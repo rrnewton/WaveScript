@@ -83,7 +83,10 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]    
     ["demo2b_iterateState.ws"     ,(lambda (a b) #t)]
     ["demo2c_inlining.ws"         ,(lambda (a b) #t)]
-    ["demo2d_pullNtimer.ws"         ,(lambda (a b) #t)]
+    
+    ;; This is having problems in PLT
+    ,@(IFCHEZ `(["demo2d_pullNtimer.ws"         ,(lambda (a b) #t)]) ())
+
 ;    ["demo2e_passchain.ws"         ,(lambda (a b) #t)]    
 
     ["demo3a_tuples.ws"           ,(lambda (a b) #t)]
@@ -148,7 +151,9 @@ exec regiment i --script "$0" ${1+"$@"};
 
     ["demo9_misc_prim_tests.ws"      ,(lambda (a b) #t)]
     ["demo9b_higher_order_prims.ws"  ,(lambda (a b) #t)]
-    ["demo9c_foreign.ws"  ,(lambda (a b) #t)]
+    
+    ;; No foreign interface yet in PLT:
+    ,@(IFCHEZ `(["demo9c_foreign.ws"  ,(lambda (a b) #t)]) ())
 
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 

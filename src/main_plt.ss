@@ -195,6 +195,7 @@
 
 
 ;; This could get verbose... ideally we'd like to export all of it:
+;; THIS IS REALLY REDUNDANT... I WISH THERE WERE SOME WAY AROUND THIS:
 (provide (all-defined) 
 	 (all-from "plt/chez_compat.ss")
 	 (all-from "generic/constants.ss")
@@ -203,11 +204,94 @@
 	 (all-from "generic/compiler_components/source_loader.ss")
 	 (all-from  "generic/util/streams.ss")
 	 (all-from "generic/passes/normalize_source/typecheck.ss")
+	 (all-from "generic/grammars/grammar_checker.ss")
+	 (all-from "generic/compiler_components/regiment_helpers.ss")
+	 (all-from "generic/compiler_components/hm_type_inference.ss")
+	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
+	 (all-from "plt/hashtab.ss")	 	 
+	 (all-from "generic/util/hash.ss")
+
+	 (all-from "generic/compiler_components/prim_defs.ss" )
+	 (all-from "generic/compiler_components/hm_type_inference.ss" )
+	 (all-from "generic/passes/normalize_source/desugar-pattern-matching.ss" )
+	 (all-from "generic/passes/normalize_source/verify-regiment.ss" )
+	 (all-from "generic/passes/normalize_source/resolve-varrefs.ss" )
+	 (all-from "generic/passes/normalize_source/ws-label-mutable.ss")
+	 (all-from "generic/passes/normalize_source/typecheck.ss" )
+	 (all-from "generic/passes/normalize_source/desugar-misc.ss" )
+	 (all-from "generic/passes/normalize_source/eta-primitives.ss" )
+	 (all-from "generic/passes/normalize_source/rename-vars.ss" )
+	 (all-from "generic/passes/normalize_source/remove-unquoted-constant.ss" )
+	 (all-from "generic/passes/static_elaborate/static-elaborate.ss" )
+	 (all-from "generic/passes/static_elaborate/verify-elaborated.ss" )
+	 (all-from "generic/passes/static_elaborate/degeneralize-arithmetic.ss" )
+	 (all-from "generic/passes/normalize_query/reduce-primitives.ss" )
+	 (all-from "generic/passes/wavescope_bkend/merge-iterates.ss" )
+	 (all-from "generic/passes/wavescope_bkend/nominalize-types.ss" )
+	 (all-from "generic/passes/wavescope_bkend/type-annotate-misc.ss" )
+	 (all-from "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" )
+	 (all-from "generic/passes/wavescope_bkend/anihilate-higher-order.ss" )
+	 (all-from "generic/passes/small-ws-passes.ss" )
+	 (all-from "generic/passes/wavescope_bkend/explicit-stream-wiring.ss" )
+	 (all-from "generic/passes/wavescope_bkend/emit-c.ss" )
+	 (all-from "generic/passes/normalize_query/remove-complex-constant.ss" )
+	 (all-from "generic/passes/normalize_query/uncover-free.ss" )
+	 (all-from "generic/passes/normalize_query/lift-letrec.ss" )
+	 (all-from "generic/passes/normalize_query/lift-letrec-body.ss" )
+	 (all-from "generic/passes/normalize_query/remove-complex-opera.ss" )
+;	 (all-from "generic/passes/normalize_query/ws-remove-letrec.ss") 
+	 (all-from "generic/passes/normalize_query/remove-lazy-letrec.ss" ) 
+	 (all-from "generic/passes/normalize_query/verify-core.ss" )
+	 (all-from "generic/passes/normalize_query/ws-lift-let.ss") 
+
+
 ;	 (all-from )
 ;	 (all-from )
 ;	 (all-from )
-	 ;REGIMENTD
+;	 (all-from )
 	 )
+
+(IFWAVESCOPE 
+  (void)
+  (provide 
+   (all-from "generic/compiler_components/logfiles.ss")
+   (all-from "generic/sim/alpha_lib.ss")
+   (all-from "generic/sim/simulator_alpha.ss")
+
+   (all-from "generic/passes/tokmac_bkend/cleanup-token-machine.ss" )
+   (all-from "generic/passes/tokmac_bkend/desugar-macros.ss" )
+   (all-from "generic/passes/tokmac_bkend/find-emittoks.ss" )
+   (all-from "generic/passes/tokmac_bkend/desugar-gradients.ss" )
+   (all-from "generic/passes/tokmac_bkend/desugar-let-stored.ss" )
+   (all-from "generic/passes/tokmac_bkend/rename-stored.ss" )   
+
+   (all-from "generic/passes/tokmac_bkend/cps-tokmac.ss" )
+   (all-from "generic/passes/tokmac_bkend/sever-cont-state.ss" )
+   (all-from "generic/passes/tokmac_bkend/closure-convert.ss" )
+   (all-from "generic/passes/tokmac_bkend/inline-tokens.ss")
+
+   (all-from "generic/passes/nesc_bkend/flatten-tokmac.ss" )
+   (all-from "generic/passes/nesc_bkend/emit-nesc.ss" )         
+
+   (all-from "generic/passes/analyze_query/add-data-flow.ss" )
+
+   (all-from "generic/passes/deglobalize/deglobalize.ss" )
+   (all-from "generic/passes/deglobalize/deglobalize2.ss" )
+
+   (all-from "generic/passes/analyze_query/classify-names.ss" )
+   (all-from "generic/passes/analyze_query/add-heartbeats.ss" )
+   (all-from "generic/passes/analyze_query/add-control-flow.ss" )
+   (all-from "generic/passes/analyze_query/add-places.ss" )
+   (all-from "generic/passes/analyze_query/analyze-places.ss" )
+   (all-from "generic/passes/analyze_query/add-data-flow.ss" )
+   (all-from "generic/passes/analyze_query/resolve-fold-trees.ss" )
+
+;  (all-from  )   
+;  (all-from  )   
+;  (all-from  )   
+;  (all-from  )   
+   ))
+
 ) ; End module
 
 

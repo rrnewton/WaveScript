@@ -13,7 +13,7 @@
         ;; This closure is only invokable once:
         (lambda (ticks succ fail)
 	  ;; Adjust:
-	  ;(set! ticks (quotient ticks 10))
+	  (set! ticks (max (quotient ticks 100) 1))
           (if invoked 
               (error 'make-engine
                      "This PLT hack for engines is not reentrant.  Don't call the same engine twice."))

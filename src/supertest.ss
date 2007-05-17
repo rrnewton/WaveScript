@@ -221,13 +221,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (ASSERT (system "make clean"))
 
 (begin (newline) (fpf "\n")
-       (printf "Third: building Wscript bytecode in PLT\n")
+       (printf "Third: building bytecode in PLT\n")
        (printf "============================================================\n")
        (define wsparse (system/exit-code "make wsparse &> 6_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
 
 
-;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
+;; [2007.03.13] Might take this out because we have a seperate, more thorough script that does it:
 #;
        ;; Now copy that executable file to our stored binaries directory.
        (when (directory-exists? "/var/www/regiment_binaries")
@@ -244,16 +244,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define pltbc (system/exit-code "make pltbc &> 7_BUILD_PLT_BYTECODE.log"))
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
+(begin (define pltrun (system/exit-code "regiment.plt &> 7b_RUN_PLT_BYTECODE.log"))
+       (fpf "plt: Run system from command line with PLT:     ~a\n" (code->msg! pltrun)))
 
 ;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
-#;
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-        (define plttests (system/exit-code 
- 			 (format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log"
-				 test-directory)))
-        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
+       (define plttests (system/exit-code 
+			 ;(format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log" test-directory)
+			 ("regiment.plt test &> 8_PLT_UNIT_TESTS.log")
+			  ))
+       (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
