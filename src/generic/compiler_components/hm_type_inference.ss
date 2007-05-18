@@ -1400,12 +1400,19 @@
 	 (apply append rand*)]
 
 
-       [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 	
+       [(,let ([,id* ,t* ,rhs*] ...) ,[bod])
 	(guard (memq let '(let letrec lazy-letrec)))
 	(append (apply append 
-		       (map (lambda (id t rhsls)
-			      `([type ,id ,t ,rhsls]))
-			 id* t* rhs*))
+		       (map (lambda (id t rhs rhsls)
+			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
+			      ;(unless (null? rhsls) (inspect rhsls))
+			      (if (symbol? rhs)
+				  (begin (ASSERT null? rhsls)
+					 ())
+				  `([type ,id ,t ,rhsls]))
+)
+			 id* t* 
+			 rhs* (map get-var-types rhs*)))
 		bod)]
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
@@ -1420,7 +1427,7 @@
 	    [() (void)]
 	    [(type ,v ,t ,subvars)
 	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-	       (fprintf port "~a~a :: " indent v)
+	       (fprintf port "~a~a \t:: " indent v)
 	       (print-type t port) (newline port))
 	     (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
 	    [,ls (guard (list? ls))

@@ -5,7 +5,16 @@
 
 include "gsl.ws";
 
+// Here's our lame enumeration... We need union types.
+float_matrix  = 0;
+double_matrix = 1;
+complex_matrix = 2;
+complexdouble_matrix = 3;
+
 // A pair containing the struct pointer and the array pointer.
+type MatrixTypeTag = Int;
+
+//type Matrix #n = (MatrixTypeTag * ExclusivePointer "void*" * ExclusivePointer "void*");
 type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
 #define BASIC(CTY, WSTY)         \
@@ -28,9 +37,35 @@ type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
       let x = gsl_matrix##CTY##_size1(mat`getPtr); \
       let y = gsl_matrix##CTY##_size2(mat`getPtr); \
        (x,y) \
-    };
+    }; \
+       \
+    /* This is temporary, we can't pass arrays yet... but we can do this */ \
+    fun toArray(mat) {             \
+      let (x,y) = dims(mat);       \
+      arr = Array:makeUNSAFE(x*y); \
+      for j = 0 to y-1 {           \
+        for i = 0 to x-1 {         \
+	  Array:set(arr, i + j*x, get(mat,i,j)) \
+	} \
+      };  \
+      arr \
+    } \
+    fun fromArray(arr, rowlen) {   \
+      len = Array:length(arr);     \
+      rows = len / rowlen;        \
+      if (len != rowlen * rows)    \
+      then wserror("fromArray: array length "++ len ++" is not divisible by "++ rowlen ++". Cannot convert to matrix."); \
+      mat = create(rowlen, rows);  \
+      for j = 0 to rows-1 {           \
+        for i = 0 to rowlen-1 {         \
+	  set(mat, i, j, arr[i + j*rowlen]) \
+	} \
+      };  \
+      mat \
+    } \
 
 
+// One day we could do this with type classes.
 #define INVERT(CTY, WSTY)          \
     fun invert((m1,d1)) {          \
       let (x,y)   = dims((m1,d1)); \
@@ -44,19 +79,6 @@ type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
 
 namespace Matrix {
-
-  /*
-  fun create(n,m, init) {
-    typecase init {
-      Int : {
-        ptr = gsl_matrix_alloc(n,m);
-	//managed_ptr = makeExclusive(ptr, free);
-				
-      }	
-      Float : {
-      }
-    }
-    }*/
 
   namespace Float {
     BASIC(_float, Float)
@@ -80,10 +102,17 @@ BASE <- iterate _ in timer(30.0)
   using Matrix; using Float;
   m = create(2,3);
   print("Ref: "++ get(m,0,0)  ++"\n");
-  print("Ref: "++ get(m,1,1)  ++"\n");
-  set(m, 1,1, 3.0);
+  print("Ref: "++ get(m,1,2)  ++"\n");
+  set(m, 1,2, 3.0);
+  set(m, 1,1, 9.0);
   print("  Set... \n");
-  print("  Ref: "++ get(m,1,1)  ++"\n\n");
+  print("  Ref: "++ get(m,1,2)  ++"\n");
+  arr = m ` toArray;
+  print(" Converted to array: "++ arr ++"\n");
+  mat2 = fromArray(arr,2);
+  print(" Converted back to matrix: "++ mat2 ++"\n");
+  print(" And back to array : "++ mat2 ` toArray ++"\n\n");
+
   emit m;
   //  emit m ` invert;
 }

@@ -15,6 +15,10 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.05.17]
+
+  *) Need to make "using Matrix:Float;" work.
+
 [2007.03.24]
   *) Because all these backends are a mess... it would be nice if the
      polymorphic printing were implemented in the language (in the
