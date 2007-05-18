@@ -1097,11 +1097,16 @@
      (define (ws-print x)
        (parameterize ([current-output-port (ws-print-output-port)])
 	 (if (string? x)
-	     (display x)
-	     (display-constrained (list x 300)))))
+	     (display (show x))
+	     (display-constrained (list (show x) 300)))))
 
-     ;; Show is like display, should have something else like write:
-     (define (show x) (format "~a" x))
+     ;; [2007.05.18] Trying to make this look more WaveScript-y:
+     (define (show x) 
+       (cond
+	[(vector? x) (format "#~a" (show (vector->list x)))]
+	[(list? x) (text->string (list "[" (insert-between ", " (map show x)) "]"))]
+	[else (format "~a" x)]
+	))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
      (define (gnuplot_array2d arr) (gnuplot (map vector->list (vector->list arr))))
@@ -1274,6 +1279,7 @@
       (match T
 	[Int     'fixnum]
 	[Float   'single-float]
+	[Double  'double-float]
 	[Boolean 'boolean]
 	[Char    'char]
 	[String  'string]

@@ -258,6 +258,7 @@
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
+;	(floatToDouble (lambda (x) x))
 	(floatToComplex ,(lambda (env f) `(quote ,(+ f 0.0+0.0i))))
 	
 	(complexToInt complexToInt-unimplemented)
@@ -858,6 +859,10 @@
 				       hashtable
 				       m_invert
 				       Mutable:ref deref
+
+				       ;; Alas, these don't have different representations for the constants, 
+				       ;; so we shouldn't do it statically:
+				       floatToDouble doubleToFloat
 
 				       foreign foreign_box foreign_source
 				       )))

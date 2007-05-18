@@ -14,26 +14,26 @@ complexdouble_matrix = 3;
 // A pair containing the struct pointer and the array pointer.
 type MatrixTypeTag = Int;
 
-//type Matrix #n = (MatrixTypeTag * ExclusivePointer "void*" * ExclusivePointer "void*");
-type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
+type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
+//type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
-#define BASIC(CTY, WSTY)         \
+#define BASIC(CTY, WSTY, TAG)         \
     /* Hmm... initialize how? */ \
-    create :: (Int,Int) -> Matrix WSTY; \
+    create :: (Int,Int) -> Matrix; \
     fun create(n,m) {  \
       p   = exclusivePtr $ gsl_matrix##CTY##_alloc(n,m); \
       arr = exclusivePtr $ gsl_matrix##CTY##_data(getPtr(p)); \
       gsl_matrix##CTY##_set_zero(p`getPtr); \
-      (p, arr) \
+      (TAG, p, arr) \
     } \
       \
     /* These could be implemented by directly using the array: */ \
-    get  :: (Matrix WSTY, Int, Int)       -> WSTY; \
-    set  :: (Matrix WSTY, Int, Int, WSTY) -> ();   \
-    dims :: (Matrix WSTY)                 -> (Int * Int); \
-    fun get((mat,_),i,j)    gsl_matrix##CTY##_get(mat`getPtr, i,j); \
-    fun set((mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
-    fun dims((mat,_)) { \
+    get  :: (Matrix, Int, Int)       -> WSTY; \
+    set  :: (Matrix, Int, Int, WSTY) -> ();   \
+    dims :: (Matrix)                 -> (Int * Int); \
+    fun get((_,mat,_),i,j)    gsl_matrix##CTY##_get(mat`getPtr, i,j); \
+    fun set((_,mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
+    fun dims((_,mat,_)) { \
       let x = gsl_matrix##CTY##_size1(mat`getPtr); \
       let y = gsl_matrix##CTY##_size2(mat`getPtr); \
        (x,y) \
@@ -67,32 +67,51 @@ type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
 // One day we could do this with type classes.
 #define INVERT(CTY, WSTY)          \
-    fun invert((m1,d1)) {          \
-      let (x,y)   = dims((m1,d1)); \
-      let (m2,d2) = create(x,y);   \
+    fun invert(mat) {          \
+      let (tag,m1,d1) = mat;   \
+      let (x,y)   = dims(mat); \
+      let mat2 = create(x,y);   \
+      let (tag,m2,d2) = mat2;   \
       let perm = nullperm(x);      \
         /* Do the work: */         \
         gsl_linalg##CTY##_LU_invert(m1`getPtr, perm, m2`getPtr); \
 	Cfree(perm);               \
-      (m2,d2)                      \
+	mat2 \
     }
 
 
 namespace Matrix {
 
   namespace Float {
-    BASIC(_float, Float)
-
+    BASIC(_float, Float, float_matrix)
    //INVERT()  // Apparently not implemented for single precision...
   }
 
+  namespace Double {
+    BASIC(, Double, double_matrix)
+   INVERT(, Double)
+  }
 
   // We don't support complex numbers in the FFI yet! 
   namespace Complex {
+    BASIC(_complex_float, Complex, complex_matrix)
+//    INVERT(_complex_float, Complex) // WHY IS THIS NOT DEFINED?
+  }
 
-    BASIC(_complex_float, Complex)
+  //  namespace ComplexDouble {} 
 
-    INVERT(_complex_float, Complex)
+  // A generic inversion routine:
+  fun invert(mat) {
+    let (tag,_,_) = mat;
+    //if tag == float_matrix
+    //then Float:invert(mat) else
+    if tag == double_matrix
+    then Double:invert(mat) else
+//    if tag == complex_matrix
+//    then Complex:invert(mat) else
+//    if tag == complexdouble_matrix
+//    then ComplexDouble:invert(mat)
+    wserror("Unrecognized matrix type tag: "++tag)
   }
   
 }
@@ -100,6 +119,7 @@ namespace Matrix {
 BASE <- iterate _ in timer(30.0) 
 { 
   using Matrix; using Float;
+
   m = create(2,3);
   print("Ref: "++ get(m,0,0)  ++"\n");
   print("Ref: "++ get(m,1,2)  ++"\n");
@@ -113,6 +133,20 @@ BASE <- iterate _ in timer(30.0)
   print(" Converted back to matrix: "++ mat2 ++"\n");
   print(" And back to array : "++ mat2 ` toArray ++"\n\n");
 
+  using Matrix; using Double;
+
+  dub = create(3,3);
+  set(dub, 0,0, floatToDouble$ 1.0);
+  set(dub, 1,1, floatToDouble$ 2.0);
+  set(dub, 2,2, floatToDouble$ 3.0);
+  
+  print("A double matrix    : "++ dub `toArray ++"\n");
+  inv = Matrix:invert(dub);
+  print("It's inverse       : "++ inv `toArray ++"\n");
+  print("It's double inverse: "++ inv `Matrix:invert `toArray ++"\n");
+  
   emit m;
+  emit dub;
+  emit Matrix:Complex:create(3,3);
   //  emit m ` invert;
 }

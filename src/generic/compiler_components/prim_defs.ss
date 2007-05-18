@@ -155,7 +155,7 @@
 
     (floatToInt16   (Float)   Int16)
     (floatToInt     (Float)   Int)
-    (floatToDouble (Float) Double)
+    (floatToDouble  (Float) Double)
     (floatToComplex (Float) Complex)
 
     (doubleToInt16   (Double)  Int16)

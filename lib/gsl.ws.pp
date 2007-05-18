@@ -67,7 +67,7 @@ ALL(free)
    entry(gsl_matrix##CTY##_set_all, (PTR(CTY), WSTY) -> ()) \
    entry(gsl_matrix##CTY##_set_zero, PTR(CTY) -> ())
 
-//getset(, Double)  // Not ready yet
+getset(, Double)  // Not ready yet
 getset(_float, Float)
 getset(_complex_float, Complex)
 //getset(_complex, ComplexDouble)
