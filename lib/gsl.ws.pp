@@ -19,6 +19,8 @@ gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h",
 #define entry(NAME,TYPE) NAME :: TYPE = foreign(wrap(NAME), gsl_includes, []);
 
 #define ALL(OP) OP() OP(_float) OP(_complex_float) OP(_complex)
+#define ALL2(OP) OP(, Double) OP(_float, Float) OP(_complex_float, Complex) /*OP(_complex, ComplexDouble)*/
+
 //#define ALL(OP) OP(_float) 
 
 //#define PTR2(S,STAR) Pointer wrap(gsl_matrix##S##STAR())
@@ -50,7 +52,6 @@ ALL(data)
 ALL(size1)
 ALL(size2)
 
-
 /*====================================================================================================*/
 /*                                         GSL Matrix functions:                                      */
 /*====================================================================================================*/
@@ -67,10 +68,27 @@ ALL(free)
    entry(gsl_matrix##CTY##_set_all, (PTR(CTY), WSTY) -> ()) \
    entry(gsl_matrix##CTY##_set_zero, PTR(CTY) -> ())
 
-getset(, Double)  // Not ready yet
-getset(_float, Float)
-getset(_complex_float, Complex)
-//getset(_complex, ComplexDouble)
+ALL2(getset)
+     //getset(, Double)  // Not ready yet
+     //getset(_float, Float)
+     //getset(_complex_float, Complex)
+     ////getset(_complex, ComplexDouble)
+
+#define add(S) plussuffix( add,          S, (PTR(S), PTR(S)) -> Int)
+#define sub(S) plussuffix( sub,          S, (PTR(S), PTR(S)) -> Int)
+#define mul(S) plussuffix( mul_elements, S, (PTR(S), PTR(S)) -> Int)
+#define div(S) plussuffix( div_elements, S, (PTR(S), PTR(S)) -> Int)
+
+ALL(add)
+ALL(sub)
+ALL(mul)
+ALL(div)
+
+#define scale(CTY,WSTY)    plussuffix( scale,        CTY, (PTR(CTY), WSTY) -> Int)
+#define addconst(CTY,WSTY) plussuffix( add_constant, CTY, (PTR(CTY), WSTY) -> Int)
+
+ALL2(scale)
+ALL2(addconst)
 
 // Inversion: Takes matrix_in, permutation, matrix_out
 #define invert(S) entry(gsl_linalg##S##_LU_invert, (PTR(S), PTR(S), PTR(S)) -> Int)

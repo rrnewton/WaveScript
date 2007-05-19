@@ -27,7 +27,7 @@
 		 ;dump-binfile 
 		 ;audio 
 		 audioFile timer 
-		 show 
+		 show
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
 		 prim_window
@@ -115,7 +115,7 @@
 		 constants
 		 helpers
 		 (except streams test-this)
-		 (only lang_wavescript 
+		 (only lang_wavescript ws-show
 		       ))
 
     
@@ -1094,19 +1094,13 @@
 	 new)
        )
 
+     (define show ws-show)
+
      (define (ws-print x)
        (parameterize ([current-output-port (ws-print-output-port)])
 	 (if (string? x)
-	     (display (show x))
-	     (display-constrained (list (show x) 300)))))
-
-     ;; [2007.05.18] Trying to make this look more WaveScript-y:
-     (define (show x) 
-       (cond
-	[(vector? x) (format "#~a" (show (vector->list x)))]
-	[(list? x) (text->string (list "[" (insert-between ", " (map show x)) "]"))]
-	[else (format "~a" x)]
-	))
+	     (display (ws-show x))
+	     (display-constrained (list (ws-show x) 300)))))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
      (define (gnuplot_array2d arr) (gnuplot (map vector->list (vector->list arr))))

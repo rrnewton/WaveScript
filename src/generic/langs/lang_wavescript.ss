@@ -10,8 +10,11 @@
 ;; This has become *terribly* non-portable.
 
 (module lang_wavescript mzscheme
-  (require "../../plt/common.ss")
-  (provide   )
+  (require "../../plt/common.ss"
+	   "../compiler_components/c_generator.ss"	   
+	   )
+  (provide ;wavescript-language
+	   ws-show)
   (chezimports )
   
   ;; Provide for PLT only, in Chez it goes to top-level.
@@ -90,6 +93,21 @@
 	 [(_ x ...) e ...]))]))
 
 ;; ======================================================================
+
+;;; This is a generic value printer.
+;;; It's used in multiple places.
+
+;; Eventually need to pass a type to this to distinguish tuples from arrays.
+(define (ws-show x) 
+  (cond
+   [(vector? x) (format "#~a" (ws-show (vector->list x)))]
+   [(list? x) (text->string (list "[" (insert-between ", " (map ws-show x)) "]"))]
+   [else (format "~a" x)]
+   ))
+
+;; ======================================================================
+
+;;; This is the actual language binding that evaluates wavescript programs.
 
 (IFCHEZ 
  ;; For CHEZ this becomes a top-level binding:
