@@ -304,11 +304,13 @@
 
 (define ws-pass-optional-stop 
   (lambda (x)
+;    (inspect x)
+;    (inspect (strip-annotations x))
     (if (regiment-verbose)
 	(IFDEBUG
 	 (begin (parameterize ([pretty-line-length 160]
-				  [print-length 300]
-				  [print-level 60])
+			       [print-length 300]
+			       [print-level 60])
 		    (newline)
 		    (pretty-print (strip-annotations x)))
 		  (printf "================================================================================\n\n")

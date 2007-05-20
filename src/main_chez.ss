@@ -7,8 +7,7 @@
 ;;;; HOWEVER: I broke this rule for things that depend on whether or not SWL is loaded.
 ;;;; TODO FIXME: I can also make this happen at compile time, via macros.
 
-
-
+  
 ; =======================================================================
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.

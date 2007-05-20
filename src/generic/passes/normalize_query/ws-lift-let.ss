@@ -158,7 +158,9 @@
 		 [(,lang '(program ,[E -> bod] ,meta* ... ,ty))
 		  ;; Ensure that there's a 'union-types' entry in the output:
 		  (let ([uniondefs (or (assq 'union-types meta*) '(union-types))])
-		    `(,lang '(program ,bod ,uniondefs ,(remq uniondefs meta*) ... ,ty)))
+		    ;`(,lang '(program ,bod ,uniondefs ,(remq uniondefs meta*) ... ,ty))
+		    `(,lang '(program ,bod ,uniondefs ,ty))
+		    )
 		  ]))]
 
     [OutputGrammar ws-lift-let-grammar])

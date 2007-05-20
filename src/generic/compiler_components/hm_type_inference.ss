@@ -51,6 +51,7 @@
            "../constants.ss"
            "../util/helpers.ss"
 	   (all-except "reg_core_generic_traverse.ss" test-this)
+;           "types.ss"
            "type_environments.ss"
 	   (all-except "../compiler_components/regiment_helpers.ss"
                        regiment-type-aliases
@@ -61,19 +62,13 @@
                        )
            )
 
-  (provide 
-  
-           num-types
-	   constant-typeable-as? 
-	   
-;	   resolve-type-aliases
+  (provide   
 
            instantiate-type
-	   export-type do-late-unify! 
+	   export-type 
 	   prim->type
-	   ;id
-	   ;inject-polymorphism
-	   
+
+	   do-late-unify! 
 	   recover-type
 	   type-const
 ;	   type-lambda
@@ -86,6 +81,8 @@
 	   strip-annotations
 	   
 	   print-var-types
+	   dealias-type
+	   realias-type
 
 	   types-compat?
            
@@ -112,12 +109,6 @@
 
 (IFCHEZ (begin) (provide (all-from "type_environments.ss")))
 
-;; Added a subkind for numbers, here are the types in that subkind.
-(define num-types '(Int Float Double Complex 
-		    Int16
-		    ;; Eventually:
-		    ;; Int8 Int16 Int64 Double Complex64
-			))
 
 ; ======================================================================
 ;;; Helpers
@@ -460,30 +451,6 @@
     result))
 
 ; ======================================================================
-
-(define constant-typeable-as? 
-  (lambda (c ty)
-#;
-    (cond 
-     [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-     [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-     [(and (flonum? c))                 (eq? ty 'Float)]
-     [else #f])
-
-    (if (eq? c 'BOTTOM) #t
-	(match ty
-	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-	  [Float   (flonum? c)]
-	  [Double  (flonum? c)]
-	  [Complex (cflonum? c)]
-	  [Bool  (boolean? c)]
-	  [String (string? c)]
-	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
-	  [#()   (eq? c 'UNIT)]
-	  ;[else #f]
-	  ))
-    ))
 
 ;;; Annotate expressions/programs with types.
   
@@ -967,7 +934,7 @@
 	[,other (fallthru other)]))
     (lambda (p)
       (match p 
-	[(,lang '(program ,[E] ,_ ...))  `(,lang '(program ,E ,_ ...))]
+	[(,lang '(program ,[E] ,_ ...))  `(,lang '(program ,E ,@_))]
 	[,expr ((core-generic-traverse Expr) expr)]
 	))))
 
@@ -1358,16 +1325,24 @@
 
 |#
 
+;; A little helper to project out a metadata-tag from a program form.
+;; TODO: Move this somewhere else:
+(define (project-metadata tag prog)
+  (match prog
+    [(,lang '(program ,body ,meta ... ,ty))  (assq tag meta)]
+    [,else #f]))
+
+
 ;; Expects a fully typed expression
 (define (print-var-types exp max-depth . p)
-  (let ([port (if (null? p) (current-output-port) (car p))])
-    
+  (let ([port (if (null? p) (current-output-port) (car p))]
+	[aliases ()])
     (define (get-var-types exp)
       ;(printf "GETTING VAR TYPES\n")(flush-output-port)
       (match exp 
 
        [(,lang '(program ,[body] ,meta ... ,ty))
-	 (append body `((type BASE ,ty ())))]
+	(append body `((type BASE ,ty ())))]
 
        [,c (guard (simple-constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
@@ -1416,26 +1391,169 @@
 		bod)]
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
-   
-    ;(inspect (get-var-types exp))
-    (let pvtloop (
-	       ;[x (begin (time (pretty-print (map cadr (get-var-types exp)))) (exit))] [depth 0] [indent " "]
-	       [x (get-var-types exp)] [depth 0] [indent " "]
-	       )
-      (if (= depth max-depth) (void)
-	  (match x
-	    [() (void)]
-	    [(type ,v ,t ,subvars)
-	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-	       (fprintf port "~a~a \t:: " indent v)
-	       (print-type t port) (newline port))
-	     (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
-	    [,ls (guard (list? ls))
-		 (for-each (lambda (x) (pvtloop x depth indent))
-		   ls)]
-	    [,other (error 'print-var-types "bad result from get-var-types: ~a" other)])))
+    ;; print-var-types body:
+    (let ([aliases (or (project-metadata 'type-aliases exp) ())])
+      (let pvtloop (
+		    [x (get-var-types exp)] 
+		    [depth 0] [indent " "]
+		    )
+	(if (= depth max-depth) (void)
+	    (match x
+	      [() (void)]
+	      [(type ,v ,t ,subvars)
+	       (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
+		 (fprintf port "~a~a \t:: " indent v)
+		 (print-type (realias-type aliases t) port) (newline port))
+	       (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
+	      [,ls (guard (list? ls))
+		   (for-each (lambda (x) (pvtloop x depth indent))
+		     ls)]
+	      [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
       ))
 
+(trace-define (dealias-type aliases t)
+;    (import iu-match) ;; Having problems!
+    (match t
+      [,s (guard (symbol? s))                   
+	  (let ([entry (or (assq s aliases)
+			   (assq s regiment-type-aliases))])
+	    (if entry 
+		(begin (DEBUGASSERT (= 2 (length entry)))
+		       (cadr entry))
+		s))]
+      [',n                                     `(quote ,n)]
+      ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
+      [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
+      [(NUM (,v . ,t))                          (if t (dealias-type aliases t) `(NUM ,v))]
+      [#(,[t*] ...)                            (apply vector t*)]
+      [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
+
+      [(Pointer ,name)          `(Pointer ,name)]
+      [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
+      ;; This is simple substitition of the type arguments:
+      [(,s ,[t*] ...) (guard (symbol? s))
+       (let ([entry (or (assq s aliases)
+			(assq s regiment-type-aliases))])
+;	 (import iu-match) ;; Having problems!
+	 (match entry
+	   [#f `(,s ,@t*)]
+	   [(,v ,rhs) (error 'resolve-type-aliases 
+			     "alias ~s should not be instantiated with arguments!: ~s" 
+			     s (cons s t*))]
+	   [(,v (,a* ...) ,rhs)
+	    ;; We're lazy, so let's use the existing machinery
+	    ;; to do the substition.  So what if it's a little inefficient?	   
+	    (match (instantiate-type `(Magic #(,@a*) ,rhs))
+	      ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+	      [(Magic #(,cells ...) ,rhs)
+	       ;; Now use the unifier to set all those mutable cellS:
+	       (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+		 cells t*)
+	       (export-type rhs)])]))]
+      [,other (error 'resolve-type-aliases "bad type: ~s" other)])
+    )
+
+#|
+
+(instantiate-type `(Magic #(,@a*) ,rhs))
+
+(match (instantiate-type `(Magic #(,@a*) ,rhs))
+  ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+  [(Magic #(,cells ...) ,rhs)
+   ;; Now use the unifier to set all those mutable cellS:
+   (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+     cells t*)
+   (export-type rhs)])
+
+|#
+
+(define realias-type
+  (let ()
+    ;; This should build up a substition of type variables to types.
+    ;; Or it should fail...
+    (define (align t template fail)
+      (cond
+       [(eqv? t template) ;(symbol? t) (symbol? template)
+	'()]
+       ;; If the template is bound to a variable, we bind that variable to this type.
+       
+       
+       [(and (vector? t) (vector? template)
+	     (= (vector-length t) (vector-length template)))
+	(foldl (lambda (subst x y)
+		 (append subst (align x y fail)))
+	  '()
+	  (vector->list t)
+	  (vector->list template))]
+       [else (fail #f)]
+       ))
+
+    (lambda (aliases t)
+      (let realias-loop ([ls aliases])
+	(cond	 
+	 [(null? ls) t] ;; No aliases apply, use original type.
+	 [(call/1cc (lambda (k) (align t (cadar ls) k)))
+	  => (lambda (subst) 
+	       (match (caar ls)
+		 [,s (guard (symbol? s)) s]
+		 [(,C ,arg* ...)
+		  `(,(caar ls) SUBST HERE)]))]
+	 [else (realias-loop (cdr ls))])))))
+
+;[(realias-type '((Foo Int)) 'Int) Foo]
+;[(realias-type '((Foo #(Int Int))) '#(Int Int)) #(Int Int)]
+
+#;
+(define (realias-type aliases t)
+  (define reversed (reverse aliases))
+  (match t
+    [,s (guard (symbol? s))
+	;; Is there an alias to this "small" (monomorphic) type:
+	(let ([entry (assq s reversed)])
+	  (if entry 
+	      (begin (DEBUGASSERT (= 2 (length entry)))
+		     (cadr entry))
+	      s))]
+
+    ;; Type variables can't by themselves be aliases:
+    [',n                                     `(quote ,n)]
+    ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
+    [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
+    [(NUM (,v . ,t))                          (if t (dealias-type aliases t) `(NUM ,v))]
+
+    
+    [,vec (guard (vector? vec))
+      ;; Candidates:
+      (filter (lambda (v) (and (vector? v) (= (vector-length vec) (vector-length v))))
+	reversed)
+
+#(,[t*] ...)                            (apply vector t*)]
+    [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
+
+    [(Pointer ,name)          `(Pointer ,name)]
+    [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
+    ;; This is simple substitition of the type arguments:
+    [(,s ,[t*] ...) (guard (symbol? s))
+     (let ([entry (or (assq s aliases)
+		      (assq s regiment-type-aliases))])
+					;	 (import iu-match) ;; Having problems!
+       (match entry
+	 [#f `(,s ,@t*)]
+	 [(,v ,rhs) (error 'resolve-type-aliases 
+			   "alias ~s should not be instantiated with arguments!: ~s" 
+			   s (cons s t*))]
+	 [(,v (,a* ...) ,rhs)
+	  ;; We're lazy, so let's use the existing machinery
+	  ;; to do the substition.  So what if it's a little inefficient?	   
+	  (match (instantiate-type `(Magic #(,@a*) ,rhs))
+	    ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+	    [(Magic #(,cells ...) ,rhs)
+	     ;; Now use the unifier to set all those mutable cellS:
+	     (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+	       cells t*)
+	     (export-type rhs)])]))]
+    [,other (error 'resolve-type-aliases "bad type: ~s" other)])  
+  t)
 
 ; ======================================================================
 ;;; Unit tests.

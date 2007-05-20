@@ -164,49 +164,51 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+#;
+(trace-define (dealias-type aliases t)
+    (match t
+      [,s (guard (symbol? s))                   
+	  (let ([entry (or (assq s aliases)
+			   (assq s regiment-type-aliases))])
+	    (if entry 
+		(begin (DEBUGASSERT (= 2 (length entry)))
+		       (cadr entry))
+		s))]
+      [',n                                     `(quote ,n)]
+      ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
+      [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
+      [(NUM (,v . ,t))                          (if t (dealias-type aliases t) `(NUM ,v))]
+      [#(,[t*] ...)                            (apply vector t*)]
+      [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
+
+      [(Pointer ,name)          `(Pointer ,name)]
+      [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
+      ;; This is simple substitition of the type arguments:
+      [(,s ,[t*] ...) (guard (symbol? s))
+       (let ([entry (or (assq s aliases)
+			(assq s regiment-type-aliases))])
+	 (match entry
+	   [#f `(,s ,t* ...)]
+	   [(,v ,rhs) (error 'resolve-type-aliases 
+			     "alias ~s should not be instantiated with arguments!: ~s" 
+			     s (cons s t*))]
+	   [(,v (,a* ...) ,rhs)
+	    ;; We're lazy, so let's use the existing machinery
+	    ;; to do the substition.  So what if it's a little inefficient?
+	    (match (instantiate-type `(Magic #(,@a*) ,rhs))
+	      [(Magic #(,cells ...) ,rhs)
+	       ;; Now use the unifier to set all those mutable cellS:
+	       (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+		 cells t*)
+	       (export-type rhs)])]))]
+      [,other (error 'resolve-type-aliases "bad type: ~s" other)])
+    )
 
 ;; [2007.03.14]
 ;; This desugars all types within the program by applying all type aliases.
 (define-pass resolve-type-aliases
     (define aliases '())
-    (define (Type t)
-      (match t
-	[,s (guard (symbol? s))                   
-	    (let ([entry (or (assq s aliases)
-			     (assq s regiment-type-aliases))])
-	      (if entry 
-		  (begin (DEBUGASSERT (= 2 (length entry)))
-			 (cadr entry))
-		  s))]
-	[',n                                     `(quote ,n)]
-	;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
-	[(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
-	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
-	[#(,[t*] ...)                            (apply vector t*)]
-	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
-
-	[(Pointer ,name)          `(Pointer ,name)]
-	[(ExclusivePointer ,name) `(ExclusivePointer ,name)]
-	;; This is simple substitition of the type arguments:
-	[(,s ,[t*] ...) (guard (symbol? s))
-	 (let ([entry (or (assq s aliases)
-			  (assq s regiment-type-aliases))])
-	   (match entry
-	     [#f `(,s ,t* ...)]
-	     [(,v ,rhs) (error 'resolve-type-aliases 
-			       "alias ~s should not be instantiated with arguments!: ~s" 
-			       s (cons s t*))]
-	     [(,v (,a* ...) ,rhs)
-	      ;; We're lazy, so let's use the existing machinery
-	      ;; to do the substition.  So what if it's a little inefficient?
-	      (match (instantiate-type `(Magic #(,a* ...) ,rhs))
-		[(Magic #(,cells ...) ,rhs)
-		 ;; Now use the unifier to set all those mutable cellS:
-		 (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
-		   cells t*)
-		 (export-type rhs)])]))]
-	[,other (error 'resolve-type-aliases "bad type: ~s" other)])
-      )
+    (define Type (lambda (t) (dealias-type aliases t)))
     [Bindings (lambda (v* t* e* reconst Expr)
 		(reconst v* (map Type t*) (map Expr e*)))]
     [Expr (lambda (x fallthru)
@@ -214,13 +216,13 @@
 		   [,oth (fallthru oth)]))]
     [Program (lambda(prog Expr)	  
 	       (match prog
-		 [(,inputlang '(program ,bod 				  
-				 ,meta* ... 
-				 ,type))
+		 [(,inputlang '(program ,bod ,meta* ... ,type))
 		  (fluid-let ([aliases (cdr (or (assq 'type-aliases meta*) 
 						'(type-aliases)))])
 		    `(resolve-type-aliases-language
-		      '(program ,(Expr bod) ,(remq (assq 'type-aliases meta*) meta*) ... 
+		      '(program ,(Expr bod) 
+			        ;,@(remq (assq 'type-aliases meta*) meta*)
+			        ,@meta*
 				,type)))]))]
     ;; Now we're free of sugars and can use the initial grammar.
     [OutputGrammar initial_regiment_grammar])

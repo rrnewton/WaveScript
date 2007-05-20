@@ -2038,7 +2038,15 @@
                          (loop (sub1 n) (cons (func n) acc))))))
       (loop n '()))))
 
+
+(define (mapadd f l last)
+  (let loop ([l l])
+    (if (null? l)
+        (list last)
+        (cons (f (car l)) (loop (cdr l))))))
+
 ;; From PLT's list.ss
+;; If provided more than 
 (define foldl
      (letrec ((fold-one
                (lambda (f init l)

@@ -1,5 +1,8 @@
 
+;;;; This file defines an ADT for type environments used by the type checker.
+;;;; It also defines the represenation for types themselves.
 
+;;;; .author Ryan Newton
 
 (module type_environments mzscheme
   (require ;`"../../plt/common.ss"
@@ -19,10 +22,17 @@
            )
 
   (provide 
-           type? 
+           num-types
+
+	   type? 
 	   distributed-type?
 	   arrow-type?
-	   polymorphic-type?          
+	   polymorphic-type?          	   
+	   constant-typeable-as? 
+
+;            instantiate-type
+; 	   export-type 
+; 	   prim->type
 
            make-tvar
 	   reset-tvar-generator
@@ -40,6 +50,13 @@
 	   )
 
   (chezimports constants rn-match)
+
+;; Added a subkind for numbers, here are the types in that subkind.
+(define num-types '(Int Float Double Complex 
+		    Int16
+		    ;; Eventually:
+		    ;; Int8 Int16 Int64 Double Complex64
+			))
 
 ; ----------------------------------------
 ;;; Representation for Types:
@@ -134,6 +151,30 @@
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [,else #f]))
+
+(define constant-typeable-as? 
+  (lambda (c ty)
+#;
+    (cond 
+     [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+     [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+     [(and (flonum? c))                 (eq? ty 'Float)]
+     [else #f])
+
+    (if (eq? c 'BOTTOM) #t
+	(match ty
+	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+	  [Float   (flonum? c)]
+	  [Double  (flonum? c)]
+	  [Complex (cflonum? c)]
+	  [Bool  (boolean? c)]
+	  [String (string? c)]
+	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
+	  [#()   (eq? c 'UNIT)]
+	  ;[else #f]
+	  ))
+    ))
 
   
 ; ----------------------------------------
