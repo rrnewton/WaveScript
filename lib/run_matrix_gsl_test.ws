@@ -27,14 +27,17 @@ BASE <- iterate _ in timer(30.0)
   set(dub, 2,2, f2d$ 3.0);
   
   print("A double matrix    : "++ dub `toArray ++"\n");
-  inv = Matrix:invert(dub);
+  inv = Matrix:Generic:invert(dub);
   print("It's inverse       : "++ inv `toArray ++"\n");
-  print("It's double inverse: "++ inv `Matrix:invert `toArray ++"\n");
+  print("It's double inverse: "++ inv `Matrix:Generic:invert `toArray ++"\n");
 
-
-  let (_,ptr,_) = dub;
-  gsl_matrix_add_constant(getPtr(ptr), f2d$ 3.3);
-  print("Add a constant:: "++ dub`toArray ++"\n");  
+  // Mutates it:
+  add_constant(dub, f2d$ 3.3);
+  print("Add a constant:: "++ dub `toArray ++"\n");  
+  scale(dub, f2d$ 10.0);
+  print("scale         :: "++ dub `toArray ++"\n");  
+  add(dub,dub);
+  print("add self      :: "++ dub `toArray ++"\n");  
   
   emit m;
   emit dub;

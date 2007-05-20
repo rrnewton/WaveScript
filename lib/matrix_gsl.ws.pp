@@ -17,6 +17,20 @@ type MatrixTypeTag = Int;
 type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 //type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
+#define UNBOXBOTH(CTY, OP) \
+    fun OP(mat1,mat2) {  \
+      /*assert(dims(mat1)==dims(mat2));*/ \
+      let (tag1,m1,ar1) = mat1; \
+      let (tag2,m2,ar2) = mat2; \
+      /*assert(tag1==tag2);*/       \
+      gsl_matrix##CTY##_##OP(m1`getPtr, m2`getPtr); \
+    }  
+#define UNBOXFIRST(CTY, OP) \
+    fun OP(mat1,arg2) {  \
+      let (tag1,m1,ar1) = mat1; \
+      gsl_matrix##CTY##_##OP(m1`getPtr, arg2); \
+    }
+
 #define BASIC(CTY, WSTY, TAG)         \
     /* Hmm... initialize how? */ \
     create :: (Int,Int) -> Matrix; \
@@ -63,6 +77,13 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       };  \
       mat \
     } \
+      \
+    UNBOXBOTH(CTY, add) \
+    UNBOXBOTH(CTY, sub) \
+    UNBOXBOTH(CTY, mul_elements) \
+    UNBOXBOTH(CTY, div_elements) \
+    UNBOXFIRST(CTY, scale) \
+    UNBOXFIRST(CTY, add_constant) \
 
 
 // One day we could do this with type classes.
@@ -99,19 +120,57 @@ namespace Matrix {
   }
 
   //  namespace ComplexDouble {} 
-
-  // A generic inversion routine:
-  fun invert(mat) {
-    let (tag,_,_) = mat;
-    //if tag == float_matrix
-    //then Float:invert(mat) else
-    if tag == double_matrix
-    then Double:invert(mat) else
-//    if tag == complex_matrix
-//    then Complex:invert(mat) else
-//    if tag == complexdouble_matrix
-//    then ComplexDouble:invert(mat)
-    wserror("Unrecognized matrix type tag: "++tag)
-  }
   
+  namespace Generic {
+
+    // A generic inversion routine:
+    fun invert(mat) {
+      let (tag,_,_) = mat;
+      //if tag == float_matrix
+      //then Float:invert(mat) else
+      if tag == double_matrix
+      then Double:invert(mat) else
+      //    if tag == complex_matrix
+      //    then Complex:invert(mat) else
+      //    if tag == complexdouble_matrix
+      //    then ComplexDouble:invert(mat)
+      wserror("Unrecognized matrix type tag: "++tag)
+    }
+    
+#define ALLGENERIC2(OP) \
+    fun OP(mat1, arg2) {      \
+      let (tag,_,_) = mat1;      \
+      if tag == float_matrix    \
+      then Float:OP(mat1,arg2) else   \
+      if tag == double_matrix   \
+      then Double:OP(mat1,arg2) else  \
+      if tag == complex_matrix  \
+      then Complex:OP(mat1,arg2) else \
+/*      if tag == complexdouble_matrix */  \
+/*      then ComplexDouble:OP(mat) else */ \
+      wserror("Unrecognized matrix type tag: "++tag) \
+    }
+
+ALLGENERIC2(add)
+ALLGENERIC2(sub)
+ALLGENERIC2(mul_elements)
+ALLGENERIC2(div_elements)
+  //ALLGENERIC2(scale)
+  //ALLGENERIC2(add_constant)
+
+
+    /*fun foo(mat) {
+      let (tag,_,_) = mat;
+      if tag == float_matrix
+      then Float:foo(mat) else
+      if tag == double_matrix
+      then Double:foo(mat) else
+      if tag == complex_matrix
+      then Complex:foo(mat) else
+      if tag == complexdouble_matrix
+      then ComplexDouble:foo(mat)
+      wserror("Unrecognized matrix type tag: "++tag)
+    }*/
+
+  }
 }
