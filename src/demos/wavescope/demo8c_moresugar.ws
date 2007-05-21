@@ -11,4 +11,6 @@ s1 = iterate(_ in s0) {
   emit ([1] :: MyType);
 }
 
+val = (s1,s1);
+
 BASE <- s1;

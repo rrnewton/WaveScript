@@ -1264,6 +1264,7 @@
 ;; Prints a type in a WaveScript format way rather than the raw sexp.
 ;; Added a hack to omit parens around the outermost type constructor.
 (define (print-type t . p)
+  (DEBUGASSERT type? t)
   (let ([port (if (null? p) (current-output-port) (car p))])
     (define (loop outer?) 
       (lambda (t)
@@ -1296,10 +1297,11 @@
 	  [,other (error 'print-type "bad type: ~s" other)])))
     (display 
      ((loop #t) t)
+     ;((loop #f) t)
      ;; Prettification: we drop the loop parens:
      port)))
 #;
-     (match t 
+(match t 
        [(,tc ,[loop -> arg*] ...) (guard (symbol? tc) (not (eq? tc 'quote)))
 	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
        [,t (loop t)])
@@ -1402,8 +1404,15 @@
 	      [() (void)]
 	      [(type ,v ,t ,subvars)
 	       (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-		 (fprintf port "~a~a \t:: " indent v)
-		 (print-type (realias-type aliases t) port) (newline port))
+		 (let* ([str (format "~a" v)]
+			[padding ;(modulo (string-length str) 25)
+			         (max 0 (- 40 (string-length str)))
+				 ])
+		   (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
+		   )
+		 (print-type (realias-type (cdr aliases) t) port) (newline port))
+;		 (print-type t port) (newline port))
+	       
 	       (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
 	      [,ls (guard (list? ls))
 		   (for-each (lambda (x) (pvtloop x depth indent))
@@ -1411,9 +1420,9 @@
 	      [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
       ))
 
-(trace-define (dealias-type aliases t)
+(define (dealias-type aliases t)
 ;    (import iu-match) ;; Having problems!
-    (match t
+  (match t
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
 			   (assq s regiment-type-aliases))])
@@ -1453,107 +1462,63 @@
       [,other (error 'resolve-type-aliases "bad type: ~s" other)])
     )
 
-#|
-
-(instantiate-type `(Magic #(,@a*) ,rhs))
-
-(match (instantiate-type `(Magic #(,@a*) ,rhs))
-  ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
-  [(Magic #(,cells ...) ,rhs)
-   ;; Now use the unifier to set all those mutable cellS:
-   (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
-     cells t*)
-   (export-type rhs)])
-
-|#
-
 (define realias-type
   (let ()
-    ;; This should build up a substition of type variables to types.
-    ;; Or it should fail...
-    (define (align t template fail)
-      (cond
-       [(eqv? t template) ;(symbol? t) (symbol? template)
-	'()]
-       ;; If the template is bound to a variable, we bind that variable to this type.
-       
-       
-       [(and (vector? t) (vector? template)
-	     (= (vector-length t) (vector-length template)))
-	(foldl (lambda (subst x y)
-		 (append subst (align x y fail)))
-	  '()
-	  (vector->list t)
-	  (vector->list template))]
-       [else (fail #f)]
-       ))
+    (define (types-equal!? t1 t2)
+      (call/1cc 
+       (lambda (k)
+	 (fluid-let ([type-error (lambda args (k #f))])
+	   (types-equal! t1 t2 (void) "<void>")
+	   (k t1)))))
 
     (lambda (aliases t)
-      (let realias-loop ([ls aliases])
-	(cond	 
-	 [(null? ls) t] ;; No aliases apply, use original type.
-	 [(call/1cc (lambda (k) (align t (cadar ls) k)))
-	  => (lambda (subst) 
-	       (match (caar ls)
-		 [,s (guard (symbol? s)) s]
-		 [(,C ,arg* ...)
-		  `(,(caar ls) SUBST HERE)]))]
-	 [else (realias-loop (cdr ls))])))))
+      ;; We need to go down inside the PARAMETERS to the alias and realias them as well...
+      (define (maybebind origty alias fail)
+	(let-values ([(v a* rhs)
+		      (match alias
+			[(,v ,rhs) (values v () rhs)]
+			[(,v (,a* ...) ,rhs) (values v a* rhs)])])
+	  (match (instantiate-type `(Magic #(,@a*) ,rhs))
+	    ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+	    [(Magic #(,cells ...) ,rhs)
+	     (let ([res (types-equal!? (instantiate-type origty) rhs)])
+	       (if res 
+		   ;; We feed it back through, possibly further reduce "cells":
+		   ;(try-realias )
+		   (if (null? cells) v
+		       (export-type `(,v ,@cells)))
+		   (fail #f))
+	       )])))
+      (define (try-realias t)
+	(let realias-loop ([ls aliases])
+	  (cond	 
+	   [(null? ls) #f] ;; No aliases apply, use original type.
+	   [(call/1cc (lambda (k) (maybebind t (car ls) k)))
+	    => (lambda (newty)  newty)]
+	   [else (realias-loop (cdr ls))])))
+
+;      (or (try-realias t) t)
+
+      ;; Walk over the type structure top-to-bottom.  Check at each
+      ;; node whether we can re-alias:
+      (let l ([ty t])
+	(match ty
+	  [,x (guard (or (symbol? x) (string? x)
+			 ;; Type variables can't be aliases by themselves.
+			 (and (pair? x)
+			      (memq (car x) '(NUM quote)))))
+	      x]
+	  [#(,t* ...) (or (try-realias ty) (list->vector (map l t*)))]
+	  [(,arg* ... -> ,res) (or (try-realias ty) `(,@(map l arg*) -> ,(l res)))]
+	  [(,s ,t* ...) (guard (symbol? s))
+	   (or (try-realias ty) `(,s . ,(map l t*)))]
+	  [,other (error 'realise-type "bad type: ~s" other)]))      
+      )))
+
 
 ;[(realias-type '((Foo Int)) 'Int) Foo]
 ;[(realias-type '((Foo #(Int Int))) '#(Int Int)) #(Int Int)]
 
-#;
-(define (realias-type aliases t)
-  (define reversed (reverse aliases))
-  (match t
-    [,s (guard (symbol? s))
-	;; Is there an alias to this "small" (monomorphic) type:
-	(let ([entry (assq s reversed)])
-	  (if entry 
-	      (begin (DEBUGASSERT (= 2 (length entry)))
-		     (cadr entry))
-	      s))]
-
-    ;; Type variables can't by themselves be aliases:
-    [',n                                     `(quote ,n)]
-    ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
-    [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
-    [(NUM (,v . ,t))                          (if t (dealias-type aliases t) `(NUM ,v))]
-
-    
-    [,vec (guard (vector? vec))
-      ;; Candidates:
-      (filter (lambda (v) (and (vector? v) (= (vector-length vec) (vector-length v))))
-	reversed)
-
-#(,[t*] ...)                            (apply vector t*)]
-    [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
-
-    [(Pointer ,name)          `(Pointer ,name)]
-    [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
-    ;; This is simple substitition of the type arguments:
-    [(,s ,[t*] ...) (guard (symbol? s))
-     (let ([entry (or (assq s aliases)
-		      (assq s regiment-type-aliases))])
-					;	 (import iu-match) ;; Having problems!
-       (match entry
-	 [#f `(,s ,@t*)]
-	 [(,v ,rhs) (error 'resolve-type-aliases 
-			   "alias ~s should not be instantiated with arguments!: ~s" 
-			   s (cons s t*))]
-	 [(,v (,a* ...) ,rhs)
-	  ;; We're lazy, so let's use the existing machinery
-	  ;; to do the substition.  So what if it's a little inefficient?	   
-	  (match (instantiate-type `(Magic #(,@a*) ,rhs))
-	    ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
-	    [(Magic #(,cells ...) ,rhs)
-	     ;; Now use the unifier to set all those mutable cellS:
-	     (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
-	       cells t*)
-	     (export-type rhs)])]))]
-    [,other (error 'resolve-type-aliases "bad type: ~s" other)])  
-  t)
 
 ; ======================================================================
 ;;; Unit tests.
