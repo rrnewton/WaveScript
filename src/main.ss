@@ -505,7 +505,7 @@
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-simulator]
-		 [included-var-bindings '()]
+;		 [included-var-bindings '()]
 		 [regiment-primitives
 		  ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -619,7 +619,7 @@
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler]
-		[included-var-bindings '()]
+;		[included-var-bindings '()]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])

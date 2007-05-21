@@ -1380,16 +1380,14 @@
        [(,let ([,id* ,t* ,rhs*] ...) ,[bod])
 	(guard (memq let '(let letrec lazy-letrec)))
 	(append (apply append 
-		       (map (lambda (id t rhs rhsls)
+		       (map (lambda (id t rhs)
 			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
 			      ;(unless (null? rhsls) (inspect rhsls))
-			      (if (symbol? rhs)
-				  (begin (ASSERT null? rhsls)
-					 ())
-				  `([type ,id ,t ,rhsls]))
-)
+			      (if (or (symbol? rhs) (memq id (included-var-bindings)))
+				  '()
+				  `([type ,id ,t ,(get-var-types rhs)])))
 			 id* t* 
-			 rhs* (map get-var-types rhs*)))
+			 rhs*))
 		bod)]
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 

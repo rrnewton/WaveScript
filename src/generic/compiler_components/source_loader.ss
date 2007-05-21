@@ -242,9 +242,15 @@
 ;; [2007.03.19] Note: top level type declarations don't have to occur
 ;; in any particular position in the file.
 (define (ws-postprocess origws)
-  (define all-includes! '()) ;; Mutated below:
+  (define all-includes! '()) ;; Mutated below:  
   ;; First we expand includes:  
   (define (process form)
+    (define (names-defined forms)
+      (match forms
+	[() ()]
+	[((define ,v ,_) . ,[rest])      (cons v rest)]
+	[((define-as ,v . ,_) . ,[rest]) (cons v rest)]
+	[(,_ . ,[rest])                  rest]))
     (match form
       [(include ,file) 
        (let ([path (resolve-lib-path file)])
@@ -256,11 +262,16 @@
 	     (begin 
 	       (set! all-includes! (cons path all-includes!))
 	       ;; This is usually a relative file path!
-	       (apply append
-		      (map process 
-			(or (expand-include path)
-			    (error 'ws-postprocess 
-				   "could not retrieve contents of include: ~s" file)))))))]
+	       (let ([imported (apply append
+				      (map process 
+					(or (expand-include path)
+					    (error 'ws-postprocess 
+						   "could not retrieve contents of include: ~s" file))))])
+		 ;; Record that these symbols were pulled from an include:
+		 ;; This is *just* cosmetic:
+		 (included-var-bindings (names-defined imported))
+		 imported
+		 ))))]
       [(using ,M) `((using ,M))]
       ;; This just renames all defs within a namespace.
       [(namespace ,Space ,[defs] ...)
