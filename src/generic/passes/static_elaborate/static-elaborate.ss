@@ -50,7 +50,7 @@
 
   (chezimports )
 
-  (IFCHEZ (import rn-match) (void))
+;  (IFCHEZ (import rn-match) (void))
 
 ;; Dummy implementation for PLT:
  (IFCHEZ (begin)
@@ -871,7 +871,7 @@
 	       `(,prim ,@rand*))]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
-	  [(consstruct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
+	  [(construct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
 
 	  ;; Foreign function application:
 	  [(app ,rator ,[rands] ...)

@@ -110,6 +110,9 @@
     [Expr ('for (Var Expr Expr) Expr)]
     [Expr ('while Expr Expr)]
 
+    ;; Application of a data constructor:
+    [Expr ('construct-data Var Expr ...)]
+
     ;; Include an entry for each primitive.
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:

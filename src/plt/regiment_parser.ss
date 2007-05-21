@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union static match 
+    namespace using AS typedef union uniontype static match 
 ;    foreign foreign_box foreign_source 
     typecase returncase
 
@@ -96,7 +96,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "match" "typecase" "returncase" 
+	 "namespace" "using" "static" "union" "uniontype" "match" "typecase" "returncase" 
 ;	 "foreign" "foreign_box" "foreign_source"
 	 )
     (string->symbol lexeme)]
@@ -347,9 +347,10 @@
 	   [(typedef union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
 	   [(union typedef VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
 	   [(union typedef VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
-	   [(union VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
-	   [(union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
-
+	   [(union VAR = unioncases SEMI maybedecls)             `((uniondef (,$2) . ,$4) . ,$6)]
+	   [(union VAR typevar = unioncases SEMI maybedecls)     `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
+	   [(uniontype VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
+	   [(uniontype VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR :: type = exp optionalsemi maybedecls) `((define ,$1 (assert-type ,$3 ,$5)) ,@$7)]
@@ -652,8 +653,8 @@
          ;; Using binary prims as values: (without eta-expanding!)
          [(LeftParen binop RightParen) $2]         
 	 ;; Haskell's "sections".
-         [(LeftParen binop exp RightParen) `(lambda (x) (,$2 x ,$3))]
-         [(LeftParen exp binop RightParen) `(lambda (x) (,$3 ,$2 x))]
+         [(LeftParen binop exp RightParen) `(lambda (x) (app ,$2 x ,$3))]
+         [(LeftParen exp binop RightParen) `(lambda (x) (app ,$3 ,$2 x))]
 
 	 ;; Negative numbers.
 	 [(- NUM) (prec NEG) (- $2)]
@@ -664,7 +665,6 @@
          [(exp ++ exp) `(show-and-string-append ,$1 ,$3)]
          [(exp ::: exp) `(cons ,$1 ,$3)]
 
-	 ;; Currently these parse as integer ops:
          [(exp + exp) `(app + ,$1 ,$3)]
          [(exp - exp) `(app - ,$1 ,$3)]
          [(exp * exp) `(app * ,$1 ,$3)]

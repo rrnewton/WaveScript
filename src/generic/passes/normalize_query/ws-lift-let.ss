@@ -40,7 +40,7 @@
 	      (ComplexConst ('cons ComplexConst ComplexConst))
 	      (ComplexConst ('foreign Const ComplexConst ComplexConst))
 	      ;; This is constant for the duration of the stream query
-	      (ComplexConst ForeignApp)
+	      (ComplexConst AppConstructs)
 	      (ComplexConst Var)
 
 	      (ComplexDatum ,atom?)
@@ -54,9 +54,10 @@
 	      (Value ('tupref Int Int Simple))
 	      (Value ('if Simple Block Block))
 	      (Value (Prim Simple ...))
-	      (Value ForeignApp)
+	      (Value AppConstructs)
 
-	      (ForeignApp ('foreign-app Const Var Simple ...))
+	      (AppConstructs ('foreign-app Const Var Simple ...))
+	      (AppConstructs ('construct-data Var Simple ...))
 
 	      (Value 'BOTTOM)
 	      (Value ComplexConst)
@@ -71,7 +72,7 @@
 	      (Block ('if Simple Block Block))
 	      (Block ('break))
 	      (Block (EffectPrim Simple ...))
-	      (Block ForeignApp)
+	      (Block AppConstructs)
 
 
 	      (Simple ('assert-type Type Simple))

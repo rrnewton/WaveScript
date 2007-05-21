@@ -53,6 +53,7 @@
        (Expr ('begin Expr ...))      
 
        (Expr ('foreign-app Const Simple Simple ...))
+       (Expr ('construct-data Var Simple ...))
 
        ;(Expr ('let ((LHS Type Expr) ...) Expr))
 

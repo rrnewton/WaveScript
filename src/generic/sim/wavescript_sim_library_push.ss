@@ -18,6 +18,8 @@
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
 		 app foreign-app let Mutable:ref deref static statref
+		 
+		 construct-data make-uniontype uniontype-tag uniontype-val
 
 		 run-stream-query reset-state!
 
@@ -152,6 +154,7 @@
 
   ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
   (reg:define-struct (sigseg start end vec timebase))
+  (reg:define-struct (uniontype tag val))
 
   ;(reg:define-struct (wsbox outports))
   ;(reg:define-struct (wsevent time source))
@@ -703,6 +706,11 @@
   (define-syntax foreign-app
     (syntax-rules ()
       [(_ realname f args ...) (f args ...)]))
+
+  (define-syntax construct-data
+    (syntax-rules ()
+      [(_ variant) (make-uniontype 'variant (void))]
+      [(_ variant arg) (make-uniontype 'variant arg)]))
 
   (define-syntax assert-type
     (syntax-rules ()

@@ -235,12 +235,12 @@ sm = stream_map;
 //   (Timestamp, Lat, Long, X,Y,Z)
 // Where X/Y/Z is accelerometer data.
 //
-//chans = (readFile("/tmp/clip", "")
+chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("./PIPE", "")
-chans = (readFile("/tmp/slave18_snip", "")
+//chans = (readFile("/tmp/slave18_snip", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
 time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);

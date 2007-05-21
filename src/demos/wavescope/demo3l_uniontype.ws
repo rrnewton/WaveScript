@@ -1,10 +1,14 @@
 
 
+
+
+
+
 //union type Foo = A Int | B Float;
 //type union Foo = A Int | B Float
 //type Foo = A of Int | B of Float
 
-union Foo = A Int | B Float;
+uniontype Foo = A Int | B Float;
 
 x = A(3);
 y = (+ 3) $ 4;

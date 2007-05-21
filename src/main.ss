@@ -1169,7 +1169,8 @@
 		       (stream-dump return outfile))
 		     ;; Otherwise, browse it interactively:
 		     (parameterize ([print-vector-length #t])
-		       (browse-stream (stream-map ws-show return))
+		       ;(browse-stream (stream-map ws-show return))
+		       (browse-stream return)
 		       ))
 		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
 	  

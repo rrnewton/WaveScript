@@ -1,6 +1,12 @@
 
 // In this version, we're exploring the concept of an "ExclusivePointer" type.
 
+// Note: I should either check the run-time tags on the matrices
+// during all operations, or I should introduce distinct types for
+// FloatMatrix ComplexMatrix, etc.  (Except the latter requires being
+// *able* to introduce user defined data types... which I think I can
+// right now.)
+
 // Should use C++ preprocessor to generate all the variants.
 
 include "gsl.ws";
@@ -10,6 +16,19 @@ float_matrix  = 0;
 double_matrix = 1;
 complex_matrix = 2;
 complexdouble_matrix = 3;
+
+//uniontype FloatMatrix t = FM__ ();
+
+/*
+type MatrixContents = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
+uniontype Matrix t = 
+    FM_ MatrixContents | 
+    DM_ MatrixContents |
+    CM_ MatrixContents |
+    CDM_ MatrixContents 
+*/
+
+//foo = FM__(());
 
 // A pair containing the struct pointer and the array pointer.
 type MatrixTypeTag = Int;
