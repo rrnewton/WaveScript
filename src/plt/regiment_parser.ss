@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union uniontype static match 
+    namespace using AS typedef union uniontype static case
 ;    foreign foreign_box foreign_source 
     typecase returncase
 
@@ -96,7 +96,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "uniontype" "match" "typecase" "returncase" 
+	 "namespace" "using" "static" "union" "uniontype" "case" "typecase" "returncase" 
 ;	 "foreign" "foreign_box" "foreign_source"
 	 )
     (string->symbol lexeme)]
@@ -390,7 +390,7 @@
    ;; [2006.09.01] For now patterns are just tuples.
    (pattern [(VAR) $1]
 	    ;; A type constructor:
-	    ;[(VAR VAR) `(tc ,$1 ,$2)]
+	    [(VAR LeftParen pattern RightParen) `(data-constructor ,$1 ,$3)]
 	    [(LeftParen RightParen) #()]
 	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
 	    )
@@ -522,7 +522,7 @@
          [(tuple) $1]
 	 
 	 ;; Deconstructing sum types with pattern matching:
-	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2 ,$4)]
+	 [(case exp LeftBrace matchcases RightBrace) `(wscase ,$2 . ,$4)]
 
 	 [(typecase exp LeftBrace typecases RightBrace) `(typecase ,$2 ,$4)]
 	 ;; Haven't decided how to do this yet.  Can typecase on the *return* type:

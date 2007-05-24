@@ -17,9 +17,9 @@
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app foreign-app let Mutable:ref deref static statref
+		 app foreign-app let Mutable:ref deref static statref		 
 		 
-		 construct-data make-uniontype uniontype-tag uniontype-val
+		 wscase construct-data make-uniontype uniontype-tag uniontype-val
 
 		 run-stream-query reset-state!
 
@@ -103,6 +103,7 @@
     (chezprovide (for for-loop-stack )
 ;		 letrec 
 		 print
+
 		 ;+ - * / ^
                                  
                  ;parmap
@@ -129,8 +130,8 @@
        ;  (alias quasiquote quasiquote)  
        ;;  (alias unquote unquote) 
        ;; (alias lambda lambda)  
-       (alias let let) ;; We assume type info has been stripped.
-
+       (alias let let) ;; We assume type info has been stripped.      
+       
        (import (add-prefix scheme s:))
        ;(alias begin s:begin)       
        )
@@ -280,7 +281,7 @@
     (define our-sinks '())
     (define src (let ([t 0])
 		  (lambda (msg)
-		    (case msg
+		    (s:case msg
 		      ;; Returns the next time we run.
 		      [(peek) t]
 		      [(pop) 
@@ -411,7 +412,7 @@
 	      (begin 
 		;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
 		(vector-set! tup i 
-			     (case (vector-ref tyvec i)
+			     (s:case (vector-ref tyvec i)
 			       [(String) (symbol->string (read p))]
 			       [(Int Int16) (let ([v (read p)])
 					      (unless (fixnum? v)
@@ -433,7 +434,7 @@
        (define t 0)
        (define pos 0)
        (define (src msg)
-	 (case msg
+	 (s:case msg
 	   [(peek) t]
 	   [(pop) 
 	    (set! t (s:+ t timestep))
@@ -503,7 +504,7 @@
     (printf "Reading stream datafile ~s\n" file)
 
     ;; __dataFile body:
-    (case repeat
+    (s:case repeat
       [(0) thestream]
       [else (error 'datafile "no repeats yet")]
       ;[(-1) (repeat-stream -1)]                                  
@@ -605,7 +606,7 @@
        (define t 0)
        (define pos 0)
        (define (src msg)
-	 (case msg
+	 (s:case msg
 	   [(peek) t]
 	   [(pop) 
 	    (set! t (s:+ t timestep))
@@ -742,6 +743,20 @@
     (syntax-rules ()
       [(_ tst bod) (let while-loop () (if tst (begin bod (while-loop))))]))
 
+
+  (define-syntax wscase
+    (syntax-rules ()
+      [(_ x [TC* fun*] ...)
+       (let* ([ls `((TC* ,fun*) ...)]
+	      [entry (assq (uniontype-tag x) ls)])	
+	 (if entry
+	     (if (eqv? (uniontype-val x) (void))
+		 ((cadr entry))
+		 ((cadr entry) (uniontype-val x)))
+	     ;(begin (inspect x)(inspect entry))
+	     (let ([entry2 (assq default-case-symbol ls)])
+	       ((cadr entry2)))
+	     ))]))
 
   ;; We just call the continuation, the fluid-let worries about popping the stack.
   (define (break) ((car (for-loop-stack)) (void)))
@@ -1294,7 +1309,7 @@
     (define (DynamicLink out files)
       (when (file-exists? out) (delete-file out))
       (let* ([files (apply string-append (map (curry format " ~s") files))]
-	     [code (case (machine-type)
+	     [code (s:case (machine-type)
 		     [(i3le ti3le)  		      
 		      ;(printf "EXEC: ~a\n" (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))
 		      (system (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))]

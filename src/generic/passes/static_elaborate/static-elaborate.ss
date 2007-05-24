@@ -332,8 +332,9 @@
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
 		(if (eq? var v) 1 0)]
-          [(if ,[test] ,[conseq] ,[altern])
-	   (+ test conseq altern)]
+          [(if ,[test] ,[conseq] ,[altern])  (+ test conseq altern)]
+	  [(wscase ,[x] (,pat* ,[rhs*]) ...) (apply + x rhs*)]
+
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
@@ -443,8 +444,7 @@
 	  [(vector ,[args] ...) `(vector ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
 
-          [(if ,[test] ,[conseq] ,[altern])
-	   `(if ,test ,conseq ,altern)]
+          [(if ,[test] ,[conseq] ,[altern])  `(if ,test ,conseq ,altern)]
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (let ((newmap (filter (lambda (x)
 				   (not (memq (car x) lhs*)))
@@ -714,8 +714,10 @@
 		   (if (getval newtest) conseq  altern))		 
 		 `(if ,newtest ,conseq ,altern))
 	     )]
-
 	  
+	  ;; TODO: We don't yet statically elaborate case statements....
+	  [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
+       	  
 	  ;; This becomes a quoted constant:
 	  [(tuple) ''UNIT]
 	  [(tuple ,[args] ...) `(tuple ,@args)]

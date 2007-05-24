@@ -67,6 +67,7 @@
          
 	 compiler-invocation-mode 
 	 regiment-verbose regiment-quiet
+	 regiment-track-source-locations
 	 regiment-current-pass
 
 	 simulation-logger 
@@ -243,7 +244,8 @@
 (define-syntax UBERDEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 
 ;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
-#;(define-syntax DEBUGASSERT
+#;
+(define-syntax DEBUGASSERT
   (syntax-rules () 
     [(_ expr) 
      (DEBUGMODE
@@ -291,6 +293,9 @@
 
 ;; This parameter determines whether the compiler should print EXTRA (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
+
+;; This determines whether the compiler tracks source locations in loaded files.
+(define-regiment-parameter regiment-track-source-locations #f)
 
 ;; This is the opposite, it is used to suppress ALL banners and nonessential output for batch execution.
 (define-regiment-parameter regiment-quiet #f)
@@ -405,6 +410,7 @@
 ;;; Used primarily by wavescript_sim_library
 ;====================================================
 
+;; This is used to deallocate C-allocated memory.
 (define foreign-guardian (reg:make-parameter #f))
 
 ;;; Used primarily by hm_type_inference.ss (and type_environments.ss)
@@ -424,6 +430,9 @@
 (define included-var-bindings (reg:make-parameter '()))
 
 
+;;; Used primarily by desugar-pattern-matching
+;====================================================
+(define default-case-symbol '__default__)  ;; Should be gensym
   
 ;;; Used primarily by nominalize-types:
 ;====================================================

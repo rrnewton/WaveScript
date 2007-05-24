@@ -395,12 +395,24 @@
        (guard (memq letrec '(letrec lazy-letrec)))
        (recover-type body (tenv-extend tenv lhs* type*))]
 
+      ;; Should this really bother recovering both types?
+      ;; It could just assume that the program is correctly
+      ;; typechecked at this point and recover *one* type.
+      ;; But, alas, that might be too general a type.
       [(if ,t ,[c] ,[a]) 
        (let ([a (instantiate-type a '())] 
 	     [c (instantiate-type c '())])
 	 (types-equal! c a `(if ,t ??? ???) "(Branches of if must have same type.)\n")
 	 (export-type c))]
-
+      [(wscase ,x  [,pat* ,[rhs*]] ...)
+       (let ([inst* (map (lambda (x) 
+			   (match x 
+			     [(,_ ... -> ,ret) (instantiate-type ret '())])) 
+		      rhs*)])
+	 (foldl1 (lambda (a b) (types-equal! a b '(case ...) "(Branches of case must have same type.)\n"))
+		 inst*)
+	 (export-type (car inst*)))]
+      
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
       [(unionN ,[t*] ...) 
@@ -524,6 +536,30 @@
        (types-equal! tt 'Bool te "(Conditional's test expression must have boolean type.)\n") ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
        (values `(if ,te ,ce ,ae) ct)]
+
+
+      [(wscase ,[l -> val valty] (,TC* ,[l -> rhs* rhsty*]) ...)
+       (values `(wscase ,val ,@(map list TC* rhs*))
+	       (let ([inst* (map (lambda (x) 
+				   (match x 
+				     [(,_ ... -> ,ret) ret])) 
+			      rhsty*)])
+		 (foldl1 (lambda (a b) 
+			   (types-equal! a b exp "(Branches of case must have same type.)\n"))
+			 inst*)
+		 (car inst*))
+	       )]
+#;
+      ;; Case statements are on the somewhat complex side to typecheck.
+      [(wscase ,[l -> val valty] (,pat* ,rhs*) ...)
+       (let ([res*
+	      (map (lambda (pat rhs)
+		     (values->list
+		      (annotate-expression rhs 
+		       (tenv-extend-pattern tenv pat valty) nongeneric)))
+		pat* rhs*)])
+	 (values `(wscase ,val ,@(map list pat* (map car res*)))
+		  (cadar res*)))]
       
       ;; Wavescope: this could be a set! to a state{} bound variable:
       [(set! ,v ,[l -> e et])  
@@ -841,6 +877,7 @@
      (guard (memq letrec '(letrec lazy-letrec)))
      `(,letrec ,(map list id* t* rhs*) ,bod)]
 
+    [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c)) c]
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
@@ -872,6 +909,7 @@
     [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
     [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
+    [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c))                                 (void)]
     ))
 
@@ -903,6 +941,7 @@
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
+    [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-types "bad expression: ~a" other)]
     ))
@@ -1367,6 +1406,7 @@
        [(begin ,[e*] ...) (apply append e*)]
        [(while ,[tstls] ,[bodls]) (append tstls bodls)]
        [(if ,[t] ,[c] ,[a]) (append t c a)]
+       [(wscase ,[x] [,pat ,[rhs*]] ...) (apply append x rhs*)]
        [(tuple ,[args] ...) (apply append args)]
        [(unionN ,[args] ...) (apply append args)]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
@@ -1392,7 +1432,7 @@
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
     ;; print-var-types body:
-    (let ([aliases (or (project-metadata 'type-aliases exp) ())])
+    (let ([aliases (cdr (or (project-metadata 'type-aliases exp) '(type-aliases)))])
       (let pvtloop (
 		    [x (get-var-types exp)] 
 		    [depth 0] [indent " "]
@@ -1408,7 +1448,7 @@
 				 ])
 		   (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
 		   )
-		 (print-type (realias-type (cdr aliases) t) port) (newline port))
+		 (print-type (realias-type aliases t) port) (newline port))
 ;		 (print-type t port) (newline port))
 	       
 	       (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
@@ -1454,7 +1494,7 @@
 	      ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
 	      [(Magic #(,cells ...) ,rhs)
 	       ;; Now use the unifier to set all those mutable cellS:
-	       (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+	       (for-each (lambda (x y) (types-equal! x y (void) "<resolve-type-aliases>" ""))
 		 cells t*)
 	       (export-type rhs)])]))]
       [,other (error 'resolve-type-aliases "bad type: ~s" other)])

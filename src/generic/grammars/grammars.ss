@@ -92,7 +92,8 @@
     [Const ('quote Datum)]
 ;    [Const ()]    
 
-    [Expr ('if Expr Expr Expr)]
+    [Expr ('if Expr Expr Expr)] ;; Phase this out.
+
     [Expr ('letrec ([LHS Type Expr] ...) Expr)]
     [Expr ('let ([LHS Type Expr] ...) Expr)]
     [Expr ('tuple Expr ...)]
@@ -135,26 +136,39 @@
     [LHS Pattern]
     [Pattern Var]
     [Pattern #(Pattern ...)]
+    [Pattern ('data-constructor Var Pattern ...)]
 
     ,@type_grammar
     )))
 
-;; This is the main grammar (minus a few sugars, see below)
+;; This is the main grammar (minus a few sugars, see below) This is
+;; the grammar output from resolve-type-aliases, this is the grammar
+;; accepted by the type-checker the first time we type check the
+;; program.
 (define initial_regiment_grammar
   `( ,@base_regiment_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
      [Expr ('lambda (LHS ...) (Type ...) Expr)]
      [Expr ('app Expr ...)]  ;; Application.  
+     [Expr ('wscase Expr [Var Expr] ...)] 
     ))
 ;; The rest of the grammars are defined in the individual pass files.
 
 (define (possible-alias? x) (and (symbol? x) (not (eq? x 'quote))))
 
-;; This is the grammar consumed by verify-regiment
+;; This is the grammar consumed by verify-regiment.
+;; Between verify-regiment and the first typecheck we are inbetween this and the initial_regiment_grammar
 (define sugared_regiment_grammar
   `(
-       ,@ (filter (lambda (x) (not (eq? 'Type (car x))))
+       ,@ (filter (lambda (x) 
+		    (IFCHEZ (import rn-match) (void))
+		    (match x
+		      [(Type ,_) #f]
+		      [(,_ ('wscase . ,__)) #f]
+		      [,else #t]))
 	    initial_regiment_grammar)
+
+       [Expr ('wscase Expr [LHS Expr] ...)]  ;; This is desugared further by desugar-pattern-matching
 
        [Expr ('let* ([Var Type Expr] ...) Expr)]
 

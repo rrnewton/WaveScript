@@ -46,6 +46,8 @@
 
        ;; Could require that these Expr positions be Lets:
        (Expr ('if Simple Expr Expr))
+       (Expr ('wscase Simple (Var Expr) ...))
+
        (Expr ('for (Var Simple Simple) Expr))
        (Expr ('while Expr Expr))
        (Expr ('lambda (LHS ...) (Type ...) Expr))
@@ -183,6 +185,15 @@
 			test-decls)
 		))]
 
+	   [(wscase ,x (,TC* ,[rhs*]) ...)
+	    (match rhs*
+	      [(#(,rhs* ,rhsdecl*) ...)
+	       (ASSERT (curry andmap null?) rhsdecl*)
+	       (mvlet ([(x xdecls) (make-simple x tenv)])
+		 (vector `(wscase ,x 
+			    ,@(map list TC* rhs*))
+			 xdecls))])]
+	   
 	   ;; For now don't lift out an iterate's lambda!	   
 	   [(iterate (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
 	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))])

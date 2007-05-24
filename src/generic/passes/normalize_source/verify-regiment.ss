@@ -40,8 +40,8 @@
        (match p
 	 [,v (guard (symbol? v))  (assert-valid-name! v)]
 	 [(assert-type ,t ,[v]) (guard (type? t)) (void)]
-	 ;; Currently only tuple patterns:
 	 [#(,p* ...) (for-each pattern! p*)]
+	 [(data-constructor ,tc ,arg) (guard (symbol? tc)) (pattern! arg)]
 	 [,other (error 'verify-regiment "bad binding pattern: ~s" other)]
 	 ))
 
@@ -96,9 +96,15 @@
 	     (ASSERT (set? vars))
 	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
 
+	  ;; Should eventually remove ifs as subsumed by case statements.
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
+
+	  ;; TODO: should check the form of the patterns:
+	  [(wscase ,[val] (,pat* ,[rhs*]) ...)
+	   (for-each pattern! pat*)
+	   `(wscase ,val ,@(map list pat* rhs*))]
 
 	  [(letrec ([,lhs* ,optional ... ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env)))

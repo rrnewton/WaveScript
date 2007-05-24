@@ -44,6 +44,7 @@
 	   tenv-lookup
 	   tenv-is-let-bound?
 	   tenv-extend
+	   tenv-extend-pattern
 	   tenv-append
 	   tenv-map
 
@@ -259,6 +260,7 @@
   (DEBUGASSERT (tenv? tenv))
   (let ([entry (assq sym (cdr tenv))])
     (if entry (caddr entry) #f)))
+
 ;; Extends a type environment.
 ;; .param tenv The type env to extend.
 ;; .param syms The names to bind.
@@ -289,6 +291,23 @@
 		    syms types)
 		  (cdr tenv))
 	  )))
+
+;; This extends a type environment, retrieving the variables to bind
+;; by deconstructing a pattern.
+;; Ultimately this will be a hotspot, so we should remove the use of map/append/etc below:
+(trace-define (tenv-extend-pattern tenv pat type)
+  ;; This builds up a list of the vars & types:
+  (define (extendpat-loop pat type)
+    (match pat
+      [,v (guard (symbol? v)) (list (vector v type))]
+      [#(,p* ...) 
+       (apply append (map extendpat-loop p* (vector->list type)))]      
+      ))
+  
+  (match (extendpat-loop pat type)
+    [(#(,v* ,t*) ...) (tenv-extend tenv v* t*)]))
+
+
 (define (tenv-append . tenvs)
   (cons (car (empty-tenv)) 
 	(apply append (map cdr tenvs))))

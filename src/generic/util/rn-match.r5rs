@@ -108,7 +108,10 @@
 ;; walk over each patern.
 (define-syntax match-help
   (syntax-rules (guard)
-    ((_ Template Cata Obj )  (error 'match "no next clause"))
+    ((_ Template Cata Obj ) 
+     (error 'match "Unmatched datum.\n  Datum: ~s\n  Source-Location: ~s\n" 
+	    Obj #'Template))
+
     ;; Guarded pattern:
     ((_ Template Cata Obj (Pat (guard G ...) B0 Bod ...) Rest ...)
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))

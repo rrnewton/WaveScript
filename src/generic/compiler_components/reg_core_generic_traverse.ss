@@ -205,6 +205,11 @@
 	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 
+	  [(wscase ,[loop -> val] (,TC ,[loop -> rhs*]) ...)
+;	   (inspect pat*)  (inspect rhs*)
+	   (fuse (cons val rhs*)
+		 (lambda (v . r*) `(wscase ,v . ,(map list TC r*))))]
+
 	  ;; These are special syntax:
 	  [(tupref ,n ,m ,[loop -> exp])
 	   (DEBUGASSERT fixnum? n)
@@ -349,6 +354,19 @@
 			 (fuse (cons ((loop newtenv) bod) rhs*)
 			       (lambda (bod . rhs*) `(let ,(map list lhs* ty* rhs*) ,bod))))
 		       ]
+	
+		      ;; We don't have to handle case, because it doesn't directly bind:
+#;
+		      [(wscase ,test (,pat* ,rhs*) ...)
+		       (let* ([type (recover-type test tenv)]     ;; TEMP!! INEFFICIENT!!
+			      [val  ((loop tenv) -> val)]
+			      [newrhs (map (lambda (pat rhs)
+					    (let ([newtenv (tenv-extend-pattern tenv pat TYPE?)])
+					      ((loop newtenv) rhs)))
+				       pat* rhs*)])
+			 (fuse (cons val rhs*)
+			       (lambda (v . r*) `(wscase ,v . ,(map list pat* r*))))
+			 )]
 
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.

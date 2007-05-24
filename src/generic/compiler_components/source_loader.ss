@@ -415,7 +415,8 @@
 		     (car (process (++ "wsparse " fn 
 				       (string-append " --nopretty"
 					 ;; We don't even track source locations in ws.opt
-        			         (if (= 3 (REGOPTLVL)) " --nopos" ""))))))
+        			         (if (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL)))
+					     " --nopos" ""))))))
 		   (begin
 		     (warning 'wsint 
 			      (++ "couldn't find wsparse executable.\n"

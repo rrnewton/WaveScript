@@ -53,6 +53,7 @@
 	      (Value ('tuple Simple ...))
 	      (Value ('tupref Int Int Simple))
 	      (Value ('if Simple Block Block))
+	      (Value ('wscase Simple (Var ('lambda (Var ...) (Type ...) Block)) ...))
 	      (Value (Prim Simple ...))
 	      (Value AppConstructs)
 
@@ -70,6 +71,7 @@
 	      (Block ('while Block Block))
 	      (Block ('set! Var Simple))
 	      (Block ('if Simple Block Block))
+	      (Block ('wscase Simple (Var ('lambda (Var ...) (Type ...) Block)) ...))
 	      (Block ('break))
 	      (Block (EffectPrim Simple ...))
 	      (Block AppConstructs)

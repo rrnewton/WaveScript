@@ -79,7 +79,9 @@
 	;; This isn't "pattern-matching" but we desugar it here so
 	;; that the type checker doesn't need to deal with it.	 
 	[(let* ,binds ,bod) (process-expr (make-let* binds bod) fallthrough)]
-       
+
+
+#;       
 	;; Only handles one-armed matches right now:
 	;;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
 	[(match ,[x] (,[break-pattern -> var binds type-assertion] ,[rhs]))
@@ -87,6 +89,26 @@
 	 (ASSERT (not type-assertion))
 	 `(letrec ([,var ,(notype) ,x] ,binds ...)
 	    ,rhs)]
+
+	;; I would like to convert this to a form that uses lambdas on
+	;; the RHS to do the binding.
+	;[(wscase ,[x] (,pat* ,rhs*) ...)   ]
+	;; We only use case for dispatching on the tag of a sum type:
+	[(wscase ,[x] (,pat* ,[rhs*])  ...)
+	 (let ([newclause*
+		(map (lambda (pat rhs)
+		       (match pat
+			 [_ `(,default-case-symbol ,rhs)]
+			 [(data-constructor ,tc ,v* ...) (guard (andmap symbol? v*))
+			  `(,tc (lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs))]
+			 [,oth (error 'desugar-pattern-matching 
+				      "not supporting this kind of pattern yet: ~s" oth)]))
+		  pat* rhs*)])
+	   `(wscase ,x ,@newclause*))]
+	[(wscase ,_ ...)
+	 (error 'desugar-pattern-matching "don't support this form of case yet: ~s" 
+		`(wscase . ,_))]
+
 
 	;; [2006.11.15] Going to add special stream-of-tuples field-naming syntax.
 	;; TODO: make it work for general patterns, not just for flat tuples!
