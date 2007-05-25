@@ -1494,7 +1494,7 @@
 	      ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
 	      [(Magic #(,cells ...) ,rhs)
 	       ;; Now use the unifier to set all those mutable cellS:
-	       (for-each (lambda (x y) (types-equal! x y (void) "<resolve-type-aliases>" ""))
+	       (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
 		 cells t*)
 	       (export-type rhs)])]))]
       [,other (error 'resolve-type-aliases "bad type: ~s" other)])

@@ -201,7 +201,8 @@
        (y 'type (tupref 1 2 pattmp)))
       #f)]
 
-    [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
+#;
+    [(,pass_desugar-pattern-matching '(foo '(program (case 3 [x x]) Int)))
      (desugar-pattern-matching-language
       '(program (letrec ([x unspecified 3]) x) unspecified))]
 #;
