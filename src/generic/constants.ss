@@ -66,6 +66,7 @@
 	 included-var-bindings
          
 	 compiler-invocation-mode 
+;	 regiment-compile-sums-as-tuples
 	 regiment-verbose regiment-quiet
 	 regiment-track-source-locations
 	 regiment-current-pass
@@ -291,6 +292,10 @@
 ;(if (file-exists? Regiment-Log-File)
 ;    (delete-file Regiment-Log-File))
 
+
+;=======================================================================;;
+;;; Compiler Controls.
+
 ;; This parameter determines whether the compiler should print EXTRA (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
 
@@ -306,10 +311,15 @@
 ;; Is this run of the compiler a WS run?
 ;; Should be set to:
 ;;   'wavescript-simulator
-;;   'wavescript-compiler
+;;   'wavescript-compiler-cpp
+;;   'wavescript-compiler-caml
 ;;   'regiment-simulator
 ;; [2007.03.20] This is now deprecated!!
 (define-regiment-parameter compiler-invocation-mode #f)
+
+;; This must be set according to the backend that we're using.
+;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
+;(define-regiment-parameter regiment-compile-sums-as-tuples 'unset)
 
 ;; When 
 (define-regiment-parameter ws-print-output-port (current-output-port))

@@ -98,7 +98,7 @@
 	      ;; Respect the invariant that nulls have type assertions:
 	      [(null? x) (ASSERT type)	       
 	       ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
-	       (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler))
+	       (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
 		   `(assert-type ,type '())
 		   ''())]
 	      [else `(quote ,x)]

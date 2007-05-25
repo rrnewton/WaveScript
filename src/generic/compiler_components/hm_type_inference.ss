@@ -542,13 +542,21 @@
        (values `(wscase ,val ,@(map list TC* rhs*))
 	       (let ([inst* (map (lambda (x) 
 				   (match x 
-				     [(,_ ... -> ,ret) ret])) 
+				     [(,_ ... -> ,ret) ret]))
 			      rhsty*)])
 		 (foldl1 (lambda (a b) 
 			   (types-equal! a b exp "(Branches of case must have same type.)\n"))
 			 inst*)
 		 (car inst*))
 	       )]
+#|
+       (guard (eq-any? app 'app 'construct-data))
+       (DEBUGASSERT (andmap type? t*))
+       (let-values ([(rator t1) (l origrat)])
+	 (values `(,app ,rator ,@rand*)
+		 (type-app origrat t1 t* exp tenv nongeneric)))
+|#
+
 #;
       ;; Case statements are on the somewhat complex side to typecheck.
       [(wscase ,[l -> val valty] (,pat* ,rhs*) ...)

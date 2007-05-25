@@ -173,6 +173,7 @@
              [(tuple) (make-result '(tuple) '())]
               
 	     [(tuple ,arg* ...)
+	      ;; INEFFICIENT: (as are all uses of recover-type...)
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)])
 		(match type
 		  [#(,argtypes ...)

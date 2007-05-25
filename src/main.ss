@@ -345,7 +345,7 @@
 
   (set! already-typed (if (null? already-typed) #f (car already-typed)))
 
-  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
+  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
 (time 
   (parameterize ()
     
@@ -505,6 +505,7 @@
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-simulator]
+		 ;[regiment-compile-sums-as-tuples ]
 ;		 [included-var-bindings '()]
 		 [regiment-primitives
 		  ;; Remove those regiment-only primitives.
@@ -618,7 +619,7 @@
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp x . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler]
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
 ;		[included-var-bindings '()]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
@@ -701,7 +702,7 @@
 
 (IFCHEZ
  (define (wscaml x . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler]
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		[regiment-primitives ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define outfile "./query.ml")

@@ -90,9 +90,13 @@
 	 `(letrec ([,var ,(notype) ,x] ,binds ...)
 	    ,rhs)]
 
-	;; I would like to convert this to a form that uses lambdas on
-	;; the RHS to do the binding.
-	;[(wscase ,[x] (,pat* ,rhs*) ...)   ]
+	;; I would like to convert this to a form that uses lambdas on the RHS to do the binding.
+	;; This keeps wscase from being yet another binding form.
+	;; Unfortunately, we use two different translations of wscase
+	;; based on what backend we're ultimitely going to be using.
+	;; For the C++ backend we just treat sums as tuples and
+	;; minimize the extra machinery required.
+	;;
 	;; We only use case for dispatching on the tag of a sum type:
 	[(wscase ,[x] (,pat* ,[rhs*])  ...)
 	 (let ([newclause*
@@ -100,7 +104,21 @@
 		       (match pat
 			 [_ `(,default-case-symbol ,rhs)]
 			 [(data-constructor ,tc ,v* ...) (guard (andmap symbol? v*))
-			  `(,tc (lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs))]
+			  (list tc 
+;				`(lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs)
+
+			    (let ([mode (compiler-invocation-mode)])
+			      (cond 
+			       [(memq (compiler-invocation-mode) '(wavescript-compiler-caml))
+				`(lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs)]
+			       [(memq (compiler-invocation-mode) '(wavescript-compiler-cpp wavescript-simulator))
+				;; Feed it back through to break up that tuple pattern:
+				(process-expr `(lambda (#(,(unique-name 'tag) ,@v*)) (,(notype)) ,rhs)
+					      fallthrough)]
+			       [else (error 'desugar-pattern-matching 
+					    "don't know what to do with a case construct in this compiler-invocation-mode: ~s"
+					    (compiler-invocation-mode))]
+			       )))]
 			 [,oth (error 'desugar-pattern-matching 
 				      "not supporting this kind of pattern yet: ~s" oth)]))
 		  pat* rhs*)])
