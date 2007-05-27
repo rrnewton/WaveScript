@@ -210,6 +210,7 @@
      (printf "Removing Match. ~a\n" (car x))
      ''RRN:LAME-HACK-DISCARDING-MATCH]
 
+    ;; Generically traverse lists...
     [(,[x*] ...) x*]
     [,x x]
   ))

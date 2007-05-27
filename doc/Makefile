@@ -8,7 +8,8 @@ FILES =
 
 
 GENERICFILES = \
-   generic/compiler_components/prim_defs.ss 
+   generic/passes/wavescope_bkend/nominalize-types.ss \
+#   generic/compiler_components/prim_defs.ss 
 #   generic/compiler_components/prim_defs.tmp.ss 
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
@@ -66,6 +67,7 @@ all: schemedoc plt_schemedoc #match.boot
 #	if ! [ -d html ];                             then mkdir html        ; fi
 #	if ! [ -d html/generic ];                     then mkdir html/generic; fi
 	if ! [ -d html/generic/compiler_components ]; then mkdir -p html/generic/compiler_components; fi
+	if ! [ -d html/generic/passes/wavescope_bkend ]; then mkdir -p html/generic/passes/wavescope_bkend; fi
 	if ! [ -d html/chez ];                        then mkdir html/chez   ; fi
 	if ! [ -d html/plt ];                         then mkdir html/plt    ; fi
 	@echo
@@ -125,7 +127,10 @@ $(OBJFILES): html/%.html: html/%
 #$(<:html/%=%)
 
 $(DUPSRC): html/%.ss: ../src/%.ss
-	$(SCHEME) --script scrub_source.ss $< $@	
+	$(SCHEME) --script scrub_source.ss $< $@.tmp	
+	echo Now performing additional pass to clean match.
+	cat $@.tmp | sed "s/(match/'(match/g" > $@ 
+	echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
 #	$(PETITE) --script scrub_source.ss $< $@	
 
 
