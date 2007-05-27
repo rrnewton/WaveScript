@@ -31,12 +31,13 @@
 
   ;; This gets set later in a different scope.
   (define bindings-fun 'uninit)
-
+  
+  ;; We multiple traversals of the program for this pass.
   ;; This looks up a variable's tuple type in the tupdef bindings.
+  ;;
   ;; I can't push it down deeper because currently the define-pass
   ;; macro only works at top level.
   (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])  
-
 
   ;; The fixed names of fields.
   (define standard-struct-field-names 
@@ -66,9 +67,6 @@
       [#(,[t] ...) (andmap id t)]
       [,else #f]))
 
-
-  (define nominalize-types
-    (let ()
       ;; The generic traversal returns an intermediate value of type
       ;; #(Expr TypeDefs) where TypeDefs is list of [Name [StructFieldType ...]] pairs.
       (reg:define-struct (result expr tydefs))
@@ -303,6 +301,10 @@
 		 (assq name defs))
 	    (reverse (tsort edges)))))
 
+
+  ;; This is the main entry poin.
+  (define nominalize-types
+    (let ()
       ;; Main body:
       (lambda (prog) 
 	(match prog 
@@ -312,12 +314,11 @@
 		  [tupdefs (remove-redundant (result-tydefs result))]
 		  [newbod (insert-struct-names (result-expr result) tupdefs)]
 		  )
-	     
 
+	     ;; This depends on TUPDEFS:
 	     (define (do-bindings vars types exprs reconstr exprfun) 
 	       (reconstr vars (map (lambda (t) (convert-type t tupdefs)) types) 
 			 (map exprfun exprs)))
-
 	     ;; LAME:
 	     (set! bindings-fun do-bindings)
 	     
