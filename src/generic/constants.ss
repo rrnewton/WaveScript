@@ -64,6 +64,7 @@
          inferencer-let-bound-poly
          inferencer-enable-LUB
 	 included-var-bindings
+	 default-case-symbol
          
 	 compiler-invocation-mode 
 ;	 regiment-compile-sums-as-tuples

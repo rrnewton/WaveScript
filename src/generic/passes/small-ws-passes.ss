@@ -60,8 +60,8 @@
 			       )
 			     )
 			v** ty** bod*)])
-		 (inspect/continue
-		  `(wscase ,x ,@(map list TC* rhs*))))
+		 `(wscase ,x ,@(map list TC* rhs*))
+		 )
 	       ]
 	      [(wscase . ,_) (error 'convert-sums-to-tuples "bad wscase: ~s" `(wscase ,@_))]
 	      [,oth (fallthru oth)]))])
