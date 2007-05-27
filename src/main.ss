@@ -664,6 +664,20 @@
 
    (when (regiment-verbose)
     (printf "================================================================================\n")
+    (printf "\n Converting sums to tuples"))
+   (set! prog (convert-sums-to-tuples prog))
+
+#;
+   (when (regiment-verbose)
+    (printf "\n Type checking one last time."))
+#;
+   ;; Retypecheck to bring back some types that were lost:
+   (parameterize ([inferencer-enable-LUB #t]
+		  [inferencer-let-bound-poly #f])
+     (ws-run-pass p retypecheck))
+
+   (when (regiment-verbose)
+    (printf "================================================================================\n")
     (printf "\nNow nominalizing types.\n"))
    (set! prog (nominalize-types prog))
    (when (regiment-verbose)

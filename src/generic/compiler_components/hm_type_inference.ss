@@ -456,7 +456,7 @@
    [else (error 'type-const "could not type: ~a" c)]))
 
 ;; Assign a type to a procedure application expression.
-(define (type-app rator rattyp rands exp tenv non-generic-tvars)
+(define (type-app rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
   (let ([result (make-tcell)])
     (types-equal! rattyp `(,@rands -> ,result) exp "(Argument to function of wrong type.)\n")
@@ -537,37 +537,17 @@
        (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
        (values `(if ,te ,ce ,ae) ct)]
 
-
+      ;; Case statements are somewhat complex to typecheck.
       [(wscase ,[l -> val valty] (,TC* ,[l -> rhs* rhsty*]) ...)
        (values `(wscase ,val ,@(map list TC* rhs*))
-	       (let ([inst* (map (lambda (x) 
-				   (match x 
-				     [(,_ ... -> ,ret) ret]))
-			      rhsty*)])
+	       (let ([inst* (map (lambda (tc rhsty) 				   
+				   (type-app rhsty (sum-instance tenv valty tc) exp tenv nongeneric))
+			      TC* rhsty*)])
+		 ;; Make sure all those return types are consistent:
 		 (foldl1 (lambda (a b) 
 			   (types-equal! a b exp "(Branches of case must have same type.)\n"))
 			 inst*)
-		 (car inst*))
-	       )]
-#|
-       (guard (eq-any? app 'app 'construct-data))
-       (DEBUGASSERT (andmap type? t*))
-       (let-values ([(rator t1) (l origrat)])
-	 (values `(,app ,rator ,@rand*)
-		 (type-app origrat t1 t* exp tenv nongeneric)))
-|#
-
-#;
-      ;; Case statements are on the somewhat complex side to typecheck.
-      [(wscase ,[l -> val valty] (,pat* ,rhs*) ...)
-       (let ([res*
-	      (map (lambda (pat rhs)
-		     (values->list
-		      (annotate-expression rhs 
-		       (tenv-extend-pattern tenv pat valty) nongeneric)))
-		pat* rhs*)])
-	 (values `(wscase ,val ,@(map list pat* (map car res*)))
-		  (cadar res*)))]
+		 (car inst*)))]
       
       ;; Wavescope: this could be a set! to a state{} bound variable:
       [(set! ,v ,[l -> e et])  
@@ -650,13 +630,13 @@
 	      (not (memq prim '(tuple unionN))))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
-	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
+	       (type-app (prim->type prim) t* exp tenv nongeneric))]
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (,app ,rator ,@rand*))
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
+		 (type-app  t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
 
       ;; These cases are still around in case there's no source-info.
@@ -664,13 +644,13 @@
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
-	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
+	       (type-app (prim->type prim) t* exp tenv nongeneric))]
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
+		 (type-app t1 t* exp tenv nongeneric)))]
      
       ;; Incorporate type assertions.
       ;; ----------------------------------------
@@ -700,12 +680,12 @@
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
+		 (type-app t1 t* exp tenv nongeneric)))]
       [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
 	 (values `(foreign-app ',realname ,rator ,@rand*)
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
+		 (type-app t1 t* exp tenv nongeneric)))]
 
       [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
 
@@ -1026,6 +1006,10 @@
       [,other 
        (Expr other (empty-tenv))])))
 
+;; UNFINISHED
+
+;; This converts union-type declarations into a type environment in
+;; which all the constructors aroe bound to appropriate function types.
 (define (sumdecls->tenv decl*)
   (define (sumdecl->tbinds decl tenv)
     (match decl 
@@ -1041,6 +1025,15 @@
    (cdr (or (assq 'union-types metadata)
 	    '(union-types)))))
 
+;; This takes a (Sum t) type and instantiates it for a particular variant.
+;; .returns  The types of the data-constructor's fields.
+(define (sum-instance tenv sumty variant-name)
+  (let ([arrowty (instantiate-type (tenv-lookup tenv variant-name))])
+    (match arrowty
+      [(,arg* ... -> ,ret) 
+       (let ([cells (map (lambda (_) (make-tcell)) arg*)])
+	 (types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
+	 (map export-type cells))])))
       
 ; ======================================================================
 

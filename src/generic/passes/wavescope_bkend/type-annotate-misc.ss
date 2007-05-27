@@ -12,19 +12,25 @@
 
 ;; UNFINISHED, should reflect constraints on annotated prims:
   (define type-annotate-misc-grammar
+
+    (let* ([hitforapp #f]
+	   [filtered 
+	    (filter (lambda (x) 
+		      (match x
+			[(Const . ,_) #f]
+			[(AppConstructs ('foreign-app . ,_)) (set! hitforapp #t) #f]
+			[,else #t]))
+	      ws-lift-let-grammar)])
+      (unless hitforapp (error 'type-annotate-misc-grammar 
+			       "failed to remove foreign-app production from previous pass's grammar."))
     ;; Add symbols to the literal grammar (for dataFile)
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
 	      (ComplexConst ('__foreign Const Const Const ComplexDatum))					
-	      (ForeignApp ('foreign-app Const ('assert-type Type Var) Simple ...))	      
+	      (AppConstructs ('foreign-app Const ('assert-type Type Var) Simple ...))
 	      )
-	  (filter (lambda (x) 
-		    (match x
-		      [(Const . ,_) #f]
-		      [(ForeignApp . ,_) #f]
-		      [,else #t]))
-	    ws-lift-let-grammar)))
+	    filtered)))
 
 ;; Adds types to various primitives for code generation.
 (define-pass type-annotate-misc

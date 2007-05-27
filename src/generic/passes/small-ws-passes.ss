@@ -19,12 +19,52 @@
 	   ;ws-add-return-statements  ;; Disabled
 	   resolve-type-aliases
 	   ws-normalize-context
+	   convert-sums-to-tuples	   
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
 
 ;; [2007.05.01] This pulls complex constants up to the top of the program.
 ;(define-pass lift-complex-constants)
+
+(define-pass convert-sums-to-tuples
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(wscase ,[x] (,TC* (lambda ,v** ,ty** ,bod*)) ...)
+	       (let ([rhs*
+		      (map (lambda (v* ty* bod)
+			     (let* ([formal (unique-name 'pattmp)]
+				    [len    (fx+ 1 (length v*))]
+#;
+				    [binds  (mapi (lambda (i v ty)
+						    (tupref)
+						    ) v* ty*)])
+			       `(lambda (,formal) 
+				  (,(list->vector (cons 'Int ty*)))
+				  ,(let loop ([i 1] [v* v*] [ty* ty*])
+				     (if (null? v*) bod
+					 `(let ([,(car v*) ,(car ty*) (tupref  ,i ,len ,formal)])
+					    ,(loop (fx+ 1 i) (cdr v*) (cdr ty*))))))
+			       )
+#;
+			     (mvlet ( #;
+				     [(formal binds type-assertion) 
+				      (break-pattern (list->vector (cons (unique-name 'tag) v*)))]
+				     )
+			       ;(ASSERT not type-assertion)
+			       `(lambda (,formal) 
+				  (,(list->vector (cons 'Int ty*)))
+				  ,(match binds
+				     [() bod]
+				     [(,bind . ,[rest]) `(let (,bind) ,rest)]))
+			       )
+			     )
+			v** ty** bod*)])
+		 (inspect/continue
+		  `(wscase ,x ,@(map list TC* rhs*))))
+	       ]
+	      [(wscase . ,_) (error 'convert-sums-to-tuples "bad wscase: ~s" `(wscase ,@_))]
+	      [,oth (fallthru oth)]))])
 
 ;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec

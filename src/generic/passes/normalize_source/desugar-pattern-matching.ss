@@ -14,7 +14,7 @@
 
 (module desugar-pattern-matching mzscheme
   (require "../../../plt/common.ss")
-  (provide pass_desugar-pattern-matching test_desugar-patterns)
+  (provide pass_desugar-pattern-matching test_desugar-patterns break-pattern)
   (chezimports)
 
   (define (break-pattern pat)
@@ -105,8 +105,8 @@
 			 [_ `(,default-case-symbol ,rhs)]
 			 [(data-constructor ,tc ,v* ...) (guard (andmap symbol? v*))
 			  (list tc 
-;				`(lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs)
-
+				`(lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs)
+#;
 			    (let ([mode (compiler-invocation-mode)])
 			      (cond 
 			       [(memq (compiler-invocation-mode) '(wavescript-compiler-caml))

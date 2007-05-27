@@ -220,6 +220,9 @@
 				     (append defs1* defs2* (list (result-tydefs body)))))
 		)]
 
+	     ;; TODO: Should do this generically for all binding forms...
+	     
+
 	     #;
 	     [(return ,[e])
 	      (make-result `(return ,(result-expr e))
