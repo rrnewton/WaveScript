@@ -15,7 +15,14 @@
 ;;;; whole-program compilation, these should be the only places
 ;;;; tuples can come from. <br><br>
 
-;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
+;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there
+;;;; is no typechecking after this.
+
+;;;; <br><br>
+;;;; [2007.05.27] Moving towards ONLY collecting tuple-types from
+;;;; explicit type annotations, NOT from tuple-forming statements
+;;;; themselves.  This critically depends on the program being
+;;;; flattened by remove-complex-opera*.
 
 ;============================================================
 
@@ -150,9 +157,11 @@
 
   ;; ============================================================
   ;;; First pass -- Collect tupdefs from the program:
-  
-  (define (collect-tupdefs-List exprList tenv)
-    (let ([results (map (lambda (x) (collect-tupdefs x tenv)) exprList)])
+
+#;
+  ;; Collect tupdefs from an entire list of expressions.
+  (define (collect-tupdefs-from-list exprList tenv)
+    (let ([results (map (lambda (x) (collect-tupdefs-from-expr x tenv)) exprList)])
       (values (map result-expr results)
 	      (apply append-tydefs (map result-tydefs results)))))
 
@@ -174,10 +183,13 @@
       [,s (guard (string? s)) '()]
       [,else (error 'nominalize-types:collect-from-type "unmatched type: ~s" else)]))
 
+
+#;
+
   ;; A first pass to collect tuple type defs & convert tuple/tupref terms.
   ;; Doesn't process the type of every term, but processes all the
   ;; places it needs to observe all used tuple types.
-  (define (collect-tupdefs expr tenv)
+  (define (collect-tupdefs-from-expr expr tenv)
     ;; We avoid the boilerplate by defining this as a "generic traversal"
     (core-generic-traverse/types
      ;; Driver
@@ -186,13 +198,13 @@
        (ASSERT result?
 	       (match expr
 		 [(tuple) (make-result '(tuple) '())]
-		 
+
 		 [(tuple ,arg* ...)
 		  ;; INEFFICIENT: (as are all uses of recover-type...)
 		  (let ([type (recover-type `(tuple . ,arg*) tenv)])
 		    (match type
 		      [#(,argtypes ...)
-		       (mvlet ([(args tydefs) (collect-tupdefs-List arg* tenv)])
+		       (mvlet ([(args tydefs) (collect-tupdefs-from-list arg* tenv)])
 			 (make-result 
 			  ;; We replace argtypes with an actual name in a second pass:
 			  `(make-struct ,argtypes ,args ...)
@@ -224,14 +236,15 @@
 			       (append-tydefs (collect-from-type t)
 					      (result-tydefs e)))]
 
+#;
 		 ;; Going to go ahead and add any types that are found in let bindings.
 		 [(let ([,v* ,ty* ,[e*]] ...) ,body)
-		  (let ([body (collect-tupdefs body (tenv-extend tenv v* ty*))]
+		  (let ([body (collect-tupdefs-from-expr body (tenv-extend tenv v* ty*))]
 			[defs1* (map collect-from-type ty*)]
 			[defs2* (map result-tydefs e*)]
 			[e* (map result-expr e*)])
 		    (make-result `(let ([,v* ,ty* ,e*] ...) ,(result-expr body))
-				 (foldl1 append-tydefs 
+				 (apply append-tydefs 
 					 (append defs1* defs2* (list (result-tydefs body)))))
 		    )]
 
@@ -247,7 +260,7 @@
 		 ;; This produces new tuples.
 		 [(unionN ,e* ...)
 		  (let ([type (recover-type `(unionN ,e* ...) tenv)])
-		    (mvlet ([(args tydefs) (collect-tupdefs-List e* tenv)])		 
+		    (mvlet ([(args tydefs) (collect-tupdefs-from-list e* tenv)])		 
 		      (make-result
 		       ;; Assert the type so that it gets converted.
 		       `(assert-type ,type (unionN ,@args))
@@ -268,16 +281,51 @@
      expr tenv
      ))
 
+  (define-pass collect-tupdefs
+    ;; Expressions just bottom out in null-lists of tydefs.
+    [Expr (lambda (x fallthru) 
+	    (match x
+	      [,s (guard (symbol? s)) ()]
+	      [',c                    ()]
+	      [,oth (fallthru oth)]))]
+    [Fuser (lambda (ls k) (apply append-tydefs ls))]
+    [Bindings 
+      (lambda (vars types exprs reconstr exprfun)
+	(apply append-tydefs 
+	       (append (map exprfun exprs)
+		       (map collect-from-type types))))]
+    [Program (lambda (prog ExprFun)
+	       (match prog
+		 [(,lang '(program ,body ,meta* ... ,toptype)) 
+		  (append-tydefs2 (collect-from-type toptype)
+				  (ExprFun body))]))])
+
 
   ;; ============================================================
-  ;;; Second pass -- go back through and insert struct names where
+  ;;; Second pass -- change tuple construction to struct-construction.
+
+  (define-pass convert-tuples 
+   [Expr/Types (lambda (x tenv fallthru)
+     (match x 
+       [(tuple) '(tuple)]
+       [(tuple ,[arg*] ...)
+	;; INEFFICIENT: (as are all uses of recover-type...)
+	;; Since the program is flattened we can grab this at the let-binding...
+	(match (recover-type `(tuple . ,arg*) tenv)
+	  [#(,argtypes ...)
+	   `(make-struct ,(last (ASSERT (assoc argtypes tupdefs))) ,@arg*)])]
+       ;; tuprefs are simple:
+       [(tupref ,i ,len ,[x])
+	`(struct-ref ,x ,(list-ref standard-struct-field-names i))]
+       [,oth (fallthru oth tenv)]
+       ))])
+
+  ;; ============================================================
+  ;;; Third pass -- go back through and insert struct names where
   ;;; struct's are built.  Also convert the types to use their nominal
   ;;; counterparts.
  
   ;; This looks up a variable's tuple type in the tupdef bindings.
-  ;;
-  ;; I can't push it down deeper because currently the define-pass
-  ;; macro only works at top level.
   (define-pass convert-types 
       ;; This depends on TUPDEFS:
       (define (bindings-fun vars types exprs reconstr exprfun) 
@@ -285,14 +333,16 @@
 		  (map exprfun exprs)))
       [Expr (lambda (x fallthr)
 	      (match x 
+#;
 		[(make-struct ,ty* ,[args] ...)
 		 `(make-struct ,(last (assoc ty* tupdefs)) ,@args)]
+
 		;; We handle ascription (assert-type) specially.  It is not
 		;; caught by the "Binding" form.
 		[(assert-type ,t ,[e])
 		 `(assert-type ,(convert-type t tupdefs) ,e)]
 		[,oth (fallthr oth)]))]
-      [Bindings (lambda args (apply bindings-fun args))])
+      [Bindings bindings-fun])
 
   ;; This goes through and replaces tuples with Struct types.
   ;; Must be an exported type.
@@ -326,38 +376,29 @@
   ;;; Main Entry Point
 
   ;; This is the main entry point.
-  ;; It combines both the passes above in succession:
+  ;; It combines the micro-passes above in succession:
   ;;  (1) collect-tupdefs
-  ;;  (2) convert-types
-  (define nominalize-types
-    (let ()
-      ;; Main body:
-      (lambda (prog) 
-	(match prog 
-	  [(,lang '(program ,body ,meta* ... ,type))
-	   (let* ([result (collect-tupdefs body (empty-tenv))]
-		  [newbod (result-expr result)]
-		  [thetupdefs (remove-redundant (result-tydefs result))]
-		  ;[newbod (insert-struct-names (result-expr result) thetupdefs)]
-		  )
-	     (fluid-let ([tupdefs thetupdefs])
-	       (match (convert-types `(,lang '(program ,newbod ,meta* ... ,type)))
-		 [(,lang '(program ,body ,meta* ... ,type))
-		  ;; Running the type-checker/inferencer isn't going to work on this output any longer:
-		  `(nominalize-types-language
-		    '(program ,body		       
-		       ;; We stick the type definitions here:
-		       (struct-defs 
-			,@(sort-defs
-			   (map (match-lambda ((,types ,flds ,name))
-				  `(,name ,@(map list flds 
-						 (map (lambda (t) (convert-type t thetupdefs)) 
-						   types))))
-			     thetupdefs)))
-		       ,meta* ... ;; The _other_ metadata.
-		       ,(convert-type type thetupdefs)))]))
-	     )]))))
-
+  ;;  (2) convert-tuples
+  ;;  (3) convert-types
+  (define (nominalize-types prog)
+    (match prog 
+      [(,lang '(program ,body ,meta* ... ,type))
+       (fluid-let ([tupdefs (collect-tupdefs prog)])
+	 (match (convert-types (convert-tuples prog)) ;; Uses tupdefs!!
+	   [(,lang '(program ,body ,meta* ... ,type))
+	    ;; Running the type-checker/inferencer isn't going to work on this output any longer:
+	    `(nominalize-types-language
+	      '(program ,body		       
+		 ;; We stick the type definitions here:
+		 (struct-defs 
+		  ,@(sort-defs
+		     (map (match-lambda ((,types ,flds ,name))
+			    `(,name ,@(map list flds 
+					   (map (lambda (t) (convert-type t tupdefs)) 
+					     types))))
+		       tupdefs)))
+		 ,meta* ... ;; The _other_ metadata.
+		 ,(convert-type type tupdefs)))]))]))
 
   ;; ============================================================
   ;;; Unit Tests.
@@ -393,20 +434,21 @@
        #f]
 
       ["tuples of tuples"
-       (reunique-names ;; This kinda thing makes me wish I used de Bruijin indices.
-	(nominalize-types '(type-print/show-language
-			   '(program
-				(tuple 1 (tuple 2 3))
-			      (Stream #(Int #(Int Int)))))))
+       (reunique-names  ;; <- This kinda thing makes me wish I used de Bruijin indices.
+	(nominalize-types
+	 '(type-print/show-language
+	   '(program
+		(let ((x #(Int Int) (tuple 2 3)))
+		  (tuple 1 x))
+	      (Stream #(Int #(Int Int)))))))
        (nominalize-types-language
 	'(program
-	     (make-struct tuptyp 1 (make-struct tuptyp_1 2 3))
+	     (let ([x (Struct tuptyp) (make-struct tuptyp 2 3)])
+	       (make-struct tuptyp_1 1 x))
 	   (struct-defs
-	    (tuptyp_1 (fld1 Int) (fld2 Int))
-	    (tuptyp (fld1 Int) (fld2 (Struct tuptyp_1))))
-	   ;(union-types)
-	   (Stream (Struct tuptyp))))
-       ]
+	    (tuptyp (fld1 Int) (fld2 Int))
+	    (tuptyp_1 (fld1 Int) (fld2 (Struct tuptyp))))
+	   (Stream (Struct tuptyp_1))))]
       
 
       ))

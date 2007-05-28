@@ -680,6 +680,9 @@
     (printf "================================================================================\n")
     (printf "\nNow nominalizing types.\n"))
    (set! prog (nominalize-types prog))
+
+;   (inspect prog)
+
    (when (regiment-verbose)
     (pretty-print prog)
     ;;   (printf "================================================================================\n")
