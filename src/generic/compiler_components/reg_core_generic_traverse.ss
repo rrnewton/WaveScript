@@ -388,7 +388,7 @@
 ;;; Derived utilities.
 
 ;; This should be a general-purpose free-vars utility for the core lang.
-;; Returns a *list*, doesn't convert it to a set.
+;; Could use a more efficient set representation...
 (define (core-free-vars exp) 
   (core-generic-traverse
    (lambda (x fallthru)

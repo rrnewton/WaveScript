@@ -29,6 +29,8 @@
 	   arrow-type?
 	   polymorphic-type?          	   
 	   constant-typeable-as? 
+	   known-size?
+	   type->width
 
 ;            instantiate-type
 ; 	   export-type 
@@ -177,6 +179,61 @@
 	  ))
     ))
 
+
+  ;; Does this type have a known size?
+  ;; Matters for making tuples into structs.
+  (define (known-size? t)
+    (define (id x) x)
+    (match t
+      [,simple (guard (symbol? simple)) #t]
+      ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
+      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
+      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+      ;; This shouldn't be in a tuple anyway:
+      [(,[arg] ... -> ,[ret]) #f]
+
+      [(Struct ,name)         #t]
+      ;; These are pointers, doesn't matter what the type inside is.
+      [(Sigseg ,_)            #t]
+      [(Array  ,_)            #t]
+      [(List   ,_)            #t]
+      [(Pointer   ,_)         #t]
+      [(ExclusivePointer  ,_) #t]
+      [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+      [#(,[t] ...) (andmap id t)]
+      [,else #f]))
+
+  ;; TODO, needs to handle sum types properly.
+  ;;
+  ;; NOTE: this is specific to the C++ backend... but it also holds
+  ;; for the external representation in files.
+  (define type->width
+    (case-lambda
+      [(t) (type->width t #f)]
+      [(t sumdecls) 
+       (match t
+	 [Int16 2]
+	 [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+	 ;; HACK:
+	 [(Sigseg #(,[w*] ...)) (apply + w*)]
+	 [(Sigseg ,t)         (type->width t)]
+	 [Float  4]
+	 [Double 8]
+	 ;;[Complex ]    
+	 
+	 ;[#() 1] ;????
+	 [#(,[t*] ...) (apply + t*)]
+
+	 [(Sum ,TC)
+	  (ASSERT sumdecls)
+	  (printf "TYPE->WIDTH UNFINISHED!\n")
+	  (inspect sumdecls)
+	  (exit 3)
+	  (assq TC sumdecls)
+	  ]
+	 
+	 [,other (error 'type->width "do not know the size of this type: ~s" other)]
+	 )]))
   
 ; ----------------------------------------
 ;;; Representation for type variables  

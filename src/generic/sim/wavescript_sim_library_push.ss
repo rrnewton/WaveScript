@@ -93,7 +93,7 @@
 		 while
 
 		 ;; [2007.03.21] These are used elsewhere, should probably factor them into another file:
-		 type->width types->width
+		 ;type->width types->width
 
 		 ;; A foreign procedure for freeing external memory:
 		 C-free
@@ -456,7 +456,7 @@
     ;; Read a binary stream with a particular tuple format.
     (define (binsource)
       (define source (read-binary-file-stream file 
-				(types->width types) ;; Read N bytes at a time.
+				(apply + (map type->width types)) ;; Read N bytes at a time.
 				(types->reader types)
 				(if (> winsize 0) winsize 1) ;; Length of "window"				
 				0 ;; Overlap
@@ -791,19 +791,6 @@
 	  (logbit1 31 unsigned)
 	  unsigned)))
 
-  (define (type->width t)
-    (match t
-      [Int16 2]
-      [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
-      ;; HACK:
-      [(Sigseg #(,t* ...)) (types->width t*)]
-      [(Sigseg ,t)         (type->width t)]
-      ;;[Float 32]
-      ;;[Complex ]    
-      [,other (error 'type->width "can't support binary reading of ~s yet." other)]
-      ))
-  (define (types->width types)
-    (apply + (map type->width  types)))
   (define (types->reader types)
      (define (type->reader t)
        (match t

@@ -69,6 +69,14 @@
   ;; TODO FINISHME!!! FIXME!
   #t)
 
+;================================================================================
+;;; Abstract syntax producing functions.
+
+;;; [2007.05.28] Trying to raise the level of abstraction a bit for producing syntax.
+
+(define (make-decl type name) `(,type" ",name";\n"))
+
+;================================================================================
 
 ;; If the type needs a specialized hashfun, returns its name,
 ;; otherwise returns #f.
@@ -671,12 +679,12 @@
 	(match exp
 
 	  ;; Special Constants:
-	  [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
+	  [(assert-type ,t nullseg)    (wrap (PolyConst 'nullseg t))]
 	  [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
-	  [(assert-type ,t '())     (wrap (PolyConst '() t))]
-;	  ['()                      (wrap (PolyConst '() t))]
+	  [(assert-type ,t '())        (wrap (PolyConst '() t))]
+;	  ['()                         (wrap (PolyConst '() t))]
 
-	  [nulltimebase             (Const name type 'nulltimebase)]
+	  [nulltimebase                (Const name type 'nulltimebase)]
 	  
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
@@ -699,7 +707,26 @@
 	     "} else {\n"
 	     ,(indent ((Block tenv) name "" altern) "  ")
 	     "}\n")]
-	  
+
+	  ;; This is tricky:
+	  ;; [2007.05.28] DEFAULT CASE NOT HANDLED RIGHT NOW!!!
+	  [(wscase ,[Simple -> x] (,tag* (lambda (,v*) (,ty*) ,bod*)) ...)
+	   (printf "WSCASE\n");
+	   (list (make-decl type name)
+		 (block `("switch (",x".tag)")
+			(map (lambda (tag v ty bod)
+			       `("case ",(number->string tag)": \n"
+				 ,(indent ((Block (tenv-extend tenv (list v) (list ty))) name "" bod) "  ")
+				 "  break;\n"))
+			  tag* v* ty* bod*)
+			))]
+
+;; WON'T WORK!!
+	  [(force-cast ,ty ,[e])
+	   (let ([ty (match ty [(Struct ,name) (Type ty)])])
+	     ;; Hmm: does this copy it?
+	     `("(*((",ty"*)&(",e")))"))]
+
 	  ;; This is needed just for the RHS's of iterator state variables.
 	  [(let ([,v ,ty ,rhs]) ,bod)
 	   (list
@@ -737,7 +764,8 @@
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 
-(trace-define ForeignApp
+;; Generate code for a "foreign" application.  Not really foreign since we're hosted in C++.
+(define ForeignApp
   (lambda (ls)
     (match ls 
       [(',realname (assert-type ,type ,rator) ,[Simple -> rand*] ...)

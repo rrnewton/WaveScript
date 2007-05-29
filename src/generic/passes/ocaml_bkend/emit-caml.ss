@@ -28,8 +28,8 @@
 (define union-edges 'union-edges-uninit)
 
 ;;CHEZ ONLY
-(define type->width (let () (import wavescript_sim_library_push) type->width))
-(define types->width (let () (import wavescript_sim_library_push) types->width))
+;(define type->width (let () (import wavescript_sim_library_push) type->width))
+;(define types->width (let () (import wavescript_sim_library_push) types->width))
   
 ;======================================================================
 ;;                    <WaveScript CAML generation>
@@ -367,7 +367,7 @@
 			       (number->string (rate->timestep rate)))
 		   " \n"
 		   (make-tuple "textreader" "binreader"
-			       (number->string (types->width types))
+			       (number->string (apply + (map type->width types)))
 			       (number->string skipbytes)
 			       (number->string offset))
 		   " \n"

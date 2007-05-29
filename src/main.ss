@@ -667,6 +667,8 @@
     (printf "\n Converting sums to tuples"))
    (set! prog (convert-sums-to-tuples prog))
 
+;   (inspect `(CONVERTED ,prog))
+
 #;
    (when (regiment-verbose)
     (printf "\n Type checking one last time."))
@@ -681,7 +683,7 @@
     (printf "\nNow nominalizing types.\n"))
    (set! prog (nominalize-types prog))
 
-;   (inspect prog)
+;   (inspect `(NOMINALIZED ,prog))
 
    (when (regiment-verbose)
     (pretty-print prog)
