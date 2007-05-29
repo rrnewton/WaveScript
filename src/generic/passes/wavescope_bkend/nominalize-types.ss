@@ -167,9 +167,8 @@
   (define-pass collect-tupdefs
     (define (Expr x fallthru) 
       (match x
-	[(,assrt ,[collect-from-type -> t] ,[e])  
-	 (guard (memq assrt '(assert-type force-cast)))
-	 (append-tydefs2 t e)]
+	[(assert-type   ,[collect-from-type -> t] ,[e])  (append-tydefs2 t e)]
+	[(cast-variant-to-parent ,tc ,[collect-from-type -> t] ,[e])  (append-tydefs2 t e)]
 	[,form (guard (binding-form? form))
 	       (let ([scoped (binding-form->scoped-exprs form)]
 		     [types (binding-form->types form)]
@@ -207,7 +206,7 @@
        [(tupref ,i ,len ,[x])
 	`(struct-ref ,x ,(list-ref standard-struct-field-names i))]
 
-       [(force-cast ,t ,[e]) `(force-cast ,t ,e)]
+       [(cast-variant-to-parent ,tc ,t ,[e]) `(cast-variant-to-parent ,tc ,t ,e)]
        [,oth (fallthru oth tenv)]
        ))])
 
@@ -222,8 +221,8 @@
 	    (match x 
 	      ;; We handle ascription (assert-type) specially.  It is not
 	      ;; caught by the "Binding" form.
-	      [(,assrt ,t ,[e]) (guard (memq assrt '(assert-type force-cast)))
-	       `(,assrt ,(convert-type t tupdefs) ,e)]
+	      [(assert-type ,t ,[e])    `(assert-type   ,(convert-type t tupdefs) ,e)]
+	      [(cast-variant-to-parent ,tc ,t ,[e])  `(cast-variant-to-parent ,tc ,(convert-type t tupdefs) ,e)]
 	      [,oth (fallthr oth)]))]
     [Bindings 
      (lambda (vars types exprs reconstr exprfun) 
@@ -271,6 +270,7 @@
     (match prog 
       [(,lang '(program ,body ,meta* ... ,type))
        (fluid-let ([tupdefs (collect-tupdefs prog)])
+	 (define unions (ASSERT (assq 'union-types meta*)))
 	 (match (convert-types (convert-tuples prog)) ;; Uses tupdefs!!
 	   [(,lang '(program ,body ,meta* ... ,type))
 	    ;; Running the type-checker/inferencer isn't going to work on this output any longer:
@@ -284,7 +284,13 @@
 					   (map (lambda (t) (convert-type t tupdefs)) 
 					     types))))
 		       tupdefs)))
-		 ,meta* ... ;; The _other_ metadata.
+		 (union-types 
+		  ,@(map (lambda (x)
+			   (match x 
+			     [(,name (,tc* ,[(lambda (t) (convert-type t tupdefs)) -> ty*]) ...)
+			      `(,name ,@(map list tc* ty*))]))
+		      (cdr unions)))
+		 ,(remq unions meta*) ... ;; The _other_ metadata.
 		 ,(convert-type type tupdefs)))]))]))
 
   ;; ============================================================

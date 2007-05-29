@@ -15,6 +15,10 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.05.29]
+  *) Eventually reduce dependency on C++ features in wsc.
+     In particular... tuples should not have constructors.
+
 [2007.05.17]
 
   *) Need to make "using Matrix:Float;" work.

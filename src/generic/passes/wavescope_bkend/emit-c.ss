@@ -74,7 +74,17 @@
 
 ;;; [2007.05.28] Trying to raise the level of abstraction a bit for producing syntax.
 
-(define (make-decl type name) `(,type" ",name";\n"))
+(trace-define make-decl 
+  (case-lambda
+    [(type name)     `(,type" ",name";\n")]
+    [(type name val) `(,type" ",name" = ",val";\n")]
+    [(type name val flag) 
+     (case flag
+       [(reference) `(,type"& ",name" = ",val";\n")]
+       [(pointer)   `(,type"* ",name" = ",val";\n")]
+       [else (make-decl type name val)])]))
+
+(define sym2str symbol->string)
 
 ;================================================================================
 
@@ -85,7 +95,7 @@
     (match k
       [,s (guard (symbol? s) (memq s '(Int Float))) #f]
       [String "boost::hash<string>"]
-      [(Struct ,name)	`("hash",(symbol->string name))]
+      [(Struct ,name)	`("hash",(sym2str name))]
       [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
       ))
   `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >"))
@@ -114,7 +124,7 @@
     ;[(Array ,[t]) `(,t "[]")]
     [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
     ;[(Array ,[t])  `("boost::shared_array< ",t" >")]
-    [(Struct ,name) (symbol->string name)]
+    [(Struct ,name) (sym2str name)]
 
     [#() "wsunit_t"]
     
@@ -135,6 +145,12 @@
 
     ;; Variables of this type might occur (for foreign entries) but they'd better not be referenced!
     [(,arg* ... -> ,result) "void*"]
+    
+    [(Union ,name) `("struct ",(sym2str name))]
+    
+#;
+    [(Union (,[sym2str -> v*] ,[t*]) ...) 
+     (list "union {" (map (lambda (v t) (list t" "v"; ")) v* t*) "}")]
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
@@ -198,7 +214,7 @@
     ;; .returns 3 values: A new expression, a set of declarations, wsq declarations
     (define (Query name typ x tenv)
       ;; Coercion:
-      (if (symbol? name) (set! name (symbol->string name)))
+      (if (symbol? name) (set! name (sym2str name)))
       (match x
 
 	;; We force this to occur out here, in the "Query", not in any position in the program.
@@ -237,7 +253,7 @@
 	;; An alias:
 	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
-	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n")
+	    (values `(,(Type typ)" " ,name " = " ,(sym2str e) ";\n")
                     ()
                     ())]
 
@@ -306,7 +322,7 @@
 	 (define new-class-name (Var (unique-name 'Window)))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
-		   ,name"->connect(",(symbol->string sig)");\n")
+		   ,name"->connect(",(sym2str sig)");\n")
 		 (if static-linkage
 		     '()
 		     ;; Otherwise we need to make a wrapper that parameterizes this window:
@@ -316,7 +332,7 @@
 		       "}\n\n")
 		     )
                  `(("op \"",name"\" \"",new-class-name"\" \"query.so\"\n")
-		   ("connect \"",(symbol->string sig)"\" \"",name"\"\n")))]
+		   ("connect \"",(sym2str sig)"\" \"",name"\"\n")))]
 
 	;; TODO: ENSBoxAudio/ensBoxAudio
 #;	
@@ -358,10 +374,10 @@
 				   [(Sigseg (Struct ,name)) name] 
 				   [,else #f])]
 		  [tuptype (match thetype
-			     [(Struct ,structname) `("struct ",(symbol->string structname))]
+			     [(Struct ,structname) `("struct ",(sym2str structname))]
 			     [(Sigseg ,[t]) t]
 			     [,other (ASSERT (not (eq? other 'String)))(Type other)])]
-		  [classname (symbol->string (unique-name 'WSDataFileSource))]
+		  [classname (sym2str (unique-name 'WSDataFileSource))]
 		  [types (if structoutput?
 			     (map cadr (cdr (ASSERT (assq structoutput? struct-defs))))
 			     (match thetype
@@ -386,7 +402,7 @@
 			     ,(if structoutput?
 				  (insert-between ", "
 				    (let loop ([n 1]
-					       [flds (map symbol->string
+					       [flds (map sym2str
 						       (list-head standard-struct-field-names (length types)))]
 					       [types types])
 				      (if (null? types) '()
@@ -491,7 +507,7 @@
 	 (values 
 	  `("WSSource* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
 	    ;; Literal array:
-	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
+	    ;;"{ ",(insert-between ", " (map sym2str types)) " });\n"
 	    )
 	  (list maintext)
           `())))]
@@ -520,8 +536,8 @@
 		[t2 (recover-type s2 tenv)]
 		[ty (format " ~a, ~a " (Type t1) (Type t2))])
 	   `(" Zip2<",ty"> ",name" = Zip2<",ty">();"
-	     " ",name".connect(",(symbol->string s1)"); "
-	     " ",name".connect(",(symbol->string s2)"); " )	   
+	     " ",name".connect(",(sym2str s1)"); "
+	     " ",name".connect(",(sym2str s2)"); " )	   
 	   )
 					;  /* zip2 */
 					;  Zip2<SigSeg<float>,float> z=Zip2<SigSeg<float>,float>();
@@ -543,7 +559,7 @@
 	    `(" WSBox* ",name" = new ",classname"();"
 	      ;; Order is critical here:
 	     ,(map (lambda (in)
-		     `(" ",name"->connect(",(symbol->string in)"); "))
+		     `(" ",name"->connect(",(sym2str in)"); "))
 		inputs)
 	     )
 	    ;; Decls:
@@ -552,11 +568,11 @@
   class ",classname" : public WSBox{ 
    
     private:
-    DEFINE_OUTPUT_TYPE(",(symbol->string tupname)");
+    DEFINE_OUTPUT_TYPE(",(sym2str tupname)");
     
     bool iterate(uint32_t port, void *item)
     {
-      emit(",(symbol->string tupname)"((wsint_t)port, *(",ty"*)item));      
+      emit(",(sym2str tupname)"((wsint_t)port, *(",ty"*)item));      
       return true;
     }
   };
@@ -604,7 +620,7 @@
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
-	((Value tenv) (symbol->string v) (Type ty) rhs)
+	((Value tenv) (sym2str v) (Type ty) rhs)
 	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
       [(begin ,e1 . ,e*)
        (list
@@ -708,21 +724,38 @@
 	     ,(indent ((Block tenv) name "" altern) "  ")
 	     "}\n")]
 
-	  ;; This is tricky:
-	  ;; [2007.05.28] DEFAULT CASE NOT HANDLED RIGHT NOW!!!
-	  [(wscase ,[Simple -> x] (,tag* (lambda (,v*) (,ty*) ,bod*)) ...)
-	   (printf "WSCASE\n");
+
+	  [(cast-variant-to-parent ,[sym2str -> tc] ,[Type -> ty] 
+				   (assert-type ,[Type -> variant-ty] ,e))
+	   (let ([newvar (sym2str (unique-name 'sumbld))])
+	     ;; First build the variant itself:
+	     (list ((Value tenv) newvar variant-ty e)
+		   ;; Build the parent container:
+		   (make-decl ty name)
+		   ;; Next store the result within the parent union type.
+		   name".payload."tc" = "newvar";\n"
+		   ;; And store the tag:
+		   name".tag = "tc";\n"
+		   ))]
+
+	  [(wscase ,[Simple -> x] ((,tag* . ,tc*) (lambda (,v*) (,ty*) ,bod*)) ...)
+	   (printf "WSCASE\n")
 	   (list (make-decl type name)
 		 (block `("switch (",x".tag)")
-			(map (lambda (tag v ty bod)
-			       `("case ",(number->string tag)": \n"
+			(map (lambda (tc v ty bod)
+			       (define TC (sym2str tc))
+			       `("case ",TC": {\n"
+				 ;; Simply bind a reference to the struct:
+				 ,(make-decl (Type ty) (sym2str v) (list x ".payload." TC) 'reference)
 				 ,(indent ((Block (tenv-extend tenv (list v) (list ty))) name "" bod) "  ")
-				 "  break;\n"))
-			  tag* v* ty* bod*)
+				 "  }  break;\n"))
+			  tc* v* ty* bod*)
 			))]
 
+
+#;
 ;; WON'T WORK!!
-	  [(force-cast ,ty ,[e])
+	  [(cast-variant-to-parent ,ty ,[e])
 	   (let ([ty (match ty [(Struct ,name) (Type ty)])])
 	     ;; Hmm: does this copy it?
 	     `("(*((",ty"*)&(",e")))"))]
@@ -730,15 +763,15 @@
 	  ;; This is needed just for the RHS's of iterator state variables.
 	  [(let ([,v ,ty ,rhs]) ,bod)
 	   (list
-	    ((Value tenv) (symbol->string v) (Type ty) rhs)
+	    ((Value tenv) (sym2str v) (Type ty) rhs)
 	    ((Value (tenv-extend tenv (list v) (list ty))) name type bod))]
 
 	;; Forming tuples.
 	[(make-struct ,name ,[Simple -> arg*] ...)
-	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
+	 (wrap `(,(sym2str name)"(",(insert-between ", " arg*)")"))]
 	;; Referencing tuples.
 	[(struct-ref ,[Simple -> x] ,fld)
-	 (wrap `("(",x "." ,(symbol->string fld)")"))]
+	 (wrap `("(",x "." ,(sym2str fld)")"))]
 
 	; ============================================================
 	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
@@ -779,11 +812,29 @@
 
 ;================================================================================
 
+
+(define (UnionDef def)
+  (match def
+    [((,[sym2str -> name]) (,[sym2str -> tc*] ,[Type -> ty*]) ...)
+     (let ([tagty (Type tag-type)])
+       (list (block `("struct ",name)
+	      (list
+	       tagty" tag;\n"
+	       (block "union"
+		      (map (lambda (tc ty) (list ty " " tc ";\n"))
+			tc* ty*)
+		      )
+	       " payload;\n"))
+	     ";\n"
+	     (block (list "enum "name"_enum")
+		    (list (insert-between ", " tc*) "\n"))";\n"))
+     ]))
+
 ;; This produces a struct definition as well as a printer function for the struct.
 (define (StructDef entry)
      (match entry
-       [(,(symbol->string -> name) (,[symbol->string -> fld*] ,typ*) ...)
-	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)]
+       [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
+	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
 	      [ctype* (map Type typ*)])
 	  `(,(block `("struct ",name)
 		    ;; Fields:
@@ -1032,6 +1083,7 @@
             (file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
+            (map UnionDef uniondefs)
             funs
             (make-output-printer typ)))
     
@@ -1063,12 +1115,12 @@
     (define (Var var)
       (ASSERT (symbol? var))
       ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
-      (symbol->string var))
+      (sym2str var))
 
-      ;(symbol->string var))
+      ;(sym2str var))
     (define (FunName var)
       (format "WSFunLib::~a" var))
-      ;(symbol->string var))
+      ;(sym2str var))
 
 
     (define Const
@@ -1139,7 +1191,7 @@
   ;; This is for primitives that correspond exactly to exactly one C call.
   (define (SimplePrim var)
     (define (fromlib v) (format "WSPrim::~a" v))
-    (define (mangle v) (mangle-name (symbol->string v)))
+    (define (mangle v) (mangle-name (sym2str v)))
     ;; Handle special cases here.
     (case var
       [(not)         
@@ -1147,7 +1199,7 @@
        ] ; The name "not" makes g++ unhappy.
       ;; These are the same as their C++ names:
       [(cos sin tan acos asin atan max min) 
-       (symbol->string var)]
+       (sym2str var)]
       [(absF absI absI16)       "abs"]
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
@@ -1219,9 +1271,9 @@
 			 +: *: -: /:
 			 ^_ ^. 
 			 ) ;; Chop off the extra character.
-		     (substring (symbol->string infix_prim) 0 1)]
+		     (substring (sym2str infix_prim) 0 1)]
 		    [(+I16 -I16 *I16 /I16 ^I16)
-		     (substring (symbol->string infix_prim) 0 1)]
+		     (substring (sym2str infix_prim) 0 1)]
 		    )])
        (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
 
@@ -1469,7 +1521,7 @@
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
-    [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
+    [(Struct ,name) (printf "%s" `("show_",(sym2str name)"(",e").c_str()"))]
 
     [Pointer (printf "%p" `("(void*)",e))]
     [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))

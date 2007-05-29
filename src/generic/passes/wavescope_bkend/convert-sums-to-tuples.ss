@@ -1,7 +1,7 @@
 
 ;;;; Encode tagged variant types (sums) as disjoint tuple types.  They
-;;;; will are "cast" from a general tuple type.  This is for the C++
-;;;; backend.
+;;;; are then contained with in a parent tuple type using a C "union"
+;;;; as well as a tag.
 ;;;;
 ;;;; .author Ryan Newton
 
@@ -9,7 +9,7 @@
 
 (module convert-sums-to-tuples mzscheme 
   (require "../../../plt/common.ss")
-  (provide convert-sums-to-tuples)
+  (provide convert-sums-to-tuples tag-type)
   (chezimports)
 
 
@@ -24,21 +24,35 @@
     (list-find-position TC
      (cdr (ASSERT (assq (cadr sumty) sum-variants)))))
 
+  (define (lookup-sumdef name)
+    (trace-let loop ([ls sum-decls])
+      (ASSERT (not (null? ls)))
+      (if (eq? (caaar ls) name)
+	  (car ls)
+	  (loop (cdr ls)))))
+
   ;; Todo, this should be handled by type->width!!
   (define (sizeof-sum sum)
     (let ([variants (cdr sum)])
       (apply max (map type->width (map cadr variants)))))
   
-  ;; Special type here that's understood by the subsequent passes but
-  ;; not the type checker.
-  (trace-define (build-parent-tuple width)
-    ;`#(,tag-type (ByteArray ,width))
-    ;`#(,tag-type ,@(make-list width 'Byte))
-    `#(,tag-type ,@(make-list (ASSERT integer? (/ width 2)) 'Int16))
+  ;; Introducing a "Union" type constructor understood by the C++ backend.
+  (define (parent-tuple sumname)
+    ;`#(,tag-type (Union ,@(cdr (lookup-sumdef sumname))))
+    `(Union ,sumname)
     )
 
-  (define (parent-tuple sumname)
-    (build-parent-tuple (cadr (ASSERT (assq sumname sum-sizes)))))
+  (define (make-tuple-term . args)
+    (cond
+     [(null? args) 'UNIT]
+     [(null? (cdr args)) (car args)]
+     [else (cons 'tuple args)]))
+  (define (make-tuple-type . args)
+    (cond
+     [(null? args) #()]
+     [(null? (cdr args)) (car args)]
+     [else (list->vector args)]))
+
 
   ; (define (pad-tuple size tupty) ...)
 
@@ -53,10 +67,14 @@
 	 (let ([ty (match (tenv-lookup tenv TC)
 			   [(,_ ... -> ,sumty) sumty])])
 	   ;; For the program to typecheck in C we need to cast it to the shared sum-type.
-	   `(force-cast ,(parent-tuple (cadr ty))
+	   ;; This is a hack that's understood by the C++ generator:
+	   `(cast-variant-to-parent ,TC ,(parent-tuple (cadr ty))
 	     (assert-type 
-	      #(,tag-type ,@(map (lambda (x) (recover-type x tenv)) arg*))
-	      (tuple ',(lookup-tag ty TC) ,@arg*))))]
+	      ,(apply make-tuple-type ;,tag-type 
+		      (map (lambda (x) (recover-type x tenv)) arg*))
+	      ,(apply make-tuple-term ;',(lookup-tag ty TC) 
+		      arg*)
+	      )))]
 
 	;; TODO: Handle no cases or just default!
 	;[(wscase )]
@@ -67,16 +85,20 @@
 		       (let* ([formal (unique-name 'pattmp)]
 			      [len    (fx+ 1 (length v*))])
 			 `(lambda (,formal) 
-			    (,(list->vector (cons tag-type ty*)))
-			    ,(let loop ([i 1] [v* v*] [ty* ty*])
-			       (if (null? v*) bod
-				   `(let ([,(car v*) ,(car ty*) (tupref  ,i ,len ,formal)])
-				      ,(loop (fx+ 1 i) (cdr v*) (cdr ty*))))))))
+			    (,(apply make-tuple-type ty*))
+			    
+			    ,(if (fx= 1 (length ty*))
+				 `(let ([,(car v*) ,(car ty*) ,formal]) ,bod)
+				 (let loop ([i 0] [v* v*] [ty* ty*])
+				   (if (null? v*) bod
+				       `(let ([,(car v*) ,(car ty*) (tupref  ,i ,len ,formal)])
+					  ,(loop (fx+ 1 i) (cdr v*) (cdr ty*))))))
+			    )))
 		  v** ty** bod*)]
 		;[sumty (recover-type x tenv)] ;; Should be a simple expression.
 	       [sumty (match (tenv-lookup tenv (car TC*)) [(,_ ... -> ,sumty) sumty])]
 	       [tag* (map (lambda (tc) (lookup-tag sumty tc)) TC*)])
-	   `(wscase ,(Expr x tenv fallthru) ,@(map list tag* rhs*)))]
+	   `(wscase ,(Expr x tenv fallthru) ,@(map list (map cons tag* TC*) rhs*)))]
 	[(wscase . ,_) (error 'convert-sums-to-tuples "bad wscase: ~s" `(wscase ,@_))]
 	
 	[(assert-type ,[Type -> t] ,[e]) `(assert-type ,t ,e)]

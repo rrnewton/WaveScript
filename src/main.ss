@@ -304,8 +304,6 @@
 
 (define ws-pass-optional-stop 
   (lambda (x)
-;    (inspect x)
-;    (inspect (strip-annotations x))
     (if (regiment-verbose)
 	(IFDEBUG
 	 (begin (parameterize ([pretty-line-length 160]
@@ -447,14 +445,12 @@
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 
-;  (inspect (count-nodes p))
 ;  (profile-clear)
   (ws-run-pass p ws-remove-complex-opera*)  
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
   ;; couple more passses before type checking.
   (IFDEBUG (do-late-typecheck) (void))
-;  (inspect (count-nodes p))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
@@ -661,10 +657,9 @@
    (flush-output-port)
    
    (set! prog (run-ws-compiler typed #t))
-
-   (when (regiment-verbose)
-    (printf "================================================================================\n")
-    (printf "\n Converting sums to tuples"))
+   
+   (printf "\nFinished normal compilation, now emitting C++ code.\n")
+   (printf "Running pass: convert-sums-to-tuples\n")
    (set! prog (convert-sums-to-tuples prog))
 
 ;   (inspect `(CONVERTED ,prog))
@@ -678,9 +673,8 @@
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
 
-   (when (regiment-verbose)
-    (printf "================================================================================\n")
-    (printf "\nNow nominalizing types.\n"))
+
+   (printf "Running pass: nominalize-types.\n")
    (set! prog (nominalize-types prog))
 
 ;   (inspect `(NOMINALIZED ,prog))

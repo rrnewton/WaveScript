@@ -92,9 +92,6 @@
 
 		 while
 
-		 ;; [2007.03.21] These are used elsewhere, should probably factor them into another file:
-		 ;type->width types->width
-
 		 ;; A foreign procedure for freeing external memory:
 		 C-free
 		 exclusivePtr

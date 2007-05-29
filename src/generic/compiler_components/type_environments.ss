@@ -207,6 +207,9 @@
   ;;
   ;; NOTE: this is specific to the C++ backend... but it also holds
   ;; for the external representation in files.
+  ;;
+  ;; NOTE: This doesn't actually correspond to the sizeof the C struct used to represent the tuple.
+  ;; The C compiler is at liberty to do things like word-align the struct.
   (define type->width
     (case-lambda
       [(t) (type->width t #f)]
