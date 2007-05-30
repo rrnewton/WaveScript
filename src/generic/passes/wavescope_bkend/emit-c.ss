@@ -74,7 +74,7 @@
 
 ;;; [2007.05.28] Trying to raise the level of abstraction a bit for producing syntax.
 
-(trace-define make-decl 
+(define make-decl 
   (case-lambda
     [(type name)     `(,type" ",name";\n")]
     [(type name val) `(,type" ",name" = ",val";\n")]
@@ -739,7 +739,6 @@
 		   ))]
 
 	  [(wscase ,[Simple -> x] ((,tag* . ,tc*) (lambda (,v*) (,ty*) ,bod*)) ...)
-	   (printf "WSCASE\n")
 	   (list (make-decl type name)
 		 (block `("switch (",x".tag)")
 			(map (lambda (tc v ty bod)

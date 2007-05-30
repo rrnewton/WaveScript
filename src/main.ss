@@ -660,7 +660,7 @@
    
    (printf "\nFinished normal compilation, now emitting C++ code.\n")
    (printf "Running pass: convert-sums-to-tuples\n")
-   (set! prog (convert-sums-to-tuples prog))
+   (time (set! prog (convert-sums-to-tuples prog)))
 
 ;   (inspect `(CONVERTED ,prog))
 
@@ -675,7 +675,7 @@
 
 
    (printf "Running pass: nominalize-types.\n")
-   (set! prog (nominalize-types prog))
+   (time (set! prog (nominalize-types prog)))
 
 ;   (inspect `(NOMINALIZED ,prog))
 

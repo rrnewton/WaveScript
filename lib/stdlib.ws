@@ -669,11 +669,25 @@ fun sort(swap, cmp, len) {
 
 
 // Some standard type definitions.
+
 /*
-union Choose2 a b       = OneOf2 a | TwoOf2 b
-union Choose3 a b c     = OneOf3 a | TwoOf3 b | ThreeOf3 c
-union Choose4 a b c d   = OneOf4 a | TwoOf4 b | ThreeOf4 c | FourOf4 d
-union Choose5 a b c d e = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | FiveOf5 e
+uniontype Union2 a b       = Oneof2 a | Twoof2 b;
+uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;
+uniontype Union4 a b c d   = Oneof4 a | Twoof4 b | Threeof4 c | Fourof4 d;
+uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Fiveof5 e;
+
+
+fun union2(s1,s2) 
+  unionList([stream_map(Oneof2,s1),
+             stream_map(Twoof2,s2)])
+
+fun union3(s1,s2,s3) 
+  unionList([stream_map(Oneof3,  s1),
+             stream_map(Twoof3,  s2),
+	     stream_map(Threeof3,s3)])
+*/
+
+/*
 
 union Choose2 (a, b)          = OneOf2 a | TwoOf2 b
 union Choose3 (a, b, c)       = OneOf3 a | TwoOf3 b | ThreeOf3 c

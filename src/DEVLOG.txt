@@ -1,6 +1,7 @@
-I'm writing down most of my *thinking* in AMORIDEAS.emacs.txt.  But I
-realized that my day-to-day development issues should go in a separate
-file; so here we are. -2004.04.29
+I'm writing down most of my *thinking* in my personal
+AMORIDEAS.emacs.txt file.  But I realized that my day-to-day
+development issues should go in a separate file; so here we
+are. -2004.04.29
 
 [2004.04.29]
   Hmm, without "identifier-syntax" I can't get things working fully
@@ -860,4 +861,26 @@ to 600ms.  Still much worse than 12ms but an improvement!
            (f (- n 1)))))
 
 
+
+[2007.05.30] {Thinking about adding static annotations}
+.
+But what do they annotate?
+Ultimately, we want to designate certain *allocating* operations
+(list, array, hash-table creation) as being static.  
+.
+This could be done in several ways.  Alternate versions of those
+allocating operators, perhaps expressed as an annotation *to* the
+operator itself.  Or an annotation on a whole lexical scope (applying
+to all operators within it).  Or an annotation on a variable binding,
+indicating that *that value* is never collected.
+.
+But, because the (static) values will have a different type, the
+static designation also needs to be carried in the types.  Again, do
+we have a (StaticArray 'a) type?  Or do we have just one new
+type-constructor: (Static (Array 'a)).
+.
+After thinking about this a bit more it seems like I should add in
+explicit operators for ref-counting an object, and expose those to the
+compiler.  But will that mess up my ability to use intrusive_ptrs?
+I need to talk to Greg about this.
 

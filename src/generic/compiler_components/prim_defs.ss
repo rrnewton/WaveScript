@@ -72,6 +72,19 @@
     ; [(Area 'a) (Stream (Space 'a))]
     ))
 
+; ;; These are sum-types that are defined by default:
+; (define regiment-sum-types
+;   '([(Union2 'a 'b)          (Oneof2 'a) (Twoof2 'b)]
+;     [(Union3 'a 'b 'c)       (Oneof3 'a) (Twoof3 'b) (Threeof3 'c)]
+;     [(Union4 'a 'b 'c 'd)    (Oneof4 'a) (Twoof4 'b) (Threeof4 'c) (Fourof4 'c)]
+;     [(Union5 'a 'b 'c 'd 'e) (Oneof5 'a) (Twoof5 'b) (Threeof5 'c) (Fourof5 'c) (Fiveof5 'c)]
+;     ))
+
+; fun union2(s1,s2) {
+;   unionList([stream_map(Oneof2,s1),
+; 	     stream_map(Twoof2,s1),])
+; }
+
 
 ;; Hierarchy:
 ;; Int8

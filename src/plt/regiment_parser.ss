@@ -317,6 +317,7 @@
           [(TYPEVAR) `(quote ,$1)]
           ;[(HASH TYPEVAR) `(NUM ,$2)]
 	  [(NUMVAR) `(NUM ,$1)])
+    (typevars [() ()] [(typevar typevars) (cons $1 $2)])
 
     (typetuple [(type) (list $1)]
 	       [(type * typetuple) (cons $1 $3)])
@@ -338,19 +339,14 @@
 
            [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
            [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
+	   ;; This takes multiple type arguments within parentheses!!
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
 
 	   ;; TAGGED UNION:
 	   ;; Haven't decided whether one or both of these terms is required:
 	   ;; Only one typevar for now:
-	   [(typedef union VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
-	   [(typedef union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
-	   [(union typedef VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
-	   [(union typedef VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
-	   [(union VAR = unioncases SEMI maybedecls)             `((uniondef (,$2) . ,$4) . ,$6)]
-	   [(union VAR typevar = unioncases SEMI maybedecls)     `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
 	   [(uniontype VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
-	   [(uniontype VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
+	   [(uniontype VAR typevars = unioncases SEMI maybedecls) `((uniondef (,$2 ,@$3) . ,$5) . ,$7)]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR :: type = exp optionalsemi maybedecls) `((define ,$1 (assert-type ,$3 ,$5)) ,@$7)]

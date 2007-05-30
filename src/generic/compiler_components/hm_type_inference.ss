@@ -1013,8 +1013,8 @@
 (define (sumdecls->tenv decl*)
   (define (sumdecl->tbinds decl tenv)
     (match decl 
-      [((,name) [,tycon* ,ty*] ... ) (guard (symbol? name))
-       (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name))) ty*))
+      [((,name ,typarg* ...) [,tycon* ,ty*] ... ) (guard (symbol? name))
+       (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name ,@typarg*))) ty*))
        ]))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 

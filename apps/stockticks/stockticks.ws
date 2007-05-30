@@ -16,22 +16,22 @@ merged = (dataFile("ticks_splits.input", "text", 44000, 0)     :: Stream (String
 
 s = iterate ((sym1,t,vol,price) in merged) {
   state {
-     ht = hashtable(300);
+     ht = HashTable:make(300);
   }
 
   //sym = internString(sym1);
   sym = sym1;
 
-  if not(hashcontains(ht, sym))
-  then hashset_BANG(ht, sym, 1.0);
+  if not(HashTable:contains(ht, sym))
+  then HashTable:set_BANG(ht, sym, 1.0);
 
   if vol == -1 // In this case price is really *factor*.
   then {
-    hashset_BANG(ht, sym, hashget(ht,sym) *. price);
+    HashTable:set_BANG(ht, sym, HashTable:get(ht,sym) *. price);
     //print("SPLIT: "++show(price)++"\n");
   }
   else {
-    emit (sym,t,vol,price *. hashget(ht,sym));
+    emit (sym,t,vol,price *. HashTable:get(ht,sym));
   };
 };
 

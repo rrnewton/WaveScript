@@ -40,6 +40,7 @@
        dir
      (concat dir "/")))
 
+
 (defun load-all-files-of-interest-from (dir)
   ;; Sometimes it doesn't work if I don't do this first:
   (progn
@@ -47,21 +48,24 @@
     (mapcar (lambda (f)
 	      (let ((filename (file-name-nondirectory f))
 		    (ext      (file-name-extension f)))
-		(if (> (length filename) 3)
-		  (if (and (not (string= (substring filename 0 1) "_"))
-			   (not (string= (substring filename 0 3) ".__"))
-			   (not (string= (substring filename 0 2) ".#")))		      
-		      (if (or (string= ext "ss")
-			      (string= ext "rs") ;; Regiment source (sexp)
-			      (string= ext "tm")
-			      (string= ext "ws") ;; Wavescript source
-			      (string= ext "cpp")
-			      (string= ext "h")
-			      (string= ext "tests"))
-			  (progn
-			    (print (concat "Loading " f))
-			    (find-file-noselect f))
-			)))))
+		(let ((len (length filename)))
+		  (if (> len 3)
+		      (if (and (not (string= (substring filename 0 1) "_"))
+			       (not (string= (substring filename 0 3) ".__"))
+			       (not (string= (substring filename 0 2) ".#"))
+			       (not (string= (substring filename (- len 1) len) "~"))
+			       )
+			  (if (or (string= ext "ss")
+				  (string= ext "rs") ;; Regiment source (sexp)
+				  (string= ext "tm")
+				  (string= ext "ws") ;; Wavescript source
+				  (string= ext "cpp")
+				  (string= ext "h")
+				  (string= ext "tests"))
+			      (progn
+				(print (concat "Loading " f))
+				(find-file-noselect f))
+			    ))))))
 	    (all-contained-files dir))))
 
 ;; rrn: this is convenient for me because I use the moccur package and the mtorus package.
@@ -248,7 +252,8 @@
 (font-lock-add-keywords 'c-mode '(("\\<\\(iterate\\)" 1 font-lock-keyword-face t)))
 ;(font-lock-add-keywords 'c-mode '(("\\<\\(in\\)" 1 font-lock-keyword-face t)))
 
-(font-lock-add-keywords 'c-mode '(("\\<\\(union\\)" 1 font-lock-keyword-face t)))
+;(font-lock-add-keywords 'c-mode '(("\\<\\(union\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(uniontype\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(match\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(state\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(let\\)" 1 font-lock-keyword-face t)))
