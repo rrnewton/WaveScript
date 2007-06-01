@@ -77,7 +77,9 @@
 	  [(src-pos ,p ,var) (guard (symbol? var))
 		(cond
 		 [(memq var type-constructors) 
-		  (error 'resolv-varrefs "type constructor not directly applied: ~s" var)]
+		  ;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
+		  var
+		  ]
 		 [(assq var var-table) => cadr]
 		 [(regiment-primitive? var) var]
 		 [else (error 'resolve-varrefs 
@@ -93,7 +95,9 @@
 		#;
 		(cond
 		 [(memq var type-constructors) 
-		  (error 'resolv-varrefs "type constructor not directly applied: ~s" var)]
+		  ;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
+		  var
+		  ]
 		 [(assq var var-table) => cadr]
 		 [(regiment-primitive? var) var]
 		 [else (error 'resolve-varrefs 

@@ -971,22 +971,7 @@
 ;; .returns 1 or 2 values: new program and toplevel type
 ;;                         If input is with-boilerplate, output is one value.
 ;; 
-;; NOTE!  We have to run the type checking TWICE to make everything settle down.
-;; This is a result of our strategy of recording LUB types for lets.
 (define (annotate-program p)
-  (match p
-    [(,lang '(program ,e ,meta ...))
-     ;(annotate-program-once (annotate-program-once p))
-     (annotate-program-once p)
-     ]
-    [,oth
-     (let-values ([(e t) (annotate-program-once oth)])
-       (values e t)
-       ;(annotate-program-once e)
-       )]))
-
-;; This is the real thing:
-(define (annotate-program-once p)
   (let ([Expr 
 	 (lambda (p tenv)
 	   (let-values ([(e t) (annotate-expression p tenv '())])
@@ -1006,7 +991,8 @@
       [,other 
        (Expr other (empty-tenv))])))
 
-;; UNFINISHED
+
+
 
 ;; This converts union-type declarations into a type environment in
 ;; which all the constructors aroe bound to appropriate function types.
@@ -1014,7 +1000,11 @@
   (define (sumdecl->tbinds decl tenv)
     (match decl 
       [((,name ,typarg* ...) [,tycon* ,ty*] ... ) (guard (symbol? name))
-       (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name ,@typarg*))) ty*))
+       (tenv-extend tenv tycon* 
+		    (map (lambda (ty)
+			   ;; TEMP, trying instantiating here:
+			   (instantiate-type `(,ty -> (Sum ,name ,@typarg*) ())
+					     )) ty*))
        ]))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 

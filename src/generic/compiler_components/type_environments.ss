@@ -64,6 +64,10 @@
 ; ----------------------------------------
 ;;; Representation for Types:
 
+;;; TODO: If I wanted an added degree of safety, I could make types
+;;; and instantiated-types totally disjoint; at the cost of boxing
+;;; them.  Currently I believe I'm being sloppy in places.
+
 (define (valid-type-symbol? s)
   (let ([str (symbol->string s)])
     (and (> (string-length str) 0)
@@ -282,6 +286,10 @@
 ; ----------------------------------------
 ;;; Type Environment ADT
 
+;;; Type environments bind variable names to types.
+;;; Currently, these may be instantiated or uninstantiated types.
+;;; <br><br>
+
 ;;; [2007.02.21] Changing the tenv representation.  Now we wish to
 ;;; ultimately use the least-upper-bound of all the reference-sites as
 ;;; the type of a let-bound variable.  I'm internally changing the
@@ -303,7 +311,7 @@
     ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
     [(,tenvsym [,v* ,t* ,flag*] ...)
      (and (eq? tenvsym (car (empty-tenv)))
-	  (andmap symbol? v*)
+	  (andmap symbol? v*)	  
 	  (andmap type? t*);(andmap instantiated-type? t*)
 	  (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
 	  )]

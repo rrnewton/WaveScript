@@ -270,7 +270,7 @@
     (match prog 
       [(,lang '(program ,body ,meta* ... ,type))
        (fluid-let ([tupdefs (collect-tupdefs prog)])
-	 (define unions (ASSERT (assq 'union-types meta*)))
+	 (define unions (or (assq 'union-types meta*) '(union-types)))
 	 (match (convert-types (convert-tuples prog)) ;; Uses tupdefs!!
 	   [(,lang '(program ,body ,meta* ... ,type))
 	    ;; Running the type-checker/inferencer isn't going to work on this output any longer:
@@ -333,6 +333,7 @@
 	   '(program
 		(let ((x #(Int Int) (tuple 2 3)))
 		  (tuple 1 x))
+	      (union-types)
 	      (Stream #(Int #(Int Int)))))))
        (nominalize-types-language
 	'(program
@@ -341,6 +342,7 @@
 	   (struct-defs
 	    (tuptyp (fld1 Int) (fld2 Int))
 	    (tuptyp_1 (fld1 Int) (fld2 (Struct tuptyp))))
+	   (union-types)
 	   (Stream (Struct tuptyp_1))))]
 
       ["collect tupdefs"
