@@ -1,5 +1,11 @@
 #! /bin/bash
 
+# This version of the script invokes Regiment using full Chez Scheme.
+# It will try to load from, heap, boot file, or .so file in that
+# order.  Failing those it will load from source.  If full Chez isn't
+# available, it falls back to Petite.
+
+
 #if [ "$REGIMENTHOST" == "plt" ]
 #then export REGIMENTEXEC=regiment.plt
 
@@ -46,7 +52,6 @@ script() {
 #    exec "$REGIMENTD/src/regiment_script.ss" $*
 
     INVOKEDIR=`pwd`
-    SCRIPT="$REGIMENTD/src/regiment_script.ss"
     ENTRY="$REGIMENTD/src/regiment.ss"
     setupchez;
     #echo ARGS: "<"$ARGS">"

@@ -32,7 +32,7 @@
   (define-pass eta-primitives
       (define type-constructors 'uniniti)
     [OutputGrammar eta-primitives-grammar]
-    [Expr 
+    [Expr
      (letrec ([processExpr 
 	       (lambda (x fallthrough)
 		 (match x
@@ -47,6 +47,16 @@
 					; Primitive types:
 				    ,(map export-type (rdc (rdc (prim->type var))))
 				    (,var ,@formals)))))]
+		   
+		   ;; As are variable references that are data constructors.
+		   [,tc (guard (symbol? tc) (assq tc type-constructors))
+		     (match (assq tc type-constructors) 
+		       [(,name ,ty* ...)
+			(let ([formal* (map (lambda (_) (unique-name 'x)) ty*)])		     
+			  ;(printf "ETA TC: ~s ~s\n" tc formal*) (exit -1)
+			  `(lambda ,formal* ,ty*
+			     (construct-data ,tc ,@formal*)))])
+		     ]
 
 		   ;; Primitives that are applied with "app" have it taken away:
 		   [(app ,prim ,[rands] ...)
@@ -61,9 +71,11 @@
 		 [(,lang '(program ,e ,meta* ... ,ty))
 		  (fluid-let ([type-constructors 
 			       (match (assq 'union-types meta*)
-				 [(union-types [,name* [,tycon** ,_] ...] ...)
-				  (apply append tycon**)])])
-		    `(,lang '(program ,(Expr e) ,@meta* ,ty)))]))])
+				 [#f ()]
+				 [(union-types [,name* ,variant** ...] ...)
+				  (apply append variant**)])])
+;		    (inspect type-constructors)
+		    `(eta-primitives-language '(program ,(Expr e) ,@meta* ,ty)))]))])
 
   (define-testing these-tests
      `(

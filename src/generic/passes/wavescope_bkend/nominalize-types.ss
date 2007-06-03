@@ -346,9 +346,10 @@
 	   (Stream (Struct tuptyp_1))))]
 
       ["collect tupdefs"
-       (,collect-tupdefs 
-        '(lang '(program (assert-type #(Int Int) (tuple '3 '4)) (Sum Foo))))
-       (((Int Int) (fld1 fld2) tuptyp_71))]
+       (reunique-names
+	(,collect-tupdefs 
+	 '(lang '(program (assert-type #(Int Int) (tuple '3 '4)) (Sum Foo)))))
+       (((Int Int) (fld1 fld2) tuptyp))]
       
       ))
   (define-testing test-this (default-unit-tester "nominalize types pass" these-tests))
