@@ -13,6 +13,7 @@
 	   (all-except "../util/imperative_streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
 	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)           
+           "../compiler_components/type_environments.ss"
 	   )
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase

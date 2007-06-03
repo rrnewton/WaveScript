@@ -79,7 +79,8 @@
 	   annotate-program
 	   strip-types do-all-late-unifies!
 	   strip-annotations
-	   
+
+	   project-metadata
 	   print-var-types
 	   dealias-type
 	   realias-type
@@ -1003,7 +1004,7 @@
        (tenv-extend tenv tycon* 
 		    (map (lambda (ty)
 			   ;; TEMP, trying instantiating here:
-			   (instantiate-type `(,ty -> (Sum ,name ,@typarg*) ())
+			   (instantiate-type `(,ty -> (Sum ,name ,@typarg*))
 					     )) ty*))
        ]))
   (foldl sumdecl->tbinds (empty-tenv) decl*))

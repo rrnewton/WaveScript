@@ -17,6 +17,7 @@
 (module emit-c mzscheme 
   (require  "../../../plt/common.ss"
 	    (all-except "nominalize-types.ss" test-this these-tests)
+	    "convert-sums-to-tuples.ss"
 	    "../../compiler_components/c_generator.ss" )
   (provide ;WSBox wscode->text
 	   wsquery->text

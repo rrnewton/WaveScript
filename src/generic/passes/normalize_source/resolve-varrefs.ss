@@ -104,7 +104,9 @@
 			      "variable was not bound!: ~a\n environment: ~s"
 			      var var-table)])]
 
-	  [(app ,tc ,[rand]) (guard (memq tc type-constructors)) 
+;; [2007.06.01] Moving this functionality to eta-primitives.
+#;
+	  [(app ,tc ,[rand]) (guard (memq tc type-constructors))
 	   ;; From here on out we use a special form:
 	   `(construct-data ,tc ,rand)]
 

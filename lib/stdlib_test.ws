@@ -5,7 +5,9 @@ include "stdlib.ws";
 
 // OH! This has to do with the source positions.
 
-BASE <- iterate (() in timer(3.0)) {
+src = union2(timer(3.0), timer(4.0))
+
+BASE <- iterate (_ in src) {
   state { first = true }
   
   if first then {
@@ -25,6 +27,8 @@ BASE <- iterate (() in timer(3.0)) {
 
     first := false;
     println("");
+
+
   };
   
   emit ();

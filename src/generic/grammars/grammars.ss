@@ -41,16 +41,8 @@
       [Type ('VQueue Type)]
       [Type ('Sigseg Type)]
 
-      ;; To lenient, user defined type:
-      [Type ('Sum ,symbol?)]
-      ;[Type ('User ,symbol?)]
-      ;[Type ,symbol?]
-#;      
-[Type ,(lambda (t)
-	       (and (list? t)
-		    (= (length t) 2)
-		    (symbol? (car t))
-		    (not (eq? (car t) 'quote))))]
+      ;; Too lenient, user defined type:
+      [Type ('Sum ,symbol? Type ...)]
       
       [Type ('HashTable Type)]
       [Type ('List Type)]

@@ -30,7 +30,8 @@
   ;; [2006.10] Rewrote again to use define-pass:
   ;; [2006.10.06] Rewriting to use generic-traversal:
   (define-pass eta-primitives
-      [OutputGrammar eta-primitives-grammar]
+      (define type-constructors 'uniniti)
+    [OutputGrammar eta-primitives-grammar]
     [Expr 
      (letrec ([processExpr 
 	       (lambda (x fallthrough)
@@ -54,8 +55,15 @@
 		   
 		   [,other (fallthrough other)]
 		   ))])
-       processExpr)])
-
+       processExpr)] 
+    [Program (lambda (x Expr) 
+	       (match x 
+		 [(,lang '(program ,e ,meta* ... ,ty))
+		  (fluid-let ([type-constructors 
+			       (match (assq 'union-types meta*)
+				 [(union-types [,name* [,tycon** ,_] ...] ...)
+				  (apply append tycon**)])])
+		    `(,lang '(program ,(Expr e) ,@meta* ,ty)))]))])
 
   (define-testing these-tests
      `(
