@@ -60,6 +60,9 @@
  	[(* ,[a] ,[b]) `(g* ,a ,b)]
  	[(/ ,[a] ,[b]) `(g/ ,a ,b)]
  	[(^ ,[a] ,[b]) `(g^ ,a ,b)]
+
+	;; This is a work-around for a name conflict:
+	[merge '_merge]
 	
 	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])
 	 (let ([lam (if (null? binds*)

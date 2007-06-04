@@ -677,8 +677,8 @@ uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Five
 
 
 fun union2(s1,s2) 
-  unionList([stream_map(Oneof2,s1),
-             stream_map(Twoof2,s2)])
+  merge(stream_map(Oneof2,s1),
+	 stream_map(Twoof2,s2))
 /*
 fun union3(s1,s2,s3) 
   unionList([stream_map(Oneof3,  s1),
