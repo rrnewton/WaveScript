@@ -514,7 +514,11 @@
 
     ;; This unions N streams of the same type, it returns a sample and
     ;; the index (in the original list) of the stream that produced it.
+    ;;
+    ;; [2007.06.04] Thinking of renaming these "MERGE"
     (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))
+    ;; Two streams of the same type:
+    (_merge            ((Stream 'a) (Stream 'a)) (Stream 'a))
 
     ;; This synchronously joins two signals.
     ;(zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))

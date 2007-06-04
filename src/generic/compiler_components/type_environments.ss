@@ -25,6 +25,7 @@
            num-types
 
 	   type? 
+	   instantiated-type?
 	   distributed-type?
 	   arrow-type?
 	   polymorphic-type?          	   

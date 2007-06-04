@@ -83,7 +83,7 @@
 		 ;smap sfilter
 		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
-		 unionN unionList 
+		 _merge unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
 		 fftC ifftC fftR2C ifftC2R
@@ -661,25 +661,12 @@
 
      (define (unionN . args)  (unionList args))
 
-#;
-     (define (zip2 s1 s2)
-       (delay 	 
-	 (let loop ([s1 s1] [s2 s2])
-	   (cond
-	    [(stream-empty? s1) '()]
-	    [(stream-empty? s2) '()]
-	    [else (stream-cons (vector (stream-car s1) (stream-car s2))
-			       (loop (stream-cdr s1) (stream-cdr s2))
-			       )]
-	    ))))
-
-
-
-
-
-
-
-
+     (define (_merge s1 s2)
+       (define our-sinks '())
+       ;; Register a receiver for each source:       
+       (s1 (lambda (x) (fire! x our-sinks)))
+       (s2 (lambda (x) (fire! x our-sinks)))
+       (lambda (sink) (set! our-sinks (cons sink our-sinks))))
 
 
 

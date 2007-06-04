@@ -169,7 +169,8 @@
 ;; This desugars all types within the program by applying all type aliases.
 (define-pass resolve-type-aliases
     (define aliases '())
-    (define Type (lambda (t) (dealias-type aliases t)))
+    (define Type (lambda (t) (export-type (dealias-type aliases (instantiate-type t)))))
+    ;(define Type (lambda (t) (dealias-type aliases t)))
     [Bindings (lambda (v* t* e* reconst Expr)
 		(reconst v* (map Type t*) (map Expr e*)))]
     [Expr (lambda (x fallthru)

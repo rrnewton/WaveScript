@@ -408,7 +408,7 @@
       [(wscase ,x  [,pat* ,[rhs*]] ...)
        (let ([inst* (map (lambda (x) 
 			   (match x 
-			     [(,_ ... -> ,ret) (instantiate-type ret '())])) 
+			     [(,_ ... -> ,ret) (instantiate-type ret '())]))
 		      rhs*)])
 	 (foldl1 (lambda (a b) (types-equal! a b '(case ...) "(Branches of case must have same type.)\n"))
 		 inst*)
@@ -1023,8 +1023,13 @@
     (match arrowty
       [(,arg* ... -> ,ret) 
        (let ([cells (map (lambda (_) (make-tcell)) arg*)])
+;	 (inspect arrowty)
+;	 (inspect `(,@cells -> ,(instantiate-type sumty)))
 	 (types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
-	 (map export-type cells))])))
+	 ;(map export-type cells)
+	 cells ;; Return instantiated type.
+	 ;(map instantiate-type (map export-type cells))
+	 )])))
       
 ; ======================================================================
 
@@ -1056,7 +1061,7 @@
 (define (types-equal! t1 t2 exp msg) ; maybemsg
 ;  (define msg (if (null? maybemsg) "" (car maybemsg)))
 ;  (ASSERT (not (null? msg)))
-  (DEBUGASSERT type? t1) (DEBUGASSERT type? t2)
+  (DEBUGASSERT instantiated-type? t1) (DEBUGASSERT instantiated-type? t2)
   (DEBUGASSERT (compose not procedure?) exp)
   (match (cons t1 t2)
     [[,x . ,y] (guard (eqv? t1 t2)) (void)]
@@ -1450,8 +1455,8 @@
 	      [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
       ))
 
+;; Should take either an instantiated or non-instantiated type.
 (define (dealias-type aliases t)
-;    (import iu-match) ;; Having problems!
   (match t
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
