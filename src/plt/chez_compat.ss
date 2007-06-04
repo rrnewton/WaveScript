@@ -45,7 +45,9 @@
   (define cd current-directory) ;; shorthand
 
   ;; Leaf nodes in a data structure.  Things that contain no more subthings.
-  (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
+  ;(define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
+  ;; No, this is the correct definition of atom?
+  (define (atom? x) (not (pair? x)))
   ;; Should ports be included?
 
 ;  (define real-time current-milliseconds)
