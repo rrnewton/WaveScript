@@ -50,6 +50,8 @@ snoop           :: (a, Stream b) -> Stream b;
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
 
+//union2          :: (Stream a, Stream b) -> Stream (Union2 a b);
+
 syncN           :: (CtrlStrm, LSS t)       -> SLS t;
 syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
 thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
@@ -678,13 +680,27 @@ uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Five
 
 fun union2(s1,s2) 
   merge(stream_map(Oneof2,s1),
-	 stream_map(Twoof2,s2))
-/*
+	stream_map(Twoof2,s2))
+
 fun union3(s1,s2,s3) 
-  unionList([stream_map(Oneof3,  s1),
-             stream_map(Twoof3,  s2),
-	     stream_map(Threeof3,s3)])
-*/
+  merge(stream_map(Oneof3,  s1),
+  merge(stream_map(Twoof3,  s2),
+        stream_map(Threeof3,s3)))
+
+fun union4(s1,s2,s3,s4) 
+  merge(stream_map(Oneof4,   s1),
+  merge(stream_map(Twoof4,   s2),
+  merge(stream_map(Threeof4, s3),
+        stream_map(Fourof4,  s4))))
+
+fun union5(s1,s2,s3,s4,s5) 
+  merge(stream_map(Oneof5,   s1),
+  merge(stream_map(Twoof5,   s2),
+  merge(stream_map(Threeof5, s3),
+  merge(stream_map(Fourof5,  s4),
+        stream_map(Fiveof5,  s5)))))
+
+
 
 /*
 
