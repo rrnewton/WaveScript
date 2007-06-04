@@ -476,7 +476,7 @@
 ;; Note, doesn't necessarily handle already annotated programs.
 ;;
 ;; .param exp - expression
-;; .param tenv - type environment 
+;; .param tenv - type environment (NOTE: bindings to INSTANTIATED types)
 ;; .param nongeneric - list of type variables that appear in lambda-arguments. (as opposed to lets)
 ;; .returns 2 values - annotated expression and expression's type
 (define (annotate-expression exp tenv nongeneric)

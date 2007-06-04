@@ -7,7 +7,7 @@ include "stdlib.ws";
 
 src = union2(timer(3.0), timer(4.0))
 
-BASE <- iterate (_ in src) {
+BASE <- iterate (x in src) {
   state { first = true }
   
   if first then {
@@ -28,6 +28,10 @@ BASE <- iterate (_ in src) {
     first := false;
     println("");
 
+    case x {
+      Oneof2(x): println("Got left! ")
+      Twoof2(y): println("Got right! ")
+    };
 
   };
   

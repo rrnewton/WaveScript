@@ -339,6 +339,7 @@
   (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (tenv? tenv))
   (DEBUGASSERT (andmap type? types))
+  ;(DEBUGASSERT (andmap instantiated-type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
     (cons (car tenv)
 	  (append (map (lambda (v t) 

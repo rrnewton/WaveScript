@@ -313,9 +313,9 @@
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 
   (define (fail x p k)
-    (set-top-level-value! 'grammar-context (k 'FAIL))
-    (set-top-level-value! 'grammar-original origexpr)
-    (set-top-level-value! 'grammar-failed x)
+    (define-top-level-value 'grammar-context (k 'FAIL))
+    (define-top-level-value 'grammar-original origexpr)
+    (define-top-level-value 'grammar-failed x)
     (warning 'check-grammar
 	   (++ (format "in ~a: " context)
 	       "could not parse expr ~s with production/pattern ~s\n  "
