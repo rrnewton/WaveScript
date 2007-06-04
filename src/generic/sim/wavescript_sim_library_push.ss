@@ -207,11 +207,14 @@
 
   (define ws-int?     fixnum?)
   (define ws-float?   flonum?)
-  (define ws-complex? cflonum?) ;; Problems in PLT!
+  ;; Problems in PLT!
+  ;; Hacking this to #T
+  (IFCHEZ (define ws-complex? cflonum?)
+	  (define (ws-complex? n) #t))
  
   ;; ================================================================================    
 
-  ;; Converts hertz to microseconds:
+  ;; converts hertz to microseconds:
   (define (rate->timestep freq)
     (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
     (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
