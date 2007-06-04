@@ -194,6 +194,23 @@
   (define-syntax static (syntax-rules () [(_ x) x]))
   (define-syntax statref (syntax-rules () [(_ x) x]))
 
+  ;; ================================================================================    
+  ;;; Type tests for WaveScript types embedded in Scheme.
+
+  ;;; These are a bit sketchy because they make specific assumptions
+  ;;; about the *representations* used by Scheme for numbers.  (I.e. a
+  ;;; number is floating point) rather than the meaning (a number is non-integral).
+  
+  ;;; In particular, we assume that inexact arithmetic yields is closed.
+  ;;; (Even if the output is an integer, it's still represented as floating point.)
+  ;;; We also assume that complex arithmetic is closed for the complex representation.
+
+  (define ws-int?     fixnum?)
+  (define ws-float?   flonum?)
+  (define ws-complex? cflonum?) ;; Problems in PLT!
+ 
+  ;; ================================================================================    
+
   ;; Converts hertz to microseconds:
   (define (rate->timestep freq)
     (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
@@ -413,11 +430,11 @@
 			     (s:case (vector-ref tyvec i)
 			       [(String) (symbol->string (read p))]
 			       [(Int Int16) (let ([v (read p)])
-					      (unless (fixnum? v)
+					      (unless (ws-int? v)
 						(error 'readFile "cannot read ~s as integer type" v))
 					      v)]
 			       [(Float)    (let ([v (read p)])
-					      (unless (flonum? v)
+					      (unless (ws-float? v)
 						(error 'readFile "cannot read ~s as float type" v))
 					      v)]
 			       [else (read p)]))
@@ -848,7 +865,7 @@
      ; (define (toFloat n)
 ;        (cond
 ; 	[(fixnum? n) (fixnum->flonum n)]
-; 	[(flonum? n) n]
+; 	[(ws-float? n) n]
 ; 	[else (error 'toFloat "may only be used for upcast, given: ~s" n)]))
 ;      (define (toComplex n) (s:+ n 0.0+0.0i))
 
@@ -895,12 +912,12 @@
   (define stringToInt (lambda (v) 
 		 (let ([x (string->number v)])
 		   (if x 
-		       (ASSERT fixnum? x)
+		       (ASSERT ws-int? x)
 		       (error 'stringToInt "couldn't convert string: ~s" v)))))
   (define stringToFloat (lambda (v) 
 		   (let ([x (string->number v)])
 		     (if x 
-			 (ASSERT flonum? x)
+			 (ASSERT ws-float? x)
 			 (error 'stringToFloat "couldn't convert string: ~s" v)))))
   (define stringToDouble stringToFloat)
   (define stringToComplex (lambda (v) 
@@ -908,15 +925,15 @@
 		   (let ([x (string->number v)])
 		     (cond
 		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
-		      [(flonum? x) (s:fl-make-rectangular x 0.0)]
-		      [else (ASSERT cflonum? x)]))))
+		      [(ws-float? x) (s:fl-make-rectangular x 0.0)]
+		      [else (ASSERT ws-complex? x)]))))
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 
   ;; [2006.08.23] Lifting ffts over sigsegs: 
   ;; Would be nice to use copy-struct for a functional update.
   (define (fftR2C arr)
-    (DEBUGASSERT (curry vector-andmap flonum?) arr)
+    (DEBUGASSERT (curry vector-andmap ws-float?) arr)
     (DEBUGMODE (if (equal? arr #()) (error 'fft "cannot take fft of Array:null"))
 	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
 		 (if (or (= 0 (vector-length arr))
@@ -928,14 +945,14 @@
 	   [half (make-vector halflen)])
       (vector-blit! double half 0 0 halflen)
       ;; Currently the output must be all cflonums.
-      (DEBUGASSERT (curry vector-andmap cflonum?) half)
+      (DEBUGASSERT (curry vector-andmap ws-complex?) half)
       half))
 
   ;; As long as we stick with the power of two constraint, the output
   ;; of this should be the same size as the original (i.e. we can
   ;; round-trip without changing length).
   (define (ifftC2R vec)
-    (DEBUGASSERT (curry vector-andmap cflonum?) vec)
+    (DEBUGASSERT (curry vector-andmap ws-complex?) vec)
     (let* ([len (vector-length vec)]
 	   [len2 (fx* 2 (fx- len 1))]
 	   [double (make-vector len2 0)])
@@ -955,7 +972,7 @@
 	)))
 
   (define (fftC arr)
-    (DEBUGASSERT (curry vector-andmap cflonum?) arr)
+    (DEBUGASSERT (curry vector-andmap ws-complex?) arr)
     (DEBUGMODE (if (equal? arr #()) (error 'fftC "cannot take fft of Array:null"))
 	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
 		 (if (or (= 0 (vector-length arr))
@@ -965,7 +982,7 @@
     (dft arr))
 
   (define (ifftC arr)
-    (DEBUGASSERT (curry vector-andmap cflonum?) arr)
+    (DEBUGASSERT (curry vector-andmap ws-complex?) arr)
     (inverse-dft arr))
 
   (define (wserror str) (error 'wserror str))

@@ -259,30 +259,36 @@
 	  (error obj "DEBUGASSERT failed: ~s" (quote expr))))]
     ))
 
+(define (format-syntax x)
+  (format "Syntax ~a, line ~a in ~a" 
+	  (syntax-object->datum x) (syntax-line x) (syntax-source x)))
+
 (define-syntax DEBUGASSERT
   (lambda (x)
     (syntax-case x ()
       [(_ expr) 
        #'(DEBUGMODE
 	  (if expr #t 
-	      (error 'DEBUGASSERT "failed: ~s" #'expr )))]
+	      (error 'DEBUGASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax  #'expr)) )))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(IFDEBUG 
 		      (let ([v val])
 		       (if (fun v) v			   
 			   (error 'DEBUGASSERT 
 				  "failed: ~s\n Value which did not satisfy above predicate: ~s" 
-				  #'fun v)))
+				  (IFCHEZ #'fun (format-syntax #'fun))
+				  v)))
 		      val)])))
 
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" #'expr))]
+      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(let ([v val])
 		       (if (fun v) v			   
-			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" #'fun 
+			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" 
+				  (IFCHEZ #'fun (format-syntax #'fun))
 				  v)))]
       )))
 

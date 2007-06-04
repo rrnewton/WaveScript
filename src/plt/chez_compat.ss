@@ -174,7 +174,7 @@
 
   (define fxlogbit? logbit?)
   
-  (define (cflonum? n) (and (complex? n) (not (rational? n))))
+  (define (cflonum? n) (and (number? n) (inexact? n) (not (eqv? 0 (imag-part n)))))
   
   (define-syntax datum
     (syntax-rules ()

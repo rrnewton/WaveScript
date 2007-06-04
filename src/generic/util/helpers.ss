@@ -1908,6 +1908,11 @@
 
 (define-testing these-tests
   `(
+    ;; First some small tests that check compatibility between Chez
+    ;; and PLT.  These are really testing chez_compat.ss more than
+    ;; this module, but I want them to run under both Chez and PLT.
+    [(atom? #()) #t]
+    [(cflonum? 3.0+0.0i) #t]    
 
     [(deep-all-matches null? '(1 (3) (4 . 5)))
      (() ())]

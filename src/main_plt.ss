@@ -50,6 +50,16 @@
               (string-append (path->string (current-directory)) "../")              
                ]))
 
+;; Set Misc PLT parameters:
+;(print-graph #t )
+;(print-gensym #f)
+;(print-level 20))
+;(print-length 80)
+;(print-vector-length #f)
+;(pretty-maximum-lines 700)
+
+
+
 (require 
 
 
@@ -477,7 +487,7 @@
                   'multiple-bindings-for-token
                   #0#))))))
 
-
+o
    
    ))
 
@@ -500,6 +510,8 @@
 
 
 ;(require main_plt)(current-directory "demos/wavescope")
+;(browse-stream (wsint "demo4_fft.ws"))
 ;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
 ;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
+
 
