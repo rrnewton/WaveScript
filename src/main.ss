@@ -310,7 +310,9 @@
 			       [print-length 300]
 			       [print-level 60])
 		    (newline)
-		    (pretty-print (strip-annotations x)))
+		    ;(pretty-print (strip-annotations x))
+		    (pretty-print x)
+		    )
 		  (printf "================================================================================\n\n")
 		  x)
 	   x)
@@ -326,11 +328,29 @@
 	   (set! v (ws-pass-optional-stop (pass v)))))
      ]))
 
+
+;; This just encapsulates the first few steps of the compiler.
+;; Everything up to and including type checking the program.
+(define (ws-compile-until-typed p)
+  (ws-run-pass p verify-regiment)
+  (ws-run-pass p pass_desugar-pattern-matching)
+  (ws-run-pass p resolve-varrefs)
+  ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
+  (ws-run-pass p resolve-type-aliases)
+  (ws-run-pass p ws-label-mutable)
+
+  (ws-run-pass p rename-vars)
+
+  ;; This is the initial typecheck. 
+  (parameterize ([inferencer-enable-LUB #f]
+		 [inferencer-let-bound-poly #t])
+    (ws-run-pass p retypecheck))
+  p)
+
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
 (define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
-
 
   (define (do-typecheck lub poly)
     (parameterize ([inferencer-enable-LUB      lub]
@@ -349,21 +369,11 @@
     
   (ws-pass-optional-stop p)
   
-  (unless already-typed
-    (ws-run-pass p verify-regiment)
-    (ws-run-pass p pass_desugar-pattern-matching)
-    (ws-run-pass p resolve-varrefs)
-    ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
-    (ws-run-pass p resolve-type-aliases)
-    (ws-run-pass p ws-label-mutable)
-
-    ;; This is the initial typecheck. 
-    (do-early-typecheck)
-    )
+  (unless already-typed (set! p (ws-compile-until-typed p)))
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-  (ws-run-pass p rename-vars)
+;  (ws-run-pass p rename-vars)
   (DEBUGMODE (do-early-typecheck) (void))
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
@@ -389,8 +399,8 @@
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (do-late-typecheck)
   (ws-run-pass p rename-vars)
+  (do-late-typecheck)
 
   (IFDEBUG 
    (unless (regiment-quiet)
@@ -544,17 +554,7 @@
 		       (flush-output-port))
 		     'replace))))
 
-  (define typed 
-    (let ([p prog])
-      (ws-run-pass p verify-regiment)
-      (ws-run-pass p pass_desugar-pattern-matching)
-      (ws-run-pass p resolve-varrefs)
-      (ws-run-pass p resolve-type-aliases)
-      (ws-run-pass p ws-label-mutable)
-      (parameterize ([inferencer-enable-LUB #f]
-		     [inferencer-let-bound-poly #t])
-	(time-accum (ws-run-pass p retypecheck))) ;; This is the initial typecheck.
-      p))
+  (define typed (ws-compile-until-typed prog))
 
   (define __ 
     (begin 
@@ -633,17 +633,7 @@
 	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
-   (define typed 
-    (let ([p prog])
-      (ws-run-pass p verify-regiment)
-      (ws-run-pass p pass_desugar-pattern-matching)
-      (ws-run-pass p resolve-varrefs)
-      (ws-run-pass p resolve-type-aliases)
-      (ws-run-pass p ws-label-mutable)
-      (parameterize ([inferencer-enable-LUB #f]
-		     [inferencer-let-bound-poly #t])
-	(ws-run-pass p retypecheck)) ;; This is the initial typecheck.
-      p))
+   (define typed (ws-compile-until-typed prog))
 
    (ASSERT (andmap symbol? flags))
 
