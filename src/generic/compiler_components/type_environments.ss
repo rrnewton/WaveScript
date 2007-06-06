@@ -8,6 +8,7 @@
   (require ;`"../../plt/common.ss"
 ;           "prim_defs.ss"
            "../../plt/iu-match.ss"
+           "../../plt/hashtab.ss"
 ;           "../../plt/chez_compat.ss"
            "../constants.ss"
            "../util/helpers.ss"
@@ -300,7 +301,24 @@
 ;;; the most general type.  The normal type field will contain the LUB
 ;;; of the reference-sites.
 
+  (define (build-entry v t flag)
+  (if flag
+      (match t
+        ;; Expects the type to be a type var:
+        [(quote ,pr) (ASSERT pair? pr)
+                     ;; CONSTRUCT A DELAYED UNIFY:
+                     ;; This is the scratch-pad on which we'll record the info from the call-sites. 
+                     
+                     (let ([cell (make-tcell (cdr pr))])
+                       (set-cdr! pr 
+                                 (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
+                     
+                     (values `(quote ,pr) #t)
+                     ])
+      (values t #f)))
+  
 ;; List based tenvs:
+
 (begin 
 
   ;; Constructs an empty type environment.
@@ -345,27 +363,17 @@
     (DEBUGASSERT (tenv? tenv))
     (DEBUGASSERT (andmap type? types))
 					;(DEBUGASSERT (andmap instantiated-type? types))
+
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
       (cons (car tenv)
-	    (append (map (lambda (v t) 
-			   (if flag
-			       (match t
-				 ;; Expects the type to be a type var:
-				 [(quote ,pr) (ASSERT pair? pr)
-				  ;; CONSTRUCT A DELAYED UNIFY:
-				  ;; This is the scratch-pad on which we'll record the info from the call-sites. 
-
-				  (let ([cell (make-tcell (cdr pr))])
-				    (set-cdr! pr 
-					      (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
-				  
-				  (list v `(quote ,pr) #t)
-				  ])
-			       (list v t #f)))
+	    (append (map (lambda (v t)
+                           (let-values ([(rhs flg) (build-entry v t flag)])
+                             (list v rhs flg)
+			     ))
+		      
 		      syms types)
 		    (cdr tenv))
 	    )))
-
   ;; This isn't used in WaveScope currently (it's legacy, from Regiment 1.0)
   (define (tenv-append . tenvs)
     (cons (car (empty-tenv)) 
@@ -385,8 +393,8 @@
 ) ;; End list-based TENV ADT.
 
 
-#;
 ;; Hash-table based tenvs:
+#;
 (begin 
 
   (reg:define-struct (tenvrec types letbounds))
@@ -397,33 +405,45 @@
 		  (make-default-hash-table default-tenv-size)))
   ;; TODO: this should be a deeper check:
   (define (tenv? x) (and (tenvrec? x) ))
-  (trace-define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
+  (define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
   (define (tenv-is-let-bound? tenv v) (hashtab-get (tenvrec-letbounds tenv) v))
 
   ;; Here's the trick of the hash-table based version.  We assume that
   ;; variable names are unique, so we continue to use the old tenv,
   ;; and just add in new bindings.
   (define (tenv-extend tenv syms types . flag)
-
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))]
 	  [table1  (tenvrec-types     tenv)]
 	  [table2  (tenvrec-letbounds tenv)])      
       (let tenv-extend-loop ([s* syms] [t* types])
-	(when (not (null? s*))
-	  (hashtab-set! table1  (car s*) (car t*))
-	  (hashtab-set! table2  (car s*) flag)
+	(when (not (null? s*))    
+	  (let-values ([(rhs flg) (build-entry (car s*) (car t*) flag)])
+	    (hashtab-set! table1  (car s*) rhs)
+	    (hashtab-set! table2  (car s*) flg))
 	  (tenv-extend-loop (cdr s*) (cdr t*)))))
     tenv)
 
+
   ;; This isn't used in WaveScope currently (it's legacy, from Regiment 1.0)
-  (define (tenv-append . tenvs) 'tenv-append-unimplemented)
+  (define (tenv-append . tenvs)
+    (let ([table1 (make-default-hash-table default-tenv-size)]
+	  [table2 (make-default-hash-table default-tenv-size)])
+      (for-each (lambda (tenv)
+		  (let ([letbounds (tenvrec-letbounds tenv)])
+		    (hashtab-for-each 
+		     (lambda (k t)
+		       (hashtab-set! table1 k t)
+		       (hashtab-set! table2 k (hashtab-get letbounds k)))
+		     (tenvrec-types tenv))))
+	tenvs)
+      (make-tenvrec table1 table2)))
   
   ;; Applies a function to all types in a type enviroment.
   (define (tenv-map f tenv)
     (let ([new (make-default-hash-table default-tenv-size)])
       (hashtab-for-each
        (lambda (k ty) (hashtab-set! new k (f ty)))
-       tenv)
+       (tenvrec-types tenv))
       (make-tenvrec new (tenvrec-letbounds tenv))))
 )
 

@@ -220,11 +220,12 @@
 ;; 
 ;; This is because, when instantiating a rator for application
 ;; let-bound type variables are reinstantiated, whereas lambda-bound ones are not.
+;; 
 (define instantiate-type 
   (case-lambda 
     [(t) (instantiate-type t '())]
     [(t nongeneric)
-     (let* ((tenv (empty-tenv))
+     (let* ((env '())
 	 (result 
 	  (let loop ((t t))
 	   (match t
@@ -238,13 +239,14 @@
 	      (guard (eq-any? qt 'quote 'NUM)
 		     (or (symbol? x) (pair? x)))
 	      (let* ([var (if (symbol? x) x (car x))]
-		     [entry (tenv-lookup tenv var)])
-		(or entry
+		     [entry (assq var env)])
+		(if entry
+		    (cdr entry)
 		    (let ((newtype `(,qt ,(cons (make-tvar) 
 						  (if (pair? x) (loop (cdr x)) #f)))))
 		      ;; After that loop var should still not occur in the env!
-		      (DEBUGASSERT (not (tenv-lookup tenv var)))
-		      (set! tenv (tenv-extend tenv (list var) (list newtype)))
+		      (DEBUGASSERT (not (assq var env)))
+		      (set! env (cons (cons var newtype) env))
 		      newtype)))]
 	     [,s (guard (symbol? s)) s]
 
@@ -383,7 +385,7 @@
   ;; Actually, this seems to expose an existing error.  I can get it to come out through repeated testing.
   ;; Hmm.. we should run the unit tests multiple times in random order..
 
-  (DEBUGASSERT (tenv? tenv))
+  (DEBUGASSERT tenv? tenv)
   (let l ((exp exp))
     (match exp 
       [(lambda ,formals ,types ,body)
@@ -474,8 +476,9 @@
 ;;
 ;; Note, doesn't necessarily handle already annotated programs.
 ;;
+;;
 ;; .param exp - expression
-;; .param tenv - type environment (NOTE: bindings to INSTANTIATED types)
+;; .param tenv - type environment (NOTE: binds vars to INSTANTIATED types)
 ;; .param nongeneric - list of type variables that appear in lambda-arguments. (as opposed to lets)
 ;; .returns 2 values - annotated expression and expression's type
 (define (annotate-expression exp tenv nongeneric)
@@ -1383,8 +1386,8 @@
        [(tupref ,n ,m ,[x]) x]
        [(lambda ,v* ,t* ,[bodls])   bodls]
 
-;;; WEIRD: this specific case seems to slow things down!
-;;; But WHY?  print-var-types is run once!
+; WEIRD: this specific case seems to slow things down!
+; But WHY?  print-var-types is run once!
 #;
        [(,simplekwd ,[args] ...)
 	(guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
@@ -1549,7 +1552,7 @@
 ; ======================================================================
 ;;; Unit tests.
 
-;;; These use quite a bit of stuff from type_environments.ss as well:
+;; These use quite a bit of stuff from type_environments.ss as well:
 (define-testing these-tests
   `(
 

@@ -13,8 +13,7 @@ GENERICFILES = \
    generic/compiler_components/prim_defs.ss \
    generic/compiler_components/type_environments.ss \
 
-
-#   generic/hm_type_inference.ss \
+#   generic/compiler_components/hm_type_inference.ss \
 
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
