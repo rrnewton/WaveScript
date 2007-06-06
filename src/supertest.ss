@@ -291,7 +291,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
        (fpf "ws: Generating gsl matrix library wrappers:     ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> 11b_build_gsl_wrappers.log" test-directory))))       
+	    (code->msg! (system/exit-code (format "make &> ~a/11b_build_gsl_wrappers.log" test-directory))))       
        (fpf "ws: Loading matrix_test.ws:                     ~a\n"
 	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
        (current-directory test-directory))
