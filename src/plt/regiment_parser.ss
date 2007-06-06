@@ -331,8 +331,9 @@
 ; 	       [(typevar COMMA typevars+) (prec COMMA) (cons $1 $3)]
 ; 	       )
 
-    (unioncases [(VAR type)                `((,$1 ,$2))]
-		[(VAR type BAR unioncases) `((,$1 ,$2) . ,$4)])
+    (type* [() ()]  [(type type*) (cons $1 $2)])
+    (unioncases [(VAR type*)                `((,$1 ,@$2))]
+		[(VAR type* BAR unioncases) `((,$1 ,@$2) . ,$4)])
     
     (decls ;; Top level variable binding
            ;; It's unfortunate that this duplicates much within the "stmt" production.

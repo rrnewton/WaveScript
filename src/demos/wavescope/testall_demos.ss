@@ -1,7 +1,7 @@
 #!/bin/sh 
 #|
 export REGIMENT_OR_WAVESCRIPT=WS
-export REGOPTLVL=2
+mexport REGOPTLVL=2
 export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
 #exec regiment.plt i --script "$0" ${1+"$@"};
@@ -101,6 +101,10 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3h_advancedlists.ws"    ,(lambda (a b) #t)]
     ["demo3i_conversion_prims.ws" ,(lambda (a b) #t)]
     ["demo3j_numbers.ws"          ,(lambda (a b) #t)]
+
+    ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
+    ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
+    
 
     ["demo4_fft.ws"               ,(lambda (a b) (void)
 				     ;(ASSERT (= 0.0 a))

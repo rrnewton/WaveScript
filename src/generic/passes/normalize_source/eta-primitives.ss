@@ -80,20 +80,20 @@
   (define-testing these-tests
      `(
 	["Simple test of eta-primitives"
-	 (eta-primitives '(base-language
+	 (reunique-names (eta-primitives '(base-language
 			   '(program
 				(rfold +_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
 			      (union-types) 
-			      (Stream Int))))
+			      (Stream Int)))))
 	 (eta-primitives-language
 	  '(program
 	       (rfold
 		(lambda (a b) (Int Int) (+_ a b))
 		0
 		(rmap
-		 (lambda (a) (Node) (nodeid a))
+		 (lambda (a_1) (Node) (nodeid a_1))
 		 (khood (anchor-at 50 10) 2)))
-	     (union-types) 
+	     (union-types)
 	     (Stream Int)))]
 	))
 
