@@ -139,7 +139,7 @@
 		
 		;; Then we import some "sub-modules" exported by the language-module.
 		;; This is everything but the overriden bindings from default scheme language:
-		(import (except mod_scheme break length + - * / ^ inspect letrec import let))
+		(import (except mod_scheme break length + - * / ^ inspect import let)) ; letrec 
 		(import mod_constants)
 		(import mod_helpers))))
  

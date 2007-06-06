@@ -394,12 +394,14 @@
        (flush-output-port))
      'replace))
 
+  ;; We want to immediately get our uniqueness property back.
+  (ws-run-pass p rename-vars)
+
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
   (ws-run-pass p degeneralize-arithmetic)
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (ws-run-pass p rename-vars)
   (do-late-typecheck)
 
   (IFDEBUG 

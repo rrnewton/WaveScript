@@ -42,7 +42,7 @@
 				[args (cadr (get-primitive-entry var))])
 			   (if (regiment-constant? var)
 			       var
-			       (let ([formals (list-head possible-formals (length args))])
+			       (let ([formals (map unique-name (list-head possible-formals (length args)))])
 				 `(lambda ,formals 
 					; Primitive types:
 				    ,(map export-type (rdc (rdc (prim->type var))))

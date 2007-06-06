@@ -223,6 +223,7 @@
 		       (import wavescript_sim_library_push)
 		       ,(strip-types (code-expr f)))
 		    ])
+
 	      (let ([real-closure (eval real-code)])		
 		`',(vector-build n (lambda (i) (real-closure i)))))
 	    ))

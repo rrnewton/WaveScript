@@ -318,6 +318,7 @@
       (values t #f)))
   
 ;; List based tenvs:
+
 (begin 
 
   ;; Constructs an empty type environment.
@@ -391,8 +392,9 @@
 	    (cdr tenv))))
 ) ;; End list-based TENV ADT.
 
-#;
+
 ;; Hash-table based tenvs:
+#;
 (begin 
 
   (reg:define-struct (tenvrec types letbounds))
@@ -405,17 +407,19 @@
   (define (tenv? x) (and (tenvrec? x) ))
   (define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
   (define (tenv-is-let-bound? tenv v) (hashtab-get (tenvrec-letbounds tenv) v))
-
+  
+  ;; UNSAFE VERSION:
+  ;; 
   ;; Here's the trick of the hash-table based version.  We assume that
   ;; variable names are unique, so we continue to use the old tenv,
   ;; and just add in new bindings.
-  (trace-define (tenv-extend tenv syms types . flag)
+  (define (tenv-extend tenv syms types . flag)
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))]
 	  [table1  (tenvrec-types     tenv)]
 	  [table2  (tenvrec-letbounds tenv)])      
       (let tenv-extend-loop ([s* syms] [t* types])
 	(when (not (null? s*))    
-	  (ASSERT (not (hashtab-get table1 (car s*))))
+	  (ASSERT (lambda (s) (not (hashtab-get table1 s))) (car s*))
 	  (let-values ([(rhs flg) (build-entry (car s*) (car t*) flag)])
 	    (hashtab-set! table1  (car s*) rhs)
 	    (hashtab-set! table2  (car s*) flg))

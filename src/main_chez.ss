@@ -101,7 +101,7 @@
 				      (cp0-effort-limit 0)
 				      )
 			 (cp0 x))))))]
-	       [else (error 'regiment-compiler "bad setting for REGOPTLVL: ~s" REGOPTLVL)])))
+	       [else (error 'regiment-compiler "bad setting for REGOPTLVL: <~s>" (REGOPTLVL))])))
 
 	   (reg:set_opt_lvl!) ;; According to $REGOPTLVL
 	   
