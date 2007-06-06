@@ -27,10 +27,11 @@
   )
 
   (apply manual-index-contributions
-	 (map (lambda (file)
+	 (map (lambda (file)		
 		(manual-index-contribution 
 		 'informative-name file
-		 'path (string-append "html/" file ".html")))
+		 'path 
+		 file
+		 ))
 	   files)
-    )
-  )
+))

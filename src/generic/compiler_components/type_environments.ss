@@ -55,19 +55,20 @@
 
   (chezimports constants rn-match)
 
+; ----------------------------------------
+;;; Representation for Types.
+;;;
+;;; TODO: If I wanted an added degree of safety, I could make types
+;;; and instantiated-types totally disjoint; at the cost of boxing
+;;; them.  Currently I believe I'm being sloppy in places.
+
+
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Double Complex 
 		    Int16
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 			))
-
-; ----------------------------------------
-;;; Representation for Types:
-
-;;; TODO: If I wanted an added degree of safety, I could make types
-;;; and instantiated-types totally disjoint; at the cost of boxing
-;;; them.  Currently I believe I'm being sloppy in places.
 
 (define (valid-type-symbol? s)
   (let ([str (symbol->string s)])
@@ -285,12 +286,12 @@
   
   
 ; ----------------------------------------
-;;; Type Environment ADT
-
+;;; Type Environment ADT.
+;;;
 ;;; Type environments bind variable names to types.
 ;;; Currently, these may be instantiated or uninstantiated types.
 ;;; <br><br>
-
+;;;
 ;;; [2007.02.21] Changing the tenv representation.  Now we wish to
 ;;; ultimately use the least-upper-bound of all the reference-sites as
 ;;; the type of a let-bound variable.  I'm internally changing the
@@ -300,7 +301,6 @@
 ;;; of the reference-sites.
 
 ;; List based tenvs:
-
 (begin 
 
   ;; Constructs an empty type environment.
@@ -386,7 +386,6 @@
 
 
 #;
-;; UNFINISHED:
 ;; Hash-table based tenvs:
 (begin 
 
@@ -398,7 +397,7 @@
 		  (make-default-hash-table default-tenv-size)))
   ;; TODO: this should be a deeper check:
   (define (tenv? x) (and (tenvrec? x) ))
-  (define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
+  (trace-define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
   (define (tenv-is-let-bound? tenv v) (hashtab-get (tenvrec-letbounds tenv) v))
 
   ;; Here's the trick of the hash-table based version.  We assume that
@@ -408,12 +407,11 @@
 
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))]
 	  [table1  (tenvrec-types     tenv)]
-	  [table2  (tenvrec-letbounds tenv)])
-      (for-each (lambda (sym) (ASSERT (not (hashtab-get table1 sym)))) syms)
+	  [table2  (tenvrec-letbounds tenv)])      
       (let tenv-extend-loop ([s* syms] [t* types])
 	(when (not (null? s*))
 	  (hashtab-set! table1  (car s*) (car t*))
-	  (hashtab-set! table2  (car s*) flag) ; (when flag )
+	  (hashtab-set! table2  (car s*) flag)
 	  (tenv-extend-loop (cdr s*) (cdr t*)))))
     tenv)
 
@@ -425,7 +423,7 @@
     (let ([new (make-default-hash-table default-tenv-size)])
       (hashtab-for-each
        (lambda (k ty) (hashtab-set! new k (f ty)))
-       (tenvrec-types tenv))
+       tenv)
       (make-tenvrec new (tenvrec-letbounds tenv))))
 )
 
@@ -433,7 +431,7 @@
 ;; This extends a type environment, retrieving the variables to bind
 ;; by deconstructing a pattern.
 ;; Ultimately this will be a hotspot, so we should remove the use of map/append/etc below:
-(trace-define (tenv-extend-pattern tenv pat type)
+(define (tenv-extend-pattern tenv pat type)
   ;; This builds up a list of the vars & types:
   (define (extendpat-loop pat type)
     (match pat

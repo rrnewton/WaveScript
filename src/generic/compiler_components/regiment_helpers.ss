@@ -270,7 +270,7 @@
 ;; Another little helper to avoid destructuring the program syntax all the time.
 (define (apply-to-program-body f prog)
   (match prog
-    [(,lang '(program ,body ,meta ... ,ty))  (,lang '(program ,(f body) ,@meta ,ty))  ]
+    [(,lang '(program ,body ,meta ... ,ty))  `(,lang '(program ,(f body) ,@meta ,ty))]
     [,_ (error 'apply-to-program-body "bad program form: ~s" prog)]))
 
 

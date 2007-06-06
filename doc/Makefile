@@ -11,7 +11,10 @@ GENERICFILES = \
    generic/compiler_components/regiment_helpers.ss \
    generic/passes/wavescope_bkend/nominalize-types.ss \
    generic/compiler_components/prim_defs.ss \
+   generic/compiler_components/type_environments.ss \
 
+
+#   generic/hm_type_inference.ss \
 
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
@@ -48,7 +51,8 @@ ANALYSIS_FILES =
 
 SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
 SRCCOPY   = $(SRCFILES:%=html/%)
-HTMLFILES = $(SRCCOPY:%=%.html)
+SRCTEMP   = $(SRCFILES:%=html/%.tmp)
+HTMLFILES = $(SRCCOPY:%.ss=%.html)
 
 # Here's a bit of a trick, we just use regiment for the scheme system,
 # and let it worry about finding the right scheme to call.
@@ -85,7 +89,7 @@ all: schemedoc plt_schemedoc #match.boot
 	@echo "Done generating Regiment documentation."
 
 ##      Now generate index:
-	$(SCHEME) --script regiment_index.laml $(SRCFILES)
+	$(SCHEME) --script regiment_index.laml $(HTMLFILES)
 
 # Here we build our pattern matcher for use in schemedoc and scrub_source
 match.boot: match.so
@@ -119,14 +123,24 @@ patch_plt:
 	cp patches_new/laml.scm_plt plt_schemedoc/laml.scm
 
 # Copy the src, scrubbing it in the process.
+# $(SRCTEMP): html/%.ss.tmp: ../src/%.ss
+# 	$(SCHEME) --script scrub_source.ss $< $@
+
+# $(SRCCOPY): html/%.ss: ../src/%.ss.tmp
+# 	echo Now performing additional pass to clean match and remove graph printing.
+# 	cat $< | sed "s/(match/'(match/g" | sed "s/#[[:digit:]]=//g" | sed "s/#[[:digit:]]#//g" > $@ 
+# 	echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
+
+
 $(SRCCOPY): html/%.ss: ../src/%.ss
 	$(SCHEME) --script scrub_source.ss $< $@.tmp
-	echo Now performing additional pass to clean match.
-	cat $@.tmp | sed "s/(match/'(match/g" > $@ 
-	echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
+	@echo "  Now performing additional pass to clean match and remove graph printing."
+	cat $@.tmp | sed "s/(match/'(match/g" | sed "s/#[[:digit:]]=//g" | sed "s/#[[:digit:]]#//g" > $@ 
+	@echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
+
 
 # # This invokes regiment.laml with the directory and the filename as command line arguments:
-$(HTMLFILES): html/%.html: html/%.tmp
+$(HTMLFILES): html/%.html: html/%.ss
 	mzscheme -r regiment_plt.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 #	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 
