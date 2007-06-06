@@ -89,10 +89,10 @@ exec regiment i --script "$0" ${1+"$@"};
 
 ;    ["demo2e_passchain.ws"         ,(lambda (a b) #t)]    
 
-    ["demo3a_tuples.ws"           ,(lambda (a b) #t)]
-
-    ["demo3c_lists.ws"            ,(lambda (a b) #t)]
-    ["demo3d_tuples_of_tuples.ws" ,(lambda (a b) #t)]
+    ["demo3a_tuples.ws"             ,(lambda (a b) #t)]
+    ["demo3b_basic_polymorphism.ss" ,(lambda (a b) #t)]
+    ["demo3c_lists.ws"              ,(lambda (a b) #t)]
+    ["demo3d_tuples_of_tuples.ws"   ,(lambda (a b) #t)]
 
 ;; Disabled temporarily:
 ;    ["demo3e_hashtables.ws"       ,(lambda (a b) #t)]
@@ -101,11 +101,9 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3h_advancedlists.ws"    ,(lambda (a b) #t)]
     ["demo3i_conversion_prims.ws" ,(lambda (a b) #t)]
     ["demo3j_numbers.ws"          ,(lambda (a b) #t)]
-
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
     
-
     ["demo4_fft.ws"               ,(lambda (a b) (void)
 				     ;(ASSERT (= 0.0 a))
 				     ;(ASSERT (= 840.0 (round b))) ;839.8869476698192

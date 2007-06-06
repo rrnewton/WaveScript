@@ -39,6 +39,7 @@
     (define annotate-outside-prims 
       '(hashtable prim_window List:append List:reverse cons
 		  Array:make Array:makeUNSAFE
+		  unionN
 		  ))
 
     (define annotate-first-arg 
