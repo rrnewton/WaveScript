@@ -245,7 +245,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
 (begin (define pltrun (system/exit-code "regiment.plt &> 7b_RUN_PLT_BYTECODE.log"))
-       (fpf "plt: Run system from command line with PLT:     ~a\n" (code->msg! pltrun)))
+       (fpf "plt: Run system from command line with PLT:   ~a\n" (code->msg! pltrun)))
 
 ;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
 (begin (newline)
@@ -277,6 +277,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
        (define pipeline-web (system/exit-code (format "make test &> ~a/11_pipeline-web.log" test-directory)))
        (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
+       (current-directory test-directory))
+
+(begin (current-directory (format "~a/apps/stockticks" test-root))
+       (fpf "ws: Running stockticks app:                   ~a\n"
+	    (code->msg! (system/exit-code (format "make test &> ~a/11B_stockticks.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/demos/wavescope" test-directory))

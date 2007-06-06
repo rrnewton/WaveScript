@@ -7,17 +7,17 @@
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
 
 s2 = iterate( w in s1 ) {
-  state{ ht = hashtable(5) }
+  state{ ht = HashTable:make(5) }
   
   // [2007.01.23] Can't recall what made my decision on this issue...
   //  ht := hashset_BANG(ht, (w.start, w.end), w.start);
-  hashset_BANG(ht, (w.start, w.end), w.start);
+  HashTable:set_BANG(ht, (w.start, w.end), w.start);
   
   emit (w, ht);
 };
 
 s3 = iterate( (w, ht) in s2) {
-  emit hashget(ht, (w.start, w.end));
+  emit HashTable:get(ht, (w.start, w.end));
 }
 
 BASE <- s3;

@@ -44,7 +44,7 @@
       ;; Too lenient, user defined type:
       [Type ('Sum ,symbol? Type ...)]
       
-      [Type ('HashTable Type)]
+      [Type ('HashTable Type Type)]
       [Type ('List Type)]
       [Type #(Type ...)] ;; Tuples
       [Type (Type ... '-> Type)]

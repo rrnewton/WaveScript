@@ -859,7 +859,7 @@
 		;; (Kind of inconsistent that we *do* currently do List:make.)
 		(not (memq prim '(show cons gint 
 				       Array:make Array:fold Array:map
-				       hashtable
+				       HashTable:make
 				       m_invert
 				       Mutable:ref deref
 

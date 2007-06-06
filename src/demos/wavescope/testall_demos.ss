@@ -93,14 +93,12 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3b_basic_polymorphism.ws" ,(lambda (a b) #t)]
     ["demo3c_lists.ws"              ,(lambda (a b) #t)]
     ["demo3d_tuples_of_tuples.ws"   ,(lambda (a b) #t)]
-
-;; Disabled temporarily:
-;    ["demo3e_hashtables.ws"       ,(lambda (a b) #t)]
-    ["demo3f_morelists.ws"        ,(lambda (a b) #t)]
-    ["demo3g_arrays.ws"           ,(lambda (a b) #t)]
-    ["demo3h_advancedlists.ws"    ,(lambda (a b) #t)]
-    ["demo3i_conversion_prims.ws" ,(lambda (a b) #t)]
-    ["demo3j_numbers.ws"          ,(lambda (a b) #t)]
+    ["demo3e_hashtables.ws"         ,(lambda (a b) #t)]
+    ["demo3f_morelists.ws"          ,(lambda (a b) #t)]
+    ["demo3g_arrays.ws"             ,(lambda (a b) #t)]
+    ["demo3h_advancedlists.ws"      ,(lambda (a b) #t)]
+    ["demo3i_conversion_prims.ws"   ,(lambda (a b) #t)]
+    ["demo3j_numbers.ws"            ,(lambda (a b) #t)]
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
     

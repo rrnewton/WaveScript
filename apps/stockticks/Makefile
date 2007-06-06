@@ -1,5 +1,5 @@
 
 
 test:
-	echo dump test_out.txt | ws.debug stockticks.ws
+	echo dump test_out.txt | ws.debug stockticks.ws -exit-error;
 

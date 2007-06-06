@@ -246,6 +246,7 @@ test:
 	regiment test
 	$(MAKE) boot  # Now build it to speed up these subsequent tests:
 	(cd ../apps/pipeline-web/; $(MAKE) test)
+# NOT WORKING RIGHT NOW:
 	(cd ../apps/stockticks/; $(MAKE) test)
 	(cd demos/wavescope; ./testall_demos.ss)
 	@echo
