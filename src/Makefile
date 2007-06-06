@@ -251,9 +251,10 @@ test:
 	@echo
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
 	@echo "============================================================"
-	echo exit | ws.debug ../lib/stdlib.ws -exit-error;
+	echo exit | ws.debug ../lib/stdlib_test.ws -exit-error;
 	echo exit | ws.debug ../lib/matrix_test.ws -exit-error;
-	(cd demos/wavescope; ./testall_wsc)
+	$(MAKE) bc
+#	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 
 

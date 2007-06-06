@@ -16,6 +16,8 @@ const_E    :: Float;
 ///  Library POD (plain old data) functions: 
 
 println    :: String -> ();
+assert     :: Bool   -> ();
+asserteq   :: (a,a)  -> ();
 
   // Some additional math functions 
 sqr        :: #n -> #n;
@@ -119,8 +121,9 @@ sort            :: ((Int, Int) -> (),
 
 
 
-
-/// Here's the IMPLEMENTATIONS:
+/*=========================================================================================*/
+/*                             Here's the _IMPLEMENTATION_                                 */
+/*=========================================================================================*/
 
 //======================================================================
 // Constant:
@@ -136,6 +139,8 @@ fun println(s) {
   print("\n");
 };
 
+fun assert(b)      if not(b)    then wserror("Assert failed.");
+fun asserteq(a,b)  if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
 fun sqr(x) { x*x }
 
