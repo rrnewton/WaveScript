@@ -53,7 +53,10 @@
 	       )
 
 ;;============================================================
-;; Here is a simple procedural interface.
+;;; Procedural Interface 
+
+;;; Here is a simple procedural interface that allows generic treatment
+;;; of binding forms.
 
 ;; TODO: CONSOLIDATE: Rewrite the define-pass [Bindings ...] clause to use these helpers:
 

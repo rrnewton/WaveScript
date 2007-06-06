@@ -8,9 +8,11 @@ FILES =
 
 
 GENERICFILES = \
+   generic/compiler_components/regiment_helpers.ss \
    generic/passes/wavescope_bkend/nominalize-types.ss \
-#   generic/compiler_components/prim_defs.ss 
-#   generic/compiler_components/prim_defs.tmp.ss 
+   generic/compiler_components/prim_defs.ss \
+
+
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
 #   generic/constants.ss \
@@ -45,8 +47,8 @@ ANALYSIS_FILES =
 #  analysis/gradients/reception_rate_vs_link_quality_wwout_acks.ss
 
 SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
-DUPSRC   = $(SRCFILES:%=html/%)
-OBJFILES = $(DUPSRC:%=%.html)
+SRCCOPY   = $(SRCFILES:%=html/%)
+HTMLFILES = $(SRCCOPY:%=%.html)
 
 # Here's a bit of a trick, we just use regiment for the scheme system,
 # and let it worry about finding the right scheme to call.
@@ -73,17 +75,17 @@ all: schemedoc plt_schemedoc #match.boot
 	@echo
 	@echo First scrub source:
 	@echo -------------------
-	$(MAKE) $(DUPSRC)
+	$(MAKE) $(SRCCOPY)
 	@echo
 	@echo Second build individual manuals:
 	@echo --------------------------------
-	$(MAKE) $(OBJFILES)
+	$(MAKE) $(HTMLFILES)
 
 	@echo "------------------------------------------------------------------------------"
 	@echo "Done generating Regiment documentation."
 
 ##      Now generate index:
-#TMP#	$(SCHEME) --script regiment_index.laml $(SRCFILES)
+	$(SCHEME) --script regiment_index.laml $(SRCFILES)
 
 # Here we build our pattern matcher for use in schemedoc and scrub_source
 match.boot: match.so
@@ -116,9 +118,15 @@ patch_plt:
 	cp patches_new/laml.init_plt plt_schemedoc/laml.init
 	cp patches_new/laml.scm_plt plt_schemedoc/laml.scm
 
+# Copy the src, scrubbing it in the process.
+$(SRCCOPY): html/%.ss: ../src/%.ss
+	$(SCHEME) --script scrub_source.ss $< $@.tmp
+	echo Now performing additional pass to clean match.
+	cat $@.tmp | sed "s/(match/'(match/g" > $@ 
+	echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
 
 # # This invokes regiment.laml with the directory and the filename as command line arguments:
-$(OBJFILES): html/%.html: html/%
+$(HTMLFILES): html/%.html: html/%.tmp
 	mzscheme -r regiment_plt.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 #	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 
@@ -126,12 +134,6 @@ $(OBJFILES): html/%.html: html/%
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`
 #$(<:html/%=%)
 
-$(DUPSRC): html/%.ss: ../src/%.ss
-	$(SCHEME) --script scrub_source.ss $< $@.tmp	
-	echo Now performing additional pass to clean match.
-	cat $@.tmp | sed "s/(match/'(match/g" > $@ 
-	echo ";; SCRUBBED FOR LAML SCHEMEDOC COMPATIBILITY!" >> $@ 
-#	$(PETITE) --script scrub_source.ss $< $@	
 
 
 install: installreadme

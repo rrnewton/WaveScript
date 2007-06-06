@@ -79,8 +79,7 @@
 	   annotate-program
 	   strip-types do-all-late-unifies!
 	   strip-annotations
-
-	   project-metadata
+	
 	   print-var-types
 	   dealias-type
 	   realias-type
@@ -1363,14 +1362,6 @@
 
 |#
 
-;; A little helper to project out a metadata-tag from a program form.
-;; TODO: Move this somewhere else:
-(define (project-metadata tag prog)
-  (match prog
-    [(,lang '(program ,body ,meta ... ,ty))  (assq tag meta)]
-    [,else #f]))
-
-
 ;; Expects a fully typed expression
 (define (print-var-types exp max-depth . p)
   (let ([port (if (null? p) (current-output-port) (car p))]
@@ -1558,20 +1549,14 @@
 ; ======================================================================
 ;;; Unit tests.
 
-;; Unit tests.
+;;; These use quite a bit of stuff from type_environments.ss as well:
 (define-testing these-tests
-  `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
-     ((List '(a . 99)) -> '(a . 99))]
-
-    ["NUM must have vars attached" (type? #((NUM Int) (NUM Float))) #f]
-    [(type? '(NUM a)) #t]
-    [(type? '(Int -> (NUM a))) #t]
+  `(
 
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
     [(let-values ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
      ((NUM unspecified) -> (NUM unspecified))]
     
-    [(export-type ''(f . Int)) Int]
     [(export-type (,type-expression '(+_ 1 1) (empty-tenv))) Int]
     [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
@@ -1679,14 +1664,6 @@
 	[(',v -> (',_ -> ',v2))
 	 (eq? v v2)]
 	[,_ #f]))]
-
-  ;; This one doesn't actually verify shared structure:
-  [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
-   ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
-
-  ["instantiate-type: Make sure we don't copy internal nongeneric vars."
-   (instantiate-type ''(at '(av . #f) -> '(av . #f)) '(av))
-   '(unspecified '(av . #f) -> '(av . #f))]
   
   ;; Now let's see about partially annotated programs.
   ["Partially (erroneously) annotated letrec"
@@ -1760,7 +1737,7 @@
   ;; TODO: FIXME: THIS REPRESENTS A BUG:
   ["LUB: Here we should infer the less general type: plain Int:"
    (,deep-member? 'NUM
-    (parameterize ([,inferencer-enable-LUB #t])
+    (parameterize ([inferencer-enable-LUB #t])
       (annotate-program 
        '(foolang '(program
 		      (letrec ([readings (Area (List Int)) 

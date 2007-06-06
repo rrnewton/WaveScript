@@ -32,35 +32,5 @@
 		 'informative-name file
 		 'path (string-append "html/" file ".html")))
 	   files)
-#|
-    (manual-index-contribution 
-       ;'informative-name "Compiler Front-end"
-     'informative-name "Compiler main"
-       'path "html/compiler.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "Command line front-end"
-       'path "html/regiment.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "generic/simulator_alpha.ss\nA second simulator"
-       'path "html/generic/simulator_alpha.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "SimAlpha Datatype definitions"
-       'path "html/generic/simulator_alpha_datatypes.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "SimAlpha Runtime Library"
-       'path "html/generic/alpha_lib.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "SimAlpha Simple Scheduler"
-       'path "html/generic/alpha_lib_scheduler_simple.ss.html")
-
-    (manual-index-contribution 
-       'informative-name "generic/hash.ss"
-       'path "html/generic/hash.ss.html")
-|#
     )
   )

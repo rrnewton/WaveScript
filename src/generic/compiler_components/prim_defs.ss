@@ -1,22 +1,27 @@
 ;;;; The type-bindings for all Regiment and TML primitives.
 ;;;; .author Ryan Newton
 
+;;;;
+;;;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
+;;;; Ok, redoing primitive listings with type information:
+;;;; The types I'm using right now are:                               <br>
+;;;;   Anchor, Area, Region, Stream, Event, Node, Location, Reading
+;;;;   Number, Int, Float, Bool, Void
+;;;;   List, Array, Tuple
+;;;;
+;;;; <br><br>
+;;;; Then some types that are used only in the local language are:
+;;;;   Token NodeID
+;;;;
+;;;; <br><br>
 ;;;; TODO TODO TODO: Need to phase out the old type defs and make this
 ;;;; the only one.
+;;;; 
+;;;; The lists of primitives here have entries of the form: <br><br>
+;;;;
+;;;;   [PrimName Type]                   -- For constants    <br>
+;;;;   [PrimName ArgTypess ReturnType]   -- For functions   <br>
 
-;=============================================================
-
-;;; Primitive type definitions, Regiment.
-;;;
-;;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
-;;; Ok, redoing primitive listings with type information:
-;;; The types I'm using right now are:
-;;;   Anchor, Area, Region, Stream, Event, Node, Location, Reading
-;;;   Number, Int, Float, Bool, Void
-;;;   List, Array, Tuple
-;;;
-;;; Then some types that are used only in the local language are:
-;;;   Token NodeID
 
 (module prim_defs mzscheme
   (require (lib "include.ss")
@@ -55,12 +60,7 @@
 
   (chezimports )
 
-;=============================================================
-
-;;; The lists of primitives here have entries of the form: 
-;;;
-;;;   [PrimName Type]                   -- For constants   <br>
-;;;   [PrimName ArgTypess ReturnType]   -- For functions   <br>
+;;; Misc global definitions.
 
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
@@ -72,18 +72,9 @@
     ; [(Area 'a) (Stream (Space 'a))]
     ))
 
-; ;; These are sum-types that are defined by default:
-; (define regiment-sum-types
-;   '([(Union2 'a 'b)          (Oneof2 'a) (Twoof2 'b)]
-;     [(Union3 'a 'b 'c)       (Oneof3 'a) (Twoof3 'b) (Threeof3 'c)]
-;     [(Union4 'a 'b 'c 'd)    (Oneof4 'a) (Twoof4 'b) (Threeof4 'c) (Fourof4 'c)]
-;     [(Union5 'a 'b 'c 'd 'e) (Oneof5 'a) (Twoof5 'b) (Threeof5 'c) (Fourof5 'c) (Fiveof5 'c)]
-;     ))
+;=============================================================
 
-; fun union2(s1,s2) {
-;   unionList([stream_map(Oneof2,s1),
-; 	     stream_map(Twoof2,s1),])
-; }
+;;; Type signatures for primitives that are singled out in some way.
 
 
 ;; Hierarchy:
@@ -121,6 +112,111 @@
 ))
 
 
+
+;; These are (or will be) allowed in both the meta and the object
+;; language.  They're higher order, but in the object language the
+;; lambda expression parameterizing each of these primitives must be
+;; *known* so that first-order code may be generated.
+(define higher-order-primitives
+  '(
+    (map (('a -> 'b) (List 'a)) (List 'b))
+    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+
+    ;; These should be defined IN the language, but they're not right now:
+    (List:map (('a -> 'b) (List 'a)) (List 'b))
+    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+    ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
+
+    ;; A lot of these can be defined in the language once we figure
+    ;; out a story for "library" (non-inlined) procedures and
+    ;; second-class references.
+    (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
+    (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
+    (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
+    ;; This uses an initialization function to fill in an array:
+    ;; It's zero-based!
+    (Array:build       (Int (Int -> 'a)) (Array 'a))
+    ))
+
+
+;; Only for the meta-language, shouldn't exist after static-elaborate.
+;; TODO: FIXME: Don't think I enforce this right now!!
+(define meta-only-primitives
+  `(
+    (GETENV (String) String) ; Returns "" if the env var is unbound.
+    (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
+   
+    ))
+
+
+
+;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
+;; 
+;; This list of primitives determines which library routines are
+;; implemented in "native code" (C++).  Any primitives in this list
+;; will NOT have their wavescript library definitions inlined, rather
+;; they will link against their native versions.
+;;   IF this is enabled, we will lose the simplicity of the query
+;; graph (not just iterates/unions).
+(IFWAVESCOPE 
+ (define wavescript-native-primitives
+   '(
+     )))
+  ;sync4?
+
+(IFWAVESCOPE
+ ;; All side-effecting primitives MUST go here and must return UNIT:
+ (define wavescript-effectful-primitives 
+   '(
+     (Array:set         ((Array 'a) Int 'a)          #())
+
+     ;; [2006.11.28] Giving these void types.
+     (HashTable:set_BANG ((HashTable 'key 'val) 'key 'val) #())
+     (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
+     (print            ('a) #())
+
+     (gnuplot_array    ((Array (NUM a))) #())
+     ;; Takes an (X,Y) pair.
+     (gnuplot_array2d  ((Array #((NUM a) (NUM b))))  #())  
+
+     ;; I just use a virtual "Queue" to make the type-checking work for emits:
+     (emit           ((VQueue 'a) 'a)                #())
+
+     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
+     (break            ()                      'a)
+
+     ;; Signals an error, has any return type:
+     (wserror         (String)                  'a)
+     (inspect         ('a)                      'a)
+
+     )))
+
+;=============================================================
+
+;;; General Regiment/WaveScript primitives.
+
+;; These count as primitives also.
+;; All regiment constants are presumed to be "slow prims" for
+;; now. (see add-heartbeats)
+(define regiment-constants
+  '(
+    (world          (Area Node))
+    (anchor         (Stream Node))
+
+;    (pi             Float)
+
+    (IS_SIM         Bool)
+
+    ;; Adding Wavescope-related primitives:
+    (nullseg        (Sigseg 'a))
+    (Array:null     (Array 'a))
+
+    (nulltimebase  Timebase)    
+
+    ;; Adding this for uniformity of normal forms in later passes:
+    ;(BOTTOM        'a)
+    
+    ))
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
@@ -305,110 +401,6 @@
     (odd?  (Int) Bool)
 
     ))
-
-
-
-;; These are (or will be) allowed in both the meta and the object
-;; language.  They're higher order, but in the object language the
-;; lambda expression parameterizing each of these primitives must be
-;; *known* so that first-order code may be generated.
-(define higher-order-primitives
-  '(
-    (map (('a -> 'b) (List 'a)) (List 'b))
-    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
-
-    ;; These should be defined IN the language, but they're not right now:
-    (List:map (('a -> 'b) (List 'a)) (List 'b))
-    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
-    ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
-
-    ;; A lot of these can be defined in the language once we figure
-    ;; out a story for "library" (non-inlined) procedures and
-    ;; second-class references.
-    (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
-    (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
-    (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
-    ;; This uses an initialization function to fill in an array:
-    ;; It's zero-based!
-    (Array:build       (Int (Int -> 'a)) (Array 'a))
-    ))
-
-
-;; Only for the meta-language, shouldn't exist after static-elaborate.
-;; TODO: FIXME: Don't think I enforce this right now!!
-(define meta-only-primitives
-  `(
-    (GETENV (String) String) ; Returns "" if the env var is unbound.
-    (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
-   
-    ))
-
-;; These count as primitives also.
-;; All regiment constants are presumed to be "slow prims" for
-;; now. (see add-heartbeats)
-(define regiment-constants
-  '(
-    (world          (Area Node))
-    (anchor         (Stream Node))
-
-;    (pi             Float)
-
-    (IS_SIM         Bool)
-
-    ;; Adding Wavescope-related primitives:
-    (nullseg        (Sigseg 'a))
-    (Array:null     (Array 'a))
-
-    (nulltimebase  Timebase)    
-
-    ;; Adding this for uniformity of normal forms in later passes:
-    ;(BOTTOM        'a)
-    
-    ))
-
-
-
-;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
-;; 
-;; This list of primitives determines which library routines are
-;; implemented in "native code" (C++).  Any primitives in this list
-;; will NOT have their wavescript library definitions inlined, rather
-;; they will link against their native versions.
-;;   IF this is enabled, we will lose the simplicity of the query
-;; graph (not just iterates/unions).
-(IFWAVESCOPE 
- (define wavescript-native-primitives
-   '(
-     )))
-  ;sync4?
-
-(IFWAVESCOPE
- ;; All side-effecting primitives MUST go here and must return UNIT:
- (define wavescript-effectful-primitives 
-   '(
-     (Array:set         ((Array 'a) Int 'a)          #())
-
-     ;; [2006.11.28] Giving these void types.
-     (HashTable:set_BANG ((HashTable 'key 'val) 'key 'val) #())
-     (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
-     (print            ('a) #())
-
-     (gnuplot_array    ((Array (NUM a))) #())
-     ;; Takes an (X,Y) pair.
-     (gnuplot_array2d  ((Array #((NUM a) (NUM b))))  #())  
-
-     ;; I just use a virtual "Queue" to make the type-checking work for emits:
-     (emit           ((VQueue 'a) 'a)                #())
-
-     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-     (break            ()                      'a)
-
-     ;; Signals an error, has any return type:
-     (wserror         (String)                  'a)
-     (inspect         ('a)                      'a)
-
-     )))
-
 
 
 (IFWAVESCOPE
@@ -613,9 +605,8 @@
 
 
 
-
-
-;; These are the distributed primitives.  The real Regiment combinators.
+;; These are the distributed primitives.  The real Regiment combinators.   <br><br>
+;; These pretty much apply only to Regiment 1.0 and not WaveScript.
 (define regiment-distributed-primitives 
   `(
     
@@ -724,6 +715,10 @@
 ;    (time (Node) Time)
      ))
 
+
+;======================================================================
+;;; Aggregates of the above sets of primitives.
+
 ;; This private state keeps a hash-table of all regiment primitives for fast lookup:
 (define primitives-hash 'primitives-hash-uninitialized)  
 
@@ -753,9 +748,10 @@
     (difference (regiment-primitives) 
 		regiment-distributed-primitives)))
 
-;======================================================================
-;;; Primitive type definitions, TML/Node-local.
 
+
+;======================================================================
+;;; Type signatures for TML/Node-local primitives.
 
 ;; These are pretty much compiler-internal primitives which can
 ;; operate on the local node.
@@ -942,7 +938,7 @@
 
 ;======================================================================
 
-;;; Various small, related functions.
+;;; Various small functions, related to primitive tables.
 
 ;; Keywords allowed in the restricted token machine language.
 (define token-machine-keyword?

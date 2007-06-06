@@ -6,6 +6,7 @@
 
 (module small-ws-passes mzscheme
   (require "../../plt/common.ss"
+	   "../../plt/hashtab.ss"	   
 	   "normalize_query/ws-remove-complex-opera.ss"
 	   "../compiler_components/type_environments.ss"
 	   )
@@ -241,7 +242,16 @@
 
                         [,oth (fallthru oth)]))))
 
-            do-expr)])
+            do-expr)]
+)
 
+
+
+#;
+     [Program (lambda (p E)
+	       (fluid-let ([substs (make-default-hash-table)])
+		 )
+	       
+	       )]
   
 ) ;; End module

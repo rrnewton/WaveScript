@@ -741,7 +741,7 @@
                      #f)
 
 	  ;; RRN: de-module here, also eliminate macros
-	  [(and (pair? form-1) (memq (car form-1) '(module IFWAVESCOPE)))
+	  [(and (pair? form-1) (memq (car form-1) '(module begin IFWAVESCOPE IFCHEZ DEBUGMODE IFDEBUG)))
            (set! previous-level-2-comment "")
 	   (let ([vals (filter (lambda (x) x) (map RRNLOOP (cdr form-1)))])
 	     (if (null? vals) #f (reverse (apply append vals))))

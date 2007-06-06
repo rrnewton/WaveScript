@@ -299,68 +299,136 @@
 ;;; the most general type.  The normal type field will contain the LUB
 ;;; of the reference-sites.
 
-;; Constructs an empty type environment.
-(define empty-tenv 
-  ;; Uses a unique identifier.
-  (let ([ident (gensym "tenv")])
-    (lambda () (list ident))))
+;; List based tenvs:
 
-;; Predicate testing for type environments.
-(define (tenv? x)
-  (IFCHEZ (import rn-match) (void))
-  (match x
-    ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
-    [(,tenvsym [,v* ,t* ,flag*] ...)
-     (and (eq? tenvsym (car (empty-tenv)))
-	  (andmap symbol? v*)	  
-	  (andmap type? t*);(andmap instantiated-type? t*)
-	  (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
-	  )]
-    [,else #f]))
-;; Retrieves a type if a binding exists for sym, otherwise #f.
-(define (tenv-lookup tenv sym)
-  (DEBUGASSERT (tenv? tenv))
-  (let ([entry (assq sym (cdr tenv))])
-    (if entry (cadr entry) #f)))
-;; This returns #t if the let-bound flag for a given binding is set.
-;; If sym is lambda-bound or is unbound in the type environment, #f is
-;; returned.
-(define (tenv-is-let-bound? tenv sym)
-  (DEBUGASSERT (tenv? tenv))
-  (let ([entry (assq sym (cdr tenv))])
-    (if entry (caddr entry) #f)))
+(begin 
 
-;; Extends a type environment.
-;; .param tenv The type env to extend.
-;; .param syms The names to bind.
-;; .param vals The types to bind.
-;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
-;; .returns A new type environment.
-(define (tenv-extend tenv syms types . flag)
-  (IFCHEZ (import rn-match) (void))
-  (DEBUGASSERT (tenv? tenv))
-  (DEBUGASSERT (andmap type? types))
-  ;(DEBUGASSERT (andmap instantiated-type? types))
-  (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
+  ;; Constructs an empty type environment.
+  (define empty-tenv 
+    ;; Uses a unique identifier.
+    (let ([ident (gensym "tenv")])
+      (lambda () (list ident))))
+
+  ;; Predicate testing for type environments.
+  (define (tenv? x)
+    (IFCHEZ (import rn-match) (void))
+    (match x
+      ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
+      [(,tenvsym [,v* ,t* ,flag*] ...)
+       (and (eq? tenvsym (car (empty-tenv)))
+	    (andmap symbol? v*)	  
+	    (andmap type? t*);(andmap instantiated-type? t*)
+	    (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
+	    )]
+      [,else #f]))
+  ;; Retrieves a type if a binding exists for sym, otherwise #f.
+  (define (tenv-lookup tenv sym)
+    (DEBUGASSERT (tenv? tenv))
+    (let ([entry (assq sym (cdr tenv))])
+      (if entry (cadr entry) #f)))
+  ;; This returns #t if the let-bound flag for a given binding is set.
+  ;; If sym is lambda-bound or is unbound in the type environment, #f is
+  ;; returned.
+  (define (tenv-is-let-bound? tenv sym)
+    (DEBUGASSERT (tenv? tenv))
+    (let ([entry (assq sym (cdr tenv))])
+      (if entry (caddr entry) #f)))
+
+  ;; Extends a type environment.
+  ;; .param tenv The type env to extend.
+  ;; .param syms The names to bind.
+  ;; .param vals The types to bind.
+  ;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
+  ;; .returns A new type environment.
+  (define (tenv-extend tenv syms types . flag)
+    (IFCHEZ (import rn-match) (void))
+    (DEBUGASSERT (tenv? tenv))
+    (DEBUGASSERT (andmap type? types))
+					;(DEBUGASSERT (andmap instantiated-type? types))
+    (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
+      (cons (car tenv)
+	    (append (map (lambda (v t) 
+			   (if flag
+			       (match t
+				 ;; Expects the type to be a type var:
+				 [(quote ,pr) (ASSERT pair? pr)
+				  ;; CONSTRUCT A DELAYED UNIFY:
+				  ;; This is the scratch-pad on which we'll record the info from the call-sites. 
+
+				  (let ([cell (make-tcell (cdr pr))])
+				    (set-cdr! pr 
+					      (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
+				  
+				  (list v `(quote ,pr) #t)
+				  ])
+			       (list v t #f)))
+		      syms types)
+		    (cdr tenv))
+	    )))
+
+  ;; This isn't used in WaveScope currently (it's legacy, from Regiment 1.0)
+  (define (tenv-append . tenvs)
+    (cons (car (empty-tenv)) 
+	  (apply append (map cdr tenvs))))
+
+  ;; Applies a function to all types in a type enviroment.
+  (define (tenv-map f tenv)
+    (IFCHEZ (import rn-match) (void))
+    (DEBUGASSERT (tenv? tenv))
     (cons (car tenv)
-	  (append (map (lambda (v t) 
-			 (if flag
-			     (match t
-			       ;; Expects the type to be a type var:
-			       [(quote ,pr) (ASSERT pair? pr)
-				;; CONSTRUCT A DELAYED UNIFY:
-				;; This is the scratch-pad on which we'll record the info from the call-sites. 
+	  (map 
+	      (lambda (x) 
+		(match x 
+		  [(,v ,t ,flag) `(,v ,(f t) ,flag)]
+		  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
+	    (cdr tenv))))
+) ;; End list-based TENV ADT.
 
-				(let ([cell (make-tcell (cdr pr))])
-				  (set-cdr! pr 
-				    (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
-				
-				(list v `(quote ,pr) #t)
-				])
-			     (list v t #f)))
-		    syms types)
-		  (cdr tenv))
-	  )))
+
+#;
+;; UNFINISHED:
+;; Hash-table based tenvs:
+(begin 
+
+  (reg:define-struct (tenvrec types letbounds))
+  (define default-tenv-size 100)
+
+  (define (empty-tenv) 
+    (make-tenvrec (make-default-hash-table default-tenv-size)
+		  (make-default-hash-table default-tenv-size)))
+  ;; TODO: this should be a deeper check:
+  (define (tenv? x) (and (tenvrec? x) ))
+  (define (tenv-lookup tenv v)        (hashtab-get (tenvrec-types     tenv) v))
+  (define (tenv-is-let-bound? tenv v) (hashtab-get (tenvrec-letbounds tenv) v))
+
+  ;; Here's the trick of the hash-table based version.  We assume that
+  ;; variable names are unique, so we continue to use the old tenv,
+  ;; and just add in new bindings.
+  (define (tenv-extend tenv syms types . flag)
+
+    (let ([flag (if (null? flag) #f (if (car flag) #t #f))]
+	  [table1  (tenvrec-types     tenv)]
+	  [table2  (tenvrec-letbounds tenv)])
+      (for-each (lambda (sym) (ASSERT (not (hashtab-get table1 sym)))) syms)
+      (let tenv-extend-loop ([s* syms] [t* types])
+	(when (not (null? s*))
+	  (hashtab-set! table1  (car s*) (car t*))
+	  (hashtab-set! table2  (car s*) flag) ; (when flag )
+	  (tenv-extend-loop (cdr s*) (cdr t*)))))
+    tenv)
+
+  ;; This isn't used in WaveScope currently (it's legacy, from Regiment 1.0)
+  (define (tenv-append . tenvs) 'tenv-append-unimplemented)
+  
+  ;; Applies a function to all types in a type enviroment.
+  (define (tenv-map f tenv)
+    (let ([new (make-default-hash-table default-tenv-size)])
+      (hashtab-for-each
+       (lambda (k ty) (hashtab-set! new k (f ty)))
+       (tenvrec-types tenv))
+      (make-tenvrec new (tenvrec-letbounds tenv))))
+)
+
 
 ;; This extends a type environment, retrieving the variables to bind
 ;; by deconstructing a pattern.
@@ -378,19 +446,35 @@
     [(#(,v* ,t*) ...) (tenv-extend tenv v* t*)]))
 
 
-(define (tenv-append . tenvs)
-  (cons (car (empty-tenv)) 
-	(apply append (map cdr tenvs))))
-;; Applies a function to all types in a type enviroment.
-(define (tenv-map f tenv)
-  (IFCHEZ (import rn-match) (void))
-  (DEBUGASSERT (tenv? tenv))
-  (cons (car tenv)
-	(map 
-	    (lambda (x) 
-	      (match x 
-		[(,v ,t ,flag) `(,v ,(f t) ,flag)]
-		[,other (error 'recover-type "bad tenv entry: ~s" other)]))
-	  (cdr tenv))))
+
+; ======================================================================
+;;; Unit tests.
+
+;; Unit tests.
+(define-testing these-tests
+  `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
+     ((List '(a . 99)) -> '(a . 99))]
+
+    ["NUM must have vars attached" (type? #((NUM Int) (NUM Float))) #f]
+    [(type? '(NUM a)) #t]
+    [(type? '(Int -> (NUM a))) #t]
+
+    [(export-type ''(f . Int)) Int]
+
+  ;; This one doesn't actually verify shared structure:
+  [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
+   ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
+
+  ["instantiate-type: Make sure we don't copy internal nongeneric vars."
+   (instantiate-type ''(at '(av . #f) -> '(av . #f)) '(av))
+   '(unspecified '(av . #f) -> '(av . #f))]
+  
+  ))
+
+;; Unit tester.
+(define-testing test-type_environments (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
+
+
+
 
 ) ;; End module
