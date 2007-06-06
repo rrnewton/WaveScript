@@ -884,3 +884,33 @@ explicit operators for ref-counting an object, and expose those to the
 compiler.  But will that mess up my ability to use intrusive_ptrs?
 I need to talk to Greg about this.
 
+
+[2007.06.06] {Trying hash tables for type environments.}
+
+Testing compiler on pothole3.ws.
+  tenv-extend is called 7035 times.
+  tenv-lookup is called 8403 times.
+
+For HASH based tenvs:
+(Note this uses one table for the whole tree traversal of the program.)
+  The average size of the tenv being extended is 676.
+  The median size is 435.
+
+For LIST based tenvs:
+  Average size at extension is 87.
+  Median size at extension is 81.
+  Average size at lookup is 75.26.
+  Median size at lookup is 55.0.
+
+LIST BASED:  total elab  typecheck 
+  ws:        2098  1247  322
+  ws.opt:    1580  934   206 
+
+HASH TABLES, SIZE 100:
+  ws:        3008  1261  333
+  ws.opt:    2247  951   214
+
+HASH TABLES, SIZE 1000:
+  ws:        2967  1238  329
+  ws.opt:    2274  941   215
+

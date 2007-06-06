@@ -52,6 +52,8 @@
 	   tenv-append
 	   tenv-map
 
+	   TEMP:tenv-sizes
+
 	   )
 
   (chezimports constants rn-match)
@@ -316,9 +318,10 @@
                      (values `(quote ,pr) #t)
                      ])
       (values t #f)))
+
+(define TEMP:tenv-sizes '())
   
 ;; List based tenvs:
-
 (begin 
 
   ;; Constructs an empty type environment.
@@ -342,6 +345,7 @@
   ;; Retrieves a type if a binding exists for sym, otherwise #f.
   (define (tenv-lookup tenv sym)
     (DEBUGASSERT (tenv? tenv))
+;    (let ([s (length tenv)]) (printf "SIZE: ~s\n" s) (set! TEMP:tenv-sizes (cons s TEMP:tenv-sizes)))
     (let ([entry (assq sym (cdr tenv))])
       (if entry (cadr entry) #f)))
   ;; This returns #t if the let-bound flag for a given binding is set.
@@ -363,7 +367,7 @@
     (DEBUGASSERT (tenv? tenv))
     (DEBUGASSERT (andmap type? types))
 					;(DEBUGASSERT (andmap instantiated-type? types))
-
+;    (let ([s (length tenv)]) (printf "SIZE: ~s\n" s) (set! TEMP:tenv-sizes (cons s TEMP:tenv-sizes)))
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
       (cons (car tenv)
 	    (append (map (lambda (v t)
@@ -394,10 +398,18 @@
 
 
 ;; Hash-table based tenvs:
+;; RUNS SLOWER!
 #;
 (begin 
 
   (reg:define-struct (tenvrec types letbounds))
+
+  (define (tenv-size tenv)
+    (let ([count 0])
+      (hashtab-for-each (lambda (k t) (set! count (fx+ 1 count)))
+			(tenvrec-types tenv))
+      count))
+
   (define default-tenv-size 100)
 
   (define (empty-tenv) 
@@ -414,12 +426,13 @@
   ;; variable names are unique, so we continue to use the old tenv,
   ;; and just add in new bindings.
   (define (tenv-extend tenv syms types . flag)
+;    (let ([s (tenv-size tenv)]) (printf "SIZE: ~s\n" s) (set! TEMP:tenv-sizes (cons s TEMP:tenv-sizes)))
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))]
 	  [table1  (tenvrec-types     tenv)]
 	  [table2  (tenvrec-letbounds tenv)])      
       (let tenv-extend-loop ([s* syms] [t* types])
 	(when (not (null? s*))    
-	  (ASSERT (lambda (s) (not (hashtab-get table1 s))) (car s*))
+	  (DEBUGASSERT (lambda (s) (not (hashtab-get table1 s))) (car s*))
 	  (let-values ([(rhs flg) (build-entry (car s*) (car t*) flag)])
 	    (hashtab-set! table1  (car s*) rhs)
 	    (hashtab-set! table2  (car s*) flg))
