@@ -293,7 +293,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
 (ASSERT (system 
 	 (format 
-	  "svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
+	  ;; TEMPORARILLY FIXING AT 1495
+	  "svn co -r 1495 svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
 	  engine-dir)))
 
 (ASSERT (putenv "WAVESCOPED" engine-dir))

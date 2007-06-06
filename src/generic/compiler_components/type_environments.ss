@@ -370,6 +370,7 @@
 ;    (let ([s (length tenv)]) (printf "SIZE: ~s\n" s) (set! TEMP:tenv-sizes (cons s TEMP:tenv-sizes)))
     (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
       (cons (car tenv)
+	    ;; This doesn't provide any speedup:
 #;
 	    (let loop ([v* syms] [t* types] [acc ()])
 	      (if (null? v*)
@@ -378,7 +379,7 @@
 		    (loop (cdr v*) (cdr t*) (cons (list (car v*) rhs flg) acc)))
 		  ))
 
-	    (append (map (lambda (v t)
+	    (append! (map (lambda (v t)
                            (let-values ([(rhs flg) (build-entry v t flag)])
                              (list v rhs flg)
 			     ))
