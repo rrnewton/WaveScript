@@ -90,7 +90,7 @@ exec regiment i --script "$0" ${1+"$@"};
 ;    ["demo2e_passchain.ws"         ,(lambda (a b) #t)]    
 
     ["demo3a_tuples.ws"             ,(lambda (a b) #t)]
-    ["demo3b_basic_polymorphism.ss" ,(lambda (a b) #t)]
+    ["demo3b_basic_polymorphism.ws" ,(lambda (a b) #t)]
     ["demo3c_lists.ws"              ,(lambda (a b) #t)]
     ["demo3d_tuples_of_tuples.ws"   ,(lambda (a b) #t)]
 
