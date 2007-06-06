@@ -252,8 +252,12 @@ test:
 	@echo
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
 	@echo "============================================================"
-	echo exit | ws.debug ../lib/stdlib_test.ws -exit-error;
-	echo exit | ws.debug ../lib/matrix_test.ws -exit-error;
+#	$(MAKE) dbg # Now build DEBUG version to speed up these subsequent tests:
+	echo exit | ws ../lib/stdlib_test.ws -exit-error;
+	echo exit | ws ../lib/matrix_test.ws -exit-error;
+	(cd ../lib; $(MAKE));
+	echo exit | ws ../lib/run_matrix_gsl_test.ws -exit-error;
+#	cd ../src;
 	$(MAKE) bc
 #	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test

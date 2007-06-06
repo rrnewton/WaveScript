@@ -189,7 +189,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
        (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
+
+#|
+       (fpf "chez: Build .boot file:                       ~a\n"
+	    (code->msg! (system/exit-code "make boot &> 3B_BUILD_BOOT.log")))
+       (ASSERT (system "./bin/regiment 2> 4B_LOAD_FROM_BOOT.log"))
+       (fpf "chez: System loads from .boot file:           ~a\n" 
+	    (code->msg! (system/exit-code "grep 'compiled .so' 4B_LOAD_FROM_BOOT.log")))
+
+
+       (fpf "chez: Build DEBUGMODE .so file:               ~a\n"
+	    (code->msg! (system/exit-code "make dbg &> 3C_BUILD_DBG.log")))
+
+|#
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
+
 
        ;; Now copy that .so file to our stored binaries directory.
        ;; But we only do this on faith, so first test if the dir is there:
@@ -268,11 +282,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 (begin (current-directory (format "~a/lib/" test-root))
-       (define stdlib (system/exit-code (format "echo exit | ws stdlib.ws &> ~a/10_stdlib.log" test-directory)))
-       (fpf "ws: Loading stdlib.ws:                        ~a\n" (code->msg! stdlib))
-       (define matrix (system/exit-code (format "echo exit | ws matrix.ws &> ~a/11_matrix.log" test-directory)))
-       (fpf "ws: Loading matrix.ws:                        ~a\n" (code->msg! matrix))
+       (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
+       (fpf "ws: Loading stdlib_test.ws:                     ~a\n" (code->msg! stdlib))
+       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/11_matrix.log" test-directory)))
+       (fpf "ws: Loading matrix_test.ws:                     ~a\n" (code->msg! matrix))
        (current-directory test-directory))
+
+;; Now for GSL interface.
+(begin (current-directory (format "~a/lib/" test-root))
+       (fpf "ws: Generating gsl matrix library wrappers:     ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> 11b_build_gsl_wrappers.log" test-directory))))       
+       (fpf "ws: Loading matrix_test.ws:                     ~a\n"
+	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
+       (current-directory test-directory))
+
 
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
        (define pipeline-web (system/exit-code (format "make test &> ~a/11_pipeline-web.log" test-directory)))

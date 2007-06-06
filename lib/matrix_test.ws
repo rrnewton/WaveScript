@@ -23,7 +23,6 @@ BASE <- iterate (() in timer(30.0)) {
   mat = list_to_matrix(mat0);
 
   if first then {
-  /*  
     m = matrix(3, 4, 5.0);
 
     // These are some unit tests. 
@@ -61,7 +60,7 @@ BASE <- iterate (() in timer(30.0)) {
     //println("Numeric test:  " ++ );
   
     first := false;
-  */
+
   } else emit matrix(0, 0, 0.0)  
 }
 
