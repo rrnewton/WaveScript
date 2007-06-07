@@ -387,7 +387,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code "make ocaml")))
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_caml" test-directory)))))
+	    (code->msg! (system/exit-code (format "./testall_caml"))))
+       (current-directory test-directory))
 
 ;;================================================================================
 
