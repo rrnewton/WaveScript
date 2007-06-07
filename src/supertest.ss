@@ -142,7 +142,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Here we begin running tests:
 
-(fpf "WaveScript (rev ~a) build & unit tests:\n" svn-revision)
+(fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")
 
 (begin (reset-timer!)
@@ -272,7 +272,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 
-(fpf "WaveScript demos & apps (Scheme backend):\n")
+(fpf "\nWaveScript demos & apps (Scheme backend):\n")
 (fpf "========================================\n")
 
 (begin (newline)
@@ -390,7 +390,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory test-directory)
        (fpf "wscaml: Building ocaml libraries (fftw, etc): ~a\n" 
-	    (code->msg! (system/exit-code "make ocaml &> ~a/16_build_caml_stuff.log" test-directory)))
+	    (code->msg! (system/exit-code (format "make ocaml &> ~a/16_build_caml_stuff.log" test-directory))))
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/17_test_demos_caml.log" test-directory))))

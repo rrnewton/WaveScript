@@ -158,14 +158,13 @@
 	    (let-match ([#(,e ,decls) e])
 	      (vector `(assert-type ,ty  ,e)
 		      decls))]
-
+#;
 	   [(let () ,body)	
 	    (let-values ([(body bdecls) (make-simple body tenv)])
 	      (vector (make-lets bdecls body) '()))]
 
 
 ;; THIS INTRODUCES EXCESSIVE ALIASING:
-
 	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
 	    (let-values ([(rhs rdecls) (make-simple e tenv)])
 	    (let-match  ([#(,rst ,decls) (process-expr 
@@ -179,13 +178,14 @@
 	      ))]
 
 #;
-;; TODO: REDO this to not simplify RHS's
+;; REDONE: this to not simplify RHS's
+	   [(let () ,[body]) body]
 	   [(let ([,v ,ty ,[e]] ,rest ...) ,bod)
-	    (let-match ([#(,rhs rdecls) (make-simple e tenv)])
+	    (let-match ([#(,rhs ,rdecls) e])
 	    (let-match  ([#(,rst ,decls) (process-expr 
 					  `(let ,rest ,bod)
-				            (tenv-extend tenv 
-						(list v) (list ty)))])
+					  (tenv-extend tenv 
+						       (list v) (list ty)))])
 	      (vector rst
 		      (append rdecls 
 			      `([,v ,ty ,rhs])
