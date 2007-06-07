@@ -654,7 +654,7 @@
    (printf "Running pass: convert-sums-to-tuples\n")
    (time (set! prog (convert-sums-to-tuples prog)))
 
-   (inspect `(CONVERTED ,prog))
+;   (inspect `(CONVERTED ,prog))
 
    ;; A final typecheck will get rid of any polymorphic tuples resulting from the conversion.
 #; #;
