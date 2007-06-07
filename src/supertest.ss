@@ -142,7 +142,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Here we begin running tests:
 
-(fpf "WaveScript (rev ~a):\n" svn-revision)
+(fpf "WaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")
 
 (begin (reset-timer!)
@@ -271,15 +271,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 			  ))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
+
+(fpf "WaveScript demos & apps (Scheme backend):\n")
+(fpf "========================================\n")
+
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
        (define getdata (system/exit-code "./download_sample_marmot_data"))
-       (fpf "\nws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
+       (fpf "ws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
        (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
        (current-directory test-directory)
-       (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
+       (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
@@ -366,9 +370,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSC:
 
+(fpf "\nWaveScript C++ Backend (uses engine):\n")
+(fpf "========================================\n")
+
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
-       (fpf "\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
        (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/15_WSC_DEMOS.log" test-directory)))
        (current-directory test-directory)
@@ -378,21 +384,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSCAML:
 
-(fpf "\nWaveScope CAML Backend (rev ~a):\n" engine-svn-revision)
+(fpf "\nWaveScript CAML Backend (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
 
 (begin (newline)
        (current-directory test-directory)
        (fpf "wscaml: Building ocaml libraries (fftw, etc): ~a\n" 
-	    (code->msg! (system/exit-code "make ocaml")))
+	    (code->msg! (system/exit-code "make ocaml &> ~a/16_build_caml_stuff.log" test-directory)))
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_caml"))))
+	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/17_test_demos_caml.log" test-directory))))
        (current-directory test-directory))
 
 ;;================================================================================
 
-(fpf "\nTotal time spent testing: ~a minutes\n" 
+(fpf "\n\n\nTotal time spent testing: ~a minutes\n" 
      (milli->minute (- (current-inexact-milliseconds) start-time)))
 
 ;(fpf "\n\nWaveScript Rev: ~a\n" svn-revision)

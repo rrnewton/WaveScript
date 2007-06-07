@@ -163,8 +163,25 @@
 	    (let-values ([(body bdecls) (make-simple body tenv)])
 	      (vector (make-lets bdecls body) '()))]
 
+
+;; THIS INTRODUCES EXCESSIVE ALIASING:
+
 	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
 	    (let-values ([(rhs rdecls) (make-simple e tenv)])
+	    (let-match  ([#(,rst ,decls) (process-expr 
+					  `(let ,rest ,bod)
+				            (tenv-extend tenv 
+						(list v) (list ty)))])
+	      (vector rst
+		      (append rdecls 
+			      `([,v ,ty ,rhs])
+			      decls))
+	      ))]
+
+#;
+;; TODO: REDO this to not simplify RHS's
+	   [(let ([,v ,ty ,[e]] ,rest ...) ,bod)
+	    (let-match ([#(,rhs rdecls) (make-simple e tenv)])
 	    (let-match  ([#(,rst ,decls) (process-expr 
 					  `(let ,rest ,bod)
 				            (tenv-extend tenv 

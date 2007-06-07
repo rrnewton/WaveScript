@@ -656,15 +656,14 @@
 
 ;   (inspect `(CONVERTED ,prog))
 
-#;
+   ;; A final typecheck will get rid of any polymorphic tuples resulting from the conversion.
+#; #;
    (when (regiment-verbose)
     (printf "\n Type checking one last time."))
-#;
    ;; Retypecheck to bring back some types that were lost:
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
-
 
    (printf "Running pass: nominalize-types.\n")
    (time (set! prog (nominalize-types prog)))
@@ -1047,7 +1046,6 @@
 		       (load (caddr args)))
 		     )]
 	    [else 
-	     ;(inspect (list->vector args))
 	     (IFCHEZ (apply orig-scheme-start (cdr args))
 		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
 		     )
@@ -1129,7 +1127,6 @@
 		   (animate-world! (simalpha-current-simworld))
 		   (printf "Animated world from world file ~s.\n" file)
 		   ;(clean-simalpha-counters!)
-		   ;(inspect (simalpha-current-simworld))
 		   (bounce-to-swl '(begin 
 				     ;(clean-simworld! (simalpha-current-simworld))
 				     (init-graphics)

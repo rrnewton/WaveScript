@@ -1,7 +1,7 @@
 #!/bin/sh 
 #|
 export REGIMENT_OR_WAVESCRIPT=WS
-mexport REGOPTLVL=2
+export REGOPTLVL=2
 export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
 #exec regiment.plt i --script "$0" ${1+"$@"};

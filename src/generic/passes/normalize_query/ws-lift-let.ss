@@ -20,7 +20,7 @@
     
     (append `(;; [2007.04.01] Adding union-types to this:
 	      ;; The LHS should only have typevars... but we don't have a special production for that:
-	      (Program ((quote program) Query ('union-types ((Var Type ...) [Var Type] ...) ...) Type))
+	      (Program ((quote program) Query ('union-types ((Var Type ...) [Var Type ...] ...) ...) Type))
 
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))

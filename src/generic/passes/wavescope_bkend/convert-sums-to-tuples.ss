@@ -34,7 +34,7 @@
   ;; Todo, this should be handled by type->width!!
   (define (sizeof-sum sum)
     (let ([variants (cdr sum)])
-      (inspect variants)
+;      (inspect variants)
       (apply max (map type->width (apply append (map cdr variants))))))
   
   ;; Introducing a "Union" type constructor understood by the C++ backend.
