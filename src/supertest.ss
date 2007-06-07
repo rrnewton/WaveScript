@@ -284,27 +284,27 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib_test.ws:                     ~a\n" (code->msg! stdlib))
-       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/11_matrix.log" test-directory)))
+       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/10b_matrix.log" test-directory)))
        (fpf "ws: Loading matrix_test.ws:                     ~a\n" (code->msg! matrix))
        (current-directory test-directory))
 
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
        (fpf "ws: Generating gsl matrix library wrappers:     ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/11b_build_gsl_wrappers.log" test-directory))))       
-       (fpf "ws: Loading matrix_test.ws:                     ~a\n"
+	    (code->msg! (system/exit-code (format "make &> ~a/11_build_gsl_wrappers.log" test-directory))))       
+       (fpf "ws: Running test of GSL matrix library.ws:                     ~a\n"
 	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
 
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
-       (define pipeline-web (system/exit-code (format "make test &> ~a/11_pipeline-web.log" test-directory)))
+       (define pipeline-web (system/exit-code (format "make test &> ~a/11b_pipeline-web.log" test-directory)))
        (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/stockticks" test-root))
        (fpf "ws: Running stockticks app:                   ~a\n"
-	    (code->msg! (system/exit-code (format "make test &> ~a/11B_stockticks.log" test-directory))))
+	    (code->msg! (system/exit-code (format "make test &> ~a/11c_stockticks.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/demos/wavescope" test-directory))
@@ -342,12 +342,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 (begin (current-directory engine-dir)
-       (define engine-make (system/exit-code (format "make all &> ~a/11_ENGINE_MAKE_ALL.log" test-directory)))
+       (define engine-make (system/exit-code (format "make all &> ~a/12_ENGINE_MAKE_ALL.log" test-directory)))
        (fpf "Engine 'make all':                            ~a\n" (code->msg! engine-make)))
 
 ;; TODO: This doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/12_testSignal.log" test-directory)))
+       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/13_testSignal.log" test-directory)))
        ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
        (code->msg! testSignal)
        (fpf "Engine: testSignal-SMSegList                  ~a\n"
@@ -356,7 +356,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TODO: This probably doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/13_PipeMemory.log" 
+       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/14_PipeMemory.log" 
 						    test-directory)))
        (code->msg! pipeMemory)
        (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
@@ -370,7 +370,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (fpf "\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/14_WSC_DEMOS.log" test-directory)))
+       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/15_WSC_DEMOS.log" test-directory)))
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
