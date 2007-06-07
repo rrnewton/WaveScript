@@ -157,7 +157,7 @@
 	 [(,input-language (quote (program ,body ,other ... ,type)))
 	  (fluid-let ([type-constructors 
 		       (match (or (assq 'union-types other ) '(union-types))
-			 [(union-types [,name* [,tycon** ,_] ...] ...)
+			 [(union-types [,name* [,tycon** . ,_] ...] ...)
 			  (apply append tycon**)])])
 	    `(resolve-varrefs-language '(program ,(doExpr body) ,other ... ,type)))]))]
     )

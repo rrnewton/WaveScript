@@ -874,7 +874,7 @@
 	       `(,prim ,@rand*))]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
-	  [(construct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
+	  [(construct-data ,tc ,[rand*] ...) `(construct-data ,tc ,@rand*)]
 
 	  ;; Foreign function application:
 	  [(app ,rator ,[rands] ...)
@@ -918,7 +918,7 @@
         [(,input-language (quote (program ,body ,meta* ...  ,type)))
 	 (set! mutable-vars (get-mutable body))
 	 (match (or (assq 'union-types meta*) '(union-types))
-	   [(union-types [,name* [,tycon** ,_] ...] ...)
+	   [(union-types [,name* [,tycon** . ,_] ...] ...)
 	    ;; For now we don't statically evaluate type constructors:
 	    (let ([init-env (map (lambda (tycon) (list tycon not-available 9393939))
 			      (apply append tycon**))])

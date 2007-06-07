@@ -143,6 +143,8 @@
   [Bindings (lambda (var* ty* expr* reconstr Expr)
 	      (reconstr var* (map Type ty*) (map Expr expr*)))])
 
+
+;; UNUSED
 (define-pass ws-add-return-statements
     (define (doit fallthru)
       (lambda (x)	
@@ -167,6 +169,8 @@
 	       `(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
 	      [,oth (fallthru oth)])
 	    )])
+
+
 
 
 ;; [2007.03.14]

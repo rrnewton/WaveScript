@@ -235,9 +235,9 @@
 	   [(set! ,v ,e)
 	    (mvlet ([(e2 decls) (make-simple e tenv)])
 	      (vector `(set! ,v ,e2) decls))]
-	   [(construct-data ,tc ,e)
-	    (mvlet ([(e2 decls) (make-simple e tenv)])
-	      (vector `(construct-data ,tc ,e2) decls))]
+	   [(construct-data ,tc ,e* ...)
+	    (mvlet ([(e2* decls) (make-simples e* tenv)])
+	      (vector `(construct-data ,tc ,@e2*) decls))]
 	   [(foreign-app ',realname ,e* ...)
 	    ;(ASSERT (symbol? rator))
 	    (mvlet ([(args binds) (make-simples e* tenv)])

@@ -76,7 +76,7 @@
 	 (match expr
 	   [(,input-language (quote (program ,body ,meta* ... ,type)))
 	    (match (or (assq 'union-types meta*) '(union-types))
-	      [(union-types [,name* (,tycon** ,ty**) ...] ...)
+	      [(union-types [,name* (,tycon** . ,_) ...] ...)
 	       (let ([body (process-expr body 
 					 (map (lambda (x) (cons x x)) 
 					   (apply append tycon**)))])

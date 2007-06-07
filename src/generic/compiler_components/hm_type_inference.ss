@@ -1002,12 +1002,13 @@
 (define (sumdecls->tenv decl*)
   (define (sumdecl->tbinds decl tenv)
     (match decl 
-      [((,name ,typarg* ...) [,tycon* ,ty*] ... ) (guard (symbol? name))
+      [((,name ,typarg* ...) [,tycon* . ,ty**] ... ) (guard (symbol? name))
        (tenv-extend tenv tycon* 
-		    (map (lambda (ty)
+		    (map (lambda (ty*)
 			   ;; TEMP, trying instantiating here:
-			   (instantiate-type `(,ty -> (Sum ,name ,@typarg*))
-					     )) ty*))
+			   (instantiate-type `(,@ty* -> (Sum ,name ,@typarg*))
+					     ))
+		      ty**))
        ]))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 

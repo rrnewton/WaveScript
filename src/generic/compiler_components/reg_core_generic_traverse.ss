@@ -290,8 +290,8 @@
 	  ;; Applications must be tagged explicitely.
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,@ls)))]
-	  [(construct-data ,tc ,[loop -> rand]) 
-	   (fuse (list rand) (lambda (r) `(construct-data ,tc ,r)))]
+	  [(construct-data ,tc ,[loop -> rand*] ...)
+	   (fuse rand* (lambda r* `(construct-data ,tc ,@r*)))]
 	  [(foreign-app ',realname ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls) `(foreign-app ',realname ,x ,@ls)))]
 

@@ -41,7 +41,7 @@
 	 [,v (guard (symbol? v))  (assert-valid-name! v)]
 	 [(assert-type ,t ,[v]) (guard (type? t)) (void)]
 	 [#(,p* ...) (for-each pattern! p*)]
-	 [(data-constructor ,tc ,arg) (guard (symbol? tc)) (pattern! arg)]
+	 [(data-constructor ,tc ,arg ...) (guard (symbol? tc)) (for-each pattern! arg)]
 	 [,other (error 'verify-regiment "bad binding pattern: ~s" other)]
 	 ))
 

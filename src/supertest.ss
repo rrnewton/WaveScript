@@ -283,16 +283,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
-       (fpf "ws: Loading stdlib_test.ws:                     ~a\n" (code->msg! stdlib))
+       (fpf "ws: Loading stdlib_test.ws:                   ~a\n" (code->msg! stdlib))
        (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/10b_matrix.log" test-directory)))
-       (fpf "ws: Loading matrix_test.ws:                     ~a\n" (code->msg! matrix))
+       (fpf "ws: Loading matrix_test.ws:                   ~a\n" (code->msg! matrix))
        (current-directory test-directory))
 
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
-       (fpf "ws: Generating gsl matrix library wrappers:     ~a\n" 
+       (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/11_build_gsl_wrappers.log" test-directory))))       
-       (fpf "ws: Running test of GSL matrix library.ws:                     ~a\n"
+       (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
 	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
@@ -338,12 +338,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 
 (begin (define engine-cleaned (system/exit-code "make clean"))
-       (fpf "Engine directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
+       (fpf "Engine: directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
 
 
 (begin (current-directory engine-dir)
        (define engine-make (system/exit-code (format "make all &> ~a/12_ENGINE_MAKE_ALL.log" test-directory)))
-       (fpf "Engine 'make all':                            ~a\n" (code->msg! engine-make)))
+       (fpf "Engine: 'make all':                            ~a\n" (code->msg! engine-make)))
 
 ;; TODO: This doesn't return ERROR code:
 (begin (current-directory engine-dir)
@@ -373,6 +373,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/15_WSC_DEMOS.log" test-directory)))
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
+
+
+;;================================================================================
+;; Now test WSCAML:
+
+(fpf "\nWaveScope CAML Backend (rev ~a):\n" engine-svn-revision)
+(fpf "========================================\n")
+
+(begin (newline)
+       (current-directory test-directory)
+       (fpf "wscaml: Building ocaml libraries (fftw, etc): ~a\n" 
+	    (code->msg! (system/exit-code "make ocaml")))
+       (current-directory (format "~a/demos/wavescope" test-directory))
+       (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
+	    (code->msg! (system/exit-code (format "./testall_caml" test-directory)))))
 
 ;;================================================================================
 

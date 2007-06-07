@@ -387,7 +387,8 @@
    ;; [2006.09.01] For now patterns are just tuples.
    (pattern [(VAR) $1]
 	    ;; A type constructor:
-	    [(VAR LeftParen pattern RightParen) `(data-constructor ,$1 ,$3)]
+	    [(VAR LeftParen RightParen)      `(data-constructor ,$1)]
+	    [(VAR LeftParen pat+ RightParen) `(data-constructor ,$1 ,@$3)]
 	    [(LeftParen RightParen) #()]
 	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
 	    )
@@ -501,7 +502,7 @@
     ;(innernotlist [(notlist) $1])    
 
     (matchcases [() '()] [(pattern COLON exp matchcases) (cons (list $1 $3) $4)])
-    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
+;    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
 
     (notlist
          [(NUM) `',$1]
@@ -521,9 +522,9 @@
 	 ;; Deconstructing sum types with pattern matching:
 	 [(case exp LeftBrace matchcases RightBrace) `(wscase ,$2 . ,$4)]
 
-	 [(typecase exp LeftBrace typecases RightBrace) `(typecase ,$2 ,$4)]
+;	 [(typecase exp LeftBrace typecases RightBrace) `(typecase ,$2 ,$4)]
 	 ;; Haven't decided how to do this yet.  Can typecase on the *return* type:
-	 [(returncase LeftBrace typecases RightBrace) `(returncase ,$3)]
+;	 [(returncase LeftBrace typecases RightBrace) `(returncase ,$3)]
 
 
 	 ;; Importing foreign functions (better be in assert-type)

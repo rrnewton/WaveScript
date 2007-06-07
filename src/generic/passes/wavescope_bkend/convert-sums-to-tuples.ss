@@ -34,7 +34,8 @@
   ;; Todo, this should be handled by type->width!!
   (define (sizeof-sum sum)
     (let ([variants (cdr sum)])
-      (apply max (map type->width (map cadr variants)))))
+      (inspect variants)
+      (apply max (map type->width (apply append (map cdr variants))))))
   
   ;; Introducing a "Union" type constructor understood by the C++ backend.
   (define (parent-tuple sumname)
