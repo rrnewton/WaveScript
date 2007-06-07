@@ -158,11 +158,10 @@
 	    (let-match ([#(,e ,decls) e])
 	      (vector `(assert-type ,ty  ,e)
 		      decls))]
-#;
+#;#;
 	   [(let () ,body)	
 	    (let-values ([(body bdecls) (make-simple body tenv)])
 	      (vector (make-lets bdecls body) '()))]
-
 
 ;; THIS INTRODUCES EXCESSIVE ALIASING:
 	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
@@ -177,7 +176,6 @@
 			      decls))
 	      ))]
 
-#;
 ;; REDONE: this to not simplify RHS's
 	   [(let () ,[body]) body]
 	   [(let ([,v ,ty ,[e]] ,rest ...) ,bod)
