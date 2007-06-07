@@ -191,8 +191,11 @@
         
 (define (Var var)
   (ASSERT symbol? var)
-  ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
-  (symbol->string var))
+  ;; This is the place to do any name mangling. 
+  ;; We prefix with an underscore to avoid names beginning in capital letters.
+  (if (regiment-primitive? var)
+      (symbol->string var)
+      (string-append "_" (symbol->string var))))
 
 ;; Really the RHS could be any expression, it just does not have a stream type.
 (define (ConstBind b)

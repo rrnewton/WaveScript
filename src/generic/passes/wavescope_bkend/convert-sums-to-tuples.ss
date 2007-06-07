@@ -32,10 +32,13 @@
 	  (loop (cdr ls)))))
 
   ;; Todo, this should be handled by type->width!!
-  (define (sizeof-sum sum)
+  (trace-define (sizeof-sum sum)
+999
+#;
    (let ([variants (cdr sum)])
 ;      (inspect variants)
-      (apply max (map type->width (apply append (map cdr variants))))))
+      (apply max (map type->width (apply append (map cdr variants)))))
+   )
   
   ;; Introducing a "Union" type constructor understood by the C++ backend.
   (define (parent-tuple sumname)

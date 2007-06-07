@@ -272,7 +272,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 
-(fpf "\nWaveScript demos & apps (Scheme backend):\n")
+(fpf "\n\nWaveScript demos & apps (Scheme backend):\n")
 (fpf "========================================\n")
 
 (begin (newline)
@@ -338,7 +338,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
-(fpf "\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
+(fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
 
 (begin (define engine-cleaned (system/exit-code "make clean"))
@@ -370,7 +370,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSC:
 
-(fpf "\nWaveScript C++ Backend (uses engine):\n")
+(fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
 (begin ;; This runs faster if we load Regiment pre-compiled:
@@ -384,7 +384,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSCAML:
 
-(fpf "\nWaveScript CAML Backend (rev ~a):\n" engine-svn-revision)
+(fpf "\n\nWaveScript CAML Backend (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
 
 (begin (newline)
