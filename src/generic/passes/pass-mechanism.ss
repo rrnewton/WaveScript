@@ -262,26 +262,37 @@
 
 ;; [2007.04.19] UNFINISHED:
 #;
-(define (fuse-passes P1 P2)
-  (let-match ([#(,E1) (P1 'get)]
-	      [#(,E2) (P2 'get)])
-    ;; FINISH:
-    (fuse-segments E1 E2)    
-    ;; Handle other fields.....
-
-    (make-pass )
+(define (fuse-passes/disjoint P1 P2)
+  (let-match ([#(,E1) (P1 'get-expr-driver)]
+	      [#(,E2) (P2 'get-expr-driver)])
+    (core-generic-traverse 
+     (lambda (x fallthru)
+       (let fploop ((x x))
+	 (E1 x (lambda (y) 
+           ;; If they're the same then 'x' was just passed through.
+	   (E2 y (lambda (z)
+	     (if (eq? y z)
+		 ;; If it passed through E2, on to auto-traverse:
+		 (fallthru z)
+		 ;; E2 handled y and 'z' is a sub-expression of y.
+		 ;; But E1 hasn't had a shot at z yet.
+		 ;; Start again at the top:
+		 (fploop z)))))))
+       ))
     ))
 
+
+#;
 (define (fuse-segments A B )
   (define fused
     (lambda (x fallthru)
       (A x (lambda (y)
        (B y (lambda (z)
-	      (if (eq? y z)
-		  (fallthru z)
-		  ;; This indicates a match-recursion has occured.
-		  ;; We need to start back at the top.
-		  (fused z fallthru))))))))
+	 (if (eq? y z)
+	     (fallthru z)
+	     ;; This indicates a match-recursion has occured.
+	     ;; We need to start back at the top.
+	     (fused z fallthru))))))))
   fused)
 
 

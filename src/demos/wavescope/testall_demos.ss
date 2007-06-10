@@ -154,9 +154,12 @@ exec regiment i --script "$0" ${1+"$@"};
     ;; WEIRD... applied a fix so that static-elaborate's hack for Array:build will work.
     ;; But now this freezes nondeterministically.  Sometimes it passes, sometimes it fails.
     ,@(IFCHEZ `(["demo9b_higher_order_prims.ws"  ,(lambda (a b) #t)]) ())
-        
+ 
+;; [2007.06.10]
+;; THIS IS DISPLAYING NONDETERMINISM:
+;;       
     ;; No foreign interface yet in PLT:
-    ,@(IFCHEZ `(["demo9c_foreign.ws"  ,(lambda (a b) #t)]) ())
+;    ,@(IFCHEZ `(["demo9c_foreign.ws"  ,(lambda (a b) #t)]) ())
 
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 
