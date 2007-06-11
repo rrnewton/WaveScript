@@ -189,7 +189,9 @@
 	  ;; This is the fallthrough/autolooper function that is passed to the driver.
           (case-lambda 
 	    ;; In this case we have a change to the driver function as we go down.
-	    [(expr newdriver) (build-traverser newdriver fuse e)]
+       [(expr newdriver) (build-traverser newdriver fuse expr)]
+
+
 	    [(expression)       	      
 	     (match  expression
 ;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
