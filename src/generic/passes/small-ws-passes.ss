@@ -213,40 +213,47 @@
 		   [#()        `(begin (,prim . ,simple) 'UNIT)]))]
 	      [,oth (fallthru oth)]))])
 
+
+; --mic
+(define (first-true ls p)
+  (cond ((null? ls) #f)
+        ((p (car ls)) (car ls))
+        (else (first-true (cdr ls) p))))
+
 ; --mic
 (define-pass propagate-copies
-    ; FIXME: use core-generic-traverse so that the hash table is not totally global
-    ; FIXME: still need to handle state variables!
-    ; FIXME: rename v1? to something better
-    ; FIXME: any problems with nested begin's?
-    ; FIXME: count all hash-table stats
-    [Expr (letrec ((substs (make-default-hash-table))
-                   (do-expr
+    ; FIXME: count all var. lookup stats
+    [Expr (letrec ((do-expr
                     ; substs is a hash table of variable substitions
-                    (lambda (x fallthru)
-                      
+                    (lambda (x fallthru substs)
+
                       (match x
 
-                        ; FIXME: better way to check for state var than looking for 'Ref?
                         [(let ((,v1 ,t1 ,v0)) ,body)
                          (guard (and (symbol? v0)
                                      (not (and (pair? t1)
                                                (eq? (car t1) 'Ref)))))
                          (begin
-                           (let ((subst-v0 (hashtab-get substs v0)))
-                             (hashtab-set! substs v1 (if subst-v0 subst-v0 v0)))
-                           (do-expr `(begin ,body) fallthru))]
-
-                        ; FIXME: may be unnecessary, if the guard above works correctly
-                        [(deref ,var) (fallthru x)]
-
-                        [,var (guard (symbol? var))
-                         (let ((subst-var (hashtab-get substs var)))
-                           (if subst-var subst-var (fallthru var)))]
-
+                           (let ((subst-binding (first-true substs (lambda (b) (eq? v0 (car b))))))
+                             (fallthru
+                              body
+                              (lambda (x f)
+                                (do-expr x f (cons `(,v1 . ,(if subst-binding (cdr subst-binding) v0))
+                                                   substs)))))
+                           )]
+                        
+                        [,var
+                         (guard (symbol? var))
+                              
+                         ; newest
+                         (let ((subst-binding (first-true substs (lambda (b) (eq? var (car b))))))
+                           (if subst-binding
+                               (cdr subst-binding)
+                               (fallthru x)))]
+                        
                         [,oth (fallthru oth)]))))
 
-            do-expr)]
+            (lambda (x f) (do-expr x f ())) )]
 )
 
 
