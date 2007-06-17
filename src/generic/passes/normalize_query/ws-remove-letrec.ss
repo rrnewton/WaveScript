@@ -16,6 +16,7 @@
 	      [,_ #t]))
     reduce-primitives-grammar))
 
+;; This handles only the letrec case.
 (define-pass remove-letrec 
     [OutputGrammar remove-letrec-grammar]
     [Expr (lambda (x fallthru)

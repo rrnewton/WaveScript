@@ -1457,8 +1457,10 @@
 	  (let ([entry (or (assq s aliases)
 			   (assq s regiment-type-aliases))])
 	    (if entry 
-		(begin (DEBUGASSERT (= 2 (length entry)))
-		       (cadr entry))
+		(begin 
+		  ;(DEBUGASSERT (= 2 (length entry)))
+		  (DEBUGASSERT null? (cadr entry))
+		  (caddr entry))
 		s))]
       [',n                                     `(quote ,n)]
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]

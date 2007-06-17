@@ -50,10 +50,11 @@
       [Type (Type ... '-> Type)]
       [Type ('-> Type)]
 
+      [Type TypeVar]
       ;; Also type vars:
-      [Type ('quote ,valid-typevar-symbol?)]
+      [TypeVar ('quote ,valid-typevar-symbol?)]
       ;; And NUM variables:
-      [Type ('NUM ,valid-typevar-symbol?)]
+      [TypeVar ('NUM ,valid-typevar-symbol?)]
       )))
 
 (define base_regiment_forms
@@ -64,8 +65,19 @@
     [Lang ,symbol?]
 
     ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
-    [Program ('program Expr Datum ...)]
+    [Program ('program Expr MetaData ... Type)]
+;    [MetaData Datum]
+    [MetaData ('type-aliases TypeAlias ...)]
+    [TypeAlias (Var (TypeVar ...) Type)]
+    [MetaData ('union-types ((Var Type ...) [Var Type ...] ...) ...)]
 
+    (type-aliases (CtrlStrm (Stream #(Bool Int Int)))
+  (SegStream ('t) (Stream (Sigseg 't))) (S ('t) (Stream 't))
+  (SS ('t) (Stream (Sigseg 't)))
+  (LSS ('t) (List (Stream (Sigseg 't))))
+  (SLS ('t) (Stream (List (Sigseg 't)))))
+
+    
     ;[Program ('program Expr Tail)]
     ;[Tail (Type)]
     ;[Tail (Datum ... Type)]

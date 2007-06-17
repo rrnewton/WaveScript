@@ -15,7 +15,10 @@
 	   "../compiler_components/hm_type_inference.ss"
            )
 
-  (provide define-pass)
+  (provide define-pass fuse-passes/disjoint fuse-passes
+	   test-pass-mechanism
+	   ;P1 P2 F G
+	   )
   (chezimports)
   (require-for-syntax "../../plt/chez_compat.ss"
                       ;(only "../util/helpers.ss" compose)
@@ -27,7 +30,7 @@
 ;;   [InputGrammar <g>]
 ;;   [OutputGrammar <g>]
 ;;      These define input/output grammars for the pass in the style of grammar_checker.ss.
-;;      These grammars are checked only in debugmode. See the obsoleted build-pass function.
+;;      These grammars are checked only in debugmode. See the obsoleted build-compiler-pass function.
 ;;
 ;;   [Program <fun: prog, ExprFun -> pass-result>]
 ;;      This form takes a user procedure to handle the top-level input to the pass, the "program".
@@ -92,27 +95,31 @@
 
 		(define dso datum->syntax-object)
 
+		(define default-expr (or expr expr/types #'(lambda (x fallthrough) (fallthrough x))))
+		(define default-fuser (or fuser #'(lambda (ls k) (apply k ls))))
+		(define default-prog 
+		  (with-syntax ([ol output-language])
+		    #'(lambda (pr Expr) 
+			(match pr
+			  [(,input-language (quote (program ,body . ,metadata )))
+			   ;; The last entry in metadata is a type!
+			   ;; Should associate a tag with it so that it can be treated the same.
+			   (let* ([realmeta (rdc metadata)]
+				  [initial-tenv (grab-init-tenv realmeta)]
+				  [uniondefs (or (assq 'union-types realmeta) '(union-types))])
+			     ;; Ensure that the output has a (union-types) form.
+			     `(ol '(program ,(Expr body initial-tenv) 
+				     ;; This forces that there be a union-types entry in the output:
+					;,uniondefs ,@(remq uniondefs metadata)
+				     . ,metadata
+				     )))]
+			  [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
+			)))
+
 		;; Fill in some defaults:
-		(set! expr (or expr expr/types #'(lambda (x fallthrough) (fallthrough x))))
-		(set! fuser (or fuser #'(lambda (ls k) (apply k ls))))
-		(unless prog 
-		  (set! prog (with-syntax ([ol output-language])
-			       #'(lambda (pr Expr) 
-				   (match pr
-				     [(,input-language (quote (program ,body . ,metadata )))
-				      ;; The last entry in metadata is a type!
-				      ;; Should associate a tag with it so that it can be treated the same.
-				      (let* ([realmeta (rdc metadata)]
-					     [initial-tenv (grab-init-tenv realmeta)]
-					     [uniondefs (or (assq 'union-types realmeta) '(union-types))])
-					;; Ensure that the output has a (union-types) form.
-					`(ol '(program ,(Expr body initial-tenv) 
-						;; This forces that there be a union-types entry in the output:
-						;,uniondefs ,@(remq uniondefs metadata)
-						. ,metadata
-						)))]
-				     [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
-				   ))))
+		(set! expr  (or expr  default-expr))
+		(set! fuser (or fuser default-fuser))
+		(set! prog  (or prog  default-prog))
 
 		;; If the user provides a function for variable bindings, we
 		;; paste that together with the "Expr" function.
@@ -223,7 +230,11 @@
 					inspec 
 
 					outspec 
-					(lambda (x) (p x process-expr)))])
+					(lambda (x) 					  
+					  (if (eq? x 'get-expr-driver)
+					      ;; If we get this message we just return our driver function:
+					      e ;; The unadorned driver function.					      
+					      (p x process-expr))))])
 				 name
 				 )))
 
@@ -260,12 +271,102 @@
 			    ))))
        ])))
 
-;; [2007.04.19] UNFINISHED:
-#;
+;; This has not been sufficiently tested yet:
 (define (fuse-passes/disjoint P1 P2)
-  (let-match ([#(,E1) (P1 'get-expr-driver)]
-	      [#(,E2) (P2 'get-expr-driver)])
-    (core-generic-traverse 
+  (define A (P1 'get-expr-driver))
+  (define B (P2 'get-expr-driver))
+  (trace-define fused
+      (lambda (x fallthru)
+	(A x (lambda (y) ;; y may be either straight fallthru or a subexpr
+	  ;; Either way it goes into B:
+	  (B y (lambda (z)
+		 (if (eq? y z)
+		     ;; If it fell through B, we know A was done with it and it's ready for fallthru:
+		     (fallthru z)
+		     ;; This indicates a match-recursion has occured.
+		     ;; z is a subexpression of y.
+		     ;; We need to start back at the top:
+		     (fused z fallthru))))))))
+  (lambda (p) (apply-to-program-body (core-generic-traverse fused) p)))
+
+;; This has not been sufficiently tested yet:
+;;
+;; Whenever an expression *IS* handled by A, we must reprocess the
+;; entire resulting subtree by B.
+(define (fuse-passes P1 P2)
+  (define A (P1 'get-expr-driver))
+  (define B (P2 'get-expr-driver))
+  (define A-pass (core-generic-traverse A))
+  (define B-pass (core-generic-traverse B))
+  (define fused
+    (lambda (x fallthru)
+      (let* ([redo-this-tree? #t]
+	     [result
+	     (A x (lambda (y) ;; y may be either straight fallthru or a subexpr
+		    (if (eq? y x)
+			;; Only if x fell straight through may we pass on to B.
+			(begin 
+			  (set! redo-this-tree? #f)
+			  (B y (lambda (z)
+			       (if (eq? y z)
+				   (fallthru z)
+				   ;; This indicates a match-recursion has occured.
+				   ;; We need to start back at the top.
+				   (fused z fallthru)))))
+			;; Otherwise we mark this entire subtree as needing to be 
+			;; reprocessed by B and we continue normally applying only A.
+			(begin
+			  ;(set! redo-this-tree? #t)
+			  (A-pass y))
+			)))])
+	(printf "   RESULT: ~s\n" result)
+	(if redo-this-tree?
+	    (B-pass result)
+	    result))))
+  (core-generic-traverse fused))
+
+
+
+
+;(eval '(define-pass P1 [Expr (lambda (x f) (if (equal? x ''3) ''333 (f x)))]))
+;(eval '(define-pass P2 [Expr (lambda (x f) (if (equal? x ''4) ''444 (f x)))]))
+;(eval '(define F (fuse-passes/disjoint P1 P2)))
+
+#;
+(begin (define-pass P1 [Expr (lambda (x f) (match x ['3 ''333] [,_ (f x)]))])
+       (define-pass P2 [Expr (lambda (x f) (match x ['4 ''444] [,_ (f x)]))])
+       (define-pass P3 [Expr (lambda (x f) (match x [',n (guard (number? n)) `',(add1 n)] [,_ (f x)]))])
+       (define F (fuse-passes/disjoint P1 P3))
+       (define G (fuse-passes P1 P3))
+       (print-graph #f)
+       )
+
+
+(define-testing these-tests
+  '(
+    ["Disjoint pass fusion."
+     (let ()
+       (define-pass P1 [Expr (lambda (x f) (match x ['3 ''333] [,_ (f x)]))])
+       (define-pass P3 [Expr (lambda (x f) (match x [',n (guard (number? n)) `',(add1 n)] [,_ (f x)]))])
+       (define F (fuse-passes/disjoint P1 P3))
+       (F '(lang '(program (+_ '3 (*_ '1 (-_ '4 '3))) 'ty))))
+     (lang '(program (+_ '333 (*_ '2 (-_ '5 '333))) 'ty))]
+    ["Verify that the non-disjoint fusion actually applies the second pass to the output of the first."
+     (let ()
+       (define-pass P1 [Expr (lambda (x f) (match x ['3 ''333] [,_ (f x)]))])
+       (define-pass P3 [Expr (lambda (x f) (match x [',n (guard (number? n)) `',(add1 n)] [,_ (f x)]))])
+       (define G (fuse-passes P1 P3))
+       ;(G '(lang '(program (+_ '3 (*_ '1 (-_ '4 '3))) 'ty)))
+       (G '(+_ '3 (*_ '1 (-_ '4 '3)))))
+     (+_ '334 (*_ '2 (-_ '5 '334)))]))
+
+
+(define-testing test-pass-mechanism 
+  (default-unit-tester "Machinery for building compiler passes."
+    these-tests))
+
+
+#;
      (lambda (x fallthru)
        (let fploop ((x x))
 	 (E1 x (lambda (y) 
@@ -278,22 +379,10 @@
 		 ;; But E1 hasn't had a shot at z yet.
 		 ;; Start again at the top:
 		 (fploop z)))))))
-       ))
-    ))
+       )
 
 
-#;
-(define (fuse-segments A B )
-  (define fused
-    (lambda (x fallthru)
-      (A x (lambda (y)
-       (B y (lambda (z)
-	 (if (eq? y z)
-	     (fallthru z)
-	     ;; This indicates a match-recursion has occured.
-	     ;; We need to start back at the top.
-	     (fused z fallthru))))))))
-  fused)
+ 
 
 
 

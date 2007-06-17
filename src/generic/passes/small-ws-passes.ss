@@ -30,6 +30,19 @@
 ;; [2007.05.01] This pulls complex constants up to the top of the program.
 ;(define-pass lift-complex-constants)
 
+;; This is superficial.
+;; This cuts out all the meta data but the union-types, which is all we need towards the end.
+
+#;
+(define (prune-meta-data input-gram)
+  (let ()
+    (define gram 
+      (cons '(Program ((quote program) Query ('union-types ((Var Type ...) [Var Type ...] ...) ...) Type))	    
+	    (remq (assq 'Program input-gram))))
+    (define-pass prune-meta-data	
+      [OutputGrammar gram])
+    prune-meta-data))
+
 ;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec
     [Expr (lambda (x fallthru)
@@ -98,7 +111,7 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-;; This little pass 
+;; This little pass handles only iterate cases.
 (define-pass standardize-iterate
     (define process-expr
       (lambda (x fallthru)
@@ -112,14 +125,20 @@
 	  ;; throw away this ascription:
 	  [(iterate (assert-type ,t ,lam) ,src)
 	   (process-expr `(iterate ,lam ,src) fallthru)]
-
+	  
+	  ;; OPTIMIZATION:
+	  ;; This doesn't recursively process the inside of iterates.
+	  ;; That's because we can't find iterates within iterates.
+	  ;; This does preclude using fuse-passes on this pass.
 	  [(iterate (lambda (,x ,y) (,tyx ,tyy) ,bod) ,[strm])
 	   `(iterate (let () (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
 	  [(iterate ,_ ...)
 	   (error 'standardize-iterate "shouldn't have missed this iterate: ~s" `(iterate ,_ ...))]
 	  [,oth (fallthru oth)])
 	))
-    [Expr process-expr])
+    [Expr process-expr]
+    ;[Props 'incomplete-ast-coverage]
+    )
 
 (define-pass kill-polymorphic-types
     (define (Type t)
@@ -170,9 +189,6 @@
 	      [,oth (fallthru oth)])
 	    )])
 
-
-
-
 ;; [2007.03.14]
 ;; This desugars all types within the program by applying all type aliases.
 (define-pass resolve-type-aliases
@@ -198,6 +214,9 @@
     [OutputGrammar initial_regiment_grammar])
 
 
+;; Pass properties: complete-ast-coverage
+;; 
+;; Handles: set!, for, effectful prims
 (define-pass ws-normalize-context
     [Expr (lambda (x fallthru)
 	    (match x  

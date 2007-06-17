@@ -19,9 +19,11 @@
   (let ([streamprims (map car wavescript-stream-primitives)])
     
     (append `(;; [2007.04.01] Adding union-types to this:
+	      
 	      ;; The LHS should only have typevars... but we don't have a special production for that:
-	      (Program ((quote program) Query ('union-types ((Var Type ...) [Var Type ...] ...) ...) Type))
-
+	      ;(Program ((quote program) Query ('union-types ((Var Type ...) [Var Type ...] ...) ...) Type))
+	      (Program ((quote program) Query MetaData ... Type))
+	      
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))
 	      (Query ('iterate ('let ((LHS Type Block) ...)
@@ -96,6 +98,8 @@
 ;; This doesn't allow let's in RHS position.  It lifts them out.  This
 ;; expands the scope of the lifted bindings, and thus depends on
 ;; unique variable names. 
+;;
+;; Handles: let, begin, iterate
 (define-pass ws-lift-let
     (define (make-begin . expr*)
       (match (match `(begin ,@expr*)
@@ -157,9 +161,12 @@
 	  [,oth (fallthru oth)])))
     ;; Assumes lets only bind one variable (except for iterates)
     [Expr process-expr]
+
+#;
     [Program (lambda (p E)
 	       (match p 
 		 [(,lang '(program ,[E -> bod] ,meta* ... ,ty))
+		  (ASSERT (< (length meta*) 2))
 		  ;; Ensure that there's a 'union-types' entry in the output:
 		  (let ([uniondefs (or (assq 'union-types meta*) '(union-types))])
 		    ;`(,lang '(program ,bod ,uniondefs ,(remq uniondefs meta*) ... ,ty))

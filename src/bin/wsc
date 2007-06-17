@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # TODO: ACCEPTING -o ARGUMENT BUT IT'S NOT USED CURRENTLY.
 

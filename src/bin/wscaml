@@ -22,7 +22,7 @@ fi
 
 
 if [ ! -f "$1" ];
-then echo Usage: "wsc <file> <options ...>";
+then echo Usage: "wscaml <file> <options ...>";
 #     echo   (Options: -b  Build cpp file.)
      echo 
      echo   File \"$1\" does not exist.

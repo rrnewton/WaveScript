@@ -317,9 +317,9 @@
 
   ;; Main body of core-generic-traverse:
   (case-lambda 
-    [(d f e) (build-traverser d f e)]
-    [(d f) (lambda (e) (build-traverser d f e))]
-    [(d) (lambda (e) (build-traverser d (lambda (ls k) (apply k ls)) e))]
+    [(d f e)             (build-traverser d f e)]
+    [(d f)   (lambda (e) (build-traverser d f e))]
+    [(d)     (lambda (e) (build-traverser d (lambda (ls k) (apply k ls)) e))]
     )))
 
 ;; This version carries around the type environment and always presents it to the user driver.

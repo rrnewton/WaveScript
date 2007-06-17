@@ -328,6 +328,30 @@
 	   (set! v (ws-pass-optional-stop (pass v)))))
      ]))
 
+;; Playing around with fusing passes.
+;; This is *just* for optimization.
+(define-syntax ws-run-fused/disjoint
+  (syntax-rules ()
+    [(_ v pass* ...)
+     ;; [2007.06.13] For now having problems with this, so just disabling it.
+     (begin (ws-run-pass v pass*) ...)
+     
+#;
+     ;; DEBUGGING.
+     ;; Asserting that the result of the fused passes is *exactly* the
+     ;; same as the passes individually.
+     (let ([orig v])
+       (printf "  EXPERIMENTAL: Running passes fused.")
+       (time (begin (ws-run-pass v pass*) ...))
+       ;; Now the fused version:
+       (printf "Now running fused version: ~s\n" '(pass* ...))
+       (let ([fusedver (time ((fuse-passes/disjoint pass* ...) orig))])
+	 ;(ASSERT (equal? v fusedver))
+	 (unless (equal? (reunique-names v) (reunique-names fusedver))
+	   (diff (reunique-names v) (reunique-names fusedver))
+	   ;(error 'ws-run-fused/disjoint "didn't match"))
+	   (inspect (reunique-names fusedver))
+	 )))]))
 
 ;; This just encapsulates the first few steps of the compiler.
 ;; Everything up to and including type checking the program.
@@ -450,25 +474,24 @@
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
 
-  (ws-run-pass p remove-letrec)
-  (ws-run-pass p standardize-iterate)
+  (ws-run-pass p remove-letrec) 
+  (ws-run-pass p standardize-iterate) ;; no fuse
 
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 
 ;  (profile-clear)
-  (ws-run-pass p ws-remove-complex-opera*)  
+  (ws-run-pass p ws-remove-complex-opera*)
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
   ;; couple more passses before type checking.
   (IFDEBUG (do-late-typecheck) (void))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
-
-  (ws-run-pass p ws-normalize-context)
-  (ws-run-pass p ws-lift-let)
-
+ 
+  (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
+  
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
   ;(do-typecheck #f #f)
@@ -705,20 +728,33 @@
 ;; WaveScript OCAML Compiler Entrypoint:
 
 (IFCHEZ
- (define (wscaml x . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
-		[regiment-primitives ;; Remove those regiment-only primitives.
-		 (difference (regiment-primitives) regiment-distributed-primitives)])
-   (define outfile "./query.ml")
-   (define prog (begin (ASSERT list? x) x))
+ (begin
+   (define (wscaml x . flags)                                 ;; Entrypoint.  
+     (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
+		    [regiment-primitives ;; Remove those regiment-only primitives.
+		     (difference (regiment-primitives) regiment-distributed-primitives)])
+       (define outfile "./query.ml")
+       (define prog (begin (ASSERT list? x) x))
 
-   (ASSERT (andmap symbol? flags))
-   (set! prog (run-ws-compiler prog))
-   (set! prog (explicit-stream-wiring prog))
-         
-   (string->file (text->string (emit-caml-wsquery prog)) outfile)
-   (printf "\nGenerated OCaml output to ~s.\n" outfile)
-   ))
+       (ASSERT (andmap symbol? flags))
+       (set! prog (run-ws-compiler prog))
+       (set! prog (explicit-stream-wiring prog))
+       (string->file (text->string (emit-caml-wsquery prog)) outfile)
+       (printf "\nGenerated OCaml output to ~s.\n" outfile)
+       ))
+   (define (wsmlton x . flags)                                 ;; Entrypoint.  
+     (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
+		    [regiment-primitives ;; Remove those regiment-only primitives.
+		     (difference (regiment-primitives) regiment-distributed-primitives)])
+       (define outfile "./query.sml")
+       (define prog (begin (ASSERT list? x) x))
+
+       (ASSERT (andmap symbol? flags))
+       (set! prog (run-ws-compiler prog))
+       (set! prog (explicit-stream-wiring prog))
+       (string->file (text->string (emit-mlton-wsquery prog)) outfile)
+       (printf "\nGenerated MLton output to ~s.\n" outfile)
+       )))
  (void))
 
 
@@ -773,6 +809,7 @@
   (printf "  log      (l)  simulator trace manipulation mode~n")
   (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
   (printf "  wscomp   (wscomp) WaveScript compiler mode~n")
+  (printf "  wscaml   (wsml)   WaveScript compiler SML backend~n")
   (printf "  wscaml   (wscaml) WaveScript compiler Caml backend~n")
   (printf "~n")
   (printf "General Options:  ~n")
@@ -1212,6 +1249,25 @@
 	     (apply wscaml exp opts)
 	   )
 	    (error 'wavescript-compiler "OCaml output not currently available when running through PLT Scheme."))]
+
+	  ;; Copy/pasted from above:
+	  [(wsml)
+	   (IFCHEZ
+	    (let ()
+	     (define exp (match filenames
+			  ;; If there's no file given read from stdout
+			  [() (console-input-port)]
+			  [(,fn ,rest ...) 
+			   (if (equal? "ws" (extract-file-extension fn))
+			       (or (read-wavescript-source-file fn)
+				   (error 'wsint "couldn't parse file: ~s" fn))
+			       ;; Otherwise let's assume 
+			       (open-input-file fn))]
+			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
+			  ))
+	     (apply wsmlton exp opts)
+	   )
+	    (error 'wavescript-compiler "SML output not currently available when running through PLT Scheme."))]
 
 	  
 	  )))))))

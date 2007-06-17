@@ -1,60 +1,60 @@
 
-;;;; .title WaveScript EmitCaml
-;;;; .author Ryan Newton [2007.03.19]
+;;;; .title WaveScript EmitMLton (SML)
+;;;; .author Ryan Newton [2007.06.13]
 
-;;;; This uses the generic C-generation libary (c_generator.ss) and
-;;;; provides procedures for producing a OCaML-file following WaveScript
-;;;; conventions.
-
-;; [2007.03.20] The first query I ran (one iterate over timer, emits
-;; constant) does 23 million samples a second.  That's not that
-;; encouraging.
-;;
-;;   Well, then again... on "Passchain" (with 10 ops), my scheme
-;; emulator gets ~200K a second.  In the paper we report Coral8 at
-;; ~200K/sec, XStream at ~100K/sec.  "wscaml" currently gets 14
-;; million/sec, or 140 times more than XStream!?
-
-;; TODO: I should output explicit type annotations for sanity checking.
-
-(module emit-caml mzscheme 
+(module emit-mlton mzscheme 
   (require  "../../../plt/common.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-caml-wsquery test-emit-caml)
+  (provide emit-mlton-wsquery )
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
 ;; MUTABLE
 (define union-edges 'union-edges-uninit)
 
-;;CHEZ ONLY
-;(define type->width (let () (import wavescript_sim_library_push) type->width))
-;(define types->width (let () (import wavescript_sim_library_push) types->width))
-  
 ;======================================================================
-;;                    <WaveScript CAML generation>
 ;======================================================================
 
-;;; First some helpers to produce syntax for certain caml constructs:
-(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
-(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+;;; These are the functions that differ from their caml countparts.
+
+(define (coerce x) (if (symbol? x) (symbol->string x) x))
 (define (make-fun formals body) 
-  (list "(fun " (if (null? formals) "()"
-		    (insert-between " " (map symbol->string formals)))
-	" -> " body ")"))
-(define (make-let binds body)
-  (list "(let "
-	(insert-between "\n and "
+  (list "(fn " (if (null? formals) "()"
+		   (insert-between " " (map coerce formals)))
+	" => \n" body ")"))
+(define (make-let binds body . extra)
+  (list "(let val " extra
+	(insert-between "\n val "
 	   (map (match-lambda ([,lhs ,rhs])
-		  (list (symbol->string lhs) " = " rhs))
+		  (list (coerce lhs) " = " rhs))
 	     binds))
 	" in \n"
 	(indent body "  ")
-	")"))
+	"\n end)"))
+
+(define (make-letrec binds body) (make-let binds body "rec "))
+
+(define (with-fun-binding name formals funbody body)
+  (list "(let fun " name
+	(if (null? formals) "()"
+	    (insert-between " " (map coerce formals)))
+	" = \n" funbody
+	" in \n"
+	(indent body "  ")
+	"\n end)"))
+
+(define (make-begin . exprs) (list "(" (insert-between ";\n" exprs) ")"))
+
+
+(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
+(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+
+
+
 
 ; make-conditional
-(define (ln . args) (list args "\n"))
-(define (lnfst . args) (list "\n" args))
+(define (ln . args)     (list args "\n"))
+(define (lnfst . args)  (list "\n" args))
 (define (lnboth . args) (list "\n" args "\n"))
 
 ;; If the type needs a specialized hashfun, returns its name,
@@ -65,12 +65,16 @@
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
+    [Float     "real"]
+    [Double    "real"]
+    
+    
+
     [Bool    "bool"]
     [Int     "int"]
     [Int16   "int"]
-    [Float    "float"]
-    [Double    "float"]
-    [Complex  "Complex.t"]
+
+;    [Complex  "Complex.t"]
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
@@ -85,30 +89,76 @@
 	   `("(",(Type t)", Bigarray.",flatty"_elt) sigseg_flat")
 	   `(,(Type t) " sigseg")))]
 
-    ;[(Stream ,[t]) `("WSBox*")]
-    ;[(Array ,[t]) `(,t "[]")]
-    ;[Timebase  "int"]
-
     [(Array ,[t])  `("(",t") array")]
     [(List ,[t]) `("(",t") list")]
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-    [,other (error 'emit-caml:Type "Not handled yet.. ~s" other)]))
+    [,other (error 'emit-mlton:Type "Not handled yet.. ~s" other)]))
+
+
+(define flush "TextIO.flushOut TextIO.stdOut")
+
+(define (build-BASE type)  
+  (if (equal? type #())      
+      ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
+      `(" baseSink = ",(make-fun '(x) flush) "\n")
+      `(" baseSink = ",(make-fun '(x) `("(print_endline (",(build-show type)" x); ",flush")"))
+	"\n")
+  ))
+
+(define (build-show t)
+  (match t
+    ;; ERROR: FIXME:
+    [(quote ,_) "(fun _ -> \"POLYMORPHIC_OBJECT\")"]
+
+    [String (make-fun '(x) "x")]
+    [Int   "Int.toString"]
+    [Int16 "Int.toString"] ;; These are just represented as ints.
+    [Float "string_of_float"]
+    [Double "string_of_float"]
+    [Bool "string_of_bool"]
+    [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
+
+    [(List ,[t]) (list "(fun ls -> \"[\" ^ String.concat \", \" (List.map "t" ls) ^ \"]\")")]
+    [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
+
+    ;; Just print range:
+    [(Sigseg ,t) (list 
+     "(fun ss -> \"[\"^ string_of_int ("  (DispatchOnArrayType 'start t)
+     " ss) ^\", \"^ string_of_int ("      (DispatchOnArrayType 'end t)
+     " ss + 1) ^ \")\")")]
+
+    [#(,[t*] ...)
+     (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
+       (list 
+	"(fun "(apply make-tuple flds)" ->\n"
+	(indent 
+	 (list "\"(\" ^"
+	       (insert-between " \", \" ^"
+			       (map (lambda (printer fld)
+				      `("((",printer") ",fld") ^ \n")) 
+				 t* flds)
+			       )
+	       " \")\"")
+	 "  ")")"))]
+    ))
 
 
 ;======================================================================
+
+;; CHANGED HEAVILY FOR MLTON:
 
 ;; This is the only entry point to the file.  A complete query can
 ;; be transformed into a complete query file.
 ;;
 ;; .param prog  The wsquery to process.
-(define emit-caml-wsquery
+(define emit-mlton-wsquery
   (lambda (prog)
     ;; Lame, requires REGIMENTD:
-    (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
-    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
-    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg_seglist.ml")))
-    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/prims.ml")))
-    (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
+    (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/scheduler.sml")))
+;    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
+    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg_seglist.sml")))
+;    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
+;    (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
@@ -118,26 +168,28 @@
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
-       (let ([result (list header1 header2 header3 header4 "\n" 
-			   ;; Block of constants first:
-			   (map (lambda (cb) (list "let " cb " ;; \n")) cb*)
+       (let ([result (list header1 ; header2 header3 header4 "\n" 
 
-			   "let rec ignored = () \n" ;; Start off the let block.
+			   ;; Block of constants first:
+			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
+
+			   " val "(build-BASE basetype)
+
 			   ;; These return incomplete bindings that are stitched with "and":
-			   (map (lambda (x) (list "\nand\n" x)) (append  src*  iter* union*))
-			   " and "(build-BASE basetype)
-			   ";; \n\n"
+			   (map (lambda (x) (list "\nval " x ";\n")) 
+			     ;; We reverse it because we wire FORWARD
+			     (reverse (append  src*  iter* union*)))
+
+			   "; \n\n"
 			   init1* "\n"
-			   "try runScheduler()\n"
-			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
-			   "\nPrintf.printf \"Query completed.\\n\";;\n"
+			   "runScheduler();\n"
+;			   "try runScheduler()\n"
+;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
+;			   "\nPrintf.printf \"Query completed.\\n\";;\n"
 			   )])
-	 #;
-	 (string->file (text->string result) 
-		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
 	 result)]
       [,other ;; Otherwise it's an invalid program.
-       (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))
+       (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)])))
 
 
 ; ======================================================================
@@ -152,14 +204,22 @@
      (let* ([emitter (Emit down*)])
        `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
 	 " ",(Var name)" = \n"
-	 "  let ",(Var vq)" = () in\n"
-	 ,@(map (lambda (lhs ty rhs)
-		  `("  let ",(Var lhs)" = ",(Expr rhs emitter)" in\n"))
-	     lhs* ty* rhs*)
-	 "  fun (",(Var x)" : ",(Type ty1)") -> \n"
-	 ,(indent (Expr bod emitter) "    ")
-	 "\n")       
-       )]))
+	 ;; First we bind the iterator state.
+	 ,(make-let `([,(Var vq) "()"]
+		      ,@(map (lambda (lhs rhs) 
+			       (list (Var lhs) (Expr rhs emitter)))
+			  lhs* rhs*))
+		    ;; Then we bind the actual function:
+
+		    ;; TODO: We should really just pull the iterator state to the top of the program.
+		    ;; Then we don't need to have this internal letrec here:
+		    
+		    (list (with-fun-binding 
+			   (Var name)
+			   (list "("(Var x)" : "(Type ty1)")") (indent (Expr bod emitter) "    ")
+			   (Var name))
+			  "\n"
+			  ))))]))
 
 ;; The incoming values already have indices on them, this just needs
 ;; to pass them through.
@@ -175,19 +235,22 @@
   ;(ASSERT (not (null? down*)))
   (lambda (expr)
     ;; Just call each of the sites with the argument.
-    `("(let emitted = ",expr" in\n"
-      ,@(map (lambda (down) 
-	       (cond 
-		[(eq? down 'BASE) `("baseSink emitted;\n")]
-		;; If we're emitting *to* a unionN, we include the index tag.
-		[(pair? down)
-		 (ASSERT (fixnum? (car down)))
-		 (ASSERT (= (length down) 2))
-		 (list (Var (cadr down))
-		       "("(Const (car down))", emitted );\n")]
-		[else `(,(Var down)" emitted;\n")]))
+    (make-let `([emitted ,expr])
+      (apply make-begin 
+       (append 
+	(map (lambda (down) 
+	      (cond 
+	       [(eq? down 'BASE) `("baseSink emitted")]
+	       ;; If we're emitting *to* a unionN, we include the index tag.
+	       [(pair? down)
+		(ASSERT (fixnum? (car down)))
+		(ASSERT (= (length down) 2))
+		(list (Var (cadr down))
+		      "("(Const (car down))", emitted )")]
+	       [else `(,(Var down)" emitted")]))
 	  down*)
-      "  ())")))
+	'("()")))
+      )))
 
         
 (define (Var var)
@@ -196,7 +259,7 @@
   ;; We prefix with an underscore to avoid names beginning in capital letters.
   (if (regiment-primitive? var)
       (symbol->string var)
-      (string-append "_" (symbol->string var))))
+      (string-append "var_" (symbol->string var))))
 
 ;; Really the RHS could be any expression, it just does not have a stream type.
 (define (ConstBind b)
@@ -270,7 +333,7 @@
 	    ;; Otherwise this is all we need:
 	    constArr))]
 
-     [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
+     [else (error 'emit-mlton:Const "not an Mlton-compatible literal (currently): ~s" datum)])))
 
 
 #|
@@ -300,13 +363,18 @@
 	       (number->string (rate->timestep rate))
 	       ])
 	  (values 	
-	   `(" ",v" = let t=ref 0 in \n"
-	     "  fun () -> \n"
-	     "    t:=!t+",r";\n"
-	     ,(indent ((Emit downstrm) "()") "    ")";\n"
-	     "    SE (!t,",v")\n" )
+	   `(" ",v" = "
+	     ,(make-let '((t "ref 0"))
+	        (with-fun-binding v ()
+		   (indent  
+		    (make-begin 
+		     `("t := !t+",r)
+		     ((Emit downstrm) "()")
+		     `("SE (!t,",v")\n"))
+		    "    ")
+		   v)))
 	   `("(* Seed the schedule with timer datasource: *)\n"
-	     "schedule := SE(0,",v") :: !schedule;;\n"))
+	     "schedule := SE(0,",v") :: !schedule;\n"))
 	  )]
 
        [(audioFile ,fn ,win ,rate)
@@ -318,7 +386,7 @@
 	(cond
 	 [(equal? mode "text") 
 	  (if (not (zero? repeats))
-	      (error 'emit-caml "Caml text mode reader doesn't support replaying the datafile yet."))
+	      (error 'emit-mlton "Caml text mode reader doesn't support replaying the datafile yet."))
 	  (values
 	   (list 
 	    ;; Builds a function from unit to an initial scheduler entry "SE" 
@@ -403,17 +471,12 @@
        
        )]))
 
-(define (build-BASE type)  
-  (if (equal? type #())      
-      ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
-      `(" baseSink x = flush stdout \n")
-      `(" baseSink x = print_endline (",(build-show type)" x); flush stdout \n")
-  ))
+
 
 
 (define (type->reader t) 
   (match t
-    [Int16  "(fun str ind -> read_int16 str ind)"]
+    [Int16  (make-fun '(str ind) (make-app "read_int16" '("str" "ind")))]
     ;[Int  "(fun str ind -> read_int32 str ind)"]
     ))
 
@@ -436,42 +499,6 @@
      "8888888"
      ]))
 
-(define (build-show t)
-  (match t
-    ;; ERROR: FIXME:
-    [(quote ,_) "(fun _ -> \"POLYMORPHIC_OBJECT\")"]
-
-    [String "(fun x -> x)"]
-    [Int   "string_of_int"]
-    [Int16 "string_of_int"] ;; These are just represented as ints.
-    [Float "string_of_float"]
-    [Double "string_of_float"]
-    [Bool "string_of_bool"]
-    [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
-
-    [(List ,[t]) (list "(fun ls -> \"[\" ^ String.concat \", \" (List.map "t" ls) ^ \"]\")")]
-    [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
-
-    ;; Just print range:
-    [(Sigseg ,t) (list 
-     "(fun ss -> \"[\"^ string_of_int ("  (DispatchOnArrayType 'start t)
-     " ss) ^\", \"^ string_of_int ("      (DispatchOnArrayType 'end t)
-     " ss + 1) ^ \")\")")]
-
-    [#(,[t*] ...)
-     (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
-       (list 
-	"(fun "(apply make-tuple flds)" ->\n"
-	(indent 
-	 (list "\"(\" ^"
-	       (insert-between " \", \" ^"
-			       (map (lambda (printer fld)
-				      `("((",printer") ",fld") ^ \n")) 
-				 t* flds)
-			       )
-	       " \")\"")
-	 "  ")")"))]
-    ))
 
 ;; These are the names of the Bigarray types.
 (define (BigarrayType? t)
@@ -489,7 +516,7 @@
 
 (define (ConvertArrType t) 
   (or (BigarrayType? t)
-      (error 'emit-caml:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
+      (error 'emit-mlton:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
 
 ;; It is error prone to keep writing this:
 (define (sigseg-prim? p)
@@ -583,11 +610,11 @@
 	      (apply make-tuple
 		     (append (make-list i "_") '("x")			
 			     (make-list (- len i 1) "_")))])
-	 `("(let ",pat" = ",v" in x)\n"))]
+	 (make-let `((,pat ,v)) "x"))]
       
       [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
-       `("(let ",v" = ",rhs" in\n ",bod")")]
-      [(begin ,[e*] ...)  `("begin\n" ,@(indent (insert-between ";\n" e*) "  ") "\nend")]
+       (make-let `((,v ,rhs)) bod)]
+      [(begin ,[e*] ...)  (indent (apply make-begin e*) "  ")]
       [(emit ,vq ,[x]) (emitter x)]
       [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
       [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
@@ -607,7 +634,7 @@
       [(assert-type ,t ,[x]) 
        ;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
        x]
-      [,unmatched (error 'emit-caml:Expr "unhandled form ~s" unmatched)]
+      [,unmatched (error 'emit-mlton:Expr "unhandled form ~s" unmatched)]
 
 )))
 
@@ -615,7 +642,7 @@
 ;;================================================================================
 
 ;; This just converts the name of the primitive, for those primitives
-;; that map directly onto OCaml functions:
+;; that map directly onto Mlton functions:
 (define (PrimName sym)
   (define sametable ;; Prims with the same name:
     '(
@@ -632,7 +659,7 @@
       [-_ "(-)"] 
       [*_ "( * )"]
       [/_ "(/)"]
-      [^_ powInt] ;; Defined in prims.ml
+      [^_ powInt] ;; Defined in prims.sml
 
       [+. "(+.)"]
       [-. "(-.)"] 
@@ -745,7 +772,7 @@
 	       (map myExpr (cons first rest)))]
     ;; Safety net:
     [(,prim ,_ ...) (guard (sigseg-prim? prim))
-     (error 'emit-caml:Prim "missed this sigseg prim: ~s" prim)]
+     (error 'emit-mlton:Prim "missed this sigseg prim: ~s" prim)]
 
     ;; Now do array prims in much the same way:
     [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
@@ -758,14 +785,14 @@
     ;; Safety net:
     [(,prim ,_ ...)     
      (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
-     (error 'emit-caml:Prim "missed this array prim: ~s" prim)]
+     (error 'emit-mlton:Prim "missed this array prim: ~s" prim)]
 
 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
      (list "("(cond
 	       [(PrimName prim) => (lambda (x) x)]
-	       [else (error 'emit-caml:Prim "currently unhandled: ~s" prim)])
+	       [else (error 'emit-mlton:Prim "currently unhandled: ~s" prim)])
 	   " "
 	   (insert-between " " rands) ")\n")]
 ))
@@ -788,12 +815,6 @@
 
 
 
-
-;======================================================================
-;;; Bits of boilerplate.
-
-;(define boilerplate_premain )
-;(define (boilerplate_postmain return_name return_type) )
 
 ;;================================================================================
 
@@ -857,8 +878,8 @@
 		     wavescript-primitives))))
       ))
 
-(define-testing test-this (default-unit-tester "wavescript_emit-caml.ss: generating WaveScript OCaML code." these-tests))
-(define test-emit-caml test-this)
+(define-testing test-this (default-unit-tester "wavescript_emit-mlton.ss: generating WaveScript Mlton code." these-tests))
+(define test-emit-mlton test-this)
 
 
 ) ;; End Module

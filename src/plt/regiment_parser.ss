@@ -338,7 +338,7 @@
     (decls ;; Top level variable binding
            ;; It's unfortunate that this duplicates much within the "stmt" production.
 
-           [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
+           [(typedef VAR = type SEMI maybedecls)         `((typedef ,$2 () ,$4) ,@$6)]
            [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
 	   ;; This takes multiple type arguments within parentheses!!
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]

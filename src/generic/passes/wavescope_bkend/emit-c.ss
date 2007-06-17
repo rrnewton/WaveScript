@@ -206,7 +206,9 @@
 	[(dynamic) #f]
 	[,else (error 'wsquery->text "bad additional arguments: ~s" mode)]))
     (match prog
-      [(,lang (quote (program ,expr (struct-defs ,struct-defs ...) (union-types ,uniondefs ...) ,typ)))
+      [(,lang (quote (program ,expr (struct-defs ,struct-defs ...) ,meta* ... ,typ)))
+       
+       (define uniondefs (cdr (ASSERT (assq 'union-types meta*))))
        
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.

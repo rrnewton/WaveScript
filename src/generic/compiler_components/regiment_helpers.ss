@@ -178,55 +178,60 @@
 (define (build-compiler-pass name input-spec output-spec transform)  
   (match (list input-spec output-spec)
     [((input ,instuff ...) (output ,outstuff ...))
-     (let ([closure 
+     (let ([mainclosure 
 	    (lambda (prog)
-	      ;; Only in DEBUGMODE do we add extra checks.
-	      (DEBUGMODE 
-	       (for-each (lambda (inspec)
-			   (match inspec
-			     ;; The optional initial production may or may not be supplied:
-			     [(grammar ,g ,initialprod ...)
-			      (unless (apply check-grammar name prog g initialprod)
-				(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]
-			     [(assert ,f)
-			      (unless (f prog)
-				(set-top-level-value! 'failed-pass-input prog)
-				(error 'build-compiler-pass 
-				       "pass ~s failed input-invariant ~s, failed input stored in 'failed-pass-input" name f))]
-			     [,other (error 'build-compiler-pass "bad input spec: ~s" other)]
-			     ))
-		 instuff))	     
-	      ;; Now execute the pass itself:
-	      (let ((result (transform prog)))
-		(DEBUGMODE
-		 (for-each (lambda (outspec)
-			     (match outspec
-			       ;; Check output grammar:	   
-			       [(grammar ,gram ,optional_initialprod ...)
-				(if (regiment-verbose) 
-				    (printf "~a: Got result, checking output grammar...\n" name))
-				(or (apply check-grammar `(,name ,result ,gram ,@optional_initialprod))
-				    ;(inspect (apply list 'FOOFOO name result gram optional_initialprod))
-				    (begin (pretty-print result) #f)
-				    (error 'build-compiler-pass 
-					   "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
-					   name prog))
-				(if (regiment-verbose)
-				    (printf "~a: Output grammar passed.\n" name))]
-			       [(assert ,f)
-				(unless (f prog)
-				  (set-top-level-value! 'failed-pass-output prog)
-				  (error 'build-compiler-pass 
-					 "pass ~s failed output-invariant ~s pass output stored in 'failed-pass-output" name f))]
-			       [,other (error 'build-compiler-pass "bad output spec: ~s" other)]
-			       ))
-		   outstuff))
-		;; Return final result:
-		result))])
+	      (if (eq? prog 'get-expr-driver)
+		  ;; This message requests that we return the "process-expr" function.  We pass it on.
+		  (transform 'get-expr-driver)
+		  (begin
+		    ;; Only in DEBUGMODE do we add extra checks.
+		    (DEBUGMODE 
+		     (for-each (lambda (inspec)
+				 (match inspec
+				   ;; The optional initial production may or may not be supplied:
+				   [(grammar ,g ,initialprod ...)
+				    (unless (apply check-grammar name prog g initialprod)
+				      (error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]
+				   [(assert ,f)
+				    (unless (f prog)
+				      (set-top-level-value! 'failed-pass-input prog)
+				      (error 'build-compiler-pass 
+					     "pass ~s failed input-invariant ~s, failed input stored in 'failed-pass-input" name f))]
+				   [,other (error 'build-compiler-pass "bad input spec: ~s" other)]
+				   ))
+		       instuff))	     
+		    ;; Now execute the pass itself:
+		    (let ((result (transform prog)))
+		      (DEBUGMODE
+		       (for-each (lambda (outspec)
+				   (match outspec
+				     ;; Check output grammar:	   
+				     [(grammar ,gram ,optional_initialprod ...)
+				      (if (regiment-verbose) 
+					  (printf "~a: Got result, checking output grammar...\n" name))
+				      (or (apply check-grammar `(,name ,result ,gram ,@optional_initialprod))
+					;(inspect (apply list 'FOOFOO name result gram optional_initialprod))
+					  (begin (pretty-print result) #f)
+					  (error 'build-compiler-pass 
+						 "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
+						 name prog))
+				      (if (regiment-verbose)
+					  (printf "~a: Output grammar passed.\n" name))]
+				     [(assert ,f)
+				      (unless (f prog)
+					(set-top-level-value! 'failed-pass-output prog)
+					(error 'build-compiler-pass 
+					       "pass ~s failed output-invariant ~s pass output stored in 'failed-pass-output" name f))]
+				     [,other (error 'build-compiler-pass "bad output spec: ~s" other)]
+				     ))
+			 outstuff))
+		      ;; Return final result:
+		      result))
+		  ))])
        ;; Add pass to global pass-table and return:
        (set! regiment-pass-name-table
-	     (cons `[,closure ,name] regiment-pass-name-table))
-       closure
+	     (cons `[,mainclosure ,name] regiment-pass-name-table))
+       mainclosure
        )]))
 
 ;; This is a hidden table (association list) that maps closures to pass names.
