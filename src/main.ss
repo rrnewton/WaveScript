@@ -96,6 +96,7 @@
     desugar-let-stored
     rename-stored
 
+
     ;; (11) CPS: we CPS the program to get rid of all non-tail calls.
 
     ;; This is because Token handlers may only schedule more tokens,
@@ -374,7 +375,12 @@
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
-(define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
+(define run-ws-compiler             ;; Entrypoint.
+  ; FIXME: this case-lambda is probably a temporary construction
+  (case-lambda
+    [(p)                               (run-ws-compiler p () #f)]
+    [(p already-typed)                 (run-ws-compiler p () already-typed)]
+    [(p disabled-passes already-typed)
 
   (define (do-typecheck lub poly)
     (parameterize ([inferencer-enable-LUB      lub]
@@ -385,7 +391,9 @@
   (define (do-early-typecheck) (do-typecheck #f #t))
   (define (do-late-typecheck)  (do-typecheck #t #f))
 
-  (set! already-typed (if (null? already-typed) #f (car already-typed)))
+  ; already-typed is now its own param. --mic
+  ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
+  
 
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
 (time 
@@ -405,6 +413,7 @@
   ;; Run this twice!!!
   ;(ws-run-pass p degeneralize-arithmetic)
   (time (ws-run-pass p static-elaborate))
+
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -454,7 +463,10 @@
   (do-late-typecheck)
   (ws-run-pass p unlift-polymorphic-constant)
 
-;  (ws-run-pass p merge-iterates) ;; <Optimization>
+  (unless (memq 'merge-iterates disabled-passes)
+    (pretty-print p)
+    (ws-run-pass p merge-iterates)
+    (pretty-print p)) ;; <Optimization>
   (IFDEBUG (do-late-typecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -489,9 +501,15 @@
   (IFDEBUG (do-late-typecheck) (void))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
- 
+
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
   
+  ; --mic
+  (unless (memq 'propagate-copies disabled-passes)
+    (pretty-print p)
+    (ws-run-pass p propagate-copies)
+    (pretty-print p))
+
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
   ;(do-typecheck #f #f)
@@ -523,7 +541,7 @@
 ;  (exit)
 
   p))
-)
+]))
 
 
 
@@ -534,7 +552,7 @@
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
-(define (wsint x)                                             ;; Entrypoint.  
+(define (wsint x . flags)                                             ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-simulator]
 		 ;[regiment-compile-sums-as-tuples ]
 ;		 [included-var-bindings '()]
@@ -580,6 +598,7 @@
 		     'replace))))
 
   (define typed (ws-compile-until-typed prog))
+  (define disabled-passes (map cadr (find-in-flags 'disable 1 flags)))
 
   (define __ 
     (begin 
@@ -595,7 +614,7 @@
 	(lambda () (print-var-types typed +inf.0)(flush-output-port))
 	'replace))))
 
-  (define compiled (let ([x (run-ws-compiler typed #t)])
+  (define compiled (let ([x (run-ws-compiler typed disabled-passes #t)])
 		     (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
 		     (parameterize-IFCHEZ ([pretty-line-length 150]
 					   [pretty-one-line-limit 100]
@@ -659,6 +678,7 @@
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
    (define typed (ws-compile-until-typed prog))
+   (define disabled-passes (map cadr (find-in-flags 'disable 1 flags)))
 
    (ASSERT (andmap symbol? flags))
 
@@ -671,7 +691,7 @@
        (print-var-types typed 1))
    (flush-output-port)
    
-   (set! prog (run-ws-compiler typed #t))
+   (set! prog (run-ws-compiler typed disabled-passes #t))
    
    (printf "\nFinished normal compilation, now emitting C++ code.\n")
    (printf "Running pass: convert-sums-to-tuples\n")
@@ -679,14 +699,15 @@
 
 ;   (inspect `(CONVERTED ,prog))
 
-   ;; A final typecheck will get rid of any polymorphic tuples resulting from the conversion.
-#; #;
+#;
    (when (regiment-verbose)
     (printf "\n Type checking one last time."))
+#;
    ;; Retypecheck to bring back some types that were lost:
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
+
 
    (printf "Running pass: nominalize-types.\n")
    (time (set! prog (nominalize-types prog)))
@@ -958,6 +979,12 @@
 		     (let ((n (read (open-input-string (format "~a" n)))))
 		     (set! opts (cons 'timeout (cons n opts))))]
 
+          ; --mic
+          ; FIXME: add to print-help (or automate print-help)
+          [(--disable-pass ,pass-name ,rest ...)
+           (set! opts (append `(disable ,pass-name) opts))
+           (loop rest)]
+
 		    ;; otherwise a file to compile that we add to the list
 		    [(,fn ,rest ...)
 		     ;(regiment-compile-file fn)
@@ -1083,6 +1110,7 @@
 		       (load (caddr args)))
 		     )]
 	    [else 
+	     ;(inspect (list->vector args))
 	     (IFCHEZ (apply orig-scheme-start (cdr args))
 		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
 		     )
@@ -1164,6 +1192,7 @@
 		   (animate-world! (simalpha-current-simworld))
 		   (printf "Animated world from world file ~s.\n" file)
 		   ;(clean-simalpha-counters!)
+		   ;(inspect (simalpha-current-simworld))
 		   (bounce-to-swl '(begin 
 				     ;(clean-simworld! (simalpha-current-simworld))
 				     (init-graphics)
@@ -1199,7 +1228,7 @@
 			       (open-input-file fn))]
 
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
-	   (let ([return (wsint prog)])
+	   (let ([return (apply wsint (cons prog opts))])
 	     (IFCHEZ (import streams) (void))
 	     ;(import imperative_streams)
 	     (if (stream? return)
