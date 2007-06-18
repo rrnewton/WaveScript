@@ -69,7 +69,7 @@
     [Int     "int"]
     [Int16   "int"]
     [Float    "float"]
-    [Double    "float"]
+    [Double   "float"]
     [Complex  "Complex.t"]
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
@@ -89,7 +89,16 @@
     ;[(Array ,[t]) `(,t "[]")]
     ;[Timebase  "int"]
 
-    [(Array ,[t])  `("(",t") array")]
+    [(Array ,t) 
+     (let ([flatty (BigarrayType? t)])
+       (if flatty
+	   (list "("
+		 (Type t)", "
+		 flatty"_elt, "
+		 " Bigarray.c_layout)"
+		 "Bigarray.Array1.t")
+	   `("(",(Type t)") array")))]
+
     [(List ,[t]) `("(",t") list")]
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-caml:Type "Not handled yet.. ~s" other)]))

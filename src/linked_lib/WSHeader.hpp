@@ -10,6 +10,7 @@
 
 /* for boost smart pointers */
 #include <boost/shared_ptr.hpp>
+#include <boost/intrusive_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 #include <boost/functional/hash.hpp>

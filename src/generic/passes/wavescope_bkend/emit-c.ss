@@ -122,9 +122,10 @@
     [(Sigseg ,[t]) `("RawSeg")]
     [(Stream ,[t]) `("WSBox*")]
 
-    ;[(Array ,[t]) `(,t "[]")]
-    [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
+    ;[(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
     ;[(Array ,[t])  `("boost::shared_array< ",t" >")]
+    [(Array ,[t])  `("wsarray_t")]
+
     [(Struct ,name) (sym2str name)]
 
     [#() "wsunit_t"]
@@ -676,10 +677,12 @@
       ;; This just does nothing in the c++ backend:
       ;[(gnuplot_array ,a) ""]
 
-      [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
-       (guard (memq containerset! '(Array:set hashset_BANG)))
+      [(hashset_BANG ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
        (ASSERT not name)
        `("(*",container ")[" ,ind "] = " ,val ";\n")]
+
+      [(Array:set (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind] ,[Simple -> val])
+       `("((",ty" *)",arr "->data)[" ,ind "] = " ,val ";\n")]
 
       ;; Can't normalize-context this because of it's forall a.a return type:
       [(wserror ,str)
@@ -1170,7 +1173,9 @@
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
 					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	  [#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
+	  [#(Array:null (Array ,t)) 
+            ;`("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")
+            `("wsarray(0)")]
 	  )))
 
     (define Simple
@@ -1360,6 +1365,7 @@
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
+	;; TODO:
 	[(toArray (assert-type (Sigseg ,t) ,sigseg))
 	 (let ([tmp (Var (unique-name 'tmp))]
 	       [tmp2 (Var (unique-name 'tmp))]
@@ -1397,14 +1403,18 @@
 	 "newarr_UNFINISHED"]
 	
 	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
+	[(assert-type ,[Type -> ty] (Array:ref ,[Simple -> arr] ,[Simple -> ind])) 
+	 (wrap `("((",ty" *)",arr "->data)[" ,ind "]"))]
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	;; This version just doesn't initialize:
+
+	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->len)"))]
+
+#;
 	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
 	 (wrap `("boost::shared_ptr< vector< ",ty
 		 " > >(new vector< ",ty" >(",n "))"))]
-
-	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
+;	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
 	[(Array:set ,x ...)
 	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]

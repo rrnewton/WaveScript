@@ -25,6 +25,10 @@ typedef string wsstring_t;
 //typedef _Complex double wscomplex_t;
 typedef _Complex float wscomplex_t;
 
+
+//typedef boost::intrusive_ptr<WSArrayStruct> wsarray_t;
+#define wsarray_t boost::intrusive_ptr<WSArrayStruct>
+
 // [2007.04.15] I can't remember why I branched this off from the
 // standard DEFINE_OUTPUT_TYPE.  Trying to go back.
 //
@@ -100,14 +104,51 @@ public:
 
 
 /********** ARRAYS **********/
+// template <class T>
+// boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
+//   vector<T>* vec = new vector<T>((int) count);
+//   for(int i=0; i<(int)count; i++) {
+//     (*vec)[i] = (T)initelem;
+//   }
+//   return boost::shared_ptr< vector<T> >( vec );
+// }
+
+// Can flatten this when the size of the array is known.
+struct WSArrayStruct {
+  int rc;
+  int len;
+  void* data;
+};
+
 template <class T>
-boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
-  vector<T>* vec = new vector<T>((int) count);
+wsarray_t makeArray(wsint_t count, T initelem) {
+  T* vec = (T*) malloc(sizeof(T) * (int)count);
   for(int i=0; i<(int)count; i++) {
-    (*vec)[i] = (T)initelem;
+    vec[i] = (T)initelem;
   }
-  return boost::shared_ptr< vector<T> >( vec );
+  WSArrayStruct* arr = new WSArrayStruct;
+  arr->len = (int)count;
+  arr->data = vec;
+  arr->rc = 0;
+  return wsarray_t(arr);
 }
+
+void intrusive_ptr_add_ref(WSArrayStruct* p) {
+  //  printf("Add rc! %d -> %d\n", p->rc, p->rc+1);
+  p->rc ++;
+}
+
+void intrusive_ptr_release(WSArrayStruct* p) {
+  //printf("Decr rc! %d -> %d\n", p->rc, p->rc-1);
+  p->rc --;
+  if (p->rc == 0) {
+    //printf("Freeing!\n");
+    free(p->data);
+    free(p);
+  }
+}
+
+
 
 //boost::shared_array<int> foo(new int[34]);
 
