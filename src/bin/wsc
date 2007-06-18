@@ -21,7 +21,11 @@ while [ $# != 0 ];  do
   then shift;
        OUTFILE="$1"; 
   elif [ "$1" == "-exit-error" ]
-  then REGPASSTHRU="$REGPASSTHRU $1"; 
+  then REGPASSTHRU="$REGPASSTHRU $1";
+  elif [ "$1" == "--disable-pass" ]
+  then REGPASSTHRU="$REGPASSTHRU $1"; # FIXME: this is dangerous on bad args!
+       shift;
+       REGPASSTHRU="$REGPASSTHRU $1";
   elif [ "$1" == "-O0" ] || 
        [ "$1" == "-O1" ] || 
        [ "$1" == "-O2" ] || 
