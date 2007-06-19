@@ -1405,7 +1405,8 @@
 	 "newarr_UNFINISHED"]
 	
 	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(assert-type ,[Type -> ty] (Array:ref ,[Simple -> arr] ,[Simple -> ind])) 
+	[;(assert-type ,[Type -> ty] (Array:ref ,[Simple -> arr] ,[Simple -> ind]))
+	 (Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
 	 (wrap `("((",ty" *)",arr "->data)[" ,ind "]"))]
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	;; This version just doesn't initialize:
@@ -1657,7 +1658,7 @@ int main(int argc, char ** argv)
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? HashTable:make prim_window 
 		   List:ref List:append List:reverse List:length List:make 
-		   Array:makeUNSAFE
+		   Array:makeUNSAFE Array:ref Array:set
 		   
 		   equal? print show seg-get toArray 
 

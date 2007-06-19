@@ -38,7 +38,7 @@
     ;(define annotated-prims '(print show cons hashtable seg-get))
     (define annotate-outside-prims 
       '(hashtable prim_window List:append List:reverse cons
-		  Array:make Array:ref Array:makeUNSAFE
+		  Array:make Array:makeUNSAFE
 		  unionN
 		  ))
 

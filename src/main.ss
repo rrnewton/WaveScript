@@ -1084,10 +1084,10 @@
 	   (cond
 	    [(null? filenames) 
 
-	     (printf "GOING INTO REPL ~s\n" main)
+;	     (printf "GOING INTO REPL ~s\n" main)
 	     ;(eval '(require main_plt))
 	     ;(eval '(require regiment_pltscript))
-	     (printf "GOT MODULE INTO TOP LEVEL ~s\n" (eval 'main))
+;	     (printf "GOT MODULE INTO TOP LEVEL ~s\n" (eval 'main))
 	     (IFCHEZ (call-with-values new-cafe (lambda ls (apply exit ls)))
 		     (read-eval-print-loop))]
 	    ;; To run a script through "regiment"

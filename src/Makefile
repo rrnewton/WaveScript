@@ -235,17 +235,28 @@ fullheap.opt:
 builddir:
 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
 
-# This runs various tests but tries not to be fairly quick.
+
+# This is basic, for someone who just downloaded WScript:
+t: test
+test:
+	rm -rf /tmp/wsparse_server_*
+	$(MAKE) clean 
+	$(MAKE) wsparse
+	regiment test
+	(cd demos/wavescope; $(MAKE) getdata)
+	(cd demos/wavescope; ./testall_demos.ss)
+
+# This a lot of tests but tries not to be fairly quick.
 # This is in contrast to supertest.ss, which is supposed to be as
 # exhaustive as possible.
-t: test
-test: 
+fulltest: 
 	rm -rf /tmp/wsparse_server_*
 	#killall mzscheme
 	$(MAKE) clean 
 	$(MAKE) wsparse
 	regiment test
-	$(MAKE) boot  # Now build it to speed up these subsequent tests:
+        # Now build it to speed up these subsequent tests:
+	if `which chez`; then $(MAKE) boot; fi 
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 # NOT WORKING RIGHT NOW:
 	(cd ../apps/stockticks/; $(MAKE) test)
