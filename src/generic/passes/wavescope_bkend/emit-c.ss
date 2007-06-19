@@ -122,8 +122,6 @@
     [(Sigseg ,[t]) `("RawSeg")]
     [(Stream ,[t]) `("WSBox*")]
 
-    ;[(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
-    ;[(Array ,[t])  `("boost::shared_array< ",t" >")]
     [(Array ,[t])  `("wsarray_t")]
 
     [(Struct ,name) (sym2str name)]
@@ -1152,11 +1150,10 @@
 				  ;; Throw in a default:
 				  'Int
 				  (type-const (vector-ref datum 0)))])
-	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
-		    " > >(new vector< ",(Type contenttype)" >(",
-		    (number->string (vector-length datum))"));\n" ;; MakeArray.
-		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
-						"" x))			   
+	     `(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))
+		    ", sizeof(",contenttype"));\n" 
+		    ,(mapi (lambda (i x) (Const `("(",name"->data)[",(number->string i)"]")
+						"" x))
 			   (vector->list datum))))]
 
 	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))
@@ -1172,10 +1169,7 @@
 	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
-					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	  [#(Array:null (Array ,t)) 
-            ;`("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")
-            `("wsarray(0)")]
+	  [#(Array:null (Array ,t)) `("wsarray_t(0)")]
 	  )))
 
     (define Simple
@@ -1193,6 +1187,7 @@
 ;================================================================================
 ;; Primitive calls:
 
+;; This returns an block of code putting the result of the prim call in "name"
 (define (Prim expr name type)
   (define (wrap x) (list type " " name " = " x ";\n"))
   ;; This is for primitives that correspond exactly to exactly one C call.
@@ -1345,7 +1340,6 @@
 	     "sscanf(",e".c_str(), \"%f+%fi\", &",tmp1", &",tmp2");\n"
 	     ,(wrap `(,tmp1"+(",tmp2"*1.0fi)"))))]
 
-
 #;
 	[(,stringTo ,[Simple -> e]) 
 	 (guard (memq stringTo '(stringToInt stringToFloat stringToComplex)))	
@@ -1365,21 +1359,29 @@
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
-	;; TODO:
 	[(toArray (assert-type (Sigseg ,t) ,sigseg))
 	 (let ([tmp (Var (unique-name 'tmp))]
 	       [tmp2 (Var (unique-name 'tmp))]
 	       [len (Var (unique-name 'len))]
 	       [ss (Simple sigseg)]
 	       [tt (Type t)])
-	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
-	     "int ",len" = ",ss".length();\n"
+	   `("int ",len" = ",ss".length();\n"
+	     ,type" ",name" = makeArrayUnsafe(",len", sizeof(",tt"));\n"
 	     "for(int i=0; i<",len"; i++) {\n"
 	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
-	     "  (*",tmp")[i] = ",tmp2";\n"
+	     "  ((",tt" *)",name"->data)[i] = ",tmp2";\n"
 	     "}\n"
-	     ,(wrap tmp)
 	     ))]
+	[(toSigseg (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> startsamp] ,[Simple -> timebase])
+	 ;; type should be "RawSeg"
+	 `("
+     RawSeg ",name"((SeqNo)",startsamp", ",arr"->len, DataSeg, 0, sizeof(",ty"), Unitless, true);
+     { 
+       Byte* direct;
+       ",name".getDirect(0, ",arr"->len, direct);
+       memcpy(direct, ",arr"->data, sizeof(",ty") * ",arr"->len);
+       ",name".releaseAll(); 
+     }\n")]
 
 	[(wserror ,[Simple -> str])
 	 ;; Don't do anything with the return value.
@@ -1410,11 +1412,16 @@
 
 	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->len)"))]
 
-#;
 	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
-	 (wrap `("boost::shared_ptr< vector< ",ty
-		 " > >(new vector< ",ty" >(",n "))"))]
-;	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
+	 ;; This is redundant with the body of makeArray
+	 (let ([arr (Var (unique-name 'tmp))]
+	       [len (Var (unique-name 'len))])
+	   `(
+	     "WSArrayStruct* ",arr" = new WSArrayStruct;\n"
+	     ,arr"->len = (int)",n";\n"
+	     ,arr"->data = malloc(sizeof(",ty") * (int)",n");\n"
+	     ,arr"->rc = 0;\n"
+	     ,(wrap `("wsarray_t(",arr")"))))]
 
 	[(Array:set ,x ...)
 	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
@@ -1537,26 +1544,6 @@
 
     [Pointer (printf "%p" `("(void*)",e))]
     [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
-
-#;
-;; NOTE: duplicated code from the "Type" function.
-(define (cast-type-for-printing ty x)
-  (match ty
-    [(Sigseg ,[Type -> t]) (format "SigSeg<~a>" t)]
-
-    [Bool       x]
-    [Int        x]
-    [Float      x]
-    [String     x]
-    [(Struct ,name) (Type ty)]
-
-    [(Array ,t) `("boost::shared_ptr< vector< ",(cast-type-for-printing t)" > >")]
-    
-    [(List ,t) `("cons< ",(cast-type-for-printing t)" >::ptr")]
-
-    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-    
-    [,other (error 'cast-type-for-printing "Not handled yet.. ~s" other)]))
 
 
 ;; This emits code for a print.

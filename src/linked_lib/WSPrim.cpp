@@ -46,6 +46,9 @@ static ostringstream global_show_stream(ostringstream::out);
    static wsint_t end(const RawSeg& w) {
      return (wsint_t)w.end();
    }
+
+   // Old Array representation.
+   /*
    template <class T>
    static RawSeg toSigseg(const boost::shared_ptr< vector< T > >& arr, 
 			  wsint_t startsamp, int timebase) {
@@ -57,6 +60,7 @@ static ostringstream global_show_stream(ostringstream::out);
      rs.releaseAll();
      return rs;
    }
+   */
 
    static RawSeg joinsegs(const RawSeg& a, const RawSeg& b) {
      return RawSeg::append(a,b);

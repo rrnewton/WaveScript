@@ -914,3 +914,20 @@ HASH TABLES, SIZE 1000:
   ws:        2967  1238  329
   ws.opt:    2274  941   215
 
+
+[2007.06.19]
+.
+Well on the newest version of demo3g the struct-based arrays run twice
+as fast as the old "vector"-class based ones (on -O3, 2 seconds vs. 1
+second).  Demo3g is invariant to one vs. two processors (it does a big
+loop *inside* an iterate, rather than passing lots of data across channels).
+
+As long as one processor is disabled (so it's uniprocessor), these do
+about the same on faith with -O3 and running with -j 1.  (Actually the
+-j 1 doesn't make much difference either way.)
+
+
+
+
+
+

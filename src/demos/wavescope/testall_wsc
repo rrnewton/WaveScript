@@ -55,7 +55,8 @@ go "demo3k_uniontype.ws"
 # But 5a,5B don't segfault..
 # 6a,6b do segfault.
 
-go "demo4_fft.ws"
+go "demo4a_fft.ws"
+#go "demo4m_fft_pipelined.ws"
 
 go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"

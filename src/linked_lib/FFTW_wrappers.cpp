@@ -25,30 +25,25 @@
       return rs;
    }
 
-   // Temp, hopefully we'll use C-native arrays soon.
-   static boost::shared_ptr< vector< wscomplex_t > >
-          fftR2C(const boost::shared_ptr< vector< wsfloat_t > >& input) {
-      int len = (*input).size();
+   static wsarray_t fftR2C(wsarray_t& input) {
+      int len = input->len;
       int len_out = (len / 2) + 1;     
-      wsfloat_t* in_buf = new wsfloat_t[len];
+      wsfloat_t*   in_buf  = (wsfloat_t*)input->data; 
       wscomplex_t* out_buf = new wscomplex_t[len_out];
-      vector<wscomplex_t>* result = new vector<wscomplex_t>(len_out);
 
       //printf(" FFT: %d->%d\n", len, len_out);
 
-      for(int i=0; i<len; i++) in_buf[i] = (*input)[i];
-
+      // Inefficient!  This approach makes a new plan every time.
       // Real to complex:
-      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);      
+      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
 
-      //      for(int i=0; i<len_out; i++) (*result)[i] = conj(out_buf[i]);
-      for(int i=0; i<len_out; i++) (*result)[i] = out_buf[i];
-
-      delete in_buf;
-      delete out_buf;
-      return boost::shared_ptr< vector< wscomplex_t > >( result );
+      WSArrayStruct* result = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
+      result->rc = 0;
+      result->len = len_out;
+      result->data = out_buf;
+      return wsarray_t(result);
    }
 
    static boost::shared_ptr< vector< wsfloat_t > >

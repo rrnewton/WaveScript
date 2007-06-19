@@ -48,6 +48,7 @@ basic:
 	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
 	$(MAKE) ws
+#	if `which chez`; then $(MAKE) ws; else 
 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source
 	@echo "======================================================================"
 	$(MAKE) ws.opt

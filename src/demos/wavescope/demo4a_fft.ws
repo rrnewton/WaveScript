@@ -20,6 +20,23 @@
 //   wscaml : 31 ms
 // (Total process times.)
 
+
+// [2007.06.19] It looks like I hacked this demo down to work with wscaml.
+// I should restore it to its full glory at some point.
+
+// [2007.06.19] Looking at how my improved array representation affects things.
+// Rev 1498 of stable branch of engine... using user time reported by the engine.
+// Uniprocessor vanilla options: 0.6 sec vs  4.0     Big improvement!
+//   w/ -j 1 --at_once         :  .5     vs  2.5 
+//   w/ -O3                    :  .25    vs  1.0
+// W/ both processors enabled  :  .40    vs  1.5
+
+// Note that all these numbers are *bad* because the caml version takes
+// .15 seconds even though that's counting the entire process's
+// execution (and the limitation that it's using double precision).
+
+
+
 fun sigseg_fftC   (ss) toSigseg(ss`toArray`fftC,    ss.start, ss.timebase)
 fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
 fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)

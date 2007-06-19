@@ -102,7 +102,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
     
-    ["demo4_fft.ws"               ,(lambda (a b) (void)
+    ["demo4a_fft.ws"               ,(lambda (a b) (void)
 				     ;(ASSERT (= 0.0 a))
 				     ;(ASSERT (= 840.0 (round b))) ;839.8869476698192
 ;; ALERT!  DEMO4 STARTED RETURNING SOMETHING DIFFERENT.... CHECK THIS OUT!

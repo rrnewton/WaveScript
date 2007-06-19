@@ -104,14 +104,6 @@ public:
 
 
 /********** ARRAYS **********/
-// template <class T>
-// boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
-//   vector<T>* vec = new vector<T>((int) count);
-//   for(int i=0; i<(int)count; i++) {
-//     (*vec)[i] = (T)initelem;
-//   }
-//   return boost::shared_ptr< vector<T> >( vec );
-// }
 
 // Can flatten this when the size of the array is known.
 struct WSArrayStruct {
@@ -119,6 +111,14 @@ struct WSArrayStruct {
   int len;
   void* data;
 };
+
+wsarray_t makeArrayUnsafe(wsint_t count, int eltsize) {
+  WSArrayStruct* stct = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
+  stct->rc  = 0;
+  stct->len = count;
+  stct->data = malloc(count * eltsize);
+  return wsarray_t(stct);
+}
 
 template <class T>
 wsarray_t makeArray(wsint_t count, T initelem) {

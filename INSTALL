@@ -41,6 +41,9 @@ runs the unit tests.
 Step 1: INSTALL PLT.
         Now you need PLT Scheme.  Download it from the PLT website and
         make sure mzscheme/mzc are in your path.
+          [Note: you can also use "apt-get install mzscheme" 
+           or "yum install plt-scheme"]
+
 
 Step 2: BUILD WSPARSE.
         To make the system run decently, you want to pre-compile the
@@ -109,13 +112,6 @@ Step 5: OPTIONAL EXTRAS.
        interface to FFTW for faster fourier transforms.
 
 
-
- ---- Notes for Debian/Ubuntu/Redhat ----
-
-Step 1 above can be accomplished simply with 
-   "apt-get install mzscheme" 
-or 
-   "yum install plt-scheme"
 
 
  ---- Installing under Windows ----

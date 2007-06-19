@@ -858,7 +858,7 @@
 		;; We don't want to Array:make in the object code!
 		;; (Kind of inconsistent that we *do* currently do List:make.)
 		(not (memq prim '(show cons gint 
-				       Array:make Array:fold Array:map
+				       Array:makeUNSAFE Array:make Array:fold Array:map
 				       HashTable:make
 				       m_invert
 				       Mutable:ref deref
