@@ -118,7 +118,10 @@
 
    port->slist
 
-   testhelpers testshelpers 
+   testhelpers testshelpers
+
+   ; --mic
+   find-in-flags
    )
  
     ;; These are provided ONLY for Chez... need to look into these periodically.
@@ -1874,7 +1877,6 @@
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
-
 ;(IFCHEZ (include "generic/util/streams.ss")
 ;	(include "streams.ss"))
 
@@ -2241,5 +2243,32 @@
       (error 'foldl1 "list must have at least on element.")
       (foldl f (car ls) (cdr ls))))
 
-)
+; --mic
+; find all occurrences of a specific flag in a list of flags.
+; the flag may be followed by a fixed number of arguments.
+; the return result is a list of the occurances, e.g.:
+; (find-in-flags 'disable 1 '(a b c disable d e f disable g h))
+;   => ((disable d) (disable g))
+;
+; gives an error if too few args.
+;
+(define (find-in-flags sym n flags)
+  (cond [(null? flags) ()]
+        [(eq? (car flags) sym)
+         (cons (list-head flags (+ n 1))
+               (find-in-flags sym n (list-tail flags (+ n 1))))]
+        [else (find-in-flags sym n (cdr flags))]))
 
+
+; --mic
+; result is (rn ... r2 r1 r0), where r0 is first call, r1 second, etc.
+; n must be >= 0
+;
+(define (n-times p n . args)
+  (let loop ((i 0)
+             (results ()))
+    (if (< i n)
+        (loop (+ i 1) (cons (apply p args) results))
+        results)))
+
+)
