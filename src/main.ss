@@ -329,6 +329,7 @@
 	   (set! v (ws-pass-optional-stop (pass v)))))
      ]))
 
+;; EXPERIMENTAL:
 ;; Playing around with fusing passes.
 ;; This is *just* for optimization.
 (define-syntax ws-run-fused/disjoint
@@ -467,6 +468,7 @@
     (pretty-print p)
     (ws-run-pass p merge-iterates)
     (pretty-print p)) ;; <Optimization>
+
   (IFDEBUG (do-late-typecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -506,9 +508,10 @@
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)
-    (pretty-print p)
+    ;(pretty-print p)
     (ws-run-pass p propagate-copies)
-    (pretty-print p))
+    ;(pretty-print p)
+    )
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
@@ -598,7 +601,7 @@
 		     'replace))))
 
   (define typed (ws-compile-until-typed prog))
-  (define disabled-passes (map cadr (find-in-flags 'disable 1 flags)))
+  (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
 
   (define __ 
     (begin 
@@ -655,8 +658,10 @@
 		(run-stream-query ,body))
 	]))))
 
-
 ;; ================================================================================
+
+(define ws-disabled-by-default '(merge-iterates ))
+
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
@@ -678,7 +683,7 @@
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
    (define typed (ws-compile-until-typed prog))
-   (define disabled-passes (map cadr (find-in-flags 'disable 1 flags)))
+   (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
 
    (ASSERT (andmap symbol? flags))
 
@@ -1253,7 +1258,7 @@
 			   (if (equal? "ws" (extract-file-extension fn))
 			       (or (read-wavescript-source-file fn)
 				   (error 'wsint "couldn't parse file: ~s" fn))
-			       ;; Otherwise let's assume 
+			       ;; Otherwise let's assume it's already parsed:
 			       (open-input-file fn))]
 			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
 			  ))

@@ -426,7 +426,7 @@
 	      ;; First match the end:
 	      (let ([len1 (length x*)]
 		    [len2 (length p*new)])
-	      (unless (> len1 len2)
+	      (unless (>= len1 len2)
 		(fail x* `(,p ,ellipses ,p*new ...) k))
 	      (listloop (list-tail x* (- len1 len2)) p*new
 			(lambda (tail)

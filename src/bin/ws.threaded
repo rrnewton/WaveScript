@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 

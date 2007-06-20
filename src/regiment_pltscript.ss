@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #|
 # -u -t -r
 exec mzscheme -qr "$0" ${1+"$@"}

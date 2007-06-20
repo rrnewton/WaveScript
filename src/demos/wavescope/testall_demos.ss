@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash 
 #|
 export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2

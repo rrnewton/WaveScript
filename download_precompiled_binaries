@@ -25,11 +25,12 @@ echo Fetching file from: "http://www.regiment.us/regiment_binaries/"$REV"_"$MT"_
 # echo
 
 if [ `which wget` ];
-then wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE;
-     wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE;
+then 
+     wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE;
+#     wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE;
 elif [ `which curl` ];
 then curl "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE -o $SOFILE;
-     curl  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE -o $WSPARSEFILE;
+#     curl  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE -o $WSPARSEFILE;
 else echo NEITHER CURL NOR WGET AVAILABLE!!; exit 1
 fi 
 
@@ -73,12 +74,13 @@ if [ ! -d ./src/build/$MT ]; then mkdir ./src/build/$MT; fi
 
 echo Moving to build/$MT/main_chez.so
 mv $SOFILE build/$MT/main_chez.so
-echo Moving to bin/wsparse
-if [ "$MT" == "i3nt" ];
-then mv $WSPARSEFILE bin/wsparse.exe;
-else mv $WSPARSEFILE bin/wsparse;
-fi
-chmod +x bin/wsparse
+
+#echo Moving to bin/wsparse
+#if [ "$MT" == "i3nt" ];
+#then mv $WSPARSEFILE bin/wsparse.exe;
+#else mv $WSPARSEFILE bin/wsparse;
+#fi
+#chmod +x bin/wsparse
 
 echo
 echo "Now when you type 'regiment' at the prompt, it should indicate that it's loading from .so"

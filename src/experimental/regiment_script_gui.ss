@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #|
 exec $REGIMENTD/depends/petite_swl --script "$0" ${1+"$@"}
 |#
