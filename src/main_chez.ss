@@ -278,9 +278,12 @@
   (include "chez/regmodule.ss")  ;; Common module syntax.
   (import reg:module)  
   )
+
+
  
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
+
 
 (if VERBOSE-LOAD (printf "  Starting load...\n"))
 
@@ -746,9 +749,21 @@
   (load "main_chez.ss")
   )
 
+;; MISC: This is for PLT compat:
+(define path->string (lambda (x) x))
+
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
 (eval-when (compile load eval) 
   (current-directory (top-level-value 'pre-load-directory)))
+
+
+
+
+
+
+
+
+
 
 
 

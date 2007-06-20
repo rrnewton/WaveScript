@@ -43,7 +43,7 @@
 
 	 ;; Chez/PLT specific (included from respective modules).
 	 reg:define-struct reg:struct? reg:struct->list reg:list->struct 
-	 IFCHEZ IF_GRAPHICS IF_THREADS
+	 IFCHEZ IF_GRAPHICS IF_THREADS 
 ;	 reg:include	 
 
 	 
