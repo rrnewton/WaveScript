@@ -93,6 +93,7 @@
 				      
    ))
 
+(IFWAVESCOPE (void)
 (begin ;; Some convenient syntax shortcuts:
    (define (node id) ;; shorthand
      (simobject-node (hashtab-get (simworld-obj-hash (simalpha-current-simworld)) id)))
@@ -103,7 +104,7 @@
 		  (node-pos (simobject-node (node id2)))))
    (define-id-syntax world (simalpha-current-simworld)) ;; shorthand   
 ;   (define (
-)
+))
 
 
 

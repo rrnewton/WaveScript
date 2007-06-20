@@ -174,10 +174,10 @@
 	;; These stubs allow our common module syntax to work.
 	(define-syntax chezimports
 	  (syntax-rules ()
-	    [(_ e ...) (begin)]))
+	    [(_ e ...) (begin (void))]))
 	(define-syntax chezprovide
 	  (syntax-rules ()
-	    [(_ e ...) (begin)]))     
+	    [(_ e ...) (begin (void))]))
 	
 ;=======================================================================
 

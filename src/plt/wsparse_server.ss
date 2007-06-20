@@ -81,11 +81,11 @@ exec mzscheme -qt "$0" ${1+"$@"}
     (write #f outpipe)
     (flush-output outpipe)
     (printf "Restarting server.\n")
-    (parameterize ([current-exception-handler restart-handler])
+    (parameterize ([uncaught-exception-handler restart-handler])
       (server-loop))
     ))
 
-(current-exception-handler restart-handler)
+(uncaught-exception-handler restart-handler)
 
 (server-loop)
 

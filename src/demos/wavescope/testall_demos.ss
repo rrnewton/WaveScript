@@ -4,7 +4,6 @@ export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
 export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
-#exec regiment.plt i --script "$0" ${1+"$@"};
 |#
 
 

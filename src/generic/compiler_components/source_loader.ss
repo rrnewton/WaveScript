@@ -232,7 +232,7 @@
    [(and (not (substring? ".." file)) 
 	 (file-exists? (++ (REGIMENTD) "/lib/" file)))
     (++ (REGIMENTD) "/lib/" file)]
-   [else (++ (current-directory) "/" file)]
+   [else (++ (path->string (current-directory)) "/" file)]
    ))
 
 ;================================================================================

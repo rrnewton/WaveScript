@@ -136,6 +136,9 @@
     (define (reg:struct->list x) (cdr (vector->list x)))
     |#
 
+    ;; This is for PLT compat:
+    (define path->string (lambda (x) x))
+    
 ) ;; End module
 
 ;(import chez_constants)

@@ -88,14 +88,22 @@ ocaml:
 
 # PLT: 
 #----------------------------------------
-bc: plt
-plt: pltbc
-pltbc: mzscheme
-mzc: mzscheme
-mzscheme: 
+bc:pltbc
+pltbc:
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
+        # Updating this to only build bytecode for WAVESCRIPT:
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
+
+# This version DOES NOT build regiment sources.  Leaner and meaner.
+wsbc:
+	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
+	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
+        # Updating this to only build bytecode for WAVESCRIPT:
+	(export REGIMENT_OR_WAVESCRIPT=WS; \
+         export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
+
+
 # Disabling this by default because I'm getting a 'collection not found: "mzlib"' error.
 #	$(MAKE) pltexe
 

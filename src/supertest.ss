@@ -25,7 +25,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Let's clean up some:
-(if (file-exists? "/tmp/wsparse_server_pipe") (delete-file "/tmp/wsparse_server_pipe"))
+(if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe"))
 (if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response"))
 
 ;; Should we killall the wsparse_server processes also?
@@ -102,7 +102,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (ASSERT (system "echo Environment established: REGIMENTD:$REGIMENTD"))
 
 ;; Catch any errors encountered below and send an email:
-(current-exception-handler
+(uncaught-exception-handler
  (lambda (exn)
    (define msg
      (format "ERROR during script execution:\n   ~a\n\nException: ~s\n" 

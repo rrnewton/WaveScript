@@ -80,6 +80,8 @@
   ;; There is also no print-gensym in PLT:
   (define print-gensym (make-parameter #f))
 
+  ;; This is defined natively in PLT 370
+  #;
   (define (integer-length integer)
     (inexact->exact
      (ceiling (/ (log (if (negative? integer)
@@ -209,9 +211,11 @@
   (define crit-printf printf) ;; Thread safe, critical section printf.
 
   ;; [2007.01.23] Changing this to catch all exceptions.
-  (define (with-error-handlers displayproc escape th)
+  (define with-error-handlers 
+    (let ([orig (uncaught-exception-handler)])
+    (lambda (displayproc escape th)
     (let/ec out
-      (parameterize ([current-exception-handler (initial-exception-handler)]
+      (parameterize ([uncaught-exception-handler orig]
 		     [error-display-handler 
                       ;(lambda (ob s) (printf "Error ~s in context ~s\n" s ob))
                       displayproc]
@@ -220,8 +224,7 @@
 		      (let ((result (apply escape args)))
 			;; If the escape procedure is not called, we must destroy the continuation:
 			(out result)))])
-        (th)))
-    )
+        (th))))))
 
   ;; Chez's system for warnings -- same as error.
   (define (warning sym . args)

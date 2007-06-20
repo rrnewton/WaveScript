@@ -140,6 +140,10 @@
        'replace)]
     [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
+(IFWAVESCOPE
+  (begin )
+  (begin
+
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'full-tokens
 ;; Also: use 'verbose to print the output of every pass.
@@ -198,7 +202,6 @@
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names))))))))
       )))
-
 
 
 ;; This is a front-end to run-compiler that reads source from a file.
@@ -288,13 +291,55 @@
 		)))
 	))))
 
-
 ;; This is the second version of the compiler, uses deglobalize2
 (define (run-compiler2 p . args)                              ;; Entrypoint.
   (parameterize ([pass-list (snoc deglobalize2 
 				  (rdc(list-remove-after deglobalize (pass-list))))])
     (apply run-compiler p args)
     ))
+
+
+
+;; This one just stops after deglobalize:
+(define (compile-to-tokens p . args)                          ;; Entrypoint.
+  (apply run-compiler p 'barely-tokens args))
+(define (compile-almost-to-tokens p . args)                   ;; Entrypoint.
+  (apply run-compiler p 'almost-tokens args))
+
+;; This finishes off the compilation of scheme-format token machine.
+;; It's just a front-end to run-compiler that restricts the passes we run over.
+(define (assemble-tokmac tm . args)                           ;; Entrypoint.
+  (printf "assem tokmac...\n" )
+  (let ([starting-place 
+	 (match tm
+	   [(,lang ,prog ...)
+	    (case lang
+	      [(add-places-language) analyze-places] ;; Not strictly correct.
+	      [(deglobalize-lang) deglobalize]
+	      [(cleanup-token-machine-lang) cleanup-token-machine]
+	      [(cps-tokmac-lang) cps-tokmac]
+	      
+					;[(haskellize-tokmac-lang) (error...
+	      [else deglobalize])]
+	   [,else deglobalize])
+	 ])
+  (let ((passes (cdr (list-remove-before starting-place (pass-list)))))
+    (disp "Assembling tokmac with passes: " passes)
+;    (lambda (tm)
+      (parameterize ([pass-list passes])
+	(apply run-compiler tm args)))))
+
+
+(define (reg:printlog file)
+  (let ((stream (reg:read-log file 'stream)))
+    (let loop ((s (reg:read-log file 'stream)))
+      (unless (null? s)
+	(display (log-line->human-readable 0 (stream-car s) ()))
+	(loop (stream-cdr s))))))
+
+    ))
+
+
 
 
 
@@ -785,37 +830,6 @@
 
 
 
-
-;; This one just stops after deglobalize:
-(define (compile-to-tokens p . args)                          ;; Entrypoint.
-  (apply run-compiler p 'barely-tokens args))
-(define (compile-almost-to-tokens p . args)                   ;; Entrypoint.
-  (apply run-compiler p 'almost-tokens args))
-
-;; This finishes off the compilation of scheme-format token machine.
-;; It's just a front-end to run-compiler that restricts the passes we run over.
-(define (assemble-tokmac tm . args)                           ;; Entrypoint.
-  (printf "assem tokmac...\n" )
-  (let ([starting-place 
-	 (match tm
-	   [(,lang ,prog ...)
-	    (case lang
-	      [(add-places-language) analyze-places] ;; Not strictly correct.
-	      [(deglobalize-lang) deglobalize]
-	      [(cleanup-token-machine-lang) cleanup-token-machine]
-	      [(cps-tokmac-lang) cps-tokmac]
-	      
-					;[(haskellize-tokmac-lang) (error...
-	      [else deglobalize])]
-	   [,else deglobalize])
-	 ])
-  (let ((passes (cdr (list-remove-before starting-place (pass-list)))))
-    (disp "Assembling tokmac with passes: " passes)
-;    (lambda (tm)
-      (parameterize ([pass-list passes])
-	(apply run-compiler tm args)))))
-
-
 ;===============================================================================
 ;;; These functions are used for command-line invocation of the whole system:
 
@@ -902,12 +916,6 @@
   ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
   (exit code))
 
-(define (reg:printlog file)
-  (let ((stream (reg:read-log file 'stream)))
-    (let loop ((s (reg:read-log file 'stream)))
-      (unless (null? s)
-	(display (log-line->human-readable 0 (stream-car s) ()))
-	(loop (stream-cdr s))))))
 
 (define main 
   (lambda args    
@@ -948,15 +956,18 @@
 		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
 
 		    [(-l4 ,rest ...) 
-		     (set! makesimcode #t)
-		     (set! opts (cons 'to-simcode opts)) (loop rest)]
+		     (IFWAVESCOPE (begin) 
+		       (begin (set! makesimcode #t)
+			      (set! opts (cons 'to-simcode opts))))
+		     (loop rest)]
 
 		    [(-l5 ,rest ...)
 		     ;; [2006.11.11] Not handled right now:
-		     (set! opts (cons 'to-nesc opts))
-		     (pass-list 
-		      (snoc emit-nesc (snoc flatten-tokmac
-			     (remq flatten-tokmac (remq emit-nesc (pass-list))))))
+		     (IFWAVESCOPE (begin) 
+		       (begin (set! opts (cons 'to-nesc opts))
+			      (pass-list 
+			       (snoc emit-nesc (snoc flatten-tokmac
+						     (remq flatten-tokmac (remq emit-nesc (pass-list))))))))
 		     (loop rest)]
 
 		    [(-exit-error ,rest ...)
@@ -1017,7 +1028,8 @@
 	  ;; Compile mode:
 	  [(c compile)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
-	   (if (null? filenames)
+	   (IFWAVESCOPE (void)
+	     (if (null? filenames)
 	       (begin
 		 (printf "No input file.  Type top-level Regiment expression.~n")
 		 (printf "> ")(flush-output-port)
@@ -1039,12 +1051,12 @@
 		    (apply regiment-compile-file (car filenames) 'to-typed opts))]
 		  [else 
 		   (apply regiment-compile-file (car filenames) 'write-file opts)])
-		 ))]
+		 )))]
 
 	  ;; Simulation mode (also may invoke compiler):
 	  [(s simulate)
-
-	   (parameterize ([simulation-logger-level 1]
+	   (IFWAVESCOPE (void)
+	     (parameterize ([simulation-logger-level 1]
 			  );; Only get send/receive, groundtruth, and newworld msgs.
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
@@ -1075,7 +1087,7 @@
 	      (begin (printf "WOOT\n")
 		     ((top-level-value 'go-sim))
 		     ))
-	     ))]
+	     )))]
 
 	  ;; Interactive mode.  A Scheme REPL.
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
@@ -1123,6 +1135,7 @@
 
 	  ;; Printing SExp log files.
 	  [(l log)
+	   (IFWAVESCOPE (void)
 	   (match (map string->symbol (cdr args))
 	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
@@ -1214,7 +1227,7 @@
 
 	     [,other (warning 'regiment:log "unsupported options or missing arguments: ~a" other)
 		     (exit -1)]
-	     )]
+	     ))]
 
 	  ;; Interpreting (preparsed) wavescript code.
 	  [(wsint)

@@ -57,7 +57,7 @@
 ;(print-length 80)
 ;(print-vector-length #f)
 ;(pretty-maximum-lines 700)
-
+(print-struct #f)
 
 
 (require 
@@ -202,7 +202,7 @@
 ;; [2007.05.17] Making this optional again.  The command line interface should turn it
 (when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
 	   (top-level-value 'REGIMENT-BATCH-MODE))
-  (current-exception-handler
+  (uncaught-exception-handler
    (lambda (exn)
      (printf "ERROR:\n   ~a\n\nException: ~s\n" (exn-message exn) exn)
      (exit 1))))
@@ -513,5 +513,8 @@ o
 ;(browse-stream (wsint "demo4_fft.ws"))
 ;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
 ;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
-
+#;
+(begin 
+  (current-directory "~/wavescript/apps/marmot")
+  (wsint "run_first_phase.ws"))
 
