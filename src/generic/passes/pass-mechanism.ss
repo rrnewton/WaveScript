@@ -9,11 +9,17 @@
   (require "../../plt/iu-match.ss"
            "../../plt/chez_compat.ss"
            "../util/helpers.ss"
-           (only "../constants.ss" chezimports ASSERT DEBUGASSERT)
+           (only "../constants.ss" chezimports ASSERT DEBUGASSERT define-testing)
            "../compiler_components/regiment_helpers.ss"
            "../compiler_components/reg_core_generic_traverse.ss"
 	   "../compiler_components/hm_type_inference.ss"
            )
+
+#;
+  (require  "../../../plt/common.ss"
+	    (all-except "nominalize-types.ss" test-this these-tests)
+	    "convert-sums-to-tuples.ss"
+	    "../../compiler_components/c_generator.ss" )
 
   (provide define-pass fuse-passes/disjoint fuse-passes
 	   test-pass-mechanism

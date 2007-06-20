@@ -47,14 +47,13 @@ basic:
 	$(MAKE) wsparse
 	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
-	$(MAKE) ws
-#	if `which chez`; then $(MAKE) ws; else 
-	@echo; echo; echo [OPT] Compiling Regiment Scheme Source
+	@if [ `which chez` ]; then $(MAKE) ws; else echo "Full Chez compiler not found, skipping build."; fi
+	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 	@echo "======================================================================"
-	$(MAKE) ws.opt
+	@if [ `which chez` ]; then $(MAKE) ws.opt; else echo "Full Chez compiler not found, skipping build."; fi
 	@echo; echo; echo 'Compiling OCaml FFTW wrapper (only needed for wscaml)'
 	@echo "======================================================================"
-	$(MAKE) ocaml
+	@if [ `which ocaml` ]; then $(MAKE) ocaml; else echo Ocaml install not found.; fi
 
 # 	@echo; echo; echo BUILDING C-code extensions.
 # 	@echo "======================================================================"
@@ -256,7 +255,7 @@ fulltest:
 	$(MAKE) wsparse
 	regiment test
         # Now build it to speed up these subsequent tests:
-	if `which chez`; then $(MAKE) boot; fi 
+	if [ `which chez` ]; then $(MAKE) boot; fi 
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 # NOT WORKING RIGHT NOW:
 	(cd ../apps/stockticks/; $(MAKE) test)
@@ -267,13 +266,16 @@ fulltest:
 #	$(MAKE) dbg # Now build DEBUG version to speed up these subsequent tests:
 	echo exit | ws ../lib/stdlib_test.ws -exit-error;
 	echo exit | ws ../lib/matrix_test.ws -exit-error;
-	(cd ../lib; $(MAKE));
-	echo exit | ws ../lib/run_matrix_gsl_test.ws -exit-error;
 #	cd ../src;
 	$(MAKE) bc
 #	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 
+
+# This is seperate... requires full Chez (for compiler) as well as GSL.
+testgsl:
+	(cd ../lib; $(MAKE));
+	echo exit | ws ../lib/run_matrix_gsl_test.ws -exit-error;
 
 supertest: super-test
 super-test: 
