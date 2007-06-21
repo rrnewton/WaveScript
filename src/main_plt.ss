@@ -196,8 +196,7 @@
 (include "generic/shortcuts.ss")
 (require "generic/util/reg_macros.ss")
 
-
-
+  
 ;; [2007.01.23] For now we exit on error unconditionally.
 ;; [2007.05.17] Making this optional again.  The command line interface should turn it
 (when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
@@ -220,6 +219,7 @@
 	 (all-from "generic/grammars/grammar_checker.ss")
 	 (all-from "generic/compiler_components/regiment_helpers.ss")
 	 (all-from "generic/compiler_components/hm_type_inference.ss")
+         (all-from "generic/passes/pass-mechanism.ss")
 	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
 	 (all-from "plt/hashtab.ss")	 	 
 	 (all-from "generic/util/hash.ss")
