@@ -22,7 +22,9 @@
 	    "../../compiler_components/c_generator.ss" )
   (provide emit-caml-wsquery test-emit-caml)
   (chezprovide )  
-  (chezimports (except helpers test-this these-tests))
+  (chezimports shared-emit-ml
+	       (except helpers test-this these-tests))
+
 
 ;; MUTABLE
 (define union-edges 'union-edges-uninit)
@@ -36,21 +38,23 @@
 ;======================================================================
 
 ;;; First some helpers to produce syntax for certain caml constructs:
-(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
-(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+(define (coerce x) (if (symbol? x) (symbol->string x) x))
 (define (make-fun formals body) 
   (list "(fun " (if (null? formals) "()"
-		    (insert-between " " (map symbol->string formals)))
+		    (insert-between " " (map coerce formals)))
 	" -> " body ")"))
+
 (define (make-let binds body)
   (list "(let "
 	(insert-between "\n and "
 	   (map (match-lambda ([,lhs ,rhs])
-		  (list (symbol->string lhs) " = " rhs))
+		  (list (coerce lhs) " = " rhs))
 	     binds))
 	" in \n"
 	(indent body "  ")
 	")"))
+
+
 
 ; make-conditional
 (define (ln . args) (list args "\n"))
@@ -287,8 +291,6 @@
       [(assert-type ,t '())     (wrap (PolyConst '() t))]
       [nulltimebase             (Const name type 'nulltimebase)]      
 |#
-
-
 
 
 ;; ================================================================================
@@ -571,56 +573,6 @@
       [#(,[t*] ...) `(tuple ,t* ...)]
       [,oth (error 'make-caml-zero-for-type "unhandled type: ~s" oth)])))
 
-; ======================================================================
-;; Expressions.
-
-;; .param exp      The expression to process.	
-;; .param emitter  Function that generates the emit code, given an argument.
-(define Expr ;(Expr tenv)
-  (lambda (exp emitter)
-    (match exp
-      [,v (guard (symbol? v) (regiment-constant? v)) (Const v)]
-      [,v (guard (symbol? v)) (Var v)]
-      [',c (Const c)]
-
-      [(assert-type (Sigseg ,elt) nullseg)    (DispatchOnArrayType 'nullseg elt)]
-      [(assert-type (Array ,elt) Array:null)  (DispatchOnArrayType 'Array:null elt)]
-
-      [(tuple ,[rands] ...)   (apply make-tuple rands)]
-      [(tupref ,i ,len ,[v])
-       (let ([pat 
-	      (apply make-tuple
-		     (append (make-list i "_") '("x")			
-			     (make-list (- len i 1) "_")))])
-	 `("(let ",pat" = ",v" in x)\n"))]
-      
-      [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
-       `("(let ",v" = ",rhs" in\n ",bod")")]
-      [(begin ,[e*] ...)  `("begin\n" ,@(indent (insert-between ";\n" e*) "  ") "\nend")]
-      [(emit ,vq ,[x]) (emitter x)]
-      [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
-      [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
-
-      ;; This is a really lame hack for now... emulating "break":
-      [(for (,i ,[st] ,[en]) ,[bod])
-       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")]
-      ;[(break) "(broke := true)"]
-      [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
-
-
-      [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-       (Prim (cons prim rand*) emitter)]
-      [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-       (Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
-
-      [(assert-type ,t ,[x]) 
-       ;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
-       x]
-      [,unmatched (error 'emit-caml:Expr "unhandled form ~s" unmatched)]
-
-)))
-
-
 ;;================================================================================
 
 ;; This just converts the name of the primitive, for those primitives
@@ -780,6 +732,26 @@
 ))
 
 
+
+;;================================================================================
+;; Import the rest of our functionality from the shared module.
+
+;; This packages up the caml specific functionality to pass back up to the parent module.
+;; This is not complete, just what I happen to be using.
+(define CamlSpecific 
+  (lambda args
+    (match args
+      [(make-let . ,x)   (apply make-let x)]
+      [(make-tuple . ,x) (apply make-tuple x)]
+
+      [(Var . ,x)        (apply Var x)]
+      [(Prim . ,x)       (apply Prim x)]
+      [(Const . ,x)      (apply Const x)]
+      [(DispatchOnArrayType . ,x) (apply DispatchOnArrayType x)]
+
+      )))
+      
+(define Expr (protoExpr CamlSpecific))
 
 
 

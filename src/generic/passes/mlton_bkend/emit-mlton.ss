@@ -4,10 +4,12 @@
 
 (module emit-mlton mzscheme 
   (require  "../../../plt/common.ss"
-	    "../../compiler_components/c_generator.ss" )
+	    "../../compiler_components/c_generator.ss" 
+	    "../ocaml_bkend/shared-emit-ml.ss")
   (provide emit-mlton-wsquery )
   (chezprovide )  
-  (chezimports (except helpers test-this these-tests))
+  (chezimports shared-emit-ml 
+	       (except helpers test-this these-tests))
 
 ;; MUTABLE
 (define union-edges 'union-edges-uninit)
@@ -43,12 +45,6 @@
 	(indent body "  ")
 	"\n end)"))
 
-(define (make-begin . exprs) (list "(" (insert-between ";\n" exprs) ")"))
-
-
-(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
-(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
-
 
 
 
@@ -68,11 +64,9 @@
     [Float     "real"]
     [Double    "real"]
     
-    
-
     [Bool    "bool"]
     [Int     "int"]
-    [Int16   "int"]
+    [Int16   "Int16.int"] ;; Not standard SML.
 
 ;    [Complex  "Complex.t"]
     [String   "string"]
@@ -236,7 +230,7 @@
   (lambda (expr)
     ;; Just call each of the sites with the argument.
     (make-let `([emitted ,expr])
-      (apply make-begin 
+      (apply make-seq
        (append 
 	(map (lambda (down) 
 	      (cond 
@@ -367,7 +361,7 @@
 	     ,(make-let '((t "ref 0"))
 	        (with-fun-binding v ()
 		   (indent  
-		    (make-begin 
+		    (make-seq
 		     `("t := !t+",r)
 		     ((Emit downstrm) "()")
 		     `("SE (!t,",v")\n"))
@@ -390,7 +384,8 @@
 	  (values
 	   (list 
 	    ;; Builds a function from unit to an initial scheduler entry "SE" 
-	    " "v" = fun () -> \n"	    
+	    " "v" = "
+	    "fun () -> \n"	    
 	    " let timestamp = ref 0 in \n"
 	    " let hndl = open_in "file" in \n"
 	    " let rec f () = \n"
@@ -589,54 +584,7 @@
       [#(,[t*] ...) `(tuple ,t* ...)]
       [,oth (error 'make-caml-zero-for-type "unhandled type: ~s" oth)])))
 
-; ======================================================================
-;; Expressions.
 
-;; .param exp      The expression to process.	
-;; .param emitter  Function that generates the emit code, given an argument.
-(define Expr ;(Expr tenv)
-  (lambda (exp emitter)
-    (match exp
-      [,v (guard (symbol? v) (regiment-constant? v)) (Const v)]
-      [,v (guard (symbol? v)) (Var v)]
-      [',c (Const c)]
-
-      [(assert-type (Sigseg ,elt) nullseg)    (DispatchOnArrayType 'nullseg elt)]
-      [(assert-type (Array ,elt) Array:null)  (DispatchOnArrayType 'Array:null elt)]
-
-      [(tuple ,[rands] ...)   (apply make-tuple rands)]
-      [(tupref ,i ,len ,[v])
-       (let ([pat 
-	      (apply make-tuple
-		     (append (make-list i "_") '("x")			
-			     (make-list (- len i 1) "_")))])
-	 (make-let `((,pat ,v)) "x"))]
-      
-      [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
-       (make-let `((,v ,rhs)) bod)]
-      [(begin ,[e*] ...)  (indent (apply make-begin e*) "  ")]
-      [(emit ,vq ,[x]) (emitter x)]
-      [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
-      [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
-
-      ;; This is a really lame hack for now... emulating "break":
-      [(for (,i ,[st] ,[en]) ,[bod])
-       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")]
-      ;[(break) "(broke := true)"]
-      [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
-
-
-      [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-       (Prim (cons prim rand*) emitter)]
-      [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-       (Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
-
-      [(assert-type ,t ,[x]) 
-       ;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
-       x]
-      [,unmatched (error 'emit-mlton:Expr "unhandled form ~s" unmatched)]
-
-)))
 
 
 ;;================================================================================
@@ -655,7 +603,15 @@
       ;;wserror ;generic_hash 
       ))
   (define aliastable
-    '([+_ "(+)"]  
+    '(
+      
+      [+I16 "(Int16.+)"]
+      [-I16 "(Int16.-)"] 
+      [*I16 "( Int16.* )"] 
+      [/I16 "( Int16./ )"]
+      [^I16 "powInt"]
+      
+      [+_ "(+)"]  
       [-_ "(-)"] 
       [*_ "( * )"]
       [/_ "(/)"]
@@ -672,12 +628,6 @@
       [*: "Complex.mul"] 
       [/: "Complex.div"]
       [^: "Complex.pow"]
-
-      [+I16 "(+)"]
-      [-I16 "(-)"] 
-      [*I16 "( * )"] 
-      [/I16 "(/)"]
-      [^I16 "powInt"]
 
       [<      "(<)"]
       [<=     "(<=)"]
@@ -799,6 +749,26 @@
 
 
 
+;;================================================================================
+;; Import the rest of our functionality from the shared module.
+
+;; This packages up the caml specific functionality to pass back up to the parent module.
+;; This is not complete, just what I happen to be using.
+(define MLtonSpecific 
+  (lambda args
+    (match args
+      [(make-let . ,x)   (apply make-let x)]
+      [(make-tuple . ,x) (apply make-tuple x)]
+
+      [(Var . ,x)        (apply Var x)]
+      [(Prim . ,x)       (apply Prim x)]
+      [(Const . ,x)      (apply Const x)]
+      [(DispatchOnArrayType . ,x) (apply DispatchOnArrayType x)]
+
+      )))
+      
+(define Expr (protoExpr MLtonSpecific))
+
 
 
 
@@ -880,6 +850,7 @@
 
 (define-testing test-this (default-unit-tester "wavescript_emit-mlton.ss: generating WaveScript Mlton code." these-tests))
 (define test-emit-mlton test-this)
+
 
 
 ) ;; End Module

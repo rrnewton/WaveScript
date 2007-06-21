@@ -1,0 +1,72 @@
+
+#!/bin/bash
+
+COMP=.__wscMessages.txt
+RUN=runquery_mlton_output.txt
+
+echo > $COMP
+echo > $RUN
+
+function go () {
+    echo 
+    echo "testall_mlton: Running $1"
+    echo "============================================================"
+    if ! wsmlton $1 -exit-error; then exit 1; fi
+    echo >> $RUN
+    echo $1 : >> $RUN
+    echo "================================================================================" >> $RUN
+    if ! ./query.exe | head -n 200 >> $RUN; then exit 1; fi
+    echo
+    echo Finished running query.
+}
+
+#go "demo1b_dataFile.ws"
+go "demo1c_timer.ws"
+#go "demo1d_dataFile_binary.ws"
+# go "demo1d_dataFile_binary.ws"
+
+# go "demo3g_arrays.ws"
+# go "demo4a_fft.ws"
+
+# go "demo6a_unionList.ws"
+
+# go "demo7a_marmot_noinline.ws"
+# go "demo7b_marmot_phase1.ws"
+
+
+# #go "demo2a_iterate.ws"
+# #go "demo2b_iterateState.ws"
+
+# # go "demo3a_tuples.ws"
+# # go "demo3b_inlining.ws"
+# # go "demo3c_lists.ws"
+# # go "demo3d_tuples_of_tuples.ws"
+# # #TEMP# go "demo3e_hashtables.ws"
+# # go "demo3f_morelists.ws"
+# # go "demo3g_arrays.ws"
+# # go "demo3h_advancedlists.ws"
+# # go "demo3i_conversion_prims.ws"
+# # go "demo3j_numbers.ws"
+# # go "demo3k_higher_order.ws"
+
+# # # [2007.03.14] This is where the segfaulting starts:
+# # # But 5a,5B don't segfault..
+# # # 6a,6b do segfault.
+
+
+
+# # go "demo5a_rewindow.ws"
+# # go "demo5b_rewindow_inlined.ws"
+
+# # go "demo6a_unionList.ws"
+# # go "demo6b_sync.ws"
+# # go "demo6c_syncN.ws"
+
+
+
+
+# # go "demo8a_generic_arith.ws" 
+# # go "demo8b_sugars.ws"
+
+# # go "demo11_simple_merge.ws"
+

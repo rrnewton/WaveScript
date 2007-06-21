@@ -582,8 +582,10 @@
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
 (include "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
+(include "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
 (include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
 (include "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
+
 
 
 ;(inspect (emit-caml-wsquery caml-example))

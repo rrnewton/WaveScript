@@ -37,12 +37,11 @@ fi
 #LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-#SML=mlton
-SML=sml
+SML=mlton 
+#SML=sml 
 
-echo $SML $INCLUDES $LIBS $FLAGS query.sml -o query.exe
 start=`date +%s`
-if $SML $INCLUDES $LIBS $FLAGS query.sml -o query.exe
+if $SML -output query.exe $INCLUDES $LIBS $FLAGS query.sml 
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to 'query.exe'.";

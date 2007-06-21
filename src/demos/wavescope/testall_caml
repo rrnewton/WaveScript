@@ -8,7 +8,7 @@ echo > $RUN
 
 function go () {
     echo 
-    echo "testall_wsc: Running $1"
+    echo "testall_caml: Running $1"
     echo "============================================================"
     if ! wscaml $1 -exit-error; then exit 1; fi
     echo >> $RUN
@@ -20,6 +20,7 @@ function go () {
 }
 
 #go "demo1b_dataFile.ws"
+go "demo1c_timer.ws"
 go "demo1d_dataFile_binary.ws"
 
 go "demo3g_arrays.ws"
