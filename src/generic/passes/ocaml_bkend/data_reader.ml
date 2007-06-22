@@ -6,6 +6,7 @@ let read_uint16 str i : int =
   (Char.code str.[i+1] lsl 8) + 
   (Char.code str.[i])
 
+(* This only works because there's space to kill.*)
 (* read_int16 : string -> int -> int *)
 let read_int16 str i =
   let unsigned = read_uint16 str i in

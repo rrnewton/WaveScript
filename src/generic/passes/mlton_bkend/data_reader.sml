@@ -15,9 +15,10 @@ fun read_uint16 vec (i : int) =
 (* read_int16 : string -> int -> int *)
 fun read_int16 vec i : Int16.int =
   let val unsigned = read_uint16 vec i in
-    if 0 = LargeWord.toInt (LargeWord.andb (unsigned, LargeWord.fromInt 32768))
+    Int16.fromInt (Word16.toIntX (Word16.fromLarge unsigned))
+(*    if 0 = LargeWord.toInt (LargeWord.andb (unsigned, LargeWord.fromInt 32768))
     then Int16.fromInt (LargeWord.toInt unsigned)
-    else Int16.fromInt (LargeWord.toInt (LargeWord.- (unsigned, LargeWord.fromInt 65536)))
+    else Int16.fromInt (LargeWord.toInt (LargeWord.- (unsigned, LargeWord.fromInt 65536)))*)
   end 
 
 
@@ -27,15 +28,11 @@ fun read_int32 vec i =
   Int32.fromLarge(Word32.toLargeInt(PackWord32Big.subVec(vec,0)))
 *)
 
-exception WSError
-fun wserror str = raise WSError
-
-
 (* Binary reading, produces a scheduler entry, "SE" *)
 (* mode & Textreader parameter are unused  and should be removed *)
 fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
              (textreader, binreader,  bytesize:int,  skipbytes:int,  offset:int)
-	     (outchan : (Int16.int -> unit))
+	     (outchan (*:(Int16.int -> unit)*) )
   =
 	  let               
 	      val hndl = BinIO.openIn file 
@@ -60,16 +57,22 @@ fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
 	   end
 
 
+fun verisigseg (x : 'a sigseg) : 'a sigseg = x
+
 (* This simply constructs a reader function that reads a whole window. 
    Thus it can reuse dataFile above. *)
 fun dataFileWindowed config 
-    (textreader,binreader, bytesize, skipbytes, offset)
+    (textreader, binreader (*: BinIO.vector -> int -> 'elem*), 
+     bytesize:int, skipbytes:int, offset:int)
 
-    outchan (winsize:int) 
-    (arrcreateUnsafe, arrset, tosigseg)
+     (outchan (*: 'elem -> unit*))
+     (winsize:int)
+     (arrcreateUnsafe, 
+      arrset : 'a array * int * 'a -> unit , 
+      tosigseg)
 =
   let
-      val sampnum = ref 0 
+      val sampnum = ref (Int64.fromInt 0)
       val wordsize : int = bytesize+skipbytes 
       fun block_bread vec baseind = 
       (* Array.init might not be the most efficient: *)
@@ -77,13 +80,25 @@ fun dataFileWindowed config
            val i = ref 0
        in        
 	  (while !i < winsize do 
-	     arrset arr i (binreader vec (baseind + !i * wordsize));
-           let val result = tosigseg arr !sampnum 3339 
+	     (arrset (arr, !i, (binreader vec (baseind + !i * wordsize)));
+	      i := !i + 1);
+           let val result = verisigseg( tosigseg (arr, !sampnum, 3339))
            in
-	   (sampnum := !sampnum + winsize;
+	   (sampnum := !sampnum + Int64.fromInt winsize;
 	    result)
            end)
        end
   in
     dataFile config (38383, block_bread, wordsize * winsize, 0, offset) outchan
   end
+
+
+(*
+    (string * string * int * int)
+ -> ('a * (BinIO.vector -> int -> 'b) * int * int * int)
+ -> (Int32.int -> unit)
+ -> int
+ -> ((int -> 'c) * ('c -> int ref -> 'b -> 'd) * 
+     ('c -> ('e ref -> 'e) -> int ref -> int -> Int32.int))
+  -> scheduleEntry
+*)

@@ -46,6 +46,8 @@
 		    (insert-between " " (map coerce formals)))
 	" -> " body ")"))
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+(define (make-for st en bod)
+  `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)"))
 
 (define (make-let binds body)
   (list "(let "
@@ -739,29 +741,33 @@
 ;;================================================================================
 ;; Import the rest of our functionality from the shared module.
 
+
+(define-syntax make-dispatcher
+  (syntax-rules (else)
+    [(_ exp syms ...) 
+     (let ([x exp])
+       (case x [(syms) syms] ... 
+	   [else (error 'make-dispatcher "unmatched: ~s" x)]))]))
+
 ;; This packages up the caml specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
 (define CamlSpecific 
   (lambda args
-    (match args
-      [(make-let . ,x)   (apply make-let x)]
-      [(make-tuple . ,x) (apply make-tuple x)]
+    (apply
+     (make-dispatcher (car args)
+		      
+        make-let 
+	make-tuple 
+	make-fun
+	make-for
+	
+	Var Prim Const 
+	DispatchOnArrayType
 
-      [(Var . ,x)        (apply Var x)]
-      [(Prim . ,x)       (apply Prim x)]
-      [(Const . ,x)      (apply Const x)]
-      [(DispatchOnArrayType . ,x) (apply DispatchOnArrayType x)]
-
-      )))
+	)
+     (cdr args))))
       
 (define Expr (protoExpr CamlSpecific))
-
-
-
-
-
-
-
 
 
 

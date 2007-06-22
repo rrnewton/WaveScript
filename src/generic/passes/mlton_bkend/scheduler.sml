@@ -43,9 +43,6 @@ end
 
 (********************************************************************************)
 
-
-(* Should do this with functors, but not entirely sure about modules and inlining. *)
-
 (* VER1: Normal arrays: *)
 (*
 type ('t,'ign) wsarray = 't array
@@ -72,24 +69,5 @@ let wsmakearr t n x  =
     arr  
     *)
 
-(*
 
-fun wsappend a b = 
-  let val len1 = Bigarray.Array1.dim a
-      val len2 = Bigarray.Array1.dim b 
-      val newarr = Bigarray.Array1.create 
-                   (Bigarray.Array1.kind a) (Bigarray.Array1.layout a) (len1 + len2)
-  in 
-()
-(*
-    for i = 0 to len1 -1 do
-      Bigarray.Array1.set newarr i (Bigarray.Array1.get a i);
-    done;
-    for i = len1  to len1 + len2 - 1 do
-      Bigarray.Array1.set newarr i (Bigarray.Array1.get b (i-len1));
-    done;
-    newarr   
-*)
-  end
 
-**)

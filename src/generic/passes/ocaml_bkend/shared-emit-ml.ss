@@ -50,8 +50,9 @@
       [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
       [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
 
+      ;; This differs in ocaml/sml.
       [(for (,i ,[st] ,[en]) ,[bod])
-       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")]
+       (obj 'make-for st en bod)]
       [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (obj 'Prim (cons prim rand*) emitter)]

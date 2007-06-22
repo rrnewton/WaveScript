@@ -34,6 +34,12 @@
 ;; Tuple version:
 ;; ...
 
+(define (make-for st en bod)
+  (list
+   "(let val i = ref "st" in \n"
+   " while !i <= "en" do\n"
+   "   "bod"\n end)"))
+
 (define (make-let binds body . extra)
   (list "(let val " extra
 	(insert-between "\n val "
@@ -71,8 +77,8 @@
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
-    [Float     "real"]
-    [Double    "real"]
+    [Float     "Real32.real"]
+    [Double    "Real64.real"]
     
     [Bool    "bool"]
     [Int     "int"]
@@ -88,10 +94,11 @@
 
     ;; Went back and forth on whether this should be a pointer:
     [(Sigseg ,t) 
-     (let ([flatty (BigarrayType? t)])
+     `(,(Type t) " sigseg")
+#;     (let ([flatty (BigarrayType? t)])
        (if flatty
 	   `("(",(Type t)", Bigarray.",flatty"_elt) sigseg_flat")
-	   `(,(Type t) " sigseg")))]
+	   ....))]
 
     [(Array ,[t])  `("(",t") array")]
     [(List ,[t]) `("(",t") list")]
@@ -115,28 +122,30 @@
     [Int16 "Int16.toString"] ;; These are just represented as ints.
 
     ;; ERROR: FIXME:
-    [(quote ,_) "(fun _ -> \"POLYMORPHIC_OBJECT\")"]
+    [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
 
-    [String (make-fun '(x) "x")]
-    [Int   "Int.toString"]
-    [Float "string_of_float"]
-    [Double "string_of_float"]
-    [Bool "string_of_bool"]
-    [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
+    [String     (make-fun '(x) "x")]
+    [Int    "Int.toString"]
+    [Float  "Real32.toString"]
+    [Double "Real64.toString"]
+    [Bool   "Bool.toString"]
+;    [Complex (make-fun '(c) "(Real32.toString c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")")]
 
-    [(List ,[t]) (list "(fun ls -> \"[\" ^ String.concat \", \" (List.map "t" ls) ^ \"]\")")]
-    [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
+    [(List ,[t]) (make-fun '(ls) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" ls) ^ \"]\")"))]
+    [(Array ,[t]) (make-fun '(a) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
 
     ;; Just print range:
-    [(Sigseg ,t) (list 
-     "(fun ss -> \"[\"^ string_of_int ("  (DispatchOnArrayType 'start t)
-     " ss) ^\", \"^ string_of_int ("      (DispatchOnArrayType 'end t)
-     " ss + 1) ^ \")\")")]
+    [(Sigseg ,t) 
+     (make-fun '(ss) 
+	       (list 
+		"(\"[\"^ Int.toString ("  (DispatchOnArrayType 'start t)
+		" ss) ^\", \"^ Int.toString ("      (DispatchOnArrayType 'end t)
+		" ss + 1) ^ \")\")"))]
 
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
-	"(fun "(apply make-tuple flds)" ->\n"
+	"(fn "(apply make-tuple flds)" =>\n"
 	(indent 
 	 (list "\"(\" ^"
 	       (insert-between " \", \" ^"
@@ -146,6 +155,45 @@
 			       )
 	       " \")\"")
 	 "  ")")"))]
+    ))
+
+
+(define (build-equality-test t)
+  (match t
+    
+    [Float  "Real32.=="]
+    [Double "Real64.=="]
+
+    [(List ,[t]) (list "(fn (l1, l2) => ListPair.all "t" (l1, l2))" )]
+    [(Array ,[t]) (list "(arrayEqual "t")")]
+    
+#|
+    ;; Just print range:
+    [(Sigseg ,t) 
+     (make-fun '(ss) 
+	       (list 
+		"(\"[\"^ Int.toString ("  (DispatchOnArrayType 'start t)
+		" ss) ^\", \"^ Int.toString ("      (DispatchOnArrayType 'end t)
+		" ss + 1) ^ \")\")"))]
+
+    [#(,[t*] ...)
+     (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
+       (list 
+	"(fn "(apply make-tuple flds)" =>\n"
+	(indent 
+	 (list "\"(\" ^"
+	       (insert-between " \", \" ^"
+			       (map (lambda (printer fld)
+				      `("((",printer") ",fld") ^ \n")) 
+				 t* flds)
+			       )
+	       " \")\"")
+	 "  ")")"))]
+  |#  
+    
+    [,else ;(make-fun (list (make-tuple "x" "y")) "(x = y)")
+	   (make-fun '(x y) "(x = y)")
+	   ]
     ))
 
 
@@ -161,9 +209,8 @@
   (lambda (prog)
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/scheduler.sml")))
-;    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
-    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg_seglist.sml")))
-;    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
+    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
+    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
 
     (match prog
@@ -174,7 +221,7 @@
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
-       (let ([result (list header1 header4 "\n" 
+       (let ([result (list header1 header2 header3 header4 "\n" 
 
 			   ;; Block of constants first:
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
@@ -323,21 +370,11 @@
 
       ;; Array:null should have been handled elsewhere:
       (ASSERT (not (zero? (vector-length datum))))
-      (let ([constArr 
-	     (list "[|" 
-		   (insert-between "; " (map Const (vector->list datum)))
-		   "|] \n")])
-	(if (BigarrayType? (type-const (vector-ref datum 0)))
-	    (list
-	     "  (Bigarray.Array1.of_array "
-	     " Bigarray."
-	     (if (zero? (vector-length datum))
-		 "int"
-		 (ConvertArrType (type-const (vector-ref datum 0)))) ;; Kind
-	     " Bigarray.c_layout \n" 
-	     constArr ")")
-	    ;; Otherwise this is all we need:
-	    constArr))]
+
+      ;; TODO: array constants.
+      (ASSERT #f)
+
+      ]
 
      [else (error 'emit-mlton:Const "not an Mlton-compatible literal (currently): ~s" datum)])))
 
@@ -500,70 +537,44 @@
 
 ;; Converts an operator based on the array element type.
 (define (DispatchOnArrayType op elt)
-  (let ([flatty (BigarrayType? elt)])
-    (if flatty
-	(case op
-	  [(Array:null) `("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout 0)")]
-	  [(Array:set)     "Bigarray.Array1.set"]
-	  [(Array:ref)     "Bigarray.Array1.get"]
-	  [(Array:length)  "Bigarray.Array1.dim"]
-	  ;; Depend on that inliner!
-	  [(Array:make)  
-	   (lnboth (make-fun '(n x) 
-	     (lnfst (make-let `([ar ("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout n)")])
-			   "begin Bigarray.Array1.fill ar x; ar end"))))]
-	  ;(make-begin (make-app 'Bigarray.Array1.fill '(ar x)) 'ar)
+  (case op
+    [(Array:null) "[||]"]
+    [(Array:make) "Array.array"]
+    ;; Just makes a normal array with zeros:
+    ;; Cut/paste from above:
 
-	  ;; TODO: This could actually be unsafe in the bigarray
-	  ;; case... but we don't exploit that yet, we just use the safe version
-	  [(Array:makeUNSAFE)
-	   (lnboth (make-fun '(n) 
-	     (make-app (DispatchOnArrayType 'Array:make elt)
-		(list "n" 
-		  (match (make-caml-zero-for-type elt)
-		    [(quote ,c) (Const c)])))))]
-	  
-	  ;; This takes an extra arg for bigarrays:
-	  [(nullseg) `("(nullseg_flat ",flatty")")]	  
-	  ;; For the sigseg prims we just append "_flat" to the name:
-	  [else 
-	   (if (sigseg-prim? op)
-	       (format "~a_flat" (ASSERT (PrimName op)))
-	       (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))])
-	;; This is the native Caml array case:
-	(case op
-	  [(Array:null) "[||]"]
-	  [(Array:make) "Array.make"]
-	  ;; Just makes a normal array with zeros:
-	  ;; Cut/paste from above:
-	  [(Array:makeUNSAFE)
-	   (lnboth (make-fun '(n) 
-	     (make-app (DispatchOnArrayType 'Array:make elt)
-		(list "n" 
-		  (match (make-caml-zero-for-type elt)
-		    [(quote ,c) (Const c)])))))]
+    ;; Can't do anything smart with this right now:
+    ;; Could use MONO Arrays... (Like we do in Caml)
+    [(Array:makeUNSAFE)
+     (lnboth (make-fun '(n) 
+		       (make-app (DispatchOnArrayType 'Array:make elt)
+				 (list 
+				  (make-tuple "n" 
+				    (match (make-mlton-zero-for-type elt)
+				      [(quote ,c) (Const c)]
+				      [,str       str]))))))]
 
-	  [(Array:length) "Array.length"]
-	  [(Array:set)    "Array.set"]
-	  [(Array:ref)    "Array.get"]
+    [(Array:length) "Array.length"]
+    [(Array:set)    "Array.update"]
+    [(Array:ref)    "Array.sub"]
 
-	  [(nullseg) "nullseg_flat"]
-	  ;; We just use the normal name conversion:
-	  [else (if (sigseg-prim? op)
-		    (ASSERT (PrimName op))		    
-		    (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
-	  ))))
+    [(nullseg) "nullseg_flat"]
+    ;; We just use the normal name conversion:
+    [else (if (sigseg-prim? op)
+	      (ASSERT (PrimName op))
+	      (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
+    ))
 
-(define make-caml-zero-for-type 
+(define make-mlton-zero-for-type 
   (lambda (t)
     (match t
       [Int   ''0]
-      [Int16 ''0]
+      [Int16 "(Int16.fromInt 0)"]
       [Float ''0.0]
       [Double ''0.0]
       [Complex ''0.0+0.0i]
       [#(,[t*] ...) `(tuple ,t* ...)]
-      [,oth (error 'make-caml-zero-for-type "unhandled type: ~s" oth)])))
+      [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])))
 
 
 
@@ -573,6 +584,12 @@
 ;; This just converts the name of the primitive, for those primitives
 ;; that map directly onto Mlton functions:
 (define (PrimName sym)
+  (define (compose . ls)
+    (make-fun '(x)
+       (let loop ([ls ls])
+	 (if (null? ls)
+	     "x"
+	     (make-app (car ls) (list (loop (cdr ls))))))))
   (define sametable ;; Prims with the same name:
     '(
       joinsegs subseg width toSigseg toArray timebase
@@ -584,24 +601,24 @@
       ;;wserror ;generic_hash 
       ))
   (define aliastable
-    '(
+    `(
       
       [+I16 "( Int16.+)"]
       [-I16 "( Int16.-)"] 
       [*I16 "( Int16.* )"] 
-      [/I16 "( Int16./ )"]
-;      [^I16 "powInt"]
+      [/I16 "( Int16.div )"]
+      [^I16 "powInt16"]
 
       [+_ "(Int.+)"]  
       [-_ "(Int.-)"] 
       [*_ "( Int.* )"]
-      [/_ "(Int./)"]
-;      [^_ powInt] ;; Defined in prims.sml
+      [/_ "(Int.div)"]
+      [^_ powInt] ;; Defined in prims.sml
 
       [+. "( Real32.+ )"]
       [-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
-      [/. "( Real32./ )"]
+      [/. "( Real32.div )"]
 
       [absI16 Int16.abs]
       [absI   Int.abs]
@@ -621,6 +638,7 @@
 ;      [/: "Complex.div"]
 ;      [^: "Complex.pow"]
 
+;;  NOT POLYMORPHIC IN SML!
 ;      [<      "(<)"]
 ;      [<=     "(<=)"]
 ;      [>      "(>)"]
@@ -631,7 +649,7 @@
 
 ;; SHARED ==========================
 
-      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
+;      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
       [Mutable:ref   "ref"]
       [deref         "!"]
 
@@ -649,30 +667,30 @@
       [List:reverse List.rev]
       [List:ref     List.nth]
 
-      [int16ToInt    (make-fun '(x) "x")]
-;      [int16ToFloat   Int16.toInt]
-;      [int16ToDouble  float_of_int]
-;      [int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+      [int16ToInt     Int16.fromInt]
+      [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
+      [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
+      ;[int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
 
-      [intToInt16    "(fun x -> x)"]
-      [intToFloat    float_of_int]
-      [intToDouble   float_of_int]
-      [intToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+      [intToInt16     Int16.toInt]
+      [intToFloat     Real32.fromInt]
+      [intToDouble    Real64.fromInt]
+;      [intToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
 
-      [floatToInt    int_of_float]
-      [floatToInt16  int_of_float]
-      [floatToDouble  "(fun x -> x)"]
-      [floatToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
+      [floatToInt    Real32.toInt]
+      [floatToInt16  ,(compose "Int16.fromInt" "Real32.toInt")]
+      [floatToDouble ,(make-fun '(x) "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
+;      [floatToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
 
-      [doubleToInt    int_of_float]
-      [doubleToInt16  int_of_float]
-      [doubleToFloat  "(fun x -> x)"]
-      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
+      [doubleToInt    Real64.toint]
+      [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
+      [doubleToFloat  ,(make-fun '(x) "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)")]
+;      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
 
-      [complexToInt16 "(fun c -> int_of_float c.Complex.re)"]
-      [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
-      [complexToFloat "(fun c -> c.Complex.re)"]
-      [complexToDouble "(fun c -> c.Complex.re)"]
+;      [complexToInt16 "(fun c -> int_of_float c.Complex.re)"]
+;      [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
+;      [complexToFloat "(fun c -> c.Complex.re)"]
+;      [complexToDouble "(fun c -> c.Complex.re)"]
 
       [stringToInt    Int.fromString]
       [stringToFloat  Real.fromString]
@@ -694,16 +712,21 @@
   (define (myExpr x) (Expr x emitter))
   (match expr
 
+    ;; Handle equality tests.  This is more laborious than in Caml.
+    [(,eq (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y]) 
+     (guard (memq eq '(equal? =)))
+     (make-app (build-equality-test ty) (list (make-tuple x y)))]
+
     ;; Print is required to be pre-annotated with a type.
     ;; (We can no longer do recover-type.)
     [(print (assert-type ,t ,e))    
-     `("(print_string ",(Prim `(show (assert-type ,t ,e)) emitter)")")]
+     `("(print ",(Prim `(show (assert-type ,t ,e)) emitter)")")]
     [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
     [(show (assert-type ,t ,[myExpr -> e]))
      `("((",(build-show t)") ",e")")]
     [(wserror ,[myExpr -> s])
      ;; Should declare a special WSException or something:
-     `("(raise (Failure ",s"))")]
+     `("(wserror ",s")")]
 
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
@@ -742,33 +765,33 @@
 ;;================================================================================
 ;; Import the rest of our functionality from the shared module.
 
+
+(define-syntax make-dispatcher
+  (syntax-rules (else)
+    [(_ exp syms ...) 
+     (let ([x exp])
+       (case x [(syms) syms] ... 
+	   [else (error 'make-dispatcher "unmatched: ~s" x)]))]))
+
 ;; This packages up the caml specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
 (define MLtonSpecific 
   (lambda args
-    (match args
-      [(make-let . ,x)   (apply make-let x)]
-      [(make-app . ,x)   (apply make-app x)]
-;      [(make-tuple . ,x) (apply make-tuple x)]
+    (apply
+     (make-dispatcher (car args)
+		      
+        make-let 
+	make-tuple 
+	make-fun
+	make-for
+	
+	Var Prim Const 
+	DispatchOnArrayType
 
-      [(Var . ,x)        (apply Var x)]
-      [(Prim . ,x)       (apply Prim x)]
-      [(Const . ,x)      (apply Const x)]
-      [(DispatchOnArrayType . ,x) (apply DispatchOnArrayType x)]
-
-      )))
+	)
+     (cdr args))))
       
 (define Expr (protoExpr MLtonSpecific))
-
-
-
-
-
-
-
-
-
-
 
 
 
