@@ -56,7 +56,8 @@ let dataFile (file, mode, repeats, period)
 	  in SE (0, f)
 
 
-
+(* This simply constructs a reader function that reads a whole window. 
+   Thus it can reuse dataFile above. *)
 let dataFileWindowed config (* (file, mode, repeats, period) *)
     (textreader,binreader, bytesize, skipbytes, offset)
     outchan winsize (arrcreate_unsafe, arrset, tosigseg)  =

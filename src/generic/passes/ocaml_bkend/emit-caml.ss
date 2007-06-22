@@ -39,10 +39,13 @@
 
 ;;; First some helpers to produce syntax for certain caml constructs:
 (define (coerce x) (if (symbol? x) (symbol->string x) x))
+
+;; Curried version:
 (define (make-fun formals body) 
   (list "(fun " (if (null? formals) "()"
 		    (insert-between " " (map coerce formals)))
 	" -> " body ")"))
+(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
 
 (define (make-let binds body)
   (list "(let "
@@ -752,7 +755,6 @@
       )))
       
 (define Expr (protoExpr CamlSpecific))
-
 
 
 

@@ -20,10 +20,20 @@
 ;;; These are the functions that differ from their caml countparts.
 
 (define (coerce x) (if (symbol? x) (symbol->string x) x))
-(define (make-fun formals body) 
-  (list "(fn " (if (null? formals) "()"
-		   (insert-between " " (map coerce formals)))
-	" => \n" body ")"))
+
+;; Curried version:
+(define (make-fun formals body)
+  (if (null? formals)
+      (list "(fn () => "body")")
+      (let loop ([formals (map coerce formals)])
+	(if (null? formals)
+	    body
+	    (list "(fn "(car formals)" => "(loop (cdr formals)) ")")))))
+(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+
+;; Tuple version:
+;; ...
+
 (define (make-let binds body . extra)
   (list "(let val " extra
 	(insert-between "\n val "
@@ -44,7 +54,7 @@
 	" in \n"
 	(indent body "  ")
 	"\n end)"))
-
+(define (make-prim-app f x*) (make-app f (list (apply make-tuple x*))))
 
 
 
@@ -101,12 +111,14 @@
 
 (define (build-show t)
   (match t
+
+    [Int16 "Int16.toString"] ;; These are just represented as ints.
+
     ;; ERROR: FIXME:
     [(quote ,_) "(fun _ -> \"POLYMORPHIC_OBJECT\")"]
 
     [String (make-fun '(x) "x")]
     [Int   "Int.toString"]
-    [Int16 "Int.toString"] ;; These are just represented as ints.
     [Float "string_of_float"]
     [Double "string_of_float"]
     [Bool "string_of_bool"]
@@ -152,7 +164,7 @@
 ;    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
     ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg_seglist.sml")))
 ;    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
-;    (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
+    (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
@@ -162,7 +174,7 @@
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
-       (let ([result (list header1 ; header2 header3 header4 "\n" 
+       (let ([result (list header1 header4 "\n" 
 
 			   ;; Block of constants first:
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
@@ -379,54 +391,19 @@
        [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
 	(cond
 	 [(equal? mode "text") 
-	  (if (not (zero? repeats))
-	      (error 'emit-mlton "Caml text mode reader doesn't support replaying the datafile yet."))
-	  (values
-	   (list 
-	    ;; Builds a function from unit to an initial scheduler entry "SE" 
-	    " "v" = "
-	    "fun () -> \n"	    
-	    " let timestamp = ref 0 in \n"
-	    " let hndl = open_in "file" in \n"
-	    " let rec f () = \n"
-	    "  let line = input_line hndl in \n"
-	    "  Scanf.sscanf line \""
-	    (insert-between " "
-	     ;; CAREFUL: THIS DOESN'T EXPLICITELY LOOK FOR NEWLINES:
-             (map (lambda (ty)
-		    (match ty
-		      [Float  "%f"] 
-		      [Double "%f"] 
-		      [Int    "%d"]
-		      [Int16  "%d"]
-		      [String "%s"]					  
-		      ))	       
-	       types))
-	    "\" \n"
-	    (let ([names (map (lambda (_) 
-				(symbol->string (unique-name "fld"))) 
-			   types)])
-	      (list 
-	       "  (fun " (insert-between " " names) " -> \n   "
-	         ;; Form a tuple of the results and send it downstream.
-	         ((Emit downstrm) (apply make-tuple names))"); \n"))
-	    ;; Now discard the rest of the line.
-;	    "  let _ = input_line hndl in "
-	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
-	    "   SE (!timestamp, f) in \n"
-	    "  SE (0, f) \n" 
-	    "  \n"
-	    )
-	   ;; Initialization: schedule this datasource:
-	   `("schedule := ",v"() :: !schedule;;\n"))]
+;	  (if (not (zero? repeats))
+;	      (error 'emit-mlton "MLton text mode reader doesn't support replaying the datafile yet."))
+	  (error 'emit-mlton "MLton text mode readFile not implemented yet.")
+	  ]
 	 
 	 [(equal? mode "binary")
 	  (values (list 
 		   ;; Builds a function from unit to an initial scheduler entry "SE" 
-		   " "v" = fun () -> \n"
-		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
-		   "  and textreader = 33333 in \n"
-		   "    "
+		   " "v" = "
+		   (make-fun '()
+		   (make-let `([binreader ,(indent (build-binary-reader types) "    ")]
+			       [textreader "33333"])
+		   (list "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
 		   (make-tuple file 
 			       (list "\"" mode "\"")
@@ -438,7 +415,7 @@
 			       (number->string skipbytes)
 			       (number->string offset))
 		   " \n"
-		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+		   (indent (make-fun '(x) ((Emit downstrm) "x")) "      ")
 		   ;; Also an additional arguments for
 		   ;; dataFileWindowed.  One that has the window size.
 		   ;; And one that bundles up array create/set and
@@ -457,7 +434,10 @@
 				  (DispatchOnArrayType 'toSigseg         tuptyp)))
 			       ))
 		       "")
-		   "\n")
+		   "\n"
+			      )
+		    
+		    )))
 		  `("schedule := ",v"() :: !schedule;;\n"))]
 	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
 	  )]
@@ -471,22 +451,23 @@
 
 (define (type->reader t) 
   (match t
-    [Int16  (make-fun '(str ind) (make-app "read_int16" '("str" "ind")))]
-    ;[Int  "(fun str ind -> read_int32 str ind)"]
+    [Int    "read_int32"]
+    [Int16  "read_int16"]
     ))
+
 
 (define (build-binary-reader types)
   (define widths (map type->width types))
+  (make-fun '(vec ind)
   (list 
-   "fun str ind -> \n"
    ;"  let pos = ref ind in \n"
    (apply make-tuple
      (mapi (lambda (i t)
-	     (list (type->reader t)" str (ind + "
+	     (list (type->reader t)" vec (ind + "
 		   (number->string (apply + (list-head widths i)))")")
 	     )
 	   types))
-   "\n"))
+   "\n")))
 
 (define (build-text-reader types)
   (match types
@@ -605,64 +586,73 @@
   (define aliastable
     '(
       
-      [+I16 "(Int16.+)"]
-      [-I16 "(Int16.-)"] 
+      [+I16 "( Int16.+)"]
+      [-I16 "( Int16.-)"] 
       [*I16 "( Int16.* )"] 
       [/I16 "( Int16./ )"]
-      [^I16 "powInt"]
-      
-      [+_ "(+)"]  
-      [-_ "(-)"] 
-      [*_ "( * )"]
-      [/_ "(/)"]
-      [^_ powInt] ;; Defined in prims.sml
+;      [^I16 "powInt"]
 
-      [+. "(+.)"]
-      [-. "(-.)"] 
-      [*. "( *.)"] 
-      [/. "(/.)"]
-      [^. "( ** )"]
+      [+_ "(Int.+)"]  
+      [-_ "(Int.-)"] 
+      [*_ "( Int.* )"]
+      [/_ "(Int./)"]
+;      [^_ powInt] ;; Defined in prims.sml
 
-      [+: "Complex.add"]
-      [-: "Complex.sub"] 
-      [*: "Complex.mul"] 
-      [/: "Complex.div"]
-      [^: "Complex.pow"]
+      [+. "( Real32.+ )"]
+      [-. "( Real32.- )"] 
+      [*. "( Real32.* )"] 
+      [/. "( Real32./ )"]
 
-      [<      "(<)"]
-      [<=     "(<=)"]
-      [>      "(>)"]
-      [>=     "(>=)"]
-      [=        "(=)"] ;; NOTE! FIXME! should be =???
-      [equal?   "(=)"] ;; NOTE! FIXME! should be =???
-      [string-append "(^)"]      
-      [Mutable:ref "ref"]
-      [deref "!"]
+      [absI16 Int16.abs]
+      [absI   Int.abs]
+      [absF   Real.abs]
+;      [absC   Complex.norm]
 
-      [absI16 abs]
-      [absI   abs]
-      [absF   abs_float]
-      [absC   Complex.norm]
+      [string-append "(String.^)"] 
+      [List:append List.@]
 
-      [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
-      [sqrtF sqrt]
-      [sqrtC Complex.sqrt]
+;; TODO ==========================
 
-      [realpart "(fun x -> x.Complex.re)"]
-      [imagpart "(fun x -> x.Complex.im)"]
+;      [^. "( ** )"] 
 
-      [cons "(fun x y -> x::y)"]
+;      [+: "Complex.add"]
+;      [-: "Complex.sub"] 
+;      [*: "Complex.mul"] 
+;      [/: "Complex.div"]
+;      [^: "Complex.pow"]
+
+;      [<      "(<)"]
+;      [<=     "(<=)"]
+;      [>      "(>)"]
+;      [>=     "(>=)"]
+;      [=        "(=)"] ;; NOTE! FIXME! should be =???
+
+
+
+;; SHARED ==========================
+
+      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
+      [Mutable:ref   "ref"]
+      [deref         "!"]
+
+;      [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
+;      [sqrtF sqrt]
+;      [sqrtC Complex.sqrt]
+
+;      [realpart "(fun x -> x.Complex.re)"]
+;      [imagpart "(fun x -> x.Complex.im)"]
+
+      [cons (make-fun '(x y) "x::y")] 
       [car List.hd]
       [cdr List.tl]
-      [List:length List.length]
+      [List:length  List.length]
       [List:reverse List.rev]
-      [List:ref List.nth]
-      [List:append List.append]
+      [List:ref     List.nth]
 
-      [int16ToInt    "(fun x -> x)"]
-      [int16ToFloat  float_of_int]
-      [int16ToDouble  float_of_int]
-      [int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+      [int16ToInt    (make-fun '(x) "x")]
+;      [int16ToFloat   Int16.toInt]
+;      [int16ToDouble  float_of_int]
+;      [int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
 
       [intToInt16    "(fun x -> x)"]
       [intToFloat    float_of_int]
@@ -684,12 +674,12 @@
       [complexToFloat "(fun c -> c.Complex.re)"]
       [complexToDouble "(fun c -> c.Complex.re)"]
 
-      [stringToInt int_of_string]
-      [stringToFloat float_of_string]
-      [stringToDouble float_of_string]
-      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
+      [stringToInt    Int.fromString]
+      [stringToFloat  Real.fromString]
+      [stringToDouble Real64.fromString]
+;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
-      [roundF "(fun x -> floor (x + 0.5))"]
+      [roundF  (make-fun '(x) "(floor (x + 0.5))")]
 
       [start   ss_start]
       [end     ss_end]
@@ -718,7 +708,7 @@
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
      (guard (memq tc '(Array Sigseg)) (sigseg-prim? prim))
-     (make-app (DispatchOnArrayType prim elt)
+     (make-prim-app (DispatchOnArrayType prim elt)
 	       (map myExpr (cons first rest)))]
     ;; Safety net:
     [(,prim ,_ ...) (guard (sigseg-prim? prim))
@@ -727,10 +717,10 @@
     ;; Now do array prims in much the same way:
     [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
      (guard (memq prim '(Array:make Array:makeUNSAFE)))
-     (make-app (DispatchOnArrayType prim elt) arg*)]
+     (make-prim-app (DispatchOnArrayType prim elt) arg*)]
     [(,prim (assert-type (Array ,elt) ,[myExpr -> first]) ,[myExpr -> rest] ...)
      (guard (memq prim '(Array:ref Array:set Array:length)))
-     (make-app (DispatchOnArrayType prim elt)
+     (make-prim-app (DispatchOnArrayType prim elt)
 	       (cons first rest))]
     ;; Safety net:
     [(,prim ,_ ...)     
@@ -740,11 +730,11 @@
 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
-     (list "("(cond
-	       [(PrimName prim) => (lambda (x) x)]
-	       [else (error 'emit-mlton:Prim "currently unhandled: ~s" prim)])
-	   " "
-	   (insert-between " " rands) ")\n")]
+     (make-prim-app 
+      (cond
+       [(PrimName prim) => (lambda (x) x)]
+       [else (error 'emit-mlton:Prim "currently unhandled: ~s" prim)])
+      rands)]
 ))
 
 
@@ -758,7 +748,8 @@
   (lambda args
     (match args
       [(make-let . ,x)   (apply make-let x)]
-      [(make-tuple . ,x) (apply make-tuple x)]
+      [(make-app . ,x)   (apply make-app x)]
+;      [(make-tuple . ,x) (apply make-tuple x)]
 
       [(Var . ,x)        (apply Var x)]
       [(Prim . ,x)       (apply Prim x)]
