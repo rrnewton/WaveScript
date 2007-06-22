@@ -22,7 +22,8 @@ function go () {
 
 #go "demo1b_dataFile.ws"
 go "demo1c_timer.ws"
-#go "demo1d_dataFile_binary.ws"
+go "demo1d_dataFile_binary.ws"
+go "demo1e_readFile.ws"
 # go "demo1d_dataFile_binary.ws"
 
 # go "demo3g_arrays.ws"

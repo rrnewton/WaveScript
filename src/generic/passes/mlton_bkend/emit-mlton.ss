@@ -34,11 +34,11 @@
 ;; Tuple version:
 ;; ...
 
-(define (make-for st en bod)
+(define (make-for i st en bod)
   (list
-   "(let val i = ref "st" in \n"
-   " while !i <= "en" do\n"
-   "   "bod"\n end)"))
+   "(let val "i" = ref "st" in \n"
+   " while !"i" <= "en" do\n"
+   "   (let val "i" = !"i" in"bod"\n end; "i" := !"i" + 1) end)"))
 
 (define (make-let binds body . extra)
   (list "(let val " extra

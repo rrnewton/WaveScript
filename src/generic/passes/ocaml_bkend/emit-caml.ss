@@ -46,8 +46,8 @@
 		    (insert-between " " (map coerce formals)))
 	" -> " body ")"))
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
-(define (make-for st en bod)
-  `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)"))
+(define (make-for i st en bod)
+  `("(for ",i" = ",st" to ",en" do\n ",bod"\n done)"))
 
 (define (make-let binds body)
   (list "(let "

@@ -52,7 +52,7 @@
 
       ;; This differs in ocaml/sml.
       [(for (,i ,[st] ,[en]) ,[bod])
-       (obj 'make-for st en bod)]
+       (obj 'make-for (Var i) st en bod)]
       [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (obj 'Prim (cons prim rand*) emitter)]
