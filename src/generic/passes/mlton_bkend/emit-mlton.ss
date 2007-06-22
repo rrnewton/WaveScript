@@ -192,7 +192,7 @@
   |#  
     
     [,else ;(make-fun (list (make-tuple "x" "y")) "(x = y)")
-	   (make-fun '(x y) "(x = y)")
+     (make-fun (list (make-tuple "x" "y")) "(x = y)")
 	   ]
     ))
 

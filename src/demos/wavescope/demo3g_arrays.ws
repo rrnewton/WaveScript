@@ -1,4 +1,22 @@
 
+
+
+// [2007.06.22]
+// Just got MLton working on this demo.
+// Benchmarks... This stresses reading from the file + array allocation.
+// Taking total process time here (except for Scheme):
+// On Faith:
+//   Caml 3.09.2                  :   5.8   seconds
+//   MLton                        :   2.3
+//   WSC (with new struct-arrays) :   6.7 
+//   Scheme                       :   4.5 - 5.6
+// On my core2 duo laptop:
+//   Caml 3.09.2                  :   15.6   seconds  Strange!
+//   MLton                        :   1.4    
+
+// To be fair Caml & Scheme aren't really using Int16s... only MLton & c++ are.
+// I should also revisit my file reading code in C++...
+
 fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
 // Audio channel 1 with no overlap.
