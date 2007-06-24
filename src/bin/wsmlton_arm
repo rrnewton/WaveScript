@@ -1,0 +1,88 @@
+#!/bin/bash
+
+#TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+source `dirname $0`/assert_regimentd
+
+FLAGS=""
+
+if [ ! -f "$1" ];
+then echo Usage: "wsmlton_arm <file> <options ...>";
+     echo 
+     echo   File \"$1\" does not exist.
+     exit 1;
+fi
+
+if [ ! -d /tmp/`whoami` ]; 
+then mkdir /tmp/`whoami`;
+fi
+
+D=`dirname "$1"`
+B=`basename "$1"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+
+# Clean up first:
+rm -f "query.sml"
+rm -f "query.exe"
+rm -f "query.*.c"
+rm -f ".tmp.*.o"
+
+export REGIMENT_OR_WAVESCRIPT=WS
+if regiment wsml $abspath ${1+"$@"} ;
+then echo
+else #rm -f $TMP; 
+    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    exit 1;
+fi
+
+#INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
+#LIBS="bigarray.cmxa fftw2.cmxa"
+#
+
+SML='mlton -codegen c -verbose 1 -stop g'
+#SML=sml 
+
+$SML $INCLUDES $LIBS $FLAGS query.sml 
+
+TMP0=.tmp.0.o
+TMP1=.tmp.1.o
+
+# RRN:
+# HACKING these calls to gcc in here directly.
+# The reason for this is that the machines I'm working on (breeze, patridge)
+# don't support "gcc -b" for some reason.
+
+
+PATH=$PATH:/usr/arm-linux/bin
+
+echo Beginning GCC cross compile.
+start=`date +%s`
+
+echo Now Linking.
+
+FILES=`ls query.*.c`
+OBJS=''
+
+echo FILES $FILES
+
+for fn in $FILES
+do 
+  echo "  Compiling $fn";
+  OBJ=.tmp.$fn.o;
+  OBJS="$OBJS $OBJ";
+  arm-linux-gcc -I/usr/arm-linux/include -std=gnu99 -c -I/usr/lib/mlton/arm-linux/include \
+          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+          -fomit-frame-pointer -w -o $OBJ $fn
+done
+#arm-linux-gcc -I/usr/arm-linux/include -std=gnu99 -c -I/usr/lib/mlton/arm-linux/include \
+#          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+#          -fomit-frame-pointer -w -o $TMP0 query.0.c
+
+if (arm-linux-gcc -o query.exe $OBJS \
+   -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp)
+then end=`date +%s`;
+     echo "  Time spent in gcc compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to 'query.exe'.";
+else echo "gcc returned error!!"; exit -1
+fi
+

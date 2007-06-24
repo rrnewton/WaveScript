@@ -14,6 +14,8 @@
 //   Caml 3.09.2                  :   15.6   seconds  Strange!
 //   MLton                        :   1.4    
 
+// [2007.06.24] This takes 6.5 seconds on breeze and 67 seconds on an ENSbox.
+
 // To be fair Caml & Scheme aren't really using Int16s... only MLton & c++ are.
 // I should also revisit my file reading code in C++...
 

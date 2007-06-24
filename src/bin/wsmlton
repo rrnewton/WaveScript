@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
@@ -37,7 +38,8 @@ fi
 #LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-SML=mlton 
+#SML='mlton -verbose 1 -codegen c'
+SML='mlton -verbose 1'
 #SML=sml 
 
 start=`date +%s`

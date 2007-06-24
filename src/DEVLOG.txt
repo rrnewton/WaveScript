@@ -926,8 +926,40 @@ As long as one processor is disabled (so it's uniprocessor), these do
 about the same on faith with -O3 and running with -j 1.  (Actually the
 -j 1 doesn't make much difference either way.)
 
+[2007.06.23]
+
+Trying to hack up a MLton ARM cross compiler.
+
+Looking for the ARM equivalent to the following i386 linux code:
+(in linux.c)
+
+  ucontext_t* ucp = (ucontext_t*)mystery;
+  GC_handleSigProf ((code_pointer) ucp->uc_mcontext.gregs[EIP]);
 
 
+ arm-linux-gcc -I/usr/arm-linux/include -I. -o print-constants print-constants.c libmlton.a libgdtoa.a /usr/arm-linux/lib/libgmp.so -lm 2> /dev/stdout  
+
+Ok... got cross compiling working for "hello world"... but when I try
+a more substantial example I run into this:
+
+/usr/lib/mlton/arm-linux/libmlton.a(IEEEReal.o)(.text+0x0): In function `IEEEReal_getRoundingMode':
+: warning: warning: fegetround is not implemented and will always fail
+/usr/lib/mlton/arm-linux/libmlton.a(IEEEReal.o)(.text+0x4): In function `IEEEReal_setRoundingMode':
+: warning: warning: fesetround is not implemented and will always fail
+.tmp.1.o(.text+0x2e8c): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.1.o(.text+0x8ee8): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.1.o(.text+0xae68): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.0.o(.text+0x654): In function `main':
+: undefined reference to `Chunk0'
+.tmp.0.o(.data+0x2214): undefined reference to `Chunk0'
+.tmp.0.o(.data+0x221c): more undefined references to `Chunk0' follow
+collect2: ld returned 1 exit status
+gcc returned error!!
 
 
+I think I messed up the IEEEReal related hack for my cross compile of
+the runtime....
 
