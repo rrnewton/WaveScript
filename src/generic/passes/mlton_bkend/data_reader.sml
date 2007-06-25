@@ -1,9 +1,13 @@
 
 
 
+(********************************************************************************)
+(* BYTE INDEXED READING *)
+
 (* Will this be inefficient? *)
 (* This produces a LargeWord... There's no Word16. *)
 (* Wow, look how verbose this SML is compared to the Caml: *)
+(* [2007.06.24] Currently this first version is more efficient than the PACK version... might be the DIV. *)
 fun read_uint16 vec (i : int) = 
   let val lower : LargeWord.word = Word8.toLarge (Word8Vector.sub(vec,i))
       val upper : LargeWord.word = LargeWord.<< (Word8.toLarge (Word8Vector.sub(vec,i+1)), 
@@ -16,17 +20,41 @@ fun read_uint16 vec (i : int) =
 fun read_int16 vec i : Int16.int =
   let val unsigned = read_uint16 vec i in
     Int16.fromInt (Word16.toIntX (Word16.fromLarge unsigned))
-(*    if 0 = LargeWord.toInt (LargeWord.andb (unsigned, LargeWord.fromInt 32768))
-    then Int16.fromInt (LargeWord.toInt unsigned)
-    else Int16.fromInt (LargeWord.toInt (LargeWord.- (unsigned, LargeWord.fromInt 65536)))*)
   end 
 
 
-(* MLton seems to have a bug *)
-(*
-fun read_int32 vec i =
-  Int32.fromLarge(Word32.toLargeInt(PackWord32Big.subVec(vec,0)))
-*)
+(********************************************************************************)
+(* "WORD" INDEXED READING *)
+
+
+(* Would be nice not to do a division here *)
+fun read_int16_wordIndexed vec i  =
+(*   Int16.fromLarge(LargeWord.toLargeIntX (PackWord16Big.subVecX(vec, i)))*)
+(* THIS IS FASTER THAN THE ABOVE: *)
+    let (*val _ = print ("Got ind "^ (Int.toString i)^ "\n")*)
+    in
+(*      Int16.fromInt(Word16.toIntX (Word16.fromLarge (PackWord16Big.subVecX(vec, i))))  *)
+     Int16.fromInt(Word16.toIntX (Word16.fromLarge (PackWord16Little.subVecX(vec, i)))) 
+    end
+
+
+(*   assert (0 = Int.rem(i,2)); *)
+(*   Int16.fromLarge(LargeWord.toLargeIntX (PackWord16Big.subVecX(vec, Int.quot(i,2)))) *)
+
+
+
+
+fun read_int32_wordIndexed vec i  =
+
+(*   assert (0 = Int.rem(i,4)); *)
+   (* IN MLTON COULD GO THROUGH PLAIN INT INSTEAD OF LARGE INT?? *)
+
+(*   Int32.fromLarge(Word32.toLargeIntX (Word32.fromLarge (PackWord32Little.subVecX(vec, i))))*)
+   Int32.fromInt(Word32.toIntX (Word32.fromLarge (PackWord32Little.subVecX(vec, i))))
+
+
+
+(********************************************************************************)
 
 (* Binary reading, produces a scheduler entry, "SE" *)
 (* mode & Textreader parameter are unused  and should be removed *)
@@ -57,8 +85,6 @@ fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
 	   end
 
 
-fun verisigseg (x : 'a sigseg) : 'a sigseg = x
-
 (* This simply constructs a reader function that reads a whole window. 
    Thus it can reuse dataFile above. *)
 fun dataFileWindowed config 
@@ -67,6 +93,7 @@ fun dataFileWindowed config
 
      (outchan (*: 'elem -> unit*))
      (winsize:int)
+     (index_coef:int)
      (arrcreateUnsafe, 
       arrset : 'a array * int * 'a -> unit , 
       tosigseg)
@@ -80,9 +107,9 @@ fun dataFileWindowed config
            val i = ref 0
        in        
 	  (while !i < winsize do 
-	     (arrset (arr, !i, (binreader vec (baseind + !i * wordsize)));
+	     (arrset (arr, !i, (binreader vec (baseind + (!i * index_coef))));
 	      i := !i + 1);
-           let val result = verisigseg( tosigseg (arr, !sampnum, 3339))
+           let val result = ( tosigseg (arr, !sampnum, 3339))
            in
 	   (sampnum := !sampnum + Int64.fromInt winsize;
 	    result)

@@ -14,6 +14,10 @@
 ;; MUTABLE
 (define union-edges 'union-edges-uninit)
 
+;; Experimenting with both of these:
+(define int-module 'Int32)
+;(define int-module 'Int)
+
 ;======================================================================
 ;======================================================================
 
@@ -81,7 +85,7 @@
     [Double    "Real64.real"]
     
     [Bool    "bool"]
-    [Int     "int"]
+    [Int     (format "~a.int" int-module)]
     [Int16   "Int16.int"] ;; Not standard SML.
 
 ;    [Complex  "Complex.t"]
@@ -125,7 +129,7 @@
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
 
     [String     (make-fun '(x) "x")]
-    [Int    "Int.toString"]
+    [Int    (format "~s.toString" int-module)]
     [Float  "Real32.toString"]
     [Double "Real64.toString"]
     [Bool   "Bool.toString"]
@@ -138,8 +142,8 @@
     [(Sigseg ,t) 
      (make-fun '(ss) 
 	       (list 
-		"(\"[\"^ Int.toString ("  (DispatchOnArrayType 'start t)
-		" ss) ^\", \"^ Int.toString ("      (DispatchOnArrayType 'end t)
+		"(\"[\"^ "int-module".toString ("  (DispatchOnArrayType 'start t)
+		" ss) ^\", \"^ "int-module".toString ("      (DispatchOnArrayType 'end t)
 		" ss + 1) ^ \")\")"))]
 
     [#(,[t*] ...)
@@ -460,9 +464,16 @@
 		   (if (> winsize 0)
 		       (begin 
 			 ;; This is necessary for now:
+			 ;; Only allowing windowed reads for ONE-TUPLES.
 			 (ASSERT (= (length types) 1))
-			 (list " "(number->string winsize)" "			       
-			       (let ([tuptyp (if (= 1 (length types))
+			 (list 
+			  " "(number->string winsize)" "	   
+			  ;; Next a multiple for indices... this is a hack to get around SML's *LAME* "pack" functionality.
+			  ;;; HACK HACK HACK:
+			  " 1 "
+			  ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
+			  ;" "(number->string (type->width (car types)))" "
+			  (let ([tuptyp (if (= 1 (length types))
 						 (car types)
 						 (list->vector types ))])
 				 (make-tuple 
@@ -488,8 +499,8 @@
 
 (define (type->reader t) 
   (match t
-    [Int    "read_int32"]
-    [Int16  "read_int16"]
+    [Int    "read_int32_wordIndexed"]
+    [Int16  "read_int16_wordIndexed"]
     ))
 
 
@@ -606,13 +617,13 @@
       [+I16 "( Int16.+)"]
       [-I16 "( Int16.-)"] 
       [*I16 "( Int16.* )"] 
-      [/I16 "( Int16.div )"]
+      [/I16 "( Int16.quot )"]
       [^I16 "powInt16"]
 
-      [+_ "(Int.+)"]  
-      [-_ "(Int.-)"] 
-      [*_ "( Int.* )"]
-      [/_ "(Int.div)"]
+      [+_ ,(format "(~s.+)" int-module)]  
+      [-_ ,(format "(~s.-)" int-module)] 
+      [*_ ,(format "(~s.*)" int-module)]
+      [/_ ,(format "(~s.quot)" int-module)]
       [^_ powInt] ;; Defined in prims.sml
 
       [+. "( Real32.+ )"]
@@ -621,7 +632,7 @@
       [/. "( Real32.div )"]
 
       [absI16 Int16.abs]
-      [absI   Int.abs]
+      [absI   (format "~s.abs" int-module)]
       [absF   Real.abs]
 ;      [absC   Complex.norm]
 
@@ -692,7 +703,7 @@
 ;      [complexToFloat "(fun c -> c.Complex.re)"]
 ;      [complexToDouble "(fun c -> c.Complex.re)"]
 
-      [stringToInt    Int.fromString]
+      [stringToInt    (format "~s.fromString" int-module)]
       [stringToFloat  Real.fromString]
       [stringToDouble Real64.fromString]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]

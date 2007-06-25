@@ -16,6 +16,15 @@
 
 // [2007.06.24] This takes 6.5 seconds on breeze and 67 seconds on an ENSbox.
 
+// [2007.06.25]Oops, above must not have been with -O3 for WSC!
+// Doing it agaain, using the default countup.raw from the repository:
+// On Faith:
+//   Caml -O3                     :   5.8   seconds
+//   MLton                        :   2.3
+//   WSC -O3                      :   1.0
+//   ws.opt                       :   4.3
+
+
 // To be fair Caml & Scheme aren't really using Int16s... only MLton & c++ are.
 // I should also revisit my file reading code in C++...
 

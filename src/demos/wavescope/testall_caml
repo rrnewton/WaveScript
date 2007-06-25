@@ -23,6 +23,7 @@ function go () {
 go "demo1c_timer.ws"
 go "demo1d_dataFile_binary.ws"
 
+go "demo3a_tuples.ws"
 go "demo3g_arrays.ws"
 go "demo4a_fft.ws"
 
