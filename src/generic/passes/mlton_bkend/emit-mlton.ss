@@ -604,7 +604,6 @@
   (define sametable ;; Prims with the same name:
     '(
       joinsegs subseg width toSigseg toArray timebase
-      cos sin tan acos asin atan max min
       not 
       
       fftR2C 
@@ -630,6 +629,16 @@
       [-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
       [/. "( Real32.div )"]
+
+      ;; UHH UNFORTUNATELY REAL32 != REAL
+      [cos  Real32.Math.cos]
+      [sin  Real32.Math.sin]
+      [tan  Real32.Math.tan] 
+      [acos Real32.Math.acos]
+      [asin Real32.Math.asin]
+      [atan Real32.Math.atan]
+;      [max max ]
+;      [min min]
 
       [absI16 Int16.abs]
       [absI   (format "~s.abs" int-module)]
@@ -708,7 +717,7 @@
       [stringToDouble Real64.fromString]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
-      [roundF  (make-fun '(x) "(floor (x + 0.5))")]
+      [roundF  ,(make-fun '(x) "Real32.fromInt (Real32.floor (x + 0.5))")]
 
       [start   ss_start]
       [end     ss_end]

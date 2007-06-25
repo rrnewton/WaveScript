@@ -1,5 +1,5 @@
 
-s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
+s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
 
 fun println(s) {
   print("  ");

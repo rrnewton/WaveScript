@@ -26,7 +26,12 @@ go "demo1d_dataFile_binary.ws"
 go "demo3a_tuples.ws"
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
+# go "demo3f_morelists.ws" # no prim_window
 go "demo3g_arrays.ws"
+#go "demo3h_advancedlists.ws"
+#go "demo3i_conversion_prims.ws"
+go "demo3j_numbers.ws"
+
 go "demo4a_fft.ws"
 
 go "demo6a_unionList.ws"

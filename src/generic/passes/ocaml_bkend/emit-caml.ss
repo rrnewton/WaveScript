@@ -678,7 +678,7 @@
       [stringToDouble float_of_string]
       [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
-      [roundF "(fun x -> floor (x + 0.5))"]
+      [roundF "(fun x -> floor (x +. 0.5))"]
 
       [start   ss_start]
       [end     ss_end]
