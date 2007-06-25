@@ -65,8 +65,11 @@ exec regiment i --script "$0" ${1+"$@"};
 				     (ASSERT (equal? a 39))
 				     (ASSERT (equal? b 39)))]
     ["demo1d_dataFile_binary.ws"  ,(lambda (a b) 
-				     (ASSERT (equal? a 1256))
-				     (ASSERT (equal? b 2024)))]
+				     (ASSERT (equal? a 256))
+				     (ASSERT (equal? b 512))
+				     ;(ASSERT (equal? a 1256))
+				     ;(ASSERT (equal? b 2024))
+				     )]
     ;; Hmm need to test windowed reading too:
     ["demo1e_readFile.ws"  ,(lambda (a b) 
 				     (ASSERT (equal? a #(512 1024 1536)))

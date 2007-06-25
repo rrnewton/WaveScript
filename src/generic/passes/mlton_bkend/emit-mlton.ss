@@ -671,7 +671,7 @@
 ;      [realpart "(fun x -> x.Complex.re)"]
 ;      [imagpart "(fun x -> x.Complex.im)"]
 
-      [cons (make-fun '(x y) "x::y")] 
+      [cons ,(make-fun (list (make-tuple "x" "y")) "x::y")]
       [car List.hd]
       [cdr List.tl]
       [List:length  List.length]
