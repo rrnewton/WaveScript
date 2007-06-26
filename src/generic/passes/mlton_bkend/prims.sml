@@ -131,3 +131,9 @@ fun powInt16 n x =
   in loop (Int16.fromInt 1) x end
 
 
+fun unpack_complex w64 = 
+    let val rl = Word32
+        val im = Word32
+    in
+      (rl,im)
+    end

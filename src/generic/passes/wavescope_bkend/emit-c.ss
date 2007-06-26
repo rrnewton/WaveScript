@@ -336,27 +336,20 @@
                  `(("op \"",name"\" \"",new-class-name"\" \"query.so\"\n")
 		   ("connect \"",(sym2str sig)"\" \"",name"\"\n")))]
 
-	;; TODO: ENSBoxAudio/ensBoxAudio
-#;	
-	[(audio ,[Simple -> channel] ,[Simple -> size] ,[Simple -> skip] ,[Simple -> rate])
-	 ;; HMM, size seems to be FIXED:  FIXME	  
-	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
-	 (values 
-	  ;; Rate was hardcoded at 24000*100
-	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
-	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate" * 50);\n"
-	    "  ",name"->connect(tmp); }\n"
-	    )
-	  '()
-          `())]
 
 	 ;(ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
-	[(ENSBoxAudioF ',[number->string -> ch] ',win ',overlap ',rate)
-	 (ASSERT zero? overlap)
-	 (values `("ENSBoxSource<float> ",name" = ENSBoxSource<wsfloat_t>(",ch");") () ())]
-	[(ENSBoxAudio ',[number->string -> ch] ',win ',overlap ',rate)
-	 (ASSERT zero? overlap)
-	 (values `("ENSBoxSource<float> ",name" = ENSBoxSource<wsint16_t>(",ch");") () ())]
+	[(ensBoxAudioF ',[number->string -> ch])
+;	 (ASSERT zero? overlap)
+	 (add-include! "<ENSBox.hpp>")
+;	 (add-link!  "libensbox_ws.so")
+	 (values `("WSBox* ",name" = (WSBox*) new ENSBoxSource<wsfloat_t>(",ch");\n") () ())]
+	[(ensBoxAudio ',[number->string -> ch])
+;	 (ASSERT zero? overlap)
+	 (add-include! "<ENSBox.hpp>")
+;	 (add-link!  "libensbox_ws.so")
+	 ;(values `("ENSBoxSource<wsint16_t> ",name" = ENSBoxSource<wsint16_t>(",ch");") () ())
+	 (values `("WSBox* ",name" = (WSBox*) new ENSBoxSource<wsint16_t>(",ch");\n") () ())
+	 ]
 
 	;; Produces an instance of a generic dataFile reader.
 	;; TODO: It's not necessary to generate code for both text & binary in the same run:
@@ -1663,7 +1656,7 @@ int main(int argc, char ** argv)
 		   equal? print show seg-get toArray 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
-		   ENSBoxAudio
+		   ensBoxAudio
 		   List:assoc List:assoc_update
 		   HashTable:rem HashTable:set ;; pure versions
 		   Array:map Array:fold

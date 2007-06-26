@@ -158,10 +158,10 @@ fun readone(mode)
   (readFile(marmotfile, "mode: binary window: 4096 rate: 24000 "++ mode) 
    :: Stream Sigseg (Int16))
 
-_ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else readone("offset: 0");
-_ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else readone("offset: 2");
-_ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else readone("offset: 4");
-_ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else readone("offset: 6");
+_ch1 = if flag then ensBoxAudio(0,4096,0,24000) else readone("offset: 0");
+_ch2 = if flag then ensBoxAudio(1,4096,0,24000) else readone("offset: 2");
+_ch3 = if flag then ensBoxAudio(2,4096,0,24000) else readone("offset: 4");
+_ch4 = if flag then ensBoxAudio(3,4096,0,24000) else readone("offset: 6");
 
 ch1 = deep_stream_map(int16ToFloat, _ch1)
 ch2 = deep_stream_map(int16ToFloat, _ch2)

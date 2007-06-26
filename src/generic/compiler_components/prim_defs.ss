@@ -428,8 +428,15 @@
     ;; Takes channel, window size, overlap, sampling rate:
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.
-    (ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
-    (ENSBoxAudioF     (Int Int Int Int) (Stream (Sigseg Float)))
+;    (ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
+;    (ENSBoxAudioF     (Int Int Int Int) (Stream (Sigseg Float)))
+    ;; No, unfortunately it's more raw than that.
+    ;; This just produces four channels of audio of mystery sizes.
+    ;(ensBoxAudio      ()  (Stream #((Sigseg Int16) (Sigseg Int16) (Sigseg Int16) (Sigseg Int16))))
+
+    ;; Ok, this uses Lewis's code... single channel sources:
+    (ensBoxAudio      (Int ) (Stream (Sigseg Int16)))
+    (ensBoxAudioF     (Int ) (Stream (Sigseg Float)))
 
     ;; Could think about a generic (HardwareSource "ENSBoxAudio(4096,)")
     ;; that provides a hack into the C++ generation.  Nasty and
