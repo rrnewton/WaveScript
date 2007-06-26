@@ -84,6 +84,7 @@ static ostringstream global_show_stream(ostringstream::out);
    
    static void wserror(wsstring_t str) {
      printf("wserror: %s\n", str.c_str());
+     
      exit(1);
    }
 
@@ -117,7 +118,7 @@ static ostringstream global_show_stream(ostringstream::out);
 
 // LISTS: 
 //==============================================================================
-// We can't define list functions inside WSPrim because of template magic
+// We can't define list functions inside the WSPrim class because of template magic
 
 template<typename T>
 bool IS_NULL(boost::shared_ptr< cons<T> > p) 

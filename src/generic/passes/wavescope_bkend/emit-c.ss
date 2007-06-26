@@ -85,6 +85,12 @@
        [(pointer)   `(,type"* ",name" = ",val";\n")]
        [else (make-decl type name val)])]))
 
+(define (make-for i st en bod)
+  (block (list "for ("i" = "st"; "i" < "en"; "i"++)")
+	 bod))
+
+(define (make-while test bod)  (block (list "while ("test")") bod))
+
 (define sym2str symbol->string)
 
 ;================================================================================
@@ -1533,6 +1539,17 @@
     [String         (stream e)]
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
+
+    [(List ,t)
+     (let ([subprinter (Emit-Print/Show-Helper "ptr->car" t printf stream)])
+       (list (stream "\"[\"")
+	     (make-decl (Type `(List ,t)) "ptr" e)
+	     (make-while "! IS_NULL(ptr)" 
+			 (list subprinter 
+			       (stream "\" \"")
+			       "ptr = ptr->cdr;\n"))
+	     (stream "\"]\"")))]
+
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
     [(Struct ,name) (printf "%s" `("show_",(sym2str name)"(",e").c_str()"))]
 
@@ -1551,8 +1568,8 @@
 (define (EmitShow e typ)
   (Emit-Print/Show-Helper 
    e typ
-   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e"))"))
-   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e ")"))))
+   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e")); \n"))
+   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e "); \n"))))
 
 
 

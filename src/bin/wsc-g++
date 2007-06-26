@@ -61,9 +61,14 @@ fi
 
 
 
+if [ "$WSARCH" == "ensbox" ];
+then THELIB=libws-SMSegList_ENSBOX
+else THELIB=libws-SMSegList
+fi
+
 if [ $DYNAMICLINK == "1" ];
-then WS_LINK="$WS_LINK $WAVESCOPED/libws-SMSegList.so";
-else WS_LINK="$WS_LINK $WAVESCOPED/libws-SMSegList.a";
+then WS_LINK="$WS_LINK $WAVESCOPED/$THELIB.so";
+else WS_LINK="$WS_LINK $WAVESCOPED/$THELIB.a";
 fi
 
 WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
@@ -72,10 +77,18 @@ WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
 
 echo Compiling .cpp file using g++.
 
-echo g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+#echo g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+
+
+if [ "$WSGPLUSPLUS" == "" ];
+then WSGPLUSPLUS=g++
+fi
+
+
+echo $WSGPLUSPLUS $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
 
 start=`date +%s`
-if g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+if $WSGPLUSPLUS $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
 then 
     end=`date +%s`
     echo "Time spent in g++: "$[($end) - ($start)]" seconds"

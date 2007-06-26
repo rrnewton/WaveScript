@@ -79,8 +79,8 @@ template <class T>
   bool wsequal (const boost::shared_ptr< cons<T> > & v1, 
 		const boost::shared_ptr< cons<T> > & v2);
 
-template <class T> 
-ostream& operator<< (ostream& output, const boost::shared_ptr< cons<T> > & );
+//template <class T> 
+//ostream& operator<< (ostream& output, const boost::shared_ptr< cons<T> > & );
 
 template <class T>
 class cons {
@@ -98,7 +98,7 @@ public:
   static ptr make(wsint_t len, T init);
 
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
-  friend ostream& operator<< <T>(ostream& output, const boost::shared_ptr< cons<T> > & );
+  //  friend ostream& operator<< <T>(ostream& output, const boost::shared_ptr< cons<T> > & );
 };
 /******** END LISTS ********/
 

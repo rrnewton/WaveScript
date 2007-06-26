@@ -89,7 +89,12 @@ fi
 #echo '$WAVESCOPED/run_WaveScriptQuery $*' >> run_query
 #chmod +x run_query
 
-if [ "$NOGCC" == "0" ] &&  wsc-g++ $CCPASSTHRU ./query 
+if [ "$WSARCH" == "ensbox" ];
+then CCOMPILE='wsc-arm-g++'
+else CCOMPILE='wsc-g++'
+fi
+
+if [ "$NOGCC" == "0" ] &&  $CCOMPILE $CCPASSTHRU ./query 
 then echo
      echo "Executable output to 'query.exe'."
 else exit 1;
