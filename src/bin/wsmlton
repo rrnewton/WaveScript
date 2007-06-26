@@ -5,7 +5,9 @@
 
 source `dirname $0`/assert_regimentd
 
-FLAGS=""
+FLAGS=' -verbose 1 -link-opt -lfftw3f  '
+CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
+
 
 if [ ! -f "$1" ];
 then echo Usage: "wsmlton <file> <options ...>";
@@ -38,15 +40,25 @@ fi
 #LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
+alias runmlton="mlton -default-ann 'allowFFI true'"
+
+#export ANNFLAG='"allowFFI true"'
+#SML="mlton -default-ann $ANNFLAG "
+#SML=runmlton
+
 #SML='mlton -verbose 1 -codegen c'
-SML='mlton -verbose 1'
+#SML='mlton -verbose 1'
+#SML="mlton -verbose 1 -link-opt -lfftw3f -default-ann 'allowFFI true' $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c "
+# mlton -link-opt -lfftw3f -default-ann 'allowFFI true' $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c 
 #SML=sml 
 
+echo "mlton -default-ann 'allowFFI true' -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES"
+
 start=`date +%s`
-if $SML -output query.exe $INCLUDES $LIBS $FLAGS query.sml 
+if mlton -default-ann 'allowFFI true' -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
+#runmlton -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to 'query.exe'.";
 else echo "$SML returned error!!"; exit -1
 fi
-

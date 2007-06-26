@@ -5,12 +5,13 @@
 #include <fftw3.h>
 #include "platform.h"
 
+/*
 Int32 testo(Real32 blah) {
   return (Int32)blah + 10;
 }
+*/
 
-
-static void fftR2C(Pointer input, Pointer output, Int32 len) {
+void fftR2C(Pointer input, Pointer output, Int32 len) {
       float* in_buf           = (float*)          input;
       _Complex float* out_buf = (_Complex float*) output;
 

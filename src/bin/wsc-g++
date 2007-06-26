@@ -43,7 +43,8 @@ FIRST=`head -n1 "$FILE.cpp"`
 MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 
 # -fPIC | -O1/2/3 | -g
-WS_FLAGS="-fPIC -pg $CCARGS"
+#WS_FLAGS="-fPIC -pg $CCARGS"
+WS_FLAGS=" $CCARGS"
 
 WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function"
 WS_INCLUDES="-I$WAVESCOPED/include "
@@ -81,14 +82,14 @@ echo Compiling .cpp file using g++.
 
 
 if [ "$WSGPLUSPLUS" == "" ];
-then WSGPLUSPLUS=g++
+then WSGPLUSPLUS="g++ "
+     export WSEXESUFFIX="exe"
 fi
 
-
-echo $WSGPLUSPLUS $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+echo $WSGPLUSPLUS $WS_ALLARGS -o "$FILE"."$WSEXESUFFIX" "$FILE.cpp" $WS_LINK;
 
 start=`date +%s`
-if $WSGPLUSPLUS $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+if $WSGPLUSPLUS $WS_ALLARGS -o "$FILE"."$WSEXESUFFIX" "$FILE.cpp" $WS_LINK;
 then 
     end=`date +%s`
     echo "Time spent in g++: "$[($end) - ($start)]" seconds"

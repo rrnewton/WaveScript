@@ -30,7 +30,7 @@ EXTRAFLAGS=" -I/usr/arm-linux/include -L/usr/arm-linux/lib -DENSBOX -DEMBEDDED -
 
 export PATH=$PATH:/usr/arm-linux/bin
 
-export WSGPLUSPLUS="arm-linux-g++ $EXTRAFLAGS"
+export WSGPLUSPLUS="arm-linux-g++ $EXTRAFLAGS "
 export WSARCH=ensbox
 
 # Now with the environment set.

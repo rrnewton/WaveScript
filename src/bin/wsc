@@ -91,11 +91,12 @@ fi
 
 if [ "$WSARCH" == "ensbox" ];
 then CCOMPILE='wsc-arm-g++'
+     export WSEXESUFFIX="arm.exe"
 else CCOMPILE='wsc-g++'
 fi
 
 if [ "$NOGCC" == "0" ] &&  $CCOMPILE $CCPASSTHRU ./query 
 then echo
-     echo "Executable output to 'query.exe'."
+     echo "Executable output to query.$WSEXESUFFIX"
 else exit 1;
 fi;

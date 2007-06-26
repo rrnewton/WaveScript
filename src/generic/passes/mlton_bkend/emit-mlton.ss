@@ -88,7 +88,7 @@
     [Int     (format "~a.int" int-module)]
     [Int16   "Int16.int"] ;; Not standard SML.
 
-;    [Complex  "Complex.t"]
+    [Complex  "Complex.complex"]
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]

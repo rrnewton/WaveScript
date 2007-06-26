@@ -6,6 +6,13 @@ fun wserror str = raise WSError str
 exception WSAssertFailed
 fun assert b = if b then () else raise WSAssertFailed
 
+structure Complex =
+struct
+  type complex = (Real32.real * Real32.real)
+  
+end
+
+
 
 (********************************************************************************)
 (* ARRAYS *)
@@ -132,8 +139,13 @@ fun powInt16 n x =
 
 
 fun unpack_complex w64 = 
-    let val rl = Word32
-        val im = Word32
+    let val rl = Word32.fromLarge (Word64.toLarge w64)
+        val im = Word32.fromLarge (Word64.toLarge w64)
     in
       (rl,im)
     end
+
+(*******************************************************************************)
+(**** IMPORTED *****)
+
+val fftR2C = _import "fftR2C" : (Real32.real array * Word64.word array * int) -> unit;
