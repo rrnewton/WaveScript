@@ -27,8 +27,11 @@ while [ $# != 0 ];  do
   then DYNAMICLINK=1; 
   elif [ "$1" == "-static" ];
   then DYNAMICLINK=0;
-  elif [ "$1" == "-O2" ] || [ "$1" == "-O3" ];
+  elif [ "$1" == "-O2" ] || [ "$1" == "-O3" ] ||
+       [ "$1" == "-pg" ] || [ "$1" == "-g" ] ;
   then CCARGS="$CCARGS $1"; 
+
+
 #  elif [ `echo $1 | sed` == "-" ]
 #  then echo "Unknown flag: $1"
   else FILE="$1"; 

@@ -122,10 +122,17 @@ wsarray_t makeArrayUnsafe(wsint_t count, int eltsize) {
 
 template <class T>
 wsarray_t makeArray(wsint_t count, T initelem) {
+  /*
   T* vec = (T*) malloc(sizeof(T) * (int)count);
   for(int i=0; i<(int)count; i++) {
     vec[i] = (T)initelem;
   }
+  */
+  T* vec = new T[count];
+  for(int i=0; i<(int)count; i++) {
+    vec[i] = (T)initelem;
+  }
+
   WSArrayStruct* arr = new WSArrayStruct;
   arr->len = (int)count;
   arr->data = vec;

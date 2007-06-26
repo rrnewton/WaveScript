@@ -14,7 +14,22 @@ static ostringstream global_show_stream(ostringstream::out);
 
    public:   
 
+   inline static wsfloat_t CNorm(wscomplex_t c) {
+     wsfloat_t re =  __real__ c;
+     wsfloat_t im =  __imag__ c;
 
+     return sqrt ((re*re) + (im*im));
+     /*
+     if     (0.0 == re)  return im;
+     else if (0.0 == im) return re;
+     else {
+       wsfloat_t absre = abs(re);
+       wsfloat_t absim = abs(im);
+       if (absre >= absim ) return (absre * sqrt(1.0 + (im*im / (re*re))));
+       else                 return (absim * sqrt(1.0 + (im*im / (re*re))));
+     }
+     */
+   }
   
    // This is a work-around to the fact that we can't have stmt blocks
    // {...} in expression position.

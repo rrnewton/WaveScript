@@ -1289,7 +1289,9 @@
 	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
 	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
 
-	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
+;; Makes gcc 3.4.3 barf:
+;;	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
+	[(absC ,[Simple -> c]) (wrap `("WSPrim::CNorm(",c")"))]
 
 	[(,toint16     ,[Simple -> e]) 
 	 (guard (memq toint16 '(intToInt16 floatToInt16 doubleToInt16)))

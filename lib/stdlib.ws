@@ -677,6 +677,7 @@ fun sort(swap, cmp, len) {
 
 // Some standard type definitions.
 
+/*
 uniontype Union2 a b       = Oneof2 a | Twoof2 b;
 uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;
 uniontype Union4 a b c d   = Oneof4 a | Twoof4 b | Threeof4 c | Fourof4 d;
@@ -704,7 +705,7 @@ fun union5(s1,s2,s3,s4,s5)
   merge(stream_map(Threeof5, s3),
   merge(stream_map(Fourof5,  s4),
         stream_map(Fiveof5,  s5)))))
-
+*/
 
 
 /*
