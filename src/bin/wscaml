@@ -8,6 +8,8 @@ source `dirname $0`/assert_regimentd
 #FLAGS="-unsafe -ffast-math -inline 100 -noassert"
 FLAGS=""
 
+OUTPUT=query.caml.exe
+
 ## ADD LOOP
 if [ "$1" == "-O3" ];
 ## HUH? On some computers ocaml doesn't recognize "-ffast-math"
@@ -54,12 +56,12 @@ INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o $OUTPUT
 start=`date +%s`
-if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o $OUTPUT
 then end=`date +%s`;
      echo "  Time spent in ocaml compiler: "$[($end) - ($start)]" second(s)";
-     echo "Executable output to 'query.exe'.";
+     echo "Executable output to $OUTPUT.";
 else echo "OCaml returned error!!"; exit -1
 fi
 

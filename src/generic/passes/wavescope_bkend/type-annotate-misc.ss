@@ -45,6 +45,8 @@
     (define annotate-first-arg 
       '(List:append List:length List:ref print show equal? seg-get toArray
 		    Array:ref Array:set Array:length
+
+		    < <= > >= 
 		    
 		    = equal?
 		    joinsegs subseg width toSigseg toArray timebase start end seg-get

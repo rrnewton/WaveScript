@@ -6,11 +6,13 @@ fun wserror str = raise WSError str
 exception WSAssertFailed
 fun assert b = if b then () else raise WSAssertFailed
 
+(*
 structure Complex =
 struct
   type complex = (Real32.real * Real32.real)
-  
+  add 
 end
+*)
 
 
 
@@ -138,14 +140,33 @@ fun powInt16 n x =
   in loop (Int16.fromInt 1) x end
 
 
-fun unpack_complex w64 = 
-    let val rl = Word32.fromLarge (Word64.toLarge w64)
-        val im = Word32.fromLarge (Word64.toLarge w64)
+val unpack_complex = 
+  let val bytes = Word8Array.array(8, Word8.fromInt 0)
+  in
+    fn w64 =>
+    let 
+(*        val _  = PackWord64Little.update (bytes, 0, Word64.toLarge w64)
+        val rl = PackReal32Little.subArr (bytes, 0)
+        val im = PackReal32Little.subArr (bytes, 1)
+*)
+
+(* 	val _ = print ("UNPACKING COMPLEX "^ (Real32.toString rl) ^" "^ (Real32.toString im) ^"\n") *)
+(*
+        open Word64
+	val twobyte = fromLarge (Word.toLarge 0wxFFFF)
+        val ones32  = orb(<<(twobyte,0w16), twobyte)
+	val lower   = andb(ones32,w64)
+	val upper   = >>(w64,0w32)
+	val _ = print ("UNPACKING COMPLEX "^ (toString lower) ^" "^ (toString upper) ^"\n")
+*)	
     in
-      (rl,im)
+(*       {real=rl, imag=im}*)
+
+      {real= Real32.fromInt 3, imag= Real32.fromInt 4}
     end
+  end 
 
 (*******************************************************************************)
 (**** IMPORTED *****)
 
-val fftR2C = _import "fftR2C" : (Real32.real array * Word64.word array * int) -> unit;
+val raw_fftR2C = _import "raw_fftR2C" : (Real32.real array * Word64.word array * int) -> unit;

@@ -133,18 +133,19 @@
     [Float  "Real32.toString"]
     [Double "Real64.toString"]
     [Bool   "Bool.toString"]
-;    [Complex (make-fun '(c) "(Real32.toString c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")")]
+    [Complex "(fn {real,imag} => Real32.toString real ^ \"+\" ^ Real32.toString imag ^ \"i\")"]
 
     [(List ,[t]) (make-fun '(ls) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" ls) ^ \"]\")"))]
     [(Array ,[t]) (make-fun '(a) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
 
     ;; Just print range:
     [(Sigseg ,t) 
-     (make-fun '(ss) 
+     (let ([Int (format "~a" int-module)])
+       (make-fun '(ss) 
 	       (list 
-		"(\"[\"^ "int-module".toString ("  (DispatchOnArrayType 'start t)
-		" ss) ^\", \"^ "int-module".toString ("      (DispatchOnArrayType 'end t)
-		" ss + 1) ^ \")\")"))]
+		"(\"[\"^ "Int".toString ("  (DispatchOnArrayType 'start t)
+		" ss) ^\", \"^ "Int".toString ("      (DispatchOnArrayType 'end t)
+		" ss + 1) ^ \")\")")))]
 
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
@@ -217,6 +218,9 @@
     (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
 
+    (define complex1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sig")))
+    (define complex2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sml")))
+
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
 		      (sources ,[Source -> src* init1*] ...)
@@ -225,7 +229,8 @@
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
-       (let ([result (list header1 header2 header3 header4 "\n" 
+       (let ([result (list complex1 complex2 
+		           header1 header2 header3 header4 "\n" 
 
 			   ;; Block of constants first:
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
@@ -355,7 +360,7 @@
      [(eq? datum #f) "false"]
      [(string? datum) (format "~s" datum)]
      [(flonum? datum)  (format "(~s)" datum)]
-     [(cflonum? datum) (format "{Complex.re=~a; Complex.im=~a }" 
+     [(cflonum? datum) (format "{real=~a; imag=~a }" 
 			       (cfl-real-part datum)
 			       (cfl-imag-part datum))]
      [(integer? datum)  (format "(~s)" datum)]
@@ -438,11 +443,12 @@
 	  ]
 	 
 	 [(equal? mode "binary")
-	  (values (list 
+	  (let ([homogenous? (homogenous-sizes? types)])
+	    (values (list 
 		   ;; Builds a function from unit to an initial scheduler entry "SE" 
 		   " "v" = "
 		   (make-fun '()
-		   (make-let `([binreader ,(indent (build-binary-reader types) "    ")]
+   	             (make-let `([binreader ,(indent (build-binary-reader types homogenous?) "    ")]
 			       [textreader "33333"])
 		   (list "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
@@ -468,11 +474,13 @@
 			 (ASSERT (= (length types) 1))
 			 (list 
 			  " "(number->string winsize)" "	   
-			  ;; Next a multiple for indices... this is a hack to get around SML's *LAME* "pack" functionality.
+
+			  ;; Next a multiplier for indices... this is a hack to get around SML's *LAME* "pack" functionality.
 			  ;;; HACK HACK HACK:
-			  " 1 "
-			  ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
-			  ;" "(number->string (type->width (car types)))" "
+			  (if homogenous? " 1 "
+			      ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
+			      (list " "(number->string (type->width (car types)))" "))
+
 			  (let ([tuptyp (if (= 1 (length types))
 						 (car types)
 						 (list->vector types ))])
@@ -486,7 +494,7 @@
 			      )
 		    
 		    )))
-		  `("schedule := ",v"() :: !schedule;;\n"))]
+		  `("schedule := ",v"() :: !schedule;;\n")))]
 	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
 	  )]
        
@@ -504,7 +512,9 @@
     ))
 
 
-(define (build-binary-reader types)
+(define (homogenous-sizes? types) (apply = (map type->width types)))
+
+(define (build-binary-reader types homogenous?)
   (define widths (map type->width types))
   (make-fun '(vec ind)
   (list 
@@ -512,8 +522,11 @@
    (apply make-tuple
      (mapi (lambda (i t)
 	     (list (type->reader t)" vec (ind + "
-		   (number->string (apply + (list-head widths i)))")")
-	     )
+		   (if homogenous? 
+		       ;; If they're homogenous we do position (word) indexed rather than byte indexed.
+		       (number->string i) 
+		       (number->string (apply + (list-head widths i))))
+		   ")"))
 	   types))
    "\n")))
 
@@ -524,6 +537,7 @@
      ]))
 
 
+#;
 ;; These are the names of the Bigarray types.
 (define (BigarrayType? t)
   (match t
@@ -549,7 +563,7 @@
 ;; Converts an operator based on the array element type.
 (define (DispatchOnArrayType op elt)
   (case op
-    [(Array:null) "[||]"]
+    [(Array:null) "(Array.fromList [])"]
     [(Array:make) "Array.array"]
     ;; Just makes a normal array with zeros:
     ;; Cut/paste from above:
@@ -606,7 +620,6 @@
       joinsegs subseg width toSigseg toArray timebase
       not 
       
-      fftR2C 
       m_invert 
       ;;wserror ;generic_hash 
       ))
@@ -642,8 +655,8 @@
 
       [absI16 Int16.abs]
       [absI   (format "~s.abs" int-module)]
-      [absF   Real.abs]
-;      [absC   Complex.norm]
+      [absF   Real32.abs]
+      [absC   Complex.magnitude]
 
       [string-append "(String.^)"] 
       [List:append List.@]
@@ -652,19 +665,11 @@
 
 ;      [^. "( ** )"] 
 
-;      [+: "Complex.add"]
-;      [-: "Complex.sub"] 
-;      [*: "Complex.mul"] 
-;      [/: "Complex.div"]
-;      [^: "Complex.pow"]
-
-;;  NOT POLYMORPHIC IN SML!
-;      [<      "(<)"]
-;      [<=     "(<=)"]
-;      [>      "(>)"]
-;      [>=     "(>=)"]
-;      [=        "(=)"] ;; NOTE! FIXME! should be =???
-
+      [+: "Complex.+"]
+      [-: "Complex.-"] 
+      [*: "Complex.*"] 
+      [/: "Complex./"]
+      [^: "Complex.pow"]
 
 
 ;; SHARED ==========================
@@ -674,11 +679,11 @@
       [deref         "!"]
 
 ;      [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
-;      [sqrtF sqrt]
+      [sqrtF Real32.sqrt]
 ;      [sqrtC Complex.sqrt]
 
-;      [realpart "(fun x -> x.Complex.re)"]
-;      [imagpart "(fun x -> x.Complex.im)"]
+      [realpart "(fn {real, imag} => real)"]
+      [imagpart "(fn {real, imag} => imag)"]
 
       [cons ,(make-fun (list (make-tuple "x" "y")) "x::y")]
       [car List.hd]
@@ -690,30 +695,30 @@
       [int16ToInt     Int16.fromInt]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
-      ;[int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+      [int16ToComplex  ,(make-fun '(n) "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
 
       [intToInt16     Int16.toInt]
       [intToFloat     Real32.fromInt]
       [intToDouble    Real64.fromInt]
-;      [intToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+      [intToComplex  ,(make-fun '(n) "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
 
-      [floatToInt    Real32.toInt]
-      [floatToInt16  ,(compose "Int16.fromInt" "Real32.toInt")]
-      [floatToDouble ,(make-fun '(x) "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
-;      [floatToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
+      [floatToInt     ,(make-fun '(x) "Real32.toInt IEEEReal.TO_ZERO x")]
+      [floatToInt16   ,(make-fun '(x) "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
+      [floatToDouble  ,(make-fun '(x) "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
+      [floatToComplex ,(make-fun '(n) "({real= n; imag= Real32.fromInt 0})")]
 
       [doubleToInt    Real64.toint]
       [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
       [doubleToFloat  ,(make-fun '(x) "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)")]
 ;      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
 
-;      [complexToInt16 "(fun c -> int_of_float c.Complex.re)"]
-;      [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
-;      [complexToFloat "(fun c -> c.Complex.re)"]
+      [complexToInt16 "(fn {real,imag} => Int16.fromint (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToFloat "(fn {real,imag} => real)"]
 ;      [complexToDouble "(fun c -> c.Complex.re)"]
 
       [stringToInt    (format "~s.fromString" int-module)]
-      [stringToFloat  Real.fromString]
+      [stringToFloat  Real32.fromString]
       [stringToDouble Real64.fromString]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
@@ -765,12 +770,43 @@
      (guard (memq prim '(Array:ref Array:set Array:length)))
      (make-prim-app (DispatchOnArrayType prim elt)
 	       (cons first rest))]
+
+    ;val raw_fftR2C = _import "raw_fftR2C" : (Real32.real array * Word64.word array * int) -> unit;
+    [(fftR2C ,[myExpr -> arr])
+     (list 
+      "let val inbuf  = "arr" \n"
+      "    val len    = Array.length inbuf \n"
+      "    val len2   = len div 2 + 1      \n"
+      "    val outbuf = Array.array (len2, (Word64.fromInt 0)) \n"
+      "in \n"
+      "  (raw_fftR2C (inbuf,outbuf, len); \n"
+      "   Array.tabulate (len2, fn i => unpack_complex (Array.sub (outbuf,i)))) \n"
+      "end \n")]
+
+    [(,op (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y])
+     (guard (memq op '(< <= >= >)))
+     (make-app (case ty
+		 [(Int)    (format "~a.~s" int-module op)]
+		 [(Int16)  (format "Int16.~s" op)]
+		 [(Float)  (format "Real32.~s" op)]
+		 [(Double) (format "Real64.~s" op)]
+		 [else (error 'emit-mlton "unhandled type for comparison operator ~s: ~s" op ty)]
+		 )
+	       (list (make-tuple x y)))]
+
+    ;;  NOT POLYMORPHIC IN SML!
+;      [<      "(<)"]
+;      [<=     "(<=)"]
+;      [>      "(>)"]
+;      [>=     "(>=)"]
+;      [=        "(=)"] ;; NOTE! FIXME! should be =???
+
+
     ;; Safety net:
     [(,prim ,_ ...)     
      (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
      (error 'emit-mlton:Prim "missed this array prim: ~s" prim)]
-
-
+ 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
      (make-prim-app 

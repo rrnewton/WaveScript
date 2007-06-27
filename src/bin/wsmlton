@@ -24,9 +24,11 @@ D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
+OUTPUT=query.mlton.exe
+
 # Clean up first:
 rm -f "query.sml"
-rm -f "query.exe"
+rm -f "$OUTPUT"
 
 export REGIMENT_OR_WAVESCRIPT=WS
 if regiment wsml $abspath ${1+"$@"} ;
@@ -52,13 +54,13 @@ alias runmlton="mlton -default-ann 'allowFFI true'"
 # mlton -link-opt -lfftw3f -default-ann 'allowFFI true' $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c 
 #SML=sml 
 
-echo "mlton -default-ann 'allowFFI true' -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES"
+echo "mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES"
 
 start=`date +%s`
-if mlton -default-ann 'allowFFI true' -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
+if mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
 #runmlton -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
-     echo "Executable output to 'query.exe'.";
+     echo "Executable output to $OUTPUT.";
 else echo "$SML returned error!!"; exit -1
 fi

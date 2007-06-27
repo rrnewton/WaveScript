@@ -66,8 +66,11 @@ fun mywindow(S, len)
     }
   };
 
+//s0 = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16 * Int16 * Int16 * Int16));
+//s0 = (dataFile("./countup.raw", "binary", 44000, 0) :: Stream Int16);
+
 s1 :: Stream (Sigseg Float);
-s1 = if GETENV("WSARCH") != "ENSBox" 
+s1 = if GETENV("WSARCH") != "ensbox" 
      then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
 	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
@@ -124,6 +127,8 @@ s2 = iterate (w in s1) {
 
 };
 
+
+// Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
 s3 = iterate (win in s2) {
   state { pos=0 }
@@ -142,7 +147,9 @@ s3 = iterate (win in s2) {
 };
 
 BASE <- 
-s3//mywindow(s3, 4)
+s3
+//s1
+//mywindow(s3, 4)
 //s1
 //iterate(x in s2) { emit x[[30]] };
 //iterate(x in s1) { emit x`width };

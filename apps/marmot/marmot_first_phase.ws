@@ -1,4 +1,5 @@
 
+
 DEBUG = false;
 DEBUGSYNC = DEBUG;
 
@@ -88,10 +89,18 @@ fun detect(scorestrm) {
 	/* emit power of 2 */
 	p = en + samples_padding - _start;
 	p2 = Mutable:ref(1);
-	for i = 0 to 24 {
+	// RRN: GETTING RID OF FOR/BREAK:
+	/*	for i = 0 to 24 {
 	  if (p2 >= p) then break;
 	  p2 := p2 * 2;
-	}
+	  }*/
+
+	//	ind = Mutable:ref(0);
+	//        while i <= 24 && p2 < p {
+        while p2 < p {
+          p2 := p2 * 2;
+	  //	  i := i + 1;  // Is this necessary?
+	};
 
 	emit (true,                               // yes, snapshot
 	      _start - samples_padding,           // start sample
@@ -145,6 +154,7 @@ fun detect(scorestrm) {
 
 //flag = GETENV("WSARCH") == "ENSBox";
 flag = false;
+//flag = true;
 
 //marmotfile = "/archive/4/marmots/brief.raw";
 //marmotfile = "/archive/4/marmots/real_100.raw";

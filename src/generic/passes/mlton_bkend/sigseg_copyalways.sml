@@ -13,7 +13,7 @@ fun width   (SS(a,_))            = Int32.fromInt (wslen a)
 fun subseg  (SS(a,st), pos, len) = SS(wssub a (Int64.toInt (pos - st)) len, pos)
 fun nullseg ()                   = SS(wsnull(), 0)
 fun timebase ss                  = 0
-fun toSigseg (arr, st, tb)       = SS(arr, st)
+fun toSigseg (arr, st, tb)       = SS(arr, Int64.fromInt st)
 fun toArray  (SS(a,_))           = a
 (* This should really return a WS Int64!! *)
 fun ss_start (SS(_,s))           = Int32.fromInt (Int64.toInt s)

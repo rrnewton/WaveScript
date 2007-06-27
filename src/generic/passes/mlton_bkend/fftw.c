@@ -11,7 +11,7 @@ Int32 testo(Real32 blah) {
 }
 */
 
-void fftR2C(Pointer input, Pointer output, Int32 len) {
+void raw_fftR2C(Pointer input, Pointer output, Int32 len) {
       float* in_buf           = (float*)          input;
       _Complex float* out_buf = (_Complex float*) output;
 
@@ -19,7 +19,7 @@ void fftR2C(Pointer input, Pointer output, Int32 len) {
 
       int len_out = (len / 2) + 1;     
       
-      printf(" FFT: %d->%d\n", len, len_out);
+      //      printf(" FFT: %d->%d\n", len, len_out);
 
       // Inefficient!  This approach makes a new plan every time.
       // Real to complex:

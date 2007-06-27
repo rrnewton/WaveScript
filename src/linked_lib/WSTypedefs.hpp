@@ -113,6 +113,7 @@ struct WSArrayStruct {
 };
 
 wsarray_t makeArrayUnsafe(wsint_t count, int eltsize) {
+  // FIXME: This is a bug too: 
   WSArrayStruct* stct = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
   stct->rc  = 0;
   stct->len = count;
