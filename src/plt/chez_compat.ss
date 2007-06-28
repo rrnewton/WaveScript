@@ -345,7 +345,7 @@
 
 
   (define (block-write outp str count)
-    (write-bytes str outp 0 count))
+    (write-string str outp 0 count))
   (define collect collect-garbage)
               
            

@@ -650,11 +650,8 @@
 
 ;; [2006.02.20] Rewrote to have an efficient version:
 (define file->string
-  (lambda (filename . opts)
-    (let* ([inp (open-input-file filename
-				 (if (not (memq 'unbuffered opts))
-				     (cons 'buffered opts)
-				     opts))]
+  (lambda (filename)
+    (let* ([inp (open-input-file filename)]
 	   [outp (open-output-string)]
 	   [block-size 1024]
 	   [block (make-string block-size)])

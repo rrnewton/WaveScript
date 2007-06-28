@@ -19,7 +19,9 @@
 
 (module emit-caml mzscheme 
   (require  "../../../plt/common.ss"
-	    "../../compiler_components/c_generator.ss" )
+	    "../../compiler_components/c_generator.ss" 
+            
+            "../ocaml_bkend/shared-emit-ml.ss")
   (provide emit-caml-wsquery test-emit-caml)
   (chezprovide )  
   (chezimports shared-emit-ml
@@ -38,12 +40,13 @@
 ;======================================================================
 
 ;;; First some helpers to produce syntax for certain caml constructs:
-(define (coerce x) (if (symbol? x) (symbol->string x) x))
+
+(define (coerce-id x) (if (symbol? x) (Var x) x))
 
 ;; Curried version:
-(define (make-fun formals body) 
+(define (make-fun formals body)
   (list "(fun " (if (null? formals) "()"
-		    (insert-between " " (map coerce formals)))
+		    (insert-between " " (map coerce-id formals)))
 	" -> " body ")"))
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
 (define (make-for i st en bod)
@@ -52,14 +55,21 @@
 (define (make-let binds body)
   (list "(let "
 	(insert-between "\n and "
-	   (map (match-lambda ([,lhs ,rhs])
-		  (list (coerce lhs) " = " rhs))
+	   (map (lambda (x)
+		  (match x
+		    [[,lhs ,rhs]     (list (coerce-id lhs) " = " rhs)]
+		    ;; Type is a sexp or a string:
+		    [[,lhs ,ty ,rhs] (list (coerce-id lhs) " :  "
+					   (if (string? ty) ty
+					       (Type ty))" = " rhs)])) 
 	     binds))
 	" in \n"
 	(indent body "  ")
 	")"))
 
-
+;; A "binding" is the "kwd v = rhs" text
+(define (make-fun-binding name formals funbody)
+  (list (coerce-id name) " = " (make-fun formals funbody)))
 
 ; make-conditional
 (define (ln . args) (list args "\n"))
@@ -130,25 +140,41 @@
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
-		      (sources ,[Source -> src* init1*] ...)
-		      (iterates ,[Iterate -> iter*] ...)
+		      (sources ,[Source -> src* init*] ...)
+		      (iterates ,[Iterate -> iter* state**] ...)
 		      (unionNs ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
        (let ([result (list header1 header2 header3 header4 "\n" 
+
 			   ;; Block of constants first:
+			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "let " cb " ;; \n")) cb*)
 
+			   ;; Handle iterator state in the same way:
+			   "\n(* Next the state for all iterates. *)\n\n"
+			   (map (lambda (iterstatebind)
+				  (list "let " iterstatebind " ;; \n"))
+			     (apply append state**))
+
+			   "\n(* Third, function bindings for iterates, sources, unions. *)\n\n"
 			   "let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
 			   (map (lambda (x) (list "\nand\n" x)) (append  src*  iter* union*))
 			   " and "(build-BASE basetype)
 			   ";; \n\n"
-			   init1* "\n"
+			   
+			   " \n\n"
+			   "\n(*  Initialize the scheduler. *)\n"
+			   "begin " (map (lambda (init) (list init ";\n")) init*) "\n"
+
+			   "\n(*  Then run it *)\n"
 			   "try runScheduler()\n"
-			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
-			   "\nPrintf.printf \"Query completed.\\n\";;\n"
+			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";\n"
+			   "\nPrintf.printf \"Query completed.\\n\""
+			   "end "
+			   ";;\n"
 			   )])
 	 #;
 	 (string->file (text->string result) 
@@ -186,10 +212,11 @@
 ;; to pass them through.
 (define (Union union)
   (match union
-    [(,name ,ty (,up* ...) (,down* ...))       
+    [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
        (list " "(Var name)" x = " ((Emit down*) "x") " \n"))]))
 
+#;
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
 (define (Emit down*)
@@ -209,7 +236,6 @@
 		[else `(,(Var down)" emitted;\n")]))
 	  down*)
       "  ())")))
-
         
 (define (Var var)
   (ASSERT symbol? var)
@@ -312,7 +338,7 @@
 (define (Source src)
     (define (E x) (Expr x 'noemits!))
   (match src
-    [(,[Var -> v] ,ty ,app (,downstrm ...))
+    [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
        [(timer ',rate)
 	(let ([r ;(Expr rate 'noemitsallowed!)
@@ -325,7 +351,7 @@
 	     ,(indent ((Emit downstrm) "()") "    ")";\n"
 	     "    SE (!t,",v")\n" )
 	   `("(* Seed the schedule with timer datasource: *)\n"
-	     "schedule := SE(0,",v") :: !schedule;;\n"))
+	     "schedule := SE(0,",v") :: !schedule"))
 	  )]
 
        [(audioFile ,fn ,win ,rate)
@@ -374,7 +400,7 @@
 	    "  \n"
 	    )
 	   ;; Initialization: schedule this datasource:
-	   `("schedule := ",v"() :: !schedule;;\n"))]
+	   `("schedule := ",v"() :: !schedule"))]
 	 
 	 [(equal? mode "binary")
 	  (values (list 
@@ -414,7 +440,7 @@
 			       ))
 		       "")
 		   "\n")
-		  `("schedule := ",v"() :: !schedule;;\n"))]
+		  `("schedule := ",v"() :: !schedule"))]
 	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
 	  )]
        
@@ -525,15 +551,15 @@
 	  [(Array:length)  "Bigarray.Array1.dim"]
 	  ;; Depend on that inliner!
 	  [(Array:make)  
-	   (lnboth (make-fun '(n x) 
-	     (lnfst (make-let `([ar ("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout n)")])
+	   (lnboth (make-fun '("n" "x") 
+	     (lnfst (make-let `(["ar" ("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout n)")])
 			   "begin Bigarray.Array1.fill ar x; ar end"))))]
 	  ;(make-begin (make-app 'Bigarray.Array1.fill '(ar x)) 'ar)
 
 	  ;; TODO: This could actually be unsafe in the bigarray
 	  ;; case... but we don't exploit that yet, we just use the safe version
 	  [(Array:makeUNSAFE)
-	   (lnboth (make-fun '(n) 
+	   (lnboth (make-fun '("n") 
 	     (make-app (DispatchOnArrayType 'Array:make elt)
 		(list "n" 
 		  (match (make-caml-zero-for-type elt)
@@ -553,7 +579,7 @@
 	  ;; Just makes a normal array with zeros:
 	  ;; Cut/paste from above:
 	  [(Array:makeUNSAFE)
-	   (lnboth (make-fun '(n) 
+	   (lnboth (make-fun '("n") 
 	     (make-app (DispatchOnArrayType 'Array:make elt)
 		(list "n" 
 		  (match (make-caml-zero-for-type elt)
@@ -756,20 +782,18 @@
 	make-tuple 
 	make-fun
 	make-for
+	make-fun-binding
 	
 	Var Prim Const 
 	DispatchOnArrayType
+	Type
 
 	)
      (cdr args))))
       
-;(define Expr (protoExpr CamlSpecific))
-;(define-values (Expr Iterate) (sharedEmitCases CamlSpecific))
-(define Expr 9999)
 
-
-
-
+(define-values (Expr Iterate Emit make-bind)
+  (sharedEmitCases CamlSpecific))
 
 
 

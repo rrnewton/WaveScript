@@ -5,7 +5,7 @@
 
 
 (* TODO: make this int64 *)
-type timestamp = int
+type timestamp = Int32.int
 
 (* Data sources are functions that generate new schedule entries *)
 datatype scheduleEntry = SE of (timestamp * (unit -> scheduleEntry))

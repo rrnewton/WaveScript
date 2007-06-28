@@ -21,19 +21,27 @@
 ;======================================================================
 ;======================================================================
 
-;;; These are the functions that differ from their caml countparts.
+(define (coerce-id x) (if (symbol? x) (Var x) x))
 
-(define (coerce x) (if (symbol? x) (symbol->string x) x))
+;;; These are the functions that differ from their caml countparts.
 
 ;; Curried version:
 (define (make-fun formals body)
   (if (null? formals)
       (list "(fn () => "body")")
-      (let loop ([formals (map coerce formals)])
+      (let loop ([formals (map coerce-id formals)])
 	(if (null? formals)
 	    body
 	    (list "(fn "(car formals)" => "(loop (cdr formals)) ")")))))
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+
+;; This is LAME, but having problems with "let val rec" syntax in MLton.
+;; This produces the "f x = bod" text.
+(define (make-fun-binding name formals funbody)
+  (list " " (coerce-id name)
+	(if (null? formals) "()"
+	    (insert-between " " (map coerce-id formals)))
+	" = "funbody))
 
 ;; Tuple version:
 ;; ...
@@ -47,11 +55,13 @@
 (define (make-let binds body . extra)
   (list "(let val " extra
 	(insert-between "\n val "
-	   (map (lambda (x)
+	   (map make-bind binds)
+
+#;	   (map (lambda (x)
 		  (match x
-		    [[,lhs ,rhs]     (list (coerce lhs) " = " rhs)]
+		    [[,lhs ,rhs]     (list (coerce-id lhs) " = " rhs)]
 		    ;; Type is a sexp or a string:
-		    [[,lhs ,ty ,rhs] (list (coerce lhs) " :  "
+		    [[,lhs ,ty ,rhs] (list (coerce-id lhs) " :  "
 					   (if (string? ty) ty
 					       (Type ty))" = " rhs)]))
 	     binds))
@@ -67,7 +77,7 @@
 (define (with-fun-binding name formals funbody body)
   (list "(let fun " name
 	(if (null? formals) "()"
-	    (insert-between " " (map coerce formals)))
+	    (insert-between " " (map coerce-id formals)))
 	" = \n" funbody
 	" in \n"
 	(indent body "  ")
@@ -125,8 +135,8 @@
 (define (build-BASE type)  
   (if (equal? type #())      
       ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
-      `(" baseSink = ",(make-fun '(x) flush) "\n")
-      `(" baseSink = ",(make-fun '(x) `("(print_endline (",(build-show type)" x); ",flush")"))
+      `(" baseSink = ",(make-fun '("x") flush) "\n")
+      `(" baseSink = ",(make-fun '("x") `("(print_endline (",(build-show type)" x); ",flush")"))
 	"\n")
   ))
 
@@ -138,20 +148,20 @@
     ;; ERROR: FIXME:
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
 
-    [String     (make-fun '(x) "x")]
+    [String     (make-fun '("x") "x")]
     [Int    (format "~s.toString" int-module)]
     [Float  "Real32.toString"]
     [Double "Real64.toString"]
     [Bool   "Bool.toString"]
     [Complex "(fn {real,imag} => Real32.toString real ^ \"+\" ^ Real32.toString imag ^ \"i\")"]
 
-    [(List ,[t]) (make-fun '(ls) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" ls) ^ \"]\")"))]
-    [(Array ,[t]) (make-fun '(a) (list "(\"[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
+    [(List ,[t]) (make-fun '("ls") (list "(\"[\" ^ concat_wsep \", \" (List.map "t" ls) ^ \"]\")"))]
+    [(Array ,[t]) (make-fun '("a") (list "(\"[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
 
     ;; Just print range:
     [(Sigseg ,t) 
      (let ([Int (format "~a" int-module)])
-       (make-fun '(ss) 
+       (make-fun '("ss") 
 	       (list 
 		"(\"[\"^ "Int".toString ("  (DispatchOnArrayType 'start t)
 		" ss) ^\", \"^ "Int".toString ("      (DispatchOnArrayType 'end t)
@@ -185,7 +195,7 @@
 #|
     ;; Just print range:
     [(Sigseg ,t) 
-     (make-fun '(ss) 
+     (make-fun '("ss") 
 	       (list 
 		"(\"[\"^ Int.toString ("  (DispatchOnArrayType 'start t)
 		" ss) ^\", \"^ Int.toString ("      (DispatchOnArrayType 'end t)
@@ -233,8 +243,8 @@
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
-		      (sources ,[Source -> src* init1*] ...)
-		      (iterates ,[Iterate -> iter*] ...)
+		      (sources ,[Source -> src* state1** init1*] ...)
+		      (iterates ,[Iterate -> iter* state2**] ...)
 		      (unionNs ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
        
@@ -243,21 +253,36 @@
 		           header1 header2 header3 header4 "\n" 
 
 			   ;; Block of constants first:
+			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
 
+			   ;; Handle iterator state in the same way:
+			   "\n(* Next the state for all iterates/sources. *)\n\n"
+			   (map (lambda (iterstatebind)
+				  (list "val " iterstatebind " ; \n"))
+			     (apply append (append state1** state2**)))
+			   
+			   "\n(* Third, function bindings for iterates, sources, unions. *)\n\n"
 			   " val "(build-BASE basetype)
-
-			   ;; These return incomplete bindings that are stitched with "and":
-			   (map (lambda (x) (list "\nval " x ";\n")) 
+			   
+			   " fun ignored () = () \n" ;; starts off the block of mutually recursive defs
+			   (map (lambda (x) (list "\n and " x "\n"))
 			     ;; We reverse it because we wire FORWARD
 			     (reverse (append  src*  iter* union*)))
+			  
+			   " \n\n"
+			   "val _ = (\n"
+			   "\n(*  Initialize the scheduler. *)\n"
+			   (map (lambda (x) (list x ";\n")) init1*)
 
-			   "; \n\n"
-			   init1* "\n"
-			   "runScheduler();\n"
+			   "\n\n(*  Then run it *)\n"			   
+			   "runScheduler()\n"
 ;			   "try runScheduler()\n"
 ;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
 ;			   "\nPrintf.printf \"Query completed.\\n\";;\n"
+
+			   ")\n"
+
 			   )])
 	 result)]
       [,other ;; Otherwise it's an invalid program.
@@ -270,11 +295,11 @@
 
 ;; The incoming values already have indices on them, this just needs
 ;; to pass them through.
-(trace-define (Union union)
+(define (Union union)
   (match union
     [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
-       (list " "(Var name)" = " (make-fun '(x) ((Emit down*) "x")) " \n"))]))
+       (list " "(Var name)" = " (make-fun '("x") ((Emit down*) "x")) " \n"))]))
 
         
 (define (Var var)
@@ -374,25 +399,25 @@
      (match app
        [(timer ',rate)
 	(let ([r ;(Expr rate 'noemitsallowed!)
-	       (number->string (rate->timestep rate))
-	       ])
+	       (number->string (rate->timestep rate))]
+	      [t (Var (unique-name 'virttime))])
 	  (values 	
-	   `(" ",v" = "
-	     ,(make-let '((t (Ref Int) "ref 0"))
-	        (with-fun-binding v ()
-		   (indent  
-		    (make-seq
-		     `("t := !t+",r)
-		     ((Emit downstrm) "()")
-		     `("SE (!t,",v")\n"))
-		    "    ")
-		   v)))
-	   `("(* Seed the schedule with timer datasource: *)\n"
-	     "schedule := SE(0,",v") :: !schedule;\n"))
-	  )]
+	   ;; First, a function binding that drives the source.
+	   (make-fun-binding v () 
+	     (indent  
+	      (make-seq
+	       `(,t " := !",t" + ",r)
+	       ((Emit downstrm) "()")
+	       `("SE (!",t",",v")\n"))
+	      "    "))	  
 
-       [(audioFile ,fn ,win ,rate)
-	000000000000]
+	   ;; Second, top level state bindings.
+	   (list (make-bind `(,t (Ref Int) "ref 0")))
+	   
+	   ;; Third, initialization statement:
+	   `("(* Seed the schedule with timer datasource: *)\n"
+	     "schedule := SE(0,",v") :: !schedule\n"))
+	  )]
 
 ;(__readFile file mode repeat rate skipbytes offset winsize types)
 
@@ -409,14 +434,13 @@
 		[tuptyp (if (= 1 (length types))
 			    (car types)
 			    (list->vector types ))])
-	    (values (list 
-		   ;; Builds a function from unit to an initial scheduler entry "SE" 
-		   " "v" = "
-		   (make-fun '()
-   	             (make-let `([binreader 
+	    (values 
+	     ;; Builds a function from unit to an initial scheduler entry "SE" 
+	     (make-fun-binding v '()
+   	             (make-let `(["binreader"
 				  ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))
 				  ,(indent (build-binary-reader types homogenous?) "    ")]
-			         [textreader "33333"])
+			         ["textreader" "33333"])
 		   (list "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
 		   (make-tuple file 
@@ -429,7 +453,7 @@
 			       (number->string skipbytes)
 			       (number->string offset))
 		   " \n"
-		   (indent (make-fun '(x) ((Emit downstrm) "x")) "      ")
+		   (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
 		   ;; Also an additional arguments for
 		   ;; dataFileWindowed.  One that has the window size.
 		   ;; And one that bundles up array create/set and
@@ -456,10 +480,11 @@
 			       ))
 		       "")
 		   "\n"
-			      )
-		    
-		    )))
-		  `("schedule := ",v"() :: !schedule;;\n")))]
+		   )))
+	      ;; Second, top level bindings
+	      ()
+	      ;; Third, initialization statement:
+	      `("schedule := ",v"() :: !schedule\n")))]
 	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
 	  )]
        
@@ -480,7 +505,7 @@
 
 (define (build-binary-reader types homogenous?)
   (define widths (map type->width types))
-  (make-fun '(vec ind)
+  (make-fun '("vec" "ind")
   (list 
    ;"  let pos = ref ind in \n"
    (apply make-tuple
@@ -519,6 +544,8 @@
     [,oth #f]
     ))
 
+  
+#;
 (define (ConvertArrType t) 
   (or (BigarrayType? t)
       (error 'emit-mlton:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
@@ -538,7 +565,7 @@
     ;; Can't do anything smart with this right now:
     ;; Could use MONO Arrays... (Like we do in Caml)
     [(Array:makeUNSAFE)
-     (lnboth (make-fun '(n) 
+     (lnboth (make-fun '("n") 
 		       (make-app (DispatchOnArrayType 'Array:make elt)
 				 (list 
 				  (make-tuple "n" 
@@ -577,7 +604,7 @@
 ;; that map directly onto Mlton functions:
 (define (PrimName sym)
   (define (compose . ls)
-    (make-fun '(x)
+    (make-fun '("x")
        (let loop ([ls ls])
 	 (if (null? ls)
 	     "x"
@@ -662,21 +689,21 @@
       [int16ToInt     Int16.fromInt]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
-      [int16ToComplex  ,(make-fun '(n) "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
+      [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
 
       [intToInt16     Int16.toInt]
       [intToFloat     Real32.fromInt]
       [intToDouble    Real64.fromInt]
-      [intToComplex  ,(make-fun '(n) "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
+      [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
 
-      [floatToInt     ,(make-fun '(x) "Real32.toInt IEEEReal.TO_ZERO x")]
-      [floatToInt16   ,(make-fun '(x) "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
-      [floatToDouble  ,(make-fun '(x) "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
-      [floatToComplex ,(make-fun '(n) "({real= n; imag= Real32.fromInt 0})")]
+      [floatToInt     ,(make-fun '("x") "Real32.toInt IEEEReal.TO_ZERO x")]
+      [floatToInt16   ,(make-fun '("x") "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
+      [floatToDouble  ,(make-fun '("x") "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
+      [floatToComplex ,(make-fun '("n") "({real= n; imag= Real32.fromInt 0})")]
 
       [doubleToInt    Real64.toint]
       [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
-      [doubleToFloat  ,(make-fun '(x) "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)")]
+      [doubleToFloat  ,(make-fun '("x") "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)")]
 ;      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
 
       [complexToInt16 "(fn {real,imag} => Int16.fromint (Real32.toInt IEEEReal.TO_ZERO real))"]
@@ -689,7 +716,7 @@
       [stringToDouble Real64.fromString]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
-      [roundF  ,(make-fun '(x) "Real32.fromInt (Real32.floor (x + 0.5))")]
+      [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
 
       [start   ss_start]
       [end     ss_end]
@@ -801,6 +828,7 @@
 	make-tuple 
 	make-fun
 	make-for
+	make-fun-binding
 	
 	Var Prim Const 
 	DispatchOnArrayType
@@ -811,8 +839,8 @@
 
 ;; Here we import bindings from the "superclass"
 ;; We pass upwards our "method table"
-(define-values (Expr Iterate Emit) (sharedEmitCases MLtonSpecific))
-
+(define-values (Expr Iterate Emit make-bind) 
+  (sharedEmitCases MLtonSpecific))
 
 
 

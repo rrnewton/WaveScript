@@ -80,6 +80,8 @@
 	  )))
 
 
+
+    ;; Updated this to return all iterator state so it can be aggregated at the top level.
     (define Iterate
       (lambda (iter)
 	(match iter
@@ -88,37 +90,21 @@
 		    (lambda (,x ,vq) (,ty1 ,ty2) ,bod)))
 	    (incoming ,up)
 	    (outgoing ,down* ...))
-
-	   ;;(if (null? down*) (inspect (vector "huh? why null?" name up down* bod)))
 	   (let* ([emitter (Emit down*)])
-	     `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
-	       " ",(Var name)" = \n"
-	       ;; First we bind the iterator state.
-	       ,(obj 'make-let `([,(Var vq) #() "()"]
-			    ,@(map (lambda (lhs ty rhs) 
-				     (list (Var lhs) ty (Expr rhs emitter)))
-				lhs* ty* rhs*))
-			  ;; Then we bind the actual function:
+	     (values
+	     ;; The first return value is binding-text for the function:
+	      `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+		,(obj 'make-fun-binding name 
+		    (list (list "("(Var x)" : "(obj 'Type ty1)")"))
+		    (indent (Expr bod emitter) "    ")))
 
-			  ;; TODO: We should really just pull the iterator state to the top of the program.
-			  ;; Then we don't need to have this internal letrec here:
-
-
-		     (list
-		      (obj 'make-let `([,(Var name) 
-				     ,(obj 'make-fun (list (list "("(Var x)" : "(obj 'Type ty1)")"))
-					   (indent (Expr bod emitter) "    "))])
-			   (Var name))
-		      "\n")
-
-#;			  
-			  (list (with-fun-binding 
-				 
-				 
-				 (Var name))
-				"\n"
-				))))])))
-
+	     ;; The second return value is a list of bindings for iterator state:
+	      (map make-bind 
+	       `([,(Var vq) #() "()"]
+		 ,@(map (lambda (lhs ty rhs) 
+			  (list (Var lhs) ty (Expr rhs emitter)))
+		     lhs* ty* rhs*)))
+	     ))])))
 
     ;; Generates code for an emit.  (curried)
     ;; .param down*   A list of sinks (names of functions) to emit to.
@@ -127,7 +113,7 @@
       ;;(ASSERT (not (null? down*)))
       (lambda (expr)
 	;; Just call each of the sites with the argument.
-	(obj 'make-let `([emitted ,expr])
+	(obj 'make-let `(["emitted" ,expr])
 		  (apply make-seq
 			 (append 
 			  (map (lambda (down) 
@@ -148,11 +134,25 @@
 			  '("()")))
 		  )))
         
+
+    (define (coerce-id x) (if (symbol? x) (Var x) x))
+
+    ;; Simpler than make-let... just produces the "v = rhs" text.
+    ;; This can then be packaged differently to make lets, letrecs, etc.
+    (define (make-bind bind)
+      (match bind
+	[[,lhs ,rhs]     (list (coerce-id lhs) " = " rhs)]
+	;; Type is a sexp or a string:
+	[[,lhs ,ty ,rhs] (list (coerce-id lhs) " :  "
+			       (if (string? ty) ty
+				   (obj 'Type ty))" = " rhs)]))
+
+
+       
+
     ;; Return a bundle of methods:
-    (values Expr Iterate Emit)
+    (values Expr Iterate Emit make-bind)
     ))
-
-
 
 )
 

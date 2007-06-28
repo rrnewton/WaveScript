@@ -14,7 +14,7 @@ function go () {
     echo >> $RUN
     echo $1 : >> $RUN
     echo "================================================================================" >> $RUN
-    if ! ./query.exe | head -n 200 >> $RUN; then exit 1; fi
+    if ! ./query.caml.exe | head -n 200 >> $RUN; then exit 1; fi
     echo
     echo Finished running query.
 }

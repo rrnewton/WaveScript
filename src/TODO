@@ -15,6 +15,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.06.28]
+    Add ws.early for running queries *without* running static elaborate.
+
 [2007.05.29]
   *) Eventually reduce dependency on C++ features in wsc.
      In particular... tuples should not have constructors.

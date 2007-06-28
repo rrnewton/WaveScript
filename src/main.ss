@@ -594,6 +594,22 @@
 
 
 
+;; ================================================================================
+;; For usability, the below ws* procedures (wsint wscomp wscaml wsmlton...) can 
+;; each take their input as a filename, a parsed program, or a port.
+;; This is the coercion function they use to coerce their input to a parseed program.
+(define (coerce-to-ws-prog x) 
+  (cond  [(input-port? x)
+	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+	     ;; We assume this is parsed but not post-processed:
+	     (ws-postprocess (read x))]
+	    [(string? x) 
+	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+	     (read-wavescript-source-file x)]
+	    [(list? x)   
+	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
+	     x]
+	    [else (error 'wsint "bad input: ~s" x)]))
 
 
 ;; ================================================================================
@@ -607,19 +623,7 @@
 		 [regiment-primitives
 		  ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
-    (define prog
-    (cond  [(input-port? x)
-	    (unless (regiment-quiet) (printf "WSINT: Loading WS source from port: ~s\n" x))
-	     ;; We assume this is parsed but not post-processed:
-	     (ws-postprocess (read x))]
-	    [(string? x) 
-	     (unless (regiment-quiet) (printf "WSINT: Loading WS source from file: ~s\n" x))
-	     (or (read-wavescript-source-file x)
-		 (error 'wsint "file did not parse: ~a" x))]
-	    [(list? x)   
-	     (unless (regiment-quiet) (printf "WSINT: Evaluating WS source: \n \n"))
-	     x]
-	    [else (error 'wsint "bad input: ~s" x)]))
+    (define prog (coerce-to-ws-prog x))
 
   (define _ (begin (unless (regiment-quiet)
 		     (printf "Evaluating program: ~a\n\n"
@@ -704,10 +708,10 @@
 	]))))
 
 ;; ================================================================================
+;; WaveScript Compiler Entrypoint:
 
 (define ws-disabled-by-default '(merge-iterates ))
 
-;; WaveScript Compiler Entrypoint:
 (define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
 ;		[included-var-bindings '()]
@@ -715,18 +719,7 @@
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define outfile "./query.cpp")
-   (define prog
-     (cond  [(input-port? x)
-	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
-	     ;; We assume this is parsed but not post-processed:
-	     (ws-postprocess (read x))]
-	    [(string? x) 
-	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
-	     (read-wavescript-source-file x)]
-	    [(list? x)   
-	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
-	     x]
-	    [else (error 'wsint "bad input: ~s" x)]))
+   (define prog (coerce-to-ws-prog x))
    (define typed (ws-compile-until-typed prog))
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
 
@@ -813,22 +806,26 @@
        (string->file (text->string (emit-caml-wsquery prog)) outfile)
        (printf "\nGenerated OCaml output to ~s.\n" outfile)
        ))
-   (define (wsmlton x . flags)                                 ;; Entrypoint.  
-     (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
-		    [regiment-primitives ;; Remove those regiment-only primitives.
-		     (difference (regiment-primitives) regiment-distributed-primitives)])
-       (define outfile "./query.sml")
-       (define prog (begin (ASSERT list? x) x))
-
-       (ASSERT (andmap symbol? flags))
-       (set! prog (run-ws-compiler prog))
-       (inspect prog)
-       (set! prog (explicit-stream-wiring prog))
-       (inspect prog)
-       (string->file (text->string (emit-mlton-wsquery prog)) outfile)
-       (printf "\nGenerated MLton output to ~s.\n" outfile)
-       )))
+)
  (void))
+
+
+;; ================================================================================
+;; WaveScript MLTON Compiler Entrypoint:
+
+(define (wsmlton x . flags)                                 ;; Entrypoint.  
+  (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
+		 [regiment-primitives ;; Remove those regiment-only primitives.
+		  (difference (regiment-primitives) regiment-distributed-primitives)])
+    (define outfile "./query.sml")
+    (define prog (coerce-to-ws-prog x))
+
+    (ASSERT (andmap symbol? flags))
+    (set! prog (run-ws-compiler prog))
+    (set! prog (explicit-stream-wiring prog))
+    (string->file (text->string (emit-mlton-wsquery prog)) outfile)
+    (printf "\nGenerated MLton output to ~s.\n" outfile)
+    ))
 
 
 
@@ -1301,22 +1298,23 @@
 
 	  ;; Copy/pasted from above:
 	  [(wsml)
-	   (IFCHEZ
-	    (let ()
+	   (let ()
 	     (define exp (match filenames
-			  ;; If there's no file given read from stdout
-			  [() (console-input-port)]
-			  [(,fn ,rest ...) 
-			   (if (equal? "ws" (extract-file-extension fn))
-			       (or (read-wavescript-source-file fn)
-				   (error 'wsint "couldn't parse file: ~s" fn))
-			       ;; Otherwise let's assume 
-			       (open-input-file fn))]
-			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
-			  ))
+			   ;; If there's no file given read from stdout
+			   [() (console-input-port)]
+			   [(,fn ,rest ...) 
+			    (if (equal? "ws" (extract-file-extension fn))
+				(or (read-wavescript-source-file fn)
+				    (error 'wsint "couldn't parse file: ~s" fn))
+				;; Otherwise let's assume 
+				(open-input-file fn))]
+					;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
+			   ))
 	     (apply wsmlton exp opts)
-	   )
-	    (error 'wavescript-compiler "SML output not currently available when running through PLT Scheme."))]
+	     )
+
+	   ;(error 'wavescript-compiler "SML output not currently available when running through PLT Scheme.")
+	   ]
 
 	  
 	  )))))))

@@ -102,7 +102,8 @@
 (all-except "generic/passes/small-ws-passes.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/explicit-stream-wiring.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/emit-c.ss" these-tests test-this)
-;(all-except "generic/passes/ocaml_bkend/emit-caml.ss" these-tests test-this)
+(all-except "generic/passes/ocaml_bkend/emit-caml.ss" these-tests test-this)
+(all-except "generic/passes/mlton_bkend/emit-mlton.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
@@ -306,209 +307,7 @@
 ;  (all-from  )   
    ))
 
-) ; End module
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#|
-
-;; Can't get langs to work.  Just abandon evaluation:
-(game-eval (lambda args 'unspecified))
-(host-eval (lambda args 'unspecified))
-
-;(require "plt/language-mechanism.ss") ;; This blows up if we try to require it up top!
-;(load/use-compiled "generic/lang00.ss")
-;(load/use-compiled "generic/lang05.ss")
-
-(load/use-compiled "generic/util/repl.ss")
-
-(define-syntax lazy-letrec
-  (syntax-rules ()
-    [(_ ([lhs rhs] ...) body ...)        
-     (letrec ([lhs rhs] ...) body ...)]))
-
-
-(define (load_loader)
-  (current-directory (build-path "plt"))
-  (let ([f (load-extension 
-	    (build-path "compiled" "native"  (system-library-subpath) "_loader.so"))])
-  (printf "Got loader: ~s~n" f)
-  (let-values ([(th r) (f #t)])
-	      (printf "Loaded, ~s  ~s~n" th r)
-	      (th))))
-
-;(begin (display ) (newline) (exit))
-
-;(begin (init-graphics) (cleanse-world) (graphical-repl))
-;(define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
-
-;(t)
-
-;(ra '(tokens (node-start () (soc-return 3))))
-
-
-(define (t)
-  (ra
-   '
-
-
-(cps-tokmac-lang
-  '(program
-     (bindings (result_1 '34234324324))
-     (nodepgm
-       (tokens
-         (returnhandler_6
-           retid
-           (destid flag val toind viaind)
-           (stored (acc_9 ()))
-           (if (= flag '222)
-               (let ([oldacc_5 acc_9])
-                 (begin (set! acc_9 '())
-                        (let ([parentpointer_7
-                               (ext-ref
-                                 (tok global-tree viaind)
-                                 storedgparent_13)])
-                          (if (not parentpointer_7)
-                              (dbg '"ERROR: fell off the via tree.")
-                              (if (= '0 parentpointer_7)
-                                  (call (tok SOC-return-handler toind)
-                                        (cons val oldacc_5))
-                                  (bcast
-                                    (tok returnhandler_6 retid)
-                                    parentpointer_7
-                                    '333
-                                    (cons val oldacc_5)
-                                    '0
-                                    '0))))
-                        #0=(void)))
-               (if (not (if (= destid '0) '#t (= destid (my-id))))
-                   (void)
-                   (set! acc_9 (cons val acc_9)))))
-         (global-tree
-           subtok_ind
-           (g_parent g_origin g_hopcount g_version)
-           (stored
-             (storedgparent_13 #1='#f)
-             (storedgorigin_12 #2='#f)
-             (storedghopcount_11 #3='#f)
-             (storedgversion_10 #4='#f))
-           (if (if (not storedghopcount_11)
-                   '#t
-                   (if (= '0 g_hopcount)
-                       (if (> g_version storedgversion_10)
-                           (if (= g_version storedgversion_10)
-                               (< g_hopcount storedghopcount_11)
-                               '#f)
-                           '#f)
-                       '#f))
-               (begin (bcast
-                        (tok global-tree subtok_ind)
-                        (my-id)
-                        g_origin
-                        (+ '1 g_hopcount)
-                        g_version)
-                      (if (not (= g_hopcount '0))
-                          (begin (set! storedgparent_13 g_parent)
-                                 (set! storedgorigin_12 g_origin)
-                                 (set! storedghopcount_11 g_hopcount)
-                                 (set! storedgversion_10 g_version)
-                                 #0#)
-                          (void))
-                      #0#)
-               (void)))
-         (spread-global
-           subtok_ind
-           (g_parent g_origin g_hopcount g_version)
-           (stored
-             (storedgparent_19 #1#)
-             (storedgorigin_18 #2#)
-             (storedghopcount_17 #3#)
-             (storedgversion_16 #4#)
-             (ver_15 (void))
-             (storedliftoption_14 '#f))
-           (if (if (not storedghopcount_17)
-                   '#t
-                   (if (= '0 g_hopcount)
-                       (if (> g_version storedgversion_16)
-                           (if (= g_version storedgversion_16)
-                               (< g_hopcount storedghopcount_17)
-                               '#f)
-                           '#f)
-                       '#f))
-               (begin (if storedliftoption_14
-                          (void)
-                          (begin (set! storedliftoption_14 '#t)
-                                 (set! ver_15 '0)
-                                 #0#))
-                      (ext-set! (tok global-tree 0) storedgparent_13 '0)
-                      (set! ver_15 (+ '1 ver_15))
-                      (bcast (tok global-tree '0) (my-id) '1 ver_15)
-                      (timed-call
-                        1000
-                        (tok spread-global 0)
-                        '#f
-                        '#f
-                        '0
-                        '#f)
-                      (if (not (= g_hopcount '0))
-                          (begin (set! storedgparent_19 g_parent)
-                                 (set! storedgorigin_18 g_origin)
-                                 (set! storedghopcount_17 g_hopcount)
-                                 (set! storedgversion_16 g_version)
-                                 #0#)
-                          (void))
-                      #0#)
-               (void)))
-         (node-start subtok_ind () (stored) (void))
-         (SOC-start
-           subtok_ind
-           ()
-           (stored)
-           (begin (void)
-                  (let ([aggrID_3 (+ (* '1000 '0) '0)])
-                    (call (tok returnhandler_6 aggrID_3)
-                          (my-id)
-                          '222
-                          result_1
-                          '0
-                          '0))
-                  (soc-finished)
-                  'multiple-bindings-for-token
-                  #0#))))))
-
-o
-   
-   ))
-
-
-
-
-
-
-
-
-(define foob 
-  (emit-nesc 
-   (flatten-tokmac 
-    (cleanup-token-machine 
-     '(tokens (SOC-start () (printf "woot\n")))))))
-
-
-;(test-units)
-|#
-
-
+  
 ;(require main_plt)(current-directory "demos/wavescope")
 ;(browse-stream (wsint "demo4_fft.ws"))
 ;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
@@ -518,3 +317,10 @@ o
   (current-directory "~/wavescript/apps/marmot")
   (wsint "run_first_phase.ws"))
 
+(begin 
+  (current-directory "~/wavescript/demos/wavescope")
+  (wsmlton "demo1c_timer.ws"))
+
+
+  
+) ; End module
