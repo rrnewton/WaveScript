@@ -143,12 +143,11 @@ fun powInt16 n x =
 val unpack_complex = 
   let val bytes = Word8Array.array(8, Word8.fromInt 0)
   in
-    fn w64 =>
+    fn (w64 : Word64.word) =>
     let 
-(*        val _  = PackWord64Little.update (bytes, 0, Word64.toLarge w64)
+        val _  = PackWord64Little.update (bytes, 0, Word64.toLarge w64)
         val rl = PackReal32Little.subArr (bytes, 0)
         val im = PackReal32Little.subArr (bytes, 1)
-*)
 
 (* 	val _ = print ("UNPACKING COMPLEX "^ (Real32.toString rl) ^" "^ (Real32.toString im) ^"\n") *)
 (*
@@ -160,9 +159,9 @@ val unpack_complex =
 	val _ = print ("UNPACKING COMPLEX "^ (toString lower) ^" "^ (toString upper) ^"\n")
 *)	
     in
-(*       {real=rl, imag=im}*)
+      {real=rl, imag=im}
 
-      {real= Real32.fromInt 3, imag= Real32.fromInt 4}
+(*       {real= Real32.fromInt 3, imag= Real32.fromInt 4} *)
     end
   end 
 

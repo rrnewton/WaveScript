@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
@@ -7,7 +6,7 @@ source `dirname $0`/assert_regimentd
 
 FLAGS=' -verbose 1 -link-opt -lfftw3f  '
 CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
-
+OUTPUT=query.mlton.exe
 
 if [ ! -f "$1" ];
 then echo Usage: "wsmlton <file> <options ...>";
@@ -24,8 +23,6 @@ D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
-OUTPUT=query.mlton.exe
-
 # Clean up first:
 rm -f "query.sml"
 rm -f "$OUTPUT"
@@ -38,27 +35,12 @@ else #rm -f $TMP;
     exit 1;
 fi
 
-#INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
-#LIBS="bigarray.cmxa fftw2.cmxa"
-#
+################################################################################
 
-alias runmlton="mlton -default-ann 'allowFFI true'"
-
-#export ANNFLAG='"allowFFI true"'
-#SML="mlton -default-ann $ANNFLAG "
-#SML=runmlton
-
-#SML='mlton -verbose 1 -codegen c'
-#SML='mlton -verbose 1'
-#SML="mlton -verbose 1 -link-opt -lfftw3f -default-ann 'allowFFI true' $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c "
-# mlton -link-opt -lfftw3f -default-ann 'allowFFI true' $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c 
-#SML=sml 
-
-echo "mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES"
+echo "mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
 
 start=`date +%s`
-if mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
-#runmlton -output query.exe $FLAGS $INCLUDES query.sml $LIBS $CINCLUDES
+if mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to $OUTPUT.";

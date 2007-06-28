@@ -29,9 +29,15 @@
 	;; Operators:
 	[(let ([,v ,ty (iterate ,f ,[dealias -> sig])]) ,[bod])
 	 (cons `[,sig -> ,v ,ty ,f] bod)]
+
 	;; UnionN: 
 	[(let ([,v (Stream ,ty) (unionN ,[dealias -> S*] ...)]) ,[bod])
 	 (cons `(,S* U-> ,v ,ty) bod)]
+	;; UnionN (Annoying): 
+	;; MAybe I should use one *more* pass to strip annotations off the spine.
+	[(let ([,v (Stream ,ty) (assert-type ,_ (unionN ,[dealias -> S*] ...))]) ,[bod])
+	 (cons `(,S* U-> ,v ,ty) bod)]
+
 	;; Sources:
 	[(let ([,v (Stream ,ty) (,prim ,rands* ...)]) ,[bod])
 	 (guard (assq prim wavescript-stream-primitives))
@@ -50,6 +56,12 @@
 	 (cons `[CONST ,v ,ty ,rhs] bod)]
 	;; Sink:
 	[,v (guard (symbol? v)) `([BASE ,(dealias v)])]
+
+	;; Safety net:
+	[(,op ,_ ...) (guard (or (memq op '(UnionN iterate))
+				 (assq op wavescript-stream-primitives)))
+	 (error 'explicit-stream-wiring "missed a construct: ~s" op)]	
+
 	[,oth (error 'explicit-stream-wiring "unmatched query construct: ~s" oth)]
 	))
   (define (decl->upstream d)
@@ -114,16 +126,22 @@
 		   (map (lambda (d)
 			  (match d
 			    [(,src* U-> ,v ,ty)
-			     `((,v ,ty ,src* 
-				   ,(add-indices v (gather-refs v decls) unionedges)))]
+			     `(((name ,v) 
+				(output-type ,ty) 
+				(incoming ,@src*)
+				(outgoing ,@(add-indices v (gather-refs v decls) unionedges))))]
 			    [,_ ()]))
 		     decls)))
 	  (define src*
 	    (apply append 
 		   (map (lambda (d)
 			  (match d
-			    [(-> ,v ,ty ,app) `((,v ,ty ,app 
-						    ,(add-indices v (gather-refs v decls) unionedges)))]
+			    [(-> ,v ,ty ,app) 
+			     `(((name ,v)
+				(output-type ,ty)
+				(code ,app)
+				(outgoing ,@(add-indices v (gather-refs v decls) unionedges))
+				))]
 			    [,_ ()]))
 		     decls)))
 	  (define iter*
@@ -131,7 +149,11 @@
 		   (map (lambda (d)
 			  (match d
 			    [(,src -> ,v ,ty ,f)
-			     `((,v ,ty ,f ,src ,(add-indices v (gather-refs v decls) unionedges)))]
+			     `(((name ,v) 
+				(output-type ,ty) 
+				(code ,f)
+				(incoming ,src)
+				(outgoing ,@(add-indices v (gather-refs v decls) unionedges))))]
 			    [,_ ()]))
 		     decls)))
 	 

@@ -161,11 +161,14 @@
 ; ======================================================================
 ;;; Helper functions for handling different program contexts:
 
+#;
 (define (Iterate iter)
   (match iter
-    [(,name ,ty (let ([,lhs* ,ty* ,rhs*] ...)
-	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
-	 ,up (,down* ...))
+    [((name ,name) (output-type ,ty) 
+      (code (let ([,lhs* ,ty* ,rhs*] ...)
+	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod)))
+      (incoming ,up) 
+      (outgoing ,down* ...))
      ;(if (null? down*) (inspect (vector "huh? why null?" name up down* bod)))
      (let* ([emitter (Emit down*)])
        `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
@@ -742,13 +745,6 @@
 ;; Import the rest of our functionality from the shared module.
 
 
-(define-syntax make-dispatcher
-  (syntax-rules (else)
-    [(_ exp syms ...) 
-     (let ([x exp])
-       (case x [(syms) syms] ... 
-	   [else (error 'make-dispatcher "unmatched: ~s" x)]))]))
-
 ;; This packages up the caml specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
 (define CamlSpecific 
@@ -767,7 +763,9 @@
 	)
      (cdr args))))
       
-(define Expr (protoExpr CamlSpecific))
+;(define Expr (protoExpr CamlSpecific))
+;(define-values (Expr Iterate) (sharedEmitCases CamlSpecific))
+(define Expr 9999)
 
 
 

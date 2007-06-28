@@ -22,6 +22,11 @@ fun read_int16 vec i : Int16.int =
     Int16.fromInt (Word16.toIntX (Word16.fromLarge unsigned))
   end 
 
+(*
+fun read_real32 vec i = 
+    let chopped = ??? (* chop a subvector with appropriate starting point. *)
+    in PackReal32Little.subVec(vec, i) end     
+*)
 
 (********************************************************************************)
 (* "WORD" INDEXED READING *)
@@ -37,21 +42,18 @@ fun read_int16_wordIndexed vec i  =
      Int16.fromInt(Word16.toIntX (Word16.fromLarge (PackWord16Little.subVecX(vec, i)))) 
     end
 
-
 (*   assert (0 = Int.rem(i,2)); *)
 (*   Int16.fromLarge(LargeWord.toLargeIntX (PackWord16Big.subVecX(vec, Int.quot(i,2)))) *)
 
-
-
-
 fun read_int32_wordIndexed vec i  =
-
 (*   assert (0 = Int.rem(i,4)); *)
    (* IN MLTON COULD GO THROUGH PLAIN INT INSTEAD OF LARGE INT?? *)
 
 (*   Int32.fromLarge(Word32.toLargeIntX (Word32.fromLarge (PackWord32Little.subVecX(vec, i))))*)
    Int32.fromInt(Word32.toIntX (Word32.fromLarge (PackWord32Little.subVecX(vec, i))))
 
+
+fun read_real32_wordIndexed vec i = PackReal32Little.subVec(vec, i)
 
 
 (********************************************************************************)
@@ -98,8 +100,9 @@ fun dataFileWindowed config
       arrset : 'a array * int * 'a -> unit , 
       tosigseg)
 =
-  let
-      val sampnum = ref (Int64.fromInt 0)
+    let
+      (* TEMP: THIS SHOULD BE INT64: *)
+      val sampnum = ref (Int32.fromInt 0)
       val wordsize : int = bytesize+skipbytes 
       fun block_bread vec baseind = 
       (* Array.init might not be the most efficient: *)
@@ -111,7 +114,7 @@ fun dataFileWindowed config
 	      i := !i + 1);
            let val result = ( tosigseg (arr, !sampnum, 3339))
            in
-	   (sampnum := !sampnum + Int64.fromInt winsize;
+	   (sampnum := !sampnum + Int32.fromInt winsize;
 	    result)
            end)
        end

@@ -4,10 +4,13 @@
 
 source `dirname $0`/assert_regimentd
 
-FLAGS=""
+FLAGS=' -verbose 1 '
+CLINK=' -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp -lfftw3f '
+CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
+OUTPUT=query.arm.mlton.exe
 
 if [ ! -f "$1" ];
-then echo Usage: "wsmlton_arm <file> <options ...>";
+then echo Usage: "wsmlton-arm <file> <options ...>";
      echo 
      echo   File \"$1\" does not exist.
      exit 1;
@@ -23,9 +26,7 @@ abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
 # Clean up first:
 rm -f "query.sml"
-rm -f "query.exe"
-rm -f "query.*.c"
-rm -f ".tmp.*.o"
+rm -f "$OUTPUT"
 
 export REGIMENT_OR_WAVESCRIPT=WS
 if regiment wsml $abspath ${1+"$@"} ;
@@ -35,54 +36,46 @@ else #rm -f $TMP;
     exit 1;
 fi
 
-#INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
-#LIBS="bigarray.cmxa fftw2.cmxa"
-#
+################################################################################
 
-SML='mlton -codegen c -verbose 1 -stop g'
-#SML=sml 
+# Clean up first:
+rm -f "query.*.c"
+rm -f ".tmp.*.o"
 
-$SML $INCLUDES $LIBS $FLAGS query.sml 
+echo MLton cross compile to ARM.  Setting up environment.
+export PATH=$PATH:/usr/arm-linux/bin
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/arm-linux/lib
 
-TMP0=.tmp.0.o
-TMP1=.tmp.1.o
+echo mlton -default-ann 'allowFFI true' -codegen c -verbose 1 -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+mlton -default-ann 'allowFFI true' -codegen c -verbose 1 -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
 
 # RRN:
 # HACKING these calls to gcc in here directly.
 # The reason for this is that the machines I'm working on (breeze, patridge)
 # don't support "gcc -b" for some reason.
 
-
-PATH=$PATH:/usr/arm-linux/bin
-
 echo Beginning GCC cross compile.
 start=`date +%s`
-
-echo Now Linking.
 
 FILES=`ls query.*.c`
 OBJS=''
 
-echo FILES $FILES
-
-for fn in $FILES
+#echo FILES $FILES
+for fn in $FILES $CINCLUDES
 do 
-  echo "  Compiling $fn";
-  OBJ=.tmp.$fn.o;
-  OBJS="$OBJS $OBJ";
+  echo "  Compiling $fn"
+  OBJ=".tmp.`basename $fn`.o"
+  OBJS="$OBJS $OBJ"
   arm-linux-gcc -I/usr/arm-linux/include -std=gnu99 -c -I/usr/lib/mlton/arm-linux/include \
           -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
           -fomit-frame-pointer -w -o $OBJ $fn
 done
-#arm-linux-gcc -I/usr/arm-linux/include -std=gnu99 -c -I/usr/lib/mlton/arm-linux/include \
-#          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
-#          -fomit-frame-pointer -w -o $TMP0 query.0.c
 
-if (arm-linux-gcc -o query.exe $OBJS \
-   -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp)
+echo Now Linking: $OBJS
+if (arm-linux-gcc -o $OUTPUT $OBJS $CLINK )
 then end=`date +%s`;
      echo "  Time spent in gcc compiler: "$[($end) - ($start)]" second(s)";
-     echo "Executable output to 'query.exe'.";
+     echo "Executable output to $OUTPUT.";
 else echo "gcc returned error!!"; exit -1
 fi
 

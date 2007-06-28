@@ -47,8 +47,13 @@
 (define (make-let binds body . extra)
   (list "(let val " extra
 	(insert-between "\n val "
-	   (map (match-lambda ([,lhs ,rhs])
-		  (list (coerce lhs) " = " rhs))
+	   (map (lambda (x)
+		  (match x
+		    [[,lhs ,rhs]     (list (coerce lhs) " = " rhs)]
+		    ;; Type is a sexp or a string:
+		    [[,lhs ,ty ,rhs] (list (coerce lhs) " :  "
+					   (if (string? ty) ty
+					       (Type ty))" = " rhs)]))
 	     binds))
 	" in \n"
 	(indent body "  ")
@@ -56,6 +61,9 @@
 
 (define (make-letrec binds body) (make-let binds body "rec "))
 
+;; In SML this is different bc it allows recursion.
+;; Would have to do letrec for same effect.
+#;
 (define (with-fun-binding name formals funbody body)
   (list "(let fun " name
 	(if (null? formals) "()"
@@ -64,6 +72,8 @@
 	" in \n"
 	(indent body "  ")
 	"\n end)"))
+
+
 (define (make-prim-app f x*) (make-app f (list (apply make-tuple x*))))
 
 
@@ -257,62 +267,14 @@
 ; ======================================================================
 ;;; Helper functions for handling different program contexts:
 
-(define (Iterate iter)
-  (match iter
-    [(,name ,ty (let ([,lhs* ,ty* ,rhs*] ...)
-	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
-	 ,up (,down* ...))
-     ;(if (null? down*) (inspect (vector "huh? why null?" name up down* bod)))
-     (let* ([emitter (Emit down*)])
-       `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
-	 " ",(Var name)" = \n"
-	 ;; First we bind the iterator state.
-	 ,(make-let `([,(Var vq) "()"]
-		      ,@(map (lambda (lhs rhs) 
-			       (list (Var lhs) (Expr rhs emitter)))
-			  lhs* rhs*))
-		    ;; Then we bind the actual function:
-
-		    ;; TODO: We should really just pull the iterator state to the top of the program.
-		    ;; Then we don't need to have this internal letrec here:
-		    
-		    (list (with-fun-binding 
-			   (Var name)
-			   (list "("(Var x)" : "(Type ty1)")") (indent (Expr bod emitter) "    ")
-			   (Var name))
-			  "\n"
-			  ))))]))
 
 ;; The incoming values already have indices on them, this just needs
 ;; to pass them through.
-(define (Union union)
+(trace-define (Union union)
   (match union
-    [(,name ,ty (,up* ...) (,down* ...))       
+    [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
-       (list " "(Var name)" x = " ((Emit down*) "x") " \n"))]))
-
-;; Generates code for an emit.  (curried)
-;; .param down*   A list of sinks (names of functions) to emit to.
-(define (Emit down*)
-  ;(ASSERT (not (null? down*)))
-  (lambda (expr)
-    ;; Just call each of the sites with the argument.
-    (make-let `([emitted ,expr])
-      (apply make-seq
-       (append 
-	(map (lambda (down) 
-	      (cond 
-	       [(eq? down 'BASE) `("baseSink emitted")]
-	       ;; If we're emitting *to* a unionN, we include the index tag.
-	       [(pair? down)
-		(ASSERT (fixnum? (car down)))
-		(ASSERT (= (length down) 2))
-		(list (Var (cadr down))
-		      "("(Const (car down))", emitted )")]
-	       [else `(,(Var down)" emitted")]))
-	  down*)
-	'("()")))
-      )))
+       (list " "(Var name)" = " (make-fun '(x) ((Emit down*) "x")) " \n"))]))
 
         
 (define (Var var)
@@ -408,7 +370,7 @@
 (define (Source src)
     (define (E x) (Expr x 'noemits!))
   (match src
-    [(,[Var -> v] ,ty ,app (,downstrm ...))
+    [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
        [(timer ',rate)
 	(let ([r ;(Expr rate 'noemitsallowed!)
@@ -416,7 +378,7 @@
 	       ])
 	  (values 	
 	   `(" ",v" = "
-	     ,(make-let '((t "ref 0"))
+	     ,(make-let '((t (Ref Int) "ref 0"))
 	        (with-fun-binding v ()
 		   (indent  
 		    (make-seq
@@ -443,13 +405,18 @@
 	  ]
 	 
 	 [(equal? mode "binary")
-	  (let ([homogenous? (homogenous-sizes? types)])
+	  (let ([homogenous? (homogenous-sizes? types)]
+		[tuptyp (if (= 1 (length types))
+			    (car types)
+			    (list->vector types ))])
 	    (values (list 
 		   ;; Builds a function from unit to an initial scheduler entry "SE" 
 		   " "v" = "
 		   (make-fun '()
-   	             (make-let `([binreader ,(indent (build-binary-reader types homogenous?) "    ")]
-			       [textreader "33333"])
+   	             (make-let `([binreader 
+				  ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))
+				  ,(indent (build-binary-reader types homogenous?) "    ")]
+			         [textreader "33333"])
 		   (list "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
 		   (make-tuple file 
@@ -481,9 +448,7 @@
 			      ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
 			      (list " "(number->string (type->width (car types)))" "))
 
-			  (let ([tuptyp (if (= 1 (length types))
-						 (car types)
-						 (list->vector types ))])
+			  (let ()
 				 (make-tuple 
 				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
 				  (DispatchOnArrayType 'Array:set        tuptyp)
@@ -504,13 +469,12 @@
 
 
 
-
 (define (type->reader t) 
   (match t
-    [Int    "read_int32_wordIndexed"]
-    [Int16  "read_int16_wordIndexed"]
+    [Int    "read_int32"]
+    [Int16  "read_int16"]
+    [Float  "read_real32"]
     ))
-
 
 (define (homogenous-sizes? types) (apply = (map type->width types)))
 
@@ -521,7 +485,10 @@
    ;"  let pos = ref ind in \n"
    (apply make-tuple
      (mapi (lambda (i t)
-	     (list (type->reader t)" vec (ind + "
+	     (list (if homogenous? 
+		       (format "~a_wordIndexed" (type->reader t))
+		       (type->reader t))
+		   " vec (ind + "
 		   (if homogenous? 
 		       ;; If they're homogenous we do position (word) indexed rather than byte indexed.
 		       (number->string i) 
@@ -822,13 +789,6 @@
 ;; Import the rest of our functionality from the shared module.
 
 
-(define-syntax make-dispatcher
-  (syntax-rules (else)
-    [(_ exp syms ...) 
-     (let ([x exp])
-       (case x [(syms) syms] ... 
-	   [else (error 'make-dispatcher "unmatched: ~s" x)]))]))
-
 ;; This packages up the caml specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
 (define MLtonSpecific 
@@ -837,20 +797,21 @@
      (make-dispatcher (car args)
 		      
         make-let 
+        make-letrec
 	make-tuple 
 	make-fun
 	make-for
 	
 	Var Prim Const 
 	DispatchOnArrayType
+	Type
 
 	)
      (cdr args))))
-      
-(define Expr (protoExpr MLtonSpecific))
 
-
-
+;; Here we import bindings from the "superclass"
+;; We pass upwards our "method table"
+(define-values (Expr Iterate Emit) (sharedEmitCases MLtonSpecific))
 
 
 

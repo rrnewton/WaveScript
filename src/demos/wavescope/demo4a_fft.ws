@@ -66,15 +66,21 @@ fun mywindow(S, len)
     }
   };
 
-//s0 = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16 * Int16 * Int16 * Int16));
-//s0 = (dataFile("./countup.raw", "binary", 44000, 0) :: Stream Int16);
-
-s1 :: Stream (Sigseg Float);
-s1 = if GETENV("WSARCH") != "ensbox" 
+s1a :: Stream (Sigseg Float);
+s1a = if GETENV("WSARCH") != "ensbox" 
      then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
 	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ensBoxAudioF(0);
+
+s0 = (readFile("6sec_marmot_sample.raw", 
+               "mode: binary  rate: 24000  window: 4096  skipbytes: 6 ") :: Stream (Sigseg Int16));
+s1b = iterate w in s0 {
+  arr = Array:build(w.width, fun (i) int16ToFloat(w[[i]]));
+  emit toSigseg(arr, w.start, nulltimebase)
+}
+
+s1 = s1b;
 
 //if GETENV("WSARCH") == "ENSBox" 
 
@@ -146,8 +152,11 @@ s3 = iterate (win in s2) {
   pos += 1;
 };
 
+
 BASE <- 
 s3
+//s2
+//s3
 //s1
 //mywindow(s3, 4)
 //s1
