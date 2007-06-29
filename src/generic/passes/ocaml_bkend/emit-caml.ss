@@ -51,6 +51,7 @@
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
 (define (make-for i st en bod)
   `("(for ",i" = ",st" to ",en" do\n ",bod"\n done)"))
+(define (make-while tst bod) `("(while ",tst" do\n ",bod"\ndone)"))
 
 (define (make-let binds body)
   (list "(let "
@@ -782,6 +783,7 @@
 	make-tuple 
 	make-fun
 	make-for
+	make-while
 	make-fun-binding
 	
 	Var Prim Const 

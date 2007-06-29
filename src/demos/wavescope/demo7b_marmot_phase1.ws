@@ -47,6 +47,23 @@
 // Improves the performance (blocked reading) to 134 ms.  Presumably
 // because rewindow is more efficent.
 
+// [2007.06.29] Just got the MLton backend working on this.
+// It only has a copy-always storage manager, but lets see how it does.
+// Using the scheduler reported numbers for wsc, and whole process
+// (user) times for mlton/caml.
+// Note, also: wsc now uses the improved array representation.
+
+//  Blocked sigseg reading:
+//   ws.opt  : 948 ms
+//   wsc     : 320-360 ms (513 real)
+//   wscaml  : 164 ms (165 real)
+//   wsmlton : 152 ms (178 real)  (Copy Always!)
+
+// Ah... good to see, with the current scheduler (rev 1495) wsc
+// actually does as well with both processors... at least for block
+// reading.
+
+
 //======================================================================
 
 
@@ -434,7 +451,7 @@ detections = detect(wscores);
 
 positives = stream_filter(fun((b,_,_)) b, detections)
 		   
-     //synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+//synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 //synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
@@ -443,7 +460,12 @@ BASE <-
 //synced
 positives
 //detections
+//wscores
 //unionList([ch1,ch2])
+//ch1
+//iterate w in ch1 { emit w[[100]] }
+//iterate w in (readFile(fn, "mode: binary  rate: 24000  window: 4096  skipbytes: 6 ") :: Stream (Sigseg Int16)) { emit w[[100]] }
+
 
 //timer(3.0)
 //iterate(w in _ch1) { print("test\n"); emit w[[0]] }

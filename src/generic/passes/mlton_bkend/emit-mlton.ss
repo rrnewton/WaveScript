@@ -51,6 +51,7 @@
    "(let val "i" = ref "st" in \n"
    " while !"i" <= "en" do\n"
    "   (let val "i" = !"i" in"bod"\n end; "i" := !"i" + 1) end)"))
+(define (make-while tst bod) `("(while ",tst" do\n ",bod")\n"))
 
 (define (make-let binds body . extra)
   (list "(let val " extra
@@ -235,7 +236,8 @@
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/scheduler.sml")))
     (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
-    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
+    (define header3a (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sig")))
+    (define header3b (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
 
     (define complex1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sig")))
@@ -250,7 +252,7 @@
        
        ;; Just append this text together.
        (let ([result (list complex1 complex2 
-		           header1 header2 header3 header4 "\n" 
+		           header1 header2 header3a header3b header4 "\n" 
 
 			   ;; Block of constants first:
 			   "\n(* First a block of constants *)\n\n"
@@ -580,7 +582,7 @@
     [(Array:set)    "Array.update"]
     [(Array:ref)    "Array.sub"]
 
-    [(nullseg) "nullseg_flat"]
+    [(nullseg) "nullseg()"]
     ;; We just use the normal name conversion:
     [else (if (sigseg-prim? op)
 	      (ASSERT (PrimName op))
@@ -696,6 +698,7 @@
 	make-tuple 
 	make-fun
 	make-for
+	make-while
 	make-fun-binding
 	
 	Var Prim Const 
@@ -753,7 +756,7 @@
       [+. "( Real32.+ )"]
       [-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
-      [/. "( Real32.div )"]
+      [/. "( Real32./ )"]
 
       ;; UHH UNFORTUNATELY REAL32 != REAL
       [cos  Real32.Math.cos]
@@ -788,8 +791,8 @@
       [Mutable:ref   "ref"]
       [deref         "!"]
 
-      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt (Real32.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
-      [sqrtF Real32.sqrt]
+      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt (Real32.Math.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
+      [sqrtF Real32.Math.sqrt]
       [sqrtC Complex.sqrt]
 
       [realpart "(fn {real, imag} => real)"]

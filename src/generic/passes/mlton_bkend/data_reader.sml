@@ -77,12 +77,12 @@ fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
 		   outchan dat
 		  end;
 		 (* Now skip some bytes: *)
-		 BinIO.inputN(hndl, skipbytes);
+		 if 0 = skipbytes then () else (BinIO.inputN(hndl, skipbytes); ());
 		 timestamp := !timestamp + period;
 		 SE (!timestamp, f))
 	   in 	  
 	     (* First we need to skip ahead by the offset. *)
-	     (BinIO.inputN(hndl, offset);
+	     (if 0 = offset then () else (BinIO.inputN(hndl, offset); ());
 	      SE (0, f))
 	   end
 
@@ -95,7 +95,10 @@ fun dataFileWindowed config
 
      (outchan (*: 'elem -> unit*))
      (winsize:int)
+
+     (* HACK: This should be either 1, or equal to bytesize. *)
      (index_coef:int)
+
      (arrcreateUnsafe, 
       arrset : 'a array * int * 'a -> unit , 
       tosigseg)
@@ -103,14 +106,28 @@ fun dataFileWindowed config
     let
       (* TEMP: THIS SHOULD BE INT64: *)
       val sampnum = ref (Int32.fromInt 0)
-      val wordsize : int = bytesize+skipbytes 
+      val bytesperwin : int = bytesize+skipbytes 
       fun block_bread vec baseind = 
       (* Array.init might not be the most efficient: *)
        let val arr = arrcreateUnsafe winsize 
            val i = ref 0
+	   val skipwords = Int.quot (skipbytes, bytesize)
        in        
-	  (while !i < winsize do 
-	     (arrset (arr, !i, (binreader vec (baseind + (!i * index_coef))));
+          (* Skipbytes must be in word granularity for our "homogenous" mode reading hack. *)
+	  (* This is too harsh actually... because bytesize might be for multiple fields in a tuple. *)
+	  (* FIXME!!! *)
+	  (assert (Int.rem (skipbytes,bytesize) = 0);
+	   assert (index_coef = 1 orelse index_coef = bytesize);
+	   while !i < winsize do 
+	     (
+(*	     
+	     print ("reading window with index "^ (Int.toString (!i * index_coef))^
+   	            " on baseind "^ (Int.toString baseind) ^
+   	            " bytesize "^ (Int.toString bytesize) ^
+   	            " bytesperwin "^ (Int.toString bytesperwin) ^
+		    "\n");*)
+		      
+	      arrset (arr, !i, (binreader vec (baseind + (!i * index_coef) + (!i * skipwords))));
 	      i := !i + 1);
            let val result = ( tosigseg (arr, !sampnum, 3339))
            in
@@ -119,7 +136,7 @@ fun dataFileWindowed config
            end)
        end
   in
-    dataFile config (38383, block_bread, wordsize * winsize, 0, offset) outchan
+    dataFile config (38383, block_bread, bytesperwin * winsize, 0, offset) outchan
   end
 
 
