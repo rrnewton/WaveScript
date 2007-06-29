@@ -61,6 +61,15 @@ struct
       {real=Real32.*(magnitude,Real32.Math.cos phase),
        imag=Real32.*(magnitude,Real32.Math.sin phase)}
 
+  (* RRN: adding this *)
+  fun sqrt {real,imag} = 
+    let val {magnitude,phase} = toPolar {real=real, imag=imag}
+        val newmag = Real32.Math.sqrt magnitude
+	val newphase = Real32./ (phase, Real32.fromInt 2)
+    in
+      fromPolar {magnitude= newmag, phase= newphase}
+    end
+
   fun toString {real,imag} =
       Real32.toString real ^ "+" ^ Real32.toString imag ^ "i"
 

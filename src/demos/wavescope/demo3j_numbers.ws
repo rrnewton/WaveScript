@@ -7,6 +7,9 @@ fun println(s) {
   print("\n");
 };
 
+fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
+
 BASE <- iterate(w in s0) {  
   n = w`width;
   i = n`intToInt16;
@@ -17,6 +20,10 @@ BASE <- iterate(w in s0) {
 
   println("trig: "++ f`sin ++" "++ f`cos ++" "++ f`tan);
   println("reverse trig: "++ f`asin ++" "++ f`acos ++" "++ f`atan);
+
+  println("sqrt complex: "++ sqrtC(3.0+4.0i) );  
+
+  assert_eq(sqrtC(3.0+4.0i), 2.0+1.0i);
 
   emit ();
 }

@@ -32,6 +32,8 @@ sig
 
   val fromPolar : {magnitude:Real32.real,phase:Real32.real} -> complex
 
+  val sqrt : complex -> complex
+
   val toString : complex -> string
 
   val ~ : complex -> complex

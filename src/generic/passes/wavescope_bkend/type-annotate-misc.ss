@@ -46,7 +46,7 @@
       '(List:append List:length List:ref print show equal? seg-get toArray
 		    Array:ref Array:set Array:length
 
-		    < <= > >= 
+		    < <= > >= max min
 		    
 		    = equal?
 		    joinsegs subseg width toSigseg toArray timebase start end seg-get

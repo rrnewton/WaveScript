@@ -38,7 +38,7 @@
 ;; This is LAME, but having problems with "let val rec" syntax in MLton.
 ;; This produces the "f x = bod" text.
 (define (make-fun-binding name formals funbody)
-  (list " " (coerce-id name)
+  (list " " (coerce-id name) " "
 	(if (null? formals) "()"
 	    (insert-between " " (map coerce-id formals)))
 	" = "funbody))
@@ -299,7 +299,10 @@
   (match union
     [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
-       (list " "(Var name)" = " (make-fun '("x") ((Emit down*) "x")) " \n"))]))
+       ;(list " "(Var name)" = " (make-fun '("x") ((Emit down*) "x")) " \n")
+       (make-fun-binding name '("x")((Emit down*) "x") )
+       ;(list " "(Var name)" = " (make-fun '("x") ) " \n")
+       )]))
 
         
 (define (Var var)
@@ -347,7 +350,7 @@
      [(eq? datum #f) "false"]
      [(string? datum) (format "~s" datum)]
      [(flonum? datum)  (format "(~s)" datum)]
-     [(cflonum? datum) (format "{real=~a; imag=~a }" 
+     [(cflonum? datum) (format "{real=~a, imag=~a }" 
 			       (cfl-real-part datum)
 			       (cfl-imag-part datum))]
      [(integer? datum)  (format "(~s)" datum)]
@@ -598,135 +601,6 @@
 
 
 
-;;================================================================================
-
-;; This just converts the name of the primitive, for those primitives
-;; that map directly onto Mlton functions:
-(define (PrimName sym)
-  (define (compose . ls)
-    (make-fun '("x")
-       (let loop ([ls ls])
-	 (if (null? ls)
-	     "x"
-	     (make-app (car ls) (list (loop (cdr ls))))))))
-  (define sametable ;; Prims with the same name:
-    '(
-      joinsegs subseg width toSigseg toArray timebase
-      not 
-      
-      m_invert 
-      ;;wserror ;generic_hash 
-      ))
-  (define aliastable
-    `(
-      
-      [+I16 "( Int16.+)"]
-      [-I16 "( Int16.-)"] 
-      [*I16 "( Int16.* )"] 
-      [/I16 "( Int16.quot )"]
-      [^I16 "powInt16"]
-
-      [+_ ,(format "(~s.+)" int-module)]  
-      [-_ ,(format "(~s.-)" int-module)] 
-      [*_ ,(format "(~s.*)" int-module)]
-      [/_ ,(format "(~s.quot)" int-module)]
-      [^_ powInt] ;; Defined in prims.sml
-
-      [+. "( Real32.+ )"]
-      [-. "( Real32.- )"] 
-      [*. "( Real32.* )"] 
-      [/. "( Real32.div )"]
-
-      ;; UHH UNFORTUNATELY REAL32 != REAL
-      [cos  Real32.Math.cos]
-      [sin  Real32.Math.sin]
-      [tan  Real32.Math.tan] 
-      [acos Real32.Math.acos]
-      [asin Real32.Math.asin]
-      [atan Real32.Math.atan]
-;      [max max ]
-;      [min min]
-
-      [absI16 Int16.abs]
-      [absI   (format "~s.abs" int-module)]
-      [absF   Real32.abs]
-      [absC   Complex.magnitude]
-
-      [string-append "(String.^)"] 
-      [List:append List.@]
-
-;; TODO ==========================
-
-;      [^. "( ** )"] 
-
-      [+: "Complex.+"]
-      [-: "Complex.-"] 
-      [*: "Complex.*"] 
-      [/: "Complex./"]
-      [^: "Complex.pow"]
-
-
-;; SHARED ==========================
-
-;      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
-      [Mutable:ref   "ref"]
-      [deref         "!"]
-
-;      [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
-      [sqrtF Real32.sqrt]
-;      [sqrtC Complex.sqrt]
-
-      [realpart "(fn {real, imag} => real)"]
-      [imagpart "(fn {real, imag} => imag)"]
-
-      [cons ,(make-fun (list (make-tuple "x" "y")) "x::y")]
-      [car List.hd]
-      [cdr List.tl]
-      [List:length  List.length]
-      [List:reverse List.rev]
-      [List:ref     List.nth]
-
-      [int16ToInt     Int16.fromInt]
-      [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
-      [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
-      [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
-
-      [intToInt16     Int16.toInt]
-      [intToFloat     Real32.fromInt]
-      [intToDouble    Real64.fromInt]
-      [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
-
-      [floatToInt     ,(make-fun '("x") "Real32.toInt IEEEReal.TO_ZERO x")]
-      [floatToInt16   ,(make-fun '("x") "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
-      [floatToDouble  ,(make-fun '("x") "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
-      [floatToComplex ,(make-fun '("n") "({real= n; imag= Real32.fromInt 0})")]
-
-      [doubleToInt    Real64.toint]
-      [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
-      [doubleToFloat  ,(make-fun '("x") "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)")]
-;      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
-
-      [complexToInt16 "(fn {real,imag} => Int16.fromint (Real32.toInt IEEEReal.TO_ZERO real))"]
-      [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
-      [complexToFloat "(fn {real,imag} => real)"]
-;      [complexToDouble "(fun c -> c.Complex.re)"]
-
-      [stringToInt    (format "~s.fromString" int-module)]
-      [stringToFloat  Real32.fromString]
-      [stringToDouble Real64.fromString]
-;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
-
-      [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
-
-      [start   ss_start]
-      [end     ss_end]
-      [seg-get ss_get]
-      ))
-  (cond 
-   [(memq sym sametable) (Var sym)]
-   [(assq sym aliastable) => (lambda (x) (format "~a" (cadr x)))]
-   [else #f]))
-
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (match expr
@@ -778,7 +652,7 @@
       "end \n")]
 
     [(,op (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y])
-     (guard (memq op '(< <= >= >)))
+     (guard (memq op '(< <= >= > max min)))
      (make-app (case ty
 		 [(Int)    (format "~a.~s" int-module op)]
 		 [(Int16)  (format "Int16.~s" op)]
@@ -788,18 +662,12 @@
 		 )
 	       (list (make-tuple x y)))]
 
-    ;;  NOT POLYMORPHIC IN SML!
-;      [<      "(<)"]
-;      [<=     "(<=)"]
-;      [>      "(>)"]
-;      [>=     "(>=)"]
-;      [=        "(=)"] ;; NOTE! FIXME! should be =???
-
-
     ;; Safety net:
     [(,prim ,_ ...)     
-     (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
-     (error 'emit-mlton:Prim "missed this array prim: ~s" prim)]
+     (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length
+  	                 < <= >= > max min
+			 )))
+     (error 'emit-mlton:Prim "missed this array prim: ~s" (cons prim _))]
  
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
@@ -846,7 +714,140 @@
 
 
 ;;================================================================================
-#;
+
+;; This just converts the name of the primitive, for those primitives
+;; that map directly onto Mlton functions:
+(define PrimName
+  (let ()
+    
+  (define (compose . ls)
+    (make-fun '("x")
+       (let loop ([ls ls])
+	 (if (null? ls)
+	     "x"
+	     (make-app (car ls) (list (loop (cdr ls))))))))
+  (define sametable ;; Prims with the same name:
+    '(
+      joinsegs subseg width toSigseg toArray timebase
+      not 
+      
+      m_invert 
+      ;;wserror ;generic_hash 
+      ))
+  (define doubleToFloat (make-fun '("x") "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)"))
+  (define aliastable
+    `(
+      
+      [+I16 "( Int16.+)"]
+      [-I16 "( Int16.-)"] 
+      [*I16 "( Int16.* )"] 
+      [/I16 "( Int16.quot )"]
+      [^I16 "powInt16"]
+
+      [+_ ,(format "(~s.+)" int-module)]  
+      [-_ ,(format "(~s.-)" int-module)] 
+      [*_ ,(format "(~s.*)" int-module)]
+      [/_ ,(format "(~s.quot)" int-module)]
+      [^_ powInt] ;; Defined in prims.sml
+
+      [+. "( Real32.+ )"]
+      [-. "( Real32.- )"] 
+      [*. "( Real32.* )"] 
+      [/. "( Real32.div )"]
+
+      ;; UHH UNFORTUNATELY REAL32 != REAL
+      [cos  Real32.Math.cos]
+      [sin  Real32.Math.sin]
+      [tan  Real32.Math.tan] 
+      [acos Real32.Math.acos]
+      [asin Real32.Math.asin]
+      [atan Real32.Math.atan]
+
+      [absI16 Int16.abs]
+      [absI   (format "~s.abs" int-module)]
+      [absF   Real32.abs]
+      [absC   Complex.magnitude]
+
+      [string-append "(String.^)"] 
+      [List:append List.@]
+
+;; TODO ==========================
+
+      [^. "( Real32.Math.pow )"]
+
+      [+: "Complex.+"]
+      [-: "Complex.-"] 
+      [*: "Complex.*"] 
+      [/: "Complex./"]
+      [^: "Complex.pow"]
+
+
+;; SHARED ==========================
+
+;      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
+      [Mutable:ref   "ref"]
+      [deref         "!"]
+
+      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt (Real32.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
+      [sqrtF Real32.sqrt]
+      [sqrtC Complex.sqrt]
+
+      [realpart "(fn {real, imag} => real)"]
+      [imagpart "(fn {real, imag} => imag)"]
+
+      [cons ,(make-fun (list (make-tuple "x" "y")) "x::y")]
+      [car List.hd]
+      [cdr List.tl]
+      [List:length  List.length]
+      [List:reverse List.rev]
+      [List:ref     List.nth]
+
+      [int16ToInt     Int16.fromInt]
+      [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
+      [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
+      [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
+
+      [intToInt16     Int16.toInt]
+      [intToFloat     Real32.fromInt]
+      [intToDouble    Real64.fromInt]
+      [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
+
+      [floatToInt     ,(make-fun '("x") "Real32.toInt IEEEReal.TO_ZERO x")]
+      [floatToInt16   ,(make-fun '("x") "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
+      [floatToDouble  ,(make-fun '("x") "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
+      [floatToComplex ,(make-fun '("n") "({real= n; imag= Real32.fromInt 0})")]
+
+      [doubleToInt    Real64.toint]
+      [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
+      [doubleToFloat  ,doubleToFloat]
+      [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n; imag= Real32.fromInt 0})"))]
+
+      [complexToInt16 "(fn {real,imag} => Int16.fromint (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToFloat "(fn {real,imag} => real)"]
+      [complexToDouble (list "(fn {real,imag} => "doubleToFloat" real)")]
+
+      [stringToInt    (format "~s.fromString" int-module)]
+      [stringToFloat  Real32.fromString]
+      [stringToDouble Real64.fromString]
+;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
+
+      [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
+
+      [start   ss_start]
+      [end     ss_end]
+      [seg-get ss_get]
+      ))
+
+    (lambda (sym) 
+      (cond 
+       [(memq sym sametable) (Var sym)]
+       [(assq sym aliastable) => (lambda (x) (format "~a" (cadr x)))]
+       [else #f])
+      )))
+
+;;================================================================================
+
   (define-testing these-tests
     `(
       [3 3]
@@ -878,8 +879,11 @@
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
+		   < <= >= > max min = 
 		   		   
 		   equal? print show seg-get toArray
+
+		   stringToComplex 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
@@ -907,8 +911,8 @@
 		     wavescript-primitives))))
       ))
 
-;(define-testing test-this (default-unit-tester "wavescript_emit-mlton.ss: generating WaveScript Mlton code." these-tests))
-;(define test-emit-mlton test-this)
+(define-testing test-this (default-unit-tester "wavescript_emit-mlton.ss: generating WaveScript Mlton code." these-tests))
+(define test-emit-mlton test-this)
 
 
 
