@@ -5,11 +5,9 @@
 // NOTE: rrn: I'm going to rewrite this at some point to use a single
 // array (packed rows) representation for interoperability with GSL/Blas.
 
-// NOTE: In the future we will have type aliases (shorthands) like this:
 type Matrix t = Array (Array t);
 
 // [2007.03.19] rrn: I'm going to clean things up gradually and move them into this namespace:
-
 namespace Matrix {
 
 // Interface:

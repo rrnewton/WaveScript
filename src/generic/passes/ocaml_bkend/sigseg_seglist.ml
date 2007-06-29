@@ -1,6 +1,9 @@
 
 (*
   [2007.03.26] Switching to bigarray.
+
+  [2007.06.29] It looks like I never got around to duplicating things
+  to make this work with BOTH array representations.
 *)
 
 open Bigarray

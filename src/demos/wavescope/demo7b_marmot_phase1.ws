@@ -47,6 +47,7 @@
 // Improves the performance (blocked reading) to 134 ms.  Presumably
 // because rewindow is more efficent.
 
+
 // [2007.06.29] Just got the MLton backend working on this.
 // It only has a copy-always storage manager, but lets see how it does.
 // Using the scheduler reported numbers for wsc, and whole process
@@ -62,6 +63,8 @@
 // Ah... good to see, with the current scheduler (rev 1495) wsc
 // actually does as well with both processors... at least for block
 // reading.
+
+// Hmm... my first shot at sigseg_seglist for mlton made performance worse.
 
 
 //======================================================================

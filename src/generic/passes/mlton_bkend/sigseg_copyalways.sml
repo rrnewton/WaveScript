@@ -1,9 +1,13 @@
 
 
-structure SigSeg =
+(* Would using vectors help? *)
+
+structure SigSeg : SIGSEG =
 struct
 
 type sample = Int64.int
+type timebase = int
+
 (* Doesn't have timebase *)
 datatype 'a sigseg = SS of ('a wsarray * sample )
 

@@ -39,7 +39,7 @@ go "demo4a_fft.ws"
 go "demo6a_unionList.ws"
 
 # go "demo7a_marmot_noinline.ws"
-# go "demo7b_marmot_phase1.ws"
+go "demo7b_marmot_phase1.ws"
 
 
 # #go "demo2a_iterate.ws"
