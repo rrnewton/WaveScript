@@ -400,7 +400,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory test-directory)
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (fpf "wsmlton: Running Demos through OCaml:          ~a\n" 
+       (fpf "wsmlton: Running Demos through MLton:          ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/18_test_demos_mlton.log" test-directory))))
        (current-directory test-directory))
 
