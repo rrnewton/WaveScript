@@ -316,7 +316,7 @@
 (begin 
   (current-directory "~/wavescript/apps/marmot")
   (wsint "run_first_phase.ws"))
-
+#;
 (begin 
   (current-directory "~/wavescript/demos/wavescope")
   (wsmlton "demo1c_timer.ws"))

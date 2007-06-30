@@ -126,8 +126,11 @@ exec regiment i --script "$0" ${1+"$@"};
  ;    "demo5c_better.ws"
 
     ["demo6a_unionList.ws"        ,(lambda (a b) 
-				     (equal? (sort < (list (vector-ref a 1) (vector-ref b 1)))
-					     '(1 101)))]
+				     #;(equal? (sort < (list (vector-ref a 1) (vector-ref b 1)))
+					     '(1 101))
+                                     (equal? (sort < (list (vector-ref a 0) (vector-ref b 0)))
+					     '(0 1))
+				     )]
     ["demo6b_sync.ws"             ,(lambda (a b) #t)]
     ["demo6c_syncN.ws"            ,(lambda (a b) #t)]
 

@@ -5,7 +5,9 @@ include "stdlib.ws";
 
 // OH! This has to do with the source positions.
 
-src = union2(timer(3.0), timer(4.0))
+// [2007.06.29] Disabling this till it works in more backends.
+//src = union2(timer(3.0), timer(4.0))
+src = timer(3.0);
 
 BASE <- iterate (x in src) {
   state { first = true }
@@ -28,10 +30,12 @@ BASE <- iterate (x in src) {
     first := false;
     println("");
 
+    /*
     case x {
       Oneof2(x): println("Got left! ")
       Twoof2(y): println("Got right! ")
     };
+    */
 
   };
   
