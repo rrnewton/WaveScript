@@ -165,6 +165,7 @@ fun rad2deg(rad) { rad * 180.0 / const_PI }
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
 
+// This *should* work by caching one or more fftw plans.
 fun fftStream(s) {
   iterate f in s { emit fftR2C(f) }
 }

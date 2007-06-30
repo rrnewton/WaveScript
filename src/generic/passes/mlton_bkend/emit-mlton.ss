@@ -113,6 +113,9 @@
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
+
+    [Timebase "SigSeg.timebase"] ;; This will change.
+
     [#() "unit "]
 
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
@@ -490,7 +493,7 @@
 	      ()
 	      ;; Third, initialization statement:
 	      `("schedule := ",v"() :: !schedule\n")))]
-	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
+	 [else (error 'readFile "mode not handled yet in MLton backend: ~s" mode)]
 	  )]
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
@@ -686,7 +689,7 @@
 ;; Import the rest of our functionality from the shared module.
 
 
-;; This packages up the caml specific functionality to pass back up to the parent module.
+;; This packages up the MLton specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
 (define MLtonSpecific 
   (lambda args
@@ -737,7 +740,7 @@
       m_invert 
       ;;wserror ;generic_hash 
       ))
-  (define doubleToFloat (make-fun '("x") "Real32.fromlarge IEEEReal.TO_NEAREST (Real64.toLarge x)"))
+  (define doubleToFloat (make-fun '("x") "Real32.fromLarge IEEEReal.TO_NEAREST (Real64.toLarge x)"))
   (define aliastable
     `(
       
@@ -791,7 +794,7 @@
       [Mutable:ref   "ref"]
       [deref         "!"]
 
-      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt (Real32.Math.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
+      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO (Real32.Math.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
       [sqrtF Real32.Math.sqrt]
       [sqrtC Complex.sqrt]
 
@@ -805,34 +808,35 @@
       [List:reverse List.rev]
       [List:ref     List.nth]
 
-      [int16ToInt     Int16.fromInt]
+      [int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
-      [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n); imag= Real32.fromInt 0})")]
+      [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n), imag= Real32.fromInt 0})")]
 
-      [intToInt16     Int16.toInt]
-      [intToFloat     Real32.fromInt]
-      [intToDouble    Real64.fromInt]
-      [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n; imag= Real32.fromInt 0})")]
+      [intToInt16     ,(compose "Int16.fromLarge"     (format "~a.toLarge" int-module))]
+      [intToFloat     ,(compose "Real32.fromLargeInt" (format "~a.toLarge" int-module))]
+      [intToDouble    ,(compose "Real64.fromLargeInt" (format "~a.toLarge" int-module))]
+      [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n, imag= Real32.fromInt 0})")]
 
-      [floatToInt     ,(make-fun '("x") "Real32.toInt IEEEReal.TO_ZERO x")]
-      [floatToInt16   ,(make-fun '("x") "Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO x)")]
-      [floatToDouble  ,(make-fun '("x") "Real64.fromlarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
-      [floatToComplex ,(make-fun '("n") "({real= n; imag= Real32.fromInt 0})")]
+      [floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
+      [floatToInt16   ,(make-fun '("x") "Int16.fromInt   (Real32.toInt IEEEReal.TO_ZERO x)")]
+      [floatToDouble  ,(make-fun '("x") "Real64.fromLarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
+      [floatToComplex ,(make-fun '("n") "({real= n, imag= Real32.fromInt 0})")]
 
-      [doubleToInt    Real64.toint]
+      [doubleToInt    ,(compose (format "~a.fromLarge" int-module) "(Real64.toLargeInt IEEEReal.TO_ZERO)")]
       [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
       [doubleToFloat  ,doubleToFloat]
-      [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n; imag= Real32.fromInt 0})"))]
+      [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n, imag= Real32.fromInt 0})"))]
 
-      [complexToInt16 "(fn {real,imag} => Int16.fromint (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToInt16 "(fn {real,imag} => Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO real))"]
       [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
       [complexToFloat "(fn {real,imag} => real)"]
-      [complexToDouble (list "(fn {real,imag} => "doubleToFloat" real)")]
+      [complexToDouble "(fn {real,imag} => (Real64.fromLarge IEEEReal.TO_ZERO (Real32.toLarge real)))"]
 
-      [stringToInt    (format "~s.fromString" int-module)]
-      [stringToFloat  Real32.fromString]
-      [stringToDouble Real64.fromString]
+      ;; Should return option type:
+      [stringToInt    ("(fn s => case ",(format "~s.fromString" int-module)" s of SOME x => x)")]
+      [stringToFloat  "(fn s => case Real32.fromString s of SOME x => x)"]
+      [stringToDouble "(fn s => case Real64.fromString s of SOME x => x)"]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]

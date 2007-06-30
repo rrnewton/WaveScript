@@ -22,7 +22,7 @@ function go () {
 #go "demo1b_dataFile.ws"
 go "demo1c_timer.ws"
 go "demo1d_dataFile_binary.ws"
-
+#go "demo1e_readFile.ws"
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"
@@ -30,44 +30,36 @@ go "demo2b_iterateState.ws"
 go "demo3a_tuples.ws"
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
+# #TEMP# go "demo3e_hashtables.ws"
 # go "demo3f_morelists.ws" # no prim_window
 go "demo3g_arrays.ws"
 #go "demo3h_advancedlists.ws"
-#go "demo3i_conversion_prims.ws"
+go "demo3i_conversion_prims.ws"
 go "demo3j_numbers.ws"
+# 3k
 
 go "demo4a_fft.ws"
 
+go "demo5a_rewindow.ws"
+go "demo5b_rewindow_inlined.ws"
+
 go "demo6a_unionList.ws"
+go "demo6b_sync.ws"
+go "demo6c_syncN.ws"
+# 6e
 
 go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"
 
+go "demo8a_generic_arith.ws" 
+go "demo8b_sugars.ws"
+go "demo8c_moresugar.ws"
 
-# go "demo3b_inlining.ws"
-# #TEMP# go "demo3e_hashtables.ws"
-# go "demo3k_higher_order.ws"
+go "demo9_misc_prim_tests.ws" # not working yet
+go "demo9b_higher_order_prims.ws"
+#gcc -c bar.c
+#go "demo9c_foreign.ws"
 
-
-
-# # [2007.03.14] This is where the segfaulting starts:
-# # But 5a,5B don't segfault..
-# # 6a,6b do segfault.
-
-
-
-# go "demo5a_rewindow.ws"
-# go "demo5b_rewindow_inlined.ws"
-
-# go "demo6a_unionList.ws"
-# go "demo6b_sync.ws"
-# go "demo6c_syncN.ws"
-
-
-
-
-# go "demo8a_generic_arith.ws" 
-# go "demo8b_sugars.ws"
 
 # go "demo11_simple_merge.ws"
 

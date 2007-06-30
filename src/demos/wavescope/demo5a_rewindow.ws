@@ -2,6 +2,8 @@
 // This does a rewindow manually.  That is, without defining a
 // separate function and using the inliner.
 
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in "++s++": "++ a ++" not equal "++ b);
+
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
 
 newwidth = 1024;
@@ -12,14 +14,18 @@ s2 = iterate (win in s1) {
          }
 
    print("\nIncoming width ");
-   print(win.width);
+   print(win`width);
    print(" Current ACC/width ");
-   print(acc.width);
+   print(acc`width);
    print(": ");
    print(acc);
    print("\n");
 
-   acc := joinsegs(acc, win);
+
+   newacc = joinsegs(acc, win);
+   assert_eq("join", newacc`width, win`width + acc`width);
+   acc := newacc;
+
    // We do this entirely with index numbers, no abstract Time objects are used.
    // win.width is an upper bound on how many windows we can produce.
 
@@ -31,8 +37,12 @@ s2 = iterate (win in s1) {
 
    while acc.width > newwidth {
      print("Iterating, acc.width " ++ acc.width ++ "\n");
-     emit subseg(acc, acc.start, newwidth);
-     acc := subseg(acc, acc.start + step, acc.width - step)
+     chop = subseg(acc, acc.start, newwidth);
+     emit chop;
+
+     leftover = subseg(acc, acc.start + step, acc.width - step);
+     assert_eq("split", acc`width, chop`width + leftover`width - step);
+     acc := leftover;
    }
 };
 

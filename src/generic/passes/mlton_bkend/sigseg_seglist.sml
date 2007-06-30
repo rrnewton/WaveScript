@@ -12,6 +12,8 @@ struct
 type sample = int  (* Should be int64 *)
 type timebase = int
 
+exception SigSegFailure of string
+
 (* Doesn't have timebase *)
 (* seglist, start sample, element count *)
 datatype 't sigseg = SS of ('t vector list * sample * int)
@@ -34,7 +36,7 @@ fun toSigseg (arr, st, tb) = SS([Array.vector arr], st, Array.length arr)
 fun ss_get (SS(ls,_,_), i) = 
   let fun loop ls i =
     case ls 
-     of   [] => raise (WSError "ss_get out of bounds ref")
+     of   [] => raise (SigSegFailure "ss_get out of bounds ref")
       | h::t => 
 	  if i < length h
 	  then sub (h,i)
@@ -66,7 +68,7 @@ fun subseg (SS(ls,st,w), pos, len) =
   let 
   fun loop ls i =
     case ls 
-     of   [] => raise (WSError "subseg out of bounds")
+     of   [] => raise (SigSegFailure "subseg out of bounds")
       | h::t => 
 	  if i < length h
 	  then (if i+len <= length h
@@ -76,7 +78,7 @@ fun subseg (SS(ls,st,w), pos, len) =
 	  else loop t (i - length h)
   and loop2 ls j = 
     case ls  
-     of   [] => raise (WSError "subseg out of bounds")
+     of   [] => raise (SigSegFailure "subseg out of bounds")
       | h::t => 
 	  if j < length h
 	  then [mysub h 0 j]

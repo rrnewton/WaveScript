@@ -57,7 +57,7 @@
 	     (obj 'make-let `((,pat ,v)) "x"))]
 	  
 	  [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
-	   (obj 'make-let `((,v ,rhs)) bod)]
+	   (obj 'make-let `((,v ,ty ,rhs)) bod)]
 	  [(begin ,[e*] ...)  (indent (apply make-seq e*) "  ")]
 	  [(emit ,vq ,[x]) (emitter x)]
 	  [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]

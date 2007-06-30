@@ -107,7 +107,7 @@
 
     ;[(Stream ,[t]) `("WSBox*")]
     ;[(Array ,[t]) `(,t "[]")]
-    ;[Timebase  "int"]
+    [Timebase  "int"]
 
     [(Array ,t) 
      (let ([flatty (BigarrayType? t)])

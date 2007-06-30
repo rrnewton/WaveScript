@@ -7,15 +7,14 @@ fun rewindow(sig, newwidth, step)
   else iterate (w in sig) {
     state { acc = nullseg; }
     acc := joinsegs(acc, w);
-    for i = 1 to w.width {
-      if acc.width > newwidth
-      then {emit subseg(acc, acc.start, newwidth);
-	    acc := subseg(acc, acc.start + step, acc.width - step)}
-      else break;
+    
+    while acc.width > newwidth { 
+      emit subseg(acc, acc.start, newwidth);
+      acc := subseg(acc, acc.start + step, acc.width - step)
     }
   };
 
 
 
 BASE <- rewindow((readFile("./countup.raw", "mode: binary  window: 4096") 
-		  :: Stream (Sigseg Int)), 1024, 512); 
+		  :: Stream (Sigseg Int16)), 1024, 512); 

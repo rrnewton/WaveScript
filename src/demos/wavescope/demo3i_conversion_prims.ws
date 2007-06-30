@@ -1,5 +1,5 @@
 
-s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
+s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
 
 fun println(s) {
   print("  ");
@@ -7,12 +7,20 @@ fun println(s) {
   print("\n");
 };
 
+fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
+
 BASE <- iterate(w in s0) {  
   n = w`width;
   i = n`intToInt16;
   f = n`intToFloat;
   d = n`intToDouble;
   c = n`intToComplex;
+
+  // 4096 is representable as any of our numbers and as such should be convertible without loss:
+  assert_eq(n, i`int16ToInt);
+  assert_eq(n, f`floatToInt);
+  assert_eq(n, d`doubleToInt);
+  assert_eq(n, c`complexToInt);
 
   print("\nFrom int16:\n");
   println( i`int16ToInt );
@@ -43,9 +51,12 @@ BASE <- iterate(w in s0) {
   println( n ` show ` stringToInt );
   println( f ` show ` stringToFloat );
   println( f ` show ` stringToDouble );
-  println( c ` show ` stringToComplex );
+
+  // [2007.06.30] Leaving this one off for now:
+  //  println( c ` show ` stringToComplex );
 
   print("\n");
+
 
   emit ();
 }

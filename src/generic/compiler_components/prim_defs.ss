@@ -279,7 +279,7 @@
 
     (stringToInt     (String)  Int)
     (stringToFloat   (String)  Float)
-    (stringToDouble  (String)  Float)
+    (stringToDouble  (String)  Double)
     (stringToComplex (String)  Complex)
     
     ;; Rounding instead of truncation:    
