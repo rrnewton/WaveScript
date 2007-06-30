@@ -24,4 +24,6 @@ sig
   val ss_end    : 'a sigseg                         -> Int32.int
   val ss_get    : 'a sigseg * Int32.int             -> 'a
 
+  val ==        : 'a sigseg * 'a sigseg             -> bool
+
 end

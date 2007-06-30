@@ -8,10 +8,10 @@
 
 include "marmot_first_phase.ws";
 
-BASE <- ch1
+//BASE <- ch1
 //BASE <- unionList([ch1,ch2,ch3,ch4])
 //BASE <- rw1
 //BASE <- hn
 //BASE <- d2
-//BASE <- synced
+BASE <- synced
 

@@ -195,6 +195,9 @@
 
     [(List ,[t]) (list "(fn (l1, l2) => ListPair.all "t" (l1, l2))" )]
     [(Array ,[t]) (list "(arrayEqual "t")")]
+
+
+    [(Sigseg ,t) "SigSeg.=="]
     
 #|
     ;; Just print range:

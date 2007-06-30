@@ -33,6 +33,10 @@ fun ss_end   (SS(_,s,w))  = s + w - 1
 fun toSigseg (arr, st, tb) = SS([Array.vector arr], st, Array.length arr)
 (* fun toSigseg (arr, st, tb) = SS([arr], st, Array.length arr) *)
 
+(* NOTE! This only works if the contents is an equality type! *)
+fun == (SS(ls1,st1,w1), SS(ls2,s2,w2)) = 
+    w1 = w2 andalso st1 = st2 andalso ls1 = ls2
+
 fun ss_get (SS(ls,_,_), i) = 
   let fun loop ls i =
     case ls 

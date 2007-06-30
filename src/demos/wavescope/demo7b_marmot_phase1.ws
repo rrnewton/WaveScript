@@ -64,6 +64,11 @@
 // actually does as well with both processors... at least for block
 // reading.
 
+// Just ran on ARM (1.1 mb input)
+//   MLton:  real  1.273s  user 1.150s
+//   wsc  :  real  4.519s  user 3.780s
+
+
 // Hmm... my first shot at sigseg_seglist for mlton made performance worse.
 
 
