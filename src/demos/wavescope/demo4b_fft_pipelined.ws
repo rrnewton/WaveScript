@@ -4,6 +4,7 @@
 // FFT every window and output a sample from that FFT, interleaved with zeros.
 
 // Pipeline the ffts into two seperate operators.
+// This inclreases parallelism and (should) increase performance.
 
 fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
 
@@ -26,15 +27,6 @@ fun mywindow(S, len)
     }
   };
 
-s1 :: Stream (Sigseg Float);
-s1 = if GETENV("WSARCH") != "ENSBox" 
-     then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
-                    :: Stream (Int16 * Int16 * Int16 * Int16));
-	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
-     else ENSBoxAudioF(0,4096,0,24000);
-
-s2 :: Stream (Sigseg Complex);
-s2 = iterate (w in s1) { emit sigseg_fftR2C(w) };
 
 fun group2(s) { 
  iterate x in s {
@@ -56,6 +48,18 @@ fun pipe2(f,s) {
     emit f(w2);
   }
 }
+
+//===========================================================================
+
+s1 :: Stream (Sigseg Float);
+s1 = if GETENV("WSARCH") != "ENSBox" 
+     then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
+                    :: Stream (Int16 * Int16 * Int16 * Int16));
+	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
+     else ENSBoxAudioF(0,4096,0,24000);
+
+s2 :: Stream (Sigseg Complex);
+s2 = iterate (w in s1) { emit sigseg_fftR2C(w) };
 
 s2b = pipe2(sigseg_fftR2C, s1);
 

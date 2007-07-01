@@ -93,7 +93,7 @@
 	       [i (unique-name 'i)])		
 	   ;; Need Array:makeZeroed or Array:makeUNSAFE !!
 	   `(let ([,tmp (Array ,ty) ,e2])
-	      (if (equal? ,tmp Array:null)
+	      (if (wsequal? ,tmp Array:null)
 		  Array:null
 		  (let ([,out (Array ',newty)
 			      ;(Array ,ty)

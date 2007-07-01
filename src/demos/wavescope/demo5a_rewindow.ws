@@ -15,11 +15,6 @@ s2 = iterate (win in s1) {
    state { acc = nullseg; 
          }
 
-   v :: Sigseg () = nullseg;
-   assert_eq("nullseg eq1", v,v);
-   assert_eq("nullseg eq2", v, (nullseg :: Sigseg ()));
-   assert_eq("nullseg eq3", (nullseg :: Sigseg ()), (nullseg :: Sigseg ()));
-
    print("\nIncoming width ");
    print(win`width);
    print(" Current ACC/width ");

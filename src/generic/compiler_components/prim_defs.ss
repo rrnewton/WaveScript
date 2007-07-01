@@ -344,8 +344,9 @@
     (>=  ('a 'a) Bool)
 
 ;    (eq? (Object Object) Bool)
-    (equal? ('a 'a) Bool)
-    (eq? ('a 'a) Bool)  ;; This should just be '=' when it comes down to it.
+    (wsequal? ('a 'a) Bool)
+    ;; [2007.07.01] Finally removing this dated construct:
+;    (eq? ('a 'a) Bool)  ;; This should just be '=' when it comes down to it.
     (null? ((List 'a)) Bool)
 
     ;; Written &&, ||, and not(b).

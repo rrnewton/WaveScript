@@ -699,8 +699,8 @@
          [(exp >= exp) `(>= ,$1 ,$3)]
 
          ;[(exp === exp) `(eq? ,$1 ,$3)] ; Do we want to do this?
-         [(exp == exp) `(equal? ,$1 ,$3)]
-         [(exp != exp) `(not (equal? ,$1 ,$3))]
+         [(exp == exp) `(wsequal? ,$1 ,$3)]
+         [(exp != exp) `(not (wsequal? ,$1 ,$3))]
          
          ;; Parentheses for precedence:
          [(LeftParen exp RightParen) $2]

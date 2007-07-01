@@ -63,7 +63,8 @@ fun arrayToList arr =
   end 
 
 fun arrayEqual eq (a1, a2) = 
-  let val len = Array.length a1 
+  let val len  = Array.length a1 
+      val len2 = Array.length a2
       fun loop i = 
         if i = len
 	then true
@@ -71,7 +72,7 @@ fun arrayEqual eq (a1, a2) =
         then loop (i+1)
         else false
   in 
-    loop 0
+    (len = len2) andalso loop 0
   end 
 
 fun concat_wsep sep ls = 

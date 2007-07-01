@@ -265,7 +265,7 @@
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
 
-	(equal? equal?) (null? null?) (pair? pair?) ;number? 
+	(wsequal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
 
 	(GETENV ,(lambda (env v)

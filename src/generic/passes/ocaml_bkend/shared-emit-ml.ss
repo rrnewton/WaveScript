@@ -21,7 +21,10 @@
 ;;;
 ;;; (These constructs are the same between Caml & SML.)
 
+;; This is a "begin" statement.
 (define (make-seq . exprs) (list "(" (insert-between ";\n" exprs) ")"))
+
+;; A tuple expression.
 (define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
 
 #;
@@ -29,8 +32,10 @@
   (make-letrec `([,name ,(make-fun formals funbody)]) body))
 
 ; ======================================================================
-;; Expressions.
+;;; Handling different AST variants:
 
+;; This is the "parent class" that contains methods shared between the
+;; Caml and MLton backends.
 (define sharedEmitCases
   (lambda (obj)
     

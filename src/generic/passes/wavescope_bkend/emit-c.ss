@@ -1486,10 +1486,11 @@
 	 (error 'emit-c:Prim "shouldn't get a __foreign here: ~s" `(__foreign ,@_))]
 
 	;; Generate equality comparison:
-	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
+	[(wsequal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
 	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
 	   (match t
 	     [Int          simple]
+	     [Int16        simple]
 	     [Float        simple]
 	     [String       simple]
 	     ;; This is effectively physical equality:
@@ -1672,7 +1673,7 @@ int main(int argc, char ** argv)
 		   List:ref List:append List:reverse List:length List:make 
 		   Array:makeUNSAFE Array:ref Array:set
 		   
-		   equal? print show seg-get toArray 
+		   wsequal? print show seg-get toArray 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudio

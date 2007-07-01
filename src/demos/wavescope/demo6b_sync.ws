@@ -109,6 +109,7 @@ outwidth = 100;
 
 ctrl = iterate(w in ch1) {
   state { pos = 0; }    
+  print("Snapshotting position "++ pos ++"\n");
   emit(true, pos, pos + outwidth - 1);
   pos := pos + outwidth;
 };

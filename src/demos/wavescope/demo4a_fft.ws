@@ -82,24 +82,6 @@ s1b = iterate w in s0 {
 
 s1 = s1b;
 
-//if GETENV("WSARCH") == "ENSBox" 
-
-/*
-fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
-fun conj(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
-fun manual_double(ss) {
-  src = ss `toArray;
-  len1 = ss.width;
-  len2 = 2 * (len1 - 1);
-  arr = Array:build(len2, 
-    fun(i) 
-      if i < len1 
-      then src[i]
-      else conj $ src[len2-i] );
-  toSigseg(arr, ss.start, ss.timebase);
-}
-*/
-
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
   //state{ foo = (Array:null :: Array Int);   }

@@ -1,6 +1,5 @@
 
 ;;;; TODO: Replace output-queue with real queue!! 
-
 (module wavescript_sim_library_push mzscheme
   (require 
            "../constants.ss"
@@ -36,6 +35,8 @@
 		 prim_window
 
 		 to-uint16 to-int16 uint16->string
+
+		 wsequal?
 
 		 gint
 		 g+ g- g* g/ g^
@@ -154,6 +155,31 @@
   ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
   (reg:define-struct (sigseg start end vec timebase))
   (reg:define-struct (uniontype tag val))
+
+  ;; This is annoying.
+  ;; Generic equality doesn't actually work for records.
+  ;;
+  ;; And because we canc have sigsegs down inside lists or vectors, we
+  ;; need to handle those cases too.
+  (define (wsequal? a b)   
+    (cond
+     [(sigseg? a) 
+      (and (= (sigseg-start a) (sigseg-start b))
+	   (s:equal? (sigseg-timebase a) (sigseg-timebase b))
+	   ;; This may not recursively contain sigsegs:
+	   (s:equal? (sigseg-vec a) (sigseg-vec b)))]     
+     [(pair? a) (and (pair? b) 
+		     (wsequal? (car a) (car b)) 
+		     (wsequal? (cdr a) (cdr b)))]
+     [(vector? a) (and (vector? b) 		       
+		       (fx= (vector-length a) (vector-length b))
+		       (let loop ([i 0])
+			 (or (fx= i (vector-length a))
+			     (and (wsequal? (vector-ref a i) (vector-ref b i))
+				  (loop (fx+ 1 i))))))]
+     [else (s:equal? a b)]))
+  ;(define equal? wsequal?)
+  
 
   ;(reg:define-struct (wsbox outports))
   ;(reg:define-struct (wsevent time source))
@@ -488,8 +514,8 @@
 
     (define thestream
       (cond 
-       [(equal? mode "text") (textsource)]
-       [(equal? mode "binary") (binsource)]
+       [(s:equal? mode "text") (textsource)]
+       [(s:equal? mode "binary") (binsource)]
        [else (error 'dataFile "this mode is not supported yet: ~s" mode)]))
     ;; This records the stream the first time through then keeps repeating it.
     (define (repeat-stream repeats)
@@ -695,7 +721,7 @@
     (or (eq? w nullseg)
 	(and (sigseg? w)
 	     (<= (sigseg-start w) (sigseg-end  w))
-	     (equal? (vector-length (sigseg-vec w))
+	     (s:equal? (vector-length (sigseg-vec w))
 		     (+  (- (sigseg-end w) (sigseg-start  w)) 1))
 	     )))
 
@@ -835,9 +861,10 @@
 ;      (define nullseg (gensym "nullseg"))
 ;      (define Array:null (gensym "Array:null"))
 ;      (define nulltimebase (gensym "nulltimebase"))
-  (define nullseg 'nullseg)
+  ;(define nullseg 'nullseg)
   (define Array:null #())
   (define nulltimebase 'nulltimebase)
+  (define nullseg (make-sigseg 0 -1 #() nulltimebase))
 
   (define (gint x) x)
 
@@ -937,7 +964,7 @@
   ;; Would be nice to use copy-struct for a functional update.
   (define (fftR2C arr)
     (DEBUGASSERT (curry vector-andmap ws-float?) arr)
-    (DEBUGMODE (if (equal? arr #()) (error 'fft "cannot take fft of Array:null"))
+    (DEBUGMODE (if (s:equal? arr #()) (error 'fft "cannot take fft of Array:null"))
 	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
 		 (if (or (= 0 (vector-length arr))
 			 (not (integer? (log2 (vector-length arr)))))
@@ -976,7 +1003,7 @@
 
   (define (fftC arr)
     (DEBUGASSERT (curry vector-andmap ws-complex?) arr)
-    (DEBUGMODE (if (equal? arr #()) (error 'fftC "cannot take fft of Array:null"))
+    (DEBUGMODE (if (s:equal? arr #()) (error 'fftC "cannot take fft of Array:null"))
 	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
 		 (if (or (= 0 (vector-length arr))
 			 (not (integer? (log2 (vector-length arr)))))
@@ -1020,13 +1047,13 @@
        (let loop ([ls ls])
 	 (cond
 	  [(null? ls) '()]
-	  [(equal? (vector-ref (car ls) 0) x) ls]
+	  [(s:equal? (vector-ref (car ls) 0) x) ls]
 	  [else (loop (cdr ls))])))
      (define (List:assoc_update origls x y)
        (let loop ([ls origls] [acc '()])
 	 (cond
 	  [(null? ls) (cons (vector x y) origls)]
-	  [(equal? (vector-ref (car ls) 0) x)
+	  [(s:equal? (vector-ref (car ls) 0) x)
 	   (append (reverse! acc) (cons (vector x y) (cdr ls)))]
 	  [else (loop (cdr ls) (cons (car ls) acc))])))
 
@@ -1071,7 +1098,7 @@
 
      ;; EQUAL? based hash tables:
      (begin
-       (define HashTable:set_BANG (slib:hash-associator equal?))
+       (define HashTable:set_BANG (slib:hash-associator s:equal?))
        
        (define (copy-hash-table ht)
 	 ;; This is terrible, we don't know how big it is.
@@ -1082,10 +1109,10 @@
 
        (define HashTable:make slib:make-hash-table)
        (define HashTable:contains 
-	 (let ([getfun (slib:hash-inquirer equal?)])
+	 (let ([getfun (slib:hash-inquirer s:equal?)])
 	   (lambda (ht k) (if (getfun ht k) #t #f))))       
        (define HashTable:get 
-	 (let ([getfun (slib:hash-inquirer equal?)])
+	 (let ([getfun (slib:hash-inquirer s:equal?)])
 	   (lambda (ht k)
 	     (let ([result (getfun ht k)])
 	       (unless result
@@ -1099,7 +1126,7 @@
 	 (HashTable:set_BANG new k v)
 	 new)
 
-       (define HashTable:rem_BANG (slib:hash-remover equal?))
+       (define HashTable:rem_BANG (slib:hash-remover s:equal?))
        (define (HashTable:rem ht k) 
 	 (define new (copy-hash-table ht))
 	 (HashTable:rem_BANG new ht k)
@@ -1325,18 +1352,18 @@
 	   ;; The assumption for now is that headers can be ignored.
 	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
 	   
-	   [(equal? ext "o")
+	   [(s:equal? ext "o")
 	    (printf "  Attempting to convert object (.o) to shared object (.so:) ~s\n" file)
 	    (let ([target (remove-file-extension file)])	      
 	      (set! sharedobject (DynamicLink target (list file))))]
 
-	   [(equal? ext "a")
+	   [(s:equal? ext "a")
 	    (printf "  Attempting to convert static library (.a) to shared .so: ~s\n" file)
 	    (let ([target  (remove-file-extension file)]
 		  [tempfile (format ".__tempfile_~a.txt" (random 1000000))])
 	      ;; This assumes bash!!
 	      (system-to-str (format "ar xv \"~a\" | awk '{ print $3 }' > ~a " file tempfile))
-	      (let ([objfiles (filter (lambda (s) (not (equal? s "")))
+	      (let ([objfiles (filter (lambda (s) (not (s:equal? s "")))
 				(file->lines tempfile))])
 		;; Now relink the .o files into a shared object:
 		(set! sharedobject (DynamicLink target objfiles))

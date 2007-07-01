@@ -103,6 +103,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3j_numbers.ws"            ,(lambda (a b) #t)]
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
+    ["demo3m_sigsegs.ws"         ,(lambda (a b) #t)]
     
     ["demo4a_fft.ws"               ,(lambda (a b) (void)
 				     ;(ASSERT (= 0.0 a))

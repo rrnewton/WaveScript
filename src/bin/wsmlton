@@ -37,10 +37,14 @@ fi
 
 ################################################################################
 
-echo "mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+MLTON=mlton
+#MLTON=mlton.dbg
+#MLTON="mlton -const 'Exn.keepHistory true'"
+
+echo "$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
 
 start=`date +%s`
-if mlton -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+if $MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to $OUTPUT.";

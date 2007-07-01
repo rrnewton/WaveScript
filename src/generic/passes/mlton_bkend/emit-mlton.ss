@@ -610,7 +610,7 @@
 
     ;; Handle equality tests.  This is more laborious than in Caml.
     [(,eq (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y]) 
-     (guard (memq eq '(equal? =)))
+     (guard (memq eq '(wsequal? =)))
      (make-app (build-equality-test ty) (list (make-tuple x y)))]
 
     ;; Print is required to be pre-annotated with a type.
@@ -788,7 +788,6 @@
 
 ;; SHARED ==========================
 
-;      [equal?        "(=)"] ;; NOTE! FIXME! should be =???
       [Mutable:ref   "ref"]
       [deref         "!"]
 
@@ -886,7 +885,7 @@
 		   List:ref List:append List:reverse List:length List:make 
 		   < <= >= > max min = 
 		   		   
-		   equal? print show seg-get toArray
+		   wsequal? print show seg-get toArray
 
 		   stringToComplex 
 

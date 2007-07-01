@@ -653,7 +653,7 @@
       [>      "(>)"]
       [>=     "(>=)"]
       [=        "(=)"] ;; NOTE! FIXME! should be =???
-      [equal?   "(=)"] ;; NOTE! FIXME! should be =???
+      [wsequal?   "(=)"] ;; NOTE! FIXME! should be =???
       [string-append "(^)"]      
       [Mutable:ref "ref"]
       [deref "!"]
@@ -842,7 +842,7 @@
 		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
 		   		   
-		   equal? print show seg-get toArray
+		   wsequal? print show seg-get toArray
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
