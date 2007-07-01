@@ -1,4 +1,7 @@
 
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
+
 fun window(S, len) 
   iterate(x in S) {
     state{ 
@@ -57,7 +60,12 @@ fun sync2 (ctrl, s1, s2) {
 
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
-    then requests := append(requests, [(flag,strt,en)])
+    then {oldlen = List:length(requests);
+          requests := append(requests, [(flag,strt,en)]);
+	  print("ADDED REQUEST "++ List:length(requests) ++"\n");
+	  assert_eq("append rqsts", List:length(requests), oldlen + 1);
+          assert("rqsts not empty", not(requests == []));
+         }
     else if ind == 1
     then acc1 := joinsegs(acc1, seg)
     else acc2 := joinsegs(acc2, seg);

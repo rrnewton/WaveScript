@@ -24,7 +24,9 @@ BASE <- iterate w in s1 {
 
    print(w`start ++"\n");
    assert_eq("start",  w`start, pos);
+   assert_eq("end",    w`end, pos+99);
    pos := pos + 100;     
+
 
    fst = subseg(w,w`start,50);
    snd = subseg(w,w`start + 50,50);
@@ -36,12 +38,14 @@ BASE <- iterate w in s1 {
    assert_eq("snd lookup", snd[[5]], w[[55]]);
 
    joined = joinsegs(fst,snd);
-
+   
    assert_eq("joined width",  joined`width, 100);
+   assert_eq("joined end",    joined`end, w`end);
 
    for i = 0 to 99 {
      assert_eq("joined same "++i, joined[[i]], w[[i]])
    };
+   assert_eq("joined same", w, joined);   
 
    mid = subseg(w, w`start + 25, 50);
    assert_eq("mid lookup",  mid[[30]], snd[[5]]);

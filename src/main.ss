@@ -460,18 +460,7 @@
   ;(ws-run-pass p degeneralize-arithmetic)
   (time (ws-run-pass p static-elaborate))
 
-
-  (DEBUGMODE
-   (with-output-to-file ".__elaborated.ss"
-     (lambda () 
-       (parameterize ([pretty-line-length 200]
-		      [pretty-maximum-lines #f]
-		      [print-level #f]
-		      [print-length #f]
-		      [print-graph #f])
-	 (pretty-print p))
-       (flush-output-port))
-     'replace))
+  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
@@ -566,17 +555,7 @@
   ;; Replacing remove-complex-opera* with a simpler pass:
   ;(ws-run-pass p flatten-iterate-spine)
    
-  (DEBUGMODE
-   (with-output-to-file ".__nocomplexopera.ss"
-     (lambda () 
-       (parameterize ([pretty-line-length 200]
-		      [pretty-maximum-lines #f]
-		      [print-level #f]
-		      [print-length #f]
-		      [print-graph #f])
-	 (pretty-print p))
-       (flush-output-port))
-     'replace))
+  (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc) 
 
@@ -611,90 +590,111 @@
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 
+;; Dump output of intermediate stages in copmiler.
+;; (This sets a variety of parameters controlling printing)
+(define (dump-compiler-intermediate prog fn)
+  (with-output-to-file fn
+    (lambda () 
+      (parameterize ([pretty-line-length 200]
+		     [pretty-maximum-lines #f]
+		     [print-level #f]
+		     [print-length #f]
+		     [print-graph #f])
+	(parameterize-IFCHEZ ([pretty-one-line-limit 100])
+			     (pretty-print ;(strip-annotations prog)
+			      prog)))
+      (flush-output-port))
+    'replace))
+
+(define ws-disabled-by-default '(merge-iterates ))
 
 ;; ================================================================================
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
-(define (wsint x . flags)                                             ;; Entrypoint.  
-  (parameterize ([compiler-invocation-mode 'wavescript-simulator]
-		 ;[regiment-compile-sums-as-tuples ]
-;		 [included-var-bindings '()]
-		 [regiment-primitives
-		  ;; Remove those regiment-only primitives.
-		  (difference (regiment-primitives) regiment-distributed-primitives)])
-    (define prog (coerce-to-ws-prog x))
 
-  (define _ (begin (unless (regiment-quiet)
-		     (printf "Evaluating program: ~a\n\n"
-			     (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
-		   (DEBUGMODE 
-		    (let ([please-delete-file 
-			   (lambda (f) (if (file-exists? f) (delete-file f)))])
-		      ;; Delete these files so that we don't get mixed up.		  
-		      (please-delete-file ".__types.txt")
-		      (please-delete-file ".__inputprog.ss")
-		      (please-delete-file ".__compiledprog.ss")
-		      (please-delete-file ".__elaborated.ss")
-		      (please-delete-file ".__nocomplexopera.ss"))
-		    (with-output-to-file ".__inputprog.ss"
-		      (lambda () 
-		       (parameterize ([pretty-line-length 200]
-				      [pretty-maximum-lines #f]
-				      [print-level #f]
-				      [print-length #f]
-				      [print-graph #f])
-			 (pretty-print ;(strip-annotations prog)
-			  prog))
-		       (flush-output-port))
-		     'replace))))
+(define-values (wsint wsint-early)
+  (let ()
 
-  (define typed (ws-compile-until-typed prog))
-  (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
+    (define (cleanup-compiler-tmpfiles)
+      (let ([please-delete-file 
+	     (lambda (f) (if (file-exists? f) (delete-file f)))])
+	;; Delete these files so that we don't get mixed up.		  
+	(please-delete-file ".__types.txt")
+	(please-delete-file ".__inputprog.ss")
+	(please-delete-file ".__compiledprog.ss")
+	(please-delete-file ".__elaborated.ss")
+	(please-delete-file ".__nocomplexopera.ss")))
 
-  (define __ 
-    (begin 
-      (unless (regiment-quiet)
-	(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
-	(printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-	(if (regiment-verbose)
-	    (print-var-types typed +inf.0)
-	    (print-var-types typed 1))
-	(flush-output-port))
-      (DEBUGMODE
-       (with-output-to-file ".__types.txt"
-	(lambda () (print-var-types typed +inf.0)(flush-output-port))
-	'replace))))
+    (define (wsint-parameterize th)
+      (parameterize ([compiler-invocation-mode 'wavescript-simulator]
+		     ;;[regiment-compile-sums-as-tuples ]
+		     ;;		 [included-var-bindings '()]
+		     [regiment-primitives
+		      ;; Remove those regiment-only primitives.
+		      (difference (regiment-primitives) regiment-distributed-primitives)])
+	(th)))
 
-  (define compiled (let ([x (run-ws-compiler typed disabled-passes #t)])
-		     (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
-		     (parameterize-IFCHEZ ([pretty-line-length 150]
-					   [pretty-one-line-limit 100]
-					   [print-level #f]
-					   [print-length #f]
-					   [print-graph #f])
-		       (with-output-to-file ".__compiledprog.ss"
-			 (lambda () (pretty-print x)(flush-output-port))
-			 'replace))
-		     x))
-  (define stripped (strip-types compiled))
-  (define stream 
-    (begin 
-      ;; If strip-types worked there shouldn't be any VQueue symbols!
-      (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
+    (define (early-part x . flags)
+      (define prog (coerce-to-ws-prog x))
+      (define _ (begin (unless (regiment-quiet)
+			 (printf "Evaluating program: ~a\n\n"
+				 (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
+		       (DEBUGMODE 
+			(cleanup-compiler-tmpfiles)
+			(dump-compiler-intermediate prog ".__inputprog.ss")
+			)))
+      (define typed (ws-compile-until-typed prog))
+      (define __ 
+	(begin 
+	  (unless (regiment-quiet)
+	    (printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
+	    (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
+	    (if (regiment-verbose)
+		(print-var-types typed +inf.0)
+		(print-var-types typed 1))
+	    (flush-output-port))
+	  (DEBUGMODE
+	   (with-output-to-file ".__types.txt"
+	     (lambda () (print-var-types typed +inf.0)(flush-output-port))
+	     'replace))))
+      typed)
 
-      ;; New Streams:
-      ;; [2007.02.06] Now we wrap it with a little extra to run the query:
-      (wavescript-language
-       (match stripped
-	 [(,lang '(program ,body ,_ ...))
-	  `(begin (reset-state!) 
-		  (run-stream-query ,body))
-	  ]))
-      ))
+    (define (eval-and-peruse-stream compiled)
+      (define stripped (strip-types compiled))
+      (define stream 
+	(begin 
+	  ;; If strip-types worked there shouldn't be any VQueue symbols!
+	  (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
 
-  stream)
-  ) ; End wsint
+	  ;; New Streams:
+	  ;; [2007.02.06] Now we wrap it with a little extra to run the query:
+	  (wavescript-language
+	   (match stripped
+	     [(,lang '(program ,body ,_ ...))
+	      `(begin (reset-state!) 
+		      (run-stream-query ,body))
+	      ]))
+	  ))
+      stream)
+    
+  (define (wsint x . flags)                                             ;; Entrypoint.      
+    (wsint-parameterize
+     (lambda ()    
+       (define typed (early-part x))
+       (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
+       (define compiled (run-ws-compiler typed disabled-passes #t))
+       (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
+       (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
+       (eval-and-peruse-stream compiled))))
+  
+  (define (wsint-early x . flags)
+    (wsint-parameterize
+     (lambda ()
+       (define typed (early-part x))
+       (eval-and-peruse-stream typed))))
+
+  (values wsint wsint-early)))
 
 
 ;; For debugging
@@ -709,8 +709,6 @@
 
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
-
-(define ws-disabled-by-default '(merge-iterates ))
 
 (define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
@@ -762,17 +760,7 @@
     ;;   (printf "================================================================================\n")
     (printf "\nNow emitting C code:\n"))
 
-   (DEBUGASSERT
-    (with-output-to-file ".__almostC.ss"
-      (lambda () 
-	(parameterize ([pretty-line-length 200]
-		       [pretty-maximum-lines #f]
-		       [print-level #f]
-		       [print-length #f]
-		       [print-graph #f])
-	  (pretty-print prog))
-	(flush-output-port))
-      'replace))
+   (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))
    
    (string->file 
     (text->string 
@@ -791,24 +779,19 @@
 ;; ================================================================================
 ;; WaveScript OCAML Compiler Entrypoint:
 
-(IFCHEZ
- (begin
-   (define (wscaml x . flags)                                 ;; Entrypoint.  
-     (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
-		    [regiment-primitives ;; Remove those regiment-only primitives.
-		     (difference (regiment-primitives) regiment-distributed-primitives)])
-       (define outfile "./query.ml")
-       (define prog (begin (ASSERT list? x) x))
+(define (wscaml x . flags)                                 ;; Entrypoint.  
+  (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
+		 [regiment-primitives ;; Remove those regiment-only primitives.
+		  (difference (regiment-primitives) regiment-distributed-primitives)])
+    (define outfile "./query.ml")
+    (define prog (begin (ASSERT list? x) x))
 
-       (ASSERT (andmap symbol? flags))
-       (set! prog (run-ws-compiler prog))
-       (set! prog (explicit-stream-wiring prog))
-       (string->file (text->string (emit-caml-wsquery prog)) outfile)
-       (printf "\nGenerated OCaml output to ~s.\n" outfile)
-       ))
-)
- (void))
-
+    (ASSERT (andmap symbol? flags))
+    (set! prog (run-ws-compiler prog))
+    (set! prog (explicit-stream-wiring prog))
+    (string->file (text->string (emit-caml-wsquery prog)) outfile)
+    (printf "\nGenerated OCaml output to ~s.\n" outfile)
+    ))
 
 ;; ================================================================================
 ;; WaveScript MLTON Compiler Entrypoint:
@@ -1015,6 +998,21 @@
 	  ;(unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
 	  (let ([mode (car symargs)] [filenames (loop (cdr symargs))])
 
+	(define (acquire-input-prog callmode ) 
+	  (match filenames
+	    ;; If there's no file given read from stdin
+	    [() (console-input-port)]
+	    [(,fn ,rest ...) 
+	     (unless (null? rest)
+	       (error callmode  "bad filename(s) or flag(s): ~s" rest))
+	     ;; If it's a ws file we need to parse the file:
+	     (if (equal? "ws" (extract-file-extension fn))
+		 (or (read-wavescript-source-file fn)
+		     (error callmode  "couldn't parse file: ~s" fn))
+		 ;; Otherwise let's assume 
+		 (open-input-file fn))]
+	    [,else (error 'regiment "~a should take one file name as input, given: ~a" callmode else)]))
+
 	;; AFTER, those options are processed we switch on the mode flag.
 	(case mode
 	  ;; Unit Test mode:
@@ -1096,6 +1094,8 @@
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
 	   (IFCHEZ (optimize-level 1) (void))
+
+	   
 
 	   (cond
 	    [(null? filenames) 
@@ -1231,20 +1231,7 @@
 	  ;; Interpreting (preparsed) wavescript code.
 	  [(wsint)
 	   (let ()
-	   (define prog (match filenames
-			  ;; If there's no file given read from stdin
-			  [() (console-input-port)]
-			  [(,fn ,rest ...) 
-			   (unless (null? rest)
-			     (error 'wsint "bad filename(s) or flag(s): ~s" rest))
-			   ;; If it's a ws file we need to parse the file:
-			   (if (equal? "ws" (extract-file-extension fn))
-			       (or (read-wavescript-source-file fn)
-				   (error 'wsint "couldn't parse file: ~s" fn))
-			       ;; Otherwise let's assume 
-			       (open-input-file fn))]
-
-			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
+	   (define prog (acquire-input-prog 'wsint))
 	   (let ([return (apply wsint (cons prog opts))])
 	     (IFCHEZ (import streams) (void))
 	     ;(import imperative_streams)
@@ -1259,63 +1246,41 @@
 		       (browse-stream return)
 		       ))
 		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
+
+	  ;; Same as wsint but only runs the compiler up to typechecking.
+	  [(wsearly)
+	   (let ()
+	     (define prog (acquire-input-prog 'wsearly))
+	     (let ([return (apply wsint-early (cons prog opts))])
+	       (IFCHEZ (import streams) (void))
+	       (if (stream? return)
+		   (if outfile
+		       (begin
+			 (printf "Dumping output to file: ~s\n" outfile)
+			 (stream-dump return outfile))
+		       ;; Otherwise, browse it interactively:
+		       (parameterize ([print-vector-length #t])
+					;(browse-stream (stream-map ws-show return))
+			 (browse-stream return)
+			 ))
+		   (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
 	  
 	  [(wscomp)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (let ()
-	     (define port (match filenames
-			  ;; If there's no file given read from stdout
-			  [() (console-input-port)]
-			  [(,fn ,rest ...) 
-			   (if (equal? "ws" (extract-file-extension fn))
-			       (or (read-wavescript-source-file fn)
-				   (error 'wsint "couldn't parse file: ~s" fn))
-			       ;; Otherwise let's assume it's already parsed:
-			       (open-input-file fn))]
-			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
-			  ))
-	     (apply wscomp port opts)
-	   )]
+	     (define port (acquire-input-prog 'wscomp))
+	     (apply wscomp port opts))]
 
 	  [(wscaml)
-	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
-	   (IFCHEZ
-	    (let ()
-	     (define exp (match filenames
-			  ;; If there's no file given read from stdout
-			  [() (console-input-port)]
-			  [(,fn ,rest ...) 
-			   (if (equal? "ws" (extract-file-extension fn))
-			       (or (read-wavescript-source-file fn)
-				   (error 'wsint "couldn't parse file: ~s" fn))
-			       ;; Otherwise let's assume 
-			       (open-input-file fn))]
-			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
-			  ))
-	     (apply wscaml exp opts)
-	   )
-	    (error 'wavescript-compiler "OCaml output not currently available when running through PLT Scheme."))]
+	   (let ()
+	     (define exp (acquire-input-prog 'wscaml))
+	     (apply wscaml exp opts))]
 
 	  ;; Copy/pasted from above:
 	  [(wsml)
 	   (let ()
-	     (define exp (match filenames
-			   ;; If there's no file given read from stdout
-			   [() (console-input-port)]
-			   [(,fn ,rest ...) 
-			    (if (equal? "ws" (extract-file-extension fn))
-				(or (read-wavescript-source-file fn)
-				    (error 'wsint "couldn't parse file: ~s" fn))
-				;; Otherwise let's assume 
-				(open-input-file fn))]
-					;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
-			   ))
-	     (apply wsmlton exp opts)
-	     )
-
-	   ;(error 'wavescript-compiler "SML output not currently available when running through PLT Scheme.")
-	   ]
-
+	     (define exp (acquire-input-prog 'wsmlton))
+	     (apply wsmlton exp opts))]
 	  
 	  )))))))
 

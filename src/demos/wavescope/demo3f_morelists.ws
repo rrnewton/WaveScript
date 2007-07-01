@@ -2,32 +2,9 @@
 
 //include "stdlib.ws";
 
-/*
-fun mywindow(S, len)
-  iterate(x in S) {
-    state{
-      arr = Array:null;
-      ind = 0;
-      startsamp = 0;
-    }
-    if ind == 0 then arr := Array:make(len, x);
-    arr[ind] := x;
-    ind := ind + 1;
-    if ind == len
-    then {
-      emit toSigseg(arr, startsamp, nulltimebase);
-      ind := 0;
-      arr := Array:make(len, x);
-      startsamp := startsamp + len;
-    }
-  };
-*/
 
-
-fun assert(str,b) {
-  if not(b)
-  then wserror("Assert failed: "++ str ++"\n");
-}
+fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
 
 // Audio channel 1 with no overlap.
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
@@ -53,13 +30,19 @@ s3 = iterate( w in mywindow(s2, 2)) {
 
 // Test equality, printing:
 s4 = iterate( ls in s3) {
-  state { myls :: List Int = [3,4,5,6] }
+  state { myls :: List Int = [3,4,5,6];
+          testappend = [] }
   // Assignment overwriting state:
   myls := ls;
   
   print("\n  Test "++ show(ls==ls) ++" "++ show([]==[]) ++"\n");
   assert("self equality",ls==ls);
   assert("nulls equal",[]==[]);
+  assert("null inequality",not([1]==[]));
+
+  testappend := List:append(testappend, [99]);
+  assert("null inequal2", (not (testappend == [])));  
+  assert("tail lens", List:length(testappend) > 0);
 
   print("  Manually printed: "++ 
 	show(myls.head) ++" "++ 
@@ -111,6 +94,7 @@ s5 = iterate(ls in s4) {
 //BASE <- iterate x in s2 { emit List:append(x,x) };
 
 // PROBLEM!
-BASE <- s3;
-
+//BASE <- s3;
 //BASE <- s3b;
+
+BASE <- s5;
