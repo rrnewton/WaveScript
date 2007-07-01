@@ -165,7 +165,3 @@ val unpack_complex =
     end
   end 
 
-(*******************************************************************************)
-(**** IMPORTED *****)
-
-val raw_fftR2C = _import "raw_fftR2C" : (Real32.real array * Word64.word array * int) -> unit;

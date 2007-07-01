@@ -29,8 +29,16 @@ fun ss_end   (SS(a,s))           = Int32.fromLarge (Int64.toLarge (s + Int64.fro
 fun ss_get   (SS(a,_), i)        = wsget a i
 
 (* NOTE! This only works if the contents is an equality type! *)
-fun == (SS(a1,s1), SS(a2,s2)) = 
-    s1 = s2 andalso a1 = a2
+fun eq subeq (SS(a1,s1), SS(a2,s2)) = 
+    (
+(*
+     print ("Comparing "^ (Int64.toString s1) ^" and "^ (Int64.toString s2) ^"\n");
+     print ("widths "^ (Int.toString (Array.length a1)) ^" and "^ (Int.toString (Array.length a2)) ^"\n");
+     print ("array comp: "^ Bool.toString (a1 = a2) ^"\n");
+*)
+     s1 = s2 andalso 
+     arrayEqual subeq (a1, a2)
+     )
 
 end
 

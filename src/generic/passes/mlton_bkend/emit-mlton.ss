@@ -193,20 +193,11 @@
     [Float  "Real32.=="]
     [Double "Real64.=="]
 
-    [(List ,[t]) (list "(fn (l1, l2) => ListPair.all "t" (l1, l2))" )]
-    [(Array ,[t]) (list "(arrayEqual "t")")]
+    [(List   ,[t])  (list "(fn (l1, l2) => ListPair.all "t" (l1, l2))" )]
+    [(Array  ,[t])  (list "(arrayEqual "t")")]
+    [(Sigseg ,[t])  (list "(SigSeg.eq "t")")]
 
-
-    [(Sigseg ,t) "SigSeg.=="]
-    
 #|
-    ;; Just print range:
-    [(Sigseg ,t) 
-     (make-fun '("ss") 
-	       (list 
-		"(\"[\"^ Int.toString ("  (DispatchOnArrayType 'start t)
-		" ss) ^\", \"^ Int.toString ("      (DispatchOnArrayType 'end t)
-		" ss + 1) ^ \")\")"))]
 
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
@@ -245,6 +236,7 @@
     (define header3a (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sig")))
     (define header3b (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
+    (define header5 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/foreign.sml")))
 
     (define complex1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sig")))
     (define complex2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sml")))
@@ -258,7 +250,7 @@
        
        ;; Just append this text together.
        (let ([result (list complex1 complex2 
-		           header1 header2 header3a header3b header4 "\n" 
+		           header1 header2 header3a header3b header4 header5 "\n" 
 
 			   ;; Block of constants first:
 			   "\n(* First a block of constants *)\n\n"
@@ -285,6 +277,9 @@
 
 			   "\n\n(*  Then run it *)\n"			   
 			   "runScheduler()\n"
+			   "handle WSError str => \n"
+			   "  (print (\"wserror: \" ^ str ^ \"\\n\");\n"
+                           "   OS.Process.exit OS.Process.failure) \n"
 ;			   "try runScheduler()\n"
 ;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
 ;			   "\nPrintf.printf \"Query completed.\\n\";;\n"
