@@ -22,6 +22,7 @@
 ;; [2005.11.19] WHOA!  Just had a problem with semicolon followed by
 ;; double quote for some reason!  That's probably a bug, should report it.
 
+(print-brackets #f)
 
 (define in (open-input-file (car (command-line-arguments))))
 (define out (open-output-file (cadr (command-line-arguments)) 'replace))
@@ -48,8 +49,8 @@
 (letrec ([subst 
 	  (lambda (c)
 	    (case c
-;	      [(#\[) #\(]
-;	      [(#\]) #\)]
+;; [2007.07.01] restoring this:
+;	      [(#\[) #\(]   [(#\]) #\)]
 	      ;; Can't handle the commas within a match construct:
 ;	      [(#\,) #\?]
 	      ;; Hell, I'm just removing quasiquote entirely:

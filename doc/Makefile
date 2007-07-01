@@ -12,6 +12,14 @@ GENERICFILES = \
    generic/passes/wavescope_bkend/nominalize-types.ss \
    generic/compiler_components/prim_defs.ss \
    generic/compiler_components/type_environments.ss \
+   generic/passes/ocaml_bkend/shared-emit-ml.ss \
+
+# broken: [2007.07.01]
+#   generic/sim/wavescript_sim_library_push.ss \
+#   generic/passes/wavescope_bkend/emit-c.ss \
+#   generic/passes/ocaml_bkend/emit-caml.ss \
+
+
 
 #   generic/compiler_components/hm_type_inference.ss \
 
@@ -71,10 +79,13 @@ all: schemedoc plt_schemedoc #match.boot
 #       changing the tbz and wasting space in the repository.
 #	if ! [ -d html ];                             then mkdir html        ; fi
 #	if ! [ -d html/generic ];                     then mkdir html/generic; fi
-	if ! [ -d html/generic/compiler_components ]; then mkdir -p html/generic/compiler_components; fi
+	if ! [ -d html/generic/compiler_components ];    then mkdir -p html/generic/compiler_components; fi
+	if ! [ -d html/generic/sim ];                    then mkdir -p html/generic/sim; fi
 	if ! [ -d html/generic/passes/wavescope_bkend ]; then mkdir -p html/generic/passes/wavescope_bkend; fi
-	if ! [ -d html/chez ];                        then mkdir html/chez   ; fi
-	if ! [ -d html/plt ];                         then mkdir html/plt    ; fi
+	if ! [ -d html/generic/passes/mlton_bkend ];     then mkdir -p html/generic/passes/mlton_bkend; fi
+	if ! [ -d html/generic/passes/ocaml_bkend ];     then mkdir -p html/generic/passes/ocaml_bkend; fi
+	if ! [ -d html/chez ];                           then mkdir -p html/chez   ; fi
+	if ! [ -d html/plt ];                            then mkdir -p html/plt    ; fi
 	@echo
 	@echo First scrub source:
 	@echo -------------------
