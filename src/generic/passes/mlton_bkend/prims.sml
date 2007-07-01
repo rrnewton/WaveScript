@@ -32,7 +32,11 @@ fun wsmakearr n x = Array.array (n,x)
 (*fun wssub a st len = Array.extract (a, st, SOME len)*)
 fun wssub a st len = 
   (* GRR Can't use Array.extract or Array.copy!! *)
-  Array.tabulate(len, fn i => Array.sub(a, st+i))
+  (
+(*   print ("wssub: arrlen "^(Int.toString (Array.length a))^
+          " start "^(Int.toString st)^" len "^(Int.toString len)^" \n");*)
+   Array.tabulate(len, fn i => Array.sub(a, st+i)))
+  
 
 fun wsappend a b = 
   let open Array

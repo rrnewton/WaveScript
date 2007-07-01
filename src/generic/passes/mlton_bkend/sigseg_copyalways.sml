@@ -6,7 +6,7 @@ structure SigSeg : SIGSEG =
 struct
 
 type sample = Int64.int
-type timebase = int
+type timebase = Int.int
 
 (* Doesn't have timebase *)
 datatype 'a sigseg = SS of ('a wsarray * sample )
@@ -16,8 +16,6 @@ fun joinsegs (SS(a,t1), SS(b,t2)) =
   (assert (t2 = t1 + Int64.fromInt (Array.length a));
    SS(wsappend a b, t1))
 fun width   (SS(a,_))            = Int32.fromInt (wslen a)
-fun subseg  (SS(a,st), pos, len) = SS(wssub a (Int64.toInt (Int64.- (Int64.fromLarge (Int32.toLarge pos), st))) len,
-                                      Int64.fromInt pos)
 fun nullseg ()                   = SS(wsnull(), 0)
 (* val nullseg                      = SS(Array.fromList [], 0) *)
 fun timebase ss                  = 0
@@ -39,6 +37,18 @@ fun eq subeq (SS(a1,s1), SS(a2,s2)) =
      s1 = s2 andalso 
      arrayEqual subeq (a1, a2)
      )
+
+
+fun subseg  (SS(a,st), pos, len) = 
+  let
+    open Int64
+    val pos2  = fromLarge (Int32.toLarge pos)
+    val start = toInt (Int64.- (pos2, st))
+(*    val _ = print ("  subseg arrlen "^(Int.toString (Array.length a))^" st "^(toString st)^" pos "^(toString pos2)^" \n")
+    val _ = print ("  requested len "^(Int.toString len)^" seg width: "^(Int.toString (width (SS(a,st))))^"\n")*)
+  in
+    SS(wssub a start len, fromInt pos)
+  end
 
 end
 

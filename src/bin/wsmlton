@@ -42,10 +42,14 @@ MLTON=mlton
 #MLTON=mlton.dbg
 #MLTON="mlton -const 'Exn.keepHistory true'"
 
-echo "$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+#echo "$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+echo "$MLTON -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
 
 start=`date +%s`
-if $MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+if 
+# For debugging enable keepHistory to get Stack traces:
+#$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+$MLTON  -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to $OUTPUT.";

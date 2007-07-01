@@ -47,7 +47,7 @@ go "demo5b_rewindow_inlined.ws"
 go "demo6a_unionList.ws"
 go "demo6b_sync.ws"
 go "demo6c_syncN.ws"
-# 6e
+go "demo6e_stdlib_sync.ws"
 
 go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"

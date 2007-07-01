@@ -34,6 +34,9 @@ BASE <- iterate w in s1 {
    assert_eq("fst width",  fst`width, 50);
    assert_eq("snd width",  snd`width, 50);
 
+   assert_eq("fst start",  fst`start, w`start);
+   assert_eq("snd start",  snd`start, w`start+50);
+
    assert_eq("fst lookup", fst[[5]], w[[5]]);
    assert_eq("snd lookup", snd[[5]], w[[55]]);
 

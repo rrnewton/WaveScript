@@ -259,10 +259,9 @@ zip3_sametype = fun (s1,s2,s3) {
 }
 
 
-
-
+// This is an internal helper that can be parameterized in two ways to
+// form "syncN" and "syncN_no_delete".
 syncN_aux = 
- //if IS_SIM then __syncN else
 fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
@@ -297,7 +296,8 @@ fun (ctrl, strms, del) {
 
     //if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
     //if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
-    if DEBUGSYNC then { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
+    if DEBUGSYNC then 
+    { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
 
     let (flag, strt, en, seg) = tup;
     // Process the new data:
@@ -313,9 +313,9 @@ fun (ctrl, strms, del) {
       allready =
 	Array:andmap(
 	 fun (seg)
-	 if (seg == nullseg ||
-	       (fl && seg`start > st) || // This only matters if we're retaining it.
-	       seg`end < en)
+	 if (seg == nullseg         ||
+	     (fl && seg`start > st) || // This only matters if we're retaining it.
+	     seg`end < en)
 	   then { 		       
 	     if DEBUGSYNC then {
 	       if (seg == nullseg) then
@@ -355,7 +355,9 @@ fun (ctrl, strms, del) {
 	  // In either case, destroy the finished portions and remove the serviced request:
 	  for j = 0 to accs`Array:length - 1 {
 	    // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	    accs[j] := subseg(accs[j], en + 1, accs[j]`end - en);
+	    // [2007.07.01] JUST FIXED A BUG, We previously were trying to subseg data that wasn't there.
+	    killuntil = max(accs[j]`start, en+1); // Make sure we don't try to subseg before the start.
+	    accs[j] := subseg(accs[j], killuntil, accs[j]`end - killuntil + 1);
 	  };
 	};
 	requests := requests`tail;
