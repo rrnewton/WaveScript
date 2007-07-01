@@ -67,7 +67,8 @@ fun sync2 (ctrl, s1, s2) {
     
     // Now we see if we can process the next request.
     if requests == []
-    then {}
+    then { print("No requests\n");
+         }
     else {
       let (fl, st, en) = requests.head;
       if (acc1       != nullseg   && 	  acc2       != nullseg   &&
@@ -84,6 +85,7 @@ fun sync2 (ctrl, s1, s2) {
 	// The request is serviced.
 	requests := requests.tail;
       }
+      else print("Can't service request\n");
     }
 
     //    emit(nullseg, nullseg);
