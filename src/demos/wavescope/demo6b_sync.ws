@@ -62,7 +62,7 @@ fun sync2 (ctrl, s1, s2) {
     if ind == 0 // It's the ctrl signal.
     then {oldlen = List:length(requests);
           requests := append(requests, [(flag,strt,en)]);
-	  print("ADDED REQUEST "++ List:length(requests) ++"\n");
+	  //print("ADDED REQUEST "++ List:length(requests) ++"\n");
 	  assert_eq("append rqsts", List:length(requests), oldlen + 1);
           assert("rqsts not empty", not(requests == []));
          }
@@ -75,7 +75,7 @@ fun sync2 (ctrl, s1, s2) {
     
     // Now we see if we can process the next request.
     if requests == []
-    then { print("No requests\n");
+    then { //print("No requests\n");
          }
     else {
       let (fl, st, en) = requests.head;
@@ -119,7 +119,7 @@ outwidth = 100;
 
 ctrl = iterate(w in ch1) {
   state { pos = 0; }    
-  print("Snapshotting position "++ pos ++"\n");
+  //print("Snapshotting position "++ pos ++"\n");
   emit(true, pos, pos + outwidth - 1);
   pos := pos + outwidth;
 };

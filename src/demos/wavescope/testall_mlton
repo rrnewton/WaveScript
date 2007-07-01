@@ -31,7 +31,7 @@ go "demo3a_tuples.ws"
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
 # #TEMP# go "demo3e_hashtables.ws"
-# go "demo3f_morelists.ws" # no prim_window
+go "demo3f_morelists.ws" 
 go "demo3g_arrays.ws"
 #go "demo3h_advancedlists.ws"   # no prim_window
 go "demo3i_conversion_prims.ws" 
@@ -45,8 +45,8 @@ go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
 
 go "demo6a_unionList.ws"
-# go "demo6b_sync.ws"
-# go "demo6c_syncN.ws"
+go "demo6b_sync.ws"
+go "demo6c_syncN.ws"
 # 6e
 
 go "demo7a_marmot_noinline.ws"

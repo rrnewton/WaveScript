@@ -1004,7 +1004,7 @@
 	    [() (console-input-port)]
 	    [(,fn ,rest ...) 
 	     (unless (null? rest)
-	       (error callmode  "bad filename(s) or flag(s): ~s" rest))
+	       (error callmode  "bad extra filename(s) or flag(s) following filename ~s:\n ~s" fn rest))
 	     ;; If it's a ws file we need to parse the file:
 	     (if (equal? "ws" (extract-file-extension fn))
 		 (or (read-wavescript-source-file fn)

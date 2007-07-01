@@ -193,7 +193,7 @@
     [Float  "Real32.=="]
     [Double "Real64.=="]
 
-    [(List   ,[t])  (list "(fn (l1, l2) => ListPair.all "t" (l1, l2))" )]
+    [(List   ,[t])  (list "(fn (l1, l2) => List.length l1 = List.length l2 andalso ListPair.all "t" (l1, l2))" )]
     [(Array  ,[t])  (list "(arrayEqual "t")")]
     [(Sigseg ,[t])  (list "(SigSeg.eq "t")")]
 

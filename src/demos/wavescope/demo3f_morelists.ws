@@ -41,6 +41,7 @@ s4 = iterate( ls in s3) {
   assert("null inequality",not([1]==[]));
 
   testappend := List:append(testappend, [99]);
+  print(" testappend after append: "++ testappend  ++"\n");
   assert("null inequal2", (not (testappend == [])));  
   assert("tail lens", List:length(testappend) > 0);
 
