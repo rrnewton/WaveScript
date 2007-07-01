@@ -1,5 +1,6 @@
 
 
+exception WSEndOfFile
 
 (********************************************************************************)
 (* BYTE INDEXED READING *)
@@ -72,9 +73,13 @@ fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
 	      (* Produce a scheduler function *)
 	      fun f () =
 	        (	          
-		  let val dat = binreader (BinIO.inputN(hndl, bytesize)) 0
+		  let 
+		     val vec = BinIO.inputN(hndl, bytesize)
+		     val obj = if not( Vector.length vec = bytesize)
+    		               then raise WSEndOfFile 
+                               else binreader vec 0
                   in 
-		   outchan dat
+		   outchan obj
 		  end;
 		 (* Now skip some bytes: *)
 		 if 0 = skipbytes then () else (BinIO.inputN(hndl, skipbytes); ());

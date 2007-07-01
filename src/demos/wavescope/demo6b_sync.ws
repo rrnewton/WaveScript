@@ -70,9 +70,9 @@ fun sync2 (ctrl, s1, s2) {
     then {}
     else {
       let (fl, st, en) = requests.head;
-      if (acc1 != nullseg &&  	  acc2 != nullseg &&
-	  acc1.start <= st && 	  acc2.start <= st &&
-	  acc1.end >= en &&	  acc2.end >= en)
+      if (acc1       != nullseg   && 	  acc2       != nullseg   &&
+	  acc1.start <= st        && 	  acc2.start <= st  &&
+	  acc1.end   >= en        &&	  acc2.end   >= en)
 	then {
 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	size = en - st + 1; // Start/end is inclusive.

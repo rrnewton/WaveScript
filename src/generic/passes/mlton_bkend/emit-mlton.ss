@@ -280,6 +280,10 @@
 			   "handle WSError str => \n"
 			   "  (print (\"wserror: \" ^ str ^ \"\\n\");\n"
                            "   OS.Process.exit OS.Process.failure) \n"
+			   " | WSEndOfFile => "
+			   "  (TextIO.output (TextIO.stdErr, \"Reached end of file. \\n\");\n"
+                           "   OS.Process.exit OS.Process.success) \n"			   
+
 ;			   "try runScheduler()\n"
 ;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
 ;			   "\nPrintf.printf \"Query completed.\\n\";;\n"
