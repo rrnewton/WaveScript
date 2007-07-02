@@ -69,7 +69,7 @@ void memoized_fftR2C(Pointer input, Int32 len) {
 // Sigh, for now doing a copy on input and output.  Above I tried to only do copy on input.
 // But I ran into strange segfaults when allocating FFTW's output buffer in MLton...
 // The weird thing is that the original raw_fftR2C *does* allocate both input and output buffers in MLton.
-Pointer memoized_fftR2C(Pointer input, Pointer output, Int32 len) {
+Pointer memoized_fftR2C(Pointer input, Int32 len) {
   //      float* in_buf = (float*)input;      
       int len_out = (len / 2) + 1; 
            
@@ -94,7 +94,7 @@ Pointer memoized_fftR2C(Pointer input, Pointer output, Int32 len) {
       // The input/output buffers must stay constant.
       memcpy(cached_inbuf, input, len * sizeof(float));
       fftwf_execute(cached_plan);
-      memcpy(output, cached_outbuf, len_out * sizeof(_Complex float));
+      //      memcpy(output, cached_outbuf, len_out * sizeof(_Complex float));
       return cached_outbuf;
  }
 

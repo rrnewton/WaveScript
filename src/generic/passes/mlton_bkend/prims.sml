@@ -188,6 +188,16 @@ val unpack_complex =
   end 
 
 
+fun unpack_complex_Pointer p i = 
+  let val rl = MLton.Pointer.getReal32(p,i)
+      val im = MLton.Pointer.getReal32(p,i+1)
+  in
+    {real=rl, imag=im}
+  end
+
+fun unpack_complex_array_Pointer p len = 
+  Array.tabulate (len, fn i => unpack_complex_Pointer p (i*2))
+
 (* [2007.07.01] Having problems with this currently *)
 (*
 val memoized_fftR2C_wrapper = 

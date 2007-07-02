@@ -71,8 +71,9 @@ wsharing       (real):  .28         .55     .27
                (cpu) :  .24         .47     .23
 
 
-On 18mb of data: 1.5/1.4     vs.  2.1/1.3 for handwritten
+On 18mb of data: 1.5/1.4     vs.  2.1/1.2 for handwritten
 On 36mb of data: 3.0/2.9s    vs.  4.0/2.3 for handwritten
+It uses about half he memory of the C++ version too.
 
 
 NOTE: The above all accidentally had Exn.keepHistory turned on!
