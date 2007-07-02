@@ -23,6 +23,8 @@ void raw_fftR2C(Pointer input, Pointer output, Int32 len) {
 
       // Inefficient!  This approach makes a new plan every time.
       // Real to complex:
+
+      // [2007.07.02] Duh, fftw will INTERNALLY cache the last plan:
       fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
@@ -84,7 +86,8 @@ Pointer memoized_fftR2C(Pointer input, Pointer output, Int32 len) {
 	last_plan_size = len;
 	cached_inbuf  = fftwf_malloc(len     * sizeof(float));
 	cached_outbuf = fftwf_malloc(len_out * sizeof(_Complex float));	
-        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE);
+	// FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
+        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_PATIENT);
       }
 
       // This is the cost of doing things this way.  
