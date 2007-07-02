@@ -52,19 +52,6 @@ fun ss_end   (SS(_,s,w))  = s + w - 1
 fun toSigseg (arr, st, tb) = SS([Array.vector arr], st, Array.length arr)
 (* fun toSigseg (arr, st, tb) = SS([arr], st, Array.length arr) *)
 
-(* Doesn't do full bounds check *)
-fun ss_get (SS(ls,_,w), i) = 
-  let 
-   val _ = assert (i < w)
-   fun loop ls i =
-    case ls 
-     of   [] => raise (SigSegFailure "ss_get out of bounds ref")
-      | h::t => 
-	  if i < length h
-	  then sub (h,i)
-	  else loop t (i - length h)
-  in loop ls i end
-
 (* Doesn't cache result yet. *)
 fun toArray (SS(ls,s,w)) = 
 (*
@@ -81,19 +68,28 @@ fun toArray (SS(ls,s,w)) =
     let val vec = concat ls
     in Array.tabulate (w, fn i => sub (vec,i)) end
 
+(* Doesn't do full bounds check *)
+fun ss_get (SS(ls,_,w), i) = 
+  let 
+(*    val _ = assert (i < w) *)
+   fun loop ls i =
+    case ls 
+     of   [] => raise (SigSegFailure "ss_get out of bounds ref")
+      | h::t => 
+	  if i < length h
+	  then sub (h,i)
+	  else loop t (i - length h)
+  in loop ls i end
+
 fun joinsegs (SS(a,t1,w1), SS(b,t2,w2)) = 
   if w1 = 0 then SS(b,t2,w2) else
   if w2 = 0 then SS(a,t1,w1) else
   let 
       val _ = assert (t2 = t1 + w1)
-(*       val _ = print ("  got assert...\n") *)
-      val _ = checkseg (SS(a,t1,w1))
-(*       val _ = print ("  got left...\n") *)
-      val _ = checkseg (SS(b,t2,w2))
-(*       val _ = print ("  got right...\n") *)
+(*       val _ = checkseg (SS(a,t1,w1)) *)
+(*       val _ = checkseg (SS(b,t2,w2)) *)
       val result = SS(a @ b, t1, w1+w2)
-(*       val _ = print ("  got result...\n") *)
-      val _ = checkseg result
+(*       val _ = checkseg result *)
   in 
     result
   end
@@ -102,7 +98,7 @@ fun joinsegs (SS(a,t1,w1), SS(b,t2,w2)) =
 fun subseg (SS(ls,st,w), pos, len) = 
   if len = 0 then nullseg() else
   let 
-   val _ = checkseg(SS(ls,st,w))
+(*    val _ = checkseg(SS(ls,st,w)) *)
 (*    val _ = print (" subseg: Ok on the way in, want len "^(Int.toString len)^" pos "^(Int.toString pos)^"\n") *)
 
     (* Second, chop off the tail that we need *)
@@ -131,15 +127,15 @@ fun subseg (SS(ls,st,w), pos, len) =
 	  else loop t (i - hlen) end
 
    val result = SS(loop ls (pos-st), pos, len)
-   val _ = checkseg result
+(*    val _ = checkseg result *)
   in 
     result
   end 
 
 fun eq f (SS(ls1,st1,w1), SS(ls2,st2,w2)) = 
  let 
-   val _ = checkseg (SS(ls1,st1,w1))
-   val _ = checkseg (SS(ls2,st2,w2))
+(*    val _ = checkseg (SS(ls1,st1,w1)) *)
+(*    val _ = checkseg (SS(ls2,st2,w2)) *)
  in 
      w1 = w2  andalso 
     (w1 = 0 orelse      (* nullsegs are always equal *)

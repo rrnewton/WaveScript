@@ -57,6 +57,14 @@ With PATIENT   (real):  1.6        3.14    1.54
                (cpu) :  1.51       2.96    1.45
                (cpu) :  1.47       2.92    1.45
 
+Now (leaving it with patient, trying other sigsegs):
+
+seglist w/dbg  (real):  1.0        2.0     1.0
+seglist no/dbg (real):  .98        1.95     .97
+
+               (cpu) :  .94        1.87     .93
+               (cpu) :  .90        1.8      .9
+
 NOTE: The above all accidentally had Exn.keepHistory turned on!
 
 */
