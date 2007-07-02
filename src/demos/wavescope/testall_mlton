@@ -2,6 +2,7 @@
 
 COMP=.__wscMessages.txt
 RUN=runquery_mlton_output.txt
+STATUS=0
 
 echo > $COMP
 echo > $RUN
@@ -10,12 +11,15 @@ function go () {
     echo 
     echo "testall_mlton: Running $1"
     echo "============================================================"
-    #echo wsmlton $1 -exit-error
-    if ! wsmlton $1 ; then exit 1; fi
+    echo wsmlton $1 -exit-error
+    if ! wsmlton $1 ; then echo "WSMLTON FAILED with $?"; exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
     echo "================================================================================" >> $RUN
-    if ! ./query.mlton.exe | head -n 200 >> $RUN; then exit 1; fi
+    if ! ./query.mlton.exe -n 20 > $RUN ; 
+    then echo QUERY EXITED WITH STATUS $?;
+         exit 1; 
+    fi
     echo
     echo Finished running query.
 }
@@ -34,7 +38,7 @@ go "demo3d_tuples_of_tuples.ws"
 # #TEMP# go "demo3e_hashtables.ws"
 go "demo3f_morelists.ws" 
 go "demo3g_arrays.ws"
-#go "demo3h_advancedlists.ws"   # no prim_window
+go "demo3h_advancedlists.ws"   
 go "demo3i_conversion_prims.ws" 
 go "demo3j_numbers.ws"
 # 3k
@@ -61,7 +65,5 @@ go "demo8c_moresugar.ws"
 #go "demo9b_higher_order_prims.ws" 
 #gcc -c bar.c
 #go "demo9c_foreign.ws"
-
-
 
 # go "demo11_simple_merge.ws"

@@ -136,13 +136,19 @@
 
 (define flush "TextIO.flushOut TextIO.stdOut")
 
-(define (build-BASE type)  
-  (if (equal? type #())      
-      ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
-      `(" baseSink = ",(make-fun '("x") flush) "\n")
-      `(" baseSink = ",(make-fun '("x") `("(print_endline (",(build-show type)" x); ",flush")"))
-	"\n")
-  ))
+(define (build-BASE type) 
+  (define printer 
+    (if (equal? type #()) flush 
+	`("(print_endline (",(build-show type)" x); ",flush")")))
+  `(" baseSink = "
+     ,(make-let `(["counter" "ref 0"])
+       (make-fun '("x") 
+	 (make-seq 
+	  "counter := !counter + 1"
+	  `("if !counter = element_limit "
+	    " then OS.Process.exit OS.Process.success"
+	    " else ",printer))))
+     "\n"))
 
 (define (build-show t)
   (match t

@@ -1,4 +1,6 @@
 
+(* This version includes an offset so that a sigseg needn't start at the first element of its first seg. *)
+
 (*
   [2007.03.26] Switching to bigarray.
 

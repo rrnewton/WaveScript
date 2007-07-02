@@ -197,8 +197,9 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = hanning(rw1);
 
-wscores = stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end),
-		     hn);
+fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase);
+wscores = stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
+//wscores = stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end), hn);
 
 detections = detect(wscores);
 

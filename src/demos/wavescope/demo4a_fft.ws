@@ -85,7 +85,7 @@ s2a = iterate w in s1 { emit sigseg_fftR2C(w) }
 s2b = iterate w in s1 { emit memosigseg_fftR2C(w) }
 
 s2 :: Stream (Sigseg Complex);
-s2 = s2a;
+s2 = s2b;
 
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;

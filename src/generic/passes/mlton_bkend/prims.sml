@@ -209,3 +209,14 @@ val memoized_fftR2C_wrapper =
       end
   end  
 *)
+
+
+(* Here we parse command line args to look for an output limit *)
+val element_limit = 
+  let val args = CommandLine.arguments()
+  in if not (null args) andalso (hd args = "-n")
+     then case Int.fromString (hd (tl args)) 
+          of SOME x => x 
+           | NONE => raise (WSError ("bad argument to -n flag: "^(hd (tl args))))
+     else ~1
+  end 

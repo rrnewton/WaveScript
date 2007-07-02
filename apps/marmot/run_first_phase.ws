@@ -31,6 +31,34 @@ accumulators).  But that was because I forgot to recompile the
 compiler on faith ;).  There must be a bug in the sigseg or list
 primitives in the c++ versin.
 
+[2007.07.02] Trying various things to improve (mlton) performance.
+
+Switched to a memoized version of fftR2C that caches the fftw plans.
+Unfortunately it does one more copy than I'd like because of problems 
+I had allocating the buffers ML side. 
+
+Testing on my 2.33 ghz Core2 Duo laptop.  Using copy-always sigsegs.
+I'm using a measurement system wherein we look at *marginal increase*.
+I want to begin considering high-startup cost strategies such as
+building an expensive fftw (measurement) plan at startup.
+
+Oh, I just realized that fftw internally caches the last plan.  But
+it's still cleaner to have a separate cache for each instance of an
+fft stream kernel.
+
+                       (4.6mb)   (9.2mb)   diff
+With orig fftw (real):  1.78       3.55    1.77
+With memoized  (real):  1.6        3.17    1.57
+With MEASURE   (real):  1.66       3.2     1.54
+With PATIENT   (real):  1.6        3.14    1.54
+
+               (cpu) :  1.47       2.95    1.48
+               (cpu) :  1.62       3.24    1.62
+               (cpu) :  1.51       2.96    1.45
+               (cpu) :  1.47       2.92    1.45
+
+NOTE: The above all accidentally had Exn.keepHistory turned on!
+
 */
 
 

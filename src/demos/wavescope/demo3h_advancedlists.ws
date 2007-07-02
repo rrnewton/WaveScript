@@ -10,13 +10,13 @@ s2 = iterate( w in s1 ) {
   emit List:reverse([w.start, w.end]);
 };
 
-s3 = iterate( w in prim_window(s2, 2)) {
-  emit(List:append(w[[0]], w[[1]]));
+s3 = iterate( x in s2) {
+  emit List:append(x, x);
   //emit [10,11,12,13];
   //emit append([10,11], [12,13]);
  }
 
- s4 = iterate( ls in s3) {
+s4 = iterate( ls in s3) {
    state { myls = [3,4,5,6] }
   myls := ls;
   

@@ -8,6 +8,16 @@ FLAGS=' -verbose 1 -link-opt -lfftw3f  '
 CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
 OUTPUT=query.mlton.exe
 
+# I'm having a lot of trouble getting enough quotes around 
+# 'allowFFI true' for it to be treated as one token.
+#MLTON='mlton -default-ann "\'allowFFI true\'"'
+MLTON=mlton.hack
+
+if [ "$1" == "-dbg" ]
+then MLTON=mlton.dbg;
+     shift;
+fi 
+
 if [ ! -f "$1" ];
 then echo Usage: "wsmlton <file> <options ...>";
      echo 
@@ -39,18 +49,20 @@ fi
 
 ################################################################################
 
-MLTON=mlton
-#MLTON=mlton.dbg
 #MLTON="mlton -const 'Exn.keepHistory true'"
 
 #echo "$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
-echo "$MLTON -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+echo "$MLTON  -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+
+#-default-ann 'allowFFI true'
+
+#GRR="'allowFFI true'"
 
 start=`date +%s`
 if 
 # For debugging enable keepHistory to get Stack traces:
 #$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
-$MLTON  -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+$MLTON -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
 then end=`date +%s`;
      echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to $OUTPUT.";
