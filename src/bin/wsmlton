@@ -29,6 +29,7 @@ rm -f "query.sml"
 rm -f "$OUTPUT"
 
 export REGIMENT_OR_WAVESCRIPT=WS
+echo regiment wsml $abspath ${2+"$@"} ;
 if regiment wsml $abspath ${2+"$@"} ;
 then echo
 else #rm -f $TMP; 

@@ -250,7 +250,7 @@
        
        ;; Just append this text together.
        (let ([result (list complex1 complex2 
-		           header1 header2 header3a header3b header4 header5 "\n" 
+		           header1 header5 header2  header3a header3b header4  "\n" 
 
 			   ;; Block of constants first:
 			   "\n(* First a block of constants *)\n\n"
@@ -657,6 +657,22 @@
       "  (raw_fftR2C (inbuf,outbuf, len); \n"
       "   Array.tabulate (len2, fn i => unpack_complex (Array.sub (outbuf,i)))) \n"
       "end \n")]
+
+    [(memoized_fftR2C ,[myExpr -> arr])
+     (list 
+      "let val inbuf  = "arr" \n"
+      "    val len    = Array.length inbuf \n"
+      "    val len2   = len div 2 + 1      \n"
+      "    val outbuf = Array.array (len2, (Word64.fromInt 0)) \n"
+      "    val _ = memoized_fftR2C (inbuf, outbuf, len) \n"
+      "in \n"
+;      "   (* It is vital that memoized_fftR2C not be called again until we unpack the outbuf: *) \n"
+      "   ( \n"
+;      "    print (\"Outbuf size: \"^ (Int.toString (Array.length outbuf)) ); \n"
+      "    Array.tabulate (len2, fn i => unpack_complex (Array.sub (outbuf,i))) \n"
+      "    ) \n"
+      "end \n")]
+;    [(memoized_fftR2C ,[myExpr -> arr]) (list "(memoized_fftR2C_wrapper "arr")")]
 
     [(,op (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y])
      (guard (memq op '(< <= >= > max min)))

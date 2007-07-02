@@ -171,7 +171,8 @@
 
 	
 	;; Safety nets:
-	[(dataFile ,_ ...) (error 'type-annotate-misc "uncaught 'dataFile' call: ~s" `(dataFile ,_ ...))]
+	[(,missed ,_ ...) (guard (memq missed '(dataFile readFile)))
+	 (error 'type-annotate-misc "uncaught '~s' call: ~s" missed (cons missed _))]
 
 	;; For now it's an error for this stuff to occur otherwise.
 	;;

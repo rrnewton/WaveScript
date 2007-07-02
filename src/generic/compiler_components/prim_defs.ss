@@ -510,6 +510,13 @@
     (fftR2C            ((Array Float))    (Array Complex))
     (ifftC2R           ((Array Complex))  (Array Float))
 
+    ;; Takes input size, and a flag indicating "MEASURE" or "ESTIMATE"
+    ;(fftw_R2Cplan      (Int String)       FFTWplan) ;; Should the output be a sum type?
+    ;; This will be implemented in the standard library when I expose operators for manipulating FFTW plans:
+    ;(stream_fftR2C     ((Stream (Sigseg Float))) (Stream (Sigseg Complex)))
+    (memoized_fftR2C    ((Array Float))    (Array Complex))
+
+
 ;    (hanning          ((Sigseg Float))  (Sigseg Float))
 
     ;; This unions N streams of the same type, it returns a sample and

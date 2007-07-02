@@ -1228,6 +1228,8 @@
        (add-link! "libfftw3f.so")
        (mangle var)]
 
+      [(memoized_fftR2C) (SimplePrim 'fftR2C)]
+
       ;; This is the "default"; find it in WSPrim:: class
       [(string-append 
 	width start end joinsegs subseg toSigseg

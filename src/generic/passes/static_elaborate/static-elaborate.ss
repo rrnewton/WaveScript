@@ -827,8 +827,13 @@
 		 )
 	       `(List:map ,f ,ls))]
 
-	  ;; Special case, show is identity on strings:
-	  [(show ',str) (guard (string? str)) `',str]
+
+	  ;; This is hackish... need to work out all the cases.
+	  [(show ',x)
+	   (cond 
+	    [(string? x) `',x]
+	    [(or (fixnum? x) (flonum? x)) `',(number->string x)]
+	    [else `(show ',x)])]
 
 	  ;; ================================================================================
 

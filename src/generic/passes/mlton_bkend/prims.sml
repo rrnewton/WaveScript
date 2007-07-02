@@ -79,6 +79,23 @@ fun arrayEqual eq (a1, a2) =
     (len = len2) andalso loop 0
   end 
 
+
+(* Same as arrayEqual *)
+fun vectorEqual eq (v1, v2) = 
+  let val len  = Vector.length v1 
+      val len2 = Vector.length v2
+      fun loop i = 
+        if i = len
+	then true
+	else if eq( Vector.sub(v1,i), Vector.sub(v2,i))
+        then loop (i+1)
+        else false
+  in 
+    (len = len2) andalso loop 0
+  end 
+
+
+
 fun concat_wsep sep ls = 
   if ls = []
   then ""
@@ -88,8 +105,6 @@ fun concat_wsep sep ls =
 
 
 (********************************************************************************)
-
-
     
 (*
 let autofft = 
@@ -170,3 +185,27 @@ val unpack_complex =
     end
   end 
 
+
+(* [2007.07.01] Having problems with this currently *)
+(*
+val memoized_fftR2C_wrapper = 
+  let 
+    val cached_size = ref 0    
+    val outbuf      = ref (Array.fromList [])
+    val outbuf2      = ref (Array.array (4096, Word64.fromInt 0))
+    val _ = (outbuf := Array.array (1, Word64.fromInt 0))
+  in
+    fn arr => 
+      let val len = Array.length arr
+	  val len2 = (len div 2) + 1
+          val _ = if not(!cached_size = len)
+	          then (cached_size := len;
+(*  		        outbuf := Array.array (len2*10, Word64.fromInt 0);  *)
+		        set_cached_plan(!outbuf2, len))
+		  else ()
+          val _ = memoized_fftR2C(arr, len)
+      in       
+        Array.tabulate (len2, fn i => unpack_complex (Array.sub (!outbuf2,i)))
+      end
+  end  
+*)

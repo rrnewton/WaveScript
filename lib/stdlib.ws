@@ -265,6 +265,8 @@ syncN_aux =
 fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
+   WARNSKEW = 20000; // threshold for warning that an accumulator has grown to big.  Should be user input.
+
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   _strms = map(f, strms);  
@@ -299,11 +301,31 @@ fun (ctrl, strms, del) {
     if DEBUGSYNC then 
     { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
 
+    // First do a "skew" check to detect when one accumulator has gotten to big. 
+    for i = 0 to Array:length(accs)-1 {
+      if width(accs[i]) > WARNSKEW
+      then {
+        print("WARNING: skewed sync, acc sizes: ");
+	for j = 0 to Array:length(accs)-1 {
+	  print( accs[j]`width ++ " ");
+	};
+	//	print("\n");
+	if requests == [] 
+	then print(" no requests.\n")
+        else print(" waiting for "++ requests`head ++"\n");
+      }
+    };
+
+
     let (flag, strt, en, seg) = tup;
+    
+    // ========================================
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
     then requests := append(requests, [(flag,strt,en)])
     else accs[ind-1] := joinsegs(accs[ind-1], seg);        
+
+    // ========================================
     // Now we see if we can process the next request.
     if requests == []
     then {} // Can't do anything yet...

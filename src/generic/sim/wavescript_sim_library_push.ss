@@ -87,7 +87,7 @@
 		 _merge unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
-		 fftC ifftC fftR2C ifftC2R
+		 fftC ifftC fftR2C ifftC2R memoized_fftR2C
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion.
@@ -971,12 +971,22 @@
 		     (error 'fft "only window sizes that are powers of two are supported: length ~s" 
 			    (vector-length arr)))))
     (let* ([double (dft arr)]
-	   [halflen (add1 (quotient (vector-length double) 2))]
+	   [fulllen (vector-length double)]
+	   [halflen (add1 (quotient fulllen 2))]
 	   [half (make-vector halflen)])
-      (vector-blit! double half 0 0 halflen)
+      ;(vector-blit! double half 0 0 halflen)
+      (vector-set! half 0 (vector-ref double 0))
+      (let loop ([i 1])
+	(unless (fx= i halflen)
+	  (vector-set! half i (vector-ref double (fx- fulllen i)))
+	  (loop (fx+ 1 i))))
+
       ;; Currently the output must be all cflonums.
       (DEBUGASSERT (curry vector-andmap ws-complex?) half)
       half))
+
+  ;; This is only relevent to fftw:
+  (define memoized_fftR2C fftR2C)
 
   ;; As long as we stick with the power of two constraint, the output
   ;; of this should be the same size as the original (i.e. we can

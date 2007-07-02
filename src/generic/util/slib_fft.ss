@@ -6,6 +6,9 @@
   (provide slib:fft slib:fft-1)
   (chezimports)
 
+;; What is the cleanest way to turn on unsafe optimizations just for this module?
+;(IFCHEZ (eval-when (compile eval load) (define-top-level-value 'origoptlvl (optimize-level)) (optimize-level 3)) (begin))
+
 (define (fft:shuffle&scale new ara n scale)
   (define lgn (integer-length (+ -1 n)))
   (if (not (eqv? n (expt 2 lgn)))
@@ -56,6 +59,9 @@
        (k (+ -1 k) (+ -1 k))
        (rvs 0 (logor (ash rvs 1) (logand 1 m))))
       ((negative? k) (if (negative? n) (lognot rvs) rvs))))
+
+;(IFCHEZ (eval-when (compile eval load) (optimize-level (top-level-value 'origoptlvl))) (begin))
+
 
 ) ;; End module.
 

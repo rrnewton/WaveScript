@@ -624,7 +624,9 @@
       ;;wserror ;generic_hash 
       ))
   (define aliastable
-    '([+_ "(+)"]  
+    '([memoized_fftR2C fftR2C]
+
+      [+_ "(+)"]  
       [-_ "(-)"] 
       [*_ "( * )"]
       [/_ "(/)"]

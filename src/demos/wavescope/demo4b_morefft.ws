@@ -22,7 +22,14 @@ fun manual_double(ss) {
 */
 
 
+fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
+fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
+fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
 
+fun sigseg_map (f, ss) {
+  arr = Array:build(ss.width, fun(i) f(ss[[i]]));
+  toSigseg(arr, ss.start, ss.timebase)
+}
 
 s1a :: Stream (Sigseg Float);
 s1a = if GETENV("WSARCH") != "ensbox" 
