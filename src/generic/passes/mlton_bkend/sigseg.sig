@@ -1,4 +1,15 @@
 
+(* 
+
+NOTE ON NULLSEG:
+
+Currently the semantics of "null" segments (width = 0) is that they
+lose their sample number information.  Any two null segments are equal
+to eachother.  Any null segment can be joined on the left or right
+with any other null segment.  Subseg can return a null segment.
+
+*)
+
 
 signature SIGSEG =
 sig

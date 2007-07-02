@@ -499,9 +499,10 @@
   (ws-run-pass p unlift-polymorphic-constant)
 
   (unless (memq 'merge-iterates disabled-passes)
-    (pretty-print p)
+    ;(pretty-print p)
     (ws-run-pass p merge-iterates)
-    (pretty-print p)) ;; <Optimization>
+    ;(pretty-print p)
+    ) ;; <Optimization>
 
   (IFDEBUG (do-late-typecheck) (void))
 

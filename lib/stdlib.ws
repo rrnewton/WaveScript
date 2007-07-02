@@ -283,14 +283,14 @@ fun (ctrl, strms, del) {
     // Debugging helper functions:
     fun printaccs() {
       for i = 0 to accs`Array:length - 1 {
-	if accs[i] == nullseg
+	if accs[i]`width == 0
 	then print("null  ")
 	else print(show(accs[i] `start) ++ ":" ++ show(accs[i] `end) ++ "  ");
       }
     };
     fun printwidths(){
       for i = 0 to accs`Array:length - 1 {
-	if accs[i] == nullseg
+	if accs[i]`width == 0
 	then print("0   ")
 	else print(show(accs[i]`width) ++ " ");
       }

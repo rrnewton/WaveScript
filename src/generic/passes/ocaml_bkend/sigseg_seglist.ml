@@ -62,6 +62,7 @@ let joinsegs (SS(a,t1,w1)) (SS(b,t2,w2)) =
   assert (t2 == t1 + w1);
   SS(List.append a b, t1, w1+w2)
 
+(* [2007.07.02] LOOKS BROKEN *)
 let subseg (SS(ls,st,w)) pos len = 
 (* TEMP TEMP TEMP: *)
 (*  assert (pos - st + len < w); *)

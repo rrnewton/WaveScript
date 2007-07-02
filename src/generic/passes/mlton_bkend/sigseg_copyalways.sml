@@ -38,8 +38,9 @@ fun eq subeq (SS(a1,s1), SS(a2,s2)) =
      arrayEqual subeq (a1, a2)
      )
 
-
+(* Can return nullseg... but that loses sample information! *)
 fun subseg  (SS(a,st), pos, len) = 
+  if len = 0 then nullseg() else
   let
     open Int64
     val pos2  = fromLarge (Int32.toLarge pos)

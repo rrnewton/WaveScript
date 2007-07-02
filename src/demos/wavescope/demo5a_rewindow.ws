@@ -42,7 +42,9 @@ s2 = iterate (win in s1) {
      chop = subseg(acc, acc.start, newwidth);
      emit chop;
 
+     //     print("Cutting leftover: "++ acc++" "++acc.start++" "++step++"  "++acc.width-step++"  \n");
      leftover = subseg(acc, acc.start + step, acc.width - step);
+     //     print("  Got leftover\n");
      assert_eq("split", acc`width, chop`width + leftover`width - step);
      acc := leftover;
    }

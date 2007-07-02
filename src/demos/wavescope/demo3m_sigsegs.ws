@@ -48,7 +48,7 @@ BASE <- iterate w in s1 {
    for i = 0 to 99 {
      assert_eq("joined same "++i, joined[[i]], w[[i]])
    };
-   assert_eq("joined same", w, joined);   
+   assert_eq("joined same total", w, joined);   
 
    mid = subseg(w, w`start + 25, 50);
    assert_eq("mid lookup",  mid[[30]], snd[[5]]);

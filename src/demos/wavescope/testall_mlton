@@ -17,7 +17,7 @@ function go () {
     echo $1 : >> $RUN
     echo "================================================================================" >> $RUN
     if ! ./query.mlton.exe -n 20 > $RUN ; 
-    then echo QUERY EXITED WITH STATUS $?;
+    then echo QUERY EXITED WITH ERROR STATUS;
          exit 1; 
     fi
     echo
