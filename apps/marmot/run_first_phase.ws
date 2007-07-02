@@ -30,7 +30,9 @@ was having the same problem with the MLton version (exploding
 accumulators).  But that was because I forgot to recompile the
 compiler on faith ;).  There must be a bug in the sigseg or list
 primitives in the c++ versin.
+*/
 
+/*
 [2007.07.02] Trying various things to improve (mlton) performance.
 
 Switched to a memoized version of fftR2C that caches the fftw plans.

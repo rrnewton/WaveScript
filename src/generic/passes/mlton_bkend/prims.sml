@@ -6,6 +6,8 @@ fun wserror str = raise WSError str
 exception WSAssertFailed
 fun assert b = if b then () else raise WSAssertFailed
 
+exception SigSegFailure of string
+
 (*
 structure Complex =
 struct
@@ -220,3 +222,4 @@ val element_limit =
            | NONE => raise (WSError ("bad argument to -n flag: "^(hd (tl args))))
      else ~1
   end 
+

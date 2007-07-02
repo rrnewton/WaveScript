@@ -295,6 +295,8 @@ fun detect(scorestrm) {
 
       // private
       noise_lock = 0; // stats
+      yay = false;
+      shouldhitby = 100000;
     }
 
     fun reset() {
@@ -307,6 +309,10 @@ fun detect(scorestrm) {
       startup := startup_init;
       refract := 0;
     };
+
+    if not(yay) && win`start > shouldhitby
+    then wserror("Got to sample "++shouldhitby++" and didn't find a marmot detection!  "++
+		 "Are you running on the normal datafile in the demos dir?");
 
     if DEBUG then 
     print("Detector state: thresh_value " ++show(thresh_value)++ " trigger " ++show(trigger)++ 
@@ -338,6 +344,8 @@ fun detect(scorestrm) {
       }	else {
 	/* untriggering! */
 	trigger := false;
+
+	yay := true;
 	emit (true,                       // yes, snapshot
 	      _start - samples_padding,     // start sample
 	      win.end + samples_padding); // end sample
@@ -469,17 +477,21 @@ BASE <-
 positives
 //detections
 //wscores
+// iterate(w in hn){emit w[[16]]}
+// iterate(w in rw1){emit w[[16]]}
 //unionList([ch1,ch2])
+//iterate(w in ch1){emit w`width}
 //ch1
 //iterate w in ch1 { emit w[[100]] }
 //iterate w in (readFile(fn, "mode: binary  rate: 24000  window: 4096  skipbytes: 6 ") :: Stream (Sigseg Int16)) { emit w[[100]] }
+
 
 
 //timer(3.0)
 //iterate(w in _ch1) { print("test\n"); emit w[[0]] }
 //iterate(w in rw1) { print("test\n"); emit w[[0]] }
 
-// iterate(w in hn){emit w[[16]]}
+
 
 //iterate(w in freq){emit w[[15]]}
 

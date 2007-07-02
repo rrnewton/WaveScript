@@ -144,10 +144,11 @@
      ,(make-let `(["counter" "ref 0"])
        (make-fun '("x") 
 	 (make-seq 
+	  printer
 	  "counter := !counter + 1"
-	  `("if !counter = element_limit "
+	  `("if !counter  = element_limit "
 	    " then OS.Process.exit OS.Process.success"
-	    " else ",printer))))
+	    " else () "))))
      "\n"))
 
 (define (build-show t)

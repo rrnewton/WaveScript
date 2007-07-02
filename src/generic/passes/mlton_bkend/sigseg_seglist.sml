@@ -16,8 +16,6 @@
    Comment all of them out for best performance.
 *)
 
-exception SigSegFailure of string
-
 structure SigSeg : SIGSEG =
 struct
 
@@ -38,6 +36,7 @@ fun slice arr offset len =
 fun sum [] = 0 | sum (h::t) = h + sum t
 fun checkseg (SS(ls,st,w)) = 
   let val sm = sum (List.map length ls) in
+    if w = 0 then assert (st=0) else
     if sm = w
     then ()
     else raise (SigSegFailure ("checkseg failed: expected width "^(Int.toString w)^
@@ -140,7 +139,7 @@ fun eq f (SS(ls1,st1,w1), SS(ls2,st2,w2)) =
      w1 = w2  andalso 
     (w1 = 0 orelse      (* nullsegs are always equal *)
      st1 = st2 andalso     
-     if w1 = 0 then true else 
+(*      if w1 = 0 then true else  *)
      let fun loop (v1,v2) (ls1,ls2) (i1,i2) cnt = 
          if cnt = 0 then true         
 	 else if i1 = length v1

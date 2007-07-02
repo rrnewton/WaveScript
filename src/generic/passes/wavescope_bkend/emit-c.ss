@@ -947,6 +947,7 @@
   )))
 
 
+;; Print the output from the entire query.
 (define (make-output-printer typ)
   (match typ
     [(Stream ,typ)
@@ -1546,13 +1547,14 @@
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
 
     [(List ,t)
-     (let ([subprinter (Emit-Print/Show-Helper "ptr->car" t printf stream)])
+     (let* ([var (Var (unique-name 'ptr))]
+	    [subprinter (Emit-Print/Show-Helper (list var"->car") t printf stream)])
        (list (stream "\"[\"")
-	     (make-decl (Type `(List ,t)) "ptr" e)
-	     (make-while "! IS_NULL(ptr)" 
+	     (make-decl (Type `(List ,t)) var e)
+	     (make-while (list "! IS_NULL("var")")
 			 (list subprinter 
 			       (stream "\" \"")
-			       "ptr = ptr->cdr;\n"))
+			       (list var" = "var"->cdr;\n")))
 	     (stream "\"]\"")))]
 
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
