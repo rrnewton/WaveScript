@@ -438,6 +438,7 @@
   (define (__readFile file mode repeat rate skipbytes offset winsize types)
     ;; TODO: implement skipbytes and winsize!!!
 
+
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
     ;; Interestingly, it's currently [2006.12.03] running better in opt-level 2 than 3!
@@ -467,35 +468,48 @@
 						(error 'readFile "cannot read ~s as float type" v))
 					      v)]
 			       [else (read p)]))
-		(loop (fx+ 1 i))))))
-      (define (get-batch)
-	(let loop ([x (read-line inp)] [batch DATAFILE_BATCH_SIZE] [acc '()])
-	  (if (or (not x) (eof-object? x) (fxzero? batch))
-	      (reverse! acc)
-	      (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
+		(loop (fx+ 1 i))))))      
        (define our-sinks '())  
-       (define timestep (rate->timestep rate))
+       (define timestep (if (> winsize 0)
+			    ;; Increase the timestep according to our window size.
+			    (* (rate->timestep rate) winsize)
+			    (rate->timestep rate)))
+       
+       (define iswindowed (> winsize 0))
        (define t 0)
        (define pos 0)
-       (define (src msg)
-	 (s:case msg
-	   [(peek) t]
-	   [(pop) 
-	    (set! t (s:+ t timestep))
-	    (let ([batch (get-batch)])
-	      (if (null? batch)
-		  ;(engine-return end-token)		  
-		  (set! t #f)
-		  (for-each (lambda (elem) 					
-                              (fire! elem our-sinks))
-		      batch)))
-	    ]))
+       ;; Reads a whole bunch of lines.
+       (define (read-window n)
+	 (let loop ([x (read-line inp)] [batch n] [acc '()])
+	   (if (or (not x) (eof-object? x) (fxzero? batch))
+	       (reverse! acc)
+	       (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
+       (define src 
+	 (lambda (msg)	   
+	   (s:case msg
+	     [(peek) t] ;; When this returns #f, we're done.
+	     [(pop) 
+	      (set! t (s:+ t timestep))
+	      (if iswindowed
+		  (let ([win (list->vector (read-window winsize))])
+		    (if (not (= (vector-length win) winsize))
+			(set! t #f)	     
+			(let* ([newpos (+ winsize pos -1)]			
+			       [result (make-sigseg pos newpos win nulltimebase)])
+			  (set! pos (+ 1 newpos))
+			  (fire! result our-sinks))))
+		  
+		  ;; Inefficient:
+		  (let ([win (read-window winsize)])
+		    (if (null? win) (set! t #f)
+			(fire! (car win) our-sinks))))])))
 
        ;; Register data source globally:
        (set! data-sources (cons src data-sources))
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
+
 
     ;; Read a binary stream with a particular tuple format.
     (define (binsource)
@@ -508,6 +522,7 @@
 				skipbytes
 				offset))
       ;; winsize 0 or -1 indicates non windowed stream, thus strip that sigseg:
+      ;; This is inefficient because we allocate a one-element sigseg then discard it:
       (if (<= winsize 0)
 	  (iterate  (lambda (x vq) (emit vq (seg-get x 0)) vq)  source)
 	  source))
@@ -665,7 +680,7 @@
 		      (when (fx>= counter print-every)
 			(set! counter (fx- counter print-every))
 			(set! total (+ total print-every))
-			(printf "Read ~a tuples from file ~a.\n"
+			(fprintf stderr "Read ~a tuples from file ~a.\n"
 				(+ total counter)
 				file)))
 

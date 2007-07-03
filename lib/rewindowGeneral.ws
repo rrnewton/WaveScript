@@ -61,4 +61,6 @@ rewindowS4S = {
   rewindowGeneral(null4S, start4S, width4S, subseg4S, joinsegs4S)
 }
 
+// rewindowS3S, rewindowS2S, etc...
+
 BASE <- rewindow((readFile("stdlib.ws", "mode: binary  window: 100") :: Stream (Sigseg Int)), 10, 0)

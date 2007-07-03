@@ -216,7 +216,7 @@
 ;(print-level 8)
 (print-level #f) ;20)
 (print-length #f) ;80)
-(print-vector-length #f)
+(print-vector-length #t)
 ;(pretty-maximum-lines 700)
 (pretty-maximum-lines #f)
 
