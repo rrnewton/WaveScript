@@ -80,7 +80,6 @@ one file stream (real): .1          .2      .1
                 (cpu) : .064        .12     .06
 
 
-
 On 18mb of data: 1.5/1.4     vs.  2.1/1.2 for handwritten
 On 36mb of data: 3.0/2.9s    vs.  4.0/2.3 for handwritten
 It uses about half he memory of the C++ version too.
@@ -90,6 +89,9 @@ For a 1.2 mb file, the handwritten version clocked in at 6.9(6.2 cpu)
 seconds, and the MLton version clocked in at 3.1(2.9) seconds.
 (Then, reading as one file stream it takes 0.94(.77).)
 
+I switched the sigseg implementation to use arrays rather than
+vectors, that sped things up even further.  (.08/.05 and .16/.097) 
+In this way, it can process 73.6 mb in a second.
 
 */
 

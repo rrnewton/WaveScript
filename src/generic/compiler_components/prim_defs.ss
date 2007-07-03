@@ -439,6 +439,8 @@
     (ensBoxAudio      (Int ) (Stream (Sigseg Int16)))
     (ensBoxAudioF     (Int ) (Stream (Sigseg Float)))
 
+    (ensBoxAudioAll   ()     (Stream (Sigseg Int16)))
+
     ;; Could think about a generic (HardwareSource "ENSBoxAudio(4096,)")
     ;; that provides a hack into the C++ generation.  Nasty and
     ;; backend-dependent, but really, how are hardware data sources
