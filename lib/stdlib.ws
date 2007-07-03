@@ -26,6 +26,7 @@ deg2rad    :: Float -> Float;
 rad2deg    :: Float -> Float;
 expF       :: Float -> Float;
 expC       :: Complex -> Complex;
+conjC      :: Complex -> Complex;
 gaussian   :: (Float, Int) -> Array Float;
 
 /// Library stream constructors:
@@ -164,6 +165,7 @@ fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
+fun conjC(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
 
 // This *should* work by caching one or more fftw plans.
 fun fftStream(s) {
