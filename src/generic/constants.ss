@@ -307,7 +307,7 @@
 (define-regiment-parameter regiment-verbose #f)
 
 ;; This determines whether the compiler tracks source locations in loaded files.
-(define-regiment-parameter regiment-track-source-locations #f)
+(define-regiment-parameter regiment-track-source-locations #t)
 
 ;; This is the opposite, it is used to suppress ALL banners and nonessential output for batch execution.
 (define-regiment-parameter regiment-quiet #f)

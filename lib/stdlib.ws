@@ -31,8 +31,7 @@ gaussian   :: (Float, Int) -> Array Float;
 
 /// Library stream constructors:
 
-   // Should be "stream_fft" for consistency?
-fftStream  :: Stream (Array Float) -> Stream (Array Complex);
+stream_fftR2C  :: Stream (Array Float) -> Stream (Array Complex);
 sigseg_fftC    :: Sigseg Complex -> Sigseg Complex;
 sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
 sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
@@ -143,6 +142,8 @@ fun println(s) {
 fun assert(b)      if not(b)    then wserror("Assert failed.");
 fun asserteq(a,b)  if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
+// Some additional math functions.
+
 fun sqr(x) { x*x }
 
 fun atan2(arg1,arg2) {
@@ -171,6 +172,8 @@ fun conjC(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
 fun fftStream(s) {
   iterate f in s { emit fftR2C(f) }
 }
+// This is the more appropriate name:
+stream_fftR2C = fftStream;
 
 fun gaussian(sigma,size) {
   mu = intToFloat(size)/2.0;

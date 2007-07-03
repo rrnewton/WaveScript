@@ -15,6 +15,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.07.03]
+   Add Int64 to support proper timestamps in sigsegs.
+
 [2007.06.28]
     Add ws.early for running queries *without* running static elaborate.
 

@@ -7,6 +7,8 @@ LEAKMEAN   = 0.215;
 LEAKSTD    = 0.034;
 E          = 2.7182818284590452354;
 
+pi   = 3.141592653589793;
+
 // ASK: array of array syntax; timebase stuff; is there an apply?; are there lambdas?;
 //      args to subseg?
 
@@ -33,37 +35,37 @@ fun rewindow(sig, newwidth, step)
 /*
  * Using PRIMITIVE version for now:
  */
-/* fun zip(s1, s2) */
-/* { */
-/*    let slist = [s1, s2]; */
-/*    iterate ((i, x) in unionList(slist)) */
-/*    { */
-/*       state { */
-/*          buf1 = []; // using list for poor-man's Maybe type. */
-/*          buf2 = []; */
-/*       } */
+fun zip2(s1, s2)
+{
+   let slist = [s1, s2];
+   iterate ((i, x) in unionList(slist))
+   {
+      state {
+         buf1 = []; // using list for poor-man's Maybe type.
+         buf2 = [];
+      }
 
-/*       if (i == 0) then */
-/*       { */
-/*          buf1 := [x]; // Might throw out elemnt. */
-/*       } */
-/*       else if (i == 1) then */
-/*       { */
-/*          buf2 := [x]; */
-/*       } */
-/*       else */
-/*       { */
-/*          wserror("implementation error"); */
-/*       }; */
+      if (i == 0) then
+      {
+         buf1 := [x]; // Might throw out elemnt.
+      }
+      else if (i == 1) then
+      {
+         buf2 := [x];
+      }
+      else
+      {
+         wserror("implementation error");
+      };
 
-/*       if (buf1.listLength == 1 && buf2.listLength == 1) then */
-/*       { */
-/*          emit (buf1.head, buf2.head); */
-/*          buf1 := []; */
-/*          buf2 := []; */
-/*       }; */
-/*    }; */
-/* } */
+      if (buf1`List:length == 1 && buf2`List:length == 1) then
+      {
+         emit (buf1`head, buf2`head);
+         buf1 := [];
+         buf2 := [];
+      };
+   };
+}
 
 
 /*
@@ -72,14 +74,14 @@ fun rewindow(sig, newwidth, step)
 fun haar_calc(values, outputLevel)
 {
    
-   valArrs = makeArray(outputLevel, nullarr);
+   valArrs = Array:make(outputLevel, Array:null);
    valArrs[0] := values;
-   currLen = values.length;
+   currLen = Mutable:ref(values`Array:length);
    
    for i=1 to outputLevel-1
    {
       currLen := currLen / 2;
-      valArr_i   = makeArray(currLen, 0.0);
+      valArr_i   = Array:make(currLen, 0.0);
       valArr_im1 = valArrs[i-1];
       for j=0 to currLen-1
       {
@@ -90,7 +92,7 @@ fun haar_calc(values, outputLevel)
    last = outputLevel-1;
    currLen := currLen / 2;
    
-   outCoefs = makeArray(currLen, 0.0);
+   outCoefs = Array:make(currLen, 0.0);
    valArr_last = valArrs[last];
    for j=0 to currLen-1
    {
@@ -108,8 +110,8 @@ fun trimpeak(stream, comp)
 {
    iterate (w in stream)
    {
-      supVal = w[[w.start]];
-      supInd = w.start;
+      supVal = Mutable:ref$ w[[w.start]];
+      supInd = Mutable:ref(w.start);
       for i=w.start+1 to w.end
       {
          if comp(w[[i]], supVal) then
@@ -130,8 +132,8 @@ fun trimpeakEmpty(stream, comp)
 {
    iterate (w in stream)
    {
-      supVal = w[[w.start]];
-      supInd = w.start;
+      supVal = Mutable:ref$ w[[w.start]];
+      supInd = Mutable:ref$ w.start;
       for i=w.start+1 to w.end
       {
          if comp(w[[i]], supVal) then
@@ -163,18 +165,15 @@ fun absf(x)
  */
 fun gaussian_likelihood(mean, stddev, peakRatio)
 {
-   constant = 1.0 /. (stddev *. sqrt(2.0 *. pi));
+   constant = 1.0 /. (stddev *. sqrtF(2.0 *. pi));
    exponent = E ^. ( 0.0 -. (peakRatio-.mean)*.(peakRatio-.mean) /. (2.0*.stddev*.stddev) );
 
    constant *. exponent;
 }
 
+source = (readFile("./pipeline1.data", "mode: text  window: 600 ") :: Stream (Sigseg Float))
 
-source :: Signal (Sigseg Float);
-source = doubleFile("./pipeline1.data", 600, 0);
-//source = audio(0, 600, 0);
-
-rw :: Signal (Sigseg Float);
+rw :: Stream (Sigseg Float);
 rw = rewindow(source, 8192, 500);
 
 
@@ -184,26 +183,26 @@ pbox = iterate (w in rw)
 }
 
 
-wlt :: Signal Sigseg Float;
+wlt :: Stream Sigseg Float;
 wlt = iterate (w in rw)
 {
    // FIXME: do wavelet(outputLevel=4, doScaling=true)
    // scalingFactor = doScaling ? sqrt(pow(2.0, (int)outputLevel)) : 1;
    scalingFactor = 4.0;
 
-   outBuf = haar_calc(to_array(w), 4); // FIXME: move this to_array() into haar_calc() !!!
-   for i=0 to outBuf.length-1
+   outBuf = haar_calc(toArray(w), 4); // FIXME: move this to_array() into haar_calc() !!!
+   for i=0 to outBuf`Array:length-1
    {
       outBuf[i] := outBuf[i] *. scalingFactor;
    };
 
-   emit to_sigseg(outBuf, 0, outBuf.length-1, w.timebase);
-}
+   emit toSigseg(outBuf, 0, outBuf`Array:length-1, w.timebase);
+};
 
-tpk1 :: Signal (Float, Sigseg Float);
+tpk1 :: Stream (Float * Sigseg Float);
 tpk1 = trimpeak(wlt, fun(a,b) { a < b });
 
-filter1 :: Signal Sigseg Float;
+filter1 :: Stream Sigseg Float;
 filter1 = iterate ((m,w) in tpk1)
 {
    // FIXME: do PeakTrimFilter()

@@ -207,10 +207,12 @@
 ;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (type-error 'type-checker
-	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n\nSource Location\n  ~a\n"
+	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n\nSource Location\n  ~a\nExpression:\n~a\n"
 	 (- (length t1) 2) (safe-export-type t1) 
 	 (- (length t2) 2) (safe-export-type t2) 
-	 (get-location exp)))
+	 (get-location exp)
+	 (get-snippet exp)
+	 ))
 
 ; ----------------------------------------
 
