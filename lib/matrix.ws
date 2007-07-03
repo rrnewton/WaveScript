@@ -107,7 +107,7 @@ fun m_colm(m,i) {
 
 fun m_map(f, m) {
   newm = Array:make(m_rows(m), Array:null);
-  for i = 0 to m_rows(m) {
+  for i = 0 to (m_rows(m) -1) {
     newm[i] := amap(f, m[i])
   };
   newm
@@ -122,7 +122,7 @@ fun m_map_inplace(f, m) {
 
 fun m_rowmap(f, m) {
   newm = Array:make(m_rows(m), Array:null);
-  for i = 0 to m_rows(m) {
+  for i = 0 to (m_rows(m) - 1) {
     newm[i] := f(m[i])
   };
   newm
@@ -131,7 +131,7 @@ fun m_rowmap(f, m) {
 /* a very special rowmap that returns a vector */
 fun m_rowmap_scalar(f, m) {
   newm = Array:make(m_rows(m), gint(0));
-  for i = 0 to m_rows(m) {
+  for i = 0 to (m_rows(m) - 1) {
     newm[i] := f(m[i])
   };
   newm
