@@ -272,7 +272,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 
-(fpf "\n\nWaveScript demos & apps (Scheme backend):\n")
+(fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")
 (fpf "========================================\n")
 
 (begin (newline)
@@ -284,6 +284,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
        (current-directory test-directory)
        (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
+
 
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
@@ -300,6 +301,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
+(begin (current-directory (format "~a/demos/wavescope" test-directory))
+       (putenv "REGIMENTHOST" "plt")
+       (define pltdemos (system/exit-code 
+			 (format "./testall_demos.ss &> ~a/9B_WS_DEMOS_PLT.log" test-directory)))
+       (putenv "REGIMENTHOST" "")
+       (fpf "plt: Running demos in PLT:                    ~a\n" (code->msg! pltdemos)))
+
+
+(fpf "\n\nWaveScript Applications (Scheme backend):\n")
+(fpf "========================================\n")
+
 
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
        (define pipeline-web (system/exit-code (format "make test &> ~a/11b_pipeline-web.log" test-directory)))
@@ -311,12 +323,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "make test &> ~a/11c_stockticks.log" test-directory))))
        (current-directory test-directory))
 
-(begin (current-directory (format "~a/demos/wavescope" test-directory))
-       (putenv "REGIMENTHOST" "plt")
-       (define pltdemos (system/exit-code 
-			 (format "./testall_demos.ss &> ~a/9B_WS_DEMOS_PLT.log" test-directory)))
-       (putenv "REGIMENTHOST" "")
-       (fpf "plt: Running demos in PLT:                    ~a\n" (code->msg! pltdemos)))
+(begin (current-directory (format "~a/apps/pipeline" test-root))
+       (fpf "ws: Running pipeline app:                     ~a\n"
+	    (code->msg! (system/exit-code (format "echo 10 | ws.debug pipeline.ws &> ~a/11d_pipeline.log" test-directory))))
+       (current-directory test-directory))
+
+(begin (current-directory (format "~a/apps/marmot" test-root))
+       (fpf "ws: Running marmot app (first phase):         ~a\n"
+	    (code->msg! (system/exit-code (format "echo 1 | ws run_first_phase.ws &> ~a/11e_marmot.log" test-directory))))
+       (current-directory test-directory))
+
+;; TODO: Pothole!
+
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
