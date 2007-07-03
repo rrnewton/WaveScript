@@ -33,14 +33,15 @@ fi
 D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+shift
 
 # Clean up first:
 rm -f "query.sml"
 rm -f "$OUTPUT"
 
 export REGIMENT_OR_WAVESCRIPT=WS
-echo regiment wsml $abspath ${2+"$@"} ;
-if regiment wsml $abspath ${2+"$@"} ;
+echo regiment wsml $abspath ${1+"$@"} ;
+if regiment wsml $abspath ${1+"$@"} ;
 then echo
 else #rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.

@@ -265,7 +265,7 @@ syncN_aux =
 fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
-   WARNSKEW = 20000; // threshold for warning that an accumulator has grown to big.  Should be user input.
+   WARNSKEW = 50000; // threshold for warning that an accumulator has grown to big.  Should be user input.
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };

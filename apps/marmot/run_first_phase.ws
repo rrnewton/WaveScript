@@ -59,24 +59,37 @@ With PATIENT   (real):  1.6        3.14    1.54
                (cpu) :  1.51       2.96    1.45
                (cpu) :  1.47       2.92    1.45
 
-Now (leaving it with patient, trying other sigsegs):
+NOTE: The above all accidentally had Exn.keepHistory turned on!
+
+Now, leaving it with "patient" fftw setting, trying other sigseg
+implementations.  Those made a huge difference.
 
 seglist w/dbg  (real):  1.0        2.0     1.0
 seglist no/dbg (real):  .98        1.95     .97
 wsharing       (real):  .28         .55     .27
 
-
                (cpu) :  .94        1.87     .93
                (cpu) :  .90        1.8      .9
                (cpu) :  .24         .47     .23
+
+Wow, also tweaked it to read the file in one stream rather than 4.
+This is getting too small to measure on theprevious data sizes...
+(This doesn't apply to the version that reads from hardware.)
+
+one file stream (real): .1          .2      .1
+                (cpu) : .064        .12     .06
+
 
 
 On 18mb of data: 1.5/1.4     vs.  2.1/1.2 for handwritten
 On 36mb of data: 3.0/2.9s    vs.  4.0/2.3 for handwritten
 It uses about half he memory of the C++ version too.
 
+[2007.07.03] Just ran on the first phase marmot query on the ARM.
+For a 1.2 mb file, the handwritten version clocked in at 6.9(6.2 cpu) 
+seconds, and the MLton version clocked in at 3.1(2.9) seconds.
+(Then, reading as one file stream it takes 0.94(.77).)
 
-NOTE: The above all accidentally had Exn.keepHistory turned on!
 
 */
 

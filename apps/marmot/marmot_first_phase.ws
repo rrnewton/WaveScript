@@ -166,29 +166,30 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 fun readone(mode) 
-  (readFile(marmotfile, "mode: binary window: 4096 rate: 24000 "++ mode) 
+  (readFile(marmotfile, "mode: binary window: 4096 rate: 24000 skipbytes: 6 "++ mode) 
    :: Stream Sigseg (Int16))
 
-     //_ch1 = if flag then ensBoxAudio(0,4096,0,24000) else readone("offset: 0");
-     //_ch2 = if flag then ensBoxAudio(1,4096,0,24000) else readone("offset: 2");
-     //_ch3 = if flag then ensBoxAudio(2,4096,0,24000) else readone("offset: 4");
-     //_ch4 = if flag then ensBoxAudio(3,4096,0,24000) else readone("offset: 6");
+chans = (readFile(marmotfile, "mode: binary window: 16384 rate: 24000 ") :: Stream Sigseg (Int16));
+fun onechan(offset)
+  iterate w in chans {
+    arr = Array:build(4096, fun (i) int16ToFloat(w[[(i*4) + offset]]));
+    emit toSigseg(arr, w`start / 4 , w`timebase)
+  }
 
 _ch1 = if flag then ensBoxAudio(0) else readone("offset: 0");
 _ch2 = if flag then ensBoxAudio(1) else readone("offset: 2");
 _ch3 = if flag then ensBoxAudio(2) else readone("offset: 4");
 _ch4 = if flag then ensBoxAudio(3) else readone("offset: 6");
 
+/*
 ch1 = deep_stream_map(int16ToFloat, _ch1)
 ch2 = deep_stream_map(int16ToFloat, _ch2)
 ch3 = deep_stream_map(int16ToFloat, _ch3)
 ch4 = deep_stream_map(int16ToFloat, _ch4)
+*/
 
-/* chans = (dataFile(marmotfile, "binary", 24000, 0) :: Stream (Int16 * Int16 * Int16 * Int16)); */
-/* _ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096); */
-/* _ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096); */
-/* _ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096); */
-/* _ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096); */
+// Testing, trying this instead:
+ch1 = onechan(0); ch2 = onechan(1); ch3 = onechan(2); ch4 = onechan(3);
 
 
 // 96 samples are ignored between each 32 used:
