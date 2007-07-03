@@ -846,9 +846,10 @@
 		   		   
 		   wsequal? print show seg-get toArray
 
+		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
+
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
-		   ENSBoxAudio
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
 		   Array:map Array:fold

@@ -1680,7 +1680,8 @@ int main(int argc, char ** argv)
 		   wsequal? print show seg-get toArray 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
-		   ensBoxAudio
+		   ensBoxAudioAll
+
 		   List:assoc List:assoc_update
 		   HashTable:rem HashTable:set ;; pure versions
 		   Array:map Array:fold

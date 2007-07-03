@@ -77,7 +77,7 @@
 	     (append '(eq? locdiff nodeid sense even? odd? dataFile readFile
 			   tuple tupref __foreign foreign foreign_box foreign_source
 			   or and show-and-string-append 
-			   ensBoxAudio ensBoxAudioF
+			   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 
 			   ;; These were resolved into the w/namespace versions:
 			   head tail map append fold
