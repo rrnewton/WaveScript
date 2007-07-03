@@ -488,7 +488,9 @@ available options, and their default values.
 \item {\bf rate:} the rate (in tuples per second) to play the back the
   data from the file.  For the emulator, this refers to virtual time,
   and is used only to maintain relative timing of different data
-  streams.  (default {\bf 1000})
+  streams.  Note that this is orthogonal to windowing; whether data is
+  windowed or not, the rate will be interpreted in the same
+  way. (default {\bf 1000}) 
 
 \item {\bf offset:}
   The offset, in bytes, at which to start reading from the
