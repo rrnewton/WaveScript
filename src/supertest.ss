@@ -391,7 +391,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory test-directory)
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (fpf "wsmlton: Running Demos through MLton:          ~a\n" 
+       (fpf "wsmlton: Running Demos through MLton:         ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/18_test_demos_mlton.log" test-directory))))
        (current-directory test-directory))
 
@@ -420,12 +420,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "    Download sample marmot data               ~a\n" 
-	    (system/exit-code "./download_small_sample_data"))
+	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/11e_marmot.log" test-directory))))
        (current-directory test-directory))
-
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
 	    (code->msg! (system/exit-code 
