@@ -393,11 +393,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wsmlton: Running Demos through MLton:         ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/18_test_demos_mlton.log" test-directory))))
-
+       (current-directory test-directory))
+(begin 
+       (current-directory (format "~a/lib/" test-root))
        (fpf "wsmlton: Compiling stdlib_test:               ~a\n"
-	    (system/exit-code (format "wsmlton stdlib_test.ws -exit-error &> ~a/10b_mlton_stdlib.log" test-directory)))
-       (fpf "wsmlton: Running stdlib_test:               ~a\n"
-	    (system/exit-code (format "./query.mlton.exe -n 10 -exit-error &> ~a/10c_run_mltonstdlib.log" test-directory)))
+	    (code->msg! (system/exit-code 
+               (format "wsmlton stdlib_test.ws -exit-error &> ~a/10b_mlton_stdlib.log" test-directory))))
+       (fpf "wsmlton: Running stdlib_test:                 ~a\n"
+	    (code->msg! (system/exit-code 
+	      (format "./query.mlton.exe -n 10 -exit-error &> ~a/10c_run_mltonstdlib.log" test-directory))))
        (current-directory test-directory))
 
 
