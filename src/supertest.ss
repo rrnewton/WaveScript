@@ -184,8 +184,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (ASSERT (putenv "REGDEBUGMODE" "OFF"))
 
-       (fpf "chez: Build .so file:                         ~a\n" (system/exit-code "make chez &> 3_BUILD_SO.log"))
-       (fpf "chez: Also build debugmode .so file:          ~a\n" (system/exit-code "make dbg &> 3b_BUILD_DBG.log"))
+       (fpf "chez: Build .so file:                         ~a\n" (code->msg! (system/exit-code "make chez &> 3_BUILD_SO.log")))
+       (fpf "chez: Also build debugmode .so file:          ~a\n" (code->msg! (system/exit-code "make dbg &> 3b_BUILD_DBG.log")))
 	     
        (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
        (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
@@ -399,7 +399,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; APPLICATIONS
 
-(fpf "\n\nWaveScript Applications (Scheme backend):\n")
+(fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")
 
 
