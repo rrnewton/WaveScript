@@ -415,29 +415,31 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (current-directory (format "~a/apps/pipeline" test-root))
        (fpf "ws: Running pipeline app:                     ~a\n"
-	    (code->msg! (system/exit-code (format "echo 10 | ws.debug pipeline.ws &> ~a/11d_pipeline.log" test-directory))))
+	    (code->msg! (system/exit-code (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "    Download sample marmot data               ~a\n" 
 	    (system/exit-code "./download_small_sample_data"))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
-	    (code->msg! (system/exit-code (format "echo 1 | ws.debug run_first_phase.ws &> ~a/11e_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code 
+            (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/11e_marmot.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
-	    (code->msg! (system/exit-code (format "echo 1 | ws.debug run_first_phase.ws &> ~a/11e_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code 
+              (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/11e_marmot.log" test-directory))))
        (current-directory test-directory))
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
-	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws &> ~a/11e2_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/11e2_marmot.log" test-directory))))
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/11e3_marmot.log" test-directory))))
        (current-directory test-directory))
 (begin (current-directory (format "~a/apps/marmot" test-root))
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
-	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws &> ~a/11e4_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/11e4_marmot.log" test-directory))))
 ;; [2007.07.03] This is having problems right now with the sync.  Not running atm.
 #;
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
