@@ -500,7 +500,7 @@
 			  (fire! result our-sinks))))
 		  
 		  ;; Inefficient:
-		  (let ([win (read-window winsize)])
+		  (let ([win (read-window 1)])
 		    (if (null? win) (set! t #f)
 			(fire! (car win) our-sinks))))])))
 
@@ -680,7 +680,7 @@
 		      (when (fx>= counter print-every)
 			(set! counter (fx- counter print-every))
 			(set! total (+ total print-every))
-			(fprintf stderr "Read ~a tuples from file ~a.\n"
+			(fprintf (current-error-port) "Read ~a tuples from file ~a.\n"
 				(+ total counter)
 				file)))
 
@@ -1421,7 +1421,7 @@
 	       (lambda args
 		 (let ([ret (apply foreignfun args)])
 		   ;; Now we add the pointer we get back to our guardian:
-		   (fprintf stderr " !!ADDING TO GUARDIAN!! ~s\n" ret)
+		   (fprintf (current-error-port) " !!ADDING TO GUARDIAN!! ~s\n" ret)
 		   ((foreign-guardian) (box ret))
 		   ret
 		   ))
@@ -1443,7 +1443,7 @@
 (define C-free 
   (IFCHEZ 
    (lambda (ptr)
-     (fprintf stderr "C-free: Loading free function from system's libc.\n")
+     (fprintf (current-error-port) "C-free: Loading free function from system's libc.\n")
      (load-shared-object "libc.so.6")
      ;; This throws an error in Petite if not wrapped in an eval:
      (set! C-free (eval '(foreign-procedure "free" (uptr) void)))
@@ -1453,7 +1453,7 @@
 ;    (exclusivePtr   (Pointer) ExclusivePointer)
 (define (exclusivePtr p)
   (let ([x (box p)])
-;    (fprintf stderr " !!ADDING TO GUARDIAN!! ~s\n" x)
+;    (fprintf (current-error-port) " !!ADDING TO GUARDIAN!! ~s\n" x)
     ((foreign-guardian) x)
     x))
 (define getPtr unbox)

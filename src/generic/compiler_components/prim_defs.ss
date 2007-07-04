@@ -126,6 +126,7 @@
     (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
+    ;(List:map2 (('a, 'b -> 'c) (List 'a) (List 'b)) (List 'c))
 
     ;; A lot of these can be defined in the language once we figure
     ;; out a story for "library" (non-inlined) procedures and
@@ -239,7 +240,10 @@
     (List:length ((List 'a)) Int)
     (List:reverse ((List 'a)) (List 'a))
     ;(reverse_BANG ((List 'a)) (List 'a))
-
+  
+    ;; TODO, add these:
+    ;(List:toArray ((List 'a)) (Array 'a))
+    
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
     (List:assoc        ((List #('a 'b)) 'a) (List #('a 'b)))
     (List:assoc_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))

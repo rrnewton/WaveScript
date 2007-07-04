@@ -75,7 +75,7 @@ sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
 deep_stream_map  :: (a -> b, SS a) -> SS b;
 //deep_stream_map2 :: (a -> b, SS b) -> ()
 
-
+   // shorthands:
 i2f :: Int -> Float;
 i2c :: Int -> Complex;
 f2i :: Float -> Int;
@@ -85,6 +85,8 @@ c2f :: Complex -> Float;
 
 smap    :: (a -> b)    -> S a -> S b;
 sfilter :: (t -> Bool) -> S t -> S t;
+
+List:map2       :: ((a,b) -> c, List a, List b) -> List c;
 
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
@@ -384,6 +386,7 @@ fun (ctrl, strms, del) {
 	    // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
 	    // [2007.07.01] JUST FIXED A BUG, We previously were trying to subseg data that wasn't there.
 	    killuntil = max(accs[j]`start, en+1); // Make sure we don't try to subseg before the start.
+	    //killuntil = en+1; // This was broken...	    
 	    accs[j] := subseg(accs[j], killuntil, accs[j]`end - killuntil + 1);
 	  };
 	};
@@ -601,11 +604,36 @@ sfilter = fun(f) fun(x) stream_filter(f,x);
 
 
 //======================================================================
-/* array operations */
+/* List operations */
+
+namespace List {
+
+  fun map2(f, ls1, ls2) {
+    p1 = Mutable:ref(ls1);
+    p2 = Mutable:ref(ls2);
+    acc = Mutable:ref([]);
+    while p1 != [] {
+      if p2 == []
+      then wserror("List:map2 arguments of unequal length: "++ls1++" "++ls2++"\n")
+      else {
+	acc := f(p1`head, p2`head) ::: acc;
+	p1 := p1`tail;
+	p2 := p2`tail;
+      }
+    };
+    List:reverse(acc)
+  }
+
+}
+
+//======================================================================
+/* Array operations */
 
 /* We use this to post-facto add things into the built-in array namespace. */
 namespace Array {
-  
+
+  // This assumes that there's at least one element in the array and
+  // thus doesn't need to be provided with a "neutral element".
   fun fold1 (f,arr) {
     if arr == null
     then wserror("Array:fold1 - array must have at least one element!")
