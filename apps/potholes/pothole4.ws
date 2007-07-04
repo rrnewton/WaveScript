@@ -2,6 +2,7 @@ include "stdlib.ws";
 include "filter.ws";
 //include "matrix.ws";
 
+// Using this file as a compilation benchmark.  Here are some results:
 
 // Note: rrn: This currently takes 3.7 seconds to compile for me with
 // iu-match everywhere, and 4.0 seconds with rn-match in the type
@@ -284,7 +285,8 @@ sm = stream_map;
 //chans = (readFile("/home/girod/data/slave18.txt", "")
 //chans = (readFile("/tmp/test.txt", "")
 //chans = (readFile("/tmp/PIPE", "")
-chans = (readFile("/tmp/slave18_snip", "")
+//chans = (readFile("/tmp/slave18_snip", "")
+chans = (readFile("slave18_smallsnip.dat", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
 time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);

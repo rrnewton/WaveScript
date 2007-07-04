@@ -427,10 +427,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "    Decompressing pipeline data               ~a\n" 
 	    (code->msg! (system/exit-code "bunzip2 pipeline1.data.bz2")))
        (fpf "ws: Running pipeline app:                     ~a\n"
-	    (code->msg! (system/exit-code (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
+	    (code->msg! (system/exit-code 
+              (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
        (current-directory test-directory))
 
-(begin (current-directory (format "~a/apps/marmot" test-root))
+
+(begin (newline)
+       (current-directory (format "~a/apps/marmot" test-root))
        (fpf "    Download sample marmot data               ~a\n" 
 	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
@@ -457,10 +460,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/11e3_marmot.log" test-directory))))
        (current-directory test-directory))
 
-
-
-;; TODO: Pothole!
-
+;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
+(begin (current-directory (format "~a/apps/pothole" test-root))
+       (fpf "    Fetching pothole data                     ~a\n" 
+	    (code->msg! (system/exit-code "./download_small_sample_data")))
+       (fpf "ws: Running pothole4 app:                     ~a\n"
+	    (code->msg! (system/exit-code 
+              (format "echo 3 | ws.debug pothole4.ws -exit-error &> ~a/11f_pothole4.log" test-directory))))
+       (current-directory test-directory))
 
 ;;================================================================================
 
