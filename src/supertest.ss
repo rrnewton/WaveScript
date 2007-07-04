@@ -420,6 +420,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/pipeline" test-root))
+       (fpf "    Decompressing pipeline data               ~a\n" 
+	    (code->msg! (system/exit-code "bunzip2 pipeline1.data.bz2")))
        (fpf "ws: Running pipeline app:                     ~a\n"
 	    (code->msg! (system/exit-code (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
        (current-directory test-directory))
