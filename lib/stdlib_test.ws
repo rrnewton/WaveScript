@@ -31,13 +31,24 @@ BASE <- iterate (x in src) {
     println("");
 
     /*
+    print("Type Unions: ");
     case x {
       Oneof2(x): println("Got left! ")
       Twoof2(y): println("Got right! ")
     };
     */
 
+    {
+       print("List primitives: ");
+       ls1 = [1,2,3];
+       ls2 = [4,5,6];        
+       summed = List:map2((+),ls1,ls2);
+       assert_eq("List:map2", [5,7,9], summed);
+       println("passed");
+    };
+    
+    
   };
   
-  emit ();
+  emit true;
 }

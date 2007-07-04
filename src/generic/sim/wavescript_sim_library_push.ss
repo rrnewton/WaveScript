@@ -481,11 +481,11 @@
        ;; Reads a whole bunch of lines.
        (define (read-window n)
 	 (let loop ([x (read-line inp)] [batch (sub1 n)] [acc '()])
-	   (if (fxzero? batch)
-	       (reverse! (cons (parse-line x) acc))
 	       (if (or (not x) (eof-object? x))
 		   (reverse! acc)
-		   (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc))))))
+		   (if (fxzero? batch)
+		       (reverse! (cons (parse-line x) acc))
+		       (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc))))))
        (define src 
 	 (lambda (msg)	   
 	   (s:case msg

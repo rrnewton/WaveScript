@@ -378,21 +378,10 @@
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
      [(list? datum)
-      (list "[" (insert-between "; " (map Const datum)) "]")]
+      (list "[" (insert-between ", " (map Const datum)) "]")]
      [(vector? datum)
-      ;; UNFINISHED: Make this agnostic to vector representation: should do in another pass...
-      #;
-      (Expr 
-       `(let ([,v 'notyp (Array:make )]))
-       (lambda _ (error 'dummyemitter "should not be called")))
-
-      ;; Array:null should have been handled elsewhere:
       (ASSERT (not (zero? (vector-length datum))))
-
-      ;; TODO: array constants.
-      (ASSERT #f)
-
-      ]
+      (list "(Array.fromList "(Const (vector->list datum))")")]
 
      [else (error 'emit-mlton:Const "not an Mlton-compatible literal (currently): ~s" datum)])))
 

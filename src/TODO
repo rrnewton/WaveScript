@@ -16,8 +16,9 @@ TOOPTIMIZE:
 ================================================================================
 
 [2007.07.03]
-   Add Int64 to support proper timestamps in sigsegs.
-   Need a binary file sink too..
+ *) Add Int64 to support proper timestamps in sigsegs.
+ *) Need a binary file sink too..
+ *) MLton FFI & ensbox data acquisition.
 
 [2007.06.28]
     Add ws.early for running queries *without* running static elaborate.

@@ -15,9 +15,9 @@ const_E    :: Float;
 
 ///  Library POD (plain old data) functions: 
 
-println    :: String -> ();
-assert     :: Bool   -> ();
-asserteq   :: (a,a)  -> ();
+println     :: String -> ();
+assert      :: (String, Bool) -> ();
+assert_eq   :: (String, a,a)  -> ();
 
   // Some additional math functions 
 sqr        :: #n -> #n;
