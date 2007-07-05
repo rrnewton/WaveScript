@@ -36,7 +36,7 @@
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
 
 ;; This is LAME, but having problems with "let val rec" syntax in MLton.
-;; This produces the "f x = bod" text.
+;; This produces the "f x = bod" snippet .
 (define (make-fun-binding name formals funbody)
   (list " " (coerce-id name) " "
 	(if (null? formals) "()"
@@ -45,6 +45,43 @@
 
 ;; Tuple version:
 ;; ...
+
+;; Prints a floating point constant in a manner acceptable to SML.
+#;
+;; This fails to be an identity... some digits change:
+(define (format-float fl)
+  (let ((v (decode-float fl)))
+    (let ((m (vector-ref v 0))
+	  (e (vector-ref v 1))
+	  (s (vector-ref v 2)))     
+
+      (let* ([exact (* s m (expt 2 e))]
+	     [n   (truncate (/ (log exact) (log 10)))]
+	     [expsign (if (< n 0) -1 1)]
+	     [n2  (* expsign (add1 (abs n)))]
+	     [rem (/ exact (expt 10 n2))])
+	(format "~aE~a" rem (inexact->exact n2))
+	))))
+;; This is the same as above but faster:
+#;
+(define (format-float fl)
+  (let* ([n   (truncate (/ (log fl) (log 10)))]
+	 [expsign (if (< n 0) -1 1)]
+	 [n2  (* expsign (add1 (abs n)))]
+	 [rem (/ fl (expt 10 n2))])
+    (format "~aE~a" rem (inexact->exact n2))
+    ))
+
+;; This is a hack, but is much simpler.
+(define (format-float fl)
+  (let* ((str (format "~a" fl))
+	 (len (string-length str)))
+    (do ((i 0 (fx+ i 1)))
+	((fx= i len) str)
+	(case (string-ref str i)
+	  [(#\-) (string-set! str i #\~)]
+	  [(#\e) (string-set! str i #\E)]))))
+
 
 (define (make-for i st en bod)
   (list
@@ -204,23 +241,18 @@
     [(Array  ,[t])  (list "(arrayEqual "t")")]
     [(Sigseg ,[t])  (list "(SigSeg.eq "t")")]
 
-#|
-
     [#(,[t*] ...)
-     (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
+     (let ([flds1 (map Var (map unique-name (make-list (length t*) 'a)))]
+	   [flds2 (map Var (map unique-name (make-list (length t*) 'b)))])
        (list 
-	"(fn "(apply make-tuple flds)" =>\n"
-	(indent 
-	 (list "\"(\" ^"
-	       (insert-between " \", \" ^"
-			       (map (lambda (printer fld)
-				      `("((",printer") ",fld") ^ \n")) 
-				 t* flds)
-			       )
-	       " \")\"")
+	"(fn "(make-tuple (apply make-tuple flds1) (apply make-tuple flds2))" =>\n"
+	(indent
+	 (insert-between " andalso "
+	   (map (lambda (comp a b) (list comp" "(make-tuple a b)))
+	     t* flds1 flds2))
 	 "  ")")"))]
-  |#  
-    
+
+    ;; Otherwise fall through on builtin equality:       
     [,else ;(make-fun (list (make-tuple "x" "y")) "(x = y)")
      (make-fun (list (make-tuple "x" "y")) "(x = y)")
 	   ]
@@ -275,7 +307,9 @@
 			   " fun ignored () = () \n" ;; starts off the block of mutually recursive defs
 			   (map (lambda (x) (list "\n and " x "\n"))
 			     ;; We reverse it because we wire FORWARD
-			     (reverse (append  src*  iter* union*)))
+			     (reverse (append iter* union*)))
+
+			   src*
 			  
 			   " \n\n"
 			   "val _ = (\n"
@@ -336,12 +370,12 @@
 (define (ConstBind b)
   (match b
 
-    [(,v ,t ,rhs)
-     (list (Var v) " = " 
-	   (Expr rhs 
+    [(,[Var -> v] ,t ,rhs)
+     (make-bind
+      `[,v ,t ,(Expr rhs 
 		 (lambda (_) 
 		   (error 'ConstBind 
-			  "shouldn't have any 'emit's within a constant (non-stream) expression"))))]
+			  "shouldn't have any 'emit's within a constant (non-stream) expression")))])]
 
 #|
     [(,[Var -> v] ,t (quote ,[Const -> rhs]))
@@ -368,11 +402,13 @@
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
      [(string? datum) (format "~s" datum)]
-     [(flonum? datum)  (format "(~s)" datum)]
+     [(flonum? datum)  (format-float datum)]
      [(cflonum? datum) (format "{real=~a, imag=~a }" 
 			       (cfl-real-part datum)
 			       (cfl-imag-part datum))]
-     [(integer? datum)  (format "(~s)" datum)]
+     [(integer? datum)  (if (< datum 0)
+			    (format "(~a~s)" #\~ (* -1 datum))
+			    (format "(~s)" datum))]
 
      [(eq? datum 'nulltimebase) "99999999"]
 
@@ -402,7 +438,7 @@
   (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
   (flonum->fixnum (* 1000000 (/ 1.0 freq))))
 
-;; Returns: a binding snippet (incomplete), and initialization code.
+;; Returns: a binding, top state (also bindings), and initialization code.
 (define (Source src)
     (define (E x) (Expr x 'noemits!))
   (match src
@@ -414,31 +450,59 @@
 	      [t (Var (unique-name 'virttime))])
 	  (values 	
 	   ;; First, a function binding that drives the source.
-	   (make-fun-binding v () 
+	   (list "fun "
+	    (make-fun-binding v () 
 	     (indent  
 	      (make-seq
 	       `(,t " := !",t" + ",r)
 	       ((Emit downstrm) "()")
 	       `("SE (!",t",",v")\n"))
-	      "    "))	  
+	      "    ")))
 
 	   ;; Second, top level state bindings.
 	   (list (make-bind `(,t (Ref Int) "ref 0")))
 	   
 	   ;; Third, initialization statement:
 	   `("(* Seed the schedule with timer datasource: *)\n"
-	     "schedule := SE(0,",v") :: !schedule\n"))
-	  )]
+	     "schedule := SE(0,",v") :: !schedule\n")))]
 
 ;(__readFile file mode repeat rate skipbytes offset winsize types)
 
        [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
 	(cond
-	 [(equal? mode "text") 
-;	  (if (not (zero? repeats))
-;	      (error 'emit-mlton "MLton text mode reader doesn't support replaying the datafile yet."))
-	  (error 'emit-mlton "MLton text mode readFile not implemented yet.")
-	  ]
+
+	 [(equal? mode "text") 	  
+	  (if (not (zero? repeats))
+	      (error 'emit-mlton "MLton text mode reader doesn't support replaying the file yet."))
+	  ;; This builds a call to textFileReader
+	  (let* ([names (map (lambda (_) (Var (unique-name 'elmt))) types)]
+		 [lspat (list "[" (insert-between ", " names) "]")]
+		 [desome (lambda (x) (list 
+                      "(case "x" of SOME x => x | NONE => raise WSError \"could not parse data from file\")"))]
+		 [tuppat (list "("
+			       (insert-between ", "
+				(map (lambda (name ty)
+				       (match ty
+					 [Float  (desome (list "Real32.fromString "name))]
+					 [Double (desome (list "Real64.fromString "name))]
+					 [Int    (desome (format "~a.fromString ~a" int-module name))]
+					 [Int16  (desome (list "Int16.fromString "name))]
+					 [String name]
+					 ))
+				  names types))
+			       ")")])
+ 	   (values
+	    (list 
+	    ;; Builds a function from unit to an initial scheduler entry "SE" 
+	    "val "v" = textFileReader ("file", "(number->string (rate->timestep rate))", "
+	                               (number->string (length names))", fn "lspat" => "tuppat") " 
+				       (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
+	    )
+	    ;; Second top level values:
+	    ()
+	    ;; Third, Initialization: schedule this datasource:
+	   `("schedule := ",v" :: !schedule"))
+	    )]
 	 
 	 [(equal? mode "binary")
 	  (let ([homogenous? (homogenous-sizes? types)]
@@ -447,7 +511,8 @@
 			    (list->vector types ))])
 	    (values 
 	     ;; Builds a function from unit to an initial scheduler entry "SE" 
-	     (make-fun-binding v '()
+	     (list "fun "
+	      (make-fun-binding v '()
    	             (make-let `(["binreader"
 				  ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))
 				  ,(indent (build-binary-reader types homogenous?) "    ")]
@@ -491,7 +556,7 @@
 			       ))
 		       "")
 		   "\n"
-		   )))
+		   ))))
 	      ;; Second, top level bindings
 	      ()
 	      ;; Third, initialization statement:

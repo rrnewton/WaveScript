@@ -56,6 +56,54 @@ fun read_int32_wordIndexed vec i  =
 
 fun read_real32_wordIndexed vec i = PackReal32Little.subVec(vec, i)
 
+(********************************************************************************)
+
+
+fun textFileReader (file, period, rowsize, tokenParser) outchan = 
+  let 
+    val timestamp = ref 0
+    val hndl = TextIO.openIn file
+    (* This reads an entire tuple from a single line *)
+    fun read n = 
+      case TextIO.inputLine hndl
+      of NONE => raise WSEndOfFile
+       | SOME line =>
+         let 
+(* 	  val _ = print ("PARSING LINE for "^Int.toString rowsize^" elements "^line^"\n") *)
+          val port = TextIO.openString line	
+	  fun pulltoken flag = 
+            case TextIO.lookahead port
+	      of NONE => raise WSEndOfFile
+               | SOME c =>
+	        (
+(*                  print ("pulltoken " ^ String.implode [c] ^ "\n"); *)
+	         if Char.isSpace c
+	         then (if flag then [] else (TextIO.input1 port;  pulltoken false))
+	         else (TextIO.input1 port;  c :: pulltoken true))
+          (* This reads each field of the tuple from a single line. *)
+          fun lineloop n =
+	    (
+(* 	    print ("Lineloop " ^ Int.toString n ^ "\n"); *)
+	    if n = 0
+	    then []
+	    else (let val t = String.implode (pulltoken false) in t :: lineloop (n - 1) end))
+         in 
+	   lineloop n
+         end
+    val time = ref 0
+    fun f () : scheduleEntry =
+      let val obj = tokenParser (read rowsize) 
+          val _ = outchan obj
+	  val _ = time := !time + period
+      in
+        SE(!time,f)
+      end
+  in 
+    SE(0,f)
+  end
+
+(* datatype scheduleEntry = SE of (timestamp * (unit -> scheduleEntry)) *)
+
 
 (********************************************************************************)
 
@@ -71,7 +119,7 @@ fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
 	      val st = ref 0  (* Inclusive *) 
 	      val en = ref 0  (* Exclusive *)	      
 	      (* Produce a scheduler function *)
-	      fun f () =
+	      fun f () : scheduleEntry =
 	        (	          
 		  let 
 		     val vec = BinIO.inputN(hndl, bytesize)

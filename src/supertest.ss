@@ -375,7 +375,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSCAML:
 
-(fpf "\n\nWaveScript CAML Backend (rev ~a):\n" engine-svn-revision)
+(fpf "\n\nWaveScript CAML Backend: \n")
 (fpf "========================================\n")
 
 (begin (newline)
@@ -387,6 +387,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/17_test_demos_caml.log" test-directory))))
        (current-directory test-directory))
 
+(fpf "\n\nWaveScript MLTON Backend:\n" )
+(fpf "========================================\n")
 
 (begin (newline)
        (current-directory test-directory)
@@ -431,7 +433,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
               (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
        (current-directory test-directory))
 
-
+;; MARMOT
 (begin (newline)
        (current-directory (format "~a/apps/marmot" test-root))
        (fpf "    Download sample marmot data               ~a\n" 
@@ -460,13 +462,23 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/11e3_marmot.log" test-directory))))
        (current-directory test-directory))
 
+
+;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
-(begin (current-directory (format "~a/apps/pothole" test-root))
+(begin (newline)
+       (current-directory (format "~a/apps/pothole" test-root))
        (fpf "    Fetching pothole data                     ~a\n" 
 	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running pothole4 app:                     ~a\n"
 	    (code->msg! (system/exit-code 
               (format "echo 3 | ws.debug pothole4.ws -exit-error &> ~a/11f_pothole4.log" test-directory))))
+
+       (fpf "wscaml Compiling pothole4 app:                ~a\n"
+	    (code->msg! (system/exit-code 
+             (format "wscaml pothole4.ws -exit-error &> ~a/11f_pothole4_caml_compile.log" test-directory))))
+       (fpf "wscaml: Running marmot app (first phase):     ~a\n"
+	    (code->msg! (system/exit-code 
+             (format "./query.caml.exe &> ~a/11f_pothole4_caml_run.log" test-directory))))
        (current-directory test-directory))
 
 ;;================================================================================
