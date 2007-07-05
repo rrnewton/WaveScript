@@ -64,28 +64,26 @@ rewindowS4S = {
 }
 
 
-/*
   nullL  = [];
-  // Should probably assert that the widths are the same here.
   fun startL(ls) ls`head`start;
-  fun widthL(ls) s1`head`width;
-  fun subseg4S(ls, p, l) {
-    ls
+  fun widthL(ls) ls`head`width;
+  fun subsegL(ls, p, l) {
+    List:map(fun(ss) subseg(ss,p,l), ls)
   }
-  fun joinsegs4S(a, b) {
-    a
+  fun joinsegsL(ls1, ls2) {
+    if ls1 == []
+    then ls2
+    else if ls2 == []
+    then ls1 
+    else List:map2(fun(a,b) joinsegs(a,b), ls1, ls2)
   }
 
 rewindowSLS = {
   rewindowGeneral(nullL, startL, widthL, subsegL, joinsegsL)
 }
-*/
-
 
 /*** Sample Main program ***/
 /*
-
-
 ch1 = (readFile("stdlib.ws", "mode: binary window: 10") :: Stream (Sigseg Int))
 
 dummydetections = iterate(w in ch1) {
@@ -97,14 +95,12 @@ dummydetections = iterate(w in ch1) {
 synced = syncN(dummydetections, [ch1, ch1, ch1, ch1]);
 
 // Mike's approach, this works now:
-
+/*
 _synced = iterate(din in synced) {
   emit (List:ref(din,0),List:ref(din,1),List:ref(din,2),List:ref(din,3)) 
 }
 BASE <- rewindowS4S(_synced, 4096, 0)
+*/
 
-
-//BASE <- rewindowSLS(synced, 4096, 0)
-
-
+BASE <- rewindowSLS(synced, 4096, 0)
 */
