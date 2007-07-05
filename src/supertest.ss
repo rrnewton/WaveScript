@@ -473,12 +473,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
               (format "echo 3 | ws.debug pothole4.ws -exit-error &> ~a/11f_pothole4.log" test-directory))))
 
-       (fpf "wscaml Compiling pothole4 app:                ~a\n"
+       (fpf "wscaml: Compiling pothole4 app:               ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "wscaml pothole4.ws -exit-error &> ~a/11f_pothole4_caml_compile.log" test-directory))))
-       (fpf "wscaml: Running marmot app (first phase):     ~a\n"
+             (format "wscaml pothole4.ws -exit-error &> ~a/11g_pothole4_caml_compile.log" test-directory))))
+       (fpf "wscaml: Running pothole4:                     ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "./query.caml.exe &> ~a/11f_pothole4_caml_run.log" test-directory))))
+             (format "./query.caml.exe &> ~a/11h_pothole4_caml_run.log" test-directory))))
+
+       (fpf "wsmlton: Compiling pothole4 app:              ~a\n"
+	    (code->msg! (system/exit-code 
+             (format "wsmlton pothole4.ws -exit-error &> ~a/11i_pothole4_mlton_compile.log" test-directory))))
+       (fpf "wsmlton: Running pothole4 app:                ~a\n"
+	    (code->msg! (system/exit-code 
+             (format "./query.mlton.exe -n 3 &> ~a/11j_pothole4_mlton_run.log" test-directory))))
+
        (current-directory test-directory))
 
 ;;================================================================================
