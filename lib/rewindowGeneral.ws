@@ -1,5 +1,5 @@
 
-
+include "stdlib.ws";
 
 // This version is enhanced to allow large steps that result in gaps in the output streams.
 //   GAP is the space *between* sampled strips, negative for overlap!
@@ -45,11 +45,9 @@ fun rewindowGeneral (mynullseg, mystart, mywidth, mysubseg, myjoinsegs)
   }
 };
 
-rewindow = rewindowGeneral(nullseg, start, width, subseg, joinsegs);
+//rewindow = rewindowGeneral(nullseg, start, width, subseg, joinsegs);
 
-rewindowS4S :: (Stream (Sigseg a * Sigseg b * Sigseg c * Sigseg d), Int, Int)
-            ->  Stream (Sigseg a * Sigseg b * Sigseg c * Sigseg d);
-rewindowS4S = {
+
   null4S  = (nullseg, nullseg, nullseg, nullseg);
   // Should probably assert that the widths are the same here.
   fun start4S((s1,_,_,_)) start(s1);
@@ -58,9 +56,55 @@ rewindowS4S = {
     (subseg(s1,p,l), subseg(s2,p,l), subseg(s3,p,l), subseg(s4,p,l));
   fun joinsegs4S((a1,a2,a3,a4), (b1,b2,b3,b4))
     (joinsegs(a1,b1), joinsegs(a2,b2), joinsegs(a3,b3), joinsegs(a4,b4));
+
+rewindowS4S :: (Stream (Sigseg a * Sigseg b * Sigseg c * Sigseg d), Int, Int)
+            ->  Stream (Sigseg a * Sigseg b * Sigseg c * Sigseg d);
+rewindowS4S = {
   rewindowGeneral(null4S, start4S, width4S, subseg4S, joinsegs4S)
 }
 
-// rewindowS3S, rewindowS2S, etc...
 
-BASE <- rewindow((readFile("stdlib.ws", "mode: binary  window: 100") :: Stream (Sigseg Int)), 10, 0)
+/*
+  nullL  = [];
+  // Should probably assert that the widths are the same here.
+  fun startL(ls) ls`head`start;
+  fun widthL(ls) s1`head`width;
+  fun subseg4S(ls, p, l) {
+    ls
+  }
+  fun joinsegs4S(a, b) {
+    a
+  }
+
+rewindowSLS = {
+  rewindowGeneral(nullL, startL, widthL, subsegL, joinsegsL)
+}
+*/
+
+
+/*** Sample Main program ***/
+/*
+
+
+ch1 = (readFile("stdlib.ws", "mode: binary window: 10") :: Stream (Sigseg Int))
+
+dummydetections = iterate(w in ch1) {
+  state { pos = 0 }
+  emit(true, pos, pos + 10 - 1);
+  pos := pos + 10;
+};
+
+synced = syncN(dummydetections, [ch1, ch1, ch1, ch1]);
+
+// Mike's approach, this works now:
+
+_synced = iterate(din in synced) {
+  emit (List:ref(din,0),List:ref(din,1),List:ref(din,2),List:ref(din,3)) 
+}
+BASE <- rewindowS4S(_synced, 4096, 0)
+
+
+//BASE <- rewindowSLS(synced, 4096, 0)
+
+
+*/
