@@ -563,6 +563,23 @@
 	      `("schedule := ",v"() :: !schedule\n")))]
 	 [else (error 'readFile "mode not handled yet in MLton backend: ~s" mode)]
 	  )]
+
+
+       ;; Reading from ensbox hardware.
+       [(ensBoxAudioAll)
+	;; Don't worry about the so-called "scheduler", just hook up
+	;; the hardware source to the data flow entry point.
+	(values
+	 (make-app "ensbox_entry"
+		  (list (make-fun 
+		     (list "p" "n")
+		     "(* UNPACK POINTER HERE *) (print \"Called into MLTON from outside...\\n\")")))
+	 
+	;; Second, top level bindings
+	()
+	;; Third, initialization statement:
+	()
+	)]
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        

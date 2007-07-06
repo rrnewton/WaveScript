@@ -6,7 +6,8 @@
 /* this is called from the ENSBox lib */
 void wavescope_push(void *data, char *buf, int count) 
 {
-  wsmlton_entry(buf, count);
+  //wsmlton_entry(buf, count);
+  printf("GOT PUSH %p %d \n", buf, count);
 }
 
 void startup() {

@@ -300,7 +300,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/gsl_wrappers.log" test-directory))))       
        (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
-	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
+	    (code->msg! (system/exit-code 
+             (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/demos/wavescope" test-directory))
@@ -466,7 +467,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
 (begin (newline)
-       (current-directory (format "~a/apps/pothole" test-root))
+       (current-directory (format "~a/apps/potholes" test-root))
        (fpf "    Fetching pothole data                     ~a\n" 
 	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running pothole4 app:                     ~a\n"

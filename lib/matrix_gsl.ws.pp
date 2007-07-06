@@ -74,11 +74,11 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
        \
     /* This is temporary, we can't pass arrays yet... but we can do this */ \
     fun toArray(mat) {             \
-      let (x,y) = dims(mat);       \
+      let (x,y) = Matrix:WSTY:dims(mat);       \
       arr = Array:makeUNSAFE(x*y); \
       for j = 0 to y-1 {           \
         for i = 0 to x-1 {         \
-	  Array:set(arr, i + j*x, get(mat,i,j)) \
+	  Array:set(arr, i + j*x, Matrix:WSTY:get(mat,i,j)) \
 	} \
       };  \
       arr \
@@ -88,10 +88,10 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       rows = len / rowlen;        \
       if (len != rowlen * rows)    \
       then wserror("fromArray: array length "++ len ++" is not divisible by "++ rowlen ++". Cannot convert to matrix."); \
-      mat = create(rowlen, rows);  \
+      mat = Matrix:WSTY:create(rowlen, rows);  \
       for j = 0 to rows-1 {           \
         for i = 0 to rowlen-1 {         \
-	  set(mat, i, j, arr[i + j*rowlen]) \
+	  Matrix:WSTY:set(mat, i, j, arr[i + j*rowlen]) \
 	} \
       };  \
       mat \
@@ -109,8 +109,8 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 #define INVERT(CTY, WSTY)          \
     fun invert(mat) {          \
       let (tag,m1,d1) = mat;   \
-      let (x,y)   = dims(mat); \
-      let mat2 = create(x,y);   \
+      let (x,y)   = Matrix:WSTY:dims(mat); \
+      let mat2 = Matrix:WSTY:create(x,y);   \
       let (tag,m2,d2) = mat2;   \
       let perm = nullperm(x);      \
         /* Do the work: */         \
@@ -146,13 +146,13 @@ namespace Matrix {
     fun invert(mat) {
       let (tag,_,_) = mat;
       //if tag == float_matrix
-      //then Float:invert(mat) else
+      //then Matrix:Float:invert(mat) else
       if tag == double_matrix
-      then Double:invert(mat) else
+      then Matrix:Double:invert(mat) else
       //    if tag == complex_matrix
-      //    then Complex:invert(mat) else
+      //    then Matrix:Complex:invert(mat) else
       //    if tag == complexdouble_matrix
-      //    then ComplexDouble:invert(mat)
+      //    then Matrix:ComplexDouble:invert(mat)
       wserror("Unrecognized matrix type tag: "++tag)
     }
     
@@ -160,13 +160,13 @@ namespace Matrix {
     fun OP(mat1, arg2) {      \
       let (tag,_,_) = mat1;      \
       if tag == float_matrix    \
-      then Float:OP(mat1,arg2) else   \
+      then Matrix:Float:OP(mat1,arg2) else   \
       if tag == double_matrix   \
-      then Double:OP(mat1,arg2) else  \
+      then Matrix:Double:OP(mat1,arg2) else  \
       if tag == complex_matrix  \
-      then Complex:OP(mat1,arg2) else \
+      then Matrix:Complex:OP(mat1,arg2) else \
 /*      if tag == complexdouble_matrix */  \
-/*      then ComplexDouble:OP(mat) else */ \
+/*      then Matrix:ComplexDouble:OP(mat) else */ \
       wserror("Unrecognized matrix type tag: "++tag) \
     }
 
