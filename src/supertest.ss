@@ -280,11 +280,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define getdata (system/exit-code "./download_sample_marmot_data"))
        (fpf "ws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
 
-       (current-directory test-directory)
        (fpf "ws: Running WaveScript Demos:                 ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
        (fpf "ws.early: Running Demos (no static elab):     ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_early &> ~a/wsearly_demos.log" test-directory))))
+       (current-directory test-directory)
        )
 
 

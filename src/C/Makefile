@@ -12,7 +12,8 @@ all: fftw.so usleep_default
 fftw.so: fftw.c fftw.ss
 	@echo; echo "Building FFTW..."
 	@echo "------------------------------------------------------------"
-	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.0a/boot/$(DIR) -lfftw3
+#	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.0a/boot/$(DIR) -lfftw3
+	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.3/boot/$(DIR) -lfftw3
 	(echo '(compile-file "fftw.ss" "fftw.so")' | $(CHEZ))
 	if ! [ -d $(BUILD) ]; then mkdir $(BUILD); fi
 	cp fftw.so $(BUILD)
