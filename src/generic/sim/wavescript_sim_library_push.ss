@@ -26,6 +26,8 @@
 		 __readFile 
 		 __foreign
 					;__syncN
+		 ;; Just stubs that give errors:
+		 ensBoxAudio ensBoxAudioF ensBoxAudioAll
 
 		 ;dump-binfile 
 		 ;audio 
@@ -582,6 +584,13 @@
       )
 
     ) ; End __dataFile
+  
+  (define (ensBoxAudioAll . args)
+    (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
+  (define (ensBoxAudio . args)
+    (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
+  (define (ensBoxAudioF . args)
+    (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
 
 #;
   ;; This is a hack to load specific audio files:
