@@ -31,7 +31,8 @@ exec regiment i --script "$0" ${1+"$@"};
 						(path->string (current-directory))) 
 					"/" fn)
 			 fn)])
-       (let ([strm (wsint absolute)] [first #f] [second #f])
+       (let ([strm ((if (getenv "WSTESTALLEARLY") wsint-early wsint) absolute)] 
+	     [first #f] [second #f])
 	 (set! first (stream-car strm))
 					;(set! first (strm))
 	 (printf "\nFirst element: ~s\n" first)

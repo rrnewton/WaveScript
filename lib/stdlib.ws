@@ -639,7 +639,7 @@ namespace Array {
   // This assumes that there's at least one element in the array and
   // thus doesn't need to be provided with a "neutral element".
   fun fold1 (f,arr) {
-    if arr == null
+    if arr == Array:null
     then wserror("Array:fold1 - array must have at least one element!")
     else {
       // There's no efficient way to do this currently.
@@ -655,12 +655,12 @@ namespace Array {
   // This is quite inefficient.  But if it's a useful thing to have it
   // can be made efficient.  Range is inclusive.
   fun foldRange (st, en, zer, f) {
-    fold(f, zer, build(en - st + 1, fun(x) x+st))
+    Array:fold(f, zer, Array:build(en - st + 1, fun(x) x+st))
   }
 
-  fun copy(arr) Array:build(arr`length, fun(i) arr[i]);
+  fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
   
-}
+} // End namespace
 
 // RRN: NOTE: These should be added to namespace Array:
 

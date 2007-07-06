@@ -403,6 +403,7 @@
 ;; This just encapsulates the first few steps of the compiler.
 ;; Everything up to and including type checking the program.
 (define (ws-compile-until-typed p)
+
   (ws-run-pass p verify-regiment)
   (ws-run-pass p pass_desugar-pattern-matching)
   (ws-run-pass p resolve-varrefs)
@@ -558,6 +559,7 @@
    
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
+  (ws-run-pass p reify-certain-types) 
   (ws-run-pass p type-annotate-misc) 
 
 ;   (set! prog (ws-add-return-statements prog))
@@ -661,6 +663,17 @@
 	     'replace))))
       typed)
 
+    (define (make-uniontype-defs x)
+      (match x
+	[#f '(void)]
+	[(union-types ((,name* . ,_) [,fld** ,ty**] ...) ...)
+	 (cons 'begin
+	   (map (lambda (fld ty) 
+		  `(define ,fld (lambda (val) (make-uniontype ',fld val))))
+	     (apply append fld**)
+	     (apply append ty**)))]))
+
+
     (define (eval-and-peruse-stream compiled)
       (define stripped (strip-types compiled))
       (define stream 
@@ -670,11 +683,14 @@
 
 	  ;; New Streams:
 	  ;; [2007.02.06] Now we wrap it with a little extra to run the query:
+	  ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
+	  ;; It should be self contained, even if that means discarding the existing "language-mechanism.ss"
 	  (wavescript-language
 	   (match stripped
-	     [(,lang '(program ,body ,_ ...))
-	      `(begin (reset-state!) 
-		      (run-stream-query ,body))
+	     [(,lang '(program ,body ,meta* ... ,type))
+	      `(let () ,(make-uniontype-defs (assq 'union-types meta*))
+		    (reset-state!)
+		    (run-stream-query ,body))
 	      ]))
 	  ))
       stream)
@@ -690,10 +706,40 @@
        (eval-and-peruse-stream compiled))))
   
   (define (wsint-early x . flags)
+    (define-pass lazify 
+      (define letrec-bound ())
+      (define process-expr
+	(lambda (x fall)
+	  (match x
+	    [,v (guard (symbol? v) (memq v letrec-bound)) `(app ,v)]
+
+	    [(iterate (letrec ([,st* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
+	     `(iterate (letrec ,(map list st* ty* rhs*) ,bod) ,src)]
+
+	    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+	     (fluid-let ([letrec-bound (append lhs* letrec-bound)])
+	       (let ([rhs* (map (lambda (x) (process-expr x fall)) rhs*)]
+		     [bod  (process-expr bod fall)])
+		 `(letrec ,(map (lambda (x t y) `(,x ,t (delay ,y))) lhs* ty* rhs*)
+		    ,bod)))]
+	    [,oth (fall oth)]
+	    )))
+	[Expr process-expr])
     (wsint-parameterize
      (lambda ()
-       (define typed (early-part x))
-       (eval-and-peruse-stream typed))))
+       (define p x)
+       (time (begin 
+	       (set! p (early-part p))
+	       ;;       (ws-run-pass p eta-primitives)
+	       ;;       (ws-run-pass p desugar-misc)
+
+	       ;; Need to convert readFile to __readFile
+	       (ws-run-pass p reify-certain-types)
+	       (ws-run-pass p strip-annotations)
+					;       (ws-run-pass p lazify)
+	       ))
+       (printf "Running program EARLY:\n")
+       (eval-and-peruse-stream p))))
 
   (values wsint wsint-early)))
 

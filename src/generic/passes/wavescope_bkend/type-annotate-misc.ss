@@ -27,7 +27,7 @@
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
-	      (ComplexConst ('__foreign Const Const Const ComplexDatum))					
+	      (ComplexConst ('__foreign Const Const Const ComplexDatum)) 
 	      (AppConstructs ('foreign-app Const ('assert-type Type Var) Simple ...))
 	      )
 	    filtered)))
@@ -96,74 +96,12 @@
 	   (assert-type ,(recover-type exp tenv)
 			,exp))]
 	
-	;; This needs to explicitly pass the types as argument to run with wsint.
-	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rate] ,[rep]))
-	 (let ([types (match t [#(,t* ...)  t*]  [,t   	(list t)])])
-	   `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ',types)
-	   )]
-
-	;; This needs the type tagged on also:
-	[(assert-type ,T (foreign ,[name] ,[files] ,[pointertypes]))
-	 `(__foreign ,name ,files ,pointertypes ',T)]
 	;; Tag the applications too:
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 	 (ASSERT symbol? rator)
 	 `(foreign-app ',realname
 		       (assert-type ,(recover-type rator tenv) ,rator)
 		       ,@arg*)]
-		
-	;; Move this to another file:
-	[(assert-type (Stream ,t) (readFile ,[fn] ',str))
-	 (ASSERT string? str)
-	 ;; Defaults:
-	 (let* ([mode "text"]
-		[repeats 0]
-		[rate 1000] ;; A khz... this is arbitrary.
-		[winsize 1] ;; Another meaningless default.
-		[skipbytes 0]
-		[offset 0]
-		[p (open-input-string str)]
-		[params (let loop ([x (read p)])
-			  (if (eof-object? x) '()
-			      (cons x (loop (read p)))))]		
-		[pairs (match params
-			 [() '()]
-			 [(,a ,b . ,[tl]) (cons (list a b) tl)]
-			 [,oth (error 'readFile "invalid parameter string to readFile primitive: ~s" str)])]
-		[num (lambda (n) 
-		       (if (integer? n) n			   
-			   (error 'readFile "expected numeric parameter, got: ~s" n)))]
-		[types (match t
-			 [#(,t* ...)  t*]
-			 [(Sigseg ,[t]) t]
-			 [,t   	(list t)])])
-	   (for-each (match-lambda ((,flag ,val))
-		       (case flag
-			 [(mode:) (set! mode (case val 
-					       [(text) "text"]
-					       [(binary) "binary"]
-					       [else (error 'readFile "unsupported mode: ~s" val)]))]
-			 [(repeats:)   (set! repeats (num val))]
-			 [(rate:)      (set! rate (num val))]
-			 [(skipbytes:) (set! skipbytes (num val))]
-			 [(offset:)    (set! offset  (num val))]
-			 [(window:)    (set! winsize (num val))]
-			 [else (error 'readFile "unknown option flag \"~s\"\n Valid flags are: ~s\n" 
-				      flag 
-				      '(mode: repeats: rate: skipbytes: offset: window:))])
-		       ) pairs)
-	   (when (equal? mode "text")
-	     (unless (= offset 0)
-	       (error 'readFile "doesn't support 'offset:' option in conjunction with text mode"))
-	     (unless (= skipbytes 0)
-	       (error 'readFile "doesn't support 'skipbytes:' option in conjunction with text mode")))
-	   
-	   ;; If we're not producing a sigseg, we must set the winsize to zero:
-	   (match t
-	     [(Sigseg ,t) (void)]
-	     [,else (set! winsize 0)])
-	   `(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
-	   )]
 
 	;; Anything already in assert form is covered.
 	;; [2007.01.24] Commenting:

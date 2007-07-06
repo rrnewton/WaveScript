@@ -78,6 +78,7 @@ rewindowS4S = {
     else List:map2(fun(a,b) joinsegs(a,b), ls1, ls2)
   }
 
+rewindowS4S :: (Stream (List (Sigseg a)), Int, Int) -> Stream (List (Sigseg a));
 rewindowSLS = {
   rewindowGeneral(nullL, startL, widthL, subsegL, joinsegsL)
 }

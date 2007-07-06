@@ -65,6 +65,8 @@
 
 	  test-regiment_helpers
 
+	  parse-readFile-modestring
+
 	  )
 
   (chezimports prim_defs grammar_checker)
@@ -1024,6 +1026,62 @@
 			     ))))
 	(regiment-parameters))
       )))
+
+
+;; The utility used for parsing the modestring arguments to readFile.
+(define (parse-readFile-modestring str typ fn)
+  (ASSERT string? str)
+  ;; Defaults:
+  (let* ([mode "text"]
+	 [repeats 0]
+	 [rate 1000] ;; one khz... this is arbitrary.
+	 [winsize 1] ;; Another meaningless default.
+	 [skipbytes 0]
+	 [offset 0]
+	 [p (open-input-string str)]
+	 [params (let loop ([x (read p)])
+		   (if (eof-object? x) '()
+		       (cons x (loop (read p)))))]		
+	 [pairs (match params
+		  [() '()]
+		  [(,a ,b . ,[tl]) (cons (list a b) tl)]
+		  [,oth (error 'readFile "invalid parameter string to readFile primitive: ~s" str)])]
+	 [num (lambda (n) 
+		(if (integer? n) n			   
+		    (error 'readFile "expected numeric parameter, got: ~s" n)))]
+	 [types (match typ
+		  [#(,t* ...)  t*]
+		  [(Sigseg ,[t]) t]
+		  [,t   	(list t)])])
+    (for-each (match-lambda ((,flag ,val))
+		(case flag
+		  [(mode:) (set! mode (case val 
+					[(text) "text"]
+					[(binary) "binary"]
+					[else (error 'readFile "unsupported mode: ~s" val)]))]
+		  [(repeats:)   (set! repeats (num val))]
+		  [(rate:)      (set! rate (num val))]
+		  [(skipbytes:) (set! skipbytes (num val))]
+		  [(offset:)    (set! offset  (num val))]
+		  [(window:)    (set! winsize (num val))]
+		  [else (error 'readFile "unknown option flag \"~s\"\n Valid flags are: ~s\n" 
+			       flag 
+			       '(mode: repeats: rate: skipbytes: offset: window:))])
+		) pairs)
+    (when (equal? mode "text")
+      (unless (= offset 0)
+	(error 'readFile "doesn't support 'offset:' option in conjunction with text mode"))
+      (unless (= skipbytes 0)
+	(error 'readFile "doesn't support 'skipbytes:' option in conjunction with text mode")))
+    
+    ;; If we're not producing a sigseg, we must set the winsize to zero:
+    (match typ
+      [(Sigseg ,t) (void)]
+      [,else (set! winsize 0)])
+    `(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
+    )
+  )
+
 
 ; ======================================================================
 

@@ -76,7 +76,7 @@
 	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	     (append '(eq? locdiff nodeid sense even? odd? dataFile readFile
 			   tuple tupref __foreign foreign foreign_box foreign_source
-			   or and show-and-string-append 
+			   or and 
 			   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 
 			   ;; These were resolved into the w/namespace versions:

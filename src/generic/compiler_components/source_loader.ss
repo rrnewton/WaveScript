@@ -99,7 +99,7 @@
 
     (if (equal? "ws" (extract-file-extension fn))
 	(let ([decls (ws-parse-file fn)])
-	  (printf "POSTPROCESSING: ~s\n" decls)
+;	  (printf "POSTPROCESSING: ~s\n" decls)
 	  (match (ws-postprocess decls)
 	    [(let* ,decls ,bod)
 	     (values `(base-lang '(program (letrec ,decls ,bod))) ())]))
@@ -273,18 +273,25 @@
 		 imported
 		 ))))]
       [(using ,M) `((using ,M))]
-      ;; This just renames all defs within a namespace.
+      ;; This just renames all defs within a "namespace".  There's
+      ;; some question, though, as to how they may refer to eachother.
       [(namespace ,Space ,[defs] ...)
        (map (lambda (def)
 	      (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+	      ;; Because of certain limitations in the current implementation
+	      ;; of letrec (value restriction), for the moment definitions
+	      ;; within the namespace still have to use the FULL NAMES of
+	      ;; their peers.
+	      (define (wrap-rhs e) e)
+	      ;(define (wrap-rhs e) `(using ,Space ,e))
+	      
 	      ;; We also inject a bunch of 'using' constructs so that
 	      ;; we can use the namespace's bindings from *within* the namespace:
 	      (match def
-		[(define ,v ,e) `(define ,(mangle v) (using ,Space ,e))]
-		[(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat (using ,Space ,e))]
+		[(define ,v ,e) `(define ,(mangle v) ,(wrap-rhs e))]
+		[(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
 		[(:: ,v ,t)     `(:: ,(mangle v) ,t)]
-		[(<- ,sink ,e)  `(<- ,sink (using ,Space ,e))]
-		))
+		[(<- ,sink ,e) `(<- ,sink ,(wrap-rhs e))]))
 	 (apply append defs))]
 
       [(uniondef ,ty ,def) `((uniondef ,ty ,def))]

@@ -222,11 +222,15 @@
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
     ; value primitives
-  `((cons ('a (List 'a)) (List 'a))
+  `(
+    
+    ;; These three are legacy Regiment names, don't use in WaveScript!:
+    (cons ('a (List 'a)) (List 'a))
     (car ((List 'a)) 'a)
     (cdr ((List 'a)) (List 'a))
     
-    ;; Some list primitives are exposed in the "Prelude".  These are just aliases:
+    ;; Some list primitives are exposed in the "Prelude".  
+    ;; These are just aliases for their more verbosely named counterparts:
     (head   ((List 'a)) 'a)      ;; Should remove car/cdr at some point.
     (tail   ((List 'a)) (List 'a))
     (append ((List 'a) (List 'a)) (List 'a))
@@ -357,7 +361,6 @@
     (not (Bool) Bool)
     (or  (Bool Bool) Bool)
     (and (Bool Bool) Bool)
-    (show-and-string-append ('a 'b) String)
     
     ;; These are in here so that various passes can treat them as
     ;; primitives rather than special forms.  (Just for the purpose of
@@ -478,8 +481,9 @@
     ; file, fileStream, streamFile, fileSource, readFile, openFile???
     ;; Maybe we could even use the same prim for windowed or unwindowed... it just depends on the type ascription.
     (readFile (String String) (Stream 'a))
-    (__readFile (String String Int Int (List Symbol)) (Stream 'a))
 
+    (__readFile (String String Int Int (List Symbol)) (Stream 'a))  ;; Internal
+    (readFile-wsearly (String String Magic) (Stream 'a)) ;; Internal
     
     ;; These are simpler interface that desugar into dataFile:
     ;; They use defaults rather than exposing as many parameters.

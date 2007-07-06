@@ -12,6 +12,8 @@
 ;;;; desugars + into g+.  The earlier this happens, the better, and
 ;;;; this was about as early as it could happen.
 
+;;;; TODO: RENAME THIS PASS.
+
 (module desugar-pattern-matching mzscheme
   (require "../../../plt/common.ss")
   (provide pass_desugar-pattern-matching test_desugar-patterns break-pattern)
@@ -53,6 +55,8 @@
     (lambda (expr fallthrough)
       (match expr 
 
+	;; Miscellaneous desugaring -- that must be done early!
+	;;======================================================================
 	;; Unadorned arithmetic symbols match onto their generic counterparts:
  	[+ 'g+] [- 'g-] [* 'g*] [/ 'g/] [^ 'g^]	
  	[(+ ,[a] ,[b]) `(g+ ,a ,b)]
@@ -63,6 +67,8 @@
 
 	;; This is a work-around for a name conflict:
 	[merge '_merge]
+	[ref 'Mutable:ref]
+	;;======================================================================	
 	
 	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])
 	 (let ([lam (if (null? binds*)

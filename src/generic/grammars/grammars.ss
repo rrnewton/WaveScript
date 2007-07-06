@@ -185,8 +185,6 @@
        [Expr ('or Expr ...)]
        [Expr ('and Expr ...)]
 
-       [Expr ('show-and-string-append Expr ...)]
-
        [LHS ('assert-type Type Pattern)]
 
        ;; We allow arbitrary type constructors because of user aliases:

@@ -957,7 +957,7 @@
 		   ;; These weren't really primitives:    
 		   tuple tupref ref deref static statref __foreign foreign foreign_box foreign_source
 		   ;; These were desugared or reduced to other primitives:
-		   or and dataFile show-and-string-append 
+		   or and dataFile 
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
 		   List:head List:tail 

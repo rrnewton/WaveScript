@@ -928,6 +928,10 @@
     [(assert-type ,t ,[e]) e]
     [(src-pos     ,p ,[e]) e]
 
+    ;; This accomodates ws.early:
+    [(readFile-wsearly ,[fn] ,[str] ,ty) `(readFile-wsearly ,fn ,str ,ty)]
+    [(delay ,[e]) `(delay ,e)]
+
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)

@@ -32,9 +32,8 @@
 
     (myremove '(Prim 'List:head) 
     (myremove '(Prim 'List:tail) 
-
-    (myremove '(Prim 'show-and-string-append)
-	      eta-primitives-grammar)))))))))))
+	      
+      eta-primitives-grammar))))))))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
@@ -51,7 +50,7 @@
 			   [(,a . ,[b]) `(cons ,a ,b)])
 			tenv
 			fallthrough)]
-
+	  
 	  ;; More sugar.
 	  ;; Don't really have a syntax for this in WaveScript:
 	  [(or ,[rands] ...)
@@ -67,8 +66,8 @@
 			tenv
 			fallthrough)]
 
-	  [(head ,[x]) `(car ,x)]
-	  [(tail ,[x]) `(cdr ,x)]
+	  [(head ,[x])      `(car ,x)]
+	  [(tail ,[x])      `(cdr ,x)]
 	  [(List:head ,[x]) `(car ,x)]
 	  [(List:tail ,[x]) `(cdr ,x)]
 
@@ -77,9 +76,6 @@
 	  [(append ,[x] ,[y]) `(List:append ,x ,y)]
 	  [(fold ,[x] ,[y])   `(List:fold ,x ,y)]
 	  [(map ,[x] ,[y])    `(List:map ,x ,y)]
-
-	  [(show-and-string-append ,[a] ,[b])
-	   `(string-append (show ,a) (show ,b))]
 
 	  ;; For now we just expand this into the forloop.
 	  ;; Might want to do something else later.

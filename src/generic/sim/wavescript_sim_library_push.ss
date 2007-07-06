@@ -19,12 +19,13 @@
 		 valid-sigseg?
 		 app foreign-app let Mutable:ref deref static statref		 
 		 
-		 wscase construct-data make-uniontype uniontype-tag uniontype-val
+		 wscase construct-data make-uniontype uniontype-tag uniontype-val 
 
 		 run-stream-query reset-state!
 
-		 __readFile ;__syncN
+		 __readFile 
 		 __foreign
+					;__syncN
 
 		 ;dump-binfile 
 		 ;audio 
@@ -71,7 +72,7 @@
 		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
-		 List:head List:tail
+		 List:head List:tail head tail
 		 List:assoc List:assoc_update
 
 		 joinsegs subseg seg-get width start end timebase
@@ -98,6 +99,9 @@
 		 C-free
 		 exclusivePtr
 		 getPtr
+
+		 readFile-wsearly FILE_EXISTS GETENV
+
 		 )
     (chezprovide (for for-loop-stack )
 ;		 letrec 
@@ -139,6 +143,11 @@
 	    (require (prefix s: "../../plt/chez_compat.ss"))
 ;	    (provide (all-from "../util/imperative_streams.ss"))
 	    ))
+
+    ;; Used to bind wavescript primitives to equivalent identifiers in Scheme.
+    (define-syntax define-alias 
+      (syntax-rules ()
+	[(_ v e) (define v e)]))
 
 
   ;; ================================================================================
@@ -208,7 +217,7 @@
     )
 
   (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
-
+  
   ;; Launch a stream element to all sinks.
   (define-syntax fire!
     (syntax-rules ()
@@ -433,7 +442,7 @@
   ;; We read in "blocks" to reduce the overhead of all those thunks!
   ;; (Actually, this didn't speed things up much, just a little.)
   (define DATAFILE_BATCH_SIZE 500)
-
+  
   ;; Should have batched data file...
   (define (__readFile file mode repeat rate skipbytes offset winsize types)
     ;; TODO: implement skipbytes and winsize!!!
@@ -793,14 +802,18 @@
     (syntax-rules ()
       [(_ x [TC* fun*] ...)
        (let* ([ls `((TC* ,fun*) ...)]
-	      [entry (assq (uniontype-tag x) ls)])	
+	      [entry (assq (uniontype-tag x) ls)])		 
+	 ;(printf "WSCASE OF: ~s ~s\n" x ls)
 	 (if entry
+	     ;; A void value indicates that it really carries no value.
 	     (if (eqv? (uniontype-val x) (void))
 		 ((cadr entry))
 		 ((cadr entry) (uniontype-val x)))
 	     ;(begin (inspect x)(inspect entry))
 	     (let ([entry2 (assq default-case-symbol ls)])
-	       ((cadr entry2)))
+	       (if entry2 
+		   ((cadr entry2))
+		   (error 'wscase "unmatched case in case construct (with no default)")))
 	     ))]))
 
   ;; We just call the continuation, the fluid-let worries about popping the stack.
@@ -846,7 +859,7 @@
 	 [(Sigseg ,t)         (type->reader t)]
 	;[Float ]
 	;[Complex ]
-	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))
+	 [,other (error 'type->reader "can't support binary reading of type ~s yet." other)]))
      (define readers (list->vector (map type->reader types)))
      (define widths (list->vector (map type->width types)))
      (define len (s:length types))
@@ -885,7 +898,18 @@
 
   (define (gint x) x)
 
-  (define g+ s:+) (define g- s:-) (define g* s:*) (define g/ s:/)
+  (define g+ s:+) (define g- s:-) (define g* s:*) 
+  ;; Special behavior for division.
+  ;; This should only be invoked with ws.early.
+  (define (g/ a b)
+    ;; We use the physical representation of the number to determine what its type is.
+    (cond
+;     [(exact? a) (quotient a b)]
+     [(fixnum? a) (fxquotient a b)]
+;     [(flonum)]
+     ;; Floats and complex just fall through to the normal scheme division.
+     [else (s:/ a b)]
+     ))
 
   (define ws+ fx+)   (define ws- fx-)   (define ws* fx*)   (define ws/ fx/)
 
@@ -1047,21 +1071,24 @@
              ;; Don't know of an interactive object inspector in PLT:
              (define (inspect x) x))             
 
-     (define tuple vector)
+     (define-alias tuple vector)
      (define (tupref ind _ v)
        (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
 
-     (define List:length s:length)
-     (define List:ref list-ref)
+     (define-alias List:length s:length)
+     (define-alias List:ref list-ref)
 
-     (define List:make make-list)
-     (define List:head car)
-     (define List:tail cdr)
+     (define-alias List:make make-list)
+     (define-alias List:head car)
+     (define-alias List:tail cdr)
 
-     (define List:reverse reverse)
-     (define List:append append)
-     (define List:map map)
+     (define-alias head car)
+     (define-alias tail cdr)
+
+     (define-alias List:reverse reverse)
+     (define-alias List:append append)
+     (define-alias List:map map)
 
      ;; These should really be defined in the language.  They aren't
      ;; currently [2006.10.26] because the elaborator isn't ready to
@@ -1335,6 +1362,7 @@
  ;; NOTE: This isn't working on 64-bit justice.
  (define __foreign
   (let ()
+
     (define (Convert T)
       (match T
 	[Int     'fixnum]
@@ -1470,6 +1498,19 @@
 ;  static_library=$1; shared_library=$2
 ;  /usr/bin/ld -O3 -x -no_excpt -expect_unresolved '*' -rpath /freeware/gcc/alpha/lib -shared -o ${shared_library:-${static_library%%a}so} -all $1
 
+
+;; ====================================================================================================== ;;
+;;                                        FOR WS.EARLY ONLY:                                              ;;
+;; ====================================================================================================== ;;
+
+  ;; Hack for ws.early
+(define (readFile-wsearly fn str type) 
+  (match (parse-readFile-modestring str type fn)
+    [(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
+     (__readFile fn mode repeats rate skipbytes offset winsize types)]))
+
+(define FILE_EXISTS file-exists?)
+(define GETENV getenv)
 
 
 ) ; End module.

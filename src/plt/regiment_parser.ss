@@ -660,7 +660,7 @@
          [(exp AND exp) `(and ,$1 ,$3)]
          [(exp OR exp) `(or ,$1 ,$3)]
 
-         [(exp ++ exp) `(show-and-string-append ,$1 ,$3)]
+         [(exp ++ exp) `(string-append (show ,$1) (show ,$3))]
          [(exp ::: exp) `(cons ,$1 ,$3)]
 
          [(exp + exp) `(app + ,$1 ,$3)]
@@ -742,7 +742,7 @@
            [(^:) '^:]
 
 	   [(:::) 'cons]
-	   [(++) 'show-and-string-append]
+	   [(++) '(lambda (x y) (string-append (show x) (show y)))]
            
            [(<) '<]
            [(>) '>]
