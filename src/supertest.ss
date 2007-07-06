@@ -161,13 +161,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory test-directory)
        (define testpetite
 	 (system/exit-code 
-	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> 0_PETITE_UNIT_TESTS.log"))
+	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> petite_UNIT_TESTS.log"))
        (fpf "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite)))
 
 (begin (define fullchez (system/exit-code "which chez > /dev/null"))
        (fpf "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez)))
 
-(begin (define loaded (system/exit-code "./regiment_script.ss &> 1_SCRIPT_LOAD.log"))
+(begin (define loaded (system/exit-code "./regiment_script.ss &> chez_SCRIPT_LOAD.log"))
        (fpf "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
 
 (begin (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
@@ -176,7 +176,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (printf "First: from source\n")
        (printf "============================================================\n")
-       (define frmsrc (system/exit-code "./regiment_script.ss test &> 2_UNIT_TESTS.log"))
+       (define frmsrc (system/exit-code "./regiment_script.ss test &> chez_UNIT_TESTS.log"))
        (fpf "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc)))
 
 (begin (newline)
@@ -184,23 +184,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (ASSERT (putenv "REGDEBUGMODE" "OFF"))
 
-       (fpf "chez: Build .so file:                         ~a\n" (code->msg! (system/exit-code "make chez &> 3_BUILD_SO.log")))
-       (fpf "chez: Also build debugmode .so file:          ~a\n" (code->msg! (system/exit-code "make dbg &> 3b_BUILD_DBG.log")))
+       (fpf "chez: Build .so file:                         ~a\n" (code->msg! (system/exit-code "make chez &> chez_BUILD_SO.log")))
+       (fpf "chez: Also build debugmode .so file:          ~a\n" (code->msg! (system/exit-code "make dbg &> chez_BUILD_DBG.log")))
 	     
-       (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
-       (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
+       (ASSERT (system "./regiment_script.ss 2> chez_LOAD_FROM_SO.log"))
+       (define loadedso (system/exit-code "grep 'compiled .so' chez_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
 
 #|
        (fpf "chez: Build .boot file:                       ~a\n"
-	    (code->msg! (system/exit-code "make boot &> 3B_BUILD_BOOT.log")))
-       (ASSERT (system "./bin/regiment 2> 4B_LOAD_FROM_BOOT.log"))
+	    (code->msg! (system/exit-code "make boot &> chez_BUILD_BOOT.log")))
+       (ASSERT (system "./bin/regiment 2> chez_LOAD_FROM_BOOT.log"))
        (fpf "chez: System loads from .boot file:           ~a\n" 
-	    (code->msg! (system/exit-code "grep 'compiled .so' 4B_LOAD_FROM_BOOT.log")))
+	    (code->msg! (system/exit-code "grep 'compiled .so' chez_LOAD_FROM_BOOT.log")))
 
-
-       (fpf "chez: Build DEBUGMODE .so file:               ~a\n"
-	    (code->msg! (system/exit-code "make dbg &> 3C_BUILD_DBG.log")))
 
 |#
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
@@ -229,7 +226,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
-(begin (define c-build (system/exit-code "make c &> 5_BUILD_C_EXTENSIONS.log"))
+(begin (define c-build (system/exit-code "make c &> gcc_BUILD_C_EXTENSIONS.log"))
        (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
 ;; Now clean again:
@@ -238,7 +235,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline) (fpf "\n")
        (printf "Third: building bytecode in PLT\n")
        (printf "============================================================\n")
-       (define wsparse (system/exit-code "make wsparse &> 6_BUILD_WSPARSE.log"))
+       (define wsparse (system/exit-code "make wsparse &> plt_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
 
 
@@ -256,10 +253,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	   ))
        )
 
-(begin (define pltbc (system/exit-code "make pltbc &> 7_BUILD_PLT_BYTECODE.log"))
+(begin (define pltbc (system/exit-code "make pltbc &> plt_BUILD_PLT_BYTECODE.log"))
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
-(begin (define pltrun (system/exit-code "regiment.plt &> 7b_RUN_PLT_BYTECODE.log"))
+(begin (define pltrun (system/exit-code "regiment.plt &> plt_RUN_PLT_BYTECODE.log"))
        (fpf "plt: Run system from command line with PLT:   ~a\n" (code->msg! pltrun)))
 
 ;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
@@ -268,7 +265,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (define plttests (system/exit-code 
 			 ;(format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log" test-directory)
-			 "regiment.plt test &> 8_PLT_UNIT_TESTS.log"
+			 "regiment.plt test &> plt_UNIT_TESTS.log"
 			  ))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
@@ -282,30 +279,34 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory (format "~a/demos/wavescope" test-directory))
        (define getdata (system/exit-code "./download_sample_marmot_data"))
        (fpf "ws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
-       (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
+
        (current-directory test-directory)
-       (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
+       (fpf "ws: Running WaveScript Demos:                 ~a\n" 
+	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
+       (fpf "ws.early: Running Demos (no static elab):     ~a\n" 
+	    (code->msg! (system/exit-code (format "./testall_early &> ~a/wsearly_demos.log" test-directory))))
+       )
 
 
 (begin (current-directory (format "~a/lib/" test-root))
-       (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/10_stdlib.log" test-directory)))
+       (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib_test.ws:                   ~a\n" (code->msg! stdlib))
-       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/10b_matrix.log" test-directory)))
+       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix.log" test-directory)))
        (fpf "ws: Loading matrix_test.ws:                   ~a\n" (code->msg! matrix))
        (current-directory test-directory))
 
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
        (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/11_build_gsl_wrappers.log" test-directory))))       
+	    (code->msg! (system/exit-code (format "make &> ~a/gsl_wrappers.log" test-directory))))       
        (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
-	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/11c_matrix_gsl.log" test-directory))))
+	    (code->msg! (system/exit-code (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/demos/wavescope" test-directory))
        (putenv "REGIMENTHOST" "plt")
        (define pltdemos (system/exit-code 
-			 (format "./testall_demos.ss &> ~a/9B_WS_DEMOS_PLT.log" test-directory)))
+			 (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory)))
        (putenv "REGIMENTHOST" "")
        (fpf "plt: Running demos in PLT:                    ~a\n" (code->msg! pltdemos)))
 
@@ -337,12 +338,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 (begin (current-directory engine-dir)
-       (define engine-make (system/exit-code (format "make all &> ~a/12_ENGINE_MAKE_ALL.log" test-directory)))
+       (define engine-make (system/exit-code (format "make all &> ~a/enigne_MAKE_ALL.log" test-directory)))
        (fpf "Engine: 'make all':                            ~a\n" (code->msg! engine-make)))
 
 ;; TODO: This doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/13_testSignal.log" test-directory)))
+       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" test-directory)))
        ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
        (code->msg! testSignal)
        (fpf "Engine: testSignal-SMSegList                  ~a\n"
@@ -351,7 +352,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TODO: This probably doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/14_PipeMemory.log" 
+       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/engine_PipeMemory.log" 
 						    test-directory)))
        (code->msg! pipeMemory)
        (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
@@ -367,7 +368,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/15_WSC_DEMOS.log" test-directory)))
+       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/wsc_demos.log" test-directory)))
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
@@ -381,10 +382,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory test-directory)
        (fpf "wscaml: Building ocaml libraries (fftw, etc): ~a\n" 
-	    (code->msg! (system/exit-code (format "make ocaml &> ~a/16_build_caml_stuff.log" test-directory))))
+	    (code->msg! (system/exit-code (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))))
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/17_test_demos_caml.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))))
        (current-directory test-directory))
 
 (fpf "\n\nWaveScript MLTON Backend:\n" )
@@ -394,16 +395,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wsmlton: Running Demos through MLton:         ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/18_test_demos_mlton.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory))))
        (current-directory test-directory))
 (begin 
        (current-directory (format "~a/lib/" test-root))
        (fpf "wsmlton: Compiling stdlib_test:               ~a\n"
 	    (code->msg! (system/exit-code 
-               (format "wsmlton stdlib_test.ws -exit-error &> ~a/10b_mlton_stdlib.log" test-directory))))
+               (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))))
        (fpf "wsmlton: Running stdlib_test:                 ~a\n"
 	    (code->msg! (system/exit-code 
-	      (format "./query.mlton.exe -n 10 -exit-error &> ~a/10c_run_mltonstdlib.log" test-directory))))
+	      (format "./query.mlton.exe -n 10 -exit-error &> ~a/wsmlton_stdlib_run.log" test-directory))))
        (current-directory test-directory))
 
 
@@ -416,13 +417,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
-       (define pipeline-web (system/exit-code (format "make test &> ~a/11b_pipeline-web.log" test-directory)))
+       (define pipeline-web (system/exit-code (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
        (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/stockticks" test-root))
        (fpf "ws: Running stockticks app:                   ~a\n"
-	    (code->msg! (system/exit-code (format "make test &> ~a/11c_stockticks.log" test-directory))))
+	    (code->msg! (system/exit-code (format "make test &> ~a/ws_stockticks.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/pipeline" test-root))
@@ -430,7 +431,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code "bunzip2 pipeline1.data.bz2")))
        (fpf "ws: Running pipeline app:                     ~a\n"
 	    (code->msg! (system/exit-code 
-              (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/11d_pipeline.log" test-directory))))
+              (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
+       (fpf "ws.early: Running pipeline app:               ~a\n"
+	    (code->msg! (system/exit-code 
+              (format "echo 10 | ws.early pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
        (current-directory test-directory))
 
 ;; MARMOT
@@ -440,26 +444,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
 	    (code->msg! (system/exit-code 
-            (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/11e_marmot.log" test-directory))))
-       (current-directory test-directory))
-(begin (current-directory (format "~a/apps/marmot" test-root))
-       (fpf "ws: Running marmot app (first phase):         ~a\n"
+            (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/ws_marmot.log" test-directory))))
+       (fpf "ws.early: Running marmot app:                 ~a\n"
 	    (code->msg! (system/exit-code 
-              (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/11e_marmot.log" test-directory))))
-       (current-directory test-directory))
-(begin (current-directory (format "~a/apps/marmot" test-root))
+            (format "echo 1 | ws.early run_first_phase.ws -exit-error &> ~a/wsearly_marmot.log" test-directory))))
+
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
-	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/11e2_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot_build.log" test-directory))))
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
-	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/11e3_marmot.log" test-directory))))
-       (current-directory test-directory))
-(begin (current-directory (format "~a/apps/marmot" test-root))
+	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot_run.log" test-directory))))       
+
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
-	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/11e4_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot_build.log" test-directory))))
 ;; [2007.07.03] This is having problems right now with the sync.  Not running atm.
 #;
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
-	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/11e3_marmot.log" test-directory))))
+	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/wsc_marmot_run.log" test-directory))))
        (current-directory test-directory))
 
 
@@ -471,21 +471,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code "./download_small_sample_data")))
        (fpf "ws: Running pothole4 app:                     ~a\n"
 	    (code->msg! (system/exit-code 
-              (format "echo 3 | ws.debug pothole4.ws -exit-error &> ~a/11f_pothole4.log" test-directory))))
+              (format "echo 3 | ws.debug pothole4.ws -exit-error &> ~a/ws_pothole4.log" test-directory))))
+       (fpf "ws.early: Running pothole4 app:               ~a\n"
+	    (code->msg! (system/exit-code 
+              (format "echo 3 | ws.early pothole4.ws -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
        (fpf "wscaml: Compiling pothole4 app:               ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "wscaml pothole4.ws -exit-error &> ~a/11g_pothole4_caml_compile.log" test-directory))))
+             (format "wscaml pothole4.ws -exit-error &> ~a/wscaml_pothole_build.log" test-directory))))
        (fpf "wscaml: Running pothole4:                     ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "./query.caml.exe &> ~a/11h_pothole4_caml_run.log" test-directory))))
+             (format "./query.caml.exe &> ~a/wscaml_pothole4_run.log" test-directory))))
 
        (fpf "wsmlton: Compiling pothole4 app:              ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "wsmlton pothole4.ws -exit-error &> ~a/11i_pothole4_mlton_compile.log" test-directory))))
+             (format "wsmlton pothole4.ws -exit-error &> ~a/wsmlton_pothole4_build.log" test-directory))))
        (fpf "wsmlton: Running pothole4 app:                ~a\n"
 	    (code->msg! (system/exit-code 
-             (format "./query.mlton.exe -n 3 &> ~a/11j_pothole4_mlton_run.log" test-directory))))
+             (format "./query.mlton.exe -n 3 &> ~a/wsmlton_pothole4_run.log" test-directory))))
 
        (current-directory test-directory))
 
