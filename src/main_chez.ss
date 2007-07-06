@@ -495,6 +495,8 @@
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
 ;(eval-when (compile eval load) (compile-profile #f))
 
+;(include "generic/passes/static_elaborate/interpret-meta.ss")  ;(import interpret-meta)
+
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 

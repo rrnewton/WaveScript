@@ -9,11 +9,18 @@ MACHINETYPE=`uname -s`-`uname -m | sed 's/ /_/'`
 
 all: fftw.so usleep_default
 
+# This is VERY specific to my setup.
 fftw.so: fftw.c fftw.ss
 	@echo; echo "Building FFTW..."
 	@echo "------------------------------------------------------------"
 #	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.0a/boot/$(DIR) -lfftw3
-	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.3/boot/$(DIR) -lfftw3
+#	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.3/boot/$(DIR) -lfftw3
+#
+# [2007.07.06] This isn't currently working under Mac OS:
+	if [ `uname` == "Darwin" ]; \
+	then  gcc -fPIC -dynamiclib -o fftw.o fftw.c -I$(REGIMENTD)/depends/petite_chez_scheme7.3/boot/$(DIR) -lfftw3; \
+        else  gcc -fPIC -shared -o fftw.o fftw.c -I$(REGIMENTD)/depends/petite_chez_scheme7.3/boot/$(DIR) -lfftw3; \
+	fi;
 	(echo '(compile-file "fftw.ss" "fftw.so")' | $(CHEZ))
 	if ! [ -d $(BUILD) ]; then mkdir $(BUILD); fi
 	cp fftw.so $(BUILD)
