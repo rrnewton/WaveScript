@@ -1,8 +1,11 @@
 
 
-;(module interpret-meta mzscheme
-;  (require (all-except "../../../plt/common.ss" ))
-;  (provide Eval Marshal Marshal-Closure  interpret-meta)
+(module interpret-meta mzscheme
+  (require (all-except "../../../plt/common.ss" )
+           "../../langs/lang_wavescript.ss")
+  (provide Eval Marshal Marshal-Closure  interpret-meta
+	   test-interpret-meta)
+  (chezimports)
 
 ; ================================================================================ ;
 ;;; Type defs and helpers
@@ -16,6 +19,9 @@
 
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
 
+(define (annotation? s) (memq s '(assert-type src-pos)))
+
+  
 #;
 (define (unwrap-val v) 
   (cond 
@@ -76,74 +82,47 @@
        (Eval bod newenv))]
 
     [(lambda ,formal* ,ty* ,bod) (make-closure formal* bod env)]
-
-    ;; Need to do a type based dispatch:
-#;
+ 
+    [(Mutable:ref ,[x]) (make-ref x)]
+    [(deref ,[x])       (ref-contents x)]
+    [(set! ,[v] ,[rhs]) (set-ref-contents! v rhs)]
+    
+    ;; This requires a bit of sketchiness to reuse the existing
+    ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
-;     (wavescript-language (cons prim (map unwrap-val x*)))]
-     (if (andmap plain? x*)	 
-	 (wavescript-language (cons prim (map plain-val x*)))
-	 (inspect 'erk)
-	 )]
-#;
-    [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
-     (match (regiment-primitive? prim)
-       [()])]
+     (ASSERT (not (assq prim wavescript-stream-primitives)))
+					;   (printf "RUNNING ~s ~s\n" prim x*)
+     ;; This is probably also rather slow.
+     (let ([raw (wavescript-language 
+		 ;; We're willing to give it "plain" vals.
+		 ;; Refs should not be passed first class.
+		 ;; And closures/streams remain opaque:
+		 (cons prim (map (lambda (x) 
+				   (ASSERT (not (ref? x)))
+				   (if (plain? x) `',(plain-val x) x)) x*)))])
+       (if (wrapped? raw) raw (make-plain raw)))]
 
-  
-  ;[(set! ,v ,[rhs]) (mutate-env! env v rhs)]
+    [(app ,[f] ,[e*] ...)
+					;   (printf "APPLYING CLOSURE to args ~s\n" e*)
+     (Eval (closure-code f) 
+	   (extend-env (closure-formals f) e*
+		       (closure-env f)))]
 
-;  [(Mutable:ref ,[x]) (apply-to-wrapped box x)]
-;  [(deref ,[x]) (apply-to-wrapped unbox x)]
-;  [(set! ,[v] ,[rhs]) (set-box! (unwrap v) rhs)]
-
-  [(Mutable:ref ,[x]) (make-ref x)]
-  [(deref ,[x])       (ref-contents x)]
-  [(set! ,[v] ,[rhs]) (set-ref-contents! v rhs)]
-
-
-  ;; This requires a bit of sketchiness to reuse the existing
-  ;; implementation of this functionality within wavescript_sim_library_push
-  [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
-   (ASSERT (not (assq prim wavescript-stream-primitives)))
-;   (printf "RUNNING ~s ~s\n" prim x*)
-   ;; This is probably also rather slow.
-   (let ([raw (wavescript-language 
-	       ;; We're willing to give it "plain" vals.
-	       ;; Refs should not be passed first class.
-	       ;; And closures/streams remain opaque:
-	       (cons prim (map (lambda (x) 
-				 (ASSERT (not (ref? x)))
-				 (if (plain? x) `',(plain-val x) x)) x*)))])
-     (if (wrapped? raw) raw (make-plain raw))
-#;
-     (match (last (regiment-primitive? prim))
-       [(Stream ,_) raw]
-       [,_ (make-plain raw)])
-     )]
-
-  [(app ,[f] ,[e*] ...)
-;   (printf "APPLYING CLOSURE to args ~s\n" e*)
-   (Eval (closure-code f) 
-	 (extend-env (closure-formals f) e*
-		     (closure-env f)))]
-
-  [(for (,i ,[st] ,[en]) ,bod)
-   (let ([end (plain-val en)])       
-     (do ([i (plain-val st) (fx+ i 1)])
-	 ((> i end) (make-plain #()))
-       (Eval bod (extend-env '(i) (list (make-plain i)) env))))]
-  [(while ,tst ,bod)
-   (begin
-     (let loop ()
-       (when (plain-val (Eval tst env))
-	 (Eval bod env)
-	 (loop)))
-     (make-plain #()))]
-  [(begin ,x* ... ,last) 
-   (begin (for-each (lambda (x) (Eval x env)) x*)
-	  (Eval last env))]
-
+    [(for (,i ,[st] ,[en]) ,bod)
+     (let ([end (plain-val en)])       
+       (do ([i (plain-val st) (fx+ i 1)])
+	   ((> i end) (make-plain #()))
+	 (Eval bod (extend-env '(i) (list (make-plain i)) env))))]
+    [(while ,tst ,bod)
+     (begin
+       (let loop ()
+	 (when (plain-val (Eval tst env))
+	   (Eval bod env)
+	   (loop)))
+       (make-plain #()))]
+    [(begin ,x* ... ,last) 
+     (begin (for-each (lambda (x) (Eval x env)) x*)
+	    (Eval last env))]
   ))
 
 
@@ -268,6 +247,9 @@
        (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
 
 
+; ================================================================================ ;
+;;; Lift constants and check sharing.
+
 
 ; ================================================================================ ;
 ;;; Entrypoint and Unit Tests
@@ -331,4 +313,4 @@
     these-tests))
 
 
-;) ;; End module
+) ;; End module

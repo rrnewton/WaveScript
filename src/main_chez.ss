@@ -493,6 +493,7 @@
 
 ;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+(include "generic/passes/static_elaborate/interpret-meta.ss")  (import interpret-meta)
 ;(eval-when (compile eval load) (compile-profile #f))
 
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
@@ -807,5 +808,3 @@
 (newline)(display (text->string (emit-caml-wsquery (explicit-stream-wiring caml-example3))))(newline)
 |#
 
-
-(include "generic/passes/static_elaborate/interpret-meta.ss")  ;(import interpret-meta)
