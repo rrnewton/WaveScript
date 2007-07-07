@@ -2,9 +2,7 @@
 
 
 
-
-
-
+;(module interpret-meta mzscheme
 
 
 (reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
@@ -12,11 +10,21 @@
 (reg:define-struct (closure formals code env))
 (reg:define-struct (streamop name op code parents))
 
+(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x)))
+
 (define (apply-env env v) 
   (ASSERT symbol? v)
-  (let ([x (cadr (ASSERT (assq v env)))])
-    (if (box? x) (unbox x) x)))
+  (let* ([x (cadr (ASSERT (assq v env)))]
+	 [result (if (box? x) (unbox x) x)])
+    (ASSERT wrapped? result)
+    result))
 (define (extend-env id* val* env) (append (map list id* val*) env))
+;; Could explicitly use a store...
+(define (mutate-env! env v x)
+  (let ([entry (apply-env env v)])
+    (cond
+     [(plain? entry) (set-plain-val! entry (plain-val x))]
+     [else (error 'mutate-env! "unhandled environment entry: ~s" entry)])))
 
 (define (unwrap-val v) 
   (cond 
@@ -24,9 +32,7 @@
    [(tuple? v) (list->vector (tuple-fields v))]
    [else (error 'interpret-meta:unwrap-val "unmatched val: ~s" v)]))
 
-(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x)))
-
-(define (Expr x env)
+(define (Eval x env)
   (match x
     [,v (guard (symbol? v)) (apply-env env v)]
     [',c (make-plain c)]
@@ -38,19 +44,19 @@
     [(iterate ,[f] ,[s])    (make-streamop #f 'iterate f (list s))]
     [(unionList ,[ls])      (make-streamop #f 'unionN #f (plain-val ls))]
 
-    [(if ,[t] ,c ,a) (Expr (if (plain-val t) c a) env)]
+    [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env)]
     
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
-     (Expr bod (extend-env lhs* rhs* env))]
+     (Eval bod (extend-env lhs* rhs* env))]
 
-    ;; Let 'n set semantics:
+    ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
        (for-each (lambda (cell rhs)
-		   (set-box! cell (Expr rhs newenv)))
+		   (set-box! cell (Eval rhs newenv)))
 	 cells rhs*)
-       (Expr bod newenv))]
+       (Eval bod newenv))]
 
     [(lambda ,formal* ,ty* ,bod) (make-closure formal* bod env)]
 
@@ -67,9 +73,12 @@
      (match (regiment-primitive? prim)
        [()])]
 
+  ;; This requires a bit of sketchiness to reuse the existing
+  ;; implementation of this functionality within wavescript_sim_library_push
   [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
    (ASSERT (not (assq prim wavescript-stream-primitives)))
 ;   (printf "RUNNING ~s ~s\n" prim x*)
+   ;; This is probably also rather slow.
    (let ([raw (wavescript-language 
 	       (cons prim (map (lambda (x) (if (plain? x) `',(plain-val x) x)) x*)))])
      (if (wrapped? raw) raw (make-plain raw))
@@ -81,32 +90,63 @@
 
   [(app ,[f] ,[e*] ...)
 ;   (printf "APPLYING CLOSURE to args ~s\n" e*)
-   (Expr (closure-code f) 
+   (Eval (closure-code f) 
 	 (extend-env (closure-formals f) e*
 		     (closure-env f)))]
+
+  
+  ;(define-syntax Mutable:ref (syntax-rules () [(_ x) x]))
+  ;(define-syntax deref (syntax-rules () [(_ x) x]))
+  ;[(Mutable:ref ,[x]) ()]
+  [(set! ,v ,[rhs]) (mutate-env! env v rhs)]
+
+  [(for (,i ,[st] ,[en]) ,bod)
+   (let ([end (plain-val en)])       
+     (do ([i (plain-val st) (fx+ i 1)])
+	 ((> i end) (make-plain #()))
+       (Eval bod (extend-env '(i) (list (make-plain i)) env))))]
+  [(while ,tst ,bod)
+   (begin
+     (let loop ()
+       (when (plain-val (Eval tst env))
+	 (Eval bod env)
+	 (loop)))
+     (make-plain #()))]
+  [(begin ,x* ... ,last) 
+   (begin (for-each (lambda (x) (Eval x env)) x*)
+	  (Eval last env))]
+
   ))
 
 
+(define-pass interpret-meta [Expr Eval])
+
 (define-testing these-tests
-  `([(,plain-val (,Expr '(+_ '1 '2) '())) 3]
-
-    [(,plain-val (,Expr '(app (lambda (x) (Int) x) '3) '())) 3]
-    [(,plain-val (,Expr '(car (cons '39 '())) '())) 39]
-
-    [(,Expr '(timer '3) '()) ,streamop?]
-
-    [(,Expr '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()) ,streamop?]
-
-    [(,plain-val (,Expr '(letrec ([x Int '3]) x) '())) 3]
-
-    [(,plain-val (,Expr '(let ([x Int '3]) (wsequal? x '3)) '())) #t]
-
-    [(,plain-val (,Expr 
+  `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]
+    [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '())) 3]
+    [(,plain-val (,Eval '(car (cons '39 '())) '())) 39]
+    [(,Eval '(timer '3) '()) ,streamop?]
+    [(,Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()) ,streamop?]
+    [(,plain-val (,Eval '(letrec ([x Int '3]) x) '())) 3]
+    [(,plain-val (,Eval '(let ([x Int '3]) (wsequal? x '3)) '())) #t]
+    [(,plain-val (,Eval 
      '(letrec ([fact 'a (lambda (n) (Int) 
         (if (wsequal? '1 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6)) '())) 
      720]
-  
+    [(,plain-val (,Eval 
+     '(let ([v 'a (Mutable:ref '99)])
+	(begin (set! v '89)
+	       v)) '()))    89]
+    [(,plain-val (,Eval 
+     '(let ([v 'a (Mutable:ref '0)])
+	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
+	       v)) '()))    10]
+    [(,plain-val (Eval 
+     '(let ([v 'a (Mutable:ref '0)])
+	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
+	       v)) '()))    10]
+    
 
     ))
 
@@ -116,9 +156,11 @@
     these-tests))
 
 
+;) ;; End module
+
 #|
 
-(Expr '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '())
+(Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '())
 
 
 |#
