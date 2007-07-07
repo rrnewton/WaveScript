@@ -469,7 +469,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory (format "~a/apps/potholes" test-root))
        (fpf "    Fetching pothole data                     ~a\n" 
-	    (code->msg! (system/exit-code "./download_small_sample_data  &> ~a/download_pothole_data.log")))
+	    (code->msg! (system/exit-code "./download_small_sample_data  &> ~a/download_pothole_data.log" 
+					  test-directory)))
 
        ;; TEMP FIXME!!!
        ;; Temporarilly turning off debug mode for pothole apps.

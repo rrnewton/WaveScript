@@ -68,6 +68,11 @@
 		(let ([rhs* (map (lambda (x) (process-expr x var-table)) rhs*)]
 		      [expr (process-expr expr var-table)])
 		  `(letrec ([,new-lhs* ,type* ,rhs*] ...) ,expr)))]
+
+	     ;; Safety net: we must have caught all binding forms or we're in trouble.
+	     [,bf (guard (binding-form? bf)) 
+		  (error 'rename-vars "missed binding form!:\n ~s" bf)]
+
 	     [,other (fallthrough other)]))
 	 (core-generic-traverse driver (lambda (ls k) (apply k ls)) expr))
        ;; Main pass body:

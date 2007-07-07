@@ -2,6 +2,7 @@
 
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
+	   "static-elaborate.ss"
            "../../langs/lang_wavescript.ss")
   (provide Eval Marshal Marshal-Closure  interpret-meta
 	   test-interpret-meta)
@@ -123,6 +124,9 @@
     [(begin ,x* ... ,last) 
      (begin (for-each (lambda (x) (Eval x env)) x*)
 	    (Eval last env))]
+
+    ;; FIXME: Should attach source info to closures:
+    [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
 
 
@@ -257,7 +261,9 @@
 ;(Marshal (Eval '(car (cons (iterate (letrec ([x 'a '3]) (lambda (x vq) (a b) x)) (timer '3)) '())) '()))
 ;(Marshal (Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()))
 
-(define-pass interpret-meta [Expr (compose Marshal Eval)])
+(define-pass interpret-meta 
+    [OutputGrammar static-elaborate-grammar]
+    [Expr (lambda (x fallthru)  (Marshal (Eval x '())))])
 
 (define-testing these-tests
   `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]
