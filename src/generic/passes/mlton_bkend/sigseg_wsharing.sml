@@ -78,19 +78,19 @@ fun toArray {dat,st,sz,off} =
 
 (* Improper bounds checking currently!! *)
 (* Should check agaainst 'sz' *)
-fun ss_get ({dat,off,sz,st}, i) = 
+fun ss_get ({dat,off,sz,st}, ind) = 
   let 
 (*     val _ = checkseg {dat=dat,off=off,sz=sz,st=st} *)
 (*     val _ = assert (i < sz) *)
     fun loop ls i =
       case ls 
-       of  [] => raise (SigSegFailure "ss_get out of bounds ref")
+       of  [] => raise (SigSegFailure ("ss_get out of bounds ref " ^ Int.toString ind))
         | h::t => 
             let val hlen = length h in
 	    if i < hlen
 	    then sub (h, i)
 	    else loop t (i - hlen) end
-  in loop dat (i + off) end
+  in loop dat (ind + off) end
 
 (* This makes sure that offset=0 *)
 (* Returns just the data list *)

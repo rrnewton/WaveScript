@@ -411,8 +411,6 @@
   (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
-  (ws-run-pass p rename-vars)
-
   ;; This is the initial typecheck. 
   (parameterize ([inferencer-enable-LUB #f]
 		 [inferencer-let-bound-poly #t])
@@ -452,7 +450,11 @@
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-;  (ws-run-pass p rename-vars)
+  ;; [2007.07.06] Moving this back where it belongs... after typechecking
+  ;; The only reason it was moved earlier was to accomodate using a hash table for type environments
+  ;; ... which didn't work anyway.
+  (ws-run-pass p rename-vars)
+
   (DEBUGMODE (do-early-typecheck) (void))
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)

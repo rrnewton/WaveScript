@@ -11,7 +11,7 @@ NSTARGATE_GCC_ROOT="$NSTARGATE_TOOLS_ROOT"
 NSTARGATE_LINUX_ROOT="$NSTARGATE_TOOLS_ROOT/arm-linux"
 
 GLIB_PATH="$NSTARGATE_LINUX_ROOT/lib/libglib-2.0.so"
-GLIB_CFLAGS=" -I$NSTARGATE_LINUX_ROOT/include/glib-2.0 -I$NSTARGATE_LINUX_ROOT/lib/glib-2.0/include "
+#GLIB_CFLAGS=" -I$NSTARGATE_LINUX_ROOT/include/glib-2.0 -I$NSTARGATE_LINUX_ROOT/lib/glib-2.0/include "
 
 EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'
 

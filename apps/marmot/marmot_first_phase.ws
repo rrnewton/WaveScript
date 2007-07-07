@@ -152,8 +152,8 @@ fun detect(scorestrm) {
 
 // ================================================================================
 
-//flag = GETENV("WSARCH") == "ENSBox";
-flag = false;
+flag = GETENV("WSARCH") == "ensbox";
+//flag = false;
 //flag = true;
 
 //marmotfile = "/archive/4/marmots/brief.raw";
@@ -172,12 +172,14 @@ fun readone(mode)
 
 chans = 
   if flag
-  then ensBoxAudioAll()
+  then rewindow(ensBoxAudioAll(), 128*4, 0)
   else (readFile(marmotfile, "mode: binary window: 16384 rate: 24000 ") :: Stream Sigseg (Int16));
 
 fun onechan(offset)
   iterate w in chans {
-    arr = Array:build(4096, fun (i) int16ToFloat(w[[(i*4) + offset]]));
+    size = w`width / 4;
+    assert_eq("source stream multiple of 4", w`width, size * 4);
+    arr = Array:build(size, fun (i) int16ToFloat(w[[(i*4) + offset]]));
     emit toSigseg(arr, w`start / 4 , w`timebase)
   }
 
@@ -216,8 +218,4 @@ d2 = iterate (d in detections) {
 };
 
 synced = syncN(d2, [ch1, ch2, ch3, ch4]);
-
-
-
-
 

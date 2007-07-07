@@ -13,6 +13,10 @@ val memoized_fftR2C = _import "memoized_fftR2C" : (Real32.real array * int) -> u
 val set_cached_plan = _import "set_cached_plan" : (Word64.word array * int) -> unit; 
 *)
 
+(* Calls what we need to start up the ensbox. 
+   After this we just wait for the callback. *)
+val init_ensbox = _import "init_ensbox" : unit -> unit;
+
 (* This is the entrypoint for binary data from the ensbox hardware. *)
 val ensbox_entry = _export "wsmlton_entry" : (MLton.Pointer.t * int -> unit) -> unit;
 (*val _ = entry (fn (p,n) => ())*)

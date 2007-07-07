@@ -198,6 +198,12 @@ fun unpack_complex_Pointer p i =
 fun unpack_complex_array_Pointer p len = 
   Array.tabulate (len, fn i => unpack_complex_Pointer p (i*2))
 
+fun unpack_int16_array_Pointer p len = 
+  Array.tabulate (len, fn i => MLton.Pointer.getInt16(p,i))
+
+
+
+
 (* [2007.07.01] Having problems with this currently *)
 (*
 val memoized_fftR2C_wrapper = 
@@ -233,3 +239,31 @@ val element_limit =
      else ~1
   end 
 
+
+
+fun runMain f = 
+(*   (print "RUN MAIN\n"; raise WSError "foo") *)
+  (print "Setting up error handlers\n";
+  f())
+  handle WSError str => 
+    (print ("wserror: " ^ str ^ "\n"); OS.Process.exit OS.Process.failure)
+  | SigSegFailure str => 
+    (print ("sigseg failure: " ^ str ^ "\n"); OS.Process.exit OS.Process.failure)
+  | WSEndOfFile => 
+    (TextIO.output (TextIO.stdErr, "Reached end of file. \n");
+      OS.Process.exit OS.Process.success)
+
+(*
+			   "handle WSError str => \n"
+			   "  (print (\"wserror: \" ^ str ^ \"\\n\");\n"
+;                           "   raise (WSError str)) \n"
+                           "   OS.Process.exit OS.Process.failure) \n"
+			   " | SigSegFailure str => \n"
+			   "  (print (\"sigseg failure: \" ^ str ^ \"\\n\");\n"
+;                           "   raise (SigSegFailure str)) \n"
+                           "   OS.Process.exit OS.Process.failure) \n"
+			   " | WSEndOfFile => "
+			   "  (TextIO.output (TextIO.stdErr, \"Reached end of file. \\n\");\n"
+                           "   OS.Process.exit OS.Process.success) \n"			   
+
+*)

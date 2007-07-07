@@ -15,6 +15,10 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.07.07]
+ Need to use two threads and add a buffer for wsmlton's ensbox data acquisition.
+ Also, can remove one copy of the data relative to how I do things right now.
+
 [2007.07.03]
  *) Add Int64 to support proper timestamps in sigsegs.
  *) Need a binary file sink too..

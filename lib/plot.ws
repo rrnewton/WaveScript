@@ -60,7 +60,7 @@ fun live(plotter) fun (S) {
   plotter(cumulative)
 }
 
-live1d = live(gnuplot_array_stream);
-live2d = live(gnuplot_array_stream2d);
+live1d = Plot:live(gnuplot_array_stream);
+live2d = Plot:live(gnuplot_array_stream2d);
 
 }

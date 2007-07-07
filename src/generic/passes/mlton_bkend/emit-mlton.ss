@@ -317,18 +317,7 @@
 			   (map (lambda (x) (list x ";\n")) init1*)
 
 			   "\n\n(*  Then run it *)\n"			   
-			   "runScheduler()\n"
-			   "handle WSError str => \n"
-			   "  (print (\"wserror: \" ^ str ^ \"\\n\");\n"
-;                           "   raise (WSError str)) \n"
-                           "   OS.Process.exit OS.Process.failure) \n"
-			   " | SigSegFailure str => \n"
-			   "  (print (\"sigseg failure: \" ^ str ^ \"\\n\");\n"
-;                           "   raise (SigSegFailure str)) \n"
-                           "   OS.Process.exit OS.Process.failure) \n"
-			   " | WSEndOfFile => "
-			   "  (TextIO.output (TextIO.stdErr, \"Reached end of file. \\n\");\n"
-                           "   OS.Process.exit OS.Process.success) \n"			   
+			   "runMain runScheduler\n"
 
 ;			   "try runScheduler()\n"
 ;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
@@ -466,7 +455,30 @@
 	   `("(* Seed the schedule with timer datasource: *)\n"
 	     "schedule := SE(0,",v") :: !schedule\n")))]
 
-;(__readFile file mode repeat rate skipbytes offset winsize types)
+
+       ;; Reading from ensbox hardware.
+       [(ensBoxAudioAll)
+	;; Don't worry about the so-called "scheduler", just hook up
+	;; the hardware source to the data flow entry point.
+	(values
+	 ;; Register this exported callback.
+
+	 (let ([bod (make-let `(["v" (Array Int16) "(unpack_int16_array_Pointer p n)"])
+  	              (make-seq
+		       ((Emit downstrm) 
+			"toSigseg(v, !stamp, 0)")
+		       "stamp := !stamp + n"))])
+	   (list "val _ = "
+	    (make-app "ensbox_entry"
+	      (list (make-let '(["stamp" "ref 0"])
+		    (make-fun (list (make-tuple "p" "n"))
+		      (if #t
+			  bod 
+			  (make-app "runMain" (list (make-fun () bod)))
+			  )))))))
+	 () ;; Second, top level bindings	 
+	 '("(runMain init_ensbox)") ;; Third, initialization statement.
+	 )]
 
        [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
 	(cond
@@ -564,22 +576,6 @@
 	 [else (error 'readFile "mode not handled yet in MLton backend: ~s" mode)]
 	  )]
 
-
-       ;; Reading from ensbox hardware.
-       [(ensBoxAudioAll)
-	;; Don't worry about the so-called "scheduler", just hook up
-	;; the hardware source to the data flow entry point.
-	(values
-	 (make-app "ensbox_entry"
-		  (list (make-fun 
-		     (list "p" "n")
-		     "(* UNPACK POINTER HERE *) (print \"Called into MLTON from outside...\\n\")")))
-	 
-	;; Second, top level bindings
-	()
-	;; Third, initialization statement:
-	()
-	)]
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
