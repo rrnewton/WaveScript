@@ -7,31 +7,118 @@
 
 
 
-(reg:define-struct (plain val)) ;; Contains a datum: number, list, array, tuple.
-(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
+(reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
+;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 (reg:define-struct (closure formals code env))
-(reg:define-struct (streapop name op code parents))
+(reg:define-struct (streamop name op code parents))
 
-(define (apply-env env v) (cadr (assq v env)))
+(define (apply-env env v) 
+  (ASSERT symbol? v)
+  (let ([x (cadr (ASSERT (assq v env)))])
+    (if (box? x) (unbox x) x)))
 (define (extend-env id* val* env) (append (map list id* val*) env))
+
+(define (unwrap-val v) 
+  (cond 
+   [(plain? v) (plain-val v)]
+   [(tuple? v) (list->vector (tuple-fields v))]
+   [else (error 'interpret-meta:unwrap-val "unmatched val: ~s" v)]))
+
+(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x)))
 
 (define (Expr x env)
   (match x
-    [,v (guard (symbol? v)) (apply-env env x)]
+    [,v (guard (symbol? v)) (apply-env env v)]
+    [',c (make-plain c)]
 
-    [(tuple ,[x*] ...) (make-tuple x*)]
+;    [(tuple ,[x*] ...) (make-tuple x*)]
+    [(tuple ,[x*] ...) (make-plain (list->vector x*))]
+
+    [(timer ,[period])      (make-streamop #f 'timer  period ())]
     [(iterate ,[f] ,[s])    (make-streamop #f 'iterate f (list s))]
     [(unionList ,[ls])      (make-streamop #f 'unionN #f (plain-val ls))]
 
+    [(if ,[t] ,c ,a) (Expr (if (plain-val t) c a) env)]
+    
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
      (Expr bod (extend-env lhs* rhs* env))]
 
-    ;; letrec
+    ;; Let 'n set semantics:
+    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+     (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
+	    [newenv (extend-env lhs* cells env)])
+       (for-each (lambda (cell rhs)
+		   (set-box! cell (Expr rhs newenv)))
+	 cells rhs*)
+       (Expr bod newenv))]
 
     [(lambda ,formal* ,ty* ,bod) (make-closure formal* bod env)]
-    [(app ,[f] ,[e*] ...)
-     (Expr (closure-code f) 
-	   (extend-env (closure-formals f) e*
-		       (closure-env f)))]
+
+    ;; Need to do a type based dispatch:
+#;
+    [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
+;     (wavescript-language (cons prim (map unwrap-val x*)))]
+     (if (andmap plain? x*)	 
+	 (wavescript-language (cons prim (map plain-val x*)))
+	 (inspect 'erk)
+	 )]
+#;
+    [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
+     (match (regiment-primitive? prim)
+       [()])]
+
+  [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
+   (ASSERT (not (assq prim wavescript-stream-primitives)))
+;   (printf "RUNNING ~s ~s\n" prim x*)
+   (let ([raw (wavescript-language 
+	       (cons prim (map (lambda (x) (if (plain? x) `',(plain-val x) x)) x*)))])
+     (if (wrapped? raw) raw (make-plain raw))
+#;
+     (match (last (regiment-primitive? prim))
+       [(Stream ,_) raw]
+       [,_ (make-plain raw)])
+     )]
+
+  [(app ,[f] ,[e*] ...)
+;   (printf "APPLYING CLOSURE to args ~s\n" e*)
+   (Expr (closure-code f) 
+	 (extend-env (closure-formals f) e*
+		     (closure-env f)))]
+  ))
+
+
+(define-testing these-tests
+  `([(,plain-val (,Expr '(+_ '1 '2) '())) 3]
+
+    [(,plain-val (,Expr '(app (lambda (x) (Int) x) '3) '())) 3]
+    [(,plain-val (,Expr '(car (cons '39 '())) '())) 39]
+
+    [(,Expr '(timer '3) '()) ,streamop?]
+
+    [(,Expr '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()) ,streamop?]
+
+    [(,plain-val (,Expr '(letrec ([x Int '3]) x) '())) 3]
+
+    [(,plain-val (,Expr '(let ([x Int '3]) (wsequal? x '3)) '())) #t]
+
+    [(,plain-val (,Expr 
+     '(letrec ([fact 'a (lambda (n) (Int) 
+        (if (wsequal? '1 n) '1 (*_ n (app fact (-_ n '1)))))])
+	(app fact '6)) '())) 
+     720]
+  
+
     ))
 
+(define-testing test-interpret-meta
+  (default-unit-tester
+    " Interpret-Meta: to evaluate the first stage of computation"
+    these-tests))
+
+
+#|
+
+(Expr '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '())
+
+
+|#
