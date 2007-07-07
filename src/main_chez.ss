@@ -808,4 +808,4 @@
 |#
 
 
-(include "generic/passes/static_elaborate/interpret-meta.ss.tmp")  ;(import interpret-meta)
+(include "generic/passes/static_elaborate/interpret-meta.ss")  ;(import interpret-meta)

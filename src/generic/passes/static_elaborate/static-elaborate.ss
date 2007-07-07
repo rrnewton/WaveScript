@@ -411,55 +411,6 @@
           [,unmatched
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
-    ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
-    #;
-    (define substitute
-      (lambda (mapping expr)
-        (match expr
-          [(quote ,datum) `(quote ,datum)]
-          [,var (guard (symbol? var)) 
-		(let ((entry (assq var mapping)))
-		  (if entry (cadr entry) var))]
-	  [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,_ ,e)]
-          [(lambda ,formals ,types ,expr)
-	   `(lambda ,formals ,types
-	      ,(substitute
-		(filter (lambda (x)
-			  (not (memq (car x) formals)))
-			mapping)
-		expr))]
-	  [(for (,i ,[st] ,[en]) ,bod)
-	   `(for (,i ,st ,en)		
-		,(substitute
-		  (filter (lambda (x) (not (eq? (car x) i))) mapping)
-		  bod))]
-	  [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
-	  [(begin ,[arg] ...) `(begin ,arg ...)]
-	  [(set! ,v ,[rhs])
-	   (if (memq v (map car mapping))
-	       (error 'static-elaborate:substitute "shouldn't be substituting against a mutated var: ~s" v))
-	   `(set! ,v ,rhs)]
-
-	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
-	  [(tuple ,[args] ...) `(tuple ,args ...)]
-	  [(vector ,[args] ...) `(vector ,args ...)]
-	  [(unionN ,[args] ...) `(unionN ,args ...)]
-
-          [(if ,[test] ,[conseq] ,[altern])  `(if ,test ,conseq ,altern)]
-	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-	   (let ((newmap (filter (lambda (x)
-				   (not (memq (car x) lhs*)))
-				 mapping)))	     
-	   `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
-	      ,(substitute newmap expr)))]
-	  [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
-	   `(,prim ,rands ...)]
-	  [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 
-	   `(,app ,rator ,rands ...)]
-          [,unmatched
-            (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
-
-
     (define not-available (unique-name "NotAvailable"))
     ;; This is a simple struct used by *getval* to indicate that the
     ;; value is code, rather than a value-proper.

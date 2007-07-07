@@ -43,6 +43,7 @@
 	   binding-form->vars binding-form->types
 	   binding-form-visit-knowncode
 	   core-free-vars
+;	   core-substitute
 	   )
 
   (chezimports prim_defs
@@ -421,6 +422,15 @@
    (lambda (ls k) (apply union ls))
    exp
    ))
+
+;; This is a utility for substituting an expression in place of all
+;; free occurrences of a variable.  It works for anything in the
+;; "core" intermediate language.
+;;
+;; (define (core-substitute new var old))
+
+
+
 
 ; ================================================================================
 
