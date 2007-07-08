@@ -156,7 +156,7 @@
     ;; Build a let expression:
     (let loop ([ops allops])
       (if (null? ops) (streamop-name val)
-	  `(let ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
+	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
 	     ,(loop (cdr ops)))))))
 
 (define (Marshal-Streamop op)
