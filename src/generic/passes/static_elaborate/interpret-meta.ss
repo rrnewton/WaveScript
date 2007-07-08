@@ -14,23 +14,16 @@
 (reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 (reg:define-struct (closure formals code env))
-(reg:define-struct (streamop name op code parents))
+
+;; Parents are streamops, params are regular values that parameterize the streamop.
+(reg:define-struct (streamop name op params parents))
 
 (reg:define-struct (ref contents))
 
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
-
 (define (annotation? s) (memq s '(assert-type src-pos)))
-
-  
-#;
-(define (unwrap-val v) 
-  (cond 
-   [(plain? v) (plain-val v)]
-   ;[(tuple? v) (list->vector (tuple-fields v))]
-   [else (error 'interpret-meta:unwrap-val "unmatched val: ~s" v)]))
-
-(define (unknown-type) `',(unique-name 'ty))
+(define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
+(define (unknown-type . _) `',(unique-name 'ty))
 
 ; ================================================================================ ;
 ;;; Environments
@@ -42,6 +35,8 @@
     (ASSERT wrapped? result)
     result))
 (define (extend-env id* val* env) (append (map list id* val*) env))
+
+#;
 ;; Could explicitly use a store...
 (define (mutate-env! env v x)
   (let ([entry (apply-env env v)])
@@ -64,12 +59,25 @@
 ;    [(tuple ,[x*] ...) (make-tuple x*)]
     [(tuple ,[x*] ...) (make-plain (list->vector x*))]
 
-    [(timer ,[period])      (make-streamop (streamop-new-name) 'timer  period ())]
-    [(iterate ,[f] ,[s])    (make-streamop (streamop-new-name) 'iterate f (list s))]
-    [(unionList ,[ls])      (make-streamop (streamop-new-name) 'unionN #f (plain-val ls))]
+;    [(timer ,[period])      (make-streamop (streamop-new-name) 'timer  period ())]
+;    [(iterate ,[f] ,[s])    (make-streamop (streamop-new-name) 'iterate f (list s))]
+
+    ;; Unionlist is a tad different because it takes a list of streams:
+    [(unionList ,[ls])      
+     (ASSERT (andmap streamop? (plain-val ls)))
+     (make-streamop (streamop-new-name) 'unionN () (plain-val ls))]
+    [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
+     (match (regiment-primitive? streamprim)
+       [(,argty* (Stream ,return))
+	;; This splits the stream from the non-stream components.
+	(let ([parents (apply append (map (lambda (x t) (if (stream-type? t) (list x) ())) x* argty*))]
+	      [params  (apply append (map (lambda (x t) (if (stream-type? t) () (list x))) x* argty*))])
+	  (ASSERT (curry andmap streamop?) parents)
+	  (ASSERT (curry andmap (compose not streamop?)) params)
+	  (make-streamop (streamop-new-name) streamprim params  parents))])]
+    
 
     [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env)]
-    
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
      (Eval bod (extend-env lhs* rhs* env))]
 
@@ -108,7 +116,6 @@
      (Eval (closure-code f) 
 	   (extend-env (closure-formals f) e*
 		       (closure-env f)))]
-
     [(for (,i ,[st] ,[en]) ,bod)
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
@@ -124,7 +131,6 @@
     [(begin ,x* ... ,last) 
      (begin (for-each (lambda (x) (Eval x env)) x*)
 	    (Eval last env))]
-
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
@@ -148,23 +154,48 @@
 	  (loop (cdr ops) acc covered)]
 	 [else 
 	  (loop (append (cdr ops)
-			(filter (lambda (op) (not (assq (streamop-name op) covered)))
+			(filter (lambda (op) (not (memq (streamop-name op) covered)))
 			  (streamop-parents (car ops))))
 		(cons (car ops) acc)
-		(cons (car ops) covered)
+		(cons (streamop-name (car ops)) covered)
 		)])))
     ;; Build a let expression:
+    
+    #;
     (let loop ([ops allops])
       (if (null? ops) (streamop-name val)
 	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
-	     ,(loop (cdr ops)))))))
-
-(define (Marshal-Streamop op)
-  (match (streamop-op op)
-    [timer   `(timer ,(Marshal-Plain (streamop-code op)))]
-    [iterate `(iterate ,(Marshal-Closure (streamop-code op)) 
-			 ,(streamop-name (car (streamop-parents op))))]
+	     ,(loop (cdr ops)))))
+    ;; No, doing letrec instead:
+    `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
+       ,(streamop-name val))
     ))
+
+(trace-define (Marshal-Streamop op)
+  (cons (streamop-op op)
+	(let loop ([argty* (car (regiment-primitive? (streamop-op op)))]
+		   [params  (streamop-params op)]
+		   [parents (streamop-parents op)])
+	  (cond
+	   [(null? argty*) '()]
+	   [(stream-type? (car argty*))
+	    (cons (streamop-name (car parents))
+		  (loop (cdr argty*) params (cdr parents)))]
+	   [else 
+	    (let ([marshal (cond 
+			    [(plain? (car params)) Marshal-Plain]
+			    [(closure? (car params)) Marshal-Closure]
+			    [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
+	      (cons (marshal (car params)) 
+		    (loop (cdr argty*) (cdr params) parents)))]))))
+
+#;
+  (match (streamop-op op)
+    [timer   `(timer ,(Marshal-Plain (car (streamop-params op))))]
+    [iterate `(iterate ,(Marshal-Closure (car (streamop-params op)))
+			 ,(streamop-name (car (streamop-parents op))))]
+    )
+
 
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
@@ -176,32 +207,33 @@
 	       [fv (difference (core-free-vars (closure-code cl))
 			       (closure-formals cl))]
 	       [state '()])
-      (cond
-       [(and (null? fv) (null? state)) `(lambda ,(closure-formals cl) ,code)]
-       [(null? fv)      `(letrec ,state (lambda ,(closure-formals cl) ,code))]
-       [else 
-	(let ([val (apply-env env (car fv))])
-	  (cond
-	   ;; FIXME: Inline simple constants:
-	   [(plain? val) 
-	    (loop code (cdr fv) 
-		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) state))]
-	   ;; This is definitely part of the state:
-	   ;; FIXME: Need to scan for shared mutable values.
-	   [(ref? val)
-	    (loop code (cdr fv)
-		  (cons (list (car fv) (unknown-type) 
-			      `(Mutable:ref ,(Marshal-Plain (ref-contents val))))
-			state))]
-	   ;; Here we inline:	  
-	   [(closure? val)  
-	    ;; We also merge the relevent parts of the closures environment with our environment:
-	    (loop (substitute (list (car fv) (closure-code val)) code)
-		  (union (core-free-vars (closure-code val)) (cdr fv))
-		  state)]
-	   [(streamop? val) 
-	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))]
-       ))))
+      (if (null? fv)
+	  (let ([bod `(lambda ,(closure-formals cl) 
+		       ,(map unknown-type (closure-formals cl)) ,code)])
+	    (if (null? state) bod
+		`(letrec ,state ,bod)))
+	  (let ([val (apply-env env (car fv))])
+	    (cond
+	     ;; FIXME: Inline simple constants:
+	     [(plain? val) 
+	      (loop code (cdr fv) 
+		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) state))]
+	     ;; This is definitely part of the state:
+	     [(ref? val)
+	      ;; FIXME: Need to scan for shared mutable values.
+	      (loop code (cdr fv)
+		    (cons (list (car fv) (unknown-type) 
+				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
+			  state))]
+	     ;; Here we inline:	  
+	     [(closure? val)  
+	      ;; We also merge the relevent parts of the closures environment with our environment:
+	      (loop (substitute (list (list (car fv) (closure-code val))) code)
+		    (union (difference (core-free-vars (closure-code val)) (closure-formals val))
+			   (cdr fv))
+		    state)]
+	     [(streamop? val) 
+	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))))))
 
 ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
 (define substitute
@@ -292,16 +324,15 @@
 	       (deref v))) '()))    10]
     
     [(deep-assq 'letrec
-      (,Marshal (,Eval '(car (cons 
+      (cdr (,Marshal (,Eval '(car (cons 
 	(let ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
-	'())) '())))
+	'())) '()))))
      #f]
     [(and (deep-assq 'letrec
-     (,Marshal (,Eval '(car (cons 
-       (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '())))
+     (cdr (,Marshal (,Eval '(car (cons 
+       (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '()))))
 	  #t)
      #t]
-
     ["With this approach, we can bind the mutable state outside of the iterate construct"
      (not 
      (deep-assq 'Mutable:ref
@@ -310,6 +341,14 @@
 	      (iterate (lambda (x vq) (a b) (deref y)) 
 				(timer '3))) '())))))
      #f]
+    ["inline a function successfully"
+     (deep-assq 'f
+     (interpret-meta '(lang '(program 
+       (let ([f 'b (lambda (x) (Int) (+_ x x))])
+	 (iterate (lambda (_) ('a) (app f '9))(timer '3))) Int))))
+     #f]
+
+    
 
     ))
 

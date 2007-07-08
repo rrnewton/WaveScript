@@ -31,7 +31,7 @@
            test-ws-remove-complex-opera)
   (chezimports)
 
-;; All expressions are re-written to reflect simplicity constraints:
+  ;; The grammar is re-written to reflect simplicity constraints:
   (define ws-remove-complex-opera*-grammar
     (append
      '(
@@ -154,10 +154,12 @@
 				  body))
 		    '()))]
 
+	   [(src-pos ,_ ,[e]) e]
 	   [(assert-type ,ty ,[e])
 	    (let-match ([#(,e ,decls) e])
 	      (vector `(assert-type ,ty  ,e)
 		      decls))]
+
 #;#;
 	   [(let () ,body)	
 	    (let-values ([(body bdecls) (make-simple body tenv)])
