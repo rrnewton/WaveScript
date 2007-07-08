@@ -14,6 +14,7 @@
            introduce-lazy-letrec
 	   lift-polymorphic-constant
 	   unlift-polymorphic-constant
+	   strip-irrelevant-polymorphism
 	   ;purify-letrec  ;; Disabled
 	   standardize-iterate
 	   kill-polymorphic-types
@@ -82,7 +83,8 @@
 	  (match x
 	    [(let ([,v1 ,t ,c]) ,v2)
 	       (guard (eq? v1 v2) (pconst? c))
-	       (ASSERT (not (polymorphic-type? t)))
+;; [2007.07.08] Removing this assert because we clean up below:
+;	       (ASSERT (lambda (t) (not (polymorphic-type? t))) t)
 	       `(assert-type ,t ,c)]
 	    [,c (guard (pconst? c))
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
@@ -91,6 +93,31 @@
 	    [(foreign ,x ,y ,z) `(foreign ,x ,y ,z)]
 	    [,other (fallthru other)]))])
 
+
+;; [2007.07.08]
+;; Remaining polymorphism at this phase of the compiler is
+;; "irrelevent" in the sense that it describes only uninspected values.
+;; Thus it is equivalent to insert unit in all such places.
+(define-pass strip-irrelevant-polymorphism
+    (define (Type ty)
+      (match ty
+	  [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v))	   #()]
+	  [,s (guard (symbol? s)) s]
+	  [#(,[t*] ...)                    (list->vector t*)]
+	  [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
+	  ;; Including Ref:
+	  [(,C ,[t*] ...) (guard (symbol? C) (not (memq C '(quote NUM))))    (cons C t*)]
+	  [,s (guard (string? s)) s] 
+	  [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))
+  [Expr (lambda (x fallthru)
+	  (match x
+	    [(assert-type ,[Type -> ty] ,[e]) 
+	     ;(printf "GOT ASSERT: ~s\n" ty)
+	     `(assert-type ,ty ,e)]
+	    [,oth (fallthru oth)]))]
+  [Bindings 
+   (lambda (vars types exprs reconstr exprfun)
+     (reconstr vars (map Type types) (map exprfun exprs)))])
 
 
 ;; Purify-letrec: makes sure letrec's only bind functions.

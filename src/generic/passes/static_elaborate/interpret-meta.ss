@@ -212,7 +212,12 @@
 
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
-(define (Marshal-Plain p) `',(plain-val p))
+(define (Marshal-Plain p) 
+  (define val (plain-val p))
+  (if (hash-table? val)
+      (error 'Marshal-Plain "hash table marshalling unimplemented")
+      `',val
+      ))
 
 (define (Marshal-Closure cl)
     (let loop ([code (closure-code cl)]

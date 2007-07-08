@@ -461,11 +461,8 @@
   (ws-run-pass p remove-unquoted-constant)
   ;; Run this twice!!!
   ;(ws-run-pass p degeneralize-arithmetic)
-  (time (ws-run-pass p static-elaborate))
-
-;  (inspect p)
-;  (time (ws-run-pass p interpret-meta))
-;  (inspect p)
+;  (time (ws-run-pass p static-elaborate))
+  (time (ws-run-pass p interpret-meta))
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 
@@ -503,7 +500,9 @@
   ;; This is a hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
   (do-late-typecheck)
+
   (ws-run-pass p unlift-polymorphic-constant)
+  (ws-run-pass p strip-irrelevant-polymorphism)
 
   (unless (memq 'merge-iterates disabled-passes)
     ;(pretty-print p)
