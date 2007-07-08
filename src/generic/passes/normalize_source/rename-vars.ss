@@ -52,6 +52,14 @@
 		     [new-table (append (map cons v* new-v*) var-table)])
 		(let ([expr (process-expr expr new-table)])
 		  `(lambda ,new-v* ,t* ,expr)))]
+
+	     [(let ([,v* ,ty* ,[rhs*]] ...) ,bod)
+	      (guard (not (assq 'let var-table)))
+	      (let* ([new-v* (map unique-name v*)]
+		     [new-table (append (map cons v* new-v*) var-table)])
+		`(let ,(map list new-v* ty* rhs*) 
+		   ,(process-expr bod new-table)))]
+
 	     [(for (,i ,[st] ,[en]) ,body)
 	      (guard (not (assq 'for var-table)))
 	      (let* ([newi (unique-name i)]

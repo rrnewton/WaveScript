@@ -225,6 +225,7 @@
 	       [state '()]
 	       [env (closure-env cl)])
       (if (null? fv)
+	  ;; We're done processing the environment, produce some code:
 	  (let ([bod `(lambda ,(closure-formals cl) 
 		       ,(map unknown-type (closure-formals cl)) ,code)])
 	    (if (null? state) bod
@@ -249,7 +250,13 @@
 	      ;; Freshness consideration:
 	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
 		(let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
-		  (loop (substitute-and-beta (car fv) newclosure code)
+		  (loop 
+
+		        ;(substitute-and-beta (car fv) newclosure code)
+ 		        ;; For now, don't do any inlining.  Do that later:
+		        (substitute (list (list (car fv) `(lambda ,(closure-formals val) 
+							    ,(map unknown-type (closure-formals val))
+							    ,newcode))) code)
 
 			;; We also merge the relevent parts of the closure's environment with our environment:
 					;(union (closure-free-vars val) (cdr fv))
@@ -279,6 +286,18 @@
 	 [newslice (map list newfv oldslice)])
     (values newcode newfv newslice)    
     ))
+
+(define Convert-left-left-lambda
+  (core-generic-traverse
+   (lambda (x fallthru)
+     (match x 
+       [(app (lambda ,formals ,types ,[bod]) ,[arg*] ...)
+	;; Convert to a let:
+	`(let ,(map list formals types arg*) ,bod)
+	;(substitute (map list formals arg*) bod)
+	;(substitute-and-beta (car fv) (make-closure formals bod ()) bod)
+	]
+       [,oth (fallthru oth)]))))
 
 ;; NOTE!  Assumes unique variable names and so ignores binding forms.
 (define substitute-and-beta
@@ -358,7 +377,8 @@
 
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
-    [Expr (lambda (x fallthru)  (Marshal (Eval x '())))])
+    [Expr (lambda (x fallthru)  
+	    (Convert-left-left-lambda (Marshal (Eval x '()))))])
 
 (define-testing these-tests
   `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]

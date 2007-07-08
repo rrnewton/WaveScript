@@ -463,7 +463,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/wsc_marmot_run.log" test-directory))))
        (current-directory test-directory))
 
-
+#;
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
 (begin (newline)

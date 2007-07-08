@@ -5,11 +5,14 @@ uniontype Foo = A Int | B Float | C ();
 
 //res2 = match (1,2) { (a,b) : b }
 
+f = (3 *);
+
 BASE <- iterate _ in timer(3.0) { 
 
   x = A(3);
   y = (+ 3) $ 4;
-  f = (3 *);
+  // [2007.07.08] Interpret-meta won't currently allow this:
+  //  f = (3 *);
   z = y`f + y.f;
 
   print("A data value: "++ x ++ "\n");
