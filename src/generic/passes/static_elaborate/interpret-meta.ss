@@ -16,7 +16,8 @@
 (reg:define-struct (closure formals code env))
 
 ;; Parents are streamops, params are regular values that parameterize the streamop.
-(reg:define-struct (streamop name op params parents))
+;; We also need a place to record the type.  At least for readFile...
+(reg:define-struct (streamop name op params parents type))
 
 (reg:define-struct (ref contents))
 
@@ -44,6 +45,12 @@
      [(plain? entry) (set-plain-val! entry (plain-val x))]
      [else (error 'mutate-env! "unhandled environment entry: ~s" entry)])))
 
+;; Takes off just the outer layer of annotations
+(define (peel-annotations e)
+  (match e
+    [(assert-type ,_ ,[e]) e]
+    [(src-pos ,_ ,[e])     e]
+    [,e                    e]))
 
 ; ================================================================================ ;
 ;;; Interpreter
@@ -62,10 +69,18 @@
 ;    [(timer ,[period])      (make-streamop (streamop-new-name) 'timer  period ())]
 ;    [(iterate ,[f] ,[s])    (make-streamop (streamop-new-name) 'iterate f (list s))]
 
+    ;; Here's a hack to keep those type assertions on the readFiles...
+    [(assert-type ,ty ,e)
+     (guard (let ([x (peel-annotations e)])
+	      (and (pair? x) (memq (car x) '(readFile dataFile)))))
+     (let ([op (Eval e env)])
+       (set-streamop-type! op ty)
+       op)]
+
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      
      (ASSERT (andmap streamop? (plain-val ls)))
-     (make-streamop (streamop-new-name) 'unionN () (plain-val ls))]
+     (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
     [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
      (match (regiment-primitive? streamprim)
        [(,argty* (Stream ,return))
@@ -74,8 +89,7 @@
 	      [params  (apply append (map (lambda (x t) (if (stream-type? t) () (list x))) x* argty*))])
 	  (ASSERT (curry andmap streamop?) parents)
 	  (ASSERT (curry andmap (compose not streamop?)) params)
-	  (make-streamop (streamop-new-name) streamprim params  parents))])]
-    
+	  (make-streamop (streamop-new-name) streamprim params  parents #f))])]   
 
     [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env)]
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
@@ -171,30 +185,29 @@
        ,(streamop-name val))
     ))
 
-(trace-define (Marshal-Streamop op)
-  (cons (streamop-op op)
-	(let loop ([argty* (car (regiment-primitive? (streamop-op op)))]
-		   [params  (streamop-params op)]
-		   [parents (streamop-parents op)])
-	  (cond
-	   [(null? argty*) '()]
-	   [(stream-type? (car argty*))
-	    (cons (streamop-name (car parents))
-		  (loop (cdr argty*) params (cdr parents)))]
-	   [else 
-	    (let ([marshal (cond 
-			    [(plain? (car params)) Marshal-Plain]
-			    [(closure? (car params)) Marshal-Closure]
-			    [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
-	      (cons (marshal (car params)) 
-		    (loop (cdr argty*) (cdr params) parents)))]))))
+(define (Marshal-Streamop op)
+  (define default 
+    (cons (streamop-op op)
+	  ;; This is more than a bit silly, I shouldn't split params/parents in the first place.
+	  (let loop ([argty* (car (regiment-primitive? (streamop-op op)))]
+		     [params  (streamop-params op)]
+		     [parents (streamop-parents op)])
+	    (cond
+	     [(null? argty*) '()]
+	     [(stream-type? (car argty*))
+	      (cons (streamop-name (car parents))
+		    (loop (cdr argty*) params (cdr parents)))]
+	     [else 
+	      (let ([marshal (cond 
+			      [(plain? (car params)) Marshal-Plain]
+			      [(closure? (car params)) Marshal-Closure]
+			      [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
+		(cons (marshal (car params)) 
+		      (loop (cdr argty*) (cdr params) parents)))]))))
+  (if (streamop-type op)
+      `(assert-type ,(streamop-type op) ,default)
+      default))
 
-#;
-  (match (streamop-op op)
-    [timer   `(timer ,(Marshal-Plain (car (streamop-params op))))]
-    [iterate `(iterate ,(Marshal-Closure (car (streamop-params op)))
-			 ,(streamop-name (car (streamop-parents op))))]
-    )
 
 
 ;; FIXME: Uh, this should do something different for tuples.
@@ -202,11 +215,10 @@
 (define (Marshal-Plain p) `',(plain-val p))
 
 (define (Marshal-Closure cl)
-  (let ([env (closure-env cl)])
     (let loop ([code (closure-code cl)]
-	       [fv (difference (core-free-vars (closure-code cl))
-			       (closure-formals cl))]
-	       [state '()])
+	       [fv   (closure-free-vars cl)]
+	       [state '()]
+	       [env (closure-env cl)])
       (if (null? fv)
 	  (let ([bod `(lambda ,(closure-formals cl) 
 		       ,(map unknown-type (closure-formals cl)) ,code)])
@@ -217,23 +229,69 @@
 	     ;; FIXME: Inline simple constants:
 	     [(plain? val) 
 	      (loop code (cdr fv) 
-		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) state))]
+		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) state)
+		    env)]
 	     ;; This is definitely part of the state:
 	     [(ref? val)
 	      ;; FIXME: Need to scan for shared mutable values.
 	      (loop code (cdr fv)
 		    (cons (list (car fv) (unknown-type) 
 				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
-			  state))]
+			  state)
+		    env)]
 	     ;; Here we inline:	  
 	     [(closure? val)  
-	      ;; We also merge the relevent parts of the closures environment with our environment:
-	      (loop (substitute (list (list (car fv) (closure-code val))) code)
-		    (union (difference (core-free-vars (closure-code val)) (closure-formals val))
-			   (cdr fv))
-		    state)]
+	      ;; Freshness consideration:
+	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
+		(let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
+		  (loop (substitute-and-beta (car fv) newclosure code)
+
+			;; We also merge the relevent parts of the closure's environment with our environment:
+					;(union (closure-free-vars val) (cdr fv))
+			(union newfree (cdr fv))
+			;; ACK!!!!!!!!!!! FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+			;; We need to pull the relevent bindings from the closure's environment.
+			;; BUT, it's not safe to assume that names don't collide...
+			;; Because even if names are statically unique... the same name could be bound to many values
+			;; (i.e from multiple calls)
+
+			;; WE NEED TO RENAME ALL THE FREE VARS WITHIN THE CLOSURE.
+
+			state 
+			(append env-slice env))))]
+	     
 	     [(streamop? val) 
-	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))))))
+	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
+
+(define (closure-free-vars cl) (difference (core-free-vars (closure-code cl)) (closure-formals cl)))
+
+(define (dissect-and-rename cl)
+  (let* ([fv    (closure-free-vars cl)]
+	 [newfv (map unique-name fv)]
+	 [newcode (substitute (map list fv newfv) (closure-code cl))]
+	 [oldenv (closure-env cl)]
+	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
+	 [newslice (map list newfv oldslice)])
+    (values newcode newfv newslice)    
+    ))
+
+;; NOTE!  Assumes unique variable names and so ignores binding forms.
+(define substitute-and-beta
+  (lambda (name fun exp)
+    (core-generic-traverse
+     (lambda (x fallthru)
+       (match x
+         ;; We've hit it in the wrong place:
+	 [,v (guard (eq? v name)) (error 'substitute-and-beta "operand position reference")]
+	 ;; Here we do the inlining.
+	 [(app ,v ,[x*] ...)
+	  (guard (eq? v name))
+	  (substitute (map list (closure-formals fun) x*)
+		      (closure-code fun))]
+	 [,oth (fallthru oth)])
+       )
+     (lambda (ls k) (apply k ls))
+     exp)))
 
 ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
 (define substitute
