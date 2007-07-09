@@ -166,6 +166,7 @@
 
 	 nodeid?
 
+	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
          )
 		
 	;; Import the platform specific constants.
@@ -822,6 +823,13 @@
   (define Default-Mouse-Highlight-Color (make-rgb 200 200 0))
   )
 
+
+; ======================================================================
+
+;; Definitions for WS Values used by interpret-meta and by wavescript_sim_library
+
+;; Contains a start and end SEQUENCE NUMBER as well as a vector.
+(reg:define-struct (sigseg start end vec timebase))
 
 ; ======================================================================
 

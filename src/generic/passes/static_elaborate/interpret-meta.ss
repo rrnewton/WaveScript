@@ -15,6 +15,9 @@
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 (reg:define-struct (closure formals code env))
 
+;; TODO: Merge with "uniontype" in wavescript_sim_library_push
+(reg:define-struct (datatype tag payload)) 
+
 ;; Parents are streamops, params are regular values that parameterize the streamop.
 ;; We also need a place to record the type.  At least for readFile...
 (reg:define-struct (streamop name op params parents type))
@@ -24,6 +27,7 @@
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
 (define (annotation? s) (memq s '(assert-type src-pos)))
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
+(define (lambda? x) (and (pair? x) (eq? (car x) 'lambda)))
 (define (unknown-type . _) `',(unique-name 'ty))
 
 ; ================================================================================ ;
@@ -45,13 +49,6 @@
      [(plain? entry) (set-plain-val! entry (plain-val x))]
      [else (error 'mutate-env! "unhandled environment entry: ~s" entry)])))
 
-;; Takes off just the outer layer of annotations
-(define (peel-annotations e)
-  (match e
-    [(assert-type ,_ ,[e]) e]
-    [(src-pos ,_ ,[e])     e]
-    [,e                    e]))
-
 ; ================================================================================ ;
 ;;; Interpreter
 
@@ -60,7 +57,10 @@
   ;; This will be replaced by something more meaningful.
   (define (streamop-new-name) (unique-name 'streamop))
   (match x
-    [,v (guard (symbol? v)) (apply-env env v)]
+    [,v (guard (symbol? v)) 
+	(if (regiment-primitive? v)
+	    (inspect `(INTERESTING ,v))
+	    (apply-env env v))]
     [',c (make-plain c)]
 
 ;    [(tuple ,[x*] ...) (make-tuple x*)]
@@ -145,6 +145,17 @@
     [(begin ,x* ... ,last) 
      (begin (for-each (lambda (x) (Eval x env)) x*)
 	    (Eval last env))]
+
+    ;; TODO: Need to add the data *constructors*... this is incomplete currently.
+    [(wscase ,[x] (,pat* ,[rhs*]) ...) 
+     (let* ([alts (map list pat* rhs*)]
+	    [case (assq (datatype-tag x) alts)]
+	    [clos (cadr case)])
+       (inspect case)
+       (Eval (closure-code clos) 
+	     (extend-env (closure-formals clos) (list (datatype-payload x))
+			 (closure-env f))))]
+
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
@@ -291,12 +302,13 @@
   (core-generic-traverse
    (lambda (x fallthru)
      (match x 
-       [(app (lambda ,formals ,types ,[bod]) ,[arg*] ...)
-	;; Convert to a let:
-	`(let ,(map list formals types arg*) ,bod)
-	;(substitute (map list formals arg*) bod)
-	;(substitute-and-beta (car fv) (make-closure formals bod ()) bod)
-	]
+       ;; Sigh, we should be doing our annotation differently...
+       [(app ,rator ,[arg*] ...)
+	(guard (lambda? (peel-annotations rator)))
+	(match (peel-annotations rator)
+	  [(lambda ,formals ,types ,[Convert-left-left-lambda -> bod])
+	   ;; Convert to a let:
+	   `(let ,(map list formals types arg*) ,bod)])]
        [,oth (fallthru oth)]))))
 
 ;; NOTE!  Assumes unique variable names and so ignores binding forms.
@@ -318,6 +330,7 @@
      exp)))
 
 ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
+;; FIXME: REWRITE WITH GENERIC TRAVERSE!
 (define substitute
   (lambda (mapping expr)
     (match expr
@@ -342,7 +355,7 @@
       [(begin ,[arg] ...) `(begin ,arg ...)]
       [(set! ,v ,[rhs])
        (if (memq v (map car mapping))
-	   (error 'static-elaborate:substitute "shouldn't be substituting against a mutated var: ~s" v))
+	   (error 'interpret-meta:substitute "shouldn't be substituting against a mutated var: ~s" v))
        `(set! ,v ,rhs)]
 
       [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
@@ -361,8 +374,11 @@
        `(,prim ,rands ...)]
       [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 
        `(,app ,rator ,rands ...)]
+
+      [(wscase ,[x] (,pat* ,[rhs*]) ...) `(wscase ,x ,@(map list pat* rhs*))]
+
       [,unmatched
-       (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
+       (error 'interpret-meta:substitute "invalid syntax ~s" unmatched)])))
 
 
 ; ================================================================================ ;

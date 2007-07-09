@@ -15,7 +15,7 @@
            "../compiler_components/type_environments.ss"
 	   )
   (provide
-                 make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
+;                 make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
 		 app foreign-app let Mutable:ref deref static statref		 
 		 
@@ -163,8 +163,6 @@
   ;; Sources allow either "peeking" the time of their next element, or
   ;; popping off thatelement.
 
-  ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
-  (reg:define-struct (sigseg start end vec timebase))
   (reg:define-struct (uniontype tag val))
 
   ;; This is annoying.

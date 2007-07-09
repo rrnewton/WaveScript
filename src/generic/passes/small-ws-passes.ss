@@ -99,9 +99,14 @@
 ;; "irrelevent" in the sense that it describes only uninspected values.
 ;; Thus it is equivalent to insert unit in all such places.
 (define-pass strip-irrelevant-polymorphism
+    (define (data-source? e)
+      (let ([expr (peel-annotations e)])
+	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
     (define (Type ty)
       (match ty
-	  [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v))	   #()]
+	  [(,qt ,v) (guard (memq qt '(quote NUM)))
+	   (ASSERT symbol? v)
+	   #()]
 	  [,s (guard (symbol? s)) s]
 	  [#(,[t*] ...)                    (list->vector t*)]
 	  [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
@@ -109,12 +114,19 @@
 	  [(,C ,[t*] ...) (guard (symbol? C) (not (memq C '(quote NUM))))    (cons C t*)]
 	  [,s (guard (string? s)) s] 
 	  [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))
-  [Expr (lambda (x fallthru)
+    (define Expr
+      (lambda (x fallthru)
 	  (match x
-	    [(assert-type ,[Type -> ty] ,[e]) 
+	    ;; Strip an assert-type unless it's around a data source.
+	    [(assert-type ,t ,e) (guard (data-source? e))
+	     `(assert-type ,t ,(Expr e fallthru))]
+	    [(assert-type ,_ ,[e]) 
 	     ;(printf "GOT ASSERT: ~s\n" ty)
-	     `(assert-type ,ty ,e)]
-	    [,oth (fallthru oth)]))]
+	     ;`(assert-type ,ty ,e)
+	     e
+	     ]
+	    [,oth (fallthru oth)])))
+  [Expr Expr]
   [Bindings 
    (lambda (vars types exprs reconstr exprfun)
      (reconstr vars (map Type types) (map exprfun exprs)))])

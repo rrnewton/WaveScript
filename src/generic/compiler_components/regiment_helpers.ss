@@ -66,7 +66,7 @@
 	  test-regiment_helpers
 
 	  parse-readFile-modestring
-
+	  peel-annotations
 	  )
 
   (chezimports prim_defs grammar_checker)
@@ -1082,6 +1082,12 @@
     )
   )
 
+;; Takes off just the outer layer of annotations
+(define (peel-annotations e)
+  (match e
+    [(assert-type ,_ ,[e]) e]
+    [(src-pos ,_ ,[e])     e]
+    [,e                    e]))
 
 ; ======================================================================
 

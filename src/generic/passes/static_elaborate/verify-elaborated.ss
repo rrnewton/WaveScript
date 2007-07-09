@@ -77,8 +77,14 @@
 	     #t ;; <-- Harshest version: no functions at all.
 	     (error 'verify-elaborated
 		    ;"post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
-		    "post-elaboration expression should (currently) not contain function applications at all.\n  Type: ~s\n  Rator: ~s\n"
-		    type rator))
+		    "~a~a  Type: ~s\n\n  Rator: ~a\n  Location: ~a\n"
+		    "post-elaboration expression should (currently) not contain function applications at all.\n"
+		    "This should have inlined...\n"
+		    ;"This probably means that you have a "
+		    type 
+		    ;; Approximate location:
+		    (get-snippet rator)
+		    (get-location rator)))
 	    `(app ,rator ,rand* ...))]
 
 
@@ -118,6 +124,10 @@
 	  (error 'verify-elaborated 
 		 "shouldn't have generic arithmetic after static-elaborate: ~s"
 		 `(,genop . ,args))]
+
+	 ;; [2007.07.08] TEMPORARY: FIXME
+	 ;; Ditching source location at this point... the rest of the compiler just isn't ready for it yet.
+	 [(src-pos ,_ ,[e]) e]	 
 
 	 [,other (fallthrough other tenv)])))
 

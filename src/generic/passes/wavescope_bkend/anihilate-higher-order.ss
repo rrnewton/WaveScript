@@ -155,7 +155,10 @@
 
 	;; Safety net:
 	[(,prim ,rands ...) (guard (assq prim higher-order-primitives))
-	 (error 'anihilate-higher-order "missed this, possible not fully elaborated: ~s" `(,prim ,@rands))]
+	 (error 'anihilate-higher-order "missed this, possible not fully elaborated:\n  Code: ~a\n  Location: ~a\n" 
+		(get-snippet `(,prim ,@rands))
+		(get-location `(,prim ,@rands))
+		)]
 	
 	[,oth (fallthru oth)]))
 

@@ -101,6 +101,8 @@
 	   grab-init-tenv
 	   sumdecls->tenv
 	   src-pos->string
+
+	   get-snippet get-location
 	   )
 
   (chezimports constants
