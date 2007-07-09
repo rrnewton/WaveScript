@@ -1,0 +1,185 @@
+
+include "marmot_first_phase.ws";
+//include "rewindowGeneral.ws";
+//include "run_aml_test.ws";
+
+//======================================================================
+
+samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+sound_spd = 345.0; // HACK - although not quite sure how to put it in
+
+
+// reference single-target AML representation, based on the aml.c file in emstar
+// implemented by Mike Allen, July 2007
+
+fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
+
+fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
+
+fun expC2(c) (1.0+0.0i * floatToComplex(cos(c))) + (0.0+1.0i * floatToComplex(sin(c))); // equivalent to the expC implementation in stdlib.ws
+
+/*
+// does an aml given fftd data already.. assumes windows of data are already fftd
+fun oneSourceAMLFFT(synced, sensors)
+{
+
+}
+*/
+//oneSourceAMLTD :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
+// does an AMl calc based on TD data of supplied window (i.e. it does no rewindowing itself)
+// only does one source - other implementations may work on multiple sources
+fun oneSourceAMLTD(synced, sensors)
+{
+  sens_num = m_rows(sensors); // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
+
+  // build an array with sens_num sensors in it for theta and radius (polar coords)
+  // 1. radius
+  radius = Array:build(sens_num, fun(i) sqrtF( sqr(m_get(sensors,i,0)) + sqr(m_get(sensors,i,1)) ) );
+  // 2. theta
+  theta = Array:build(sens_num, fun(i) atan2(m_get(sensors,i,1), m_get(sensors,i,0)));
+
+  //  print(show(m_get(sensors,0,0))++"\n");
+
+  //  print("radius = "++show(radius[0])++" "++show(radius[1])++" "++show(radius[2])++" "++show(radius[3])++"\n");
+  //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
+
+  // convert the data from a list of segs into a matrix
+  data_in = stream_map(list_of_segs_to_matrix, synced);
+
+  // num_src = 1; // we're only interested in one source, this var is not used..
+  grid_size = 360; // 1 unit per degree.
+
+  // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
+  aml_result = iterate (m_in in data_in) {
+
+    // so we can use m_rowmap to map our function in the same way as the fft
+    window_size = (m_in[0])`Array:length; // this is the size of one of the rows in m_in, right? currently 16384 - WHY
+
+    // total bins that will come out of the FFT
+    total_bins = window_size/2;
+
+    // The result vector
+    Jvec = Array:make(grid_size, 0.0);
+
+    //fft the sync'd data - these must be channels, otherwise the fft doesn't make any sense
+    fft_temp = m_rowmap(fftR2C, m_in);
+    
+    //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
+    sel_bin_size = min(total_bins, window_size/20);
+    // the above makes more sense when you're NOT using all bins for the AML (i.e. you're only using certain frequency bands)
+
+    // the processed frequency data will be mapped into here
+    data_f = matrix(sens_num, total_bins, 0.00+0.00i); // with no set values, yet. 4 channels x total bin size
+
+    // set each element
+    for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
+      for j = 0 to (total_bins - 1) { // window size
+        set(data_f, i, j, sdivC(conjC(m_get(fft_temp,i,j)), intToFloat(window_size)) );
+      };
+      // set those first values - think this is supposed to be the last value in each array? - i is channel num
+      //function takes the 0th element from the fft's imaginary and divides it by window size (setting it to the real), and sets the imag to 0 
+      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(m_get(fft_temp,i,0))/intToFloat(window_size))) );
+      // set (channel, element in array)
+    };
+  
+    // this sort is directly taken from the aml.c implementation
+    // instead of sorting all the bins, only a subset are sorted == quicker, I think
+  
+    psds = Array:make(total_bins,0.0); // power across bins
+    psd_index = Array:make(total_bins,0); // power indices
+    
+    for i = 0 to (total_bins-1) {
+      for j = 0 to (sens_num-1) { // AML_NUM_CHANNELS
+	psds[i] := psds[i] + norm_sqrC(m_get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
+      };
+      psd_index[i] := i;
+    };
+    
+    // unfortunately, it's difficult to keep state in a non-iterate block with wavescript
+    // we hack this by making Arrays (which you can edit) with one element
+    temp_val = Array:make(1,0.0); // HACK
+    temp_ind = Array:make(1,0); // HACK
+    max_ind = Array:make(1,0); // HACK
+    order = Array:make(sel_bin_size,0); // order of array
+    
+    // the actual sort
+    for i = 0 to (sel_bin_size-1) {
+      temp_val[0] := psds[i];
+      temp_ind[0] := psd_index[i];
+      max_ind[0] := i;
+      
+      for j = i+1 to (total_bins-1) {
+	if psds[j] > temp_val[0] then {
+	  max_ind[0] := j;
+	  temp_val[0] := psds[j];
+	  temp_ind[0] := psd_index[j];
+	};
+      };
+      
+      if (max_ind[0] < i || max_ind[0] > i) then { // i don't know the syntax for != here
+	psds[max_ind[0]] := psds[i];
+	psd_index[max_ind[0]] := psd_index[i];
+      	psds[i] := temp_val[0];
+	psd_index[i] := temp_ind[0];
+      };      
+      order[i] := temp_ind[0]; // all subsequent access to psds is done thru the order array
+    };
+    //    gnuplot_array(order);
+    // now do the actual AML calculation, searching thru each angle
+    for i = 0 to (grid_size - 1) {
+      try_angle = intToFloat(i)*2.00*const_PI/intToFloat(grid_size);
+      
+      // TD code from C
+      // td[k] = - radius[k] * cosf ( try_angle - theta[k])*param->samp_rate/param->sound_spd;
+
+      // function to calculate time delay relative to centre of array
+      fun delay(c) {
+      	(0.00 - radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
+	//	(radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
+      };
+      td = Array:build(sens_num, fun(c) delay(c));
+      //      print("td = "++show(td[0])++" "++show(td[1])++" "++show(td[2])++" "++show(td[3])++"\n");
+      for j = 0 to (sel_bin_size-1) {
+	// steering vector of complex numbers
+	D = Array:make(sens_num, 0.0+0.0i);
+	temp_c = Array:make(1,0.0+0.0i); // HACK :-)
+	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
+	for n = 0 to (sens_num - 1) {
+	  //	  D[n] := expC(0.0+1.0i * f2c(-2.0 * const_PI * gint(order[j]) * td[n] / gint(window_size))); // took out the order[j]+1 (seems to make it equal)
+	  D[n] := expC(0.0+1.0i * f2c(2.0 * const_PI * gint(order[j]) * td[n] / gint(window_size))); // took out the order[j]+1 (seems to make it equal)
+	  // odd thing here is that if we take out the - from -2.0, the results are correct.. need to figure this out
+	  //D[n] := expC(0.0+1.0i * f2c(-2.0 * const_PI * gint(order[j]+1) * td[n] / gint(window_size)));
+	  //D[n] := expC2(-2.0 * const_PI * gint(order[j]+1) * td[n] / gint(window_size)); // equivalent, usding different expC function
+	};
+	//emit(D);
+	for n = 0 to (sens_num - 1) {
+	  temp_c[0] := temp_c[0] + conjC(D[n]) * m_get(data_f,n,order[j]);
+	};
+
+	for n = 0 to (sens_num - 1) {
+	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c[0], intToFloat(sens_num))) );
+	  // c version is : Cnormsqr(Cmul(temp_c,D[k])), where temp_c is divided by AML_NUM_CHANNELS
+	};
+      };
+    };
+    gnuplot_array(Jvec);
+    emit(Jvec); // and, we're done!
+  };
+
+  aml_result
+}
+
+//========================================
+// Main query:
+
+/* define array geometry */
+sensors = list_to_matrix([[ 0.04,-0.04,-0.04],
+			  [ 0.04, 0.04, 0.04],
+			  [-0.04, 0.04,-0.04],
+			  [-0.04,-0.04, 0.04]]);
+
+// 'synced' is defined in marmot_first_phase.ws
+//doas = FarFieldDOAb(synced, sensors);
+doas = oneSourceAMLTD(synced, sensors);
+
+BASE <- doas
