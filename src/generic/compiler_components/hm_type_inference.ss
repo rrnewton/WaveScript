@@ -444,7 +444,7 @@
    [(boolean? c) 'Bool]
    
    [(vector? c) `(Array ,(if (zero? (vector-length c))
-			     ''anytype
+			     (make-tcell) ;''anytype
 			     (type-const (vector-ref c 0))))]
 
    [(eq? c 'BOTTOM) (make-tcell)]
@@ -459,6 +459,14 @@
 	(for-each (lambda (t) (types-equal! t t1 `',c "(Elements of list must have same type.)\n"))
 	  (cdr types))
 	`(List ,t1)))]
+   
+   ;; Should we allow constant sigsegs?
+   ;[(eq? c nullseg-object) ]
+   [(sigseg? c) 
+    (if (zero? (vector-length (sigseg-vec c)))
+	`(Sigseg ,(make-tcell))
+	`(Sigseg (type-const (vector-ref (sigseg-vec c)))))]
+   
    [else (error 'type-const "could not type: ~a" c)]))
 
 ;; Assign a type to a procedure application expression.
@@ -676,8 +684,7 @@
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
 	 (types-equal! (instantiate-type ty '()) et newexp "(Type incompatible with explicit type annotation.)\n")
-	 (values `(assert-type ,ty ,e)
-		 et))]
+	 (values newexp et))]
 
       ;; ----------------------------------------
 

@@ -118,8 +118,16 @@
       (lambda (x fallthru)
 	  (match x
 	    ;; Strip an assert-type unless it's around a data source.
-	    [(assert-type ,t ,e) (guard (data-source? e))
+	    ;; HACK: quoted numbers also need their type annotations.
+#;
+	    [(assert-type ,t ,e) (guard (or (data-source? e) (quoted-num? e)))
 	     `(assert-type ,t ,(Expr e fallthru))]
+
+	    ;; New hack: we keep any annotations that have NO
+	    ;; polymorphism.  These will not be a problem.
+	    [(assert-type ,t ,[e]) (guard (not (polymorphic-type? t)))
+	     `(assert-type ,t ,e)]
+
 	    [(assert-type ,_ ,[e]) 
 	     ;(printf "GOT ASSERT: ~s\n" ty)
 	     ;`(assert-type ,ty ,e)

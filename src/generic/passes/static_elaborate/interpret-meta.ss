@@ -2,7 +2,7 @@
 
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
-	   "static-elaborate.ss"
+	   (all-except "static-elaborate.ss" these-tests)
            "../../langs/lang_wavescript.ss")
   (provide Eval Marshal Marshal-Closure  interpret-meta
 	   test-interpret-meta)
@@ -59,15 +59,11 @@
   (match x
     [,v (guard (symbol? v)) 
 	(if (regiment-primitive? v)
-	    (inspect `(INTERESTING ,v))
+	    (make-plain (wavescript-language v))
 	    (apply-env env v))]
     [',c (make-plain c)]
 
-;    [(tuple ,[x*] ...) (make-tuple x*)]
     [(tuple ,[x*] ...) (make-plain (list->vector x*))]
-
-;    [(timer ,[period])      (make-streamop (streamop-new-name) 'timer  period ())]
-;    [(iterate ,[f] ,[s])    (make-streamop (streamop-new-name) 'iterate f (list s))]
 
     ;; Here's a hack to keep those type assertions on the readFiles...
     [(assert-type ,ty ,e)
@@ -154,7 +150,7 @@
        (inspect case)
        (Eval (closure-code clos) 
 	     (extend-env (closure-formals clos) (list (datatype-payload x))
-			 (closure-env f))))]
+			 (closure-env clos))))]
 
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
@@ -224,11 +220,11 @@
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
 (define (Marshal-Plain p) 
-  (define val (plain-val p))
-  (if (hash-table? val)
-      (error 'Marshal-Plain "hash table marshalling unimplemented")
-      `',val
-      ))
+  (let ([val (plain-val p)])
+    (if (hash-table? val)
+	(error 'Marshal-Plain "hash table marshalling unimplemented")
+	`',val
+	)))
 
 (define (Marshal-Closure cl)
     (let loop ([code (closure-code cl)]

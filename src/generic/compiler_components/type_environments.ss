@@ -164,6 +164,7 @@
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [,else #f]))
 
+;; Taken instantiated or uninstantiated type:
 (define constant-typeable-as? 
   (lambda (c ty)
 #;
@@ -184,6 +185,10 @@
 	  [String (string? c)]
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
 	  [#()   (eq? c 'UNIT)]
+
+	  ;; Type variable, matches anything:
+	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]
+
 	  ;[else #f]
 	  ))
     ))

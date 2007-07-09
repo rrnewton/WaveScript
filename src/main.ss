@@ -462,7 +462,7 @@
   ;; Run this twice!!!
   ;(ws-run-pass p degeneralize-arithmetic)
   (time (ws-run-pass p static-elaborate))
-; (time (ws-run-pass p interpret-meta))
+;  (time (ws-run-pass p interpret-meta))
 ;  (inspect p)
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
@@ -497,6 +497,10 @@
   ;; Shouldn't need to redo LUB because the types are already restrictive???
   (do-late-typecheck)
 
+  ;; Trying this *before* unlift.  
+  ;; The function here is to strip all but the essential type annotations.
+  (ws-run-pass p strip-irrelevant-polymorphism)
+
   ;; This three-step process is inefficient, but easy:
   ;; This is a hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
@@ -504,6 +508,7 @@
 
   (ws-run-pass p unlift-polymorphic-constant)
   (ws-run-pass p strip-irrelevant-polymorphism)
+;  (inspect p)
 
   (unless (memq 'merge-iterates disabled-passes)
     ;(pretty-print p)
@@ -547,6 +552,7 @@
 ;  (exit)
 
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
+;  (inspect p)
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)

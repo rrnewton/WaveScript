@@ -166,6 +166,7 @@
 
 	 nodeid?
 
+;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
          )
 		
@@ -830,6 +831,7 @@
 
 ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
 (reg:define-struct (sigseg start end vec timebase))
+;(define special-nullseg-object (gensym "unique-nullseg"))
 
 ; ======================================================================
 

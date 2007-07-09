@@ -751,7 +751,7 @@
 
   ;; ================================================================================
   (define (valid-sigseg? w)
-    (or (eq? w nullseg)
+    (or (nullseg? w)
 	(and (sigseg? w)
 	     (<= (sigseg-start w) (sigseg-end  w))
 	     (s:equal? (vector-length (sigseg-vec w))
@@ -902,6 +902,9 @@
   (define Array:null #())
   (define nulltimebase 'nulltimebase)
   (define nullseg (make-sigseg 0 -1 #() nulltimebase))
+  ;(define nullseg special-nullseg-object)
+  ;(define (nullseg? x) (eq? x nullseg))
+  (define (nullseg? x) (fx= 0 (vector-length (sigseg-vec x))))
 
   (define (gint x) x)
 
@@ -1235,8 +1238,8 @@
        (DEBUGASSERT (valid-sigseg? w2))
        (DEBUGASSERT valid-sigseg?
 	(cond 
-	 [(eq? w1 nullseg) w2]
-	 [(eq? w2 nullseg) w1]
+	 [(nullseg? w1) w2]
+	 [(nullseg? w2) w1]
 	 [else 
 	  (let ([a (sigseg-start w1)]
 		[b (sigseg-end w1)]
@@ -1292,7 +1295,7 @@
        (DEBUGASSERT (valid-sigseg? w))
        (ASSERT valid-sigseg?
 	(cond
-	 [(eq? w nullseg) (error 'subseg "cannot subseg nullseg: ind:~s len:~s" startind len)]
+	 [(nullseg? w) (error 'subseg "cannot subseg nullseg: ind:~s len:~s" startind len)]
 	 [(< len 0) (error 'subseg "length of subseg cannot be negative!: ~s" len)]
 	 [(= len 0) nullseg]
 	 [(or (< startind (sigseg-start w))
@@ -1310,28 +1313,28 @@
      ;; [2007.01.26] Changing this back to be zero-based.
      (define (seg-get w ind) 
        (DEBUGASSERT valid-sigseg? w)
-       (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
+       (if (nullseg? w) (error 'seg-get "cannot get element from nullseg!"))
        (DEBUGMODE (if (or (< ind 0) (>= ind (width w)))
 		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
        (vector-ref (sigseg-vec w) ind))
      (define (width w) 
-       (DEBUGASSERT (valid-sigseg? w))
-       (if (eq? w nullseg) 0 (vector-length (sigseg-vec w))))
+       (DEBUGASSERT valid-sigseg? w)
+       (if (nullseg? w) 0 (vector-length (sigseg-vec w))))
      (define (start w) 
        (DEBUGASSERT (valid-sigseg? w))
-       (if (eq? w nullseg) (error 'start "cannot get start index from nullseg!"))
+       (if (nullseg? w) (error 'start "cannot get start index from nullseg!"))
        (sigseg-start w))
      (define (end w) 
        (DEBUGASSERT (valid-sigseg? w))
-       (if (eq? w nullseg) (error 'end "cannot get end index from nullseg!"))
+       (if (nullseg? w) (error 'end "cannot get end index from nullseg!"))
        (sigseg-end w))
      (define (timebase w) 
        (DEBUGASSERT (valid-sigseg? w))
        ;; Is this true?  Or does each signal have its own nullseg?? That could be very tricky...
        ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
-       (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
+       (if (nullseg? w) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
-     (define (toArray w) (if (eq? w nullseg) #() (sigseg-vec w)))
+     (define (toArray w) (if (nullseg? w) #() (sigseg-vec w)))
      (define (toSigseg ar st tb)
        (define en (fx+ st (s:vector-length ar) -1))
        (DEBUGASSERT (or (eq? ar Array:null) (vector? ar)))
