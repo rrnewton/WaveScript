@@ -5,7 +5,7 @@ exec mzscheme -qt "$0" ${1+"$@"}
 
 ;; Experimenting with doing a TCP version
 
-(module wsparse_server_tcp.ss mzscheme 
+(module wsparse_server_tcp mzscheme 
   (require "regiment_parser.ss")
 
   (define conn #f)
@@ -36,7 +36,7 @@ exec mzscheme -qt "$0" ${1+"$@"}
              (tcp-abandon-port inpipe)
              (tcp-abandon-port outpipe)
              (server-loop))]
-          [else (error 'server-loop "received something other than a filename")]
+          [else (error 'server-loop "received something other than a filename: ~s" fn)]
           )))
     (server-loop))
 
