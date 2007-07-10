@@ -1,3 +1,7 @@
+#! /bin/bash
+#|
+exec mzscheme -mqt "$0" ${1+"$@"}
+|#
 
 ;; Just a little PLT script to parse the input file and write result to stdout.
 
@@ -26,6 +30,7 @@
     (write (ws-parse-file filename))
     (pretty-print (ws-parse-file filename)))
 
+(exit 0)
 )
 
 ;(require wsparse)

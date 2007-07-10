@@ -400,6 +400,7 @@
  ;; .returns A parsed file, or #f for failure.
  ;; Expects absolute path!!
  (define (ws-parse-file fn)    
+   ;; FIXME: DELETE THIS.  It's obsoleted by the vastly more reliable TCP based server.
    (define (try-server)
      (printf "Using wsparse_server to parse file: ~a\n" fn)
      (let ([out (open-output-file "/tmp/wsparse_server_pipe" 'append)]
@@ -415,6 +416,17 @@
      (begin 
        (let* ([tmpfile (format "/tmp/~a.tmp" (random 1000000))]
 	      [port
+
+	       ;; [2007.07.09] Switching over to the new client:
+	       ;; Looks like we could use "process" and avoid the temp file:
+	       (begin
+		 (printf "Calling wsparse_client.ss to parse file: ~a\n" fn)
+		 ;; We want only the stdout not the stderr:
+		 (system (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a  > ~a" 
+				 (REGIMENTD) fn tmpfile))
+		 (open-input-file tmpfile)
+		 )
+#;
 	       (if (zero? (system "which wsparse")) 
 		   ;; Use pre-compiled executable:
 		   (begin 
@@ -430,7 +442,7 @@
 				  "Running wsparse.ss from source, but you probably"
 				  " want to do 'make wsparse' for speed."))
 		     ;; We want only the stdout not the stderr:
-		     (system (format "mzscheme --require-script ~a/src/plt/wsparse.ss ~a --nopretty > ~a" 
+		     (system (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty > ~a" 
 				     (REGIMENTD) fn tmpfile))
 		     (open-input-file tmpfile)
 		     ))]
@@ -438,7 +450,7 @@
 	 (close-input-port port)
 	 (delete-file tmpfile)
 	 ;; This is very hackish:
-	 (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	 (if (or (eq? decls 'ERROR) (eq? decls 'PARSE)) ;; From "PARSE ERROR"
 	     (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
 	 ;;(printf "POSTPROCESSING: ~s\n" decls)
 	 ;;(ws-postprocess decls)
