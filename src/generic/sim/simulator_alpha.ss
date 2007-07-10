@@ -1010,7 +1010,7 @@
 		     ;; We consider the first arg to represent a token machine if it is a *list*.
 		     [(,tm ,rest ...) (guard (list? tm))
 		      (define (run-compiled)
-			(if (simalpha-write-sims-to-disk)
+			(if (simulator-write-sims-to-disk)
 			    (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
 			      (parameterize ([print-level #f]
 					     [pretty-maximum-lines #f]
@@ -1036,7 +1036,7 @@
 			[,tm			     
 			 (let ((cleaned tm )) ; (cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
-			     (if (simalpha-write-sims-to-disk)
+			     (if (simulator-write-sims-to-disk)
 				 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
 					;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
 				   (parameterize ([print-level #f]
@@ -1073,7 +1073,7 @@
 
 		      ;; When we get to the end of the params we start it up:
 		      [() 
-		       (if (simalpha-write-sims-to-disk)
+		       (if (simulator-write-sims-to-disk)
                            ;; In this case we assume the simulation is already written to disk:
 			   ;; Loading this binds "node-code" at top-level:
 			   (IFCHEZ

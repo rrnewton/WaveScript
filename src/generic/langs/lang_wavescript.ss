@@ -209,11 +209,12 @@
 					;(require mzscheme)
 					;(find-library-collection-paths (cons ... (find-library-collection-paths)))	    )
 
-	     (printf "CURRENT DIR ~s\n" (current-directory))
+;	     (printf "CURRENT DIR ~s\n" (current-directory))
+	     (require "./plt/chez_compat.ss") ;; [2007.07.10]
 	     (require "./generic/util/streams.ss")
 	     (require "./generic/sim/wavescript_sim_library_push.ss")
-	     (printf "GOT LIBRARY LOADED\n")
-	     (printf "Here's binding: ~s\n" __readFile)
+;	     (printf "GOT LIBRARY LOADED\n")
+;	     (printf "Here's binding: ~s\n" __readFile)
   ;	     (printf "Here's binding from stream: ~s\n" stream-car)
 	     (if (top-level-bound? 'start-dir) (current-directory (eval 'start-dir)))
 	     (define THISWSVAL ,expr)

@@ -1010,7 +1010,7 @@
 
 			     simalpha-label-sensorvals
 			     simalpha-label-msgcounts
-			     simalpha-write-sims-to-disk
+			     simulator-write-sims-to-disk
 			     simalpha-graphics-on
 			     simalpha-stream-result
 

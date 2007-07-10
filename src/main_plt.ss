@@ -83,6 +83,7 @@
 (all-except "generic/passes/normalize_source/remove-unquoted-constant.ss" these-tests test-this)
 
 (all-except "generic/passes/static_elaborate/static-elaborate.ss" these-tests test-this)
+(all-except "generic/passes/static_elaborate/interpret-meta.ss" these-tests test-this)
 (all-except "generic/passes/static_elaborate/verify-elaborated.ss" these-tests test-this)
 (all-except "generic/passes/static_elaborate/degeneralize-arithmetic.ss" these-tests test-this)
 
@@ -240,6 +241,7 @@
 	 (all-from "generic/passes/normalize_source/rename-vars.ss" )
 	 (all-from "generic/passes/normalize_source/remove-unquoted-constant.ss" )
 	 (all-from "generic/passes/static_elaborate/static-elaborate.ss" )
+	 (all-from "generic/passes/static_elaborate/interpret-meta.ss" )
 	 (all-from "generic/passes/static_elaborate/verify-elaborated.ss" )
 	 (all-from "generic/passes/static_elaborate/degeneralize-arithmetic.ss" )
 	 (all-from "generic/passes/normalize_query/reduce-primitives.ss" )
@@ -310,11 +312,15 @@
    ))
 
   
-;(require main_plt)(current-directory "demos/wavescope")
-;(browse-stream (wsint "demo4_fft.ws"))
+;(require main_plt)
+; (current-directory "demos/wavescope")
+; (browse-stream (wsint "demo6c_syncN.ws"))
+
+  ;(browse-stream (wsint "demo4_fft.ws"))
 ;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
 ;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
-#;
+
+  #;
 (begin 
   (current-directory "~/wavescript/apps/marmot")
   (wsint "run_first_phase.ws"))

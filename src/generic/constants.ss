@@ -130,7 +130,7 @@
 	 simalpha-sense-function
 	 simalpha-sense-function-constructor
 	 simalpha-graphics-on
-         simalpha-write-sims-to-disk
+         simulator-write-sims-to-disk
 	 simalpha-generate-modules
 	 simalpha-label-msgcounts 
 	 simalpha-label-sensorvals 
@@ -723,8 +723,9 @@
 ;; highlighting them), can be slow.
 ;(define-regiment-parameter simalpha-draw-edges #t)
 
-;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
-(define-regiment-parameter simalpha-write-sims-to-disk (IFDEBUG #t #f))
+;; When this is #t the simulator writes all simulations to a file and loads them.  Better for debugging!
+;; This controls both the "language-mechanism" and simalpha..
+(define-regiment-parameter simulator-write-sims-to-disk (IFDEBUG #t #f))
 
 ;; This parameter controls whether or not the generated (simulator)
 ;; code will be wrapped in "module" declarations.  This makes

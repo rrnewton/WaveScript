@@ -112,13 +112,21 @@
      (ASSERT (not (assq prim wavescript-stream-primitives)))
 					;   (printf "RUNNING ~s ~s\n" prim x*)
      ;; This is probably also rather slow.
-     (let ([raw (wavescript-language 
-		 ;; We're willing to give it "plain" vals.
-		 ;; Refs should not be passed first class.
-		 ;; And closures/streams remain opaque:
-		 (cons prim (map (lambda (x) 
-				   (ASSERT (not (ref? x)))
-				   (if (plain? x) `',(plain-val x) x)) x*)))])
+     (let ([raw 
+	    ;; Can't write/read because it will contain procedures and streamops.
+	    (parameterize ([simulator-write-sims-to-disk #f])
+	      (wavescript-language 
+	       ;; We're willing to give it "plain" vals.
+	       ;; Refs should not be passed first class.
+	       ;; And closures/streams remain opaque:
+	       (cons prim (map (lambda (x)				   
+				 (ASSERT (not (ref? x)))				   
+				 (cond 
+				  [(plain? x) `',(plain-val x)]
+				  [(closure? x) (reify-closure x)]				    
+				  [(streamop? x) x] ;; This shouldn't be touched.
+				  [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
+			    x*))))])
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
@@ -155,6 +163,12 @@
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
+
+;; Make a *real* procedure that evaluates a closure.
+(define (reify-closure c)
+  (lambda args
+    (Eval (closure-code c) 
+	  (extend-env (closure-formals c) args (closure-env c)))))
 
 
 ; ================================================================================ ;
@@ -195,22 +209,25 @@
 (define (Marshal-Streamop op)
   (define default 
     (cons (streamop-op op)
-	  ;; This is more than a bit silly, I shouldn't split params/parents in the first place.
-	  (let loop ([argty* (car (regiment-primitive? (streamop-op op)))]
-		     [params  (streamop-params op)]
-		     [parents (streamop-parents op)])
-	    (cond
-	     [(null? argty*) '()]
-	     [(stream-type? (car argty*))
-	      (cons (streamop-name (car parents))
-		    (loop (cdr argty*) params (cdr parents)))]
-	     [else 
-	      (let ([marshal (cond 
-			      [(plain? (car params)) Marshal-Plain]
-			      [(closure? (car params)) Marshal-Closure]
-			      [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
-		(cons (marshal (car params)) 
-		      (loop (cdr argty*) (cdr params) parents)))]))))
+	  (if (eq? 'unionN (streamop-op op))
+	      (map streamop-name (streamop-parents op))
+	      ;; This is more than a bit silly, I shouldn't split params/parents in the first place.
+	      (let loop ([argty* (car (ASSERT (regiment-primitive? (streamop-op op))))]
+			 [params  (streamop-params op)]
+			 [parents (streamop-parents op)])
+		(cond
+		 [(null? argty*) '()]
+		 [(stream-type? (car argty*))
+		  (cons (streamop-name (car parents))
+			(loop (cdr argty*) params (cdr parents)))]
+		 [else 
+		  (let ([marshal (cond 
+				  [(plain? (car params)) Marshal-Plain]
+				  [(closure? (car params)) Marshal-Closure]
+				  [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
+		    (cons (marshal (car params)) 
+			  (loop (cdr argty*) (cdr params) parents)))]))
+	      )))
   (if (streamop-type op)
       `(assert-type ,(streamop-type op) ,default)
       default))
@@ -413,7 +430,7 @@
      '(let ([v 'a (Mutable:ref '0)])
 	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '()))    10]
-    [(,plain-val (Eval 
+    [(,plain-val (,Eval 
      '(let ([v 'a (Mutable:ref '0)])
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '()))    10]

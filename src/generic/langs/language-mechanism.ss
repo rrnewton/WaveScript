@@ -5,10 +5,10 @@
 
 (define define-language
   (lambda (name def . postdef)
-    ;; [2006.08.30] Changing things so that we load from file in debug mode.  
-    ;; Gives us source locations.
+    ;; [2006.08.30] Changing things so that we load from file if the
+    ;; write-sims-to-disk parameter is set.  Gives us source locations.
     (define (runprog p)
-      (IFDEBUG
+      (if (simulator-write-sims-to-disk)
        (let* ([tmpfile "__lang_running.tmp.ss"]
 	      [out (open-output-file tmpfile 'replace)])
 	 (parameterize ([print-length #f]
