@@ -219,6 +219,8 @@
 (print-vector-length #t)
 ;(pretty-maximum-lines 700)
 (pretty-maximum-lines #f)
+(pretty-line-length 150)
+(pretty-standard-indent 0)
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.

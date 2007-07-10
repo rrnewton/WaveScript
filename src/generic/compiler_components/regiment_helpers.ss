@@ -37,11 +37,11 @@
 	  sense-random-1to100
 	  ;sense-fast-sine-wave
 
-	  unique-name unique-name-counter extract-suffix make-begin 
+	  unique-name unique-name-counter extract-suffix make-begin make-nested-lets
 	  deep-reg:struct->list ;deep-reg:struct->list2 reg:very-deep-map
 	  strip-illegal deunique-name  reunique-names
 	  get-formals 
-
+	  
 
 	  ;; Hmm, not sure what meaning immediate has here...
 	  ;immediate? 
@@ -67,6 +67,7 @@
 
 	  parse-readFile-modestring
 	  peel-annotations
+	  let-spine
 	  )
 
   (chezimports prim_defs grammar_checker)
@@ -266,6 +267,10 @@
       [() (void)]
       [(,x) x]
       [(,x ,x* ...) `(begin ,x ,@x*)]))))
+
+(define (make-nested-lets binds body)
+  (if (null? binds) body
+      `(let (,(car binds)) ,(make-nested-lets (cdr binds) body))))
 
 ;; A little helper to project out a metadata-tag from a program form.
 ;; TODO: Move this somewhere else:
@@ -1088,6 +1093,31 @@
     [(assert-type ,_ ,[e]) e]
     [(src-pos ,_ ,[e])     e]
     [,e                    e]))
+
+;; This is a simple interactive debugging tool.  It shows the binding
+;; spine of the program.
+(define let-spine 
+  (case-lambda 
+    [(arg)  (if (number? arg) 
+		(lambda (e) (let-spine arg e))
+		(let-spine 0 arg))]
+    [(level e)      
+     (match e
+       [,v (guard (symbol? v)) v]
+       [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+	(guard (memq lett '(let* let letrec lazy-letrec)))
+	`(,lett ,(map (lambda (v rhs) (list v (if (>= level 1) rhs '_))) 
+		   lhs* rhs*)
+		,bod)]
+       [(lambda ,args ,ty ,[bod]) 
+	(if (>= level 2) `(lambda ,args ,bod) '_)]
+       [(iterate ,[fun] ,[bod])
+	(if (>= level 3) `(iterate _ ,bod) '_)]
+
+       [(assert-type ,_ ,[e]) e]
+       [(src-pos ,_ ,[e]) e]
+       [(,lang '(program ,[e] ,_ ...)) e]
+       [,else '_])]))
 
 ; ======================================================================
 

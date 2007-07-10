@@ -87,7 +87,7 @@
    gaussian
 
    list-repeat! make-repeats
-   mapi for-eachi diff
+   mapi map-filter for-eachi diff
    set? subset? set-equal? list->set set-cons union intersection difference
    setq? subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
@@ -341,6 +341,8 @@
                             (if (fx< i 0) 0                                
                                 (+ (count-nodes (vector-ref lsvec i))
                                    (loop (sub1 i))))))]
+      ;; Well, don't know how to go in here.  So it's an atom.
+      [(record? lsvec) 1]
       [else (error 'count-nodes
                    "only knows how to count the nodes of a list or vector, not ~a" lsvec
                    )])))
@@ -352,6 +354,15 @@
 	'()
 	(cons (f i (car ls))
 	      (mapi-loop (add1 i) (cdr ls))))))
+;; Apply a function, discard any results that are #f
+(define (map-filter f ls)
+  (if (null? ls) '()
+      (let ([val (f (car ls))])
+	(if val 
+	    (cons val (map-filter f (cdr ls)))
+	    (map-filter f (cdr ls))
+	     ))))
+
 ;; [2005.10.16] 
 (define (for-eachi f ls)
   (let foreachi-loop ((i 0) (ls ls))

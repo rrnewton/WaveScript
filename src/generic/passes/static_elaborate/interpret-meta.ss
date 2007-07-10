@@ -27,8 +27,10 @@
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
 (define (annotation? s) (memq s '(assert-type src-pos)))
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
-(define (lambda? x) (and (pair? x) (eq? (car x) 'lambda)))
+(define (lambda? x) (let ([x (peel-annotations x)])
+		      (and (pair? x) (eq? (car x) 'lambda))))
 (define (unknown-type . _) `',(unique-name 'ty))
+
 
 ; ================================================================================ ;
 ;;; Environments
@@ -37,9 +39,11 @@
   (ASSERT symbol? v)
   (let* ([x (cadr (ASSERT (assq v env)))]
 	 [result (if (box? x) (unbox x) x)])
-    (ASSERT wrapped? result)
+    (DEBUGASSERT wrapped? result)
     result))
-(define (extend-env id* val* env) (append (map list id* val*) env))
+(define (extend-env id* val* env)
+  (DEBUGASSERT (curry andmap (lambda (x) (or (wrapped? x) (box? x)))) val*)
+  (append (map list id* val*) env))
 
 #;
 ;; Could explicitly use a store...
@@ -48,6 +52,7 @@
     (cond
      [(plain? entry) (set-plain-val! entry (plain-val x))]
      [else (error 'mutate-env! "unhandled environment entry: ~s" entry)])))
+
 
 ; ================================================================================ ;
 ;;; Interpreter
@@ -150,6 +155,7 @@
      (begin (for-each (lambda (x) (Eval x env)) x*)
 	    (Eval last env))]
 
+#;
     ;; TODO: Need to add the data *constructors*... this is incomplete currently.
     [(wscase ,[x] (,pat* ,[rhs*]) ...) 
      (let* ([alts (map list pat* rhs*)]
@@ -167,8 +173,11 @@
 ;; Make a *real* procedure that evaluates a closure.
 (define (reify-closure c)
   (lambda args
+    (DEBUGASSERT (curry andmap (compose not procedure?)) args)
     (Eval (closure-code c) 
-	  (extend-env (closure-formals c) args (closure-env c)))))
+	  (extend-env (closure-formals c) 
+		      (map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
+		      (closure-env c)))))
 
 
 ; ================================================================================ ;
@@ -177,8 +186,11 @@
 ;; This marshals the resulting stream-operators.
 ;; The result is a code for a stream-graph.
 (define (Marshal val)
-  (ASSERT streamop? val)
-  (let (;[covered (make-default-hash-table 100)]
+  (cond
+   [(plain? val) (Marshal-Plain val)]
+   [(closure? val) (Marshal-Closure val)]
+   [(streamop? val)
+    (let (;[covered (make-default-hash-table 100)]
 	[acc '()])
     ;; Here we trace back through the stream graph:
     (define allops
@@ -204,7 +216,8 @@
     ;; No, doing letrec instead:
     `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
        ,(streamop-name val))
-    ))
+    )]
+   [else (error 'Marshal "cannot marshal: ~s" val)]))
 
 (define (Marshal-Streamop op)
   (define default 
@@ -221,11 +234,9 @@
 		  (cons (streamop-name (car parents))
 			(loop (cdr argty*) params (cdr parents)))]
 		 [else 
-		  (let ([marshal (cond 
-				  [(plain? (car params)) Marshal-Plain]
-				  [(closure? (car params)) Marshal-Closure]
-				  [else (error 'Marshal-Streamop "unknown value: ~s" (car params))])])
-		    (cons (marshal (car params)) 
+		  (let ()
+		    (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
+		    (cons (Marshal (car params)) 
 			  (loop (cdr argty*) (cdr params) parents)))]))
 	      )))
   (if (streamop-type op)
@@ -275,26 +286,16 @@
 	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
 		(let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
 		  (loop 
-
-		        ;(substitute-and-beta (car fv) newclosure code)
- 		        ;; For now, don't do any inlining.  Do that later:
-		        (substitute (list (list (car fv) `(lambda ,(closure-formals val) 
-							    ,(map unknown-type (closure-formals val))
-							    ,newcode))) code)
-
-			;; We also merge the relevent parts of the closure's environment with our environment:
-					;(union (closure-free-vars val) (cdr fv))
-			(union newfree (cdr fv))
-			;; ACK!!!!!!!!!!! FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
-			;; We need to pull the relevent bindings from the closure's environment.
-			;; BUT, it's not safe to assume that names don't collide...
-			;; Because even if names are statically unique... the same name could be bound to many values
-			;; (i.e from multiple calls)
-
-			;; WE NEED TO RENAME ALL THE FREE VARS WITHIN THE CLOSURE.
-
-			state 
-			(append env-slice env))))]
+		   ;; For now, don't do any inlining.  Do that later:
+		   ;; Here we simply stick those lambdas into the code.
+		   (substitute (list (list (car fv) `(lambda ,(closure-formals val) 
+						       ,(map unknown-type (closure-formals val))
+						       ,newcode))) 
+			       code)
+		   ;; We also merge the relevent parts of the closure's environment with our environment:
+		   (union newfree (cdr fv))
+		   state 
+		   (append env-slice env))))]
 	     
 	     [(streamop? val) 
 	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
@@ -311,18 +312,65 @@
     (values newcode newfv newslice)    
     ))
 
-(define Convert-left-left-lambda
-  (core-generic-traverse
-   (lambda (x fallthru)
-     (match x 
-       ;; Sigh, we should be doing our annotation differently...
-       [(app ,rator ,[arg*] ...)
-	(guard (lambda? (peel-annotations rator)))
-	(match (peel-annotations rator)
-	  [(lambda ,formals ,types ,[Convert-left-left-lambda -> bod])
-	   ;; Convert to a let:
-	   `(let ,(map list formals types arg*) ,bod)])]
-       [,oth (fallthru oth)]))))
+
+; ================================================================================ ;
+;;; Basic inlining for stream kernels.
+
+
+;; After meta-program evaluation, what normalization do we want to do to the stream kernels?
+;; Currently, we'd like to get rid of applications.  This function does some very simpl 
+(define (do-basic-inlining e)
+  (define (Expr e subst)
+    (core-generic-traverse
+     (lambda (x fallthru)
+       (match x 
+	 ;; Inline a simple left-left lambda:
+	 ;; Sigh, we should be doing our annotation differently...
+#;
+	 [(app ,rator ,[arg*] ...)
+	  (guard (lambda? rator))
+	  (match (peel-annotations rator)
+	    [(lambda ,formals ,types ,[do-basic-inlining -> bod])
+	     ;; Convert to a let:
+	     `(let ,(map list formals types arg*) ,bod)])]
+
+	 ;; If the variable is bound to a lambda, here we inline it.
+	 [,v (guard (symbol? v))
+	     (let ([ent (assq v subst)])
+;	       (when ent (printf "  INLINING LAMBDA VARREF ~s\n" v))
+	       (if ent (caddr ent) v))]
+
+	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
+	  (let* (;[binds (map list lhs* ty* rhs*)]
+		 [lambind? (lambda (b) (lambda? (caddr b)))]
+		 [newbinds (filter (compose not lambind?) binds)]
+		 [lambs    (filter lambind? binds)])
+
+;	    (unless (null? lambs) (printf "  GOT LAMB BINDS EXTENDING SUBST: ~s\n" (map car lambs)))
+
+	    ;; This is a hack that depends on unique naming.  That's
+	    ;; how we handle let in the same way as letrec.  The lhs*
+	    ;; simply won't occur in the rhs* for a let..
+	    (if (null? lambs)
+		(fallthru `(,lett ,newbinds ,bod))
+		;; This is an inefficent hack, but we loop through again just to change the subst.
+		(Expr `(,lett ,newbinds ,bod) (append lambs subst))))]
+
+	 ;; "Left left lambda"
+	 ;; Evaluate the rator first so it has the chance to turn into a lambda.
+	 [(app ,[rator] ,[rands] ...)
+	  (if (lambda?  rator)
+	      (match (peel-annotations rator)
+		[(lambda ,formals ,types ,[do-basic-inlining -> bod])
+;		 (printf "  CONVERTING LEFT-LEFT-LAMBDA ~s\n" formals)
+		 ;; Convert to a let:
+		 `(let ,(map list formals types rands) ,bod)])
+	      `(app ,rator ,@rands))]
+
+	 [,oth (fallthru oth)]))
+     (lambda (ls k) (apply k ls))
+     e))
+  (Expr e '()))
 
 ;; NOTE!  Assumes unique variable names and so ignores binding forms.
 (define substitute-and-beta
@@ -395,19 +443,17 @@
 
 
 ; ================================================================================ ;
-;;; Lift constants and check sharing.
+;;; TODO: Lift constants and check sharing.
 
 
 ; ================================================================================ ;
 ;;; Entrypoint and Unit Tests
 
-;(Marshal (Eval '(car (cons (iterate (letrec ([x 'a '3]) (lambda (x vq) (a b) x)) (timer '3)) '())) '()))
-;(Marshal (Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()))
-
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru)  
-	    (Convert-left-left-lambda (Marshal (Eval x '()))))])
+	    (do-basic-inlining (time (Marshal (time (Eval x '()))))))])
+
 
 (define-testing these-tests
   `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]
@@ -460,7 +506,14 @@
 	 (iterate (lambda (_) ('a) (app f '9))(timer '3))) Int))))
      #f]
 
-    
+
+    ["Reduce away fact of 6." 
+     (interpret-meta '(foo '(program 
+      (letrec ([fact _ (lambda (n) (_) 
+			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
+	(app fact '6))
+      (union-types) 'notype)))
+     (unspecified '(program '720 (union-types) 'notype))]
 
     ))
 

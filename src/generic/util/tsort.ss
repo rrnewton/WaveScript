@@ -1,3 +1,4 @@
+;;;; Topological sort.
 
 (module tsort mzscheme
   (require (lib "pretty.ss")
@@ -9,6 +10,7 @@
 	   test-this these-tests test-tsort)
   (chezimports)
 
+;; DAG = ([VertSource VertAdjacent ...] ...)
 (define (tsort dag )
   (if (null? dag)
       '()

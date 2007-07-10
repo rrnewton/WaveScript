@@ -460,9 +460,13 @@
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)
   ;; Run this twice!!!
-  ;(ws-run-pass p degeneralize-arithmetic)
-  (time (ws-run-pass p static-elaborate))
+  ;;;;(ws-run-pass p degeneralize-arithmetic)
+
+  (printf "  PROGSIZE: ~s\n" (count-nodes p))
 ;  (time (ws-run-pass p interpret-meta))
+  (time (ws-run-pass p static-elaborate))
+  (printf "  PROGSIZE: ~s\n" (count-nodes p))
+;  (inspect (let-spine 3 p))
 ;  (inspect p)
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
@@ -508,7 +512,6 @@
 
   (ws-run-pass p unlift-polymorphic-constant)
   (ws-run-pass p strip-irrelevant-polymorphism)
-;  (inspect p)
 
   (unless (memq 'merge-iterates disabled-passes)
     ;(pretty-print p)
@@ -552,7 +555,6 @@
 ;  (exit)
 
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
-;  (inspect p)
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)
@@ -1422,169 +1424,6 @@
   ))
 
 
-(define bugprog
-  '(letrec ([sync2 (lambda (ctrl s1 s2)
-                  (letrec ([_ctrl (iterate
-                                    (lambda (#(b s e) ___VIRTQUEUE___)
-                                      (begin
-                                        (emit
-                                          ___VIRTQUEUE___
-                                          (tuple b s e nullseg))
-                                        ___VIRTQUEUE___))
-                                    ctrl)])
-                    (letrec ([_s1 (iterate
-                                    (lambda (win ___VIRTQUEUE___)
-                                      (begin
-                                        (emit
-                                          ___VIRTQUEUE___
-                                          (tuple '#f 0 0 win))
-                                        ___VIRTQUEUE___))
-                                    s1)])
-                      (letrec ([_s2 (iterate
-                                      (lambda (win ___VIRTQUEUE___)
-                                        (begin
-                                          (emit
-                                            ___VIRTQUEUE___
-                                            (tuple '#f 0 0 win))
-                                          ___VIRTQUEUE___))
-                                      s2)])
-                        (letrec ([slist (cons
-                                          _ctrl
-                                          (cons _s1 (cons _s2 '())))])
-                          (iterate
-                            (letrec ([acc1 nullseg]
-                                     [acc2 nullseg]
-                                     [requests '()])
-                              (lambda (#(ind tup) ___VIRTQUEUE___)
-                                (begin
-                                  (letrec ([#(flag strt en seg) tup])
-                                    (begin
-                                      (if (equal? ind 0)
-                                          (set! requests
-                                            (app append
-                                                 requests
-                                                 (cons
-                                                   (tuple flag strt en)
-                                                   '())))
-                                          (if (equal? ind 1)
-                                              (set! acc1
-                                                (app joinsegs acc1 seg))
-                                              (set! acc2
-                                                (app joinsegs acc2 seg))))
-                                      (if (not (equal? acc1 nullseg))
-                                          (app print
-                                               (string-append
-                                                 "  Acc1: "
-                                                 (string-append
-                                                   (app show
-                                                        (app start acc1))
-                                                   (string-append
-                                                     ":"
-                                                     (string-append
-                                                       (app show
-                                                            (app end acc1))
-                                                       "\n")))))
-                                          .
-                                          #0=((tuple)))
-                                      (if (not (equal? acc2 nullseg))
-                                          (app print
-                                               (string-append
-                                                 "  Acc2: "
-                                                 (string-append
-                                                   (app show
-                                                        (app start acc2))
-                                                   (string-append
-                                                     ":"
-                                                     (string-append
-                                                       (app show
-                                                            (app end acc2))
-                                                       "\n")))))
-                                          .
-                                          #0#)
-                                      (if (equal? requests '())
-                                          (tuple)
-                                          (letrec ([#(fl st en) (app head
-                                                                     requests)])
-                                            (if (and (not (equal?
-                                                            acc1
-                                                            nullseg))
-                                                     (and (not (equal?
-                                                                 acc2
-                                                                 nullseg))
-                                                          (and (<= (app start
-                                                                        acc1)
-                                                                   st)
-                                                               (and (<= (app start
-                                                                             acc2)
-                                                                        st)
-                                                                    (and (>= (app end
-                                                                                  acc1)
-                                                                             en)
-                                                                         (>= (app end
-                                                                                  acc2)
-                                                                             en))))))
-                                                (begin
-                                                  (app print
-                                                       (string-append
-                                                         "  Spit out segment!! "
-                                                         (string-append
-                                                           (app show st)
-                                                           (string-append
-                                                             ":"
-                                                             (string-append
-                                                               (app show
-                                                                    en)
-                                                               "\n")))))
-                                                  (letrec ([size (+ (- en
-                                                                       st)
-                                                                    1)])
-                                                    (begin
-                                                      (emit
-                                                        ___VIRTQUEUE___
-                                                        (tuple
-                                                          (app subseg
-                                                               acc1
-                                                               st
-                                                               size)
-                                                          (app subseg
-                                                               acc2
-                                                               st
-                                                               size)))
-                                                      (set! acc1
-                                                        (app subseg
-                                                             acc1
-                                                             (+ st size)
-                                                             (- (app width
-                                                                     acc1)
-                                                                size)))
-                                                      (set! acc2
-                                                        (app subseg
-                                                             acc2
-                                                             (+ st size)
-                                                             (- (app width
-                                                                     acc2)
-                                                                size)))
-                                                      (set! requests
-                                                        (app tail
-                                                             requests)))))
-                                                .
-                                                #0#)))))
-                                  ___VIRTQUEUE___)))
-                            (app unionList slist)))))))])
-  (letrec ([ch1 (app audio 0 128 0)])
-    (letrec ([ch2 (app audio 1 128 0)])
-      (letrec ([outwidth 100])
-        (letrec ([ctrl (iterate
-                         (letrec ([pos 0])
-                           (lambda (w ___VIRTQUEUE___)
-                             (begin
-                               (emit
-                                 ___VIRTQUEUE___
-                                 (tuple '#t pos (- (+ pos outwidth) 1)))
-                               (set! pos (+ pos outwidth))
-                               ___VIRTQUEUE___)))
-                         ch1)])
-          (app sync2 ctrl ch1 ch2)))))))
 
 
 

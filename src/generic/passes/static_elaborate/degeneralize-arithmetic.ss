@@ -45,7 +45,8 @@
 		[(let ([,v ,t (,genop ,[args] ...)]) ,v2)
 		 (guard (eq? v v2) (assq genop generic-arith-primitives))		 
 		 (if (eq? genop 'gint)		     
-		     (match (list t (car args))
+		     ;; Strip annotations so they don't throw off our pattern matching:
+		     (match (list t (strip-annotations (car args)))
 		       [(Int16   (quote ,n))  
 			(ASSERT (constant-typeable-as? n 'Int16))
 			`(assert-type Int16 (quote ,n))

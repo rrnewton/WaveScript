@@ -9,9 +9,9 @@ s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg 
 //s1 = deep_smap(int16ToInt, s0);
 
 
-fun println(s) {
+fun println(str) {
   print("  ");
-  print(s);
+  print(str);
   print("\n");
 };
 
