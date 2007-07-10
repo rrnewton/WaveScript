@@ -10,7 +10,7 @@
 ;(newline)
 
 
-(define-regiment-parameter regiment-version "0.9")
+(define-regiment-parameter regiment-version "0.9?")
 
 
 ;; This is the global parameter that determines which transformations
