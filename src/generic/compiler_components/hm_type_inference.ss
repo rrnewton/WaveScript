@@ -1121,8 +1121,10 @@
 	    (not (memq '-> xargs))
 	    (not (memq '-> yargs))
 	    (= (length xargs) (length yargs)))
-     (if (not (eq? x1 y1))
-	 (type-error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp))
+     (if (not (eq? x1 y1))	 
+	(raise-type-mismatch "These constructors do not match." x1 y1 exp)
+	;(type-error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp)
+	 )
 ;     (types-equal! x1 y1 exp)
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg)) xargs yargs)]
 
@@ -1137,7 +1139,13 @@
 	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg))
 	  xargs yargs)
 	(types-equal! x y exp msg)]
-       [,other (type-error 'types-equal!
+       [,other 
+	(raise-type-mismatch "Function type does not match non-function type." 
+			     (export-type `(,@yargs -> ,y))
+			     (export-type other) 
+			     exp)
+	#;
+	(type-error 'types-equal!
 		      "procedure type ~a\nDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
 		      (export-type `(,@yargs -> ,y))
 		      (export-type other)

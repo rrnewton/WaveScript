@@ -19,9 +19,9 @@ namespace Plot {
 //livePlot :: ArrayPlotter t -> 'foo;
 //livePlot :: SigsegPlotter t -> 'foo;
 //livePlot :: Plotter t -> Plotter t;
-fun live(plotter) fun (S) {
+fun internal_helper(wid, get, toContainer) fun (src) {
 
-  let cumulative = iterate( win in S ) {
+  let cumulative = iterate( win in src) {
     state { 
       arr = Array:null;
       ind = 0;
@@ -40,7 +40,7 @@ fun live(plotter) fun (S) {
 /*     }; */
     
     // Inefficient!! for now we just reallocate EVERY time:
-    arr2 = make(arr.length + win.width, win[[0]]);
+    arr2 = make(arr.length + win`wid, win`get(0));
     for i = 0 to arr.length-1 {
       //println("Copying! " ++ i);
       arr2[i] := arr[i];
@@ -48,19 +48,33 @@ fun live(plotter) fun (S) {
     arr := arr2;  
 
     // Now we copy the new data in:
-    for i = 0 to win.width-1 {
-      arr[ind+i] := win[[i]];
+    for i = 0 to win`wid - 1 {
+      arr[ind+i] := win`get(i);
     };
-    ind += win.width;
+    ind += win`wid;
 
     emit arr;
   };
 
-  //gnuplot_array_stream(cumulative)
-  plotter(cumulative)
+  // We should reproduce the original stream.
+  // But we need union types for that...
+  trash = gnuplot_array_stream(cumulative);
+  //  trash2 = iterate arr in trash {emit toSigseg(arr,0,nulltimebase) };
+  // Here's a hack!  We bring it back to the same type so that we can use unionList.
+  trash2 = iterate arr in trash { emit toContainer(arr) };
+  merged = unionList([src, trash2]);
+  iterate (i,w) in merged { if i==0 then emit w }
 }
 
-live1d = Plot:live(gnuplot_array_stream);
-live2d = Plot:live(gnuplot_array_stream2d);
+namespace Sigseg {
+  //live1d :: ArrayPlotter t -> 'foo;
+  cumulative1d = Plot:internal_helper(width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
+  cumulative2d = Plot:internal_helper(width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
+}
+
+namespace Array {
+  cumulative1d = Plot:internal_helper(Array:length, fun(a,i) a[i], fun(x)x);
+  cumulative2d = Plot:internal_helper(Array:length, fun(a,i) a[i], fun(x)x);
+}
 
 }

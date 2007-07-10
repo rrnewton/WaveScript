@@ -586,6 +586,7 @@
 
     (show             ('a) String)
 
+    ;; These keep a gnuplot window open and repeatedly update it.
     ;; Shouldn't need both of these, one should be defined in wavescript:
     (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
     (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM a)))) (Stream (Sigseg (NUM a))))
@@ -759,7 +760,8 @@
 	   regiment-constants)
    ;; Update the hash table when we change this parameter:
    (lambda (ls)
-     (set! primitives-hash (make-default-hash-table))
+     ;; [2007.07.10] Hmm... didn't set the size before.  Setting now:
+     (set! primitives-hash (make-default-hash-table 500))
      (for-each (lambda (entry)
 		 (hashtab-set! primitives-hash (car entry) (cdr entry)))
        ls)

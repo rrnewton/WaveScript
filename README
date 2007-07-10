@@ -203,6 +203,25 @@ deleted object.  My memory is fuzzy however, I did figure this out in
 the past, but I need to remember exactly what causes this.  <TODO>
 
 
+<Profiling instructions>
+======================================================================
+
+(eval-when (compile eval load) (compile-profile #f))
+
+(with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
+
+(begin 
+  (import swl:module-setup)
+  (import swl:oop)
+  (import swl:macros)
+  (import swl:option)
+  (import swl:threads)
+  (import swl:generics)  
+;  (load "/usr/lib/swl1.0c/apps/profview/profview.ss")
+   (load "~/wavescript/src/chez/rn_profview.ss")
+  (cd "~/wavescript/src/"))
+
+(p-view (with-input-from-file "/tmp/pdump" read))
 
 
 ======================================================================

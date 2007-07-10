@@ -3,10 +3,28 @@
   (require "../constants.ss"
            "../util/helpers.ss"
            (prefix ws: "../sim/wavescript_sim_library.ss"))
-  (provide test-ws test-lang_wavescript)
+  (provide test-ws test-lang_wavescript
+	   lang_wavescript_prim-exceptions)
   (chezimports (add-prefix wavescript_sim_library_push ws:)
 	       ;; Hack, migrated some bindings here:
 	       (add-prefix constants ws:))
+
+(define lang_wavescript_prim-exceptions
+  ;; Make some exceptions for things that are in Regiment but not WaveScript.
+  ;; Also exceptions for geneeric prims and other prims that have been desugared.
+  (append '(eq? locdiff nodeid sense even? odd? dataFile readFile
+		tuple tupref __foreign foreign foreign_box foreign_source
+		or and 
+		ensBoxAudio ensBoxAudioF ensBoxAudioAll
+
+		;; These were resolved into the w/namespace versions:
+		head tail map append fold
+
+		;; These are defined as syntaxes:
+		Mutable:ref ref deref static statref 
+		)
+	  generic-arith-primitives
+	  meta-only-primitives))
  
   (define-testing these-tests
     (let ()      
@@ -74,21 +92,7 @@
 	    (difference
 	     (map car (append regiment-basic-primitives
 			      wavescript-primitives))
-	     ;; Make some exceptions for things that are in Regiment but not WaveScript.
-	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
-	     (append '(eq? locdiff nodeid sense even? odd? dataFile readFile
-			   tuple tupref __foreign foreign foreign_box foreign_source
-			   or and 
-			   ensBoxAudio ensBoxAudioF ensBoxAudioAll
-
-			   ;; These were resolved into the w/namespace versions:
-			   head tail map append fold
-
-			   ;; These are defined as syntaxes:
-			   Mutable:ref ref deref static statref 
-			   )
-		     generic-arith-primitives
-		     meta-only-primitives)
+	     lang_wavescript_prim-exceptions
 	     ))
 
 	)))

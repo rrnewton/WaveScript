@@ -45,14 +45,6 @@
   (DEBUGASSERT (curry andmap (lambda (x) (or (wrapped? x) (box? x)))) val*)
   (append (map list id* val*) env))
 
-#;
-;; Could explicitly use a store...
-(define (mutate-env! env v x)
-  (let ([entry (apply-env env v)])
-    (cond
-     [(plain? entry) (set-plain-val! entry (plain-val x))]
-     [else (error 'mutate-env! "unhandled environment entry: ~s" entry)])))
-
 
 ; ================================================================================ ;
 ;;; Interpreter
@@ -64,7 +56,8 @@
   (match x
     [,v (guard (symbol? v)) 
 	(if (regiment-primitive? v)
-	    (make-plain (wavescript-language v))
+	    ;(make-plain (wavescript-language v))
+	    (make-plain 399999999999999999)
 	    (apply-env env v))]
     [',c (make-plain c)]
 
@@ -115,7 +108,6 @@
     ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
      (ASSERT (not (assq prim wavescript-stream-primitives)))
-					;   (printf "RUNNING ~s ~s\n" prim x*)
      ;; This is probably also rather slow.
      (let ([raw 
 	    ;; Can't write/read because it will contain procedures and streamops.
@@ -131,11 +123,20 @@
 				  [(closure? x) (reify-closure x)]				    
 				  [(streamop? x) x] ;; This shouldn't be touched.
 				  [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
-			    x*))))])
+			    x*))))
+
+#;
+	    (if (not (let ([ty (last (regiment-primitive? prim))])
+		  (or (stream-type? ty) (polymorphic-type? ty))))
+		499999999999999999
+
+
+		)
+
+])
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
-					;   (printf "APPLYING CLOSURE to args ~s\n" e*)
      (Eval (closure-code f) 
 	   (extend-env (closure-formals f) e*
 		       (closure-env f)))]
@@ -169,6 +170,20 @@
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
+
+(define dictionary) ;; Set below:
+(define (build-dictionary!)
+  (set! dictionary (make-default-hash-table 500))
+  (let ([prims (difference 
+		(map car (append regiment-basic-primitives wavescript-primitives))
+		lang_wavescript_prim-exceptions)])
+    (let ([vals (wavescript-language `(list ,@prims))])
+      (for-each (lambda (sym prim)
+		  (hashtab-set! dictionary sym prim))	   
+	prims vals)))
+  (printf "BUILT DICTIONARY!\n")
+;  (inspect dictionary)
+  )
 
 ;; Make a *real* procedure that evaluates a closure.
 (define (reify-closure c)
@@ -324,20 +339,9 @@
     (core-generic-traverse
      (lambda (x fallthru)
        (match x 
-	 ;; Inline a simple left-left lambda:
-	 ;; Sigh, we should be doing our annotation differently...
-#;
-	 [(app ,rator ,[arg*] ...)
-	  (guard (lambda? rator))
-	  (match (peel-annotations rator)
-	    [(lambda ,formals ,types ,[do-basic-inlining -> bod])
-	     ;; Convert to a let:
-	     `(let ,(map list formals types arg*) ,bod)])]
-
 	 ;; If the variable is bound to a lambda, here we inline it.
 	 [,v (guard (symbol? v))
 	     (let ([ent (assq v subst)])
-;	       (when ent (printf "  INLINING LAMBDA VARREF ~s\n" v))
 	       (if ent (caddr ent) v))]
 
 	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
@@ -345,9 +349,6 @@
 		 [lambind? (lambda (b) (lambda? (caddr b)))]
 		 [newbinds (filter (compose not lambind?) binds)]
 		 [lambs    (filter lambind? binds)])
-
-;	    (unless (null? lambs) (printf "  GOT LAMB BINDS EXTENDING SUBST: ~s\n" (map car lambs)))
-
 	    ;; This is a hack that depends on unique naming.  That's
 	    ;; how we handle let in the same way as letrec.  The lhs*
 	    ;; simply won't occur in the rhs* for a let..
@@ -362,7 +363,6 @@
 	  (if (lambda?  rator)
 	      (match (peel-annotations rator)
 		[(lambda ,formals ,types ,[do-basic-inlining -> bod])
-;		 (printf "  CONVERTING LEFT-LEFT-LAMBDA ~s\n" formals)
 		 ;; Convert to a let:
 		 `(let ,(map list formals types rands) ,bod)])
 	      `(app ,rator ,@rands))]
@@ -452,8 +452,10 @@
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru)  
+	    (build-dictionary!)
 	    (do-basic-inlining (time (Marshal (time (Eval x '()))))))])
 
+; ================================================================================ ;
 
 (define-testing these-tests
   `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]

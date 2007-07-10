@@ -1508,7 +1508,6 @@
 ;  static_library=$1; shared_library=$2
 ;  /usr/bin/ld -O3 -x -no_excpt -expect_unresolved '*' -rpath /freeware/gcc/alpha/lib -shared -o ${shared_library:-${static_library%%a}so} -all $1
 
-
 ;; ====================================================================================================== ;;
 ;;                                        FOR WS.EARLY ONLY:                                              ;;
 ;; ====================================================================================================== ;;

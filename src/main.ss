@@ -463,13 +463,19 @@
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-;  (time (ws-run-pass p interpret-meta))
   (time (ws-run-pass p static-elaborate))
+;  (time (ws-run-pass p interpret-meta))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-;  (inspect (let-spine 3 p))
-;  (inspect p)
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
+#;
+  (begin 
+    (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
+    (dump-compiler-intermediate p ".__elaborated.ss")
+    (inspect (let-spine 3 p))
+    (inspect p)
+    (exit 0))
+
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)

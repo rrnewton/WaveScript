@@ -232,7 +232,7 @@
 	 [Int16 2]
 	 [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
 	 ;; HACK:
-	 [(Sigseg #(,[w*] ...)) (apply + w*)]
+	 ;[(Sigseg #(,[w*] ...)) (apply + w*)]
 	 [(Sigseg ,t)         (type->width t)]
 	 [Float  4]
 	 [Double 8]

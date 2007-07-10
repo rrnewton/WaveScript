@@ -458,7 +458,7 @@
 ;(include "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
 ;(include "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
 (include "generic/sim/wavescript_sim_library_push.ss")
-(include "generic/testing/lang_wavescript_tests.ss")
+(include "generic/testing/lang_wavescript_tests.ss") (import lang_wavescript_tests)
 
 (include "generic/langs/lang00.ss")
 
@@ -493,10 +493,10 @@
 (include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
 
-;(eval-when (compile eval load) (compile-profile #t))
+(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
 (include "generic/passes/static_elaborate/interpret-meta.ss")  (import interpret-meta)
-;(eval-when (compile eval load) (compile-profile #f))
+(eval-when (compile eval load) (compile-profile #f))
 
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)

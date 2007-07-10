@@ -53,6 +53,9 @@ include "filter.ws";
 //   ws    : 1748
 //   ws.opt: 1228
 
+// [2007.07.10]
+// Got the new interpret-meta working, but it performs *terribly* on
+// this file.  Is this because of computing the notch filter?
 
 
 //======================================================================
