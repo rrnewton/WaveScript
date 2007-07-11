@@ -1641,16 +1641,59 @@
 	[setstmnts '()]
 	[opts ""]
 	[withclause "with linespoints"])
-
+    
+    ;; This plots a point.
     (define (plot-one i d)
       (cond
+       [(list? d)
+	(for-each (lambda (n) (fprintf dat "~s " n)) d)
+	(fprintf dat "\n")]
+#;
        [(number? d) (fprintf dat "~s ~s\n" i d)]
+#;
        [(or (vector? d) (list? d))
 	((if (vector? d) vector-for-each for-each) 
 	 (lambda (n) (fprintf dat "~s " n)) d)
 	(fprintf dat "\n")]
        [else 'gnuplot_pipe:plot-one "invalid datapoint.  Cannot plot ~s" d]))
+    
+    (define (normalize-data dat)
+      (mapi (lambda (i point)
+	      (cond
+	       [(number? point) (list i point)]
+	       [(vector? point) (vector->list point)]
+	       [(list? point)   point]))
+	    dat))
 
+    (define (set-ranges! data port)
+      (define (extend-right a b) 
+	(let ([val (+ b (* 0.1 (- b a)))])
+	  (if (zero? (- b a)) (+ val 1) val)))
+      (define (extend-left  a b) 
+	(let ([val (- a (* 0.1 (- b a)))])
+	  (if (zero? (- b a)) (- val 1) val)))
+      (ASSERT (not (null? data)))
+
+;      (fprintf port "set xrange [~a:~a];\n" -10 10)
+;      (fprintf port "set yrange [~a:~a];\n" -10 10)
+
+      ;; Gnuplot's autoscale options are so damn stupid that I have to manually compute the ranges here.
+      ;; (Otherwise you can't see the top's and bottoms of my square waves, because it leaves no margin!)
+      (let loop ([data data]
+		 [xmin +inf.0] [xmax -inf.0]
+		 [ymin +inf.0] [ymax -inf.0])
+	(cond
+	 [(null? data)
+;	  (inspect (list (extend-left xmin xmax) (extend-right xmin xmax)))
+	  (fprintf port "set xrange [~a:~a];\n" (extend-left xmin xmax) (extend-right xmin xmax))
+	  (fprintf port "set yrange [~a:~a];\n" (extend-left ymin ymax) (extend-right ymin ymax))]
+	 [else
+	  (loop (cdr data)
+		(min xmin (caar data))
+		(max xmax (caar data))
+		(min ymin (cadar data))
+		(max ymax (cadar data)))])))
+    
     ;; Process flags:
     (for-each 
 	(lambda (flag)
@@ -1664,7 +1707,8 @@
       flags)
     
     ;; Write script file:
-    (fprintf scrip "set autoscale;\n")
+    ;(fprintf scrip "set autoscale x;\n")
+    
     (for-each (lambda (setline)
 		(fprintf scrip setline))
       setstmnts)
@@ -1693,40 +1737,45 @@
 	    ;;(delete-file fn1)
 	    ;;(delete-file fn2)
 	    ]
+       ;; This is a batch of data:
        [else 
 	(ASSERT list? (car msg))
+	(ASSERT null? (cdr msg))
+	(let ([payload (normalize-data (car msg))])
+	  ;; Having weird problems with it drawing two graphs on top of eachother.
+	  ;; HACK! HACK! HACK!
+	  ;; What if we totally kill the pipe between communications?
+	  (if (file-exists? fn2) (delete-file fn2))
+	  (system (format "mkfifo ~s" fn2))
 
-	;; Having weird problems with it drawing two graphs on top of eachother.
-	;; What if we totally kill the pipe between communications?
-	(if (file-exists? fn2) (delete-file fn2))
-	(system (format "mkfifo ~s" fn2))
+	  ;; Send replot message
+	  (if first-time
+	      (begin (set-ranges! payload outp)
+		     (display scrip outp)
+		     (flush-output-port outp)
+		     (set! first-time #f))
+	      (begin (set-ranges! payload outp)
+		     (display "replot\n" outp)		   
+		     (flush-output-port outp)))
 
-	;; Send replot message
-	(if first-time
-	    (begin (display scrip outp)
-		   (flush-output-port outp)
-		   (set! first-time #f))
-	    (begin (display "replot\n" outp)
-		   (flush-output-port outp)))
+	  ;;(printf "Replot message sent.\n")
+	  ;;(printf "Writing new dataset to pipe ~s\n" fn2)
 
-	;;(printf "Replot message sent.\n")
-	;;(printf "Writing new dataset to pipe ~s\n" fn2)
+	  ;; Open a session on the pipe
+	  (set! dat (open-output-file fn2 'append))
+	  
+	  ;;(printf "Opened pipe.\n")
+	  ;; Write dataset to pipe:
+	  #;
+	  (if (not (or (andmap number? data) 
+		       (andmap (lambda (l) (and (list? l) (andmap number? l)))
+			       data)))
+	      (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
+	  (for-eachi plot-one payload)
 
-	;; Open a session on the pipe
-	(set! dat (open-output-file fn2 'append))
-	
-	;;(printf "Opened pipe.\n")
-	;; Write dataset to pipe:
-	#;
-	(if (not (or (andmap number? data) 
-		     (andmap (lambda (l) (and (list? l) (andmap number? l)))
-			     data)))
-	    (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
-	(for-eachi plot-one (car msg))
-
-	;; Close pipe to end session.
-	(close-output-port dat)
-	(set! dat #f)
+	  ;; Close pipe to end session.
+	  (close-output-port dat)
+	  (set! dat #f))
 	;;(printf "Data written to pipe.\n")
 	])
       )))))

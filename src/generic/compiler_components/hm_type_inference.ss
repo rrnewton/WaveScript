@@ -190,10 +190,11 @@
 (define (raise-type-mismatch msg t1 t2 exp)
   (type-error 'type-checker
 	 (++ "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-	     "Type mismatch: ~s doesn't match ~s \n~a"
+	     "Type mismatch: ~a doesn't match ~a \n~a"
 	     "\nLocation:\n   ~a\n" ;; Location
 	     "\nExpression:\n~a\n")
-	 (safe-export-type t1) (safe-export-type t2)
+	 (show-type (safe-export-type t1))
+	 (show-type (safe-export-type t2))
 	 msg
 	 ;; Approximate location:
 	 (get-location exp)
@@ -209,9 +210,9 @@
 ;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (type-error 'type-checker
-	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n\nSource Location\n  ~a\nExpression:\n~a\n"
-	 (- (length t1) 2) (safe-export-type t1) 
-	 (- (length t2) 2) (safe-export-type t2) 
+	 "Different numbers of arguments:\n      ~s: ~a\n  and ~s: ~a\n\nSource Location\n  ~a\nExpression:\n~a\n"
+	 (- (length t1) 2) (show-type (safe-export-type t1))
+	 (- (length t2) 2) (show-type (safe-export-type t2))
 	 (get-location exp)
 	 (get-snippet exp)
 	 ))
@@ -834,7 +835,7 @@
 		       (if old 
 			   (types-equal! new (instantiate-type old '())
 					 `(letrec (,'... [,new ,old] ,'...) ,'...)
-					 "(Recursive Let's argument type must match the annotation.)\n")))
+					 "Recursive Let's argument type must match the annotation.\n")))
 		  rhs-types existing-types)]
              [tenv (extend-with-maybe-poly id* rhs* rhs-types tenv)])
         ;; Unify all these new type variables with the rhs expressions
@@ -845,7 +846,7 @@
 				  (DEBUGASSERT tenv? tenv)
 				  ;; For our own RHS we are "nongeneric".
 				  (let-values ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
-				    (types-equal! type t rhs "<<Internal error in typechecking letrec.>>")
+				    (types-equal! type t rhs "(possibly recursive) binding does not match its explicit annotation.")
                                     ;(inspect `(GOTNEWRHSTYPE ,t ,type))
 				    newrhs)
 				  ]))
@@ -1134,8 +1135,9 @@
     [[,x .  (,yargs ... -> ,y)] 
      (match x 
        [(,xargs ... -> ,x)
-	(if (not (= (length xargs) (length yargs)))
-	    (raise-wrong-number-of-arguments t1 t2 exp))
+	(unless (= (length xargs) (length yargs))
+	  (printf "\nError: ~a\n" msg) ;; Print this before raising the generic message:
+	  (raise-wrong-number-of-arguments t1 t2 exp))
 	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg))
 	  xargs yargs)
 	(types-equal! x y exp msg)]
@@ -1362,11 +1364,11 @@
      ;((loop #f) t)
      ;; Prettification: we drop the loop parens:
      port)))
-#;
-(match t 
-       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc) (not (eq? tc 'quote)))
-	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
-       [,t (loop t)])
+
+(define (show-type ty)
+  (let ([p (open-output-string)])    
+    (print-type ty p)
+    (get-output-string p)))
 
 #|
 

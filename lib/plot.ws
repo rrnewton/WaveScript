@@ -1,4 +1,6 @@
 
+include "stdlib.ws";
+
 /* This library provides utilities for "live" plots that update as the
    data streams through.
 
@@ -79,6 +81,33 @@ fun internal_helper(plotter, wid, get, toContainer) fun (src) {
   iterate (i,w) in merged { if i==0 then emit w }
 }
 
+fun seggaps_helper(strm) {
+  iterate w in strm { 
+    state { counter = 0 }
+    counter += 1;
+    emit (counter, w`start);
+    emit (counter, w`start + w`width);
+  }
+}
+
+fun sqrwave_helper(strm) {
+  iterate w in strm { 
+    state { firsttime = true; flag = false }
+    // Here's a hack.  Just to set the frame.
+    // This is very particular to gnuplot:
+     if firsttime then {
+      firsttime := false;
+      emit (w`start, 2);
+      emit (w`start,-1);
+      emit (w`start, 1);
+    };
+    flag := not(flag);
+    y = if flag then 1 else 0;
+    emit (w`start,           y);
+    emit (w`start + w`width, y);
+  };
+}
+
 // ================================================================================ //
 //                           END INTERNAL HELPER FUNCTIONS.                         //
 
@@ -103,5 +132,35 @@ cumulative1d = Plot:internal_helper(gnuplot_array_stream,   fun(x) 1, fun(x,_) x
 cumulative2d = Plot:internal_helper(gnuplot_array_stream2d, fun(x) 1, fun(x,_) x, fun(arr) arr[0]);
 
 
-
+fun staircase_cumulative(strm) {
+  xy = Plot:seggaps_helper(strm);
+  Plot:cumulative2d(xy);
 }
+
+fun staircase(strm) {
+  xy = Plot:seggaps_helper(strm);
+  xy2 = window(xy,10);
+  xy3 = rewindow(xy2,10,-9);
+  gnuplot_sigseg_stream2d(xy3)
+}
+
+
+fun sqrwave_cumulative(strm) {
+  xy = Plot:sqrwave_helper(strm);
+  // Repeat the first element so we don't have to wait to fill up the window.
+  //xy2 = rep_first(7,xy);
+  xy3 = window(xy, 2);
+  Plot:Sigseg:cumulative2d(xy3);
+}
+
+fun sqrwave(strm,winsize) {
+  xy = Plot:sqrwave_helper(strm);
+  //xy2 = prepend_stream(Array:build(7,(0,0)), xy);
+  xy2 = rep_first(winsize*2 - 3, xy);
+  xy3 = window(xy2, winsize*2);
+  xy4 = rewindow(xy3, winsize*2, 2 - (winsize*2));
+  gnuplot_sigseg_stream2d(xy4)
+}
+
+
+} // End Plot namespace

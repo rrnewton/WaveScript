@@ -154,7 +154,7 @@ fun trimpeak(stream, comp)
 {
    iterate (w in stream)
    {
-      supVal = Mutable:ref$ w[[w.start]];
+      supVal = Mutable:ref$ w[[0]];
       supInd = Mutable:ref(w.start);
       //      print("START FOR\n");
       //for i=w.start+1 to w.end // This is quite wrong.
@@ -180,7 +180,7 @@ fun trimpeakEmpty(stream, comp)
 {
    iterate (w in stream)
    {
-      supVal = Mutable:ref$ w[[w.start]];
+      supVal = Mutable:ref$ w[[0]];
       supInd = Mutable:ref$ w.start;
       for i=w.start+1 to w.end
       {

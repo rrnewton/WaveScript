@@ -29,13 +29,15 @@ expC       :: Complex -> Complex;
 conjC      :: Complex -> Complex;
 gaussian   :: (Float, Int) -> Array Float;
 
-/// Library stream constructors:
+/// Lifted FFT operators:
 
 stream_fftR2C  :: Stream (Array Float) -> Stream (Array Complex);
 sigseg_fftC    :: Sigseg Complex -> Sigseg Complex;
 sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
 sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
 sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
+
+/// Library stream constructors:
 
 type CtrlStrm = Stream (Bool * Int * Int);
 type SegStream t = Stream (Sigseg t);
@@ -67,6 +69,10 @@ makeHanning     :: Int      -> Array Float;
   // Taper the edges of the (probably overlapping) windows.
 hanning         :: SS Float -> SS Float;
 
+
+  // Replay the first element of a stream.
+rep_first        :: (Int, Stream a) -> Stream a;
+
 stream_map       :: (a -> b,    Stream a) -> Stream b;
 stream_filter    :: (t -> Bool, Stream t) -> Stream t;
 stream_iterate   :: ((a, st) -> (List b * st), st, Stream a) -> Stream b;
@@ -74,6 +80,8 @@ stream_iterate   :: ((a, st) -> (List b * st), st, Stream a) -> Stream b;
 sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
 deep_stream_map  :: (a -> b, SS a) -> SS b;
 //deep_stream_map2 :: (a -> b, SS b) -> ()
+
+
 
    // shorthands:
 i2f :: Int -> Float;
@@ -529,6 +537,19 @@ fun hanning (strm) {
     //print("\nBUF: "++ show(buf)++"\n");
 
     emit toSigseg(buf, win`start, win`timebase);
+  }
+}
+
+// As currently designed this requires allocation!
+fun rep_first(count, strm) {
+  iterate x in strm {
+    state { first_time = true }
+    if first_time then { first_time := false; for i = 1 to count { emit x }};
+    emit x;
+    /*    if n < count then {
+      if count == 0 then saved := [x];
+      count += 1;      
+      }*/
   }
 }
 

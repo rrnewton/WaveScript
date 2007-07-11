@@ -62,7 +62,6 @@
   (match x
     [,v (guard (symbol? v)) 
 	(if (regiment-primitive? v)
-	    ;(make-plain (wavescript-language v))
 	    (make-plain (hashtab-get dictionary v))
 	    (apply-env env v))]
     [',c (make-plain c)]
@@ -136,30 +135,7 @@
 			     [(closure? x) (reify-closure x)]
 			     [(streamop? x) x] ;; This shouldn't be touched.
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
-		       x*))
-#;
-	      (wavescript-language 
-	       ;; We're willing to give it "plain" vals.
-	       ;; Refs should not be passed first class.
-	       ;; And closures/streams remain opaque:
-	       (cons prim (map (lambda (x)				   
-				 (ASSERT (not (ref? x)))				   
-				 (cond 
-				  [(plain? x) `',(plain-val x)]
-				  [(closure? x) (reify-closure x)]				    
-				  [(streamop? x) x] ;; This shouldn't be touched.
-				  [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
-			    x*))))
-
-#;
-	    (if (not (let ([ty (last (regiment-primitive? prim))])
-		  (or (stream-type? ty) (polymorphic-type? ty))))
-		499999999999999999
-
-
-		)
-
-])
+		       x*)))])
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
