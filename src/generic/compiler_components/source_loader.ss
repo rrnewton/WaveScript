@@ -245,7 +245,6 @@
   ;; First we expand includes:  
   ;; NOTE: Should be tail recursive.  The number of forms could grow large.
   (define (process* forms all-includes)
-    (printf "PROCESS* ~s ~s\n" (length forms) all-includes)
     (if (null? forms) 
         (values '() all-includes)
 	(let-values ([(fst includes)   (process  (car forms) all-includes)])
@@ -259,7 +258,6 @@
 	[((define ,v ,_) . ,[rest])      (cons v rest)]
 	[((define-as ,v . ,_) . ,[rest]) (cons v rest)]
 	[(,_ . ,[rest])                  rest]))
-    (printf "  PROCESS  ~s\n"  all-includes)
     (match form
       [(include ,file) 
        (let ([path (resolve-lib-path file)])
@@ -284,25 +282,27 @@
       [(using ,M) (values `((using ,M)) all-includes)]
       ;; This just renames all defs within a "namespace".  There's
       ;; some question, though, as to how they may refer to eachother.
-      [(namespace ,Space . ,[defs new-includes])
-       (values
-	(map (lambda (def)
-	       (define (mangle v) (string->symbol (format "~a:~a" Space v)))
-	       ;; Because of certain limitations in the current implementation
-	       ;; of letrec (value restriction), for the moment definitions
-	       ;; within the namespace still have to use the FULL NAMES of
-	       ;; their peers.
-	       (define (wrap-rhs e) e)
- 	;(define (wrap-rhs e) `(using ,Space ,e))
-	       ;; We also inject a bunch of 'using' constructs so that
-	       ;; we can use the namespace's bindings from *within* the namespace:
-	       (match def
-		 [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
-		 [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
-		 [(:: ,v ,t)             `(:: ,(mangle v) ,t)]
-		 [(<- ,sink ,e)          `(<- ,sink ,(wrap-rhs e))]))
-	  (apply append defs))
-	new-includes)]
+      [(namespace ,Space . ,rest)
+       (let-values ([(defs new-includes) (process* rest all-includes)])
+	 (values
+	  (map (lambda (def)
+		 (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+		 ;; Because of certain limitations in the current implementation
+		 ;; of letrec (value restriction), for the moment definitions
+		 ;; within the namespace still have to use the FULL NAMES of
+		 ;; their peers.
+		 (define (wrap-rhs e) e)
+					;(define (wrap-rhs e) `(using ,Space ,e))
+		 ;; We also inject a bunch of 'using' constructs so that
+		 ;; we can use the namespace's bindings from *within* the namespace:
+		 (match def
+		   [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
+		   [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
+		   [(:: ,v ,t)             `(:: ,(mangle v) ,t)]
+		   [(<- ,sink ,e)          `(<- ,sink ,(wrap-rhs e))]))
+	    defs)
+	  new-includes)
+	 )]
 
       [(uniondef ,ty ,def) (values `((uniondef ,ty ,def)) all-includes)]
 
