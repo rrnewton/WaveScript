@@ -468,13 +468,16 @@
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
+;  (inspect (let-spine 4 p))
+;  (inspect p)
 #;
   (begin 
     (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
     (dump-compiler-intermediate p ".__elaborated.ss")
-    (inspect (let-spine 3 p))
+    (inspect (let-spine 4 p))
     (inspect p)
-    (exit 0))
+    (exit 0)
+    )
 
 
   ;; We want to immediately get our uniqueness property back.

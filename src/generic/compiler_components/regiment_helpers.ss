@@ -1112,7 +1112,11 @@
        [(lambda ,args ,ty ,[bod]) 
 	(if (>= level 2) `(lambda ,args ,bod) '_)]
        [(iterate ,[fun] ,[bod])
-	(if (>= level 3) `(iterate _ ,bod) '_)]
+	(if (>= level 3) 
+	    (if (>= level 4)
+		`(iterate ,fun ,bod)
+		`(iterate _ ,bod))
+	    '_)]
 
        [(assert-type ,_ ,[e]) e]
        [(src-pos ,_ ,[e]) e]

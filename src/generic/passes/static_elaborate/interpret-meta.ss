@@ -50,14 +50,17 @@
 ;;; Interpreter
 
 ;; This evaluates the meta program.  The result is a *value*
-(define (Eval x env)
+;;
+;; .param pretty-name -- uses this to hang onto names for the closures
+(define (Eval x env pretty-name)
   ;; This will be replaced by something more meaningful.
   (define (streamop-new-name) (unique-name 'streamop))
+  (unless dictionary (build-dictionary!))
   (match x
     [,v (guard (symbol? v)) 
 	(if (regiment-primitive? v)
 	    ;(make-plain (wavescript-language v))
-	    (make-plain 399999999999999999)
+	    (make-plain (hashtab-get dictionary v))
 	    (apply-env env v))]
     [',c (make-plain c)]
 
@@ -67,7 +70,7 @@
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
 	      (and (pair? x) (memq (car x) '(readFile dataFile)))))
-     (let ([op (Eval e env)])
+     (let ([op (Eval e env pretty-name)])
        (set-streamop-type! op ty)
        op)]
 
@@ -85,18 +88,18 @@
 	  (ASSERT (curry andmap (compose not streamop?)) params)
 	  (make-streamop (streamop-new-name) streamprim params  parents #f))])]   
 
-    [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env)]
+    [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env pretty-name)]
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
-     (Eval bod (extend-env lhs* rhs* env))]
+     (Eval bod (extend-env lhs* rhs* env) pretty-name)]
 
     ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
        (for-each (lambda (cell rhs)
-		   (set-box! cell (Eval rhs newenv)))
+		   (set-box! cell (Eval rhs newenv pretty-name)))
 	 cells rhs*)
-       (Eval bod newenv))]
+       (Eval bod newenv pretty-name))]
 
     [(lambda ,formal* ,ty* ,bod) (make-closure formal* bod env)]
  
@@ -112,6 +115,26 @@
      (let ([raw 
 	    ;; Can't write/read because it will contain procedures and streamops.
 	    (parameterize ([simulator-write-sims-to-disk #f])
+
+	      ;; First, I applied wavescript-language to just the prim
+	      ;; name, rather than the whole app.  That actually made
+	      ;; performance a bit worse.
+
+	      ;; This assumes it's a function and not syntax:
+	      (apply (ASSERT (hashtab-get dictionary prim))
+		     ;(wavescript-language prim)
+		     ;; We're willing to give it "plain" vals.
+		     ;; Refs should not be passed first class.
+		     ;; And closures/streams remain opaque:					
+		     (map (lambda (x)				   
+		 	    (ASSERT (not (ref? x)))				   
+			    (cond 
+			     [(plain? x)   (plain-val x)]
+			     [(closure? x) (reify-closure x)]
+			     [(streamop? x) x] ;; This shouldn't be touched.
+			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
+		       x*))
+#;
 	      (wavescript-language 
 	       ;; We're willing to give it "plain" vals.
 	       ;; Refs should not be passed first class.
@@ -139,22 +162,23 @@
     [(app ,[f] ,[e*] ...)
      (Eval (closure-code f) 
 	   (extend-env (closure-formals f) e*
-		       (closure-env f)))]
+		       (closure-env f))
+	   pretty-name)]
     [(for (,i ,[st] ,[en]) ,bod)
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
 	   ((> i end) (make-plain #()))
-	 (Eval bod (extend-env '(i) (list (make-plain i)) env))))]
+	 (Eval bod (extend-env '(i) (list (make-plain i)) env) pretty-name)))]
     [(while ,tst ,bod)
      (begin
        (let loop ()
-	 (when (plain-val (Eval tst env))
-	   (Eval bod env)
+	 (when (plain-val (Eval tst env pretty-name))
+	   (Eval bod env pretty-name)
 	   (loop)))
        (make-plain #()))]
     [(begin ,x* ... ,last) 
-     (begin (for-each (lambda (x) (Eval x env)) x*)
-	    (Eval last env))]
+     (begin (for-each (lambda (x) (Eval x env pretty-name)) x*)
+	    (Eval last env pretty-name))]
 
 #;
     ;; TODO: Need to add the data *constructors*... this is incomplete currently.
@@ -165,18 +189,27 @@
        (inspect case)
        (Eval (closure-code clos) 
 	     (extend-env (closure-formals clos) (list (datatype-payload x))
-			 (closure-env clos))))]
+			 (closure-env clos)) 
+	     pretty-name))]
 
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
 
-(define dictionary) ;; Set below:
+(define dictionary #f) ;; Set below:
 (define (build-dictionary!)
   (set! dictionary (make-default-hash-table 500))
   (let ([prims (difference 
-		(map car (append regiment-basic-primitives wavescript-primitives))
-		lang_wavescript_prim-exceptions)])
+		(map car (append regiment-basic-primitives 
+				 ;regiment-distributed-primitives
+				 wavescript-primitives
+				 meta-only-primitives
+				 higher-order-primitives
+				 regiment-constants
+				 ))
+		(append '()
+			lang_wavescript_prim-exceptions)
+	       )])
     (let ([vals (wavescript-language `(list ,@prims))])
       (for-each (lambda (sym prim)
 		  (hashtab-set! dictionary sym prim))	   
@@ -192,7 +225,8 @@
     (Eval (closure-code c) 
 	  (extend-env (closure-formals c) 
 		      (map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-		      (closure-env c)))))
+		      (closure-env c))
+	  #f)))
 
 
 ; ================================================================================ ;
@@ -274,6 +308,9 @@
 	       [fv   (closure-free-vars cl)]
 	       [state '()]
 	       [env (closure-env cl)])
+
+;      (if (memq 'roadnoise (map deunique-name fv)) (inspect fv))  ;; TEMP
+
       (if (null? fv)
 	  ;; We're done processing the environment, produce some code:
 	  (let ([bod `(lambda ,(closure-formals cl) 
@@ -452,45 +489,44 @@
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru)  
-	    (build-dictionary!)
-	    (do-basic-inlining (time (Marshal (time (Eval x '()))))))])
+	    (do-basic-inlining (time (Marshal (time (Eval x '() #f))))))])
 
 ; ================================================================================ ;
 
 (define-testing these-tests
-  `([(,plain-val (,Eval '(+_ '1 '2) '())) 3]
-    [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '())) 3]
-    [(,plain-val (,Eval '(car (cons '39 '())) '())) 39]
-    [(,Eval '(timer '3) '()) ,streamop?]
-    [(,Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '()) ,streamop?]
-    [(,plain-val (,Eval '(letrec ([x Int '3]) x) '())) 3]
-    [(,plain-val (,Eval '(let ([x Int '3]) (wsequal? x '3)) '())) #t]
+  `([(,plain-val (,Eval '(+_ '1 '2) '() #f)) 3]
+    [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '()  #f)) 3]
+    [(,plain-val (,Eval '(car (cons '39 '())) '() #f)) 39]
+    [(,Eval '(timer '3) '() #f) ,streamop?]
+    [(,Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '() #f) ,streamop?]
+    [(,plain-val (,Eval '(letrec ([x Int '3]) x) '() #f)) 3]
+    [(,plain-val (,Eval '(let ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
      '(letrec ([fact 'a (lambda (n) (Int) 
         (if (wsequal? '1 n) '1 (*_ n (app fact (-_ n '1)))))])
-	(app fact '6)) '())) 
+	(app fact '6)) '() #f)) 
      720]
     [(,plain-val (,Eval 
      '(let ([v 'a (Mutable:ref '99)])
 	(begin (set! v '89)
-	       (deref v))) '()))    89]
+	       (deref v))) '() #f))    89]
     [(,plain-val (,Eval 
      '(let ([v 'a (Mutable:ref '0)])
 	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
-	       (deref v))) '()))    10]
+	       (deref v))) '() #f))    10]
     [(,plain-val (,Eval 
      '(let ([v 'a (Mutable:ref '0)])
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
-	       (deref v))) '()))    10]
+	       (deref v))) '() #f))    10]
     
     [(deep-assq 'letrec
       (cdr (,Marshal (,Eval '(car (cons 
 	(let ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
-	'())) '()))))
+	'())) '() #f))))
      #f]
     [(and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '()))))
+       (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
 	  #t)
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -499,7 +535,7 @@
      (deep-assq 'letrec
       (,Marshal (,Eval '(let ([y 'a (Mutable:ref '100)]) 
 	      (iterate (lambda (x vq) (a b) (deref y)) 
-				(timer '3))) '())))))
+				(timer '3))) '() #f)))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f

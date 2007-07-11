@@ -12,7 +12,10 @@
 (define lang_wavescript_prim-exceptions
   ;; Make some exceptions for things that are in Regiment but not WaveScript.
   ;; Also exceptions for geneeric prims and other prims that have been desugared.
-  (append '(eq? locdiff nodeid sense even? odd? dataFile readFile
+  (append '(eq? 
+	        locdiff nodeid sense world anchor IS_SIM
+		even? odd? dataFile readFile
+
 		tuple tupref __foreign foreign foreign_box foreign_source
 		or and 
 		ensBoxAudio ensBoxAudioF ensBoxAudioAll
@@ -90,8 +93,12 @@
 		      `(wavescript-language (quote ,prim))
 		      'unspecified))
 	    (difference
-	     (map car (append regiment-basic-primitives
-			      wavescript-primitives))
+	     (map car (append  regiment-basic-primitives 
+			       ;regiment-distributed-primitives
+			       wavescript-primitives
+			       meta-only-primitives
+			       higher-order-primitives
+			       regiment-constants))
 	     lang_wavescript_prim-exceptions
 	     ))
 
