@@ -1447,7 +1447,7 @@
 	    (set-box! already-loaded-object-files (cons sharedobject (unbox already-loaded-object-files)))
 	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
-    (lambda (name files pointertypes type)
+    (lambda (name files type)
       (printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
       (for-each LoadFile! files)
       ;; After it's loaded there'd better be access:

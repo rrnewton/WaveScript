@@ -67,7 +67,7 @@
 	      ['()  (f x)]
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
 	      ;; Don't touch these:
-	      [(foreign ,x ,y ,z) `(foreign ,x ,y ,z)]
+	      [(foreign ,x ,y) `(foreign ,x ,y)]
 	      [,other (fallthru other)]))])
 
 (define-pass unlift-polymorphic-constant
@@ -90,7 +90,7 @@
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
 
 	    ;; Don't touch these:
-	    [(foreign ,x ,y ,z) `(foreign ,x ,y ,z)]
+	    [(foreign ,x ,y) `(foreign ,x ,y)]
 	    [,other (fallthru other)]))])
 
 

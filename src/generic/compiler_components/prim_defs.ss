@@ -374,10 +374,9 @@
     ;; Foreign takes: 
     ;;  (1) function name 
     ;;  (2) foreign files (.c .h .so etc) to load function from
-    ;;  (3) list of C pointer types for any Pointer arguments to the function
-    (foreign        (String (List String) (List String)) 'any)
+    (foreign        (String (List String)) 'any)
     ;; (Internal) This is the same but has the type tagged on the end:
-    (__foreign      (String (List String) (List String) (List Symbol)) 'any)
+    (__foreign      (String (List String) (List Symbol)) 'any)
 
     (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
     (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))

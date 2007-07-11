@@ -82,7 +82,7 @@
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
    '[Expr ('foreign-app Const Expr Expr ...)]
-   '[Expr ('foreign Const Const Const)]
+   '[Expr ('foreign Const Const)]
    ;'[Expr ('foreign Const PolyConst PolyConst)]
     ;; This is quirky, will need this for null lists:
    ;'[PolyConst Const]
@@ -480,7 +480,7 @@
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-		       [(foreign ',name ,files ',pointertypes)  name]
+		       [(foreign ',name . ,_)  name]
 		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -790,10 +790,9 @@
 
 	  ;; We inline the arguments.  After this pass this is a special construct.
 	  ;; This over-rules our general behavior of not inlining complex constants.
-	  [(foreign ,[name] ,[files] ,[pointertypes])
+	  [(foreign ,[name] ,[files])
 	   `(foreign ,(if (available? name)         `',(getval name) name)
-		     ,(if (available? files)        `',(getval files) files)
-		     ,(if (available? pointertypes) `',(getval pointertypes) pointertypes))]
+		     ,(if (available? files)        `',(getval files) files))]
 
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))

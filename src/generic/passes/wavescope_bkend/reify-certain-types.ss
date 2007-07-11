@@ -45,8 +45,8 @@
 	      )]
 	   
 	   ;; This needs the type tagged on also:
-	   [(assert-type ,T (foreign ,[name] ,[files] ,[pointertypes]))
-	    `(__foreign ,name ,files ,pointertypes ',T)]
+	   [(assert-type ,T (foreign ,[name] ,[files]))
+	    `(__foreign ,name ,files ',T)]
 	   
 	   ;; This parses the option string to readFile.
 	   [(assert-type (Stream ,t) (readFile ,[fn] ',str))
