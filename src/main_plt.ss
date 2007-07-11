@@ -312,14 +312,19 @@
    ))
 
   
-;(require main_plt)
-; (current-directory "demos/wavescope")
+ (current-directory "demos/wavescope")
 ; (browse-stream (wsint "demo6c_syncN.ws"))
+ (browse-stream (wsint "demo6e_stdlib_sync.ws"))
 
   ;(browse-stream (wsint "demo4_fft.ws"))
 ;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
 ;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
 
+#;
+  (begin
+  (current-directory "~/wavescript/lib")
+  (wsint "c.ws"))
+  
   #;
 (begin 
   (current-directory "~/wavescript/apps/marmot")

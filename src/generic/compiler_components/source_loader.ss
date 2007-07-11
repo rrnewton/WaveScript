@@ -242,70 +242,76 @@
 ;; [2007.03.19] Note: top level type declarations don't have to occur
 ;; in any particular position in the file.
 (define (ws-postprocess origws)
-  (define all-includes! '()) ;; Mutated below:  
   ;; First we expand includes:  
-  (define (process* forms)
-    (if (null? forms) '()
-	(let ([fst (process (car forms))])
-	  (append fst (process* (cdr forms))))))
-  (define (process form)
+  ;; NOTE: Should be tail recursive.  The number of forms could grow large.
+  (define (process* forms all-includes)
+    (printf "PROCESS* ~s ~s\n" (length forms) all-includes)
+    (if (null? forms) 
+        (values '() all-includes)
+	(let-values ([(fst includes)   (process  (car forms) all-includes)])
+	  (let-values ([(snd includes) (process* (cdr forms) includes)])
+	    (values (append fst snd) 
+		    includes)))))
+  (define (process form all-includes)
     (define (names-defined forms)
       (match forms
 	[() ()]
 	[((define ,v ,_) . ,[rest])      (cons v rest)]
 	[((define-as ,v . ,_) . ,[rest]) (cons v rest)]
 	[(,_ . ,[rest])                  rest]))
+    (printf "  PROCESS  ~s\n"  all-includes)
     (match form
       [(include ,file) 
        (let ([path (resolve-lib-path file)])
-	 (if (member path all-includes!)
+	 (if (member path all-includes)
 	     (begin
 	       (warning 'ws-postprocess
 			"Suppressing repeated include of file!: ~s\n" path)
-	       '())
+	       (values '() all-includes))
 	     (begin 
-	       (set! all-includes! (cons path all-includes!))
 	       ;; This is usually a relative file path!
-	       (let ([imported 
-		      (process*
-		       (or (expand-include path)
-			   (error 'ws-postprocess 
-				  "could not retrieve contents of include: ~s" file)))])
+	       (let-values ([(imported new-includes)
+                             (process*
+                              (or (expand-include path)
+                                  (error 'ws-postprocess 
+                                         "could not retrieve contents of include: ~s" file))
+                              (cons path all-includes))])
 		 ;; Record that these symbols were pulled from an include:
 		 ;; This is *just* cosmetic:
 		 (included-var-bindings (names-defined imported))
-		 imported
+		 (values imported new-includes)
 		 ))))]
-      [(using ,M) `((using ,M))]
+      [(using ,M) (values `((using ,M)) all-includes)]
       ;; This just renames all defs within a "namespace".  There's
       ;; some question, though, as to how they may refer to eachother.
-      [(namespace ,Space ,[defs] ...)
-       (map (lambda (def)
-	      (define (mangle v) (string->symbol (format "~a:~a" Space v)))
-	      ;; Because of certain limitations in the current implementation
-	      ;; of letrec (value restriction), for the moment definitions
-	      ;; within the namespace still have to use the FULL NAMES of
-	      ;; their peers.
-	      (define (wrap-rhs e) e)
-	      ;(define (wrap-rhs e) `(using ,Space ,e))
-	      
-	      ;; We also inject a bunch of 'using' constructs so that
-	      ;; we can use the namespace's bindings from *within* the namespace:
-	      (match def
-		[(define ,v ,e) `(define ,(mangle v) ,(wrap-rhs e))]
-		[(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
-		[(:: ,v ,t)     `(:: ,(mangle v) ,t)]
-		[(<- ,sink ,e) `(<- ,sink ,(wrap-rhs e))]))
-	 (apply append defs))]
+      [(namespace ,Space . ,[defs new-includes])
+       (values
+	(map (lambda (def)
+	       (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+	       ;; Because of certain limitations in the current implementation
+	       ;; of letrec (value restriction), for the moment definitions
+	       ;; within the namespace still have to use the FULL NAMES of
+	       ;; their peers.
+	       (define (wrap-rhs e) e)
+ 	;(define (wrap-rhs e) `(using ,Space ,e))
+	       ;; We also inject a bunch of 'using' constructs so that
+	       ;; we can use the namespace's bindings from *within* the namespace:
+	       (match def
+		 [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
+		 [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
+		 [(:: ,v ,t)             `(:: ,(mangle v) ,t)]
+		 [(<- ,sink ,e)          `(<- ,sink ,(wrap-rhs e))]))
+	  (apply append defs))
+	new-includes)]
 
-      [(uniondef ,ty ,def) `((uniondef ,ty ,def))]
+      [(uniondef ,ty ,def) (values `((uniondef ,ty ,def)) all-includes)]
 
       [(namespace . ,other)
        (error 'ws-postprocess "bad namespace form: ~s" (cons 'namespace other))]
       
-      [,other (list other)]))
+      [,other  (values (list other) all-includes)]))
 
-  (define  ws (process* origws))
+  (define  ws (first-value (process* origws '())))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
   (define (f2 x) (or (memq (car x) '(define using define-as)) ))
