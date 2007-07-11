@@ -10,7 +10,7 @@
 
 (module regiment_helpers mzscheme
   
-    (require 
+    (require
 	    (lib "include.ss")
             (lib "date.ss")
             (lib "pretty.ss")
@@ -1109,6 +1109,7 @@
 	`(,lett ,(map (lambda (v rhs) (list v (if (>= level 1) rhs '_))) 
 		   lhs* rhs*)
 		,bod)]
+
        [(lambda ,args ,ty ,[bod]) 
 	(if (>= level 2) `(lambda ,args ,bod) '_)]
        [(iterate ,[fun] ,[bod])
@@ -1120,7 +1121,19 @@
 
        [(assert-type ,_ ,[e]) e]
        [(src-pos ,_ ,[e]) e]
+       [(using ,_ ,[e]) e]
+       
        [(,lang '(program ,[e] ,_ ...)) e]
+
+       ;; duplicated code:
+       [(,lett ([,lhs* ,[rhs*]] ...) ,[bod])
+	(guard (memq lett '(let* let letrec lazy-letrec)))
+	`(,lett ,(map (lambda (v rhs) (list v (if (>= level 1) rhs '_))) 
+		   lhs* rhs*)
+		,bod)]
+       ;; duplicated code:
+       [(lambda ,args ,[bod]) (if (>= level 2) `(lambda ,args ,bod) '_)]
+
        [,else '_])]))
 
 ; ======================================================================

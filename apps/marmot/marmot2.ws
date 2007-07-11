@@ -70,32 +70,32 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     
     // unfortunately, it's difficult to keep state in a non-iterate block with wavescript
     // we hack this by making Arrays (which you can edit) with one element
-    temp_val = Array:make(1,0.0); // HACK
-    temp_ind = Array:make(1,0); // HACK
-    max_ind = Array:make(1,0); // HACK
+    temp_val = ref(0.0); 
+    temp_ind = ref(0);
+    max_ind = ref(0);
     order = Array:make(sel_bin_size,0); // order of array
     
     // the actual sort
     for i = 0 to (sel_bin_size-1) {
-      temp_val[0] := psds[i];
-      temp_ind[0] := psd_index[i];
-      max_ind[0] := i;
+      temp_val := psds[i];
+      temp_ind := psd_index[i];
+      max_ind := i;
       
       for j = i+1 to (total_bins-1) {
-	if psds[j] > temp_val[0] then {
-	  max_ind[0] := j;
-	  temp_val[0] := psds[j];
-	  temp_ind[0] := psd_index[j];
+	if psds[j] > temp_val then {
+	  max_ind := j;
+	  temp_val := psds[j];
+	  temp_ind := psd_index[j];
 	};
       };
       
-      if (max_ind[0] < i || max_ind[0] > i) then { // i don't know the syntax for != here
-	psds[max_ind[0]] := psds[i];
-	psd_index[max_ind[0]] := psd_index[i];
-      	psds[i] := temp_val[0];
-	psd_index[i] := temp_ind[0];
+      if (max_ind < i || max_ind > i) then { // i don't know the syntax for != here
+	psds[max_ind] := psds[i];
+	psd_index[max_ind] := psd_index[i];
+      	psds[i] := temp_val;
+	psd_index[i] := temp_ind;
       };      
-      order[i] := temp_ind[0]; // all subsequent access to psds is done thru the order array
+      order[i] := temp_ind; // all subsequent access to psds is done thru the order array
     };
     //    gnuplot_array(order);
     // now do the actual AML calculation, searching thru each angle
@@ -115,7 +115,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       for j = 0 to (sel_bin_size-1) {
 	// steering vector of complex numbers
 	D = Array:make(sens_num, 0.0+0.0i);
-	temp_c = Array:make(1,0.0+0.0i); // HACK :-)
+	temp_c = ref(0.0+0.0i);
 	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
 	for n = 0 to (sens_num - 1) {
 	  //	  D[n] := expC(0.0+1.0i * f2c(-2.0 * const_PI * gint(order[j]) * td[n] / gint(window_size))); // took out the order[j]+1 (seems to make it equal)
@@ -126,11 +126,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	};
 	//emit(D);
 	for n = 0 to (sens_num - 1) {
-	  temp_c[0] := temp_c[0] + conjC(D[n]) * m_get(data_f,n,order[j]);
+	  temp_c := temp_c + conjC(D[n]) * m_get(data_f,n,order[j]);
 	};
 
 	for n = 0 to (sens_num - 1) {
-	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c[0], intToFloat(sens_num))) );
+	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c, intToFloat(sens_num))) );
 	  // c version is : Cnormsqr(Cmul(temp_c,D[k])), where temp_c is divided by AML_NUM_CHANNELS
 	};
       };
@@ -178,7 +178,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     
     for k = 1 to ((total_len/win_size)-1) {
       print(show(k*win_size)++"\n");
-      m_in = build_matrix(sens_num,win_size,fun(i,j) m_get(_m_in,i,j+(k*win_size))); // make a new matrix with 4096*4 elements
+      m_in = build_matrix(sens_num,win_size, fun(i,j) m_get(_m_in,i,j+(k*win_size))); // make a new matrix with 4096*4 elements
       //      gnuplot_array(m_in[0]);
       // we're being odd here
       if (k==1) then {
@@ -312,17 +312,3 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   aml_result
 }
 
-//========================================
-// Main query:
-
-/* define array geometry */
-sensors = list_to_matrix([[ 0.04,-0.04,-0.04],
-			  [ 0.04, 0.04, 0.04],
-			  [-0.04, 0.04,-0.04],
-			  [-0.04,-0.04, 0.04]]);
-
-// 'synced' is defined in marmot_first_phase.ws
-//doas = FarFieldDOAb(synced, sensors);
-doas = oneSourceAMLTD(synced, sensors,4096);
-
-BASE <- doas

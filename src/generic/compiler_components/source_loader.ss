@@ -244,6 +244,10 @@
 (define (ws-postprocess origws)
   (define all-includes! '()) ;; Mutated below:  
   ;; First we expand includes:  
+  (define (process* forms)
+    (if (null? forms) '()
+	(let ([fst (process (car forms))])
+	  (append fst (process* (cdr forms))))))
   (define (process form)
     (define (names-defined forms)
       (match forms
@@ -262,11 +266,11 @@
 	     (begin 
 	       (set! all-includes! (cons path all-includes!))
 	       ;; This is usually a relative file path!
-	       (let ([imported (apply append
-				      (map process 
-					(or (expand-include path)
-					    (error 'ws-postprocess 
-						   "could not retrieve contents of include: ~s" file))))])
+	       (let ([imported 
+		      (process*
+		       (or (expand-include path)
+			   (error 'ws-postprocess 
+				  "could not retrieve contents of include: ~s" file)))])
 		 ;; Record that these symbols were pulled from an include:
 		 ;; This is *just* cosmetic:
 		 (included-var-bindings (names-defined imported))
@@ -301,7 +305,7 @@
       
       [,other (list other)]))
 
-  (define  ws (apply append (map process origws)))
+  (define  ws (process* origws))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
   (define (f2 x) (or (memq (car x) '(define using define-as)) ))

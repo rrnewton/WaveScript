@@ -97,10 +97,14 @@ fun sqrwave_helper(strm) {
     // This is very particular to gnuplot:
      if firsttime then {
       firsttime := false;
+      emit (w`start, 0);
+/*
       emit (w`start, 2);
       emit (w`start,-1);
       emit (w`start, 1);
+*/
     };
+
     flag := not(flag);
     y = if flag then 1 else 0;
     emit (w`start,           y);
@@ -124,7 +128,6 @@ namespace Array {
   cumulative1d = Plot:internal_helper(gnuplot_array_stream,   Array:length, fun(a,i) a[i], fun(x)x);
   cumulative2d = Plot:internal_helper(gnuplot_array_stream2d, Array:length, fun(a,i) a[i], fun(x)x);
 }
-
 
 // These versions operate not on streams of sigsegs/arrays but streams of raw elements.
 
