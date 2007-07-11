@@ -3,7 +3,10 @@
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
 	   (all-except "static-elaborate.ss" these-tests)
-           "../../langs/lang_wavescript.ss")
+           "../../langs/lang_wavescript.ss"
+           "../../testing/lang_wavescript_tests.ss"
+           "../../../plt/hashtab.ss"
+	   )
   (provide Eval Marshal Marshal-Closure  interpret-meta
 	   test-interpret-meta)
   (chezimports)

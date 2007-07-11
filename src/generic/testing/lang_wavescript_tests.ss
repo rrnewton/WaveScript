@@ -2,13 +2,17 @@
 (module lang_wavescript_tests mzscheme
   (require "../constants.ss"
            "../util/helpers.ss"
-           (prefix ws: "../sim/wavescript_sim_library.ss"))
+           "../../plt/common.ss"
+           (prefix ws: "../constants.ss")
+           (prefix ws: "../sim/wavescript_sim_library_push.ss"))
   (provide test-ws test-lang_wavescript
-	   lang_wavescript_prim-exceptions)
+	   lang_wavescript_prim-exceptions
+	   )
   (chezimports (add-prefix wavescript_sim_library_push ws:)
 	       ;; Hack, migrated some bindings here:
 	       (add-prefix constants ws:))
 
+;; Things not covered:
 (define lang_wavescript_prim-exceptions
   ;; Make some exceptions for things that are in Regiment but not WaveScript.
   ;; Also exceptions for geneeric prims and other prims that have been desugared.

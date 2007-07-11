@@ -1,15 +1,22 @@
 
 include "plot.ws";
 
-s1 = (readFile ("plot.ws", "mode: binary  window: 100") :: Stream (Sigseg Int16))
+data = (readFile ("plot.ws", "mode: binary  window: 100") :: Stream (Sigseg Int16))
 
-s2 = iterate w in s1 {
+widths = iterate w in data {
   emit Array:make(1, w`width)
-}
+};
 
-BASE <- Plot:Array:cumulative1d(s2)
+widths2 = iterate w in data {
+  emit w`width
+};
+
 
 //BASE <- Plot:Sigseg:cumulative1d(s1)
+//BASE <- Plot:Array:cumulative1d(widths)
+BASE <- Plot:cumulative1d(widths2)
+
+
 
 
 

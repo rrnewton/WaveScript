@@ -1,25 +1,32 @@
 
+/* This library provides utilities for "live" plots that update as the
+   data streams through.
 
+   "cumulative" plots just grow over time with new data.  Can't run forever!
+   "sliding_window" plots keep a finite amount of history
 
+*/
 
-type Plotter t = Stream t -> Stream t;
+Plot:cumulative1d                        :: Stream #a -> Stream #a;
+Plot:cumulative2d                        :: Stream (#x * #y) -> Stream (#x * #y);
 
-type ArrayPlotter t = Stream (Array t) -> Stream (Array t);
-type SigsegPlotter t = Stream (Sigseg t) -> Stream (Sigseg t);
+Plot:Array:cumulative1d                  :: Stream (Array #a) -> Stream (Array #a);
+Plot:Array:cumulative2d                  :: Stream (Array (#x * #y)) -> Stream (Array (#x * #y));
+
+Plot:Sigseg:cumulative1d                 :: Stream (Sigseg #a) -> Stream (Sigseg #a);
+Plot:Sigseg:cumulative2d                 :: Stream (Sigseg (#x * #y)) -> Stream (Sigseg (#x * #y));
+
 
 namespace Plot {
+
+
+//               INTERNAL HELPER FUNCTIONS: Don't use directly                      //
+// ================================================================================ //
 
 // Takes a windowed stream.  Remembers the history and redraws the
 // whole graph every time it gets a new window of data on the stream.
 //
-// NOTE: this should return the original stream:
-//livePlot :: ArrayPlotter t -> SigsegPlotter t;
-
-//livePlot :: ArrayPlotter t -> Stream (Sigseg t) -> Stream (Array t);
-//livePlot :: ArrayPlotter t -> 'foo;
-//livePlot :: SigsegPlotter t -> 'foo;
-//livePlot :: Plotter t -> Plotter t;
-fun internal_helper(wid, get, toContainer) fun (src) {
+fun internal_helper(plotter, wid, get, toContainer) fun (src) {
 
   let cumulative = iterate( win in src) {
     state { 
@@ -58,7 +65,13 @@ fun internal_helper(wid, get, toContainer) fun (src) {
 
   // We should reproduce the original stream.
   // But we need union types for that...
-  trash = gnuplot_array_stream(cumulative);
+
+  trash = plotter ( cumulative );
+
+  /*  trash = if dims == 1 then gnuplot_array_stream  ( cumulative )
+     else if dims == 2 then gnuplot_array_stream2d( cumulative )
+     else wserror("unsupported dimension: "++dims);*/
+
   //  trash2 = iterate arr in trash {emit toSigseg(arr,0,nulltimebase) };
   // Here's a hack!  We bring it back to the same type so that we can use unionList.
   trash2 = iterate arr in trash { emit toContainer(arr) };
@@ -66,15 +79,29 @@ fun internal_helper(wid, get, toContainer) fun (src) {
   iterate (i,w) in merged { if i==0 then emit w }
 }
 
+// ================================================================================ //
+//                           END INTERNAL HELPER FUNCTIONS.                         //
+
+
+// Sub-namespaces encapsulate different types that we work with.
+// Streams of Sigsegs or Streams of Arrays:
 namespace Sigseg {
   //live1d :: ArrayPlotter t -> 'foo;
-  cumulative1d = Plot:internal_helper(width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
-  cumulative2d = Plot:internal_helper(width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
+  cumulative1d = Plot:internal_helper(gnuplot_array_stream,   width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
+  cumulative2d = Plot:internal_helper(gnuplot_array_stream2d, width, fun(w,i) w[[i]], fun(x) toSigseg(x, 0, nulltimebase));
 }
 
 namespace Array {
-  cumulative1d = Plot:internal_helper(Array:length, fun(a,i) a[i], fun(x)x);
-  cumulative2d = Plot:internal_helper(Array:length, fun(a,i) a[i], fun(x)x);
+  cumulative1d = Plot:internal_helper(gnuplot_array_stream,   Array:length, fun(a,i) a[i], fun(x)x);
+  cumulative2d = Plot:internal_helper(gnuplot_array_stream2d, Array:length, fun(a,i) a[i], fun(x)x);
 }
+
+
+// These versions operate not on streams of sigsegs/arrays but streams of raw elements.
+
+cumulative1d = Plot:internal_helper(gnuplot_array_stream,   fun(x) 1, fun(x,_) x, fun(arr) arr[0]);
+cumulative2d = Plot:internal_helper(gnuplot_array_stream2d, fun(x) 1, fun(x,_) x, fun(arr) arr[0]);
+
+
 
 }

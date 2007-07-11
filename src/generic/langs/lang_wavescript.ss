@@ -198,9 +198,10 @@
  ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
  ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
 (define (wavescript-language expr)
-  (let (;[name (gensym)]
-	)    
-    (eval `(begin;module ,name mzscheme
+  (let* (;[name (gensym)]
+	 [tmpfile (string-append (path->string (current-directory)) "/__lang_running.tmp.ss")]
+	 [PROG
+	 `(begin;module ,name mzscheme
 	     (current-load-relative-directory (string-append ,(REGIMENTD) "/src/"))
 					;	   (current-directory (string-append ,(REGIMENTD) "/src/"))
 	     (printf "SWITCHED TO LOAD DIR ~s\n" (current-load-relative-directory))
@@ -216,16 +217,23 @@
 ;	     (printf "GOT LIBRARY LOADED\n")
 ;	     (printf "Here's binding: ~s\n" __readFile)
   ;	     (printf "Here's binding from stream: ~s\n" stream-car)
-	     (if (top-level-bound? 'start-dir) (current-directory (eval 'start-dir)))
+	     (if (top-level-bound? 'start-dir) (current-directory (eval 'start-dir)))	     
 	     (define THISWSVAL ,expr)
 	     (require mzscheme)
 ;	     (provide THISWSVAL)
 	     THISWSVAL
-	     ))
+	     )])
+    (if (simulator-write-sims-to-disk) 
+	(begin 
+	  (printf "WRITING SIM TO TMPFILE: ~s\n" tmpfile)
+	  (slist->file (list PROG) tmpfile (IFDEBUG 'pretty 'write))
+	  (load tmpfile))
+	(eval PROG))
 ;    (eval `(require ,name))
 ;    (eval 'THISWSVAL)
     ))
-)
+
+) ; End IFCHEZ
 
 ) ; End module.
 

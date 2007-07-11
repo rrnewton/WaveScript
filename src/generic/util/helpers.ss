@@ -342,10 +342,14 @@
                                 (+ (count-nodes (vector-ref lsvec i))
                                    (loop (sub1 i))))))]
       ;; Well, don't know how to go in here.  So it's an atom.
+      [else 1]
+#;
       [(record? lsvec) 1]
+#;
       [else (error 'count-nodes
                    "only knows how to count the nodes of a list or vector, not ~a" lsvec
-                   )])))
+                   )]
+      )))
 
 ;; [2005.10.16] Not tail recursive!!
 (define (mapi f ls)
