@@ -1,4 +1,6 @@
 
+include "stdlib.ws";
+
 // A library of matrix routines.
 // Author:  Lewis Girod & Ryan Newton 
 
@@ -11,22 +13,144 @@ type Matrix t = Array (Array t);
 namespace Matrix {
 
 // Interface:
-get :: (Matrix t, Int, Int) -> t;
-set :: (Matrix t, Int, Int, t) -> ();
+create :: (Int, Int, t) -> Matrix t;
+get    :: (Matrix t, Int, Int) -> t;
+set    :: (Matrix t, Int, Int, t) -> ();
+dims   ::  Matrix                 -> (Int * Int);
+
+ fun create(rows, cols, init) {
+   arr = Array:make(rows, Array:null);
+   for i = 0 to rows-1 {
+     arr[i] := Array:make(cols, init);
+   };
+   arr
+ }
 
  fun get(mat, row, col) (mat[row])[col];
- 
  fun set(mat, row, col, val) {
    r = mat[row];
    r[col] := val;
    () // mutators should return nothing!
- };
+ }
+ fun dims(mat) (Array:length(mat), Array:length(mat[0]))
+
+ // Here we pack the Array of Arrays into a one-dimensional array for
+ // consistency with the GSl interface.
+ fun toArray(mat) {
+   // Could use Array:build but, we'd have to do division.
+   let (r,c) = Matrix:dims(mat);
+   arr = Array:makeUNSAFE(r*c);
+   for i = 0 to r - 1 {
+     for j = 0 to c - 1 {
+       Array:set(arr, i + (j*r), Matrix:get(mat,i,j));
+     }
+   };
+   arr
+ }
+ fun fromArray(arr, r) {
+   using Array;
+   c = arr`length / r;
+   assert("fromArray: rows divide array length evenly", arr`length == r*c);
+   build(r, fun(i)
+      build(c, fun(j) 
+        arr[i + (j*r)]))
+ }
+/*
+ fun fromList(ls) {
+   r   = List:length(ls);
+   c   = List:length(ls`head);
+   mat = Matrix:create(r, c, ls`head`head);
+   List:foreachi(
+     fun(j,row) List:fromeachi(
+      fun(i,x) Matrix:set(mat,i,j,x), 
+      row),
+    ls);
+   mat
+ }
+*/
+
+ // In general build is efficient because it doesn't need to zero the storage.
+ fun build(r,c,f) {
+   using Array;
+   build(r, fun(i) build(c, fun(j) f(i,j)))
+ }
+
+ fun map(f, mat) {
+   using Array;
+   let (r,c) = Matrix:dims(mat);
+   build(r, fun(i) 
+    build(c, fun(j) f(Matrix:get(mat,i,j))))
+ }
+ fun map2(f, mat1,mat2) {
+   using Array;
+   let (r,c) = Matrix:dims(mat1);
+   build(r, fun(i) 
+    build(c, fun(j) 
+      f(Matrix:get(mat1,i,j), Matrix:get(mat2,i,j))))
+ }
+
+ fun add(m1,m2)          Matrix:map2((+), m1, m2)
+ fun sub(m1,m2)          Matrix:map2((-), m1, m2)
+ fun mul_elements(m1,m2) Matrix:map2((*), m1, m2)
+ fun div_elements(m1,m2) Matrix:map2((/), m1, m2)
+ fun scale(mat,coef)     Matrix:map((* coef), mat) 
+ fun add_constant(mat,c) Matrix:map((+ c), mat) 
+
+ // INVERT NOT IMPLEMENTED! 
+
+ // [2007.07.12] This apes the structure of the current matrix_gsl.ws for interoperability.
+ namespace Float {
+   fun create(i,j) Matrix:create(i,j, 0.0);
+   get       :: (Matrix Float, Int, Int) -> Float     = Matrix:get;
+   set       :: (Matrix Float, Int, Int, Float) -> () = Matrix:set;
+   dims      ::  Matrix Float -> (Int * Int)          = Matrix:dims;
+   toArray   ::  Matrix Float -> Array Float          = Matrix:toArray;
+   fromArray :: (Array Float, Int) -> Matrix Float    = Matrix:fromArray;
+   add          :: (Matrix Float, Matrix Float) -> Matrix Float  = Matrix:add;   
+   sub          :: (Matrix Float, Matrix Float) -> Matrix Float  = Matrix:sub;   
+   mul_elements :: (Matrix Float, Matrix Float) -> Matrix Float  = Matrix:mul_elements;   
+   div_elements :: (Matrix Float, Matrix Float) -> Matrix Float  = Matrix:div_elements;  
+   scale        :: (Matrix Float, Float) -> Matrix Float  = Matrix:scale;   
+   add_constant :: (Matrix Float, Float) -> Matrix Float  = Matrix:add_constant;   
+ }
+
+ namespace Double {
+   fun create(i,j) Matrix:create(i,j, 0.0);
+   get       :: (Matrix Double, Int, Int) -> Double     = Matrix:get;
+   set       :: (Matrix Double, Int, Int, Double) -> () = Matrix:set;
+   dims      ::  Matrix Double -> (Int * Int)           = Matrix:dims;
+   toArray   ::  Matrix Double -> Array Double          = Matrix:toArray;
+   fromArray :: (Array Double, Int) -> Matrix Double    = Matrix:fromArray;
+   add          :: (Matrix Double, Matrix Double) -> Matrix Double  = Matrix:add;   
+   sub          :: (Matrix Double, Matrix Double) -> Matrix Double  = Matrix:sub;   
+   mul_elements :: (Matrix Double, Matrix Double) -> Matrix Double  = Matrix:mul_elements;   
+   div_elements :: (Matrix Double, Matrix Double) -> Matrix Double  = Matrix:div_elements;  
+   scale        :: (Matrix Double, Double) -> Matrix Double  = Matrix:scale;   
+   add_constant :: (Matrix Double, Double) -> Matrix Double  = Matrix:add_constant;   
+ }
+
+ namespace Complex {
+   fun create(i,j) Matrix:create(i,j, 0.0);
+   get       :: (Matrix Complex, Int, Int) -> Complex     = Matrix:get;
+   set       :: (Matrix Complex, Int, Int, Complex) -> () = Matrix:set;
+   dims      ::  Matrix Complex -> (Int * Int)            = Matrix:dims;
+   toArray   ::  Matrix Complex -> Array Complex          = Matrix:toArray;
+   fromArray :: (Array Complex, Int) -> Matrix Complex    = Matrix:fromArray;
+   add          :: (Matrix Complex, Matrix Complex) -> Matrix Complex  = Matrix:add;   
+   sub          :: (Matrix Complex, Matrix Complex) -> Matrix Complex  = Matrix:sub;   
+   mul_elements :: (Matrix Complex, Matrix Complex) -> Matrix Complex  = Matrix:mul_elements;   
+   div_elements :: (Matrix Complex, Matrix Complex) -> Matrix Complex  = Matrix:div_elements;  
+   scale        :: (Matrix Complex, Complex) -> Matrix Complex  = Matrix:scale;   
+   add_constant :: (Matrix Complex, Complex) -> Matrix Complex  = Matrix:add_constant;   
+ }
  
-  
 };
 
-// For now we just import immediately:
-using Matrix;
+// TEMP
+fun foo () {
+  using Matrix;
+  map
+}
 
 // "Legacy" bindings:
 m_get = Matrix:get;
@@ -34,13 +158,7 @@ m_set = Matrix:set;
 
 // make:
 matrix :: (Int, Int, t) -> (Matrix t);
-fun matrix(rows, cols, init) {
-  arr = Array:make(rows, Array:null);
-  for i = 0 to rows-1 {
-    arr[i] := Array:make(cols, init);
-  };
-  arr
-}
+matrix = Matrix:create;
 
 // build:
 
@@ -56,11 +174,7 @@ fun m_cols(m) {
   m[0]`Array:length
 }
 
-fun build_matrix(n,m,f) {
-  Array:build(n, 
-    fun(i) Array:build(m, 
-      fun(j) f(i,j)))
-}
+build_matrix = Matrix:build;
 
 // rrn: Pure version:
 list_to_matrix :: List (List t) -> Array (Array t);

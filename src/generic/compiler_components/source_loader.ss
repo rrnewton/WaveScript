@@ -287,14 +287,17 @@
 	 (values
 	  (map (lambda (def)
 		 (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+
+		 ;; We also inject a bunch of 'using' constructs so that
+		 ;; we can use the namespace's bindings from *within* the namespace:
+		 ;;(define (wrap-rhs e) `(using ,Space ,e))
+		 ;; SCRATCH THAT!
 		 ;; Because of certain limitations in the current implementation
 		 ;; of letrec (value restriction), for the moment definitions
 		 ;; within the namespace still have to use the FULL NAMES of
 		 ;; their peers.
 		 (define (wrap-rhs e) e)
-					;(define (wrap-rhs e) `(using ,Space ,e))
-		 ;; We also inject a bunch of 'using' constructs so that
-		 ;; we can use the namespace's bindings from *within* the namespace:
+		 ;; FIXME: This doesn't handle "using" within a namespace.
 		 (match def
 		   [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
 		   [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]

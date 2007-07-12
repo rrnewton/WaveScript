@@ -1,7 +1,7 @@
 
 // In this version, we're exploring the concept of an "ExclusivePointer" type.
 
-// Note: I should either check the run-time tags on the matrices
+// Note: FIXME: I should either check the run-time tags on the matrices
 // during all operations, or I should introduce distinct types for
 // FloatMatrix ComplexMatrix, etc.  (Except the latter requires being
 // *able* to introduce user defined data types... which I think I can
@@ -30,9 +30,7 @@ uniontype Matrix t =
 
 //foo = FM__(());
 
-// A pair containing the struct pointer and the array pointer.
-type MatrixTypeTag = Int;
-
+// A pair containing a type tag, the struct pointer, and the array pointer.
 type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 //type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 

@@ -1440,7 +1440,8 @@
 		       (map (lambda (id t rhs)
 			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
 			      ;(unless (null? rhsls) (inspect rhsls))
-			      (if (or (symbol? rhs) (memq id (included-var-bindings)))
+			      (if (and (or (symbol? rhs) (memq id (included-var-bindings)))
+				       (not (regiment-verbose)))
 				  '()
 				  `([type ,id ,t ,(get-var-types rhs)])))
 			 id* t* 

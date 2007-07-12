@@ -82,7 +82,7 @@
 	  [(__foreign ',cname ',files ',ty) 
 	   (printf "GOT __FOREIGN..\n")
 	   (obj 'ForeignEntry cname files ty)]
-	  [(__foreign . ,_) (error 'emit-mlton "missed __foreign entry: ~s" (con '__foreign _))]
+	  [(__foreign . ,_) (error 'emit-mlton "missed __foreign entry: ~s" (cons '__foreign _))]
 
 	  [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]

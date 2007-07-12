@@ -892,8 +892,7 @@ Here are the functions contained within the namespace {\tt
 \bullet$ $ $set$(m, i, j, val)     & :: &  $(Matrix, Int, Int, Float) \ra   ()$ \\
 \bullet$ $ $dims$(m)               & :: &  $ Matrix                   \ra   (Float * Float)$ \\
 \bullet$ $ $toArray$(m)            & :: &  $ Matrix                   \ra   Array Float $ \\
-\bullet$ $ $fromArray$(arr,dim1) & :: &  $ (Array Float, Int)         \ra   Matrix $ \\
-
+\bullet$ $ $fromArray$(arr,dim1)   & :: &  $ (Array Float, Int)       \ra   Matrix $ \\
 \end{array}
 \]
 
@@ -902,12 +901,31 @@ matrix, accessing and mutating it, and converting to one-dimensional
 (row-major) arrays.  Converting to and from arrays may or may not
 duplicate the storage, depending on the WaveScript backend in use.  
 
+In addition to the above basics matrix functions, the {\tt
+matrix\_gsl.ws} library namespace also includes common linear algebra
+matrix operations.
 
+\[
+\begin{array}{lcl}
+\bullet$ $ $add$(m1, m2)           & :: &  $(Matrix, Matrix)          \ra   Matrix$ \\
+\bullet$ $ $sub$(m1, m2)           & :: &  $(Matrix, Matrix)          \ra   Matrix$ \\
+\bullet$ $ $mul\_elements$(m1, m2) & :: &  $(Matrix, Matrix)          \ra   Matrix$ \\
+\bullet$ $ $div\_elements$(m1, m2) & :: &  $(Matrix, Matrix)          \ra   Matrix$ \\
+\bullet$ $ $scale$(m, coef)        & :: &  $(Matrix, Float)           \ra   Matrix$ \\
+\bullet$ $ $add\_constant$(m1, const) & :: &  $(Matrix, Float)        \ra   Matrix$ \\
 
-Note that these functions may be called as {\tt Matrix:Float:get} or by
-first importing the namespace ({\tt using Matrix:Float}) followed by
-simply {\tt get}.  Also included are {\tt Matrix:Complex} and {\tt
-  Matrix:Double}, which provide interfaces identical to {\tt Matrix:Float}.
+\bullet$ $ $invert$(m)             & :: &  $ Matrix                   \ra   Matrix$ \\
+\end{array}
+\]
+
+Note that these functions may be called as {\tt Matrix:Float:add}
+(fully qualified) or by first importing the namespace, ``{\tt using
+Matrix:Float};'', followed by simply ``{\tt get}''.  Also included in {\tt matrix\_gsl.so} are {\tt
+Matrix:Complex} and {\tt Matrix:Double}, which provide interfaces
+identical to {\tt Matrix:Float}.  \rednote{(Currently, the {\tt
+invert} operation is available only for {\tt Matrix:Double}.)}
+
+%http://www.gnu.org/software/gsl/manual/html_node/
 
 \chapter{WaveScript Evaluation Model}
 
