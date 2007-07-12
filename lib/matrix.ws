@@ -17,6 +17,10 @@ create :: (Int, Int, t) -> Matrix t;
 get    :: (Matrix t, Int, Int) -> t;
 set    :: (Matrix t, Int, Int, t) -> ();
 dims   ::  Matrix t               -> (Int * Int);
+copy   ::  Matrix t -> Matrix t;
+
+ // For the native WS implementation, comparison is just builtin equality.
+ eq = (==);
 
  fun create(rows, cols, init) {
    arr = Array:make(rows, Array:null);
@@ -73,6 +77,12 @@ dims   ::  Matrix t               -> (Int * Int);
  fun build(r,c,f) {
    using Array;
    build(r, fun(i) build(c, fun(j) f(i,j)))
+ }
+
+
+ fun copy(mat) {
+   let (r,c) = Matrix:dims(mat);
+   Matrix:build(r,c, fun(i,j) Matrix:get(mat,i,j))
  }
 
  fun map(f, mat) {
@@ -134,7 +144,7 @@ dims   ::  Matrix t               -> (Int * Int);
  }
 
  namespace Double {
-   fun create(i,j) Matrix:create(i,j, 0.0);
+   fun create(i,j) Matrix:create(i,j, 0.0`floatToDouble);
    get       :: (Matrix Double, Int, Int) -> Double     = Matrix:get;
    set       :: (Matrix Double, Int, Int, Double) -> () = Matrix:set;
    dims      ::  Matrix Double -> (Int * Int)           = Matrix:dims;
@@ -150,7 +160,7 @@ dims   ::  Matrix t               -> (Int * Int);
  }
 
  namespace Complex {
-   fun create(i,j) Matrix:create(i,j, 0.0);
+   fun create(i,j) Matrix:create(i,j, 0.0+0.0i);
    get       :: (Matrix Complex, Int, Int) -> Complex     = Matrix:get;
    set       :: (Matrix Complex, Int, Int, Complex) -> () = Matrix:set;
    dims      ::  Matrix Complex -> (Int * Int)            = Matrix:dims;

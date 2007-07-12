@@ -310,6 +310,12 @@
     (/. (Float Float) Float)
     (^. (Float Float) Float) ;; exponentiation
 
+    (+D (Double Double) Double)
+    (-D (Double Double) Double)
+    (*D (Double Double) Double)
+    (/D (Double Double) Double)
+    (^D (Double Double) Double) ;; exponentiation
+
     (+: (Complex Complex) Complex)
     (-: (Complex Complex) Complex) 
     (*: (Complex Complex) Complex) 
@@ -326,6 +332,7 @@
     (absI16 (Int16) Int16)
     (absI (Int) Int)
     (absF (Float) Float)
+    (absD (Double) Double)
     (absC (Complex) Float)
     
     (cos (Float) Float)

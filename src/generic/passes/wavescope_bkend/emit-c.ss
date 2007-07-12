@@ -799,7 +799,7 @@
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 
-;; Generate code for a "foreign" application.  Not really foreign since we're hosted in C++.
+;; Generate code for a "foreign" application.  Not really foreign since we're hosted in C++
 (define ForeignApp
   (lambda (ls)
     (match ls 
@@ -1260,20 +1260,22 @@
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])
      (guard (memq infix_prim '(;+ - * /
 			       +. -. *. /. 
-				  +_ *_ -_ /_
+			       +D -D *D /D
+			       +_ *_ -_ /_
 				  +: *: -: /:
 				  +I16 *I16 -I16 /I16
 				  < > <= >= =
-				  ^_ ^. ^: ^I16
+				  ^_ ^. ^: ^D ^I16
 				  )))
      (let ([cname (case infix_prim
 		    [(=) "=="]
 		    [(;+ * - / 
 		      < > <= >=) infix_prim]
 		    [(+. *. -. /.
-			 +_ *_ -_ /_
-			 +: *: -: /:
-			 ^_ ^. 
+		      +_ *_ -_ /_
+		      +D *D -D /D
+		      +: *: -: /:
+		      ^_ ^. ^D
 			 ) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]
 		    [(+I16 -I16 *I16 /I16 ^I16)

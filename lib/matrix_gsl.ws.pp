@@ -48,28 +48,54 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       gsl_matrix##CTY##_##OP(m1`getPtr, arg2); \
     }
 
-#define BASIC(CTY, WSTY, TAG)         \
-    /* Hmm... initialize how? */ \
+#define BASIC(CTY, WSTY, TAG)    \
+    /* Hmm... initialize how? */  \
     create :: (Int,Int) -> Matrix; \
-    fun create(n,m) {  \
-      p   = exclusivePtr $ gsl_matrix##CTY##_alloc(n,m); \
+    fun create(n,m) {               \
+      p   = exclusivePtr $ gsl_matrix##CTY##_alloc(n,m);     \
       arr = exclusivePtr $ gsl_matrix##CTY##_data(getPtr(p)); \
       gsl_matrix##CTY##_set_zero(p`getPtr); \
       (TAG, p, arr) \
-    } \
-      \
-    /* These could be implemented by directly using the array: */ \
-    get  :: (Matrix, Int, Int)       -> WSTY; \
-    set  :: (Matrix, Int, Int, WSTY) -> ();   \
-    dims :: (Matrix)                 -> (Int * Int); \
-    fun get((_,mat,_),i,j)    gsl_matrix##CTY##_get(mat`getPtr, i,j); \
+    }                \
+                      \
+    /* These could be implemented by directly using the array: */   \
+    get  :: (Matrix, Int, Int)       -> WSTY;                        \
+    set  :: (Matrix, Int, Int, WSTY) -> ();                           \
+    dims :: (Matrix)                 -> (Int * Int);                   \
+    fun get((_,mat,_),i,j)    gsl_matrix##CTY##_get(mat`getPtr, i,j);   \
     fun set((_,mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
-    fun dims((_,mat,_)) { \
+    fun dims((_,mat,_)) {                         \
       let x = gsl_matrix##CTY##_size1(mat`getPtr); \
-      let y = gsl_matrix##CTY##_size2(mat`getPtr); \
+      let y = gsl_matrix##CTY##_size2(mat`getPtr);  \
        (x,y) \
-    }; \
-       \
+    };        \
+               \
+    fun copy(mat1) {                      \
+      let (r,c) = Matrix:WSTY:dims(mat1);  \
+      let mat2  = Matrix:WSTY:create(r,c);  \
+      let (_,m1,_) = mat1;                   \
+      let (_,m2,_) = mat2;                    \
+      gsl_matrix_memcpy(m2`getPtr, m1`getPtr); \
+      mat2 \
+    }       \
+             \
+    fun eq(m1,m2) {                 \
+      i = ref(0);                    \
+      j = ref(0);                     \
+      stilleq = ref(true);             \
+      let (r,c) = Matrix:WSTY:dims(m1); \
+      while i < r && stilleq {           \
+        while j < c && stilleq {          \
+	  if Matrix:WSTY:get(m1,i,j) !=    \
+             Matrix:WSTY:get(m2,i,j)        \
+	  then stilleq := false;             \
+	  j += 1;  \
+	};          \
+	i += 1;      \
+      };              \
+      stilleq          \
+    }                   \
+                         \
     /* This is temporary, we can't pass arrays yet... but we can do this */ \
     fun toArray(mat) {             \
       let (x,y) = Matrix:WSTY:dims(mat);       \

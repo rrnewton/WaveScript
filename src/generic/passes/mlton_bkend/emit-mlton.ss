@@ -871,6 +871,13 @@
       [-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
       [/. "( Real32./ )"]
+      [^. "( Real32.Math.pow )"]
+
+      [+D "( Real64.+ )"]
+      [-D "( Real64.- )"] 
+      [*D "( Real64.* )"] 
+      [/D "( Real64./ )"]
+      [^D "( Real64.Math.pow )"]
 
       ;; UHH UNFORTUNATELY REAL32 != REAL
       [cos  Real32.Math.cos]
@@ -890,7 +897,8 @@
 
 ;; TODO ==========================
 
-      [^. "( Real32.Math.pow )"]
+
+
 
       [+: "Complex.+"]
       [-: "Complex.-"] 

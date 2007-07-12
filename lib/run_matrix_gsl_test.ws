@@ -1,3 +1,4 @@
+include "stdlib.ws";
 include "matrix_gsl.ws";
 
 f2d = floatToDouble;
@@ -21,26 +22,45 @@ result = iterate _ in timer(30.0)
 
   using Matrix; using Double;
 
-  dub = create(3,3);
-  set(dub, 0,0, f2d$ 1.0);
-  set(dub, 1,1, f2d$ 2.0);
-  set(dub, 2,2, f2d$ 3.0);
+  newmat = create(3,3);
+  set(newmat, 0,0, f2d$ 1.0);
+  set(newmat, 1,1, f2d$ 2.0);
+  set(newmat, 2,2, f2d$ 3.0);
   
-  print("A double matrix    : "++ dub `toArray ++"\n");
+  print("A double matrix    : "++ newmat `toArray ++"\n");
+
+  dub = copy(newmat); 
+
+  print("A copy             : "++ dub `toArray ++"\n");
+  assert("matrix copy eq", eq(newmat,dub));
+
   inv = Matrix:Generic:invert(dub);
+
   print("It's inverse       : "++ inv `toArray ++"\n");
-  print("It's double inverse: "++ inv `Matrix:Generic:invert `toArray ++"\n");
+  doubleinv = inv `Matrix:Generic:invert;
+  print("It's double inverse (using generic): "++ doubleinv `toArray ++"\n");
+  assert("double inverse eq", eq(dub,doubleinv));
 
   // Mutates it:
   add_constant(dub, f2d$ 3.3);
   print("Add a constant:: "++ dub `toArray ++"\n");  
+  add_constant(dub, f2d$ 3.3);
+
+  scratch = copy(dub);
+  sub(scratch, newmat); // Just the difference
+  scale(scratch, f2d$ -1.0);
+  add(dub,scratch);
+  print("Sub back out and get back: "++ dub `toArray ++"\n");  
+  assert("add sub eq", eq(dub,newmat));
+
   scale(dub, f2d$ 10.0);
   print("scale         :: "++ dub `toArray ++"\n");  
   add(dub,dub);
   print("add self      :: "++ dub `toArray ++"\n");  
-  
-  add(dub,dub);
-  print("mult self      :: "++ dub `toArray ++"\n");  
+
+  //add_constant(dub, f2d$ 1.0);  
+  product = mul(dub,dub);
+  print("a mult      :: "++ product `toArray ++"\n");  
   
   emit m;
   emit dub;

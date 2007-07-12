@@ -28,6 +28,7 @@
 
   (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g^ '^_] [abs 'absI]))
   (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g^ '^.] [abs 'absF]))
+  (define (double x)  (match x [g+ '+D] [g- '-D] [g* '*D] [g/ '/D] [g^ '^D] [abs 'absD]))
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
   (define (int16 x)   (match x [g+ '+I16] [g- 'I-16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
@@ -52,24 +53,23 @@
 			`(assert-type Int16 (quote ,n))
 			;(quote Int16 ,n)
 			]
+		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
+
 		       [(Int     ,e)  e]
 		       [(Int16   ,e)  
 			(error 'degeneralize-arithmetic
-			       "cannot currently use gint with an arbitrary expression and output type Int16: ~s"
+			       "cannot currently use gint with an arbitrary expression and output type Int16, it might overflow: ~s"
 			       `(gint ,e))]
 		       [(Float   ,e)  `(intToFloat ,e)]
+		       [(Double  ,e)  `(intToDouble ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
 		       [,else 
-			(if (memq t '(Int Float Complex))
-			    (error 'degeneralize-arithmetic
-				   "gint should only be used on numeric constants, not: ~s" 
-				   (cons 'gint args))
-			    (error 'degeneralize-arithmetic
-				   "unhandled output type demanded of gint, ~s, expression: ~s"
-				   t (cons 'gint args)) )])
+			(error 'degeneralize-arithmetic
+			       "unhandled output type demanded of gint, ~s, expression: ~s"
+			       t (cons 'gint args))])
 ;; NOTE: THIS WON'T WORK FOR ABS YET...
 ;; IT WORKS BASED ON THE RETURN TYPE, WHICH IS AMBIGUOUS FOR ABS.
 
@@ -77,6 +77,7 @@
 		       [(Int)     `(,(int     genop) . ,args)]
 		       [(Int16)   `(,(int16   genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]
+		       [(Double)  `(,(double  genop) . ,args)]
 		       [(Complex) `(,(complex genop) . ,args)]
 		       [else (error 'degeneralize-arithmetic
 				    "generic operation did not have concrete numeric type after elaboration: ~s"
@@ -90,5 +91,6 @@
      (parameterize ([inferencer-enable-LUB #f]
 		    [inferencer-let-bound-poly #f])
        (retypecheck
-	(lift-generics p)))))
+	(lift-generics p)))
+     ))
   )

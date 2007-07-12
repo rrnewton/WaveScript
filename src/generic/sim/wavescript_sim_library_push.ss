@@ -46,9 +46,10 @@
 		 +_ -_ *_ /_ ^_
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
+		 +D -D *D /D ^D
 		 +I16 -I16 *I16 /I16 ^I16
 		 sqrtF sqrtC sqrtI
-		 absI absF absC absI16
+		 absI absF absD absC absI16
 		 roundF		 
 
 		 int16ToInt     int16ToFloat int16ToDouble int16ToComplex
@@ -929,12 +930,14 @@
   ;(define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
   (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
+  (define +D fl+)    (define -D fl-)    (define *D fl*)    (define /D fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
 
   (define ws^ expt)
   (define g^ expt)
   (define ^_ expt)
   (define ^I16 expt)
+  (define ^D expt)
   (define ^. expt)
   (define ^: expt)
 
@@ -956,6 +959,7 @@
   (define absI16 fxabs)
   (define absI fxabs)
   (define absF flabs)
+  (define absD flabs)
   (define absC (IFCHEZ s:abs 
 		       (lambda (c) 
 			 (let ([x (cfl-real-part c)] 
