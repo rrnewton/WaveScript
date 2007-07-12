@@ -15,6 +15,8 @@ Specifically, a "Pointer" type.
 gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h", 
                 GETENV("REGIMENTD")++ "/lib/ws_gslpak.so"]
 
+// gsl_blas.ws -- The high level blas interface.
+
 #define wrap(x) #x
 #define entry(NAME,TYPE) NAME :: TYPE = foreign(wrap(NAME), gsl_includes);
 
@@ -35,6 +37,8 @@ gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h",
 
 nullperm :: Int -> Pointer "gsl_permutation*" = foreign("makeNullPerm", gsl_includes)
 //    in List:append(gsl_includes, [GETENV("REGIMENTD") ++ "/lib/GSL_extras.c"])
+
+nulltranspose :: () -> Int = foreign("makeCblasNoTrans", gsl_includes)
 
 makeMatrixWrapper :: Array #n -> Pointer "gsl_matrix*" = foreign("makeNullPerm", gsl_includes)
 
@@ -137,6 +141,31 @@ invert(_complex_float)
 
 
 /*====================================================================================================*/
+/*                                         GSL BLAS routines                                          */
+/*====================================================================================================*/
+
+
+// DANGER: The first argument is an ENUM, not necessarily the sizeof an int.
+gsl_blas_sgemm :: (Int, Int, Float, Pointer "gsl_matrix_float*", Pointer "gsl_matrix_float*", Float, Pointer "gsl_matrix_float*") -> Int;
+gsl_blas_sgemm = foreign("gsl_blas_sgemm", gsl_includes);
+
+/*
+gsl_matrix_get :: (Pointer "gsl_matrix *", Int, Int) -> Double = foreign("gsl_matrix_get", gsl_includes);
+gsl_matrix_add :: (Pointer "gsl_matrix *", Pointer "gsl_matrix *") -> Int = foreign("gsl_matrix_add", gsl_includes);
+#define add(S) plussuffix( add,          S, (PTR(S), PTR(S)) -> Int)
+ALL(add)
+
+int  gsl_blas_sgemm (CBLAS_TRANSPOSE_t TransA,
+                     CBLAS_TRANSPOSE_t TransB,
+                     float alpha,
+                     const gsl_matrix_float * A,
+                     const gsl_matrix_float * B,
+                     float beta,
+                     gsl_matrix_float * C);
+*/
+
+
+/*====================================================================================================*/
 
 // This only works for linux:
 libc = if SHELL("uname") == "Darwin\n"
@@ -162,3 +191,34 @@ iterate _ in timer(30.0)
   p = exclusivePtr( gsl_matrix_alloc(3,3));
   emit (getPtr(p), gsl_matrix_data( getPtr(p)));
 }
+
+
+/*
+
+{
+  double A[] = { 
+    1., 2., 
+    3., 4. 
+  };
+  double B[] = {
+    2., 3.,
+    4., 5.
+  };
+  double alpha = 1., beta = 0.;
+
+  gsl_matrix_view A_m = gsl_matrix_view_array(A, 2, 2);
+  gsl_matrix_view B_m = gsl_matrix_view_array(B, 2, 2);
+  gsl_matrix *C = gsl_matrix_alloc(2,2);
+
+  gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, alpha, &A_m.matrix, 
+      &B_m.matrix, beta, C);
+
+  printf("[[\n%f\t%f\n%f\t%f]]\n", 
+      gsl_matrix_get(C, 0, 0), gsl_matrix_get(C, 0, 1), 
+      gsl_matrix_get(C, 1, 0), gsl_matrix_get(C, 1, 1));
+
+  gsl_matrix_free(C);
+  return 0;
+}
+
+*/

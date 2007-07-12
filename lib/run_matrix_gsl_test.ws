@@ -2,7 +2,7 @@ include "matrix_gsl.ws";
 
 f2d = floatToDouble;
 
-BASE <- iterate _ in timer(30.0) 
+result = iterate _ in timer(30.0) 
 { 
   using Matrix; using Float;
 
@@ -39,8 +39,14 @@ BASE <- iterate _ in timer(30.0)
   add(dub,dub);
   print("add self      :: "++ dub `toArray ++"\n");  
   
+  add(dub,dub);
+  print("mult self      :: "++ dub `toArray ++"\n");  
+  
   emit m;
   emit dub;
   emit Matrix:Complex:create(3,3);
   //  emit m ` invert;
 }
+
+BASE <- result
+//BASE <- Matrix:noTrans

@@ -120,10 +120,23 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 
 namespace Matrix {
 
+  noTrans = nulltranspose();
+
   namespace Float {
     BASIC(_float, Float, float_matrix)
    //INVERT()  // Apparently not implemented for single precision...
-  }
+
+    fun mul(mat1,mat2) {    
+      let (r,c) = Matrix:Float:dims(mat1);
+      let (_,m1,d1) = mat1; 
+      let (_,m2,d2) = mat2; 
+      let mat3 = Matrix:Float:create(r,c);
+      let (tg,m3,d3) = mat3;
+      // Check return value?
+      gsl_blas_sgemm(Matrix:noTrans, Matrix:noTrans, 1.0, m1`getPtr, m2`getPtr, 0.0, m3`getPtr);
+      mat3
+    }
+   }
 
   namespace Double {
     BASIC(, Double, double_matrix)

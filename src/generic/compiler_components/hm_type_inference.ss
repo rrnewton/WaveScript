@@ -1483,8 +1483,8 @@
 	  (let ([entry (or (assq s aliases)
 			   (assq s regiment-type-aliases))])
 	    (if entry 
-		(begin 
-		  ;(DEBUGASSERT (= 2 (length entry)))
+		(begin 		  
+		  ;; Make sure the alias has no type arguments:
 		  (DEBUGASSERT null? (cadr entry))
 		  (caddr entry))
 		s))]

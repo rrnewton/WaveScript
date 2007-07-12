@@ -11,7 +11,7 @@ include "matrix.ws";
 //mat0 = [[1,2], [3,4]];
 //mat = list_to_matrix(mat0);
 
-BASE <- iterate (() in timer(30.0)) {
+result = iterate (() in timer(30.0)) {
   state { first = true }
 
 
@@ -64,3 +64,6 @@ BASE <- iterate (() in timer(30.0)) {
   } else emit matrix(0, 0, 0.0)  
 }
 
+BASE <- result;
+//BASE <- CONST(nulltranspose())
+//Matrix:noTrans

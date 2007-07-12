@@ -43,7 +43,7 @@
     
     ;; .param exp      The expression to process.	
     ;; .param emitter  Function that generates the emit code, given an argument.
-    (trace-define Expr ;(Expr tenv)
+    (define Expr ;(Expr tenv)
       (lambda (exp emitter)
 	(match exp
 	  [,v (guard (symbol? v) (regiment-constant? v)) (obj 'Const v)]
