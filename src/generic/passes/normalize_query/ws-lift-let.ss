@@ -41,7 +41,7 @@
 	      (ComplexConst ('quote ComplexDatum))
 	      ;; This is kind of lame:
 	      (ComplexConst ('cons ComplexConst ComplexConst))
-	      (ComplexConst ('foreign Const ComplexConst ComplexConst))
+	      (ComplexConst ('foreign Const ComplexConst))
 	      ;; This is constant for the duration of the stream query
 	      (ComplexConst AppConstructs)
 	      (ComplexConst Var)
