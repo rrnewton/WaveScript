@@ -14,6 +14,8 @@
 ;; MUTABLE
 (define union-edges 'union-edges-uninit)
 
+(define foreign-includes ())
+
 ;; Experimenting with both of these:
 (define int-module 'Int32)
 ;(define int-module 'Int)
@@ -157,13 +159,11 @@
 
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
 
+    [(,[args] ... -> ,[ret])
+     (list "(" (insert-between " * " args) " -> " ret ")")]
+
     ;; Went back and forth on whether this should be a pointer:
-    [(Sigseg ,t) 
-     `(,(Type t) " sigseg")
-#;     (let ([flatty (BigarrayType? t)])
-       (if flatty
-	   `("(",(Type t)", Bigarray.",flatty"_elt) sigseg_flat")
-	   ....))]
+    [(Sigseg ,t) `(,(Type t) " sigseg")]
 
     [(Array ,[t])  `("(",t") array")]
     [(List ,[t]) `("(",t") list")]
@@ -686,6 +686,19 @@
 
 
 
+;(define (ForeignApp ls)
+(trace-define (ForeignApp realname type rator rand*)
+  (make-app (Var rator) rand*))
+
+(trace-define (ForeignEntry cname files ty)
+  (match ty
+    [(,argty* ... -> ,retty)	
+     (let ([add-file!
+	    (lambda (file)
+	      (set! foreign-includes (cons file foreign-includes))
+	      )])
+       (for-each add-file! files)
+       `(" _import \"",cname"\" : ",(Type ty)";\n"))]))
 
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
@@ -805,7 +818,7 @@
 	Var Prim Const 
 	DispatchOnArrayType
 	Type
-
+	ForeignApp ForeignEntry
 	)
      (cdr args))))
 

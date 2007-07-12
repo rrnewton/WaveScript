@@ -226,7 +226,7 @@
       (match x
 
 	;; We force this to occur out here, in the "Query", not in any position in the program.
-	[(__foreign ',cname ',files ,_ ',ty)
+	[(__foreign ',cname ',files ',ty)
 	 (match ty
 	   [(,argty* ... -> ,retty)	
 	    (let ([add-file!

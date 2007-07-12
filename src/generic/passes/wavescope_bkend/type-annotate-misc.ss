@@ -27,7 +27,7 @@
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
-	      (ComplexConst ('__foreign Const Const Const ComplexDatum)) 
+	      (ComplexConst ('__foreign Const Const ComplexDatum)) 
 	      (AppConstructs ('foreign-app Const ('assert-type Type Var) Simple ...))
 	      )
 	    filtered)))

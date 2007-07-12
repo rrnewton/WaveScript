@@ -43,7 +43,7 @@
     
     ;; .param exp      The expression to process.	
     ;; .param emitter  Function that generates the emit code, given an argument.
-    (define Expr ;(Expr tenv)
+    (trace-define Expr ;(Expr tenv)
       (lambda (exp emitter)
 	(match exp
 	  [,v (guard (symbol? v) (regiment-constant? v)) (obj 'Const v)]
@@ -72,6 +72,18 @@
 	  [(for (,i ,[st] ,[en]) ,[bod])
 	   (obj 'make-for (Var i) st en bod)]
 	  [(while ,[tst] ,[bod]) (obj 'make-while tst bod)]
+
+
+;	  [(foreign-app . ,x) (obj 'ForeignApp x)]
+	  [(foreign-app ',realname (assert-type ,type ,rator) ,[rand*] ...) (obj 'ForeignApp realname type rator rand*)]
+;	  [(foreign-app ',realname (assert-type ,type ,rator) ,[rand*] ...) 
+;	   (make-app (symbol->string rator) rand*)]
+
+	  [(__foreign ',cname ',files ',ty) 
+	   (printf "GOT __FOREIGN..\n")
+	   (obj 'ForeignEntry cname files ty)]
+	  [(__foreign . ,_) (error 'emit-mlton "missed __foreign entry: ~s" (con '__foreign _))]
+
 	  [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]
 	  [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))

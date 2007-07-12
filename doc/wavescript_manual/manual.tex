@@ -851,12 +851,21 @@ pointer to C representation of type {\tt T}
   Complex, Int16, and Array types.  Further, it will provide a
   C-library for manipulating the representations of other WaveScript types.}
 
+
+%================================================================================
 \chapter{Signal Processing Libraries}
+
+Most of the basic stream operators (window, rewindow, sync, etc) are
+contained within ``stdlib.ws''.  Thus most programs will start with
+{\tt include ``stdlib.ws''}.
 
 \section{Fourier Transforms}
 
 WaveScript uses fftw.  See prim\_defs.ss for a list of the different
 fft interfaces provided.
+
+
+
 
 \section{Matrix Operations}
 
@@ -873,9 +882,10 @@ the corresponding {\tt .pp} files.)
 Here are the functions contained within the {\tt Matrix:Float} namespace.
 
 \begin{itemize}
-\item get(Matrix, Int, Int) = Float
+\item get(Matrix, Int, Int)        = Float
 \item set(Matrix, Int, Int, Float) = Float
-\item dims(Matrix) = (Float, Float)
+\item dims(Matrix)                 = (Float, Float)
+\item create(Int,Int)              = Matrix
 \end{itemize}
 
 Note, these functions may be called as {\tt Matrix:Float:get} or by
