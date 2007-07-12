@@ -139,7 +139,10 @@ invert(_complex_float)
 /*====================================================================================================*/
 
 // This only works for linux:
-Cfree :: Pointer "void*" -> () = foreign("free", ["libc.so.6"])
+libc = if SHELL("uname") == "Darwin\n"
+       then ["libc.dylib"]
+       else ["libc.so.6"];
+Cfree :: Pointer "void*" -> () = foreign("free", libc)
 
 /*====================================================================================================*/
 

@@ -274,6 +274,13 @@
 			 `(quote ,(if x x "")))
 		       (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
+	(SHELL ,(lambda (env v)
+		   (if (string? v)
+		       (let ([x (system-to-str v)])
+			 `(quote ,(if x x "")))
+		       (error 'static-elaborate:SHELL "bad input: ~s" v)
+		      )))
+
 	(FILE_EXISTS ,(lambda (env v)
 		       (if (string? v)
 			   `(quote ,(file-exists? v))

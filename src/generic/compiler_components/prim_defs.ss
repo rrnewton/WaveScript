@@ -146,9 +146,8 @@
   `(
     (GETENV (String) String) ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
-   
+    (SHELL (String) String)  ; Returns a string containing the output of the subprocess.
     ))
-
 
 
 ;; TODO: NOT IMPLEMENTED YET: [2006.09.01]

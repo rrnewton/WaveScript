@@ -1,10 +1,11 @@
 
 fun assert(b) if not(b) then wserror("Assert failed.");
 
-plat = GETENV("OSTYPE")
-libc = if plat == "Linux" 
+//plat = GETENV("OSTYPE")
+plat = SHELL("uname")
+libc = if plat == "Linux\n" 
        then "libc.so.6" 
-       else if plat == "Darwin"
+       else if plat == "Darwin\n"
        then "libc.dylib" 
        else wserror("Don't know how to find libc on platform: "++ plat)
 
@@ -12,6 +13,8 @@ malloc :: Int -> Pointer "void*" = foreign("malloc", [libc])
 free   :: Pointer "void*" -> ()  = foreign("free",   [libc])
 
 BASE <- iterate _ in timer(30.0) { 
+  print("Running on platform: "++plat++"\n");
+ 
   p1 = malloc(300);
   print("  malloc'd pointer: "++ p1 ++"\n");
   p2 = malloc(300);

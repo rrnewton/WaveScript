@@ -102,7 +102,7 @@
 		 exclusivePtr
 		 getPtr
 
-		 readFile-wsearly FILE_EXISTS GETENV
+		 readFile-wsearly FILE_EXISTS GETENV SHELL
 
 		 )
     (chezprovide (for for-loop-stack )
@@ -1520,6 +1520,7 @@
 
 (define FILE_EXISTS file-exists?)
 (define GETENV getenv)
+(define SHELL system-to-str)
 
 
 ) ; End module.
