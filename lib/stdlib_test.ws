@@ -9,16 +9,27 @@ include "stdlib.ws";
 //src = union2(timer(3.0), timer(4.0))
 src = timer(3.0);
 
+fun assert_prnt(str,a,b) {
+  assert_eq(str,a,b);
+  print("Assert passed: "++ str ++ "\n");
+}
+
 BASE <- iterate (x in src) {
   state { first = true }
   
   if first then {
     println("\n");
     {
+      println("  Array primitives: ");
+      println("=====================");
+
       using Array;
       arr = build(10, fun(x) x);
-      println("Fold:  " ++ Array:fold((+), 0, arr));
-      println("Fold1: " ++ Array:fold1((+), arr) ++ "  (should be same as previous)");
+      f1 = Array:fold((+), 0, arr);
+      f2 = Array:fold1((+), arr);
+      println("Fold:  " ++ f1);
+      println("Fold1: " ++ f2 ++ "  (should be same as previous)");
+      assert_prnt("folds equal", f1,f2);
 
       //flipped = fun(x,y) (y:::x); 
       //      println("FoldCons:  " ++ Array:fold(fun(x,y)(y:::x), [], arr));
@@ -39,12 +50,15 @@ BASE <- iterate (x in src) {
     */
 
     {
-       print("List primitives: ");
+       println("  List primitives: ");
+       println("====================");
        ls1 = [1,2,3];
        ls2 = [4,5,6];        
        summed = List:map2((+),ls1,ls2);
-       assert_eq("List:map2", [5,7,9], summed);
-       println("passed");
+       assert_prnt("List:map2", [5,7,9], summed);
+
+       assert_prnt("List:mapi", 6, List:fold1((+), List:mapi(fun(i,x) i, [0,0,0,0])));
+
     };
     
     

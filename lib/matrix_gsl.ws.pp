@@ -144,6 +144,23 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
     MAKEPURE(WSTY, add_constant, add_constant_inplace) \
 
 
+#define BUILTONTOP \
+ fun rowmap(f, m) { \
+  let (rows,_) = Matrix:WSTY:dims(m);  \
+  Array:build(rows, fun(i) f(Matrix:WSTY:row(m,i))) \
+ }                \
+ fun map(f, mat) { \
+   using Matrix;    \
+   let (r,c) = Matrix:WSTY:dims(mat);    \
+   build(r,c, fun(i,j) Matrix:WSTY:get(mat,i,j)) \
+ }                                    \
+ fun map2(f, mat1,mat2) {              \
+   using Matrix;                        \
+   let (r,c) = Matrix:dims(mat1);        \
+   build(r,c, fun(i,j) f(get(mat1,i,j), get(mat2,i,j)))
+ }
+
+
 // One day we could do this with type classes.
 #define INVERT(CTY, WSTY)          \
     fun invert(mat) {          \

@@ -85,16 +85,25 @@ deep_stream_map  :: (a -> b, SS a) -> SS b;
 
    // shorthands:
 i2f :: Int -> Float;
+i2d :: Int -> Double;
 i2c :: Int -> Complex;
 f2i :: Float -> Int;
+f2d :: Float -> Double;
 f2c :: Float -> Complex;
 c2i :: Complex -> Int;
 c2f :: Complex -> Float;
+c2d :: Complex -> Double;
 
 smap    :: (a -> b)    -> S a -> S b;
 sfilter :: (t -> Bool) -> S t -> S t;
 
+// Extra list/array functions augmenting the compiler builtins.
+
 List:map2       :: ((a,b) -> c, List a, List b) -> List c;
+List:mapi       :: ((Int,a) -> b, List a) -> List b;
+List:foreach    :: (      a -> (), List a) -> ();
+List:foreachi   :: ((Int,a) -> (), List a) -> ();
+List:fold1      :: ((t, t) -> t, List t) -> t;
 
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
@@ -616,11 +625,14 @@ fun deep_stream_map2(f,sss) {
 // Useful aliases:
 
 i2f = intToFloat;
+i2d = intToDouble;
 i2c = intToComplex;
 f2i = floatToInt;
 f2c = floatToComplex;
+f2d = floatToDouble;
 c2i = complexToInt;
 c2f = complexToFloat;
+c2d = complexToDouble;
 
 // These are the "advanced" versions.  They're curried.
 smap    = fun(f) fun(x) stream_map(f,x);
@@ -632,6 +644,42 @@ sfilter = fun(f) fun(x) stream_filter(f,x);
 /* List operations */
 
 namespace List {
+/*
+  fun mapi(f, ls) {
+    ind = ref(0);
+    ptr = ref(ls);
+    acc = ref([]);
+    while ptr != [] {
+      acc := f(ind, ptr`head) ::: acc;
+      ind := ind + 1;
+      ptr := ptr ` tail;
+    };
+    List:reverse(acc)
+  }
+*/
+
+  fun foreach(f, ls) {
+    ptr = ref(ls);
+    while ptr != [] {
+      f(ptr`head);
+      ptr := ptr ` tail;
+    }
+  }
+  fun foreachi(f, ls) {
+    ind = ref(0);
+    ptr = ref(ls);
+    while ptr != [] {
+      f(ind, ptr`head);
+      ind := ind + 1;
+      ptr := ptr ` tail;
+    }
+  }
+
+  fun mapi(f, ls) {
+    acc = ref([]);
+    List:foreachi(fun(i,x) acc := f(i,x) ::: acc, ls);
+    List:reverse(acc)
+  }
 
   fun map2(f, ls1, ls2) {
     p1 = Mutable:ref(ls1);
@@ -647,6 +695,12 @@ namespace List {
       }
     };
     List:reverse(acc)
+  }
+
+  fun fold1 (f,ls) {
+    if ls == []
+    then wserror("List:fold1 - list must have at least one element!")
+    else List:fold(f, ls`head, ls`tail)
   }
 
 }

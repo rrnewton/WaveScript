@@ -4,7 +4,6 @@ DEBUG = false;
 DEBUGSYNC = DEBUG;
 
 include "stdlib.ws";
-include "matrix.ws";
 
 // Takes Sigseg Complex
 fun marmotscore2(freqs) { 

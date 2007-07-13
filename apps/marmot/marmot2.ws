@@ -3,10 +3,42 @@ include "marmot_first_phase.ws";
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
+include "matrix.ws";
+//include "matrix_gsl.ws";
+
 //======================================================================
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 sound_spd = 345.0; // HACK - although not quite sure how to put it in
+
+
+// This doesn't seem quite worthy of going in the standard library yet:
+list_of_rowsegs_to_matrix :: List (Sigseg t) -> Array (Array t);
+fun list_of_rowsegs_to_matrix(ls) {
+  using Matrix; using Float;
+  r = List:length(ls);
+  fst = ls`head;
+  c = width(fst);
+  // Here we should create_UNSAFE...
+  //mat = create(r,c, fst[[0]]);
+  mat = create(r,c);
+
+  fun copyrow(i, ss) { for j = 0 to c-1 { set(mat, i,j, ss[[j]]) } };
+  List:foreachi(copyrow, ls);
+  mat
+}
+
+/*
+  ptr = ref(ls);
+  for i = 0 to r-1 {
+    hd = ptr`head;
+    for j = 0 to c-1 {
+      set(mat, i,j, hd[[j]])
+    };
+    ptr := ptr`tail;
+  };
+  mat 
+  */
 
 
 // reference single-target AML representation, based on the aml.c file in emstar
@@ -25,6 +57,8 @@ fun expC2(c) (1.0+0.0i * floatToComplex(cos(c))) + (0.0+1.0i * floatToComplex(si
 //Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
+    using Matrix; using Complex;
+
     // so we can use m_rowmap to map our function in the same way as the fft
     window_size = (data_in[0])`Array:length; // this is the size of one of the rows in m_in, right? currently 16384 - WHY
 
@@ -35,23 +69,23 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     Jvec = Array:make(grid_size, 0.0);
 
     //fft the sync'd data - these must be channels, otherwise the fft doesn't make any sense
-    fft_temp = m_rowmap(fftR2C, data_in);
+    fft_temp = fromArray2d(Float:rowmap(fftR2C, data_in));
     
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
     sel_bin_size = min(total_bins, window_size/20);
     // the above makes more sense when you're NOT using all bins for the AML (i.e. you're only using certain frequency bands)
 
     // the processed frequency data will be mapped into here
-    data_f = matrix(sens_num, total_bins, 0.00+0.00i); // with no set values, yet. 4 channels x total bin size
+    data_f = create(sens_num, total_bins); // with no set values, yet. 4 channels x total bin size
 
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
       for j = 0 to (total_bins - 1) { // window size
-        m_set(data_f, i, j, sdivC(conjC(m_get(fft_temp,i,j)), intToFloat(window_size)) );
+        set(data_f, i, j, sdivC(conjC( get(fft_temp,i,j)), intToFloat(window_size)) );
       };
       // set those first values - think this is supposed to be the last value in each array? - i is channel num
       //function takes the 0th element from the fft's imaginary and divides it by window size (setting it to the real), and sets the imag to 0 
-      m_set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(m_get(fft_temp,i,0))/intToFloat(window_size))) );
+      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart( get(fft_temp,i,0))/intToFloat(window_size))) );
       // set (channel, element in array)
     };
   
@@ -63,7 +97,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     
     for i = 0 to (total_bins-1) {
       for j = 0 to (sens_num-1) { // AML_NUM_CHANNELS
-	psds[i] := psds[i] + norm_sqrC(m_get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
+	psds[i] := psds[i] + norm_sqrC( get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
       };
       psd_index[i] := i;
     };
@@ -126,7 +160,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	};
 	//emit(D);
 	for n = 0 to (sens_num - 1) {
-	  temp_c := temp_c + conjC(D[n]) * m_get(data_f,n,order[j]);
+	  temp_c := temp_c + conjC(D[n]) * get(data_f, n,order[j]);
 	};
 
 	for n = 0 to (sens_num - 1) {
@@ -148,21 +182,22 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 // win_size decides how AML results to use
 fun oneSourceAMLTD(synced, sensors, win_size)
 {
-  sens_num = m_rows(sensors); // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
+  using Matrix; using Float; 
+  let (sens_num,_) = dims(sensors); // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
 
   // build an array with sens_num sensors in it for theta and radius (polar coords)
   // 1. radius
-  radius = Array:build(sens_num, fun(i) sqrtF( sqr(m_get(sensors,i,0)) + sqr(m_get(sensors,i,1)) ) );
+  radius = Array:build(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
   // 2. theta
-  theta = Array:build(sens_num, fun(i) atan2(m_get(sensors,i,1), m_get(sensors,i,0)));
+  theta = Array:build(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
 
-  //  print(show(m_get(sensors,0,0))++"\n");
+  //  print(show(get(sensors,0,0))++"\n");
 
   //  print("radius = "++show(radius[0])++" "++show(radius[1])++" "++show(radius[2])++" "++show(radius[3])++"\n");
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map(list_of_segs_to_matrix, synced);
+  data_in = stream_map(list_of_rowsegs_to_matrix, synced);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.
@@ -178,17 +213,17 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     
     for k = 1 to ((total_len/win_size)-1) {
       print(show(k*win_size)++"\n");
-      m_in = build_matrix(sens_num,win_size, fun(i,j) m_get(_m_in,i,j+(k*win_size))); // make a new matrix with 4096*4 elements
+      m_in = build(sens_num, win_size, fun(i,j) get(_m_in,i,j+(k*win_size))); // make a new matrix with 4096*4 elements
       //      gnuplot_array(m_in[0]);
       // we're being odd here
       if (k==1) then {
-	result = actualAML(m_in,radius,theta, grid_size, sens_num);
+	result = actualAML(m_in, radius,theta, grid_size, sens_num);
 	gnuplot_array(result);
 	emit(result)
       }
     };
     
-    //    m_in = build_matrix(sens_num,win_size,fun(i,j) m_get(_m_in,i,j+12288)); // make a new matrix with 4096*4 elements
+    //    m_in = build(sens_num,win_size,fun(i,j) get(_m_in,i,j+12288)); // make a new matrix with 4096*4 elements
     //    emit(actualAML(m_in,radius,theta, grid_size, sens_num));
     /*
     // so we can use m_rowmap to map our function in the same way as the fft
@@ -213,11 +248,11 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
       for j = 0 to (total_bins - 1) { // window size
-        set(data_f, i, j, sdivC(conjC(m_get(fft_temp,i,j)), intToFloat(window_size)) );
+        set(data_f, i, j, sdivC(conjC(get(fft_temp,i,j)), intToFloat(window_size)) );
       };
       // set those first values - think this is supposed to be the last value in each array? - i is channel num
       //function takes the 0th element from the fft's imaginary and divides it by window size (setting it to the real), and sets the imag to 0 
-      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(m_get(fft_temp,i,0))/intToFloat(window_size))) );
+      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(get(fft_temp,i,0))/intToFloat(window_size))) );
       // set (channel, element in array)
     };
   
@@ -229,7 +264,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     
     for i = 0 to (total_bins-1) {
       for j = 0 to (sens_num-1) { // AML_NUM_CHANNELS
-	psds[i] := psds[i] + norm_sqrC(m_get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
+	psds[i] := psds[i] + norm_sqrC(get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
       };
       psd_index[i] := i;
     };
@@ -292,7 +327,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 	};
 	//emit(D);
 	for n = 0 to (sens_num - 1) {
-	  temp_c[0] := temp_c[0] + conjC(D[n]) * m_get(data_f,n,order[j]);
+	  temp_c[0] := temp_c[0] + conjC(D[n]) * get(data_f,n,order[j]);
 	};
 
 	for n = 0 to (sens_num - 1) {
