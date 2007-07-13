@@ -123,6 +123,7 @@
     (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
 
     ;; These should be defined IN the language, but they're not right now:
+    ;; [2007.07.13] We have while loops and second class refs... should put these in.
     (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
@@ -131,6 +132,9 @@
     ;; A lot of these can be defined in the language once we figure
     ;; out a story for "library" (non-inlined) procedures and
     ;; second-class references.
+
+    ;; [2007.07.13] Actually... second class references are allowed
+    ;; now... I don't see why we'd need non-inlined procedures.
     (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
     (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
     (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
@@ -258,6 +262,8 @@
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
     ,@generic-arith-primitives
+    
+    (makeComplex (Float Float) Complex)
     
     (int16ToInt     (Int16)   Int)
     (int16ToFloat   (Int16)   Float)

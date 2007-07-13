@@ -28,6 +28,17 @@ fun list_of_rowsegs_to_matrix(ls) {
   mat
 }
 
+// rrn: TEMP: this is getting around a problem with Array:build and foreign
+// functions and metaprogram evaluation.
+fun mybuild(len, f) {
+  arr = Array:makeUNSAFE(len);
+  for i = 0 to len-1 {
+    arr[i] := f(i);
+  };
+  arr
+}
+
+
 /*
   ptr = ref(ls);
   for i = 0 to r-1 {
@@ -192,9 +203,9 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 
   // build an array with sens_num sensors in it for theta and radius (polar coords)
   // 1. radius
-  radius = Array:build(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
+  radius = mybuild(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
   // 2. theta
-  theta = Array:build(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
+  theta = mybuild(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
 
   //  print(show(get(sensors,0,0))++"\n");
 

@@ -12,7 +12,7 @@ matrix_gsl.ws: matrix_gsl.ws.pp gsl.ws
 ws_gslpak.so: GSL_extras.c GSL_extras.h
 	if [ `uname` == "Darwin" ]; \
 	then export LIBRARY_PATH=$LIBRARY_PATH:/sw/lib ; \
-	     gcc -dynamiclib -lm -lgslcblas -lgsl GSL_extras.c -o ws_gslpak.so; \
+	     gcc -fno-common -dynamiclib -lm -lgslcblas -lgsl GSL_extras.c -o ws_gslpak.so; \
 	else gcc  -lm -lgslcblas -lgsl -shared GSL_extras.c -o ws_gslpak.so; fi
 
 old:

@@ -48,3 +48,42 @@ size_t gsl_matrix_complex_size1(gsl_matrix_complex* mat) { return mat->size1; }
 size_t gsl_matrix_complex_size2(gsl_matrix_complex* mat) { return mat->size2; }
 size_t gsl_matrix_complex_float_size1(gsl_matrix_complex_float* mat) { return mat->size1; }
 size_t gsl_matrix_complex_float_size2(gsl_matrix_complex_float* mat) { return mat->size2; }
+
+// This is horrible:
+float get_complex_ptr_real(gsl_complex_float* c) {
+  float* p = (float*)c;
+  return p[0];
+}
+float get_complex_ptr_imag(gsl_complex_float* c) {
+  float* p = (float*)c;
+  return p[1];
+}
+
+gsl_complex_float cmplx_comm_temp;
+gsl_complex_float* ws_gsl_matrix_complex_float_get(gsl_matrix_complex_float* mat, int i, int j) {
+  cmplx_comm_temp = gsl_matrix_complex_float_get(mat,i,j);
+  return &cmplx_comm_temp;
+}
+void* ws_gsl_matrix_complex_float_set(gsl_matrix_complex_float* mat, int i, int j, float re, float im) {
+  gsl_complex_float c;
+  float* p = (float*)(&c);
+  p[0] = re;
+  p[1] = im;
+  gsl_matrix_complex_float_set(mat,i,j, c);
+}
+
+void* ws_gsl_matrix_complex_float_scale(gsl_matrix_complex_float* mat, float re, float im) {
+  gsl_complex_float c;
+  float* p = (float*)(&c);
+  p[0] = re;
+  p[1] = im;  
+  gsl_matrix_complex_float_scale(mat, c);
+}
+
+void* ws_gsl_matrix_complex_float_add_constant(gsl_matrix_complex_float* mat, float re, float im) {
+  gsl_complex_float c;
+  float* p = (float*)(&c);
+  p[0] = re;
+  p[1] = im;  
+  gsl_matrix_complex_float_add_constant(mat, c);
+}

@@ -51,7 +51,9 @@
 		 sqrtF sqrtC sqrtI
 		 absI absF absD absC absI16
 		 roundF		 
-
+		 
+		 makeComplex
+		 
 		 int16ToInt     int16ToFloat int16ToDouble int16ToComplex
 		 intToInt16     intToFloat   intToDouble   intToComplex 
 		 floatToInt16   floatToInt   floatToDouble floatToComplex 
@@ -965,6 +967,8 @@
 			 (let ([x (cfl-real-part c)] 
 			       [y (cfl-imag-part c)])					   
 			   (sqrt (+ (* x x) (* y y)))))))
+
+  (define (makeComplex re im) (s:fl-make-rectangular re im))
 
   (define int16ToInt    (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)

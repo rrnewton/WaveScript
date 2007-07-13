@@ -215,6 +215,13 @@ copy   ::  Matrix t -> Matrix t;
    add_constant :: (Matrix Float, Float) -> Matrix Float         = Matrix:add_constant;   
    mul          :: (Matrix Float, Matrix Float) -> Matrix Float  = Matrix:mul;   
 
+   add_inplace          :: (Matrix Float, Matrix Float) -> ()  = Matrix:add_inplace;   
+   sub_inplace          :: (Matrix Float, Matrix Float) -> ()  = Matrix:sub_inplace;   
+   mul_elements_inplace :: (Matrix Float, Matrix Float) -> ()  = Matrix:mul_elements_inplace; 
+   div_elements_inplace :: (Matrix Float, Matrix Float) -> ()  = Matrix:div_elements_inplace;
+   scale_inplace        :: (Matrix Float, Float) -> ()         = Matrix:scale_inplace;
+   add_constant_inplace :: (Matrix Float, Float) -> ()         = Matrix:add_constant_inplace;
+
    build        :: (Int, Int, (Int, Int) -> Float) -> Matrix Float = Matrix:build;
    foreachi     :: ((Int, Int, Float) -> (), Matrix Float) -> ()   = Matrix:foreachi;
    rowmap       ::  (Array Float -> b, Matrix Float) -> Array b    = Matrix:rowmap;
@@ -244,6 +251,13 @@ copy   ::  Matrix t -> Matrix t;
    add_constant :: (Matrix Double, Double) -> Matrix Double         = Matrix:add_constant;   
    mul          :: (Matrix Double, Matrix Double) -> Matrix Double  = Matrix:mul;   
 
+   add_inplace          :: (Matrix Double, Matrix Double) -> ()  = Matrix:add_inplace;   
+   sub_inplace          :: (Matrix Double, Matrix Double) -> ()  = Matrix:sub_inplace;   
+   mul_elements_inplace :: (Matrix Double, Matrix Double) -> ()  = Matrix:mul_elements_inplace; 
+   div_elements_inplace :: (Matrix Double, Matrix Double) -> ()  = Matrix:div_elements_inplace;
+   scale_inplace        :: (Matrix Double, Double) -> ()         = Matrix:scale_inplace;
+   add_constant_inplace :: (Matrix Double, Double) -> ()         = Matrix:add_constant_inplace;
+
    build        :: (Int, Int, (Int, Int) -> Double) -> Matrix Double = Matrix:build;
    foreachi     :: ((Int, Int, Double) -> (), Matrix Double) -> ()   = Matrix:foreachi;
    rowmap       ::  (Array Double -> b, Matrix Double) -> Array b    = Matrix:rowmap;
@@ -271,6 +285,13 @@ copy   ::  Matrix t -> Matrix t;
    scale        :: (Matrix Complex, Complex) -> Matrix Complex         = Matrix:scale;   
    add_constant :: (Matrix Complex, Complex) -> Matrix Complex         = Matrix:add_constant;   
    mul          :: (Matrix Complex, Matrix Complex) -> Matrix Complex  = Matrix:mul;   
+
+   add_inplace          :: (Matrix Complex, Matrix Complex) -> ()  = Matrix:add_inplace;   
+   sub_inplace          :: (Matrix Complex, Matrix Complex) -> ()  = Matrix:sub_inplace;   
+   mul_elements_inplace :: (Matrix Complex, Matrix Complex) -> ()  = Matrix:mul_elements_inplace; 
+   div_elements_inplace :: (Matrix Complex, Matrix Complex) -> ()  = Matrix:div_elements_inplace;
+   scale_inplace        :: (Matrix Complex, Complex) -> ()         = Matrix:scale_inplace;
+   add_constant_inplace :: (Matrix Complex, Complex) -> ()         = Matrix:add_constant_inplace;
 
    build        :: (Int, Int, (Int, Int) -> Complex) -> Matrix Complex = Matrix:build;
    foreachi     :: ((Int, Int, Complex) -> (), Matrix Complex) -> ()   = Matrix:foreachi;

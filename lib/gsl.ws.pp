@@ -78,11 +78,16 @@ ALL(free)
 #define getset(CTY,WSTY) \
    entry(gsl_matrix##CTY##_get,     (PTR(CTY), Int, Int) -> WSTY) \
    entry(gsl_matrix##CTY##_set,     (PTR(CTY), Int, Int, WSTY) -> ()) \
-   entry(gsl_matrix##CTY##_set_all, (PTR(CTY), WSTY) -> ()) \
+   entry(gsl_matrix##CTY##_set_all, (PTR(CTY), WSTY) -> ()) 
+
+#define setconst(CTY,WSTY) \
    entry(gsl_matrix##CTY##_set_zero,     PTR(CTY) -> ()) \
    entry(gsl_matrix##CTY##_set_identity, PTR(CTY) -> ())
 
-ALL2(getset)
+ALL2(setconst)
+
+getset(, Double) 
+getset(_float, Float) // Complex handled below...
 
 // Section 8.4.4 - File Reading - Incomplete
 // Section 8.4.5 - Matrix Views - Incomplete
@@ -111,8 +116,9 @@ ALL(add)
 ALL(sub)
 ALL(mul)
 ALL(div)
-ALL2(scale)
-ALL2(addconst)
+scale(, Double)    scale(_float, Float)
+addconst(, Double) addconst(_float, Float) // Complex handled below...
+
 
 // Section 8.4.11 - Finding max & min - Incomplete
 
@@ -124,6 +130,37 @@ ALL2(addconst)
 ALL(isnull)
 ALL(ispos)
 ALL(isneg)
+
+/*====================================================================================================*/
+/*                                  Routines with Complex Arguments                                   */
+/*====================================================================================================*/
+
+// These have to be defined specially for complex, because Scheme and MLton
+// FFI's can't pass complex numbers.
+get_complex_ptr_real :: Pointer "wscomplex_t" -> Float = foreign("get_complex_ptr_real",gsl_includes);
+get_complex_ptr_imag :: Pointer "wscomplex_t" -> Float = foreign("get_complex_ptr_imag",gsl_includes);
+ws_gsl_matrix_complex_float_get = (foreign("ws_gsl_matrix_complex_float_get", gsl_includes) 
+              :: (Pointer "gsl_matrix_complex_float*", Int, Int) -> Pointer "wscomplex_t");
+ws_gsl_matrix_complex_float_set = (foreign("ws_gsl_matrix_complex_float_set", gsl_includes) 
+              :: (Pointer "gsl_matrix_complex_float*", Int, Int, Float, Float) -> ());
+
+ws_gsl_matrix_complex_float_scale = (foreign("ws_gsl_matrix_complex_float_scale", gsl_includes)
+              :: (Pointer "gsl_matrix_complex_float*", Float,Float) -> ());
+ws_gsl_matrix_complex_float_add_constant = (foreign("ws_gsl_matrix_complex_float_add_constant", gsl_includes)
+              :: (Pointer "gsl_matrix_complex_float*", Float,Float) -> ());
+
+fun gsl_matrix_complex_float_get(mat, i,j) {
+  p = ws_gsl_matrix_complex_float_get(mat,i,j);
+  makeComplex(get_complex_ptr_real(p), get_complex_ptr_imag(p));
+}
+fun gsl_matrix_complex_float_set(mat, i,j, c) 
+  ws_gsl_matrix_complex_float_set(mat,i,j, realpart(c), imagpart(c));
+
+fun gsl_matrix_complex_float_scale(mat, c)
+  ws_gsl_matrix_complex_float_scale(mat, realpart(c), imagpart(c));
+fun gsl_matrix_complex_float_add_constant(mat, c)
+  ws_gsl_matrix_complex_float_add_constant(mat, realpart(c), imagpart(c));
+
 
 /*====================================================================================================*/
 /*                                         GSL Linear Algebra                                         */

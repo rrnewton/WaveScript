@@ -4,6 +4,11 @@ include "stdlib.ws";
 
 f2d = floatToDouble;
 
+fun assert_prnt(str,a,b) {
+  assert_eq(str,a,b);
+  print("Assert passed: "++ str ++ "\n");
+}
+
 result1 = iterate _ in timer(30.0) 
 { 
   using Matrix; using Float;
@@ -70,6 +75,19 @@ result1 = iterate _ in timer(30.0)
   product = Matrix:Double:mul(dub,dub);
   print("a mult      :: "++ product `toArray ++"\n");  
 
+
+  print("\n----------------------------------------\n");
+  print("Complex Matrices..\n\n");  
+
+  {
+    m = Matrix:Complex:create(2,3);
+    Matrix:Complex:set(m, 1,1, 3.0+4.0i);
+    c = Matrix:Complex:get(m, 1,1);    
+    assert_prnt("complex matrix get/set", c, 3.0+4.0i);
+    Matrix:Complex:add_constant_inplace(m, 1.0+1.0i); 
+    Matrix:Complex:scale_inplace(m, 2.0+0.0i); 
+    println("add const and scale: "++ Matrix:Complex:toArray(m));
+  };
   emit dub;
   //  emit Matrix:Complex:create(3,3);
 
