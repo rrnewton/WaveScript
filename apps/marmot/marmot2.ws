@@ -178,7 +178,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     Jvec
 }
 
-//oneSourceAMLTD :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
+oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float);
 // does an AMl calc based on TD data of supplied window (i.e. it does no rewindowing itself)
 // only does one source - other implementations may work on multiple sources
 
@@ -186,7 +186,9 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 fun oneSourceAMLTD(synced, sensors, win_size)
 {
   using Matrix; using Float; 
-  let (sens_num,_) = dims(sensors); // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
+  // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
+  // rrn: can't currently calculate matrix dimensions (foreign function) at compile time:
+  sens_num = List:length(sensor_list);
 
   // build an array with sens_num sensors in it for theta and radius (polar coords)
   // 1. radius

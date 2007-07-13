@@ -276,7 +276,9 @@
                               (cons path all-includes))])
 		 ;; Record that these symbols were pulled from an include:
 		 ;; This is *just* cosmetic:
-		 (included-var-bindings (names-defined imported))
+		 
+		 ;(printf "ADDING INCLUDES FROM ~s :\n   ~s\n" path (names-defined imported))
+		 (included-var-bindings (append (names-defined imported) (included-var-bindings)))
 		 (values imported new-includes)
 		 ))))]
       [(using ,M) (values `((using ,M)) all-includes)]
