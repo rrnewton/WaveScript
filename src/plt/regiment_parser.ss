@@ -209,8 +209,10 @@
       x))
 
 (define (unwrap x)
-  (if (source-position-tracking)
-      (match x [(src-pos ,p ,e) e])
+  (if (source-position-tracking)   
+      (if (eq? (car x) 'src-pos) (caddr x)
+	  (error 'parser:unwrap "expected src-pos form"))
+      ;(match x [(src-pos ,p ,e) e])
       x))
 
 (define (ws-parse . args)
@@ -274,6 +276,12 @@
     ;; This adds source position information!!
     (exp [(exp-raw) (wrap $1-start-pos $1-end-pos $1)])
     (selfterminated [(selfterminated-raw) (wrap $1-start-pos $1-end-pos $1)])
+
+    ;; This is an expression which must, however, be a variable.
+    ;; Yet it can still keep a source location.
+    ;; [2007.07.13] This caused a reduce-reduce conflict so I had to do it manually.
+;    (VarExp [(VAR) (wrap $1-start-pos $1-end-pos $1)])
+;    (VarExp [(VAR) $1])
 
     (type 
 	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
@@ -506,11 +514,12 @@
 
     (notlist
          [(NUM) `',$1]
-         [(VAR)  $1]
+;         [(VarExp)  $1]
+	 [(VAR) $1]
          [(CHAR) $1]
          [(STRING) $1]
          [(true) ''#t] 
-	 [(false) ''#f]
+	 [(false) ''#f]	 
 #;
          [(DOTVARS) 
            (let loop ([ls (cdr $1)] [acc (car $1)])
@@ -534,13 +543,13 @@
 
          
 ;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]
-         [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
+         [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,(wrap $1-start-pos $1-end-pos $1) ,$4)]
 ;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
 
 	 ;; Alternate syntax for "dot syntax".  Might switch to this
 	 ;; to free up period for future record syntax.
-	 [(exp MAGICAPPLYSEP VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
-         [(exp MAGICAPPLYSEP VAR) `(app ,$3 ,$1)]
+	 [(exp MAGICAPPLYSEP VAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1 . ,$5)]
+         [(exp MAGICAPPLYSEP VAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
 	 ;; Another application syntax... Haskell's '$' operator.
 	 ;; Don't want to pollute the language too much, but I find
@@ -548,10 +557,10 @@
 	 [(exp $ exp) `(app ,$1 ,$3)] ;; Note, every binop adds a shift/reduce conflict currently¢
 
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
-	 [(exp DOT VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
+	 [(exp DOT VAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1 . ,$5)]
 	 ;; Basic dot syntax:
 	 ;; Can only use this to call named functions, that is symbols:
-         [(exp DOT VAR) `(app ,$3 ,$1)]
+         [(exp DOT VAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))
@@ -562,14 +571,14 @@
 	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,(map unwrap $3) ,(unwrap $1))]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
-         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,$1 ,$3 ,$6)]	 
+         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,(wrap $1-start-pos $1-end-pos $1) ,$3 ,$6)]
 	 ;; Shorthands:
          [(VAR += exp) `(set! ,$1 (+ ,$1 ,$3))]
          [(VAR -= exp) `(set! ,$1 (- ,$1 ,$3))]
          [(VAR *= exp) `(set! ,$1 (* ,$1 ,$3))]
 
 	 ;; Operators that are simple are straightforward.
-         [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]
+         [(VAR LeftParen expls RightParen) `(app ,(wrap $1-start-pos $1-end-pos $1) ,@$3)]
 	 ;; This is a keyword, but it's also a prim name:
          [(static LeftParen expls RightParen) `(app static ,@$3)]
 
@@ -577,7 +586,7 @@
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 
 	 ;; Array references/assignments:
-         [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,$1 ,$3)]
+         [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,(wrap $1-start-pos $1-end-pos $1) ,$3)]
          [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(Array:ref ,$2 ,$5)]
          
          ;; Expression with user type annotation:
