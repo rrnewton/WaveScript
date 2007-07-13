@@ -47,11 +47,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
       for j = 0 to (total_bins - 1) { // window size
-        set(data_f, i, j, sdivC(conjC(m_get(fft_temp,i,j)), intToFloat(window_size)) );
+        m_set(data_f, i, j, sdivC(conjC(m_get(fft_temp,i,j)), intToFloat(window_size)) );
       };
       // set those first values - think this is supposed to be the last value in each array? - i is channel num
       //function takes the 0th element from the fft's imaginary and divides it by window size (setting it to the real), and sets the imag to 0 
-      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(m_get(fft_temp,i,0))/intToFloat(window_size))) );
+      m_set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart(m_get(fft_temp,i,0))/intToFloat(window_size))) );
       // set (channel, element in array)
     };
   

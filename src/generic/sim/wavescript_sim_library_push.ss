@@ -1488,7 +1488,12 @@
   (IFCHEZ 
    (lambda (ptr)
      (fprintf (current-error-port) "C-free: Loading free function from system's libc.\n")
-     (load-shared-object "libc.so.6")
+     (load-shared-object 
+      (case (machine-type)
+	[(i3osx ppcosx) "libc.dylib"]
+	[(i3le )        "libc.so.6"]
+	[else (error 'C-free "don't know what shared object to load this from on machine type: ~s" 
+		     (machine-type))]))
      ;; This throws an error in Petite if not wrapped in an eval:
      (set! C-free (eval '(foreign-procedure "free" (uptr) void)))
      (C-free ptr))

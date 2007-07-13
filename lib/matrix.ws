@@ -1,11 +1,10 @@
 
-include "stdlib.ws";
+// A library of matrix routines implemented directly in WaveScript.
 
-// A library of matrix routines.
 // Author:  Lewis Girod & Ryan Newton 
 
-// NOTE: rrn: I'm going to rewrite this at some point to use a single
-// array (packed rows) representation for interoperability with GSL/Blas.
+include "stdlib.ws";
+
 
 type Matrix t = Array (Array t);
 
@@ -99,12 +98,39 @@ copy   ::  Matrix t -> Matrix t;
       f(Matrix:get(mat1,i,j), Matrix:get(mat2,i,j))))
  }
 
+ fun map_inplace(f, mat) {
+   using Matrix;
+   let (r,c) = dims(mat);
+   for i = 0 to r-1 {
+     for j = 0 to c-1 {
+       set(mat, i,j, f(get(mat,i,j)))
+     }
+   }
+ }
+ fun map2_inplace(f, mat1, mat2) {
+   using Matrix;
+   let (r,c) = dims(mat1);
+   for i = 0 to r-1 {
+     for j = 0 to c-1 {
+       set(mat1, i,j, f(get(mat1,i,j), get(mat2,i,j)))
+     }
+   }
+ }
+
  fun add(m1,m2)          Matrix:map2((+), m1, m2)
  fun sub(m1,m2)          Matrix:map2((-), m1, m2)
  fun mul_elements(m1,m2) Matrix:map2((*), m1, m2)
  fun div_elements(m1,m2) Matrix:map2((/), m1, m2)
  fun scale(mat,coef)     Matrix:map((* coef), mat) 
  fun add_constant(mat,c) Matrix:map((+ c), mat) 
+
+ fun add_inplace(m1,m2)          Matrix:map2_inplace((+), m1, m2)
+ fun sub_inplace(m1,m2)          Matrix:map2_inplace((-), m1, m2)
+ fun mul_elements_inplace(m1,m2) Matrix:map2_inplace((*), m1, m2)
+ fun div_elements_inplace(m1,m2) Matrix:map2_inplace((/), m1, m2)
+ fun scale_inplace(mat,coef)     Matrix:map_inplace((* coef), mat) 
+ fun add_constant_inplace(mat,c) Matrix:map_inplace((+ c), mat) 
+
 
  // Matrix multiplication.
  fun mul(m1,m2) {

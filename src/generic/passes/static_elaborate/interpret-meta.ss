@@ -16,6 +16,9 @@
 
 (reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
+
+;; There are two kinds of closures.  Native and foreign.
+;; Foreign closures have #f in place of formals and env.
 (reg:define-struct (closure formals code env))
 
 ;; TODO: Merge with "uniontype" in wavescript_sim_library_push
@@ -32,6 +35,8 @@
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))
+(define (foreign-closure? cl) (not (closure-formals cl)))
+
 (define (unknown-type . _) `',(unique-name 'ty))
 
 
@@ -68,13 +73,27 @@
 
     [(tuple ,[x*] ...) (make-plain (list->vector x*))]
 
-    ;; Here's a hack to keep those type assertions on the readFiles...
+    ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
 	      (and (pair? x) (memq (car x) '(readFile dataFile)))))
      (let ([op (Eval e env pretty-name)])
        (set-streamop-type! op ty)
        op)]
+    ;; This duplicates the above case forforeign entries.
+    [(assert-type ,ty ,e)
+     (guard (let ([x (peel-annotations e)])
+	      (and (pair? x) (memq (car x) '(foreign)))))
+     (match (peel-annotations e)
+       [(foreign ,name ,includes)
+	(let ([name     (plain-val (Eval name env #f))]
+	      [includes (plain-val (Eval includes env #f))])
+	  ;; This is a closure representing a foreign function.
+	  (make-closure #f `(assert-type ,ty (foreign ',name ',includes)) #f)
+	  )])]
+    [(foreign . ,_) (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons 'foreign _))]
+    ;; We leave this alone:
+;    [(foreign ,[x*] ...) (cons 'foreign x*)]
 
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      
@@ -139,10 +158,26 @@
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
+     (when (foreign-closure? f)
+       (error 'interpret-meta:Eval "foreign app during meta eval: ~s" (closure-code f)))
+     ;; Native closure:
      (Eval (closure-code f) 
 	   (extend-env (closure-formals f) e*
 		       (closure-env f))
-	   pretty-name)]
+	   pretty-name)
+#;     
+     ;; Is it a native or foreign closure:
+     (if (foreign-closure? f)
+	 (match (closure-code f)
+	   [(foreign ',name ',includes)
+	    (warning 'interpret-meta:Eval "calling foreign function during meta eval: ~s" name)
+	    ;; TODO: Should we allow this???
+	    ;; A couple things we could do:
+	    ;;  (1) Eval foreign app at compile time.
+	    ;;  (2) Treat meta-time foreign apps as suspensions.
+	    (inspect includes)
+	    ])
+)]
     [(for (,i ,[st] ,[en]) ,bod)
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
@@ -199,6 +234,7 @@
 
 ;; Make a *real* procedure that evaluates a closure.
 (define (reify-closure c)
+  (ASSERT (not (foreign-closure? c)))
   (lambda args
     (DEBUGASSERT (curry andmap (compose not procedure?)) args)
     (Eval (closure-code c) 
@@ -283,11 +319,17 @@
 	)))
 
 (define (Marshal-Closure cl)
-    (let loop ([code (closure-code cl)]
-	       [fv   (closure-free-vars cl)]
-	       [state '()]
-	       [env (closure-env cl)])
-
+  (ASSERT (not (foreign-closure? cl)))
+  (if (foreign-closure? cl)
+	
+     ;; This just turns into the '(foreign name includes)' expression.
+     (inspect/continue (closure-code cl))
+	
+     (let loop ([code (closure-code cl)]
+		[fv   (closure-free-vars cl)]
+		[state '()]
+		[env (closure-env cl)])
+       
 ;      (if (memq 'roadnoise (map deunique-name fv)) (inspect fv))  ;; TEMP
 
       (if (null? fv)
@@ -311,29 +353,49 @@
 				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
 			  state)
 		    env)]
-	     ;; Here we inline:	  
 	     [(closure? val)  
-	      ;; Freshness consideration:
-	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
-		(let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
-		  (loop 
-		   ;; For now, don't do any inlining.  Do that later:
-		   ;; Here we simply stick those lambdas into the code.
-		   (substitute (list (list (car fv) `(lambda ,(closure-formals val) 
-						       ,(map unknown-type (closure-formals val))
-						       ,newcode))) 
-			       code)
-		   ;; We also merge the relevent parts of the closure's environment with our environment:
-		   (union newfree (cdr fv))
-		   state 
-		   (append env-slice env))))]
+	      (if (foreign-closure? val)
+		  ;; This just turns into the '(foreign name includes)' expression.
+		  (loop code (cdr fv) 
+			(cons `(,(car fv) ,(unknown-type) ,(closure-code val))
+			      state)
+			env)
+		  ;; First, a freshness consideration:
+		  (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
+		    (let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
+		      (loop 
+		       ;; For now, don't do any inlining.  Do that later:
+		       ;; Here we simply stick those lambdas into the code.
+		       (substitute (list (list (car fv) 
+				     ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
+				     (if (foreign-closure? val)
+					 (match (closure-code val)
+					   [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
+					    (let ([formals (list-head standard-struct-field-names (length arg*))])
+					      `(lambda ,formals ,arg*
+						  (foreign-app ,name ,@formals)
+						 ,(map unknown-type (closure-formals val))
+						 ,newcode)
+					      )])					 
+					 `(lambda ,(closure-formals val) 
+					   ,(map unknown-type (closure-formals val))
+					   ,newcode))))
+				   code)
+		       ;; We also merge the relevent parts of the closure's environment with our environment:
+		       (union newfree (cdr fv))
+		       state 
+		       (append env-slice env)))))]
 	     
 	     [(streamop? val) 
-	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
+	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))))
+	))
 
-(define (closure-free-vars cl) (difference (core-free-vars (closure-code cl)) (closure-formals cl)))
+(define (closure-free-vars cl) 
+  (DEBUGASSERT (not (foreign-closure? cl)))
+  (difference (core-free-vars (closure-code cl)) (closure-formals cl)))
 
 (define (dissect-and-rename cl)
+  (DEBUGASSERT (not (foreign-closure? cl)))
   (let* ([fv    (closure-free-vars cl)]
 	 [newfv (map unique-name fv)]
 	 [newcode (substitute (map list fv newfv) (closure-code cl))]

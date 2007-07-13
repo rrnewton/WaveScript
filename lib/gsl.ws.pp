@@ -149,6 +149,9 @@ invert(_complex_float)
 gsl_blas_sgemm = (foreign("gsl_blas_sgemm", gsl_includes) ::
   (Int, Int, Float, Pointer "gsl_matrix_float*", Pointer "gsl_matrix_float*", Float, Pointer "gsl_matrix_float*") -> Int);
 
+gsl_blas_dgemm = (foreign("gsl_blas_dgemm", gsl_includes) ::
+  (Int, Int, Double, Pointer "gsl_matrix*", Pointer "gsl_matrix*", Double, Pointer "gsl_matrix*") -> Int);
+
 /*
 gsl_matrix_get :: (Pointer "gsl_matrix *", Int, Int) -> Double = foreign("gsl_matrix_get", gsl_includes);
 gsl_matrix_add :: (Pointer "gsl_matrix *", Pointer "gsl_matrix *") -> Int = foreign("gsl_matrix_add", gsl_includes);

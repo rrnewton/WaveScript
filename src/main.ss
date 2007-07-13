@@ -439,7 +439,6 @@
   ; already-typed is now its own param. --mic
   ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
   
-
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
 (time 
   (parameterize ()
@@ -464,10 +463,10 @@
 
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p static-elaborate))
-;  (time (ws-run-pass p interpret-meta))
+;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
-  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
+;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
 ;  (inspect p)
 #;
@@ -478,7 +477,6 @@
     (inspect p)
     (exit 0)
     )
-
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)

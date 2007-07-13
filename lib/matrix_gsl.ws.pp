@@ -34,19 +34,26 @@ uniontype Matrix t =
 type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 //type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
-#define UNBOXBOTH(CTY, OP) \
-    fun OP(mat1,mat2) {  \
+#define UNBOXBOTH(CTY, OP, OPNAME) \
+    fun OPNAME(mat1,mat2) {  \
       /*assert(dims(mat1)==dims(mat2));*/ \
       let (tag1,m1,ar1) = mat1; \
       let (tag2,m2,ar2) = mat2; \
       /*assert(tag1==tag2);*/       \
       gsl_matrix##CTY##_##OP(m1`getPtr, m2`getPtr); \
     }  
-#define UNBOXFIRST(CTY, OP) \
-    fun OP(mat1,arg2) {  \
+#define UNBOXFIRST(CTY, OP, OPNAME) \
+    fun OPNAME(mat1,arg2) {  \
       let (tag1,m1,ar1) = mat1; \
       gsl_matrix##CTY##_##OP(m1`getPtr, arg2); \
     }
+
+#define MAKEPURE(WSTY, PURE, IMPURE) \
+    fun PURE(x,y) {                 \
+      cop = Matrix:WSTY:copy(x);    \
+      Matrix:WSTY:IMPURE(cop,y);    \
+      cop                           \
+    }                               \
 
 #define BASIC(CTY, WSTY, TAG)    \
     /* Hmm... initialize how? */  \
@@ -76,11 +83,12 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       let (_,m1,_) = mat1;                   \
       let (_,m2,_) = mat2;                    \
       gsl_matrix_memcpy(m2`getPtr, m1`getPtr); \
-      mat2 \
-    }       \
-             \
-    fun eq(m1,m2) {                 \
-      i = ref(0);                    \
+      mat2     \
+    }           \
+                 \
+    fun eq(m1,m2) \
+    Matrix:WSTY:dims(m1) == Matrix:WSTY:dims(m2) && \
+    { i = ref(0);                    \
       j = ref(0);                     \
       stilleq = ref(true);             \
       let (r,c) = Matrix:WSTY:dims(m1); \
@@ -121,12 +129,19 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       mat \
     } \
       \
-    UNBOXBOTH(CTY, add) \
-    UNBOXBOTH(CTY, sub) \
-    UNBOXBOTH(CTY, mul_elements) \
-    UNBOXBOTH(CTY, div_elements) \
-    UNBOXFIRST(CTY, scale) \
-    UNBOXFIRST(CTY, add_constant) \
+    UNBOXBOTH(CTY, add, add_inplace) \
+    UNBOXBOTH(CTY, sub, sub_inplace) \
+    UNBOXBOTH(CTY, mul_elements, mul_elements_inplace) \
+    UNBOXBOTH(CTY, div_elements, div_elements_inplace) \
+    UNBOXFIRST(CTY, scale, scale_inplace) \
+    UNBOXFIRST(CTY, add_constant, add_constant_inplace) \
+                                                        \
+    MAKEPURE(WSTY, add, add_inplace) \
+    MAKEPURE(WSTY, sub, sub_inplace) \
+    MAKEPURE(WSTY, mul_elements, mul_elements_inplace) \
+    MAKEPURE(WSTY, div_elements, div_elements_inplace) \
+    MAKEPURE(WSTY, scale, scale_inplace) \
+    MAKEPURE(WSTY, add_constant, add_constant_inplace) \
 
 
 // One day we could do this with type classes.
@@ -143,30 +158,32 @@ type Matrix = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 	mat2 \
     }
 
+#define MULT(BLASPREC, WSTY, CONST)           \
+    fun mul(mat1,mat2) {               \
+      let (_,m1,d1) = mat1;             \
+      let (_,m2,d2) = mat2;              \
+      let (r,c) = Matrix:WSTY:dims(mat1); \
+      let mat3 = Matrix:WSTY:create(r,c);  \
+      let (tg,m3,d3) = mat3;                \
+      /* Check return value? */              \
+      gsl_blas_##BLASPREC##gemm(Matrix:noTrans(), Matrix:noTrans(), CONST 1.0, m1`getPtr, m2`getPtr, CONST 0.0, m3`getPtr); \
+      mat3 \
+    }
 
 namespace Matrix {
 
-  noTrans = nulltranspose();
+  noTrans = nulltranspose;
 
   namespace Float {
     BASIC(_float, Float, float_matrix)
    //INVERT()  // Apparently not implemented for single precision...
-
-    fun mul(mat1,mat2) {    
-      let (r,c) = Matrix:Float:dims(mat1);
-      let (_,m1,d1) = mat1; 
-      let (_,m2,d2) = mat2; 
-      let mat3 = Matrix:Float:create(r,c);
-      let (tg,m3,d3) = mat3;
-      // Check return value?
-      gsl_blas_sgemm(Matrix:noTrans, Matrix:noTrans, 1.0, m1`getPtr, m2`getPtr, 0.0, m3`getPtr);
-      mat3
-    }
+    MULT(s, Float, )
    }
 
   namespace Double {
     BASIC(, Double, double_matrix)
    INVERT(, Double)
+   MULT(d, Double, floatToDouble$ )
   }
 
   // We don't support complex numbers in the FFI yet! 
