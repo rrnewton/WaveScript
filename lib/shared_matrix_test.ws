@@ -11,7 +11,7 @@ result1 = iterate _ in timer(30.0)
   print("\n=======================================\n");
   print("Shared matrix tests..\n\n");  
 
-  m = create(2,3);
+  m :: Matrix Float = create(2,3);
   print("Ref: "++ get(m,0,0)  ++"\n");
   print("Ref: "++ get(m,1,2)  ++"\n");
   set(m, 1,2, 3.0);

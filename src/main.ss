@@ -499,7 +499,7 @@
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
   ;(ws-run-pass p retypecheck)
- 
+
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"

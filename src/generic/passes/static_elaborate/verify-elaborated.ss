@@ -97,8 +97,9 @@
 
 	 [(Array:build ,[n] ,[f])
 	  (unless inside-iterate
-	    (error 'verify-elaborated "didn't elaborate far enough. \n~a"
-		   "Array:build is not allowed after elaboration, except inside iterate.\n"))
+	    (error 'verify-elaborated "didn't elaborate far enough. \n~a ~s"
+		   "Array:build is not allowed after elaboration, except inside iterate.\n"
+		   `(Array:build ,n ,f)))
 	  `(Array:build ,n ,f)]
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
 

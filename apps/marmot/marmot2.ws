@@ -13,7 +13,7 @@ sound_spd = 345.0; // HACK - although not quite sure how to put it in
 
 
 // This doesn't seem quite worthy of going in the standard library yet:
-list_of_rowsegs_to_matrix :: List (Sigseg t) -> Array (Array t);
+//list_of_rowsegs_to_matrix :: List (Sigseg t) -> Matrix t
 fun list_of_rowsegs_to_matrix(ls) {
   using Matrix; using Float;
   r = List:length(ls);
@@ -59,8 +59,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
     using Matrix; using Complex;
 
+    _ = (data_in :: Matrix Float);
+
     // so we can use m_rowmap to map our function in the same way as the fft
-    window_size = (data_in[0])`Array:length; // this is the size of one of the rows in m_in, right? currently 16384 - WHY
+    //window_size = (data_in[0])`Array:length; // this is the size of one of the rows in m_in, right? currently 16384 - WHY
+    window_size = snd(Float:dims(data_in));
 
     // total bins that will come out of the FFT
     total_bins = window_size/2;
@@ -203,9 +206,11 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   grid_size = 360; // 1 unit per degree.
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
-  aml_result = iterate (_m_in in data_in) {
+  aml_result = iterate (_m_in :: Matrix Float in data_in) {
     // I guess we need the loop in here?
-    total_len = _m_in[0]`Array:length;
+    total_len = snd(_m_in`dims);
+    //total_len = _m_in[0]`Array:length;
+
     //print(show(total_len)++"\n");
     //print(show(total_len/win_size)++"\n");
     // this just chops the first 4096 parts of the signal to do the AML on HACKED
@@ -213,7 +218,8 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     
     for k = 1 to ((total_len/win_size)-1) {
       print(show(k*win_size)++"\n");
-      m_in = build(sens_num, win_size, fun(i,j) get(_m_in,i,j+(k*win_size))); // make a new matrix with 4096*4 elements
+      // make a new matrix with 4096*4 elements:
+      m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in,i,j+(k*win_size))); 
       //      gnuplot_array(m_in[0]);
       // we're being odd here
       if (k==1) then {

@@ -61,33 +61,33 @@ copy   ::  Matrix t -> Matrix t;
  // No guarantee to copy storage!!
  fun fromArray2d(arr) arr
 
-/*
- fun fromList(ls) {
+   /*
+ fun fromList2d(ls) {
    r   = List:length(ls);
    c   = List:length(ls`head);
    mat = Matrix:create(r, c, ls`head`head);
    List:foreachi(
-     fun(j,row) List:fromeachi(
+     fun(j,row) List:foreachi(
       fun(i,x) Matrix:set(mat,i,j,x), 
       row),
     ls);
    mat
  }
-*/
-
- // rrn: Pure version:
- fromList2d :: List (List t) -> Matrix t;
- fun fromList2d(list) {
-   len2 = list`head`List:length;
-   Array:build(list`List:length,
-     fun(i) Array:build(len2,
-       fun(j) List:ref(List:ref(list,i), j)))
- }
+   */
 
  // In general build is efficient because it doesn't need to zero the storage.
  fun build(r,c,f) {
    using Array;
    build(r, fun(i) build(c, fun(j) f(i,j)))
+ }
+
+ // rrn: Pure version:
+ // Inefficient... but generally runs only at meta-time.
+ fun fromList2d(list) {
+   len2 = list`head`List:length;
+   Array:build(list`List:length,
+     fun(i) Array:build(len2,
+       fun(j) List:ref(List:ref(list,i), j)))
  }
 
  fun row(m,r) m[r]

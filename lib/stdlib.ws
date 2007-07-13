@@ -19,6 +19,9 @@ println     :: String -> ();
 assert      :: (String, Bool) -> ();
 assert_eq   :: (String, a,a)  -> ();
 
+fst         :: (a * b) -> a;
+snd         :: (a * b) -> b;
+
   // Some additional math functions 
 sqr        :: #n -> #n;
 atan2      :: (Float, Float) -> Float;
@@ -157,6 +160,9 @@ fun println(s) {
   print(s);
   print("\n");
 };
+
+fun fst((a,_)) a
+fun snd((_,b)) b
 
 //fun assert(b)      if not(b)    then wserror("Assert failed.");
 //fun asserteq(a,b)  if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
