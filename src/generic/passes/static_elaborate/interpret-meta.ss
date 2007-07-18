@@ -3,8 +3,9 @@
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
 	   (all-except "static-elaborate.ss" these-tests)
+	   (all-except "../wavescope_bkend/nominalize-types.ss" these-tests test-this)
            "../../langs/lang_wavescript.ss"
-           "../../testing/lang_wavescript_tests.ss"
+           "../../testing/lang_wavescript_tests.ss"	   
            "../../../plt/hashtab.ss"
 	   )
   (provide Eval Marshal Marshal-Closure  interpret-meta
@@ -323,7 +324,8 @@
   (if (foreign-closure? cl)
 	
      ;; This just turns into the '(foreign name includes)' expression.
-     (inspect/continue (closure-code cl))
+     ;(inspect/continue (closure-code cl))
+      (closure-code cl)
 	
      (let loop ([code (closure-code cl)]
 		[fv   (closure-free-vars cl)]

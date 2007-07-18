@@ -834,6 +834,8 @@
 
 ;; This just converts the name of the primitive, for those primitives
 ;; that map directly onto Mlton functions:
+;;
+;; SML CONVENTION: ALL PRIMITIVES TAKE MULTIPLE ARGUMENTS AS TUPLES!
 (define PrimName
   (let ()
     
@@ -890,6 +892,7 @@
       [absI16 Int16.abs]
       [absI   (format "~s.abs" int-module)]
       [absF   Real32.abs]
+      [absD   Real64.abs]
       [absC   Complex.magnitude]
 
       [string-append "(String.^)"] 
@@ -925,6 +928,8 @@
       [List:length  List.length]
       [List:reverse List.rev]
       [List:ref     List.nth]
+
+      [makeComplex  ,(make-fun (list (make-tuple "r" "i")) "({real= r, imag= i})")]
 
       [int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]

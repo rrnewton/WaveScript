@@ -1202,7 +1202,7 @@
       ;; These are the same as their C++ names:
       [(cos sin tan acos asin atan max min) 
        (sym2str var)]
-      [(absF absI absI16)       "abs"]
+      [(absF absD absI absI16)       "abs"]
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  "csqrt"]
@@ -1320,6 +1320,8 @@
 	 (guard (memq ToComplex 
 		      '(int16ToComplex intToComplex floatToComplex doubleToComplex)))
     	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
+	[(makeComplex ,[Simple -> re] ,[Simple -> im])
+	 (wrap `("((wscomplex_t)(",re" + (",im" * 1.0fi)))"))]
 
 	[(stringToInt ,[Simple -> e]) 
 	 (let ([tmp (Var (unique-name 'tmp))])

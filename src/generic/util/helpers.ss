@@ -117,6 +117,7 @@
    symbol-append 
 
    port->slist
+   eprintf
 
    testhelpers testshelpers
 
@@ -131,7 +132,7 @@
      system/echoed system-to-str with-evaled-params
      add-parameter-hook chomp shell-expand-string
      seconds-since-1970 ignore grep-oblist comma-number runN
-     gobj?  crit-printf
+     gobj?  crit-printf 
      read-line median stddev 
      test-this these-tests
 
@@ -643,6 +644,9 @@
                    (reverse! acc))
             (porttoslistloop (read p) (cons exp acc))))))
 
+;; "Error" printf, goes to stderr:
+(define (eprintf . args) (apply fprintf (current-error-port) args))
+
 ;; prints each expression to file.
 (define slist->file
   (case-lambda 
@@ -655,6 +659,7 @@
 	  (for-each (lambda (x) 
 		      (case method
 			[(write plain) (write x p)(newline p)]
+			[(display) (display x p)];; Should handle it's own newlines!
 			[(pretty pretty-print) 
 			 (parameterize ([print-level #f]
 					[print-graph #f])

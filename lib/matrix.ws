@@ -8,6 +8,8 @@ include "stdlib.ws";
 
 type Matrix t = Array (Array t);
 
+//DEBUGMATRIX = true
+
 // [2007.03.19] rrn: I'm going to clean things up gradually and move them into this namespace:
 namespace Matrix {
 
@@ -90,7 +92,16 @@ copy   ::  Matrix t -> Matrix t;
        fun(j) List:ref(List:ref(list,i), j)))
  }
 
- fun row(m,r) m[r]
+ // Note, these provide no guarantees as to allocating fresh storage:
+ fun row(m,i) m[i]
+ fun col(m,j) {
+   let (r,c) = Matrix:dims(m);
+   arr = Array:makeUNSAFE(r);
+   for i = 0 to r-1 {
+     arr[i] := Matrix:get(m,i,j);
+   };
+   arr
+ }
 
  fun foreachi(f, mat) {
    using Matrix;
@@ -202,6 +213,7 @@ copy   ::  Matrix t -> Matrix t;
    set       :: (Matrix Float, Int, Int, Float) -> () = Matrix:set;
    dims      ::  Matrix Float -> (Int * Int)          = Matrix:dims;
    row       :: (Matrix Float, Int) -> Array Float    = Matrix:row;
+   col       :: (Matrix Float, Int) -> Array Float    = Matrix:col;
    toArray   ::  Matrix Float -> Array Float          = Matrix:toArray;
    fromArray :: (Array Float, Int) -> Matrix Float    = Matrix:fromArray;
    fromArray2d  :: Array (Array Float) -> Matrix Float           = Matrix:fromArray2d;
@@ -238,6 +250,7 @@ copy   ::  Matrix t -> Matrix t;
    set       :: (Matrix Double, Int, Int, Double) -> () = Matrix:set;
    dims      ::  Matrix Double -> (Int * Int)          = Matrix:dims;
    row       :: (Matrix Double, Int) -> Array Double    = Matrix:row;
+   col       :: (Matrix Double, Int) -> Array Double    = Matrix:col;
    toArray   ::  Matrix Double -> Array Double          = Matrix:toArray;
    fromArray :: (Array Double, Int) -> Matrix Double    = Matrix:fromArray;
    fromArray2d  :: Array (Array Double) -> Matrix Double           = Matrix:fromArray2d;
@@ -273,6 +286,7 @@ copy   ::  Matrix t -> Matrix t;
    set       :: (Matrix Complex, Int, Int, Complex) -> () = Matrix:set;
    dims      ::  Matrix Complex -> (Int * Int)          = Matrix:dims;
    row       :: (Matrix Complex, Int) -> Array Complex    = Matrix:row;
+   col       :: (Matrix Complex, Int) -> Array Complex    = Matrix:col;
    toArray   ::  Matrix Complex -> Array Complex          = Matrix:toArray;
    fromArray :: (Array Complex, Int) -> Matrix Complex    = Matrix:fromArray;
    fromArray2d  :: Array (Array Complex) -> Matrix Complex           = Matrix:fromArray2d;

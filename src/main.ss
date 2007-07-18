@@ -636,7 +636,7 @@
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
-
+;; .returns - A stream of results
 (define-values (wsint wsint-early)
   (let ()
 
@@ -695,7 +695,7 @@
 	     (apply append ty**)))]))
 
 
-    (define (eval-and-peruse-stream compiled)
+    (define (eval-to-stream compiled)
       (define stripped (strip-types compiled))
       (define stream 
 	(begin 
@@ -705,7 +705,7 @@
 	  ;; New Streams:
 	  ;; [2007.02.06] Now we wrap it with a little extra to run the query:
 	  ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
-	  ;; It should be self contained, even if that means discarding the existing "language-mechanism.ss"
+	  ;; It SHOULD be self contained, even if that means discarding the existing "language-mechanism.ss"
 	  (wavescript-language
 	   (match stripped
 	     [(,lang '(program ,body ,meta* ... ,type))
@@ -724,7 +724,7 @@
        (define compiled (run-ws-compiler typed disabled-passes #t))
        (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
-       (eval-and-peruse-stream compiled))))
+       (eval-to-stream compiled))))
   
   (define (wsint-early x . flags)
     (define-pass lazify 
@@ -760,10 +760,32 @@
 					;       (ws-run-pass p lazify)
 	       ))
        (printf "Running program EARLY:\n")
-       (eval-and-peruse-stream p))))
+       (eval-to-stream p))))
 
   (values wsint wsint-early)))
 
+;; When invoking "ws" from the command line, this is the function that
+;; determines where the stream goes.  I.e. to an interactive browser
+;; or to a file.
+(define (wsint:direct-stream strm)
+  (IFCHEZ (import streams) (void))
+  (cond
+   [(not (stream? strm))
+    (eprintf  "\nWS query returned a non-stream value:\n  ~s\n" strm)]
+   [(and (wsint-tuple-limit) (wsint-output-file))
+    ;; This could be more efficient, but for now we just take it all
+    ;; into memory and then dump it all to disk.
+    (slist->file 
+     (first-value (stream-take (wsint-tuple-limit) strm))
+     (wsint-output-file)
+     'display)]
+   [(wsint-output-file)
+    (eprintf "Dumping output to file: ~s\n" (wsint-output-file))
+    (stream-dump strm (wsint-output-file))]
+   [else
+    ;; Otherwise, browse it interactively:
+    (parameterize ([print-vector-length #t])
+      (browse-stream strm))]))
 
 ;; For debugging
 (define run-wavescript-sim 
@@ -991,6 +1013,15 @@
 		     (regiment-verbose #t)
 		     (loop rest)
 		     ]
+
+		    [(-n ,limit ,rest ...)
+		     (wsint-tuple-limit (ASSERT integer? (string->number (symbol->string limit))))
+		     (loop rest)]
+
+		    [(-o ,outfile ,rest ...)
+		     (wsint-output-file (symbol->string outfile))
+		     (loop rest)]
+
 		    [(.h ,rest ...) (print-help) (regiment-exit 0)]
 
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
@@ -1300,38 +1331,13 @@
 	  [(wsint)
 	   (let ()
 	   (define prog (acquire-input-prog 'wsint))
-	   (let ([return (apply wsint (cons prog opts))])
-	     (IFCHEZ (import streams) (void))
-	     ;(import imperative_streams)
-	     (if (stream? return)
-		 (if outfile
-		     (begin
-		       (printf "Dumping output to file: ~s\n" outfile)
-		       (stream-dump return outfile))
-		     ;; Otherwise, browse it interactively:
-		     (parameterize ([print-vector-length #t])
-		       ;(browse-stream (stream-map ws-show return))
-		       (browse-stream return)
-		       ))
-		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
+	   (wsint:direct-stream (apply wsint (cons prog opts))))]
 
 	  ;; Same as wsint but only runs the compiler up to typechecking.
 	  [(wsearly)
 	   (let ()
 	     (define prog (acquire-input-prog 'wsearly))
-	     (let ([return (apply wsint-early (cons prog opts))])
-	       (IFCHEZ (import streams) (void))
-	       (if (stream? return)
-		   (if outfile
-		       (begin
-			 (printf "Dumping output to file: ~s\n" outfile)
-			 (stream-dump return outfile))
-		       ;; Otherwise, browse it interactively:
-		       (parameterize ([print-vector-length #t])
-					;(browse-stream (stream-map ws-show return))
-			 (browse-stream return)
-			 ))
-		   (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
+	     (wsint:direct-stream (apply wsint-early (cons prog opts))))]
 	  
 	  [(wscomp)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)

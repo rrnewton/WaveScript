@@ -3,14 +3,17 @@ include "marmot_first_phase.ws";
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
-include "matrix.ws";
-//include "matrix_gsl.ws";
+//include "matrix.ws";
+include "matrix_gsl.ws";
+
+include "array_geometry.ws";
 
 //======================================================================
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 sound_spd = 345.0; // HACK - although not quite sure how to put it in
 
+sensors = Matrix:Float:fromList2d(sensor_list);
 
 // This doesn't seem quite worthy of going in the standard library yet:
 //list_of_rowsegs_to_matrix :: List (Sigseg t) -> Matrix t
@@ -237,7 +240,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
       // we're being odd here
       if (k==1) then {
 	result = actualAML(m_in, radius,theta, grid_size, sens_num);
-	gnuplot_array(result);
+	//	gnuplot_array(result);
 	emit(result)
       }
     };

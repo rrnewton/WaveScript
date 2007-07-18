@@ -72,6 +72,9 @@
 	 regiment-track-source-locations
 	 regiment-current-pass
 
+	 wsint-tuple-limit
+	 wsint-output-file
+
 	 simulation-logger 
 	 simulation-logger-count
 	 simulation-logger-level
@@ -397,6 +400,10 @@
 ;; set to zero at the start of a simulation.
 (define simulation-logger-count (reg:make-parameter #f))
 
+;;; Used by wsint:
+
+(define-regiment-parameter wsint-tuple-limit #f)
+(define-regiment-parameter wsint-output-file #f)
 
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a

@@ -9,6 +9,7 @@
 
 // Should use C++ preprocessor to generate all the variants.
 
+include "stdlib.ws";
 include "gsl.ws";
 
 // Here's our lame enumeration... We need union types.
@@ -16,6 +17,8 @@ float_matrix  = 0;
 double_matrix = 1;
 complex_matrix = 2;
 complexdouble_matrix = 3;
+
+DEBUGMATRIX = true;
 
 //uniontype FloatMatrix t = FM__ ();
 
@@ -70,7 +73,7 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
     get  :: (Matrix, Int, Int)       -> WSTY;                        \
     set  :: (Matrix, Int, Int, WSTY) -> ();                           \
     dims :: (Matrix)                 -> (Int * Int);                   \
-    fun get((_,mat,_),i,j)    gsl_matrix##CTY##_get(mat`getPtr, i,j);   \
+                                                                        \
     fun set((_,mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
     fun dims((_,mat,_)) {                         \
       let x = gsl_matrix##CTY##_size1(mat`getPtr); \
@@ -78,6 +81,15 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
        (x,y) \
     };        \
                \
+    fun get(m,i,j)  {                     \
+      let (_,mat,_) = m;                   \
+      if DEBUGMATRIX then {                 \
+        let (r,c) = Matrix:WSTY:dims(m);     \
+        assert("matrix get, inds "++ i ++","++ j ++" dims "++ (r,c), i<r && j<c); \
+      };                                       \
+      gsl_matrix##CTY##_get(mat`getPtr, i,j);   \
+    }                                            \
+                                         \
     fun copy(mat1) {                      \
       let (r,c) = Matrix:WSTY:dims(mat1);  \
       let mat2  = Matrix:WSTY:create(r,c);  \
@@ -152,8 +164,17 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
       arr = Array:makeUNSAFE(c);                    \
       for j = 0 to c-1 {                             \
 	Array:set(arr, j, Matrix:WSTY:get(mat,i,j))   \
-      };   \
-      arr   \
+      };    \
+      arr    \
+ }            \
+               \
+ fun col(m,j) { \
+   let (r,c) = Matrix:WSTY:dims(m); \
+   arr = Array:makeUNSAFE(r);        \
+   for i = 0 to r-1 {                 \
+     arr[i] := Matrix:WSTY:get(m,i,j); \
+   };                                   \
+   arr      \
  }           \
               \
  fun fromArray(arr, rowlen) {     \

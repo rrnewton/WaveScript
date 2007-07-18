@@ -671,6 +671,7 @@
       [absI16 abs]
       [absI   abs]
       [absF   abs_float]
+      [absD   abs_float]
       [absC   Complex.norm]
 
       [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
@@ -712,6 +713,8 @@
       [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
       [complexToFloat "(fun c -> c.Complex.re)"]
       [complexToDouble "(fun c -> c.Complex.re)"]
+
+      [makeComplex "(fun re im -> {Complex.re= re; Complex.im= im})"]
 
       [stringToInt int_of_string]
       [stringToFloat float_of_string]

@@ -156,7 +156,7 @@
 			  (let loop ()
 			    (if (stream-empty? stream)
 				(unless (regiment-quiet)
-				  (printf "Finished, dumped ~a stream elements.\n" count))
+				  (fprintf (current-error-port) "Finished, dumped ~a stream elements.\n" count))
 				(let ([elem (stream-car stream)])
 				  (unless (equal? elem #())
 				    (write elem port)(newline port))
@@ -172,7 +172,7 @@
 			   50000000 
 			   (lambda ()
 			     (unless (regiment-quiet)
-			       (printf "  POS# ~a dumped...\n" pos))
+			       (fprintf  (current-error-port) "  POS# ~a dumped...\n" pos))
 			     )))])
 		   (if (regiment-quiet)		       
 		       (go)
