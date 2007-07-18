@@ -291,14 +291,25 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib_test.ws:                   ~a\n" (code->msg! stdlib))
-       (define matrix (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix.log" test-directory)))
-       (fpf "ws: Loading matrix_test.ws:                   ~a\n" (code->msg! matrix))
+
+       ;; This is the OLD one:
+       (define matrix )(system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix.log" test-directory))
+       (fpf "ws: Loading old matrix_test.ws:               ~a\n" (code->msg! matrix))
+
+       (fpf "ws: Running native WS test_matrix.ws:         ~a\n" 
+	    (code->msg! (system/exit-code (format "echo 10 | ws test_matrix.ws -exit-error &> ~a/matrix.log" test-directory))))
+       
+
        (current-directory test-directory))
 
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
        (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/gsl_wrappers.log" test-directory))))       
+
+       (fpf "ws: Running GSL test_matrix_gsl.ws:          ~a\n" 
+	    (code->msg! (system/exit-code (format "echo 10 | ws test_matrix_gsl.ws -exit-error &> ~a/matrix.log" test-directory))))
+#;
        (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
 	    (code->msg! (system/exit-code 
              (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
