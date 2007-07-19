@@ -682,6 +682,9 @@
       [Double ''0.0]
       [Complex ''0.0+0.0i]
       [#(,[t*] ...) `(tuple ,t* ...)]
+
+      [(Array ,_) "(Array.fromList [])"]
+
       [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])))
 
 

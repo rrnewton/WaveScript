@@ -204,11 +204,13 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   // rrn: can't currently calculate matrix dimensions (foreign function) at compile time:
   sens_num = List:length(sensor_list);
 
+  // RRN: NOTE:   Here we are (potentially) calling foreign matrix functions at compile time...
+
   // build an array with sens_num sensors in it for theta and radius (polar coords)
-  // 1. radius
-  radius = mybuild(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
+  // 1. radius  
+  radius = Array:build(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
   // 2. theta
-  theta = mybuild(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
+  theta = Array:build(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
 
   //  print(show(get(sensors,0,0))++"\n");
 
