@@ -2214,6 +2214,7 @@
 ;;               to (with-output-to-string (lambda () (system/echoed "ls")))
 
 ;; [2005.11.17] This one is similar 
+;; It looks like the chez primitive doesn't provide a handle on stderror.
 (define (system-to-str str)
   (let-match ([(,in ,out ,id) (process str)])
     (let ((p (open-output-string)))

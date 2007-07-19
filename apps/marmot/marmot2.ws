@@ -3,8 +3,8 @@ include "marmot_first_phase.ws";
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
-//include "matrix.ws";
-include "matrix_gsl.ws";
+include "matrix.ws";
+//include "matrix_gsl.ws";
 
 include "array_geometry.ws";
 

@@ -224,6 +224,9 @@
       (parser
     
    (src-pos)
+
+   (suppress) ;; IMPORTANT!!! COMMENT OUT WHEN DEBUGGING PARSER!
+
    (start start)
    (end EOF)
    

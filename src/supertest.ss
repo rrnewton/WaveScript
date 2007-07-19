@@ -307,8 +307,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/gsl_wrappers.log" test-directory))))       
 
-       (fpf "ws: Running GSL test_matrix_gsl.ws:          ~a\n" 
-	    (code->msg! (system/exit-code (format "echo 10 | ws test_matrix_gsl.ws -exit-error &> ~a/matrix_gsl.log" test-directory))))
+       (fpf "ws: Running GSL test_matrix_gsl.ws:           ~a\n" 
+	    (code->msg! (system/exit-code (format 
+               "echo 10 | ws test_matrix_gsl.ws -exit-error &> ~a/matrix_gsl.log" test-directory))))
 #;
        (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
 	    (code->msg! (system/exit-code 

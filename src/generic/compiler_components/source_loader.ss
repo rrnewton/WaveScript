@@ -413,73 +413,69 @@
 (IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.
  ;; .returns A parsed file, or #f for failure.
+ ;;
  ;; Expects absolute path!!
+ ;;
+ ;; [2007.07.19] Removing code to call the old server (through pipes).
  (define (ws-parse-file fn)    
    ;; FIXME: DELETE THIS.  It's obsoleted by the vastly more reliable TCP based server.
-   (define (try-server)
-     (printf "Using wsparse_server to parse file: ~a\n" fn)
-     (let ([out (open-output-file "/tmp/wsparse_server_pipe" 'append)]
-	   [in  (open-input-file "/tmp/wsparse_server_response")])
-       (write fn out)
-       (flush-output-port out)
-       (let ([result (read in)])	     
-	 (close-output-port out)
-	 (close-input-port in)
-	 result)))
+
+     ;; We don't even track source locations in ws.opt
+   (define dont-track (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL))))
+   (define extra-opts (if dont-track " --nopos" ""))
+
    (define (try-command)
-     ;; HACK: WON'T WORK IN WINDOWS:)
-     (begin 
-       (let* ([tmpfile (format "/tmp/~a.tmp" (random 1000000))]
-	      [port
+     ;; HACK: WON'T WORK IN WINDOWS:
+     (if (zero? (system "which wsparse")) 
+	 ;; Use pre-compiled executable:
+	 (begin 
+	   (eprintf "  Falling back to wsparse executable to parse file: ~a\n" fn)
+	   (system-to-str 
+	    (string-append "wsparse " fn  " --nopretty" extra-opts)))
+	 #f))
 
-	       ;; [2007.07.09] Switching over to the new client:
-	       ;; Looks like we could use "process" and avoid the temp file:
-	       (begin
-		 (printf "Calling wsparse_client.ss to parse file: ~a\n" fn)
-		 ;; We want only the stdout not the stderr:
-		 (system (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a  > ~a" 
-				 (REGIMENTD) fn tmpfile))
-		 (open-input-file tmpfile)
-		 )
-#;
-	       (if (zero? (system "which wsparse")) 
-		   ;; Use pre-compiled executable:
-		   (begin 
-		     (printf "Calling wsparse to parse file: ~a\n" fn)
-		     (car (process (++ "wsparse " fn 
-				       (string-append " --nopretty"
-					 ;; We don't even track source locations in ws.opt
-        			         (if (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL)))
-					     " --nopos" ""))))))
-		   (begin
-		     (warning 'wsint 
-			      (++ "couldn't find wsparse executable.\n"
-				  "Running wsparse.ss from source, but you probably"
-				  " want to do 'make wsparse' for speed."))
-		     ;; We want only the stdout not the stderr:
-		     (system (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty > ~a" 
-				     (REGIMENTD) fn tmpfile))
-		     (open-input-file tmpfile)
-		     ))]
-	      [decls (read port)])
-	 (close-input-port port)
-	 (delete-file tmpfile)
-	 ;; This is very hackish:
-	 (if (or (eq? decls 'ERROR) (eq? decls 'PARSE)) ;; From "PARSE ERROR"
-	     (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
-	 ;;(printf "POSTPROCESSING: ~s\n" decls)
-	 ;;(ws-postprocess decls)
-	 decls)))
+   (define (try-from-source)
+     (eprintf
+      (++ "  Falling back to wsparse.ss from source, but you probably"
+	  " want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n"))
+     ;; We want only the stdout not the stderr.
+     ;; UNFORTUNATELY, this 
+     (system-to-str 
+      (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty ~a" 
+	      (REGIMENTD) fn extra-opts)))
+
+   (define (try-client/server)
+     (if (file-exists? "/tmp/wsparse_server_tcp_running")
+	 (begin 
+	   (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn)
+	   ;; Ideally, we want only the stdout not the stderr, but can't do that.
+	   ;; I don't want this command line to be bash-dependent if possible.
+	   (let ([str (system-to-str
+		       (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a ~a " (REGIMENTD) fn extra-opts))])
+	     (if (or (equal? str "#f") (equal? str "#f\n")) 
+		 #f
+		 str)))
+	 #f))
+
+   ;; ========================================
    
-   (if (eq? 'i3nt (machine-type))
-       (set! fn (de-cygwin-path fn)))
+   (when (eq? 'i3nt (machine-type))
+     (set! fn (de-cygwin-path fn)))
 
-   (if (file-exists? "/tmp/wsparse_server_pipe")
-       ;; TODO: Make sure path is absolute!!
-       (or (try-server) 
-	   (begin (printf "Server failed, trying command.\n") #f)
-	   (try-command))
-       (try-command)))
+   (let* ([result 
+	   (or (try-client/server)	      
+	       (begin ;(printf "Server failed, trying command.\n")
+		      (try-command))
+	       (begin 
+		 (try-from-source)))]
+	  [decls (read (open-input-string result))])
+
+     ;; This is very hackish:
+     (when (or (eq? decls 'ERROR) (eq? decls 'PARSE)) ;; From "PARSE ERROR"
+       (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+     
+     decls
+))
 
  ;; The PLT version is imported above: (from regiment_parser.ss)
  (begin)
