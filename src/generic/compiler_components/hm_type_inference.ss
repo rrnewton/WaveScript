@@ -1487,7 +1487,8 @@
 	    (if entry 
 		(begin 		  
 		  ;; Make sure the alias has no type arguments:
-		  (DEBUGASSERT null? (cadr entry))
+		  (unless (null? (cadr entry))
+                    (error 'dealias-type "this alias should have had arguments: ~s" s))
 		  (caddr entry))
 		s))]
       [',n                                     `(quote ,n)]

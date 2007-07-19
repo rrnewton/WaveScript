@@ -61,7 +61,7 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
 
 #define BASIC(CTY, WSTY, TAG)                             \
     /* Hmm... initialize how? */                           \
-    create :: (Int,Int) -> Matrix;                          \
+    create :: (Int,Int) -> Matrix WSTY;                     \
     fun create(n,m) {                                        \
       p   = exclusivePtr $ gsl_matrix##CTY##_alloc(n,m);      \
       arr = exclusivePtr $ gsl_matrix##CTY##_data(getPtr(p));  \
@@ -70,9 +70,9 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
     }                                                             \
                                                                    \
     /* These could be implemented by directly using the array: */   \
-    get  :: (Matrix, Int, Int)       -> WSTY;                        \
-    set  :: (Matrix, Int, Int, WSTY) -> ();                           \
-    dims :: (Matrix)                 -> (Int * Int);                   \
+    get  :: (Matrix WSTY, Int, Int)       -> WSTY;                   \
+    set  :: (Matrix WSTY, Int, Int, WSTY) -> ();                      \
+    dims :: (Matrix WSTY)                 -> (Int * Int);              \
                                                                         \
     fun set((_,mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
     fun dims((_,mat,_)) {                         \
