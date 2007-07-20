@@ -76,9 +76,9 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
                                                                         \
     fun set((_,mat,_),i,j,x)  gsl_matrix##CTY##_set(mat`getPtr, i,j, x); \
     fun dims((_,mat,_)) {                         \
-      let x = gsl_matrix##CTY##_size1(mat`getPtr); \
-      let y = gsl_matrix##CTY##_size2(mat`getPtr);  \
-       (x,y) \
+      let y = gsl_matrix##CTY##_size1(mat`getPtr); \
+      let x = gsl_matrix##CTY##_size2(mat`getPtr);  \
+      { (y,x) } \
     };        \
                \
     fun get(m,i,j)  {                     \
@@ -138,8 +138,8 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
  fun build(r,c, f) {                         \
       /* Should be createUNSAFE */            \
       mat = Matrix:WSTY:create(r, c);          \
-      for j = 0 to r-1 {                        \
-        for i = 0 to c-1 {                       \
+      for i = 0 to r-1 {                        \
+        for j = 0 to c-1 {                       \
 	  Matrix:WSTY:set(mat, i, j, f(i,j))      \
 	}                                          \
       };                                            \
@@ -148,11 +148,11 @@ type Matrix t = (Int * ExclusivePointer "void*" * ExclusivePointer "void*");
                                                        \
  /* This is temporary, we can't pass arrays yet, but we can do this */ \
  fun toArray(mat) {                           \
-      let (x,y) = Matrix:WSTY:dims(mat);       \
-      arr = Array:makeUNSAFE(x*y);              \
-      for j = 0 to y-1 {                         \
-        for i = 0 to x-1 {                        \
-	  Array:set(arr, i + j*x, Matrix:WSTY:get(mat,i,j)) \
+      let (rows,cols) = Matrix:WSTY:dims(mat); \
+      arr = Array:makeUNSAFE(rows * cols);      \
+      for i = 0 to rows-1 {                      \
+      for j = 0 to cols-1 {                       \
+	  Array:set(arr, j + i*cols, Matrix:WSTY:get(mat,i,j)) \
 	} \
       };   \
       arr   \

@@ -15,6 +15,7 @@
   (chezimports)
 
 ;; This is a bit complex because it programmatically splits out the stream-primitives.
+;; [2007.07.19] FIXME: THIS IS BROKEN FOR NOW!!!!!!!!!!!!!!!!!
 (define ws-lift-let-grammar
   (let ([streamprims (map car wavescript-stream-primitives)])
     
@@ -23,13 +24,31 @@
 	      ;; The LHS should only have typevars... but we don't have a special production for that:
 	      ;(Program ((quote program) Query ('union-types ((Var Type ...) [Var Type ...] ...) ...) Type))
 	      (Program ((quote program) Query MetaData ... Type))
-	      
+
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))
+	      
 	      (Query ('iterate ('let ((LHS Type Block) ...)
 				 ('lambda (Var Var) (Type Type) Block)) Simple))
 	      (Query ('unionN Simple ...))
 	      (Query (StreamOp Simple ...))
+
+;	      (QueryRHS Value)
+;	      (QueryRHS StreamExpr)
+
+	      ;; Shouldn't this only be in the RHS of a let?
+;	      (Query ComplexConst)
+	      ;(Query ('let ((LHS Type ComplexConst) ...) Query))
+	      ;; But really that's not sufficiently general:
+	      ;(Query ('let ((LHS Type Value) ...) Query))
+
+	      ;; [2007.07.19] TEMP FIXME
+	      ;; We're in a bad place right now with side effects and foreign functions.
+	      ;; HACK HACK HACK: This is temporarya
+	      (Query Value)
+	      (Query Block)
+;	      (Query ('begin Query ... Query))
+
 
 	      (Simple Var)
 	      (Simple Const)
@@ -49,7 +68,6 @@
 	      (ComplexDatum ,atom?)
 	      (ComplexDatum (ComplexDatum ...))
 
-	      (Query ComplexConst)
 
 	      (Value Var) 
 	      (Value Const)
@@ -84,6 +102,7 @@
 	      (Value ('assert-type Type Value))
 	      (Query ('assert-type Type Query))
 	      (Block ('assert-type Type Block))
+;	      (StreamExpr ('assert-type Type StreamExpr))
 	       
 	       )
 	    (map (lambda (x)
@@ -174,6 +193,7 @@
 		    )
 		  ]))]
 
-    [OutputGrammar ws-lift-let-grammar])
+;    [OutputGrammar ws-lift-let-grammar]
+    )
 
 ) ;; End module

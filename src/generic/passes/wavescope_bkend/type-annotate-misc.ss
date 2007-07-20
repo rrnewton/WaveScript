@@ -125,7 +125,10 @@
 
 
   [Expr/Types process-expr]
-  [OutputGrammar type-annotate-misc-grammar])
+
+  ;; TEMP FIXME!!!
+  ;[OutputGrammar type-annotate-misc-grammar]
+)
 
 
 ) ; End module

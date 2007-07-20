@@ -1096,19 +1096,25 @@
 
 ;; This is a simple interactive debugging tool.  It shows the binding
 ;; spine of the program.
+;;
+;; Levels:
+;;  
 (define let-spine 
   (case-lambda 
     [(arg)  (if (number? arg) 
 		(lambda (e) (let-spine arg e))
 		(let-spine 0 arg))]
     [(level e)      
-     (match e
+      (match e
        [,v (guard (symbol? v)) v]
        [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
 	(guard (memq lett '(let* let letrec lazy-letrec)))
 	`(,lett ,(map (lambda (v rhs) (list v (if (>= level 1) rhs '_))) 
 		   lhs* rhs*)
 		,bod)]
+
+       [(begin ,[e*] ...)
+	(if (>= level 3) `(begin ,@e*) '_)]
 
        [(lambda ,args ,ty ,[bod]) 
 	(if (>= level 2) `(lambda ,args ,bod) '_)]

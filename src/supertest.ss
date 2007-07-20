@@ -462,8 +462,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.early run_first_phase.ws -exit-error &> ~a/wsearly_marmot.log" test-directory))))
 
-       ;; Run the second phase:
-       (fpf "ws: Running marmot app (first phase):         ~a\n"
+       ;; Run the second phase also!
+       (fpf "ws: Running marmot app (second phase):        ~a\n"
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot2.log" test-directory))))
 

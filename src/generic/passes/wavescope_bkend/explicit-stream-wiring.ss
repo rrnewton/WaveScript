@@ -50,10 +50,18 @@
 	;; Alias:
 	[(let ([,v1 (Stream ,ty) ,v2]) ,bod) (guard symbol? v2)
 	 (Expr bod (cons (list v1 v2) aliases))]
-	;; Constants:
+
+	;; Constants: Theoretically we could wrap up side effecting
+	;; code (from a 'begin') into the bindings for the constants.
+	;; That would be a bit limiting.  For example, there's nowhere
+	;; to put a for-loop that fills TWO constant array bindings.
+	;;
+	;; Really, this stream-wiring graph that comes out needs to
+	;; have ANOTHER slot for initialization code.
 	[(let ([,v ,ty ,rhs]) ,[bod])
 	 (ASSERT (lambda (t) (not (deep-assq 'Stream t))) ty)
 	 (cons `[CONST ,v ,ty ,rhs] bod)]
+
 	;; Sink:
 	[,v (guard (symbol? v)) `([BASE ,(dealias v)])]
 

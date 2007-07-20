@@ -41,6 +41,9 @@ fun mybuild(len, f) {
   arr
 }
 
+metabuild = mybuild;
+//metabuild = Array:build;
+
 
 /*
   ptr = ref(ls);
@@ -112,11 +115,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     psds = Array:make(total_bins,0.0); // power across bins
     psd_index = Array:make(total_bins,0); // power indices
     
-    for i = 0 to (total_bins-1) {
-      for j = 0 to (sens_num-1) { // AML_NUM_CHANNELS
-	psds[i] := psds[i] + norm_sqrC( get(data_f,j,i)); // data_f is channels as rows, freq data as cols 
+    for j = 0 to (total_bins-1) {
+      for i = 0 to (sens_num-1) { // AML_NUM_CHANNELS
+	psds[j] := psds[j] + norm_sqrC( get(data_f,i,j)); // data_f is channels as rows, freq data as cols 
       };
-      psd_index[i] := i;
+      psd_index[j] := j;
     };
     
     // unfortunately, it's difficult to keep state in a non-iterate block with wavescript
@@ -208,9 +211,9 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 
   // build an array with sens_num sensors in it for theta and radius (polar coords)
   // 1. radius  
-  radius = Array:build(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
+  radius = metabuild(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
   // 2. theta
-  theta = Array:build(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
+  theta = metabuild(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
 
   //  print(show(get(sensors,0,0))++"\n");
 
@@ -237,7 +240,11 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     for k = 1 to ((total_len/win_size)-1) {
       print(show(k*win_size)++"\n");
       // make a new matrix with 4096*4 elements:
-      m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in,i,j+(k*win_size))); 
+      m_in :: Matrix Float = build(sens_num, win_size, 
+         fun(i,j) { 
+	   //	   print("BUILDING : "++i++" "++j++" of "++sens_num++" "++win_size++"\n");
+	   get(_m_in, i, j+(k*win_size));
+         }); 
       //      gnuplot_array(m_in[0]);
       // we're being odd here
       if (k==1) then {

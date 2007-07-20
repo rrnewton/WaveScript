@@ -968,7 +968,8 @@
 			       [y (cfl-imag-part c)])					   
 			   (sqrt (+ (* x x) (* y y)))))))
 
-  (define (makeComplex re im) (s:fl-make-rectangular re im))
+  ;(define (makeComplex re im) (s:fl-make-rectangular re im))
+  (define (makeComplex re im) (s:make-rectangular re im))
 
   (define int16ToInt    (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)
@@ -984,7 +985,7 @@
   (define floatToInt16 flonum->fixnum)
   (define floatToInt   flonum->fixnum)
   (define (floatToDouble x) x)
-  (define (floatToComplex f) (s:fl-make-rectangular f 0.0))
+  (define (floatToComplex f) (s:make-rectangular f 0.0))
 
   (define doubleToInt16 floatToInt16)
   (define doubleToInt    floatToInt)
