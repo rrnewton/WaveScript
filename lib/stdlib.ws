@@ -859,7 +859,7 @@ fun deinterleaveSS(n, outsize, strm) {
 	   newwin[newind] := win[[i]]; 
 	   newind += 1;
 	   if newind == outsize then {
-	     sampnum = win`start + i - (outsize - 1);
+	     sampnum = (win`start + i) / n - (outsize - 1);
 	     emit toSigseg(newwin, sampnum, nulltimebase);
 	     newwin := Array:makeUNSAFE(outsize);
 	     newind := 0;
