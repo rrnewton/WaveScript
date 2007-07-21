@@ -40,6 +40,46 @@ sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
 sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
 sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
 
+
+// Extra ADT functions augmenting the compiler builtins.
+
+FIFO:make       ::  Int -> Queue t;
+FIFO:empty      ::  Queue t -> Bool;
+FIFO:enqueue    :: (Queue t, t) -> ();
+FIFO:dequeue    ::  Queue t -> t;
+
+List:map2       :: ((a,b) -> c, List a, List b) -> List c;
+List:mapi       :: ((Int,a) -> b, List a) -> List b;
+List:foreach    :: (      a -> (), List a) -> ();
+List:foreachi   :: ((Int,a) -> (), List a) -> ();
+List:fold1      :: ((t, t) -> t, List t) -> t;
+List:choplast   :: List t -> (t * List t);
+
+Array:fold1     :: ((t, t) -> t, Array t) -> t;
+Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
+Array:copy      :: Array t -> Array t;
+
+
+// These aren't at their final names.  They'll be moved into the Array
+// namespace or discarded.
+amap_inplace    :: (t -> t, Array t) -> Array t;
+amap            :: (a -> b, Array a) -> Array b;
+afold           :: ((b, a) -> b,  b,  Array a) -> b;
+asum            :: Array #n -> #n;
+amult_scalar    :: (Array #n, #n) -> Array #n;
+amult_scalar_inplace :: (Array #n, #n) -> Array #n;
+apairmult       :: (Array #n, Array #n) -> Array #n;
+apairsum        :: (Array #n, Array #n) -> Array #n;
+adot            :: (Array #n, Array #n) -> #n;
+a_max           :: Array #n -> (#n * Int);
+a_zeroes        :: Int -> Array #n;
+a_ones          :: Int -> Array #n;
+
+  // Side-effecting insertion sort:
+sort            :: ((Int, Int) -> (), 
+                    (Int, Int) -> Int, 
+                    Int) -> ();
+
 /// Library stream constructors:
 
 type CtrlStrm = Stream (Bool * Int * Int);
@@ -58,8 +98,9 @@ snoop           :: (a, Stream b) -> Stream b;
 
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
+zip4_sametype   :: (Int, S t, S t, S t, S t) -> Stream (t * t * t * t);
 // Introducing an argument controlling buffer size:
-//zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
+zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
 
 //union2          :: (Stream a, Stream b) -> Stream (Union2 a b);
 
@@ -107,43 +148,6 @@ c2d :: Complex -> Double;
 smap    :: (a -> b)    -> S a -> S b;
 sfilter :: (t -> Bool) -> S t -> S t;
 
-// Extra list/array functions augmenting the compiler builtins.
-
-List:map2       :: ((a,b) -> c, List a, List b) -> List c;
-List:mapi       :: ((Int,a) -> b, List a) -> List b;
-List:foreach    :: (      a -> (), List a) -> ();
-List:foreachi   :: ((Int,a) -> (), List a) -> ();
-List:fold1      :: ((t, t) -> t, List t) -> t;
-List:choplast   :: List t -> (t * List t);
-
-Array:fold1     :: ((t, t) -> t, Array t) -> t;
-Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
-Array:copy      :: Array t -> Array t;
-
-FIFO:make       ::  Int -> Queue t;
-FIFO:empty      ::  Queue t -> Bool;
-FIFO:enqueue    :: (Queue t, t) -> ();
-FIFO:dequeue    ::  Queue t -> t;
-
-// These aren't at their final names.  They'll be moved into the Array
-// namespace or discarded.
-amap_inplace    :: (t -> t, Array t) -> Array t;
-amap            :: (a -> b, Array a) -> Array b;
-afold           :: ((b, a) -> b,  b,  Array a) -> b;
-asum            :: Array #n -> #n;
-amult_scalar    :: (Array #n, #n) -> Array #n;
-amult_scalar_inplace :: (Array #n, #n) -> Array #n;
-apairmult       :: (Array #n, Array #n) -> Array #n;
-apairsum        :: (Array #n, Array #n) -> Array #n;
-adot            :: (Array #n, Array #n) -> #n;
-a_max           :: Array #n -> (#n * Int);
-a_zeroes        :: Int -> Array #n;
-a_ones          :: Int -> Array #n;
-
-  // Side-effecting insertion sort:
-sort            :: ((Int, Int) -> (), 
-                    (Int, Int) -> Int, 
-                    Int) -> ();
 
 // These bindings are PRIVATE.  They are exported (just because we
 // don't have a proper module system), but DON'T USE THEM!
@@ -351,6 +355,104 @@ namespace FIFO {
     let (x,ls) = List:choplast(q[0]);
     q[0] := ls;
     x
+  }
+}
+
+
+
+//======================================================================
+/* Array operations */
+
+/* We use this to post-facto add things into the built-in array namespace. */
+namespace Array {
+
+  // This assumes that there's at least one element in the array and
+  // thus doesn't need to be provided with a "neutral element".
+  fun fold1 (f,arr) {
+    if arr == Array:null
+    then wserror("Array:fold1 - array must have at least one element!")
+    else {
+      // There's no efficient way to do this currently.
+      // Don't want to copy the array.
+      let (_,result) = 
+        Array:fold(fun((bit,acc), x) 
+		     if bit then (true, f(acc,x)) else (true, acc),
+		   (false, arr[0]), arr);
+      result
+    }
+  }
+
+  // This is quite inefficient.  But if it's a useful thing to have it
+  // can be made efficient.  Range is inclusive.
+  fun foldRange (st, en, zer, f) {
+    Array:fold(f, zer, Array:build(en - st + 1, fun(x) x+st))
+  }
+
+  fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
+  
+} // End namespace
+
+// RRN: NOTE: These should be added to namespace Array:
+
+// Shall we call side effecting versions amapIO ?
+fun amap_inplace(f, arr) {
+  for i = 0 to arr`Array:length - 1 {
+    arr[i] := f(arr[i]);
+  }
+  arr
+}
+
+// TEMP:
+amap = Array:map;
+afold = Array:fold;
+
+fun asum(arr) { afold((+), gint(0), arr) }
+fun amult_scalar(arr,s) { amap(fun (x) x*s, arr) }
+fun amult_scalar_inplace(arr,s) {
+  fun ms(a) { a*s };
+  amap_inplace(ms, arr)
+}
+
+fun apairmult(arr1,arr2) {
+  Array:build(arr1`Array:length, 
+	      fun (i) arr1[i] * arr2[i])
+}
+
+fun apairsum(arr1,arr2) {
+  Array:build(arr1`Array:length,
+              fun (i) arr1[i] + arr2[i])
+}
+
+
+fun adot(arr1,arr2) {
+  // rrn: This is pretty unnatural:
+  let (_,sum) = Array:fold(fun ((i,acc), x) 
+			     (i+1, acc + (x * arr2[i])),
+			   (0,gint(0)), arr1);
+  sum
+}
+
+fun a_max(arr) {
+  // TODO: Check for null array!
+  let (i,mx,mxi) = 
+   Array:fold( fun ((i,mx,mxi), n)
+ 	        if n > mx 
+   	        then (i+1, n,i)
+	        else (i+1, mx,mxi),
+	       (0,arr[0],0), arr);
+  (mx,mxi)
+}
+
+fun a_zeroes(len) { Array:make(len, gint(0)) }
+fun a_ones(len) { Array:make(len, gint(1)) }
+
+fun sort(swap, cmp, len) {
+  for j = 0 to len-1 {
+    for i = 0 to len-2 {
+      if (cmp(i,i+1) > 0) then {
+        swap(i,i+1);
+      }
+    }
   }
 }
 
@@ -897,102 +999,6 @@ smap    = fun(f) fun(x) stream_map(f,x);
 sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
-
-//======================================================================
-/* Array operations */
-
-/* We use this to post-facto add things into the built-in array namespace. */
-namespace Array {
-
-  // This assumes that there's at least one element in the array and
-  // thus doesn't need to be provided with a "neutral element".
-  fun fold1 (f,arr) {
-    if arr == Array:null
-    then wserror("Array:fold1 - array must have at least one element!")
-    else {
-      // There's no efficient way to do this currently.
-      // Don't want to copy the array.
-      let (_,result) = 
-        Array:fold(fun((bit,acc), x) 
-		     if bit then (true, f(acc,x)) else (true, acc),
-		   (false, arr[0]), arr);
-      result
-    }
-  }
-
-  // This is quite inefficient.  But if it's a useful thing to have it
-  // can be made efficient.  Range is inclusive.
-  fun foldRange (st, en, zer, f) {
-    Array:fold(f, zer, Array:build(en - st + 1, fun(x) x+st))
-  }
-
-  fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
-  
-} // End namespace
-
-// RRN: NOTE: These should be added to namespace Array:
-
-// Shall we call side effecting versions amapIO ?
-fun amap_inplace(f, arr) {
-  for i = 0 to arr`Array:length - 1 {
-    arr[i] := f(arr[i]);
-  }
-  arr
-}
-
-// TEMP:
-amap = Array:map;
-afold = Array:fold;
-
-fun asum(arr) { afold((+), gint(0), arr) }
-fun amult_scalar(arr,s) { amap(fun (x) x*s, arr) }
-fun amult_scalar_inplace(arr,s) {
-  fun ms(a) { a*s };
-  amap_inplace(ms, arr)
-}
-
-fun apairmult(arr1,arr2) {
-  Array:build(arr1`Array:length, 
-	      fun (i) arr1[i] * arr2[i])
-}
-
-fun apairsum(arr1,arr2) {
-  Array:build(arr1`Array:length,
-              fun (i) arr1[i] + arr2[i])
-}
-
-
-fun adot(arr1,arr2) {
-  // rrn: This is pretty unnatural:
-  let (_,sum) = Array:fold(fun ((i,acc), x) 
-			     (i+1, acc + (x * arr2[i])),
-			   (0,gint(0)), arr1);
-  sum
-}
-
-fun a_max(arr) {
-  // TODO: Check for null array!
-  let (i,mx,mxi) = 
-   Array:fold( fun ((i,mx,mxi), n)
- 	        if n > mx 
-   	        then (i+1, n,i)
-	        else (i+1, mx,mxi),
-	       (0,arr[0],0), arr);
-  (mx,mxi)
-}
-
-fun a_zeroes(len) { Array:make(len, gint(0)) }
-fun a_ones(len) { Array:make(len, gint(1)) }
-
-fun sort(swap, cmp, len) {
-  for j = 0 to len-1 {
-    for i = 0 to len-2 {
-      if (cmp(i,i+1) > 0) then {
-        swap(i,i+1);
-      }
-    }
-  }
-}
 
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */

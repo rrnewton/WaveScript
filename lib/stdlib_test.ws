@@ -30,8 +30,8 @@ BASE <- iterate (x in zipped) {
   state { first = true }
   
   //println(x++" \n");
-  emit x;
   assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
+  emit x;
 
   if first then {
     println("\n");
