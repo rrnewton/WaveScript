@@ -148,6 +148,18 @@
 		  (for (,i '0 (-_ ,len '1))
 		      (Array:set ,out ,i (let ([,v Int ,i]) ,e1)))
 		  ,out))))]
+
+	[(List:build ,[n] (lambda (,v) (Int) ,[e1]))
+	 (let ([notype (unique-name 'notype)]
+	       [acc (unique-name 'acc)]
+	       [len (unique-name 'len)]
+	       [i (unique-name 'i)])
+	   `(let ([,len Int ,n])
+	      (let ([,acc (Ref (List ',notype)) (Mutable:ref '())])
+		(begin 
+		  (for (,i '0 (-_ ,len '1))
+		      (set! ,acc (cons (let ([,v Int ,i]) ,e1) (deref ,acc))))
+		  (List:reverse (deref ,acc))))))]
 	
 ;     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
 

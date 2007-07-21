@@ -67,7 +67,8 @@
 
 	;; This is a work-around for a name conflict:
 	[merge '_merge]
-	[ref 'Mutable:ref]
+	;[ref (inspect "HMRM Ref in desugar pat match")'Mutable:ref]
+
 	;;======================================================================	
 	
 	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])

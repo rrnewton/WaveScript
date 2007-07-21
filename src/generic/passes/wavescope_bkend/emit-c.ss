@@ -258,6 +258,9 @@
 ;		       " ",name " = " ,((Value tenv) e) ";\n"))
                     '())]
 
+
+
+
 	;; An alias:
 	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
@@ -289,6 +292,12 @@
                                    (cons stmt stmtacc) (cons decl declacc) (cons wsq wsqacc)))))))]
            [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])]
 
+
+	;; [2007.07.20] Now allowing arbitrary initialization code.
+	;; And therefore, we handle begin's here:
+#;
+	[(begin ,e* ... ,[q])
+	 (values ........)]
 
 	[(let ([,lhs ,ty ,rhs]) ,bod)
 	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])

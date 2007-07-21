@@ -51,11 +51,15 @@ type LSS t = List   (Stream (Sigseg t));
 type SLS t = Stream (List   (Sigseg t));
 
 CONST           :: t -> S t;
+COUNTUP         :: Int -> S Int;
+
   // This lets you eavesdrop on a stream while passing all data through:
 snoop           :: (a, Stream b) -> Stream b;
 
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
+// Introducing an argument controlling buffer size:
+//zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
 
 //union2          :: (Stream a, Stream b) -> Stream (Union2 a b);
 
@@ -65,9 +69,12 @@ thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
 
   // This takes an unwindowed stream and produces a stream of sigsegs:
 window          :: (Stream t, Int) -> SS t;
+dewindow        ::  SS t           -> Stream t;
 
   // Don't change the data, but redo the windowing:
 rewindow        :: (SS t, Int, Int) -> SS t;
+deinterleave    :: (Int, Stream t)  -> List (Stream t);
+deinterleaveSS  :: (Int, Int, SS t) -> List (SS t);
 makeHanning     :: Int      -> Array Float;
   // Taper the edges of the (probably overlapping) windows.
 hanning         :: SS Float -> SS Float;
@@ -107,10 +114,16 @@ List:mapi       :: ((Int,a) -> b, List a) -> List b;
 List:foreach    :: (      a -> (), List a) -> ();
 List:foreachi   :: ((Int,a) -> (), List a) -> ();
 List:fold1      :: ((t, t) -> t, List t) -> t;
+List:choplast   :: List t -> (t * List t);
 
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
+
+FIFO:make       ::  Int -> Queue t;
+FIFO:empty      ::  Queue t -> Bool;
+FIFO:enqueue    :: (Queue t, t) -> ();
+FIFO:dequeue    ::  Queue t -> t;
 
 // These aren't at their final names.  They'll be moved into the Array
 // namespace or discarded.
@@ -224,12 +237,138 @@ fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
 fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
 
 
+
+
+//======================================================================
+/* List operations */
+
+namespace List {
+
+  // This is primitive for arrays, but we happen to define it as a
+  // library procedure for lists:
+  //
+  // Unfortunately, with the old static-elaborator, this doesn't work at 
+  // meta-program eval time:
+  /*
+  fun build(n,f) {
+    acc = ref([]);
+    for i = 0 to n-1 {
+      acc := f(i) ::: acc;
+    };
+    List:reverse(acc);
+  }
+  */
+
+
+/*
+  fun mapi(f, ls) {
+    ind = ref(0);
+    ptr = ref(ls);
+    acc = ref([]);
+    while ptr != [] {
+      acc := f(ind, ptr`head) ::: acc;
+      ind := ind + 1;
+      ptr := ptr ` tail;
+    };
+    List:reverse(acc)
+  }
+*/
+
+  fun foreach(f, ls) {
+    ptr = ref(ls);
+    while ptr != [] {
+      f(ptr`head);
+      ptr := ptr ` tail;
+    }
+  }
+  fun foreachi(f, ls) {
+    ind = ref(0);
+    ptr = ref(ls);
+    while ptr != [] {
+      f(ind, ptr`head);
+      ind := ind + 1;
+      ptr := ptr ` tail;
+    }
+  }
+
+  fun mapi(f, ls) {
+    acc = ref([]);
+    List:foreachi(fun(i,x) acc := f(i,x) ::: acc, ls);
+    List:reverse(acc)
+  }
+
+  fun map2(f, ls1, ls2) {
+    p1 = Mutable:ref(ls1);
+    p2 = Mutable:ref(ls2);
+    acc = Mutable:ref([]);
+    while p1 != [] {
+      if p2 == []
+      then wserror("List:map2 arguments of unequal length: "++ls1++" "++ls2++"\n")
+      else {
+	acc := f(p1`head, p2`head) ::: acc;
+	p1 := p1`tail;
+	p2 := p2`tail;
+      }
+    };
+    List:reverse(acc)
+  }
+
+  fun fold1 (f,ls) {
+    if ls == []
+    then wserror("List:fold1 - list must have at least one element!")
+    else List:fold(f, ls`head, ls`tail)
+  }
+
+  // Truncates the last element of the list, returning that last element and a new list.
+  fun choplast(ls) {
+    if ls == [] then wserror("List:choplast can't take a null list");
+    p1 = ref(ls);
+    p2 = ref(ls`tail);  
+    acc = ref([]);
+    while p2 != [] {
+      acc := p1`head ::: acc; 
+      p1 := p2;
+      p2 := p2`tail;    
+    };
+    (p1`head, List:reverse(acc))
+  }
+
+}
+
+
+//======================================================================
+/* FIFO Queues */
+
+// This is a very inefficient initial implementation.
+// Should use circular buffers.
+
+type Queue t = Array (List t);
+namespace FIFO {
+  fun make(n) Array:make(1,[]);
+  fun empty(q) q[0] == [];
+  fun enqueue(q,x) q[0] := x ::: q[0];
+  fun dequeue(q) {
+    let (x,ls) = List:choplast(q[0]);
+    q[0] := ls;
+    x
+  }
+}
+
+
 //======================================================================
 // "Library" stream constructors:
 
 fun CONST(x) 
   iterate _ in timer(1000.0) {
     emit x
+  }
+
+fun COUNTUP(n)
+  iterate _ in timer(1000.0) {
+    // Should be Int64:
+    state { counter = n }
+    emit counter;
+    counter += 1;
   }
 
 fun snoop(str, strm) {
@@ -289,6 +428,39 @@ zip3_sametype = fun (s1,s2,s3) {
       s2 := tail(s2);
       s3 := tail(s3);
     }
+  }
+}
+
+fun zip4_sametype(bufsize, s1,s2,s3,s4) {
+  iterate (ind, elem) in unionList([s1,s2,s3,s4]) {
+    state { 
+      b1 = FIFO:make(bufsize);
+      b2 = FIFO:make(bufsize);
+      b3 = FIFO:make(bufsize);
+      b4 = FIFO:make(bufsize);
+    }
+    using FIFO;
+    if (ind == 0) then enqueue(b1,elem) else
+    if (ind == 1) then enqueue(b2,elem) else
+    if (ind == 2) then enqueue(b3,elem) else
+                       enqueue(b4,elem);
+    if not(empty(b1)) && not(empty(b2)) && not(empty(b3)) && not(empty(b4))
+    then emit (dequeue(b1), dequeue(b2), dequeue(b3), dequeue(b4))
+  }
+}
+
+// This currently buffers arbitrarily.
+// In the future it should use this bufsize argument to statically
+// allocate the buffer.
+fun zipN_sametype(bufsize, slist) {
+  using List; 
+  len = slist`List:length;
+  iterate (ind, elem) in unionList(slist) {
+    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
+    using FIFO;
+    enqueue(bufs[ind], elem);
+    if Array:andmap(fun(q) not(empty(q)), bufs)
+    then emit List:build(len, fun(i) dequeue(bufs[i]));
   }
 }
 
@@ -474,6 +646,13 @@ fun window(S, len)
     }
   };
 
+fun dewindow(s) {
+  iterate w in s {
+    for i = 0 to w `width - 1 {
+      emit w[[i]];
+    }
+  }
+}
 
 // This version is enhanced to allow large steps that result in gaps in the output streams.
 //   GAP is the space *between* sampled strips, negative for overlap!
@@ -516,6 +695,79 @@ fun rewindow(sig, newwidth, gap) {
       }
    }
   }
+}
+
+// This should take a buffer size argument:
+// This is much like a zip:
+/*
+fun interleave(ls, bufsize) {
+  using FIFO;
+  n = ls`length;
+  iterate (newi,newdat) in unionList(ls) {
+    state { 
+      //bufs = Array:build(n, fun(i) Array:makeUNSAFE(bufsize));
+      // bufs = Array:make(n, ls);
+
+      // An array of Queues:
+      bufs = Array:build(n, fun(i) make(bufsize));
+      ind = 0;
+    }
+    // Add the data.    
+    enqueue(bufs[newi], newdat);
+    if empty(bufs[ind])
+    then {}
+    else {
+      emit dequeue(bufs);
+      
+    }
+  }
+}
+*/
+
+// This version takes a plain stream:
+// 
+// rrn: would be nice if iterator-merging could allow us to operate on
+// raw streams more often, and automatically merge the "window"
+// operators into something like "deinterleave".
+//
+// In fact (dewindow o dinterleave o window) should be efficient.
+fun deinterleave(n, strm) {
+ List:build(n,
+   fun(offset) {
+     iterate x in strm {
+       state { counter = 0 }
+       if counter == offset  then emit x; 
+       counter += 1;
+       if counter == n       then counter := 0;              
+     }
+   })
+}
+
+// This version takes a stream of sigsegs:
+fun deinterleaveSS(n, outsize, strm) {
+ List:build(n,
+   fun(offset) {
+     iterate win in strm {
+       state { counter = 0;
+               newwin = Array:makeUNSAFE(outsize);
+               newind = 0 }
+       for i = 0 to win`width - 1 {
+         if counter == offset  
+         then {
+	   newwin[newind] := win[[i]]; 
+	   newind += 1;
+	   if newind == outsize then {
+	     sampnum = win`start + i - (outsize - 1);
+	     emit toSigseg(newwin, sampnum, nulltimebase);
+	     newwin := Array:makeUNSAFE(outsize);
+	     newind := 0;
+	   }
+	 };
+         counter += 1;
+         if counter == n then counter := 0; 
+       }
+     }
+   })
 }
 
 
@@ -645,71 +897,6 @@ smap    = fun(f) fun(x) stream_map(f,x);
 sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
-
-//======================================================================
-/* List operations */
-
-namespace List {
-/*
-  fun mapi(f, ls) {
-    ind = ref(0);
-    ptr = ref(ls);
-    acc = ref([]);
-    while ptr != [] {
-      acc := f(ind, ptr`head) ::: acc;
-      ind := ind + 1;
-      ptr := ptr ` tail;
-    };
-    List:reverse(acc)
-  }
-*/
-
-  fun foreach(f, ls) {
-    ptr = ref(ls);
-    while ptr != [] {
-      f(ptr`head);
-      ptr := ptr ` tail;
-    }
-  }
-  fun foreachi(f, ls) {
-    ind = ref(0);
-    ptr = ref(ls);
-    while ptr != [] {
-      f(ind, ptr`head);
-      ind := ind + 1;
-      ptr := ptr ` tail;
-    }
-  }
-
-  fun mapi(f, ls) {
-    acc = ref([]);
-    List:foreachi(fun(i,x) acc := f(i,x) ::: acc, ls);
-    List:reverse(acc)
-  }
-
-  fun map2(f, ls1, ls2) {
-    p1 = Mutable:ref(ls1);
-    p2 = Mutable:ref(ls2);
-    acc = Mutable:ref([]);
-    while p1 != [] {
-      if p2 == []
-      then wserror("List:map2 arguments of unequal length: "++ls1++" "++ls2++"\n")
-      else {
-	acc := f(p1`head, p2`head) ::: acc;
-	p1 := p1`tail;
-	p2 := p2`tail;
-      }
-    };
-    List:reverse(acc)
-  }
-
-  fun fold1 (f,ls) {
-    if ls == []
-    then wserror("List:fold1 - list must have at least one element!")
-    else List:fold(f, ls`head, ls`tail)
-  }
-
-}
 
 //======================================================================
 /* Array operations */

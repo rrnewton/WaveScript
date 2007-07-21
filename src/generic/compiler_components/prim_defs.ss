@@ -141,6 +141,8 @@
     ;; This uses an initialization function to fill in an array:
     ;; It's zero-based!
     (Array:build       (Int (Int -> 'a)) (Array 'a))
+
+    (List:build        (Int (Int -> 'a)) (List 'a))
     ))
 
 
@@ -433,7 +435,7 @@
 
     ;; These are for second-class references (iterator state variables)
     (Mutable:ref     ('a)         (Ref 'a))
-    (ref             ('a)         (Ref 'a))
+;    (ref             ('a)         (Ref 'a))
     (deref            ((Ref 'a))   'a)
 
     ;; Stream Sources:

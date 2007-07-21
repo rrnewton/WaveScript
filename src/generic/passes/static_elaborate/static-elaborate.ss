@@ -28,6 +28,11 @@
 ;;;  than it needs to be, a bit of control-flow analysis would allow
 ;;;  us to be more permissive.)
 
+;;; TODO: This pass is ALREADY way too complex.  But for completeness
+;;; it should really lift out letrecs from the right hand side of
+;;; letrecs.  But since we can't guarantee that unique variable naming
+;;; holds in the interior of this pass....
+
 ;; [2007.03.29] Adding ugly hack to only evaluate Array:build
 ;; *outside* of iterates...
 
@@ -100,6 +105,15 @@
 	       [,_ #t]))
      remove-unquoted-constant-grammar)
    ))
+
+
+(define (make-nested-letrecs binds body)
+  (if (null? binds) body
+      `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
+(define (make-nested-cons ls)
+  (match ls
+    [() ''()]
+    [(,a . ,[b]) `(cons ,a ,b)]))
 
 ;=======================================================================
 
@@ -231,6 +245,11 @@
 	;(length vector-length)
 	(Array:ref vector-ref)	
 	(Array:length vector-length)	
+	(Array:toList vector->list)
+
+	(List:build ,(lambda (env n f)
+		       (make-nested-cons (map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
+
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
 	(List:append append)
@@ -313,9 +332,6 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (define (make-nested-letrecs binds body)
-	(if (null? binds) body
-	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
       (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
@@ -767,8 +783,10 @@
 				    ls))
 		       `(unionList ,x))
 		     ))
-	       (begin (error 'static-elaborate "couldn't elaborate unionList, value unavailable:~s"
-			     `(unionList ,x))
+	       ;; This is just a warning, it might be inside dead code.
+	       (begin (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
+			     `(unionList ,x)
+			     (assq x env))
 		      `(unionList ,x))
 			       )]
 

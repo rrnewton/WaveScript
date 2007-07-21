@@ -466,6 +466,8 @@
 ;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
+;  (inspect p)
+
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
 ;  (inspect p)

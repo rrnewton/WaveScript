@@ -7,18 +7,51 @@ include "stdlib.ws";
 
 // [2007.06.29] Disabling this till it works in more backends.
 //src = union2(timer(3.0), timer(4.0))
-src = timer(3.0);
+src = COUNTUP(30);
 
 fun assert_prnt(str,a,b) {
   assert_eq(str,a,b);
   print("Assert passed: "++ str ++ "\n");
 }
 
-BASE <- iterate (x in src) {
+// This has to be lifted to top level because of limitations in static-elaborate:
+s1 = window(src, 10);
+ls = deinterleaveSS(2, 10, s1);
+ch1 = dewindow$  ls`List:ref(0);
+ch2 = dewindow$  ls`List:ref(1);
+
+ch1b = deinterleave(2, src) ` List:ref(0);
+
+zipped = zipN_sametype(0, [ch1,ch1b]);
+
+zipped2 = zip4_sametype(0, ch1,ch1b, ch1,ch1b);
+
+BASE <- iterate (x in zipped) {
   state { first = true }
   
+  //println(x++" \n");
+  emit x;
+  assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
+
   if first then {
     println("\n");
+
+    {
+      println("  FIFO ADT ");
+      println("=====================");
+      using FIFO;
+      q = make(10);
+      enqueue(q,1);
+      enqueue(q,2);
+      enqueue(q,3);
+      x = dequeue(q);
+      y = dequeue(q);
+      enqueue(q,4);
+      z = dequeue(q);
+      w = dequeue(q);
+      assert_prnt("fifo", [1,2,3,4], [x,y,z,w]);
+    };
+
     {
       println("  Array primitives: ");
       println("=====================");
@@ -50,6 +83,7 @@ BASE <- iterate (x in src) {
     */
 
     {
+       using List;
        println("  List primitives: ");
        println("====================");
        ls1 = [1,2,3];
@@ -59,10 +93,12 @@ BASE <- iterate (x in src) {
 
        assert_prnt("List:mapi", 6, List:fold1((+), List:mapi(fun(i,x) i, [0,0,0,0])));
 
+       assert_prnt("choplast", (4,[1,2,3]), choplast([1,2,3,4]));
+
     };
     
     
   };
   
-  emit true;
+  //  emit true;
 }

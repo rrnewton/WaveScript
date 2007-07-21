@@ -41,8 +41,8 @@ fun mybuild(len, f) {
   arr
 }
 
-metabuild = mybuild;
-//metabuild = Array:build;
+//metabuild = mybuild;
+metabuild = Array:build;
 
 
 /*
@@ -122,8 +122,6 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       psd_index[j] := j;
     };
     
-    // unfortunately, it's difficult to keep state in a non-iterate block with wavescript
-    // we hack this by making Arrays (which you can edit) with one element
     temp_val = ref(0.0); 
     temp_ind = ref(0);
     max_ind = ref(0);

@@ -164,11 +164,6 @@ marmotfile =
   //  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
-fun readone(mode) 
-  (readFile(marmotfile, "mode: binary window: 4096 rate: 24000 skipbytes: 6 "++ mode) 
-   :: Stream Sigseg (Int16))
-
-
 chans = 
   if flag
   then rewindow(ensBoxAudioAll(), 128*4, 0)
@@ -182,17 +177,6 @@ fun onechan(offset)
     emit toSigseg(arr, w`start / 4 , w`timebase)
   }
 
-/*
-_ch1 = if flag then ensBoxAudio(0) else readone("offset: 0");
-_ch2 = if flag then ensBoxAudio(1) else readone("offset: 2");
-_ch3 = if flag then ensBoxAudio(2) else readone("offset: 4");
-_ch4 = if flag then ensBoxAudio(3) else readone("offset: 6");
-
-ch1 = deep_stream_map(int16ToFloat, _ch1)
-ch2 = deep_stream_map(int16ToFloat, _ch2)
-ch3 = deep_stream_map(int16ToFloat, _ch3)
-ch4 = deep_stream_map(int16ToFloat, _ch4)
-*/
 
 // Testing, trying this instead:
 ch1 = onechan(0); ch2 = onechan(1); ch3 = onechan(2); ch4 = onechan(3);

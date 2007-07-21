@@ -8,6 +8,14 @@ s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg 
 
 //s1 = deep_smap(int16ToInt, s0);
 
+fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+
+fun assert_prnt(str,a,b) {
+  assert_eq(str,a,b);
+  print("Assert passed: "++ str ++ "\n");
+}
+
 
 fun println(str) {
   print("  ");
@@ -15,34 +23,55 @@ fun println(str) {
   print("\n");
 };
 
+// TODO: Test meta-time higher order also!!!
+metals  =  List:build(10, fun(x)x);
+metaarr = Array:build(10, fun(x)x);
+
 BASE <- iterate(w in s1) {  
   arr = toArray(subseg(w, w.start, 20));
   ls = Array:toList(arr);
 
+  assert_prnt("meta built eq len", metals`List:length, metaarr`Array:length);
+  assert_prnt("meta built eq", metals, metaarr`Array:toList);
+
   println("OrigWindow[5]: " ++ w[[5]]);
 
-  println("\nList: " ++ ls);
+  {
+    using List;
+    println("\nList: " ++ ls);
 
-  println("List[5]: " ++ ls.List:ref(5) );
-  println("Mapped: " ++ List:map(fun(x) x / gint(10), ls));
-  println("Convert: " ++ List:map(fun(x) int16ToFloat (x / gint(10)), ls));
+    assert_prnt("ls[5] eq w[5]", ls`List:ref(5), w[[5]]);
 
-  println("Map null: " ++
-	  ((List:map(fun(x) x /_ 10, ([]::List Int))) :: List Int));
-  println("Folded: " ++ List:fold((+), gint(1), ls));
-  println("\nArr: " ++ arr);
-  println("Arr[5]: " ++ arr[5]);
+    mapped = map(fun(x) x / gint(10), ls);
+    assert_prnt("mapped len", mapped`length, ls`length);
 
-  // Don't have array equality in WSC:
-  //  println("Map null: " ++
-  //	  ((Array:map(fun(x) x /_ 10, (Array:null :: Array Int))) :: Array Int));
-  println("Mapped: " ++ Array:map( (/ gint(10)), arr));
-  println("Convert: " ++ Array:map( fun(x) int16ToFloat (x / gint(10)), arr));
-  println("Folded: " ++ Array:fold((+), gint(1), arr));
-  println("AndMapped: " ++ Array:andmap(fun(x) x > gint(400), arr));
+    built = build(mapped`length, fun(i) List:ref(mapped,i));
 
-  println("Build StaticElab: " ++ Array:build(10, fun (x) x*10));
-  println("Build Dynamic: " ++ Array:build(w`width - w`width + 10, fun (x) x*10));
+    assert_prnt("built eq", built, mapped);
+
+    println("Mapped: " ++ mapped);
+    println("Convert: " ++ map(fun(x) int16ToFloat (x / gint(10)), ls));
+
+    println("Map null: " ++
+	    ((map(fun(x) x /_ 10, ([]::List Int))) :: List Int));
+    println("Folded: " ++ fold((+), gint(1), ls));
+  };
+
+  {
+    println("\nArr: " ++ arr);
+    println("Arr[5]: " ++ arr[5]);
+
+    // Don't have array equality in WSC:
+    //  println("Map null: " ++
+    //	  ((Array:map(fun(x) x /_ 10, (Array:null :: Array Int))) :: Array Int));
+    println("Mapped: " ++ Array:map( (/ gint(10)), arr));
+    println("Convert: " ++ Array:map( fun(x) int16ToFloat (x / gint(10)), arr));
+    println("Folded: " ++ Array:fold((+), gint(1), arr));
+    println("AndMapped: " ++ Array:andmap(fun(x) x > gint(400), arr));
+
+    println("Build StaticElab: " ++ Array:build(10, fun (x) x*10));
+    println("Build Dynamic: " ++ Array:build(w`width - w`width + 10, fun (x) x*10));
+  };
 
   emit ();
 }

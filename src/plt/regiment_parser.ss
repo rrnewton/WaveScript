@@ -429,6 +429,7 @@
 	 [(selfterminated) $1]
 	 )
    ;; Blocks of statements.
+   ;; Lots of redundancy with top level 'decls'
    (stmts  [() '()]
 	   ;; LAME: We require let only when you're going to use a pattern.
            [(let pattern = exp SEMI stmts) `((letrec ([,$2 ,$4]) ,(make-begin $6)))]

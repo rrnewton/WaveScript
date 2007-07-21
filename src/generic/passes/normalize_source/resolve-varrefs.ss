@@ -2,6 +2,8 @@
 ;;;; expand "ref" to "Mutable:ref".  But we do it hygenically,
 ;;;; avoiding capture.
 
+; I wonder how inefficent this "fluid-let" method is.
+
 (module resolve-varrefs mzscheme
   (require "../../../plt/common.ss")
   (provide resolve-varrefs 
@@ -71,48 +73,44 @@
       ;; Mutated below:
       (define type-constructors '())
 
+      (define (Var p var)
+	(cond
+
+	 ;; DESUGARING:
+	 ;; We can't dealias some of these aliases without making
+	 ;; sure they aren't shadowed in the environment.
+	 [(and (eq? var 'ref) (not (assq 'ref var-table)))
+	  ;(inspect "GOT REF")
+	  'Mutable:ref]
+
+	 ;[(eq? var 'ref) (printf "GOT REF IN SCOPE\n") 'ref]
+	 
+	 [(memq var type-constructors) 
+	  ;;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
+	  var]
+	 [(assq var var-table) => cadr]
+	 [(regiment-primitive? var) var]
+	 [else (error 'resolve-varrefs 
+		      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
+		      var (map car var-table)
+		      (if p
+			  (format "\nSource location:\n  ~a\n\n" (src-pos->string p))
+			  ""))]))
+
       (define (driver x fallthru)
 	;(inspect exploded-table)
 	(match x
-	  [(src-pos ,p ,var) (guard (symbol? var))
-		(cond
-		 [(memq var type-constructors) 
-		  ;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
-		  var
-		  ]
-		 [(assq var var-table) => cadr]
-		 [(regiment-primitive? var) var]
-		 [else (error 'resolve-varrefs 
-			      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
-			      var (map car var-table)
-			      (if p
-				  (format "\nSource location:\n  ~a\n\n" (src-pos->string p))
-				  ""))])]
-	  ;; DUPLICATED CODE:
-	  [,var (guard (symbol? var))
-		(driver `(src-pos #f ,var) fallthru)
-		;(error 'resolve-varrefs "varref without src-pos, for now an error: ~s" var)
-		#;
-		(cond
-		 [(memq var type-constructors) 
-		  ;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
-		  var
-		  ]
-		 [(assq var var-table) => cadr]
-		 [(regiment-primitive? var) var]
-		 [else (error 'resolve-varrefs 
-			      "variable was not bound!: ~a\n environment: ~s"
-			      var var-table)])]
+
+
+	  ;; There should be a better way of doing this:
+	  [(src-pos ,p ,var) (guard (symbol? var))  (Var p var)]
+	  [,var (guard (symbol? var)) (Var #f var)]
 
 ;; [2007.06.01] Moving this functionality to eta-primitives.
 #;
 	  [(app ,tc ,[rand]) (guard (memq tc type-constructors))
 	   ;; From here on out we use a special form:
 	   `(construct-data ,tc ,rand)]
-
-	  ;; Expand this into the more verbose form:
-	  [(ref ,[x]) (guard (not (assq 'ref var-table)))
-	   `(Mutable:ref ,x)]
 
 	  ;; The automatic traversal won't do the variable (it's not an expression):
 	  [(set! ,[v] ,[rhs]) `(set! ,v ,rhs)]
