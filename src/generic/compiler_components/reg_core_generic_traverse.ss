@@ -299,7 +299,7 @@
 	   (fuse (cons rator rands) (lambda (x . ls) `(foreign-app ',realname ,x ,@ls)))]
 
 	  [(,annot ,t ,[loop -> e])
-	   (guard (memq annot '(assert-type src-pos)))
+	   (guard (memq annot '(assert-type src-pos data-rate)))
 	   (fuse (list e) (lambda (x) `(,annot ,t ,x)))]
 
 	  ;; Annotations:

@@ -11,7 +11,7 @@
            (prefix slib: "../util/slib_hashtab.ss")
 	   (all-except "../util/imperative_streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
-	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)           
+	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)
            "../compiler_components/type_environments.ss"
 	   )
   (provide
@@ -89,6 +89,7 @@
 		 emit return
 		 ;smap sfilter
 		 iterate break ;deep-iterate
+                 iterate-bench
 		 ;; TODO: nix unionList.
 		 _merge unionN unionList 
 		 ;zip2
@@ -358,15 +359,36 @@
     (define our-sinks '())
     (define wsbox
       (lambda (msg)
-	(let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
-	  ;(inspect outputs)
-	  (for-each (lambda (elem)
+        (let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
+          ;(inspect outputs)
+          (for-each (lambda (elem)
                       (fire! elem our-sinks))
-	    outputs))))
+            outputs))))
     ;; Register ourselves with our source:
     (src wsbox)
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
+
+  
+  ; FIXME: do we need to measure the final stream to BASE also?
+  (define (iterate-bench input-type box-name edge-counts-table fun src)
+    (define our-sinks '())
+    (define wsbox
+      (lambda (msg)
+        (let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
+          ;(set! input-count (+ input-count (datum->width input-type msg)))
+          (put-hash-table! edge-counts-table
+                           box-name
+                           (+ (get-hash-table edge-counts-table box-name 0)
+                              (datum->width input-type msg)))
+          (for-each (lambda (elem)
+                      (fire! elem our-sinks))
+            outputs))))
+    ;; Register ourselves with our source:
+    (src wsbox)
+    (lambda (sink)
+      (set! our-sinks (cons sink our-sinks))))
+
 
   ;; This is the functional version of iterate.
   ;; Untested

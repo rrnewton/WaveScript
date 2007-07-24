@@ -934,9 +934,13 @@
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
+    [(iterate-bench ,t ,n ,ht ,[f] ,[s]) `(iterate-bench ,t ,n ,ht ,f ,s)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+
+    ; FIXME: should these three be rolled into one, as in core-generic-traverse?
     [(assert-type ,t ,[e]) e]
     [(src-pos     ,p ,[e]) e]
+    [(data-rate   ,r ,[e]) e]
 
     ;; This accomodates ws.early:
     [(readFile-wsearly ,[fn] ,[str] ,ty) `(readFile-wsearly ,fn ,str ,ty)]

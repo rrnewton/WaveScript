@@ -585,6 +585,8 @@
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
+(include "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
+
 (include "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
 (include "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
 (include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)

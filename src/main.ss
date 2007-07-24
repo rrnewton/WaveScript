@@ -121,6 +121,7 @@
     ;; Uncomment to make the compiler generate NesC code.
 ;    flatten-tokmac
 ;    emit-nesc
+
     )))
 
 ; ==================================================================
@@ -567,9 +568,7 @@
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)
-    ;(pretty-print p)
     (ws-run-pass p propagate-copies)
-    ;(pretty-print p)
     )
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
@@ -583,7 +582,13 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p reify-certain-types) 
-  (ws-run-pass p type-annotate-misc) 
+  (ws-run-pass p type-annotate-misc)
+
+  ;; for analysis of data rates between boxes
+  ;; uncomment to enable
+  ;(unless (memq 'annotate-with-data-rates disabled-passes)
+  ;  (ws-run-pass p annotate-with-data-rates))
+
 
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)

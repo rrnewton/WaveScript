@@ -33,6 +33,7 @@
 	   constant-typeable-as? 
 	   known-size?
 	   type->width
+           datum->width
 
 ;            instantiate-type
 ; 	   export-type 
@@ -233,9 +234,11 @@
 	 [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
 	 ;; HACK:
 	 ;[(Sigseg #(,[w*] ...)) (apply + w*)]
-	 [(Sigseg ,t)         (type->width t)]
+	 ;[(Sigseg ,t)         (type->width t)]
+         [(Sigseg ,t) 16]
 	 [Float  4]
 	 [Double 8]
+         [Bool 1] ; FIXME: check this
 	 ;;[Complex ]    
 	 
 	 ;[#() 1] ;????
@@ -251,6 +254,18 @@
 	 
 	 [,other (error 'type->width "do not know the size of this type: ~s" other)]
 	 )]))
+
+  ;; like type->width, but receives both the type and the datum in order to calculate
+  ;; the total width (necessary for e.g. arrays)
+  (define datum->width
+    (case-lambda
+      [(t d) (datum->width t d #f)]
+      [(t d sumdecls)
+       (match t
+         [(Array ,et) (foldr + 8 (map (lambda (e) (datum->width et e)) (vector->list d)))]
+         ; FIXME: implement List also
+         [,other (type->width t)]
+         )]))
   
 ; ----------------------------------------
 ;;; Representation for type variables  

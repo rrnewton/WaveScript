@@ -333,6 +333,10 @@
                      ("connect \"" ,parent"\" \"",name"\"\n"))
                    ))]
 
+
+        ; FIXME: for now, just ignore the data rates
+        [(data-rate ,r ,e) (Query name typ e tenv)]
+
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
 		      (prim_window ,sig ,[Simple -> size]))
@@ -843,6 +847,7 @@
 
 ;; This produces a struct definition as well as a printer function for the struct.
 (define (StructDef entry)
+     (printf "heh, entry is: ~n") (pretty-print entry) (printf "~n")
      (match entry
        [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
 	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
@@ -1060,7 +1065,7 @@
 
   ;============================================================
   ;; Main body:
-  ;; Here we stitch together the file out of its composit bits.
+  ;; Here we stitch together the file out of its composite bits.
   (fluid-let ([include-files ()]
 	      [link-files    ()])
     (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
