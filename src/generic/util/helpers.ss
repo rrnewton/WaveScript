@@ -93,6 +93,7 @@
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
+   list-build
    foldl foldl1
    
    vector-for-each vector-map vector-map! vector-fold
@@ -424,6 +425,13 @@
 			  (case-lambda
 			    [() (origfun)]
 			    [(v) (origfun v) (hook v)]))))
+
+(define list-build
+  (lambda (n f)
+    (let loop ([i 0] [acc ()])
+      (if (fx= i n)
+	  (reverse! acc)
+	  (loop (fx+ 1 i) (cons (f i) acc))))))
 
 (define list-index
   (lambda (pred ls)

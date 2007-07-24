@@ -66,7 +66,7 @@
 	  test-regiment_helpers
 
 	  parse-readFile-modestring
-	  peel-annotations
+	  annotation? peel-annotations
 	  let-spine
 	  )
 
@@ -1087,12 +1087,24 @@
     )
   )
 
+(define (annotation? sym)
+  (memq sym '(assert-type src-pos data-rate)))
+
 ;; Takes off just the outer layer of annotations
 (define (peel-annotations e)
   (match e
-    [(assert-type ,_ ,[e]) e]
-    [(src-pos ,_ ,[e])     e]
+    [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
     [,e                    e]))
+
+;; This variant returns all the annotations to you.
+;; Not used yet:
+#;
+(define (peel/collect-annotations e)
+  (match e
+    [(,ann ,_ ,[e a*]) (guard (annotation? ann))
+     (values e (cons (list ann _) a*))]
+    [,e (values e ())]))
+
 
 ;; This is a simple interactive debugging tool.  It shows the binding
 ;; spine of the program.

@@ -75,6 +75,7 @@ Pointer memoized_fftR2C(Pointer input, Int32 len) {
            
       if (last_plan_size == 0) {
         fprintf(stderr, "Allocating fftw plan for the first time, size %d\n", len);
+	fflush(stderr);
       } else if (last_plan_size != len) {
         fprintf(stderr, "REALLOCATING cached fftw plan, size %d\n", len);
       	fftwf_destroy_plan(cached_plan);

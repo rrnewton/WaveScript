@@ -79,6 +79,7 @@
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
 		 List:head List:tail head tail
 		 List:assoc List:assoc_update
+		 List:build
 
 		 joinsegs subseg seg-get width start end timebase
 		 toArray toSigseg 
@@ -1162,6 +1163,8 @@
      (define Array:toList vector->list)
      (define Array:andmap (lambda (f v) (andmap f (vector->list v))))
      (define Array:build vector-build)
+
+     (define List:build list-build)
 
      (define internString string->symbol)
      (define uninternString symbol->string)

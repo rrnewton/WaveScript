@@ -32,7 +32,6 @@
 (reg:define-struct (ref contents))
 
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
-(define (annotation? s) (memq s '(assert-type src-pos)))
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))

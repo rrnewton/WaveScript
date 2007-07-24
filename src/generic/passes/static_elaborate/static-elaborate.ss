@@ -126,7 +126,6 @@
 ;   '(output)
    (let ()
 
-     (define (annotation? s) (memq s '(assert-type src-pos)))
      ;; This expects that you verify available? first.
      (define (outer-getval env)
        (lambda (x)
@@ -778,13 +777,15 @@
 		 (if (list? ls)
 		     `(unionN ,@ls)
 		     (begin 
-		       (if (regiment-verbose) 
-			   (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s"
-				    ls))
+		       #;
+		       (when (regiment-verbose) 
+			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
 		       `(unionList ,x))
 		     ))
 	       ;; This is just a warning, it might be inside dead code.
-	       (begin (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
+	       (begin 
+		 #;
+		 (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
 			     `(unionList ,x)
 			     (assq x env))
 		      `(unionList ,x))

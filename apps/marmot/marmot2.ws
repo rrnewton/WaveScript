@@ -1,8 +1,8 @@
 
-include "marmot_first_phase.ws";
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
+include "stdlib.ws";
 include "matrix.ws";
 //include "matrix_gsl.ws";
 
@@ -74,6 +74,7 @@ fun expC2(c) (1.0+0.0i * floatToComplex(cos(c))) + (0.0+1.0i * floatToComplex(si
 //Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
+    println("Running actual AML.");
     using Matrix; using Complex;
 
     _ = (data_in :: Matrix Float);
@@ -226,31 +227,20 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = iterate (_m_in :: Matrix Float in data_in) {
-    // I guess we need the loop in here?
-    total_len = snd(_m_in`dims);
-    //total_len = _m_in[0]`Array:length;
 
-    //print(show(total_len)++"\n");
-    //print(show(total_len/win_size)++"\n");
-    // this just chops the first 4096 parts of the signal to do the AML on HACKED
+    println("Computing AML result.");
+
+    // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows
-    
-    for k = 1 to ((total_len/win_size)-1) {
-      print(show(k*win_size)++"\n");
-      // make a new matrix with 4096*4 elements:
-      m_in :: Matrix Float = build(sens_num, win_size, 
-         fun(i,j) { 
-	   //	   print("BUILDING : "++i++" "++j++" of "++sens_num++" "++win_size++"\n");
-	   get(_m_in, i, j+(k*win_size));
-         }); 
-      //      gnuplot_array(m_in[0]);
-      // we're being odd here
-      if (k==1) then {
-	result = actualAML(m_in, radius,theta, grid_size, sens_num);
-	//	gnuplot_array(result);
-	emit(result)
-      }
-    };
+
+    offset = 0; // This is the offset into the original window.
+
+    m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
+    //   gnuplot_array(m_in[0]);
+    result = actualAML(m_in, radius,theta, grid_size, sens_num);
+    //	gnuplot_array(result);
+    emit(result)
+
     
     //    m_in = build(sens_num,win_size,fun(i,j) get(_m_in,i,j+12288)); // make a new matrix with 4096*4 elements
     //    emit(actualAML(m_in,radius,theta, grid_size, sens_num));
