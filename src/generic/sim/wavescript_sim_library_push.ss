@@ -7,6 +7,7 @@
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            "../../plt/engine.ss"
+           "../../plt/hashtab.ss"
 	   "../../../depends/matpak.ss"
            (prefix slib: "../util/slib_hashtab.ss")
 	   (all-except "../util/imperative_streams.ss" test-this )
@@ -378,9 +379,9 @@
       (lambda (msg)
         (let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
           ;(set! input-count (+ input-count (datum->width input-type msg)))
-          (put-hash-table! edge-counts-table
+          (hashtab-set! edge-counts-table
                            box-name
-                           (+ (get-hash-table edge-counts-table box-name 0)
+                           (+ (or (hashtab-get edge-counts-table box-name) 0)
                               (datum->width input-type msg)))
           (for-each (lambda (elem)
                       (fire! elem our-sinks))

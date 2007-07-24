@@ -12,6 +12,7 @@
 ;           "../../plt/chez_compat.ss"
            "../constants.ss"
            "../util/helpers.ss"
+	   (only (lib "list.ss") foldr)
 #;
 	   (all-except "../compiler_components/regiment_helpers.ss"
                        regiment-type-aliases
