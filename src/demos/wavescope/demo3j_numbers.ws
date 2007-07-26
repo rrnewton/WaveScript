@@ -13,9 +13,12 @@ fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal
 BASE <- iterate(w in s0) {  
   n = w`width;
   i = n`intToInt16;
+  l = n`intToInt64;
   f = n`intToFloat;
   c = n`intToComplex;
 
+  assert_eq(l, l + gint(0));
+  
   println("roundF: " ++ roundF(f + 0.6));
 
   println("trig: "++ f`sin ++" "++ f`cos ++" "++ f`tan);

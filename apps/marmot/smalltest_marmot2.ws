@@ -46,8 +46,5 @@ include "marmot2.ws";
 doas = oneSourceAMLTD(synced, sensors, 2048); 
 
 //BASE <- gnuplot_array_stream(doas)
-BASE <- iterate x in doas {
-  print("GOT FINAL RESULT\n");
-  emit x
-  }
-//BASE <- synced;
+//BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
+BASE <- synced;

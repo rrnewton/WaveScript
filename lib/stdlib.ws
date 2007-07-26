@@ -999,7 +999,7 @@ smap    = fun(f) fun(x) stream_map(f,x);
 sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
-
+fun merge3(a,b,c) merge(merge(a,b), c)
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */

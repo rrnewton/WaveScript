@@ -178,8 +178,8 @@
 
     (if (eq? c 'BOTTOM) #t
 	(match ty
-	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+	  [Int   (guard (fixnum? c))  (int32? c)]
+	  [Int16 (guard (fixnum? c))  (int16? c)]
 	  [Float   (flonum? c)]
 	  [Double  (flonum? c)]
 	  [Complex (cflonum? c)]

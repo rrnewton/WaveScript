@@ -169,6 +169,8 @@
 	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
+	(+I16 +) (-I16 -) (*I16 *) (/I16 /) (^I16 expt) 
+	(+I64 +) (-I64 -) (*I64 *) (/I64 /) (^I64 expt) 
 
 	;; This doesn't give it the right representation:
 	;; We don't yet know for sure what the type should be.
@@ -258,7 +260,7 @@
 	
 	(sqrtI ,(lambda (env n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
 
-	(absI16 fxabs) (absI fxabs) (absF flabs) (absC abs)
+	(absI16 fxabs) (absI fxabs) (absF flabs) (absI64 abs) (absC abs)
 
 	(cos cos) (sin sin) (tan tan)
 	(acos acos) (asin asin)	(atan atan)

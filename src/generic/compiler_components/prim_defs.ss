@@ -81,7 +81,7 @@
 ;; Int8
 ;; Int16
 ;; Int    Float
-;; Int64  Double  Complex32
+;; Int64  Double  Complex
 ;;                Complex64
 (define generic-arith-primitives
   '(
@@ -266,32 +266,47 @@
     ,@generic-arith-primitives
     
     (makeComplex (Float Float) Complex)
+
+    ;; We should follow SML's system of "toLarge" and "fromLarge"
+    ;; Alternatively, We should at least programmatically generate these specs:
     
     (int16ToInt     (Int16)   Int)
+    (int16ToInt64   (Int16)   Int64)
     (int16ToFloat   (Int16)   Float)
     (int16ToDouble  (Int16)   Double)
     (int16ToComplex (Int16)   Complex)
 
+    (int64ToInt     (Int64)   Int)
+    (int64ToInt16   (Int64)   Int16)
+    (int64ToFloat   (Int64)   Float)
+    (int64ToDouble  (Int64)   Double)
+    (int64ToComplex (Int64)   Complex)
+
     (intToInt16     (Int)   Int16)
+    (intToInt64     (Int)   Int64)
     (intToFloat     (Int)   Float)
     (intToDouble    (Int)   Double)
     (intToComplex   (Int)   Complex)
 
     (floatToInt16   (Float)   Int16)
+    (floatToInt64   (Float)   Int64)
     (floatToInt     (Float)   Int)
     (floatToDouble  (Float) Double)
     (floatToComplex (Float) Complex)
 
     (doubleToInt16   (Double)  Int16)
+    (doubleToInt64   (Double)  Int64)
     (doubleToInt     (Double)  Int)
     (doubleToFloat   (Double)  Float)
     (doubleToComplex (Double)  Complex)
 
     (complexToInt16  (Complex) Int16)
+    (complexToInt64  (Complex) Int64)
     (complexToInt    (Complex) Int)
     (complexToDouble (Complex) Double)
     (complexToFloat  (Complex) Float)
 
+    ;(stringToInt64  (String)  Int64)
     (stringToInt     (String)  Int)
     (stringToFloat   (String)  Float)
     (stringToDouble  (String)  Double)
@@ -311,6 +326,13 @@
     (*I16 (Int16 Int16) Int16) 
     (/I16 (Int16 Int16) Int16) 
     (^I16 (Int16 Int16) Int16) ;; exponentiation
+
+    (+I64 (Int64 Int64) Int64)
+    (-I64 (Int64 Int64) Int64) 
+    (*I64 (Int64 Int64) Int64) 
+    (/I64 (Int64 Int64) Int64) 
+    (^I64 (Int64 Int64) Int64) ;; exponentiation
+
 
     (+. (Float Float) Float)
     (-. (Float Float) Float)
@@ -338,6 +360,7 @@
     (sqrtC (Complex) Complex)    
     
     (absI16 (Int16) Int16)
+    (absI64 (Int64) Int64)
     (absI (Int) Int)
     (absF (Float) Float)
     (absD (Double) Double)
@@ -549,6 +572,10 @@
     (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))
     ;; Two streams of the same type:
     (_merge            ((Stream 'a) (Stream 'a)) (Stream 'a))
+
+    ;; Currently, because of letrec semantics, an explicit operator
+    ;; must be used to create a feedback loop.
+    (feedbackloop     ((Stream 't) ((Stream 't) -> (Stream 't)))  (Stream 't))
 
     ;; This synchronously joins two signals.
     ;(zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))

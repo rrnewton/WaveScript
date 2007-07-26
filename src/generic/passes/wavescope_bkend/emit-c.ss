@@ -115,6 +115,7 @@
     [Bool    "wsbool_t"]
     [Int     "wsint_t"]
     [Int16   "wsint16_t"]
+    [Int64   "wsint64_t"]
     [Double  "wsdouble_t"]
     [Float   "wsfloat_t"]
     [Complex "wscomplex_t"]
@@ -408,6 +409,7 @@
 					  [Float  "%f"] ;; Single precision floats
 					  [Double "%f"] ;; Double precision floats
 					  [Int    "%d"]
+					  [Int64  "%lld"]
 					  [Int16  "%hd"]
 					  [String "%s"]					  
 					  ))
@@ -421,8 +423,10 @@
 					       [types types])
 				      (if (null? types) '()
 					  (match (car types)
-					    [,s (guard '(memq s '(Int Int16 Float Double)))
+					    ;; These are the types that can be filled by scanf directly:
+					    [,s (guard (memq s '(Int Int16 Int64 Float Double)))
 						(cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+					    ;; TODO: Complex numbers are not handled!
 					    [String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
 					    ))))
 				  ;; Otherwise the output is just a single value:
@@ -1216,7 +1220,7 @@
       ;; These are the same as their C++ names:
       [(cos sin tan acos asin atan max min) 
        (sym2str var)]
-      [(absF absD absI absI16)       "abs"]
+      [(absF absD absI absI16 absI64) "abs"]
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  "csqrt"]
@@ -1278,8 +1282,9 @@
 			       +_ *_ -_ /_
 				  +: *: -: /:
 				  +I16 *I16 -I16 /I16
+				  +I64 *I64 -I64 /I64
 				  < > <= >= =
-				  ^_ ^. ^: ^D ^I16
+				  ^_ ^. ^: ^D ^I16 ^I64
 				  )))
      (let ([cname (case infix_prim
 		    [(=) "=="]
@@ -1292,7 +1297,9 @@
 		      ^_ ^. ^D
 			 ) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16 ^I16)
+		    [(+I16 -I16 *I16 /I16 ^I16
+                      +I64 -I64 *I64 /I64 ^I64
+		      )
 		     (substring (sym2str infix_prim) 0 1)]
 		    )])
        (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
@@ -1307,24 +1314,26 @@
 	 (wrap `("__real__ " ,v))]
 	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
 	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
+	[(complexToInt64 ,[Simple -> v])   (wrap `("(wsint64_t) __real__ " ,v))]
 
 ;; Makes gcc 3.4.3 barf:
 ;;	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
 	[(absC ,[Simple -> c]) (wrap `("WSPrim::CNorm(",c")"))]
 
 	[(,toint16     ,[Simple -> e]) 
-	 (guard (memq toint16 '(intToInt16 floatToInt16 doubleToInt16)))
+	 (guard (memq toint16 '(intToInt16 int64ToInt16 floatToInt16 doubleToInt16)))
 	 (wrap `("(wsint16_t)",e))]
-
+	[(,toint64    ,[Simple -> e]) 
+	 (guard (memq toint64 '(int16ToInt64 intToInt64 floatToInt64 doubleToInt64)))
+	 (wrap `("(wsint64_t)",e))]
 	[(,toint     ,[Simple -> e]) 
-	 (guard (memq toint '(int16ToInt floatToInt doubleToInt)))
+	 (guard (memq toint '(int16ToInt int64ToInt floatToInt doubleToInt)))
 	 (wrap `("(wsint_t)",e))]
-	
 	[(,tofloat  ,[Simple -> e]) 
-	 (guard (memq tofloat '(intToFloat int16ToFloat doubleToFloat)))
+	 (guard (memq tofloat '(intToFloat int16ToFloat int64ToFloat doubleToFloat)))
 	 (wrap `("(wsfloat_t)",e))]
 	[(,todouble  ,[Simple -> e]) 
-	 (guard (memq todouble '(intToDouble int16ToDouble floatToDouble)))
+	 (guard (memq todouble '(intToDouble int16ToDouble int64ToDouble floatToDouble)))
 	 (wrap `("(wsdouble_t)",e))]
 
 	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
@@ -1332,8 +1341,8 @@
 	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
 	[(,ToComplex ,[Simple -> e])
 	 (guard (memq ToComplex 
-		      '(int16ToComplex intToComplex floatToComplex doubleToComplex)))
-    	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
+		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))
+    	 (wrap `("((wscomplex_t)((wsfloat_t)",e" + 0.0fi))"))]
 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
 	 (wrap `("((wscomplex_t)(",re" + (",im" * 1.0fi)))"))]
 

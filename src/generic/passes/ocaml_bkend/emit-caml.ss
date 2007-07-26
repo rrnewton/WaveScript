@@ -857,6 +857,11 @@
 		   		   
 		   wsequal? print show seg-get toArray
 
+		   ;; [2007.07.24] Because the caml backend isn't really supported, we're not doing Int64s:
+		   int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex
+		   int16ToInt64 intToInt64 floatToInt64 doubleToInt64 complexToInt64
+   		   +I64 -I64 *I64 /I64 ^I64 absI64 
+
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:

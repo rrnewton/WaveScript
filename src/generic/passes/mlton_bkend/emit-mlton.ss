@@ -147,6 +147,7 @@
     [Bool    "bool"]
     [Int     (format "~a.int" int-module)]
     [Int16   "Int16.int"] ;; Not standard SML.
+    [Int64   "Int64.int"] 
 
     [Complex  "Complex.complex"]
     [String   "string"]
@@ -191,7 +192,8 @@
 (define (build-show t)
   (match t
 
-    [Int16 "Int16.toString"] ;; These are just represented as ints.
+    [Int16 "Int16.toString"]
+    [Int64 "Int64.toString"] 
 
     ;; ERROR: FIXME:
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
@@ -499,6 +501,7 @@
 					 [Double (desome (list "Real64.fromString "name))]
 					 [Int    (desome (format "~a.fromString ~a" int-module name))]
 					 [Int16  (desome (list "Int16.fromString "name))]
+					 [Int64  (desome (list "Int64.fromString "name))]
 					 [String name]
 					 ))
 				  names types))
@@ -587,6 +590,7 @@
   (match t
     [Int    "read_int32"]
     [Int16  "read_int16"]
+    [Int64  "read_int64"]
     [Float  "read_real32"]
     ))
 
@@ -617,27 +621,6 @@
      "8888888"
      ]))
 
-
-#;
-;; These are the names of the Bigarray types.
-(define (BigarrayType? t)
-  (match t
-
-;    [,_ #f] ;; DISABLE!
-
-    [Int     "int"]
-    [Int16   "int16_signed"]
-    [Float   "float64"]
-    [Double  "float64"]
-    [Complex "complex64"]
-    [,oth #f]
-    ))
-
-  
-#;
-(define (ConvertArrType t) 
-  (or (BigarrayType? t)
-      (error 'emit-mlton:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
 
 ;; It is error prone to keep writing this:
 (define (sigseg-prim? p)
@@ -678,6 +661,7 @@
     (match t
       [Int   ''0]
       [Int16 "(Int16.fromInt 0)"]
+      [Int64 "(Int64.fromInt 0)"]
       [Float ''0.0]
       [Double ''0.0]
       [Complex ''0.0+0.0i]
@@ -770,11 +754,15 @@
       "end \n")]
 ;    [(memoized_fftR2C ,[myExpr -> arr]) (list "(memoized_fftR2C_wrapper "arr")")]
 
+
+    ;; Probably should be able to specialize these earlier....
+    ;; But in other backends (C, caml), they remain polymorphic.
     [(,op (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y])
      (guard (memq op '(< <= >= > max min)))
      (make-app (case ty
 		 [(Int)    (format "~a.~s" int-module op)]
 		 [(Int16)  (format "Int16.~s" op)]
+		 [(Int64)  (format "Int64.~s" op)]
 		 [(Float)  (format "Real32.~s" op)]
 		 [(Double) (format "Real64.~s" op)]
 		 [else (error 'emit-mlton "unhandled type for comparison operator ~s: ~s" op ty)]
@@ -865,6 +853,12 @@
       [*I16 "( Int16.* )"] 
       [/I16 "( Int16.quot )"]
       [^I16 "powInt16"]
+      
+      [+I64 "( Int64.+)"]
+      [-I64 "( Int64.-)"] 
+      [*I64 "( Int64.* )"] 
+      [/I64 "( Int64.quot )"]
+      [^I64 "powInt64"]
 
       [+_ ,(format "(~s.+)" int-module)]  
       [-_ ,(format "(~s.-)" int-module)] 
@@ -893,6 +887,7 @@
       [atan Real32.Math.atan]
 
       [absI16 Int16.abs]
+      [absI64 Int64.abs]
       [absI   (format "~s.abs" int-module)]
       [absF   Real32.abs]
       [absD   Real64.abs]

@@ -555,13 +555,18 @@
 
       ;; Case statements are somewhat complex to typecheck.
       [(wscase ,[l -> val valty] (,TC* ,[l -> rhs* rhsty*]) ...)
+;       (DEBUGASSERT (curry andmap type?) rhsty*)
        (values `(wscase ,val ,@(map list TC* rhs*))
 	       (let ([inst* (map (lambda (tc rhsty) 				   
 				   (type-app rhsty (sum-instance tenv valty tc) exp tenv nongeneric))
 			      TC* rhsty*)])
+;		 (DEBUGASSERT (curry andmap type?) inst*)
 		 ;; Make sure all those return types are consistent:
 		 (foldl1 (lambda (a b) 
-			   (types-equal! a b exp "(Branches of case must have same type.)\n"))
+			   (DEBUGASSERT type? a)
+			   (DEBUGASSERT type? b)
+			   (types-equal! a b exp "(Branches of case must have same type.)\n")
+			   a)
 			 inst*)
 		 (car inst*)))]
       
@@ -1081,6 +1086,7 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
+;; Returns nothing.
 (define (types-equal! t1 t2 exp msg) ; maybemsg
 ;  (define msg (if (null? maybemsg) "" (car maybemsg)))
 ;  (ASSERT (not (null? msg)))

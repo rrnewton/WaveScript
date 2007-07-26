@@ -467,7 +467,7 @@
 ;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
-;  (inspect p)
+  (inspect p)
 
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
@@ -549,6 +549,8 @@
   ;; because functions have all been inlined.
 
   (ws-run-pass p remove-letrec) 
+  (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
+
   (ws-run-pass p standardize-iterate) ;; no fuse
 
 ;  (ws-run-pass p introduce-lazy-letrec)
@@ -565,11 +567,15 @@
 ;  (exit)
 
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
+
+  (inspect p)
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)
     (ws-run-pass p propagate-copies)
     )
+
+  (inspect p)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.

@@ -49,17 +49,20 @@
 		 +: -: *: /: ^:
 		 +D -D *D /D ^D
 		 +I16 -I16 *I16 /I16 ^I16
+		 +I64 -I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI
-		 absI absF absD absC absI16
+		 absI absF absD absC absI16 absI64
 		 roundF		 
 		 
 		 makeComplex
 		 
-		 int16ToInt     int16ToFloat int16ToDouble int16ToComplex
-		 intToInt16     intToFloat   intToDouble   intToComplex 
-		 floatToInt16   floatToInt   floatToDouble floatToComplex 
-		 doubleToInt16   doubleToInt   doubleToFloat doubleToComplex 
-		 complexToInt16 complexToInt complexToDouble complexToFloat
+		 int16ToInt     int16ToInt64  int16ToFloat int16ToDouble int16ToComplex
+		 int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex
+
+		 intToInt16     intToInt64     intToFloat   intToDouble   intToComplex 
+		 floatToInt16   floatToInt64   floatToInt   floatToDouble floatToComplex 
+		 doubleToInt16  doubleToInt64   doubleToInt   doubleToFloat doubleToComplex 
+		 complexToInt16 complexToInt64 complexToInt complexToDouble complexToFloat
 		 
 		 stringToInt stringToFloat stringToDouble stringToComplex
 
@@ -92,6 +95,7 @@
 		 ;smap sfilter
 		 iterate break ;deep-iterate
                  iterate-bench
+		 feedbackloop
 		 ;; TODO: nix unionList.
 		 _merge unionN unionList 
 		 ;zip2
@@ -391,6 +395,21 @@
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
 
+  (define (feedbackloop src fun)
+    ;; Let-n-set to build a cyclic structure.
+    (define our-sinks '())
+    (define (joiner msg) (fire! msg our-sinks))
+    (define (registrar sink)
+      (set! our-sinks (cons sink our-sinks)))
+    ;; Pass this stream representation to the function:
+    (define resultstrm (fun registrar))
+
+    ;; Register ourselves with our source:
+    (src joiner)
+    ;; Connect the result stream back to the joiner.
+    (resultstrm joiner)
+    ;; Return the final result
+    resultstrm)
 
   ;; This is the functional version of iterate.
   ;; Untested
@@ -847,7 +866,7 @@
 	     (let ([entry2 (assq default-case-symbol ls)])
 	       (if entry2 
 		   ((cadr entry2))
-		   (error 'wscase "unmatched case in case construct (with no default)")))
+		   (error 'wscase "unmatched case in case construct (with no default): ~s" (uniontype-tag x))))
 	     ))]))
 
   ;; We just call the continuation, the fluid-let worries about popping the stack.
@@ -955,6 +974,7 @@
 
   ;(define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
   (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
+  (define +I64 s:+)  (define -I64 s:-)  (define *I64 s:*)  (define /I64 s:/)
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
   (define +D fl+)    (define -D fl-)    (define *D fl*)    (define /D fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
@@ -963,6 +983,7 @@
   (define g^ expt)
   (define ^_ expt)
   (define ^I16 expt)
+  (define ^I64 expt)
   (define ^D expt)
   (define ^. expt)
   (define ^: expt)
@@ -983,6 +1004,7 @@
   (define imagpart cfl-imag-part)
   
   (define absI16 fxabs)
+  (define absI64 s:abs)
   (define absI fxabs)
   (define absF flabs)
   (define absD flabs)
@@ -996,28 +1018,39 @@
   (define (makeComplex re im) (s:make-rectangular re im))
 
   (define int16ToInt    (lambda (x) x))
+  (define int16ToInt64  (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)
   (define int16ToDouble   fixnum->flonum)
   (define (int16ToComplex n) (s:+ n 0.0+0.0i))
 
-  (define intToInt16 (lambda (x) x))
+  (define int64ToInt16  (lambda (x) (ASSERT int16? x) x))
+  (define int64ToInt    (lambda (x) (ASSERT int32? x) x))
+  (define int64ToFloat    exact->inexact)
+  (define int64ToDouble   exact->inexact)
+  (define (int64ToComplex n) (s:+ n 0.0+0.0i))
+
+  (define intToInt16 (lambda (x) (ASSERT int16? x) x))
+  (define intToInt64 (lambda (x) x))
   (define intToFloat fixnum->flonum)
   (define intToDouble fixnum->flonum)
   (define intToComplex int16ToComplex)
 
   ;; Should do a range check here:
   (define floatToInt16 flonum->fixnum)
+  (define floatToInt64 (lambda (x) (exact->inexact (floor x))))
   (define floatToInt   flonum->fixnum)
   (define (floatToDouble x) x)
   (define (floatToComplex f) (s:make-rectangular f 0.0))
 
   (define doubleToInt16 floatToInt16)
+  (define doubleToInt64 floatToInt64)
   (define doubleToInt    floatToInt)
   (define (doubleToFloat x) x)
   (define doubleToComplex floatToComplex)
 
-  (define (complexToInt16 c) (flonum->fixnum (realpart c)))
-  (define complexToInt complexToInt16)
+  (define (complexToInt c) (flonum->fixnum (realpart c)))
+  (define complexToInt16 complexToInt)
+  (define complexToInt64 (lambda (x) (exact->inexact (floor (realpart x)))))
   (define complexToDouble realpart)
   (define complexToFloat realpart)
 

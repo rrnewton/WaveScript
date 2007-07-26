@@ -12,8 +12,9 @@ using namespace __gnu_cxx;
 
 typedef bool wsunit_t;
 
-typedef int16_t wsint16_t;
+typedef int16_t  wsint16_t;
 typedef uint16_t wsuint16_t;
+typedef int64_t  wsint64_t;
 
 typedef int wsint_t;
 //typedef double wsfloat_t;
