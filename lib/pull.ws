@@ -54,6 +54,7 @@ fun Pull:iterate(qsize, src, fn) {
       fun(loopback) {
 	// First any pulls to the upstream we have to route appropriately:
 	upresults = stream_map(UpstreamResult, src(filtUpstreamPull(loopback)));
+	// This is the central event-dispatcher:
         iterate evt in merge(upresults,loopback) {
          state { buf = FIFO:make(qsize);
 	         owed = 0 }
@@ -92,7 +93,7 @@ fun Pull:iterate(qsize, src, fn) {
 
 // ================================================================================
 
-pstream = Pull:iterate(2, Pull:counter(10),
+pstream = Pull:iterate(3, Pull:counter(10),
                        fun (n) [n+100, n+200, n+300])
 BASE <- Pull:pullwith(pstream, timer(3.0))
 

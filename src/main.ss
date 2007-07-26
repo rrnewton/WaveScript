@@ -467,7 +467,6 @@
 ;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
-  (inspect p)
 
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
@@ -567,15 +566,11 @@
 ;  (exit)
 
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
-
-  (inspect p)
   
   ; --mic
   (unless (memq 'propagate-copies disabled-passes)
     (ws-run-pass p propagate-copies)
     )
-
-  (inspect p)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
