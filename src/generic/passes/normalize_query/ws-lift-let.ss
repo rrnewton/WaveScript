@@ -55,7 +55,7 @@
 	      (Simple ('tuple))
 
 	      (Const ('quote Datum))
-	      (Datum ,atom?)
+	      (Datum ,simple-constant?)
 	      
 	      (ComplexConst ('quote ComplexDatum))
 	      ;; This is kind of lame:
@@ -65,8 +65,8 @@
 	      (ComplexConst AppConstructs)
 	      (ComplexConst Var)
 
-	      (ComplexDatum ,atom?)
-	      (ComplexDatum (ComplexDatum ...))
+	      (ComplexDatum ,complex-constant?)
+;	      (ComplexDatum (ComplexDatum ...))
 
 
 	      (Value Var) 

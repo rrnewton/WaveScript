@@ -134,8 +134,8 @@
     [Var ,is-var?]
     ;[QuotedDatum ,atom?]
     ;[QuotedDatum ,list?]
-    [Datum ,atom?]
-    [Datum (Datum ...)] ;; Quite flexible here, any sort of thing is a const.
+    [Datum ,complex-constant?]
+    ;[Datum (Datum ...)] ;; Quite flexible here, any sort of thing is a const.
 
     ;; At first LHS can be any pattern:
     [LHS Pattern]

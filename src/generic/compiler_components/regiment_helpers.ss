@@ -307,7 +307,9 @@
   (match x
     ;; [2007.03.11] Making complex constants *NON* simple
     [(quote ,imm) (guard ;(not (null? imm)) 
-			 (not (pair? imm)) (not (vector? imm))) #t]
+		         (simple-constant? imm)
+			 ;(not (pair? imm)) (not (vector? imm))
+			 ) #t]
     ;; Void value:
     ;[(tuple) #t] ;; [2007.03.19] Why had I commented this before?
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
@@ -333,10 +335,15 @@
         )))
 
 ;; Valid complex constants in Regiment.
+;; (Includes simple constants as well.)
 (define complex-constant?
   (lambda (x)
-    (or (pair? x)
-	(vector? x))))
+    (or (and (pair? x) 
+	     (complex-constant? (car x)) 
+	     (complex-constant? (cdr x)))
+	(and (vector? x)
+	     (vector-andmap complex-constant? x)	     
+	     ))))
 
 
 ;; A potentially quoted integer.

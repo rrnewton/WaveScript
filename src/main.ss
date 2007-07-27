@@ -462,14 +462,10 @@
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
-;  (inspect p)
-
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p static-elaborate))
 ;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-
-;  (inspect p)
 
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
@@ -536,7 +532,12 @@
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
   (ws-run-pass p reduce-primitives) ; w/g 
+
+  ;; NOTE: wavescript-language won't work until we've removed complex constants.
+  ;; Quoted arrays work differently in WS than in Scheme.
+  ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
+
   (IFDEBUG (do-late-typecheck) (void))
 
 ;  (ws-run-pass p uncover-free)

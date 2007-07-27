@@ -239,8 +239,10 @@
 		       ,(strip-types (code-expr f)))
 		    ])
 
-	      (let ([real-closure (eval real-code)])		
-		`(vector ,@(list-build n (lambda (i) `',(real-closure i))))))
+	      (let ([real-closure (eval real-code)]) 
+		;`(vector ,@(list-build n (lambda (i) `',(real-closure i))))
+		`',(vector-build n (lambda (i) (real-closure i)))
+		))
 	    ))
 
 	;(length vector-length)
@@ -718,6 +720,8 @@
 	   (if (andmap available? x*)
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
 	       (let ([vals (map getval x*)])
+		 ;; [2007.07.27] Fixing this, not generating quoted constant at all:
+		 ;`(vector . ,x*)		 
 		 (if (ormap code? vals)
 		     ;; Can't stick code within a constant:
 		     `(vector . ,x*)

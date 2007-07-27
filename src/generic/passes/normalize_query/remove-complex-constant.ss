@@ -1,25 +1,18 @@
-;;; Pass 6: remove-complex-constant
 
-;;; RRN[2004.04.24] This pass has been resurected.  The old
-;;; functionality described below is largely outdated.
+;;;; Pass: Remove Complex Constant
+;;;; .author Ryan Newton
 
-;;; NOTE: [2007.03.11] currently, array constants are not reduced.
+;;;; TODO: we *should* lift array values that don't escape and aren't
+;;;; mutated.  We should also combine any identical list or array
+;;;; values that we do lift.  These are major changes, however.
 
-;;; FIXME FIXME FIXME FIXME : [2007.04.05] This needs to insure that
-;;; array constants are not mutated before lifting them.
+;;;; remove-complex-constant arranges for complex constant values to
+;;;; be built only once, when the program begins, by wrapping each
+;;;; program that contains complex constants in a let expression
+;;;; binding temporary variables to the expressions that create the
+;;;; complex constants and rewriting the original quote expressions
+;;;; as references to these temporaries.  For example,
 
-;;; remove-complex-constant arranges for complex constant values to
-;;; be built only once, when the program begins, by wrapping each
-;;; program that contains complex constants in a let expression
-;;; binding temporary variables to the expressions that create the
-;;; complex constants and rewriting the original quote expressions
-;;; as references to these temporaries.  For example,
-;;;
-
-
-;;; The implementation uses multiple return values to return both
-;;; the rewritten expression and a list of bindings for temporary
-;;; variables to constant-creation expressions.
 
 (module remove-complex-constant mzscheme  
   (require "../../../plt/common.ss"
@@ -33,18 +26,14 @@
 (define-pass remove-complex-constant
   ;; Returns vector of two things: new expr and list of const binds
   [Expr (lambda (x fallthrough)
-	  (match x 
-          [(quote ,datum)
-           (guard (simple-constant? datum)) ;; Not required to be immediate?
-           (vector `(quote ,datum) '())]
-	  ;; [2006.10.14] Umm we shouldn't be supporting symbols:
-          [(quote ,datum)
-           (guard (symbol? datum))
-           (vector `(quote ,datum) '())]
-          [(quote ,datum)
-           (let* ([tmp (unique-name 'tmp)])
-	     (let-values ([(exp type) (datum->code datum)])	       
-	       (vector tmp `((,tmp ,type ,exp)))))]
+	  (match x 	    
+	    [(quote ,datum) 
+	     (let-values ([(exp type mutable?) (datum->code datum)])
+	       (if (or mutable? (simple-expr? exp))
+		   (vector exp ())
+		   (let ([tmp (unique-name 'tmp)])
+		     (vector tmp `((,tmp ,type ,exp))))
+		   ))]
 	  
 	  ;; Don't lift out these complex constants!
 	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
@@ -86,25 +75,46 @@
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
       (lambda (x)
-	;(DEBUGASSERT pair? x)
-	;; Null tenv is ok, it's just a constant:
-	(let ([type (recover-type `',x (empty-tenv))])
-	  (values 
-	   (let loop ([x x])
-	     (cond		     
-	      [(pair? x)	       
-	       `(cons ,(first-value (datum->code (car x)))
-		      ,(loop (cdr x)))]
-	      ;; Respect the invariant that nulls have type assertions:
-	      [(null? x) (ASSERT type)	       
-	       ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
-	       (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
-		   `(assert-type ,type '())
-		   ''())]
-	      [else `(quote ,x)]
-	      ;;[else (error 'datum->code "unhandled complex constant: ~s" x)]
-	      ))
-	   type)))))
+	;; Empty tenv is ok, it's just a constant:
+	(let loop ([x x] [type (recover-type `',x (empty-tenv))])
+	  (cond		     
+	   [(simple-constant? x) (values `',x type #f)]
+	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
+	   [(symbol? x)  (values `',x type #f)]
+
+	   [(pair? x)
+	    (match type
+	      [(List ,elt-t)
+	       ;; Really mutability is a function of the type, not the value.  This is a bit silly.
+	       (let-values ([(e1 t1 mu1?) (loop (car x) elt-t)]
+			    [(e2 t2 mu2?) (loop (cdr x) type)])
+		 (values `(cons ,e1 ,e2) type (or mu1? mu2?)))])]
+	   
+	   ;; Respect the invariant that nulls have type assertions:
+	   [(null? x) (ASSERT type)
+	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
+	    (values
+	     (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
+		 `(assert-type ,type '())
+		 ''())
+	     type #f)]
+
+	   ;; Vectors are mutable and can't be lifted to the top.
+	   [(vector? x) (ASSERT type)
+	    (values
+	     (let ([tmp (unique-name 'tmparr)])
+	      `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
+		 (begin 
+		   ,@(list-build 
+		      (vector-length x)
+		      (lambda (i) 
+			`(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i)))))
+		      )
+		   ,tmp)))
+	     type #t)]
+
+	   [else (error 'datum->code "unhandled quoted constant: ~s" x)]
+	   )))))
 #;
   (define negate-datum
     (lambda (datum)
