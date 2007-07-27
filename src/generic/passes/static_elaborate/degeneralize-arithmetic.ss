@@ -32,6 +32,7 @@
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
   (define (int16 x)   (match x [g+ '+I16] [g- 'I-16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
+  (define (int64 x)   (match x [g+ '+I64] [g- 'I-64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
   (define degeneralize-arithmetic-grammar
     (filter (lambda (x)
@@ -53,16 +54,23 @@
 			`(assert-type Int16 (quote ,n))
 			;(quote Int16 ,n)
 			]
+
+		       [(Int64   (quote ,n))  
+			(ASSERT (constant-typeable-as? n 'Int64))
+			`(assert-type Int64 (quote ,n))]
+
 		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 
 		       [(Int     ,e)  e]
+		       [(Int64   ,e)  e]
 		       [(Int16   ,e)  
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type Int16, it might overflow: ~s"
 			       `(gint ,e))]
+
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Double  ,e)  `(intToDouble ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
@@ -76,6 +84,7 @@
 		     (case t
 		       [(Int)     `(,(int     genop) . ,args)]
 		       [(Int16)   `(,(int16   genop) . ,args)]
+		       [(Int64)   `(,(int64   genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]
 		       [(Double)  `(,(double  genop) . ,args)]
 		       [(Complex) `(,(complex genop) . ,args)]

@@ -462,11 +462,14 @@
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
+;  (inspect p)
+
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p static-elaborate))
 ;  (time (ws-run-pass p interpret-meta))  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
+;  (inspect p)
 
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 4 p))
@@ -787,6 +790,11 @@
      (first-value (stream-take (wsint-tuple-limit) strm))
      (wsint-output-file)
      'display)]
+#;
+   [(wsint-tuple-limit)
+    
+    ]
+
    [(wsint-output-file)
     (eprintf "Dumping output to file: ~s\n" (wsint-output-file))
     (stream-dump strm (wsint-output-file))]

@@ -930,26 +930,37 @@
       [makeComplex  ,(make-fun (list (make-tuple "r" "i")) "({real= r, imag= i})")]
 
       [int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
+      [int16ToInt64   ,(compose "Int64.fromLarge" "Int16.toLarge")]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
       [int16ToComplex  ,(make-fun '("n") "({real= Real32.fromInt (Int16.toInt n), imag= Real32.fromInt 0})")]
 
+      [int64ToInt     ,(compose (format "~a.fromLarge" int-module) "Int64.toLarge")]
+      [int64ToInt16   ,(compose "Int16.fromLarge" "Int16.toLarge")]
+      [int64ToFloat   ,(compose "Real32.fromLargeInt" "Int64.toLarge")]
+      [int64ToDouble  ,(compose "Real64.fromLargeInt" "Int64.toLarge")]
+      [int64ToComplex  ,(make-fun '("n") "({real= Real32.fromLargeInt (Int64.toLarge n), imag= Real32.fromInt 0})")]
+
       [intToInt16     ,(compose "Int16.fromLarge"     (format "~a.toLarge" int-module))]
+      [intToInt64     ,(compose "Int64.fromLarge"     (format "~a.toLarge" int-module))]
       [intToFloat     ,(compose "Real32.fromLargeInt" (format "~a.toLarge" int-module))]
       [intToDouble    ,(compose "Real64.fromLargeInt" (format "~a.toLarge" int-module))]
       [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n, imag= Real32.fromInt 0})")]
 
       [floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
+      [floatToInt64   ,(make-fun '("x") "Int64.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt16   ,(make-fun '("x") "Int16.fromInt   (Real32.toInt IEEEReal.TO_ZERO x)")]
       [floatToDouble  ,(make-fun '("x") "Real64.fromLarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
       [floatToComplex ,(make-fun '("n") "({real= n, imag= Real32.fromInt 0})")]
 
       [doubleToInt    ,(compose (format "~a.fromLarge" int-module) "(Real64.toLargeInt IEEEReal.TO_ZERO)")]
       [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
+      [doubleToInt64  ,(compose "Int64.fromLarge" "Real64.toLargeInt")]
       [doubleToFloat  ,doubleToFloat]
       [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n, imag= Real32.fromInt 0})"))]
 
       [complexToInt16 "(fn {real,imag} => Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToInt64 "(fn {real,imag} => Int64.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO real))"]
       [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
       [complexToFloat "(fn {real,imag} => real)"]
       [complexToDouble "(fn {real,imag} => (Real64.fromLarge IEEEReal.TO_ZERO (Real32.toLarge real)))"]

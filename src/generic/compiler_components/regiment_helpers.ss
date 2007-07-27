@@ -26,8 +26,6 @@
 	     )
 
   (provide   
-
-          int16? int32?
      
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 	  randomize-list randomize-vector! list-get-random vector-get-random
@@ -74,9 +72,6 @@
 
   (chezimports prim_defs grammar_checker)
 
-;; Indicates whether an integer can be represented in a certain number of bits:
-(define (int16? c) (and (< c (expt 2 15)) (> c (- (expt 2 15)))))
-(define (int32? c) (and (< c (expt 2 31)) (> c (- (expt 2 31)))))
 
 ; ======================================================================
 ;;; The various sensor-reading stubs.  

@@ -343,9 +343,9 @@ namespace List {
 //======================================================================
 /* FIFO Queues */
 
+
 // This is a very inefficient initial implementation.
 // Should use circular buffers.
-
 type Queue t = Array (List t);
 namespace FIFO {
   fun make(n) Array:make(1,[]);
@@ -358,13 +358,62 @@ namespace FIFO {
   }
 }
 
-
+/*
+// This implementation uses a circular buffer:
+// Contains start (inclusive) and count
+// Because Refs are not first class, we use an array to store the start/count.
+type Queue t = (Array t * Array Int);
+namespace FIFO {
+  fun make(n)   (Array:makeUNSAFE(n), Array:build(2, fun(_) 0));
+  fun empty((_,stcnt))  stcnt[1] == 0
+  fun enqueue((arr,stcnt), x) {
+    print("\n    ENQUEUEING "++x++" "++(arr,stcnt)++"\n");
+    len = arr`Array:length;
+    if stcnt[1] == len
+    then wserror("FIFO:enqueue - queue full!")
+    else {
+      ind = stcnt[0] + stcnt[1];
+      if ind >= len
+      then arr[ind-len] := x
+      else arr[ind]     := x;
+      // Increase the count by one:
+      stcnt[1] := stcnt[1] + 1;
+    };
+    print("    FIN ENQUEUEING "++x++" "++(arr,stcnt)++"\n");
+  }
+  fun dequeue((arr,stcnt)) {
+    print("DEQUEUEING: "++(arr,stcnt)++"\n");
+    len = arr`Array:length;
+    if stcnt[1] == 0    
+    then wserror("FIFO:dequeue - queue empty!")
+    else {
+      st = stcnt[0];
+      if st + 1 == len 
+        then stcnt[0] := 0
+        else stcnt[0] := st + 1;
+      arr[st];
+    }
+  }
+}
+*/
 
 //======================================================================
 /* Array operations */
 
 /* We use this to post-facto add things into the built-in array namespace. */
 namespace Array {
+
+  /*
+  fun fromList(ls) {
+    arr = Array:makeUNSAFE(ls`List:length);
+    p = ref(ls);
+    i = ref(0);
+    while p != [] {
+      arr[i] := p`head;
+      p := p`tail;
+    };
+    arr
+    }*/
 
   // This assumes that there's at least one element in the array and
   // thus doesn't need to be provided with a "neutral element".

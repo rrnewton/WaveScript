@@ -31,6 +31,7 @@
 	   distributed-type?
 	   arrow-type?
 	   polymorphic-type?          	   
+	   type-containing-mutable?
 	   constant-typeable-as? 
 	   known-size?
 	   type->width
@@ -70,7 +71,7 @@
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Double Complex 
-		    Int16
+		    Int16 Int64
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 			))
@@ -155,6 +156,23 @@
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [,else #f]))
 
+;; Does a value of this type have mutable subcomponents?
+(define (type-containing-mutable? t)
+  (IFCHEZ (import rn-match) (void))
+  (match t
+    [(Array ,_) #t]
+    [(HashTable ,_ ,__) #t]
+    [,s (guard (symbol? s))                              #f]
+    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
+    [(,qt (,v . ,_)) (guard (memq qt '(quote NUM)) (symbol? v))
+     (error 'type-containing-mutable? "got instantiated type!: ~s" t)]
+    [#(,[t] ...) (ormap id t)]
+    ;; An arrow type is not itself mutable.
+    [(,[arg] ... -> ,[ret]) #f]
+    ;; Including Ref:
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
+    [,else #f]))
+
 ;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
   (IFCHEZ (import rn-match) (void))
@@ -178,8 +196,9 @@
 
     (if (eq? c 'BOTTOM) #t
 	(match ty
-	  [Int   (guard (fixnum? c))  (int32? c)]
 	  [Int16 (guard (fixnum? c))  (int16? c)]
+	  [Int   (guard (fixnum? c))  (int32? c)]
+	  [Int64 (guard (fixnum? c))  (int64? c)]
 	  [Float   (flonum? c)]
 	  [Double  (flonum? c)]
 	  [Complex (cflonum? c)]

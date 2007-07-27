@@ -169,6 +169,8 @@
 
 	 nodeid?
 
+	 int16? int32? int64?
+
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
          )
@@ -428,10 +430,12 @@
 ;; arbitrary code in the RHSs of their parameter statements.
 (define dummy-param (reg:make-parameter #f))
 
+
+
+
 ;=======================================================================;;
 ;;                         Per-module constants                         ;;
 ;=======================================================================;;
-
 
 ;;; Used primarily by wavescript_sim_library
 ;====================================================
@@ -545,12 +549,14 @@
 (define KCALL_FLAG 'KCALL) ; 99  ;; 
 
 
+
 ;;; Used primarily by helpers.ss:
 ;====================================================
 
 ;; Controls the number of times the default unit tester will retry a failed test.
 ;; (Only applies to nondeterministic tests marked as 'retry'.)<br>
 (define-regiment-parameter default-unit-tester-retries 3)
+
 
 
 ;;; Used primarily by Simulator_nought.ss: (DEPRECATED)
@@ -614,6 +620,8 @@
 			       (* 12 (sim-num-nodes)))))])
     (DEBUGASSERT (inexact? newrad))
     (processor-screen-radius newrad)))
+
+
   
 ;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================
@@ -634,6 +642,7 @@
 ;; Number of milleseconds over which to start up the nodes.   <br>
 ;; [2005.11.14] FIXME: Not used yet in simulator-alpha.
 (define-regiment-parameter sim-startup-stagger 0)
+
 
 ;====================================================
 ;;; Used primarily by Simulator_alpha.ss: <br>
@@ -770,6 +779,7 @@
 
 ; ======================================================================
 
+
 ;;; Used primarily by alpha_lib_scheduler_simple.ss
 ;=====================
 
@@ -779,6 +789,7 @@
 ;; Vtimes:
 (define RADIO_DELAY 30)  ;; Communication time
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
+
 
 ;;; Used primarily by the graphics system:
 ; ========================================
@@ -849,6 +860,12 @@
 ;;; (macro), but a function.  However, these are functions that are
 ;;; (1) simple and (2) must be scoped very broadly, thus justifying
 ;;; their inclusion in this file.
+
+
+;; Indicates whether an integer can be represented in a certain number of bits:
+(define (int16? c) (and (< c (expt 2 15)) (> c (- (expt 2 15)))))
+(define (int32? c) (and (< c (expt 2 31)) (> c (- (expt 2 31)))))
+(define (int64? c) (and (< c (expt 2 63)) (> c (- (expt 2 63)))))
 
 
 ; ======================================================================

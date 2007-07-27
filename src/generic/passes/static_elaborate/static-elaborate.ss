@@ -240,7 +240,7 @@
 		    ])
 
 	      (let ([real-closure (eval real-code)])		
-		`',(vector-build n (lambda (i) (real-closure i)))))
+		`(vector ,@(list-build n (lambda (i) `',(real-closure i))))))
 	    ))
 
 	;(length vector-length)
@@ -401,13 +401,29 @@
           [,unmatched
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
-    
+
+    ;; These are vars that are mutated with set!
+    ;; [2007.07.26] Should alse include any vars that are bound to values containing arrays!
     (define get-mutable
       (core-generic-traverse 
        (lambda (x fallthru)
 	 (match x
 	   [(set! ,v ,[e]) (cons v e)]
 	   [(vector ,[x*] ...) (apply append x*)]
+	   ;; Any kind of array in the type makes the variable potentially mutable.
+#;
+	   [,bf (guard (binding-form? bf))
+		(let ([mutvars (map (lambda (v t) 
+				      (if (type-containing-mutable? t) (list v) ()))
+				 (binding-form->vars bf)
+				 (binding-form->types bf))])
+;		  (unless (andmap null? mutvars) (inspect mutvars))
+		  (apply append
+  		   (append mutvars
+		     (map get-mutable 
+		       (append (binding-form->scoped-exprs bf)
+			       (binding-form->unscoped-exprs bf)))))
+		  )]
 	   [,other (fallthru other)]))
        (lambda (ls k) (apply append ls))))
 
@@ -838,7 +854,7 @@
 		    (andmap fully-available? rand*) #t)
 
 		;; Special exceptions:
-		;; We don't want to Array:make in the object code!
+		;; We prefer not to Array:make in the object code!
 		;; (Kind of inconsistent that we *do* currently do List:make.)
 		(not (memq prim '(show cons gint 
 				       Array:makeUNSAFE Array:make Array:fold Array:map

@@ -20,6 +20,7 @@
     `(
       [Type 'Int]
       [Type 'Int16]
+      [Type 'Int64]
       [Type 'Float]
       [Type 'Double]
       [Type 'Complex]

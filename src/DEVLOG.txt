@@ -375,13 +375,13 @@ xgraph
 
 Adding Int16... these are the things that had to change:
  *) Add conversion procedures to prim_defs.ss, wavescript_sim_library, static-elaborate
- *) Added to list of num types in hm_type_inference
+ *) Added to list of num types in type_environments
  *) Changed the type checker to allow int16 constants, the convention
     is that they be always wrapped in (assert-type ...) forms
  *) Add to emit-c for printing, reading, and arithmetic 
 .
 NOTE! Also need to add to degeneralize-arithmetic !! - [2007.07.12]
- 
+NOTE! Also need to add to grammar.ss  - [2007.07.27]
 
 
 [2007.03.05]
