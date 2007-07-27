@@ -91,9 +91,13 @@
 		 (values `(cons ,e1 ,e2) type (or mu1? mu2?)))])]
 	   
 	   ;; Respect the invariant that nulls have type assertions:
-	   [(null? x) (ASSERT type)
+	   [(null? x) 
+	    (ASSERT type)
+	    (ASSERT (compose not polymorphic-type?) type)
 	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
 	    (values
+	     `(assert-type ,type '())
+	     #;
 	     (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
 		 `(assert-type ,type '())
 		 ''())

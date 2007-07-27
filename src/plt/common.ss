@@ -16,6 +16,7 @@
           "../generic/compiler_components/hm_type_inference.ss"
           "../generic/compiler_components/reg_core_generic_traverse.ss"
 	  "../generic/grammars/grammar_checker.ss"
+          "../generic/passes/pass-mechanism_basic.ss"                 
           "../generic/passes/pass-mechanism.ss"
           )
   (require-for-syntax "../generic/passes/pass-mechanism.ss")
@@ -31,5 +32,6 @@
            (all-from "../generic/compiler_components/hm_type_inference.ss")
            (all-from-except "../generic/compiler_components/reg_core_generic_traverse.ss" test-this)
            (all-from "../generic/grammars/grammar_checker.ss")
+           (all-from "../generic/passes/pass-mechanism_basic.ss")
            (all-from "../generic/passes/pass-mechanism.ss"))
   )

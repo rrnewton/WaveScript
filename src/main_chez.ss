@@ -350,14 +350,15 @@
 	)
  )
 
+
 ;; Lists all the Regiment primitives and their types:
 (include "generic/compiler_components/prim_defs.ss") (import prim_defs)
+(include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
 (include "generic/compiler_components/type_environments.ss") (import type_environments)
 
 (include "generic/grammars/grammar_checker.ss") (import grammar_checker)
-(include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
 
@@ -443,6 +444,7 @@
 ;; Type inference is used by verify-regiment, below.
 (include "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
 
+(include "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
 (include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
 
 ;; Load this pass early because it's used in a couple places.

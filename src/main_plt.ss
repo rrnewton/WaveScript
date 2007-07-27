@@ -186,6 +186,7 @@
 ;; INLINE THE MAIN COMPILER CODE
 
 ;; Bring these into top-level for some of the mini-passes defined in main.ss.
+(require (all-except "generic/passes/pass-mechanism_basic.ss" these-tests test-this))
 (require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
 
@@ -223,6 +224,7 @@
 	 (all-from "generic/grammars/grammar_checker.ss")
 	 (all-from "generic/compiler_components/regiment_helpers.ss")
 	 (all-from "generic/compiler_components/hm_type_inference.ss")
+         (all-from "generic/passes/pass-mechanism_basic.ss")
          (all-from "generic/passes/pass-mechanism.ss")
 	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
 	 (all-from "plt/hashtab.ss")	 	 
