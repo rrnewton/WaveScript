@@ -78,9 +78,6 @@
 	;; Empty tenv is ok, it's just a constant:
 	(let loop ([x x] [type (recover-type `',x (empty-tenv))])
 	  (cond		     
-	   [(simple-constant? x) (values `',x type #f)]
-	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
-	   [(symbol? x)  (values `',x type #f)]
 
 	   [(pair? x)
 	    (match type
@@ -93,18 +90,16 @@
 	   ;; Respect the invariant that nulls have type assertions:
 	   [(null? x) 
 	    (ASSERT type)
-	    (ASSERT (compose not polymorphic-type?) type)
-	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
+;	    (ASSERT (compose not polymorphic-type?) type)
 	    (values
-	     `(assert-type ,type '())
-	     #;
+	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
 	     (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
 		 `(assert-type ,type '())
 		 ''())
 	     type #f)]
 
 	   ;; Vectors are mutable and can't be lifted to the top.
-	   [(vector? x) (ASSERT type)
+	   [(vector? x) ;(ASSERT type)
 	    (values
 	     (let ([tmp (unique-name 'tmparr)])
 	      `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
@@ -116,6 +111,10 @@
 		      )
 		   ,tmp)))
 	     type #t)]
+
+	   [(simple-constant? x) (values `',x type #f)]
+	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
+	   [(symbol? x)  (values `',x type #f)]
 
 	   [else (error 'datum->code "unhandled quoted constant: ~s" x)]
 	   )))))

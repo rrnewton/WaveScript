@@ -390,7 +390,7 @@
   ;; Actually, this seems to expose an existing error.  I can get it to come out through repeated testing.
   ;; Hmm.. we should run the unit tests multiple times in random order..
 
-  (DEBUGASSERT tenv? tenv)
+  (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
     (match exp 
       [(lambda ,formals ,types ,body)
@@ -493,7 +493,7 @@
 ;; .param exp - expression
 ;; .param tenv - type environment (NOTE: binds vars to INSTANTIATED types)
 ;; .param nongeneric - list of type variables that appear in lambda-arguments. (as opposed to lets)
-;; .returns 2 values - annotated expression and expression's type
+;; .returns 2 values - annotated expression and expression's type (both w/ INSTANTIATED types)
 (define (annotate-expression exp tenv nongeneric)
   (define (extract-optional optional)
     (map (lambda (existing-type)
@@ -684,7 +684,8 @@
       ;; This is a special case for constants.
       [(assert-type ,ty (quote ,n))
        (if (constant-typeable-as? n ty)
-	   (values `(assert-type ,ty (quote ,n))  ty)
+	   (values `(assert-type ,ty (quote ,n))  
+		   (instantiate-type ty '()))
 	   (error 'hm_type_inference "constant ~s was labeled with type ~s which doesn't match"
 		  `(quote ,n) ty))]
       [(assert-type ,ty ,[l -> e et])
@@ -725,7 +726,9 @@
       (do-all-late-unifies! result)
       result
       )
-  (l exp)
+  (let-values ([(e t) (l exp)])
+    (DEBUGASSERT instantiated-type? t)
+    (values e t))
   ))
 
 ;; Internal helper.
@@ -851,7 +854,8 @@
 				  (DEBUGASSERT tenv? tenv)
 				  ;; For our own RHS we are "nongeneric".
 				  (let-values ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
-				    (types-equal! type t rhs "(possibly recursive) binding does not match its explicit annotation.")
+				    (types-equal! type t rhs 
+						  "(possibly recursive) binding does not match its explicit annotation.")
                                     ;(inspect `(GOTNEWRHSTYPE ,t ,type))
 				    newrhs)
 				  ]))

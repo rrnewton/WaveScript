@@ -536,7 +536,7 @@
   ;; NOTE: wavescript-language won't work until we've removed complex constants.
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
-  (ws-run-pass p remove-complex-constant)
+  (ws-run-pass p remove-complex-constant)  
 
   (IFDEBUG (do-late-typecheck) (void))
 

@@ -278,6 +278,7 @@
 	  (if expr #t 
 	      (error 'DEBUGASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax  #'expr)) )))]
       ;; This form is (ASSERT integer? x) returning the value of x.
+      ;; NOTE!!! It still evaluates and returns the VALUE in nondebugmode, it just skips the predictae.
       [(_ fun val) #'(IFDEBUG 
 		      (let ([v val])
 		       (if (fun v) v			   
