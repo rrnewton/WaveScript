@@ -15,6 +15,12 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.07.27]
+ *) I'm pretty confident that I can add a -fastprune option that would
+    eliminated dead code very early (without type checking it!).
+    While dangerous, I think this would be useful.  Perhaps it could
+    be restricted a little to only prune official "standard library" code...
+
 [2007.07.07]
  Need to use two threads and add a buffer for wsmlton's ensbox data acquisition.
  Also, can remove one copy of the data relative to how I do things right now.

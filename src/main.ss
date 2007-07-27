@@ -738,25 +738,6 @@
        (eval-to-stream compiled))))
   
   (define (wsint-early x . flags)
-    (define-pass lazify 
-      (define letrec-bound ())
-      (define process-expr
-	(lambda (x fall)
-	  (match x
-	    [,v (guard (symbol? v) (memq v letrec-bound)) `(app ,v)]
-
-	    [(iterate (letrec ([,st* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
-	     `(iterate (letrec ,(map list st* ty* rhs*) ,bod) ,src)]
-
-	    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
-	     (fluid-let ([letrec-bound (append lhs* letrec-bound)])
-	       (let ([rhs* (map (lambda (x) (process-expr x fall)) rhs*)]
-		     [bod  (process-expr bod fall)])
-		 `(letrec ,(map (lambda (x t y) `(,x ,t (delay ,y))) lhs* ty* rhs*)
-		    ,bod)))]
-	    [,oth (fall oth)]
-	    )))
-	[Expr process-expr])
     (wsint-parameterize
      (lambda ()
        (define p x)
@@ -768,7 +749,6 @@
 	       ;; Need to convert readFile to __readFile
 	       (ws-run-pass p reify-certain-types)
 	       (ws-run-pass p strip-annotations)
-					;       (ws-run-pass p lazify)
 	       ))
        (printf "Running program EARLY:\n")
        (eval-to-stream p))))
@@ -790,10 +770,9 @@
      (first-value (stream-take (wsint-tuple-limit) strm))
      (wsint-output-file)
      'display)]
-#;
    [(wsint-tuple-limit)
-    
-    ]
+    ;; TODO, use proper WS printing:
+    (for-each pretty-print (first-value (stream-take (wsint-tuple-limit) strm)))]
 
    [(wsint-output-file)
     (eprintf "Dumping output to file: ~s\n" (wsint-output-file))

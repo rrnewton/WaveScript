@@ -272,8 +272,8 @@ fulltest:
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
 	@echo "============================================================"
 #	$(MAKE) dbg # Now build DEBUG version to speed up these subsequent tests:
-	echo 1 | ws ../lib/stdlib_test.ws -exit-error;
-	echo 1 | ws ../lib/matrix_test.ws -exit-error;
+	ws ../lib/stdlib_test.ws -exit-error -n 10;
+	ws ../lib/test_matrix.ws -exit-error -n 10;
 #	cd ../src;
 	$(MAKE) bc
 #	(cd demos/wavescope; ./testall_wsc)
