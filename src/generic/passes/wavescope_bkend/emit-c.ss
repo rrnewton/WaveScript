@@ -13,7 +13,6 @@
 ;;;;   Sigseg t -> Sigseg<t>
 ;;;; 
 
-
 (module emit-c mzscheme 
   (require  "../../../plt/common.ss"
 	    (all-except "nominalize-types.ss" test-this these-tests)
@@ -1521,6 +1520,7 @@
 	   (match t
 	     [Int          simple]
 	     [Int16        simple]
+	     [Int64        simple]
 	     [Float        simple]
 	     [String       simple]
 	     ;; This is effectively physical equality:
