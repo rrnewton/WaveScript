@@ -113,6 +113,8 @@ exec regiment i --script "$0" ${1+"$@"};
 
 				     )]
 
+    ["demo4c_quoted_constants.ws"  ,(lambda (a b) (void))]
+
     ["demo5a_rewindow.ws"         ,(lambda (a b) 
 				     (IFCHEZ (import wavescript_sim_library_push) (void))
 				     (ASSERT (= 0     (start a)))

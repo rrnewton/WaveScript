@@ -385,6 +385,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
+#;
+(begin 
+       (current-directory (format "~a/lib/" test-root))
+       (fpf "wsc: Compiling stdlib_test:                   ~a\n"
+	    (code->msg! (system/exit-code 
+               (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))))
+#;
+       (fpf "wsc: Running stdlib_test:                     ~a\n"
+	    (code->msg! (system/exit-code 
+	      (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory))))
+       (current-directory test-directory))
+
 
 ;;================================================================================
 ;; Now test WSCAML:

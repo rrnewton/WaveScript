@@ -128,6 +128,7 @@
 	    [(assert-type ,t ,[e]) (guard (not (polymorphic-type? t)))
 	     `(assert-type ,t ,e)]
 
+	    ;; Otherwise we remove the type assertion entirely.
 	    [(assert-type ,_ ,[e]) 
 	     ;(printf "GOT ASSERT: ~s\n" ty)
 	     ;`(assert-type ,ty ,e)

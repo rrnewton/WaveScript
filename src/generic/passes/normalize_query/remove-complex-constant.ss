@@ -82,7 +82,10 @@
 		  (- (- pow32 n))))])
       (lambda (orig origty)
 	;; Empty tenv is ok, it's just a constant:
-	(let loop ([x orig] [type (or origty (recover-type `',orig (empty-tenv)))])
+	(let loop ([x orig] 
+		   ;[type (or origty (recover-type `',orig (empty-tenv)))]
+		   [type (recover-type `',orig (empty-tenv))]
+		   )
 	  (cond		     
 
 	   [(pair? x)
@@ -96,6 +99,8 @@
 	   ;; Respect the invariant that nulls have type assertions:
 	   [(null? x) 
 	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
+	    (values ''() type #f)
+#;
 	    (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
 		(begin
 		  (ASSERT type)
@@ -105,17 +110,19 @@
 
 	   ;; Vectors are mutable and can't be lifted to the top.
 	   [(vector? x) ;(ASSERT type)
-	    (values
-	     (let ([tmp (unique-name 'tmparr)])
-	      `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
-		 (begin 
-		   ,@(list-build 
-		      (vector-length x)
-		      (lambda (i) 
-			`(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i)))))
-		      )
-		   ,tmp)))
-	     type #t)]
+	    (match type
+	      [(Array ,elt-ty)	       
+	       (values
+		(let ([tmp (unique-name 'tmparr)])
+		  `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
+		     (begin 
+		       ,@(list-build 
+			  (vector-length x)
+			  (lambda (i) 
+			    `(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
+			  )
+		       ,tmp)))
+		type #t)])]
 
 	   [(simple-constant? x) (values `',x type #f)]
 	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:

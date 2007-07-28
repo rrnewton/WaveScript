@@ -505,6 +505,13 @@
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
 
+  (IFDEBUG (do-late-typecheck) (void))
+
+  ;; NOTE: wavescript-language won't work until we've removed complex constants.
+  ;; Quoted arrays work differently in WS than in Scheme.
+  ;; (WS has a freshness guarantee.)
+  (ws-run-pass p remove-complex-constant)
+
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
   (do-late-typecheck)
@@ -532,12 +539,7 @@
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
   (ws-run-pass p reduce-primitives) ; w/g 
-
-  ;; NOTE: wavescript-language won't work until we've removed complex constants.
-  ;; Quoted arrays work differently in WS than in Scheme.
-  ;; (WS has a freshness guarantee.)
-  (ws-run-pass p remove-complex-constant)  
-
+ 
   (IFDEBUG (do-late-typecheck) (void))
 
 ;  (ws-run-pass p uncover-free)
@@ -833,7 +835,6 @@
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
-
 
    (printf "Running pass: nominalize-types.\n")
    (time (set! prog (nominalize-types prog)))

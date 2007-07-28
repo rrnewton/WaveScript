@@ -41,6 +41,7 @@ go "demo3g_arrays.ws"
 # 3k
 
 go "demo4a_fft.ws"
+go "demo4c_quoted_constants.ws"
 
 go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
