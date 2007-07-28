@@ -62,6 +62,8 @@ typedef _Complex float wscomplex_t;
 
 
 bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
+bool wsequal(wsint16_t x,   wsint16_t y)   { return x==y; }
+bool wsequal(wsint64_t x,   wsint64_t y)   { return x==y; }
 bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
 bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
 bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
