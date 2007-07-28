@@ -36,9 +36,9 @@
   ;; Returns vector of two things: new expr and list of const binds
   [Expr (lambda (x fallthrough)
 	  (match x 	    
-
 	    [(assert-type ,ty (quote ,datum))
-	     (do-datum datum ty)]
+	     (match (do-datum datum ty)
+	       [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
 	    [(quote ,datum)   (do-datum datum #f)]
 	  
 	  ;; Don't lift out these complex constants!
