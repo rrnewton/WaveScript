@@ -24,16 +24,22 @@
 (define remove-complex-constant-grammar reduce-primitives-grammar)
 
 (define-pass remove-complex-constant
+  
+  (define (do-datum datum ty)
+    (let-values ([(exp type mutable?) (datum->code datum ty)])
+      (if (or mutable? (simple-expr? exp))
+	  (vector exp ())
+	  (let ([tmp (unique-name 'tmp)])
+	    (vector tmp `((,tmp ,type ,exp))))
+	  )))
+    
   ;; Returns vector of two things: new expr and list of const binds
   [Expr (lambda (x fallthrough)
 	  (match x 	    
-	    [(quote ,datum) 
-	     (let-values ([(exp type mutable?) (datum->code datum)])
-	       (if (or mutable? (simple-expr? exp))
-		   (vector exp ())
-		   (let ([tmp (unique-name 'tmp)])
-		     (vector tmp `((,tmp ,type ,exp))))
-		   ))]
+
+	    [(assert-type ,ty (quote ,datum))
+	     (do-datum datum ty)]
+	    [(quote ,datum)   (do-datum datum #f)]
 	  
 	  ;; Don't lift out these complex constants!
 	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
@@ -74,9 +80,9 @@
 	    (lambda (n)
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
-      (lambda (x)
+      (lambda (orig origty)
 	;; Empty tenv is ok, it's just a constant:
-	(let loop ([x x] [type (recover-type `',x (empty-tenv))])
+	(let loop ([x orig] [type (or origty (recover-type `',orig (empty-tenv)))])
 	  (cond		     
 
 	   [(pair? x)
@@ -90,7 +96,8 @@
 	   ;; Respect the invariant that nulls have type assertions:
 	   [(null? x) 
 	    (ASSERT type)
-;	    (ASSERT (compose not polymorphic-type?) type)
+	    (when (polymorphic-type? type) (inspect orig))
+	    (ASSERT (compose not polymorphic-type?) type)
 	    (values
 	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
 	     (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))

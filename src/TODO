@@ -15,6 +15,14 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.07.28]
+ *) When not in debug mode, DEBUASSERT should not evaluate the val
+    even when called (DEBUGASSERT pred val).  I think I initially
+    conceived of that as a way to optionally assert a predicate on a
+    value before returning it.  However, now I very frequently use
+    that form of invocation just to get the better error message when the
+    assertion fails.
+
 [2007.07.27]
  *) I'm pretty confident that I can add a -fastprune option that would
     eliminated dead code very early (without type checking it!).
