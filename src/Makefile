@@ -275,7 +275,9 @@ fulltest:
 	ws ../lib/stdlib_test.ws -exit-error -n 10;
 	ws ../lib/test_matrix.ws -exit-error -n 10;
 #	cd ../src;
+	export REGDEBUGMODE=ON
 	$(MAKE) bc
+	export REGDEBUGMODE=OFF
 #	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 

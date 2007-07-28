@@ -12,6 +12,8 @@
 
 (module pass-mechanism_basic mzscheme
     (require "../../plt/iu-match.ss"
+             "../../plt/chez_compat.ss"
+             "../grammars/grammar_checker.ss"
              "../constants.ss" )
 
   (provide     
