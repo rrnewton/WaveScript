@@ -285,10 +285,13 @@
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
+		      (init  ,[Effect -> init*] ...)
 		      (sources ,[Source -> src* state1** init1*] ...)
 		      (iterates ,[Iterate -> iter* state2**] ...)
 		      (unionNs ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
+
+       (inspect init*)
        
        ;; Just append this text together.
        (let ([result (list complex1 complex2 
@@ -297,6 +300,9 @@
 			   ;; Block of constants first:
 			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
+
+			   ;; Then initialize the global bindings:
+			   (apply make-seq init*)
 
 			   ;; Handle iterator state in the same way:
 			   "\n(* Next the state for all iterates/sources. *)\n\n"
@@ -412,6 +418,15 @@
       (list "(Array.fromList "(Const (vector->list datum))")")]
 
      [else (error 'emit-mlton:Const "not an Mlton-compatible literal (currently): ~s" datum)])))
+
+
+;; This handles one of the statements that are part of query initialization.
+;; (Initializing global state.)
+(define (Effect expr)
+  (Expr expr 
+	(lambda (_) 
+	  (error 'Effect
+		 "shouldn't have any 'emit's within an initialization expression"))))
 
 
 #|

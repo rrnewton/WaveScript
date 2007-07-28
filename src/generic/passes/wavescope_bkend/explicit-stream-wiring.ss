@@ -51,6 +51,12 @@
 	[(let ([,v1 (Stream ,ty) ,v2]) ,bod) (guard symbol? v2)
 	 (Expr bod (cons (list v1 v2) aliases))]
 
+	;; This is not necessarily the only way to do this.  We gather
+	;; all start-up time effects.  Later we will bundle them into
+	;; one initialization function.
+	[(begin ,effect* ... ,[bod])
+	 (cons `[INIT ,effect*] bod)]
+
 	;; Constants: Theoretically we could wrap up side effecting
 	;; code (from a 'begin') into the bindings for the constants.
 	;; That would be a bit limiting.  For example, there's nowhere
@@ -115,7 +121,8 @@
 
 	  ;; Now we need to make a second pass to separate the
 	  ;; different types of construct and to gather references.
-	  (define cb* (map cdr (filter (lambda (x) (eq? (car x) 'CONST)) decls)))
+	  (define cb*   (map cdr (filter (lambda (x) (eq? (car x) 'CONST)) decls)))
+	  (define init* (map cdr (filter (lambda (x) (eq? (car x) 'INIT)) decls)))
 
 	  ;; Here we gather all the forward wirings. Quadratic:
 	  
@@ -167,13 +174,13 @@
 	 
 	  (define base (cadr (assq 'BASE decls)))
 
-;	  (inspect (vector iter* union*))
-
-	  (ASSERT (curry apply =) (list (length decls) 
-					(+ 1 (length iter*) (length src*) (length union*) (length cb*))))
+	  (ASSERT (curry apply =) 
+		  (list (length decls) 
+			(+ 1 (length iter*) (length src*) (length union*) (length cb*) (length init*))))
 
 	  `(explicit-stream-wiring-language
 	    '(graph (const     . ,cb*)
+		    (init      . ,(apply append (apply append init*)))
 		    (sources   . ,src*)
 		    (iterates  . ,iter*)
 		    (unionNs    . ,union*)
