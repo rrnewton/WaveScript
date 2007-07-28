@@ -95,15 +95,13 @@
 	   
 	   ;; Respect the invariant that nulls have type assertions:
 	   [(null? x) 
-	    (ASSERT type)
-	    (when (polymorphic-type? type) (inspect orig))
-	    (ASSERT (compose not polymorphic-type?) type)
-	    (values
 	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
-	     (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
-		 `(assert-type ,type '())
-		 ''())
-	     type #f)]
+	    (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
+		(begin
+		  (ASSERT type)
+		  (ASSERT (compose not polymorphic-type?) type)
+		  (values `(assert-type ,type '()) type #f))
+		(values ''() type #f))]
 
 	   ;; Vectors are mutable and can't be lifted to the top.
 	   [(vector? x) ;(ASSERT type)
