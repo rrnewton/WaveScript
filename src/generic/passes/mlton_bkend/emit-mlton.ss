@@ -290,8 +290,6 @@
 		      (iterates ,[Iterate -> iter* state2**] ...)
 		      (unionNs ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
-
-       (inspect init*)
        
        ;; Just append this text together.
        (let ([result (list complex1 complex2 
@@ -301,8 +299,8 @@
 			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
 
-			   ;; Then initialize the global bindings:
-			   (apply make-seq init*)
+			   "\n(* Then initialize the global bindings: *)\n"
+			   "val _ = "(indent (apply make-seq init*) "        ")"\n\n"
 
 			   ;; Handle iterator state in the same way:
 			   "\n(* Next the state for all iterates/sources. *)\n\n"
