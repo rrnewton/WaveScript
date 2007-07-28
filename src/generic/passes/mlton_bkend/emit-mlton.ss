@@ -238,6 +238,7 @@
     
     [Float  "Real32.=="]
     [Double "Real64.=="]
+    [Complex "(fn ({real=r1,imag=i1}, {real=r2,imag=i2}) => Real32.==(r1,r2) andalso Real32.==(i1,i2))"]
 
     [(List   ,[t])  (list "(fn (l1, l2) => List.length l1 = List.length l2 andalso ListPair.all "t" (l1, l2))" )]
     [(Array  ,[t])  (list "(arrayEqual "t")")]
@@ -668,6 +669,7 @@
       [#(,[t*] ...) `(tuple ,t* ...)]
 
       [(Array ,_) "(Array.fromList [])"]
+      [(List ,_) "[]"]
 
       [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])))
 
