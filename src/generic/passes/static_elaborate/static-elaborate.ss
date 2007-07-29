@@ -601,7 +601,7 @@
 
 		  ;; Resolve aliases:
 		  [(,_ ,v ,__) (guard (symbol? v))
-		   (ASSERT (not (memq v mutable-vars)))
+;		   (ASSERT (not (memq v mutable-vars)))
 		   ;(printf "ALIAS? ~s ~s\n" var v)
 		   (process-expr v env)]
 

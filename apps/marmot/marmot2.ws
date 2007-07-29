@@ -207,12 +207,15 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   sens_num = List:length(sensor_list);
 
   // RRN: NOTE:   Here we are (potentially) calling foreign matrix functions at compile time...
+  // RRN: Instead, we make sure to access the *list* of sensors here, not the *matrix*:
 
   // build an array with sens_num sensors in it for theta and radius (polar coords)
   // 1. radius  
-  radius = metabuild(sens_num, fun(i) sqrtF( sqr( get(sensors,i,0)) + sqr( get(sensors,i,1)) ) );
+  radius = metabuild(sens_num, fun(i) sqrtF( sqr( List:ref(List:ref(sensor_list,i),0)) 
+                                           + sqr( List:ref(List:ref(sensor_list,i),1))));
   // 2. theta
-  theta = metabuild(sens_num, fun(i) atan2( get(sensors,i,1), get(sensors,i,0)));
+  theta = metabuild(sens_num, fun(i) atan2( List:ref(List:ref(sensor_list,i),1), 
+                                            List:ref(List:ref(sensor_list,i),0)));
 
   //  print(show(get(sensors,0,0))++"\n");
 
