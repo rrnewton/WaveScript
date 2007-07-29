@@ -501,6 +501,8 @@
   ;(ws-run-pass p kill-polymorphic-types)
   ;(ws-run-pass p retypecheck)
 
+;  (print-graph #f)(inspect p)
+
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"

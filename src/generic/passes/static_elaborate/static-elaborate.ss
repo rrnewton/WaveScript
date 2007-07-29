@@ -413,7 +413,8 @@
 	   [(set! ,v ,[e]) (cons v e)]
 	   [(vector ,[x*] ...) (apply append x*)]
 	   ;; Any kind of array in the type makes the variable potentially mutable.
-
+	   
+	   ;; Sigh. this causes problems either way.
 	   [,bf (guard (binding-form? bf))
 		(let ([mutvars (map (lambda (v t) 
 				      (if (type-containing-mutable? t) (list v) ()))
@@ -495,8 +496,6 @@
 		    (if (eq? x not-available) #f
 			(match x
 			   [(quote ,datum)         #t]
-			   
-			   ;; A lambda expression is fully available if all of its free variables are:
 			   [(lambda ,vs ,tys ,bod) #t]
 
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
@@ -518,7 +517,7 @@
 		  [foreign-fun? 
 		   (lambda  (x)
 		     (match x 
-		       [,var (guard (symbol? var) (not (memq var mutable-vars)))
+		       [,var (guard (symbol? var))
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
@@ -534,6 +533,7 @@
 			  [(cons ,x ,y) #t]
 			  [(tuple ,args ...) #t]
 			  [(vector ,args ...) #t]
+			  ;; If it's mutable (like an array) then it can't be said to be available for use.
 			  [,var (guard (symbol? var)
 				       (not (memq var mutable-vars)))
 				(let ((entry (assq var env)))
@@ -573,8 +573,9 @@
 		 (if (memq prim computable-constants)
 		     (do-constant prim)
 		     prim)]
-          [,var (guard (symbol? var) (memq var mutable-vars)) var]
 
+	  ;; Any variable bound to something that can be mutated cannot be inlined.
+          [,var (guard (symbol? var) (memq var mutable-vars)) var]
 
 	  ;; Here's where a lot of the magic happens:
           [,var (guard (symbol? var))	  
@@ -584,6 +585,7 @@
 ;		  [(,_ ,x 1) 
 ;`		   (printf "REFCOUNT1: ~a\n" var)
 ;		   x]
+
 		  ;; Inline constants:
 		  [(,_ (quote ,d) ,__) 
 		   (guard (simple-constant? d)) ; Don't inline constants requiring allocation.
@@ -598,17 +600,13 @@
 		  [(,_ ,NA ,__) (guard (eq? NA not-available)) var]
 
 		  ;; Resolve aliases:
-		  ;; FIXME: SHOULD MAKE SURE IT'S NOT MUTABLE?
 		  [(,_ ,v ,__) (guard (symbol? v))
 		   (ASSERT (not (memq v mutable-vars)))
 		   ;(printf "ALIAS? ~s ~s\n" var v)
 		   (process-expr v env)]
 
 		  ;; [2007.04.30] Inline first-class references to closures:
-		  [(,_ (lambda . ,rest) ,__)
-		   (let ([new `(lambda ,@rest)])
-		     (if (null? (intersection (core-free-vars new) mutable-vars))
-			 new var))]
+		  [(,_ (lambda . ,rest) ,__)  `(lambda ,@rest)]
 
 		  ;; Otherwise, nothing we can do with it.
 		  [,else   var])
@@ -898,11 +896,7 @@
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
-		 (if (not (null? (intersection mutable-vars (core-free-vars rator))))
-		     (error 'static-elaborate 
-			    "can't currently inline rator with free mutable vars!: ~s"
-			    code)
-		     (inline code rands)))
+		 (inline code rands))
 	       (begin 
 		 (if (regiment-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
