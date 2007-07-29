@@ -344,7 +344,6 @@ namespace List {
 /* FIFO Queues */
 
 
-/*
 // This is a very inefficient initial implementation.
 // Should use circular buffers.
 type Queue t = Array (List t);
@@ -358,12 +357,12 @@ namespace FIFO {
     x
   }
 }
-*/
 
+
+/*
 // Contains start (inclusive) and count
 // Because Refs are not first class, we use an array to store the start/count.
 type Queue t = (Array t * Array Int);
-
 namespace FIFO {
   fun make(n)   (Array:makeUNSAFE(n), Array:build(2, fun(_) 0));
   fun empty((_,stcnt))  stcnt[1] == 0
@@ -393,6 +392,7 @@ namespace FIFO {
     }
   }
 }
+*/
 
 //======================================================================
 /* Array operations */
