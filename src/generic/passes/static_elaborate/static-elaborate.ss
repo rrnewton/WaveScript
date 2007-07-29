@@ -413,7 +413,7 @@
 	   [(set! ,v ,[e]) (cons v e)]
 	   [(vector ,[x*] ...) (apply append x*)]
 	   ;; Any kind of array in the type makes the variable potentially mutable.
-#;
+
 	   [,bf (guard (binding-form? bf))
 		(let ([mutvars (map (lambda (v t) 
 				      (if (type-containing-mutable? t) (list v) ()))
