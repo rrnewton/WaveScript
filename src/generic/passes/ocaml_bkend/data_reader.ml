@@ -75,7 +75,7 @@ let dataFileWindowed config (* (file, mode, repeats, period) *)
 	result
   in
     dataFile config (38383, block_bread, wordsize * winsize, 0, offset) outchan
-
+;;
 
 
 

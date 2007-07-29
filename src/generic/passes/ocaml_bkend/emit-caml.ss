@@ -141,6 +141,7 @@
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
+		      (init  ,[Effect -> init*] ...)
 		      (sources ,[Source -> src* init*] ...)
 		      (iterates ,[Iterate -> iter* state**] ...)
 		      (unionNs ,[Union -> union*] ...)
@@ -152,6 +153,9 @@
 			   ;; Block of constants first:
 			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "let " cb " ;; \n")) cb*)
+
+			   "\n(* Then initialize the global bindings: *)\n"
+			   (indent (apply make-seq init*) "   ")";;\n\n"
 
 			   ;; Handle iterator state in the same way:
 			   "\n(* Next the state for all iterates. *)\n\n"
@@ -319,6 +323,14 @@
 	    constArr))]
 
      [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
+
+;; This handles one of the statements that are part of query initialization.
+;; (Initializing global state.)
+(define (Effect expr)
+  (Expr expr 
+	(lambda (_) 
+	  (error 'Effect
+		 "shouldn't have any 'emit's within an initialization expression"))))
 
 
 #|

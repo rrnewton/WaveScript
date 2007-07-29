@@ -892,8 +892,6 @@
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog))
     (set! prog (explicit-stream-wiring prog))
-    (inspect prog)
-
     (string->file (text->string (emit-mlton-wsquery prog)) outfile)
     (printf "\nGenerated MLton output to ~s.\n" outfile)
     ))
