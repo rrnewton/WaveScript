@@ -243,7 +243,8 @@ val element_limit =
 
 fun runMain f = 
 (*   (print "RUN MAIN\n"; raise WSError "foo") *)
-  (print "Setting up error handlers\n";
+  (
+(*   print "Setting up error handlers\n";*)
   f())
   handle WSError str => 
     (print ("wserror: " ^ str ^ "\n"); OS.Process.exit OS.Process.failure)

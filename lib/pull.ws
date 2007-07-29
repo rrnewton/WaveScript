@@ -46,51 +46,6 @@ fun Pull:counter(strt)
      emit counter;
    }
 
-// This is the PULL version of iterate.
-fun Pull:iterateLS(qsize, src, fn) {
-  fun(pullstring) {        
-    filtFinalResult$
-    feedbackloop(stream_map(fun(x) DownstreamPull(()), pullstring),
-      fun(loopback) {
-	// First any pulls to the upstream we have to route appropriately:
-	upresults = stream_map(UpstreamResult, src(filtUpstreamPull(loopback)));
-	// This is the central event-dispatcher:
-        iterate evt in merge(upresults,loopback) {
-         state { buf = FIFO:make(qsize);
-	         owed = 0 }
-         case evt {
-	   FinalResult(x)    : {} //emit evt
-	   UpstreamPull (_)  : {} // This will have been handled above.
-
- 	   DownstreamPull(_) : 
-	     {
-	       // If we have buffered data, respond with that:
-	       if not(FIFO:empty(buf))
-	       then emit FinalResult(FIFO:dequeue(buf))
-	       else {
-	         // Otherwise we have to pull our upstream to get some tuples.
-	         owed += 1;
-		 emit UpstreamPull(())
-	       }
-	     }
-           UpstreamResult(x) : 
-	     {
-	       ourresults = ref( fn(x));
-	       assert("upstream pull node should produce at least one output", ourresults != []);
-	       while owed > 0 && ourresults != [] {
-	         owed -= 1;
-		 emit FinalResult(ourresults`head);
-		 ourresults := ourresults`tail;
-	       };
-	       // The remainder go to the buffer:
-	       List:foreach(fun(x) FIFO:enqueue(buf,x), ourresults);
-	     }
-         }
-       }
-     });
-  }
-}
-
 fun Pull:applyST(qsize, src, transformer) {
   fun(pullstring) {        
     filtFinalResult$
@@ -133,6 +88,7 @@ fun Pull:applyST(qsize, src, transformer) {
   }
 }
 
+fun Pull:map(fn,strm) Pull:applyST(0, strm, fun(s) stream_map(fn,s))
 
 // ================================================================================
 
@@ -143,12 +99,14 @@ BASE <- Pull:pullwith(pstream, timer(3.0))
 */
 
 // ALTERNATIVLY we could use this interface:
-pstream = Pull:applyST(2, Pull:counter(10),
+pstream = 
+  Pull:map((+1000), 
+     Pull:applyST(2, Pull:counter(10),
 	    fun (s) iterate n in s {
 	       emit n+100;
 	       emit n+200;
 	       emit n+300;
-	     });
+	     }));
 BASE <- Pull:pullwith(pstream, timer(3.0))
 
 

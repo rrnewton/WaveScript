@@ -139,6 +139,9 @@
 	      )]
 	   [(iterate . ,_) (error 'remove-complex-opera* "bad iterate: ~s" _)]
 
+	   ;; Ditto for a feedbackloop-operator.
+	   
+
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to
 	   ;; reorder side effects.
