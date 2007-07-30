@@ -124,7 +124,7 @@
 	"\n end)"))
 
 
-(define (make-prim-app f x*) (make-app f (list (apply make-tuple x*))))
+(define (make-prim-app f x*) (make-app f (list (apply make-tuple-code x*))))
 
 
 
@@ -220,7 +220,7 @@
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
-	"(fn "(apply make-tuple flds)" =>\n"
+	"(fn "(apply make-tuple-code flds)" =>\n"
 	(indent 
 	 (list "\"(\" ^"
 	       (insert-between " \", \" ^"
@@ -248,16 +248,16 @@
      (let ([flds1 (map Var (map unique-name (make-list (length t*) 'a)))]
 	   [flds2 (map Var (map unique-name (make-list (length t*) 'b)))])
        (list 
-	"(fn "(make-tuple (apply make-tuple flds1) (apply make-tuple flds2))" =>\n"
+	"(fn "(make-tuple-code (apply make-tuple-code flds1) (apply make-tuple-code flds2))" =>\n"
 	(indent
 	 (insert-between " andalso "
-	   (map (lambda (comp a b) (list comp" "(make-tuple a b)))
+	   (map (lambda (comp a b) (list comp" "(make-tuple-code a b)))
 	     t* flds1 flds2))
 	 "  ")")"))]
 
     ;; Otherwise fall through on builtin equality:       
     [,else ;(make-fun (list (make-tuple "x" "y")) "(x = y)")
-     (make-fun (list (make-tuple "x" "y")) "(x = y)")
+     (make-fun (list (make-tuple-code "x" "y")) "(x = y)")
 	   ]
     ))
 
@@ -487,7 +487,7 @@
 	   (list "val _ = "
 	    (make-app "ensbox_entry"
 	      (list (make-let '(["stamp" "ref 0"])
-		    (make-fun (list (make-tuple "p" "n"))
+		    (make-fun (list (make-tuple-code "p" "n"))
 		      (if #t
 			  bod 
 			  (make-app "runMain" (list (make-fun () bod)))
@@ -548,12 +548,12 @@
 			         ["textreader" "33333"])
 		   (list "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
-		   (make-tuple file 
+		   (make-tuple-code file 
 			       (list "\"" mode "\"")
 			       (number->string repeats)
 			       (number->string (rate->timestep rate)))
 		   " \n"
-		   (make-tuple "textreader" "binreader"
+		   (make-tuple-code "textreader" "binreader"
 			       (number->string (apply + (map type->width types)))
 			       (number->string skipbytes)
 			       (number->string offset))
@@ -578,7 +578,7 @@
 			      (list " "(number->string (type->width (car types)))" "))
 
 			  (let ()
-				 (make-tuple 
+				 (make-tuple-code 
 				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
 				  (DispatchOnArrayType 'Array:set        tuptyp)
 				  (DispatchOnArrayType 'toSigseg         tuptyp)))
@@ -615,7 +615,7 @@
   (make-fun '("vec" "ind")
   (list 
    ;"  let pos = ref ind in \n"
-   (apply make-tuple
+   (apply make-tuple-code
      (mapi (lambda (i t)
 	     (list (if homogenous? 
 		       (format "~a_wordIndexed" (type->reader t))
@@ -654,7 +654,7 @@
      (lnboth (make-fun '("n") 
 		       (make-app (DispatchOnArrayType 'Array:make elt)
 				 (list 
-				  (make-tuple "n" 
+				  (make-tuple-code "n" 
 				    (match (make-mlton-zero-for-type elt)
 				      [(quote ,c) (Const c)]
 				      [,str       str]))))))]
@@ -709,7 +709,7 @@
     ;; Handle equality tests.  This is more laborious than in Caml.
     [(,eq (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y]) 
      (guard (memq eq '(wsequal? =)))
-     (make-app (build-equality-test ty) (list (make-tuple x y)))]
+     (make-app (build-equality-test ty) (list (make-tuple-code x y)))]
 
     ;; Print is required to be pre-annotated with a type.
     ;; (We can no longer do recover-type.)
@@ -782,7 +782,7 @@
 		 [(Double) (format "Real64.~s" op)]
 		 [else (error 'emit-mlton "unhandled type for comparison operator ~s: ~s" op ty)]
 		 )
-	       (list (make-tuple x y)))]
+	       (list (make-tuple-code x y)))]
 
     ;; Safety net:
     [(,prim ,_ ...)     
@@ -815,7 +815,7 @@
 		      
         make-let 
         make-letrec
-	make-tuple 
+	make-tuple-code 
 	make-fun
 	make-for
 	make-while
@@ -935,14 +935,14 @@
       [realpart "(fn {real, imag} => real)"]
       [imagpart "(fn {real, imag} => imag)"]
 
-      [cons ,(make-fun (list (make-tuple "x" "y")) "x::y")]
+      [cons ,(make-fun (list (make-tuple-code "x" "y")) "x::y")]
       [car List.hd]
       [cdr List.tl]
       [List:length  List.length]
       [List:reverse List.rev]
       [List:ref     List.nth]
 
-      [makeComplex  ,(make-fun (list (make-tuple "r" "i")) "({real= r, imag= i})")]
+      [makeComplex  ,(make-fun (list (make-tuple-code "r" "i")) "({real= r, imag= i})")]
 
       [int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
       [int16ToInt64   ,(compose "Int64.fromLarge" "Int16.toLarge")]

@@ -2615,15 +2615,16 @@
 
 
 ["WSINT: tuples of tuples"
- (mvlet ([(ls _)
-   (stream-take 10 
-      (wsint '(let* ([s1 (timer 3.0)]
-		     [s2 (iterate (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
-		     [s3 (iterate (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
-		s3)))]) ls)
- ,(make-list 10 (make-tuple (list (make-tuple '(3 4)) 9)))]
-
-
+ (map (lambda (t1)
+	(map (lambda (t2) (if (tuple? t2) (tuple-fields t2) t2)) (tuple-fields t1)))
+   (mvlet ([(ls _)
+	    (stream-take 10 
+			 (wsint '(let* ([s1 (timer 3.0)]
+					[s2 (iterate (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
+					[s3 (iterate (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
+				   s3)))]) 
+     ls))
+ ,(make-list 10 '((3 4) 9))]
 
 
 #;

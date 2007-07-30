@@ -404,7 +404,7 @@
 	      (list 
 	       "  (fun " (insert-between " " names) " -> \n   "
 	         ;; Form a tuple of the results and send it downstream.
-	         ((Emit downstrm) (apply make-tuple names))"); \n"))
+	         ((Emit downstrm) (apply make-tuple-code names))"); \n"))
 	    ;; Now discard the rest of the line.
 ;	    "  let _ = input_line hndl in "
 	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
@@ -425,12 +425,12 @@
 		   "  and textreader = 33333 in \n"
 		   "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
-		   (make-tuple file 
+		   (make-tuple-code file 
 			       (list "\"" mode "\"")
 			       (number->string repeats)
 			       (number->string (rate->timestep rate)))
 		   " \n"
-		   (make-tuple "textreader" "binreader"
+		   (make-tuple-code "textreader" "binreader"
 			       (number->string (apply + (map type->width types)))
 			       (number->string skipbytes)
 			       (number->string offset))
@@ -448,7 +448,7 @@
 			       (let ([tuptyp (if (= 1 (length types))
 						 (car types)
 						 (list->vector types ))])
-				 (make-tuple 
+				 (make-tuple-code 
 				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
 				  (DispatchOnArrayType 'Array:set        tuptyp)
 				  (DispatchOnArrayType 'toSigseg         tuptyp)))
@@ -482,7 +482,7 @@
   (list 
    "fun str ind -> \n"
    ;"  let pos = ref ind in \n"
-   (apply make-tuple
+   (apply make-tuple-code
      (mapi (lambda (i t)
 	     (list (type->reader t)" str (ind + "
 		   (number->string (apply + (list-head widths i)))")")
@@ -521,7 +521,7 @@
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
-	"(fun "(apply make-tuple flds)" ->\n"
+	"(fun "(apply make-tuple-code flds)" ->\n"
 	(indent 
 	 (list "\"(\" ^"
 	       (insert-between " \", \" ^"
@@ -805,7 +805,7 @@
      (make-dispatcher (car args)
 		      
         make-let 
-	make-tuple 
+	make-tuple-code 
 	make-fun
 	make-for
 	make-while

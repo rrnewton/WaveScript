@@ -5,7 +5,7 @@
 	    "../../compiler_components/c_generator.ss" )
   (provide sharedEmitCases
 	   make-dispatcher
-	   make-seq make-tuple)
+	   make-seq make-tuple-code)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -25,7 +25,7 @@
 (define (make-seq . exprs) (list "(" (insert-between ";\n" exprs) ")"))
 
 ;; A tuple expression.
-(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
+(define (make-tuple-code . args)  (list "(" (insert-between ", " args) ")"))
 
 #;
 (define (with-fun-binding name formals funbody body)
@@ -53,10 +53,10 @@
 	  [(assert-type (Sigseg ,elt) nullseg)    (obj 'DispatchOnArrayType 'nullseg elt)]
 	  [(assert-type (Array ,elt) Array:null)  (obj 'DispatchOnArrayType 'Array:null elt)]
 
-	  [(tuple ,[rands] ...)   (apply make-tuple rands)]
+	  [(tuple ,[rands] ...)   (apply make-tuple-code rands)]
 	  [(tupref ,i ,len ,[v])
 	   (let ([pat 
-		  (apply make-tuple
+		  (apply make-tuple-code
 			 (append (make-list i "_") '("x")			
 				 (make-list (- len i 1) "_")))])
 	     (obj 'make-let `((,pat ,v)) "x"))]
