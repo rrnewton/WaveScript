@@ -75,7 +75,7 @@
 	   type-app
 ;	   type-letrec
            
-	   annotate-expression
+	   annotate-expression export-expression
 	   annotate-program
 	   strip-types do-all-late-unifies!
 	   strip-annotations
@@ -447,6 +447,8 @@
    [(vector? c) `(Array ,(if (zero? (vector-length c))
 			     (make-tcell) ;''anytype
 			     (type-const (vector-ref c 0))))]
+
+   [(tuple? c) (list->vector (map type-const (tuple-fields c)))]
 
    [(eq? c 'BOTTOM) (make-tcell)]
    [(eq? c 'UNIT)   #()]

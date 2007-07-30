@@ -22,7 +22,7 @@
 		 (guard (assq genop generic-arith-primitives))
 		 (let ([tmp (unique-name 'tmp)]
 		       [alpha (unique-name 'alpha)])
-		   `(let ([,tmp (,genop . ,args)])
+		   `(let ([,tmp ',alpha (,genop . ,args)])
 		      ,tmp))]
 		[,other (fallthru other)]))])
 

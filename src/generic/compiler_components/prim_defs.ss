@@ -87,6 +87,9 @@
   '(
     (gint (Int) (NUM a))
 
+    ;; Generalized zero.
+    ;;(gzero ()   'a)  ;; Not yet.
+
     (g+ ((NUM a) (NUM a)) (NUM a))
     (g- ((NUM a) (NUM a)) (NUM a)) 
     (g* ((NUM a) (NUM a)) (NUM a)) 

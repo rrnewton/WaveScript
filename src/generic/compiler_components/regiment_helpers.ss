@@ -247,9 +247,13 @@
 	     (complex-constant? (car x)) 
 	     (complex-constant? (cdr x)))
 	(and (vector? x)
-	     (vector-andmap complex-constant? x)	     
-	     ))))
-
+	     (vector-andmap complex-constant? x))
+	(and (tuple? x)
+	     (andmap complex-constant? (tuple-fields x)))
+	;; This is only for nullseg, it's a bit sketchy.
+	(and (sigseg? x)
+	     (fx= 0 (vector-length (sigseg-vec x))))
+	)))
 
 ;; A potentially quoted integer.
 (define (qinteger? n)

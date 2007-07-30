@@ -39,6 +39,11 @@
 		      (and (pair? x) (eq? (car x) 'lambda))))
 (define (foreign-closure? cl) (not (closure-formals cl)))
 
+;; Unwraps plain only:
+(define (unwrap-plain x) 
+  (DEBUGASSERT wrapped? x)
+  (if (plain? x) (plain-val x) x))
+
 (define (unknown-type . _) `',(unique-name 'ty))
 
 
@@ -129,6 +134,10 @@
     [(Mutable:ref ,[x]) (make-ref x)]
     [(deref ,[x])       (ref-contents x)]
     [(set! ,[v] ,[rhs]) (set-ref-contents! v rhs)]
+    
+    [(Array:makeUNSAFE ,_) (error 'interpret-meta:Eval 
+				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
+				  `(Array:makeUNSAFE ,_))]
     
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
@@ -242,13 +251,22 @@
   (ASSERT (not (foreign-closure? c)))
   (lambda args
     (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-    (plain-val
+    (unwrap-plain
      (Eval (closure-code c) 
 	   (extend-env (closure-formals c) 
 		       ;;args 
 		       ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-		       (map (lambda (x) (ASSERT (not (wrapped? x)))
-				    (make-plain x)) args)
+		       (map (lambda (x) 
+			      ;; Let's say you map(streamtransformer, list)...
+			      ;; That requires passing closures that handle streams.
+			      #;
+			      (when (streamop? x)
+				(error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
+			      ;(ASSERT (compose not wrapped?) x)
+			      ;(make-plain x)
+			      (if (wrapped? x) x (make-plain x))
+			      )
+			 args)
 		       (closure-env c))
 	   #f))))
 
@@ -332,11 +350,19 @@
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
 (define (Marshal-Plain p) 
-  (let ([val (plain-val p)])
-    (if (hash-table? val)
-	(error 'Marshal-Plain "hash table marshalling unimplemented")
-	`',val
-	)))
+  (let loop ([val (plain-val p)])
+    (cond
+     [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
+     ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
+#;
+     [(sigseg? val) (if (fx= 0 (vector-length (sigseg-vec val)))
+			'nullseg
+			(error 'Marshal-Plain "non-null sigseg marshalling unimplemented"))]
+;     [(list? val) (map loop val)]
+     [else 
+      ;(DEBUGASSERT complex-constant? val)
+      `',val]
+     )))
 
 (define (Marshal-Closure cl)
   (ASSERT (not (foreign-closure? cl)))
@@ -432,7 +458,7 @@
 
 
 ;; After meta-program evaluation, what normalization do we want to do to the stream kernels?
-;; Currently, we'd like to get rid of applications.  This function does some very simpl 
+;; Currently, we'd like to get rid of applications.  This function exhaustively inlines.
 (define (do-basic-inlining e)
   (define (Expr e subst)
     (core-generic-traverse
@@ -461,11 +487,14 @@
 	 [(app ,[rator] ,[rands] ...)
 	  (if (lambda?  rator)
 	      (match (peel-annotations rator)
-		[(lambda ,formals ,types ,[do-basic-inlining -> bod])
+		[(lambda ,formals ,types ,bod) ;[do-basic-inlining -> bod]
 		 ;; Convert to a let:
-		 `(let ,(map list formals types rands) ,bod)])
+		 ;; Then we must put it back through the inliner.
+		 ;; Those let RHS's might have some more inlining to do.
+		 (do-basic-inlining		  
+		  `(let ,(map list formals types rands) ,bod))])
 	      (begin
-		(inspect (cons "FAILED TO EVAL RATOR TO LAMBDA: ~s" `(app ,rator ,@rands)))
+		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
 		`(app ,rator ,@rands))
 	      )]
 

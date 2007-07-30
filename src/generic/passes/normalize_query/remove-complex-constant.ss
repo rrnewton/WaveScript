@@ -124,6 +124,21 @@
 		       ,tmp)))
 		type #t)])]
 
+	   ;; This is kind of pointless... we turn tuples back into code.
+	   [(tuple? x) 
+	    (let* ([anymuts? #f]
+		   [expr `(tuple ,@(map (lambda (x ty) 
+					  (let-values ([(e ty mut?) (loop x ty)])
+					    (when mut? (set! anymuts? #t))
+					    e))
+				     (tuple-fields x) (vector->list type) ))])
+	      (values expr type anymuts?))]
+	   
+	   ;; This is only for nullseg:
+	   [(sigseg? x)
+	    (ASSERT (fx= 0 (vector-length (sigseg-vec x))))
+	    (values 'nullseg type #f)]
+
 	   [(simple-constant? x) (values `',x type #f)]
 	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
 	   [(symbol? x)  (values `',x type #f)]

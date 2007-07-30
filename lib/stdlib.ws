@@ -295,9 +295,9 @@ namespace List {
     }
   }
 
-  fun mapi(f, ls) {
+  fun mapi(mif, ls) {
     acc = ref([]);
-    List:foreachi(fun(i,x) acc := f(i,x) ::: acc, ls);
+    List:foreachi(fun(i,x) acc := mif(i,x) ::: acc, ls);
     List:reverse(acc)
   }
 
@@ -899,9 +899,12 @@ fun deinterleaveSS(n, outsize, strm) {
    fun(offset) {
      iterate win in strm {
        state { counter = 0;
-               newwin = Array:makeUNSAFE(outsize);
+               newwin = Array:null;
+	       firsttime = true;
                newind = 0 }
        for i = 0 to win`width - 1 {
+	 // We can't use makeUNSAFE at meta-time currently:
+         if firsttime then { firsttime := false; newwin := Array:makeUNSAFE(outsize) };
          if counter == offset  
          then {
 	   newwin[newind] := win[[i]]; 
