@@ -358,6 +358,8 @@ namespace FIFO {
   }
 }
 
+// [2007.07.29] This array based implementation exposed some problems
+// with the meta-evaluation framework.
 
 /*
 // Contains start (inclusive) and count

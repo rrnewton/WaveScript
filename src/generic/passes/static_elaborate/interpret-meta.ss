@@ -15,6 +15,8 @@
 ; ================================================================================ ;
 ;;; Type defs and helpers
 
+;; We use data types to separate different kinds of values.
+
 (reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 
@@ -71,7 +73,7 @@
 	    (apply-env env v))]
     [',c (make-plain c)]
 
-    [(tuple ,[x*] ...) (make-plain (list->vector x*))]
+    [(tuple ,[x*] ...) (make-plain (list->vector (map plain-val x*)))]
 
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
@@ -155,6 +157,7 @@
 			     [(streamop? x) x] ;; This shouldn't be touched.
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 		       x*)))])
+       (printf "  RAW RESULT from prim ~s: ~s\n" prim raw)
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
@@ -232,16 +235,33 @@
 ;  (inspect dictionary)
   )
 
-;; Make a *real* procedure that evaluates a closure.
+;; Make a *real* procedure that evaluates a closure.  Thus we can pass
+;; it to one of the higher-order WS primitives that's implemented in a
+;; separate library (wavescript_sim_library_push.ss).
 (define (reify-closure c)
   (ASSERT (not (foreign-closure? c)))
   (lambda args
     (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-    (Eval (closure-code c) 
-	  (extend-env (closure-formals c) 
-		      (map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-		      (closure-env c))
-	  #f)))
+    (plain-val
+     (Eval (closure-code c) 
+	   (extend-env (closure-formals c) 
+		       ;;args 
+		       ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
+		       (map (lambda (x) (ASSERT (not (wrapped? x)))
+				    (make-plain x)) args)
+		       (closure-env c))
+	   #f))))
+
+#;
+;; This adds code around a closure that wraps/unwraps the arguments
+;; and result values, thus allowing the closure to be passed to
+;; wavescript-language to operate on unwrapped values.
+(define (wrap/unwrap-closure clos)
+  (lambda args
+    ;; Anything that gets passed to one of these wavescript
+    ;; primitives should return only plain data.
+    (plain-val (apply clos (map (lambda (x) (if (wrapped? x) x (make-plain x))) args)))
+    ))
 
 
 ; ================================================================================ ;
@@ -311,7 +331,7 @@
 
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
-(define (Marshal-Plain p) 
+(trace-define (Marshal-Plain p) 
   (let ([val (plain-val p)])
     (if (hash-table? val)
 	(error 'Marshal-Plain "hash table marshalling unimplemented")
@@ -444,7 +464,10 @@
 		[(lambda ,formals ,types ,[do-basic-inlining -> bod])
 		 ;; Convert to a let:
 		 `(let ,(map list formals types rands) ,bod)])
-	      `(app ,rator ,@rands))]
+	      (begin
+		(inspect (cons "FAILED TO EVAL RATOR TO LAMBDA: ~s" `(app ,rator ,@rands)))
+		`(app ,rator ,@rands))
+	      )]
 
 	 [,oth (fallthru oth)]))
      (lambda (ls k) (apply k ls))

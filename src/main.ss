@@ -462,6 +462,8 @@
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
+;  (inspect p)
+
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p static-elaborate))
 ;  (time (ws-run-pass p interpret-meta))  

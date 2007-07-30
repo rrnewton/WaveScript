@@ -73,8 +73,8 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
     ;; Hmm need to test windowed reading too:
     ["demo1e_readFile.ws"  ,(lambda (a b) 
-				     (ASSERT (equal? a #(512 1024 1536)))
-				     (ASSERT (equal? b #(2 514 1026))))]
+			      (ASSERT (equal? (tuple-fields a) '(512 1024 1536)))
+			      (ASSERT (equal? (tuple-fields b) '(2 514 1026))))]
     
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
