@@ -59,8 +59,8 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
 
     ["demo1b_dataFile.ws"         ,(lambda (a b) 
-				     (ASSERT (equal? a #(1 1.0)))
-				     (ASSERT (equal? b #(2 2.0))))]
+				     (ASSERT (equal? (tuple-fields a) '(1 1.0)))
+				     (ASSERT (equal? (tuple-fields b) '(2 2.0))))]
 
     ["demo1c_timer.ws"         ,(lambda (a b) 
 				     (ASSERT (equal? a 39))
@@ -131,9 +131,8 @@ exec regiment i --script "$0" ${1+"$@"};
  ;    "demo5c_better.ws"
 
     ["demo6a_unionList.ws"        ,(lambda (a b) 
-				     #;(equal? (sort < (list (vector-ref a 1) (vector-ref b 1)))
-					     '(1 101))
-                                     (equal? (sort < (list (vector-ref a 0) (vector-ref b 0)))
+				     (IFCHEZ (import wavescript_sim_library_push) (void))
+                                     (equal? (sort < (list (tupref 0 2 a) (tupref 0 2 b)))
 					     '(0 1))
 				     )]
     ["demo6b_sync.ws"             ,(lambda (a b) #t)]
@@ -156,8 +155,8 @@ exec regiment i --script "$0" ${1+"$@"};
 
     ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
     ["demo8b_sugars.ws"           ,(lambda (a b) 
-				     (equal? a #(1 1 2 1 1 2))
-				     (equal? b #(1 1 2 1 1 2)))]
+				     (equal? (tuple-fields a) '(1 1 2 1 1 2))
+				     (equal? (tuple-fields b) '(1 1 2 1 1 2)))]
 
     ["demo9_misc_prim_tests.ws"      ,(lambda (a b) #t)]
     

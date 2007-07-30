@@ -2621,7 +2621,7 @@
 		     [s2 (iterate (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
 		     [s3 (iterate (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
 		s3)))]) ls)
- ,(make-list 10 #(#(3 4) 9))]
+ ,(make-list 10 (make-tuple (list (make-tuple '(3 4)) 9)))]
 
 
 

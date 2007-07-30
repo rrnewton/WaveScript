@@ -196,6 +196,8 @@
 			 (or (fx= i (vector-length a))
 			     (and (wsequal? (vector-ref a i) (vector-ref b i))
 				  (loop (fx+ 1 i))))))]
+     [(tuple? a) (and (tuple? b)
+		      (wsequal? (tuple-fields a) (tuple-fields b)))]
      [else (s:equal? a b)]))
   ;(define equal? wsequal?)
   
@@ -418,9 +420,9 @@
     (define state zero)
     (define wsbox
       (lambda (msg)
-	(let ([vec (reverse! (unbox (fun msg state)))])
-	  (set! state (vector-ref vec 1))
-          (let ([v (vector-ref vec 0)]) 
+	(let ([tup (reverse! (unbox (fun msg state)))])
+	  (set! state (tupref 1 2 tup))
+          (let ([v (tupref 0 2 tup)])
             (fire! v our-sinks)))))
     ;; Register ourselves with our source:
     (src wsbox)
@@ -505,25 +507,24 @@
       (define tyvec (list->vector types))
       (define (parse-line str)
 	(define p (open-input-string str))
-	(define tup (make-vector len))
-	(let loop ([i 0])
-	  (if (fx= i len)
-	      (if (= 1 len) (vector-ref tup 0) tup)
-	      (begin 
-		;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
-		(vector-set! tup i 
-			     (s:case (vector-ref tyvec i)
-			       [(String) (symbol->string (read p))]
-			       [(Int Int16) (let ([v (read p)])
-					      (unless (ws-int? v)
-						(error 'readFile "cannot read ~s as integer type" v))
-					      v)]
-			       [(Float)    (let ([v (read p)])
-					      (unless (ws-float? v)
-						(error 'readFile "cannot read ~s as float type" v))
-					      v)]
-			       [else (read p)]))
-		(loop (fx+ 1 i))))))      
+	(let ([ls (list-build len 
+		    (lambda (i)
+		      ;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
+                      (s:case (vector-ref tyvec i)
+			      [(String) (symbol->string (read p))]
+			      [(Int Int16) (let ([v (read p)])
+					     (unless (ws-int? v)
+					       (error 'readFile "cannot read ~s as integer type" v))
+					     v)]
+			      [(Float)    (let ([v (read p)])
+					    (unless (ws-float? v)
+					      (error 'readFile "cannot read ~s as float type" v))
+					    v)]
+			      [else (read p)])
+		      ))])
+	  (if (fx= 1 (length ls))
+	      (car ls)
+	      (make-tuple ls))))
        (define our-sinks '())  
        (define timestep (if (> winsize 0)
 			    ;; Increase the timestep according to our window size.
@@ -779,7 +780,7 @@
        ;; Register a receiver for each source:       
        (for-eachi (lambda (i src)
                       (src (lambda (x)
-                             (fire! (vector i x) our-sinks))))
+                             (fire! (tuple i x) our-sinks))))
                   ls)
        (lambda (sink)
          (set! our-sinks (cons sink our-sinks))))
@@ -920,13 +921,12 @@
       [(= 0 len) (error 'types->reader "can't read unit type (zero-length tuple) from a file!")]
       [(= 1 len) (type->reader (car types))]
       [else (lambda (str ind)
-	      (let ([vec (make-vector len)])
-		(let unmarshallloop ([i 0] [pos ind])
-		  (if (= i len)
-		      vec
-		      (begin (vector-set! vec i ((vector-ref readers i) str pos))
-			     (unmarshallloop (fx+ 1 i) (fx+ pos (vector-ref widths i)))))
-		  )))]))
+	      (apply tuple
+	       (let unmarshallloop ([i 0] [pos ind])
+		 (if (= i len)
+		     '()
+		     (cons ((vector-ref readers i) str pos)
+			   (unmarshallloop (fx+ 1 i) (fx+ pos (vector-ref widths i))))))))]))
 
   ;; Currently unused.
   (define (uint16->string n)
@@ -1147,10 +1147,8 @@
              ;; Don't know of an interactive object inspector in PLT:
              (define (inspect x) x))             
 
-     (define-alias tuple vector)
-     (define (tupref ind _ v)
-       (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
-       (vector-ref v ind))
+     (define (tuple . args) (make-tuple args))
+     (define (tupref ind _ tup) (list-ref (tuple-fields tup) ind))
 
      (define-alias List:length s:length)
      (define-alias List:ref list-ref)
@@ -1177,14 +1175,14 @@
        (let loop ([ls ls])
 	 (cond
 	  [(null? ls) '()]
-	  [(s:equal? (vector-ref (car ls) 0) x) ls]
+	  [(s:equal? (tupref 0 2 (car ls)) x) ls]
 	  [else (loop (cdr ls))])))
      (define (List:assoc_update origls x y)
        (let loop ([ls origls] [acc '()])
 	 (cond
 	  [(null? ls) (cons (vector x y) origls)]
-	  [(s:equal? (vector-ref (car ls) 0) x)
-	   (append (reverse! acc) (cons (vector x y) (cdr ls)))]
+	  [(s:equal? (tupref 0 2 (car ls)) x)
+	   (append (reverse! acc) (cons (tuple x y) (cdr ls)))]
 	  [else (loop (cdr ls) (cons (car ls) acc))])))
 
      (define Array:make make-vector)

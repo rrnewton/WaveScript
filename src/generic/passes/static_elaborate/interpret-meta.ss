@@ -73,7 +73,7 @@
 	    (apply-env env v))]
     [',c (make-plain c)]
 
-    [(tuple ,[x*] ...) (make-plain (list->vector (map plain-val x*)))]
+    [(tuple ,[x*] ...) (make-plain (make-tuple (map plain-val x*)))]
 
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
@@ -157,7 +157,7 @@
 			     [(streamop? x) x] ;; This shouldn't be touched.
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 		       x*)))])
-       (printf "  RAW RESULT from prim ~s: ~s\n" prim raw)
+;       (printf "  RAW RESULT from prim ~s: ~s\n" prim raw)
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
@@ -331,7 +331,7 @@
 
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
-(trace-define (Marshal-Plain p) 
+(define (Marshal-Plain p) 
   (let ([val (plain-val p)])
     (if (hash-table? val)
 	(error 'Marshal-Plain "hash table marshalling unimplemented")

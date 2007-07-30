@@ -173,7 +173,7 @@
 
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
-	 make-tuple tuple-fields
+	 make-tuple tuple-fields tuple?
          )
 		
 	;; Import the platform specific constants.
