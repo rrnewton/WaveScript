@@ -135,26 +135,7 @@
 			     (map contract-id imported))
 			   var-table)]
 			 [exploded-table (append chopped  exploded-table)])
-	       (driver bod fallthru))
-
-#;
-	     (fluid-let ([mapping 
-			  (append 
-			   (map list 
-			     (map contract-id (map cdr imported))
-			     (map contract-id imported))
-			   mapping)])
-	       (driver bod fallthru))
-
-#;
-	     ;; This goes over the code multiple times.  Will perform
-	     ;; very badly if there are many nested "using"
-	     ;; statements.
-	     (driver
-	      (core-substitute (map contract-id (map cdr imported))
-			       (map contract-id imported)
-			       bod)
-	      fallthru))]
+	       (driver bod fallthru)))]
 	  
 	  [,oth (fallthru oth)]))
 
@@ -230,13 +211,19 @@
 	(resolve-varrefs-language
 	 '(program (letrec ([unspecified Int 3]) (set! unspecified 39)) (union-types) Int))]
        
+
        ["Basic using declaration"
 	(reunique-names 
 	 (resolve-varrefs '(lang '(program (letrec ([M:x 't '3]) (using M x)) (union-types) Int))))
+
+	(resolve-varrefs-language '(program (letrec ((M:x (quote t) (quote 3))) M:x) (union-types) Int))
+#;
 	(resolve-varrefs-language
 	 '(program
 	      (letrec ([unspecified 't '3]) (letrec ([x 'type unspecified]) x))
 	    (union-types) Int))]
+
+       
               
        ))
 
