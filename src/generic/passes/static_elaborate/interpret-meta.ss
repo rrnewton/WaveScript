@@ -423,21 +423,23 @@
 		      (loop 
 		       ;; For now, don't do any inlining.  Do that later:
 		       ;; Here we simply stick those lambdas into the code.
-		       (substitute (list (list (car fv) 
-				     ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
-				     (if (foreign-closure? val)
-					 (match (closure-code val)
-					   [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
-					    (let ([formals (list-head standard-struct-field-names (length arg*))])
-					      `(lambda ,formals ,arg*
-						  (foreign-app ,name ,@formals)
-						 ,(map unknown-type (closure-formals val))
-						 ,newcode)
-					      )])					 
-					 `(lambda ,(closure-formals val) 
+		       (core-substitute 
+			(list (car fv))			
+			(list  
+			 ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
+			 (if (foreign-closure? val)
+			     (match (closure-code val)
+			       [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
+				(let ([formals (list-head standard-struct-field-names (length arg*))])
+				  `(lambda ,formals ,arg*
+					   (foreign-app ,name ,@formals)
 					   ,(map unknown-type (closure-formals val))
-					   ,newcode))))
-				   code)
+					   ,newcode)
+				  )])					 
+			     `(lambda ,(closure-formals val) 
+				,(map unknown-type (closure-formals val))
+				,newcode)))
+			code)
 		       ;; We also merge the relevent parts of the closure's environment with our environment:
 		       (union newfree (cdr fv))
 		       state 
@@ -456,7 +458,7 @@
   (DEBUGASSERT (not (foreign-closure? cl)))
   (let* ([fv    (closure-free-vars cl)]
 	 [newfv (map unique-name fv)]
-	 [newcode (substitute (map list fv newfv) (closure-code cl))]
+	 [newcode (core-substitute fv newfv (closure-code cl))]
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
@@ -513,108 +515,6 @@
      (lambda (ls k) (apply k ls))
      e))
   (Expr e '()))
-
-;; NOTE!  Assumes unique variable names and so ignores binding forms.
-#;
-(define substitute-and-beta
-  (lambda (name fun exp)
-    (core-generic-traverse
-     (lambda (x fallthru)
-       (match x
-         ;; We've hit it in the wrong place:
-	 [,v (guard (eq? v name)) (error 'substitute-and-beta "operand position reference")]
-	 ;; Here we do the inlining.
-	 [(app ,v ,[x*] ...)
-	  (guard (eq? v name))
-	  (substitute (map list (closure-formals fun) x*)
-		      (closure-code fun))]
-	 [,oth (fallthru oth)])
-       )
-     (lambda (ls k) (apply k ls))
-     exp)))
-
-;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
-;; FIXME: REWRITE WITH GENERIC TRAVERSE!
-(define substitute
-  (lambda (mapping expr)
-
-#;
-    (begin 
-      (printf "SUBSTITUTING length mapping: ")
-      (flush-output-port)
-      (printf "~s " (length mapping))
-      (flush-output-port)
-      (printf "expr ~s \n" (count-nodes expr))
-      (printf "    ~a\n" (map car mapping)))
-
-    (match expr
-      [(quote ,datum) `(quote ,datum)]
-      [,var (guard (symbol? var)) 
-	    (let ((entry (assq var mapping)))
-;	      (printf "\nVARSUBSTITUTED! ~s\n\n" var)
-	      (if entry (cadr entry) var))]
-      [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,_ ,e)]
-      [(lambda ,formals ,types ,expr)
-       `(lambda ,formals ,types
-		,(substitute
-		  (filter (lambda (x)
-			    (not (memq (car x) formals)))
-		    mapping)
-		  expr))]
-      [(for (,i ,[st] ,[en]) ,bod)
-       `(for (,i ,st ,en)		
-	    ,(substitute
-	      (filter (lambda (x) (not (eq? (car x) i))) mapping)
-	      bod))]
-      [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
-      [(begin ,[arg] ...) `(begin ,arg ...)]
-      [(set! ,v ,[rhs])
-       (if (memq v (map car mapping))
-	   (error 'interpret-meta:substitute "shouldn't be substituting against a mutated var: ~s" v))
-       `(set! ,v ,rhs)]
-
-      [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
-      [(tuple ,[args] ...) `(tuple ,args ...)]
-      [(vector ,[args] ...) `(vector ,args ...)]
-      [(unionN ,[args] ...) `(unionN ,args ...)]
-
-      [(if ,[test] ,[conseq] ,[altern])  `(if ,test ,conseq ,altern)]
-      [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-       (let ((newmap (filter (lambda (x)
-			       (not (memq (car x) lhs*)))
-		       mapping)))
-	 ;; HACK! In general recursion is not allowed with interpret-meta.
-	 ;; However, we recognize mere aliases here so that "using M"
-	 ;; statements *within* module M don't result in
-	 ;; nontermination.
-#;
-	 (let loop ([lhs* lhs*] [rhs* rhs*])
-	   (let ([rhs (peel-annotations (car rhs*))])
-	     (if (symbol? rhs)
-		 (let ([entry (assq rhs mapping)])
-		   (if entry 
-		       		      
-		       
-		       (cons `(,rhs ))
-
-		       ))
-		 )
-	     )
-	   )
-
-	 `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
-	    ,(substitute newmap expr)))]
-
-      [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
-       `(,prim ,rands ...)]
-      [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 
-       `(,app ,rator ,rands ...)]
-
-      [(wscase ,[x] (,pat* ,[rhs*]) ...) `(wscase ,x ,@(map list pat* rhs*))]
-
-      [,unmatched
-       (error 'interpret-meta:substitute "invalid syntax ~s" unmatched)])))
-
 
 ; ================================================================================ ;
 ;;; TODO: Lift constants and check sharing.
