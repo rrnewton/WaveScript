@@ -31,7 +31,8 @@
 #ifndef __WAVESCOPE_ENSBOX_H__
 #define __WAVESCOPE_ENSBOX_H__
 
-#include <libmisc/misc.h>
+//#include <libmisc/misc.h>
+#include <inttypes.h>
 
 // OLD
 //void wavescope_push(void *data, char *buf, int count);
@@ -44,5 +45,6 @@ void ensbox_start(void *data);
 // RYAN
 void wavescope_push(char *buf, int count, uint64_t sample_count);
 int ws_main(int argc, char **argv);
+uint64_t get_gps_value(uint64_t to_convert); // converts sample to GPS
 
 #endif

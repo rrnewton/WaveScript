@@ -64,9 +64,9 @@ go "demo8b_sugars.ws"
 go "demo8c_moresugar.ws"
 
 # go "demo9_misc_prim_tests.ws" # not working yet
-#go "demo9b_higher_order_prims.ws" 
+go "demo9b_higher_order_prims.ws" 
 #gcc -c bar.c
-#go "demo9c_foreign.ws"
+go "demo9c_foreign.ws"
 
 go "demo10a_simple_merge.ws"
 go "demo10b_repeated_rewindow.ws"

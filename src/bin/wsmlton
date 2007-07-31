@@ -4,6 +4,8 @@
 
 source `dirname $0`/assert_regimentd
 
+
+
 FLAGS=' -verbose 1 -link-opt -lfftw3f  '
 CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
 OUTPUT=query.mlton.exe
@@ -25,13 +27,12 @@ then echo Usage: "wsmlton <file> <options ...>";
      exit 1;
 fi
 
-if [ ! -d /tmp/`whoami` ]; 
-then mkdir /tmp/`whoami`;
-fi
+#if [ ! -d /tmp/`whoami` ];  then mkdir /tmp/`whoami`; fi
 
 # FILENAME MUST BE FIRST ARG
-D=`dirname "$1"`
-B=`basename "$1"`
+INFILE=$1
+D=`dirname "$INFILE"`
+B=`basename "$INFILE"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 shift
 
@@ -47,6 +48,21 @@ else #rm -f $TMP;
     echo Compilation aborted: \"regiment wscomp\" exited with error code.
     exit 1;
 fi
+
+
+# Pull the extra libraries off the first line of the query file.
+############################################################
+FIRST=`head -n1 query.sml`
+echo FIRST LINE OF FILE: $FIRST
+MATCH=`echo $FIRST | grep "WSLIBDEPS:"`
+if [ "$MATCH" != "" ];
+then 
+   EXTRALIBS=`echo $FIRST | sed "s/.*WSLIBDEPS://"`
+   echo Linking extra libraries requested by query file: $EXTRALIBS
+   CINCLUDES="$CINCLUDES $EXTRALIBS"
+fi
+############################################################
+
 
 ################################################################################
 

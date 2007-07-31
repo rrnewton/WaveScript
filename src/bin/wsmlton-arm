@@ -1,5 +1,7 @@
 #!/bin/bash
 
+## DUPLICATED CODE WITH WSMLTON:
+
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 source `dirname $0`/assert_regimentd
@@ -7,16 +9,18 @@ source `dirname $0`/assert_regimentd
 FLAGS=' -verbose 1 '
 CLINK=' -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp -lfftw3f '
 CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c 
-           $REGIMENTD/src/generic/passes/mlton_bkend/ensbox.c"
+           $REGIMENTD/src/generic/passes/mlton_bkend/ensbox_new.c"
 OUTPUT=query.arm.mlton.exe
 
 GLIB_PATH="/usr/arm-linux/arm-linux/lib/libglib-2.0.so"
 
-EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'
+if [ "$EMLIB" == "" ]; then EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'; fi
+# "a" for static linking "so" for dynamic:
+EXT=a
 ENSBOXLD=" \
-  $EMLIB/libensbox_ws.so $EMLIB/libemrun.so $EMLIB/liblink.so \
-  $EMLIB/libdev.so $EMLIB/libsync.so $EMLIB/libdev.so \
-  $EMLIB/libmisc.so $EMLIB/libfusd.so -lm -lasound $GLIB_PATH"
+  $EMLIB/libensbox_ws2.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
+  $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libdev.$EXT \
+  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT -lm -lasound $GLIB_PATH"
 
 if [ ! -f "$1" ];
 then echo Usage: "wsmlton-arm <file> <options ...>";

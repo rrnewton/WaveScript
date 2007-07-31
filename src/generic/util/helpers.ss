@@ -849,10 +849,12 @@
 ;; [2005.10.11]  Added reverse! to make the result in the same order as orig. <br>
 ;; NOTE: Uses eq? !
 (define list->set
-  (lambda (ls)
-    (if (null? ls) '()
-	(reverse! 
-	 (set-cons(car ls) (list->set (cdr ls)))))))
+  (case-lambda
+    [(ls) (list->set ls eq?)]
+    [(ls comp)
+     (if (null? ls) '()
+	 (reverse! 
+	  (set-cons (car ls) (list->set (cdr ls)) comp)))]))
 ;; [2006.01.23] Added version that uses equal?  For structure based equivalence.
 #;
 (define list->set_equal
@@ -865,11 +867,13 @@
 
 ;; NOTE: Uses eq? !
 (define set-cons
-  (lambda (x set)
-    (cond
+  (case-lambda
+    [(x set equ?)
+     (cond
       [(null? set) (list x)]
-      [(eq? x (car set)) set]
-      [else (cons (car set) (set-cons x (cdr set)))])))
+      [(equ? x (car set)) set]
+      [else (cons (car set) (set-cons x (cdr set)))])]
+    [(x set) (set-cons x set eq?)]))
 
 (define union
   (case-lambda
