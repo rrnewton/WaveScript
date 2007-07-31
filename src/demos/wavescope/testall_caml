@@ -64,6 +64,6 @@ go "demo9b_higher_order_prims.ws"
 #gcc -c bar.c
 #go "demo9c_foreign.ws"
 
-
-# go "demo11a_simple_merge.ws"
-
+#go "demo10a_simple_merge.ws"
+#go "demo10b_repeated_rewindow.ws"
+#go "demo10c_fft_ifft.ws"

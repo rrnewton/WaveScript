@@ -296,8 +296,9 @@
 	;; [2007.07.20] Now allowing arbitrary initialization code.
 	;; And therefore, we handle begin's here:
 #;
-	[(begin ,e* ... ,[q])
-	 (values ........)]
+	[(begin ,[(lambda (e) ((Block tenv) #f #f e)) -> e*] ... ,[q])
+	 (inspect "GOINGOINGINIGINGINIG")
+	 (values ?????????)]
 
 	[(let ([,lhs ,ty ,rhs]) ,bod)
 	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
@@ -727,6 +728,10 @@
 	  ;[,c (guard (simple-constant? c)) (Const c)]
 	  [(quote ,datum)           (Const name type datum)]
 	  [(tuple)                  (wrap (Simple '(tuple)))]
+
+	  ;; [2007.07.31] TEMP: Need to refactor this whole pass to use explicit-stream-wiring
+	  [(begin ,[(lambda (e) ((Block tenv) #f #f e)) -> stmt*] ... ,[val])
+	   (list stmt* val)]
 
 	  [,v (guard (symbol? v))
 	      (ASSERT (compose not regiment-primitive?) v)

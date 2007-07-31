@@ -85,5 +85,5 @@ go "demo8b_sugars.ws"
 gcc -c bar.c
 go "demo9c_foreign.ws"
 
-go "demo11a_simple_merge.ws"
-#go "demo11b_repeated_rewindow.ws"
+go "demo10a_simple_merge.ws"
+#go "demo10b_repeated_rewindow.ws"
