@@ -24,6 +24,7 @@
 
 (module reg_core_generic_traverse  mzscheme
   (require (lib "include.ss")  
+	   (only (lib "list.ss") filter)  
            "../constants.ss"
 	   "../../plt/iu-match.ss"
 ;	   (all-except "../../plt/rn-match.ss" match-lambda let-match)
@@ -441,7 +442,7 @@
 		 [newbod     (loop newmapping bod)]
 		 [newrhs*
 		  (case lett
-		    [(let)                (map (lambda (x) (loop mappyng    x)) rhs*)]
+		    [(let)                (map (lambda (x) (loop mapping    x)) rhs*)]
 		    [(letrec lazy-letrec) (map (lambda (x) (loop newmapping x)) rhs*)]
 		    )])
 	    `(letrec ,(map list lhs* ty* newrhs*) ,newbod))]

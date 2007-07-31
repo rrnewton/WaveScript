@@ -166,7 +166,7 @@
 			     [(streamop? x) x] ;; This shouldn't be touched.
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 		       x*)))])
-       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
+;       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
@@ -282,13 +282,16 @@
     ))
 
 
+
+
+
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
 ;; This marshals the resulting stream-operators.
 ;; The result is a code for a stream-graph.
 (define (Marshal val)
-  (display-constrained "  MARSHALING: " `[,val 100] "\n")
+;  (display-constrained "  MARSHALLING: " `[,val 100] "\n")
   (cond
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
@@ -342,17 +345,16 @@
 		    (cons (Marshal (car params)) 
 			  (loop (cdr argty*) (cdr params) parents)))]))
 	      )))
-  (display-constrained "   MARSHALING STREAMOP: " `[,op 100] "\n")
+;  (display-constrained "   MARSHALLING STREAMOP: " `[,op 100] "\n")
   (if (streamop-type op)
       `(assert-type ,(streamop-type op) ,default)
       default))
 
 
 
-;; FIXME: Uh, this should do something different for tuples.
-;; We should mayb maintain types:
+;; We should maybe maintain types...
 (define (Marshal-Plain p) 
-  (display-constrained "    MARSHALING plain " `[,p 100] "\n")
+;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
   (let loop ([val (plain-val p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
@@ -367,8 +369,11 @@
       `',val]
      )))
 
+;; FIXME: TODO: to make this more efficient, we should build up a
+;; single substitution, then apply it, rather than repeatedly
+;; traversing the closure's code.
 (define (Marshal-Closure cl)
-  (display-constrained "    MARSHALING CLOSURE: " `[,cl 100] "\n")
+;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
   (ASSERT (not (foreign-closure? cl)))
   (if (foreign-closure? cl)
 	
@@ -500,7 +505,7 @@
 		 (do-basic-inlining		  
 		  `(let ,(map list formals types rands) ,bod))])
 	      (begin
-		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
+;		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
 		`(app ,rator ,@rands))
 	      )]
 
@@ -532,18 +537,21 @@
 ;; FIXME: REWRITE WITH GENERIC TRAVERSE!
 (define substitute
   (lambda (mapping expr)
-    (printf "SUBSTITUTING length mapping: ")
-    (flush-output-port)
-    (printf "~s " (length mapping))
-    (flush-output-port)
-    (printf "expr ~s \n" (count-nodes expr))
-    (printf "    ~a\n" (map car mapping))
+
+#;
+    (begin 
+      (printf "SUBSTITUTING length mapping: ")
+      (flush-output-port)
+      (printf "~s " (length mapping))
+      (flush-output-port)
+      (printf "expr ~s \n" (count-nodes expr))
+      (printf "    ~a\n" (map car mapping)))
 
     (match expr
       [(quote ,datum) `(quote ,datum)]
       [,var (guard (symbol? var)) 
 	    (let ((entry (assq var mapping)))
-	      (printf "\nVARSUBSTITUTED! ~s\n\n" var)
+;	      (printf "\nVARSUBSTITUTED! ~s\n\n" var)
 	      (if entry (cadr entry) var))]
       [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,_ ,e)]
       [(lambda ,formals ,types ,expr)

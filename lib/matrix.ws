@@ -103,7 +103,6 @@ dims   ::  Matrix t               -> (Int * Int);
  }
 
  fun map_inplace(f, mat) {
-   using Matrix;
    foreachi(fun(i,j,x) set(mat, i,j, f(x)), mat)
  }
 /*
@@ -119,7 +118,6 @@ dims   ::  Matrix t               -> (Int * Int);
 */
 
  fun map2_inplace(f, mat1, mat2) {
-   using Matrix;
    foreachi(fun(i,j,x) set(mat1, i,j, f(x, get(mat2,i,j))),  mat1)
  }
 
@@ -150,12 +148,10 @@ dims   ::  Matrix t               -> (Int * Int);
  }
 
  fun map(f, mat) {
-   using Matrix;
    let (r,c) = Matrix:dims(mat);
    build(r,c, fun(i,j) get(mat,i,j))
  }
  fun map2(f, mat1,mat2) {
-   using Matrix;
    let (r,c) = Matrix:dims(mat1);
    build(r,c, fun(i,j) f(get(mat1,i,j), get(mat2,i,j)))
  }
