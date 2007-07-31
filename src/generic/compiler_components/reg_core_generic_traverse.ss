@@ -428,38 +428,39 @@
 ;; free occurrences of a variable.  It works for anything in the
 ;; "core" intermediate language.
 ;;
-(define (core-substitute var* new* old)
-  (let loop ([mapping (map list var* new*)] [expr old])
-    (core-generic-traverse
-     (lambda (x fallthru)
-       (match x        
-	 [,v (guard (symbol? v))
-	     (let ([entry (assq v mapping)])
-	       (if entry (cadr entry)  v))]
-	 [(,lett ([,lhs* ,ty* ,rhs*] ...) ,bod)
-	  (guard (memq lett '(letrec lazy-letrec let)))
-	  (let* ([newmapping (filter (lambda (pr) (not (memq (car pr) lhs*))) mapping)]
-		 [newbod     (loop newmapping bod)]
-		 [newrhs*
-		  (case lett
-		    [(let)                (map (lambda (x) (loop mapping    x)) rhs*)]
-		    [(letrec lazy-letrec) (map (lambda (x) (loop newmapping x)) rhs*)]
-		    )])
-	    `(letrec ,(map list lhs* ty* newrhs*) ,newbod))]
-	 [(let* . ,_) (error 'core-substitute "not handling let* currently")]
-	 [(lambda (,vars ...) (,types ...) ,bod)
-	  `(lambda ,vars ,types
-		   ,(loop (filter (lambda (pr) (not (memq (car pr) vars))) mapping)
-			  bod))]
-	 ;; This is a weird case.  I guess i is bound to start.
-	 [(for (,i ,[st] ,[en]) ,bod)
-	  `(for (,i ,st ,en)
-		,(loop (filter (lambda (pr) (not (eq? (car pr) i))) mapping)
-		       bod))]
-	 [,x (fallthru x)]))
-     (lambda (ls k) (apply k ls))
-     expr)))
-
+(define core-substitute
+  (case-lambda
+    [(var* new* body) (core-substitute (map list var* new*) body)]
+    [(mapping body)
+     (core-generic-traverse
+      (lambda (x fallthru)
+	(match x        
+	  [,v (guard (symbol? v))
+	      (let ([entry (assq v mapping)])
+		(if entry (cadr entry)  v))]
+	  [(,lett ([,lhs* ,ty* ,rhs*] ...) ,bod)
+	   (guard (memq lett '(letrec lazy-letrec let)))
+	   (let* ([newmapping (filter (lambda (pr) (not (memq (car pr) lhs*))) mapping)]
+		  [newbod     (core-substitute newmapping bod)]
+		  [newrhs*
+		   (case lett
+		     [(let)                (map (lambda (x) (core-substitute mapping    x)) rhs*)]
+		     [(letrec lazy-letrec) (map (lambda (x) (core-substitute newmapping x)) rhs*)]
+		     )])
+	     `(letrec ,(map list lhs* ty* newrhs*) ,newbod))]
+	  [(let* . ,_) (error 'core-substitute "not handling let* currently")]
+	  [(lambda (,vars ...) (,types ...) ,bod)
+	   `(lambda ,vars ,types
+		    ,(core-substitute (filter (lambda (pr) (not (memq (car pr) vars))) mapping)
+				      bod))]
+	  ;; This is a weird case.  I guess i is bound to start.
+	  [(for (,i ,[st] ,[en]) ,bod)
+	   `(for (,i ,st ,en)
+		,(core-substitute (filter (lambda (pr) (not (eq? (car pr) i))) mapping)
+				  bod))]
+	  [,x (fallthru x)]))
+      (lambda (ls k) (apply k ls))
+      body)]))
 
 ; ================================================================================
 

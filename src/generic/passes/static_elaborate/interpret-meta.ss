@@ -386,102 +386,97 @@
 ;; single substitution, then apply it, rather than repeatedly
 ;; traversing the closure's code.
 (define (Marshal-Closure cl)
+  ;; Below we accumulate a cumulative substitution list,
+  ;; we must apply it accordingly.
+  (define (subst-the-substs subst)
+    (match subst
+      [() ()]
+      [((,v ,expr) . ,[rest])
+       (cons (list v (core-substitute rest expr))
+	     rest)]))
+
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
-  (ASSERT (not (foreign-closure? cl)))
-  (if (foreign-closure? cl)	
-      ;; This just turns into the '(foreign name includes)' expression:
-      (closure-code cl)
+  (ASSERT (not (foreign-closure? cl)))  
 
-      ;; This loop accumulates a bunch of bindings that cover all the
-      ;; free variables of the closure.  (And, transitively, any
-      ;; closures reachable from the input closure.)  These bindings
-      ;; fall into two categories.  Mutable bindings are only allowed
-      ;; to be accessed from a single closure.  Immutable bindings may
-      ;; float up to become global bindings.  (And thus not duplicate
-      ;; code between multiple iterates.)
-     (let loop ([code (closure-code cl)]
-		[fv   (closure-free-vars cl)]
-		[state '()]
-		[globals '()]
-		[env (closure-env cl)]
-		;[substitution '()]
-		)
-      (if (null? fv)
-	  ;; We're done processing the environment, produce some code:
-	  (let ([bod `(lambda ,(closure-formals cl) 
-			,(map unknown-type (closure-formals cl)) ,code)])
-	    ;(if (null? state) bod `(letrec ,state ,bod))
-;	    (unless (null? globals) (inspect globals))
-	    `(letrec ,(append globals state) ,bod)
-	    )
-	  (let ([val (apply-env env (car fv))])
-	    (cond
-	     [(plain? val) 
-	      (loop code (cdr fv) state
-		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
-		    env 
-		    ;substitution
-		    )]
-	     ;; This is definitely part of the state:
-	     [(ref? val)
-	      ;; FIXME: Need to scan for shared mutable values.
-	      (loop code (cdr fv)
-		    (cons (list (car fv) (unknown-type) 
-				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
-			  state)
-		    globals env)]
+  ;; This loop accumulates a bunch of bindings that cover all the
+  ;; free variables of the closure.  (And, transitively, any
+  ;; closures reachable from the input closure.)  These bindings
+  ;; fall into two categories.  Mutable bindings are only allowed
+  ;; to be accessed from a single closure.  Immutable bindings may
+  ;; float up to become global bindings.  (And thus not duplicate
+  ;; code between multiple iterates.)
+  (let loop ([code (closure-code cl)]
+	     [fv   (closure-free-vars cl)]
+	     [state '()]
+	     [globals '()]
+	     [env (closure-env cl)]
+	     [substitution '()]
+	     )
+    (if (null? fv)
+	;; We're done processing the environment, produce some code:
+	(let ([bod `(lambda ,(closure-formals cl) 
+		      ,(map unknown-type (closure-formals cl)) ,code)])
+					;(if (null? state) bod `(letrec ,state ,bod))
+					;	    (unless (null? globals) (inspect globals))
+;	  (printf "FINALLY DOING SUBSTITUTION: ~s\n" (map car (reverse substitution)))
+	  `(letrec ,(append globals state) 
+	     ,(let ([subst (subst-the-substs (reverse substitution))])
+		(core-substitute (map car subst) (map cadr subst)
+				 bod))))
+	(let ([val (apply-env env (car fv))])
+	  (cond
+	   [(plain? val) 
+	    (loop code (cdr fv) state
+		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
+		  env substitution )]
+	   ;; This is definitely part of the state:
+	   [(ref? val)
+	    ;; FIXME: Need to scan for shared mutable values.
+	    (loop code (cdr fv)
+		  (cons (list (car fv) (unknown-type) 
+			      `(Mutable:ref ,(Marshal-Plain (ref-contents val))))
+			state)
+		  globals env substitution)]
 
-	     [(foreign-closure? val)
-;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
-	      (match (closure-code val)
-		[(assert-type ,ty (foreign ',name ',includes))
-		 (match ty
-		   [(,argty* ... -> ,res)
-		    (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
-		      ;; This just turns into the '(foreign name includes)' expression.
-		      (loop 
-		       ;; Change any references to be foreign-apps...
-		       (core-substitute (list (car fv)) 
-					(list `(lambda ,formals ,argty*
-						 (foreign-app ',name ,(car fv) ,@formals)))
-					code)
-		       (cdr fv) state
-		       (cons `(,(car fv) ,(unknown-type) ,(closure-code val)) globals)
-		       env))])])]
+	   [(foreign-closure? val)
+					;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
+	    (match (closure-code val)
+	      [(assert-type ,ty (foreign ',name ',includes))
+	       (match ty
+		 [(,argty* ... -> ,res)
+		  (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
+		    ;; This just turns into the '(foreign name includes)' expression.
+		    (loop code (cdr fv) state
+			  ;; The foreign binding just turns into the '(foreign name includes)' expression:
+			  (cons `(,(car fv) ,(unknown-type) ,(closure-code val)) globals)
+			  env
+			  ;; Change any references to be foreign-apps...
+			  (cons (list (car fv)
+				      `(lambda ,formals ,argty*
+					       (foreign-app ',name ,(car fv) ,@formals)))
+				substitution)))])])]
 
-	     ;; Free variables bound to closures need to be turned back into code and inlined.
-	     [(closure? val)  
-	      ;; First, a freshness consideration:
-	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
-		(DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
-		(loop 
-		 ;; For now, don't do any inlining.  Do that later:
-		 ;; Here we simply stick those lambdas into the code.
-		 (core-substitute 
-		  (list (car fv))			
-		  (list  
-		   ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
-		   (if (foreign-closure? val)
-		       (match (closure-code val)
-			 [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
-			  (let ([formals (list-head standard-struct-field-names (length arg*))])
-			    `(lambda ,formals ,arg*
-				     (foreign-app ,name ,@formals)
-				     ,(map unknown-type (closure-formals val))
-				     ,newcode)
-			    )])					 
-		       `(lambda ,(closure-formals val) 
-			  ,(map unknown-type (closure-formals val))
-			  ,newcode)))
-		  code)
-		 ;; We also merge the relevent parts of the closure's environment with our environment:
-		 (union newfree (cdr fv))
-		 state globals
-		 (append env-slice env)))]
-	     
-	     [(streamop? val) 
-	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))))
-	))
+	   ;; Free variables bound to closures need to be turned back into code and inlined.
+	   [(closure? val)  
+	    ;; First, a freshness consideration:
+	    (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
+	      (DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
+	      (loop code 		 
+		    ;; We also merge the relevent parts of the closure's environment with our environment:
+		    (union newfree (cdr fv))
+		    state globals
+		    (append env-slice env)
+		    (cons 		 
+		     ;; For now, don't do any inlining.  Do that later:
+		     ;; Here we simply stick those lambdas into the code.
+		     (list (car fv) 
+			   `(lambda ,(closure-formals val) 
+			      ,(map unknown-type (closure-formals val))
+			      ,newcode))
+		     substitution)))]
+	   
+	   [(streamop? val) 
+	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
 
 (define (closure-free-vars cl) 
   (DEBUGASSERT (not (foreign-closure? cl)))
@@ -560,8 +555,11 @@
 
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
-    [Expr (lambda (x fallthru)  
-	    (do-basic-inlining (time (Marshal (time (Eval x '() #f))))))])
+    [Expr (lambda (x fallthru) 
+;	    (inspect x)
+	    (do-basic-inlining 
+	     (id;inspect/continue
+	      (time (Marshal (time (Eval x '() #f)))))))])
 
 ; ================================================================================ ;
 
