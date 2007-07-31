@@ -279,15 +279,15 @@ namespace List {
 */
 
   fun foreach(f, ls) {
-    ptr = ref(ls);
+    ptr = Mutable:ref(ls);
     while ptr != [] {
       f(ptr`head);
       ptr := ptr ` tail;
     }
   }
   fun foreachi(f, ls) {
-    ind = ref(0);
-    ptr = ref(ls);
+    ind = Mutable:ref(0);
+    ptr = Mutable:ref(ls);
     while ptr != [] {
       f(ind, ptr`head);
       ind := ind + 1;
@@ -296,7 +296,7 @@ namespace List {
   }
 
   fun mapi(mif, ls) {
-    acc = ref([]);
+    acc = Mutable:ref([]);
     List:foreachi(fun(i,x) acc := mif(i,x) ::: acc, ls);
     List:reverse(acc)
   }
@@ -326,9 +326,9 @@ namespace List {
   // Truncates the last element of the list, returning that last element and a new list.
   fun choplast(ls) {
     if ls == [] then wserror("List:choplast can't take a null list");
-    p1 = ref(ls);
-    p2 = ref(ls`tail);  
-    acc = ref([]);
+    p1 = Mutable:ref(ls);
+    p2 = Mutable:ref(ls`tail);  
+    acc = Mutable:ref([]);
     while p2 != [] {
       acc := p1`head ::: acc; 
       p1 := p2;

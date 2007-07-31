@@ -13,12 +13,13 @@ type Matrix t = Array (Array t);
 // [2007.03.19] rrn: I'm going to clean things up gradually and move them into this namespace:
 namespace Matrix {
 
+
 // Interface:
 create :: (Int, Int, t) -> Matrix t;
 get    :: (Matrix t, Int, Int) -> t;
 set    :: (Matrix t, Int, Int, t) -> ();
 dims   ::  Matrix t               -> (Int * Int);
-copy   ::  Matrix t -> Matrix t;
+//copy   ::  Matrix t -> Matrix t;
 
  // For the native WS implementation, comparison is just builtin equality.
  eq = (==);
@@ -37,6 +38,7 @@ copy   ::  Matrix t -> Matrix t;
    r[col] := val;
    () // mutators should return nothing!
  }
+
  fun dims(mat) (Array:length(mat), Array:length(mat[0]))
 
  // Here we pack the Array of Arrays into a one-dimensional array for
@@ -63,20 +65,6 @@ copy   ::  Matrix t -> Matrix t;
  // No guarantee to copy storage!!
  fun fromArray2d(arr) arr
 
-   /*
- fun fromList2d(ls) {
-   r   = List:length(ls);
-   c   = List:length(ls`head);
-   mat = Matrix:create(r, c, ls`head`head);
-   List:foreachi(
-     fun(j,row) List:foreachi(
-      fun(i,x) Matrix:set(mat,i,j,x), 
-      row),
-    ls);
-   mat
- }
-   */
-
  // In general build is efficient because it doesn't need to zero the storage.
  fun build(r,c,f) {
    using Array;
@@ -92,6 +80,8 @@ copy   ::  Matrix t -> Matrix t;
        fun(j) List:ref(List:ref(list,i), j)))
  }
 
+
+
  // Note, these provide no guarantees as to allocating fresh storage:
  fun row(m,i) m[i]
  fun col(m,j) {
@@ -104,7 +94,6 @@ copy   ::  Matrix t -> Matrix t;
  }
 
  fun foreachi(f, mat) {
-   using Matrix;
    let (r,c) = dims(mat);
    for i = 0 to r-1 {
      for j = 0 to c-1 {
@@ -170,6 +159,7 @@ copy   ::  Matrix t -> Matrix t;
    let (r,c) = Matrix:dims(mat1);
    build(r,c, fun(i,j) f(get(mat1,i,j), get(mat2,i,j)))
  }
+
  //========================================
 
  fun add(m1,m2)          Matrix:map2((+), m1, m2)
@@ -243,6 +233,7 @@ copy   ::  Matrix t -> Matrix t;
    map2_inplace :: ((Float,Float) -> Float, Matrix Float, Matrix Float) -> ()   = Matrix:map2_inplace;
  }
 
+
  // The below namespaces are cut/paste from "Float" above.
  namespace Double {
    eq        :: (Matrix Double, Matrix Double) -> Bool  = Matrix:eq;
@@ -280,6 +271,7 @@ copy   ::  Matrix t -> Matrix t;
    map2_inplace :: ((Double,Double) -> Double, Matrix Double, Matrix Double) -> ()   = Matrix:map2_inplace;
  }
 
+
  namespace Complex {
    eq        :: (Matrix Complex, Matrix Complex) -> Bool  = Matrix:eq;
    get       :: (Matrix Complex, Int, Int) -> Complex     = Matrix:get;
@@ -316,9 +308,11 @@ copy   ::  Matrix t -> Matrix t;
    map2_inplace :: ((Complex,Complex) -> Complex, Matrix Complex, Matrix Complex) -> ()   = Matrix:map2_inplace;
  }
 
+
  // Except this bit:
  fun Double:create(i,j) Matrix:create(i,j, floatToDouble(0.0));
  fun Complex:create(i,j) Matrix:create(i,j, 0.0+0.0i);
+
   
 };
 

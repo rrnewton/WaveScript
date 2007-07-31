@@ -166,7 +166,7 @@
 			     [(streamop? x) x] ;; This shouldn't be touched.
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 		       x*)))])
-;       (printf "  RAW RESULT from prim ~s: ~s\n" prim raw)
+       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
@@ -288,6 +288,7 @@
 ;; This marshals the resulting stream-operators.
 ;; The result is a code for a stream-graph.
 (define (Marshal val)
+  (display-constrained "  MARSHALING: " `[,val 100] "\n")
   (cond
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
@@ -341,6 +342,7 @@
 		    (cons (Marshal (car params)) 
 			  (loop (cdr argty*) (cdr params) parents)))]))
 	      )))
+  (display-constrained "   MARSHALING STREAMOP: " `[,op 100] "\n")
   (if (streamop-type op)
       `(assert-type ,(streamop-type op) ,default)
       default))
@@ -350,6 +352,7 @@
 ;; FIXME: Uh, this should do something different for tuples.
 ;; We should mayb maintain types:
 (define (Marshal-Plain p) 
+  (display-constrained "    MARSHALING plain " `[,p 100] "\n")
   (let loop ([val (plain-val p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
@@ -365,6 +368,7 @@
      )))
 
 (define (Marshal-Closure cl)
+  (display-constrained "    MARSHALING CLOSURE: " `[,cl 100] "\n")
   (ASSERT (not (foreign-closure? cl)))
   (if (foreign-closure? cl)
 	
@@ -400,6 +404,7 @@
 				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
 			  state)
 		    env)]
+	     ;; Free variables bound to closures need to be turned back into code and inlined.
 	     [(closure? val)  
 	      (if (foreign-closure? val)
 		  ;; This just turns into the '(foreign name includes)' expression.
@@ -441,6 +446,7 @@
   (DEBUGASSERT (not (foreign-closure? cl)))
   (difference (core-free-vars (closure-code cl)) (closure-formals cl)))
 
+;; Renames the free vars for a closure.
 (define (dissect-and-rename cl)
   (DEBUGASSERT (not (foreign-closure? cl)))
   (let* ([fv    (closure-free-vars cl)]
@@ -504,6 +510,7 @@
   (Expr e '()))
 
 ;; NOTE!  Assumes unique variable names and so ignores binding forms.
+#;
 (define substitute-and-beta
   (lambda (name fun exp)
     (core-generic-traverse
@@ -525,10 +532,18 @@
 ;; FIXME: REWRITE WITH GENERIC TRAVERSE!
 (define substitute
   (lambda (mapping expr)
+    (printf "SUBSTITUTING length mapping: ")
+    (flush-output-port)
+    (printf "~s " (length mapping))
+    (flush-output-port)
+    (printf "expr ~s \n" (count-nodes expr))
+    (printf "    ~a\n" (map car mapping))
+
     (match expr
       [(quote ,datum) `(quote ,datum)]
       [,var (guard (symbol? var)) 
 	    (let ((entry (assq var mapping)))
+	      (printf "\nVARSUBSTITUTED! ~s\n\n" var)
 	      (if entry (cadr entry) var))]
       [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,_ ,e)]
       [(lambda ,formals ,types ,expr)
@@ -559,9 +574,29 @@
       [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
        (let ((newmap (filter (lambda (x)
 			       (not (memq (car x) lhs*)))
-		       mapping)))	     
+		       mapping)))
+	 ;; HACK! In general recursion is not allowed with interpret-meta.
+	 ;; However, we recognize mere aliases here so that "using M"
+	 ;; statements *within* module M don't result in
+	 ;; nontermination.
+#;
+	 (let loop ([lhs* lhs*] [rhs* rhs*])
+	   (let ([rhs (peel-annotations (car rhs*))])
+	     (if (symbol? rhs)
+		 (let ([entry (assq rhs mapping)])
+		   (if entry 
+		       		      
+		       
+		       (cons `(,rhs ))
+
+		       ))
+		 )
+	     )
+	   )
+
 	 `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
 	    ,(substitute newmap expr)))]
+
       [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
        `(,prim ,rands ...)]
       [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 

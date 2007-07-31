@@ -68,12 +68,17 @@
 			    #f))))
 	     (regiment-primitives))))
       (define exploded-table (map cdr relevant-prims))
+
+      ;; This is used for two purposes.  It keeps track of all bindings so we can recognize free variables.
+      ;; It also keeps track of variable renamings that are to be performed as a result of using statements.
       ;; Seed this with prims, but don't rename prims:
       (define var-table (map (lambda (p) (list (car p) (car p))) relevant-prims))
       ;; Mutated below:
       (define type-constructors '())
-
-      (define (Var p var)
+      ;; Mutated below:
+      ;(define mapping '())
+      
+      (define (Var pos var)
 	(cond
 
 	 ;; DESUGARING:
@@ -88,20 +93,22 @@
 	 [(memq var type-constructors) 
 	  ;;(error 'resolv-varrefs "type constructor not directly applied: ~s" var)
 	  var]
-	 [(assq var var-table) => cadr]
+	 [(assq var var-table) => 
+	  (lambda (pr) 
+	    (let ([v2 (cadr pr)])
+	      (if (and (symbol? v2) (not (eq? v2 var)))
+		  (Var pos v2)
+		  v2)))]
 	 [(regiment-primitive? var) var]
 	 [else (error 'resolve-varrefs 
 		      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
 		      var (map car var-table)
-		      (if p
-			  (format "\nSource location:\n  ~a\n\n" (src-pos->string p))
+		      (if pos
+			  (format "\nSource location:\n  ~a\n\n" (src-pos->string pos))
 			  ""))]))
 
       (define (driver x fallthru)
-	;(inspect exploded-table)
 	(match x
-
-
 	  ;; There should be a better way of doing this:
 	  [(src-pos ,p ,var) (guard (symbol? var))  (Var p var)]
 	  [,var (guard (symbol? var)) (Var #f var)]
@@ -114,20 +121,39 @@
 
 	  ;; The automatic traversal won't do the variable (it's not an expression):
 	  [(set! ,[v] ,[rhs]) `(set! ,v ,rhs)]
-	  [(using ,M ,e)
-	   (let ([imported
-		  (filter (lambda (ev) (eq? M (car ev)))
-		    exploded-table)])
-	     ;(inspect (vector 'imported imported))
+	  [(using ,M ,bod)
+	   (let* ([imported
+		   (filter (lambda (ev) (eq? M (car ev)))
+		     exploded-table)]
+		  [chopped (map cdr imported)])
 
-	     ;; TODO: It might be somewhat more efficent if we brought
-	     ;; these substitutions down with us, rather than
-	     ;; introducing this code bloat:
+	     ;; Here we perform some surgery on the var-table
+	     (fluid-let ([var-table
+			  (append 
+			   (map list 
+			     (map contract-id chopped)
+			     (map contract-id imported))
+			   var-table)]
+			 [exploded-table (append chopped  exploded-table)])
+	       (driver bod fallthru))
+
+#;
+	     (fluid-let ([mapping 
+			  (append 
+			   (map list 
+			     (map contract-id (map cdr imported))
+			     (map contract-id imported))
+			   mapping)])
+	       (driver bod fallthru))
+
+#;
+	     ;; This goes over the code multiple times.  Will perform
+	     ;; very badly if there are many nested "using"
+	     ;; statements.
 	     (driver
-	      `(letrec ([,(map contract-id (map cdr imported))
-			 ,(map (lambda (_) `(quote ,(unique-name 'type))) imported)
-			 ,(map contract-id imported)] ...)
-		 ,e)
+	      (core-substitute (map contract-id (map cdr imported))
+			       (map contract-id imported)
+			       bod)
 	      fallthru))]
 	  
 	  [,oth (fallthru oth)]))

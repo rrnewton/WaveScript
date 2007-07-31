@@ -284,21 +284,22 @@
       [(using ,M) (values `((using ,M)) all-includes)]
       ;; This just renames all defs within a "namespace".  There's
       ;; some question, though, as to how they may refer to eachother.
+      ;; 
       [(namespace ,Space . ,rest)
        (let-values ([(defs new-includes) (process* rest all-includes)])
 	 (values
 	  (map (lambda (def)
 		 (define (mangle v) (string->symbol (format "~a:~a" Space v)))
-
+		 
 		 ;; We also inject a bunch of 'using' constructs so that
 		 ;; we can use the namespace's bindings from *within* the namespace:
-		 ;;(define (wrap-rhs e) `(using ,Space ,e))
+		 (define (wrap-rhs e) `(using ,Space ,e))
 		 ;; SCRATCH THAT!
 		 ;; Because of certain limitations in the current implementation
 		 ;; of letrec (value restriction), for the moment definitions
 		 ;; within the namespace still have to use the FULL NAMES of
 		 ;; their peers.
-		 (define (wrap-rhs e) e)
+		 ;(define (wrap-rhs e) e)
 		 ;; FIXME: This doesn't handle "using" within a namespace.
 		 (match def
 		   [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
@@ -316,6 +317,7 @@
       
       [,other  (values (list other) all-includes)]))
 
+  ;; First we use "process" to handle includes and namespaces.
   (define  ws (first-value (process* origws '())))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
@@ -333,7 +335,7 @@
 
   (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
   (let ([typevs (map car types)]
-	[defvs (map car defs)])
+	[defvs  (map car defs)])
 
     ;; DEFENSE:
     (unless (= 1 (length routes))
@@ -362,9 +364,9 @@
 	  ;; A define statement:
 	  [((,v ,e) . ,[rest])
 	   ;; If there's a type decl for this binding, use it:
-	   `(letrec (,(if (memq v typevs)
-			  `[,v ,(cadr (assq v types)) ,e]
-			  `[,v ,e]))
+	   `(let (,(if (memq v typevs)
+		       `[,v ,(cadr (assq v types)) ,e]
+		       `[,v ,e]))
 	      ,rest)]
 
 	  ;; A define-as statement:
