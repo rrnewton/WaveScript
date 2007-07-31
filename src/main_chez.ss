@@ -330,7 +330,7 @@
 (include "generic/util/hash.ss") (import hash) ;; TEMPORARY, used for "hash" function from slib.
 ;; Including full slib hash tables also... nesed equal?-based hashtabs sometime.
 (include "generic/util/slib_hashtab.ss") (import (add-prefix slib_hashtab slib:))
-(include "chez/hashtab.ss")      (import hashtab)
+(include "chez/hashtab.ss")              (import hashtab) ;; eq? based.
 (include "generic/util/helpers.ss") (import (except helpers test-this these-tests))
 (include "generic/util/streams.ss") (import (except streams test-this these-tests))
 ;; Not using these currently:

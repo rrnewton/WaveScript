@@ -171,12 +171,13 @@ exec regiment i --script "$0" ${1+"$@"};
 ;    ,@(IFCHEZ `(["demo9c_foreign.ws"  ,(lambda (a b) #t)]) ())
 
     ;; TODO: FIX THESE NUMBERS!
-    ["demo11_simple_merge.ws"     ,(lambda (a b) 
+    ["demo11a_simple_merge.ws"     ,(lambda (a b) 
 				     (void)
 				     ;; [2007.04.08] Why did this change?
 				     ;(ASSERT (= 514 a))
 				     ;(ASSERT (= 5634 b))
 				     )]
+    ["demo11b_repeated_rewindow.ws"  ,(lambda (a b) (void))]
     
     ))
 

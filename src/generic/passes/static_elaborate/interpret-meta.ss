@@ -301,17 +301,26 @@
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
+(define marshal-cache 'mc-uninit)
+
 ;; This marshals the resulting stream-operators.
 ;; The result is a code for a stream-graph.
 (define (Marshal val)
 ;  (display-constrained "  MARSHALLING: " `[,val 100] "\n")
   (cond
+   [(hashtab-get marshal-cache val)
+    => (match-lambda ((,name . ,code))
+	 (printf "\n  Marshal: HAD MARSHALLED VALUE IN CACHE!!!\n")
+	 code)]
+
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
    [(streamop? val)
     (let (;[covered (make-default-hash-table 100)]
 	[acc '()])
     ;; Here we trace back through the stream graph:
+    ;; Could possibly replace this with a judicious use of memoization (marshal-cache).
+    ;; (Plus maybe a topological sort of the bindinggs at the end.)
     (define allops
       (let loop ([ops (list val)] [acc '()] [covered '()])
 	(cond
@@ -425,6 +434,12 @@
 				 bod))))
 	(let ([val (apply-env env (car fv))])
 	  (cond
+
+	   [(hashtab-get marshal-cache val)
+	    => (match-lambda ((,name . ,code))
+		 (printf "\n  Marshal-Closure: HAD MARSHALLED VALUE IN CACHE!!!\n")
+		 code)]
+
 	   [(plain? val) 
 	    (loop code (cdr fv) state
 		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
@@ -557,9 +572,11 @@
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru) 
 ;	    (inspect x)
-	    (do-basic-inlining 
-	     (id;inspect/continue
-	      (time (Marshal (time (Eval x '() #f)))))))])
+	    (fluid-let ([marshal-cache (make-default-hash-table 1000)])
+	      (do-basic-inlining 
+	       (id;inspect/continue
+		(time (Marshal (time (Eval x '() #f))))))
+	      ))])
 
 ; ================================================================================ ;
 

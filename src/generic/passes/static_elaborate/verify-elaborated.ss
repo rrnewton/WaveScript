@@ -95,14 +95,16 @@
 	  (fluid-let ([inside-iterate #t])
 	    `(iterate ,(process-expr letorlamb tenv fallthrough) ,src))]
 
-	 [(Array:build ,[n] ,[f])
+	 [(,higher ,[x*] ...)
+	  (guard (assq higher higher-order-primitives))
 	  (unless inside-iterate
-	    (error 'verify-elaborated "didn't elaborate far enough. \n~a ~s"
-		   "Array:build is not allowed after elaboration, except inside iterate.\n"
-		   `(Array:build ,n ,f)))
-	  `(Array:build ,n ,f)]
+	    (error 'verify-elaborated "didn't elaborate far enough. \n~s~a ~s"
+		   higher
+		   " is not allowed after elaboration, except inside iterate.\n" 
+		   `(,higher . x*)))
+	  `(,higher . ,x*)]
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
-
+	 ;[(tuple ,_ ...)  (error 'verify-elaborated "didn't elaborate far enough. tuple is not allowed after elaboration.")]
 
 	 [(,foreign ',name ',files)
 	  (guard (memq foreign '(foreign foreign_box foreign_source)))
@@ -121,7 +123,7 @@
 		(fallthrough form tenv)]	 
 	 
 	 [(,genop ,args ...)
-	  (guard (memq genop '(g+ g- g* g/ g^ gint)))
+	  (guard (assq genop generic-arith-primitives))
 	  (error 'verify-elaborated 
 		 "shouldn't have generic arithmetic after static-elaborate: ~s"
 		 `(,genop . ,args))]

@@ -65,5 +65,5 @@ go "demo9b_higher_order_prims.ws"
 #go "demo9c_foreign.ws"
 
 
-# go "demo11_simple_merge.ws"
+# go "demo11a_simple_merge.ws"
 

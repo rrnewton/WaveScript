@@ -68,4 +68,5 @@ go "demo8c_moresugar.ws"
 #gcc -c bar.c
 #go "demo9c_foreign.ws"
 
-# go "demo11_simple_merge.ws"
+go "demo11a_simple_merge.ws"
+go "demo11b_repeated_rewindow.ws"

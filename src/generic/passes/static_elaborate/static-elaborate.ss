@@ -157,6 +157,10 @@
 	  [,else #f])
 	)]
 
+     ;; This quotes the object if its a real value.
+     (define (quote-value v)
+       (if (code? v) (code-expr v) `',v))
+
      ;; A table binding computable prims to an expression that evals
      ;; to a function which will carry out the primitive.
      ;; 
@@ -250,8 +254,14 @@
 	(Array:length vector-length)	
 	(Array:toList vector->list)
 
+	;; We don't repeat the Array:build hack here... sort of inconsistent.
 	(List:build ,(lambda (env n f)
 		       (make-nested-cons (map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
+	(List:fold ,(lambda (env fn zer ls)
+		      (foldl (lambda (elem acc)
+			       `(app ,(code-expr fn) ,acc ,(quote-value elem)))
+			(quote-value zer)
+			ls)))
 
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
@@ -845,12 +855,13 @@
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
 	   (if (and 		
 		(andmap available? rand*)
+
 	       ;(assq prim computable-prims)
 		;; Exceptions:
 		(not (assq prim wavescript-effectful-primitives))
 		(not (assq prim wavescript-stream-primitives))
 		(not (assq prim regiment-distributed-primitives))
-
+		
 		;; TEMP! -- execute higher order prims if their functions are ready:
 		(if (assq prim higher-order-primitives)
 		    (andmap fully-available? rand*) #t)
