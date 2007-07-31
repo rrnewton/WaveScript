@@ -38,6 +38,10 @@
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))
 (define (foreign-closure? cl) (not (closure-formals cl)))
+(define (make-foreign-closure name includes ty)
+  (DEBUGASSERT string? name) 
+  (DEBUGASSERT (andmap string? includes))
+  (make-closure #f `(assert-type ,ty (foreign ',name ',includes)) #f))
 
 ;; Unwraps plain only:
 (define (unwrap-plain x) 
@@ -46,6 +50,15 @@
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
+;; Are two meta-values equal?
+(define (values-equal? a b)
+  (or (and (plain? a) (plain? b)
+	   (equal? (plain-val a) (plain-val b)))
+      (eq? a b)
+      #;
+      (and (streamop? a) (streamop? b)
+	   ???????????
+	   )))
 
 ; ================================================================================ ;
 ;;; Environments
@@ -96,7 +109,7 @@
 	(let ([name     (plain-val (Eval name env #f))]
 	      [includes (plain-val (Eval includes env #f))])
 	  ;; This is a closure representing a foreign function.
-	  (make-closure #f `(assert-type ,ty (foreign ',name ',includes)) #f)
+	  (make-foreign-closure name includes ty)
 	  )])]
     [(foreign . ,_) (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons 'foreign _))]
     ;; We leave this alone:
@@ -375,32 +388,40 @@
 (define (Marshal-Closure cl)
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
   (ASSERT (not (foreign-closure? cl)))
-  (if (foreign-closure? cl)
-	
-     ;; This just turns into the '(foreign name includes)' expression.
-     ;(inspect/continue (closure-code cl))
+  (if (foreign-closure? cl)	
+      ;; This just turns into the '(foreign name includes)' expression:
       (closure-code cl)
-	
+
+      ;; This loop accumulates a bunch of bindings that cover all the
+      ;; free variables of the closure.  (And, transitively, any
+      ;; closures reachable from the input closure.)  These bindings
+      ;; fall into two categories.  Mutable bindings are only allowed
+      ;; to be accessed from a single closure.  Immutable bindings may
+      ;; float up to become global bindings.  (And thus not duplicate
+      ;; code between multiple iterates.)
      (let loop ([code (closure-code cl)]
 		[fv   (closure-free-vars cl)]
 		[state '()]
-		[env (closure-env cl)])
-       
-;      (if (memq 'roadnoise (map deunique-name fv)) (inspect fv))  ;; TEMP
-
+		[globals '()]
+		[env (closure-env cl)]
+		;[substitution '()]
+		)
       (if (null? fv)
 	  ;; We're done processing the environment, produce some code:
 	  (let ([bod `(lambda ,(closure-formals cl) 
-		       ,(map unknown-type (closure-formals cl)) ,code)])
-	    (if (null? state) bod
-		`(letrec ,state ,bod)))
+			,(map unknown-type (closure-formals cl)) ,code)])
+	    ;(if (null? state) bod `(letrec ,state ,bod))
+;	    (unless (null? globals) (inspect globals))
+	    `(letrec ,(append globals state) ,bod)
+	    )
 	  (let ([val (apply-env env (car fv))])
 	    (cond
-	     ;; FIXME: Inline simple constants:
 	     [(plain? val) 
-	      (loop code (cdr fv) 
-		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) state)
-		    env)]
+	      (loop code (cdr fv) state
+		    (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
+		    env 
+		    ;substitution
+		    )]
 	     ;; This is definitely part of the state:
 	     [(ref? val)
 	      ;; FIXME: Need to scan for shared mutable values.
@@ -408,42 +429,55 @@
 		    (cons (list (car fv) (unknown-type) 
 				`(Mutable:ref ,(Marshal-Plain (ref-contents val))))
 			  state)
-		    env)]
+		    globals env)]
+
+	     [(foreign-closure? val)
+;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
+	      (match (closure-code val)
+		[(assert-type ,ty (foreign ',name ',includes))
+		 (match ty
+		   [(,argty* ... -> ,res)
+		    (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
+		      ;; This just turns into the '(foreign name includes)' expression.
+		      (loop 
+		       ;; Change any references to be foreign-apps...
+		       (core-substitute (list (car fv)) 
+					(list `(lambda ,formals ,argty*
+						 (foreign-app ',name ,(car fv) ,@formals)))
+					code)
+		       (cdr fv) state
+		       (cons `(,(car fv) ,(unknown-type) ,(closure-code val)) globals)
+		       env))])])]
+
 	     ;; Free variables bound to closures need to be turned back into code and inlined.
 	     [(closure? val)  
-	      (if (foreign-closure? val)
-		  ;; This just turns into the '(foreign name includes)' expression.
-		  (loop code (cdr fv) 
-			(cons `(,(car fv) ,(unknown-type) ,(closure-code val))
-			      state)
-			env)
-		  ;; First, a freshness consideration:
-		  (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
-		    (let ([newclosure (make-closure (closure-formals val) newcode env-slice)])
-		      (loop 
-		       ;; For now, don't do any inlining.  Do that later:
-		       ;; Here we simply stick those lambdas into the code.
-		       (core-substitute 
-			(list (car fv))			
-			(list  
-			 ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
-			 (if (foreign-closure? val)
-			     (match (closure-code val)
-			       [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
-				(let ([formals (list-head standard-struct-field-names (length arg*))])
-				  `(lambda ,formals ,arg*
-					   (foreign-app ,name ,@formals)
-					   ,(map unknown-type (closure-formals val))
-					   ,newcode)
-				  )])					 
-			     `(lambda ,(closure-formals val) 
-				,(map unknown-type (closure-formals val))
-				,newcode)))
-			code)
-		       ;; We also merge the relevent parts of the closure's environment with our environment:
-		       (union newfree (cdr fv))
-		       state 
-		       (append env-slice env)))))]
+	      ;; First, a freshness consideration:
+	      (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
+		(DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
+		(loop 
+		 ;; For now, don't do any inlining.  Do that later:
+		 ;; Here we simply stick those lambdas into the code.
+		 (core-substitute 
+		  (list (car fv))			
+		  (list  
+		   ;; If it's foreign we inline a lambda that will in turn construct a foreign-app:
+		   (if (foreign-closure? val)
+		       (match (closure-code val)
+			 [(assert-type (,arg* ... -> ,ret) (foreign ',name ',includes))
+			  (let ([formals (list-head standard-struct-field-names (length arg*))])
+			    `(lambda ,formals ,arg*
+				     (foreign-app ,name ,@formals)
+				     ,(map unknown-type (closure-formals val))
+				     ,newcode)
+			    )])					 
+		       `(lambda ,(closure-formals val) 
+			  ,(map unknown-type (closure-formals val))
+			  ,newcode)))
+		  code)
+		 ;; We also merge the relevent parts of the closure's environment with our environment:
+		 (union newfree (cdr fv))
+		 state globals
+		 (append env-slice env)))]
 	     
 	     [(streamop? val) 
 	      (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]))))
@@ -462,6 +496,7 @@
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
+    (DEBUGASSERT (set-equal? newfv (difference (core-free-vars newcode) (closure-formals cl))))
     (values newcode newfv newslice)    
     ))
 
