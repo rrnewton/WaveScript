@@ -13,8 +13,6 @@ result1 = iterate _ in timer(30.0)
 { 
   using Matrix; using Float;
 
-  /*
-
   print("\n=======================================\n");
   print("Shared matrix tests..\n\n");  
 
@@ -93,9 +91,6 @@ result1 = iterate _ in timer(30.0)
   emit dub;
   //  emit Matrix:Complex:create(3,3);
 
-  */
-
-  emit 99;
 }
 
 //BASE <- result
