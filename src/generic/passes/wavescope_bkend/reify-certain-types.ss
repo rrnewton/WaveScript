@@ -51,7 +51,7 @@
 	    `(,(symbol-append '__ frgn) ,name ,files ',T)]
 	   ;; Safety net:
 	   [(,frgn . ,_) (guard (memq frgn '(foreign foreign_source)))
-	    (error 'reify-certain-types "missed ~s construct: ~s" frgn (cons frgn _))]
+	    (error 'reify-certain-types "missed ~s construct, must not have type annotation: ~s" frgn (cons frgn _))]
 	   
 	   ;; This parses the option string to readFile.
 	   [(assert-type (Stream ,t) (readFile ,[fn] ',str))

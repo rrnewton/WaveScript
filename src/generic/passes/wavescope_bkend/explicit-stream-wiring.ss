@@ -1,6 +1,7 @@
 
 
-
+;;; NOTE: This is currently unnecessarily complexified by the
+;;; existence of unionN AND merge.  Reduce these to one operator.
 
 (module explicit-stream-wiring mzscheme
   (require "../../../plt/common.ss")
@@ -18,6 +19,9 @@
 ;;  5) A designated name of a source/iterate that returns to BASE<-
 (define-pass explicit-stream-wiring 
 
+    (define (unionN? pr) (and (pair? pr) (eq? (car pr) 'unionN)))
+    (define (merge? pr) (and (pair? pr) (eq? (car pr) '_merge)))
+
     ;; This makes a first pass over the spine of the query and
     ;; gathers/tags the appropriate bits.
     (define (Expr x aliases)
@@ -30,13 +34,15 @@
 	[(let ([,v ,ty (iterate ,f ,[dealias -> sig])]) ,[bod])
 	 (cons `[,sig -> ,v ,ty ,f] bod)]
 
-	;; UnionN: 
-	[(let ([,v (Stream ,ty) (unionN ,[dealias -> S*] ...)]) ,[bod])
-	 (cons `(,S* U-> ,v ,ty) bod)]
-	;; UnionN (Annoying): 
-	;; MAybe I should use one *more* pass to strip annotations off the spine.
-	[(let ([,v (Stream ,ty) (assert-type ,_ (unionN ,[dealias -> S*] ...))]) ,[bod])
-	 (cons `(,S* U-> ,v ,ty) bod)]
+	;; UnionN and Merge:
+	[(let ([,v (Stream ,ty) ,form]) ,[bod])
+	 (guard (let ([peeled (peel-annotations form)]) 
+		  (or (unionN? peeled) (merge? peeled))))
+	 (match (peel-annotations form)
+	   [(unionN ,[dealias -> S*] ...)
+	    (cons `(,S* U-> ,v ,ty) bod)]
+	   [(_merge ,[dealias -> a] ,[dealias -> b])
+	    (cons `(,a ,b M-> ,v ,ty) bod)])]       
 
 	;; Sources:
 	[(let ([,v (Stream ,ty) (,prim ,rands* ...)]) ,[bod])
@@ -99,6 +105,7 @@
 	[((-> . ,_) . ,[rest])     rest]
 	[((,src -> ,dest . ,_) . ,[rest])   (guard (eq? v src))   (cons dest rest)]
 	[((,src* U-> ,dest . ,_) . ,[rest]) (guard (memq v src*)) (cons dest rest)]
+	[((,a ,b M-> ,dest . ,_) . ,[rest]) (guard (or (eq? v a) (eq? v b))) (cons dest rest)]
 	[((BASE ,src) . ,[rest]) (guard (eq? v src))  
 	 (cons 'BASE rest)]
 	[(,_ . ,[rest]) rest])))
@@ -135,15 +142,22 @@
 			    [,_ ()]))
 		     decls)))
 
-	  ;; Currently only unionN supported...
+	  ;; Currently only unionN, merge supported...
 	  (define union*
 	    (apply append 
 		   (map (lambda (d)
 			  (match d
 			    [(,src* U-> ,v ,ty)
-			     `(((name ,v) 
+			     `((union 
+				(name ,v) 
 				(output-type ,ty) 
 				(incoming ,@src*)
+				(outgoing ,@(add-indices v (gather-refs v decls) unionedges))))]
+			    [(,a ,b M-> ,v ,ty)
+			     `((merge 
+				(name ,v) 
+				(output-type ,ty) 
+				(incoming ,a ,b)
 				(outgoing ,@(add-indices v (gather-refs v decls) unionedges))))]
 			    [,_ ()]))
 		     decls)))
@@ -183,7 +197,7 @@
 		    (init      . ,(apply append (apply append init*)))
 		    (sources   . ,src*)
 		    (iterates  . ,iter*)
-		    (unionNs    . ,union*)
+		    (unions    . ,union*)
 		    (sink ,base ,t))))]))]
   )
 

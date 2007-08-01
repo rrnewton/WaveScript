@@ -505,8 +505,6 @@
   ;(ws-run-pass p kill-polymorphic-types)
   ;(ws-run-pass p retypecheck)
 
-;  (print-graph #f)(inspect p)
-
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
@@ -594,8 +592,8 @@
    
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
-  (ws-run-pass p reify-certain-types) 
   (ws-run-pass p type-annotate-misc)
+  (ws-run-pass p reify-certain-types) 
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable

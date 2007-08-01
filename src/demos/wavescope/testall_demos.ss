@@ -149,6 +149,7 @@ exec regiment i --script "$0" ${1+"$@"};
 				     (ASSERT (= 300   (start (list-ref b 1))))
 				     (ASSERT (= 399   (end   (list-ref b 1))))
 				     )]
+    ["demo6f_merge.ws"            ,(lambda (a b) (void))]
 
     ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
     ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]

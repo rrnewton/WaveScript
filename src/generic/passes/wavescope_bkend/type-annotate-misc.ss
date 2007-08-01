@@ -42,6 +42,8 @@
 		  Array:make Array:makeUNSAFE
 		  unionN
 		  ptrToArray
+		  ;; Being lenient with these and not requiring direct annotation from the start.
+		  foreign_source
 		  ))
 
     (define annotate-first-arg 
@@ -109,7 +111,8 @@
 	;; [2007.01.24] Commenting:
 	;;[(assert-type ,t ,e) `(assert-type ,t ,(fallthru e tenv))]
 
-	
+
+#;	
 	;; Safety nets:
 	[(,missed ,_ ...) (guard (memq missed '(dataFile readFile)))
 	 (error 'type-annotate-misc "uncaught '~s' call: ~s" missed (cons missed _))]

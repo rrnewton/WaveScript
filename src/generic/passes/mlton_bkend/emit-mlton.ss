@@ -12,9 +12,9 @@
 	       (except helpers test-this these-tests))
 
 ;; MUTABLE
-(define union-edges 'union-edges-uninit)
+;(define union-edges 'union-edges-uninit)
 
-(define foreign-includes ())
+(define foreign-includes 'uninit-fi)
 (define (add-file! file)
   (set! foreign-includes (cons file foreign-includes)))
 
@@ -22,6 +22,9 @@
 ;; us to call into the foreign "wsmain" instead of starting our own
 ;; scheduler.
 (define driven-by-foreign #f)
+
+(define extraCdecls 'uninit-ecd)
+(define CinitCalls  'uninit-cic)
 
 ;; Experimenting with both of these:
 (define int-module 'Int32)
@@ -294,13 +297,30 @@
     (define complex1 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sig")))
     (define complex2 (file->string (++ (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sml")))
 
-    (match prog
+    (fluid-let ([driven-by-foreign #f]
+		[extraCdecls      ()]
+		[CinitCalls       ()]
+		[foreign-includes ()])
+     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
 		      (init  ,[Effect -> init*] ...)
 		      (sources ,[Source -> src* state1** init1*] ...)
 		      (iterates ,[Iterate -> iter* state2**] ...)
-		      (unionNs ,[Union -> union*] ...)
+		      (unions ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
+
+       ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
+       (let ([tmpfile "__temp__inlinedC.c"])
+	 (unless (null? CinitCalls)
+	   (set! extraCdecls
+		 (snoc (format "\nvoid ws_inlinedC_initialization() {\n~a\n}\n\n"
+			       (apply string-append
+				      (map (lambda (init) (format "  ~a();\n" init))
+					CinitCalls)))
+		       extraCdecls)))
+	 (unless (null? extraCdecls)
+	   (string->file (apply string-append extraCdecls) tmpfile)
+	   (set! foreign-includes (cons tmpfile foreign-includes))))
        
        ;; Just append this text together.
        (let ([result (list 
@@ -342,6 +362,12 @@
 			  
 			   " \n\n"
 
+			   ;; We need to call init functions for inlined C code, if it exists:
+			   (if (null? CinitCalls) ()
+			       '("val ws_inlinedC_initialization = _import \"ws_inlinedC_initialization\" : unit -> unit;\n"
+				 "val _ = ws_inlinedC_initialization()\n"
+				 ))
+
 			   ;; We either call the foreign wsmain or start our scheduler.
 			   (if driven-by-foreign
 			       '("val wsmain = _import \"wsmain\" : unit -> unit; \n"
@@ -349,7 +375,7 @@
 			       (list 
 				"val _ = (\n"
 				"\n(*  Initialize the scheduler. *)\n"
-				(map (lambda (x) (list x ";\n")) init1*)
+				(map (lambda (x) (if (null? x) () (list x ";\n"))) init1*)
 				"\n\n(*  Then run it *)\n"			   
 				"runMain runScheduler\n"
 				")\n"
@@ -363,7 +389,7 @@
 			   )])
 	 result)]
       [,other ;; Otherwise it's an invalid program.
-       (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)])))
+       (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)]))))
 
 
 ; ======================================================================
@@ -374,12 +400,19 @@
 ;; to pass them through.
 (define (Union union)
   (match union
-    [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
+    [(union (name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
        ;(list " "(Var name)" = " (make-fun '("x") ((Emit down*) "x")) " \n")
        (make-fun-binding name '("x")((Emit down*) "x") )
        ;(list " "(Var name)" = " (make-fun '("x") ) " \n")
-       )]))
+       )]
+    
+    ;; For MLTON, this could probably be implemented on top of unionList/unionN with no loss of efficiency.
+    [(merge (name ,name) (output-type ,ty) (incoming ,astrm ,bstrm) (outgoing ,down* ...))
+     (list "\n  (* Merge operator: *)\n"
+      (make-fun-binding name '("x") ((Emit down*) "x") ))]
+    
+))
 
         
 (define (Var var)
@@ -490,7 +523,8 @@
 	       `(,t " := !",t" + ",r)
 	       ((Emit downstrm) "()")
 	       `("SE (!",t",",v")\n"))
-	      "    ")))
+	      "    "))
+	    "\n\n")
 
 	   ;; Second, top level state bindings.
 	   (list (make-bind `(,t (Ref Int) "ref 0")))
@@ -498,6 +532,14 @@
 	   ;; Third, initialization statement:
 	   `("(* Seed the schedule with timer datasource: *)\n"
 	     "schedule := SE(0,",v") :: !schedule\n")))]
+
+       [(inline_C ',decls ',init)
+	;; This returns nothing... it adds the C code to a top-level accumulator.
+	(set! extraCdecls (cons decls extraCdecls))
+	(when (not (equal? init ""))
+	  (set! CinitCalls  (cons init CinitCalls)))
+	(values () () ())
+	]
 
        [(__foreign_source ',name ',includes ',types)
 	(for-each add-file! includes)

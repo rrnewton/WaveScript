@@ -144,7 +144,7 @@
 		      (init  ,[Effect -> init*] ...)
 		      (sources ,[Source -> src* init*] ...)
 		      (iterates ,[Iterate -> iter* state**] ...)
-		      (unionNs ,[Union -> union*] ...)
+		      (unions ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
        
        ;; Just append this text together.
@@ -217,9 +217,11 @@
 ;; to pass them through.
 (define (Union union)
   (match union
-    [((name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
+    [(union (name ,name) (output-type ,ty) (incoming ,up* ...) (outgoing ,down* ...))
      (let ([emitter (Emit down*)])
-       (list " "(Var name)" x = " ((Emit down*) "x") " \n"))]))
+       (list " "(Var name)" x = " ((Emit down*) "x") " \n"))]
+    ;; Merge unimplemented...
+    ))
 
 #;
 ;; Generates code for an emit.  (curried)

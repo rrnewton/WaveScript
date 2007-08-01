@@ -431,6 +431,16 @@
     ;; Must be wrapped in an assert-type of course:
     (ptrToArray     ((Pointer 'name) Int) (Array 'a))
 
+    ;; This is down-and-dirty.  Inline C code.
+    ;;
+    ;; There's no good place to call it from either... thus it simply returns an empty stream.
+    ;; We need a "pull and ignore" to invoke it but ignore it.
+    ;;
+    ;; The first argument is a set of top-level definitions to add to the linked C-code.
+    ;; The second argument is either the null string, or the name of
+    ;; an initialization function to call from main().
+    (inline_C       (String String) (Stream 'a))
+
     ;; Not implemented yet:
     ;(marshal        ('a) String)
     ;(unmarshal        (String) 'a)
@@ -580,7 +590,12 @@
     ;; the index (in the original list) of the stream that produced it.
     ;;
     ;; [2007.06.04] Thinking of renaming these "MERGE"
-    (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))
+    ;;
+    ;; [2007.08.01] For the moment, keeping unionList AND merge.  One
+    ;; provides indices for which input port the input came from, the
+    ;; other doesn't.  Either one of these can be implemented with the
+    ;; other, but for efficiency, we're keeping them separate.
+    (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))    
     ;; Two streams of the same type:
     (_merge            ((Stream 'a) (Stream 'a)) (Stream 'a))
 

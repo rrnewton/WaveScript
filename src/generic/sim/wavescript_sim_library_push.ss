@@ -25,7 +25,7 @@
 		 run-stream-query reset-state!
 
 		 __readFile 
-		 __foreign __foreign_source
+		 __foreign __foreign_source inline_C
 					;__syncN
 		 ;; Just stubs that give errors:
 		 ensBoxAudio ensBoxAudioF ensBoxAudioAll
@@ -1435,6 +1435,8 @@
 
 (define (__foreign_source . _)
   (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
+(define (inline_C . _)
+  (error 'inline_C "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
 
 ;; This provides access to C-functions:
 (IFCHEZ
