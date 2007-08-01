@@ -499,11 +499,11 @@
 	(for-each add-file! includes)
 	(set! driven-by-foreign #t)
 	(let ([tupty 
-	       ;(insert-between " * " (map symbol->string types))
 	       (match types
-		 [(Stream ,ty) 
-		  (ASSERT symbol? ty)
-		  (Type ty)])
+		 ;; Only allowing simple scalar types for now (Int, Float)
+		 [(Stream #(,ty* ...)) (ASSERT (andmap symbol? ty*)) (Type (list->vector ty*))]
+		  ;(insert-between " * " (map symbol->string types))
+		 [(Stream ,ty) (ASSERT (symbol? ty)) (Type ty)])
 	       ])
 	  (values
 	   ;; A function that pushes data into the system.

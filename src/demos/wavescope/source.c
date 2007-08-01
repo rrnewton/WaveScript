@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 void wsentry1(int);
-void wsentry2(float);
+void wsentry2(int, float);
 
 void wsmain() {
   int counter = 5;
@@ -12,7 +12,7 @@ void wsmain() {
      wsentry1(counter);
     usleep(500 * 1000);
     printf("Calling entry point 2.\n");
-     wsentry2((float)counter + 0.5);
+     wsentry2(99, (float)counter + 0.5);
     counter--;
   }
   printf("Done calling into WS, exiting\n");
