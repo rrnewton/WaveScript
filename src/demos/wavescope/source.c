@@ -9,13 +9,13 @@ void wsmain() {
   while (counter > 0) {
     usleep(1000 * 1000);
     printf("Calling entry point 1.\n");
+     wsentry1(counter);
     usleep(500 * 1000);
     printf("Calling entry point 2.\n");
+     wsentry2((float)counter + 0.5);
     counter--;
   }
   printf("Done calling into WS, exiting\n");
 }
 
-int main() {
-  wsmain();
-}
+//int main() { wsmain(); }

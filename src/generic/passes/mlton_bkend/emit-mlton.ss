@@ -15,6 +15,13 @@
 (define union-edges 'union-edges-uninit)
 
 (define foreign-includes ())
+(define (add-file! file)
+  (set! foreign-includes (cons file foreign-includes)))
+
+;; If there are any foreign sources, this becomes true, and that tells
+;; us to call into the foreign "wsmain" instead of starting our own
+;; scheduler.
+(define driven-by-foreign #f)
 
 ;; Experimenting with both of these:
 (define int-module 'Int32)
@@ -330,18 +337,24 @@
 			   src*
 			  
 			   " \n\n"
-			   "val _ = (\n"
-			   "\n(*  Initialize the scheduler. *)\n"
-			   (map (lambda (x) (list x ";\n")) init1*)
 
-			   "\n\n(*  Then run it *)\n"			   
-			   "runMain runScheduler\n"
+			   ;; We either call the foreign wsmain or start our scheduler.
+			   (if driven-by-foreign
+			       '("val wsmain = _import \"wsmain\" : unit -> unit; \n"
+				 "val _ = wsmain()")
+			       (list 
+				"val _ = (\n"
+				"\n(*  Initialize the scheduler. *)\n"
+				(map (lambda (x) (list x ";\n")) init1*)
+				"\n\n(*  Then run it *)\n"			   
+				"runMain runScheduler\n"
+				")\n"
+				))
 
 ;			   "try runScheduler()\n"
 ;			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
 ;			   "\nPrintf.printf \"Query completed.\\n\";;\n"
 
-			   ")\n"
 
 			   )])
 	 result)]
@@ -482,7 +495,9 @@
 	   `("(* Seed the schedule with timer datasource: *)\n"
 	     "schedule := SE(0,",v") :: !schedule\n")))]
 
-       [(__foreign_source ',name ',initCcalls ',types)
+       [(__foreign_source ',name ',includes ',types)
+	(for-each add-file! includes)
+	(set! driven-by-foreign #t)
 	(let ([tupty 
 	       ;(insert-between " * " (map symbol->string types))
 	       (match types
@@ -495,12 +510,16 @@
 	   ;; Don't use the scheduler at all.
 	   (list "\nfun " v " elt = "((Emit downstrm) "elt")"\n\n"
 		 `("val _ = (_export \"",name"\" : (",tupty" -> unit) -> unit;) ",v" \n")
-		 (map (lambda (init) `("val ",init" = _import \"",init"\" : unit -> unit ;\n")) initCcalls))	   
+		 ;"val wsmain = _import \"wsmain\" : unit -> unit; \n"
+		 ;(map (lambda (init) `("val ",init" = _import \"",init"\" : unit -> unit ;\n")) initCcalls)
+		 )
 	   ;; No top-level state bindings. 
 	   ()
 	   ;; We call into C to get the thing started.
-	   (map (lambda (init) (make-app init (list (make-tuple-code)))) initCcalls))
-	  )]
+	   ;(map (lambda (init) (make-app init (list (make-tuple-code)))) initCcalls))
+	   ;"wsmain()\n"
+	   ()
+	   ))]
 
        ;; Reading from ensbox hardware.
        [(ensBoxAudioAll)
@@ -725,12 +744,8 @@
 (trace-define (ForeignEntry cname files ty)
   (match ty
     [(,argty* ... -> ,retty)	
-     (let ([add-file!
-	    (lambda (file)
-	      (set! foreign-includes (cons file foreign-includes))
-	      )])
-       (for-each add-file! files)
-       `(" _import \"",cname"\" : ",(Type ty)";\n"))]))
+     (for-each add-file! files)
+     `(" _import \"",cname"\" : ",(Type ty)";\n")]))
 
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
