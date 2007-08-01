@@ -41,6 +41,7 @@
       '(hashtable prim_window List:append List:reverse cons
 		  Array:make Array:makeUNSAFE
 		  unionN
+		  ptrToArray
 		  ))
 
     (define annotate-first-arg 

@@ -112,7 +112,7 @@
 	   (let* ([emitter (Emit down*)])
 	     (values
 	     ;; The first return value is binding-text for the function:
-	      `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+	      `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
 		,(obj 'make-fun-binding name 
 		    (list (list "("(Var x)" : "(obj 'Type ty1)")"))
 		    (indent (Expr bod emitter) "    ")))

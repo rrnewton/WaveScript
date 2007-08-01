@@ -161,6 +161,8 @@
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
 
+    [(Pointer ,_) "MLton.Pointer.t"]
+
     [Timebase "SigSeg.timebase"] ;; This will change.
 
     [#() "unit "]
@@ -213,7 +215,9 @@
     [Complex "(fn {real,imag} => Real32.toString real ^ \"+\" ^ Real32.toString imag ^ \"i\")"]
 
     [(List ,[t]) (make-fun '("ls") (list "(\"[\" ^ concat_wsep \", \" (List.map "t" ls) ^ \"]\")"))]
-    [(Array ,[t]) (make-fun '("a") (list "(\"[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
+    [(Array ,[t]) (make-fun '("a") (list "(\"#[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
+
+    [(Pointer ,_) "(fn _ => \"<pointer>\")"]
 
     ;; Just print range:
     [(Sigseg ,t) 
@@ -501,9 +505,9 @@
 	(let ([tupty 
 	       (match types
 		 ;; Only allowing simple scalar types for now (Int, Float)
-		 [(Stream #(,ty* ...)) (ASSERT (andmap symbol? ty*)) (Type (list->vector ty*))]
+		 [(Stream #(,ty* ...)) (Type (list->vector ty*))]
 		  ;(insert-between " * " (map symbol->string types))
-		 [(Stream ,ty) (ASSERT (symbol? ty)) (Type ty)])
+		 [(Stream ,ty) (Type ty)])
 	       ])
 	  (values
 	   ;; A function that pushes data into the system.
@@ -690,6 +694,7 @@
   (memq p '(joinsegs subseg width toSigseg toArray timebase start end seg-get)))
 
 ;; Converts an operator based on the array element type.
+;; For mlton this does the same thing irrespective of element type.
 (define (DispatchOnArrayType op elt)
   (case op
     [(Array:null) "(Array.fromList [])"]
@@ -728,7 +733,7 @@
       [Float ''0.0]
       [Double ''0.0]
       [Complex ''0.0+0.0i]
-      [#(,[t*] ...) `(tuple ,t* ...)]
+      [#(,[t*] ...) (make-tuple-code t*)]
 
       [(Array ,_) "(Array.fromList [])"]
       [(List ,_) "[]"]
@@ -784,6 +789,35 @@
      (guard (memq prim '(Array:ref Array:set Array:length)))
      (make-prim-app (DispatchOnArrayType prim elt)
 	       (cons first rest))]
+
+    ;; This unpacks a foreign array into a WS array:
+    [(assert-type (Array ,elt) (ptrToArray ,[myExpr -> ptr] ,[myExpr -> len]))
+
+     (let ([getter 
+	    (case elt
+	      [(Int16) "getInt16"]
+	      [(Int)   "getInt32"]
+	      [(Int64) "getInt64"]
+	      [(Float)  "getReal32"]
+	      [(Dobule) "getReal64"]
+	      ;; TODO, complex numbers can be done but are a tad trickier.
+	      [else (error 'ptrToArray "Unsupported element type for wsmlton: ~s" elt)]
+	      )])
+       (list "Array.tabulate ("len", "
+	     "fn i => MLton.Pointer."getter" ("ptr", i))"))
+     #;
+     (let ([getter "getInt32"])
+       (list
+	"let val p = "ptr"\n"
+	"    val len = "len"\n"
+	"    val i = ref 0 \n"
+	"    val arr = "(DispatchOnArrayType 'Array:makeUNSAFE elt)" len\n"
+	" in \n"
+	" (while !i < len do\n"
+	"   (Array.update(arr,!i, MLton.Pointer."getter"(p, !i)); i := !i+1)"
+	" ; arr)\n" 
+	"end\n"
+	))]
 
     ;val raw_fftR2C = _import "raw_fftR2C" : (Real32.real array * Word64.word array * int) -> unit;
     [(fftR2C ,[myExpr -> arr])

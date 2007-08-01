@@ -420,9 +420,16 @@
     ;; (Internal) This is the same but has the type tagged on the end:
     (__foreign        (String (List String) (List Symbol)) 'any)
     (__foreign_source (String (List String) (List Symbol)) (Stream 'any))
-
+    
+    ;; ExclusivePointers are pointers that WS has sole ownership of,
+    ;; and can "free" when finished with.
     (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
     (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
+
+    ;; This allows us to unpack a foreign pointer into an array,
+    ;; copying the storage.
+    ;; Must be wrapped in an assert-type of course:
+    (ptrToArray     ((Pointer 'name) Int) (Array 'a))
 
     ;; Not implemented yet:
     ;(marshal        ('a) String)
