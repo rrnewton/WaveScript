@@ -54,7 +54,7 @@ s1b = iterate w in s0 {
 
 s1 = s1b;
 
-s2 :: Stream (Sigseg Complex);
+//s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
   state{ foo = (Array:null :: Array Int);   }
   print(foo);  print("\n");
@@ -62,8 +62,11 @@ s2 = iterate (w in s1) {
   a = manual_double $ sigseg_fftR2C (w) ;
   b = sigseg_fftC   $ sigseg_map(floatToComplex, w);
 
-  for i = 0 to 9 { print(a[[i]]++" ") }; print("\n");
-  for i = 0 to 9 { print(b[[i]]++" ") }; print("\n");
+  for i = 0 to 4 { print(a[[i]]++" \n") }; print("\n");
+  for i = 0 to 4 { print(b[[i]]++" \n") }; print("\n");
+  emit ();
+
+  /*
 
   inspect $ toArray $ a;
   inspect $ toArray $ b;
@@ -95,9 +98,11 @@ s2 = iterate (w in s1) {
   print(chopfront( sigseg_ifftC2R( sigseg_fftR2C (w))) ++ "\n");
   */
 
+*/
 };
 
 
+/*
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
 s3 = iterate (win in s2) {
@@ -115,11 +120,11 @@ s3 = iterate (win in s2) {
 
   pos += 1;
 };
-
+*/
 
 BASE <- 
-s3
-//s2
+//s3
+s2
 //s3
 //s1
 //mywindow(s3, 4)

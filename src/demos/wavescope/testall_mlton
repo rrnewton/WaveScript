@@ -12,7 +12,7 @@ function go () {
     echo "testall_mlton: Running $1"
     echo "============================================================"
     echo wsmlton $1 -exit-error
-    if ! wsmlton $1 ; then echo "WSMLTON FAILED with $?"; exit 1; fi
+    if ! wsmlton $1 -exit-error ; then echo "WSMLTON FAILED with $?"; exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
     echo "================================================================================" >> $RUN
