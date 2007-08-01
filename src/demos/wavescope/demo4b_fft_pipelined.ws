@@ -51,20 +51,21 @@ fun pipe2(f,s) {
 
 //===========================================================================
 
-s1 :: Stream (Sigseg Float);
-s1 = if GETENV("WSARCH") != "ENSBox" 
-     then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
+chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
-	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
-     else ENSBoxAudioF(0,4096,0,24000);
 
-s2 :: Stream (Sigseg Complex);
-s2 = iterate (w in s1) { emit sigseg_fftR2C(w) };
+s1 :: Stream (Sigseg Float);
+s1 = mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096);
+
+s2a :: Stream (Sigseg Complex);
+s2a = iterate w in s1 { emit sigseg_fftR2C(w) };
 
 s2b = pipe2(sigseg_fftR2C, s1);
 
-//s3 :: Stream Float;
-s3 = iterate (win in s2b) {
+// SWITCH THIS BETWEEN s2a AND s2b TO COMPARE PERFORMANCE:
+s2 = s2b;
+
+s3 = iterate (win in s2) {
   state { pos=0 }
 
   x :: Int = 3;  // Explicit type annotation on local var.

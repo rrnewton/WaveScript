@@ -9,7 +9,8 @@
            "../../../plt/hashtab.ss"
 	   )
   (provide Eval Marshal Marshal-Closure  interpret-meta
-	   test-interpret-meta)
+	   test-interpret-meta
+	   marshal-cache)
   (chezimports)
 
 ; ================================================================================ ;
@@ -423,15 +424,17 @@
 	     )
     (if (null? fv)
 	;; We're done processing the environment, produce some code:
-	(let ([bod `(lambda ,(closure-formals cl) 
-		      ,(map unknown-type (closure-formals cl)) ,code)])
+	(let* ([bod `(lambda ,(closure-formals cl) 
+		       ,(map unknown-type (closure-formals cl)) ,code)]
+	       [newbod (let ([subst (subst-the-substs (reverse substitution))])
+			 (core-substitute (map car subst) (map cadr subst)
+					  bod))]
+	       [binds (append globals state)])
 					;(if (null? state) bod `(letrec ,state ,bod))
 					;	    (unless (null? globals) (inspect globals))
 ;	  (printf "FINALLY DOING SUBSTITUTION: ~s\n" (map car (reverse substitution)))
-	  `(letrec ,(append globals state) 
-	     ,(let ([subst (subst-the-substs (reverse substitution))])
-		(core-substitute (map car subst) (map cadr subst)
-				 bod))))
+	  (if (null? binds) newbod `(letrec ,binds ,newbod)))
+	  ;`(letrec ,binds ,newbod))
 	(let ([val (apply-env env (car fv))])
 	  (cond
 
@@ -606,23 +609,26 @@
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     
-    [(deep-assq 'letrec
-      (cdr (,Marshal (,Eval '(car (cons 
+    [(fluid-let ([marshal-cache (make-default-hash-table 1000)])
+      (deep-assq 'letrec		
+        (cdr (,Marshal (,Eval '(car (cons 
 	(let ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
-	'())) '() #f))))
+	'())) '() #f)))))
      #f]
-    [(and (deep-assq 'letrec
+    [(fluid-let ([marshal-cache (make-default-hash-table 1000)])
+     (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
        (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
-	  #t)
+	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
-     (not 
+     (fluid-let ([marshal-cache (make-default-hash-table 1000)])
+       (not 
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
       (,Marshal (,Eval '(let ([y 'a (Mutable:ref '100)]) 
 	      (iterate (lambda (x vq) (a b) (deref y)) 
-				(timer '3))) '() #f)))))
+				(timer '3))) '() #f))))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f

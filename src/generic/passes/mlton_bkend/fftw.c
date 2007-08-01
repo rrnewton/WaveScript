@@ -30,6 +30,19 @@ void raw_fftR2C(Pointer input, Pointer output, Int32 len) {
       fftwf_destroy_plan(plan);           
  }
 
+// TEMP:
+void raw_ifftC2R(Pointer input, Pointer output, Int32 len) {
+      _Complex float* in_buf = (_Complex float*)  input;
+      float*         out_buf = (float*)          output;
+      int len_out = (len + 1) * 2;     
+
+      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
+      fftwf_execute(plan);
+      fftwf_destroy_plan(plan);           
+ }
+
+
+// EVENTUALLY, the below memoized version should totally replace the above versions.
 
 int        last_plan_size = 0;
 fftwf_plan cached_plan;

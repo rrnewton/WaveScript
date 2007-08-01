@@ -426,7 +426,7 @@
   ; FIXME: this case-lambda is probably a temporary construction
   (case-lambda
     [(p)                               (run-ws-compiler p () #f)]
-    [(p already-typed)                 (run-ws-compiler p () already-typed)]
+    [(p disabled-passes)               (run-ws-compiler p disabled-passes #f)]
     [(p disabled-passes already-typed)
 
   (define (do-typecheck lub poly)
@@ -532,6 +532,7 @@
   (ws-run-pass p unlift-polymorphic-constant)
   (ws-run-pass p strip-irrelevant-polymorphism)
 
+  ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
   (unless (memq 'merge-iterates disabled-passes)
     ;(pretty-print p)
     (ws-run-pass p merge-iterates)
@@ -873,11 +874,12 @@
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
+    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.ml")
     (define prog (begin (ASSERT list? x) x))
 
     (ASSERT (andmap symbol? flags))
-    (set! prog (run-ws-compiler prog))
+    (set! prog (run-ws-compiler prog disabled-passes #f))
     (set! prog (explicit-stream-wiring prog))
     (string->file (text->string (emit-caml-wsquery prog)) outfile)
     (printf "\nGenerated OCaml output to ~s.\n" outfile)
@@ -890,11 +892,12 @@
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
+    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.sml")
     (define prog (coerce-to-ws-prog x))
 
     (ASSERT (andmap symbol? flags))
-    (set! prog (run-ws-compiler prog))
+    (set! prog (run-ws-compiler prog disabled-passes #f))
     (set! prog (explicit-stream-wiring prog))
     (string->file (text->string (emit-mlton-wsquery prog)) outfile)
     (printf "\nGenerated MLton output to ~s.\n" outfile)

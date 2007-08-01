@@ -161,7 +161,7 @@ fun powInt16 n x =
     else loop (Int16.*(n, acc)) (i - 1)
   in loop (Int16.fromInt 1) x end
 
-
+(* Takes a Word64 to a complex struct. *)
 val unpack_complex = 
   let val bytes = Word8Array.array(8, Word8.fromInt 0)
   in
@@ -186,6 +186,21 @@ val unpack_complex =
 (*       {real= Real32.fromInt 3, imag= Real32.fromInt 4} *)
     end
   end 
+
+(* This packs a complex array into a word64 array *)
+val pack_complex_array =  
+  let val bytes = Word8Array.array(8, Word8.fromInt 0) in
+  fn arr => 
+  Array.tabulate(Array.length arr,
+    fn i => 
+      let val {real,imag} = Array.sub(arr,i) 
+          val _ = PackReal32Little.update(bytes,0, real)
+          val _ = PackReal32Little.update(bytes,1, imag)
+	  val pkd = PackWord64Little.subArr(bytes,0)
+      in        
+       pkd
+      end)
+  end
 
 
 fun unpack_complex_Pointer p i = 

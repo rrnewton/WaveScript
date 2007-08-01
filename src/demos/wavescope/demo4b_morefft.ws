@@ -1,13 +1,16 @@
 
 // This tests variants of fft, including the inverse ffts.
-
 /***********************************************************************/
+
+include "stdlib.ws";
 
 //if GETENV("WSARCH") == "ENSBox" 
 
-/*
+
 fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
 fun conj(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
+
+// Double the half-sized complex representation to the same size as the real representation.
 fun manual_double(ss) {
   src = ss `toArray;
   len1 = ss.width;
@@ -19,23 +22,27 @@ fun manual_double(ss) {
       else conj $ src[len2-i] );
   toSigseg(arr, ss.start, ss.timebase);
 }
-*/
 
-
-fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
-fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
-fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
-
-fun sigseg_map (f, ss) {
-  arr = Array:build(ss.width, fun(i) f(ss[[i]]));
-  toSigseg(arr, ss.start, ss.timebase)
+fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert_prnt(str,pred) {
+  assert(str,pred);
+  print("Assert passed: "++ str ++ "\n");
 }
 
-s1a :: Stream (Sigseg Float);
+fun arrdiffF(a1,a2) 
+  Array:build(Array:length(a1), fun (i) absF(a1[i] - a2[i]))
+fun arrdiffC(a1,a2) 
+  Array:build(Array:length(a1), fun (i) absC(a1[i] - a2[i]))
+
+fun closeenough(arr1, arr2) {
+  Array:andmap(fun (delt) delt < 1.0, arrdiffC(arr1,arr2));
+}
+
+
 s1a = if GETENV("WSARCH") != "ensbox" 
      then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
-	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
+	   window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ensBoxAudioF(0);
 
 s0 = (readFile("6sec_marmot_sample.raw", 
@@ -54,8 +61,18 @@ s2 = iterate (w in s1) {
   
   a = manual_double $ sigseg_fftR2C (w) ;
   b = sigseg_fftC   $ sigseg_map(floatToComplex, w);
+
+  for i = 0 to 9 { print(a[[i]]++" ") }; print("\n");
+  for i = 0 to 9 { print(b[[i]]++" ") }; print("\n");
+
   inspect $ toArray $ a;
   inspect $ toArray $ b;
+
+  inspect $ arrdiffC(a`toArray,b`toArray);
+
+  assert_prnt("real->complex and complex->complex match:", 
+              closeenough(a`toArray,b`toArray));
+  
   inspect $ toArray(a)==toArray(b);
 
   inspect $ toArray $ sigseg_ifftC2R $ sigseg_fftR2C (w) ;

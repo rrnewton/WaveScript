@@ -1703,6 +1703,8 @@ int main(int argc, char ** argv)
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
 		   List:head List:tail 
+
+		   ptrToArray
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? HashTable:make prim_window 

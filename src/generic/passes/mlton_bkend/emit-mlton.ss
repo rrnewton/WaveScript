@@ -873,6 +873,19 @@
       "   Array.tabulate (len2, fn i => unpack_complex (Array.sub (outbuf,i)))) \n"
       "end \n")]
 
+    [(ifftC2R ,[myExpr -> arr])
+     (list 
+      "let val inbuf  = pack_complex_array "arr" \n"
+      "    val len    = Array.length inbuf \n"
+      "    val len2   = (len - 1) * 2      \n"
+      "    val outbuf = Array.array (len2, (Real32.fromInt 0)) \n"
+      "in \n"
+      "  (raw_ifftC2R (inbuf,outbuf, len); \n"
+      "   outbuf)\n"
+;      "   Array.tabulate (len2, fn i => unpack_complex (Array.sub (outbuf,i)))) \n"
+      "end \n")]
+
+
     [(memoized_fftR2C ,[myExpr -> arr])
      (list 
       "let val inbuf  = "arr" \n"
@@ -1152,6 +1165,7 @@
 		   joinsegs subseg width toSigseg toArray timebase start end seg-get
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
+		   ptrToArray
 		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
 		   < <= >= > max min = 

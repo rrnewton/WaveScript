@@ -36,23 +36,26 @@
 
       ;; Modifying to not create free-variables in the introduced lambda abstraction.
       [(iterate (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body)
-		(iterate (lambda (,x ,VQX) (,tx (VQueue ,outx)) 
-				 ;; By convention the return-value is the vqueue:
-				 (begin ,bodx-exprs ...)
+		(iterate (lambda (,x ,VQX) (,tx (VQueue ,outx))
+				 ;; By convention the return-value is the vqueue:				 
+				 ;(begin ,exprs ... ,return-val)
+				 ;; rrn: loosening this up, don't require that the body's a begin:
+				 ,bodx
 				 )
 			 ,inputstream))
-       (let ([return-val (rac bodx-exprs)]
-	     [exprs (rdc bodx-exprs)])
-       (ASSERT (eq? return-val VQX))       
+       ;; rrn: it was good to enforce this convention, but not doing it anymore:
+       ;(ASSERT (eq? return-val VQX)) 
        (let ([f (unique-name 'f)])
 	 (do-expr
 	  `(iterate (lambda (,x ,VQX) (,tx (VQueue ,outy))
 			    (letrec ([,f (,ty (VQueue ,outy) -> #())
 					 (lambda (,y ,VQY) (,ty (VQueue ,outy))
 						 (begin ,body (tuple)))])
-			      ,(subst-emits `(begin ,@exprs ,VQX) f VQX)))
+			      ,(subst-emits ;`(begin ,@exprs ,VQX)
+				            `(begin ,@bodx ,VQX)
+					    f VQX)))
 		    ,inputstream)
-	  fallthrough)))]
+	  fallthrough))]
 
       [(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___))
        (error 'merge-iterates "implementation problem, should have matched this but didn't: \n~s" 

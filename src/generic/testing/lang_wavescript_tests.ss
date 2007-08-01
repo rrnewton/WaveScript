@@ -20,6 +20,8 @@
 	        locdiff nodeid sense world anchor IS_SIM
 		even? odd? dataFile readFile
 
+		ptrToArray
+
 		tuple tupref
                  __foreign foreign 
 		foreign_source __foreign_source

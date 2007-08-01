@@ -860,6 +860,8 @@
 		   head tail map append fold
 		   List:head List:tail 
 
+		   ptrToArray
+
 		   ;; This are handled specially by DispatchOnArrayType.
 		   ;; This is due to the dual-representation for arrays.
 		   Array:toList Array:make Array:makeUNSAFE Array:get Array:ref Array:length

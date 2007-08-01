@@ -17,6 +17,7 @@ s0 = iterate _ in timer(1000.0) {
 }
 
 BASE <- iterate a in s0 {
+  emit a;
   emit ifftC2R( fftR2C(a) )
 }
 
