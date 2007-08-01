@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# This takes the .sml file down to a binary.
+
+INPUT=$1
+shift
+
+FLAGS=' -verbose 1 '
+CLINK=' -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp -lfftw3f '
+CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c 
+           $REGIMENTD/src/generic/passes/mlton_bkend/ensbox_new.c"
+OUTPUT=query.arm.mlton.exe
+
+# Clean up first:
+rm -f "$OUTPUT"
+rm -f "query.*.c"
+rm -f ".tmp.*.o"
+
+GLIB_PATH="/usr/arm-linux/arm-linux/lib/libglib-2.0.so"
+
+if [ "$EMLIB" == "" ]; then EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'; fi
+# "a" for static linking "so" for dynamic:
+EXT=a
+ENSBOXLD=" \
+  $EMLIB/libensbox_ws2.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
+  $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libdev.$EXT \
+  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT -lm -lasound $GLIB_PATH"
+
+################################################################################
+
+echo MLton cross compile to ARM.  Setting up environment.
+export PATH=$PATH:/usr/arm-linux/bin
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/arm-linux/lib
+
+echo mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+
+echo Beginning GCC cross compile.
+start=`date +%s`
+
+FILES=`ls query.*.c`
+OBJS=''
+
+#echo FILES $FILES
+for fn in $FILES $CINCLUDES
+do 
+  # RRN:
+  # HACKING these calls to gcc in here directly.
+  # The reason for this is that the machines I'm working on (breeze, patridge)
+  # don't support "gcc -b" for some reason.
+
+  echo "  Compiling $fn"
+  OBJ=".tmp.`basename $fn`.o"
+  OBJS="$OBJS $OBJ"
+  arm-linux-gcc -I/usr/arm-linux/include -std=gnu99 -c -I/usr/lib/mlton/arm-linux/include \
+          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+          -fomit-frame-pointer -w -o $OBJ $fn \
+	  -I"$REGIMENTD/src/generic/passes/mlton_bkend"
+done
+
+echo Now Linking: $OBJS
+if (arm-linux-gcc -o $OUTPUT $OBJS $CLINK $ENSBOXLD)
+then end=`date +%s`;
+     echo "  Time spent in gcc compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to $OUTPUT.";
+else echo "gcc returned error!!"; exit -1
+fi

@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# This takes the .sml file down to a binary.
+
+INPUT=$1
+shift
+
+FLAGS=' -verbose 1 -link-opt -lfftw3f  '
+CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
+OUTPUT=query.mlton.exe
+
+# Clean up first:
+rm -f "$OUTPUT"
+
+# I'm having a lot of trouble getting enough quotes around 
+# 'allowFFI true' for it to be treated as one token.
+#MLTON='mlton -default-ann "\'allowFFI true\'"'
+export MLTON=mlton.hack
+
+if [ "$1" == "-dbg" ]
+then export MLTON=mlton.dbg;
+     shift;
+fi 
+
+# Pull the extra libraries off the first line of the query file.
+############################################################
+FIRST=`head -n1 $INPUT`
+MATCH=`echo $FIRST | grep "WSLIBDEPS:"`
+if [ "$MATCH" != "" ];
+then 
+   EXTRALIBS=`echo $FIRST | sed "s/.*WSLIBDEPS://"`
+   echo Linking extra libraries requested by query file: $EXTRALIBS
+   echo 
+   CINCLUDES="$CINCLUDES $EXTRALIBS"
+fi
+############################################################
+
+
+################################################################################
+
+#MLTON="mlton -const 'Exn.keepHistory true'"
+
+#echo "$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+echo "$MLTON  -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES"
+
+#-default-ann 'allowFFI true'
+
+#GRR="'allowFFI true'"
+
+start=`date +%s`
+if 
+# For debugging enable keepHistory to get Stack traces:
+#$MLTON -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+$MLTON -output $OUTPUT $FLAGS $INCLUDES query.sml $CINCLUDES
+then end=`date +%s`;
+     echo "  Time spent in $SML compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to $OUTPUT.";
+else echo "$SML returned error!!"; exit -1
+fi
+
