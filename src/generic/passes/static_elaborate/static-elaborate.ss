@@ -88,6 +88,7 @@
    '[Expr ('unionN Expr ...)]  
    '[Expr ('foreign-app Const Expr Expr ...)]
    '[Expr ('foreign Const Const)]
+   '[Expr ('foreign_source Const Const)]
    ;'[Expr ('foreign Const PolyConst PolyConst)]
     ;; This is quirky, will need this for null lists:
    ;'[PolyConst Const]
@@ -846,10 +847,10 @@
 
 	  ;; We inline the arguments.  After this pass this is a special construct.
 	  ;; This over-rules our general behavior of not inlining complex constants.
-	  [(foreign ,[name] ,[files])
-	   `(foreign ,(if (available? name)         `',(getval name) name)
-		     ,(if (available? files)        `',(getval files) files))]
-
+	  [(,frgn ,[name] ,[files]) (guard (memq frgn '(foreign foreign_source)))
+	   `(,frgn ,(if (available? name)         `',(getval name) name)
+		   ,(if (available? files)        `',(getval files) files))]
+	  
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  

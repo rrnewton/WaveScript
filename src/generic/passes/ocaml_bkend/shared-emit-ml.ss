@@ -84,6 +84,8 @@
 	   (obj 'ForeignEntry cname files ty)]
 	  [(__foreign . ,_) (error 'emit-mlton "missed __foreign entry: ~s" (cons '__foreign _))]
 
+	  ;; TODO: FOREIGN_SOURCE
+
 	  [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]
 	  [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))

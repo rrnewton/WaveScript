@@ -43,6 +43,7 @@
 	  
 	  ;; Don't lift out these complex constants!
 	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+	  [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
 
           [(lambda ,formals ,types ,[result])
 	   (match result

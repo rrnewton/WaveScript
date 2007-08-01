@@ -18,6 +18,7 @@
     (append `(
 ;	      (Const ComplexConst)
 	      (ComplexConst ('__foreign Const Const Const ComplexDatum)) 	      
+	      ;; Foreign_source?
 	      )
 	    type-annotate-misc-grammar))
   
@@ -45,8 +46,12 @@
 	      )]
 	   
 	   ;; This needs the type tagged on also:
-	   [(assert-type ,T (foreign ,[name] ,[files]))
-	    `(__foreign ,name ,files ',T)]
+	   [(assert-type ,T (,frgn ,[name] ,[files]))
+	    (guard (memq frgn '(foreign foreign_source)))
+	    `(,(symbol-append '__ frgn) ,name ,files ',T)]
+	   ;; Safety net:
+	   [(,frgn . ,_) (guard (memq frgn '(foreign foreign_source)))
+	    (error 'reify-certain-types "missed ~s construct: ~s" frgn (cons frgn _))]
 	   
 	   ;; This parses the option string to readFile.
 	   [(assert-type (Stream ,t) (readFile ,[fn] ',str))

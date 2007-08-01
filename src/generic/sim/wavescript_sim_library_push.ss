@@ -25,7 +25,7 @@
 		 run-stream-query reset-state!
 
 		 __readFile 
-		 __foreign
+		 __foreign __foreign_source
 					;__syncN
 		 ;; Just stubs that give errors:
 		 ensBoxAudio ensBoxAudioF ensBoxAudioAll
@@ -1432,6 +1432,9 @@
                       ))
 
 (define already-loaded-object-files (box ())) ;; When do we reset this?
+
+(define (__foreign_source . _)
+  (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
 
 ;; This provides access to C-functions:
 (IFCHEZ

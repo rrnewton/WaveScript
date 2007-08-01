@@ -415,8 +415,11 @@
     ;;  (1) function name 
     ;;  (2) foreign files (.c .h .so etc) to load function from
     (foreign        (String (List String)) 'any)
+    (foreign_source (String (List String)) (Stream 'any))
+
     ;; (Internal) This is the same but has the type tagged on the end:
-    (__foreign      (String (List String) (List Symbol)) 'any)
+    (__foreign        (String (List String) (List Symbol)) 'any)
+    (__foreign_source (String (List String) (List Symbol)) (Stream 'any))
 
     (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
     (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
@@ -431,9 +434,7 @@
     ;; Not implemented yet:
     ;(foreign_box    (String (List String)) 'any)
     ;; This won't work in the schem backend...
-    ;(foreign_source (String (List String)) 'any)
-
-
+    
     (locdiff (Location Location) Float)
 
     ;; Shouldn't this be local??

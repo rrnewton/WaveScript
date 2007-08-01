@@ -20,7 +20,9 @@
 	        locdiff nodeid sense world anchor IS_SIM
 		even? odd? dataFile readFile
 
-		tuple tupref __foreign foreign foreign_box foreign_source
+		tuple tupref
+                 __foreign foreign 
+		foreign_source __foreign_source
 		or and 
 		ensBoxAudio ensBoxAudioF ensBoxAudioAll
 

@@ -10,7 +10,7 @@ int counter = 0;
 // 48 K samples per second
 void wavescope_push(char *buf, int count, uint64_t sample_count) 
 {
-  printf("GOT PUSH FROM MIKE %p %d \n", buf, count);
+  //printf("GOT PUSH FROM MIKE %p %d \n", buf, count);
   wsmlton_entry(buf, count);
   // MAKE SURE TO FREE *buf when finished with..
   free(buf);

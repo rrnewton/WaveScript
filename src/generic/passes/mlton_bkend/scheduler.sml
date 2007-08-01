@@ -2,7 +2,10 @@
 
 
 
-
+(* This scheduler is only for artifically driving the system from
+within MLton, to read in data files or virtual "timers" at specified
+relative rates. In practice, the system needs to be driven from the
+outside by some data source(s). *)
 
 (* TODO: make this int64 *)
 type timestamp = Int32.int

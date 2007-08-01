@@ -482,6 +482,25 @@
 	   `("(* Seed the schedule with timer datasource: *)\n"
 	     "schedule := SE(0,",v") :: !schedule\n")))]
 
+       [(__foreign_source ',name ',initCcalls ',types)
+	(let ([tupty 
+	       ;(insert-between " * " (map symbol->string types))
+	       (match types
+		 [(Stream ,ty) 
+		  (ASSERT symbol? ty)
+		  (Type ty)])
+	       ])
+	  (values
+	   ;; A function that pushes data into the system.
+	   ;; Don't use the scheduler at all.
+	   (list "\nfun " v " elt = "((Emit downstrm) "elt")"\n\n"
+		 `("val _ = (_export \"",name"\" : (",tupty" -> unit) -> unit;) ",v" \n")
+		 (map (lambda (init) `("val ",init" = _import \"",init"\" : unit -> unit ;\n")) initCcalls))	   
+	   ;; No top-level state bindings. 
+	   ()
+	   ;; We call into C to get the thing started.
+	   (map (lambda (init) (make-app init (list (make-tuple-code)))) initCcalls))
+	  )]
 
        ;; Reading from ensbox hardware.
        [(ensBoxAudioAll)

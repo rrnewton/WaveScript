@@ -44,11 +44,11 @@
 
 	      ;; [2007.07.19] TEMP FIXME
 	      ;; We're in a bad place right now with side effects and foreign functions.
-	      ;; HACK HACK HACK: This is temporarya
+	      ;; HACK HACK HACK: This is temporary
 	      (Query Value)
 	      (Query Block)
 ;	      (Query ('begin Query ... Query))
-
+	      (Query ('foreign_source Const ComplexConst))
 
 	      (Simple Var)
 	      (Simple Const)
@@ -61,13 +61,13 @@
 	      ;; This is kind of lame:
 	      (ComplexConst ('cons ComplexConst ComplexConst))
 	      (ComplexConst ('foreign Const ComplexConst))
+
 	      ;; This is constant for the duration of the stream query
 	      (ComplexConst AppConstructs)
 	      (ComplexConst Var)
 
 	      (ComplexDatum ,complex-constant?)
 ;	      (ComplexDatum (ComplexDatum ...))
-
 
 	      (Value Var) 
 	      (Value Const)

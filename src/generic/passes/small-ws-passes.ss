@@ -67,7 +67,9 @@
 	      ['()  (f x)]
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
 	      ;; Don't touch these:
-	      [(foreign ,x ,y) `(foreign ,x ,y)]
+	      [(foreign        ,x ,y) `(foreign        ,x ,y)]
+	      [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
+
 	      [,other (fallthru other)]))])
 
 (define-pass unlift-polymorphic-constant
@@ -81,11 +83,17 @@
 	[,else   #f]))
   [Expr (lambda (x fallthru)
 	  (match x
+
+	    ;; Don't touch these:
+	    [(foreign        ,x ,y) `(foreign        ,x ,y)]
+	    [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
+
 	    [(let ([,v1 ,t ,c]) ,v2)
 	       (guard (eq? v1 v2) (pconst? c))
 ;; [2007.07.08] Removing this assert because we clean up below:
 ;	       (ASSERT (lambda (t) (not (polymorphic-type? t))) t)
 	       `(assert-type ,t ,c)]
+
 	    [,c (guard (pconst? c))
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
 

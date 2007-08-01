@@ -24,7 +24,7 @@ EXT=a
 ENSBOXLD=" \
   $EMLIB/libensbox_ws2.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
   $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libdev.$EXT \
-  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT -lm -lasound $GLIB_PATH"
+  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT $EMLIB/libmisc.$EXT -lm -lasound $GLIB_PATH"
 
 ################################################################################
 
