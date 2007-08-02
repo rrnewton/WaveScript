@@ -417,6 +417,7 @@ namespace Array {
   // This assumes that there's at least one element in the array and
   // thus doesn't need to be provided with a "neutral element".
   fun fold1 (f,arr) {
+    //    if Array:length(arr) == 0
     if arr == Array:null
     then wserror("Array:fold1 - array must have at least one element!")
     else {
