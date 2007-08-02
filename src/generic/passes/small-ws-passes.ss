@@ -21,12 +21,56 @@
 	   ;ws-add-return-statements  ;; Disabled
 	   resolve-type-aliases
 	   ws-normalize-context
+	   generate-comparison-code
 
-      ; --mic
-      propagate-copies
+           ; --mic
+	   propagate-copies
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
+
+;; [2007.08.02] This kind of thing should not be done in the actual
+;; code generators if it can be helped.
+(define-pass generate-comparison-code
+  (define (build-comparison ty e1 e2)
+    (match ty
+      [(Array ,elt) 
+       (let ([el1 (unique-name "arrel1")]
+	     [el2 (unique-name "arrel2")]
+	     [i   (unique-name "i")])
+	 `(let ([i (Ref Int) (Mutable:ref '0)]
+		[stop (Ref Bool) (Mutable:ref '#f)]
+		[len Int (Array:Length ,e1)])
+	    (begin
+	      (while (if (< (deref ,i) len) (not (deref stop)) '#f)
+		   (let ([,el1 (Array:ref ,e1 ,i)]
+			 [,el2 (Array:ref ,e2 ,i)])
+		     (if ,(build-comparison elt el1 el2)
+			 (set! ,i (+_ (deref ,i) '1))
+			 (set! stop '#t)
+			 )))
+	      (not (deref stop)))))]
+      ;; For the simple case we just allow the wsequal? to stick around.
+      [,_ `(wsequal? (assert-type ,ty ,e1) ,e2)]))
+  [Expr 
+   (lambda (x fallthru)
+     (match x
+       [(wsequal? (assert-type ,ty ,[e1]) ,[e2])
+	(ASSERT simple-expr? e1)
+	(ASSERT simple-expr? e2)
+	(build-comparison ty e1 e2)	
+	#;
+	(maybe-let e1 ty
+	  (lambda (e1)
+	    (maybe-let )
+	    ))
+	]
+       [(wsequal? . ,_) 
+	(error 'generate-comparison-code 
+	       "wsequal? was missing type annotation: ~s"
+	       `(wsequal? . ,_))]
+       [,oth (fallthru oth)]
+       ))])
 
 
 ;; [2007.05.01] This pulls complex constants up to the top of the program.

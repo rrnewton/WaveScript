@@ -41,7 +41,7 @@
 	  ;immediate? 
 	  simple-constant? complex-constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
-	  simple-expr?
+	  simple-expr? maybe-let
 
 	  token-machine? token-machine->program token-machine-keyword?
 
@@ -218,6 +218,18 @@
     ;[(tuple) #t] ;; [2007.03.19] Why had I commented this before?
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
     [,otherwise #f]))
+
+
+;; This is a litlte helper that introduces a new binding ONLY if the
+;; RHS in question is not simple.  This avoids unnecessary aliasing
+;; and code-bloat.
+(define (maybe-let rhs ty k)
+  (if (simple-expr? rhs)
+      (k rhs)
+      (let ([name (unique-name 'tmp)])
+	`(let ([,name ,ty ,rhs])
+	   ,(k name)))))
+
 
 ;; This describes what can go inside a (quote _) expression
 ;; after the complex constants have been removed.

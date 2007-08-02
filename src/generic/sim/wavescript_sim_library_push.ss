@@ -1095,7 +1095,10 @@
       (vector-set! half 0 (vector-ref double 0))
       (let loop ([i 1])
 	(unless (fx= i halflen)
-	  (vector-set! half i (vector-ref double (fx- fulllen i)))
+	  ;; Fill from the front:
+	  (vector-set! half i (vector-ref double i))
+	  ;; Fill from the back:
+	  ;(vector-set! half i (vector-ref double (fx- fulllen i)))
 	  (loop (fx+ 1 i))))
 
       ;; Currently the output must be all cflonums.

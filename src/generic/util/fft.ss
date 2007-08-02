@@ -20,12 +20,13 @@
   (provide ;make-dft-plan 
            dft
 	   inverse-dft)
-  (chezimports slib_fft)
-
+  (chezimports slib_fft
+	       scheme_fft)
+  
+  ;; Slib's inverse dft is the only one I've got right now in pure scheme:
   (define inverse-dft slib:fft-1)
   
   ;; Set to the basic scheme version:
-#;
   (define basic-dft 
     (lambda (x)
       (cond [(vector? x) 

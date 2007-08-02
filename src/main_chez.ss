@@ -363,8 +363,8 @@
 (include "chez/pregexp.ss") (import pregexp_module)
 
 (include "generic/compiler_components/c_generator.ss") (import c_generator)
-;(include "generic/util/scheme_fft.ss")
-(include "generic/util/slib_fft.ss")
+(include "generic/util/scheme_fft.ss") ;; FFT from the chez users guide
+(include "generic/util/slib_fft.ss")   ;; FFT from slib.
 (include "generic/util/fft.ss") (import fft)
 
 (IFWAVESCOPE (begin)	     

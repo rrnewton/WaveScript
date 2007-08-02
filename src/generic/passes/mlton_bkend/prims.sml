@@ -196,9 +196,8 @@ val pack_complex_array =
       let val {real,imag} = Array.sub(arr,i) 
           val _ = PackReal32Little.update(bytes,0, real)
           val _ = PackReal32Little.update(bytes,1, imag)
-	  val pkd = PackWord64Little.subArr(bytes,0)
       in        
-       pkd
+       PackWord64Little.subArr(bytes,0)
       end)
   end
 

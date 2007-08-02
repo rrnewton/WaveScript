@@ -45,8 +45,8 @@ go "demo3j_numbers.ws"
 go "demo3m_sigsegs.ws"
 
 go "demo4a_fft.ws"
-go "demo4c_quoted_constants.ws"
-go "demo4d_fifo_adt.ws"
+go "demo4d_quoted_constants.ws"
+go "demo4e_fifo_adt.ws"
 
 go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"

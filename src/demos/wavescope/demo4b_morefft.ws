@@ -24,8 +24,13 @@ fun manual_double(ss) {
 }
 
 fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
 fun assert_prnt(str,pred) {
   assert(str,pred);
+  print("Assert passed: "++ str ++ "\n");
+}
+fun assert_eq_prnt(str,a,b) {
+  assert_eq(str,a,b);
   print("Assert passed: "++ str ++ "\n");
 }
 
@@ -56,17 +61,43 @@ s1 = s1b;
 
 //s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
-  state{ foo = (Array:null :: Array Int);   }
-  print(foo);  print("\n");
   
-  a = manual_double $ sigseg_fftR2C (w) ;
-  b = sigseg_fftC   $ sigseg_map(floatToComplex, w);
+  println("\n  Roundtripping with the restricted real transform...");
+  trip = sigseg_ifftC2R( sigseg_fftR2C (w));
+  round1 = Array:map(roundF, w`toArray);
+  round2 = Array:map(roundF, trip`toArray);
+  
+  for i = 0 to 4 { print(round1[i]++"   ") }; print("\n");
+  for i = 0 to 4 { print(round2[i]++"   ") }; print("\n");
+  
+  assert_prnt("Roundtrip gets us back", round1 == round2);
+  print("\n");
 
-  for i = 0 to 4 { print(a[[i]]++" \n") }; print("\n");
-  for i = 0 to 4 { print(b[[i]]++" \n") }; print("\n");
+  once = sigseg_fftR2C (w);
+  thrice = sigseg_fftR2C( sigseg_ifftC2R( sigseg_fftR2C (w)));
+
+  for i = 0 to 4 { print(roundF(absC(once[[i]]))++"   ") }; print("\n");
+  for i = 0 to 4 { print(roundF(absC(thrice[[i]]))++"   ") }; print("\n");
+
+  assert_prnt("Roundtrip on the complex side", 
+              closeenough(once`toArray, thrice`toArray));
+  print("\n");
+
   emit ();
 
   /*
+  diff1 = arrdiffC(once`toArray, trip`toArray);
+  inspect$ diff1;
+
+  a = manual_double $ sigseg_fftR2C (w) ;
+  b = sigseg_fftC   $ sigseg_map(floatToComplex, w);  
+
+
+  for i = 0 to 4 { print(a[[i]]++" \n") }; print("\n");
+  for i = 0 to 4 { print(b[[i]]++" \n") }; print("\n");
+
+
+
 
   inspect $ toArray $ a;
   inspect $ toArray $ b;
@@ -85,9 +116,6 @@ s2 = iterate (w in s1) {
   //  emit sigseg_fftC( sigseg_map(floatToComplex, w));
   // Now roundtrip with the full complex transform:
   emit sigseg_fftC( sigseg_ifftC( sigseg_fftC( sigseg_map(floatToComplex, w))));
-  // Now roundtrip with the restricted real transform:
-  emit sigseg_fftR2C( sigseg_ifftC2R( sigseg_fftR2C (w)))
-
 
   /*
   emit sigseg_map(floatToComplex, w);

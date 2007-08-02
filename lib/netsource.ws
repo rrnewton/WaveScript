@@ -33,7 +33,9 @@ fun netpub_int(s, name) {
 //
 
 
-fun gen_glue_int (id) {"
+fun gen_glue_int (host,name) {
+  id = host++"_"++name;
+"
   int __ready_"++id++"(ev_tcp_peer_t *peer, char *buf, uint size) {
     // cast buffer to int and call entry point with it.
     int x = *(int*)buf; 
@@ -41,16 +43,13 @@ fun gen_glue_int (id) {"
   }
 
   void __init_"++id++"() {
+    elog(LOG_WARNING, \"connecting to stream\");
+    subscription_client_create(\""++host++"\", \""++name++"\", __ready_"++host++"_"++name++");
   }
 "}
 
-// RRN: NEED TO FIX THE PARSER:
-//     elog(LOG_WARNING, \"connecting to stream\");
-//    subscription_client_create(\""++host++"\", \""++name++"\", __ready_"++host++"_"++name++");
-
 fun netsub_int(host, name) {
-  id = host++"_"++name;
-  ccode = inline_C(gen_glue_int(id), "__init_"++id);
+  ccode = inline_C(gen_glue_int(host,name), "__init_"++id);
   src = foreign_source("__entry_"++id, []);
   merge(ccode, src)
 }

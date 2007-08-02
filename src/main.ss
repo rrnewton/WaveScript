@@ -594,6 +594,10 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
+  (inspect p)
+  (ws-run-pass p generate-comparison-code)
+  (inspect p)
+
   (ws-run-pass p reify-certain-types) 
 
   ;; for analysis of data rates between boxes

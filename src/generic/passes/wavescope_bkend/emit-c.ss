@@ -1536,6 +1536,11 @@
 	     
 	     [(List ,t)    simple]
 	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
+
+	     #;
+	     ;; Need to make a for loop to go through the data.
+	     [(Array ,t)  
+	      ]
 	     
 	     ;; We have generated a comparison op for each struct.
 	     ;; UNFINISHED:

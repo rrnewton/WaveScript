@@ -105,7 +105,10 @@
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
-   [(:seq "\"" (:* (:- any-char "\"")) "\"")
+   ;; This allows strings to contain escaped characters.
+   [(:seq "\"" (:* (:or (:- (:- any-char "\"")  "\\") ;; Safe characters
+			(:seq "\\" any-char)))        ;; Escape sequences
+	  "\"")
     (token-STRING (unescape-chars (substring lexeme 1 (sub1 (string-length lexeme)))))]
 
    ;["#"  'HASH]
@@ -225,7 +228,7 @@
     
    (src-pos)
 
-   (suppress) ;; IMPORTANT!!! COMMENT OUT WHEN DEBUGGING PARSER!
+   ;(suppress) ;; IMPORTANT!!! SUPPRESSES CONFLICT INFO! COMMENT OUT WHEN DEBUGGING PARSER!
 
    (start start)
    (end EOF)
