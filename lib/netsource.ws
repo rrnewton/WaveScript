@@ -41,6 +41,7 @@ fun gen_glue_int (host,name,id) {
     // cast buffer to int and call entry point with it.
     int x = *(int*)buf; 
     __entry_"++id++"(x);
+    return EVENT_RENEW;
   }
 
   void __init_"++id++"() {
@@ -52,6 +53,6 @@ fun gen_glue_int (host,name,id) {
 fun netsub_int(host, name) {
   id = host++"_"++name;
   ccode = inline_C(gen_glue_int(host,name,id), "__init_"++id);
-  src = foreign_source("__entry_"++id, []);
+  src = (foreign_source("__entry_"++id, []) :: Stream Int);
   merge(ccode, src)
 }
