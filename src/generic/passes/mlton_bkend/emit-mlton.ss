@@ -341,6 +341,12 @@
 			   "\n(* First a block of constants *)\n\n"
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
 
+			   ;; wsinit happens before the individual inits below, and before wsmain:
+			   (if driven-by-foreign
+			       '("val wsinit = _import \"wsinit\" : unit -> unit; \n"
+				 "val _ = wsinit()")
+			       ())
+
 			   "\n(* Then initialize the global bindings: *)\n"
 			   "val _ = "(indent (apply make-seq init*) "        ")"\n\n"
 
@@ -361,12 +367,6 @@
 			   src*
 			  
 			   " \n\n"
-
-			   ;; We either call the foreign wsinit or not
-			   (if driven-by-foreign
-			       '("val wsinit = _import \"wsinit\" : unit -> unit; \n"
-				 "val _ = wsinit()")
-			       ())
 
 			   ;; We need to call init functions for inlined C code, if it exists:
 			   (if (null? CinitCalls) ()
