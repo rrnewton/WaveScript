@@ -789,10 +789,9 @@
       [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])))
 
 
-
 ;(define (ForeignApp ls)
 (trace-define (ForeignApp realname type rator rand*)
-  (make-app (Var rator) rand*))
+  (make-app (Var rator) (list (apply make-tuple-code rand*))))
 
 (trace-define (ForeignEntry cname files ty)
   (match ty
