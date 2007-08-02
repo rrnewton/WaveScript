@@ -35,21 +35,25 @@
   (define (build-comparison ty e1 e2)
     (match ty
       [(Array ,elt) 
-       (let ([el1 (unique-name "arrel1")]
-	     [el2 (unique-name "arrel2")]
-	     [i   (unique-name "i")])
-	 `(let ([i (Ref Int) (Mutable:ref '0)]
-		[stop (Ref Bool) (Mutable:ref '#f)]
-		[len Int (Array:Length ,e1)])
-	    (begin
-	      (while (if (< (deref ,i) len) (not (deref stop)) '#f)
-		   (let ([,el1 (Array:ref ,e1 ,i)]
-			 [,el2 (Array:ref ,e2 ,i)])
-		     (if ,(build-comparison elt el1 el2)
-			 (set! ,i (+_ (deref ,i) '1))
-			 (set! stop '#t)
-			 )))
-	      (not (deref stop)))))]
+       (let ([el1  (unique-name "arrel1")]
+	     [el2  (unique-name "arrel2")]
+	     [i    (unique-name "i")]
+	     [stop (unique-name "stop")]
+	     [len  (unique-name "len")])
+	 `(if (wsequal? (assert-type Int (Array:length ,e1)) (Array:length ,e2))
+	      (let ([,i (Ref Int) (Mutable:ref '0)]
+		    [,stop (Ref Bool) (Mutable:ref '#f)]
+		    [,len Int (Array:length ,e1)])
+		(begin
+		  (while (if (< (deref ,i) ,len) (not (deref ,stop)) '#f)
+			 (let ([,el1 ,elt (Array:ref ,e1 ,i)])
+			 (let ([,el2 ,elt (Array:ref ,e2 ,i)])
+			     (if ,(build-comparison elt el1 el2)
+				 (set! ,i (+_ (deref ,i) '1))
+				 (set! ,stop '#t)
+				 ))))
+		  (not (deref ,stop))))
+	      '#f))]
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,ty ,e1) ,e2)]))
   [Expr 

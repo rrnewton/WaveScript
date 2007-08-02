@@ -594,10 +594,6 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
-  (inspect p)
-  (ws-run-pass p generate-comparison-code)
-  (inspect p)
-
   (ws-run-pass p reify-certain-types) 
 
   ;; for analysis of data rates between boxes
@@ -831,6 +827,10 @@
    (set! prog (run-ws-compiler typed disabled-passes #t))
    
    (printf "\nFinished normal compilation, now emitting C++ code.\n")
+
+   (printf "Running pass: generate-comparison-code\n")
+   (ws-run-pass p generate-comparison-code)
+
    (printf "Running pass: convert-sums-to-tuples\n")
    (time (set! prog (convert-sums-to-tuples prog)))
 
@@ -844,6 +844,7 @@
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
+
 
    (printf "Running pass: nominalize-types.\n")
    (time (set! prog (nominalize-types prog)))
