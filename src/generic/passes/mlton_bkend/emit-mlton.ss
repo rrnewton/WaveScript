@@ -362,6 +362,12 @@
 			  
 			   " \n\n"
 
+			   ;; We either call the foreign wsinit or not
+			   (if driven-by-foreign
+			       '("val wsinit = _import \"wsinit\" : unit -> unit; \n"
+				 "val _ = wsinit()")
+			       ())
+
 			   ;; We need to call init functions for inlined C code, if it exists:
 			   (if (null? CinitCalls) ()
 			       '("val ws_inlinedC_initialization = _import \"ws_inlinedC_initialization\" : unit -> unit;\n"

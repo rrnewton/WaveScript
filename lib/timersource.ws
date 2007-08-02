@@ -2,24 +2,27 @@
 //  Timer Source
 //
 
+//includes = ["wavescope_ensbox.h", "libwavescope2.a"];
 
-fun gen_timer_glue (name,period) ("
+fun gen_timerglue (name,period) ("
+  #include <devel/wavescope/wavescope_ensbox.h>
+
   int __timercb_"++name++"(void *data, int interval, g_event_t *ev) {
     static int counter = 0;
     // trigger into wavescript
-    __timerentry_"++name++"(counter);
+    __timerentry_"++name++"(counter++);
     return EVENT_RENEW;
   }
 
   void __inittimer_"++name++"() {
     elog(LOG_WARNING, \"setting timer source "++name++" for period "++period++"\");
-    g_timer_add(NULL, "++period++", __timercb_"++name++", NULL, NULL);
+    g_timer_add("++period++", __timercb_"++name++", NULL, NULL, NULL);
   }
 ")
 
 fun timer_source(name, period) {
-  ccode = inline_C(gen_glue_int(name, period), "__inittimer_"++name);
-  src = foreign_source("__timerentry_"++name, []) :: Stream Int;
+  ccode = inline_C(gen_timerglue(name, period), "__inittimer_"++name);
+  src = (foreign_source("__timerentry_"++name, []) :: Stream Int);
   merge(ccode, src)
 }
 
