@@ -16,4 +16,6 @@ void wsmain() {
   printf("Done calling into WS, exiting\n");
 }
 
+void wsinit() {}
+
 //int main() { wsmain(); }

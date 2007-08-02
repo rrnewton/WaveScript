@@ -25,7 +25,8 @@ fun netsource(host, files, cnst) {
 }
 
 toplevel = inline_C( "
- void wsmain() { }
+ void wsmain() { } 
+ void wsinit() { }
 ", "")
 
 strm1 = (netsource("foo", [], "34")   :: Stream Int);
