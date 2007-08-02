@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# This takes the .sml file down to a binary.
+
+INPUT=$1
+shift
+
+FLAGS=' -verbose 1 '
+CLINK=' -L/usr/lib/mlton/self -lmlton -lgdtoa -lm -lgmp -lfftw3f '
+CINCLUDES="$REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
+#           $REGIMENTD/src/generic/passes/mlton_bkend/ensbox_new.c
+OUTPUT=query.mlton.exe
+
+# Clean up first:
+rm -f "$OUTPUT"
+rm -f "query.*.c"
+rm -f ".tmp.*.o"
+
+GLIB_PATH="/lib/libglib-2.0.so"
+
+if [ "$EMLIB" == "" ]; then EMLIB='/export/home/girod/emstar/obj.i686-linux/lib'; fi
+# "a" for static linking "so" for dynamic:
+EXT=a
+ENSBOXLD=" \
+  $EMLIB/libwavescope2.$EXT $EMLIB/libvxp_ws.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
+  $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libevent.$EXT $EMLIB/libdev.$EXT \
+  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT $EMLIB/libmisc.$EXT -lm -lasound $GLIB_PATH"
+
+################################################################################
+
+echo MLton compile to host.  Setting up environment.
+
+echo mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+
+echo Beginning GCC compile.
+start=`date +%s`
+
+FILES=`ls query.*.c __temp__inlinedC.c`
+OBJS=''
+
+#echo FILES $FILES
+for fn in $FILES $CINCLUDES
+do 
+  # RRN:
+  # HACKING these calls to gcc in here directly.
+  # The reason for this is that the machines I'm working on (breeze, patridge)
+  # don't support "gcc -b" for some reason.
+
+  echo "  Compiling $fn"
+  OBJ=".tmp.`basename $fn`.o"
+  OBJS="$OBJS $OBJ"
+  gcc  -std=gnu99 -c -I/usr/lib/mlton/self/include \
+          -I$EMLIB/../../include `pkg-config --cflags glib-2.0` \
+          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+          -fomit-frame-pointer -w -o $OBJ $fn \
+	  -I"$REGIMENTD/src/generic/passes/mlton_bkend"
+done
+
+echo Now Linking: $OBJS
+if (gcc -o $OUTPUT $OBJS $CLINK $ENSBOXLD)
+then end=`date +%s`;
+     echo "  Time spent in gcc compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to $OUTPUT.";
+else echo "gcc returned error!!"; exit -1
+fi

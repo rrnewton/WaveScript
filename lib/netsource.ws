@@ -8,11 +8,11 @@ includes = ["wavescope_ensbox.h", "libwavescope2.a"];
 // rrn: void* needs to be changed to the correct type!
 
 // registration function.  this registers a new stream for export.
-c_wsnet_register :: String -> Pointer = 
+c_wsnet_register :: String -> Pointer "void*" = 
   foreign("wsnet_register", includes);
 
 // enqueue function.  this pushes an int into a network stream
-c_wsnet_enqueue_int :: Pointer Int -> Int = 
+c_wsnet_enqueue_int :: (Pointer "void*", Int) -> Int = 
   foreign("wsnet_enqueue_int", includes);
 
 // is there a way to generalize this on types?
@@ -33,9 +33,10 @@ fun netpub_int(s, name) {
 //
 
 
-fun gen_glue_int (host,name) {
-  id = host++"_"++name;
+fun gen_glue_int (host,name,id) {
 "
+  #include <devel/wavescope/wavescope_ensbox.h>
+
   int __ready_"++id++"(ev_tcp_peer_t *peer, char *buf, uint size) {
     // cast buffer to int and call entry point with it.
     int x = *(int*)buf; 
@@ -49,7 +50,8 @@ fun gen_glue_int (host,name) {
 "}
 
 fun netsub_int(host, name) {
-  ccode = inline_C(gen_glue_int(host,name), "__init_"++id);
+  id = host++"_"++name;
+  ccode = inline_C(gen_glue_int(host,name,id), "__init_"++id);
   src = foreign_source("__entry_"++id, []);
   merge(ccode, src)
 }
