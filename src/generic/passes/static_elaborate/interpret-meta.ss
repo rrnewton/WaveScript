@@ -10,7 +10,8 @@
 	   )
   (provide Eval Marshal Marshal-Closure  interpret-meta
 	   test-interpret-meta
-	   marshal-cache)
+;	   marshal-cache
+)
   (chezimports)
 
 ; ================================================================================ ;
@@ -302,14 +303,14 @@
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
-(define marshal-cache 'mc-uninit)
+(define marshal-cache (make-parameter 'mc-uninit))
 
 ;; This marshals the resulting stream-operators.
 ;; The result is a code for a stream-graph.
 (define (Marshal val)
 ;  (display-constrained "  MARSHALLING: " `[,val 100] "\n")
   (cond
-   [(hashtab-get marshal-cache val)
+   [(hashtab-get (marshal-cache) val)
     => (match-lambda ((,name . ,code))
 	 (printf "\n  Marshal: HAD MARSHALLED VALUE IN CACHE!!!\n")
 	 code)]
@@ -438,7 +439,7 @@
 	(let ([val (apply-env env (car fv))])
 	  (cond
 
-	   [(hashtab-get marshal-cache val)
+	   [(hashtab-get (marshal-cache) val)
 	    => (match-lambda ((,name . ,code))
 		 (printf "\n  Marshal-Closure: HAD MARSHALLED VALUE IN CACHE!!!\n")
 		 code)]
@@ -575,7 +576,7 @@
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru) 
 ;	    (inspect x)
-	    (fluid-let ([marshal-cache (make-default-hash-table 1000)])
+	    (parameterize ([marshal-cache (make-default-hash-table 1000)])
 	      (do-basic-inlining 
 	       (id;inspect/continue
 		(time (Marshal (time (Eval x '() #f))))))
@@ -609,20 +610,20 @@
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     
-    [(fluid-let ([marshal-cache (make-default-hash-table 1000)])
+    [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
 	(let ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
 	'())) '() #f)))))
      #f]
-    [(fluid-let ([marshal-cache (make-default-hash-table 1000)])
+    [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
        (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
-     (fluid-let ([marshal-cache (make-default-hash-table 1000)])
+     (parameterize ([,marshal-cache (make-default-hash-table 1000)])
        (not 
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
