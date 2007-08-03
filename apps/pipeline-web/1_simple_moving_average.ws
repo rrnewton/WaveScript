@@ -3,7 +3,7 @@
 
 // 0 says not to replay the data-file after it's finished:
 // 1000 says to set sample rate at 1Khz -- not important for this app:
-data = (readFile("data.txt", "") :: Stream (Int * Float));
+data = (readFile("data.txt", "", timer(1000.0)) :: Stream (Int * Float));
 
 // prim_window will be obsoleted at some point.
 wins = prim_window(data, 10);

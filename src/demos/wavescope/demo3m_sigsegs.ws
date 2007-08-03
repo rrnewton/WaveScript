@@ -6,7 +6,7 @@ fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++
 fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
 
 
-s1 = (readFile("countup.raw", "mode: binary window: 100") :: Stream (Sigseg Int16))
+s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
 BASE <- iterate w in s1 {
    state { pos = 0 }

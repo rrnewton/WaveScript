@@ -12,7 +12,9 @@ grouped like this:
  demo7* : A more substantial program: Marmot phase 1.
  demo8* : Fancy language features, syntactic sugars and generic arith.
 
- demo9* : More advanced and heavier weight primitives.
+ demo9* : More advanced primitives and language features.
+ demo10*: Tests/examples of different optimizations.
+ demo11*: ENSbox-specific demos.
 
  ...
 

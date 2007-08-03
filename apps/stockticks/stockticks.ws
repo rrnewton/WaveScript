@@ -10,7 +10,8 @@
 // That's the overhead of these lazy, thunk-heavy streams.
 
 
-merged = (dataFile("ticks_splits.input", "text", 44000, 0)     :: Stream (String * Float * Int * Float))
+merged = (readFile("ticks_splits.input", "mode: text", timer(44000.0))
+          :: Stream (String * Float * Int * Float))
 //merged = (dataFile("ticks_splits.input", "text", 44000, 250) :: Stream (String * Float * Int * Float))
 //merged = (dataFile("ticks_splits.input", "text", 44000, -1)  :: Stream (String * Float * Int * Float))
 

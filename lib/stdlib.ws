@@ -93,6 +93,8 @@ type SLS t = Stream (List   (Sigseg t));
 CONST           :: t -> S t;
 COUNTUP         :: Int -> S Int;
 
+//easyReadFile    :: String -> Stream t;
+
   // This lets you eavesdrop on a stream while passing all data through:
 snoop           :: (a, Stream b) -> Stream b;
 
@@ -508,6 +510,9 @@ fun sort(swap, cmp, len) {
 
 //======================================================================
 // "Library" stream constructors:
+
+//fun easyReadFile(filename) 
+//     readFile(filename, "", timer(1000.0))
 
 fun CONST(x) 
   iterate _ in timer(1000.0) {

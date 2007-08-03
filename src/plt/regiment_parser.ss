@@ -289,7 +289,7 @@
 ;    (VarExp [(VAR) (wrap $1-start-pos $1-end-pos $1)])
 ;    (VarExp [(VAR) $1])
 
-    (type 
+    (type
 	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
           [(LeftParen type COMMA typeargs RightParen -> type) `(,$2 ,@$4 -> ,$7)]
 	  ;; This is a special case: zero argument function:

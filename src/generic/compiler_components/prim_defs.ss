@@ -490,57 +490,17 @@
 
     (prim_window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
-    ;; Takes channel, window size, overlap, sampling rate:
-    ;; This reads a hard-wired file of marmot-data.
-    ;; The format is four interleaved channels of 16-bit signed ints.
-;    (ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
-;    (ENSBoxAudioF     (Int Int Int Int) (Stream (Sigseg Float)))
-    ;; No, unfortunately it's more raw than that.
-    ;; This just produces four channels of audio of mystery sizes.
-    ;(ensBoxAudio      ()  (Stream #((Sigseg Int16) (Sigseg Int16) (Sigseg Int16) (Sigseg Int16))))
-
     ;; Ok, this uses Lewis's code... single channel sources:
     (ensBoxAudio      (Int ) (Stream (Sigseg Int16)))
     (ensBoxAudioF     (Int ) (Stream (Sigseg Float)))
-
     (ensBoxAudioAll   ()     (Stream (Sigseg Int16)))
 
-    ;; Could think about a generic (HardwareSource "ENSBoxAudio(4096,)")
-    ;; that provides a hack into the C++ generation.  Nasty and
-    ;; backend-dependent, but really, how are hardware data sources
-    ;; not going to be backend dependent?
-
-    ;(audio      (Int Int Int Int) (Stream (Sigseg Float)))
-
     ;; Generic data-file reader.
-    ;; Usage: datafile(fileName, mode, rate, repeats)
-    ;;  Where mode is "text" "text-comma" or "binary".
-    ;;    "text" has whitespace-separated values.
-    ;;  Repeats is an integer representing the number of times to
-    ;;    repeat the files data.  -1 encodes "indefinitely"
-    ;;  Rate is simulated samples/second to read the file's tuples.
-    ;; 
-    ;; dataFile must occur directly within a ( :: T) construct.
-    (dataFile (String String Int Int) (Stream 'a))
-    ;; Internal compiler construct:
-    ;(__dataFile (String String Int Int (List Symbol)) (Stream 'a))
+    ;; The arguments are described in the manual.
+    (readFile (String String (Stream 'a)) (Stream 'b))
 
-    ;; This version reads blocks of tuples at a time:
-;    (dataFileWindowed (String String Int Int Int) (Stream (Sigseg 'a)))
-
-    ;; TODO: The number of options this should take is way too large.
-    ;; Let's make it a list of optional arguments:
-    ;;(dataFile (String (List #(String String))) (Stream 'a))
-    ;dataFile("foo.txt", [("mode","text"), ("repeats","-1"), ("rate","44000"), ("advance", "8")]);
-    ;dataFile("foo.txt", "mode: text  repeats: -1  rate: 44000  advance: 8");
-    ;dataFile("foo.raw", "mode= binary  repeats= -1");
-
-    ; file, fileStream, streamFile, fileSource, readFile, openFile???
-    ;; Maybe we could even use the same prim for windowed or unwindowed... it just depends on the type ascription.
-    (readFile (String String) (Stream 'a))
-
-    (__readFile (String String Int Int (List Symbol)) (Stream 'a))  ;; Internal
-    (readFile-wsearly (String String Magic) (Stream 'a)) ;; Internal
+    (__readFile (String (Stream 'a) String Int Int (List Symbol)) (Stream 'a))  ;; Internal
+    (readFile-wsearly (String String (Stream 'a) Magic) (Stream 'a))            ;; Internal
     
     ;; These are simpler interface that desugar into dataFile:
     ;; They use defaults rather than exposing as many parameters.
@@ -552,11 +512,6 @@
     ;(binFile  (String) (Stream 'a))
     
 
-    ;; Takes a file to read from, window size, overlap, sampling rate:
-    ;; Reads a stream of Uint16's from the file.
-    (audioFile        (String Int Int Int)  (Stream (Sigseg Int)))
-
-
     ;; This internal version works only in the emulator.
     ;(__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))
 
@@ -565,12 +520,6 @@
     ;;   Tick:  #(sym,t,vol,price)
     ;;   Split: #(sym,t,-1,factor)
     ;(stockStream      ()  (Stream #(String Float Int Float)))
-
-    ;; This version is to read a file containing doubles.
-    ;; HACK: Currently it expects a text file rather than a binary file for the 
-    ;; interpreted version of the system.
-    ;(doubleFile        (String Int Int)  (Stream (Sigseg Float)))
-
 
     (fftC              ((Array Complex))  (Array Complex))
     (ifftC             ((Array Complex))  (Array Complex))

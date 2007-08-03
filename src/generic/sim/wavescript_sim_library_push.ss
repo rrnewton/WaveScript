@@ -32,7 +32,7 @@
 
 		 ;dump-binfile 
 		 ;audio 
-		 audioFile timer 
+		 timer 
 		 show
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
@@ -210,8 +210,6 @@
 
   ;; ================================================================================    
 
-  (define end-token (gensym "wavescript_stream_END"))
-
   ;; Global queue of input events in virtual time.
   ;; Currently pairs of (time . source)
   (define event-queue   'wslp-uninit1)    
@@ -219,7 +217,17 @@
   (define data-sources  'wslp-uninit3)   ;; A list of all data sources in the query graph
   (define output-queue  'wslp-uninit4)   ;; Outputs from the query graph
   (define global-eng    'wslp-uninit5)   ;; Engine for running stream graph. 
-  
+
+  ;; [2007.08.02] There's currently no mechasism for backpressure, and
+  ;; readFile's are now in the interior of the stream graph rather
+  ;; than being sources.  So currently we just shut the whole thing
+  ;; down when any readFile runs out of data.
+  (define still-running? #t) ;; Has the query shut down yet?
+  (define (stop-WS-sim! msg) 
+    (eprintf "\nStopping WS Sim: ~s\n" msg)
+    ;(reset-state!)
+    (set! still-running? #f))
+
   ;; Reset the global state.
   (define (reset-state!)
     (set! event-queue '())
@@ -304,7 +312,8 @@
 		   (src 'pop)
 		   ;; Add the next event for this source to the queue.
 		   (let ([newentry (cons (src 'peek) src)])
-		     (if (car newentry)
+		     ;; Only add new events if we're still running:
+		     (if (and (car newentry) still-running?)
 			 (set! event-queue (merge! cmpr-entry (list newentry) event-queue)))
 		     (global-loop)
 		     ))))
@@ -335,11 +344,10 @@
 	   (set! global-eng neweng)
 	   )))
 
-
-
   ;; ================================================================================
   ;; Stream processing primitives:
 
+  ;; Stream source:
   (define (timer freq) 
     ;; milliseconds:
     (define timestep (rate->timestep freq))
@@ -479,22 +487,13 @@
 				     (sigseg-vec w))
 			 (sigseg-timebase w)))))
 
-  
-  ;; Read a stream of Uint16's.
-  (define (audioFile file len overlap rate)
-    (read-binary-file-stream file 
-		      2 ;; Read just 2 bytes at a time.
-		      to-uint16
-		      len overlap rate 0 0))
-
   ;; We read in "blocks" to reduce the overhead of all those thunks!
   ;; (Actually, this didn't speed things up much, just a little.)
   (define DATAFILE_BATCH_SIZE 500)
   
   ;; Should have batched data file...
-  (define (__readFile file mode repeat rate skipbytes offset winsize types)
+  (define (__readFile file srcstrm mode repeat skipbytes offset winsize types)
     ;; TODO: implement skipbytes and winsize!!!
-
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -526,13 +525,7 @@
 	      (car ls)
 	      (make-tuple ls))))
        (define our-sinks '())  
-       (define timestep (if (> winsize 0)
-			    ;; Increase the timestep according to our window size.
-			    (* (rate->timestep rate) winsize)
-			    (rate->timestep rate)))
-       
        (define iswindowed (> winsize 0))
-       (define t 0)
        (define pos 0)
        ;; Reads a whole bunch of lines.
        (define (read-window n)
@@ -542,16 +535,13 @@
 		   (if (fxzero? batch)
 		       (reverse! (cons (parse-line x) acc))
 		       (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc))))))
-       (define src 
-	 (lambda (msg)	   
-	   (s:case msg
-	     [(peek) t] ;; When this returns #f, we're done.
-	     [(pop) 
-	      (set! t (s:+ t timestep))
-	      (if iswindowed
+       (define wsbox 
+	 (lambda (msg)
+	   (if iswindowed
 		  (let ([win (list->vector (read-window winsize))])
 		    (if (not (= (vector-length win) winsize))
-			(set! t #f)	     
+                        ;; How do we signal end of file?
+			(stop-WS-sim! "readFile: didn't get enough data on window read")
 			(let* ([newpos (+ winsize pos -1)]			
 			       [result (make-sigseg pos newpos win nulltimebase)])
 			  (set! pos (+ 1 newpos))
@@ -559,11 +549,12 @@
 		  
 		  ;; Inefficient:
 		  (let ([win (read-window 1)])
-		    (if (null? win) (set! t #f)
-			(fire! (car win) our-sinks))))])))
+		    (if (null? win) 
+			(stop-WS-sim! "readFile: out of data")
+			(fire! (car win) our-sinks))))))
 
-       ;; Register data source globally:
-       (set! data-sources (cons src data-sources))
+       ;; Register ourselves with the parent operator:
+       (srcstrm wsbox)
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
@@ -571,12 +562,11 @@
 
     ;; Read a binary stream with a particular tuple format.
     (define (binsource)
-      (define source (read-binary-file-stream file 
+      (define source (read-binary-file-stream file srcstrm
 				(apply + (map type->width types)) ;; Read N bytes at a time.
 				(types->reader types)
 				(if (> winsize 0) winsize 1) ;; Length of "window"				
 				0 ;; Overlap
-				rate
 				skipbytes
 				offset))
       ;; winsize 0 or -1 indicates non windowed stream, thus strip that sigseg:
@@ -637,28 +627,8 @@
   (define (ensBoxAudioF . args)
     (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
 
-#;
-  ;; This is a hack to load specific audio files:
-  ;; It simulates the four channels of marmot data.
-  (define (audio chan len overlap rate)
-    (define (read-sample str index)
-	 (let ([s str] [ind index])
-	   ;; Just the requested channel:
-
-	   (fixnum->flonum ;; For now this returns float.
-	    (to-int16 s (fx+ ind (fx* chan 2))))
-	   ;; All 4 channels:
-	   ;; NIXING: This allocation of little vectors is really painful performance wise.
-
-#;	   (vector (to-int16 s ind)
-		   (to-int16 s (fx+ 2 ind))
-		   (to-int16 s (fx+ 4 ind))
-		   (to-int16 s (fx+ 6 ind)))
-	   ))
-       (read-binary-file-stream (default-marmotfile) 8 read-sample len overlap rate 0))
-
   ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
-  (define (read-binary-file-stream file wordsize sample-extractor len overlap rate skipbytes offset)
+  (define (read-binary-file-stream file srcstrm wordsize sample-extractor len overlap skipbytes offset)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
     (define buffer1 (make-string chunksize #\_))
@@ -726,40 +696,33 @@
 	   (error 'read-binary-file-stream "currently does not support overlaps, use rewindow")))
 
        (define our-sinks '())  
-       (define timestep (rate->timestep rate))
-       (define t 0)
        (define pos 0)
-       (define (src msg)
-	 (s:case msg
-	   [(peek) t]
-	   [(pop) 
-	    (set! t (s:+ t timestep))
-	    
-	    (let ([win (read-window)])
-	      (if win
-		  (let* ([newpos (+ len pos -1)]
-			 [result (make-sigseg pos newpos win nulltimebase)])
-		    
-		    (unless (regiment-quiet)
-		      (set! counter (fx+ counter len))
-		      (when (fx>= counter print-every)
-			(set! counter (fx- counter print-every))
-			(set! total (+ total print-every))
-			(fprintf (current-error-port) "Read ~a tuples from file ~a.\n"
-				(+ total counter)
-				file)))
-
-		    (set! pos (+ 1 newpos))
-                    (fire! result our-sinks)
-		    )
-		  (begin 		    
+       (define (wsbox msg)         
+         (let ([win (read-window)])
+           (if win
+               (let* ([newpos (+ len pos -1)]
+                      [result (make-sigseg pos newpos win nulltimebase)])
+                 
+                 (unless (regiment-quiet)
+                   (set! counter (fx+ counter len))
+                   (when (fx>= counter print-every)
+                     (set! counter (fx- counter print-every))
+                     (set! total (+ total print-every))
+                     (fprintf (current-error-port) "Read ~a tuples from file ~a.\n"
+                              (+ total counter)
+                              file)))
+                 
+                 (set! pos (+ 1 newpos))
+                 (fire! result our-sinks)
+                 )
+               (begin 		    
 #;
-		    (error 'read-binary-file-stream
-			   "don't know how to handle eof right now.")
-		    (set! t #f))))
-	    ]))
-
-       ;; Scan ahead in the file to the offset:
+                 (error 'read-binary-file-stream
+                        "don't know how to handle eof right now.")
+		 (stop-WS-sim! "readFile: hit eof")
+                 (void)))))
+    
+    ;; Scan ahead in the file to the offset:
        (let scan ([offset offset])
 	 ;; Would be nice if we had a seek command instead of having
 	 ;; to read this out by blocks:
@@ -767,8 +730,8 @@
 	   ;; Don't read more than we have room for.
 	   (scan (- offset (block-read infile buffer1 (min offset chunksize))))))
 
-       ;; Register data source globally:
-       (set! data-sources (cons src data-sources))
+       ;; Register with our parent stream.
+       (srcstrm wsbox)
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))

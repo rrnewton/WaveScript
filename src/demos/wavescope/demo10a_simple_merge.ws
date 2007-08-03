@@ -2,7 +2,7 @@
 // This file is meant to demonstrate how the compiler can merge iterates.
 // Run the compiler/emulator with -verbose watch the intermediate code.
 
-s1 = (readFile("./countup.raw", "mode: binary  window: 10") :: Stream (Sigseg Int));
+s1 = (readFile("./countup.raw", "mode: binary  window: 10", timer(2400.0)) :: Stream (Sigseg Int));
 
 s2 = iterate (sigseg in s1) { emit sigseg[[0]]; }
 

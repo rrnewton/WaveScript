@@ -49,28 +49,11 @@ exec regiment i --script "$0" ${1+"$@"};
 
 (define demo-list
     `(
-#;
-    ["demo0_audio.ws"             ,(lambda (a b) 
-				     (IFCHEZ (import wavescript_sim_library_push) (void))
-				     (ASSERT (= 0    (start a)))
-				     (ASSERT (= 4095 (end   a)))
-				     (ASSERT (= 4096 (start b)))
-				     (ASSERT (= 8191 (end   b)))
-				     )]
-
-    ["demo1b_dataFile.ws"         ,(lambda (a b) 
-				     (ASSERT (equal? (tuple-fields a) '(1 1.0)))
-				     (ASSERT (equal? (tuple-fields b) '(2 2.0))))]
 
     ["demo1c_timer.ws"         ,(lambda (a b) 
-				     (ASSERT (equal? a 39))
-				     (ASSERT (equal? b 39)))]
-    ["demo1d_dataFile_binary.ws"  ,(lambda (a b) 
-				     (ASSERT (equal? a 256))
-				     (ASSERT (equal? b 512))
-				     ;(ASSERT (equal? a 1256))
-				     ;(ASSERT (equal? b 2024))
-				     )]
+				  (ASSERT (equal? a 39))
+				  (ASSERT (equal? b 39)))]
+    ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
     ;; Hmm need to test windowed reading too:
     ["demo1e_readFile.ws"  ,(lambda (a b) 
 			      (ASSERT (equal? (tuple-fields a) '(512 1024 1536)))

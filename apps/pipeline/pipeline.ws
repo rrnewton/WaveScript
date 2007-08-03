@@ -219,7 +219,7 @@ fun gaussian_likelihood(mean, stddev, peakRatio)
    constant *. exponent;
 }
 
-source = (readFile("./pipeline1.data", "mode: text  window: 600 ") :: Stream (Sigseg Float))
+source = (readFile("./pipeline1.data", "mode: text  window: 600 ", timer(10000.0)) :: Stream (Sigseg Float))
 
 rw :: Stream (Sigseg Float);
 rw = rewindow(source, 8192, 500);

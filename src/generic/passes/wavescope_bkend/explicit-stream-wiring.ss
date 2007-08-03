@@ -45,6 +45,7 @@
 	    (cons `(,a ,b M-> ,v ,ty) bod)])]       
 
 	;; Sources:
+	;; This assumes that wavescript streame primitives are sources.
 	[(let ([,v (Stream ,ty) (,prim ,rands* ...)]) ,[bod])
 	 (guard (assq prim wavescript-stream-primitives))
 	 (cons `[-> ,v (Stream ,ty) (,prim . ,rands*)] bod)]

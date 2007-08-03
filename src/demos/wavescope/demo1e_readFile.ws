@@ -8,8 +8,9 @@
 
 
 s1 = (readFile("./countup.raw", 
-	       "mode: binary  rate: 44000  repeats: 0 "++
-	       "skipbytes: 2  window: 255 offset: 2")
+	       "mode: binary  repeats: 0 "++
+	       "skipbytes: 2  window: 255 offset: 2", 
+	       timer(44000.0 / 255.0))
       //:: Stream (Sigseg (Int16 * Int16 * Int16)))
       //:: Stream (Int16 * Int16 * Int16))
       :: Stream (Sigseg (Int16)))

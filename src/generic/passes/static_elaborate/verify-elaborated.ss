@@ -95,6 +95,8 @@
 	  (fluid-let ([inside-iterate #t])
 	    `(iterate ,(process-expr letorlamb tenv fallthrough) ,src))]
 
+	 ;; [2007.08.02] Allowing this now:
+#;
 	 [(,higher ,[x*] ...)
 	  (guard (assq higher higher-order-primitives))
 	  (unless inside-iterate

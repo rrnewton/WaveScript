@@ -13,7 +13,7 @@ include "stdlib.ws";
 // Here we read in a small data sample.
 file = "testdata.txt"
 //chans = (readFile(file, "mode: text window: 8192 rate: 24000 ") :: Stream Sigseg (Float)); 
-_chans = (readFile(file, "mode: text  rate: 24000 ") :: Stream (Float));
+_chans = (readFile(file, "mode: text ", timer(2400.0)) :: Stream (Float));
 chans = window(_chans, 8192);
 
 split = deinterleaveSS(4, 2048, chans);

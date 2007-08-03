@@ -1,7 +1,8 @@
 
 // UNFINISHED
 
-BASE <- rewindow((readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int)), 10, 100);
+BASE <- rewindow((readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) 
+                 :: Stream (Sigseg Int)), 10, 100);
 
 
 

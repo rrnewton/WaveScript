@@ -31,7 +31,7 @@
 fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
 // Audio channel 1 with no overlap.
-s1 = (readFile("./countup.raw", "mode: binary  window: 15000") :: Stream (Sigseg Int16));
+s1 = (readFile("./countup.raw", "mode: binary  window: 15000", timer(1.0)) :: Stream (Sigseg Int16));
 
 /* s2 = iterate(w in s1) { */
 /*   arr = makeArray(3, 99.9); */

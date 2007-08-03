@@ -289,7 +289,7 @@ sm = stream_map;
 //chans = (readFile("/tmp/test.txt", "")
 //chans = (readFile("/tmp/PIPE", "")
 //chans = (readFile("/tmp/slave18_snip", "")
-chans = (readFile("slave18_smallsnip.dat", "")
+chans = (readFile("slave18_smallsnip.dat", "", timer(10000.0))
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
 time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);

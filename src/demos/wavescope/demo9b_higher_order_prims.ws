@@ -1,6 +1,6 @@
 
 //s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
-s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
+s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
 //	       "mode: binary  rate: 44000  repeats: 0 "++
 //	       "skipbytes: 2  window: 50 offset: 2")

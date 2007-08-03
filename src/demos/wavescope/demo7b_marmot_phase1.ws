@@ -429,11 +429,12 @@ ch4 = window(iterate((_,_,_,d) in chans){ emit int16ToFloat(d) }, 4096);
 // [2007.03.24] Using the new "readFile" we can read sigsegs directly:
 fun toFl(S) { deep_smap(int16ToFloat, S) }
 fn = "6sec_marmot_sample.raw";
-config = "mode: binary  rate: 24000  window: 4096  skipbytes: 6 ";
-_ch1 = toFl((readFile(fn, config)                :: Stream (Sigseg Int16)));
-_ch2 = toFl((readFile(fn, config ++ "offset: 2") :: Stream (Sigseg Int16)));
-ch3  = toFl((readFile(fn, config ++ "offset: 4") :: Stream (Sigseg Int16)));
-ch4  = toFl((readFile(fn, config ++ "offset: 6") :: Stream (Sigseg Int16)));
+config = "mode: binary  window: 4096  skipbytes: 6 ";
+driver = timer(24000.0 / 4096.0);
+_ch1 = toFl((readFile(fn, config,                driver) :: Stream (Sigseg Int16)));
+_ch2 = toFl((readFile(fn, config ++ "offset: 2", driver) :: Stream (Sigseg Int16)));
+ch3  = toFl((readFile(fn, config ++ "offset: 4", driver) :: Stream (Sigseg Int16)));
+ch4  = toFl((readFile(fn, config ++ "offset: 6", driver) :: Stream (Sigseg Int16)));
 
 
 ch1 = _ch1; ch2 = _ch2;

@@ -164,10 +164,12 @@ marmotfile =
   //  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
+winsize = 16384;
+driver = timer(24000.0 / winsize`i2f);
 chans = 
   if flag
   then rewindow(ensBoxAudioAll(), 128*4, 0)
-  else (readFile(marmotfile, "mode: binary window: 16384 rate: 24000 ") :: Stream Sigseg (Int16));
+  else (readFile(marmotfile, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
 
 fun onechan(offset)
   iterate w in chans {

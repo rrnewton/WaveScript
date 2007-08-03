@@ -3,7 +3,7 @@
 
 include "stdlib.ws";
 
-data = (readFile("data.txt", "") :: Stream (Int * Float));
+data = (readFile("data.txt", "", timer(1000.0)) :: Stream (Int * Float));
 
 wins = window(data, 10);
 

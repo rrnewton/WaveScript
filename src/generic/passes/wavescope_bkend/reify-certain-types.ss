@@ -38,12 +38,6 @@
 	   ;; Like the src-pos case above, this is a little snip of what static-elaborate does:
 	   [(app ,prim ,_ ...) (guard (regiment-primitive? prim))
 	    (process-expr (cons prim _) fallthru)]
-
-	   ;; This needs to explicitly pass the types as argument to run with wsint.
-	   [(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rate] ,[rep]))
-	    (let ([types (match t [#(,t* ...)  t*]  [,t   	(list t)])])
-	      `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ',types)
-	      )]
 	   
 	   ;; This needs the type tagged on also:
 	   [(assert-type ,T (,frgn ,[name] ,[files]))
@@ -54,15 +48,14 @@
 	    (error 'reify-certain-types "missed ~s construct, must not have type annotation: ~s" frgn (cons frgn _))]
 	   
 	   ;; This parses the option string to readFile.
-	   [(assert-type (Stream ,t) (readFile ,[fn] ',str))
+	   [(assert-type (Stream ,t) (readFile ,[fn] ',str ,[src]))
 	    ;; From regiment_helpers.ss
-            (parse-readFile-modestring str t fn)
-            ]
+            (parse-readFile-modestring str t fn src)]
            
            ;; Here's a hack for ws.early:
-           ;; We don't necessarily have the string available, but we can still throw
-           [(assert-type (Stream ,t) (readFile ,[fn] ,[str]))
-            `(readFile-wsearly ,fn ,str ',t)]
+           ;; We don't necessarily have the string available, but we can still throw in the types.
+           [(assert-type (Stream ,t) (readFile ,[fn] ,[str] ,[src]))
+            `(readFile-wsearly ,fn ,str ,src ',t)]
 
 #;
            [(assert-type ,_ (readFile ,[fn] ,[str]))

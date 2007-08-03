@@ -6,7 +6,7 @@
 
 fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
 
-s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
+s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
 newwidth = 1024;
 step = 512;

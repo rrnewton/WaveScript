@@ -1,7 +1,7 @@
 
 namespace Foo {
   //s0 = timer(300.0);
-  s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int16));
+  s0 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 }
 
 namespace Bar {

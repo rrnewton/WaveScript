@@ -2,13 +2,28 @@
 // This provides a facility for pull-based streams.
 // It uses the metaprogramming framework to thread "pull" wires through the query.
 
-include "stdlib.ws";
+//include "stdlib.ws";
 
 type PullStream t = Stream () -> Stream t;
+
+// INTERFACE:
+
+//Pull:pullwith :: (PullStream t, Stream ()) -> Stream t;
+//Pull:counter  :: Int -> (PullStream Int);
+
+//Pull:counter  :: Int -> (Stream () -> Stream Int);
+//Pull:counter  :: #epz -> Stream 'eqg -> Stream #epz;
+//Pull:counter  :: Int -> Stream 'eqg -> Stream Int;
+//Pull:counter  :: Int -> Stream () -> Stream Int;
+
+Pull:counter  :: Int -> (Stream ()) -> Stream Int;
+//Pull:counter  :: Int -> Stream () -> Stream Int;
+
 
 // ================================================================================
 // Data type defs:
 
+// For internal use only:
 uniontype PullIterEvent a b = 
   UpstreamPull   ()   | 
   DownstreamPull ()   | 
@@ -40,12 +55,12 @@ fun Pull:pullwith(pstream, strm) pstream(strm)
 //Pull:counter :: Int -> PullStream Int;
 fun Pull:counter(strt)
  fun (pulls)
-   iterate _ in pulls {
-     state{ counter = strt - 1 }
-     counter += 1;
+   iterate x::() in pulls {
+     state{ counter = strt - gint(1) }
+     counter += gint(1);
      emit counter;
    }
-
+/*
 fun Pull:applyST(qsize, src, transformer) {
   fun(pullstring) {        
     filtFinalResult$
@@ -89,6 +104,7 @@ fun Pull:applyST(qsize, src, transformer) {
 }
 
 fun Pull:map(fn,strm) Pull:applyST(0, strm, fun(s) stream_map(fn,s))
+*/
 
 // ================================================================================
 
@@ -99,6 +115,7 @@ BASE <- Pull:pullwith(pstream, timer(3.0))
 */
 
 // ALTERNATIVLY we could use this interface:
+/*
 pstream = 
   Pull:map((+1000), 
      Pull:applyST(2, Pull:counter(10),
@@ -108,7 +125,7 @@ pstream =
 	       emit n+300;
 	     }));
 BASE <- Pull:pullwith(pstream, timer(3.0))
-
+*/
 
 
 // SCRAP

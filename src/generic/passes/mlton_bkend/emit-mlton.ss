@@ -344,7 +344,7 @@
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
 			       '("val wsinit = _import \"wsinit\" : unit -> unit; \n"
-				 "val _ = wsinit()")
+				 "val _ = wsinit()\n")
 			       ())
 
 			   "\n(* Then initialize the global bindings: *)\n"
