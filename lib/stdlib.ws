@@ -917,13 +917,65 @@ fun deinterleaveSS(n, outsize, strm) {
 	   newind += 1;
 	   if newind == outsize then {
 	     sampnum = (win`start + i) / n - (outsize - 1);
-	     emit toSigseg(newwin, sampnum, nulltimebase);
+	     emit toSigseg(newwin, sampnum, win`timebase);
 	     newwin := Array:makeUNSAFE(outsize);
 	     newind := 0;
 	   }
 	 };
          counter += 1;
          if counter == n then counter := 0; 
+       }
+     }
+   })
+}
+
+// This version takes a stream of sigsegs:
+// it outputs whole wins as they come, and deals with gaps OK
+fun deinterleaveSS2(n, strm) {
+ List:build(n,
+   fun(offset) {
+     iterate win in strm {
+
+       // emit nullsegs to indicate gaps
+       state {
+	 last_counter :: Int64 = 0;
+	 nulled = false;
+       }
+
+       // handle input nullsegs
+       if (win == nullseg) then {
+	 if (nulled != true) then { emit(nullseg); };
+         nulled := true;
+       }
+
+       else {
+
+	 // detect discontinuities
+	 if (last_counter != win`start) then {
+	   if (nulled != true) then { emit(nullseg); };
+  	   nulled := true;
+           last_counter := win`start;
+	 };
+         last_counter := last_counter + win`width;
+
+	 counter = 0;
+	 newind = 0;
+	 outsize = win`width / n;
+	 newwin = Array:makeUNSAFE(outsize);
+	 
+	 for i = 0 to win`width - 1 {	 
+	   if counter == offset  
+	   then {
+	     newwin[newind] := win[[i]]; 
+	     newind += 1;
+	   };
+	   counter += 1;
+	   if counter == n then counter := 0; 
+	 };
+	 
+	 sampnum = win`start / n;
+	 emit toSigseg(newwin, sampnum, win`timebase);
+         nulled := false;
        }
      }
    })

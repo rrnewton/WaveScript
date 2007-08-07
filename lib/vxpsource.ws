@@ -17,6 +17,8 @@ struct queued_data {
 
 #define MAX_QUEUE_LEN (8*MILLION_I)
 
+int __vxp_tb = 0;
+
 static
 int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 {  
@@ -27,9 +29,29 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
       g_msg_queue_dec_size(ws->mq, qd->length);
       
       if (qd->buf) {
+	
+	/* inject into timebase system */
+	double gps;
+	double cpu;
+	double samples = qd->sample_count;
+	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
+  	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+	}
+	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
+  	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	}
+
+	samples += qd->count;
+	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
+  	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+	}
+	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
+  	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	}
+
 	/* upcall to wavescript */
 	__vxpentry(qd->buf, qd->count, qd->sample_count);
-	//free(qd->buf);
+	free(qd->buf);
       }
       else {
 	elog(LOG_CRIT, \"got msg queue element, null pointer\");
@@ -113,6 +135,8 @@ int __initvxp()
     exit(1);
   }
 
+  __vxp_tb = timebase_new(my_node_id, CLOCK_VXP, 0.1);
+
   /* spawn thread to run vxp. */
   if (pthread_create(&(ws->vxp_thread), NULL, vxp_thread, ws) < 0) {
     fprintf(stderr, \"couldn't launch thread: %m\n\");
@@ -127,7 +151,7 @@ fun vxp_source() {
   src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
     arr :: Array Int16 = ptrToArray(p,len);
-    emit arr;
+    deinterleaveSS2(4, toSigseg(arr, counter*4, 0));
   };
   merge(ccode, interleaved)
 }
