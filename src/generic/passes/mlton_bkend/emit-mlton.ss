@@ -173,7 +173,10 @@
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
 
     [(,[args] ... -> ,[ret])
-     (list "(" (insert-between " * " args) " -> " ret ")")]
+     (list "(" (if (null? args)
+		   "unit"
+		   (insert-between " * " args))
+	   " -> " ret ")")]
 
     ;; Went back and forth on whether this should be a pointer:
     [(Sigseg ,t) `(,(Type t) " sigseg")]
