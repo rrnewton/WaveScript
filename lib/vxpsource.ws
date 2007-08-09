@@ -165,7 +165,7 @@ fun nullsafe_ptrToArray(p, len)
 
 
 //vxp_source :: () -> List (Stream (Sigseg Int16));
-fun vxp_source() {
+fun vxp_source_init() {
   ccode = inline_C(vxp_c_interface(), "__initvxp");
   src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
@@ -185,7 +185,10 @@ fun vxp_source() {
       print("emitted sigseg?\n");
     }
   };
-  //List:map(fun(x) merge(ccode, x), deinterleaveSS2(4, interleaved));
-  merge(ccode, unionList(deinterleaveSS2(4, interleaved)));
+  merge(ccode, interleaved);
+}
+
+fun vxp_source_stream(interleaved, offset) {
+  one_deinterleaveSS2(4, offset, interleaved)
 }
 
