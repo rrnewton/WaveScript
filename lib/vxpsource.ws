@@ -2,6 +2,9 @@
 c_vxp_get_tb :: () -> Timebase = 
   foreign("vxp_get_tb", []);
 
+c_isnull :: (Pointer "void *") -> Bool = 
+  foreign("vxp_isnull", []);
+
 fun vxp_c_interface() {
 "
 #include <devel/wavescope/wavescope_ensbox.h>
@@ -22,6 +25,7 @@ struct queued_data {
 int __vxp_tb = 0;
 
 int vxp_get_tb() { return __vxp_tb; }
+int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
 
 static
 int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
@@ -148,14 +152,30 @@ int __initvxp()
 
 "};
 
+
+fun nullsafe_ptrToArray(p, len)
+{
+  if (c_isnull(p)) then {
+    Array:make(len, gint(0))
+  }
+  else {
+    ptrToArray(p,len)
+  }
+};
+
+
 //vxp_source :: () -> List (Stream (Sigseg Int16));
 fun vxp_source() {
   ccode = inline_C(vxp_c_interface(), "__initvxp");
   src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
+    // note: len is measured in bytes.
+    //       counter is measured in 4 channel samples!
+
+    // check for NULL pointer
     print("from c: len="++len++" counter="++counter++"\n");
-    arr :: Array Int16 = ptrToArray(p,len);
-    print("array is made, length "++arr`length++"\n");
+    arr :: Array Int16 = nullsafe_ptrToArray(p,len);
+    print("array is made, length "++arr`Array:length++"\n");
     emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
     print("emitted sigseg?\n");
   };
