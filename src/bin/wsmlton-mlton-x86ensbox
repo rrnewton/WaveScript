@@ -31,7 +31,7 @@ ENSBOXLD=" \
 echo MLton compile to host.  Setting up environment.
 
 echo mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
-mlton -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
+mlton -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -codegen c  -stop g $FLAGS $INCLUDES query.sml $CINCLUDES
 
 echo Beginning GCC compile.
 start=`date +%s`

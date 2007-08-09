@@ -1,3 +1,3 @@
 #!/bin/sh
 
-mlton -default-ann 'allowFFI true' $*
+mlton -const 'Exn.keepHistory true' -default-ann 'allowFFI true' $*

@@ -169,18 +169,17 @@ fun vxp_source() {
   ccode = inline_C(vxp_c_interface(), "__initvxp");
   src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
-    // note: len is measured in bytes.
-    //       counter is measured in 4 channel samples!
+    // note: len and counter are measured in 4 channel samples!
 
     // check for NULL pointer
     if (c_isnull(p)) then {
-      println("ignoring gap of "++len/4++" samples");
+      println("ignoring gap of "++len++" samples");
       // could also use nullsafe_ptrToArray... 
     }
 
     else {
       print("from c: len="++len++" counter="++counter++"\n");
-      arr :: Array Int16 = ptrToArray(p,len);
+      arr :: Array Int16 = ptrToArray(p,len*4);
       print("array is made, length "++arr`Array:length++"\n");
       emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
       print("emitted sigseg?\n");
