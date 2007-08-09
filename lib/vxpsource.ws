@@ -1,4 +1,6 @@
 
+c_vxp_get_tb :: () -> Timebase = 
+  foreign("vxp_get_tb", []);
 
 fun vxp_c_interface() {
 "
@@ -18,6 +20,8 @@ struct queued_data {
 #define MAX_QUEUE_LEN (8*MILLION_I)
 
 int __vxp_tb = 0;
+
+int vxp_get_tb() { return __vxp_tb; }
 
 static
 int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
@@ -145,14 +149,16 @@ int __initvxp()
 
 "};
 
-
+//vxp_source :: () -> List (Stream (Sigseg Int16));
 fun vxp_source() {
   ccode = inline_C(vxp_c_interface(), "__initvxp");
-  src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
+  src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int));
+  /// SHOULD BE INT * INT64 !!!
   interleaved = iterate (p,len,counter) in src {
     arr :: Array Int16 = ptrToArray(p,len);
-    deinterleaveSS2(4, toSigseg(arr, counter*4, 0));
+    emit(toSigseg(arr, counter*4, c_vxp_get_tb()));
   };
-  merge(ccode, interleaved)
+  //List:map(fun(x) merge(ccode, x), deinterleaveSS2(4, interleaved));
+  unionList(deinterleaveSS2(4, interleaved));
 }
 

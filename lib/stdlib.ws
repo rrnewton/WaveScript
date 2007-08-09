@@ -938,8 +938,11 @@ fun deinterleaveSS2(n, strm) {
 
        // emit nullsegs to indicate gaps
        state {
-	 last_counter :: Int64 = 0;
+	 // should be Int64!
+	 last_counter = 0;
 	 nulled = false;
+	 counter = 0;
+	 newind = 0;
        }
 
        // handle input nullsegs
@@ -958,8 +961,8 @@ fun deinterleaveSS2(n, strm) {
 	 };
          last_counter := last_counter + win`width;
 
-	 counter = 0;
-	 newind = 0;
+	 counter := 0;
+	 newind := 0;
 	 outsize = win`width / n;
 	 newwin = Array:makeUNSAFE(outsize);
 	 
