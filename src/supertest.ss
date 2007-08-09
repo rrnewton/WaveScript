@@ -375,6 +375,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSC:
 
+#|
+
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
@@ -412,6 +414,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))))
        (current-directory test-directory))
+
+|#
 
 (fpf "\n\nWaveScript MLTON Backend:\n" )
 (fpf "========================================\n")
@@ -484,13 +488,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot_run.log" test-directory))))       
 
+
+#|
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot_build.log" test-directory))))
+
+|#
+
 ;; [2007.07.03] This is having problems right now with the sync.  Not running atm.
 #;
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
 	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/wsc_marmot_run.log" test-directory))))
-       (current-directory test-directory))
+
+
+
+       (current-directory test-directory)
+       )
 
 #;
 ;; POTHOLE 
@@ -514,12 +527,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
               (format "echo 3 | ws.early pothole4.ws -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
+#|
        (fpf "wscaml: Compiling pothole4 app:               ~a\n"
 	    (code->msg! (system/exit-code 
              (format "wscaml pothole4.ws -exit-error &> ~a/wscaml_pothole_build.log" test-directory))))
        (fpf "wscaml: Running pothole4:                     ~a\n"
 	    (code->msg! (system/exit-code 
              (format "./query.caml.exe &> ~a/wscaml_pothole4_run.log" test-directory))))
+|#
 
        (fpf "wsmlton: Compiling pothole4 app:              ~a\n"
 	    (code->msg! (system/exit-code 

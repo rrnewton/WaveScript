@@ -26,7 +26,7 @@ zipped = zipN_sametype(0, [ch1,ch1b]);
 
 zipped2 = zip4_sametype(0, ch1,ch1b, ch1,ch1b);
 
-BASE <- iterate (x in zipped) {
+result = iterate (x in zipped) {
   state { first = true }
   
   //println(x++" \n");
@@ -103,3 +103,5 @@ BASE <- iterate (x in zipped) {
   //  emit true;
 }
 
+BASE <- result
+//BASE <- ch2

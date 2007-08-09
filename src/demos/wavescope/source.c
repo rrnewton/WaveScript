@@ -19,5 +19,6 @@ void wsmain() {
 }
 
 void wsinit() {}
+//void wsinit(int argc, char* argv[]) {}
 
 //int main() { wsmain(); }

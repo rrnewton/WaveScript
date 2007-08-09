@@ -125,6 +125,8 @@ makeHanning     :: Int      -> Array Float;
   // Taper the edges of the (probably overlapping) windows.
 hanning         :: SS Float -> SS Float;
 
+  // Insert explicit nullsegs to represent gaps.
+make_gapstream  :: SS t -> SS t;
 
   // Replay the first element of a stream.
 rep_first        :: (Int, Stream a) -> Stream a;
@@ -837,7 +839,8 @@ fun rewindow(sig, newwidth, gap) {
     acc := joinsegs(acc, win);
     //print("Acc "++show(acc`start)++":"++show(acc`end)++" need_feed "++show(need_feed)++"\n");
 
-    go := true;
+   // This is INEFFICIENT!  We don't need to do this many subseg operations:
+   go := true;
    while go {
      if need_feed then {
        if acc`width > gap // here we discard a segment:
@@ -913,9 +916,9 @@ fun deinterleaveSS(n, outsize, strm) {
                newwin = Array:null;
 	       firsttime = true;
                newind = 0 }
+       // We can't use makeUNSAFE at meta-time currently:
+       if firsttime then { firsttime := false; newwin := Array:makeUNSAFE(outsize) };
        for i = 0 to win`width - 1 {
-	 // We can't use makeUNSAFE at meta-time currently:
-         if firsttime then { firsttime := false; newwin := Array:makeUNSAFE(outsize) };
          if counter == offset  
          then {
 	   newwin[newind] := win[[i]]; 
@@ -1037,6 +1040,88 @@ fun rep_first(count, strm) {
       }*/
   }
 }
+
+
+/* 
+ Experimental:
+*/
+/*
+
+fun gapstream_state_machine(initstate, startcontig, continuecontig, endcontig) {
+  fun (s)
+   iterate win in s {
+      state {
+	lastsamp = -2; // Stream sampnums must be positive.
+	userstate = initstate;
+      }
+      // Gap markers (nullsegs) are ignored.
+      if win`width > 0 then 
+        if win`start == lastsamp+1 then {
+          let (tups, newstate) = continuecontig(win, userstate);
+  	  List:foreach( fun(x) emit x, tups);
+          userstate := newstate;	
+          lastsamp := win`end;
+	} else {
+	  // We call end once for the gap itself, then start immediately.
+          let (tups1, newstate1) = endcontig(win, userstate);
+          let (tups2, newstate2) = startcontig(win, newstate1);
+
+  	  List:foreach( fun(x) emit x, tups1);
+  	  List:foreach( fun(x) emit x, tups2);
+          userstate := newstate2; 
+          lastsamp := win`end;
+	}
+   }
+}
+
+// Just an example... only works for positive gaps.
+fun rewindow_gapstream(sig, newwidth, gap) {
+  feed = newwidth + gap;
+  fun dumpavail(acc) {
+    howmany = acc`width / feed;
+    output = Mutable:ref([]);
+    for i = 0 to howmany-1 {
+      output := subseg(acc, i * feed, newwidth) ::: output;      
+    };
+    newstart = howmany*feed;
+    (List:reverse(output), 
+     subseg(acc, newstart, acc`width - newpos))
+  };
+  f = gapstream_state_machine(
+        nullseg,
+        fun (w,acc) { // Start
+	  // The remainder left in the acc goes out and we start over.
+          let (tups, newacc) = dumpavail(w);
+	  (acc ::: tups, newacc)
+	}, 
+	fun (w,acc) dumpavail(joinsegs(acc,w)); // Continue
+	fun (st,en,acc) ([],acc) // Gap, do nothing
+      );
+  f(sig)
+}
+
+
+*/
+
+
+// RRN: FIXME Currently untested!!!
+// Makes the gaps explicit in a stream.  Inserts nullsegs where there are gaps.
+fun make_gapstream(s) {
+  iterate win in s {
+    state { lastsamp = -2`gint }
+      // Gap markers (nullsegs) are ignored.
+    if win`width > 0 then {
+        if win`start == lastsamp + 1`gint then {
+	  emit win;
+	} else {
+	  emit nullseg;
+	  emit win;
+	};
+	lastsamp := win`end;
+    } 
+   }
+}
+
 
 
 //======================================================================

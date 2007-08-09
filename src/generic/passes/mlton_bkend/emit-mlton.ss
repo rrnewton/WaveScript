@@ -49,11 +49,17 @@
 
 ;; This is LAME, but having problems with "let val rec" syntax in MLton.
 ;; This produces the "f x = bod" snippet .
+#;
 (define (make-fun-binding name formals funbody)
   (list " " (coerce-id name) " "
 	(if (null? formals) "()"
 	    (insert-between " " (map coerce-id formals)))
 	" = "funbody))
+(define (make-fun-binding name formals funbody)
+  (list " " (coerce-id name) " = fn "
+	(if (null? formals) "()"
+	    (insert-between " " (map coerce-id formals)))
+	" => "funbody))
 
 ;; Tuple version:
 ;; ...
@@ -205,16 +211,21 @@
      "\n"))
 
 (define (build-show t)
+  (define (intprint mod)
+    (format (++ "(fn n => if n < ~a.fromInt 0 "
+	       " then \"-\" ^ ~a.toString (~a.-(~a.fromInt 0, n))"
+	       " else ~a.toString n)")
+	    mod mod mod mod mod))
   (match t
 
-    [Int16 "Int16.toString"]
-    [Int64 "Int64.toString"] 
+    [Int16 (intprint 'Int16)]
+    [Int64 (intprint 'Int64)] 
+    [Int   (intprint int-module)]
 
     ;; ERROR: FIXME:
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
 
     [String     (make-fun '("x") "x")]
-    [Int    (format "~s.toString" int-module)]
     [Float  "Real32.toString"]
     [Double "Real64.toString"]
     [Bool   "Bool.toString"]
@@ -308,8 +319,8 @@
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
 		      (init  ,[Effect -> init*] ...)
 		      (sources ,[Source -> src* state1** init1*] ...)
-		      (iterates ,[Iterate -> iter* state2**] ...)
-		      (unions ,[Union -> union*] ...)
+		      (operators ,[Operator -> oper* state2**] ...)
+;		      (unions ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
 
        ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
@@ -363,9 +374,9 @@
 			   " val "(build-BASE basetype)
 			   
 			   " fun ignored () = () \n" ;; starts off the block of mutually recursive defs
-			   (map (lambda (x) (list "\n and " x "\n"))
+			   (map (lambda (x) (list "\n val " x "\n"))
 			     ;; We reverse it because we wire FORWARD
-			     (reverse (append iter* union*)))
+			     (reverse oper*))
 
 			   src*
 			  
@@ -405,6 +416,7 @@
 ;;; Helper functions for handling different program contexts:
 
 
+#;
 ;; The incoming values already have indices on them, this just needs
 ;; to pass them through.
 (define (Union union)
@@ -504,6 +516,29 @@
 |#
 
 
+#;
+(define (Iterate entry)
+  (match entry 
+    [((name ,name) (output-type ,ty)
+      (code (iterate (let ([,lhs* ,ty* ,rhs*] ...)
+		       (lambda (,x ,vq) (,ty1 ,ty2) ,bod)) ,_))
+      (incoming ,up)
+      (outgoing ,down* ...))
+     (let* ([emitter (Emit down*)])
+       (values
+	;; The first return value is binding-text for the function:
+	`(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+	  ,(obj 'make-fun-binding name 
+		(list (list "("(Var x)" : "(obj 'Type ty1)")"))
+		    (indent (Expr bod emitter) "    ")))
+	
+	;; The second return value is a list of bindings for iterator state:
+	(map make-bind 
+	  `([,(Var vq) #() "()"]
+	    ,@(map (lambda (lhs ty rhs) 
+		     (list (Var lhs) ty (Expr rhs emitter)))
+		lhs* ty* rhs*)))
+	))]))
 
 
 ;; ================================================================================
@@ -525,14 +560,14 @@
 	      [t (Var (unique-name 'virttime))])
 	  (values 	
 	   ;; First, a function binding that drives the source.
-	   (list "fun "
-	    (make-fun-binding v () 
-	     (indent  
+	   (list "val " v " = let fun "v" () = " 
+		 (indent  
 	      (make-seq
 	       `(,t " := !",t" + ",r)
 	       ((Emit downstrm) "()")
 	       `("SE (!",t",",v")\n"))
-	      "    "))
+	      "    ")
+	     "\n in "v" end"
 	    "\n\n")
 
 	   ;; Second, top level state bindings.
@@ -599,109 +634,101 @@
 	 () ;; Second, top level bindings	 
 	 '("(runMain init_ensbox)") ;; Third, initialization statement.
 	 )]
-
-       [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
-	(cond
-
-	 [(equal? mode "text") 	  
-	  (if (not (zero? repeats))
-	      (error 'emit-mlton "MLton text mode reader doesn't support replaying the file yet."))
-	  ;; This builds a call to textFileReader
-	  (let* ([names (map (lambda (_) (Var (unique-name 'elmt))) types)]
-		 [lspat (list "[" (insert-between ", " names) "]")]
-		 [desome (lambda (x) (list 
-                      "(case "x" of SOME x => x | NONE => raise WSError \"could not parse data from file\")"))]
-		 [tuppat (list "("
-			       (insert-between ", "
-				(map (lambda (name ty)
-				       (match ty
-					 [Float  (desome (list "Real32.fromString "name))]
-					 [Double (desome (list "Real64.fromString "name))]
-					 [Int    (desome (format "~a.fromString ~a" int-module name))]
-					 [Int16  (desome (list "Int16.fromString "name))]
-					 [Int64  (desome (list "Int64.fromString "name))]
-					 [String name]
-					 ))
-				  names types))
-			       ")")])
- 	   (values
-	    (list 
-	    ;; Builds a function from unit to an initial scheduler entry "SE" 
-	    "val "v" = textFileReader ("file", "(number->string (rate->timestep rate))", "
-	                               (number->string (length names))", fn "lspat" => "tuppat") " 
-				       (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
-	    )
-	    ;; Second top level values:
-	    ()
-	    ;; Third, Initialization: schedule this datasource:
-	   `("schedule := ",v" :: !schedule"))
-	    )]
-	 
-	 [(equal? mode "binary")
-	  (let ([homogenous? (homogenous-sizes? types)]
-		[tuptyp (if (= 1 (length types))
-			    (car types)
-			    (list->vector types ))])
-	    (values 
-	     ;; Builds a function from unit to an initial scheduler entry "SE" 
-	     (list "fun "
-	      (make-fun-binding v '()
-   	             (make-let `(["binreader"
-				  ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))
-				  ,(indent (build-binary-reader types homogenous?) "    ")]
-			         ["textreader" "33333"])
-		   (list "    "
-		   (if (> winsize 0) "dataFileWindowed" "dataFile")
-		   (make-tuple-code file 
-			       (list "\"" mode "\"")
-			       (number->string repeats)
-			       (number->string (rate->timestep rate)))
-		   " \n"
-		   (make-tuple-code "textreader" "binreader"
-			       (number->string (apply + (map type->width types)))
-			       (number->string skipbytes)
-			       (number->string offset))
-		   " \n"
-		   (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
-		   ;; Also an additional arguments for
-		   ;; dataFileWindowed.  One that has the window size.
-		   ;; And one that bundles up array create/set and
-		   ;; toSigseg.
-		   (if (> winsize 0)
-		       (begin 
-			 ;; This is necessary for now:
-			 ;; Only allowing windowed reads for ONE-TUPLES.
-			 (ASSERT (= (length types) 1))
-			 (list 
-			  " "(number->string winsize)" "	   
-
-			  ;; Next a multiplier for indices... this is a hack to get around SML's *LAME* "pack" functionality.
-			  ;;; HACK HACK HACK:
-			  (if homogenous? " 1 "
-			      ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
-			      (list " "(number->string (type->width (car types)))" "))
-
-			  (let ()
-				 (make-tuple-code 
-				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
-				  (DispatchOnArrayType 'Array:set        tuptyp)
-				  (DispatchOnArrayType 'toSigseg         tuptyp)))
-			       ))
-		       "")
-		   "\n"
-		   ))))
-	      ;; Second, top level bindings
-	      ()
-	      ;; Third, initialization statement:
-	      `("schedule := ",v"() :: !schedule\n")))]
-	 [else (error 'readFile "mode not handled yet in MLton backend: ~s" mode)]
-	  )]
-
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
        )]))
 
+(define (ReadFile name code upstream downstrm)
+    (set! name (Var name))
+  (match code
+    [(__readFile ,[(lambda (x) (Expr x #f)) -> file] ,[Var -> source] ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+     (cond
+      [(equal? mode "text") 	  
+       (if (not (zero? repeats))
+	   (error 'emit-mlton "MLton text mode reader doesn't support replaying the file yet."))
+       (if (not (zero? winsize))
+	   (error 'emit-mlton "MLton text mode reader doesn't support windowing right now."))
+       
+       ;; This builds a call to textFileReader
+       (let* (
+	      [names (map (lambda (_) (Var (unique-name 'elmt))) types)]
+	      [lspat (list "[" (insert-between ", " names) "]")]
+	      [desome (lambda (x) (list 
+				   "(case "x" of SOME x => x | NONE => raise WSError \"could not parse data from file\")"))]
+	      [tuppat (list "("
+			    (insert-between ", "
+					    (map (lambda (name ty)
+						   (match ty
+						     [Float  (desome (list "Real32.fromString "name))]
+						     [Double (desome (list "Real64.fromString "name))]
+						     [Int    (desome (format "~a.fromString ~a" int-module name))]
+						     [Int16  (desome (list "Int16.fromString "name))]
+						     [Int64  (desome (list "Int64.fromString "name))]
+						     [String name]
+						     ))
+					      names types))
+			    ")")])
+	 ;; Builds a function representing the stream
+         (list 	  
+	   name" = textFileReader ("file", "
+	   (number->string (length names))", fn "lspat" => "tuppat") " 
+	   (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
+	   )
+	 )]
+      
+      [(equal? mode "binary")
+       (let ([homogenous? (homogenous-sizes? types)]
+	     [tuptyp (if (= 1 (length types))
+			 (car types)
+			 (list->vector types ))])
+;; Builds a function from unit to an initial scheduler entry "SE" 
+	  (list name " = "
+		(make-let `(["binreader"
+			       ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))
+			       ,(indent (build-binary-reader types homogenous?) "    ")])
+		    (list "    "
+			  (if (> winsize 0) "dataFileWindowed" "dataFile")
+			  (make-tuple-code file 
+					   (list "\"" mode "\"")
+					   (number->string repeats)
+					   )
+			  " \n"
+			  (make-tuple-code "binreader"
+					   (number->string (apply + (map type->width types)))
+					   (number->string skipbytes)
+					   (number->string offset))
+			  " \n"
+			  (indent (make-fun '("x") ((Emit downstrm) "x")) "      ")
+			  ;; Also an additional arguments for
+			  ;; dataFileWindowed.  One that has the window size.
+			  ;; And one that bundles up array create/set and
+			  ;; toSigseg.
+			  (if (> winsize 0)
+			      (begin 
+				;; This is necessary for now:
+				;; Only allowing windowed reads for ONE-TUPLES.
+				(ASSERT (= (length types) 1))
+				(list 
+				 " "(number->string winsize)" "	   
+
+				 ;; Next a multiplier for indices... this is a hack to get around SML's *LAME* "pack" functionality.
+			  ;;; HACK HACK HACK:
+				 (if homogenous? " 1 "
+			      ;;; If not using *exclusively* the "wordIndexed" functions, this should be:
+				     (list " "(number->string (type->width (car types)))" "))
+
+				 (let ()
+				   (make-tuple-code 
+				    (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
+				    (DispatchOnArrayType 'Array:set        tuptyp)
+				    (DispatchOnArrayType 'toSigseg         tuptyp)))
+				 ))
+			      "")
+			  "\n"
+			  ))))]
+      [else (error 'readFile "mode not handled yet in MLton backend: ~s" mode)]
+      )]))
 
 
 (define (type->reader t) 
@@ -965,14 +992,14 @@
 	
 	Var Prim Const 
 	DispatchOnArrayType
-	Type
+	Type ReadFile
 	ForeignApp ForeignEntry
 	)
      (cdr args))))
 
 ;; Here we import bindings from the "superclass"
 ;; We pass upwards our "method table"
-(define-values (Expr Iterate Emit make-bind) 
+(define-values (Expr Operator Emit make-bind) 
   (sharedEmitCases MLtonSpecific))
 
 

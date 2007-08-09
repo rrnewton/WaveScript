@@ -105,11 +105,11 @@ fun window(S, len)
 // Constant:
 M_PI = 3.141592653589793;
 
-//syncN     :: (Stream (Bool * Int64 * Int64), List (Stream (Sigseg t))) -> Stream (List (Sigseg t));
+syncN       :: (List (Stream (Sigseg Float)), Stream (Bool * Int64 * Int64)) -> Stream (List (Sigseg Float));
 fun syncN (strms, ctrl) {
   let _ctrl = iterate((b,s,e) in ctrl) { emit (b,(s::Int64),(e::Int64), (nullseg :: Sigseg Float)); };
   let f = fun(s) { iterate(win :: Sigseg Float in s) { 
-                   emit (false,0`gint, 0`gint, (win :: Sigseg Float)); }; };
+                   emit (false,0`intToInt64, 0`intToInt64, (win :: Sigseg Float)); }; };
   let _strms = map(f, strms);
 
   let slist :: List (Stream (Bool * Int64 * Int64 * Sigseg t)) = _ctrl ::: _strms;
@@ -300,7 +300,7 @@ fun detect(scorestrm) {
       // private
       noise_lock = 0; // stats
       yay = false;
-      shouldhitby = 100000;
+      shouldhitby = 100000`gint;
     }
 
     fun reset() {
@@ -330,7 +330,7 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if win.end - _start > max_run_length then {
+      if win.end - _start > max_run_length`gint then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
 	      ++", re-estimating noise\n");
 	

@@ -584,8 +584,9 @@
 (include "generic/passes/wavescope_bkend/reify-certain-types.ss") (import reify-certain-types)
 (include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
 (include "generic/passes/wavescope_bkend/convert-sums-to-tuples.ss") (import convert-sums-to-tuples)
-(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
-(include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
+;; RRN: TEMP: DISABLING WSC/WSCAML:
+;(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
+;(include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
 (include "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 

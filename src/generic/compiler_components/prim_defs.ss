@@ -499,8 +499,9 @@
     ;; The arguments are described in the manual.
     (readFile (String String (Stream 'a)) (Stream 'b))
 
-    (__readFile (String (Stream 'a) String Int Int (List Symbol)) (Stream 'a))  ;; Internal
-    (readFile-wsearly (String String (Stream 'a) Magic) (Stream 'a))            ;; Internal
+    ;; Internal:
+    (__readFile (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
+    (readFile-wsearly  (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     
     ;; These are simpler interface that desugar into dataFile:
     ;; They use defaults rather than exposing as many parameters.
@@ -787,10 +788,10 @@
 ;; Be wary that this is only computed once while "regiment-primitives" might change.
 (define wavescript-stream-primitives
   (filter (lambda (x) (deep-assq 'Stream x))
-    (difference (regiment-primitives) 
-		regiment-distributed-primitives)))
-
-
+    (filter (lambda (pr)
+	      (not (memq (car pr) '(world anchor))))
+      (difference (regiment-primitives) 
+		regiment-distributed-primitives))))
 
 ;======================================================================
 ;;; Type signatures for TML/Node-local primitives.

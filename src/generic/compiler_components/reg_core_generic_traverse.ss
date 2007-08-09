@@ -490,7 +490,7 @@
      (lambda (x) (Int) (+_ '3 '4))]
     
     ["core-free-vars "
-     (core-free-vars '(audioFile '"countup.raw" '2 x))
+     (core-free-vars '(readFile '"countup.raw" '"" x))
      (x)]
 
     ;; TODO: To test this mechanism we should have some really big

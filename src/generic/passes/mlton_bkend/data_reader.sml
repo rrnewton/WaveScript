@@ -59,7 +59,7 @@ fun read_real32_wordIndexed vec i = PackReal32Little.subVec(vec, i)
 (********************************************************************************)
 
 
-fun textFileReader (file, period, rowsize, tokenParser) outchan = 
+fun textFileReader (file, rowsize, tokenParser) outchan = 
   let 
     val timestamp = ref 0
     val hndl = TextIO.openIn file
@@ -90,16 +90,13 @@ fun textFileReader (file, period, rowsize, tokenParser) outchan =
          in 
 	   lineloop n
          end
-    val time = ref 0
-    fun f () : scheduleEntry =
+    fun strm () =
       let val obj = tokenParser (read rowsize) 
-          val _ = outchan obj
-	  val _ = time := !time + period
       in
-        SE(!time,f)
+        outchan obj
       end
   in 
-    SE(0,f)
+    strm
   end
 
 (* datatype scheduleEntry = SE of (timestamp * (unit -> scheduleEntry)) *)
@@ -107,43 +104,39 @@ fun textFileReader (file, period, rowsize, tokenParser) outchan =
 
 (********************************************************************************)
 
+
 (* Binary reading, produces a scheduler entry, "SE" *)
 (* mode & Textreader parameter are unused  and should be removed *)
-fun dataFile (file:string,  mode:string,  repeats:int,  period:int)
-             (textreader, binreader,  bytesize:int,  skipbytes:int,  offset:int)
+fun dataFile (file:string,  mode:string,  repeats:int)
+             ( binreader,  bytesize:int,  skipbytes:int,  offset:int)
 	     (outchan (*:(Int16.int -> unit)*) )
   =
 	  let               
 	      val hndl = BinIO.openIn file 
-	      val timestamp = ref 0
 	      val st = ref 0  (* Inclusive *) 
 	      val en = ref 0  (* Exclusive *)	      
 	      (* Produce a scheduler function *)
-	      fun f () : scheduleEntry =
-	        (	          
-		  let 
+	      fun f ()  =
+	          (let 
 		     val vec = BinIO.inputN(hndl, bytesize)
 		     val obj = if not( Vector.length vec = bytesize)
     		               then raise WSEndOfFile 
                                else binreader vec 0
-                  in 
-		   outchan obj
+	             val _ = outchan obj
+                  in ()
 		  end;
 		 (* Now skip some bytes: *)
-		 if 0 = skipbytes then () else (BinIO.inputN(hndl, skipbytes); ());
-		 timestamp := !timestamp + period;
-		 SE (!timestamp, f))
+		 if 0 = skipbytes then () else (BinIO.inputN(hndl, skipbytes); ()))
 	   in 	  
 	     (* First we need to skip ahead by the offset. *)
 	     (if 0 = offset then () else (BinIO.inputN(hndl, offset); ());
-	      SE (0, f))
+	     f)
 	   end
-
 
 (* This simply constructs a reader function that reads a whole window. 
    Thus it can reuse dataFile above. *)
 fun dataFileWindowed config 
-    (textreader, binreader (*: BinIO.vector -> int -> 'elem*), 
+    ( binreader (*: BinIO.vector -> int -> 'elem*), 
      bytesize:int, skipbytes:int, offset:int)
 
      (outchan (*: 'elem -> unit*))
@@ -158,7 +151,8 @@ fun dataFileWindowed config
 =
     let
       (* TEMP: THIS SHOULD BE INT64: *)
-      val sampnum = ref (Int32.fromInt 0)
+      val winsize_ = Int64.fromInt winsize
+      val sampnum = ref (Int64.fromInt 0)
       val bytesperwin : int = bytesize+skipbytes 
       fun block_bread vec baseind = 
       (* Array.init might not be the most efficient: *)
@@ -184,13 +178,15 @@ fun dataFileWindowed config
 	      i := !i + 1);
            let val result = ( tosigseg (arr, !sampnum, 3339))
            in
-	   (sampnum := !sampnum + Int32.fromInt winsize;
+	   (sampnum := Int64.+(!sampnum, winsize_);
 	    result)
            end)
        end
   in
-    dataFile config (38383, block_bread, bytesperwin * winsize, 0, offset) outchan
+    dataFile config ( block_bread, bytesperwin * winsize, 0, offset) outchan
   end
+
+
 
 
 (*
@@ -202,3 +198,7 @@ fun dataFileWindowed config
      ('c -> ('e ref -> 'e) -> int ref -> int -> Int32.int))
   -> scheduleEntry
 *)
+
+
+val _ = print_endline "ARGUMENTS: "
+val _ = List.map print_endline (CommandLine.arguments())

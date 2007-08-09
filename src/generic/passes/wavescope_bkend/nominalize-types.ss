@@ -302,8 +302,9 @@
        (deep-assq 'tupref
 		  (nominalize-types '(type-print/show-language
 			   '(program
+				(let ([s0_0 (Stream #()) (timer '3.0)])
 				(let ([s1_1 (Stream (Sigseg Int))
-					    (audioFile '"./countup.raw" '4096 '0)])
+					    (readFile '"./countup.raw" '"" s0_0)])
 				  (let ([s2_2 (Stream #(Int Int))
 					      (iterate
 					       (lambda (w_3 VIRTQUEUE_4)
@@ -322,7 +323,7 @@
 							 (emit VIRTQUEUE_9 (tuple y_8 x_7 '3.0))
 							 VIRTQUEUE_9))))
 						 s2_2)])
-				      s3_5)))
+				      s3_5))))
 			      (Stream #(Int Int Float))))))
        #f]
 

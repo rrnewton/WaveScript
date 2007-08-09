@@ -101,12 +101,12 @@
 
 
     ;; Updated this to return all iterator state so it can be aggregated at the top level.
-    (define Iterate
-      (lambda (iter)
-	(match iter
-	  [((name ,name) (output-type ,ty) 
-	    (code (let ([,lhs* ,ty* ,rhs*] ...)
-		    (lambda (,x ,vq) (,ty1 ,ty2) ,bod)))
+    (define Operator
+      (lambda (entry)
+	(match entry
+	  [(iterate (name ,name) (output-type ,ty)
+	    (code (iterate (let ([,lhs* ,ty* ,rhs*] ...)
+			     (lambda (,x ,vq) (,ty1 ,ty2) ,bod)) ,_))
 	    (incoming ,up)
 	    (outgoing ,down* ...))
 	   (let* ([emitter (Emit down*)])
@@ -123,7 +123,22 @@
 		 ,@(map (lambda (lhs ty rhs) 
 			  (list (Var lhs) ty (Expr rhs emitter)))
 		     lhs* ty* rhs*)))
-	     ))])))
+	     ))]
+	  
+	  [(__readFile (name ,name) (output-type ,ty) (code ,c) (incoming ,up* ...) (outgoing ,down* ...))
+	   (values (obj 'ReadFile name c up* down*) ())]
+
+	  [(unionN (name ,name) (output-type ,ty) (code ,_) (incoming ,up* ...) (outgoing ,down* ...))
+	   (let ([emitter (Emit down*)])
+	     (values (obj 'make-fun-binding name '("x")((Emit down*) "x")) ()))]
+    
+	  ;; For MLTON, this could probably be implemented on top of unionList/unionN with no loss of efficiency.
+	  [(_merge (name ,name) (output-type ,ty) (code ,_) (incoming ,astrm ,bstrm) (outgoing ,down* ...))
+	   (values 
+	    (list "\n  (* Merge operator: *)\n"
+		 (obj 'make-fun-binding name '("x") ((Emit down*) "x") ))
+	    ())]
+	  )))
 
     ;; Generates code for an emit.  (curried)
     ;; .param down*   A list of sinks (names of functions) to emit to.
@@ -170,7 +185,7 @@
        
 
     ;; Return a bundle of methods:
-    (values Expr Iterate Emit make-bind)
+    (values Expr Operator Emit make-bind)
     ))
 
 )

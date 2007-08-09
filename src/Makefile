@@ -252,6 +252,7 @@ test:
 	regiment test
 	(cd demos/wavescope; $(MAKE) getdata)
 	(cd demos/wavescope; ./testall_demos.ss)
+	ws ../lib/stdlib_test.ws -exit-error -n 10;
 
 # This a lot of tests but tries not to be fairly quick.
 # This is in contrast to supertest.ss, which is supposed to be as
