@@ -11,5 +11,5 @@ BASE <-
 //snoop("ch2",List:ref(chans,2)), snoop("ch3",List:ref(chans,3)) ]);
 
 //unionList(chans);
-chans
+snoop("blah",chans)
 

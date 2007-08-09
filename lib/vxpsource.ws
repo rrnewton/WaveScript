@@ -157,6 +157,6 @@ fun vxp_source() {
     emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
   };
   //List:map(fun(x) merge(ccode, x), deinterleaveSS2(4, interleaved));
-  unionList(deinterleaveSS2(4, interleaved));
+  merge(ccode, unionList(deinterleaveSS2(4, interleaved)));
 }
 
