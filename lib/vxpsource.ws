@@ -77,7 +77,6 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 }
 
 
-static
 void audio_push(void *data, char *buf, int count, uint64_t sample_count) 
 {
   ws_state_t *ws = (ws_state_t *)data;
@@ -143,7 +142,7 @@ int __initvxp()
 
   /* spawn thread to run vxp. */
   if (pthread_create(&(ws->vxp_thread), NULL, vxp_thread, ws) < 0) {
-    fprintf(stderr, \"couldn't launch thread: %m\n\");
+    elog(LOG_CRIT, \"couldn't launch thread: %m\");
   }
 }
 
@@ -152,11 +151,10 @@ int __initvxp()
 //vxp_source :: () -> List (Stream (Sigseg Int16));
 fun vxp_source() {
   ccode = inline_C(vxp_c_interface(), "__initvxp");
-  src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int));
-  /// SHOULD BE INT * INT64 !!!
+  src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
     arr :: Array Int16 = ptrToArray(p,len);
-    emit(toSigseg(arr, counter*4, c_vxp_get_tb()));
+    emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
   };
   //List:map(fun(x) merge(ccode, x), deinterleaveSS2(4, interleaved));
   unionList(deinterleaveSS2(4, interleaved));

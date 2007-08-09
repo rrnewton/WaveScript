@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # This takes the .sml file down to a binary.
 
@@ -16,7 +16,7 @@ rm -f "$OUTPUT"
 rm -f "query.*.c"
 rm -f ".tmp.*.o"
 
-GLIB_PATH="/lib/libglib-2.0.so"
+GLIB_PATH=`pkg-config glib-2.0 --libs`
 
 if [ "$EMLIB" == "" ]; then EMLIB='/export/home/girod/emstar/obj.i686-linux/lib'; fi
 # "a" for static linking "so" for dynamic:
