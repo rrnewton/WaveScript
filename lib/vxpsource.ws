@@ -173,11 +173,18 @@ fun vxp_source() {
     //       counter is measured in 4 channel samples!
 
     // check for NULL pointer
-    print("from c: len="++len++" counter="++counter++"\n");
-    arr :: Array Int16 = nullsafe_ptrToArray(p,len);
-    print("array is made, length "++arr`Array:length++"\n");
-    emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
-    print("emitted sigseg?\n");
+    if (c_isnull(p)) then {
+      println("ignoring gap of "++len/4++" samples");
+      // could also use nullsafe_ptrToArray... 
+    }
+
+    else {
+      print("from c: len="++len++" counter="++counter++"\n");
+      arr :: Array Int16 = ptrToArray(p,len);
+      print("array is made, length "++arr`Array:length++"\n");
+      emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
+      print("emitted sigseg?\n");
+    }
   };
   //List:map(fun(x) merge(ccode, x), deinterleaveSS2(4, interleaved));
   merge(ccode, unionList(deinterleaveSS2(4, interleaved)));
