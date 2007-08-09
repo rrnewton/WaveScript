@@ -26,7 +26,7 @@ fun detect(scorestrm) {
   hi_thresh = 16;
   startup_init = 300;
   refract_interval = 40;
-  max_run_length = 48000`to64;
+  max_run_length = 48000;
   samples_padding = 2400`to64;
   
   iterate((score,st,en) in scorestrm) {
@@ -35,7 +35,7 @@ fun detect(scorestrm) {
       trigger = false;
       smoothed_mean = 0.0;
       smoothed_var = 0.0;
-      _start = 0; 
+      _start = 0`to64; 
       trigger_value = 0.0;
       startup = 300;
       refract = 0;                 
@@ -49,7 +49,7 @@ fun detect(scorestrm) {
       trigger := false;
       smoothed_mean := 0.0;
       smoothed_var := 0.0;
-      _start := 0;
+      _start := 0`to64;
       trigger_value := 0.0;
       startup := startup_init;
       refract := 0;
@@ -88,7 +88,7 @@ fun detect(scorestrm) {
 	
 	/* emit power of 2 */
 	p = en + samples_padding - _start;
-	p2 = Mutable:ref(1);
+	p2 = Mutable:ref(1`to64);
 	// RRN: GETTING RID OF FOR/BREAK:
 	/*	for i = 0 to 24 {
 	  if (p2 >= p) then break;
@@ -98,19 +98,19 @@ fun detect(scorestrm) {
 	//	ind = Mutable:ref(0);
 	//        while i <= 24 && p2 < p {
         while p2 < p {
-          p2 := p2 * 2;
+          p2 := p2 * 2`to64;
 	  //	  i := i + 1;  // Is this necessary?
 	};
 
 	emit (true,                               // yes, snapshot
 	      _start - samples_padding,           // start sample
-	      _start - samples_padding + p2 - 1); // end sample
+	      _start - samples_padding + p2 - 1`to64); // end sample
 	if DEBUG then
 	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
 	      " just processed window "++show(st)++":"++show(en)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
-	_start := 0;
+	_start := 0`to64;
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
@@ -142,7 +142,7 @@ fun detect(scorestrm) {
       /* but this seems to assume that the sample numbers start at zero?? */
       emit (false, 0`to64, max(0`to64, st - samples_padding - 1`to64));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
+      print("DISCARD message: "++show((false, 0, max(0`to64, en - samples_padding)))++
 	    " just processed window "++show(st)++":"++show(en)++"\n");
       
     }

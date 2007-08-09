@@ -6,7 +6,7 @@
 # Linux only.
 
 
-#scp nms3.csail.mit.edu:~newton/csv7.3-i3le.tar.gz .
+scp nms3.csail.mit.edu:~newton/csv7.3-i3le.tar.gz .
 
 echo '#!/bin/bash'         > chez
 echo                      >> chez

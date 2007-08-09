@@ -15,7 +15,7 @@ rm -f "$OUTPUT"
 # I'm having a lot of trouble getting enough quotes around 
 # 'allowFFI true' for it to be treated as one token.
 #MLTON='mlton -default-ann "\'allowFFI true\'"'
-export MLTON=mlton.dbg
+export MLTON=mlton.hack
 
 if [ "$1" == "-dbg" ]
 then export MLTON=mlton.dbg;

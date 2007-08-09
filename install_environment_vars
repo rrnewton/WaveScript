@@ -7,4 +7,3 @@
 export REGIMENTD=`pwd`
 export PATH=$REGIMENTD/bin:$PATH
 export PATH=$PATH:$REGIMENTD/depends
-export PATH=$PATH:$REGIMENTD/depends/csv7.3/bin
