@@ -288,9 +288,17 @@
 	      (g+ tmp_142 '3.141592653589793)
 	      (g- tmp_142 '3.141592653589793)))
 
+;	(intToInt16 (lambda (x) x))
+;	(intToInt64 (lambda (x) x))
 	(intToFloat fixnum->flonum)
 	(intToComplex intToComplex-unimplented)
 
+;	(int64ToInt16  (lambda (x) (ASSERT int16? x) x))
+;	(int64ToInt    (lambda (x) (ASSERT int32? x) x))
+;	(int64ToFloat    exact->inexact)
+;	(int64ToDouble   exact->inexact)
+;	(int64ToComplex  (lambda (n) (+ n 0.0+0.0i)))
+	
 	(floatToInt flonum->fixnum)
 ;	(floatToDouble (lambda (x) x))
 	(floatToComplex ,(lambda (env f) `(quote ,(+ f 0.0+0.0i))))
@@ -575,6 +583,8 @@
 				;;[,other (error 'getlist "not a list-constructor: ~s" other)])
 				)))
 			#f))]
+
+		 [letrec? (lambda (x) (and (pair? x) (eq? (car x) 'letrec)))]
 		 )
 
         (match expr
@@ -850,11 +860,38 @@
 	  [(,frgn ,[name] ,[files]) (guard (memq frgn '(foreign foreign_source)))
 	   `(,frgn ,(if (available? name)         `',(getval name) name)
 		   ,(if (available? files)        `',(getval files) files))]
+
+
 	  
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
-	   (if (and 		
+	   
+	   ;; Trying to lift out letrecs:
+	   (cond 
+#;
+	    ;; DANGER: This needs to be audited.
+	    ;; We might have freshness problems!!!!!!
+	    [(list-index letrec? rand*) =>
+	     (lambda (i) 
+	       ;; For now only do it for ONE rand
+	       ;(ASSERT (fx= 1 (filter letrec? rand*)))
+	       (let loop ([rand* rand*] [argacc ()] [bindacc ()])
+		 (if (null? rand*)
+		     (begin
+		       (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
+		       ;(inspect (list rand* argacc bindacc))
+		       (if (null? bindacc) 
+			   `(,prim ,@(reverse argacc))
+			   `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
+		     (match (car rand*)
+		       [(letrec ,binds ,bod) 
+			(loop (cdr rand*) 
+			      (cons bod argacc)
+			      (append (reverse binds) bindacc))]
+		       [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
+		     )))]
+	    [(and 		
 		(andmap available? rand*)
 
 	       ;(assq prim computable-prims)
@@ -879,12 +916,15 @@
 				       ;; Alas, these don't have different representations for the constants, 
 				       ;; so we shouldn't do it statically:
 				       floatToDouble doubleToFloat
+				       intToInt16 intToInt64
+				       int16ToInt int64ToInt
 
 				       foreign foreign_box foreign_source
 				       )))
 		)
-	       (do-prim prim (map getval rand*) env)
-	       `(,prim ,@rand*))]
+	     (do-prim prim (map getval rand*) env)]
+	    [else `(,prim ,@rand*)]
+	    )]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
 	  [(construct-data ,tc ,[rand*] ...) `(construct-data ,tc ,@rand*)]

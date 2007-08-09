@@ -10,7 +10,7 @@ fun rewindow(sig, newwidth, step)
     
     while acc.width > newwidth { 
       emit subseg(acc, acc.start, newwidth);
-      acc := subseg(acc, acc.start + step, acc.width - step)
+      acc := subseg(acc, acc.start + step`intToInt64, acc.width - step)
     }
   };
 

@@ -26,7 +26,7 @@ function go () {
 
 #go "demo1b_dataFile.ws"  # Can't do text yet.
 go "demo1c_timer.ws"
-go "demo1d_dataFile_binary.ws"
+#go "demo1d_dataFile_binary.ws"
 go "demo1e_readFile.ws"
 
 go "demo2a_iterate.ws"

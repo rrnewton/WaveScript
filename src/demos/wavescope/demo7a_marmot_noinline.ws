@@ -3,7 +3,7 @@ fun window(S, len)
     state{ 
       arr = Array:null;
       ind = 0; 
-      startsamp = 0;
+      startsamp = 0`gint;
     }
     if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
@@ -13,7 +13,7 @@ fun window(S, len)
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
       arr := Array:make(len, x); 
-      startsamp := startsamp + len;
+      startsamp := startsamp + len`intToInt64;
     }
   };
 
@@ -39,7 +39,7 @@ rw1 = iterate (w in ch1) {
   acc := joinsegs(acc, w);
   while acc.width > newwidth {
     emit subseg(acc, acc.start, newwidth);
-    acc := subseg(acc, acc.start + step, acc.width - step);
+    acc := subseg(acc, acc.start + step`intToInt64, acc.width - step);
   }
 };
 

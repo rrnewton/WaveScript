@@ -31,8 +31,8 @@
   (define (double x)  (match x [g+ '+D] [g- '-D] [g* '*D] [g/ '/D] [g^ '^D] [abs 'absD]))
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
-  (define (int16 x)   (match x [g+ '+I16] [g- 'I-16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
-  (define (int64 x)   (match x [g+ '+I64] [g- 'I-64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
+  (define (int16 x)   (match x [g+ '+I16] [g- '-I16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
+  (define (int64 x)   (match x [g+ '+I64] [g- '-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
   (define degeneralize-arithmetic-grammar
     (filter (lambda (x)

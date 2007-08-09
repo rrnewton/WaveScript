@@ -40,7 +40,7 @@ fun sigseg_fftR2C     (ss) toSigseg(ss`toArray`fftR2C, ss.start, ss.timebase)
 fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase)
 
 fun mywindow(S, len)
-  iterate(x in S) {
+  iterate x in S {
     state{
       arr = Array:null;
       ind = 0;
@@ -51,7 +51,7 @@ fun mywindow(S, len)
     ind := ind + 1;
     if ind == len
     then {
-      emit toSigseg(arr, startsamp, nulltimebase);
+      emit toSigseg(arr, startsamp`intToInt64, nulltimebase);
       ind := 0;
       arr := Array:make(len, x);
       startsamp := startsamp + len;

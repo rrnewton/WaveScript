@@ -82,7 +82,8 @@ sort            :: ((Int, Int) -> (),
 
 /// Library stream constructors:
 
-type CtrlStrm = Stream (Bool * Int * Int);
+// A flag to the range keep or not, plus start/end sample numbers (inclusive)
+type CtrlStrm = Stream (Bool * Int64 * Int64);
 type SegStream t = Stream (Sigseg t);
 
 type S t   = Stream t;
@@ -108,6 +109,8 @@ zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
 
 syncN           :: (CtrlStrm, LSS t)       -> SLS t;
 syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
+
+// RRN: NOTE: This should be explained or REMOVED:
 thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
 
   // This takes an unwindowed stream and produces a stream of sigsegs:
@@ -146,6 +149,9 @@ f2c :: Float -> Complex;
 c2i :: Complex -> Int;
 c2f :: Complex -> Float;
 c2d :: Complex -> Double;
+
+to64   :: Int -> Int64;
+from64 :: Int64 -> Int;
 
 smap    :: (a -> b)    -> S a -> S b;
 sfilter :: (t -> Bool) -> S t -> S t;
@@ -629,8 +635,8 @@ fun (ctrl, strms, del) {
 
    WARNSKEW = 50000; // threshold for warning that an accumulator has grown to big.  Should be user input.
 
-  _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
-  f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
+  _ctrl = iterate((b,s,e) in ctrl) { emit ((b,s,e, nullseg) :: (Bool * Int64 * Int64 * Sigseg any)); };
+  f = fun(s) { iterate(win in s) { emit (false,0`gint,0`gint, win); }; };
   _strms = map(f, strms);  
   slist = _ctrl ::: _strms;  
 
@@ -728,7 +734,7 @@ fun (ctrl, strms, del) {
 	if fl then {
 	  if DEBUGSYNC 
 	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-	  size = en - st + 1; // Start,end are inclusive.
+	  size = int64ToInt(en - st) + 1; // Start,end are inclusive.
   	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
 	} else {
 	  if DEBUGSYNC then
@@ -740,9 +746,9 @@ fun (ctrl, strms, del) {
 	  for j = 0 to accs`Array:length - 1 {
 	    // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
 	    // [2007.07.01] JUST FIXED A BUG, We previously were trying to subseg data that wasn't there.
-	    killuntil = max(accs[j]`start, en+1); // Make sure we don't try to subseg before the start.
+	    killuntil = max(accs[j]`start, en + 1`gint); // Make sure we don't try to subseg before the start.
 	    //killuntil = en+1; // This was broken...	    
-	    accs[j] := subseg(accs[j], killuntil, accs[j]`end - killuntil + 1);
+	    accs[j] := subseg(accs[j], killuntil, int64ToInt(accs[j]`end - killuntil) + 1);
 	  };
 	};
 	requests := requests`tail;
@@ -755,9 +761,8 @@ syncN = fun (ctrl, strms) { syncN_aux(ctrl, strms, true) }
 
 syncN_no_delete = fun (ctrl, strms) { syncN_aux(ctrl, strms, false) }
 
-
-fun thresh_extract(search,streamlist,thresh,pad) {
-
+fun thresh_extract(search,streamlist,thresh,_pad) {
+  pad = _pad`intToInt64;
   ctrl = iterate (w in search) {
     state {
       skiptill = pad;
@@ -765,30 +770,30 @@ fun thresh_extract(search,streamlist,thresh,pad) {
 
     //println("in thresh, w.start " ++ w.start);
 
-    for i = 0 to w.width-1 {
-      if ((w.start+i) > skiptill && absF(w[[i]]) > thresh) then {
+    for _i = 0 to w.width-1 {
+      i = _i`intToInt64;
+      if ((w.start + i) > skiptill && absF(w[[_i]]) > thresh) then {
         //println("about to emit t, " ++ w.start + i - pad ++ " " ++ w.start + i + pad - 1);
-    	emit (true, w.start + i - pad, w.start + i + pad - 1);
+    	emit (true, w.start + i - pad, w.start + i + pad - 1`gint);
         skiptill := w.start + i + pad;
       }
     };
     
-    if (w.start+w.width-pad-1 > skiptill) then {
+    if (w.start + w.width.intToInt64 - pad - 1`gint > skiptill) then {
       //println("about to emit f, " ++ w.start + w.width - pad - 1);
-      emit (false, 0, w.start + w.width - pad - 1);
+      emit (false, 0`gint, w.start + w.width.intToInt64 - pad - 1`gint);
     }
   };
 
   syncN(ctrl,streamlist);
 }
 
-
 fun window(S, len) 
   iterate(x in S) {
     state{ 
       arr = Array:null;
       ind = 0; 
-      startsamp = 0;
+      startsamp = 0`gint;
     }
     if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
@@ -798,7 +803,7 @@ fun window(S, len)
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
       arr := Array:make(len, x); 
-      startsamp := startsamp + len;
+      startsamp := startsamp + len`intToInt64;
     }
   };
 
@@ -836,7 +841,7 @@ fun rewindow(sig, newwidth, gap) {
    while go {
      if need_feed then {
        if acc`width > gap // here we discard a segment:
-       then {acc := subseg(acc, acc`start + gap, acc`width - gap);
+       then {acc := subseg(acc, acc`start + gap`intToInt64, acc`width - gap);
 	     need_feed := false; }
        else go := false
       } else {
@@ -844,9 +849,9 @@ fun rewindow(sig, newwidth, gap) {
 	then {emit subseg(acc, acc`start, newwidth);
 	      if gap > 0 
 	      then { 
-		acc := subseg(acc, acc`start + newwidth, acc`width - newwidth);
+		acc := subseg(acc, acc`start + newwidth`intToInt64, acc`width - newwidth);
 		need_feed := true; 
-	      } else acc := subseg(acc, acc`start + feed, acc`width - feed);
+	      } else acc := subseg(acc, acc`start + feed`intToInt64, acc`width - feed);
 	} else go := false
       }
    }
@@ -916,7 +921,7 @@ fun deinterleaveSS(n, outsize, strm) {
 	   newwin[newind] := win[[i]]; 
 	   newind += 1;
 	   if newind == outsize then {
-	     sampnum = (win`start + i) / n - (outsize - 1);
+	     sampnum = (win`start + i`intToInt64) / n`gint - (outsize`gint - 1`gint);
 	     emit toSigseg(newwin, sampnum, win`timebase);
 	     newwin := Array:makeUNSAFE(outsize);
 	     newind := 0;
@@ -938,8 +943,7 @@ fun deinterleaveSS2(n, strm) {
 
        // emit nullsegs to indicate gaps
        state {
-	 // should be Int64!
-	 last_counter = 0;
+	 last_counter = 0`gint;
 	 nulled = false;
 	 counter = 0;
 	 newind = 0;
@@ -959,7 +963,7 @@ fun deinterleaveSS2(n, strm) {
   	   nulled := true;
            last_counter := win`start;
 	 };
-         last_counter := last_counter + win`width;
+         last_counter := last_counter + win`width`intToInt64;
 
 	 counter := 0;
 	 newind := 0;
@@ -976,7 +980,7 @@ fun deinterleaveSS2(n, strm) {
 	   if counter == n then counter := 0; 
 	 };
 	 
-	 sampnum = win`start / n;
+	 sampnum = win`start / n`gint;
 	 emit toSigseg(newwin, sampnum, win`timebase);
          nulled := false;
        }
@@ -1078,15 +1082,15 @@ fun deep_stream_map(f,sss)
 fun deep_stream_map2(f,sss) {
   iterate(ss in sss) {
     state { 
-      pos = 0;
+      pos = 0`gint;
       lastout = nullseg;
     }
     first = f(ss[[0]]);
     output = Array:make(ss`width, first);
     if pos > ss`start then
-      for i = 0 to pos - ss`start - 1 {
+      for i = 0 to int64ToInt(pos - ss`start) - 1 {
 	// Copy old result:
-	output[i] := lastout[[i + (ss`start - lastout`start)]];
+	output[i] := lastout[[i + int64ToInt(ss`start - lastout`start)]];
       }	     
   };
   strm = rewindow(sss,100,0);
@@ -1105,6 +1109,9 @@ f2d = floatToDouble;
 c2i = complexToInt;
 c2f = complexToFloat;
 c2d = complexToDouble;
+
+to64 = intToInt64;
+from64 = int64ToInt;
 
 // These are the "advanced" versions.  They're curried.
 smap    = fun(f) fun(x) stream_map(f,x);

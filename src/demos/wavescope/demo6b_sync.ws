@@ -7,7 +7,7 @@ fun window(S, len)
     state{ 
       arr = Array:null;
       ind = 0; 
-      startsamp = 0;
+      startsamp = gint(0);
     }
     if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
@@ -17,7 +17,7 @@ fun window(S, len)
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
       arr := Array:make(len, x); 
-      startsamp := startsamp + len;
+      startsamp := startsamp + len`intToInt64;
     }
   };
 
@@ -80,15 +80,15 @@ fun sync2 (ctrl, s1, s2) {
     else {
       let (fl, st, en) = requests.head;
       if (acc1       != nullseg   && 	  acc2       != nullseg   &&
-	  acc1.start <= st        && 	  acc2.start <= st  &&
-	  acc1.end   >= en        &&	  acc2.end   >= en)
+	  acc1.start <= st`intToInt64  && acc2.start <= st`intToInt64  &&
+	  acc1.end   >= en`intToInt64  && acc2.end   >= en`intToInt64)
 	then {
 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	size = en - st + 1; // Start/end is inclusive.
-	emit (subseg(acc1, st, size),
-	      subseg(acc2, st, size));
-	acc1 := subseg(acc1, st + size, acc1.width - size);
-	acc2 := subseg(acc2, st + size, acc2.width - size);
+	emit (subseg(acc1, st`intToInt64, size),
+	      subseg(acc2, st`intToInt64, size));
+	acc1 := subseg(acc1, intToInt64(st + size), acc1.width - size);
+	acc2 := subseg(acc2, intToInt64(st + size), acc2.width - size);
 
 	// The request is serviced.
 	requests := requests.tail;

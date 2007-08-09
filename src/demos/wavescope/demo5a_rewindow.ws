@@ -9,7 +9,7 @@ fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
 newwidth = 1024;
-step = 512;
+step = gint(512);
 
 s2 = iterate (win in s1) {
    state { acc = nullseg; 
@@ -39,11 +39,11 @@ s2 = iterate (win in s1) {
 
    while acc.width > newwidth {
      print("Iterating, acc.width " ++ acc.width ++ "\n");
-     chop = subseg(acc, acc.start, newwidth);
+     chop = subseg(acc, acc`start, newwidth);
      emit chop;
 
      //     print("Cutting leftover: "++ acc++" "++acc.start++" "++step++"  "++acc.width-step++"  \n");
-     leftover = subseg(acc, acc.start + step, acc.width - step);
+     leftover = subseg(acc, acc.start + step`intToInt64, acc.width - step);
      //     print("  Got leftover\n");
      assert_eq("split", acc`width, chop`width + leftover`width - step);
      acc := leftover;

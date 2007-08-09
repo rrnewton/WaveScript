@@ -3,7 +3,7 @@ fun window(S, len)
     state{ 
       arr = Array:null;
       ind = 0; 
-      startsamp = 0;
+      startsamp = 0`gint;
     }
     if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
@@ -13,7 +13,7 @@ fun window(S, len)
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
       arr := Array:make(len, x); 
-      startsamp := startsamp + len;
+      startsamp := startsamp + len`intToInt64;
     }
   };
 
@@ -60,8 +60,8 @@ fun syncN (strms, ctrl) {
 	Array:fold(fun (bool, seg)
 		   (bool               &&
 		    not(seg == nullseg) &&
-		    not(seg.start > st) &&
-		    not(seg.end < en)),
+		    not(seg.start > st`intToInt64) &&
+		    not(seg.end   < en`intToInt64)),
 		   true, accs);
      	
       if allready then {
@@ -69,7 +69,7 @@ fun syncN (strms, ctrl) {
 	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
 
-  	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
+  	  emit List:map(fun (seg) subseg(seg, intToInt64(st), size), Array:toList(accs))
 
 	} else 
 	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
@@ -77,7 +77,7 @@ fun syncN (strms, ctrl) {
 	// Destroy the discarded portions and remove the serviced request:
 	for j = 0 to accs.Array:length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
+	  accs[j] := subseg(accs[j], intToInt64(en + 1), accs[j].end`int64ToInt - en);
 	};
 	requests := requests.tail;
       }

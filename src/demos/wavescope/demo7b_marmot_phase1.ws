@@ -87,7 +87,7 @@ fun window(S, len)
     state{ 
       arr = Array:null;
       ind = 0; 
-      startsamp = 0;
+      startsamp = 0`gint;
     }
     if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
@@ -97,7 +97,7 @@ fun window(S, len)
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
       arr := Array:make(len, x); 
-      startsamp := startsamp + len;
+      startsamp := startsamp + len`gint;
     }
   };
 
@@ -105,14 +105,14 @@ fun window(S, len)
 // Constant:
 M_PI = 3.141592653589793;
 
-
+//syncN     :: (Stream (Bool * Int64 * Int64), List (Stream (Sigseg t))) -> Stream (List (Sigseg t));
 fun syncN (strms, ctrl) {
-  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, (nullseg :: Sigseg Float)); };
+  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,(s::Int64),(e::Int64), (nullseg :: Sigseg Float)); };
   let f = fun(s) { iterate(win :: Sigseg Float in s) { 
-                   emit (false,0,0, (win :: Sigseg Float)); }; };
+                   emit (false,0`gint, 0`gint, (win :: Sigseg Float)); }; };
   let _strms = map(f, strms);
 
-  let slist = _ctrl ::: _strms;
+  let slist :: List (Stream (Bool * Int64 * Int64 * Sigseg t)) = _ctrl ::: _strms;
   
   // Side effect not allowed in iterate:
   //print("Syncing N streams: " ++ show(slist.List:length) ++ "\n");
@@ -130,7 +130,9 @@ fun syncN (strms, ctrl) {
     };
     print("\n");
 
-    let (flag, strt, en, seg) = tup;
+    let (flag, _strt, _en, seg) = tup;
+    strt :: Int64 = _strt;
+    en :: Int64 = _en;    
 
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
@@ -154,7 +156,7 @@ fun syncN (strms, ctrl) {
       if allready then {
 	if fl then {
 	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-	  size = en - st + 1; // Start,end are inclusive.
+	  size = int64ToInt(en - st) + 1; // Start,end are inclusive.
 
   	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
 
@@ -164,7 +166,9 @@ fun syncN (strms, ctrl) {
 	// Destroy the discarded portions and remove the serviced request:
 	for j = 0 to accs.Array:length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
+	  ss :: Sigseg t = accs[j];
+	  foo :: Int64 = end(ss);
+	  accs[j] := subseg(accs[j], en + 1`intToInt64, int64ToInt(foo - en));
 	};
 	requests := requests.tail;
       }
@@ -199,7 +203,7 @@ fun rewindow(sig, newwidth, gap) {
       //print("acc width "++ acc.width ++ " GO "++ go ++"\n");
       if need_feed then {
 	if acc.width > gap // here we discard a segment:
-	then {acc := subseg(acc, acc.start + gap, acc.width - gap);
+	then {acc := subseg(acc, acc.start + gap`gint, acc.width - gap);
 	      need_feed := false; }
 	else go := false
       } else {
@@ -207,9 +211,9 @@ fun rewindow(sig, newwidth, gap) {
 	then {emit subseg(acc, acc.start, newwidth);
 	      if gap > 0 
 	      then { 
-		acc := subseg(acc, acc.start + newwidth, acc.width - newwidth);
+		acc := subseg(acc, acc.start + newwidth`gint, acc.width - newwidth);
 		need_feed := true; 
-	      } else acc := subseg(acc, acc.start + feed, acc.width - feed);
+	      } else acc := subseg(acc, acc.start + feed`gint, acc.width - feed);
 	} else go := false;	
       }
     }
@@ -280,7 +284,7 @@ fun detect(scorestrm) {
   startup_init = 300;
   refract_interval = 40;
   max_run_length = 48000;
-  samples_padding = 2400;
+  samples_padding = 2400`gint;
 
   iterate((score,win) in scorestrm) {
     state {
@@ -288,7 +292,7 @@ fun detect(scorestrm) {
       trigger = false;
       smoothed_mean = 0.0;
       smoothed_var = 0.0;
-      _start = 0; //start = ??? // SeqNo
+      _start :: Int64 = 0`gint; 
       trigger_value = 0.0;
       startup = 300;
       refract = 0;                 
@@ -304,7 +308,7 @@ fun detect(scorestrm) {
       trigger := false;
       smoothed_mean := 0.0; // 0; // TYPE INFERENC ERROR -- CHECK SET! CASE FIXME!!!!
       smoothed_var := 0.0;
-      _start := 0;
+      _start := 0 `gint;
       trigger_value := 0.0;
       startup := startup_init;
       refract := 0;
@@ -346,11 +350,15 @@ fun detect(scorestrm) {
 	trigger := false;
 
 	yay := true;
-	emit (true,                       // yes, snapshot
-	      _start - samples_padding,     // start sample
-	      win.end + samples_padding); // end sample
+	tmp :: Int64 = win.end;
+
+	/*
+	emit (true,                            // yes, snapshot
+	      _start - samples_padding,   // start sample
+	      tmp + samples_padding); // end sample
+	*/
 	// PAD IT FOR TESTALL_DEMOS:
-	emit(true, 0, 0);
+	emit(true, 0`gint, 0`gint);
 
 
 	if DEBUG then
@@ -358,7 +366,7 @@ fun detect(scorestrm) {
 	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
-	_start := 0;
+	_start := 0`gint;
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
@@ -388,9 +396,9 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, win.end - samples_padding));
+      emit (false, 0, max(0`gint, win.end - samples_padding));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
+      print("DISCARD message: "++show((false, 0, max(0`gint, win.end - samples_padding)))++
 	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
       
     }

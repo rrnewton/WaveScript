@@ -9,7 +9,7 @@ fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
 s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
 BASE <- iterate w in s1 {
-   state { pos = 0 }
+   state { pos = gint(0) }
 
    //========================================
    // Test nullsegs
@@ -30,14 +30,14 @@ BASE <- iterate w in s1 {
 
    print(w`start ++"\n");
    assert_eq("start",  w`start, pos);
-   assert_eq("end",    w`end, pos+99);
-   pos := pos + 100;     
+   assert_eq("end",    w`end, pos+gint(99));
+   pos := pos + gint(100);     
 
    //========================================
    // Split into two pieces
 
-   fst = subseg(w,w`start,50);
-   snd = subseg(w,w`start + 50,50);
+   fst = subseg(w, w`start, 50`gint);
+   snd = subseg(w,w`start + 50`gint,50`gint);
 
    assert_eq("fst width",  fst`width, 50);
    assert_eq("snd width",  snd`width, 50);
@@ -47,13 +47,13 @@ BASE <- iterate w in s1 {
    assert("snd w inequal", not(snd==w));
 
    assert_eq("fst start",  fst`start, w`start);
-   assert_eq("snd start",  snd`start, w`start+50);
+   assert_eq("snd start",  snd`start, w`start + 50`gint);
 
    assert_eq("fst lookup", fst[[5]], w[[5]]);
    assert_eq("snd lookup", snd[[5]], w[[55]]);
 
    joined = joinsegs(fst,snd);
-   
+
    assert_eq("joined width",  joined`width, 100);
    assert_eq("joined end",    joined`end, w`end);
 
@@ -65,7 +65,7 @@ BASE <- iterate w in s1 {
    //========================================
    // Take a chunk in the middle 
 
-   mid = subseg(w, w`start + 25, 50);
+   mid = subseg(w, w`start + 25`gint, 50`gint);
    assert_eq("mid lookup",  mid[[30]], snd[[5]]);
    assert_eq("mid lookup2", mid[[29]],   w[[54]]);
 
@@ -85,9 +85,9 @@ BASE <- iterate w in s1 {
 
    for i = 0 to 8 { 
      // These chunks ovelap by one
-     chunks[i] := subseg(w, w`start + (i*10), 11);
+     chunks[i] := subseg(w, w`start + (i`intToInt64 * 10`gint), 11`gint);
    };
-   chunks[9] := subseg(w, w`start + 90, 10);
+   chunks[9] := subseg(w, w`start + 90`gint, 10`gint);
    //   inspect$ chunks;
    for i = 0 to 8 {
      assert_eq("chunks width", chunks[i]`width, 11);

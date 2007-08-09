@@ -11,9 +11,9 @@ uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;
 uniontype Union4 a b c d   = Oneof4 a | Twoof4 b | Threeof4 c | Fourof4 d;
 uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Fiveof5 e;
 
-fun CONST(x) 
+fun CONST(y) 
   iterate _ in timer(1000.0) {
-    emit x
+    emit y
   }
 
 fun union2(s1,s2) 

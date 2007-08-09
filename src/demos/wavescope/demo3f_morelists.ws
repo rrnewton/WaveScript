@@ -11,7 +11,7 @@ s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: St
 
 // Test reverse:
 s2 = iterate( w in s1 ) {
-  emit List:reverse([w.start, w.end]);
+  emit List:reverse([w.start.int64ToInt, w.end.int64ToInt]);
 };
 
 s3 = iterate ( x in s2) { emit append(x,x) }

@@ -616,22 +616,22 @@
     (toArray         ((Sigseg 'a))  (Array 'a))
     ;; TODO: This needs to take Int64's....
     ;; Takes array, start-sample-number, timebase.
-    (toSigseg        ((Array 'a) Int Timebase)  (Sigseg 'a))
+    (toSigseg        ((Array 'a) Int64 Timebase)  (Sigseg 'a))
 
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
 
     ;; Takes a start sample # and a Length to copy.
     ;; Can produce nullseg if len=0.
-    (subseg          ((Sigseg 'a) Int Int) (Sigseg 'a))
+    (subseg          ((Sigseg 'a) Int64 Int) (Sigseg 'a))
 
     ;; This is now zero indexed:
     (seg-get      ((Sigseg 'a) Int) 'a)
     (width        ((Sigseg 'a)) Int)
     
     ;; Returns absolute sample indexes.
-    (start        ((Sigseg 'a)) Int)  ;; inclusive start of range
-    (end          ((Sigseg 'a)) Int)  ;; inclusive end of range
+    (start        ((Sigseg 'a)) Int64)  ;; inclusive start of range
+    (end          ((Sigseg 'a)) Int64)  ;; inclusive end of range
     ;; Returns timebase:
     (timebase     ((Sigseg 'a)) Timebase)
 

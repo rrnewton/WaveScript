@@ -17,8 +17,8 @@ s3 = iterate( x in s2) {
  }
 
 s4 = iterate( ls in s3) {
-   state { myls = [3,4,5,6] }
-  myls := ls;
+  state { myls = [3,4,5,6] }
+  myls := map(int64ToInt, ls);
   
   print("  Test "++ show(ls==ls) ++" "++ show([]==[]) ++"\n");
   print(show(myls.head) ++" "++

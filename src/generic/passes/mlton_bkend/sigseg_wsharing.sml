@@ -12,7 +12,7 @@
 structure SigSeg : SIGSEG =
 struct
 
-type sample = int  (* Should be int64 *)
+type sample = Int64.int 
 type timebase = int
 
 type 'a sigseg =  {
@@ -30,7 +30,7 @@ fun slice arr offset len =
 fun sum [] = 0 | sum (h::t) = h + sum t
 fun checkseg {dat,st,sz,off} = 
   (* Make sure nullsegs are in canonical form. *)
-  if sz = 0 then assert (st=0) else    
+  if sz = 0 then assert ((st = Int64.fromInt 0)) else    
   let val sm = sum (List.map length dat) 
   in
     if sm >= sz andalso length(hd dat) > off
@@ -43,12 +43,12 @@ fun nullseg  t                  = { dat=[], st=0, sz=0, off=0 }
 fun timebase ss                 = 0
 fun width    {dat,st,sz,off}    = sz
 fun ss_start {dat,st,sz,off}    = st
-fun ss_end   {dat,st,sz,off}    = st + sz - 1
+fun ss_end   {dat,st,sz,off}    = Int64.+(st, Int64.fromInt sz) - Int64.fromInt 1
 (* fun toSigseg (arr, st, tb)      = { dat=[Array.vector arr], st=st, sz=Array.length arr, off=0 } *)
 fun toSigseg (arr, st, tb)      = { dat=[arr], st=st, sz=length arr, off=0 }
 
 (* Doesn't cache result yet. *)
-fun toArray {dat,st,sz,off} = 
+fun toArray {dat, st, sz,off} = 
     (* array version *)
     if sz = 0 then Array.fromList [] else
 (*    if null (tl dat) then hd dat else*)
@@ -114,10 +114,10 @@ fun joinsegs (a, b) =
   if z1 = 0 then b else
   if z2 = 0 then a else
   let 
-      val _ = if s2 = s1 + z1 then ()
+      val _ = if (s2 = Int64.+(s1, Int64.fromInt z1)) then ()
              else raise (SigSegFailure ("segments do not line up: start1= "
-	                      ^Int.toString s1^ " size1= "^Int.toString z1^
- 		             " and start2= "^Int.toString s2))
+	                      ^Int64.toString s1^ " size1= "^Int.toString z1^
+ 		             " and start2= "^Int64.toString s2))
       val d2 = reallocFirstChunk b
       val result = { dat = d1@d2,
                      st  = s1,
@@ -138,7 +138,7 @@ fun subseg (ss, pos, len) =
 
 (*     val _ = print ("  shaving off from size: "^Int.toString sz^"\n") *)
 
-    val _ = assert (pos - st + len <= sz);
+    val _ = assert (Int64.toInt(Int64.-(pos, st)) + len <= sz);
 
     (* Second, chop off the tail that we need *)
     fun loop2 ls cnt = 
@@ -155,8 +155,8 @@ fun subseg (ss, pos, len) =
     fun loop ls i =
      case ls of
          [] => raise (SigSegFailure ("subseg.loop1 out of bounds: requested pos " 
-	                             ^Int.toString pos^ " len "^Int.toString len^
-				     " from sigseg of len "^Int.toString sz^" pos "^Int.toString st))
+	                             ^Int64.toString pos^ " len "^Int.toString len^
+				     " from sigseg of len "^Int.toString sz^" pos "^Int64.toString st))
       | h::t => 
 	  let val hlen = length h 
 (* 	      val _ = print (" head segment length: "^Int.toString hlen^"\n") *)
@@ -169,7 +169,7 @@ fun subseg (ss, pos, len) =
             else loop t (i - hlen)
           end
 
-    val (dat2,off2) = loop dat (off + pos - st)
+    val (dat2,off2) = loop dat (off + Int64.toInt(Int64.-(pos, st)))
     
 (*     val _ = print ("New offset! "^Int.toString off2^" old was "^Int.toString off^"\n") *)
 
@@ -189,7 +189,7 @@ fun eq f (a,b) =
  in
      w1 = w2  andalso 
     (w1 = 0 orelse      (* nullsegs are always equal *)
-     st1 = st2 andalso     
+    (st1 = st2) andalso     
 (*      if w1 = 0 then true else  *)
      let fun loop (v1,v2) (ls1,ls2) (i1,i2) cnt = 
          if cnt = 0 then true         

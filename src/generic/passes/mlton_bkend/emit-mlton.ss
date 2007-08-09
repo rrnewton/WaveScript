@@ -227,8 +227,8 @@
      (let ([Int (format "~a" int-module)])
        (make-fun '("ss") 
 	       (list 
-		"(\"[\"^ "Int".toString ("  (DispatchOnArrayType 'start t)
-		" ss) ^\", \"^ "Int".toString ("      (DispatchOnArrayType 'end t)
+		"(\"[\"^ Int64.toString ("  (DispatchOnArrayType 'start t)
+		" ss) ^\", \"^ Int64.toString ("      (DispatchOnArrayType 'end t)
 		" ss + 1) ^ \")\")")))]
 
     [#(,[t*] ...)
@@ -584,10 +584,10 @@
   	              (make-seq
 		       ((Emit downstrm) 
 			"toSigseg(v, !stamp, 0)")
-		       "stamp := !stamp + n"))])
+		       "stamp := Int64.+ (!stamp, n)"))])
 	   (list "val _ = "
 	    (make-app "ensbox_entry"
-	      (list (make-let '(["stamp" "ref 0"])
+	      (list (make-let '(["stamp" "ref (Int64.fromInt 0)"])
 		    (make-fun (list (make-tuple-code "p" "n"))
 		      (if #t
 			  bod 
@@ -768,7 +768,7 @@
     [(nullseg) "nullseg()"]
     ;; We just use the normal name conversion:
     [else (if (sigseg-prim? op)
-	      (ASSERT (PrimName op))
+	      (ASSERT (PrimName op)) ;; Defined in the libray.
 	      (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
     ))
 
