@@ -268,6 +268,7 @@ fulltest:
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 # NOT WORKING RIGHT NOW:
 	(cd ../apps/stockticks/; $(MAKE) test)
+	(cd demos/wavescope; $(MAKE) getdata)
 	(cd demos/wavescope; ./testall_demos.ss)
 	@echo
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
