@@ -357,8 +357,11 @@
 
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
-			       '("val wsinit = _import \"wsinit\" : unit -> unit; \n"
-				 "val _ = wsinit()\n")
+			       '("val wsinit = _import \"wsinit\" : (int * string array) -> unit; \n"
+				 "val cmdargs = CommandLine.arguments()\n"
+				 "val argc = length cmdargs\n"
+				 "val argv = Array.fromList cmdargs\n"
+				 "val _ = wsinit(argc, argv)\n")
 			       ())
 
 			   "\n(* Then initialize the global bindings: *)\n"
@@ -390,8 +393,8 @@
 
 			   ;; We either call the foreign wsmain or start our scheduler.
 			   (if driven-by-foreign
-			       '("val wsmain = _import \"wsmain\" : unit -> unit; \n"
-				 "val _ = wsmain()")
+			       '("val wsmain = _import \"wsmain\" : (int * string array) -> unit; \n"
+				 "val _ = wsmain(argc, argv)")
 			       (list 
 				"val _ = (\n"
 				"\n(*  Initialize the scheduler. *)\n"
