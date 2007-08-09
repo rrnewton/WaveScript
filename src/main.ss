@@ -829,7 +829,7 @@
    (printf "\nFinished normal compilation, now emitting C++ code.\n")
 
    (printf "Running pass: generate-comparison-code\n")
-   (ws-run-pass p generate-comparison-code)
+   (ws-run-pass prog generate-comparison-code)
 
    (printf "Running pass: convert-sums-to-tuples\n")
    (time (set! prog (convert-sums-to-tuples prog)))

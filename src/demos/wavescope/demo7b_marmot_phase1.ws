@@ -283,8 +283,8 @@ fun detect(scorestrm) {
   hi_thresh = 8;
   startup_init = 300;
   refract_interval = 40;
-  max_run_length = 48000;
-  samples_padding = 2400`gint;
+  max_run_length = 48000`intToInt64;
+  samples_padding = 2400`intToInt64;
 
   iterate((score,win) in scorestrm) {
     state {
@@ -330,7 +330,7 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if win.end - _start > max_run_length`gint then {
+      if win.end - _start > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
 	      ++", re-estimating noise\n");
 	
@@ -481,11 +481,14 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
+
+// [2007.08.09] DETECTIONS IS BROKEN.  FOR SOME ODD REASON THE 64BIT SAMPLE NUMBERS BROKE THE DECTOR.
+// DISABLING FOR NOW BECAUSE IT'S NOT A PRIORITY.
 BASE <- 
 //synced
-positives
+//positives
 //detections
-//wscores
+wscores
 // iterate(w in hn){emit w[[16]]}
 // iterate(w in rw1){emit w[[16]]}
 //unionList([ch1,ch2])

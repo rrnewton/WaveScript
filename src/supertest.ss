@@ -326,6 +326,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
+#;
+(begin 
+
 (define engine-dir (format "~a/WS_test_engine" (getenv "HOME")))
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
 (ASSERT (system 
@@ -371,6 +374,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
 	    (if (zero? pipeMemory) "?maybe passed?" "-FAILED-"))
        )
+
+) ;; End engine
 
 ;;================================================================================
 ;; Now test WSC:

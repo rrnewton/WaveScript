@@ -478,7 +478,7 @@
   (lambda (datum)
     (cond
      [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
-     [(eq? datum 'UNIT) "()"]
+     [(eq? datum 'UNIT) "()"]     
      [(null? datum) "[]"]
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
@@ -869,6 +869,9 @@
      (guard (memq prim '(Array:ref Array:set Array:length)))
      (make-prim-app (DispatchOnArrayType prim elt)
 	       (cons first rest))]
+
+    [(ptrIsNull ,[myExpr -> ptr]) 
+     "(EQUAL == MLton.Pointer.compare (Mlton.Pointer.null, "ptr"))"]
 
     ;; This unpacks a foreign array into a WS array:
     [(assert-type (Array ,elt) (ptrToArray ,[myExpr -> ptr] ,[myExpr -> len]))

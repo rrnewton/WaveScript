@@ -430,6 +430,7 @@
     ;; copying the storage.
     ;; Must be wrapped in an assert-type of course:
     (ptrToArray     ((Pointer 'name) Int) (Array 'a))
+    (ptrIsNull      ((Pointer 'name)) Bool)
 
     ;; This is down-and-dirty.  Inline C code.
     ;;

@@ -18,15 +18,16 @@ fun marmotscore2(freqs) {
 }
 
 
-/* expects Zip2<SigSeg<float>,float>::Output */
+//detect :: Stream (Float * Sigseg any) -> Stream (Bool * Int * Int64);
+detect :: Stream (Float * Sigseg any) -> Stream (Bool * Int64 * Int64);
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.999;
   hi_thresh = 16;
   startup_init = 300;
   refract_interval = 40;
-  max_run_length = 48000;
-  samples_padding = 2400;
+  max_run_length = 48000`to64;
+  samples_padding = 2400`to64;
   
   iterate((score,st,en) in scorestrm) {
     state {
@@ -66,7 +67,7 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if en - _start > max_run_length then {
+      if int64ToInt(en - _start) > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
 	      ++", re-estimating noise");
 	
@@ -139,7 +140,7 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, st - samples_padding - 1));
+      emit (false, 0`to64, max(0`to64, st - samples_padding - 1`to64));
       if DEBUG then 
       print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
 	    " just processed window "++show(st)++":"++show(en)++"\n");
@@ -176,7 +177,7 @@ fun onechan(offset)
     size = w`width / 4;
     assert_eq("source stream multiple of 4", w`width, size * 4);
     arr = Array:build(size, fun (i) int16ToFloat(w[[(i*4) + offset]]));
-    emit toSigseg(arr, w`start / 4 , w`timebase)
+    emit toSigseg(arr, w`start / 4`intToInt64 , w`timebase)
   }
 
 
