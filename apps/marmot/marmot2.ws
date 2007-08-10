@@ -137,8 +137,9 @@ fun expC2(f) makeComplex(cos(f), sin(f))
 actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
-  //    println("Running actual AML.");
     using Matrix; using Complex;
+
+    log(1,"Running actual AML.");
 
     _ = (data_in :: Matrix Float);
 
@@ -307,7 +308,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = iterate (_m_in :: Matrix Float in data_in) {
 
-    println("Computing AML result.");
+    log("Computing AML result.");
 
     // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows

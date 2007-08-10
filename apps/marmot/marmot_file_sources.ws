@@ -25,6 +25,8 @@ fun onechan(offset)
     emit toSigseg(arr, w`start / 4`intToInt64 , w`timebase)
   }
 
+// When we're not live we just print log messages to the stream.
+fun log(l,s) println(s)
 
 // Testing, trying this instead:
 ch1 = onechan(0); 

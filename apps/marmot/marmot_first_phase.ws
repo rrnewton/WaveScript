@@ -11,9 +11,9 @@ fun marmotscore2(freqs) {
     absC(freqs[[3]] +: 
 	 freqs[[4]]);
   if DEBUG then 
-   print("\nMarmot Score: "++show(result)++", \nBased on values "
-	++ show(freqs[[3]]) ++ " "
-	++ show(freqs[[4]]) ++ " \n");
+   log(1 ,"\nMarmot Score: "++show(result)++", \nBased on values "
+	 ++ show(freqs[[3]]) ++ " "
+	 ++ show(freqs[[4]]) ++ " \n");
   result
 }
 
@@ -57,7 +57,7 @@ fun detect(scorestrm) {
     };
 
     if DEBUG then 
-    print("Detector state: thresh_value " ++show(thresh_value)++ " trigger " ++show(trigger)++ 
+    log(1,"Detector state: thresh_value " ++show(thresh_value)++ " trigger " ++show(trigger)++ 
 	  " smoothed_mean " ++show(smoothed_mean)++ " smoothed_var " ++show(smoothed_var)++ "\n" ++
 	  "        _start " ++show(_start)++ " trigger_value " ++show(trigger_value)++ 
 	  " startup " ++show(startup)++ " refract " ++show(refract)++ " noise_lock " ++show(noise_lock)++"\n"
@@ -69,8 +69,8 @@ fun detect(scorestrm) {
 
       /* check for 'noise lock' */
       if int64ToInt(en - _start) > max_run_length then {
-	print("Detection length exceeded maximum of " ++ show(max_run_length)
-	      ++", re-estimating noise");
+	log(1, "Detection length exceeded maximum of " ++ show(max_run_length)
+	       ++", re-estimating noise");
 	
 	noise_lock := noise_lock + 1;
 	reset();
@@ -107,7 +107,7 @@ fun detect(scorestrm) {
 	      _start - samples_padding,           // start sample
 	      _start - samples_padding + p2 - 1`to64); // end sample
 	if DEBUG then
-	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
+	 log(1,"KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
 	      " just processed window "++show(st)++":"++show(en)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
@@ -118,11 +118,11 @@ fun detect(scorestrm) {
       let thresh = i2f(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
-        print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
+        log(1,"Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
 
       /* over thresh and not in startup period (noise est period) */
       if startup == 0 && score > thresh then {
-	if DEBUG then print("Switching trigger to ON state.\n");
+	if DEBUG then log(1,"Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
@@ -143,7 +143,7 @@ fun detect(scorestrm) {
       /* but this seems to assume that the sample numbers start at zero?? */
       emit (false, 0`to64, max(0`to64, st - samples_padding - 1`to64));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0`to64, en - samples_padding)))++
+      log(1, "DISCARD message: "++show((false, 0, max(0`to64, en - samples_padding)))++
 	    " just processed window "++show(st)++":"++show(en)++"\n");
       
     }
@@ -167,7 +167,7 @@ detections = detect(wscores);
 
 d2 = iterate (d in detections) {
   let (flag,_,_) = d;
-  if flag then print("detected at "++show(d)++"\n");
+  if flag then log(1,"Detection at "++show(d)++"\n");
   emit d;
 };
 
