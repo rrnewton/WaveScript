@@ -16,15 +16,16 @@ rm -f "$OUTPUT"
 rm -f "query.*.c"
 rm -f ".tmp.*.o"
 
-GLIB_PATH="/usr/arm-linux/arm-linux/lib/libglib-2.0.so"
+GLIB_PATH=`pkg-config glib-2.0 --libs`
 
 if [ "$EMLIB" == "" ]; then EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'; fi
 # "a" for static linking "so" for dynamic:
 EXT=a
 ENSBOXLD=" \
-  $EMLIB/libensbox_ws2.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
-  $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libdev.$EXT \
-  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT $EMLIB/libmisc.$EXT -lm -lasound $GLIB_PATH"
+  $EMLIB/libwavescope2.$EXT $EMLIB/libvxp_ws.$EXT $EMLIB/libemrun.$EXT $EMLIB/liblink.$EXT \
+  $EMLIB/libdev.$EXT $EMLIB/libsync.$EXT $EMLIB/libevent.$EXT $EMLIB/libdev.$EXT \
+  $EMLIB/libmisc.$EXT $EMLIB/libfusd.$EXT $EMLIB/libremstore.$EXT $EMLIB/libmisc.$EXT -lm -lasound $GLIB_PATH \
+"
 
 ################################################################################
 

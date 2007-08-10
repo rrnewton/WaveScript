@@ -463,8 +463,6 @@
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
-    (inspect p)
-
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p static-elaborate))
 ;  (time (ws-run-pass p interpret-meta))
@@ -473,7 +471,7 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
 ;  (inspect (let-spine 4 p))
-  (inspect p)
+;  (inspect p)
 #;
   (begin 
     (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
@@ -494,8 +492,6 @@
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
   (do-late-typecheck)
-
-  (inspect p)
 
   (IFDEBUG 
    (unless (regiment-quiet)
@@ -598,8 +594,6 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
-
-  (inspect p)
   (ws-run-pass p reify-certain-types) 
 
   ;; for analysis of data rates between boxes
