@@ -15,6 +15,9 @@ c_wsnet_register :: String -> Pointer "void*" =
 c_wsnet_enqueue_int :: (Pointer "void*", Int) -> Int = 
   foreign("wsnet_enqueue_int", includes);
 
+log :: (Int, String) -> Int = 
+  foreign("log_msg", includes);
+
 // is there a way to generalize this on types?
 fun netpub_int(s, name) {
   iterate i in s {
