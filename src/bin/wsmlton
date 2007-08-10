@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# First phase consumes the first argument (.ws file)
 wsmlton-firstphase $*
 shift
-wsmlton-mlton query.sml $*
+wsmlton-secondphase query.sml $*

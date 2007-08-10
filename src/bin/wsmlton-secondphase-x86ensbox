@@ -1,0 +1,18 @@
+#!/bin/bash 
+
+# This takes the .sml file down to a binary.
+
+if [ "$EMLIB" == "" ]; then EMLIB='/export/home/girod/emstar/obj.i686-linux/lib'; fi
+
+echo MLton compile to x86ensbox host. 
+export WSMLGCC=gcc
+export GCCLINK=' -L/usr/lib/mlton/self -lmlton -lgdtoa -lm -lgmp -lfftw3f '
+export GCCBUILD="-std=gnu99 -I/usr/lib/mlton/self/include \
+          -I$EMLIB/../../include `pkg-config --cflags glib-2.0` \
+          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+          -fomit-frame-pointer -w -o $OBJ $fn \
+	  -I$REGIMENTD/src/generic/passes/mlton_bkend"
+
+################################################################################
+
+wsmlton-secondphase-ensbox $*

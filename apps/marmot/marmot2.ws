@@ -47,7 +47,7 @@ STILL TO DO:
   * allocate the array td once and just refill it.
 
 GREAT: I scaled it up, and when we exec 100 reps we got these times:
-  * C version - 3.088 seconds
+  * C version - 3.09  seconds
   * wsmlton   - 1.67  seconds
  
 */
@@ -64,7 +64,7 @@ include "array_geometry.ws";
 
 //======================================================================
 
-samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+samp_rate = 24000.0; // HACK - we should get this from the stream/timebase/sigseg
 sound_spd = 345.0; // HACK - although not quite sure how to put it in
 
 sensors = Matrix:Float:fromList2d(sensor_list);
@@ -164,10 +164,6 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 
     // Allocate some extra buffers that are used below.
     D = Array:make(sens_num, 0.0+0.0i);
-    //DRE = Array:make(sens_num, 0.0);
-    //DIM = Array:make(sens_num, 0.0);
-
-    foo = Mutable:ref(0.0); // RRN: TEST
 
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS

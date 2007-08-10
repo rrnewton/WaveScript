@@ -339,15 +339,16 @@
        ;; Just append this text together.
        (let ([result (list 
                            ;; Very first thing is 
-                           (format "(*WSLIBDEPS: ~a\n" 
-                                   (apply string-append
-                                          (insert-between " " 
-                                            (list->set 
-					     (filter (lambda (fn) (not (equal? (extract-file-extension fn) "h")))
-					       foreign-includes)
-					     equal?))))
-                           "*)\n"
-                      
+		           (let ([deps (filter (lambda (fn) (not (equal? (extract-file-extension fn) "h")))
+					 foreign-includes)])
+			     (if (null? deps) ()
+				 (list 
+				  (format "(*WSLIBDEPS: ~a\n" 
+					  (apply string-append
+						 (insert-between " " 
+								 (list->set deps equal?))))
+				  "*)\n")))
+			   
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
 

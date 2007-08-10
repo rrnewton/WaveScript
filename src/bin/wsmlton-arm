@@ -1,7 +1,0 @@
-#!/bin/bash
-
-export WSARCH=ensbox
-
-wsmlton-firstphase $*
-shift
-wsmlton-mlton-arm query.sml $*
