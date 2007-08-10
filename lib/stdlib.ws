@@ -861,6 +861,35 @@ fun rewindow(sig, newwidth, gap) {
   }
 }
 
+
+// degap takes a stream of sigsegs
+// any gaps in the stream will be replaced with sigsegs of init
+fun degap(s, init)
+{
+  iterate w in s {
+    state {
+      next = 0;
+    }
+    if w != nullseg then {
+      if w`start > next then {
+	if (next != 0) then {
+	  arr = Array:make(w`start - next, init);
+	  emit(toSigseg(arr, next, w`timebase));
+	}
+      }
+      else 
+      if w`start == next then emit(w)
+      else {
+	wserror("gap we can't degap.. start is "++
+		w`start++".. prev was "++next);
+      };
+
+      next := w`end + 1;
+    }
+  }
+}
+
+
 // This should take a buffer size argument:
 // This is much like a zip:
 /*
