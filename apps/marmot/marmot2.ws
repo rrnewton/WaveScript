@@ -243,7 +243,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	temp_c = ref(0.0+0.0i);
 
 	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
-	for n = 0 to (sens_num - 1) {	
+	for n = 0 to (sens_num - 1) {
            // took out the order[j]+1 (seems to make it equal)
 	   // odd thing here is that if we take out the - from -2.0, the results are correct.. need to figure this out
 
@@ -316,11 +316,10 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
     //   gnuplot_array(m_in[0]);
 
-    result = Mutable:ref(Array:null);
-    for i = 1 to 100 {
-      result := actualAML(m_in, radius,theta, grid_size, sens_num);    
-    };
+    //result = Mutable:ref(Array:null);
+    //for i = 1 to 100 { result := actualAML(m_in, radius,theta, grid_size, sens_num) };
     //result = Array:make(grid_size, 0.0); // FAKE
+    result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
     //	gnuplot_array(result);
     emit(result)

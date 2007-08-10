@@ -1,9 +1,9 @@
 
 
 all:
-	(cd fftw2-0.2; $(MAKE))
+	if [ -d fftw2-0.2 ] then (cd fftw2-0.2; $(MAKE));
 
 
 clean:
-	(cd fftw2-0.2; $(MAKE) clean)
+	if [ -d fftw2-0.2 ] then (cd fftw2-0.2; $(MAKE) clean);
 
