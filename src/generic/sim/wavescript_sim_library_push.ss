@@ -935,10 +935,12 @@
 
   ;(define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
   (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
-  (define +I64 s:+)  (define -I64 s:-)  (define *I64 s:*)  (define /I64 s:/)
+  (define +I64 s:+)  (define -I64 s:-)  (define *I64 s:*)  
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
   (define +D fl+)    (define -D fl-)    (define *D fl*)    (define /D fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
+
+  (define (/I64 a b) (floor (s:/ a b)))
 
   (define ws^ expt)
   (define g^ expt)

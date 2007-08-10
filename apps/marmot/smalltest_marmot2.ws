@@ -18,6 +18,7 @@ chans = window(_chans, 8192);
 
 split = deinterleaveSS(4, 2048, chans);
 
+//ch1 = snoop("chan1 ", List:ref(split, 0)) ;
 ch1 = List:ref(split, 0);
 ch2 = List:ref(split, 1);
 ch3 = List:ref(split, 2);
@@ -44,7 +45,9 @@ include "marmot2.ws";
 //doas = FarFieldDOAb(synced, sensors);
 doas = oneSourceAMLTD(synced, sensors, 2048); 
 
+//BASE <- chans;
+//BASE <- ch1;
+//BASE <- dewindow(ch1)
+//BASE <- synced;
 //BASE <- gnuplot_array_stream(doas)
 BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
-//BASE <- synced;
-//BASE <- dewindow(ch1)
