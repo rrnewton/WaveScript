@@ -1,4 +1,53 @@
 
+/* 
+  RRN: Trying to analyze the poor performance.
+  Takes 190 ms user time on testdata.txt.
+  Takes 36 ms when discounting the AML itself.
+    (Slow text reading, lots of alloc?)
+  Leaving out BOTH the sort loop and the angle search: 36 ms 
+  The sort loop is also trivial... all the time's in the angle search.  
+  Building the delay array.... trivial cost.
+
+  Hmm... allocating 'D' in the inner loop... that looks killer.
+  Uncommenting it doesn't add significant cost... but it might get DCE'd.
+
+  That ONE LINE where we initialize the steering vector does almost all the damage. (Brings us up to 180ms)
+  Doing expC2 by itself (make complex plus two trig ops) causes 40ms damage.
+  Just ALLOCATING a complex number (with floatToComplex) does just as much damage.  
+  
+  Wait... that large floating point expression (-2.0 * ...) ALSO seems to account for nearly all of the time in question.
+  AH, tricky... maybe it's stopping the array TD from being dead-code-eliminated.
+  No.. if I remove the reference to td... it still takes a while.
+  In fact, *just* referencing td costs almost nothing.
+  Hmm, accessing "order[j]", and converting it to float... *that's* expensive.
+  INTERESTING!!! the intToFloat is implemented very badly!!!!!
+
+  After fixing conversions, the multiply expression that was painful before is now trivial.
+  In fact, now the expC is pretty cheap (~10ms)! It was the conversions that were expensive!
+  (Moving where we allocate the matrices makes no difference really... MLton must fix that.)
+
+  GREAT!  That original D[n] = line that was causing trouble... it now causes 20X less trouble.
+  So we have got a 2.5x improvement (total) from fixing the conversions.
+  We get an additional 28% from improving expC to not be wasteful with complex operations and allocations.
+  That brings us to a total time of 55ms on my 17inch macbook currently.
+
+NEXT ROUND:
+
+ Lifting: I attempted several lifts manually... lifted conversion
+  functions (order[j], window_size) out of the innermost loop.  I also
+  lifted the allocation of the matrix D.  None of this gave me ANY performance benefit.
+  I should undo it for clarity, but I'm going to leave it in case we end up running with wsc.
+
+ Fixing complex operators: fixed up sdivC and conjC
+
+STILL TO DO:
+
+  * Split the array D into real and imaginary arrays 
+  * allocate the array td once and just refill it.
+ 
+*/
+
+
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
@@ -61,17 +110,21 @@ metabuild = Array:build;
 // reference single-target AML representation, based on the aml.c file in emstar
 // implemented by Mike Allen, July 2007
 
-fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
+//fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
+fun sdivC(c,d) makeComplex(realpart(c)/d, imagpart(c)/d);
 
 fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 
-fun expC2(c) (1.0+0.0i * floatToComplex(cos(c))) + (0.0+1.0i * floatToComplex(sin(c))); // equivalent to the expC implementation in stdlib.ws
+// equivalent to the expC implementation in stdlib.ws
+fun expC2(f) makeComplex(cos(f), sin(f))
 
 
 // does an aml given fftd data already.. assumes windows of data are already fftd
 //fun oneSourceAMLFFT(synced, sensors)
 
 //Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
+
+actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
     println("Running actual AML.");
@@ -82,6 +135,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     // so we can use m_rowmap to map our function in the same way as the fft
     //window_size = (data_in[0])`Array:length; // this is the size of one of the rows in m_in, right? currently 16384 - WHY
     window_size = snd(Float:dims(data_in));
+    _window_size = i2f(window_size);
+    _sens_num = i2f(sens_num);
 
     // total bins that will come out of the FFT
     total_bins = window_size/2;
@@ -93,11 +148,21 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     fft_temp = fromArray2d(Float:rowmap(fftR2C, data_in));
     
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
-    sel_bin_size = min(total_bins, window_size/20);
+    //sel_bin_size = min(total_bins, window_size/20);
+    sel_bin_size = 100; // TEMP FIXME FIXME
+    println("Sel_bin_size: " ++ sel_bin_size); // This is 100 in the C code!!
+
     // the above makes more sense when you're NOT using all bins for the AML (i.e. you're only using certain frequency bands)
 
     // the processed frequency data will be mapped into here
     data_f = create(sens_num, total_bins); // with no set values, yet. 4 channels x total bin size
+
+    // Allocate some extra buffers that are used below.
+    D = Array:make(sens_num, 0.0+0.0i);
+    //DRE = Array:make(sens_num, 0.0);
+    //DIM = Array:make(sens_num, 0.0);
+
+    foo = Mutable:ref(0.0); // RRN: TEST
 
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
@@ -127,7 +192,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     temp_ind = ref(0);
     max_ind = ref(0);
     order = Array:make(sel_bin_size,0); // order of array
-    
+
     // the actual sort
     for i = 0 to (sel_bin_size-1) {
       temp_val := psds[i];
@@ -150,6 +215,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       };      
       order[i] := temp_ind; // all subsequent access to psds is done thru the order array
     };
+
+
     //    gnuplot_array(order);
     // now do the actual AML calculation, searching thru each angle
     for i = 0 to (grid_size - 1) {
@@ -159,35 +226,38 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       // td[k] = - radius[k] * cosf ( try_angle - theta[k])*param->samp_rate/param->sound_spd;
 
       // function to calculate time delay relative to centre of array
-      fun delay(c) {
-      	(0.00 - radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
-	//	(radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
-      };
-      td = Array:build(sens_num, fun(c) delay(c));
+      fun delay(c) (0.00 - radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
+
+      td = Array:build(sens_num, delay);
+
       //      print("td = "++show(td[0])++" "++show(td[1])++" "++show(td[2])++" "++show(td[3])++"\n");
       for j = 0 to (sel_bin_size-1) {
-	// steering vector of complex numbers
-	D = Array:make(sens_num, 0.0+0.0i);
+
+        _order = i2f(order[j]);
+	
 	temp_c = ref(0.0+0.0i);
+
 	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
-	for n = 0 to (sens_num - 1) {
-	  //	  D[n] := expC(0.0+1.0i * f2c(-2.0 * const_PI * gint(order[j]) * td[n] / gint(window_size))); // took out the order[j]+1 (seems to make it equal)
-	  D[n] := expC(0.0+1.0i * f2c(2.0 * const_PI * gint(order[j]) * td[n] / gint(window_size))); // took out the order[j]+1 (seems to make it equal)
-	  // odd thing here is that if we take out the - from -2.0, the results are correct.. need to figure this out
-	  //D[n] := expC(0.0+1.0i * f2c(-2.0 * const_PI * gint(order[j]+1) * td[n] / gint(window_size)));
-	  //D[n] := expC2(-2.0 * const_PI * gint(order[j]+1) * td[n] / gint(window_size)); // equivalent, usding different expC function
+	for n = 0 to (sens_num - 1) {	
+           // took out the order[j]+1 (seems to make it equal)
+	   // odd thing here is that if we take out the - from -2.0, the results are correct.. need to figure this out
+
+	   // RRN: This inner loop was costing us dearly before, improved to this:
+	   D[n] := expC2(2.0 * const_PI * _order * td[n] / _window_size);
 	};
-	//emit(D);
+
 	for n = 0 to (sens_num - 1) {
 	  temp_c := temp_c + conjC(D[n]) * get(data_f, n,order[j]);
 	};
 
 	for n = 0 to (sens_num - 1) {
-	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c, intToFloat(sens_num))) );
+	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c, _sens_num)) );
 	  // c version is : Cnormsqr(Cmul(temp_c,D[k])), where temp_c is divided by AML_NUM_CHANNELS
-	};
-      };
+	}
+      }
+
     };
+
     // gnuplot_array(Jvec);
     //    emit(Jvec); // and, we're done!
     // just return JVec, no emit!
@@ -240,7 +310,9 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 
     m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
     //   gnuplot_array(m_in[0]);
-    result = actualAML(m_in, radius,theta, grid_size, sens_num);
+        result = actualAML(m_in, radius,theta, grid_size, sens_num);    
+    //result = Array:make(grid_size, 0.0); // FAKE
+
     //	gnuplot_array(result);
     emit(result)
 

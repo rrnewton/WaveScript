@@ -58,6 +58,7 @@ List:choplast   :: List t -> (t * List t);
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
+Array:fill      :: (Array t, t) -> ();
 
 
 // These aren't at their final names.  They'll be moved into the Array
@@ -222,7 +223,8 @@ fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
-fun conjC(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
+//fun conjC(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
+fun conjC(c) makeComplex(c`realpart, 0.0 - c`imagpart)
 
 // This *should* work by caching one or more fftw plans.
 fun fftStream(s) {
@@ -448,8 +450,14 @@ namespace Array {
   }
 
   fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
+
+  fun fill(arr,v) {
+    for i = 0 to Array:length(arr) - 1 {
+      arr[i] := v;
+    }
+  }
   
-} // End namespace
+} // End namespace Array
 
 // RRN: NOTE: These should be added to namespace Array:
 
