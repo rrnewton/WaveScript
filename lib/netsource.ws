@@ -16,8 +16,8 @@ c_wsnet_enqueue_int :: (Pointer "void*", Int) -> Int =
   foreign("wsnet_enqueue_int", includes);
 
 
-raw_log :: (Int, String) -> Int = foreign("log_msg", includes);
-fun log(s) raw_log(s ++ "\0");
+raw_log :: (Int, String, Int) -> () = foreign("log_msg", includes);
+fun log(l,s) raw_log(l,s++" ",s`String:length);
 
 // is there a way to generalize this on types?
 fun netpub_int(s, name) {
