@@ -17,9 +17,10 @@ fun marmotscore2(freqs) {
   result
 }
 
-
 //detect :: Stream (Float * Sigseg any) -> Stream (Bool * Int * Int64);
-detect :: Stream (Float * Sigseg any) -> Stream (Bool * Int64 * Int64);
+//detect :: Stream (Float * Sigseg any) -> Stream (Bool * Int64 * Int64);
+//detect :: Stream (Float * Sigseg 'any) -> Stream (Bool * #erk * Int64);
+detect :: Stream (Float * Int64 * Int64) -> Stream (Bool * Int64 * Int64);
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.999;
@@ -150,6 +151,7 @@ fun detect(scorestrm) {
 }
 
 
+
 // ================================================================================
 
 flag = GETENV("WSARCH") == "ensbox";
@@ -192,6 +194,8 @@ rw1 = rewindow(ch1, 32, 96);
 hn = hanning(rw1);
 
 fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase);
+
+wscores :: Stream (Float * Int64 * Int64);
 wscores = stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
 //wscores = stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end), hn);
 
@@ -204,4 +208,3 @@ d2 = iterate (d in detections) {
 };
 
 synced = syncN(d2, [ch1, ch2, ch3, ch4]);
-

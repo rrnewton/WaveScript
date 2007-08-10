@@ -1485,7 +1485,7 @@
 		   (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
 		   )
 ;		 (print-type (realias-type aliases t) port) (newline port))
-		 (print-type t port) (newline port))
+		 (print-type t port) (fprintf port ";\n"))
 	       
 	       (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
 	      [,ls (guard (list? ls))

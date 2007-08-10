@@ -98,10 +98,13 @@ In this way, it can process 73.6 mb in a second.
 
 include "marmot_first_phase.ws";
 
+//BASE <- 3 
 //BASE <- chans
 //BASE <- ch1
 //BASE <- unionList([ch1,ch2,ch3,ch4])
 //BASE <- rw1
 //BASE <- hn
+//BASE <- wscores
+//BASE <- detections
 //BASE <- d2
 BASE <- synced
