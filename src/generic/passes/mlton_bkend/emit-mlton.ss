@@ -358,7 +358,7 @@
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
 			       '("val wsinit = _import \"wsinit\" : (int * string array) -> unit; \n"
-				 "val cmdargs = CommandLine.arguments()\n"
+				 "val cmdargs = CommandLine.name() :: CommandLine.arguments()\n"
 				 "val argc = length cmdargs\n"
 				 "val argv = Array.fromList cmdargs\n"
 				 "val _ = wsinit(argc, argv)\n")
