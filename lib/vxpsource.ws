@@ -173,16 +173,12 @@ fun vxp_source_init() {
 
     // check for NULL pointer
     if (c_isnull(p)) then {
-      println("ignoring gap of "++len++" samples");
       // could also use nullsafe_ptrToArray... 
     }
 
     else {
-      print("from c: len="++len++" counter="++counter++"\n");
       arr :: Array Int16 = ptrToArray(p,len*4);
-      print("array is made, length "++arr`Array:length++"\n");
       emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
-      print("emitted sigseg?\n");
     }
   };
   merge(ccode, interleaved);

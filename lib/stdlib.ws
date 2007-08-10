@@ -969,7 +969,7 @@ fun one_deinterleaveSS2(n, offset, strm) {
       outsize = win`width / n;
       newwin = Array:makeUNSAFE(outsize);
       
-      for i = 0 to win`width - 1 {	 
+      for i = 0 to (outsize * n - 1) {	 
 	if counter == offset  
 	then {
 	  newwin[newind] := win[[i]]; 

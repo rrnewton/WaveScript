@@ -46,7 +46,7 @@ fun gen_glue_int (host,name,id) {
 
   void __init_"++id++"() {
     elog(LOG_WARNING, \"connecting to stream\");
-    subscription_client_create(\""++host++"\", \""++name++"\", __ready_"++host++"_"++name++");
+    subscription_client_create(\""++host++"\", \""++name++"\", __ready_"++host++"_"++name++", NULL);
   }
 "}
 
