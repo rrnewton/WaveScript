@@ -19,10 +19,16 @@ chans = window(_chans, 8192);
 split = deinterleaveSS(4, 2048, chans);
 
 //ch1 = snoop("chan1 ", List:ref(split, 0)) ;
-ch1 = List:ref(split, 0);
+_ch1 = List:ref(split, 0);
 ch2 = List:ref(split, 1);
 ch3 = List:ref(split, 2);
 ch4 = List:ref(split, 3);
+
+ch1 = iterate x in _ch1 {
+  state { fst = true }
+  if fst then { fst:=false; println("Got a window on ch1, first element:" ++ x[[0]])};
+  emit x;
+}
 
 synced0 = zipN_sametype(0, [ch1,ch2,ch3,ch4]);
 
@@ -49,5 +55,5 @@ doas = oneSourceAMLTD(synced, sensors, 2048);
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
 //BASE <- synced;
-BASE <- gnuplot_array_stream(doas)
-//BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
+//BASE <- gnuplot_array_stream(doas)
+BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }

@@ -27,5 +27,7 @@ fun onechan(offset)
 
 
 // Testing, trying this instead:
-ch1 = onechan(0); ch2 = onechan(1); ch3 = onechan(2); ch4 = onechan(3);
-
+ch1 = onechan(0); 
+ch2 = onechan(1); 
+ch3 = onechan(2); 
+ch4 = onechan(3);

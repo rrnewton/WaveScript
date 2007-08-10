@@ -49,6 +49,11 @@ STILL TO DO:
 GREAT: I scaled it up, and when we exec 100 reps we got these times:
   * C version - 3.09  seconds
   * wsmlton   - 1.67  seconds
+
+RUNNING ON ENSBOX:
+  * farfield_ex : 2.0 user
+  * 
+
  
 */
 

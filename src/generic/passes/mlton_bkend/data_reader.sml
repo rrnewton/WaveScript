@@ -199,6 +199,7 @@ fun dataFileWindowed config
   -> scheduleEntry
 *)
 
-
+(*
 val _ = print_endline "ARGUMENTS: "
 val _ = List.map print_endline (CommandLine.arguments())
+*)
