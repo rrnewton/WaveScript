@@ -45,7 +45,7 @@ fun closeenough(arr1, arr2) {
 
 
 s1a = if GETENV("WSARCH") != "ensbox" 
-     then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
+then {chans = (readFile("6sec_marmot_sample.raw", "mode: binary", timer(24000.0))
                     :: Stream (Int16 * Int16 * Int16 * Int16));
 	   window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ensBoxAudioF(0);

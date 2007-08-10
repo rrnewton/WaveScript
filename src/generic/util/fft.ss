@@ -39,8 +39,8 @@
 
   ;; We do late-binding here.  Don't load the extension until we call dft.
   (define (dft vec)
-    ;(set! dft basic-dft)
-    (set! dft slib:fft)
+    (set! dft basic-dft)
+    ;(set! dft slib:fft) ;; This on DOES NOT correspond to our mlton/C implementations
     
     ;; If we're using chez and have FFTW available, use that instead:
     (IFCHEZ 

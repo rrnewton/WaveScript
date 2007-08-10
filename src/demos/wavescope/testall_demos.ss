@@ -93,8 +93,10 @@ exec regiment i --script "$0" ${1+"$@"};
 				     ;(ASSERT (= 0.0 a))
 				     ;(ASSERT (= 840.0 (round b))) ;839.8869476698192
 ;; ALERT!  DEMO4 STARTED RETURNING SOMETHING DIFFERENT.... CHECK THIS OUT!
-
 				     )]
+
+    ;; Demo4b... 
+
 
     ["demo4d_quoted_constants.ws"  ,(lambda (a b) (void))]
     ["demo4e_fifo_adt.ws"  ,(lambda (a b) (void))]
