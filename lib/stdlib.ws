@@ -868,12 +868,12 @@ fun degap(s, init)
 {
   iterate w in s {
     state {
-      next = 0;
+      next = gint(0);
     }
     if w != nullseg then {
       if w`start > next then {
-	if (next != 0) then {
-	  arr = Array:make(w`start - next, init);
+	if (next != gint(0)) then {
+	  arr = Array:make(int64ToInt(w`start - next), init);
 	  emit(toSigseg(arr, next, w`timebase));
 	}
       }
@@ -884,10 +884,11 @@ fun degap(s, init)
 		w`start++".. prev was "++next);
       };
 
-      next := w`end + 1;
+      next := w`end + gint(1);
     }
   }
 }
+
 
 
 // This should take a buffer size argument:
