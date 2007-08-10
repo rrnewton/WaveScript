@@ -3,7 +3,8 @@
 //  PUBLISH
 //
 
-includes = ["wavescope_ensbox.h", "libwavescope2.a"];
+//includes = ["wavescope_ensbox.h", "libwavescope2.a"];
+includes = ["wavescope_ensbox.h"];
 
 // rrn: void* needs to be changed to the correct type!
 
