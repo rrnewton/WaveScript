@@ -2,6 +2,7 @@
 //========================================
 // Main query:
 
+include "marmot_file_sources.ws";
 include "marmot_first_phase.ws";
 include "marmot2.ws";
 

@@ -146,8 +146,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 
 (begin (reset-timer!)
-       (define cleaned (system/exit-code "make clean"))
-       (fpf "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
+       (define cleaned )
+       (fpf "Build directory cleaned:                      ~a\n" 
+	    (code->msg! (system/exit-code "make clean > make_clean.log"))))
 
 (begin (define runpetite (system/exit-code (format "echo | ~a/depends/petite" test-root)))
        (fpf "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
@@ -230,7 +231,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
 ;; Now clean again:
-(ASSERT (system "make clean"))
+(ASSERT (system "make clean > make_clean2.log"))
 
 (begin (newline) (fpf "\n")
        (printf "Third: building bytecode in PLT\n")
