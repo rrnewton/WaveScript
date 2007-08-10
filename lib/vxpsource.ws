@@ -8,6 +8,7 @@ c_isnull :: (Pointer "void *") -> Bool =
 fun vxp_c_interface() {
 "
 #include <devel/wavescope/wavescope_ensbox.h>
+#include <pthread.h>
 
 /*
  *  Queuing vxp data from second thread back into main event loop.
@@ -23,6 +24,8 @@ struct queued_data {
 #define MAX_QUEUE_LEN (8*MILLION_I)
 
 int __vxp_tb = 0;
+pthread_mutex_t arg_mutex;
+pthread_cond_t arg_cond;
 
 int vxp_get_tb() { return __vxp_tb; }
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
@@ -118,8 +121,11 @@ void *vxp_thread(void *arg) {
 
   ws_state_t *ws = (ws_state_t *)arg;
   
+
   // start the vxpc_server in library form
   ensbox_main(ws->argc, ws->argv);
+  pthread_cond_signal(&arg_cond);
+  //  pthread_mutex_unlock(&arg_mutex);
   ensbox_start(ws);
   
   return NULL;
@@ -144,10 +150,22 @@ int __initvxp()
 
   __vxp_tb = timebase_new(my_node_id, CLOCK_VXP, 0.1);
 
+  // init cond variables before...
+  pthread_mutex_init(&arg_mutex, NULL);
+  pthread_cond_init(&arg_cond, NULL);
+
+  // in main thread - broadcast..
+
+  // pthread waits..
+
+
   /* spawn thread to run vxp. */
   if (pthread_create(&(ws->vxp_thread), NULL, vxp_thread, ws) < 0) {
     elog(LOG_CRIT, \"couldn't launch thread: %m\");
   }
+  pthread_mutex_lock(&arg_mutex);
+  pthread_cond_wait(&arg_cond, &arg_mutex);
+
 }
 
 "};
