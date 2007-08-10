@@ -38,12 +38,17 @@ NEXT ROUND:
   lifted the allocation of the matrix D.  None of this gave me ANY performance benefit.
   I should undo it for clarity, but I'm going to leave it in case we end up running with wsc.
 
- Fixing complex operators: fixed up sdivC and conjC
+ Fixing complex operators: fixed up sdivC and conjC, slight gain, down to 52ms.
+  (Need to run this more times to get more reasonable numbers!)
 
 STILL TO DO:
 
   * Split the array D into real and imaginary arrays 
   * allocate the array td once and just refill it.
+
+GREAT: I scaled it up, and when we exec 100 reps we got these times:
+  * C version - 3.088 seconds
+  * wsmlton   - 1.67  seconds
  
 */
 
@@ -127,7 +132,7 @@ fun expC2(f) makeComplex(cos(f), sin(f))
 actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
-    println("Running actual AML.");
+  //    println("Running actual AML.");
     using Matrix; using Complex;
 
     _ = (data_in :: Matrix Float);
@@ -150,7 +155,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
     //sel_bin_size = min(total_bins, window_size/20);
     sel_bin_size = 100; // TEMP FIXME FIXME
-    println("Sel_bin_size: " ++ sel_bin_size); // This is 100 in the C code!!
+    //    println("Sel_bin_size: " ++ sel_bin_size); // This is 100 in the C code!!
 
     // the above makes more sense when you're NOT using all bins for the AML (i.e. you're only using certain frequency bands)
 
@@ -310,7 +315,11 @@ fun oneSourceAMLTD(synced, sensors, win_size)
 
     m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
     //   gnuplot_array(m_in[0]);
-        result = actualAML(m_in, radius,theta, grid_size, sens_num);    
+
+    result = Mutable:ref(Array:null);
+    for i = 1 to 100 {
+      result := actualAML(m_in, radius,theta, grid_size, sens_num);    
+    };
     //result = Array:make(grid_size, 0.0); // FAKE
 
     //	gnuplot_array(result);
