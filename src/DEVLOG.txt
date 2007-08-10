@@ -929,7 +929,7 @@ As long as one processor is disabled (so it's uniprocessor), these do
 about the same on faith with -O3 and running with -j 1.  (Actually the
 -j 1 doesn't make much difference either way.)
 
-[2007.06.23]
+[2007.06.23] {porting Mlton ARM cross compiler}
 
 Trying to hack up a MLton ARM cross compiler.
 

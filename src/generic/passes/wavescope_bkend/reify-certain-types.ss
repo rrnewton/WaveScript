@@ -61,9 +61,8 @@
            [(assert-type ,_ (readFile ,[fn] ,[str]))
 	    (inspect 'HMMM)]
 
-#;
 	   ;; Safety net:
-	   [(,op ,_ ...) (guard (memq op '(foreign readFile dataFile)))
+	   [(,op ,_ ...) (guard (memq op '(foreign readFile)))
 	    (error 'reify-certain-types "compiler error, missed operator: ~s" op)]
 	   
 	   

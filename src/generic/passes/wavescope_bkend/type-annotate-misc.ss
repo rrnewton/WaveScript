@@ -44,6 +44,8 @@
 		  ptrToArray
 		  ;; Being lenient with these and not requiring direct annotation from the start.
 		  foreign_source
+
+		  ; readFile
 		  ))
 
     (define annotate-first-arg 

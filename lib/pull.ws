@@ -2,21 +2,18 @@
 // This provides a facility for pull-based streams.
 // It uses the metaprogramming framework to thread "pull" wires through the query.
 
-//include "stdlib.ws";
+include "stdlib.ws";
 
-type PullStream t = Stream () -> Stream t;
+type PullStream t = (Stream ()) -> Stream t;
 
 // INTERFACE:
 
-//Pull:pullwith :: (PullStream t, Stream ()) -> Stream t;
-//Pull:counter  :: Int -> (PullStream Int);
-
-//Pull:counter  :: Int -> (Stream () -> Stream Int);
-//Pull:counter  :: #epz -> Stream 'eqg -> Stream #epz;
-//Pull:counter  :: Int -> Stream 'eqg -> Stream Int;
-//Pull:counter  :: Int -> Stream () -> Stream Int;
-
+Pull:pullwith :: (PullStream t, Stream ()) -> Stream t;
 Pull:counter  :: Int -> (Stream ()) -> Stream Int;
+Pull:applyST  :: (Int, PullStream a, (Stream a -> Stream b)) -> PullStream b;
+Pull:readFile :: (String, String) -> PullStream any;
+
+// TODO FIX PARSE ERROR!!!!!!!!!!
 //Pull:counter  :: Int -> Stream () -> Stream Int;
 
 
@@ -60,7 +57,7 @@ fun Pull:counter(strt)
      counter += gint(1);
      emit counter;
    }
-/*
+
 fun Pull:applyST(qsize, src, transformer) {
   fun(pullstring) {        
     filtFinalResult$
@@ -104,18 +101,26 @@ fun Pull:applyST(qsize, src, transformer) {
 }
 
 fun Pull:map(fn,strm) Pull:applyST(0, strm, fun(s) stream_map(fn,s))
-*/
+
+// Can't yet get away with this readFile without the immediate enclosing assert-type.
+// The types get lost in static-elaborate.
+fun Pull:readFile(file, mode)
+  fun (pullstring) readFile(file, mode, pullstring)
+
+/*
+fun Pull:zip2(s1,s2)
+  fun (pullstring)
+   iterate x in _ {
+     state { flip = false }
+     if flip
+     then emit PullFirst();
+     else emit PullFirst();
+   }
+  */
 
 // ================================================================================
 
-/*
-pstream = Pull:iterateLS(3, Pull:counter(10),
-                       fun (n) [n+100, n+200, n+300])
-BASE <- Pull:pullwith(pstream, timer(3.0))
-*/
-
 // ALTERNATIVLY we could use this interface:
-/*
 pstream = 
   Pull:map((+1000), 
      Pull:applyST(2, Pull:counter(10),
@@ -125,7 +130,10 @@ pstream =
 	       emit n+300;
 	     }));
 BASE <- Pull:pullwith(pstream, timer(3.0))
-*/
+
+//filesrc :: PullStream Int;
+//filesrc = (Pull:readFile("pull.ws", "mode: binary") :: PullStream Int);
+//BASE <- Pull:pullwith(filesrc, timer(3.0))
 
 
 // SCRAP
