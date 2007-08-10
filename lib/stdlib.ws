@@ -60,6 +60,7 @@ Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
 
+String:append   :: (String, String) -> String;
 
 // These aren't at their final names.  They'll be moved into the Array
 // namespace or discarded.
@@ -458,6 +459,8 @@ namespace Array {
   }
   
 } // End namespace Array
+
+fun String:append(a,b) a++b
 
 // RRN: NOTE: These should be added to namespace Array:
 

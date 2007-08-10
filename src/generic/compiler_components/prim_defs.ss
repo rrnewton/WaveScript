@@ -613,6 +613,7 @@
     (gnuplot_sigseg_stream2d ((Stream (Sigseg #((NUM a) (NUM b))))) (Stream (Sigseg #((NUM a) (NUM b)))))
 
     (string-append    (String String) String) ;; Rename String:append!!
+    (String:length    (String) Int)
     ;(String:sub      (String Int Int) String) ;; TOIMPLEMENT
 
     (toArray         ((Sigseg 'a))  (Array 'a))

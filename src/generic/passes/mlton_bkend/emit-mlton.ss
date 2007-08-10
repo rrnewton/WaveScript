@@ -1172,6 +1172,8 @@
       [stringToDouble "(fn s => case Real64.fromString s of SOME x => x)"]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
+      [String:length "String.size"]
+
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
 
       [start   ss_start]

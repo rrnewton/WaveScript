@@ -1037,6 +1037,8 @@
 		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
 		      [(ws-float? x) (s:fl-make-rectangular x 0.0)]
 		      [else (ASSERT ws-complex? x)]))))
+
+  (define String:length string-length)
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 
