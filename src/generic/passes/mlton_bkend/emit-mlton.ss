@@ -178,6 +178,10 @@
 
     [Timebase "SigSeg.timebase"] ;; This will change.
 
+#;
+    [(Sum ,name ,[args] ...)
+     (inspect (text->string (list "(" (apply make-tuple-code args) (symbol->string name)"")))]
+
     [#() "unit "]
 
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]

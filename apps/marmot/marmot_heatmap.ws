@@ -2,69 +2,23 @@
 include "matrix.ws";
 include "matrix_extras.ws";
 
-// Uses "doas" that we get from the network.
-
-fun normalize(x) "TODO"
-/*
-    // calculate normalised J (AML vector) values
-    for (i=0; i < args->coord_length; i++) { // used to use args->aml_length
-      // be sneaky here, and copy the detection times and node id at this point
-      aml_results_norm[i].node_id = args->coords[i].node;
-      aml_results_norm[i].det_times = args->coords[i].last_aml.det_times;
-
-      aml_total = 0; // reset this each iteration
-
-      // calculate the total
-      for (j=0;j<360;j++) {
-	//aml_total += args->aml_results[i].lhood_vector[j];
-	aml_total += args->coords[i].last_aml.lhood_vector[j];
-      }
-
-      // then normalise based on the total we just made
-      for (j=0;j<360;j++) {
-	aml_results_norm[i].lhood_vector[j] = args->coords[i].last_aml.lhood_vector[j]/aml_total;
-      }
-    }
-
- */
-
-// First we temporally cluster AML messages to get sets that we can project on a plane.
-/*
-clustered = iterate x in doas {
-  emit [normalize(x)];
-}
-*/
-
-/*
-// represents a node in a node list
-typedef struct aml_node_entry {
-  node_id_t node;
-  float coord[3];
-  float rpy[3];
-  aml_result_t last_aml;
-  unsigned char stale;
-} aml_node_entry_t;
-
-// represents arguments to a doa fuse calculation
-typedef struct aml_fuse_args {
-  int c_scale;
-  aml_plot_axes_t axes;
-  aml_node_entry_t *coords; // node coordinates and aml results
-  int coord_length;
-  // results are included in node_entry_t's now
-  //  aml_result_t *aml_results;
-  //  int aml_length;
-  int angle_num;
-} aml_fuse_args_t;
-
-
-*/
-
 angle_num = 360.0
 
 FP_NAN = 0.0 / 0.0;
 fun floor(f) intToFloat(floatToInt(f))
 fun ceiling(f) roundF(f+0.5);
+
+/**************************************************************/
+
+/*
+// Temporal clustering of real time AML results.
+fun temporal_cluster_amls(amls) {
+  iterate arr in union2(amls, timer(2.0)) {
+    state { acc = [] }
+    
+  }
+}
+*/
 
 /**************************************************************/
 
@@ -105,6 +59,8 @@ fun coord_converters(axes, grid_scale) {
    fun (n) (n`i2f + 0.5) / y_chunks * y_width + y_min)
   }
 }
+
+/**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
 doa_fuse :: (CoordSystem, List NodeRecord) -> Matrix Float;
@@ -164,3 +120,107 @@ fun getmax(heatmap, convx, convy) {
   // Return the maximum and it's location (in cm):
   (max_val, convx(max_j), convy(max_i))
 }
+
+//******************************************************************************//
+// Functions for writing an image to disk
+
+colormap = List:toArray$
+ [(0,     0,   143),
+  (0,     0,   159),
+  (0,     0,   175),
+  (0,     0,   191),
+  (0,     0,   207),
+  (0,     0,   223),
+  (0,     0,   239),
+  (0,     0,   255),
+  (0,    16,   255),
+  (0,    32,   255),
+  (0,    48,   255),
+  (0,    64,   255),
+  (0,    80,   255),
+  (0,    96,   255),
+  (0,   112,   255),
+  (0,   128,   255),
+  (0,   143,   255),
+  (0,   159,   255),
+  (0,   175,   255),
+  (0,   191,   255),
+  (0,   207,   255),
+  (0,   223,   255),
+  (0,   239,   255),
+  (0,   255,   255),
+  (16,   255,   239),
+  (32,   255,   223),
+  (48,   255,   207),
+  (64,   255,   191),
+  (80,   255,   175),
+  (96,   255,   159),
+  (112,   255,   143),
+  (128,   255,   128),
+  (143,   255,   112),
+  (159,   255,    96),
+  (175,   255,    80),
+  (191,   255,    64),
+  (207,   255,    48),
+  (223,   255,    32),
+  (239,   255,    16),
+  (255,   255,     0),
+  (255,   239,     0),
+  (255,   223,     0),
+  (255,   207,     0),
+  (255,   191,     0),
+  (255,   175,     0),
+  (255,   159,     0),
+  (255,   143,     0),
+  (255,   128,     0),
+  (255,   112,     0),
+  (255,    96,     0),
+  (255,    80,     0),
+  (255,    64,     0),
+  (255,    48,     0),
+  (255,    32,     0),
+  (255,    16,     0),
+  (255,     0,     0),
+  (239,     0,     0),
+  (223,     0,     0),
+  (207,     0,     0),
+  (191,     0,     0),
+  (175,     0,     0),
+  (159,     0,     0),
+  (143,     0,     0),
+  (128,     0,     0)]
+
+// Takes, file, width, height, red-array, green-array, blue-array
+c_write_ppm_file 
+  = (foreign("write_ppm_file", ["ppm_write.c"]) 
+  :: (String, Int, Int, Array Int, Array Int, Array Int) -> Int)
+
+type RGB = (Int * Int * Int);
+write_ppm_file :: (String, Matrix RGB) -> Int;
+fun write_ppm_file(file, mat) {
+  let (r,c) = Matrix:dims(mat);
+  dat = Matrix:toArray(mat);
+  R = Array:map(fun((r,g,b)) r, dat);
+  G = Array:map(fun((r,g,b)) g, dat);
+  B = Array:map(fun((r,g,b)) b, dat);
+  cstr = file ++ String:implode([intToChar(0)]);
+  c_write_ppm_file(cstr, c, r, R,G,B);
+}
+
+colorize_likelihoods :: Matrix Float -> Matrix RGB;
+fun colorize_likelihoods(lhoods) {
+  fst = Matrix:get(lhoods,0,0);
+  mx = Matrix:fold(max, fst, lhoods);
+  mn = Matrix:fold(min, fst, lhoods);
+  //println("Color max/min: "++mx++" / "++mn);
+  //  Matrix:map(fun(v) colormap[f2i$ roundF(v / mx * 63.0)], 
+  Matrix:map(fun(v) {
+          colorind = f2i((v-mn) / (mx - mn) * 63.0);
+          //println("ColorInd: "++ colorind);
+          colormap[colorind]
+	},
+	lhoods);
+}
+
+//******************************************************************************//
+
