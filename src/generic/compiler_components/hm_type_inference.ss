@@ -441,6 +441,8 @@
    [(flonum? c) 'Float]
    [(cflonum? c) 'Complex]
    [(integer? c) 'Int]
+
+   [(char? c)   'Char]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
    

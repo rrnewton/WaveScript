@@ -65,7 +65,6 @@ fun floor(f) intToFloat(floatToInt(f))
 fun ceiling(f) roundF(f+0.5);
 
 
-
 type Axes       = (Float * Float * Float * Float);
 type Settings   = (Axes * (Float * Float));
 type NodeRecord = ((Int * Float * Float * Float) * Array Float);
@@ -74,18 +73,18 @@ type Converter  = Int -> Float; // Coordinate converter.
 doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-fun doa_fuse((axes, (c_scale, angle_num)), noderecords) {
+fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
   let (x_min, x_max, y_min, y_max) = axes;
   if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
-  assert("Won't do sub-centimeter", c_scale > 1.0);
+  assert("Won't do sub-centimeter", grid_scale > 1.0);
 
   // Our original coordinate system is centimeters.
   x_width = x_max - x_min;
   y_width = y_max - y_min;
 
   // Our new coordinate system is called "chunks" for lack of a better name.
-  x_chunks = x_width / c_scale;
-  y_chunks = y_width / c_scale;
+  x_chunks = x_width / grid_scale;
+  y_chunks = y_width / grid_scale;
 
   fun xchunks_to_cm(n) (n`i2f + 0.5) / x_chunks * x_width + x_min;
   fun ychunks_to_cm(n) (n`i2f + 0.5) / y_chunks * y_width + y_min;        
@@ -132,21 +131,15 @@ fun getmax((heatmap, convx, convy)) {
   let (max_val, max_i, max_j) = 
    Matrix:foldi(
     fun(i,j, acc, elm) {
-      /*
       let (winner,wini,winj) = acc;
       if max(elm, winner) == elm
       then (elm,i,j)
       else acc
-      */
-acc
     },
     (Matrix:get(heatmap,0,0), 0, 0), 
     heatmap);
 
-/*
   // Return the maximum and it's location (in cm):
   (max_val, convx(max_j), convy(max_i))
- */
-39
 }
 

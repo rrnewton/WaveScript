@@ -269,6 +269,7 @@
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
 	(List:append append)
+	(List:toArray list->vector)
 
 	;; Need to put in a real "show" at some point:
 	;(show ,(lambda (x) `',(format "~a" x)))

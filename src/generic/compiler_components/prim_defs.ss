@@ -254,7 +254,7 @@
     ;(reverse_BANG ((List 'a)) (List 'a))
   
     ;; TODO, add these:
-    ;(List:toArray ((List 'a)) (Array 'a))
+    (List:toArray ((List 'a)) (Array 'a))
     
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
     (List:assoc        ((List #('a 'b)) 'a) (List #('a 'b)))
