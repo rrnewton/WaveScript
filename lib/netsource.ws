@@ -28,10 +28,6 @@ c_wsnet_enqueue_int :: (Pointer "void*", Int) -> Int =
 c_wsnet_enqueue_sigseg4 :: (Pointer "void*", Int64, Int, Timebase, Array Int16) -> Int =
   foreign("wsnet_enqueue_sigseg4", includes);
 
-// raw log is wrapped by log
-raw_log :: (Int, String, Int) -> () = foreign("log_msg", includes);
-fun log(l,s) raw_log(l,s++" ",s`String:length+1);
-
 // is there a way to generalize this on types?
 fun netpub_int(s, name) {
   iterate i in s {

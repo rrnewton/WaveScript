@@ -254,20 +254,29 @@ val element_limit =
   end 
 
 
+fun errprnt str = TextIO.output (TextIO.stdErr, str)
+fun exit_process flag = 
+  if flag 
+  then OS.Process.exit OS.Process.success
+  else OS.Process.exit OS.Process.failure
+fun exit_foreignsrc _ = ~1
 
-fun runMain f = 
-(*   (print "RUN MAIN\n"; raise WSError "foo") *)
-  (
-(*   print "Setting up error handlers\n";*)
-  f())
+(* Returns an error code. *)
+fun run_w_handlers comp stdprnt errprnt exitfun =
+  (comp (); 0)
   handle WSError str => 
-    (print ("wserror: " ^ str ^ "\n"); OS.Process.exit OS.Process.failure)
+    (stdprnt ("wserror: " ^ str ^ "\n"); exitfun false)
   | SigSegFailure str => 
-    (print ("sigseg failure: " ^ str ^ "\n"); OS.Process.exit OS.Process.failure)
+    (stdprnt ("sigseg failure: " ^ str ^ "\n"); exitfun false)
   | WSEndOfFile => 
-    (TextIO.output (TextIO.stdErr, "Reached end of file. \n");
-      OS.Process.exit OS.Process.success)
+    (errprnt "Reached end of file. \n";  exitfun true)
 
+(* This is only used for a normal "timer" driven query foreign_source
+   driven queries don't use it.*)
+fun runMain f = 
+  (*   print "Setting up error handlers\n";*)
+  run_w_handlers f print errprnt exit_process
+  
 (*
 			   "handle WSError str => \n"
 			   "  (print (\"wserror: \" ^ str ^ \"\\n\");\n"

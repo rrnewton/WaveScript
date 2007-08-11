@@ -354,18 +354,20 @@
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
 
-			   ;; Block of constants first:
-			   "\n(* First a block of constants *)\n\n"
-			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
-
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
 			       '("val wsinit = _import \"wsinit\" : (int * string array) -> unit; \n"
+				 "val foreign_wserror = _import \"wserror\" : string -> unit;\n"
 				 "val cmdargs = CommandLine.name() :: CommandLine.arguments()\n"
 				 "val argc = length cmdargs\n"
 				 "val argv = Array.fromList cmdargs\n"
-				 "val _ = wsinit(argc, argv)\n")
+				 "val _ = wsinit(argc, argv)\n"
+				 )
 			       ())
+
+			   ;; Block of constants first:
+			   "\n(* First a block of constants *)\n\n"
+			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
 
 			   "\n(* Then initialize the global bindings: *)\n"
 			   "val _ = "(indent (apply make-seq init*) "        ")"\n\n"
@@ -477,6 +479,20 @@
 |#
     [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]))
 
+;; This handles null characters correctly.
+;; (VERY INEFFICIENT CURRENTLY .. BAD FOR OUR LARGE INLINEC STRINGS)
+(trace-define (print-mlton-string str)
+  (list "\""
+    (list->string
+     (apply append
+	    (map (lambda (c)
+		   (case c
+		    [(#\nul)     (list #\\ #\0 #\0 #\0)]
+		    [(#\newline) (list #\\ #\n)]
+		    [else (list c)]))
+	      (string->list str))))
+    "\""))
+
 (define Const
   (lambda (datum)
     (cond
@@ -485,7 +501,7 @@
      [(null? datum) "[]"]
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
-     [(string? datum) (format "~s" datum)]
+     [(string? datum) (print-mlton-string datum)]
      [(flonum? datum)  (format-float datum)]
      [(cflonum? datum) (format "{real=~a, imag=~a }" 
 			       (cfl-real-part datum)
@@ -604,8 +620,10 @@
 	  (values
 	   ;; A function that pushes data into the system.
 	   ;; Don't use the scheduler at all.
-	   (list "\nfun " v " elt = "((Emit downstrm) "elt")"\n\n"
-		 `("val _ = (_export \"",name"\" : (",tupty" -> unit) -> unit;) ",v" \n")
+	   ;; Do catch errors however.
+	   (list "\nfun " v " elt = \n"
+		 "  run_w_handlers (fn () => "((Emit downstrm) "elt")") foreign_wserror foreign_wserror exit_foreignsrc  \n\n"
+		 `("val _ = (_export \"",name"\" : (",tupty" -> int) -> unit;) ",v" \n")
 		 ;"val wsmain = _import \"wsmain\" : unit -> unit; \n"
 		 ;(map (lambda (init) `("val ",init" = _import \"",init"\" : unit -> unit ;\n")) initCcalls)
 		 )
@@ -826,10 +844,10 @@
 
 
 ;(define (ForeignApp ls)
-(trace-define (ForeignApp realname type rator rand*)
+(define (ForeignApp realname type rator rand*)
   (make-app (Var rator) (list (apply make-tuple-code rand*))))
 
-(trace-define (ForeignEntry cname files ty)
+(define (ForeignEntry cname files ty)
   (match ty
     [(,argty* ... -> ,retty)	
      (for-each add-file! files)
@@ -1177,6 +1195,8 @@
       [String:length "String.size"]
       [String:explode "String.explode"]
       [String:implode "String.implode"]
+      [intToChar "Char.chr"]
+      [charToInt "Char.ord"]
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
 

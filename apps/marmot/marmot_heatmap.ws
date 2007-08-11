@@ -83,8 +83,6 @@ type Converter  = Int -> Float; // Coordinate converter.
 doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
 fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
 
-  println("Starting DOA fuse.");
-
   let (x_min, x_max, y_min, y_max) = axes;
   if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
   assert("Won't do sub-centimeter", grid_scale > 1.0);
@@ -96,6 +94,8 @@ fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
   // Our new coordinate system is called "chunks" for lack of a better name.
   x_chunks = x_width / grid_scale;
   y_chunks = y_width / grid_scale;
+
+  println("Starting DOA fuse.  Gridsize "++x_chunks++" x "++y_chunks);
 
   fun xchunks_to_cm(n) (n`i2f + 0.5) / x_chunks * x_width + x_min;
   fun ychunks_to_cm(n) (n`i2f + 0.5) / y_chunks * y_width + y_min;        

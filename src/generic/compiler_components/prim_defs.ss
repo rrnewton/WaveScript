@@ -619,6 +619,9 @@
     (String:explode   (String) (List Char))
     (String:implode   ((List Char)) String)
 
+    (intToChar (Int) Char)
+    (charToInt (Char) Int)
+
     ;(String:sub      (String Int Int) String) ;; TOIMPLEMENT
 
     (toArray         ((Sigseg 'a))  (Array 'a))

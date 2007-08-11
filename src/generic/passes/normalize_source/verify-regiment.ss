@@ -27,6 +27,8 @@
    (let ()
 
      (define (assert-valid-name! v)
+       ;; [2007.08.11] Changing this:
+       #;
        (IFWAVESCOPE 
 	(if (regiment-primitive? v)
 	    (error 'verify-regiment 
@@ -34,7 +36,9 @@
 	(if (regiment-keyword? v)
 	    (error 'verify-regiment 
 		   "for the time being you cannot bind/mutate variables that use the same names as keywords: '~s'" v))
-	))
+	)
+       (void)
+       )
 
      (define (pattern! p)
        (match p

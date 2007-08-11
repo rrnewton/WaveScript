@@ -299,6 +299,9 @@
 	(intToFloat fixnum->flonum)
 	(intToComplex intToComplex-unimplented)
 
+	(intToChar integer->char)
+	(charToInt char->integer)
+
 ;	(int64ToInt16  (lambda (x) (ASSERT int16? x) x))
 ;	(int64ToInt    (lambda (x) (ASSERT int32? x) x))
 ;	(int64ToFloat    exact->inexact)

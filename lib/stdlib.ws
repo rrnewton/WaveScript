@@ -1052,6 +1052,7 @@ fun deinterleaveSS(n, outsize, strm) {
    })
 }
 
+// Extracts one interleaved channel
 fun one_deinterleaveSS2(n, offset, strm) {
   iterate win in strm {
     

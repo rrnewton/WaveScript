@@ -66,6 +66,7 @@
 		 complexToInt16 complexToInt64 complexToInt complexToDouble complexToFloat
 		 
 		 stringToInt stringToFloat stringToDouble stringToComplex
+		 intToChar charToInt
 		 String:length String:explode String:implode
 		 
 		 ;toComplex toFloat  ;; Generic versions
@@ -85,7 +86,7 @@
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
 		 List:head List:tail head tail
 		 List:assoc List:assoc_update
-		 List:build
+		 List:build List:toArray
 
 		 joinsegs subseg seg-get width start end timebase
 		 toArray toSigseg 
@@ -1043,6 +1044,8 @@
   (define String:length string-length)
   (define String:explode string->list)
   (define String:implode list->string)
+  (define intToChar integer->char)
+  (define charToInt char->integer)
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 
@@ -1135,6 +1138,8 @@
      (define-alias List:reverse reverse)
      (define-alias List:append append)
      (define-alias List:map map)
+
+     (define-alias List:toArray list->vector)
 
      ;; These should really be defined in the language.  They aren't
      ;; currently [2006.10.26] because the elaborator isn't ready to

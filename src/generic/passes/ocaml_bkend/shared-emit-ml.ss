@@ -80,7 +80,6 @@
 ;	   (make-app (symbol->string rator) rand*)]
 
 	  [(__foreign ',cname ',files ',ty) 
-	   (printf "GOT __FOREIGN..\n")
 	   (obj 'ForeignEntry cname files ty)]
 	  [(__foreign . ,_) (error 'emit-mlton "missed __foreign entry: ~s" (cons '__foreign _))]
 

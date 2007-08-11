@@ -149,7 +149,7 @@ dims   ::  Matrix t               -> (Int * Int);
 
  fun map(f, mat) {
    let (r,c) = Matrix:dims(mat);
-   build(r,c, fun(i,j) get(mat,i,j))
+   build(r,c, fun(i,j) f(get(mat,i,j)))
  }
  fun map2(f, mat1,mat2) {
    let (r,c) = Matrix:dims(mat1);
