@@ -92,7 +92,9 @@ colormap = List:toArray$
 
 
 
-nodesAndData = List:map2(fun(x,y)(x,y), nodes, data)
+nodesAndData = List:map2(fun(x,y)(x,y), 
+                nodes, 
+		map(normalize_doas, data))
 
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
 settings = (axes, (100.0, 360.0)) // grid_scale and angle_num

@@ -64,14 +64,23 @@ FP_NAN = 0.0 / 0.0;
 fun floor(f) intToFloat(floatToInt(f))
 fun ceiling(f) roundF(f+0.5);
 
+/**************************************************************/
+
+// calculate normalised J (AML vector) values
+fun normalize_doas(doas) {
+  total = Array:fold((+), 0.0, doas);
+  Array:map((/ total), doas);  
+}
+
+/**************************************************************/
+
 type AxesBounds = (Float * Float * Float * Float);
 type NodeRecord = ((Int * Float * Float * Float) * Array Float);
 type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
 
-doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
-
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
+doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
 fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
 
   println("Starting DOA fuse.");
