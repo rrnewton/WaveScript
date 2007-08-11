@@ -59,6 +59,9 @@ Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
+Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
+Array:append    :: (List (Array t)) -> Array t;
+Array:sub       :: (Array t, Int, Int) -> Array t;
 
 String:append   :: (String, String) -> String;
 
@@ -457,6 +460,30 @@ namespace Array {
       arr[i] := v;
     }
   }
+
+  // Like memcpy... might want to make
+  // TODO: add some defense!!  
+  fun blit(dst, dstpos, src, srcpos, len) {
+    for i = 0 to len - 1 {
+      dst[i+dstpos] := src[srcpos+i];      
+    }
+  }
+
+  // Append a list of arrays.
+  fun append(loa) {
+    size = List:fold(fun(sz, ar) sz + length(ar), 0, loa);
+    newarr = makeUNSAFE(size);
+    List:fold(fun (cntr, ar) {
+      len = length(ar);
+      blit(newarr, cntr, ar, 0, len);
+      cntr + len
+    }, 0, loa);
+    newarr // final result.
+  }
+  
+  // Extract a sub-array.
+  fun sub(arr, pos, len)
+     build(len, fun(i) arr[pos+i])
   
 } // End namespace Array
 

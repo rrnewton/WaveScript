@@ -64,6 +64,13 @@ result = iterate (x in zipped) {
       println("Fold1: " ++ f2 ++ "  (should be same as previous)");
       assert_prnt("folds equal", f1,f2);
 
+      new = make(15,0);
+      Array:blit(new, 2, arr, 5, 5);
+      println("Blit: " ++ new);
+      sb = sub(new, 2, 5);
+      println("Sub: " ++ sb);
+      println("Append: " ++ append([sb,sb,sb]));
+
       //flipped = fun(x,y) (y:::x); 
       //      println("FoldCons:  " ++ Array:fold(fun(x,y)(y:::x), [], arr));
 
