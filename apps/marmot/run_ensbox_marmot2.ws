@@ -2,6 +2,7 @@
 //========================================
 // Main query:
 
+include "ensbox_logger.ws";
 include "stdlib.ws";
 include "netsource.ws";
 
