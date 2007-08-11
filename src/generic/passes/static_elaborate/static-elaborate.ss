@@ -279,6 +279,7 @@
 	(sqrtI ,(lambda (env n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
 
 	(absI16 fxabs) (absI fxabs) (absF flabs) (absI64 abs) (absC abs)
+	(roundF round)
 
 	(cos cos) (sin sin) (tan tan)
 	(acos acos) (asin asin)	(atan atan)

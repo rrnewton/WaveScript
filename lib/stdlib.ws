@@ -49,6 +49,7 @@ FIFO:empty      ::  Queue t -> Bool;
 FIFO:enqueue    :: (Queue t, t) -> ();
 FIFO:dequeue    ::  Queue t -> t;
 
+List:filter     :: (a -> Bool, List a) -> List a;
 List:map2       :: ((a,b) -> c, List a, List b) -> List c;
 List:mapi       :: ((Int,a) -> b, List a) -> List b;
 List:foreach    :: (      a -> (), List a) -> ();
@@ -162,8 +163,12 @@ c2d :: Complex -> Double;
 to64   :: Int -> Int64;
 from64 :: Int64 -> Int;
 
-smap    :: (a -> b)    -> S a -> S b;
-sfilter :: (t -> Bool) -> S t -> S t;
+ /// CURRIED versions of functions
+// maps, etc
+
+Curry:smap    :: (a -> b)    -> S a -> S b;
+Curry:sfilter :: (t -> Bool) -> S t -> S t;
+
 
 
 // These bindings are PRIVATE.  They are exported (just because we
@@ -303,6 +308,18 @@ namespace List {
     List:reverse(acc)
   }
 */
+
+  // Maybe should be built in...
+  fun filter(f, ls) {
+    ptr = Mutable:ref(ls);
+    acc = Mutable:ref([]);
+    while ptr != [] {
+      if f(ptr`head)
+      then acc := ptr`head ::: acc;
+      ptr := ptr ` tail;
+    };
+    List:reverse(acc)
+  }
 
   fun foreach(f, ls) {
     ptr = Mutable:ref(ls);
@@ -1004,7 +1021,8 @@ fun deinterleave(n, strm) {
    })
 }
 
-// This version takes a stream of sigsegs:
+// This version takes the number of streams to split int, the desired
+// size of output sigsegs, and stream of sigsegs.
 fun deinterleaveSS(n, outsize, strm) {
  List:build(n,
    fun(offset) {
@@ -1299,11 +1317,24 @@ to64 = intToInt64;
 from64 = int64ToInt;
 
 // These are the "advanced" versions.  They're curried.
-smap    = fun(f) fun(x) stream_map(f,x);
-sfilter = fun(f) fun(x) stream_filter(f,x);
+
 //amap = 
 
 fun merge3(a,b,c) merge(merge(a,b), c)
+
+Curry:smap    = fun(f) fun(x) stream_map(f,x);
+Curry:sfilter = fun(f) fun(x) stream_filter(f,x);  
+Curry:deep_stream_map = fun(f) fun(x) deep_stream_map(f,x);  
+Curry:sigseg_map      = fun(f) fun(x) sigseg_map(f,x);
+Curry:stream_map      = Curry:smap;
+Curry:stream_filter   = Curry:sfilter;
+
+fun Curry:map(f)    fun(x) List:map(f,x)
+fun Curry:filter(f) fun(x) List:filter(f,x)
+fun Curry:fold(f,z) fun(x) List:fold(f,z,x)
+fun Curry:fold1(f)  fun(x) List:fold1(f,x)
+
+
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */

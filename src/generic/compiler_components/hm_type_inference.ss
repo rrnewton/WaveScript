@@ -1499,6 +1499,7 @@
 ;; Should take either an instantiated or non-instantiated type.
 (define (dealias-type aliases t)
   (match t
+      ;; A type alias with no type arguments:
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
 			   (assq s regiment-type-aliases))])
@@ -1507,7 +1508,8 @@
 		  ;; Make sure the alias has no type arguments:
 		  (unless (null? (cadr entry))
                     (error 'dealias-type "this alias should have had arguments: ~s" s))
-		  (caddr entry))
+		  ;; Recursively dealias:
+		  (dealias-type aliases (caddr entry)))
 		s))]
       [',n                                     `(quote ,n)]
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
@@ -1529,15 +1531,19 @@
 			     "alias ~s should not be instantiated with arguments!: ~s" 
 			     s (cons s t*))]
 	   [(,v (,a* ...) ,rhs)
-	    ;; We're lazy, so let's use the existing machinery
-	    ;; to do the substition.  So what if it's a little inefficient?	   
-	    (match (instantiate-type `(Magic #(,@a*) ,rhs))
-	      ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
-	      [(Magic #(,cells ...) ,rhs)
-	       ;; Now use the unifier to set all those mutable cellS:
-	       (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
-		 cells t*)
-	       (export-type rhs)])]))]
+	    (let ([result 
+		   ;; We're lazy, so let's use the existing machinery
+		   ;; to do the substition.  So what if it's a little inefficient?	   
+		   (match (instantiate-type `(Magic #(,@a*) ,rhs))
+		     ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+		     [(Magic #(,cells ...) ,rhs)
+		      ;; Now use the unifier to set all those mutable cellS:
+		      (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
+			cells t*)
+		      (export-type rhs)])])
+	      ;; Finally, recursively dealias in case there are more aliases left.
+	      (dealias-type aliases result)
+	      )]))]
       [,other (error 'resolve-type-aliases "bad type: ~s" other)])
     )
 

@@ -64,16 +64,18 @@ FP_NAN = 0.0 / 0.0;
 fun floor(f) intToFloat(floatToInt(f))
 fun ceiling(f) roundF(f+0.5);
 
-
-type Axes       = (Float * Float * Float * Float);
-type Settings   = (Axes * (Float * Float));
+type AxesBounds = (Float * Float * Float * Float);
 type NodeRecord = ((Int * Float * Float * Float) * Array Float);
+type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
 
 doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
 fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
+
+  println("Starting DOA fuse.");
+
   let (x_min, x_max, y_min, y_max) = axes;
   if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
   assert("Won't do sub-centimeter", grid_scale > 1.0);
