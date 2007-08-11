@@ -4,16 +4,18 @@
 include "ensbox_logger.ws";
 
 origprint = print;
+origerror = wserror;
+
 fun print(str) {
   log_file(1,str);
   log(1,str);
 }
-
-origerror = wserror;
-fun wserror(str) { msg = "wserror: "++ str++"\n";
-                   log_file(0, msg);
-                   log(0, msg);
-                   origerror(str); }
+fun wserror(str) { 
+  msg = "wserror: "++ str++"\n";
+  log_file(0, msg);
+  log(0, msg);
+  origerror(str); 
+}
 
 include "stdlib.ws";
 include "vxpsource.ws";

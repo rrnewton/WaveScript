@@ -808,12 +808,10 @@
     ;; Could use MONO Arrays... (Like we do in Caml)
     [(Array:makeUNSAFE)
      (lnboth (make-fun '("n") 
-		       (make-app (DispatchOnArrayType 'Array:make elt)
-				 (list 
-				  (make-tuple-code "n" 
-				    (match (make-mlton-zero-for-type elt)
-				      [(quote ,c) (Const c)]
-				      [,str       str]))))))]
+	 (make-app (DispatchOnArrayType 'Array:make elt)
+		   (list 
+		    (make-tuple-code "n" 
+		     (make-mlton-zero-for-type elt))))))]
 
     [(Array:length) "Array.length"]
     [(Array:set)    "Array.update"]
@@ -826,21 +824,23 @@
 	      (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
     ))
 
-(define make-mlton-zero-for-type 
-  (lambda (t)
-    (match t
-      [Int   ''0]
-      [Int16 "(Int16.fromInt 0)"]
-      [Int64 "(Int64.fromInt 0)"]
-      [Float ''0.0]
-      [Double ''0.0]
-      [Complex ''0.0+0.0i]
-      [#(,[t*] ...) (make-tuple-code t*)]
+(trace-define (make-mlton-zero-for-type t)
+    (match (match t
+	     [Int   ''0]
+	     [Int16 "(Int16.fromInt 0)"]
+	     [Int64 "(Int64.fromInt 0)"]
+	     [Float ''0.0]
+	     [Double ''0.0]
+	     [Complex ''0.0+0.0i]
+	     [#(,[make-mlton-zero-for-type -> t*] ...) 
+	      (apply make-tuple-code t*)]
 
-      [(Array ,_) "(Array.fromList [])"]
-      [(List ,_) "[]"]
+	     [(Array ,_) "(Array.fromList [])"]
+	     [(List ,_) "[]"]
 
-      [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])))
+	     [,oth (error 'make-mlton-zero-for-type "unhandled type: ~s" oth)])
+      [(quote ,c) (Const c)]
+      [,str       str]))
 
 
 ;(define (ForeignApp ls)

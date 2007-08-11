@@ -48,12 +48,13 @@ basic:
 	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
 	@if [ `which chez` ]; then $(MAKE) ws; else echo "Full Chez compiler not found, skipping build."; fi
-	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
-	@echo "======================================================================"
-	@if [ `which chez` ]; then $(MAKE) ws.opt; else echo "Full Chez compiler not found, skipping build."; fi
-	@echo; echo; echo 'Compiling OCaml FFTW wrapper (only needed for wscaml)'
-	@echo "======================================================================"
-	@if [ `which ocaml` ]; then $(MAKE) ocaml; else echo Ocaml install not found.; fi
+
+# 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
+# 	@echo "======================================================================"
+# 	@if [ `which chez` ]; then $(MAKE) ws.opt; else echo "Full Chez compiler not found, skipping build."; fi
+# 	@echo; echo; echo 'Compiling OCaml FFTW wrapper (only needed for wscaml)'
+# 	@echo "======================================================================"
+# 	@if [ `which ocaml` ]; then $(MAKE) ocaml; else echo Ocaml install not found.; fi
 
 # 	@echo; echo; echo BUILDING C-code extensions.
 # 	@echo "======================================================================"

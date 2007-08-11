@@ -102,6 +102,7 @@
 ;; NOTE: ADDS A TRAILING NEWLINE.
 ;; Should be its own fixed point.
 (define (text->lines text)
+;  (if (deep-assq 'quote text) (inspect text))
   (let ([text (wrap text)])
     ;; Tail recursive
     (let loop ([text text] [acc '()])
