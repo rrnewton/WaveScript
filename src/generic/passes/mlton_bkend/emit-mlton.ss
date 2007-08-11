@@ -167,6 +167,8 @@
 
     [Complex  "Complex.complex"]
     [String   "string"]
+    [Char     "char"]
+
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
 
@@ -1173,6 +1175,8 @@
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
       [String:length "String.size"]
+      [String:explode "String.explode"]
+      [String:implode "String.implode"]
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
 

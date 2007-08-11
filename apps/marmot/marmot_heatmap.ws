@@ -4,7 +4,7 @@ include "matrix_extras.ws";
 
 // Uses "doas" that we get from the network.
 
-fun normalize(x) x 
+fun normalize(x) "TODO"
 /*
     // calculate normalised J (AML vector) values
     for (i=0; i < args->coord_length; i++) { // used to use args->aml_length
@@ -29,10 +29,11 @@ fun normalize(x) x
  */
 
 // First we temporally cluster AML messages to get sets that we can project on a plane.
+/*
 clustered = iterate x in doas {
   emit [normalize(x)];
 }
-
+*/
 
 /*
 // represents a node in a node list
@@ -60,88 +61,92 @@ typedef struct aml_fuse_args {
 */
 
 FP_NAN = 0.0 / 0.0;
+fun floor(f) intToFloat(floatToInt(f))
+fun ceiling(f) roundF(f+0.5);
+
+
+
+type Axes       = (Float * Float * Float * Float);
+type Settings   = (Axes * (Float * Float));
+type NodeRecord = ((Int * Float * Float * Float) * Array Float);
+type Converter  = Int -> Float; // Coordinate converter.
+
+doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-fun doa_fuse(axes, (c_scale, angle_num), nodepos_arr, normdoas_ls) {
+fun doa_fuse((axes, (c_scale, angle_num)), noderecords) {
   let (x_min, x_max, y_min, y_max) = axes;
-  if (y_max - y_min) != (x_max - x_min)) then wserror("not a square");
-  assert("Won't do sub-centimeter", c_scale > 1);
+  if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
+  assert("Won't do sub-centimeter", c_scale > 1.0);
 
+  // Our original coordinate system is centimeters.
   x_width = x_max - x_min;
   y_width = y_max - y_min;
-  x_size = x_width / c_scale;
-  y_size = y_width / c_scale;
 
-  // allocate memory for the 2d array
-  output = Matrix:create(x_size, y_size);
+  // Our new coordinate system is called "chunks" for lack of a better name.
+  x_chunks = x_width / c_scale;
+  y_chunks = y_width / c_scale;
 
-  // These are for...?
-  x_c = Array:makeUNSAFE(x_size);
-  y_c = Array:makeUNSAFE(y_size);
+  fun xchunks_to_cm(n) (n`i2f + 0.5) / x_chunks * x_width + x_min;
+  fun ychunks_to_cm(n) (n`i2f + 0.5) / y_chunks * y_width + y_min;        
  
-  // Fill in each point in the map:
-  // Should use Matrix:map_inplace...
-  for i = 0 to y_size - 1 {
-    for j = 0 to x_size - 1 {
+  // Build the likelihood map:
 
+  (Matrix:build(f2i$ ceiling(x_chunks), f2i$ ceiling(y_chunks),
+    fun(i,j) {
       // Coordinates in centimeter space:
-      c_x = (j`i2f + 0.5) / x_size * x_width + x_min;
-      c_y = (i`i2f + 0.5) / y_size * y_width + y_min;
-          
-      //      x_c[j] = x;
-      //      y_c[i] = y;
+      c_x :: Float = xchunks_to_cm(j);
+      c_y :: Float = ychunks_to_cm(i);
 
       // Trace out from each node:
       // Should use List:foldi
-      List:foreachi(
-        fun(k, normdoas) {
-	  let (x,y,yaw) = nodepos_arr[k];
-	  nr = yaw * CONST_PI / 180`gint; // node rotation	       
+      List:foldi(
+	// Each node record contains location/orientation as well as doas likelihood vector:
+        fun(k, sum, ((id,x,y,yaw), doavec)) {
+
+	  nr = yaw * const_PI / 180.0; // node rotation	       
 	  theta = atan2(c_y - y, c_x - x);
 	  assert("theta shuold not be NAN!", theta != FP_NAN);
 	
 	  // Convert to degrees:
-	  r_th_deg = floor( modF((2.0 * CONST_PI + theta - nr) * 180.0 / CONST_PI, 360.0) );
-
+	  r_th_deg = floor( modF((2.0 * const_PI + theta - nr) * 180.0 / const_PI, 360.0) );
 	  _deg = f2i$ floor(r_th_deg / (360.0 / angle_num));
 
 	  // modF not necessary:
 	  //pos2 = if pos < 0 then modF(pos + 360, 360) else pos;
 	  dir = if _deg < 0 then _deg + 360 else _deg; 
 
-	  // Access the likelihood vector for that node in the correct direction.
-	  output[i][j] := output[i][j] + normdoas[dir];
-	  
+	  // Access the likelihood vector for that node in appropriate direction.
+	  // Add it into our total for this grid square:
+	  sum + doavec[dir]
         },
-	normdoas_ls);
-    }; // end j for-loop
-  }; // end i for-loop
-  
-  // Now output is all filled up, get back out the maxes.
+	0.0, noderecords)}),
+
+   // Also return our coordinate system in the form of these two conversion procedures.
+   xchunks_to_cm, ychunks_to_cm)
+}
+
+
+fun getmax((heatmap, convx, convy)) {
+
   let (max_val, max_i, max_j) = 
    Matrix:foldi(
     fun(i,j, acc, elm) {
+      /*
       let (winner,wini,winj) = acc;
       if max(elm, winner) == elm
       then (elm,i,j)
-      else tup
-    }, 
-    (output[0][0],0,0)
-     output);
-  
-  
+      else acc
+      */
+acc
+    },
+    (Matrix:get(heatmap,0,0), 0, 0), 
+    heatmap);
 
-  /*  
-  double *x_c;
-  double *y_c;
-  int i,j,k,l,x_size,y_size;
-  aml_result_t *aml_results_norm; // normalised aml results (used to be aml_res_t)
-  double aml_total; // used to normalise the data (the running total)
-  double max_val = 0;
-  double min_val = 0;
-  double max_x = 0;
-  double max_y = 0;
-  */
-
-
+/*
+  // Return the maximum and it's location (in cm):
+  (max_val, convx(max_j), convy(max_i))
+ */
+39
 }
+

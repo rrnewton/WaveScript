@@ -369,6 +369,8 @@
     (absD (Double) Double)
     (absC (Complex) Float)
     
+;    (modF (Float Float) Float)
+    
     (cos (Float) Float)
     (sin (Float) Float)
     (tan (Float) Float)
@@ -614,6 +616,9 @@
 
     (string-append    (String String) String) ;; Rename String:append!!
     (String:length    (String) Int)
+    (String:explode   (String) (List Char))
+    (String:implode   ((List Char)) String)
+
     ;(String:sub      (String Int Int) String) ;; TOIMPLEMENT
 
     (toArray         ((Sigseg 'a))  (Array 'a))

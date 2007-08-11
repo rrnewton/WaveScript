@@ -52,6 +52,7 @@
 		 +I64 -I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI
 		 absI absF absD absC absI16 absI64
+		 ;modI modF 
 		 roundF		 
 		 
 		 makeComplex
@@ -65,7 +66,8 @@
 		 complexToInt16 complexToInt64 complexToInt complexToDouble complexToFloat
 		 
 		 stringToInt stringToFloat stringToDouble stringToComplex
-
+		 String:length String:explode String:implode
+		 
 		 ;toComplex toFloat  ;; Generic versions
 		 ;toInt ;; Truncate
 		 ;roundToInt
@@ -1039,6 +1041,8 @@
 		      [else (ASSERT ws-complex? x)]))))
 
   (define String:length string-length)
+  (define String:explode string->list)
+  (define String:implode list->string)
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 

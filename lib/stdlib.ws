@@ -31,6 +31,7 @@ expF       :: Float -> Float;
 expC       :: Complex -> Complex;
 conjC      :: Complex -> Complex;
 gaussian   :: (Float, Int) -> Array Float;
+modF       :: (Float, Float) -> Float;
 
 /// Lifted FFT operators:
 
@@ -231,6 +232,14 @@ fun expC(c) { floatToComplex(const_E) ^: c }
 //fun conjC(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
 fun conjC(c) makeComplex(c`realpart, 0.0 - c`imagpart)
 
+fun modF(f, base) {
+  tmp = Mutable:ref(f);
+  while tmp > base {
+    tmp -= base;
+  };
+  tmp
+}
+
 // This *should* work by caching one or more fftw plans.
 fun fftStream(s) {
   iterate f in s { emit fftR2C(f) }
@@ -334,6 +343,19 @@ namespace List {
     List:reverse(acc)
   }
 
+  // Could define this in either the imperative or functional manner.  
+  fun foldi(f, zer, ls) {
+    ind = Mutable:ref(0);
+    ptr = Mutable:ref(ls);
+    acc = Mutable:ref(zer);
+    while ptr != [] {
+      acc := f(ind, acc, ptr`head);
+      ind := ind + 1;
+      ptr := ptr ` tail;
+    };
+    acc
+  }
+  
   fun fold1 (f,ls) {
     if ls == []
     then wserror("List:fold1 - list must have at least one element!")

@@ -11,7 +11,7 @@ src = COUNTUP(30);
 
 fun assert_prnt(str,a,b) {
   assert_eq(str,a,b);
-  print("Assert passed: "++ str ++ "\n");
+  print("Assert passed: "++ str ++ ": " ++  b ++"\n");
 }
 
 // This has to be lifted to top level because of limitations in static-elaborate:
@@ -102,6 +102,9 @@ result = iterate (x in zipped) {
 
        assert_prnt("choplast", (4,[1,2,3]), choplast([1,2,3,4]));
 
+       bld = List:build(5, fun(i)i);
+       assert_prnt("List:build", bld, [0,1,2,3,4]);
+       assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
     };
     
     
