@@ -4,11 +4,8 @@ include "vxpsource.ws";
 include "netsource.ws";
 
 inter = vxp_source_init();
-ch1 = deep_stream_map(int16ToFloat,
-		      degap(vxp_source_stream(inter, 0),0`gint));
-ch2 = deep_stream_map(int16ToFloat,
-		      degap(vxp_source_stream(inter, 1),0`gint));
-ch3 = deep_stream_map(int16ToFloat,
-		      degap(vxp_source_stream(inter, 2),0`gint));
-ch4 = deep_stream_map(int16ToFloat,
-		      degap(vxp_source_stream(inter, 3),0`gint));
+ch1i = degap(vxp_source_stream(inter, 0),0`gint);
+ch2i = degap(vxp_source_stream(inter, 1),0`gint);
+ch3i = degap(vxp_source_stream(inter, 2),0`gint);
+ch4i = degap(vxp_source_stream(inter, 3),0`gint);
+

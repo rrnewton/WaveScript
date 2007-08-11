@@ -1,7 +1,17 @@
 
+//========================================
+// Main query:
 
-include "sources_vxp_live.ws";
-include "marmot_first_phase.ws";
+include "stdlib.ws";
+include "netsource.ws";
+
+synced_ints = netsub_4sigseg("192.168.3.167", "detections"); 
+synced = stream_map(fun (x) 
+            map(fun (y) sigseg_map(int16ToFloat,y), x), 
+	    synced_ints);
+
 include "marmot2.ws";
 
-BASE <- synced 
+doas = oneSourceAMLTD(synced, sensors,4096);
+
+BASE <- (doas)

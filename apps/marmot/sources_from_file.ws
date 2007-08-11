@@ -21,7 +21,7 @@ fun onechan(offset)
   iterate w in chans {
     size = w`width / 4;
     assert_eq("source stream multiple of 4", w`width, size * 4);
-    arr = Array:build(size, fun (i) int16ToFloat(w[[(i*4) + offset]]));
+    arr = Array:build(size, fun (i) (w[[(i*4) + offset]]));
     emit toSigseg(arr, w`start / 4`intToInt64 , w`timebase)
   }
 
@@ -29,7 +29,7 @@ fun onechan(offset)
 fun log(l,s) println(s)
 
 // Testing, trying this instead:
-ch1 = onechan(0); 
-ch2 = onechan(1); 
-ch3 = onechan(2); 
-ch4 = onechan(3);
+ch1i = onechan(0); 
+ch2i = onechan(1); 
+ch3i = onechan(2); 
+ch4i = onechan(3);
