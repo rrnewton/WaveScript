@@ -103,7 +103,8 @@
    ["as" 'AS]
    ["type" 'typedef]
    
-   [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
+   [(:seq "'" (:or (:seq "\\" any-char) (:- any-char "'")) "'")
+    (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    ;; This allows strings to contain escaped characters.
    [(:seq "\"" (:* (:or (:- (:- any-char "\"")  "\\") ;; Safe characters
