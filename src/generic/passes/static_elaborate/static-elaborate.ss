@@ -214,6 +214,8 @@
 				  [else (ASSERT cflonum? x)])))))
 
 	(String:length string-length)
+	(String:explode string->list)
+	(String:implode list->string)
 	
 	;; This is VERY slow... worse than I thought.  Building a 256
 	;; element filter array statically takes an additional three
