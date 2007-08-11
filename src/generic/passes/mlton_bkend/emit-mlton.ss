@@ -92,13 +92,15 @@
 
 ;; This is a hack, but is much simpler.
 (define (format-float fl)
-  (let* ((str (format "~a" fl))
-	 (len (string-length str)))
-    (do ((i 0 (fx+ i 1)))
-	((fx= i len) str)
-	(case (string-ref str i)
-	  [(#\-) (string-set! str i #\~)]
-	  [(#\e) (string-set! str i #\E)]))))
+  (if (not (= fl fl))
+      "(0.0/0.0)"
+      (let* ((str (format "~a" fl))
+	     (len (string-length str)))
+	(do ((i 0 (fx+ i 1)))
+	    ((fx= i len) str)
+	  (case (string-ref str i)
+	    [(#\-) (string-set! str i #\~)]
+	    [(#\e) (string-set! str i #\E)])))))
 
 
 (define (make-for i st en bod)
@@ -370,7 +372,8 @@
 			   (map (lambda (cb) (list "val " cb " ; \n")) cb*)
 
 			   "\n(* Then initialize the global bindings: *)\n"
-			   "val _ = "(indent (apply make-seq init*) "        ")"\n\n"
+			   "fun initglobals () = "(indent (apply make-seq init*) "        ")"\n\n"
+			   "val _ = run_w_handlers initglobals print errprnt exit_process\n"
 
 			   ;; Handle iterator state in the same way:
 			   "\n(* Next the state for all iterates/sources. *)\n\n"
@@ -481,7 +484,7 @@
 
 ;; This handles null characters correctly.
 ;; (VERY INEFFICIENT CURRENTLY .. BAD FOR OUR LARGE INLINEC STRINGS)
-(trace-define (print-mlton-string str)
+(define (print-mlton-string str)
   (list "\""
     (list->string
      (apply append
@@ -496,7 +499,11 @@
 (define Const
   (lambda (datum)
     (cond
-     [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
+     ;; This indicates that we have a forall a.a value...
+;     [(eq? datum 'BOTTOM) 
+;      (wrap "(print_endline \"Tried to evaluate BOTTOM value!\"; wserror \"BOTTOM\")")] ;; Should probably generate an error.
+
+     [(eq? datum 'BOTTOM) "()"]
      [(eq? datum 'UNIT) "()"]     
      [(null? datum) "[]"]
      [(eq? datum #t) "true"]
@@ -824,7 +831,7 @@
 	      (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
     ))
 
-(trace-define (make-mlton-zero-for-type t)
+(define (make-mlton-zero-for-type t)
     (match (match t
 	     [Int   ''0]
 	     [Int16 "(Int16.fromInt 0)"]
@@ -1106,6 +1113,7 @@
 
       [string-append "(String.^)"] 
       [List:append List.@]
+      [List:toArray  Array.fromList]
 
 ;; TODO ==========================
 

@@ -1,4 +1,6 @@
 
+// This file contains a 
+
 include "stdlib.ws";
 include "marmot_heatmap.ws";
 
@@ -9,6 +11,7 @@ nodes =
    (104, 0.0, -4890.001043, 181.457764),
    (106, 13801.727366, -924.578002, 129.536758),
    (108, 6719.793799, 552.692044, 131.25087)];
+
 
 data = Curry:map(List:toArray)$
 
@@ -91,11 +94,13 @@ colormap = List:toArray$
   (143,     0,     0),
   (128,     0,     0)]
 
+//******************************************************************************//
+
+
 // Takes, file, width, height, red-array, green-array, blue-array
 c_write_ppm_file 
   = (foreign("write_ppm_file", ["ppm_write.c"]) 
   :: (String, Int, Int, Array Int, Array Int, Array Int) -> Int)
-
 
 type RGB = (Int * Int * Int);
 write_ppm_file :: (String, Matrix RGB) -> Int;
@@ -111,30 +116,40 @@ fun write_ppm_file(file, mat) {
 
 colorize_likelihoods :: Matrix Float -> Matrix RGB;
 fun colorize_likelihoods(lhoods) {
-  mx = Matrix:fold(max, 0.0, lhoods);
+  fst = Matrix:get(lhoods,0,0);
+  mx = Matrix:fold(max, fst, lhoods);
+  mn = Matrix:fold(min, fst, lhoods);
+  //println("Color max/min: "++mx++" / "++mn);
   //  Matrix:map(fun(v) colormap[f2i$ roundF(v / mx * 63.0)], 
-  Matrix:map(fun(v) colormap[f2i(v / mx * 63.0)], 
-             lhoods);
+  Matrix:map(fun(v) {
+          colorind = f2i((v-mn) / (mx - mn) * 63.0);
+          //println("ColorInd: "++ colorind);
+          colormap[colorind]
+	},
+	lhoods);
 }
 
-
-nodesAndData = List:map2(fun(x,y)(x,y), 
-                nodes, 
-		map(normalize_doas, data))
-
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
-settings = (axes, (2000.0, 360.0)) // grid_scale and angle_num
+//grid_scale = 50.0
+grid_scale = 2000.0
 
 BASE <- iterate _ in timer(3.0) {
-  let (mat, cx, cv) = doa_fuse(settings, nodesAndData);
-  foo = cx(3);
+  println("Executing test_heatmap...");
+
+  nodesAndData = List:map2(fun(x,y)(x,y), 
+                  nodes, 
+  	          map(normalize_doas, data));
+
+  let coordsys = coord_converters(axes, grid_scale);
+  let mat = doa_fuse(coordsys, nodesAndData);
+
   pic = colorize_likelihoods(mat);
 
   file = "temp.ppm";
-  
   write_ppm_file(file,pic);
 
   emit ("Wrote image to file: " ++ file);
+  //emit pic;
 }
 
 

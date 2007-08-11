@@ -16,9 +16,9 @@ int write_ppm_file(char *filename, int wid, int height, int* R, int* G, int* B)
   fprintf(fptr,"P6\n");
   fprintf(fptr,"%d %d\n", wid, height); // size of the file
   fprintf(fptr,"255\n");         // colour depth
-  for (x=0; x < wid; x++) {
+  for (x=1; x <= wid; x++) {
     for (y=0; y < height; y++) {
-      int ind = x + (y * wid);
+      int ind = (wid-x) + ((height - y) * wid);
       fprintf(fptr,"%c", R[ind]); // red
       fprintf(fptr,"%c", G[ind]); // green
       fprintf(fptr,"%c", B[ind]); // blue

@@ -60,6 +60,8 @@ typedef struct aml_fuse_args {
 
 */
 
+angle_num = 360.0
+
 FP_NAN = 0.0 / 0.0;
 fun floor(f) intToFloat(floatToInt(f))
 fun ceiling(f) roundF(f+0.5);
@@ -78,14 +80,16 @@ type AxesBounds = (Float * Float * Float * Float);
 type NodeRecord = ((Int * Float * Float * Float) * Array Float);
 type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
+// Xbound, Ybound, and conversion procs.
+type CoordSystem = (Float * Float * Converter * Converter);
 
-//create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (Settings, List NodeRecord) -> (Matrix Float * Converter * Converter);
-fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
-
+// Manifest our coordinate system in the form of conversion procedures.
+coord_converters :: (AxesBounds, Float) -> CoordSystem;
+fun coord_converters(axes, grid_scale) {
   let (x_min, x_max, y_min, y_max) = axes;
-  if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
-  assert("Won't do sub-centimeter", grid_scale > 1.0);
+  //if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
+  //assert("Won't do sub-centimeter", grid_scale > 1.0);
+  {
 
   // Our original coordinate system is centimeters.
   x_width = x_max - x_min;
@@ -95,14 +99,22 @@ fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
   x_chunks = x_width / grid_scale;
   y_chunks = y_width / grid_scale;
 
-  println("Starting DOA fuse.  Gridsize "++x_chunks++" x "++y_chunks);
+  // Return x/y conversion functions.
+  (x_chunks, y_chunks,
+   fun (n) (n`i2f + 0.5) / x_chunks * x_width + x_min,
+   fun (n) (n`i2f + 0.5) / y_chunks * y_width + y_min)
+  }
+}
 
-  fun xchunks_to_cm(n) (n`i2f + 0.5) / x_chunks * x_width + x_min;
-  fun ychunks_to_cm(n) (n`i2f + 0.5) / y_chunks * y_width + y_min;        
- 
+//create the plot 'canvas' - a 2d array where each pixel is a likelihood
+doa_fuse :: (CoordSystem, List NodeRecord) -> Matrix Float;
+fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
+  xd = xdim`ceiling`f2i;
+  yd = ydim`ceiling`f2i;
+  println("Starting DOA fuse.  Gridsize "++xd++" x "++yd);
+
   // Build the likelihood map:
-
-  (Matrix:build(f2i$ ceiling(x_chunks), f2i$ ceiling(y_chunks),
+  Matrix:build(xd,yd,
     fun(i,j) {
       // Coordinates in centimeter space:
       c_x :: Float = xchunks_to_cm(j);
@@ -130,14 +142,13 @@ fun doa_fuse((axes, (grid_scale, angle_num)), noderecords) {
 	  // Add it into our total for this grid square:
 	  sum + doavec[dir]
         },
-	0.0, noderecords)}),
-
-   // Also return our coordinate system in the form of these two conversion procedures.
-   xchunks_to_cm, ychunks_to_cm)
+	0.0, noderecords)})
 }
 
 
-fun getmax((heatmap, convx, convy)) {
+//
+
+fun getmax(heatmap, convx, convy) {
 
   let (max_val, max_i, max_j) = 
    Matrix:foldi(
@@ -153,4 +164,3 @@ fun getmax((heatmap, convx, convy)) {
   // Return the maximum and it's location (in cm):
   (max_val, convx(max_j), convy(max_i))
 }
-

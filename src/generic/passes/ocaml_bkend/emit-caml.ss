@@ -281,6 +281,7 @@
 
 (define Const
   (lambda (datum)
+    (if (eq? datum 'BOTTOM) (inspect 'HUH???))
     (cond
      [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
      [(eq? datum 'UNIT) "()"]
