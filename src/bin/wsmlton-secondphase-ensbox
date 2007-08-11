@@ -46,6 +46,16 @@ export WSMLOUTPUT='query._.c'
 source wsmlton-secondphase $*
 export WSMLOUTPUT=query.ensbox.mlton.exe
 
+shift
+echo;echo ARGS $*; echo
+
+
+# if [ "$1" == "-dbg" ]; then 
+#   echo Configuring GCC for debug mode.
+#   export GCCLINK="$GCCLINK -g";
+#   export GCCBUILD="$GCCBUILD -g";
+# fi 
+
 #echo; echo; echo "OUT OF WSMLTON-SECONDPHASE, WSMLCINCLUDES = $WSMLCINCLUDES"
 #echo "AND PATH: $PATH"; echo; echo 
 

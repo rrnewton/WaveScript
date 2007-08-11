@@ -966,3 +966,13 @@ gcc returned error!!
 I think I messed up the IEEEReal related hack for my cross compile of
 the runtime....
 
+[2007.08.10] {Stream revisions}
+
+Can we do borealis style stream revisions with metaprogramming?
+
+(Other metaprogramming topics:
+ pop/push/pull interface...
+ teleporting messages
+ pull streams
+ marshaling
+ )

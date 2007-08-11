@@ -1,4 +1,4 @@
 #!/bin/sh
 
-mlton -const 'Exn.keepHistory true' -default-ann 'allowFFI true' $*
+mlton -debug true -const 'Exn.keepHistory true' -default-ann 'allowFFI true' $*
 

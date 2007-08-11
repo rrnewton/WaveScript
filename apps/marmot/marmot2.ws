@@ -308,7 +308,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = iterate (_m_in :: Matrix Float in data_in) {
 
-    log("Computing AML result.");
+    log(1, "Computing AML result.");
 
     // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows

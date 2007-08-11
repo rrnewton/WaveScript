@@ -212,6 +212,8 @@
 				  [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
 				  [(real? x) (fl-make-rectangular x 0.0)]
 				  [else (ASSERT cflonum? x)])))))
+
+	(String:length string-length)
 	
 	;; This is VERY slow... worse than I thought.  Building a 256
 	;; element filter array statically takes an additional three
