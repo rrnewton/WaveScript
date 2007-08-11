@@ -150,9 +150,10 @@ fun detect(scorestrm) {
   }
 }
 
+ch1f = deep_stream_map(int16ToFloat, ch1i);
 
 // 96 samples are ignored between each 32 used:
-rw1 = rewindow(ch1, 32, 96);
+rw1 = rewindow(ch1f, 32, 96);
 
 //hn = smap(hanning, rw1);
 hn = hanning(rw1);
@@ -171,4 +172,4 @@ d2 = iterate (d in detections) {
   emit d;
 };
 
-synced = syncN(d2, [ch1, ch2, ch3, ch4]);
+synced = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);
