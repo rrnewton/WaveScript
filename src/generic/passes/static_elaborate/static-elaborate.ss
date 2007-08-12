@@ -326,7 +326,6 @@
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
 
-;	(wsequal? equal?) 
 	(null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
 
@@ -604,7 +603,7 @@
 				;;[,other (error 'getlist "not a list-constructor: ~s" other)])
 				)))
 			#f))]
-
+		 
 		 [getval ;; If available, follow aliases until you have a real value expression:
 		  (outer-getval env)]
 
@@ -624,7 +623,23 @@
 				)))
 			#f))]
 
-		 [letrec? (lambda (x) (and (pair? x) (eq? (car x) 'letrec)))]
+		 [side-effect-free?
+		  (lambda (x)
+		    (match x
+		      [,var (guard (symbol? var)) #t]
+		      [,const (guard (simple-constant? const)) #t] ;; for tupref etc
+		      [(lambda . ,_) #t]
+		      [(quote ,datum) #t]
+		      [(,prim ,[args] ...)
+		       (if (assq prim wavescript-effectful-primitives)
+			   #f
+			   (andmap (lambda (x) x) args))]
+		      [(set! . ,_) #f]
+		      [,oth (error 'side-effect-free? "we forgot to handle this: ~s" oth)]
+		      ))]
+
+		 [letrec? (lambda (x) (let ([x (peel-annotations x)])
+					(and (pair? x) (eq? (car x) 'letrec))))]
 		 )
 
         (match expr
@@ -844,8 +859,7 @@
 	  ;; [2007.08.12] Yet more unpleasant hackery.
 	  ;; We can conclude that containers are UNEQUAL based just on their lengths.
 	  ;; This is relevant to null comparisons.
-	  ;; DANGER!!! THIS DOESN'T VERIF THAT OPERANDS LACK SIDE EFFECTS BEFORE EVALUATING THEM!
-
+	  ;; DANGER!!! THIS DOESN'T VERIF THAT OPERANDS LACK SIDE EFFECTS BEFORE ELIMINATING THEM!
 	  [(wsequal? ,[a] ,[b])
  	   (cond
 	    [(and (available? a) (available? b)) `',(equal? (getval a) (getval b))]
@@ -854,7 +868,10 @@
 		   [blen (container-length b)])
 	       (inspect `(alen blen: ,alen ,blen))
 	       (if (and alen blen (not (fx= alen blen)))
-		   ''#f
+		   (begin 
+		     (ASSERT side-effect-free? a)
+		     (ASSERT side-effect-free? b)
+		     ''#f)
 		   `(wsequal? ,a ,b)))]
 	    ;; Otherwise we can't conclude anything:
 	    [else `(wsequal? ,a ,b)])]	  
@@ -928,11 +945,11 @@
 	   
 	   ;; Trying to lift out letrecs:
 	   (cond 
-#;
+
 	    ;; DANGER: This needs to be audited.
 	    ;; We might have freshness problems!!!!!!
 	    [(list-index letrec? rand*) =>
-	     (lambda (i) 
+	     (lambda (ind) 
 	       ;; For now only do it for ONE rand
 	       ;(ASSERT (fx= 1 (filter letrec? rand*)))
 	       (let loop ([rand* rand*] [argacc ()] [bindacc ()])
@@ -943,11 +960,17 @@
 		       (if (null? bindacc) 
 			   `(,prim ,@(reverse argacc))
 			   `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
-		     (match (car rand*)
-		       [(letrec ,binds ,bod) 
-			(loop (cdr rand*) 
-			      (cons bod argacc)
-			      (append (reverse binds) bindacc))]
+		     (match (peel-annotations (car rand*))
+		       [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+			(ASSERT (andmap side-effect-free? rhs*))
+			;; Freshness: rename these bindings:
+			(let* ([new-lhs* (map unique-name lhs*)]
+			       [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
+			       [new-rhs* (map convert rhs*)]
+			       [new-bod (convert bod)])
+			  (loop (cdr rand*)
+				(cons new-bod argacc)
+				(append (reverse (map list new-lhs* ty* new-rhs*)) bindacc)))]
 		       [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
 		     )))]
 	    [(and 		

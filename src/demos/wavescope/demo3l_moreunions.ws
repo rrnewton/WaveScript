@@ -1,8 +1,8 @@
 
 
-fun stream_map(f,s) {
-  iterate (x in s) {
-    emit f(x);
+fun stream_map(fn,strm) {
+  iterate (elm in strm) {
+    emit fn(elm);
   }
 }
 
@@ -29,9 +29,9 @@ s1 = union3(CONST(1),CONST(2.0),CONST(3.0+0.0i));
 
 s2 = union2(s1,s1);
 
-BASE <- iterate x in s2 {
+BASE <- iterate sum in s2 {
      
-    case x {
+    case sum {
       Oneof2(x): print("Got left! "++x++"\n")
       Twoof2(y): print("Got right! "++y++"\n")
     };
