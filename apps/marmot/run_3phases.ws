@@ -32,10 +32,15 @@ coordsys = coord_converters(axes, grid_scale);
 heatmaps = stream_map(fun(x) doa_fuse(coordsys,x), clusters);
 
 BASE <- iterate heatmap in heatmaps {
-
-  println("  Writing to ppm file...");
+  let (_,_,cx,cy) = coordsys;
 
   pic = colorize_likelihoods(heatmap);
+
+  let (mx,i,j) = getmax(heatmap,coordsys);
+  println("Max marmot likelihood was "++mx++
+          " at position "++cx(j)++","++cy(i)++
+	  " w/pic coord "++i++","++j);
+  draw_marmot(pic, i, j, f2i$ max(4.0, 250.0 / grid_scale));
 
   file = "temp.ppm";
   write_ppm_file(file,pic);

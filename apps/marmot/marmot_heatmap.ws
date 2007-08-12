@@ -125,8 +125,8 @@ fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
 
 //
 
-fun getmax(heatmap, convx, convy) {
-
+getmax :: (Matrix Float, CoordSystem) -> (Float * Int * Int);
+fun getmax(heatmap, (_,_, convx, convy)) {
   let (max_val, max_i, max_j) = 
    Matrix:foldi(
     fun(i,j, acc, elm) {
@@ -135,11 +135,13 @@ fun getmax(heatmap, convx, convy) {
       then (elm,i,j)
       else acc
     },
-    (Matrix:get(heatmap,0,0), 0, 0), 
-    heatmap);
+     (Matrix:get(heatmap,0,0), 0, 0), 
+     heatmap);
 
   // Return the maximum and it's location (in cm):
-  (max_val, convx(max_j), convy(max_i))
+  //(max_val, convx(max_j), convy(max_i))
+  (max_val, max_i, max_j)
+    //  (100.0, 200, 200)
 }
 
 //******************************************************************************//
@@ -242,6 +244,46 @@ fun colorize_likelihoods(lhoods) {
 	},
 	lhoods);
 }
+
+
+fun draw_marmot(pic, center_x, center_y, size) {
+  using Matrix;
+  //println("\nDRAWING MARMOT AT "++center_x++", "++center_y++"\n");
+  let (xmx,ymx) = dims(pic);
+  fun draw(x,y,col) {
+    //println("   Drawing pixel: "++x++", "++y);
+    if x >= 0 && x < xmx && 
+       y >= 0 && y < ymx 
+    then set(pic, x, y, col)
+    //else println("Pixel out of bounds! "++x++", "++y)
+  };
+
+  half = size / 2;
+  for x = center_x-half to center_x+half {
+    for y = center_y-half to center_y+half {
+      draw(x,y, (255,255,255))
+    }
+  };
+  for x = center_x-half+1 to center_x+half-1 {
+    for y = center_y-half+1 to center_y+half-1 {
+      draw(x,y, (0,0,0))
+    }
+  };
+  pic
+
+  /*
+  set(pic, i  , j  , (0,0,0));
+  set(pic, i  , j+1, (0,0,0));
+  set(pic, i+1, j+1, (0,0,0));
+  set(pic, i+1, j,   (0,0,0));
+  set(pic, i+1, j-1, (0,0,0));
+  set(pic, i  , j-1, (0,0,0));
+  set(pic, i-1, j-1, (0,0,0));
+  set(pic, i-1, j  , (0,0,0));
+  set(pic, i-1, j+1, (0,0,0));
+  */
+}
+
 
 //******************************************************************************//
 
