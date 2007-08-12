@@ -17,10 +17,10 @@ nodes = [(100, -0.0, 0.000891, 222.746048)];
 noderecs = stream_map(fun(doavec) (nodes`List:ref(0), doavec), doas)
 
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
-grid_scale = 25.0
+//grid_scale = 25.0
 //grid_scale = 50.0
 //grid_scale = 100.0
-//grid_scale = 138.0
+grid_scale = 138.0
 //grid_scale = 2000.0
 
 clusters = temporal_cluster_amls(noderecs)

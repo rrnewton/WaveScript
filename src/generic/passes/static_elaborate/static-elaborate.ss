@@ -162,6 +162,15 @@
      (define (quote-value v)
        (if (code? v) (code-expr v) `',v))
 
+     ;; This is tricky because it has to respect representation constraints:
+     (define (generic-div a b)
+       (cond
+	[(fixnum? a) (fx/ a b)] ;; Int and Int16
+	[(integer? a) (ASSERT integer? b) (floor (/ a b))] ;; This is an int64:
+	[(flonum? a) (fl/ a b)] ;; Float and Double
+	[else (error 'static-elaborate:generic-divide "unknown number representations: ~s ~s" a b)]
+	))
+
      ;; A table binding computable prims to an expression that evals
      ;; to a function which will carry out the primitive.
      ;; 
@@ -170,7 +179,8 @@
      ;; CONVENTION: if the right hand side is a closure, it takes an env argument also.
     (define computable-prims 
       `((+ +) (- -) (* *) (/ /) (^ expt) 
-	(g+ +) (g- -) (g* *) (g/ /) (g^ expt)
+	(g+ +) (g- -) (g* *) (g^ expt)
+	(g/ ,(lambda (env a b) `',(generic-div a b)))
 	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
