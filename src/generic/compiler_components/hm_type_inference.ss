@@ -143,7 +143,7 @@
        (match pos
 	 [#f "Unknown source location."]
 	 [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
-	  (format "within file ~s\n   in the viscinity of line ~s column ~s"
+	  (format "within file ~s\n   in the vicinity of line ~s column ~s"
 		  fn ln1 col1)
 	  ]))]))
 

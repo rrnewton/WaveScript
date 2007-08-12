@@ -111,4 +111,4 @@ include "marmot_first_phase.ws";
 //BASE <- wscores
 //BASE <- detections
 //BASE <- d2
-BASE <- synced
+BASE <- synced_ints

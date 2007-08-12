@@ -172,4 +172,4 @@ d2 = iterate (d in detections) {
   emit d;
 };
 
-synced = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);
+synced_ints = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);

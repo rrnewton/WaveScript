@@ -72,6 +72,8 @@ fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
   // Build the likelihood map:
   Matrix:build(xd,yd,
     fun(i,j) {
+//   3939.9  
+
       // Coordinates in centimeter space:
       c_x :: Float = xchunks_to_cm(j);
       c_y :: Float = ychunks_to_cm(i);
@@ -98,7 +100,8 @@ fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
 	  // Add it into our total for this grid square:
 	  sum + doavec[dir]
         },
-	0.0, noderecords)})
+	0.0, noderecords)
+  })
 }
 
 

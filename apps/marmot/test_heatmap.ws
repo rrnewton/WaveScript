@@ -31,15 +31,21 @@ data = Curry:map(List:toArray)$
 //******************************************************************************//
 
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
-grid_scale = 50.0
+//grid_scale = 50.0
+grid_scale = 138.0
 //grid_scale = 2000.0
 
 BASE <- iterate _ in timer(3.0) {
+  state { nodesAndData = []; fst = true }
+
   println("Executing test_heatmap...");
 
-  nodesAndData = List:map2(fun(x,y)(x,y), 
-                  nodes, 
-  	          map(normalize_doas, data));
+  if fst then {
+    fst := false;
+    nodesAndData := List:map2(fun(x,y)(x,y), 
+                    nodes, 
+  	            map(normalize_doas, data));
+  };
 
   let coordsys = coord_converters(axes, grid_scale);
   let mat = doa_fuse(coordsys, nodesAndData);
