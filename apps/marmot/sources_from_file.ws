@@ -13,9 +13,15 @@ marmotfile =
   //  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
+samp_rate = 24000.0; // HACK - we should get this from the stream/timebase/sigseg
+
 winsize = 16384;
-driver = timer(24000.0 / winsize`i2f);
+// Old data files are 24 khz...
+driver = timer(samp_rate * 4.0 / winsize`i2f);
 chans = (readFile(marmotfile, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
+
+// TODO: Try oversampling this input stream to 48 khz to make the detector match the live data:
+//chans48 = ...
 
 fun onechan(offset)
   iterate w in chans {

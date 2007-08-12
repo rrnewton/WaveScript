@@ -10,15 +10,31 @@ fun ceiling(f) roundF(f+0.5);
 
 /**************************************************************/
 
-/*
 // Temporal clustering of real time AML results.
 fun temporal_cluster_amls(amls) {
-  iterate arr in union2(amls, timer(2.0)) {
-    state { acc = [] }
-    
+  iterate x in union2(amls, timer(2.0)) {
+    state { 
+      acc = [];
+      counter = 0;
+    }
+    case x {
+      Left(arr): {
+        acc := arr ::: acc;
+	counter := 0;
+      }
+      Right(_): {
+        counter += 1;
+	if counter > 1 
+	then {
+	  if acc != [] then {
+            emit List:reverse(acc);
+	    acc := [];
+	  }
+	}
+      }
+    }
   }
 }
-*/
 
 /**************************************************************/
 
@@ -30,8 +46,10 @@ fun normalize_doas(doas) {
 
 /**************************************************************/
 
-type AxesBounds = (Float * Float * Float * Float);
+// ID, X,Y, YAW, and AML result.
 type NodeRecord = ((Int * Float * Float * Float) * Array Float);
+
+type AxesBounds = (Float * Float * Float * Float);
 type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
 // Xbound, Ybound, and conversion procs.

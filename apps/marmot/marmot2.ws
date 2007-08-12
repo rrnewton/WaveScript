@@ -69,10 +69,7 @@ include "array_geometry.ws";
 
 //======================================================================
 
-samp_rate = 24000.0; // HACK - we should get this from the stream/timebase/sigseg
 sound_spd = 345.0; // HACK - although not quite sure how to put it in
-
-sensors = Matrix:Float:fromList2d(sensor_list);
 
 // This doesn't seem quite worthy of going in the standard library yet:
 //list_of_rowsegs_to_matrix :: List (Sigseg t) -> Matrix t

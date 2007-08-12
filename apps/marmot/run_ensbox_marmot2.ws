@@ -13,6 +13,6 @@ synced = stream_map(fun (x)
 
 include "marmot2.ws";
 
-doas = oneSourceAMLTD(synced, sensors,4096);
+doas = oneSourceAMLTD(synced, micgeometry, 4096);
 
 BASE <- (doas)

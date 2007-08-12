@@ -8,10 +8,13 @@
 
 include "stdlib.ws";
 
-//include "marmot_first_phase.ws";
+// When we're not live we just print log messages to the stream.
+fun log(l,s) println(s)
 
 // Here we read in a small data sample.
 file = "testdata.txt"
+samp_rate = 24000.0; 
+
 //chans = (readFile(file, "mode: text window: 8192 rate: 24000 ") :: Stream Sigseg (Float)); 
 _chans = (readFile(file, "mode: text ", timer(2400.0)) :: Stream (Float));
 chans = window(_chans, 8192);
@@ -49,11 +52,11 @@ include "marmot2.ws";
 // Main query:
 
 //doas = FarFieldDOAb(synced, sensors);
-doas = oneSourceAMLTD(synced, sensors, 2048); 
+doas = oneSourceAMLTD(synced, micgeometry, 2048); 
 
 //BASE <- chans;
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
 //BASE <- synced;
-//BASE <- gnuplot_array_stream(doas)
-BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
+BASE <- gnuplot_array_stream(doas)
+//BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
