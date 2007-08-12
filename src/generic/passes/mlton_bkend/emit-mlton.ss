@@ -30,6 +30,9 @@
 (define int-module 'Int32)
 ;(define int-module 'Int)
 
+;; Mutated below:
+(define union-types 'utuninit)
+
 ;======================================================================
 ;======================================================================
 
@@ -202,7 +205,7 @@
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-mlton:Type "Not handled yet.. ~s" other)]))
 
-(trace-define (TypeDecl td)
+(define (TypeDecl td)
   (match td
     [((,name ,[Type -> args] ...) [,tag* ,ty*] ...)
      (list "datatype "(apply make-tuple-code args)" "(SumName name)" = \n  "
@@ -255,7 +258,35 @@
 
     [(Pointer ,_) "(fn _ => \"<pointer>\")"]
 
-    [(Sum ,name ,args ...) "(fn _ => \"<uniontype>\")"]
+#;
+    [(Sum ,name ,args ...) (format "(fn _ => \"<uniontype ~a>\")" name)]
+    [(Sum ,sumname ,arg-ty* ...)     
+     (car (apply append 
+		 (map (lambda (x)
+			(match x
+			  [((,name ,ty*1 ...) (,variant* ,ty*2) ...)
+			   (if (not (eq? name sumname)) ()
+			       (let ([instance (instantiate-type `(MAGIC ,(list->vector ty*1) ,(list->vector ty*2)))])
+				 (types-equal! instance
+					       (instantiate-type `(MAGIC ,(list->vector arg-ty*) ',(unique-name "any")))
+					       #f "")
+				 (let ([new-varty* (vector->list (export-type (caddr instance)))])
+				   (list 
+				    (make-fun (list (Var 'sumt))
+					      (WScase 'sumt 
+						      variant*
+						      (map (lambda (varname argty)
+								   `(lambda (x) (,argty)
+									    (string-append 
+									     ;',(format "~s" (VariantName varname))
+									     ',(++ (VariantName varname) "(")
+									     ;'"WOOT("
+									     (string-append
+									      (show (assert-type ,argty x))
+									      '")"))))
+							variant* new-varty*)
+						      #f))))))]))
+		   union-types)))]
 
     ;; Just print range:
     [(Sigseg ,t) 
@@ -336,18 +367,21 @@
 		[extraCdecls      ()]
 		[CinitCalls       ()]
 		[foreign-includes ()])
-     (match prog
-      [(,lang '(graph (const ,[ConstBind -> cb*] ...)
-		      (init  ,[Effect -> init*] ...)
-		      (sources ,[Source -> src* state1** init1*] ...)
-		      (operators ,[Operator -> oper* state2**] ...)
-;		      (unions ,[Union -> union*] ...)
-		      (sink ,base ,basetype)
-		      (union-types ,[TypeDecl -> user-type-decls*] ...)
-		      ))
-
-       ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
-       (let ([tmpfile "__temp__inlinedC.c"])
+      (match prog
+	[(,__ '(graph ,_ ... (union-types ,user-type-decls* ...)))
+	 (fluid-let ([union-types user-type-decls*])
+	 (match prog
+	   [(,lang '(graph (const ,[ConstBind -> cb*] ...)
+			   (init  ,[Effect -> init*] ...)
+			   (sources ,[Source -> src* state1** init1*] ...)
+			   (operators ,[Operator -> oper* state2**] ...)
+					;		      (unions ,[Union -> union*] ...)
+			   (sink ,base ,basetype)
+			   ,_
+			   ))
+	 
+	 ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
+	 (let ([tmpfile "__temp__inlinedC.c"])
 	 (unless (null? CinitCalls)
 	   (set! extraCdecls
 		 (snoc (format "\nvoid ws_inlinedC_initialization() {\n~a\n}\n\n"
@@ -359,8 +393,8 @@
 	   (string->file (apply string-append extraCdecls) tmpfile)
 	   (set! foreign-includes (cons tmpfile foreign-includes))))
        
-       ;; Just append this text together.
-       (let ([result (list 
+	 ;; Just append this text together.
+	 (let ([result (list 
                            ;; Very first thing is 
 		           (let ([deps (filter (lambda (fn) (not (equal? (extract-file-extension fn) "h")))
 					 foreign-includes)])
@@ -375,7 +409,7 @@
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
 
-			   user-type-decls*
+			   (map TypeDecl user-type-decls*)
 
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
@@ -439,9 +473,10 @@
 
 
 			   )])
-	 result)]
-      [,other ;; Otherwise it's an invalid program.
-       (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)]))))
+	   result)]
+	   [,other ;; Otherwise it's an invalid program.
+	    (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)]))
+	 ]))))
 
 
 ; ======================================================================
@@ -514,9 +549,10 @@
 		    [(#\nul)     (list #\\ #\0 #\0 #\0)]
 		    [(#\newline) (list #\\ #\n)]
 		    [(#\tab)     (list #\\ #\t)]
-		    [(#\r)       (list #\\ #\r)]
-		    [(#\")       (list #\\ #\")]
-		    [(#\')       (list #\\ #\')]
+;		    [(#\r)       (list #\\ #\r)]
+;		    [(#\")       (list #\\ #\")]
+;		    [(#\')       (list #\\ #\')]
+		    [(#\\)       (list #\\ #\\)]
 		    [else (list c)]))
 	      (string->list str))))
     "\""))
@@ -889,7 +925,7 @@
 (define (SumName s) (++ "ty_" (symbol->string s)))
 (define (VariantName s) (symbol->string s))
 
-(trace-define (WScase x names funs emitter)
+(define (WScase x names funs emitter)
   (define (myExpr x) (Expr x emitter))
   (let ([x (myExpr x)])
     (list "case " x " of\n"
