@@ -495,6 +495,10 @@
 		   (case c
 		    [(#\nul)     (list #\\ #\0 #\0 #\0)]
 		    [(#\newline) (list #\\ #\n)]
+		    [(#\tab)     (list #\\ #\t)]
+		    [(#\r)       (list #\\ #\r)]
+		    [(#\")       (list #\\ #\")]
+		    [(#\')       (list #\\ #\')]
 		    [else (list c)]))
 	      (string->list str))))
     "\""))
@@ -862,6 +866,15 @@
     [(,argty* ... -> ,retty)	
      (for-each add-file! files)
      `(" _import \"",cname"\" : ",(Type ty)";\n")]))
+
+#;
+(define (WScase x names funs emitter)
+  (let ([x (Expr x emitter)])
+    
+    (list "case " x ""
+	  
+	  ))
+  )
 
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))

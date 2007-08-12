@@ -90,8 +90,11 @@
 	  [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
 	   (obj 'Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
 
+	  [(wscase ,x [,name* ,fun*] ...)
+	   (obj 'WScase x name* fun* emitter)]
+
 	  [(assert-type ,t ,[x]) 
-					;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
+           ;;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
 	   x]
 	  [,unmatched (error 'emit-mlton:Expr "unhandled form ~s" unmatched)]
 
