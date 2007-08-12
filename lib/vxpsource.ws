@@ -27,7 +27,10 @@ int __vxp_tb = 0;
 pthread_mutex_t arg_mutex;
 pthread_cond_t arg_cond;
 FILE *remote_stream = NULL;
+FILE *remote_index = NULL;
+char curr_fn[256] = {};
 int spill_mode = "++spill_mode++";
+int file_index = 0;  // byte index into current file 
 
 int vxp_get_tb() { return __vxp_tb; }
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
@@ -83,20 +86,44 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 	  double_to_tv(&(hdr.cpu_end), cpu);
 	  double_to_tv(&(hdr.gps_end), gps);
 
-	  if (remote_stream == NULL) {
+	  if (remote_index == NULL) {
 	    char fn[256];
+            sprintf(fn, \"/remote/vxp_%d_index\", my_node_id);
+	    int fd = remote_open(fn, \"append\");
+	    if (fd < 0) {
+	      elog(LOG_WARNING, \"Failed to open remote connection: %m\");
+            }
+	    else {
+	      remote_index = fdopen(fd, \"rw\");
+	    }
+	  }
+
+	  if (remote_stream == NULL) {
 	    if (orig_gps != 0)
-	      sprintf(fn, \"/remote/vxp_%d_%.6llf.wsaudio\",
+	      sprintf(curr_fn, \"/remote/vxp_%d_%.6llf.wsaudio\",
 	              my_node_id, orig_gps);
 	    else
-	      sprintf(fn, \"/remote/vxp_%d_%.6llf_NOGPS.wsaudio\",
+	      sprintf(curr_fn, \"/remote/vxp_%d_%.6llf_NOGPS.wsaudio\",
 	              my_node_id, orig_cpu);
-	    int fd = remote_open(fn, \"\");
+	    int fd = remote_open(curr_fn, \"\");
 	    if (fd < 0) {
 	      elog(LOG_WARNING, \"Failed to open remote connection: %m\");
             }
 	    else {
 	      remote_stream = fdopen(fd, \"rw\");
+	    }
+	    file_index = 0;
+	  }
+
+	  if (remote_index) {
+	    int status = fprintf(remote_index, \"%lld %.6lf %d %s%c\",
+				 hdr.sample_start, orig_gps, 
+				 file_index, curr_fn, 10);
+	    fflush(remote_index);
+	    if (status < 0) {
+	      elog(LOG_WARNING, \"Remote connection failed (I): (%d) %m\", status);	      
+	      fclose(remote_index);
+	      remote_index = NULL;
 	    }
 	  }
 

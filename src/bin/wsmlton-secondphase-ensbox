@@ -6,22 +6,26 @@
 # export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/generic/passes/mlton_bkend/ensbox_new.c"
 GLIB_PATH=`pkg-config glib-2.0 --libs`
 
-if [ "$EMLIB" == "" ]; then export EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'; fi
+if [ "$EMLIB" == "" ]; then export EMLIB='/scratch/girod/emstar'; fi
 # "a" for static linking "so" for dynamic:
 EXT=a
+
+if [ "$EMLIBLIB" == "" ]; then export EMLIBLIB=$EMLIB/obj.nims-stargate/lib ; fi
+export EMLIBH=$EMLIB/include
+
 export ENSBOXLD="           \
-  $EMLIB/libwavescope2.$EXT \
-  $EMLIB/libvxp_ws.$EXT     \
-  $EMLIB/libemrun.$EXT      \
-  $EMLIB/liblink.$EXT       \
-  $EMLIB/libdev.$EXT        \
-  $EMLIB/libsync.$EXT       \
-  $EMLIB/libevent.$EXT      \
-  $EMLIB/libdev.$EXT        \
-  $EMLIB/libmisc.$EXT       \
-  $EMLIB/libfusd.$EXT       \
-  $EMLIB/libremstore.$EXT   \
-  $EMLIB/libmisc.$EXT       \
+  $EMLIBLIB/libwavescope2.$EXT \
+  $EMLIBLIB/libvxp_ws.$EXT     \
+  $EMLIBLIB/libemrun.$EXT      \
+  $EMLIBLIB/liblink.$EXT       \
+  $EMLIBLIB/libdev.$EXT        \
+  $EMLIBLIB/libsync.$EXT       \
+  $EMLIBLIB/libevent.$EXT      \
+  $EMLIBLIB/libdev.$EXT        \
+  $EMLIBLIB/libmisc.$EXT       \
+  $EMLIBLIB/libfusd.$EXT       \
+  $EMLIBLIB/libremstore.$EXT   \
+  $EMLIBLIB/libmisc.$EXT       \
    -lm -lasound $GLIB_PATH  \
 "
 
@@ -35,10 +39,11 @@ if [ "$WSMLGCC" == "" ]; then
   export PATH=$PATH:/usr/arm-linux/bin;
   export WSMLGCC=arm-linux-gcc;
   export GCCLINK=' -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp -lfftw3f '
-  export GCCBUILD='-I/usr/arm-linux/include -std=gnu99 -I/usr/lib/mlton/arm-linux/include 
-          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing 
-          -fomit-frame-pointer -w   
-	  -I"$REGIMENTD/src/generic/passes/mlton_bkend"'
+  export GCCBUILD="-I/usr/arm-linux/include -std=gnu99 -I/usr/lib/mlton/arm-linux/include \
+          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+	  -I$EMLIBH \
+          -fomit-frame-pointer -w \
+	  -I$REGIMENTD/src/generic/passes/mlton_bkend"
 fi 
 
 ## Now call the vanilla version:
