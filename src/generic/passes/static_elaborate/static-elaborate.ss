@@ -269,9 +269,13 @@
 	(Array:length vector-length)	
 	(Array:toList vector->list)
 
+
 	;; We don't repeat the Array:build hack here... sort of inconsistent.
 	(List:build ,(lambda (env n f)
 		       (make-nested-cons (map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
+
+	;; [2007.08.12] Have to handle this specially because the args need not be fully-available.
+#;
 	(List:fold ,(lambda (env fn zer ls)
 		      (foldl (lambda (elem acc)
 			       `(app ,(code-expr fn) ,acc ,(quote-value elem)))
@@ -280,7 +284,7 @@
 
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
-	(List:append append)
+;	(List:append append)
 	(List:toArray list->vector)
 
 	;; Need to put in a real "show" at some point:
@@ -643,6 +647,10 @@
 		 )
 
         (match expr
+
+	  ;; EXPR HANDLING: FIRST THE SPECIAL FORMS
+	  ;; ================================================================================
+
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
 	  [,prim (guard (regiment-primitive? prim))
@@ -725,7 +733,329 @@
 	  
           [(begin ,[args] ...) `(begin ,@args)]
           [(set! ,v ,[rhs]) `(set! ,v ,rhs)]
+	           
+	  ;; Here we do computation if the arguments are available:
+          [(if ,test ,[conseq] ,[altern])
+	   ;(disp "CONDITIONAL: " test)
+	   (let ([newtest (process-expr test env)])
+	     (if (available? newtest)  
+		 (begin 
+		   (if (getval newtest) conseq  altern))		 
+		 `(if ,newtest ,conseq ,altern))
+	     )]
 	  
+	  ;; TODO: We don't yet statically elaborate case statements....
+	  [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
+       	  
+	  ;; This becomes a quoted constant:
+	  [(tuple) ''UNIT]
+	  [(tuple ,[args] ...) `(tuple ,@args)]
+	  [(unionN ,[args] ...) `(unionN ,@args)]
+	  [(vector ,[x*] ...)
+	   (if (andmap available? x*)
+	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
+	       (let ([vals (map getval x*)])
+		 ;; [2007.07.27] Fixing this, not generating quoted constant at all:
+		 ;`(vector . ,x*)		 
+		 (if (ormap code? vals)
+		     ;; Can't stick code within a constant:
+		     `(vector . ,x*)
+		     `(quote ,(list->vector vals))
+		     ))
+	       `(vector . ,x*))]
+
+
+	  ;; EXPR HANDLING: NOW FOR A BRIEF INTERMISSION WHEREIN WE LIFT LETRECS
+	  ;; ================================================================================
+	  
+	  ;; It's a little funky that we look for letrec? before evaluating the rands...
+          [(,prim ,rand* ...)
+	   (guard (regiment-primitive? prim)
+		  (list-index letrec? rand*))
+	   
+	   (when (eq? prim 'unionList)
+	     (printf "  Trying to lift unionlist...\n"))
+	   
+	   ;; For now only do it for ONE rand
+	   ;;(ASSERT (fx= 1 (filter letrec? rand*)))
+	   (let loop ([rand* rand*] [argacc ()] [bindacc ()])
+	     (if (null? rand*)
+		 (begin
+		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
+					;(inspect (list rand* argacc bindacc))
+		   (if (null? bindacc) 
+		       `(,prim ,@(reverse argacc))
+		       `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
+		 (match (peel-annotations (car rand*))
+		   [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+		    (ASSERT (andmap side-effect-free? rhs*))
+		    ;; Freshness: rename these bindings:
+		    (let* ([new-lhs* (map unique-name lhs*)]
+			   [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
+			   [new-rhs* (map convert rhs*)]
+			   [new-bod (convert bod)])
+		      (loop (cdr rand*)
+			    (cons new-bod argacc)
+			    (append (reverse (map list new-lhs* ty* new-rhs*)) bindacc)))]
+		   [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
+		 ))]
+
+	  ;; [2007.08.12]
+	  ;; This is a letrec in the RHS of a letrec.
+	  ;; Sad to duplicate so much of the rest of the compiler within static-elaborate.
+	  ;; FIXME FIXME!!! ONLY IMPLEMENTED FOR ONE-BINDING LETRECS ATM
+	  [(letrec ([,lhs ,ty (letrec ,binds ,bod1)]) ,bod2)
+
+	   ;(inspect (format "FOUND LETREC NEST! ~s ~s" lhs (map car binds)))
+	   
+	   ;; This should always be safe wrt side effects.
+	   ;; The RHS we lift is already in head position.
+	   ;; FIXME: HOWEVER ARE THERE FRESHNESS CONCERNS??
+	   (process-expr `(letrec ,binds
+			    (letrec ([,lhs ,ty ,bod1])
+			      ,bod2))
+			 env)]
+
+	  ;; EXPR HANDLING: NOW CONTAINER PRIMITIVES
+	  ;; ================================================================================	  
+	  ;; NOTE: these could throw away side effects when operating on object code!!!
+	  ;; DANGER! FIXME FIXME 
+	  ;; ================================================================================	  
+	  [(cons ,[a] ,[b])
+	   (if (and (available? a) (available? b))
+	       (let ([vala (getval a)]
+		     [valb (getval b)])
+		 ;; Can't stick code within a constant currently:
+		 (if (or (code? vala) (code? valb))
+		     `(cons ,a ,b)
+		     `(quote (,vala . ,valb))))
+	       `(cons ,a ,b))]
+
+	  
+	  ;; TODO: vector-ref.
+
+	  [(tupref ,ind ,len ,[tup])
+	   (if (container-available? tup)
+	       (match (code-expr (ASSERT code? (getval tup)))
+		 [(tuple ,args ...)
+		  (unless (eq? (length args) len)
+		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
+			   len `(tuple ,@args)))
+		  (list-ref args ind)]
+		 [,else (error 'static-elaborate:process-expr "implementation error, tupref case")])
+	       `(tupref ,ind ,len ,tup))]
+	  [(car ,[x]) 
+	   (if (container-available? x)
+	       (let ([val (getval x)])
+		 (if (code? val)
+		     (match (code-expr val)
+		       [(cons ,a ,b) a]
+		       [,x (error 'static-elaborate:process-expr "implementation error, car case: ~s" x)])
+		     `(quote ,(car val))))
+	       `(car ,x))]
+	  [(cdr ,[x]) 
+	   (if (container-available? x)
+	       (let ([val (getval x)])
+		 (if (code? val)		     
+		     (match (code-expr val)
+		       [(cons ,a ,b) b]		       
+		       [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
+		     `(quote ,(cdr val))))
+	       `(cdr ,x))]
+	  [(List:length ,[x])
+	   (if (container-available? x)
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     `(quote ,(length ls))
+		     `(List:length ,x)
+		     ))
+	       `(List:length ,x))]
+
+	  ;; TODO: This is too strict, we can get out elements even if the tail of the list is unknown.
+	  [(List:ref ,[x] ,[i])
+	   (if (and (available? i) (container-available? x))
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     (match i [(quote ,i) (list-ref ls i)])
+		     `(List:ref ,x ,i)
+		     ))
+	       `(List:ref ,x ,i))]
+
+	  ;; TODO: Only fires when the whole of A is available.
+	  ;; FIXME: We should pull out prefixes if we can...
+	  [(List:append ,[a] ,[b])
+	   (if (container-available? a)
+	       (let ([val (getlist a)])
+		 (if (list? val)
+		     (match val
+		       [() b]
+		       [(,hd . ,[tl]) `(cons ,hd ,tl)])
+		     (error 'static-elaborate:List:append "partially available first list... finish this case")
+		     ;`(List:append ,a ,b)
+		     ))
+	       `(List:append ,a ,b))]
+
+	  [(List:map ,[f] ,[ls])
+	   (ASSERT side-effect-free? f)
+	   (if (container-available? ls)
+	       (let ([val (getlist ls)])		 
+		 (if (code? val)
+		     (match (code-expr val)
+		       [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(List:map ,f ,b) env))]
+		       [,x (error 'static-elaborate:process-expr "implementation error, List:map case: ~s" x)]) 
+		     (match val
+		       [() ''()]
+		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
+		 )
+	       `(List:map ,f ,ls))]
+	
+	  ;; At meta-program type List:fold is fold RIGHT!!
+	  ;; Your program must tolerate left or right folds..
+	  [(List:fold ,[fn] ,[zer] ,[ls])
+	   (ASSERT side-effect-free? fn)
+
+	    (if (container-available? ls)
+		(let ([val (getlist ls)])
+		  (if (code? val)
+		      (match (code-expr val)
+			[(cons ,a ,b) `(app ,fn ,a ,(process-expr `(List:fold ,fn ,zer ,b) env))]
+			[,x (error 'static-elaborate:process-expr "implementation error, List:fold case: ~s" x)]) 
+		      (match val
+			[() zer]
+			[(,h . ,[t]) `(app ,fn ,h ,t)])))
+		`(List:fold ,fn ,zer ,ls))]
+  
+#;
+	  ;; Requires entire list be available:
+	  [(List:fold ,[fn] ,[zer] ,[ls])
+	   (ASSERT side-effect-free? fn)
+	   (inspect/continue
+	    (if (available? ls)
+	       (match val
+		 [() zer]
+		 [(,h . ,[t]) `(app ,fn ,t ,h)])
+	       `(List:fold ,fn ,zer ,ls)))]
+
+#;
+	  ;; Processes a prefix of the list:
+	  ;(f (f (f zer 1) 2) 3)
+	  ;(List:fold f ZER? (cons (f car ) cdr))
+	  [(List:fold ,[fn] ,[zer] ,[ls])
+	   (ASSERT side-effect-free? f)
+	   (if (container-available? ls)
+	       (let ([val (getlist ls)])		 
+		 (if (code? val)
+		     (match (code-expr val)
+		       [(cons ,a ,b) `(app ,fn ,(process-expr `(List:map ,f ,b) env))]
+		       [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)]) 
+		     (match val
+		       [() ]
+		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
+		 ))]
+	  
+	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
+	  [(unionList ,[x])
+	   (if (container-available? x)
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     `(unionN ,@ls)
+		     (begin 
+		       #;
+		       (when (regiment-verbose) 
+			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
+		       `(unionList ,x))
+		     ))
+	       ;; This is just a warning, it might be inside dead code.
+	       (begin 
+		 #;
+		 (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
+			     `(unionList ,x)
+			     (assq x env))
+		      `(unionList ,x))
+			       )]
+
+	  ;; [2007.08.12] Yet more unpleasant hackery.
+	  ;; We can conclude that containers are UNEQUAL based just on their lengths.
+	  ;; This is relevant to null comparisons.
+	  ;; DANGER!!! THIS DOESN'T VERIF THAT OPERANDS LACK SIDE EFFECTS BEFORE ELIMINATING THEM!
+	  [(wsequal? ,[a] ,[b])
+ 	   (cond
+	    [(and (available? a) (available? b)) `',(equal? (getval a) (getval b))]
+	    [(and (container-available? a) (container-available? b))
+	     (let ([alen (container-length a)]
+		   [blen (container-length b)])
+;	       (inspect `(alen blen: ,alen ,blen))
+	       (if (and alen blen (not (fx= alen blen)))
+		   (begin 
+		     (ASSERT side-effect-free? a)
+		     (ASSERT side-effect-free? b)
+		     ''#f)
+		   `(wsequal? ,a ,b)))]
+	    ;; Otherwise we can't conclude anything:
+	    [else `(wsequal? ,a ,b)])]
+
+
+	  ;; EXPR HANDLING: OTHER PRIMITIVES
+	  ;; ================================================================================	  
+
+	  ;; This is hackish... need to work out all the cases.
+	  [(show ',x)
+	   (cond 
+	    [(string? x) `',x]
+	    [(or (fixnum? x) (flonum? x)) `',(number->string x)]
+	    [else `(show ',x)])]
+
+	  ;; We inline the arguments.  After this pass this is a special construct.
+	  ;; This over-rules our general behavior of not inlining complex constants.
+	  [(,frgn ,[name] ,[files]) (guard (memq frgn '(foreign foreign_source)))
+	   `(,frgn ,(if (available? name)         `',(getval name) name)
+		   ,(if (available? files)        `',(getval files) files))]
+	  
+	  ;; All other computable prims:
+          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
+	   
+	   ;; Trying to lift out letrecs:
+	   (cond 
+
+	    [(and 		
+		(andmap available? rand*)
+
+	       ;(assq prim computable-prims)
+		;; Exceptions:
+		(not (assq prim wavescript-effectful-primitives))
+		(not (assq prim wavescript-stream-primitives))
+		(not (assq prim regiment-distributed-primitives))
+		
+		;; TEMP! -- execute higher order prims if their functions are ready:
+		(if (assq prim higher-order-primitives)
+		    (andmap fully-available? rand*) #t)
+
+		;; Special exceptions:
+		;; We prefer not to Array:make in the object code!
+		;; (Kind of inconsistent that we *do* currently do List:make.)
+		(not (memq prim '(show cons gint 
+				       Array:makeUNSAFE Array:make Array:fold Array:map
+				       HashTable:make
+				       m_invert
+				       Mutable:ref deref
+
+				       ;; Alas, these don't have different representations for the constants, 
+				       ;; so we shouldn't do it statically:
+				       floatToDouble doubleToFloat
+				       intToInt16 intToInt64
+				       int16ToInt int64ToInt
+
+				       foreign foreign_box foreign_source
+				       )))
+		)
+	     (do-prim prim (map getval rand*) env)]
+	    [else `(,prim ,@rand*)]
+	    )]
+
+	  ;; EXPR HANDLING: A FEW MORE SPECIAL FORMS AT THE END:
+	  ;; ================================================================================
+
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
@@ -772,241 +1102,6 @@
 				     lhs* type* newrhs* occurs))])
 	     ;(disp "OCCURS: " lhs* occurs)
 	     `(letrec ,newbinds ,newbod)))]
-         
-	  ;; Here we do computation if the arguments are available:
-          [(if ,test ,[conseq] ,[altern])
-	   ;(disp "CONDITIONAL: " test)
-	   (let ([newtest (process-expr test env)])
-	     (if (available? newtest)  
-		 (begin 
-		   (if (getval newtest) conseq  altern))		 
-		 `(if ,newtest ,conseq ,altern))
-	     )]
-	  
-	  ;; TODO: We don't yet statically elaborate case statements....
-	  [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
-       	  
-	  ;; This becomes a quoted constant:
-	  [(tuple) ''UNIT]
-	  [(tuple ,[args] ...) `(tuple ,@args)]
-	  [(unionN ,[args] ...) `(unionN ,@args)]
-	  [(vector ,[x*] ...)
-	   (if (andmap available? x*)
-	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
-	       (let ([vals (map getval x*)])
-		 ;; [2007.07.27] Fixing this, not generating quoted constant at all:
-		 ;`(vector . ,x*)		 
-		 (if (ormap code? vals)
-		     ;; Can't stick code within a constant:
-		     `(vector . ,x*)
-		     `(quote ,(list->vector vals))
-		     ))
-	       `(vector . ,x*))]
-
-	  [(cons ,[a] ,[b])
-	   (if (and (available? a) (available? b))
-	       (let ([vala (getval a)]
-		     [valb (getval b)])
-		 ;; Can't stick code within a constant currently:
-		 (if (or (code? vala) (code? valb))
-		     `(cons ,a ,b)
-		     `(quote (,vala . ,valb))))
-	       `(cons ,a ,b))]
-	  
-	  ;; TODO: vector-ref.
-
-	  ;; First we handle primitives that work on container types: 
-	  ;; NOTE: these could throw away side effects when operating on object code!!!
-	  ;; DANGER! FIXME FIXME 
-	  ;; ================================================================================
-	  [(tupref ,ind ,len ,[tup])
-	   (if (container-available? tup)
-	       (match (code-expr (ASSERT code? (getval tup)))
-		 [(tuple ,args ...)
-		  (unless (eq? (length args) len)
-		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
-			   len `(tuple ,@args)))
-		  (list-ref args ind)]
-		 [,else (error 'static-elaborate:process-expr "implementation error, tupref case")])
-	       `(tupref ,ind ,len ,tup))]
-	  [(car ,[x]) 
-	   (if (container-available? x)
-	       (let ([val (getval x)])
-		 (if (code? val)
-		     (match (code-expr val)
-		       [(cons ,a ,b) a]
-		       [,x (error 'static-elaborate:process-expr "implementation error, car case: ~s" x)])
-		     `(quote ,(car val))))
-	       `(car ,x))]
-	  [(cdr ,[x]) 
-	   (if (container-available? x)
-	       (let ([val (getval x)])
-		 (if (code? val)		     
-		     (match (code-expr val)
-		       [(cons ,a ,b) b]		       
-		       [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
-		     `(quote ,(cdr val))))
-	       `(cdr ,x))]
-	  [(List:length ,[x])
-	   (if (container-available? x)
-	       (let ([ls (getlist x)])
-		 (if (list? ls)
-		     `(quote ,(length ls))
-		     `(List:length ,x)
-		     ))
-	       `(List:length ,x))]
-
-	  ;; [2007.08.12] Yet more unpleasant hackery.
-	  ;; We can conclude that containers are UNEQUAL based just on their lengths.
-	  ;; This is relevant to null comparisons.
-	  ;; DANGER!!! THIS DOESN'T VERIF THAT OPERANDS LACK SIDE EFFECTS BEFORE ELIMINATING THEM!
-	  [(wsequal? ,[a] ,[b])
- 	   (cond
-	    [(and (available? a) (available? b)) `',(equal? (getval a) (getval b))]
-	    [(and (container-available? a) (container-available? b))
-	     (let ([alen (container-length a)]
-		   [blen (container-length b)])
-	       (inspect `(alen blen: ,alen ,blen))
-	       (if (and alen blen (not (fx= alen blen)))
-		   (begin 
-		     (ASSERT side-effect-free? a)
-		     (ASSERT side-effect-free? b)
-		     ''#f)
-		   `(wsequal? ,a ,b)))]
-	    ;; Otherwise we can't conclude anything:
-	    [else `(wsequal? ,a ,b)])]	  
-
-	  
-	  ;; TODO: This is too strict, we can get out elements even if the tail of the list is unknown.
-	  [(List:ref ,[x] ,[i])
-	   (if (and (available? i) (container-available? x))
-	       (let ([ls (getlist x)])
-		 (if (list? ls)
-		     (match i [(quote ,i) (list-ref ls i)])
-		     `(List:ref ,x ,i)
-		     ))
-	       `(List:ref ,x ,i))]
-
-	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
-	  [(unionList ,[x])
-	   (if (container-available? x)
-	       (let ([ls (getlist x)])
-		 (if (list? ls)
-		     `(unionN ,@ls)
-		     (begin 
-		       #;
-		       (when (regiment-verbose) 
-			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
-		       `(unionList ,x))
-		     ))
-	       ;; This is just a warning, it might be inside dead code.
-	       (begin 
-		 #;
-		 (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
-			     `(unionList ,x)
-			     (assq x env))
-		      `(unionList ,x))
-			       )]
-
-	  [(List:map ,[f] ,[ls])
-	   (if (container-available? ls)
-	       (let ([val (getlist ls)])		 
-		 (if (code? val)
-		     (match (code-expr val)
-		       [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(List:map ,f ,b) env))]
-		       [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)]) 
-		     (match val
-		       [() ''()]
-		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
-		 )
-	       `(List:map ,f ,ls))]
-
-
-	  ;; This is hackish... need to work out all the cases.
-	  [(show ',x)
-	   (cond 
-	    [(string? x) `',x]
-	    [(or (fixnum? x) (flonum? x)) `',(number->string x)]
-	    [else `(show ',x)])]
-
-	  ;; ================================================================================
-
-	  ;; We inline the arguments.  After this pass this is a special construct.
-	  ;; This over-rules our general behavior of not inlining complex constants.
-	  [(,frgn ,[name] ,[files]) (guard (memq frgn '(foreign foreign_source)))
-	   `(,frgn ,(if (available? name)         `',(getval name) name)
-		   ,(if (available? files)        `',(getval files) files))]
-
-
-	  
-	  ;; All other computable prims:
-          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
-	   
-	   ;; Trying to lift out letrecs:
-	   (cond 
-
-	    ;; DANGER: This needs to be audited.
-	    ;; We might have freshness problems!!!!!!
-	    [(list-index letrec? rand*) =>
-	     (lambda (ind) 
-	       ;; For now only do it for ONE rand
-	       ;(ASSERT (fx= 1 (filter letrec? rand*)))
-	       (let loop ([rand* rand*] [argacc ()] [bindacc ()])
-		 (if (null? rand*)
-		     (begin
-		       (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
-		       ;(inspect (list rand* argacc bindacc))
-		       (if (null? bindacc) 
-			   `(,prim ,@(reverse argacc))
-			   `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
-		     (match (peel-annotations (car rand*))
-		       [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
-			(ASSERT (andmap side-effect-free? rhs*))
-			;; Freshness: rename these bindings:
-			(let* ([new-lhs* (map unique-name lhs*)]
-			       [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
-			       [new-rhs* (map convert rhs*)]
-			       [new-bod (convert bod)])
-			  (loop (cdr rand*)
-				(cons new-bod argacc)
-				(append (reverse (map list new-lhs* ty* new-rhs*)) bindacc)))]
-		       [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
-		     )))]
-	    [(and 		
-		(andmap available? rand*)
-
-	       ;(assq prim computable-prims)
-		;; Exceptions:
-		(not (assq prim wavescript-effectful-primitives))
-		(not (assq prim wavescript-stream-primitives))
-		(not (assq prim regiment-distributed-primitives))
-		
-		;; TEMP! -- execute higher order prims if their functions are ready:
-		(if (assq prim higher-order-primitives)
-		    (andmap fully-available? rand*) #t)
-
-		;; Special exceptions:
-		;; We prefer not to Array:make in the object code!
-		;; (Kind of inconsistent that we *do* currently do List:make.)
-		(not (memq prim '(show cons gint 
-				       Array:makeUNSAFE Array:make Array:fold Array:map
-				       HashTable:make
-				       m_invert
-				       Mutable:ref deref
-
-				       ;; Alas, these don't have different representations for the constants, 
-				       ;; so we shouldn't do it statically:
-				       floatToDouble doubleToFloat
-				       intToInt16 intToInt64
-				       int16ToInt int64ToInt
-
-				       foreign foreign_box foreign_source
-				       )))
-		)
-	     (do-prim prim (map getval rand*) env)]
-	    [else `(,prim ,@rand*)]
-	    )]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
 	  [(construct-data ,tc ,[rand*] ...) `(construct-data ,tc ,@rand*)]

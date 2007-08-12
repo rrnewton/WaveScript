@@ -7,7 +7,8 @@ include "stdlib.ws";
 // NOTE: THESE OLD FILES ARE 24KHZ!!
 
 // These are the nodes we have data for.
-nodenums = [100, 103, 104, 108, 109, 112, 113]
+//nodenums = [100, 103, 104, 108, 109, 112, 113]
+nodenums = [100, 103]
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 //winsize = 16384;
 winsize = 16;
