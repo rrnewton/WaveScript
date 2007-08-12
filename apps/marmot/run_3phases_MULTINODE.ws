@@ -10,8 +10,9 @@ include "stdlib.ws";
 //nodenums = [100, 103, 104, 108, 109, 112, 113]
 nodenums = [100, 103]
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+winsize = 4 * 4096;
 //winsize = 16384;
-winsize = 16;
+//winsize = 16;
 
 fun read_audio(id) {
   fn = "multinode48khz/"++id++".raw";
@@ -42,8 +43,11 @@ alldata = map(read_audio, nodenums)
 
 include "marmot_first_phase.ws";
 
-BASE <- 
-  detector()
+let (_ch1,ch2,ch3,ch4) = List:ref(alldata, 0);
+
+ch1 = snoop_every(100, fun (ind,x) ("Reading data window #: "++ind + 1`gint), _ch1);
+
+BASE <- detector((ch1,ch2,ch3,ch4))
 
 /*
 

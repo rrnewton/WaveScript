@@ -107,6 +107,8 @@ COUNTUP         :: Int -> S Int;
 
   // This lets you eavesdrop on a stream while passing all data through:
 snoop           :: (a, Stream b) -> Stream b;
+  // This lets you call a progress report every N samples of a stream.
+snoop_every     :: (Int, ((Int64, a) -> String), Stream a) -> Stream a;
 
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
@@ -626,6 +628,20 @@ fun snoop(str, strm) {
     emit x;
   }
 }
+
+fun snoop_every(everyN, fn, strm) {
+  iterate x in strm {
+    state { cnt = 0;
+            total = gint(0);
+	  }
+    cnt += 1;
+    if cnt == everyN
+    then { println(fn(total,x)); cnt := 0 };
+    total += intToInt64(1);
+    emit x;
+  }
+}
+
 
 zip2_sametype = fun (s1,s2) {
   slist = [s1,s2];
