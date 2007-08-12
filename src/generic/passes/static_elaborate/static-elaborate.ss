@@ -326,7 +326,8 @@
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
 
-	(wsequal? equal?) (null? null?) (pair? pair?) ;number? 
+;	(wsequal? equal?) 
+	(null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
 
 	(GETENV ,(lambda (env v)
@@ -583,7 +584,26 @@
 
 			  [,else #f]
 			  )
-		    ))]		 
+		    ))]
+		 
+		 [container-length
+		  (lambda (x)
+		    (define (incr x) (if x (fx+ 1 x) #f))
+		    (if (container-available? x)
+			(let ([val (getval x)])
+			  (if (code? val)
+			      (match (code-expr val) 
+				[(cons ,a ,b) (incr (container-length b))]
+				[(tuple ,args ...)  (length args)]
+				[(vector ,args ...) (legnth args)]
+				[,oth #f]
+				)
+			      (match val
+				[(,x* ...) (length x*)]
+				[#(,x* ...) (length x*)]
+				;;[,other (error 'getlist "not a list-constructor: ~s" other)])
+				)))
+			#f))]
 
 		 [getval ;; If available, follow aliases until you have a real value expression:
 		  (outer-getval env)]
@@ -807,7 +827,7 @@
 	   (if (container-available? x)
 	       (let ([val (getval x)])
 		 (if (code? val)		     
-		     (match val
+		     (match (code-expr val)
 		       [(cons ,a ,b) b]		       
 		       [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
 		     `(quote ,(cdr val))))
@@ -820,6 +840,25 @@
 		     `(List:length ,x)
 		     ))
 	       `(List:length ,x))]
+
+	  ;; [2007.08.12] Yet more unpleasant hackery.
+	  ;; We can conclude that containers are UNEQUAL based just on their lengths.
+	  ;; This is relevant to null comparisons.
+	  ;; DANGER!!! THIS DOESN'T VERIF THAT OPERANDS LACK SIDE EFFECTS BEFORE EVALUATING THEM!
+
+	  [(wsequal? ,[a] ,[b])
+ 	   (cond
+	    [(and (available? a) (available? b)) `',(equal? (getval a) (getval b))]
+	    [(and (container-available? a) (container-available? b))
+	     (let ([alen (container-length a)]
+		   [blen (container-length b)])
+	       (inspect `(alen blen: ,alen ,blen))
+	       (if (and alen blen (not (fx= alen blen)))
+		   ''#f
+		   `(wsequal? ,a ,b)))]
+	    ;; Otherwise we can't conclude anything:
+	    [else `(wsequal? ,a ,b)])]	  
+
 	  
 	  ;; TODO: This is too strict, we can get out elements even if the tail of the list is unknown.
 	  [(List:ref ,[x] ,[i])

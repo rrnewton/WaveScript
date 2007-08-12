@@ -15,4 +15,5 @@ include "marmot2.ws";
 //doas = FarFieldDOAb(synced, sensors);
 doas = oneSourceAMLTD(synced, micgeometry, 4096);
 
-BASE <- (doas)
+BASE <- gnuplot_array_stream(doas)
+/* BASE <- (doas) */

@@ -108,6 +108,7 @@
     (define Operator
       (lambda (entry)
 	(match entry
+
 	  [(iterate (name ,name) (output-type ,ty)
 	    (code (iterate (let ([,lhs* ,ty* ,rhs*] ...)
 			     (lambda (,x ,vq) (,ty1 ,ty2) ,bod)) ,_))
@@ -140,7 +141,17 @@
 	  [(_merge (name ,name) (output-type ,ty) (code ,_) (incoming ,astrm ,bstrm) (outgoing ,down* ...))
 	   (values 
 	    (list "\n  (* Merge operator: *)\n"
-		 (obj 'make-fun-binding name '("x") ((Emit down*) "x") ))
+		  (obj 'make-fun-binding name '("x") ((Emit down*) "x") ))
+	    ())]
+
+	  ;; These just fizzle for mlton... passes data through.
+	  [(,gnuplot (name ,name) (output-type ,ty)
+		     (code ,_) (incoming ,up)  (outgoing ,down* ...))
+	   (guard (memq gnuplot '(gnuplot_array_stream gnuplot_sigseg_stream
+ 			          gnuplot_array_stream2d gnuplot_sigseg_stream2d)))
+	   (values 
+	    (list "\n  (* Gnuplot operator (does nothing currently): *)\n"
+		  (obj 'make-fun-binding name '("x") ((Emit down*) "x") ))
 	    ())]
 	  )))
 

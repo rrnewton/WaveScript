@@ -3,9 +3,8 @@ include "stdlib.ws";
 
 // ================================================================================
 
+// NOTE: THESE OLD FILES ARE 24KHZ!!
 
-//marmotfile = "/archive/4/marmots/brief.raw";
-//marmotfile = "/archive/4/marmots/real_100.raw";
 marmotfile =
   if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
   if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
@@ -13,7 +12,7 @@ marmotfile =
   //  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
-samp_rate = 24000.0; // HACK - we should get this from the stream/timebase/sigseg
+samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
 winsize = 16384;
 // Old data files are 24 khz...
@@ -21,10 +20,11 @@ driver = timer(samp_rate * 4.0 / winsize`i2f);
 chans = (readFile(marmotfile, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
 
 // TODO: Try oversampling this input stream to 48 khz to make the detector match the live data:
-//chans48 = ...
+// Quite inefficient.
+chans48 = window(iterate samp in dewindow(chans) { emit samp; emit samp }, winsize*2);
 
 fun onechan(offset)
-  iterate w in chans {
+  iterate w in chans48 {
     size = w`width / 4;
     assert_eq("source stream multiple of 4", w`width, size * 4);
     arr = Array:build(size, fun (i) (w[[(i*4) + offset]]));

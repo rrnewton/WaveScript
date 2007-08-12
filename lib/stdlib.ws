@@ -49,6 +49,7 @@ FIFO:empty      ::  Queue t -> Bool;
 FIFO:enqueue    :: (Queue t, t) -> ();
 FIFO:dequeue    ::  Queue t -> t;
 
+// WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
 List:map2       :: ((a,b) -> c, List a, List b) -> List c;
 List:mapi       :: ((Int,a) -> b, List a) -> List b;
