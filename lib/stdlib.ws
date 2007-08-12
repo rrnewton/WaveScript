@@ -1349,16 +1349,15 @@ fun Curry:fold1(f)  fun(x) List:fold1(f,x)
 
 // Some standard type definitions.
 
-/*
-uniontype Union2 a b       = Oneof2 a | Twoof2 b;
+uniontype Union2 a b       = Left a | Right b;
 uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;
 uniontype Union4 a b c d   = Oneof4 a | Twoof4 b | Threeof4 c | Fourof4 d;
 uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Fiveof5 e;
 
 
 fun union2(s1,s2) 
-  merge(stream_map(Oneof2,s1),
-	stream_map(Twoof2,s2))
+  merge(stream_map(Left,s1),
+	stream_map(Right,s2))
 
 fun union3(s1,s2,s3) 
   merge(stream_map(Oneof3,  s1),
@@ -1377,8 +1376,6 @@ fun union5(s1,s2,s3,s4,s5)
   merge(stream_map(Threeof5, s3),
   merge(stream_map(Fourof5,  s4),
         stream_map(Fiveof5,  s5)))))
-*/
-
 
 /*
 

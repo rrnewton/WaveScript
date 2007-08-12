@@ -561,10 +561,9 @@
   (lambda (datum)
     (cond
      ;; This indicates that we have a forall a.a value...
-;     [(eq? datum 'BOTTOM) 
-;      (wrap "(print_endline \"Tried to evaluate BOTTOM value!\"; wserror \"BOTTOM\")")] ;; Should probably generate an error.
+     [(eq? datum 'BOTTOM) 
+      (wrap "(print_endline \"Tried to evaluate BOTTOM value!\"; wserror \"BOTTOM\")")] ;; Should probably generate an error.
 
-     [(eq? datum 'BOTTOM) "()"]
      [(eq? datum 'UNIT) "()"]     
      [(null? datum) "[]"]
      [(eq? datum #t) "true"]

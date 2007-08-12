@@ -80,14 +80,15 @@ result = iterate (x in zipped) {
 
     first := false;
     println("");
-
-    /*
+    
+    {
     print("Type Unions: ");
-    case x {
-      Oneof2(x): println("Got left! ")
-      Twoof2(y): println("Got right! ")
+      x = Left(3);
+      case x {
+        Left(x): println("Got left! ")
+        Right(y): println("Got right! ")
+      }
     };
-    */
 
     {
        using List;
