@@ -164,7 +164,8 @@
    (lambda (p _)
      (match p
        [(,lang '(program ,e ,meta* ... (Stream ,t)))
-	(let ([decls (Expr e '())])
+	(let ([union-types (cdr (ASSERT (assq 'union-types meta*)))]
+	      [decls (Expr e '())])
 
 ;	  (define ___ (inspect decls))
 
@@ -258,7 +259,9 @@
 		    (operators  . ,op*)
 ;		    (iterates  . ,iter*)
 ;		    (unions    . ,union*)
-		    (sink ,basename ,t))))]))]
+		    (sink ,basename ,t)
+		    (union-types . ,union-types)
+		    )))]))]
   )
 
 

@@ -92,6 +92,8 @@
 
 	  [(wscase ,x [,name* ,fun*] ...)
 	   (obj 'WScase x name* fun* emitter)]
+	  [(construct-data ,name ,[arg]) 
+	   (obj 'make-app (obj 'VariantName name) (list arg))]
 
 	  [(assert-type ,t ,[x]) 
            ;;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)

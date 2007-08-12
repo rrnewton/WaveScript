@@ -159,6 +159,9 @@
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
+    ;; These are used just for the type variables of user Sum types.
+    [(quote ,v) (ASSERT symbol? v) (++ "'" (symbol->string v))]
+
     [Float     "Real32.real"]
     [Double    "Real64.real"]
     
@@ -173,13 +176,13 @@
 
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
-
+  
     [(Pointer ,_) "MLton.Pointer.t"]
 
     [Timebase "SigSeg.timebase"] ;; This will change.
 
     [(Sum ,name ,[args] ...)
-     (list "(" (apply make-tuple-code args) " " (symbol->string name)"")]
+     (list "(" (apply make-tuple-code args) " " (SumName name) ")")]
 
     [#() "unit "]
 
@@ -199,6 +202,15 @@
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-mlton:Type "Not handled yet.. ~s" other)]))
 
+(trace-define (TypeDecl td)
+  (match td
+    [((,name ,[Type -> args] ...) [,tag* ,ty*] ...)
+     (list "datatype "(apply make-tuple-code args)" "(SumName name)" = \n  "
+	   (insert-between "  |\n  "
+	    (map (lambda (tag ty)
+		   (list (VariantName tag) " of " (Type ty)))
+	     tag* ty*))
+	   ";\n")]))
 
 (define flush "TextIO.flushOut TextIO.stdOut")
 
@@ -242,6 +254,8 @@
     [(Array ,[t]) (make-fun '("a") (list "(\"#[\" ^ concat_wsep \", \" (List.map "t" (arrayToList a)) ^ \"]\")"))]
 
     [(Pointer ,_) "(fn _ => \"<pointer>\")"]
+
+    [(Sum ,name ,args ...) "(fn _ => \"<uniontype>\")"]
 
     ;; Just print range:
     [(Sigseg ,t) 
@@ -328,7 +342,9 @@
 		      (sources ,[Source -> src* state1** init1*] ...)
 		      (operators ,[Operator -> oper* state2**] ...)
 ;		      (unions ,[Union -> union*] ...)
-		      (sink ,base ,basetype)))
+		      (sink ,base ,basetype)
+		      (union-types ,[TypeDecl -> user-type-decls*] ...)
+		      ))
 
        ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
        (let ([tmpfile "__temp__inlinedC.c"])
@@ -358,6 +374,8 @@
 			   
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
+
+			   user-type-decls*
 
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
@@ -867,14 +885,22 @@
      (for-each add-file! files)
      `(" _import \"",cname"\" : ",(Type ty)";\n")]))
 
-#;
-(define (WScase x names funs emitter)
-  (let ([x (Expr x emitter)])
-    
-    (list "case " x ""
-	  
-	  ))
-  )
+
+(define (SumName s) (++ "ty_" (symbol->string s)))
+(define (VariantName s) (symbol->string s))
+
+(trace-define (WScase x names funs emitter)
+  (define (myExpr x) (Expr x emitter))
+  (let ([x (myExpr x)])
+    (list "case " x " of\n"
+	  (insert-between "\n | "
+	    (map (lambda (name fun)
+		   (match fun
+		     [(lambda (,[Var -> v*] ...) ,ty* ,[myExpr -> bod])
+		      (list (VariantName name) " "(apply make-tuple-code v*) " => " bod)
+		      ]))
+	      names funs))
+	  )))
 
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
@@ -1036,6 +1062,7 @@
         make-letrec
 	make-tuple-code 
 	make-fun
+	make-app
 	make-for
 	make-while
 	make-fun-binding
@@ -1044,6 +1071,7 @@
 	DispatchOnArrayType
 	Type ReadFile
 	ForeignApp ForeignEntry
+	WScase SumName VariantName
 	)
      (cdr args))))
 
