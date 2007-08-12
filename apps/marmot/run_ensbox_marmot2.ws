@@ -6,6 +6,8 @@ include "ensbox_logger.ws";
 include "stdlib.ws";
 include "netsource.ws";
 
+samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+
 synced_ints = netsub_4sigseg("192.168.3.167", "detections"); 
 synced = stream_map(fun (x) 
             map(fun (y) sigseg_map(int16ToFloat,y), x), 

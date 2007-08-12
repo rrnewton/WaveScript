@@ -5,7 +5,7 @@ c_vxp_get_tb :: () -> Timebase =
 c_isnull :: (Pointer "void *") -> Bool = 
   foreign("vxp_isnull", []);
 
-fun vxp_c_interface() {
+fun vxp_c_interface(spill_mode) {
 "
 #include <devel/wavescope/wavescope_ensbox.h>
 #include <pthread.h>
@@ -26,6 +26,8 @@ struct queued_data {
 int __vxp_tb = 0;
 pthread_mutex_t arg_mutex;
 pthread_cond_t arg_cond;
+FILE *remote_stream = NULL;
+int spill_mode = "++spill_mode++";
 
 int vxp_get_tb() { return __vxp_tb; }
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
@@ -52,12 +54,71 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
   	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
 	}
 
+	struct ws_audio_chunk_hdr hdr = {
+	  payload_length_bytes: qd->length,
+	  node_id: my_node_id,
+          sample_rate: 48000,  // should be from global??
+	  channels: 4,
+	  bytes_per_channel: 2,
+	  sample_start: samples
+        };	
+	double orig_gps = gps;
+	double orig_cpu = cpu;
+	
+	if (spill_mode) {
+	  memmove(hdr.magic, WS_AUDIO_MAGIC, sizeof(hdr.magic));
+	  double_to_tv(&(hdr.cpu_start), cpu);
+	  double_to_tv(&(hdr.gps_start), gps);
+        }
+
 	samples += qd->count;
 	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
   	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
 	}
 	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
   	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	}
+
+	if (spill_mode) {
+	  double_to_tv(&(hdr.cpu_end), cpu);
+	  double_to_tv(&(hdr.gps_end), gps);
+
+	  if (remote_stream == NULL) {
+	    char fn[256];
+	    if (orig_gps != 0)
+	      sprintf(fn, \"/remote/vxp_%d_%.6llf.wsaudio\",
+	              my_node_id, orig_gps);
+	    else
+	      sprintf(fn, \"/remote/vxp_%d_%.6llf_NOGPS.wsaudio\",
+	              my_node_id, orig_cpu);
+	    int fd = remote_open(fn, \"\");
+	    if (fd < 0) {
+	      elog(LOG_WARNING, \"Failed to open remote connection: %m\");
+            }
+	    else {
+	      remote_stream = fdopen(fd, \"rw\");
+	    }
+	  }
+
+	  if (remote_stream) {	  
+	    int status = fwrite(&hdr, sizeof(hdr), 1, remote_stream);
+	    if (status != sizeof(hdr)) {
+	      elog(LOG_WARNING, \"Remote connection failed (H): (%d) %m\", status);	      
+	      fclose(remote_stream);
+	      remote_stream = NULL;
+	    } 
+	  }
+
+	  if (remote_stream) {	  
+	    int status = fwrite(qd->buf, qd->length, 1, remote_stream);
+	    if (status != qd->length) {
+	      elog(LOG_WARNING, \"Remote connection failed: (%d) %m\", status);	      
+	      fclose(remote_stream);
+	      remote_stream = NULL;
+	    } 
+	  }
+
+	  if (remote_stream) fflush(remote_stream);
 	}
 
 	/* upcall to wavescript */
@@ -183,8 +244,8 @@ fun nullsafe_ptrToArray(p, len)
 
 
 //vxp_source :: () -> List (Stream (Sigseg Int16));
-fun vxp_source_init() {
-  ccode = inline_C(vxp_c_interface(), "__initvxp");
+fun vxp_source_init(spill_mode) {
+  ccode = inline_C(vxp_c_interface(spill_mode), "__initvxp");
   src = (foreign_source("__vxpentry", []) :: Stream (Pointer "int16_t*" * Int * Int64));
   interleaved = iterate (p,len,counter) in src {
     // note: len and counter are measured in 4 channel samples!

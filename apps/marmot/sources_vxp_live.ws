@@ -23,7 +23,7 @@ include "netsource.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
-inter = vxp_source_init();
+inter = vxp_source_init(0);
 ch1i = degap(vxp_source_stream(inter, 0),0`gint);
 ch2i = degap(vxp_source_stream(inter, 1),0`gint);
 ch3i = degap(vxp_source_stream(inter, 2),0`gint);
