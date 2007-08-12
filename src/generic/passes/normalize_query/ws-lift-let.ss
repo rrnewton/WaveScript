@@ -130,7 +130,8 @@
     (define process-expr
       (lambda (x fallthru)
 	(match x
-
+	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
+	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
 
 	  ;; Ascriptions are redundant right within the RHS:
 	  ;; But we leave them for primitives:
@@ -164,6 +165,7 @@
 	   (process-expr 
 	    `(let ([,v2 ,ty2 ,e2]) (let ([,v ,ty (assert-type ,ty3 ,rhs)]) ,bod))
 	    fallthru)]
+
 	  ;; Lifting out begins too.
 	  [(let ([,v ,ty (begin ,e1 ,e2 ,rest ...)]) ,bod)
 	   (process-expr 
@@ -171,12 +173,12 @@
 	    fallthru)]
 	  ;; Otherwise can't lift here:
 	  [(let ([,v ,ty ,[rhs]]) ,[bod]) `(let ([,v ,ty ,rhs]) ,bod)]
+
+	  [(let () ,[bod]) bod]
 	  [(let . ,_) (error 'ws-lift-let "unhandled let: ~s" `(let . ,_))]
 
-
 	  [(begin ,[e])  e]
-	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
-	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+
 	  [,oth (fallthru oth)])))
     ;; Assumes lets only bind one variable (except for iterates)
     [Expr process-expr]

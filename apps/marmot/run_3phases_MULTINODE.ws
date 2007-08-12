@@ -28,7 +28,7 @@ fun read_audio(id) {
   };
   
   //  (onechan(0), onechan(1), onechan(2), onechan(3))  
-  [onechan(0), onechan(1), onechan(2), onechan(3)]
+  (onechan(0), onechan(1), onechan(2), onechan(3))
 }
 
 // When we're not live we just print log messages to the stream.
@@ -36,17 +36,26 @@ fun log(l,s) println(s)
 
 alldata = map(read_audio, nodenums)
 
-BASE <- unionList(List:fold1(List:append, alldata))
+//BASE <- unionList(List:fold1(List:append, alldata))
 
 // ================================================================================
 
-/*
-
 include "marmot_first_phase.ws";
+
+BASE <- 
+  detector()
+
+/*
 
 synced = stream_map(fun (x) 
             map(fun (y) sigseg_map(int16ToFloat,y), x), 
 	    synced_ints);
+
+
+
+// ================================================================================
+
+
 
 include "marmot2.ws";
 include "marmot_heatmap.ws";

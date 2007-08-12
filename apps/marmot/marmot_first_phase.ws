@@ -150,26 +150,31 @@ fun detect(scorestrm) {
   }
 }
 
-ch1f = deep_stream_map(int16ToFloat, ch1i);
-
-// 96 samples are ignored between each 32 used:
-rw1 = rewindow(ch1f, 32, 96);
-
-//hn = smap(hanning, rw1);
-hn = hanning(rw1);
-
 fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase);
 
-wscores :: Stream (Float * Int64 * Int64);
-wscores = stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
-//wscores = stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end), hn);
+// ================================================================================
 
-detections = detect(wscores);
+fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
-d2 = iterate (d in detections) {
-  let (flag,_,_) = d;
-  if flag then log(1,"Detection at "++show(d)++"\n");
-  emit d;
-};
+  ch1f = deep_stream_map(int16ToFloat, ch1i);
 
-synced_ints = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);
+  // 96 samples are ignored between each 32 used:
+  rw1 = rewindow(ch1f, 32, 96);
+
+  //hn = smap(hanning, rw1);
+  hn = hanning(rw1);
+
+  wscores :: Stream (Float * Int64 * Int64) = 
+    stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
+
+  detections = detect(wscores);
+
+  d2 = iterate (d in detections) {
+    let (flag,_,_) = d;
+    if flag then log(1,"Detection at "++show(d)++"\n");
+    emit d;
+  };
+
+  synced_ints = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);
+  synced_ints
+}

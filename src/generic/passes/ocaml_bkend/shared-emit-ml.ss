@@ -109,26 +109,37 @@
       (lambda (entry)
 	(match entry
 
-	  [(iterate (name ,name) (output-type ,ty)
-	    (code (iterate (let ([,lhs* ,ty* ,rhs*] ...)
-			     (lambda (,x ,vq) (,ty1 ,ty2) ,bod)) ,_))
-	    (incoming ,up)
-	    (outgoing ,down* ...))
-	   (let* ([emitter (Emit down*)])
-	     (values
-	     ;; The first return value is binding-text for the function:
-	      `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
-		,(obj 'make-fun-binding name 
-		    (list (list "("(Var x)" : "(obj 'Type ty1)")"))
-		    (indent (Expr bod emitter) "    ")))
+	  [(iterate (name ,name) 
+		    (output-type ,ty)
+		    (code (iterate ,itercode ,_))
+		    (incoming ,up)
+		    (outgoing ,down* ...))
+	   
+	   (define (loop itercode)
+	     (match itercode 
+	       [(let ([,lhs* ,ty* ,rhs*] ...) (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
+		(let* ([emitter (Emit down*)])
+		  (values
+		   ;; The first return value is binding-text for the function:
+		   `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+		     ,(obj 'make-fun-binding name 
+			   (list (list "("(Var x)" : "(obj 'Type ty1)")"))
+			   (indent (Expr bod emitter) "    ")))
 
-	     ;; The second return value is a list of bindings for iterator state:
-	      (map make-bind 
-	       `([,(Var vq) #() "()"]
-		 ,@(map (lambda (lhs ty rhs) 
-			  (list (Var lhs) ty (Expr rhs emitter)))
-		     lhs* ty* rhs*)))
-	     ))]
+		   ;; The second return value is a list of bindings for iterator state:
+		   (map make-bind 
+		     `([,(Var vq) #() "()"]
+		       ,@(map (lambda (lhs ty rhs) 
+				(list (Var lhs) ty (Expr rhs emitter)))
+			   lhs* ty* rhs*)))
+		   ))]
+	       [(lambda (,x ,vq) (,ty1 ,ty2) ,bod)
+		(warning 'emit-ml "got iterate without state-let, standardize-letrec failed")
+		(loop `(let () (lambda (,x ,vq) (,ty1 ,ty2) ,bod)))
+		]))
+	   (loop itercode)]
+
+	  [(iterate . _) (inspect (cons "EMIT ML UNMATCHED ITERATE" (cons 'iterate _)))]
 	  
 	  [(__readFile (name ,name) (output-type ,ty) (code ,c) (incoming ,up* ...) (outgoing ,down* ...))
 	   (values (obj 'ReadFile name c up* down*) ())]

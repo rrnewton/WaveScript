@@ -781,7 +781,7 @@
 	   (let loop ([rand* rand*] [argacc ()] [bindacc ()])
 	     (if (null? rand*)
 		 (begin
-		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
+;		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
 					;(inspect (list rand* argacc bindacc))
 		   (if (null? bindacc) 
 		       `(,prim ,@(reverse argacc))

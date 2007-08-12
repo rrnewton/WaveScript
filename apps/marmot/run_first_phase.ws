@@ -98,7 +98,6 @@ In this way, it can process 73.6 mb in a second.
 
 
 
-
 include "sources_from_file.ws";
 include "marmot_first_phase.ws";
 
@@ -111,4 +110,18 @@ include "marmot_first_phase.ws";
 //BASE <- wscores
 //BASE <- detections
 //BASE <- d2
-BASE <- synced_ints
+//BASE <- synced_ints
+
+chans = detector((ch1i,ch2i,ch3i,ch4i));
+
+ch1 = stream_map(fun(x) List:ref(x, 0), chans)
+ch2 = stream_map(fun(x) List:ref(x, 1), chans)
+ch3 = stream_map(fun(x) List:ref(x, 2), chans)
+ch4 = stream_map(fun(x) List:ref(x, 3), chans)
+
+BASE <- zipN_sametype(10,
+ [gnuplot_sigseg_stream(ch1),
+  gnuplot_sigseg_stream(ch2),
+  gnuplot_sigseg_stream(ch3),
+  gnuplot_sigseg_stream(ch4)])
+
