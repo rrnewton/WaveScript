@@ -126,8 +126,6 @@ fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 fun expC2(f) makeComplex(cos(f), sin(f))
 
 
-// does an aml given fftd data already.. assumes windows of data are already fftd
-//fun oneSourceAMLFFT(synced, sensors)
 
 //Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 

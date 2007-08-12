@@ -2,6 +2,18 @@
 include "matrix.ws";
 include "matrix_extras.ws";
 
+
+// ID, X,Y, YAW, and AML result.
+type NodeRecord = ((Int * Float * Float * Float) * Array Float);
+
+type AxesBounds = (Float * Float * Float * Float);
+type Settings   = (AxesBounds * (Float * Float));
+type Converter  = Int -> Float; // Coordinate converter.
+// Xbound, Ybound, and conversion procs.
+type CoordSystem = (Float * Float * Converter * Converter);
+
+
+
 angle_num = 360.0
 
 FP_NAN = 0.0 / 0.0;
@@ -11,6 +23,7 @@ fun ceiling(f) roundF(f+0.5);
 /**************************************************************/
 
 // Temporal clustering of real time AML results.
+temporal_cluster_amls :: (Stream NodeRecord) -> Stream (List NodeRecord);
 fun temporal_cluster_amls(amls) {
   iterate x in union2(amls, timer(2.0)) {
     state { 
@@ -45,15 +58,6 @@ fun normalize_doas(doas) {
 }
 
 /**************************************************************/
-
-// ID, X,Y, YAW, and AML result.
-type NodeRecord = ((Int * Float * Float * Float) * Array Float);
-
-type AxesBounds = (Float * Float * Float * Float);
-type Settings   = (AxesBounds * (Float * Float));
-type Converter  = Int -> Float; // Coordinate converter.
-// Xbound, Ybound, and conversion procs.
-type CoordSystem = (Float * Float * Converter * Converter);
 
 // Manifest our coordinate system in the form of conversion procedures.
 coord_converters :: (AxesBounds, Float) -> CoordSystem;

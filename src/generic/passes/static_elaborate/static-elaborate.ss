@@ -572,14 +572,14 @@
 		  (lambda (x)
 		    (if (eq? x not-available) #f
 			(match x 
-			  [(quote ,datum) #t]
-			  [(cons ,x ,y) #t]
+			  [(quote ,datum)    #t]
+			  [(cons ,x ,y)      #t]
 			  [(tuple ,args ...) #t]
 			  [(vector ,args ...) #t]
 			  ;; If it's mutable (like an array) then it can't be said to be available for use.
 			  [,var (guard (symbol? var)
-				       (not (memq var mutable-vars)))
-				(let ((entry (assq var env)))
+				       (not (memq var mutable-vars))) 
+				(let ((entry (assq var env)))			
 				  (and entry (container-available? (cadr entry))))]
 			  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
 
@@ -881,6 +881,14 @@
 		     ))
 	       `(List:ref ,x ,i))]
 
+	  [(List:reverse ,[ls])
+	   (if (container-available? ls)
+	       (let ([x (getlist ls)])
+		 (if (list? x)
+		     (reverse x)
+		     `(List:reverse ,ls)))
+	       `(List:reverse ,ls))]
+
 	  ;; TODO: Only fires when the whole of A is available.
 	  ;; FIXME: We should pull out prefixes if we can...
 	  [(List:append ,[a] ,[b])
@@ -1149,15 +1157,18 @@
 	    (let ([init-env (map (lambda (tycon) (list tycon not-available 9393939))
 			      (apply append tycon**))])
 	      ;; Run until we reach a fixed point.
-	      (let loop ([oldbody body]
-			 [body (process-expr body init-env)]
-			 [iterations 1])
+	      (let elabloop ([oldbody body]
+			     [body (process-expr body init-env)]
+			     [iterations 1])
 		(if (equal? oldbody body)	   
 		    (begin
 		      ;(when (regiment-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
-		    (loop body (process-expr body init-env) (add1 iterations)))))
+		    ;; [2007.08.12] SADLY, we have to redo the mutable-vars when we iterate:
+		    (begin (set! mutable-vars (get-mutable body))
+			   (elabloop body (process-expr body init-env) (add1 iterations))
+			   ))))
 	    ])]
 	)))))
 

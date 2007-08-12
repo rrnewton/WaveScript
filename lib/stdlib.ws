@@ -56,10 +56,12 @@ List:mapi       :: ((Int,a) -> b, List a) -> List b;
 List:foreach    :: (      a -> (), List a) -> ();
 List:foreachi   :: ((Int,a) -> (), List a) -> ();
 List:fold1      :: ((t, t) -> t, List t) -> t;
+//List:foldi      :: (((Int, acc, t) -> acc), acc, List t) -> acc;
 List:choplast   :: List t -> (t * List t);
 
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
-Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
+// [2007.08.12] BUG!!! THIS IS THE WRONG TYPE... BUT IT CHECKS??
+//Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
@@ -341,12 +343,7 @@ namespace List {
     }
   }
 
-  fun mapi(mif, ls) {
-    acc = Mutable:ref([]);
-    List:foreachi(fun(i,x) acc := mif(i,x) ::: acc, ls);
-    List:reverse(acc)
-  }
-
+  
   fun map2(f, ls1, ls2) {
     p1 = Mutable:ref(ls1);
     p2 = Mutable:ref(ls2);
@@ -362,6 +359,12 @@ namespace List {
     };
     List:reverse(acc)
   }
+  
+  fun fold1 (f,ls) {
+    if ls == []
+    then wserror("List:fold1 - list must have at least one element!")
+    else List:fold(f, ls`head, ls`tail)
+  }
 
   // Could define this in either the imperative or functional manner.  
   fun foldi(f, zer, ls) {
@@ -375,12 +378,26 @@ namespace List {
     };
     acc
   }
-  
-  fun fold1 (f,ls) {
-    if ls == []
-    then wserror("List:fold1 - list must have at least one element!")
-    else List:fold(f, ls`head, ls`tail)
+
+  fun mapi(mif, ls) {
+    acc = Mutable:ref([]);
+    List:foreachi(fun(i,x) acc := mif(i,x) ::: acc, ls);
+    List:reverse(acc)
   }
+
+  /*    
+  fun foldi (fn, zer, ls) {
+    let (_,res) =
+      fold(fun ((i,acc), elm) (i+1, fn(i,acc,elm)), 
+           (0,zer), ls);
+    res
+  }
+
+  // FIXME!!! INEFFICIENT!!! BUT NEED THIS FOR IT TO WORK AT META-TIME!!!
+  fun mapi(mif, ls) 
+    List:reverse(List:foldi(fun (i,acc,elm) mif(i,elm) ::: acc,
+                 [], ls))
+  */
 
   // Truncates the last element of the list, returning that last element and a new list.
   fun choplast(ls) {
