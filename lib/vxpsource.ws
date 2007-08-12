@@ -29,7 +29,7 @@ pthread_cond_t arg_cond;
 FILE *remote_stream = NULL;
 FILE *remote_index = NULL;
 char curr_fn[256] = {};
-int spill_mode = "++spill_mode++";
+int spill_mode = 0; // "++spill_mode++";
 int file_index = 0;  // byte index into current file 
 
 int vxp_get_tb() { return __vxp_tb; }
@@ -211,7 +211,7 @@ void *vxp_thread(void *arg) {
   
 
   // start the vxpc_server in library form
-  ensbox_main(ws->argc, ws->argv);
+  ensbox_main(&(ws->argc), ws->argv);
   pthread_cond_signal(&arg_cond);
   //  pthread_mutex_unlock(&arg_mutex);
   ensbox_start(ws);
