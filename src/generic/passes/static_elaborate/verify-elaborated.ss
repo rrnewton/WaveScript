@@ -16,6 +16,7 @@
 
 ;; Verifies that there are no polymorphic types left on the programs variable bindings.
 ;; Also verifies that there are no disallowed applications.
+;; FIXME: [2007.08.13] Easing this up... need to work on it more though.
 (define-pass verify-elaborated
     [OutputGrammar verify-elaborated-grammar]
 
@@ -29,8 +30,13 @@
       (define (id x) x)
       (match t
 	[,s (guard (symbol? s)) #t]
-	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
-	[(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+	[(quote ,v)          #t]
+	[(quote (,v . ,[t]))  t]
+
+	;; [2007.08.13] DANGER: THINK ABOUT THIS SOME MORE.
+	;; At the least a numeric type doesn't contain a Stream!
+	[(NUM ,_)            #t]
+
 	[(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
 	
 	;; Areas can contain streams:
@@ -43,7 +49,7 @@
 		    "elaboration didn't succeed in getting all (potential) stream types free from other type constructors:\n  ~s"
 		    `(,C . ,t*)))]
 	[#(,t* ...) 
-	 (and (not (polymorphic-type? (list->vector t*)))
+	 (and ;(not (polymorphic-type? (list->vector t*)))
 	      (or (andmap verify-stream-free t*)
 		  (error 'verify-type
 			 "elaboration didn't succeed in getting this stream type free from this tuple:\n  ~s"
@@ -54,13 +60,15 @@
     (match t
       [(Stream ,t) #f]
       [,s (guard (symbol? s)) #t]
+;      [(NUM ,_)               #t]
       [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
       [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
       [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
       [(,C ,t* ...) (guard (symbol? C)) (andmap verify-stream-free t*)]
       [,s (guard (string? s)) #t]
       [#(,t* ...) (and (andmap verify-stream-free t*)
-		       (not (polymorphic-type? (list->vector t*))))]
+		       ;(not (polymorphic-type? (list->vector t*)))
+		       )]
       ;[,else #f]
       ))
 

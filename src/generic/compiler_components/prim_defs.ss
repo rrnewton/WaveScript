@@ -411,7 +411,7 @@
     ;; types under our type system. 
     ;; TODO: [2006.09.01] I should probably take these out:
     (tuple Object Tuple)
-    (tupref (Tuple Int Int) Object)
+    (tupref (Int Int Tuple) Object)
 
     ;; Here we pretend similarly:
     ;; Foreign takes: 

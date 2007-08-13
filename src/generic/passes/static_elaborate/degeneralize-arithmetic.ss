@@ -103,6 +103,9 @@
      ;; Let bound poly should be off, then we get the right types for the generics.
      (parameterize ([inferencer-enable-LUB #f]
 		    [inferencer-let-bound-poly #f])
-       (let ([typed (retypecheck (lift-generics p))])
-;	 (inspect typed)
-	 typed)))))
+       (let ([lifted (lift-generics p)])
+;	 (inspect lifted)
+	 (let ([typed (retypecheck lifted)])
+;	   (inspect typed)
+	   typed))
+))))

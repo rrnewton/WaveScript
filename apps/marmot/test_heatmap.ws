@@ -36,6 +36,9 @@ data = Curry:map(List:toArray)$
 //grid_scale = 138.0
 //grid_scale = 2000.0
 
+//let coordsys = coord_converters(axes, grid_scale);
+//let (_,_,cnvrtx,cnvrty) = coord_converters(axes, grid_scale);
+
 BASE <- iterate _ in timer(3.0) {
   state { nodesAndData = []; fst = true }
 
@@ -48,8 +51,7 @@ BASE <- iterate _ in timer(3.0) {
   	            map(normalize_doas, data));
   };
 
-  let coordsys = coord_converters(axes, grid_scale);
-  let mat = doa_fuse(coordsys, nodesAndData);
+  let mat = doa_fuse(axes,grid_scale, nodesAndData);
 
   pic = colorize_likelihoods(mat);
 

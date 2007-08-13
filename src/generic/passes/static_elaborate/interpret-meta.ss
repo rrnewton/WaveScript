@@ -55,6 +55,9 @@
   (DEBUGASSERT wrapped? x)
   (if (plain? x) (plain-val x) x))
 
+(define (maybe-wrap x)
+  (if (wrapped? x) x (make-plain x)))
+
 (define (unknown-type . _) `',(unique-name 'ty))
 
 ;; Are two meta-values equal?
@@ -98,8 +101,11 @@
 	    (apply-env env v))]
     [',c (make-plain c)]
 
-    [(tuple ,[x*] ...) (make-plain (make-tuple (map plain-val x*)))]
-    [(tupref ,[tup] ,ind ,len ) (list-ref (tuple-fields tup) ind)]
+    [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)))]
+    [(tupref ,ind ,len ,[tup])
+     (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
+     (maybe-wrap (list-ref (tuple-fields (plain-val tup)) ind))
+     ]
 
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
@@ -159,7 +165,12 @@
     [(Array:makeUNSAFE ,_) (error 'interpret-meta:Eval 
 				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
 				  `(Array:makeUNSAFE ,_))]
-    
+
+    ;; TEMP HACK!!!!
+    [(floatToInt ,[x])
+;     (inspect x)
+     (make-plain (inexact->exact (floor (plain-val x))))]
+
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
@@ -396,6 +407,8 @@
 ;     [(int64? val)  (int64-num val)]
 ;     [(double? val) (double-num val)]
 
+     [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
+				(tuple-fields val)))]
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!
      ;; Need to wrap them!!

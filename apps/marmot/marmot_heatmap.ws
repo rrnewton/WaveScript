@@ -9,9 +9,10 @@ type TaggedAML = (NodeRecord * Array Float);
 
 type AxesBounds = (Float * Float * Float * Float);
 type Settings   = (AxesBounds * (Float * Float));
-type Converter  = Int -> Float; // Coordinate converter.
+//type Converter  = Int -> Float; // Coordinate converter.
 // Xbound, Ybound, and conversion procs.
-type CoordSystem = (Int * Int * Converter * Converter);
+//type CoordSystem = (Int * Int * Converter * Converter);
+//type CoordSystem = (Int * Int * Float * Float * Float * Float);
 
 
 angle_num = 360.0
@@ -72,9 +73,33 @@ fun normalize_doas(doas) {
 
 /**************************************************************/
 
-// Manifest our coordinate system in the form of conversion procedures.
-coord_converters :: (AxesBounds, Float) -> CoordSystem;
-fun coord_converters(axes, grid_scale) {
+// Convert pixels back to centimeters.
+convertcoord :: (AxesBounds, Float, Int, Int) -> (Float*Float);
+fun convertcoord(axes, grid_scale, u, v) {
+  let (x_min, x_max, y_min, y_max) = axes;
+  // Our original coordinate system is centimeters.
+  x_width = x_max - x_min;
+  y_width = y_max - y_min;
+  // Our new coordinate system:
+  x_pixels = x_width / grid_scale;
+  y_pixels = y_width / grid_scale;
+  ((u`i2f + 0.5) / x_pixels * x_width + x_min,
+   (v`i2f + 0.5) / y_pixels * y_width + y_min)
+}
+
+getpixeldims :: (AxesBounds, Float) -> (Int*Int);
+fun getpixeldims(axes, grid_scale) {
+  let (x_min, x_max, y_min, y_max) = axes;
+  x_width = x_max - x_min;
+  y_width = y_max - y_min;
+  ((x_width/grid_scale) `ceiling`f2i, 
+   (y_width/grid_scale) `ceiling`f2i)
+}
+
+
+/*
+build_coordsys :: (AxesBounds, Float) -> CoordSystem;
+fun build_coordsys(axes, grid_scale) {
   let (x_min, x_max, y_min, y_max) = axes;
   //if (y_max - y_min) != (x_max - x_min) then wserror("not a square");
   //assert("Won't do sub-centimeter", grid_scale > 1.0);
@@ -90,16 +115,25 @@ fun coord_converters(axes, grid_scale) {
 
   // Return x/y conversion functions.
   (x_pixels`ceiling`f2i, y_pixels`ceiling`f2i,
-   fun (n) (n`i2f + 0.5) / x_pixels * x_width + x_min,
-   fun (n) (n`i2f + 0.5) / y_pixels * y_width + y_min)
+   x_width, y_width, x_min, y_min)
   }
 }
+
+// Converts from pixel space to 
+convertcoord :: (CoordSystem, Int, Int) -> (Float,Float);
+fun convertcoord((x_pixels, y_pixels, x_width, y_width, x_min, y_min), (x,y)) {
+   ((x`i2f + 0.5) / x_pixels * x_width + x_min,
+    (y`i2f + 0.5) / y_pixels * y_width + y_min)
+}
+*/
 
 /**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (CoordSystem, List TaggedAML) -> Matrix Float;
-fun doa_fuse((xpixels, ypixels, xchunks_to_cm, ychunks_to_cm), noderecords) {
+doa_fuse :: (AxesBounds, Float, List TaggedAML) -> Matrix Float;
+fun doa_fuse(axes, grid_scale, noderecords) {
+
+  let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
   { let (xmin,xmax,ymin,ymax) = axes;
     println("Starting DOA fuse.  Gridsize "++xpixels++" x "++ypixels++
           "  Axes: ("++xmin`f2i++", "++ymin`f2i++") to ("++xmax`f2i++", "++ymax`f2i++")");
@@ -112,8 +146,7 @@ fun doa_fuse((xpixels, ypixels, xchunks_to_cm, ychunks_to_cm), noderecords) {
     fun(u,v) {
 
       // Coordinates in centimeter space:
-      c_x :: Float = xchunks_to_cm(u);
-      c_y :: Float = ychunks_to_cm(v);
+      let (c_x,c_y) = convertcoord(axes,grid_scale, u,v);
 
       // Trace out from each node:
       // Should use List:foldi
@@ -142,8 +175,8 @@ fun doa_fuse((xpixels, ypixels, xchunks_to_cm, ychunks_to_cm), noderecords) {
 }
 
 
-getmax :: (Matrix Float, CoordSystem) -> (Float * Int * Int);
-fun getmax(heatmap, (_,_, convx, convy)) {
+getmax :: (Matrix Float) -> (Float * Int * Int);
+fun getmax(heatmap) {
   let (max_val, max_x, max_y) = 
    Matrix:foldi(
     fun(x,y, acc, elm) {
