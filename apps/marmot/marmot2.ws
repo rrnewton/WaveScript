@@ -266,7 +266,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     Jvec
 }
 
-oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float);
+//oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float * Int64);
 // does an AMl calc based on TD data of supplied window (i.e. it does no rewindowing itself)
 // only does one source - other implementations may work on multiple sources
 
@@ -295,15 +295,13 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map(list_of_rowsegs_to_matrix, synced);
+  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start), synced);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
-  aml_result = iterate (_m_in :: Matrix Float in data_in) {
-
-    log(1, "  Computing AML result.");
+  aml_result = iterate (_m_in,starttime) in data_in {
 
     // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows
@@ -318,8 +316,10 @@ fun oneSourceAMLTD(synced, sensors, win_size)
     //result = Array:make(grid_size, 0.0); // FAKE
     result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
+    log(1, "  Got result of AML.");
+
     //	gnuplot_array(result);
-    emit(result)
+    emit(result, starttime)
   };
   /*
   aml_result = iterate (z in aml_results) {

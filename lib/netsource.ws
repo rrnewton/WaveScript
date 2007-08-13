@@ -87,7 +87,7 @@ fun netsub_int(host, name) {
 // host is the ip addr, name is the name of the stream, id is 
 
 c_globalsample_get_tb :: () -> Timebase = 
-  foreign("globalsample_get_tb", []);
+  foreign("globalsample_get_tb", ["devel/wavescope/wavescope_ensbox.h"]);
 
 fun gen_glue_sigseg4 (host,name,id) {
 "

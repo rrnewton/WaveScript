@@ -5,7 +5,7 @@ include "matrix_extras.ws";
 
 // ID, X,Y, YAW, and AML result.
 type NodeRecord = (Int * Float * Float * Float);
-type TaggedAML = (NodeRecord * Array Float);
+type TaggedAML = (NodeRecord * Int64 * Array Float);
 
 type AxesBounds = (Float * Float * Float * Float);
 type Settings   = (AxesBounds * (Float * Float));
@@ -26,26 +26,29 @@ fun ceiling(f) roundF(f+0.5);
 // Temporal clustering of real time AML results.
 temporal_cluster_amls :: (Int, Stream TaggedAML) -> Stream (List TaggedAML);
 fun temporal_cluster_amls(minclustsize, amls) {
-  iterate x in union2(amls, timer(2.0)) {
+  iterate x in union2(amls, timer_source("cluster_timer", 500)) {
     state { 
       acc = [];
       counter = 0;
       duparr = Array:make(20,false);
     }
     case x {
-      Left(arr): {
-        acc := arr ::: acc;
+      Left(entry): {
+        foo :: TaggedAML = entry;
+        println("AML received! Already had: "++acc`List:length);
+        acc := entry ::: acc;
 	counter := 0;
       }
       Right(_): {
+        //println("Timer Fired! acc length: "++acc`List:length);
         counter += 1;
 	if counter > 1 
 	then {
 	  if acc != [] then {
 	    // Filter out duplicates.
-	    acc2 = Mutable:ref([]);
+	    acc2 :: Ref (List TaggedAML) = Mutable:ref([]);
 	    List:foreach(fun(aml) {
-	      let ((id,_,_,_),_) = aml;
+	      let ((id,_,_,_),_,_) = aml;
 	      if not(duparr[id-100]) then 
 	      {
 	        duparr[id-100] := true;
@@ -57,7 +60,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
 	    Array:fill(duparr, false);
 	    
 	    print("Got a cluster of detections from nodes: {");
-	    List:foreach(fun (((id,_,_,_),_)) print(id++" "), acc2);
+	    List:foreach(fun (((id,_,_,_),_,_)) print(id++" "), acc2);
             print("}\n");
 	    if List:length(acc2) >= minclustsize 
 	    then emit acc2;
@@ -135,7 +138,7 @@ fun convertcoord((x_pixels, y_pixels, x_width, y_width, x_min, y_min), (x,y)) {
 /**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (AxesBounds, Float, List TaggedAML) -> Matrix Float;
+doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
 fun doa_fuse(axes, grid_scale, noderecords) {
 
   let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
@@ -147,7 +150,7 @@ fun doa_fuse(axes, grid_scale, noderecords) {
   };
 
   // Build the likelihood map:
-  Matrix:build(xpixels, ypixels,
+  (Matrix:build(xpixels, ypixels,
     fun(u,v) {
 
       // Coordinates in centimeter space:
@@ -157,7 +160,7 @@ fun doa_fuse(axes, grid_scale, noderecords) {
       // Should use List:foldi
       List:foldi(
 	// Each node record contains location/orientation as well as doas likelihood vector:
-        fun(k, sum, ((id,x,y,yaw), doavec)) {
+        fun(k, sum, ((id,x,y,yaw), startsamp, doavec)) {
 
 	  nr = yaw * const_PI / 180.0; // node rotation	       
 	  theta = atan2(c_y - y, c_x - x);
@@ -176,7 +179,12 @@ fun doa_fuse(axes, grid_scale, noderecords) {
 	  sum + doavec[dir]
         },
 	0.0, noderecords)
-  })
+   }), 
+   // Also return the timestamp.
+   {
+     let (_,st0,_) = List:ref(noderecords,0);
+     List:fold(fun(mx, (_, startsamp, _)) max(mx,startsamp), st0, noderecords)
+   })
 }
 
 
