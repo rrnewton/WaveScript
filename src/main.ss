@@ -465,8 +465,8 @@
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-  (time (ws-run-pass p static-elaborate))
-;  (time (ws-run-pass p interpret-meta))
+;  (time (ws-run-pass p static-elaborate))
+  (time (ws-run-pass p interpret-meta))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
@@ -486,6 +486,7 @@
   (ws-run-pass p rename-vars)
 
 ;  (DEBUGMODE (do-late-typecheck))
+;  (do-late-typecheck)
 
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
   (ws-run-pass p degeneralize-arithmetic)

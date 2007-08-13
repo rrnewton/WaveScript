@@ -65,7 +65,7 @@
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 
 		       [(Int     ,e)  e]
-		       [(Int64   ,e)  e]
+		       [(Int64   ,e)  `(intToInt64 ,e)]
 		       [(Int16   ,e)  
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type Int16, it might overflow: ~s"
@@ -74,6 +74,10 @@
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Double  ,e)  `(intToDouble ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
+		       
+		       ;; DANGER: FIXME: Don't know if this is a good idea:
+		       [((NUM ,_) ,e) e]
+
 		       [,else 
 			(error 'degeneralize-arithmetic
 			       "unhandled output type demanded of gint, ~s, expression: ~s"
@@ -99,7 +103,6 @@
      ;; Let bound poly should be off, then we get the right types for the generics.
      (parameterize ([inferencer-enable-LUB #f]
 		    [inferencer-let-bound-poly #f])
-       (retypecheck
-	(lift-generics p)))
-     ))
-  )
+       (let ([typed (retypecheck (lift-generics p))])
+;	 (inspect typed)
+	 typed)))))

@@ -19,7 +19,8 @@
 
 ;; We use data types to separate different kinds of values.
 
-(reg:define-struct (plain val)) ;; Contains a datum: number, list, array, (tuples separate)
+;; Contains a datum: number, list, array, (tuples separate)
+(reg:define-struct (plain val ))
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 
 ;; There are two kinds of closures.  Native and foreign.
@@ -34,6 +35,10 @@
 (reg:define-struct (streamop name op params parents type))
 
 (reg:define-struct (ref contents))
+;; We must distinguish these because they share the same physical
+;; representatino as other numbers.
+;(reg:define-struct (int64 num))
+;(reg:define-struct (double num))
 
 (define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
@@ -388,6 +393,13 @@
      [(sigseg? val) (if (fx= 0 (vector-length (sigseg-vec val)))
 			'nullseg
 			(error 'Marshal-Plain "non-null sigseg marshalling unimplemented"))]
+;     [(int64? val)  (int64-num val)]
+;     [(double? val) (double-num val)]
+
+     [(and (integer? val) (exact? val)) `(gint ',val)]
+     ;; No double's in meta program currently!!!
+     ;; Need to wrap them!!
+
 ;     [(list? val) (map loop val)]
      [else 
       ;(DEBUGASSERT complex-constant? val)
