@@ -29,8 +29,8 @@ export ENSBOXLD="           \
    -lm -lasound $GLIB_PATH  \
 "
 
-rm -f "query.*.c"
-rm -f ".tmp.*.o"
+rm -f query.*.c
+rm -f .tmp.*.o
 
 export MLTONARGS="$MLTONARGS -codegen c -stop g "
 

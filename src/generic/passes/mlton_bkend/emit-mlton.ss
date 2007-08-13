@@ -894,6 +894,7 @@
 (define (make-mlton-zero-for-type t)
     (match (match t
 	     [Int   ''0]
+	     [Bool  "false"]
 	     [Int16 "(Int16.fromInt 0)"]
 	     [Int64 "(Int64.fromInt 0)"]
 	     [Float ''0.0]
@@ -902,6 +903,7 @@
 	     [#(,[make-mlton-zero-for-type -> t*] ...) 
 	      (apply make-tuple-code t*)]
 
+	     [(Sigseg ,_) "(nullseg())"]
 	     [(Array ,_) "(Array.fromList [])"]
 	     [(List ,_) "[]"]
 

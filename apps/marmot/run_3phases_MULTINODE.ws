@@ -203,14 +203,7 @@ merged = List:fold1(merge, labeledamls)
 
 //BASE <- merged
 
-clusters = stream_map(
-  fun (clust) { 
-    print("Got a cluster of detections from nodes: {");
-    List:foreach(fun (((id,_,_,_),_)) print(id++" "), clust);
-    print("}\n");
-    clust;
-  },
-  temporal_cluster_amls(merged))
+clusters = temporal_cluster_amls(merged)
 
 //BASE <- clusters
 

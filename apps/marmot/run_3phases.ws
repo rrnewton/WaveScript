@@ -25,24 +25,21 @@ grid_scale = 25.0
 //grid_scale = 138.0
 //grid_scale = 2000.0
 
-clusters = temporal_cluster_amls(noderecs)
+clusters = temporal_cluster_amls(1,noderecs)
 
-coordsys = coord_converters(axes, grid_scale);
-
-//BASE <- CONST(coordsys)
-
-heatmaps = stream_map(fun(x) doa_fuse(coordsys,x), clusters);
+heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
 BASE <- iterate heatmap in heatmaps {
-  let (_,_,cx,cy) = coordsys;
+  print("Got heatmap.\n");
 
   pic = colorize_likelihoods(heatmap);
-
-  let (mx,i,j) = getmax(heatmap,coordsys);
+  
+  let (mx,u,v) = getmax(heatmap);
+  let (x,y) = convertcoord(axes,grid_scale, u,v);
   println("Max marmot likelihood was "++mx++
-          " at position "++cx(j)++","++cy(i)++
-	  " w/pic coord "++i++","++j);
-  draw_marmot(pic, i, j, f2i$ max(4.0, 250.0 / grid_scale));
+          " at position "++x++","++y++
+	  " w/pic coord "++u++","++v);
+  draw_marmot(pic, u, v, f2i$ max(4.0, 250.0 / grid_scale));
 
   file = "temp.ppm";
   write_ppm_file(file,pic);

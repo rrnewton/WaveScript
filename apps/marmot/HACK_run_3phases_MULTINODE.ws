@@ -114,31 +114,21 @@ merged =
   merge(aml6, 
         aml7))))))
 
-raw_clusters = temporal_cluster_amls(merged);
+clusters = temporal_cluster_amls(3, merged);
 
-clusters = iterate clust in raw_clusters {
-  print("Got a cluster of detections from nodes: { ");
-  List:foreach(fun (((id,_,_,_),_)) print(id++" "), clust);
-  print("}\n");
-  if List:length(clust) >= 3 then emit clust;
-}
-
-coordsys = coord_converters(axes, grid_scale);
-
-heatmaps = stream_map(fun(x) doa_fuse(coordsys,x), clusters);
+heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
 BASE <- iterate heatmap in heatmaps {
   state { cnt = 0 }
   
-  let (_,_,cx,cy) = coordsys;
-
   pic = colorize_likelihoods(heatmap);
 
-  let (mx,i,j) = getmax(heatmap,coordsys);
+  let (mx,u,v) = getmax(heatmap);
+  let (x,y) = convertcoord(axes,grid_scale,u,v);
   println("Max marmot likelihood was "++mx++
-          " at position "++cx(j)++","++cy(i)++
-	  " w/pic coord "++i++","++j);
-  draw_marmot(pic, i, j, f2i$ max(4.0, 250.0 / grid_scale));
+          " at position "++x++","++y++
+	  " w/pic coord "++u++","++v);
+  draw_marmot(pic, u, v, f2i$ max(4.0, 250.0 / grid_scale));
 
   file = "temp"++cnt++".ppm";
   cnt += 1;

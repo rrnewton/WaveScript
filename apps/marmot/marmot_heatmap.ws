@@ -24,8 +24,8 @@ fun ceiling(f) roundF(f+0.5);
 /**************************************************************/
 
 // Temporal clustering of real time AML results.
-temporal_cluster_amls :: (Stream TaggedAML) -> Stream (List TaggedAML);
-fun temporal_cluster_amls(amls) {
+temporal_cluster_amls :: (Int, Stream TaggedAML) -> Stream (List TaggedAML);
+fun temporal_cluster_amls(minclustsize, amls) {
   iterate x in union2(amls, timer(2.0)) {
     state { 
       acc = [];
@@ -55,7 +55,12 @@ fun temporal_cluster_amls(amls) {
             //emit List:reverse(acc);
 	    acc := [];
 	    Array:fill(duparr, false);
-	    emit acc2;
+	    
+	    print("Got a cluster of detections from nodes: {");
+	    List:foreach(fun (((id,_,_,_),_)) print(id++" "), acc2);
+            print("}\n");
+	    if List:length(acc2) >= minclustsize 
+	    then emit acc2;
 	  }
 	}
       }
