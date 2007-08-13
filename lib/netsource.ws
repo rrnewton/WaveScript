@@ -65,7 +65,7 @@ fun gen_glue_int (host,name,id) {
   int __ready_"++id++"(ev_tcp_peer_t *peer, char *buf, uint size) {
     // cast buffer to int and call entry point with it.
     int x = *(int*)buf; 
-    __entry_"++id++"(x);
+    WRAP_WSENTRY(__entry_"++id++"(x));
     return EVENT_RENEW;
   }
 
@@ -112,11 +112,12 @@ fun gen_glue_sigseg4 (host,name,id) {
       elog(LOG_WARNING, \"can't convert sample numbers, dropping data\");
     }
     else {
-      __entry_"++id++"(sample, len, 
-                       cast->target,
-                       cast->target+len,
-                       cast->target+len*2,
-                       cast->target+len*3);
+      WRAP_WSENTRY(
+        __entry_"++id++"(sample, len, 
+                         cast->target,
+                         cast->target+len,
+                         cast->target+len*2,
+                         cast->target+len*3));
     }
     return EVENT_RENEW;
   }

@@ -5,4 +5,4 @@ include "marmot_first_phase.ws";
 
 phase1result = detector((ch1i,ch2i,ch3i,ch4i));
 
-BASE <- phase1result; //netpub_sigseg4(phase1result, "detections"); 
+BASE <- netpub_sigseg4(phase1result, "detections"); 

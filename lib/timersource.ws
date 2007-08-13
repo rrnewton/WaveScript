@@ -10,7 +10,7 @@ fun gen_timerglue (name,period) ("
   int __timercb_"++name++"(void *data, int interval, g_event_t *ev) {
     static int counter = 0;
     // trigger into wavescript
-    __timerentry_"++name++"(counter++);
+    WRAP_WSENTRY(__timerentry_"++name++"(counter++));
     return EVENT_RENEW;
   }
 

@@ -30,6 +30,7 @@ FILE *remote_stream = NULL;
 FILE *remote_index = NULL;
 char curr_fn[256] = {};
 int file_index = 0;  // byte index into current file 
+int last_time_check = 0;
 
 int vxp_get_tb() { return __vxp_tb; }
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
@@ -46,28 +47,33 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
       if (qd->buf) {
 
 #ifdef ENABLE_TIMESYNC
-	/* inject into timebase system */
-	double gps;
-	double cpu;
-	double samples = qd->sample_count;
-	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
-  	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
-	}
-	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
-  	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
-	}
+	int now = time(0);
+	if (now - last_time_check > 5) {
+	  last_time_check = now;
+
+	  /* inject into timebase system */
+	  double gps;
+	  double cpu;
+	  double samples = qd->sample_count;
+	  if (samples_to_clock_value(samples, GPS, &gps) == 0) {
+  	    timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+	  }
+	  if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
+  	    timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	  }
 	
-	samples += qd->count;
-	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
-  	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
-	}
-	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
-  	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	  samples += qd->count;
+	  if (samples_to_clock_value(samples, GPS, &gps) == 0) {
+  	    timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+	  }
+	  if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
+  	    timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+	  }
 	}
 #endif
 
 	/* upcall to wavescript */
-	__vxpentry(qd->buf, qd->count, qd->sample_count);
+	WRAP_WSENTRY(__vxpentry(qd->buf, qd->count, qd->sample_count));
 	free(qd->buf);
       }
       else {
