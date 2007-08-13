@@ -93,9 +93,6 @@ fun gen_glue_sigseg4 (host,name,id) {
 "
   #include <devel/wavescope/wavescope_ensbox.h>
 
-  int __globalsample_tb = 0;
-  int globalsample_get_tb() { return __globalsample_tb; }
-
   int __ready_"++id++"(ev_tcp_peer_t *peer, char *buf, uint size) {
     // cast buffer to char * and parse out:
     // timestamp (double)
