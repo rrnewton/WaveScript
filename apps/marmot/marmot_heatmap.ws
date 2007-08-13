@@ -4,14 +4,14 @@ include "matrix_extras.ws";
 
 
 // ID, X,Y, YAW, and AML result.
-type NodeRecord = ((Int * Float * Float * Float) * Array Float);
+type NodeRecord = (Int * Float * Float * Float);
+type TaggedAML = (NodeRecord * Array Float);
 
 type AxesBounds = (Float * Float * Float * Float);
 type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
 // Xbound, Ybound, and conversion procs.
 type CoordSystem = (Float * Float * Converter * Converter);
-
 
 
 angle_num = 360.0
@@ -23,7 +23,7 @@ fun ceiling(f) roundF(f+0.5);
 /**************************************************************/
 
 // Temporal clustering of real time AML results.
-temporal_cluster_amls :: (Stream NodeRecord) -> Stream (List NodeRecord);
+temporal_cluster_amls :: (Stream TaggedAML) -> Stream (List TaggedAML);
 fun temporal_cluster_amls(amls) {
   iterate x in union2(amls, timer(2.0)) {
     state { 
@@ -71,34 +71,33 @@ fun coord_converters(axes, grid_scale) {
   x_width = x_max - x_min;
   y_width = y_max - y_min;
 
-  // Our new coordinate system is called "chunks" for lack of a better name.
-  x_chunks = x_width / grid_scale;
-  y_chunks = y_width / grid_scale;
+  // Our new coordinate system:
+  x_pixels = x_width / grid_scale;
+  y_pixels = y_width / grid_scale;
 
   // Return x/y conversion functions.
-  (x_chunks, y_chunks,
-   fun (n) (n`i2f + 0.5) / x_chunks * x_width + x_min,
-   fun (n) (n`i2f + 0.5) / y_chunks * y_width + y_min)
+  (x_pixels, y_pixels,
+   fun (n) (n`i2f + 0.5) / x_pixels * x_width + x_min,
+   fun (n) (n`i2f + 0.5) / y_pixels * y_width + y_min)
   }
 }
 
 /**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (CoordSystem, List NodeRecord) -> Matrix Float;
-fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
-  xd = xdim`ceiling`f2i;
-  yd = ydim`ceiling`f2i;
+doa_fuse :: (CoordSystem, List TaggedAML) -> Matrix Float;
+fun doa_fuse((xpixels, ypixels, xchunks_to_cm, ychunks_to_cm), noderecords) {
+  xd = xpixels`ceiling`f2i;
+  yd = ypixels`ceiling`f2i;
   println("Starting DOA fuse.  Gridsize "++xd++" x "++yd);
 
   // Build the likelihood map:
   Matrix:build(xd,yd,
-    fun(i,j) {
-//   3939.9  
+    fun(u,v) {
 
       // Coordinates in centimeter space:
-      c_x :: Float = xchunks_to_cm(j);
-      c_y :: Float = ychunks_to_cm(i);
+      c_x :: Float = xchunks_to_cm(u);
+      c_y :: Float = ychunks_to_cm(v);
 
       // Trace out from each node:
       // Should use List:foldi
@@ -127,25 +126,21 @@ fun doa_fuse((xdim, ydim, xchunks_to_cm, ychunks_to_cm), noderecords) {
 }
 
 
-//
-
 getmax :: (Matrix Float, CoordSystem) -> (Float * Int * Int);
 fun getmax(heatmap, (_,_, convx, convy)) {
-  let (max_val, max_i, max_j) = 
+  let (max_val, max_x, max_y) = 
    Matrix:foldi(
-    fun(i,j, acc, elm) {
-      let (winner,wini,winj) = acc;
+    fun(x,y, acc, elm) {
+      let (winner,winx,winy) = acc;
       if max(elm, winner) == elm
-      then (elm,i,j)
+      then (elm,x,y)
       else acc
     },
      (Matrix:get(heatmap,0,0), 0, 0), 
      heatmap);
 
   // Return the maximum and it's location (in cm):
-  //(max_val, convx(max_j), convy(max_i))
-  (max_val, max_i, max_j)
-    //  (100.0, 200, 200)
+  (max_val, max_x, max_y)
 }
 
 //******************************************************************************//
@@ -225,20 +220,22 @@ c_write_ppm_file
 type RGB = (Int * Int * Int);
 write_ppm_file :: (String, Matrix RGB) -> Int;
 fun write_ppm_file(file, mat) {
-  let (r,c) = Matrix:dims(mat);
-  dat = Matrix:toArray(mat);
+  using Matrix;
+  let (hght,wid) = dims(mat);
+  dat = toArray(transpose(mat));
   R = Array:map(fun((r,g,b)) r, dat);
   G = Array:map(fun((r,g,b)) g, dat);
   B = Array:map(fun((r,g,b)) b, dat);
   cstr = file ++ String:implode([intToChar(0)]);
-  c_write_ppm_file(cstr, c, r, R,G,B);
+  c_write_ppm_file(cstr, wid, hght, R,G,B);
 }
 
 colorize_likelihoods :: Matrix Float -> Matrix RGB;
 fun colorize_likelihoods(lhoods) {
-  fst = Matrix:get(lhoods,0,0);
-  mx = Matrix:fold(max, fst, lhoods);
-  mn = Matrix:fold(min, fst, lhoods);
+  using Matrix;
+  fst = get(lhoods,0,0);
+  mx = fold(max, fst, lhoods);
+  mn = fold(min, fst, lhoods);
   //println("Color max/min: "++mx++" / "++mn);
   //  Matrix:map(fun(v) colormap[f2i$ roundF(v / mx * 63.0)], 
   Matrix:map(fun(v) {

@@ -1192,6 +1192,7 @@
 
       [string-append "(String.^)"] 
       [List:append List.@]
+      [List:zip ListPair.zip]
       [List:toArray  Array.fromList]
 
 ;; TODO ==========================

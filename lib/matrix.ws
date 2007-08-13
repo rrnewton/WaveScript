@@ -1,6 +1,10 @@
 
 // A library of matrix routines implemented directly in WaveScript.
 
+// NOTE! matrices are indixed (row,column)
+// Remember to iterate over the matrix by incrementing row on the
+// outside and column in the inner loop.
+
 // Author:  Lewis Girod & Ryan Newton 
 
 include "stdlib.ws";

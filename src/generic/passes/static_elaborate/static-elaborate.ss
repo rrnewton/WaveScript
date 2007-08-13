@@ -889,6 +889,15 @@
 		     `(List:reverse ,ls)))
 	       `(List:reverse ,ls))]
 
+	  [(List:zip ,[a] ,[b])
+	   (if (and (container-available? a) (container-available? b))
+	       (let ([x (getlist a)] [y (getlist b)])
+		 (if (and (list? x) (list? y))
+		     (make-nested-cons
+		      (map (lambda (one two) `(tuple ,one ,two)) x y))
+		     `(List:zip ,a ,b)))
+	       `(List:zip ,a ,b))]
+
 	  ;; TODO: Only fires when the whole of A is available.
 	  ;; FIXME: We should pull out prefixes if we can...
 	  [(List:append ,[a] ,[b])

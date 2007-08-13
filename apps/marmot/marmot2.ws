@@ -134,7 +134,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
     using Matrix; using Complex;
 
-    log(1,"Running actual AML.");
+    log(1,"  Running actual AML.");
 
     _ = (data_in :: Matrix Float);
 
@@ -303,7 +303,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = iterate (_m_in :: Matrix Float in data_in) {
 
-    log(1, "Computing AML result.");
+    log(1, "  Computing AML result.");
 
     // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows

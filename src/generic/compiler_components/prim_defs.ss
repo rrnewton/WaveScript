@@ -128,6 +128,7 @@
     ;; These should be defined IN the language, but they're not right now:
     ;; [2007.07.13] We have while loops and second class refs... should put these in.
     (List:map (('a -> 'b) (List 'a)) (List 'b))
+    (List:zip ((List 'a) (List 'b)) (List #('a 'b)))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
     ;(List:map2 (('a, 'b -> 'c) (List 'a) (List 'b)) (List 'c))
