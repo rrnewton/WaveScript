@@ -414,7 +414,8 @@
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
 			       '("val wsinit = _import \"wsinit\" : (int * string array) -> unit; \n"
-				 "val foreign_wserror = _import \"wserror\" : string -> unit;\n"
+				 "val raw_foreign_wserror = _import \"wserror\" : string -> unit;\n"
+				 "fun foreign_wserror str = raw_foreign_wserror (str ^  nullChar)\n"
 				 "val cmdargs = CommandLine.name() :: CommandLine.arguments()\n"
 				 "val argc = length cmdargs\n"
 				 "val argv = Array.fromList cmdargs\n"
