@@ -121,9 +121,7 @@ fun gen_glue_sigseg4 (host,name,id) {
 
   void __init_"++id++"() {
     elog(LOG_WARNING, \"connecting to stream\");
-    __globalsample_tb = timebase_new(my_node_id, CLOCK_GLOBALVXP, 0.1);
-    timebase_add_segment(gps_timebase(), 1, __globalsample_tb, 48000);
-    timebase_add_segment(gps_timebase(), 2, __globalsample_tb, 96000);
+
     subscription_client_create(\""++host++"\", \""++name++"\", __ready_"++id++", NULL);
   }
 "}
