@@ -764,34 +764,36 @@
 	  ;; These two cases account for A LOT of the static-elaborate slowdown:
 	  ;; If I knew freshness concerns would be so bad... I would have probably used debruin indices...
 	  ;; ================================================================================
-	  
+
+#;
 	  ;; It's a little funky that we look for letrec? before evaluating the rands...
           [(,prim ,rand* ...)
 	   (guard (regiment-primitive? prim)
 		  (list-index letrec? rand*))
-	  	   
-	   ;; For now only do it for ONE rand
-	   ;;(ASSERT (fx= 1 (filter letrec? rand*)))
-	   (let loop ([rand* rand*] [argacc ()] [bindacc ()])
-	     (if (null? rand*)
-		 (begin
-;		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
-		   (if (null? bindacc) 
-		       `(,prim ,@(reverse argacc))
-		       `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
-		 (match (peel-annotations (car rand*))
-		   [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
-		    (ASSERT (andmap side-effect-free? rhs*))
-		    ;; Freshness: rename these bindings:
-		    (let* ([new-lhs* (map unique-name lhs*)]
-			   [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
-			   [new-rhs* (map convert rhs*)]
-			   [new-bod (convert bod)])
-		      (loop (cdr rand*)
-			    (cons new-bod argacc)
-			    (append (reverse (map list new-lhs* ty* new-rhs*)) bindacc)))]
-		   [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
-		 ))]
+	   (let ();([rand* (map (lambda (x) (process-expr x env)) rand*)])
+	     ;; For now only do it for ONE rand
+	     ;;(ASSERT (fx= 1 (filter letrec? rand*)))
+	     (let loop ([rand* rand*] [argacc ()] [bindacc ()])
+	       (if (null? rand*)
+		   (begin
+					;		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
+		     (if (null? bindacc) 
+			 `(,prim ,@(reverse argacc))
+			 `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
+		   (match (peel-annotations (car rand*))
+		     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+		      (ASSERT (andmap side-effect-free? rhs*))
+		      ;; Freshness: rename these bindings:
+		      (let* ([new-lhs* (map unique-name lhs*)]
+			     [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
+			     [new-rhs* (map convert rhs*)]
+			     [new-bod (convert bod)])
+			(loop (cdr rand*)
+			      (cons new-bod argacc)
+			      (append (reverse (map list new-lhs* ty* new-rhs*)) bindacc)))]
+		     [,oth (loop (cdr rand*) (cons oth argacc) bindacc)])
+		   ))
+	     )]
 
 	  ;; [2007.08.12]
 	  ;; This is a letrec in the RHS of a letrec.
@@ -869,6 +871,7 @@
 		       [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
 		     `(quote ,(cdr val))))
 	       `(cdr ,x))]
+
 	  [(List:length ,[x])
 	   (if (container-available? x)
 	       (let ([ls (getlist x)])

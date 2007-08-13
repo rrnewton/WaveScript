@@ -29,6 +29,7 @@ fun temporal_cluster_amls(amls) {
     state { 
       acc = [];
       counter = 0;
+      duparr = Array:make(20,false);
     }
     case x {
       Left(arr): {
@@ -40,8 +41,20 @@ fun temporal_cluster_amls(amls) {
 	if counter > 1 
 	then {
 	  if acc != [] then {
-            emit List:reverse(acc);
+	    // Filter out duplicates.
+	    acc2 = Mutable:ref([]);
+	    List:foreach(fun(aml) {
+	      let ((id,_,_,_),_) = aml;
+	      if not(duparr[id-100]) then 
+	      {
+	        duparr[id-100] := true;
+                acc2 := aml ::: acc2;
+	      }
+	    }, acc);
+            //emit List:reverse(acc);
 	    acc := [];
+	    Array:fill(duparr, false);
+	    emit acc2;
 	  }
 	}
       }
@@ -225,11 +238,11 @@ type RGB = (Int * Int * Int);
 write_ppm_file :: (String, Matrix RGB) -> Int;
 fun write_ppm_file(file, mat) {
   using Matrix;
-  //let (wid,hght) = dims(mat);
-  //dat = toArray(mat);
+  let (wid,hght) = dims(mat);
+  dat = toArray(build(wid,hght, fun(x,y) get(mat,x,hght-y-1)));
   // We store in column-major so we flip it just once on the way out.
-  let (hght,wid) = dims(mat);
-  dat = toArray(transpose(mat));
+  //let (hght,wid) = dims(mat);
+  //dat = toArray(transpose(mat));
   R = Array:map(fun((r,g,b)) r, dat);
   G = Array:map(fun((r,g,b)) g, dat);
   B = Array:map(fun((r,g,b)) b, dat);
