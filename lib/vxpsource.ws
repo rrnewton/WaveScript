@@ -29,7 +29,6 @@ pthread_cond_t arg_cond;
 FILE *remote_stream = NULL;
 FILE *remote_index = NULL;
 char curr_fn[256] = {};
-int spill_mode = 0; // "++spill_mode++";
 int file_index = 0;  // byte index into current file 
 
 int vxp_get_tb() { return __vxp_tb; }
@@ -45,7 +44,8 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
       g_msg_queue_dec_size(ws->mq, qd->length);
       
       if (qd->buf) {
-	
+
+#ifdef ENABLE_TIMESYNC
 	/* inject into timebase system */
 	double gps;
 	double cpu;
@@ -56,24 +56,7 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
   	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
 	}
-
-	struct ws_audio_chunk_hdr hdr = {
-	  payload_length_bytes: qd->length,
-	  node_id: my_node_id,
-          sample_rate: 48000,  // should be from global??
-	  channels: 4,
-	  bytes_per_channel: 2,
-	  sample_start: samples
-        };	
-	double orig_gps = gps;
-	double orig_cpu = cpu;
 	
-	if (spill_mode) {
-	  memmove(hdr.magic, WS_AUDIO_MAGIC, sizeof(hdr.magic));
-	  double_to_tv(&(hdr.cpu_start), cpu);
-	  double_to_tv(&(hdr.gps_start), gps);
-        }
-
 	samples += qd->count;
 	if (samples_to_clock_value(samples, GPS, &gps) == 0) {
   	  timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
@@ -81,72 +64,7 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 	if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
   	  timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
 	}
-
-	if (spill_mode) {
-	  double_to_tv(&(hdr.cpu_end), cpu);
-	  double_to_tv(&(hdr.gps_end), gps);
-
-	  if (remote_index == NULL) {
-	    char fn[256];
-            sprintf(fn, \"/remote/vxp_%d_index\", my_node_id);
-	    int fd = remote_open(fn, \"append\");
-	    if (fd < 0) {
-	      elog(LOG_WARNING, \"Failed to open remote connection: %m\");
-            }
-	    else {
-	      remote_index = fdopen(fd, \"rw\");
-	    }
-	  }
-
-	  if (remote_stream == NULL) {
-	    if (orig_gps != 0)
-	      sprintf(curr_fn, \"/remote/vxp_%d_%.6llf.wsaudio\",
-	              my_node_id, orig_gps);
-	    else
-	      sprintf(curr_fn, \"/remote/vxp_%d_%.6llf_NOGPS.wsaudio\",
-	              my_node_id, orig_cpu);
-	    int fd = remote_open(curr_fn, \"\");
-	    if (fd < 0) {
-	      elog(LOG_WARNING, \"Failed to open remote connection: %m\");
-            }
-	    else {
-	      remote_stream = fdopen(fd, \"rw\");
-	    }
-	    file_index = 0;
-	  }
-
-	  if (remote_index) {
-	    int status = fprintf(remote_index, \"%lld %.6lf %d %s%c\",
-				 hdr.sample_start, orig_gps, 
-				 file_index, curr_fn, 10);
-	    fflush(remote_index);
-	    if (status < 0) {
-	      elog(LOG_WARNING, \"Remote connection failed (I): (%d) %m\", status);	      
-	      fclose(remote_index);
-	      remote_index = NULL;
-	    }
-	  }
-
-	  if (remote_stream) {	  
-	    int status = fwrite(&hdr, sizeof(hdr), 1, remote_stream);
-	    if (status != sizeof(hdr)) {
-	      elog(LOG_WARNING, \"Remote connection failed (H): (%d) %m\", status);	      
-	      fclose(remote_stream);
-	      remote_stream = NULL;
-	    } 
-	  }
-
-	  if (remote_stream) {	  
-	    int status = fwrite(qd->buf, qd->length, 1, remote_stream);
-	    if (status != qd->length) {
-	      elog(LOG_WARNING, \"Remote connection failed: (%d) %m\", status);	      
-	      fclose(remote_stream);
-	      remote_stream = NULL;
-	    } 
-	  }
-
-	  if (remote_stream) fflush(remote_stream);
-	}
+#endif
 
 	/* upcall to wavescript */
 	__vxpentry(qd->buf, qd->count, qd->sample_count);
@@ -245,7 +163,6 @@ int __initvxp()
   // in main thread - broadcast..
 
   // pthread waits..
-
 
   /* spawn thread to run vxp. */
   if (pthread_create(&(ws->vxp_thread), NULL, vxp_thread, ws) < 0) {
