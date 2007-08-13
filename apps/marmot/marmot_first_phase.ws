@@ -171,10 +171,10 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   d2 = iterate (d in detections) {
     let (flag,_,_) = d;
-    if flag then log(1,"Detection at "++show(d)++"\n");
+    if flag then log(LOG_TIMING,"Detection at "++show(d)++"\n");
     emit d;
   };
 
-  synced_ints = syncN(d2, [ch1i, ch2i, ch3i, ch4i]);
+  synced_ints = syncN_no_delete(d2, [ch1i, ch2i, ch3i, ch4i]);
   synced_ints
 }
