@@ -434,6 +434,8 @@
     ;; Must be wrapped in an assert-type of course:
     (ptrToArray     ((Pointer 'name) Int) (Array 'a))
     (ptrIsNull      ((Pointer 'name)) Bool)
+    ;; YUCK: adding this also for initialization.
+    (ptrMakeNull    () (Pointer ""))
 
     ;; This is down-and-dirty.  Inline C code.
     ;;

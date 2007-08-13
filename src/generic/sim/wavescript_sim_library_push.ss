@@ -111,7 +111,7 @@
 		 while
 
 		 ;; A foreign procedure for freeing external memory:
-		 C-free exclusivePtr getPtr nullPtr ptrIsNull
+		 C-free exclusivePtr getPtr nullPtr ptrIsNull ptrMakeNull
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL
 
@@ -1554,6 +1554,7 @@
 (define getPtr unbox)
 
 (define (ptrIsNull p) (= p 0))
+(define (ptrMakeNull) 0)
 (define nullPtr 0)
 
 ;; TODO ptrToArray

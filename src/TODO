@@ -219,3 +219,7 @@ Can't remember why I didn't originally.
 
  X) Updating type checker to handle partially annotated programs.
 
+[2007.08.13] {Deployment}
+
+ *) check out degap
+ 

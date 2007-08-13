@@ -34,13 +34,18 @@
 ;; We also need a place to record the type.  At least for readFile...
 (reg:define-struct (streamop name op params parents type))
 
+;; This is not a pretty aspect of the system, but there are some
+;; things that we should just "freeze" as code during metaprogram eval.
+;; In particular, we should not evaluate foreign functions at metaprog time.
+(reg:define-struct (suspension operator argvals))
+
 (reg:define-struct (ref contents))
 ;; We must distinguish these because they share the same physical
 ;; representatino as other numbers.
 ;(reg:define-struct (int64 num))
 ;(reg:define-struct (double num))
 
-(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x)))
+(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x) (suspension? x)))
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))
@@ -202,13 +207,16 @@
        (if (wrapped? raw) raw (make-plain raw)))]
 
     [(app ,[f] ,[e*] ...)
-     (when (foreign-closure? f)
-       (error 'interpret-meta:Eval "foreign app during meta eval: ~s" (closure-code f)))
-     ;; Native closure:
-     (Eval (closure-code f) 
-	   (extend-env (closure-formals f) e*
-		       (closure-env f))
-	   pretty-name)
+     (if (foreign-closure? f)
+	 (begin
+	   (printf "EXPERIMENTAL: making meta-suspension for foreign app!!")
+	   (make-suspension f e*))
+	 ;(error 'interpret-meta:Eval "foreign app during meta eval: ~s" (closure-code f))
+	 ;; Native closure:
+	 (Eval (closure-code f) 
+	       (extend-env (closure-formals f) e*
+			   (closure-env f))
+	       pretty-name))
 #;     
      ;; Is it a native or foreign closure:
      (if (foreign-closure? f)
@@ -331,6 +339,12 @@
     => (match-lambda ((,name . ,code))
 	 (printf "\n  Marshal: HAD MARSHALLED VALUE IN CACHE!!!\n")
 	 code)]
+
+   ;; EXPERIMENTAL:
+   [(suspension? val) 
+    (ASSERT (foreign-closure? (suspension-operator val)))
+    `(foreign-app ,(suspension-operator val)
+		  ,@(map Marshal (suspension-argvals val)))]
 
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]

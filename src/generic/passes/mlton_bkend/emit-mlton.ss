@@ -982,6 +982,7 @@
 
     [(ptrIsNull ,[myExpr -> ptr]) 
      "(EQUAL == MLton.Pointer.compare (Mlton.Pointer.null, "ptr"))"]
+    [(ptrMakeNull) "(Mlton.Pointer.null)"]
 
     ;; This unpacks a foreign array into a WS array:
     [(assert-type (Array ,elt) (ptrToArray ,[myExpr -> ptr] ,[myExpr -> len]))
