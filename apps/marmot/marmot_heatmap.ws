@@ -11,7 +11,7 @@ type AxesBounds = (Float * Float * Float * Float);
 type Settings   = (AxesBounds * (Float * Float));
 type Converter  = Int -> Float; // Coordinate converter.
 // Xbound, Ybound, and conversion procs.
-type CoordSystem = (Float * Float * Converter * Converter);
+type CoordSystem = (Int * Int * Converter * Converter);
 
 
 angle_num = 360.0
@@ -76,7 +76,7 @@ fun coord_converters(axes, grid_scale) {
   y_pixels = y_width / grid_scale;
 
   // Return x/y conversion functions.
-  (x_pixels, y_pixels,
+  (x_pixels`ceiling`f2i, y_pixels`ceiling`f2i,
    fun (n) (n`i2f + 0.5) / x_pixels * x_width + x_min,
    fun (n) (n`i2f + 0.5) / y_pixels * y_width + y_min)
   }
@@ -87,12 +87,15 @@ fun coord_converters(axes, grid_scale) {
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
 doa_fuse :: (CoordSystem, List TaggedAML) -> Matrix Float;
 fun doa_fuse((xpixels, ypixels, xchunks_to_cm, ychunks_to_cm), noderecords) {
-  xd = xpixels`ceiling`f2i;
-  yd = ypixels`ceiling`f2i;
-  println("Starting DOA fuse.  Gridsize "++xd++" x "++yd);
+  { let (xmin,xmax,ymin,ymax) = axes;
+    println("Starting DOA fuse.  Gridsize "++xpixels++" x "++ypixels++
+          "  Axes: ("++xmin`f2i++", "++ymin`f2i++") to ("++xmax`f2i++", "++ymax`f2i++")");
+    assert("xmax > xmin", xmax>xmin);
+    assert("ymax > ymin", ymax>ymin);
+  };
 
   // Build the likelihood map:
-  Matrix:build(xd,yd,
+  Matrix:build(xpixels, ypixels,
     fun(u,v) {
 
       // Coordinates in centimeter space:
@@ -217,10 +220,14 @@ c_write_ppm_file
   = (foreign("write_ppm_file", ["ppm_write.c"]) 
   :: (String, Int, Int, Array Int, Array Int, Array Int) -> Int)
 
+
 type RGB = (Int * Int * Int);
 write_ppm_file :: (String, Matrix RGB) -> Int;
 fun write_ppm_file(file, mat) {
   using Matrix;
+  //let (wid,hght) = dims(mat);
+  //dat = toArray(mat);
+  // We store in column-major so we flip it just once on the way out.
   let (hght,wid) = dims(mat);
   dat = toArray(transpose(mat));
   R = Array:map(fun((r,g,b)) r, dat);

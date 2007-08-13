@@ -8,7 +8,7 @@ origerror = wserror;
 
 fun print(str) {
   log_file(1,str);
-  log(1,str);
+  //log(1,str);
 }
 fun wserror(str) { 
   msg = "wserror: "++ str++"\n";

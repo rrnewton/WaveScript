@@ -438,6 +438,7 @@
 	  [,v (guard (symbol? v))
 	      (let ([entry (assq v mapping)])
 		(if entry (cadr entry)  v))]
+	  [(set! ,[v] ,[rhs]) `(set! ,v ,rhs)]
 	  [(,lett ([,lhs* ,ty* ,rhs*] ...) ,bod)
 	   (guard (memq lett '(letrec lazy-letrec let)))
 	   (let* ([newmapping (filter (lambda (pr) (not (memq (car pr) lhs*))) mapping)]

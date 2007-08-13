@@ -753,6 +753,7 @@ syncN_aux =
 fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
+   ENABLEWARNINGS = false;
    WARNSKEW = 60000; // threshold for warning that an accumulator has grown to big.  Should be user input.
 
   _ctrl = iterate((b,s,e) in ctrl) { emit ((b,s,e, nullseg) :: (Bool * Int64 * Int64 * Sigseg any)); };
@@ -791,6 +792,7 @@ fun (ctrl, strms, del) {
 
     // First do a "skew" check to detect when one accumulator has gotten to big. 
     for i = 0 to Array:length(accs)-1 {
+      if ENABLEWARNINGS then      
       if width(accs[i]) > WARNSKEW
       then {
         print("WARNING: skewed sync, acc sizes: ");

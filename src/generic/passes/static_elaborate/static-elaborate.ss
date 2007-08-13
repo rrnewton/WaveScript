@@ -166,7 +166,9 @@
      (define (generic-div a b)
        (cond
 	[(fixnum? a) (fx/ a b)] ;; Int and Int16
-	[(integer? a) (ASSERT integer? b) (floor (/ a b))] ;; This is an int64:
+	[(and (integer? a) (exact? a)) ;; This is an int64:
+	 (ASSERT integer? b) 
+	 (floor (/ a b))]
 	[(flonum? a) (fl/ a b)] ;; Float and Double
 	[else (error 'static-elaborate:generic-divide "unknown number representations: ~s ~s" a b)]
 	))
@@ -273,14 +275,6 @@
 	;; We don't repeat the Array:build hack here... sort of inconsistent.
 	(List:build ,(lambda (env n f)
 		       (make-nested-cons (map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
-
-	;; [2007.08.12] Have to handle this specially because the args need not be fully-available.
-#;
-	(List:fold ,(lambda (env fn zer ls)
-		      (foldl (lambda (elem acc)
-			       `(app ,(code-expr fn) ,acc ,(quote-value elem)))
-			(quote-value zer)
-			ls)))
 
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
@@ -767,22 +761,21 @@
 
 	  ;; EXPR HANDLING: NOW FOR A BRIEF INTERMISSION WHEREIN WE LIFT LETRECS
 	  ;; ================================================================================
+	  ;; These two cases account for A LOT of the static-elaborate slowdown:
+	  ;; If I knew freshness concerns would be so bad... I would have probably used debruin indices...
+	  ;; ================================================================================
 	  
 	  ;; It's a little funky that we look for letrec? before evaluating the rands...
           [(,prim ,rand* ...)
 	   (guard (regiment-primitive? prim)
 		  (list-index letrec? rand*))
-	   
-	   (when (eq? prim 'unionList)
-	     (printf "  Trying to lift unionlist...\n"))
-	   
+	  	   
 	   ;; For now only do it for ONE rand
 	   ;;(ASSERT (fx= 1 (filter letrec? rand*)))
 	   (let loop ([rand* rand*] [argacc ()] [bindacc ()])
 	     (if (null? rand*)
 		 (begin
 ;		   (printf "LIFTING LETREC BINDS: ~s\n" (map car (reverse bindacc)))
-					;(inspect (list rand* argacc bindacc))
 		   (if (null? bindacc) 
 		       `(,prim ,@(reverse argacc))
 		       `(letrec ,(reverse bindacc) (,prim ,@(reverse argacc)))))
@@ -804,17 +797,31 @@
 	  ;; This is a letrec in the RHS of a letrec.
 	  ;; Sad to duplicate so much of the rest of the compiler within static-elaborate.
 	  ;; FIXME FIXME!!! ONLY IMPLEMENTED FOR ONE-BINDING LETRECS ATM
-	  [(letrec ([,lhs ,ty (letrec ,binds ,bod1)]) ,bod2)
+	  [(letrec ([,lhs ,ty (letrec ([,lhs* ,ty* ,rhs*] ...) ,bod1)]) ,bod2)
+;	  [(letrec ([,lhs ,ty (letrec ,binds ,bod1)]) ,bod2)
+;	   (ASSERT (not (memq lhs lhs*)))
+	   (DEBUGASSERT (not (memq lhs (core-free-vars bod1))))
+;	   (printf "FOUND LETREC NEST! ~s ~s\n" lhs lhs*)
 
-	   ;(inspect (format "FOUND LETREC NEST! ~s ~s" lhs (map car binds)))
-	   
-	   ;; This should always be safe wrt side effects.
-	   ;; The RHS we lift is already in head position.
-	   ;; FIXME: HOWEVER ARE THERE FRESHNESS CONCERNS??
-	   (process-expr `(letrec ,binds
-			    (letrec ([,lhs ,ty ,bod1])
-			      ,bod2))
-			 env)]
+	   ;; Make it nice and fresh:
+	   ;; It doesn't seem to make it too much slower.
+	   (let* ([new-lhs* (map unique-name lhs*)]
+		  [convert (lambda (x) (core-substitute lhs* new-lhs* x))]
+		  [new-rhs* (map convert rhs*)]
+		  [new-bod1 (convert bod1)])
+	     ;; This should always be safe wrt side effects.
+	     ;; The RHS we lift is already in head position.
+	     (process-expr `(letrec ,(map list new-lhs* ty* new-rhs*)
+			      (letrec ([,lhs ,ty ,new-bod1])
+				,bod2))
+			   env))
+#;
+	   	     ;; This should always be safe wrt side effects.
+	     ;; The RHS we lift is already in head position.
+	     (process-expr `(letrec ,binds
+			      (letrec ([,lhs ,ty ,bod1])
+				,bod2))
+			   env)]
 
 	  ;; EXPR HANDLING: NOW CONTAINER PRIMITIVES
 	  ;; ================================================================================	  
@@ -912,63 +919,50 @@
 		     ))
 	       `(List:append ,a ,b))]
 
+	  ;; [2007.08.12] Ack, restricting this to make sure the whole list is available...
+	  ;; seing if that affects performance.
+	  ;; Seemed to make no difference.
+#;
 	  [(List:map ,[f] ,[ls])
 	   (ASSERT side-effect-free? f)
-	   (if (container-available? ls)
-	       (let ([val (getlist ls)])		 
-		 (if (code? val)
-		     (match (code-expr val)
-		       [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(List:map ,f ,b) env))]
-		       [,x (error 'static-elaborate:process-expr "implementation error, List:map case: ~s" x)]) 
-		     (match val
-		       [() ''()]
-		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
-		 )
-	       `(List:map ,f ,ls))]
+	   (let loop ([ls ls])
+	     (if (container-available? ls)
+		 (let ([val (getlist ls)])
+		   (if (list? val)
+		       (make-nested-cons (map (lambda (cd) `(app ,f ,cd)) val))
+		       `(List:map ,f ,ls)))
+		 `(List:map ,f ,ls)))]
+
+	  [(List:map ,[f] ,[ls])
+	   (ASSERT side-effect-free? f)
+	   (let loop ([ls ls])
+	     (if (container-available? ls)
+		 (let ([val (getlist ls)])		 
+		   (if (code? val)
+		       (match (code-expr val)
+			 [(cons ,a ,b) `(cons (app ,f ,a) ,(loop b))]
+			 [,x (error 'static-elaborate:process-expr "implementation error, List:map case: ~s" x)]) 
+		       (match val
+			 [() ''()]
+			 [(,h . ,[t]) `(cons (app ,f ,h) ,t)])))
+		 `(List:map ,f ,ls))
+	     )]
 	
 	  ;; At meta-program type List:fold is fold RIGHT!!
 	  ;; Your program must tolerate left or right folds..
 	  [(List:fold ,[fn] ,[zer] ,[ls])
 	   (ASSERT side-effect-free? fn)
-
-	    (if (container-available? ls)
-		(let ([val (getlist ls)])
-		  (if (code? val)
-		      (match (code-expr val)
-			[(cons ,a ,b) `(app ,fn ,a ,(process-expr `(List:fold ,fn ,zer ,b) env))]
-			[,x (error 'static-elaborate:process-expr "implementation error, List:fold case: ~s" x)]) 
-		      (match val
-			[() zer]
-			[(,h . ,[t]) `(app ,fn ,h ,t)])))
-		`(List:fold ,fn ,zer ,ls))]
-  
-#;
-	  ;; Requires entire list be available:
-	  [(List:fold ,[fn] ,[zer] ,[ls])
-	   (ASSERT side-effect-free? fn)
-	   (inspect/continue
-	    (if (available? ls)
-	       (match val
-		 [() zer]
-		 [(,h . ,[t]) `(app ,fn ,t ,h)])
-	       `(List:fold ,fn ,zer ,ls)))]
-
-#;
-	  ;; Processes a prefix of the list:
-	  ;(f (f (f zer 1) 2) 3)
-	  ;(List:fold f ZER? (cons (f car ) cdr))
-	  [(List:fold ,[fn] ,[zer] ,[ls])
-	   (ASSERT side-effect-free? f)
-	   (if (container-available? ls)
-	       (let ([val (getlist ls)])		 
-		 (if (code? val)
-		     (match (code-expr val)
-		       [(cons ,a ,b) `(app ,fn ,(process-expr `(List:map ,f ,b) env))]
-		       [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)]) 
-		     (match val
-		       [() ]
-		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
-		 ))]
+	   (let loop ([ls ls])
+	     (if (container-available? ls)
+		 (let ([val (getlist ls)])
+		   (if (code? val)
+		       (match (code-expr val)
+			 [(cons ,a ,b) `(app ,fn ,a ,(loop b))]
+			 [,x (error 'static-elaborate:process-expr "implementation error, List:fold case: ~s" x)])
+		       (match val
+			 [() zer]
+			 [(,h . ,[t]) `(app ,fn ,h ,t)])))
+		 `(List:fold ,fn ,zer ,ls)))]
 	  
 	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
 	  [(unionList ,[x])

@@ -1,6 +1,9 @@
 
 // This file contains a 
 
+axes = (-2000.0, 15801.0, -11659.0, 6142.0)
+grid_scale = 50.0
+
 include "stdlib.ws";
 include "marmot_heatmap.ws";
 
@@ -30,9 +33,7 @@ data = Curry:map(List:toArray)$
 
 //******************************************************************************//
 
-axes = (-2000.0, 15801.0, -11659.0, 6142.0)
-//grid_scale = 50.0
-grid_scale = 138.0
+//grid_scale = 138.0
 //grid_scale = 2000.0
 
 BASE <- iterate _ in timer(3.0) {

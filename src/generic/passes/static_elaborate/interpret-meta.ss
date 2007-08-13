@@ -94,6 +94,7 @@
     [',c (make-plain c)]
 
     [(tuple ,[x*] ...) (make-plain (make-tuple (map plain-val x*)))]
+    [(tupref ,[tup] ,ind ,len ) (list-ref (tuple-fields tup) ind)]
 
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
