@@ -26,9 +26,21 @@ zipped = zipN_sametype(0, [ch1,ch1b]);
 
 zipped2 = zip4_sametype(0, ch1,ch1b, ch1,ch1b);
 
-result = iterate (x in zipped) {
+everyother = iterate x in s1 {
+  state { flag = true }
+  if flag then emit x;
+  flag := not(flag);
+}
+
+degapped = degap(everyother,gint(0))
+
+result = iterate sum in union2(degapped,zipped) {
   state { first = true }
-  
+  println("in");
+  case sum {
+    Left(x) : println("woot "++x)
+    Right(x): {
+    
   //println(x++" \n");
   assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
   emit x;
@@ -106,13 +118,15 @@ result = iterate (x in zipped) {
        bld = List:build(5, fun(i)i);
        assert_prnt("List:build", bld, [0,1,2,3,4]);
        assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
-    };
-    
-    
-  };
+    }
+  } 
+ } 
+};
   
   //  emit true;
 }
 
 BASE <- result
+
+//BASE <- result
 //BASE <- ch2

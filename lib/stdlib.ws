@@ -988,22 +988,24 @@ fun degap(s, init)
 {
   iterate w in s {
     state {
-      next = gint(0);
+      next = intToInt64(0);
     }
     if w != nullseg then {
       if w`start > next then {
-	if (next != gint(0)) then {
+	if (next != intToInt64(0)) then {
 	  arr = Array:make(int64ToInt(w`start - next), init);
-	  emit(toSigseg(arr, next, w`timebase));
+	  emit(toSigseg(arr, next, w`timebase));	  
 	}
-      }
-      else 
-      if w`start == next then emit(w)
+      };
+      emit(w);
+      /*
+      else         
+      if w`start == next then 
       else {
 	wserror("gap we can't degap.. start is "++
 		w`start++".. prev was "++next);
       };
-
+      */
       next := w`end + gint(1);
     }
   }
