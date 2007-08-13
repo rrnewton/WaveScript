@@ -540,21 +540,23 @@
 
 ;; This handles null characters correctly.
 ;; (VERY INEFFICIENT CURRENTLY .. BAD FOR OUR LARGE INLINEC STRINGS)
-(define (print-mlton-string str)
+(trace-define (print-mlton-string str)
   (list "\""
     (list->string
-     (apply append
-	    (map (lambda (c)
-		   (case c
-		    [(#\nul)     (list #\\ #\0 #\0 #\0)]
-		    [(#\newline) (list #\\ #\n)]
-		    [(#\tab)     (list #\\ #\t)]
-;		    [(#\r)       (list #\\ #\r)]
-;		    [(#\")       (list #\\ #\")]
-;		    [(#\')       (list #\\ #\')]
-		    [(#\\)       (list #\\ #\\)]
-		    [else (list c)]))
-	      (string->list str))))
+     (match (string->list str)
+       [() ()]
+       ;; Something that's already quoted.
+      ; [(#\\ ,c . ,[tl]) (list* #\\ c tl)]
+       
+       [(#\nul     . ,[tl]) (list* #\\ #\0 #\0 #\0 tl)]
+       [(#\newline . ,[tl]) (list* #\\ #\n tl)]
+       [(#\tab     . ,[tl]) (list* #\\ #\t tl)]
+     ;	   [(#\r)       (list #\\ #\r)]
+       [(#\" . ,[tl])       (list* #\\ #\" tl)]
+;       [(#\' . ,[tl])       (list* #\\ #\' tl)]
+       [(#\\ . ,[tl])       (list* #\\ #\\ tl)]
+       [(,a . ,[tl]) (cons a tl)]
+       ))
     "\""))
 
 (define Const
