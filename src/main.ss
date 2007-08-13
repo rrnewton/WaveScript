@@ -489,7 +489,6 @@
 ;  (do-late-typecheck)
 
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
-  (inspect p)
   (ws-run-pass p degeneralize-arithmetic)
 
   ;; We MUST typecheck before verify-elaborated.

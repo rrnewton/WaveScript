@@ -976,3 +976,17 @@ Can we do borealis style stream revisions with metaprogramming?
  pull streams
  marshaling
  )
+
+
+[2007.08.13] {ENSbox stuff}
+
+polling mode is rev 1.28
+checkin date 8/13 2:10
+
+rbsh -U flood --ignore 100,103
+rbsh -b wlan0
+
+/home/emstar/wavescope.run
+
+./emrun/emrun wavescope.run --daemon
+./query.ensbox.mlton.exe --sink 192.168.12.151

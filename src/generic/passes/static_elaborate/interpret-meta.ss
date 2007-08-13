@@ -109,6 +109,7 @@
     [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)))]
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
+     (ASSERT (plain? tup))
      (maybe-wrap (list-ref (tuple-fields (plain-val tup)) ind))
      ]
 
@@ -125,10 +126,13 @@
 	      (and (pair? x) (memq (car x) '(foreign)))))
      (match (peel-annotations e)
        [(foreign ,name ,includes)
-	(let ([name     (plain-val (Eval name env #f))]
-	      [includes (plain-val (Eval includes env #f))])
+	(let ([name     (Eval name env #f)]
+	      [includes (Eval includes env #f)])
+	  (ASSERT (plain? name))
+	  (ASSERT (plain? includes))
 	  ;; This is a closure representing a foreign function.
-	  (make-foreign-closure name includes ty)
+	  (make-foreign-closure (plain-val name) 
+				(plain-val includes) ty)
 	  )])]
     [(foreign . ,_) (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons 'foreign _))]
     ;; We leave this alone:
@@ -136,6 +140,7 @@
 
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      
+     (ASSERT (plain? ls))
      (ASSERT (andmap streamop? (plain-val ls)))
      (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
     [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
@@ -148,7 +153,9 @@
 	  (ASSERT (curry andmap (compose not streamop?)) params)
 	  (make-streamop (streamop-new-name) streamprim params  parents #f))])]   
 
-    [(if ,[t] ,c ,a) (Eval (if (plain-val t) c a) env pretty-name)]
+    [(if ,[t] ,c ,a) 
+     (ASSERT (plain? t))
+     (Eval (if (plain-val t) c a) env pretty-name)]
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
      (Eval bod (extend-env lhs* rhs* env) pretty-name)]
 
@@ -173,6 +180,7 @@
 
     ;; TEMP HACK!!!!
     [(floatToInt ,[x])
+     (ASSERT (plain? x))
 ;     (inspect x)
      (make-plain (inexact->exact (floor (plain-val x))))]
 
@@ -209,7 +217,7 @@
     [(app ,[f] ,[e*] ...)
      (if (foreign-closure? f)
 	 (begin
-	   (printf "EXPERIMENTAL: making meta-suspension for foreign app!!")
+	   (printf "EXPERIMENTAL: making meta-suspension for foreign app!!: ~s" f)
 	   (make-suspension f e*))
 	 ;(error 'interpret-meta:Eval "foreign app during meta eval: ~s" (closure-code f))
 	 ;; Native closure:
@@ -231,14 +239,17 @@
 	    ])
 )]
     [(for (,i ,[st] ,[en]) ,bod)
+     (ASSERT (plain? st))
+     (ASSERT (plain? en))
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
 	   ((> i end) (make-plain #()))
 	 (Eval bod (extend-env '(i) (list (make-plain i)) env) pretty-name)))]
-    [(while ,tst ,bod)
-     (begin
+    [(while ,tst ,bod)     
+     (let ([test (Eval tst env pretty-name)])
+       (ASSERT (plain? test))
        (let loop ()
-	 (when (plain-val (Eval tst env pretty-name))
+	 (when (plain-val test)
 	   (Eval bod env pretty-name)
 	   (loop)))
        (make-plain #()))]
@@ -343,7 +354,7 @@
    ;; EXPERIMENTAL:
    [(suspension? val) 
     (ASSERT (foreign-closure? (suspension-operator val)))
-    `(foreign-app ,(suspension-operator val)
+    `(foreign-app ,(Marshal-Closure (suspension-operator val))
 		  ,@(map Marshal (suspension-argvals val)))]
 
    [(plain? val) (Marshal-Plain val)]
@@ -410,6 +421,8 @@
 ;; We should maybe maintain types...
 (define (Marshal-Plain p) 
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
+  (ASSERT (plain? p))
+  
   (let loop ([val (plain-val p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
@@ -447,7 +460,7 @@
 	     rest)]))
 
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
-  (ASSERT (not (foreign-closure? cl)))  
+  (ASSERT (not (foreign-closure? cl)))
 
   ;; This loop accumulates a bunch of bindings that cover all the
   ;; free variables of the closure.  (And, transitively, any
@@ -493,7 +506,7 @@
 	    ;; FIXME: Need to scan for shared mutable values.
 	    (loop code (cdr fv)
 		  (cons (list (car fv) (unknown-type) 
-			      `(Mutable:ref ,(Marshal-Plain (ref-contents val))))
+			      `(Mutable:ref ,(Marshal (ref-contents val))))
 			state)
 		  globals env substitution)]
 

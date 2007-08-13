@@ -59,10 +59,11 @@ List:fold1      :: ((t, t) -> t, List t) -> t;
 //List:foldi      :: (((Int, acc, t) -> acc), acc, List t) -> acc;
 List:choplast   :: List t -> (t * List t);
 
+foldRange       :: (Int, Int, t, (t, Int) -> t) -> t;
+
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 // [2007.08.12] BUG!!! THIS IS THE WRONG TYPE... BUT IT CHECKS??
 //Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
-Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
 Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
@@ -472,6 +473,13 @@ namespace FIFO {
 }
 */
 
+
+// This is quite inefficient.  But if it's a useful thing to have it
+// can be made efficient.  Range is inclusive.
+fun foldRange (st, en, zer, f) {
+  Array:fold(f, zer, Array:build(en - st + 1, fun(x) x+st))
+}
+
 //======================================================================
 /* Array operations */
 
@@ -511,12 +519,6 @@ namespace Array {
   // we are in the input.  Must be used with fold left!
   fun foldi (f, zer, arr)
     fold(fun ((i,acc), elm) (i+1, f(i,acc,elm)), (0,zer), arr)
-
-  // This is quite inefficient.  But if it's a useful thing to have it
-  // can be made efficient.  Range is inclusive.
-  fun foldRange (st, en, zer, f) {
-    Array:fold(f, zer, Array:build(en - st + 1, fun(x) x+st))
-  }
 
   fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
 
