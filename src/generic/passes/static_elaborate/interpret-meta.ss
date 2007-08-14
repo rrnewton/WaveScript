@@ -1,4 +1,6 @@
 
+;; TODO: Change some of the asserts below to DEBUGASSERTS
+
 
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
@@ -334,8 +336,6 @@
 
 
 
-
-
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
@@ -354,8 +354,19 @@
    ;; EXPERIMENTAL:
    [(suspension? val) 
     (ASSERT (foreign-closure? (suspension-operator val)))
-    `(foreign-app ,(Marshal-Closure (suspension-operator val))
-		  ,@(map Marshal (suspension-argvals val)))]
+    (match (closure-code (suspension-operator val))
+      [(assert-type ,ty (foreign ',name ',includes))
+       `(foreign-app ',name
+		     ,(Marshal-Foreign-Closure (suspension-operator val))
+		     ,@(map Marshal (ASSERT (suspension-argvals val))))
+       ])
+    
+
+#;
+    (let ([op (unique-name "foreignentry")])
+      `(let ([,op ,(unique-name 'ty) ])
+	 
+	 ))]
 
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
@@ -386,6 +397,7 @@
 	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
 	     ,(loop (cdr ops)))))
     ;; No, doing letrec instead:
+    (ASSERT allops)
     `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
        ,(streamop-name val))
     )]
@@ -394,8 +406,8 @@
 (define (Marshal-Streamop op)
   (define default 
     (cons (streamop-op op)
-	  (if (eq? 'unionN (streamop-op op))
-	      (map streamop-name (streamop-parents op))
+	  (if (eq? 'unionN (streamop-op op))	      
+	      (map streamop-name (ASSERT (streamop-parents op)))
 	      ;; This is more than a bit silly, I shouldn't split params/parents in the first place.
 	      (let loop ([argty* (car (ASSERT (regiment-primitive? (streamop-op op))))]
 			 [params  (streamop-params op)]
@@ -435,7 +447,7 @@
 ;     [(double? val) (double-num val)]
 
      [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
-				(tuple-fields val)))]
+				(ASSERT (tuple-fields val) )))]
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!
      ;; Need to wrap them!!
@@ -445,6 +457,14 @@
       ;(DEBUGASSERT complex-constant? val)
       `',val]
      )))
+
+
+
+;; Foreign closures are simple... they become foreign entries.
+(define (Marshal-Foreign-Closure fcl)
+  (ASSERT (foreign-closure? fcl))
+  (inspect/continue (closure-code fcl))
+  )
 
 ;; FIXME: TODO: to make this more efficient, we should build up a
 ;; single substitution, then apply it, rather than repeatedly
@@ -460,7 +480,8 @@
 	     rest)]))
 
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
-;  (ASSERT (not (foreign-closure? cl)))
+  (ASSERT (not (foreign-closure? cl)))
+
 
   ;; This loop accumulates a bunch of bindings that cover all the
   ;; free variables of the closure.  (And, transitively, any
@@ -479,7 +500,7 @@
     (if (null? fv)
 	;; We're done processing the environment, produce some code:
 	(let* ([bod `(lambda ,(closure-formals cl) 
-		       ,(map unknown-type (closure-formals cl)) ,code)]
+		       ,(map unknown-type (ASSERT (closure-formals cl))) ,code)]
 	       [newbod (let ([subst (subst-the-substs (reverse substitution))])
 			 (core-substitute (map car subst) (map cadr subst)
 					  bod))]
@@ -511,7 +532,7 @@
 		  globals env substitution)]
 
 	   [(foreign-closure? val)
-					;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
+  	    ;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
 	    (match (closure-code val)
 	      [(assert-type ,ty (foreign ',name ',includes))
 	       (match ty
@@ -551,8 +572,9 @@
 	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
 
 (define (closure-free-vars cl) 
-  (DEBUGASSERT (not (foreign-closure? cl)))
-  (difference (core-free-vars (closure-code cl)) (closure-formals cl)))
+  ;(ASSERT (not (foreign-closure? cl)))
+  (if (foreign-closure? cl) ()
+      (difference (core-free-vars (closure-code cl)) (closure-formals cl))))
 
 ;; Renames the free vars for a closure.
 (define (dissect-and-rename cl)

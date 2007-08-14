@@ -592,7 +592,7 @@
 			      (match (code-expr val) 
 				[(cons ,a ,b) (incr (container-length b))]
 				[(tuple ,args ...)  (length args)]
-				[(vector ,args ...) (legnth args)]
+				[(vector ,args ...) (length args)]
 				[,oth #f]
 				)
 			      (match val
