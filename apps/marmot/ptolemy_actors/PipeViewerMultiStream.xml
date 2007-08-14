@@ -4,7 +4,7 @@
 <entity name="PipeViewerMultiStream" class="ptolemy.actor.TypedCompositeActor">
     <property name="_createdBy" class="ptolemy.kernel.attributes.VersionAttribute" value="6.0.2">
     </property>
-    <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={122, 189, 1296, 742}, maximized=false}">
+    <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={292, 264, 1296, 742}, maximized=false}">
     </property>
     <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[1084, 639]">
     </property>
@@ -27,7 +27,7 @@
         </property>
         <port name="output" class="ptolemy.actor.TypedIOPort">
             <property name="output"/>
-            <property name="_type" class="ptolemy.actor.TypeAttribute" value="{name=string, chan=int, node=int, timestamp=int, data={int}}">
+            <property name="_type" class="ptolemy.actor.TypeAttribute" value="{name=int, chan=int, node=int, timestamp=int, data={int}}">
             </property>
         </port>
     </entity>
@@ -36,7 +36,7 @@
         </property>
         <property name="title" class="ptolemy.kernel.util.StringAttribute" value="DataString">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={568, 618, 484, 161}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={568, 618, 443, 151}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="[230.0, 710.0]">
         </property>
@@ -45,7 +45,7 @@
         <property name="fileOrURL" class="ptolemy.data.expr.FileParameter" value="dets.pipe">
         </property>
         <doc>Read one line at a time from a text file and output as a string</doc>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="{140.0, 600.0}">
+        <property name="_location" class="ptolemy.kernel.util.Location" value="[130.0, 605.0]">
         </property>
     </entity>
     <entity name="MonitorValue2" class="ptolemy.actor.lib.MonitorValue">
@@ -97,7 +97,7 @@
         <entity name="XYPlotter" class="ptolemy.actor.lib.gui.XYPlotter">
             <property name="legend" class="ptolemy.kernel.util.StringAttribute" value="AML output">
             </property>
-            <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={571, 165, 500, 345}, maximized=false}">
+            <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={571, 165, 500, 343}, maximized=false}">
             </property>
             <property name="_plotSize" class="ptolemy.actor.gui.SizeAttribute" value="[500, 300]">
             </property>
@@ -110,8 +110,8 @@
 <title>XYPlotter</title>
 <xLabel></xLabel>
 <yLabel></yLabel>
-<xRange min="-188.40729240391053" max="358.94532256114445"/>
-<yRange min="-275.8376234069332" max="104.26010937070336"/>
+<xRange min="1.7976931348623157E308" max="-1.7976931348623157E308"/>
+<yRange min="1.7976931348623157E308" max="-1.7976931348623157E308"/>
 <default connected="no" marks="points"/>
 </plot>?>
             </configure>
@@ -421,23 +421,6 @@
         <link port="PolarToCartesian.x" relation="relation5"/>
         <link port="PolarToCartesian.y" relation="relation6"/>
     </entity>
-    <entity name="Expression" class="ptolemy.actor.lib.Expression">
-        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="input.name == &quot;aml&quot;">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
-            <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
-            </property>
-            <property name="displayWidth" class="ptolemy.data.expr.Parameter" value="60">
-            </property>
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[405.0, 700.0]">
-        </property>
-        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
-        </property>
-        <port name="input" class="ptolemy.actor.TypedIOPort">
-            <property name="input"/>
-        </port>
-    </entity>
     <entity name="Switch" class="ptolemy.actor.lib.Switch">
         <property name="SwitchIcon" class="ptolemy.vergil.icon.EditorIcon">
             <property name="rectangle" class="ptolemy.vergil.kernel.attributes.RectangleAttribute">
@@ -583,9 +566,9 @@
     <entity name="Display2" class="ptolemy.actor.lib.gui.Display">
         <property name="rowsDisplayed" class="ptolemy.data.expr.Parameter" value="3">
         </property>
-        <property name="title" class="ptolemy.kernel.util.StringAttribute" value="Switch1">
+        <property name="title" class="ptolemy.kernel.util.StringAttribute" value="Detection Message">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={916, 353, 484, 97}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={916, 353, 443, 91}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="[725.0, 675.0]">
         </property>
@@ -597,7 +580,7 @@
         </property>
         <property name="title" class="ptolemy.kernel.util.StringAttribute" value="InputName">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={1070, 625, 484, 97}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={1070, 625, 443, 91}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="[570.0, 480.0]">
         </property>
@@ -607,9 +590,9 @@
     <entity name="Display" class="ptolemy.actor.lib.gui.Display">
         <property name="rowsDisplayed" class="ptolemy.data.expr.Parameter" value="3">
         </property>
-        <property name="title" class="ptolemy.kernel.util.StringAttribute" value="Switch0">
+        <property name="title" class="ptolemy.kernel.util.StringAttribute" value="AML Message">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={902, 109, 484, 97}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={902, 109, 443, 91}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="{725.0, 625.0}">
         </property>
@@ -638,7 +621,7 @@
         </property>
         <property name="title" class="ptolemy.kernel.util.StringAttribute" value="ISAML">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={902, 109, 484, 97}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={902, 109, 443, 91}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="[740.0, 730.0]">
         </property>
@@ -675,12 +658,29 @@
         </property>
         <property name="title" class="ptolemy.kernel.util.StringAttribute" value="NODE INDEX">
         </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={1070, 625, 484, 97}, maximized=false}">
+        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={1070, 625, 443, 91}, maximized=false}">
         </property>
         <property name="_location" class="ptolemy.kernel.util.Location" value="[685.0, 450.0]">
         </property>
         <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
         </property>
+    </entity>
+    <entity name="Expression" class="ptolemy.actor.lib.Expression">
+        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="input.name == 11111">
+        </property>
+        <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
+            <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
+            </property>
+            <property name="displayWidth" class="ptolemy.data.expr.Parameter" value="60">
+            </property>
+        </property>
+        <property name="_location" class="ptolemy.kernel.util.Location" value="[390.0, 700.0]">
+        </property>
+        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
+        </property>
+        <port name="input" class="ptolemy.actor.TypedIOPort">
+            <property name="input"/>
+        </port>
     </entity>
     <relation name="relation4" class="ptolemy.actor.TypedIORelation">
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
@@ -726,11 +726,11 @@
         <vertex name="vertex1" value="[615.0, 730.0]">
         </vertex>
     </relation>
-    <relation name="relation8" class="ptolemy.actor.TypedIORelation">
+    <relation name="relation9" class="ptolemy.actor.TypedIORelation">
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
         </property>
     </relation>
-    <relation name="relation9" class="ptolemy.actor.TypedIORelation">
+    <relation name="relation2" class="ptolemy.actor.TypedIORelation">
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
         </property>
     </relation>
@@ -743,8 +743,6 @@
     <link port="Expression4.output" relation="relation"/>
     <link port="Expression4.input" relation="relation5"/>
     <link port="PolarAMLPlot.port" relation="relation"/>
-    <link port="Expression.output" relation="relation8"/>
-    <link port="Expression.input" relation="relation5"/>
     <link port="Switch.input" relation="relation5"/>
     <link port="Switch.output" relation="relation7"/>
     <link port="Switch.output" relation="relation12"/>
@@ -755,10 +753,12 @@
     <link port="Expression3.output" relation="relation13"/>
     <link port="Expression3.input" relation="relation5"/>
     <link port="Display3.input" relation="relation14"/>
-    <link port="BooleanToAnything.input" relation="relation8"/>
+    <link port="BooleanToAnything.input" relation="relation2"/>
     <link port="BooleanToAnything.output" relation="relation14"/>
     <link port="Expression7.output" relation="relation9"/>
     <link port="Expression7.input" relation="relation5"/>
     <link port="Display7.input" relation="relation9"/>
+    <link port="Expression.output" relation="relation2"/>
+    <link port="Expression.input" relation="relation5"/>
     <link relation1="relation11" relation2="relation14"/>
 </entity>
