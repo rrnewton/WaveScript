@@ -1062,7 +1062,7 @@
 		     (loop rest)]
 
 		    [(-exit-error ,rest ...)
-		     (printf "SETTING BATCH MODE\n")
+		     (eprintf "SETTING BATCH MODE\n")
 		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 		     (loop rest)]
 		    
@@ -1198,7 +1198,7 @@
 	  ;; Interactive mode.  A Scheme REPL.
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
 	  [(i interact)
-	   (printf "Exposing Regiment through interactive read-eval-print loop:\n")
+	   (eprintf "Exposing Regiment through interactive read-eval-print loop:\n")
 	   ;; [2006.02.28] We want to reset global bindings before loading any more source:
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:

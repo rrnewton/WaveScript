@@ -58,5 +58,5 @@ doas = oneSourceAMLTD(synced, micgeometry, 2048);
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
 //BASE <- synced;
-BASE <- gnuplot_array_stream(doas)
+BASE <- gnuplot_array_stream(smap(fst, doas))
 //BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }

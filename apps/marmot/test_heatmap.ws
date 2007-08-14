@@ -4,6 +4,8 @@
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
 grid_scale = 50.0
 
+fun timer_source(_,t) timer(1000.0 / t`intToFloat)
+
 include "stdlib.ws";
 include "marmot_heatmap.ws";
 
@@ -40,18 +42,15 @@ data = Curry:map(List:toArray)$
 //let (_,_,cnvrtx,cnvrty) = coord_converters(axes, grid_scale);
 
 BASE <- iterate _ in timer(3.0) {
-  state { nodesAndData = []; fst = true }
+  using List;
 
   println("Executing test_heatmap...");
 
-  if fst then {
-    fst := false;
-    nodesAndData := List:map2(fun(x,y)(x,y), 
-                    nodes, 
-  	            map(normalize_doas, data));
-  };
+  nodesAndData = map2(fun(x,y) (x,0`gint,y), nodes, map(normalize_doas, data));
 
-  let mat = doa_fuse(axes,grid_scale, nodesAndData);
+  //  nodesAndData = List:map2(fun(nd,(mat,st)) (nd,st,mat), nodes, norm);
+  //doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
+  let (mat,st) = doa_fuse(axes,grid_scale, nodesAndData);
 
   pic = colorize_likelihoods(mat);
 
@@ -59,7 +58,6 @@ BASE <- iterate _ in timer(3.0) {
   write_ppm_file(file,pic);
 
   emit ("Wrote image to file: " ++ file ++ " "++ Matrix:get(mat,0,0));
-  //emit pic;
 }
 
 

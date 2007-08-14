@@ -169,6 +169,7 @@ c2d :: Complex -> Double;
 to64   :: Int -> Int64;
 from64 :: Int64 -> Int;
 
+
  /// CURRIED versions of functions
 // maps, etc
 
@@ -1291,6 +1292,8 @@ fun stream_map(f,s) {
     emit f(x);
   }
 }
+smap = stream_map; // I just can't stand this one being longer.
+
 
 fun stream_filter(f,s) {
   iterate (x in s) {
