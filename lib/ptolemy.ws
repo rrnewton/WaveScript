@@ -1,16 +1,5 @@
 
 
-fun ensbox_to_ptolemy(name, chan, node, time, data) {
-  write_to_fifo
-    ("/tmp/ptolemy",
-     alist_to_ptolemy
-     ( [ ("name",name), 
-	 ("chan", show(chan)), 
-	 ("node", show(node)),
-	 ("timestamp", show(time)),
-	 ("data", array_to_ptolemy(data)) ] )++"\n")
-}
-
 
 
 /* fifo,string */
@@ -43,4 +32,16 @@ fun alist_to_ptolemy(al) {
       "{"++assoc_to_ptolemy(al`head)++
 	List:fold1(fun (x,y) ","++y++","++x,
 		   List:map(assoc_to_ptolemy,al`tail))++"}";
+}
+
+
+fun ensbox_to_ptolemy(name, chan, node, time, data) {
+  write_to_fifo
+    ("/tmp/ptolemy",
+     alist_to_ptolemy
+     ( [ ("name",name), 
+	 ("chan", show(chan)), 
+	 ("node", show(node)),
+	 ("timestamp", show(time)),
+	 ("data", array_to_ptolemy(data)) ] )++"\n")
 }
