@@ -56,6 +56,10 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 	  double cpu;
 	  double samples = qd->sample_count;
 	  if (samples_to_clock_value(samples, GPS, &gps) == 0) {
+#ifdef TIMEBASEDEBUG
+elog(LOG_WARNING, \"adding entry %d->%d %lf %lf\",
+__vxp_tb, gps_timebase(), samples, gps);
+#endif
   	    timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
 	  }
 	  if (samples_to_clock_value(samples, CPU, &cpu) == 0) {

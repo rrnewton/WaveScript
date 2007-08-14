@@ -102,6 +102,7 @@ fun gen_glue_sigseg4 (host,name,id) {
     /* unmarshal from the buffer to call into entry */
     struct sigseg4_msg *cast = (struct sigseg4_msg *)buf;
     double time = tv_to_double(&(cast->start_time));
+
     int len = (size - sizeof(struct sigseg4_msg))/4/sizeof(int16_t);
 
     double sample = 0;
@@ -109,8 +110,13 @@ fun gen_glue_sigseg4 (host,name,id) {
       elog(LOG_WARNING, \"can't convert sample numbers, dropping data\");
     }
     else {
+#ifdef TIMEBASEDEBUG
+elog(LOG_WARNING, \"gpstv %ld.%06ld -> gps %lf -> gs %lf\",
+cast->start_time.tv_sec, cast->start_time.tv_usec,
+time, sample);
+#endif
       WRAP_WSENTRY(
-        __entry_"++id++"(sample, len, 
+        __entry_"++id++"((int64_t)sample, len, 
                          cast->target,
                          cast->target+len,
                          cast->target+len*2,
