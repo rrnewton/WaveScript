@@ -112,7 +112,7 @@
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))
-     (maybe-wrap (list-ref (tuple-fields (plain-val tup)) ind))
+     (maybe-wrap (list-ref (tuple-fields  (plain-val tup)) ind))
      ]
 
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......

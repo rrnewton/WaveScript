@@ -1141,7 +1141,7 @@
 
      (define-alias List:toArray list->vector)
 
-     (define (List:zip a b) (map list a b))
+     (define (List:zip a b) (map (lambda args (make-tuple args)) a b))
 
      ;; These should really be defined in the language.  They aren't
      ;; currently [2006.10.26] because the elaborator isn't ready to

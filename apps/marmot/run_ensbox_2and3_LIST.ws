@@ -51,9 +51,9 @@ fun aml(slsf) {
 fun lifted_norm((x,st)) (normalize_doas(x),st)
 
 amls = 
-  map(fun(floatdata)
-      stream_map(fun((x,st)) (node1,st,x), stream_map(lifted_norm, aml(floatdata))),
-      floats)
+  map(fun((node,floatdata))
+      stream_map(fun((x,st)) (node,st,x), stream_map(lifted_norm, aml(floatdata))),
+      List:zip(nodes,floats))
 
 merged :: Stream TaggedAML;
 merged = List:fold1(merge, amls)
@@ -83,4 +83,4 @@ final = iterate (heatmap,stamp) in heatmaps {
 }
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
-BASE <- final
+//BASE <- final
