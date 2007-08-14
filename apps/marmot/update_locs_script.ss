@@ -6,6 +6,7 @@ exec regiment i --script "$0"
 #|
 |#
 
+#;
 (define rawdat 
   '((112 -5228.900146 -9371.299744 1090.900040 -10.800000 0.500000 1.600000 0.000000 0.000000 0.000000 1)
     (115 -3826.100159 -14488.400269 1119.099998 13.600000 0.000000 0.800000 0.000000 0.000000 0.000000 1)
@@ -16,11 +17,24 @@ exec regiment i --script "$0"
     (113 405.700016 -13919.900513 693.300009 -9.900000 0.300000 -1.300000 0.000000 0.000000 0.000000 1)
     (103 -4006.600189 -1251.299953 576.999998 16.500000 -2.300000 0.000000 0.000000 0.000000 0.000000 1)))
 
-;; ssh cat?
-;(define rawdat (file->lines "/dev/loc/dump_coords"))
-
 (define (extract ls)
   (list (list-ref ls 0) (list-ref ls 1) (list-ref ls 2) (list-ref ls 4)))
+
+(printf "\nUpdating node locations...\n")
+(flush-output-port)
+
+(printf "Logging into gateway and get locations from /dev/loc/ ...\n")
+
+(define code (system "ssh root@192.168.11.1 cat /dev/loc/dump_coords > loc.txt"))
+
+(unless (zero? code)
+  (printf "\nSSH COMMAND FAILED\n")
+  (exit -1))
+
+(printf "\nSSH succeeded, created loc.txt:\n\n")
+(system "cat loc.txt")
+
+(define rawdat (file->lines "loc.txt"))
 
 (define file (open-output-file "nodelocs.ws" 'replace))
 
@@ -32,6 +46,11 @@ exec regiment i --script "$0"
 		  (insert-between ", "
 		    (map number->string 
 		      (extract row))))))
-  rawdat)
+ (sort 
+  (lambda (a b) (< (car a) (car b)))
+  rawdat))
 
+(close-output-port file)
 
+(printf "\nCreated nodelocs.ws\n\n")
+(system "cat nodelocs.ws")

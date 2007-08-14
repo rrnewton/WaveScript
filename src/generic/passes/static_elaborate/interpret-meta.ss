@@ -460,7 +460,7 @@
 	     rest)]))
 
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
-  (ASSERT (not (foreign-closure? cl)))
+;  (ASSERT (not (foreign-closure? cl)))
 
   ;; This loop accumulates a bunch of bindings that cover all the
   ;; free variables of the closure.  (And, transitively, any

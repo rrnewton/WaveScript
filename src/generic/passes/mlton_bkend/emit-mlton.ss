@@ -541,7 +541,7 @@
 
 ;; This handles null characters correctly.
 ;; (VERY INEFFICIENT CURRENTLY .. BAD FOR OUR LARGE INLINEC STRINGS)
-(trace-define (print-mlton-string str)
+(define (print-mlton-string str)
   (list "\""
     (list->string
      (match (string->list str)
