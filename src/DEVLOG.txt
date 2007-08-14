@@ -990,3 +990,96 @@ rbsh -b wlan0
 
 ./emrun/emrun wavescope.run --daemon
 ./query.ensbox.mlton.exe --sink 192.168.12.151
+
+[2007.08.13] 6:10 pm... slow windspeed, fairly humid... 70F??
+54 ranges... very nice 
+
+STEPS:
+
+start_wavescope
+
+/dev/dsr/cache  was populated
+
+toggle_routing off
+linux route?
+
+PROBLEM: /bin/ip didn't exist... had to simlink /sbin/ip
+
+SET THE GATEWAY AS MASTER TIMESYNC SEEDED WITH LOCAL CLOCK
+ssh root@192.168.11.1 "echo root=`date -u +%s` > /dev/sync/gsync"
+
+my_tx_seq:   1195
+outbound queue: cur=0, peak=0
+
+
+ root@ensbox-1 /home/emstar $cat /dev/dsr/cache Node 1 Routing Cache:
+8 entries ----------------------------------------- Dest Flaps Hops
+(ETX) Timeout Path
+ 100       3      2( 2.07)         5   (A) 1-(1.02)->104-(1.05)->100
+ 112       2      2( 2.02)         6   (A) 1-(1.02)->104-(1.00)->112
+ 108       8      1( 1.51)         6   (A) 1-(1.51)->108
+ 115       3      2( 2.03)         6   (A) 1-(1.02)->104-(1.00)->115
+ 109       5      2( 2.02)         5   (A) 1-(1.02)->104-(1.00)->109
+ 113       0      1( 1.04)         5   (A) 1-(1.04)->113
+ 104       0      1( 1.02)         5   (A) 1-(1.02)->104
+ 103       1      2( 2.12)         5   (A) 1-(1.02)->104-(1.09)->103
+
+
+ root@ensbox-1 /home/emstar 
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 100       3      2( 2.03)         4   (A) 1-(1.01)->104-(1.02)->100
+ 112       2      2( 2.01)         5   (A) 1-(1.01)->104-(1.00)->112
+ 108       8      1( 1.19)         5   (A) 1-(1.19)->108
+ 115       3      2( 2.09)         5   (A) 1-(1.01)->104-(1.08)->115
+ 109       5      2( 2.01)         5   (A) 1-(1.01)->104-(1.00)->109
+ 113       0      1( 1.02)         5   (A) 1-(1.02)->113
+ 104       0      1( 1.01)         4   (A) 1-(1.01)->104
+ 103       1      2( 2.05)         5   (A) 1-(1.01)->104-(1.04)->103
+
+my_tx_seq:   1226
+outbound queue: cur=0, peak=0
+
+
+ root@ensbox-1 /home/emstar 
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 100       3      2( 2.00)         3   (A) 1-(1.00)->104-(1.00)->100
+ 112       2      2( 2.02)         4   (A) 1-(1.00)->104-(1.02)->112
+ 108       8      1( 1.75)         3   (A) 1-(1.75)->108
+ 115       3      2( 2.01)         3   (A) 1-(1.00)->104-(1.01)->115
+ 109       5      2( 2.06)         3   (A) 1-(1.00)->104-(1.06)->109
+ 113       0      1( 1.00)         3   (A) 1-(1.00)->113
+ 104       0      1( 1.00)         3   (A) 1-(1.00)->104
+ 103       1      2( 2.01)         3   (A) 1-(1.00)->104-(1.00)->103
+
+
+
+
+Finally got routing working!
+========================================
+
+gettime -c gps -t
+  g2007-08-14_00.55.51.048889
+Route for 108 makes no sense!!!
+
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 112       0      2( 2.01)         8   (A) 1-(1.00)->104-(1.01)->112
+ 108       1      5( 5.12)         7   (A) 1-(1.00)->104-(1.00)->115-(1.00)->100-(1.08)->103-(1.04)->108
+ 113       2      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->113
+ 109       1      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->109
+ 103       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->103
+ 100       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->100
+ 115       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->115
+ 104       0      1( 1.00)         7   (A) 1-(1.00)->104
+
+my_tx_seq:   3112
+
+{0, 99, 99, 1, 2, 99, 99, 99, 3, 4, 99, 99, 5, 6, 99, 7}

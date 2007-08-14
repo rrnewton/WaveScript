@@ -4,13 +4,13 @@
 <entity name="PipeViewerMultiStream" class="ptolemy.actor.TypedCompositeActor">
     <property name="_createdBy" class="ptolemy.kernel.attributes.VersionAttribute" value="6.0.2">
     </property>
-    <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={411, 87, 1131, 714}, maximized=false}">
+    <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={237, 73, 1297, 746}, maximized=false}">
     </property>
-    <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[918, 607]">
+    <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[1084, 639]">
     </property>
     <property name="_vergilZoomFactor" class="ptolemy.data.expr.ExpertParameter" value="1.2043650793651">
     </property>
-    <property name="_vergilCenter" class="ptolemy.data.expr.ExpertParameter" value="{470.1136738056013, 631.0}">
+    <property name="_vergilCenter" class="ptolemy.data.expr.ExpertParameter" value="{429.6414141414142, 607.6994949494949}">
     </property>
     <property name="DDF Director" class="ptolemy.domains.ddf.kernel.DDFDirector">
         <property name="_location" class="ptolemy.kernel.util.Location" value="[165.0, 445.0]">
@@ -604,23 +604,6 @@
         <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
         </property>
     </entity>
-    <entity name="Expression2" class="ptolemy.actor.lib.Expression">
-        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="input.name == &quot;detection&quot;">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
-            <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
-            </property>
-            <property name="displayWidth" class="ptolemy.data.expr.Parameter" value="60">
-            </property>
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[355.0, 795.0]">
-        </property>
-        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
-        </property>
-        <port name="input" class="ptolemy.actor.TypedIOPort">
-            <property name="input"/>
-        </port>
-    </entity>
     <entity name="Display" class="ptolemy.actor.lib.gui.Display">
         <property name="rowsDisplayed" class="ptolemy.data.expr.Parameter" value="3">
         </property>
@@ -662,104 +645,6 @@
         <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
         </property>
     </entity>
-    <entity name="Display6" class="ptolemy.actor.lib.gui.Display">
-        <property name="rowsDisplayed" class="ptolemy.data.expr.Parameter" value="3">
-        </property>
-        <property name="title" class="ptolemy.kernel.util.StringAttribute" value="ISDET">
-        </property>
-        <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={902, 109, 484, 97}, maximized=false}">
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[735.0, 830.0]">
-        </property>
-        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
-        </property>
-    </entity>
-    <entity name="EventFilter" class="ptolemy.domains.de.lib.EventFilter">
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[175.0, 805.0]">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.EditorIcon">
-            <property name="rectangle" class="ptolemy.vergil.kernel.attributes.RectangleAttribute">
-                <property name="_location" class="ptolemy.kernel.util.Location" value="[1.0, 0.0]">
-                </property>
-                <property name="width" class="ptolemy.data.expr.Parameter" value="29.0">
-                </property>
-                <property name="height" class="ptolemy.data.expr.Parameter" value="21.0">
-                </property>
-                <property name="centered" class="ptolemy.data.expr.Parameter" value="true">
-                </property>
-                <property name="fillColor" class="ptolemy.actor.gui.ColorAttribute" value="{1.0, 1.0, 1.0, 1.0}">
-                </property>
-            </property>
-            <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={433, 271, 813, 507}, maximized=false}">
-            </property>
-            <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[600, 400]">
-            </property>
-            <property name="_vergilZoomFactor" class="ptolemy.data.expr.ExpertParameter" value="4.0">
-            </property>
-            <property name="_vergilCenter" class="ptolemy.data.expr.ExpertParameter" value="{0.0, 0.0}">
-            </property>
-        </property>
-    </entity>
-    <entity name="EventFilter2" class="ptolemy.domains.de.lib.EventFilter">
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[180.0, 845.0]">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.EditorIcon">
-            <property name="rectangle" class="ptolemy.vergil.kernel.attributes.RectangleAttribute">
-                <property name="_location" class="ptolemy.kernel.util.Location" value="[1.0, 0.0]">
-                </property>
-                <property name="width" class="ptolemy.data.expr.Parameter" value="29.0">
-                </property>
-                <property name="height" class="ptolemy.data.expr.Parameter" value="21.0">
-                </property>
-                <property name="centered" class="ptolemy.data.expr.Parameter" value="true">
-                </property>
-                <property name="fillColor" class="ptolemy.actor.gui.ColorAttribute" value="{1.0, 1.0, 1.0, 1.0}">
-                </property>
-            </property>
-            <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={433, 271, 813, 507}, maximized=false}">
-            </property>
-            <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[600, 400]">
-            </property>
-            <property name="_vergilZoomFactor" class="ptolemy.data.expr.ExpertParameter" value="4.0">
-            </property>
-            <property name="_vergilCenter" class="ptolemy.data.expr.ExpertParameter" value="{0.0, 0.0}">
-            </property>
-        </property>
-    </entity>
-    <entity name="Expression5" class="ptolemy.actor.lib.Expression">
-        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="0">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
-            <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
-            </property>
-            <property name="displayWidth" class="ptolemy.data.expr.Parameter" value="60">
-            </property>
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[235.0, 805.0]">
-        </property>
-        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
-        </property>
-        <port name="input" class="ptolemy.actor.TypedIOPort">
-            <property name="input"/>
-        </port>
-    </entity>
-    <entity name="Expression6" class="ptolemy.actor.lib.Expression">
-        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="1">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
-            <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
-            </property>
-            <property name="displayWidth" class="ptolemy.data.expr.Parameter" value="60">
-            </property>
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[235.0, 845.0]">
-        </property>
-        <property name="_hideName" class="ptolemy.data.expr.SingletonParameter" value="true">
-        </property>
-        <port name="input" class="ptolemy.actor.TypedIOPort">
-            <property name="input"/>
-        </port>
-    </entity>
     <entity name="BooleanToAnything" class="ptolemy.actor.lib.conversions.BooleanToAnything">
         <property name="falseValue" class="ptolemy.data.expr.Parameter" value="1">
         </property>
@@ -768,42 +653,8 @@
         <property name="_location" class="ptolemy.kernel.util.Location" value="[535.0, 700.0]">
         </property>
     </entity>
-    <entity name="BooleanToAnything2" class="ptolemy.actor.lib.conversions.BooleanToAnything">
-        <property name="falseValue" class="ptolemy.data.expr.Parameter" value="888">
-        </property>
-        <property name="trueValue" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[550.0, 855.0]">
-        </property>
-    </entity>
-    <entity name="EventFilter4" class="ptolemy.domains.de.lib.EventFilter">
-        <property name="_location" class="ptolemy.kernel.util.Location" value="[460.0, 855.0]">
-        </property>
-        <property name="_icon" class="ptolemy.vergil.icon.EditorIcon">
-            <property name="rectangle" class="ptolemy.vergil.kernel.attributes.RectangleAttribute">
-                <property name="_location" class="ptolemy.kernel.util.Location" value="[1.0, 0.0]">
-                </property>
-                <property name="width" class="ptolemy.data.expr.Parameter" value="29.0">
-                </property>
-                <property name="height" class="ptolemy.data.expr.Parameter" value="21.0">
-                </property>
-                <property name="centered" class="ptolemy.data.expr.Parameter" value="true">
-                </property>
-                <property name="fillColor" class="ptolemy.actor.gui.ColorAttribute" value="{1.0, 1.0, 1.0, 1.0}">
-                </property>
-            </property>
-            <property name="_windowProperties" class="ptolemy.actor.gui.WindowPropertiesAttribute" value="{bounds={433, 271, 813, 507}, maximized=false}">
-            </property>
-            <property name="_vergilSize" class="ptolemy.actor.gui.SizeAttribute" value="[600, 400]">
-            </property>
-            <property name="_vergilZoomFactor" class="ptolemy.data.expr.ExpertParameter" value="4.0">
-            </property>
-            <property name="_vergilCenter" class="ptolemy.data.expr.ExpertParameter" value="{0.0, 0.0}">
-            </property>
-        </property>
-    </entity>
     <entity name="Expression7" class="ptolemy.actor.lib.Expression">
-        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="{0, 99, 99, 1, 2, 99, 99, 99, 3, 4, 99, 99, 5, 6, 99, 15}(input.node)">
+        <property name="expression" class="ptolemy.kernel.util.StringAttribute" value="{0, 99, 99, 1, 2, 99, 99, 99, 3, 4, 99, 99, 5, 6, 99, 7}(input.node - 100)">
         </property>
         <property name="_icon" class="ptolemy.vergil.icon.BoxedValueIcon">
             <property name="attributeName" class="ptolemy.kernel.util.StringAttribute" value="expression">
@@ -851,12 +702,6 @@
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
         </property>
     </relation>
-    <relation name="relation10" class="ptolemy.actor.TypedIORelation">
-        <property name="width" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
-        <vertex name="vertex1" value="[655.0, 800.0]">
-        </vertex>
-    </relation>
     <relation name="relation11" class="ptolemy.actor.TypedIORelation">
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
         </property>
@@ -880,22 +725,6 @@
         </property>
         <vertex name="vertex1" value="[615.0, 730.0]">
         </vertex>
-    </relation>
-    <relation name="relation2" class="ptolemy.actor.TypedIORelation">
-        <property name="width" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
-    </relation>
-    <relation name="relation3" class="ptolemy.actor.TypedIORelation">
-        <property name="width" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
-    </relation>
-    <relation name="relation15" class="ptolemy.actor.TypedIORelation">
-        <property name="width" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
-    </relation>
-    <relation name="relation16" class="ptolemy.actor.TypedIORelation">
-        <property name="width" class="ptolemy.data.expr.Parameter" value="1">
-        </property>
     </relation>
     <relation name="relation8" class="ptolemy.actor.TypedIORelation">
         <property name="width" class="ptolemy.data.expr.Parameter" value="1">
@@ -922,22 +751,12 @@
     <link port="Switch.control" relation="relation11"/>
     <link port="Display2.input" relation="relation12"/>
     <link port="Display5.input" relation="relation13"/>
-    <link port="Expression2.output" relation="relation16"/>
     <link port="Display.input" relation="relation7"/>
     <link port="Expression3.output" relation="relation13"/>
     <link port="Expression3.input" relation="relation5"/>
     <link port="Display3.input" relation="relation14"/>
-    <link port="Display6.input" relation="relation10"/>
-    <link port="EventFilter.output" relation="relation2"/>
-    <link port="EventFilter2.output" relation="relation3"/>
-    <link port="Expression5.input" relation="relation2"/>
-    <link port="Expression6.input" relation="relation3"/>
     <link port="BooleanToAnything.input" relation="relation8"/>
     <link port="BooleanToAnything.output" relation="relation14"/>
-    <link port="BooleanToAnything2.input" relation="relation15"/>
-    <link port="BooleanToAnything2.output" relation="relation10"/>
-    <link port="EventFilter4.input" relation="relation16"/>
-    <link port="EventFilter4.output" relation="relation15"/>
     <link port="Expression7.output" relation="relation9"/>
     <link port="Expression7.input" relation="relation5"/>
     <link port="Display7.input" relation="relation9"/>
