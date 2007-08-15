@@ -44,23 +44,21 @@ fun tag(sls)
 include "marmot2.ws";
 include "marmot_heatmap.ws";
 
+amls :: List (Stream AML);
+
 // **********************  UNCOMMENT FOR SERVER SIDE AML ************************ //
 //================================================================================//
 
 synced = map(fun(ip) snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections")), ips)
-amls :: List (Stream AML);
 amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
 
 
 // **********************  UNCOMMENT FOR CLIENT SIDE AML ************************ //
 //================================================================================//
 
-//synced = map(fun(ip) netsub_amls(ip,"amls"), ips)
-//amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
-
+//amls = map(fun(ip) smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
 
 //================================================================================//
-
 
 
 merged :: Stream (Tagged AML);

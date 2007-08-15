@@ -47,7 +47,7 @@ BASE <- iterate _ in timer(3.0) {
   println("Executing test_heatmap...");
 
   amls = map(fun (arr) (arr,0`gint,nulltimebase), data);
-  nodesAndData = map2(fun(nd,aml) (nd,aml), nodes, map(normalize_doas, amls));
+  nodesAndData = map2(fun(nd,aml) (nd,aml), nodes, map(normalize_aml, amls));
 
   //  nodesAndData = List:map2(fun(nd,(mat,st)) (nd,st,mat), nodes, norm);
   //doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);

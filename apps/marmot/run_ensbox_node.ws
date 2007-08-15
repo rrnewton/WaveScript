@@ -6,20 +6,23 @@ include "marmot_first_phase.ws";
 phase1result = detector((ch1i,ch2i,ch3i,ch4i));
 
 
-
+// Assumes they're the same size of course:
+chopped = iterate ls in phase1result {
+  fst = List:ref(ls,0);
+  emit map(fun(ss) subseg(ss, fst`start, fst`width), ls);
+}
 
 
 // **********************  UNCOMMENT FOR SERVER SIDE AML ************************ //
 //================================================================================//
 
-BASE <- netpub_sigseg4(phase1result, "detections"); 
-
-
+BASE <- netpub_sigseg4(chopped, "detections");
 
 
 // **********************  UNCOMMENT FOR CLIENT SIDE AML ************************ //
 //================================================================================//
 
-//amls :: List (Stream AML);
-//amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),phase1result)
-//BASE <- netpub_sigseg4(amls, "amls"); 
+/* include "marmot2.ws"; */
+/* amls :: Stream AML; */
+/* amls = oneSourceAMLTD(phase1result, 4096) */
+/* BASE <- netpub_aml(amls, "amls");  */

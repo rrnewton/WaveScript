@@ -174,6 +174,7 @@ fun netsub_4sigseg(host, name) {
 
 
 // rrn: This even more lamely takes in the four arrays and puts them back together.
+netsub_amls :: (String, String) -> Stream (Array Int16 * Int64 * Timebase); 
 fun netsub_amls(host, name) {
   id = dots_to_underbars(host)++"_"++name;
   ccode = inline_C(gen_glue_sigseg4(host,name,id), "__init_"++id);

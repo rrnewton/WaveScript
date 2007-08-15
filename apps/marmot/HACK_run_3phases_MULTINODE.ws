@@ -96,13 +96,13 @@ fun aml(slsf)
 // ================================================================================
 include "marmot_heatmap.ws";
 
-aml1 = stream_map(fun(x) (node1,x), stream_map(normalize_doas,aml(det1)))
-aml2 = stream_map(fun(x) (node2,x), stream_map(normalize_doas,aml(det2)))
-aml3 = stream_map(fun(x) (node3,x), stream_map(normalize_doas,aml(det3)))
-aml4 = stream_map(fun(x) (node4,x), stream_map(normalize_doas,aml(det4)))
-aml5 = stream_map(fun(x) (node5,x), stream_map(normalize_doas,aml(det5)))
-aml6 = stream_map(fun(x) (node6,x), stream_map(normalize_doas,aml(det6)))
-aml7 = stream_map(fun(x) (node7,x), stream_map(normalize_doas,aml(det7)))
+aml1 = stream_map(fun(x) (node1,x), stream_map(normalize_aml,aml(det1)))
+aml2 = stream_map(fun(x) (node2,x), stream_map(normalize_aml,aml(det2)))
+aml3 = stream_map(fun(x) (node3,x), stream_map(normalize_aml,aml(det3)))
+aml4 = stream_map(fun(x) (node4,x), stream_map(normalize_aml,aml(det4)))
+aml5 = stream_map(fun(x) (node5,x), stream_map(normalize_aml,aml(det5)))
+aml6 = stream_map(fun(x) (node6,x), stream_map(normalize_aml,aml(det6)))
+aml7 = stream_map(fun(x) (node7,x), stream_map(normalize_aml,aml(det7)))
 
 merged :: Stream TaggedAML;
 merged = 

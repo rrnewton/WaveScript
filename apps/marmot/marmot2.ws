@@ -342,6 +342,28 @@ fun oneSourceAMLTD(synced, win_size) {
 }
 
 
+/**************************************************************/
+
+// calculate normalised J (AML vector) values
+normalize_aml :: AML -> AML;
+fun normalize_aml((doas,st,tb)) {
+  total = Array:fold((+), 0.0, doas);
+  (Array:map((/ total), doas), st,tb)
+}
+
+normalized_aml_to_int16s :: AML -> (Array Int16 * Int64 * Timebase);
+fun normalized_aml_to_int16s((arr,st,tb)) {
+  (Array:map(fun(n) floatToInt16(n * 65536.0), arr), st, tb)
+}
+
+
+normalized_aml_to_floats :: (Array Int16 * Int64 * Timebase) -> AML;
+fun normalized_aml_to_floats((arr,st,tb)) {
+  (Array:map(fun(n) int16ToFloat(n), arr), st, tb)
+}
+
+
+/**************************************************************/
 
 
 // Little helper
@@ -349,4 +371,6 @@ fun segsToFloat(synced_ints)
   stream_map(fun (x) 
               map(fun (y) sigseg_map(int16ToFloat,y), x), 
 	    synced_ints);
+
+
 
