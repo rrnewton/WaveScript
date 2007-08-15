@@ -22,7 +22,6 @@ struct queued_data {
 
 #define MAX_QUEUE_LEN (8*MILLION_I)
 
-int __vxp_tb = 0;
 pthread_mutex_t arg_mutex;
 pthread_cond_t arg_cond;
 FILE *remote_stream = NULL;
@@ -56,20 +55,20 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
 	  if (samples_to_clock_value(samples, GPS, &gps) == 0) {
 #ifdef TIMEBASEDEBUG
 elog(LOG_WARNING, \"adding entry %d->%d %lf %lf\",
-__vxp_tb, gps_timebase(), samples, gps);
+CLOCK_VXP, CLOCK_GPS, samples, gps);
 #endif
-  	    timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+  	    timebase_add_segment(CLOCK_VXP, samples, CLOCK_GPS, gps);
 	  }
 	  if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
-  	    timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+  	    timebase_add_segment(CLOCK_VXP, samples, CLOCK_CPU, cpu);
 	  }
 	
 	  samples += qd->count;
 	  if (samples_to_clock_value(samples, GPS, &gps) == 0) {
-  	    timebase_add_segment(__vxp_tb, samples, gps_timebase(), gps);
+  	    timebase_add_segment(CLOCK_VXP, samples, CLOCK_GPS, gps);
 	  }
 	  if (samples_to_clock_value(samples, CPU, &cpu) == 0) {
-  	    timebase_add_segment(__vxp_tb, samples, cpu_timebase(), cpu);
+  	    timebase_add_segment(CLOCK_VXP, samples, CLOCK_CPU, cpu);
 	  }
 	}
 #endif
@@ -161,8 +160,6 @@ int __initvxp()
     elog(LOG_CRIT, \"failed to create message queue\");
     exit(1);
   }
-
-  __vxp_tb = timebase_new(my_node_id, CLOCK_VXP, 0.1);
 
   // init cond variables before...
   pthread_mutex_init(&arg_mutex, NULL);
