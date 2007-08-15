@@ -17,39 +17,31 @@ exec regiment i --script "$0"
     (113 405.700016 -13919.900513 693.300009 -9.900000 0.300000 -1.300000 0.000000 0.000000 0.000000 1)
     (103 -4006.600189 -1251.299953 576.999998 16.500000 -2.300000 0.000000 0.000000 0.000000 0.000000 1)))
 
-(trace-define (extract x)
-  (define ls ())
-  (define p (open-input-string x))
-  (set! ls (append ls (list (read p))))
-  (set! ls (append ls (list (read p))))
-  (set! ls (append ls (list (read p))))
-  (set! ls (append ls (list (read p))))
-  (set! ls (append ls (list (read p))))
-  (set! ls (append ls (list (read p))))
-  (list (list-ref ls 0) (list-ref ls 1) (list-ref ls 2) (list-ref ls 4)))
-
-#|
 (printf "\nUpdating node locations...\n")
 (flush-output-port)
 
-(printf "Logging into gateway and get locations from /dev/loc/ ...\n")
+(if (file-exists? "loc.txt")
+    (begin 
+      (printf "  \'loc.txt\' exists so I'm using it.  (Delete it if you want to refetch locations):\n")
 
-(define code (system "ssh root@192.168.11.1 cat /dev/loc/dump_coords > loc.txt"))
+      (begin 
+	(printf "Logging into gateway and get locations from /dev/loc/ ...\n")
+	(define code )
+	(let ([code (system "ssh root@192.168.11.1 cat /dev/loc/dump_coords > loc.txt")])
+	  (unless (zero? code)
+	    (printf "\nSSH COMMAND FAILED\n")
+	    (exit -1))
+	  (printf "\nSSH succeeded, created loc.txt:\n\n")
+	  ))))
 
-(unless (zero? code)
-  (printf "\nSSH COMMAND FAILED\n")
-  (exit -1))
-
-(printf "\nSSH succeeded, created loc.txt:\n\n")
 (system "cat loc.txt")
-|#
 
+(define (extract ls)
+  (list (list-ref ls 0) (list-ref ls 1) (list-ref ls 2) (list-ref ls 4)))
 
 (define rawdat 
-  (filter (lambda (x) (not (equal? x "")))
-    (file->lines "loc.txt")))
-
-(inspect rawdat)
+  (filter (compose not null?)
+    (map string->slist (file->lines "loc.txt"))))
 
 
 (define file (open-output-file "nodelocs.ws" 'replace))
@@ -63,8 +55,6 @@ exec regiment i --script "$0"
 		  (insert-between ", "
 		    (map number->string 
 		      (extract row))))))
-rawdat
-#;
  (sort 
   (lambda (a b) (< (car a) (car b)))
   rawdat))

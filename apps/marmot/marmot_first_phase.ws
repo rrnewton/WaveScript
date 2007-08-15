@@ -178,3 +178,4 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
   synced_ints = syncN_no_delete(d2, [ch1i, ch2i, ch3i, ch4i]);
   synced_ints
 }
+

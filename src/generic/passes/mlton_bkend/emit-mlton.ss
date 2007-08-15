@@ -159,6 +159,21 @@
 ;(define (HashType k v) )
 ;(define (SharedPtrType t))
 
+;; These are the (mlton) types that WS types have when they are traveling abroad.
+(define (ForeignType ty)
+  (match ty
+;    [Timebase (Type 'Int)]
+    [,oth (Type oth)]))
+
+(define (marshal-to-foreign ty expr)
+  (match ty
+;    [Timebase (list "(let val Timebase tb = "expr" in tb end)")]
+    [,oth expr]))
+(define (marshal-from-foreign ty expr)
+  (match ty
+;    [Timebase (list "(Timebase "expr")")]
+    [,oth expr]))
+
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
@@ -917,13 +932,19 @@
 
 ;(define (ForeignApp ls)
 (define (ForeignApp realname type rator rand*)
-  (make-app (Var rator) (list (apply make-tuple-code rand*))))
+  (match type 
+    [(,argty* ... -> ,retty)
+     (marshal-from-foreign retty
+      (make-app (Var rator) 
+	       (list (apply make-tuple-code 
+			    (map marshal-to-foreign argty* rand*)))))
+     ]))
 
 (define (ForeignEntry cname files ty)
   (match ty
     [(,argty* ... -> ,retty)	
      (for-each add-file! files)
-     `(" _import \"",cname"\" : ",(Type ty)";\n")]))
+     `(" _import \"",cname"\" : ",(ForeignType ty)";\n")]))
 
 
 (define (SumName s) (++ "ty_" (symbol->string s)))

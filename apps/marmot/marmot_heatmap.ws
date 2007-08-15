@@ -1,18 +1,7 @@
 
+include "types.ws";
 include "matrix.ws";
 include "matrix_extras.ws";
-
-
-// ID, X,Y, YAW, and AML result.
-type NodeRecord = (Int * Float * Float * Float);
-type TaggedAML = (NodeRecord * Int64 * Array Float);
-
-type AxesBounds = (Float * Float * Float * Float);
-type Settings   = (AxesBounds * (Float * Float));
-//type Converter  = Int -> Float; // Coordinate converter.
-// Xbound, Ybound, and conversion procs.
-//type CoordSystem = (Int * Int * Converter * Converter);
-//type CoordSystem = (Int * Int * Float * Float * Float * Float);
 
 
 angle_num = 360.0
@@ -74,7 +63,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
 /**************************************************************/
 
 // calculate normalised J (AML vector) values
-normalize_doas :: Array Float -> Array Float;
+normalize_doas :: AML -> AML;
 fun normalize_doas(doas) {
   total = Array:fold((+), 0.0, doas);
   Array:map((/ total), doas);  
@@ -139,7 +128,7 @@ fun convertcoord((x_pixels, y_pixels, x_width, y_width, x_min, y_min), (x,y)) {
 /**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
+doa_fuse :: (AxesBounds, Float, List TaggedAML) -> LikelihoodMap;
 fun doa_fuse(axes, grid_scale, noderecords) {
 
   let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
@@ -189,8 +178,8 @@ fun doa_fuse(axes, grid_scale, noderecords) {
 }
 
 
-getmax :: (Matrix Float) -> (Float * Int * Int);
-fun getmax(heatmap) {
+getmax :: LikelihoodMap -> (Float * Int * Int);
+fun getmax((heatmap,_)) {
   let (max_val, max_x, max_y) = 
    Matrix:foldi(
     fun(x,y, acc, elm) {
@@ -297,8 +286,9 @@ fun write_ppm_file(file, mat) {
   c_write_ppm_file(cstr, wid, hght, R,G,B);
 }
 
-colorize_likelihoods :: Matrix Float -> Matrix RGB;
-fun colorize_likelihoods(lhoods) {
+// Returns a "picture"
+colorize_likelihoods :: LikelihoodMap -> Matrix RGB;
+fun colorize_likelihoods((lhoods,_)) {
   using Matrix;
   fst = get(lhoods,0,0);
   mx = fold(max, fst, lhoods);

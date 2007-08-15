@@ -13,8 +13,9 @@ structure SigSeg : SIGSEG =
 struct
 
 (*datatype sample   = SampNum of Int64.int *)
+(* datatype timebase = Timebase of int *)
 type sample   = Int64.int 
-datatype timebase = Timebase of int
+type timebase = int
 
 type 'a sigseg =  {
   dat : 'a array list,
@@ -42,8 +43,11 @@ fun checkseg {dat,st,sz,off,tb} =
   end 
 
 
-fun nullTimebase () = Timebase 0
-fun newTimebase n = Timebase n
+(*fun nullTimebase () = Timebase 0
+fun newTimebase n = Timebase n*)
+
+fun nullTimebase () = 0
+fun newTimebase n   = n
 fun timebase {dat,st,sz,off,tb} = tb
 
 fun nullseg  t                  = { dat=[], st=0, sz=0, off=0, tb= nullTimebase() }

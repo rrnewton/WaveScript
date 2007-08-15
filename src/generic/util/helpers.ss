@@ -1587,6 +1587,7 @@
     (for-each 
 	(lambda (flag)
 	  (match flag
+	    [(title ,str) (set! setstmnts (cons (format "set title \"~a\"\n" str) setstmnts))]
 	    [lines (set! withclause "with linespoints")]
 	    [points (set! withclause "with points ps 4")]
 	    [boxes (set! withclause "with boxes")

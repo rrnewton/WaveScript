@@ -328,3 +328,12 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   aml_result
 }
 
+
+
+
+// Little helper
+fun segsToFloat(synced_ints)
+  stream_map(fun (x) 
+              map(fun (y) sigseg_map(int16ToFloat,y), x), 
+	    synced_ints);
+

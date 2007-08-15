@@ -21,11 +21,6 @@ grid_scale = {
       absF(ymax - ymin) / desired_min_pixel_dimm`i2f)
 }
 
-fun toFloat(synced_ints)
-  stream_map(fun (x) 
-            map(fun (y) sigseg_map(int16ToFloat,y), x), 
-	    synced_ints);
-
 nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
 
 ips = ["192.168.11.100",
@@ -37,12 +32,17 @@ ips = ["192.168.11.100",
        "192.168.11.113",
        "192.168.11.115"]
 
-synced = map(fun(ip) netsub_4sigseg(ip,"detections"), ips)
+fun tag(sls) 
+  map(fun((node,strms))
+      stream_map(fun(x) (node,x) ,strms),
+      List:zip(nodes,sls))
 
-floats = map(toFloat,synced);
+synced = map(fun(ip) netsub_4sigseg(ip,"detections"), ips)
 
 include "marmot2.ws";
 include "marmot_heatmap.ws";
+
+floats = map(segsToFloat,synced);
 
 fun aml(slsf) {
   oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
@@ -63,18 +63,20 @@ clusters = temporal_cluster_amls(3, merged);
 
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-final = iterate (heatmap,stamp) in heatmaps {
+final = iterate lhoodmap in heatmaps {
   state { cnt = 0 }
-  
-  pic = colorize_likelihoods(heatmap);
 
-  let (mx,u,v) = getmax(heatmap);
+  pic = colorize_likelihoods(lhoodmap);
+
+  let (mx,u,v) = getmax(lhoodmap);
   let (x,y) = convertcoord(axes,grid_scale,u,v);
+
   println("Max marmot likelihood was "++mx++
           " at position "++x++","++y++
 	  " w/pic coord "++u++","++v);
   draw_marmot(pic, u, v, f2i$ max(4.0, 250.0 / grid_scale));
 
+  let (_,stamp) = lhoodmap;
   file = "pic"++1000+cnt++"_"++stamp++".ppm";
   cnt += 1;
   write_ppm_file(file,pic);
@@ -83,4 +85,4 @@ final = iterate (heatmap,stamp) in heatmaps {
 }
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
-//BASE <- final
+BASE <- final
