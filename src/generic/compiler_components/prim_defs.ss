@@ -659,7 +659,7 @@
     (timebase     ((Sigseg 'a)) Timebase)
     
     ;; INTERNAL!!!
-    (Secret:newTimebase (Int) Timebase)
+    (Secret:newTimebase (Int)   Timebase)
 
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))

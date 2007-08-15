@@ -1054,6 +1054,8 @@
 				       m_invert
 				       Mutable:ref deref
 
+				       Secret:newTimebase
+
 				       ;; Alas, these don't have different representations for the constants, 
 				       ;; so we shouldn't do it statically:
 				       floatToDouble doubleToFloat

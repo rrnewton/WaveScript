@@ -174,6 +174,7 @@
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
 	 make-tuple tuple-fields tuple?
+	 make-timebase timebase-num timebase?
          )
 		
 	;; Import the platform specific constants.
@@ -856,6 +857,8 @@
 
 ;; [2007.07.29] Adding this to distinguish tuples from vectors.
 (reg:define-struct (tuple fields))
+
+(reg:define-struct (timebase num))
 
 ; ======================================================================
 
