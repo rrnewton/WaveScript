@@ -13,7 +13,7 @@ fun ceiling(f) roundF(f+0.5);
 /**************************************************************/
 
 // Temporal clustering of real time AML results.
-temporal_cluster_amls :: (Int, Stream TaggedAML) -> Stream (List TaggedAML);
+temporal_cluster_amls :: (Int, Stream (Tagged AML)) -> Stream (List Tagged AML);
 fun temporal_cluster_amls(minclustsize, amls) {
   iterate x in union2(amls, timer_source("cluster_timer", 500)) {
     state { 
@@ -23,7 +23,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
     }
     case x {
       Left(entry): {
-        foo :: TaggedAML = entry;
+        foo :: Tagged AML = entry;
         println("AML received! Already had: "++acc`List:length);
         acc := entry ::: acc;
 	counter := 0;
@@ -35,9 +35,9 @@ fun temporal_cluster_amls(minclustsize, amls) {
 	then {
 	  if acc != [] then {
 	    // Filter out duplicates.
-	    acc2 :: Ref (List TaggedAML) = Mutable:ref([]);
+	    acc2 :: Ref (List Tagged AML) = Mutable:ref([]);
 	    List:foreach(fun(aml) {
-	      let ((id,_,_,_),_,_) = aml;
+	      let ((id,_,_,_),_) = aml;
 	      if not(duparr[id-100]) then 
 	      {
 	        duparr[id-100] := true;
@@ -49,7 +49,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
 	    Array:fill(duparr, false);
 	    
 	    print("Got a cluster of detections from nodes: {");
-	    List:foreach(fun (((id,_,_,_),_,_)) print(id++" "), acc2);
+	    List:foreach(fun (((id,_,_,_),_)) print(id++" "), acc2);
             print("}\n");
 	    if List:length(acc2) >= minclustsize 
 	    then emit acc2;
@@ -64,9 +64,9 @@ fun temporal_cluster_amls(minclustsize, amls) {
 
 // calculate normalised J (AML vector) values
 normalize_doas :: AML -> AML;
-fun normalize_doas((doas,st)) {
+fun normalize_doas((doas,st,tb)) {
   total = Array:fold((+), 0.0, doas);
-  (Array:map((/ total), doas), st)
+  (Array:map((/ total), doas), st,tb)
 }
 
 /**************************************************************/
@@ -128,8 +128,8 @@ fun convertcoord((x_pixels, y_pixels, x_width, y_width, x_min, y_min), (x,y)) {
 /**************************************************************/
 
 //create the plot 'canvas' - a 2d array where each pixel is a likelihood
-doa_fuse :: (AxesBounds, Float, List TaggedAML) -> LikelihoodMap;
-fun doa_fuse(axes, grid_scale, noderecords) {
+doa_fuse :: (AxesBounds, Float, List (Tagged AML)) -> LikelihoodMap;
+fun doa_fuse(axes, grid_scale, taggedamls) {
 
   let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
   { let (xmin,xmax,ymin,ymax) = axes;
@@ -150,7 +150,7 @@ fun doa_fuse(axes, grid_scale, noderecords) {
       // Should use List:foldi
       List:foldi(
 	// Each node record contains location/orientation as well as doas likelihood vector:
-        fun(k, sum, ((id,x,y,yaw), startsamp, doavec)) {
+        fun(k, sum, ((id,x,y,yaw), (doavec, startsamp, tb)) {
 
 	  nr = yaw * const_PI / 180.0; // node rotation	       
 	  theta = atan2(c_y - y, c_x - x);
@@ -168,12 +168,12 @@ fun doa_fuse(axes, grid_scale, noderecords) {
 	  // Add it into our total for this grid square:
 	  sum + doavec[dir]
         },
-	0.0, noderecords)
+	0.0, taggedamls)
    }), 
    // Also return the timestamp.
    {
-     let (_,st0,_) = List:ref(noderecords,0);
-     List:fold(fun(mx, (_, startsamp, _)) max(mx,startsamp), st0, noderecords)
+     let (_,(_,st0,_)) = List:ref(taggedamls,0);
+     List:fold(fun(mx, (_, (_,startsamp, _))) max(mx,startsamp), st0, taggedamls)
    })
 }
 

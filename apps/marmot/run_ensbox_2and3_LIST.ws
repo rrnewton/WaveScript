@@ -50,17 +50,19 @@ fun aml(slsf)
   oneSourceAMLTD(slsf, 4096)
   //  oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
 
-amls :: List (Stream TaggedAML);
-//amls = tag$ map(aml,synced)
+5amls :: List (Stream (Tagged AML));
+amls = tag$ map(aml,synced)
+/*
 amls =
   map(fun((node,datastrm))
-      stream_map(fun((x,st)) (node,st,x), stream_map(normalize_doas, aml(datastrm))),
+      stream_map(fun(aml) (node,aml), stream_map(normalize_doas, aml(datastrm))),
       List:zip(nodes,synced))
+*/
 
-merged :: Stream TaggedAML;
+merged :: Stream (Tagged AML);
 merged = List:fold1(merge, amls)
 
-clusters :: Stream (List TaggedAML);
+clusters :: Stream (List (Tagged AML));
 clusters = temporal_cluster_amls(3, merged);
 
 heatmaps :: Stream LikelihoodMap;

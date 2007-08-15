@@ -17,7 +17,8 @@ include "marmot2.ws";
 
 // 'synced' is defined in marmot_first_phase.ws
 //doas = FarFieldDOAb(synced, sensors);
-doas = iterate (m,stamp) in oneSourceAMLTD(synced_ints, 4096)
+doas :: Stream (Array Float);
+doas = iterate (m,stamp,tb) in oneSourceAMLTD(synced_ints, 4096)
 {
   println("Got reading at: "++stamp);
   emit m

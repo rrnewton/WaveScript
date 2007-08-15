@@ -570,6 +570,7 @@
 ;  (ws-run-pass p lift-letrec-body)
 
 ;  (profile-clear)
+  (inspect p)
   (ws-run-pass p ws-remove-complex-opera*)
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a

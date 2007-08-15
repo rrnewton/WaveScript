@@ -300,13 +300,14 @@ fun oneSourceAMLTD(synced, win_size) {
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start), synced_floats);
+  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start, List:ref(ls,0)`timebase),
+                 synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
-  aml_result = iterate (_m_in,starttime) in data_in {
+  aml_result = iterate (_m_in, starttime, tb) in data_in {
 
     // We extract a window of "win_size" to perform the AML algorithm on.
     // not doing any padding just yet - only do WHOLE windows
@@ -324,7 +325,7 @@ fun oneSourceAMLTD(synced, win_size) {
     log(1, "  Got result of AML.");
 
     //	gnuplot_array(result);
-    emit(result, starttime)
+    emit(result, starttime, tb)
   };
   /*
   aml_result = iterate (z in aml_results) {

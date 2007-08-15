@@ -448,7 +448,7 @@
 
      [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
 				(ASSERT (tuple-fields val) )))]
-     [(timebase? val) `(Secret:newTimebase ,(timebase-num val))]
+     [(timebase? val) `(Secret:newTimebase ',(timebase-num val))]
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!
      ;; Need to wrap them!!
