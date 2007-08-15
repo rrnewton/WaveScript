@@ -61,6 +61,7 @@ RUNNING ON ENSBOX:
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
+include "types.ws";
 include "stdlib.ws";
 include "matrix.ws";
 //include "matrix_gsl.ws";
@@ -271,9 +272,13 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 // only does one source - other implementations may work on multiple sources
 
 // win_size decides how AML results to use
-fun oneSourceAMLTD(synced, sensors, win_size)
-{
-  using Matrix; using Float; 
+//oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
+fun oneSourceAMLTD(synced, win_size) {
+  using Matrix;
+  using Float; 
+
+  synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
+
   // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
   // rrn: can't currently calculate matrix dimensions (foreign function) at compile time:
   sens_num = List:length(sensor_list);
@@ -295,7 +300,7 @@ fun oneSourceAMLTD(synced, sensors, win_size)
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start), synced);
+  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start), synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.

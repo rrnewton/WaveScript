@@ -64,9 +64,9 @@ fun temporal_cluster_amls(minclustsize, amls) {
 
 // calculate normalised J (AML vector) values
 normalize_doas :: AML -> AML;
-fun normalize_doas(doas) {
+fun normalize_doas((doas,st)) {
   total = Array:fold((+), 0.0, doas);
-  Array:map((/ total), doas);  
+  (Array:map((/ total), doas), st)
 }
 
 /**************************************************************/

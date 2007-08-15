@@ -32,6 +32,8 @@ ips = ["192.168.11.100",
        "192.168.11.113",
        "192.168.11.115"]
 
+
+tag :: List (Stream t) -> List (Stream (NodeRecord * t));
 fun tag(sls) 
   map(fun((node,strms))
       stream_map(fun(x) (node,x) ,strms),
@@ -42,18 +44,18 @@ synced = map(fun(ip) netsub_4sigseg(ip,"detections"), ips)
 include "marmot2.ws";
 include "marmot_heatmap.ws";
 
-floats = map(segsToFloat,synced);
+//floats = map(segsToFloat,synced);
 
-fun aml(slsf) {
-  oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
-}
+fun aml(slsf) 
+  oneSourceAMLTD(slsf, 4096)
+  //  oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
 
-fun lifted_norm((x,st)) (normalize_doas(x),st)
-
-amls = 
-  map(fun((node,floatdata))
-      stream_map(fun((x,st)) (node,st,x), stream_map(lifted_norm, aml(floatdata))),
-      List:zip(nodes,floats))
+amls :: List (Stream TaggedAML);
+//amls = tag$ map(aml,synced)
+amls =
+  map(fun((node,datastrm))
+      stream_map(fun((x,st)) (node,st,x), stream_map(normalize_doas, aml(datastrm))),
+      List:zip(nodes,synced))
 
 merged :: Stream TaggedAML;
 merged = List:fold1(merge, amls)
@@ -61,6 +63,7 @@ merged = List:fold1(merge, amls)
 clusters :: Stream (List TaggedAML);
 clusters = temporal_cluster_amls(3, merged);
 
+heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
 final = iterate lhoodmap in heatmaps {

@@ -1252,6 +1252,8 @@
       [List:length  List.length]
       [List:reverse List.rev]
       [List:ref     List.nth]
+      [List:make    "(fn (n,elm) => List.tabulate(n, (fn _ => elm)))"]
+
 
       [makeComplex  ,(make-fun (list (make-tuple-code "r" "i")) "({real= r, imag= i})")]
 
