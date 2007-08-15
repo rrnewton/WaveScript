@@ -1,6 +1,5 @@
 
-c_vxp_get_tb :: () -> Timebase = 
-  foreign("vxp_get_tb", []);
+include "timebase.ws";
 
 c_isnull :: (Pointer "void *") -> Bool = 
   foreign("vxp_isnull", []);
@@ -32,7 +31,6 @@ char curr_fn[256] = {};
 int file_index = 0;  // byte index into current file 
 int last_time_check = 0;
 
-int vxp_get_tb() { return __vxp_tb; }
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
 
 static
@@ -211,7 +209,7 @@ fun vxp_source_init(spill_mode) {
 
     else {
       arr :: Array Int16 = ptrToArray(p,len*4);
-      emit(toSigseg(arr, counter*gint(4), c_vxp_get_tb()));
+      emit(toSigseg(arr, counter*gint(4), tb_vxp));
     }
   };
   merge(ccode, interleaved);

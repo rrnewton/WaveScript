@@ -86,9 +86,6 @@ fun netsub_int(host, name) {
 
 // host is the ip addr, name is the name of the stream, id is 
 
-c_globalsample_get_tb :: () -> Timebase = 
-  foreign("globalsample_get_tb", ["devel/wavescope/wavescope_ensbox.h"]);
-
 fun gen_glue_sigseg4 (host,name,id) {
 "
   #include <devel/wavescope/wavescope_ensbox.h>
@@ -106,10 +103,11 @@ fun gen_glue_sigseg4 (host,name,id) {
     int len = (size - sizeof(struct sigseg4_msg))/4/sizeof(int16_t);
 
     double sample = 0;
-    if (timebase_conv(gps_timebase(), time, __globalsample_tb, &sample) < 0) {
+    if (timebase_conv(CLOCK_GPS, time, CLOCK_GLOBALVXP, &sample) < 0) {
       elog(LOG_WARNING, \"can't convert sample numbers, dropping data\");
     }
     else {
+#define TIMEBASEDEBUG 
 #ifdef TIMEBASEDEBUG
 elog(LOG_WARNING, \"gpstv %ld.%06ld -> gps %lf -> gs %lf\",
 cast->start_time.tv_sec, cast->start_time.tv_usec,
@@ -143,10 +141,10 @@ fun netsub_4sigseg(host, name) {
     arr2 :: Array Int16 = ptrToArray(p2,len);
     arr3 :: Array Int16 = ptrToArray(p3,len);
     arr4 :: Array Int16 = ptrToArray(p4,len);
-    emit([ toSigseg(arr1, sample, c_globalsample_get_tb()),
-	   toSigseg(arr2, sample, c_globalsample_get_tb()),
-	   toSigseg(arr3, sample, c_globalsample_get_tb()),
-	   toSigseg(arr4, sample, c_globalsample_get_tb()) ]);
+    emit([ toSigseg(arr1, sample, tb_globalvxp),
+	   toSigseg(arr2, sample, tb_globalvxp),
+	   toSigseg(arr3, sample, tb_globalvxp),
+	   toSigseg(arr4, sample, tb_globalvxp) ]);
   };
   merge(ccode, conv)
 }
