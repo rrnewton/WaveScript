@@ -102,7 +102,7 @@
    insert-between iota compose compose/values disp pp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
-   file->lines string->lines
+   file->lines string->lines string->slist port->slist
    string-split
 
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
@@ -117,7 +117,6 @@
    display-constrained
    symbol-append 
 
-   port->slist
    eprintf
 
    testhelpers testshelpers
@@ -639,11 +638,6 @@
 ;;----------------------------------------
 
 ;[2001.07.15]
-(define file->slist
-  (lambda (filename . opts)
-    (let ([p (if (input-port? filename) filename
-		 (apply open-input-file filename opts))])
-      (port->slist p))))
 (define port->slist
   (lambda (p)
     (let porttoslistloop ([exp (read p)] [acc '()])
@@ -651,6 +645,12 @@
             (begin (close-input-port p)
                    (reverse! acc))
             (porttoslistloop (read p) (cons exp acc))))))
+(define file->slist
+  (lambda (filename . opts)
+    (let ([p (if (input-port? filename) filename
+		 (apply open-input-file filename opts))])
+      (port->slist p))))
+(define (string->slist str) (port->slist (open-input-string str)))
 
 ;; "Error" printf, goes to stderr:
 (define (eprintf . args) (apply fprintf (current-error-port) args))
@@ -1564,6 +1564,8 @@
 ;;   2) A list of numbers
 ;;   3) A stream of numbers/(X Y) pairs.
 ;; (See stream implementation, this file.)
+;; 
+;; The flags input may contain 'lines, 'points, or 'boxes.
 (define (gnuplot data . flags)
   (let ([fn1 "_temp_gnuplot.script"]
 	[fn2 "_temp_gnuplot.dat"])
@@ -1586,6 +1588,7 @@
 	(lambda (flag)
 	  (match flag
 	    [lines (set! withclause "with linespoints")]
+	    [points (set! withclause "with points ps 4")]
 	    [boxes (set! withclause "with boxes")
 	     (set! setstmnts (cons "set style fill solid 1.000000 border -1;\n" setstmnts))]
 	    ;[(opts ,str) (set! opts str)]
@@ -1647,7 +1650,7 @@
 ;;  The new data must consist of a list of numbers or of (X,Y) pairs.
 ;;  
 (define (gnuplot_pipe . flags)
-  (let (;[fn1 "_temp_gnuplot.script"]
+ (let (;[fn1 "_temp_gnuplot.script"]
 	[fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" 
 		     (+ (real-time) (random 100000)))])
     (if (file-exists? fn2) (delete-file fn2))
@@ -1681,7 +1684,7 @@
 	       [(vector? point) (vector->list point)]
 	       [(list? point)   point]))
 	    dat))
-
+    
     (define (set-ranges! data port)
       (define (extend-right a b) 
 	(let ([val (+ b (* 0.1 (- b a)))])

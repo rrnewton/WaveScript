@@ -36,6 +36,7 @@
 		 show
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
+		 gnuplot_process
 		 prim_window
 
 		 to-uint16 to-int16 uint16->string
@@ -88,7 +89,7 @@
 		 List:assoc List:assoc_update
 		 List:build List:toArray List:zip
 
-		 joinsegs subseg seg-get width start end timebase
+		 joinsegs subseg seg-get width start end timebase Secret:newTimebase
 		 toArray toSigseg 
 
 		 assert-type
@@ -1271,6 +1272,53 @@
 
      (define gnuplot_array_stream2d  (gnuplot-helper (lambda (arr) (vector->list arr))))
      (define gnuplot_sigseg_stream2d (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
+
+     (trace-define (gnuplot_process ctrl datastrm)       
+       (define (filtnewline s) (list->string (remq-all #\newline (string->list s))))
+       (define gnuplotoutput
+	 (format "/tmp/_gnuplot_process_~s.out"
+		 (filtnewline (system-to-str "date +%s"))
+		 #;
+		 (+ (real-time) (random 100000))))
+       (define fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" 
+			   (filtnewline (system-to-str "date +%s"))
+			   #;
+			   (+ (real-time) (random 100000))))
+       ;; FIXME: FINISH THIS:
+       (trace-define (mungestring str)
+	 (if (memq #\~ (string->list str))
+	     (format str fn2)
+	     str))
+       
+       (printf "Making fifo...\n")
+       (system (format "mkfifo ~s" fn2))
+       (printf "Fifo made opening it from one end.\n")
+       (let ([datapipe #f]) ;; Have to mutate this... blocks on open.
+	 (printf "Opening process...\n")
+	 (let-match ([(,inp ,outp ,pid) (process (format "gnuplot - &> ~a" gnuplotoutput))])
+	  
+	   #;
+	   (define (try-output)
+	     (let loop ()
+	       (when (char-ready? inp)
+		 (display (read-char inp))
+		 (loop))))
+
+	   (eprintf "gnuplot process running...\n")
+	   	   
+	   ;; So how about flushing?
+	   (ctrl     (lambda (str) 
+;		       (try-output)
+		       (printf "Got ctrl strm message: ~s\n" str)
+		       (display (mungestring str) outp) (flush-output-port outp)))
+	   (datastrm (lambda (str) 
+;		       (try-output)
+		       (unless datapipe (set! datapipe (open-output-file fn2 'append)))
+		       (printf "Got data strm message: ~s\n" str)
+		       (display str datapipe) (flush-output-port outp)))))
+       (lambda (sink) (void)))
+
+;     (define (spawnprocess instrm))
   
      (define m_invert ws-invert-matrix)
 
@@ -1379,6 +1427,9 @@
        ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
        (if (nullseg? w) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
+     
+     (define (Secret:newTimebase x) x)
+
      (define (toArray w) (if (nullseg? w) #() (sigseg-vec w)))
      (define (toSigseg ar st tb)
        (define en (fx+ st (s:vector-length ar) -1))

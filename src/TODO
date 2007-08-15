@@ -223,3 +223,8 @@ Can't remember why I didn't originally.
 
  *) check out degap
  
+
+[2007.08.14]
+
+Run AML on the nodes.
+Make cluster algorithm use detection time.

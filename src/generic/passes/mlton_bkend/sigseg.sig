@@ -15,13 +15,16 @@ signature SIGSEG =
 sig
   type sample
   type 'a sigseg
-  type timebase
+  type timebase 
 
 (*  datatype 'a sigseg = SS of ('a wsarray * sample )*)
 
   val width     : 'a sigseg                         -> Int32.int
-  val timebase  : 'a sigseg                         -> timebase 
   val joinsegs  : 'a sigseg * 'a sigseg             -> 'a sigseg
+
+  val timebase      : 'a sigseg                     -> timebase 
+  val nullTimebase  : unit                          -> timebase 
+  val newTimebase   : int                           -> timebase 
 
   (* This should at least take a double, if not Int64! *)
   val subseg    : 'a sigseg * sample * Int32.int -> 'a sigseg

@@ -185,10 +185,6 @@
      (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
      (print            ('a) #())
 
-     (gnuplot_array    ((Array (NUM a))) #())
-     ;; Takes an (X,Y) pair.
-     (gnuplot_array2d  ((Array #((NUM a) (NUM b))))  #())  
-
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
      (emit           ((VQueue 'a) 'a)                #())
 
@@ -221,7 +217,7 @@
     (nullseg        (Sigseg 'a))
     (Array:null     (Array 'a))
 
-    (nulltimebase  Timebase)    
+    (nulltimebase  Timebase)
 
     ;; Adding this for uniformity of normal forms in later passes:
     ;(BOTTOM        'a)
@@ -559,6 +555,19 @@
     ;; must be used to create a feedback loop.
     (feedbackloop     ((Stream 't) ((Stream 't) -> (Stream 't)))  (Stream 't))
 
+
+    (gnuplot_array    ((Array (NUM a))) #())
+    ;; Takes an (X,Y) pair.
+    (gnuplot_array2d  ((Array #((NUM a) (NUM b))))  #())  
+    
+    ;; Starts up a gnuplot process.
+    ;; Feeds it data on one channel, and control messages on the other.
+    (gnuplot_process  ((Stream String) (Stream String)) (Stream 'any))
+    ;(spawnprocess  ((Stream String)) (Stream String))
+
+
+
+
     ;; This synchronously joins two signals.
     ;(zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))
 
@@ -648,6 +657,9 @@
     (end          ((Sigseg 'a)) Int64)  ;; inclusive end of range
     ;; Returns timebase:
     (timebase     ((Sigseg 'a)) Timebase)
+    
+    ;; INTERNAL!!!
+    (Secret:newTimebase (Int) Timebase)
 
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))

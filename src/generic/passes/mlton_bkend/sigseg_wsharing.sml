@@ -12,14 +12,16 @@
 structure SigSeg : SIGSEG =
 struct
 
-type sample = Int64.int 
-type timebase = int
+(*datatype sample   = SampNum of Int64.int *)
+type sample   = Int64.int 
+datatype timebase = Timebase of int
 
 type 'a sigseg =  {
   dat : 'a array list,
   st  : sample,
   sz  : int,	     (* Total width of window *)
-  off : int          (* Offset into the first segment. Allows more sharing. *)
+  off : int,         (* Offset into the first segment. Allows more sharing. *)
+  tb  : timebase
 }
 
 open Array
@@ -28,7 +30,7 @@ fun slice arr offset len =
   tabulate (len, fn i => sub(arr, offset + i))
 
 fun sum [] = 0 | sum (h::t) = h + sum t
-fun checkseg {dat,st,sz,off} = 
+fun checkseg {dat,st,sz,off,tb} = 
   (* Make sure nullsegs are in canonical form. *)
   if sz = 0 then assert ((st = Int64.fromInt 0)) else    
   let val sm = sum (List.map length dat) 
@@ -39,16 +41,20 @@ fun checkseg {dat,st,sz,off} =
                               " but found "^(Int.toString sm)))
   end 
 
-fun nullseg  t                  = { dat=[], st=0, sz=0, off=0 }
-fun timebase ss                 = 0
-fun width    {dat,st,sz,off}    = sz
-fun ss_start {dat,st,sz,off}    = st
-fun ss_end   {dat,st,sz,off}    = Int64.+(st, Int64.fromInt sz) - Int64.fromInt 1
+
+fun nullTimebase () = Timebase 0
+fun newTimebase n = Timebase n
+fun timebase {dat,st,sz,off,tb} = tb
+
+fun nullseg  t                  = { dat=[], st=0, sz=0, off=0, tb= nullTimebase() }
+fun width    {dat,st,sz,off,tb} = sz
+fun ss_start {dat,st,sz,off,tb} = st
+fun ss_end   {dat,st,sz,off,tb} = Int64.+(st, Int64.fromInt sz) - Int64.fromInt 1
 (* fun toSigseg (arr, st, tb)      = { dat=[Array.vector arr], st=st, sz=Array.length arr, off=0 } *)
-fun toSigseg (arr, st, tb)      = { dat=[arr], st=st, sz=length arr, off=0 }
+fun toSigseg (arr, st, tb)      = { dat=[arr], st=st, sz=length arr, off=0, tb=tb }
 
 (* Doesn't cache result yet. *)
-fun toArray {dat, st, sz,off} = 
+fun toArray {dat, st, sz,off,tb} = 
     (* array version *)
     if sz = 0 then Array.fromList [] else
 (*    if null (tl dat) then hd dat else*)
@@ -78,7 +84,7 @@ fun toArray {dat, st, sz,off} =
 
 (* Improper bounds checking currently!! *)
 (* Should check agaainst 'sz' *)
-fun ss_get ({dat,off,sz,st}, ind) = 
+fun ss_get ({dat,off,sz,st,tb}, ind) = 
   let 
 (*     val _ = checkseg {dat=dat,off=off,sz=sz,st=st} *)
 (*     val _ = assert (i < sz) *)
@@ -94,7 +100,7 @@ fun ss_get ({dat,off,sz,st}, ind) =
 
 (* This makes sure that offset=0 *)
 (* Returns just the data list *)
-fun reallocFirstChunk {dat, st, sz, off} =
+fun reallocFirstChunk {dat, st, sz, off, tb} =
   let 
 (*       val _ = checkseg {dat=dat, st=st, sz=sz, off=off} *)
   in 
@@ -106,8 +112,8 @@ fun reallocFirstChunk {dat, st, sz, off} =
 (* Here's where we may need to reallocate the first segment of B if it's offset is not zero *)
 fun joinsegs (a, b) =  
   let
-     val {dat=d1, st=s1, sz=z1, off=off1}  = a
-     val {dat=_,  st=s2, sz=z2, off=off2} = b
+     val {dat=d1, st=s1, sz=z1, off=off1, tb=tb1} = a
+     val {dat=_,  st=s2, sz=z2, off=off2, tb=tb2} = b
 (*      val _ = checkseg a *)
 (*      val _ = checkseg b *)
   in
@@ -118,11 +124,13 @@ fun joinsegs (a, b) =
              else raise (SigSegFailure ("segments do not line up: start1= "
 	                      ^Int64.toString s1^ " size1= "^Int.toString z1^
  		             " and start2= "^Int64.toString s2))
+      val _ = assert (tb1 = tb2);
       val d2 = reallocFirstChunk b
       val result = { dat = d1@d2,
                      st  = s1,
                      sz  = z1+z2,
-                     off = off1 }
+                     off = off1,
+		     tb  = tb1 }
 (*       val _ = checkseg result *)
   in
      result
@@ -134,7 +142,7 @@ fun subseg (ss, pos, len) =
   if len = 0 then nullseg() else
   let 
 (*     val _ = checkseg ss *)
-    val {dat, st, sz, off} = ss 
+    val {dat, st, sz, off, tb} = ss 
 
 (*     val _ = print ("  shaving off from size: "^Int.toString sz^"\n") *)
 
@@ -173,7 +181,7 @@ fun subseg (ss, pos, len) =
     
 (*     val _ = print ("New offset! "^Int.toString off2^" old was "^Int.toString off^"\n") *)
 
-    val result = { dat= dat2, st=pos, sz=len, off=off2 }
+    val result = { dat= dat2, st=pos, sz=len, off=off2, tb=tb }
 (*     val _ = checkseg result *)
   in result end
 
@@ -184,12 +192,13 @@ fun eq f (a,b) =
  let
 (*      val _ = checkseg a   *)
 (*      val _ = checkseg b  *)
-     val {dat=d1, st=st1, sz=w1, off=off1} = a
-     val {dat=d2, st=st2, sz=w2, off=off2} = b
+     val {dat=d1, st=st1, sz=w1, off=off1, tb=tb1} = a
+     val {dat=d2, st=st2, sz=w2, off=off2, tb=tb2} = b
  in
      w1 = w2  andalso 
     (w1 = 0 orelse      (* nullsegs are always equal *)
     (st1 = st2) andalso     
+    (tb1 = tb2) andalso
 (*      if w1 = 0 then true else  *)
      let fun loop (v1,v2) (ls1,ls2) (i1,i2) cnt = 
          if cnt = 0 then true         

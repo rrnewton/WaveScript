@@ -580,7 +580,7 @@
 			    (format "(~a~s)" #\~ (* -1 datum))
 			    (format "(~s)" datum))]
 
-     [(eq? datum 'nulltimebase) "99999999"]
+     [(eq? datum 'nulltimebase) "(nullTimebase())"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
      [(list? datum)
@@ -1291,6 +1291,8 @@
       [String:implode "String.implode"]
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
+
+      [Secret:newTimebase newTimebase]    ;; ADT breakage!
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
 

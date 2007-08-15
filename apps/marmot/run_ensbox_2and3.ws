@@ -98,4 +98,4 @@ final = iterate (heatmap,stamp) in heatmaps {
 }
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
-//BASE <- final
+BASE <- final

@@ -10,6 +10,10 @@ fun fftArray(arr) {
 }
 */
 
+marmfft = fftR2C
+marmfft = memoized_fftR2C
+//marmfft = foreign(,["","$EMLIB/libnl/libnl/fix_fft.c"])
+//marmfft = foreign("wsfixfft",["fix_fft.c"])
 
 fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
 
@@ -59,7 +63,7 @@ fun FarFieldDOAb(synced, sensors)
     D = Array:make(sens_num, 0.0+0.0i);
 
     //fft the sync'd data - these must be channels, otherwise the fft doesn't make any sense
-    fft_temp = m_rowmap(fftR2C, m_in); // just maps per-row, as you would expect ends up being 8192 samples (complex, no redundancy)
+    fft_temp = m_rowmap(marmfft, m_in); // just maps per-row, as you would expect ends up being 8192 samples (complex, no redundancy)
 
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // hacked from Andreas' code
     sel_bin_size = min(total_bins, Ndat/20);

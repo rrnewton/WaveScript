@@ -17,9 +17,18 @@ exec regiment i --script "$0"
     (113 405.700016 -13919.900513 693.300009 -9.900000 0.300000 -1.300000 0.000000 0.000000 0.000000 1)
     (103 -4006.600189 -1251.299953 576.999998 16.500000 -2.300000 0.000000 0.000000 0.000000 0.000000 1)))
 
-(define (extract ls)
+(trace-define (extract x)
+  (define ls ())
+  (define p (open-input-string x))
+  (set! ls (append ls (list (read p))))
+  (set! ls (append ls (list (read p))))
+  (set! ls (append ls (list (read p))))
+  (set! ls (append ls (list (read p))))
+  (set! ls (append ls (list (read p))))
+  (set! ls (append ls (list (read p))))
   (list (list-ref ls 0) (list-ref ls 1) (list-ref ls 2) (list-ref ls 4)))
 
+#|
 (printf "\nUpdating node locations...\n")
 (flush-output-port)
 
@@ -33,19 +42,29 @@ exec regiment i --script "$0"
 
 (printf "\nSSH succeeded, created loc.txt:\n\n")
 (system "cat loc.txt")
+|#
 
-(define rawdat (file->lines "loc.txt"))
+
+(define rawdat 
+  (filter (lambda (x) (not (equal? x "")))
+    (file->lines "loc.txt")))
+
+(inspect rawdat)
+
 
 (define file (open-output-file "nodelocs.ws" 'replace))
 
 (for-eachi 
- (lambda (i row)   
+ (lambda (i row)
+   (printf "ERK ~s\n" row)
    (fprintf file "node~s = (~a)\n" 
 	   (add1 i)
 	   (apply string-append
 		  (insert-between ", "
 		    (map number->string 
 		      (extract row))))))
+rawdat
+#;
  (sort 
   (lambda (a b) (< (car a) (car b)))
   rawdat))

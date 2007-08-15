@@ -8,10 +8,10 @@ relative rates. In practice, the system needs to be driven from the
 outside by some data source(s). *)
 
 (* TODO: make this int64 *)
-type timestamp = Int32.int
+(*type timestamp = Int32.int*)
 
 (* Data sources are functions that generate new schedule entries *)
-datatype scheduleEntry = SE of (timestamp * (unit -> scheduleEntry))
+datatype scheduleEntry = SE of (Int32.int * (unit -> scheduleEntry))
 
 val schedule : scheduleEntry list ref = ref []
 

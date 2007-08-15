@@ -176,7 +176,7 @@ fun dataFileWindowed config
 		      
 	      arrset (arr, !i, (binreader vec (baseind + (!i * index_coef) + (!i * skipwords))));
 	      i := !i + 1);
-           let val result = ( tosigseg (arr, !sampnum, 3339))
+           let val result = ( tosigseg (arr, !sampnum, newTimebase 8888888))
            in
 	   (sampnum := Int64.+(!sampnum, winsize_);
 	    result)
