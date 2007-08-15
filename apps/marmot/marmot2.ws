@@ -272,7 +272,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 // only does one source - other implementations may work on multiple sources
 
 // win_size decides how AML results to use
-//oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
+oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
 fun oneSourceAMLTD(synced, win_size) {
   using Matrix;
   using Float; 

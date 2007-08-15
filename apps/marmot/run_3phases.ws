@@ -12,7 +12,7 @@ synced = stream_map(fun (x)
 include "marmot2.ws";
 include "marmot_heatmap.ws";
 
-doas = oneSourceAMLTD(synced, micgeometry, 4096);
+doas = oneSourceAMLTD(synced, 4096);
 
 nodes = [(100, -0.0, 0.000891, 222.746048)];
 

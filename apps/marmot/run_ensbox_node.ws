@@ -7,7 +7,9 @@ phase1result = detector((ch1i,ch2i,ch3i,ch4i));
 
 //========================================
 // PHASE 1 ONLY:
-//BASE <- netpub_sigseg4(phase1result, "detections"); 
+BASE <- netpub_sigseg4(phase1result, "detections"); 
+
+/*
 
 //========================================
 // TRYING AML ON NODE
@@ -36,4 +38,4 @@ fun netpub_aml(amlS, name) {
 
 
 BASE <- netpub_sigseg4(phase1result, "detections"); 
-
+*/

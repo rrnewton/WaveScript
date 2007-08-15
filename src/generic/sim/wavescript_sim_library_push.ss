@@ -186,7 +186,8 @@
     (cond
      [(sigseg? a) 
       (and (= (sigseg-start a) (sigseg-start b))
-	   (s:equal? (sigseg-timebase a) (sigseg-timebase b))
+	   (s:equal? (timebase-num (sigseg-timebase a)) 
+		     (timebase-num (sigseg-timebase b)))
 	   ;; This may not recursively contain sigsegs:
 	   (s:equal? (sigseg-vec a) (sigseg-vec b)))]     
      [(pair? a) (and (pair? b) 
@@ -772,7 +773,9 @@
 
   (define (valid-timebase? tb)
     ;; This is the only implemented timebase right now ;)
-    (eq? tb nulltimebase))
+    ;(eq? tb nulltimebase)
+    (timebase? tb)
+    )
      
   (define-syntax app
     (syntax-rules ()
@@ -911,7 +914,7 @@
 ;      (define nulltimebase (gensym "nulltimebase"))
   ;(define nullseg 'nullseg)
   (define Array:null #())
-  (define nulltimebase 'nulltimebase)
+  (define nulltimebase (make-timebase 12345654321))
   (define nullseg (make-sigseg 0 -1 #() nulltimebase))
   ;(define nullseg special-nullseg-object)
   ;(define (nullseg? x) (eq? x nullseg))
@@ -1339,7 +1342,8 @@
 		[x (sigseg-start w2)]
 		[y (sigseg-end w2)])
 	   (cond
-	    [(not (eq? (sigseg-timebase w1) (sigseg-timebase w2)))
+	    [(not (eq? (timebase-num (sigseg-timebase w1)) 
+		       (timebase-num (sigseg-timebase w2))))
 	     (error 'joinsegs "Cannot handle different TimeBases!")]
 
 	    ;; In this case the head of w2 is lodged in w1:
@@ -1428,7 +1432,7 @@
        (if (nullseg? w) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
      
-     (define (Secret:newTimebase x) x)
+     (define (Secret:newTimebase x) (make-timebase x))
 
      (define (toArray w) (if (nullseg? w) #() (sigseg-vec w)))
      (define (toSigseg ar st tb)

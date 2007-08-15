@@ -448,6 +448,7 @@
 
      [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
 				(ASSERT (tuple-fields val) )))]
+     [(timebase? val) `(Secret:newTimebase ,(timebase-num val))]
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!
      ;; Need to wrap them!!
@@ -463,7 +464,7 @@
 ;; Foreign closures are simple... they become foreign entries.
 (define (Marshal-Foreign-Closure fcl)
   (ASSERT (foreign-closure? fcl))
-  (inspect/continue (closure-code fcl))
+  (closure-code fcl)
   )
 
 ;; FIXME: TODO: to make this more efficient, we should build up a

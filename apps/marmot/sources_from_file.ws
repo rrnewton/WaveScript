@@ -41,3 +41,5 @@ ch1i = onechan(0);
 ch2i = onechan(1); 
 ch3i = onechan(2); 
 ch4i = onechan(3);
+
+fun timer_source(_,t) timer(1000.0 / t`intToFloat)
