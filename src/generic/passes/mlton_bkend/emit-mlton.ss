@@ -262,6 +262,8 @@
     ;; ERROR: FIXME:
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
 
+    [Timebase  (make-fun '("x") (list "\"<Timebase \" ^ "(intprint 'Int)" x ^ \">\""))]
+
     [String     (make-fun '("x") "x")]
     [Float  "Real32.toString"]
     [Double "Real64.toString"]

@@ -150,7 +150,7 @@ fun doa_fuse(axes, grid_scale, taggedamls) {
       // Should use List:foldi
       List:foldi(
 	// Each node record contains location/orientation as well as doas likelihood vector:
-        fun(k, sum, ((id,x,y,yaw), (doavec, startsamp, tb)) {
+        fun(k, sum, ((id,x,y,yaw), (doavec, startsamp, tb))) {
 
 	  nr = yaw * const_PI / 180.0; // node rotation	       
 	  theta = atan2(c_y - y, c_x - x);

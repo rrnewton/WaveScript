@@ -4,6 +4,8 @@
 // time... In opt-lvl 3 it took 1 min / 34sec...
 
 include "nodelocs.ws";
+include "types.ws";
+
 include "ensbox_logger.ws";
 include "stdlib.ws";
 include "netsource.ws";
@@ -50,7 +52,7 @@ fun aml(slsf)
   oneSourceAMLTD(slsf, 4096)
   //  oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
 
-5amls :: List (Stream (Tagged AML));
+amls :: List (Stream (Tagged AML));
 amls = tag$ map(aml,synced)
 /*
 amls =

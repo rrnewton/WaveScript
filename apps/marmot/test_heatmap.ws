@@ -46,18 +46,20 @@ BASE <- iterate _ in timer(3.0) {
 
   println("Executing test_heatmap...");
 
-  nodesAndData = map2(fun(x,y) (x,0`gint,y), nodes, map(normalize_doas, data));
+  amls = map(fun (arr) (arr,0`gint,nulltimebase), data);
+  nodesAndData = map2(fun(nd,aml) (nd,aml), nodes, map(normalize_doas, amls));
 
   //  nodesAndData = List:map2(fun(nd,(mat,st)) (nd,st,mat), nodes, norm);
   //doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
   let (mat,st) = doa_fuse(axes,grid_scale, nodesAndData);
 
-  pic = colorize_likelihoods(mat);
+  pic = colorize_likelihoods((mat,st));
 
   file = "temp.ppm";
   write_ppm_file(file,pic);
 
   emit ("Wrote image to file: " ++ file ++ " "++ Matrix:get(mat,0,0));
+
 }
 
 
