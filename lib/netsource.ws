@@ -53,6 +53,29 @@ fun netpub_sigseg4(s, name) {
 }
 
 
+/*
+fun LAMESPLITTER((arr,strt)) {
+  chunksize = seg`width / 4;
+  using Array;
+  arr1 = build(chunksize, fun(i) arr[i + 0 * chunksize]);
+  arr2 = build(chunksize, fun(i) arr[i + 1 * chunksize]);
+  arr3 = build(chunksize, fun(i) arr[i + 2 * chunksize]);
+  arr4 = build(chunksize, fun(i) arr[i + 3 * chunksize]);
+  ()
+}
+*/
+
+// This hackishly reuses the same C function that is used to send detections
+fun netpub_aml(amlS, name) {
+  iterate (vec,stamp,tb) in amlS {
+    state { ns = c_wsnet_register(name); }
+    c_wsnet_enqueue_sigseg4(ns, stamp, vec`Array:length, nulltimebase, vec);
+    emit((vec,stamp,tb));
+  }
+}
+
+
+
 
 //
 //  SUBSCRIBE
@@ -145,6 +168,24 @@ fun netsub_4sigseg(host, name) {
 	   toSigseg(arr2, sample, tb_globalvxp),
 	   toSigseg(arr3, sample, tb_globalvxp),
 	   toSigseg(arr4, sample, tb_globalvxp) ]);
+  };
+  merge(ccode, conv)
+}
+
+
+// rrn: This even more lamely takes in the four arrays and puts them back together.
+fun netsub_amls(host, name) {
+  id = dots_to_underbars(host)++"_"++name;
+  ccode = inline_C(gen_glue_sigseg4(host,name,id), "__init_"++id);
+  src = (foreign_source("__entry_"++id, []) :: Stream (Int64 * Int * 
+	Pointer "int16_t*" * Pointer "int16_t*" * 
+	Pointer "int16_t*" * Pointer "int16_t*"));
+  conv = iterate (sample, len, p1, p2, p3, p4) in src {
+    arr1 :: Array Int16 = ptrToArray(p1,len);
+    arr2 :: Array Int16 = ptrToArray(p2,len);
+    arr3 :: Array Int16 = ptrToArray(p3,len);
+    arr4 :: Array Int16 = ptrToArray(p4,len);
+    emit (Array:append([arr1,arr2,arr3,arr4]), sample, tb_globalvxp)
   };
   merge(ccode, conv)
 }

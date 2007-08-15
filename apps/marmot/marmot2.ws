@@ -276,7 +276,7 @@ oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
 fun oneSourceAMLTD(synced, win_size) {
   using Matrix;
   using Float; 
-
+  
   synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
 
   // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
@@ -300,8 +300,14 @@ fun oneSourceAMLTD(synced, win_size) {
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map(fun(ls) (list_of_rowsegs_to_matrix(ls), List:ref(ls,0)`start, List:ref(ls,0)`timebase),
-                 synced_floats);
+  data_in = stream_map( fun(ls) {
+                st = List:ref(ls,0)`start;
+		tb = List:ref(ls,0)`timebase;
+		wid = List:ref(ls,0)`width;
+                log(1, "AMLING_DETECTION_SEGMENTS  START " ++st++ " WIDTH " ++wid++ " TIMEBASE " ++tb);
+               (list_of_rowsegs_to_matrix(ls), st, tb)
+	    },
+	    synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.
@@ -323,6 +329,7 @@ fun oneSourceAMLTD(synced, win_size) {
     result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
     log(1, "  Got result of AML.");
+
 
     //	gnuplot_array(result);
     emit(result, starttime, tb)

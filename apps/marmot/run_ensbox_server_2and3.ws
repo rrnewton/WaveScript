@@ -41,28 +41,30 @@ fun tag(sls)
       stream_map(fun(x) (node,x) ,strms),
       List:zip(nodes,sls))
 
-synced = map(fun(ip) netsub_4sigseg(ip,"detections"), ips)
-
 include "marmot2.ws";
 include "marmot_heatmap.ws";
 
-//floats = map(segsToFloat,synced);
+// **********************  UNCOMMENT FOR SERVER SIDE AML ************************ //
+//================================================================================//
 
-fun aml(slsf) 
-  oneSourceAMLTD(slsf, 4096)
-  //  oneSourceAMLTD(snoop("DETECTION SEGMENTS",slsf), micgeometry, 4096);
+synced = map(fun(ip) snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections")), ips)
+amls :: List (Stream AML);
+amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
 
-amls :: List (Stream (Tagged AML));
-amls = tag$ map(aml,synced)
-/*
-amls =
-  map(fun((node,datastrm))
-      stream_map(fun(aml) (node,aml), stream_map(normalize_doas, aml(datastrm))),
-      List:zip(nodes,synced))
-*/
+
+// **********************  UNCOMMENT FOR CLIENT SIDE AML ************************ //
+//================================================================================//
+
+//synced = map(fun(ip) netsub_amls(ip,"amls"), ips)
+//amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
+
+
+//================================================================================//
+
+
 
 merged :: Stream (Tagged AML);
-merged = List:fold1(merge, amls)
+merged = List:fold1(merge, tag(amls))
 
 clusters :: Stream (List (Tagged AML));
 clusters = temporal_cluster_amls(3, merged);
