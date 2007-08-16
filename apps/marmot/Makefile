@@ -19,16 +19,31 @@ client:
 	wsmlton-ensbox run_ensbox_node.ws
 	cp query.ensbox.mlton.exe NEWNODE.exe
 
-upload:
+upload: 100 103 104 108 109 112 113 115
+
+100:
 	scp NEWNODE.exe root@192.168.11.100:/root/detector.exe
+103:
 	scp NEWNODE.exe root@192.168.11.103:/root/detector.exe
+104:
 	scp NEWNODE.exe root@192.168.11.104:/root/detector.exe
+108:
 	scp NEWNODE.exe root@192.168.11.108:/root/detector.exe
+109:
 	scp NEWNODE.exe root@192.168.11.109:/root/detector.exe
+112:
 	scp NEWNODE.exe root@192.168.11.112:/root/detector.exe
+113:
 	scp NEWNODE.exe root@192.168.11.113:/root/detector.exe
+115:
 	scp NEWNODE.exe root@192.168.11.115:/root/detector.exe
 
+103-up: 103 104 108 109 112 113 115
+104-up: 104 108 109 112 113 115
+108-up: 108 109 112 113 115
+109-up: 109 112 113 115
+112-up: 112 113 115
+113-up: 113 115
 
 clean:
 	rm -f query.*.c .tmp*.o *.pipe query.sml foo.out gmon.out pdump*
