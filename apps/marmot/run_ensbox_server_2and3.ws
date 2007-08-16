@@ -46,20 +46,21 @@ include "marmot_heatmap.ws";
 
 amls :: List (Stream AML);
 
-// **********************  UNCOMMENT FOR SERVER SIDE AML ************************ //
-//================================================================================//
+
+// **********************  SERVER SIDE AML ************************ //
+//==================================================================//
 
 synced = map(fun(ip) snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections")), ips)
-amls = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
+amls_server = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
 
+// **********************  CLIENTSIDE AML ************************ //
+//=================================================================//
 
-// **********************  UNCOMMENT FOR CLIENT SIDE AML ************************ //
+amls_client = map(fun(ip) smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
+
 //================================================================================//
 
-//amls = map(fun(ip) smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
-
-//================================================================================//
-
+amls = if AMLSERVERSIDE then amls_server else amls_client
 
 merged :: Stream (Tagged AML);
 merged = List:fold1(merge, tag(amls))
@@ -93,3 +94,4 @@ final = iterate lhoodmap in heatmaps {
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
 BASE <- final
+

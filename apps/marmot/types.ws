@@ -20,3 +20,4 @@ type Settings   = (AxesBounds * (Float * Float));
 
 
 include "timebase.ws";
+include "config.ws";

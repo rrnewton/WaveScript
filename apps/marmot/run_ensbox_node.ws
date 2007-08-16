@@ -21,29 +21,22 @@ chopped = iterate ls in phase1result {
 }
 
 
-// **********************  UNCOMMENT FOR SERVER SIDE AML ************************ //
+// **********************  SERVER SIDE AML ************************ //
+//==================================================================//
+
+result_dets = smap(fun(_) (), netpub_sigseg4(chopped, "detections"));
+
+// **********************  CLIENTSIDE AML ************************ //
+//=================================================================//
+
+include "marmot2.ws";
+amls :: Stream IntAML;
+amls = smap(normalized_aml_to_int16s,
+       smap(normalize_aml,
+            oneSourceAMLTD(phase1result, 4096)))
+
+result_amls =  netpub_aml(amls, "amls");
+
 //================================================================================//
 
-BASE <- netpub_sigseg4(chopped, "detections");
-
-
-// **********************  UNCOMMENT FOR CLIENT SIDE AML ************************ //
-//================================================================================//
-
-/* include "marmot2.ws"; */
-/* amls :: Stream IntAML; */
-/* amls = smap(normalized_aml_to_int16s, */
-/*        smap(normalize_aml, */
-/*             oneSourceAMLTD(phase1result, 4096) */
-/* 	    //smap(fun(dets)    ) */
-/* 	    )) */
-
-/* amls2 = iterate x in amls{ */
-/*   log(1, "WHATS UP HERE?"); */
-/*   emit x; */
-/* } */
-
-/* //BASE <- netpub_aml(snoop("SNOOPIN", amls2), "amls"); */
-/* //BASE <- netpub_aml(snoop("SNOOPIN", amls2), "amls"); */
-/* BASE <- snoop("SNOOPIN", amls2) */
-
+BASE <- if AMLSERVERSIDE then result_dets else result_amls

@@ -5,6 +5,11 @@ DEBUGSYNC = DEBUG;
 
 include "stdlib.ws";
 
+// Trying 
+
+//fix_fft :: (Array Int16 * Array Int16 * Int 16 * Int16)
+//         = foreign("fix_fft", ["fix_fft.c"])
+
 // Takes Sigseg Complex
 fun marmotscore2(freqs) { 
   result = 
@@ -156,13 +161,13 @@ fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.tim
 
 fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
-  ch1f = deep_stream_map(int16ToFloat, ch1i);
-
   // 96 samples are ignored between each 32 used:
-  rw1 = rewindow(ch1f, 32, 96);
+  rw1 = rewindow(ch1i, 32, 96);
+
+  floats = deep_stream_map(int16ToFloat, rw1);
 
   //hn = smap(hanning, rw1);
-  hn = hanning(rw1);
+  hn = hanning(floats);
 
   wscores :: Stream (Float * Int64 * Int64) = 
     stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
