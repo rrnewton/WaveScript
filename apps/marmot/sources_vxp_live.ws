@@ -20,6 +20,7 @@ fun wserror(str) {
 include "stdlib.ws";
 include "vxpsource.ws";
 include "netsource.ws";
+include "types.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 

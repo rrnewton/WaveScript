@@ -53,27 +53,19 @@ fun netpub_sigseg4(s, name) {
 }
 
 
-/*
-fun LAMESPLITTER((arr,strt)) {
-  chunksize = seg`width / 4;
-  using Array;
-  arr1 = build(chunksize, fun(i) arr[i + 0 * chunksize]);
-  arr2 = build(chunksize, fun(i) arr[i + 1 * chunksize]);
-  arr3 = build(chunksize, fun(i) arr[i + 2 * chunksize]);
-  arr4 = build(chunksize, fun(i) arr[i + 3 * chunksize]);
-  ()
-}
-*/
-
 // This hackishly reuses the same C function that is used to send detections
+netpub_aml :: (Stream IntAML, String) -> Stream ();
 fun netpub_aml(amlS, name) {
   iterate (vec,stamp,tb) in amlS {
-    state { ns = c_wsnet_register(name); }
-    c_wsnet_enqueue_sigseg4(ns, stamp, vec`Array:length, nulltimebase, vec);
-    emit((vec,stamp,tb));
+
+    println("ATTEMPTING TO PUBLISH AML RESULTS!!!!");
+
+    //state { ns = c_wsnet_register(name); }
+    //c_wsnet_enqueue_sigseg4(ns, stamp, vec`Array:length / 4, nulltimebase, vec);
+    //emit((vec,stamp,tb));
+    emit ();
   }
 }
-
 
 
 

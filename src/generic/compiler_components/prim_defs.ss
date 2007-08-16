@@ -563,8 +563,7 @@
     ;; Starts up a gnuplot process.
     ;; Feeds it data on one channel, and control messages on the other.
     (gnuplot_process  ((Stream String) (Stream String)) (Stream 'any))
-    ;(spawnprocess  ((Stream String)) (Stream String))
-
+    (spawnprocess  (String (Stream String)) (Stream String))
 
 
 

@@ -36,7 +36,7 @@
 		 show
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
-		 gnuplot_process
+		 gnuplot_process spawnprocess
 		 prim_window
 
 		 to-uint16 to-int16 uint16->string
@@ -1321,7 +1321,18 @@
 		       (display str datapipe) (flush-output-port outp)))))
        (lambda (sink) (void)))
 
-;     (define (spawnprocess instrm))
+     ;; This only produces output
+     (define (spawnprocess command instrm)
+	 (let-match ([(,inp ,outp ,pid) (process command)])	   
+	   (eprintf "Spawnprocess: Spawned ~s\n" command)
+	   	   
+	   ;; So how about flushing?
+	   (instrm  (lambda (str) 
+		      (printf "Got message for child process: ~s\n" str)
+		      (display str outp) 
+		      (flush-output-port outp))))
+	 (lambda (sink) (void))
+       )
   
      (define m_invert ws-invert-matrix)
 

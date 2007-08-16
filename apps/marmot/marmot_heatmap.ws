@@ -62,6 +62,62 @@ fun temporal_cluster_amls(minclustsize, amls) {
 
 /**************************************************************/
 
+// This is going to be version 2.  It will time-out based on real
+// time, but cluster detections based on detection timestamps.
+
+/*
+timestamp_cluster_amls :: (Int, Stream (Tagged AML)) -> Stream (List Tagged AML);
+fun timestamp_cluster_amls(minclustsize, amls) {
+  iterate x in union2(amls, timer_source("cluster_timer", 500)) {
+    state { 
+      acc = [];
+      counter = 0;
+      duparr = Array:make(20,false);
+    }
+    case x {
+      Left(entry): {
+        foo :: Tagged AML = entry;
+        println("AML received! Already had: "++acc`List:length);
+        acc := entry ::: acc;
+	counter := 0;
+      }
+      Right(_): {
+        //println("Timer Fired! acc length: "++acc`List:length);
+        counter += 1;
+	if counter > 1 
+	then {
+	  if acc != [] then {
+	    // Filter out duplicates.
+	    acc2 :: Ref (List Tagged AML) = Mutable:ref([]);
+	    List:foreach(fun(aml) {
+	      let ((id,_,_,_),_) = aml;
+	      if not(duparr[id-100]) then 
+	      {
+	        duparr[id-100] := true;
+                acc2 := aml ::: acc2;
+	      }
+	    }, acc);
+            //emit List:reverse(acc);
+	    acc := [];
+	    Array:fill(duparr, false);
+	    
+	    print("Got a cluster of detections from nodes: {");
+	    List:foreach(fun (((id,_,_,_),_)) print(id++" "), acc2);
+            print("}\n");
+	    if List:length(acc2) >= minclustsize 
+	    then emit acc2;
+	  }
+	}
+      }
+    }
+  }
+}
+
+*/
+
+/**************************************************************/
+
+
 // Convert pixels back to centimeters.
 convertcoord :: (AxesBounds, Float, Int, Int) -> (Float*Float);
 fun convertcoord(axes, grid_scale, u, v) {

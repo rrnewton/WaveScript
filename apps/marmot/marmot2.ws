@@ -330,7 +330,6 @@ fun oneSourceAMLTD(synced, win_size) {
 
     log(1, "  Got result of AML.");
 
-
     //	gnuplot_array(result);
     emit(result, starttime, tb)
   };
@@ -347,19 +346,26 @@ fun oneSourceAMLTD(synced, win_size) {
 // calculate normalised J (AML vector) values
 normalize_aml :: AML -> AML;
 fun normalize_aml((doas,st,tb)) {
+  log(1,"Normalizing AML.");
   total = Array:fold((+), 0.0, doas);
   (Array:map((/ total), doas), st,tb)
 }
 
-normalized_aml_to_int16s :: AML -> (Array Int16 * Int64 * Timebase);
+normalized_aml_to_int16s :: AML -> IntAML;
 fun normalized_aml_to_int16s((arr,st,tb)) {
-  (Array:map(fun(n) floatToInt16(n * 65536.0), arr), st, tb)
+  log(1,"Converting AML to Int16");
+  fun convert(f) {
+    //log(1,"Converting float! "++f);
+    floatToInt16(f);
+  };
+  res = (Array:map(fun(n) convert(n * 65535.0 - 32768.0), arr), st, tb);
+  log(1,"Finished AML conversion");
+  res
 }
 
-
-normalized_aml_to_floats :: (Array Int16 * Int64 * Timebase) -> AML;
+normalized_aml_to_floats :: IntAML -> AML;
 fun normalized_aml_to_floats((arr,st,tb)) {
-  (Array:map(fun(n) int16ToFloat(n), arr), st, tb)
+  (Array:map(fun(n) (int16ToFloat(n) + 32768.0) / 65535.0, arr), st, tb)
 }
 
 
