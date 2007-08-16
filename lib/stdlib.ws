@@ -69,6 +69,7 @@ Array:fill      :: (Array t, t) -> ();
 Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
 Array:append    :: (List (Array t)) -> Array t;
 Array:sub       :: (Array t, Int, Int) -> Array t;
+Array:foreach   :: (a -> (), Array a) -> ();
 
 String:append   :: (String, String) -> String;
 
@@ -553,8 +554,25 @@ namespace Array {
   // Extract a sub-array.
   fun sub(arr, pos, len)
      build(len, fun(i) arr[pos+i])
-  
+
+  fun foreach(f,arr) {
+    for i = 0 to arr.length-1 {
+      f(arr[i])
+    }
+  }
+
+  fun mapi(f,arr) {
+    new = makeUNSAFE(arr.length);
+    for i = 0 to arr.length-1 {
+      new[i] := f(i,arr[i])
+    };
+    new
+  }
+ 
 } // End namespace Array
+
+
+
 
 fun String:append(a,b) a++b
 
