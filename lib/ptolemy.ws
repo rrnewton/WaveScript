@@ -16,6 +16,13 @@ fun write_to_file(fifo, str) {
 }
 
 
+fun snoop_to_file(str, stream) {
+  iterate x in stream {
+    write_to_file(str, show(x)++"\n");
+    emit(x)
+  }
+}
+
 
 fun array_to_ptolemy(a) {
   if (a`Array:length == 0) 

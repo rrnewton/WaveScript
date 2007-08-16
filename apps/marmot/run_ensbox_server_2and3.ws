@@ -10,6 +10,7 @@ include "ensbox_logger.ws";
 include "stdlib.ws";
 include "netsource.ws";
 include "timersource.ws";
+include "ptolemy.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
@@ -50,13 +51,30 @@ amls :: List (Stream AML);
 // **********************  SERVER SIDE AML ************************ //
 //==================================================================//
 
-synced = map(fun(ip) snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections")), ips)
-amls_server = map(fun (slsf) oneSourceAMLTD(slsf, 4096),synced)
+/* because show sigseg doesnt dump it */
+fun snoop_4sigseg_to_file(f,s) {
+  iterate x in s {    
+    write_to_file(f,
+	 "Detection segments: " ++ show(x) ++ "\n" ++
+	 //show(List:map(toArray,x)) ++ 
+	 "\n");
+    emit(x) 
+  }
+}
+
+synced = map(fun(ip) 
+      snoop_4sigseg_to_file("/home/girod/marmots/detections.log",
+      snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections"))), ips)
+amls_server = map(fun (slsf) 
+      snoop_to_file("/home/girod/marmots/amls.log",
+                    oneSourceAMLTD(slsf, 4096)),synced)
 
 // **********************  CLIENTSIDE AML ************************ //
 //=================================================================//
 
-amls_client = map(fun(ip) smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
+amls_client = map(fun(ip) 
+      //snoop_to_file("/home/girod/marmots/client_amls.log",
+                    smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
 
 //================================================================================//
 
