@@ -24,7 +24,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
     case x {
       Left(entry): {
         foo :: Tagged AML = entry;
-        println("AML received! Already had: "++acc`List:length);
+        log(1,"AML received! Already had: "++acc`List:length);
         acc := entry ::: acc;
 	counter := 0;
       }
@@ -48,9 +48,9 @@ fun temporal_cluster_amls(minclustsize, amls) {
 	    acc := [];
 	    Array:fill(duparr, false);
 	    
-	    print("Got a cluster of detections from nodes: {");
-	    List:foreach(fun (((id,_,_,_),_)) print(id++" "), acc2);
-            print("}\n");
+	    log(1,"Got a cluster of detections from nodes: {"++
+     	           List:fold(fun (str, ((id,_,_,_),_)) (str++id++" "), "", acc2)
+                  ++"}\n");
 	    if List:length(acc2) >= minclustsize 
 	    then emit acc2;
 	  }
@@ -180,7 +180,7 @@ fun doa_fuse(axes, grid_scale, taggedamls) {
 
   let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
   { let (xmin,xmax,ymin,ymax) = axes;
-    println("Starting DOA fuse.  Gridsize "++xpixels++" x "++ypixels++
+    log(1, "Starting DOA fuse.  Gridsize "++xpixels++" x "++ypixels++
           "  Axes: ("++xmin`f2i++", "++ymin`f2i++") to ("++xmax`f2i++", "++ymax`f2i++")");
     assert("xmax > xmin", xmax>xmin);
     assert("ymax > ymin", ymax>ymin);
