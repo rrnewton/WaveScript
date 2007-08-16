@@ -17,7 +17,7 @@ phase1result = iterate x in _phase1result {
 // Assumes they're the same size of course:
 chopped = iterate ls in phase1result {
   fst = List:ref(ls,0);
-  emit map(fun(ss) subseg(ss, fst`start, fst`width), ls);
+  emit map(fun(ss) subseg(ss, fst`start, min(4096,fst`width)), ls);
 }
 
 

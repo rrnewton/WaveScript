@@ -69,7 +69,8 @@ Array:fill      :: (Array t, t) -> ();
 Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
 Array:append    :: (List (Array t)) -> Array t;
 Array:sub       :: (Array t, Int, Int) -> Array t;
-Array:foreach   :: (a -> (), Array a) -> ();
+Array:foreach    :: (     a -> (), Array a) -> ();
+Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 
 String:append   :: (String, String) -> String;
 
@@ -181,7 +182,7 @@ Curry:sfilter :: (t -> Bool) -> S t -> S t;
 
 // These bindings are PRIVATE.  They are exported (just because we
 // don't have a proper module system), but DON'T USE THEM!
-   syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
+Internal:syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
 		    
 // NEED TO ADD:
 // qsort, Complexl, expc, atan2, MInv...
@@ -561,6 +562,12 @@ namespace Array {
     }
   }
 
+  fun foreachi(f,arr) {
+    for i = 0 to arr.length-1 {
+      f(i, arr[i])
+    }
+  }
+
   fun mapi(f,arr) {
     new = makeUNSAFE(arr.length);
     for i = 0 to arr.length-1 {
@@ -770,7 +777,7 @@ fun zipN_sametype(bufsize, slist) {
 
 // This is an internal helper that can be parameterized in two ways to
 // form "syncN" and "syncN_no_delete".
-syncN_aux = 
+Internal:syncN_aux = 
 fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
@@ -900,9 +907,8 @@ fun (ctrl, strms, del) {
   }
 }
 
-syncN = fun (ctrl, strms) { syncN_aux(ctrl, strms, true) }
-
-syncN_no_delete = fun (ctrl, strms) { syncN_aux(ctrl, strms, false) }
+syncN           = fun (ctrl, strms) { Internal:syncN_aux(ctrl, strms, true) }
+syncN_no_delete = fun (ctrl, strms) { Internal:syncN_aux(ctrl, strms, false) }
 
 fun thresh_extract(search,streamlist,thresh,_pad) {
   pad = _pad`intToInt64;
@@ -1001,7 +1007,6 @@ fun rewindow(sig, newwidth, gap) {
    }
   }
 }
-
 
 // degap takes a stream of sigsegs
 // any gaps in the stream will be replaced with sigsegs of init

@@ -119,14 +119,20 @@ result = iterate sum in union2(degapped,zipped) {
        assert_prnt("List:build", bld, [0,1,2,3,4]);
        assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
     }
-  } 
+  } // End "first" 
  } 
 };
   
   //  emit true;
 }
 
-BASE <- result
+
+BASE <- rewindow(s1, 5, 0)
+
+
+
+
+
+
 
 //BASE <- result
-//BASE <- ch2
