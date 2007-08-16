@@ -123,7 +123,7 @@ fun gen_glue_sigseg4 (host,name,id) {
       elog(LOG_WARNING, \"can't convert sample numbers, dropping data\");
     }
     else {
-#define TIMEBASEDEBUG 
+//#define TIMEBASEDEBUG 
 #ifdef TIMEBASEDEBUG
 elog(LOG_WARNING, \"gpstv %ld.%06ld -> gps %lf -> gs %lf\",
 cast->start_time.tv_sec, cast->start_time.tv_usec,
