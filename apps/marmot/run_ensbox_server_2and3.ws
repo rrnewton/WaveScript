@@ -56,7 +56,7 @@ fun snoop_4sigseg_to_file(f,s) {
   iterate x in s {    
     write_to_file(f,
 	 "Detection segments: " ++ show(x) ++ "\n" ++
-	 //show(List:map(toArray,x)) ++ 
+	 show(List:map(toArray,x)) ++ 
 	 "\n");
     emit(x) 
   }
@@ -73,8 +73,8 @@ amls_server = map(fun (slsf)
 //=================================================================//
 
 amls_client = map(fun(ip) 
-      //snoop_to_file("/home/girod/marmots/client_amls.log",
-                    smap(normalized_aml_to_floats, netsub_amls(ip,"amls")), ips)
+      snoop_to_file("/home/girod/marmots/client_amls.log",
+                    smap(normalized_aml_to_floats, netsub_amls(ip,"amls"))), ips)
 
 //================================================================================//
 
