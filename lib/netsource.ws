@@ -58,12 +58,13 @@ netpub_aml :: (Stream IntAML, String) -> Stream ();
 fun netpub_aml(amlS, name) {
   iterate (vec,stamp,tb) in amlS {
 
-    println("ATTEMPTING TO PUBLISH AML RESULTS!!!!");
+    //    println("ATTEMPTING TO PUBLISH AML RESULTS!!!!");
+    log(1,"ATTEMPTING TO PUBLISH AML RESULTS!!!!");
 
     //state { ns = c_wsnet_register(name); }
     //c_wsnet_enqueue_sigseg4(ns, stamp, vec`Array:length / 4, nulltimebase, vec);
     //emit((vec,stamp,tb));
-    emit ();
+    //emit ();
   }
 }
 

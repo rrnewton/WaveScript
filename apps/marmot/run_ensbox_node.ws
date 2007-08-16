@@ -34,11 +34,16 @@ BASE <- netpub_sigseg4(chopped, "detections");
 /* amls :: Stream IntAML; */
 /* amls = smap(normalized_aml_to_int16s, */
 /*        smap(normalize_aml, */
-/*             oneSourceAMLTD(phase1result, 4096))) */
+/*             oneSourceAMLTD(phase1result, 4096) */
+/* 	    //smap(fun(dets)    ) */
+/* 	    )) */
 
 /* amls2 = iterate x in amls{ */
 /*   log(1, "WHATS UP HERE?"); */
 /*   emit x; */
 /* } */
 
-/* BASE <- netpub_aml(snoop("SNOOPIN", amls2), "amls"); */
+/* //BASE <- netpub_aml(snoop("SNOOPIN", amls2), "amls"); */
+/* //BASE <- netpub_aml(snoop("SNOOPIN", amls2), "amls"); */
+/* BASE <- snoop("SNOOPIN", amls2) */
+

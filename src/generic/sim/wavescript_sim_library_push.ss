@@ -1323,15 +1323,27 @@
 
      ;; This only produces output
      (define (spawnprocess command instrm)
+       (define our-sinks ())
 	 (let-match ([(,inp ,outp ,pid) (process command)])	   
+	   (define (try-output)
+	     (let loop ()
+	       (if (char-ready? inp)
+		   (cons (read-char inp) (loop))
+		   ())))
 	   (eprintf "Spawnprocess: Spawned ~s\n" command)
 	   	   
 	   ;; So how about flushing?
 	   (instrm  (lambda (str) 
 		      (printf "Got message for child process: ~s\n" str)
 		      (display str outp) 
-		      (flush-output-port outp))))
-	 (lambda (sink) (void))
+		      (flush-output-port outp)
+		      (let ([processoutput (try-output)])
+			(unless (null? processoutput)
+			  (fire! (list->string processoutput) our-sinks)))
+;		      (fire! "Sent stuff to subprocess...\n" our-sinks)
+		      )))
+	 (lambda (sink) 
+	   (set! our-sinks (cons sink our-sinks)))
        )
   
      (define m_invert ws-invert-matrix)
