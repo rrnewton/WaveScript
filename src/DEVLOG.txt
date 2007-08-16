@@ -1088,3 +1088,7 @@ my_tx_seq:   3112
 
 TICKET NUMBER BEING CREDITED: 
   016 216 185 7904
+
+Person helping me fix the fare:
+  575.00 charged to credit card 
+

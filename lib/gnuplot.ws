@@ -15,7 +15,7 @@ namespace Gnuplot {
     }
 
     fun simpleStreamOp (extracmds, plotsuffix, strm, spewdata) {
-      pipe = spawnprocess("gnuplot",
+      pipe = spawnprocess("gnuplot -persist",
 			  iterate x in strm {
 			    state { fst=true }
 			    emit extracmds;
@@ -37,7 +37,6 @@ namespace Gnuplot {
      (extracmds, " \"-\" using 1:2 with linespoints\n", strm,
       fun(arr,out) {
         Array:foreach(fun((x,y)) out(x++" "++y++"\n"), arr);
-   	out("e\n");
       })
   }
  fun array_stream(extracmds, strm) {
@@ -46,7 +45,6 @@ namespace Gnuplot {
      (extracmds, " \"-\" using 1:2 with linespoints\n", strm,
       fun(arr,out) {
         Array:foreachi(fun(i,x) out(i++" "++x++"\n"), arr);
-   	out("e\n");
       })
   }
 

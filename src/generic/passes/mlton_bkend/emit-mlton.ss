@@ -248,11 +248,15 @@
      "\n"))
 
 (define (build-show t)
+#;
   (define (intprint mod)
     (format (++ "(fn n => if n < ~a.fromInt 0 "
 	       " then \"-\" ^ ~a.toString (~a.-(~a.fromInt 0, n))"
 	       " else ~a.toString n)")
 	    mod mod mod mod mod))
+  ;; Simpler:
+  (define (intprint mod)  (format "~a.toString" mod))
+
   (match t
 
     [Int16 (intprint 'Int16)]

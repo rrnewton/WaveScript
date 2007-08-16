@@ -105,6 +105,7 @@
 
 
     ;; Updated this to return all iterator state so it can be aggregated at the top level.
+    ;; Returns two values: code and bindings.
     (define Operator
       (lambda (entry)
 	(match entry
@@ -156,6 +157,7 @@
 	    ())]
 
 	  ;; These just fizzle for mlton... passes data through.
+
 	  [(,gnuplot (name ,name) (output-type ,ty)
 		     (code ,_) (incoming ,up)  (outgoing ,down* ...))
 	   (guard (memq gnuplot '(gnuplot_array_stream gnuplot_sigseg_stream
@@ -164,6 +166,24 @@
 	    (list "\n  (* Gnuplot operator (does nothing currently): *)\n"
 		  (obj 'make-fun-binding name '("x") ((Emit down*) "x") ))
 	    ())]
+
+
+	  
+	  [(spawnprocess (name ,name) (output-type ,ty)
+			 (code (spawnprocess ,cmd ,__))
+			 (incoming ,up)  (outgoing ,down* ...))
+	   (let ([proc (Var (unique-name "process"))]
+		 [emitter (Emit down*)])
+	     (values
+	      (list "\n  (* Spawnprocess operator: *)\n"
+		    (obj 'make-fun-binding name '("x") (obj 'make-app proc (list "x")) ))
+	      (list 
+	       (make-bind `[,proc (String -> #())
+				  ,(obj 'make-app "spawnprocess" 
+					(list (Expr cmd emitter)))])))
+	     )]
+
+
 	  )))
 
     ;; Generates code for an emit.  (curried)

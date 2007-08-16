@@ -293,3 +293,18 @@ fun runMain f =
                            "   OS.Process.exit OS.Process.success) \n"			   
 
 *)
+
+
+fun spawnprocess cmd  = 
+  let 
+      val _ = print ("SPAWNING PROCESS" ^ cmd ^ "\n")
+      val proc = Unix.execute("/bin/sh",["-c",cmd])
+      val (inS, outS) = Unix.streamsOf proc
+          (* We ignore the inS for now... *)
+  in
+    fn str => 
+    TextIO.output(outS,str)
+    (*downstrm ()*)
+  end
+  
+
