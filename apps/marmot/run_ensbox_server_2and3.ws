@@ -8,6 +8,7 @@ include "types.ws";
 
 include "ensbox_logger.ws";
 include "stdlib.ws";
+include "gnuplot.ws";
 include "netsource.ws";
 include "timersource.ws";
 include "ptolemy.ws";
@@ -78,7 +79,15 @@ amls_client = map(fun(ip)
 
 //================================================================================//
 
-amls = if AMLSERVERSIDE then amls_server else amls_client
+_amls = if AMLSERVERSIDE then amls_server else amls_client
+
+amls :: List (Stream AML);
+amls = map(fun(((id,_,_,yaw),amlstrm)) 
+                maybe_graph_aml(id, yaw, amlstrm),
+           List:zip(nodes, _amls))
+
+//amls = map(fun(((id,_,_,yaw),strm)) aml_detections(id, yaw, strm),
+//              List:zip(nodes,alldetections))
 
 merged :: Stream (Tagged AML);
 merged = List:fold1(merge, tag(amls))
@@ -89,26 +98,7 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-final = iterate lhoodmap in heatmaps {
-  state { cnt = 0 }
-
-  pic = colorize_likelihoods(lhoodmap);
-
-  let (mx,u,v) = getmax(lhoodmap);
-  let (x,y) = convertcoord(axes,grid_scale,u,v);
-
-  println("Max marmot likelihood was "++mx++
-          " at position "++x++","++y++
-	  " w/pic coord "++u++","++v);
-  draw_marmot(pic, u, v, f2i$ max(4.0, 250.0 / grid_scale));
-
-  let (_,stamp) = lhoodmap;
-  file = "pic"++1000+cnt++"_"++stamp++".ppm";
-  cnt += 1;
-  write_ppm_file(file,pic);
-
-  emit ("Wrote image to file: " ++ file);
-}
+final = dump_likelihood_maps(heatmaps)
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
 BASE <- final

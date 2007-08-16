@@ -34,13 +34,14 @@ rm -f .tmp.*.o
 
 export MLTONARGS="$MLTONARGS -codegen c -stop g "
 
+## RRN [2007.08.16] Changing this to O3!!!
 if [ "$WSMLGCC" == "" ]; then
   echo MLton cross compile to ARM ENSbox.  Setting up environment.;
   export PATH=$PATH:/usr/arm-linux/bin;
   export WSMLGCC=arm-linux-gcc;
   export GCCLINK=' -L/usr/arm-linux/lib -L/usr/lib/mlton/arm-linux -lmlton -lgdtoa -lm -lgmp -lfftw3f '
   export GCCBUILD="-I/usr/arm-linux/include -std=gnu99 -I/usr/lib/mlton/arm-linux/include \
-          -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
+          -I/usr/lib/mlton/include -O3 -fno-strict-aliasing \
 	  -I$EMLIBH \
           -fomit-frame-pointer -w \
 	  -I$REGIMENTD/src/generic/passes/mlton_bkend"

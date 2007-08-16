@@ -132,6 +132,23 @@ fun convertcoord(axes, grid_scale, u, v) {
    (v`i2f + 0.5) / y_pixels * y_width + y_min)
 }
 
+/*
+// Convert world coordinates to pixels.
+convert_to_pixels :: (AxesBounds, Float, Float, Float) -> (Int * Int);
+fun convert_to_pixels(axes, grid_scale, x, y) {
+  let (x_min, x_max, y_min, y_max) = axes;
+  // Our original coordinate system is centimeters.
+  x_width = x_max - x_min;
+  y_width = y_max - y_min;
+  // Our new coordinate system:
+  x_pixels = x_width / grid_scale;
+  y_pixels = y_width / grid_scale;
+  
+  ((x - x_min) / x_width * x_pixels,
+   (x - x_min) / x_width * x_pixels)
+}
+*/
+
 getpixeldims :: (AxesBounds, Float) -> (Int*Int);
 fun getpixeldims(axes, grid_scale) {
   let (x_min, x_max, y_min, y_max) = axes;
@@ -392,3 +409,36 @@ fun draw_marmot(pic, center_x, center_y, size) {
 
 //******************************************************************************//
 
+// This is reused from multiple scripts.
+// It dumps to a file and prints some messages.
+fun dump_likelihood_maps(heatmaps)
+iterate lhoodmap in heatmaps {
+  state { cnt = 0 }
+
+  pic = colorize_likelihoods(lhoodmap);
+
+  let (mx,u,v) = getmax(lhoodmap);
+  let (x,y) = convertcoord(axes,grid_scale,u,v);
+
+  log(1,"Max marmot likelihood was "++mx++
+          " at position "++x++","++y++
+	  " w/pic coord "++u++","++v);
+  marmot_size = f2i$ max(4.0, 250.0 / grid_scale);
+  node_size   = f2i$ max(2.0, 125.0 / grid_scale);
+  draw_marmot(pic, u, v, marmot_size);
+
+  /*
+   List:foreach(fun ((id, x,y,yaw)) {
+
+     draw_marmot(pic, x, y, node_size);
+
+   }, nodes);
+  */
+
+  let (_,stamp) = lhoodmap;
+  file = "pic"++1000+cnt++"_"++stamp++".ppm";
+  cnt += 1;
+  write_ppm_file(file,pic);
+
+  emit ("Wrote image to file: " ++ file);
+}

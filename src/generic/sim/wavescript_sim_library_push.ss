@@ -1334,9 +1334,8 @@
 	   	   
 	   ;; So how about flushing?
 	   (instrm  (lambda (str) 
-		      (printf "Got message for child process: ~s\n" str)
-		      (display str outp) 
-		      (flush-output-port outp)
+;		      (printf "Got message for child process: ~s\n" str)
+		      (display str outp) (flush-output-port outp)
 		      (let ([processoutput (try-output)])
 			(unless (null? processoutput)
 			  (fire! (list->string processoutput) our-sinks)))

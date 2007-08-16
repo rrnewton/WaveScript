@@ -14,6 +14,11 @@ namespace Gnuplot {
       fn ("e\n");
     }
 
+    fun gnuplotme() {
+      
+    }
+
+    // TODO: This should build up teh command stream without starting the process.
     fun simpleStreamOp (extracmds, plotsuffix, strm, spewdata) {
       pipe = spawnprocess("gnuplot -persist",
 			  iterate x in strm {
@@ -46,6 +51,17 @@ namespace Gnuplot {
       fun(arr,out) {
         Array:foreachi(fun(i,x) out(i++" "++x++"\n"), arr);
       })
+  }
+
+ // Automatically converts to radians based on array size.
+ fun array_stream_autopolar(extracmds, strm) {
+   array_streamXY("set polar;\n"++extracmds,
+		 smap(fun(a) {
+		   // We assume that the length of the array represents 360 degrees.
+		   denom = Array:length(a)`i2f / 2.0;
+	  	   Array:mapi(fun(i,mag) (i`i2f / 180.0 * const_PI, mag), a);
+		 }, 
+		 strm))
   }
 
  // This is a nice one, it takes a list of array streams and plots

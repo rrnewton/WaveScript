@@ -5,14 +5,10 @@ include "marmot_first_phase.ws";
 
 synced_ints = detector((ch1i,ch2i,ch3i,ch4i));
 
-synced = stream_map(fun (x) 
-            map(fun (y) sigseg_map(int16ToFloat,y), x), 
-	    synced_ints);
-
 include "marmot2.ws";
 include "marmot_heatmap.ws";
 
-doas = oneSourceAMLTD(synced, 4096);
+doas = oneSourceAMLTD(synced_ints, 4096);
 
 nodes = [(100, -0.0, 0.000891, 222.746048)];
 
@@ -46,5 +42,3 @@ BASE <- iterate heatmap in heatmaps {
 
   emit ("Wrote image to file: " ++ file);
 }
-
-

@@ -26,12 +26,14 @@ doas = iterate (m,stamp,tb) in oneSourceAMLTD(synced_ints, 4096)
 
 include "gnuplot.ws";
 
-BASE <- Gnuplot:array_streamXY(
+BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n",doas)
+
+/*
   "set polar;\n"++
   "set title \"AML output\"\n"
   , smap(fun(a) Array:mapi(fun(i,mag) (i`i2f / 180.0 * const_PI, mag), a), 
          doas))
-
+     */
 //BASE <- gnuplot_array_stream(doas)
 /* BASE <- (doas) */
 

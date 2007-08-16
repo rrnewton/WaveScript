@@ -1,9 +1,14 @@
 
 include "stdlib.ws";
-
+include "gnuplot.ws";
 include "types.ws";
 
 LOG_TIMING = 255;
+
+// When we're not live we just print log messages to the stream.
+fun log(l,s) println(s)
+
+fun timer_source(_,t) timer(1000.0 / t`intToFloat)
 
 // ================================================================================
 
@@ -35,13 +40,9 @@ fun onechan(offset)
     emit toSigseg(arr, w`start / 4`intToInt64 , w`timebase)
   }
 
-// When we're not live we just print log messages to the stream.
-fun log(l,s) println(s)
 
 // Testing, trying this instead:
 ch1i = onechan(0); 
 ch2i = onechan(1); 
 ch3i = onechan(2); 
 ch4i = onechan(3);
-
-fun timer_source(_,t) timer(1000.0 / t`intToFloat)

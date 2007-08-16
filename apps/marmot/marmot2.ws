@@ -379,4 +379,33 @@ fun segsToFloat(synced_ints)
 	    synced_ints);
 
 
+// Takes a stream of detections
+fun maybe_graph_aml(id, rotation, strm) {
+  arrs = smap(fun((ar,_,_)) 
+              Array:mapi(fun(i, radius) (const_PI * (i`i2f + rotation) / 180.0, radius), ar),
+              strm);
+  gui = Gnuplot:array_streamXY(
+     "set title \"AML output node"++id++"\";\n"++
+     "set polar;\n"++
+     "set grid polar ;\n"++
+     "unset border;\n"++
+     "unset param;\n",
+//     set angles DEGREES
+     arrs);
+  if GUIENABLED
+  then merge(strm, iterate _ in gui {})
+  else strm
+}
 
+
+/*
+// Takes a stream of detections
+fun aml_tagged_detections(slsf) {
+  strm = oneSourceAMLTD(smap(fun(_,x)x, slsf), 4096);
+  arrs = smap(fun(((id,_,_,rot),(ar,_,_))) ar, strm);
+  gui = Gnuplot:array_stream_autopolar("set title \"AML output\"\n",arrs);
+  if GUIENABLED
+  then merge(strm, iterate _ in gui {})
+  else strm
+}
+*/
