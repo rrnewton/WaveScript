@@ -18,6 +18,7 @@ fun wserror(str) {
 }
 
 include "stdlib.ws";
+include "gnuplot.ws";
 include "vxpsource.ws";
 include "netsource.ws";
 include "types.ws";
