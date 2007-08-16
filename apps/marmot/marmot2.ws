@@ -135,7 +135,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
     using Matrix; using Complex;
 
-    log(1,"  Running actual AML.");
+    //log(1,"  Running actual AML.");
 
     _ = (data_in :: Matrix Float);
 
@@ -346,20 +346,20 @@ fun oneSourceAMLTD(synced, win_size) {
 // calculate normalised J (AML vector) values
 normalize_aml :: AML -> AML;
 fun normalize_aml((doas,st,tb)) {
-  log(1,"Normalizing AML.");
+  //log(1,"Normalizing AML.");
   total = Array:fold((+), 0.0, doas);
   (Array:map((/ total), doas), st,tb)
 }
 
 normalized_aml_to_int16s :: AML -> IntAML;
 fun normalized_aml_to_int16s((arr,st,tb)) {
-  log(1,"Converting AML to Int16");
+  //log(1,"Converting AML to Int16");
   fun convert(f) {
     //log(1,"Converting float! "++f);
     floatToInt16(f);
   };
   res = (Array:map(fun(n) convert(n * 65535.0 - 32768.0), arr), st, tb);
-  log(1,"Finished AML conversion");
+  //log(1,"Finished AML conversion");
   res
 }
 

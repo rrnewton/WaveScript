@@ -24,9 +24,11 @@ include "types.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
+max_gap = 128000;
+
 inter = vxp_source_init(1);
-ch1i = degap(vxp_source_stream(inter, 0),0`gint);
-ch2i = degap(vxp_source_stream(inter, 1),0`gint);
-ch3i = degap(vxp_source_stream(inter, 2),0`gint);
-ch4i = degap(vxp_source_stream(inter, 3),0`gint);
+ch1i = degap(vxp_source_stream(inter, 0),0`gint,max_gap);
+ch2i = degap(vxp_source_stream(inter, 1),0`gint,max_gap);
+ch3i = degap(vxp_source_stream(inter, 2),0`gint,max_gap);
+ch4i = degap(vxp_source_stream(inter, 3),0`gint,max_gap);
 

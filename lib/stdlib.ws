@@ -1010,7 +1010,7 @@ fun rewindow(sig, newwidth, gap) {
 
 // degap takes a stream of sigsegs
 // any gaps in the stream will be replaced with sigsegs of init
-fun degap(s, init)
+fun degap(s, init, max_gap)
 {
   iterate w in s {
     state {
@@ -1019,7 +1019,12 @@ fun degap(s, init)
     if w != nullseg then {
       if w`start > next then {
 	if (next != intToInt64(0)) then {
-	  arr = Array:make(int64ToInt(w`start - next), init);
+	  gap = int64ToInt(w`start - next);
+	  if (gap > max_gap) then {
+   	    wserror("Gap of "++gap++" enountered.  Max gap of "++max_gap++" exceeded.");
+	  };
+	  log(LOG_WARNING,"Gap of "++gap++" enountered.");
+	  arr = Array:make(gap, init);
 	  emit(toSigseg(arr, next, w`timebase));	  
 	}
       };
