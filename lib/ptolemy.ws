@@ -3,14 +3,18 @@
 
 
 /* fifo,string */
-c_write_to_fifo :: (String, String) -> Int =
-  foreign("write_string_to_fifo", []);
+c_write_to_file :: (Int, String, String) -> Int =
+  foreign("write_string_to_file", []);
 
 
 fun write_to_fifo(fifo, str) {
-  c_write_to_fifo(fifo++ String:implode([intToChar(0)]), 
-		  str ++ String:implode([intToChar(0)]))
+  c_write_to_file(1, fifo++nullterm, str++nullterm)
 }
+
+fun write_to_file(fifo, str) {
+  c_write_to_file(0, fifo++nullterm, str++nullterm)
+}
+
 
 
 fun array_to_ptolemy(a) {
