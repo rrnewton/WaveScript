@@ -501,7 +501,7 @@
     ;; The arguments are described in the manual.
     (readFile (String String (Stream 'a)) (Stream 'b))
 
-    (HACK_O_RAMA (String) (Stream (Sigseg Int16)))
+    (HACK_O_RAMA (String) (Stream #((Sigseg Int16) (Sigseg Int16) (Sigseg Int16) (Sigseg Int16))))
 
     ;; Internal:
     (__readFile (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))

@@ -15,6 +15,11 @@ include "ptolemy.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
+nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+
+include "marmot2.ws";
+include "marmot_heatmap.ws";
+
 axes :: (Float * Float * Float * Float);
 axes = auto_axes(nodes)
 
@@ -24,8 +29,6 @@ grid_scale = {
   min(absF(xmax - xmin) / desired_min_pixel_dimm`i2f,
       absF(ymax - ymin) / desired_min_pixel_dimm`i2f)
 }
-
-nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
 
 ips = ["192.168.11.100",
        "192.168.11.103",
@@ -42,9 +45,6 @@ fun tag(sls)
   map(fun((node,strms))
       stream_map(fun(x) (node,x) ,strms),
       List:zip(nodes,sls))
-
-include "marmot2.ws";
-include "marmot_heatmap.ws";
 
 amls :: List (Stream AML);
 
@@ -98,7 +98,7 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-final = dump_likelihood_maps(heatmaps)
+final = dump_likelihood_maps(heatmaps, axes, grid_scale)
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
 BASE <- final

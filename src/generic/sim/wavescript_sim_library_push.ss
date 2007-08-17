@@ -116,6 +116,8 @@
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL
 
+		 HACK_O_RAMA
+
 		 )
     (chezprovide (for for-loop-stack )
 ;		 letrec 
@@ -1663,8 +1665,44 @@
 
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
 (define (HACK_O_RAMA filename)
-  999  
-  )
+  ;; Must be in milleseconds:
+  ;; Convert from 48khz to milliseconds:
+  (define (sample->time n) (/ n 48))
+  (define our-sinks '())
+  (define port (open-input-file filename))
+  (define nexttime)
+  (define nextdat)
+  (define (read-one!)
+    (define metadat (read port))
+    (define payload (read port))
+    (match metadat
+      [((,st ,end) ,_ ,__ ,___) 
+       (ASSERT integer? st) (ASSERT integer? en)
+       (set! nexttime st)
+       (match payload
+	 [(,v1 ,v2 ,v3 ,v4)
+	  (ASSERT (and (vector? v1) (vector? v2) (vector? v3) (vector? v4)))
+	  (set! nextdat 
+		(make-tuple
+		 (make-sigseg nexttime (sub1 end) v1 3)
+		 (make-sigseg nexttime (sub1 end) v2 3)
+		 (make-sigseg nexttime (sub1 end) v3 3)
+		 (make-sigseg nexttime (sub1 end) v4 3)
+		 ))])]))
+  (define src (let ([t start])
+		(lambda (msg)
+		  (s:case msg
+		    ;; Returns the next time we run.
+		    [(peek) nexttime]
+		    [(pop) 
+		     (fire! nextdat our-sinks)		     
+		     ;; Release one stream element.
+		     (read-one)]))))
+  ;; Register ourselves globally as a leaf node:
+  (set! data-sources (cons src data-sources))
+  (lambda (sink)
+    ;; Register the sink to receive this output:
+    (set! our-sinks (cons sink our-sinks))))
 
 
 ) ; End module.
