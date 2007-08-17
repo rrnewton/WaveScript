@@ -4,6 +4,9 @@ include "timebase.ws";
 c_isnull :: (Pointer "void *") -> Bool = 
   foreign("vxp_isnull", []);
 
+vxp_buffer_time_remaining :: () -> Double =
+  foreign("vxp_buffer_left", []);
+
 fun vxp_c_interface(spill_mode) {
 "
 #include <devel/wavescope/wavescope_ensbox.h>
@@ -31,6 +34,12 @@ int file_index = 0;  // byte index into current file
 int last_time_check = 0;
 
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
+
+double vxp_buffer_left() {
+  ws_state_t *ws = get_global_ws();
+  return (double)(MAX_QUEUE_LEN - g_msg_queue_get_size(ws->mq)) /
+          (double)(48000*sizeof(int16_t[4]));
+}
 
 static
 int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)

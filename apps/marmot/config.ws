@@ -4,6 +4,9 @@
 // Should we run aml on the server or the client?
 AMLSERVERSIDE = true;
 
+// enable adaptive mode
+AMLADAPTIVE = false;
+
 // Should we bring up gnuplot and image viewer windows??
 GUIENABLED = true;
 

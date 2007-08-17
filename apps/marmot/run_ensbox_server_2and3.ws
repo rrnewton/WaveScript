@@ -83,9 +83,16 @@ amls_client = map(fun(ip)
                     smap(fun(aml) normalize_aml(aml_to_floats(aml)), 
 		         netsub_amls(ip,"amls"))), ips)
 
-//================================================================================//
+// **********************  ADAPTIVE AML ************************** //
+//=================================================================//
 
-_amls = if AMLSERVERSIDE then amls_server else amls_client
+_amls = if AMLSERVERSIDE 
+	then amls_server 
+	else if AMLADAPTIVE 
+	  then amls_client //merge(amls_server,amls_client)
+	  else amls_client
+
+//================================================================================//
 
 amls :: List (Stream AML);
 amls = map(fun(((id,_,_,yaw),amlstrm)) 
