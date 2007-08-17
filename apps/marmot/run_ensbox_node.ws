@@ -31,9 +31,8 @@ result_dets = smap(fun(_) (), netpub_sigseg4(chopped, "detections"));
 
 include "marmot2.ws";
 amls :: Stream IntAML;
-amls = smap(normalized_aml_to_int16s,
-       smap(normalize_aml,
-            oneSourceAMLTD(phase1result, 4096)))
+amls = smap(aml_to_int16s,
+            oneSourceAMLTD(phase1result, 4096))
 
 result_amls =  netpub_aml(amls, "amls");
 

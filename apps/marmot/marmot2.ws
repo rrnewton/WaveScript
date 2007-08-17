@@ -355,20 +355,23 @@ fun normalize_aml((doas,st,tb)) {
   (arr, st, tb)
 }
 
-normalized_aml_to_int16s :: AML -> IntAML;
-fun normalized_aml_to_int16s((arr,st,tb)) {
+aml_to_int16s :: AML -> IntAML;
+fun aml_to_int16s((arr,st,tb)) {
   //log(1,"Converting AML to Int16");
   fun convert(f) {
     //log(1,"Converting float! "++f);
     floatToInt16(f);
   };
-  res = (Array:map(fun(n) convert(n * 65535.0 - 32768.0), arr), st, tb);
+  high = Array:fold(max, 0.0, arr);
+  res = (Array:map(fun(n) convert((n / high) * 65535.0 - 32768.0), arr), st, tb);
   //log(1,"Finished AML conversion");
   res
 }
 
-normalized_aml_to_floats :: IntAML -> AML;
-fun normalized_aml_to_floats((arr,st,tb)) {
+// Remember to normalize after applying this!!
+// This will produce numbers *between* 0.0 and 1.0, but they won't *sum* to 1.0
+aml_to_floats :: IntAML -> AML;
+fun aml_to_floats((arr,st,tb)) {
   (Array:map(fun(n) (int16ToFloat(n) + 32768.0) / 65535.0, arr), st, tb)
 }
 

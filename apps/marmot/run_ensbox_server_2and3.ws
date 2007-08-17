@@ -66,16 +66,22 @@ fun snoop_4sigseg_to_file(f,s) {
 synced = map(fun(ip) 
       snoop_4sigseg_to_file("/home/girod/marmots/detections.log",
       snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections"))), ips)
+
+
 amls_server = map(fun (slsf) 
-      snoop_to_file("/home/girod/marmots/amls.log",
-                    oneSourceAMLTD(slsf, 4096)),synced)
+      smap(normalize_aml,
+        snoop_to_file("/home/girod/marmots/amls.log",
+                    oneSourceAMLTD(slsf, 4096))),
+      synced)
 
 // **********************  CLIENTSIDE AML ************************ //
 //=================================================================//
 
+// We get int16s, we convert to floats, and then normalize.
 amls_client = map(fun(ip) 
       snoop_to_file("/home/girod/marmots/client_amls.log",
-                    smap(normalized_aml_to_floats, netsub_amls(ip,"amls"))), ips)
+                    smap(fun(aml) normalize_aml(aml_to_floats(aml)), 
+		         netsub_amls(ip,"amls"))), ips)
 
 //================================================================================//
 
