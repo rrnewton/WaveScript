@@ -111,20 +111,6 @@ allamls = map(fun(((id,_,_,yaw),strm))
 //	             oneSourceAMLTD(strm, 4096),
               List:zip(nodes,alldetections))
 
-ignored = Gnuplot:array_streamXY_multiplot(
-   "", 
-   //  "set title \"AML output node"++id++"\";\n"++
-   "set polar;\n"++
-   "set grid polar ;\n"++
-   "unset border;\n"++
-   "unset param;\n",
-   map(fun(((id,_,_,rotation),strm)) 
-       smap(fun((arr,_,_))
-         Array:mapi(fun(i, radius) (const_PI * (i`i2f + rotation) / 180.0, radius), arr),
-       strm), 
-   List:zip(nodes,allamls))
-)
-
 merged :: Stream (Tagged AML);
 merged = List:fold1(merge, tag(allamls))
 clusters :: Stream (List (Tagged AML));
@@ -132,6 +118,9 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
+ignored = draw_multi_amls(nodes,allamls)
+ignored2 = draw_multi_detections(nodes,alldetections)
+
 BASE <- 
-merge(iterate _ in ignored {},
+merge(merge(ignored,ignored2),
       dump_likelihood_maps(heatmaps, axes, grid_scale))

@@ -68,7 +68,7 @@ namespace Gnuplot {
 
  // This is a nice one, it takes a list of array streams and plots
  // them all on a single multiplot.
- fun array_streamXY_multiplot(startupcmds, extracmds, strmls) {
+ fun array_streamXY_multiplot(startupcmds, cmdlist, strmls) {
    using List;
    //   panels = ceiling$ sqrtF(strmls.length);
    //   coords = build(panels)
@@ -84,6 +84,8 @@ namespace Gnuplot {
               (0.66, 0.33),
               (0.0,  0.66),
               (0.33, 0.66)];
+   extracmds = List:toArray$ cmdlist;
+   hitonce = Array:make(10,false);
      /*
              [(0.0,  0.0, strmls.ref(0)),
               (0.33, 0.0, strmls.ref(1)),
@@ -114,9 +116,13 @@ namespace Gnuplot {
 	 emit ("set size "++sizex++","++sizey++"\n");
 	 let (x,y) = origins[ind];
          emit ("set origin "++x++","++y++"\n");
-         emit extracmds;
-	 emit "clear\n";
-         emit "plot \"-\" using 1:2 with linespoints\n";
+         //emit "clear\n";q
+         emit extracmds[ind];
+         //emit "clear\n";
+	 //plot = if hitonce[ind] then "replot" else { hitonce[ind] := true; "plot" };
+	 //plot = "plot";
+         emit (plot++" \"-\" using 1:2 with linespoints;\n");
+         //emit ("plot \"-\" using 1:2 with linespoints;\n");
          Array:foreach(fun((x,y)) emit(x++" "++y++"\n"), arr);
          emit ("e\n");
        });

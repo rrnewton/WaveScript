@@ -919,6 +919,7 @@
     (match (match t
 	     [Int   ''0]
 	     [Bool  "false"]
+	     [String "\"\""]
 	     [Int16 "(Int16.fromInt 0)"]
 	     [Int64 "(Int64.fromInt 0)"]
 	     [Float ''0.0]

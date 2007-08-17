@@ -56,7 +56,7 @@ fun snoop_4sigseg_to_file(f,s) {
 
 synced = map(fun((id,_,_,_)) 
       snoop_4sigseg_to_file("/home/girod/marmots/detections.log",
-      snoop("DETECTION SEGMENTS", netsub_4sigseg(ip(id),"detections"))), 
+      snoop("DETECTION SEGMENTS "++id, netsub_4sigseg(ip(id),"detections"))), 
       nodes)
 
 
@@ -88,7 +88,7 @@ _amls = if AMLSERVERSIDE
 
 amls :: List (Stream AML);
 amls = map(fun(((id,_,_,yaw),amlstrm)) 
-                maybe_graph_aml(id, yaw, amlstrm),
+	   amlstrm, //                maybe_graph_aml(id, yaw, amlstrm),
            List:zip(nodes, _amls))
 
 //amls = map(fun(((id,_,_,yaw),strm)) aml_detections(id, yaw, strm),
@@ -103,8 +103,12 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-final = dump_likelihood_maps(heatmaps, axes, grid_scale)
+ignored = draw_multi_amls(nodes,amls)
+ignored2 = draw_multi_detections(nodes,synced)
+
+final = 
+merge(merge(ignored,ignored2),
+      dump_likelihood_maps(heatmaps, axes, grid_scale))
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
 BASE <- final
-
