@@ -346,9 +346,13 @@ fun oneSourceAMLTD(synced, win_size) {
 // calculate normalised J (AML vector) values
 normalize_aml :: AML -> AML;
 fun normalize_aml((doas,st,tb)) {
-  //log(1,"Normalizing AML.");
-  total = Array:fold((+), 0.0, doas);
-  (Array:map((/ total), doas), st,tb)
+  log(1,"Normalizing AML.");
+  denom = Array:fold(fun (acc, f) (acc + f2d(f)), f2d(0.0), doas);
+  //denom = Array:fold(max, 0.0, doas);
+  log(1,"Got DENOM: "++denom);
+  arr = Array:map(fun (x) d2f(f2d(x) / denom), doas);
+  log(1,"Got new ARR: " ++ Array:sub(arr, 0, 5));
+  (arr, st, tb)
 }
 
 normalized_aml_to_int16s :: AML -> IntAML;

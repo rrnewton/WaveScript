@@ -167,6 +167,7 @@ f2c :: Float -> Complex;
 c2i :: Complex -> Int;
 c2f :: Complex -> Float;
 c2d :: Complex -> Double;
+d2f :: Double -> Float;
 
 to64   :: Int -> Int64;
 from64 :: Int64 -> Int;
@@ -1381,6 +1382,7 @@ i2c = intToComplex;
 f2i = floatToInt;
 f2c = floatToComplex;
 f2d = floatToDouble;
+d2f = doubleToFloat;
 c2i = complexToInt;
 c2f = complexToFloat;
 c2d = complexToDouble;

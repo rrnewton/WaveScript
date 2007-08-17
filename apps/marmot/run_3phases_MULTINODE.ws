@@ -1,19 +1,38 @@
 
 
-include "stdlib.ws";
-include "gnuplot.ws";
+
+LOG_TIMING = 255;
+// from elog.h in emstar
+LOG_EMERG = 0;       /**< system is unusable */
+LOG_ALERT = 1;       /**< action must be taken immediately */
+LOG_CRIT = 2;      /**< critical conditions */
+LOG_ERR = 3;      /**< error conditions */
+LOG_WARNING = 4;       /**< warning conditions */
+LOG_NOTICE = 5;      /**< normal but significant condition */
+LOG_INFO = 6;      /**< informational */
+LOG_DEBUG_0 = 7;       /**< debug */
+LOG_OFF =  -1;	/**< don't emit log messages */
+LOG_UNDEFINED = -2;      /**< loglevel not specified */
+
 
 // GLOBAL CONSTANTS:
 
-LOG_TIMING = 255;
 
 // When we're not live we just print log messages to the stream.
-fun log(l,s) println(s)
+fun log(l,s) print(s++"\n");
 fun timer_source(_,t) timer(1000.0 / t`intToFloat)
+
+include "stdlib.ws";
+include "gnuplot.ws";
+
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 winsize = 4 * 4096;
 
+include "nodelocs.ws";
+nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+
+/*
 nodes = 
   [
    (100, -0.700000, 14107.000732, 13.200000)
@@ -25,29 +44,18 @@ nodes =
    ,(112, -5601.399994, 4740.200043, -9.200000)
     //(115, -4438.600159, -516.499996, 10.800000),
    ]
+*/
+
+// ================================================================================
+
+// NOW LOAD MARMOT CODE:
+
+include "marmot_first_phase.ws";
+include "marmot2.ws";
+include "marmot_heatmap.ws";
 
 axes :: (Float * Float * Float * Float);
-axes = {
-  using List;
-  let (_,x0,y0,_) = nodes.ref(0);
-  /*
-  let (xmin,xmax,ymin,ymax) =
-    List:fold(fun((xmn,xmx,ymn,ymx), (id,x,y,yaw))
-	      (min(x,xmn), max(x,xmx), min(y,ymn), max(y,ymx)),
-//	      (x0,x0,y0,y0),
-	      (0.0,10.0,0.0,10.0),
-	      nodes);
-  */
-  xmin = fold(min, x0, map(fun((_,x,_,_)) x, nodes));
-  xmax = fold(max, x0, map(fun((_,x,_,_)) x, nodes));
-  ymin = fold(min, y0, map(fun((_,_,y,_)) y, nodes));
-  ymax = fold(max, y0, map(fun((_,_,y,_)) y, nodes));
-
-  padx = (xmax - xmin) * 0.1;
-  pady = (ymax - ymin) * 0.1;
-  (xmin-padx, xmax+padx, ymin-pady, ymax+pady)
-  //(xmin,xmax, ymin,ymax)
-}
+axes = auto_axes(nodes)
 
 // AUTO GRID SIZE:
 desired_min_pixel_dimm = 300
@@ -57,13 +65,6 @@ grid_scale = {
       absF(ymax - ymin) / desired_min_pixel_dimm`i2f)
 }
 
-// ================================================================================
-
-// NOW LOAD MARMOT CODE:
-
-include "marmot_first_phase.ws";
-include "marmot2.ws";
-include "marmot_heatmap.ws";
 
 //================================================================================
 
@@ -105,7 +106,9 @@ alldetections = map(detector, alldata)
 // AML results from each node.
 allamls :: List (Stream AML);
 allamls = map(fun(((id,_,_,yaw),strm)) 
-                maybe_graph_aml(id, yaw, oneSourceAMLTD(strm, 4096)),
+                maybe_graph_aml(id, yaw, 
+		     smap(normalize_aml,oneSourceAMLTD(strm, 4096))),
+/* 	             oneSourceAMLTD(strm, 4096)), */
               List:zip(nodes,alldetections))
 
 merged :: Stream (Tagged AML);
@@ -115,4 +118,4 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-BASE <- dump_likelihood_maps(heatmaps)
+BASE <- dump_likelihood_maps(heatmaps, axes, grid_scale)

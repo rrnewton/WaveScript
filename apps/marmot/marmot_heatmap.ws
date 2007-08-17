@@ -132,7 +132,6 @@ fun convertcoord(axes, grid_scale, u, v) {
    (v`i2f + 0.5) / y_pixels * y_width + y_min)
 }
 
-/*
 // Convert world coordinates to pixels.
 convert_to_pixels :: (AxesBounds, Float, Float, Float) -> (Int * Int);
 fun convert_to_pixels(axes, grid_scale, x, y) {
@@ -144,10 +143,9 @@ fun convert_to_pixels(axes, grid_scale, x, y) {
   x_pixels = x_width / grid_scale;
   y_pixels = y_width / grid_scale;
   
-  ((x - x_min) / x_width * x_pixels,
-   (x - x_min) / x_width * x_pixels)
+  (f2i((x - x_min) / x_width * (x_pixels)),
+   f2i((y - y_min) / y_width * (y_pixels)))
 }
-*/
 
 getpixeldims :: (AxesBounds, Float) -> (Int*Int);
 fun getpixeldims(axes, grid_scale) {
@@ -409,36 +407,69 @@ fun draw_marmot(pic, center_x, center_y, size) {
 
 //******************************************************************************//
 
+fun auto_axes(nodes) {
+  using List;
+  let (_,x0,y0,_) = nodes.ref(0);
+  /*
+  let (xmin,xmax,ymin,ymax) =
+    List:fold(fun((xmn,xmx,ymn,ymx), (id,x,y,yaw))
+	      (min(x,xmn), max(x,xmx), min(y,ymn), max(y,ymx)),
+//	      (x0,x0,y0,y0),
+	      (0.0,10.0,0.0,10.0),
+	      nodes);
+  */
+  xmin = fold(min, x0, map(fun((_,x,_,_)) x, nodes));
+  xmax = fold(max, x0, map(fun((_,x,_,_)) x, nodes));
+  ymin = fold(min, y0, map(fun((_,_,y,_)) y, nodes));
+  ymax = fold(max, y0, map(fun((_,_,y,_)) y, nodes));
+
+  padx = (xmax - xmin) * 0.1;
+  pady = (ymax - ymin) * 0.1;
+  (xmin-padx, xmax+padx, ymin-pady, ymax+pady)
+  //(xmin,xmax, ymin,ymax)
+}
+
+
+
+
 // This is reused from multiple scripts.
 // It dumps to a file and prints some messages.
-fun dump_likelihood_maps(heatmaps)
-iterate lhoodmap in heatmaps {
-  state { cnt = 0 }
+fun dump_likelihood_maps(heatmaps, axes, grid_scale) {
+  fun printloc(lhoodmap) {      
+    let (mx,u,v) = getmax(lhoodmap);
+    let (x,y) = convertcoord(axes,grid_scale,u,v);
+    log(1,"Max marmot likelihood was "++mx++
+	" at position "++x++","++y++
+	" w/pic coord "++u++","++v);
+  };
 
-  pic = colorize_likelihoods(lhoodmap);
+  if PPMFILES 
+  then iterate lhoodmap in heatmaps {
+    state { cnt = 0 }
+    printloc(lhoodmap);
 
-  let (mx,u,v) = getmax(lhoodmap);
-  let (x,y) = convertcoord(axes,grid_scale,u,v);
+    let (mx,u,v) = getmax(lhoodmap);
+    pic = colorize_likelihoods(lhoodmap);
+    marmot_size = f2i$ max(4.0, 250.0 / grid_scale);
+    node_size   = f2i$ max(2.0, 125.0 / grid_scale);
+    draw_marmot(pic, u, v, marmot_size);
 
-  log(1,"Max marmot likelihood was "++mx++
-          " at position "++x++","++y++
-	  " w/pic coord "++u++","++v);
-  marmot_size = f2i$ max(4.0, 250.0 / grid_scale);
-  node_size   = f2i$ max(2.0, 125.0 / grid_scale);
-  draw_marmot(pic, u, v, marmot_size);
+    List:foreach(fun ((id, x,y,yaw)) {
+      let (u,v) = convert_to_pixels(axes,grid_scale,x,y);
+      draw_marmot(pic, u, v, node_size);
+      {}
+    }, nodes);
 
-  /*
-   List:foreach(fun ((id, x,y,yaw)) {
+    let (_,stamp) = lhoodmap;
+    //file = "pic"++1000+cnt++"_"++stamp++".ppm";
+    file = "pic_"++stamp++".ppm";
+    cnt += 1;
+    write_ppm_file(file,pic);
+    emit ("Wrote image to file: " ++ file);
+  }
+  else iterate lhoodmap in heatmaps {
+    printloc(lhoodmap);    
+    emit ("Finished processing cluster of detections (not writing .ppm).")
+  }
 
-     draw_marmot(pic, x, y, node_size);
-
-   }, nodes);
-  */
-
-  let (_,stamp) = lhoodmap;
-  file = "pic"++1000+cnt++"_"++stamp++".ppm";
-  cnt += 1;
-  write_ppm_file(file,pic);
-
-  emit ("Wrote image to file: " ++ file);
 }

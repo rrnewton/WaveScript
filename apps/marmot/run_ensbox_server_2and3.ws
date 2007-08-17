@@ -16,7 +16,7 @@ include "ptolemy.ws";
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
 axes :: (Float * Float * Float * Float);
-axes = (-6303.0, 2122.0, -1410.0, 15517.0);
+axes = auto_axes(nodes)
 
 desired_min_pixel_dimm = 300
 grid_scale = { 

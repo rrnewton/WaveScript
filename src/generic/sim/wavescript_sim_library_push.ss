@@ -1344,7 +1344,7 @@
 	 (lambda (sink) 
 	   (set! our-sinks (cons sink our-sinks)))
        )
-  
+
      (define m_invert ws-invert-matrix)
 
      ;;================================================================================
@@ -1659,6 +1659,12 @@
 (define FILE_EXISTS file-exists?)
 (define GETENV getenv)
 (define SHELL system-to-str)
+
+
+;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
+(define (HACK_O_RAMA filename)
+  999  
+  )
 
 
 ) ; End module.

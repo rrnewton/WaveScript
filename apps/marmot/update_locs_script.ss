@@ -21,18 +21,15 @@ exec regiment i --script "$0"
 (flush-output-port)
 
 (if (file-exists? "loc.txt")
+    (printf "  \'loc.txt\' exists so I'm using it.  (Delete it if you want to refetch locations):\n")
     (begin 
-      (printf "  \'loc.txt\' exists so I'm using it.  (Delete it if you want to refetch locations):\n")
-
-      (begin 
-	(printf "Logging into gateway and get locations from /dev/loc/ ...\n")
-	(define code )
-	(let ([code (system "ssh root@192.168.11.1 cat /dev/loc/dump_coords > loc.txt")])
-	  (unless (zero? code)
-	    (printf "\nSSH COMMAND FAILED\n")
-	    (exit -1))
-	  (printf "\nSSH succeeded, created loc.txt:\n\n")
-	  ))))
+      (printf "Logging into gateway and get locations from /dev/loc/ ...\n")
+      (let ([code (system "ssh root@192.168.11.1 cat /dev/loc/dump_coords > loc.txt")])
+	(unless (zero? code)
+	  (printf "\nSSH COMMAND FAILED\n")
+	  (exit -1))
+	(printf "\nSSH succeeded, created loc.txt:\n\n")
+	)))
 
 (system "cat loc.txt")
 
