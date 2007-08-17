@@ -11,4 +11,4 @@ AMLADAPTIVE = false;
 GUIENABLED = true;
 
 // Should we record .ppm files for the likelihood maps?
-PPMFILES = true;
+PPMFILES = false;

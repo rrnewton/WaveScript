@@ -4,6 +4,8 @@ namespace Gnuplot {
 
   namespace Internal {
 
+    fun ceiling(f) roundF(f+0.5);
+
     // Doesn't add the leading "plot" command
     fun array_data(arr, fn) {
       using Array;
@@ -66,10 +68,88 @@ namespace Gnuplot {
 
  // This is a nice one, it takes a list of array streams and plots
  // them all on a single multiplot.
- fun array_stream_XYmultiplot(extracmds, strmls) {
+ fun array_streamXY_multiplot(startupcmds, extracmds, strmls) {
+   using List;
+   //   panels = ceiling$ sqrtF(strmls.length);
+   //   coords = build(panels)
+   
+   sizex = 0.33;
+   sizey = 0.33;
+   origins = List:toArray$ 
+             [(0.0,  0.0),
+              (0.33, 0.0),
+              (0.66, 0.0),
+              (0.0,  0.33),
+              (0.33, 0.33),
+              (0.66, 0.33),
+              (0.0,  0.66),
+              (0.33, 0.66)];
+     /*
+             [(0.0,  0.0, strmls.ref(0)),
+              (0.33, 0.0, strmls.ref(1)),
+              (0.66, 0.0, strmls.ref(2)),
+              (0.0,  0.33, strmls.ref(3)),
+              (0.33, 0.33, strmls.ref(4)),
+              (0.66, 0.33, strmls.ref(5)),
+              (0.0,  0.66, strmls.ref(6)),
+              (0.33, 0.66, strmls.ref(7))];
+     */
 
- 
-   ()
+   pipe = spawnprocess("gnuplot -persist",
+       iterate (ind,arr) in unionList(strmls) {
+	 state { fst=true }
+	 if fst then {
+	   emit startupcmds;
+	   emit 
+	   "
+	   set style function lines
+	   set size 1.0, 1.0
+	   set origin 0.0, 0.0
+	   set multiplot
+	   ";
+	   fst := false;
+	 };
+
+/* 	 emit ("set title \"Graph "++ind++"\"\n"); */
+	 emit ("set size "++sizex++","++sizey++"\n");
+	 let (x,y) = origins[ind];
+         emit ("set origin "++x++","++y++"\n");
+         emit extracmds;
+	 emit "clear\n";
+         emit "plot \"-\" using 1:2 with linespoints\n";
+         Array:foreach(fun((x,y)) emit(x++" "++y++"\n"), arr);
+         emit ("e\n");
+       });
+   pipe
  }
 
-}
+
+}  // End namespace
+
+
+/*
+
+"
+
+ set title \"foo\"
+ plot \"~/hello.dat\" using 1:2 with linespoints;
+
+
+ #  Plot 1
+ set size 0.5,0.5
+ set origin 0.0,0.5
+ clear
+ set title \"foo2\"
+ plot \"~/hello2.dat\" using 1:2 with linespoints;
+
+
+ #  Plot 2
+ set title \"bar\"
+ set size 0.5,0.5
+ set origin 0.0,0.0
+ plot \"~/hello2.dat\" using 1:2 with linespoints;
+
+ unset multiplot
+ reset
+"
+*/

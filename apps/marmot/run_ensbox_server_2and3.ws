@@ -30,24 +30,15 @@ grid_scale = {
       absF(ymax - ymin) / desired_min_pixel_dimm`i2f)
 }
 
-ips = ["192.168.11.100",
-       "192.168.11.103",
-       "192.168.11.104",
-       "192.168.11.108",
-       "192.168.11.109",
-       "192.168.11.112",
-       "192.168.11.113",
-       "192.168.11.115"]
-
-
 tag :: List (Stream t) -> List (Stream (NodeRecord * t));
 fun tag(sls) 
   map(fun((node,strms))
       stream_map(fun(x) (node,x) ,strms),
       List:zip(nodes,sls))
 
-amls :: List (Stream AML);
+fun ip(id) "192.168.11."++id
 
+amls :: List (Stream AML);
 
 // **********************  SERVER SIDE AML ************************ //
 //==================================================================//
@@ -63,9 +54,10 @@ fun snoop_4sigseg_to_file(f,s) {
   }
 }
 
-synced = map(fun(ip) 
+synced = map(fun((id,_,_,_)) 
       snoop_4sigseg_to_file("/home/girod/marmots/detections.log",
-      snoop("DETECTION SEGMENTS", netsub_4sigseg(ip,"detections"))), ips)
+      snoop("DETECTION SEGMENTS", netsub_4sigseg(ip(id),"detections"))), 
+      nodes)
 
 
 amls_server = map(fun (slsf) 
@@ -78,10 +70,10 @@ amls_server = map(fun (slsf)
 //=================================================================//
 
 // We get int16s, we convert to floats, and then normalize.
-amls_client = map(fun(ip) 
+amls_client = map(fun((id,_,_,_))
       snoop_to_file("/home/girod/marmots/client_amls.log",
                     smap(fun(aml) normalize_aml(aml_to_floats(aml)), 
-		         netsub_amls(ip,"amls"))), ips)
+		         netsub_amls(ip(id),"amls"))), nodes)
 
 // **********************  ADAPTIVE AML ************************** //
 //=================================================================//

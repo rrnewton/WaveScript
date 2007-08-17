@@ -303,7 +303,10 @@ fun spawnprocess cmd  =
           (* We ignore the inS for now... *)
   in
     fn str => 
+    (
+(*     print ("Got a msg for gnuplot: "^ str ^ "\n");*)
     TextIO.output(outS,str)
+    )
     (*downstrm ()*)
   end
   

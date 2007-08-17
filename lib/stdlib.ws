@@ -1024,9 +1024,10 @@ fun degap(s, init, max_gap)
 	  if (gap > max_gap) then {
    	    wserror("Gap of "++gap++" enountered.  Max gap of "++max_gap++" exceeded.");
 	  };
-	  log(LOG_WARNING,"Gap of "++gap++" enountered.");
+	  //log(LOG_WARNING,"Gap of "++gap++" enountered.");
+          print("Gap of "++gap++" enountered.\n");
 	  arr = Array:make(gap, init);
-	  emit(toSigseg(arr, next, w`timebase));	  
+	  emit(toSigseg(arr, next, w`timebase));
 	}
       };
       emit(w);

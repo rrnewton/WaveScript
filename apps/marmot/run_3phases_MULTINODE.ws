@@ -106,10 +106,24 @@ alldetections = map(detector, alldata)
 // AML results from each node.
 allamls :: List (Stream AML);
 allamls = map(fun(((id,_,_,yaw),strm)) 
-                maybe_graph_aml(id, yaw, 
-		     smap(normalize_aml,oneSourceAMLTD(strm, 4096))),
-/* 	             oneSourceAMLTD(strm, 4096)), */
+	      //                maybe_graph_aml(id, yaw, 
+		     smap(normalize_aml, oneSourceAMLTD(strm, 4096)),
+//	             oneSourceAMLTD(strm, 4096),
               List:zip(nodes,alldetections))
+
+ignored = Gnuplot:array_streamXY_multiplot(
+   "", 
+   //  "set title \"AML output node"++id++"\";\n"++
+   "set polar;\n"++
+   "set grid polar ;\n"++
+   "unset border;\n"++
+   "unset param;\n",
+   map(fun(((id,_,_,rotation),strm)) 
+       smap(fun((arr,_,_))
+         Array:mapi(fun(i, radius) (const_PI * (i`i2f + rotation) / 180.0, radius), arr),
+       strm), 
+   List:zip(nodes,allamls))
+)
 
 merged :: Stream (Tagged AML);
 merged = List:fold1(merge, tag(allamls))
@@ -118,4 +132,6 @@ clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
-BASE <- dump_likelihood_maps(heatmaps, axes, grid_scale)
+BASE <- 
+merge(iterate _ in ignored {},
+      dump_likelihood_maps(heatmaps, axes, grid_scale))

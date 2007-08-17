@@ -344,16 +344,41 @@ fun oneSourceAMLTD(synced, win_size) {
 /**************************************************************/
 
 // calculate normalised J (AML vector) values
+/*
 normalize_aml :: AML -> AML;
 fun normalize_aml((doas,st,tb)) {
   log(1,"Normalizing AML.");
-  denom = Array:fold(fun (acc, f) (acc + f2d(f)), f2d(0.0), doas);
-  //denom = Array:fold(max, 0.0, doas);
+  //denom = Array:fold(fun (acc, f) (acc + f2d(f)), f2d(0.0), doas);
+  denom = f2d$ Array:fold(max, 0.0, doas);
   log(1,"Got DENOM: "++denom);
   arr = Array:map(fun (x) d2f(f2d(x) / denom), doas);
   log(1,"Got new ARR: " ++ Array:sub(arr, 0, 5));
   (arr, st, tb)
 }
+
+
+normalize_aml :: AML -> AML;
+fun normalize_aml((doas,st,tb)) {
+  high = Array:fold(max, 0.0, doas);
+  arr = Array:map(fun (x) (x / high), doas);
+  total = Array:fold((+), 0.0, arr);
+  arr2 = Array:map(fun (x) (x / total), arr);
+  (arr2, st, tb)
+}
+
+*/
+
+// This basic version works fine... it just appeared not to work
+// because of weird Gnuplot/mlton communication problems.
+normalize_aml :: AML -> AML;
+fun normalize_aml((doas,st,tb)) {
+  total = Array:fold((+), 0.0, doas);
+  arr2 = Array:map(fun (x) (x / total), doas);
+  //println("NORMED MAX: "++(Array:fold1(max,arr2)));
+  //println("NORMED MIN: "++(Array:fold1(min,arr2)));
+  (arr2, st, tb)
+}
+
 
 aml_to_int16s :: AML -> IntAML;
 fun aml_to_int16s((arr,st,tb)) {
