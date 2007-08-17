@@ -297,7 +297,7 @@ fun runMain f =
 
 fun spawnprocess cmd  = 
   let 
-      val _ = print ("SPAWNING PROCESS" ^ cmd ^ "\n")
+(*      val _ = print ("SPAWNING PROCESS " ^ cmd ^ "\n")*)
       val proc = Unix.execute("/bin/sh",["-c",cmd])
       val (inS, outS) = Unix.streamsOf proc
           (* We ignore the inS for now... *)

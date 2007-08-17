@@ -66,7 +66,9 @@ namespace Gnuplot {
 
  // This is a nice one, it takes a list of array streams and plots
  // them all on a single multiplot.
- fun array_stream_multiplot(extracmds, strmls) {
+ fun array_stream_XYmultiplot(extracmds, strmls) {
+
+ 
    ()
  }
 

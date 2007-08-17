@@ -5,10 +5,12 @@ DEBUGSYNC = DEBUG;
 
 include "stdlib.ws";
 
-// Trying 
+// Trying this fft:
+fix_fft :: (Array Int16 * Array Int16 * Int16 * Int16)
+         = foreign("fix_fft", ["fix_fft.c"]);
 
-//fix_fft :: (Array Int16 * Array Int16 * Int 16 * Int16)
-//         = foreign("fix_fft", ["fix_fft.c"])
+//marmfft = fix_fft
+marmfft = memoized_fftR2C
 
 // Takes Sigseg Complex
 fun marmotscore2(freqs) { 
@@ -155,7 +157,8 @@ fun detect(scorestrm) {
   }
 }
 
-fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase);
+
+fun sigseg_fft (ss) toSigseg(ss`toArray`marmfft, ss.start, ss.timebase);
 
 // ================================================================================
 
@@ -170,7 +173,7 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
   hn = hanning(floats);
 
   wscores :: Stream (Float * Int64 * Int64) = 
-    stream_map(fun(x) (marmotscore2( memosigseg_fftR2C(x) ), x.start, x.end), hn);
+    stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end), hn);
 
   detections = detect(wscores);
 
