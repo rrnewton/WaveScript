@@ -89,7 +89,7 @@ amls_client = map(fun(ip)
 _amls = if AMLSERVERSIDE 
 	then amls_server 
 	else if AMLADAPTIVE 
-	  then amls_client //merge(amls_server,amls_client)
+	  then map(fun ((x,y)) (merge(x,y)), List:zip(amls_server,amls_client))
 	  else amls_client
 
 //================================================================================//

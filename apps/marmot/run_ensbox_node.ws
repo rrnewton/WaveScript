@@ -40,8 +40,8 @@ result_amls =  netpub_aml(amls, "amls");
 //==================================================================//
 
 decided = iterate d in chopped {
-  estimated_time = 3.0;  //teleport_in("aml_timing");  -- would measure later
-  if (vxp_buffer_time_remaining() < (estimated_time * 1.25)) then {
+  estimated_time = f2d(3.0);  //teleport_in("aml_timing");  -- would measure later
+  if (vxp_buffer_time_remaining() < (estimated_time * f2d(1.25))) then {
     emit(true,d);
   }
   else {
@@ -50,19 +50,18 @@ decided = iterate d in chopped {
 }
 
 do_local = iterate (local,d) in decided { 
-  if (local) then emit(d); 
+  if (local == true) then emit(d); 
 }
 
 send_back = iterate (local,d) in decided { 
-  if (!local) then emit(d); 
+  if (local == false) then emit(d); 
 }
 
 
 include "marmot2.ws";
 amls :: Stream IntAML;
-amls = smap(normalized_aml_to_int16s,
-       smap(normalize_aml,
-            oneSourceAMLTD(do_local, 4096)));
+amls = smap(aml_to_int16s,
+            oneSourceAMLTD(do_local, 4096));
 
 result_adapt = merge(smap(fun(_) (), netpub_aml(amls, "amls")),
 		     smap(fun(_) (), netpub_sigseg4(send_back, "detections")));
