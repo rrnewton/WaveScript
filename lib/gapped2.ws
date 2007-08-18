@@ -95,18 +95,6 @@ namespace Gapped {
       // NEGATIVE GAP
       iterate _ in sig {
       wserror("Gapped:rewindow -- Not handling overlapping windows yet.");
-      /*
-      acc := joinsegs(acc, win);
-      wid = acc`width - owed_gap;
-      // NEGATIVE GAP
-      number_ready = 
-	if wid < newwidth then 0 else (wid - newwidth) / feed;
-
-      for i = 0 to number_ready-1 {
-	emit subseg(acc, owed_gap + i*feed, newwidth)
-      };
-      acc := subseg(acc, owed_gap + number_ready * feed, ??);      
-      */
     }
   }
  }
@@ -133,20 +121,148 @@ fun rewindow(sig,newwidth,gap)
   markgaps(Internal:rewindow(sig,newwidth,gap))
 
 
+// This is an internal helper that can be parameterized in two ways to
+// form "syncN" and "syncN_no_delete".
+Internal:syncN_aux = 
+fun (ctrl, strms, del) {
+   DEBUGSYNC = false; // Activate to debug the below code:
+
+   ENABLEWARNINGS = false;
+   WARNSKEW = 60000; // threshold for warning that an accumulator has grown to big.  Should be user input.
+
+  _ctrl = iterate((b,s,e) in ctrl) { emit ((b,s,e, nullseg) :: (Bool * Int64 * Int64 * Sigseg any)); };
+  f = fun(s) { iterate(win in s) { emit (false,0`gint,0`gint, win); }; };
+  _strms = map(f, strms);  
+  slist = _ctrl ::: _strms;  
+
+   //  if DEBUGSYNC then print("Syncing N streams (including ctrl stream): " ++ show(slist`List:length) ++ "\n");
+
+  iterate((ind, tup) in unionList(slist)) {
+    state {
+      accs = Array:make(slist`List:length - 1, nullseg);
+      requests = [];
+    }
+    
+    // Debugging helper functions:
+    fun printaccs() {
+      for i = 0 to accs`Array:length - 1 {
+	if accs[i]`width == 0
+	then print("null  ")
+	else print(show(accs[i] `start) ++ ":" ++ show(accs[i] `end) ++ "  ");
+      }
+    };
+    fun printwidths(){
+      for i = 0 to accs`Array:length - 1 {
+	if accs[i]`width == 0
+	then print("0   ")
+	else print(show(accs[i]`width) ++ " ");
+      }
+    };
+
+    //if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
+    //if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
+    if DEBUGSYNC then 
+    { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
+
+    // First do a "skew" check to detect when one accumulator has gotten to big. 
+    for i = 0 to Array:length(accs)-1 {
+      if ENABLEWARNINGS then      
+      if width(accs[i]) > WARNSKEW
+      then {
+        print("WARNING: skewed sync, acc sizes: ");
+	for j = 0 to Array:length(accs)-1 {
+	  print( accs[j]`width ++ " ");
+	};
+	//	print("\n");
+	if requests == [] 
+	then print(" no requests.\n")
+        else print(" waiting for "++ requests`head ++"\n");
+      }
+    };
 
 
+    let (flag, strt, en, seg) = tup;
+    
+    // ========================================
+    // Process the new data:
+    if ind == 0 // It's the ctrl signal.
+    then requests := append(requests, [(flag,strt,en)])
+    else accs[ind-1] := joinsegs(accs[ind-1], seg);        
 
-/*
-        // Send out the remainder even though it may not be the right size.
-	emit acc;
-	if acc != nullseg then emit nullseg;
-        acc := nullseg;
-	owed_gap :=
-*/
+    // ========================================
+    // Now we see if we can process the next request.
+    if requests == []
+    then {} // Can't do anything yet...
+    else {
+      let (fl, st, en) = requests`head;
+
+      allready =
+	Array:andmap(
+	 fun (seg)
+	 if (seg == nullseg         ||
+	     (fl && seg`start > st) || // This only matters if we're retaining it.
+	     seg`end < en)
+	   then { 		       
+	     if DEBUGSYNC then {
+	       if (seg == nullseg) then
+		 println("  Not all ready: NULL")
+	       else
+		 println("  Not all ready: "
+			  ++ show(fl && seg`start > st) ++ " "
+			  ++ show(seg`end < en) ++ " " 
+	                  ++ ((st,en,seg`start,seg`end)));
+	     };
+             
+             if (seg != nullseg && fl && seg`start > st) then {
+               println("Sync has a request that can never be filled:");
+	       println("Accumulator has "++seg`start++" to "++
+		       seg`end++", but request is for "++
+		       st++" to "++en++".");
+	       wserror("Impossible sync request");
+	     };
+
+	     false }
+  	   else true,
+	 accs);
+
+      // The data is ready on all buffers, now it's time to either discard or output it.
+      if allready then {
+	if fl then {
+	  if DEBUGSYNC 
+	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	  size = int64ToInt(en - st) + 1; // Start,end are inclusive.
+  	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
+	} else {
+	  if DEBUGSYNC then
+	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	};
+
+	if (del || not(fl)) then {
+	  // In either case, destroy the finished portions and remove the serviced request:
+	  for j = 0 to accs`Array:length - 1 {
+	    // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
+	    // [2007.07.01] JUST FIXED A BUG, We previously were trying to subseg data that wasn't there.
+	    killuntil = max(accs[j]`start, en + 1`gint); // Make sure we don't try to subseg before the start.
+	    //killuntil = en+1; // This was broken...	    
+	    accs[j] := subseg(accs[j], killuntil, int64ToInt(accs[j]`end - killuntil) + 1);
+	  };
+	};
+	requests := requests`tail;
+      }
+    }
+  }
+}
+
+
+syncN_no_delete = fun (ctrl, strms) { Internal:syncN_aux(ctrl, strms, false) }
 
 
 
 } // End namespace
+
+
+
+
 
 
 src = COUNTUP(30);
@@ -168,65 +284,3 @@ BASE <- rewindow(markgaps(s1), 100, 50);
 
 
 
-
-
-
-
-  /*
-
-     
-   iterate (win in sig) {
-    state { 
-      acc = nullseg; 
-      // Sometimes we still owe some "gap" samples from last time:
-      owed_gap = 0;
-      //      go = false; // Temp 
-    }
-
-    // IF NOT NULLSEG
-    {
-      acc := joinsegs(acc, win);
-      wid = acc`width - owed_gap;
-      // NEGATIVE GAP
-      number_ready = 
-	if wid < newwidth then 0 else (wid - newwidth) / feed;
-
-      for i = 0 to number_ready-1 {
-	emit subseg(acc, owed_gap + i*feed, newwidth)
-      };
-      acc := subseg(acc, owed_gap + number_ready * feed, ??);      
-    }
-
-
-
-
-
-
-   // This is INEFFICIENT!  We don't need to do this many subseg operations:
-   go := true;
-   while go {
-     if need_feed then {
-       if acc`width > gap // here we discard a segment:
-       then {acc := subseg(acc, acc`start + gap`intToInt64, acc`width - gap);
-	     need_feed := false; }
-       else go := false
-      } else {
-	if acc`width > newwidth
-	then {emit subseg(acc, acc`start, newwidth);
-	      if gap > 0 
-	      then { 
-		acc := subseg(acc, acc`start + newwidth`intToInt64, acc`width - newwidth);
-		need_feed := true; 
-	      } else acc := subseg(acc, acc`start + feed`intToInt64, acc`width - feed);
-	} else go := false
-      }
-   }
-  }
-}
-
-s1 = window(timer(3.0), 10);
-
-BASE <- rewindow(s1, 5, 0)
-
-
-  */
