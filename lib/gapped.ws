@@ -54,13 +54,16 @@ namespace Gapped {
 
 	  // If we get a gap, we do nothing.
 	  if win == nullseg then {}
-	  // If it's the first time, just add to accumulator.
 	  else {
+  	    // If it's the first time, just set the state.
 	    if nextpos == -1`gint then {
 	      if DEBUGGAPPED then println("Gapped:rewindow - first time running");
 	      acc := win;
 	      nextpos := win`start;
-	    } 
+	    }
+	    // If the acc is null ...
+	    else if acc == nullseg then 
+ 	      acc := win
 	    // If we get what we're expecting, that's fine.
 	    else if win`start == acc`end + 1`gint then {
 	      if DEBUGGAPPED then println("Gapped:rewindow - normal join");
