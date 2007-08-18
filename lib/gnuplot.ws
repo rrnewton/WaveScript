@@ -86,16 +86,6 @@ namespace Gnuplot {
               (0.33, 0.66)];
    extracmds = List:toArray$ cmdlist;
    hitonce = Array:make(10,false);
-     /*
-             [(0.0,  0.0, strmls.ref(0)),
-              (0.33, 0.0, strmls.ref(1)),
-              (0.66, 0.0, strmls.ref(2)),
-              (0.0,  0.33, strmls.ref(3)),
-              (0.33, 0.33, strmls.ref(4)),
-              (0.66, 0.33, strmls.ref(5)),
-              (0.0,  0.66, strmls.ref(6)),
-              (0.33, 0.66, strmls.ref(7))];
-     */
 
    pipe = spawnprocess("gnuplot -persist",
        iterate (ind,arr) in unionList(strmls) {
@@ -118,10 +108,12 @@ namespace Gnuplot {
          emit ("set origin "++x++","++y++"\n");
          //emit "clear\n";q
          emit extracmds[ind];
-         //emit "clear\n";
+         emit "clear\n";
 	 //plot = if hitonce[ind] then "replot" else { hitonce[ind] := true; "plot" };
-	 //plot = "plot";
+	 plot = "plot";
          emit (plot++" \"-\" using 1:2 with linespoints;\n");
+         //emit "clear\n";
+         //emit ("replot;\n");
          //emit ("plot \"-\" using 1:2 with linespoints;\n");
          Array:foreach(fun((x,y)) emit(x++" "++y++"\n"), arr);
          emit ("e\n");

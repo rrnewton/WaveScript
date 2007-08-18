@@ -1324,12 +1324,12 @@ fun stream_map(f,s) {
 }
 smap = stream_map; // I just can't stand this one being longer.
 
-
 fun stream_filter(f,s) {
   iterate (x in s) {
     if f(x) then emit x
   }
 }
+sfilter = stream_filter;
 
 fun stream_iterate(f,z,s) {
   iterate (x in s) {
