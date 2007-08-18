@@ -5,8 +5,8 @@
 
 include "stdlib.ws";
 
-//uniontype GappedStream t = Gap (Int64 * Int64) | Seg (Sigseg t);
-//wserror("Gapped:rewindow - even gapped streams")
+// A gap contoins start and width.
+uniontype GappedStream t = Gap (Int64 * Int) | Seg (Sigseg t);
 
 DEBUGGAPPED = false;
 
@@ -24,7 +24,7 @@ namespace Gapped {
 
 	// POSITIVE GAP
 	// ACTUALLY
-        iterate win in sig {
+        iterate sum in sig {
           state {
 	    acc = nullseg;
 	    // This is the next sample that's actually requested.
@@ -37,7 +37,7 @@ namespace Gapped {
 	      if DEBUGGAPPED then println("Emitting chunk: "++nextpos++ " width "++newwidth);
 	      if DEBUGGAPPED then println("From:"++acc);
  	      cut = subseg(acc, nextpos, newwidth);
-	      print("Here's the cut: "++cut);
+	      //println("Here's the cut: "++cut);
 	      emit cut;
 	      nextpos += feed;
 	    };
@@ -53,37 +53,56 @@ namespace Gapped {
 	    }
 	  };
 
-	  // If we get a gap, we do nothing.
-	  if win == nullseg then {}
-	  else {
-  	    // If it's the first time, just set the state.
-	    if nextpos == -1`gint then {
-	      if DEBUGGAPPED then println("Gapped:rewindow - first time running");
-	      acc := win;
-	      nextpos := win`start;
+	  case sum {
+	    Gap(tup): {
+	      let (st,wid) = tup;
+	      // If the nextpos is in the gap, then that's bad, we reset.
+	      if nextpos >= st && nextpos < st + wid`gint 
+	      then {	          
+		  if DEBUGGAPPED then println("Gapped:rewindow - RESET");
+		  acc := nullseg;
+		  nextpos := -1 `gint;
+	      }
+  	      else {}
 	    }
-	    // If the acc is null ...
-	    else if acc == nullseg then 
- 	      acc := win
-	    // If we get what we're expecting, that's fine.
-	    else if win`start == acc`end + 1`gint then {
-	      if DEBUGGAPPED then println("Gapped:rewindow - normal join");
-	      acc := joinsegs(acc, win);
-	    }
-	    // Otherwise we've got a gap!!  The accumulator is void.
-	    // But wait, does the gap hit the requested positon, or no?
-	    else if win`start <= nextpos then {
-	      // The current stream hasn't yet gone beyond the next request:
-	      acc := win;
-	    }
-	    // We've got a gap that DOES affect our next output, reset state:
-	    else {
-	      if DEBUGGAPPED then println("Gapped:rewindow - RESET");
-	      acc := win;
-	      nextpos := win`start;
-	    };
-	    // In any of the above cases we try to output:
-            try_output();
+            Seg(win):
+	      // If we get a gap, we do nothing.
+	      if win == nullseg 
+	      then wserror("Gapped:rewindow - even gapped streams shouldn't contain nullsegs")
+	      else {
+		// If it's the first time, just set the state.
+		if nextpos == -1`gint then {
+		  if DEBUGGAPPED then println("Gapped:rewindow - first time running");
+		  acc := win;
+		  nextpos := win`start;
+		}
+		// If the acc is null ...
+		else if acc == nullseg then {
+	          acc := win
+		}
+                // If we get what we're expecting, that's fine.
+		else {
+		  assert_eq("Rewindow:gapped got incorrect input stream",win`end + 1`gint, acc`start);
+		  if DEBUGGAPPED then println("Gapped:rewindow - normal join");
+		  acc := joinsegs(acc, win);		  
+		};
+
+
+		/*
+		// Otherwise we've got a gap!!  The accumulator is void.
+		// But wait, does the gap hit the requested positon, or no?
+		else if win`start <= nextpos then {
+		  // The current stream hasn't yet gone beyond the next request:
+		  acc := win;
+		}
+		// We've got a gap that DOES affect our next output, reset state:
+		else ;
+		*/
+
+
+		// In any of the above cases we try to output:
+		try_output();
+	      }
 	  }
       }
     else
@@ -109,19 +128,19 @@ namespace Gapped {
 
 // This takes a stream of sigsegs any gaps in the stream will be
 // replaced with null sigsegs.
+//markgaps :: Stream t -> GappedStream t;
 fun markgaps(stm) {
   iterate w in stm {
     state {
       next = to64(-1);
     }
-    if w != nullseg then {
-      if w`start > next && (next != to64(-1))
-      then  emit nullseg;
-      emit(w);
-      next := w`end + gint(1);
+    if w == nullseg then wserror("Gapped:markgaps -- should not have nullsegs in input stream")
+    else if w`start > next && (next != to64(-1))
+    then emit Gap((next, from64(w`start - next)));
+    emit Seg(w);
+    next := w`end + gint(1);
     }
   }
-}
 
 // We add the gaps back in separately.
 fun rewindow(sig,newwidth,gap)
@@ -146,8 +165,15 @@ fun rewindow(sig,newwidth,gap)
 
 src = COUNTUP(30);
 s1 = window(src, 10);
+g = iterate x in s1 {
+  state { b = false }
+  b := not(b);
+  if b then emit x;
+}
 using Gapped;
-BASE <- rewindow(s1, 100, 50);
+//BASE <- markgaps(g)
+BASE <- rewindow(markgaps(g), 5, 0)
+//BASE <- rewindow(s1, 100, 50);
 //BASE <- s1;
 
 
