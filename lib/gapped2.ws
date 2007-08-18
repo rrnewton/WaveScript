@@ -23,7 +23,6 @@ namespace Gapped {
       else if gap >= 0 then 
 
 	// POSITIVE GAP
-	// ACTUALLY
         iterate sum in sig {
           state {
 	    acc = nullseg;
@@ -35,7 +34,7 @@ namespace Gapped {
 	    //println("Trying output, nextpos "++nextpos++" acc "++acc);
 	    while acc`start <= nextpos && nextpos+gint(newwidth) <= acc`start+gint(acc`width) {
 	      if DEBUGGAPPED then println("Emitting chunk: "++nextpos++ " width "++newwidth);
-	      if DEBUGGAPPED then println("From:"++acc);
+	      if DEBUGGAPPED then println("From acc starting: "++acc`start++" width "++acc`width);
  	      cut = subseg(acc, nextpos, newwidth);
 	      //println("Here's the cut: "++cut);
 	      emit cut;
@@ -82,23 +81,10 @@ namespace Gapped {
 		}
                 // If we get what we're expecting, that's fine.
 		else {
-		  assert_eq("Rewindow:gapped got incorrect input stream",win`end + 1`gint, acc`start);
+		  assert_eq("Rewindow:gapped got incorrect input stream", acc`end + 1`gint, win`start);
 		  if DEBUGGAPPED then println("Gapped:rewindow - normal join");
 		  acc := joinsegs(acc, win);		  
 		};
-
-
-		/*
-		// Otherwise we've got a gap!!  The accumulator is void.
-		// But wait, does the gap hit the requested positon, or no?
-		else if win`start <= nextpos then {
-		  // The current stream hasn't yet gone beyond the next request:
-		  acc := win;
-		}
-		// We've got a gap that DOES affect our next output, reset state:
-		else ;
-		*/
-
 
 		// In any of the above cases we try to output:
 		try_output();
@@ -170,11 +156,15 @@ g = iterate x in s1 {
   b := not(b);
   if b then emit x;
 }
+
 using Gapped;
 //BASE <- markgaps(g)
-BASE <- rewindow(markgaps(g), 5, 0)
-//BASE <- rewindow(s1, 100, 50);
-//BASE <- s1;
+//BASE <- rewindow(markgaps(g), 5, 0)
+//BASE <- Gapped:Internal:rewindow(markgaps(s1), 100, 50);
+//BASE <- rewindow(markgaps(s1), 100, -50);
+//BASE <- markgaps(s1);
+
+BASE <- rewindow(markgaps(s1), 100, 50);
 
 
 
