@@ -44,10 +44,10 @@ amls :: List (Stream AML);
 //==================================================================//
 
 /* because show sigseg doesnt dump it */
-fun snoop_4sigseg_to_file(f,s) {
+fun snoop_4sigseg_to_file(id,f,s) {
   iterate x in s {    
     write_to_file(f,
-	 "Detection segments: " ++ show(x) ++ "\n" ++
+	 "Detection segments: " ++ id ++ " " ++ show(x) ++ "\n" ++
 	 show(List:map(toArray,x)) ++ 
 	 "\n");
     emit(x) 
@@ -55,7 +55,7 @@ fun snoop_4sigseg_to_file(f,s) {
 }
 
 synced = map(fun((id,_,_,_)) 
-      snoop_4sigseg_to_file("/home/girod/marmots/detections.log",
+      snoop_4sigseg_to_file(id,"/home/girod/marmots/detections.log",
       snoop("DETECTION SEGMENTS "++id, netsub_4sigseg(ip(id),"detections"))), 
       nodes)
 

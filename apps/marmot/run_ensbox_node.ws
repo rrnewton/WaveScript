@@ -40,8 +40,8 @@ result_amls =  netpub_aml(amls, "amls");
 //==================================================================//
 
 decided = iterate d in chopped {
-  estimated_time = f2d(3.0);  //teleport_in("aml_timing");  -- would measure later
-  if (vxp_buffer_time_remaining() < (estimated_time * f2d(1.25))) then {
+  estimated_time = 3.0;  //teleport_in("aml_timing");  -- would measure later
+  if (vxp_buffer_time_remaining() > (estimated_time * 1.25 + 3.0)) then {
     emit(true,d);
   }
   else {

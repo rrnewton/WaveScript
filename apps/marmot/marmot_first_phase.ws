@@ -179,7 +179,8 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   d2 = iterate (d in detections) {
     let (flag,_,_) = d;
-    if flag then log(LOG_TIMING,"Detection at "++show(d)++"\n");
+    if flag then log(LOG_TIMING,"Detection at "++show(d)++
+	", "++vxp_buffer_time_remaining()++" seconds in buffer");
     emit d;
   };
 

@@ -4,7 +4,7 @@ include "timebase.ws";
 c_isnull :: (Pointer "void *") -> Bool = 
   foreign("vxp_isnull", []);
 
-vxp_buffer_time_remaining :: () -> Double =
+vxp_buffer_time_remaining :: () -> Float =
   foreign("vxp_buffer_left", []);
 
 fun vxp_c_interface(spill_mode) {
@@ -23,7 +23,6 @@ struct queued_data {
   int count; // number of samples in buffer
 };
 
-#define MAX_QUEUE_LEN (8*MILLION_I)
 
 pthread_mutex_t arg_mutex;
 pthread_cond_t arg_cond;
@@ -35,10 +34,13 @@ int last_time_check = 0;
 
 int vxp_isnull(void *p) { return (p == NULL) ? 1 : 0; }
 
-double vxp_buffer_left() {
+float vxp_buffer_left() {
   ws_state_t *ws = get_global_ws();
-  return (double)(MAX_QUEUE_LEN - g_msg_queue_get_size(ws->mq)) /
-          (double)(48000*sizeof(int16_t[4]));
+  if (ws->mq) {
+    return (float)(MAX_VXP_QUEUE_LEN - g_msg_queue_get_size(ws->mq)) /
+      (float)(48000*sizeof(int16_t[4]));
+  }
+  return 0;
 }
 
 static
@@ -49,6 +51,8 @@ int audio_from_queue(msg_queue_opts_t *opts, buf_t *buf)
     if (buf->len == sizeof(struct queued_data)) {
       struct queued_data *qd = (struct queued_data *)buf->buf;
       g_msg_queue_dec_size(ws->mq, qd->length);
+
+      discover_set_vxp_buffer_left(vxp_buffer_left());
       
       if (qd->buf) {
 
@@ -110,7 +114,7 @@ void audio_push(void *data, char *buf, int count, uint64_t sample_count)
 {
   ws_state_t *ws = (ws_state_t *)data;
 
-  if (g_msg_queue_get_size(ws->mq) < MAX_QUEUE_LEN) {
+  if (g_msg_queue_get_size(ws->mq) < MAX_VXP_QUEUE_LEN) {
     buf_t *b = buf_new();
     
     /* copy and queue it */
@@ -163,6 +167,7 @@ int __initvxp()
     cb: audio_from_queue,
     private_data: ws,
     name: \"audio queue\",
+    maxrun: 10
   };
 
   if (g_msg_queue(&mq_opts, &(ws->mq)) < 0) {
