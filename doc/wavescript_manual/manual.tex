@@ -22,7 +22,7 @@
 
 % page size commands
 
-\title{WaveScript 0.1.3 Users Manual}
+\title{WaveScript 0.1.4 Users Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -53,23 +53,33 @@ $\tt #1 $&$ \arr $&$ #2 $
 
 WaveScript is a functional metaprogramming language for writing highly abstract
 programs that generate efficient dataflow graphs.  These graphs are
-executable in an emulator (ws) or by compiling to C++ (wsc) and linking them
-to the {\em XStream} engine.
+executable in several backends (Scheme, ML, C++) that offer different
+tradeoffs in features, performance, and compile times.  The compiler
+has several command line entrypoints for the different backends.
+
+%Calling {\bf ws}
+% linking them to the {\em XStream} engine.
 
 \section{Using WaveScript}
 
 See the README for install instructions.  The bottom line is that you
 will need Mzscheme and Petite Chez Scheme to run the WaveScript
-emulator.  (Petite for Linux is included in the repository.)  You will
-need Boost, the Gnu Scientific Library (GSL), FFTW, and their
-respective headers to run {\bf wsc}-compiled code.
+compiler and the Scheme backend.  (Petite for Linux is included in the
+repository.)  You will need Boost, the Gnu Scientific Library (GSL),
+FFTW, and their respective headers to run compiled C++ code.
 
-Once the system is installed you should be able to execute {\tt ws} or
-{\tt wsc} on any WaveScript source files ({\tt .ws} files).
+Once the system is installed you should be able to execute {\bf \tt
+  ws} on any WaveScript source files ({\tt .ws} files).  This will
+compile the query and execute it directly in the Scheme backend.
+Other backends (and variations on this one) will be discussed in this
+chapter.  This chapter addresses pragmatic issues concerning invoking
+the system and running dataflow graphs.  If you are new to WaveScript,
+it may help to skip to chapter \ref{s:lang} to get a sense for the
+language itself, then come back to this section afterwards.
 
 \subsection*{Develop Incrementally}
 
-WaveScript is still very much a prototype.  It doesn't offer the same
+WaveScript is a research compiler.  It doesn't offer the same
 level of support that you expect from production-quality
 compilers.  Sometimes the error messages might be difficult to
 interpret.  (However, the type checker messages have been improved
@@ -78,22 +88,43 @@ immensely and do include code locations [04/08/2007].)
 Therefore it helps to build your program bit by bit.  Compile often to make
 sure that the pieces of your program parse and type-check.
 
-{\tt \bf wsparse:}
-If you want the full error message for a stubborn parser error, run
-{\tt wsparse} directly on the ws file.  It will either print the AST
-(abstract syntax tree) for the file, or will give you an error message
-that does include line and character numbers.
+{\tt \bf wsparse:} While entrypoints such as {\tt \bf ws} parse source files
+internally, if you want the full error message for a parser error
+(including line and column number!), run {\tt wsparse} directly on the
+{\tt .ws} file.  It will either print the AST (abstract syntax tree) for the
+file, or will give you an error message that does include line and
+character numbers.
 
-\subsection{The WaveScript Emulator: {\tt \bf ws} }
+\subsection{{\tt \bf ws}: The Interactive Scheme Backend}
 
-Running {\tt ws} on a WaveScript file will simulate the functionality
-of the query without actually compiling the query to C++ code.  The
-query is converted to a Scheme program which is compiled to native
-code and executed on the fly.  Hardware sensors cannot be accessed
-from the emulator (except through the foreign interface \ref{s:foreign}), 
-and so data must be read from trace files.
+Running the command ``{\tt ws mysource.ws}'' will compile your source
+file, and execute the resultant dataflow graph directly within Scheme,
+without generating code for another platform.
+%
+The dataflow graph is converted to a Scheme program which is compiled
+to native code and executed on the fly.  Compile time is low, because
+we need not call a separate backend compiler.  However, performance is
+not as good as the other backends we will discuss.  Further, the
+Scheme backend does not support external (real time) data sources,
+only queries running in virtual time using data stored in files.
 
-\subsubsection*{Consider {\tt \bf ws.opt} for high-performance emulation}
+One major advantage of the Scheme backend is that it's {\em
+  interactive}.  The query starts up paused, and the user may step
+through and inspect the elements of the output stream.  Thus the user
+may {\em pull} on the stream rather than being {\em pushed} a torrent
+of output.
+
+%% Further, hardware
+%% sensors cannot be accessed from the emulator (except through the
+%% foreign interface \ref{s:foreign}), and so data must be read from
+%% trace files.
+
+\subsection*{Variants of {\tt \bf ws}}
+
+There are several other useful ways to invoke WaveScript with the
+Scheme backend.
+
+\subsubsection*{Consider {\tt \bf ws.opt} for higher performance}
 
 The first thing to do to improve the performance of {\tt ws} is make
 sure that you have the full version of Chez Scheme.  This version
@@ -142,13 +173,22 @@ structure invariants to help ensure proper operation.
   to expose compiler bugs.
 \end{enumerate}
 
+
+\subsubsection*{For very low compile times: {\tt \bf ws.early}}
+
+If you are running many small programs --- stream ``queries'' --- then
+the latency introduced by compilation may be more significant than the
+throughput of the query once it is running.  In this case it is
+reasonable to use {\tt ws.early}.
+
+
 %When you run {\bf ws.debug} the compiler runs extensive
 %invariant checks on the data structures it uses, in particular it
 %checks the intermediate forms between compiler passes for
 %conformance to explicit grammars.  Further it inserts extra
 %type-checks to make sure that the intermediate programs are well-formed.
 
-\subsection{The WaveScript Compiler: {\tt \bf wsc}}
+\subsection{The WaveScript C++ Backend}
 
 The WaveScript emulator provides a reference implementation suitable
 to prototyping and debugging applications.  The eventual target is to
@@ -169,14 +209,16 @@ some basic disparities in how objects are printed to text form.  Hopefully, thes
 are straightforward to work around, and should go away shortly.}
 
 
+\subsubsection*{The WaveScript CaML Backend}
 
+\rednote{This backend is no longer supported and will receive no new features!}
 
-
+\subsubsection*{The WaveScript MLton Backend}
 
 
 
 %================================================================================
-\chapter{Language Basics}
+\chapter{Language Basics}\label{s:lang}
 
 Please make liberal use of {\tt wavescript/demos/wavescope/*.ws} as a reference
 when learning WaveScript.  These demos cover most of the basic
@@ -889,6 +931,9 @@ for a few operations implemented only in the GSL-based version,
 the libraries should be interchangeable.  You should choose which to
 use based on the operations you need, availability of GSL on the
 target platform, and performance requirements.
+\rednote{Note: The GSL matrix library depends on the {\em
+    ExclusivePtr} mechanism, which is not supported in the ML backends
+    presently.}
 
 \subsection{Other numeric types}
 
