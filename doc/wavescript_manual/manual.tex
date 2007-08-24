@@ -10,8 +10,8 @@
 
 
 \setlength{\textheight}{9.25in}
-\setlength{\columnsep}{0.25in} %RRN changed: {0.33in}
-\setlength{\textwidth}{7.4in}
+\setlength{\columnsep}{0.33in} %RRN changed: {0.33in}
+\setlength{\textwidth}{7.48in}
 \setlength{\footskip}{0.0in}
 \setlength{\topmargin}{-0.25in}
 \setlength{\headheight}{0.0in}
@@ -289,7 +289,7 @@ a function body consists of curly braces, it needn't be followed by a semi-colon
 \subsection{Constructing complete programs}
 
 A complete program file contains function and variable
-declarations as well as a single {\em stream wiring statement} of the form:
+declarations as well as a {\em stream wiring statement} of the form:
 \begin{wscode}
 BASE <- expression;
 \end{wscode}
@@ -613,15 +613,15 @@ The primary means of operating on the data inside streams is the {\tt
   iterate} syntactic construct.
 
 \begin{verbatim}
-        S2 = iterate( x in S1 ) {
+        S2 = iterate x in S1  {
           state{ counter = 0 }
           counter := counter + 1;
           emit counter + x;
         }
 \end{verbatim}
 
-The {\tt iterate} construct can be placed in any {\em expression}
-position.  It produces a new stream by applying the supplied code to
+The {\tt iterate} construct can be placed in any {\em expression
+position}.  It produces a new stream by applying the supplied code to
 every element of its input stream.  The above example executes the
 body of the iterate every time data is received on the stream {\tt
   S1}, it adds an increasing quantity to each element of {\tt S1}, and the
@@ -629,17 +629,18 @@ resulting stream is bound to the variable {\tt S2}.
 
 In addition to {\tt iterate} several library procedures (such as {\tt
 stream\_map}) and many primitives (such as {\tt unionList}) operate on
-{\tt Stream} values.
-
-
-
+{\tt Stream} values.  For example, {\tt merge} combines two streams of the same
+type (their tuples interleaved in real time), whereas {\tt
+  unionList} also combines streams of the same type, but tags all
+output tuples with an integer index indicating from which of the input
+streams it originated.
 
 
 %================================================================================
 \section{Sigsegs}
 
 Sigsegs are a flexible ADT for representing windows of samples on a stream.
-Please refer to the CIDR'07 publication by the title 
+Please refer to the CIDR'07 publication with the title
 ``The Case for a Signal-Oriented Data Stream Management System'' for
 details.  Also check {\tt prim\_defs.ss} for the specific names and
 type signatures of the Sigseg primitives.

@@ -32,6 +32,11 @@ WaveScript (or it can call into us).
 %Thus we can generate C code and then call into the code
 %we generated (or have it call into us).
 
+
+
+
+\section{Foreign functions}
+
 The basic foreign function primitive is called as follows: ``{\tt
 foreign({\em function-name}, {\em file-list})}''.  Like any other
 primitive function, {\tt foreign} can be used anywhere within a
@@ -75,9 +80,104 @@ source and object files.)  Also, if you try to import multiple files with
 the same basename (e.g. ``bar.o'' and ``bar.so'') the behavior is
 currently undefined.
 
+
+
+
+
+\section{Foreign Sources}
+
+A call to register a foreign source has the same form as for a foreign
+function: ``{\tt foreign\_source({\em function-name}, {\em
+file-list})}''.  However, in this case the {\em function-name} is the
+name of the function being {\em exported}.  The call to {\tt
+foreign\_source} will return a stream of incoming values.  It must be
+annotated with a type of the form {\tt Stream} $T$, where $T$ is a
+type that supports marshaling from C code.
+%
+The function exported to C will take a single argument, convert it to
+the WaveScript representation, and fire off a tuple as one element of
+the input stream.
+
+Currently, using multiple foreign sources is supported (i.e. multiple
+entrypoints into WaveScript).  However, if using foreign sources, you
+cannot also use built-in WaveScript ``timer'' sources.  When driving
+the system from foreign sources, the entire WaveScript system becomes
+just a set of functions that can be called from C.  The system is
+dormant until one of these entrypoints is called.
+
+Because the main thread of control belongs to the foreign C code,
+there is another convention that is followed.  The user must implement
+two functions that WaveScript uses to start up the system.
+
+\begin{verbatim}
+  void wsinit(int argc, char** argv)
+  void wsmain(int argc, char** argv)
+\end{verbatim}
+
+{\tt Wsinit} is called at startup, before any WaveScript code runs
+(e.g. before {\tt state\{\}} blocks are initialized, and even before
+constants are allocated).  {\tt Wsmain} is called when the WaveScript
+dataflow graph is finished initialing and is ready to receive data.
+{\tt Wsmain} should control all subsequent acquisition of data, and
+feed it into WaveScript through the registered {\tt foreign\_source}
+functions.
+
+
+
+\section{Inline C Code}
+
+The function for generating and including C code in the compiler's
+output is {\tt inline\_C}.  We want this bso that we can
+{\em generate} new/parameterized C code (by pasting strings together) rather than 
+including a static {\tt .c} or {\tt .h} file, and instead of using
+some other mechanism (such as the C preprocessor) to generate the C code.
+The function  is called as ``{\tt inline\_C({\em c-code},
+{\em init-function})}''.  Both of its arguments are strings.  The first
+string contains raw C-code (top level declarations).  The second
+argument is either the null string, or is the name of an
+initialization function to add to the list of initializers called
+before {\tt wsmain} is called (if present).  This method enables us to
+generate, for example, an arbitrary number of C-functions dependent on
+an arbitrary number of pieces of global state.  Accordingly we also
+generate initializer functions for the global state, and register them
+to be called at startup-time.
+
+The return value of the {\tt inline\_C} function is a bit odd.  It
+returns an empty stream (a stream that never fires).  This stream may
+be of any type; just as the empty list may serve as a list of any
+type.  This convention is an artifact of the WaveScript metaprogram
+evaluation.  The end result of metaprogram evaluation is a dataflow
+graph.  For the inline C code to be included in the final output of
+the compiler, it must be included in this dataflow graph.  Thus {\tt inline\_C}
+returns a ``stream'', that must in turn be included in the dataflow
+graph for the inline C code to be included.
+%
+You can do this by using the {\tt merge} primitive to combine it with any
+other Stream (this will not affect that other stream, as {\tt
+inline\_C} never produces any tuples).  Alternatively, you can return the
+output of {\tt inline\_C} directly to the {\tt BASE} (the root sink),
+as follows:
+
+\begin{wscode}
+BASE <- inline\_C(\dots)
+\end{wscode}
+
+Note that a WaveScript program can contain multiple ``{\tt BASE <-}''
+statements that are implicitly combined with the {\tt merge}
+primitive.  Of course, all the streams returned in this way must be of
+the same type.
+%
+\rednote{Actually, this feature is planned but not implemented at the
+  moment [2007.08.24].}
+
+
+
+
+\section{Backend support}
+
 The foreign interface works to varying degrees under the {\bf Scheme},
  {\bf MLton}, and {\bf C++/XStream} backends ({\tt ws}, {\tt wsmlton},
- and {\tt wsc}).  Below we discuss current the limitations in each
+ and {\tt wsc} respectively).  Below we discuss the current  limitations in each
  backend.  The feature matrix in Figure \ref{f:features} gives an
  overview.
 
@@ -141,7 +241,10 @@ importing the source files.
 supported on Linux platforms.  It also has very preliminary support
 for Mac OS but has a long way to go.}
 
-\subsection{Converting WaveScript and C types}
+
+
+
+\section{Converting WaveScript and C types}
 
 An important feature of the foreign interface is that it defines a set
 of mappings between WaveScript types and native C types.  The compiler
@@ -203,3 +306,57 @@ must be a scalar type
   types.
 }
 
+
+\section{Importing C-allocated Arrays}
+
+A WaveScript array is generally a bit more involved than a C-style
+array.  Namely, it includes a length field, and potentially other
+metadata.  In some backends ({\tt wsc}, {\tt wsmlton}) it is easy to
+pass WaveScript arrays to C without copying them, because the WS array
+contains a C-style array within it, and that pointer may be passed
+directly.
+
+Going the other way is more difficult.  If an array has been allocated
+(via {\tt malloc}) in C, it's not possible to use it directly in
+WaveScript.  It lacks the necessary metadata and lives outside the
+space managed by the garbage collector.  However, WaveScript does
+offer a way to {\em unpack} a pointer to C array into a WaveScript
+array.  Simple use the primitive {\tt ``ptrToArray''}. But, as with
+foreign functions, be sure to include a type annotation.  (See the
+table in Figure \ref{f:features} for a list of backends that currently
+support {\tt ptrToArray}.)
+
+\section{``Exclusive'' Pointers}
+
+Unfortunately, {\tt ptrToArray} is not always sufficient for our
+purposes.  When wrapping an external library for use in WaveScript, it
+is desirable to use memory allocated outside WaveScript, while
+maintaining a WaveScript-like API.  For instance, consider a Matrix
+library based on the Gnu Scientific Library (GSL), as will described in the
+next chapter.  GSL matrices must be allocated outside of WaveScript.
+Yet we wish to provide a wrapper to the GSL matrix operations that
+feels natural within WaveScript.  In particular, the user should not
+need to manually deallocate the storage used for matrices.
+
+For this purpose, WaveScript supports the concept of an {\em
+  exclusive} pointer.  ``Exclusive'' means that no code outside of
+WaveScript holds onto the pointer.  Thus when WaveScript is done
+with the pointer the garbage collector may invoke {\tt free} to
+deallocate the referenced memory.  (This is equivalent to calling {\tt
+  free} from C, and will not, for example, successfully deallocate a
+  pointer to a pointer.)
+
+Using exclusive pointers is easy.  There is one function {\tt
+  exclusivePtr} that converts a normal {\tt Pointer} type (machine
+  address) into a managed exclusive pointer.  By calling this, the
+  user guarantees that that copy of the pointer is the only in
+  existence.  Converting to an exclusive pointer should be thought of
+  as ``destroying'' the pointer---it cannot be used afterwards.  To
+  retrieve a normal pointer from the exclusive pointer, use the {\tt
+  getPtr} function.  \rednote{In the future, getting an exclusive
+  pointer will ``lock'' it, and you'll have to release it to make it
+  viable for garbage collection again.  Currently, this mechanism is
+  unimplemented, so you must be careful that you use the {\tt Pointer}
+  value that you get back immediately, and that there is a live copy
+  of the exclusive pointer in existence to keep it from being free'd
+  before you finish with it.}
