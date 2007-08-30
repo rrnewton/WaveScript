@@ -146,7 +146,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 
 (begin (reset-timer!)
-       (define cleaned )
        (fpf "Build directory cleaned:                      ~a\n" 
 	    (code->msg! (system/exit-code "make clean > make_clean.log"))))
 
