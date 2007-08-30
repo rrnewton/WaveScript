@@ -892,6 +892,13 @@
 		   
 		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 
 		   HashTable:make HashTable:rem HashTable:set ;; pure versions
+
+
+		   ;; [2007.08.30] NO FURTHER DEVELOPMENT ON CAML BACKEND, THEREFORE NOT ADDING PRIMS!
+		   List:toArray ptrMakeNull gnuplot_array gnuplot_array2d 
+		   String:length String:explode String:implode charToInt intToChar 
+		   Secret:newTimebase
+
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)

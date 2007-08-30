@@ -1,6 +1,15 @@
 
 ;; TODO: Change some of the asserts below to DEBUGASSERTS
 
+;; TODO: FIXME: When we were on deployment I made some hacks here to
+;; deal with numeric constants.  The problem is that we don't yet know
+;; what type we're dealing with (int, int16, int64).  And we can't
+;; tell from the value's representation.  So I hackishly inserted some
+;; "gints", all integer metavalues become gints...
+;;
+;; This should be *ok* because the program already passed the more
+;; conservative type checking before getting here.  Besides, we should
+;; eventually make all integer constants "gint".
 
 (module interpret-meta mzscheme
   (require (all-except "../../../plt/common.ss" )
@@ -174,7 +183,11 @@
  
     [(Mutable:ref ,[x]) (make-ref x)]
     [(deref ,[x])       (ref-contents x)]
-    [(set! ,[v] ,[rhs]) (set-ref-contents! v rhs)]
+    [(set! ,[v] ,[rhs]) 
+     ;(call/cc inspect)
+;     (inspect v)
+     (set-ref-contents! v rhs)
+     ]
     
     [(Array:makeUNSAFE ,_) (error 'interpret-meta:Eval 
 				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
@@ -248,14 +261,15 @@
 	   ((> i end) (make-plain #()))
 	 (Eval bod (extend-env '(i) (list (make-plain i)) env) pretty-name)))]
     [(while ,tst ,bod)     
-     (let ([test (Eval tst env pretty-name)])
-       (ASSERT (plain? test))
-       (let loop ()
+     (let loop ()
+       (let ([test (Eval tst env pretty-name)])
+	 (ASSERT (plain? test))
 	 (when (plain-val test)
 	   (Eval bod env pretty-name)
-	   (loop)))
-       (make-plain #()))]
+	   (loop))))
+     (make-plain #())]
     [(begin ,x* ... ,last) 
+     ;; Side effects are modeled by... actual side effects!
      (begin (for-each (lambda (x) (Eval x env pretty-name)) x*)
 	    (Eval last env pretty-name))]
 
@@ -664,9 +678,15 @@
     [Expr (lambda (x fallthru) 
 ;	    (inspect x)
 	    (parameterize ([marshal-cache (make-default-hash-table 1000)])
+
+	      (let* (
+		     [evaled (time (Eval x '() #f))]
+		     [marshaled (time (Marshal evaled))]		     
+		     )
 	      (do-basic-inlining 
 	       (id;inspect/continue
-		(time (Marshal (time (Eval x '() #f))))))
+		marshaled))
+		)
 	      ))])
 
 ; ================================================================================ ;
@@ -732,7 +752,7 @@
 			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6))
       (union-types) 'notype)))
-     (unspecified '(program '720 (union-types) 'notype))]
+     (unspecified '(program (gint '720) (union-types) 'notype))]
 
     ))
 

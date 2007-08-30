@@ -6,7 +6,7 @@
   (require  "../../../plt/common.ss"
 	    "../../compiler_components/c_generator.ss" 
 	    "../ocaml_bkend/shared-emit-ml.ss")
-  (provide emit-mlton-wsquery )
+  (provide emit-mlton-wsquery test-emit-mlton)
   (chezprovide )  
   (chezimports shared-emit-ml 
 	       (except helpers test-this these-tests))
@@ -1350,6 +1350,8 @@
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
+
+		   gnuplot_array gnuplot_array2d
 		   
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
