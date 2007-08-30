@@ -18,10 +18,21 @@ libc = "libc."++ext
 namespace Unix {
 
 // Can we support error codes across backends?
-system :: String -> Int = foreign("system", ["stdlib.h", Internal:libc])
+system :: String -> Int = 
+   foreign("system", ["stdlib.h", Internal:libc])
 
-usleep :: Int -> () = foreign("usleep",["unistd.h", Internal:libc])
+usleep :: Int -> () = 
+   foreign("usleep",["unistd.h", Internal:libc])
 
+fopen :: (String, String) -> Pointer "FILE*" = 
+   foreign("fopen", [Internal:libc])
+
+// Write a stream of strings to disk.  Returns an empty stream
+fileSink :: Stream String  -> Stream nothing;
+fun fileSink (strm) {
+  iterate str in strm {  
+  }
+}
 
 }
 
@@ -38,9 +49,14 @@ BASE <- iterate _ in timer$ 3.0 {
     // WEIRD!!!! USLEEP WORKS IN ONE PLACE BUT NOT THE OTHER.
     //    usleep(1000000);
     system("ls");
-    usleep(1000000);
+    usleep(500000);
     print$ "yay finished!\n";
-    emit 1;
+
+    fp = fopen("foo.out","w");
+    
+    print("Got file handle ! "++fp++"\n");
+
+    emit 1;   
   };
   fst := false;
   emit 0;

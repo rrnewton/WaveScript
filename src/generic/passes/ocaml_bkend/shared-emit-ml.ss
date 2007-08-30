@@ -143,7 +143,7 @@
 		]))
 	   (loop itercode)]
 
-	  [(iterate . _) (inspect (cons "EMIT ML UNMATCHED ITERATE" (cons 'iterate _)))]
+	  [(iterate . ,_) (inspect (cons "EMIT ML UNMATCHED ITERATE" (cons 'iterate _)))]
 	  
 	  [(__readFile (name ,name) (output-type ,ty) (code ,c) (incoming ,up* ...) (outgoing ,down* ...))
 	   (values (obj 'ReadFile name c up* down*) ())]

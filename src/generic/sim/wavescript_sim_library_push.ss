@@ -1278,7 +1278,10 @@
      (define gnuplot_array_stream2d  (gnuplot-helper (lambda (arr) (vector->list arr))))
      (define gnuplot_sigseg_stream2d (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
 
-     (trace-define (gnuplot_process ctrl datastrm)       
+     (define gnuplot_process 
+      (IFCHEZ     
+       (lambda (ctrl datastrm)
+          
        (define (filtnewline s) (list->string (remq-all #\newline (string->list s))))
        (define gnuplotoutput
 	 (format "/tmp/_gnuplot_process_~s.out"
@@ -1322,9 +1325,12 @@
 		       (printf "Got data strm message: ~s\n" str)
 		       (display str datapipe) (flush-output-port outp)))))
        (lambda (sink) (void)))
-
+       (lambda _ (error 'gnuplot_process "not implemented in PLT"))))
+      
      ;; This only produces output
-     (define (spawnprocess command instrm)
+     (define spawnprocess
+       (IFCHEZ
+       (lambda (command instrm)          
        (define our-sinks ())
 	 (let-match ([(,inp ,outp ,pid) (process command)])	   
 	   (define (try-output)
@@ -1344,8 +1350,9 @@
 ;		      (fire! "Sent stuff to subprocess...\n" our-sinks)
 		      )))
 	 (lambda (sink) 
-	   (set! our-sinks (cons sink our-sinks)))
-       )
+	   (set! our-sinks (cons sink our-sinks))))
+       (lambda _ (error 'spawnprocess "not implemented in PLT"))
+       ))
 
      (define m_invert ws-invert-matrix)
 
@@ -1672,9 +1679,9 @@
   (define port (open-input-file filename))
 
   (define firsttime #f)
-  (define nextid)
-  (define nexttime)
-  (define nextdat)
+  (define nextid #f)
+  (define nexttime #f)
+  (define nextdat #f)
   (define (read-one!)
     (define nodeid (read port))
     (define metadat (read port))
