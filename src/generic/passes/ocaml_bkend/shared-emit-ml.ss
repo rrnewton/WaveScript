@@ -124,7 +124,10 @@
 		   ;; The first return value is binding-text for the function:
 		   `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
 		     ,(obj 'make-fun-binding name 
-			   (list (list "("(Var x)" : "(obj 'Type ty1)")"))
+			   (list (list "("(Var x)
+				       (if (mlton-ascribe-types) (list " : "(obj 'Type ty1)) "")
+				       ;;(list " : "(obj 'Type ty1))
+				       ")"))
 			   (indent (Expr bod emitter) "    ")))
 
 		   ;; The second return value is a list of bindings for iterator state:
@@ -223,11 +226,14 @@
       (match bind
 	[[,lhs ,rhs]     (list (coerce-id lhs) " = " rhs)]
 	;; Type is a sexp or a string:
-	[[,lhs ,ty ,rhs] (list (coerce-id lhs) " :  "
-			       (if (string? ty) ty
-				   (obj 'Type ty))" = " rhs)]))
-
-
+	[[,lhs ,ty ,rhs] (list (coerce-id lhs) 
+			       (if (mlton-ascribe-types)
+				   (list " :  "
+				     (if (string? ty) ty
+					 (obj 'Type ty)))
+				   " ")
+			       " = " rhs)]
+			       ))
        
 
     ;; Return a bundle of methods:

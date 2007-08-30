@@ -43,18 +43,21 @@ exec regiment i --script "$0"
 
 (define file (open-output-file "nodelocs.ws" 'replace))
 
-(for-eachi 
- (lambda (i row)
-   (printf "ERK ~s\n" row)
-   (fprintf file "node~s = (~a)\n" 
-	   (add1 i)
-	   (apply string-append
-		  (insert-between ", "
-		    (map number->string 
-		      (extract row))))))
- (sort 
-  (lambda (a b) (< (car a) (car b)))
-  rawdat))
+(display
+(text->string
+(list "nodels = [" 
+  (insert-between ", \n          "
+   (map (lambda (row)
+	      (list "("
+	      (insert-between ", "
+			      (map number->string 
+				(extract row)))
+	      ")"))
+	 (sort 
+	  (lambda (a b) (< (car a) (car b)))
+	  rawdat)))
+  "]\n"))
+ file)
 
 (close-output-port file)
 

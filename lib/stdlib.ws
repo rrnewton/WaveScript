@@ -348,7 +348,7 @@ namespace List {
     }
   }
 
-  
+  // Map over two lists. 
   fun map2(f, ls1, ls2) {
     p1 = Mutable:ref(ls1);
     p2 = Mutable:ref(ls2);

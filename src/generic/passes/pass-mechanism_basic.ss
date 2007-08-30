@@ -45,8 +45,7 @@
 		  ;; This message requests that we return the "process-expr" function.  We pass it on.
 		  (transform 'get-expr-driver)
 		  (begin
-		    ;; Only in DEBUGMODE do we add extra checks.
-		    (DEBUGMODE 
+		    (when (check-pass-grammars)
 		     (for-each (lambda (inspec)
 				 (match inspec
 				   ;; The optional initial production may or may not be supplied:
@@ -63,7 +62,7 @@
 		       instuff))	     
 		    ;; Now execute the pass itself:
 		    (let ((result (transform prog)))
-		      (DEBUGMODE
+		      (when (check-pass-grammars)
 		       (for-each (lambda (outspec)
 				   (match outspec
 				     ;; Check output grammar:	   

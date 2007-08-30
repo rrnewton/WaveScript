@@ -442,8 +442,8 @@ Gnuplot:array_streamXY_multiplot(
    "", 
    map(fun((id,_,_,_))
       "set yrange [-5000:5000];\n"++
-      "set noxtics\n"++
-      "set noytics\n"++
+       "set noxtics\n"++
+       "set noytics\n"++
       "set title \"Detection, node  "++id++"\";\n"++
       "set format x \"\";\n"++
       "unset border;\n"++

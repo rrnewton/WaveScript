@@ -29,7 +29,7 @@ fun temporal_cluster_amls(minclustsize, amls) {
 	counter := 0;
       }
       Right(_): {
-        //println("Timer Fired! acc length: "++acc`List:length);
+        println("Timer Fired! acc length: "++acc`List:length);
         counter += 1;
 	if counter > 1 
 	then {
@@ -431,22 +431,21 @@ fun auto_axes(nodes) {
 
 
 
-
-// This is reused from multiple scripts.
-// It dumps to a file and prints some messages.
-fun dump_likelihood_maps(heatmaps, axes, grid_scale) {
-  fun printloc(lhoodmap) {      
+fun print_marmot_loc(lhoodmap,axes, grid_scale) { 
     let (mx,u,v) = getmax(lhoodmap);
     let (x,y) = convertcoord(axes,grid_scale,u,v);
     log(1,"Max marmot likelihood was "++mx++
 	" at position "++x++","++y++
 	" w/pic coord "++u++","++v);
-  };
+}
 
-  if PPMFILES 
-  then iterate lhoodmap in heatmaps {
-    state { cnt = 0 }
-    printloc(lhoodmap);
+// TODO : UNLIFT ME!
+// This is reused from multiple scripts.
+// It rasterizes the likelihood map to an "image"
+draw_likelihood_map :: (Stream LikelihoodMap, AxesBounds, Float) -> Stream (Matrix RGB * Int64);
+fun draw_likelihood_map(heatmaps, axes, grid_scale) {
+  iterate lhoodmap in heatmaps {
+    print_marmot_loc(lhoodmap, axes, grid_scale);
 
     let (mx,u,v) = getmax(lhoodmap);
     pic = colorize_likelihoods(lhoodmap);
@@ -460,16 +459,72 @@ fun dump_likelihood_maps(heatmaps, axes, grid_scale) {
       {}
     }, nodes);
 
-    let (_,stamp) = lhoodmap;
+    let (_,stamp) = lhoodmap;    
+    emit (pic, stamp);
+  }
+}
+
+// Dumps a stream of in-memory images to ppm image files.
+dump_ppms :: Stream (Matrix RGB * Int64) -> Stream String;
+fun dump_ppms(strm) {
+  iterate (pic,stamp) in strm {
+    state { cnt = 0 }
+
     //file = "pic"++1000+cnt++"_"++stamp++".ppm";
     file = "pic_"++stamp++".ppm";
     cnt += 1;
     write_ppm_file(file,pic);
-    emit ("Wrote image to file: " ++ file);
+    log (1,"Wrote image to file: " ++ file);
+    emit ("Wrote image to file: " ++ file); 
   }
-  else iterate lhoodmap in heatmaps {
-    printloc(lhoodmap);    
+}
+
+// This is reused from multiple "query" files.
+fun common_backend(lhoods,axes,grid_scale) {
+  if PPMFILES then 
+    dump_ppms( draw_likelihood_map(lhoods, axes, grid_scale))
+  else iterate lhoodmap in lhoods {
+    print_marmot_loc(lhoodmap,axes,grid_scale);
     emit ("Finished processing cluster of detections (not writing .ppm).")
   }
-
 }
+
+
+// This is lame.. can't call write_ppm_file from Scheme backend right
+// now.  Thus I'm lamely writing the image out as text... then I'll
+// compile a separate WS program (with mlton) to convert them back.
+dump_txt_images :: Stream (Matrix RGB * Int64) -> Stream String;
+fun dump_txt_images(tpics) {
+  iterate (pic,stamp) in tpics {
+    using Matrix;
+    let (wid,hght) = dims(pic);
+    flatflipped = toArray(build(wid,hght, fun(x,y) get(pic,x,hght-y-1)));
+    emit wid++" "++hght++" 0";
+    Array:foreach(fun((r,g,b)) emit r++" "++ g ++" "++b++ "", flatflipped);
+  }
+}
+
+// This is better... dump the ppm format directly.
+gen_ppm :: Stream (Matrix RGB * Int64) -> Stream String;
+fun gen_ppm(tpics) {
+  iterate (pic,stamp) in tpics {
+    using Matrix;
+    let (wid,hght) = dims(pic);
+    flipped = build(wid,hght, fun(x,y) get(pic,x,hght-y-1));
+    emit "# samplenum "++stamp;
+    emit "P6";
+    emit wid++" "++hght;
+    Array:foreach(fun(row) {
+      str = ref("");
+      Array:foreach(fun((r,g,b)) {
+         rc = intToChar(r);
+         gc = intToChar(g);
+         bc = intToChar(b);
+         str := str ++ String:implode([rc,gc,bc]);
+        },
+        row);
+      emit str;
+    }, pic);
+  }
+}
+

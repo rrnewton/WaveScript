@@ -148,11 +148,15 @@ namespace Gapped {
       // ========================================
       // Process the new data:
       Right(dat): {
+
+	//        print("  Got it: "++show(dat)++"\n");
+
         let (ind, seg) = dat;
+
+	//        case seg { Gap(foo): () Seg(foo): () };
 
         if DEBUGSYNC then 
         { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
-
 	// First do a "skew" check to detect when one accumulator has gotten to big. 
 	for i = 0 to Array:length(accs)-1 {
 	  if ENABLEWARNINGS then      
@@ -169,11 +173,19 @@ namespace Gapped {
 	  }
 	};
 
-	/*
+	//println(seg);
+	//inspect(seg);
 
+	//	case seg { Gap(_): () Seg(_): () }
+
+
+	/*
 	case seg {
 	  Gap(_): wserror("syncN - gaps not supported yet")
-	  Seg(seg): {
+	  Seg(seg): 
+            wserror("huh")
+	    /*
+{
 	    // Add to the appropriate accumulator.
 	    // ASSUMES CONTIGUITY:
 	    //accs[ind-1] := joinsegs(accs[ind-1], seg);
@@ -240,13 +252,20 @@ namespace Gapped {
 		requests := requests`tail;
 	      }
 	    }
-	  }
-	}
-*/
+	  }*/
 
-	// 
 
-	
+	}*/
+
+
+
+
+
+
+
+
+
+
       }     
     }    
    }

@@ -970,12 +970,11 @@ the runtime....
 
 Can we do borealis style stream revisions with metaprogramming?
 
-(Other metaprogramming topics:
+Other metaprogramming topics:
  pop/push/pull interface...
  teleporting messages
  pull streams
- marshaling
- )
+ marshaling  
 
 
 [2007.08.13] {ENSbox stuff}
@@ -991,6 +990,8 @@ rbsh -b wlan0
 ./emrun/emrun wavescope.run --daemon
 ./query.ensbox.mlton.exe --sink 192.168.12.151
 
+
+================================================================================
 [2007.08.13] 6:10 pm... slow windspeed, fairly humid... 70F??
 54 ranges... very nice 
 
@@ -1091,4 +1092,15 @@ TICKET NUMBER BEING CREDITED:
 
 Person helping me fix the fare:
   575.00 charged to credit card 
+
+
+================================================================================
+
+[2007.08.28]
+As a simple feature, it would be nice if metaprogram evaluation could
+result in multiple disjoint executables.  Then you could at least
+express a client and server program together and not invoke the
+compiler multiple times.
+.
+What would we name them though ;).  Name them after the sources/sinks?
 

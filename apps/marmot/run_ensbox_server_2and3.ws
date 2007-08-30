@@ -15,7 +15,7 @@ include "ptolemy.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
-nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+nodes = [node1, node2, node3, node4, node5, node6, node7] //, node8]
 
 include "marmot2.ws";
 include "marmot_heatmap.ws";
@@ -107,7 +107,7 @@ ignored = draw_multi_amls(nodes,amls)
 ignored2 = draw_multi_detections(nodes,synced)
 
 final = 
-merge(merge(ignored,ignored2),
+merge(ignored, //merge(ignored,ignored2),
       dump_likelihood_maps(heatmaps, axes, grid_scale))
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:

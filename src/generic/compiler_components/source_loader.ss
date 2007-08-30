@@ -263,8 +263,7 @@
        (let ([path (resolve-lib-path file)])
 	 (if (member path all-includes)
 	     (begin
-	       (warning 'ws-postprocess
-			"Suppressing repeated include of file!: ~s\n" path)
+	       (eprintf "  Suppressing repeated include of file!: ~s\n" path)
 	       (values '() all-includes))
 	     (begin 
 	       ;; This is usually a relative file path!

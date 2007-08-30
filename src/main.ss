@@ -485,6 +485,8 @@
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
 
+;(inspect p)
+
 ;  (DEBUGMODE (do-late-typecheck))
 ;  (do-late-typecheck)
 
@@ -524,7 +526,7 @@
 
   ;; Trying this *before* unlift.  
   ;; The function here is to strip all but the essential type annotations.
-  (ws-run-pass p strip-irrelevant-polymorphism)
+;  (ws-run-pass p strip-irrelevant-polymorphism)
 
   ;; This three-step process is inefficient, but easy:
   ;; This is a hack, but a pretty cool hack.
@@ -532,7 +534,7 @@
   (do-late-typecheck)
 
   (ws-run-pass p unlift-polymorphic-constant)
-  (ws-run-pass p strip-irrelevant-polymorphism)
+;  (ws-run-pass p strip-irrelevant-polymorphism)
 
   ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
   (unless (memq 'merge-iterates disabled-passes)

@@ -3,11 +3,9 @@ include "stdlib.ws";
 include "gnuplot.ws";
 include "types.ws";
 
-LOG_TIMING = 255;
-
 // When we're not live we just print log messages to the stream.
 fun log(l,s) println(s)
-
+fun log_file(l,s) print(s++"\n")
 fun timer_source(_,t) timer(1000.0 / t`intToFloat)
 
 // ================================================================================

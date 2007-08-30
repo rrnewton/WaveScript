@@ -605,7 +605,7 @@
 	    (if (= 0 repeats)
 		stream-empty-token
 		(begin (set! buf whole-stream)
-		       (set! repeats (- repeats 1))
+		       (set! repeats (fx- repeats 1))
 		       (loop)))]
 	   [else
 	    (let ([x (car buf)])
@@ -681,7 +681,7 @@
 	   (let loop ([count count1]
 		      [acc (list (substring buffer1 0 count1))])
 	     ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
-	     (let ([newcount (block-read infile buffer1 (- winsize count))])
+	     (let ([newcount (block-read infile buffer1 (fx- winsize count))])
 	       (if (eof-object? newcount) 
 		   (begin (warning 'read-window 
 			    "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
@@ -733,7 +733,7 @@
 	 ;; to read this out by blocks:
 	 (unless (zero? offset)
 	   ;; Don't read more than we have room for.
-	   (scan (- offset (block-read infile buffer1 (min offset chunksize))))))
+	   (scan (fx- offset (block-read infile buffer1 (min offset chunksize))))))
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
@@ -770,7 +770,7 @@
 	(and (sigseg? w)
 	     (<= (sigseg-start w) (sigseg-end  w))
 	     (s:equal? (vector-length (sigseg-vec w))
-		     (+  (- (sigseg-end w) (sigseg-start  w)) 1))
+		     (s:+  (s:- (sigseg-end w) (sigseg-start  w)) 1))
 	     )))
 
   (define (valid-timebase? tb)
@@ -1053,7 +1053,7 @@
   (define intToChar integer->char)
   (define charToInt char->integer)
   
-  (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
+  (define (roundF f) ((IFCHEZ flround round) f))
 
   ;; [2006.08.23] Lifting ffts over sigsegs: 
   ;; Would be nice to use copy-struct for a functional update.
@@ -1377,12 +1377,12 @@
 	     (DEBUGASSERT (sigseg? w2))
 	     ;(printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
 	     	     
-	     (let ([new (make-vector (add1 (- (max b y) a)))])
+	     (let ([new (make-vector (add1 (s:- (max b y) a)))])
 	       (for (i a (max b y))
-		   (define (first) (vector-ref (sigseg-vec w1) (- i a)))
-		 (define (second) (vector-ref (sigseg-vec w2) (- i x)))
+		 (define (first) (vector-ref (sigseg-vec w1) (s:- i a)))
+		 (define (second) (vector-ref (sigseg-vec w2) (s:- i x)))
 					;		  (printf "i ~a\n" i)
-		 (vector-set! new (- i a)
+		 (vector-set! new (s:- i a)
 			      (cond
 			       ;; Still in the first window:
 			       [(< i x) (first)]
@@ -1420,15 +1420,15 @@
 	 [(< len 0) (error 'subseg "length of subseg cannot be negative!: ~s" len)]
 	 [(= len 0) nullseg]
 	 [(or (< startind (sigseg-start w))
-		(> (+ startind len -1) (sigseg-end w)))
-	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" startind (+ startind len -1) w)]
+		(> (s:+ startind len -1) (sigseg-end w)))
+	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" startind (s:+ startind len -1) w)]
 	 [else 
 	  (let ([vec (make-vector len)])
 	    (for (i 0 (fx- len 1))
 		(vector-set! vec i 
 			     (vector-ref (sigseg-vec w) 
-					 (+ i (- startind (sigseg-start w))))))
-	    (make-sigseg startind (+ startind len -1) vec (sigseg-timebase w)))])))
+					 (fx+ i (s:- startind (sigseg-start w))))))
+	    (make-sigseg startind (s:+ startind len -1) vec (sigseg-timebase w)))])))
 
 
      ;; [2007.01.26] Changing this back to be zero-based.
@@ -1460,12 +1460,12 @@
 
      (define (toArray w) (if (nullseg? w) #() (sigseg-vec w)))
      (define (toSigseg ar st tb)
-       (define en (fx+ st (s:vector-length ar) -1))
+       (define en (s:+ st (s:vector-length ar) -1))
        (DEBUGASSERT (or (eq? ar Array:null) (vector? ar)))
        (DEBUGASSERT integer? st)
        (DEBUGASSERT integer? en)
        (DEBUGASSERT valid-timebase? tb)
-       (if (not (= (vector-length ar) (+ en (- st) 1)))
+       (if (not (= (vector-length ar) (s:+ en (s:- st) 1)))
 	   (error 'toSigseg "vector's size did not match start/end tags: ~s:~s ~s" st en ar))
        (DEBUGASSERT valid-sigseg?
 		    (make-sigseg st en ar tb)))
@@ -1666,30 +1666,51 @@
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
 (define (HACK_O_RAMA filename)
   ;; Must be in milleseconds:
-  ;; Convert from 48khz to milliseconds:
-  (define (sample->time n) (/ n 48))
+  ;; Convert from 48khz to microseconds:
+  (define (sample->time n) (s:* n 1000000. 1/48000))
   (define our-sinks '())
   (define port (open-input-file filename))
+
+  (define firsttime #f)
+  (define nextid)
   (define nexttime)
   (define nextdat)
   (define (read-one!)
+    (define nodeid (read port))
     (define metadat (read port))
     (define payload (read port))
-    (match metadat
-      [((,st ,end) ,_ ,__ ,___) 
-       (ASSERT integer? st) (ASSERT integer? en)
-       (set! nexttime st)
-       (match payload
-	 [(,v1 ,v2 ,v3 ,v4)
-	  (ASSERT (and (vector? v1) (vector? v2) (vector? v3) (vector? v4)))
-	  (set! nextdat 
-		(make-tuple
-		 (make-sigseg nexttime (sub1 end) v1 3)
-		 (make-sigseg nexttime (sub1 end) v2 3)
-		 (make-sigseg nexttime (sub1 end) v3 3)
-		 (make-sigseg nexttime (sub1 end) v4 3)
-		 ))])]))
-  (define src (let ([t start])
+    (if (or (eof-object? nodeid) (eof-object? metadat) (eof-object? payload))
+	(stop-WS-sim! "readFile: hit eof")
+	(begin 
+	  (ASSERT integer? nodeid)
+	  (set! nextid nodeid)
+	  
+	  (match metadat
+	    [((,st ,end) ,_ ,__ ,___)       
+	     (define ms (sample->time st))
+	     (ASSERT integer? st) (ASSERT integer? end)
+	     (unless firsttime (set! firsttime ms))
+	     (set! nexttime (s:- ms firsttime))
+	     (ASSERT (>= nexttime 0))
+	     (match payload
+	       [(,v1 ,v2 ,v3 ,v4)
+		(ASSERT (and (vector? v1) (vector? v2) (vector? v3) (vector? v4)))
+		(ASSERT (vector-andmap int16? v1))
+		(ASSERT (vector-andmap int16? v2))
+		(ASSERT (vector-andmap int16? v3))
+		(ASSERT (vector-andmap int16? v4))
+		(set! nextdat 
+		      (make-tuple
+		       (list nextid
+			     (list
+			      (make-sigseg nexttime (sub1 end) v1 3)
+			      (make-sigseg nexttime (sub1 end) v2 3)
+			      (make-sigseg nexttime (sub1 end) v3 3)
+			      (make-sigseg nexttime (sub1 end) v4 3)
+			      ))))])]))
+	))
+  (define src (begin
+		(read-one!)
 		(lambda (msg)
 		  (s:case msg
 		    ;; Returns the next time we run.
@@ -1697,7 +1718,7 @@
 		    [(pop) 
 		     (fire! nextdat our-sinks)		     
 		     ;; Release one stream element.
-		     (read-one)]))))
+		     (read-one!)]))))
   ;; Register ourselves globally as a leaf node:
   (set! data-sources (cons src data-sources))
   (lambda (sink)

@@ -48,6 +48,7 @@
       time-accum-report
       time-accum-buf
 
+      \\
    )
   
   ;; These provide extra information for Chez:
@@ -57,6 +58,20 @@
   (chezimports )
 
   ;===============================================================================
+
+  ;; This is a lazy shorthand for when writing lambdas in the REPL:
+  (define-syntax \\
+    (lambda (x)
+      (syntax-case x ()
+	  [(_) (syntax (lambda <ignored> (void)))]
+	  [(_ body) (syntax (lambda <ignored> body))]
+	  
+	  [(_ formals body bodies ...)
+	   (if (symbol? (syntax-object->datum (syntax formals)))
+	       (syntax (lambda (formals) body bodies ...))
+	       (syntax (lambda formals body bodies ...)))]
+	  [_ (syntax (lambda args (void)))]
+	  )))
 
   (IFCHEZ
    ;; multiple-value let

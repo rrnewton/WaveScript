@@ -452,9 +452,20 @@
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!
      ;; Need to wrap them!!
+;
+     ;; FIXME:
+     [(list? val)
+      ;; This value is thrown away:
+      ;; TODO, do a proper check to make sure there are no streamops/closures
+      (for-each loop val)
+      `',val]    
 
-;     [(list? val) (map loop val)]
      [else 
+      (ASSERT (not (streamop? val)))
+      (ASSERT (not (closure? val)))
+      (ASSERT (not (ref? val)))
+      (ASSERT (not (suspension? val)))
+
       ;(DEBUGASSERT complex-constant? val)
       `',val]
      )))

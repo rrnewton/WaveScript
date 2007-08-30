@@ -50,7 +50,7 @@
          ;; Syntax:
 	 IFDEBUG 
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
-         REGIMENT_DEBUG HACK regiment-emit-debug
+         REGIMENT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
 	 IFWAVESCOPE ;; Load WS extensions or no?
          ;chezprovide chezimports ;; To make the common module facility work.         
 
@@ -344,6 +344,13 @@
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.
 (define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
+
+;; [2007.08.17] TEMP: TURNING OFF FOR NOW:
+(define-regiment-parameter check-pass-grammars (IFDEBUG #f #f))
+
+;; Output type annotations on all the generated mlton code.
+;; Makes the output more verbose...
+(define-regiment-parameter mlton-ascribe-types #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns
@@ -871,9 +878,9 @@
 
 
 ;; Indicates whether an integer can be represented in a certain number of bits:
-(define (int16? c) (and (< c (expt 2 15)) (> c (- (expt 2 15)))))
-(define (int32? c) (and (< c (expt 2 31)) (> c (- (expt 2 31)))))
-(define (int64? c) (and (< c (expt 2 63)) (> c (- (expt 2 63)))))
+(define (int16? c) (and (< c (expt 2 15)) (>= c (- (expt 2 15)))))
+(define (int32? c) (and (< c (expt 2 31)) (>= c (- (expt 2 31)))))
+(define (int64? c) (and (< c (expt 2 63)) (>= c (- (expt 2 63)))))
 
 
 ; ======================================================================
