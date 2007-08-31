@@ -645,6 +645,14 @@
 		;; This is an inefficent hack, but we loop through again just to change the subst.
 		(Expr `(,lett ,newbinds ,bod) (append lambs subst))))]
 
+	 ;; [2007.08.30] Adding basic eta-reduction also.
+	 ;; FIXME: Make sure this can't break an iterate's special syntactic structure.
+	 #;
+	 [(lambda ,args (app ,[rator] ,args2 ...))
+	  (guard (equal? args args2))
+	  rator]
+
+
 	 ;; "Left left lambda"
 	 ;; Evaluate the rator first so it has the chance to turn into a lambda.
 	 [(app ,[rator] ,[rands] ...)

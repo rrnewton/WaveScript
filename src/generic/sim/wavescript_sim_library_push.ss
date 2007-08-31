@@ -1501,47 +1501,70 @@
 (define (__foreign_source . _)
   (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
 (define (inline_C . _)
-  (error 'inline_C "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
+  (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend."))
+
+
 
 ;; This provides access to C-functions:
 (IFCHEZ
- ;; NOTE: This isn't working on 64-bit justice.
- (define __foreign
-  (let ()
 
-    (define (Convert T)
-      (match T
-	[Int     'fixnum]
-	[Float   'single-float]
-	[Double  'double-float]
-	[Boolean 'boolean]
-	[Char    'char]
-	[String  'string]
-	[(Pointer ,_) 'uptr]
-;	[(ExclusivePointer ,_) 'uptr]
-	[#()     'void]
-	;[(Char) char]
-	[,else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
+ (begin 
 
-    (define (DynamicLink out files)
-      (when (file-exists? out) (delete-file out))
-      (let* ([files (apply string-append (map (curry format " ~s") files))]
-	     [code (s:case (machine-type)
-		     [(i3le ti3le)  		      
-		      ;(printf "EXEC: ~a\n" (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))
-		      (system (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))]
-		     [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o \"~a.so\" ~a" out files))]
-		     [else (error 'foreign "don't know how to compile files ~s on machine type ~s: ~s\n" files (machine-type))]
-		    )])
-	;; This is actually not guaranteed to work by the chez spec:
-	(unless (zero? code)
-	  (error 'foreign "C compiler returned error code ~s." code))
-	;; Returns the name of the output file:
-	;; Should use a dylib extension for mac os X:
-	(string-append out ".so")
-	))
-    
-    (define (LoadFile! file)
+   ;; [2007.08.30] Feature change for the WS foreign interface.  Now
+   ;; the user may assume access to all of libc by default.
+  (define ensure-libc-loaded!
+    (let ([ranyet? #f])
+      (lambda ()
+	(unless ranyet?
+	  (load-shared-object
+	   (case (machine-type)
+	     [(i3osx ppcosx) "libc.dylib"]
+	     [(i3le) "libc.so"]
+	     [else (error 'ensure-libc-loaded! 
+			  "WaveScript foreign interface not supported on platform: ~s"
+			  (machine-type))]
+	     ))
+	  (set! ranyet? #t)))))
+  ;; NOTE: This isn't working on 64-bit justice.
+  (define __foreign
+    (let ()
+
+      ;; First make sure that the C standard library is loaded.
+      (define _ (ensure-libc-loaded!))
+
+      (define (Convert T)
+	(match T
+	  [Int     'fixnum]
+	  [Float   'single-float]
+	  [Double  'double-float]
+	  [Boolean 'boolean]
+	  [Char    'char]
+	  [String  'string]
+	  [(Pointer ,_) 'uptr]
+					;	[(ExclusivePointer ,_) 'uptr]
+	  [#()     'void]
+					;[(Char) char]
+	  [,else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
+
+      (define (DynamicLink out files)
+	(when (file-exists? out) (delete-file out))
+	(let* ([files (apply string-append (map (curry format " ~s") files))]
+	       [code (s:case (machine-type)
+			     [(i3le ti3le)  		      
+					;(printf "EXEC: ~a\n" (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))
+			      (system (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))]
+			     [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o \"~a.so\" ~a" out files))]
+			     [else (error 'foreign "don't know how to compile files ~s on machine type ~s: ~s\n" files (machine-type))]
+			     )])
+	  ;; This is actually not guaranteed to work by the chez spec:
+	  (unless (zero? code)
+	    (error 'foreign "C compiler returned error code ~s." code))
+	  ;; Returns the name of the output file:
+	  ;; Should use a dylib extension for mac os X:
+	  (string-append out ".so")
+	  ))
+      
+      (define (LoadFile! file)
 	(let ([ext (extract-file-extension file)]
 	      [sharedobject file])
 	  (cond
@@ -1583,26 +1606,26 @@
 	    (set-box! already-loaded-object-files (cons sharedobject (unbox already-loaded-object-files)))
 	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
-    (lambda (name files type)
-      (printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
-      (for-each LoadFile! files)
-      ;; After it's loaded there'd better be access:
-      (ASSERT foreign-entry? name)
-      (match type
-	[(,[Convert -> args] ... -> ,ret)
-	 (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
-	   foreignfun
-#;	   
-	   (if (match? ret (ExclusivePointer ,_))
-	       (lambda args
-		 (let ([ret (apply foreignfun args)])
-		   ;; Now we add the pointer we get back to our guardian:
-		   (fprintf (current-error-port) " !!ADDING TO GUARDIAN!! ~s\n" ret)
-		   ((foreign-guardian) (box ret))
-		   ret
-		   ))
-	       foreignfun))
-	 ]))))
+      (lambda (name files type)
+	(printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
+	(for-each LoadFile! files)
+	;; After it's loaded there'd better be access:
+	(ASSERT foreign-entry? name)
+	(match type
+	  [(,[Convert -> args] ... -> ,ret)
+	   (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
+	     foreignfun
+	     #;	   
+	     (if (match? ret (ExclusivePointer ,_))
+		 (lambda args
+		   (let ([ret (apply foreignfun args)])
+		     ;; Now we add the pointer we get back to our guardian:
+		     (fprintf (current-error-port) " !!ADDING TO GUARDIAN!! ~s\n" ret)
+		     ((foreign-guardian) (box ret))
+		     ret
+		     ))
+		 foreignfun))
+	   ])))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
 ;; This tries to match the binary format used in the C backend.
@@ -1644,6 +1667,9 @@
 (define nullPtr 0)
 
 ;; TODO ptrToArray
+(define ptrToArray
+  )
+
 
 ;    (getPtr         (ExclusivePointer) Pointer)
 

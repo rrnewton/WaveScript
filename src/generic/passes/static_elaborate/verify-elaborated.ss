@@ -102,6 +102,9 @@
 	 [(iterate ,letorlamb ,[src])
 	  (fluid-let ([inside-iterate #t])
 	    `(iterate ,(process-expr letorlamb tenv fallthrough) ,src))]
+	 
+	 ;; TODO: disallow lambdas except as arguments to iterate and select higher order prims.
+	 
 
 	 ;; [2007.08.02] Allowing this now:
 #;

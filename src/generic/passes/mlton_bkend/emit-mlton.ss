@@ -593,6 +593,8 @@
 			    (format "(~a~s)" #\~ (* -1 datum))
 			    (format "(~s)" datum))]
 
+     [(char? datum) (list "#" (print-mlton-string (list->string (list datum))))]
+
      [(eq? datum 'nulltimebase) "(nullTimebase())"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
@@ -896,6 +898,10 @@
 	     [#(,[make-mlton-zero-for-type -> t*] ...) 
 	      (apply make-tuple-code t*)]
 
+	     ;; Well this is downright nasty:
+	     ;[(Char) "#\" \""]
+	     [Char "#\"\\000\""]
+
 	     [(Sigseg ,_) "(nullseg())"]
 	     [(Array ,_) "(Array.fromList [])"]
 	     [(List ,_) "[]"]
@@ -982,32 +988,23 @@
 
     ;; This unpacks a foreign array into a WS array:
     [(assert-type (Array ,elt) (ptrToArray ,[myExpr -> ptr] ,[myExpr -> len]))
-
      (let ([getter 
-	    (case elt
-	      [(Int16) "getInt16"]
-	      [(Int)   "getInt32"]
-	      [(Int64) "getInt64"]
-	      [(Float)  "getReal32"]
-	      [(Dobule) "getReal64"]
-	      ;; TODO, complex numbers can be done but are a tad trickier.
-	      [else (error 'ptrToArray "Unsupported element type for wsmlton: ~s" elt)]
-	      )])
-       (list "Array.tabulate ("len", "
-	     "fn i => MLton.Pointer."getter" ("ptr", i))"))
-     #;
-     (let ([getter "getInt32"])
-       (list
-	"let val p = "ptr"\n"
-	"    val len = "len"\n"
-	"    val i = ref 0 \n"
-	"    val arr = "(DispatchOnArrayType 'Array:makeUNSAFE elt)" len\n"
-	" in \n"
-	" (while !i < len do\n"
-	"   (Array.update(arr,!i, MLton.Pointer."getter"(p, !i)); i := !i+1)"
-	" ; arr)\n" 
-	"end\n"
-	))]
+	    (lambda ()
+	      (case elt
+		[(Int16)  "getInt16"]
+		[(Int)    "getInt32"]
+		[(Int64)  "getInt64"]
+		[(Float)  "getReal32"]
+		[(Double) "getReal64"]
+		
+		;; TODO, complex numbers can be done but are a tad trickier.
+		[else (error 'ptrToArray "Unsupported element type for wsmlton: ~s" elt)]
+		))])
+       (let ([fun (if (eq? elt 'Char)
+		      "(fn (ptr, offset) => Char.chr (Word8.toInt (MLton.Pointer.getWord8 (ptr, offset))))"
+		      (list "MLton.Pointer."(getter)))])
+	 (list "Array.tabulate ("len", "
+	       "fn i => "fun" ("ptr", i))")))]
 
     ;val raw_fftR2C = _import "raw_fftR2C" : (Real32.real array * Word64.word array * int) -> unit;
     [(fftR2C ,[myExpr -> arr])
