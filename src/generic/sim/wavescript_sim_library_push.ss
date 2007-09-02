@@ -1529,9 +1529,6 @@
   (define __foreign
     (let ()
 
-      ;; First make sure that the C standard library is loaded.
-      (define _ (ensure-libc-loaded!))
-
       (define (Convert T)
 	(match T
 	  [Int     'fixnum]
@@ -1607,6 +1604,10 @@
 	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
       (lambda (name files type)
+
+	;; First make sure that the C standard library is loaded.
+	(ensure-libc-loaded!)
+
 	(printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
 	(for-each LoadFile! files)
 	;; After it's loaded there'd better be access:
@@ -1667,6 +1668,7 @@
 (define nullPtr 0)
 
 ;; TODO ptrToArray
+#;
 (define ptrToArray
   )
 

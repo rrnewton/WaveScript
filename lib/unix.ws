@@ -53,7 +53,7 @@ malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
 
 
 // Write a stream of strings to disk.  Returns an empty stream
-asciiFileSink :: (String, Stream String)  -> Stream nothing;
+fileSink :: (String, Stream String)  -> Stream nothing;
 fun fileSink (filename, strm) {
   iterate str in strm {  
     state {
@@ -70,17 +70,16 @@ fun fileSink (filename, strm) {
 
 
 
-
 strings = iterate _ in timer(3.0) {
   state { cnt = 0 }
   if cnt < 15 then emit cnt++"\n";
   cnt += 1;  
 }
 
-BASE <- asciiFileSink("stream.out", strings)
+BASE <- fileSink("stream.out", strings)
+
 
 /*
-
 
 BASE <- iterate _ in timer$ 3.0 {
   state {fst=true}
