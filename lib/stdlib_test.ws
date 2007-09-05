@@ -32,7 +32,7 @@ everyother = iterate x in s1 {
   flag := not(flag);
 }
 
-degapped = degap(everyother,gint(0))
+degapped = degap(everyother, gint(0), 1000);
 
 result = iterate sum in union2(degapped,zipped) {
   state { first = true }
