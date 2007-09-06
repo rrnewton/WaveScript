@@ -1,3 +1,10 @@
+
+
+;;;; This implements a straightforward stream datatype -- tail-delayed pairs.
+
+;;;; There are also other implementations of streams in different files.
+
+
 (module streams mzscheme
   (require "../constants.ss"
 	   "helpers.ss"
@@ -14,14 +21,6 @@
    test-streams
    )
   (chezimports)
-
-;;;; This implements a straightforward stream datatype -- tail-delayed pairs.
-
-;;;; Currently 'include'd by helpers.ss
-
-;;;; TODO: Could consider an implementation that mutates into a list
-;;;; as the promises are evaluated.  Good for streams that are
-;;;; processed multiple times.
 
 ;=======================================================================
 ;;; Stream functions.

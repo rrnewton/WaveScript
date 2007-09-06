@@ -7,6 +7,8 @@ exec regiment i --script "$0" ${1+"$@"};
 |#
 
 
+(IFCHEZ (import streams) (void))
+
 
 ;; This runs all the demo files and (for some tests) checks their
 ;; output for correctness.
@@ -21,7 +23,6 @@ exec regiment i --script "$0" ${1+"$@"};
 (system "gcc -c bar.c")
 
 (define (go i x)
-  (IFCHEZ (import streams) (void))
   (match x 
     [(,fn ,oracle)
      (printf "\n\nDemo: ~a \n"  fn)
@@ -33,11 +34,15 @@ exec regiment i --script "$0" ${1+"$@"};
 			 fn)])
        (let ([strm ((if (getenv "WSTESTALLEARLY") wsint-early wsint) absolute)] 
 	     [first #f] [second #f])
-	 (set! first (stream-car strm))
-					;(set! first (strm))
+
+	 (let-values ([(ls _) (stream-take  2 strm)])
+	   (set! first (car ls))
+	   (set! second (cadr ls)))
+
+;	 (set! first (stream-car strm))
 	 (printf "\nFirst element: ~s\n" first)
-	 (set! second (stream-car (stream-cdr strm)))
-					;(set! second (strm))
+
+;	 (set! second (stream-car (stream-cdr strm)))
 	 (printf "Second element: ~s\n" second)
 
 	 ;; Don't use the ORACLES in PLT for now..
@@ -50,15 +55,25 @@ exec regiment i --script "$0" ${1+"$@"};
 (define demo-list
     `(
 
+#;
     ["demo1c_timer.ws"         ,(lambda (a b) 
 				  (ASSERT (equal? a 39))
 				  (ASSERT (equal? b 39)))]
+
+    ;; This one specifically sabatoges the next one.
+
     ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
+    ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
+    ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
+    ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
+
+#;
     ;; Hmm need to test windowed reading too:
     ["demo1e_readFile.ws"  ,(lambda (a b) 
 			      (ASSERT (equal? (tuple-fields a) '(512 1024 1536)))
 			      (ASSERT (equal? (tuple-fields b) '(2 514 1026))))]
     
+#|
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
 				     (IFCHEZ (import wavescript_sim_library_push) (void))
@@ -164,6 +179,8 @@ exec regiment i --script "$0" ${1+"$@"};
 				     ;(ASSERT (= 5634 b))
 				     )]
     ["demo10b_repeated_rewindow.ws"  ,(lambda (a b) (void))]
+
+|#
     
     ))
 

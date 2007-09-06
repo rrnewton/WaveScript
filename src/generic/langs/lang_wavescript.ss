@@ -1,7 +1,7 @@
 ;; [2006.07.22]
 
 ;; This language definition implements WaveScript, with its Sigsegs and all.
-;; Uses the stream-processing prims from helpers.ss
+;; Uses the stream-processing API defined elsewhere.
 
 ;; TODO: Make the core language bindings into a module which is
 ;; imported when eval happens.  This way even petite with a limited
@@ -27,62 +27,9 @@
 ;;; Some TESTS of the reader:	
 ;;; Commenting out because the PLT-reader can't handle the hash syntax:
 ;------------------------------------------------------------
-#|
-;; Takes 35 seconds using stupid approach (read-char).
-(define (read-all)
-  (wavescript-language)
-  (time 
-  (let loop ((s (audio 0 1024 0)))
-    ;(if (= 0 (remainder n 100)) (display #\.))
-;    (display #\.)  
-;    (printf "~a\n" (stream-car s))
-;    (ASSERT (= 1000 (vector-length (stream-car s))))
-    (if (stream-empty? s) 'DONE
-	(loop (stream-cdr s) ;(add1 n)
-	      )))))
-(define (read-n n)
-  (wavescript-language)
-  (time 
-  (let loop ((s (audio 0 1024 0)) (n n))
-    ;(if (= 0 (remainder n 100)) (display #\.))
-;    (display #\.)  
-;    (printf "~a\n" (stream-car s))
-;    (ASSERT (= 1000 (vector-length (stream-car s))))
-    (if (fxzero? n) 'DONE
-	(loop (stream-cdr s) (fx- n 1)
-	      )))))
-;; Takes 3.3 seconds.
-(define (baseline-read-all)
-  (let ((p (default-marmotfile)))
-     (time 
-      (let loop ()
-	(let ((c (#3%read-char p)))
-	  (if (#3%eof-object? c)
-	      'alldone
-	      (loop)))))
-     (close-input-port p)))
-;; Takes 350-430 ms (depending on optimize-level) to load 315mb on faith.
-;; (That must be using some disk caching, eh?)
-;; Note: changing block size:
-;;   10 - 17 sec
-;;   100 - 2 sec
-;;   1024 - 350 ms
-;;   2048 - 260 ms
-;;   16384 - 210-270 ms
-;;   32768 - 180 ms
-;;   65536 - 180-250 ms
-(define (baseline-read-all-block)
-  (define chunk 8000)
-   (let ((p (open-input-file (default-marmotfile)))
-	 (s (make-string chunk #\_)))
-     (time 
-      (let loop ()
-	(let ((n (#3%block-read p s chunk)))
-	  ;(printf "~a " n)
-	  (if (#3%eof-object? n)
-	      'alldone ;(printf "done: ~a\n" s)
-	      (loop)))))
-     (close-input-port p)))|#
+;;; TAKING OUT these tests after rev 2635, you can go back if you want
+;;; to look at them.
+
 ;------------------------------------------------------------
 
 (define-syntax define-inlined
@@ -212,7 +159,7 @@
 
 ;	     (printf "CURRENT DIR ~s\n" (current-directory))
 	     (require "./plt/chez_compat.ss") ;; [2007.07.10]
-	     (require "./generic/util/streams.ss")
+;	     (require "./generic/util/streams.ss")
 	     (require "./generic/sim/wavescript_sim_library_push.ss")
 ;	     (printf "GOT LIBRARY LOADED\n")
 ;	     (printf "Here's binding: ~s\n" __readFile)
@@ -232,6 +179,7 @@
 ;    (eval `(require ,name))
 ;    (eval 'THISWSVAL)
     ))
+
 
 ) ; End IFCHEZ
 

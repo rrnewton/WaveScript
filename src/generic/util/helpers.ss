@@ -32,7 +32,6 @@
 
    "../constants.ss"
    "reg_macros.ss"
-   ;"streams.ss"
    )
 
   ;; ONLY IN PLT:
@@ -158,7 +157,6 @@
  (provide  ;; For chez compatibility:
   (all-from "../../plt/chez_compat.ss")
   (all-from "reg_macros.ss")
-  ;(all-from "streams.ss")
   )
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
@@ -1563,7 +1561,7 @@
 ;;   1) A list of (X Y) pairs
 ;;   2) A list of numbers
 ;;   3) A stream of numbers/(X Y) pairs.
-;; (See stream implementation, this file.)
+;; (See stream implementation, streams.ss.)
 ;; 
 ;; The flags input may contain 'lines, 'points, or 'boxes.
 (define (gnuplot data . flags)
