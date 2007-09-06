@@ -165,7 +165,7 @@
 ;; Thus it is equivalent to insert unit in all such places.
 (define-pass strip-irrelevant-polymorphism
     (define (data-source? e)
-      (let ([expr (peel-annotations e)])f
+      (let ([expr (peel-annotations e)])
 	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
     (define (Type ty)
       (match ty

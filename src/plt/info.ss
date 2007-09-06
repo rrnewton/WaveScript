@@ -22,6 +22,9 @@
 
 ;	  "rn-match.ss"
 
+	  ;; This is dead code:
+;	  "basic_graphics.ss"
+
 	  "aggregation_experiments.ss"
 
 	  "rrn-current-test.ss"

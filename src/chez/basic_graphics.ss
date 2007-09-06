@@ -1,3 +1,7 @@
+;; [2007.09.06]
+;; This code is long dead.  I don't use the token machine backend at
+;; all, much less the network simulator and GUI.
+
 ;; [2004.05.24]
 ;; This implements my simple "basic graphics" interface, which I will
 ;; document somewhere as soon as it's done.  Erg, you'd think this
