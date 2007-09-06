@@ -411,7 +411,6 @@
 
   ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
   (ws-run-pass p resolve-type-aliases)
-
   (ws-run-pass p ws-label-mutable)
 
   ;; This is the initial typecheck. 
@@ -756,10 +755,12 @@
        (define p x)
        (time (begin 
 	       (set! p (early-part p))
-	       ;;       (ws-run-pass p eta-primitives)
+	       (ws-run-pass p eta-primitives)
 	       ;;       (ws-run-pass p desugar-misc)
 
 	       ;; Need to convert readFile to __readFile
+	       ;(ws-run-pass p type-annotate-misc)
+	       (ws-run-pass p strip-src-pos)
 	       (ws-run-pass p reify-certain-types)
 	       (ws-run-pass p strip-annotations)
 	       ))

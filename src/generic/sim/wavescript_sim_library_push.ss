@@ -1688,10 +1688,10 @@
 ;; ====================================================================================================== ;;
 
   ;; Hack for ws.early
-(define (readFile-wsearly fn str type) 
-  (match (parse-readFile-modestring str type fn)
-    [(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
-     (__readFile fn mode repeats rate skipbytes offset winsize types)]))
+(define (readFile-wsearly fn str src type)
+  (match (parse-readFile-modestring str type fn src)
+    [(__readFile ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+     (__readFile fn src mode repeats skipbytes offset winsize types)]))
 
 (define FILE_EXISTS file-exists?)
 (define GETENV getenv)

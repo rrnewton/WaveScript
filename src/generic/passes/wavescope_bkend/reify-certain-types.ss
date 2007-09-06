@@ -3,6 +3,9 @@
 ;; pre-static elaborate input.  Thus it must be versatile enough to be
 ;; called near the front or near the end of the compiler.
 
+;; Note!  This requires stripping out src-pos info, as it breaks some
+;; of the pattern matching below.
+
 (module reify-certain-types mzscheme 
   (require  "../../../plt/common.ss" 
 	    ;"../normalize_query/ws-lift-let.ss"

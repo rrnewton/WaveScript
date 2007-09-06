@@ -15,6 +15,7 @@
 	   lift-polymorphic-constant
 	   unlift-polymorphic-constant
 	   strip-irrelevant-polymorphism
+	   strip-src-pos
 	   ;purify-letrec  ;; Disabled
 	   standardize-iterate
 	   kill-polymorphic-types
@@ -28,6 +29,14 @@
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
+
+;; [2007.09.06] little helper pass used in ws.early:
+(define-pass strip-src-pos
+  [Expr (lambda (e fallthru)
+	  (match e
+	    [(src-pos ,_ ,[e]) e]
+	    [,oth (fallthru oth)]))])
+
 
 ;; [2007.08.02] This kind of thing should not be done in the actual
 ;; code generators if it can be helped.
@@ -156,7 +165,7 @@
 ;; Thus it is equivalent to insert unit in all such places.
 (define-pass strip-irrelevant-polymorphism
     (define (data-source? e)
-      (let ([expr (peel-annotations e)])
+      (let ([expr (peel-annotations e)])f
 	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
     (define (Type ty)
       (match ty
