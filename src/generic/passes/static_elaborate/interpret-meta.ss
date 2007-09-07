@@ -48,6 +48,12 @@
 ;; This is not a pretty aspect of the system, but there are some
 ;; things that we should just "freeze" as code during metaprogram eval.
 ;; In particular, we should not evaluate foreign functions at metaprog time.
+;;
+;; [2007.09.06] Hash tables are another sticky part, we can't expect
+;; the hash for an object to remain the same during compile
+;; vs. runtime.  We might be able to make this work, as long as we
+;; don't give the user direct access to the hash, but or the moment
+;; we're going to just not evaluate hash tables at meta-eval time.
 (reg:define-struct (suspension operator argvals))
 
 (reg:define-struct (ref contents))
@@ -60,7 +66,7 @@
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))
-(define (foreign-closure? cl) (not (closure-formals cl)))
+(define (foreign-closure? cl) (and (closure? cl) (not (closure-formals cl))))
 (define (make-foreign-closure name includes ty)
   (DEBUGASSERT string? name) 
   (DEBUGASSERT (andmap string? includes))
@@ -198,6 +204,10 @@
      (ASSERT (plain? x))
 ;     (inspect x)
      (make-plain (inexact->exact (floor (plain-val x))))]
+
+    ;; HACK: need to finish treating hash tables:
+    [(HashTable:make ,[len]) 
+     (make-suspension 'HashTable:make (list len))]
 
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
@@ -367,20 +377,18 @@
 
    ;; EXPERIMENTAL:
    [(suspension? val) 
-    (ASSERT (foreign-closure? (suspension-operator val)))
-    (match (closure-code (suspension-operator val))
-      [(assert-type ,ty (foreign ',name ',includes))
-       `(foreign-app ',name
-		     ,(Marshal-Foreign-Closure (suspension-operator val))
-		     ,@(map Marshal (ASSERT (suspension-argvals val))))
-       ])
-    
-
-#;
-    (let ([op (unique-name "foreignentry")])
-      `(let ([,op ,(unique-name 'ty) ])
-	 
-	 ))]
+    (cond
+     [(foreign-closure? (suspension-operator val))
+      (match (closure-code (suspension-operator val))
+	[(assert-type ,ty (foreign ',name ',includes))
+	 `(foreign-app ',name
+		       ,(Marshal-Foreign-Closure (suspension-operator val))
+		       ,@(map Marshal (ASSERT (suspension-argvals val))))
+	 ])]
+     [(regiment-primitive? (suspension-operator val))
+      `(,(suspension-operator val) ,@(map Marshal (ASSERT (suspension-argvals val))))]
+     [else (error 'interpret-meta:Marshal "unhandled suspended op: ~s" (suspension-operator val))]
+     )]
 
    [(plain? val) (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
