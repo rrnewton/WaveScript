@@ -414,7 +414,7 @@
   (ws-run-pass p ws-label-mutable)
 
   ;; This is the initial typecheck. 
-  (parameterize ([inferencer-enable-LUB #f]
+  (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])
     (ws-run-pass p retypecheck))
   p)
@@ -435,7 +435,9 @@
       (time-accum (ws-run-pass p retypecheck))))
   ;; There are currently two different typecheck configs that we use.
   ;; One for the meta language, one for the object.
+  ;; The meta language has let-polymorphism, and doesn't bindings to LUB types.
   (define (do-early-typecheck) (do-typecheck #f #t))
+  ;; The object language is the reverse:
   (define (do-late-typecheck)  (do-typecheck #t #f))
 
   ; already-typed is now its own param. --mic
@@ -451,20 +453,33 @@
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
+  ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
+  ;; here breaks something wrt "union2" and sum types... 
+  ;; Perhaps the LUB typing isn't being implemented correctly.
+
+  ;(DEBUGMODE (do-early-typecheck) (void))
+  ;(inspect p)
+  ;(do-early-typecheck)
+
   ;; [2007.07.06] Moving this back where it belongs... after typechecking
   ;; The only reason it was moved earlier was to accomodate using a hash table for type environments
   ;; ... which didn't work anyway.
   (ws-run-pass p rename-vars)
 
-  (DEBUGMODE (do-early-typecheck) (void))
+;  (DEBUGMODE (do-early-typecheck) (void))
+
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
-;  (inspect p)
+;; FIXME Broken here too:
+;  (DEBUGMODE (do-early-typecheck) (void))
+  ;; This doesn't work either:
+;  (do-typecheck #t #t)
 
+;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (time (ws-run-pass p interpret-meta))
 ;  (time (ws-run-pass p static-elaborate))
@@ -508,7 +523,6 @@
   ;; things that don't matter.  We typecheck afterwards to make sure
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
-  ;(ws-run-pass p retypecheck)
 
   (ws-run-pass p verify-elaborated)
 
