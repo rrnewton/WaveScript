@@ -717,28 +717,6 @@
 	     (apply append fld**)
 	     (apply append ty**)))]))
 
-
-    (define (eval-to-stream compiled)
-      (define stripped (strip-types compiled))
-      (define stream 
-	(begin 
-	  ;; If strip-types worked there shouldn't be any VQueue symbols!
-	  (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
-
-	  ;; New Streams:
-	  ;; [2007.02.06] Now we wrap it with a little extra to run the query:
-	  ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
-	  ;; It SHOULD be self contained, even if that means discarding the existing "language-mechanism.ss"
-	  (wavescript-language
-	   (match stripped
-	     [(,lang '(program ,body ,meta* ... ,type))
-	      `(let () ,(make-uniontype-defs (assq 'union-types meta*))
-		    (reset-state!)
-		    (run-stream-query ,body))
-	      ]))
-	  ))
-      stream)
-    
   (define (wsint x . flags)                                             ;; Entrypoint.      
     (wsint-parameterize
      (lambda ()    
@@ -747,7 +725,7 @@
        (define compiled (run-ws-compiler typed disabled-passes #t))
        (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
-       (eval-to-stream compiled))))
+       (run-wavescript-sim compiled))))
   
   (define (wsint-early x . flags)
     (wsint-parameterize
@@ -765,7 +743,7 @@
 	       (ws-run-pass p strip-annotations)
 	       ))
        (printf "Running program EARLY:\n")
-       (eval-to-stream p))))
+       (run-wavescript-sim p))))
 
   (values wsint wsint-early)))
 
@@ -799,10 +777,20 @@
 ;; For debugging
 (define run-wavescript-sim 
   (lambda (p)
+    ;; New Streams:
+
+    ;; [2007.02.06] Now we wrap it with a little extra to run
+    ;; the query.  This is needed as a result of switching over
+    ;; to imperative streams.
+    
+    ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
+    ;; It SHOULD be self contained, even if that means discarding the existing "language-mechanism.ss"
     (wavescript-language
      (match (strip-types p)
        [(,lang '(program ,body ,_ ...))
-	`(begin (reset-state!) 
+	;; If strip-types worked there shouldn't be any VQueue symbols!
+	(DEBUGASSERT (not (deep-assq 'VQueue (list bod _))))
+	`(begin (reset-wssim-state!)
 		(run-stream-query ,body))
 	]))))
 

@@ -52,13 +52,36 @@ malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
 
 
 
+/* // Write a stream of strings to disk.  Returns an empty stream */
+/* fileSink :: (String, String, Stream String)  -> Stream nothing; */
+/* fun fileSink (filename, mode, strm) { */
+/*   iterate str in strm {   */
+/*     state { */
+/*       fp = Unix:fopen(filename, mode) */
+/*     } */
+/*     // This is very inefficient, it should be fixed: */
+/*     arr = List:toArray( String:explode(str)); */
+/*     len = Array:length(arr); */
+/*     cnt = Unix:fwrite_arr(arr, 1, len, fp); */
+/*     if cnt != len  */
+/*     then wserror("fileSink: fwrite failed to write data") */
+/*   } */
+/* } */
+
+
+
 // Write a stream of strings to disk.  Returns an empty stream
-fileSink :: (String, Stream String)  -> Stream nothing;
-fun fileSink (filename, strm) {
+fileSink :: (String, String, Stream String)  -> Stream nothing;
+fun fileSink (filename, mode, strm) {
   iterate str in strm {  
-    state {
-      fp = Unix:fopen(filename, "w")
+    state { 
+      fst = true;
+      fp = ptrMakeNull();
     }
+    if fst then {
+      fp := Unix:fopen(filename, mode);
+      fst = false;
+    };
     // This is very inefficient, it should be fixed:
     arr = List:toArray( String:explode(str));
     len = Array:length(arr);
@@ -76,7 +99,7 @@ strings = iterate _ in timer(3.0) {
   cnt += 1;  
 }
 
-BASE <- fileSink("stream.out", strings)
+BASE <- fileSink("stream.out", "w", strings)
 
 
 /*

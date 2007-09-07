@@ -1709,7 +1709,6 @@ int main(int argc, char ** argv)
 		   head tail map append fold
 		   List:head List:tail 
 
-		   ptrToArray
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? HashTable:make prim_window 
@@ -1720,6 +1719,10 @@ int main(int argc, char ** argv)
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll
+		   List:toArray ptrToArray ptrIsNull ptrMakeNull
+		   gnuplot_array gnuplot_array2d
+		   String:length String:explode String:implode
+		   intToChar charToInt Secret:newTimebase
 
 		   List:assoc List:assoc_update
 		   HashTable:rem HashTable:set ;; pure versions

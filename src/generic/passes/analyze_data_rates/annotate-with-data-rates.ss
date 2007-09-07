@@ -35,7 +35,7 @@
                     [(,lang '(program ,body ,meta* ... ,type))
                      `(let ((edge-counts-table (make-hash-table)))
                         ,(make-uniontype-defs (assq 'union-types meta*))
-                        (reset-state!)
+                        (reset-wssim-state!)
                         (cons
                          (run-stream-query ,body)
                          edge-counts-table))])))

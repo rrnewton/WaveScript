@@ -2627,6 +2627,39 @@
  ,(make-list 10 '((3 4) 9))]
 
 
+["Run multiple WS queries in a row and see if it screws up the global state."
+
+ (list
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer '3.0) (Stream #()))))))
+   )
+ ((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0())) ]
+
+
+
+["Run multiple WS queries in a row and see if it screws up the global state."
+ ,(let ([prog 
+	 `(first-value (stream-take 2 (wsint-early
+          '(lang '(program (assert-type (Stream Int16) 
+            (readFile ',(string-append (getenv "REGIMENTD") "/demos/wavescope/countup.txt") 
+		      '"mode: text" (timer '1000.0))) (Stream Int16))))))])
+    `(begin   ,prog ,prog ,prog))
+ unspecified]
+
+
+
+
+
+
+
+
+
+
+
+
+
 #;
 ["Demos: "
  (load-regiment (++ (REGIMENTD) "/src/demos/regiment/"))

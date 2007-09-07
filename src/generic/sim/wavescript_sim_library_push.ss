@@ -22,7 +22,7 @@
 		 
 		 wscase construct-data make-uniontype uniontype-tag uniontype-val 
 
-		 run-stream-query reset-state!
+		 run-stream-query reset-wssim-state! print-wssim-state
 
 		 __readFile 
 		 __foreign __foreign_source inline_C
@@ -215,7 +215,7 @@
 
   ;; ================================================================================    
 
-  ;; Global queue of input events in virtual time.
+  ;; Global queue of input events in virtual time.  
   ;; Currently pairs of (time . source)
   (define event-queue   'wslp-uninit1)    
   (define current-vtime 'wslp-uninit2)
@@ -227,6 +227,7 @@
   ;; readFile's are now in the interior of the stream graph rather
   ;; than being sources.  So currently we just shut the whole thing
   ;; down when any readFile runs out of data.
+  ;; Mutable state, this needs to be handled very carefully!!!
   (define still-running? #t) ;; Has the query shut down yet?
   (define (stop-WS-sim! msg) 
     (eprintf "\nStopping WS Sim: ~s\n" msg)
@@ -234,12 +235,18 @@
     (set! still-running? #f))
 
   ;; Reset the global state.
-  (define (reset-state!)
+  (define (reset-wssim-state!)
+    ;(print-wssim-state)
+    ;(printf "RESETTING GLOBAL SIM STATE!\n")
     (set! event-queue '())
     (set! current-vtime 0)
     (set! data-sources '())
     (set! output-queue '())
-    )
+    (set! still-running? #t))
+
+  (define (print-wssim-state)
+    (printf "  Event-queue: ~s\n  Vtime: ~s\n  data-sources: ~s\n  output-queue: ~s\n"
+	    event-queue current-vtime data-sources output-queue))
 
   (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
   
@@ -279,6 +286,9 @@
     (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
     (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
   
+  ;; This takes a push-based stream and wraps it in an engine to make
+  ;; a kind-of pull based stream (a la streams.ss).
+  ;;
   ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
 

@@ -201,6 +201,7 @@
 	;; Since the program is flattened we can grab this at the let-binding...
 	(match (recover-type `(tuple . ,arg*) tenv)
 	  [#(,argtypes ...)
+	   (printf "ERK argtypes ~s and tupdefs ~s\n" argtypes tupdefs)
 	   `(make-struct ,(last (ASSERT (assoc argtypes tupdefs))) ,@arg*)])]
        ;; tuprefs are simple:
        [(tupref ,i ,len ,[x])
@@ -300,7 +301,37 @@
     `(
       ["remove all those tuprefs"
        (deep-assq 'tupref
-		  (nominalize-types '(type-print/show-language
+	  (nominalize-types
+
+ '(type-print/show-language
+    '(program
+      (let ([s0_0 (Stream #0()) (timer '3.0)])
+       (let ([s1_1 (Stream (Sigseg Int))
+              (readFile '"./countup.raw" '"" s0_0)])
+        (let ([s2_2 (Stream #(Int Int64))
+               (iterate
+                (lambda (w_3 VIRTQUEUE_4)
+                 ((Sigseg Int) (VQueue #(Int Int64)))
+                 (begin
+                  (emit VIRTQUEUE_4 (tuple (width w_3) (start w_3)))
+                  VIRTQUEUE_4))
+                s1_1)])
+         (let ([s3_5 (Stream #3(Int64 Int Float))
+                (iterate
+                 (lambda (pattmp_6 VIRTQUEUE_9)
+                  (#(Int Int64) (VQueue #3(Int64 Int Float)))
+                  (let ([x_7 Int (tupref 0 2 pattmp_6)])
+                   (let ([y_8 Int64 (tupref 1 2 pattmp_6)])
+                    (begin
+                     (emit VIRTQUEUE_9 (tuple y_8 x_7 '3.0))
+                     VIRTQUEUE_9))))
+                 s2_2)])
+          s3_5))))
+      (Stream #3(Int Int Float))))
+
+#;
+
+ '(type-print/show-language
 			   '(program
 				(let ([s0_0 (Stream #()) (timer '3.0)])
 				(let ([s1_1 (Stream (Sigseg Int))
