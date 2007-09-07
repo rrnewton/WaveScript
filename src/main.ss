@@ -774,7 +774,8 @@
     (parameterize ([print-vector-length #t])
       (browse-stream strm))]))
 
-;; For debugging
+;; This functionality should probably be included in the wavescript language itself.
+;; But due to limitations in the language-mechanism that I've been usng, that doesn't work presently.
 (define run-wavescript-sim 
   (lambda (p)
     ;; New Streams:
@@ -789,7 +790,7 @@
      (match (strip-types p)
        [(,lang '(program ,body ,_ ...))
 	;; If strip-types worked there shouldn't be any VQueue symbols!
-	(DEBUGASSERT (not (deep-assq 'VQueue (list bod _))))
+	(DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
 	`(begin (reset-wssim-state!)
 		(run-stream-query ,body))
 	]))))
