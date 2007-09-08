@@ -265,8 +265,8 @@
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
 
-;; To completely DISABLE my new prototype matcher, do this:
-(alias rn-match-bak rn-match) (alias rn-match iu-match)
+;; To completely DISABLE my new prototype matcher, uncomment this:
+;(alias rn-match-bak rn-match) (alias rn-match iu-match)
 ;;
 ;; [2007.04.19] Currently, just having rn-match in the type-checker
 ;; plus the static elaborator bloats the code size a noticable amount.
