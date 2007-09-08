@@ -1428,6 +1428,8 @@ uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;
 uniontype Union4 a b c d   = Oneof4 a | Twoof4 b | Threeof4 c | Fourof4 d;
 uniontype Union5 a b c d e = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Fiveof5 e;
 
+//uniontype Union5 (a,b,c,d,e) = Oneof5 a | Twoof5 b | Threeof5 c | Fourof5 d | Fiveof5 e;
+
 
 fun union2(s1,s2) 
   merge(stream_map(Left,s1),

@@ -619,9 +619,14 @@
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
-    (DEBUGASSERT (set-equal? newfv (difference (core-free-vars newcode) (closure-formals cl))))
-    (values newcode newfv newslice)    
-    ))
+    (unless (set-equal? newfv
+			     (list->set (difference (core-free-vars newcode) (closure-formals cl))))
+      (inspect newfv)
+      (inspect (list->set (difference (core-free-vars newcode) (closure-formals cl))))
+      )
+    (DEBUGASSERT (set-equal? newfv
+			     (list->set (difference (core-free-vars newcode) (closure-formals cl)))))
+    (values newcode newfv newslice)))
 
 
 ; ================================================================================ ;

@@ -555,6 +555,12 @@
 
     ;; Currently, because of letrec semantics, an explicit operator
     ;; must be used to create a feedback loop.
+
+    ;; It takes an input stream, and a stream transformer (ST).  The
+    ;; input stream is fed into the ST, and the output of the ST is
+    ;; sent downstream AND fed back to itself.
+    ;;
+    ;; Uniontypes need to be used or this will result in an infinite loop.
     (feedbackloop     ((Stream 't) ((Stream 't) -> (Stream 't)))  (Stream 't))
 
 

@@ -309,7 +309,13 @@
 	  [(STRING) $1]
 
           ;; A type constructor, make it right-associative.
+;          [(VAR type) (prec APP) (list $1 $2)]
+;          [(VAR VAR) (prec APP) (list $1 $2)]
+;          [(VAR LeftParen typeargs RightParen) (prec APP) (cons $1 $3)]
+;          [(LeftParen VAR type type* RightParen) (prec APP) (list* $2 $3 $4)]
+
           [(VAR type) (prec APP) (list $1 $2)]
+          [(VAR LeftParen type COMMA typeargs RightParen) (prec APP) (list* $1 $3 $5)]
 
 	  [(typevar) $1]
 
@@ -356,6 +362,7 @@
            [(typedef VAR = type SEMI maybedecls)         `((typedef ,$2 () ,$4) ,@$6)]
            [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
 	   ;; This takes multiple type arguments within parentheses!!
+	   ;; ACK inconsistent with uniontypes!!!
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
 
 	   ;; TAGGED UNION:
