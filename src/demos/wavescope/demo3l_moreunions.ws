@@ -27,7 +27,9 @@ fun union3(s1,s2,s3)
 
 s1 = union3(CONST(1),CONST(2.0),CONST(3.0+0.0i));
 
-s2 = union2(s1,s1);
+s1b = union3(CONST(1.0),CONST("yay"),CONST(99));
+
+s2 = union2(s1,s1b);
 
 BASE <- iterate sum in s2 {
      

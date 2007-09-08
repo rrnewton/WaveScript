@@ -228,3 +228,17 @@ Can't remember why I didn't originally.
 
 Run AML on the nodes.
 Make cluster algorithm use detection time.
+
+[2007.09.07]
+
+Came across serious incompleteness in treatment of Sum types.  After
+metaprogram evaluation we need to switch to having explicit sums (not
+named sum-types), or we need to split the datatype decls
+appropriately, because they *may not be used polymorphically* after
+that point.  This new pass could be similar to nominalize-types...
+.
+Right now, if you try to instantiate the same data
+constructor with different types in different parts of the program, it
+will break!
+
+

@@ -524,7 +524,10 @@
 
     ;(innernotlist [(notlist) $1])    
 
-    (matchcases [() '()] [(pattern COLON exp matchcases) (cons (list $1 $3) $4)])
+    (matchcases [() '()] 
+		[(pattern COLON exp matchcases) (cons (list $1 $3) $4)]
+		[(pattern COLON exp BAR matchcases) (cons (list $1 $3) $5)]
+		)
 ;    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
 
     (notlist

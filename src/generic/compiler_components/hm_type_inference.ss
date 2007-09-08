@@ -562,7 +562,10 @@
 ;       (DEBUGASSERT (curry andmap type?) rhsty*)
        (values `(wscase ,val ,@(map list TC* rhs*))
 	       (let ([inst* (map (lambda (tc rhsty) 				   
-				   (type-app rhsty (sum-instance tenv valty tc) exp tenv nongeneric))
+				   (if (eq? tc default-case-symbol)
+				       rhsty ;; Not an app...
+				       (type-app rhsty (sum-instance tenv valty tc) exp tenv nongeneric)
+				       ))
 			      TC* rhsty*)])
 ;		 (DEBUGASSERT (curry andmap type?) inst*)
 		 ;; Make sure all those return types are consistent:
@@ -1055,17 +1058,21 @@
 ;; This takes a (Sum t) type and instantiates it for a particular variant.
 ;; .returns  The types of the data-constructor's fields.
 (define (sum-instance tenv sumty variant-name)
-  (let ([arrowty (instantiate-type (tenv-lookup tenv variant-name))])
-    (match arrowty
-      [(,arg* ... -> ,ret) 
-       (let ([cells (map (lambda (_) (make-tcell)) arg*)])
-;	 (inspect arrowty)
-;	 (inspect `(,@cells -> ,(instantiate-type sumty)))
-	 (types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
-	 ;(map export-type cells)
-	 cells ;; Return instantiated type.
-	 ;(map instantiate-type (map export-type cells))
-	 )])))
+  (ASSERT (not (eq? variant-name default-case-symbol)))
+  (let ([type (tenv-lookup tenv variant-name)])
+    (unless type
+      (error 'sum-instance "This variant \"~s\" is not a member of the sum type." variant-name))
+    (let ([arrowty (instantiate-type type)])
+      (match arrowty
+	[(,arg* ... -> ,ret) 
+	 (let ([cells (map (lambda (_) (make-tcell)) arg*)])
+					;	 (inspect arrowty)
+					;	 (inspect `(,@cells -> ,(instantiate-type sumty)))
+	   (types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
+					;(map export-type cells)
+	   cells ;; Return instantiated type.
+					;(map instantiate-type (map export-type cells))
+	   )]))))
       
 ; ======================================================================
 

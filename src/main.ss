@@ -488,7 +488,7 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
 ;  (inspect (let-spine 4 p))
-;  (inspect p)
+  (inspect p)
 #;
   (begin 
     (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)

@@ -39,7 +39,12 @@ uniontype SwapperEvent a b =
   OutA        b  |
   OutB        b  ;
   
-
+uniontype SwapBlockMsg a st =
+  SB_data      a  |
+  SB_quiesce  ()  |
+  SB_ack      ()  |
+  SB_activate st  ;
+ 
 
 // ================================================================================
 
@@ -55,8 +60,8 @@ uniontype SwapperEvent a b =
 // The merged components create a stream transformer that accepts a
 // "Switch!" message, and produces an ACK indicating that the switch
 // has completed.
-build_toggle :: (Swapable(a,b,st), Swapable(a,b,st)) 
-   -> ST (Union2(a,()), Union2(b,ACK));
+//build_toggle :: (Swapable(a,b,st), Swapable(a,b,st)) 
+//   -> ST (Union2(a,()), Union2(b,ACK));
 
 
 fun build_toggle(abox, bbox) 
@@ -64,10 +69,10 @@ fun build_toggle(abox, bbox)
   empty = iterate _ in timer(3.0) {};
 
   //  instream :: Stream SwapperEvent (a);
-  instream = smap(OrigInput,strm);
-
   // Input strm is Left for data and Right for SWITCH! command.
   // This is confusing because we wrap that in another union:
+  instream = smap(OrigInput,strm);
+
   loopout = feedbackloop(instream,
    fun(loopback) {
      iterate x in loopback {
@@ -98,17 +103,13 @@ fun build_toggle(abox, bbox)
      }
   });
 
-
-  fun filtA(s) iterate x in s { case x { OutA(a): emit a } };
-  fun filtB(s) iterate x in s { case x { OutB(b): emit b } };
+  fun filtA(s) iterate x in s { case x { OutA(a): emit a | _: () } };
+  fun filtB(s) iterate x in s { case x { OutB(b): emit b | _: () } };
 
   s1 = smap(Oneof3, abox(filtA(loopout)));
   s2 = smap(Oneof3, bbox(filtB(loopout))); 
 
-  merged = merge(s1,s2);
-
-  empty
-
+  merge(s1,s2);
 
   /*
   result = iterate sum in strm {
@@ -124,4 +125,30 @@ fun build_toggle(abox, bbox)
   */
  }
 
-
+block1 = fun(ind) fun(strm) {
+  iterate x in strm {
+    state { cnt=0 }
+    case x {
+      Oneof3  (dat): // data to process
+      {
+	println("Block "++ind++" processing dat with state="++cnt);
+	// Doesn't work, something's broken!!!!!!
+	//emit Oneof3(intToFloat(dat))
+	//emit Oneof3(intToFloat(100 + dat))
+	emit Oneof3(1000 + dat);
+      }
+      Twoof3  (_): // a Quiesce message, go to sleep.
+      {
+        tmp = cnt;
+	cnt := 0;
+        emit Twoof3(tmp);
+      }
+      Threeof3(st): // a startup message with a payload
+      {
+        println("Block "++ind++" starting up!!");
+        cnt := st;
+	emit Threeof3(()); // An ACK
+      }
+    }
+  }
+}
