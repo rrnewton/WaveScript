@@ -1504,7 +1504,10 @@
       ))
 
 ;; Should take either an instantiated or non-instantiated type.
-(define (dealias-type aliases t)
+;; This takes the union types just so it can distinguish whether a type constructor is valid.
+(define (dealias-type aliases union-types t)
+  (define user-datatypes (map caar (cdr union-types)))
+  (let loop ([t t])
   (match t
       ;; A type alias with no type arguments:
       [,s (guard (symbol? s))                   
@@ -1516,12 +1519,12 @@
 		  (unless (null? (cadr entry))
                     (error 'dealias-type "this alias should have had arguments: ~s" s))
 		  ;; Recursively dealias:
-		  (dealias-type aliases (caddr entry)))
+		  (loop (caddr entry)))
 		s))]
       [',n                                     `(quote ,n)]
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
       [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
-      [(NUM (,v . ,t))                          (if t (dealias-type aliases t) `(NUM ,v))]
+      [(NUM (,v . ,t))                          (if t (loop t) `(NUM ,v))]
       [#(,[t*] ...)                            (apply vector t*)]
       [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
 
@@ -1533,7 +1536,12 @@
 			(assq s regiment-type-aliases))])
 ;	 (import iu-match) ;; Having problems!
 	 (match entry
-	   [#f `(,s ,@t*)]
+	   [#f 
+	    (unless (or (memq s built-in-type-constructors)
+			(memq s user-datatypes))
+	      (error'dealias-type "This type constructor is not in the alias table, nor is it builtin: ~s\n  Aliases: ~s" 
+		    s (map car aliases)))
+	    `(,s ,@t*)]
 	   [(,v ,rhs) (error 'resolve-type-aliases 
 			     "alias ~s should not be instantiated with arguments!: ~s" 
 			     s (cons s t*))]
@@ -1549,10 +1557,9 @@
 			cells t*)
 		      (export-type rhs)])])
 	      ;; Finally, recursively dealias in case there are more aliases left.
-	      (dealias-type aliases result)
+	      (loop result)
 	      )]))]
-      [,other (error 'resolve-type-aliases "bad type: ~s" other)])
-    )
+      [,other (error 'resolve-type-aliases "bad type: ~s" other)])))
 
 (define realias-type
   (let ()

@@ -305,8 +305,9 @@
 ;; [2007.03.14]
 ;; This desugars all types within the program by applying all type aliases.
 (define-pass resolve-type-aliases
-    (define aliases '())
-    (define Type (lambda (t) (export-type (dealias-type aliases (instantiate-type t)))))
+    (define aliases '())    ;; Mutated below:
+    (define union-types #f) ;; Mutated below:
+    (define Type (lambda (t) (export-type (dealias-type aliases union-types (instantiate-type t)))))
     ;(define Type (lambda (t) (dealias-type aliases t)))
     [Bindings (lambda (v* t* e* reconst Expr)
 		(reconst v* (map Type t*) (map Expr e*)))]
@@ -317,7 +318,8 @@
 	       (match prog
 		 [(,inputlang '(program ,bod ,meta* ... ,type))
 		  (fluid-let ([aliases (cdr (or (assq 'type-aliases meta*) 
-						'(type-aliases)))])
+						'(type-aliases)))]
+			      [union-types (ASSERT (assq 'union-types meta*))])
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) 
 			        ;,@(remq (assq 'type-aliases meta*) meta*)

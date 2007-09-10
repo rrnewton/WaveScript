@@ -43,6 +43,7 @@
 	   wavescript-effectful-primitives
 	   wavescript-stream-primitives
 
+	   built-in-type-constructors
 	   generic-arith-primitives
 	   token-machine-primitives
 
@@ -76,6 +77,9 @@
 
 ;;; Type signatures for primitives that are singled out in some way.
 
+;; Anything not in this list is either a user-defined type constructor, or invalid.
+(define built-in-type-constructors 
+  '(List Array Sigseg Stream HashTable))
 
 ;; Hierarchy:
 ;; Int8
