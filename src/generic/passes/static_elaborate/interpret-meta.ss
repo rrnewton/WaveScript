@@ -586,6 +586,8 @@
 	   ;; Free variables bound to closures need to be turned back into code and inlined.
 	   [(closure? val)  
 	    ;; First, a freshness consideration:
+	    ;; FIXME: We could be better here about catching duplicated bindings.
+	    ;; (Instead, by renaming we will give them distinct bindings.)
 	    (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
 	      (DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
 	      (loop code 		 
@@ -613,15 +615,18 @@
 ;; Renames the free vars for a closure.
 (define (dissect-and-rename cl)
   (DEBUGASSERT (not (foreign-closure? cl)))
-  (let* ([fv    (closure-free-vars cl)]
+  (let* ([fv    (list->set (closure-free-vars cl))]
 	 [newfv (map unique-name fv)]
 	 [newcode (core-substitute fv newfv (closure-code cl))]
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
+#;
     (unless (set-equal? newfv
 			     (list->set (difference (core-free-vars newcode) (closure-formals cl))))
       (inspect newfv)
+      (inspect (core-free-vars newcode))
+      (inspect (closure-formals cl))
       (inspect (list->set (difference (core-free-vars newcode) (closure-formals cl))))
       )
     (DEBUGASSERT (set-equal? newfv
