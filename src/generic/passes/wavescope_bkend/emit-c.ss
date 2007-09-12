@@ -198,6 +198,10 @@
 ;;             Default is 'static.
 ;; .returns text of a .cpp query file (if in static linkage mode)
 ;;;.returns OR vector containing text of .cpp file + .wsq query descriptor (dynamic linkage)
+;;
+;; FIXME: MIC: changed to ignore timer sources; WSDataFileSource classes are not written to support these,
+;;        and would likely only be slowed down
+;;
 (define wsquery->text
   (lambda (prog . mode)
 
@@ -443,7 +447,8 @@
 		 (list
 		  (block (list "class " classname " : public WSSource")
 		 (list "public:\n"
-	       (block (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
+	       (block #;(list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
+                      (list classname "(wsstring_t path, WSSource *ignored_source, wsstring_t mode)")
 		 `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
 		   "binarymode = (mode == string(\"binary\"));\n"
 		   "if (_f == NULL) {\n"
@@ -601,12 +606,20 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
+        #;
 	[(timer ,[Simple -> period])
 	 (values 
 	  `(" WSSource* ",name" = new WSBuiltins::Timer(",period");\n"  )
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
+
+        ;; FIXME: for now, assume this will be used only by readFile, and ignored
+        [(timer ,[Simple -> period])
+         (values
+          `(" WSSource * ",name" = NULL;\n")
+          '()
+          '())]
 
 	[(assert-type ,t ,[q1 q2 q3]) (values q1 q2 q3)]
 	
