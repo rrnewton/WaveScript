@@ -1,3 +1,9 @@
+Key:
+
+ *) Todo item
+ X) Finished item
+ -) Out of date / expired item.
+ ~~) Partially complete
 
  <IN_PROGRESS>:
 ================================================================================
@@ -14,6 +20,9 @@ TOOPTIMIZE:
 
 
 ================================================================================
+
+[2007.09.14] {Ideas that haven't been written up}
+Here are some things we've worked on in this project
 
 [2007.07.28]
  *) When not in debug mode, DEBUASSERT should not evaluate the val
@@ -120,7 +129,7 @@ These are the order that optimizations need to be implemented:
 
 [2007.01.27]
 
- *) Build .boot file.
+ X) Build .boot file.
  *) Finish implementing equality
  *) Make printed representations consistent between WS and WSC. 
  X) Push generic arith system to the front end.
@@ -166,7 +175,7 @@ supposed to return an intermediate record.
 
 [2006.08.29]
 
- *) How much work would it be to track source locations?
+ x) How much work would it be to track source locations?
   [2006.12.03]
   So what I would like to do is add a general association list of "info" to each term.
   This is analogous to the to a parameterized "expr 'a" type in ML.
@@ -175,30 +184,29 @@ supposed to return an intermediate record.
 
 [2006.08.02]
 
- *) Encapsulate thread related things into a threads.ss
+ x) Encapsulate thread related things into a threads.ss
  *) Is there any way to get "languages" working in PLT?
  X) Finish porting modules to common module format.
 
-
 [2006.05.02]
 
- *) Unit tests for deglobalize2
+ -) Unit tests for deglobalize2
 
 
 [2006.04.03]
 
-  *) Add type checking to TMs.
+  -) Add type checking to TMs.
   X) Add type checking between all passes of the compiler.
   X) Add more custom grammar checks.
   X) (Maybe fix the system for grammar check errors, it's fundamentally
      broken and a hack.)
   X) Rework type system.
   X) Add and use generic traverse for Regiment as well as TML.
-  *) Lift out certain Regiment utilities from individual passes into common files.
+  x) Lift out certain Regiment utilities from individual passes into common files.
 
 
 ================================================================================
-FINISHED:
+COMPLETELY FINISHED:
 
 <Done> [2005.10.19] Make the chez version use records.  Better safety that way.
 Can't remember why I didn't originally.

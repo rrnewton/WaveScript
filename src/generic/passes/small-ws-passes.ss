@@ -319,7 +319,7 @@
 		 [(,inputlang '(program ,bod ,meta* ... ,type))
 		  (fluid-let ([aliases (cdr (or (assq 'type-aliases meta*) 
 						'(type-aliases)))]
-			      [union-types (ASSERT (assq 'union-types meta*))])
+			      [union-types (or (assq 'union-types meta*) '(union-types))])
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) 
 			        ;,@(remq (assq 'type-aliases meta*) meta*)

@@ -12,6 +12,8 @@
      par-list  ;; Evaluate a list of thunks
      par-map   ;; Apply function to list in parallel
 
+     par-status ;; Optional utility to show status of par threads.
+
      ;async-par ;; A version of 'par' that returns immediately.
      ;sync      ;; The corresponding call to wait for an async-par to finish.
      ;WAITING
@@ -19,7 +21,6 @@
      )
   
   (import chez_constants)
-
 
 
 ;=============================================================================
@@ -79,15 +80,21 @@
 
 ;; Inefficient version, forks threads on demand:
 ;; ACK: segfaults under stress:
+;; [2007.09.14] After about 500 forks...
+;; Well, probably it doesn't clean up these threads?
 #;
 (begin 
   (define (init-par num-cpus) (void))
   (define (shutdown-par) (void))
+  (define numforked 0)
+  (define (par-status) (printf "Total threads forked: ~s\n" numforked))
+  (define tickets 'dummy)
 
   (define (par-list . thunks)
     ;; Could be made slightly more efficient by not using generic queues.
     (define q* (map (lambda (th) 
 		      (let ([q (make-bq 1)])
+			(set! numforked (add1 numforked))
 			(fork-thread (lambda () (enqueue! q (th))))
 			q))
 		 thunks))
@@ -95,21 +102,7 @@
     (map dequeue! q*)))
 
 
-#;
-(let ()
-  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  (define (l2 x) (unless (zero? x) (l2 (sub1 x))))
-  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-  (time (par (l1 10000000) (l2 10000000)))
-  (time (list (l1 10000000) (l2 10000000)))
-  )
-
-#;
-(let ()
-  (define (tree n)
-    (if (zero? n) 1
-	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
-  (tree 10))
+;; ================================================================================
 
 ;; Better, maintains worker threads and a job queue.
 ;; [2007.04.04] Occasionally deadlocks currently.
@@ -118,25 +111,30 @@
 ;;
 ;; Tweaking design: if no tickets are available, we just do it ourselves.
 (begin
+  
+  ;; STATE:
   ;; We need to put a request for work in a job queue, but get a ticket
   ;; back that we can use to both (1) wait on the computation's
   ;; completion (2) retrieve the value produced by the computation.
   (define not-finished #t)
   (define tickets '()) ;; Tickets for work.
   (define mut (make-mutex)) ;; Global: guards tickets and printing.
+  (define threads ())
   
-  ;; DEBUG:
-  ;(define WAITING '())
+  ;; DEBUGGING:
+  ; (define WAITING '())
+  ;;  Pick a print:
+  ;   (define (print . args) (with-mutex mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (apply printf args))
+     (define (print . args) (void)) ;; fizzle
 
   (define not-computed (gensym "not-computed"))
-  
-  ;(define (print . args) (with-mutex mut (apply printf args) (flush-output-port)))
-  ;(define (print . args) (apply printf args))
-  (define (print . args) (void))
+
   (define-record job (work)
     ([mutex (make-mutex)]  ;; TODO: This doesn't really need its own mutex.
      [ready (make-condition)]
      [val  not-computed]))
+
   (define (get-job-result j)
     ;; DEBUG!!! BRINGING THIS MUTEX OUT HERE:
     (with-mutex (job-mutex j)
@@ -175,10 +173,15 @@
 		  (condition-signal (job-ready j)))
 		(go)))))
 	(fork-thread go))))
+
   (define (init-par num-cpus) 
     (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
-      (make-worker)))
+      (set! threads (cons (make-worker) threads))))
   (define (shutdown-par) (set! not-finished #f))
+  (define (par-status) 
+    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n"
+	    not-finished mut  tickets threads))
+
   (define (par-list . thunks)
     (let ([jobs (map (lambda (th) 		      
 		       (print " SRC: Taking a ticket...\n") 
@@ -204,6 +207,55 @@
 
 
 
+;; ================================================================================
+;;; Little tests:
+
+#;
+(let ()
+  ;; Decrement a counter in two threads vs. one.
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  (define (l2 x) (unless (zero? x) (l2 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+  (time (par (l1 10000000) (l2 10000000)))
+  (time (list (l1 10000000) (l2 10000000)))
+  )
+
+;; This won't work because of shared code:
+;; WAIT it works!
+#;
+(let ()
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+  (time (par (l1 10000000) (l1 10000000)))
+  (time (list (l1 10000000) (l1
+ 10000000)))
+  )
+
+;; Eight ways
+#;
+(let ()
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  (define (l2 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l3 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l4 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l5 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l6 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l7 x) (unless (zero? x) (l2 (sub1 x))))
+  (define (l8 x) (unless (zero? x) (l2 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+  (time (par (l1 10000000) (l2 10000000)))
+  (time (list (l1 10000000) (l2 10000000)))
+  )
+
+
+#;
+(let ()
+  ;; Make 1024 threads:
+  (define (tree n)
+    (if (zero? n) 1
+	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
+  (time (tree 10)))
+
 
 
 ;; Basic work-stealing...???
@@ -217,6 +269,9 @@
 ;;
 ;; NOTE: The computations have to be heavyweight for the parallelism
 ;; to beat the extra communication cost.
+;;
+;; [2007.09.14] Note, this is for the old stream representation:
+;; (tail-delayed pairs), the WS emulator now uses a push-based stream rep.
 (define (stream-parmap f s)
   ;; Could be made slightly more efficient by not using generic queues.
   (define outq (make-bq 1))

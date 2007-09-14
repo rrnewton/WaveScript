@@ -38,9 +38,6 @@
 ;; Foreign closures have #f in place of formals and env.
 (reg:define-struct (closure formals code env))
 
-;; TODO: Merge with "uniontype" in wavescript_sim_library_push
-(reg:define-struct (datatype tag payload)) 
-
 ;; Parents are streamops, params are regular values that parameterize the streamop.
 ;; We also need a place to record the type.  At least for readFile...
 (reg:define-struct (streamop name op params parents type))
@@ -62,7 +59,15 @@
 ;(reg:define-struct (int64 num))
 ;(reg:define-struct (double num))
 
-(define (wrapped? x) (or (plain? x) (streamop? x) (closure? x) (ref? x) (suspension? x)))
+;; NOTE: also uses 'uniontype' and 'tuple' defined in constants.ss
+
+
+;; NOTE: a tuple or uniontype will go inside a "plain" wrapper (?):
+(define (wrapped? x) 
+  (or (plain? x) (streamop? x) (closure? x) (ref? x) (suspension? x)      
+      ;(tuple? x) ;; Is this right?  what about sigseg?
+      ))
+
 (define (stream-type? ty) (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (lambda? x) (let ([x (peel-annotations x)])
 		      (and (pair? x) (eq? (car x) 'lambda))))
@@ -238,6 +243,9 @@
 		       x*)))])
 ;       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
        (if (wrapped? raw) raw (make-plain raw)))]
+    
+    ;; [2007.09.14] Supporting sums:
+    [(construct-data ,tag ,[val]) (make-plain (make-uniontype tag val))]
 
     [(app ,[f] ,[e*] ...)
      (if (foreign-closure? f)
@@ -283,15 +291,14 @@
      (begin (for-each (lambda (x) (Eval x env pretty-name)) x*)
 	    (Eval last env pretty-name))]
 
-#;
     ;; TODO: Need to add the data *constructors*... this is incomplete currently.
     [(wscase ,[x] (,pat* ,[rhs*]) ...) 
      (let* ([alts (map list pat* rhs*)]
-	    [case (assq (datatype-tag x) alts)]
+	    [case (assq (uniontype-tag x) alts)]
 	    [clos (cadr case)])
        (inspect case)
        (Eval (closure-code clos) 
-	     (extend-env (closure-formals clos) (list (datatype-payload x))
+	     (extend-env (closure-formals clos) (list (uniontype-val x))
 			 (closure-env clos)) 
 	     pretty-name))]
 
@@ -363,6 +370,7 @@
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
+;; We may hit the same value repeatedly.  This memoizes marshal:
 (define marshal-cache (make-parameter 'mc-uninit))
 
 ;; This marshals the resulting stream-operators.
@@ -470,6 +478,11 @@
 
      [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
 				(ASSERT (tuple-fields val) )))]
+
+     [(uniontype? val)
+      `(construct-data ,(uniontype-tag val)
+		       ,(Marshal (uniontype-val val)))]
+
      [(timebase? val) `(Secret:newTimebase ',(timebase-num val))]
      [(and (integer? val) (exact? val)) `(gint ',val)]
      ;; No double's in meta program currently!!!

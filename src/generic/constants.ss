@@ -175,6 +175,7 @@
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
 	 make-tuple tuple-fields tuple?
 	 make-timebase timebase-num timebase?
+         make-uniontype uniontype-tag uniontype-val  uniontype?
          )
 		
 	;; Import the platform specific constants.
@@ -864,6 +865,8 @@
 
 ;; [2007.07.29] Adding this to distinguish tuples from vectors.
 (reg:define-struct (tuple fields))
+
+(reg:define-struct (uniontype tag val)) ;; Sum types
 
 (reg:define-struct (timebase num))
 

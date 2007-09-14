@@ -72,6 +72,8 @@ Array:sub       :: (Array t, Int, Int) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 
+//Array:sort       :: ()
+
 String:append   :: (String, String) -> String;
 
 // These aren't at their final names.  They'll be moved into the Array
@@ -93,6 +95,7 @@ a_ones          :: Int -> Array #n;
 sort            :: ((Int, Int) -> (), 
                     (Int, Int) -> Int, 
                     Int) -> ();
+
 
 /// Library stream constructors:
 
@@ -1422,6 +1425,8 @@ fun Curry:fold1(f)  fun(x) List:fold1(f,x)
 
 
 // Some standard type definitions.
+
+uniontype Option a = None() | Some a;
 
 uniontype Union2 a b       = Left a | Right b;
 uniontype Union3 a b c     = Oneof3 a | Twoof3 b | Threeof3 c;

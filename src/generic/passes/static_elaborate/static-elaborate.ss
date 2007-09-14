@@ -57,6 +57,7 @@
 
 ;  (IFCHEZ (import rn-match) (void))
 
+;; Already have a dummy in main_chez:
 ;; Dummy implementation for PLT:
  (IFCHEZ (begin)
 	 (begin (define par list)

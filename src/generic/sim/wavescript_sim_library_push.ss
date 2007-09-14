@@ -20,7 +20,7 @@
 		 valid-sigseg?
 		 app foreign-app let Mutable:ref deref static statref		 
 		 
-		 wscase construct-data make-uniontype uniontype-tag uniontype-val 
+		 wscase construct-data 
 
 		 run-stream-query reset-wssim-state! print-wssim-state
 
@@ -176,8 +176,6 @@
   ;; Streams take sinks and register them.
   ;; Sources allow either "peeking" the time of their next element, or
   ;; popping off thatelement.
-
-  (reg:define-struct (uniontype tag val))
 
   ;; This is annoying.
   ;; Generic equality doesn't actually work for records.
