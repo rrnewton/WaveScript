@@ -208,9 +208,12 @@ int  gsl_blas_sgemm (CBLAS_TRANSPOSE_t TransA,
 /*====================================================================================================*/
 
 // This only works for linux:
-libc = if SHELL("uname") == "Darwin\n"
-       then ["libc.dylib"]
-       else ["libc.so.6"];
+/* libc = if SHELL("uname") == "Darwin\n" */
+/*        then ["libc.dylib"] */
+/*        else ["libc.so.6"]; */
+
+// [2007.09.14] CHANGE!  Now libc is IMPLICITELY included in the foreign interface:
+libc = [];
 Cfree :: Pointer "void*" -> () = foreign("free", libc)
 
 /*====================================================================================================*/

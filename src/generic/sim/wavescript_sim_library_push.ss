@@ -1527,11 +1527,14 @@
 	  (load-shared-object
 	   (case (machine-type)
 	     [(i3osx ppcosx) "libc.dylib"]
-	     [(i3le) "libc.so"]
+	     [(i3le) "libc.so.6"]
 	     [else (error 'ensure-libc-loaded! 
 			  "WaveScript foreign interface not supported on platform: ~s"
 			  (machine-type))]
 	     ))
+	  ;; FIXME: there are other places in the code where we might want to know about this:
+	  ;; Let's just put it in an environment variable.
+	  (putenv "REGLIBCLOADED" "TRUE")
 	  (set! ranyet? #t)))))
   ;; NOTE: This isn't working on 64-bit justice.
   (define __foreign

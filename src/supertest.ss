@@ -490,6 +490,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot2.log" test-directory))))
 
+;; FIXME TEMP DISABLING::::
+#; #;
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
 	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot_build.log" test-directory))))
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
