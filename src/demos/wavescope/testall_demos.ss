@@ -67,13 +67,11 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
     ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]
 
-#;
     ;; Hmm need to test windowed reading too:
     ["demo1e_readFile.ws"  ,(lambda (a b) 
 			      (ASSERT (equal? (tuple-fields a) '(512 1024 1536)))
 			      (ASSERT (equal? (tuple-fields b) '(2 514 1026))))]
     
-#|
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
 				     (IFCHEZ (import wavescript_sim_library_push) (void))
@@ -179,8 +177,6 @@ exec regiment i --script "$0" ${1+"$@"};
 				     ;(ASSERT (= 5634 b))
 				     )]
     ["demo10b_repeated_rewindow.ws"  ,(lambda (a b) (void))]
-
-|#
     
     ))
 

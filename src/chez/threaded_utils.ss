@@ -175,6 +175,7 @@
 	(fork-thread go))))
 
   (define (init-par num-cpus) 
+    (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
     (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
       (set! threads (cons (make-worker) threads))))
   (define (shutdown-par) (set! not-finished #f))

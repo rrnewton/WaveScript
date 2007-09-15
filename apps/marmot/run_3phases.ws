@@ -6,11 +6,12 @@ include "marmot_first_phase.ws";
 synced_ints = detector((ch1i,ch2i,ch3i,ch4i));
 
 include "marmot2.ws";
+
+nodes = [(100, -0.0, 0.000891, 222.746048)];
+
 include "marmot_heatmap.ws";
 
 doas = oneSourceAMLTD(synced_ints, 4096);
-
-nodes = [(100, -0.0, 0.000891, 222.746048)];
 
 noderecs = stream_map(fun(doavec) (nodes`List:ref(0), doavec), doas)
 

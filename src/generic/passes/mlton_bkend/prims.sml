@@ -268,13 +268,11 @@ fun run_w_handlers comp stdprnt errprnt exitfun =
     (stdprnt ("wserror: " ^ str ^ "\n"); exitfun false)
   | SigSegFailure str => 
     (stdprnt ("sigseg failure: " ^ str ^ "\n"); exitfun false)
-(*
   | WSEndOfFile => 
     (errprnt "Reached end of file. \n";  exitfun true)
-*)
 
-(* This is only used for a normal "timer" driven query foreign_source
-   driven queries don't use it.*)
+(* This is only used for a normal "timer" driven query.
+   Foreign_source driven queries don't use it.*)
 fun runMain f = 
   (*   print "Setting up error handlers\n";*)
   run_w_handlers f print errprnt exit_process

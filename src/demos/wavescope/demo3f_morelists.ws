@@ -1,5 +1,8 @@
 // Test all those other list primitives.
 
+// [2007.09.15] Having a problem with static-elaborate on this pass curretly.
+// It runs into the int64ToInt app as an argument to cons and gets messed up.
+
 //include "stdlib.ws";
 
 

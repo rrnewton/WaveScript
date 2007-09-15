@@ -8,6 +8,9 @@ fun log(l,s) println(s)
 fun log_file(l,s) print(s++"\n")
 fun timer_source(_,t) timer(1000.0 / t`intToFloat)
 
+// Also need a dummy for this:
+fun vxp_buffer_time_remaining() 0.0
+
 // ================================================================================
 
 // NOTE: THESE OLD FILES ARE 24KHZ!!

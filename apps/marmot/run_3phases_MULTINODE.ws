@@ -22,6 +22,9 @@ LOG_UNDEFINED = -2;      /**< loglevel not specified */
 fun log(l,s) print(s++"\n");
 fun timer_source(_,t) timer(1000.0 / t`intToFloat)
 
+// Also need a dummy for this:
+fun vxp_buffer_time_remaining() 0.0
+
 include "stdlib.ws";
 include "gnuplot.ws";
 

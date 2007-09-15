@@ -79,7 +79,8 @@
 
 ;; Anything not in this list is either a user-defined type constructor, or invalid.
 (define built-in-type-constructors 
-  '(List Array Sigseg Stream HashTable))
+  '(List Array Sigseg Stream HashTable
+	 Ref))
 
 ;; Hierarchy:
 ;; Int8
@@ -1065,8 +1066,10 @@
      [else (length args)])))
 
 ;; Is it a regiment primitive?
-(define (regiment-primitive? x)
-  (hashtab-get primitives-hash x))
+;(define (regiment-primitive? x) (hashtab-get primitives-hash x))
+(define (regiment-primitive? x) 
+  (let ([entry (assq x (regiment-primitives))])
+    (and entry (cdr entry))))
 
 ;; Is it a regiment constant?
 (define (regiment-constant? x)

@@ -422,7 +422,7 @@
 
 	  [(assert-type ,_ ,[e]) e]
           [(set! ,lhs ,(rhs))
-           (if (eq? v lhs) 
+           (if (eq? v lhs)
 	       9988
 	       #;
 	       (error 'static-elaborate:count-refs
@@ -439,6 +439,8 @@
 	  [(foreign-app ',realname ,[arg*] ...)	 (apply + arg*)]
 
           [,unmatched
+	   (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
+	       (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
 
@@ -1149,7 +1151,9 @@
 		 `(app ,rator ,@rands)))]
 
           [,unmatched
-            (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
+	   (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
+	       (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
+	   (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
 
 	  (DEBUGASSERT (compose not code?) PE-result)
 	  PE-result

@@ -8,7 +8,9 @@ fun println(s) {
 };
 
 fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
-fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
+fun assert_eq(str,a,b) if a==b 
+  then print("passed: "++str++"\n")
+  else wserror("Assert failed: "++str++ " "++ a ++" not equal "++ b);
 
 BASE <- iterate(w in s0) {  
   n = w`width;
@@ -17,7 +19,7 @@ BASE <- iterate(w in s0) {
   f = n`intToFloat;
   c = n`intToComplex;
 
-  assert_eq(l, l + gint(0));
+  assert_eq("additive identity", l, l + gint(0));
   
   println("roundF: " ++ roundF(f + 0.6));
 
@@ -26,7 +28,11 @@ BASE <- iterate(w in s0) {
 
   println("sqrt complex: "++ sqrtC(3.0+4.0i) );  
 
-  assert_eq(sqrtC(3.0+4.0i), 2.0+1.0i);
+  assert_eq("complex equality", 2.0+1.0i, 2.0+1.0i);
+
+  //print("diff " ++ sqrtC(3.0+4.0i) - 2.0+1.0i ++ "\n");
+
+  assert("complex sqrt", absC(sqrtC(3.0+4.0i) - 2.0+1.0i) < 0.000001);
 
   emit ();
 }
