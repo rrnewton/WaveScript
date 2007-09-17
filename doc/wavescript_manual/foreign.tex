@@ -93,21 +93,21 @@ name of the function being {\em exported}.  The call to {\tt
 foreign\_source} will return a stream of incoming values.  It must be
 annotated with a type of the form {\tt Stream} $T$, where $T$ is a
 type that supports marshaling from C code.
-%
-We call the function exported to C an {\em entrypoint}.  It will take
-a single argument, convert it to the WaveScript representation, and
-fire off a tuple as one element of the input stream.  The return
-behavior of this entrypoint is determined by the scheduling policy
-employed by the particular WaveScope backend.  For example, it may
-follow the tuple through in a depth-first traversal of the stream
-graph, returning only when there is no further processing.  Or the
-entrypoint function may return immediately, merely enqueuing the tuple
-for later processing.  The entrypoint will return an integer error
-code, which is zero if the WaveScope process is still in a healthy
-state at the time the entrypoint returns.  Note that a zero
+
+We call the function exported to C an {\em entrypoint}.  When called
+from C, it will take a single argument, convert it to the WaveScript
+representation, and fire off a tuple as one element of the input
+stream.  The return behavior of this entrypoint is determined by the
+scheduling policy employed by that particular WaveScope backend.  For
+example, it may follow the tuple through a depth-first traversal of
+the stream graph, returning only when there is no further processing.
+Or the entrypoint may return immediately, merely enqueuing
+the tuple for later processing.  The entrypoint returns an integer
+error code, which is zero if the WaveScope process is in a
+healthy state at the time the call completes.  Note that a zero
 return-code does not guarantee that an error will not be encountered
-as the data is further processed, but before the entrypoint is called
-again.
+in the time between the call completion and the next invocation of the
+entrypoint. 
 
 Currently, using multiple foreign sources is supported (i.e. multiple
 entrypoints into WaveScript).  However, if using foreign sources, you
@@ -133,10 +133,11 @@ constants are allocated).  {\tt Wsmain} is called when the WaveScript
 dataflow graph is finished initialing and is ready to receive data.
 {\tt Wsmain} should control all subsequent acquisition of data, and
 feed data into WaveScript through the registered {\tt foreign\_source}
-functions.  {\tt Wserror} is called when WaveScope reaches an error,
-it may choose to end the process, or may return to the WaveScope
-process.  Thereafter, the process is ``broken'', and pending or future
-calls to entrypoints will return a non-zero error code.
+functions.  {\tt Wserror} is called when WaveScope reaches an error.
+This function may choose to end the process, or may return control to
+the WaveScope process.  The WaveScope process is thereafter
+``broken''; any pending or future calls to entrypoints will return a
+non-zero error code.
 
 \section{Inline C Code}
 
