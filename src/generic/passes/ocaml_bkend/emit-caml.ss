@@ -248,7 +248,7 @@
   (ASSERT symbol? var)
   ;; This is the place to do any name mangling. 
   ;; We prefix with an underscore to avoid names beginning in capital letters.
-  (if (regiment-primitive? var)
+  (if (real-primitive? var)
       (symbol->string var)
       (string-append "_" (symbol->string var))))
 
@@ -786,7 +786,7 @@
 
 
     [(assert-type ,t ,[primapp]) primapp]
-    [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
+    [(,prim ,[myExpr -> rands] ...) (guard (real-primitive? prim))
      (list "("(cond
 	       [(PrimName prim) => (lambda (x) x)]
 	       [else (error 'emit-caml:Prim "currently unhandled: ~s" prim)])

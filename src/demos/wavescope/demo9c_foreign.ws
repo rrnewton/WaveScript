@@ -18,6 +18,9 @@ bar :: Int -> Int = foreign("bar", ["bar.h", "./bar.o"])
 
 
 BASE <- iterate _ in timer(30.0) { 
+  state {
+    _ = SHELL("gcc -c bar.c")
+  }
   x = bar $ foo2 $ foo1 $ 3;
   assert(x == 109);
   emit x;

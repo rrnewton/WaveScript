@@ -4,6 +4,11 @@
 void wsentry1(int);
 void wsentry2(int, float);
 
+
+void wserror(const char* p) {
+  printf("GOT WSERROR: %s\n", p);
+}
+
 void wsmain(int argc, char* argv[]) {
   int counter = 5;
 

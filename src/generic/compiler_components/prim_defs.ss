@@ -1066,7 +1066,8 @@
      [else (length args)])))
 
 ;; Is it a regiment primitive?
-;(define (regiment-primitive? x) (hashtab-get primitives-hash x))
+(define (regiment-primitive? x) (hashtab-get primitives-hash x))
+#;
 (define (regiment-primitive? x) 
   (let ([entry (assq x (regiment-primitives))])
     (and entry (cdr entry))))

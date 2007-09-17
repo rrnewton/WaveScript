@@ -261,7 +261,9 @@ fun exit_process flag =
   else OS.Process.exit OS.Process.failure
 fun exit_foreignsrc _ = ~1
 
-(* Returns an error code. *)
+(* Runs a computation, handles certain standard exceptions, calls
+  appropriate functions for error printing and exit. 
+   Returns an error  code. *)
 fun run_w_handlers comp stdprnt errprnt exitfun =
   (comp (); 0)
   handle WSError str => 

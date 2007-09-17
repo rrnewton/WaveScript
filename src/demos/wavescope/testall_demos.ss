@@ -176,8 +176,11 @@ exec regiment i --script "$0" ${1+"$@"};
 				     ;(ASSERT (= 514 a))
 				     ;(ASSERT (= 5634 b))
 				     )]
-    ["demo10b_repeated_rewindow.ws"  ,(lambda (a b) (void))]
-    
+
+    ;; This is just TOO slow in PLT.  It takes 20+ minutes by itself.     
+    ,@(IFCHEZ
+       `(["demo10b_repeated_rewindow.ws"  ,(lambda (a b) (void))])
+       '())
     ))
 
 (for-eachi go demo-list)

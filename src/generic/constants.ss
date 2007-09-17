@@ -414,8 +414,10 @@
 (define simulation-logger-count (reg:make-parameter #f))
 
 ;;; Used by wsint:
-
+;;
+;; Limits the amount of output from the run:
 (define-regiment-parameter wsint-tuple-limit #f)
+;; Directs the output to a file
 (define-regiment-parameter wsint-output-file #f)
 
 ;; [2006.02.22] <br>

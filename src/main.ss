@@ -910,7 +910,7 @@
     (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.sml")
     (define prog (coerce-to-ws-prog x))
-
+    
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog disabled-passes #f))
     (set! prog (explicit-stream-wiring prog))

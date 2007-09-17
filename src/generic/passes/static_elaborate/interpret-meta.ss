@@ -38,8 +38,10 @@
 ;; Foreign closures have #f in place of formals and env.
 (reg:define-struct (closure formals code env))
 
-;; Parents are streamops, params are regular values that parameterize the streamop.
-;; We also need a place to record the type.  At least for readFile...
+;; A stream operator can be a leaf or an intermediate node.
+;; The "parents" field contains a list of streamops, params are
+;; regular values that parameterize the streamop.  We also need a
+;; place to record the type.  At least for readFile and foreign_source...
 (reg:define-struct (streamop name op params parents type))
 
 ;; This is not a pretty aspect of the system, but there are some
@@ -114,6 +116,8 @@
 ; ================================================================================ ;
 ;;; Interpreter
 
+(define keep-annotation-prims )
+
 ;; This evaluates the meta program.  The result is a *value*
 ;;
 ;; .param pretty-name -- uses this to hang onto names for the closures
@@ -135,6 +139,8 @@
      (maybe-wrap (list-ref (tuple-fields  (plain-val tup)) ind))
      ]
 
+    ;; UGLINESS
+    ;; ----------------------------------------
     ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
@@ -145,20 +151,30 @@
     ;; This duplicates the above case forforeign entries.
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
-	      (and (pair? x) (memq (car x) '(foreign)))))
+	      (and (pair? x) (memq (car x) '(foreign foreign_source)))))
      (match (peel-annotations e)
-       [(foreign ,name ,includes)
+       [(,op ,name ,includes)
 	(let ([name     (Eval name env #f)]
 	      [includes (Eval includes env #f)])
 	  (ASSERT (plain? name))
 	  (ASSERT (plain? includes))
-	  ;; This is a closure representing a foreign function.
-	  (make-foreign-closure (plain-val name) 
-				(plain-val includes) ty)
+	  (match op
+	    ;; This is a closure representing a foreign function.
+	    [foreign
+	     (make-foreign-closure (plain-val name) 
+				   (plain-val includes) ty)]
+	    ;; This is a streamop representing a foreign source.
+	    [foreign_source
+	     (make-streamop 
+	      (string->symbol (string-append "foreign_" (unwrap-plain name)))
+	      'foreign_source (list name includes) () ty)]
+	    )
 	  )])]
-    [(foreign . ,_) (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons 'foreign _))]
+    [(,frgn . ,_) (guard (memq frgn '(foreign foreign_source)))
+     (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons frgn _))]
     ;; We leave this alone:
 ;    [(foreign ,[x*] ...) (cons 'foreign x*)]
+    ;; ----------------------------------------
 
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      

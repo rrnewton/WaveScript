@@ -521,7 +521,7 @@
   (ASSERT symbol? var)
   ;; This is the place to do any name mangling. 
   ;; We prefix with an underscore to avoid names beginning in capital letters.
-  (if (regiment-primitive? var)
+  (if (real-primitive? var)
       (symbol->string var)
       (string-append "var_" (symbol->string var))))
 
@@ -1071,7 +1071,10 @@
      (error 'emit-mlton:Prim "missed this array prim: ~s" (cons prim _))]
  
     [(assert-type ,t ,[primapp]) primapp]
-    [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
+
+    [(tuple . ,_) (error 'emit-mlton:Prim "got a tuple: ~s" `(tuple . ,_))]
+
+    [(,prim ,[myExpr -> rands] ...) (guard (real-primitive? prim))
      (make-prim-app 
       (cond
        [(PrimName prim) => (lambda (x) x)]

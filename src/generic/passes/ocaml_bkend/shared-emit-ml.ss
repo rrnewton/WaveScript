@@ -5,7 +5,8 @@
 	    "../../compiler_components/c_generator.ss" )
   (provide sharedEmitCases
 	   make-dispatcher
-	   make-seq make-tuple-code)
+	   make-seq make-tuple-code
+	   real-primitive?)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -31,6 +32,8 @@
 (define (with-fun-binding name formals funbody body)
   (make-letrec `([,name ,(make-fun formals funbody)]) body))
 
+;; Should be used everywhere below rather than "regiment-primitive?"
+(define (real-primitive? x) (and (regiment-primitive? x) (not (eq? x 'tuple))))
 
 ; ======================================================================
 ;;; Handling different AST variants:
@@ -86,17 +89,19 @@
 
 	  ;; TODO: FOREIGN_SOURCE
 
-	  [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	  [(,prim ,rand* ...) (guard (real-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]
-	  [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	   (obj 'Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
+	  ;; Here we leave type assertions on all primitives.
+	  [(assert-type ,ty (,prim ,rand* ...)) (guard (real-primitive? prim))
+	   (obj 'Prim `(assert-type ,ty (,prim . ,rand*)) emitter)]
 
 	  [(wscase ,x [,name* ,fun*] ...)
 	   (obj 'WScase x name* fun* emitter)]
 	  [(construct-data ,name ,[arg]) 
 	   (obj 'make-app (obj 'VariantName name) (list arg))]
-
-	  [(assert-type ,t ,[x]) 
+	  
+	  ;; All non-primitives lose their assertions:
+	  [(assert-type ,t ,[x])
            ;;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
 	   x]
 	  [,unmatched (error 'emit-mlton:Expr "unhandled form ~s" unmatched)]

@@ -4,7 +4,7 @@
 
 include "stdlib.ws";
 
-reps = 100;
+reps = 25;
 
 src = iterate _ in timer(3.0) { state{cnt=0} cnt += 1; emit cnt };
 windowed = window(src, 10);

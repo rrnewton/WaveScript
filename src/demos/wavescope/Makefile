@@ -8,3 +8,5 @@ getdata: 6sec_marmot_sample.raw
 scheme:
 	./testall_demos.ss
 
+clean:
+	rm -f query.* .*.o ._* __* *.o

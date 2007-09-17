@@ -803,7 +803,7 @@ ORACLE: They have their reasons, ...
 \end{center}
 
 The {\em reason} in WaveScript, is that we want to write programs of a
-different character than we want to {\em run}.
+different character than we want to {\em run}.  We call this {\em asymmetric metaprogramming}.
 We want to {\em write}
 abstract, reusable, polymorphic, higher-order programs, but we want to
 {\em run} fast, monomorphic, first-order, C-programs representing
@@ -823,11 +823,41 @@ that a function is to be compiled as a C-function, rather than
 inlined.  Of course, such a function will not be allowed to take or
 return {\tt Stream} values.
 
-\rednote{\em \bf Keep the metaprogram pure! (free of side-effects)}
+\rednote{\em \bf Keep the metaprogram pure for now! (free of side-effects)}
+
+\chapter{WaveScript Execution Model}
+
+After the metaprogram evaluates, what is left is a dataflow graph of
+stream operators (kernels).  Now you may ask: what are the semantics
+of this dataflow graph's execution?  WaveScript implements an {\em
+asynchronous dataflow} model.  Streams are sequences discrete events,
+with no implied synchronization.  Stream kernels are thus
+event-handlers.  Further, the order of evaluation of kernels within a
+data flow graph is entirely at the whim of the scheduler, subject to
+loose fairness constraints.  Any kernel with input data available is
+{\em ready} and may execute at any time; yet no ready kernel may
+execute an infinite number of times without all other ready kernels
+executing.
+
+\rednote{Other guarantees?  There was supposed to be one more...}
+
+Of course, in practice we have slightly stronger expectations of the
+scheduler.  We expect that it is reasonably well engineered, and does not
+follow perverse practices regarding fairness.  For example,
+depth-first traversals
+
+However, ultimately, computations must be robust to the timing of the
+communication channels between kernels.  After all, the program may be
+distributed, with some channels going over slow wireless links, and
+other channels intra-node.  How do we accomplish this?  Well, we rely
+on well-engineered libraries to insulate programmers from as much of
+the pain of asynchronicity as possible.
+
+\rednote{TODO: go over and expand this}
 
 \section{Debugging}
 
-
+\rednote{TODO}
 
 %% pos#0: 
 %% seg-get: index 474 is out of bounds for sigseg:
