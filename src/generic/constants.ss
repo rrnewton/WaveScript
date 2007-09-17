@@ -351,7 +351,7 @@
 
 ;; Output type annotations on all the generated mlton code.
 ;; Makes the output more verbose...
-(define-regiment-parameter mlton-ascribe-types #f)
+(define-regiment-parameter mlton-ascribe-types #t)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns

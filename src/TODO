@@ -21,8 +21,15 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.09.16] {MLton integer constants}
+ *) Fix emit-mlton to ascribe types to integer constants, even if
+    mlton-ascribe-types is turned off.
+ *) Also refactor mlton-ascribe-types so that it doesn't touch the shared module.
+
 [2007.09.14] {Ideas that haven't been written up}
-Here are some things we've worked on in this project
+Here are some things we've worked on in this project that haven't been written up yet:
+ *) interpret-meta
+ *)
 
 [2007.07.28]
  *) When not in debug mode, DEBUASSERT should not evaluate the val

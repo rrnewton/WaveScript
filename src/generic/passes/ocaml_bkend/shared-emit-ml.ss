@@ -31,6 +31,7 @@
 (define (with-fun-binding name formals funbody body)
   (make-letrec `([,name ,(make-fun formals funbody)]) body))
 
+
 ; ======================================================================
 ;;; Handling different AST variants:
 
@@ -125,7 +126,7 @@
 		   `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
 		     ,(obj 'make-fun-binding name 
 			   (list (list "("(Var x)
-				       (if (mlton-ascribe-types) (list " : "(obj 'Type ty1)) "")
+				       (maybe-ascribe ty1)
 				       ;;(list " : "(obj 'Type ty1))
 				       ")"))
 			   (indent (Expr bod emitter) "    ")))
@@ -226,15 +227,19 @@
       (match bind
 	[[,lhs ,rhs]     (list (coerce-id lhs) " = " rhs)]
 	;; Type is a sexp or a string:
-	[[,lhs ,ty ,rhs] (list (coerce-id lhs) 
-			       (if (mlton-ascribe-types)
-				   (list " :  "
-				     (if (string? ty) ty
-					 (obj 'Type ty)))
-				   " ")
+	[[,lhs ,ty ,rhs] (list (coerce-id lhs)
+			       (maybe-ascribe ty)
 			       " = " rhs)]
 			       ))
-       
+
+    ;; Helper for ascription:
+    (define (maybe-ascribe ty)
+      (if (and (mlton-ascribe-types)
+	       (when (polymorphic-type? ty)
+		 (warning 'mlton-ascribe-types "Got polymorphic type! ~s" ty)
+		 #f))
+	  (list " : " (if (string? ty) ty (obj 'Type ty)))
+	  ""))       
 
     ;; Return a bundle of methods:
     (values Expr Operator Emit make-bind)

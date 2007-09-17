@@ -16,6 +16,8 @@ pi   = 3.141592653589793;
  *
  */
 
+to64 = intToInt64
+
 fun rewindow(sig, newwidth, step)
 {
   if step > newwidth
@@ -26,7 +28,7 @@ fun rewindow(sig, newwidth, step)
     for i = 1 to w.width {
       if acc.width > newwidth
       then {emit subseg(acc, acc.start, newwidth);
-            acc := subseg(acc, acc.start + step, acc.width - step)}
+            acc := subseg(acc, acc.start + step.to64, acc.width - step)}
       else break;
     }
   };
@@ -164,12 +166,12 @@ fun trimpeak(stream, comp)
          if comp(w[[i]], supVal) then
          {
             supVal := w[[i]];
-            supInd := i ;
+            supInd := i.to64 ;
          };
       };
       //      print("END FOR\n");
 
-      emit (supVal, subseg(w, supInd + w`start, w`width - supInd));
+      emit (supVal, subseg(w, supInd + w`start, w`width - supInd.int64ToInt));
    };
 }
 
@@ -182,12 +184,13 @@ fun trimpeakEmpty(stream, comp)
    {
       supVal = Mutable:ref$ w[[0]];
       supInd = Mutable:ref$ w.start;
-      for i=w.start+1 to w.end
+      // Yuck this looks like it should be a fold:
+      for i = 1 to w.width-1
       {
          if comp(w[[i]], supVal) then
          {
             supVal := w[[i]];
-            supInd := i;
+            supInd := i.to64;
          };
       };
 
@@ -245,7 +248,7 @@ wlt = iterate (w in rw)
       outBuf[i] := outBuf[i] *. scalingFactor;
    };
 
-   emit toSigseg(outBuf, 0, w.timebase);
+   emit toSigseg(outBuf, to64(0), w.timebase);
 };
 
 tpk1 :: Stream (Float * Sigseg Float);
