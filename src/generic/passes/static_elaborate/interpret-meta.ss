@@ -116,8 +116,6 @@
 ; ================================================================================ ;
 ;;; Interpreter
 
-(define keep-annotation-prims )
-
 ;; This evaluates the meta program.  The result is a *value*
 ;;
 ;; .param pretty-name -- uses this to hang onto names for the closures
