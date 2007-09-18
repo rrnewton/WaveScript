@@ -3,6 +3,8 @@
 ;; threads.  Only relevent to the pthread-based version of Chez
 ;; Scheme.
 
+;; TODO: Par should really return multiple values... not a list.
+
 (chez:module threaded_utils
     (stream-parmap 
      make-bq enqueue! dequeue!   bq-i bq-vec bq-mutex bq-ready bq-room
@@ -13,11 +15,12 @@
      par-map   ;; Apply function to list in parallel
 
      par-status ;; Optional utility to show status of par threads.
-
+     par-reset! ;; Reset counters
+     
      ;async-par ;; A version of 'par' that returns immediately.
      ;sync      ;; The corresponding call to wait for an async-par to finish.
      ;WAITING
-     tickets
+     ;tickets
      )
   
   (import chez_constants)
@@ -78,6 +81,9 @@
 ;; A bit inefficient, defined in terms of par-list:
 (define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
 
+;; ================================================================================
+;; <-[ VERSION 1 ]->
+
 ;; Inefficient version, forks threads on demand:
 ;; ACK: segfaults under stress:
 ;; [2007.09.14] After about 500 forks...
@@ -88,6 +94,7 @@
   (define (shutdown-par) (void))
   (define numforked 0)
   (define (par-status) (printf "Total threads forked: ~s\n" numforked))
+  (define (par-reset!) (set! numforked 0))
   (define tickets 'dummy)
 
   (define (par-list . thunks)
@@ -103,13 +110,17 @@
 
 
 ;; ================================================================================
+;; <-[ VERSION 2 ]->
 
-;; Better, maintains worker threads and a job queue.
+;; Work sharing version.
+;; Maintains worker threads and a job queue.
+;;
 ;; [2007.04.04] Occasionally deadlocks currently.
 ;; Fixed deadlock, but it has the design flaw that it runs out of
 ;; threads if you do nested pars.
 ;;
 ;; Tweaking design: if no tickets are available, we just do it ourselves.
+#;
 (begin
   
   ;; STATE:
@@ -120,6 +131,8 @@
   (define tickets '()) ;; Tickets for work.
   (define mut (make-mutex)) ;; Global: guards tickets and printing.
   (define threads ())
+  
+  (define par-list-counter 0) ;; protected by mut
   
   ;; DEBUGGING:
   ; (define WAITING '())
@@ -176,17 +189,22 @@
 
   (define (init-par num-cpus) 
     (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
-    (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
-      (set! threads (cons (make-worker) threads))))
+    (with-mutex mut
+      (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
+	(set! threads (cons (make-worker) threads)))))
   (define (shutdown-par) (set! not-finished #f))
-  (define (par-status) 
-    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n"
-	    not-finished mut  tickets threads))
+  (define (par-status)
+    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
+	    not-finished mut  tickets threads par-list-counter))
+  ;; This should maybe reset more:
+  (define (par-reset!) 
+    (with-mutex mut (set! par-list-counter 0)))
 
   (define (par-list . thunks)
     (let ([jobs (map (lambda (th) 		      
 		       (print " SRC: Taking a ticket...\n") 
 		       (with-mutex mut
+			 (set! par-list-counter (add1 par-list-counter))
 			 (if (null? tickets)
 			     ;; Do it ourselves:
 			     (let ([j (make-job #f)])
@@ -206,6 +224,160 @@
 
 
 
+;; ================================================================================
+;; <-[ VERSION 3 ]->
+
+;; Work stealing version.
+;; Each thread maintains a "stack" of potentially parallel computations (thunks).
+;; Idle threads steal frames from this stack.
+;;
+(begin
+  
+  ;; STATE:
+
+  ;; Each thread's stack has a list of frames, from newest to oldest.
+  ;; We use a lock-free approach for mutating/reading the frame list.
+  ;; Therefore, a thief might steal an old inactive frame, but this poses no problem.
+  ;; 
+  ;; A thread's "stack" must be as efficient as possible, because
+  ;; it essentially replaces the native scheme stack where par calls
+  ;; are concerned.  (I wonder if continuations can serve any purpose here.)
+  (reg:define-struct (thread-stack id frames))
+  
+  ;; Frames are locked individually.
+  ;; status may be 'available 'grabbed 'done
+  (reg:define-struct (frame mut thunks statuses))
+  
+  ;; There's also a global list of threads:
+  (define allstacks #()) ;; This is effectively immutable.
+  (define par-finished #f)
+  ;; And a mutex for global state:
+  (define global-mut (make-mutex))  
+  (define par-list-counter 0) ;; how many attempted forks were there
+
+  ;; A new stack has no frames, but has a (hopefully) unique ID:
+  (define (new-stack) (make-thread-stack (random 10000) ()))
+
+  ;; A per-thread parameter.
+  (define this-stack (make-thread-parameter (new-stack)))
+
+  ;; DEBUGGING:
+  ;;  Pick a print:
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (apply printf args))
+  ;   (define (print . args) (void)) ;; fizzle
+
+  ;; ----------------------------------------
+
+  ;; Traverse everybody's stack to find work.
+  (define (steal-work)     
+    (let theifloop ([ind (random (vector-length allstacks))])
+      (let ([frames (thread-stack-frames (vector-ref allstacks ind))])
+	(cond
+	 [(null? frames) ]
+	    ))
+
+      ;; Go across the frames in the stack, oldest first, looking for something to steal.
+      (let stackloop ([frames frames])
+	
+	(if (null? (cdr frames))
+	    
+	    )
+	(let-values ([(sp wp) (grab-work frame)])
+	  )	
+	)
+
+      (values #f #f #f)
+      ))
+
+  ;; Traverse a frame to grab a piece of work and mark it "grabbed".
+  (define (grab-work frame)
+    (with-mutex (frame-mut frame)
+      (let grabloop ([thunks (frame-thunks frame)]
+		     [statuses (frame-statuses frame)])
+	(if (null? thunks) (values #f #f) ;; All finished.
+	    (case (car statuses)
+	      [(available) (set-car! statuses 'grabbed)
+	       (values statuses thunks)]
+	      [(grabbed done) (grabloop (cdr thunks) (cdr statuses))])))))
+
+  ;; Do the work and mark it as done.
+  (define (do-work frame statuspair workpair) 
+    ;; It's already marked as grabbed, so we don't need the mutex to execute:
+    (set-car! workpair ((car workpair)))
+    (with-mutex (frame-mut frame)
+      (set-car! statuspair 'done)))
+
+  (define (make-worker)
+    (define stack (new-stack))
+    (print "Forking worker...\n")
+    (fork-thread (lambda () 		   
+		   (this-stack stack) ;; Initialize stack.		  
+		   ;; Steal work forever:
+		   (let forever ()
+		     (unless par-finished
+		       (let-values ([(frm sp wp) (steal-work)])  
+			 (when wp (do-work frm sp wp)))		       
+		       (forever)
+		       ))))
+    stack)
+
+  (define (init-par num-cpus) 
+    (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
+    (with-mutex global-mut   
+      (set! allstacks (make-vector num-cpus))
+      (vector-set! allstacks 0 (this-stack))
+      ;; We fork N-1 threads (the original one counts)
+      (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
+	(vector-set! allstacks i (make-worker)))))
+  (define (shutdown-par) (set! par-finished #t))
+
+  (define (par-status) 
+    (void)
+#;
+    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
+	    not-finished mut  tickets threads par-list-counter))
+
+  ;; This should maybe reset more:
+  (define (par-reset!) 
+    (with-mutex global-mut (set! par-list-counter 0)))
+
+  ;; What thread are we called from?  Which stack do we add to?...
+  (define (par-list . thunks)
+    (define frame
+      (make-frame (make-mutex) thunks 
+		  (map (lambda (_) 'available) thunks)))
+
+    ;; Add a frame to our stack.
+    (let ([st (this-stack)])
+      (set-thread-stack-frames! st (cons frame (thread-stack-frames st))))
+
+    (with-mutex global-mut
+      (print "\nall threads ~s  our thread stack id ~s length ~s\n" 
+	     (vector-length allstacks) (thread-stack-id (this-stack)) (length (thread-stack-frames (this-stack))))
+      )
+
+    ;; Now we traverse our frame, looking for work.
+    ;; Other threads may also steal work from our frame during this process.
+    (let workloop ()
+      (let-values ([(statuspair workpair) (grab-work frame)])
+	(if workpair
+	    (begin 
+	      (do-work frame statuspair workpair)
+	      ;; Now keep going to process the rest of the frame.
+	      (workloop))
+	    ;; Otherwise we're all done and can return the values!
+	    (begin
+	      ;(inspect (frame-thunks frame))
+	      (frame-thunks frame)))
+	))
+
+;    (map (lambda (th) (th)) thunks)
+    
+    
+    ))
+
+
 
 
 ;; ================================================================================
@@ -213,13 +385,20 @@
 
 #;
 (let ()
+  (define count (* 500 1000 1000))
+  ;(define count (* 500 ))
   ;; Decrement a counter in two threads vs. one.
   (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  (define (l2 x) (unless (zero? x) (l2 (sub1 x))))
+  ;(define (l2 x) (unless (zero? x) (l2 (sub1 x))))
   ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-  (time (par (l1 10000000) (l2 10000000)))
-  (time (list (l1 10000000) (l2 10000000)))
+
+  (par-reset!)
+  (time (par (l1 count) (l1 count)))
+  ;(time (list (l1 count) (l2 count)))
+  (par-status)
   )
+
+
 
 ;; This won't work because of shared code:
 ;; WAIT it works!
@@ -228,34 +407,30 @@
   (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
   ;(time (rep 10000 (par (l1 10000) (l2 10000))))
   (time (par (l1 10000000) (l1 10000000)))
-  (time (list (l1 10000000) (l1
- 10000000)))
+  (time (list (l1 10000000) (l1 10000000)))
   )
 
 ;; Eight ways
 #;
 (let ()
   (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  (define (l2 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l3 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l4 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l5 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l6 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l7 x) (unless (zero? x) (l2 (sub1 x))))
-  (define (l8 x) (unless (zero? x) (l2 (sub1 x))))
   ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-  (time (par (l1 10000000) (l2 10000000)))
-  (time (list (l1 10000000) (l2 10000000)))
+  (time (par (l1 10000000) (l1 10000000)))
+  (time (list (l1 10000000) (l1 10000000)))
   )
 
 
+
+;; [2007.09.18] Hmm, on this one it displays the "taking turns" behavior:
 #;
 (let ()
   ;; Make 1024 threads:
   (define (tree n)
     (if (zero? n) 1
 	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
-  (time (tree 10)))
+  (par-reset!)
+  (time (tree 22))
+  (par-status))
 
 
 

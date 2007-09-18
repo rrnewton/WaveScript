@@ -62,6 +62,8 @@
  (IFCHEZ (begin)
 	 (begin (define par list)
 		(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
+		(define (par-status) (void))
+		(define (par-reset!) (void))
 		(define par-map map)))
 
 ;; This is the grammar for the output of static-elaborate
@@ -1177,6 +1179,7 @@
 		    (begin
 		      ;(when (regiment-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
+		      (par-status) ;; TEMP
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
 		    ;; [2007.08.12] SADLY, we have to redo the mutable-vars when we iterate:
 		    (begin (set! mutable-vars (get-mutable body))

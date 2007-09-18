@@ -1526,8 +1526,8 @@
 	(unless ranyet?
 	  (load-shared-object
 	   (case (machine-type)
-	     [(i3osx ppcosx) "libc.dylib"]
-	     [(i3le) "libc.so.6"]
+	     [(ti3osx i3osx ppcosx) "libc.dylib"]
+	     [(ti3le i3le) "libc.so.6"]
 	     [else (error 'ensure-libc-loaded! 
 			  "WaveScript foreign interface not supported on platform: ~s"
 			  (machine-type))]

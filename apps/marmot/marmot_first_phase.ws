@@ -6,8 +6,8 @@ DEBUGSYNC = DEBUG;
 include "stdlib.ws";
 
 // Trying this fft:
-fix_fft :: (Array Int16 * Array Int16 * Int16 * Int16)
-         = foreign("fix_fft", ["fix_fft.c"]);
+//fix_fft :: (Array Int16 * Array Int16 * Int16 * Int16)
+//         = foreign("fix_fft", ["fix_fft.c"]);
 
 //marmfft = fix_fft
 marmfft = memoized_fftR2C
