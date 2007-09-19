@@ -1,4 +1,6 @@
 
+
+//==============================================================================
 // [2007.06.26] This is taking 1.5 seconds on fort, 2.6 on partridge.
 // For some reason it takes FIFTY seconds on the ensbox right now.
 
@@ -33,6 +35,7 @@ primitives in the c++ versin.
 */
 
 /*
+================================================================================
 [2007.07.02] Trying various things to improve (mlton) performance.
 
 Switched to a memoized version of fftR2C that caches the fftw plans.
@@ -94,6 +97,20 @@ vectors, that sped things up even further.  (.08/.05 and .16/.097)
 In this way, it can process 73.6 mb in a second.
 
 */
+
+//==============================================================================
+// [2007.09.19] {failure to monomorphize}
+//
+// interpret-meta is not succesfully making the program monomorphic.
+// First, I'm curious if interpret-meta's substantially more bloated
+// output produces worse runtime performance, or if mlton cleans up
+// after it effectively.  On 15min of data (168mb), on justice:
+//   static-elab:    17.1 / 16.3 real/cpu (with ~1s variance)
+//   interpret-meta: 16.5 / 15.6, 16.8 / 15.8 ...
+// Ok, so no significant difference.
+//
+// 
+
 
 
 

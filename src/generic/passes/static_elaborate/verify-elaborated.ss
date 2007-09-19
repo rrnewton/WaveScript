@@ -45,7 +45,7 @@
 		    "elaboration didn't succeed in getting all (potential) stream types free from other type constructors:\n  ~s"
 		    `(,C . ,t*)))]
 	[#(,t* ...) 
-	 (and (not (polymorphic-type? (list->vector t*)))
+	 (and ;(not (polymorphic-type? (list->vector t*))) ;; TEMPTOGGLE
 	      (or (andmap verify-stream-free t*)
 		  (error 'verify-type
 			 "elaboration didn't succeed on this tuple type:\n  ~s"
@@ -53,7 +53,7 @@
 	[,else #f]))
 
   ;; Streams may not occur inside other types (tuples or user type constructors)
-  (trace-define (verify-stream-free t)
+  (define (verify-stream-free t)
     (match t
       [(Stream ,t) #f]
       [,s (guard (symbol? s)) #t]
