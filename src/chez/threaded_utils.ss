@@ -279,7 +279,9 @@
 			(values ind (thread-stack-frames (vector-ref allstacks ind)))))])
 	(cond
 	 ;; No work on this processor, try again. 
-	 [(null? frames) (theifloop)]
+	 [(null? frames) 
+	  ;(display ind)
+	  (theifloop)]
 	 [else 
 	  ;; NOTE: I HAVE NO IDEA WHETHER THIS IS MORE EFFICIENT THAN JUST DOING A REVERSE ON THE FRAME LIST!
 	  ;;
@@ -438,9 +440,11 @@
 ;; ================================================================================
 ;;; Little tests:
 
+
+;; This type of test can get 7.18X speedup on 8-way valor (work-stealing).
 #;
 (let ()
-  (define count (* 500 1000 1000))
+  (define count (* 100 1000 1000))
   ;(define count (* 500 ))
   ;; Decrement a counter in two threads vs. one.
   (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
@@ -448,7 +452,7 @@
   ;(time (rep 10000 (par (l1 10000) (l2 10000))))
 
   (par-reset!)
-  (time (par (l1 count) (l1 count)))
+  (time (par (l1 count) (l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)))
   ;(time (list (l1 count) (l2 count)))
   (par-status)
   )
@@ -465,18 +469,12 @@
   (time (list (l1 10000000) (l1 10000000)))
   )
 
-;; Eight ways
-#;
-(let ()
-  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-  (time (par (l1 10000000) (l1 10000000)))
-  (time (list (l1 10000000) (l1 10000000)))
-  )
 
 
-
-;; [2007.09.18] Hmm, on this one it displays the "taking turns" behavior:
+;; [2007.09.18] Hmm, on this one it displays the "taking turns" behavior (work sharing)
+;; [2007.09.18] With work-stealing this gets a MEAGER 1.6X speedup on 8-way valor!!
+;;  7684ms 8-way (3611 collecting) vs. 12228ms (2370 collecting)
+;; Clearly our implementation of the "parallel stack" isn't that good.
 #;
 (let ()
   ;; Make 1024 threads:

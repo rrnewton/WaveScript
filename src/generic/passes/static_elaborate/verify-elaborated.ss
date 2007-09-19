@@ -20,10 +20,6 @@
 (define-pass verify-elaborated
     [OutputGrammar verify-elaborated-grammar]
 
-    ;; [2007.01.25] Changing this to be stricter: no remaining
-    ;; polymorphism in these types:
-#;    (define (verify-type t) (not (polymorphic-type? t)))
-
     ;; UNFINISHED:
     ;; This verifies that tuple types are not polymorphic.
     (define (verify-type t)
@@ -49,21 +45,22 @@
 		    "elaboration didn't succeed in getting all (potential) stream types free from other type constructors:\n  ~s"
 		    `(,C . ,t*)))]
 	[#(,t* ...) 
-	 (and ;(not (polymorphic-type? (list->vector t*)))
+	 (and (not (polymorphic-type? (list->vector t*)))
 	      (or (andmap verify-stream-free t*)
 		  (error 'verify-type
-			 "elaboration didn't succeed in getting this stream type free from this tuple:\n  ~s"
+			 "elaboration didn't succeed on this tuple type:\n  ~s"
 			 (list->vector t*))))]
 	[,else #f]))
 
-  (define (verify-stream-free t)
+  ;; Streams may not occur inside other types (tuples or user type constructors)
+  (trace-define (verify-stream-free t)
     (match t
       [(Stream ,t) #f]
       [,s (guard (symbol? s)) #t]
 ;      [(NUM ,_)               #t]
-      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
-      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
-      [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v))          #t]
+      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v))  t]
+      [(,[arg] ... -> ,[ret])               (and ret (andmap id  arg))]
       [(,C ,t* ...) (guard (symbol? C)) (andmap verify-stream-free t*)]
       [,s (guard (string? s)) #t]
       [#(,t* ...) (and (andmap verify-stream-free t*)
