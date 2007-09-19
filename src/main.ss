@@ -481,8 +481,8 @@
 
 ;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-;  (time (ws-run-pass p interpret-meta))
-  (time (ws-run-pass p static-elaborate))
+  (time (ws-run-pass p interpret-meta))
+;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))

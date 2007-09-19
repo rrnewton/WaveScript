@@ -231,6 +231,7 @@
 ;; Each thread maintains a "stack" of potentially parallel computations (thunks).
 ;; Idle threads steal frames from this stack.
 ;;
+;; [2007.09.18] This successfully gets a reasonable parallel speedup on the tree test.
 (begin
   
   ;; STATE:
@@ -263,32 +264,46 @@
 
   ;; DEBUGGING:
   ;;  Pick a print:
-     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
   ;   (define (print . args) (apply printf args))
-  ;   (define (print . args) (void)) ;; fizzle
+     (define (print . args) (void)) ;; fizzle
 
   ;; ----------------------------------------
-
   ;; Traverse everybody's stack to find work.
+  ;; Returns frame, statuspair, workpair.
   (define (steal-work)     
-    (let theifloop ([ind (random (vector-length allstacks))])
-      (let ([frames (thread-stack-frames (vector-ref allstacks ind))])
+    (let theifloop ()
+      (let-values ([(ind frames)
+		    (with-mutex global-mut 
+		      (let ([ind (random (vector-length allstacks))])
+			(values ind (thread-stack-frames (vector-ref allstacks ind)))))])
 	(cond
-	 [(null? frames) ]
-	    ))
-
-      ;; Go across the frames in the stack, oldest first, looking for something to steal.
-      (let stackloop ([frames frames])
-	
-	(if (null? (cdr frames))
-	    
-	    )
-	(let-values ([(sp wp) (grab-work frame)])
-	  )	
-	)
-
-      (values #f #f #f)
-      ))
+	 ;; No work on this processor, try again. 
+	 [(null? frames) (theifloop)]
+	 [else 
+	  ;; NOTE: I HAVE NO IDEA WHETHER THIS IS MORE EFFICIENT THAN JUST DOING A REVERSE ON THE FRAME LIST!
+	  ;;
+	  ;; Go across the frames in the stack, oldest first, looking for something to steal.
+	  ;; This is just a foldr, written with an explicit loop an multiple values.
+	  (let-values ([(frm sp wp)
+			(let stackloop ([frames frames])
+			  (define (grab) 
+			    (let-values ([(sp wp) (grab-work (car frames))])
+			      (if wp 
+				  (values (car frames) sp wp)
+				  (values #f #f #f))))
+			  (if (null? (cdr frames))
+			      ;; Got to the end, try this one.
+			      (grab)
+			      (let-values ([(frm sp wp) (stackloop (cdr frames))])
+				(if wp 
+				    (values frm sp wp)
+				    (grab)))))])
+	    (if wp 
+		(begin 
+		  (print "Stealing WORK from processor ~s frame: ~s\n" ind frm)
+		  (values frm sp wp))
+		(theifloop)))]))))
 
   ;; Traverse a frame to grab a piece of work and mark it "grabbed".
   (define (grab-work frame)
@@ -304,13 +319,14 @@
   ;; Do the work and mark it as done.
   (define (do-work frame statuspair workpair) 
     ;; It's already marked as grabbed, so we don't need the mutex to execute:
-    (set-car! workpair ((car workpair)))
-    (with-mutex (frame-mut frame)
-      (set-car! statuspair 'done)))
+    (let ([result ((car workpair))])
+      ;; We do need the mutex to mutate the pairs:
+      (with-mutex (frame-mut frame)
+	(set-car! workpair result)
+	(set-car! statuspair 'done))))
 
   (define (make-worker)
     (define stack (new-stack))
-    (print "Forking worker...\n")
     (fork-thread (lambda () 		   
 		   (this-stack stack) ;; Initialize stack.		  
 		   ;; Steal work forever:
@@ -333,10 +349,10 @@
   (define (shutdown-par) (set! par-finished #t))
 
   (define (par-status) 
-    (void)
-#;
-    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
-	    not-finished mut  tickets threads par-list-counter))
+    (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n  fork-attempts: ~s\n"
+	    par-finished (vector-length allstacks)
+	    (map length (map thread-stack-frames (vector->list allstacks)))
+	    par-list-counter))
 
   ;; This should maybe reset more:
   (define (par-reset!) 
@@ -348,33 +364,72 @@
       (make-frame (make-mutex) thunks 
 		  (map (lambda (_) 'available) thunks)))
 
-    ;; Add a frame to our stack.
+    ;; Should use global mutex:
+    (set! par-list-counter (add1 par-list-counter))
+
+    ;; From here on out, that frame is ready for business.
+    ;; Add a frame to our stack.  NO LOCKS!
     (let ([st (this-stack)])
       (set-thread-stack-frames! st (cons frame (thread-stack-frames st))))
 
+#;
     (with-mutex global-mut
       (print "\nall threads ~s  our thread stack id ~s length ~s\n" 
 	     (vector-length allstacks) (thread-stack-id (this-stack)) (length (thread-stack-frames (this-stack))))
       )
 
-    ;; Now we traverse our frame, looking for work.
-    ;; Other threads may also steal work from our frame during this process.
+
+    ;; The version below was broken, so trying this simple but inefficient one:
+    ;; FIXME: QUADRATICALLY traversing the list from the start each time with grab-work:
+    ;;   
     (let workloop ()
-      (let-values ([(statuspair workpair) (grab-work frame)])
-	(if workpair
+      (define (alldone? frame)
+	(with-mutex (frame-mut frame)
+	  (andmap (lambda (x) (eq? x 'done)) (frame-statuses frame))))
+      (let-values ([(sp wp) (grab-work frame)])
+	(cond
+	 [wp (do-work frame sp wp) (workloop)]
+	 [(alldone? frame)
+	  ;(print "Frame finished, popping: ~s\n" frame)
+	  ;; POP IT.  It's ok that this isn't mutex-protected.
+	  (let ([st (this-stack)]) (set-thread-stack-frames! st (cdr (thread-stack-frames st))))
+	  (frame-thunks frame)]
+	 [else  ;; SPIN until it's done:
+	  (workloop)])))
+
+    ;; Now we traverse our frame, handling each thunk.
+    ;; Other threads may also steal work from our frame during this process.
+    ;; 
+    ;; If all work from this frame is assigned, but not completed then we need to block.
+#;
+    (let workloop ([alldone #t]
+		   [status* (frame-statuses frame)]
+		   [thunks (frame-thunks frame)])
+      (cond
+       [(null? thunks) 
+	(if alldone 
+	    ;; If we're all done we can return the values!
 	    (begin 
-	      (do-work frame statuspair workpair)
-	      ;; Now keep going to process the rest of the frame.
-	      (workloop))
-	    ;; Otherwise we're all done and can return the values!
+	      (print "Frame finished, popping: ~s\n" frame)
+	      ;; POP IT.  It's ok that this isn't mutex-protected.
+	      (let ([st (this-stack)]) (set-thread-stack-frames! st (cdr (thread-stack-frames st))))
+	      (frame-thunks frame))
+	    ;; FIXME: ACK, for the time being we SPIN until the grabbed work is done.
 	    (begin
-	      ;(inspect (frame-thunks frame))
-	      (frame-thunks frame)))
-	))
+	      (print " @ SPINNING @\n")
+	      (workloop #f (frame-statuses frame) (frame-thunks frame))
+	      ))]
+       [(eq? 'done (car status*)) (workloop alldone (cdr status*) (cdr thunks))]
+       [(eq? 'available (car status*)) 
+	    (begin 
+	      (do-work frame status* thunks)
+	      ;; Now keep going to process the rest of the frame.
+	      (workloop alldone (cdr status*) (cdr thunks)))]
+       ;; Someone else has it:
+       [(eq? 'grabbed (car status*)) (workloop #f (cdr status*) (cdr thunks))]))
 
 ;    (map (lambda (th) (th)) thunks)
-    
-    
+        
     ))
 
 
@@ -429,7 +484,7 @@
     (if (zero? n) 1
 	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
   (par-reset!)
-  (time (tree 22))
+  (printf "\n~s\n\n" (time (tree 22)))
   (par-status))
 
 

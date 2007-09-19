@@ -1,5 +1,17 @@
 
 
+// A little testing on valor:
+//   6.3 sec static elab single threaded
+//   6.7 sec w/ par turned on (1 thread)
+// Oops, that was with hashtable-based regiment-primitive?
+//   9.65 sec static elab single threaded
+//   9.64 sec w/ par turned on (1 thread)
+//   10.4 sec w/ 2 threads
+//   12.0 sec w/ 3 threads
+// ... sec w/ 8 threads
+// Currently it gets a regiment-primitive? related error!  Even with hash tables turned off.
+
+
 include "sources_from_file.ws";
 include "marmot_first_phase.ws";
 
