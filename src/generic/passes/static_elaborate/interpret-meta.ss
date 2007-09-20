@@ -25,6 +25,9 @@
 )
   (chezimports)
 
+
+
+
 ; ================================================================================ ;
 ;;; Type defs and helpers
 
@@ -36,7 +39,8 @@
 
 ;; There are two kinds of closures.  Native and foreign.
 ;; Foreign closures have #f in place of formals and env.
-(reg:define-struct (closure formals code env))
+;;   "name" is optional -- a symbol or #f
+(reg:define-struct (closure name formals code env))
 
 ;; A stream operator can be a leaf or an intermediate node.
 ;; The "parents" field contains a list of streamops, params are
@@ -77,7 +81,7 @@
 (define (make-foreign-closure name includes ty)
   (DEBUGASSERT string? name) 
   (DEBUGASSERT (andmap string? includes))
-  (make-closure #f `(assert-type ,ty (foreign ',name ',includes)) #f))
+  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f))
 
 ;; Unwraps plain only:
 (define (unwrap-plain x) 
@@ -99,6 +103,10 @@
 	   ???????????
 	   )))
 
+
+
+
+
 ; ================================================================================ ;
 ;;; Environments
 
@@ -113,6 +121,11 @@
   (append (map list id* val*) env))
 
 
+
+
+
+
+
 ; ================================================================================ ;
 ;;; Interpreter
 
@@ -121,7 +134,27 @@
 ;; .param pretty-name -- uses this to hang onto names for the closures
 (define (Eval x env pretty-name)
   ;; This will be replaced by something more meaningful.
-  (define (streamop-new-name) (unique-name 'streamop))
+  (define (streamop-new-name)
+;    (printf "STREAMOP NAME, pretty name was: ~s\n" pretty-name)
+    (unique-name (or pretty-name 'anonstreamop))
+    ;(and pretty-name (unique-name pretty-name))    
+    )
+
+  (define (prettify-names! names vals)
+    (for-each (lambda (name val)
+		       (cond
+			[(closure? val)			 
+			 (unless (closure-name val)
+			   (set-closure-name! val (unique-name name)))]
+			[(streamop? val)
+			 ;; override the streamop name from its creation site?
+			 (unless (and (streamop-name val) 
+				      (not (eq? 'anonstreamop (deunique-name (streamop-name val)))))
+;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)
+			   
+			   (set-streamop-name! val (unique-name name)))]))
+      names vals))
+
   (unless dictionary (build-dictionary!))
   (match x
     [,v (guard (symbol? v)) 
@@ -174,6 +207,7 @@
 ;    [(foreign ,[x*] ...) (cons 'foreign x*)]
     ;; ----------------------------------------
 
+
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      
      (ASSERT (plain? ls))
@@ -192,25 +226,39 @@
     [(if ,[t] ,c ,a) 
      (ASSERT (plain? t))
      (Eval (if (plain-val t) c a) env pretty-name)]
+
+    ;; [2007.09.19] Is this necessary if we've converted to left-left lambda?
+#; ;; TEMPTOGGLE
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
+     (for-each (lambda (lhs val)
+		 (when (closure? val)
+		   (prinft "   YEEEEEEEEEEEEEAAAAAAAAAAH: ~s\n" lhs)		   
+		   )		 
+		 )
+       lhs* rhs*)
      (Eval bod (extend-env lhs* rhs* env) pretty-name)]
 
     ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
-       (for-each (lambda (cell rhs)
-		   (set-box! cell (Eval rhs newenv pretty-name)))
-	 cells rhs*)
+       (for-each (lambda (cell lhs rhs)
+		   (set-box! cell (Eval rhs newenv pretty-name))
+		   ;; PRETTY NAMES:
+
+		   (when (closure? (unbox cell)) 
+;		     (printf "   WWOOOOOOOOOOOOOOOOOOOOT: ~s\n" lhs)		     
+		     (prettify-names! (list lhs) (list (unbox cell))))
+		   )
+	 cells lhs* rhs*)
        (Eval bod newenv pretty-name))]
 
-    [(lambda ,formal* ,ty* ,bod) (make-closure formal* bod env)]
+    [(lambda ,formal* ,ty* ,bod) 
+     (make-closure #f formal* bod env)]
  
     [(Mutable:ref ,[x]) (make-ref x)]
     [(deref ,[x])       (ref-contents x)]
     [(set! ,[v] ,[rhs]) 
-     ;(call/cc inspect)
-;     (inspect v)
      (set-ref-contents! v rhs)
      ]
     
@@ -218,10 +266,10 @@
 				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
 				  `(Array:makeUNSAFE ,_))]
 
-    ;; TEMP HACK!!!!
+    ;; TEMP HACK
     [(floatToInt ,[x])
      (ASSERT (plain? x))
-;     (inspect x)
+
      (make-plain (inexact->exact (floor (plain-val x))))]
 
     ;; HACK: need to finish treating hash tables:
@@ -263,28 +311,20 @@
 
     [(app ,[f] ,[e*] ...)
      (if (foreign-closure? f)
+	 ;; Foreign app is suspended for later:
 	 (begin
-	   (printf "EXPERIMENTAL: making meta-suspension for foreign app!!: ~s" f)
+	   (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s" f)
 	   (make-suspension f e*))
-	 ;(error 'interpret-meta:Eval "foreign app during meta eval: ~s" (closure-code f))
+
 	 ;; Native closure:
-	 (Eval (closure-code f) 
+	 (begin 
+	   ;; Do PRETTY naming:
+	   (prettify-names! (closure-formals f) e*)
+	   (Eval (closure-code f)
 	       (extend-env (closure-formals f) e*
 			   (closure-env f))
-	       pretty-name))
-#;     
-     ;; Is it a native or foreign closure:
-     (if (foreign-closure? f)
-	 (match (closure-code f)
-	   [(foreign ',name ',includes)
-	    (warning 'interpret-meta:Eval "calling foreign function during meta eval: ~s" name)
-	    ;; TODO: Should we allow this???
-	    ;; A couple things we could do:
-	    ;;  (1) Eval foreign app at compile time.
-	    ;;  (2) Treat meta-time foreign apps as suspensions.
-	    (inspect includes)
-	    ])
-)]
+	       (or (closure-name f) pretty-name))))]
+
     [(for (,i ,[st] ,[en]) ,bod)
      (ASSERT (plain? st))
      (ASSERT (plain? en))
@@ -381,10 +421,16 @@
 
 
 
+
+
+
+
+
 ; ================================================================================ ;
 ;;; Marshaling Stream Values
 
 ;; We may hit the same value repeatedly.  This memoizes marshal:
+;; FIXME: UNFINISHED: DON'T ADD TO IT YET:
 (define marshal-cache (make-parameter 'mc-uninit))
 
 ;; This marshals the resulting stream-operators.
@@ -392,6 +438,8 @@
 (define (Marshal val)
 ;  (display-constrained "  MARSHALLING: " `[,val 100] "\n")
   (cond
+
+#;
    [(hashtab-get (marshal-cache) val)
     => (match-lambda ((,name . ,code))
 	 (printf "\n  Marshal: HAD MARSHALLED VALUE IN CACHE!!!\n")
@@ -416,14 +464,17 @@
    [(closure? val) (Marshal-Closure val)]
    [(streamop? val)
     (let (;[covered (make-default-hash-table 100)]
-	[acc '()])
+	  [acc '()])
     ;; Here we trace back through the stream graph:
     ;; Could possibly replace this with a judicious use of memoization (marshal-cache).
     ;; (Plus maybe a topological sort of the bindinggs at the end.)
+    ;;    
     (define allops
       (let loop ([ops (list val)] [acc '()] [covered '()])
+	;; covered is a list of streamop-names that we've already included
+	;; FIXME: USE A HASH TABLE!
 	(cond
-	 [(null? ops) acc]
+	 [(null? ops) acc] ;; Return all the streamops encountered.
 	 [(memq (streamop-name (car ops)) covered)
 	  (loop (cdr ops) acc covered)]
 	 [else 
@@ -433,40 +484,43 @@
 		(cons (car ops) acc)
 		(cons (streamop-name (car ops)) covered)
 		)])))
-    ;; Build a let expression:
-    
+    (DEBUGASSERT set? (map streamop-name allops))
+
+    ;; Build a let expression binding all streamops:    
     #;
     (let loop ([ops allops])
       (if (null? ops) (streamop-name val)
 	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
 	     ,(loop (cdr ops)))))
+
     ;; No, doing letrec instead:
     (ASSERT allops)
     `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
-       ,(streamop-name val))
-    )]
+       ,(streamop-name val)))]
    [else (error 'Marshal "cannot marshal: ~s" val)]))
 
 (define (Marshal-Streamop op)
-  (define default 
-    (cons (streamop-op op)
-	  (if (eq? 'unionN (streamop-op op))	      
-	      (map streamop-name (ASSERT (streamop-parents op)))
-	      ;; This is more than a bit silly, I shouldn't split params/parents in the first place.
-	      (let loop ([argty* (car (ASSERT (regiment-primitive? (streamop-op op))))]
-			 [params  (streamop-params op)]
-			 [parents (streamop-parents op)])
-		(cond
-		 [(null? argty*) '()]
-		 [(stream-type? (car argty*))
-		  (cons (streamop-name (car parents))
-			(loop (cdr argty*) params (cdr parents)))]
-		 [else 
-		  (let ()
-		    (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
-		    (cons (Marshal (car params)) 
-			  (loop (cdr argty*) (cdr params) parents)))]))
-	      )))
+  (define arglist
+    ;; This is more than a bit silly, I have to recombine the argument list from params/parents.
+    ;; I shouldn't split params/parents in the first place.
+    (let loop ([argty* (if (eq? 'unionN (streamop-op op)) ;; special case, not a prim
+			   (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
+			   (car (ASSERT (regiment-primitive? (streamop-op op))))
+			   )]
+	       [params  (streamop-params op)]
+	       [parents (streamop-parents op)])
+      (cond
+       [(null? argty*) '()]
+       [(stream-type? (car argty*))
+	(cons (streamop-name (car parents))
+	      (loop (cdr argty*) params (cdr parents)))]
+       [else 
+	(let ()
+	  (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
+	  (cons (Marshal (car params)) 
+		(loop (cdr argty*) (cdr params) parents)))]))) ;; End Silliness
+  ;; Produce primitive application syntax:
+  (define default (cons (streamop-op op) arglist))
 ;  (display-constrained "   MARSHALLING STREAMOP: " `[,op 100] "\n")
   (if (streamop-type op)
       `(assert-type ,(streamop-type op) ,default)
@@ -520,19 +574,20 @@
      )))
 
 
-
 ;; Foreign closures are simple... they become foreign entries.
 (define (Marshal-Foreign-Closure fcl)
   (ASSERT (foreign-closure? fcl))
   (closure-code fcl)
   )
 
+
 ;; FIXME: TODO: to make this more efficient, we should build up a
 ;; single substitution, then apply it, rather than repeatedly
 ;; traversing the closure's code.
 (define (Marshal-Closure cl)
-  ;; Below we accumulate a cumulative substitution list,
-  ;; we must apply it accordingly.
+  ;; Below we accumulate a cumulative substitution list.
+  ;; We must apply the substitions to the expressions being substituted.
+  ;; This requires picking an order.
   (define (subst-the-substs subst)
     (match subst
       [() ()]
@@ -545,19 +600,20 @@
 
 
   ;; This loop accumulates a bunch of bindings that cover all the
-  ;; free variables of the closure.  (And, transitively, any
-  ;; closures reachable from the input closure.)  These bindings
+  ;; free variables of the closure (and, transitively, any
+  ;; closures reachable from the input closure).  These bindings
   ;; fall into two categories.  Mutable bindings are only allowed
   ;; to be accessed from a single closure.  Immutable bindings may
   ;; float up to become global bindings.  (And thus not duplicate
   ;; code between multiple iterates.)
-  (let loop ([code (closure-code cl)]
-	     [fv   (closure-free-vars cl)]
-	     [state '()]
-	     [globals '()]
-	     [env (closure-env cl)]
-	     [substitution '()]
-	     )
+  (let marshloop ([code (closure-code cl)]                   ;; Code to process
+		  [fv   (list->set (closure-free-vars cl))]  ;; free vars to marshal
+		  [state '()]                                ;; mutable state for this closure
+		  [globals '()]                              ;; immutable global bindings
+		  [env (closure-env cl)]                     ;; environment from which to marshal
+		  [substitution '()]                         ;; lambda's to inline
+		  )
+    (DEBUGASSERT set? fv)
     (if (null? fv)
 	;; We're done processing the environment, produce some code:
 	(let* ([bod `(lambda ,(closure-formals cl) 
@@ -566,6 +622,8 @@
 			 (core-substitute (map car subst) (map cadr subst)
 					  bod))]
 	       [binds (append globals state)])
+	  (DEBUGASSERT set? (map car binds))
+
 					;(if (null? state) bod `(letrec ,state ,bod))
 					;	    (unless (null? globals) (inspect globals))
 ;	  (printf "FINALLY DOING SUBSTITUTION: ~s\n" (map car (reverse substitution)))
@@ -574,19 +632,20 @@
 	(let ([val (apply-env env (car fv))])
 	  (cond
 
+#;
 	   [(hashtab-get (marshal-cache) val)
 	    => (match-lambda ((,name . ,code))
 		 (printf "\n  Marshal-Closure: HAD MARSHALLED VALUE IN CACHE!!!\n")
 		 code)]
 
 	   [(plain? val) 
-	    (loop code (cdr fv) state
+	    (marshloop code (cdr fv) state
 		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
 		  env substitution )]
 	   ;; This is definitely part of the state:
 	   [(ref? val)
 	    ;; FIXME: Need to scan for shared mutable values.
-	    (loop code (cdr fv)
+	    (marshloop code (cdr fv)
 		  (cons (list (car fv) (unknown-type) 
 			      `(Mutable:ref ,(Marshal (ref-contents val))))
 			state)
@@ -600,7 +659,7 @@
 		 [(,argty* ... -> ,res)
 		  (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
 		    ;; This just turns into the '(foreign name includes)' expression.
-		    (loop code (cdr fv) state
+		    (marshloop code (cdr fv) state
 			  ;; The foreign binding just turns into the '(foreign name includes)' expression:
 			  (cons `(,(car fv) ,(unknown-type) ,(closure-code val)) globals)
 			  env
@@ -610,21 +669,25 @@
 					       (foreign-app ',name ,(car fv) ,@formals)))
 				substitution)))])])]
 
+	   ;; FIXME:
 	   ;; Free variables bound to closures need to be turned back into code and inlined.
-	   [(closure? val)  
+	   ;; This is a little ugly... we stick the lambda in but inline later.  We could proably 
+	   ;; also not treat it specially at all, and leave it outside.  But we do want to rip
+	   ;; the environment out of these closures, regardless of where we stick the lambda code.
+	   [(closure? val)
 	    ;; First, a freshness consideration:
 	    ;; FIXME: We could be better here about catching duplicated bindings.
 	    ;; (Instead, by renaming we will give them distinct bindings.)
 	    (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
 	      (DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
-	      (loop code 		 
+	      (marshloop code 		 
 		    ;; We also merge the relevent parts of the closure's environment with our environment:
 		    (union newfree (cdr fv))
 		    state globals
 		    (append env-slice env)
 		    (cons 		 
 		     ;; For now, don't do any inlining.  Do that later:
-		     ;; Here we simply stick those lambdas into the code.
+		     ;; Here we simply stick those lambdas into the code. (by adding them to the subst)
 		     (list (car fv) 
 			   `(lambda ,(closure-formals val) 
 			      ,(map unknown-type (closure-formals val))
@@ -661,9 +724,14 @@
     (values newcode newfv newslice)))
 
 
-; ================================================================================ ;
-;;; Basic inlining for stream kernels.
 
+
+
+
+
+
+; ================================================================================ ;
+;;; Basic inlining inside stream kernels.
 
 ;; After meta-program evaluation, what normalization do we want to do to the stream kernels?
 ;; Currently, we'd like to get rid of applications.  This function exhaustively inlines.
@@ -723,13 +791,19 @@
 ;;; TODO: Lift constants and check sharing.
 
 
+
+
+
+
+
+
+
 ; ================================================================================ ;
 ;;; Entrypoint and Unit Tests
 
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru) 
-;	    (inspect x)
 	    (parameterize ([marshal-cache (make-default-hash-table 1000)])
 
 	      (let* (

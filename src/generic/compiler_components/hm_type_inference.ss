@@ -424,7 +424,7 @@
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
       [(unionN ,[t*] ...) 
        (ASSERT (not (null? t*)))
-       (ASSERT all-equal?  t*)
+       (ASSERT all-equal?  t*) ;; Requires that they're literally equal sexps...
        (match (types-compat? '(Stream 'a) (car t*))
 	 [(Stream ,t) `(Stream #(Int ,t))]
 	 )
@@ -609,9 +609,12 @@
 	 (for-each (lambda (t2) 
 		     (types-equal! first t2 exp "(All streams into unionList or unionN must be same type.)\n"))
 	   (cdr t*))
+	 ;; Make sure it's resolved as a stream type:
+	 (types-equal! first (instantiate-type '(Stream 'anything) ()) exp "unionN must take streams")
+	 ;; Now we add in that integer tag to the type.
 	 (values exp
-		 (match (types-compat? '(Stream 'a) (car t*))
-		   [(Stream ,t) `(Stream #(Int ,(instantiate-type t nongeneric)))])))]
+		 (match (deep-assq 'Stream first)
+		   [(Stream ,elt) `(Stream #(Int ,elt))])))]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])

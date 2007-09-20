@@ -45,7 +45,7 @@
 		    "elaboration didn't succeed in getting all (potential) stream types free from other type constructors:\n  ~s"
 		    `(,C . ,t*)))]
 	[#(,t* ...) 
-	 (and ;(not (polymorphic-type? (list->vector t*))) ;; TEMPTOGGLE
+	 (and (not (polymorphic-type? (list->vector t*))) 
 	      (or (andmap verify-stream-free t*)
 		  (error 'verify-type
 			 "elaboration didn't succeed on this tuple type:\n  ~s"

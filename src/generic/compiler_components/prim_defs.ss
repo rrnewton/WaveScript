@@ -632,7 +632,7 @@
     ;; These keep a gnuplot window open and repeatedly update it.
     ;; Shouldn't need both of these, one should be defined in wavescript:
     (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
-    (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM a)))) (Stream (Sigseg (NUM a))))
+    (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM t)))) (Stream (Sigseg (NUM t))))
 
     ;; These take (X,Y) pairs.
     (gnuplot_array_stream2d  ((Stream (Array #((NUM a) (NUM b))))) (Stream (Array #((NUM a) (NUM b)))))
@@ -1066,7 +1066,8 @@
      [else (length args)])))
 
 ;; Is it a regiment primitive?
-;(define (regiment-primitive? x) (hashtab-get primitives-hash x))
+(define (regiment-primitive? x) (hashtab-get primitives-hash x))
+#;
 (define (regiment-primitive? x) 
   (let ([entry (assq x (regiment-primitives))])
     (and entry (cdr entry))))
