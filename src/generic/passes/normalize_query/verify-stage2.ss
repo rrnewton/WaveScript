@@ -171,7 +171,7 @@
           [(lambda ,formalexp ,type ,expr)
            (guard (list? formalexp) 
 		  (andmap symbol? formalexp)
-		  (set? formalexp)
+		  (list-is-set?o formalexp)
                   (not (memq 'lambda env)))
 	   `(lambda ,formalexp 
 	      ,(process-expr expr (union formalexp env)
@@ -184,7 +184,7 @@
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env))
                   (andmap symbol? lhs*)
-                  (set? lhs*))
+                  (list-is-set? lhs*))
 	   (let* ([newenv (union lhs* env)]
 		  [new-type-env (map list lhs*
 				     (map (lambda (x) (infer-type x newenv type-env))

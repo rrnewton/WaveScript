@@ -502,9 +502,9 @@
 (define formalexp?
   (lambda (formalexp)
     (match formalexp
-      [(,v* ...) (set? v*)]
+      [(,v* ...) (list-is-set? v*)]
       [,v (guard (symbol? v)) #t]
-      [(,v* ... . ,extra) (set? (cons extra v*))]
+      [(,v* ... . ,extra) (list-is-set? (cons extra v*))]
       [,else #f])))
 
 

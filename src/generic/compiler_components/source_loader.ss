@@ -346,7 +346,7 @@
       (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
     (unless (subset? typevs defvs)
       (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-    (unless (set? (map car typealiases))
+    (unless (list-is-set? (map car typealiases))
       (error 'ws-postprocess 
 	     "Got two type aliases with the same name!\nAll aliases: ~s"
 	     typealiases))

@@ -87,8 +87,8 @@
 
    list-repeat! make-repeats
    mapi map-filter for-eachi diff
-   set? subset? set-equal? list->set set-cons union intersection difference
-   setq? subsetq? set-eq?
+   list-is-set? subset? set-equal? list->set set-cons union intersection difference
+   list-is-setq? subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
@@ -806,23 +806,18 @@
 ;;; FIXME TODO: seal this type off to prevent invalid accesses to the list representation.
 ;; =================================================================================
 
-#;
-(define genmember
-  (lambda (eqfun)
-    (cond
-     [(eq? eqfun eq?) memq]
-     [(eq? eqfun equal?) member]
-     [else (error 'genmember "unsupported eq-fun: ~a\n" eqfun)])))
+;; Here we make sets a separate datatype:
+;(reg:define-struct (set internal))
 
-(define (set? ls)
+(define (list-is-set? ls)
   (or (null? ls)
       (and (not (member (car ls) (cdr ls)))
-	   (set? (cdr ls)))))
+	   (list-is-set? (cdr ls)))))
 ;; eq? based:
-(define (setq? ls)
+(define (list-is-setq? ls)
   (or (null? ls)
       (and (not (memq (car ls) (cdr ls)))
-	   (set? (cdr ls)))))
+	   (list-is-setq? (cdr ls)))))
 
 ;; Inefficient for ordered types:
 (define (subset? l1 l2)
@@ -842,8 +837,8 @@
 	(if (and (testfun lst1) (testfun lst2))
 	    (loop lst1 lst2)
 	    (error 'set-eq/equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2))))))
-(define set-eq?    (set-comparator setq? memq))
-(define set-equal? (set-comparator set?  member))
+(define set-eq?    (set-comparator list-is-setq? memq))
+(define set-equal? (set-comparator list-is-set?  member))
 
 ;; [2005.10.11]  Added reverse! to make the result in the same order as orig. <br>
 ;; NOTE: Uses eq? !

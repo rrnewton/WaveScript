@@ -97,7 +97,7 @@
 			  [() (map (lambda (_) (blank-type)) v*)]
 			  [((,t* ...)) t*])]
 		 [vars (apply append (map pattern->vars v*))])	     
-	     (ASSERT (set? vars))
+	     (ASSERT (list-is-set? vars))
 	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
 
 	  ;; Should eventually remove ifs as subsumed by case statements.
@@ -122,7 +122,7 @@
 				  [() (blank-type)]
 				  [(,t) t]))
 			   optional)])
-	     (ASSERT (set? vars))
+	     (ASSERT (list-is-set? vars))
 	     `(letrec ([,lhs* ,types ,rands] ...) ,body))]
 	  
 	  ;; This is long-winded, handling all these let-variants:
@@ -136,7 +136,7 @@
 			[rhsnew (process-expr (car rhs*) env)]
 			[newenv (union vars env)]
 			[type (match (car opt) [() (blank-type)] [(,t) t])])
-		   (ASSERT (set? vars))
+		   (ASSERT (list-is-set? vars))
 		   (loop newenv (cdr lhs*) (cdr rhs*) (cdr opt)
 			 `([,(car lhs*) ,type ,rhsnew] . ,acc)
 			 ))))]
@@ -149,7 +149,7 @@
 				[() (blank-type)]
 				[(,t) t]))
 			 optional)])
-	    (ASSERT (set? vars))
+	    (ASSERT (list-is-set? vars))
 	    `(let ([,lhs* ,types ,rhs*] ...) 
 	       ,(process-expr body (union lhs* env))))]
 
@@ -159,7 +159,7 @@
 	  (ASSERT symbol? lhs)
 	  ;; "pat" is really just a list of symbols for now.
 	  (ASSERT (curry andmap symbol?) pat)
-	  (ASSERT (set? pat))
+	  (ASSERT (list-is-set? pat))
 	  `(let-as (,lhs ,pat ,rhs)
 		   ,(process-expr body (union (cons lhs pat) env)))]
 

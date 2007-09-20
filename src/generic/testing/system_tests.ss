@@ -2585,8 +2585,8 @@
       (define set2 (sort < (union '(6 14) nbrs1 nbrs2)))
       ;(printf "\n  Actual neighbors: ~s \n" set2)
       (ASSERT (not (null? set1)))
-      (ASSERT (set? nbrs1))
-      (ASSERT (set? nbrs2))
+      (ASSERT (list-is-set? nbrs1))
+      (ASSERT (list-is-set? nbrs2))
       (equal? set1 set2)))]
 
 

@@ -484,7 +484,7 @@
 		(cons (car ops) acc)
 		(cons (streamop-name (car ops)) covered)
 		)])))
-    (DEBUGASSERT set? (map streamop-name allops))
+    (DEBUGASSERT list-is-set? (map streamop-name allops))
 
     ;; Build a let expression binding all streamops:    
     #;
@@ -613,7 +613,7 @@
 		  [env (closure-env cl)]                     ;; environment from which to marshal
 		  [substitution '()]                         ;; lambda's to inline
 		  )
-    (DEBUGASSERT set? fv)
+    (DEBUGASSERT list-is-set? fv)
     (if (null? fv)
 	;; We're done processing the environment, produce some code:
 	(let* ([bod `(lambda ,(closure-formals cl) 
@@ -622,7 +622,7 @@
 			 (core-substitute (map car subst) (map cadr subst)
 					  bod))]
 	       [binds (append globals state)])
-	  (DEBUGASSERT set? (map car binds))
+	  (DEBUGASSERT list-is-set? (map car binds))
 
 					;(if (null? state) bod `(letrec ,state ,bod))
 					;	    (unless (null? globals) (inspect globals))

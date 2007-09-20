@@ -372,7 +372,7 @@
 
       (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
       ;; There had better be no duplicate identifiers.  We don't allow this for now.
-      (DEBUGASSERT (set? (map node-id (map car graph))))
+      (DEBUGASSERT (list-is-set? (map node-id (map car graph))))
 
       (unless (simworld-object-graph world)
 	(set-simworld-object-graph! world

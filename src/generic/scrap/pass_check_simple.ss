@@ -17,7 +17,7 @@
 ;; No variable capture is allowed at this point.
 
 ;;; The implementation requires constant?, datum?, keyword?,
-;;; regiment-primitive?, set?, formalexp?, get-formals, and the list
+;;; regiment-primitive?, list-is-set?, formalexp?, get-formals, and the list
 ;;; regiment-primitives from helpers.ss.
 
 (define verify-core 
@@ -28,7 +28,7 @@
 	 [(let ([,lhs* ,[process-expr -> rhs*]] ...) ,expr)	   
 	   (guard (not (memq 'let env))
                   (andmap symbol? lhs*)
-                  (set? lhs*))
+                  (list-is-set? lhs*))
 	   (if (ormap (lambda (s) (memq s env)) lhs*)
 	       (error 'verify-core "no variable	capture at this point."))
 	   #t]))

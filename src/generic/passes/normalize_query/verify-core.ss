@@ -35,7 +35,7 @@
 	 [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'lazy-letrec env))
                    (andmap symbol? lhs*)
-		  (set? lhs*) ;; No duplicate lhs's ..
+		  (list-is-set? lhs*) ;; No duplicate lhs's ..
 		  )
 	   (if (ormap (lambda (s) (memq s env)) lhs*)
 	       (error 'verify-core "no variable	capture at this point."))

@@ -474,7 +474,7 @@
 	     ;; This fills in defaults for missing greturn parameters:
 	     [(greturn ,thing ,stuff ...)
 	      (if (or (not (andmap pair? stuff))
-		      (not (set? (map car stuff)))
+		      (not (list-is-set? (map car stuff)))
 		      (not (subset? (map car stuff)
 				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
