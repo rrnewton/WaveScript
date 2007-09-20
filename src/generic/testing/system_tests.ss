@@ -114,8 +114,8 @@
 	       )
        )
      ,(lambda (ls) 	
-	(set-equal? (list->set (car ls))
-		    (list->set (cadr ls))))]
+	(set-equal? (list-rem-dups (car ls))
+		    (list-rem-dups (cadr ls))))]
 
 
     ["Simalpha: run a simple program that floods lights."
@@ -1229,7 +1229,7 @@
 		'[simalpha-channel-model 'lossless]
 		)))
 	(list (< (length lst) 30)
-	      (sort < (list->set lst))
+	      (sort < (list-rem-dups lst))
 	      (equal? lst (sort < lst)))) ;; Only true with VERY restricted simulation model.
       (#t (0 10 20) #t)]
 
@@ -1298,7 +1298,7 @@
 	    (eq? BASE_ID (car lst))         ;; First should come BaseID:
 	    (not (memq BASE_ID (cdr lst)))  ;; And that should be the only BaseID
 	    (> (length lst) 1)              ;; Should have some neighbors, its connected.
-	    (eq? (length lst) (length (list->set lst))))))]
+	    (eq? (length lst) (length (list-rem-dups lst))))))]
 
      ;; [2005.10.06] After doing my refactoring to make multiple return-handler tokens
      ;; this isn't working.  We're only getting a return from one of our neighbors.
@@ -1367,7 +1367,7 @@
 ; 	   (< one two three))
 	 ;; Also check to make sure whe heard from everyone.
 	 (= (sim-num-nodes)
-	    (length (list->set (apply append x))))
+	    (length (list-rem-dups (apply append x))))
 	 ))]
 
      ;; [2005.11.16] This just FAILED when I had realtime mode turned on.  But succeeded when I tried again.
@@ -1563,7 +1563,7 @@
 
      ["Gradients: Now try cons-aggregated greturn from one-hops (Definitely SIM ONLY, does alloc)"
       ;No it's not, require connected: ;retry  ;; It's possibly we have no neighbors at all!
-      (map list->set
+      (map list-rem-dups
 	   (filter (lambda (x) (not (null? x)))
 		   , (tm-to-list
 		     '(tokens 
@@ -2176,7 +2176,7 @@
 	(and (> (length ls) (* 2 (sim-num-nodes)))
 	     (equal?
 	      (sort < (cons BASE_ID (iota 1 29)))
-	      (sort < (list->set ls)))))]
+	      (sort < (list-rem-dups ls)))))]
 
     ;; [2005.11.14] Huh, just started getting some errors on this when running from command line.
     ["Run a simple fold in regiment." 
@@ -2486,7 +2486,7 @@
 		[simalpha-graphics-on #t]
 		[sim-timeout 20000])
    (sort < 
-	 (list->set     
+	 (list-rem-dups     
 	  (run-simulator-alpha 
 	   (run-compiler 
 	    '(rintegrate (lambda (node x state) (tuple (+ x 1000) state))
@@ -2573,7 +2573,7 @@
 		[simalpha-failure-model 'none]
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
-   (sort < (list->set 
+   (sort < (list-rem-dups 
 	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions.rs")))
 	 ))
  ,(lambda (set1)
@@ -2606,7 +2606,7 @@
 		[simalpha-channel-model 'lossless])
    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs"))
 #;
-   (sort < (list->set 
+   (sort < (list-rem-dups 
 	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs")))
 	 ))
 

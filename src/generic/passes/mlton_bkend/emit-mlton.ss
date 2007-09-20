@@ -416,7 +416,7 @@
 				  (format "(*WSLIBDEPS: ~a\n" 
 					  (apply string-append
 						 (insert-between " " 
-								 (list->set deps equal?))))
+								 (list-rem-dups deps equal?))))
 				  "*)\n")))
 			   
                            complex1 complex2 

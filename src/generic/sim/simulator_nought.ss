@@ -899,7 +899,7 @@
 	 (node-id (simobject-node this)) (cpu-time) which what
 	 (case what
 	   [(on) 
-	    (set! led-toggle-state (list->set (cons which led-toggle-state)))
+	    (set! led-toggle-state (list-rem-dups (cons which led-toggle-state)))
 	    (apply sim-light-up colors)
 	    "" ]
 	  [(off)
@@ -913,7 +913,7 @@
 		 (sim-light-up 0 0 0)
 		 "off")
 	       (begin 
-		 (set! led-toggle-state (list->set (cons which led-toggle-state)))
+		 (set! led-toggle-state (list-rem-dups (cons which led-toggle-state)))
 		 (apply sim-light-up colors)
 		 "on")
 	       )]

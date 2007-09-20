@@ -239,7 +239,7 @@
   ; Flip off all the edge highlights:
     (IF_GRAPHICS
      (let ((lines
-            (list->set ;; eq? based list->set
+            (list-rem-dups ;; eq? based list-rem-dups
              (apply append
                     (map (lambda (simob)
 			   (unless (simobject-gobj simob)

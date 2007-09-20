@@ -267,7 +267,7 @@
 ;	  "sim-leds " what which (hashtab->list state-table)) (flush-output-port)
     (let ([extra (case what
                             [(on) 
-                             (set! led-toggle-state (list->set (cons which led-toggle-state)))
+                             (set! led-toggle-state (list-rem-dups (cons which led-toggle-state)))
                              '()]
                             [(off)
                              (set! led-toggle-state (remq which led-toggle-state))
@@ -278,7 +278,7 @@
                                    (set! led-toggle-state (remq which led-toggle-state))
                                    '(off))
                                  (begin 
-                                   (set! led-toggle-state (list->set (cons which led-toggle-state)))
+                                   (set! led-toggle-state (list-rem-dups (cons which led-toggle-state)))
                                    '(on))
                                  )]
                             [else (error 'sim-leds "bad action: ~s" what)])])

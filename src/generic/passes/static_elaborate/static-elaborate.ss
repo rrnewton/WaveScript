@@ -243,7 +243,7 @@
 	(Array:build 
 	 ,(lambda (env n f)
 	    ;; Jeez, this is inefficient because we've already done this at least once:
-	    (let* ([fv* (list->set (core-free-vars (code-expr f)))]
+	    (let* ([fv* (list-rem-dups (core-free-vars (code-expr f)))]
 		   [real-code 
 
 		    `(wavescript-language

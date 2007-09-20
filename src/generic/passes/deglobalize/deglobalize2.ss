@@ -47,7 +47,7 @@
 
 ;; TODO: TEST THIS
 (define (regiment-free-vars expr)
-  (list->set 
+  (list-rem-dups 
    (let loop ((env ()) (expr expr))
      (match expr	 
        [,var (guard (symbol? var))

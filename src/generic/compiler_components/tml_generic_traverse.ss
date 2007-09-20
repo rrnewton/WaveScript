@@ -256,7 +256,7 @@
 	(append rhs (remq lhs bod))
 	]
        [(lambda (,lhs* ...) ,[bod])
-	(difference bod ;(list->set (apply append bod*)) 
+	(difference bod ;(list-rem-dups (apply append bod*)) 
 		    lhs*)]
        [(let-stored ((,lhs ,[rhs])) ,[bod])
 	(append rhs (remq lhs bod))]

@@ -183,7 +183,7 @@
 			    tok subid*))
 		     ;; Make sure there is no intersection between stored vars:
 		     (let ((svars (map car allstored)))
-		       (if (not (= (length svars) (length (list->set svars))))
+		       (if (not (= (length svars) (length (list-rem-dups svars))))
 			   (error 'remove-duplicate-tokbinds
 			    "handlers for token ~s have overlapping stored vars: ~s" tok svars)))
 		     )

@@ -96,7 +96,7 @@
 	[(,lang '(program (bindings ,constbinds ...) 
 		   (nodepgm (tokens ,toks ...))))
 	 
-	 (let ([tainted (list->set (process-tokbinds toks))])
+	 (let ([tainted (list-rem-dups (process-tokbinds toks))])
 	   `(,lang
 	     '(program 
 		  (bindings ,constbinds ...)

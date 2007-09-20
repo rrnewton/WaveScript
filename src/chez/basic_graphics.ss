@@ -360,7 +360,7 @@
 					 (action: (lambda (self)
 						    (set! showedges-state (not showedges-state))
 						    (let ((edges 
-							   (list->set 
+							   (list-rem-dups 
 							    (apply append 
 								   (map (lambda (x) 
 									  (map cadr (gobject-edgelist (simobject-gobj x))))

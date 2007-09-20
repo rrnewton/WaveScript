@@ -532,7 +532,7 @@
 			(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
 			       (list (equal? (,toks-referenced body) (list tok))
 				     (equal? (,toks-escaped body) '())
-				     (set-equal? (list->set (,free-vars body)) '(flag subtok_ind fv0))
+				     (set-equal? (list-rem-dups (,free-vars body)) '(flag subtok_ind fv0))
 				     (,free-vars expr))))
 		   ;; If the test fails, give information:
 		   (list expr ktbs)

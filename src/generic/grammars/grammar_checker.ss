@@ -51,7 +51,7 @@
   ;; .param origexpr is an sexpression
   ;; .param grammar is just a list of productions
   ;; .param initialprod indicates which production to use to start checking
-    (define allvariants (list->set (map car grammar)))
+    (define allvariants (list-rem-dups (map car grammar)))
     (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 
   ;; This keeps track of how deep we are, for purposes of deciding which failure to report.
@@ -308,7 +308,7 @@
       (ASSERT (or (null? initialprod) 
 		  (and (list? initialprod) (symbol? (car initialprod)) 
 		       (null? (cdr initialprod)))))
-      (list->set (map car grammar))
+      (list-rem-dups (map car grammar))
       ))
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 

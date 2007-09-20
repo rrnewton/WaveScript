@@ -303,7 +303,7 @@
 	     ;(DEBUGASSERT (null? (intersection (map car innerbinds) (map car letrecbinds))))
 	     ;(inspect (vector (map car innerbinds) (map car letrecbinds)))
 	     (append innerbinds letrecbinds)
-	     ;(list->set (append innerbinds letrecbinds))
+	     ;(list-rem-dups (append innerbinds letrecbinds))
 	     ;innerbinds
 	     )]
 

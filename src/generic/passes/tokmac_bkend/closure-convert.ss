@@ -91,7 +91,7 @@
 
     ;; Get the free vars from an expression
     (define (free-vars e)
-      (list->set 
+      (list-rem-dups 
        (tml-generic-traverse
 	;; driver, fuser, expression
 	(lambda  (x loop) 

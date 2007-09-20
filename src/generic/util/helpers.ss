@@ -87,7 +87,8 @@
 
    list-repeat! make-repeats
    mapi map-filter for-eachi diff
-   list-is-set? list-subset? set-equal? list->set set-cons union intersection difference
+   list-is-set? list-subset? set-equal? list->set set->list union intersection difference ;set-cons
+   list-rem-dups
    list-is-setq? list-subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc rdc! rac&rdc! last 
@@ -807,7 +808,7 @@
 ;; =================================================================================
 
 ;; Here we make sets a separate datatype:
-;(reg:define-struct (set internal))
+(reg:define-struct (setadt internal))
 
 (define (list-is-set? ls)
   (or (null? ls)
@@ -842,33 +843,30 @@
 
 ;; [2005.10.11]  Added reverse! to make the result in the same order as orig. <br>
 ;; NOTE: Uses eq? !
-(define list->set
+(define list-rem-dups
   (case-lambda
     [(ls) (list->set ls eq?)]
     [(ls comp)
-     (if (null? ls) '()
+    (let loop ([ls ls])
+       (if (null? ls) '()
 	 (reverse! 
-	  (set-cons (car ls) (list->set (cdr ls) comp) comp)))]))
-;; [2006.01.23] Added version that uses equal?  For structure based equivalence.
+	  (set-cons:list (car ls) (loop (cdr ls)) comp))))
 #;
-(define list->set_equal
-  (lambda (ls)
-    (let loop ((ls ls))
-      (if (null? ls) '()
-	  (if (member (car ls) (cdr ls))
-	      (loop (cdr ls))
-	      (cons (car ls) (loop (cdr ls))))))))
+     (make-setadt
+  )]))
+
+(define (set->list set) set)
+(define list->set list-rem-dups)
 
 ;; NOTE: Uses eq? !
-(define set-cons
+(define set-cons:list
   (case-lambda
     [(x set equ?)
      (cond
       [(null? set) (list x)]
       [(equ? x (car set)) set]
-      [else (cons (car set) (set-cons x (cdr set)))])]
-    [(x set) (set-cons x set eq?)]))
-
+      [else (cons (car set) (set-cons:list x (cdr set)))])]
+    [(x set) (set-cons:list x set eq?)]))
 
 (define union
   (case-lambda

@@ -606,12 +606,12 @@
   ;; to be accessed from a single closure.  Immutable bindings may
   ;; float up to become global bindings.  (And thus not duplicate
   ;; code between multiple iterates.)
-  (let marshloop ([code (closure-code cl)]                   ;; Code to process
-		  [fv   (list->set (closure-free-vars cl))]  ;; free vars to marshal
-		  [state '()]                                ;; mutable state for this closure
-		  [globals '()]                              ;; immutable global bindings
-		  [env (closure-env cl)]                     ;; environment from which to marshal
-		  [substitution '()]                         ;; lambda's to inline
+  (let marshloop ([code (closure-code cl)]       ;; Code to process
+		  [fv   (closure-free-vars cl)]  ;; free vars to marshal
+		  [state '()]                    ;; mutable state for this closure
+		  [globals '()]                  ;; immutable global bindings
+		  [env (closure-env cl)]         ;; environment from which to marshal
+		  [substitution '()]             ;; lambda's to inline
 		  )
     (DEBUGASSERT list-is-set? fv)
     (if (null? fv)
@@ -700,12 +700,14 @@
 (define (closure-free-vars cl) 
   ;(ASSERT (not (foreign-closure? cl)))
   (if (foreign-closure? cl) ()
-      (difference (core-free-vars (closure-code cl)) (closure-formals cl))))
+     (list-rem-dups 
+	(difference (core-free-vars (closure-code cl)) 
+		    (closure-formals cl)))))
 
 ;; Renames the free vars for a closure.
 (define (dissect-and-rename cl)
   (DEBUGASSERT (not (foreign-closure? cl)))
-  (let* ([fv    (list->set (closure-free-vars cl))]
+  (let* ([fv    (closure-free-vars cl)]
 	 [newfv (map unique-name fv)]
 	 [newcode (core-substitute fv newfv (closure-code cl))]
 	 [oldenv (closure-env cl)]
@@ -713,14 +715,14 @@
 	 [newslice (map list newfv oldslice)])
 #;
     (unless (set-equal? newfv
-			     (list->set (difference (core-free-vars newcode) (closure-formals cl))))
+			     (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl))))
       (inspect newfv)
       (inspect (core-free-vars newcode))
       (inspect (closure-formals cl))
-      (inspect (list->set (difference (core-free-vars newcode) (closure-formals cl))))
+      (inspect (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl))))
       )
     (DEBUGASSERT (set-equal? newfv
-			     (list->set (difference (core-free-vars newcode) (closure-formals cl)))))
+			     (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl)))))
     (values newcode newfv newslice)))
 
 

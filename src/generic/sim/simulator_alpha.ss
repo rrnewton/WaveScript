@@ -883,7 +883,7 @@
 	 `(define (node-code this)	    
 
 	   ;; First define datatype definitions for the tokens:
-	   ,@(let ((alltoks (list->set (map car allstored))))
+	   ,@(let ((alltoks (list-rem-dups (map car allstored))))
 	       (append 
 		(map (lambda (t)		
 		       `(reg:define-struct (,t ;invoke-counter 

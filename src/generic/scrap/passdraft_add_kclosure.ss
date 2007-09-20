@@ -4,7 +4,7 @@
   (let ()
     
     (define (free-vars e)
-      (list->set 
+      (list-rem-dups 
        (tml-generic-traverse
 	;; driver, fuser, expression
 	(lambda  (x loop) 

@@ -80,7 +80,7 @@
    (define-id-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
 
    (define-id-syntax edges (identifier-syntax ;; shorthand
-			    (list->set 
+			    (list-rem-dups 
 			     (apply append
 				    (map (lambda (x) (map cadr (gobject-edgelist (simobject-gobj x))))
 				      (simworld-all-objs (simalpha-current-simworld)))))))
