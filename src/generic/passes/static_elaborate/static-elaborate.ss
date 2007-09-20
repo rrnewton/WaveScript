@@ -81,7 +81,7 @@
 			  (and (subcheck e 'Expr)
 			       (= (length v*) (length t*))
 			       ;; No free vars allowed!!
-			       (subset? ('TODOfree-vars e) v*))]
+			       (list-subset? ('TODOfree-vars e) v*))]
 			 [,else #f]))]
        )))
 ;; TEMPORARY:

@@ -60,7 +60,7 @@
     (letrec ([check-valid (lambda (name props)
 			    (DEBUGASSERT (list? props))
 			    (cond 
-			     [(subset? '(distributed local) props)
+			     [(list-subset? '(distributed local) props)
 			      (error 'classify-names:add-props! 
 				     "var ~s cannot be both a distributed and local value: ~a"
 				     name props)]

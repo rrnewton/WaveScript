@@ -475,7 +475,7 @@
 	     [(greturn ,thing ,stuff ...)
 	      (if (or (not (andmap pair? stuff))
 		      (not (list-is-set? (map car stuff)))
-		      (not (subset? (map car stuff)
+		      (not (list-subset? (map car stuff)
 				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
 			 "process-expr: bad syntax for greturn: ~s" `(greturn ,stuff ...)))

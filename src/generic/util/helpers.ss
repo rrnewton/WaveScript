@@ -87,8 +87,8 @@
 
    list-repeat! make-repeats
    mapi map-filter for-eachi diff
-   list-is-set? subset? set-equal? list->set set-cons union intersection difference
-   list-is-setq? subsetq? set-eq?
+   list-is-set? list-subset? set-equal? list->set set-cons union intersection difference
+   list-is-setq? list-subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
@@ -820,9 +820,9 @@
 	   (list-is-setq? (cdr ls)))))
 
 ;; Inefficient for ordered types:
-(define (subset? l1 l2)
+(define (list-subset? l1 l2)
   (andmap (lambda (a) (member a l2)) l1))
-(define (subsetq? l1 l2)
+(define (list-subsetq? l1 l2)
   (andmap (lambda (a) (memq a l2)) l1))
 
 (define set-comparator

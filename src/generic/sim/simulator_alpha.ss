@@ -1155,7 +1155,7 @@
 	  'replace))
     
     ;; Only allow accepted flags:
-    (ASSERT (subset? flags '(simple use-stale-world)))
+    (ASSERT (list-subset? flags '(simple use-stale-world)))
 
     ;; Now to really run it, but first we instantiate the sensor-stubs for the program to read:
     (printf "Starting alpha-sim, initializing sensor-stub...\n")

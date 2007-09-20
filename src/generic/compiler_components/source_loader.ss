@@ -344,7 +344,7 @@
 	  (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
     (unless (eq? 'BASE (caar routes))
       (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
-    (unless (subset? typevs defvs)
+    (unless (list-subset? typevs defvs)
       (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
     (unless (list-is-set? (map car typealiases))
       (error 'ws-postprocess 
