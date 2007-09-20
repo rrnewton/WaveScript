@@ -109,8 +109,10 @@
 	     [(eq? infered-type expected-type)
 	      (void)] ;; It's all good
 	     ;; Locations are just lists for the moment!
-	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
-	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
+	     [(set-equal? (list->set (list infered-type expected-type)) 
+			  (list->set '(List Location)))  (void)]
+	     [(set-equal? (list->set (list infered-type expected-type)) 
+			  (list->set '(Dist Number)))  (void)]
 
 	     [(and (eq? infered-type 'Region)
 		   (eq? expected-type 'Area))]
@@ -132,7 +134,8 @@
 	 [(eq? 'Object t1) t2]
 	 [(eq? 'Object t2) t1]
 	 ;; Subtyping!! (without polymorphism or anything)
-	 [(set-equal? (list t1 t2) '(Area Region)) 'Region]
+	 [(set-equal? (list->set (list t1 t2)) 
+		      (list->set '(Area Region))) 'Region]
 	 [else (error 'type-union
 		      "Cannot union types: ~s and ~s" t1 t2)])))
 

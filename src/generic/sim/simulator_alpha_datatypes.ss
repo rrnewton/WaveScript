@@ -204,13 +204,14 @@
     (ASSERT (andmap list? og))
     (ASSERT (andmap (lambda (row) (andmap invcheck-simobject row)) og))
     ;; Make sure the simobjects correspond physically to the nodes.
-    (ASSERT (set-eq? (map simobject-node (map car og))
-			  (map car (simworld-graph w)))))
+    (ASSERT (set-eq? (list->set (map simobject-node (map car og)))
+		     (list->set (map car (simworld-graph w))))))
   ;; Make sure the hash-table contains the same substance as the object-graph.
   (let ((hsh (hashtab->list (simworld-obj-hash w))))
     (for-each (lambda (pr) 
 		(ASSERT (= (car pr) (node-id (simobject-node (cdr pr))))))  hsh)
-    (ASSERT (set-eq? (map cdr hsh) (map car (simworld-object-graph w)))))
+    (ASSERT (set-eq? (list->set (map cdr hsh))
+		     (list->set (map car (simworld-object-graph w))))))
   ;; Check vtime.
   (ASSERT (integer? (simworld-vtime w)))
   ;; Check led-toggle-states

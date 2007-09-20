@@ -240,27 +240,27 @@ fun specgram_seglist(ext) {
     
     //specgram the sync'd data 
     
-    fun dospec(index,i,x) {
-      s = List:ref(segs,index);
-      a = toArray(s.subseg(s.start+i,points));
+    fun dospec(index, i, x) {
+      s = List:ref(segs, index);
+      a = toArray(s.subseg(s.start + i`to64, points));
       win = apairmult(a,hw);
       f = fftR2C(win);
       for j = 0 to points/2 {
 	println("@@ " ++ x ++ " " ++ j+index*(points/2+1) ++ " " ++ absC(f[j])
-		++ " " ++ s.start+i);
+		++ " " ++ s.start + i`to64);
       };
     };
     
     for i = 0 to ((s1.width-points) / skip) {
-      dospec(0,i*skip,xcount);
-      dospec(1,i*skip,xcount);
-      dospec(2,i*skip,xcount);
+      dospec(0, i*skip, xcount);
+      dospec(1, i*skip, xcount);
+      dospec(2, i*skip, xcount);
       println("@@ ");
       xcount := xcount + 1;
     };	
     
     for i = 0 to s1.width-1 {
-      println("@# " ++ s1.start+1 ++ " "
+      println("@# " ++ s1`start + 1`to64 ++ " "
 	      ++ s1[[i]] ++ " " 
 	      ++ s2[[i]] ++ " " 
 	      ++ s3[[i]] ++ " " );
@@ -329,18 +329,19 @@ xw = profile(x,notch1,64);
 yw = profile(y,notch1,64);
 zw = profile(z,notch2,64);
 
-
+totalscore :: Stream (Float * Int64 * Int);
 totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
   emit(x+y+z,wz.start,wz.end);
 };
 
+smoothed :: Stream (Float * Int * Int);
 smoothed = sm(fun(v)(v,0,0),
 	      gaussian_smoothing
-	      (sm(fun((v,_,_))v,totalscore), 64, 8));
+	      (sm(fun((v,_,_))v, totalscore), 64, 8));
 
 mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
-		 zip2_sametype(totalscore,smoothed));
+		 zip2_sametype(totalscore, smoothed));
 
 dets = detect(mergedscore);
 

@@ -14,7 +14,7 @@ fun fft_filter(s, filter) {
   };
 
   tdwin = iterate f in filt {
-    emit(toSigseg(ifftC2R(f),0,nulltimebase)); 
+    emit(toSigseg(ifftC2R(f), 0`to64, nulltimebase)); 
   };
 
   td = zip2_sametype(gnuplot_sigseg_stream(hanning(tdwin)), rw);

@@ -386,9 +386,9 @@
 
 		["Next testing number-freevars"
 		 (,free-vars (,number-freevars '(begin x y (let ((z '3)) z))))
-		 ,(lambda (ls) (set-equal? ls '(fv0 fv1)))]
+		 ,(lambda (ls) (set-equal? (list->set ls) (list->set '(fv0 fv1))))]
 		[(,free-vars (,number-freevars '(begin x y (let ((z 3)) (+ ht z)))))
-		 ,(lambda (ls) (set-equal? ls '(fv0 fv1 fv2)))]	       
+		 ,(lambda (ls) (set-equal? (list->set ls) (list->set '(fv0 fv1 fv2))))]	       
 		[(,free-vars '(lambda (HOLE_2)
 			       (call (tok tok1 0)
 				     (lambda (HOLE_3)

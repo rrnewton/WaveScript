@@ -114,8 +114,8 @@
 	       )
        )
      ,(lambda (ls) 	
-	(set-equal? (list-rem-dups (car ls))
-		    (list-rem-dups (cadr ls))))]
+	(set-equal? (list->set (car ls))
+		    (list->set (cadr ls))))]
 
 
     ["Simalpha: run a simple program that floods lights."

@@ -351,7 +351,7 @@
 			resultofanonlambda_8)
 		      (,empty-dfg)))
 		     ,(lambda (x)
-			(set-eq? x '(var_2 resultofanonlambda_8)))]
+			(set-eq? (list->set x) (list->set '(var_2 resultofanonlambda_8))))]
 		    ["Two bindings, one nested letrec"
 		     (map car (,process-expr 
 		      '(lazy-letrec ([resultofanonlambda_8 Int () '89]
@@ -363,7 +363,7 @@
 				    res2)
 		      (,empty-dfg)))
 		     ,(lambda (x)
-			(set-eq? x '(foo res1 resultofanonlambda_8 var_2 res2)))]
+			(set-eq? (list->set x) (list->set '(foo res1 resultofanonlambda_8 var_2 res2))))]
 
 		    ["Data flow graph?"
 		     (,dfg? '((x ,worldsym)
@@ -392,7 +392,8 @@
 #;
 	   (DEBUGMODE (let ([allvars (expr->allvars letexpr)])
 			(DEBUGASSERT (= (length allvars) (length dfg)))
-			(DEBUGASSERT (set-equal? allvars (map car dfg)))))
+			(DEBUGASSERT (set-equal? (list->set allvars)
+						 (list->set (map car dfg))))))
 
 	   ;;(inspect global-tenv)
 	   `(,input-language (quote (program (props ,proptable ...) 
@@ -459,10 +460,11 @@
 		  (x ,worldsym)		
 		  (f (lambda (x) (_) x)))
 
-		(cdr x)
-		`((x ,worldsym)
+		
+		(list->set (cdr x))
+		(list->set `((x ,worldsym)
 		  (f (f ('a -> 'a) () (lambda (x) ('b) x)))
-		  (v (v (Area Node) () (rmap f world))))
+		  (v (v (Area Node) () (rmap f world)))))
 		)))]
 
       ["Now let's look at nested regions."
@@ -478,9 +480,9 @@
        (map car
             (cdr (,deep-assq 'data-flow (add-data-flow ',nested_testprog))))
        ,(lambda (x)
-         (set-equal? x 
+         (set-equal? (list->set x) 
 		     ;'(r2 nd r1 n h h2 getid v ret)
-		     '(r2 nd res_r1 r1 a kh n w h getid h2 v)
+		     (list->set '(r2 nd res_r1 r1 a kh n w h getid h2 v))
 		     ))]
 
       )))))

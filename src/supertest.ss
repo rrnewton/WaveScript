@@ -495,7 +495,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot_run.log" test-directory))))       
 
+;; FIXME: ADD THIRD STAGE ETC!!!
 
+
+;; TEMP FIXME:
 #|
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot_build.log" test-directory))))
@@ -507,12 +510,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
 	    (code->msg! (system/exit-code (format "echo 1 | ./query.exe &> ~a/wsc_marmot_run.log" test-directory))))
 
-
-
        (current-directory test-directory)
        )
 
-#;
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
 (begin (newline)
@@ -534,6 +534,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
               (format "echo 3 | ws.early pothole4.ws -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
+;; TEMP FIXME DISABLED
 #|
        (fpf "wscaml: Compiling pothole4 app:               ~a\n"
 	    (code->msg! (system/exit-code 

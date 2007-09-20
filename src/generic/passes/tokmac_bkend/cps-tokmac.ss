@@ -453,11 +453,11 @@
 	   `(
 	     ["Testing free-vars" 
 	      (,free-vars '(dbg '"w%d%d\n" fv0 x))
-	       ,(lambda (ls) (set-equal? ls '(fv0 x)))]
+	       ,(lambda (ls) (set-equal? (list->set ls) (list->set '(fv0 x))))]
 	     [(,free-vars '(begin x y (let ((z 3)) z)))
-	      ,(lambda (ls) (set-equal? ls '(x y)))]
+	      ,(lambda (ls) (set-equal? (list->set ls) (list->set '(x y))))]
 	     [(,free-vars '(begin a (if b c (let ((d e)) d)) f))
-	      ,(lambda (ls) (set-equal? ls '(a b c e f)))]
+	      ,(lambda (ls) (set-equal? (list->set ls) (list->set '(a b c e f))))]
 	     [(,free-vars '(begin '0 '1 (let ([z '3]) z)))
 	      ()]
 	     	     
@@ -532,7 +532,8 @@
 			(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
 			       (list (equal? (,toks-referenced body) (list tok))
 				     (equal? (,toks-escaped body) '())
-				     (set-equal? (list-rem-dups (,free-vars body)) '(flag subtok_ind fv0))
+				     (set-equal? (list->set (,free-vars body))
+						 (list->set '(flag subtok_ind fv0)))
 				     (,free-vars expr))))
 		   ;; If the test fails, give information:
 		   (list expr ktbs)

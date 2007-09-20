@@ -609,19 +609,6 @@
         (cons (f (car ls))
               (mapright f (cdr ls))))))
 
-#;
-(define list->set
-  (lambda (origls origpos v)
-    (let list-set-loop ([ls origls] [pos origpos])
-      (cond
-        [(null? ls)
-         (error 'list-set
-                "list ~a is not long enough to reference pos ~a"
-                origls origpos)]
-        [(zero? pos) (cons v (cdr ls))]
-        [else (cons (car ls)
-                    (list-set-loop (cdr ls) (sub1 pos)))]))))
-
 
 (define (list-repeat! ls)
   (if (null? ls) (error 'list-repeat! "cannot create infinite list from null list."))
@@ -828,7 +815,9 @@
 
 (define set-comparator
   (lambda (testfun memfun)
-    (lambda (lst1 lst2)
+    (lambda (set1 set2)
+      (define lst2 (setadt-internal set1))
+      (define lst1 (setadt-internal set2))
       (letrec ((loop (lambda (lst1 lst2)
 		       (cond
 			[(and (null? lst1) (null? lst2)) #t]
@@ -845,7 +834,7 @@
 ;; NOTE: Uses eq? !
 (define list-rem-dups
   (case-lambda
-    [(ls) (list->set ls eq?)]
+    [(ls) (list-rem-dups ls eq?)]
     [(ls comp)
     (let loop ([ls ls])
        (if (null? ls) '()
@@ -855,9 +844,10 @@
      (make-setadt
   )]))
 
-(define (set->list set) set)
-(define list->set list-rem-dups)
+(define (set->list set) (setadt-internal set))
+(define (list->set . args) (make-setadt (apply list-rem-dups args)))
 
+;; On lists, port to sets:
 ;; NOTE: Uses eq? !
 (define set-cons:list
   (case-lambda
@@ -868,6 +858,7 @@
       [else (cons (car set) (set-cons:list x (cdr set)))])]
     [(x set) (set-cons:list x set eq?)]))
 
+;; On lists, port to sets:
 (define union
   (case-lambda
     [(set1 set2)
@@ -885,6 +876,7 @@
            set1
            (loop (union set1 (car sets)) (cdr sets))))]))
 
+;; On lists, port to sets:
 (define intersection
   (case-lambda
     [(set1 set2)
@@ -899,6 +891,7 @@
            set1
            (loop (intersection set1 (car sets)) (cdr sets))))]))
 
+;; On lists, port to sets:
 (define difference
   (lambda (set1 set2)
     (let loop ([set1 set1]
@@ -909,6 +902,7 @@
      (else (cons (car set1)  (loop (cdr set1) set2)))))
     ))
 
+;; CURRENTLY UNUSED:
 (define generalized-member?
   (lambda (pred?)
     (lambda (x ls)
@@ -916,7 +910,6 @@
         (and (not (null? ls))
              (or (pred? (car ls) x)
                  (f (cdr ls))))))))
-
 (define generalized-union
   (lambda (pred?)
     (let ([member? (generalized-member? pred?)])

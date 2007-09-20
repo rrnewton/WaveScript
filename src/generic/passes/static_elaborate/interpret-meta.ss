@@ -714,15 +714,15 @@
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
 #;
-    (unless (set-equal? newfv
-			     (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl))))
+    (unless (set-equal? (list->set newfv)
+			(list->set (difference (core-free-vars newcode) (closure-formals cl))))
       (inspect newfv)
       (inspect (core-free-vars newcode))
       (inspect (closure-formals cl))
       (inspect (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl))))
       )
-    (DEBUGASSERT (set-equal? newfv
-			     (list-rem-dups (difference (core-free-vars newcode) (closure-formals cl)))))
+    (DEBUGASSERT (set-equal? (list->set newfv)
+			     (list->set (difference (core-free-vars newcode) (closure-formals cl)))))
     (values newcode newfv newslice)))
 
 

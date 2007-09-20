@@ -32,7 +32,8 @@
 	    (,test-deglob2 
 	     '(rfold + 0 (rmap nodeid (khood (anchor-maximizing nodeid world) 2))))
 	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))
-	       (and (set-eq? (map car decls) '(ELECT EMIT AGGR))
+	       (and (set-eq? (list->set (map car decls))  
+			     (list->set '(ELECT EMIT AGGR)))
 		    ;; Do we aggregate using the local tree?
 		    (substring? "khood" (symbol->string (cadr (deep-assq 'VIA (deep-assq 'AGGR decls)))))
 		    ;; Elect plugs into the Emit:
