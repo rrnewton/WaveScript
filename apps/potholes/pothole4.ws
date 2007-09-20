@@ -105,8 +105,9 @@ fun gaussian_smoothing(s, points, sigma) {
 
 
 DEBUG=false;
-data_padding = 100;
+data_padding = 100`gint;
 
+//detect ::  
 fun detect(scorestrm) {
   // Constants:
   hi_thresh = 1.5;                  // factor above smoothed
@@ -116,23 +117,25 @@ fun detect(scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
-      _start = 0; 
+      _start = 0`to64; 
       trigger_value = 0.0;
-      refract = 0;                 
+      refract = 0;
 
       max_peak = 0.0;
       max_over = 0.0;
       first_over = 0.0;
-      peak_location = 0;
+      peak_location = 0`to64;
       integral = 0.0;
 
       curr_thresh = 0.0;
     }
+    
+    _ :: Int64 = st; _ :: Int64 = en; // TEMP
 
     fun reset() {
       thresh_value := 0.0;
       trigger := false;
-      _start := 0;
+      _start := 0`to64;
       trigger_value := 0.0;
       refract := 0;
     };
@@ -150,7 +153,7 @@ fun detect(scorestrm) {
       integral := integral + score;
       if (score > max_peak) then {
         max_peak := score;
-        peak_location := (st + en) / 2;
+        peak_location := (st + en) / 2`to64;
       };
 
       if ((score-curr_thresh) > max_over) then {
@@ -174,7 +177,7 @@ fun detect(scorestrm) {
 	// end sample
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
-	_start := 0;
+	_start := 0`to64;
         thresh_value := 0.0;
       }
     };
@@ -191,7 +194,7 @@ fun detect(scorestrm) {
 	refract := refract_interval;
 	thresh_value := curr_thresh;
 	_start := st;
-	peak_location := (st+en)/2;
+	peak_location := (st+en) / gint(2);
 	trigger_value := score;
 	max_peak := score;
 	max_over := score-smoothed_mean;
@@ -206,9 +209,9 @@ fun detect(scorestrm) {
 	/* ok, we can free from sync */
 	/* rrn: here we lamely clear from the beginning of time. */
 	/* but this seems to assume that the sample numbers start at zero?? */
-	emit (0, 0, st - 1, 0, 0.0, 0.0, 0.0, 0.0);
+	emit (0, 0`to64, st - 1`to64, 0`to64, 0.0, 0.0, 0.0, 0.0);
 	if DEBUG then 
-	  print("DISCARD message: "++show((false, 0, st-1))++
+	  print("DISCARD message: "++show((false, 0, st - 1`to64))++
 		" just processed window "++show(st)++":"++show(en)++"\n");
       }
   }
@@ -329,32 +332,36 @@ xw = profile(x,notch1,64);
 yw = profile(y,notch1,64);
 zw = profile(z,notch2,64);
 
-totalscore :: Stream (Float * Int64 * Int);
+totalscore :: Stream (Float * Int64 * Int64);
 totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
-  emit(x+y+z,wz.start,wz.end);
+  emit(x+y+z, wz.start, wz.end);
 };
 
-smoothed :: Stream (Float * Int * Int);
-smoothed = sm(fun(v)(v,0,0),
+
+// RRN: TODO: JUST USE UNION TYPES HERE, SHOULDN'T NEED THIS:
+smoothed :: Stream (Float * Int64 * Int64);
+smoothed = sm(fun(v)(v, 0`to64, 0`to64),
 	      gaussian_smoothing
 	      (sm(fun((v,_,_))v, totalscore), 64, 8));
 
-mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
+
+// Contains (score, smoothed_mean, start, end)
+mergedscore = sm(fun(((v,s,e),(sm,_,_))) (v,sm,s,e),
 		 zip2_sametype(totalscore, smoothed));
 
 dets = detect(mergedscore);
 
-tosync = iterate (b,s,e,_,_,_,_,_) in dets { 
+tosync = iterate (b,st,en,_,_,_,_,_) in dets { 
   if b == 1
   then
-    emit(true,max(0,s-data_padding),e+data_padding)
+    emit(true,max(0`gint, st-data_padding), en+data_padding)
   else if b == 0 then
-    emit(false,0,max(0,e-data_padding-1));
+    emit(false, 0`gint, max(0`gint, en - data_padding - 1`gint));
 }
 
-
-type My4Tup = ((List (Sigseg Float)) * Int * Float * Float * Int * Float * Float);
+// A datatype containing (?,?,?,?,?,?,?)
+type My4Tup = ((List (Sigseg Float)) * Int64 * Float * Float * Int64 * Float * Float);
 
 zipsync1 :: Stream My4Tup;
 zipsync2 :: Stream My4Tup;
@@ -368,7 +375,7 @@ snips = syncN_no_delete(tosync, [time, lat, long, x, y, z, dir, speed]);
 
 
 zipsync2 = iterate l in snips {
-  emit(l,0,0.0,0.0,0,0.0,0.0);
+  emit(l,0`gint, 0.0, 0.0, 0`gint, 0.0, 0.0);
 }
 
 
@@ -390,7 +397,7 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
   dir = List:ref(segs,6);
   speed = List:ref(segs,7);
 
-  index = l - time.start;
+  index = from64(l - time.start);
 
   if (first) then println("");
   first = false;
@@ -411,8 +418,8 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
 
 
 tosync2 = iterate (_, _, s, e) in mergedscore { 
-  emit(true,(s+e)/2-127,(s+e)/2+128);
-  emit(false,0,(s+e)/2-127);
+  emit(true,(s+e) / 2`gint - 127`gint, (s+e)/2`gint + 128`gint);
+  emit(false,0`gint, (s+e)/2`gint - 127`gint);
 }
 
 smoothedscores = syncN_no_delete(tosync2, [time, lat, long, dir, speed]);
@@ -523,3 +530,5 @@ BASE <-
 iterate _ in unionList([final1,final2]) { emit () }
 
 // wsc: Worked with rev 1342 of the engine
+
+
