@@ -801,7 +801,10 @@
 ; Removed mvlet! [2004.04.28]
 
 
-;;; Procedures for manipulating sets.
+;;; SET ADT.
+;;;
+;;; FIXME TODO: seal this type off to prevent invalid accesses to the list representation.
+;; =================================================================================
 
 #;
 (define genmember
@@ -810,14 +813,12 @@
      [(eq? eqfun eq?) memq]
      [(eq? eqfun equal?) member]
      [else (error 'genmember "unsupported eq-fun: ~a\n" eqfun)])))
-;    (lambda (x ls)
-;      (
 
-;; eq? based:
 (define (set? ls)
   (or (null? ls)
       (and (not (member (car ls) (cdr ls)))
 	   (set? (cdr ls)))))
+;; eq? based:
 (define (setq? ls)
   (or (null? ls)
       (and (not (memq (car ls) (cdr ls)))
@@ -827,7 +828,7 @@
 (define (subset? l1 l2)
   (andmap (lambda (a) (member a l2)) l1))
 (define (subsetq? l1 l2)
-  (andmap (lambda (a) (member a l2)) l1))
+  (andmap (lambda (a) (memq a l2)) l1))
 
 (define set-comparator
   (lambda (testfun memfun)
@@ -852,7 +853,7 @@
     [(ls comp)
      (if (null? ls) '()
 	 (reverse! 
-	  (set-cons (car ls) (list->set (cdr ls)) comp)))]))
+	  (set-cons (car ls) (list->set (cdr ls) comp) comp)))]))
 ;; [2006.01.23] Added version that uses equal?  For structure based equivalence.
 #;
 (define list->set_equal
@@ -872,6 +873,7 @@
       [(equ? x (car set)) set]
       [else (cons (car set) (set-cons x (cdr set)))])]
     [(x set) (set-cons x set eq?)]))
+
 
 (define union
   (case-lambda
@@ -935,6 +937,9 @@
                     [(null? set1) set2]
                     [(member? (car set1) set2) (loop (cdr set1))]
                     [else (cons (car set1) (loop (cdr set1)))])))))))))
+
+;; ============================================================
+
 
 ;; Produce a list of consecutive integers.
 ;; .example (iota n) => (0 1 ... n-1)

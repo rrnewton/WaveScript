@@ -825,35 +825,35 @@
     [(,Eval '(timer '3) '() #f) ,streamop?]
     [(,Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '() #f) ,streamop?]
     [(,plain-val (,Eval '(letrec ([x Int '3]) x) '() #f)) 3]
-    [(,plain-val (,Eval '(let ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
+    [(,plain-val (,Eval '(letrec ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
      '(letrec ([fact 'a (lambda (n) (Int) 
         (if (wsequal? '1 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6)) '() #f)) 
      720]
     [(,plain-val (,Eval 
-     '(let ([v 'a (Mutable:ref '99)])
+     '(letrec ([v 'a (Mutable:ref '99)])
 	(begin (set! v '89)
 	       (deref v))) '() #f))    89]
     [(,plain-val (,Eval 
-     '(let ([v 'a (Mutable:ref '0)])
+     '(letrec ([v 'a (Mutable:ref '0)])
 	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     [(,plain-val (,Eval 
-     '(let ([v 'a (Mutable:ref '0)])
+     '(letrec ([v 'a (Mutable:ref '0)])
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
-	(let ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
+	(letrec ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
 	'())) '() #f)))))
      #f]
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (let ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
+       (letrec ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -861,14 +861,14 @@
        (not 
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
-      (,Marshal (,Eval '(let ([y 'a (Mutable:ref '100)]) 
+      (,Marshal (,Eval '(letrec ([y 'a (Mutable:ref '100)]) 
 	      (iterate (lambda (x vq) (a b) (deref y)) 
 				(timer '3))) '() #f))))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f
      (interpret-meta '(lang '(program 
-       (let ([f 'b (lambda (x) (Int) (+_ x x))])
+       (letrec ([f 'b (lambda (x) (Int) (+_ x x))])
 	 (iterate (lambda (_) ('a) (app f '9))(timer '3))) Int))))
      #f]
 

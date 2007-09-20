@@ -218,7 +218,7 @@
 	[ids (map node-id (map car (simworld-graph w)))])
     (for-each (lambda (pr)
 		(ASSERT (memq (car pr) ids))
-		(ASSERT (subsetq? (cdr pr) '(red green blue))))
+		(ASSERT (subsetq? (list->set (cdr pr)) (list->set '(red green blue)))))
       hsh))
   ;; Check connectivity-function, not much to say here.
   (ASSERT (or (not (simworld-connectivity-function w))
