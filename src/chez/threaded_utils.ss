@@ -225,6 +225,12 @@
       (map get-job-result jobs)
       ;jobs
       ))
+
+  ;; TEMP: This is inefficient of course:
+  (define (parmv-fun th1 th2)
+    (let ([ls (par-list (list th1 th2))])
+      (values (car ls) (cadr ls))))
+  
 )
 
 
@@ -434,11 +440,13 @@
 	      ;; Now keep going to process the rest of the frame.
 	      (workloop alldone (cdr status*) (cdr thunks)))]
        ;; Someone else has it:
-       [(eq? 'grabbed (car status*)) (workloop #f (cdr status*) (cdr thunks))]))
+       [(eq? 'grabbed (car status*)) (workloop #f (cdr status*) (cdr thunks))]))    )
 
-;    (map (lambda (th) (th)) thunks)
-        
-    ))
+  ;; TEMP: This is inefficient of course:
+  (define (parmv-fun th1 th2)
+    (let ([ls (par-list (list th1 th2))])
+      (values (car ls) (cadr ls))))
+)
 
 
 ;; ================================================================================
@@ -497,17 +505,14 @@
     ;; EXCESSIVE LOCKING
     ;; FIXME: Optimization... do a lock-free check first:
     ;(if (eq? 'available (shadowframe-mut frame))  )
-    (with-mutex (shadowframe-mut frame)
-      ;; If someone beat us here, we fizzle
-      (if (eq? 'available (shadowframe-status frame))
-	  (begin 
-	    (printf "STOLE work! ~s\n" frame)
-	    (set-shadowframe-status!   frame 'done)
-	    (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame)))
-	    #t)
-	  (begin 
-	    ;(print "  work was already taken: ~s\n" (shadowframe-status frame))
-	    #f))))
+    (and (eq? 'available (shadowframe-status frame))
+	 (with-mutex (shadowframe-mut frame)
+	   ;; If someone beat us here, we fizzle
+	   (and (eq? 'available (shadowframe-status frame))
+		(begin 
+		  (printf "STOLE work! ~s\n" frame)
+		  (set-shadowframe-status!   frame 'done)
+		  (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame))))))))
 
   (define (make-worker)
     (define stack (new-stack))
@@ -668,14 +673,24 @@
 ;; Sadly no... it is 200ms with no list creation. (changing to fixnum doesn't improve!)
 #;
 (let ()
-  ;; Make 1024 threads:
+  ;; Make a million threads:
   (define (tree n)
     (if (zero? n) 1
 	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
   (par-reset!)
-  (printf "\n~s\n\n" (time (tree 22)))
+  (printf "\n~s\n\n" (time (tree 20)))
   (par-status))
 
+
+#;
+(let ()
+  ;; Make a million threads:
+  (define (tree n)
+    (if (zero? n) 1
+	(call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
+  (par-reset!)
+  (printf "\n~s\n\n" (time (tree 20)))
+  (par-status))
 
 
 ;; Basic work-stealing...???
