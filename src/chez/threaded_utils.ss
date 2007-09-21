@@ -11,7 +11,7 @@
 
      init-par  ;; Run initialization code (fork threads, etc)
      par       ;; Evaluate expressions in parallel, return list of values
-;     par-list  ;; Evaluate a list of thunks
+     par-list  ;; Evaluate a list of thunks
      parmv-fun parmv
      par-map   ;; Apply function to list in parallel
 
@@ -78,6 +78,10 @@
   (syntax-rules ()
     [(par e ...) (par-list (lambda () e) ...)]
     ))
+
+(define-syntax parmv
+  (syntax-rules ()
+    [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
 
 ;; A bit inefficient, defined in terms of par-list:
 (define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
@@ -473,9 +477,9 @@
 
   ;; DEBUGGING:
   ;;  Pick a print:
-     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
   ;   (define (print . args) (apply printf args))
-  ;   (define (print . args) (void)) ;; fizzle
+     (define (print . args) (void)) ;; fizzle
 
   ;; Try to grab a frame.  Return success code.
   (define (grab-work frame)
@@ -487,45 +491,23 @@
 	[else #f])))
 
   ;; ----------------------------------------
-  ;; Traverse everybody's stack to find work.
-  ;; Returns frame, statuspair, workpair.
-#;
-  (define (steal-work)     
-    (let theifloop ()
-      (let-values ([(ind frames)
-		    (with-mutex global-mut 
-		      (let ([ind (random (vector-length allstacks))])
-			(values ind (shadowstack-frames (vector-ref allstacks ind)))))])
-	(cond
-	 ;; No work on this processor, try again. 
-	 [(null? frames) (theifloop)]
-	 [else 
-	  ;; NOTE: I HAVE NO IDEA WHETHER THIS IS MORE EFFICIENT THAN JUST DOING A REVERSE ON THE FRAME LIST!
-	  ;;
-	  ;; Go across the frames in the stack, oldest first, looking for something to steal.
-	  ;; This is just a foldr, written with an explicit loop an multiple values.
-	  (or (let stackloop ([frames frames])
-		   (if (null? (cdr frames))
-		       ;; Got to the end, try this one.
-		       (grab-work (car frames))
-		       (let ([frm (stackloop (cdr frames))])
-			 (or frm (grab-work (car frames))))))
-	      (theifloop))]))))
 
-  ;; Do the work and mark it as done.
+  ;; Try to do work and mark it as done.
   (define (do-work! frame)
     ;; EXCESSIVE LOCKING
     ;; FIXME: Optimization... do a lock-free check first:
     ;(if (eq? 'available (shadowframe-mut frame))  )
     (with-mutex (shadowframe-mut frame)
       ;; If someone beat us here, we fizzle
-      (if (eq? 'available (shadowframe-mut frame))
+      (if (eq? 'available (shadowframe-status frame))
 	  (begin 
-	    (print "STOLE work! ~s\n" frame)
+	    (printf "STOLE work! ~s\n" frame)
 	    (set-shadowframe-status!   frame 'done)
 	    (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame)))
 	    #t)
-	  #f)))
+	  (begin 
+	    ;(print "  work was already taken: ~s\n" (shadowframe-status frame))
+	    #f))))
 
   (define (make-worker)
     (define stack (new-stack))
@@ -541,8 +523,7 @@
 				       (let ([ind (random (vector-length allstacks))])
 					 (values ind (shadowstack-frames (vector-ref allstacks ind)))))])
 
-#;
-			 (when (> (length frames) 0) 
+			 (when (> (length frames) 2) 
 			   (print "~s frames to scan\n" (length frames)))
 			 (cond
 			  ;; No work on this processor, try again. 
@@ -609,12 +590,21 @@
 	  [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
 	   (pop!)
 	   (values val1 (shadowframe-thunkval frame))]))))
-  )
 
+  
+  (define (par-list . thunks)
+    (if (null? thunks) ()
+	(let ()
+	  (let plloop ([thunks thunks])
+	    (cond 
+	     [(null? (cdr thunks)) (list ((car thunks)))]
+	     [else
+	      (let-values ([(fst rest) (parmv ((car thunks))
+					      (plloop (cdr thunks)))])
+		(cons fst rest)	  
+		)])
+	    )))))
 
-(define-syntax parmv
-  (syntax-rules ()
-    [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
 
 ;;(parmv-fun (lambda () (printf "A\n") 1) (lambda () (printf "B\n") 2))
 
