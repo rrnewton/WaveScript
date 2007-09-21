@@ -342,7 +342,7 @@
  (begin (printf "Configuring for multithreaded execution.\n")
 	(include "chez/threaded_utils.ss")
 	(import threaded_utils)
-	(define desired-number-of-threads 1) ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
+	(define desired-number-of-threads 2) ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
 	(init-par desired-number-of-threads)
 	)
  ;; Otherwise provide a dummy implementation of "par":

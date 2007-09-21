@@ -23,6 +23,7 @@ TOOPTIMIZE:
 
 [2007.09.20]
  *) Change regiment-primitive? to use symbol props.
+ *) Is -exit-error not working for type errors?
 
 [2007.09.16] {MLton integer constants}
  *) Fix emit-mlton to ascribe types to integer constants, even if

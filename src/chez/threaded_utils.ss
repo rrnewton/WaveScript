@@ -11,7 +11,8 @@
 
      init-par  ;; Run initialization code (fork threads, etc)
      par       ;; Evaluate expressions in parallel, return list of values
-     par-list  ;; Evaluate a list of thunks
+;     par-list  ;; Evaluate a list of thunks
+     parmv-fun parmv
      par-map   ;; Apply function to list in parallel
 
      par-status ;; Optional utility to show status of par threads.
@@ -232,6 +233,7 @@
 ;; Idle threads steal frames from this stack.
 ;;
 ;; [2007.09.18] This successfully gets a reasonable parallel speedup on the tree test.
+#;
 (begin
   
   ;; STATE:
@@ -435,7 +437,201 @@
     ))
 
 
+;; ================================================================================
+;; <-[ VERSION 4 ]->
 
+;; Tweaking Work-stealing version to use multiple values and do only 2-way par.
+(begin
+  
+  ;; STATE:
+
+  ;; Each thread's stack has a list of frames, from newest to oldest.
+  ;; We use a lock-free approach for mutating/reading the frame list.
+  ;; Therefore, a thief might steal an old inactive frame, but this poses no problem.
+  ;; 
+  ;; A thread's "stack" must be as efficient as possible, because
+  ;; it essentially replaces the native scheme stack where par calls
+  ;; are concerned.  (I wonder if continuations can serve any purpose here.)
+  (reg:define-struct (shadowstack id frames))
+  
+  ;; Frames are locked individually.
+  ;; status may be 'available 'grabbed 'done
+  (reg:define-struct (shadowframe mut status thunkval))
+  
+  ;; There's also a global list of threads:
+  (define allstacks #()) ;; This is effectively immutable.
+  (define par-finished #f)
+  ;; And a mutex for global state:
+  (define global-mut (make-mutex))
+  (define par-counter 0) ;; how many attempted forks were there
+
+  ;; A new stack has no frames, but has a (hopefully) unique ID:
+  (define (new-stack) (make-shadowstack (random 10000) ()))
+
+  ;; A per-thread parameter.
+  (define this-stack (make-thread-parameter (new-stack)))
+
+  ;; DEBUGGING:
+  ;;  Pick a print:
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (apply printf args))
+  ;   (define (print . args) (void)) ;; fizzle
+
+  ;; Try to grab a frame.  Return success code.
+  (define (grab-work frame)
+    (with-mutex (shadowframe-mut frame)
+      (case (shadowframe-status frame)
+	[(available) 
+	 (set-shadowframe-status! frame 'grabbed)
+	 #t]
+	[else #f])))
+
+  ;; ----------------------------------------
+  ;; Traverse everybody's stack to find work.
+  ;; Returns frame, statuspair, workpair.
+#;
+  (define (steal-work)     
+    (let theifloop ()
+      (let-values ([(ind frames)
+		    (with-mutex global-mut 
+		      (let ([ind (random (vector-length allstacks))])
+			(values ind (shadowstack-frames (vector-ref allstacks ind)))))])
+	(cond
+	 ;; No work on this processor, try again. 
+	 [(null? frames) (theifloop)]
+	 [else 
+	  ;; NOTE: I HAVE NO IDEA WHETHER THIS IS MORE EFFICIENT THAN JUST DOING A REVERSE ON THE FRAME LIST!
+	  ;;
+	  ;; Go across the frames in the stack, oldest first, looking for something to steal.
+	  ;; This is just a foldr, written with an explicit loop an multiple values.
+	  (or (let stackloop ([frames frames])
+		   (if (null? (cdr frames))
+		       ;; Got to the end, try this one.
+		       (grab-work (car frames))
+		       (let ([frm (stackloop (cdr frames))])
+			 (or frm (grab-work (car frames))))))
+	      (theifloop))]))))
+
+  ;; Do the work and mark it as done.
+  (define (do-work! frame)
+    ;; EXCESSIVE LOCKING
+    ;; FIXME: Optimization... do a lock-free check first:
+    ;(if (eq? 'available (shadowframe-mut frame))  )
+    (with-mutex (shadowframe-mut frame)
+      ;; If someone beat us here, we fizzle
+      (if (eq? 'available (shadowframe-mut frame))
+	  (begin 
+	    (print "STOLE work! ~s\n" frame)
+	    (set-shadowframe-status!   frame 'done)
+	    (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame)))
+	    #t)
+	  #f)))
+
+  (define (make-worker)
+    (define stack (new-stack))
+    (fork-thread (lambda () 		   
+		   (this-stack stack) ;; Initialize stack.		  
+		   ;; Steal work forever:
+		   (let forever ()
+		     (unless par-finished
+
+		       ;; FIXME: ACK, do we need to lock for this:
+		       (let-values ([(ind frames)
+				     (with-mutex global-mut 
+				       (let ([ind (random (vector-length allstacks))])
+					 (values ind (shadowstack-frames (vector-ref allstacks ind)))))])
+
+#;
+			 (when (> (length frames) 0) 
+			   (print "~s frames to scan\n" (length frames)))
+			 (cond
+			  ;; No work on this processor, try again. 
+			  [(null? frames) (forever)]
+			  [else 
+			   ;; Go across the frames in the stack, oldest first, looking for something to steal.
+			   ;; This is just a foldr, written with an explicit loop an multiple values.
+			   (or (let stackloop ([frames frames])
+				 (if (null? (cdr frames))
+				     ;; Got to the end, try this one.
+				     (do-work! (car frames))
+				     (let ([frm (stackloop (cdr frames))])
+				       (or frm (do-work! (car frames))))))
+			       (forever))]))))))
+    stack)
+
+  (define (init-par num-cpus) 
+    (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
+    (with-mutex global-mut   
+      (set! allstacks (make-vector num-cpus))
+      (vector-set! allstacks 0 (this-stack))
+      ;; We fork N-1 threads (the original one counts)
+      (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
+	(vector-set! allstacks i (make-worker)))))
+  (define (shutdown-par) (set! par-finished #t))
+
+  (define (par-status) 
+    (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n  fork-attempts: ~s\n"
+	    par-finished (vector-length allstacks)
+	    (map length (map shadowstack-frames (vector->list allstacks)))
+	    par-counter))
+
+  ;; This should maybe reset more:
+  (define (par-reset!) (with-mutex global-mut (set! par-counter 0)))
+
+  ;; What thread are we called from?  Which stack do we add to?...
+  (define (parmv-fun th1 th2)
+    (define frame (make-shadowframe (make-mutex) 'available th2))
+
+    (define (pop!) 
+      (print "POP frame\n")
+      ;; POP IT.  It's ok that this isn't mutex-protected.
+      (let ([st (this-stack)]) (set-shadowstack-frames! st (cdr (shadowstack-frames st)))))
+   
+    ;; Should use global mutex:
+    (set! par-counter (add1 par-counter))
+
+    ;; From here on out, that frame is ready for business.
+    ;; Add a frame to our stack.  NO LOCKS!
+    (let ([st (this-stack)])
+      (set-shadowstack-frames! st (cons frame (shadowstack-frames st))))
+
+    ;; Start processing the first thunk.
+    (let ([val1 (th1)])
+      ;; Then grab the frame mutex and see if someone did the work for us:
+      (with-mutex (shadowframe-mut frame)
+	(case (shadowframe-status frame)
+	  [(available) 
+	   (print "  hmm... no one stole our work...\n")
+	   (pop!) ;; Pop before we even start the thunk.
+	   (values val1 (th2))]
+	  [(grabbed) 
+	   (error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
+	  [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
+	   (pop!)
+	   (values val1 (shadowframe-thunkval frame))]))))
+  )
+
+
+(define-syntax parmv
+  (syntax-rules ()
+    [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
+
+;;(parmv-fun (lambda () (printf "A\n") 1) (lambda () (printf "B\n") 2))
+
+#;
+(let ()
+  (define count (* 50 1000 1000))
+  ;(define count (* 500 ))
+  ;; Decrement a counter in two threads vs. one.
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  ;(define (l2 x) (unless (zero? x) (l2 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+
+  (par-reset!)
+  (time (parmv (l1 count) (l1 count)))
+  ;(time (list (l1 count) (l2 count)))
+  (par-status)
+  )
 
 ;; ================================================================================
 ;;; Little tests:
@@ -475,6 +671,11 @@
 ;; [2007.09.18] With work-stealing this gets a MEAGER 1.6X speedup on 8-way valor!!
 ;;  7684ms 8-way (3611 collecting) vs. 12228ms (2370 collecting)
 ;; Clearly our implementation of the "parallel stack" isn't that good.
+;;
+;; [2007.09.20] By the way, non-par mode (2^22) on justice gives: 459ms cpu (80ms gc)
+;;   par-mode 1-thread gives: 10s cpu, 2.1s gc
+;; This is a factor of 20... wait is Chez optimizing away the list creation?  
+;; Sadly no... it is 200ms with no list creation. (changing to fixnum doesn't improve!)
 #;
 (let ()
   ;; Make 1024 threads:
