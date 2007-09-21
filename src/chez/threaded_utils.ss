@@ -12,7 +12,8 @@
      init-par  ;; Run initialization code (fork threads, etc)
      par       ;; Evaluate expressions in parallel, return list of values
      par-list  ;; Evaluate a list of thunks
-     parmv-fun parmv
+     ;parmv-fun          
+     (parmv pop! push! this-stack parmv-helper)
      par-map   ;; Apply function to list in parallel
 
      par-status ;; Optional utility to show status of par threads.
@@ -22,6 +23,8 @@
      ;sync      ;; The corresponding call to wait for an async-par to finish.
      ;WAITING
      ;tickets
+     make-shadowframe shadowframe-mut shadowframe-status shadowframe-thunkval
+     set-shadowframe-mut! set-shadowframe-status! set-shadowframe-thunkval!
      )
   
   (import chez_constants)
@@ -581,8 +584,7 @@
   (define (pop! stack)
     ;(print "POP frame\n")
     (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
-
-
+#;
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
     (define stack (this-stack))
@@ -606,36 +608,44 @@
 	   (pop! stack)
 	   (values val1 (shadowframe-thunkval frame))]))))
 
-#;
+  (define (parmv-helper stack frame val1)
+    (with-mutex (shadowframe-mut frame)
+      (case (shadowframe-status frame)
+	[(available)
+	 (pop! stack) ;; Pop before we even start the thunk.
+	 (values val1 ((shadowframe-thunkval frame)))
+	 ;(values val1 (th2))
+	 ]
+	[(grabbed) 
+	 (error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
+	[else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
+	      (pop! stack)
+	      (values val1 (shadowframe-thunkval frame))])))
+
   ;; This one makes a thunk only for the second argument:
   (define-syntax parmv
     (syntax-rules ()
       [(_ a b) 
-       (let ([stack (this-stack)])
-	 (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-	 (set-shadowframe-status!   frame  'available)
-	 (set-shadowframe-thunkval! frame  th2)
-	 ;; Add a frame to our stack.  NO LOCKS!    
-	 ;; From here on out, that frame is ready for business.
-	 (push! stack)
-	 ;; Start processing the first thunk.
-	 (let ([val1 (th1)])
-	   ;; Then grab the frame mutex and see if someone did the work for us:
+       (let ([stack (this-stack)]
+	     [th2   (lambda () b)])
+	 (define frame (push! stack th2))
+	 (let ([val1 a]) ;; Do the first computation:
+	   ;(parmv-helper stack frame val1)
 	   (with-mutex (shadowframe-mut frame)
 	     (case (shadowframe-status frame)
 	       [(available)
-		(print "  hmm... no one stole our work...\n")
 		(pop! stack) ;; Pop before we even start the thunk.
 		(values val1 (th2))]
 	       [(grabbed) 
 		(error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
 	       [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
 		     (pop! stack)
-		     (values val1 (shadowframe-thunkval frame))])))
-	 parmv-fun a (lambda () b))])
-    )
+		     (values val1 (shadowframe-thunkval frame))]))
 
+	   )
+	 )]))
 
+#;
   (define-syntax parmv
     (syntax-rules ()
       [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
