@@ -1,0 +1,215 @@
+
+;; This is pertinent mainly to threaded_utils.ss, but it was growing to big to leave in there.
+
+;; ================================================================================
+;;; Little tests:
+
+;; ------------------------------------------------------------
+;; Embarassingly Parallel:
+
+;; This type of test can get 7.18X speedup on 8-way valor (work-stealing).
+#;
+(let ()
+  (define count (* 100 1000 1000))
+  ;(define count (* 500 ))
+  ;; Decrement a counter in two threads vs. one.
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  ;(define (l2 x) (unless (zero? x) (l2 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+
+  (par-reset!)
+  (time (parmv (l1 count) (l1 count)))
+  ;(time (par (l1 count) (l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)))
+  ;(time (list (l1 count) (l2 count)))
+  (par-status)
+  )
+
+;; This won't work because of shared code:
+;; WAIT it works!
+#;
+(let ()
+  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
+  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+  (time (par (l1 10000000) (l1 10000000)))
+  (time (list (l1 10000000) (l1 10000000)))
+  )
+
+
+;; ------------------------------------------------------------
+;; "parallel fib" style test:
+
+#;
+(let ()
+  ;; Make a million threads:
+  (define (tree n)
+    (if (zero? n) 1
+	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
+  (par-reset!)
+  (printf "\n~s\n\n" (time (tree 20)))
+  (par-status))
+
+#;
+(let ()
+  ;; Make a million threads:
+  (define (tree n)
+    (if (zero? n) 1
+	(call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
+  (par-reset!)
+  (printf "\n~s\n\n" (time (tree 23)))
+  (par-status))
+
+
+;; [2007.09.18] Hmm, on this one it displays the "taking turns" behavior (work sharing)
+;; [2007.09.18] With work-stealing this gets a MEAGER 1.6X speedup on 8-way valor!!
+;;  7684ms 8-way (3611 collecting) vs. 12228ms (2370 collecting)
+;; Clearly our implementation of the "parallel stack" isn't that good.
+;;
+;; [2007.09.20] By the way, non-par mode (2^22) on justice gives: 459ms cpu (80ms gc)
+;;   par-mode 1-thread gives: 10s cpu, 2.1s gc
+;; This is a factor of 20... wait is Chez optimizing away the list creation?  
+;; Sadly no... it is 200ms with no list creation. (changing to fixnum doesn't improve!)
+;;
+;; [2007.09.21] Doing everything in opt-level 3, still get only a 10X par overhead.
+;;  (Was afraid that would be much worse.)
+;; For parallel speedup, only getting 52% speedup on 8-processor valor!!
+;; (It gets a 42% speedup with just two threads.)
+
+#|
+;; [2007.09.21] Now working on this parallel speedup issue:
+;; Valor results for 1-8 threads, Tree test: 2^23
+    4967 ms elapsed real time, including 1301 ms collecting
+    3550 ms elapsed real time, including 1367 ms collecting
+    3638 ms elapsed real time, including 1440 ms collecting
+    3192 ms elapsed real time, including 1479 ms collecting
+    3210 ms elapsed real time, including 1481 ms collecting
+    3197 ms elapsed real time, including 1537 ms collecting
+    3248 ms elapsed real time, including 1504 ms collecting
+    3396 ms elapsed real time, including 1447 ms collecting
+;; Again, for memory alloc:
+    1006856992 bytes allocated, including 1010763328 bytes reclaimed
+    1011154424 bytes allocated, including 1014860008 bytes reclaimed
+    1012952928 bytes allocated, including 1017063744 bytes reclaimed
+    1018558520 bytes allocated, including 1022404432 bytes reclaimed
+    1018210016 bytes allocated, including 1021627432 bytes reclaimed
+    1020242232 bytes allocated, including 1023440936 bytes reclaimed
+    1020832072 bytes allocated, including 1025132040 bytes reclaimed
+    1023607520 bytes allocated, including 1027770504 bytes reclaimed
+
+;; And on justice:
+    4314 ms elapsed real time, including 1215 ms collecting  3099 nongc
+    2934 ms elapsed real time, including 1247 ms collecting  1687
+    2918 ms elapsed real time, including 1315 ms collecting  1603
+    3190 ms elapsed real time, including 1305 ms collecting  1885
+    3345 ms elapsed real time, including 1299 ms collecting  2046
+    3360 ms elapsed real time, including 1329 ms collecting  2031
+    3387 ms elapsed real time, including 1365 ms collecting  2022
+    3455 ms elapsed real time, including 1379 ms collecting  2076
+
+;; For simple eight-way loops.
+    4525 ms elapsed real time
+    3917 ms elapsed real time
+    3505 ms elapsed real time
+    2807 ms elapsed real time
+    2239 ms elapsed real time
+    1686 ms elapsed real time
+    1247 ms elapsed real time
+    652  ms elapsed real time
+;; And justice:
+    4658 ms elapsed real time
+    4078 ms elapsed real time
+    3813 ms elapsed real time
+    3493 ms elapsed real time
+    3194 ms elapsed real time
+    2913 ms elapsed real time
+    2634 ms elapsed real time, including 0 ms collecting
+    2343 ms elapsed real time, including 0 ms collecting
+;; On valor that's almost linear:  (1. 1.2  1.3  1.6  2.0  2.7  3.6  6.9)
+|#
+
+
+#|
+;; [2007.09.21] Ok trying the one-thunk version.
+;; This time using optimize-level 3 for everything.
+;; (BUT still using the test with generic arithmetic... 
+;;  Replacing generic with fixnum arith makes almost no difference.)
+;;
+;; Justice does well here, 63% speedup on 2 processors.
+    2826 ms elapsed real time, including 330 ms collecting 2496
+    1726 ms elapsed real time, including 340 ms collecting 1386
+    1785 ms elapsed real time, including 348 ms collecting
+    2036 ms elapsed real time, including 388 ms collecting
+    2172 ms elapsed real time, including 368 ms collecting
+    2129 ms elapsed real time, including 368 ms collecting
+    1993 ms elapsed real time, including 361 ms collecting
+    2127 ms elapsed real time, including 385 ms collecting
+;; Valor doesn't do so great, a mere 72% on 8 processors.
+    3619 ms elapsed real time, including 389 ms collecting 3230
+    2386 ms elapsed real time, including 372 ms collecting 2014
+    2498 ms elapsed real time, including 394 ms collecting
+    2248 ms elapsed real time, including 422 ms collecting
+    2016 ms elapsed real time, including 438 ms collecting
+    2125 ms elapsed real time, including 436 ms collecting
+    2132 ms elapsed real time, including 428 ms collecting
+    2100 ms elapsed real time, including 428 ms collecting 1672
+;; Maybe I need to let it warm up before timing it...
+
+
+;; Tried removing global lock on steal... shouldn't do much, steal happens only a few times.
+;; Ok, now I'm trying standalone.ss.. I've bumped the GC trip way up (20mb).
+;; Justice:
+   2765 ms elapsed real time, including 9 ms collecting
+    1477 ms elapsed real time, including 11 ms collecting
+    1818 ms elapsed real time, including 14 ms collecting
+    2561 ms elapsed real time, including 13 ms collecting
+    8495 ms elapsed real time, including 37 ms collecting
+    3033 ms elapsed real time, including 20 ms collecting
+    3414 ms elapsed real time, including 23 ms collecting
+    6000 ms elapsed real time, including 18 ms collecting
+;; Valor:
+    3614 ms elapsed real time, including 5 ms collecting
+    2181 ms elapsed real time, including 11 ms collecting
+    3007 ms elapsed real time, including 12 ms collecting
+    2610 ms elapsed real time, including 10 ms collecting
+    2351 ms elapsed real time, including 18 ms collecting
+    4495 ms elapsed real time, including 56 ms collecting
+    2837 ms elapsed real time, including 37 ms collecting
+    3164 ms elapsed real time, including 43 ms collecting
+
+
+;; Let's just pump it up a little bit, doing 2^25
+;; Justice:
+    12069 ms elapsed real time, including 38 ms collecting
+    5935 ms elapsed real time, including 41 ms collecting
+    7226 ms elapsed real time, including 48 ms collecting
+    8365 ms elapsed real time, including 53 ms collecting
+    8081 ms elapsed real time, including 55 ms collecting
+    39304 ms elapsed real time, including 159 ms collecting
+    9678 ms elapsed real time, including 72 ms collecting
+    7367 ms elapsed real time, including 68 ms collecting
+;; Valor:
+    14483 ms elapsed real time, including 34 ms collecting
+    8573 ms elapsed real time, including 46 ms collecting
+    11175 ms elapsed real time, including 47 ms collecting
+    10491 ms elapsed real time, including 66 ms collecting
+    9644 ms elapsed real time, including 64 ms collecting
+    18048 ms elapsed real time, including 207 ms collecting
+    12123 ms elapsed real time, including 159 ms collecting
+    13114 ms elapsed real time, including 169 ms collecting
+
+;; INTERESTING, with this "parmv" version it's doing 120 bytes of
+;; allocation per iteration.  Oh wait, valor is 64-bit so that's only
+;; 15 words... that's not that bad.
+
+    4026577360 bytes allocated, including 4010964504 bytes reclaimed
+    4027445984 bytes allocated, including 4012676928 bytes reclaimed
+    4027724376 bytes allocated, including 4013371024 bytes reclaimed
+    4028370376 bytes allocated, including 4016095424 bytes reclaimed
+    4029065272 bytes allocated, including 4017681984 bytes reclaimed
+    13650460264 bytes allocated, including 13644598008 bytes reclaimed
+    9851505424  bytes allocated, including 9845509264 bytes reclaimed
+    10284491240 bytes allocated, including 10270320416 bytes reclaimed
+
+
+
+|#
+

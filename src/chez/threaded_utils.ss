@@ -503,6 +503,9 @@
 
   ;; A per-thread parameter.
   (define this-stack (make-thread-parameter (new-stack)))
+  
+  ;; Mutated below:
+  (define numprocessors #f)
 
   ;; DEBUGGING:
   ;;  Pick a print:
@@ -533,12 +536,8 @@
 		   ;; Steal work forever:
 		   (let forever ()
 		     (unless par-finished
-
-		       ;; FIXME: ACK, do we need to lock for this:
-		       (let-values ([(ind stack)
-				     (with-mutex global-mut 
-				       (let ([ind (random (vector-length allstacks))])
-					 (values ind (vector-ref allstacks ind))))])
+		       (let* ([ind (random numprocessors)]
+			      [stack (vector-ref allstacks ind)])
 			 (let* ([frames (shadowstack-frames stack)]
 				[tl     (shadowstack-tail stack)])
 			   (let frmloop ([i 0])
@@ -551,6 +550,7 @@
   (define (init-par num-cpus) 
     (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
     (with-mutex global-mut   
+      (set! numprocessors num-cpus)
       (set! allstacks (make-vector num-cpus))
       (vector-set! allstacks 0 (this-stack))
       ;; We fork N-1 threads (the original one counts)
@@ -567,9 +567,6 @@
   ;; This should maybe reset more:
   (define (par-reset!) (with-mutex global-mut (set! par-counter 0)))
 
-  (define (incr-counter!)
-    ;; Should use global mutex:
-    (set! par-counter (add1 par-counter)))
   (define (push! stack thunk)
     (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
     ;; Initialize the frame
@@ -584,6 +581,7 @@
   (define (pop! stack)
     ;(print "POP frame\n")
     (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+
 #;
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
@@ -591,8 +589,6 @@
     ;; Add a frame to our stack.  NO LOCKS!    
     ;; From here on out, that frame is ready for business.
     (define frame (push! stack th2))
-    ;(incr-counter!)
-
     ;; Start processing the first thunk.
     (let ([val1 (th1)])
       ;; Then grab the frame mutex and see if someone did the work for us:
@@ -613,9 +609,7 @@
       (case (shadowframe-status frame)
 	[(available)
 	 (pop! stack) ;; Pop before we even start the thunk.
-	 (values val1 ((shadowframe-thunkval frame)))
-	 ;(values val1 (th2))
-	 ]
+	 (values val1 ((shadowframe-thunkval frame)))]
 	[(grabbed) 
 	 (error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
 	[else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
@@ -630,7 +624,8 @@
 	     [th2   (lambda () b)])
 	 (define frame (push! stack th2))
 	 (let ([val1 a]) ;; Do the first computation:
-	   ;(parmv-helper stack frame val1)
+	   (parmv-helper stack frame val1) ;; Doesn't seem to make much difference.
+	   #;
 	   (with-mutex (shadowframe-mut frame)
 	     (case (shadowframe-status frame)
 	       [(available)
@@ -682,133 +677,6 @@
   (par-status)
   )
 
-;; ================================================================================
-;;; Little tests:
-
-
-;; This type of test can get 7.18X speedup on 8-way valor (work-stealing).
-#;
-(let ()
-  (define count (* 100 1000 1000))
-  ;(define count (* 500 ))
-  ;; Decrement a counter in two threads vs. one.
-  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  ;(define (l2 x) (unless (zero? x) (l2 (sub1 x))))
-  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-
-  (par-reset!)
-  (time (parmv (l1 count) (l1 count)))
-  ;(time (par (l1 count) (l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)))
-  ;(time (list (l1 count) (l2 count)))
-  (par-status)
-  )
-
-
-
-
-;; This won't work because of shared code:
-;; WAIT it works!
-#;
-(let ()
-  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
-  (time (par (l1 10000000) (l1 10000000)))
-  (time (list (l1 10000000) (l1 10000000)))
-  )
-
-
-
-;; [2007.09.18] Hmm, on this one it displays the "taking turns" behavior (work sharing)
-;; [2007.09.18] With work-stealing this gets a MEAGER 1.6X speedup on 8-way valor!!
-;;  7684ms 8-way (3611 collecting) vs. 12228ms (2370 collecting)
-;; Clearly our implementation of the "parallel stack" isn't that good.
-;;
-;; [2007.09.20] By the way, non-par mode (2^22) on justice gives: 459ms cpu (80ms gc)
-;;   par-mode 1-thread gives: 10s cpu, 2.1s gc
-;; This is a factor of 20... wait is Chez optimizing away the list creation?  
-;; Sadly no... it is 200ms with no list creation. (changing to fixnum doesn't improve!)
-;;
-;; [2007.09.21] Doing everything in opt-level 3, still get only a 10X par overhead.
-;;  (Was afraid that would be much worse.)
-;; For parallel speedup, only getting 52% speedup on 8-processor valor!!
-;; (It gets a 42% speedup with just two threads.)
-
-#|
-;; [2007.09.21] Now working on this parallel speedup issue:
-;; Valor results for 1-8 threads, Tree test: 2^23
-    4967 ms elapsed real time, including 1301 ms collecting
-    3550 ms elapsed real time, including 1367 ms collecting
-    3638 ms elapsed real time, including 1440 ms collecting
-    3192 ms elapsed real time, including 1479 ms collecting
-    3210 ms elapsed real time, including 1481 ms collecting
-    3197 ms elapsed real time, including 1537 ms collecting
-    3248 ms elapsed real time, including 1504 ms collecting
-    3396 ms elapsed real time, including 1447 ms collecting
-;; Again, for memory alloc:
-    1006856992 bytes allocated, including 1010763328 bytes reclaimed
-    1011154424 bytes allocated, including 1014860008 bytes reclaimed
-    1012952928 bytes allocated, including 1017063744 bytes reclaimed
-    1018558520 bytes allocated, including 1022404432 bytes reclaimed
-    1018210016 bytes allocated, including 1021627432 bytes reclaimed
-    1020242232 bytes allocated, including 1023440936 bytes reclaimed
-    1020832072 bytes allocated, including 1025132040 bytes reclaimed
-    1023607520 bytes allocated, including 1027770504 bytes reclaimed
-
-;; And on justice:
-    4314 ms elapsed real time, including 1215 ms collecting
-    2934 ms elapsed real time, including 1247 ms collecting
-    2918 ms elapsed real time, including 1315 ms collecting
-    3190 ms elapsed real time, including 1305 ms collecting
-    3345 ms elapsed real time, including 1299 ms collecting
-    3360 ms elapsed real time, including 1329 ms collecting
-    3387 ms elapsed real time, including 1365 ms collecting
-    3455 ms elapsed real time, including 1379 ms collecting
-
-;; For simple eight-way loops.
-    4525 ms elapsed real time
-    3917 ms elapsed real time
-    3505 ms elapsed real time
-    2807 ms elapsed real time
-    2239 ms elapsed real time
-    1686 ms elapsed real time
-    1247 ms elapsed real time
-    652  ms elapsed real time
-;; And justice:
-    4658 ms elapsed real time
-    4078 ms elapsed real time
-    3813 ms elapsed real time
-    3493 ms elapsed real time
-    3194 ms elapsed real time
-    2913 ms elapsed real time
-    2634 ms elapsed real time, including 0 ms collecting
-    2343 ms elapsed real time, including 0 ms collecting
-;; On valor that's almost linear:  (1. 1.2  1.3  1.6  2.0  2.7  3.6  6.9)
-
-
-|#
-#;
-(let ()
-  ;; Make a million threads:
-  (define (tree n)
-    (if (zero? n) 1
-	(apply + (par (tree (sub1 n)) (tree (sub1 n))))))
-  (par-reset!)
-  (printf "\n~s\n\n" (time (tree 20)))
-  (par-status))
-
-
-#;
-(let ()
-  ;; Make a million threads:
-  (define (tree n)
-    (if (zero? n) 1
-	(call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
-  (par-reset!)
-  (printf "\n~s\n\n" (time (tree 23)))
-  (par-status))
-
-
-;; Basic work-stealing...???
 
 
 
