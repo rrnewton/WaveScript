@@ -515,6 +515,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
+#;
 (begin (newline)
        (current-directory (format "~a/apps/potholes" test-root))
        (fpf "    Fetching pothole data                     ~a\n" 

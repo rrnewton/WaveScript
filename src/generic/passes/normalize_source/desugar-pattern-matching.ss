@@ -12,6 +12,8 @@
 ;;;; desugars + into g+.  The earlier this happens, the better, and
 ;;;; this was about as early as it could happen.
 
+;;;; [2007.09.21] One more thing, now it desugars integer constants into gint()s
+
 ;;;; TODO: RENAME THIS PASS.
 
 (module desugar-pattern-matching mzscheme
@@ -54,6 +56,9 @@
   (define process-expr
     (lambda (expr fallthrough)
       (match expr 
+
+#;	[(quote ,n) 
+	 (inspect n)]
 
 	;; Miscellaneous desugaring -- that must be done early!
 	;;======================================================================

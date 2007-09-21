@@ -472,7 +472,7 @@
   (reg:define-struct (shadowframe mut status thunkval))
 
   ;; QUICK HACK, does this do any better:
-  #;
+#;
   (begin (define make-shadowframe vector)
 	 (define (shadowframe-mut v)      (vector-ref v 0))
 	 (define (shadowframe-status v)   (vector-ref v 1))
@@ -492,9 +492,9 @@
   (define (new-stack) 
     (make-shadowstack (random 10000) 
       0            ;; Head pointer.
-      (make-mutex) ;; Head mutex.
+      #f;(make-mutex) ;; Head mutex.
       0            ;; Tail pointer.
-      (make-mutex) ;; Tail mutex.
+      #f;(make-mutex) ;; Tail mutex.
       (vector-build 50 
 	(lambda (_) (make-shadowframe (make-mutex) #f #f)))))
 
@@ -573,19 +573,21 @@
   ;; This should maybe reset more:
   (define (par-reset!) (with-mutex global-mut (set! par-counter 0)))
 
+  (define (push! stack)
+    ;(print "PUSH frame\n")
+    (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
+    ;; TODO! Check if we need to realloc the stack!
+    ;(when (> ))
+    )
+
+  (define (pop! stack)
+    ;(print "POP frame\n")
+    (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
     (define stack (this-stack))
     (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-    (define (push!) 
-      (print "PUSH frame\n")
-      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
-      ;; Check if we need to realloc the stack.
-      ;(when (> ))
-      )
-    (define (pop!)
-      (print "POP frame\n")
-      (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
    
     ;; Should use global mutex:
     (set! par-counter (add1 par-counter))
@@ -597,7 +599,7 @@
 
     ;; Add a frame to our stack.  NO LOCKS!    
     ;; From here on out, that frame is ready for business.
-    (push!)
+    (push! stack)
 
     ;; Start processing the first thunk.
     (let ([val1 (th1)])
@@ -606,12 +608,12 @@
 	(case (shadowframe-status frame)
 	  [(available)
 	   (print "  hmm... no one stole our work...\n")
-	   (pop!) ;; Pop before we even start the thunk.
+	   (pop! stack) ;; Pop before we even start the thunk.
 	   (values val1 (th2))]
 	  [(grabbed) 
 	   (error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
 	  [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
-	   (pop!)
+	   (pop! stack)
 	   (values val1 (shadowframe-thunkval frame))]))))
 
   
@@ -661,7 +663,8 @@
   ;(time (rep 10000 (par (l1 10000) (l2 10000))))
 
   (par-reset!)
-  (time (par (l1 count) (l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)))
+  (time (parmv (l1 count) (l1 count)))
+  ;(time (par (l1 count) (l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)(l1 count)))
   ;(time (list (l1 count) (l2 count)))
   (par-status)
   )
@@ -689,6 +692,9 @@
 ;;   par-mode 1-thread gives: 10s cpu, 2.1s gc
 ;; This is a factor of 20... wait is Chez optimizing away the list creation?  
 ;; Sadly no... it is 200ms with no list creation. (changing to fixnum doesn't improve!)
+;;
+;; [2007.09.21] Doing everything in opt-level 3, still get only a 10X par overhead.
+;;  (Was afraid that would be much worse.)
 #;
 (let ()
   ;; Make a million threads:
@@ -707,7 +713,7 @@
     (if (zero? n) 1
 	(call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
   (par-reset!)
-  (printf "\n~s\n\n" (time (tree 20)))
+  (printf "\n~s\n\n" (time (tree 22)))
   (par-status))
 
 
