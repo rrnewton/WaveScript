@@ -157,7 +157,7 @@
 ;; Tried removing global lock on steal... shouldn't do much, steal happens only a few times.
 ;; Ok, now I'm trying standalone.ss.. I've bumped the GC trip way up (20mb).
 ;; Justice:
-   2765 ms elapsed real time, including 9 ms collecting
+    2765 ms elapsed real time, including 9 ms collecting
     1477 ms elapsed real time, including 11 ms collecting
     1818 ms elapsed real time, including 14 ms collecting
     2561 ms elapsed real time, including 13 ms collecting
@@ -208,6 +208,31 @@
     13650460264 bytes allocated, including 13644598008 bytes reclaimed
     9851505424  bytes allocated, including 9845509264 bytes reclaimed
     10284491240 bytes allocated, including 10270320416 bytes reclaimed
+
+;; Hmm... I did the pcall hack and it's still allocating 104 bytes per
+;; iteration (more than that really, because 50% of all iterations are
+;; leaf nodes). This must be counting the allocation of chez stack
+;; frames or something...?
+;; Pcall on Valor:
+    14520 ms elapsed real time, including 34 ms collecting
+    8630 ms elapsed real time, including 40 ms collecting
+    8193 ms elapsed real time, including 53 ms collecting
+    8423 ms elapsed real time, including 48 ms collecting
+    9313 ms elapsed real time, including 54 ms collecting
+    17892 ms elapsed real time, including 183 ms collecting
+    11387 ms elapsed real time, including 138 ms collecting
+    12867 ms elapsed real time, including 194 ms collecting
+
+    3489700464 bytes allocated, including 3484829360 bytes reclaimed
+    3490497824 bytes allocated, including 3487546112 bytes reclaimed
+    3490588744 bytes allocated, including 3487478928 bytes reclaimed
+    3490491216 bytes allocated, including 3488751648 bytes reclaimed
+    3491867480 bytes allocated, including 3491136560 bytes reclaimed
+    13147459104 bytes allocated, including 13140928488 bytes reclaimed
+    9123752016  bytes allocated, including 9109261240 bytes reclaimed
+    10978387408 bytes allocated, including 10963775480 bytes reclaimed
+
+
 
 
 

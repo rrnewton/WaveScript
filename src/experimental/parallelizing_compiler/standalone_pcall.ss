@@ -1,4 +1,6 @@
 
+;; Now doing a hack to get rid of thunk allocation.
+
 (eval-when (compile eval load) 
   (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
@@ -31,14 +33,24 @@
   
   ;; Frames are locked individually.
   ;; status may be 'available or 'done
-  (define-record shadowframe  (mut status thunkval))
+  (define-record shadowframe  (mut status oper argval))
+#;
+  (begin (define make-shadowframe vector)
+	 (define (shadowframe-mut v)      (vector-ref v 0))
+	 (define (shadowframe-status v)   (vector-ref v 1))
+	 (define (shadowframe-oper v)     (vector-ref v 2)) 
+	 (define (shadowframe-argval v)   (vector-ref v 3))
+	 (define (set-shadowframe-mut! v x)      (vector-set! v 0 x))
+	 (define (set-shadowframe-status! v x)   (vector-set! v 1 x))
+	 (define (set-shadowframe-oper! v x)     (vector-set! v 2 x))
+	 (define (set-shadowframe-argval! v x)   (vector-set! v 3 x))
+	 )
 
   ;; There's also a global list of threads:
   (define allstacks #()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
-  (define par-counter 0) ;; how many attempted forks were there
 
   ;; A new stack has no frames, but has a (hopefully) unique ID:
   (define (new-stack) 
@@ -46,13 +58,30 @@
       0            ;; Head pointer.
       0            ;; Tail pointer.
       (vector-build 50 
-	(lambda (_) (make-shadowframe (make-mutex) #f #f)))))
+	(lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
 
   ;; A per-thread parameter.
   (define this-stack (make-thread-parameter (new-stack)))
   
   ;; Mutated below:
   (define numprocessors #f)
+
+  ;; ----------------------------------------
+
+  (define (init-par num-cpus) 
+    (printf "\n  Initializing PAR system for ~s threads.\n" num-cpus)
+    (with-mutex global-mut   
+      (set! numprocessors num-cpus)
+      (set! allstacks (make-vector num-cpus))
+      (vector-set! allstacks 0 (this-stack))
+      ;; We fork N-1 threads (the original one counts)
+      (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
+	(vector-set! allstacks i (make-worker)))))
+  (define (shutdown-par) (set! par-finished #t))
+  (define (par-status) 
+    (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
+	    par-finished (vector-length allstacks)
+	    (map shadowstack-tail (vector->list allstacks))))
 
   ;; ----------------------------------------
 
@@ -63,8 +92,10 @@
 	   ;; If someone beat us here, we fizzle
 	   (and (eq? 'available (shadowframe-status frame))
 		(begin 
+		  ;(printf "STOLE work! ~s\n" frame)
 		  (set-shadowframe-status!   frame 'done)
-		  (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame))))))))
+		  (set-shadowframe-argval! frame 
+					   ((shadowframe-oper frame) (shadowframe-argval frame))))))))
 
   (define (make-worker)
     (define stack (new-stack))
@@ -84,66 +115,40 @@
 				     (frmloop (fx+ 1 i)))))))))))
     stack)
 
-  (define (init-par num-cpus) 
-    (printf "\n  Initializing PAR system for ~s threads.\n" num-cpus)
-    (with-mutex global-mut   
-      (set! numprocessors num-cpus)
-      (set! allstacks (make-vector num-cpus))
-      (vector-set! allstacks 0 (this-stack))
-      ;; We fork N-1 threads (the original one counts)
-      (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
-	(vector-set! allstacks i (make-worker)))))
-  (define (shutdown-par) (set! par-finished #t))
-
-  (define (par-status) 
-    (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n  fork-attempts: ~s\n"
-	    par-finished (vector-length allstacks)
-	    (map shadowstack-tail (vector->list allstacks))
-	    par-counter))
-
-  ;; This should maybe reset more:
-  (define (par-reset!) (with-mutex global-mut (set! par-counter 0)))
-
-  (define (push! stack thunk)
-    (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-    ;; Initialize the frame
-    (set-shadowframe-thunkval! frame  thunk)
-    (set-shadowframe-status!   frame  'available)
-    (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
-    ;; TODO! Check if we need to realloc the stack!
-    frame)
-  (define (pop! stack)
-    (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
-
-  (define (parmv-helper stack frame val1)
-    (with-mutex (shadowframe-mut frame)
-      (case (shadowframe-status frame)
-	[(available)
-	 (pop! stack) ;; Pop before we even start the thunk.
-	 (values val1 ((shadowframe-thunkval frame)))]
-	[else (pop! stack)
-	      (values val1 (shadowframe-thunkval frame))])))
-
-  ;; This one makes a thunk only for the second argument:
-  (define-syntax parmv
+  (define-syntax pcall
     (syntax-rules ()
-      [(_ a b) 
-       (let ([stack (this-stack)]
-	     [th2   (lambda () b)])
-	 (define frame (push! stack th2))
-	 (let ([val1 a]) ;; Do the first computation:
-	   (parmv-helper stack frame val1) ;; Doesn't seem to make much difference.
+      [(_ (f x) e2)
+       (let ([stack (this-stack)])
+	 (define (push! oper val)
+	   (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
+	   ;; Initialize the frame
+	   (set-shadowframe-oper!   frame oper)
+	   (set-shadowframe-argval! frame val)
+	   (set-shadowframe-status!   frame  'available)
+	   (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
+	   frame)
+	 (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+
+	 (define frame (push! f x))
+	 (let ([val1 e2])
+	   (with-mutex (shadowframe-mut frame)
+	     (case (shadowframe-status frame)
+	       [(available)
+		(pop!) ;; Pop before we even start the thunk.
+		(values val1 
+			;(op arg)
+			((shadowframe-oper frame) (shadowframe-argval frame))
+			)]
+	       [else (pop!)
+		     (values val1 (shadowframe-argval frame))]))
 	   ))]))
 
-
   (init-par (string->number (or (getenv "NUMTHREADS") "2")))
-
-  (printf "Run using parallel add-tree via multiple-value based parmv:\n")
+  (printf "Run using parallel add-tree via pcall mechanism:\n")
   (let ()
     (define (tree n)
       (if (zero? n) 1
-	  (call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
-    (par-reset!)
+	  (call-with-values (lambda () (pcall (tree (sub1 n)) (tree (sub1 n)))) +)))
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
 
