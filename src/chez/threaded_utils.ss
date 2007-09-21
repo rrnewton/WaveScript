@@ -464,7 +464,8 @@
   ;; A thread's "stack" must be as efficient as possible, because
   ;; it essentially replaces the native scheme stack where par calls
   ;; are concerned.  (I wonder if continuations can serve any purpose here.)
-  (reg:define-struct (shadowstack id frames))
+  ;; Note, head is the "bottom" and tail is the "top".  We add to tail.
+  (reg:define-struct (shadowstack id head hlock tail tlock frames))
   
   ;; Frames are locked individually.
   ;; status may be 'available 'grabbed 'done
@@ -478,7 +479,14 @@
   (define par-counter 0) ;; how many attempted forks were there
 
   ;; A new stack has no frames, but has a (hopefully) unique ID:
-  (define (new-stack) (make-shadowstack (random 10000) ()))
+  (define (new-stack) 
+    (make-shadowstack (random 10000) 
+      0            ;; Head pointer.
+      (make-mutex) ;; Head mutex.
+      0            ;; Tail pointer.
+      (make-mutex) ;; Tail mutex.
+      (vector-build 50 
+	(lambda (_) (make-shadowframe (make-mutex) #f #f)))))
 
   ;; A per-thread parameter.
   (define this-stack (make-thread-parameter (new-stack)))
@@ -523,26 +531,17 @@
 		     (unless par-finished
 
 		       ;; FIXME: ACK, do we need to lock for this:
-		       (let-values ([(ind frames)
+		       (let-values ([(ind stack)
 				     (with-mutex global-mut 
 				       (let ([ind (random (vector-length allstacks))])
-					 (values ind (shadowstack-frames (vector-ref allstacks ind)))))])
-
-			 (when (> (length frames) 2) 
-			   (print "~s frames to scan\n" (length frames)))
-			 (cond
-			  ;; No work on this processor, try again. 
-			  [(null? frames) (forever)]
-			  [else 
-			   ;; Go across the frames in the stack, oldest first, looking for something to steal.
-			   ;; This is just a foldr, written with an explicit loop an multiple values.
-			   (or (let stackloop ([frames frames])
-				 (if (null? (cdr frames))
-				     ;; Got to the end, try this one.
-				     (do-work! (car frames))
-				     (let ([frm (stackloop (cdr frames))])
-				       (or frm (do-work! (car frames))))))
-			       (forever))]))))))
+					 (values ind (vector-ref allstacks ind))))])
+			 (let* ([frames (shadowstack-frames stack)]
+				[tl     (shadowstack-tail stack)])
+			   (let frmloop ([i 0])
+			     (if (fx= i tl) 
+				 (forever) ;; No work on this processor, try again. 
+				 (or (do-work! (vector-ref frames i))
+				     (frmloop (fx+ 1 i)))))))))))
     stack)
 
   (define (init-par num-cpus) 
@@ -558,7 +557,7 @@
   (define (par-status) 
     (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n  fork-attempts: ~s\n"
 	    par-finished (vector-length allstacks)
-	    (map length (map shadowstack-frames (vector->list allstacks)))
+	    (map shadowstack-tail (vector->list allstacks))
 	    par-counter))
 
   ;; This should maybe reset more:
@@ -566,27 +565,36 @@
 
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
-    (define frame (make-shadowframe (make-mutex) 'available th2))
-
-    (define (pop!) 
+    (define stack (this-stack))
+    (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
+    (define (push!) 
+      (print "PUSH frame\n")
+      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
+      ;; Check if we need to realloc the stack.
+      ;(when (> ))
+      )
+    (define (pop!)
       (print "POP frame\n")
-      ;; POP IT.  It's ok that this isn't mutex-protected.
-      (let ([st (this-stack)]) (set-shadowstack-frames! st (cdr (shadowstack-frames st)))))
+      (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
    
     ;; Should use global mutex:
     (set! par-counter (add1 par-counter))
 
+    ;; Initialize the frame
+    ;(set-shadowframe-mut!      frame  (make-mutex)) ;; TEMPTOGGLE
+    (set-shadowframe-status!   frame  'available)
+    (set-shadowframe-thunkval! frame  th2)
+
+    ;; Add a frame to our stack.  NO LOCKS!    
     ;; From here on out, that frame is ready for business.
-    ;; Add a frame to our stack.  NO LOCKS!
-    (let ([st (this-stack)])
-      (set-shadowstack-frames! st (cons frame (shadowstack-frames st))))
+    (push!)
 
     ;; Start processing the first thunk.
     (let ([val1 (th1)])
       ;; Then grab the frame mutex and see if someone did the work for us:
       (with-mutex (shadowframe-mut frame)
 	(case (shadowframe-status frame)
-	  [(available) 
+	  [(available)
 	   (print "  hmm... no one stole our work...\n")
 	   (pop!) ;; Pop before we even start the thunk.
 	   (values val1 (th2))]
