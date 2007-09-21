@@ -567,12 +567,17 @@
   (define (incr-counter!)
     ;; Should use global mutex:
     (set! par-counter (add1 par-counter)))
-  (define (push! stack)
+  (define (push! stack thunk)
+    (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
+    ;; Initialize the frame
+    ;(set-shadowframe-mut!      frame  (make-mutex)) ;; TEMPTOGGLE
+    (set-shadowframe-thunkval! frame  thunk)
+    (set-shadowframe-status!   frame  'available)
     ;(print "PUSH frame\n")
     (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
     ;; TODO! Check if we need to realloc the stack!
     ;(when (> ))
-    )
+    frame)
   (define (pop! stack)
     ;(print "POP frame\n")
     (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
@@ -581,15 +586,11 @@
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
     (define stack (this-stack))
-    (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-    ;(incr-counter!)
-    ;; Initialize the frame
-    ;(set-shadowframe-mut!      frame  (make-mutex)) ;; TEMPTOGGLE
-    (set-shadowframe-status!   frame  'available)
-    (set-shadowframe-thunkval! frame  th2)
     ;; Add a frame to our stack.  NO LOCKS!    
     ;; From here on out, that frame is ready for business.
-    (push! stack)
+    (define frame (push! stack th2))
+    ;(incr-counter!)
+
     ;; Start processing the first thunk.
     (let ([val1 (th1)])
       ;; Then grab the frame mutex and see if someone did the work for us:
@@ -604,6 +605,36 @@
 	  [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
 	   (pop! stack)
 	   (values val1 (shadowframe-thunkval frame))]))))
+
+#;
+  ;; This one makes a thunk only for the second argument:
+  (define-syntax parmv
+    (syntax-rules ()
+      [(_ a b) 
+       (let ([stack (this-stack)])
+	 (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
+	 (set-shadowframe-status!   frame  'available)
+	 (set-shadowframe-thunkval! frame  th2)
+	 ;; Add a frame to our stack.  NO LOCKS!    
+	 ;; From here on out, that frame is ready for business.
+	 (push! stack)
+	 ;; Start processing the first thunk.
+	 (let ([val1 (th1)])
+	   ;; Then grab the frame mutex and see if someone did the work for us:
+	   (with-mutex (shadowframe-mut frame)
+	     (case (shadowframe-status frame)
+	       [(available)
+		(print "  hmm... no one stole our work...\n")
+		(pop! stack) ;; Pop before we even start the thunk.
+		(values val1 (th2))]
+	       [(grabbed) 
+		(error 'parmv-fun "should never observe the grabbed state! mutex should prevent this")]
+	       [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
+		     (pop! stack)
+		     (values val1 (shadowframe-thunkval frame))])))
+	 parmv-fun a (lambda () b))])
+    )
+
 
   (define-syntax parmv
     (syntax-rules ()
