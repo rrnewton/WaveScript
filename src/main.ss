@@ -1007,6 +1007,7 @@
   (exit code))
 
 
+;; *THE* Main function for the regiment/wavescript process.
 (define main 
   (lambda args    
     (define makesimcode #f)
@@ -1015,7 +1016,18 @@
     (define simrepl #f)
 ;    (disp "Main called w ARGS: " args)
     (when (null? args) (print-help) (regiment-exit 0))
-    
+
+    (IF_THREADS
+     (begin       
+       ;; No matter which arguments we're called with, let's go ahead and
+       ;; initialize the thread system.  Really this should happen only
+       ;; for compile-modes that may actually use it.
+       (define-top-level-value 'desired-number-of-threads
+	 (string->number (or (getenv "REGTHREADS") "1")))
+       ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
+       (init-par desired-number-of-threads))
+     (void))
+
 ;    (printf "regimentc: compile regiment programs!~n")
     (let ([opts '()] ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
 	  )

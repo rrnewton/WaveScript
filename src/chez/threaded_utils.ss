@@ -519,7 +519,7 @@
 	   ;; If someone beat us here, we fizzle
 	   (and (eq? 'available (shadowframe-status frame))
 		(begin 
-		  (printf "STOLE work! ~s\n" frame)
+		  (print "STOLE work! ~s\n" frame)
 		  (set-shadowframe-status!   frame 'done)
 		  (set-shadowframe-thunkval! frame ((shadowframe-thunkval frame))))))))
 
@@ -664,6 +664,7 @@
 
 
 
+
 ;; This won't work because of shared code:
 ;; WAIT it works!
 #;
@@ -688,6 +689,62 @@
 ;;
 ;; [2007.09.21] Doing everything in opt-level 3, still get only a 10X par overhead.
 ;;  (Was afraid that would be much worse.)
+;; For parallel speedup, only getting 52% speedup on 8-processor valor!!
+;; (It gets a 42% speedup with just two threads.)
+
+#|
+;; [2007.09.21] Now working on this parallel speedup issue:
+;; Valor results for 1-8 threads, Tree test: 2^23
+    4967 ms elapsed real time, including 1301 ms collecting
+    3550 ms elapsed real time, including 1367 ms collecting
+    3638 ms elapsed real time, including 1440 ms collecting
+    3192 ms elapsed real time, including 1479 ms collecting
+    3210 ms elapsed real time, including 1481 ms collecting
+    3197 ms elapsed real time, including 1537 ms collecting
+    3248 ms elapsed real time, including 1504 ms collecting
+    3396 ms elapsed real time, including 1447 ms collecting
+;; Again, for memory alloc:
+    1006856992 bytes allocated, including 1010763328 bytes reclaimed
+    1011154424 bytes allocated, including 1014860008 bytes reclaimed
+    1012952928 bytes allocated, including 1017063744 bytes reclaimed
+    1018558520 bytes allocated, including 1022404432 bytes reclaimed
+    1018210016 bytes allocated, including 1021627432 bytes reclaimed
+    1020242232 bytes allocated, including 1023440936 bytes reclaimed
+    1020832072 bytes allocated, including 1025132040 bytes reclaimed
+    1023607520 bytes allocated, including 1027770504 bytes reclaimed
+
+;; And on justice:
+    4314 ms elapsed real time, including 1215 ms collecting
+    2934 ms elapsed real time, including 1247 ms collecting
+    2918 ms elapsed real time, including 1315 ms collecting
+    3190 ms elapsed real time, including 1305 ms collecting
+    3345 ms elapsed real time, including 1299 ms collecting
+    3360 ms elapsed real time, including 1329 ms collecting
+    3387 ms elapsed real time, including 1365 ms collecting
+    3455 ms elapsed real time, including 1379 ms collecting
+
+;; For simple eight-way loops.
+    4525 ms elapsed real time
+    3917 ms elapsed real time
+    3505 ms elapsed real time
+    2807 ms elapsed real time
+    2239 ms elapsed real time
+    1686 ms elapsed real time
+    1247 ms elapsed real time
+    652  ms elapsed real time
+;; And justice:
+    4658 ms elapsed real time
+    4078 ms elapsed real time
+    3813 ms elapsed real time
+    3493 ms elapsed real time
+    3194 ms elapsed real time
+    2913 ms elapsed real time
+    2634 ms elapsed real time, including 0 ms collecting
+    2343 ms elapsed real time, including 0 ms collecting
+;; On valor that's almost linear:  (1. 1.2  1.3  1.6  2.0  2.7  3.6  6.9)
+
+
+|#
 #;
 (let ()
   ;; Make a million threads:
@@ -706,7 +763,7 @@
     (if (zero? n) 1
 	(call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
   (par-reset!)
-  (printf "\n~s\n\n" (time (tree 22)))
+  (printf "\n~s\n\n" (time (tree 23)))
   (par-status))
 
 
