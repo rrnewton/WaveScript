@@ -79,10 +79,6 @@
     [(par e ...) (par-list (lambda () e) ...)]
     ))
 
-(define-syntax parmv
-  (syntax-rules ()
-    [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
-
 ;; A bit inefficient, defined in terms of par-list:
 (define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
 
@@ -446,6 +442,10 @@
   (define (parmv-fun th1 th2)
     (let ([ls (par-list (list th1 th2))])
       (values (car ls) (cadr ls))))
+
+  (define-syntax parmv
+    (syntax-rules ()
+      [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
 )
 
 
@@ -507,15 +507,6 @@
   ;   (define (print . args) (apply printf args))
      (define (print . args) (void)) ;; fizzle
 
-  ;; Try to grab a frame.  Return success code.
-  (define (grab-work frame)
-    (with-mutex (shadowframe-mut frame)
-      (case (shadowframe-status frame)
-	[(available) 
-	 (set-shadowframe-status! frame 'grabbed)
-	 #t]
-	[else #f])))
-
   ;; ----------------------------------------
 
   ;; Try to do work and mark it as done.
@@ -573,34 +564,32 @@
   ;; This should maybe reset more:
   (define (par-reset!) (with-mutex global-mut (set! par-counter 0)))
 
+  (define (incr-counter!)
+    ;; Should use global mutex:
+    (set! par-counter (add1 par-counter)))
   (define (push! stack)
     ;(print "PUSH frame\n")
     (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
     ;; TODO! Check if we need to realloc the stack!
     ;(when (> ))
     )
-
   (define (pop! stack)
     ;(print "POP frame\n")
     (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+
 
   ;; What thread are we called from?  Which stack do we add to?...
   (define (parmv-fun th1 th2)
     (define stack (this-stack))
     (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-   
-    ;; Should use global mutex:
-    (set! par-counter (add1 par-counter))
-
+    ;(incr-counter!)
     ;; Initialize the frame
     ;(set-shadowframe-mut!      frame  (make-mutex)) ;; TEMPTOGGLE
     (set-shadowframe-status!   frame  'available)
     (set-shadowframe-thunkval! frame  th2)
-
     ;; Add a frame to our stack.  NO LOCKS!    
     ;; From here on out, that frame is ready for business.
     (push! stack)
-
     ;; Start processing the first thunk.
     (let ([val1 (th1)])
       ;; Then grab the frame mutex and see if someone did the work for us:
@@ -615,6 +604,10 @@
 	  [else (DEBUGASSERT (eq? 'done (shadowframe-status frame)))
 	   (pop! stack)
 	   (values val1 (shadowframe-thunkval frame))]))))
+
+  (define-syntax parmv
+    (syntax-rules ()
+      [(_ a b) (parmv-fun (lambda () a) (lambda () b))]))
 
   
   (define (par-list . thunks)
