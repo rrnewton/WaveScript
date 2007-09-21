@@ -470,7 +470,17 @@
   ;; Frames are locked individually.
   ;; status may be 'available 'grabbed 'done
   (reg:define-struct (shadowframe mut status thunkval))
-  
+
+  ;; QUICK HACK, does this do any better:
+  #;
+  (begin (define make-shadowframe vector)
+	 (define (shadowframe-mut v)      (vector-ref v 0))
+	 (define (shadowframe-status v)   (vector-ref v 1))
+	 (define (shadowframe-thunkval v) (vector-ref v 2))
+	 (define (set-shadowframe-mut! v x)      (vector-set! v 0 x))
+	 (define (set-shadowframe-status! v x)   (vector-set! v 1 x))
+	 (define (set-shadowframe-thunkval! v x) (vector-set! v 2 x)))
+
   ;; There's also a global list of threads:
   (define allstacks #()) ;; This is effectively immutable.
   (define par-finished #f)
@@ -540,7 +550,7 @@
 			   (let frmloop ([i 0])
 			     (if (fx= i tl) 
 				 (forever) ;; No work on this processor, try again. 
-				 (or (do-work! (vector-ref frames i))
+				 (or (and (do-work! (vector-ref frames i)) (forever))
 				     (frmloop (fx+ 1 i)))))))))))
     stack)
 
