@@ -144,6 +144,19 @@
 ;	   (print "  let go\n")
 	   #t)))
 
+  (define (find-and-steal-once!)
+    (unless par-finished
+      (let* ([ind (random numprocessors)]
+	     [stack (vector-ref allstacks ind)])
+	(let* ([frames (shadowstack-frames stack)]
+	       [tl     (shadowstack-tail stack)])
+	  (let frmloop ([i 0])
+	    (if (fx= i tl) 
+		#f ;; No work on this processor, try again. 
+		(if (steal-work! (vector-ref frames i))
+		    #t
+		    (frmloop (fx+ 1 i)))))))))
+
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
@@ -152,17 +165,9 @@
 		     (set! threads-registered (add1 threads-registered)))
                    ;; Steal work forever:
                    (let forever ()
-                     (unless par-finished
-                       (let* ([ind (random numprocessors)]
-                              [stack (vector-ref allstacks ind)])
-                         (let* ([frames (shadowstack-frames stack)]
-                                [tl     (shadowstack-tail stack)])
-                           (let frmloop ([i 0])
-                             (if (fx= i tl) 
-                                 (forever) ;; No work on this processor, try again. 
-                                 (if (steal-work! (vector-ref frames i))
-                                     (forever)
-                                     (frmloop (fx+ 1 i)))))))))))
+		     (find-and-steal-once!)
+		     (forever)		     
+                     )))
     stack)
 
   (define-syntax pcall
@@ -184,7 +189,7 @@
 	     ;; We're the parent, when we get to this frame, we lock it off from all other comers.
 	     ;; Thieves do non-blocking probes.
 	     (let ([result 
-		    (let spinwait ()
+		    (let waitloop ()
 		      (mutex-acquire (shadowframe-mut frame))
 		      (case (shadowframe-status frame)
 			[(available)
@@ -195,10 +200,13 @@
 			     )]
 			;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
 			[(stolen) 
-			 ;; For now we just spin until they're done:
-			 (mutex-release (shadowframe-mut frame))			 
-			 ;(print ".")
-			 (spinwait)]
+			 ;; Let go of this so they can finish and mark it as done.
+			 (mutex-release (shadowframe-mut frame))
+			 ;; Meanwhile we should go try to make ourselves useful:
+			 (find-and-steal-once!)
+			 ;; When we're done with that come back and see if our outsourced job is doen.
+			 (waitloop)
+			 ]
 			;; It was stolen and is now completed:
 			[else (pop!) (op val1 (shadowframe-argval frame))]))])
 	       ;(print "  OUTTA THERE\n")
