@@ -7,6 +7,19 @@
 
 (module ()
 
+(define-syntax ASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax #'expr))))]
+      ;; This form is (ASSERT integer? x) returning the value of x.
+      [(_ fun val) #'(let ([v val])
+		       (if (fun v) v			   
+			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" 
+				  (IFCHEZ #'fun (format-syntax #'fun))
+				  v)))]
+      )))
+
+
 (define-syntax with-mutex
   (syntax-rules ()
     [(_ e0 e1 e2 ...)
@@ -58,6 +71,7 @@
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
+  (define threads-registered 1)
 
   ;; A new stack has no frames, but has a (hopefully) unique ID:
   (define (new-stack) 
@@ -73,17 +87,30 @@
   ;; Mutated below:
   (define numprocessors #f)
 
+  ;; We spin until everybody is awake.
+  (define (wait-for-everybody)
+    (let wait-for-threads ()
+      ;(printf "  ~s ~s\n" threads-registered numprocessors)
+      (unless 
+	;(= threads-registered numprocessors)
+  	(with-mutex global-mut (= threads-registered numprocessors))
+	  (wait-for-threads))))
+
   ;; ----------------------------------------
 
-  (define (init-par num-cpus) 
+  (define (init-par num-cpus)
     (printf "\n  Initializing PAR system for ~s threads.\n" num-cpus)
     (with-mutex global-mut   
+      (ASSERT (eq? threads-registered 1))
       (set! numprocessors num-cpus)
       (set! allstacks (make-vector num-cpus))
       (vector-set! allstacks 0 (this-stack))
       ;; We fork N-1 threads (the original one counts)
       (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
-        (vector-set! allstacks i (make-worker)))))
+        (vector-set! allstacks i (make-worker))))
+    (wait-for-everybody)
+    (printf "Everyone's awake!\n"))
+
   (define (shutdown-par) (set! par-finished #t))
   (define (par-status) 
     (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
@@ -107,7 +134,9 @@
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
-                   (this-stack stack) ;; Initialize stack.                
+                   (this-stack stack) ;; Initialize stack. 
+		   (with-mutex global-mut ;; Register our existence.
+		     (set! threads-registered (add1 threads-registered)))
                    ;; Steal work forever:
                    (let forever ()
                      (unless par-finished
