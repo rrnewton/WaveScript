@@ -1023,9 +1023,10 @@
        ;; initialize the thread system.  Really this should happen only
        ;; for compile-modes that may actually use it.
        (define-top-level-value 'desired-number-of-threads
-	 (string->number (or (getenv "REGTHREADS") "1")))
+	 (ASSERT (string->number (or (getenv "REGTHREADS") "1"))))
        ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
-       (init-par desired-number-of-threads))
+       (init-par desired-number-of-threads)
+)
      (void))
 
 ;    (printf "regimentc: compile regiment programs!~n")

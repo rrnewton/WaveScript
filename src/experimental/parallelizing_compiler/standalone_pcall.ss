@@ -1,25 +1,31 @@
-
 ;; Now doing a hack to get rid of thunk allocation.
 
-(eval-when (compile eval load)
+(eval-when (compile eval load) 
   (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-;; Tweaking Work-stealing version to use multiple values and do only 2-way par.
 (module ()
+
+(define-syntax with-mutex
+  (syntax-rules ()
+    [(_ e0 e1 e2 ...)
+     (let ([m e0])
+       (mutex-acquire m)
+       (let ([x (begin e1 e2 ...)])
+         (mutex-release m)
+         x))]))
 
   (define test-depth 25) ;; Make a tree with 2^test-depth nodes.
 
   (define vector-build
     (lambda (n f)
       (let ([v (make-vector n)])
-	(do ([i 0 (fx+ i 1)])
-	    ((= i n) v)
-	  (vector-set! v i (f i))
-	  ))))
-
-
+        (do ([i 0 (fx+ i 1)])
+            ((= i n) v)
+          (vector-set! v i (f i))
+          ))))
+  
   ;; STATE:
 
   ;; Each thread's stack has a list of frames, from newest to oldest.
@@ -37,15 +43,15 @@
   (define-record shadowframe  (mut status oper argval))
 #;
   (begin (define make-shadowframe vector)
-	 (define (shadowframe-mut v)      (vector-ref v 0))
-	 (define (shadowframe-status v)   (vector-ref v 1))
-	 (define (shadowframe-oper v)     (vector-ref v 2)) 
-	 (define (shadowframe-argval v)   (vector-ref v 3))
-	 (define (set-shadowframe-mut! v x)      (vector-set! v 0 x))
-	 (define (set-shadowframe-status! v x)   (vector-set! v 1 x))
-	 (define (set-shadowframe-oper! v x)     (vector-set! v 2 x))
-	 (define (set-shadowframe-argval! v x)   (vector-set! v 3 x))
-	 )
+         (define (shadowframe-mut v)      (vector-ref v 0))
+         (define (shadowframe-status v)   (vector-ref v 1))
+         (define (shadowframe-oper v)     (vector-ref v 2)) 
+         (define (shadowframe-argval v)   (vector-ref v 3))
+         (define (set-shadowframe-mut! v x)      (vector-set! v 0 x))
+         (define (set-shadowframe-status! v x)   (vector-set! v 1 x))
+         (define (set-shadowframe-oper! v x)     (vector-set! v 2 x))
+         (define (set-shadowframe-argval! v x)   (vector-set! v 3 x))
+         )
 
   ;; There's also a global list of threads:
   (define allstacks #()) ;; This is effectively immutable.
@@ -59,7 +65,7 @@
       0            ;; Head pointer.
       0            ;; Tail pointer.
       (vector-build 50 
-	(lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
+        (lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
 
   ;; A per-thread parameter.
   (define this-stack (make-thread-parameter (new-stack)))
@@ -77,80 +83,97 @@
       (vector-set! allstacks 0 (this-stack))
       ;; We fork N-1 threads (the original one counts)
       (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
-	(vector-set! allstacks i (make-worker)))))
+        (vector-set! allstacks i (make-worker)))))
   (define (shutdown-par) (set! par-finished #t))
   (define (par-status) 
     (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
-	    par-finished (vector-length allstacks)
-	    (map shadowstack-tail (vector->list allstacks))))
-
-  (define (par-reset!) (void))
+            par-finished (vector-length allstacks)
+            (map shadowstack-tail (vector->list allstacks))))
 
   ;; ----------------------------------------
 
   ;; Try to do work and mark it as done.
   (define (do-work! frame)
     (and (eq? 'available (shadowframe-status frame))
-	 (with-mutex (shadowframe-mut frame)
-	   ;; If someone beat us here, we fizzle
-	   (and (eq? 'available (shadowframe-status frame))
-		(begin 
-		  ;(printf "STOLE work! ~s\n" frame)
-		  (set-shadowframe-status!   frame 'done)
-		  (set-shadowframe-argval! frame 
-					   ((shadowframe-oper frame) (shadowframe-argval frame))))))))
+         (with-mutex (shadowframe-mut frame)
+           ;; If someone beat us here, we fizzle
+           (and (eq? 'available (shadowframe-status frame))
+                (begin 
+                  ;(printf "STOLE work! ~s\n" frame)
+                  (set-shadowframe-status!   frame 'done)
+                  (set-shadowframe-argval! frame 
+                                           ((shadowframe-oper frame) (shadowframe-argval frame))))))))
 
   (define (make-worker)
     (define stack (new-stack))
-    (fork-thread (lambda () 		   
-		   (this-stack stack) ;; Initialize stack.		  
-		   ;; Steal work forever:
-		   (let forever ()
-		     (unless par-finished
-		       (let* ([ind (random numprocessors)]
-			      [stack (vector-ref allstacks ind)])
-			 (let* ([frames (shadowstack-frames stack)]
-				[tl     (shadowstack-tail stack)])
-			   (let frmloop ([i 0])
-			     (if (fx= i tl) 
-				 (forever) ;; No work on this processor, try again. 
-				 (or (and (do-work! (vector-ref frames i)) (forever))
-				     (frmloop (fx+ 1 i)))))))))))
+    (fork-thread (lambda ()                
+                   (this-stack stack) ;; Initialize stack.                
+                   ;; Steal work forever:
+                   (let forever ()
+                     (unless par-finished
+                       (let* ([ind (random numprocessors)]
+                              [stack (vector-ref allstacks ind)])
+                         (let* ([frames (shadowstack-frames stack)]
+                                [tl     (shadowstack-tail stack)])
+                           (let frmloop ([i 0])
+                             (if (fx= i tl) 
+                                 (forever) ;; No work on this processor, try again. 
+                                 (if (do-work! (vector-ref frames i))
+                                     (forever)
+                                     (frmloop (fx+ 1 i)))))))))))
     stack)
 
   (define-syntax pcall
     (syntax-rules ()
-      [(_ (f x) e2)
+      [(_ op (f x) e2)
        (let ([stack (this-stack)])
-	 (define (push! oper val)
-	   (define frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack)))
-	   ;; Initialize the frame
-	   (set-shadowframe-oper!   frame oper)
-	   (set-shadowframe-argval! frame val)
-	   (set-shadowframe-status!   frame  'available)
-	   (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
-	   frame)
-	 (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+         (define (push! oper val)
+           (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
+             ;; Initialize the frame
+             (set-shadowframe-oper!   frame oper)
+             (set-shadowframe-argval! frame val)
+             (set-shadowframe-status!   frame  'available)
+             (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
+             frame))
+         (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
-	 (define frame (push! f x))
-	 (let ([val1 e2])
-	   (with-mutex (shadowframe-mut frame)
-	     (case (shadowframe-status frame)
-	       [(available)
-		(pop!) ;; Pop before we even start the thunk.
-		(values val1 
-			;(op arg)
-			((shadowframe-oper frame) (shadowframe-argval frame))
-			)]
-	       [else (pop!)
-		     (values val1 (shadowframe-argval frame))]))
-	   ))]))
-  
-    
+         (let ([frame (push! f x)])
+           (let ([val1 e2])
+             (with-mutex (shadowframe-mut frame)
+               (case (shadowframe-status frame)
+                 [(available)
+                  (pop!) ;; Pop before we even start the thunk.
+                  (op val1 
+                          ;(op arg)
+                          ((shadowframe-oper frame) (shadowframe-argval frame))
+                          )]
+                 [else (pop!)
+                       (op val1 (shadowframe-argval frame))]))
+             )))]))
+
+
+
 #;
   (define-syntax parmv
     (syntax-rules () 
       []))
 
+
+;;================================================================================
+
+  (init-par (string->number (or (getenv "NUMTHREADS") "2")))
+  (printf "Run using parallel add-tree via pcall mechanism:\n")
+  (let ()
+    (define (tree n)
+      (if (zero? n) 1
+          (pcall + (tree (sub1 n)) (tree (sub1 n)))))
+    (printf "\n~s\n\n" (time (tree test-depth)))
+    (par-status))
+
+
+
 ) 
+
+
+
 
