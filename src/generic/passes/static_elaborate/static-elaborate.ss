@@ -61,6 +61,7 @@
 ;; Dummy implementation for PLT:
  (IFCHEZ (begin)
 	 (begin (define par list)
+		(define parmv values)
 		(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
 		(define (par-status) (void))
 		(define (par-reset!) (void))
@@ -1100,29 +1101,32 @@
 		  ;; We don't want to needlessly expand every
 		  ;; recursive definition!
 		  [newenv2 (append (map (lambda (lhs) (list lhs not-available 9999889)) lhs*) env)]
-		  
-		  ;; This parallel version works in many places, but gives me invalid mem ref elsewhere:
-		  [newall* (par (process-expr expr newenv)
-				(par-map (lambda (x) (process-expr x newenv2)) rhs*))]
-		  [newbod (car newall*)]
-		  [newrhs* (cadr newall*)]
-;		  [__ 	   (break)]
-                  ;; How much does each bound variable get referenced:
-		  ;; FIXME FIXME FIXME: SHOULD MAKE ONE PASS TO GET REF COUNTS:a
-		  [occurs (map (lambda (v myrhs) 
-				 (apply + (count-refs v newbod)
-					(map (lambda (x) (count-refs v x)) 
-					     (remq myrhs newrhs*))))
-			       lhs* newrhs*)]
-		  [newbinds (filter id
-				    (map 
-				     (lambda (lhs type rhs refs)
-				       ;; Here we eliminate dead code:
-				       (and (> refs 0)
-					    `(,lhs ,type ,rhs)))
-				     lhs* type* newrhs* occurs))])
-	     ;(disp "OCCURS: " lhs* occurs)
-	     `(letrec ,newbinds ,newbod)))]
+		  )
+
+	     ;; (old) This parallel version works in many places, but gives me invalid mem ref elsewhere
+	     (let-values ([(newbod newrhs*)
+			   (parmv (process-expr expr newenv)
+				  (par-map (lambda (x) (process-expr x newenv2)) rhs*))
+			   ])
+	       (let* (		  
+		      ;; How much does each bound variable get referenced:
+		      ;; FIXME FIXME FIXME: SHOULD MAKE ONE PASS TO GET REF COUNTS:a
+		      [occurs (map (lambda (v myrhs) 
+				     (apply + (count-refs v newbod)
+					    (map (lambda (x) (count-refs v x)) 
+					      (remq myrhs newrhs*))))
+				lhs* newrhs*)]
+		      [newbinds (filter id
+				  (map 
+				      (lambda (lhs type rhs refs)
+					;; Here we eliminate dead code:
+					(and (> refs 0)
+					     `(,lhs ,type ,rhs)))
+				    lhs* type* newrhs* occurs))])
+		 
+		 `(letrec ,newbinds ,newbod)
+		 )
+	      )))]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
 	  [(construct-data ,tc ,[rand*] ...) `(construct-data ,tc ,@rand*)]
@@ -1179,7 +1183,7 @@
 		    (begin
 		      ;(when (regiment-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
-		      (par-status) ;; TEMP
+		      (par-status) ;; TEMPTOGGLE
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
 		    ;; [2007.08.12] SADLY, we have to redo the mutable-vars when we iterate:
 		    (begin (set! mutable-vars (get-mutable body))

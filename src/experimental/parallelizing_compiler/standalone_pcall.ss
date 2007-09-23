@@ -5,7 +5,7 @@
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-(begin
+(module ()
 
 (define-syntax ASSERT
   (lambda (x)
@@ -44,17 +44,6 @@
   ;; Frames are locked individually.
   ;; status may be 'available, 'stolen, or 'done
   (define-record shadowframe  (mut status oper argval))
-#;
-  (begin (define make-shadowframe vector)
-         (define (shadowframe-mut v)      (vector-ref v 0))
-         (define (shadowframe-status v)   (vector-ref v 1))
-         (define (shadowframe-oper v)     (vector-ref v 2)) 
-         (define (shadowframe-argval v)   (vector-ref v 3))
-         (define (set-shadowframe-mut! v x)      (vector-set! v 0 x))
-         (define (set-shadowframe-status! v x)   (vector-set! v 1 x))
-         (define (set-shadowframe-oper! v x)     (vector-set! v 2 x))
-         (define (set-shadowframe-argval! v x)   (vector-set! v 3 x))
-         )
 
   ;; There's also a global list of threads:
   (define allstacks #()) ;; This is effectively immutable.
@@ -120,28 +109,23 @@
   (define (steal-work! frame)
     (and (eq? 'available (shadowframe-status frame))
 	 ;(mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
-	 (mutex-acquire (shadowframe-mut frame)) ;; NONBLOCKING VER HAS A PROBLEM
+	 (mutex-acquire (shadowframe-mut frame)) ;; NONBLOCKING VERSION HAS A PROBLEM!!?
 	 ;; From here on out we've got the mutex:
 	 (if (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
 	     #t 
-	     (begin ;(print "    fizzled....\n")
-		    (mutex-release (shadowframe-mut frame)) 
+	     (begin (mutex-release (shadowframe-mut frame)) 
 		    #f))
 	 (begin 
 	   ;;(printf "STOLE work! ~s\n" frame)
 	   (set-shadowframe-status! frame 'stolen)
-;	   (print "STOLEN, releasing...\n")
-	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
-;	   (print "Now computing...\n")
+	   (mutex-release (shadowframe-mut frame)) 
+	   ;; Then let go to do the real work:
 	   (set-shadowframe-argval! frame 
 	      ((shadowframe-oper frame) (shadowframe-argval frame)))
-	   ;; Now we *must* acquire it in order to set the status to done.
-;	   (print "Grabbing again to mark done.\n")
+	   ;; Now we *must* acquire it (even if we block) in order to set the status to done.
 	   (mutex-acquire (shadowframe-mut frame)) ;; blocking...
-;	   (print "  grabbed\n")
 	   (set-shadowframe-status! frame 'done)	   
 	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
-;	   (print "  let go\n")
 	   #t)))
 
   (define (find-and-steal-once!)
@@ -187,29 +171,27 @@
          (let ([frame (push! f x)])
            (let ([val1 e2])
 	     ;; We're the parent, when we get to this frame, we lock it off from all other comers.
-	     ;; Thieves do non-blocking probes.
-	     (let ([result 
-		    (let waitloop ()
-		      (mutex-acquire (shadowframe-mut frame))
-		      (case (shadowframe-status frame)
-			[(available)
-			 ;(print "nobody stole it\n")
-			 (pop!) ;; Pop before we even start the thunk.
-			 (op ((shadowframe-oper frame) (shadowframe-argval frame))
-			     val1)]
-			;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
-			[(stolen) 
-			 ;; Let go of this so they can finish and mark it as done.
-			 (mutex-release (shadowframe-mut frame))
-			 ;; Meanwhile we should go try to make ourselves useful:
-			 (find-and-steal-once!)
-			 ;; When we're done with that come back and see if our outsourced job is doen.
-			 (waitloop)]
-			;; It was stolen and is now completed:
-			[else (pop!) (op (shadowframe-argval frame) val1)]))])
-	       ;(print "  OUTTA THERE\n")
-	       (mutex-release (shadowframe-mut frame))
-	       result)
+	     ;; Thieves should do non-blocking probes.
+	     (let waitloop ()
+	       (mutex-acquire (shadowframe-mut frame))
+	       (case (shadowframe-status frame)
+		 [(available) 		  
+		  (set-shadowframe-status! frame 'stolen) ;; Just in case...
+		  (pop!) ;; Pop before we even start the thunk.
+		  (mutex-release (shadowframe-mut frame))
+		  (op ((shadowframe-oper frame) (shadowframe-argval frame))
+		      val1)]
+		 ;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
+		 [(stolen) 
+		  ;; Let go of this so they can finish and mark it as done.
+		  (mutex-release (shadowframe-mut frame))		 
+		  (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
+		  (waitloop)] ;; When we're done with that come back and see if our outsourced job is done.
+		 ;; It was stolen and is now completed:
+		 [else (pop!) 
+		       (mutex-release (shadowframe-mut frame))
+		       (op (shadowframe-argval frame) val1)]))
+
              )))]))
 
   ;; Returns values in a list
@@ -217,15 +199,35 @@
     (syntax-rules ()
       [(_ a b) (pcall list ((lambda (_) a) #f) b)]))
 
+  (define-syntax parmv
+    (syntax-rules ()
+      [(_ a b) (pcall values ((lambda (_) a) #f) b)]))
 
-;;================================================================================
+  ;;================================================================================
 
   (init-par (string->number (or (getenv "NUMTHREADS") "2")))
+
   (let ()
     (define (tree n)
       (if (fxzero? n) 1
           (pcall fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
     (printf "Run using parallel add-tree via pcall mechanism:\n")
+    (printf "\n~s\n\n" (time (tree test-depth)))
+    (par-status))
+#;
+  (let ()
+    (define (tree n)
+      (if (fxzero? n) 1
+          (apply fx+ (par (tree (fx- n 1)) (tree (fx- n 1))))))
+    (printf "Run using parallel add-tree w/ LIST intermediate values:\n")
+    (printf "\n~s\n\n" (time (tree test-depth)))
+    (par-status))
+#;
+  (let ()
+    (define (tree n)
+      (if (fxzero? n) 1
+          (call-with-values (lambda () (parmv (tree (fx- n 1)) (tree (fx- n 1)))) fx+)))
+    (printf "Run using parallel add-tree w/ MULTIPLE values:\n")
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
 
@@ -234,7 +236,7 @@
     (define (tree n)
       (if (fxzero? n) 1
           (fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
-    (printf "Run seq version:\n")
+    (printf "Run sequential (non-par) version:\n")
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
 
