@@ -19,16 +19,6 @@
 				  v)))]
       )))
 
-
-(define-syntax with-mutex
-  (syntax-rules ()
-    [(_ e0 e1 e2 ...)
-     (let ([m e0])
-       (mutex-acquire m)
-       (let ([x (begin e1 e2 ...)])
-         (mutex-release m)
-         x))]))
-
   (define test-depth 25) ;; Make a tree with 2^test-depth nodes.
 
   (define vector-build
@@ -129,18 +119,29 @@
   ;; Try to do work and mark it as done.
   (define (steal-work! frame)
     (and (eq? 'available (shadowframe-status frame))
-	 (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
-	 (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
+	 ;(mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
+	 (mutex-acquire (shadowframe-mut frame)) ;; NONBLOCKING VER HAS A PROBLEM
+	 ;; From here on out we've got the mutex:
+	 (if (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
+	     #t 
+	     (begin (print "    fizzled....\n")
+		    (mutex-release (shadowframe-mut frame)) 
+		    #f))
 	 (begin 
 	   ;;(printf "STOLE work! ~s\n" frame)
 	   (set-shadowframe-status! frame 'stolen)
+;	   (print "STOLEN, releasing...\n")
 	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
+;	   (print "Now computing...\n")
 	   (set-shadowframe-argval! frame 
 	      ((shadowframe-oper frame) (shadowframe-argval frame)))
 	   ;; Now we *must* acquire it in order to set the status to done.
+;	   (print "Grabbing again to mark done.\n")
 	   (mutex-acquire (shadowframe-mut frame)) ;; blocking...
+;	   (print "  grabbed\n")
 	   (set-shadowframe-status! frame 'done)	   
 	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
+;	   (print "  let go\n")
 	   #t)))
 
   (define (make-worker)
@@ -195,11 +196,12 @@
 			;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
 			[(stolen) 
 			 ;; For now we just spin until they're done:
-			 (mutex-release (shadowframe-mut frame))
+			 (mutex-release (shadowframe-mut frame))			 
+			 ;(print ".")
 			 (spinwait)]
 			;; It was stolen and is now completed:
 			[else (pop!) (op val1 (shadowframe-argval frame))]))])
-
+	       ;(print "  OUTTA THERE\n")
 	       (mutex-release (shadowframe-mut frame))
 	       result)
              )))]))
