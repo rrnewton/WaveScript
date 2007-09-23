@@ -88,9 +88,9 @@
 
     ;; DEBUGGING:
   ;;  Pick a print:
-     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
   ;   (define (print . args) (apply printf args))
-  ;   (define (print . args) (void)) ;; fizzle
+     (define (print . args) (void)) ;; fizzle
 
 
   ;; ----------------------------------------
@@ -124,7 +124,7 @@
 	 ;; From here on out we've got the mutex:
 	 (if (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
 	     #t 
-	     (begin (print "    fizzled....\n")
+	     (begin ;(print "    fizzled....\n")
 		    (mutex-release (shadowframe-mut frame)) 
 		    #f))
 	 (begin 
@@ -228,10 +228,19 @@
   (printf "Run using parallel add-tree via pcall mechanism:\n")
   (let ()
     (define (tree n)
-      (if (zero? n) 1
-          (pcall + (tree (sub1 n)) (tree (sub1 n)))))
+      (if (fxzero? n) 1
+          (pcall fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
+
+  (printf "Run seq version:\n")
+  (let ()
+    (define (tree n)
+      (if (fxzero? n) 1
+          (fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
+    (printf "\n~s\n\n" (time (tree test-depth)))
+    (par-status))
+
 
 
 

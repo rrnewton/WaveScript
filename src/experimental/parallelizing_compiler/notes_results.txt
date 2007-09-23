@@ -288,5 +288,38 @@
     75764 ms elapsed cpu time, including 148 ms collecting
     85893 ms elapsed cpu time, including 152 ms collecting
 
+|#
+
+
+#|
+
+;; [2007.09.22] Ah, this is nice.  With current standalone_pcall
+;; getting proper speedups beyond two threads.  Here's on hydra using
+;; optimize-level 2 (but with a matlab process eating one cpu).
+
+1    8779 ms elapsed real time
+2    4611 ms elapsed real time
+3    3473 ms elapsed real time
+4    2721 ms elapsed real time
+5    2899 ms elapsed real time
+6    2335 ms elapsed real time
+7    1797 ms elapsed real time
+8    1629
+9    1260
+10   1198
+11   1222
+12   1215
+13   1210
+14   1223
+15   1011
+16   -- got an error, overflowed the shadowstack!!!
+ 
+Seemed to choke on 8 threads.... having to run manually some.
+
+Par overhead on one thread is currently at 7.5X.  Not bad at all.
+
+Doing par with fixnum arithmetic instead of generic arith doesn't seem
+to make much difference... but switchng to O3 jumps us back up to 11X
+overhead.
 
 |#
