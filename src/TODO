@@ -21,6 +21,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2007.09.22]
+ *) Ack 
+
 [2007.09.20]
  *) Change regiment-primitive? to use symbol props.
  *) Is -exit-error not working for type errors?

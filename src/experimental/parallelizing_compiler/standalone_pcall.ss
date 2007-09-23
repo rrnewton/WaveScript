@@ -1,7 +1,7 @@
 
 ;; Now doing a hack to get rid of thunk allocation.
 
-(eval-when (compile eval load) 
+(eval-when (compile eval load)
   (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
@@ -18,7 +18,8 @@
 	    ((= i n) v)
 	  (vector-set! v i (f i))
 	  ))))
-  
+
+
   ;; STATE:
 
   ;; Each thread's stack has a list of frames, from newest to oldest.
@@ -83,6 +84,8 @@
 	    par-finished (vector-length allstacks)
 	    (map shadowstack-tail (vector->list allstacks))))
 
+  (define (par-reset!) (void))
+
   ;; ----------------------------------------
 
   ;; Try to do work and mark it as done.
@@ -142,15 +145,12 @@
 	       [else (pop!)
 		     (values val1 (shadowframe-argval frame))]))
 	   ))]))
-
-  (init-par (string->number (or (getenv "NUMTHREADS") "2")))
-  (printf "Run using parallel add-tree via pcall mechanism:\n")
-  (let ()
-    (define (tree n)
-      (if (zero? n) 1
-	  (call-with-values (lambda () (pcall (tree (sub1 n)) (tree (sub1 n)))) +)))
-    (printf "\n~s\n\n" (time (tree test-depth)))
-    (par-status))
+  
+    
+#;
+  (define-syntax parmv
+    (syntax-rules () 
+      []))
 
 ) 
 

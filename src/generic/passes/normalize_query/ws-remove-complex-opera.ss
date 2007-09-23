@@ -207,11 +207,18 @@
 	   [(wscase ,x (,TC* ,[rhs*]) ...)
 	    (match rhs*
 	      [(#(,rhs* ,rhsdecl*) ...)
-	       (ASSERT (curry andmap null?) rhsdecl*)
+	       ;(ASSERT (curry andmap null?) rhsdecl*)
 	       (mvlet ([(x xdecls) (make-simple x tenv)])
 		 (vector `(wscase ,x 
-			    ,@(map list TC* rhs*))
-			 xdecls))])]
+			    ,@(map 
+				(lambda (TC rhs rhsdecl)
+				  (unless (eq? TC default-case-symbol)
+				    ;; All the other RHS's should be just lambdas... 
+				    ;; and they shouldn't produce bindings:
+				    (ASSERT null? rhsdecl))
+				  (list TC rhs))
+				TC* rhs* rhsdecl*))
+			 (apply append xdecls rhsdecl*)))])]
 	   
 	   ;; For now don't lift out an iterate's lambda!	   
 	   [(iterate (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)

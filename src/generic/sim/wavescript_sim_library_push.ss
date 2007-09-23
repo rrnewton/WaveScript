@@ -844,7 +844,7 @@
 	     ;(begin (inspect x)(inspect entry))
 	     (let ([entry2 (assq default-case-symbol ls)])
 	       (if entry2 
-		   ((cadr entry2))
+		   (cadr entry2) ;((cadr entry2))
 		   (error 'wscase "unmatched case in case construct (with no default): ~s" (uniontype-tag x))))
 	     ))]))
 

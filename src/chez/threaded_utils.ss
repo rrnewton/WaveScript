@@ -11,10 +11,11 @@
 
      init-par  ;; Run initialization code (fork threads, etc)
      par       ;; Evaluate expressions in parallel, return list of values
-     par-list  ;; Evaluate a list of thunks
+;     par-list  ;; Evaluate a list of thunks
      ;parmv-fun          
-     (parmv pop! push! this-stack parmv-helper)
+;     (parmv pop! push! this-stack parmv-helper)
      par-map   ;; Apply function to list in parallel
+     pcall
 
      par-status ;; Optional utility to show status of par threads.
      par-reset! ;; Reset counters
@@ -23,8 +24,10 @@
      ;sync      ;; The corresponding call to wait for an async-par to finish.
      ;WAITING
      ;tickets
-     make-shadowframe shadowframe-mut shadowframe-status shadowframe-thunkval
-     set-shadowframe-mut! set-shadowframe-status! set-shadowframe-thunkval!
+     make-shadowframe shadowframe-mut shadowframe-status 
+     set-shadowframe-mut! set-shadowframe-status! 
+     ;shadowframe-thunkval set-shadowframe-thunkval!
+     shadowframe-argval shadowframe-oper set-shadowframe-argval! set-shadowframe-oper!
      )
   
   (import chez_constants)
@@ -660,22 +663,17 @@
 	    )))))
 
 
-;;(parmv-fun (lambda () (printf "A\n") 1) (lambda () (printf "B\n") 2))
 
+;; ================================================================================
+;; <-[ VERSION 5 ]->
+
+;; Using a more restricted "pcall" syntax to try to minimize allocation.
 #;
-(let ()
-  (define count (* 50 1000 1000))
-  ;(define count (* 500 ))
-  ;; Decrement a counter in two threads vs. one.
-  (define (l1 x) (unless (zero? x) (l1 (sub1 x))))
-  ;(define (l2 x) (unless (zero? x) (l2 (sub1 x))))
-  ;(time (rep 10000 (par (l1 10000) (l2 10000))))
+(begin
 
-  (par-reset!)
-  (time (parmv (l1 count) (l1 count)))
-  ;(time (list (l1 count) (l2 count)))
-  (par-status)
-  )
+  
+)
+
 
 
 

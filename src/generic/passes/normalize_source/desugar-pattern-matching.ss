@@ -57,8 +57,10 @@
     (lambda (expr fallthrough)
       (match expr 
 
-#;	[(quote ,n) 
-	 (inspect n)]
+	[(quote ,n) (guard (integer? n) (exact? n))
+	 ;(inspect n)
+	 `(gint (quote ,n))
+	 ]
 
 	;; Miscellaneous desugaring -- that must be done early!
 	;;======================================================================

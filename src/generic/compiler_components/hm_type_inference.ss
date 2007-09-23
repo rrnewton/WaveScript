@@ -436,6 +436,7 @@
        (export-type (type-expression other (tenv-map instantiate-type tenv)))   ])))
 
 ;; Assign a basic type to a constant.
+;; TODO: if this is to handle sum types, it needs to take the type defs also.
 (define (type-const c)
   (cond
    [(flonum? c) 'Float]

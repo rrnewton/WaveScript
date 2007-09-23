@@ -196,10 +196,6 @@
     12123 ms elapsed real time, including 159 ms collecting
     13114 ms elapsed real time, including 169 ms collecting
 
-;; INTERESTING, with this "parmv" version it's doing 120 bytes of
-;; allocation per iteration.  Oh wait, valor is 64-bit so that's only
-;; 15 words... that's not that bad.
-
     4026577360 bytes allocated, including 4010964504 bytes reclaimed
     4027445984 bytes allocated, including 4012676928 bytes reclaimed
     4027724376 bytes allocated, including 4013371024 bytes reclaimed
@@ -208,6 +204,12 @@
     13650460264 bytes allocated, including 13644598008 bytes reclaimed
     9851505424  bytes allocated, including 9845509264 bytes reclaimed
     10284491240 bytes allocated, including 10270320416 bytes reclaimed
+
+;; INTERESTING, with this ^^ "parmv" version it's doing 120 bytes of
+;; allocation per iteration.  Oh wait, valor is 64-bit so that's only
+;; 15 words... that's not that bad.
+
+
 
 ;; Hmm... I did the pcall hack and it's still allocating 104 bytes per
 ;; iteration (more than that really, because 50% of all iterations are
@@ -232,9 +234,59 @@
     9123752016  bytes allocated, including 9109261240 bytes reclaimed
     10978387408 bytes allocated, including 10963775480 bytes reclaimed
 
+;; Just ran on hydra.
+
+    17256 ms elapsed real time, including 42 ms collecting
+    9277 ms elapsed real time, including 50 ms collecting
+    13226 ms elapsed real time, including 57 ms collecting
+    12144 ms elapsed real time, including 58 ms collecting
+    9091 ms elapsed real time, including 62 ms collecting
+    9058 ms elapsed real time, including 63 ms collecting
+    6943 ms elapsed real time, including 71 ms collecting
+    8079 ms elapsed real time, including 76 ms collecting
+    9387 ms elapsed real time, including 70 ms collecting
+    6023 ms elapsed real time, including 83 ms collecting
+    6616 ms elapsed real time, including 83 ms collecting
+    6205 ms elapsed real time, including 85 ms collecting
+    10015 ms elapsed real time, including 197 ms collecting
+    8695 ms elapsed real time, including 152 ms collecting
+    7486 ms elapsed real time, including 183 ms collecting
+    13219 ms elapsed real time, including 338 ms collecting
+
+    3489700464 bytes allocated, including 3484829360 bytes reclaimed
+    3490540520 bytes allocated, including 3487485432 bytes reclaimed
+    3490556208 bytes allocated, including 3487629400 bytes reclaimed
+    3491434064 bytes allocated, including 3490506304 bytes reclaimed
+    3491507864 bytes allocated, including 3490645512 bytes reclaimed
+    3492019568 bytes allocated, including 3492957752 bytes reclaimed
+    3492718056 bytes allocated, including 3493541040 bytes reclaimed
+    3493242040 bytes allocated, including 3474629096 bytes reclaimed
+    3490651720 bytes allocated, including 3491345440 bytes reclaimed
+    3494329216 bytes allocated, including 3477931520 bytes reclaimed
+    3494864312 bytes allocated, including 3478745896 bytes reclaimed
+    3494978880 bytes allocated, including 3479921840 bytes reclaimed
+    9102705792 bytes allocated, including 9098978320 bytes reclaimed
+    6564471288 bytes allocated, including 6555174608 bytes reclaimed
+    7549604712 bytes allocated, including 7550149648 bytes reclaimed
+    14419644312 bytes allocated, including 14418772056 bytes reclaimed
 
 
+;; SIGH, for larger numbers of threads I seem to get:
+
+[thread 3] Error in shadowstack-frames: 0 is not of type #<record type shadowstack>. 
+[thread 3] Error: attempt to apply non-procedure 1.
+
+;; Top says that scheme will get to using ~740% cpu.
+
+;; For reference, did the pcall version on Valor grabbing cpu time:
+    15080 ms elapsed cpu time, including 28 ms collecting
+    16789 ms elapsed cpu time, including 60 ms collecting
+    16301 ms elapsed cpu time, including 24 ms collecting
+    23365 ms elapsed cpu time, including 36 ms collecting
+    15920 ms elapsed cpu time, including 100 ms collecting
+    105934 ms elapsed cpu time, including 184 ms collecting
+    75764 ms elapsed cpu time, including 148 ms collecting
+    85893 ms elapsed cpu time, including 152 ms collecting
 
 
 |#
-
