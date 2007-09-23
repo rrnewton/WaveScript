@@ -292,7 +292,7 @@
 
 
 #|
-
+;;================================================================================
 ;; [2007.09.22] Ah, this is nice.  With current standalone_pcall
 ;; getting proper speedups beyond two threads.  Here's on hydra using
 ;; optimize-level 2 (but with a matlab process eating one cpu).
@@ -321,5 +321,60 @@ Par overhead on one thread is currently at 7.5X.  Not bad at all.
 Doing par with fixnum arithmetic instead of generic arith doesn't seem
 to make much difference... but switchng to O3 jumps us back up to 11X
 overhead.
+
+|#
+
+
+#|
+;;================================================================================
+;; [2007.09.23] Running again on hydra after some fixes (for various errors.)
+
+    9575 ms elapsed real time
+    4954 ms elapsed real time
+    3322 ms elapsed real time
+    2961 ms elapsed real time
+    2404 ms elapsed real time
+    1691 ms elapsed real time
+    1476 ms elapsed real time
+    1392 ms elapsed real time
+    1237 ms elapsed real time
+    1075 ms elapsed real time
+    1007 ms elapsed real time
+    957 ms elapsed real time
+    898 ms elapsed real time
+    863 ms elapsed real time
+    804 ms elapsed real time
+    810 ms elapsed real time
+
+It's possible that we're plateauing at the end because the absolute
+amounts of work are getting too small.  Cpu time stays fairly constant, which is good.
+
+;; Here's 10-16 threads on 2^27th work:
+10:    42193 ms elapsed cpu time
+11:    42135 ms elapsed cpu time
+12:    42700 ms elapsed cpu time
+13:    43553 ms elapsed cpu time
+14:    43302 ms elapsed cpu time
+15:    44507 ms elapsed cpu time
+16:    46628 ms elapsed cpu time
+
+;; But real time is not improving much.  This must mean that
+;; processors cannot keep busy:
+    4392 ms elapsed real time
+    4050 ms elapsed real time
+    3825 ms elapsed real time
+    3649 ms elapsed real time
+    3388 ms elapsed real time
+    3276 ms elapsed real time
+    3194 ms elapsed real time
+
+
+;; Now with things working well I'm going back to see if we can speed
+;; up the compiler on run_3phases.ws.  For now I'm using parmv and
+;; par-map (not pcall directly).
+
+;; nonPar version: 9.0s real on static-elab
+;; par 1T: 9.2s
+;; par 2T: 
 
 |#

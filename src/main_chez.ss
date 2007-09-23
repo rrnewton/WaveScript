@@ -346,6 +346,7 @@
 	)
  ;; Otherwise provide a dummy implementation of "par":
  (begin (define par list)
+	(define parmv values)
 	(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
 	(define par-map map)
 	(define (init-par cpus) (void))

@@ -1033,8 +1033,12 @@
 ;; [2004.06.24]<br> This is for the regiment primitives:
 (define get-primitive-entry
   (lambda (prim)
-    (or (let ([entry (hashtab-get primitives-hash prim)])
+    (or 
+        #;(let ([entry (hashtab-get primitives-hash prim)])
 	  (if entry (cons prim entry) #f))
+        (let ([entry (regiment-primitive? prim)])
+	  (if entry (cons prim entry) #f))
+
 	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))

@@ -17,6 +17,7 @@
      par-map   ;; Apply function to list in parallel
 
      (pcall find-and-steal-once! )
+     parmv
 
      par-status ;; Optional utility to show status of par threads.
      par-reset! ;; Reset counters
@@ -706,12 +707,14 @@
   (define global-mut (make-mutex))
   (define threads-registered 1)
 
+  (define initial-stack-size 500)
+
   ;; A new stack has no frames, but has a (hopefully) unique ID:
   (define (new-stack) 
     (make-shadowstack (random 10000) 
       0            ;; Head pointer.
       0            ;; Tail pointer.
-      (vector-build 50 
+      (vector-build initial-stack-size
         (lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
 
   ;; A per-thread parameter.
@@ -731,9 +734,9 @@
 
     ;; DEBUGGING:
   ;;  Pick a print:
-  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
   ;   (define (print . args) (apply printf args))
-     (define (print . args) (void)) ;; fizzle
+  ;   (define (print . args) (void)) ;; fizzle
 
 
   ;; ----------------------------------------
@@ -770,7 +773,7 @@
 	     (begin (mutex-release (shadowframe-mut frame)) 
 		    #f))
 	 (begin 
-	   ;;(printf "STOLE work! ~s\n" frame)
+	   ;(print "STOLE work! ~s\n" frame)
 	   (set-shadowframe-status! frame 'stolen)
 	   (mutex-release (shadowframe-mut frame)) 
 	   ;; Then let go to do the real work:
@@ -859,7 +862,7 @@
 
   (define (par-map fn ls) 
     (if (null? ls) ()
-	(trace-let loop ([ls ls])
+	(let loop ([ls ls])
 	  (if (null? (cdr ls))
 	      (list (fn (car ls)))
 	      (pcall cons 
