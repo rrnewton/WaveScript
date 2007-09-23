@@ -5,7 +5,7 @@
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-(module ()
+(begin
 
 (define-syntax ASSERT
   (lambda (x)
@@ -195,9 +195,8 @@
 			[(available)
 			 ;(print "nobody stole it\n")
 			 (pop!) ;; Pop before we even start the thunk.
-			 (op val1 
-			     ((shadowframe-oper frame) (shadowframe-argval frame))
-			     )]
+			 (op ((shadowframe-oper frame) (shadowframe-argval frame))
+			     val1)]
 			;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
 			[(stolen) 
 			 ;; Let go of this so they can finish and mark it as done.
@@ -205,39 +204,37 @@
 			 ;; Meanwhile we should go try to make ourselves useful:
 			 (find-and-steal-once!)
 			 ;; When we're done with that come back and see if our outsourced job is doen.
-			 (waitloop)
-			 ]
+			 (waitloop)]
 			;; It was stolen and is now completed:
-			[else (pop!) (op val1 (shadowframe-argval frame))]))])
+			[else (pop!) (op (shadowframe-argval frame) val1)]))])
 	       ;(print "  OUTTA THERE\n")
 	       (mutex-release (shadowframe-mut frame))
 	       result)
              )))]))
 
-
-
-#;
-  (define-syntax parmv
-    (syntax-rules () 
-      []))
+  ;; Returns values in a list
+  (define-syntax par
+    (syntax-rules ()
+      [(_ a b) (pcall list ((lambda (_) a) #f) b)]))
 
 
 ;;================================================================================
 
   (init-par (string->number (or (getenv "NUMTHREADS") "2")))
-  (printf "Run using parallel add-tree via pcall mechanism:\n")
   (let ()
     (define (tree n)
       (if (fxzero? n) 1
           (pcall fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
+    (printf "Run using parallel add-tree via pcall mechanism:\n")
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
 
-  (printf "Run seq version:\n")
+#;
   (let ()
     (define (tree n)
       (if (fxzero? n) 1
           (fx+ (tree (fx- n 1)) (tree (fx- n 1)))))
+    (printf "Run seq version:\n")
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
 
