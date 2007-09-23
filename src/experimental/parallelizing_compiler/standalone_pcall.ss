@@ -52,7 +52,7 @@
   (define-record shadowstack (id head tail frames))
   
   ;; Frames are locked individually.
-  ;; status may be 'available or 'done
+  ;; status may be 'available, 'stolen, or 'done
   (define-record shadowframe  (mut status oper argval))
 #;
   (begin (define make-shadowframe vector)
@@ -96,6 +96,13 @@
   	(with-mutex global-mut (= threads-registered numprocessors))
 	  (wait-for-threads))))
 
+    ;; DEBUGGING:
+  ;;  Pick a print:
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (apply printf args))
+  ;   (define (print . args) (void)) ;; fizzle
+
+
   ;; ----------------------------------------
 
   (define (init-par num-cpus)
@@ -120,16 +127,21 @@
   ;; ----------------------------------------
 
   ;; Try to do work and mark it as done.
-  (define (do-work! frame)
+  (define (steal-work! frame)
     (and (eq? 'available (shadowframe-status frame))
-         (with-mutex (shadowframe-mut frame)
-           ;; If someone beat us here, we fizzle
-           (and (eq? 'available (shadowframe-status frame))
-                (begin 
-                  ;(printf "STOLE work! ~s\n" frame)
-                  (set-shadowframe-status!   frame 'done)
-                  (set-shadowframe-argval! frame 
-                                           ((shadowframe-oper frame) (shadowframe-argval frame))))))))
+	 (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
+	 (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
+	 (begin 
+	   ;;(printf "STOLE work! ~s\n" frame)
+	   (set-shadowframe-status! frame 'stolen)
+	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
+	   (set-shadowframe-argval! frame 
+	      ((shadowframe-oper frame) (shadowframe-argval frame)))
+	   ;; Now we *must* acquire it in order to set the status to done.
+	   (mutex-acquire (shadowframe-mut frame)) ;; blocking...
+	   (set-shadowframe-status! frame 'done)	   
+	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
+	   #t)))
 
   (define (make-worker)
     (define stack (new-stack))
@@ -147,7 +159,7 @@
                            (let frmloop ([i 0])
                              (if (fx= i tl) 
                                  (forever) ;; No work on this processor, try again. 
-                                 (if (do-work! (vector-ref frames i))
+                                 (if (steal-work! (vector-ref frames i))
                                      (forever)
                                      (frmloop (fx+ 1 i)))))))))))
     stack)
@@ -161,23 +173,35 @@
              ;; Initialize the frame
              (set-shadowframe-oper!   frame oper)
              (set-shadowframe-argval! frame val)
-             (set-shadowframe-status!   frame  'available)
+             (set-shadowframe-status! frame  'available)
              (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
              frame))
          (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
          (let ([frame (push! f x)])
            (let ([val1 e2])
-             (with-mutex (shadowframe-mut frame)
-               (case (shadowframe-status frame)
-                 [(available)
-                  (pop!) ;; Pop before we even start the thunk.
-                  (op val1 
-                          ;(op arg)
-                          ((shadowframe-oper frame) (shadowframe-argval frame))
-                          )]
-                 [else (pop!)
-                       (op val1 (shadowframe-argval frame))]))
+	     ;; We're the parent, when we get to this frame, we lock it off from all other comers.
+	     ;; Thieves do non-blocking probes.
+	     (let ([result 
+		    (let spinwait ()
+		      (mutex-acquire (shadowframe-mut frame))
+		      (case (shadowframe-status frame)
+			[(available)
+			 ;(print "nobody stole it\n")
+			 (pop!) ;; Pop before we even start the thunk.
+			 (op val1 
+			     ((shadowframe-oper frame) (shadowframe-argval frame))
+			     )]
+			;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
+			[(stolen) 
+			 ;; For now we just spin until they're done:
+			 (mutex-release (shadowframe-mut frame))
+			 (spinwait)]
+			;; It was stolen and is now completed:
+			[else (pop!) (op val1 (shadowframe-argval frame))]))])
+
+	       (mutex-release (shadowframe-mut frame))
+	       result)
              )))]))
 
 
