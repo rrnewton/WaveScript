@@ -373,8 +373,18 @@ amounts of work are getting too small.  Cpu time stays fairly constant, which is
 ;; up the compiler on run_3phases.ws.  For now I'm using parmv and
 ;; par-map (not pcall directly).
 
+;; Testing on laptop:
 ;; nonPar version: 9.0s real on static-elab
 ;; par 1T: 9.2s
-;; par 2T: 
+;; par 2T: 9.2s
+;; par 8T: 93.s -- WHOA, 10X slowdown as we increase the number of threads!!
+;; Something is seriously wrong.
+
+nonpar: 14.6s
+    1T: 14.7
+    2T: 14.0
+    4T: 13.98
+    8T: 14.3
+   16T: 15.5
 
 |#

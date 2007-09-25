@@ -343,14 +343,16 @@
 ;;; the most general type.  The normal type field will contain the LUB
 ;;; of the reference-sites.
 
-  (define (build-entry v t flag)
+;; Helper: return the expression and flag for an entry in the tenv.
+(define (build-entry v t flag)
   (if flag
       (match t
         ;; Expects the type to be a type var:
         [(quote ,pr) (ASSERT pair? pr)
                      ;; CONSTRUCT A DELAYED UNIFY:
                      ;; This is the scratch-pad on which we'll record the info from the call-sites. 
-                     
+
+	             ;; Make a new location and splice it in:
                      (let ([cell (make-tcell (cdr pr))])
                        (set-cdr! pr 
                                  (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
@@ -399,7 +401,7 @@
   ;; Extends a type environment.
   ;; .param tenv The type env to extend.
   ;; .param syms The names to bind.
-  ;; .param vals The types to bind.
+  ;; .param vals The types to bind (expects instantiated type vars).
   ;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
   ;; .returns A new type environment.
   (define (tenv-extend tenv syms types . flag)

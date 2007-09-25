@@ -793,6 +793,9 @@
 	   (values `(let ,(map list id* newtype* newrhs*) ,bod) bodty)))]
       )))
 
+;; Extend a type environment and turn on let-bound polymorphism based
+;; on parameter settings and on whether the right-hand-side meets the
+;; value restriction.
 (define (extend-with-maybe-poly lhs* rhs* newtype* tenv)
   ;; Let bound polymorphism.  We use the "value restriction" like ML:
   ;; I must admit, I think this is quite lame.
@@ -1045,10 +1048,14 @@
       [((,name ,typarg* ...) [,tycon* . ,ty**] ... ) (guard (symbol? name))
        (tenv-extend tenv tycon* 
 		    (map (lambda (ty*)
-			   ;; TEMP, trying instantiating here:
-			   (instantiate-type `(,@ty* -> (Sum ,name ,@typarg*))
-					     ))
-		      ty**))
+			   ;; Make an instantiated type var because tenv-extend expects that.
+			   (make-tcell
+			    ;; TEMP, trying instantiating here:
+			    (instantiate-type `(,@ty* -> (Sum ,name ,@typarg*))
+					      )))
+		      ty**)
+		    #t ;; data constructors are *always* polymorphic
+		    )
        ]))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 
