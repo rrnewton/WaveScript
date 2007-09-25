@@ -19,13 +19,13 @@ type EPtr = Int;
 // Let's split the tree up, so that we can stream AST nodes.
 uniontype Expr ptr = 
    ENum Float               | 
-   EOp (ptr * ptr)         | // Just PLUS for now.
+   EOp (ptr * ptr)          | // Just PLUS for now.
    ELam (ptr)               | // Contains just a body
    EVar (ptr)               | // The location of the binder.
    EApp (ptr * ptr)         |
 
-   EEndExpr (); // This shouldn't really be in the expression grammar
-   EEndLevel Int; // This shouldn't really be in the expression grammar
+   EEndLevel Int            | // This shouldn't really be in the expression grammar
+   EEndExpr ()              ; // This shouldn't really be in the expression grammar
 
 uniontype BinOp = PlusOp() | MultOp();
 
@@ -45,6 +45,54 @@ fun pass1(strm) {
     }),
   strm)
 }
+
+// Join App nodes with children.
+
+// Join all nodes with children.  Output each level independently
+// (even though it will have already been output as the child of the
+// previous level.
+fun join_all(strm) {
+  iterate (ind, exp) in strm {
+    state {
+      // Everyone from last lvl (below):
+      lastlvl = []; //HashTable:make(10); 
+      thislvl = [];//HashTable:make(10); 
+    }
+    //using HashTable;
+    //set_BANG(thislvl, ind, exp);
+    thislvl := List:assoc_update(thislvl, ind, exp);
+
+    case exp {
+      ENum (f) :    {}
+      ELam (ptr) :  {}
+      EVar (ptr) :  {}
+      EOp (pair) :  { let(x,y)=pair; }
+      EApp (pair) : { let(x,y)=pair; }         
+      EEndLevel(n): {
+        // When we're done with the current level, we can join it with the previous level.
+	// NEED HASHTABLE:FOREACH
+        List:map(fun((ind,exp)) 
+	    case exp {
+	      ENum (f) :    {}
+	      ELam (ptr) :  {}
+	      EVar (ptr) :  {}
+	      EOp (pair) :  { let(x,y)=pair; }
+	      EApp (pair) : { let(x,y)=pair; }         
+	      EEndLevel(n): {}
+	      
+	    }, thislvl);
+	()
+      }
+      EEndExpr(_) : {} 
+    }
+
+    // Is somebody waiting to connect to us?
+    //if contains(ind,lastlvl)
+    
+    
+  }  
+}
+
 
 /* // Next, something more complex. */
 /* // Let's reassemble all the lambdas and count varrefs to their bound var. */
@@ -92,7 +140,7 @@ fun pass1(strm) {
 
 ast = iterate _ in timer(3.0) {
   emit (3, ENum(99));
-  emit (3, ENum(101))
+  emit (3, ENum(101));
   emit (0, EEndLevel(3));
 
   emit (2, ELam(1));
@@ -113,6 +161,7 @@ joined = iterate _ in timer(3.0) {
 /*   emit [EOp((34, 35))];
  */
 
-//BASE <- pass1 $ ast;
-BASE <- joined
+BASE <- join_all $ pass1 $ ast;
+//BASE <- ast
+//BASE <- joined
 
