@@ -74,7 +74,7 @@ fun join_all(strm) {
         List:map(fun((ind,exp)) 
 	    case exp {
 	      ENum (f) :    {}
-	      ELam (ptr) :  {}
+	      ELam (ptr) :  emit Elam(List:assoc(lastlvl, ptr))
 	      EVar (ptr) :  {}
 	      EOp (pair) :  { let(x,y)=pair; }
 	      EApp (pair) : { let(x,y)=pair; }         
