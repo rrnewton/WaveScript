@@ -23,7 +23,9 @@ uniontype Expr ptr =
    ELam (ptr)               | // Contains just a body
    EVar (ptr)               | // The location of the binder.
    EApp (ptr * ptr)         |
-   EEndToken (); // This shouldn't really be in the expression grammar
+
+   EEndExpr (); // This shouldn't really be in the expression grammar
+   EEndLevel Int; // This shouldn't really be in the expression grammar
 
 uniontype BinOp = PlusOp() | MultOp();
 
@@ -89,11 +91,17 @@ fun pass1(strm) {
 
 
 ast = iterate _ in timer(3.0) {
+  emit (3, ENum(99));
+  emit (3, ENum(101))
+  emit (0, EEndLevel(3));
+
+  emit (2, ELam(1));
+  emit (0, EEndLevel(2));
+
   emit (1, EOp((1, 2)));
-  emit (2, ENum(99));
-  emit (3, ENum(101));
-  emit (4, ELam(1));
-  emit (-1, EEndToken(()));
+  emit (0, EEndLevel(1));
+
+  emit (-1, EEndExpr(()));
 }
 
 joined = iterate _ in timer(3.0) {
