@@ -1066,6 +1066,12 @@
    (cdr (or (assq 'union-types metadata)
 	    '(union-types)))))
 
+;; Like peel-annotations, but gets rid of extra type-var bindings on the outside.
+(define (peel-outer-typevars ty)
+  (match ty 
+    [(quote (,v . ,[ty])) ty]
+    [,oth oth]))
+
 ;; This takes a (Sum t) type and instantiates it for a particular variant.
 ;; .returns  The types of the data-constructor's fields.
 (define (sum-instance tenv sumty variant-name)
@@ -1074,7 +1080,7 @@
     (unless type
       (error 'sum-instance "This variant \"~s\" is not a member of the sum type." variant-name))
     (let ([arrowty (instantiate-type type)])
-      (match arrowty
+      (match (peel-outer-typevars arrowty)
 	[(,arg* ... -> ,ret) 
 	 (let ([cells (map (lambda (_) (make-tcell)) arg*)])
 					;	 (inspect arrowty)

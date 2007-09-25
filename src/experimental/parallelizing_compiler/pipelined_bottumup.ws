@@ -34,16 +34,15 @@ type AST = List (EPtr * Expr);
 //ast0 = [ENum(90)]
 //ast1 = [EOp(PlusOp(()), 34, 35)]
 
-
 // A simple pass, handle a single clause in isolation.
-/* fun pass1(strm) { */
-/*   smap(fun ((ind,exp)) */
-/*     (ind, case exp { */
-/*       ENum(n): ENum(n+1) */
-/*       _ : exp */
-/*     }), */
-/*   strm) */
-/* } */
+fun pass1(strm) {
+  smap(fun ((ind,exp))
+    (ind, case exp {
+      ENum(n): ENum(n+1)
+      _ : exp
+    }),
+  strm)
+}
 
 /* // Next, something more complex. */
 /* // Let's reassemble all the lambdas and count varrefs to their bound var. */
@@ -89,16 +88,16 @@ type AST = List (EPtr * Expr);
 /* } */
 
 
-/* ast = iterate _ in timer(3.0) { */
-/*   emit (1, EOp((1, 2))); */
-/*   emit (2, ENum(99)); */
-/*   emit (3, ENum(101)); */
-/*   emit (4, ELam(1)); */
-/*   emit (-1, EEndToken(())); */
-/* } */
+ast = iterate _ in timer(3.0) {
+  emit (1, EOp((1, 2)));
+  emit (2, ENum(99));
+  emit (3, ENum(101));
+  emit (4, ELam(1));
+  emit (-1, EEndToken(()));
+}
 
 joined = iterate _ in timer(3.0) {
-  emit (ELam(90), ELam("foo"));
+  emit (ELam(ELam("foo")));
 }
 
 /*   emit [ENum(90)]; */
