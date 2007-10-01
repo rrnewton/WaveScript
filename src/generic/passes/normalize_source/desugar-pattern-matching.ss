@@ -57,6 +57,10 @@
     (lambda (expr fallthrough)
       (match expr 
 
+
+;; TEMPTOGGLE:
+;; Make plain integer constants "gints" by default:
+#;
 	[(quote ,n) (guard (integer? n) (exact? n))
 	 ;(inspect n)
 	 `(gint (quote ,n))

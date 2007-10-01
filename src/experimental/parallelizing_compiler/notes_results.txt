@@ -388,3 +388,32 @@ nonpar: 14.6s
    16T: 15.5
 
 |#
+
+#|
+
+Ran it on 2^28th with opt-level 3.  Parallel efficiency isn't getting
+any better at the large numbers of cores.  I think I need to make some
+improvements to the algorithm and data structures.  For example, using
+a ready-queue, etc.
+
+    67270 ms elapsed real time
+    33978 ms elapsed real time
+    22769 ms elapsed real time
+    17530 ms elapsed real time
+    13922 ms elapsed real time
+    12001 ms elapsed real time
+    10218 ms elapsed real time
+    8982 ms elapsed real time
+    8315 ms elapsed real time
+    7832 ms elapsed real time
+    7355 ms elapsed real time
+    6959 ms elapsed real time
+    6533 ms elapsed real time
+    6222 ms elapsed real time
+    5960 ms elapsed real time
+    5602 ms elapsed real time
+
+
+
+
+|#

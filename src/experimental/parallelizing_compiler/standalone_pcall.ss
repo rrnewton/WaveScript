@@ -1,7 +1,7 @@
 ;; Now doing a hack to get rid of thunk allocation.
 
 (eval-when (compile eval load) 
-  (optimize-level 2)
+  (optimize-level 3)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 

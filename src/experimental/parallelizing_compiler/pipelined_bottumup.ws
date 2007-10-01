@@ -11,6 +11,8 @@ fun smap(f,s) {
   }
 }
 
+fun snd((a,b)) b
+
 // Instead of a recursive data type, we use explicit indices to refer
 // to other nodes in the tree.
 type EPtr = Int;
@@ -21,7 +23,7 @@ uniontype Expr ptr =
    ENum Float               | 
    EOp (ptr * ptr)          | // Just PLUS for now.
    ELam (ptr)               | // Contains just a body
-   EVar (ptr)               | // The location of the binder.
+   EVar (Int)               | // The location of the binder.
    EApp (ptr * ptr)         |
 
    EEndLevel Int            | // This shouldn't really be in the expression grammar
@@ -51,6 +53,7 @@ fun pass1(strm) {
 // Join all nodes with children.  Output each level independently
 // (even though it will have already been output as the child of the
 // previous level.
+//join_all :: Stream (Int * Expr ind) -> Stream (Int * Expr (Expr ind));
 fun join_all(strm) {
   iterate (ind, exp) in strm {
     state {
@@ -63,27 +66,30 @@ fun join_all(strm) {
     thislvl := List:assoc_update(thislvl, ind, exp);
 
     case exp {
-      ENum (f) :    {}
-      ELam (ptr) :  {}
-      EVar (ptr) :  {}
-      EOp (pair) :  { let(x,y)=pair; }
-      EApp (pair) : { let(x,y)=pair; }         
+/*       ENum (f) :    {} */
+/*       ELam (ptr) :  {} */
+/*       EVar (ptr) :  {} */
+/*       EOp (pair) :  { let(x,y)=pair; } */
+/*       EApp (pair) : { let(x,y)=pair; }          */
+/*       EEndExpr(_) : {}  */
       EEndLevel(n): {
         // When we're done with the current level, we can join it with the previous level.
 	// NEED HASHTABLE:FOREACH
         List:map(fun((ind,exp)) 
 	    case exp {
-	      ENum (f) :    {}
-	      ELam (ptr) :  emit Elam(List:assoc(lastlvl, ptr))
-	      EVar (ptr) :  {}
-	      EOp (pair) :  { let(x,y)=pair; }
-	      EApp (pair) : { let(x,y)=pair; }         
-	      EEndLevel(n): {}
+      	      ELam (ptr):  emit (ind, ELam(List:assoc(lastlvl, ptr)`head`snd))
+	      EVar (n)  :  emit (ind, exp)
+/* 	      EOp (pair) :  { let(x,y)=pair; } */
+/* 	      EApp (pair) : { let(x,y)=pair; }          */
+/* 	      EEndLevel(n): {} */
+//              _ : emit exp
 	      
 	    }, thislvl);
+	//lastlvl := thislvl;
+	thislvl := [];
 	()
       }
-      EEndExpr(_) : {} 
+      _ : {}
     }
 
     // Is somebody waiting to connect to us?
