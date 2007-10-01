@@ -1070,6 +1070,7 @@
 (define (peel-outer-typevars ty)
   (match ty 
     [(quote (,v . ,[ty])) ty]
+    [(LATEUNIFY ,_ ,[general]) general]
     [,oth oth]))
 
 ;; This takes a (Sum t) type and instantiates it for a particular variant.
