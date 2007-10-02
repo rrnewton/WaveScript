@@ -3,6 +3,10 @@
 ;; more recursive function definitions, and the graph of stream
 ;; connections must be acyclic.  Thus, any given letrec may be sorted.
 
+;; [2007.10.02] This also does the job of flattening normal let
+;; statements into nested chains of lets.  (Giving them a let*
+;; semantics.)
+
 (module ws-remove-letrec mzscheme
   (require "../../../plt/common.ss"
 	   "reduce-primitives.ss"
@@ -26,6 +30,14 @@
     [OutputGrammar remove-letrec-grammar]
     [Expr (lambda (x fallthru)
 	    (match x
+	      
+	      [(let ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+	       (make-nested-lets (map list lhs* ty* rhs*) bod)
+	       #; #;
+	       (warning 'ws-remove-letrec "Shouldn't get a normal let in input: ~s"
+		      `(let ,_ ,__))
+	       (inspect `(let ,_ ,__))]
+
 	      ;; Should be no "lazy" letrec at this point.
 	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
 	       (let* ([fv** (map core-free-vars e*)]

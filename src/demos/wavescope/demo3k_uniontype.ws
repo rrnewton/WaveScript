@@ -10,7 +10,7 @@ f = (3 *);
 BASE <- iterate _ in timer(3.0) { 
 
   x = A(3);
-  y = (+ 3) $ 4;
+  y :: Int = (+ 3) $ 4;
   // [2007.07.08] Interpret-meta won't currently allow this:
   //  f = (3 *);
   z = y`f + y.f;

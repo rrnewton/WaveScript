@@ -92,6 +92,11 @@
 		       [(Float)   `(,(float   genop) . ,args)]
 		       [(Double)  `(,(double  genop) . ,args)]
 		       [(Complex) `(,(complex genop) . ,args)]
+
+		       ;; Defaulting to INT: TEMPTOGGLE:
+		       ;; FIXME: Haven't fully verified the safety of this yet.
+		       [else      `(,(int     genop) . ,args)]
+#;
 		       [else (error 'degeneralize-arithmetic
 				    "generic operation did not have concrete numeric type after elaboration: ~s"
 				    (cons genop args))]

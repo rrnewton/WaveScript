@@ -1181,6 +1181,32 @@
 	(unless (= (length xargs) (length yargs))
 	  (printf "\nError: ~a\n" msg) ;; Print this before raising the generic message:
 	  (raise-wrong-number-of-arguments t1 t2 exp))
+	
+	;; EXPERIMENTAL: TESTING: TEMPTOGGLE:
+	(letrec ([stream? (lambda (ty) (match (peel-outer-typevars ty) [(Stream ,_) #t] [,_ #f]))]
+		 [nonstream? 
+		  (lambda (ty) 
+		    (and (peel-outer-typevars ty) ;; Not an undefined type var.
+			 (not (stream? ty)))
+		    #;
+		    (match (peel-outer-typevars ty) 
+		      [(,C . ,_) 
+		       (printf "   nonstream constructor?: ~s" C)
+		       (not (eq? C 'Stream))]
+		      [,_ #f]))])
+	  (for-each (lambda (t1 t2) 
+		      #;
+		      (printf "  TESTING: ~s ~s  strm: ~s/~s nonstrm: ~s/~s\n" (peel-outer-typevars t1) (peel-outer-typevars t2)
+			      (stream? t1) (stream? t2)
+			      (nonstream? t1) (nonstream? t2))
+		      (if (or (and (stream? t1) (nonstream? t2))
+			      (and (stream? t2) (nonstream? t1)))
+			  ;(inspect (list "Got potential stream coercion:" t1 t2))
+			  (printf "  Got potential stream coercion: ~s ~s" 
+				  (peel-outer-typevars t1) (peel-outer-typevars t2))
+			  ))
+	    xargs yargs))
+
 	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg))
 	  xargs yargs)
 	(types-equal! x y exp msg)]

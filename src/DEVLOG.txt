@@ -1104,3 +1104,49 @@ compiler multiple times.
 .
 What would we name them though ;).  Name them after the sources/sinks?
 
+[2007.10.01] {Thinking about auto-lifting functions over streams.}
+
+  1 + S ==> smap(fun(x)(x+1), S)
+
+Can we define allow the unifier to unify these two types??
+  (... T ...) -> T2
+  (... Stream T ...) -> Stream T2
+
+But even once we do that, how do we go back and convert the code?
+Perhaps the app (and primapp) case can detect that a coercion has
+occured, and modify the code....  But this is still strange and
+dangerous.  For one thing, it involves *changing* the return type of
+a primitive, so we must be careful in what order we do our
+unification!  (The unifier may no longer rely on the unify being
+associativity/commutative.)
+
+[2007.10.02] {Builtin syntax for smap}
+
+Been thinking a bit more about overloading function applications to streams.
+
+f(g(S) + 3, 99)
+
+f(g(S) + 3)
+
+But another option is just to have an infix smap operator:
+
+S => g => (+3) => f
+
+S -> g -> (+3) -> f
+
+S >> g >> (+3) >> f
+
+f @ (+3) @ g @ S
+
+f@  (+3)@  g@  S
+
+S  @(+3)  @g  @f
+
+S2 = S 
+  -> g 
+  -> (+3) 
+  -> f
+
+S2 = f <- (+3) <- g <- S
+S2 = f << (+3) << g << S
+

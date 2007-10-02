@@ -34,13 +34,13 @@
 ;; We use data types to separate different kinds of values.
 
 ;; Contains a datum: number, list, array, (tuples separate)
-(reg:define-struct (plain val ))
+(reg:define-struct (plain val type))
 ;(reg:define-struct (tuple fields)) ;; To distinguish tuples from vectors.
 
 ;; There are two kinds of closures.  Native and foreign.
 ;; Foreign closures have #f in place of formals and env.
 ;;   "name" is optional -- a symbol or #f
-(reg:define-struct (closure name formals code env))
+(reg:define-struct (closure name formals code env type))
 
 ;; A stream operator can be a leaf or an intermediate node.
 ;; The "parents" field contains a list of streamops, params are
@@ -59,7 +59,7 @@
 ;; we're going to just not evaluate hash tables at meta-eval time.
 (reg:define-struct (suspension operator argvals))
 
-(reg:define-struct (ref contents))
+(reg:define-struct (ref contents type))
 ;; We must distinguish these because they share the same physical
 ;; representatino as other numbers.
 ;(reg:define-struct (int64 num))
@@ -81,7 +81,7 @@
 (define (make-foreign-closure name includes ty)
   (DEBUGASSERT string? name) 
   (DEBUGASSERT (andmap string? includes))
-  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f))
+  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f #f))
 
 ;; Unwraps plain only:
 (define (unwrap-plain x) 
@@ -89,7 +89,7 @@
   (if (plain? x) (plain-val x) x))
 
 (define (maybe-wrap x)
-  (if (wrapped? x) x (make-plain x)))
+  (if (wrapped? x) x (make-plain x #f)))
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
@@ -103,8 +103,26 @@
 	   ???????????
 	   )))
 
-
-
+;; This tags a value with a type.
+;; This is necessary for not losing type information for constants.
+(define (set-value-type! val type)
+    ;;
+    (define (fold-in ty1 ty2) 
+      (if ty2
+	  (types-compat? ty1 ty2)
+	  ty1))
+    (cond
+     [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
+     ;; Must recursively handle the insides of the ref also:
+     [(ref? val) (set-ref-type! val (fold-in type (ref-type val)))
+      (match type
+	[(Ref ,elt) (set-value-type! (ref-contents val) elt)])]
+     [(closure? val)
+      (set-closure-type! val (fold-in type (closure-type val)))]
+     [(suspension? val)  (ASSERT #f)]
+     [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
+     [else (error 'unimpl "unmatched")]
+     ))
 
 
 ; ================================================================================ ;
@@ -119,7 +137,6 @@
 (define (extend-env id* val* env)
   (DEBUGASSERT (curry andmap (lambda (x) (or (wrapped? x) (box? x)))) val*)
   (append (map list id* val*) env))
-
 
 
 
@@ -159,11 +176,11 @@
   (match x
     [,v (guard (symbol? v)) 
 	(if (regiment-primitive? v)
-	    (make-plain (hashtab-get dictionary v))
+	    (make-plain (hashtab-get dictionary v) #f)
 	    (apply-env env v))]
-    [',c (make-plain c)]
+    [',c (make-plain c #f)]
 
-    [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)))]
+    [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)) #f)]
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))
@@ -172,14 +189,14 @@
 
     ;; UGLINESS
     ;; ----------------------------------------
-    ;; Here's a hack to keep those type assertions on the readFiles and foreign entries......
+    ;; Here's a hack to keep those type assertions on the readFiles ......
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
-	      (and (pair? x) (memq (car x) '(readFile dataFile)))))
+	      (and (pair? x) (memq (car x) '(readFile)))))
      (let ([op (Eval e env pretty-name)])
        (set-streamop-type! op ty)
        op)]
-    ;; This duplicates the above case forforeign entries.
+    ;; This duplicates the above case for foreign entries.
     [(assert-type ,ty ,e)
      (guard (let ([x (peel-annotations e)])
 	      (and (pair? x) (memq (car x) '(foreign foreign_source)))))
@@ -201,6 +218,10 @@
 	      'foreign_source (list name includes) () ty)]
 	    )
 	  )])]
+
+    ;; FIXME: THIS SHOULD MAKE THE CASES ABOVE REDUNDANT:
+    [(assert-type ,ty ,[val]) (set-value-type! val ty) val]
+
     [(,frgn . ,_) (guard (memq frgn '(foreign foreign_source)))
      (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons frgn _))]
     ;; We leave this alone:
@@ -228,6 +249,7 @@
      (Eval (if (plain-val t) c a) env pretty-name)]
 
     ;; [2007.09.19] Is this necessary if we've converted to left-left lambda?
+    ;; [2007.10.02] Actually, we should handle left-left lambda for efficiency.
 #; ;; TEMPTOGGLE
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
      (for-each (lambda (lhs val)
@@ -242,21 +264,19 @@
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
-       (for-each (lambda (cell lhs rhs)
+       (for-each (lambda (cell lhs ty rhs)
 		   (set-box! cell (Eval rhs newenv pretty-name))
-		   ;; PRETTY NAMES:
-
 		   (when (closure? (unbox cell)) 
-;		     (printf "   WWOOOOOOOOOOOOOOOOOOOOT: ~s\n" lhs)		     
 		     (prettify-names! (list lhs) (list (unbox cell))))
+		   (set-value-type! (unbox cell) ty)
 		   )
-	 cells lhs* rhs*)
+	 cells lhs* ty* rhs*)
        (Eval bod newenv pretty-name))]
 
     [(lambda ,formal* ,ty* ,bod) 
-     (make-closure #f formal* bod env)]
+     (make-closure #f formal* bod env `(,@ty* -> 'any))]
  
-    [(Mutable:ref ,[x]) (make-ref x)]
+    [(Mutable:ref ,[x]) (make-ref x #f)]
     [(deref ,[x])       (ref-contents x)]
     [(set! ,[v] ,[rhs]) 
      (set-ref-contents! v rhs)
@@ -270,7 +290,7 @@
     [(floatToInt ,[x])
      (ASSERT (plain? x))
 
-     (make-plain (inexact->exact (floor (plain-val x))))]
+     (make-plain (inexact->exact (floor (plain-val x))) #f)]
 
     ;; HACK: need to finish treating hash tables:
     [(HashTable:make ,[len]) 
@@ -304,10 +324,10 @@
 			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 		       x*)))])
 ;       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
-       (if (wrapped? raw) raw (make-plain raw)))]
+       (if (wrapped? raw) raw (make-plain raw #f)))]
     
     ;; [2007.09.14] Supporting sums:
-    [(construct-data ,tag ,[val]) (make-plain (make-uniontype tag val))]
+    [(construct-data ,tag ,[val]) (make-plain (make-uniontype tag val) #f)]
 
     [(app ,[f] ,[e*] ...)
      (if (foreign-closure? f)
@@ -320,18 +340,27 @@
 	 (begin 
 	   ;; Do PRETTY naming:
 	   (prettify-names! (closure-formals f) e*)
-	   (Eval (closure-code f)
-	       (extend-env (closure-formals f) e*
-			   (closure-env f))
-	       (or (closure-name f) pretty-name))))]
-
+	   ;; Assert that the args have the right type:
+	   (match (closure-type f)
+	     [(,argty* ... -> ,retty)
+	      ;; Nothing to do with return type yet!
+	      (for-each set-value-type! e* argty*)
+	      (let ([result		     
+		     (Eval (closure-code f)
+			   (extend-env (closure-formals f) e*
+				       (closure-env f))
+			   (or (closure-name f) pretty-name))])
+		(set-value-type! result retty)
+		result
+		)])))]
+    
     [(for (,i ,[st] ,[en]) ,bod)
      (ASSERT (plain? st))
      (ASSERT (plain? en))
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
-	   ((> i end) (make-plain #()))
-	 (Eval bod (extend-env '(i) (list (make-plain i)) env) pretty-name)))]
+	   ((> i end) (make-plain #() #f))
+	 (Eval bod (extend-env '(i) (list (make-plain i #f)) env) pretty-name)))]
     [(while ,tst ,bod)     
      (let loop ()
        (let ([test (Eval tst env pretty-name)])
@@ -339,7 +368,7 @@
 	 (when (plain-val test)
 	   (Eval bod env pretty-name)
 	   (loop))))
-     (make-plain #())]
+     (make-plain #() #f)]
     [(begin ,x* ... ,last) 
      ;; Side effects are modeled by... actual side effects!
      (begin (for-each (lambda (x) (Eval x env pretty-name)) x*)
@@ -356,6 +385,7 @@
 			 (closure-env clos)) 
 	     pretty-name))]
 
+    ;; Handles assert-type, src-pos...
     ;; FIXME: Should attach source info to closures:
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
@@ -382,6 +412,8 @@
 ;  (inspect dictionary)
   )
 
+
+
 ;; Make a *real* procedure that evaluates a closure.  Thus we can pass
 ;; it to one of the higher-order WS primitives that's implemented in a
 ;; separate library (wavescript_sim_library_push.ss).
@@ -402,7 +434,7 @@
 				(error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
 			      ;(ASSERT (compose not wrapped?) x)
 			      ;(make-plain x)
-			      (if (wrapped? x) x (make-plain x))
+			      (if (wrapped? x) x (make-plain x #f))
 			      )
 			 args)
 		       (closure-env c))
@@ -416,7 +448,7 @@
   (lambda args
     ;; Anything that gets passed to one of these wavescript
     ;; primitives should return only plain data.
-    (plain-val (apply clos (map (lambda (x) (if (wrapped? x) x (make-plain x))) args)))
+    (plain-val (apply clos (map (lambda (x) (if (wrapped? x) x (make-plain x #f))) args)))
     ))
 
 
@@ -533,7 +565,8 @@
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
   (ASSERT (plain? p))
   
-  (let loop ([val (plain-val p)])
+  (let loop ([val (plain-val p)]
+	     [ty  (plain-type p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
      ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
@@ -544,31 +577,54 @@
 ;     [(int64? val)  (int64-num val)]
 ;     [(double? val) (double-num val)]
 
-     [(tuple? val) `(tuple . ,(map (lambda (x) (if (wrapped? x) (Marshal x) (loop x)))
-				(ASSERT (tuple-fields val) )))]
+     [(tuple? val) 
+      `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (loop x ty)))
+		   (ASSERT (tuple-fields val) )
+		   (vector->list (ASSERT ty))
+		   ))]
 
      [(uniontype? val)
       `(construct-data ,(uniontype-tag val)
 		       ,(Marshal (uniontype-val val)))]
 
      [(timebase? val) `(Secret:newTimebase ',(timebase-num val))]
-     [(and (integer? val) (exact? val)) `(gint ',val)]
+
+     ;; HACK: all ints become gints!!!
+     ;[(and (integer? val) (exact? val)) `(gint ',val)]
+     [;(number? val)
+      (and (integer? val) (exact? val))
+      ;(ASSERT (plain-type p))
+      (unless ty (error 'Marshal-Plain "No type for this int ~s" val))
+      `(assert-type ,ty (gint ',val))]
      ;; No double's in meta program currently!!!
-     ;; Need to wrap them!!
+     ;; ANNOYING, FIXME: We don't have a direct syntax for double
+     ;; constants, as a stopgap we could cast them from float
+     ;; constants (unless they're too big).
+
 ;
      ;; FIXME:
      [(list? val)
       ;; This value is thrown away:
       ;; TODO, do a proper check to make sure there are no streamops/closures
-      (for-each loop val)
-      `',val]    
+      (unless ty (inspect p))
+      (match ty
+	[(List ,elt)
+	 (for-each (lambda (x) (loop x elt)) val)])
+      
+      `',val]
 
+     [(vector? val)
+      ;; FIXME
+      `',val ]
+
+     ;; FIXME: GET RID OF THIS FALLTHROUGH!
      [else 
-      (ASSERT (not (streamop? val)))
-      (ASSERT (not (closure? val)))
-      (ASSERT (not (ref? val)))
-      (ASSERT (not (suspension? val)))
+;      (ASSERT (not (streamop? val))) (ASSERT (not (closure? val))) 
+;      (ASSERT (not (ref? val)))      (ASSERT (not (suspension? val)))
 
+      (ASSERT (or (string? val) (flonum? val) (cflonum? val) (boolean? val)
+		  (sigseg? val)
+		  ))
       ;(DEBUGASSERT complex-constant? val)
       `',val]
      )))
@@ -834,28 +890,28 @@
 	(app fact '6)) '() #f)) 
      720]
     [(,plain-val (,Eval 
-     '(letrec ([v 'a (Mutable:ref '99)])
+     '(letrec ([v (Ref 'a) (Mutable:ref '99)])
 	(begin (set! v '89)
 	       (deref v))) '() #f))    89]
     [(,plain-val (,Eval 
-     '(letrec ([v 'a (Mutable:ref '0)])
+     '(letrec ([v (Ref 'a) (Mutable:ref '0)])
 	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     [(,plain-val (,Eval 
-     '(letrec ([v 'a (Mutable:ref '0)])
+     '(letrec ([v (Ref 'a) (Mutable:ref '0)])
 	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
-	(letrec ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3)))
+	(letrec ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3.0)))
 	'())) '() #f)))))
      #f]
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (letrec ([y 'a '100]) (iterate (lambda (x vq) (a b) y) (timer '3))) '())) '() #f))))
+       (letrec ([y Int '100]) (iterate (lambda (x vq) (a b) y) (timer '3.0))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -863,25 +919,29 @@
        (not 
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
-      (,Marshal (,Eval '(letrec ([y 'a (Mutable:ref '100)]) 
+      (,Marshal (,Eval '(letrec ([y (Ref Int) (Mutable:ref '100)]) 
 	      (iterate (lambda (x vq) (a b) (deref y)) 
-				(timer '3))) '() #f))))))
+				(timer '3.0))) '() #f))))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f
      (interpret-meta '(lang '(program 
        (letrec ([f 'b (lambda (x) (Int) (+_ x x))])
-	 (iterate (lambda (_) ('a) (app f '9))(timer '3))) Int))))
+	 (iterate (lambda (_) ('a) (app f '9)) (timer '3.0))) Int))))
      #f]
 
 
     ["Reduce away fact of 6." 
      (interpret-meta '(foo '(program 
-      (letrec ([fact _ (lambda (n) (_) 
-			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
+      (letrec ([fact (Int -> Int)
+		     (lambda (n) (Int)
+			     (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6))
       (union-types) 'notype)))
-     (unspecified '(program (gint '720) (union-types) 'notype))]
+     ;(unspecified '(program (gint '720) (union-types) 'notype))
+     (unspecified
+      '(program (assert-type Int (gint '720)) (union-types) 'notype))
+     ]
 
     ))
 

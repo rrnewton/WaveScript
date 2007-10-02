@@ -129,18 +129,20 @@
 
     (define process-expr
       (lambda (x fallthru)
+	(define (normal-prim? p) (and (regiment-primitive? p) (not (eq? p 'iterate))))
 	(match x
 	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
 	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	  [(iterate . ,_) (error 'ws-lift-let "missed iterate: ~s" `(iterate . ,_))]
 
 	  ;; Ascriptions are redundant right within the RHS:
 	  ;; But we leave them for primitives:
 	  [(let ([,v ,ty (assert-type ,ty3 (,prim ,[rand*] ...))]) ,[bod])
-	   (guard (regiment-primitive? prim))
+	   (guard (normal-prim? prim))
 	   `(let ([,v ,ty (assert-type ,ty3 (,prim . ,rand*))]) ,bod)]
 	  ;; A 'constant' primitive:
 	  [(let ([,v ,ty (assert-type ,ty3 ,prim)]) ,[bod])
-	   (guard (regiment-primitive? prim))
+	   (guard (normal-prim? prim))
 	   `(let ([,v ,ty (assert-type ,ty3 ,prim)]) ,bod)]
 	  ;; And for quoted constants:
 	  [(let ([,v ,ty (assert-type ,ty3 (quote ,c))]) ,[bod])

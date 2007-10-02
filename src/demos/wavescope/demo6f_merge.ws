@@ -6,7 +6,7 @@
 // vice-versa, but it's currently handled separately (unfortunately).
 
 s1 = iterate _ in timer(4.0){
-  state{ c=0 }
+  state{ c :: Int64 = 0 }
   c += 1;
   emit c
 }

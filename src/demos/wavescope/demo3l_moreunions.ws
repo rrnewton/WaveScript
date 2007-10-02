@@ -25,7 +25,7 @@ fun union3(s1,s2,s3)
   merge(stream_map(Twoof3,  s2),
         stream_map(Threeof3,s3)))
 
-s1 = union3(CONST(1),CONST(2.0),CONST(3.0+0.0i));
+s1 = union3(CONST((1::Int)),CONST(2.0),CONST(3.0+0.0i));
 
 s1b = union3(CONST(1.0),CONST("yay"),CONST(99));
 

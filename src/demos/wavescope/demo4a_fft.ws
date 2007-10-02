@@ -91,7 +91,7 @@ s2 = s2b;
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
 s3 = iterate (win in s2) {
-  state { pos=0 }
+  state { pos::Int=0 }
   
   x :: Int = 3;  // Explicit type annotation on local var.
   y = (4 == 4);
