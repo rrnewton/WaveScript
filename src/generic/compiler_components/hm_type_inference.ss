@@ -437,6 +437,7 @@
 
 ;; Assign a basic type to a constant.
 ;; TODO: if this is to handle sum types, it needs to take the type defs also.
+;; [2007.10.02] TODO: AUDIT THIS.  For integer constants perhaps it should infer a generic type...
 (define (type-const c)
   (cond
    [(flonum? c) 'Float]

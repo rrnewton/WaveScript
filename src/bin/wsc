@@ -13,10 +13,13 @@ REGPASSTHRU=""
 FILE=""
 OUTFILE=query.cpp
 NOGCC=0
+WSCDEBUG=0
 
 while [ $# != 0 ];  do 
   if [ "$1" == "-no-gcc" ]
   then NOGCC=1;
+  elif [ "$1" == "-dbg" ]
+  then WSCDEBUG=1;
   elif [ "$1" == "-o" ]
   then shift;
        OUTFILE="$1"; 
@@ -94,6 +97,9 @@ then CCOMPILE='wsc-arm-g++'
      export WSEXESUFFIX="arm.exe"
 else CCOMPILE='wsc-g++'
 fi
+
+
+export WSCDEBUG
 
 if [ "$NOGCC" == "0" ] &&  $CCOMPILE $CCPASSTHRU ./query 
 then echo

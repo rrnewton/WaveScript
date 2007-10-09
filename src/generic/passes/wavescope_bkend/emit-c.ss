@@ -606,7 +606,6 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-        #;
 	[(timer ,[Simple -> period])
 	 (values 
 	  `(" WSSource* ",name" = new WSBuiltins::Timer(",period");\n"  )
@@ -615,6 +614,7 @@
 	  )]
 
         ;; FIXME: for now, assume this will be used only by readFile, and ignored
+	#;
         [(timer ,[Simple -> period])
          (values
           `(" WSSource * ",name" = NULL;\n")

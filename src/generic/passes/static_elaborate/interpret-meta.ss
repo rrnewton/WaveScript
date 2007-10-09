@@ -605,13 +605,13 @@
      ;; constants (unless they're too big).
 
 ;
-     ;; FIXME:
      [(list? val)
       ;; This value is thrown away:
       ;; TODO, do a proper check to make sure there are no streamops/closures
+      ;; FIXME: IS THIS NECESSARY:
       (match (or ty (type-const val))
 	[(List ,elt)
-	 (for-each (lambda (x) (loop x elt)) val)])      
+	 (for-each (lambda (x) (loop x elt)) val)])
       `',val]
 
      [(vector? val)

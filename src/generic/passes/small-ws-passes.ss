@@ -23,12 +23,23 @@
 	   resolve-type-aliases
 	   ws-normalize-context
 	   generate-comparison-code
+	   strip-unnecessary-ascription
 
            ; --mic
 	   propagate-copies
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
+
+;; [2007.10.09] 
+(define-pass strip-unnecessary-ascription
+  (define required-ops '(readFile foreign foreign_source))
+  [Expr (lambda (e fallthru)
+	  (match e
+	    [(assert-type ,t (,op ,[x*] ...)) (guard (memq op required-ops))
+	     `(assert-type ,t ,(cons op x*))]
+	    [(assert-type ,t ,[e]) e]
+	    [,oth (fallthru oth)]))])
 
 ;; [2007.09.06] little helper pass used in ws.early:
 (define-pass strip-src-pos

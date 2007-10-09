@@ -28,7 +28,7 @@ function go () {
 # echo DEMO1: >> $RUN
 # ./run_query | head -20 >> $RUN
 
-go "demo1b_dataFile.ws"
+#go "demo1b_dataFile.ws"
 go "demo1c_timer.ws"
 go "demo1d_dataFile_binary.ws"
 go "demo1e_readFile.ws"

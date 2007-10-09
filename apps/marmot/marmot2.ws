@@ -454,8 +454,10 @@ Gnuplot:array_streamXY_multiplot(
    map(fun(((id,_,_,_), strm)) 
        smap(fun(sigsegs) {
   	   arr = toArray$ List:ref(sigsegs,0);
-           println("DETECTIONMIN: "++Array:fold1(min,arr));
-           Array:mapi(fun(i,x) if x < 0`gint then (i,absI16(x)) else (i,(x)), arr);
+           println("DETECTIONMIN: "++Array:fold1(min,arr));	   
+           Array:mapi(fun(i,x) 
+	      if x == intToInt16(-32768) then  wserror("\n\nGOT LEAST NEGATIVE INT16!!!\n\n") else
+	      if x < 0`gint then (i,absI16(x)) else (i,(x)), arr);
            //Array:mapi(fun(i,x) if x < 0`gint then (i,"-"++(1`gint - x)) else (i,show(x)), arr);
            //Array:mapi(fun(i,x) (i,max(x,gint(0))), arr);
 	 },

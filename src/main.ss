@@ -525,7 +525,7 @@
   ;; things that don't matter.  We typecheck afterwards to make sure
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
-
+  (ws-run-pass p strip-unnecessary-ascription)
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
@@ -856,7 +856,6 @@
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
-
 
    (printf "Running pass: nominalize-types.\n")
    (time (set! prog (nominalize-types prog)))

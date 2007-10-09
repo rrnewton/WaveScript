@@ -22,6 +22,10 @@ FILE=""
 # -fssa-dce -fstrength-reduce  -fstrict-aliasing  -ftracer  -fthread-jumps -funroll-all-loops  -funroll-loops --param
 
 
+if [ "$WSCDEBUG" == "1" ];
+then CCARGS="$CCARGS -g -O0"; 
+fi
+
 while [ $# != 0 ];  do 
   if [ "$1" == "-dynamic" ];
   then DYNAMICLINK=1; 

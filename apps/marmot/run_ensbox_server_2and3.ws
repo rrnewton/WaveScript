@@ -108,7 +108,8 @@ ignored2 = draw_multi_detections(nodes,synced)
 
 final = 
 merge(ignored, //merge(ignored,ignored2),
-      dump_likelihood_maps(heatmaps, axes, grid_scale))
+      //      dump_likelihood_maps(heatmaps, axes, grid_scale))
+      common_backend(heatmaps, axes, grid_scale))
 
 // COMMENT OUT WHEN USING THE PTOLEMY ENTRY POINT:
 BASE <- final
