@@ -609,11 +609,9 @@
      [(list? val)
       ;; This value is thrown away:
       ;; TODO, do a proper check to make sure there are no streamops/closures
-      (unless ty (inspect p))
-      (match ty
+      (match (or ty (type-const val))
 	[(List ,elt)
-	 (for-each (lambda (x) (loop x elt)) val)])
-      
+	 (for-each (lambda (x) (loop x elt)) val)])      
       `',val]
 
      [(vector? val)
@@ -884,7 +882,7 @@
     [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '()  #f)) 3]
     [(,plain-val (,Eval '(car (cons '39 '())) '() #f)) 39]
     [(,Eval '(timer '3) '() #f) ,streamop?]
-    [(,Eval '(car (cons (iterate (lambda (x vq) (a b) '99) (timer '3)) '())) '() #f) ,streamop?]
+    [(,Eval '(car (cons (iterate (lambda (x vq) ('a 'b) '99) (timer '3)) '())) '() #f) ,streamop?]
     [(,plain-val (,Eval '(letrec ([x Int '3]) x) '() #f)) 3]
     [(,plain-val (,Eval '(letrec ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
@@ -908,13 +906,13 @@
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
-	(letrec ([x 'a '100]) (iterate (lambda (x vq) (a b) x) (timer '3.0)))
+	(letrec ([x 'a '100]) (iterate (lambda (x vq) ('a 'b) x) (timer '3.0)))
 	'())) '() #f)))))
      #f]
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (letrec ([y Int '100]) (iterate (lambda (x vq) (a b) y) (timer '3.0))) '())) '() #f))))
+       (letrec ([y Int '100]) (iterate (lambda (x vq) ('a 'b) y) (timer '3.0))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -923,7 +921,7 @@
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
       (,Marshal (,Eval '(letrec ([y (Ref Int) (Mutable:ref '100)]) 
-	      (iterate (lambda (x vq) (a b) (deref y)) 
+	      (iterate (lambda (x vq) ('a 'b) (deref y)) 
 				(timer '3.0))) '() #f))))))
      #f]
     ["inline a function successfully"
