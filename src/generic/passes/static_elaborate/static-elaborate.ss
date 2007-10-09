@@ -771,7 +771,7 @@
 	  ;; If I knew freshness concerns would be so bad... I would have probably used debruin indices...
 	  ;; ================================================================================
 
-#;
+#; ;; DISABLING this one:
 	  ;; It's a little funky that we look for letrec? before evaluating the rands...
           [(,prim ,rand* ...)
 	   (guard (regiment-primitive? prim)

@@ -119,7 +119,7 @@
 	[(Ref ,elt) (set-value-type! (ref-contents val) elt)])]
      [(closure? val)
       (set-closure-type! val (fold-in type (closure-type val)))]
-     [(suspension? val)  (ASSERT #f)]
+     [(suspension? val)  (void)]
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
      [else (error 'unimpl "unmatched")]
      ))
@@ -188,6 +188,7 @@
      ]
 
     ;; UGLINESS
+    ;; FIXME: THE BELOW SHOULD BE ABLE TO REPLACE THESE TWO CASES:
     ;; ----------------------------------------
     ;; Here's a hack to keep those type assertions on the readFiles ......
     [(assert-type ,ty ,e)
@@ -237,12 +238,13 @@
     [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
      (match (regiment-primitive? streamprim)
        [(,argty* (Stream ,return))
+	(for-each set-value-type! x* argty*) ;; Set all the types of arguments (some may be integers).
 	;; This splits the stream from the non-stream components.
 	(let ([parents (apply append (map (lambda (x t) (if (stream-type? t) (list x) ())) x* argty*))]
 	      [params  (apply append (map (lambda (x t) (if (stream-type? t) () (list x))) x* argty*))])
 	  (ASSERT (curry andmap streamop?) parents)
 	  (ASSERT (curry andmap (compose not streamop?)) params)
-	  (make-streamop (streamop-new-name) streamprim params  parents #f))])]   
+	  (make-streamop (streamop-new-name) streamprim params  parents #f))])]
 
     [(if ,[t] ,c ,a) 
      (ASSERT (plain? t))
@@ -294,12 +296,13 @@
 
     ;; HACK: need to finish treating hash tables:
     [(HashTable:make ,[len]) 
+     (set-value-type! len 'Int)
      (make-suspension 'HashTable:make (list len))]
 
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
-     (ASSERT (not (assq prim wavescript-stream-primitives)))
+     (DEBUGASSERT (not (assq prim wavescript-stream-primitives)))
      ;; This is probably also rather slow.
      (let ([raw 
 	    ;; Can't write/read because it will contain procedures and streamops.
