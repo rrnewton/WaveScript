@@ -7,7 +7,10 @@ fun println(s) {
   print("\n");
 };
 
-fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
+fun assert(str,b) 
+  if b 
+  then print("passed: "++str++"\n")
+  else wserror("Assert failed: "++ str ++"\n");
 fun assert_eq(str,a,b) if a==b 
   then print("passed: "++str++"\n")
   else wserror("Assert failed: "++str++ " "++ a ++" not equal "++ b);
@@ -29,6 +32,7 @@ BASE <- iterate(w in s0) {
   println("sqrt complex: "++ sqrtC(3.0+4.0i) );  
 
   assert_eq("complex equality", 2.0+1.0i, 2.0+1.0i);
+  assert("complex inequality", not(2.0+1.0i == 2.0+9.0i));
 
   //print("diff " ++ sqrtC(3.0+4.0i) - 2.0+1.0i ++ "\n");
 

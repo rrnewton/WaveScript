@@ -33,10 +33,15 @@
 
 ;; [2007.10.09] 
 (define-pass strip-unnecessary-ascription
-  (define required-ops '(readFile foreign foreign_source quote))
+  (define required-ops '(readFile foreign foreign_source))
   [Expr (lambda (e fallthru)
 	  (match e
-	    [(assert-type ,t (,op ,[x*] ...)) (guard (memq op required-ops))
+	    ;; FIXME: HACK: [2007.10.10] Just prune out the polymorphic asserts around constants.
+	    [(assert-type ,ty (quote ,[x])) 
+	     (guard (not (polymorphic-type? ty)))
+	     `(assert-type ,ty ',x)]
+	    [(assert-type ,t (,op ,[x*] ...)) 
+	     (guard (memq op required-ops))
 	     `(assert-type ,t ,(cons op x*))]
 	    [(assert-type ,t ,[e]) e]
 	    [,oth (fallthru oth)]))])
@@ -175,6 +180,7 @@
 ;; "irrelevent" in the sense that it describes only uninspected values.
 ;; Thus it is equivalent to insert unit in all such places.
 (define-pass strip-irrelevant-polymorphism
+    (define dummy-type #()) ;; Type to insert.    
     (define (data-source? e)
       (let ([expr (peel-annotations e)])
 	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
@@ -182,7 +188,7 @@
       (match ty
 	  [(,qt ,v) (guard (memq qt '(quote NUM)))
 	   (ASSERT symbol? v)
-	   #()]
+	   dummy-type]
 	  [,s (guard (symbol? s)) s]
 	  [#(,[t*] ...)                    (list->vector t*)]
 	  [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
@@ -193,23 +199,31 @@
     (define Expr
       (lambda (x fallthru)
 	  (match x
+
 	    ;; Strip an assert-type unless it's around a data source.
 	    ;; HACK: quoted numbers also need their type annotations.
-#;
+	    #;
 	    [(assert-type ,t ,e) (guard (or (data-source? e) (quoted-num? e)))
 	     `(assert-type ,t ,(Expr e fallthru))]
 
+	    #;
 	    ;; New hack: we keep any annotations that have NO
 	    ;; polymorphism.  These will not be a problem.
 	    [(assert-type ,t ,[e]) (guard (not (polymorphic-type? t)))
 	     `(assert-type ,t ,e)]
 
 	    ;; Otherwise we remove the type assertion entirely.
-	    [(assert-type ,_ ,[e]) 
+	    #;
+	    [(assert-type ,_ ,[e])
 	     ;(printf "GOT ASSERT: ~s\n" ty)
 	     ;`(assert-type ,ty ,e)
 	     e
 	     ]
+
+	    ;; [2007.10.10] NOW we strip polymorphism even from the ascription:
+	    [(assert-type ,[Type -> ty] ,[e])
+	     `(assert-type ,ty ,e)]
+
 	    [,oth (fallthru oth)])))
   [Expr Expr]
   [Bindings 

@@ -326,9 +326,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
-(define engine-svn-revision 999999999)
-
-#;
 (begin 
 
 (define engine-dir (format "~a/WS_test_engine" (getenv "HOME")))
@@ -382,8 +379,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSC:
 
-#|
-
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
@@ -407,6 +402,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory))
 
 
+#|
 ;;================================================================================
 ;; Now test WSCAML:
 
@@ -501,7 +497,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;; Third phase won't work in "ws" because of writing ppm file.
        (fpf "wsmlton: Compiling marmot app (3phases):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))))
-       (fpf "wsmlton: Running marmot app (3phases):    ~a\n"
+       (fpf "wsmlton: Running marmot app (3phases):        ~a\n"
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
        
 

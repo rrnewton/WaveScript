@@ -551,7 +551,7 @@
   (do-late-typecheck)
 
   (ws-run-pass p unlift-polymorphic-constant)
-;  (ws-run-pass p strip-irrelevant-polymorphism)
+  (ws-run-pass p strip-irrelevant-polymorphism)
 
   ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
   (unless (memq 'merge-iterates disabled-passes)

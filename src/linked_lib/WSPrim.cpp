@@ -13,7 +13,7 @@ static ostringstream global_show_stream(ostringstream::out);
  class WSPrim {
 
    public:   
-
+   
    inline static wsfloat_t CNorm(wscomplex_t c) {
      wsfloat_t re =  __real__ c;
      wsfloat_t im =  __imag__ c;
@@ -29,6 +29,17 @@ static ostringstream global_show_stream(ostringstream::out);
        else                 return (absim * sqrt(1.0 + (im*im / (re*re))));
      }
      */
+   }
+
+   inline static wscomplex_t csqrt(wscomplex_t c) {
+     wsfloat_t sqrt2 = 1.4142135623730951;
+     wsfloat_t a =  __real__ c;
+     wsfloat_t b =  __imag__ c;
+     wsfloat_t norm = CNorm(c);          
+     wsfloat_t p = sqrt(norm + a) / sqrt2;
+     wsfloat_t q = sqrt(norm - a) / sqrt2;
+     if (b < 0) q *= -1;
+     return p + (q * 1.0fi);
    }
   
    // This is a work-around to the fact that we can't have stmt blocks

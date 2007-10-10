@@ -1,4 +1,5 @@
 
+;;;; TODO: Refactor this file to process the more sensible graph representation used by emit-mlton.
 
 ;;;; .title WaveScript EmitC
 ;;;; .author Ryan Newton
@@ -218,6 +219,7 @@
       [(,lang (quote (program ,expr (struct-defs ,struct-defs ...) ,meta* ... ,typ)))
        
        (define uniondefs (cdr (ASSERT (assq 'union-types meta*))))
+
        
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.
@@ -229,29 +231,7 @@
       (if (symbol? name) (set! name (sym2str name)))
       (match x
 
-	;; We force this to occur out here, in the "Query", not in any position in the program.
-	[(__foreign ',cname ',files ',ty)
-	 (match ty
-	   [(,argty* ... -> ,retty)	
-	    (let ([add-file!
-		   (lambda (file)
-		     ;; Add to global list of includes if it's not already there.
-		     (let ([ext (extract-file-extension file)])
-		       (cond
-			[(member ext '("c" "cpp" "h" "hpp"))
-			 (add-include! (list "\"" file "\""))]
-			[(or (member ext '("so" "a" "o"))
-			     ;; A hack:
-			     (substring? ".so." file))
-			 ;; Note: If you try to load a pre-compiled object, you must also provide a header!
-			 (add-link! file)]
-			[else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
-		     )])
-	      (for-each add-file! files)
-	      (let ([ty (Type ty)])
-		(values `(,ty " ",name" = (",ty")0;\n") ()())))])]
-	[(__foreign . ,_)
-	 (error 'emit-c:Query "unhandled form: ~s" `(__foreign ,@_))]
+	[(__foreign . ,_) (values (ForeignEntry name (cons '__foreign _)) () ())]
 
 	;; Anything else that's not of stream type, make global:
 	[,e (guard (not (distributed-type? typ)))
@@ -460,6 +440,7 @@
 		      "}\n"
 		      ;;"Launch();\n"
 		      "fseek(_f, ",offset", SEEK_SET);\n"
+		      ,(if (> winsize 0) "sampnum = 0;\n" "")
 		      )
 		    )
 		   ;; "\n  DEFINE_SOURCE_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
@@ -469,7 +450,7 @@
 		   "\nprivate:\n"
 		   "  FILE* _f;\n"
 		   "  bool binarymode;\n"
-		   (if (> winsize 0) "int sampnum = 0;\n" "")
+		   (if (> winsize 0) "  int sampnum;\n" "")
 
 		  ;; Then the main method that drives it:
 		  (block "bool iterate(uint32_t port, void *item)"
@@ -859,7 +840,7 @@
 
 ;; This produces a struct definition as well as a printer function for the struct.
 (define (StructDef entry)
-     (printf "heh, entry is: ~n") (pretty-print entry) (printf "~n")
+     ;(printf "StructDef entry is: ~n") (pretty-print entry) (printf "~n")
      (match entry
        [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
 	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
@@ -1138,6 +1119,7 @@
 ) ; End wsquery->text
 
 
+;;; THESE ALL LIVE OUTSIDE wsquery->text:
 ; ======================================================================
 ;;; Helper functions for handling different program contexts:
         
@@ -1209,11 +1191,44 @@
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
+;================================================================================
+
+(define (ForeignEntry name form)
+  (match form
+    [(__foreign ',cname ',files ',ty)
+     (match ty
+       [(,argty* ... -> ,retty)	
+	(let ([add-file!
+	       (lambda (file)
+		 ;; Add to global list of includes if it's not already there.
+		 (let ([ext (extract-file-extension file)])
+		   (cond
+		    [(member ext '("c" "cpp" "h" "hpp"))
+		     (add-include! (list "\"" file "\""))]
+		    [(or (member ext '("so" "a" "o"))
+			 ;; A hack:
+			 (substring? ".so." file))
+		     ;; Note: If you try to load a pre-compiled object, you must also provide a header!
+		     (add-link! file)]
+		    [else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
+		 )])
+	  (for-each add-file! files)
+	  ;;(list "\n#define "name" "cname"\n")
+
+	  ;; We bind the user's name it to a null value. Then, later,
+	  ;; we short-circuit the applications to refer directly to
+	  ;; the cname.
+	  (let ([ty (Type ty)]) `(,ty " ",name" = (",ty")0;\n"))
+	  )])]
+    [(__foreign . ,_)
+     (error 'emit-c:ForeignEntry "unhandled foreign form: ~s" `(__foreign ,@_))]
+    [,_ (error 'emit-c:ForeignEntry "non foreign form: ~s" form)]))
 
 ;================================================================================
 ;; Primitive calls:
 
 ;; This returns an block of code putting the result of the prim call in "name"
+;; It takes the primapp expression, and a name to store the return value.
 (define (Prim expr name type)
   (define (wrap x) (list type " " name " = " x ";\n"))
   ;; This is for primitives that correspond exactly to exactly one C call.
@@ -1231,7 +1246,7 @@
       [(absF absD absI absI16 absI64) "abs"]
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
-      [(sqrtC)                  "csqrt"]
+      [(sqrtC)                  (fromlib "csqrt")]
 
       ;; These use GSL and require appropriate includes.
       [(m_invert)
@@ -1518,10 +1533,8 @@
 	[(HashTable:get ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
 	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
 	[(HashTable:contains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
-
-
-	[(__foreign . ,_)
-	 (error 'emit-c:Prim "shouldn't get a __foreign here: ~s" `(__foreign ,@_))]
+	
+	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
 	;; Generate equality comparison:
 	[(wsequal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
@@ -1531,6 +1544,7 @@
 	     [Int16        simple]
 	     [Int64        simple]
 	     [Float        simple]
+	     [Complex      simple] ;; does this work?
 	     [String       simple]
 	     ;; This is effectively physical equality:
 	     ;; Requires that they have the same parents.
