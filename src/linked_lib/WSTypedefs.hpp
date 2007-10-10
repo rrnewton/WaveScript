@@ -28,7 +28,7 @@ typedef _Complex float wscomplex_t;
 
 
 //typedef boost::intrusive_ptr<WSArrayStruct> wsarray_t;
-#define wsarray_t boost::intrusive_ptr<WSArrayStruct>
+//#define wsarray_t boost::intrusive_ptr<WSArrayStruct>
 
 // [2007.04.15] I can't remember why I branched this off from the
 // standard DEFINE_OUTPUT_TYPE.  Trying to go back.
@@ -109,56 +109,70 @@ public:
 /********** ARRAYS **********/
 
 // Can flatten this when the size of the array is known.
+template <class T>
 struct WSArrayStruct {
   int rc;
   int len;
-  void* data;
+  //void* data;
+  T* data;
 };
 
-wsarray_t makeArrayUnsafe(wsint_t count, int eltsize) {
+template <class T>
+boost::intrusive_ptr< WSArrayStruct<T> >
+makeArrayUnsafe(wsint_t count, T initelem) {
+  //T* vec = (T*) malloc(sizeof(T) * (int)count);
+  T* vec = new T[count];
+  WSArrayStruct<T>* arr = new WSArrayStruct<T>;
+  arr->len = (int)count;
+  arr->data = vec;
+  arr->rc = 0;
+  return boost::intrusive_ptr< WSArrayStruct<T> >(arr);
+}
+
+/*
+makeArrayUnsafe(wsint_t count, int eltsize) {
   // FIXME: This is a bug too: 
   WSArrayStruct* stct = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
   stct->rc  = 0;
   stct->len = count;
   stct->data = malloc(count * eltsize);
-  return wsarray_t(stct);
+  return boost::intrusive_ptr< WSArrayStruct<T> >(stct);
 }
+*/
 
 template <class T>
-wsarray_t makeArray(wsint_t count, T initelem) {
-  /*
-  T* vec = (T*) malloc(sizeof(T) * (int)count);
-  for(int i=0; i<(int)count; i++) {
-    vec[i] = (T)initelem;
-  }
-  */
+boost::intrusive_ptr< WSArrayStruct<T> >
+makeArray(wsint_t count, T initelem) {
+  //T* vec = (T*) malloc(sizeof(T) * (int)count);
   T* vec = new T[count];
   for(int i=0; i<(int)count; i++) {
     vec[i] = (T)initelem;
   }
 
-  WSArrayStruct* arr = new WSArrayStruct;
+  WSArrayStruct<T>* arr = new WSArrayStruct<T>;
   arr->len = (int)count;
   arr->data = vec;
   arr->rc = 0;
-  return wsarray_t(arr);
+  return boost::intrusive_ptr< WSArrayStruct<T> >(arr);
 }
 
-void intrusive_ptr_add_ref(WSArrayStruct* p) {
+template <class T>
+void intrusive_ptr_add_ref(WSArrayStruct<T>* p) {
   //  printf("Add rc! %d -> %d\n", p->rc, p->rc+1);
   p->rc ++;
 }
 
-void intrusive_ptr_release(WSArrayStruct* p) {
+template <class T>
+void intrusive_ptr_release(WSArrayStruct<T>* p) {
   //printf("Decr rc! %d -> %d\n", p->rc, p->rc-1);
   p->rc --;
   if (p->rc == 0) {
     //printf("Freeing!\n");
-    free(p->data);
+    //free(p->data);
+    delete [](T*)(p->data);
     free(p);
   }
 }
-
 
 
 //boost::shared_array<int> foo(new int[34]);

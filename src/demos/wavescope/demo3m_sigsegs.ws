@@ -96,7 +96,7 @@ BASE <- iterate w in s1 {
 
    //========================================
    // Split into several small, overlapping chunks.
-   
+
    chunks = Array:make(10,nullseg);
 
    for i = 0 to 8 { 

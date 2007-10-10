@@ -129,7 +129,8 @@
     [(Sigseg ,[t]) `("RawSeg")]
     [(Stream ,[t]) `("WSBox*")]
 
-    [(Array ,[t])  `("wsarray_t")]
+    ;[(Array ,[t])  `("wsarray_t")]
+    [(Array ,[t])  `("boost::intrusive_ptr< WSArrayStruct< ",t" > >")]
 
     [(Struct ,name) (sym2str name)]
 
@@ -1158,8 +1159,10 @@
 				  ;; Throw in a default:
 				  'Int
 				  (type-const (vector-ref datum 0)))])
-	     `(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))
-		    ", sizeof(",contenttype"));\n" 
+	     `(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))", "
+		    ;;"sizeof(",contenttype")"
+		    "("(Type contenttype)")"(make-zero-for-type contenttype)
+		    ");\n" 
 		    ,(mapi (lambda (i x) (Const `("(",name"->data)[",(number->string i)"]")
 						"" x))
 			   (vector->list datum))))]
@@ -1177,8 +1180,17 @@
 	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
-	  [#(Array:null (Array ,t)) `("wsarray_t(0)")]
+          [#(Array:null (Array ,t))
+	   `("boost::intrusive_ptr< WSArrayStruct< ",(Type t)" > >((WSArrayStruct< ",(Type t)" >*) 0)")
+            ;`("wsarray_t(0)")
+          ]
 	  )))
+
+    (define (make-zero-for-type ty) 
+     (match ty
+      [Int "0"] [Int16 "0"] [Int64 "0"]
+      [Float "0.0"] [Double "0.0"]
+      [(Sigseg ,elt) (PolyConst 'nullseg ty)]))
 
     (define Simple
       (lambda (x)
@@ -1420,7 +1432,8 @@
 	       [ss (Simple sigseg)]
 	       [tt (Type t)])
 	   `("int ",len" = ",ss".length();\n"
-	     ,type" ",name" = makeArrayUnsafe(",len", sizeof(",tt"));\n"
+	     ;,type" ",name" = makeArrayUnsafe(",len", sizeof(",tt"));\n"
+	     ,type" ",name" = makeArrayUnsafe(",len", (",tt")(",(make-zero-for-type t)"));\n"
 	     "for(int i=0; i<",len"; i++) {\n"
 	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
 	     "  ((",tt" *)",name"->data)[i] = ",tmp2";\n"
@@ -1467,6 +1480,8 @@
 
 	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->len)"))]
 
+
+#; ;; TEMPTOGGLE
 	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
 	 ;; This is redundant with the body of makeArray
 	 (let ([arr (Var (unique-name 'tmp))]
