@@ -491,11 +491,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
             (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot2.log" test-directory))))
 
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
-	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot_build.log" test-directory))))
+	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))))
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
-	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot_run.log" test-directory))))       
+	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot1_run.log" test-directory))))
+       
+       ;; Third phase won't work in "ws" because of writing ppm file.
+       (fpf "wsmlton: Compiling marmot app (3phases):      ~a\n"
+	    (code->msg! (system/exit-code (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))))
+       (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
+	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
+       
 
 ;; FIXME: ADD THIRD STAGE ETC!!!
+
+
+
 
 
 ;; TEMP FIXME:
@@ -512,6 +522,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
        (current-directory test-directory)
        )
+
+
+
+
+
 
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
