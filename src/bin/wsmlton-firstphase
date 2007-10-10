@@ -28,8 +28,8 @@ shift
 export REGIMENT_OR_WAVESCRIPT=WS
 #echo regiment wsml $abspath ${1+"$@"} ;
 #  Should pass some flags/arguments here maybe??:
-echo regiment wsml $abspath 
-if regiment wsml $abspath 
+echo regiment wsml $abspath $*
+if regiment wsml $abspath $*
 then echo
 else #rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.

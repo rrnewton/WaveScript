@@ -4,10 +4,11 @@
 axes = (-2000.0, 15801.0, -11659.0, 6142.0)
 grid_scale = 50.0
 
-fun timer_source(_,t) timer(1000.0 / t`intToFloat)
-
 include "stdlib.ws";
-include "marmot_heatmap.ws";
+
+fun log(l,s) println(s)
+fun log_file(l,s) print(s++"\n")
+fun timer_source(_,t) timer(1000.0 / t`intToFloat)
 
 nodes =
   [(100, -0.0, 0.000891, 222.746048),
@@ -17,6 +18,7 @@ nodes =
    (106, 13801.727366, -924.578002, 129.536758),
    (108, 6719.793799, 552.692044, 131.25087)];
 
+include "marmot_heatmap.ws";
 
 data = Curry:map(List:toArray)$
 
@@ -41,10 +43,18 @@ data = Curry:map(List:toArray)$
 //let coordsys = coord_converters(axes, grid_scale);
 //let (_,_,cnvrtx,cnvrty) = coord_converters(axes, grid_scale);
 
+normalize_aml :: AML -> AML;
+fun normalize_aml((doas,st,tb)) {
+  total = Array:fold((+), 0.0, doas);
+  arr = Array:map((/ total), doas);
+  (arr, st, tb)
+}
+
+
 BASE <- iterate _ in timer(3.0) {
   using List;
 
-  println("Executing test_heatmap...");
+  print("Executing test_heatmap...\n");
 
   amls = map(fun (arr) (arr,0`gint,nulltimebase), data);
   nodesAndData = map2(fun(nd,aml) (nd,aml), nodes, map(normalize_aml, amls));

@@ -33,7 +33,7 @@
 
 ;; [2007.10.09] 
 (define-pass strip-unnecessary-ascription
-  (define required-ops '(readFile foreign foreign_source))
+  (define required-ops '(readFile foreign foreign_source quote))
   [Expr (lambda (e fallthru)
 	  (match e
 	    [(assert-type ,t (,op ,[x*] ...)) (guard (memq op required-ops))

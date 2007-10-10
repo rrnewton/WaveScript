@@ -417,7 +417,7 @@ iterate _ in
 Gnuplot:array_streamXY_multiplot(
    "", 
    map(fun((id,_,_,_))
-      "set title \"AML output, node  "++id++"\";\n"++
+      "set title \"AML output, node  "++(id::Int)++"\";\n"++
       "set polar;\n"++
       "set grid polar ;\n"++
       "set noxtics\n"++
