@@ -378,13 +378,14 @@
 	;; Produces an instance of a generic dataFile reader.
 	;; TODO: It's not necessary to generate code for both text & binary in the same run:
 	[(__readFile ,[Simple -> file] 
+		     ,source
 		     ,[Simple -> mode] 
 		     ,[Simple -> repeats] 
-		     ,[Simple -> rate]
 		     ',skipbytes 
 		     ,[Simple -> offset] 
 		     ',winsize 
 		     ',types_ignored)
+	 (ASSERT symbol? source)
 	 (let-match ([(Stream ,thetype) typ])
 	   (let* (
 		  ;; Do we output a struct of values or just a single value:
@@ -396,7 +397,7 @@
 			     [(Struct ,structname) `("struct ",(sym2str structname))]
 			     [(Sigseg ,[t]) t]
 			     [,other (ASSERT (not (eq? other 'String)))(Type other)])]
-		  [classname (sym2str (unique-name 'WSDataFileSource))]
+		  [classname (sym2str (unique-name 'WSDataFileReader))]
 		  [types (if structoutput?
 			     (map cadr (cdr (ASSERT (assq structoutput? struct-defs))))
 			     (match thetype
@@ -435,120 +436,119 @@
 					    ))))
 				  ;; Otherwise the output is just a single value:
 				  "&tup"
-#;
+				  #;
 				  (if (> winsize 0)
 				      "tup" ;; It's an array already.
 				      "&tup")
 				  )
 			     ");\n")]
 
-		  
-		[maintext 
-		 (list
-		  (block (list "class " classname " : public WSSource")
-		 (list "public:\n"
-	       (block #;(list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
-                      (list classname "(wsstring_t path, WSSource *ignored_source, wsstring_t mode)")
-		 `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
-		   "binarymode = (mode == string(\"binary\"));\n"
-		   "if (_f == NULL) {\n"
-		   "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
-		   "  abort();\n"
-		   "}\n"
-		   "Launch();\n")
-		 )
-	       "\n  DEFINE_SOURCE_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
-	       "\nprivate:\n"
-	       "  FILE* _f;\n"
-	       "  bool binarymode;\n"
- 	       (block "void *run_thread()"
-	       (list		
-		(if (> winsize 0) "int sampnum = 0;\n" "")
-		"fseek(_f, "offset", SEEK_SET);\n"
-		(block "while (!Shutdown())"
-		  `(,(if (> winsize 0) 
-			 `("RawSeg storage(sampnum, ",(number->string winsize)
-			   ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
-			   "Byte* buf;\n"
-			   "storage.getDirect(0, ",(number->string winsize)", buf);")
-			 `(,tuptype" tup;\n"))
-		    
 
-		    "// Nasty hack to handle strings separately, since we're not using C strings:\n"
-		    "// Cap of a 100 on length of strings read in:\n"
-		    ,(map (lambda (i) (format "char str~a[100];\n" i))
-		          (iota 1 numstrings))
-		    "int status = 0;\n"
-		    ,(block "if (!binarymode)"
-			    ;; Text mode is more complicated:
-			    textmodereader)
-		    ,(block "else"			    
-			    `("// The binary format of tuples matches that in the file:\n"
-			      ,(let ([readcmd 
-				      (lambda (n dest)
-					`("status += fread(",dest
-					  ",sizeof(",tuptype"), ",(number->string n)",_f);\n"))])
-				 (if (> winsize 0)
-				     (if (> skipbytes 0)
-					 ;; Have to interleave reading and skipping forward:
-					 (block `("for (int i=0; i<",(number->string winsize)"; i++)")
-						(list (readcmd 1 `("buf+(i*sizeof(",tuptype"))"))
-						      "fseek(_f, "(number->string skipbytes)", SEEK_CUR);\n"))
-					 ;; Otherwise can do one read:
-					 (readcmd winsize "buf"))
-				     (readcmd 1 "&tup")))
+		[maintext ;; A big class definition.
+		 (list
+		  (block (list "class " classname " : public WSBox")
+		   (list "public:\n"
+		   ;; First the constructor:
+		   (block 
+		    (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
+		    ;(list classname "(wsstring_t path, WSSource *ignored_source, wsstring_t mode)")
+		    `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
+		      "binarymode = (mode == string(\"binary\"));\n"
+		      "if (_f == NULL) {\n"
+		      "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
+		      "  abort();\n"
+		      "}\n"
+		      ;;"Launch();\n"
+		      "fseek(_f, ",offset", SEEK_SET);\n"
+		      )
+		    )
+		   ;; "\n  DEFINE_SOURCE_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
+		   "DEFINE_OUTPUT_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
+
+	          ;; Then some private state:
+		   "\nprivate:\n"
+		   "  FILE* _f;\n"
+		   "  bool binarymode;\n"
+		   (if (> winsize 0) "int sampnum = 0;\n" "")
+
+		  ;; Then the main method that drives it:
+		  (block "bool iterate(uint32_t port, void *item)"
+		    (list		
+		     ;(if (> winsize 0) "int sampnum = 0;\n" "")
+		     ;"fseek(_f, "offset", SEEK_SET);\n"
+		     (list ;block "while (!Shutdown())"
+			    `(,(if (> winsize 0) 
+				   `("RawSeg storage(sampnum, ",(number->string winsize)
+				     ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
+				     "Byte* buf;\n"
+				     "storage.getDirect(0, ",(number->string winsize)", buf);")
+				   `(,tuptype" tup;\n"))
+			      
+			      ,(map (lambda (i) 
+				      (list 
+				       "// Nasty hack to handle string fields separately, since we're not using C strings:\n"
+				       "// Cap of a 100 on length of strings read in:\n"
+				       (format "char str~a[100];\n" i)))
+				 (iota 1 numstrings))
+			      "int status = 0;\n"
+			      ,(block "if (!binarymode)"
+				      ;; Text mode is more complicated:
+				      textmodereader)
+			      ,(block "else"			    
+				      `("// The binary format of tuples matches that in the file:\n"
+					,(let ([readcmd 
+						(lambda (n dest)
+						  `("status += fread(",dest
+						    ",sizeof(",tuptype"), ",(number->string n)",_f);\n"))])
+					   (if (> winsize 0)
+					       (if (> skipbytes 0)
+						   ;; Have to interleave reading and skipping forward:
+						   (block `("for (int i=0; i<",(number->string winsize)"; i++)")
+							  (list (readcmd 1 `("buf+(i*sizeof(",tuptype"))"))
+								"fseek(_f, "(number->string skipbytes)", SEEK_CUR);\n"))
+						   ;; Otherwise can do one read:
+						   (readcmd winsize "buf"))
+					       (readcmd 1 "&tup")))
+					))
+			      
+			      ;; Now with that nasty scanf finished we still
+			      ;; have to put the strings into the right fields:
+			      ,(map (lambda (n fld ty)
+				      (if (eq? ty 'String)
+					  (format "tup.~a = str~a;\n" fld n)
+					  '()))
+				 (iota 1 (length types))
+				 (list-head standard-struct-field-names (length types))
+				 types)
+			      
+			      ,(block `("if (status != ",(number->string (max 1 winsize))
+					" * (binarymode ? 1 : ",(number->string (length types))"))")
+				      '("chatter(LOG_WARNING, \"dataFile EOF encountered (%d).\", status);\n"
+					"WSSched::stop();\n"
+					"return true;\n"))
+					;"t.time = (uint64_t)(time*1000000);\n"
+			      ,(if (> winsize 0)
+				   `("storage.release(buf);\n"
+				     ;"source_emit(storage);\n"
+				     "emit(storage);\n"
+				     "storage = RawSeg(sampnum, ",(number->string winsize)
+				     ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
+				     "sampnum += ",(number->string winsize)";\n")
+				   ;"source_emit(tup);\n"
+				   "emit(tup);\n"
+				   )
 			      ))
-		    
-		    ;; Now with that nasty scanf finished we still
-		    ;; have to put the strings into the right fields:
-		    ,(map (lambda (n fld ty)
-			    (if (eq? ty 'String)
-				(format "tup.~a = str~a;\n" fld n)
-				'()))
-		       (iota 1 (length types))
-		       (list-head standard-struct-field-names (length types))
-		       types)
-		    
-		    ,(block `("if (status != ",(number->string (max 1 winsize))
-			      " * (binarymode ? 1 : ",(number->string (length types))"))")
-		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (%d).\", status);\n"
-			"WSSched::stop();\n"
-			"return NULL;\n"))
-		    ;"t.time = (uint64_t)(time*1000000);\n"
-		    ,(if (> winsize 0)
-			 `("storage.release(buf);\n"
-			   "source_emit(storage);\n"
-			   "storage = RawSeg(sampnum, ",(number->string winsize)
-			   ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
-			   "sampnum += ",(number->string winsize)";\n")
-			 "source_emit(tup);\n")
-		    ))
-		"return NULL;")
-	       ))) ";")])
+		     "return true;")
+		    ))) ";")])
+
 	   (DEBUGASSERT text? maintext)
 	 ;; This is the code that actually builds a dataFile reader object:
 	 (values 
-	  `("WSSource* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
-	    ;; Literal array:
-	    ;;"{ ",(insert-between ", " (map sym2str types)) " });\n"
+	  `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
+	    " ",name"->connect(",(sym2str source)");\n"
 	    )
 	  (list maintext)
           `())))]
-
-	;; [2006.11.18] This is for readng pipeline data currently.
-	[(doubleFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap])
-	 ;; CODE DUPLICATION:
-	 (values 
-	  `("WSBox* ",name";\n"
-	    "{ size = ",size";\n"
-	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n"
-	    "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
-	    "  ",name"->connect(tmp); }\n"
-	    )
-	  '()
-          `()
-          )]
-
 	
 	;; This is purely hackish... should use the zip library function.	
 #;
@@ -567,7 +567,6 @@
 					;  z.connect(&rw1);
 					;  z.connect(&ms);	 
 	 ]
-
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
@@ -612,14 +611,6 @@
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
-
-        ;; FIXME: for now, assume this will be used only by readFile, and ignored
-	#;
-        [(timer ,[Simple -> period])
-         (values
-          `(" WSSource * ",name" = NULL;\n")
-          '()
-          '())]
 
 	[(assert-type ,t ,[q1 q2 q3]) (values q1 q2 q3)]
 	
