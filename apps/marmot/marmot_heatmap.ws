@@ -482,7 +482,9 @@ fun dump_ppms(strm) {
 // This is reused from multiple "query" files.
 fun common_backend(lhoods,axes,grid_scale) {
   if PPMFILES then 
-    dump_ppms( draw_likelihood_map(lhoods, axes, grid_scale))
+    dump_ppms( 
+    //dump_txt_images( 
+      draw_likelihood_map(lhoods, axes, grid_scale))
   else iterate lhoodmap in lhoods {
     print_marmot_loc(lhoodmap,axes,grid_scale);
     emit ("Finished processing cluster of detections (not writing .ppm).")

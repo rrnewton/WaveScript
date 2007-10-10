@@ -476,8 +476,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; MARMOT
 (begin (newline)
        (current-directory (format "~a/apps/marmot" test-root))
-       (fpf "    Download sample marmot data               ~a\n" 
-	    (code->msg! (system/exit-code "./download_small_sample_data")))
+       (fpf "    Run Makefile                              ~a\n" 
+	    (code->msg! (system/exit-code "make")))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/ws_marmot.log" test-directory))))
@@ -485,10 +485,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
             (format "echo 1 | ws.early run_first_phase.ws -exit-error &> ~a/wsearly_marmot.log" test-directory))))
 
-       ;; Run the second phase also!
        (fpf "ws: Running marmot app (second phase):        ~a\n"
 	    (code->msg! (system/exit-code 
-            (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot2.log" test-directory))))
+            (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot12.log" test-directory))))
+
+       (fpf "ws: Running marmot app (3phases):             ~a\n"
+	    (code->msg! (system/exit-code 
+            (format "echo 1 | ws.debug run_3phases.ws -exit-error &> ~a/ws_marmot123.log" test-directory))))
 
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
 	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))))
@@ -498,7 +501,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;; Third phase won't work in "ws" because of writing ppm file.
        (fpf "wsmlton: Compiling marmot app (3phases):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))))
-       (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
+       (fpf "wsmlton: Running marmot app (3phases):    ~a\n"
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
        
 

@@ -33,8 +33,8 @@ samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigse
 winsize = 4 * 4096;
 
 include "nodelocs.ws";
-//nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
-nodes = nodels
+nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+//nodes = nodels
 
 /*
 nodes = 

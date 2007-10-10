@@ -38,6 +38,10 @@ clusters = temporal_cluster_amls(1,noderecs)
 
 heatmaps = stream_map(fun(x) doa_fuse(axes,grid_scale,x), clusters);
 
+
+BASE <- common_backend(heatmaps, axes, grid_scale)
+
+/*
 BASE <- iterate heatmap in heatmaps {
   print("Got heatmap.\n");
 
@@ -55,3 +59,5 @@ BASE <- iterate heatmap in heatmaps {
 
   emit ("Wrote image to file: " ++ file);
 }
+*/
+
