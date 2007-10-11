@@ -91,7 +91,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;
 ;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
 (current-directory "..")
-(define test-root (current-directory))
+(define test-root (path->string (current-directory)))
 (define test-directory (format "~a/src" test-root))
 (current-directory test-directory)
 
