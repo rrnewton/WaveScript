@@ -23,6 +23,7 @@
       (match ty
 	[(Sum ,name ,[t*] ...)  `(Sum ,name ,@t*)]
 	[,s (guard (symbol? s)) s]
+	[,s (guard (string? s)) s]
 	[#(,[t*] ...) (list->vector t*)]
 	[(,[arg] ... -> ,[ret]) `(,@arg -> ,ret)]
 	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) `(,qt ,v)]
