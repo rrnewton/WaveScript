@@ -507,6 +507,7 @@
 ;(eval-when (compile eval load) (compile-profile #f))
 
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
+(include "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
 (include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)

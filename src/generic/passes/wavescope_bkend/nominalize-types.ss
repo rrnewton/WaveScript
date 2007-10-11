@@ -287,6 +287,7 @@
 		       tupdefs)))
 		 (union-types 
 		  ,@(map (lambda (x)
+			   (inspect x)
 			   (match x 
 			     [(,name (,tc* ,[(lambda (t) (convert-type t tupdefs)) -> ty*]) ...)
 			      `(,name ,@(map list tc* ty*))]))

@@ -1458,6 +1458,7 @@ fun union5(s1,s2,s3,s4,s5)
   merge(stream_map(Fourof5,  s4),
         stream_map(Fiveof5,  s5)))))
 
+
 /*
 
 union Choose2 (a, b)          = OneOf2 a | TwoOf2 b
