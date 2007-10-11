@@ -222,7 +222,6 @@
 
 	    ;; [2007.10.10] NOW we strip polymorphism even from the ascription:
 	    [(assert-type ,[Type -> ty] ,[e])
-	     (pretty-print (vector 'STRIPPING ty e))
 	     `(assert-type ,ty ,e)]
 
 	    [,oth (fallthru oth)])))

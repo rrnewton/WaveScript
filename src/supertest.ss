@@ -328,7 +328,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin 
 
-(define engine-dir (format "~a/WS_test_engine" (getenv "HOME")))
+(define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
 (ASSERT (system 
 	 (format 
