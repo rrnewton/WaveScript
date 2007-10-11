@@ -20,8 +20,7 @@
     (define varianttable 'uninit) ;; Maps constructor name to type name.
     (define (Type ty)
       (match ty
-	[(Sum . ,_) (inspect _)]
-	
+	[(Sum ,name ,[t*] ...)  `(Sum ,name ,@t*)]
 	[,s (guard (symbol? s)) s]
 	[#(,[t*] ...) (list->vector t*)]
 	[(,[arg] ... -> ,[ret]) `(,@arg -> ,ret)]
@@ -35,6 +34,11 @@
 	    (match x 
 	      ;; FIXME:: WE JUST DONT TOUCH THE ASCRIPTIONS:
 	      [(assert-type ,ty ,[e])  `(assert-type ,ty ,e)]
+	      [(construct-data ,tc ,[args] ...)
+	       (let ([typename (hashtab-get varianttable tc)])
+		 (hashtab-set! instancecounts typename
+                   (fx+ 1 (hashtab-get instancecounts typename))))
+	       `(construct-data ,tc ,@args)]
 	      [,other (fallthru other)]))]
     [Program 
      (lambda(prog Expr)	  
