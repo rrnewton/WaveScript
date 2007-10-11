@@ -25,7 +25,11 @@
       return rs;
    }
 
-   static wsarray_t fftR2C(wsarray_t& input) {
+
+#define complexarr boost::intrusive_ptr< WSArrayStruct<wscomplex_t> >
+#define floatarr   boost::intrusive_ptr< WSArrayStruct<wsfloat_t> >
+
+   static complexarr fftR2C(floatarr& input) {
       int len = input->len;
       int len_out = (len / 2) + 1;     
       wsfloat_t*   in_buf  = (wsfloat_t*)input->data; 
@@ -39,11 +43,12 @@
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
 
-      WSArrayStruct* result = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
+      //WSArrayStruct<wscomplex_t>* result = (WSArrayStruct<wscomplex_t>*)malloc(sizeof(WSArrayStruct<wscomplex_t>));
+      WSArrayStruct<wscomplex_t>* result = new WSArrayStruct<wscomplex_t>;
       result->rc = 0;
       result->len = len_out;
       result->data = out_buf;
-      return wsarray_t(result);
+      return complexarr(result);
    }
 
    static boost::shared_ptr< vector< wsfloat_t > >

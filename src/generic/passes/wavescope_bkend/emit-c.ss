@@ -1186,6 +1186,7 @@
           ]
 	  )))
 
+    ;; TODO, Finish this:
     (define (make-zero-for-type ty) 
      (match ty
       [Int "0"] [Int16 "0"] [Int64 "0"]
@@ -1479,9 +1480,12 @@
 	;; This version just doesn't initialize:
 
 	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->len)"))]
+		
+	[(assert-type (Array ,ty) (Array:makeUNSAFE ,[Simple -> n]))
+	 (wrap `("makeArrayUnsafe(",n", (",(Type ty)")(",(make-zero-for-type ty)"));\n"
+		 ))]
 
-
-#; ;; TEMPTOGGLE
+#;
 	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
 	 ;; This is redundant with the body of makeArray
 	 (let ([arr (Var (unique-name 'tmp))]

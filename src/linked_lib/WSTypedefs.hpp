@@ -117,6 +117,9 @@ struct WSArrayStruct {
   T* data;
 };
 
+//template <class T>
+//typedef boost::intrusive_ptr< WSArrayStruct<T> > wsarray_t;
+
 template <class T>
 boost::intrusive_ptr< WSArrayStruct<T> >
 makeArrayUnsafe(wsint_t count, T initelem) {
