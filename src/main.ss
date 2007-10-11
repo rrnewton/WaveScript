@@ -551,6 +551,7 @@
   (do-late-typecheck)
 
   (ws-run-pass p unlift-polymorphic-constant)
+  ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
 
   ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...

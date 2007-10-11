@@ -337,6 +337,7 @@
     [(Array  ,[t])  (list "(arrayEqual "t")")]
     [(Sigseg ,[t])  (list "(SigSeg.eq "t")")]
 
+    [#()    "(fn ((),()) => true)"]
     [#(,[t*] ...)
      (let ([flds1 (map Var (map unique-name (make-list (length t*) 'a)))]
 	   [flds2 (map Var (map unique-name (make-list (length t*) 'b)))])
@@ -637,28 +638,30 @@
   (match src
     [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
-       [(timer ',rate)
-	(let ([r ;(Expr rate 'noemitsallowed!)
-	       (number->string (rate->timestep rate))]
-	      [t (Var (unique-name 'virttime))])
-	  (values 	
-	   ;; First, a function binding that drives the source.
-	   (list "val " v " = let fun "v" () = " 
-		 (indent  
-	      (make-seq
-	       `(,t " := !",t" + ",r)
-	       ((Emit downstrm) "()")
-	       `("SE (!",t",",v")\n"))
-	      "    ")
-	     "\n in "v" end"
-	    "\n\n")
+       [(timer ,[peel-annotations -> arg])
+	(match arg
+	  [',rate 
+	   (let ([r ;(Expr rate 'noemitsallowed!)
+		  (number->string (rate->timestep rate))]
+		 [t (Var (unique-name 'virttime))])
+	     (values 	
+	      ;; First, a function binding that drives the source.
+	      (list "val " v " = let fun "v" () = " 
+		    (indent  
+		     (make-seq
+		      `(,t " := !",t" + ",r)
+		      ((Emit downstrm) "()")
+		      `("SE (!",t",",v")\n"))
+		     "    ")
+		    "\n in "v" end"
+		    "\n\n")
 
-	   ;; Second, top level state bindings.
-	   (list (make-bind `(,t (Ref Int) "ref 0")))
-	   
-	   ;; Third, initialization statement:
-	   `("(* Seed the schedule with timer datasource: *)\n"
-	     "schedule := SE(0,",v") :: !schedule\n")))]
+	      ;; Second, top level state bindings.
+	      (list (make-bind `(,t (Ref Int) "ref 0")))
+	      
+	      ;; Third, initialization statement:
+	      `("(* Seed the schedule with timer datasource: *)\n"
+		"schedule := SE(0,",v") :: !schedule\n")))])]
 
        [(inline_C ',decls ',init)
 	;; This returns nothing... it adds the C code to a top-level accumulator.

@@ -217,6 +217,10 @@
     ;; Void value:
     ;[(tuple) #t] ;; [2007.03.19] Why had I commented this before?
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
+
+    ;; Annotations can still be simple.
+    [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
+
     [,otherwise #f]))
 
 
@@ -1014,6 +1018,7 @@
     )
   )
 
+;; This defines the set of "annotations" recognized by the compiler.
 (define (annotation? sym)
   (memq sym '(assert-type src-pos data-rate)))
 
