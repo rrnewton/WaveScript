@@ -49,12 +49,7 @@ go "demo3h_advancedlists.ws"
 go "demo3i_conversion_prims.ws"
 go "demo3j_numbers.ws"
 #go "demo3k_uniontype.ws" # Was this working at some point?  It's not now... [2007.10.10]
-
-# [2007.10.10] ACK! Getting a munmap crash on this right now:
-## BUT THEN IT RUNS OK IN VALGRIND!!
-###########################################
-#go "demo3m_sigsegs.ws"
-###########################################
+go "demo3m_sigsegs.ws"
 
 # [2007.03.14] This is where the segfaulting starts:
 # But 5a,5B don't segfault..
