@@ -86,6 +86,7 @@
 (all-except "generic/passes/static_elaborate/interpret-meta.ss" these-tests test-this)
 (all-except "generic/passes/static_elaborate/verify-elaborated.ss" these-tests test-this)
 (all-except "generic/passes/static_elaborate/degeneralize-arithmetic.ss" these-tests test-this)
+(all-except "generic/passes/static_elaborate/split-union-types.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
 

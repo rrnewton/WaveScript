@@ -8,6 +8,7 @@
 
 (module split-union-types mzscheme
   (require "../../../plt/common.ss"
+	   "../../../plt/hashtab.ss"
            "../normalize_source/typecheck.ss"
 	   "../static_elaborate/static-elaborate.ss"
 	   )
