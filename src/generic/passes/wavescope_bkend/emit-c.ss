@@ -585,6 +585,37 @@
             `()))]
 
 
+	;; UNOPTIMIZED: Should combine with downstream iterate.
+	[(_merge ,left ,right)
+	 (ASSERT symbol? left)
+	 (ASSERT symbol? right)
+	 
+	 (let ([ty (Type (match (recover-type left tenv)
+			   [(Stream ,t) t]))]
+	       [classname (format "Merge~a" (unique-name ""))])
+	   (values 
+	    `(" WSBox* ",name" = new ",classname"();"
+	      (" ",name"->connect(",(sym2str left)"); ")
+	      (" ",name"->connect(",(sym2str right)"); "))
+	    ;; Decls:
+	    `("
+  /* This takes any number of connections, they must be connected in order. */
+  class ",classname" : public WSBox{ 
+   
+    private:
+    DEFINE_OUTPUT_TYPE(",ty");
+    
+    bool iterate(uint32_t port, void *item)
+    {
+      emit(*(",ty"*)item);
+      return true;
+    }
+  };
+")
+            `()))]
+
+
+
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
 	[(timer ,[Simple -> period])
@@ -595,8 +626,18 @@
 	  )]
 
 	[(assert-type ,t ,[q1 q2 q3]) (values q1 q2 q3)]
-	
-	  [,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
+
+	;; These just do NOTHING for now:
+	[(gnuplot_sigseg_stream   ,[a b c]) (values a b c)]
+	[(gnuplot_sigseg_stream2d ,[a b c]) (values a b c)]
+	[(gnuplot_array_stream    ,[a b c]) (values a b c)]
+	[(gnuplot_array_stream2d  ,[a b c]) (values a b c)]
+
+	[(spawnprocess ,[Simple -> cmd] ,[a b c])
+	 ;; FIXME: TEMPTOGGGLE FOR NOW WE DO NOTHING
+	 (values a b c)]
+
+	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
 
 
@@ -931,6 +972,7 @@
 ;; iterate.
 (define (naturalize inname outname type)
   (define tstr (Type type))
+  (define default `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n"))
   `("/* Naturalize input type to meet expectations of the iterate-body. */\n"
     ,(match type
     ;; The input is passed into the body as a reference.
@@ -939,8 +981,10 @@
      `("/* Sigseg input.  This is a bit of a trick, uses ref rather than value: */\n"
        ,tstr "& " ,outname " = *(",tstr"*) ",inname";\n")]
     ;; Immediates are passed by value.
-    [,imm (guard (or (immediate-type? imm) (equal? imm '#())))
-	  `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
+    [,imm (guard (or (immediate-type? imm) 
+		     (equal? imm '#())
+		     (eq? imm 'String)))
+	  default]
     
     ;; Currently let's just not let you pass sigsegs in lists!
     [(List ,t)
@@ -949,6 +993,7 @@
     [(Array ,t)
      `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")
      ]    
+    
 	  
     ;; TODO ARRAYS:    
     [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]
@@ -1007,7 +1052,7 @@
 			   ;; Hardcoding this as void*:
 			   "void* ",(Var vq)" = (void*)0;\n"
 			   
-			   ,@body
+			   ,body
 			   
 			   ;; This is a quirky feature.  The bool returns
 			   ;; indicates whether the scheduler should NOT
@@ -1159,7 +1204,8 @@
 				  ;; Throw in a default:
 				  'Int
 				  (type-const (vector-ref datum 0)))])
-	     `(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))", "
+	     `(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))
+		    ", "
 		    ;;"sizeof(",contenttype")"
 		    "("(Type contenttype)")"(make-zero-for-type contenttype)
 		    ");\n" 
@@ -1191,6 +1237,9 @@
      (match ty
       [Int "0"] [Int16 "0"] [Int64 "0"]
       [Float "0.0"] [Double "0.0"]
+      [(Struct ,name) (format "~a()" name)]
+      [(List ,elt)  (PolyConst '() `(List ,elt))]
+      [(Array ,elt) (PolyConst 'Array:null `(Array ,elt))]
       [(Sigseg ,elt) (PolyConst 'nullseg ty)]))
 
     (define Simple
@@ -1435,6 +1484,7 @@
 	   `("int ",len" = ",ss".length();\n"
 	     ;,type" ",name" = makeArrayUnsafe(",len", sizeof(",tt"));\n"
 	     ,type" ",name" = makeArrayUnsafe(",len", (",tt")(",(make-zero-for-type t)"));\n"
+	     ;,type" ",name" = makeArrayUnsafe(",len");\n"
 	     "for(int i=0; i<",len"; i++) {\n"
 	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
 	     "  ((",tt" *)",name"->data)[i] = ",tmp2";\n"
@@ -1483,8 +1533,8 @@
 		
 	[(assert-type (Array ,ty) (Array:makeUNSAFE ,[Simple -> n]))
 	 (wrap `("makeArrayUnsafe(",n", (",(Type ty)")(",(make-zero-for-type ty)"));\n"
+		 ;"makeArrayUnsafe(",n");\n"
 		 ))]
-
 #;
 	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
 	 ;; This is redundant with the body of makeArray
@@ -1605,6 +1655,7 @@
     [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
     [Int            (printf "%d" e)]
     [Int16          (printf "%hd" e)]
+    [Int64          (printf "%lld" e)]
     [Float          (printf "%f" e)]
     [Double         (printf "%lf" e)]
 
@@ -1629,6 +1680,19 @@
 			 (list subprinter 
 			       (stream "\" \"")
 			       (list var" = "var"->cdr;\n")))
+	     (stream "\"]\"")))]
+    [(Array ,ty)
+     (let* ([var (Var (unique-name 'arrtmp))])
+       (list (stream "\"#[ \"")
+	     (make-decl (Type `(Array ,ty)) var e)
+	     "int i;\n"
+	     (make-for "i" "0" (list var "->len") 		      
+		       (list 
+			"if (i>0) " (printf ", %s" "\"\"") ;(stream "\", \"")
+			(Emit-Print/Show-Helper (list "("var"->data)[i]") 
+						ty printf stream)
+			;(stream "\" \"")
+			))
 	     (stream "\"]\"")))]
 
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]

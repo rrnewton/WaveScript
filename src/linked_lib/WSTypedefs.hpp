@@ -123,6 +123,7 @@ struct WSArrayStruct {
 template <class T>
 boost::intrusive_ptr< WSArrayStruct<T> >
 makeArrayUnsafe(wsint_t count, T initelem) {
+//makeArrayUnsafe(wsint_t count) {
   //T* vec = (T*) malloc(sizeof(T) * (int)count);
   T* vec = new T[count];
   WSArrayStruct<T>* arr = new WSArrayStruct<T>;
