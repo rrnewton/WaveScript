@@ -520,7 +520,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" test-directory))))
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe &> ~a/wsc_marmot1_run.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./query.exe | head -n 10 &> ~a/wsc_marmot1_run.log" test-directory))))
        (fpf "wsc: Compiling marmot app (second phase):     ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))))
 
