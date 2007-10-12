@@ -129,6 +129,7 @@
 		 [,other other]) ]))])
 
 ;; [2007.03.17] Including Array:makeUNSAFE here even though it's not "constant"
+;; [2007.10.11] Adjusting this to apply to data constructors/destructors as well.
 (define-pass lift-polymorphic-constant
     [Expr (lambda (x fallthru)
 	    (define (f x) 
@@ -140,12 +141,16 @@
 	      [Array:null (f x)]
 	      ['()  (f x)]
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
+	      [(construct-data ,name ,[x*] ...) (f `(construct-data ,name ,@x*))]
+	      [(wscase ,[x] (,tag* ,[fun*]) ...) 
+	       `(wscase ,(f x) ,@(map list tag* fun*))]
 	      ;; Don't touch these:
 	      [(foreign        ,x ,y) `(foreign        ,x ,y)]
 	      [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
 
 	      [,other (fallthru other)]))])
 
+;; [2007.10.11] Adjusting this to apply to data constructors/destructors as well.
 (define-pass unlift-polymorphic-constant
     (define (pconst? x) 
       (match x
@@ -154,19 +159,23 @@
 	['()     #t]
 	[()     #t]
 	[(Array:makeUNSAFE ,n) #t]
+	[(construct-data ,name . ,_) #t]
 	[,else   #f]))
   [Expr (lambda (x fallthru)
 	  (match x
-
 	    ;; Don't touch these:
 	    [(foreign        ,x ,y) `(foreign        ,x ,y)]
 	    [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
-
+	   
 	    [(let ([,v1 ,t ,c]) ,v2)
 	       (guard (eq? v1 v2) (pconst? c))
 ;; [2007.07.08] Removing this assert because we clean up below:
 ;	       (ASSERT (lambda (t) (not (polymorphic-type? t))) t)
 	       `(assert-type ,t ,c)]
+	   
+	    [(wscase (let ([,v1 ,t ,[x]]) ,v2) (,tag* ,[fun*]) ...)
+	     (guard (eq? v1 v2))
+	     `(wscase (assert-type ,t ,x) ,@(map list tag* fun*))]
 
 	    [,c (guard (pconst? c))
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]

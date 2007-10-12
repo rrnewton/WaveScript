@@ -192,7 +192,7 @@
     [Timebase "SigSeg.timebase"] ;; This will change.
 
     [(Sum ,name ,[args] ...)
-     (list "(" (apply make-tuple-code args) " " (SumName name) ")")]
+     (list "(" (if (null? args) "" (apply make-tuple-code args)) " " (SumName name) ")")]
 
     [#() "unit "]
 
@@ -214,13 +214,16 @@
 
 (define (TypeDecl td)
   (match td
-    [((,name ,[Type -> args] ...) [,tag* ,ty*] ...)
-     (list "datatype "(apply make-tuple-code args)" "(SumName name)" = \n  "
+    [((,name ,[Type -> args] ...) [,tag* ,ty*] ...)     
+     (let ([params (if (null? args) ""
+		       (apply make-tuple-code args))])
+       (list "and "params" "(SumName name)" = \n  "
 	   (insert-between "  |\n  "
 	    (map (lambda (tag ty)
 		   (list (VariantName tag) " of " (Type ty)))
 	     tag* ty*))
-	   ";\n")]))
+	   "\n")
+       )]))
 
 (define flush "TextIO.flushOut TextIO.stdOut")
 
@@ -261,6 +264,7 @@
     [Timebase  (make-fun '("x") (list "\"<Timebase \" ^ "(intprint 'Int)" x ^ \">\""))]
 
     [String     (make-fun '("x") "x")]
+    [Char       (make-fun '("x") "String.implode [x]")]
     [Float  "Real32.toString"]
     [Double "Real64.toString"]
     [Bool   "Bool.toString"]
@@ -422,7 +426,8 @@
 			   
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
-
+			   
+			   "datatype Ignored = Ignored of int\n"
 			   (map TypeDecl user-type-decls*)
 
 			   ;; wsinit happens before the individual inits below, and before wsmain:

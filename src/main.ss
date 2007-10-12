@@ -526,7 +526,6 @@
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
   (ws-run-pass p strip-unnecessary-ascription)  
-  (ws-run-pass p split-union-types) ;; monomorphize sum types
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
@@ -552,6 +551,8 @@
   (do-late-typecheck)
 
   (ws-run-pass p unlift-polymorphic-constant)
+  (ws-run-pass p split-union-types) ;; monomorphize sum types
+
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
 

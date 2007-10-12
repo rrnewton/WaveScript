@@ -17,13 +17,14 @@
   (define sum-decls    'uninitialized-sum-decls)
 
   ;;;; NOTE!!! NOT HANDLING SUMS WITH TYPE ARGUMENTS YET!
-  (define sum-sizes    'uninitialized-sum-sizes)
+;  (define sum-sizes    'uninitialized-sum-sizes)
   (define sum-variants 'uninitialized-sum-variants)
   
   (define (lookup-tag sumty TC)
     (list-find-position TC
      (cdr (ASSERT (assq (cadr sumty) sum-variants)))))
 
+#;
   (define (lookup-sumdef name)
     (trace-let loop ([ls sum-decls])
       (ASSERT (not (null? ls)))
@@ -32,6 +33,7 @@
 	  (loop (cdr ls)))))
 
   ;; Todo, this should be handled by type->width!!
+  #;
   (trace-define (sizeof-sum sum)
 999
 #;
@@ -41,7 +43,7 @@
    )
   
   ;; Introducing a "Union" type constructor understood by the C++ backend.
-  (define (parent-tuple sumname)
+  (define (parent-struct sumname)
     ;`#(,tag-type (Union ,@(cdr (lookup-sumdef sumname))))
     `(Union ,sumname)
     )
@@ -68,11 +70,11 @@
 	 ;; [2007.05.28] Because these are value types, we don't
 	 ;; CURRENTLY need to allocate extra space to bring it up
 	 ;; to the size of the largest variant:
-	 (let ([ty (match (tenv-lookup tenv TC)
-			   [(,_ ... -> ,sumty) sumty])])
+	 (let ([ty (match (peel-outer-typevars (tenv-lookup tenv TC))
+		     [(,_ ... -> ,sumty) sumty])])
 	   ;; For the program to typecheck in C we need to cast it to the shared sum-type.
 	   ;; This is a hack that's understood by the C++ generator:
-	   `(cast-variant-to-parent ,TC ,(parent-tuple (cadr ty))
+	   `(cast-variant-to-parent ,TC ,(parent-struct (cadr ty))
 	     (assert-type 
 	      ,(apply make-tuple-type ;,tag-type 
 		      (map (lambda (x) (recover-type x tenv)) arg*))
@@ -83,8 +85,10 @@
 	;; TODO: Handle no cases or just default!
 	;[(wscase )]
 
-	[(wscase ,x (,TC* (lambda ,v** ,ty** ,bod*)) ...)
-	 (let* ([rhs*
+	[(wscase ,xx (,TC* (lambda ,v** ,ty** ,bod*)) ...)
+	 (let* ([newbod* (map (lambda (v* ty* bod) (Expr bod (tenv-extend tenv v* ty*) fallthru))
+			   v** ty** bod*)]
+		[rhs*
 		(map (lambda (v* ty* bod)
 		       (let* ([formal (unique-name 'pattmp)]
 			      [len    (fx+ 1 (length v*))])
@@ -98,11 +102,12 @@
 				       `(let ([,(car v*) ,(car ty*) (tupref  ,i ,len ,formal)])
 					  ,(loop (fx+ 1 i) (cdr v*) (cdr ty*))))))
 			    )))
-		  v** ty** bod*)]
+		  v** ty** newbod*)]
 		;[sumty (recover-type x tenv)] ;; Should be a simple expression.
-	       [sumty (match (tenv-lookup tenv (car TC*)) [(,_ ... -> ,sumty) sumty])]
+	       [sumty (match (peel-outer-typevars (tenv-lookup tenv (car TC*)) )
+			[(,_ ... -> ,sumty) sumty])]
 	       [tag* (map (lambda (tc) (lookup-tag sumty tc)) TC*)])
-	   `(wscase ,(Expr x tenv fallthru) ,@(map list (map cons tag* TC*) rhs*)))]
+	   `(wscase ,(Expr xx tenv fallthru) ,@(map list (map cons tag* TC*) rhs*)))]
 	[(wscase . ,_) (error 'convert-sums-to-tuples "bad wscase: ~s" `(wscase ,@_))]
 	
 	[(assert-type ,[Type -> t] ,[e]) `(assert-type ,t ,e)]
@@ -116,9 +121,7 @@
 	[(,qt ,v) (guard (memq qt '(quote NUM)))   ty]
 	[#()                                       ty]
 	[,s (guard (string? s))                    ty]
-
-	[(Sum ,TC)                                 (parent-tuple TC)]
-
+	[(Sum ,TC)                                 (parent-struct TC)]
 	[(,[l -> arg] ... -> ,[l -> ret])         `(,@arg -> ,ret)]
 	[(,C ,[l -> t] ...) (guard (symbol? C))   `(,C ,@t)]
 	[#(,[l -> t*] ...)                        `#(,@t*)]
@@ -136,14 +139,17 @@
 	[(,lang '(program ,body ,meta* ... ,toptype)) 
 	 (fluid-let ([sum-decls (cdr (or (assq 'union-types meta*) '(union-types)))])
 	   (fluid-let ([sum-variants
-			(map (lambda (entry)
+			(map (lambda (entry) ;; No type args at this point.
 			       (cons (caar entry) (map car (cdr entry))))
 			  sum-decls)]
+		       #;
 		       [sum-sizes (map (lambda (x) (list (caar x) (sizeof-sum x)))
-				    sum-decls)])
+				    sum-decls)])	     
 	     ;; Note: because this is split into two passes, the toptype is run thorugh twice:
-	     `(,lang '(program ,(Expr body (grab-init-tenv meta*)) ,@meta* ,(Type toptype))))
-	   )])))
+	     `(,lang '(program ,(Expr body (grab-init-tenv meta*))
+			,@meta*
+			,toptype))))])))
+
 
 ;; ============================================================
 ;;; Mini-pass #1: Convert expressions
@@ -165,8 +171,32 @@
   [Program  Prog])
 
 ;; ============================================================
+;;; Mini-pass #3: Convert top level sum type declarations
 
-(define convert-sums-to-tuples (compose convert-expressions convert-types))
+(define-pass convert-sumdecls
+  [Program (trace-lambda CONVERTSUMDECLS (prog Expr)
+	     (match prog
+	       [(,lang '(program ,body ,meta* ... ,toptype))
+		(let* ([newdecls 
+			(map (lambda (entry) ;; No type args at this point.
+			       (match entry
+				 [((,tyname) (,tag* ,[Type -> ty**] ...) ...)
+				  (cons (list tyname) (map cons tag* ty**))
+				  ]))
+			  (cdr (or (assq 'union-types meta*) '(union-types))))])
+		  `(,lang '(program ,body
+			     (union-types . ,newdecls)
+			     ,@(remq (assq 'union-types meta*) meta*)
+			     ,(Type toptype))))])
+	     )])
+
+;; ============================================================
+
+(define convert-sums-to-tuples 
+  (compose convert-sumdecls 	   
+	   convert-expressions
+	   convert-types
+	   ))
 
 
 ) ; End module

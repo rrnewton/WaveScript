@@ -99,10 +99,11 @@
 ;	   raise-wrong-number-of-arguments
 
 	   grab-init-tenv
-	   sumdecls->tenv
+	   sumdecls->tenv sum-instance
 	   src-pos->string
 
 	   get-snippet get-location
+	   peel-outer-typevars
 	   )
 
   (chezimports constants

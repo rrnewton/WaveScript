@@ -623,7 +623,7 @@
 ;      (ASSERT (not (streamop? val))) (ASSERT (not (closure? val))) 
 ;      (ASSERT (not (ref? val)))      (ASSERT (not (suspension? val)))
 
-      (ASSERT (or (string? val) (flonum? val) (cflonum? val) (boolean? val)
+      (ASSERT (or (string? val) (char? val) (flonum? val) (cflonum? val) (boolean? val)
 		  (sigseg? val)
 		  ))
       ;(DEBUGASSERT complex-constant? val)

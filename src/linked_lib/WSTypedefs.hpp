@@ -22,6 +22,7 @@ typedef float  wsfloat_t;
 typedef double wsdouble_t; 
 typedef bool   wsbool_t;
 typedef string wsstring_t;
+typedef char   wschar_t;
 //typedef fftw_complex wscomplex_t;
 //typedef _Complex double wscomplex_t;
 typedef _Complex float wscomplex_t;

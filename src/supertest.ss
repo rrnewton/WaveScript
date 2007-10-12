@@ -508,7 +508,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; FIXME: ADD THIRD STAGE ETC!!!
 
 
-
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" test-directory))))
        (fpf "wsc: Running marmot app (first phase):        ~a\n"

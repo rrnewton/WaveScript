@@ -120,6 +120,7 @@
     [Float   "wsfloat_t"]
     [Complex "wscomplex_t"]
 
+    [Char   "wschar_t"]
     [String "wsstring_t"] ;; Not boosted.
     
     [(Ref ,[t]) t]  ;; These disappar.
@@ -690,6 +691,20 @@
 	       "} else break; \n"
 	       ))]
 
+      ;; [2007.10.12] DUPLICATED!!!! FIXME NEED TO REFACTOR:
+      [(wscase ,[Simple -> x] ((,tag* . ,tc*) (lambda (,v*) (,ty*) ,bod*)) ...)
+       (list (if name (make-decl type name) "")
+	     (block `("switch (",x".tag)")
+		    (map (lambda (tc v ty bod)
+			   (define TC (sym2str tc))
+			   `("case ",TC": {\n"
+			     ;; Simply bind a reference to the struct:
+			     ,(make-decl (Type ty) (sym2str v) (list x ".payload." TC) 'reference)
+			     ,(indent ((Block (tenv-extend tenv (list v) (list ty))) name "" bod) "  ")
+			     "  }  break;\n"))
+		      tc* v* ty* bod*)
+		    ))]
+
       ;; Deprecated:
       [(break) (ASSERT not name) "break;\n"]
 
@@ -790,6 +805,7 @@
 		   ))]
 
 	  [(wscase ,[Simple -> x] ((,tag* . ,tc*) (lambda (,v*) (,ty*) ,bod*)) ...)
+	   (ASSERT name) (ASSERT type)
 	   (list (make-decl type name)
 		 (block `("switch (",x".tag)")
 			(map (lambda (tc v ty bod)
@@ -801,7 +817,6 @@
 				 "  }  break;\n"))
 			  tc* v* ty* bod*)
 			))]
-
 
 #;
 ;; WON'T WORK!!
@@ -986,6 +1001,9 @@
 		     (eq? imm 'String)))
 	  default]
     
+    [(Union ,tyname)  default] ;; double check these
+    [(Struct ,tyname) default] ;; double check these
+
     ;; Currently let's just not let you pass sigsegs in lists!
     [(List ,t)
      `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
@@ -1192,6 +1210,10 @@
 	  [(eq? datum #t) (wrap "TRUE")]
 	  [(eq? datum #f) (wrap "FALSE")]       
 	  [(string? datum) (wrap (format "string(~s)" datum))]
+
+          ;; FIXME THIS WON'T HANDLE NON-PRINTING CHARACTERS YET!!
+          [(char? datum) (wrap (format "'~a'" datum))]
+
 	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
 	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
 				    (cfl-real-part datum)

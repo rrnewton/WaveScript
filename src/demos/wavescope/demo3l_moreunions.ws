@@ -27,11 +27,12 @@ fun union3(s1,s2,s3)
 
 s1 = union3(CONST((1::Int)),CONST(2.0),CONST(3.0+0.0i));
 
-s1b = union3(CONST(1.0),CONST("yay"),CONST(99));
+//s1b = union3(CONST(1.0),CONST("yay"),CONST(99));
+s1b = union3(CONST(1.0),CONST('h'),CONST(99));
 
 // [2007.09.15] FIXME: ACTIVATE THIS WHEN THE COMPILER CAN HANDLE IT:
-//s2 = union2(s1,s1b);
-s2 = union2(s1,s1);
+s2 = union2(s1,s1b);
+//s2 = union2(s1,s1);
 
 BASE <- iterate sum in s2 {
      
@@ -42,4 +43,3 @@ BASE <- iterate sum in s2 {
     
     emit ()
 }
-
