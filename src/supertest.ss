@@ -514,7 +514,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
        
 
-;; FIXME: ADD THIRD STAGE ETC!!!
+       ;; FIXME: ADD THIRD STAGE MULTINODE ETC!!!
 
 
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
@@ -523,8 +523,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code (format "./query.exe &> ~a/wsc_marmot1_run.log" test-directory))))
        (fpf "wsc: Compiling marmot app (second phase):     ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))))
+
+       ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
        (fpf "wsc: Running marmot app (second phase):       ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe &> ~a/wsc_marmot12_run.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./query.exe | head -n 10 &> ~a/wsc_marmot12_run.log" test-directory))))
 
        (current-directory test-directory)
        )
