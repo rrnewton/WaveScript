@@ -57,10 +57,11 @@
 		      (map (lambda (entry)
 			     (match entry
 			       [((,tyname) (,tag* ,ty** ...) ...)
+				(cons (list tyname) ;; Throw in a dummy edge to ensure we keep it.
 				(map (lambda (used) (list used tyname))				  
-				 (apply append
+				 (apply append 
 					(map (lambda (ty*) (apply append (map type->allsums ty*)))
-					  ty**)))]))
+					  ty**))))]))
 			unions))]
 	  [lookup (map (lambda (entry) (cons (caar entry) (cdr entry))) unions)])
       (let ([new (map (lambda (name)

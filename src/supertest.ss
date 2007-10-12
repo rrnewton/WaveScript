@@ -286,8 +286,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
        (fpf "ws: Running WaveScript Demos:                 ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
+
+       (putenv "REGIMENTHOST" "plt")
+       (fpf "plt: Running WaveScript Demos:                ~a\n" 
+	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
+       (putenv "REGIMENTHOST" "")
+
        (fpf "ws.early: Running Demos (no static elab):     ~a\n" 
 	    (code->msg! (system/exit-code (format "./testall_early &> ~a/wsearly_demos.log" test-directory))))
+
+
+
        (current-directory test-directory)
        )
 
