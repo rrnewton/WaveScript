@@ -9,7 +9,7 @@
 (module split-union-types mzscheme
   (require "../../../plt/common.ss"
 	   "../../../plt/hashtab.ss"
-           "../util/tsort.ss"
+           (all-except "../../util/tsort.ss" test-this these-tests)
            "../normalize_source/typecheck.ss"
 	   "../static_elaborate/static-elaborate.ss"
 	   )
