@@ -1298,6 +1298,8 @@
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
 
+      [clock "(fn () => Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer()))))"]
+
       [Secret:newTimebase newTimebase]    ;; ADT breakage!
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
