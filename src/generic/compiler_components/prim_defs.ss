@@ -461,6 +461,7 @@
 
     ;; System CPU time
     (clock () Double)
+    ;(exit () 'any)
     
     (locdiff (Location Location) Float)
 

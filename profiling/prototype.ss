@@ -55,6 +55,7 @@ exec regiment i "$0" ${1+"$@"};
 		(if first
 		    (begin ,code (set! first '#f) 
 			   (emit vq (tuple))
+			   (wserror '"Exiting benchmark.")
 			   vq)
 		    vq)
 		))
@@ -71,32 +72,37 @@ exec regiment i "$0" ${1+"$@"};
   (let-match ([(,_ ,build1 ,access1) (assq t1 data-methods)]
 	      [(,_ ,build2 ,access2) (assq t2 data-methods)])
     `(begin 
-       ,(timeit `(for (i 1 ,reps) ,(build1 xd `(lambda (_) ,(build2 yd '(lambda (i) i))))))       
+       ,(timeit `(for (i 1 ,(inexact->exact (floor reps)))
+		     ,(build1 xd `(lambda (_) ,(build2 yd '(lambda (i) i))))))
        )))
 
 (define (full-2d-test-suite t1 t2)
+  (define scale 0.1) ;; 1 = hundred million units
   `(begin
      ;; First stress allocate:
      (print "Stressing Allocation, big x big ")
      ;; Doing 100 million cells in each test:
-     ,(build-2d-test 100 1000 1000 t1 t2)
+     ,(build-2d-test (* scale 100) 1000 1000 t1 t2)
      (print "Stressing Allocation, verybig x small ")
-     ,(build-2d-test 333 100000 3 t1 t2)
+     ,(build-2d-test (* scale 333) 100000 3 t1 t2)
      (print "Stressing Allocation, small x verybig ")
-     ,(build-2d-test 333 3 100000 t1 t2)
+     ,(build-2d-test (* scale 333) 3 100000 t1 t2)
      ))
 
-
-(define prog (execonce-boilerplate (full-2d-test-suite 'array 'array)))
 
 ;; ================================================================================
 ;;; Running programs under different backends:
 
+(define current-output-file (make-parameter #f))
 
 (define (run-w/scheme prog)
   (printf "\nRUNNING WITH SCHEME\n")
   (printf "================================================================================\n")
-  (pretty-print (stream-car (wsint prog))))
+  ;; The program exits via a wserror call, so we set this up:
+  (parameterize ([wserror-handler
+		  (lambda (str) (printf "wserror: ~a\n" str))])
+    (pretty-print (stream-car (wsint prog))))
+  )
 
 (define (run-w/mlton prog)
   (printf "\nRUNNING WITH MLTON\n")
@@ -104,15 +110,51 @@ exec regiment i "$0" ${1+"$@"};
   (wsmlton prog)
   (printf "Compiling with mlton... ")
   (flush-output-port (current-output-port))
-  (format "finished (~a).\n"(shell "wsmlton-secondphase query.sml &> /dev/null"))
+  (printf "finished (~a).\n" (system "wsmlton-secondphase query.sml &> /dev/null"))
   (flush-output-port (current-output-port))
-  (shell "./query.mlton.exe")
+  (system (format "./query.mlton.exe &> tmp_file.txt"))
+  (display (file->string "tmp_file.txt"))
   )
 
-(printf "Running all tests...\n\n")
-(regiment-quiet #t)
-(run-w/scheme prog)
-(run-w/mlton prog)
+(define (run-w/cpp prog)
+  (printf "\nRUNNING WITH C++/XSTREAM\n")
+  (printf "================================================================================\n")
+  (wscomp prog)
+
+  (printf "Compiling with g++... ") (flush-output-port (current-output-port))
+  (printf "finished (~a).\n" (system "wsc-g++ query -O3 &> /dev/null"))
+  ;(printf "finished (~a).\n" (system "wsc-g++ query "))
+  (flush-output-port (current-output-port))
+  (system (format "./query.exe -j 1 --at_once > tmp_file.txt"))
+  (display (file->string "tmp_file.txt"))
+  )
+
+(define (run-all t1 t2)
+  (define prog (execonce-boilerplate (full-2d-test-suite t1 t2)))
+  (define filename (format "~a_~a.out" t1 t2))
+  ;(define file1 (open-output-file filename 'replace))
+  (define file1 (current-output-port))  
+  (printf "Running all tests...\n\n") 
+  ;(inspect prog)
+  (parameterize ([current-output-file filename]
+		 [current-output-port file1]
+		 [ws-print-output-port file1])
+    (run-w/scheme prog)
+    (run-w/cpp prog)
+    (run-w/mlton prog))
+  ;(close-output-port file1)
+  )
+
+;; ================================================================================
+;;; The main Script:
+
+;(regiment-quiet #t)
+
+
+;(run-all 'array 'array) ;; Nested arrays:
+(run-all 'array 'tuple)
+
+
 (exit)
 
 #;

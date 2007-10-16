@@ -75,7 +75,8 @@
 	 wsint-tuple-limit
 	 wsint-output-file
 	 wsint-time-query
-
+	 wserror-handler
+	 
 	 simulation-logger 
 	 simulation-logger-count
 	 simulation-logger-level
@@ -340,7 +341,7 @@
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
 ;(define-regiment-parameter regiment-compile-sums-as-tuples 'unset)
 
-;; When 
+;; When we use the 'print' command within a WS program, this is where that output goes.
 (define-regiment-parameter ws-print-output-port (current-output-port))
 
 ;; This parameter adds extra debug/assertion code to the generated code.
@@ -422,6 +423,8 @@
 (define-regiment-parameter wsint-output-file #f)
 ;; Times how long it takes to pull the tuples from the stream.
 (define-regiment-parameter wsint-time-query #f)
+
+(define wserror-handler (make-parameter  (lambda (str) (error 'wserror str))))
 
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a

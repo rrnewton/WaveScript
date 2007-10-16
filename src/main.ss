@@ -837,18 +837,19 @@
 
    (ASSERT (andmap symbol? flags))
 
-   (printf "Compiling program. \n\n")
+   ;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
    ;;(pretty-print prog)
    
-   (printf "\nTypecheck complete, program types:\n\n")
-   (if (regiment-verbose) 
-       (print-var-types typed +inf.0)
-       (print-var-types typed 1))
-   (flush-output-port)
+   (unless (regiment-quiet)
+     (printf "\nTypecheck complete, program types:\n\n")
+     (if (regiment-verbose) 
+	 (print-var-types typed +inf.0)
+	 (print-var-types typed 1))
+     (flush-output-port))
    
    (set! prog (run-ws-compiler typed disabled-passes #t))
    
-   (printf "\nFinished normal compilation, now emitting C++ code.\n")
+   (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
 
    ;(inspect (deep-assq-all 'wsequal? prog))
    ;(ws-run-pass prog generate-comparison-code)
@@ -889,7 +890,9 @@
       prog))
     outfile)
    
-   (printf "\nGenerated C++ output to ~s.\n" outfile))
+   (unless (regiment-quiet)
+     (printf "\nGenerated C++ output to ~s.\n" outfile))
+   )
  ) ; End wscomp
 
 

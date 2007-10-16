@@ -769,7 +769,7 @@
 
 	  [nulltimebase                (Const name type 'nulltimebase)]
 
-	  [(clock) (wrap "(1000.0 * (double)clock())")]
+	  [(clock) (wrap "((double)clock() / 1000.0)")]
 	  
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
@@ -849,7 +849,7 @@
 	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	 (Prim (cons prim rand*) name type)]
 	[(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	 (printf "\nANNOTATED PRIM: ~s\n" prim)
+	 ;(printf "\nANNOTATED PRIM: ~s\n" prim)
 	 (Prim `(assert-type ,t (,prim . ,rand*)) name type)]
 
 	; ============================================================
@@ -1168,7 +1168,9 @@
             funs
             (make-output-printer typ)))
     
-    (newline)(display (text->string wsq))(newline)(newline)
+    (unless (regiment-quiet)
+      (printf "WSQ connection graph:\n")
+      (newline)(display (text->string wsq))(newline)(newline))
     ;(break)
 
     (if static-linkage 
@@ -1783,7 +1785,7 @@ int main(int argc, char ** argv)
 ")
 
 (define (boilerplate_postmain return_name return_type)   
-  (printf "Generating code for returning stream of type ~s\n" return_type)
+  (unless (regiment-quiet) (printf "Generating code for returning stream of type ~s\n" return_type))
   `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
   PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");

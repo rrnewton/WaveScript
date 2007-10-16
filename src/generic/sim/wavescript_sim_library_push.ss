@@ -94,7 +94,7 @@
 
 		 assert-type
 		 
-		 wserror inspect
+		 wserror inspect 
 		 emit return
 		 ;smap sfilter
 		 iterate break ;deep-iterate
@@ -1132,10 +1132,10 @@
     (DEBUGASSERT (curry vector-andmap ws-complex?) arr)
     (inverse-dft arr))
 
-  (define (wserror str) (error 'wserror str))
-     (IFCHEZ (define inspect inspect/continue)
+  (define (wserror str) ((wserror-handler) str))
+  (IFCHEZ (define inspect inspect/continue)
              ;; Don't know of an interactive object inspector in PLT:
-             (define (inspect x) x))             
+	  (define (inspect x) x))      
 
      (define (tuple . args) (make-tuple args))
      (define (tupref ind _ tup) (list-ref (tuple-fields tup) ind))
