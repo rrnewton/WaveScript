@@ -126,5 +126,6 @@ ignored = draw_multi_amls(nodes,allamls)
 ignored2 = draw_multi_detections(nodes,alldetections)
 
 BASE <- 
-merge(merge(ignored,ignored2),
-      common_backend(heatmaps, axes, grid_scale))
+//merge(merge(ignored,ignored2),
+      common_backend(heatmaps, axes, grid_scale)
+      //      )

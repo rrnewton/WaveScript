@@ -164,13 +164,15 @@
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
 (define (ToForeignType ty txt)
+  (define (scalar? ty) (memq ty '(Int Int16 Int64 Float Double)))
   (match ty
     ;; For these types we just put in a cast:
-    [,t (guard (memq t '(Int Float))) 
+    [,t (guard (scalar? t))
 	`("((",(Type t)")" ,txt ")")]
     [String `("(",txt".c_str())")]
     ;[Pointer txt]
     [(Pointer ,cty) `("(",cty")(",txt")")]
+    [(Array ,elt) (guard (scalar? elt)) `("(",(Type elt)"*)(",txt"->data)")]
     [,oth (error 'emit-c:ToForeignType
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     )
@@ -661,9 +663,11 @@
 			 (list x ";\n")))
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
+      [(deref ,v) (guard (symbol? v)) (if name (wrap (Var v)) "")]
+
       [(quote ,c)             (if name ((Value tenv) name type `',c) "")]
       [(tuple)                (if name ((Value tenv) name type '(tuple)) "")]
-
+      
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
 	((Value tenv) (sym2str v) (Type ty) rhs)
@@ -683,6 +687,7 @@
 	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
 		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
       [(while ,tst ,[bod]) (ASSERT not name)
+       ;; Just because of the way our code generator is set up, we generate this ugly code:
        (block `("while (1)") 
 	      (list 
 	       ((Block tenv) "grosshack" "wsbool_t" tst)
@@ -763,6 +768,8 @@
 ;	  ['()                         (wrap (PolyConst '() t))]
 
 	  [nulltimebase                (Const name type 'nulltimebase)]
+
+	  [(clock) (wrap "((double)clock())")]
 	  
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
@@ -1214,7 +1221,13 @@
           ;; FIXME THIS WON'T HANDLE NON-PRINTING CHARACTERS YET!!
           [(char? datum) (wrap (format "'~a'" datum))]
 
-	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
+	  [(flonum? datum) 
+            ;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
+            (wrap (format "(wsfloat_t)~a" 
+			  (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
+			      "(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
+			      datum)					 
+			  ))]
 	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
 				    (cfl-real-part datum)
 				    (cfl-imag-part datum)))]
@@ -1259,6 +1272,8 @@
      (match ty
       [Int "0"] [Int16 "0"] [Int64 "0"]
       [Float "0.0"] [Double "0.0"]
+      [Bool "0"]
+;      [String "\"\""]
       [(Struct ,name) (format "~a()" name)]
       [(List ,elt)  (PolyConst '() `(List ,elt))]
       [(Array ,elt) (PolyConst 'Array:null `(Array ,elt))]
@@ -1271,7 +1286,10 @@
 	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
 	  ['() (error 'Simple "null list without type annotation")]
 	  [(quote ,c) (Const #f #f c)]
-	  [,v (guard (symbol? v)) (Var v)]
+          [nulltimebase (Const #f #f 'nulltimebase)]
+
+          [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
+          [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var v)]
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
@@ -1359,9 +1377,11 @@
       ;; This is the "default"; find it in WSPrim:: class
       [(string-append 
 	width start end joinsegs subseg toSigseg
+	String:implode
 	;wserror ;generic_hash        
 	)
-       (fromlib (mangle var))]
+       (fromlib (mangle var))]      
+
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
       ))
 
@@ -1427,15 +1447,16 @@
 ;;	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
 	[(absC ,[Simple -> c]) (wrap `("WSPrim::CNorm(",c")"))]
 
+	[(intToChar ,[Simple -> e]) (wrap `("(wschar_t)",e))]
+	[(,toint     ,[Simple -> e]) 
+	 (guard (memq toint '(int16ToInt int64ToInt floatToInt doubleToInt charToInt)))
+	 (wrap `("(wsint_t)",e))]
 	[(,toint16     ,[Simple -> e]) 
 	 (guard (memq toint16 '(intToInt16 int64ToInt16 floatToInt16 doubleToInt16)))
 	 (wrap `("(wsint16_t)",e))]
 	[(,toint64    ,[Simple -> e]) 
 	 (guard (memq toint64 '(int16ToInt64 intToInt64 floatToInt64 doubleToInt64)))
 	 (wrap `("(wsint64_t)",e))]
-	[(,toint     ,[Simple -> e]) 
-	 (guard (memq toint '(int16ToInt int64ToInt floatToInt doubleToInt)))
-	 (wrap `("(wsint_t)",e))]
 	[(,tofloat  ,[Simple -> e]) 
 	 (guard (memq tofloat '(intToFloat int16ToFloat int64ToFloat doubleToFloat)))
 	 (wrap `("(wsfloat_t)",e))]
@@ -1646,14 +1667,10 @@
 	     [(List ,t)    simple]
 	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
 
-	     #;
-	     ;; Need to make a for loop to go through the data.
-	     [(Array ,t)  
-	      ]
-	     
 	     ;; We have generated a comparison op for each struct.
 	     ;; UNFINISHED:
-	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
+	     ;[(Struct ,name) `("eq",name"(",a", ",b")")]
+	     [(Struct ,name) simple]
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
 	   )	 
 	 ]

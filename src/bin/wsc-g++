@@ -53,7 +53,9 @@ MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 #WS_FLAGS="-fPIC -pg $CCARGS"
 WS_FLAGS=" $CCARGS"
 
-WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function"
+#-Wno-div-by-zero ## Doesn't work for C++...
+#WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function "
+WS_WARNINGS=""
 WS_INCLUDES="-I$WAVESCOPED/include "
 WS_MACROS="-DSegList -DuseArray "
 #WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "

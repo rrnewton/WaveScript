@@ -64,6 +64,8 @@
 
 	;; These primitives need their assert-types on the INSIDE:
 
+	[(List:make ,[n] (assert-type ,ty ,[init]))
+	 `(List:make ,n (assert-type ,ty ,init))]
 	[(List:make ,[n] ,[init])
 	 `(List:make ,n (assert-type ,(recover-type init tenv) ,init))]
 
@@ -87,9 +89,10 @@
 			rhs))
 	       types rhs*)
 	      other))
-	  tenv
-	  )]
+	  tenv)]
 	
+	[(,annfirst (assert-type ,ty ,[x]) ,[y*] ...) (guard (memq annfirst annotate-first-arg))
+	 `(,annfirst (assert-type ,ty ,x)  . ,y*)]
 	[(,annfirst ,[x] ,[y*] ...) (guard (memq annfirst annotate-first-arg))
 	 `(,annfirst (assert-type ,(recover-type x tenv) ,x)  . ,y*)]
 
@@ -101,8 +104,13 @@
 	 (let ([exp `(,annprim . ,e*)])
 	   (assert-type ,(recover-type exp tenv)
 			,exp))]
-	
-	;; Tag the applications too:
+
+	;; Tag the applications too:	
+	[(foreign-app ',realname (assert-type ,ty ,rator) ,[arg*] ...)
+	 (ASSERT symbol? rator)
+	 `(foreign-app ',realname
+		       (assert-type ,ty ,rator)
+		       ,@arg*)]
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 	 (ASSERT symbol? rator)
 	 `(foreign-app ',realname

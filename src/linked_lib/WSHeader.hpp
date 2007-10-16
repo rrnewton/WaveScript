@@ -27,7 +27,7 @@
 //#include <fftw3.h>
 //#include <complex.h>
 #include <complex>
-//#include <time.h>
+#include <time.h>
 
 //#include <gsl/gsl_linalg.h>
 //#include <gsl/gsl_matrix.h>

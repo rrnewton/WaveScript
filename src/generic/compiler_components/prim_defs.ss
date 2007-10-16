@@ -458,6 +458,9 @@
     ;; Not implemented yet:
     ;(foreign_box    (String (List String)) 'any)
     ;; This won't work in the schem backend...
+
+    ;; System CPU time
+    (clock () Double)
     
     (locdiff (Location Location) Float)
 

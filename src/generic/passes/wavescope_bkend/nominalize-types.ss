@@ -201,7 +201,7 @@
 	;; Since the program is flattened we can grab this at the let-binding...
 	(match (recover-type `(tuple . ,arg*) tenv)
 	  [#(,argtypes ...)
-	   (printf "ERK argtypes ~s and tupdefs ~s\n" argtypes tupdefs)
+	   ;(printf "ERK argtypes ~s and tupdefs ~s\n" argtypes tupdefs)
 	   `(make-struct ,(last (ASSERT (assoc argtypes tupdefs))) ,@arg*)])]
        ;; tuprefs are simple:
        [(tupref ,i ,len ,[x])

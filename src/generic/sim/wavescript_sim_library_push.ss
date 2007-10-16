@@ -115,6 +115,7 @@
 		 C-free exclusivePtr getPtr nullPtr ptrIsNull ptrMakeNull
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL
+		 clock
 
 		 HACK_O_RAMA
 
@@ -1708,6 +1709,7 @@
 (define GETENV getenv)
 (define SHELL system-to-str)
 
+(define (clock) (exact->inexact (cpu-time)))
 
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
 (define (HACK_O_RAMA filename)

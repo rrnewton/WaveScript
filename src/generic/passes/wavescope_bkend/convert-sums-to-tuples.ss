@@ -174,7 +174,7 @@
 ;;; Mini-pass #3: Convert top level sum type declarations
 
 (define-pass convert-sumdecls
-  [Program (trace-lambda CONVERTSUMDECLS (prog Expr)
+  [Program (lambda (prog Expr)
 	     (match prog
 	       [(,lang '(program ,body ,meta* ... ,toptype))
 		(let* ([newdecls 

@@ -221,6 +221,9 @@
     ;; Annotations can still be simple.
     [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
 
+    ;; [2007.10.16] This is now considered simple:
+    [(deref ,var) (DEBUGASSERT symbol? var) #t]
+
     [,otherwise #f]))
 
 

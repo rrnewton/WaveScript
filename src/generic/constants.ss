@@ -74,6 +74,7 @@
 
 	 wsint-tuple-limit
 	 wsint-output-file
+	 wsint-time-query
 
 	 simulation-logger 
 	 simulation-logger-count
@@ -419,6 +420,8 @@
 (define-regiment-parameter wsint-tuple-limit #f)
 ;; Directs the output to a file
 (define-regiment-parameter wsint-output-file #f)
+;; Times how long it takes to pull the tuples from the stream.
+(define-regiment-parameter wsint-time-query #f)
 
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a

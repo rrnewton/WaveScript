@@ -114,7 +114,6 @@ template <class T>
 struct WSArrayStruct {
   int rc;
   int len;
-  //void* data;
   T* data;
 };
 
@@ -175,7 +174,8 @@ void intrusive_ptr_release(WSArrayStruct<T>* p) {
     //printf("Freeing!\n");
     //free(p->data);
     delete [](T*)(p->data);
-    free(p);
+    //free(p);
+    delete p;
   }
 }
 

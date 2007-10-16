@@ -2,7 +2,7 @@
 //#include <libmisc/misc.h>
 #include <stdio.h>
 
-int write_ppm_file(char *filename, int wid, int height, int* R, int* G, int* B)
+int write_ppm_file(const char *filename, int wid, int height, int* R, int* G, int* B)
 {
   FILE *fptr;
   double **new_plot;

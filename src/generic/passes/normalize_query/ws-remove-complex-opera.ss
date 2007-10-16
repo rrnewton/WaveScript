@@ -19,6 +19,10 @@
 ;;;; 
 ;;;; .author Ryan Newton
 
+
+;;;; [2007.10.16] Modifying this pass to not treat a "deref" as complex.
+;;;; Accomplishing that by simply changing simple-expr?.
+
 ;===============================================================================
 
 (module ws-remove-complex-opera mzscheme

@@ -110,6 +110,7 @@ type SLS t = Stream (List   (Sigseg t));
 
 CONST           :: t -> S t;
 COUNTUP         :: Int -> S Int;
+ONCE            :: (() -> ()) -> S ();
 
 //easyReadFile    :: String -> Stream t;
 
@@ -670,6 +671,19 @@ fun COUNTUP(n)
     emit counter;
     counter += 1;
   }
+
+// Useful for benchmarks and tests.  Runs a "normal" (non-streaming)
+// program.  That is, execute a thunk a single time, then produce an
+// infinite stream of unit values.
+fun ONCE(thnk) {
+  iterate _ in timer(100.0) {
+    state { first = true }
+    if first then {
+      thnk();
+      first := false;
+    } else emit ();
+  }
+}
 
 fun snoop(str, strm) {
   iterate (x in strm) {

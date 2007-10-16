@@ -61,33 +61,38 @@
   (define (build-comparison ty e1 e2)
     (match ty
       [(Array ,elt) 
-       (let ([el1  (unique-name "arrel1")]
+       (let ([arr1 (unique-name "arr1")]
+	     [arr2 (unique-name "arr2")]
+	     [el1  (unique-name "arrel1")]
 	     [el2  (unique-name "arrel2")]
 	     [i    (unique-name "i")]
 	     [stop (unique-name "stop")]
 	     [len  (unique-name "len")])
-	 `(if (wsequal? (assert-type Int (Array:length ,e1)) (Array:length ,e2))
-	      (let ([,i (Ref Int) (Mutable:ref '0)]
-		    [,stop (Ref Bool) (Mutable:ref '#f)]
-		    [,len Int (Array:length ,e1)])
-		(begin
-		  (while (if (< (deref ,i) ,len) (not (deref ,stop)) '#f)
-			 (let ([,el1 ,elt (Array:ref ,e1 ,i)])
-			 (let ([,el2 ,elt (Array:ref ,e2 ,i)])
-			     (if ,(build-comparison elt el1 el2)
-				 (set! ,i (+_ (deref ,i) '1))
-				 (set! ,stop '#t)
-				 ))))
-		  (not (deref ,stop))))
-	      '#f))]
+	 `(let ([,arr1 (Array ,elt) ,e1])
+	    (let ([,arr2 (Array ,elt) ,e2])
+	      (if (wsequal? (assert-type Int (Array:length ,arr1)) (Array:length ,arr2))
+		  (let ([,i (Ref Int) (Mutable:ref '0)])
+		    (let ([,stop (Ref Bool) (Mutable:ref '#f)])
+		      (let ([,len Int (Array:length ,arr1)])
+			(begin
+			  (while (if (< (deref ,i) ,len) (not (deref ,stop)) '#f)
+				 (let ([,el1 ,elt (Array:ref ,arr1 (deref ,i))])
+				   (let ([,el2 ,elt (Array:ref ,arr2 (deref ,i))])
+				     (if ,(build-comparison elt el1 el2)
+					 (set! ,i (+_ (deref ,i) '1))
+					 (set! ,stop '#t)
+					 ))))
+			  (not (deref ,stop))))))
+		  '#f)
+	      )))]
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,ty ,e1) ,e2)]))
   [Expr 
    (lambda (x fallthru)
      (match x
        [(wsequal? (assert-type ,ty ,[e1]) ,[e2])
-	(ASSERT simple-expr? e1)
-	(ASSERT simple-expr? e2)
+	;(ASSERT simple-expr? e1)
+	;(ASSERT simple-expr? e2)
 	(build-comparison ty e1 e2)	
 	#;
 	(maybe-let e1 ty

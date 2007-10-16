@@ -2157,6 +2157,8 @@
 				    (simworld-all-objs
 				     (simalpha-current-simworld)))))))]
 
+    ;; [2007.10.15] This is nondeterministic... I just had it fail
+    ;; under PLT in revision 2723.
     ["Run and simulate complete regiment program." 
      retry
      (parameterize ([simalpha-channel-model 'lossless]

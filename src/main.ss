@@ -571,6 +571,10 @@
  
   (IFDEBUG (do-late-typecheck) (void))
 
+  (ws-run-pass p type-annotate-misc)
+  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-cpp)
+    (ws-run-pass p generate-comparison-code))
+
 ;  (ws-run-pass p uncover-free)
 
   ;(ws-run-pass p purify-letrec)
@@ -593,6 +597,7 @@
 
 ;  (profile-clear)
   (ws-run-pass p ws-remove-complex-opera*)
+
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
   ;; couple more passses before type checking.
@@ -771,19 +776,20 @@
 ;; or to a file.
 (define (wsint:direct-stream strm)
   (IFCHEZ (import streams) (void))
+  
+  (define (run-to-tuplimit) (first-value (stream-take (wsint-tuple-limit) strm)))
+  (define (run) (if (wsint-time-query) (time (run-to-tuplimit)) (run-to-tuplimit)))
+
   (cond
    [(not (stream? strm))
     (eprintf  "\nWS query returned a non-stream value:\n  ~s\n" strm)]
    [(and (wsint-tuple-limit) (wsint-output-file))
     ;; This could be more efficient, but for now we just take it all
     ;; into memory and then dump it all to disk.
-    (slist->file 
-     (first-value (stream-take (wsint-tuple-limit) strm))
-     (wsint-output-file)
-     'display)]
+    (slist->file  (run)  (wsint-output-file) 'display)]
    [(wsint-tuple-limit)
     ;; TODO, use proper WS printing:
-    (for-each pretty-print (first-value (stream-take (wsint-tuple-limit) strm)))]
+    (for-each pretty-print (run))]
 
    [(wsint-output-file)
     (eprintf "Dumping output to file: ~s\n" (wsint-output-file))
@@ -843,11 +849,12 @@
    
    (printf "\nFinished normal compilation, now emitting C++ code.\n")
 
-   (printf "Running pass: generate-comparison-code\n")
-   (ws-run-pass prog generate-comparison-code)
+   ;(inspect (deep-assq-all 'wsequal? prog))
+   ;(ws-run-pass prog generate-comparison-code)
+   ;(ws-run-pass prog ws-lift-let)
+   ;(inspect (deep-assq-all 'wsequal? prog))
 
-   (printf "Running pass: convert-sums-to-tuples\n")
-   (time (set! prog (convert-sums-to-tuples prog)))
+   (ws-run-pass prog convert-sums-to-tuples)
 
 ;   (inspect `(CONVERTED ,prog))
 
@@ -872,6 +879,10 @@
 
    (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))
    
+;   (inspect (deep-assq-all 'wsequal? prog))
+
+;   (inspect (explicit-stream-wiring prog))  
+
    (string->file 
     (text->string 
      (wsquery->text
@@ -1051,6 +1062,10 @@
 
 		    [(-n ,limit ,rest ...)
 		     (wsint-tuple-limit (ASSERT integer? (string->number (symbol->string limit))))
+		     (loop rest)]
+		    ;; Goes with -n... Time query for wsint:
+		    [(-t ,rest ...)
+		     (wsint-time-query #t)
 		     (loop rest)]
 
 		    [(-o ,outfile ,rest ...)
