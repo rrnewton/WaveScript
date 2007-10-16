@@ -769,7 +769,7 @@
 
 	  [nulltimebase                (Const name type 'nulltimebase)]
 
-	  [(clock) (wrap "((double)clock())")]
+	  [(clock) (wrap "(1000.0 * (double)clock())")]
 	  
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]

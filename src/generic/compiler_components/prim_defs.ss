@@ -412,7 +412,7 @@
     ;; types under our type system. 
     ;; TODO: [2006.09.01] I should probably take these out:
     (tuple Object Tuple)
-    (tupref (Int Int Tuple) Object)
+    (tupref (Int Int Tuple) Object) ;; takes ind, len, tuple
 
     ;; Here we pretend similarly:
     ;; Foreign takes: 

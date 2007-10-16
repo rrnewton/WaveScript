@@ -68,8 +68,9 @@
 			(let ([entry (assq name lookup)])
 			  (cons (list (car entry)) (cdr entry))))
 		   (tsort ordering))])
-	(printf "Split and sorted union types into:\n")
-	(pretty-print new)
+	(unless (regiment-quiet)
+	  (printf "Split and sorted union types into:\n")
+	  (pretty-print new))
 	new)))
 
   (define-pass split-union-types

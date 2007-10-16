@@ -1298,7 +1298,7 @@
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
 
-      [clock "(fn () => Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer()))))"]
+      [clock "(fn () => (Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer())))) * 1000.0)"]
 
       [Secret:newTimebase newTimebase]    ;; ADT breakage!
 

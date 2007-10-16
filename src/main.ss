@@ -369,7 +369,8 @@
     [(_ v pass)
      ;;(time (set! p (optional-stop (pass p))))
      (parameterize ([regiment-current-pass 'pass])
-       (printf "Running Pass: ~s\n" 'pass)(flush-output-port)
+       (unless (regiment-quiet)
+	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port))
        (if (regiment-verbose)
 	   (time (set! v (ws-pass-optional-stop (pass v))))
 	   (set! v (ws-pass-optional-stop (pass v)))))
@@ -446,7 +447,6 @@
   ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
   
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
-(time 
   (parameterize ()
     
   (ws-pass-optional-stop p)
@@ -483,7 +483,7 @@
 
 ;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-  (time (ws-run-pass p interpret-meta))
+  (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
@@ -633,12 +633,13 @@
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
 
-  (printf "Total typechecker time used:\n")
-  (time-accum-report)(newline)
+  (unless (regiment-quiet)
+    (printf "Total typechecker time used:\n")
+    (time-accum-report)(newline))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
-  p))
+  p)
 ]))
 
 
@@ -867,8 +868,7 @@
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
 
-   (printf "Running pass: nominalize-types.\n")
-   (time (set! prog (nominalize-types prog)))
+   (ws-run-pass prog nominalize-types)
 
 ;   (inspect `(NOMINALIZED ,prog))
 

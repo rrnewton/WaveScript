@@ -411,7 +411,7 @@
       (for-each (lambda (sym prim)
 		  (hashtab-set! dictionary sym prim))	   
 	prims vals)))
-  (printf "BUILT DICTIONARY!\n")
+  ;(printf "BUILT DICTIONARY!\n")
 ;  (inspect dictionary)
   )
 
@@ -863,11 +863,13 @@
 (define-pass interpret-meta 
     [OutputGrammar static-elaborate-grammar]
     [Expr (lambda (x fallthru) 
+	    (define-syntax maybtime
+	      (syntax-rules ()
+		[(_ e) (if (regiment-quiet) e (time e))]))
 	    (parameterize ([marshal-cache (make-default-hash-table 1000)])
-
 	      (let* (
-		     [evaled (time (Eval x '() #f))]
-		     [marshaled (time (Marshal evaled))]		     
+		     [evaled    (maybtime (Eval x '() #f))]
+		     [marshaled (maybtime (Marshal evaled))]
 		     )
 	      (do-basic-inlining 
 	       (id;inspect/continue
