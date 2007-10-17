@@ -446,14 +446,14 @@
   ; already-typed is now its own param. --mic
   ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
   
-  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
-  (parameterize ()
+  (define (run-that-compiler)
+    (parameterize ()
     
-  (ws-pass-optional-stop p)
+      (ws-pass-optional-stop p)
   
-  (unless already-typed (set! p (ws-compile-until-typed p)))
+      (unless already-typed (set! p (ws-compile-until-typed p)))
 
-  (unless (regiment-quiet) (printf "Program verified.\n"))
+      (unless (regiment-quiet) (printf "Program verified.\n"))
 
   ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
   ;; here breaks something wrt "union2" and sum types... 
@@ -639,7 +639,12 @@
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
-  p)
+  p)) ;; End run-that-compiler
+
+  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
+  
+  (if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
+
 ]))
 
 
@@ -931,8 +936,15 @@
     
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog disabled-passes #f))
-    (set! prog (explicit-stream-wiring prog))
-    (string->file (text->string (emit-mlton-wsquery prog)) outfile)
+    (ws-run-pass prog explicit-stream-wiring)
+
+;    (inspect prog)
+    (printf "SIZE BEFORE MLTON CODEGEN: ~s\n" (count-nodes prog))
+
+    (time (ws-run-pass prog emit-mlton-wsquery))
+
+;    (inspect 'made-it-this-far)
+    (string->file (text->string prog) outfile)
     (printf "\nGenerated MLton output to ~s.\n" outfile)
     ))
 

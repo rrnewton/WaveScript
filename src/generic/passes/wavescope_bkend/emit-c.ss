@@ -1723,14 +1723,15 @@
 			       (list var" = "var"->cdr;\n")))
 	     (stream "\"]\"")))]
     [(Array ,ty)
-     (let* ([var (Var (unique-name 'arrtmp))])
+     (let* ([var (Var (unique-name 'arrtmp))]
+	    [ind (Var (unique-name 'i))])
        (list (stream "\"#[ \"")
 	     (make-decl (Type `(Array ,ty)) var e)
-	     "int i;\n"
-	     (make-for "i" "0" (list var "->len") 		      
+	     (format "int ~a;\n" ind)
+	     (make-for ind "0" (list var "->len") 		      
 		       (list 
-			"if (i>0) " (printf ", %s" "\"\"") ;(stream "\", \"")
-			(Emit-Print/Show-Helper (list "("var"->data)[i]") 
+			"if ("ind">0) " (printf ", %s" "\"\"") ;(stream "\", \"")
+			(Emit-Print/Show-Helper (list "("var"->data)["ind"]")
 						ty printf stream)
 			;(stream "\" \"")
 			))

@@ -110,7 +110,7 @@
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
    unfold-list average clump
-    partition partition-equal split-before
+    partition partition-equal split-before group
    myequal?
       
    with-evaled-params
@@ -1491,7 +1491,8 @@
     [(f (car ls)) (values (reverse! acc) ls)]
     [else (loop (cons (car ls) acc) (cdr ls))])))
      
-
+;; Filter a list into two parts based ona predicate.
+;; Doesn't maintain ordering.
 (define partition
   (lambda (lst f)
     (letrec ((loop
@@ -1515,6 +1516,20 @@
 		 [outgroup (cadr pr)])
 	    (cons (cons first ingroup) 
 		  (loop outgroup)))))))
+
+;; Simple utility, group a list into groups of N elements.  List lengt
+;; must be divisible by N.
+(define (group n origls)
+  (let loop ([cnt n] [acc '()] [ls origls])
+    (cond
+     [(null? ls)
+      (if (zero? cnt) (list (reverse! acc))
+	  (error 'group "List length ~s was not divisible by: ~s" (length origls) n))]
+     [(zero? cnt)
+      (cons (reverse! acc) (loop n () ls))]
+     [else (loop (fx- cnt 1) (cons (car ls) acc) (cdr ls))]     
+     )))
+
 
 ; =======================================================================
 

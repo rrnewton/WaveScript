@@ -598,10 +598,12 @@
 (include "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 
 (include "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
+
+(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
 (include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
 (include "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
-
+(eval-when (compile eval load) (compile-profile #f))
 
 
 ;(inspect (emit-caml-wsquery caml-example))

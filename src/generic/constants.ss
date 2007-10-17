@@ -486,7 +486,7 @@
 ;;; Used primarily by nominalize-types:
 ;====================================================
 
-(define MAX_TUPLE_SIZE 100)
+(define MAX_TUPLE_SIZE 500)
 
 ;;; Used primarily by pass12_add-heartbeats:
 ;====================================================
