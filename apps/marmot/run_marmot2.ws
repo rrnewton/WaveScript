@@ -2,6 +2,10 @@
 //========================================
 // Main query:
 
+// How long does it take to get one tuple??
+// ws: 2631 ms (1941 in ws.opt), 84 ms, 
+
+
 include "sources_from_file.ws";
 include "marmot_first_phase.ws";
 
@@ -26,7 +30,26 @@ doas = iterate (m,stamp,tb) in oneSourceAMLTD(synced_ints, 4096)
 
 include "gnuplot.ws";
 
-BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n",doas)
+fun QUITAFTERFIRST(s) {
+  iterate x in s {
+    state { first = true }
+    if first == true then { emit x; first := false; }
+    else wserror("Got first element: "++x);
+  }
+}
+
+fun TIMEFIRST(strm) {
+  iterate x in strm {
+    state { strt = (clock() :: Double);
+            first = true;  }
+    if first then { println("TimeElapsed: "++ (clock() - strt)); first := false };
+    emit x;
+  }
+}
+
+BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n",
+          TIMEFIRST(doas))
+
 
 /*
   "set polar;\n"++

@@ -781,7 +781,7 @@
 ;; determines where the stream goes.  I.e. to an interactive browser
 ;; or to a file.
 (define (wsint:direct-stream strm)
-  (IFCHEZ (import streams) (void))
+  (IFCHEZ (import streams) (begin))
   
   (define (run-to-tuplimit) (first-value (stream-take (wsint-tuple-limit) strm)))
   (define (run) (if (wsint-time-query) (time (run-to-tuplimit)) (run-to-tuplimit)))
@@ -1257,9 +1257,7 @@
 	   ;; [2006.02.28] We want to reset global bindings before loading any more source:
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
-	   (IFCHEZ (optimize-level 1) (void))
-
-	   
+	   (IFCHEZ (optimize-level 1) (void))	   
 
 	   (cond
 	    [(null? filenames) 

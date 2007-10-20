@@ -768,8 +768,6 @@
 ;	  ['()                         (wrap (PolyConst '() t))]
 
 	  [nulltimebase                (Const name type 'nulltimebase)]
-
-	  [(clock) (wrap "((double)clock() / 1000.0)")]
 	  
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
@@ -1351,6 +1349,8 @@
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  (fromlib "csqrt")]
+
+      [(clock) (wrap "((double)clock() / 1000.0)")]
 
       ;; These use GSL and require appropriate includes.
       [(m_invert)
