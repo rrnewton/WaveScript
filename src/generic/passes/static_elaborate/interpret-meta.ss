@@ -526,18 +526,7 @@
     (DEBUGASSERT list-is-set? (map streamop-name allops))
     (ASSERT allops)
 
-    ;; [2007.10.20] NEED TO TOPOLOGICALLY SORT THIS:
-    ;; Build a let expression binding all streamops:    
-#;
-    (let loop ([ops allops])
-      (if (null? ops) (streamop-name val)
-	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
-	     ,(loop (cdr ops)))))
-#;
-    ;; No, doing letrec instead:
-    `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
-       ,(streamop-name val))
-
+    ;; Have to topo-sort the letrec bindings to assure it runs in a call-by-value evaluation:
     (let ([binds (topo-sort-bindings (map streamop-name allops) 
 				     (map unknown-type allops)
 				     (map Marshal-Streamop allops))])      
