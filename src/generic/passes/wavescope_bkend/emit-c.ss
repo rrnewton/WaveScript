@@ -1677,7 +1677,7 @@
 	     ;; UNFINISHED:
 	     ;[(Struct ,name) `("eq",name"(",a", ",b")")]
 	     [(Struct ,name) simple]
-	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
+	   [,_ (error 'emitC "no equality yet for type: ~s" ty)])
 	   )]
 
 	;; If we have an extra assert-type... just ignore it.

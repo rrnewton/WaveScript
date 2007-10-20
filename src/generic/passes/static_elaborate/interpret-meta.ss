@@ -15,6 +15,7 @@
   (require (all-except "../../../plt/common.ss" )
 	   (all-except "static-elaborate.ss" these-tests)
 	   (all-except "../wavescope_bkend/nominalize-types.ss" these-tests test-this)
+	   (all-except "../normalize_query/ws-remove-letrec.ss" these-tests test-this)
            "../../langs/lang_wavescript.ss"
            "../../testing/lang_wavescript_tests.ss"	   
            "../../../plt/hashtab.ss"
