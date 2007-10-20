@@ -31,6 +31,12 @@ What's the critical path for the remaining weeks before PLDI?
  *) For rewrite opts:
    X) Make interpret-meta idempotent.
    *) Tag "special" stream prim names.  Pull out their defs in the initial program.
+   *) After interpret-meta, we want to inline single-ref variables (in
+      object and meta-code) to get a squished-together expression that we an
+      match our patterns against.  This is probably better than trying
+      to "see through" variable bindings when looking for applications of a
+      rewrite rule.  (Reference counting becomes annoying, and the inliner
+      needs to be sucked into the rewrite pass.)
    *) Apply rewrite rules to special prims.
    *) Push their defs back in after the first interpret-meta.
  *) For profiling (waiting on Michael's stuff):

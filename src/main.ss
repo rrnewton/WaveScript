@@ -484,7 +484,7 @@
 ;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
-;  (do-early-typecheck) (ws-run-pass p interpret-meta) ;; Testing idempotentcy 
+  (do-early-typecheck) (ws-run-pass p interpret-meta) ;; Testing idempotentcy 
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 

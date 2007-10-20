@@ -120,6 +120,18 @@
 ))
 
 
+;; [2007.10.20]
+;; Beginning to lay down the infrastructure for doing rewrite optimizitions.
+#;
+(define special-rewrite-primitives
+  '([fft]
+    [ifft]))
+;; These don't need types because they're defined in WS types.  The
+;; inferencer infers types normally.
+(define special-rewrite-libfuns
+  '(rewindow    
+    ))
+
 
 ;; These are (or will be) allowed in both the meta and the object
 ;; language.  They're higher order, but in the object language the
