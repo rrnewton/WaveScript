@@ -1150,3 +1150,13 @@ S2 = S
 S2 = f <- (+3) <- g <- S
 S2 = f << (+3) << g << S
 
+
+[2007.10.20] {AST representation}
+
+If I had to do this whole compiler over again, and was using Scheme,
+the first thing I'd do would be to abstract all uses of abstract
+syntax.  This means adding macros for defining "datatypes" and then
+for pattern matching on them.  That's a lot of overhead upfront, but
+then I could experiment with different representations.  Now so much
+is invested in lists+match, it would be very difficult to change.
+

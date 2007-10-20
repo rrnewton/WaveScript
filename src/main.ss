@@ -484,7 +484,7 @@
 ;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
-;  (do-early-typecheck) (ws-run-pass p interpret-meta) ;; Testing idempotentcy 
+  (do-early-typecheck) (ws-run-pass p interpret-meta) ;; Testing idempotentcy 
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
@@ -587,7 +587,7 @@
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
 
-  (ws-run-pass p remove-letrec) ;; 
+  (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
   (ws-run-pass p standardize-iterate) ;; no fuse

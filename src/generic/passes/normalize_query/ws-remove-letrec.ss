@@ -14,7 +14,7 @@
 	   )
   (provide remove-letrec
 	   remove-letrec-grammar
-	   topo-sort-letrec
+	   topo-sort-bindings
 	   )
   (chezimports tsort)
 
@@ -39,7 +39,7 @@
 
       ;; Should be no "lazy" letrec at this point.
       [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
-       (topo-sort-letrec v* ty* e* bod)]
+       (make-nested-lets (topo-sort-bindings v* ty* e*) bod)]
 
       [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
        (DEBUGASSERT (null? (intersection lhs* (apply append (map core-free-vars rhs*)))))
@@ -49,10 +49,10 @@
       [,oth (fallthru oth)])
     ))
 
-(define (topo-sort-letrec v* ty* e* bod)
-  (let* ([fv** (map core-free-vars e*)]
+(define (topo-sort-bindings v* ty* rhs*)
+  (let* ([fv** (map core-free-vars rhs*)]
 	 [graph (map cons v* fv**)]
-	 [binds (map list v* ty* e*)])
+	 [binds (map list v* ty* rhs*)])
     #;
     (unless (null? (intersection v* (apply append fv**)))
       (inspect 
@@ -61,11 +61,8 @@
       #;
       (inspect (topological-sort graph)))
 
-					;`(let ([,v* ,ty* ,e*] ...) ,bod)
-    (make-nested-lets 
-     (map-filter (lambda (v) (assq v binds)) 
-		 (reverse (topological-sort graph)))
-     bod)))
+    (map-filter (lambda (v) (assq v binds))
+		(reverse (topological-sort graph)))))
 
 ;; This handles only the letrec case.
 (define-pass remove-letrec 

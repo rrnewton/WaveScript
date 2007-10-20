@@ -21,8 +21,20 @@ TOOPTIMIZE:
 
 ================================================================================
 
-[2007.09.22]
- *) Ack 
+[2007.10.20]
+What's the critical path for the remaining weeks before PLDI?
+ *) For data-rep transforms:
+   *) Implement IFPROFILE switch (though could maybe do without).
+   *) Implement "coerce" in its basic, inefficient form.
+   *) That means having some way of expressing mappings from T1 => T2
+   *) Implement accessor short-circuiting optimizations (build(i,f)[j] => f(j))
+ *) For rewrite opts:
+   X) Make interpret-meta idempotent.
+   *) Tag "special" stream prim names.  Pull out their defs in the initial program.
+   *) Apply rewrite rules to special prims.
+   *) Push their defs back in after the first interpret-meta.
+ *) For profiling (waiting on Michael's stuff):
+   
 
 [2007.09.20]
  *) Change regiment-primitive? to use symbol props.
@@ -262,5 +274,4 @@ that point.  This new pass could be similar to nominalize-types...
 Right now, if you try to instantiate the same data
 constructor with different types in different parts of the program, it
 will break!
-
 

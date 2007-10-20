@@ -533,15 +533,15 @@
       (if (null? ops) (streamop-name val)
 	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
 	     ,(loop (cdr ops)))))
-
+#;
     ;; No, doing letrec instead:
     `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
        ,(streamop-name val))
-#;
-    (id;inspect/continue
-     (topo-sort-letrec (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops)
-		      (streamop-name val)))
 
+    (let ([binds (topo-sort-bindings (map streamop-name allops) 
+				     (map unknown-type allops)
+				     (map Marshal-Streamop allops))])      
+      `(letrec ,binds ,(streamop-name val)))
     )]
    [else (error 'Marshal "cannot marshal: ~s" val)]))
 
