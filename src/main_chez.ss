@@ -503,6 +503,8 @@
 
 ;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+(include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
+(include "generic/passes/normalize_query/ws-remove-letrec.ss") (import ws-remove-letrec)
 (include "generic/passes/static_elaborate/interpret-meta.ss")  (import interpret-meta)
 ;(eval-when (compile eval load) (compile-profile #f))
 
@@ -510,7 +512,6 @@
 (include "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
-(include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
 
 (include "generic/passes/wavescope_bkend/merge-iterates.ss") (import merge-iterates)
 (include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
@@ -525,7 +526,7 @@
 (include "generic/passes/normalize_query/lift-letrec.ss")          (import lift-letrec)
 (include "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
 (include "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
-(include "generic/passes/normalize_query/ws-remove-letrec.ss") (import ws-remove-letrec)
+
 
 
 ;(eval-when (compile eval load) (compile-profile #t))

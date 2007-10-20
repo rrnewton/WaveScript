@@ -164,7 +164,8 @@
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
 (define (ToForeignType ty txt)
-  (define (scalar? ty) (memq ty '(Int Int16 Int64 Float Double)))
+  ;(define (scalar? ty) (memq ty '(Int Int16 Int64 Float Double)))
+  (define (scalar? ty) (or (memq ty num-types) (memq ty '(Char)))) ;; And char?
   (match ty
     ;; For these types we just put in a cast:
     [,t (guard (scalar? t))
@@ -1221,6 +1222,7 @@
           ;; FIXME THIS WON'T HANDLE NON-PRINTING CHARACTERS YET!!
           [(char? datum) (wrap (format "'~a'" datum))]
 
+          ;; Hacked this to handle NAN (not in a pretty way).
 	  [(flonum? datum) 
             ;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
             (wrap (format "(wsfloat_t)~a" 
@@ -1266,6 +1268,7 @@
             ;`("wsarray_t(0)")
           ]
 	  )))
+
 
     ;; TODO, Finish this:
     (define (make-zero-for-type ty) 
@@ -1651,9 +1654,10 @@
 	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
 	;; Generate equality comparison:
-	[(wsequal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
-	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
-	   (match t
+	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])	 
+	 (let* ([a (Simple `(assert-type ,ty ,e1))]
+		[simple (wrap `("wsequal(",a", ",b")"))])
+	   (match ty
 	     [Int          simple]
 	     [Int16        simple]
 	     [Int64        simple]
@@ -1664,9 +1668,9 @@
 	     ;; Requires that they have the same parents.
 	     ;; Won't read the contents of two different Sigsegs...
 	     ;; FIXME: Should consider fixing this.
-	     [(Sigseg ,t)  simple]
+	     [(Sigseg ,elt)  simple]
 	     
-	     [(List ,t)    simple]
+	     [(List ,elt)    simple]
 	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
 
 	     ;; We have generated a comparison op for each struct.
@@ -1674,11 +1678,10 @@
 	     ;[(Struct ,name) `("eq",name"(",a", ",b")")]
 	     [(Struct ,name) simple]
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
-	   )	 
-	 ]
+	   )]
 
 	;; If we have an extra assert-type... just ignore it.
-	[(assert-type ,t ,[e]) e]
+	[(assert-type ,ty ,[e]) e]
 
 	;; Other prims fall through to here:
 	[(,other ,[Simple -> rand*] ...)

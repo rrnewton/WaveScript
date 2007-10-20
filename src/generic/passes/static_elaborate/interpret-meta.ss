@@ -234,7 +234,10 @@
     [(unionList ,[ls])      
      (ASSERT (plain? ls))
      (ASSERT (andmap streamop? (plain-val ls)))
+     ;(Eval `(unionN ,@(plain-val ls)) env pretty-name)
      (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
+    [(unionN ,[args] ...) (make-streamop (streamop-new-name) 'unionN () args #f)]
+
     [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
      (match (regiment-primitive? streamprim)
        [(,argty* (Stream ,return))
@@ -266,6 +269,7 @@
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
+;       (inspect (map list lhs* rhs*))
        (for-each (lambda (cell lhs ty rhs)
 		   (set-box! cell (Eval rhs newenv pretty-name))
 		   (when (closure? (unbox cell)) 
@@ -520,18 +524,25 @@
 		(cons (streamop-name (car ops)) covered)
 		)])))
     (DEBUGASSERT list-is-set? (map streamop-name allops))
+    (ASSERT allops)
 
+    ;; [2007.10.20] NEED TO TOPOLOGICALLY SORT THIS:
     ;; Build a let expression binding all streamops:    
-    #;
+#;
     (let loop ([ops allops])
       (if (null? ops) (streamop-name val)
 	  `(letrec ([,(streamop-name (car ops)) ,(unknown-type) ,(Marshal-Streamop (car ops))])
 	     ,(loop (cdr ops)))))
 
     ;; No, doing letrec instead:
-    (ASSERT allops)
     `(letrec ,(map list (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops))
-       ,(streamop-name val)))]
+       ,(streamop-name val))
+#;
+    (id;inspect/continue
+     (topo-sort-letrec (map streamop-name allops) (map unknown-type allops) (map Marshal-Streamop allops)
+		      (streamop-name val)))
+
+    )]
    [else (error 'Marshal "cannot marshal: ~s" val)]))
 
 (define (Marshal-Streamop op)

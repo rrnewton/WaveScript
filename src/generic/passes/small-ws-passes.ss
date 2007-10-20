@@ -85,6 +85,7 @@
 			  (not (deref ,stop))))))
 		  '#f)
 	      )))]
+      ;; TODO: Lists, etc.
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,ty ,e1) ,e2)]))
   [Expr 

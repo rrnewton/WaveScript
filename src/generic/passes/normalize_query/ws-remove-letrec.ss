@@ -14,6 +14,7 @@
 	   )
   (provide remove-letrec
 	   remove-letrec-grammar
+	   topo-sort-letrec
 	   )
   (chezimports tsort)
 
@@ -25,45 +26,51 @@
 	      [,_ #t]))
     reduce-primitives-grammar))
 
+(define ProcessExpr 
+  (lambda (x fallthru)
+    (match x
+      
+      [(let ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+       (make-nested-lets (map list lhs* ty* rhs*) bod)
+       #; #;
+       (warning 'ws-remove-letrec "Shouldn't get a normal let in input: ~s"
+		`(let ,_ ,__))
+       (inspect `(let ,_ ,__))]
+
+      ;; Should be no "lazy" letrec at this point.
+      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
+       (topo-sort-letrec v* ty* e* bod)]
+
+      [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
+       (DEBUGASSERT (null? (intersection lhs* (apply append (map core-free-vars rhs*)))))
+       `(iterate (let ,(map list lhs* ty* rhs*) ,bod) ,src)]
+
+      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
+      [,oth (fallthru oth)])
+    ))
+
+(define (topo-sort-letrec v* ty* e* bod)
+  (let* ([fv** (map core-free-vars e*)]
+	 [graph (map cons v* fv**)]
+	 [binds (map list v* ty* e*)])
+    #;
+    (unless (null? (intersection v* (apply append fv**)))
+      (inspect 
+       (map-filter (lambda (v) (assq v binds)) 
+		   (reverse (topological-sort graph))))
+      #;
+      (inspect (topological-sort graph)))
+
+					;`(let ([,v* ,ty* ,e*] ...) ,bod)
+    (make-nested-lets 
+     (map-filter (lambda (v) (assq v binds)) 
+		 (reverse (topological-sort graph)))
+     bod)))
+
 ;; This handles only the letrec case.
 (define-pass remove-letrec 
     [OutputGrammar remove-letrec-grammar]
-    [Expr (lambda (x fallthru)
-	    (match x
-	      
-	      [(let ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
-	       (make-nested-lets (map list lhs* ty* rhs*) bod)
-	       #; #;
-	       (warning 'ws-remove-letrec "Shouldn't get a normal let in input: ~s"
-		      `(let ,_ ,__))
-	       (inspect `(let ,_ ,__))]
-
-	      ;; Should be no "lazy" letrec at this point.
-	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
-	       (let* ([fv** (map core-free-vars e*)]
-		      [graph (map cons v* fv**)]
-		      [binds (map list v* ty* e*)])
-#;
-		 (unless (null? (intersection v* (apply append fv**)))
-		   (inspect 
-		    (map-filter (lambda (v) (assq v binds)) 
-			      (reverse (topological-sort graph))))
-		   #;
-		   (inspect (topological-sort graph)))
-
-		 ;`(let ([,v* ,ty* ,e*] ...) ,bod)
-		 (make-nested-lets 
-		  (map-filter (lambda (v) (assq v binds)) 
-			      (reverse (topological-sort graph)))
-		  bod))]
-
-	      [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
-	       (DEBUGASSERT (null? (intersection lhs* (apply append (map core-free-vars rhs*)))))
-	       `(iterate (let ,(map list lhs* ty* rhs*) ,bod) ,src)]
-
-	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
-	      [,oth (fallthru oth)])
-	    )])
+    [Expr ProcessExpr])
 
 (ASSERT (= (length remove-letrec-grammar) (sub1 (length reduce-primitives-grammar))))
 
