@@ -142,6 +142,7 @@
 	 simalpha-pause-hook
 
          ws-print-output-port ;; For the WS simulator.
+	 ws-optimizations-enabled
 
 	 varied-param
 	 dummy-param
@@ -298,11 +299,14 @@
     (syntax-case x ()
       [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
-      [(_ fun val) #'(let ([v val])
-		       (if (fun v) v			   
-			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" 
-				  (IFCHEZ #'fun (format-syntax #'fun))
-				  v)))]
+      [(_ fun val) #'(ASSERT "" fun val)]
+      [(_ str fun val) 
+       #'(let ([v val])
+	   (if (fun v) v			   
+	       (error 'ASSERT "failed, ~s:\n ~s\n Value which did not satisfy above predicate: ~s" 
+		      str
+		      (IFCHEZ #'fun (format-syntax #'fun))
+		      v)))]
       )))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
@@ -336,6 +340,12 @@
 ;;   'regiment-simulator
 ;; [2007.03.20] This is now deprecated!!
 (define-regiment-parameter compiler-invocation-mode #f)
+
+;; This parameter controls what optimizations the compiler applies.
+
+;; It can be set by passing a -O2 style flag, or by specifically
+;; enabling optimizations with -opt <NAME>.
+(define-regiment-parameter ws-optimizations-enabled '(rewrites))
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.

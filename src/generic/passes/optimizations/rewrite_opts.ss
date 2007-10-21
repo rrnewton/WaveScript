@@ -40,6 +40,7 @@
   ;; But for now just limiting it to the zero-gap case.
   '([(rewindow (rewindow ,strm ,wid1 ,(nonpositive? gap1)) ,wid2 ,(nonpositive? gap2))
      (rewindow ,strm ,wid2 ,gap2)]
+
     ))
 
 ;; Unification will be triggered in the first place by the occurrence

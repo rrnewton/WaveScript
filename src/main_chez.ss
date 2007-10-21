@@ -512,7 +512,9 @@
 (include "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
+(include "generic/passes/optimizations/smoosh-together.ss") (import smoosh-together)
 (include "generic/passes/optimizations/rewrite_opts.ss")
+(include "generic/passes/optimizations/data_reps.ss")
 
 (include "generic/passes/wavescope_bkend/merge-iterates.ss") (import merge-iterates)
 (include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)

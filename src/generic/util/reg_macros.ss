@@ -30,6 +30,7 @@
 
       eq-any?
       for grep rep
+      cheap-fluid-let
       let-match match?
       mvlet
       match-lambda
@@ -201,6 +202,15 @@
 (define-syntax match?
   (syntax-rules ()
     [(_ x pat) (match x [pat #t] [,else #f])]))
+
+;; [2007.10.20] A lot of the time we know there won't be any
+;; continuations invoked within the dynamic extent of a fluid-let.  In
+;; this case the dynamic-wind based version is inefficient.
+(define-syntax cheap-fluid-let
+  (syntax-rules ()
+    [(_ ([lhs* rhs*] ...) bod* ...)
+     (fluid-let ([lhs* rhs*] ...) bod* ...)
+     ]))
 
 ;;<br> [2005.10.05]
 ;;<br>  Evaluate expression and mask output by search string.  

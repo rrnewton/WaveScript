@@ -483,8 +483,23 @@
 
 ;  (inspect p)
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
+  
+  ;; REWRITE RULE <OPTIMIZATION>:
+  (when (memq 'rewrites (ws-optimizations-enabled))
+    ;(let-values ([(specs p2) (hide-special-libfuns p)]) (set! p p2))
+    ;(ws-run-pass p hide-special-libfuns)
+    ; (parameterize ([regiment-primitives (append (project-metadata 'special-libfuns))]))
+    (ws-run-pass p interpret-meta) (do-early-typecheck)  ;; Testing idempotentcy 
+    (ws-run-pass p rename-vars)
+    (ws-run-pass p smoosh-together)
+    ; (ws-run-pass p rewrite-rules)
+    ; (ws-run-pass reveal-special-libfuns)
+    )
+    ;;(dump-compiler-intermediate (strip-annotations p) ".__presmooshed.ss")
+
+
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
-  (do-early-typecheck) (ws-run-pass p interpret-meta) ;; Testing idempotentcy 
+
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
@@ -583,10 +598,8 @@
 
   ;; Now that we're done with elaboration we should take the stream
   ;; processing spine, convert it to let.
-
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
-
   (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
@@ -598,17 +611,16 @@
 
 ;  (profile-clear)
   (ws-run-pass p ws-remove-complex-opera*)
-
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
   ;; couple more passses before type checking.
   (IFDEBUG (do-late-typecheck) (void))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
-;  (exit)
 
+  ;; This is an example of the experimental pass-fusion mechanism.
   (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
   
-  ; --mic
+  ; --mic, <OPTIMIZATION>
   (unless (memq 'propagate-copies disabled-passes)
     (ws-run-pass p propagate-copies)
     )
@@ -619,8 +631,7 @@
   (do-late-typecheck)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
-  ;(ws-run-pass p flatten-iterate-spine)
-   
+  ;(ws-run-pass p flatten-iterate-spine) ;; Not anymore....
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
@@ -968,7 +979,7 @@
   (printf "  test     (t)  run all regiment tests~n")
   (printf "  log      (l)  simulator trace manipulation mode~n")
   (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
-  (printf "  wscomp   (wscomp) WaveScript compiler mode~n")
+  (printf "  wscomp   (wscomp) WaveScript (C++) compiler mode~n")
   (printf "  wscaml   (wsml)   WaveScript compiler SML backend~n")
   (printf "  wscaml   (wscaml) WaveScript compiler Caml backend~n")
   (printf "~n")
@@ -976,7 +987,7 @@
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
   (printf "  -q   suppress banners and other nonessential output~n")
   (printf "~n")
-  (printf "Compiler Options: ~n")
+  (printf "Regiment Compiler Options: ~n")
   (printf "  -d2  use new compiler: deglobalize2 ~n")
   (printf "  -lt  type check only, print typed program to stdout           ~n")
   (printf "  -ltt type check only, print *only* top level types to stdout  ~n")
@@ -1002,10 +1013,15 @@
   (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world~n")
   (printf "~n")
+
   (printf "WSINT options: ~n")
   (printf "  -dump <file>  don't go into stream browser, dump output stream to file~n")
+  (printf "  -n <int>      dump only a certain number of tuples and stop ~n")
+  (printf "  -t            time how long it takes to dump that many tuples ~n")
   (printf "WSCOMP options: ~n")
   (printf "  -c0           only run the WaveScript compiler, stop at C++~n")
+  (printf "Options for all WaveScript configurations: ~n")
+  (printf "  --disable-pass <pass-name> suppress a specific pass ~n")
   )
 
 (define (print-types-and-exit prog . opts)
@@ -1060,101 +1076,12 @@
      (void))
 
 ;    (printf "regimentc: compile regiment programs!~n")
-    (let ([opts '()] ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
-	  )
-      ;; Loop goes through the arguments, processing them accordingly:
-      ;; Anything not matched by this is presumed to be a file name.
-      (letrec ([loop 
-	      (lambda (args)
-		(match args
-		    [() '()]
-
-		    [(-v ,rest ...) 
-		     (set! opts (cons 'verbose opts))
-		     (regiment-verbose #t)
-		     (loop rest)
-		     ]
-
-		    [(-n ,limit ,rest ...)
-		     (wsint-tuple-limit (ASSERT integer? (string->number (symbol->string limit))))
-		     (loop rest)]
-		    ;; Goes with -n... Time query for wsint:
-		    [(-t ,rest ...)
-		     (wsint-time-query #t)
-		     (loop rest)]
-
-		    [(-o ,outfile ,rest ...)
-		     (wsint-output-file (symbol->string outfile))
-		     (loop rest)]
-
-		    [(.h ,rest ...) (print-help) (regiment-exit 0)]
-
-		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
-		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
-
-		    [(-d2 ,rest ...) (set! opts (cons 'deglobalize2 opts)) (loop rest)]
-
-		    [(-lt ,rest ...) (set! opts (cons 'type-only-verbose opts)) (loop rest)]
-		    [(-ltt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
-
-		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))   (loop rest)]
-		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts))   (loop rest)]
-		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
-
-		    [(-l4 ,rest ...) 
-		     (IFWAVESCOPE (begin) 
-		       (begin (set! makesimcode #t)
-			      (set! opts (cons 'to-simcode opts))))
-		     (loop rest)]
-
-		    [(-l5 ,rest ...)
-		     ;; [2006.11.11] Not handled right now:
-		     (IFWAVESCOPE (begin) 
-		       (begin (set! opts (cons 'to-nesc opts))
-			      (pass-list 
-			       (snoc emit-nesc (snoc flatten-tokmac
-						     (remq flatten-tokmac (remq emit-nesc (pass-list))))))))
-		     (loop rest)]
-
-		    [(-exit-error ,rest ...)
-		     (eprintf "SETTING BATCH MODE\n")
-		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
-		     (loop rest)]
-		    
-;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
-		    [(-debug ,rest ...)		     
-		     (define-top-level-value 'REGIMENT-BATCH-MODE #f)
-		     (regiment-emit-debug #t)
-		     (loop rest)]
-
-		    [(-quiet ,rest ...)
-		     (regiment-quiet #t)
-		     (loop rest)]
-
-		    [(-dump ,file ,rest ...)
-		     (set! outfile file)
-		     (loop rest)]
-
-		    [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
-
-		    [(-timeout ,n ,rest ...)
-		     (let ((n (read (open-input-string (format "~a" n)))))
-		     (set! opts (cons 'timeout (cons n opts))))]
-
-          ; --mic
-          ; FIXME: add to print-help (or automate print-help)
-          [(--disable-pass ,pass-name ,rest ...)
-           (set! opts (append `(disable ,pass-name) opts))
-           (loop rest)]
-
-		    ;; otherwise a file to compile that we add to the list
-		    [(,fn ,rest ...)
-		     ;(regiment-compile-file fn)
-		     (cons (symbol->string fn) (loop rest))]
-
-		    [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]
-		    ))])
-
+    ;; This is a list of option flags mutated by "loop" below.
+    ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
+    (let ([opts '()])
+      
+      ;; This determines what mode we're in then calls "loop" to process the flags.
+      (define (main)		
         ;; I keep disjoint options for the modes so I use the same option-processor for all modes (loop)
 	(let ([symargs (map string->symbol args)])
 
@@ -1419,7 +1346,102 @@
 	     (define exp (acquire-input-prog 'wsmlton))
 	     (apply wsmlton exp opts))]
 	  
-	  )))))))
+	  ))))
+
+      ;; Loop goes through the arguments, processing them accordingly:
+      ;; Anything not matched by this is presumed to be a file name.
+      (define (loop args)
+	(match args
+	  [() '()]
+
+	  [(-v ,rest ...) 
+	   (set! opts (cons 'verbose opts))
+	   (regiment-verbose #t)
+	   (loop rest)
+	   ]
+
+	  [(-n ,limit ,rest ...)
+	   (wsint-tuple-limit (ASSERT integer? (string->number (symbol->string limit))))
+	   (loop rest)]
+	  ;; Goes with -n... Time query for wsint:
+	  [(-t ,rest ...)
+	   (wsint-time-query #t)
+	   (loop rest)]
+
+	  [(-o ,outfile ,rest ...)
+	   (wsint-output-file (symbol->string outfile))
+	   (loop rest)]
+
+	  [(.h ,rest ...) (print-help) (regiment-exit 0)]
+
+	  [(-plot ,rest ...) (set! plot #t) (loop rest)]
+	  [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
+
+	  [(-d2 ,rest ...) (set! opts (cons 'deglobalize2 opts)) (loop rest)]
+
+	  [(-lt ,rest ...) (set! opts (cons 'type-only-verbose opts)) (loop rest)]
+	  [(-ltt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
+
+	  [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))   (loop rest)]
+	  [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts))   (loop rest)]
+	  [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
+
+	  [(-l4 ,rest ...) 
+	   (IFWAVESCOPE (begin) 
+	     (begin (set! makesimcode #t)
+		    (set! opts (cons 'to-simcode opts))))
+	   (loop rest)]
+
+	  [(-l5 ,rest ...)
+	   ;; [2006.11.11] Not handled right now:
+	   (IFWAVESCOPE (begin) 
+	     (begin (set! opts (cons 'to-nesc opts))
+		    (pass-list 
+		     (snoc emit-nesc (snoc flatten-tokmac
+					   (remq flatten-tokmac (remq emit-nesc (pass-list))))))))
+	   (loop rest)]
+
+	  [(-exit-error ,rest ...)
+	   (eprintf "SETTING BATCH MODE\n")
+	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   (loop rest)]
+	  
+					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
+	  [(-debug ,rest ...)		     
+	   (define-top-level-value 'REGIMENT-BATCH-MODE #f)
+	   (regiment-emit-debug #t)
+	   (loop rest)]
+
+	  [(-quiet ,rest ...)
+	   (regiment-quiet #t)
+	   (loop rest)]
+
+	  [(-dump ,file ,rest ...)
+	   (set! outfile file)
+	   (loop rest)]
+
+	  [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
+
+	  [(-timeout ,n ,rest ...)
+	   (let ((n (read (open-input-string (format "~a" n)))))
+	     (set! opts (cons 'timeout (cons n opts))))]
+
+	  ;; --mic
+	  ;; FIXME: add to print-help (or automate print-help)
+	  [(--disable-pass ,pass-name ,rest ...)
+	   (set! opts (append `(disable ,pass-name) opts))
+	   (loop rest)]
+	  
+	  ;; otherwise a file to compile that we add to the list
+	  [(,fn ,rest ...)
+					;(regiment-compile-file fn)
+	   (cons (symbol->string fn) (loop rest))]
+
+	  [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]
+	  ))
+
+      (main) ;; Call the entrypoint above.      
+      )))
 
 ;===============================================================================
 ;;; TESTING:

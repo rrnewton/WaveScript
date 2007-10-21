@@ -475,18 +475,30 @@ upload:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
 
 
+#AWKIT="awk '{ print $1 }'"
+
 wc:        wordcount
 count:     wordcount
 linecount: wordcount
 wordcount:
-	find -name "*.ss" | grep -v "/parser/" | grep -v "wavescript_temp" | xargs wc 
-	@echo;echo
-	find -name "*.rs" | xargs wc 
-	@echo;echo
-	find -name "*.tm" | xargs wc 
-	@echo;echo
-#	cd ../;
-	find ../ -name "*.ws" | xargs wc 
+	echo;echo "total for Scheme code:" > .wc_tmp.txt
+	find -name "*.ss" | grep -v "/parser/" | grep -v "wavescript_temp" | xargs wc >> .wc_tmp.txt
+	echo;echo "total for .rs code:" >> .wc_tmp.txt
+	find -name "*.rs" | xargs wc >> .wc_tmp.txt
+	echo;echo "total for token machine code:" >> .wc_tmp.txt
+	find -name "*.tm" | xargs wc >> .wc_tmp.txt
+	echo;echo "total for wavescript code:" >> .wc_tmp.txt
+	find ../ -name "*.ws" | xargs wc >> .wc_tmp.txt
+	echo;echo "total for c/c++ code:" >> .wc_tmp.txt
+	(find ../ -name "*.h";  find ../ -name "*.hpp"; find ../ -name "*.cpp"; find ../ -name "*.c";) | xargs wc >> .wc_tmp.txt
+	@echo;echo;
+	@cat .wc_tmp.txt | grep total
+	@echo;echo TOTAL total:
+#	echo "DAMN QUOTATION '\\$1'"
+#	cat .wc_tmp.txt | grep total | grep -v code | $(AWKIT)
+#	cat .wc_tmp.txt | grep total | grep -v code | awk '{ print 1 }'
+
+
 
 #	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs demos/token_machs/*.tm demos/regiment/*.rs| grep -v "^_" | xargs wc
 

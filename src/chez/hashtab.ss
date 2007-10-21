@@ -1,7 +1,10 @@
 ;; This implements a common hashtable interface used by Regiment.
 ;; As usual, this is used to paper over the difference between PLT and Chez.
 
-(chez:module hashtab (make-default-hash-table (hashtab-get immediate?) (hashtab-set! immediate?) hashtab-for-each hashtab-remove!)
+(chez:module hashtab 
+    (make-default-hash-table (hashtab-get immediate?) 
+			     (hashtab-set! immediate?) 
+			     hashtab-for-each hashtab-remove!)
 	
 	;; This is implementation specific, these are the types for which eq? <=> equal?
 	(define (immediate? x)

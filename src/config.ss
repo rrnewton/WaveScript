@@ -49,6 +49,13 @@
 
 
 ;; [2006.09.11] This configures the scheme compiler when loading regiment.
+;; NOTE: this controls the optimization level for the COMPILER, and
+;; also for the token machine simulator or the Scheme WS backend.
+;; But it does *not* control the number of optimizations applied by
+;; the compiler to the generated code.  
+;;
+;; Look at the parameter ws-optimizations-enabled for that.
+;;
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
 ;;   3 -- unsafe optimizations, used for long running simulations.
@@ -58,4 +65,3 @@
    [else 2]  ;; <-- CHANGE DEFAULT HERE
    ))
 ;; Note that this is separate from IFDEBUG above.
-

@@ -45,6 +45,7 @@
 	   binding-form-visit-knowncode
 	   core-free-vars
 	   core-substitute
+	   core-refcount
 	   )
 
   (chezimports prim_defs
@@ -463,6 +464,47 @@
       (lambda (ls k) (apply k ls))
       body)]))
 
+;; This one is a little trickier.  Because it uses a hash table, it
+;; requires that its input already have unique variable names.
+
+(define (core-refcount exp)
+  ;; We really have no idea how big we should make it.
+  ;; Because we have no idea how big the expression is.
+  ;; Another reason (besides paralelizing) that it would be convenient
+  ;; to have weights on AST nodes that track the size of the tree.
+  (define table (make-default-hash-table 500))
+  (define (check-table s) (hashtab-get table s))
+  (define (add-to-table! s) (hashtab-set! table s 0))
+  (define (incr-table! s)
+    (define rc (hashtab-get table s))
+    (DEBUGASSERT rc)
+    (hashtab-set! table s (fx+ 1 rc)))
+  (define (Expr x fallthru)
+    (match x     
+      [,vr (guard (symbol? vr) (not (regiment-primitive? vr)))
+	   (incr-table! vr)]
+      [,form (guard (binding-form? form))
+	     (let ([scoped (binding-form->scoped-exprs form)]
+		   [vars (binding-form->vars form)]
+		   [others (binding-form->unscoped-exprs form)])
+
+	       ;; Make sure there isn't already an entry in the table for that sym.
+	       ;; There shouldn't be if we have unique names.
+	       (for-each (lambda (vr) (ASSERT not (check-table vr))) vars)
+
+	       ;; Just because we can, we go ahead and traverse the out-of-scope 
+	       ;; vars *before* we add entries for the vars we're binding.
+	       (for-each (lambda (e) (Expr e fallthru)) others)
+	       (for-each add-to-table! vars)	  
+	       ;; After entries are made in the table, we go ahead with this.
+	       (for-each (lambda (e) (Expr e fallthru)) scoped))]
+      [,oth (fallthru oth)]))
+  (core-generic-traverse Expr (lambda (_ k) (void)) exp)
+  ;(let ([ls ()]) (hashtab-for-each (lambda (key x) (set! ls (cons (list key x) ls))) table) ls)
+  table
+  )
+
+
 ; ================================================================================
 
 (define-testing these-tests
@@ -493,6 +535,16 @@
     ["core-free-vars "
      (core-free-vars '(readFile '"countup.raw" '"" x))
      (x)]
+
+    [(core-refcount '(lambda (x) (Int) (lambda (x) (Float) x))) error]
+
+    ["core-refcount"
+     (hashtab->list (core-refcount '(lambda (x) (Int) x)))
+     ((x . 1))]
+    ["core-refcount2"
+     (hashtab->list (core-refcount '(let ([x Int '3]) (lambda (y) (Int) (*_ y (+_ x x))))))
+     ,(lambda (ls) (set-equal? (list->set ls) (list->set '((y . 1) (x . 2)))))]
+
 
     ;; TODO: To test this mechanism we should have some really big
     ;; source files that we read in, and run a generic traversal where
