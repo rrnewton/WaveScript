@@ -21,26 +21,44 @@ TOOPTIMIZE:
 
 ================================================================================
 
-[2007.10.20]
+[2007.10.22] {Sharing in Stream DAG}
+   *) It's been clear for a while now that the stream DAG notation
+      should be able to capture repeated identical operators.  This
+      should probably be implemented in interpret-meta.
+      Interpret-meta should hash the stream kernels that it generates
+      (or the inputs that generate them), so that it knows when it can
+      use the same kernel function in two operators.  This will also
+      require widening the output grammar to accept names rather than
+      lambda expressions as argument to an "iterate" (how else to
+      express the sharing?). 
+
+[2007.10.20] {Critical path for PLDI}
 What's the critical path for the remaining weeks before PLDI?
  *) For data-rep transforms:
    *) Implement IFPROFILE switch (though could maybe do without).
    *) Implement "coerce" in its basic, inefficient form.
-   *) That means having some way of expressing mappings from T1 => T2
+     *) That means having some way of expressing mappings from T1 => T2
+   *) Implement "push-through" that is like coerce, but pushes a
+      transform through an operator.
    *) Implement accessor short-circuiting optimizations (build(i,f)[j] => f(j))
- *) For rewrite opts:
+ X) For rewrite opts:
    X) Make interpret-meta idempotent.
-   *) Tag "special" stream prim names.  Pull out their defs in the initial program.
-   *) After interpret-meta, we want to inline single-ref variables (in
+   X) Tag "special" stream prim names.  Pull out their defs in the initial program.
+   X) After interpret-meta, we want to inline single-ref variables (in
       object and meta-code) to get a squished-together expression that we an
       match our patterns against.  This is probably better than trying
       to "see through" variable bindings when looking for applications of a
       rewrite rule.  (Reference counting becomes annoying, and the inliner
       needs to be sucked into the rewrite pass.)
-   *) Apply rewrite rules to special prims.
-   *) Push their defs back in after the first interpret-meta.
+   X) Apply rewrite rules to special prims.
+   X) Push their defs back in after the first interpret-meta.
+ *) For stream-graph parallelism opts:
+   *) Identify "maps"... general stateless operators are annoying to deal with.
+   *) Take heavy maps and split them N ways, insert splitter&joiner.
+   *) Insert rewindow/dewindow around busy edges.
+   That's as far as we'll go at first.
  *) For profiling (waiting on Michael's stuff):
-   
+    This is what will drive the control policies of the other opts.
 
 [2007.09.20]
  *) Change regiment-primitive? to use symbol props.

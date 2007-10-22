@@ -22,6 +22,7 @@
 
 (module smoosh-together mzscheme
   (require "../../../plt/common.ss"
+	   "../../../plt/hashtab.ss"
 	   ;"reduce-primitives.ss"
 	   )
   (provide smoosh-together)
@@ -57,7 +58,7 @@
 	  ;; Inline if refcount is 1.
 	  [,vr (guard (symbol? vr))
 	       (let ([rc (hashtab-get reftable vr)])
-		 (printf "    REF Var ~s with RC ~s\n" vr rc)
+;		 (printf "    REF Var ~s with RC ~s\n" vr rc)
 ;		 (inspect env)
 		 (ASSERT (not (fxzero? rc)))
 		 (if (fx= rc 1)
@@ -81,7 +82,7 @@
 			(lambda (lhs ty _rhs)
 			  (let ([rc (hashtab-get reftable lhs)])
 			    (ASSERT rc)
-			    (printf "  BIND Var ~s with RC ~s\n" lhs rc)
+;			    (printf "  BIND Var ~s with RC ~s\n" lhs rc)
 			    (cond
 			     [(fx> rc 1) (list lhs ty (loop _rhs))]
 			     [(fx= rc 1) #f]

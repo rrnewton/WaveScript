@@ -3,6 +3,7 @@
 ;;;; .author      Ryan Newton
 ;;;; This takes away and, or, list, and some other sugars.
 
+;;;; Currently it also takes away let, replacing it with left left lambda.
 
 (module desugar-misc mzscheme
   (require "../../../plt/common.ss"
@@ -86,6 +87,8 @@
 		(for (,i 0 (- (width ,tmp) 1))
 		    (app ,f (seg-get ,tmp ,i))
 		  )))]
+
+	  ;; DESUGAR LET'S INTO LEFT LEFT LAMBDA:
 
 	  ;; THIS IS INVALID FOR OUR TYPE SYSTEM:
 	  ;; It might work if the program were already typed, but future retype-checking will break:

@@ -25,11 +25,77 @@
 	   generate-comparison-code
 	   strip-unnecessary-ascription
 
+	   hide-special-libfuns
+	   reveal-special-libfuns
+
            ; --mic
 	   propagate-copies
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
+
+
+;; [2007.10.21]
+
+;; NOTE: This currently depends on exactly which binding form the
+;; parser and the previous desugaring passes decide to output.  For
+;; now it just looks for left-left-lambda.
+;;
+;; We could try to use binding-form-visit-knowncode... but
+;; unfortunately it doesn't let us remove the binding right now.
+(define-pass hide-special-libfuns
+  ;; This accumulates the special-defs that we come across below.
+  (define special-defs ())
+  [Expr (lambda (xp fallthr)
+	  (match xp
+	    ;; This is lame... but we repeat eta-prims here:
+	    #;
+	    [,vr (guard (symbol? vr) (regiment-primitive? vr) (not (memq vr regiment-constants)))
+		 `(lambda )]
+
+	    [(app (lambda (,lhs) (,ty) ,[bod]) ,[rhs])
+	     (if (memq lhs special-rewrite-libfuns)
+		 (begin 
+		   (set! special-defs (cons (list lhs ty rhs) special-defs))
+		   bod)
+		 `(app (lambda (,lhs) (,ty) ,bod) ,rhs))]
+
+#;
+	    [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+	     (guard (memq lett '(let let* letrec)))
+	     (printf " hmm ~s\n" lhs*)
+	     (if ;(not (null? (intersection lhs* special-rewrite-libfuns)))
+ 	        (memq 'rewindow lhs*)
+		;(inspect lhs*)
+		 `(,lett ,(map list lhs* ty* rhs*) ,bod))]
+	    [,oth (fallthr oth)])
+	  )]
+;; Here's the pure way to do it:
+;  [Fuser (lambda (ls k) (vector (apply append (map (vecref 0) ls)) (apply k (map (vecref 1) ls))))]
+
+  [Program (lambda (pr Expr)
+	     (match pr
+	       [(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
+		;(inspect (vector 'gotspecial (map car special-defs)))
+		`(,lang '(program ,bod (special-libfuns ,@special-defs) ,meta* ... ,topty))
+		]))]
+  
+  )
+
+;; [2007.10.22]
+(define-pass reveal-special-libfuns
+    [Expr (lambda (xp fallthr)
+	    (match xp
+	      [(,special ,[x*] ...)  (guard (memq special special-rewrite-libfuns))
+	       `(app ,special ,@x*)]
+	      [,oth (fallthr oth)]))]
+    [Program (lambda (pr Expr)
+	       (match pr
+		 [(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
+		  (let* ([special (ASSERT (assq 'special-libfuns meta*))]
+			 [newmeta (remq special meta*)])
+		    ;; This assumes that none of the special defs depend on one another:
+		    `(,lang '(program (letrec ,(cdr special) ,bod) ,@newmeta ,topty)))]))])
 
 
 ;; [2007.10.09] 

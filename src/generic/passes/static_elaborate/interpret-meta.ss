@@ -239,7 +239,9 @@
      (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
     [(unionN ,[args] ...) (make-streamop (streamop-new-name) 'unionN () args #f)]
 
-    [(,streamprim ,[x*] ...) (guard (assq streamprim wavescript-stream-primitives))
+    [(,streamprim ,[x*] ...)
+     ;(guard (assq streamprim wavescript-stream-primitives))
+     (guard (stream-primitive? streamprim))
      (match (regiment-primitive? streamprim)
        [(,argty* (Stream ,return))
 	(for-each set-value-type! x* argty*) ;; Set all the types of arguments (some may be integers).
@@ -399,7 +401,11 @@
   ))
 
 (define dictionary #f) ;; Set below:
+
+;; NOTE: this does not track everything in regiment-primitives, as
+;; that may change over time.
 (define (build-dictionary!)
+;  (inspect 'building-dictionary)
   (set! dictionary (make-default-hash-table 500))
   (let ([prims (difference 
 		(map car (append regiment-basic-primitives 

@@ -42,6 +42,7 @@
 	   wavescript-primitives
 	   wavescript-effectful-primitives
 	   wavescript-stream-primitives
+	   stream-primitive?
 
 	   built-in-type-constructors
 	   generic-arith-primitives
@@ -57,6 +58,8 @@
  	   basic-primitive?
  	   distributed-primitive?
  	   token-machine-primitive?
+
+	   special-rewrite-libfuns
 	   )
 
   (chezimports )
@@ -129,7 +132,8 @@
 ;; These don't need types because they're defined in WS types.  The
 ;; inferencer infers types normally.
 (define special-rewrite-libfuns
-  '(rewindow    
+  '(window dewindow rewindow 
+	   
     ))
 
 
@@ -844,7 +848,14 @@
     (filter (lambda (pr)
 	      (not (memq (car pr) '(world anchor))))
       (difference (regiment-primitives) 
-		regiment-distributed-primitives))))
+		  regiment-distributed-primitives))))
+
+(define (stream-primitive? sym)
+  (and (not (memq sym '(world anchor)))
+       (let ([entry (regiment-primitive? sym)])
+	 (and entry
+	      (deep-assq 'Stream entry)))))
+
 
 ;======================================================================
 ;;; Type signatures for TML/Node-local primitives.

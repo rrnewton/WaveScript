@@ -37,6 +37,13 @@
 
      ;; TODO: Rewrite to use define-pass with the Bindings clause.
      (let ()
+       (define (make-new-name sym)
+	 ;; [2007.10.21] We don't touch special names.  It's currently
+	 ;; up to the user to insure that they are only defined once.
+	 (if (memq sym special-rewrite-libfuns)
+	     sym
+	     (unique-name sym)))
+
        (define (process-expr expr var-table)
 	 (define (driver x fallthrough)
 	   (match x
@@ -49,21 +56,21 @@
 				 var var-table)])]
 	     [(lambda (,v* ...) (,t* ...) ,expr)
 	      (guard (not (assq 'lambda var-table)))
-	      (let* ([new-v* (map unique-name v*)]
+	      (let* ([new-v* (map make-new-name v*)]
 		     [new-table (append (map cons v* new-v*) var-table)])
 		(let ([expr (process-expr expr new-table)])
 		  `(lambda ,new-v* ,t* ,expr)))]
 
 	     [(let ([,v* ,ty* ,[rhs*]] ...) ,bod)
 	      (guard (not (assq 'let var-table)))
-	      (let* ([new-v* (map unique-name v*)]
+	      (let* ([new-v* (map make-new-name v*)]
 		     [new-table (append (map cons v* new-v*) var-table)])
 		`(let ,(map list new-v* ty* rhs*) 
 		   ,(process-expr bod new-table)))]
 
 	     [(for (,i ,[st] ,[en]) ,body)
 	      (guard (not (assq 'for var-table)))
-	      (let* ([newi (unique-name i)]
+	      (let* ([newi (make-new-name i)]
 		     [var-table `((,i . ,newi) . ,var-table)])
 		`(for (,newi ,st ,en) 
 		     ,(process-expr body var-table)))]
@@ -72,7 +79,7 @@
 	     
 	     [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	      (guard (not (assq 'letrec var-table)))
-	      (let* ([new-lhs* (map unique-name lhs*)]
+	      (let* ([new-lhs* (map make-new-name lhs*)]
 		     [var-table (append (map cons lhs* new-lhs*) var-table)])
 		(let ([rhs* (map (lambda (x) (process-expr x var-table)) rhs*)]
 		      [expr (process-expr expr var-table)])

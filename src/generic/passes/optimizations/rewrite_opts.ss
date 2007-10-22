@@ -35,20 +35,33 @@
 ;; Rewrite rules
 
 ;; These are the built-in rewrite rules.
-(define rewrite-rules 
+;;
+;; FOR NOW DO NOT USE A PATTERN VARIABLE TWICE IN THE OUTPUT! (duplicates code)
+;; In the future we could add some protection (extra let-bindings).
+(define rewrite-rule-table 
   ;; We should actually be able to do this opt for any NONPOSITIVE gap:
   ;; But for now just limiting it to the zero-gap case.
-  '([(rewindow (rewindow ,strm ,wid1 ,(nonpositive? gap1)) ,wid2 ,(nonpositive? gap2))
+  '(["rewindow/rewindow"
+     (rewindow (rewindow ,strm ,wid1 ,(nonpositive? gap1)) ,wid2 ,(nonpositive? gap2))
      (rewindow ,strm ,wid2 ,gap2)]
+
+    ["dewindow/window"  (dewindow (window ,strm ,wid)) ,strm]
+
+    ["window/dewindow"  (window (dewindow ,strm) ,wid) (rewindow ,strm ,wid '0)]
 
     ))
 
 ;; Unification will be triggered in the first place by the occurrence
 ;; of an application of the head operator (e.g. rewindow).
 
+(define rewrite-heads
+  (map caadr rewrite-rule-table))
 
 ;; ================================================================================
+;;; Helpers:
 
+;; Subst := #f | ([name . expr] ...)
+;; Hack to short-circuit when we hit a #f (like 'and').
 (define-syntax mergesubsts
   (syntax-rules ()
     [(_ e) e]
@@ -58,53 +71,6 @@
 	    (let ([rest (mergesubsts e* ...)])
 	      (and rest 
 		   (reallymerge s1 rest)))))]))
-
-;; Tries to unify an expression with a pattern.
-;; Should I use mutable cells like with type unification?
-(define (unify expr pat env)
-  (define (resolve expr)
-    ;; Resolve the expression further if we can:
-    (if (symbol? expr) ;; Resolve variables.
-	(or (apply-env env expr) expr)
-	expr))
-  (match pat
-    ;; Rule-supplied predicates:
-    ;;a
-    ;; If we wanted to optimize this pass we should maybe put off
-    ;; checking the predicates until the end.  That is, make sure the
-    ;; pattern matches otherwise.
-    [(,uq (,pred ,name)) (guard (eq? uq 'unquote))
-     (ASSERT (symbol? pred)) (ASSERT (symbol? name))
-     (let ([value (get-value expr env)])
-       ;; Could we get it down to a value?
-       (if (not value) #f 
-	   (let ([predfn (top-level-value pred)])
-	     (inspect (predfn (unbox value))))))]
-
-    ;; Pattern variable, unifies with anything:
-    [(,uq ,name) (guard (eq? uq 'unquote)) 
-     (ASSERT (symbol? name))
-     `([,name ,expr])] ;; Return a substitution
-
-    [,else 
-
-     ;; Finally we try to combine them:
-     (match (vector (resolve expr) pat)
-       [#((app ,[resolve -> fn] ,x* ...) (,op ,pat* ...))
-	(ASSERT symbol? op)
-	(if (eq? fn op)
-	    (unify* x* pat* env)
-	    #f)]
-       
-       [,_ 	
-	;(printf "   COULDNT MATCH: ~s\n" _)	
-	#f] ;; Otherwise just fail.
-       )]))
-
-(define (unify* ex* pt* env)
-  (if (null? ex*) (empty-subst)
-      (mergesubsts (unify  (car ex*) (car pt*) env)
-		   (unify* (cdr ex*) (cdr pt*) env))))
 
 
 (define (reallymerge s1 s2)
@@ -116,13 +82,96 @@
 (define (empty-env) ())
 (define (apply-env env v) (let ([entry (assq v env)]) (and entry (cadr entry))))
 
+;; ================================================================================
+;; Unify code with the LHS of a rule.
+;;
+;; Tries to unify an expression with a pattern.
+;; Should I use mutable cells like with type unification?
+(define (unify expr pat env)
 
+  (define (resolve expr) (peel-annotations expr))
+  ;; [2007.10.22] DISABLING this: smoosh-together gets rid of
+  ;; let-bindings that might be in the way.
+#;
+  (define (resolve expr)
+    ;; Resolve the expression further if we can:
+    (if (symbol? expr) ;; Resolve variables.
+	(or (apply-env env expr) expr)
+	expr))
+  (match pat
+    ;; Rule-supplied predicates:
+    ;; If we wanted to optimize this pass we should maybe put off
+    ;; checking the predicates until the end.  That is, make sure the
+    ;; pattern matches otherwise.
+    [(,uq (,pred ,name)) (guard (eq? uq 'unquote))
+     (ASSERT (symbol? pred)) (ASSERT (symbol? name))
+     (let ([value (get-value expr env)])
+       ;; Could we get it down to a value?
+       (if (not value) #f 
+	   (let ([predfn (top-level-value pred)])
+	     (if (predfn (unbox value))
+		 `([,name . ,expr])
+		 #f))))]
+
+    ;; Pattern variable, unifies with anything:
+    [(,uq ,name) (guard (eq? uq 'unquote)) 
+     (ASSERT (symbol? name))
+     `([,name . ,expr])] ;; Return a substitution
+
+    [,else 
+
+     ;; Finally we try to combine them:
+     (match (vector (resolve expr) pat)
+       [#((,[resolve -> fn] ,x* ...) (,op ,pat* ...))
+	(ASSERT symbol? op)
+	(if (eq? fn op)
+	    (unify* x* pat* env)
+	    #f)]       
+       [,_ 	
+	;(printf "   COULDNT MATCH: ~s\n" _)	
+	#f] ;; Otherwise just fail.
+       )]))
+
+(define (unify* ex* pt* env)
+  (if (null? ex*) (empty-subst)
+      (mergesubsts (unify  (car ex*) (car pt*) env)
+		   (unify* (cdr ex*) (cdr pt*) env))))
+
+;; ================================================================================
+;; Apply a substitution to the RHS of a rule.
+;;
+;; We currently lose any type or src-position annotationsin this
+;; process... we could try to fix that at some point.
+(define (instantiate-rule rulerhs subst)
+  (match rulerhs
+    [(,uq ,name) (guard (eq? uq 'unquote)) 
+     (ASSERT (symbol? name))
+     (cdr (ASSERT (assq name subst)))]
+    [(quote ,c) `(quote ,c)]
+    [(,op ,[args] ...) (guard (symbol? op))
+     (cons op args)]))
 
 ;; ================================================================================
 ;;; The Actual Compiler Pass
 
 
-
+(define-pass rewrite-rules
+  [Expr (lambda (xp fallthr)
+	  (match xp    
+	    ;; Currently we apply rewrite rules from the inside out.
+	    ;; We could do the opposite... there's no good principle to guide us.
+	    [(,special ,[arg*] ...) 
+	     (guard (symbol? special) (memq special rewrite-heads))
+	     (define pos (list-find-position special rewrite-heads))
+	     (define rule (list-ref rewrite-rule-table pos))
+;;;	     (printf "Trying to unify ~s \nwith   ~s\n" (cons special arg*) (cadr rule))	     
+	     (let ([subst (unify (cons special arg*) (cadr rule) (empty-env))])
+	       (if subst 
+		   (begin 
+		     (printf "RULE-FIRED: ~s\n" (car rule))
+		     (instantiate-rule (caddr rule) subst))
+		   (cons special arg*)))]
+	    [,oth (fallthr oth)]))])
 
 
 ;; ================================================================================
@@ -136,6 +185,8 @@
 (define (get-value expr env)
   (match expr
     [(quote ,val) (box val)] ;; NEED TO RETURN TYPE ALSO!
+    [(assert-type ,_ ,[x]) x]
+    [(gint ,[c]) c]
     [,vr (guard (symbol? vr))
 	 (let ([entry (apply-env env expr)])
 	   (if entry (get-value entry env)
@@ -155,6 +206,7 @@
 	   ,''(foo (bar ,x) (baz ,y)) (,empty-env))
    ((x '3) (y '4))]
 
+#;
   ["Now test lookups in the environment."
    (,unify   '(app foo myvar (app baz '4)) 
 	   ,''(foo (bar ,x) (baz ,y))

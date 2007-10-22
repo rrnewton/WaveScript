@@ -448,20 +448,16 @@
   
   (define (run-that-compiler)
     (parameterize ()
-    
       (ws-pass-optional-stop p)
-  
       (unless already-typed (set! p (ws-compile-until-typed p)))
-
       (unless (regiment-quiet) (printf "Program verified.\n"))
 
-  ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
-  ;; here breaks something wrt "union2" and sum types... 
-  ;; Perhaps the LUB typing isn't being implemented correctly.
-
-  ;(DEBUGMODE (do-early-typecheck) (void))
-  ;(inspect p)
-  ;(do-early-typecheck)
+      ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
+      ;; here breaks something wrt "union2" and sum types... 
+      ;; Perhaps the LUB typing isn't being implemented correctly.
+      
+      ;;(DEBUGMODE (do-early-typecheck) (void))
+      ;;(do-early-typecheck)
 
   ;; [2007.07.06] Moving this back where it belongs... after typechecking
   ;; The only reason it was moved earlier was to accomodate using a hash table for type environments
@@ -481,25 +477,41 @@
   ;; This doesn't work either:
 ;  (do-typecheck #t #t)
 
-;  (inspect p)
-  (printf "  PROGSIZE: ~s\n" (count-nodes p))
+
   
-  ;; REWRITE RULE <OPTIMIZATION>:
+  ;; <OPTIMIZATION>: REWRITE RULES
+  ;; -----------------------------------------
   (when (memq 'rewrites (ws-optimizations-enabled))
-    ;(let-values ([(specs p2) (hide-special-libfuns p)]) (set! p p2))
-    ;(ws-run-pass p hide-special-libfuns)
-    ; (parameterize ([regiment-primitives (append (project-metadata 'special-libfuns))]))
-    (ws-run-pass p interpret-meta) (do-early-typecheck)  ;; Testing idempotentcy 
-    (ws-run-pass p rename-vars)
-    (ws-run-pass p smoosh-together)
-    ; (ws-run-pass p rewrite-rules)
-    ; (ws-run-pass reveal-special-libfuns)
-    )
-    ;;(dump-compiler-intermediate (strip-annotations p) ".__presmooshed.ss")
+    (ws-run-pass p hide-special-libfuns)
+    (parameterize ([regiment-primitives
+		    (append (map (match-lambda ([,lhs ,ty ,rhs]) 
+				   (match ty
+				     [(,args ... -> ,res) `(,lhs ,args ,res)]))
+			      (cdr (ASSERT (project-metadata 'special-libfuns p))))
+			    (regiment-primitives))])
+      (ws-run-pass p eta-primitives)
+      (ws-run-pass p interpret-meta) (do-early-typecheck)
+      (ws-run-pass p rename-vars)
+      (dump-compiler-intermediate (strip-annotations p) ".__presmooshed.ss")
+      (ws-run-pass p smoosh-together)
+      (dump-compiler-intermediate (strip-annotations p) ".__smooshed.ss")
+
+      (inspect (match p [(,lang '(program ,bod . ,_)) bod]))
+      (ws-run-pass p rewrite-rules)
+      (inspect (match p [(,lang '(program ,bod . ,_)) bod]))
+      (ws-run-pass p reveal-special-libfuns)))
+  ;; -----------------------------------------
+
+;  (ws-run-pass p interpret-meta) (do-early-typecheck)  ;; Testing idempotentcy 
+;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated_first.ss"))
 
 
+
+
+
+
+  (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
-
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
 
@@ -1367,9 +1379,14 @@
 	  [(-t ,rest ...)
 	   (wsint-time-query #t)
 	   (loop rest)]
-
+	  
 	  [(-o ,outfile ,rest ...)
 	   (wsint-output-file (symbol->string outfile))
+	   (loop rest)]
+
+	  [(-opt ,name ,rest ...)
+	   (unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
+	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
 
 	  [(.h ,rest ...) (print-help) (regiment-exit 0)]

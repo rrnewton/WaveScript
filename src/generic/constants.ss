@@ -345,7 +345,8 @@
 
 ;; It can be set by passing a -O2 style flag, or by specifically
 ;; enabling optimizations with -opt <NAME>.
-(define-regiment-parameter ws-optimizations-enabled '(rewrites))
+;(define-regiment-parameter ws-optimizations-enabled '(rewrites))
+(define-regiment-parameter ws-optimizations-enabled '())
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
