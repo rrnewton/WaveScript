@@ -130,15 +130,7 @@ fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 fun expC2(f) makeComplex(cos(f), sin(f))
 
 // Produces the extra pieces of data that AML needs before it searches through angles.
-//fun prepAML(data_in, radius, theta, grid_size, sens_num) {
-//}
-
-
-// Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
-// grid_size is generally 360, for one-degree increments.
-actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
-fun actualAML(data_in, radius, theta, grid_size, sens_num)
-{
+fun prepAML(data_in, radius, theta, grid_size, sens_num) {
     using Matrix; using Complex;
 
     //log(1,"  Running actual AML.");
@@ -219,6 +211,19 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       order[i] := temp_ind; // all subsequent access to psds is done thru the order array
     };
 
+    // Return value:
+    ((data_in, radius, theta, grid_size, sens_num),
+     (sel_bin_size, order, _window_size, _sens_num, data_f))
+       
+}
+
+// Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
+// grid_size is generally 360, for one-degree increments.
+//actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
+fun actualAML(((data_in, radius, theta, grid_size, sens_num),
+               (sel_bin_size, order, _window_size, _sens_num, data_f)))
+{
+    using Matrix; using Complex;
 
     //    gnuplot_array(order);
     // now do the actual AML calculation, searching thru each angle
@@ -327,20 +332,10 @@ fun oneSourceAMLTD(synced, win_size) {
   }, data_in);
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
-  aml_result = stream_map(
-     fun( (m_in, starttime, tb) ) {
-      
-      result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
-      log(1, "  Got result of AML.");
-
-      (result, starttime, tb)
-    }, projected);
-
-  /*
-  aml_result = iterate (z in aml_results) {
-    emit z;
-    };*/
+  temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, grid_size, sens_num), st,tb), projected);  
+  aml_result = smap(fun((tup,st,tb)) (actualAML(tup),st,tb), temp);
+  
   aml_result
 }
 
