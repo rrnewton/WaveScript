@@ -98,6 +98,9 @@ fun mybuild(len, f) {
   arr
 }
 
+// This is just a bit of syntactic decoration to increase readibility.
+fun return(x) { x }
+
 //metabuild = mybuild;
 metabuild = Array:build;
 
@@ -126,6 +129,9 @@ fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 // equivalent to the expC implementation in stdlib.ws
 fun expC2(f) makeComplex(cos(f), sin(f))
 
+// Produces the extra pieces of data that AML needs before it searches through angles.
+//fun prepAML(data_in, radius, theta, grid_size, sens_num) {
+//}
 
 
 // Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
@@ -297,7 +303,7 @@ fun oneSourceAMLTD(synced, win_size) {
   //  print("theta = "++show(theta[0])++" "++show(theta[1])++" "++show(theta[2])++" "++show(theta[3])++"\n");
 
   // convert the data from a list of segs into a matrix
-  data_in = stream_map( fun(ls) {
+  data_in = smap( fun(ls) {
                 st = List:ref(ls,0)`start;
 		tb = List:ref(ls,0)`timebase;
 		wid = List:ref(ls,0)`width;
@@ -309,23 +315,27 @@ fun oneSourceAMLTD(synced, win_size) {
   // num_src = 1; // we're only interested in one source, this var is not used..
   grid_size = 360; // 1 unit per degree.
 
+  // Project out the range of data we want to look at:
+  projected = smap(fun((mat, st, tb)) {
+    offset = 0; // This is the offset into the original window.
+    // We extract a window of "win_size" to perform the AML algorithm on.
+    // not doing any padding just yet - only do WHOLE windows
+    //
+    // RRN: This could be more efficient by projecting a row, and doing Array:sub to break out a chunk.
+    mat2 :: Matrix Float = build(sens_num, win_size, fun(i,j) get(mat, i, j));
+    return $ (mat2, st,tb);
+  }, data_in);
+
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = stream_map(
-     fun( (_m_in, starttime, tb) ) {
-
-      // We extract a window of "win_size" to perform the AML algorithm on.
-      // not doing any padding just yet - only do WHOLE windows
-
-      offset = 0; // This is the offset into the original window.
-
-      m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
-
+     fun( (m_in, starttime, tb) ) {
+      
       result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
       log(1, "  Got result of AML.");
 
       (result, starttime, tb)
-    }, data_in);
+    }, projected);
 
   /*
   aml_result = iterate (z in aml_results) {
