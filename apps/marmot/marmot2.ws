@@ -128,8 +128,8 @@ fun expC2(f) makeComplex(cos(f), sin(f))
 
 
 
-//Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
-
+// Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
+// grid_size is generally 360, for one-degree increments.
 actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
 fun actualAML(data_in, radius, theta, grid_size, sens_num)
 {
