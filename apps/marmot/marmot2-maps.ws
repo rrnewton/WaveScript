@@ -310,26 +310,23 @@ fun oneSourceAMLTD(synced, win_size) {
   grid_size = 360; // 1 unit per degree.
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
-  aml_result = iterate (_m_in, starttime, tb) in data_in {
+  aml_result = stream_map(
+     fun( (_m_in, starttime, tb) ) {
 
-    // We extract a window of "win_size" to perform the AML algorithm on.
-    // not doing any padding just yet - only do WHOLE windows
+      // We extract a window of "win_size" to perform the AML algorithm on.
+      // not doing any padding just yet - only do WHOLE windows
 
-    offset = 0; // This is the offset into the original window.
+      offset = 0; // This is the offset into the original window.
 
-    m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
-    //   gnuplot_array(m_in[0]);
+      m_in :: Matrix Float = build(sens_num, win_size, fun(i,j) get(_m_in, i, j + offset));
 
-    //result = Mutable:ref(Array:null);
-    //for i = 1 to 100 { result := actualAML(m_in, radius,theta, grid_size, sens_num) };
-    //result = Array:make(grid_size, 0.0); // FAKE
-    result = actualAML(m_in, radius,theta, grid_size, sens_num);
+      result = actualAML(m_in, radius,theta, grid_size, sens_num);
 
-    log(1, "  Got result of AML.");
+      log(1, "  Got result of AML.");
 
-    //	gnuplot_array(result);
-    emit(result, starttime, tb)
-  };
+      (result, starttime, tb)
+    }, data_in);
+
   /*
   aml_result = iterate (z in aml_results) {
     emit z;
