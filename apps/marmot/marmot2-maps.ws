@@ -212,7 +212,7 @@ fun prepAML(data_in, radius, theta, grid_size, sens_num) {
     };
 
     // Return value:
-    ((data_in, radius, theta, grid_size, sens_num),
+    ((radius, theta, grid_size, sens_num),
      (sel_bin_size, order, _window_size, _sens_num, data_f))
        
 }
@@ -220,7 +220,7 @@ fun prepAML(data_in, radius, theta, grid_size, sens_num) {
 // Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 // grid_size is generally 360, for one-degree increments.
 //actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
-fun actualAML(((data_in, radius, theta, grid_size, sens_num),
+fun actualAML(((radius, theta, grid_size, sens_num),
                (sel_bin_size, order, _window_size, _sens_num, data_f)))
 {
     using Matrix; using Complex;
