@@ -506,7 +506,6 @@
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated_first.ss"))
 
 
-
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))

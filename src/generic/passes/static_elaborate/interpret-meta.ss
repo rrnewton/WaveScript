@@ -805,11 +805,15 @@
   (define (Expr e subst)
     (core-generic-traverse
      (lambda (x fallthru)
-       (match x 
+       (let loop ([x x])
+	 (match x 
 	 ;; If the variable is bound to a lambda, here we inline it.
 	 [,v (guard (symbol? v))
 	     (let ([ent (assq v subst)])
-	       (if ent (caddr ent) v))]
+	       (if ent 
+		   ;; We must continue processing the inlined function:
+		   (loop (caddr ent))
+		   v))]
 
 	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
 	  (let* (;[binds (map list lhs* ty* rhs*)]
@@ -848,7 +852,7 @@
 		`(app ,rator ,@rands))
 	      )]
 
-	 [,oth (fallthru oth)]))
+	 [,oth (fallthru oth)])))
      (lambda (ls k) (apply k ls))
      e))
   (Expr e '()))
