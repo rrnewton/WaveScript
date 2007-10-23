@@ -7,6 +7,7 @@
 
 
 include "stdlib.ws";
+include "gnuplot.ws";
 
 // When we're not live we just print log messages to the stream.
 fun log(l,s) println(s)
@@ -48,15 +49,26 @@ synced2 = iterate x in synced0 {
 synced = synced2;
 include "marmot2.ws";
 
+
+converted = smap(fun (ls) List:map(fun(ss) sigseg_map(floatToInt16,ss), ls), synced0);
+
+
 //========================================
 // Main query:
 
+
 //doas = FarFieldDOAb(synced, sensors);
-doas = oneSourceAMLTD(synced, micgeometry, 2048); 
+//doas = oneSourceAMLTD(synced, micgeometry, 2048); 
+//doas :: Stream (Array Float);
+doas = oneSourceAMLTD(converted, 4096);
+//doas = oneSourceAMLTD(synced0, 4096);
 
 //BASE <- chans;
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
 //BASE <- synced;
-BASE <- gnuplot_array_stream(smap(fst, doas))
+//BASE <- gnuplot_array_stream(smap(fst, doas))
 //BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
+
+//BASE <- (smap(fst, doas))
+BASE <- doas

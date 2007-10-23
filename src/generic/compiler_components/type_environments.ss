@@ -24,7 +24,7 @@
            )
 
   (provide 
-           num-types
+           num-types scalar-type?
 
 	   type? 
 	   instantiated-type?
@@ -75,6 +75,8 @@
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 			))
+
+(define (scalar-type? ty) (or (memq ty num-types) (memq ty '(Char))))
 
 (define (valid-type-symbol? s)
   (let ([str (symbol->string s)])

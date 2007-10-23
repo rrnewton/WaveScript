@@ -267,6 +267,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     Jvec
 }
 
+//fun AML_prep1
+
 //oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float * Int64);
 // does an AMl calc based on TD data of supplied window (i.e. it does no rewindowing itself)
 // only does one source - other implementations may work on multiple sources

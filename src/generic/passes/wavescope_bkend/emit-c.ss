@@ -163,9 +163,7 @@
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
-(define (ToForeignType ty txt)
-  ;(define (scalar? ty) (memq ty '(Int Int16 Int64 Float Double)))
-  (define (scalar? ty) (or (memq ty num-types) (memq ty '(Char)))) ;; And char?
+(define (ToForeignType ty txt)  
   (match ty
     ;; For these types we just put in a cast:
     [,t (guard (scalar? t))

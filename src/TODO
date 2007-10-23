@@ -35,12 +35,16 @@ TOOPTIMIZE:
 [2007.10.20] {Critical path for PLDI}
 What's the critical path for the remaining weeks before PLDI?
  *) For data-rep transforms:
+   ~) Empirically measure data rep effiiency across backends.
    *) Implement IFPROFILE switch (though could maybe do without).
-   *) Implement "coerce" in its basic, inefficient form.
-     *) That means having some way of expressing mappings from T1 => T2
-   *) Implement "push-through" that is like coerce, but pushes a
-      transform through an operator.
+   X) Implement "coerce" in its basic, inefficient form.
+     X) That means having some way of expressing mappings from T1 => T2
+   *) Implement "push-through" that pushes a transform into an
+      upstream or downstream operator.
    *) Implement accessor short-circuiting optimizations (build(i,f)[j] => f(j))
+      And map/tabulate fold/tabulate deforestations.
+   *) Array/Array: Speed up a naive matrix library?
+
  X) For rewrite opts:
    X) Make interpret-meta idempotent.
    X) Tag "special" stream prim names.  Pull out their defs in the initial program.
@@ -52,13 +56,17 @@ What's the critical path for the remaining weeks before PLDI?
       needs to be sucked into the rewrite pass.)
    X) Apply rewrite rules to special prims.
    X) Push their defs back in after the first interpret-meta.
+
  *) For stream-graph parallelism opts:
-   *) Identify "maps"... general stateless operators are annoying to deal with.
-   *) Take heavy maps and split them N ways, insert splitter&joiner.
-   *) Insert rewindow/dewindow around busy edges.
+   ~) Identify "maps"... general stateless operators are annoying to deal with.
+   ~) Take heavy maps and split them N ways, insert splitter&joiner.
+   ~) Insert rewindow/dewindow around busy edges.
+   X) Merge operators.
    That's as far as we'll go at first.
+
  *) For profiling (waiting on Michael's stuff):
     This is what will drive the control policies of the other opts.
+   *) Profile times as well as data rate.  Profile data sizes.
 
 [2007.09.20]
  *) Change regiment-primitive? to use symbol props.

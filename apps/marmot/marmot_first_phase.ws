@@ -162,6 +162,8 @@ fun sigseg_fft (ss) toSigseg(ss`toArray`marmfft, ss.start, ss.timebase);
 
 // ================================================================================
 
+detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16)) 
+         -> Stream Detection;
 fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   // 96 samples are ignored between each 32 used:

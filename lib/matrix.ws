@@ -29,6 +29,7 @@ dims   ::  Matrix t               -> (Int * Int);
  eq = (==);
 
  fun create(rows, cols, init) {
+   // This should be nested build OR build/make
    arr = Array:make(rows, Array:null);
    for i = 0 to rows-1 {
      arr[i] := Array:make(cols, init);
