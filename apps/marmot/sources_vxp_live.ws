@@ -1,6 +1,7 @@
 
 // Here we hackishly redefine wserror before loading stdlib.
 
+include "types.ws";
 include "ensbox_logger.ws";
 
 origprint = print;
@@ -21,7 +22,6 @@ include "stdlib.ws";
 include "gnuplot.ws";
 include "vxpsource.ws";
 include "netsource.ws";
-include "types.ws";
 
 samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 

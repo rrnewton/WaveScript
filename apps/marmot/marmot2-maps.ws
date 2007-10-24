@@ -130,7 +130,7 @@ fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 fun expC2(f) makeComplex(cos(f), sin(f))
 
 // Produces the extra pieces of data that AML needs before it searches through angles.
-fun prepAML(data_in, radius, theta, grid_size, sens_num) {
+fun prepAML(data_in, radius, theta, sens_num) {
     using Matrix; using Complex;
 
     //log(1,"  Running actual AML.");
@@ -212,7 +212,7 @@ fun prepAML(data_in, radius, theta, grid_size, sens_num) {
     };
 
     // Return value:
-    ((radius, theta, grid_size, sens_num),
+    ((radius, theta, sens_num),
      (sel_bin_size, order, _window_size, _sens_num, data_f))
        
 }
@@ -220,8 +220,9 @@ fun prepAML(data_in, radius, theta, grid_size, sens_num) {
 // Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 // grid_size is generally 360, for one-degree increments.
 //actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
-fun actualAML(((radius, theta, grid_size, sens_num),
-               (sel_bin_size, order, _window_size, _sens_num, data_f)))
+fun actualAML(start, grid_size, 
+              ((radius, theta, sens_num),
+	       (sel_bin_size, order, _window_size, _sens_num, data_f)))
 {
     using Matrix; using Complex;
 
@@ -272,7 +273,7 @@ fun actualAML(((radius, theta, grid_size, sens_num),
       result
     };
 
-    Array:build(grid_size, do_aml_angle);    
+    Array:build(grid_size - start, fun(i) do_aml_angle(start+i));
 }
 
 //oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float * Int64);
@@ -280,7 +281,7 @@ fun actualAML(((radius, theta, grid_size, sens_num),
 // only does one source - other implementations may work on multiple sources
 
 // win_size decides how AML results to use
-oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
+//oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
 fun oneSourceAMLTD(synced, win_size) {
   using Matrix;
   using Float; 
@@ -333,10 +334,12 @@ fun oneSourceAMLTD(synced, win_size) {
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
 
-  temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, grid_size, sens_num), st,tb), projected);  
-  aml_result = smap(fun((tup,st,tb)) (actualAML(tup),st,tb), temp);
-  
-  aml_result
+  temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
+  //  aml_result = smap(fun((tup,st,tb)) ((actualAML)(grid_size, tup),st,tb), temp);
+  //  aml_result
+  half1 = smap(fun((tup,st,tb)) (actualAML(0,  10, tup),st,tb), temp);
+  half2 = smap(fun((tup,st,tb)) (actualAML(10, 20, tup),st,tb), temp);
+  zip2_sametype(half1,half2);  
 }
 
 

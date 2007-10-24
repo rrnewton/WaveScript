@@ -558,6 +558,8 @@ namespace Array {
   }
   
   // Extract a sub-array.
+  // This could be more efficient if it were implemented as a primitive.
+  // You could do bounds check once, etc.
   fun sub(arr, pos, len)
      build(len, fun(i) arr[pos+i])
 

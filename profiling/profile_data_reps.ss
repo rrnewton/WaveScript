@@ -5,12 +5,20 @@ exec regiment i "$0" ${1+"$@"};
 
 (optimize-level 2)
 
+
+
 ;exec regiment i "$0" `pwd` ${1+"$@"};
 ;exec regiment i --script $*
 
 ;;;; This file represents an experiment in automatically profiling the
 ;;;; efficiency of different data representations on a given backend
 ;;;; and hardware platform.
+
+;; This controls how much work we do:
+;(define testscale (* 150 1000 1000))
+;(define testscale (* 100 1000 1000)) ;; one hundred million cells
+;(define testscale (* 50 1000 1000))
+(define testscale (* 1 1000 1000))
 
 
 ;================================================================================
@@ -73,13 +81,14 @@ exec regiment i "$0" ${1+"$@"};
      (begin
        ,exp
        (let ([ellapsed1 (g- (clock) st1)])
-	 (print (string-append (string-append "TimeElapsed: " (show ellapsed1)) "\n"))))))
+	 (begin
+	   (print (string-append (string-append "TimeElapsed: " (show ellapsed1)) "\n"))
+	   ;; Do an extra little loop here, perhaps, to fix th MLton backends exiting early problem.
+	   ;; Or need to be able to do a flush on the output port....
+	   (for (i 0 80) (print " "))(print "\n"))
+	 ))))
 
 
-(define testscale (* 150 1000 1000))
-;(define testscale (* 100 1000 1000)) ;; one hundred million cells
-;(define testscale (* 50 1000 1000))
-;(define testscale (* 1 1000 1000))
 
 
 ;(define implementation (make-parameter 'unknown))
@@ -244,21 +253,4 @@ exec regiment i "$0" ${1+"$@"};
 ;(run-all 'array 'tuple)
 ;(run-all 'tuple 'array)
 
-
 (exit)
-
-#;
-(define prog 
-  (execonce-boilerplate 
-   `(begin 
-      (print '"woot\n")
-      
-      (let ([arr (Array #(Int Int)) (Array:build 10 
-				     (lambda (i) (Int) (tuple 2 3)))])
-	
-	(emit vq arr)
-	)
-      
-      ;(emit vq (tuple))
-      )
-   ))

@@ -21,12 +21,14 @@ include "marmot2-maps.ws";
 
 // 'synced' is defined in marmot_first_phase.ws
 //doas = FarFieldDOAb(synced, sensors);
+/*
 doas :: Stream (Array Float);
 doas = iterate (m,stamp,tb) in oneSourceAMLTD(synced_ints, 4096)
 {
   println("Got reading at: "++stamp);
   emit m
 }
+*/
 
 include "gnuplot.ws";
 
@@ -47,9 +49,8 @@ fun TIMEFIRST(strm) {
   }
 }
 
-BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n",
-          (doas))
-
+//BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n", (doas))
+BASE <- oneSourceAMLTD(synced_ints, 4096)
 
 /*
   "set polar;\n"++
