@@ -127,10 +127,10 @@
     [(VQueue ,_) "void*"]
 
     ;; Went back and forth on whether this should be a pointer:
-    [(Sigseg ,[t]) `("RawSeg")]
+    [(Sigseg ,[t]) `("SigSeg< ",t" >")]
     [(Stream ,[t]) `("WSBox*")]
 
-    ;[(Array ,[t])  `("wsarray_t")]
+    ;[(Array ,[t])  `("wsarray_t< ",t" >")]
     [(Array ,[t])  `("boost::intrusive_ptr< WSArrayStruct< ",t" > >")]
 
     [(Struct ,name) (sym2str name)]
@@ -143,9 +143,11 @@
 
     ;; HACK HACK FIXME:
     ;; This is for null lists.
-    [(List ',_) `("cons<int>::ptr")]
+    ;[(List ',_) `("wslist_t<int>")]
+    [(List ',_) `("boost::shared_ptr< cons<int> >")]
     ;; Boosted cons cells:
-    [(List ,[t]) `("cons< ",t" >::ptr")]
+    ;[(List ,[t]) `("wslist_t< ",t" >")]
+    [(List ,[t]) `("boost::shared_ptr< cons< ",t" > >")]
 
     [(Hashset ',_ ,__) (error 'emitC "hash table with typevar" )]
     [(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
@@ -196,10 +198,11 @@
 
 ;; This is the only entry point to the file.  A complete query can
 ;; be transformed into a complete query file.
-;; .param prog  The wsquery to process.
-;; .param mode (Optional) 'static or 'dynamic, indicating whether to
-;;             produce a main() function, or code for a .so & .wsq.
-;;             Default is 'static.
+;; .param prog      The wsquery to process.
+;; .param scheduler Symbol indicating the WaveScope scheduler to be used; one of: default-scheduler FIXME
+;; .param mode      (Optional) 'static or 'dynamic, indicating whether to
+;;                  produce a main() function, or code for a .so & .wsq.
+;;                  Default is 'static.
 ;; .returns text of a .cpp query file (if in static linkage mode)
 ;;;.returns OR vector containing text of .cpp file + .wsq query descriptor (dynamic linkage)
 ;;
@@ -207,11 +210,12 @@
 ;;        and would likely only be slowed down
 ;;
 (define wsquery->text
-  (lambda (prog . mode)
+  (lambda (prog scheduler . mode)
 
     ;; I use mutation below to accumulate a list of the connections between boxes, this allows us to produce a WSQ file:
     (define query-descriptor '())
     
+    ; FIXME: restructure this; there may be more named params. in the future
     (define static-linkage 
       (match mode 
 	[()        #t]	
@@ -301,9 +305,18 @@
 	 (ASSERT (symbol? sig))	  
 	 (let* ([parent (Var sig)]
 		[class_name `("Iter_" ,name)]
-		;; First we produce a line of text to construct the box:
-		[ourstmts `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
-			      ,name"->connect(" ,parent ");\n")]
+
+		;; First we produce a few lines of text to construct and connect the box:
+		[ourstmts (case scheduler
+                  [(default-scheduler train-scheduler)
+                   `("WSBox* ",name" = new ",class_name "(" ");\n"
+                     ,name"->connect(",parent");\n")]
+                  [(corefit-scheduler-ex)
+                   `("WSBox* ",name" = new ",class_name "(" ");\n"
+                     "query.addOp(",name");\n"
+                     ,name"->setCPU(0);\n" ; FIXME: use params. file
+                     "query.connectOps(",parent", ",name");\n\n")])]
+
 		;; Then we produce the declaration for the box itself:
 		[ourdecls 
 		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
@@ -314,7 +327,7 @@
 				;; Constructor:
 				(block `(,class_name "()")  stateinit)
 				;; This produces a function declaration for iterate:				
-				iterator+vars)))]) 
+				iterator+vars)))])
 	   ;(if (symbol? sig) 
 	   (values ourstmts ourdecls
                    `(("op \"",name"\" \"",class_name"\" \"query.so\"\n") 
@@ -447,7 +460,8 @@
 		      )
 		    )
 		   ;; "\n  DEFINE_SOURCE_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
-		   "DEFINE_OUTPUT_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
+		   ;"DEFINE_OUTPUT_TYPE("(if (> winsize 0) "RawSeg" tuptype)");\n"
+         "DEFINE_OUTPUT_TYPE("(if (> winsize 0) (format "SigSeg< ~a >" tuptype) tuptype)");\n"
 
 	          ;; Then some private state:
 		   "\nprivate:\n"
@@ -461,11 +475,17 @@
 		     ;(if (> winsize 0) "int sampnum = 0;\n" "")
 		     ;"fseek(_f, "offset", SEEK_SET);\n"
 		     (list ;block "while (!Shutdown())"
-			    `(,(if (> winsize 0) 
-				   `("RawSeg storage(sampnum, ",(number->string winsize)
-				     ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
-				     "Byte* buf;\n"
-				     "storage.getDirect(0, ",(number->string winsize)", buf);")
+			    `(,(if (> winsize 0)
+                    `("SigSeg< ",tuptype" > storage(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
+                      ,tuptype"* buf = storage.getDirect(0, ",(number->string winsize)");\n")
+                    
+                    ; FIXME: remove this
+                    #;
+                    `("RawSeg storage(sampnum, ",(number->string winsize)
+                      ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
+                      "Byte* buf;\n"
+                      "storage.getDirect(0, ",(number->string winsize)", buf);")
+
 				   `(,tuptype" tup;\n"))
 			      
 			      ,(map (lambda (i) 
@@ -481,17 +501,17 @@
 			      ,(block "else"			    
 				      `("// The binary format of tuples matches that in the file:\n"
 					,(let ([readcmd 
-						(lambda (n dest)
-						  `("status += fread(",dest
-						    ",sizeof(",tuptype"), ",(number->string n)",_f);\n"))])
+                       (lambda (n dest)
+                         `("status += fread((void*)",dest
+                           ",sizeof(",tuptype"), ",(number->string n)",_f);\n"))])
 					   (if (> winsize 0)
 					       (if (> skipbytes 0)
-						   ;; Have to interleave reading and skipping forward:
-						   (block `("for (int i=0; i<",(number->string winsize)"; i++)")
-							  (list (readcmd 1 `("buf+(i*sizeof(",tuptype"))"))
-								"fseek(_f, "(number->string skipbytes)", SEEK_CUR);\n"))
-						   ;; Otherwise can do one read:
-						   (readcmd winsize "buf"))
+                          ;; Have to interleave reading and skipping forward:
+                          (block `("for (wsint_t i=0; i<",(number->string winsize)"; i++)")
+                                 (list (readcmd 1 `("(buf+i)"))
+                                       "fseek(_f, "(number->string skipbytes)", SEEK_CUR);\n"))
+                          ;; Otherwise can do one read:
+                          (readcmd winsize "buf"))
 					       (readcmd 1 "&tup")))
 					))
 			      
@@ -512,25 +532,38 @@
 					"return true;\n"))
 					;"t.time = (uint64_t)(time*1000000);\n"
 			      ,(if (> winsize 0)
-				   `("storage.release(buf);\n"
-				     ;"source_emit(storage);\n"
-				     "emit(storage);\n"
-				     "storage = RawSeg(sampnum, ",(number->string winsize)
-				     ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
-				     "sampnum += ",(number->string winsize)";\n")
-				   ;"source_emit(tup);\n"
-				   "emit(tup);\n"
-				   )
+
+                    `("storage.release(buf);\n"
+                      "emit(storage);\n"
+                      "storage = SigSeg< ",tuptype" >(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
+                      "sampnum += ",(number->string winsize)";\n")
+
+                    #;
+                    `("storage.release(buf);\n"
+                                        ;"source_emit(storage);\n"
+                      "emit(storage);\n"
+                      "storage = RawSeg(sampnum, ",(number->string winsize)
+                      ", DataSeg, 0, sizeof(",tuptype"), Unitless, true);\n"
+                      "sampnum += ",(number->string winsize)";\n")
+                                        ;"source_emit(tup);\n"
+
+                    "emit(tup);\n")
 			      ))
 		     "return true;")
 		    ))) ";")])
 
 	   (DEBUGASSERT text? maintext)
 	 ;; This is the code that actually builds a dataFile reader object:
-	 (values 
-	  `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
-	    " ",name"->connect(",(sym2str source)");\n"
-	    )
+	 (values
+     (case scheduler
+       [(default-scheduler train-scheduler)
+        `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
+          " ",name"->connect(",(sym2str source)");\n")]
+       [(corefit-scheduler-ex)
+        `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
+          "query.addOp(",name");\n"
+          ,name"->setCPU(0);\n"
+          "query.connectOps(",(sym2str source)", ",name");\n\n")])
 	  (list maintext)
           `())))]
 	
@@ -561,13 +594,20 @@
 	 (let ([ty (Type (match (recover-type (car inputs) tenv)
 			   [(Stream ,t) t]))]
 	       [classname (format "UnionN~a" (unique-name ""))])
-	   (values 
-	    `(" WSBox* ",name" = new ",classname"();"
-	      ;; Order is critical here:
-	     ,(map (lambda (in)
-		     `(" ",name"->connect(",(sym2str in)"); "))
-		inputs)
-	     )
+	   (values
+
+       (case scheduler
+         [(default-scheduler train-scheduler)
+          `(" WSBox* ",name" = new ",classname"();"
+            ;; Order is critical here:
+            ,(map (lambda (in) `(" ",name"->connect(",(sym2str in)"); ")) inputs))]
+         [(corefit-scheduler-ex)
+          `(" WSBox* ",name" = new ",classname"();\n"
+            "query.addOp(",name");\n"
+            ,name"->setCPU(0);\n" ; FIXME: use params. file
+            ;; Order is critical here:
+            ,(map (lambda (in) `("query.connectOps(",(sym2str in)", ",name");\n")) inputs))])
+
 	    ;; Decls:
 	    `("
   /* This takes any number of connections, they must be connected in order. */
@@ -595,17 +635,27 @@
 	 (let ([ty (Type (match (recover-type left tenv)
 			   [(Stream ,t) t]))]
 	       [classname (format "Merge~a" (unique-name ""))])
-	   (values 
-	    `(" WSBox* ",name" = new ",classname"();"
-	      (" ",name"->connect(",(sym2str left)"); ")
-	      (" ",name"->connect(",(sym2str right)"); "))
+	   (values
+       (case scheduler
+         [(default-scheduler train-scheduler)
+          `(" WSBox* ",name" = new ",classname"();"
+            (" ",name"->connect(",(sym2str left)"); ")
+            (" ",name"->connect(",(sym2str right)"); "))]
+         [(corefit-scheduler-ex)
+          `("WSBox* ",name" = new ",classname"();\n"
+            "query.addOp(",name");\n"
+            ,name"->setCPU(0);\n"
+            "query.connectOps(",(sym2str left)",",name");\n"
+            "query.connectOps(",(sym2str right)",",name");\n\n")])
+
 	    ;; Decls:
 	    `("
   /* This takes any number of connections, they must be connected in order. */
   class ",classname" : public WSBox{ 
    
-    private:
+  private:
     DEFINE_OUTPUT_TYPE(",ty");
+
     
     bool iterate(uint32_t port, void *item)
     {
@@ -622,7 +672,13 @@
 	;; Wire these all to our iterate.
 	[(timer ,[Simple -> period])
 	 (values 
-	  `(" WSSource* ",name" = new WSBuiltins::Timer(",period");\n"  )
+     (case scheduler
+       [(default-scheduler train-scheduler)
+        `("WSSource * ",name" = new WSBuiltins::Timer(",period");\n")]
+       [(corefit-scheduler-ex)
+        `("WSSource* ",name" = new WSBuiltins::Timer(",period");\n"
+          "query.addOp(",name");\n"
+          ,name"->setCPU(0);\n\n")])
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
@@ -683,7 +739,7 @@
       
       [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
        (let ([istr (Var i)])	   
-	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+	 (block `("for (wsint_t ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
 		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
       [(while ,tst ,[bod]) (ASSERT not name)
        ;; Just because of the way our code generator is set up, we generate this ugly code:
@@ -896,7 +952,11 @@
 	       " payload;\n"))
 	     ";\n"
 	     (block (list "enum "name"_enum")
-		    (list (insert-between ", " tc*) "\n"))";\n"))
+		    (list (insert-between ", " tc*) "\n"))
+        ";\n"
+        "uint32_t getTotalByteSize(const struct "name" &e) {\n"
+        "  return sizeof(e.tag) + sizeof(e.payload);\n"
+        "}\n"))
      ]))
 
 ;; This produces a struct definition as well as a printer function for the struct.
@@ -921,8 +981,26 @@
 			      (map (lambda (fld arg)
 				     `("  ",fld "(" ,arg ")"))
 				fld* tmpargs)) " {}\n"
-				))))
-	    ";\n\n"
+				))
+            ;; Corefit byte accounting:
+            ;,(if (eq? scheduler 'corefit-scheduler-ex)
+            ;     "uint32_t getTotalByteSize() const { return sizeof(*this); }\n"
+            ;     "")
+            ))
+	    ";\n"
+
+            ;; size provider, for corefit
+            ;; FIXME: deal with variable sizes!
+            ,(if (eq? scheduler 'corefit-scheduler-ex)
+                 (let* ([make-term-str (lambda (fld) (format "getTotalByteSize(e.~a)" fld))]
+                        [sum-string 
+                         (foldr (lambda (term sum) (format "~a + ~a" (make-term-str term) sum))
+                                (make-term-str (car fld*)) (cdr fld*))])
+                   (string-append
+                    "uint32_t getTotalByteSize(const struct "name" &e) {\n"
+                    "  return "sum-string";\n"
+                    "}\n"))
+                 "")
             
             ;; This produces a printing function.  We could save space
             ;; by not generating this for structure types that are
@@ -1106,10 +1184,10 @@
     ))
 
   (define (build-main body)
-    `(,boilerplate_premain
+    `(,(boilerplate_premain scheduler)
       ;;"// " ,(Type typ) " toplevel;\n"
       ,(indent body "  ")
-      ,(boilerplate_postmain (Var 'toplevel) typ)))
+      ,(boilerplate_postmain scheduler (Var 'toplevel) typ)))
 
   #;
   (define (build-wsq name query sofile)
@@ -1127,6 +1205,11 @@
   ;============================================================
   ;; Main body:
   ;; Here we stitch together the file out of its composite bits.
+
+  (ASSERT (or (eq? scheduler 'default-scheduler)
+              (eq? scheduler 'train-scheduler)
+              (eq? scheduler 'corefit-scheduler-ex)))
+
   (fluid-let ([include-files ()]
 	      [link-files    ()])
     (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
@@ -1258,7 +1341,8 @@
 					;"NULL_LIST"
 					;`("(cons<",(Type t)">::ptr)NULL_LIST")
 					;`("(cons<",(Type t)">::null_ls)")
-	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
+	   ;`("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
+      `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
           [#(Array:null (Array ,t))
@@ -1379,10 +1463,10 @@
 
       ;; This is the "default"; find it in WSPrim:: class
       [(string-append 
-	width start end joinsegs subseg toSigseg
-	String:implode
-	;wserror ;generic_hash        
-	)
+        width start end joinsegs subseg toSigseg
+        String:implode
+        ;wserror ;generic_hash        
+        )
        (fromlib (mangle var))]      
 
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
@@ -1436,15 +1520,15 @@
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
+	[(imagpart ,[Simple -> v])   (wrap `("__imag__ (" ,v ")"))]
 
 	;; Wait... do we need to cast to double here?
 	[(,extractreal ,[Simple -> v]) 
 	 (guard (memq extractreal '(realpart complexToFloat complexToDouble)))
-	 (wrap `("__real__ " ,v))]
-	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
-	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
-	[(complexToInt64 ,[Simple -> v])   (wrap `("(wsint64_t) __real__ " ,v))]
+	 (wrap `("__real__ (" ,v ")"))]
+	[(complexToInt   ,[Simple -> v])   (wrap `("wsint_t((int)__real__ (" ,v "))"))]
+	[(complexToInt16 ,[Simple -> v])   (wrap `("wsint16_t((int16_t)__real__ (" ,v "))"))]
+	[(complexToInt64 ,[Simple -> v])   (wrap `("wsint64_t((int64_t)__real__ (" ,v "))"))]
 
 ;; Makes gcc 3.4.3 barf:
 ;;	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
@@ -1473,7 +1557,7 @@
 	[(,ToComplex ,[Simple -> e])
 	 (guard (memq ToComplex 
 		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))
-    	 (wrap `("((wscomplex_t)((wsfloat_t)",e" + 0.0fi))"))]
+    	 (wrap `("wscomplex_t(",e" + 0.0fi)"))]
 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
 	 (wrap `("((wscomplex_t)(",re" + (",im" * 1.0fi)))"))]
 
@@ -1538,13 +1622,22 @@
 	     ))]
 	[(toSigseg (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> startsamp] ,[Simple -> timebase])
 	 ;; type should be "RawSeg"
+    `("SigSeg< ",ty" > ",name"(Unitless, (SeqNo)",startsamp", ",arr"->len, DataSeg);
+       {
+         ",ty" *direct = ",name".getDirect(0, ",arr"->len);
+         memcpy((void*)direct, ",arr"->data, sizeof(",ty") * ",arr"->len);
+         ",name".release(direct); // FIXME: what should this be?
+       }\n"
+      )
+
+    #;
 	 `("
      RawSeg ",name"((SeqNo)",startsamp", ",arr"->len, DataSeg, 0, sizeof(",ty"), Unitless, true);
      { 
        Byte* direct;
        ",name".getDirect(0, ",arr"->len, direct);
        memcpy(direct, ",arr"->data, sizeof(",ty") * ",arr"->len);
-       ",name".releaseAll(); 
+       ",name".releaseAll();
      }\n")]
 
 	[(wserror ,[Simple -> str])
@@ -1608,19 +1701,19 @@
 
 
 	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
-	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
+	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)(",b")))"))]
 	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
 	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
 	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
+	 (wrap `("cons< ",(Type t)" >::reverse(",ls")"))]
 	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
-	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
+	 (wrap `("cons< ",ty" >::append(",ls1", ",ls2")"))]
 	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
+	 (wrap `("cons< ",(Type t)" >::ref(",ls", ",ind")"))]
 	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::length(",ls")"))]
+	 (wrap `("cons< ",(Type t)" >::length(",ls")"))]
 	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
+	 (wrap `("cons< ",(Type t)" >::make(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
 ;; Don't have types for nulls yet:
@@ -1652,9 +1745,9 @@
 	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
 	;; Generate equality comparison:
-	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])	 
+	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])
 	 (let* ([a (Simple `(assert-type ,ty ,e1))]
-		[simple (wrap `("wsequal(",a", ",b")"))])
+           [simple (wrap `("wsequal(",a", ",b")"))])
 	   (match ty
 	     [Int          simple]
 	     [Int16        simple]
@@ -1675,8 +1768,8 @@
 	     ;; UNFINISHED:
 	     ;[(Struct ,name) `("eq",name"(",a", ",b")")]
 	     [(Struct ,name) simple]
-	   [,_ (error 'emitC "no equality yet for type: ~s" ty)])
-	   )]
+        [,_ (error 'emitC "no equality yet for type: ~s" ty)])
+      )]
 
 	;; If we have an extra assert-type... just ignore it.
 	[(assert-type ,ty ,[e]) e]
@@ -1695,16 +1788,16 @@
 (define (Emit-Print/Show-Helper e typ printf stream)
   (match typ
     [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
-    [Int            (printf "%d" e)]
-    [Int16          (printf "%hd" e)]
-    [Int64          (printf "%lld" e)]
-    [Float          (printf "%f" e)]
-    [Double         (printf "%lf" e)]
+    [Int            (printf "%d" (format "~a" e))]
+    [Int16          (printf "%hd" (format "~a" e))]
+    [Int64          (printf "%lld" (format "~a" e))]
+    [Float          (printf "%f" (format "~a" e))]
+    [Double         (printf "%lf" (format "~a" e))]
 
     [(Pointer ,_)   (printf "%p" e)]
 
     ;;[Complex        (stream `("complex<float>(",e")"))]
-    [Complex        (printf "%f+%fi" `("__real__ " ,e ", __imag__ ",e))]
+    [Complex        (printf "%f+%fi" `("__real__ (" ,e "), __imag__ (",e")"))]
     ;[Complex        (stream "\"<Cannot currently print complex>\"" )]
     ;[Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
 
@@ -1738,7 +1831,8 @@
 			))
 	     (stream "\"]\"")))]
 
-    [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
+    ;[(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
+    [(Sigseg ,t)    (stream `(,e))]
     [(Struct ,name) (printf "%s" `("show_",(sym2str name)"(",e").c_str()"))]
 
     [Pointer (printf "%p" `("(void*)",e))]
@@ -1768,7 +1862,10 @@
 
 ; char *numberelements = misc_parse_out_option(&argc, argv, "n", 0);
 
-(define boilerplate_premain "
+(define (boilerplate_premain scheduler)
+  (case scheduler
+    [(default-scheduler train-scheduler)
+     "
 
 int main(int argc, char ** argv)
 {
@@ -1784,11 +1881,35 @@ int main(int argc, char ** argv)
   //WSBox* toplevel;
 
   /* begin constructing operator graph */
-")
+"]
+    [(corefit-scheduler-ex)
+     "
 
-(define (boilerplate_postmain return_name return_type)   
+int main(int argc, char ** argv)
+{
+  /* set global variable(s) */
+  if (misc_parse_out_switch(&argc, argv, \"no_prefix\", 0))
+    WSOUTPUT_PREFIX = FALSE;
+  else WSOUTPUT_PREFIX = TRUE;
+
+  /* initialize subsystems */ 
+  WSInit(&argc, argv);
+
+  /* for corefit */
+  WSQuery query;
+
+  /* declare variable to hold final result */
+  //WSBox* toplevel;
+
+  /* begin constructing operator graph */
+"]))
+
+
+(define (boilerplate_postmain scheduler return_name return_type)   
   (unless (regiment-quiet) (printf "Generating code for returning stream of type ~s\n" return_type))
-  `("
+  (case scheduler
+    [(default-scheduler train-scheduler)
+     `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
   PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");
   out.connect(",return_name");
@@ -1798,14 +1919,32 @@ int main(int argc, char ** argv)
 
   return 0;
 }
+"
+  )]
+    [(corefit-scheduler-ex) ; FIXME: use params. file for setCPU() below
+     `("
+  /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
+  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");
+  query.addOp(&out);
+  out.setCPU(0);
+  query.connectOps(",return_name", &out);
+  
+  /* now, run */
+  query.connectAll();
+  WSSched::addQuery(&query);
+  WSRun();
 
-"))
+  return 0;
+}
+"
+  )]))
+
 
 ;; Boilerplate for producing a WSBox class:
 (define (WSBox name outtype constructor body)
   `(,(block (wrap `("\nclass " ,name " : public WSBox"))
 	    `("public:\n"
-	      "DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
+         "DEFINE_OUTPUT_TYPE(",outtype");\n\n"
 	      ,constructor
 	      "\nprivate:\n"
 	      ,body)) ";\n"))
@@ -1921,7 +2060,8 @@ int main(int argc, char ** argv)
                                                     ___VIRTQUEUE___))
                                               s1)])
        s2)
-     (Stream (Sigseg Complex)))))))
+     (Stream (Sigseg Complex))))
+         'default-scheduler)))
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp")))
 
@@ -1934,6 +2074,7 @@ int main(int argc, char ** argv)
      (letrec ([s1 (Stream (Sigseg Complex)) (audio 1 4096 0)])
        s1)
      (Stream (Sigseg Complex))))
+         'default-scheduler
 		   )))
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp")))
@@ -1978,7 +2119,8 @@ int main(int argc, char ** argv)
                                          ___VIRTQUEUE___))
                                    s2)])
        s3)
-     (Signal Float))))))
+     (Signal Float)))
+  'default-scheduler)))
   
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp"))

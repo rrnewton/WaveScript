@@ -5,6 +5,7 @@
 DYNAMICLINK=0
 CCARGS=""
 FILE=""
+SCHEDULER="default-scheduler"
 
 
 # In the future, consider these optimize flags:
@@ -23,7 +24,8 @@ FILE=""
 
 
 if [ "$WSCDEBUG" == "1" ];
-then CCARGS="$CCARGS -g -O0"; 
+then CCARGS="$CCARGS -g -O0";
+else CCARGS="$CCARGS -O2"; 
 fi
 
 while [ $# != 0 ];  do 
@@ -31,6 +33,9 @@ while [ $# != 0 ];  do
   then DYNAMICLINK=1; 
   elif [ "$1" == "-static" ];
   then DYNAMICLINK=0;
+  elif [ "$1" == "--scheduler" ];
+  then shift;
+       SCHEDULER="$1";
   elif [ "$1" == "-O2" ] || [ "$1" == "-O3" ] ||
        [ "$1" == "-pg" ] || [ "$1" == "-g" ] ;
   then CCARGS="$CCARGS $1"; 
@@ -53,13 +58,24 @@ MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 #WS_FLAGS="-fPIC -pg $CCARGS"
 WS_FLAGS=" $CCARGS"
 
+
+case $SCHEDULER in
+  default-scheduler)    SCHEDULER_MACRO=""
+    ;;
+  train-scheduler)      SCHEDULER_MACRO="-DTRAIN_SCHEDULER"
+    ;;
+  corefit-scheduler-ex) SCHEDULER_MACRO="-DCOREFIT_SCHEDULER_EX"
+    ;;
+esac
+
+
 #-Wno-div-by-zero ## Doesn't work for C++...
 #WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function "
 WS_WARNINGS=""
 WS_INCLUDES="-I$WAVESCOPED/include "
-WS_MACROS="-DSegList -DuseArray "
+WS_MACROS="-DSegList -DuseArray -Di386 -DTIMING_RDTSC $SCHEDULER_MACRO"
 #WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
-WS_LINK=" -lpthread "
+WS_LINK=" -lpthread -lpapi "
 
 
 if [ "$MATCH" != "" ];
@@ -77,8 +93,8 @@ else THELIB=libws-SMSegList
 fi
 
 if [ $DYNAMICLINK == "1" ];
-then WS_LINK="$WS_LINK $WAVESCOPED/$THELIB.so";
-else WS_LINK="$WS_LINK $WAVESCOPED/$THELIB.a";
+then WS_LINK="$WAVESCOPED/$THELIB.so $WS_LINK";
+else WS_LINK="$WAVESCOPED/$THELIB.a $WS_LINK";
 fi
 
 WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "

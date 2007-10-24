@@ -705,6 +705,10 @@
 
 (define ws-disabled-by-default '(merge-iterates ))
 
+(define ws-default-wavescope-scheduler 'default-scheduler)
+
+
+
 ;; ================================================================================
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
@@ -859,6 +863,8 @@
    (define prog (coerce-to-ws-prog x))
    (define typed (ws-compile-until-typed prog))
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
+   (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
+                                            `(,ws-default-wavescope-scheduler))))
 
    (ASSERT (andmap symbol? flags))
 
@@ -896,6 +902,8 @@
 
    (ws-run-pass prog nominalize-types)
 
+   (pretty-print prog)
+
 ;   (inspect `(NOMINALIZED ,prog))
 
    (when (regiment-verbose)
@@ -910,8 +918,7 @@
 
    (string->file 
     (text->string 
-     (wsquery->text
-      prog))
+     (wsquery->text prog wavescope-scheduler))
     outfile)
    
    (unless (regiment-quiet)
@@ -1444,6 +1451,12 @@
 	  [(--disable-pass ,pass-name ,rest ...)
 	   (set! opts (append `(disable ,pass-name) opts))
 	   (loop rest)]
+
+     ;; --mic
+     ;; FIXME: add to print-help (or automate print-help)
+     [(--scheduler ,sched-name ,rest ...)
+      (set! opts (append `(scheduler ,sched-name) opts))
+      (loop rest)]
 	  
 	  ;; otherwise a file to compile that we add to the list
 	  [(,fn ,rest ...)
