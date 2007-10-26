@@ -107,12 +107,12 @@
 
 	;; Tag the applications too:	
 	[(foreign-app ',realname (assert-type ,ty ,rator) ,[arg*] ...)
-	 (ASSERT symbol? rator)
+;	 (ASSERT symbol? rator) ;; [2007.10.26] Not sure why this would need to be the case...
 	 `(foreign-app ',realname
 		       (assert-type ,ty ,rator)
 		       ,@arg*)]
 	[(foreign-app ',realname ,rator ,[arg*] ...)
-	 (ASSERT symbol? rator)
+;	 (ASSERT symbol? rator) ;; [2007.10.26] Not sure why this would need to be the case...
 	 `(foreign-app ',realname
 		       (assert-type ,(recover-type rator tenv) ,rator)
 		       ,@arg*)]
