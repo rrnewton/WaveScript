@@ -199,18 +199,18 @@
 (define-testing rewrite-tests
 `(
 
-  [(,unify '(app foo '3 '4) ,''(foo ,x ,y) (,empty-env))
-   ((x '3) (y '4))]
+  [(,unify '(foo '3 '4) ,''(foo ,x ,y) (,empty-env))
+   ((x . '3) (y . '4))]
 
-  [(,unify   '(app foo (app bar '3) (app baz '4))
+  [(,unify   '(foo (bar '3) (baz '4))
 	   ,''(foo (bar ,x) (baz ,y)) (,empty-env))
-   ((x '3) (y '4))]
+   ((x . '3) (y . '4))]
 
 #;
   ["Now test lookups in the environment."
-   (,unify   '(app foo myvar (app baz '4)) 
+   (,unify   '(foo myvar (baz '4)) 
 	   ,''(foo (bar ,x) (baz ,y))
-	  '([myvar (app bar '3)]))
+	  '([myvar (bar '3)]))
    ((x '3) (y '4))]
   
   ))

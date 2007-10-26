@@ -15,10 +15,12 @@ exec regiment i "$0" ${1+"$@"};
 ;;;; and hardware platform.
 
 ;; This controls how much work we do:
+;; Should do averaging... but that's the same as just running longer.
+(define testscale (* 300 1000 1000)) ;; Took 10 min on faith.
 ;(define testscale (* 150 1000 1000))
 ;(define testscale (* 100 1000 1000)) ;; one hundred million cells
 ;(define testscale (* 50 1000 1000))
-(define testscale (* 1 1000 1000))
+;(define testscale (* 1 1000 1000))
 
 
 ;================================================================================
@@ -114,11 +116,11 @@ exec regiment i "$0" ${1+"$@"};
 			  t1 t2 xd yd reps))
 	  ,(let-match ([(,_ ,mx1 ,build1 ,access1 ,fold1) (assq t1 data-methods)]
 		      [(,_ ,mx2 ,build2 ,access2 ,fold2) (assq t2 data-methods)])
-	    (when (> xd mx1) (error 'build-2d-alloc-test "~a exceeds max size ~a for type ~a" xd mx1 t1))
-	    (when (> yd mx2) (error 'build-2d-alloc-test "~a exceeds max size ~a for type ~a" yd mx2 t2))
+	    (when (> xd mx1) (error 'fold-test-withgrain "~a exceeds max size ~a for type ~a" xd mx1 t1))
+	    (when (> yd mx2) (error 'fold-test-withgrain "~a exceeds max size ~a for type ~a" yd mx2 t2))
 	    `(begin 
 	       ,(timeit `(let ([data ,(build1 (min xd mx1) 
-					      `(lambda (_) ,(build2 (min yd mx2) '(lambda (i) i))))]
+					      `(lambda (_) ,(build2 (min yd mx2) '(lambda (i) '1))))]
 			       [result (Mutable:ref (assert-type Int64 (gint 0)))])
 			   (begin
 			     (for (i 1 ,reps)
@@ -209,6 +211,7 @@ exec regiment i "$0" ${1+"$@"};
 (print-graph #f)
 (regiment-quiet #t)
 
+
 (begin ;; TEST ALLOCATION:
   (printf "\n<<<< FIRST TESTING ALLOCATION >>>>\n\n")
   (run-all (execonce-boilerplate `(begin ,(alloc-test 'array 'array 1000 1000)
@@ -238,6 +241,7 @@ exec regiment i "$0" ${1+"$@"};
 					 ,(fold-test-withgrain 'array 'array 100000 3)
 					 ,(fold-test-withgrain 'array 'array 3 100000)
 					 ))                    'array 'array)
+
   (run-all (execonce-boilerplate `(begin ;,(fold-test-withgrain 'tuple 'array 500 500)
 				          ,(fold-test-withgrain 'tuple 'array 70 70)
 					 ,(fold-test-withgrain 'tuple 'array 3 83333)

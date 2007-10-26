@@ -8,6 +8,9 @@ fun assert b = if b then () else raise WSAssertFailed
 
 exception SigSegFailure of string
 
+exception WSEndOfFile of string
+
+
 (*
 structure Complex =
 struct
@@ -270,8 +273,8 @@ fun run_w_handlers comp stdprnt errprnt exitfun =
     (stdprnt ("wserror: " ^ str ^ "\n"); exitfun false)
   | SigSegFailure str => 
     (stdprnt ("sigseg failure: " ^ str ^ "\n"); exitfun false)
-  | WSEndOfFile => 
-    (errprnt "Reached end of file. \n";  exitfun true)
+  | WSEndOfFile _ => (errprnt "Reached end of file. \n";  exitfun true)
+  | x => raise x
 
 (* This is only used for a normal "timer" driven query.
    Foreign_source driven queries don't use it.*)

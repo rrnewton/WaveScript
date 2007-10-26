@@ -481,7 +481,8 @@
   
   ;; <OPTIMIZATION>: REWRITE RULES
   ;; -----------------------------------------
-  (when (memq 'rewrites (ws-optimizations-enabled))
+  (IFCHEZ
+   (when (memq 'rewrites (ws-optimizations-enabled))
     (ws-run-pass p hide-special-libfuns)
     (parameterize ([regiment-primitives
 		    (append (map (match-lambda ([,lhs ,ty ,rhs]) 
@@ -500,6 +501,7 @@
       (ws-run-pass p rewrite-rules)
       (inspect (match p [(,lang '(program ,bod . ,_)) bod]))
       (ws-run-pass p reveal-special-libfuns)))
+   (void))
   ;; -----------------------------------------
 
 ;  (ws-run-pass p interpret-meta) (do-early-typecheck)  ;; Testing idempotentcy 

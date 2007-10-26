@@ -16,6 +16,7 @@
 
 (module emit-c mzscheme 
   (require  "../../../plt/common.ss"
+	    (all-except (lib "list.ss") sort sort! filter)
 	    (all-except "nominalize-types.ss" test-this these-tests)
 	    "convert-sums-to-tuples.ss"
 	    "../../compiler_components/c_generator.ss" )
@@ -168,12 +169,12 @@
 (define (ToForeignType ty txt)  
   (match ty
     ;; For these types we just put in a cast:
-    [,t (guard (scalar? t))
+    [,t (guard (scalar-type? t))
 	`("((",(Type t)")" ,txt ")")]
     [String `("(",txt".c_str())")]
     ;[Pointer txt]
     [(Pointer ,cty) `("(",cty")(",txt")")]
-    [(Array ,elt) (guard (scalar? elt)) `("(",(Type elt)"*)(",txt"->data)")]
+    [(Array ,elt) (guard (scalar-type? elt)) `("(",(Type elt)"*)(",txt"->data)")]
     [,oth (error 'emit-c:ToForeignType
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     )
@@ -1435,8 +1436,6 @@
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  (fromlib "csqrt")]
 
-      [(clock) (wrap "((double)clock() / 1000.0)")]
-
       ;; These use GSL and require appropriate includes.
       [(m_invert)
        (add-include! "<gsl/gsl_linalg.h>")
@@ -1474,6 +1473,8 @@
 
   (match expr
     ;; First we handle "open coded" primitives and special cases:
+
+    [(clock) (wrap "((double)clock() / 1000.0)")]
 
     [(Mutable:ref ,[Simple -> x]) (wrap x)]
     [(deref ,[Simple -> x]) (wrap x)]

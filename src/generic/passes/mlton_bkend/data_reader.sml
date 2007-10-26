@@ -1,7 +1,5 @@
 
 
-exception WSEndOfFile
-
 (********************************************************************************)
 (* BYTE INDEXED READING *)
 
@@ -66,14 +64,14 @@ fun textFileReader (file, rowsize, tokenParser) outchan =
     (* This reads an entire tuple from a single line *)
     fun read n = 
       case TextIO.inputLine hndl
-      of NONE => raise WSEndOfFile
+      of NONE => raise (WSEndOfFile "")
        | SOME line =>
          let 
 (* 	  val _ = print ("PARSING LINE for "^Int.toString rowsize^" elements "^line^"\n") *)
           val port = TextIO.openString line	
 	  fun pulltoken flag = 
             case TextIO.lookahead port
-	      of NONE => raise WSEndOfFile
+	      of NONE => raise (WSEndOfFile "")
                | SOME c =>
 	        (
 (*                  print ("pulltoken " ^ String.implode [c] ^ "\n"); *)
@@ -120,7 +118,7 @@ fun dataFile (file:string,  mode:string,  repeats:int)
 	          (let 
 		     val vec = BinIO.inputN(hndl, bytesize)
 		     val obj = if not( Vector.length vec = bytesize)
-    		               then raise WSEndOfFile 
+    		               then raise (WSEndOfFile "")
                                else binreader vec 0
 	             val _ = outchan obj
                   in ()
