@@ -1160,3 +1160,50 @@ for pattern matching on them.  That's a lot of overhead upfront, but
 then I could experiment with different representations.  Now so much
 is invested in lists+match, it would be very difficult to change.
 
+[2007.10.26]
+
+Thinking of trying to partition an operator to pull out the read-only
+part.
+
+iterate x in S {
+  state { a=0; b=0 }
+  if p(x) then a+=1 else b+=1;
+  ??
+}
+
+This is amenable to the simple rule wherein if all varrefs to x feed
+into a particular function, then you can pull it out:
+
+S2 = smap(p,S)
+S3 = iterate y in S2 {
+  state { a=0; b=0 }
+  if y then a+=1 else b+=1
+}
+
+BUT, since we're probably emitting x, it's not that easy:
+
+iterate x in S {
+  state { a=0; b=0 }
+  if p(x) then { a+=1; emit (a,b,x) } else b+=1
+}
+
+Now x occurs in two contexts... we can still lift out p(x) like this:
+
+S2 = smap(fun(x) (x,p(x)), S)
+S3 = iterate (x,tmp) in S2 {
+  state { a=0; b=0 }
+  if tmp then { a+=1; emit (a,b,x) } else b+=1
+}
+
+But to discover this we need finer granularity profiling.  Luckily we
+can probably iteratively profile on demand.  (I.e. when you find
+something you can pull out, then you profile it.)
+
+This is probably analogous to an existing loop/pipelining
+optimization.
+
+
+
+
+
+

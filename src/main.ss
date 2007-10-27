@@ -1394,6 +1394,11 @@
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
 
+	  ;; This signals that we include whatever debugging info we can in the output code.
+	  ;; [2007.10.26] Currently it's just used by the wsmlton script, and doees nothing here.
+	  [(-dbg ,rest ...) (loop rest)]
+
+
 	  [(.h ,rest ...) (print-help) (regiment-exit 0)]
 
 	  [(-plot ,rest ...) (set! plot #t) (loop rest)]
