@@ -11,7 +11,7 @@
 ; .ws files have nothing comparable at the moment.
 
 (module source_loader mzscheme 
-  (require 
+  (require xpand-in
    (all-except "regiment_helpers.ss" test-this these-tests)
    "../constants.ss"
    "../../plt/iu-match.ss"   
@@ -27,7 +27,6 @@
    read-regiment-source-file ;; Read a file to SEXP syntax
    load-regiment reg:load    ;; Read and execute a file using simulator.
 
-   expand-include            ;; Expand an include statement into a set of definitions.
    ws-parse-file
    ws-relative-path?
 
@@ -204,6 +203,14 @@
     [,_  (error 'source_loader:desugar-define
 		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
 
+;; Extract the file and path portions of 
+;(define (basename pathstr) )
+(define (dirname pathstr)
+  ;; Everything up until the last "#/"
+  (define chars (string->list pathstr))
+  (define dir (reverse! (or (memq #\/ (reverse! chars)) '(#\.))))
+  (list->string dir))
+
 ;; Would like to do a bit better job of this:
 (IFCHEZ
  (define (ws-relative-path? p)
@@ -225,8 +232,12 @@
      )
    ))
 
+;; Resolve whether a path refers to a .ws file in the library or
+;; somewhere else.  Returns an absolute path in either case.  Might be
+;; better to have a different syntax for including library code.
 (define (resolve-lib-path file)
   (cond 
+   ;; Absolute path, not a library:
    [(not (ws-relative-path? file)) file]
    ;; Safety: Can't use ".." wrt to lib directory:
    [(and (not (substring? ".." file)) 
@@ -244,14 +255,14 @@
 (define (ws-postprocess origws)
   ;; First we expand includes:  
   ;; NOTE: Should be tail recursive.  The number of forms could grow large.
-  (define (process* forms all-includes)
+  (define (process* forms all-includes current-file)
     (if (null? forms) 
         (values '() all-includes)
-	(let-values ([(fst includes)   (process  (car forms) all-includes)])
-	  (let-values ([(snd includes) (process* (cdr forms) includes)])
+	(let-values ([(fst includes)   (process  (car forms) all-includes current-file)])
+	  (let-values ([(snd includes) (process* (cdr forms) includes current-file)])
 	    (values (append fst snd) 
 		    includes)))))
-  (define (process form all-includes)
+  (define (process form all-includes current-file)
     (define (names-defined forms)
       (match forms
 	[() ()]
@@ -260,32 +271,45 @@
 	[(,_ . ,[rest])                  rest]))
     (match form
       [(include ,file) 
-       (let ([path (resolve-lib-path file)])
-	 (if (member path all-includes)
-	     (begin
-	       (eprintf "  Suppressing repeated include of file!: ~s\n" path)
-	       (values '() all-includes))
-	     (begin 
-	       ;; This is usually a relative file path!
-	       (let-values ([(imported new-includes)
-                             (process*
-                              (or (expand-include path)
-                                  (error 'ws-postprocess 
-                                         "could not retrieve contents of include: ~s" file))
-                              (cons path all-includes))])
-		 ;; Record that these symbols were pulled from an include:
-		 ;; This is *just* cosmetic:
-		 
-		 ;(printf "ADDING INCLUDES FROM ~s :\n   ~s\n" path (names-defined imported))
-		 (included-var-bindings (append (names-defined imported) (included-var-bindings)))
-		 (values imported new-includes)
-		 ))))]
+
+       ;; We have to go to the directory containing the included file to resolve further includes.
+       (parameterize ([current-directory (if current-file (dirname current-file) (current-directory))])
+	 ;(printf "    CURDIR IS: ~s\n" (current-directory))
+	 (let ([path (resolve-lib-path file)])
+	 ;; FIXME: Currently ../ can defeat this method of tracking files loaded:
+	 ;; We need to at least see through that:
+	   (unless (file-exists? path)
+	     (error 'parser "Included file not found: ~s\n" path))
+	   
+	   (if (member path all-includes)
+	       (begin
+		 (eprintf "  Suppressing repeated include of file!: ~s\n" path)
+		 (values '() all-includes))
+	       (begin 
+		 ;; This is usually a relative file path!
+		 (let-values ([(imported new-includes)
+			       (process*			      				
+				(parameterize () ;([current-directory (dirname path)])
+				  ;(printf "    CURDIR IS: ~s\n" (current-directory))
+				  (ws-parse-file path) ;; Expand out the includes within this included file.
+				  )
+				(cons path all-includes)
+				path ;; Now the current file becomes the included file.
+				)])
+		   ;; Record that these symbols were pulled from an include:
+		   ;; This is *just* cosmetic:
+		   
+					;(printf "ADDING INCLUDES FROM ~s :\n   ~s\n" path (names-defined imported))
+		   (included-var-bindings (append (names-defined imported) (included-var-bindings)))
+		   (values imported new-includes)
+		   )))))]
+
       [(using ,M) (values `((using ,M)) all-includes)]
       ;; This just renames all defs within a "namespace".  There's
       ;; some question, though, as to how they may refer to eachother.
       ;; 
       [(namespace ,Space . ,rest)
-       (let-values ([(defs new-includes) (process* rest all-includes)])
+       (let-values ([(defs new-includes) (process* rest all-includes current-file)])
 	 (values
 	  (map (lambda (def)
 		 (define (mangle v) (string->symbol (format "~a:~a" Space v)))
@@ -317,7 +341,7 @@
       [,other  (values (list other) all-includes)]))
 
   ;; First we use "process" to handle includes and namespaces.
-  (define  ws (first-value (process* origws '())))
+  (define  ws (first-value (process* origws '() #f)))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
   (define (f2 x) (or (memq (car x) '(define using define-as)) ))
@@ -384,21 +408,6 @@
 	   'notype))
       )))
 
-;; Expand an include statement into a set of definitions.
-;; Optionally takes the absolute path of the file in which the
-;; (include _) statement is located.
-;; .returns The same output as ws-parse-file, might be #f.
-(define expand-include
-  (case-lambda
-    [(fn) (expand-include fn #f)]
-    [(inclfile fromfile)
-     (cond 
-      [(file-exists? inclfile) (void)]
-      ;; Also search the $REGIMENTD/lib/ directory.
-      [(file-exists? (format "~a/lib/~a" (REGIMENTD) inclfile))
-       (set! inclfile (format "~a/lib/~a" (REGIMENTD) inclfile))]
-      [else (error 'parser "Included file not found: ~s\n" inclfile)])
-     (ws-parse-file inclfile)]))
 
 (define (de-cygwin-path fn)
   (if (< (string-length fn) 13)

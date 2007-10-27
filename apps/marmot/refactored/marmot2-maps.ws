@@ -61,12 +61,12 @@ RUNNING ON ENSBOX:
 //include "rewindowGeneral.ws";
 //include "run_aml_test.ws";
 
-include "types.ws";
+//include "../types.ws";
 include "stdlib.ws";
 include "matrix.ws";
 //include "matrix_gsl.ws";
 
-include "array_geometry.ws";
+include "../array_geometry.ws";
 
 //======================================================================
 

@@ -6,8 +6,8 @@
 // ws: 2631 ms (1941 in ws.opt), 84 ms, 
 
 
-include "sources_from_file.ws";
-include "marmot_first_phase.ws";
+include "../sources_from_file.ws";
+include "../marmot_first_phase.ws";
 
 synced_ints = detector((ch1i,ch2i,ch3i,ch4i));
 
