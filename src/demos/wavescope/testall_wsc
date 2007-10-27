@@ -10,7 +10,8 @@ function go () {
     echo; echo; echo; echo; echo; echo; echo;  
     echo "testall_wsc: Running $1"
     echo "============================================================"
-    if ! wsc --scheduler corefit-scheduler-ex $1 -exit-error; then exit 1; fi
+#    if ! wsc --scheduler corefit-scheduler-ex $1 -exit-error; then exit 1; fi
+    if ! wsc --scheduler train-scheduler $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
 ##    ./run_query | head -20 >> $RUN

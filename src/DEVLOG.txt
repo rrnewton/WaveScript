@@ -1219,4 +1219,27 @@ And it does this on the way out:
 Maybe that's the FFI, but I don't know how that would be touched in a
 simple call to "regiment".
 
+[2007.10.27] {Rewrite optimizations on marmot.}
+
+It looks like we could get this picture:
+
+  overlap/hanning, fft, toArray, lopass(blit), fromArray, ifft, unhanning/merge
+  overlap/hanning, fft, toArray, hipass(blit), fromArray, ifft, unhanning/merge
+  overlap/hanning, fft, sumEnergy, ....
+
+ From this: lopass o hipass o marmotScore ...
+ Where: marmotScore = toFreq o sumEnergy  ...
+
+Ideally we could fuse the lopass/hipass automatically:
+
+  lo = smap(fun(arr) blit(copy(arr), st1, end1, 0), input)
+  hi = smap(fun(arr) blit(copy(arr), st2, end2, 0), lo)
+
+=> Fuses to => 
+
+  hi = smap(fun(arr1) { arr2 = blit(copy(arr), st1, end1, 0);
+                        blit(copy(arr2), st2, end2, 0) }, input)
+
+Then the question is whether we can recognize that arr2 is used
+linearly, and copy(arr2) can be eliminated.
 
