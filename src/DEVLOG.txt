@@ -1204,6 +1204,19 @@ optimization.
 
 
 
+[2007.10.27] {Trying to get saved heaps on *some* machine}
 
+Interesting.  I made some linux virtual machines.  I've got a Debian
+3.0 VM with a 2.4 kernel.  It runs from saved heaps, but it sometimes
+gives me this:
+
+  Error in random-seed: invalid argument 0.
+
+And it does this on the way out:
+
+  free(): invalid pointer 0x80b05f8!
+
+Maybe that's the FFI, but I don't know how that would be touched in a
+simple call to "regiment".
 
 

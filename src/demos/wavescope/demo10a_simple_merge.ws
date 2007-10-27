@@ -7,11 +7,11 @@ s1 = (readFile("./countup.raw", "mode: binary  window: 10", timer(2400.0)) :: St
 s2 = iterate (sigseg in s1) { emit sigseg[[0]]; }
 
 s3 = iterate (y in iterate (x in s2) {  
-                      emit x + 1;
+                      emit x - 1;
                    }
              )
 {
-  emit y * 2;
+  emit y / 100;
 }
 
 //s3 = iterate (x in s2) {
