@@ -6,6 +6,25 @@
 
 reps = 2;
 
+fun window(S, len) 
+  iterate(x in S) {
+    state{ 
+      arr = Array:null;
+      ind = 0; 
+      startsamp = 0`gint;
+    }
+    if ind == 0 then arr := Array:make(len, x);
+    arr[ind] := x;
+    ind := ind + 1;
+    if ind == len
+    then {
+      emit toSigseg(arr, startsamp, nulltimebase);
+      ind := 0;
+      arr := Array:make(len, x); 
+      startsamp := startsamp + len`intToInt64;
+    }
+  };
+
 fun rewindow(sig, newwidth, gap) {
   feed = newwidth + gap;
 
@@ -48,9 +67,8 @@ fun rewindow(sig, newwidth, gap) {
   }
 }
 
-
 src = iterate _ in timer(3.0) { state{cnt=0} cnt += 1; emit cnt };
-windowed = prim_window(src, 10);
+windowed = window(src, 10);
 
 BASE <- 
  List:fold(

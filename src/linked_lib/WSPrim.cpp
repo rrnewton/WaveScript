@@ -540,7 +540,7 @@ public:
       Launch();
     }
 
-    DEFINE_SOURCE_TYPE(wsunit_t);
+    DEFINE_SOURCE_TYPE(bool);
 
     private:
     int period; 
@@ -555,3 +555,6 @@ public:
   };
   
 };
+
+
+typedef wsbool_t        wsunit_t;

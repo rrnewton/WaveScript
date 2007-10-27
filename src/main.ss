@@ -1039,6 +1039,7 @@
   (printf "  -c0           only run the WaveScript compiler, stop at C++~n")
   (printf "Options for all WaveScript configurations: ~n")
   (printf "  --disable-pass <pass-name> suppress a specific pass ~n")
+  (printf "  --scheduler <name> xstream scheduler; can be train-scheduler or corefit-scheduler-ex~n")
   )
 
 (define (print-types-and-exit prog . opts)

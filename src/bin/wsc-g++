@@ -75,7 +75,7 @@ WS_WARNINGS=""
 WS_INCLUDES="-I$WAVESCOPED/include "
 WS_MACROS="-DSegList -DuseArray -Di386 -DTIMING_RDTSC $SCHEDULER_MACRO"
 #WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
-WS_LINK=" -lpthread -lpapi "
+WS_LINK=" -lpthread  " # -lpapi
 
 
 if [ "$MATCH" != "" ];
