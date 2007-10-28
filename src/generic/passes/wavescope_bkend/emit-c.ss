@@ -1358,6 +1358,7 @@
      (match ty
       [Int "0"] [Int16 "0"] [Int64 "0"]
       [Float "0.0"] [Double "0.0"]
+      [Complex "0.0fi"]
       [Bool "0"]
 ;      [String "\"\""]
       [(Struct ,name) (format "~a()" name)]

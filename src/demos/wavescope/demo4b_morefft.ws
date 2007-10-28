@@ -60,6 +60,9 @@ s1b = iterate w in s0 {
 
 s1 = s1b;
 
+
+
+
 //s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
   
@@ -71,7 +74,7 @@ s2 = iterate (w in s1) {
   for i = 0 to 4 { print(round1[i]++"   ") }; print("\n");
   for i = 0 to 4 { print(round2[i]++"   ") }; print("\n");
   
-  assert_prnt("Roundtrip gets us back", round1 == round2);
+  assert_eq_prnt("Roundtrip gets us back", round1, round2);
   print("\n");
 
   once = sigseg_fftR2C (w);

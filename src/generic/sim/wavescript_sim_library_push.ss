@@ -202,6 +202,8 @@
 				  (loop (fx+ 1 i))))))]
      [(tuple? a) (and (tuple? b)
 		      (wsequal? (tuple-fields a) (tuple-fields b)))]
+     ;; Even more inefficiency:
+     [(number? a) (= a b)] ;; Matters for 0.0 == -0.0
      [else (s:equal? a b)]))
   ;(define equal? wsequal?)
   

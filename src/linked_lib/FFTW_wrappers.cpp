@@ -51,6 +51,35 @@
       return complexarr(result);
    }
 
+   // [2007.10.28] Porting to new Array format.
+   // Could generate this within emit-c.ss using FFTW + codegen for arrays.
+
+   static floatarr ifftC2R(complexarr& input) {
+      int len = input->len;
+      int len_out = (len - 1) * 2; 
+
+      wscomplex_t*   in_buf  = (wscomplex_t*)input->data; 
+      wsfloat_t  *   out_buf = new wsfloat_t[len_out]; // Return a new array with the result.
+
+      //printf(" FFT: %d->%d\n", len, len_out);
+
+      // Inefficient!  This approach makes a new plan every time.
+      // Real to complex:
+      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);  
+      fftwf_execute(plan);
+      fftwf_destroy_plan(plan);           
+
+      //WSArrayStruct<wscomplex_t>* result = (WSArrayStruct<wscomplex_t>*)malloc(sizeof(WSArrayStruct<wscomplex_t>));
+      WSArrayStruct<wsfloat_t>* result = new WSArrayStruct<wsfloat_t>;
+      result->rc = 0;
+      result->len = len_out;
+      result->data = out_buf;
+      return floatarr(result);
+   }
+
+
+
+/*
    static boost::shared_ptr< vector< wsfloat_t > >
           ifftC2R(const boost::shared_ptr< vector< wscomplex_t > >& input) {
       int len = (*input).size();
@@ -77,3 +106,4 @@
       return boost::shared_ptr< vector< wsfloat_t > >( result );
    }
 
+*/
