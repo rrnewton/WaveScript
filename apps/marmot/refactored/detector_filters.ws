@@ -4,6 +4,11 @@ DEBUG = false;
 DEBUGSYNC = DEBUG;
 
 include "stdlib.ws";
+include "filter.ws";
+
+fun log(x,y) {println(y);}
+fun vxp_buffer_time_remaining() {20}
+LOG_TIMING=1;
 
 // Trying this fft:
 //fix_fft :: (Array Int16 * Array Int16 * Int16 * Int16)
@@ -162,10 +167,25 @@ fun sigseg_fft (ss) toSigseg(ss`toArray`marmfft, ss.start, ss.timebase);
 
 // ================================================================================
 
-detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16)) 
-         -> Stream Detection;
+//detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16)) 
+//         -> Stream Detection;
 fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
+  sfloats = deep_stream_map(int16ToFloat, ch1i);
+
+  // highpass and lowpass to simulate bandpass
+  filtered = fft_filter(fft_filter(sfloats, low_pass(16,4)),
+                        high_pass(16,3));
+
+  // now compute psd
+  psds = psd(filtered, 16);
+
+  // sum the psd 
+  wscores = iterate p in psds {
+    emit( (Array:fold((+), 0.0, toArray(p)), p.start, p.end) )
+  };
+
+/*
   // 96 samples are ignored between each 32 used:
   rw1 = rewindow(ch1i, 32, 96);
 
@@ -176,6 +196,7 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   wscores :: Stream (Float * Int64 * Int64) = 
     stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end), hn);
+*/
 
   detections = detect(wscores);
 
