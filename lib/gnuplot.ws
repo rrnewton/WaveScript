@@ -1,4 +1,5 @@
 
+//include "stdlib.ws";
 
 namespace Gnuplot {
 
