@@ -87,13 +87,11 @@ s2 = iterate (w in s1) {
   for i = 0 to 8 { print(round1[i]++"   ") }; print("\n");
   for i = 0 to 8 { print(round2[i]++"   ") }; print("\n");
 
-  ift = ifftC2R(first);
-  println("IFFT "++ ift` Array:length ++": "++ ift);
-
-
-  println("SIMPLE FFT  "++  fftR2C(List:toArray([1,2,3,4])));
-  println("SIMPLE IFFT "++ ifftC2R(fftR2C(List:toArray([1,2,3,4]))));
-  //println("SIMPLE IFFT "++ ifftC2R(List:toArray([1,2,3,4,5])));
+  //ift = ifftC2R(first);
+  //println("IFFT "++ ift` Array:length ++": "++ ift);
+  //println("SIMPLE FFT  "++  fftR2C(List:toArray([1,2,3,4])));
+  // println("SIMPLE IFFT "++ ifftC2R(fftR2C(List:toArray([1,2,3,4]))));
+  ////println("SIMPLE IFFT "++ ifftC2R(List:toArray([1,2,3,4,5])));
   
   assert_prnt("Roundtrip gets us back", round1 == round2);
   print("\n");

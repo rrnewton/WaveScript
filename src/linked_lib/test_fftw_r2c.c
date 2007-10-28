@@ -1,6 +1,6 @@
 
 
-#define SIZE 8
+#define SIZE 4
 
 #include <fftw3.h>
 int main() {

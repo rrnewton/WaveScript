@@ -37,12 +37,19 @@ void raw_fftR2C(Pointer input, Pointer output, Int32 len) {
 void raw_ifftC2R(Pointer input, Pointer output, Int32 len) {
       _Complex float* in_buf = (_Complex float*)  input;
       float*         out_buf = (float*)          output;
-      int len_out = (len + 1) * 2;     
-
+      int len_out = (len - 1) * 2;     
+      int i;
+      //for (i = 0; i<len; i++) printf("    UNPACKING BITS IN C++: %g + %gi\n", __real__ in_buf[i], __imag__ in_buf[i]);
+      
       //fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
       fftwf_plan plan = fftwf_plan_dft_c2r_1d(len_out, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
+
+      //for (i = 0; i<len_out; i++) printf("    GOT RESULT IN C++: %f\n", out_buf[i]);
+
+      // Normalize it:
+      for (i = 0; i<len_out; i++) out_buf[i] /= len_out;
  }
 
 

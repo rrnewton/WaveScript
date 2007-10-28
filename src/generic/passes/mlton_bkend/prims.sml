@@ -198,9 +198,13 @@ val pack_complex_array =
     fn i => 
       let val {real,imag} = Array.sub(arr,i) 
           val _ = PackReal32Little.update(bytes,0, real)
+(* 	  val _ = print ("Packing real: " ^ (Real32.toString real) ^ "\n") *)
           val _ = PackReal32Little.update(bytes,1, imag)
+(* 	  val _ = print ("Packing imag: " ^ (Real32.toString imag) ^ "\n") *)
+	  val w64 = PackWord64Little.subArr(bytes,0)
+(* 	  val _ = print ("  64 bit: " ^ (Word64.fmt StringCvt.HEX w64) ^ "\n") *)
       in        
-       PackWord64Little.subArr(bytes,0)
+        w64
       end)
   end
 
