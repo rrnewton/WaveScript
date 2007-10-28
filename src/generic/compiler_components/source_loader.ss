@@ -11,7 +11,7 @@
 ; .ws files have nothing comparable at the moment.
 
 (module source_loader mzscheme 
-  (require xpand-in
+  (require 
    (all-except "regiment_helpers.ss" test-this these-tests)
    "../constants.ss"
    "../../plt/iu-match.ss"   

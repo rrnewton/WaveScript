@@ -30,7 +30,7 @@
 	   instantiated-type?
 	   distributed-type?
 	   arrow-type?
-	   polymorphic-type?          	   
+	   polymorphic-type?  type-replace-polymorphic 
 	   type-containing-mutable?
 	   constant-typeable-as? 
 	   known-size?
@@ -157,6 +157,20 @@
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [,else #f]))
+
+
+(define (type-replace-polymorphic ty dummy-type)
+  (match ty
+    [(,qt ,v) (guard (memq qt '(quote NUM)))
+     (ASSERT symbol? v)
+     dummy-type]
+    [,s (guard (symbol? s)) s]
+    [#(,[t*] ...)                    (list->vector t*)]
+    [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
+    ;; Including Ref:
+    [(,C ,[t*] ...) (guard (symbol? C) (not (memq C '(quote NUM))))    (cons C t*)]
+    [,s (guard (string? s)) s] 
+    [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))
 
 ;; Does a value of this type have mutable subcomponents?
 (define (type-containing-mutable? t)

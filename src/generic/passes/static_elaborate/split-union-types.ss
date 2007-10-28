@@ -78,7 +78,7 @@
       (match ty
 	[(Sum ,name ,t* ...)
 ;	 (printf "CONVERTING TYPE: Sum ~a ~a\n" name t*)
-	 `(Sum ,(symappendcntr name (instance->number `(Sum ,name ,@t*))))]
+	 `(Sum ,(symappendcntr name (instance->number (depoly `(Sum ,name ,@t*)))))]
 	[,s (guard (symbol? s)) s]
 	[,s (guard (string? s)) s]
 	[#(,[t*] ...) (list->vector t*)]
@@ -86,19 +86,28 @@
 	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) `(,qt ,v)]
 	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)])
       )
+    (define (depoly urty)
+      (if (polymorphic-type? urty)
+	  ;; [2007.10.27] Doing this for now.   It's easy (and legal) to have under-constrained Sums.
+	  (begin (printf "WARNING: squishing out unresolved polymorphism in sum type: ~s\n" urty)
+		 (type-replace-polymorphic urty #()))
+	  urty))
+    
     [Bindings 
      (lambda (vars types exprs reconstr exprfun)
        (reconstr vars (map Type types) (map exprfun exprs)))]
     [Expr (lambda (x fallthru)
 	    (match x 
-	      [(assert-type ,ty (construct-data ,tc ,[args] ...))
+	      [(assert-type ,urty (construct-data ,tc ,[args] ...))
 ;	       (printf "GOT CONSTRUCTDATA: ~a ~a\n" tc ty)
-	       (ASSERT (not (polymorphic-type? ty)))
+	       ;(ASSERT (not (polymorphic-type? ty)))
+	       (define ty (depoly urty))
 	       (let* (;[typename (hashtab-get varianttable tc)]
 		      [cntr (instance->number ty)])
 		 `(construct-data ,(symappendcntr tc cntr) ,@args))]
-	      [(wscase (assert-type ,sumty ,[x]) (,tag* ,[fun*]) ...)
-	       (ASSERT (not (polymorphic-type? sumty)))
+	      [(wscase (assert-type ,ursumty ,[x]) (,tag* ,[fun*]) ...)
+	       ;(ASSERT (not (polymorphic-type? sumty)))
+	       (define sumty (depoly ursumty))
 	       (let ([cntr (instance->number sumty)])
 		 `(wscase ,x ,@(map list (map (lambda (s) (symappendcntr s cntr)) tag*) fun*)))]
 

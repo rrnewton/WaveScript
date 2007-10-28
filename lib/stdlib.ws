@@ -67,7 +67,8 @@ Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
 Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
-Array:append    :: (List (Array t)) -> Array t;
+Array:append    :: (Array t, Array t) -> Array t;
+Array:concat    :: (List (Array t)) -> Array t;
 Array:sub       :: (Array t, Int, Int) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
@@ -546,7 +547,7 @@ namespace Array {
   }
 
   // Append a list of arrays.
-  fun append(loa) {
+  fun concat(loa) {
     size = List:fold(fun(sz, ar) sz + length(ar), 0, loa);
     newarr = makeUNSAFE(size);
     List:fold(fun (cntr, ar) {
@@ -555,6 +556,17 @@ namespace Array {
       cntr + len
     }, 0, loa);
     newarr // final result.
+  }
+
+  // Append just two arrays.  
+  fun append(aa,bb) {
+    // Don't know if it's better to blit here, or just use Array:build.
+    len1 = length(aa);
+    len2 = length(bb);
+    newarr = makeUNSAFE(len1 + len2);
+    blit(newarr, 0, aa, 0, len1);
+    blit(newarr, len1, bb, 0, len2);
+    newarr
   }
   
   // Extract a sub-array.
@@ -669,7 +681,7 @@ fun CONST(x)
 fun COUNTUP(n)
   iterate _ in timer(1000.0) {
     // Should be Int64:
-    state { counter = n }
+    state { counter :: Int = n }
     emit counter;
     counter += 1;
   }
@@ -1103,7 +1115,7 @@ fun deinterleave(n, strm) {
  List:build(n,
    fun(offset) {
      iterate x in strm {
-       state { counter = 0 }
+       state { counter :: Int = 0 }
        if counter == offset  then emit x; 
        counter += 1;
        if counter == n       then counter := 0;              
@@ -1117,7 +1129,7 @@ fun deinterleaveSS(n, outsize, strm) {
  List:build(n,
    fun(offset) {
      iterate win in strm {
-       state { counter = 0;
+       state { counter :: Int = 0;
                newwin = Array:null;
 	       firsttime = true;
                newind = 0 }
@@ -1150,7 +1162,7 @@ fun one_deinterleaveSS2(n, offset, strm) {
     state {
       last_counter = 0`gint;
       nulled = false;
-      counter = 0;
+      counter :: Int = 0;
       newind = 0;
     }
     
@@ -1176,7 +1188,7 @@ fun one_deinterleaveSS2(n, offset, strm) {
       newwin = Array:makeUNSAFE(outsize);
       
       for i = 0 to (outsize * n - 1) {	 
-	if counter == offset  
+	if counter == (offset :: Int)
 	then {
 	  newwin[newind] := win[[i]]; 
 	  newind += 1;

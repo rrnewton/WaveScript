@@ -312,7 +312,8 @@ fun oneSourceAMLTD(synced, win_size) {
 	    synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
-  grid_size = 360; // 1 unit per degree.
+  //grid_size = 360; // 1 unit per degree.
+  grid_size = 36; 
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
   aml_result = iterate (_m_in, starttime, tb) in data_in {

@@ -220,7 +220,7 @@ fun prepAML(data_in, radius, theta, sens_num) {
 // Accepts a matrix, and the associated theta and radius calculated, and returns the aml_vector
 // grid_size is generally 360, for one-degree increments.
 //actualAML :: (Matrix Float, Array Float, Array Float, Int, Int) -> Array Float;
-fun actualAML(start, grid_size, 
+fun actualAML(start, count, grid_size, 
               ((radius, theta, sens_num),
 	       (sel_bin_size, order, _window_size, _sens_num, data_f)))
 {
@@ -273,7 +273,7 @@ fun actualAML(start, grid_size,
       result
     };
 
-    Array:build(grid_size - start, fun(i) do_aml_angle(start+i));
+    Array:build(count, fun(i) do_aml_angle(start+i));
 }
 
 //oneSourceAMLTD :: (Stream (List (Sigseg Float)), Matrix Float, Int) -> Stream (Array Float * Int64);
@@ -319,7 +319,8 @@ fun oneSourceAMLTD(synced, win_size) {
 	    synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
-  grid_size = 360; // 1 unit per degree.
+  //grid_size = 360; // 1 unit per degree.
+  grid_size = 36; // 1 unit per degree.
 
   // Project out the range of data we want to look at:
   projected = smap(fun((mat, st, tb)) {
@@ -337,9 +338,11 @@ fun oneSourceAMLTD(synced, win_size) {
   temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
   //  aml_result = smap(fun((tup,st,tb)) ((actualAML)(grid_size, tup),st,tb), temp);
   //  aml_result
-  half1 = smap(fun((tup,st,tb)) (actualAML(0,  10, tup),st,tb), temp);
-  half2 = smap(fun((tup,st,tb)) (actualAML(10, 20, tup),st,tb), temp);
-  zip2_sametype(half1,half2);  
+  half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
+  half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
+
+  smap(fun((a,b)) Array:append(a,b),
+       zip2_sametype(half1,half2));
 }
 
 

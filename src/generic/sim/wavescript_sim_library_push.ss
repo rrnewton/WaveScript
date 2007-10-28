@@ -1103,6 +1103,7 @@
     (let* ([len (vector-length vec)]
 	   [len2 (fx* 2 (fx- len 1))]
 	   [double (make-vector len2 0)])
+
       ;; Fill in half of the spacious one:
       (vector-blit! vec double 0 0 len)
       ;; Now fill in the other half, backwards:
@@ -1263,7 +1264,9 @@
        (parameterize ([current-output-port (ws-print-output-port)])
 	 (if (string? x)
 	     (display (ws-show x))
-	     (display-constrained (list (ws-show x) 300)))))
+	     (display-constrained (list (ws-show x) 300)))
+	 (IFDEBUG (flush-output-port) (void))
+	 ))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
      (define (gnuplot_array2d arr) (gnuplot (map vector->list (vector->list arr))))

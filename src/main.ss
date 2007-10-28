@@ -554,6 +554,7 @@
   (ws-run-pass p strip-unnecessary-ascription)  
   (ws-run-pass p verify-elaborated)
 
+  ;; [2007.10.27] For MLton we might should remove at least part of this pass:
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
 
   (IFDEBUG (do-late-typecheck) (void))
@@ -577,7 +578,7 @@
   (do-late-typecheck)
 
   (ws-run-pass p unlift-polymorphic-constant)
-  (ws-run-pass p split-union-types) ;; monomorphize sum types
+  (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
 
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)

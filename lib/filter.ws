@@ -1,3 +1,4 @@
+// Frequency domain filters over time-domain series.
 
 include "stdlib.ws";
 
@@ -41,6 +42,7 @@ println("ffting " ++ h.width);
 
 println("iffting " ++ toifft`Array:length);
 
+//inspect(toifft);
     tmp = toSigseg(ifftC2R(toifft), h.start, h.timebase);
 
 println("emitting " ++ tmp.width);

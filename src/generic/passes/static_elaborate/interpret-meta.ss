@@ -272,7 +272,6 @@
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
-;       (inspect (map list lhs* rhs*))
        (for-each (lambda (cell lhs ty rhs)
 		   (set-box! cell (Eval rhs newenv pretty-name))
 		   (when (closure? (unbox cell)) 
@@ -298,7 +297,6 @@
     ;; TEMP HACK
     [(floatToInt ,[x])
      (ASSERT (plain? x))
-
      (make-plain (inexact->exact (floor (plain-val x))) #f)]
 
     ;; HACK: need to finish treating hash tables:
@@ -309,33 +307,36 @@
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
-     (DEBUGASSERT (not (assq prim wavescript-stream-primitives)))
-     ;; This is probably also rather slow.
-     (let ([raw 
-	    ;; Can't write/read because it will contain procedures and streamops.
-	    (parameterize ([simulator-write-sims-to-disk #f])
+     (DEBUGASSERT (not (assq prim wavescript-stream-primitives)))     
+     (match (regiment-primitive? prim)
+       [((,argty* ...) ,retty)
+	;(for-each set-value-type! x* argty*) ;; Necessary?
+	;; This is probably also rather slow.
+	(let ([raw 
+	       ;; Can't write/read because it will contain procedures and streamops.
+	       (parameterize ([simulator-write-sims-to-disk #f])
 
-	      ;; First, I applied wavescript-language to just the prim
-	      ;; name, rather than the whole app.  That actually made
-	      ;; performance a bit worse.
+		 ;; First, I applied wavescript-language to just the prim
+		 ;; name, rather than the whole app.  That actually made
+		 ;; performance a bit worse.
 
-	      ;; This assumes it's a function and not syntax:
-	      (apply (ASSERT (hashtab-get dictionary prim))
-		     ;(wavescript-language prim)
-		     ;; We're willing to give it "plain" vals.
-		     ;; Refs should not be passed first class.
-		     ;; And closures/streams remain opaque:					
-		     (map (lambda (x)				   
-		 	    (ASSERT (not (ref? x)))				   
-			    (cond 
-			     [(plain? x)   (plain-val x)]
-			     [(closure? x) (reify-closure x)]
-			     [(streamop? x) x] ;; This shouldn't be touched.
-			     [else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
-		       x*)))])
-;       (display-constrained "  RAW RESULT from prim " `[,prim 100] " " `[,raw 100] "\n")
-       (if (wrapped? raw) raw (make-plain raw #f)))]
-    
+		 ;; This assumes it's a function and not syntax:
+		 (apply (ASSERT (hashtab-get dictionary prim))
+					;(wavescript-language prim)
+			;; We're willing to give it "plain" vals.
+			;; Refs should not be passed first class.
+			;; And closures/streams remain opaque:					
+			(map (lambda (x)				   
+			       (ASSERT (not (ref? x)))				   
+			       (cond 
+				[(plain? x)   (plain-val x)]
+				[(closure? x) (reify-closure x)]
+				[(streamop? x) x] ;; This shouldn't be touched.
+				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
+			  x*)))])
+	  (let ([final (if (wrapped? raw) raw (make-plain raw #f))])
+	    (set-value-type! final retty) ;; Necessary?
+	    final))])]
     ;; [2007.09.14] Supporting sums:
     [(construct-data ,tag ,[val]) (make-plain (make-uniontype tag val) #f)]
 
@@ -351,6 +352,7 @@
 	   ;; Do PRETTY naming:
 	   (prettify-names! (closure-formals f) e*)
 	   ;; Assert that the args have the right type:
+
 	   (match (closure-type f)
 	     [(,argty* ... -> ,retty)
 	      ;; Nothing to do with return type yet!
@@ -389,7 +391,6 @@
      (let* ([alts (map list pat* rhs*)]
 	    [case (assq (uniontype-tag x) alts)]
 	    [clos (cadr case)])
-       (inspect case)
        (Eval (closure-code clos) 
 	     (extend-env (closure-formals clos) (list (uniontype-val x))
 			 (closure-env clos)) 
@@ -405,7 +406,6 @@
 ;; NOTE: this does not track everything in regiment-primitives, as
 ;; that may change over time.
 (define (build-dictionary!)
-;  (inspect 'building-dictionary)
   (set! dictionary (make-default-hash-table 500))
   (let ([prims (difference 
 		(map car (append regiment-basic-primitives 
@@ -423,7 +423,6 @@
 		  (hashtab-set! dictionary sym prim))	   
 	prims vals)))
   ;(printf "BUILT DICTIONARY!\n")
-;  (inspect dictionary)
   )
 
 
@@ -433,26 +432,31 @@
 ;; separate library (wavescript_sim_library_push.ss).
 (define (reify-closure c)
   (ASSERT (not (foreign-closure? c)))
+  ;; This is called within wavescript_sim_library_push.ss:
   (lambda args
     (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-    (unwrap-plain
-     (Eval (closure-code c) 
-	   (extend-env (closure-formals c) 
-		       ;;args 
-		       ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-		       (map (lambda (x) 
-			      ;; Let's say you map(streamtransformer, list)...
-			      ;; That requires passing closures that handle streams.
-			      #;
-			      (when (streamop? x)
-				(error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
-			      ;(ASSERT (compose not wrapped?) x)
-			      ;(make-plain x)
-			      (if (wrapped? x) x (make-plain x #f))
-			      )
-			 args)
-		       (closure-env c))
-	   #f))))
+    (match (closure-type c)
+      ;; We need to tag the types onto values that we store in the environment.
+      [(,argty* ... -> ,retty)
+       (unwrap-plain
+	(Eval (closure-code c) 
+	      (extend-env (closure-formals c) 
+			  ;;args 
+			  ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
+			  (map (lambda (arg argty)
+				 ;; Let's say you map(streamtransformer, list)...
+				 ;; That requires passing closures that handle streams.
+				 #;
+				 (when (streamop? x)
+				   (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
+					;(ASSERT (compose not wrapped?) x)
+					;(make-plain x)
+				 (let ([wrapped (if (wrapped? arg) arg (make-plain arg #f))])
+				   (set-value-type! wrapped argty)
+				   wrapped))
+			    args argty*)
+			  (closure-env c))
+	      #f))])))
 
 #;
 ;; This adds code around a closure that wraps/unwraps the arguments

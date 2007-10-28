@@ -43,7 +43,7 @@ result = iterate sum in union2(degapped,zipped) {
     
   //println(x++" \n");
   assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
-  emit x;
+  emit "Right";
 
   if first then {
     println("\n");
@@ -81,7 +81,8 @@ result = iterate sum in union2(degapped,zipped) {
       println("Blit: " ++ new);
       sb = sub(new, 2, 5);
       println("Sub: " ++ sb);
-      println("Append: " ++ append([sb,sb,sb]));
+      println("Concat: " ++ concat([sb,sb,sb]));
+      println("Append: " ++ append(sb,sb));
 
       //flipped = fun(x,y) (y:::x); 
       //      println("FoldCons:  " ++ Array:fold(fun(x,y)(y:::x), [], arr));
@@ -92,7 +93,7 @@ result = iterate sum in union2(degapped,zipped) {
 
     first := false;
     println("");
-    
+
     {
     print("Type Unions: ");
       x = Left(3);
@@ -121,18 +122,10 @@ result = iterate sum in union2(degapped,zipped) {
     }
   } // End "first" 
  } 
+
 };
   
-  //  emit true;
 }
 
 
-BASE <- rewindow(s1, 5, 0)
-
-
-
-
-
-
-
-//BASE <- result
+BASE <- result
