@@ -1089,7 +1089,7 @@
 	  ;; Fill from the back:
 	  ;(vector-set! half i (vector-ref double (fx- fulllen i)))
 	  (loop (fx+ 1 i))))
-
+      
       ;; Currently the output must be all cflonums.
       (DEBUGASSERT (curry vector-andmap ws-complex?) half)
       half))

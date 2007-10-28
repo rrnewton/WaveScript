@@ -24,7 +24,8 @@
 	       scheme_fft)
   
   ;; Slib's inverse dft is the only one I've got right now in pure scheme:
-  (define inverse-dft slib:fft-1)
+  ;(define inverse-dft slib:fft-1)
+  (define (inverse-dft vec) (slib:fft-1 (vector-map cfl-conjugate vec)))
   
   ;; Set to the basic scheme version:
   (define basic-dft 
@@ -39,8 +40,8 @@
 
   ;; We do late-binding here.  Don't load the extension until we call dft.
   (define (dft vec)
-    (set! dft basic-dft)
-    ;(set! dft slib:fft) ;; This on DOES NOT correspond to our mlton/C implementations
+    (set! dft basic-dft) ;; TEMPTOGGLE - let's use this one and take complex conjugate before inverse
+   ;(set! dft slib:fft) ;; This on DOES NOT correspond to our mlton/C implementations
     
     ;; If we're using chez and have FFTW available, use that instead:
     (IFCHEZ 

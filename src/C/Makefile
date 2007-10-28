@@ -8,6 +8,7 @@ MACHINETYPE=`uname -s`-`uname -m | sed 's/ /_/'`
 #TARGET=../build/$(DIR)/
 
 all: fftw.so usleep_default
+	echo BUILT for $(DIR)
 
 # This is VERY specific to my setup.
 fftw.so: fftw.c fftw.ss

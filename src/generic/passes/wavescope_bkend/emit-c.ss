@@ -1347,6 +1347,7 @@
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
           [#(Array:null (Array ,t))
+            ;; A boosted null pointer.
 	   `("boost::intrusive_ptr< WSArrayStruct< ",(Type t)" > >((WSArrayStruct< ",(Type t)" >*) 0)")
             ;`("wsarray_t(0)")
           ]
@@ -1670,7 +1671,9 @@
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	;; This version just doesn't initialize:
 
-	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->len)"))]
+	[(Array:length ,[Simple -> arr])                  
+	 ;; The boosted pointer could be null.
+	 (wrap `("(wsint_t)(",arr".get() && ",arr"->len)"))]
 		
 	[(assert-type (Array ,ty) (Array:makeUNSAFE ,[Simple -> n]))
 	 (wrap `("makeArrayUnsafe(",n", (",(Type ty)")(",(make-zero-for-type ty)"));\n"

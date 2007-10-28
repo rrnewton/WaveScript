@@ -44,14 +44,17 @@ fun closeenough(arr1, arr2) {
 }
 
 
+/*
 s1a = if GETENV("WSARCH") != "ensbox" 
 then {chans = (readFile("6sec_marmot_sample.raw", "mode: binary", timer(24000.0))
                     :: Stream (Int16 * Int16 * Int16 * Int16));
 	   window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ensBoxAudioF(0);
+*/
 
 s0 = (readFile("6sec_marmot_sample.raw", 
-               "mode: binary  window: 4096  skipbytes: 6 ", 
+               "mode: binary  window: 16 skipbytes: 6 ", 
+	       //               "mode: binary  window: 4096 skipbytes: 6 ", 
                timer(10.0)) :: Stream (Sigseg Int16));
 s1b = iterate w in s0 {
   arr = Array:build(w.width, fun (i) int16ToFloat(w[[i]]));
@@ -63,18 +66,36 @@ s1 = s1b;
 
 
 
+
+
+
 //s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
-  
+
+  println("First, just a forward fft... ");
+  //first = sigseg_fftR2C(w)`toArray;
+  first = Array:map(conjC, sigseg_fftR2C(w)`toArray);
+
+  for i = 0 to 4 { print(first[i]++"   ") }; print("\n");
+  println("FFT: "++first`Array:length ++" " ++ first);
+
   println("\n  Roundtripping with the restricted real transform...");
   trip = sigseg_ifftC2R( sigseg_fftR2C (w));
   round1 = Array:map(roundF, w`toArray);
   round2 = Array:map(roundF, trip`toArray);
   
-  for i = 0 to 4 { print(round1[i]++"   ") }; print("\n");
-  for i = 0 to 4 { print(round2[i]++"   ") }; print("\n");
+  for i = 0 to 8 { print(round1[i]++"   ") }; print("\n");
+  for i = 0 to 8 { print(round2[i]++"   ") }; print("\n");
+
+  ift = ifftC2R(first);
+  println("IFFT "++ ift` Array:length ++": "++ ift);
+
+
+  println("SIMPLE FFT  "++  fftR2C(List:toArray([1,2,3,4])));
+  println("SIMPLE IFFT "++ ifftC2R(fftR2C(List:toArray([1,2,3,4]))));
+  //println("SIMPLE IFFT "++ ifftC2R(List:toArray([1,2,3,4,5])));
   
-  assert_eq_prnt("Roundtrip gets us back", round1, round2);
+  assert_prnt("Roundtrip gets us back", round1 == round2);
   print("\n");
 
   once = sigseg_fftR2C (w);

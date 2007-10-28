@@ -11,6 +11,9 @@ Int32 testo(Real32 blah) {
 }
 */
 
+// [2007.10.28] Test encoding/decoding of complex arrays.
+//void identity_C2C(Pointer input) {  }
+
 void raw_fftR2C(Pointer input, Pointer output, Int32 len) {
       float* in_buf           = (float*)          input;
       _Complex float* out_buf = (_Complex float*) output;
@@ -36,7 +39,8 @@ void raw_ifftC2R(Pointer input, Pointer output, Int32 len) {
       float*         out_buf = (float*)          output;
       int len_out = (len + 1) * 2;     
 
-      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
+      //fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
+      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len_out, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
  }
