@@ -11,8 +11,27 @@ sfloats = iterate w in s0 {
   emit toSigseg(arr, w.start, nulltimebase)
 }
 
-BASE <-
-// merge(
-//  snoop("orig", psd(sfloats, 32)),
-  snoop("filt", psd(fft_filter(sfloats, low_pass(1024,32)), 32))
+fun gnuplot_snoop(s) {
+  iterate a in s {
+    gnuplot_array(a);
+    emit(a)
+  }
+}
 
+/*
+BASE <-
+ merge(
+  gnuplot_snoop(psd(sfloats, 64)),
+  gnuplot_snoop(psd(fft_filter(sfloats, low_pass(1024,32)), 32)))
+*/
+
+/*
+BASE <-
+  fft_filter(sfloats, low_pass(1024,32))
+*/
+
+BASE <-
+  gnuplot_snoop(psd(
+   fft_filter(
+    fft_filter(sfloats, low_pass(1024,768)),
+    high_pass(1024,256)), 1024))

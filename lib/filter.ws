@@ -1,4 +1,3 @@
-// Frequency domain filters over time-domain series.
 
 include "stdlib.ws";
 
@@ -33,24 +32,33 @@ fun fft_filter(s, filter) {
   han = hanning(rw);
 
   tdfilt = iterate(h in han) {
-println("ffting " ++ h.width);
+    harr = toArray(h);
+    freq = fftR2C(harr);
 
-    freq = fftR2C(toArray(h));
+    fun multfilt(i) { 
+      if (i < filter`Array:length) then {
+        freq[i] * filter[i];
+      }
+      else {
+        gint(0); 
+      }
+    };
 
-    toifft = Array:build(filter`Array:length, 
-                         fun(i) freq[i] * filter[i]);
+    toifft = Array:build(freq`Array:length, multfilt);
+    //println("freq len "++freq`Array:length++ " toifft len "++toifft`Array:length);
 
-println("iffting " ++ toifft`Array:length);
+    tdarr = ifftC2R(toifft);
 
-//inspect(toifft);
-    tmp = toSigseg(ifftC2R(toifft), h.start, h.timebase);
+//println("harr: "++harr);
+//println("tdarr: "++tdarr);
 
-println("emitting " ++ tmp.width);
+    tmp = toSigseg(tdarr, h.start, h.timebase);
     emit tmp;
   };
 
-  hanning_merge(gnuplot_sigseg_stream(tdfilt))
+  hanning_merge(tdfilt)
 }
+
 
 notch_filter :: (Int, Int, Int) -> Array Complex;
 fun notch_filter(size, low, high) {
@@ -87,8 +95,6 @@ fun psd(s, size) {
   rw = rewindow(s, size*2, 0);
   han = hanning(rw);
   iterate (h in han) {
-println("doing fft of thing size " ++ h.width);
-
     freq = fftR2C(toArray(h));
     emit Array:build(size, fun (i) (absC(freq[i])))
   }
