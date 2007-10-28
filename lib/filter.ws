@@ -1,22 +1,23 @@
 
 include "stdlib.ws";
 
-// inverses overlapped hanning windows
+// inverses overlapped hanning windows (sigsegs)
+hanning_merge :: (Stream (Sigseg Float)) -> Stream (Sigseg Float);
 fun hanning_merge(s) {
   iterate w in s {
-    state { arr = null }
+    state { arr = Array:null }
 
-    if arr == null 
-    then arr := make(w.width / 2, 0.0);
+    if arr == Array:null 
+    then arr := Array:make(w.width / 2, 0.0);
 
-    for i = 0 to length(arr) - 1 {
-      arr[i] := 2.0 * (arr[i] + w[i]);
+    for i = 0 to arr`Array:length - 1 {
+      arr[i] := 2.0 * (arr[i] + w[[i]]);
     };
 
-    emit(arr);
+    emit(toSigseg(arr, w.start, w.timebase));
 
-    for i = 0 to length(arr) - 1 {
-      arr[i] := w[i + length(arr)];
+    for i = 0 to arr`Array:length - 1 {
+      arr[i] := w[[i + arr`Array:length]];
     }
   }
 }
@@ -26,21 +27,27 @@ fft_filter :: (Stream (Sigseg Float), Array Complex) -> Stream (Sigseg Float);
 fun fft_filter(s, filter) {
   using Array;
 
-  rw = rewindow(s, (filter`length - 1) * 2, 0 - (filter`length - 1));
+  rw = rewindow(s, filter`Array:length * 2, 0 - filter`Array:length);
 
   han = hanning(rw);
 
   tdfilt = iterate(h in han) {
+println("ffting " ++ h.width);
+
     freq = fftR2C(toArray(h));
-    emit hanning_merge(ifftC2R(build(filter`length, 
-                                     fun(i) freq[i] * filter[i])));
+
+    toifft = Array:build(filter`Array:length, 
+                         fun(i) freq[i] * filter[i]);
+
+println("iffting " ++ toifft`Array:length);
+
+    tmp = toSigseg(ifftC2R(toifft), h.start, h.timebase);
+
+println("emitting " ++ tmp.width);
+    emit tmp;
   };
 
-  tdfilt2 = zip2_sametype(tdfilt, rw);
-
-  iterate((f, orig) in tdfilt2) {
-    emit(toSigseg(arr, orig.start, orig.timebase));
-  }
+  hanning_merge(gnuplot_sigseg_stream(tdfilt))
 }
 
 notch_filter :: (Int, Int, Int) -> Array Complex;
@@ -51,6 +58,38 @@ fun notch_filter(size, low, high) {
       then 1.0+0.0i // Can't use gint here because we're in the meta phase!
       else 0.0+0.0i
     })
+}
+
+low_pass :: (Int, Int) -> Array Complex;
+fun low_pass(size, cutoff) {
+  Array:build(size, 
+    fun (i) {
+      if i <= cutoff 
+      then 1.0+0.0i // Can't use gint here because we're in the meta phase!
+      else 0.0+0.0i
+    })
+}
+
+high_pass :: (Int, Int) -> Array Complex;
+fun high_pass(size, cutoff) {
+  Array:build(size, 
+    fun (i) {
+      if i >= cutoff 
+      then 1.0+0.0i // Can't use gint here because we're in the meta phase!
+      else 0.0+0.0i
+    })
+}
+
+
+fun psd(s, size) {
+  rw = rewindow(s, size*2, 0);
+  han = hanning(rw);
+  iterate (h in han) {
+println("doing fft of thing size " ++ h.width);
+
+    freq = fftR2C(toArray(h));
+    emit Array:build(size, fun (i) (absC(freq[i])))
+  }
 }
 
 
