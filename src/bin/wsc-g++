@@ -66,6 +66,8 @@ case $SCHEDULER in
     ;;
   corefit-scheduler-ex) SCHEDULER_MACRO="-DCOREFIT_SCHEDULER_EX"
     ;;
+  corefit-scheduler-df) SCHEDULER_MACRO="-DCOREFIT_SCHEDULER_DF"
+    ;;
 esac
 
 

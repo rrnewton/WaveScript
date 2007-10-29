@@ -312,7 +312,7 @@
                   [(default-scheduler train-scheduler)
                    `("WSBox* ",name" = new ",class_name "(" ");\n"
                      ,name"->connect(",parent");\n")]
-                  [(corefit-scheduler-ex)
+                  [(corefit-scheduler-ex corefit-scheduler-df)
                    `("WSBox* ",name" = new ",class_name "(" ");\n"
                      "query.addOp(",name");\n"
                      ,name"->setCPU(0);\n" ; FIXME: use params. file
@@ -560,7 +560,7 @@
        [(default-scheduler train-scheduler)
         `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
           " ",name"->connect(",(sym2str source)");\n")]
-       [(corefit-scheduler-ex)
+       [(corefit-scheduler-ex corefit-scheduler-df)
         `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
           "query.addOp(",name");\n"
           ,name"->setCPU(0);\n"
@@ -602,7 +602,7 @@
           `(" WSBox* ",name" = new ",classname"();"
             ;; Order is critical here:
             ,(map (lambda (in) `(" ",name"->connect(",(sym2str in)"); ")) inputs))]
-         [(corefit-scheduler-ex)
+         [(corefit-scheduler-ex corefit-scheduler-df)
           `(" WSBox* ",name" = new ",classname"();\n"
             "query.addOp(",name");\n"
             ,name"->setCPU(0);\n" ; FIXME: use params. file
@@ -642,7 +642,7 @@
           `(" WSBox* ",name" = new ",classname"();"
             (" ",name"->connect(",(sym2str left)"); ")
             (" ",name"->connect(",(sym2str right)"); "))]
-         [(corefit-scheduler-ex)
+         [(corefit-scheduler-ex corefit-scheduler-df)
           `("WSBox* ",name" = new ",classname"();\n"
             "query.addOp(",name");\n"
             ,name"->setCPU(0);\n"
@@ -676,7 +676,7 @@
      (case scheduler
        [(default-scheduler train-scheduler)
         `("WSSource * ",name" = new WSBuiltins::Timer(",period");\n")]
-       [(corefit-scheduler-ex)
+       [(corefit-scheduler-ex corefit-scheduler-df)
         `("WSSource* ",name" = new WSBuiltins::Timer(",period");\n"
           "query.addOp(",name");\n"
           ,name"->setCPU(0);\n\n")])
@@ -986,7 +986,7 @@
 				fld* tmpargs)) " {}\n"
 				))
             ;; Corefit byte accounting:
-            ;,(if (eq? scheduler 'corefit-scheduler-ex)
+            ;,(if (or (eq? scheduler 'corefit-scheduler-ex) (eq? scheduler 'corefit-scheduler-df))
             ;     "uint32_t getTotalByteSize() const { return sizeof(*this); }\n"
             ;     "")
             ))
@@ -994,7 +994,7 @@
 
             ;; size provider, for corefit
             ;; FIXME: deal with variable sizes!
-            ,(if (eq? scheduler 'corefit-scheduler-ex)
+            ,(if (or (eq? scheduler 'corefit-scheduler-ex) (eq? scheduler 'corefit-scheduler-df))
                  (let* ([make-term-str (lambda (fld) (format "getTotalByteSize(e.~a)" fld))]
                         [sum-string 
                          (foldr (lambda (term sum) (format "~a + ~a" (make-term-str term) sum))
@@ -1221,7 +1221,8 @@
 
   (ASSERT (or (eq? scheduler 'default-scheduler)
               (eq? scheduler 'train-scheduler)
-              (eq? scheduler 'corefit-scheduler-ex)))
+              (eq? scheduler 'corefit-scheduler-ex)
+              (eq? scheduler 'corefit-scheduler-df)))
 
   (fluid-let ([include-files ()]
 	      [link-files    ()])
@@ -1920,7 +1921,7 @@ int main(int argc, char ** argv)
 
   /* begin constructing operator graph */
 "]
-    [(corefit-scheduler-ex)
+    [(corefit-scheduler-ex corefit-scheduler-df)
      "
 
 int main(int argc, char ** argv)
@@ -1967,7 +1968,7 @@ int main(int argc, char ** argv)
 }
 "
   )]
-    [(corefit-scheduler-ex) ; FIXME: use params. file for setCPU() below
+    [(corefit-scheduler-ex corefit-scheduler-df) ; FIXME: use params. file for setCPU() below
      `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
   PrintQueryOutput out = PrintQueryOutput(\"WSOUT\", maxTuples);
