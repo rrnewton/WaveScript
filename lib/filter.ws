@@ -96,7 +96,8 @@ fun psd(s, size) {
   han = hanning(rw);
   iterate (h in han) {
     freq = fftR2C(toArray(h));
-    emit Array:build(size, fun (i) (absC(freq[i])))
+    emit(toSigseg(Array:build(size, fun (i) (absC(freq[i]))),
+                  h.start, h.timebase))
   }
 }
 
