@@ -648,21 +648,21 @@
 	  [',rate 
 	   (let ([r ;(Expr rate 'noemitsallowed!)
 		  (number->string (rate->timestep rate))]
-		 [t (Var (unique-name 'virttime))])
+		 [vtime (Var (unique-name 'virttime))])
 	     (values 	
 	      ;; First, a function binding that drives the source.
 	      (list "val " v " = let fun "v" () = " 
 		    (indent  
 		     (make-seq
-		      `(,t " := !",t" + ",r)
+		      `(,vtime " := Int64.+ (!",vtime", ",r")")
 		      ((Emit downstrm) "()")
-		      `("SE (!",t",",v")\n"))
+		      `("SE (!",vtime",",v")\n"))
 		     "    ")
 		    "\n in "v" end"
 		    "\n\n")
 
 	      ;; Second, top level state bindings.
-	      (list (make-bind `(,t (Ref Int) "ref 0")))
+	      (list (make-bind `(,vtime (Ref Int64) "ref 0")))
 	      
 	      ;; Third, initialization statement:
 	      `("(* Seed the schedule with timer datasource: *)\n"

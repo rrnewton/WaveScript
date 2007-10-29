@@ -540,6 +540,7 @@ public:
         period((int)(1000000.0 * (1.0 / freq)))
      {
        Launch();
+       //setBatchSize(1); // For a "pull based" execution.
      }
 
      DEFINE_SOURCE_TYPE(bool);
@@ -551,6 +552,7 @@ public:
     {
       while (!Shutdown())
       {
+        //printf("   <<< TIMER FIRING >>>\n");
         source_emit(0);
         usleep(period);
       }

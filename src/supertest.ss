@@ -340,8 +340,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
 (ASSERT (system 
 	 (format 
-	  ;; TEMPORARILLY FIXING AT 1495
 	  "svn co -r 1495 svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
+	  ;; [2007.10.29] Switching back to HEAD revision:
+	  ;"svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
 	  engine-dir)))
 
 (ASSERT (putenv "WAVESCOPED" engine-dir))
@@ -513,18 +514,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
-	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" test-directory))))
-       
-       ;; [2007.10.20] Disabling for now... this is running forever:
-#;
+	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
+						  test-directory))))
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe | head -n 10 &> ~a/wsc_marmot1_run.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))))
        (fpf "wsc: Compiling marmot app (second phase):     ~a\n"
 	    (code->msg! (system/exit-code (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))))
-
        ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
        (fpf "wsc: Running marmot app (second phase):       ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe | head -n 10 &> ~a/wsc_marmot12_run.log" test-directory))))
+	    (code->msg! (system/exit-code (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory))))
 
        (current-directory test-directory)
        )

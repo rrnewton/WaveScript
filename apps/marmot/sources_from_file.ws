@@ -22,7 +22,17 @@ marmotfile =
   //  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
-samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+// How many samples a second do we want to process on each input audio channel?
+//samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+
+// Trying to give this a nice number for the C++ backend:
+// 5K, 10K - working fine on faith 20-30% utilization
+// 20K fine on faith.
+samp_rate = 30000.0; 
+
+// Having problems when I move to the CoreFit engine.
+// Seems to always use 100% cpu.
+//samp_rate = 5000.0; 
 
 winsize = 16384;
 // Old data files are 24 khz...

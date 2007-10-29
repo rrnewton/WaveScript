@@ -7,7 +7,7 @@
 // Reading one channel takes 2.5 seconds.
 // But reading all four and doing a union takes 17-20 seconds!
 
-/* [2007.07.01] Timing different implementations:
+/* [2007.07.01] Timing different implementations {faith}
 
  Timing against "3min_marmot_sample.raw" (31.4mb) on faith.
  With blocked sigseg reading.

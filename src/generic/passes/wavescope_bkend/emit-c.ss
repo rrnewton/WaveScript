@@ -1132,7 +1132,10 @@
 			      "printf(\"\\n\");\n")])
 
 			" curTuples++;\n"
-			" if (curTuples == maxTuples) WSSched::stop();\n"
+			;" if (curTuples == maxTuples) { printf(\"Tuple limit hit.  Stopping query.\\n\"); WSSched::stop();} \n"
+			" if (curTuples == maxTuples) { "
+			" chatter(LOG_WARNING, \"Tuple limit hit.  Stopping query.\"); WSSched::stop();} \n"
+			
 
 ; [2007.01.22] Don't need to do this, it happens automatically:
 ;			"delete element;\n"  

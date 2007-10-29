@@ -11,7 +11,7 @@ outside by some data source(s). *)
 (*type timestamp = Int32.int*)
 
 (* Data sources are functions that generate new schedule entries *)
-datatype scheduleEntry = SE of (Int32.int * (unit -> scheduleEntry))
+datatype scheduleEntry = SE of (Int64.int * (unit -> scheduleEntry))
 
 val schedule : scheduleEntry list ref = ref []
 
