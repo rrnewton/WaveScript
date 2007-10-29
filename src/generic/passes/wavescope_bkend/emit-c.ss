@@ -1884,6 +1884,7 @@
 (define (boilerplate_premain scheduler)
   (case scheduler
     [(default-scheduler train-scheduler)
+     ;; FIXME: Yuck, pretty bad code duplication:
      "
 
 int main(int argc, char ** argv)
