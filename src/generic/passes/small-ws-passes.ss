@@ -23,6 +23,7 @@
 	   resolve-type-aliases
 	   ws-normalize-context
 	   generate-comparison-code
+	   generate-printing-code
 	   strip-unnecessary-ascription
 
 	   hide-special-libfuns
@@ -175,6 +176,54 @@
        ))])
 
 
+;; [2007.10.28] Factoring this out of emit-c.
+;; It builds code to print a particular type of value.
+;; It should work across backends.
+(define-pass generate-printing-code
+  (define (build-print which ty expr addstr!)
+    (match ty
+      [(List ,elt)
+       (let* ([ptr (unique-name 'ptr)]
+	      [do-elt (or (build-print which elt `(car (deref ,ptr)) addstr!)
+			  `(,which (assert-type ,elt (car (deref ,ptr)))))])
+	 `(let ([,ptr (Ref (List ,elt)) (Mutable:ref ,expr)])
+	    (begin 
+	      ,(addstr! ''"[")	      
+	      (while (not (wsequal? (deref ,ptr) (assert-type (List ,elt) '())))
+		     (begin
+		       ,(addstr! do-elt)
+		       (if (wsequal? (cdr (deref ,ptr))  (assert-type (List ,elt) '()))
+			   (tuple)
+			   ,(addstr! ''", "))
+		       (set! ,ptr (cdr (deref ,ptr)))))
+	      ,(addstr! ''"]"))))]
+      ;[,oth `(,which (assert-type ,ty ,expr))]
+      [,oth #f]
+      ))
+  [Expr 
+   (lambda (x fallthru)
+     (match x
+       ;; TODO: optimize print(show(...)) and print(string-append(...))
+
+       [(print (assert-type ,ty ,[exp]))
+	(or (build-print 'print ty exp (lambda (x) `(print ,x)))
+	    `(print (assert-type ,ty ,exp)))]
+       [(print . ,_) 
+	(error 'generate-printing-code "print was missing type annotation: ~s" `(print . ,_))]
+       ;; This is nastier... currently quadradic append behavior.
+       ;; The solution, of course, is to expose more (mutable string
+       ;; buffers) or, alternatively, to form a list of strings and then append once
+       [(show (assert-type ,ty ,[exp]))
+	(let ([acc (unique-name 'acc)])
+	  (let ([printer (build-print 'show ty exp (lambda (x) `(set! ,acc (string-append (deref ,acc) ,x))))])
+	    (if printer	       
+		`(let ([,acc (Ref String) (Mutable:ref '"")]) (begin ,printer (deref ,acc)))
+		`(show (assert-type ,ty ,exp)))))]
+       [(show . ,_)(error 'generate-printing-code "show was missing type annotation: ~s" `(print . ,_))]
+       [,oth (fallthru oth)]
+       ))])
+;(generate-printing-code '(lang '(program (print (assert-type (List Int) '[2])) #())))
+
 ;; [2007.05.01] This pulls complex constants up to the top of the program.
 ;(define-pass lift-complex-constants)
 
@@ -266,18 +315,8 @@
     (define (data-source? e)
       (let ([expr (peel-annotations e)])
 	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
-    (define (Type ty)
-      (match ty
-	  [(,qt ,v) (guard (memq qt '(quote NUM)))
-	   (ASSERT symbol? v)
-	   dummy-type]
-	  [,s (guard (symbol? s)) s]
-	  [#(,[t*] ...)                    (list->vector t*)]
-	  [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
-	  ;; Including Ref:
-	  [(,C ,[t*] ...) (guard (symbol? C) (not (memq C '(quote NUM))))    (cons C t*)]
-	  [,s (guard (string? s)) s] 
-	  [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))
+
+    (define (Type t) (type-replace-polymorphic t dummy-type))
     (define Expr
       (lambda (x fallthru)
 	  (match x

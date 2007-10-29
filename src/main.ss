@@ -600,7 +600,12 @@
 
   (ws-run-pass p type-annotate-misc)
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-cpp)
-    (ws-run-pass p generate-comparison-code))
+    (ws-run-pass p generate-comparison-code)
+    )
+  (ws-run-pass p generate-printing-code)
+
+  ;; Should also generate printing code:
+  ;(ws-run-pass p generate-printing-code)
 
 ;  (ws-run-pass p uncover-free)
 
@@ -905,7 +910,7 @@
 
    (ws-run-pass prog nominalize-types)
 
-   (pretty-print prog)
+;   (pretty-print prog)
 
 ;   (inspect `(NOMINALIZED ,prog))
 

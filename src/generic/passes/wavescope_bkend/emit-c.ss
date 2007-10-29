@@ -728,6 +728,8 @@
        (list
 	((Value tenv) (sym2str v) (Type ty) rhs)
 	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
+
+      [(begin ,[e]) e]
       [(begin ,e1 . ,e*)
        (list
 	((Block tenv) #f #f e1)
@@ -1625,6 +1627,7 @@
 	     ))]
 	[(toSigseg (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> startsamp] ,[Simple -> timebase])
 	 ;; type should be "RawSeg"
+	 ;; FIXME: CURRENTLY DOESNT WORK FOR NULLARRAY!
     `("SigSeg< ",ty" > ",name"(Unitless, (SeqNo)",startsamp", ",arr"->len, DataSeg);
        {
          ",ty" *direct = ",name".getDirect(0, ",arr"->len);
@@ -1672,8 +1675,8 @@
 	;; This version just doesn't initialize:
 
 	[(Array:length ,[Simple -> arr])                  
-	 ;; The boosted pointer could be null.
-	 (wrap `("(wsint_t)(",arr".get() && ",arr"->len)"))]
+	 ;; The boosted pointer could be null.  Maybe we should actually allocate something for the nulls.  Sigh.
+	 (wrap `("(wsint_t)(",arr".get() ? ",arr"->len : 0)"))]
 		
 	[(assert-type (Array ,ty) (Array:makeUNSAFE ,[Simple -> n]))
 	 (wrap `("makeArrayUnsafe(",n", (",(Type ty)")(",(make-zero-for-type ty)"));\n"
@@ -1765,6 +1768,9 @@
 	     ;; Won't read the contents of two different Sigsegs...
 	     ;; FIXME: Should consider fixing this.
 	     [(Sigseg ,elt)  simple]
+	     ;; Could do this c++-ishly... but yuck.
+	     [(Array ,elt)  
+	      (error 'emit-C:Prim "shouldn't run into wsequal? on an array type")]
 	     
 	     [(List ,elt)    simple]
 	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
@@ -1790,6 +1796,9 @@
 
 ;; This implements our polymorphic print/show functions.
 ;; It prints something or other for any type.
+;;
+;; [2007.10.28] FIXME: Most of this should really be done in a previous pass.
+;; Only basic scalar and string printing should be handled here.
 (define (Emit-Print/Show-Helper e typ printf stream)
   (match typ
     [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
@@ -1811,6 +1820,7 @@
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
 
+#;
     [(List ,t)
      (let* ([var (Var (unique-name 'ptr))]
 	    [subprinter (Emit-Print/Show-Helper (list var"->car") t printf stream)])
@@ -1822,14 +1832,18 @@
 			       (list var" = "var"->cdr;\n")))
 	     (stream "\"]\"")))]
     [(Array ,ty)
-     (let* ([var (Var (unique-name 'arrtmp))]
+     (let* ([varsym (unique-name 'arrtmp)] [var (Var varsym)]
+	    [len (Var (unique-name 'len))]
 	    [ind (Var (unique-name 'i))])
        (list (stream "\"#[ \"")
 	     (make-decl (Type `(Array ,ty)) var e)
 	     (format "int ~a;\n" ind)
-	     (make-for ind "0" (list var "->len") 		      
+	     ;(format "int ~a;\n" len)
+	     (Prim `(Array:length ,varsym) len (Type 'Int))
+	     (make-for ind "0" len
 		       (list 
 			"if ("ind">0) " (printf ", %s" "\"\"") ;(stream "\", \"")
+			;; This can be an unsafe access if we want (no null check), but it doesn't matter much:
 			(Emit-Print/Show-Helper (list "("var"->data)["ind"]")
 						ty printf stream)
 			;(stream "\" \"")

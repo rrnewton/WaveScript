@@ -73,8 +73,8 @@ s1 = s1b;
 s2 = iterate (w in s1) {
 
   println("First, just a forward fft... ");
-  //first = sigseg_fftR2C(w)`toArray;
-  first = Array:map(conjC, sigseg_fftR2C(w)`toArray);
+  first = sigseg_fftR2C(w)`toArray;
+  //first = Array:map(conjC, sigseg_fftR2C(w)`toArray); 
 
   for i = 0 to 4 { print(first[i]++"   ") }; print("\n");
   println("FFT: "++first`Array:length ++" " ++ first);
@@ -83,16 +83,17 @@ s2 = iterate (w in s1) {
   trip = sigseg_ifftC2R( sigseg_fftR2C (w));
   round1 = Array:map(roundF, w`toArray);
   round2 = Array:map(roundF, trip`toArray);
-  
-  for i = 0 to 8 { print(round1[i]++"   ") }; print("\n");
-  for i = 0 to 8 { print(round2[i]++"   ") }; print("\n");
+
+  for i = 0 to 4 { print(round1[i]++"   ") }; print("\n");
+  for i = 0 to 4 { print(round2[i]++"   ") }; print("\n");
 
   //ift = ifftC2R(first);
   //println("IFFT "++ ift` Array:length ++": "++ ift);
   //println("SIMPLE FFT  "++  fftR2C(List:toArray([1,2,3,4])));
   // println("SIMPLE IFFT "++ ifftC2R(fftR2C(List:toArray([1,2,3,4]))));
   ////println("SIMPLE IFFT "++ ifftC2R(List:toArray([1,2,3,4,5])));
-  
+
+  /*  
   assert_prnt("Roundtrip gets us back", round1 == round2);
   print("\n");
 
@@ -106,6 +107,7 @@ s2 = iterate (w in s1) {
               closeenough(once`toArray, thrice`toArray));
   print("\n");
 
+  */
   emit ();
 
   /*
