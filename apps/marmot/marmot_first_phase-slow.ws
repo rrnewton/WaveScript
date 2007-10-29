@@ -168,12 +168,16 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   sfloats = deep_stream_map(int16ToFloat, ch1i);
 
+  /* ULTRACRAP IMPLEMENTATION */
   // highpass and lowpass to simulate bandpass
   filtered = fft_filter(fft_filter(sfloats, low_pass(16,4)),
                         high_pass(16,3));
 
   // now compute psd
   psds = psd(filtered, 16);
+
+  /* SEMICRAP IMPLEMENTATION -- doesnt work but for comparison */
+  //psds = psd(sfloats, 16);
 
   // sum the psd 
   wscores = iterate p in psds {
