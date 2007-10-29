@@ -675,9 +675,9 @@
 	 (values 
      (case scheduler
        [(default-scheduler train-scheduler)
-        `("WSSource * ",name" = new WSBuiltins::Timer(",period");\n")]
+        `("WSSource * ",name" = new WSBuiltins::Timer(",period", maxTuples);\n")]
        [(corefit-scheduler-ex)
-        `("WSSource* ",name" = new WSBuiltins::Timer(",period");\n"
+        `("WSSource* ",name" = new WSBuiltins::Timer(",period", maxTuples);\n"
           "query.addOp(",name");\n"
           ,name"->setCPU(0);\n\n")])
 	  '()
@@ -1888,10 +1888,18 @@
 
 int main(int argc, char ** argv)
 {
+  /* max. number of tuples to run for all sources */
+  int maxTuples;
+
+
   /* set global variable(s) */
   if (misc_parse_out_switch(&argc, argv, \"no_prefix\", 0))
     WSOUTPUT_PREFIX = FALSE;
   else WSOUTPUT_PREFIX = TRUE;
+
+  if (0 != misc_parse_option_as_int(&argc, argv, \"num_tuples\", 'n', &maxTuples)) {
+    maxTuples = -1;
+  }
 
   /* initialize subsystems */ 
   WSInit(&argc, argv);
@@ -1906,10 +1914,18 @@ int main(int argc, char ** argv)
 
 int main(int argc, char ** argv)
 {
+  /* max. number of tuples to run for all sources */
+  int maxTuples;
+
+
   /* set global variable(s) */
   if (misc_parse_out_switch(&argc, argv, \"no_prefix\", 0))
     WSOUTPUT_PREFIX = FALSE;
   else WSOUTPUT_PREFIX = TRUE;
+
+  if (0 != misc_parse_option_as_int(&argc, argv, \"num_tuples\", 'n', &maxTuples)) {
+    maxTuples = -1;
+  }
 
   /* initialize subsystems */ 
   WSInit(&argc, argv);

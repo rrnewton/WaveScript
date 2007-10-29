@@ -535,20 +535,33 @@ public:
   class Timer : public WSSource{
    
     public:
-    Timer(wsfloat_t freq) : WSSource("Timer") {
-      period = (int)(1000000.0 * (1.0 / freq));
-      Launch();
-    }
+     Timer(wsfloat_t freq, wsint_t maxTuples) :
+        WSSource("Timer"),
+        period((int)(1000000.0 * (1.0 / freq))),
+        maxTuples(maxTuples),
+        currTuple(0)
+     {
+       Launch();
+     }
 
-    DEFINE_SOURCE_TYPE(bool);
+     DEFINE_SOURCE_TYPE(bool);
 
-    private:
-    int period; 
+     private:
+     int period; 
+     int maxTuples;
+     int currTuple;
 
-    void *run_thread() {
-      while (!Shutdown()) {
-	source_emit(0);
-	usleep(period);
+    void *run_thread()
+    {
+      while (!Shutdown())
+      {
+        if ((maxTuples >= 0) && (currTuple == maxTuples))
+        {
+           WSSched::stop();
+        }
+        source_emit(0);
+        usleep(period);
+        ++currTuple;
       }
       return NULL;
     }
