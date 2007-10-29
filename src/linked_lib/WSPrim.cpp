@@ -535,11 +535,9 @@ public:
   class Timer : public WSSource{
    
     public:
-     Timer(wsfloat_t freq, wsint_t maxTuples) :
+     Timer(wsfloat_t freq) :
         WSSource("Timer"),
-        period((int)(1000000.0 * (1.0 / freq))),
-        maxTuples(maxTuples),
-        currTuple(0)
+        period((int)(1000000.0 * (1.0 / freq)))
      {
        Launch();
      }
@@ -548,20 +546,13 @@ public:
 
      private:
      int period; 
-     int maxTuples;
-     int currTuple;
 
     void *run_thread()
     {
       while (!Shutdown())
       {
-        if ((maxTuples >= 0) && (currTuple == maxTuples))
-        {
-           WSSched::stop();
-        }
         source_emit(0);
         usleep(period);
-        ++currTuple;
       }
       return NULL;
     }

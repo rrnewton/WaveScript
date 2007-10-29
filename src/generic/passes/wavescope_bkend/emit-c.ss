@@ -675,9 +675,9 @@
 	 (values 
      (case scheduler
        [(default-scheduler train-scheduler)
-        `("WSSource * ",name" = new WSBuiltins::Timer(",period", maxTuples);\n")]
+        `("WSSource * ",name" = new WSBuiltins::Timer(",period");\n")]
        [(corefit-scheduler-ex)
-        `("WSSource* ",name" = new WSBuiltins::Timer(",period", maxTuples);\n"
+        `("WSSource* ",name" = new WSBuiltins::Timer(",period");\n"
           "query.addOp(",name");\n"
           ,name"->setCPU(0);\n\n")])
 	  '()
@@ -1111,8 +1111,12 @@
        `("\n\n"
 	 ,(block "class PrintQueryOutput : public WSBox"
 	 `("public:\n"
-	   "PrintQueryOutput(const char *name) : WSBox(\"PrintQueryOutput\") {}\n\n"
+	   "PrintQueryOutput(const char *name, int maxTuples) "
+	   " : WSBox(\"PrintQueryOutput\"), maxTuples(maxTuples), curTuples(0) "
+	   " {}\n\n"
 	   "private:\n"
+	   "  int maxTuples;\n"
+	   "  int curTuples;\n"
 	   "DEFINE_NO_OUTPUT_TYPE;\n\n"
 	   ,(block "bool iterate(uint32_t port, void *input)"
 		   `(,T " *element = (",T" *)input;\n"
@@ -1126,6 +1130,9 @@
 			    `("if(WSOUTPUT_PREFIX) printf(\"WSOUT: \");\n"
 			      ,(EmitPrint "(*element)" typ) ";\n"
 			      "printf(\"\\n\");\n")])
+
+			" curTuples++;\n"
+			" if (curTuples == maxTuples) WSSched::stop();\n"
 
 ; [2007.01.22] Don't need to do this, it happens automatically:
 ;			"delete element;\n"  
@@ -1947,7 +1954,7 @@ int main(int argc, char ** argv)
     [(default-scheduler train-scheduler)
      `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
-  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");
+  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\", maxTuples);
   out.connect(",return_name");
 
   /* now, run */
@@ -1960,7 +1967,7 @@ int main(int argc, char ** argv)
     [(corefit-scheduler-ex) ; FIXME: use params. file for setCPU() below
      `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
-  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");
+  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\", maxTuples);
   query.addOp(&out);
   out.setCPU(0);
   query.connectOps(",return_name", &out);
