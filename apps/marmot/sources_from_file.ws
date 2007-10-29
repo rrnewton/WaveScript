@@ -28,11 +28,12 @@ marmotfile =
 // Trying to give this a nice number for the C++ backend:
 // 5K, 10K - working fine on faith 20-30% utilization
 // 20K fine on faith.
-samp_rate = 30000.0; 
+//samp_rate = 30000.0; 
 
 // Having problems when I move to the CoreFit engine.
 // Seems to always use 100% cpu.
 //samp_rate = 5000.0; 
+samp_rate = 1000.0;
 
 winsize = 16384;
 // Old data files are 24 khz...

@@ -1,6 +1,6 @@
 
 
-// On faith: scheme = <1s / 50K * 50, 
+// On faith: scheme = <1s / 50K * 50, (-n 50)
 //   mlton = 3s ?? And that's whether or not we use 32 or 64 bit virttime stamps.
 //   wsc -O2 = 15.5s 9.3s (user) with no usleeping at all, 
 //   with the "setBatchSize" method, it was 29.2s real, 12.1s. user.
@@ -12,6 +12,6 @@ BASE <- iterate _ in timer(10000.0) {
   count += 1;
   if count == printevery then {
     count := 0;
-    emit ();
+    emit 1; // Added some output... otherwise I think MLton may have optimized the whole thing away.
   }
 }

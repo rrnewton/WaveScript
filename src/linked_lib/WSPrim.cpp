@@ -532,24 +532,19 @@ public:
 
 
   /* This takes Signal(T) to Signal(SigSeg(T)) */
-  class Timer : public WSSource{
-   
+  class Timer : public WSSource {   
     public:
      Timer(wsfloat_t freq) :
         WSSource("Timer"),
         period((int)(1000000.0 * (1.0 / freq)))
      {
        Launch();
-       //setBatchSize(1); // For a "pull based" execution.
      }
-
      DEFINE_SOURCE_TYPE(bool);
-
      private:
      int period; 
-
-    void *run_thread()
-    {
+     void *run_thread()
+     {
       while (!Shutdown())
       {
         //printf("   <<< TIMER FIRING >>>\n");
@@ -557,9 +552,29 @@ public:
         usleep(period);
       }
       return NULL;
-    }
-  };
-  
+     }
+  };  
+
+  class MagicPullTimer : public WSSource {
+    public:
+     MagicPullTimer(wsfloat_t freq) : WSSource("MagicPullTimer")
+     {
+       Launch();
+       setBatchSize(1); // For a "pull based" execution.
+     }
+     DEFINE_SOURCE_TYPE(bool);
+     private: 
+     void *run_thread()
+     {
+      while (!Shutdown()) {
+        source_emit(0);
+      }
+      return NULL;
+     }
+  };  
+
+
+
 };
 
 

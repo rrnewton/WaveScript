@@ -672,14 +672,17 @@
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
 	[(timer ,[Simple -> period])
+	 ;; HACK, we use the "setBatchSize" version for timing queries if "-t" was given.
+	 ;; This only makes sense if the query has a SINGLE timer as its data source.
+	 (define classname (if (wsint-time-query) "MagicPullTimer" "Timer"))
 	 (values 
-     (case scheduler
-       [(default-scheduler train-scheduler)
-        `("WSSource * ",name" = new WSBuiltins::Timer(",period");\n")]
-       [(corefit-scheduler-ex corefit-scheduler-df)
-        `("WSSource* ",name" = new WSBuiltins::Timer(",period");\n"
-          "query.addOp(",name");\n"
-          ,name"->setCPU(0);\n\n")])
+	  (case scheduler
+	    [(default-scheduler train-scheduler)
+	     `("WSSource * ",name" = new WSBuiltins::",classname"(",period");\n")]
+	    [(corefit-scheduler-ex corefit-scheduler-df)
+	     `("WSSource* ",name" = new WSBuiltins::",classname"(",period");\n"
+	       "query.addOp(",name");\n"
+	       ,name"->setCPU(0);\n\n")])
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]

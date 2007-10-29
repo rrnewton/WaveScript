@@ -15,6 +15,7 @@ OUTFILE=query.cpp
 NOGCC=0
 WSCDEBUG=0
 
+# This is lame, but have to pass through a bunch of stuff from the script to the scheme process.
 while [ $# != 0 ];  do 
   if [ "$1" == "-no-gcc" ]
   then NOGCC=1;
@@ -23,8 +24,10 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-o" ]
   then shift;
        OUTFILE="$1"; 
-  elif [ "$1" == "-exit-error" ]
+  elif [ "$1" == "-exit-error" ] ||
+       [ "$1" == "-t" ]
   then REGPASSTHRU="$REGPASSTHRU $1";
+
   elif [ "$1" == "--disable-pass" ]
   then REGPASSTHRU="$REGPASSTHRU $1"; # FIXME: this is dangerous on bad args!
        shift;
@@ -68,6 +71,7 @@ rm -f "$OUTFILE"
 
 if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
 
+#echo PASSING THROUGH ARGS: $REGPASSTHRU
 export REGIMENT_OR_WAVESCRIPT=WS
 if "$REGIMENTEXEC" wscomp $abspath $REGPASSTHRU ;
 then echo

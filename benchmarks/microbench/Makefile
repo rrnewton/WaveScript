@@ -1,7 +1,17 @@
 
 
 
+BENCHS="
+ just_timer.ws
+ read_filedata_bigwins.ws
+ read_filedata_smallwins.ws
+"
+
 all: /tmp/dummyfile.bin
+	@echo "   Running all microbenchmarks, building pdf summary."
+	@echo "   Running all microbenchmarks, building pdf summary."
+
+	@echo "   Running all microbenchmarks, building pdf summary."
 
 # This makse a ~40MB file.
 # 
