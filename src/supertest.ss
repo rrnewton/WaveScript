@@ -534,7 +534,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
-#;
 (begin (current-directory (format "~a/benchmarks" test-root))
        (fpf "    Run all benchmarks, build full report:    ~a\n" 
 	    (code->msg! (system/exit-code (format "make > ~a/perfreport.log" test-directory))))
