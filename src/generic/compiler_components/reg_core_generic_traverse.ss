@@ -309,10 +309,19 @@
 ;	  [(src-pos     ,p ,[loop -> e]) (fuse (list e) (lambda (x) `(src-pos     ,p ,x)))]
 ;	  [(assert-type ,t ,[loop -> e]) (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
 
+     [(iterate ,annot ,[loop -> f] ,[loop -> s])
+      (fuse `(,f ,s) (lambda ls `(iterate ,annot . ,ls)))] ; FIXME: is this at all dangerous?
+        
+     
+     #;
+     [(iterate ,a ,[loop -> rands] ...)
+      (begin
+        (fuse rands (lambda ls `(iterate ,a . ,ls))))]
+
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)
 		      (basic-primitive? prim)))
-	   (fuse rands (lambda ls `(,prim . ,ls)))]
+      (fuse rands (lambda ls `(,prim . ,ls)))]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)

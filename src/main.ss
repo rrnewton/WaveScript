@@ -655,8 +655,8 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
-  ;(unless (memq 'annotate-with-data-rates disabled-passes)
-  ;  (ws-run-pass p annotate-with-data-rates))
+  (unless (memq 'annotate-with-data-rates disabled-passes)
+    (ws-run-pass p annotate-with-data-rates))
 
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
@@ -878,7 +878,7 @@
 
    ;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
    ;;(pretty-print prog)
-   
+
    (unless (regiment-quiet)
      (printf "\nTypecheck complete, program types:\n\n")
      (if (regiment-verbose) 
@@ -910,7 +910,6 @@
 
    (ws-run-pass prog nominalize-types)
 
-;   (pretty-print prog)
 
 ;   (inspect `(NOMINALIZED ,prog))
 
@@ -1102,7 +1101,10 @@
 ;    (printf "regimentc: compile regiment programs!~n")
     ;; This is a list of option flags mutated by "loop" below.
     ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
-    (let ([opts '()])
+    ;; FIXME: may want to merge these two eventually; input-parameters added mostly for
+    ;;        profiling information, which can have slightly more complex structure
+    (let ([opts '()]
+          [input-parameters '()])
       
       ;; This determines what mode we're in then calls "loop" to process the flags.
       (define (main)		
@@ -1375,8 +1377,8 @@
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
       (define (loop args)
-	(match args
-	  [() '()]
+        (match args
+          [() '()]
 
 	  [(-v ,rest ...) 
 	   (set! opts (cons 'verbose opts))
@@ -1468,8 +1470,17 @@
 
      ;; --mic
      ;; FIXME: add to print-help (or automate print-help)
+     ;; FIXME: get rid of this; put it into input-parameters
      [(--scheduler ,sched-name ,rest ...)
       (set! opts (append `(scheduler ,sched-name) opts))
+      (loop rest)]
+
+     ;; --mic
+     ;; FIXME: add to print-help (or automate print-help)
+     [(--param-file ,param-file-name ,rest ...)
+      (let ((param-file (open-input-file (symbol->string param-file-name))))
+        (set! input-parameters (read param-file))
+        (close-port param-file))
       (loop rest)]
 	  
 	  ;; otherwise a file to compile that we add to the list

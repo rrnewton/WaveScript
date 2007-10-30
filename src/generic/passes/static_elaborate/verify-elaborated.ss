@@ -96,9 +96,9 @@
 	 ;; This is insufficiently precise, because it can allow
 	 ;; naughty things, for example, in the RHS of the state
 	 ;; bindings.
-	 [(iterate ,letorlamb ,[src])
+	 [(iterate ,annot ,letorlamb ,[src])
 	  (fluid-let ([inside-iterate #t])
-	    `(iterate ,(process-expr letorlamb tenv fallthrough) ,src))]
+	    `(iterate ,annot ,(process-expr letorlamb tenv fallthrough) ,src))]
 	 
 	 ;; TODO: disallow lambdas except as arguments to iterate and select higher order prims.
 	 

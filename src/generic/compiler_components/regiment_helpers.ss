@@ -1065,11 +1065,11 @@
 
        [(lambda ,args ,ty ,[bod]) 
 	(if (>= level 2) `(lambda ,args ,bod) '_)]
-       [(iterate ,[fun] ,[bod])
+       [(iterate ,annot ,[fun] ,[bod])
 	(if (>= level 3) 
 	    (if (>= level 4)
-		`(iterate ,fun ,bod)
-		`(iterate _ ,bod))
+		`(iterate ,annot ,fun ,bod)
+		`(iterate ,annot _ ,bod))
 	    '_)]
 
        [(assert-type ,_ ,[e]) e]

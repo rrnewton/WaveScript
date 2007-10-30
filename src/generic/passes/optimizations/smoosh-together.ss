@@ -68,7 +68,7 @@
 
 	  ;; For now we simply don't go inside lambda's:
 	  ;[(lambda ,v* ,ty* ,bod) `(lambda ,v* ,ty* ,bod)]
-	  [(iterate ,_ ,[strm]) `(iterate ,_ ,strm)]
+	  [(iterate ,annot ,_ ,[strm]) `(iterate ,annot ,_ ,strm)]
 
 	  [(,lett ([,lhs* ,ty* ,_rhs*] ...) ,_bod)
 	   (guard (memq lett '(let let* letrec)))

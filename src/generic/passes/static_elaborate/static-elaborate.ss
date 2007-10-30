@@ -434,7 +434,7 @@
 	       )]
           [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
           [(while ,[tst] ,(bod)) (+ tst bod)]
-          [(iterate ,(fun) ,(bod)) (+ fun bod)]
+          [(iterate ,annot ,(fun) ,(bod)) (+ fun bod)]
 
 	  [(,app ,[rator] ,[rands] ...) 
 	   (guard (eq-any? app 'app 'construct-data))
@@ -716,15 +716,15 @@
 	  ;; I'm not confident that we've updated the inliner to deal with side-effects.
 	  ;; [2006.11.05] DANGER, ENABLING NOW BUT AM STILL NOT CONFIDENT:
 
-	  ;; We can't inline teh iterator state however, don't try for now.
+	  ;; We can't inline the iterator state however, don't try for now.
 	  ;; [2006.11.05] Currently this exposes a bug while executing demo7
 ;	  [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
 ;	   (let ([newenv (append (map (lambda (v rhs) (list v rhs 99999)) lhs* rhs*) env)])
 ;	     `(iterate (letrec ([,lhs* ,ty* ,rhs*] ...) ,(process-expr bod newenv)) ,strm))]
-          [(iterate ,[fun] ,[strm])  `(iterate ,fun ,strm)]
+          [(iterate ,annot ,[fun] ,[strm])  `(iterate ,annot ,fun ,strm)]
 	  ;; This is altogether a hack, we need to purify these iterates.
 
-;          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
+;          [(iterate ,annot ,fun ,[strm])  `(iterate ,annot ,fun ,strm)]
 	  
 	  [(for (,i ,[st] ,[en]) ,bod)
 	   (let ([newenv (cons `(,i ,not-available 99999) env)])	    
@@ -1259,7 +1259,7 @@
 	 (static-elaborate ',prog)
 	 ,prog])
 
-    ,(let ([prog '(iterate (lambda (x ___VIRTQUEUE___) (Int (VQueue Int))
+    ,(let ([prog '(iterate () (lambda (x ___VIRTQUEUE___) (Int (VQueue Int))
 				   (letrec ([y Bool '#t])
 				     (begin (for (i '1 '10) (set! y '#f))
 					    (if y (emit ___VIRTQUEUE___ '77)

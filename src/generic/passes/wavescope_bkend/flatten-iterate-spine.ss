@@ -27,14 +27,14 @@
 		      (if (pair? x) (printf "FIS: ~s\n" (car x)))
 		      #f)) 00]
 
-	 [(iterate ,fun ,[src])
+	 [(iterate ,annot ,fun ,[src])
 	  (mvlet ([(src binds) (make-simple-shallow src tenv)])
 	    ;; This had better be a symbol for now.
 	    (ASSERT symbol? src)
 	    
 	    (if (null? binds)
-		`(iterate ,fun ,src)
-		`(lazy-letrec ,binds (iterate ,fun ,src)))
+		`(iterate ,annot ,fun ,src)
+		`(lazy-letrec ,binds (iterate ,annot ,fun ,src)))
 	    )]
 
 	 [(zip2 ,[s1] ,[s2])
@@ -87,6 +87,7 @@
 	(List (Stream #(Float (Sigseg Float))))
 	(cons tpk1_21 (cons tpk4_51 '()))))
       (iterate
+       ()
        (lazy-letrec
 	((buf1_60 (List #(Float (Sigseg Float))) '())
 	 (buf2_59 (List #(Float (Sigseg Float))) '()))

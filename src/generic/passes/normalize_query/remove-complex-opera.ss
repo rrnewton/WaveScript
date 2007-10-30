@@ -128,11 +128,11 @@
 	       ))]
 
 	   ;; For now don't lift out an iterate's lambda!
-	   [(iterate ,[fun] ,source)
+	   [(iterate ,annot ,[fun] ,source)
 	    (let-match ([#(,f ,decl1) fun])
 	      (mvlet ([(s decl2) (make-simple source tenv)])
 		(display-constrained "simple iterate source: " `[,s 100] "\n")
-		(vector `(iterate ,(make-letrec decl1 f) ,s)
+		(vector `(iterate ,annot ,(make-letrec decl1 f) ,s)
 			;(append decl1 decl2)
 			decl2
 			))

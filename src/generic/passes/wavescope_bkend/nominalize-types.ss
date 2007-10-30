@@ -310,6 +310,7 @@
               (readFile '"./countup.raw" '"" s0_0)])
         (let ([s2_2 (Stream #(Int Int64))
                (iterate
+                ()
                 (lambda (w_3 VIRTQUEUE_4)
                  ((Sigseg Int) (VQueue #(Int Int64)))
                  (begin
@@ -318,6 +319,7 @@
                 s1_1)])
          (let ([s3_5 (Stream #3(Int64 Int Float))
                 (iterate
+                 ()
                  (lambda (pattmp_6 VIRTQUEUE_9)
                   (#(Int Int64) (VQueue #3(Int64 Int Float)))
                   (let ([x_7 Int (tupref 0 2 pattmp_6)])
@@ -338,6 +340,7 @@
 					    (readFile '"./countup.raw" '"" s0_0)])
 				  (let ([s2_2 (Stream #(Int Int))
 					      (iterate
+                      ()
 					       (lambda (w_3 VIRTQUEUE_4)
 						 ((Sigseg Int) (VQueue #(Int Int)))
 						 (begin
@@ -346,6 +349,7 @@
 					       s1_1)])
 				    (let ([s3_5 (Stream #(Int Int Float))
 						(iterate
+                   ()
 						 (lambda (pattmp_6 VIRTQUEUE_9)
 						   (#(Int Int) (VQueue #(Int Int Float)))
 						   (let ([x_7 Int (tupref 0 2 pattmp_6)])

@@ -25,6 +25,8 @@
   [OutputGrammar reduce-primitives-grammar]
   [Expr (lambda (x fallthrough)	 
 	  (match x
+       [(iterate ,annot ,[f] ,[s])
+        (process-primapp 'iterate `(,annot ,f ,s))]
 	    [(,prim ,[rand*] ...)
 	     (guard (regiment-primitive? prim))
 	     (process-primapp prim rand*)]

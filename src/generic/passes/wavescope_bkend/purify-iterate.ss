@@ -306,7 +306,7 @@
 
 (define (Expr-driver ex fallthru)
   (match ex
-    [(iterate (,lett ([,lhs* ,ty* ,rhs*] ...)
+    [(iterate ,annot (,lett ([,lhs* ,ty* ,rhs*] ...)
 		     (lambda (,x ,vq) (,tyx ,tyvq) ,[bod]))
 	      ,[source])
      (guard (memq lett '(let letrec)))
@@ -334,7 +334,7 @@
 
 (define (testit)  
   (Expr 
-   '(iterate (let ([st Int 3])
+   '(iterate () (let ([st Int 3])
 	       (lambda (x vq) (Int (VQueue Int))
 		 (begin 
 		   (set! st (+ st 1))

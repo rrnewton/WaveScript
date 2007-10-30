@@ -38,10 +38,10 @@
 	      `(set! ,v ,e)]
 	     ;; Hmm... this is really treating it as a *let* not a letrec.
 	     ;; TODO: Change this to let!
-	     [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,lamb) ,[src])
+	     [(iterate ,annot (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,lamb) ,[src])
 	      ;(printf "  MUTABLE!! ~s\n" lhs*)
 	      (fluid-let ([mutable (append lhs* mutable)])
-		`(iterate (letrec ([,lhs* (Ref ,ty*) (Mutable:ref ,rhs*)] ...)
+		`(iterate ,annot (letrec ([,lhs* (Ref ,ty*) (Mutable:ref ,rhs*)] ...)
 			    ,(Expr lamb fallthru)) ,src))]
 	     
 	     ;; [2007.03.18] Ok, for now we're going to allow the user

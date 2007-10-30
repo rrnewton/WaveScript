@@ -266,27 +266,28 @@
       [(t) (type->width t #f)]
       [(t sumdecls) 
        (match t
-	 [Int16 2]
-	 [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
-	 ;; HACK:
-	 ;[(Sigseg #(,[w*] ...)) (apply + w*)]
-	 ;[(Sigseg ,t)         (type->width t)]
+         [Int16 2]
+         [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+         [Int64 8]
+         ;; HACK:
+         ;[(Sigseg #(,[w*] ...)) (apply + w*)]
+         ;[(Sigseg ,t)         (type->width t)]
          [(Sigseg ,t) 16]
-	 [Float  4]
-	 [Double 8]
+         [Float  4]
+         [Double 8]
+         [Complex 8]
+         [Char 1]
          [Bool 1] ; FIXME: check this
-	 ;;[Complex ]    
+         ;;[Complex ]    
 	 
-	 ;[#() 1] ;????
-	 [#(,[t*] ...) (apply + t*)]
+         ;[#() 1] ;????
+         [#(,[t*] ...) (apply + t*)]
 
-	 [(Sum ,TC)
-	  (ASSERT sumdecls)
-	  (printf "TYPE->WIDTH UNFINISHED!\n")
-	  (inspect sumdecls)
-	  (exit 3)
-	  (assq TC sumdecls)
-	  ]
+         [(Sum ,TC)
+          (ASSERT sumdecls)
+          (let ((sumtypedef (assoc `(,TC) sumdecls)))
+            (ASSERT sumtypedef)
+            (apply max (map (lambda (m) (type->width (cadr m) sumdecls)) (cdr sumtypedef))))]
 	 
 	 [,other (error 'type->width "do not know the size of this type: ~s" other)]
 	 )]))
@@ -299,8 +300,8 @@
       [(t d sumdecls)
        (match t
          [(Array ,et) (foldr + 8 (map (lambda (e) (datum->width et e)) (vector->list d)))]
-         ; FIXME: implement List also
-         [,other (type->width t)]
+         [(List ,et)  (foldr + 0 (map (lambda (e) (+ 8 (datum->width et e))) d))]
+         [,other (type->width t sumdecls)]
          )]))
   
 ; ----------------------------------------

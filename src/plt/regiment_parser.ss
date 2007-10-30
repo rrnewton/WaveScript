@@ -619,24 +619,24 @@
 
          ;; Iterators:
          [(iter iterbinder LeftBrace stmts RightBrace) 
-              `(,$1 (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $4 (list VIRTQUEUE)))) ,(cadr $2))]
+              `(,$1 (annotations) (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $4 (list VIRTQUEUE)))) ,(cadr $2))]
          [(iter iterbinder LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (letrec ,$6 (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE))))) ,(cadr $2))]
+          `(,$1 (annotations) (letrec ,$6 (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE))))) ,(cadr $2))]
 
 	 ;; Now with type annotation:
 #;
          [(iter LeftParen pattern :: type in exp RightParen LeftBrace stmts RightBrace) 
-              `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $10 (list VIRTQUEUE)))) 
+              `(,$1 (annotations) (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $10 (list VIRTQUEUE)))) 
 		    (assert-type (Stream ,$5) ,$7))]
 #;
          [(iter LeftParen pattern :: type in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (letrec ,$12 (lambda (,$3 ,VIRTQUEUE)
+          `(,$1 (annotations) (letrec ,$12 (lambda (,$3 ,VIRTQUEUE)
 			       ,(make-begin (append $14 (list VIRTQUEUE)))))
 		(assert-type (Stream ,$5) ,$7))]
 #;         
 	 ;; Considering moving to no-parens for iterate (for consistency):
 	 [(iter pattern in exp LeftBrace stmts RightBrace)
-	  `(,$1 (lambda (,$2 ,VIRTQUEUE) ,(make-begin (append $6 (list VIRTQUEUE)))) ,$4)]
+	  `(,$1 (annotations) (lambda (,$2 ,VIRTQUEUE) ,(make-begin (append $6 (list VIRTQUEUE)))) ,$4)]
 	 
 
 	 ;; Expression conditional:

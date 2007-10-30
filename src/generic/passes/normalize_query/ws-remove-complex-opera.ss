@@ -225,13 +225,13 @@
 			 (apply append xdecls rhsdecl*)))])]
 	   
 	   ;; For now don't lift out an iterate's lambda!	   
-	   [(iterate (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
+	   [(iterate ,annot (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
 	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))])
 	      (ASSERT null? fdecl)
 	      (mvlet ([(src sdecl) (make-simple source tenv)])
 		;(ASSERT null? sdecl)
 		;(display-constrained "simple iterate source: " `[,src 100] "\n")
-		(vector `(iterate (let ,(map list
+		(vector `(iterate ,annot (let ,(map list
 					  v* ty*
 					  (map make-lets rdecls* rhs*))
 				    ,f)

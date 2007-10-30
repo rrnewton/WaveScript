@@ -35,43 +35,43 @@
     
   ;; Returns vector of two things: new expr and list of const binds
   [Expr (lambda (x fallthrough)
-	  (match x 	    
-	    [(assert-type ,ty (quote ,datum))
-	     (match (do-datum datum ty)
-	       [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
-	    [(quote ,datum)   (do-datum datum #f)]
-	  
-	  ;; Don't lift out these complex constants!
-	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
-	  [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
-
-          [(lambda ,formals ,types ,[result])
-	   (match result
-	     [#(,body ,body-b*) 
-	      ;;(vector `(lambda ,formals ,body) body-b*)
-	      ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
-	      (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
-	     )]
-	  [,other (fallthrough other)]))]
+          (match x 	    
+            [(assert-type ,ty (quote ,datum))
+             (match (do-datum datum ty)
+               [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
+            [(quote ,datum)   (do-datum datum #f)]
+            
+            ;; Don't lift out these complex constants!
+            [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+            [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
+            
+            [(lambda ,formals ,types ,[result])
+             (match result
+               [#(,body ,body-b*) 
+                ;;(vector `(lambda ,formals ,body) body-b*)
+                ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
+                (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
+               )]
+            [,other (fallthrough other)]))]
 
   [Fuser (lambda (results k)
-	 (match results
-	   [(#(,exps ,binds) ...) (vector (apply k exps) (apply append binds))]
-	   [,other (error 'remove-complex-constant:process-expr 
-			  "bad intermediate result: ~s" other)]))]
+         (match results
+           [(#(,exps ,binds) ...) (vector (apply k exps) (apply append binds))]
+           [,other (error 'remove-complex-constant:process-expr 
+                          "bad intermediate result: ~s" other)]))]
 
   [Program 
    (lambda (prog process-expr)
      (match prog
        [(,input-language (quote (program ,body ,meta* ... ,type)))
-	(let-match ([#(,body ,body-b*) (process-expr body)])
-	  (if (null? body-b*)
-	      `(remove-complex-constant-language
-		'(program ,body ,meta* ... ,type))
-	      `(remove-complex-constant-language
-		'(program 
-		     (letrec ,body-b* ,body)
-		   ,meta* ...  ,type))))]))]
+        (let-match ([#(,body ,body-b*) (process-expr body)])
+          (if (null? body-b*)
+              `(remove-complex-constant-language
+                '(program ,body ,meta* ... ,type))
+              `(remove-complex-constant-language
+                '(program 
+                     (letrec ,body-b* ,body)
+                   ,meta* ...  ,type))))]))]
 
   ;; Works just for lists right now.
   (define datum->code

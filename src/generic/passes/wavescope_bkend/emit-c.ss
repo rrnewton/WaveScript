@@ -301,7 +301,7 @@
 			  (cons decl boddecls)
 			  (cons wsq wsqdecls)))))]
 
-	[(iterate ,let-or-lambda ,sig)
+	[(iterate ,annot ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))	  
 	 (let* ([parent (Var sig)]
@@ -2100,6 +2100,7 @@ int main(int argc, char ** argv)
   '(program
      (letrec ([s1 (Stream (Sigseg Complex)) (audio 1 4096 0)]
               [s2 (Stream (Sigseg Complex)) (iterate
+                                              ()
                                               (lambda (w ___VIRTQUEUE___)
                                                 ((Sigseg Complex) (VQueue
 								   (Sigseg
@@ -2138,6 +2139,7 @@ int main(int argc, char ** argv)
   '(program
      (letrec ([s1 (Stream (Sigseg Complex)) (audio 0 1024 0)]
               [s2 (Stream (Array Complex)) (iterate
+                                             ()
                                              (lambda (w ___VIRTQUEUE___)
                                                ((Sigseg Complex) (VQueue
 								  (Array
@@ -2150,6 +2152,7 @@ int main(int argc, char ** argv)
 						 ___VIRTQUEUE___))
                                              s1)]
               [s3 (Stream Float) (iterate
+                                  ()
 				  (lambda (arr0 ___VIRTQUEUE___)
                                      ((Array Complex) (VQueue  Float))
                                        (begin

@@ -131,8 +131,8 @@
       (lambda (x fallthru)
 	(define (normal-prim? p) (and (regiment-primitive? p) (not (eq? p 'iterate))))
 	(match x
-	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
-	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	  [(iterate ,annot (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
+	   `(iterate ,annot (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
 	  [(iterate . ,_) (error 'ws-lift-let "missed iterate: ~s" `(iterate . ,_))]
 
 	  ;; Ascriptions are redundant right within the RHS:

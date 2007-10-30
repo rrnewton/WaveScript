@@ -7,84 +7,163 @@
   ;
   (require (lib "process.ss")
            (lib "pregexp.ss")
+           (lib "port.ss")
            ;"../generic/util/helpers.ss"
            )
 
   ;
-  (provide compile-program
-           measure-wavescope-program)
+  (provide run-wavescope-program
+
+           get-svn-info
+           )
 
   ; FIXME: these are the duplicates from helpers.ss
   (provide n-times foldr)
-   
+
+
+;
+; FIXME: only works on stdout-bound processes
+;
+(define (run-program cmdline greppers output-port)
+  (let* ((proc-vals (process cmdline))
+         (proc-stdout (list-ref proc-vals 0))
+         (proc-stdin  (list-ref proc-vals 1))
+         (proc-pid    (list-ref proc-vals 2))
+         (proc-stderr (list-ref proc-vals 3))
+         (proc-ctrl   (list-ref proc-vals 4))
+         (stdouterr   (input-port-append #f proc-stdout proc-stderr)))
+
+    ;;
+    (define summary
+      (let loop ((gathered-info ()))
+        (let ((line (read-line stdouterr))) ; FIXME: does not guarantee that lines from stdout/stderr don't overrun each other
+
+          ;;
+          (fprintf output-port "~a~n" line)
+
+          ;; run each of the line greppers until there's a match
+          (if (eof-object? line)
+              gathered-info
+              (let ((new-info (ormap (lambda (gf) (gf line)) greppers)))
+                (if new-info
+                    (loop (append new-info gathered-info))
+                    (loop gathered-info)))))))
+
+    ;;
+    (proc-ctrl 'wait)
+    (close-input-port proc-stdout)
+    (close-output-port proc-stdin)
+    (close-input-port proc-stderr)
+
+    ;;
+    summary))
 
 
 ;
 ;
 ;
-(define (run-process path . args)
-  (let ((proc-vals (apply process* (cons path args))))
-    (let loop ((output-line (read-line (car proc-vals))))
-      (if (not (eq? output-line eof))
-          (begin
-            (printf "~a~n" output-line)
-            (loop (read (car proc-vals))))
-          (begin
-            (close-input-port (car proc-vals))
-            (close-output-port (cadr proc-vals))
-            (close-input-port (cadddr proc-vals)))))))
+(define (run-wavescope-program-c++ plan)
 
-          
+  ;; pull out params.
+  (define filename (cdr (assoc 'exe plan)))
+  (define num-tups (cdr (or (assoc 'num-tuples plan) '(_ . #f))))
+  (define logfilename (cdr (assoc 'run-logfile plan)))
+
+  ;; greppers:
+  ;; a list of functions, each taking an input line,
+  ;; and returning a list of new statistics, or #f
+  (define greppers
+    (list
+
+     [lambda (line)
+       (let ((times (pregexp-match "real=([0-9]*) user=([0-9]*) sys=([0-9]*) sum=[0-9]*" line)))
+         (if times
+             (let-values ([(real-time user-time sys-time)
+                           (apply values (map string->number (cdr times)))])
+               `((real-time . ,real-time) (user-time . ,user-time) (sys-time . ,sys-time)))
+             #f))]
+     ))
+
+  ;; build command-line
+  (define command-line
+    (string-append filename
+                   (if num-tups (string-append " -n " (number->string num-tups)) "")))
+
+  ;;
+  (if (not (null? logfilename))
+      (let ((logfile (open-output-file logfilename 'append)))
+        (run-program command-line greppers logfile)
+        (close-output-port logfile))
+      (run-program command-line greppers (current-output-port))))
+
+
+;
+;
+;
+(define (run-wavescope-program-mlton plan)
+
+  ;; pull out params.
+  (define filename (cdr (assoc 'exe plan)))
+  (define num-tups (cdr (or (assoc 'num-tuples plan) '(_ . #f))))
+  (define logfilename (cdr (assoc 'run-logfile plan)))
+
+  ;; greppers
+  (define greppers
+    (list
+
+     [lambda (line)
+       (let ((times (pregexp-match "^usertime, systime, realtime: (.*), (.*), (.*)" line)))
+         (if times
+             (let-values ([(user-time sys-time real-time)
+                           (apply values (map string->number (cdr times)))])
+               `((real-time . ,real-time) (user-time . ,user-time) (sys-time . ,sys-time)))
+             #f))]
+     ))
+
+  ;; build command-line
+  (define command-line
+    (string-append "/usr/bin/time -f \"usertime, systime, realtime: %U, %S, %e\n\""
+                   " " filename
+                   (if num-tups (string-append " -n " (number->string num-tups)) "")))
+
+  ;;
+  (if (not (null? logfilename))
+      (let ((logfile (open-output-file logfilename 'append)))
+        (run-program command-line greppers logfile)
+        (close-output-port logfile))
+      (run-program command-line greppers (current-output-port))))
       
-;
-; compile a wavescript program
-;   extension is a string to add into the names of the c++ source and binary
-;   returns c++ binary's filename on success, #f on failure
-;
-(define (compile-program filename extension disabled-passes)
-  (let ((c++-src-filename (string-append filename "." extension ".cpp"))
-        (c++-bin-filename (string-append filename "." extension ".c++.exe"))
-        (disabled-pass-flags
-         (foldr (lambda (x y) (string-append " --disable-pass " (symbol->string x) y)) "" disabled-passes)))
-
-    (if (and (system (string-append "wsc " filename disabled-pass-flags))
-             (system (string-append "mv query.cpp " c++-src-filename))
-             (system (string-append "mv query.exe " c++-bin-filename)))
-        c++-bin-filename
-        #f)))
-
 
 ;
 ;
 ;
-(define (measure-wavescope-program filename)
-  (let ((proc-vals (process filename)))
-    (let ((proc-stdout     (list-ref proc-vals 0))
-          (proc-stdin      (list-ref proc-vals 1))
-          (proc-pid        (list-ref proc-vals 2))
-          (proc-stderr     (list-ref proc-vals 3))
-          (proc-controller (list-ref proc-vals 4)))
+(define (run-wavescope-program plan)
+  (case (cdr (assoc 'backend plan))
+    ((c++)   (run-wavescope-program-c++ plan))
+    ((mlton) (run-wavescope-program-mlton plan))
+    (else  (error 'run-wavescope-program "unknown backend: ~a" (cdr (assoc 'backend plan))))))
 
-      ;(display (proc-controller 'status)) (newline)
 
-      ; loop until start of scheduler statistics output
-      (let loop ()
-        (if (not (pregexp-match "^Scheduler Statistics Summary" (read-line proc-stdout)))
-            (loop)))
-
-      ; gather scheduler statistics
-      (let* ((deferred-queues (car (pregexp-match "[0-9]"           (read-line proc-stdout))))
-             (processing-time (car (pregexp-match "[0-9]*\\.[0-9]*" (read-line proc-stdout))))
-             (user-time       (car (pregexp-match "[0-9]*\\.[0-9]*" (read-line proc-stdout))))
-             (system-time     (car (pregexp-match "[0-9]*\\.[0-9]*" (read-line proc-stdout)))))
-
-        (proc-controller 'wait)
-        (close-input-port proc-stdout)
-        (close-output-port proc-stdin)
-        (close-input-port proc-stderr)
-
-        (map string->number (list processing-time user-time system-time))))))
-
+;
+; FIXME: should not be in this file
+;
+(define (get-svn-info)
+  (run-program
+   "cd $REGIMENTD; svn info"
+   (list
+    [lambda (line)
+      (let ((url-match (pregexp-match "^URL: (.*)" line)))
+        (if url-match
+            `((svn-url . ,(cadr url-match)))
+            #f))]
+    
+    [lambda (line)
+      (let ((rev-match (pregexp-match "^Last Changed Rev: ([0-9]*)" line)))
+        (if rev-match
+            `((svn-revision . ,(string->number (cadr rev-match))))
+            #f))])
+   (current-output-port)))
+   
 
 
 ;

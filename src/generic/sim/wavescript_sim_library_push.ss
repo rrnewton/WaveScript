@@ -18,7 +18,9 @@
   (provide
 ;                 make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app foreign-app let Mutable:ref deref static statref		 
+		 app foreign-app let Mutable:ref deref static statref
+
+       annotations
 		 
 		 wscase construct-data 
 
@@ -262,6 +264,8 @@
   (define-syntax static (syntax-rules () [(_ x) x]))
   (define-syntax statref (syntax-rules () [(_ x) x]))
 
+  (define-syntax annotations (syntax-rules () [(_ . x) x]))
+
   ;; ================================================================================    
   ;;; Type tests for WaveScript types embedded in Scheme.
 
@@ -387,7 +391,7 @@
   ;;(define smap stream-map)
   ;;(define sfilter stream-filter)
   
-  (define (iterate fun src)
+  (define (iterate annotations fun src)
     (define our-sinks '())
     (define wsbox
       (lambda (msg)
@@ -403,7 +407,7 @@
 
   
   ; FIXME: do we need to measure the final stream to BASE also?
-  (define (iterate-bench input-type box-name edge-counts-table fun src)
+  (define (iterate-bench annotations input-type box-name edge-counts-table sum-type-declarations fun src)
     (define our-sinks '())
     (define wsbox
       (lambda (msg)
@@ -412,7 +416,7 @@
           (hashtab-set! edge-counts-table
                            box-name
                            (+ (or (hashtab-get edge-counts-table box-name) 0)
-                              (datum->width input-type msg)))
+                              (datum->width input-type msg sum-type-declarations)))
           (for-each (lambda (elem)
                       (fire! elem our-sinks))
             outputs))))
@@ -521,75 +525,75 @@
       (define inp (open-input-file file))
       (define tyvec (list->vector types))
       (define (parse-line str)
-	(define p (open-input-string str))
-	(let ([ls (list-build len 
-		    (lambda (i)
-		      ;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
-                      (s:case (vector-ref tyvec i)
-			      [(String) (symbol->string (read p))]
-			      [(Int Int16) (let ([v (read p)])
-					     (unless (ws-int? v)
-					       (error 'readFile "cannot read ~s as integer type" v))
-					     v)]
-			      [(Float)    (let ([v (read p)])
-					    (unless (ws-float? v)
-					      (error 'readFile "cannot read ~s as float type" v))
-					    v)]
-			      [else (read p)])
-		      ))])
-	  (if (fx= 1 (length ls))
-	      (car ls)
-	      (make-tuple ls))))
-       (define our-sinks '())  
-       (define iswindowed (> winsize 0))
-       (define pos 0)
-       ;; Reads a whole bunch of lines.
-       (define (read-window n)
-	 (let loop ([x (read-line inp)] [batch (sub1 n)] [acc '()])
+        (define p (open-input-string str))
+        (let ([ls (list-build len 
+                              (lambda (i)
+                                ;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
+                                (s:case (vector-ref tyvec i)
+                                        [(String) (symbol->string (read p))]
+                                        [(Int Int16) (let ([v (read p)])
+                                                       (unless (ws-int? v)
+                                                         (error 'readFile "cannot read ~s as integer type" v))
+                                                       v)]
+                                        [(Float)    (let ([v (read p)])
+                                                      (unless (ws-float? v)
+                                                        (error 'readFile "cannot read ~s as float type" v))
+                                                      v)]
+                                        [else (read p)])
+                                ))])
+          (if (fx= 1 (length ls))
+              (car ls)
+              (make-tuple ls))))
+      (define our-sinks '())  
+      (define iswindowed (> winsize 0))
+      (define pos 0)
+      ;; Reads a whole bunch of lines.
+      (define (read-window n)
+        (let loop ([x (read-line inp)] [batch (sub1 n)] [acc '()])
 	       (if (or (not x) (eof-object? x))
-		   (reverse! acc)
-		   (if (fxzero? batch)
-		       (reverse! (cons (parse-line x) acc))
-		       (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc))))))
-       (define wsbox 
-	 (lambda (msg)
-	   (if iswindowed
-		  (let ([win (list->vector (read-window winsize))])
-		    (if (not (= (vector-length win) winsize))
-                        ;; How do we signal end of file?
-			(stop-WS-sim! "readFile: didn't get enough data on window read")
-			(let* ([newpos (+ winsize pos -1)]			
-			       [result (make-sigseg pos newpos win nulltimebase)])
-			  (set! pos (+ 1 newpos))
-			  (fire! result our-sinks))))
-		  
-		  ;; Inefficient:
-		  (let ([win (read-window 1)])
-		    (if (null? win) 
-			(stop-WS-sim! "readFile: out of data")
-			(fire! (car win) our-sinks))))))
+              (reverse! acc)
+              (if (fxzero? batch)
+                  (reverse! (cons (parse-line x) acc))
+                  (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc))))))
+      (define wsbox 
+        (lambda (msg)
+          (if iswindowed
+              (let ([win (list->vector (read-window winsize))])
+                (if (not (= (vector-length win) winsize))
+                    ;; How do we signal end of file?
+                    (stop-WS-sim! "readFile: didn't get enough data on window read")
+                    (let* ([newpos (+ winsize pos -1)]			
+                           [result (make-sigseg pos newpos win nulltimebase)])
+                      (set! pos (+ 1 newpos))
+                      (fire! result our-sinks))))
+              
+              ;; Inefficient:
+              (let ([win (read-window 1)])
+                (if (null? win) 
+                    (stop-WS-sim! "readFile: out of data")
+                    (fire! (car win) our-sinks))))))
 
-       ;; Register ourselves with the parent operator:
-       (srcstrm wsbox)
-       (lambda (sink)
-	 ;; Register the sink to receive this output:
-	 (set! our-sinks (cons sink our-sinks))))
+      ;; Register ourselves with the parent operator:
+      (srcstrm wsbox)
+      (lambda (sink)
+        ;; Register the sink to receive this output:
+        (set! our-sinks (cons sink our-sinks))))
 
 
     ;; Read a binary stream with a particular tuple format.
     (define (binsource)
       (define source (read-binary-file-stream file srcstrm
-				(apply + (map type->width types)) ;; Read N bytes at a time.
-				(types->reader types)
-				(if (> winsize 0) winsize 1) ;; Length of "window"				
-				0 ;; Overlap
-				skipbytes
-				offset))
+                                              (apply + (map type->width types)) ;; Read N bytes at a time.
+                                              (types->reader types)
+                                              (if (> winsize 0) winsize 1) ;; Length of "window"				
+                                              0 ;; Overlap
+                                              skipbytes
+                                              offset))
       ;; winsize 0 or -1 indicates non windowed stream, thus strip that sigseg:
       ;; This is inefficient because we allocate a one-element sigseg then discard it:
       (if (<= winsize 0)
-	  (iterate  (lambda (x vq) (emit vq (seg-get x 0)) vq)  source)
-	  source))
+          (iterate () (lambda (x vq) (emit vq (seg-get x 0)) vq) source)
+          source))
 
     (define thestream
       (cond 
@@ -599,42 +603,42 @@
     ;; This records the stream the first time through then keeps repeating it.
     (define (repeat-stream repeats)
       (let ([whole-stream #f] [buf '()] [first-run? #t])
-	(define (loop)
-	  (cond
-	   [first-run? 
-	    (let ([x (thestream)])
-	      (if (eq? x stream-empty-token)
-		  (begin 
-		    (set! buf (reverse! buf))
-		    (set! whole-stream buf)
-		    (set! first-run? #f)
-		    (set! thestream #f)
-		    (loop))
-		  (begin (set! buf (cons x buf))
-			 x)))]
-	   [(null? buf)
-	    (if (= 0 repeats)
-		stream-empty-token
-		(begin (set! buf whole-stream)
-		       (set! repeats (fx- repeats 1))
-		       (loop)))]
-	   [else
-	    (let ([x (car buf)])
-	      (set! buf (cdr buf))
-	      x)]))
-	loop))
+        (define (loop)
+          (cond
+           [first-run? 
+            (let ([x (thestream)])
+              (if (eq? x stream-empty-token)
+                  (begin 
+                    (set! buf (reverse! buf))
+                    (set! whole-stream buf)
+                    (set! first-run? #f)
+                    (set! thestream #f)
+                    (loop))
+                  (begin (set! buf (cons x buf))
+                         x)))]
+           [(null? buf)
+            (if (= 0 repeats)
+                stream-empty-token
+                (begin (set! buf whole-stream)
+                       (set! repeats (fx- repeats 1))
+                       (loop)))]
+           [else
+            (let ([x (car buf)])
+              (set! buf (cdr buf))
+              x)]))
+        loop))
 
     (printf "Reading stream datafile ~s\n" file)
 
-    ;; __dataFile body:
+    ;; __readFile body:
     (s:case repeat
-      [(0) thestream]
-      [else (error 'datafile "no repeats yet")]
-      ;[(-1) (repeat-stream -1)]                                  
-      ;[else (ASSERT (> repeat 0)) (repeat-stream repeat)]
-      )
+            [(0) thestream]
+            [else (error 'datafile "no repeats yet")]
+                                        ;[(-1) (repeat-stream -1)]                                  
+                                        ;[else (ASSERT (> repeat 0)) (repeat-stream repeat)]
+            )
 
-    ) ; End __dataFile
+    ) ; End __readFile
   
   (define (ensBoxAudioAll . args)
     (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
@@ -657,86 +661,86 @@
     (define total 0)
     (define print-every 500000)
 
-       ;; This version is simpler than my previous attempt and just
-       ;; reads at the granularity of the window-size.  However it has
-       ;; a CORRECTNESS problem.  It depends on block-read getting all
-       ;; the data every read.  
-       ;; TODO: FIX THIS.
-       ;;
-       ;; This version takes 750 ms (opt lvl 3) with no alloc or fill.
-       ;; 1.6 s with alloc, 2.0 s with alloc & constant fill.
-       ;; And 22 seconds with alloc, fill, and sample parsing!
-       ;; Tried forcing read-sample/to-int16 to inline, but that bumped it to 35s!
-       ;; (Oops.  Got it back down to 24.8s by linearizing the pattern var usages.)
-       ;;   Inlining only to-int16 makes it 26s... not helping...       
-       ;;
-       ;; NOTE: Performance got vastly better when I only did one
-       ;; channel at a time instead of every sample being a 4-vector.
-       (define (read-window)
-	 (define (return-it string)
-	   (let ([win (make-vector len)])
-	     (let readloop ([i 0] [pos 0])
-	       ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
-	       (unless (= i len)
-		 (vector-set! win i (sample-extractor string pos))
-		 (readloop (fx+ i 1) (fx+ pos wordsize skipbytes))
-		 ))  
-	     win))
-	 (set! count1 (block-read infile buffer1 winsize))
-	 (cond
-	  [(eof-object? count1)  #f]
-	  ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
-	  [(fx< count1  winsize)
-	   ;; If we got an incomplete window we just keep reading:
-	   ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
-	   (let loop ([count count1]
-		      [acc (list (substring buffer1 0 count1))])
-	     ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
-	     (let ([newcount (block-read infile buffer1 (fx- winsize count))])
-	       (if (eof-object? newcount) 
-		   (begin (warning 'read-window 
-			    "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
-			    count1 winsize) 
-			  #f)
-		   (let ([total (+ count newcount)]
-			 [newacc (cons (substring buffer1 0 newcount) acc)])
-		     (if (fx= total winsize)
-			 (return-it (apply string-append (reverse! newacc)))
-			 (loop total newacc))))))] 
-	  [else (return-it buffer1)]))
+    ;; This version is simpler than my previous attempt and just
+    ;; reads at the granularity of the window-size.  However it has
+    ;; a CORRECTNESS problem.  It depends on block-read getting all
+    ;; the data every read.  
+    ;; TODO: FIX THIS.
+    ;;
+    ;; This version takes 750 ms (opt lvl 3) with no alloc or fill.
+    ;; 1.6 s with alloc, 2.0 s with alloc & constant fill.
+    ;; And 22 seconds with alloc, fill, and sample parsing!
+    ;; Tried forcing read-sample/to-int16 to inline, but that bumped it to 35s!
+    ;; (Oops.  Got it back down to 24.8s by linearizing the pattern var usages.)
+    ;;   Inlining only to-int16 makes it 26s... not helping...       
+    ;;
+    ;; NOTE: Performance got vastly better when I only did one
+    ;; channel at a time instead of every sample being a 4-vector.
+    (define (read-window)
+      (define (return-it string)
+        (let ([win (make-vector len)])
+          (let readloop ([i 0] [pos 0])
+            ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
+            (unless (= i len)
+              (vector-set! win i (sample-extractor string pos))
+              (readloop (fx+ i 1) (fx+ pos wordsize skipbytes))
+              ))  
+          win))
+      (set! count1 (block-read infile buffer1 winsize))
+      (cond
+       [(eof-object? count1)  #f]
+                                        ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
+       [(fx< count1  winsize)
+        ;; If we got an incomplete window we just keep reading:
+        ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
+        (let loop ([count count1]
+                   [acc (list (substring buffer1 0 count1))])
+                                        ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
+          (let ([newcount (block-read infile buffer1 (fx- winsize count))])
+            (if (eof-object? newcount) 
+                (begin (warning 'read-window 
+                                "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
+                                count1 winsize) 
+                       #f)
+                (let ([total (+ count newcount)]
+                      [newacc (cons (substring buffer1 0 newcount) acc)])
+                  (if (fx= total winsize)
+                      (return-it (apply string-append (reverse! newacc)))
+                      (loop total newacc))))))] 
+       [else (return-it buffer1)]))
 
-       (define _ 
-	 ;; This returns the stream representing the audio channel (read in from disk):
-	 ;; TODO: HANDLE OVERLAP:
-	 (unless (zero? overlap)
-	   (error 'read-binary-file-stream "currently does not support overlaps, use rewindow")))
+    (define _ 
+      ;; This returns the stream representing the audio channel (read in from disk):
+      ;; TODO: HANDLE OVERLAP:
+      (unless (zero? overlap)
+        (error 'read-binary-file-stream "currently does not support overlaps, use rewindow")))
 
-       (define our-sinks '())  
-       (define pos 0)
-       (define (wsbox msg)         
-         (let ([win (read-window)])
-           (if win
-               (let* ([newpos (+ len pos -1)]
-                      [result (make-sigseg pos newpos win nulltimebase)])
-                 
-                 (unless (regiment-quiet)
-                   (set! counter (fx+ counter len))
-                   (when (fx>= counter print-every)
-                     (set! counter (fx- counter print-every))
-                     (set! total (+ total print-every))
-                     (fprintf (current-error-port) "Read ~a tuples from file ~a.\n"
-                              (+ total counter)
-                              file)))
-                 
-                 (set! pos (+ 1 newpos))
-                 (fire! result our-sinks)
-                 )
-               (begin 		    
-#;
-                 (error 'read-binary-file-stream
-                        "don't know how to handle eof right now.")
-		 (stop-WS-sim! "readFile: hit eof")
-                 (void)))))
+    (define our-sinks '())  
+    (define pos 0)
+    (define (wsbox msg)         
+      (let ([win (read-window)])
+        (if win
+            (let* ([newpos (+ len pos -1)]
+                   [result (make-sigseg pos newpos win nulltimebase)])
+              
+              (unless (regiment-quiet)
+                (set! counter (fx+ counter len))
+                (when (fx>= counter print-every)
+                  (set! counter (fx- counter print-every))
+                  (set! total (+ total print-every))
+                  (fprintf (current-error-port) "Read ~a tuples from file ~a.\n"
+                           (+ total counter)
+                           file)))
+              
+              (set! pos (+ 1 newpos))
+              (fire! result our-sinks)
+              )
+            (begin 		    
+              #;
+              (error 'read-binary-file-stream
+                     "don't know how to handle eof right now.")
+              (stop-WS-sim! "readFile: hit eof")
+              (void)))))
     
     ;; Scan ahead in the file to the offset:
        (let scan ([offset offset])

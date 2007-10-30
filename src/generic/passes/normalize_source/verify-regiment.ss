@@ -94,9 +94,9 @@
            (guard (not (memq 'lambda env)))
 	   (for-each pattern! v*)	   
 	   (let ([types (match optionaltypes 
-			  [() (map (lambda (_) (blank-type)) v*)]
-			  [((,t* ...)) t*])]
-		 [vars (apply append (map pattern->vars v*))])	     
+                     [() (map (lambda (_) (blank-type)) v*)]
+                     [((,t* ...)) t*])]
+            [vars (apply append (map pattern->vars v*))])	     
 	     (ASSERT (list-is-set? vars))
 	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
 
@@ -171,43 +171,45 @@
 	 ;; verify-regiment can't track the bindings that should be introduced here:
 	 [(using ,M ,[e])  (ASSERT symbol? M)  `(using ,M ,e)]
 
-	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
-	  [(begin ,[e] ...) `(begin ,e ...)]
-	  [(set! ,v ,[e]) (guard (symbol? v)) 
-	   (if (and (not (memq v env))
-		    (not (regiment-primitive? v)))
-	       (error 'verify-regiment (format "set! unbound variable: ~a~n" v)))
-	   (assert-valid-name! v)
-	   `(set! ,v ,e)]
-	  [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
-	   (assert-valid-name! v)
-	   `(for (,v ,e1 ,e2) 
-		,(process-expr e3 (cons v env)))]
-	  [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
-	  ;; ========================================
+    ;; [2006.07.25] Adding effectful constructs for WaveScope:
+    [(begin ,[e] ...) `(begin ,e ...)]
+    [(set! ,v ,[e]) (guard (symbol? v)) 
+     (if (and (not (memq v env))
+              (not (regiment-primitive? v)))
+         (error 'verify-regiment (format "set! unbound variable: ~a~n" v)))
+     (assert-valid-name! v)
+     `(set! ,v ,e)]
+    [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
+     (assert-valid-name! v)
+     `(for (,v ,e1 ,e2) 
+          ,(process-expr e3 (cons v env)))]
+    [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
+    ;; ========================================
 
-	  [(assert-type (Stream ,t) (dataFile ,[file] ,[mode] ,[repeats]))
-	       (let ([Type (lambda (t)
-			     (unless (memq t '(String Int Float Char))
-			       (error 'verify-regiment
-				      "this is not a type that can be read with dataFile: ~s" t))
-			     t)])
+    [(assert-type (Stream ,t) (dataFile ,[file] ,[mode] ,[repeats]))
+     (let ([Type (lambda (t)
+                   (unless (memq t '(String Int Float Char))
+                     (error 'verify-regiment
+                            "this is not a type that can be read with dataFile: ~s" t))
+                   t)])
 		 (match t
 		   [#(,t* ...) (for-each Type t*)]
 		   [,t (Type t)])
 		 `(assert-type (Stream ,t)  `(dataFile ,file ,mode ,repeats)))]
-	  
-	  	 
-          [(,prim ,[rand*] ...)
-           (guard (not (memq prim env))
-		  (regiment-primitive? prim))
-	   `(,prim ,rand* ...)]
-          
-	  [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
 
-          [,unmatched
-            (error 'verify-regiment "invalid syntax ~s" unmatched)])))
-
+    [(iterate ,annot ,[f] ,[s])
+     `(iterate ,annot ,f ,s)]
+    
+    [(,prim ,[rand*] ...)
+     (guard (not (memq prim env))
+            (regiment-primitive? prim))
+     `(,prim ,rand* ...)]
+    
+    [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
+    
+    [,unmatched
+     (error 'verify-regiment "invalid syntax ~s" unmatched)])))
+     
      (define (process-program prog)
 
 	 ;; This is ugly, but for this very first pass, we pretend

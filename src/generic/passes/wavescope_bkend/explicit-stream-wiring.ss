@@ -63,6 +63,23 @@
 	       `(unionN ,(map (lambda (_) '(Stream 'a)) rand*) (Stream #(Int 'a)))
 	       (get-primitive-entry op)))
 	 (match (peel-annotations rhs)
+
+      ;; added to peel off the (new) annotations from iterates
+      [(iterate ,annot ,rand* ...)
+       (match (prim-entry 'iterate `(,annot . ,rand*))
+         [(,_ (,annotty . ,argty*) ,result)
+          (let ([src*
+                 (apply append
+                   (map (lambda (rand argty)
+                          (match argty
+                            [(Stream ,_)
+                             (ASSERT symbol? rand)
+                             (list (dealias rand))]
+                            [,oth (DEBUGASSERT (not (deep-assq 'Stream oth))) ()]))
+                     rand* argty*))])
+            (cons (make-operator v ty `(iterate . ,rand*) src*)
+                  bod))])]
+
 	   [(,prim ,rand* ...)
 	    (match (prim-entry prim rand*)
 	      [(,_ ,argty* ,result)
@@ -82,7 +99,8 @@
 		 (cons (make-operator v ty `(,prim . ,rand*) src*)
 		       bod))])])]
 
-	[(let ([,v ,ty (iterate . ,_)]) ,[bod])
+   ;; this silently removes the (new) annotations --mic
+	[(let ([,v ,ty (iterate ,annot . ,_)]) ,[bod])
 	 (inspect (cons 'iterate _))]
 
 	;; Sources

@@ -639,7 +639,8 @@
 ;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
 ;    (emit             ('a) #())
 
-    (iterate        (('in (VQueue 'out) -> (VQueue 'out)) (Stream 'in))           (Stream 'out))
+    ;; FIXME: putting the type as (List Annotation) is a bit of a hack
+    (iterate        ((List Annotation) ('in (VQueue 'out) -> (VQueue 'out)) (Stream 'in))      (Stream 'out))
     ;(deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
     ;(window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
     

@@ -37,6 +37,10 @@ while [ $# != 0 ];  do
        shift;
        CCPASSTHRU="$CCPASSTHRU --scheduler $1";
        REGPASSTHRU="$REGPASSTHRU $1";
+  elif [ "$1" == "--param-file" ]
+  then REGPASSTHRU="$REGPASSTHRU $1";
+       shift;
+       REGPASSTHRU="$REGPASSTHRU $1";
   elif [ "$1" == "-O0" ] || 
        [ "$1" == "-O1" ] || 
        [ "$1" == "-O2" ] || 

@@ -159,7 +159,7 @@
 		      ,(map (lambda (_) (notype)) fldname*)
 		      ,(map (lambda (i) 
 			    #;
-			    `(lambda (s) (iterate (lambda (x vq) 
+			    `(lambda (s) (iterate () (lambda (x vq) 
 						    (begin (emit vq (tupref ,i ,len x)) vq))
 						  s))
 			    ;; Simple tuple projector:
@@ -184,7 +184,7 @@
 	       [vq (unique-name '___vq___)]
 	       [make-tuple (lambda (args) (if (= 1 (length args)) 
 					      (car args) (cons 'tuple args)))])
-           `(iterate (lambda (,tmp ,vq) (,(notype) ,(notype))
+           `(iterate (annotations) (lambda (,tmp ,vq) (,(notype) ,(notype))
 		       (begin (emit ,vq ,(make-tuple 
 					  (map (lambda (proj) 
 						 `(app ,(mangle-projector src proj) ,tmp)) 

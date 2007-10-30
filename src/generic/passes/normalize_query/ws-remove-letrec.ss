@@ -41,9 +41,9 @@
       [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
        (make-nested-lets (topo-sort-bindings v* ty* e*) bod)]
 
-      [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
+      [(iterate ,annot (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod]) ,[src])
        (DEBUGASSERT (null? (intersection lhs* (apply append (map core-free-vars rhs*)))))
-       `(iterate (let ,(map list lhs* ty* rhs*) ,bod) ,src)]
+       `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,bod) ,src)]
 
       [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
       [,oth (fallthru oth)])

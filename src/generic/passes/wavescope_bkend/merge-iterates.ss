@@ -27,7 +27,12 @@
 	  (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
 	 [,other (fallthrough other)]))
      (lambda (ls k) (apply k ls)) ;; fuser
-     body))  
+     body))
+
+  ;; merge the two lists of annotations
+  ;; FIXME: we will probably need something more intelligent soon!
+  (define (merge-annotations annot-outer annot-inner)
+    (append annot-outer annot-inner))
 
   (define (do-expr expr fallthrough)
     (match expr
@@ -35,8 +40,8 @@
       ;; related to (,foo ... ,last) patterns.  Avoiding them for now.
 
       ;; Modifying to not create free-variables in the introduced lambda abstraction.
-      [(iterate (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body)
-		(iterate (lambda (,x ,VQX) (,tx (VQueue ,outx))
+      [(iterate ,annoty (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body)
+		(iterate ,annotx (lambda (,x ,VQX) (,tx (VQueue ,outx))
 				 ;; By convention the return-value is the vqueue:				 
 				 ;(begin ,exprs ... ,return-val)
 				 ;; rrn: loosening this up, don't require that the body's a begin:
@@ -47,7 +52,8 @@
        ;(ASSERT (eq? return-val VQX)) 
        (let ([f (unique-name 'f)])
 	 (do-expr
-	  `(iterate (lambda (,x ,VQX) (,tx (VQueue ,outy))
+	  `(iterate ,(merge-annotations annoty annotx)
+               (lambda (,x ,VQX) (,tx (VQueue ,outy))
 			    (letrec ([,f (,ty (VQueue ,outy) -> #())
 					 (lambda (,y ,VQY) (,ty (VQueue ,outy))
 						 (begin ,body (tuple)))])
@@ -57,9 +63,9 @@
 		    ,inputstream)
 	  fallthrough))]
 
-      [(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___))
+      [(iterate ,annoty (lambda ,_ ...) (iterate ,annotx (lambda ,__ ...) ,___))
        (error 'merge-iterates "implementation problem, should have matched this but didn't: \n~s" 
-	      `(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___)))]
+	      `(iterate ,annoty (lambda ,_ ...) (iterate ,annotx (lambda ,__ ...) ,___)))]
       [,other (fallthrough other)]))
 
 (define-pass merge-iterates [Expr do-expr])
@@ -71,11 +77,11 @@
      (length (deep-assq-all 'iterate
 	       (merge-iterates 
 		'(foolang 
-		  '(program (iterate (lambda (x vq1) (Int (VQueue Int))
+		  '(program (iterate () (lambda (x vq1) (Int (VQueue Int))
 					     (begin (emit vq1 (+_ x 1)) 
 						    (emit vq1 (+_ x 100))
 						    vq1))
-				     (iterate (lambda (y vq2) (Int (VQueue Int))
+				     (iterate () (lambda (y vq2) (Int (VQueue Int))
 						      (begin (emit vq2 (*_ y 2))
 							     (emit vq2 (*_ y 3))
 							     vq2))

@@ -176,11 +176,11 @@
   (unless dictionary (build-dictionary!))
   (match x
     [,v (guard (symbol? v)) 
-	(if (regiment-primitive? v)
-	    (make-plain (hashtab-get dictionary v) #f)
-	    (apply-env env v))]
+        (if (regiment-primitive? v)
+            (make-plain (hashtab-get dictionary v) #f)
+            (apply-env env v))]
     [',c (make-plain c #f)]
-
+    
     [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)) #f)]
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
@@ -238,6 +238,17 @@
      ;(Eval `(unionN ,@(plain-val ls)) env pretty-name)
      (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
     [(unionN ,[args] ...) (make-streamop (streamop-new-name) 'unionN () args #f)]
+
+    
+    [(iterate ,annot ,[f] ,[s])
+     (match (regiment-primitive? 'iterate)
+       [((,annotty ,fty ,sty) (Stream ,return))
+        (for-each set-value-type! `(,f ,s) `(,fty ,sty))
+        (let ([parents (apply append (map (lambda (x t) (if (stream-type? t) (list x) ())) `(,f ,s) `(,fty ,sty)))]
+              [params  (apply append (map (lambda (x t) (if (stream-type? t) () (list x))) `(,f ,s) `(,fty ,sty)))])
+          (ASSERT (curry andmap streamop?) parents)
+          (ASSERT (curry andmap (compose not streamop?)) params)
+          (make-streamop (streamop-new-name) 'iterate (cons annot params) parents #f))])]
 
     [(,streamprim ,[x*] ...)
      ;(guard (assq streamprim wavescript-stream-primitives))
@@ -500,11 +511,11 @@
     (cond
      [(foreign-closure? (suspension-operator val))
       (match (closure-code (suspension-operator val))
-	[(assert-type ,ty (foreign ',name ',includes))
-	 `(foreign-app ',name
-		       ,(Marshal-Foreign-Closure (suspension-operator val))
-		       ,@(map Marshal (ASSERT (suspension-argvals val))))
-	 ])]
+        [(assert-type ,ty (foreign ',name ',includes))
+         `(foreign-app ',name
+                       ,(Marshal-Foreign-Closure (suspension-operator val))
+                       ,@(map Marshal (ASSERT (suspension-argvals val))))
+         ])]
      [(regiment-primitive? (suspension-operator val))
       `(,(suspension-operator val) ,@(map Marshal (ASSERT (suspension-argvals val))))]
      [else (error 'interpret-meta:Marshal "unhandled suspended op: ~s" (suspension-operator val))]
@@ -514,7 +525,7 @@
    [(closure? val) (Marshal-Closure val)]
    [(streamop? val)
     (let (;[covered (make-default-hash-table 100)]
-	  [acc '()])
+          [acc '()])
     ;; Here we trace back through the stream graph:
     ;; Could possibly replace this with a judicious use of memoization (marshal-cache).
     ;; (Plus maybe a topological sort of the bindinggs at the end.)
@@ -523,17 +534,17 @@
       (let loop ([ops (list val)] [acc '()] [covered '()])
 	;; covered is a list of streamop-names that we've already included
 	;; FIXME: USE A HASH TABLE!
-	(cond
-	 [(null? ops) acc] ;; Return all the streamops encountered.
-	 [(memq (streamop-name (car ops)) covered)
-	  (loop (cdr ops) acc covered)]
-	 [else 
-	  (loop (append (cdr ops)
-			(filter (lambda (op) (not (memq (streamop-name op) covered)))
-			  (streamop-parents (car ops))))
-		(cons (car ops) acc)
-		(cons (streamop-name (car ops)) covered)
-		)])))
+        (cond
+         [(null? ops) acc] ;; Return all the streamops encountered.
+         [(memq (streamop-name (car ops)) covered)
+          (loop (cdr ops) acc covered)]
+         [else 
+          (loop (append (cdr ops)
+                        (filter (lambda (op) (not (memq (streamop-name op) covered)))
+                          (streamop-parents (car ops))))
+                (cons (car ops) acc)
+                (cons (streamop-name (car ops)) covered)
+                )])))
     (DEBUGASSERT list-is-set? (map streamop-name allops))
     (ASSERT allops)
 
@@ -550,21 +561,23 @@
     ;; This is more than a bit silly, I have to recombine the argument list from params/parents.
     ;; I shouldn't split params/parents in the first place.
     (let loop ([argty* (if (eq? 'unionN (streamop-op op)) ;; special case, not a prim
-			   (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
-			   (car (ASSERT (regiment-primitive? (streamop-op op))))
-			   )]
-	       [params  (streamop-params op)]
-	       [parents (streamop-parents op)])
+                           (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
+                           (car (ASSERT (regiment-primitive? (streamop-op op))))
+                           )]
+               [params  (streamop-params op)]
+               [parents (streamop-parents op)])
       (cond
        [(null? argty*) '()]
+       [(equal? (car argty*) '(List Annotation))
+        (cons (car params) (loop (cdr argty*) (cdr params) parents))] ;; a bit of a hack, for iterate with annotations
        [(stream-type? (car argty*))
-	(cons (streamop-name (car parents))
-	      (loop (cdr argty*) params (cdr parents)))]
+        (cons (streamop-name (car parents))
+              (loop (cdr argty*) params (cdr parents)))]
        [else 
-	(let ()
-	  (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
-	  (cons (Marshal (car params)) 
-		(loop (cdr argty*) (cdr params) parents)))]))) ;; End Silliness
+        (let ()
+          (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
+          (cons (Marshal (car params)) 
+                (loop (cdr argty*) (cdr params) parents)))]))) ;; End Silliness
   ;; Produce primitive application syntax:
   (define default (cons (streamop-op op) arglist))
 ;  (display-constrained "   MARSHALLING STREAMOP: " `[,op 100] "\n")
@@ -899,7 +912,7 @@
     [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '()  #f)) 3]
     [(,plain-val (,Eval '(car (cons '39 '())) '() #f)) 39]
     [(,Eval '(timer '3) '() #f) ,streamop?]
-    [(,Eval '(car (cons (iterate (lambda (x vq) ('a 'b) '99) (timer '3)) '())) '() #f) ,streamop?]
+    [(,Eval '(car (cons (iterate () (lambda (x vq) ('a 'b) '99) (timer '3)) '())) '() #f) ,streamop?]
     [(,plain-val (,Eval '(letrec ([x Int '3]) x) '() #f)) 3]
     [(,plain-val (,Eval '(letrec ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
@@ -923,13 +936,13 @@
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
-	(letrec ([x 'a '100]) (iterate (lambda (x vq) ('a 'b) x) (timer '3.0)))
+	(letrec ([x 'a '100]) (iterate () (lambda (x vq) ('a 'b) x) (timer '3.0)))
 	'())) '() #f)))))
      #f]
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (letrec ([y Int '100]) (iterate (lambda (x vq) ('a 'b) y) (timer '3.0))) '())) '() #f))))
+       (letrec ([y Int '100]) (iterate () (lambda (x vq) ('a 'b) y) (timer '3.0))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -938,14 +951,14 @@
      (deep-assq 'Mutable:ref
      (deep-assq 'letrec
       (,Marshal (,Eval '(letrec ([y (Ref Int) (Mutable:ref '100)]) 
-	      (iterate (lambda (x vq) ('a 'b) (deref y)) 
+	      (iterate () (lambda (x vq) ('a 'b) (deref y)) 
 				(timer '3.0))) '() #f))))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f
      (interpret-meta '(lang '(program 
        (letrec ([f 'b (lambda (x) (Int) (+_ x x))])
-	 (iterate (lambda (_) ('a) (app f '9)) (timer '3.0))) Int))))
+	 (iterate () (lambda (_) ('a) (app f '9)) (timer '3.0))) Int))))
      #f]
 
 

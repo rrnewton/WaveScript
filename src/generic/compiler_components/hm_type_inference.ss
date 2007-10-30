@@ -513,48 +513,49 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
+
     (match exp ;; NO DIRECT RECURSION ALLOWED!!! GO THROUGH "l" LOOP ABOVE!!!
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
       [,prim (guard (symbol? prim) (regiment-primitive? prim) (not (tenv-lookup tenv prim)))
-	     (values prim (prim->type prim))]
-
+             (values prim (prim->type prim))]
+      
       ;; Here's the magic:
       [,v (guard (symbol? v))
-	  (let ((entry (tenv-lookup tenv v)))
-	    (if entry 
+          (let ((entry (tenv-lookup tenv v)))
+            (if entry 
                 (cond
-                  ;; Let-bound polymorphism: 
-		 [(tenv-is-let-bound? tenv v)
-		   (let ()
-		     ;(printf "LETBOUND: ~s\n" v)
-		     ;(unless (null? nongeneric) (printf "  NONGENERIC: ~s\n"  nongeneric))
-		     ;(inspect entry)
-
-		     (match entry
-		       ;; Here's another call site which affects the LUB type assigned to the let-bound var.
-		       [(quote (,tv . (LATEUNIFY ,lubs ,general)))
-			(DEBUGASSERT (inferencer-enable-LUB))
-			(let ([this-site (instantiate-type general nongeneric)])
+                 ;; Let-bound polymorphism: 
+                 [(tenv-is-let-bound? tenv v)
+                  (let ()
+                                        ;(printf "LETBOUND: ~s\n" v)
+                                        ;(unless (null? nongeneric) (printf "  NONGENERIC: ~s\n"  nongeneric))
+                                        ;(inspect entry)
+                    
+                    (match entry
+                      ;; Here's another call site which affects the LUB type assigned to the let-bound var.
+                      [(quote (,tv . (LATEUNIFY ,lubs ,general)))
+                       (DEBUGASSERT (inferencer-enable-LUB))
+                       (let ([this-site (instantiate-type general nongeneric)])
 			  ;(printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" tv general this-site)
-			  ;; CAREFUL!  Here we mutate the lubs on that LATEUNIFY.
-			  (DEBUGASSERT (curry eq? 'LATEUNIFY) (cadadr entry))
-			  (set-car! (cddadr entry)  
-				    (if lubs
-					`(LUB ,lubs ,this-site)
-					this-site))
-			  ;; We return the type for *this* varref.
-			  (values v this-site))]
-
-		       [(quote (,tv . ,general))
-			(DEBUGASSERT (not (inferencer-enable-LUB)))
-			(values v (instantiate-type general nongeneric))
-			])
-		     )]
-                  [else                   
-                   (values v entry)])
-		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
+                         ;; CAREFUL!  Here we mutate the lubs on that LATEUNIFY.
+                         (DEBUGASSERT (curry eq? 'LATEUNIFY) (cadadr entry))
+                         (set-car! (cddadr entry)  
+                                   (if lubs
+                                       `(LUB ,lubs ,this-site)
+                                       this-site))
+                         ;; We return the type for *this* varref.
+                         (values v this-site))]
+                      
+                      [(quote (,tv . ,general))
+                       (DEBUGASSERT (not (inferencer-enable-LUB)))
+                       (values v (instantiate-type general nongeneric))
+                       ])
+                    )]
+                 [else                   
+                  (values v entry)])
+                (error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te "(Conditional's test expression must have boolean type.)\n") ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
@@ -583,51 +584,51 @@
       ;; Wavescope: this could be a set! to a state{} bound variable:
       [(set! ,v ,[l -> e et])  
        (let ([newexp `(set! ,v ,e)])
-	 ;; The mutable var must be a Ref!
-	 (types-equal! (ASSERT (tenv-lookup tenv v))
-		       `(Ref ,et)
-		       newexp "(Cannot assign to incompatible type.)\n")
-	 ;; returns unit type:
-	 (values newexp #()))]
+         ;; The mutable var must be a Ref!
+         (types-equal! (ASSERT (tenv-lookup tenv v))
+                       `(Ref ,et)
+                       newexp "(Cannot assign to incompatible type.)\n")
+         ;; returns unit type:
+         (values newexp #()))]
 
 #;
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
-	 (unless (types-compat? 'Int (types-compat? st et)) 
-	   (raise-type-mismatch "(Start/End of for-loop must be integers.)\n" start end expr))
-	 (values expr #()))]
-
+         (unless (types-compat? 'Int (types-compat? st et)) 
+           (raise-type-mismatch "(Start/End of for-loop must be integers.)\n" start end expr))
+         (values expr #()))]
+      
       [(while ,[l -> tst tt] ,[l -> bod bt])
        (let ([expr `(while ,tst ,bod)])
-	 (unless (types-compat? 'Bool tt) 
-	   (raise-type-mismatch "(While loop expects boolean test.)\n" 'Bool tt expr))
-	 (values expr #()))]
+         (unless (types-compat? 'Bool tt) 
+           (raise-type-mismatch "(While loop expects boolean test.)\n" 'Bool tt expr))
+         (values expr #()))]
 
-
+      
       [(unionN ,[l -> e* t*] ...)
        (ASSERT (not (null? t*)))
        (let ([exp `(unionN ,@e*)]
-	     [first (car t*)])
-	 ;; Make sure they're all equal:
-	 (for-each (lambda (t2) 
-		     (types-equal! first t2 exp "(All streams into unionList or unionN must be same type.)\n"))
-	   (cdr t*))
-	 ;; Make sure it's resolved as a stream type:
-	 (types-equal! first (instantiate-type '(Stream 'anything) ()) exp "unionN must take streams")
-	 ;; Now we add in that integer tag to the type.
-	 (values exp
-		 (match (deep-assq 'Stream first)
-		   [(Stream ,elt) `(Stream #(Int ,elt))])))]
+             [first (car t*)])
+         ;; Make sure they're all equal:
+         (for-each (lambda (t2) 
+                     (types-equal! first t2 exp "(All streams into unionList or unionN must be same type.)\n"))
+           (cdr t*))
+         ;; Make sure it's resolved as a stream type:
+         (types-equal! first (instantiate-type '(Stream 'anything) ()) exp "unionN must take streams")
+         ;; Now we add in that integer tag to the type.
+         (values exp
+                 (match (deep-assq 'Stream first)
+                   [(Stream ,elt) `(Stream #(Int ,elt))])))]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
-	 (error 'annotate-expression 
-		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
+         (error 'annotate-expression 
+                "invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
        (values `(tupref ,n ,len ,e)
-	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
-		 (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
-		 (vector-ref newtypes (qinteger->integer n))))]
+               (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
+                 (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
+                 (vector-ref newtypes (qinteger->integer n))))]
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
@@ -637,48 +638,58 @@
        (types-equal! ty1 'Int exp "(Starting point for range of for-loop must be an integer.)\n")
        (types-equal! ty2 'Int exp "(Ending point for range of for-loop must be an integer.)\n")
        (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
-	 (let-values ([(bod ty) (annotate-expression bod tenv nongeneric)])
-	   (values `(for (,i ,start ,end) ,bod) ty)))]
-
+         (let-values ([(bod ty) (annotate-expression bod tenv nongeneric)])
+           (values `(for (,i ,start ,end) ,bod) ty)))]
+      
       
       [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
-						(map (lambda (_) `(quote ,(make-tvar))) v*)
-						tenv nongeneric)]
+                                                (map (lambda (_) `(quote ,(make-tvar))) v*)
+                                                tenv nongeneric)]
       [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
 
       [(let ([,id* . ,tail*] ...) ,bod)
        (let ([ty*  (extract-optional (map rdc tail*))]
-	     [rhs* (map last tail*)])
-	 (DEBUGASSERT (curry andmap type?) (filter id ty*))
-	 (annotate-let id* rhs* bod ty* tenv nongeneric))]
-
+             [rhs* (map last tail*)])
+         (DEBUGASSERT (curry andmap type?) (filter id ty*))
+         (annotate-let id* rhs* bod ty* tenv nongeneric))]
+      
       [(,letrec ([,id* . ,tail*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
        (let ([ty*  (extract-optional (map rdc tail*))]
-	     [rhs* (map last tail*)])
-	 (DEBUGASSERT (curry andmap type?) (filter id ty*))
-	 (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
-
+             [rhs* (map last tail*)])
+         (DEBUGASSERT (curry andmap type?) (filter id ty*))
+         (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
+      
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
+      [(src-pos ,p (iterate ,annot ,[l -> f ft] ,[l -> s st]))
+       (DEBUGASSERT (andmap type? `((List Annotation) ,ft ,st)))
+       (values `(iterate ,annot ,f ,s)
+               (type-app (prim->type 'iterate) `((List Annotation) ,ft ,st) exp tenv nongeneric))]
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
        (guard (regiment-primitive? prim)
-	      (not (memq prim '(tuple unionN))))
+              (not (memq prim '(tuple unionN))))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
-	       (type-app (prim->type prim) t* exp tenv nongeneric))]
+               (type-app (prim->type prim) t* exp tenv nongeneric))]
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
-	 (values `(src-pos ,p (,app ,rator ,@rand*))
-		 (type-app  t1 t* exp tenv nongeneric)))]
+         (values `(src-pos ,p (,app ,rator ,@rand*))
+                 (type-app  t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
+
+      [(iterate ,annot ,[l -> f ft] ,[l -> s st])
+       (DEBUGASSERT (andmap type? `((List Annotation) ,ft ,st)))
+       (values `(iterate ,annot ,f ,s)
+               (type-app (prim->type 'iterate) `((List Annotation) ,ft ,st) exp tenv nongeneric))]
 
       ;; These cases are still around in case there's no source-info.
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
-	       (type-app (prim->type prim) t* exp tenv nongeneric))]
+               (type-app (prim->type prim) t* exp tenv nongeneric))]
+      
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
@@ -713,21 +724,21 @@
       [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
-	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
-		 (type-app t1 t* exp tenv nongeneric)))]
+         (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
+                 (type-app t1 t* exp tenv nongeneric)))]
       [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
-	 (values `(foreign-app ',realname ,rator ,@rand*)
-		 (type-app t1 t* exp tenv nongeneric)))]
-
+         (values `(foreign-app ',realname ,rator ,@rand*)
+                 (type-app t1 t* exp tenv nongeneric)))]
+      
       [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
-
+      
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,@rand*))]
-
+      
       [,c (guard (simple-constant? c)) (values c (type-const c))]            
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
@@ -890,6 +901,8 @@
     [(src-pos ,p ,[e]) `(src-pos ,p ,e)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
 
+    [(iterate ,annot ,[f] ,[s]) `(iterate ,annot ,f ,s)]
+
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
@@ -922,11 +935,13 @@
     ;; The type occurring here isn't instantiated (thus doesn't contain late unifies)
     [(assert-type ,t ,[e])                                    (void)]
     [(src-pos ,t ,[e])                                        (void)]
-    [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])         (void)]
+    [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])        (void)]
     [(tupref ,n ,[e])                                         (void)]
     [(set! ,v ,[e])                                           (void)]
 
     ;; All these simple cases just recur on all arguments:
+
+    [(iterate ,annot ,[f] ,[s])                               (void)]
 
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
@@ -958,8 +973,8 @@
     
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
-    [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
-    [(iterate-bench ,t ,n ,ht ,[f] ,[s]) `(iterate-bench ,t ,n ,ht ,f ,s)]
+    [(iterate ,a ,[f] ,[s]) `(iterate ,a ,f ,s)]
+    [(iterate-bench ,a ,t ,n ,ht ,std ,[f] ,[s]) `(iterate-bench ,a ,t ,n ,ht ,std ,f ,s)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     ; FIXME: should these three be rolled into one, as in core-generic-traverse?
@@ -1034,8 +1049,8 @@
       [(,lang '(program ,bod ,metadat* ... ,type))
        (ASSERT type? type)
        (let-values ([(e t) (Expr bod (sumdecls->tenv
-				 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
-	 `(typechecked-lang '(program ,e ,@metadat* ,t)))]
+                                 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
+         `(typechecked-lang '(program ,e ,@metadat* ,t)))]
       [,other 
        (Expr other (empty-tenv))])))
 
@@ -1471,7 +1486,7 @@
       (match exp 
 
        [(,lang '(program ,[body] ,meta ... ,ty))
-	(append body `((type BASE ,ty ())))]
+        (append body `((type BASE ,ty ())))]
 
        [,c (guard (simple-constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
@@ -1483,13 +1498,17 @@
        [(tupref ,n ,m ,[x]) x]
        [(lambda ,v* ,t* ,[bodls])   bodls]
 
+       ; FIXME: is this right?
+       [(iterate ,annot ,[f] ,[s])
+        (append f s)]
+
 ; WEIRD: this specific case seems to slow things down!
 ; But WHY?  print-var-types is run once!
 #;
        [(,simplekwd ,[args] ...)
-	(guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
-		   (regiment-primitive? simplekwd)))
-	(apply append args)]
+        (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+                   (regiment-primitive? simplekwd)))
+        (apply append args)]
 
        [(begin ,[e*] ...) (apply append e*)]
        [(while ,[tstls] ,[bodls]) (append tstls bodls)]
@@ -1498,56 +1517,56 @@
        [(tuple ,[args] ...) (apply append args)]
        [(unionN ,[args] ...) (apply append args)]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
-	(apply append rat rand*)]
+        (apply append rat rand*)]
        ;; This one case brings us from 0 to 30 ms:
        [(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
-	 (apply append rand*)]
+         (guard (regiment-primitive? prim))
+         (apply append rand*)]
 
 
        [(,let ([,id* ,t* ,rhs*] ...) ,[bod])
-	(guard (memq let '(let letrec lazy-letrec)))
-	(append (apply append 
-		       (map (lambda (id t rhs)
+        (guard (memq let '(let letrec lazy-letrec)))
+        (append (apply append 
+                       (map (lambda (id t rhs)
 			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
 			      ;(unless (null? rhsls) (inspect rhsls))
 			      ;(inspect (included-var-bindings))
-			      (if (or (regiment-verbose)
-				      (and (not (memq id (included-var-bindings)))
-					   (not (symbol? (peel-annotations rhs)))))
-			       `([type ,id ,t ,(get-var-types rhs)])
-			       '()))
-			 id* t* 
-			 rhs*))
-		bod)]
+                              (if (or (regiment-verbose)
+                                      (and (not (memq id (included-var-bindings)))
+                                           (not (symbol? (peel-annotations rhs)))))
+                                  `([type ,id ,t ,(get-var-types rhs)])
+                                  '()))
+                         id* t* 
+                         rhs*))
+                bod)]
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
     ;; print-var-types body:
     (let ([aliases (cdr (or (project-metadata 'type-aliases exp) '(type-aliases)))])
       (let pvtloop (
-		    [x (get-var-types exp)] 
-		    [depth 0] [indent " "]
-		    )
-	(if (= depth max-depth) (void)
-	    (match x
-	      [() (void)]
-	      [(type ,v ,t ,subvars)
-	       (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-		 (let* ([str (format "~a" v)]
-			[padding ;(modulo (string-length str) 25)
-			         (max 0 (- 40 (string-length str)))
-				 ])
-		   (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
-		   )
-;		 (print-type (realias-type aliases t) port) (newline port))
-		 (print-type t port) (fprintf port ";\n"))
-	       
-	       (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
-	      [,ls (guard (list? ls))
-		   (for-each (lambda (x) (pvtloop x depth indent))
-		     ls)]
-	      [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
-      ))
+                    [x (get-var-types exp)] 
+                    [depth 0] [indent " "]
+                    )
+        (if (= depth max-depth) (void)
+            (match x
+              [() (void)]
+              [(type ,v ,t ,subvars)
+               (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
+                 (let* ([str (format "~a" v)]
+                        [padding ;(modulo (string-length str) 25)
+                         (max 0 (- 40 (string-length str)))
+                         ])
+                   (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
+                   )
+                 ;		 (print-type (realias-type aliases t) port) (newline port))
+                 (print-type t port) (fprintf port ";\n"))
+               
+               (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
+              [,ls (guard (list? ls))
+                   (for-each (lambda (x) (pvtloop x depth indent))
+                     ls)]
+              [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
+    ))
 
 ;; Should take either an instantiated or non-instantiated type.
 ;; This takes the union types just so it can distinguish whether a type constructor is valid.
