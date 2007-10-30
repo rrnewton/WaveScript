@@ -391,6 +391,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
+#;
+
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (current-directory (format "~a/demos/wavescope" test-directory))
@@ -431,6 +433,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf "\n\nWaveScript MLTON Backend:\n" )
 (fpf "========================================\n")
+
+#;#;
 
 (begin (newline)
        (current-directory test-directory)
@@ -477,6 +481,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
               (format "echo 10 | ws.early pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
        (current-directory test-directory))
+#;
 
 ;; MARMOT
 (begin (newline)
@@ -534,9 +539,28 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
-(begin (current-directory (format "~a/benchmarks" test-root))
-       (fpf "    Run all benchmarks, build full report:    ~a\n" 
-	    (code->msg! (system/exit-code (format "make > ~a/perfreport.log" test-directory))))
+;; [2007.10.30] building incrementally.
+(begin (current-directory (format "~a/benchmarks/microbobench" test-root))
+       (fpf "    Run microbenchmarks:                      ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> ~a/bench_micro.log" test-directory))))
+
+       (current-directory (format "~a/benchmarks/language_shootout" test-root))
+       (fpf "    Run language_shootout:                    ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> ~a/bench_shootout.log" test-directory))))
+
+       (current-directory (format "~a/benchmarks/appbenches" test-root))
+       (fpf "    Run application benchmarks:               ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> ~a/bench_apps.log" test-directory))))
+
+       (current-directory (format "~a/benchmarks/datareps" test-root))
+#;
+       (fpf "    Run application benchmarks:               ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> ~a/bench_datareps.log" test-directory))))
+
+
+       (current-directory (format "~a/benchmarks" test-root))
+       (fpf "    Compile results, build full report:       ~a\n" 
+	    (code->msg! (system/exit-code (format "make &> ~a/bench_perfreport.log" test-directory))))
        )
 
 ;; POTHOLE 
@@ -626,16 +650,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; This should run on faith:
 (when (directory-exists? "/var/www/regression")
   (printf "Going to try publishing to website.\n")
-  (let* (;[d (seconds->date (current-seconds))]
-	 [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
-		          "/var/www/regression/rev~a_eng~a_~a"
-			  svn-revision engine-svn-revision
-			  ;(date-year d) (date-month d) (date-day d)
-			  ;(date-hour d) (date-minute d)
-			  (if failed "FAILED" "passed"))])
-    (if (file-exists? webfile) (delete-file webfile))
-    (fprintf orig-console "Copying log to website. ~a\n" webfile)
-    (copy-file logfile webfile)
-    (ASSERT (system (format "chgrp www-data ~a" webfile)))
-    (ASSERT (system (format "chmod g+r ~a" webfile)))
+  (let ([publish (lambda (logfile webfile)
+		   (if (file-exists? webfile) (delete-file webfile))
+		   (fprintf orig-console "Copying log to website. ~a\n" webfile)
+		   (copy-file logfile webfile)
+		   (ASSERT (system (format "chgrp www-data ~a" webfile)))
+		   (ASSERT (system (format "chmod g+r ~a" webfile)))
+		   )])
+       
+    (let* (;[d (seconds->date (current-seconds))]
+	   [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
+		     "/var/www/regression/rev~a_eng~a_~a"
+		     svn-revision engine-svn-revision
+					;(date-year d) (date-month d) (date-day d)
+					;(date-hour d) (date-minute d)
+		     (if failed "FAILED" "passed"))])
+      (publish logfile webfile))
+    ;; Now do the 
+    (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
+			    svn-revision engine-svn-revision)])
+      (publish (format "~a/benchmarks/perfreport.pdf" test-root) webfile))
     ))

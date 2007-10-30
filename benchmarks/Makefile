@@ -47,7 +47,7 @@ language_shootout/shootout.eps:
 	(cd language_shootout; $(MAKE))
 
 clean:
-	rm -f machineinfo.tex perfreport.pdf
+	rm -f machineinfo.tex perfreport.pdf perfreport.log perfreport.aux top_*.txt wssvn.tex enginesvn.tex
 
 distclean: clean
 	(cd language_shootout; $(MAKE) clean)

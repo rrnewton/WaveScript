@@ -1,0 +1,102 @@
+
+%\documentclass[twocolumn]{article}
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{fullpage}
+
+\begin{document}
+\title{WaveScript Benchmarks Perfomance Report}
+\maketitle
+\date
+
+\subsubsection*{Machine information:}
+\input{machineinfo.tex}
+
+\subsubsection*{WaveScript SVN:}
+\input{wssvn.tex}
+
+\subsubsection*{WaveScope Engine SVN:}
+\input{enginesvn.tex}
+
+%% ================================================================================ %%
+\section{Microbenchmarks}
+%% ================================================================================ %%
+
+This section contains various microbenchmarks that stress the
+implementation of particular language constructs or data types.
+Figure \ref{micro} contains execution time results.
+
+%\begin{figure}
+\begin{center}
+\includegraphics[width=0.6\hsize]{microbench/microbench.pdf}
+\end{center}
+%\caption{Microbenchmarks.}\label{micro}
+%\end{figure}
+
+\subsubsection*{Per-stream-element overheads}
+One thing that you can see, is that currently (2007.10) the
+C++/XStream engine has a high per-tuple (that is, per-element) on the communication channels
+relative to the ML backend.  The {\tt just\_timer} test stresses this,
+doing nothing but passing a large number of unit tuples.
+
+
+
+
+%% ================================================================================ %%
+\section{Language Shootout Benchmarks}
+%% ================================================================================ %%
+
+This is where I will accumulate some of the small benchmarks from the
+language shootout.  Here are some per-benchmark comments:
+
+\begin{itemize}
+\item {\bf fannkuch} - ``pancake flipping''.  This is a translation of the
+  gcc version of the benchmark.  Tests indexed access to a small array.
+\end{itemize}
+
+%\begin{figure}
+\begin{center}
+\includegraphics[width=0.6\hsize]{language_shootout/shootout.pdf}
+\end{center}
+%\caption{Great language shootout.  (Those benchmarks that are implemented.)} \label{shootout}
+%\end{figure}
+
+
+
+%% ================================================================================ %%
+\section{Application Benchmarks}
+%% ================================================================================ %%
+
+This section includes performance results on larger programs, namely, our
+current applications.  Presently (2007.10) the largest of these by far
+is the marmot application.
+
+%% ================================================================================ %%
+\section{Data Representation Profiling}
+%% ================================================================================ %%
+
+This section includes an analysis of the efficiency of different data
+representations under different backends.  This should theoretically
+be run on different hardware platforms as well (such as the ARM-based ensboxes).
+
+
+
+
+%% ================================================================================ %%
+\pagebreak
+\appendix
+\section{Appendix: Additional system information}
+
+\subsubsection*{Top results before running benchmarks:}
+{
+\footnotesize
+\input{top_before.txt}
+}
+\subsubsection*{Top results {\em after} running benchmarks:}
+{
+\footnotesize
+\input{top_after.txt}
+}
+
+\end{document}
