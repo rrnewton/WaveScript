@@ -1375,7 +1375,7 @@
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
       (define (loop args)
-	(trace-match HMM args
+	(match args
 	  [() '()]
 
 	  [(-v ,rest ...) 

@@ -2,6 +2,10 @@
 
 WSCARGS="-j 1 --at_once"
 
+function print_results_header() {
+  echo "Benchmark ChezScheme GCC MLton" >> RESULTS.txt
+}
+
 function runallbackends() {
   NAME=$1
   FILE=$1.ws
@@ -20,5 +24,3 @@ function runallbackends() {
   (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out   
   echo $NAME `extract_scheme_usertimes.sh $DEST/scheme.$NAME.out` `extract_cpp_usertimes.sh $DEST/cpp.$NAME.out` `extract_mlton_usertimes.sh $DEST/mlton.$NAME.out` >> RESULTS.txt
 }
-
-
