@@ -1,25 +1,26 @@
 #!/bin/sh
 
-TEMP="./temp/"
+TEMP="./logs/"
 
 WSCARGS="-j 1 --at_once"
 
 function doall() {
   NAME=$1
   FILE=$1.ws
-  TUPS=$2
+  DEST=$2
+  TUPS=$3
   echo;echo "Running $FILE";
   echo "  scheme: running... -n $TUPS"
-  ws $FILE -n $TUPS -t &> $TEMP/scheme.$NAME.out
+  ws $FILE -n $TUPS -t &> $DEST/scheme.$NAME.out
   echo "  mlton: compiling..."
-  wsmlton $FILE &> $TEMP/mlton.compile.$NAME.out
+  wsmlton $FILE &> $DEST/mlton.compile.$NAME.out
   echo "   mlton: running... -n "$TUPS
-  (/usr/bin/time -f "usertime %S\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $TEMP/mlton.$NAME.out
+  (/usr/bin/time -f "usertime %S\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
   echo "  cpp: compiling..."
-  wsc $FILE -t &> $TEMP/cpp.compile.$NAME.out
+  wsc $FILE -t &> $DEST/cpp.compile.$NAME.out
   echo "    cpp: running... -n "$TUPS
-  (time ./query.exe $WSCARGS -n $TUPS) &> $TEMP/cpp.$NAME.out   
-  echo $NAME `extract_scheme_usertimes.sh $TEMP/scheme.$NAME.out` `extract_cpp_usertimes.sh $TEMP/cpp.$NAME.out` `extract_mlton_usertimes.sh $TEMP/mlton.$NAME.out` >> RESULTS.txt
+  (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out   
+  echo $NAME `extract_scheme_usertimes.sh $DEST/scheme.$NAME.out` `extract_cpp_usertimes.sh $DEST/cpp.$NAME.out` `extract_mlton_usertimes.sh $DEST/mlton.$NAME.out` >> RESULTS.txt
 }
 
 
@@ -29,12 +30,8 @@ echo;echo " *** Running all microbenchmarks, building pdf summary.  Takes approx
 rm -rf $TEMP
 mkdir $TEMP
 
-doall read_filedata_bigwins 15
-doall read_filedata_smallwins 15
-doall just_timer 50
-
-# echo "TIMES EXTRACTED:"
-# extract_scheme_usertimes.sh $TEMP/scheme.out
-# extract_mlton_usertimes.sh $TEMP/mlton.out 
-# extract_cpp_usertimes.sh $TEMP/cpp.out 
-
+echo "## User time for each benchmark/backend " > RESULTS.txt
+echo "Benchmark ChezScheme GCC MLton" >> RESULTS.txt
+doall readfile_bigwins   $TEMP 30 
+doall readfile_smallwins $TEMP 30 
+doall just_timer         $TEMP 35 
