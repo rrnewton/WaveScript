@@ -42,21 +42,10 @@ include "stdlib.ws";
 using Array;
 using Mutable;
 
-/*
-    Aint*	perm;
-    Aint*	perm1;
-    Aint*	count;
-    long	flips;
-    long	flipsMax;
-    Int		r;
-    Int		i;
-    Int		k;
-    Int		didpr;
-    const Int	n1	= n - 1;
 
-*/
+//arg = 7;
+arg = 11; // The input used on the language shootout website.
 
-arg = 11;
 
 //r        = ref(0);didpr    = ref(0);flipsMax = ref(0);
 

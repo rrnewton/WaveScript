@@ -6,6 +6,9 @@ BENCHS=" just_timer.ws read_filedata_bigwins.ws read_filedata_smallwins.ws"
 all: /tmp/dummyfile.bin
 	@echo "   Running all microbenchmarks, building pdf summary."
 	./runall.sh
+	$(MAKE) graph
+
+graph:
 	gnuplot plot.gp > microbench.eps
 
 
@@ -21,4 +24,5 @@ all: /tmp/dummyfile.bin
 	rm -f /tmp/two
 
 clean:
-	rm -f *~ __* .__* query.* /tmp/dummyfile.bin 
+	rm -f *~ __* .__* query.* /tmp/dummyfile.bin microbench.eps microbench.pdf
+

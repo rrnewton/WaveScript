@@ -26,7 +26,7 @@ set style data histograms
 set xtics border in scale 1,0.5 nomirror 
 # offset  character 0, 0, 0 
 
-set yrange [ 0.00000 : 17000. ] noreverse nowriteback
+set yrange [ 0.00000 : 12000. ] noreverse nowriteback
 #plot 'immigration.txt' using 6:xtic(1) ti col, '' u 12 ti col, '' u 13 ti col, '' u 14 ti col
 #plot 'RESULTS.txt' using 2:xtic(1) ti col, '' u 2 ti col, '' u 3 ti col, '' u 4 ti col
 
