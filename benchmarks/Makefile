@@ -16,7 +16,7 @@ all:
 ## during the execution of the benchmarks to make sure nothing else
 ## was stealing CPU from us.
 
-perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex 
+perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf
 	pdflatex -halt-on-error perfreport.tex
 
 machineinfo.tex:
@@ -34,7 +34,9 @@ enginesvn.tex:
 	(cd $(WAVESCOPED); svn info | grep Revision) >> enginesvn.tex
 	echo '\end{verbatim}' >> enginesvn.tex
 
-
+appbench/marmot.pdf:
+	(cd appbench; $(MAKE))
+#	(cd appbench; $(MAKE) marmot.pdf)
 
 microbench/microbench.pdf: microbench/microbench.eps
 	(cd microbench; $(TOPDF) microbench.eps)

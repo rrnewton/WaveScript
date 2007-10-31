@@ -535,7 +535,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 
 ;; [2007.10.30] building incrementally.
-(begin (current-directory (format "~a/benchmarks/microbobench" test-root))
+(begin (current-directory (format "~a/benchmarks/microbench" test-root))
        (fpf "    Run microbenchmarks:                      ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_micro.log" test-directory))))
 
@@ -543,7 +543,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "    Run language_shootout:                    ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_shootout.log" test-directory))))
 
-       (current-directory (format "~a/benchmarks/appbenches" test-root))
+       (current-directory (format "~a/benchmarks/appbench" test-root))
        (fpf "    Run application benchmarks:               ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_apps.log" test-directory))))
 

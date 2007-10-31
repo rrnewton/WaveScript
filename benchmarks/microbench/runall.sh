@@ -24,7 +24,8 @@ runallbackends readfile_bigwins   $TEMP 30
 runallbackends readfile_smallwins $TEMP 30 
 runallbackends just_timer         $TEMP 35 
 runallbackends printing_lists     $TEMP 8000
-runallbackends conv_SigsegArr     $TEMP 20
+#runallbackends conv_SigsegArr     $TEMP 20
+runallbackends conv_SigsegArr     $TEMP 1
 runallbackends fft                $TEMP 100
 
 # Time has to be measured differently for this we need to mark the start time.
