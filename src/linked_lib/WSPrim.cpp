@@ -146,7 +146,21 @@ uint32_t getTotalByteSize(const SigSeg<T> &e)
       return (wsint_t)w.end();
    }
 
-
+   // We have to copy it here for garbage collection reasons.
+   // The getDirect is not necessarily needed, could use an iterator.
+   template <class T> static  //inline
+     const boost::intrusive_ptr< WSArrayStruct<T> > toArray(SigSeg<T>& x)
+   {
+     int wid = x.length();
+     T* dat  = new T[wid];
+     T* ptr = x.getDirect(0, wid);
+     memcpy(dat, ptr, sizeof(T) * wid);
+     WSArrayStruct<T>* result = new WSArrayStruct<T>;
+     result->rc  = 0;
+     result->len = wid;
+     result->data = dat;
+     return boost::intrusive_ptr< WSArrayStruct<T> >( result );
+   }
 
    // Old Array representation.
    /*

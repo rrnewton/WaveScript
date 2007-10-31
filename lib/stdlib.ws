@@ -261,6 +261,7 @@ fun modF(f, base) {
 }
 
 // This *should* work by caching one or more fftw plans.
+// [2007.10.30] SHOULD be using memoized_fftR2C here.
 fun fftStream(s) {
   iterate f in s { emit fftR2C(f) }
 }
@@ -1223,6 +1224,11 @@ fun makeHanning(size) {
 // 0.5 * (1.0 - cos(2.0 * const_PI * intToFloat(i+1) / intToFloat(size+1))))
 }
 
+// [2007.10.30] We don't want to reallocate the hanning filter every
+// time.  We pre-render it... but if the size of the windows is not
+// constant, this will be very inefficient.  Worse than just doing the
+// math as we need it.  The more adaptive approach would resort to
+// doing the math on the fly if the size changes N times in a row.
 fun hanning (strm) {
   iterate(win in strm) {
     state{ 

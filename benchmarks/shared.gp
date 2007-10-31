@@ -10,4 +10,4 @@ set style data histograms
 #set xtics border in scale 1,0.5 nomirror rotate by -45  offset character 0, 0, 0 
 set xtics border in scale 1,0.5 nomirror 
 
-plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col
+# plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col

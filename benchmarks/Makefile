@@ -5,19 +5,19 @@ TOPDF=ps2pdf
 
 all: 
 	@echo "  Running all benchmarks to generate report, takes approximately ?? minutes."
-	echo '\begin{verbatim}' > top_before.txt
-	top -b | head -n 20    >> top_before.txt
-	echo '\end{verbatim}'  >> top_before.txt
+	echo '\begin{verbatim}' > top_before.tex
+	top -b | head -n 20    >> top_before.tex
+	echo '\end{verbatim}'  >> top_before.tex
 	$(MAKE) perfreport.pdf
-	echo '\begin{verbatim}' > top_after.txt
-	top -b | head -n 20    >> top_after.txt
-	echo '\end{verbatim}'  >> top_after.txt
+	echo '\begin{verbatim}' > top_after.tex
+	top -b | head -n 20    >> top_after.tex
+	echo '\end{verbatim}'  >> top_after.tex
 ## Really, the correct thing to do would be to modify CPU utilization
 ## during the execution of the benchmarks to make sure nothing else
 ## was stealing CPU from us.
 
-perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf 
-	pdflatex perfreport.tex
+perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex 
+	pdflatex -halt-on-error perfreport.tex
 
 machineinfo.tex:
 	echo '\begin{verbatim}' > machineinfo.tex
@@ -45,6 +45,16 @@ language_shootout/shootout.pdf: language_shootout/shootout.eps
 	(cd language_shootout; $(TOPDF) shootout.eps)
 language_shootout/shootout.eps:
 	(cd language_shootout; $(MAKE))
+
+
+microbench/RESULTS.tex: microbench/RESULTS.txt
+	echo '\begin{verbatim}'            > microbench/RESULTS.tex
+	cat microbench/RESULTS.txt        >> microbench/RESULTS.tex
+	echo '\end{verbatim}'             >> microbench/RESULTS.tex
+language_shootout/RESULTS.tex: language_shootout/RESULTS.txt
+	echo '\begin{verbatim}'            > language_shootout/RESULTS.tex
+	cat language_shootout/RESULTS.txt >> language_shootout/RESULTS.tex
+	echo '\end{verbatim}'             >> language_shootout/RESULTS.tex
 
 clean:
 	rm -f machineinfo.tex perfreport.pdf perfreport.log perfreport.aux top_*.txt wssvn.tex enginesvn.tex

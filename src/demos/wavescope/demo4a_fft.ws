@@ -39,25 +39,6 @@
 fun sigseg_fftR2C     (ss) toSigseg(ss`toArray`fftR2C, ss.start, ss.timebase)
 fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase)
 
-fun mywindow(S, len)
-  iterate x in S {
-    state{
-      arr = Array:null;
-      ind = 0;
-      startsamp = 0;
-    }
-    if ind == 0 then arr := Array:make(len, x);
-    arr[ind] := x;
-    ind := ind + 1;
-    if ind == len
-    then {
-      emit toSigseg(arr, startsamp`intToInt64, nulltimebase);
-      ind := 0;
-      arr := Array:make(len, x);
-      startsamp := startsamp + len;
-    }
-  };
-
 winsize = 4096
 //winsize = 32;
 
@@ -86,12 +67,20 @@ s2a = iterate w in s1 { emit sigseg_fftR2C(w) }
 s2b = iterate w in s1 { emit memosigseg_fftR2C(w) }
 
 s2 :: Stream (Sigseg Complex);
-s2 = s2b;
+s2 = if SHELL("MEMOIZE") == "" then s2b else s2a;
 
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
 s3 = iterate (win in s2) {
-  state { pos::Int=0 }
+  state { pos::Int = 0 ;
+          start = 0;
+          first = true;
+        }
+
+  if first == true then {
+    first := false; start := clock();
+    print("Setting start time: "++ start ++"\n");
+  };
   
   x :: Int = 3;  // Explicit type annotation on local var.
   y = (4 == 4);
@@ -101,6 +90,9 @@ s3 = iterate (win in s2) {
   //  print(win[[ind]].realpart ++ " ");
   if win[[ind]].realpart > 224.0
   then { //emit 0.0; 
+    print("UserTimeElapsed: ");
+    print(show(max(0, clock() - start)));
+    print("\n");
     emit (pos/4, win[[ind]].imagpart)
   };
 
@@ -113,7 +105,6 @@ s3
 //s2
 //s3
 //s1
-//mywindow(s3, 4)
 //s1
 //iterate(x in s2) { emit x[[30]] };
 //iterate(x in s1) { emit x`width };

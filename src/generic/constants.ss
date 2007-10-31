@@ -143,6 +143,7 @@
 
          ws-print-output-port ;; For the WS simulator.
 	 ws-optimizations-enabled
+	 ws-optimization-level
 
 	 varied-param
 	 dummy-param
@@ -347,6 +348,10 @@
 ;; enabling optimizations with -opt <NAME>.
 ;(define-regiment-parameter ws-optimizations-enabled '(rewrites))
 (define-regiment-parameter ws-optimizations-enabled '())
+
+;; This parameter is read by various parts of the compiler.
+;; It's value is 0,1,2, or 3.  -O3 enables unsafe optimizations.
+(define-regiment-parameter ws-optimization-level 2)
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.

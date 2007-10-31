@@ -1483,7 +1483,9 @@
      
      (define (Secret:newTimebase x) (make-timebase x))
 
-     (define (toArray w) (if (nullseg? w) #() (sigseg-vec w)))
+     ;; [2007.10.30] UNSAFE: This doesn't copy!  It should.  This is
+     ;; the safe backend afterall, not the high performance one.
+     (define (toArray w) (if (nullseg? w) #() (if (fx= 3 (ws-optimization-level)) (sigseg-vec w) (vector-copy (sigseg-vec w)))))
      (define (toSigseg ar st tb)
        (define en (s:+ st (s:vector-length ar) -1))
        (DEBUGASSERT (or (eq? ar Array:null) (vector? ar)))

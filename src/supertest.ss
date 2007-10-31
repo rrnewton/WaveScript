@@ -391,8 +391,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
-#;
-
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (current-directory (format "~a/demos/wavescope" test-directory))
@@ -433,8 +431,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf "\n\nWaveScript MLTON Backend:\n" )
 (fpf "========================================\n")
-
-#;#;
 
 (begin (newline)
        (current-directory test-directory)
@@ -481,7 +477,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (code->msg! (system/exit-code 
               (format "echo 10 | ws.early pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
        (current-directory test-directory))
-#;
 
 ;; MARMOT
 (begin (newline)

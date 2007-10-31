@@ -1454,7 +1454,9 @@
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  (fromlib "csqrt")]
-
+      
+      [(toArray)                (fromlib "toArray")]
+      
       ;; These use GSL and require appropriate includes.
       [(m_invert)
        (add-include! "<gsl/gsl_linalg.h>")
@@ -1477,6 +1479,7 @@
        (add-link! "libfftw3f.so")
        (mangle var)]
 
+      ;; Currently the memoized version is not implemented for C++.
       [(memoized_fftR2C) (SimplePrim 'fftR2C)]
 
       ;; This is the "default"; find it in WSPrim:: class
@@ -1625,6 +1628,9 @@
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
+	;; FIXME  FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	;; THIS HAS THE WRONG COMPLEXITY!!  It does a seg-get every time.
+#;
 	[(toArray (assert-type (Sigseg ,t) ,sigseg))
 	 (let ([tmp (Var (unique-name 'tmp))]
 	       [tmp2 (Var (unique-name 'tmp))]
@@ -1743,7 +1749,7 @@
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
 
 	;; Safety net:
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse List:toArray
 					   List:ref List:length makeList ))) 
 	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
@@ -1778,6 +1784,8 @@
 	     [Float        simple]
 	     [Complex      simple] ;; does this work?
 	     [String       simple]
+	     [Char         simple]
+	     [Bool         simple]
 	     ;; This is effectively physical equality:
 	     ;; Requires that they have the same parents.
 	     ;; Won't read the contents of two different Sigsegs...

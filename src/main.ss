@@ -1393,6 +1393,10 @@
 	  [(-t ,rest ...)
 	   (wsint-time-query #t)
 	   (loop rest)]
+
+	  ;; This SHOULD also switch on some optimization passes with ws-optimizations-enabled:
+	  [(-O3 ,rest ...) (ws-optimization-level 3) (loop rest)]
+	  [(-O2 ,rest ...) (ws-optimization-level 2) (loop rest)]
 	  
 	  [(-o ,outfile ,rest ...)
 	   (wsint-output-file (symbol->string outfile))

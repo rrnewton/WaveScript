@@ -23,9 +23,9 @@
 \section{Microbenchmarks}
 %% ================================================================================ %%
 
-This section contains various microbenchmarks that stress the
+This section reports various microbenchmarks that stress the
 implementation of particular language constructs or data types.
-Figure \ref{micro} contains execution time results.
+%Figure \ref{micro} contains execution time results.
 
 %\begin{figure}
 \begin{center}
@@ -40,6 +40,11 @@ C++/XStream engine has a high per-tuple (that is, per-element) on the communicat
 relative to the ML backend.  The {\tt just\_timer} test stresses this,
 doing nothing but passing a large number of unit tuples.
 
+Notes:
+\begin{itemize}
+\item FFT results for Scheme above depend on whether or not it is
+  configured to use FFTW, or a native Scheme fourier transform.
+\end{itemize}
 
 
 
@@ -72,6 +77,15 @@ This section includes performance results on larger programs, namely, our
 current applications.  Presently (2007.10) the largest of these by far
 is the marmot application.
 
+\subsection{Marmot Application}
+
+We start off by looking at the original, hand-optimized marmot
+application that we deployed.
+
+\begin{center}
+\includegraphics[width=0.6\hsize]{appbenchs/marmot.pdf}
+\end{center}
+
 %% ================================================================================ %%
 \section{Data Representation Profiling}
 %% ================================================================================ %%
@@ -80,23 +94,83 @@ This section includes an analysis of the efficiency of different data
 representations under different backends.  This should theoretically
 be run on different hardware platforms as well (such as the ARM-based ensboxes).
 
+\subsection{Arrays of Arrays}
+
+Arrays of arrays are notable because they cannot generally be
+flattened (the inner arrays will always be pointers).  In the future
+we may look at tentative flattening based on profiling data.  But
+first, here are the times for repeatedly allocating an array of
+arrays, and for repeatedly folding the values in an array of arrays.
+
+%\begin{minipage}[t]{.45\textwidth} \hfill \end{minipage}
+\begin{center}
+\mbox{
+\includegraphics[width=0.48\hsize]{datareps/alloc_arrarr.pdf}
+\includegraphics[width=0.48\hsize]{datareps/fold_arrarr.pdf}
+}
+\end{center}
+
+Next we look at allocating arrays of tuples and vice versa.  We look at
+both square sizes and at highly skewed dimensions.  This is limited by
+not being able to make tuples very large.
+\begin{center}
+\mbox{
+\includegraphics[width=0.48\hsize]{datareps/alloc_arraytuple.pdf}
+\includegraphics[width=0.48\hsize]{datareps/alloc_tuplearray.pdf}
+}
+\end{center}
+
+Then we do examine folding over arrays of tuples and tuples of arrays.
+\begin{center}
+\mbox{
+\includegraphics[width=0.48\hsize]{datareps/fold_arraytuple.pdf}
+\includegraphics[width=0.48\hsize]{datareps/fold_tuplearray.pdf}
+}
+\end{center}
+
+
+
+
+%% go3 alloc_arrarr 46000.
+%% go3  fold_arrarr 46000.
+
+%% go2 alloc_arraytuple 22000.
+%% go2  fold_arraytuple 22000.
+%% go2 alloc_tuplearray 22000.
+%% go2  fold_tuplearray 22000.
+
 
 
 
 %% ================================================================================ %%
-\pagebreak
+%\pagebreak
 \appendix
+\section{Appendix: Raw numbers for above graphs}
+
+\subsubsection*{Microbenchmarks}
+{\footnotesize
+\input{microbench/RESULTS.tex}
+}
+
+\subsubsection*{Language Shootout:}
+{\footnotesize
+\input{language_shootout/RESULTS.tex}}
+
+\subsubsection*{Marmot Application:}
+{\footnotesize
+\input{appbenchs/marmot.tex}}
+
 \section{Appendix: Additional system information}
 
 \subsubsection*{Top results before running benchmarks:}
 {
 \footnotesize
-\input{top_before.txt}
+\input{top_before.tex}
 }
 \subsubsection*{Top results {\em after} running benchmarks:}
 {
 \footnotesize
-\input{top_after.txt}
+\input{top_after.tex}
 }
 
 \end{document}

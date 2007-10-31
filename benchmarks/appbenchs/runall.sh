@@ -30,3 +30,7 @@ runallbackends run_first_phase $TEMP 5
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./
 
+cp RESULTS.txt marmot.txt
+echo '\begin{verbatim}' > marmot.tex
+cat marmot.txt         >> marmot.tex
+echo '\end{verbatim}'  >> marmot.tex

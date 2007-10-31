@@ -423,6 +423,9 @@
 						 (insert-between " " 
 								 (list-rem-dups deps equal?))))
 				  "*)\n")))
+
+			   "(* This is set by the compiler to reflect the flags passed to wsmlton: *)\n"
+			   "val oPTLVL = "(number->string (ws-optimization-level))"\n\n"
 			   
                            complex1 complex2 
 		           header1 header5 header2  header3a header3b header4  "\n" 
