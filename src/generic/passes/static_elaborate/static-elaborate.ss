@@ -476,27 +476,6 @@
     ;; TEMP: (ironic) HACK:
     (define mutable-vars 'uninit)
 
-    ;; TODO FINISH:
-    #;
-    (define count-app-refs
-      (lambda (v expr)
-        (match expr
-          [(quote ,datum) 0]
-          [,var (guard (symbol? var))
-		(if (eq? var v) 1 0)]
-          [(lambda ,formals ,types ,expr)
-	   (if (memq v formals) 0 (count-refs v expr))]
-          [(if ,[test] ,[conseq] ,[altern])
-	   (+ test conseq altern)]
-	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-	   (if (memq v lhs*) 0
-	       (+ (count-refs v expr)
-		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
-;	  [(,prim ,[rands] ...)	   
-	  [(,[rator] ,[rands] ...) (+ rator (apply + rands))]
-          [,unmatched
-            (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
-
     (define not-available (unique-name "NotAvailable"))
     ;; This is a simple struct used by *getval* to indicate that the
     ;; value is code, rather than a value-proper.
@@ -1259,13 +1238,14 @@
 	 (static-elaborate ',prog)
 	 ,prog])
 
-    ,(let ([prog '(iterate () (lambda (x ___VIRTQUEUE___) (Int (VQueue Int))
+    ,(let ([prog '(iterate () (lambda (x ___VIRTQUEUE___) (#() (VQueue Int))
 				   (letrec ([y Bool '#t])
 				     (begin (for (i '1 '10) (set! y '#f))
 					    (if y (emit ___VIRTQUEUE___ '77)
 						(emit ___VIRTQUEUE___ '100))
 					    ___VIRTQUEUE___)
-				     )))])
+				     ))
+			   (timer (assert-type Float '1.0)))])
        `["(non-persistent) Mutable variable inside iterate.  This was a bug with conditional-reduction."
 	 (static-elaborate '(foolang '(program ,prog (Stream Int))))
 	 (static-elaborate-language '(program ,prog (Stream Int)))])

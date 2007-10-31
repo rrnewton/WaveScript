@@ -655,7 +655,8 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
-  (unless (memq 'annotate-with-data-rates disabled-passes)
+  #;
+  (unless  (memq 'annotate-with-data-rates disabled-passes)
     (ws-run-pass p annotate-with-data-rates))
 
 ;   (set! prog (ws-add-return-statements prog))
@@ -1484,7 +1485,7 @@
      [(--param-file ,param-file-name ,rest ...)
       (let ((param-file (open-input-file (symbol->string param-file-name))))
         (set! input-parameters (read param-file))
-        (close-port param-file))
+        (close-input-port param-file))
       (loop rest)]
 	  
 	  ;; otherwise a file to compile that we add to the list
