@@ -67,19 +67,19 @@ s2a = iterate w in s1 { emit sigseg_fftR2C(w) }
 s2b = iterate w in s1 { emit memosigseg_fftR2C(w) }
 
 s2 :: Stream (Sigseg Complex);
-s2 = if SHELL("MEMOIZE") == "" then s2b else s2a;
+s2 = if GETENV("MEMOIZE") == "" then s2b else s2a;
 
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
 s3 = iterate (win in s2) {
   state { pos::Int = 0 ;
-          start = 0;
+          strttime = 0;
           first = true;
         }
 
   if first == true then {
-    first := false; start := clock();
-    print("Setting start time: "++ start ++"\n");
+    first := false; strttime := clock();
+    print("Setting start time: "++ strttime ++"\n");
   };
   
   x :: Int = 3;  // Explicit type annotation on local var.
@@ -91,7 +91,7 @@ s3 = iterate (win in s2) {
   if win[[ind]].realpart > 224.0
   then { //emit 0.0; 
     print("UserTimeElapsed: ");
-    print(show(max(0, clock() - start)));
+    print(show(max(0, clock() - strttime)));
     print("\n");
     emit (pos/4, win[[ind]].imagpart)
   };

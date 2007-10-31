@@ -134,7 +134,7 @@ exec regiment i --script "$0" ${1+"$@"};
 				     (ASSERT (= 199   (end   (list-ref a 0))))
 				     (ASSERT (= 100   (start (list-ref a 1))))
 				     (ASSERT (= 199   (end   (list-ref a 1))))
-2				     (ASSERT (= 300   (start (list-ref b 0))))
+				     (ASSERT (= 300   (start (list-ref b 0))))
 				     (ASSERT (= 399   (end   (list-ref b 0))))
 				     (ASSERT (= 300   (start (list-ref b 1))))
 				     (ASSERT (= 399   (end   (list-ref b 1))))
