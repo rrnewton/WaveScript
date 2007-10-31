@@ -655,7 +655,7 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
-
+#;
   (unless  (memq 'annotate-with-data-rates disabled-passes)
     (ws-run-pass p annotate-with-data-rates))
 
