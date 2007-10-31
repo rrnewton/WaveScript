@@ -264,7 +264,7 @@
   (define-syntax static (syntax-rules () [(_ x) x]))
   (define-syntax statref (syntax-rules () [(_ x) x]))
 
-  (define-syntax annotations (syntax-rules () [(_ . x) x]))
+  (define-syntax annotations (syntax-rules () [(annotations . x) '(annotations . x)]))
 
   ;; ================================================================================    
   ;;; Type tests for WaveScript types embedded in Scheme.
