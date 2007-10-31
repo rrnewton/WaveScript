@@ -584,11 +584,11 @@
   (ws-run-pass p strip-irrelevant-polymorphism)
 
   ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
-  (unless (memq 'merge-iterates disabled-passes)
-    ;(pretty-print p)
-    (ws-run-pass p merge-iterates)
-    ;(pretty-print p)
-    ) ;; <Optimization>
+  ;(unless (memq 'merge-iterates disabled-passes)
+  ;  ;(pretty-print p)
+  ;  (ws-run-pass p merge-iterates)
+  ;  ;(pretty-print p)
+  ;  ) ;; <Optimization>
 
   (IFDEBUG (do-late-typecheck) (void))
 
