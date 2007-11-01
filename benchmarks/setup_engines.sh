@@ -20,7 +20,7 @@ if ! [ -d ./engine/1495 ]; then
   mv include_1495 engine/1495/include
 fi
 
-if ! [ -d ./engine/1495 ]; then
+if ! [ -d ./engine/newest ]; then
   rm -rf engine/newest;
   mkdir engine/newest
   tar xzvf include_newest.tgz 
