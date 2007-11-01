@@ -70,8 +70,8 @@ fun notch_filter(size, low, high) {
     })
 }
 
-low_pass :: (Int, Int) -> Array Complex;
-fun low_pass(size, cutoff) {
+low_pass_coefs :: (Int, Int) -> Array Complex;
+fun low_pass_coefs(size, cutoff) {
   Array:build(size, 
     fun (i) {
       if i <= cutoff 
@@ -80,8 +80,8 @@ fun low_pass(size, cutoff) {
     })
 }
 
-high_pass :: (Int, Int) -> Array Complex;
-fun high_pass(size, cutoff) {
+high_pass_coefs :: (Int, Int) -> Array Complex;
+fun high_pass_coefs(size, cutoff) {
   Array:build(size, 
     fun (i) {
       if i >= cutoff 
@@ -89,7 +89,6 @@ fun high_pass(size, cutoff) {
       else 0.0+0.0i
     })
 }
-
 
 fun psd(s, size) {
   rw = rewindow(s, size*2, 0);
@@ -100,7 +99,6 @@ fun psd(s, size) {
                   h.start, h.timebase))
   }
 }
-
 
 filter_spikes :: ((Stream (Sigseg t)), Float) -> (Stream (Sigseg t));
 fun filter_spikes(s, thresh) {

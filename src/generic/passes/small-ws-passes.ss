@@ -44,6 +44,9 @@
 ;;
 ;; We could try to use binding-form-visit-knowncode... but
 ;; unfortunately it doesn't let us remove the binding right now.
+;;
+;; FIXME: WE ALSO NEED TO EXTRACT ANY DEPENDENCIES (FREE VARS), NOT
+;; JUST THE PARTICULAR BINDING FOR A SPECIAL LIBFUN.
 (define-pass hide-special-libfuns
   ;; This accumulates the special-defs that we come across below.
   (define special-defs ())
@@ -160,9 +163,6 @@
        (define len (fx+ 1 (length ty0)))
        (define tmp1 '(unique-name "tmptupa"))
        (define tmp2 '(unique-name "tmptupb"))
-       
-       (inspect/continue
-	
        `(let ([,tmp1 ,origtype ,e1])
 	  (let ([,tmp2 ,origtype ,e2])	    
 	    ,(let loop ([types (cons ty0 ty*)]
@@ -172,7 +172,7 @@
 		  head
 		  `(if ,head
 		       (loop (cdr types) (fx+ 1 ind))
-		       '#f))))))]
+		       '#f)))))]
 
       ;; TODO: Lists, etc.
 

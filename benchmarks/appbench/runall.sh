@@ -46,8 +46,17 @@ echo '\end{verbatim}'  >> marmot.tex
 ##   OTHER MARMOT CONFIGS (Optimizations)
 ## ================================================================================ ##
 
-## TODO
+cd "$REGIMENTD/apps/marmot/refactored";
 
+export HANDOPT_BUILDSPLIT=true
+
+echo "## Running marmot phase 1&2 with 2-way split AML. " > RESULTS.txt
+#print_results_header
+#runallbackends run_marmot2-maps $TEMP 1 1
+
+unset HANDOPT_BUILDSPLIT
+cd "$START"
+mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
 
 ## ================================================================================ ##
 ##   STOCKTICKS

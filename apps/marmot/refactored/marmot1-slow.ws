@@ -162,7 +162,68 @@ fun detect(scorestrm) {
 
 // ================================================================================
 
-detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16)) 
+
+// RRN:
+// Adding some combinators which we will target with the rewrite rules.
+
+fun SSS_toArray(sss)   iterate x in sss { emit toArray(x) }
+fun SSS_fromArray(sss) 
+  iterate arr in sss { 
+    state { stamp :: Int64 = 0 }
+    emit toSigseg(arr, stamp, nulltimebase);
+    stamp += intToInt64$ Array:length(arr);
+  }
+
+fun SA_fft(sa) 
+  iterate arr in sa {
+    emit fftR2C(arr);
+  }
+
+fun SA_ifft(sa) 
+  iterate arr in sa {
+    emit ifftC2R(arr);
+  }
+
+// fft on a stream of sigsegs.  Could be primitive.
+fun SSS_fft(sss) {
+  SSS_fromArray $ 
+  SA_fft $ 
+  SSS_toArray $ 
+    sss
+}
+
+fun SSS_ifft(sss) {
+  SSS_fromArray $ 
+  SA_ifft $ 
+  SSS_toArray $ 
+    sss
+}
+
+fun SSS_psd(s, size) {
+  deep_stream_map( absC,
+   SSS_fft $
+    hanning $ 
+     rewindow(s, size*2, 0))
+}
+
+fun high_pass(size, cutoff, input) {
+  using Curry;
+
+  fun clearlow(arr) {
+    //arr2 = Array:copy(arr);
+    arr    
+  };
+
+  SSS_fromArray   $ 
+   smap(clearlow) $
+    SSS_toArray   $ 
+     SSS_ifft     $ 
+      input
+}
+
+
+// RRN: Modifying this to make it amenable to rewrite opts.
+detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16))
          -> Stream Detection;
 fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
@@ -170,8 +231,51 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   /* ULTRACRAP IMPLEMENTATION */
   // highpass and lowpass to simulate bandpass
-  filtered = fft_filter(fft_filter(sfloats, low_pass(16,4)),
-                        high_pass(16,3));
+
+  hi = fft_filter(sfloats, low_pass_coefs(16,4));
+  lo = fft_filter(hi, high_pass_coefs(16,3));
+  filtered = lo;
+
+  // now compute psd
+  psds = psd(filtered, 16);
+
+  /* SEMICRAP IMPLEMENTATION -- doesnt work but for comparison */
+  //psds = psd(sfloats, 16);
+
+  // sum the psd 
+  wscores = iterate p in psds {
+    emit( (Array:fold((+), 0.0, toArray(p)), p.start, p.end) )
+  };
+
+  detections = detect(wscores);
+
+  d2 = iterate (d in detections) {
+    let (flag,_,_) = d;
+    if flag then log(LOG_TIMING,"Detection at "++show(d)++
+	", "++vxp_buffer_time_remaining()++" seconds in buffer");
+    emit d;
+  };
+
+  synced_ints = syncN_no_delete(d2, [ch1i, ch2i, ch3i, ch4i]);
+  synced_ints
+}
+
+
+
+
+// This puts the pieces together to make a detector that goes from 4
+// audio channels all the way to detections.
+lewis_detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16))
+         -> Stream Detection;
+fun lewis_detector((ch1i,ch2i,ch3i,ch4i)) {
+
+  sfloats = deep_stream_map(int16ToFloat, ch1i);
+
+  /* ULTRACRAP IMPLEMENTATION */
+  // highpass and lowpass to simulate bandpass
+  filtered = fft_filter(
+               fft_filter(sfloats, low_pass_coefs(16,4)),
+                                   high_pass_coefs(16,3));
 
   // now compute psd
   psds = psd(filtered, 16);

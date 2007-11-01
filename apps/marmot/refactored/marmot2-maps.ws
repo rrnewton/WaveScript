@@ -336,13 +336,22 @@ fun oneSourceAMLTD(synced, win_size) {
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
 
   temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
-  //  aml_result = smap(fun((tup,st,tb)) ((actualAML)(grid_size, tup),st,tb), temp);
-  //  aml_result
-  half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
-  half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
+  
+  // SPLIT VERSION:
+  split = { 
+    half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
+    half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
+    smap(fun(((a,st,tb),(b,_,_))) (Array:append(a,b), st,tb),
+         zip2_sametype(half1,half2)) };
 
-  smap(fun((a,b)) Array:append(a,b),
-       zip2_sametype(half1,half2));
+  // MONOLITHIC VERSION:
+  aml_result = smap(fun((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb), temp);
+
+  //smap(inspect, split)
+
+  if GETENV("HANDOPT_BUILDSPLIT") == ""
+  then aml_result
+  else split
 }
 
 

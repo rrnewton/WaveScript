@@ -115,8 +115,8 @@ In this way, it can process 73.6 mb in a second.
 
 
 
-include "sources_from_file.ws";
-include "marmot_first_phase-slow.ws";
+include "../sources_from_file.ws";
+include "marmot1-slow.ws";
 
 //BASE <- 3 
 //BASE <- chans

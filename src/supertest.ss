@@ -536,6 +536,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; [2007.10.30] building incrementally.
 (begin (current-directory (format "~a/benchmarks/microbench" test-root))
+       (fpf "    Setup Engines:                            ~a\n" 
+	    (code->msg! (system/exit-code (format "./setup_engines.sh &> ~a/bench_setup.log" test-directory))))
+
        (fpf "    Run microbenchmarks:                      ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_micro.log" test-directory))))
 
