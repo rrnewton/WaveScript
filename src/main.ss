@@ -508,6 +508,27 @@
 ;  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated_first.ss"))
 
 
+  ;; <OPTIMIZATION>: FUSE BOXES
+  ;; -----------------------------------------
+  ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
+  ;(unless (memq 'merge-iterates disabled-passes)
+  ;  ;(pretty-print p)
+  ;  (ws-run-pass p merge-iterates)
+  ;  ;(pretty-print p)
+  ;  ) ;; <Optimization>
+  (when (or (memq 'fuse (ws-optimizations-enabled))
+	    (memq 'merge-iterates (ws-optimizations-enabled)))
+    (ws-run-pass p simple-merge-iterates)
+    ;; Inline those function defs again.
+    ;; This really is terrible code bloat... need to simply support
+    ;; first order functions in the backends.  Might not be time for
+    ;; that right this second though.
+    ;(ws-run-pass p interpret-meta) (do-early-typecheck)
+    )
+  ;; -----------------------------------------
+
+
+
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
@@ -583,12 +604,7 @@
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
 
-  ;; RRN: Will enable merge-iterates as soon as the backend can handle (app _) constructs...
-  ;(unless (memq 'merge-iterates disabled-passes)
-  ;  ;(pretty-print p)
-  ;  (ws-run-pass p merge-iterates)
-  ;  ;(pretty-print p)
-  ;  ) ;; <Optimization>
+  ;; <-------- NOTE: Old location for merge-iterates. [2007.11.01]
 
   (IFDEBUG (do-late-typecheck) (void))
 
@@ -599,10 +615,11 @@
   (IFDEBUG (do-late-typecheck) (void))
 
   (ws-run-pass p type-annotate-misc)
-  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-cpp)
+  (ws-run-pass p generate-printing-code)
+#;
+  (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-cpp)
     (ws-run-pass p generate-comparison-code)
     )
-  (ws-run-pass p generate-printing-code)
 
   ;; Should also generate printing code:
   ;(ws-run-pass p generate-printing-code)
@@ -892,7 +909,7 @@
    (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
 
    ;(inspect (deep-assq-all 'wsequal? prog))
-   ;(ws-run-pass prog generate-comparison-code)
+   ;(ws-run-pass prog generate-comparison-code) ;; RUNNING AGAIN
    ;(ws-run-pass prog ws-lift-let)
    ;(inspect (deep-assq-all 'wsequal? prog))
 

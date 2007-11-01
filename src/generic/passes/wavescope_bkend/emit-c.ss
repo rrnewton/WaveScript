@@ -1025,15 +1025,19 @@
 	    "}\n\n"
 
 
+;; [2007.11.01] THIS CAN HOPEFULLY BE DISABLED WITH generate-comparison-code ACTIVATED:
+
             ;; This produces an equality function. 
 	    "bool wsequal(const ",name"& x, const ",name"& y) {\n" 
 	    ,(if (null? fld*)
 		"return TRUE;\n"
 		`(" return "
 		  ,(insert-between " && "
-				   (map (lambda (fld)
-					  `(" wsequal(x.",fld", y.",fld") "))
-				     fld*))
+				   (map (lambda (fld ty)
+					  ;`(" wsequal(x.",fld", y.",fld") ")
+					  (generate-wsequal-code ty `("x.",fld) `("y.",fld) (lambda (x) x))
+					  )
+				     fld* typ*))
 		  ";\n"))
 	    "}\n\n"
 
@@ -1776,36 +1780,9 @@
 	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
 	;; Generate equality comparison:
-	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])
-	 (let* ([a (Simple `(assert-type ,ty ,e1))]
-           [simple (wrap `("wsequal(",a", ",b")"))])
-	   (match ty
-	     [Int          simple]
-	     [Int16        simple]
-	     [Int64        simple]
-	     [Float        simple]
-	     [Complex      simple] ;; does this work?
-	     [String       simple]
-	     [Char         simple]
-	     [Bool         simple]
-	     ;; This is effectively physical equality:
-	     ;; Requires that they have the same parents.
-	     ;; Won't read the contents of two different Sigsegs...
-	     ;; FIXME: Should consider fixing this.
-	     [(Sigseg ,elt)  simple]
-	     ;; Could do this c++-ishly... but yuck.
-	     [(Array ,elt)  
-	      (error 'emit-C:Prim "shouldn't run into wsequal? on an array type")]
-	     
-	     [(List ,elt)    simple]
-	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
-
-	     ;; We have generated a comparison op for each struct.
-	     ;; UNFINISHED:
-	     ;[(Struct ,name) `("eq",name"(",a", ",b")")]
-	     [(Struct ,name) simple]
-        [,_ (error 'emitC "no equality yet for type: ~s" ty)])
-      )]
+	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])	
+	 (let* ([a (Simple `(assert-type ,ty ,e1))])
+	   (generate-wsequal-code ty a b wrap))]
 
 	;; If we have an extra assert-type... just ignore it.
 	[(assert-type ,ty ,[e]) e]
@@ -1817,6 +1794,38 @@
 	 ])
   )
 
+
+(define (generate-wsequal-code ty a b wrap)
+  (define (simple) (wrap `("wsequal(",a", ",b")")))
+  (match ty
+    [Int          (simple)]
+    [Int16        (simple)]
+    [Int64        (simple)]
+    [Float        (simple)]
+    [Complex      (simple)] ;; does this work?
+    [String       (simple)]
+    [Char         (simple)]
+    [Bool         (simple)]
+
+    [Timebase         (simple)]
+    ;; This is effectively physical equality:
+    ;; Requires that they have the same parents.
+    ;; Won't read the contents of two different Sigsegs...
+    ;; FIXME: Should consider fixing this.
+    [(Sigseg ,elt)  (simple)]
+    ;; Could do this c++-ishly... but yuck.
+    [(Array ,elt)   (simple)
+     ;(error 'emit-C:Prim "shouldn't run into wsequal? on an array type")
+     ]
+    
+    [(List ,elt)    (simple)]
+					;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
+
+    ;; We have generated a comparison op for each struct.
+    ;; UNFINISHED:
+					;[(Struct ,name) `("eq",name"(",a", ",b")")]
+    [(Struct ,name) (simple)]
+    [,_ (error 'emitC "no equality yet for type: ~s" ty)]))
 
 
 ;; This implements our polymorphic print/show functions.
@@ -2059,6 +2068,8 @@ int main(int argc, char ** argv)
 		   List:ref List:append List:reverse List:length List:make 
 		   Array:makeUNSAFE Array:ref Array:set
 		   
+		   realtime
+
 		   wsequal? print show seg-get toArray 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:

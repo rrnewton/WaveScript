@@ -125,8 +125,8 @@
 ;; [2007.08.02] This kind of thing should not be done in the actual
 ;; code generators if it can be helped.
 (define-pass generate-comparison-code
-  (define (build-comparison ty e1 e2)
-    (match ty
+  (define (build-comparison origtype e1 e2)
+    (match origtype ;; NO MATCH RECURSION!.
       [(Array ,elt) 
        (let ([arr1 (unique-name "arr1")]
 	     [arr2 (unique-name "arr2")]
@@ -137,7 +137,7 @@
 	     [len  (unique-name "len")])
 	 `(let ([,arr1 (Array ,elt) ,e1])
 	    (let ([,arr2 (Array ,elt) ,e2])
-	      (if (wsequal? (assert-type Int (Array:length ,arr1)) (Array:length ,arr2))
+	      (if ,(build-comparison 'Int `(Array:length ,arr1) `(Array:length ,arr2))
 		  (let ([,i (Ref Int) (Mutable:ref '0)])
 		    (let ([,stop (Ref Bool) (Mutable:ref '#f)])
 		      (let ([,len Int (Array:length ,arr1)])
@@ -152,9 +152,32 @@
 			  (not (deref ,stop))))))
 		  '#f)
 	      )))]
+
+      ;; [2007.11.01] Doing tuples here.
+      ;; (This actually makes for worse-code for Scheme... could do this conditionally:)
+      ;; TODO FIXME: Remove the relevant code from the different backends.      
+      [#(,ty0 ,ty* ...)
+       (define len (fx+ 1 (length ty0)))
+       (define tmp1 '(unique-name "tmptupa"))
+       (define tmp2 '(unique-name "tmptupb"))
+       
+       (inspect/continue
+	
+       `(let ([,tmp1 ,origtype ,e1])
+	  (let ([,tmp2 ,origtype ,e2])	    
+	    ,(let loop ([types (cons ty0 ty*)]
+			[ind 0])
+	      (define head (build-comparison (car types) `(tupref ,ind ,len ,tmp1) `(tupref ,ind ,len ,tmp2)))
+	      (if (null? (cdr types))
+		  head
+		  `(if ,head
+		       (loop (cdr types) (fx+ 1 ind))
+		       '#f))))))]
+
       ;; TODO: Lists, etc.
+
       ;; For the simple case we just allow the wsequal? to stick around.
-      [,_ `(wsequal? (assert-type ,ty ,e1) ,e2)]))
+      [,_ `(wsequal? (assert-type ,origtype ,e1) ,e2)]))
   [Expr 
    (lambda (x fallthru)
      (match x

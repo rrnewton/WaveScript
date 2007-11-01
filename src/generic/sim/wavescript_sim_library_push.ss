@@ -117,7 +117,7 @@
 		 C-free exclusivePtr getPtr nullPtr ptrIsNull ptrMakeNull
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL
-		 clock
+		 clock realtime
 
 		 HACK_O_RAMA
 
@@ -221,7 +221,7 @@
   ;; Global queue of input events in virtual time.  
   ;; Currently pairs of (time . source)
   (define event-queue   'wslp-uninit1)    
-  (define current-vtime 'wslp-uninit2)
+  (define current-vtime 'wslp-uninit2)   ;; virtual microseconds 
   (define data-sources  'wslp-uninit3)   ;; A list of all data sources in the query graph
   (define output-queue  'wslp-uninit4)   ;; Outputs from the query graph
   (define global-eng    'wslp-uninit5)   ;; Engine for running stream graph. 
@@ -242,7 +242,7 @@
     ;(print-wssim-state)
     ;(printf "RESETTING GLOBAL SIM STATE!\n")
     (set! event-queue '())
-    (set! current-vtime 0)
+    (set! current-vtime 0) 
     (set! data-sources '())
     (set! output-queue '())
     (set! still-running? #t))
@@ -1727,10 +1727,11 @@
      (__readFile fn src mode repeats skipbytes offset winsize types)]))
 
 (define FILE_EXISTS file-exists?)
-(define GETENV getenv)
+(define (GETENV str) (or (getenv str) ""))
 (define SHELL system-to-str)
 
 (define (clock) (exact->inexact (cpu-time)))
+(define (realtime) (/ current-vtime 1000))
 
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
 (define (HACK_O_RAMA filename)

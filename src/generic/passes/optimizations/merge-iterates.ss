@@ -8,12 +8,10 @@
 ;;;; mic: should be done only after the standardize-iterate pass
 
 (module merge-iterates mzscheme
-  (require 
-          "../../../plt/common.ss"
-	  )
-  (provide merge-iterates
-	   test-merge-iterates	   
-           )
+  (require  "../../../plt/common.ss" 
+	    "../../../plt/hashtab.ss"
+	    (all-except (lib "list.ss") sort! sort filter))
+  (provide merge-iterates)
   (chezimports )
 
 
@@ -798,138 +796,5 @@
     [Expr Expr])
 
   (rewrite-program-from-graph prog))
-
-
-
-
-
-
-(define-testing these-tests 
-  `(
-    ["Peform basic iterate merging."
-     (length (deep-assq-all 'iterate
-	       (merge-iterates 
-		'(foolang 
-		  '(program (iterate (lambda (x vq1) (Int (VQueue Int))
-					     (begin (emit vq1 (+_ x 1)) 
-						    (emit vq1 (+_ x 100))
-						    vq1))
-				     (iterate (lambda (y vq2) (Int (VQueue Int))
-						      (begin (emit vq2 (*_ y 2))
-							     (emit vq2 (*_ y 3))
-							     vq2))
-					      SOMESTREAM))
-		     T)))))
-     ;; Simply verify that it reduces two iterates to one.
-     1]
-    ))
-
-(define-testing test-this  
-  (default-unit-tester "Merge-Iterates: collapse adjacent iterates"  these-tests))
-
-(define test-merge-iterates test-this)
-
-
-
-
-
-
-
-
-
-
-
-
-#;
-(define merge-iterates
-  (build-compiler-pass ;; This wraps the main function with extra debugging
-   'merge-iterates
-   `(input)
-   `(output) 
-   (let ()
-     (define (subst-emits body fun)
-       (core-generic-traverse
-	(lambda (expr fallthrough)
-	  (match expr
-	    [(emit ,vqueue ,x) `(app ,fun ,x)]
-	    [(iterate . ,_)
-	     (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
-	    [,other (fallthrough other)]))
-	(lambda (ls k) (apply k ls))
-	body))
-
-     (define process-expr
-       (lambda (expr)
-	 (core-generic-traverse
-	  (lambda (expr fallthrough) ;; driver
-	    (match expr
-	      [(iterate (lambda (,y) (,ty) 
-				(letrec ([___VIRTQUEUE___ (VQueue ,outy) (virtqueue)])
-				  ,body))
-			(iterate (lambda (,x) (,tx) 
-					 (letrec ([___VIRTQUEUE___ (VQueue ,outx) (virtqueue)])
-					   ,bodx))
-				 ,inputstream))
-	       (let ([f (unique-name 'f)])
-		 (process-expr
-		  `(iterate (lambda (,x) (,tx)
-				    (letrec ([___VIRTQUEUE___ (VQueue ,outy) (virtqueue)])
-				      (letrec ([,f (,ty -> ,outy)
-						   (lambda (,y) (,ty) ,body)])
-					,(subst-emits bodx f))))
-			    ,inputstream)))]
-	      [,other (fallthrough other)]))
-	  (lambda (ls k) (apply k ls)) ;; fuser
-	  expr)))
-
-     ;; Main pass body:
-     (lambda (expr)
-       (match expr
-	 [(,input-language (quote (program ,body ,type)))
-	  (let ([body (process-expr body)])
-	    `(merge-iterates-language '(program ,body ,type)))])))))
-
-
-
-#;
-(define testresult 
-  (strip-types '(letrec ([s1 (Stream (Sigseg Int)) (app audioFile
-                                                 "./countup.raw"
-                                                 10
-                                                 0)])
-       (letrec ([s2 (Stream Int) (iterate
-                                       (lambda (sigseg)
-                                         ((Sigseg Int))
-                                         (letrec ([___VIRTQUEUE___ (VQueue
-                                                                     Int) (virtqueue)])
-                                           (begin
-                                             (emit
-                                               ___VIRTQUEUE___
-                                               (seg-get
-                                                 sigseg
-                                                 (app start sigseg)))
-                                             ___VIRTQUEUE___)))
-                                       s1)])
-         (letrec ([s3 (Stream Int) (iterate
-                                         (lambda (x)
-                                           (Int)
-                                           (letrec ([___VIRTQUEUE___ (VQueue
-                                                                       Int) (virtqueue)])
-                                             (letrec ([f_5 (Int
-                                                             ->
-                                                             Int) (lambda (x)
-                                                                        (Int)
-                                                                        (begin
-                                                                          (emit
-                                                                            ___VIRTQUEUE___
-                                                                            (*_ x
-                                                                               2))
-                                                                          ___VIRTQUEUE___))])
-                                               (begin
-                                                 (app f_5 (+ x 1))
-                                                 ___VIRTQUEUE___))))
-                                         s2)])
-           s3)))))
-
 
 ) ;; End module

@@ -889,8 +889,8 @@
 		   internString uninternString
 
 		   exclusivePtr getPtr
-		   clock
-
+		   clock realtime
+		   
 		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 
 		   HashTable:make HashTable:rem HashTable:set ;; pure versions
 

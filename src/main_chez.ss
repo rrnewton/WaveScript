@@ -516,7 +516,8 @@
 (include "generic/passes/optimizations/rewrite_opts.ss")
 (include "generic/passes/optimizations/data_reps.ss")
 
-(include "generic/passes/wavescope_bkend/merge-iterates.ss") (import merge-iterates)
+(include "generic/passes/optimizations/merge-iterates.ss") (import merge-iterates)
+(include "generic/passes/optimizations/simple-merge-iterates.ss") (import simple-merge-iterates)
 (include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
 (include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss") (import flatten-iterate-spine)
 

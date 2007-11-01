@@ -23,20 +23,9 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 // How many samples a second do we want to process on each input audio channel?
-//samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
-
-// Trying to give this a nice number for the C++ backend:
-// 5K, 10K - working fine on faith 20-30% utilization
-// 20K fine on faith.
-//samp_rate = 30000.0; 
-
-// Having problems when I move to the CoreFit engine.
-// Seems to always use 100% cpu.
-//samp_rate = 5000.0; 
-samp_rate = 1000.0;
+samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
 
 winsize = 16384;
-
 
 fun amplify(n,s)
   iterate x in s {
@@ -46,9 +35,21 @@ fun amplify(n,s)
   }
 
 // Old data files are 24 khz...
-//driver = timer(samp_rate * 4.0 / winsize`i2f);
-driver = amplify(100, timer(10.0));
-chans = (readFile(marmotfile, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
+driver = 
+   if GETENV("COREFITBENCH") == ""
+   // Our simulation of a "realtime" Ensbox:
+   then timer(samp_rate * 4.0 / winsize`i2f)
+   // Just run really fast to benchmark WSC.
+   else amplify(100, timer(10.0));
+
+debugdriver = iterate x in driver {
+  println("GETENV <"++GETENV("WSCBENCH")++">");
+  print("DRIVER FIRED: "++ realtime() ++" timerrate "++ (samp_rate * 4.0 / winsize`i2f) ++"\n");
+  emit x;
+}
+
+chans = (readFile(marmotfile, "mode: binary window: "++winsize, driver) 
+     :: Stream Sigseg (Int16));
 
 // TODO: Try oversampling this input stream to 48 khz to make the detector match the live data:
 // Quite inefficient.
@@ -68,3 +69,5 @@ ch1i = onechan(0);
 ch2i = onechan(1); 
 ch3i = onechan(2); 
 ch4i = onechan(3);
+
+//BASE <- debugdriver

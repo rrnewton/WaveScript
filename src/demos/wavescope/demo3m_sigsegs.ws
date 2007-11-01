@@ -2,19 +2,8 @@
 // Several demos up till now have read in a stream of Sigsegs.
 // But this demo stresses the various sigseg operators.
 
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
-fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
 
-fun assert_prnt(str,pred) {
-  assert(str,pred);
-  print("Assert passed: "++ str ++ "\n");
-}
-fun assert_eq_prnt(str,a,b) {
-  assert_eq(str,a,b);
-  print("Assert passed: "++ str ++ "\n");
-}
-
-
+include "common.ws";
 
 s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 

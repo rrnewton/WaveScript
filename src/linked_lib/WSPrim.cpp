@@ -261,6 +261,78 @@ uint32_t getTotalByteSize(const boost::intrusive_ptr< WSArrayStruct<T> > &e)
   return sizeof(int)*2 + e->len;
 }
 
+template <class T>
+boost::intrusive_ptr< WSArrayStruct<T> >
+makeArrayUnsafe(wsint_t count, T initelem) {
+//makeArrayUnsafe(wsint_t count) {
+  //T* vec = (T*) malloc(sizeof(T) * (int)count);
+  T* vec = new T[count];
+  WSArrayStruct<T>* arr = new WSArrayStruct<T>;
+  arr->len = (int)count;
+  arr->data = vec;
+  arr->rc = 0;
+  return boost::intrusive_ptr< WSArrayStruct<T> >(arr);
+}
+
+/*
+makeArrayUnsafe(wsint_t count, int eltsize) {
+  // FIXME: This is a bug too: 
+  WSArrayStruct* stct = (WSArrayStruct*)malloc(sizeof(WSArrayStruct));
+  stct->rc  = 0;
+  stct->len = count;
+  stct->data = malloc(count * eltsize);
+  return boost::intrusive_ptr< WSArrayStruct<T> >(stct);
+}
+*/
+
+template <class T>
+boost::intrusive_ptr< WSArrayStruct<T> >
+//wsarray_t<T>
+makeArray(wsint_t count, T initelem) {
+  //T* vec = (T*) malloc(sizeof(T) * (int)count);
+  T* vec = new T[count];
+  for(int i=0; i<(int)count; i++) {
+    vec[i] = (T)initelem;
+  }
+
+  WSArrayStruct<T>* arr = new WSArrayStruct<T>;
+  arr->len = (int)count;
+  arr->data = vec;
+  arr->rc = 0;
+  return boost::intrusive_ptr< WSArrayStruct<T> >(arr);
+}
+
+template <class T>
+void intrusive_ptr_add_ref(WSArrayStruct<T>* p) {
+  //  printf("Add rc! %d -> %d\n", p->rc, p->rc+1);
+  p->rc ++;
+}
+
+template <class T>
+void intrusive_ptr_release(WSArrayStruct<T>* p) {
+  //printf("Decr rc! %d -> %d\n", p->rc, p->rc-1);
+  p->rc --;
+  if (p->rc == 0) {
+    //printf("Freeing!\n");
+    //free(p->data);
+    delete [](T*)(p->data);
+    //free(p);
+    delete p;
+  }
+}
+
+template <class T> 
+bool wsequal (const boost::intrusive_ptr< WSArrayStruct<T> > arr1,
+              const boost::intrusive_ptr< WSArrayStruct<T> > arr2) {
+  T* p1 = arr1.get();
+  T* p2 = arr1.get();
+  if (p1 == 0 && p2 == 0) return true; 
+  else if (p1 == 0 || p2 == 0) return false;
+  else if (p1->len != p2->len) return false;
+  else for (int i=0; i<p2->len; i++) {
+    wsequal(p1->data[i], p2->data[i]);
+  }
+}
 
 // LISTS: 
 //==============================================================================

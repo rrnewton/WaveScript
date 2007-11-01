@@ -115,11 +115,18 @@ ONCE            :: (() -> ()) -> S ();
 
 //easyReadFile    :: String -> Stream t;
 
+// *** Misc Utilities *** //
   // This lets you eavesdrop on a stream while passing all data through:
 snoop           :: (a, Stream b) -> Stream b;
   // This lets you call a progress report every N samples of a stream.
 snoop_every     :: (Int, ((Int64, a) -> String), Stream a) -> Stream a;
 
+// sparsify 
+// repeater
+// holdAndRepeat
+// timeTransformer
+
+// *** SYNCHRONIZATION *** //
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
 zip4_sametype   :: (Int, S t, S t, S t, S t) -> Stream (t * t * t * t);
@@ -133,6 +140,8 @@ syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
 
 // RRN: NOTE: This should be explained or REMOVED:
 thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
+
+// *** Windowing *** //
 
   // This takes an unwindowed stream and produces a stream of sigsegs:
 window          :: (Stream t, Int) -> SS t;
@@ -720,6 +729,79 @@ fun snoop_every(everyN, fn, strm) {
   }
 }
 
+// Repeat each tuple in the stream to N tuples.
+fun repeater(n,s)
+  iterate x in s {
+    for i = 1 to n {
+      emit x;
+    }
+  }
+
+// The oposite of a repeater, take only every Nth tuple.
+fun sparsify(n,s) {
+  iterate x in s {
+    state { counter = 0 }
+    counter += 1;
+    if counter == n then { counter := 0; emit x }
+  }
+}
+
+// Pull n tuples from a stream, store them.  Then call a start
+// function and spool them out for some number of repeats.
+fun holdAndRepeat(num, repeats, startfun, strm) {
+  iterate x in strm {
+    // This would be more efficient, but not supported yet:
+    // At the least we should make suspension for Array:makeUNSAFE calls at metaprog eval.
+    //state { ind =0; arr = Array:makeUNSAFE(num) }
+    state { ind =0; arr = Array:null; first = true; alldone = false }
+
+    if not(alldone) then {
+
+    if first then {
+      first := false;
+      arr := Array:makeUNSAFE(num)
+    };
+    arr[ind] := x;
+    ind += 1;
+    if ind == num then {
+      startfun();
+      // Produce a potentially giant amount of output in one execution.
+      // If loops were allowed, it would make more sense to produce
+      // some output, then reschedule ourselves.
+      for j = 1 to repeats {
+        for i = 0 to num-1 {
+	  //print("EMITTING: "++ i ++" of "++ num ++"\n");
+	  emit arr[i];
+	}
+      };
+      print("  DONE SPOOLING OUT\n");
+      alldone := true;
+     }
+    }
+  }
+}
+
+fun timeTransformer(num, input, strans) {
+  fun strtfn() { print("STARTTIME:"); print(show(clock())); print("\n") };
+  fun endfn()  { print("ENDTIME: "); print(show(clock())); print("\n") };
+  strt = iterate x in input {
+    state { first = true }
+    if first then { strtfn(); first := false };
+    emit x;    
+  };
+  ends = iterate x in strans(strt) {
+    state { counter = 0; alldone = false }
+    if not(alldone) then {
+      counter += 1;
+      if counter == num then { 
+        endfn(); 
+	alldone := true;
+      }
+    };
+    emit x
+  };
+  ends
+}
 
 zip2_sametype = fun (s1,s2) {
   slist = [s1,s2];

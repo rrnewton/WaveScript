@@ -94,7 +94,8 @@
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
 
-(all-except "generic/passes/wavescope_bkend/merge-iterates.ss" these-tests test-this)
+;(all-except "generic/passes/optimizations/merge-iterates.ss")
+(all-except "generic/passes/optimizations/simple-merge-iterates.ss")
 ;(all-except "generic/passes/wavescope_bkend/purify-iterate.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/nominalize-types.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/convert-sums-to-tuples.ss")
@@ -257,7 +258,10 @@
 	 ;(include "generic/passes/optimizations/data_reps.ss")
 
 	 (all-from "generic/passes/normalize_query/reduce-primitives.ss" )
-	 (all-from "generic/passes/wavescope_bkend/merge-iterates.ss" )
+
+	 ;; [2007.11.01] Not fully PLT compatible yet:
+	 ;(all-from "generic/passes/optimizations/merge-iterates.ss" )
+	 (all-from "generic/passes/optimizations/simple-merge-iterates.ss" )
 	 (all-from "generic/passes/wavescope_bkend/nominalize-types.ss" )
 	 (all-from "generic/passes/wavescope_bkend/type-annotate-misc.ss" )
 	 (all-from "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" )

@@ -1357,6 +1357,8 @@
 		   		   
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   
+		   realtime
+		   
 		   wsequal? print show seg-get toArray
 
 		   stringToComplex 

@@ -62,8 +62,12 @@ function runallbackends() {
   (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME.out   
   rm -f query.*  
 
+
+
   ## NOW THE NEW SCHEDULER:
   ## ----------------------------------------
+  # This is a flag that the code responds to:
+  export COREFITBENCH=true
   export WAVESCOPED="$REGIMENTD/benchmarks/engine/newest"
 
   echo "  cpp: COREFIT_SCHEDULER_DF compiling..."
@@ -78,6 +82,8 @@ function runallbackends() {
   echo "    cpp: running... -n $TUPS $WSCARGS"
   (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME.out   
   rm -f query.*  
+
+  unset COREFITBENCH
 
   # ================================================================================
 

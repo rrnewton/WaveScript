@@ -117,7 +117,7 @@
    display-constrained
    symbol-append 
 
-   eprintf
+   eprintf log-opt
 
    testhelpers testshelpers
 
@@ -640,6 +640,8 @@
 
 ;; "Error" printf, goes to stderr:
 (define (eprintf . args) (apply fprintf (current-error-port) args))
+
+(define (log-opt . args) (apply fprintf (current-error-port) args))
 
 ;; prints each expression to file.
 (define slist->file

@@ -477,6 +477,7 @@
 
     ;; System CPU time
     (clock () Double)
+    (realtime () Int64) ;; EXPERIMENTAL: Realtime since process started ms (or virtual time).
     ;(exit () 'any)
     
     (locdiff (Location Location) Float)
