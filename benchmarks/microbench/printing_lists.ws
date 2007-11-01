@@ -3,7 +3,16 @@
 
 ls = List:build(100, fun(i) i);
 
-BASE <- iterate _ in timer(1.0) {
+
+fun amplify(n,s)
+  iterate x in s {
+    for i = 1 to n {
+      emit x;
+    }
+  }
+
+
+BASE <- iterate _ in amplify(750, timer(10.0)) {
   print("List: "++ ls ++ "\n");
   emit ();
 }

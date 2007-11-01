@@ -39,6 +39,14 @@
 fun sigseg_fftR2C     (ss) toSigseg(ss`toArray`fftR2C, ss.start, ss.timebase)
 fun memosigseg_fftR2C (ss) toSigseg(ss`toArray`memoized_fftR2C, ss.start, ss.timebase)
 
+fun amplify(n,s)
+  iterate x in s {
+    for i = 1 to n {
+      emit x;
+    }
+  }
+
+
 winsize = 4096
 //winsize = 32;
 
@@ -54,7 +62,10 @@ s1a = if GETENV("WSARCH") != "ensbox"
 s0 = (readFile("6sec_marmot_sample.raw", 
                //"mode: binary  rate: 24000  window: 32  skipbytes: 6 ") :: Stream (Sigseg Int16));
 	       "mode: binary  window: "++ winsize ++"  skipbytes: 6 ",
-	       timer(24000.0 / intToFloat(winsize))) :: Stream (Sigseg Int16));
+	       //amplify(40, amplify(50, timer(10.0)))
+	       amplify(1700, timer(10.0))
+	       //timer(10.0);
+	       ) :: Stream (Sigseg Int16));
 s1b = iterate w in s0 {
   arr = Array:build(w.width, fun (i) int16ToFloat(w[[i]]));
   emit toSigseg(arr, w.start, nulltimebase)

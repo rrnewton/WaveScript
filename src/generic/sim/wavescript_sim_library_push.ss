@@ -286,6 +286,16 @@
  
   ;; ================================================================================    
 
+  ;; May be more useful than (time ...) for measuring small computations.
+  (define (measure-thunk-ticks th)
+    (let loop ([eng (make-engine th)]
+	       [acc 0])
+      (eng 1000000 
+	   (lambda (remaining res)
+	     (+ acc (fx- 1000000 remaining)))
+	   (lambda (e2) (loop e2 (+ acc 1000000)))
+	   )))
+
   ;; converts hertz to microseconds:
   (define (rate->timestep freq)
     (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))

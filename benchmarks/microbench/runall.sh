@@ -18,15 +18,19 @@ mkdir $TEMP
 # cd $START
 ln -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
 
+## This is ugly, but for supporting the new C++ backend, this needs to
+## know how to limit the work via input tuples or output tuples.
+## Thus we give both numbers to "runallbackends".
+
 echo "## User time for each benchmark/backend " > RESULTS.txt
 print_results_header
-runallbackends readfile_bigwins   $TEMP 30 
-runallbackends readfile_smallwins $TEMP 30 
-runallbackends just_timer         $TEMP 35 
-runallbackends printing_lists     $TEMP 8000
-#runallbackends conv_SigsegArr     $TEMP 20
-runallbackends conv_SigsegArr     $TEMP 1
-runallbackends fft                $TEMP 100
+runallbackends readfile_bigwins   $TEMP $((63 * 30))             30 
+runallbackends readfile_smallwins $TEMP $((63 * 128 * 4 * 30))   30 
+#runallbackends just_timer         $TEMP 1  35 
+runallbackends edge_stress         $TEMP  1  1
+runallbackends printing_lists     $TEMP 1  8000
+runallbackends conv_SigsegArr     $TEMP 1  5
+runallbackends fft                $TEMP 1  100
 
 # Time has to be measured differently for this we need to mark the start time.
 # This is lame, cancel out the affect by removing the line it adds:
@@ -35,3 +39,4 @@ runallbackends fft                $TEMP 100
 
 #runallbackends "../../demos/wavescope/demo4a_fft.ws" $TEMP 1
 # And then add it back in our own way:
+

@@ -62,6 +62,8 @@ WS_FLAGS=" $CCARGS"
 case $SCHEDULER in
   default-scheduler)    SCHEDULER_MACRO=""
     ;;
+  depth-first)          SCHEDULER_MACRO="-DDEPTH_FIRST"
+    ;;
   train-scheduler)      SCHEDULER_MACRO="-DTRAIN_SCHEDULER"
     ;;
   corefit-scheduler-ex) SCHEDULER_MACRO="-DCOREFIT_SCHEDULER_EX"

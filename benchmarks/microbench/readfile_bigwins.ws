@@ -10,8 +10,20 @@
 //  52ms in wsc -O2 (with no usleep at all)
 //   45/10ms real/user when setBatchSize is used.
 
+
+
+fun amplify(n,s)
+  iterate x in s {
+    for i = 1 to n {
+      emit x;
+    }
+  }
+
+// We put an amplifier on it, so we don't have to run the actual timer source at a high rate.
+mytimer = amplify(1000, timer(10.0))
+
 file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ", 
-	         timer(10.0))
+	         mytimer)
      :: Stream (Sigseg (Int16)))
 
 // Print something approx every megabyte read.

@@ -309,7 +309,7 @@
 
 		;; First we produce a few lines of text to construct and connect the box:
 		[ourstmts (case scheduler
-                  [(default-scheduler train-scheduler)
+                  [(default-scheduler train-scheduler depth-first)
                    `("WSBox* ",name" = new ",class_name "(" ");\n"
                      ,name"->connect(",parent");\n")]
                   [(corefit-scheduler-ex corefit-scheduler-df)
@@ -557,7 +557,7 @@
 	 ;; This is the code that actually builds a dataFile reader object:
 	 (values
      (case scheduler
-       [(default-scheduler train-scheduler)
+       [(default-scheduler train-scheduler depth-first)
         `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
           " ",name"->connect(",(sym2str source)");\n")]
        [(corefit-scheduler-ex corefit-scheduler-df)
@@ -598,7 +598,7 @@
 	   (values
 
        (case scheduler
-         [(default-scheduler train-scheduler)
+         [(default-scheduler train-scheduler depth-first)
           `(" WSBox* ",name" = new ",classname"();"
             ;; Order is critical here:
             ,(map (lambda (in) `(" ",name"->connect(",(sym2str in)"); ")) inputs))]
@@ -638,7 +638,7 @@
 	       [classname (format "Merge~a" (unique-name ""))])
 	   (values
        (case scheduler
-         [(default-scheduler train-scheduler)
+         [(default-scheduler train-scheduler depth-first)
           `(" WSBox* ",name" = new ",classname"();"
             (" ",name"->connect(",(sym2str left)"); ")
             (" ",name"->connect(",(sym2str right)"); "))]
@@ -677,7 +677,7 @@
 	 (define classname (if (wsint-time-query) "MagicPullTimer" "Timer"))
 	 (values 
 	  (case scheduler
-	    [(default-scheduler train-scheduler)
+	    [(default-scheduler train-scheduler depth-first)
 	     `("WSSource * ",name" = new WSBuiltins::",classname"(",period");\n")]
 	    [(corefit-scheduler-ex corefit-scheduler-df)
 	     `("WSSource* ",name" = new WSBuiltins::",classname"(",period");\n"
@@ -1138,7 +1138,8 @@
 			;" if (curTuples == maxTuples) { printf(\"Tuple limit hit.  Stopping query.\\n\"); WSSched::stop();} \n"
 			" if (curTuples == maxTuples) { "
 			"   chatter(LOG_WARNING, \"Tuple limit hit.  Stopping query.\"); "
-			"   WSSched::stopnow(); } \n"
+			;"   WSSched::stopnow(); } \n"
+			"   exit(0); } \n" ;; Trying this instead.
 			
 
 ; [2007.01.22] Don't need to do this, it happens automatically:
@@ -1224,7 +1225,8 @@
   ;; Here we stitch together the file out of its composite bits.
 
   (ASSERT (or (eq? scheduler 'default-scheduler)
-              (eq? scheduler 'train-scheduler)
+	      (eq? scheduler 'depth-first) ;; Old scheduler
+              (eq? scheduler 'train-scheduler) ;; Old scheduler
               (eq? scheduler 'corefit-scheduler-ex)
               (eq? scheduler 'corefit-scheduler-df)))
 
@@ -1906,7 +1908,7 @@
 
 (define (boilerplate_premain scheduler)
   (case scheduler
-    [(default-scheduler train-scheduler)
+    [(default-scheduler train-scheduler depth-first)
      ;; FIXME: Yuck, pretty bad code duplication:
      "
 
@@ -1967,7 +1969,7 @@ int main(int argc, char ** argv)
 (define (boilerplate_postmain scheduler return_name return_type)   
   (unless (regiment-quiet) (printf "Generating code for returning stream of type ~s\n" return_type))
   (case scheduler
-    [(default-scheduler train-scheduler)
+    [(default-scheduler train-scheduler depth-first)
      `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
   PrintQueryOutput out = PrintQueryOutput(\"WSOUT\", maxTuples);

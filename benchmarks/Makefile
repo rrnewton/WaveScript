@@ -3,6 +3,8 @@
 #TOPDF=epstopdf
 TOPDF=ps2pdf
 
+
+#	$(MAKE) getall
 all: 
 	@echo "  Running all benchmarks to generate report, takes approximately ?? minutes."
 	echo '\begin{verbatim}' > top_before.tex
@@ -15,6 +17,10 @@ all:
 ## Really, the correct thing to do would be to modify CPU utilization
 ## during the execution of the benchmarks to make sure nothing else
 ## was stealing CPU from us.
+
+engine: 
+getall: 
+	./setup_engines.sh
 
 perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf
 	pdflatex -halt-on-error perfreport.tex
@@ -62,5 +68,9 @@ clean:
 	rm -f machineinfo.tex perfreport.pdf perfreport.log perfreport.aux top_*.txt wssvn.tex enginesvn.tex
 
 distclean: clean
-	(cd language_shootout; $(MAKE) clean)
-	(cd microbench; $(MAKE) clean)
+	rm -rf ./engine
+	rm -rf ./libws-*.a include*.tgz
+	(cd language_shootout && $(MAKE) clean)
+	(cd microbench && $(MAKE) clean)
+	(cd appbench   && $(MAKE) clean)
+	(cd datareps   && $(MAKE) clean)

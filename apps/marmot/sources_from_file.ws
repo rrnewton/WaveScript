@@ -36,8 +36,18 @@ marmotfile =
 samp_rate = 1000.0;
 
 winsize = 16384;
+
+
+fun amplify(n,s)
+  iterate x in s {
+    for i = 1 to n {
+      emit x;
+    }
+  }
+
 // Old data files are 24 khz...
-driver = timer(samp_rate * 4.0 / winsize`i2f);
+//driver = timer(samp_rate * 4.0 / winsize`i2f);
+driver = amplify(100, timer(10.0));
 chans = (readFile(marmotfile, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
 
 // TODO: Try oversampling this input stream to 48 khz to make the detector match the live data:

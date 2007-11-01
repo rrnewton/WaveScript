@@ -25,5 +25,5 @@ graph:
 	rm -f /tmp/two
 
 clean:
-	rm -f *~ __* .__* query.* /tmp/dummyfile.bin microbench.eps microbench.pdf
+	rm -f *~ __* .__* query.* /tmp/dummyfile.bin microbench.eps microbench.pdf 6sec_marmot_sample.raw
 

@@ -30,13 +30,14 @@ file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ",
 	         timer(10.0))
      :: Stream (Sigseg (Int16)))
 
-     //printevery = 63;
-printevery = 100;
+//printevery = 63;
+//printevery = 100;
+printevery = 2;
 
 BASE <- iterate w in file {
-   state { counter = 0;  }		 
+   state { counter = 0;  }
    counter += 1;
-   for i = 1 to 1000 {
+   for i = 1 to 5000 {
      tmp1 = toArray(w);
      tmp2 = toSigseg(tmp1, w.start, w.timebase);
      if counter == printevery then {

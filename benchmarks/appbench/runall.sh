@@ -22,10 +22,12 @@ cd "$REGIMENTD/apps/marmot";
 (cat temp.raw >> 6sec_marmot_sample.raw)
 (cat temp.raw >> 6sec_marmot_sample.raw)
 (cat temp.raw >> 6sec_marmot_sample.raw)
+(cat temp.raw >> 6sec_marmot_sample.raw)
+(cat temp.raw >> 6sec_marmot_sample.raw)
 
 echo "## Running original marmot app. " > RESULTS.txt
 print_results_header
-runallbackends run_first_phase $TEMP 5
+runallbackends run_first_phase $TEMP 1 5
 
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./
