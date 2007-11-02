@@ -324,14 +324,16 @@ void intrusive_ptr_release(WSArrayStruct<T>* p) {
 template <class T> 
 bool wsequal (const boost::intrusive_ptr< WSArrayStruct<T> > arr1,
               const boost::intrusive_ptr< WSArrayStruct<T> > arr2) {
-  T* p1 = arr1.get();
-  T* p2 = arr1.get();
-  if (p1 == 0 && p2 == 0) return true; 
-  else if (p1 == 0 || p2 == 0) return false;
-  else if (p1->len != p2->len) return false;
+  WSArrayStruct<T>* p1 = arr1.get();
+  WSArrayStruct<T>* p2 = arr1.get();
+  if      (p1 == 0 && p2 == 0) return 1; 
+  else if (p1 == 0 || p2 == 0) return 0;
+  else if (p1->len != p2->len) return 0;
   else for (int i=0; i<p2->len; i++) {
-    wsequal(p1->data[i], p2->data[i]);
-  }
+    if (! wsequal(p1->data[i], p2->data[i]))
+    return 0;
+  };
+  return 1;
 }
 
 // LISTS: 

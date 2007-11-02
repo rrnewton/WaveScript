@@ -30,8 +30,8 @@ cd "$REGIMENTD/apps/marmot";
 (cat temp.raw >> 6sec_marmot_sample.raw)
 
 echo "## Running original marmot app. " > RESULTS.txt
-print_results_header
-runallbackends run_first_phase $TEMP 1 5
+#print_results_header
+#runallbackends run_first_phase $TEMP 1 5
 
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./
@@ -47,16 +47,20 @@ echo '\end{verbatim}'  >> marmot.tex
 ## ================================================================================ ##
 
 cd "$REGIMENTD/apps/marmot/refactored";
-
 export HANDOPT_BUILDSPLIT=true
-
 echo "## Running marmot phase 1&2 with 2-way split AML. " > RESULTS.txt
-#print_results_header
-#runallbackends run_marmot2-maps $TEMP 1 1
-
+runallbackends run_marmot2-maps $TEMP 1 1
 unset HANDOPT_BUILDSPLIT
 cd "$START"
 mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
+
+
+cd "$REGIMENTD/apps/marmot/refactored";
+echo "## Running marmot phase 1&2 with no split AML. " > RESULTS.txt
+runallbackends run_marmot2-maps $TEMP 1 1
+cd "$START"
+mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
+
 
 ## ================================================================================ ##
 ##   STOCKTICKS
@@ -82,3 +86,9 @@ unset OMITMLTON
 
 ## TODO
 
+
+## APPEND RESULTS:
+rm -f RESULTS.txt
+print_results_header 
+cat aml_datapar.txt >> RESULTS.txt
+cat aml_nosplit.txt >> RESULTS.txt
