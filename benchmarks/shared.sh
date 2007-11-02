@@ -21,18 +21,22 @@ function runallbackends() {
 
 
   echo "  scheme: running... -n $TUPS"
-  ws $FILE -exit-error -n $TUPS -t &> $DEST/scheme.$NAME.out
+  if ! (ws $FILE -exit-error -n $TUPS -t &> $DEST/scheme.$NAME.out); 
+  then echo "ws failed!"; exit -1; fi
+
 
   echo "  scheme -O3: running... -n $TUPS"
-  ws.opt $FILE -O3 -exit-error -n $TUPS -t &> $DEST/schemeO3.$NAME.out
+  if ws.opt $FILE -O3 -exit-error -n $TUPS -t &> $DEST/schemeO3.$NAME.out; then echo>/dev/null;
+  else echo "ws.opt failed!"; exit -1; fi
 
 
   echo "  mlton: compiling..."
-  wsmlton $FILE -exit-error  &> $DEST/mlton.compile.$NAME.out
+  if wsmlton $FILE -exit-error  &> $DEST/mlton.compile.$NAME.out; then echo>/dev/null;
+  else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
 #  (/usr/bin/time -f "usertime %U\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
-  (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
-
+  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out; 
+  then echo "failed!"; exit -1; fi
 
   # ================================================================================
 
@@ -46,7 +50,8 @@ function runallbackends() {
   if wsc $FILE -t -exit-error   &> $DEST/cpp.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
-  (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out   
+  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out; 
+  then echo "failed!"; exit -1; fi
   rm -f query.*  
 
   echo "  cpp: -DDEPTH_FIRST compiling..."
@@ -59,7 +64,8 @@ function runallbackends() {
   if  wsc $FILE -t -exit-error --scheduler depth-first &> $DEST/cppdf.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
-  (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME.out   
+  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME.out;
+  then echo "failed!"; exit -1; fi
   rm -f query.*  
 
 
@@ -80,7 +86,8 @@ function runallbackends() {
   if  wsc $FILE --scheduler corefit-scheduler-df -exit-error  &> $DEST/cppnew.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $WSCARGS"
-  (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME.out   
+  if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME.out;
+  then echo "failed!"; exit -1; fi
   rm -f query.*  
 
   unset COREFITBENCH

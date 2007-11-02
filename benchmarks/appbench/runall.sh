@@ -49,7 +49,7 @@ echo '\end{verbatim}'  >> marmot.tex
 cd "$REGIMENTD/apps/marmot/refactored";
 export HANDOPT_BUILDSPLIT=true
 echo "## Running marmot phase 1&2 with 2-way split AML. " > RESULTS.txt
-runallbackends run_marmot2-maps $TEMP 1 1
+runallbackends run_marmot2-maps $TEMP 0 3
 unset HANDOPT_BUILDSPLIT
 cd "$START"
 mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
@@ -57,7 +57,7 @@ mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
 
 cd "$REGIMENTD/apps/marmot/refactored";
 echo "## Running marmot phase 1&2 with no split AML. " > RESULTS.txt
-runallbackends run_marmot2-maps $TEMP 1 1
+runallbackends run_marmot2-maps $TEMP 0 3
 cd "$START"
 mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
 

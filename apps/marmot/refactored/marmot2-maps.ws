@@ -1,61 +1,25 @@
 
+
+
+
+
+
+
 /* 
-  RRN: Trying to analyze the poor performance.
-  Takes 190 ms user time on testdata.txt.
-  Takes 36 ms when discounting the AML itself.
-    (Slow text reading, lots of alloc?)
-  Leaving out BOTH the sort loop and the angle search: 36 ms 
-  The sort loop is also trivial... all the time's in the angle search.  
-  Building the delay array.... trivial cost.
 
-  Hmm... allocating 'D' in the inner loop... that looks killer.
-  Uncommenting it doesn't add significant cost... but it might get DCE'd.
+[2007.11.01] Initial parallelization  experimentation  
 
-  That ONE LINE where we initialize the steering vector does almost all the damage. (Brings us up to 180ms)
-  Doing expC2 by itself (make complex plus two trig ops) causes 40ms damage.
-  Just ALLOCATING a complex number (with floatToComplex) does just as much damage.  
-  
-  Wait... that large floating point expression (-2.0 * ...) ALSO seems to account for nearly all of the time in question.
-  AH, tricky... maybe it's stopping the array TD from being dead-code-eliminated.
-  No.. if I remove the reference to td... it still takes a while.
-  In fact, *just* referencing td costs almost nothing.
-  Hmm, accessing "order[j]", and converting it to float... *that's* expensive.
-  INTERESTING!!! the intToFloat is implemented very badly!!!!!
+Currently running -j 1, -n 3 gives real 9s user 1.1s.
 
-  After fixing conversions, the multiply expression that was painful before is now trivial.
-  In fact, now the expC is pretty cheap (~10ms)! It was the conversions that were expensive!
-  (Moving where we allocate the matrices makes no difference really... MLton must fix that.)
 
-  GREAT!  That original D[n] = line that was causing trouble... it now causes 20X less trouble.
-  So we have got a 2.5x improvement (total) from fixing the conversions.
-  We get an additional 28% from improving expC to not be wasteful with complex operations and allocations.
-  That brings us to a total time of 55ms on my 17inch macbook currently.
 
-NEXT ROUND:
-
- Lifting: I attempted several lifts manually... lifted conversion
-  functions (order[j], window_size) out of the innermost loop.  I also
-  lifted the allocation of the matrix D.  None of this gave me ANY performance benefit.
-  I should undo it for clarity, but I'm going to leave it in case we end up running with wsc.
-
- Fixing complex operators: fixed up sdivC and conjC, slight gain, down to 52ms.
-  (Need to run this more times to get more reasonable numbers!)
-
-STILL TO DO:
-
-  * Split the array D into real and imaginary arrays 
-  * allocate the array td once and just refill it.
-
-GREAT: I scaled it up, and when we exec 100 reps we got these times:
-  * C version - 3.09  seconds
-  * wsmlton   - 1.67  seconds
-
-RUNNING ON ENSBOX:
-  * farfield_ex : 2.0 user
-  * 
-
- 
 */
+
+
+
+
+
+
 
 
 //include "rewindowGeneral.ws";

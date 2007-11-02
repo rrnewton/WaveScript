@@ -12,7 +12,7 @@ mkdir $TEMP
 
 echo "## User time for each language-shootout benchmark/backend " > RESULTS.txt
 print_results_header
-runallbackends fannkuch2   $TEMP 1
+runallbackends fannkuch2   $TEMP 1 1
 
 grep "CPU ticks" $DEST/scheme.$NAME.out
 grep "CPU ticks" $DEST/cpp.$NAME.out

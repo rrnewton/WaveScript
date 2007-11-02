@@ -538,21 +538,25 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory (format "~a/benchmarks" test-root))
        (fpf "    Setup Engines:                            ~a\n" 
 	    (code->msg! (system/exit-code (format "./setup_engines.sh &> ~a/bench_setup.log" test-directory))))
+
+
        (current-directory (format "~a/benchmarks/microbench" test-root))
        (fpf "    Run microbenchmarks:                      ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_micro.log" test-directory))))
+
 
        (current-directory (format "~a/benchmarks/language_shootout" test-root))
        (fpf "    Run language_shootout:                    ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_shootout.log" test-directory))))
 
+
        (current-directory (format "~a/benchmarks/appbench" test-root))
        (fpf "    Run application benchmarks:               ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_apps.log" test-directory))))
 
+
        (current-directory (format "~a/benchmarks/datareps" test-root))
-#;
-       (fpf "    Run application benchmarks:               ~a\n" 
+       (fpf "    Run datarep benchmarks:               ~a\n" 
 	    (code->msg! (system/exit-code (format "make &> ~a/bench_datareps.log" test-directory))))
 
 
