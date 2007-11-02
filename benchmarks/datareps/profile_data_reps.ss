@@ -65,7 +65,8 @@ exec regiment i "$0" ${1+"$@"};
 
 ;; This generates the basic boilerplate:
 (define (execonce-boilerplate code)
-  `(iterate (letrec ([first Bool '#t])
+  `(iterate () ;; [2007.11.02] Now with annotations.
+	    (letrec ([first Bool '#t])
 	      (lambda (,(unique-name 'x) vq) 
 		;(#() (VQueue #()))
 		(#() 'b)
