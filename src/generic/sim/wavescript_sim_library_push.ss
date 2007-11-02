@@ -644,7 +644,7 @@
 
       ;; Register ourselves with the parent operator:
       (srcstrm wsbox)
-      (hashtab-set! edge-counts-table box-name bench-rec)
+      (if bench? (hashtab-set! edge-counts-table box-name bench-rec))
       (lambda (sink)
         ;; Register the sink to receive this output:
         (set! our-sinks (cons sink our-sinks))))
@@ -834,7 +834,7 @@
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
-       (hashtab-set! edge-counts-table box-name bench-rec)
+       (if bench? (hashtab-set! edge-counts-table box-name bench-rec))
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
