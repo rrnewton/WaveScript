@@ -169,10 +169,13 @@ exec regiment i "$0" ${1+"$@"};
 (define (run-w/cpp prog)
 ;  [implementation 'wsc]
   (parameterize ()
-    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
     (printf "\nRUNNING WITH C++/XSTREAM COREFIT_DF\n")
     (printf "================================================================================\n")
+
+    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
     (wscomp prog '(scheduler corefit-scheduler-df))
+    ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
+    ;(wscomp prog '(scheduler depth-first))
 
     (printf "Compiling with g++... ") (flush-output-port (current-output-port))
 					;(printf "finished (~a).\n" (system "wsc-g++ query -O3 &> /dev/null"))
