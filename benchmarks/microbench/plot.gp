@@ -1,7 +1,7 @@
 
 set title "Microbenchmarks in all WS backends" 
 
-set yrange [ 0.00000 : 10000. ] noreverse nowriteback
+#set yrange [ 0.00000 : 10000. ] noreverse nowriteback
 load "../shared.gp"
 set style histogram clustered gap 2 title  offset character 0, 0, 0
 set xtics border in scale 1,0.5 nomirror rotate by -45  offset character 0, 0, 0 

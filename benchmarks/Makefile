@@ -21,7 +21,7 @@ all:
 engine: 
 	./setup_engines.sh
 
-perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf
+perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf datareps/alloc_arrarr.pdf
 	pdflatex -halt-on-error perfreport.tex
 
 machineinfo.tex:
@@ -42,6 +42,10 @@ enginesvn.tex:
 appbench/marmot.pdf:
 	(cd appbench; $(MAKE))
 #	(cd appbench; $(MAKE) marmot.pdf)
+
+# HACK: We assume if this one's there then the other ones are too:
+datareps/alloc_arrarr.pdf:
+	(cd datareps; $(MAKE))
 
 microbench/microbench.pdf: microbench/microbench.eps
 	(cd microbench; $(TOPDF) microbench.eps)

@@ -3,7 +3,7 @@
 
 set title "Hand-optimized marmot application" 
 
-set yrange [ 0.00000 : 22000. ] noreverse nowriteback
+#set yrange [ 0.00000 : 22000. ] noreverse nowriteback
 load "../shared.gp"
 
 #plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col

@@ -7,6 +7,7 @@ all:
 
 graph:
 	gnuplot plot.gp > shootout.eps
+	ps2pdf shootout.eps
 
 gather:
 
