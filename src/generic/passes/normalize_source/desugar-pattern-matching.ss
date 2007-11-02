@@ -77,6 +77,21 @@
 
 	;; This is a work-around for a name conflict:
 	[merge '_merge]
+   [(app merge ,[s1] ,[s2]) `(_merge (annotations) ,s1 ,s2)]
+   ; FIXME: is this dangerous?
+   [(app (src-pos ,sp1 merge) ,[s1] ,[s2])
+    `(_merge (annotations) ,s1 ,s2)]
+
+   [(app readFile ,[args] ...) `(readFile (annotations) ,@args)]
+   ; FIXME: is this dangerous?
+   [(app (src-pos ,sp1 readFile) ,[args] ...)
+    `(readFile (annotations) ,@args)]
+
+   [(app timer ,[args] ...) `(timer (annotations) ,@args)]
+   ; FIXME: is this dangerous?
+   [(app (src-pos ,sp1 timer) ,[args] ...)
+    `(timer (annotations) ,@args)]
+
 	;[ref (inspect "HMRM Ref in desugar pat match")'Mutable:ref]
 
 	;;======================================================================	

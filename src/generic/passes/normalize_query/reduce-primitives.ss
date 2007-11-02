@@ -25,8 +25,9 @@
   [OutputGrammar reduce-primitives-grammar]
   [Expr (lambda (x fallthrough)	 
 	  (match x
-       [(iterate ,annot ,[f] ,[s])
-        (process-primapp 'iterate `(,annot ,f ,s))]
+       [(,prim ,annot ,[rand*] ...)
+        (guard (and (pair? annot) (eq? (car annot) 'annotations)))
+        (process-primapp prim `(,annot ,@rand*))]
 	    [(,prim ,[rand*] ...)
 	     (guard (regiment-primitive? prim))
 	     (process-primapp prim rand*)]
@@ -34,27 +35,27 @@
   (define process-primapp
     (lambda (prim args)
       (match (cons prim args)
-	[(circle-at ,loc ,rad)
-	 `(circle (anchor-at ,loc) ,rad)]
-	[(khood-at ,loc ,rad)
-	 `(khood (anchor-at ,loc) ,rad)]
-	;; This builds a function to optimize distance from an x,y position.
-	[(anchor-at ,x ,y) 
-	 (let ([xvar (unique-name 'xpos)]
-	       [yvar (unique-name 'ypos)])
-	   `(anchor-maximizing 
+        [(circle-at ,loc ,rad)
+         `(circle (anchor-at ,loc) ,rad)]
+        [(khood-at ,loc ,rad)
+         `(khood (anchor-at ,loc) ,rad)]
+        ;; This builds a function to optimize distance from an x,y position.
+        [(anchor-at ,x ,y) 
+         (let ([xvar (unique-name 'xpos)]
+               [yvar (unique-name 'ypos)])
+           `(anchor-maximizing 
 					;		    (letrec ([,xvar Int ,x]
 					;			     [,yvar Int ,y])
-	     (lambda (n) (Node) (-_ '0 (+_ (^_ (-_ (sense '"xpos" n) ,x) '2) 
-					   (^_ (-_ (sense '"ypos" n) ,y) '2))))
-	     world))]
+             (lambda (n) (Node) (-_ '0 (+_ (^_ (-_ (sense '"xpos" n) ,x) '2) 
+                                           (^_ (-_ (sense '"ypos" n) ,y) '2))))
+             world))]
 
-	[(node_to_anchor ,n) `(node->anchor ,n)]
+        [(node_to_anchor ,n) `(node->anchor ,n)]
 
-	[(head ,ls) `(car ,ls)]
-	[(tail ,ls) `(cdr ,ls)]	
+        [(head ,ls) `(car ,ls)]
+        [(tail ,ls) `(cdr ,ls)]	
 
-	[,orig orig])))
+        [,orig orig])))
   )
 
 ) ; End Module

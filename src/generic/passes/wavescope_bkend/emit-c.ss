@@ -374,14 +374,15 @@
 
 	;; Produces an instance of a generic dataFile reader.
 	;; TODO: It's not necessary to generate code for both text & binary in the same run:
-	[(__readFile ,[Simple -> file] 
-		     ,source
-		     ,[Simple -> mode] 
-		     ,[Simple -> repeats] 
-		     ',skipbytes 
-		     ,[Simple -> offset] 
-		     ',winsize 
-		     ',types_ignored)
+	[(__readFile ,annot
+                ,[Simple -> file] 
+                ,source
+                ,[Simple -> mode] 
+                ,[Simple -> repeats] 
+                ',skipbytes 
+                ,[Simple -> offset] 
+                ',winsize 
+                ',types_ignored)
 	 (ASSERT symbol? source)
 	 (let-match ([(Stream ,thetype) typ])
 	   (let* (
@@ -588,7 +589,7 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-	[(assert-type (Stream (Struct ,tupname)) (unionN ,inputs ...))
+	[(assert-type (Stream (Struct ,tupname)) (unionN ,annot ,inputs ...))
 	 (ASSERT (not (null? inputs)))
 	 (ASSERT (andmap symbol? inputs))
 	 
@@ -629,7 +630,7 @@
 
 
 	;; UNOPTIMIZED: Should combine with downstream iterate.
-	[(_merge ,left ,right)
+	[(_merge ,annot ,left ,right)
 	 (ASSERT symbol? left)
 	 (ASSERT symbol? right)
 	 
@@ -671,7 +672,7 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-	[(timer ,[Simple -> period])
+	[(timer ,annot ,[Simple -> period])
 	 ;; HACK, we use the "setBatchSize" version for timing queries if "-t" was given.
 	 ;; This only makes sense if the query has a SINGLE timer as its data source.
 	 (define classname (if (wsint-time-query) "MagicPullTimer" "Timer"))

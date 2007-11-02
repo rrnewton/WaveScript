@@ -410,25 +410,25 @@
       [(if ,t ,[c] ,[a]) 
        (let ([a (instantiate-type a '())] 
 	     [c (instantiate-type c '())])
-	 (types-equal! c a `(if ,t ??? ???) "(Branches of if must have same type.)\n")
-	 (export-type c))]
+         (types-equal! c a `(if ,t ??? ???) "(Branches of if must have same type.)\n")
+         (export-type c))]
       [(wscase ,x  [,pat* ,[rhs*]] ...)
        (let ([inst* (map (lambda (x) 
-			   (match x 
-			     [(,_ ... -> ,ret) (instantiate-type ret '())]))
-		      rhs*)])
-	 (foldl1 (lambda (a b) (types-equal! a b '(case ...) "(Branches of case must have same type.)\n"))
-		 inst*)
-	 (export-type (car inst*)))]
+                           (match x 
+                             [(,_ ... -> ,ret) (instantiate-type ret '())]))
+                      rhs*)])
+         (foldl1 (lambda (a b) (types-equal! a b '(case ...) "(Branches of case must have same type.)\n"))
+                 inst*)
+         (export-type (car inst*)))]
       
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
-      [(unionN ,[t*] ...) 
+      [(unionN ,annot ,[t*] ...) 
        (ASSERT (not (null? t*)))
        (ASSERT all-equal?  t*) ;; Requires that they're literally equal sexps...
        (match (types-compat? '(Stream 'a) (car t*))
-	 [(Stream ,t) `(Stream #(Int ,t))]
-	 )
+         [(Stream ,t) `(Stream #(Int ,t))]
+         )
        ]
 
       ;; Since the program is already typed, we just use the arrow type of the rator:
@@ -513,7 +513,6 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
-
     (match exp ;; NO DIRECT RECURSION ALLOWED!!! GO THROUGH "l" LOOP ABOVE!!!
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
@@ -605,9 +604,9 @@
          (values expr #()))]
 
       
-      [(unionN ,[l -> e* t*] ...)
+      [(unionN ,annot ,[l -> e* t*] ...)
        (ASSERT (not (null? t*)))
-       (let ([exp `(unionN ,@e*)]
+       (let ([exp `(unionN ,annot ,@e*)]
              [first (car t*)])
          ;; Make sure they're all equal:
          (for-each (lambda (t2) 
@@ -619,6 +618,17 @@
          (values exp
                  (match (deep-assq 'Stream first)
                    [(Stream ,elt) `(Stream #(Int ,elt))])))]
+
+      ; FIXME: a bit of a hack since these need to be typechecked both as a function application, and independently,
+      ;        without and with annotations, respectively;
+      ;        also, these can probably just be generalized with a guard for the annotations
+      [(_merge ,annot ,[l -> s1 t1] ,[l -> s2 t2])
+       (values `(_merge ,annot ,s1 ,s2) (type-app (prim->type '_merge) `((List Annotation) ,t1 ,t2) exp tenv nongeneric))]
+      [(readFile ,annot ,[l -> args* ty*] ...)
+       (values `(readFile ,annot ,@args*) (type-app (prim->type 'readFile) `((List Annotation) ,@ty*) exp tenv nongeneric))]
+
+      [(timer ,annot ,[l -> args* ty*] ...)
+       (values `(timer ,annot ,@args*) (type-app (prim->type 'timer) `((List Annotation) ,@ty*) exp tenv nongeneric))]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
@@ -660,6 +670,21 @@
          (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
       
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
+      [(src-pos ,p (_merge ,annot ,[l -> s1 s1t] ,[l -> s2 s2t]))
+       (DEBUGASSERT (andmap type? `((List Annotation) ,s1t ,s2t)))
+       (values `(_merge ,annot ,s1 ,s2)
+               (type-app (prim->type '_merge) `((List Annotation) ,s1t ,s2t) exp tenv nongeneric))]
+
+      [(src-pos ,p (readFile ,annot ,[l -> rand* t*] ...))
+       (DEBUGASSERT (andmap type? `((List Annotation) ,@t*)))
+       (values `(readFile ,annot ,@rand*)
+               (type-app (prim->type 'readFile) `((List Annotation) ,@t*) exp tenv nongeneric))]
+
+      [(src-pos ,p (timer ,annot ,[l -> rand* t*] ...))
+       (DEBUGASSERT (andmap type? `((List Annotation) ,@t*)))
+       (values `(timer ,annot ,@rand*)
+               (type-app (prim->type 'timer) `((List Annotation) ,@t*) exp tenv nongeneric))]
+
       [(src-pos ,p (iterate ,annot ,[l -> f ft] ,[l -> s st]))
        (DEBUGASSERT (andmap type? `((List Annotation) ,ft ,st)))
        (values `(iterate ,annot ,f ,s)
@@ -689,12 +714,12 @@
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
                (type-app (prim->type prim) t* exp tenv nongeneric))]
-      
+
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (let-values ([(rator t1) (l origrat)])
-	 (values `(,app ,rator ,@rand*)
+         (values `(,app ,rator ,@rand*)
 		 (type-app t1 t* exp tenv nongeneric)))]
      
       ;; Incorporate type assertions.
@@ -902,10 +927,14 @@
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
 
     [(iterate ,annot ,[f] ,[s]) `(iterate ,annot ,f ,s)]
+    [(unionN ,annot ,[args] ...) `(unionN ,annot ,@args)]
+    [(_merge ,annot ,[s1] ,[s2]) `(_merge ,annot ,s1 ,s2)]
+    [(readFile ,annot ,[args] ...) `(readFile ,annot ,@args)]
+    [(timer ,annot ,[args] ...) `(timer ,annot ,@args)]
 
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
-     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+     (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
@@ -942,9 +971,13 @@
     ;; All these simple cases just recur on all arguments:
 
     [(iterate ,annot ,[f] ,[s])                               (void)]
+    [(unionN ,annot ,[args] ...)                              (void)]
+    [(_merge ,annot ,[s1] ,[s2])                              (void)]
+    [(readFile ,annot ,[args] ...)                            (void)]
+    [(timer ,annot ,[args] ...)                               (void)]
 
     [(,simplekwd ,[args] ...)
-     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+     (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      (void)]
 
@@ -975,6 +1008,14 @@
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(iterate ,a ,[f] ,[s]) `(iterate ,a ,f ,s)]
     [(iterate-bench ,a ,t ,n ,ht ,std ,[f] ,[s]) `(iterate-bench ,a ,t ,n ,ht ,std ,f ,s)]
+    [(unionN ,a ,[s*] ...) `(unionN ,a ,@s*)]
+    [(unionN-bench ,a ,t ,n ,ht ,std ,[s*] ...) `(unionN-bench ,a ,t ,n ,ht ,std ,@s*)]
+    [(_merge ,a ,[s1] ,[s2]) `(_merge ,a ,s1 ,s2)]
+    [(_merge-bench ,a ,t ,n ,ht ,std ,[s1] ,[s2]) `(_merge-bench ,a ,t ,n ,ht ,std ,s1 ,s2)]
+    [(__readFile ,a ,[f] ,[s] ,[m] ,[r] ,[sk] ,[ws] ,[ty] ,bench-args ...)
+     `(__readFile ,a ,f ,s ,m ,r ,sk ,ws ,ty ,@bench-args)]
+    [(timer ,a ,[t]) `(timer ,a ,t)]
+    [(timer-bench ,a ,t ,n ,ht ,std ,[freq]) `(timer-bench ,a ,t ,n ,ht ,std ,freq)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     ; FIXME: should these three be rolled into one, as in core-generic-traverse?
@@ -988,7 +1029,7 @@
 
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
-     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+     (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
@@ -1506,7 +1547,7 @@
 ; But WHY?  print-var-types is run once!
 #;
        [(,simplekwd ,[args] ...)
-        (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+        (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
                    (regiment-primitive? simplekwd)))
         (apply append args)]
 
@@ -1515,7 +1556,10 @@
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(wscase ,[x] [,pat ,[rhs*]] ...) (apply append x rhs*)]
        [(tuple ,[args] ...) (apply append args)]
-       [(unionN ,[args] ...) (apply append args)]
+       [(unionN ,annot ,[args] ...) (apply append args)]
+       [(_merge ,annot ,[s1] ,[s2]) (append s1 s2)]
+       [(readFile ,annot ,[args] ...) (apply append args)]
+       [(timer ,annot ,[args] ...) (apply append args)]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
         (apply append rat rand*)]
        ;; This one case brings us from 0 to 30 ms:

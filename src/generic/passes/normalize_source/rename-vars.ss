@@ -24,7 +24,7 @@
     (list*
      ;; This is really compiler-internal.  Introduced after static-elaborate.
      ;; Including here only because rename-vars is used in multiple places.
-     '[Expr ('unionN Expr ...)]
+     '[Expr ('unionN Expr Expr ...)]
      '[Expr ('foreign-app Const Expr Expr ...)]
      ws-label-mutable-grammar))
 

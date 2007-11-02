@@ -236,8 +236,18 @@
      (ASSERT (plain? ls))
      (ASSERT (andmap streamop? (plain-val ls)))
      ;(Eval `(unionN ,@(plain-val ls)) env pretty-name)
-     (make-streamop (streamop-new-name) 'unionN () (plain-val ls) #f)]
-    [(unionN ,[args] ...) (make-streamop (streamop-new-name) 'unionN () args #f)]
+     (make-streamop (streamop-new-name) 'unionN `((annotations)) (plain-val ls) #f)]
+    [(unionN ,annot ,[args] ...) (make-streamop (streamop-new-name) 'unionN `(,annot) args #f)]
+
+
+    [(_merge ,annot ,[s1] ,[s2])
+     (make-streamop (streamop-new-name) '_merge `(,annot) `(,s1 ,s2) #f)]
+    
+    [(readFile ,annot ,[f] ,[m] ,[s])
+     (make-streamop (streamop-new-name) 'readFile `(,annot ,f ,m) `(,s) #f)]
+
+    [(timer ,annot ,[t])
+     (make-streamop (streamop-new-name) 'timer `(,annot ,t) () #f)]
 
     
     [(iterate ,annot ,[f] ,[s])
@@ -560,16 +570,29 @@
   (define arglist
     ;; This is more than a bit silly, I have to recombine the argument list from params/parents.
     ;; I shouldn't split params/parents in the first place.
-    (let loop ([argty* (if (eq? 'unionN (streamop-op op)) ;; special case, not a prim
-                           (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
-                           (car (ASSERT (regiment-primitive? (streamop-op op))))
-                           )]
+    (let loop (
+               ; FIXME: should probably move this somewhere better
+               [argty*
+                (case (streamop-op op)
+                  [(unionN)
+                   (cons '(List Annotation)
+                         (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types. Contents unimportant.
+                         )]
+                  [else
+                   (car (ASSERT (regiment-primitive? (streamop-op op))))])]
+               #;
+               [argty* (if (eq? 'unionN (streamop-op op)) ;; special case, not a prim
+                           (cons '(List Annotation)
+                                 (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
+                                 )
+                           (car (ASSERT (regiment-primitive? (streamop-op op)))))]
+                           
                [params  (streamop-params op)]
                [parents (streamop-parents op)])
       (cond
        [(null? argty*) '()]
        [(equal? (car argty*) '(List Annotation))
-        (cons (car params) (loop (cdr argty*) (cdr params) parents))] ;; a bit of a hack, for iterate with annotations
+        (cons (car params) (loop (cdr argty*) (cdr params) parents))] ;; a bit of a hack, for boxes with annotations
        [(stream-type? (car argty*))
         (cons (streamop-name (car parents))
               (loop (cdr argty*) params (cdr parents)))]
@@ -634,8 +657,8 @@
       ;; TODO, do a proper check to make sure there are no streamops/closures
       ;; FIXME: IS THIS NECESSARY:
       (match (or ty (type-const val))
-	[(List ,elt)
-	 (for-each (lambda (x) (loop x elt)) val)])
+        [(List ,elt)
+         (for-each (lambda (x) (loop x elt)) val)])
       `',val]
 
      [(vector? val)
@@ -643,7 +666,7 @@
       `',val ]
 
      ;; FIXME: GET RID OF THIS FALLTHROUGH!
-     [else 
+     [else
 ;      (ASSERT (not (streamop? val))) (ASSERT (not (closure? val))) 
 ;      (ASSERT (not (ref? val)))      (ASSERT (not (suspension? val)))
 

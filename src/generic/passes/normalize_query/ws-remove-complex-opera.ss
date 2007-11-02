@@ -42,7 +42,7 @@
        ;; (Expr ('app Expr ...))  
        (Expr Var) 
        (Expr Const)
-       (Expr ('unionN Simple ...))
+       (Expr ('unionN Simple Simple ...))
        (Expr ('tuple Simple ...))
        (Expr ('tupref Int Int Simple))
        (Expr (Prim Simple ...)) 
@@ -240,10 +240,22 @@
 			)))]
 	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
-	   [(unionN ,strms ...)
+	   [(unionN ,annot ,strms ...)
 	    (let-values ([(v* decls) (make-simples strms tenv)])
-	      (vector `(unionN ,@v*)
+	      (vector `(unionN ,annot ,@v*)
 		      decls))]
+
+      [(_merge ,annot ,s1 ,s2)
+       (let-values ([(v* decls) (make-simples `(,s1 ,s2) tenv)])
+         (vector `(_merge ,annot ,s1 ,s2) decls))]
+
+      [(readFile ,annot ,rand* ...)
+       (mvlet ([(args binds) (make-simples rand* tenv)])
+         (vector `(readFile ,annot ,@args) binds))]
+
+      [(timer ,annot ,rand* ...)
+       (mvlet ([(args binds) (make-simples rand* tenv)])
+         (vector `(timer ,annot ,@args) binds))]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to

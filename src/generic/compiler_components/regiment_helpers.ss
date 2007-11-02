@@ -969,7 +969,7 @@
 
 
 ;; The utility used for parsing the modestring arguments to readFile.
-(define (parse-readFile-modestring str typ fn src)
+(define (parse-readFile-modestring annot str typ fn src)
   (ASSERT string? str)
   ;; Defaults:
   (let* ([mode "text"]
@@ -1016,7 +1016,7 @@
     (match typ
       [(Sigseg ,t) (void)]
       [,else (set! winsize 0)])
-    `(__readFile ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+    `(__readFile ,annot ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
 
     )
   )

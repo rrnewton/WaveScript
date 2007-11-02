@@ -228,8 +228,22 @@
 
 	  ;; Being VERY lenient.  Vector is here just because it's used in static-elaborate. [2007.03.06]
 	  [(,varargkeyword ,[loop -> args] ...)
-	   (guard (memq varargkeyword '(unionN tuple vector)))
+	   (guard (memq varargkeyword '(tuple vector)))
 	   (fuse args (lambda args `(,varargkeyword ,@args)))]
+
+     [(unionN ,annot ,[loop -> args] ...)
+      (fuse args (lambda ls `(unionN ,annot . ,ls)))]
+
+     [(_merge ,annot ,[loop -> s1] ,[loop -> s2])
+      (fuse `(,s1 ,s2) (lambda ls `(_merge ,annot . ,ls)))]
+
+     [(readFile ,annot ,[loop -> args] ...)
+      (fuse args (lambda ls `(readFile ,annot . ,ls)))]
+     [(__readFile ,annot ,[loop -> args] ...)
+      (fuse args (lambda ls `(__readFile ,annot . ,ls)))]
+
+     [(timer ,annot ,[loop -> args] ...)
+      (fuse args (lambda ls `(timer ,annot . ,ls)))]
 
 	  ;; Adding this special syntax as well (output of nominalize-types)
 	  [(make-struct ,name  ,[loop -> args] ...)
@@ -294,6 +308,8 @@
 	  ; ========================================
 
 	  ;; Applications must be tagged explicitely.
+     [(app ,[loop -> rator] (annotations) ,[loop -> rands] ...)
+      (fuse `(,rator (annotations) ,@rands) (lambda (x . ls) `(app ,x ,@ls)))]
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,@ls)))]
 	  [(construct-data ,tc ,[loop -> rand*] ...)

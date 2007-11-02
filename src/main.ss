@@ -672,9 +672,10 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
-#;
+
   (unless  (memq 'annotate-with-data-rates disabled-passes)
     (ws-run-pass p annotate-with-data-rates))
+  (pretty-print p) 
 
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
@@ -870,11 +871,12 @@
     (wavescript-language
      (match (strip-types p)
        [(,lang '(program ,body ,_ ...))
-	;; If strip-types worked there shouldn't be any VQueue symbols!
-	(DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
-	`(begin (reset-wssim-state!)
-		(run-stream-query ,body))
-	]))))
+        ;; If strip-types worked there shouldn't be any VQueue symbols!
+        (DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
+        `(begin (reset-wssim-state!)
+                (run-stream-query ,body))
+        ]))
+))
 
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:

@@ -51,9 +51,9 @@
 	    (error 'reify-certain-types "missed ~s construct, must not have type annotation: ~s" frgn (cons frgn _))]
 	   
 	   ;; This parses the option string to readFile.
-	   [(assert-type (Stream ,t) (readFile ,[fn] ',str ,[src]))
+	   [(assert-type (Stream ,t) (readFile ,annot ,[fn] ',str ,[src]))
 	    ;; From regiment_helpers.ss
-            (parse-readFile-modestring str t fn src)]
+            (parse-readFile-modestring annot str t fn src)]
            
            ;; Here's a hack for ws.early:
            ;; We don't necessarily have the string available, but we can still throw in the types.

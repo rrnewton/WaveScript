@@ -101,6 +101,7 @@
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(LATEUNIFY #f ,[t]) t]
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
+    [(List Annotation) #t] ; FIXME: a bit of a hack, but Annotations should not appear in any other form
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C) (not (memq C '(quote NUM)))) (andmap id t)]
     [,s (guard (string? s)) #t] ;; Allowing strings for uninterpreted C types.
@@ -112,8 +113,8 @@
   (instantiated-type? t 
     (lambda (x) 
       (match x 
-	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
-	[,other #f]))))
+        [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
+        [,other #f]))))
 
 ;; Does it contain the monad?
 (define (distributed-type? t)
@@ -289,7 +290,7 @@
             (ASSERT sumtypedef)
             (apply max (map (lambda (m) (type->width (cadr m) sumdecls)) (cdr sumtypedef))))]
 	 
-	 [,other (error 'type->width "do not know the size of this type: ~s" other)]
+         [,other (error 'type->width "do not know the size of this type: ~s" other)]
 	 )]))
 
   ;; like type->width, but receives both the type and the datum in order to calculate
@@ -299,8 +300,11 @@
       [(t d) (datum->width t d #f)]
       [(t d sumdecls)
        (match t
-         [(Array ,et) (foldr + 8 (map (lambda (e) (datum->width et e)) (vector->list d)))]
-         [(List ,et)  (foldr + 0 (map (lambda (e) (+ 8 (datum->width et e))) d))]
+         [(Array ,t) (foldr + 8 (map (lambda (e) (datum->width t e sumdecls)) (vector->list d)))]
+         [(List ,t)  (apply +   (map (lambda (e) (+ 8 (datum->width t e sumdecls))) d))]
+         [#() 1] ; FIXME FIXME: what to really do here?
+         [#(,t* ...) (apply +   (map (lambda (e t) (datum->width t e sumdecls)) (tuple-fields d) t*))]
+         [String (string-length d)] ; FIXME: there may be some overhead?
          [,other (type->width t sumdecls)]
          )]))
   

@@ -34,7 +34,7 @@
 
 		 ;dump-binfile 
 		 ;audio 
-		 timer 
+		 timer timer-bench
 		 show
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
@@ -100,10 +100,13 @@
 		 emit return
 		 ;smap sfilter
 		 iterate break ;deep-iterate
-                 iterate-bench
+
+       iterate-bench
+       bench-stats
+
 		 feedbackloop
 		 ;; TODO: nix unionList.
-		 _merge unionN unionList 
+		 _merge _merge-bench unionN unionN-bench unionList unionList-bench
 		 ;zip2
 		 ; union2 union3 union4 union5
 		 fftC ifftC fftR2C ifftC2R memoized_fftR2C
@@ -257,6 +260,10 @@
   (define-syntax fire!
     (syntax-rules ()
       ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
+  (define (profiled-fire! tuple sinks bench-rec output-type sumdecls)
+    (bench-stats-bytes-add!  bench-rec (datum->width output-type tuple sumdecls))
+    (bench-stats-tuples-add! bench-rec 1)
+    (fire! tuple sinks))
 
   ;; These do nothing.  Scheme's bindings are mutable to start.
   (define-syntax Mutable:ref (syntax-rules () [(_ x) x]))
@@ -265,6 +272,12 @@
   (define-syntax statref (syntax-rules () [(_ x) x]))
 
   (define-syntax annotations (syntax-rules () [(annotations . x) '(annotations . x)]))
+
+  ;;
+  (define-record bench-stats (bytes tuples cpu-time))
+  (define (bench-stats-bytes-add!    bs bytes) (set-bench-stats-bytes!    bs (+ bytes (bench-stats-bytes bs))))
+  (define (bench-stats-tuples-add!   bs bytes) (set-bench-stats-tuples!   bs (+ bytes (bench-stats-tuples bs))))
+  (define (bench-stats-cpu-time-add! bs bytes) (set-bench-stats-cpu-time! bs (+ bytes (bench-stats-cpu-time bs))))
 
   ;; ================================================================================    
   ;;; Type tests for WaveScript types embedded in Scheme.
@@ -378,7 +391,7 @@
   ;; Stream processing primitives:
 
   ;; Stream source:
-  (define (timer freq) 
+  (define (timer annot freq) 
     ;; milliseconds:
     (define timestep (rate->timestep freq))
     (define our-sinks '())
@@ -394,6 +407,28 @@
 		       ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
+    (lambda (sink)
+      ;; Register the sink to receive this output:
+      (set! our-sinks (cons sink our-sinks))))
+
+  (define (timer-bench annot output-type box-name edge-counts-table sum-type-declarations freq)
+    ;; milliseconds:
+    (define timestep (rate->timestep freq))
+    (define our-sinks '())
+    (define bench-rec (make-bench-stats 0 0 0))
+    (define src (let ([t 0])
+        (lambda (msg)
+          (s:case msg
+            ;; Returns the next time we run.
+            [(peek) t]
+            [(pop)
+             ;; Release one stream element.
+             (set! t (s:+ t timestep))
+             (profiled-fire! #() our-sinks bench-rec output-type sum-type-declarations)
+             ]))))
+    ;; Register ourselves globally as a leaf node:
+    (set! data-sources (cons src data-sources))
+    (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
       ;; Register the sink to receive this output:
       (set! our-sinks (cons sink our-sinks))))
@@ -415,25 +450,33 @@
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
 
-  
-  ; FIXME: do we need to measure the final stream to BASE also?
-  (define (iterate-bench annotations input-type box-name edge-counts-table sum-type-declarations fun src)
+  (define (iterate-bench annotations output-type box-name edge-counts-table sum-type-declarations fun src)
     (define our-sinks '())
+    (define bench-rec (make-bench-stats 0 0 0))
     (define wsbox
       (lambda (msg)
-        (let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
-          ;(set! input-count (+ input-count (datum->width input-type msg)))
-          (hashtab-set! edge-counts-table
-                           box-name
-                           (+ (or (hashtab-get edge-counts-table box-name) 0)
-                              (datum->width input-type msg sum-type-declarations)))
-          (for-each (lambda (elem)
-                      (fire! elem our-sinks))
+        (let ([outputs '()]
+              [stats-pre1 '()]
+              [stats-pre2 '()]
+              [stats-post '()])
+          
+          ;; run the box and update CPU time
+          (set! stats-pre1 (statistics))
+          (set! stats-pre2 (statistics))
+          (set! outputs (reverse! (unbox (fun msg (virtqueue)))))
+          (set! stats-post (statistics))
+          (bench-stats-cpu-time-add! bench-rec (- (sstats-cpu stats-post) (sstats-cpu stats-pre2)
+                                                  (- (sstats-cpu stats-pre2) (sstats-cpu stats-pre1))))
+
+          ;; fire!
+          (for-each (lambda (elem) (profiled-fire! elem our-sinks bench-rec output-type sum-type-declarations))
             outputs))))
     ;; Register ourselves with our source:
     (src wsbox)
+    (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
+
 
   (define (feedbackloop src fun)
     ;; Let-n-set to build a cyclic structure.
@@ -522,8 +565,18 @@
   (define DATAFILE_BATCH_SIZE 500)
   
   ;; Should have batched data file...
-  (define (__readFile file srcstrm mode repeat skipbytes offset winsize types)
+  ; FIXME: last arg. is a hack
+  ; FIXME: need to implement a real output-type; it's broken right now, using types
+  (define (__readFile annot file srcstrm mode repeat skipbytes offset winsize types . bench)
     ;; TODO: implement skipbytes and winsize!!!
+
+    ;; chez scheme doesn't have define-values -- d'oh
+    (define bench? (not (null? bench)))
+    (define output-type           (if bench? (car bench)    #f))
+    (define box-name              (if bench? (cadr bench)   #f))
+    (define edge-counts-table     (if bench? (caddr bench)  #f))
+    (define sum-type-declarations (if bench? (cadddr bench) #f))
+
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -555,6 +608,7 @@
               (car ls)
               (make-tuple ls))))
       (define our-sinks '())  
+      (define bench-rec (make-bench-stats 0 0 0))
       (define iswindowed (> winsize 0))
       (define pos 0)
       ;; Reads a whole bunch of lines.
@@ -574,17 +628,23 @@
                     (stop-WS-sim! "readFile: didn't get enough data on window read")
                     (let* ([newpos (+ winsize pos -1)]			
                            [result (make-sigseg pos newpos win nulltimebase)])
+                      
                       (set! pos (+ 1 newpos))
-                      (fire! result our-sinks))))
+                      (if bench?
+                          (profiled-fire! result our-sinks bench-rec output-type sum-type-declarations)
+                          (fire! result our-sinks)))))
               
               ;; Inefficient:
               (let ([win (read-window 1)])
                 (if (null? win) 
                     (stop-WS-sim! "readFile: out of data")
-                    (fire! (car win) our-sinks))))))
+                    (if bench?
+                        (profiled-fire! (car win) our-sinks bench-rec output-type sum-type-declarations)
+                        (fire! (car win) our-sinks)))))))
 
       ;; Register ourselves with the parent operator:
       (srcstrm wsbox)
+      (hashtab-set! edge-counts-table box-name bench-rec)
       (lambda (sink)
         ;; Register the sink to receive this output:
         (set! our-sinks (cons sink our-sinks))))
@@ -598,11 +658,19 @@
                                               (if (> winsize 0) winsize 1) ;; Length of "window"				
                                               0 ;; Overlap
                                               skipbytes
-                                              offset))
+                                              offset
+                                              (if (> winsize 0) bench? #f)
+                                              output-type
+                                              box-name
+                                              edge-counts-table
+                                              sum-type-declarations))
       ;; winsize 0 or -1 indicates non windowed stream, thus strip that sigseg:
       ;; This is inefficient because we allocate a one-element sigseg then discard it:
       (if (<= winsize 0)
-          (iterate () (lambda (x vq) (emit vq (seg-get x 0)) vq) source)
+          (if bench?
+              (iterate-bench annot output-type box-name edge-counts-table sum-type-declarations
+                             (lambda (x vq) (emit vq (seg-get x 0)) vq) source)
+              (iterate annot (lambda (x vq) (emit vq (seg-get x 0)) vq) source))
           source))
 
     (define thestream
@@ -658,7 +726,8 @@
     (error 'ensBoxAudioAll "can't run inside scheme emulator!"))
 
   ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
-  (define (read-binary-file-stream file srcstrm wordsize sample-extractor len overlap skipbytes offset)
+  (define (read-binary-file-stream file srcstrm wordsize sample-extractor len overlap skipbytes offset
+                                   bench? output-type box-name edge-counts-table sum-type-declarations)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
     (define buffer1 (make-string chunksize #\_))
@@ -725,9 +794,10 @@
       (unless (zero? overlap)
         (error 'read-binary-file-stream "currently does not support overlaps, use rewindow")))
 
-    (define our-sinks '())  
+    (define our-sinks '())
+    (define bench-rec (if bench? (make-bench-stats 0 0 0) #f))
     (define pos 0)
-    (define (wsbox msg)         
+    (define (wsbox msg)
       (let ([win (read-window)])
         (if win
             (let* ([newpos (+ len pos -1)]
@@ -743,8 +813,10 @@
                            file)))
               
               (set! pos (+ 1 newpos))
-              (fire! result our-sinks)
-              )
+
+              (if bench?
+                  (profiled-fire! result our-sinks bench-rec output-type sum-type-declarations)
+                  (fire! result our-sinks)))
             (begin 		    
               #;
               (error 'read-binary-file-stream
@@ -762,6 +834,7 @@
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
+       (hashtab-set! edge-counts-table box-name bench-rec)
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
@@ -778,13 +851,44 @@
        (lambda (sink)
          (set! our-sinks (cons sink our-sinks))))
 
-     (define (unionN . args)  (unionList args))
+     (define (unionList-bench output-type box-name edge-counts-table sum-type-declarations ls)
+       (define our-sinks '())
+       (define bench-rec (make-bench-stats 0 0 0))
+       ;; Register a receiver for each source:
+       (for-eachi (lambda (i src)
+                    (src (lambda (x)
+                           (let ((datum (tuple i x)))
+                             (profiled-fire! x our-sinks bench-rec output-type sum-type-declarations)))))
+                  ls)
+       (hashtab-set! edge-counts-table box-name bench-rec)
+       (lambda (sink)
+         (set! our-sinks (cons sink our-sinks))))
 
-     (define (_merge s1 s2)
+
+     (define (unionN annotations . args) (unionList args))
+
+     (define (unionN-bench annotations output-type box-name edge-counts-table sum-type-declarations . args)
+       (unionList-bench output-type box-name edge-counts-table sum-type-declarations args))
+     
+
+     (define (_merge annotations s1 s2)
        (define our-sinks '())
        ;; Register a receiver for each source:       
        (s1 (lambda (x) (fire! x our-sinks)))
        (s2 (lambda (x) (fire! x our-sinks)))
+       (lambda (sink) (set! our-sinks (cons sink our-sinks))))
+
+     ; NOTE: doesn't matter for us, but not re-entrant
+     (define (_merge-bench annotations output-type box-name edge-counts-table sum-type-declarations s1 s2)
+       (define our-sinks '())
+       (define bench-rec (make-bench-stats 0 0 0))
+       ;; Register a receiver for each source:
+       (define wsbox
+         (lambda (x)
+           (profiled-fire! x our-sinks bench-rec output-type sum-type-declarations)))
+       (s1 wsbox)
+       (s2 wsbox)
+       (hashtab-set! edge-counts-table box-name bench-rec)
        (lambda (sink) (set! our-sinks (cons sink our-sinks))))
 
 

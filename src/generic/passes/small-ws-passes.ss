@@ -111,6 +111,11 @@
 	    [(assert-type ,ty (quote ,[x])) 
 	     (guard (not (polymorphic-type? ty)))
 	     `(assert-type ,ty ',x)]
+       [(assert-type ,t (,op ,annot ,[x*] ...))
+        (guard (and (memq op required-ops)
+                    (pair? annot)
+                    (eq? 'annotations (car annot))))
+        `(assert-type ,t (,op ,annot ,@x*))]
 	    [(assert-type ,t (,op ,[x*] ...)) 
 	     (guard (memq op required-ops))
 	     `(assert-type ,t ,(cons op x*))]
@@ -511,9 +516,9 @@
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
 	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
 	       (let ([entry (assq prim wavescript-effectful-primitives)])
-		 (match (caddr entry)
-		   [(quote ,v) `(begin (,prim . ,simple) 'BOTTOM)]
-		   [#()        `(begin (,prim . ,simple) 'UNIT)]))]
+                 (match (caddr entry)
+                   [(quote ,v) `(begin (,prim . ,simple) 'BOTTOM)]
+                   [#()        `(begin (,prim . ,simple) 'UNIT)]))]
 	      [,oth (fallthru oth)]))])
 
 

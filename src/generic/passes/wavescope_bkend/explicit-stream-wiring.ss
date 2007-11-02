@@ -31,8 +31,8 @@
     ;; in the query graph.
     (define source-prims
       (map car
-	(filter (match-lambda ((,name ,args ,result)) (not (deep-assq 'Stream args)))
-	  wavescript-stream-primitives)))
+        (filter (match-lambda ((,name ,args ,result)) (not (deep-assq 'Stream args)))
+          wavescript-stream-primitives)))
     (define nonsource-prims
        (map car 
 	(filter (match-lambda ((,name ,args ,result)) (deep-assq 'Stream args))
@@ -40,6 +40,8 @@
 
     (define (unionN? pr) (and (pair? pr) (eq? (car pr) 'unionN)))
     (define (merge? pr) (and (pair? pr) (eq? (car pr) '_merge)))
+    (define (annotated-prim? pr)
+      (and (pair? pr) (memq (car pr) '(iterate _merge unionN __readFile))))
 
     (define (sourceapp? pr)    (and (pair? pr) (memq (car pr) source-prims)))
     (define (nonsourceapp? pr) (and (pair? pr) (memq (car pr) nonsource-prims)))
@@ -48,19 +50,21 @@
     ;; gathers/tags the appropriate bits.
     (define (Expr x aliases)
       (define (dealias v)
-	(ASSERT symbol? v)
-	(let ([entry (assq v aliases)])
-	  (if entry (dealias (cadr entry)) v)))
+        (ASSERT symbol? v)
+        (let ([entry (assq v aliases)])
+          (if entry (dealias (cadr entry)) v)))
       (unless (null? aliases) (printf "ALIASES: ~s\n" aliases))
       (match x
 	;; Operators: This includes iterate:
 	[(let ([,v ,ty ,rhs]) ,[bod])
 	 (guard (let ([peeled (peel-annotations rhs)])
 		  (or (nonsourceapp? peeled)
-		      (unionN? peeled))))
+		      (unionN? peeled)
+            (annotated-prim? peeled))))
 	 (define (prim-entry op rand*)
 	   (if (eq? op 'unionN)
-	       `(unionN ,(map (lambda (_) '(Stream 'a)) rand*) (Stream #(Int 'a)))
+	       `(,op ((List Annotation) . ,(map (lambda (_) '(Stream 'a)) (cdr rand*)))
+                ((List Annotation) (Stream #(Int 'a))))
 	       (get-primitive-entry op)))
 	 (match (peel-annotations rhs)
 
@@ -77,7 +81,24 @@
                              (list (dealias rand))]
                             [,oth (DEBUGASSERT (not (deep-assq 'Stream oth))) ()]))
                      rand* argty*))])
-            (cons (make-operator v ty `(iterate . ,rand*) src*)
+            (cons (make-operator v ty `(iterate ,annot . ,rand*) src*)
+                  bod))])]
+
+      ;; added to peel off the (new) annotations from any prim.
+      [(,prim ,annot ,rand* ...)
+       (guard (and (pair? annot) (eq? 'annotations (car annot))))
+       (match (prim-entry prim `(,annot ,@rand*))
+         [(,_ ,argty* ,result)
+          (let ([src*
+                 (apply append
+                        (map (lambda (rand argty)
+                               (match argty
+                                 [(Stream ,_)
+                                  (ASSERT (symbol? rand))
+                                  (list (dealias rand))]
+                                 [,oth (DEBUGASSERT (not (deep-assq 'Stream oth))) ()]))
+                          rand* (cdr argty*)))])
+            (cons (make-operator v ty `(,prim ,annot . ,rand*) src*)
                   bod))])]
 
 	   [(,prim ,rand* ...)
@@ -85,21 +106,20 @@
 	      [(,_ ,argty* ,result)
 	       #;
 	       (unless (= (length argty*) (length rand*))
-		 (inspect (vector rand* argty*)))
+            (inspect (vector rand* argty*)))
 	       (let ([src* 
-		      (apply append 
-			     (map (lambda (rand argty)
-				    (match argty
-				      [(Stream ,_) 
-				       (ASSERT symbol? rand)
-				       (list (dealias rand))]
-				      [,oth (DEBUGASSERT (not (deep-assq 'Stream oth)))
-					    ()]))
-			       rand* argty*))])
-		 (cons (make-operator v ty `(,prim . ,rand*) src*)
-		       bod))])])]
+                 (apply append 
+                        (map (lambda (rand argty)
+                               (match argty
+                                 [(Stream ,_) 
+                                  (ASSERT symbol? rand)
+                                  (list (dealias rand))]
+                                 [,oth (DEBUGASSERT (not (deep-assq 'Stream oth)))
+                                       ()]))
+                          rand* argty*))])
+            (cons (make-operator v ty `(,prim . ,rand*) src*)
+                  bod))])])]
 
-   ;; this silently removes the (new) annotations --mic
 	[(let ([,v ,ty (iterate ,annot . ,_)]) ,[bod])
 	 (inspect (cons 'iterate _))]
 

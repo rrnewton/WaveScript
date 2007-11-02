@@ -646,7 +646,7 @@
   (match src
     [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
-       [(timer ,[peel-annotations -> arg])
+       [(timer ,annot ,[peel-annotations -> arg])
 	(match arg
 	  [',rate 
 	   (let ([r ;(Expr rate 'noemitsallowed!)
@@ -738,7 +738,7 @@
 (define (ReadFile name code upstream downstrm)
     (set! name (Var name))
   (match code
-    [(__readFile ,[(lambda (x) (Expr x #f)) -> file] ,[Var -> source] ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+    [(__readFile ,annot ,[(lambda (x) (Expr x #f)) -> file] ,[Var -> source] ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
      (cond
       [(equal? mode "text") 	  
        (if (not (zero? repeats))

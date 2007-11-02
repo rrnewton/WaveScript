@@ -30,7 +30,7 @@
 	      
 	      (Query ('iterate ('let ((LHS Type Block) ...)
 				 ('lambda (Var Var) (Type Type) Block)) Simple))
-	      (Query ('unionN Simple ...))
+	      (Query ('unionN Simple Simple ...))
 	      (Query (StreamOp Simple ...))
 
 ;	      (QueryRHS Value)
@@ -137,9 +137,15 @@
 
 	  ;; Ascriptions are redundant right within the RHS:
 	  ;; But we leave them for primitives:
+     [(let ([,v ,ty (assert-type ,ty3 (,prim ,annot ,[rand*] ...))]) ,[bod])
+      (guard (and (normal-prim? prim)
+                  (pair? annot)
+                  (eq? (car annot) 'annotations)))
+      `(let ([,v ,ty (assert-type ,ty3 (,prim ,annot . ,rand*))]) ,bod)]
 	  [(let ([,v ,ty (assert-type ,ty3 (,prim ,[rand*] ...))]) ,[bod])
 	   (guard (normal-prim? prim))
 	   `(let ([,v ,ty (assert-type ,ty3 (,prim . ,rand*))]) ,bod)]
+
 	  ;; A 'constant' primitive:
 	  [(let ([,v ,ty (assert-type ,ty3 ,prim)]) ,[bod])
 	   (guard (normal-prim? prim))

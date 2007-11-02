@@ -89,7 +89,7 @@
 (define static-elaborate-grammar
   (list* 
    ;; After elaboration we have unionN:
-   '[Expr ('unionN Expr ...)]  
+   '[Expr ('unionN Expr Expr ...)]  
    '[Expr ('foreign-app Const Expr Expr ...)]
    '[Expr ('foreign Const Const)]
    '[Expr ('foreign_source Const Const)]
@@ -399,52 +399,56 @@
         (match expr
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
-		(if (eq? var v) 1 0)]
+                (if (eq? var v) 1 0)]
           [(if ,[test] ,[conseq] ,[altern])  (+ test conseq altern)]
-	  [(wscase ,[x] (,pat* ,[rhs*]) ...) (apply + x rhs*)]
+          [(wscase ,[x] (,pat* ,[rhs*]) ...) (apply + x rhs*)]
 
-	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-	   (if (memq v lhs*) 0
-	       (+ (count-refs v expr)
-		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
+          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
+           (if (memq v lhs*) 0
+               (+ (count-refs v expr)
+                  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
           [(lambda ,formals ,types ,expr)
-	   (if (memq v formals) 0 (count-refs v expr))]
+           (if (memq v formals) 0 (count-refs v expr))]
           
 ;	  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-	  [(src-pos ,_ ,[e]) e]
+          [(src-pos ,_ ,[e]) e]
 
-	  [(tupref ,n ,m ,[x]) x]
-	  [(tuple ,[args] ...) (apply + args)]
-	  [(,prim ,[rands] ...)
-	   (guard (regiment-primitive? prim))
+          [(tupref ,n ,m ,[x]) x]
+          [(tuple ,[args] ...) (apply + args)]
+          [(,prim ,[rands] ...)
+           (guard (regiment-primitive? prim))
            (apply fx+ rands)]
           [(begin ,(stmt) ...) (apply + stmt)]
 
-	  [(unionN ,[args] ...) (apply + args)]
-	  [(vector ,[args] ...) (apply + args)]
+          [(unionN ,annot ,[args] ...) (apply + args)]
+          [(_merge ,annot ,[s1] ,[s2]) (+ s1 s2)]
+          [(__readFile ,annot ,[args] ...) (apply + args)]
+          [(timer ,annot ,[args] ...) (apply + args)]
 
-	  [(assert-type ,_ ,[e]) e]
+          [(vector ,[args] ...) (apply + args)]
+
+          [(assert-type ,_ ,[e]) e]
           [(set! ,lhs ,(rhs))
            (if (eq? v lhs)
-	       9988
-	       #;
-	       (error 'static-elaborate:count-refs
-		      "Hmm... shouldn't be counting references to mutable-var: ~s" v)
-	       rhs
-	       )]
+               9988
+               #;
+               (error 'static-elaborate:count-refs
+                      "Hmm... shouldn't be counting references to mutable-var: ~s" v)
+               rhs
+               )]
           [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
           [(while ,[tst] ,(bod)) (+ tst bod)]
           [(iterate ,annot ,(fun) ,(bod)) (+ fun bod)]
 
-	  [(,app ,[rator] ,[rands] ...) 
-	   (guard (eq-any? app 'app 'construct-data))
-	   (+ rator (apply + rands))]
-	  [(foreign-app ',realname ,[arg*] ...)	 (apply + arg*)]
+          [(,app ,[rator] ,[rands] ...) 
+           (guard (eq-any? app 'app 'construct-data))
+           (+ rator (apply + rands))]
+          [(foreign-app ',realname ,[arg*] ...)	 (apply + arg*)]
 
           [,unmatched
-	   (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
-	       (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
-            (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
+           (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
+               (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
+           (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
 
     ;; These are vars that are mutated with set!
@@ -729,7 +733,10 @@
 	  ;; This becomes a quoted constant:
 	  [(tuple) ''UNIT]
 	  [(tuple ,[args] ...) `(tuple ,@args)]
-	  [(unionN ,[args] ...) `(unionN ,@args)]
+	  [(unionN ,annot ,[args] ...) `(unionN ,annot ,@args)]
+     [(_merge ,annot ,[s1] ,[s2]) `(_merge ,annot ,s1 ,s2)]
+     [(__readFile ,annot ,[args] ...) `(__readFile ,annot ,@args)]
+     [(timer ,annot ,[args] ...) `(timer ,annot ,@args)]
 	  [(vector ,[x*] ...)
 	   (if (andmap available? x*)
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
@@ -957,20 +964,20 @@
 	   (if (container-available? x)
 	       (let ([ls (getlist x)])
 		 (if (list? ls)
-		     `(unionN ,@ls)
+		     `(unionN (annotations) ,@ls)
 		     (begin 
 		       #;
 		       (when (regiment-verbose) 
 			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
-		       `(unionList ,x))
+		       `(unionList (annotations) ,x))
 		     ))
 	       ;; This is just a warning, it might be inside dead code.
 	       (begin 
 		 #;
 		 (warning 'static-elaborate "couldn't elaborate unionList, value unavailable: ~s\n Environment entry: ~s"
-			     `(unionList ,x)
+			     `(unionList (annotations) ,x)
 			     (assq x env))
-		      `(unionList ,x))
+		      `(unionList (annotations) ,x))
 			       )]
 
 	  ;; [2007.08.12] Yet more unpleasant hackery.

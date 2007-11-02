@@ -89,6 +89,11 @@
 
 	  ;; TODO: FOREIGN_SOURCE
 
+     ;; strip out annotations
+     [(,prim ,annot ,rand* ...)
+      (guard (and (real-primitive? prim) (pair? annot) (eq? 'annotations (car annot))))
+      (obj 'Prim (cons prim rand*) emitter)]
+
 	  [(,prim ,rand* ...) (guard (real-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]
 	  ;; Here we leave type assertions on all primitives.
@@ -114,13 +119,13 @@
     ;; Returns two values: code and bindings.
     (define Operator
       (lambda (entry)
-	(match entry
+        (match entry
 
-	  [(iterate (name ,name) 
-		    (output-type ,ty)
-		    (code (iterate ,itercode ,_))
-		    (incoming ,up)
-		    (outgoing ,down* ...))
+          [(iterate (name ,name) 
+                    (output-type ,ty)
+                    (code (iterate ,annot ,itercode ,_))
+                    (incoming ,up)
+                    (outgoing ,down* ...))
 	   
 	   (define (loop itercode)
 	     (match itercode 
@@ -151,7 +156,8 @@
 
 	  [(iterate . ,_) (inspect (cons "EMIT ML UNMATCHED ITERATE" (cons 'iterate _)))]
 	  
-	  [(__readFile (name ,name) (output-type ,ty) (code ,c) (incoming ,up* ...) (outgoing ,down* ...))
+	  [(__readFile (name ,name) (output-type ,ty) (code ,c)
+                  (incoming ,up* ...) (outgoing ,down* ...))
 	   (values (obj 'ReadFile name c up* down*) ())]
 
 	  [(unionN (name ,name) (output-type ,ty) (code ,_) (incoming ,up* ...) (outgoing ,down* ...))

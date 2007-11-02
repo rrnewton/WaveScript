@@ -49,14 +49,14 @@
 		`(lazy-letrec ,binds (zip2 ,s1 ,s2)))
 	    )]
 
-	 [(unionN ,[strms] ...)	 
+	 [(unionN ,annot ,[strms] ...)	 
 	  (match (map (lambda (S) (values->list (make-simple-shallow S tenv))) strms)
 	    [((,arg* ,binds*) ...)
 	     (define binds (apply append binds*))
 	     (DEBUGASSERT (lambda (ls) (andmap symbol? ls)) arg*)
 	     (if (null? binds)
-		 `(unionN . ,arg*)
-		 `(lazy-letrec ,binds (unionN . ,arg*)))
+                 `(unionN ,annot . ,arg*)
+                 `(lazy-letrec (,annot . ,binds) (unionN ,annot . ,arg*)))
 	     ])]
 
 	 ;; Safety net:
@@ -124,7 +124,7 @@
 		      (set! buf2_59 '()))
 		    (tuple))
 		VIRTQUEUE_64)))))))
-       (unionList slist_58))) 
+       (unionList (annotations) slist_58))) 
       SOmeTYPe))
  
 )

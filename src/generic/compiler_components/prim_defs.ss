@@ -514,7 +514,7 @@
 
     ;; This doesn't carry a time value, it just "fires" every so often.
     ;; Takes as input a frequency in hertz.
-    (timer            (Float) (Stream #()))
+    (timer            ((List Annotation) Float) (Stream #()))
 
     (prim_window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
@@ -525,12 +525,13 @@
 
     ;; Generic data-file reader.
     ;; The arguments are described in the manual.
-    (readFile (String String (Stream 'a)) (Stream 'b))
+    (readFile ((List Annotation) String String (Stream 'a)) (Stream 'b))
 
     (HACK_O_RAMA (String) (Stream #(Int (List (Sigseg Int16)))))
 
     ;; Internal:
-    (__readFile (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
+    (readFile   ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
+    (__readFile ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     (readFile-wsearly  (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     
     ;; These are simpler interface that desugar into dataFile:
@@ -577,7 +578,7 @@
     ;; other, but for efficiency, we're keeping them separate.
     (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))    
     ;; Two streams of the same type:
-    (_merge            ((Stream 'a) (Stream 'a)) (Stream 'a))
+    (_merge            ((List Annotation) (Stream 'a) (Stream 'a)) (Stream 'a))
 
     ;; Currently, because of letrec semantics, an explicit operator
     ;; must be used to create a feedback loop.
@@ -1063,14 +1064,14 @@
 (define get-primitive-entry
   (lambda (prim)
     (or 
-        #;(let ([entry (hashtab-get primitives-hash prim)])
+     #;(let ([entry (hashtab-get primitives-hash prim)])
 	  (if entry (cons prim entry) #f))
-        (let ([entry (regiment-primitive? prim)])
-	  (if entry (cons prim entry) #f))
+    (let ([entry (regiment-primitive? prim)])
+      (if entry (cons prim entry) #f))
 
-	(assq prim token-machine-primitives)
-        (error 'get-primitive-entry
-               "no entry for this primitive: ~a" prim))))
+    (assq prim token-machine-primitives)
+    (error 'get-primitive-entry
+           "no entry for this primitive: ~a" prim))))
 
 ;; Gotta remember to update this if I change the format of prim entries..
 (define (get-primitive-return-type prim)

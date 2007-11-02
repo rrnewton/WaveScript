@@ -20,6 +20,10 @@
 
   (chezimports)
 
+;;
+(define (stream-type? ty)   (and (pair? ty) (eq? (car ty) 'Stream)))
+(define (type-of-stream ty) (cadr ty))
+
 
 ;;
 (define-pass annotate-with-data-rates
@@ -63,17 +67,82 @@
             (match x
               [(iterate ,annot
                         (let ,state
-                          (lambda ,args (,input-type ,output-type) ,body))
+                          (lambda ,args (,input-type (VQueue ,output-type)) ,[body]))
                         ,stream)
 
                ; FIXME: having to pass in edge-counts-table here annoys me
                `(iterate-bench ,annot
-                               ',input-type ',(unique-name 'itb)
+                               ',output-type ',(unique-name 'itb)
                                edge-counts-table
                                sum-type-declarations
                                (let ,state
                                  (lambda ,args (,input-type ,output-type) ,body))
                                ,stream)]
+              
+              [(let ((,stream-name
+                      ,output-stream-type
+                      (_merge ,annot ,s1 ,s2)))
+                 ,[body])
+               (ASSERT (stream-type? output-stream-type))
+
+               `(let ((,stream-name
+                       ,output-stream-type
+                       (_merge-bench ,annot
+                                     ',(type-of-stream output-stream-type)
+                                     ',(unique-name 'mgb)
+                                     edge-counts-table
+                                     sum-type-declarations
+                                     ,s1 ,s2)))
+                  ,body)]
+
+              ; FIXME: get rid of the assert-type here (from annotate-outside-prims, probably)
+              [(let ((,stream-name
+                      ,output-stream-type
+                      (assert-type ,output-stream-type-assert
+                                   (unionN ,annot ,in-strs ...))))
+                 ,[body])
+               (ASSERT (equal? output-stream-type output-stream-type-assert))
+               (ASSERT (stream-type? output-stream-type))
+
+               `(let ((,stream-name
+                       ,output-stream-type
+                       (assert-type ,output-stream-type-assert
+                                    (unionN-bench ,annot
+                                                  ',(type-of-stream output-stream-type)
+                                                  ',(unique-name 'unb)
+                                                  edge-counts-table
+                                                  sum-type-declarations
+                                                  ,@in-strs))))
+                  ,body)]
+              
+              [(let ((,stream-name
+                      ,output-stream-type
+                      (__readFile ,annot ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types)))
+                 ,[body])
+               (ASSERT (stream-type? output-stream-type))
+
+               `(let ((,stream-name
+                       ,output-stream-type
+                       (__readFile ,annot ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types
+                                   ',(type-of-stream output-stream-type)
+                                   ',(unique-name 'rfb)
+                                   edge-counts-table
+                                   sum-type-declarations)))
+                  ,body)]
+
+              [(let ((,stream-name
+                      ,output-stream-type
+                      (timer ,annot ,freq)))
+                 ,[body])
+               (ASSERT (stream-type? output-stream-type))
+               
+               `(let ((,stream-name
+                       ,output-stream-type
+                       (timer-bench ,annot ',(type-of-stream output-stream-type) ',(unique-name 'tmr)
+                                    edge-counts-table sum-type-declarations
+                                    ,freq)))
+                  ,body)]
+              
 
               [,oth (fallthru oth)]))])
 
@@ -91,28 +160,65 @@
       [Expr (lambda (x fallthru)
               (match x
                 [(iterate-bench ,annot
-                                ',input-type ',box-name
+                                ',output-type ',box-name
                                 edge-counts-table
                                 sum-type-declarations
                                 (let ,state
-                                  (lambda ,args (,input-type-redundant ,output-type) ,body))
+                                  (lambda ,args (,input-type ,output-type-redundant) ,[body]))
                                 ,stream)
-                 ; FIXME: assert that input-type is input-type-redundant?
 
-                 `(iterate ,(add-annotation annot `(data-rate ,box-name ,(get-hash-table rates box-name 0)))
+                 `(iterate ,(add-annotation annot `(data-rates ,box-name ,(get-hash-table rates box-name #f)))
                            (let ,state
-                             (lambda ,args (,input-type ,output-type) ,body))
-                           ,stream)
-                 
-                 #;
-                 `(data-rate
-                   (,box-name ,(get-hash-table rates box-name 0))
-                   (iterate ,annot
-                            (let ,state
-                              (lambda ,args (,input-type ,output-type) ,body))
-                            ,stream))
+                             (lambda ,args (,input-type (VQueue ,output-type)) ,body))
+                           ,stream)]
 
-                 ]
+
+                [(let ((,stream-name
+                        ,output-stream-type
+                        (_merge-bench ,annot
+                                      ',output-type
+                                      ',box-name
+                                      edge-counts-table
+                                      sum-type-declarations
+                                      ,s1 ,s2)))
+                   ,[body])
+                 
+                 `(let ((,stream-name
+                         ,output-stream-type
+                         (_merge ,(add-annotation annot `(data-rates ,box-name ,(get-hash-table rates box-name #f)))
+                                 ,s1 ,s2)))
+                    ,body)]
+
+
+                [(let ((,stream-name
+                        ,output-stream-type
+                        (assert-type ,output-stream-type-assert
+                                     (unionN-bench ,annot
+                                                   ',output-type
+                                                   ',box-name
+                                                   edge-counts-table
+                                                   sum-type-declarations
+                                                   ,in-strs ...))))
+                   ,[body])
+
+                 `(let ((,stream-name
+                         ,output-stream-type
+                         (assert-type ,output-stream-type-assert
+                                      (unionN ,(add-annotation annot
+                                                               `(data-rates ,box-name ,(get-hash-table rates box-name #f)))
+                                              ,@in-strs))))
+                    ,body)]
+
+
+                [(__readFile ,annot ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types
+                             ',output-type ',box-name edge-counts-table sum-type-declarations)
+                 `(__readFile ,(add-annotation annot `(data-rates ,box-name ,(get-hash-table rates box-name #f)))
+                              ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types)]
+
+
+                [(timer-bench ,annot ',output-type ',box-name edge-counts-table sum-type-declarations ,freq)
+                 `(timer ,(add-annotation annot `(data-rates ,box-name ,(get-hash-table rates box-name #f))) ,freq)]
+
 
                 [,oth (fallthru oth)]))])
 
