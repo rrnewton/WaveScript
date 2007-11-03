@@ -19,7 +19,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; OH RIGHT.  DEBUGMODE.  Gotta be careful about that.
 
 
-;; TODO: Add a timeout!  In case the test gets stuck.
+;; [2007.11.03] FIXME!!! BADLY NEED A TIMEOUT ON ALL SUBPROCESSES!
+
 
 (require (lib "process.ss") (lib "date.ss"))
 
@@ -82,6 +83,34 @@ exec mzscheme -qr "$0" ${1+"$@"}
 			  (format "ASSERT failed: ~s\n\nCurrent Directory: ~s\n" 
 				  #'expr (current-directory)))
 		    (exit 1)))])))
+
+(define (post-to-web) 
+  ;; As icing on the cake let's post this on the web too:
+  ;; This should run on faith:
+  (when (directory-exists? "/var/www/regression")
+    (printf "Going to try publishing to website.\n")
+    (let ([publish (lambda (logfile webfile)
+		     (if (file-exists? webfile) (delete-file webfile))
+		     (fprintf orig-console "Copying log to website. ~a\n" webfile)
+		     (copy-file logfile webfile)
+		     (ASSERT (system (format "chgrp www-data ~a" webfile)))
+		     (ASSERT (system (format "chmod g+r ~a" webfile)))
+		     )])
+      
+      (let* (;[d (seconds->date (current-seconds))]
+	     [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
+		       "/var/www/regression/rev~a_eng~a_~a"
+		       svn-revision engine-svn-revision
+					;(date-year d) (date-month d) (date-day d)
+					;(date-hour d) (date-minute d)
+		       (if failed "FAILED" "passed"))])
+	(publish logfile webfile))
+      ;; Now do the 
+      (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
+			      svn-revision engine-svn-revision)])
+	(publish (format "~a/benchmarks/perfreport.pdf" test-root) webfile))
+      )))
+
 ; ----------------------------------------
 ;;; Main Script:
 
@@ -148,7 +177,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")
-
+(post-to-web)
 (begin (reset-timer!)
        (fpf "Build directory cleaned:                      ~a\n" 
 	    (code->msg! (system/exit-code "make clean > make_clean.log"))))
@@ -230,6 +259,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
+(post-to-web)
 (begin (define c-build (system/exit-code "make c &> gcc_BUILD_C_EXTENSIONS.log"))
        (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
@@ -273,10 +303,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 			  ))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
+(post-to-web)
 
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")
 (fpf "========================================\n")
-
+(post-to-web)
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
@@ -300,7 +331,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        )
 
-
+(post-to-web)
 (begin (current-directory (format "~a/lib/" test-root))
        (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib_test.ws:                   ~a\n" (code->msg! stdlib))
@@ -329,7 +360,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
              (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
-
+(post-to-web)
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
@@ -357,6 +388,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
 
+(post-to-web)
 (begin (define engine-cleaned (system/exit-code "make clean"))
        (fpf "Engine: directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
 
@@ -391,6 +423,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
+(post-to-web)
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (current-directory (format "~a/demos/wavescope" test-directory))
@@ -432,6 +465,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript MLTON Backend:\n" )
 (fpf "========================================\n")
 
+(post-to-web)
 (begin (newline)
        (current-directory test-directory)
        (current-directory (format "~a/demos/wavescope" test-directory))
@@ -453,6 +487,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; APPLICATIONS
 
+(post-to-web)
 (fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")
 
@@ -531,6 +566,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Performance benchmarks.
 
+(post-to-web)
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
@@ -646,30 +682,4 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
-
-
-;; As icing on the cake let's post this on the web too:
-;; This should run on faith:
-(when (directory-exists? "/var/www/regression")
-  (printf "Going to try publishing to website.\n")
-  (let ([publish (lambda (logfile webfile)
-		   (if (file-exists? webfile) (delete-file webfile))
-		   (fprintf orig-console "Copying log to website. ~a\n" webfile)
-		   (copy-file logfile webfile)
-		   (ASSERT (system (format "chgrp www-data ~a" webfile)))
-		   (ASSERT (system (format "chmod g+r ~a" webfile)))
-		   )])
-       
-    (let* (;[d (seconds->date (current-seconds))]
-	   [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
-		     "/var/www/regression/rev~a_eng~a_~a"
-		     svn-revision engine-svn-revision
-					;(date-year d) (date-month d) (date-day d)
-					;(date-hour d) (date-minute d)
-		     (if failed "FAILED" "passed"))])
-      (publish logfile webfile))
-    ;; Now do the 
-    (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
-			    svn-revision engine-svn-revision)])
-      (publish (format "~a/benchmarks/perfreport.pdf" test-root) webfile))
-    ))
+(post-to-web)

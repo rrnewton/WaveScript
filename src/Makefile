@@ -260,7 +260,7 @@ test:
 # exhaustive as possible.
 fulltest: 
 	rm -rf /tmp/wsparse_server_*
-	#killall mzscheme
+#killall mzscheme
 	$(MAKE) clean 
 	$(MAKE) wsparse
 	regiment test

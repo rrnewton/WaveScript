@@ -934,8 +934,8 @@
   `([(,plain-val (,Eval '(+_ '1 '2) '() #f)) 3]
     [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '()  #f)) 3]
     [(,plain-val (,Eval '(car (cons '39 '())) '() #f)) 39]
-    [(,Eval '(timer '3) '() #f) ,streamop?]
-    [(,Eval '(car (cons (iterate () (lambda (x vq) ('a 'b) '99) (timer '3)) '())) '() #f) ,streamop?]
+    [(,Eval '(timer () '3) '() #f) ,streamop?]
+    [(,Eval '(car (cons (iterate () (lambda (x vq) ('a 'b) '99) (timer () '3)) '())) '() #f) ,streamop?]
     [(,plain-val (,Eval '(letrec ([x Int '3]) x) '() #f)) 3]
     [(,plain-val (,Eval '(letrec ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
@@ -959,13 +959,13 @@
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
       (deep-assq 'letrec		
         (cdr (,Marshal (,Eval '(car (cons 
-	(letrec ([x 'a '100]) (iterate () (lambda (x vq) ('a 'b) x) (timer '3.0)))
+	(letrec ([x 'a '100]) (iterate () (lambda (x vq) ('a 'b) x) (timer () '3.0)))
 	'())) '() #f)))))
      #f]
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
      (and (deep-assq 'letrec
      (cdr (,Marshal (,Eval '(car (cons 
-       (letrec ([y Int '100]) (iterate () (lambda (x vq) ('a 'b) y) (timer '3.0))) '())) '() #f))))
+       (letrec ([y Int '100]) (iterate () (lambda (x vq) ('a 'b) y) (timer () '3.0))) '())) '() #f))))
 	  #t))
      #t]
     ["With this approach, we can bind the mutable state outside of the iterate construct"
@@ -975,13 +975,13 @@
      (deep-assq 'letrec
       (,Marshal (,Eval '(letrec ([y (Ref Int) (Mutable:ref '100)]) 
 	      (iterate () (lambda (x vq) ('a 'b) (deref y)) 
-				(timer '3.0))) '() #f))))))
+				(timer () '3.0))) '() #f))))))
      #f]
     ["inline a function successfully"
      (deep-assq 'f
      (interpret-meta '(lang '(program 
        (letrec ([f 'b (lambda (x) (Int) (+_ x x))])
-	 (iterate () (lambda (_) ('a) (app f '9)) (timer '3.0))) Int))))
+	 (iterate () (lambda (_) ('a) (app f '9)) (timer () '3.0))) Int))))
      #f]
 
 
