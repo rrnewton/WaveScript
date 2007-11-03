@@ -528,7 +528,7 @@
   ;; -----------------------------------------
 
 
-
+  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
@@ -673,8 +673,10 @@
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
 
-  (unless  (memq 'annotate-with-data-rates disabled-passes)
-    (ws-run-pass p annotate-with-data-rates))
+  (when (memq 'profile (ws-optimizations-enabled))
+    (unless  (memq 'annotate-with-data-rates disabled-passes)
+      (ws-run-pass p annotate-with-data-rates)))
+
   (pretty-print p) 
 
 ;   (set! prog (ws-add-return-statements prog))

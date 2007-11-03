@@ -47,8 +47,9 @@ fun TIMEFIRST(strm) {
   }
 }
 
-BASE <- Gnuplot:array_stream_autopolar("set title \"AML output\"\n",
-          (doas))
+BASE <- 
+//Gnuplot:array_stream_autopolar("set title \"AML output\"\n", (doas))
+doas
 
 
 /*

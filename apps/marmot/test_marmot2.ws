@@ -17,7 +17,9 @@ file = "testdata.txt"
 samp_rate = 24000.0; 
 
 //chans = (readFile(file, "mode: text window: 8192 rate: 24000 ") :: Stream Sigseg (Float)); 
-_chans = (readFile(file, "mode: text ", timer(2400.0)) :: Stream (Float));
+
+mytimer = repeater(240, timer(10.0))
+_chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
 chans = window(_chans, 8192);
 
 split = deinterleaveSS(4, 2048, chans);
@@ -49,9 +51,10 @@ synced2 = iterate x in synced0 {
 synced = synced2;
 include "marmot2.ws";
 
+fun SLSSmap(fn,slss)
+  smap(fun (ls) List:map(fun(ss) sigseg_map(fn,ss), ls), slss);
 
-converted = smap(fun (ls) List:map(fun(ss) sigseg_map(floatToInt16,ss), ls), synced0);
-
+//converted = SLSSmap(floatToInt16, synced0)
 
 //========================================
 // Main query:
@@ -60,13 +63,15 @@ converted = smap(fun (ls) List:map(fun(ss) sigseg_map(floatToInt16,ss), ls), syn
 //doas = FarFieldDOAb(synced, sensors);
 //doas = oneSourceAMLTD(synced, micgeometry, 2048); 
 //doas :: Stream (Array Float);
-doas = oneSourceAMLTD(converted, 4096);
+doas = oneSourceAMLTD_helper(synced0, 2048);
 //doas = oneSourceAMLTD(synced0, 4096);
 
 //BASE <- chans;
+//BASE <- ch2;
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
-//BASE <- synced;
+//BASE <- synced2;
+//BASE <- converted;
 //BASE <- gnuplot_array_stream(smap(fst, doas))
 //BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
 

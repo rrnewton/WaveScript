@@ -273,14 +273,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 // does an AMl calc based on TD data of supplied window (i.e. it does no rewindowing itself)
 // only does one source - other implementations may work on multiple sources
 
-// win_size decides how AML results to use
-oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
-fun oneSourceAMLTD(synced, win_size) {
+// This takes the floats directly, used in tests:
+fun oneSourceAMLTD_helper(synced_floats, win_size) {
   using Matrix;
   using Float; 
   
-  synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
-
   // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
   // rrn: can't currently calculate matrix dimensions (foreign function) at compile time:
   sens_num = List:length(sensor_list);
@@ -342,6 +339,15 @@ fun oneSourceAMLTD(synced, win_size) {
     };*/
   aml_result
 }
+
+
+// This wrapper also does the conversion to float:
+oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
+fun oneSourceAMLTD(synced, win_size) {
+  synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
+  oneSourceAMLTD_helper(synced_floats, win_size);
+}
+
 
 
 /**************************************************************/
