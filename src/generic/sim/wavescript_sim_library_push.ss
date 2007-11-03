@@ -274,7 +274,7 @@
   (define-syntax annotations (syntax-rules () [(annotations . x) '(annotations . x)]))
 
   ;;
-  (define-record bench-stats (bytes tuples cpu-time))
+  (reg:define-struct (bench-stats bytes tuples cpu-time))
   (define (bench-stats-bytes-add!    bs bytes) (set-bench-stats-bytes!    bs (+ bytes (bench-stats-bytes bs))))
   (define (bench-stats-tuples-add!   bs bytes) (set-bench-stats-tuples!   bs (+ bytes (bench-stats-tuples bs))))
   (define (bench-stats-cpu-time-add! bs bytes) (set-bench-stats-cpu-time! bs (+ bytes (bench-stats-cpu-time bs))))
@@ -461,12 +461,16 @@
               [stats-post '()])
           
           ;; run the box and update CPU time
-          (set! stats-pre1 (statistics))
-          (set! stats-pre2 (statistics))
-          (set! outputs (reverse! (unbox (fun msg (virtqueue)))))
-          (set! stats-post (statistics))
-          (bench-stats-cpu-time-add! bench-rec (- (sstats-cpu stats-post) (sstats-cpu stats-pre2)
-                                                  (- (sstats-cpu stats-pre2) (sstats-cpu stats-pre1))))
+	  ;; rrn: should do this in a neater way, but for now just ripping this out for PLT:
+	  (IFCHEZ
+	   (begin           
+	     (set! stats-pre1 (statistics))
+	     (set! stats-pre2 (statistics))
+	     (set! outputs (reverse! (unbox (fun msg (virtqueue)))))
+	     (set! stats-post (statistics))
+	     (bench-stats-cpu-time-add! bench-rec (- (sstats-cpu stats-post) (sstats-cpu stats-pre2)
+						     (- (sstats-cpu stats-pre2) (sstats-cpu stats-pre1)))))
+	   (void))
 
           ;; fire!
           (for-each (lambda (elem) (profiled-fire! elem our-sinks bench-rec output-type sum-type-declarations))
@@ -476,6 +480,7 @@
     (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
+
 
 
   (define (feedbackloop src fun)

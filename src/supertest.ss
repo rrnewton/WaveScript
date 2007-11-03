@@ -84,7 +84,65 @@ exec mzscheme -qr "$0" ${1+"$@"}
 				  #'expr (current-directory)))
 		    (exit 1)))])))
 
-(define (post-to-web) 
+;; Run a command with a timeout.
+(define (system/timeout cmd)
+  (let* ([proc (process cmd)]
+	 [stdout (car proc)]
+	 [stdin  (cadr proc)]
+	 [stderr (cadddr proc)]
+	 [statusfn (car (reverse proc))])
+    ;; Let something run for 20 min, 1200 seconds.
+    (define timeout (* 20 60 1000 ))
+    (define pollinterval (* 250 ))
+    (define (closeup) 
+      (close-input-port stdout)
+      (close-input-port stderr)
+      (close-output-port stdin))
+    (define start-time (current-inexact-milliseconds))
+    (let waitloop ([time 0])
+      ;; discard any input:
+      ;(printf "Reading ports\n")
+      ;(let loop () (when (char-ready? stdout) (read-char stdout) (loop)))
+      ;(let loop () (when (char-ready? stderr) (read-char stderr) (loop)))
+      ;(printf "STATUS: ~s\n" (statusfn 'status))
+      (case (statusfn 'status)
+	[(done-ok)    (closeup) 0]
+	[(done-error) (closeup) (statusfn 'exit-code)]
+	[(running)    
+	 (if (> time timeout)
+	     ;; Kill the subprocess.
+	     (begin 
+	       ;(printf "TIMED OUT\n")
+	       (fpf "    Process timed out!\n")
+	       (fprintf orig-console "   Process timed out!\n")
+	       (statusfn 'kill)
+	       99)
+	     (begin 
+	       ;; Wait a bit and check again:
+	       (sync (alarm-evt (+ (current-inexact-milliseconds) pollinterval)))
+	       (waitloop (+ time pollinterval))))]
+	[else (error 'system/timeout "")]))))
+
+(define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
+(define engine-svn-revision 'unknown)
+(define (setup-engine-dir!)
+  (ASSERT (system (format "rm -rf ~a" engine-dir)))
+  (ASSERT (system 
+	   (format 
+	    "svn co -r 1495 svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
+	    ;; [2007.10.29] Switching back to HEAD revision:
+					;"svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
+	    engine-dir)))
+
+  (ASSERT (putenv "WAVESCOPED" engine-dir))
+  (ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
+  (parameterize ([current-directory engine-dir])
+    (set! engine-svn-revision
+	  (begin 
+	    (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
+	    (read (open-input-file "svn_rev.txt"))))))
+
+(define (post-to-web webfilename) 
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
   (when (directory-exists? "/var/www/regression")
@@ -97,19 +155,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (ASSERT (system (format "chmod g+r ~a" webfile)))
 		     )])
       
-      (let* (;[d (seconds->date (current-seconds))]
-	     [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
-		       "/var/www/regression/rev~a_eng~a_~a"
-		       svn-revision engine-svn-revision
-					;(date-year d) (date-month d) (date-day d)
-					;(date-hour d) (date-minute d)
-		       (if failed "FAILED" "passed"))])
+      (let* ([webfile (format "/var/www/regression/~a" webfilename)])
 	(publish logfile webfile))
-      ;; Now do the 
-      (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
-			      svn-revision engine-svn-revision)])
-	(publish (format "~a/benchmarks/perfreport.pdf" test-root) webfile))
+      ;; Now do the performance report:
+      (let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
+	(if (file-exists? perfreport)
+	    (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
+				    svn-revision engine-svn-revision)])
+	      (publish perfreport webfile))))
       )))
+
+
+;; Partway through refactoring all the tests below to use this helper:
+(define (run-test title cmd) 
+  (fpf (format "~a~a~a\n"
+	title
+	(list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
+	(code->msg! (system/timeout cmd))))
+  (post-to-web (format "intermediate/rev_~a" svn-revision)))
 
 ; ----------------------------------------
 ;;; Main Script:
@@ -140,6 +203,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
    (define msg
      (format "ERROR during script execution:\n   ~a\n\nException: ~s\n" 
 	     (exn-message exn) exn))
+   (fprintf orig-console msg)
    (mail ryan-email "Failure of supertest.ss" msg)
    (exit 1)))
 
@@ -171,19 +235,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 
-
-
 ;; Here we begin running tests:
+
+(fpf "\nRunning from directory: ~a\n\n" test-root)
 
 (fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")
-(post-to-web)
-(begin (reset-timer!)
-       (fpf "Build directory cleaned:                      ~a\n" 
-	    (code->msg! (system/exit-code "make clean > make_clean.log"))))
 
-(begin (define runpetite (system/exit-code (format "echo | ~a/depends/petite" test-root)))
-       (fpf "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
+(post-to-web (format "intermediate/rev_~a" svn-revision))
+
+(reset-timer!)
+(run-test "Build directory cleaned:" "make clean > make_clean.log")
+(run-test "petite: Repository's Petite Chez runs:" 
+	  (format "echo | ~a/depends/petite" test-root))
 
 ;; Now that we're sure petite runs let's get the machine type:
 (define machine-type 
@@ -191,45 +255,35 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "echo '(machine-type)' | petite -q > machine_type.txt")))
     (read (open-input-file "machine_type.txt"))))
 
-(begin (current-directory test-directory)
-       (define testpetite
-	 (system/exit-code 
-	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> petite_UNIT_TESTS.log"))
-       (fpf "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite)))
+(current-directory test-directory)
+(run-test 
+ "petite: Load & run unit tests:"
+ "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> petite_UNIT_TESTS.log")
 
-(begin (define fullchez (system/exit-code "which chez > /dev/null"))
-       (fpf "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez)))
-
-(begin (define loaded (system/exit-code "./regiment_script.ss &> chez_SCRIPT_LOAD.log"))
-       (fpf "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
-
-(begin (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
-       (fpf "chez: WScript has access to the compiler:     ~a\n" (code->msg! compilerworks)))
-
-(begin (newline)
-       (printf "First: from source\n")
-       (printf "============================================================\n")
-       (define frmsrc (system/exit-code "./regiment_script.ss test &> chez_UNIT_TESTS.log"))
-       (fpf "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc)))
+(run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
+(run-test "chez: WScript loads from source (via script):" "./regiment_script.ss &> chez_SCRIPT_LOAD.log")
+(run-test "chez: WScript has access to the compiler:"
+	  "echo '(compile 3)' | ./regiment_script.ss i --exit-error")
+(run-test "chez: Unit tests, loaded from source:" "./regiment_script.ss test &> chez_UNIT_TESTS.log")
 
 (begin (newline)
        (printf "Second: building Chez shared object\n")
        (printf "============================================================\n")
        (ASSERT (putenv "REGDEBUGMODE" "OFF"))
 
-       (fpf "chez: Build .so file:                         ~a\n" (code->msg! (system/exit-code "make chez &> chez_BUILD_SO.log")))
-       (fpf "chez: Also build debugmode .so file:          ~a\n" (code->msg! (system/exit-code "make dbg &> chez_BUILD_DBG.log")))
+       (fpf "chez: Build .so file:                         ~a\n" (code->msg! (system/timeout "make chez &> chez_BUILD_SO.log")))
+       (fpf "chez: Also build debugmode .so file:          ~a\n" (code->msg! (system/timeout "make dbg &> chez_BUILD_DBG.log")))
 	     
        (ASSERT (system "./regiment_script.ss 2> chez_LOAD_FROM_SO.log"))
-       (define loadedso (system/exit-code "grep 'compiled .so' chez_LOAD_FROM_SO.log"))
+       (define loadedso (system/timeout "grep 'compiled .so' chez_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
 
 #|
        (fpf "chez: Build .boot file:                       ~a\n"
-	    (code->msg! (system/exit-code "make boot &> chez_BUILD_BOOT.log")))
+	    (code->msg! (system/timeout "make boot &> chez_BUILD_BOOT.log")))
        (ASSERT (system "./bin/regiment 2> chez_LOAD_FROM_BOOT.log"))
        (fpf "chez: System loads from .boot file:           ~a\n" 
-	    (code->msg! (system/exit-code "grep 'compiled .so' chez_LOAD_FROM_BOOT.log")))
+	    (code->msg! (system/timeout "grep 'compiled .so' chez_LOAD_FROM_BOOT.log")))
 
 
 |#
@@ -255,12 +309,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
        ;; FIXME:
 
-;       (define runso (system/exit-code "./regiment_script.ss test"))
+;       (define runso (system/timeout "./regiment_script.ss test"))
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
-(post-to-web)
-(begin (define c-build (system/exit-code "make c &> gcc_BUILD_C_EXTENSIONS.log"))
+(post-to-web (format "intermediate/rev_~a" svn-revision))
+(begin (define c-build (system/timeout "make c &> gcc_BUILD_C_EXTENSIONS.log"))
        (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
 ;; Now clean again:
@@ -269,7 +323,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline) (fpf "\n")
        (printf "Third: building bytecode in PLT\n")
        (printf "============================================================\n")
-       (define wsparse (system/exit-code "make wsparse &> plt_BUILD_WSPARSE.log"))
+       (define wsparse (system/timeout "make wsparse &> plt_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
 
 
@@ -287,61 +341,61 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	   ))
        )
 
-(begin (define pltbc (system/exit-code "make pltbc &> plt_BUILD_PLT_BYTECODE.log"))
+(begin (define pltbc (system/timeout "make pltbc &> plt_BUILD_PLT_BYTECODE.log"))
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
-(begin (define pltrun (system/exit-code "regiment.plt &> plt_RUN_PLT_BYTECODE.log"))
+(begin (define pltrun (system/timeout "regiment.plt &> plt_RUN_PLT_BYTECODE.log"))
        (fpf "plt: Run system from command line with PLT:   ~a\n" (code->msg! pltrun)))
 
 ;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-       (define plttests (system/exit-code 
+       (define plttests (system/timeout 
 			 ;(format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log" test-directory)
 			 "regiment.plt test &> plt_UNIT_TESTS.log"
 			  ))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")
 (fpf "========================================\n")
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (define getdata (system/exit-code "./download_sample_marmot_data"))
+       (define getdata (system/timeout "./download_sample_marmot_data"))
        (fpf "ws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
 
        (fpf "ws: Running WaveScript Demos:                 ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
+	    (code->msg! (system/timeout (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))))
 
        (putenv "REGIMENTHOST" "plt")
        (fpf "plt: Running WaveScript Demos:                ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))))
+	    (code->msg! (system/timeout (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))))
        (putenv "REGIMENTHOST" "")
 
        (fpf "ws.early: Running Demos (no static elab):     ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_early &> ~a/wsearly_demos.log" test-directory))))
+	    (code->msg! (system/timeout (format "./testall_early &> ~a/wsearly_demos.log" test-directory))))
 
 
 
        (current-directory test-directory)
        )
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (begin (current-directory (format "~a/lib/" test-root))
-       (define stdlib (system/exit-code (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory)))
+       (define stdlib (system/timeout (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib_test.ws:                   ~a\n" (code->msg! stdlib))
 
        ;; This is the OLD one:
        (fpf "ws: Loading old matrix_test.ws:               ~a\n" 
-	    (code->msg! (system/exit-code (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix_old.log" test-directory))))
+	    (code->msg! (system/timeout (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix_old.log" test-directory))))
 
        (fpf "ws: Running native WS test_matrix.ws:         ~a\n" 
-	    (code->msg! (system/exit-code (format "echo 10 | ws test_matrix.ws -exit-error &> ~a/matrix_ws.log" test-directory))))
+	    (code->msg! (system/timeout (format "echo 10 | ws test_matrix.ws -exit-error &> ~a/matrix_ws.log" test-directory))))
        
 
        (current-directory test-directory))
@@ -349,71 +403,50 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Now for GSL interface.
 (begin (current-directory (format "~a/lib/" test-root))
        (fpf "ws: Generating gsl matrix library wrappers:   ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/gsl_wrappers.log" test-directory))))       
+	    (code->msg! (system/timeout (format "make &> ~a/gsl_wrappers.log" test-directory))))       
 
        (fpf "ws: Running GSL test_matrix_gsl.ws:           ~a\n" 
-	    (code->msg! (system/exit-code (format 
+	    (code->msg! (system/timeout (format 
                "echo 10 | ws test_matrix_gsl.ws -exit-error &> ~a/matrix_gsl.log" test-directory))))
 #;
        (fpf "ws: Running test of GSL matrix library.ws:    ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
              (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))))
        (current-directory test-directory))
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
+(setup-engine-dir!) 
 (begin 
-
-(define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
-(ASSERT (system (format "rm -rf ~a" engine-dir)))
-(ASSERT (system 
-	 (format 
-	  "svn co -r 1495 svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
-	  ;; [2007.10.29] Switching back to HEAD revision:
-	  ;"svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
-	  engine-dir)))
-
-(ASSERT (putenv "WAVESCOPED" engine-dir))
-(ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
-(current-directory engine-dir)
-
-(define engine-svn-revision
-  (begin 
-    (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
-    (read (open-input-file "svn_rev.txt"))))
 
 (fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
 
-(post-to-web)
-(begin (define engine-cleaned (system/exit-code "make clean"))
-       (fpf "Engine: directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
+(post-to-web (format "intermediate/rev_~a" svn-revision))
+(parameterize ([current-directory engine-dir])
+  
+  (fpf "Engine: directory cleaned:                     ~a\n" (code->msg! (system/timeout "make clean")))  
+  (fpf "Engine: 'make all':                            ~a\n" 
+       (code->msg! (system/timeout (format "make all &> ~a/enigne_MAKE_ALL.log" test-directory))))  
 
-
-(begin (current-directory engine-dir)
-       (define engine-make (system/exit-code (format "make all &> ~a/enigne_MAKE_ALL.log" test-directory)))
-       (fpf "Engine: 'make all':                            ~a\n" (code->msg! engine-make)))
-
-;; TODO: This doesn't return ERROR code:
-(begin (current-directory engine-dir)
-       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" test-directory)))
-       ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
-       (code->msg! testSignal)
-       (fpf "Engine: testSignal-SMSegList                  ~a\n"
-	    (if (zero? testSignal) "?maybe passed?" "-FAILED-"))
-       )
-
-;; TODO: This probably doesn't return ERROR code:
-(begin (current-directory engine-dir)
-       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/engine_PipeMemory.log" 
-						    test-directory)))
-       (code->msg! pipeMemory)
-       (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
-	    (if (zero? pipeMemory) "?maybe passed?" "-FAILED-"))
-       )
+  ;; TODO: This doesn't return ERROR code:
+  (begin 
+    (define testSignal (system/timeout (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" test-directory)))
+    (code->msg! testSignal)
+    (fpf "Engine: testSignal-SMSegList                  ~a\n"
+	 (if (zero? testSignal) "?maybe passed?" "-FAILED-")))
+  
+  ;; TODO: This probably doesn't return ERROR code:
+  (begin 
+    (define pipeMemory (system/timeout (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/engine_PipeMemory.log" 
+						 test-directory)))
+    (code->msg! pipeMemory)
+    (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
+	 (if (zero? pipeMemory) "?maybe passed?" "-FAILED-")))
+)
 
 ) ;; End engine
 
@@ -423,11 +456,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/wsc_demos.log" test-directory)))
+       (define wsc-demos (system/timeout (format "./testall_wsc &> ~a/wsc_demos.log" test-directory)))
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
@@ -435,11 +468,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin 
        (current-directory (format "~a/lib/" test-root))
        (fpf "wsc: Compiling stdlib_test:                   ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
                (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))))
 #;
        (fpf "wsc: Running stdlib_test:                     ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
 	      (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory))))
        (current-directory test-directory))
 
@@ -454,10 +487,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory test-directory)
        (fpf "wscaml: Building ocaml libraries (fftw, etc): ~a\n" 
-	    (code->msg! (system/exit-code (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))))
+	    (code->msg! (system/timeout (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))))
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wscaml: Running Demos through OCaml:          ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))))
+	    (code->msg! (system/timeout (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))))
        (current-directory test-directory))
 
 |#
@@ -465,20 +498,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript MLTON Backend:\n" )
 (fpf "========================================\n")
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (begin (newline)
        (current-directory test-directory)
        (current-directory (format "~a/demos/wavescope" test-directory))
        (fpf "wsmlton: Running Demos through MLton:         ~a\n" 
-	    (code->msg! (system/exit-code (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory))))
+	    (code->msg! (system/timeout (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory))))
        (current-directory test-directory))
 (begin 
        (current-directory (format "~a/lib/" test-root))
        (fpf "wsmlton: Compiling stdlib_test:               ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
                (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))))
        (fpf "wsmlton: Running stdlib_test:                 ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
 	      (format "./query.mlton.exe -n 10 -exit-error &> ~a/wsmlton_stdlib_run.log" test-directory))))
        (current-directory test-directory))
 
@@ -487,29 +520,29 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; APPLICATIONS
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")
 
 
 (begin (current-directory (format "~a/apps/pipeline-web" test-root))
-       (define pipeline-web (system/exit-code (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
+       (define pipeline-web (system/timeout (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
        (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/stockticks" test-root))
        (fpf "ws: Running stockticks app:                   ~a\n"
-	    (code->msg! (system/exit-code (format "make test &> ~a/ws_stockticks.log" test-directory))))
+	    (code->msg! (system/timeout (format "make test &> ~a/ws_stockticks.log" test-directory))))
        (current-directory test-directory))
 
 (begin (current-directory (format "~a/apps/pipeline" test-root))
        (fpf "    Decompressing pipeline data               ~a\n" 
-	    (code->msg! (system/exit-code "bunzip2 pipeline1.data.bz2")))
+	    (code->msg! (system/timeout "bunzip2 pipeline1.data.bz2")))
        (fpf "ws: Running pipeline app:                     ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
               (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
        (fpf "ws.early: Running pipeline app:               ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
               (format "echo 10 | ws.early pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))))
        (current-directory test-directory))
 
@@ -517,47 +550,47 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory (format "~a/apps/marmot" test-root))
        (fpf "    Run Makefile                              ~a\n" 
-	    (code->msg! (system/exit-code "make")))
+	    (code->msg! (system/timeout "make")))
        (fpf "ws: Running marmot app (first phase):         ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
             (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/ws_marmot.log" test-directory))))
        (fpf "ws.early: Running marmot app:                 ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
             (format "echo 1 | ws.early run_first_phase.ws -exit-error &> ~a/wsearly_marmot.log" test-directory))))
 
        (fpf "ws: Running marmot app (second phase):        ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
             (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot12.log" test-directory))))
 
        (fpf "ws: Running marmot app (3phases):             ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
             (format "echo 1 | ws.debug run_3phases.ws -exit-error &> ~a/ws_marmot123.log" test-directory))))
 
        (fpf "wsmlton: Compiling marmot app (first phase):  ~a\n"
-	    (code->msg! (system/exit-code (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))))
+	    (code->msg! (system/timeout (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))))
        (fpf "wsmlton: Running marmot app (first phase):    ~a\n"
-	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot1_run.log" test-directory))))
+	    (code->msg! (system/timeout (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot1_run.log" test-directory))))
        
        ;; Third phase won't work in "ws" because of writing ppm file.
        (fpf "wsmlton: Compiling marmot app (3phases):      ~a\n"
-	    (code->msg! (system/exit-code (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))))
+	    (code->msg! (system/timeout (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))))
        (fpf "wsmlton: Running marmot app (3phases):        ~a\n"
-	    (code->msg! (system/exit-code (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
+	    (code->msg! (system/timeout (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))))
        
 
        ;; FIXME: ADD THIRD STAGE MULTINODE ETC!!!
 
 
        (fpf "wsc: Compiling marmot app (first phase):      ~a\n"
-	    (code->msg! (system/exit-code (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
+	    (code->msg! (system/timeout (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
 						  test-directory))))
        (fpf "wsc: Running marmot app (first phase):        ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))))
+	    (code->msg! (system/timeout (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))))
        (fpf "wsc: Compiling marmot app (second phase):     ~a\n"
-	    (code->msg! (system/exit-code (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))))
+	    (code->msg! (system/timeout (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))))
        ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
        (fpf "wsc: Running marmot app (second phase):       ~a\n"
-	    (code->msg! (system/exit-code (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory))))
+	    (code->msg! (system/timeout (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory))))
 
        (current-directory test-directory)
        )
@@ -566,39 +599,39 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Performance benchmarks.
 
-(post-to-web)
+(post-to-web (format "intermediate/rev_~a" svn-revision))
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
 ;; [2007.10.30] building incrementally.
 (begin (current-directory (format "~a/benchmarks" test-root))
        (fpf "    Setup Engines:                            ~a\n" 
-	    (code->msg! (system/exit-code (format "./setup_engines.sh &> ~a/bench_setup.log" test-directory))))
+	    (code->msg! (system/timeout (format "./setup_engines.sh &> ~a/bench_setup.log" test-directory))))
 
 
        (current-directory (format "~a/benchmarks/microbench" test-root))
        (fpf "    Run microbenchmarks:                      ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/bench_micro.log" test-directory))))
+	    (code->msg! (system/timeout (format "make &> ~a/bench_micro.log" test-directory))))
 
 
        (current-directory (format "~a/benchmarks/language_shootout" test-root))
        (fpf "    Run language_shootout:                    ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/bench_shootout.log" test-directory))))
+	    (code->msg! (system/timeout (format "make &> ~a/bench_shootout.log" test-directory))))
 
 
        (current-directory (format "~a/benchmarks/appbench" test-root))
        (fpf "    Run application benchmarks:               ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/bench_apps.log" test-directory))))
+	    (code->msg! (system/timeout (format "make &> ~a/bench_apps.log" test-directory))))
 
 
        (current-directory (format "~a/benchmarks/datareps" test-root))
        (fpf "    Run datarep benchmarks:               ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/bench_datareps.log" test-directory))))
+	    (code->msg! (system/timeout (format "make &> ~a/bench_datareps.log" test-directory))))
 
 
        (current-directory (format "~a/benchmarks" test-root))
        (fpf "    Compile results, build full report:       ~a\n" 
-	    (code->msg! (system/exit-code (format "make &> ~a/bench_perfreport.log" test-directory))))
+	    (code->msg! (system/timeout (format "make &> ~a/bench_perfreport.log" test-directory))))
        )
 
 ;; POTHOLE 
@@ -607,7 +640,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (current-directory (format "~a/apps/potholes" test-root))
        (fpf "    Fetching pothole data                     ~a\n" 
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
 	       (format "./download_small_sample_data  &> ~a/download_pothole_data.log" 
 		       test-directory))))
 
@@ -617,27 +650,27 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (ASSERT (putenv "REGDEBUGMODE" "OFF"))
 
        (fpf "ws: Running pothole4 app:                     ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
 			 (format "echo 3 | ws pothole4.ws -exit-error &> ~a/ws_pothole4.log" test-directory))))
        (fpf "ws.early: Running pothole4 app:               ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
               (format "echo 3 | ws.early pothole4.ws -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
 ;; TEMP FIXME DISABLED
 #|
        (fpf "wscaml: Compiling pothole4 app:               ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
              (format "wscaml pothole4.ws -exit-error &> ~a/wscaml_pothole_build.log" test-directory))))
        (fpf "wscaml: Running pothole4:                     ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
              (format "./query.caml.exe &> ~a/wscaml_pothole4_run.log" test-directory))))
 |#
 
        (fpf "wsmlton: Compiling pothole4 app:              ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
              (format "wsmlton pothole4.ws -exit-error &> ~a/wsmlton_pothole4_build.log" test-directory))))
        (fpf "wsmlton: Running pothole4 app:                ~a\n"
-	    (code->msg! (system/exit-code 
+	    (code->msg! (system/timeout 
              (format "./query.mlton.exe -n 3 &> ~a/wsmlton_pothole4_run.log" test-directory))))
 
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
@@ -682,4 +715,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
-(post-to-web)
+(post-to-web (format "rev~a_eng~a_~a"
+		     svn-revision engine-svn-revision
+		     (if failed "FAILED" "passed")))

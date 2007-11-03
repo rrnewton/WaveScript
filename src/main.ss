@@ -672,10 +672,11 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
-
-  (when (memq 'profile (ws-optimizations-enabled))
-    (unless  (memq 'annotate-with-data-rates disabled-passes)
-      (ws-run-pass p annotate-with-data-rates)))
+  (IFCHEZ   
+   (when (memq 'profile (ws-optimizations-enabled))
+     (unless  (memq 'annotate-with-data-rates disabled-passes)
+       (ws-run-pass p annotate-with-data-rates)))
+   (void))
 
   (pretty-print p) 
 
