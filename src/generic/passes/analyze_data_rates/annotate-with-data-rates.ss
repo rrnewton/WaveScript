@@ -63,6 +63,9 @@
 ;; but i don't see a way around it.
 (define-pass annotate-iterates-with-types
 
+    ;; to be filled in from input-parameters
+    (define num-tuples #f)
+
     [Expr (lambda (x fallthru)
             (match x
               [(iterate ,annot
@@ -140,11 +143,17 @@
                        ,output-stream-type
                        (timer-bench ,annot ',(type-of-stream output-stream-type) ',(unique-name 'tmr)
                                     edge-counts-table sum-type-declarations
-                                    ,freq)))
+                                    ,freq ,num-tuples)))
                   ,body)]
               
 
-              [,oth (fallthru oth)]))])
+              [,oth (fallthru oth)]))]
+
+    [Program (lambda (p Expr)
+               (match p
+                 [(,lang '(program ,bod ,meta* ... (input-parameters ,params) ,type))
+                  (set! num-tuples (cdr (or (assoc 'num-tuples params) '(_ . -1))))
+                  `(,lang '(program ,(Expr bod) ,@meta* (input-parameters ,params) ,type))]))])
 
 
 ;;
@@ -216,7 +225,7 @@
                               ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types)]
 
 
-                [(timer-bench ,annot ',output-type ',box-name edge-counts-table sum-type-declarations ,freq)
+                [(timer-bench ,annot ',output-type ',box-name edge-counts-table sum-type-declarations ,freq ,num-tuples)
                  `(timer ,(add-annotation annot `(data-rates ,box-name ,(get-hash-table rates box-name #f))) ,freq)]
 
 

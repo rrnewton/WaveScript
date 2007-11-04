@@ -1015,7 +1015,7 @@
     [(__readFile ,a ,[f] ,[s] ,[m] ,[r] ,[sk] ,[ws] ,[ty] ,bench-args ...)
      `(__readFile ,a ,f ,s ,m ,r ,sk ,ws ,ty ,@bench-args)]
     [(timer ,a ,[t]) `(timer ,a ,t)]
-    [(timer-bench ,a ,t ,n ,ht ,std ,[freq]) `(timer-bench ,a ,t ,n ,ht ,std ,freq)]
+    [(timer-bench ,a ,t ,n ,ht ,std ,[freq] ,[num-tuples]) `(timer-bench ,a ,t ,n ,ht ,std ,freq ,num-tuples)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     ; FIXME: should these three be rolled into one, as in core-generic-traverse?

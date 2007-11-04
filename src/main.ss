@@ -668,7 +668,7 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
-  (ws-run-pass p reify-certain-types) 
+  (ws-run-pass p reify-certain-types)
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
@@ -704,18 +704,28 @@
 ;; For usability, the below ws* procedures (wsint wscomp wscaml wsmlton...) can 
 ;; each take their input as a filename, a parsed program, or a port.
 ;; This is the coercion function they use to coerce their input to a parseed program.
-(define (coerce-to-ws-prog x) 
-  (cond  [(input-port? x)
-	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
-	     ;; We assume this is parsed but not post-processed:
-	     (ws-postprocess (read x))]
-	    [(string? x) 
-	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
-	     (read-wavescript-source-file x)]
-	    [(list? x)   
-	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
-	     x]
-	    [else (error 'wsint "bad input: ~s" x)]))
+(define (coerce-to-ws-prog x input-params)
+  (let ((prog
+         (cond  [(input-port? x)
+                 (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+                 ;; We assume this is parsed but not post-processed:
+                 (ws-postprocess (read x))]
+                [(string? x) 
+                 (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+                 (read-wavescript-source-file x)]
+                [(list? x)   
+                 (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
+                 x]
+                [else (error 'wsint "bad input: ~s" x)])))
+    
+    ;; add in the input-parameters
+    (set! prog
+          (match prog
+            [(,lang '(program ,s* ... ,types))
+             `(,lang '(program ,@s* (input-parameters ,input-params) ,types))]))
+
+    prog))
+
 
 ;; Dump output of intermediate stages in copmiler.
 ;; (This sets a variety of parameters controlling printing)
@@ -766,8 +776,8 @@
 		      (difference (regiment-primitives) regiment-distributed-primitives)])
 	(th)))
 
-    (define (early-part x . flags)
-      (define prog (coerce-to-ws-prog x))
+    (define (early-part x input-params . flags)
+      (define prog (coerce-to-ws-prog x input-params))
       (define _ (begin (unless (regiment-quiet)
 			 (printf "Evaluating program: ~a\n\n"
 				 (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
@@ -801,22 +811,22 @@
 	     (apply append fld**)
 	     (apply append ty**)))]))
 
-  (define (wsint x . flags)                                             ;; Entrypoint.      
+  (define (wsint x input-params . flags)                                             ;; Entrypoint.      
     (wsint-parameterize
      (lambda ()    
-       (define typed (early-part x))
+       (define typed (early-part x input-params))
        (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
        (define compiled (run-ws-compiler typed disabled-passes #t))
        (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
        (run-wavescript-sim compiled))))
   
-  (define (wsint-early x . flags)
+  (define (wsint-early x input-params . flags)
     (wsint-parameterize
      (lambda ()
        (define p x)
        (time (begin 
-	       (set! p (early-part p))
+	       (set! p (early-part p input-params))
 	       (ws-run-pass p eta-primitives)
 	       ;;       (ws-run-pass p desugar-misc)
 
@@ -884,14 +894,14 @@
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
 
-(define (wscomp x . flags)                                 ;; Entrypoint.  
+(define (wscomp x input-params . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
 ;		[included-var-bindings '()]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define outfile "./query.cpp")
-   (define prog (coerce-to-ws-prog x))
+   (define prog (coerce-to-ws-prog x input-params))
    (define typed (ws-compile-until-typed prog))
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
    (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
@@ -982,13 +992,13 @@
 ;; ================================================================================
 ;; WaveScript MLTON Compiler Entrypoint:
 
-(define (wsmlton x . flags)                                 ;; Entrypoint.  
+(define (wsmlton x input-params . flags)                                 ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
     (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.sml")
-    (define prog (coerce-to-ws-prog x))
+    (define prog (coerce-to-ws-prog x input-params))
     
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog disabled-passes #f))
@@ -1370,19 +1380,20 @@
 	  [(wsint)
 	   (let ()
 	   (define prog (acquire-input-prog 'wsint))
-	   (wsint:direct-stream (apply wsint (cons prog opts))))]
+	   (wsint:direct-stream (apply wsint (cons prog (cons input-parameters opts)))))]
 
 	  ;; Same as wsint but only runs the compiler up to typechecking.
 	  [(wsearly)
 	   (let ()
 	     (define prog (acquire-input-prog 'wsearly))
-	     (wsint:direct-stream (apply wsint-early (cons prog opts))))]
+	     (wsint:direct-stream (apply wsint-early (cons prog (cons input-params opts)))))]
 	  
 	  [(wscomp)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
+      (printf "*** mic: input-params: ~a~n" input-parameters)
 	   (let ()
 	     (define port (acquire-input-prog 'wscomp))
-	     (apply wscomp port opts))]
+	     (apply wscomp port input-parameters opts))]
 
 	  [(wscaml)
 	   (let ()
@@ -1393,7 +1404,7 @@
 	  [(wsml)
 	   (let ()
 	     (define exp (acquire-input-prog 'wsmlton))
-	     (apply wsmlton exp opts))]
+	     (apply wsmlton exp input-parameters opts))]
 	  
 	  ))))
 

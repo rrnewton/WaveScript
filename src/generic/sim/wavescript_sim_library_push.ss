@@ -395,15 +395,16 @@
     ;; milliseconds:
     (define timestep (rate->timestep freq))
     (define our-sinks '())
-    (define src (let ([t 0])
+    (define src (let ([t 0]
+                      [n 0])
 		  (lambda (msg)
 		    (s:case msg
 		      ;; Returns the next time we run.
 		      [(peek) t]
-		      [(pop) 
+		      [(pop)
 		       ;; Release one stream element.
 		       (set! t (s:+ t timestep))
-                       (fire! #() our-sinks)
+             (fire! #() our-sinks)
 		       ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
@@ -411,19 +412,22 @@
       ;; Register the sink to receive this output:
       (set! our-sinks (cons sink our-sinks))))
 
-  (define (timer-bench annot output-type box-name edge-counts-table sum-type-declarations freq)
+  (define (timer-bench annot output-type box-name edge-counts-table sum-type-declarations freq num-tuples)
     ;; milliseconds:
     (define timestep (rate->timestep freq))
     (define our-sinks '())
     (define bench-rec (make-bench-stats 0 0 0))
-    (define src (let ([t 0])
+    (define src (let ([t 0]
+                      [n 0])
         (lambda (msg)
           (s:case msg
             ;; Returns the next time we run.
             [(peek) t]
             [(pop)
+             (if (= n num-tuples) (stop-WS-sim! (format "reached ~a tuples!" num-tuples)))
              ;; Release one stream element.
              (set! t (s:+ t timestep))
+             (set! n (+ n 1))
              (profiled-fire! #() our-sinks bench-rec output-type sum-type-declarations)
              ]))))
     ;; Register ourselves globally as a leaf node:
