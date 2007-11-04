@@ -1389,7 +1389,6 @@
 	  
 	  [(wscomp)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
-      (printf "*** mic: input-params: ~a~n" input-parameters)
 	   (let ()
 	     (define port (acquire-input-prog 'wscomp))
 	     (apply wscomp port input-parameters opts))]
