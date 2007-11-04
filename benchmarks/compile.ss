@@ -24,7 +24,7 @@
   (define output-exe-filename (cdr (assoc 'exe plan)))
   (define scheduler           (cdr (assoc 'scheduler plan)))
   (define logfile             (cdr (assoc 'compile-logfile plan)))
-  
+
   (define disabled-pass-flags
     (foldr (lambda (pass flags-str) (string-append " --disable-pass " (symbol->string pass) flags-str)) "" disabled-passes))
 
@@ -33,6 +33,11 @@
   (let ((tmp-file (open-output-file tmp-plan-file-path 'truncate)))
     (print plan tmp-file)
     (close-output-port tmp-file))
+
+
+  ;; FIXME: hack
+  (if (null? output-src-filename) (set! output-src-filename "./query.cpp"))
+  (if (null? output-exe-filename) (set! output-exe-filename "./query.exe"))
 
   ;;
   (let ((compiled?
@@ -71,6 +76,17 @@
   (define output-src-filename (cdr (assoc 'source-code plan)))
   (define output-exe-filename (cdr (assoc 'exe plan)))
   (define logfile             (cdr (assoc 'compile-logfile plan)))
+
+  ;; FIXME: this is a really silly way of pushing an s-exp. of parameters into the wavescript compiler
+  (define tmp-plan-file-path (make-temporary-file))
+  (let ((tmp-file (open-output-file tmp-plan-file-path 'truncate)))
+    (print plan tmp-file)
+    (close-output-port tmp-file))
+
+
+  ;; FIXME: hack
+  (if (null? output-src-filename) (set! output-src-filename "./query.sml"))
+  (if (null? output-exe-filename) (set! output-exe-filename "./query.mlton.exe"))
   
   ;;
   (let ((compiled?
@@ -82,6 +98,9 @@
               (system (string-append "mv ./query.sml " output-src-filename)))
           (or (string=? "./query.mlton.exe" output-exe-filename) ; FIXME: tiny bug again
               (system (string-append "mv ./query.mlton.exe " output-exe-filename))))))
+
+    ;; cleanup
+    (delete-file tmp-plan-file-path)
 
     (if compiled?
 

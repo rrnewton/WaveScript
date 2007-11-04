@@ -19,8 +19,8 @@
   '(
     (disabled-passes)
     (backend . c++)
-    (source-code . "./query.cpp")
-    (exe . "./query.exe")
+    (source-code)
+    (exe)
     (scheduler . corefit-scheduler-df)
     (num-tuples . -1)
     (run-before) ; FIXME: not impl. yet

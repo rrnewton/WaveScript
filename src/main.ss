@@ -678,7 +678,6 @@
        (ws-run-pass p annotate-with-data-rates)))
    (void))
 
-  (pretty-print p) 
 
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
