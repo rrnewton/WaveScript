@@ -113,7 +113,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	     ;; Kill the subprocess.
 	     (begin 
 	       ;(printf "TIMED OUT\n")
-	       (fpf "    Process timed out!\n")
+	       (fpf " *** Process timed out!: ***\n")
 	       (fprintf orig-console "   Process timed out!\n")
 	       (statusfn 'kill)
 	       99)
@@ -145,17 +145,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (read (open-input-file "svn_rev.txt"))))))
 
 (define (post-to-web webfilename) 
+  (define publish 
+    (lambda (logfile webfile)
+      (if (file-exists? webfile) (delete-file webfile))
+      (fprintf orig-console "Copying log to website. ~a\n" webfile)
+      (copy-file logfile webfile)
+      (ASSERT (system (format "chgrp www-data ~a" webfile)))
+      (ASSERT (system (format "chmod g+r ~a" webfile)))
+      ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
   (when (directory-exists? "/var/www/regression")
     (printf "Going to try publishing to website.\n")
-    (let ([publish (lambda (logfile webfile)
-		     (if (file-exists? webfile) (delete-file webfile))
-		     (fprintf orig-console "Copying log to website. ~a\n" webfile)
-		     (copy-file logfile webfile)
-		     (ASSERT (system (format "chgrp www-data ~a" webfile)))
-		     (ASSERT (system (format "chmod g+r ~a" webfile)))
-		     )])
+    (let ([])
       
       (let* ([webfile (format "/var/www/regression/~a" webfilename)])
 	(publish logfile webfile))
@@ -669,3 +671,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (post-to-web (format "rev~a_eng~a_~a"
 		     svn-revision engine-svn-revision
 		     (if failed "FAILED" "passed")))
+
+;; Finally, copy all logs 
+(system "rm -f /var/www/regression/most_recent_logs/*")
+(system (format "cp ~a/*.log /var/www/regression/most_recent_logs/"
+		test-directory))

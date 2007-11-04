@@ -32,7 +32,7 @@ exec regiment i --script "$0" ${1+"$@"};
 						(path->string (current-directory))) 
 					"/" fn)
 			 fn)])
-       (let ([strm ((if (getenv "WSTESTALLEARLY") wsint-early wsint) absolute)] 
+       (let ([strm ((if (getenv "WSTESTALLEARLY") wsint-early wsint) absolute ())]
 	     [first #f] [second #f])
 
 	 (let-values ([(ls _) (stream-take  2 strm)])
