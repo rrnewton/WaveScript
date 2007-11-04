@@ -8,7 +8,7 @@
 ;; list of demo source files
 ;;
 (define demos
-  '(;"demo1c_timer.ws"
+  '("demo1c_timer.ws"
     "demo1d_readFile_text.ws"
     "demo1e_readFile.ws"
     
@@ -63,7 +63,7 @@
  (map
    (lambda (demo)
      (measure-wavescript-program `([ws-filename . ,demo]
-                                   ;[num-tuples . 100]
+                                   [num-tuples . 100]
                                    [backend . mlton])))
    demos)
 )
