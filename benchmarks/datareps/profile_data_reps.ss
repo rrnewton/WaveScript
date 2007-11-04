@@ -1,6 +1,6 @@
 #! /bin/sh
 #|
-exec regiment i "$0" ${1+"$@"};
+exec regiment i "$0" ${1+"$@"} -exit-error;
 |#
 
 (optimize-level 2)
@@ -77,7 +77,7 @@ exec regiment i "$0" ${1+"$@"};
 			   vq)
 		    vq)
 		))
-	    (timer '3.0)))
+	    (timer () '3.0)))
 
 (define (timeit exp)
   `(let ([st1 (clock)])     

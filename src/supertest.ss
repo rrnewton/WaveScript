@@ -91,8 +91,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	 [stdin  (cadr proc)]
 	 [stderr (cadddr proc)]
 	 [statusfn (car (reverse proc))])
-    ;; Let something run for 20 min, 1200 seconds.
-    (define timeout (* 20 60 1000 ))
+    ;; Let something run for 30 min
+    (define timeout (* 30 60 1000 ))
     (define pollinterval (* 250 ))
     (define (closeup) 
       (close-input-port stdout)
@@ -208,6 +208,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	     exn))
    (display msg orig-console);(fprintf orig-console msg)
    (mail ryan-email "Failure of supertest.ss" msg)
+   ;; Might as well try this too:
+   (fpf msg)
+   (post-to-web (format "rev_~a_ERROR" svn-revision))
    (exit 1)))
 
 (define date 
