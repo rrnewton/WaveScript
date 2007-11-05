@@ -1833,11 +1833,11 @@
 ;;                                        FOR WS.EARLY ONLY:                                              ;;
 ;; ====================================================================================================== ;;
 
-  ;; Hack for ws.early
-(define (readFile-wsearly fn str src type)
-  (match (parse-readFile-modestring str type fn src)
-    [(__readFile ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
-     (__readFile fn src mode repeats skipbytes offset winsize types)]))
+;; Hack for ws.early.  Just a little wrapper to call the real thing.
+(define (readFile-wsearly annot fn str src type)
+  (match (parse-readFile-modestring annot str type fn src)
+    [(__readFile ,annot ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+     (__readFile annot fn src mode repeats skipbytes offset winsize types)]))
 
 (define FILE_EXISTS file-exists?)
 (define (GETENV str) (or (getenv str) ""))

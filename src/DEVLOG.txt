@@ -1243,3 +1243,14 @@ Ideally we could fuse the lopass/hipass automatically:
 Then the question is whether we can recognize that arr2 is used
 linearly, and copy(arr2) can be eliminated.
 
+[2007.11.05] 
+Ah, what would things have been like if we'de used records for ASTs?
+.
+(let loop ([x _])
+  (compile-case x
+   [lit? (f (lit-val x))]
+   [iterate? (if (iterate? (streamop-code x))
+		 MERGE-ITERATES
+		 ;(traverse loop x)
+		 (make-streamop 'iterate _ _ _ _ _)
+		 )]))

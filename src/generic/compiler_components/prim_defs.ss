@@ -43,6 +43,8 @@
 	   wavescript-effectful-primitives
 	   wavescript-stream-primitives
 	   stream-primitive?
+	   temp-hack-stream-primitives 
+	   temp-hack-stream-primitive?
 
 	   built-in-type-constructors
 	   generic-arith-primitives
@@ -859,6 +861,11 @@
 	 (and entry
 	      (deep-assq 'Stream entry)))))
 
+;; [2007.11.05] These are the primitives that currently carry an
+;; "annotation" field after their 
+(define temp-hack-stream-primitives 
+  '(iterate unionN _merge readFile __readFile readFile-wsearly timer))
+(define (temp-hack-stream-primitive? p) (memq p temp-hack-stream-primitives))
 
 ;======================================================================
 ;;; Type signatures for TML/Node-local primitives.

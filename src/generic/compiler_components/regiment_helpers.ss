@@ -969,6 +969,7 @@
 
 
 ;; The utility used for parsing the modestring arguments to readFile.
+;; Returns:  a __readfile expression with its many fields.
 (define (parse-readFile-modestring annot str typ fn src)
   (ASSERT string? str)
   ;; Defaults:

@@ -1006,16 +1006,24 @@
     
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
-    [(iterate ,a ,[f] ,[s]) `(iterate ,a ,f ,s)]
+
     [(iterate-bench ,a ,t ,n ,ht ,std ,[f] ,[s]) `(iterate-bench ,a ,t ,n ,ht ,std ,f ,s)]
-    [(unionN ,a ,[s*] ...) `(unionN ,a ,@s*)]
     [(unionN-bench ,a ,t ,n ,ht ,std ,[s*] ...) `(unionN-bench ,a ,t ,n ,ht ,std ,@s*)]
-    [(_merge ,a ,[s1] ,[s2]) `(_merge ,a ,s1 ,s2)]
     [(_merge-bench ,a ,t ,n ,ht ,std ,[s1] ,[s2]) `(_merge-bench ,a ,t ,n ,ht ,std ,s1 ,s2)]
+    [(timer-bench ,a ,t ,n ,ht ,std ,[freq] ,[num-tuples]) `(timer-bench ,a ,t ,n ,ht ,std ,freq ,num-tuples)]
+
+    ;; [2007.11.05] rrn: Generalizing:
+    [(,streamop ,annot ,[arg*] ...) (guard (temp-hack-stream-primitive? streamop))
+     `(,streamop ,annot ,@arg*)]
+#| 
+    [(iterate ,a ,[f] ,[s]) `(iterate ,a ,f ,s)]
+    [(unionN ,a ,[s*] ...) `(unionN ,a ,@s*)]
+    [(_merge ,a ,[s1] ,[s2]) `(_merge ,a ,s1 ,s2)]
     [(__readFile ,a ,[f] ,[s] ,[m] ,[r] ,[sk] ,[ws] ,[ty] ,bench-args ...)
      `(__readFile ,a ,f ,s ,m ,r ,sk ,ws ,ty ,@bench-args)]
     [(timer ,a ,[t]) `(timer ,a ,t)]
-    [(timer-bench ,a ,t ,n ,ht ,std ,[freq] ,[num-tuples]) `(timer-bench ,a ,t ,n ,ht ,std ,freq ,num-tuples)]
+|#
+
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     ; FIXME: should these three be rolled into one, as in core-generic-traverse?

@@ -231,20 +231,22 @@
 	   (guard (memq varargkeyword '(tuple vector)))
 	   (fuse args (lambda args `(,varargkeyword ,@args)))]
 
+     ;; FIXME: THIS SHOULD BE EXPANDED TO ALL wavescript-stream-primitive's 
+     [(,streamop ,annot ,[loop -> args] ...)
+      ;(guard (stream-primitive? streamop))
+      (guard (temp-hack-stream-primitive? streamop))
+      (fuse args (lambda ls `(,streamop ,annot ,@ls)))]
+
+#|
      [(unionN ,annot ,[loop -> args] ...)
       (fuse args (lambda ls `(unionN ,annot . ,ls)))]
-
      [(_merge ,annot ,[loop -> s1] ,[loop -> s2])
       (fuse `(,s1 ,s2) (lambda ls `(_merge ,annot . ,ls)))]
-
-     [(readFile ,annot ,[loop -> args] ...)
-      (fuse args (lambda ls `(readFile ,annot . ,ls)))]
      [(__readFile ,annot ,[loop -> args] ...)
       (fuse args (lambda ls `(__readFile ,annot . ,ls)))]
-
      [(timer ,annot ,[loop -> args] ...)
       (fuse args (lambda ls `(timer ,annot . ,ls)))]
-
+|#
 	  ;; Adding this special syntax as well (output of nominalize-types)
 	  [(make-struct ,name  ,[loop -> args] ...)
 	   (guard (symbol? name))

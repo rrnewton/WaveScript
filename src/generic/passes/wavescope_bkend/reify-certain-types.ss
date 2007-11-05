@@ -57,8 +57,8 @@
            
            ;; Here's a hack for ws.early:
            ;; We don't necessarily have the string available, but we can still throw in the types.
-           [(assert-type (Stream ,t) (readFile ,[fn] ,[str] ,[src]))
-            `(readFile-wsearly ,fn ,str ,src ',t)]
+           [(assert-type (Stream ,t) (readFile ,annot ,[fn] ,[str] ,[src]))
+            `(readFile-wsearly ,annot ,fn ,str ,src ',t)]
 
 #;
            [(assert-type ,_ (readFile ,[fn] ,[str]))
