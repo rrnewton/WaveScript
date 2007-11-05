@@ -452,7 +452,7 @@
 
 (include "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
 (include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
-(include "generic/passes/graphviz.ss")
+(include "generic/passes/graphviz.ss") (import graphviz)
 
 
 ;; Load this pass early because it's used in a couple places.
@@ -611,6 +611,7 @@
 (include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
 (include "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
 (eval-when (compile eval load) (compile-profile #f))
+
 
 
 ;(inspect (emit-caml-wsquery caml-example))

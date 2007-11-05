@@ -1,3 +1,13 @@
+
+(module graphviz mzscheme
+  (require "../../plt/common.ss"
+           "../compiler_components/c_generator.ss")
+  (provide output-graphviz
+           )
+
+  (chezimports)
+
+
 (define-pass output-graphviz
   [Program
    (lambda (prog Expr)
@@ -33,3 +43,5 @@
 	;(define edges3 (list (format " ~a -> BASE\n" base)))	
 ;	(inspect (append edges1 edges2 edges3))
 
+
+) ;; End module
