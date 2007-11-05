@@ -25,7 +25,11 @@ ln -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
 echo "## User time for each benchmark/backend " > RESULTS.txt
 print_results_header
 runallbackends readfile_bigwins   $TEMP $((63 * 30))             30 
-runallbackends readfile_smallwins $TEMP $((63 * 128 * 4 * 30))   30 
+
+## [2007.11.04] Strange problems with readfile_smallwins!!!  Disabling for now:
+#runallbackends readfile_smallwins $TEMP $((63 * 128 * 4 * 30))   30 
+
+
 #runallbackends just_timer         $TEMP 1  35 
 runallbackends edge_stress         $TEMP  1  1
 runallbackends printing_lists     $TEMP 1  8000

@@ -452,6 +452,8 @@
 
 (include "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
 (include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
+(include "generic/passes/graphviz.ss")
+
 
 ;; Load this pass early because it's used in a couple places.
 (IFWAVESCOPE (begin)  

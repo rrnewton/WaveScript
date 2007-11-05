@@ -29,6 +29,12 @@ then export MLTON=mlton.dbg;
      shift;
 fi 
 
+if [ "$1" == "-O3" ]
+then export MLTON=mlton.opt;
+     shift;
+fi 
+
+
 # Pull the extra libraries off the first line of the query file.
 ############################################################
 FIRST=`head -n1 $INPUT`

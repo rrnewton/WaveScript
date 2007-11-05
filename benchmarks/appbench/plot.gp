@@ -20,4 +20,6 @@ plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 t
 # set yrange [ 0.00000 : 17000. ] noreverse nowriteback
 # plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col
 
-plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col, '' using 5 title col, '' using 6 title col, '' using 7 title col
+load "../standard_plot.gp"
+
+#plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col, '' using 5 title col, '' using 6 title col, '' using 7 title col

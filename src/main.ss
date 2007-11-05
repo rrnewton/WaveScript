@@ -1003,6 +1003,8 @@
     (set! prog (run-ws-compiler prog disabled-passes #f))
     (ws-run-pass prog explicit-stream-wiring)
 
+    (IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))
+
 ;    (inspect prog)
     (printf "SIZE BEFORE MLTON CODEGEN: ~s\n" (count-nodes prog))
 

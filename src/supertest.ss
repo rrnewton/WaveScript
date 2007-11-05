@@ -126,7 +126,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
 (define engine-svn-revision 'unknown)
 (define (setup-engine-dir!)
-  (fprintf orig-console "  Checking out engine from svn into directory ~a\n" engine-dir)
+  (fprintf orig-console "  Checking out engine from svn into directory\n  ~a\n" engine-dir)
   (fpf "  Checking out engine from svn into directory ~a\n" engine-dir)
   (ASSERT (system (format "rm -rf ~a" engine-dir)))
   (ASSERT (system 
@@ -670,6 +670,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
+(fprintf orig-console "Copying all logs to website...\n")
 (system "rm -f /var/www/regression/most_recent_logs/*")
 (system (format "cp ~a/*.log /var/www/regression/most_recent_logs/"
 		test-directory))
+(fprintf orig-console "Copied all logs to website.\n")
+
+

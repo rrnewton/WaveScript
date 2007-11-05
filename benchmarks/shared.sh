@@ -4,7 +4,7 @@ OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
 
 function print_results_header() {
-  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"MLton -O2\"" >> RESULTS.txt
+  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> RESULTS.txt
 }
 
 
@@ -70,13 +70,25 @@ function runcpp_corefit() {
 
 function runmlton() {
   echo "  mlton: compiling..."
-  if wsmlton $FILE -exit-error  &> $DEST/mlton.compile.$NAME.out; then echo>/dev/null;
+  if wsmlton $FILE -exit-error &> $DEST/mlton.compile.$NAME.out; then echo>/dev/null;
   else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
 #  (/usr/bin/time -f "usertime %U\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
   if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out; 
   then echo "failed!"; exit -1; fi
 }
+
+
+function runmltonO3() {
+  echo "  mlton -O3: compiling..."
+  if wsmlton $FILE -O3 -exit-error &> $DEST/mltonO3.compile.$NAME.out; then echo>/dev/null;
+  else echo "wsmlton -O3 failed!"; exit -1; fi
+  echo "   mlton -O3: running... -n "$TUPS
+#  (/usr/bin/time -f "usertime %U\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
+  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mltonO3.$NAME.out; 
+  then echo "failed!"; exit -1; fi
+}
+
 
 
 function runallbackends() {
@@ -92,6 +104,11 @@ function runallbackends() {
 
   runscheme
   runschemeO3
+  
+  if [ "$OMITMLTON" == "" ]; then 
+    runmlton; 
+    runmltonO3;
+  fi
 
   ## FIRST THE OLD SCHEDULER:  
   runcpp
@@ -99,14 +116,14 @@ function runallbackends() {
 
   ## NOW THE NEW SCHEDULER:
   runcpp_corefit
-  
-  if [ "$OMITMLTON" == "" ]; then runmlton; fi
 
   # ================================================================================
   echo $NAME `extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`  \
              `extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out` \
-             `extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`          \
-             `extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`         \
-             `extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`         \
-             `extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`       >> RESULTS.txt
+             `extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`        \
+             `extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`       \
+             `extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`       \
+             `extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`         \
+             `extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`        \
+  >> RESULTS.txt
 }
