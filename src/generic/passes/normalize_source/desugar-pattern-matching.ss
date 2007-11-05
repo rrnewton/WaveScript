@@ -86,11 +86,13 @@
    ; FIXME: is this dangerous?
    [(app (src-pos ,sp1 readFile) ,[args] ...)
     `(readFile (annotations) ,@args)]
+   [(readFile ,[args] ...) `(readFile (annotations) ,@args)]
 
    [(app timer ,[args] ...) `(timer (annotations) ,@args)]
    ; FIXME: is this dangerous?
    [(app (src-pos ,sp1 timer) ,[args] ...)
     `(timer (annotations) ,@args)]
+   [(timer ,[args] ...) `(timer (annotations) ,@args)]
 
 	;[ref (inspect "HMRM Ref in desugar pat match")'Mutable:ref]
 
@@ -174,7 +176,7 @@
 		      ,(map (lambda (_) (notype)) fldname*)
 		      ,(map (lambda (i) 
 			    #;
-			    `(lambda (s) (iterate () (lambda (x vq) 
+			    `(lambda (s) (iterate (annotations) (lambda (x vq) 
 						    (begin (emit vq (tupref ,i ,len x)) vq))
 						  s))
 			    ;; Simple tuple projector:

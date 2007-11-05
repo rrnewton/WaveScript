@@ -16,7 +16,7 @@
   (define elm (unique-name 'elm))
   (define vq (unique-name 'vq))
   
-  `(iterate () (letrec ([,cnt Int '0])
+  `(iterate (annotations) (letrec ([,cnt Int '0])
 	      (lambda (,elm ,vq) ('a (VQueue 'a))
 		      
 		      )

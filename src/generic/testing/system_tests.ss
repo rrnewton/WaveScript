@@ -2621,10 +2621,11 @@
 	(map (lambda (t2) (if (tuple? t2) (tuple-fields t2) t2)) (tuple-fields t1)))
    (mvlet ([(ls _)
 	    (stream-take 10 
-			 (wsint '(let* ([s1 (timer () 3.0)]
-					[s2 (iterate () (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
-					[s3 (iterate () (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
-				   s3)))]) 
+			 (wsint '(let* ([s1 (timer #;(annotations) 
+                              3.0)]
+					[s2 (iterate (annotations) (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
+					[s3 (iterate (annotations) (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
+				   s3) '()))]) 
      ls))
  ,(make-list 10 '((3 4) 9))]
 
@@ -2632,10 +2633,10 @@
 ["Run multiple WS queries in a row and see if it screws up the global state."
 
  (list
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer () '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer () '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer () '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer () '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
    )
  ((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0())) ]
 
@@ -2644,9 +2645,9 @@
  ,(let ([prog 
 	 `(first-value (stream-take 2 (wsint-early
           '(lang '(program (assert-type (Stream Int16) 
-            (readFile ()
+            (readFile
 		      ',(string-append (getenv "REGIMENTD") "/demos/wavescope/countup.txt") 
-		      '"mode: text" (timer () '1000.0))) (Stream Int16))))))])
+		      '"mode: text" (timer '1000.0))) (Stream Int16))) '())))])
     `(begin   ,prog ,prog ,prog))
  unspecified]
 

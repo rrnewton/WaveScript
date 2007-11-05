@@ -148,13 +148,13 @@
      (length (deep-assq-all 'iterate
 	       (simple-merge-iterates 
 		'(foolang 
-		  '(program (iterate () 
+		  '(program (iterate (annotations) 
 				     (let () 
 				       (lambda (x vq1) (Int (VQueue Int))
 					       (begin (emit vq1 (+_ x 1)) 
 						    (emit vq1 (+_ x 100))
 						    vq1)))
-				     (iterate ()
+				     (iterate (annotations)
 					      (let ()
 						(lambda (y vq2) (Int (VQueue Int))
 							(begin (emit vq2 (*_ y 2))

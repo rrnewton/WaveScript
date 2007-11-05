@@ -1245,7 +1245,7 @@
 	 (static-elaborate ',prog)
 	 ,prog])
 
-    ,(let ([prog '(iterate () (lambda (x ___VIRTQUEUE___) (#() (VQueue Int))
+    ,(let ([prog '(iterate (annotations) (lambda (x ___VIRTQUEUE___) (#() (VQueue Int))
 				   (letrec ([y Bool '#t])
 				     (begin (for (i '1 '10) (set! y '#f))
 					    (if y (emit ___VIRTQUEUE___ '77)

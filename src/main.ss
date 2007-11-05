@@ -721,7 +721,10 @@
     (set! prog
           (match prog
             [(,lang '(program ,s* ... ,types))
-             `(,lang '(program ,@s* (input-parameters ,input-params) ,types))]))
+             `(,lang '(program ,@s* (input-parameters ,input-params) ,types))]
+            
+            ;; do nothing in this case
+            [,oth prog]))
 
     prog))
 
@@ -1387,7 +1390,7 @@
 	  [(wsearly)
 	   (let ()
 	     (define prog (acquire-input-prog 'wsearly))
-	     (wsint:direct-stream (apply wsint-early (cons prog (cons input-params opts)))))]
+	     (wsint:direct-stream (apply wsint-early (cons prog (cons input-parameters opts)))))]
 	  
 	  [(wscomp)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)

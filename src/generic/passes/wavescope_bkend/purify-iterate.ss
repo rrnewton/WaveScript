@@ -334,7 +334,7 @@
 
 (define (testit)  
   (Expr 
-   '(iterate () (let ([st Int 3])
+   '(iterate (annotations) (let ([st Int 3])
 	       (lambda (x vq) (Int (VQueue Int))
 		 (begin 
 		   (set! st (+ st 1))
