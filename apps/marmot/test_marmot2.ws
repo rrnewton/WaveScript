@@ -22,6 +22,8 @@ mytimer = repeater(240, timer(10.0))
 _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
 chans = window(_chans, 8192);
 
+//chans = holdAndRepeat(8192, 100, fun()(), _chans)
+
 split = deinterleaveSS(4, 2048, chans);
 
 //ch1 = snoop("chan1 ", List:ref(split, 0)) ;
