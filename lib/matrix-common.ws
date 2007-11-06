@@ -7,6 +7,7 @@
 
 // Author:  Lewis Girod & Ryan Newton 
 
+namespace Matrix {
 
  //========================================
  // These are implemented ON TOP of the matrix abstraction.
@@ -46,6 +47,12 @@
  fun div_elements_inplace(m1,m2) Matrix:map2_inplace((/), m1, m2)
  fun scale_inplace(mat,coef)     Matrix:map_inplace((* coef), mat) 
  fun add_constant_inplace(mat,c) Matrix:map_inplace((+ c), mat) 
+
+ // Transpose
+ fun trans(m) {
+   let (r,c) = dim(m);
+   build(c,r,fun (j,i) get(m,i,j))
+ }
 
  // Matrix multiplication.
  fun mul(m1,m2) {

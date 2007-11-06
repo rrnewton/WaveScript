@@ -30,23 +30,23 @@ dims   ::  Matrix t               -> (Int * Int);
 
  fun create(rows, cols, init) {
    // This should be nested build OR build/make
-   (cols,Array:make(rows*cols, init))
+   (rows,cols,Array:make(rows*cols, init))
  }
 
  fun get(mat, row, col) {
-   (rowsize,arr) = mat;
+   let (colsize,rowsize,arr) = mat;
    arr[col+rowsize*row]
  }
 
  fun set(mat, row, col, val) {
-   (rowsize,arr) = mat;
+   let (colsize,rowsize,arr) = mat;
    arr[col+rowsize*row] := val;
    () // mutators should return nothing!
  }
 
  fun dims(mat) {
-   (rowsize,arr) = mat;
-   (Array:length(arr)/rowsize, rowsize)
+   let (rows,cols,arr) = mat;
+   (rows,cols)
  }
  
  // Here we pack the Array of Arrays into a one-dimensional array for
@@ -70,13 +70,11 @@ dims   ::  Matrix t               -> (Int * Int);
    m = Matrix:create(r,c,gint(0));
    for i = 0 to r - 1 {
      for j = 0 to c - 1 {
-       Matrix:set(m,i,j,Array:get(arr, i + (j*r)));
+       Matrix:set(m,i,j,get(arr, i + (j*r)));
      }
    };
    m
  }
- // No guarantee to copy storage!!
- //fun fromArray2d(arr) arr
 
  // In general build is efficient because it doesn't need to zero the storage.
  fun build(r,c,f) {
@@ -90,28 +88,44 @@ dims   ::  Matrix t               -> (Int * Int);
    (c,arr)
  }
 
+ // No guarantee to copy storage!!
+ fun fromArray2d(arr) {
+   r = arr`Array:length;
+   c = arr[0]`Array:length;
+   Matrix:build(r,c,fun (i,j) (arr[i])[j])
+ }
 
  // rrn: Pure version:
  // Inefficient... but generally runs only at meta-time.
  fun fromList2d(list) {
    r = list`List:length;
    c = list`head`List:length;
-   Matrix:build(r,c,fun (i,j) {
-       List:ref(List:ref(list,i), j) }
+   Matrix:build(r,c,fun (i,j) 
+       List:ref(List:ref(list,i), j) )
  }
 
 
  // Note, these provide no guarantees as to allocating fresh storage:
  fun row(m,i) {
-   (rowsize,a) = m;
-   Array:build(rowsize,fun(j) a[i*rowsize+j])
+   let (r,c) = dims(m);
+   Array:build(r,fun(j) Matrix:get(m,i,j))
+ }
+ fun col(m,j) {
+   let (r,c) = dims(m);
+   Array:build(c,fun(i) Matrix:get(m,i,j))
  }
 
+/*  maybe faster versions... but hopefully optimizer will beat this
+ fun row(m,i) {
+   let (rowsize,a) = m;
+   Array:build(rowsize,fun(j) a[i*rowsize+j])
+ }
  fun col(m,j) {
-   (rowsize,a) = m;
+   let (rowsize,a) = m;
    colsize = a`Array:length / rowsize;
    Array:build(colsize,fun(i) a[i*rowsize+j])
  }
+*/
 
  fun foreachi(f, mat) {
    let (r,c) = dims(mat);
@@ -152,7 +166,8 @@ dims   ::  Matrix t               -> (Int * Int);
    }
  }
    */
+}
 
-include "matrix-common.ws"
+include "matrix-common.ws";
 
 
