@@ -91,7 +91,7 @@ fun high_pass_coefs(size, cutoff) {
 }
 
 fun psd(s, size) {
-  rw = rewindow(s, size*2, 0);
+  rw = rewindow(s, size*2, 0-size);
   han = hanning(rw);
   iterate (h in han) {
     freq = fftR2C(toArray(h));
