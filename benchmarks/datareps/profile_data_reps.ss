@@ -168,14 +168,17 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 
 (define (run-w/cpp prog)
 ;  [implementation 'wsc]
-  (parameterize ()
-    (printf "\nRUNNING WITH C++/XSTREAM COREFIT_DF\n")
-    (printf "================================================================================\n")
+  (parameterize ()    
+    ;; [2007.11.06] Getting segfaults with the new scheduler.
+    ;(printf "\nRUNNING WITH C++/XSTREAM COREFIT_DF\n")
+    ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
+    ;(wscomp prog () '(scheduler corefit-scheduler-df))
+    (printf "\nRUNNING WITH C++/XSTREAM 1495 DF\n")
+    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
+    (wscomp prog '(scheduler depth-first))
 
-    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
-    (wscomp prog () '(scheduler corefit-scheduler-df))
-    ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
-    ;(wscomp prog '(scheduler depth-first))
+    
+    (printf "================================================================================\n")
 
     (printf "Compiling with g++... ") (flush-output-port (current-output-port))
 					;(printf "finished (~a).\n" (system "wsc-g++ query -O3 &> /dev/null"))

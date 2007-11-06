@@ -908,8 +908,8 @@
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
    (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
                                             `(,ws-default-wavescope-scheduler))))
-
-   (ASSERT (andmap symbol? flags))
+   
+   ;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
 
    ;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
    ;;(pretty-print prog)

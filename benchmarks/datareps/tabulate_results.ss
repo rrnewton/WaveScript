@@ -19,6 +19,7 @@ exec regiment i "$0" ${1+"$@"};
 (define (grab-results name)
   (system "cat array_array.out | grep TimeElapsed: | sed 's/~/-/g' | awk '{ print $NF }'  > .tmp.out")
   (let ([aa_results (file->slist ".tmp.out")])
+    (ASSERT (= 3 (length aa_results)))
     (dump-lines (format "~a/~a_arrarr.result" startdir name)
 		(cons '("Implementation 1000x1000  100000x3  3x100000")
 		      (map cons '(Scheme C++ MLton) (group 3 aa_results))))))
