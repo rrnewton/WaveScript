@@ -49,6 +49,21 @@ dims   ::  Matrix t               -> (Int * Int);
    (rows,cols)
  }
  
+
+ fun show2(mat) {
+   let (rows,cols,arr) = mat;
+   str = Mutable:ref("");
+   str := str ++ "[ ";
+   for i = 0 to r - 1 {
+     for j = 0 to c - 1 {
+       str := str++Matrix:get(mat,i,j)++" ";
+     };
+     str := str ++ "\n  ";
+   };
+   str := str ++ "]\n";
+ }
+      
+
  // Here we pack the Array of Arrays into a one-dimensional array for
  // consistency with the GSl interface.
  fun toArray(mat) {
@@ -56,8 +71,8 @@ dims   ::  Matrix t               -> (Int * Int);
   // Could use Array:build but, we'd have to do division.
    let (r,c) = Matrix:dims(mat);
    arr = Array:makeUNSAFE(r*c);
-   for i = 0 to r - 1 {
-     for j = 0 to c - 1 {
+   for j = 0 to c - 1 {
+     for i = 0 to r - 1 {
        Array:set(arr, i + (j*r), Matrix:get(mat,i,j));
      }
    };
@@ -68,8 +83,8 @@ dims   ::  Matrix t               -> (Int * Int);
    c = arr`length / r;
    assert("fromArray: rows divide array length evenly", arr`length == r*c);
    m = Matrix:create(r,c,gint(0));
-   for i = 0 to r - 1 {
-     for j = 0 to c - 1 {
+   for j = 0 to c - 1 {
+     for i = 0 to r - 1 {
        Matrix:set(m,i,j,get(arr, i + (j*r)));
      }
    };
@@ -80,8 +95,8 @@ dims   ::  Matrix t               -> (Int * Int);
  fun build(r,c,f) {
    using Array;
    arr = Array:makeUNSAFE(r*c);
-   for i = 0 to r - 1 {
-     for j = 0 to c - 1 {
+   for j = 0 to c - 1 {
+     for i = 0 to r - 1 {
        arr[i*c+j] := f(i,j);
      }
    };
@@ -129,8 +144,8 @@ dims   ::  Matrix t               -> (Int * Int);
 
  fun foreachi(f, mat) {
    let (r,c) = dims(mat);
-   for i = 0 to r-1 {
-     for j = 0 to c-1 {
+   for j = 0 to c-1 {
+     for i = 0 to r-1 {
        f(i,j, get(mat,i,j))
      }
    }
