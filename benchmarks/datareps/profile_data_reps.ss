@@ -77,7 +77,7 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 			   vq)
 		    vq)
 		))
-	    (timer () '3.0)))
+	    (timer '3.0)))
 
 (define (timeit exp)
   `(let ([st1 (clock)])     
@@ -149,14 +149,14 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
     ;; The program exits via a wserror call, so we set this up:
     (parameterize ([wserror-handler
 		    (lambda (str) (printf "wserror: ~a\n" str))])
-      (pretty-print (stream-car (wsint prog))))))
+      (pretty-print (stream-car (wsint prog ()))))))
 
 (define (run-w/mlton prog)
 ;  [implementation 'wsmlton]
   (parameterize ()
     (printf "\nRUNNING WITH MLTON\n")
     (printf "================================================================================\n")
-    (wsmlton prog)
+    (wsmlton prog ())
     (printf "Compiling with mlton... ")
     (flush-output-port (current-output-port))
     (printf "finished (~a).\n" (system "wsmlton-secondphase query.sml &> /dev/null"))
@@ -173,7 +173,7 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
     (printf "================================================================================\n")
 
     (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
-    (wscomp prog '(scheduler corefit-scheduler-df))
+    (wscomp prog () '(scheduler corefit-scheduler-df))
     ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
     ;(wscomp prog '(scheduler depth-first))
 
