@@ -122,7 +122,7 @@
       (set-closure-type! val (fold-in type (closure-type val)))]
      [(suspension? val)  (void)]
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
-     [else (error 'unimpl "unmatched")]
+     [else (error 'set-value-type! "not handled yet: ~s" val)]
      ))
 
 
@@ -230,6 +230,17 @@
 ;    [(foreign ,[x*] ...) (cons 'foreign x*)]
     ;; ----------------------------------------
 
+
+    ;; [2007.11.07] HACKS for manually pinning to different CPUs:
+    [(SETCPU ,[int] ,[strm])
+     (ASSERT streamop? strm)
+     (ASSERT fixnum? (plain-val int))
+     (set-streamop-params! strm
+	(match (streamop-params strm)
+	  [((annotations ,alist ...) . ,rest)
+	   `((annotations (cpu-pin ,(plain-val int)) . ,alist)
+	     . ,rest)]))
+     strm]
 
     ;; Unionlist is a tad different because it takes a list of streams:
     [(unionList ,[ls])      
@@ -601,8 +612,16 @@
           (DEBUGASSERT (or (plain? (car params)) (closure? (car params))))
           (cons (Marshal (car params)) 
                 (loop (cdr argty*) (cdr params) parents)))]))) ;; End Silliness
+  ;; If available, let's add the name to the annotation list.
+  (define nameadded
+    (match arglist
+      [((annotations ,alist ...) ,otherargs ...)
+       ;; Don't replace a name that's already there:
+       (if (and (streamop-name op) (not (assq 'name alist)))
+	   `((annotations (name ,(streamop-name op)) ,@alist) ,@otherargs)
+	   arglist)]))
   ;; Produce primitive application syntax:
-  (define default (cons (streamop-op op) arglist))
+  (define default (cons (streamop-op op) nameadded))
 ;  (display-constrained "   MARSHALLING STREAMOP: " `[,op 100] "\n")
   (if (streamop-type op)
       `(assert-type ,(streamop-type op) ,default)

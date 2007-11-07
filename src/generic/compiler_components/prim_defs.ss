@@ -180,6 +180,10 @@
     (GETENV (String) String) ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
     (SHELL (String) String)  ; Returns a string containing the output of the subprocess.
+
+    ;; [2007.11.07] These are hacks to manually parallelize programs.
+    (SETCPU           (Int (Stream 't)) (Stream 't))
+    (SETCPUDEEP       (Int (Stream 't)) (Stream 't))
     ))
 
 
@@ -591,7 +595,6 @@
     ;;
     ;; Uniontypes need to be used or this will result in an infinite loop.
     (feedbackloop     ((Stream 't) ((Stream 't) -> (Stream 't)))  (Stream 't))
-
 
     (gnuplot_array    ((Array (NUM a))) #())
     ;; Takes an (X,Y) pair.

@@ -119,7 +119,7 @@
 		 ;; A foreign procedure for freeing external memory:
 		 C-free exclusivePtr getPtr nullPtr ptrIsNull ptrMakeNull
 
-		 readFile-wsearly FILE_EXISTS GETENV SHELL
+		 readFile-wsearly FILE_EXISTS GETENV SHELL SETCPU SETCPUDEEP
 		 clock realtime
 
 		 HACK_O_RAMA
@@ -1842,6 +1842,9 @@
 (define FILE_EXISTS file-exists?)
 (define (GETENV str) (or (getenv str) ""))
 (define SHELL system-to-str)
+
+(define (SETCPU i s) s)
+(define (SETCPUDEEP i s) s)
 
 (define (clock) (exact->inexact (cpu-time)))
 (define (realtime) (/ current-vtime 1000))

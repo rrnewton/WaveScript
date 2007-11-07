@@ -302,7 +302,8 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
   
   // SPLIT VERSION:
   split = { 
-    half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
+    _half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
+    half1 = SETCPU(1,_half1);
     half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
     smap(fun(((a,st,tb),(b,_,_))) {
            print("  Got zipped results...\n");

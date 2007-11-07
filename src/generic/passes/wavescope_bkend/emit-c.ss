@@ -304,6 +304,7 @@
 	[(iterate (annotations . ,annot) ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))	  
+	 ;(if (assq 'cpu-pin annot) (inspect (vector "SET CPU ON ITERATE: " annot)))
 	 (let* ([parent (Var sig)]
 		[class_name `("Iter_" ,name)]
 

@@ -21,17 +21,17 @@ samp_rate = 24000.0;
 
 
 // [2007.11.07] Disabling this because of problems with DF and amplification.
-/*
-file = "testdata.txt"
-mytimer = repeater(2400, timer(20.0))
-_chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
-__chans = window(_chans, 8192);
-chans = repeater(21, __chans)
-*/
 
-file = "6sec_marmot_sample.raw"
-mytimer = timer(40.0)
-chans = (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Float));
+chans = if true
+  then { file = "testdata.txt";
+         mytimer = repeater(2400, timer(20.0));
+         _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
+         __chans = window(_chans, 8192);
+         repeater(21, __chans); }
+  else { file = "6sec_marmot_sample.raw";
+         mytimer = timer(40.0);
+	 (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Float));
+       };
 
 split = deinterleaveSS(4, 2048, chans);
 
