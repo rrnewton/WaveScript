@@ -1,8 +1,12 @@
 
 /*
-*  benchmark results.  rowmajor: 6270
-*                      original: 11614
-*                      rowmajor hand-opt indexing: 3365
+*  benchmark results.
+*   original:              11614
+*   rowmajor:               6270
+*   rowmajor with list:     6323
+*   rowmajor lift mults:    4667
+*   rowmajor index by adds: 3365
+*   rowmajor unroll:        1956
 *
 */
 
@@ -10,9 +14,17 @@
 
 include "stdlib.ws";
 include "matrix-rowmajor.ws";
+//include "matrix-rowmajor-spec.ws";
 //include "matrix.ws";
 
- // *** NOTE THIS MUST BE COMMENTED OUT IF WE ARE USING ORIG MATRIX LIB
+////////////////////////
+//
+// *** NOTE THE FOLLOWING OPTS ONLY WORK WITH THE MATRIX-ROWMAJOR.WS
+//     VERSION.  ALL OTHERS HAVE AN INCOMPATIBLE DATA REP
+//
+///////////////////////
+
+
  // Matrix multiplication.
  fun mul_rm_opt_index(m1,m2) {
   using Array;
@@ -24,14 +36,11 @@ include "matrix-rowmajor.ws";
 
   for i = 0 to r1-1 {
     tmpiout = i*c2;
+    tmpi = i*c1;
     for j = 0 to c2-1 {
       sum = Mutable:ref( gint(0) );
-      tmpi = Mutable:ref(i*c1);
-      tmpj = Mutable:ref(j);
       for k = 0 to r2-1 {
-	sum := sum + arr1[tmpi] * arr2[tmpj];
-        tmpi := tmpi + 1;
-        tmpj := tmpj + c2;
+	sum := sum + arr1[tmpi+k] * arr2[k*c2+j];
       };
       arr_o[tmpiout+j] := sum;
     }
@@ -40,7 +49,6 @@ include "matrix-rowmajor.ws";
  }
 
 
- // *** NOTE THIS MUST BE COMMENTED OUT IF WE ARE USING ORIG MATRIX LIB
  // Matrix multiplication.
  fun mul_rm_opt_index2(m1,m2) {
   using Array;
@@ -68,7 +76,6 @@ include "matrix-rowmajor.ws";
  }
 
 
-
  // Matrix multiplication.
  fun mul_rm_opt_unroll(m1,m2) {
   using Array;
@@ -87,17 +94,30 @@ include "matrix-rowmajor.ws";
       tmpi = Mutable:ref(i*c1);
       tmpj = Mutable:ref(j);
       tmps = Mutable:ref(0);
-      for k = 0 to r2-1 {
-	sum[tmps] := sum[tmps] + arr1[tmpi] * arr2[tmpj];
+      fun unroll(index) {
+        sum[index] := sum[index] + arr1[tmpi] * arr2[tmpj];
         tmpi := tmpi + 1;
         tmpj := tmpj + c2;
-        tmps := (tmps + 1); if (tmps = 8) then tmps := 0;
+      };
+      for k = 0 to (r2/8)-1 {
+        unroll(0);
+        unroll(1);
+        unroll(2);
+        unroll(3);
+        unroll(4);
+        unroll(5);
+        unroll(6);
+        unroll(7);
+      };
+      for k = 8*(r2/8) to r2-1 {
+	unroll(0);
       };
       arr_o[tmpiout+j] := Array:fold((+),gint(0),sum);
     }
   };
   m3 // Return.
  }
+
 
 
 result = iterate (() in timer(30.0)) {
@@ -112,9 +132,10 @@ result = iterate (() in timer(30.0)) {
 
     start1 = clock();
 
-    m2 = Matrix:mul(m,m);
+    //m2 = Matrix:mul(m,m);
     //m2 = mul_rm_opt_index(m,m);
-    //m2 = mul_rm_opt_unroll(m,m);
+    //m2 = mul_rm_opt_index2(m,m);
+    m2 = mul_rm_opt_unroll(m,m);
 
     start2 = clock();
 
