@@ -331,6 +331,7 @@ bool wsequal(wsint16_t x,   wsint16_t y)   { return x==y; }
 bool wsequal(wsint64_t x,   wsint64_t y)   { return x==y; }
 //bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
 bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
+bool wsequal(wsdouble_t x, wsdouble_t y)   { return x==y; }
 bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
 bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
 

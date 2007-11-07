@@ -565,7 +565,7 @@
 ;; constant amount of time.H
 (define-regiment-parameter etx-retry-delay 50)
 ;; And this is the maximum number of times a retry will be made.
-(define-regiment-parameter etx-max-retries 3)
+(define-regiment-parameter etx-max-retries 5)
 
 ;;; Used primarily by pass cps-tokmac
 ;====================================================

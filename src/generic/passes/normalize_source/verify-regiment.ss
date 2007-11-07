@@ -206,6 +206,9 @@
      `(,prim ,rand* ...)]
     
     [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
+
+    [(,record . ,rest) (guard (memq record '(record record-update)))
+     (error 'verify-regiment "record syntax not supported yet ~s" `(,record . ,rest))]
     
     [,unmatched
      (error 'verify-regiment "invalid syntax ~s" unmatched)])))

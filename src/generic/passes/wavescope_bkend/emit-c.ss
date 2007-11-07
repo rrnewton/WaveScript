@@ -315,6 +315,7 @@
                      ,name"->connect(",parent");\n")]
                   [(corefit-scheduler-ex corefit-scheduler-df)
                    (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+		     (ASSERT fixnum? cpu-num)
                      `("WSBox* ",name" = new ",class_name "(" ");\n"
                        "query.addOp(",name");\n"
                        ,name"->setCPU(",(number->string cpu-num)");\n" ; FIXME: use params. file
@@ -1516,7 +1517,9 @@
   (match expr
     ;; First we handle "open coded" primitives and special cases:
 
-    [(clock) (wrap "((double)clock() / 1000.0)")]
+    [(clock) `("getrusage(RUSAGE_SELF, &global_rusage);\n"
+	       ,(wrap "(global_rusage.ru_utime.microseconds / 1000)"))]
+    [(realtime) (wrap "(clock() * 1000 / CLOCKS_PER_SEC)")]
 
     [(Mutable:ref ,[Simple -> x]) (wrap x)]
     [(deref ,[Simple -> x]) (wrap x)]

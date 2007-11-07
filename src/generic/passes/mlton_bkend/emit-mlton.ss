@@ -1301,7 +1301,8 @@
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
 
-      [clock "(fn () => (Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer())))) * 1000.0)"]
+      [clock    "(fn () => (Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer())))) * 1000.0)"]
+      [realtime "(fn () => (Int64.fromLarge (Time.toMilliseconds (Timer.checkRealTimer (Timer.totalRealTimer())))))"]
 
       [Secret:newTimebase newTimebase]    ;; ADT breakage!
 
@@ -1356,9 +1357,7 @@
 		   < <= >= > max min = 
 		   		   
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
-		   
-		   realtime
-		   
+		   		   
 		   wsequal? print show seg-get toArray
 
 		   stringToComplex 

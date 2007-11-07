@@ -10,10 +10,11 @@ all:
 	echo '\begin{verbatim}' > top_before.tex
 	top -b | head -n 20    >> top_before.tex
 	echo '\end{verbatim}'  >> top_before.tex
-	$(MAKE) perfreport.pdf
+	$(MAKE) foobarbaz
 	echo '\begin{verbatim}' > top_after.tex
 	top -b | head -n 20    >> top_after.tex
 	echo '\end{verbatim}'  >> top_after.tex
+	$(MAKE) perfreport.pdf
 ## Really, the correct thing to do would be to modify CPU utilization
 ## during the execution of the benchmarks to make sure nothing else
 ## was stealing CPU from us.
@@ -21,9 +22,11 @@ all:
 engine: 
 	./setup_engines.sh
 
-perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf 
-	pdflatex -halt-on-error perfreport.tex
+foobarbaz: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf 
 # datareps/alloc_arrarr.pdf ## DISABLING
+
+perfreport.pdf:
+	pdflatex -halt-on-error perfreport.tex
 
 machineinfo.tex:
 	echo '\begin{verbatim}' > machineinfo.tex

@@ -9,6 +9,8 @@ static ostringstream global_show_stream(ostringstream::out);
 
 static bool stopalltimers = 0;
 
+static struct rusage global_rusage;
+
 // LISTS: 
 //==============================================================================
 // We can't define list functions inside the WSPrim class because of template magic

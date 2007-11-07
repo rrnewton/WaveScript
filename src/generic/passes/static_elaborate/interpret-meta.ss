@@ -238,7 +238,7 @@
      (set-streamop-params! strm
 	(match (streamop-params strm)
 	  [((annotations ,alist ...) . ,rest)
-	   `((annotations (cpu-pin ,(plain-val int)) . ,alist)
+	   `((annotations (cpu-pin . ,(plain-val int)) . ,alist)
 	     . ,rest)]))
      strm]
 

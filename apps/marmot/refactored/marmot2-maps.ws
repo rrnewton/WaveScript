@@ -302,6 +302,8 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
   
   // SPLIT VERSION:
   split = { 
+
+
     _half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
     half1 = SETCPU(1,_half1);
     half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
@@ -309,7 +311,8 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
            print("  Got zipped results...\n");
            (Array:append(a,b), st,tb)
          },
-         zip2_sametype(half1,half2)) };
+         zip2_sametype(half1,half2)) 
+  };
 
   // MONOLITHIC VERSION:
   aml_result = smap(fun((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb), temp);

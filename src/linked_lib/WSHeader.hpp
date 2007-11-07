@@ -28,6 +28,8 @@
 //#include <complex.h>
 #include <complex>
 #include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 //#include <gsl/gsl_linalg.h>
 //#include <gsl/gsl_matrix.h>

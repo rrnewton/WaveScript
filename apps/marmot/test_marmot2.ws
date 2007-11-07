@@ -22,18 +22,23 @@ samp_rate = 24000.0;
 
 // [2007.11.07] Disabling this because of problems with DF and amplification.
 
-chans = if true
+chans = 
+  if true
   then { file = "testdata.txt";
          mytimer = repeater(2400, timer(20.0));
          _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
          __chans = window(_chans, 8192);
          repeater(21, __chans); }
   else { file = "6sec_marmot_sample.raw";
-         mytimer = timer(40.0);
+         mytimer = timer(80.0);
 	 (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Float));
        };
 
-split = deinterleaveSS(4, 2048, chans);
+
+include "marmot2.ws";
+
+fun run_it(chans) {
+  split = deinterleaveSS(4, 2048, chans);
 
 //ch1 = snoop("chan1 ", List:ref(split, 0)) ;
 _ch1 = List:ref(split, 0);
@@ -45,36 +50,34 @@ ch1 = iterate x in _ch1 {
   state { fst = true }
   if fst then { fst:=false; println("Got a window on ch1, first element:" ++ x[[0]])};
   emit x;
-}
+};
 
 synced0 = zipN_sametype(0, [ch1,ch2,ch3,ch4]);
 
 synced1 = iterate ls in synced0 {
   using List;
   emit (ls`ref(0), ls`ref(1), ls`ref(2), ls`ref(3))
-}
+};
 
 synced2 = iterate x in synced0 {
   print("Got synced\n");
   emit x;
-}
+};
 
 synced = synced2;
-include "marmot2.ws";
 
 fun SLSSmap(fn,slss)
   smap(fun (ls) List:map(fun(ss) sigseg_map(fn,ss), ls), slss);
 
 //converted = SLSSmap(floatToInt16, synced0)
 
+doas = oneSourceAMLTD_helper(synced0, 2048);
+doas
+}
+
 //========================================
 // Main query:
 
-
-//doas = FarFieldDOAb(synced, sensors);
-//doas = oneSourceAMLTD(synced, micgeometry, 2048); 
-//doas :: Stream (Array Float);
-doas = oneSourceAMLTD_helper(synced0, 2048);
 //doas = oneSourceAMLTD(synced0, 4096);
 
 //BASE <- chans;
@@ -88,5 +91,10 @@ doas = oneSourceAMLTD_helper(synced0, 2048);
 
 //BASE <- (smap(fst, doas))
 //BASE <- smap(fun (_) (), doas)
-BASE <- timeN(20, doas)
+//BASE <- timeN(20, doas)
+
+
+//BASE <- run_it(chans)
+
+BASE <- smap(fun(_)(), timeTransformer(5, chans, run_it))
 

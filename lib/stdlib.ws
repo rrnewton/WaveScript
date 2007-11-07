@@ -795,9 +795,16 @@ fun holdAndRepeat(num, repeats, startfun, strm) {
   }
 }
 
+// Times how long it takes for a given stream transformer to execute
+// to produce N tuples.  Of course, it captures total processing time
+// between the point that the stream transformer starts executing and
+// finishes.  It has no way to discount processing done by other
+// operators.
 fun timeTransformer(num, input, strans) {
-  fun strtfn() { print("STARTTIME:"); print(show(clock())); print("\n") };
-  fun endfn()  { print("ENDTIME: "); print(show(clock())); print("\n") };
+  fun strtfn() { print("STARTTIMECPU:");  print(show(clock()));    print("\n");
+                 print("STARTTIMEREAL:"); print(show(realtime())); print("\n"); };
+  fun endfn()  { print("ENDTIMECPU: ");  print(show(clock()));    print("\n");
+                 print("ENDTIMEREAL: "); print(show(realtime())); print("\n"); };
   strt = iterate x in input {
     state { first = true }
     if first then { strtfn(); first := false };
