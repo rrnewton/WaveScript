@@ -7,6 +7,7 @@ bool WSOUTPUT_PREFIX = TRUE;
 static char global_show_buffer[500];
 static ostringstream global_show_stream(ostringstream::out);
 
+static bool stopalltimers = 0;
 
 // LISTS: 
 //==============================================================================
@@ -636,6 +637,10 @@ public:
       while (!Shutdown())
       {
         //printf("   <<< TIMER FIRING >>>\n");
+	if (stopalltimers) {
+	  printf("  One timer stopping...\n");
+	  WSSched::stop();
+	}
         source_emit(0);
         usleep(period);
       }

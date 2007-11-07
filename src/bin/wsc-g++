@@ -24,8 +24,14 @@ SCHEDULER="default-scheduler"
 
 
 if [ "$WSCDEBUG" == "1" ];
-then CCARGS="$CCARGS -g -O0";
-else CCARGS="$CCARGS -O2"; 
+then CCARGS="$CCARGS -g ";
+     COPTFLAG="-O0"
+#then CCARGS="$CCARGS -g -O0";
+#else CCARGS="$CCARGS -O2"; 
+fi
+
+if [ "$COPTFLAG" == "" ];
+then COPTFLAG="-O2"
 fi
 
 while [ $# != 0 ];  do 
@@ -56,7 +62,7 @@ MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 
 # -fPIC | -O1/2/3 | -g
 #WS_FLAGS="-fPIC -pg $CCARGS"
-WS_FLAGS=" $CCARGS"
+WS_FLAGS=" $CCARGS $COPTFLAG"
 
 
 case $SCHEDULER in

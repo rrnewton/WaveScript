@@ -209,7 +209,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
    (mail ryan-email "Failure of supertest.ss" msg)
    ;; Might as well try this too:
    (fpf msg)
-   (post-to-web (format "rev_~a_ERROR" svn-revision))
+   (post-to-web (format "rev~a_ERROR" svn-revision))
    (exit 1)))
 
 (define date 
@@ -378,10 +378,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   ;; This is the OLD one:
   (run-test "ws: Loading old matrix_test.ws:" 
-	    (format "echo 10 | ws matrix_test.ws -exit-error &> ~a/matrix_old.log" test-directory))
+	    (format "ws matrix_test.ws -exit-error -n 10 &> ~a/matrix_old.log" test-directory))
 
   (run-test "ws: Running native WS test_matrix.ws:" 
-	    (format "echo 10 | ws test_matrix.ws -exit-error &> ~a/matrix_ws.log" test-directory))
+	    (format "ws test_matrix.ws -exit-error -n 10 &> ~a/matrix_ws.log" test-directory))
   )
 
 ;; Now for GSL interface.
@@ -575,9 +575,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "    Run application benchmarks: " 
 	    (format "make &> ~a/bench_apps.log" test-directory))
   
-  (current-directory (format "~a/benchmarks/datareps" test-root))
-  (run-test "    Run datarep benchmarks:" 
-	    (format "make &> ~a/bench_datareps.log" test-directory))
+;  (current-directory (format "~a/benchmarks/datareps" test-root))
+;  (run-test "    Run datarep benchmarks:" 
+;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
   (current-directory (format "~a/benchmarks" test-root))
   (run-test "    Compile results, build full report: " 

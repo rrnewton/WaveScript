@@ -452,6 +452,7 @@
 		    (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
 		    ;(list classname "(wsstring_t path, WSSource *ignored_source, wsstring_t mode)")
 		    `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
+		      "stoppedbefore = 0;"
 		      "binarymode = (mode == string(\"binary\"));\n"
 		      "if (_f == NULL) {\n"
 		      "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
@@ -469,6 +470,7 @@
 	          ;; Then some private state:
 		   "\nprivate:\n"
 		   "  FILE* _f;\n"
+		   "  bool stoppedbefore;\n"
 		   "  bool binarymode;\n"
 		   (if (> winsize 0) "  int sampnum;\n" "")
 
@@ -530,8 +532,13 @@
 			      
 			      ,(block `("if (status != ",(number->string (max 1 winsize))
 					" * (binarymode ? 1 : ",(number->string (length types))"))")
-				      '("chatter(LOG_WARNING, \"dataFile EOF encountered (%d).\", status);\n"
-					"WSSched::stop();\n"
+				      '("if (!stoppedbefore)\n"
+					"chatter(LOG_WARNING, \"dataFile EOF encountered (%d) stopalltimers.\", status);\n"
+					;"WSSched::stop();\n"
+					;; [2007.11.06] readfile is no longer a source, hacking it to do this:
+					;; Should really stop only the upstream timer however.
+					"stopalltimers = 1;\n"
+					"stoppedbefore = 1;\n"
 					"return true;\n"))
 					;"t.time = (uint64_t)(time*1000000);\n"
 			      ,(if (> winsize 0)

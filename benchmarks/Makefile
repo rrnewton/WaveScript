@@ -21,8 +21,9 @@ all:
 engine: 
 	./setup_engines.sh
 
-perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf datareps/alloc_arrarr.pdf
+perfreport.pdf: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf 
 	pdflatex -halt-on-error perfreport.tex
+# datareps/alloc_arrarr.pdf ## DISABLING
 
 machineinfo.tex:
 	echo '\begin{verbatim}' > machineinfo.tex

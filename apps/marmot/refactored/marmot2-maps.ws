@@ -237,6 +237,8 @@ fun actualAML(start, count, grid_size,
       result
     };
 
+    log(1, "INSIDE ACTUALAML, start "++start);
+
     Array:build(count, fun(i) do_aml_angle(start+i));
 }
 
@@ -246,11 +248,9 @@ fun actualAML(start, count, grid_size,
 
 // win_size decides how AML results to use
 //oneSourceAMLTD :: (Stream Detection, Int) -> Stream AML;
-fun oneSourceAMLTD(synced, win_size) {
+fun oneSourceAMLTD_helper(synced_floats, win_size) {
   using Matrix;
   using Float; 
-  
-  synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
 
   // calculate how many acoustic sensors exist (this is AML_NUM_CHANNELS)
   // rrn: can't currently calculate matrix dimensions (foreign function) at compile time:
@@ -277,14 +277,13 @@ fun oneSourceAMLTD(synced, win_size) {
                 st = List:ref(ls,0)`start;
 		tb = List:ref(ls,0)`timebase;
 		wid = List:ref(ls,0)`width;
-                log(1, "AMLING_DETECTION_SEGMENTS  START " ++st++ " WIDTH " ++wid++ " TIMEBASE " ++tb);
+                //log(1, "AMLING_DETECTION_SEGMENTS  START " ++st++ " WIDTH " ++wid++ " TIMEBASE " ++tb);
                (list_of_rowsegs_to_matrix(ls), st, tb)
 	    },
 	    synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
-  //grid_size = 360; // 1 unit per degree.
-  grid_size = 36; // 1 unit per degree.
+  grid_size = 360; // 1 unit per degree.
 
   // Project out the range of data we want to look at:
   projected = smap(fun((mat, st, tb)) {
@@ -305,7 +304,10 @@ fun oneSourceAMLTD(synced, win_size) {
   split = { 
     half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
     half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
-    smap(fun(((a,st,tb),(b,_,_))) (Array:append(a,b), st,tb),
+    smap(fun(((a,st,tb),(b,_,_))) {
+           print("  Got zipped results...\n");
+           (Array:append(a,b), st,tb)
+         },
          zip2_sametype(half1,half2)) };
 
   // MONOLITHIC VERSION:
@@ -318,6 +320,11 @@ fun oneSourceAMLTD(synced, win_size) {
   else split
 }
 
+fun oneSourceAMLTD(synced, win_size) {
+  synced_floats = smap(fun(x) List:map(fun(x) sigseg_map(int16ToFloat,x), x), synced);
+  oneSourceAMLTD_helper(synced_floats, win_size);
+}
+
 
 /**************************************************************/
 
@@ -325,21 +332,21 @@ fun oneSourceAMLTD(synced, win_size) {
 
 // This basic version works fine... it just appeared not to work
 // because of weird Gnuplot/mlton communication problems.
-normalize_aml :: AML -> AML;
+//normalize_aml :: AML -> AML;
 fun normalize_aml((doas,st,tb)) {
   total = Array:fold((+), 0.0, doas);
   arr = Array:map((/ total), doas);
   (arr, st, tb)
 }
 
-aml_to_unitcircle :: AML -> AML;
+//aml_to_unitcircle :: AML -> AML;
 fun aml_to_unitcircle((doas,st,tb)) {
   high = Array:fold1(max, doas);
   arr = Array:map((/ high), doas);
   (arr, st, tb)
 }
 
-aml_to_int16s :: AML -> IntAML;
+//aml_to_int16s :: AML -> IntAML;
 fun aml_to_int16s((arr,st,tb)) {
   //log(1,"Converting AML to Int16");
   fun convert(f) {
@@ -354,7 +361,7 @@ fun aml_to_int16s((arr,st,tb)) {
 
 // Remember to normalize after applying this!!
 // This will produce numbers *between* 0.0 and 1.0, but they won't *sum* to 1.0
-aml_to_floats :: IntAML -> AML;
+//aml_to_floats :: IntAML -> AML;
 fun aml_to_floats((arr,st,tb)) {
   (Array:map(fun(n) (int16ToFloat(n) + 32768.0) / 65535.0, arr), st, tb)
 }

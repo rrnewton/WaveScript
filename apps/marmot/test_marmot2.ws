@@ -12,17 +12,26 @@ include "gnuplot.ws";
 // When we're not live we just print log messages to the stream.
 fun log(l,s) println(s)
 
+GUIENABLED = false
+
 // Here we read in a small data sample.
-file = "testdata.txt"
 samp_rate = 24000.0; 
 
 //chans = (readFile(file, "mode: text window: 8192 rate: 24000 ") :: Stream Sigseg (Float)); 
 
-mytimer = repeater(240, timer(10.0))
-_chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
-chans = window(_chans, 8192);
 
-//chans = holdAndRepeat(8192, 100, fun()(), _chans)
+// [2007.11.07] Disabling this because of problems with DF and amplification.
+/*
+file = "testdata.txt"
+mytimer = repeater(2400, timer(20.0))
+_chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
+__chans = window(_chans, 8192);
+chans = repeater(21, __chans)
+*/
+
+file = "6sec_marmot_sample.raw"
+mytimer = timer(40.0)
+chans = (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Float));
 
 split = deinterleaveSS(4, 2048, chans);
 
@@ -78,4 +87,6 @@ doas = oneSourceAMLTD_helper(synced0, 2048);
 //BASE <- iterate x in doas { print("GOT FINAL RESULT\n");  emit x }
 
 //BASE <- (smap(fst, doas))
-BASE <- doas
+//BASE <- smap(fun (_) (), doas)
+BASE <- timeN(20, doas)
+

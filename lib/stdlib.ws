@@ -746,6 +746,20 @@ fun sparsify(n,s) {
   }
 }
 
+// This pulls N+1 elements from the stream because it only starts
+// timing when it receives the first element.
+// DANGER, this is only valid with a pure depth-first traversal order.
+fun timeN(n,s) {
+  iterate x in s {
+    state { cnt = 0; start = 0 }
+    if cnt == 0 then start := clock();
+    if cnt == n 
+    then { print("TOTALTIME: "++ clock() - start ++ "\n");
+           emit (); };
+    cnt += 1;
+  }
+}
+
 // Pull n tuples from a stream, store them.  Then call a start
 // function and spool them out for some number of repeats.
 fun holdAndRepeat(num, repeats, startfun, strm) {
