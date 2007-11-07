@@ -32,6 +32,21 @@ namespace Matrix {
    build(r,c, fun(i,j) f(get(mat1,i,j), get(mat2,i,j)))
  }
 
+ fun show2(mat) {
+   let (r,c) = Matrix:dims(mat);
+   str = Mutable:ref("");
+   str := str ++ "[ ";
+   for i = 0 to r - 1 {
+     for j = 0 to c - 1 {
+       str := str++Matrix:get(mat,i,j)++" ";
+     };
+     if (i != r-1) then 
+       str := str ++ "\n  ";
+   };
+   str ++ "]\n"
+ }
+      
+
  //========================================
 
  fun add(m1,m2)          Matrix:map2((+), m1, m2)
@@ -63,7 +78,6 @@ namespace Matrix {
   m3 = Matrix:create(r1, c2, Matrix:get(m1,0,0));
   for i = 0 to r1-1 {
     for j = 0 to c2-1 {
-      // need to know type :( .. what if not float?
       sum = Mutable:ref( gint(0) );
       for k = 0 to r2-1 {
 	sum := sum + (Matrix:get(m1,i,k) * Matrix:get(m2,k,j));

@@ -50,20 +50,6 @@ dims   ::  Matrix t               -> (Int * Int);
  }
  
 
- fun show2(mat) {
-   let (r,c,arr) = mat;
-   str = Mutable:ref("");
-   str := str ++ "[ ";
-   for i = 0 to r - 1 {
-     for j = 0 to c - 1 {
-       str := str++Matrix:get(mat,i,j)++" ";
-     };
-     str := str ++ "\n  ";
-   };
-   str ++ "]\n"
- }
-      
-
  // Here we pack the Array of Arrays into a one-dimensional array for
  // consistency with the GSl interface.
  fun toArray(mat) {

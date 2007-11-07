@@ -2,7 +2,8 @@
 // Matrix.ws needs stdlib.ws.
 
 include "stdlib.ws";
-include "matrix-rowmajor.ws";
+//include "matrix-rowmajor.ws";
+include "matrix.ws";
 
 
 
