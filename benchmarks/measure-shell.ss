@@ -54,7 +54,7 @@
         (error 'main "please provide some command-line arguments")))
 
   (pretty-print
-   (measure-wavescript-program plan)))
+   (compile-and-measure-wavescript-program plan)))
 
 
 

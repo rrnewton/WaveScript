@@ -9,7 +9,8 @@
            "running.ss")
 
   ;
-  (provide measure-wavescript-program)
+  (provide measure-wavescript-program
+           compile-and-measure-wavescript-program)
 
 
 ;
@@ -29,10 +30,25 @@
     (run-logfile)
     ))
 
+
 ;
 ;
 ;
 (define (measure-wavescript-program plan)
+  
+  (define full-plan (append plan default-plan))
+  (define execution-output (run-wavescope-program full-plan))
+
+  (define implicit-parameters
+    `(,@(get-svn-info)))
+
+  (append execution-output implicit-parameters plan))
+
+
+;
+;
+;
+(define (compile-and-measure-wavescript-program plan)
 
   (define full-plan (append plan default-plan))
   (define compilation-output (compile-wavescript-program full-plan))
