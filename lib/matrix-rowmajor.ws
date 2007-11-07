@@ -10,7 +10,7 @@
 include "stdlib.ws";
 
 
-type Matrix t = (int * Array t);
+type Matrix t = (int * int * Array t);
 
 //DEBUGMATRIX = true
 
@@ -51,7 +51,7 @@ dims   ::  Matrix t               -> (Int * Int);
  
 
  fun show2(mat) {
-   let (rows,cols,arr) = mat;
+   let (r,c,arr) = mat;
    str = Mutable:ref("");
    str := str ++ "[ ";
    for i = 0 to r - 1 {
@@ -60,7 +60,7 @@ dims   ::  Matrix t               -> (Int * Int);
      };
      str := str ++ "\n  ";
    };
-   str := str ++ "]\n";
+   str ++ "]\n"
  }
       
 
@@ -85,7 +85,7 @@ dims   ::  Matrix t               -> (Int * Int);
    m = Matrix:create(r,c,gint(0));
    for j = 0 to c - 1 {
      for i = 0 to r - 1 {
-       Matrix:set(m,i,j,get(arr, i + (j*r)));
+       Matrix:set(m,i,j,arr[i + (j*r)]);
      }
    };
    m
@@ -100,7 +100,7 @@ dims   ::  Matrix t               -> (Int * Int);
        arr[i*c+j] := f(i,j);
      }
    };
-   (c,arr)
+   (r,c,arr)
  }
 
  // No guarantee to copy storage!!

@@ -50,20 +50,22 @@ namespace Matrix {
 
  // Transpose
  fun trans(m) {
-   let (r,c) = dim(m);
+   let (r,c) = Matrix:dims(m);
    build(c,r,fun (j,i) get(m,i,j))
  }
 
  // Matrix multiplication.
  fun mul(m1,m2) {
   using Array;
+  let (r1,c1) = Matrix:dims(m1);
+  let (r2,c2) = Matrix:dims(m2);
   // TODO: could be more defensive here, check for null:
-  m3 = Matrix:create(m1`length, m2[0]`length, Matrix:get(m1,0,0));
-  for i = 0 to m1`length-1 {
-    for j = 0 to m2[0]`length-1 {
+  m3 = Matrix:create(r1, c2, Matrix:get(m1,0,0));
+  for i = 0 to r1-1 {
+    for j = 0 to c2-1 {
       // need to know type :( .. what if not float?
       sum = Mutable:ref( gint(0) );
-      for k = 0 to m2`length-1 {
+      for k = 0 to r2-1 {
 	sum := sum + (Matrix:get(m1,i,k) * Matrix:get(m2,k,j));
       };
       Matrix:set(m3,i,j,sum)

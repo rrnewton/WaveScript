@@ -26,27 +26,47 @@ result = iterate (() in timer(30.0)) {
 
     // These are some unit tests. 
    
-    println("Dimensions are 4,3? "++mat`Matrix.dims);
-    println(show2(mat));
-    println();
+    println("Dimensions are 3,4? "++mat`Matrix:dims);
+    println(Matrix:show2(mat));
+    println("");
 
-    println("Dimensions are 3,4? "++m`Matrix.dims);
-    println(show2(m));
-    println(show2(Matrix:trans(m)));
-    println(show2(Matrix:mul(m,Matrix:trans(m))));
-    println();
+    println("Dimensions are 3,4? "++m`Matrix:dims);
+    println(Matrix:show2(m));
+    println(Matrix:show2(Matrix:trans(m)));
+    println(Matrix:show2(Matrix:mul(m,Matrix:trans(m))));
+    println("");
 
-    m2 = Matrix:create(5, 5, 3.0);
-    
+    Matrix:set(m,1,1,10);
+    println(Matrix:show2(m));
+    println(Matrix:show2(Matrix:trans(m)));
+    println(Matrix:show2(Matrix:mul(m,Matrix:trans(m))));
+    println("");
+
     simple = Matrix:fromList2d([[1.0, 2.0], [3.0 , 4.0]]);
 
-    println("Dimensions are 2,2? "++simple`Matrix.dims);
-    println(show2(simple));
-    println(show2(Matrix:trans(simple)));
-    println(show2(Matrix:mul(simple,simple)));
-    println();
+    println("Dimensions are 2,2? "++simple`Matrix:dims);
+    println(Matrix:show2(simple));
+    println(Matrix:show2(Matrix:trans(simple)));
+    println(Matrix:show2(Matrix:mul(simple,Matrix:trans(simple))));
+    println("");
 
     first := false;
+
+    println("Round tripping thru 1 d array");
+    arr = Matrix:toArray(simple);
+    println(Matrix:show2(Matrix:fromArray(arr,2)));
+
+/*
+    println("Round tripping thru 2 d array");
+    arr2 = Matrix:toArray2d(simple);
+    println(Matrix:show2(Matrix:fromArray2d(arr2)));
+*/
+
+    println("first col is "++Matrix:col(simple,0));
+    println("first row is "++Matrix:row(simple,0));
+
+    println("do a foreach:");
+    Matrix:foreachi((fun(i,j,v) println("i="++i++" j="++j++" v="++v)),simple);
 
   } 
 }
