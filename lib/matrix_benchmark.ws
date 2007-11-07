@@ -12,7 +12,7 @@ include "stdlib.ws";
 include "matrix-rowmajor.ws";
 //include "matrix.ws";
 
-
+ // *** NOTE THIS MUST BE COMMENTED OUT IF WE ARE USING ORIG MATRIX LIB
  // Matrix multiplication.
  fun mul_rm_opt_index(m1,m2) {
   using Array;
@@ -39,6 +39,8 @@ include "matrix-rowmajor.ws";
   m3 // Return.
  }
 
+
+/*
  // Matrix multiplication.
  fun mul_rm_opt_unroll(m1,m2) {
   using Array;
@@ -68,7 +70,7 @@ include "matrix-rowmajor.ws";
   };
   m3 // Return.
  }
-
+*/
 
 result = iterate (() in timer(30.0)) {
   state { first = true }
@@ -76,14 +78,20 @@ result = iterate (() in timer(30.0)) {
   if first then {
     first := false;
 
+    start0 = clock();
+
     m = Matrix:build(1000,1000,fun (i,j) intToDouble(i*j));
 
     start1 = clock();
-    //m2 = Matrix:mul(m,m);
-    m2 = mul_rm_opt_unroll(m,m);
+
+    m2 = Matrix:mul(m,m);
+    //m2 = mul_rm_opt_index(m,m);
+    //m2 = mul_rm_opt_unroll(m,m);
+
     start2 = clock();
 
     println("elapsed time: "++start2-start1);
+    println("elapsed time including build: "++start2-start0);
 
     emit(());
   } 
