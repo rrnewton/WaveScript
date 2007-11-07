@@ -301,7 +301,7 @@
 			  (cons decl boddecls)
 			  (cons wsq wsqdecls)))))]
 
-	[(iterate ,annot ,let-or-lambda ,sig)
+	[(iterate (annotations . ,annot) ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))	  
 	 (let* ([parent (Var sig)]
@@ -313,10 +313,11 @@
                    `("WSBox* ",name" = new ",class_name "(" ");\n"
                      ,name"->connect(",parent");\n")]
                   [(corefit-scheduler-ex corefit-scheduler-df)
-                   `("WSBox* ",name" = new ",class_name "(" ");\n"
-                     "query.addOp(",name");\n"
-                     ,name"->setCPU(0);\n" ; FIXME: use params. file
-                     "query.connectOps(",parent", ",name");\n\n")])]
+                   (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+                     `("WSBox* ",name" = new ",class_name "(" ");\n"
+                       "query.addOp(",name");\n"
+                       ,name"->setCPU(",(number->string cpu-num)");\n" ; FIXME: use params. file
+                       "query.connectOps(",parent", ",name");\n\n"))])]
 
 		;; Then we produce the declaration for the box itself:
 		[ourdecls 
@@ -374,7 +375,7 @@
 
 	;; Produces an instance of a generic dataFile reader.
 	;; TODO: It's not necessary to generate code for both text & binary in the same run:
-	[(__readFile ,annot
+	[(__readFile (annotations . ,annot)
                 ,[Simple -> file] 
                 ,source
                 ,[Simple -> mode] 
@@ -562,10 +563,11 @@
         `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
           " ",name"->connect(",(sym2str source)");\n")]
        [(corefit-scheduler-ex corefit-scheduler-df)
-        `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
-          "query.addOp(",name");\n"
-          ,name"->setCPU(0);\n"
-          "query.connectOps(",(sym2str source)", ",name");\n\n")])
+        (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+          `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
+            "query.addOp(",name");\n"
+            ,name"->setCPU(",(number->string cpu-num)");\n"
+            "query.connectOps(",(sym2str source)", ",name");\n\n"))])
 	  (list maintext)
           `())))]
 	
@@ -589,7 +591,7 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-	[(assert-type (Stream (Struct ,tupname)) (unionN ,annot ,inputs ...))
+	[(assert-type (Stream (Struct ,tupname)) (unionN (annotations . ,annot) ,inputs ...))
 	 (ASSERT (not (null? inputs)))
 	 (ASSERT (andmap symbol? inputs))
 	 
@@ -604,11 +606,12 @@
             ;; Order is critical here:
             ,(map (lambda (in) `(" ",name"->connect(",(sym2str in)"); ")) inputs))]
          [(corefit-scheduler-ex corefit-scheduler-df)
-          `(" WSBox* ",name" = new ",classname"();\n"
-            "query.addOp(",name");\n"
-            ,name"->setCPU(0);\n" ; FIXME: use params. file
-            ;; Order is critical here:
-            ,(map (lambda (in) `("query.connectOps(",(sym2str in)", ",name");\n")) inputs))])
+          (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+            `(" WSBox* ",name" = new ",classname"();\n"
+              "query.addOp(",name");\n"
+              ,name"->setCPU(",(number->string cpu-num)");\n"
+              ;; Order is critical here:
+              ,(map (lambda (in) `("query.connectOps(",(sym2str in)", ",name");\n")) inputs)))])
 
 	    ;; Decls:
 	    `("
@@ -630,7 +633,7 @@
 
 
 	;; UNOPTIMIZED: Should combine with downstream iterate.
-	[(_merge ,annot ,left ,right)
+	[(_merge (annotations . ,annot) ,left ,right)
 	 (ASSERT symbol? left)
 	 (ASSERT symbol? right)
 	 
@@ -644,11 +647,12 @@
             (" ",name"->connect(",(sym2str left)"); ")
             (" ",name"->connect(",(sym2str right)"); "))]
          [(corefit-scheduler-ex corefit-scheduler-df)
-          `("WSBox* ",name" = new ",classname"();\n"
-            "query.addOp(",name");\n"
-            ,name"->setCPU(0);\n"
-            "query.connectOps(",(sym2str left)",",name");\n"
-            "query.connectOps(",(sym2str right)",",name");\n\n")])
+          (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+            `("WSBox* ",name" = new ",classname"();\n"
+              "query.addOp(",name");\n"
+              ,name"->setCPU(",(number->string cpu-num)");\n"
+              "query.connectOps(",(sym2str left)",",name");\n"
+              "query.connectOps(",(sym2str right)",",name");\n\n"))])
 
 	    ;; Decls:
 	    `("
@@ -672,7 +676,7 @@
 
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-	[(timer ,annot ,[Simple -> period])
+	[(timer (annotations . ,annot) ,[Simple -> period])
 	 ;; HACK, we use the "setBatchSize" version for timing queries if "-t" was given.
 	 ;; This only makes sense if the query has a SINGLE timer as its data source.
 	 (define classname (if (wsint-time-query) "MagicPullTimer" "Timer"))
@@ -681,9 +685,10 @@
 	    [(default-scheduler train-scheduler depth-first)
 	     `("WSSource * ",name" = new WSBuiltins::",classname"(",period");\n")]
 	    [(corefit-scheduler-ex corefit-scheduler-df)
-	     `("WSSource* ",name" = new WSBuiltins::",classname"(",period");\n"
-	       "query.addOp(",name");\n"
-	       ,name"->setCPU(0);\n\n")])
+        (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
+          `("WSSource* ",name" = new WSBuiltins::",classname"(",period");\n"
+            "query.addOp(",name");\n"
+            ,name"->setCPU(",(number->string cpu-num)");\n\n"))])
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
