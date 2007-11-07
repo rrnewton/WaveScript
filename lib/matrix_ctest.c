@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
   }  
   end = clock();
 
-  printf("diff=%lf\n", (end-start)/(double)CLOCKS_PER_SEC);
+  printf("diff=%lf ms\n", (end-start)/(CLOCKS_PER_SEC/1000.0));
 
   // prevent optimization !
   double s = 0;

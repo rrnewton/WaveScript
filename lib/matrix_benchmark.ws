@@ -1,6 +1,7 @@
 
 /*
 *  benchmark results.
+*   c test:                12300
 *   original:              11614
 *   rowmajor:               6270
 *   rowmajor with list:     6323
@@ -23,7 +24,6 @@ include "matrix-rowmajor.ws";
 //     VERSION.  ALL OTHERS HAVE AN INCOMPATIBLE DATA REP
 //
 ///////////////////////
-
 
  // Matrix multiplication.
  fun mul_rm_opt_index(m1,m2) {
@@ -118,6 +118,11 @@ include "matrix-rowmajor.ws";
   m3 // Return.
  }
 
+////////////////////////
+//
+// *** END SPECIAL JUNK
+//
+///////////////////////
 
 
 result = iterate (() in timer(30.0)) {
