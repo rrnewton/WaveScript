@@ -40,7 +40,35 @@ include "matrix-rowmajor.ws";
  }
 
 
-/*
+ // *** NOTE THIS MUST BE COMMENTED OUT IF WE ARE USING ORIG MATRIX LIB
+ // Matrix multiplication.
+ fun mul_rm_opt_index2(m1,m2) {
+  using Array;
+  let (r1,c1,arr1) = m1;
+  let (r2,c2,arr2) = m2;
+
+  m3 = Matrix:create(r1, c2, Matrix:get(m1,0,0));
+  let (ro,co,arr_o) = m3;
+
+  for i = 0 to r1-1 {
+    tmpiout = i*c2;
+    for j = 0 to c2-1 {
+      sum = Mutable:ref( gint(0) );
+      tmpi = Mutable:ref(i*c1);
+      tmpj = Mutable:ref(j);
+      for k = 0 to r2-1 {
+	sum := sum + arr1[tmpi] * arr2[tmpj];
+        tmpi := tmpi + 1;
+        tmpj := tmpj + c2;
+      };
+      arr_o[tmpiout+j] := sum;
+    }
+  };
+  m3 // Return.
+ }
+
+
+
  // Matrix multiplication.
  fun mul_rm_opt_unroll(m1,m2) {
   using Array;
@@ -70,7 +98,7 @@ include "matrix-rowmajor.ws";
   };
   m3 // Return.
  }
-*/
+
 
 result = iterate (() in timer(30.0)) {
   state { first = true }
