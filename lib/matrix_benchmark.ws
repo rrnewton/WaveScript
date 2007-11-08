@@ -1,9 +1,9 @@
 
 /*
-*  benchmark results.
-*   c test:                12300
-*   original:              11614
-*   rowmajor:               6270
+*  benchmark results.       O3      no O3
+*   c test:                 1510
+*   original:               2218    2606
+*   rowmajor:               2220    2906
 *   rowmajor with list:     6323
 *   rowmajor lift mults:    4667
 *   rowmajor index by adds: 3365
@@ -17,6 +17,7 @@ include "stdlib.ws";
 include "matrix-rowmajor.ws";
 //include "matrix-rowmajor-spec.ws";
 //include "matrix.ws";
+
 
 ////////////////////////
 //
@@ -175,9 +176,9 @@ result = iterate (() in timer(30.0)) {
 
     start1 = clock();
 
-    //m3 = Matrix:mul(m,m);
-    //m3 = mul_rm_opt_index(m,m);
-    //m3 = mul_rm_opt_index2(m,m);
+    //m3 = Matrix:mul(m1,m2);
+    //m3 = mul_rm_opt_index(m1,m2);
+    //m3 = mul_rm_opt_index2(m1,m2);
     m3 = mul_rm_opt_unroll(m1,m2);
 
     start2 = clock();
