@@ -23,7 +23,7 @@ samp_rate = 24000.0;
 // [2007.11.07] Disabling this because of problems with DF and amplification.
 
 chans = 
-  if true
+  if false
   then { file = "testdata.txt";
          mytimer = repeater(2400, timer(20.0));
          _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
@@ -96,5 +96,4 @@ doas
 
 //BASE <- run_it(chans)
 
-BASE <- smap(fun(_)(), timeTransformer(5, chans, run_it))
-
+BASE <- smap(fun(_)(), timeTransformer(30, chans, run_it))

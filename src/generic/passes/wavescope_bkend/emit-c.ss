@@ -1516,10 +1516,17 @@
 
   (match expr
     ;; First we handle "open coded" primitives and special cases:
-
+    
+    ;; [2007.11.07] These seem equivalent:
+    #;
     [(clock) `("getrusage(RUSAGE_SELF, &global_rusage);\n"
-	       ,(wrap "(global_rusage.ru_utime.microseconds / 1000)"))]
-    [(realtime) (wrap "(clock() * 1000 / CLOCKS_PER_SEC)")]
+	       ,(wrap "(global_rusage.ru_utime.tv_usec / 1000)"))]
+    [(clock) (wrap "(clock() * 1000 / CLOCKS_PER_SEC)")]
+    [(realtime) 
+     (define tmp (symbol->string (unique-name "tmp")))
+     `("struct timeval ",tmp";\n"
+       "gettimeofday(&",tmp", NULL);\n"
+       ,(wrap `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))]
 
     [(Mutable:ref ,[Simple -> x]) (wrap x)]
     [(deref ,[Simple -> x]) (wrap x)]

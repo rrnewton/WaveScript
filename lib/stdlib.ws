@@ -801,10 +801,12 @@ fun holdAndRepeat(num, repeats, startfun, strm) {
 // finishes.  It has no way to discount processing done by other
 // operators.
 fun timeTransformer(num, input, strans) {
-  fun strtfn() { print("STARTTIMECPU:");  print(show(clock()));    print("\n");
-                 print("STARTTIMEREAL:"); print(show(realtime())); print("\n"); };
-  fun endfn()  { print("ENDTIMECPU: ");  print(show(clock()));    print("\n");
-                 print("ENDTIMEREAL: "); print(show(realtime())); print("\n"); };
+  fun strtfn() { print("STARTTIMECPU: ");  print(show(doubleToInt64$ clock()));    print("\n");
+                 print("STARTTIMEREAL: "); print(show(realtime())); print("\n"); 
+	       };
+  fun endfn()  { print("ENDTIMECPU: ");  print(show(doubleToInt64$ clock()));    print("\n");
+                 print("ENDTIMEREAL: "); print(show(realtime())); print("\n"); 
+	       };
   strt = iterate x in input {
     state { first = true }
     if first then { strtfn(); first := false };

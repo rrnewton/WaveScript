@@ -1,17 +1,16 @@
 #!/bin/bash
 
-CPU0=`grep STARTTIMECPU $1 | awk '{ print $2; print "\n" }'`
-CPU1=`grep ENDTIMECPU $1 | awk '{ print $2; print "\n" }'`
+#CPU0=`grep STARTTIMECPU $1 | awk '{ print $2; print "\n" }'`
+#CPU1=`grep ENDTIMECPU $1 | awk '{ print $2; print "\n" }'`
 
-
-#REAL0=`grep STARTTIMEREAL $1 | awk '{ print $2}'`
-#REAL1=`grep ENDTIMEREAL $1 | awk '{ print $2}'`
+REAL0=`grep --binary-files=text STARTTIMEREAL $1 | awk '{ print $2}'`
+REAL1=`grep --binary-files=text ENDTIMEREAL $1 | awk '{ print $2}'`
 
 #echo "times <"$CPU0">  and <"$CPU1">"
 #echo "times <"$REAL0">  and <"$REAL1">"
 
 # Don't know how to do this in bash right now:
-echo "(begin (map (lambda (ls) (pretty-print (apply - ls))) (reverse (map list (list $CPU1) (list $CPU0)))) (void))" | petite -q
+echo "(begin (map (lambda (ls) (pretty-print (apply - ls))) (reverse (map list (list $REAL1) (list $REAL0)))) (void))" | petite -q
 
 #for STRT in $CPU0; END  in $CPU1;  do
 #for STRT, END in $CPU0, $CPU1;  do

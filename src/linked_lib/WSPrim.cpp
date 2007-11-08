@@ -9,7 +9,6 @@ static ostringstream global_show_stream(ostringstream::out);
 
 static bool stopalltimers = 0;
 
-static struct rusage global_rusage;
 
 // LISTS: 
 //==============================================================================
@@ -630,6 +629,12 @@ public:
         period((int)(1000000.0 * (1.0 / freq)))
      {
        Launch();
+       const char* envvar = getenv("TIMEROVERIDE");
+       if (envvar != NULL) {
+         int freq2 = atoi(envvar);
+	 period = (int)(1000000.0 * (1.0 / (double)freq2));
+	 printf("OVERLOADING TIMER RATES WITH NEW RATE: %d\n", freq2);
+       }
      }
      DEFINE_SOURCE_TYPE(bool);
      private:

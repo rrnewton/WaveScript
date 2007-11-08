@@ -4,7 +4,6 @@
 
 
 
-
 /* 
 
 [2007.11.01] Initial parallelization  experimentation  
@@ -12,6 +11,9 @@
 Currently running -j 1, -n 3 gives real 9s user 1.1s.
 
 
+[2007.11.07] Sigh getting this occasionally when running with two threads.
+
+*** glibc detected *** ./query.exe: double free or corruption (out): 0xb6337f00 ***                                                                    
 
 */
 
@@ -299,10 +301,30 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
 
   temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
-  
+
+
+
+
+  fun onepiece(i,total) {
+    chunk = grid_size/total;
+    smap(fun((tup,st,tb)) (actualAML(i*chunk, (i+1)*chunk , grid_size, tup),st,tb), temp);
+  };
+  threads = 2;
+  components = List:build(threads,
+    fun(i) {
+      SETCPU(i, onepiece(i,threads))
+    });
+
+  split = 
+    smap(fun(((a,st,tb),(b,_,_))) {
+           print("  Got zipped results...\n");
+           (Array:append(a,b), st,tb)
+         },
+         zip2_sametype(List:ref(components,0), List:ref(components,1)));
+
+    /*  
   // SPLIT VERSION:
   split = { 
-
 
     _half1 = smap(fun((tup,st,tb)) (actualAML(0,           grid_size/2, grid_size, tup),st,tb), temp);
     half1 = SETCPU(1,_half1);
@@ -313,6 +335,7 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
          },
          zip2_sametype(half1,half2)) 
   };
+    */
 
   // MONOLITHIC VERSION:
   aml_result = smap(fun((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb), temp);

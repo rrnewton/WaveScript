@@ -1278,8 +1278,8 @@
 
       ;[doubleToInt    ,(compose (format "~a.fromLarge" int-module) "(Real64.toLargeInt IEEEReal.TO_ZERO)")]
       [doubleToInt     "Real64.toInt IEEEReal.TO_ZERO"]
-      [doubleToInt16  ,(compose "Int16.fromInt" "Real64.toInt")]
-      [doubleToInt64  ,(compose "Int64.fromLarge" "Real64.toLargeInt")]
+      [doubleToInt16  ,(make-fun '("x") "Int16.fromInt   (Real64.toInt IEEEReal.TO_ZERO x)")]
+      [doubleToInt64  ,(make-fun '("x") "Int64.fromLarge (Real64.toLargeInt IEEEReal.TO_ZERO x)")]
       [doubleToFloat  ,doubleToFloat]
       [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n, imag= Real32.fromInt 0})"))]
 
