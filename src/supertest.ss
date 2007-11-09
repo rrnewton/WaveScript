@@ -374,7 +374,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Test STANDARD LIBRARIES:
 (parameterize ([current-directory (format "~a/lib/" test-root)])
-  (run-test "ws: Loading stdlib_test.ws:" (format "echo 10 | ws stdlib_test.ws -exit-error &> ~a/stdlib.log" test-directory))
+  (run-test "ws: Loading stdlib_test.ws:" (format "ws stdlib_test.ws -n 10 -exit-error &> ~a/stdlib.log" test-directory))
 
   ;; This is the OLD one:
   (run-test "ws: Loading old matrix_test.ws:" 
@@ -391,10 +391,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
   
   (run-test "ws: Running GSL test_matrix_gsl.ws:" 
 	    (format 
-	     "echo 10 | ws test_matrix_gsl.ws -exit-error &> ~a/matrix_gsl.log" test-directory))
+	     "ws test_matrix_gsl.ws -n 2 -exit-error &> ~a/matrix_gsl.log" test-directory))
   #;
   (run-test "ws: Running test of GSL matrix library.ws:"
-	    (format "echo 10 | ws run_matrix_gsl_test.ws -exit-error  &> ~a/matrix_gsl.log" test-directory))
+	    (format "ws run_matrix_gsl_test.ws -n 2-exit-error  &> ~a/matrix_gsl.log" test-directory))
   )
 
 ;;================================================================================
@@ -503,9 +503,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/apps/pipeline" test-root)))
   (run-test "    Decompressing pipeline data   "  "bunzip2 pipeline1.data.bz2")
   (run-test "ws: Running pipeline app:    "
-	    (format "echo 10 | ws.debug pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory))
+	    (format "ws.debug pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory))
   (run-test "ws.early: Running pipeline app: "
-	    (format "echo 10 | ws.early pipeline.ws -exit-error &> ~a/ws_pipeline.log" test-directory)))
+	    (format "ws.early pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory)))
 
 ;; MARMOT
 (parameterize ((current-directory (format "~a/apps/marmot" test-root)))
@@ -513,15 +513,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
     
   (run-test "    Run Makefile   " "make")
   (run-test "ws: Running marmot app (first phase):  "
-	    (format "echo 1 | ws.debug run_first_phase.ws -exit-error &> ~a/ws_marmot.log" test-directory))
+	    (format "ws.debug run_first_phase.ws -n 1 -exit-error &> ~a/ws_marmot.log" test-directory))
   (run-test "ws.early: Running marmot app:   "
-	    (format "echo 1 | ws.early run_first_phase.ws -exit-error &> ~a/wsearly_marmot.log" test-directory))
+	    (format "ws.early run_first_phase.ws -n 1 -exit-error &> ~a/wsearly_marmot.log" test-directory))
 
   (run-test "ws: Running marmot app (second phase):  "
-	    (format "echo 1 | ws.debug run_marmot2.ws -exit-error &> ~a/ws_marmot12.log" test-directory))
+	    (format "ws.debug run_marmot2.ws -n 1 -exit-error &> ~a/ws_marmot12.log" test-directory))
 
   (run-test "ws: Running marmot app (3phases): "
-	    (format "echo 1 | ws.debug run_3phases.ws -exit-error &> ~a/ws_marmot123.log" test-directory))
+	    (format "ws.debug run_3phases.ws -n 1 -exit-error &> ~a/ws_marmot123.log" test-directory))
 
   (run-test "wsmlton: Compiling marmot app (first phase):  "
 	    (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))
@@ -601,10 +601,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
        (fpf "ws: Running pothole4 app:                     ~a\n"
 	    (code->msg! (system/timeout 
-			 (format "echo 3 | ws pothole4.ws -exit-error &> ~a/ws_pothole4.log" test-directory))))
+			 (format "ws pothole4.ws -n 3 -exit-error &> ~a/ws_pothole4.log" test-directory))))
        (fpf "ws.early: Running pothole4 app:               ~a\n"
 	    (code->msg! (system/timeout 
-              (format "echo 3 | ws.early pothole4.ws -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
+              (format "ws.early pothole4.ws -n 3 -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
 ;; TEMP FIXME DISABLED
 #|

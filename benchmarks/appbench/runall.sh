@@ -46,6 +46,14 @@ echo '\end{verbatim}'  >> marmot.tex
 ##   OTHER MARMOT CONFIGS (Optimizations)
 ## ================================================================================ ##
 
+
+cd "$REGIMENTD/apps/marmot/refactored";
+echo "## Running marmot phase 1&2 with no split AML. " > RESULTS.txt
+runallbackends run_marmot2-maps $TEMP 0 3
+cd "$START"
+mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
+
+
 cd "$REGIMENTD/apps/marmot/refactored";
 export HANDOPT_BUILDSPLIT=true
 echo "## Running marmot phase 1&2 with 2-way split AML. " > RESULTS.txt
@@ -53,13 +61,6 @@ runallbackends run_marmot2-maps $TEMP 0 3
 unset HANDOPT_BUILDSPLIT
 cd "$START"
 mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
-
-
-cd "$REGIMENTD/apps/marmot/refactored";
-echo "## Running marmot phase 1&2 with no split AML. " > RESULTS.txt
-runallbackends run_marmot2-maps $TEMP 0 3
-cd "$START"
-mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
 
 
 ## ================================================================================ ##

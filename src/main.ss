@@ -923,6 +923,11 @@
      (flush-output-port))
    
    (set! prog (run-ws-compiler typed disabled-passes #t))
+
+   ;; Here we dump it to a .dot file.
+   (IFCHEZ (string->file (output-graphviz (explicit-stream-wiring prog)) "query.dot")
+	   (void))
+
    
    (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
 
