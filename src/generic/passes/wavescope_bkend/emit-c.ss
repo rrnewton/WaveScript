@@ -318,7 +318,7 @@
 		     (ASSERT fixnum? cpu-num)
                      `("WSBox* ",name" = new ",class_name "(" ");\n"
                        "query.addOp(",name");\n"
-                       ,name"->setCPU(",(number->string cpu-num)");\n" ; FIXME: use params. file
+                       ,name"->setCPU(",(number->string cpu-num)" % WSSched::_numThreads);\n" ; FIXME: use params. file
                        "query.connectOps(",parent", ",name");\n\n"))])]
 
 		;; Then we produce the declaration for the box itself:
@@ -576,7 +576,7 @@
         (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
           `("WSBox* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
             "query.addOp(",name");\n"
-            ,name"->setCPU(",(number->string cpu-num)");\n"
+            ,name"->setCPU(",(number->string cpu-num)" % WSSched::_numThreads);\n"
             "query.connectOps(",(sym2str source)", ",name");\n\n"))])
 	  (list maintext)
           `())))]
@@ -619,7 +619,7 @@
           (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
             `(" WSBox* ",name" = new ",classname"();\n"
               "query.addOp(",name");\n"
-              ,name"->setCPU(",(number->string cpu-num)");\n"
+              ,name"->setCPU(",(number->string cpu-num)" % WSSched::_numThreads);\n"
               ;; Order is critical here:
               ,(map (lambda (in) `("query.connectOps(",(sym2str in)", ",name");\n")) inputs)))])
 
@@ -660,7 +660,7 @@
           (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
             `("WSBox* ",name" = new ",classname"();\n"
               "query.addOp(",name");\n"
-              ,name"->setCPU(",(number->string cpu-num)");\n"
+              ,name"->setCPU(",(number->string cpu-num)" % WSSched::_numThreads);\n"
               "query.connectOps(",(sym2str left)",",name");\n"
               "query.connectOps(",(sym2str right)",",name");\n\n"))])
 
@@ -698,7 +698,7 @@
         (let ([cpu-num (cdr (or (assoc 'cpu-pin annot) '(_ . 0)))])
           `("WSSource* ",name" = new WSBuiltins::",classname"(",period");\n"
             "query.addOp(",name");\n"
-            ,name"->setCPU(",(number->string cpu-num)");\n\n"))])
+            ,name"->setCPU(",(number->string cpu-num)" % WSSched::_numThreads);\n\n"))])
 	  '()
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
