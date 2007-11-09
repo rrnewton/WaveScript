@@ -382,6 +382,9 @@ template <class T>
 struct WSArrayStruct {
   int rc;
   int len;
+#ifndef BOOST_SP_DISABLE_THREADS
+  //Mutex mut;
+#endif
   T* data;
 };
 

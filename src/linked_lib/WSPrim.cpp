@@ -304,17 +304,85 @@ makeArray(wsint_t count, T initelem) {
   return boost::intrusive_ptr< WSArrayStruct<T> >(arr);
 }
 
+
+
+
+inline int atomic_exchange_and_add( int * pw, int dv )
+{
+    // int r = *pw;
+    // *pw += dv;
+    // return r;
+
+    int r;
+
+    __asm__ __volatile__
+    (
+        "lock\n\t"
+        "xadd %1, %0":
+        "=m"( *pw ), "=r"( r ): // outputs (%0, %1)
+        "m"( *pw ), "1"( dv ): // inputs (%2, %3 == %1)
+        "memory", "cc" // clobbers
+    );
+
+    return r;
+}
+
+inline void atomic_increment( int * pw )
+{
+    //atomic_exchange_and_add( pw, 1 );
+
+    __asm__
+    (
+        "lock\n\t"
+        "incl %0":
+        "=m"( *pw ): // output (%0)
+        "m"( *pw ): // input (%1)
+        "cc" // clobbers
+    );
+}
+
+
 template <class T>
 void intrusive_ptr_add_ref(WSArrayStruct<T>* p) {
   //  printf("Add rc! %d -> %d\n", p->rc, p->rc+1);
+#ifndef BOOST_SP_DISABLE_THREADS  
+  //p->mut.lock();
+#endif
+
+#ifndef BOOST_SP_DISABLE_THREADS  
+  //printf("   Trying incr: %d\n", p->rc);
+  atomic_increment( &(p->rc) );
+  //printf("   INCREMENTED: %d\n", p->rc);
+#else
   p->rc ++;
+#endif
+
+#ifndef BOOST_SP_DISABLE_THREADS
+  //p->mut.unlock();
+#endif
 }
 
 template <class T>
 void intrusive_ptr_release(WSArrayStruct<T>* p) {
   //printf("Decr rc! %d -> %d\n", p->rc, p->rc-1);
-  p->rc --;
-  if (p->rc == 0) {
+#ifndef BOOST_SP_DISABLE_THREADS
+  //p->mut.lock();
+#endif
+  //p->rc --;
+
+  //printf("Trying decr: %d\n", p->rc);
+#ifndef BOOST_SP_DISABLE_THREADS  
+  int rc = atomic_exchange_and_add( &(p->rc), -1 );
+  //printf("DECREMENTED: %d\n", p->rc);
+#else
+  int rc = p->rc;
+#endif
+
+#ifndef BOOST_SP_DISABLE_THREADS
+  //p->mut.unlock();
+#endif  
+  
+  if (rc == 0) {
     //printf("Freeing!\n");
     //free(p->data);
     delete [](T*)(p->data);
@@ -629,7 +697,7 @@ public:
         period((int)(1000000.0 * (1.0 / freq)))
      {
        Launch();
-       const char* envvar = getenv("TIMEROVERIDE");
+       const char* envvar = getenv("TIMEROVERRIDE");
        if (envvar != NULL) {
          int freq2 = atoi(envvar);
 	 period = (int)(1000000.0 * (1.0 / (double)freq2));

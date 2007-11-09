@@ -453,11 +453,12 @@
 		   (block 
 		    (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
 		    ;(list classname "(wsstring_t path, WSSource *ignored_source, wsstring_t mode)")
-		    `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
-		      "stoppedbefore = 0;"
+		    `(
 		      "binarymode = (mode == string(\"binary\"));\n"
+		      "_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
+		      "stoppedbefore = 0;\n"
 		      "if (_f == NULL) {\n"
-		      "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
+		      "  chatter(LOG_CRIT, \"Unable to open dataa file %s: %m\", path.c_str());\n"
 		      "  abort();\n"
 		      "}\n"
 		      ;;"Launch();\n"
