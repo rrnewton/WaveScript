@@ -615,11 +615,14 @@
   ;; If available, let's add the name to the annotation list.
   (define nameadded
     (match arglist
+      ;; This isn't that safe:
       [((annotations ,alist ...) ,otherargs ...)
        ;; Don't replace a name that's already there:
        (if (and (streamop-name op) (not (assq 'name alist)))
 	   `((annotations (name ,(streamop-name op)) ,@alist) ,@otherargs)
-	   arglist)]))
+	   arglist)]
+      [,_ arglist]
+      ))
   ;; Produce primitive application syntax:
   (define default (cons (streamop-op op) nameadded))
 ;  (display-constrained "   MARSHALLING STREAMOP: " `[,op 100] "\n")

@@ -309,18 +309,22 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
     chunk = grid_size/total;
     smap(fun((tup,st,tb)) (actualAML(i*chunk, (i+1)*chunk , grid_size, tup),st,tb), temp);
   };
-  threads = 2;
+
+  threads = if GETENV("NUMTHREADS") == "" then 4 else stringToInt(GETENV("NUMTHREADS"));
   components = List:build(threads,
     fun(i) {
       SETCPU(i, onepiece(i,threads))
     });
 
   split = 
-    smap(fun(((a,st,tb),(b,_,_))) {
+    smap(fun(ls) {
+           arrs = List:map(fun((a,_,_)) a,ls);
+	   let (_,st,tb) = head(ls);
            print("  Got zipped results...\n");
-           (Array:append(a,b), st,tb)
+	   (Array:concat(arrs), st,tb)
+           //(Array:append(a,b), st,tb)
          },
-         zip2_sametype(List:ref(components,0), List:ref(components,1)));
+         zipN_sametype(20, components));
 
     /*  
   // SPLIT VERSION:

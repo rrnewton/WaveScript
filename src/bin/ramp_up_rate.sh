@@ -17,7 +17,7 @@ echo "OUTPUT LOCATION <$OUTPUT>"
 echo "## Rate and Realtime " > RESULTS.txt
 
 for rate in `seq $START $INTERVAL $END`; do
-  export TIMEROVERIDE=$rate
+  export TIMEROVERRIDE=$rate
   FILE=$OUTPUT"_$rate".txt
   RETURN=1
   while [ "$RETURN" != 0 ]; do 
