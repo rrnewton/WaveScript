@@ -804,8 +804,8 @@
 	    ;; First, a freshness consideration:
 	    ;; FIXME: We could be better here about catching duplicated bindings.
 	    ;; (Instead, by renaming we will give them distinct bindings.)
-	    (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])
-	      (DEBUGASSERT (null? (intersection (map car env-slice) (map car env))))
+	    (let-values ([(newcode newfree env-slice) (dissect-and-rename val)])	      
+	      (DEBUGASSERT null? (intersection (map car env-slice) (map car env)))
 	      (marshloop code 		 
 		    ;; We also merge the relevent parts of the closure's environment with our environment:
 		    (union newfree (cdr fv))
@@ -831,6 +831,10 @@
 		    (closure-formals cl)))))
 
 ;; Renames the free vars for a closure.
+;; Returns three value:
+;;   1: A new body.
+;;   2: The newly named free variables.
+;;   3: A new environment containing just the bindings for the (renamed) free vars.
 (define (dissect-and-rename cl)
   (DEBUGASSERT (not (foreign-closure? cl)))
   (let* ([fv    (closure-free-vars cl)]
@@ -839,9 +843,12 @@
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
-#;
+    (printf "OLDFREE ~s NEWFREE ~s\n" fv newfv )
+    
+    #;
     (unless (set-equal? (list->set newfv)
 			(list->set (difference (core-free-vars newcode) (closure-formals cl))))
+      (printf "HAVING ISSUES WITH DISSECT-AND-RENAME\n")
       (inspect newfv)
       (inspect (core-free-vars newcode))
       (inspect (closure-formals cl))

@@ -30,7 +30,7 @@
 		    `(quote ,const)]	      
 	    [,other (fallthrough other)]))]
   [Program (lambda (prog Expr)
-	     (unique-name-counter 0)
+	     ;(unique-name-counter 0) ;; [2007.11.09] Why the heck was this here?
 	     (match prog
 	       [(,input-language (quote (program ,body ,meta* ... ,type)))
 		`(remove-unquoted-constant-language 

@@ -468,6 +468,7 @@
 			  [(string? sym) (string->symbol sym)]
 			  [(symbol? sym) sym]
 			  [else (error 'unique-name "invalid name root: ~a" sym)])))
+;		(printf "  Coining name, counter ~s\n" (unique-name-counter))
             (string->symbol
               (string-append
                 (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME
