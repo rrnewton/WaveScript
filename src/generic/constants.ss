@@ -180,7 +180,12 @@
 	 make-tuple tuple-fields tuple?
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
-         )
+	 
+	 bench-stats? make-bench-stats  ;bench-stats 
+	 bench-stats-bytes bench-stats-tuples bench-stats-cpu-time
+	 set-bench-stats-bytes! set-bench-stats-tuples! set-bench-stats-cpu-time!
+
+         ) ;; End provide
 		
 	;; Import the platform specific constants.
 	(chezimports chez_constants)
@@ -893,6 +898,9 @@
 (reg:define-struct (uniontype tag val)) ;; Sum types
 
 (reg:define-struct (timebase num))
+
+;; Used for profiling and annotating data rates.
+(reg:define-struct (bench-stats bytes tuples cpu-time))
 
 ; ======================================================================
 

@@ -102,8 +102,7 @@
 		 iterate break ;deep-iterate
 
        iterate-bench
-       bench-stats
-
+       
 		 feedbackloop
 		 ;; TODO: nix unionList.
 		 _merge _merge-bench unionN unionN-bench unionList unionList-bench
@@ -274,7 +273,6 @@
   (define-syntax annotations (syntax-rules () [(annotations . x) '(annotations . x)]))
 
   ;;
-  (reg:define-struct (bench-stats bytes tuples cpu-time))
   (define (bench-stats-bytes-add!    bs bytes) (set-bench-stats-bytes!    bs (+ bytes (bench-stats-bytes bs))))
   (define (bench-stats-tuples-add!   bs bytes) (set-bench-stats-tuples!   bs (+ bytes (bench-stats-tuples bs))))
   (define (bench-stats-cpu-time-add! bs bytes) (set-bench-stats-cpu-time! bs (+ bytes (bench-stats-cpu-time bs))))

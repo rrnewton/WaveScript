@@ -676,4 +676,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		test-directory))
 (fprintf orig-console "Copied all logs to website.\n")
 
+(current-directory "/var/www")
+(system "./setperms")
 

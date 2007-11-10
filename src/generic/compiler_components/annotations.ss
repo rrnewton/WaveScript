@@ -9,6 +9,7 @@
 
   (provide annotq
            annot-keys
+	   annotation-list?
            merge-annotations)
 
   (chezimports)
@@ -40,8 +41,18 @@
 ;;
 ;;
 (define (annot-keys annot-list)
-  (map car (cdr annot-list)))
+  ;(ASSERT (pair? annot-list))
+  ;(ASSERT (eq? (car annot-list) 'annotations))
+  (DEBUGASSERT annotation-list? `(annotations . ,annot-list))
+  ;(map car (cdr annot-list))
+  (map car annot-list)
+  )
 
+(define (annotation-list? ls)
+  (match ls
+    [(annotations (,left* . ,right*) ...)
+     (andmap symbol? left*)]
+    [,_ #f]))
 
 ;;
 ;; two annotation lists al-left and al-right are merged as follows:
@@ -59,10 +70,15 @@
   (case-lambda
     [(al-left al-right) (merge-annotations al-left al-right '())]
     [(al-left al-right merge-hints)
-
-     (let ([keys-both (intersection (annot-keys al-left) (annot-keys al-right))]
-           [keys-left-only (difference (annot-keys al-left) (annot-keys al-right))]
-           [keys-right-only (difference (annot-keys al-right) (annot-keys al-left))])
+     ;(DEBUGASSERT annotation-list? al-left)
+     ;(DEBUGASSERT annotation-list? al-right)
+     
+     (let* ([keys-left  (annot-keys al-left)]
+	    [keys-right (annot-keys al-right)]
+	    ;; Could make this venn diagram in one call:
+	    [keys-both       (intersection keys-left  keys-right)]
+	    [keys-left-only  (difference   keys-left  keys-right)]
+	    [keys-right-only (difference   keys-right keys-left)])
        
        ;; take all from keys-left-only *unless* they are hinted as right-only
        (append
