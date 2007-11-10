@@ -5,7 +5,8 @@
 (module simple-merge-iterates mzscheme
   (require 
           "../../../plt/common.ss"
-	  )
+          "../../compiler_components/annotations.ss")
+
   (provide simple-merge-iterates
            simple-merge-policy:always
 	   test-simple-merge-iterates)
@@ -56,8 +57,15 @@
 
   ;; merge the two lists of annotations
   ;; FIXME: we will probably need something more intelligent soon!
+  #;
   (define (merge-annotations annot-outer annot-inner)
     (append annot-outer annot-inner))
+
+  ;; stats for a merged box, ->[left]->[right]->  =>  ->[left->right]->
+  (define (merge-data-rates left-stats right-stats)
+    (make-bench-stats (bench-stats-bytes  right-stats)
+                      (bench-stats-tuples right-stats)
+                      (+ (bench-stats-cpu-time left-stats) (bench-stats-cpu-time right-stats))))
 
   (define (do-expr expr fallthrough)
     (match expr
@@ -86,7 +94,10 @@
        ;; rrn: it was good to enforce this convention, but not doing it anymore:
 					;(ASSERT (eq? return-val VQX)) 
        (do-expr
-        `(iterate (annotations . ,(merge-annotations annoty annotx))
+        `(iterate (annotations . ,(merge-annotations annoty
+                                                     annotx
+                                                     `([merge-with-downstream . right-only]
+                                                       [data-rates manual ,merge-data-rates])))
                   (let ,(append statey statex) (lambda (,x ,VQY) (,tx (VQueue ,outy))
                                                        ,(inline-subst-emits
                                                          `(let ((,VQX (VQueue ,outy) ,VQY)) ,bodx)
@@ -110,6 +121,7 @@
 
     ;; merge the two lists of annotations
     ;; FIXME: we will probably need something more intelligent soon!
+    #;
     (define (merge-annotations annot-outer annot-inner)
       (append annot-outer annot-inner))
   
@@ -118,7 +130,9 @@
         [(iterate (annotations . ,annot-up) ,f-up
                   (iterate (annotations . ,annot-down) ,f-down ,in-str))
 
-         `(iterate (annotations . ,(merge-annotations '((merge-with-downstream)) annot-up)) ,f-up
+         `(iterate (annotations . ,(merge-annotations '(annotations (merge-with-downstream))
+                                                      annot-up))
+                   ,f-up
                    ,(do-expr
                      `(iterate (annotations . ,annot-down) ,f-down ,in-str)
                      fallthrough))]

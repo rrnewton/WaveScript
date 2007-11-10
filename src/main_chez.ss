@@ -364,6 +364,8 @@
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
 (include "generic/compiler_components/type_environments.ss") (import type_environments)
 
+(include "generic/compiler_components/annotations.ss") (import annotations)
+
 (include "generic/grammars/grammar_checker.ss") (import grammar_checker)
 (include "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
