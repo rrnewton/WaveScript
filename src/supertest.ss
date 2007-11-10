@@ -543,7 +543,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc: Running marmot app (first phase):  "
 	    (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))
   (run-test "wsc: Compiling marmot app (second phase):  "
-	    (format "wsc run_marmot2.ws -n 1 -exit-error &> ~a/wsc_marmot12_build.log" test-directory))
+	    (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))
   ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
   (run-test "wsc: Running marmot app (second phase): "
 	    (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory))

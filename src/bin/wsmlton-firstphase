@@ -25,6 +25,8 @@ B=`basename "$INFILE"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 shift
 
+
+
 export REGIMENT_OR_WAVESCRIPT=WS
 #echo regiment wsml $abspath ${1+"$@"} ;
 #  Should pass some flags/arguments here maybe??:
