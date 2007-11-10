@@ -20,6 +20,7 @@
   '(
     (disabled-passes)
     (backend . c++)
+    (optimizations)
     (source-code)
     (exe)
     (scheduler . corefit-scheduler-df)

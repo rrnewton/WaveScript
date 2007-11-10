@@ -87,6 +87,7 @@
   ;; build command-line
   (define command-line
     (string-append filename
+                   " -j 1 " ; FIXME: should be in the plan
                    (if num-tups (string-append " -n " (number->string num-tups)) "")))
 
   ;;

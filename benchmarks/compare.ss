@@ -8,6 +8,7 @@
 
   ;
   (require (lib "list.ss")
+           "compile.ss"
            "measure.ss")
 
   ;
@@ -15,9 +16,12 @@
 
 
 ;
+; actions: list containg the symbols compile, run (either or both)
 ;
+; "compare" is a bit of a misnomer now, with the actions arg: there is no "comparison" if we're just compiling;
+; we just want to compile with multiple plans
 ;
-(define (compare meta-plan compile?)
+(define (compare meta-plan . actions)
 
   (define static-params            (filter (lambda (pair) (not (memq (car pair) '(var mvar)))) meta-plan))
   (define variable-params (map cdr (filter (lambda (pair)      (eq? 'var  (car pair)))         meta-plan)))
@@ -34,8 +38,20 @@
                                                   ))
                            (cadar var-plan)))))
 
+  (map (cond [(and (memq 'compile actions) (memq 'run actions))
+              compile-and-measure-wavescript-program]
+             [(memq 'compile actions)
+              compile-wavescript-program]
+             [(memq 'run actions)
+              measure-wavescript-program]
+             [else (error 'compare "please, specify one or both of 'compile, 'run")])
+
+    (product (append multivar-params variable-params) static-params))
+
+  #;
   (map (if compile? compile-and-measure-wavescript-program measure-wavescript-program)
-    (product (append multivar-params variable-params) static-params)))
+    (product (append multivar-params variable-params) static-params))
+  )
 
 
 ;
