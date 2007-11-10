@@ -428,9 +428,9 @@
 (define run-ws-compiler             ;; Entrypoint.
   ; FIXME: this case-lambda is probably a temporary construction
   (case-lambda
-    [(p)                               (run-ws-compiler p () #f)]
-    [(p disabled-passes)               (run-ws-compiler p disabled-passes #f)]
-    [(p disabled-passes already-typed)
+    [(p params)                               (run-ws-compiler p params () #f)]
+    [(p params disabled-passes)               (run-ws-compiler p params disabled-passes #f)]
+    [(p params disabled-passes already-typed)
 
   (define (do-typecheck lub poly)
     (parameterize ([inferencer-enable-LUB      lub]
@@ -516,8 +516,11 @@
   ;  (ws-run-pass p merge-iterates)
   ;  ;(pretty-print p)
   ;  ) ;; <Optimization>
-  (when (or (memq 'fuse (ws-optimizations-enabled))
-	    (memq 'merge-iterates (ws-optimizations-enabled)))
+  #;
+  (when (or (memq 'fuse (cdr (or (assoc 'optimizations params) '(_ . ()))))
+            (memq 'fuse (ws-optimizations-enabled))
+            (memq 'merge-iterates (ws-optimizations-enabled)))
+    (ws-run-pass p simple-merge-policy:always)
     (ws-run-pass p simple-merge-iterates)
     ;; Inline those function defs again.
     ;; This really is terrible code bloat... need to simply support
@@ -534,6 +537,7 @@
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
+
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
@@ -638,6 +642,22 @@
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
   (ws-run-pass p standardize-iterate) ;; no fuse
+
+
+  ;; <OPTIMIZATION>: FUSE BOXES
+  ;; -----------------------------------------
+  ;; mic: for now, simple-merge-iterates does manual inlining
+  ;; (interpret-meta doesn't work this far down in the compiler, yet)
+  (when (or (memq 'fuse (cdr (or (assoc 'optimizations params) '(_ . ()))))
+            (memq 'fuse (ws-optimizations-enabled))
+            (memq 'merge-iterates (ws-optimizations-enabled)))
+    (ws-run-pass p smoosh-together)
+    (ws-run-pass p simple-merge-policy:always)
+    (ws-run-pass p simple-merge-iterates)
+    (ws-run-pass p rename-vars)
+    (ws-run-pass p standardize-iterate)
+    )
+
 
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
@@ -819,7 +839,7 @@
      (lambda ()    
        (define typed (early-part x input-params))
        (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
-       (define compiled (run-ws-compiler typed disabled-passes #t))
+       (define compiled (run-ws-compiler typed input-params disabled-passes #t))
        (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
        (run-wavescript-sim compiled))))
@@ -922,7 +942,7 @@
 	 (print-var-types typed 1))
      (flush-output-port))
    
-   (set! prog (run-ws-compiler typed disabled-passes #t))
+   (set! prog (run-ws-compiler typed input-params disabled-passes #t))
 
    ;; Here we dump it to a .dot file.
    (IFCHEZ (string->file (output-graphviz (explicit-stream-wiring prog)) "query.dot")
@@ -982,7 +1002,7 @@
 ;; ================================================================================
 ;; WaveScript OCAML Compiler Entrypoint:
 
-(define (wscaml x . flags)                                 ;; Entrypoint.  
+(define (wscaml x input-params . flags)                                 ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -991,7 +1011,7 @@
     (define prog (begin (ASSERT list? x) x))
 
     (ASSERT (andmap symbol? flags))
-    (set! prog (run-ws-compiler prog disabled-passes #f))
+    (set! prog (run-ws-compiler prog input-params disabled-passes #f))
     (set! prog (explicit-stream-wiring prog))
     (string->file (text->string (emit-caml-wsquery prog)) outfile)
     (printf "\nGenerated OCaml output to ~s.\n" outfile)
@@ -1009,7 +1029,7 @@
     (define prog (coerce-to-ws-prog x input-params))
     
     (ASSERT (andmap symbol? flags))
-    (set! prog (run-ws-compiler prog disabled-passes #f))
+    (set! prog (run-ws-compiler prog input-params disabled-passes #f))
     (ws-run-pass prog explicit-stream-wiring)
 
     (IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))
@@ -1407,7 +1427,7 @@
 	  [(wscaml)
 	   (let ()
 	     (define exp (acquire-input-prog 'wscaml))
-	     (apply wscaml exp opts))]
+	     (apply wscaml exp input-parameters opts))]
 
 	  ;; Copy/pasted from above:
 	  [(wsml)

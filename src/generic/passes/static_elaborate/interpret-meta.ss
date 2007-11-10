@@ -290,7 +290,8 @@
 
     ;; [2007.09.19] Is this necessary if we've converted to left-left lambda?
     ;; [2007.10.02] Actually, we should handle left-left lambda for efficiency.
-#; ;; TEMPTOGGLE
+    ;; TEMPTOGGLE
+    #;
     [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
      (for-each (lambda (lhs val)
 		 (when (closure? val)

@@ -6,7 +6,8 @@
   (require 
           "../../../plt/common.ss"
 	  )
-  (provide simple-merge-iterates  
+  (provide simple-merge-iterates
+           simple-merge-policy:always
 	   test-simple-merge-iterates)
   (chezimports)
 
@@ -21,6 +22,9 @@
 
 
 ; REV 2807: before the full-merging was checked in:
+;;
+;; mic: this assumes that the program has been smoosh-together'd
+;;
 (define-pass simple-merge-iterates 
     ;; -> [X] -> [Y] ->
     ;; -> [X(Y)] -> 
@@ -36,6 +40,20 @@
      (lambda (ls k) (apply k ls)) ;; fuser
      body))
 
+  ;; do full inlining of Y's body into X's emits
+  (define (inline-subst-emits body fun fun-var fun-var-type)
+    (core-generic-traverse
+     (lambda (expr fallthrough)  ;; driver
+       (match expr
+         [(emit ,vqueue ,[x])
+          `(let ((,fun-var ,fun-var-type ,x)) ,fun)]
+         [(iterate . ,_)
+          (error 'merge-iterates:inline-subst-emits "shouldn't have nested iterates! ~a" expr)]
+         [,other (fallthrough other)]))
+     (lambda (ls k) (apply k ls)) ;; fuser
+     body))
+             
+
   ;; merge the two lists of annotations
   ;; FIXME: we will probably need something more intelligent soon!
   (define (merge-annotations annot-outer annot-inner)
@@ -47,41 +65,69 @@
       ;; related to (,foo ... ,last) patterns.  Avoiding them for now.
 
       ;; Modifying to not create free-variables in the introduced lambda abstraction.
-      [(iterate ,annoty (let () (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body))
-		(iterate ,annotx (let ()
+      
+      ;;
+      ;; FIXME: this will keep the "merge-with-downstream" annotation from the upper box!!!
+      ;;
+      [(iterate (annotations . ,annoty) (let ,statey (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body))
+		(iterate (annotations . ,annotx) (let ,statex
 				   (lambda (,x ,VQX) (,tx (VQueue ,outx))
-					 ;; By convention the return-value is the vqueue:				 
-					;(begin ,exprs ... ,return-val)
-					 ;; rrn: loosening this up, don't require that the body's a begin:
-					 ,bodx
-					 ))
+                                           ;; By convention the return-value is the vqueue:
+					   ;(begin ,exprs ... ,return-val)
+                                           ;; rrn: loosening this up, don't require that the body's a begin:
+                                           ,bodx
+                                           ))
 			 ,inputstream))
+       ;; don't merge indiscriminately; let an earlier pass tell us when to merge
+       (guard (assq 'merge-with-downstream annoty))
+
        (log-opt "OPTIMIZATION: merge-iterates: merging nested iterates\n")
        
        ;; rrn: it was good to enforce this convention, but not doing it anymore:
 					;(ASSERT (eq? return-val VQX)) 
-       (let ([f (unique-name 'f)])
-	 (do-expr
-	  `(iterate ,(merge-annotations annoty annotx)
-		    (lambda (,x ,VQX) (,tx (VQueue ,outy))
-			    (letrec ([,f (,ty (VQueue ,outy) -> #())
-					 (lambda (,y ,VQY) (,ty (VQueue ,outy))
-						 (begin ,body (tuple)))])
-			      ,(subst-emits ;`(begin ,@exprs ,VQX)
-				`(begin ,@bodx ,VQX)
-				f VQX)))
-		    ,inputstream)
-	  fallthrough))]
+       (do-expr
+        `(iterate (annotations . ,(merge-annotations annoty annotx))
+                  (let ,(append statey statex) (lambda (,x ,VQY) (,tx (VQueue ,outy))
+                                                       ,(inline-subst-emits
+                                                         `(let ((,VQX (VQueue ,outy) ,VQY)) ,bodx)
+                                                         `(begin ,body (tuple))
+                                                         y ty)))
+                  ,inputstream)
+        fallthrough)]
+
 
       [(iterate ,annoty (lambda ,_ ...) (iterate ,annotx (lambda ,__ ...) ,___))
        (error 'merge-iterates "implementation problem, should have matched this but didn't: \n~s" 
 	      `(iterate ,annoty (lambda ,_ ...) (iterate ,annotx (lambda ,__ ...) ,___)))]
       [,other (fallthrough other)]))
 
+
     [Expr do-expr])
 
 
+;; perform the simple merge whenever possible
+(define-pass simple-merge-policy:always
 
+    ;; merge the two lists of annotations
+    ;; FIXME: we will probably need something more intelligent soon!
+    (define (merge-annotations annot-outer annot-inner)
+      (append annot-outer annot-inner))
+  
+    (define (do-expr expr fallthrough)
+      (match expr
+        [(iterate (annotations . ,annot-up) ,f-up
+                  (iterate (annotations . ,annot-down) ,f-down ,in-str))
+
+         `(iterate (annotations . ,(merge-annotations '((merge-with-downstream)) annot-up)) ,f-up
+                   ,(do-expr
+                     `(iterate (annotations . ,annot-down) ,f-down ,in-str)
+                     fallthrough))]
+
+        
+        [,other (fallthrough other)]))
+
+
+  [Expr do-expr])
 
 
 ;; EVEN OLDER ONE:
@@ -148,7 +194,7 @@
      (length (deep-assq-all 'iterate
 	       (simple-merge-iterates 
 		'(foolang 
-		  '(program (iterate (annotations) 
+		  '(program (iterate (annotations (merge-with-downstream)) 
 				     (let () 
 				       (lambda (x vq1) (Int (VQueue Int))
 					       (begin (emit vq1 (+_ x 1)) 

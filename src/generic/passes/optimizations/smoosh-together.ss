@@ -60,15 +60,24 @@
 	       (let ([rc (hashtab-get reftable vr)])
 ;		 (printf "    REF Var ~s with RC ~s\n" vr rc)
 ;		 (inspect env)
-		 (ASSERT (not (fxzero? rc)))
-		 (if (fx= rc 1)
-		     ;; Transform as we inline:
-		     (loop (cdr (assq vr env)))
-		     vr))]
+                 ;; some symbols are not variables (e.g. nullseg)
+                 (if (not rc)
+                     vr
+                     (begin
+                       (ASSERT (not (fxzero? rc)))
+                       (if (fx= rc 1)
+                           ;; Transform as we inline:
+                           (loop (cdr (assq vr env)))
+                           vr))))]
 
 	  ;; For now we simply don't go inside lambda's:
 	  ;[(lambda ,v* ,ty* ,bod) `(lambda ,v* ,ty* ,bod)]
-	  [(iterate ,annot ,_ ,[strm]) `(iterate ,annot ,_ ,strm)]
+	  [(iterate ,annot (,lett ([,lhs* ,ty* ,[_rhs*]] ...) ,_) ,[strm])
+           (ASSERT (memq lett '(let let* letrec)))
+           `(iterate ,annot (,lett ,(map list lhs* ty* _rhs*) ,_) ,strm)]
+
+          [(iterate ,annot (lambda ,_ ...) ,[strm])
+           `(iterate ,annot (lambda ,@_) ,strm)]
 
 	  [(,lett ([,lhs* ,ty* ,_rhs*] ...) ,_bod)
 	   (guard (memq lett '(let let* letrec)))
