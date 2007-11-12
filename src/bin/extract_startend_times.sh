@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CPU0=`grep STARTTIMECPU $1 | awk '{ print $2; print "\n" }'`
-CPU1=`grep ENDTIMECPU $1 | awk '{ print $2; print "\n" }'`
+CPU0=`grep --binary-files=text STARTTIMECPU $1 | awk '{ print $2; print "\n" }'`
+CPU1=`grep --binary-files=text ENDTIMECPU $1 | awk '{ print $2; print "\n" }'`
 
 
 #REAL0=`grep STARTTIMEREAL $1 | awk '{ print $2}'`
