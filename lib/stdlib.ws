@@ -1633,6 +1633,31 @@ union Choose5 (a, b, c, d, e) = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | F
 */
 
 
+
+
+fun joiner(bufsize, slist) {
+  using List; 
+  len = slist`List:length;
+  iterate (ind, elem) in unionList(slist) {
+    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize));
+            pos = 0; // The next guy in line
+           }
+    using FIFO;
+    //println("joiner received: "++(ind,elem));
+    if ind == pos then {
+      emit elem;
+      pos += 1;
+      if pos == len then pos := 0;
+      // Relieve any pent-up data
+      while not(empty(bufs[pos])) {
+        emit elem;
+        pos += 1;	
+	if pos == len then pos := 0;
+      }
+    } else enqueue(bufs[ind], elem);
+  }
+}
+
 // Map a function over a stream with N separate instances for pipelining.
 parmap  :: (Int, (a -> b), Stream a) -> Stream b;
 fun parmap(n, fn, src) {
@@ -1645,13 +1670,16 @@ fun parmap(n, fn, src) {
     };
     routed = List:build(n, 
       fun(i) iterate (ind,x) in split {
-        if ind == i then emit fn(x);
+        if ind == i then emit x;
       });
+    // route before processing so spurious tuples don't go across CPU boundaries.
+    processed = List:mapi(fun(i,filtered) SETCPU(i,smap(fn, filtered)), routed);
     // Use zipN for simplicity.
     // Could optimize this a little bit.
-    joined = zipN(10,routed); 
+    //joined = zipN(10,routed); 
     // Finally, spool them out.
-    iterate arr in joined {
-      Array:foreach(fun(x) emit x, arr)
-    }
+    //iterate arr in joined { Array:foreach(fun(x) emit x, arr)  }
+ 
+    joiner(10, processed);
+    //joiner(10, routed);
   };

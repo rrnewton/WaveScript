@@ -709,6 +709,14 @@
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
+  ;; Here we dump it to a .dot file for graphviz.
+  ;; Wasted work if we're going to apply explicit-stream-wiring again later.
+  (when (dump-graphviz-output)
+    (string->file (output-graphviz (explicit-stream-wiring p)) "query.dot")
+    ;; If this fails, oh well:
+    (system "rm -f query.png")
+    (time (system "dot -Tpng query.dot -oquery.png")))
+  
   p)) ;; End run-that-compiler
 
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
@@ -943,11 +951,6 @@
      (flush-output-port))
    
    (set! prog (run-ws-compiler typed input-params disabled-passes #t))
-
-   ;; Here we dump it to a .dot file.
-   (IFCHEZ (string->file (output-graphviz (explicit-stream-wiring prog)) "query.dot")
-	   (void))
-
    
    (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
 
@@ -1031,8 +1034,8 @@
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog input-params disabled-passes #f))
     (ws-run-pass prog explicit-stream-wiring)
-
-    (IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))
+    
+    ;(IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))
 
 ;    (inspect prog)
     (printf "SIZE BEFORE MLTON CODEGEN: ~s\n" (count-nodes prog))
@@ -1106,6 +1109,7 @@
   (printf "WSCOMP options: ~n")
   (printf "  -c0           only run the WaveScript compiler, stop at C++~n")
   (printf "Options for all WaveScript configurations: ~n")
+  (printf "  -dot          dump compiled program to graphviz ~n")
   (printf "  --disable-pass <pass-name> suppress a specific pass ~n")
   (printf "  --scheduler <name> xstream scheduler; can be train-scheduler or corefit-scheduler-ex~n")
   )
@@ -1508,6 +1512,8 @@
 	   (eprintf "SETTING BATCH MODE\n")
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (loop rest)]
+
+	  [(-dot ,rest ...) (dump-graphviz-output #t) (loop rest)]
 	  
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 	  [(-debug ,rest ...)		     

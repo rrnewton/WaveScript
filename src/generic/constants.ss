@@ -145,6 +145,8 @@
 	 ws-optimizations-enabled
 	 ws-optimization-level
 
+	 dump-graphviz-output
+
 	 varied-param
 	 dummy-param
 
@@ -375,6 +377,8 @@
 ;; Output type annotations on all the generated mlton code.
 ;; Makes the output more verbose...
 (define-regiment-parameter mlton-ascribe-types #t)
+
+(define-regiment-parameter dump-graphviz-output #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns

@@ -351,11 +351,11 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
 
   //smap(inspect, split)
 
-  if GETENV("HANDOPT_BUILDSPLIT") == ""
-  then if GETENV("HANDOPT_MAPSPLIT") == ""
-       then aml_result
-       else duplicated
-  else split
+  if      not(GETENV("HANDOPT_MAPSPLIT") == "")
+  then { print("\n   USING DUPLICATED!\n\n"); duplicated }
+  else if not(GETENV("HANDOPT_BUILDSPLIT") == "")
+  then { print("\n   USING SPLIT!\n\n"); split }
+  else { print("\n   USING DEFAULT!\n\n"); aml_result }
 }
 
 fun oneSourceAMLTD(synced, win_size) {

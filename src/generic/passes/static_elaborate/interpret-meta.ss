@@ -161,12 +161,15 @@
   (define (prettify-names! names vals)
     (for-each (lambda (name val)
 		       (cond
-			[(closure? val)			 
+			[(closure? val)			
 			 (unless (closure-name val)
 			   (set-closure-name! val (unique-name name)))]
 			[(streamop? val)
 			 ;; override the streamop name from its creation site?
-			 (unless (and (streamop-name val) 
+			 ;; [2007.11.12] Trying just overwriting it always... 
+			 ;; Is the *last* name a good name?
+			 (unless (and #f 
+				      (streamop-name val) 
 				      (not (eq? 'anonstreamop (deunique-name (streamop-name val)))))
 ;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)
 			   
@@ -321,7 +324,7 @@
     [(deref ,[x])       (ref-contents x)]
     [(set! ,[v] ,[rhs]) 
      (set-ref-contents! v rhs)
-     ]
+     (make-plain (void) '#())]
     
     [(Array:makeUNSAFE ,_) (error 'interpret-meta:Eval 
 				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
@@ -367,6 +370,7 @@
 				[(streamop? x) x] ;; This shouldn't be touched.
 				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 			  x*)))])
+	  ;(ASSERT (not (eq? raw (void))))
 	  (let ([final (if (wrapped? raw) raw (make-plain raw #f))])
 	    (set-value-type! final retty) ;; Necessary?
 	    final))])]
@@ -844,7 +848,7 @@
 	 [oldenv (closure-env cl)]
 	 [oldslice (map (lambda (v) (apply-env oldenv v)) fv)]
 	 [newslice (map list newfv oldslice)])
-    (printf "OLDFREE ~s NEWFREE ~s\n" fv newfv )
+    ;(printf "OLDFREE ~s NEWFREE ~s\n" fv newfv )
     
     #;
     (unless (set-equal? (list->set newfv)

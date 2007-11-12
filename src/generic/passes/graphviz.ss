@@ -25,9 +25,33 @@
 	    dest*))
 	(define edges1 (map blowup srcv* sdownstrm**))
 	(define edges2 (map blowup opv* odownstrm**))
+	
+	(define nodelabels 
+	  (map (lambda (name opcode)
+		      (match opcode
+			[(,streamop (annotations . ,annot) . ,rest)
+			 ;(guard (temp-hack-stream-primitive? streamop))
+			 (list (format "  ~a [label=\"~a~a\"];\n"
+				       name
+				       name;(cdr (ASSERT (assq 'name annot)))
+				       (let ([cpu (assq 'cpu-pin annot)]
+					     [datarates (assq 'data-rates annot)])
+					 (string-append
+					  (if cpu       (format "\\n[cpu ~a]" (cdr cpu)) "")
+					  ;; This should be improved, and should probably affect the color
+					  (if datarates (format "\\n[rates ~a]" (cdr datarates)) "")
+					  ))))
+			 ]
+			;[,_ (void)]
+			)
+		      )
+	    (append srcv* opv*) 
+	    (append se* oe*)))
+	
 (text->string
 `("digraph Foo {
-"  ,(append edges1 edges2)"
+"  ,(append edges1 (reverse edges2))"
+"  ,nodelabels"
 }"))]))])
 
 ;;   rankdir=LR;
