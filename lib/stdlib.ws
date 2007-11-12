@@ -131,7 +131,9 @@ zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
 zip4_sametype   :: (Int, S t, S t, S t, S t) -> Stream (t * t * t * t);
 // Introducing an argument controlling buffer size:
+// This should REALLY, produce an array.
 zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
+zipN            :: (Int, List (Stream t)) -> Stream (Array t);
 
 //union2          :: (Stream a, Stream b) -> Stream (Union2 a b);
 
@@ -912,6 +914,28 @@ fun zipN_sametype(bufsize, slist) {
   }
 }
 
+// zipN will ALWAYS have to be "sametype"
+//zipN = zipN_sametype;
+
+// [2007.11.12] Don't want to break any old code right now, but this
+// should REALLY produce an array.
+fun zipN(bufsize, slist) {
+  using List; 
+  len = slist`List:length;
+  iterate (ind, elem) in unionList(slist) {
+    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
+    using FIFO;
+    enqueue(bufs[ind], elem);
+    if Array:andmap(fun(q) not(empty(q)), bufs)
+    then emit Array:build(len, fun(i) dequeue(bufs[i]));
+  }
+}
+// Can make a namespace "Easy" that has defaults for buffering stuff
+// or uses dynamically expanding buffers.  Or alternatively could make
+// a namespace "static" for the opposite.  If we had functors we could
+// just substitute the growing fifos to derive the "Easy"
+// implementations.
+
 
 // This is an internal helper that can be parameterized in two ways to
 // form "syncN" and "syncN_no_delete".
@@ -1607,3 +1631,27 @@ union Choose5 (a, b, c, d, e) = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | F
 
 
 */
+
+
+// Map a function over a stream with N separate instances for pipelining.
+parmap  :: (Int, (a -> b), Stream a) -> Stream b;
+fun parmap(n, fn, src) {
+    split = iterate x in src {
+      state { cnt = 0 }
+      // NEED MODULO:
+      emit (cnt, x);
+      cnt += 1;
+      if cnt == n then cnt := 0;
+    };
+    routed = List:build(n, 
+      fun(i) iterate (ind,x) in split {
+        if ind == i then emit fn(x);
+      });
+    // Use zipN for simplicity.
+    // Could optimize this a little bit.
+    joined = zipN(10,routed); 
+    // Finally, spool them out.
+    iterate arr in joined {
+      Array:foreach(fun(x) emit x, arr)
+    }
+  };

@@ -310,6 +310,9 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
     smap(fun((tup,st,tb)) (actualAML(i*chunk, (i+1)*chunk , grid_size, tup),st,tb), temp);
   };
 
+  
+  fun doaml((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb);
+
   threads = if GETENV("NUMTHREADS") == "" then 4 else stringToInt(GETENV("NUMTHREADS"));
   components = List:build(threads,
     fun(i) {
@@ -325,6 +328,8 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
            //(Array:append(a,b), st,tb)
          },
          zipN_sametype(20, components));
+
+   duplicated = parmap(threads, doaml, temp);
 
     /*  
   // SPLIT VERSION:
@@ -347,7 +352,9 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
   //smap(inspect, split)
 
   if GETENV("HANDOPT_BUILDSPLIT") == ""
-  then aml_result
+  then if GETENV("HANDOPT_MAPSPLIT") == ""
+       then aml_result
+       else duplicated
   else split
 }
 
