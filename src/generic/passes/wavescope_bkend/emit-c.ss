@@ -1159,6 +1159,8 @@
 			" if (curTuples == maxTuples) { "
 			"   chatter(LOG_WARNING, \"Tuple limit hit.  Stopping query.\"); "
 			;"   WSSched::stopnow(); } \n"
+			"   uint32_t get_contention(); \n"
+			"   printf(\"SCHED count = %ld\\n\", get_contention()); \n"
 			"   exit(0); } \n" ;; Trying this instead.
 			
 
