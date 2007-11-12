@@ -514,6 +514,8 @@
 	      ;[(emit ,[vq] ,[e]) `(begin (emit ,vq ,e) (tuple))]
 	      [(set! ,v ,[e])    `(begin (set! ,v ,e)  (tuple))]
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
+	      [(while ,[test] ,[bod]) 
+	       `(begin (while ,test ,bod)  (tuple))]
 	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
 	       (let ([entry (assq prim wavescript-effectful-primitives)])
                  (match (caddr entry)
