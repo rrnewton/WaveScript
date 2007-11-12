@@ -25,6 +25,7 @@ while [ $# != 0 ];  do
   then shift;
        OUTFILE="$1"; 
   elif [ "$1" == "-exit-error" ] ||
+       [ "$1" == "-dot" ] ||
        [ "$1" == "-t" ]
   then REGPASSTHRU="$REGPASSTHRU $1";
 
