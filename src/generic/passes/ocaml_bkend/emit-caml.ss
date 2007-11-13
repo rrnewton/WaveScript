@@ -880,6 +880,7 @@
    		   +I64 -I64 *I64 /I64 ^I64 absI64 
 
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
+		   moduloI
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R

@@ -735,6 +735,7 @@ fun snoop_every(everyN, fn, strm) {
 fun repeater(n,s)
   iterate x in s {
     for i = 1 to n {
+      print("  Emitting from repeater, "++i++"\n");
       emit x;
     }
   }
@@ -1650,7 +1651,7 @@ fun joiner(bufsize, slist) {
       if pos == len then pos := 0;
       // Relieve any pent-up data
       while not(empty(bufs[pos])) {
-        emit elem;
+        emit dequeue(bufs[pos]);
         pos += 1;	
 	if pos == len then pos := 0;
       }

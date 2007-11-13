@@ -1099,7 +1099,7 @@
   (define (sqrtI n) (flonum->fixnum (sqrt n)))
   (define sqrtF sqrt)
   (define sqrtC sqrt)
-  (define moduloI #%fxmodulo)
+  (define moduloI fxmodulo)
      
      ;; These shouldn't be implemented because they should be desugared earlier!
      ; (define (toFloat n)

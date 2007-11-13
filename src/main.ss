@@ -711,11 +711,13 @@
 
   ;; Here we dump it to a .dot file for graphviz.
   ;; Wasted work if we're going to apply explicit-stream-wiring again later.
-  (when (dump-graphviz-output)
+  (IFCHEZ
+   (when (dump-graphviz-output)
     (string->file (output-graphviz (explicit-stream-wiring p)) "query.dot")
     ;; If this fails, oh well:
     (system "rm -f query.png")
     (time (system "dot -Tpng query.dot -oquery.png")))
+   (void))
   
   p)) ;; End run-that-compiler
 

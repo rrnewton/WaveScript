@@ -199,12 +199,27 @@ fun SSS_ifft(sss) {
     sss
 }
 
-fun SSS_psd(s, size) {
-  deep_stream_map( absC,
+
+fun SSS_toFreq(size, sss) {
    SSS_fft $
-    hanning $ 
-     rewindow(s, size*2, 0))
+   hanning $ 
+   rewindow(s, size*2, 0)
 }
+
+
+fun SSS_fromFreq(size, sss) {
+   SSS_fft $
+   hanning $ 
+   rewindow(s, size*2, 0)
+}
+
+
+
+fun SSS_psd(size, s) {
+  deep_stream_map( absC,
+  SSS_toFreq(size, s))
+}
+
 
 fun high_pass(size, cutoff, input) {
   using Curry;

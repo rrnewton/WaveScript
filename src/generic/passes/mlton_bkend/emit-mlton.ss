@@ -1360,7 +1360,7 @@
 		   		   
 		   wsequal? print show seg-get toArray
 
-		   stringToComplex 
+		   stringToComplex moduloI
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R

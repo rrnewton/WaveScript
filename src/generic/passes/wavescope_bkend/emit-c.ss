@@ -329,7 +329,7 @@
 				  [(Stream ,t) (Type t)]
 				  [,other (error 'emitC:Query "expected iterate to have signal output type! ~s" other)])
 				;; Constructor:
-				(block `(,class_name "()")  stateinit)
+				(block `(,class_name "() : WSBox(\"",class_name"\")")  stateinit)
 				;; This produces a function declaration for iterate:				
 				iterator+vars)))])
 	   ;(if (symbol? sig) 

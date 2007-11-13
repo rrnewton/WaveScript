@@ -70,127 +70,69 @@ using namespace __gnu_cxx;
 
 #elif defined(COREFIT_SCHEDULER_DF) 
 
-#ifdef CACHE_FIT_SORT
-// Defined CACHE_FIT_SORT
+// Don't do a damn thing here.
+// We just inherit Stan's like we should.
 
-       // Sample the L1 cache misses here
-
-// Sample the L1 cache missed here
-// Calculate the difference
-//     l1missStats[m_outputs[i]->port()]->sample(difference)
-
-#define DEFINE_OUTPUT_TYPE(type)                \
- inline void emit(const type &tuple) {         \
-   uint i, j;                                     \
-    outputStats.sample(getTotalByteSize(tuple)); \
-    for (j=0; j<m_outputs.size(); j++) { \
-      i = outputOrder[j]; \
-      WSBox *nextBox = m_outputs[i]->getParent(); \
-     if (nextBox->getPartition() == partition &&  \
-         !inCycle(nextBox)) {                           \
-       nextBox->prevScheduled = this;                           \
-       nextBox->iterate(m_outputs[i]->port(),                   \
-                        const_cast<type *>(&tuple));    \
-      } else { \
-          m_outputs[i]->enqueue(new type (tuple), this);  \
-          m_outputs[i]->commit(this);                     \
-          nextBox->getPartition()->scheduleActive(nextBox);     \
-      } \
-    } \
-    totalEmits++;                               \
-    misc++;                                     \
-    totalEmitBytes += getTotalByteSize(tuple); \
-  } \
-  void *cloneTuple(void *tuple) { \
-  type *tuplePtr = (type *)tuple; \
-  type *outPtr = (new type (*tuplePtr)); \
-  return outPtr; \
-  } \
-  void freeTuple(void *tuple) {\
-  type *tuplePtr = (type *)tuple; \
-  delete tuplePtr; \
-  } \
-  void clearOutputBuffer() \
-  { }
-
-#elif defined(CACHE_FIT_RADIUS)
-// Defined CACHE_FIT_RADIUS
-
-#define DEFINE_OUTPUT_TYPE(type)                \
- inline void emit(const type &tuple) {         \
-   uint i;                                        \
-   uint outputSize = getTotalByteSize(tuple); \
-   PAPI_read(partition->papiEventSet,                   \
-             partition->papiCtrValues);                 \
-   long_long temp = (partition->papiCtrValues[0] + \
-                     partition->papiCtrValues[1]); \
-   uint footPrintSize = (temp - cacheReuse.cacheMisses) * \
-     WSSystem::L1DCacheLine(); \
-   cacheReuse.cacheMisses = temp; \
-   if (outputSize > cacheReuse.outpSizeEst) \
-     cacheReuse.outpSizeEst = outputSize; \
-   cacheReuse.mult = m_outputs.size(); \
-   cacheReuse.outpSize = outputSize; \
-   cacheReuse.opFootprint = footPrintSize; \
-   if (cacheReuse.opFootprint > cacheReuse.opFootprintEst) \
-     cacheReuse.opFootprintEst = cacheReuse.opFootprint; \
-   if (prevScheduled != NULL)                            \
-     cacheReuse.cacheFill = prevScheduled->cacheReuse.cacheFill + \
-       cacheReuse.opFootprint; \
-   else \
-     cacheReuse.cacheFill = cacheReuse.opFootprint; \
-   for (i=0; i<m_outputs.size(); i++, cacheReuse.mult--) {   \
-      WSBox *nextBox = m_outputs[i]->getParent(); \
-     if (!doPostpone(nextBox) && \
-         nextBox->getPartition() == partition &&        \
-         !inCycle(nextBox)) {                           \
-       nextBox->prevScheduled = this;                           \
-       nextBox->iterate(m_outputs[i]->port(),                   \
-                        const_cast<type *>(&tuple));    \
-      } else { \
-          m_outputs[i]->enqueue(new type (tuple), this);  \
-          m_outputs[i]->commit(this);                     \
-          nextBox->getPartition()->scheduleActive(nextBox);     \
-      } \
-    } \
-    totalEmits++;                               \
-    misc++;                                     \
-    totalEmitBytes += getTotalByteSize(tuple); \
-  } \
-  void *cloneTuple(void *tuple) { \
-  type *tuplePtr = (type *)tuple; \
-  type *outPtr = (new type (*tuplePtr)); \
-  return outPtr; \
-  } \
-  void freeTuple(void *tuple) {\
-  type *tuplePtr = (type *)tuple; \
-  delete tuplePtr; \
-  } \
-  void clearOutputBuffer() \
-  { }
+// #define DEFINE_OUTPUT_TYPE(type)                \
+//  inline void emit(const type &tuple) {         \
+//     uint i;                                     \
+//     for (i=0; i<m_outputs.size(); i++) { \
+//       WSBox *nextBox = m_outputs[i]->getParent(); \
+//      if (nextBox->getPartition() == partition &&  \
+//          !inCycle(nextBox)) {                           \
+//        nextBox->prevScheduled = this;                           \
+//        nextBox->iterate(m_outputs[i]->port(),                   \
+//                         const_cast<type *>(&tuple));    \
+//       } else { \
+//           m_outputs[i]->enqueue(new type (tuple), this);  \
+//           m_outputs[i]->commit(this);                     \
+//           nextBox->getPartition()->scheduleActive(nextBox);     \
+//       } \
+//     } \
+//     totalEmits++;                               \
+//     misc++;                                     \
+//     totalEmitBytes += getTotalByteSize(tuple); \
+//   } \
+//   void *cloneTuple(void *tuple) { \
+//   type *tuplePtr = (type *)tuple; \
+//   type *outPtr = (new type (*tuplePtr)); \
+//   return outPtr; \
+//   } \
+//   void freeTuple(void *tuple) {\
+//   type *tuplePtr = (type *)tuple; \
+//   delete tuplePtr; \
+//   } \
+//   void clearOutputBuffer() \
+//   { }
 
 
-#else
 
 #define DEFINE_OUTPUT_TYPE(type)                \
  inline void emit(const type &tuple) {         \
     uint i;                                     \
+    char doDF[m_outputs.size()]; \
     for (i=0; i<m_outputs.size(); i++) { \
       WSBox *nextBox = m_outputs[i]->getParent(); \
      if (nextBox->getPartition() == partition &&  \
-         !inCycle(nextBox)) {                           \
-       nextBox->prevScheduled = this;                           \
-       nextBox->iterate(m_outputs[i]->port(),                   \
-                        const_cast<type *>(&tuple));    \
+	 !inCycle(nextBox)) {				\
+       doDF[i] = 1; \
       } else { \
+       doDF[i] = 0; \
           m_outputs[i]->enqueue(new type (tuple), this);  \
-          m_outputs[i]->commit(this);                     \
-          nextBox->getPartition()->scheduleActive(nextBox);     \
+	  m_outputs[i]->commit(this);			  \
+	  nextBox->getPartition()->scheduleActive(nextBox);	\
       } \
     } \
-    totalEmits++;                               \
+    for (i=0;i<m_outputs.size();i++) {\
+      WSBox *nextBox = m_outputs[i]->getParent(); \
+      if (doDF[i]) {\
+       nextBox->prevScheduled = this;				\
+       nextBox->iterate(m_outputs[i]->port(),			\
+			const_cast<type *>(&tuple));	\
+      }\
+    }\
+    totalEmits++;				\
     misc++;                                     \
-    totalEmitBytes += getTotalByteSize(tuple); \
   } \
   void *cloneTuple(void *tuple) { \
   type *tuplePtr = (type *)tuple; \
@@ -204,8 +146,8 @@ using namespace __gnu_cxx;
   void clearOutputBuffer() \
   { }
 
-#endif
-// #ifdef CACHE_FIT_SORT, not defined
+//    totalEmitBytes += tuple.getTotalByteSize(); \
+
 
 #elif defined(COREFIT_SCHEDULER_EX)
 // Default emit() + bytewise accounting
