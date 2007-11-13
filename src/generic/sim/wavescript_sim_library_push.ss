@@ -53,7 +53,7 @@
 		 +D -D *D /D ^D
 		 +I16 -I16 *I16 /I16 ^I16
 		 +I64 -I64 *I64 /I64 ^I64
-		 sqrtF sqrtC sqrtI
+		 sqrtF sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
 		 ;modI modF 
 		 roundF		 
@@ -1099,6 +1099,7 @@
   (define (sqrtI n) (flonum->fixnum (sqrt n)))
   (define sqrtF sqrt)
   (define sqrtC sqrt)
+  (define moduloI #%fxmodulo)
      
      ;; These shouldn't be implemented because they should be desugared earlier!
      ; (define (toFloat n)

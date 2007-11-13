@@ -385,6 +385,8 @@
     (sqrtI (Int)     Int)
     (sqrtF (Float)   Float)
     (sqrtC (Complex) Complex)    
+
+    (moduloI (Int Int) Int)
     
     (absI16 (Int16) Int16)
     (absI64 (Int64) Int64)

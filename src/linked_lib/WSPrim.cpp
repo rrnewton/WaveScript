@@ -122,6 +122,10 @@ uint32_t getTotalByteSize(const SigSeg<T> &e)
      return (wsbool_t)!b;
    }
 
+   inline static wsint_t moduloI(wsint_t n, wsint_t m) {
+     return n%m;
+   }
+
    // SigSegs:
     /*
    static wsint_t width(const RawSeg& w) {

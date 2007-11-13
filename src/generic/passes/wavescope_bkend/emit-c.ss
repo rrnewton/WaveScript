@@ -1476,6 +1476,7 @@
        (sym2str var)]
       [(absF absD absI absI16 absI64) "abs"]
       [(roundF)                 "round"]
+      [(moduloI)                (fromlib "moduloI")]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  (fromlib "csqrt")]
       

@@ -12,7 +12,7 @@
 if ! [ -f "$1" ]; then echo "File does not exist!"; exit -1; fi
 
 #UTIME=`tail -n 10 $1  | grep "usertime" | awk '{ print $2 }'`
-UTIME=`tail -n 10 $1  | grep "user" | tail -n 1 | awk '{ print $2 }' | sed -e 's/m/ /' -e 's/s//'`
+UTIME=`tail -n 25 $1  | grep "user" | tail -n 1 | awk '{ print $2 }' | sed -e 's/m/ /' -e 's/s//'`
 
 MIN=`echo $UTIME | awk '{ print $1 }'`
 SEC=`echo $UTIME | awk '{ print $2 }'`
