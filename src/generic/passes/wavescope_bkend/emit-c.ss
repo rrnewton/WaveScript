@@ -1834,6 +1834,8 @@
     [Char         (simple)]
     [Bool         (simple)]
 
+    [#()          (simple)]
+
     [Timebase         (simple)]
     ;; This is effectively physical equality:
     ;; Requires that they have the same parents.
