@@ -374,7 +374,7 @@ void intrusive_ptr_release(WSArrayStruct<T>* p) {
 #endif
   //printf("Trying decr: %d\n", p->rc);
 #ifndef BOOST_SP_DISABLE_THREADS  
-  int rc = atomic_exchange_and_add( &(p->rc), -1 );
+  int rc = atomic_exchange_and_add( &(p->rc), -1 ) - 1;
   //printf("DECREMENTED: %d\n", p->rc);
 #else
   p->rc --;
