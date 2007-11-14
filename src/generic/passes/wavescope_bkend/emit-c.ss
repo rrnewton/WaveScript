@@ -1499,7 +1499,7 @@
        (mangle var)]
 
       ;; These use FFTW
-      [(fftR2C ifftC2R fftC ifftC)
+      [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
        (add-include! "<fftw3.h>")
        (add-include! (list "\"" (REGIMENTD) 
 			   "/src/linked_lib/FFTW_wrappers.cpp\""))
@@ -1507,7 +1507,7 @@
        (mangle var)]
 
       ;; Currently the memoized version is not implemented for C++.
-      [(memoized_fftR2C) (SimplePrim 'fftR2C)]
+      ;[(memoized_fftR2C) (SimplePrim 'fftR2C)]
 
       ;; This is the "default"; find it in WSPrim:: class
       [(string-append 

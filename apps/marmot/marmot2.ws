@@ -152,7 +152,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     Jvec = Array:make(grid_size, 0.0);
 
     //fft the sync'd data - these must be channels, otherwise the fft doesn't make any sense
-    fft_temp = fromArray2d(Float:rowmap(fftR2C, data_in));
+    fft_temp = fromArray2d(Float:rowmap(memoized_fftR2C, data_in));
     
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
     //sel_bin_size = min(total_bins, window_size/20);

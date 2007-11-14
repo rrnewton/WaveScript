@@ -113,7 +113,7 @@ fun prepAML(data_in, radius, theta, sens_num) {
     total_bins = window_size/2;
 
     //fft the sync'd data - these must be channels, otherwise the fft doesn't make any sense
-    fft_temp = fromArray2d(Float:rowmap(fftR2C, data_in));
+    fft_temp = fromArray2d(Float:rowmap(memoized_fftR2C, data_in));
     
     //    sel_bin_size = min(half_size,m_cols(fft_temp)/20); // the C version
     //sel_bin_size = min(total_bins, window_size/20);
