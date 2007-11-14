@@ -1,5 +1,18 @@
 
 
+/*
+
+
+[2007.11.14] Some numbers from faith:  For 10 tuples.
+
+ OrigHandopt: 1s
+ LewisVer:    14.9 / 13.6
+ RyanVEr:     10.65
+ RyanWithOpt: 3.3s
+
+*/
+
+
 DEBUG = false;
 DEBUGSYNC = DEBUG;
 
@@ -12,6 +25,7 @@ include "filter.ws";
 
 //marmfft = fix_fft
 marmfft = memoized_fftR2C
+fun sigseg_marmfft  (ss) toSigseg(ss `toArray `marmfft,    ss.start, ss.timebase)
 
 // Takes Sigseg Complex
 fun marmotscore2(freqs) { 
@@ -176,7 +190,7 @@ fun SSS_fromArray(sss)
 
 fun SA_fft(sa) 
   iterate arr in sa {
-    emit fftR2C(arr);
+    emit marmfft(arr);
   }
 
 fun SA_ifft(sa) 
@@ -186,40 +200,20 @@ fun SA_ifft(sa)
 
 // fft on a stream of sigsegs.  Could be primitive.
 fun SSS_fft(sss) {
-  SSS_fromArray $ 
-  SA_fft $ 
-  SSS_toArray $ 
-    sss
+/*   SSS_fromArray $  */
+/*   SA_fft $  */
+/*   SSS_toArray $  */
+/*     sss */
+  smap(sigseg_marmfft, sss)
 }
 
 fun SSS_ifft(sss) {
-  SSS_fromArray $ 
-  SA_ifft $ 
-  SSS_toArray $ 
-    sss
+/*   SSS_fromArray $  */
+/*   SA_ifft $  */
+/*   SSS_toArray $  */
+/*     sss */
+  smap(sigseg_ifftC2R, sss)
 }
-
-
-fun SSS_toFreq(size, sss) {
-   SSS_fft $
-   hanning $ 
-   rewindow(s, size*2, 0)
-}
-
-
-fun SSS_fromFreq(size, sss) {
-   SSS_fft $
-   hanning $ 
-   rewindow(s, size*2, 0)
-}
-
-
-
-fun SSS_psd(size, s) {
-  deep_stream_map( absC,
-  SSS_toFreq(size, s))
-}
-
 
 fun high_pass(size, cutoff, input) {
   using Curry;
@@ -237,9 +231,69 @@ fun high_pass(size, cutoff, input) {
 }
 
 
+
+toFreq:: (Int, Stream (Sigseg Float)) ->  Stream (Sigseg Complex);
+fun toFreq(size, sss) {
+   SSS_fft $
+   hanning $ 
+   rewindow(sss, size*2, 0 - size)
+}
+
+
+fromFreq :: (Int, Stream (Sigseg Complex)) ->  Stream (Sigseg Float);
+fun fromFreq(size, sss) {
+   hanning_merge $
+   SSS_ifft $
+     //   rewindow(sss, sizeg, 0 - size)
+     sss
+}
+
+raw_bandpass :: (Int, Int, Int, Stream (Sigseg Complex)) ->  Stream (Sigseg Complex);
+fun raw_bandpass(size, lo, hi, strm) {
+   fun filt(ss) {
+     len = ss`width;
+     arr = ss`toArray;
+     newarr = Array:make(len, 0);
+     Array:blit(newarr, lo, arr, lo, hi-lo+1);
+     toSigseg(newarr,ss`start, ss`timebase);
+   };
+  smap(filt, strm)
+}
+
+bandpass :: (Int, Int, Int, Stream (Sigseg Float)) ->  Stream (Sigseg Float);
+fun bandpass(size, lo, hi, strm) {
+   fromFreq(size,
+     raw_bandpass(size,lo,hi, 
+       toFreq(size, strm)))
+}
+
+
+  fun reduce(ss) {
+    //println("   Reducing ss: "++ss);
+    (Array:fold(fun(acc, x) acc + absC(x), 0.0, toArray(ss)), 
+     ss`start, ss`end)
+  };
+
+
+//SSS_psd                                  :: (Int, Stream (Sigseg Float)) -> Stream Float;
+fun SSS_psd(size, s) {
+  Curry:smap(reduce) $ 
+  toFreq(size, s)
+}
+
+
+fun oneshot(size, s) {
+  Curry:smap(reduce) $ 
+  raw_bandpass(16, 3, 4, 
+       toFreq(size, s))
+}
+
+
+
+
 // RRN: Modifying this to make it amenable to rewrite opts.
-detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16))
-         -> Stream Detection;
+/*detector :: (Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16) * Stream (Sigseg Int16))
+  -> Stream Detection;*/
 fun detector((ch1i,ch2i,ch3i,ch4i)) {
 
   sfloats = deep_stream_map(int16ToFloat, ch1i);
@@ -247,20 +301,31 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
   /* ULTRACRAP IMPLEMENTATION */
   // highpass and lowpass to simulate bandpass
 
-  hi = fft_filter(sfloats, low_pass_coefs(16,4));
-  lo = fft_filter(hi, high_pass_coefs(16,3));
-  filtered = lo;
-
-  // now compute psd
-  psds = psd(filtered, 16);
+  ver1 = {
+    hi = fft_filter(sfloats, low_pass_coefs(16,4));
+    lo = fft_filter(hi, high_pass_coefs(16,3));
+    filtered = lo;
+    // now compute psd
+    psds = psd(filtered, 16);
+    wscores = iterate p in psds {    
+      emit( (Array:fold((+), 0.0, toArray(p)), p.start, p.end) )
+    };
+    wscores
+  };
+  ver2 = {
+    filt = bandpass(16, 3, 4, sfloats);
+    wscores = SSS_psd(16, filt);
+    wscores
+  };
+  ver3 = oneshot(16,sfloats);
+ 
+  wscores = if GETENV("HANDOPT_FFTIFFT")=="" then ver2 else ver3;
+  //wscores = ver2;
 
   /* SEMICRAP IMPLEMENTATION -- doesnt work but for comparison */
   //psds = psd(sfloats, 16);
 
   // sum the psd 
-  wscores = iterate p in psds {
-    emit( (Array:fold((+), 0.0, toArray(p)), p.start, p.end) )
-  };
 
   detections = detect(wscores);
 
@@ -272,7 +337,9 @@ fun detector((ch1i,ch2i,ch3i,ch4i)) {
   };
 
   synced_ints = syncN_no_delete(d2, [ch1i, ch2i, ch3i, ch4i]);
-  synced_ints
+
+  // EVILHACKS:
+  sparsify(1000, wscores)
 }
 
 

@@ -51,7 +51,7 @@
 	 (load fftw-file)
 	 ;;(import (add-prefix fftw fftw:))
 	 (set! dft 
-	       ;; Simple memoization scheme:
+	       ;; Simple memoization scheme, should use hash table.
 	       (let ([plans '()])
 		 (lambda (v)
 		   (let ([cell (assq (vector-length v) plans)])

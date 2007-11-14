@@ -21,6 +21,9 @@ while [ $# != 0 ];  do
   then NOGCC=1;
   elif [ "$1" == "-dbg" ]
   then WSCDEBUG=1;
+  elif [ "$1" == "-nothreads" ]
+#  then CCPASSTHRU="$CCPASSTHRU -DBOOST_SP_DISABLE_THREADS"
+  then CCPASSTHRU="$CCPASSTHRU -nothreads"
   elif [ "$1" == "-o" ]
   then shift;
        OUTFILE="$1"; 

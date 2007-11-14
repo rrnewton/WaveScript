@@ -112,7 +112,7 @@ Pointer memoized_fftR2C(Pointer input, Int32 len) {
 	cached_inbuf  = fftwf_malloc(len     * sizeof(float));
 	cached_outbuf = fftwf_malloc(len_out * sizeof(_Complex float));	
 	// FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
-        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_PATIENT);
+        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE);
       }
 
       // This is the cost of doing things this way.  

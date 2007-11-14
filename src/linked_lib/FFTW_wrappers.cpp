@@ -95,13 +95,15 @@ static complexarr memoized_fftR2C(floatarr& input) {
       if (initialized == 0) {
 
         // grab the lock
+#ifndef BOOST_SP_DISABLE_THREADS
         planner_lock.lock();
+#endif
 
         // ok.. if we have the lock then either someone already initialized it
         // ahead of us, or we must init it.  if initialized is still 0...
 
         if (initialized == 0) {
-          fprintf(stderr, "Allocating fftw plan for the first time, size %d\n", len);
+          fprintf(stderr, "  Allocating fftw plan for the first time, size %d\n", len);
   	  fflush(stderr);
 
   	  last_plan_size = len;
@@ -113,12 +115,16 @@ static complexarr memoized_fftR2C(floatarr& input) {
 
         // OK it is init'd now
         initialized = 1;
+
+#ifndef BOOST_SP_DISABLE_THREADS
         planner_lock.unlock();
+#endif
       }
 
       if (last_plan_size != len) {
         fprintf(stderr, "ack, we're screwed.. fftw plan for %d, not %d\n",
 		last_plan_size, len);
+	exit(-1);
       }
       
       //fprintf(stderr, "   EXECUTING PLAN size %d\n", len);
@@ -134,6 +140,8 @@ static complexarr memoized_fftR2C(floatarr& input) {
 
 
 
+// Trying this:
+//#include "fourier.c"
 
 
 

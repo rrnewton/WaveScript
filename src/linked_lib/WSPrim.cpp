@@ -372,13 +372,12 @@ void intrusive_ptr_release(WSArrayStruct<T>* p) {
 #ifndef BOOST_SP_DISABLE_THREADS
   //p->mut.lock();
 #endif
-  //p->rc --;
-
   //printf("Trying decr: %d\n", p->rc);
 #ifndef BOOST_SP_DISABLE_THREADS  
   int rc = atomic_exchange_and_add( &(p->rc), -1 );
   //printf("DECREMENTED: %d\n", p->rc);
 #else
+  p->rc --;
   int rc = p->rc;
 #endif
 

@@ -49,13 +49,19 @@
 
     ["window/dewindow"  (window (dewindow ,strm) ,wid) (rewindow ,strm ,wid '0)]
 
+    ["to-from freq"     (toFreq ,x (fromFreq ,y ,s))  ,s]
+    ["from-to freq"     (fromFreq ,x (toFreq ,y ,s))  ,s]
+
     ))
 
 ;; Unification will be triggered in the first place by the occurrence
 ;; of an application of the head operator (e.g. rewindow).
 
-(define rewrite-heads
+
+(define special-rewrite-libfuns ;rewrite-heads  
   (map caadr rewrite-rule-table))
+
+(define rewrite-heads special-rewrite-libfuns)
 
 ;; ================================================================================
 ;;; Helpers:
@@ -168,7 +174,7 @@
 	     (let ([subst (unify (cons special arg*) (cadr rule) (empty-env))])
 	       (if subst 
 		   (begin 
-		     (printf "RULE-FIRED: ~s\n" (car rule))
+		     (printf " *** OPTIMIZATION: RULE-FIRED: ~s\n" (car rule))
 		     (instantiate-rule (caddr rule) subst))
 		   (cons special arg*)))]
 	    [,oth (fallthr oth)]))])

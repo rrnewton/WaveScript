@@ -81,6 +81,7 @@
 	     (match pr
 	       [(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
 		;(inspect (vector 'gotspecial (map car special-defs)))
+		(printf "  HIDING: ~s\n" (map car special-defs))
 		`(,lang '(program ,bod (special-libfuns ,@special-defs) ,meta* ... ,topty))
 		]))]
   
@@ -91,6 +92,7 @@
     [Expr (lambda (xp fallthr)
 	    (match xp
 	      [(,special ,[x*] ...)  (guard (memq special special-rewrite-libfuns))
+	       (printf "  REVEALING: ~s\n" special)
 	       `(app ,special ,@x*)]
 	      [,oth (fallthr oth)]))]
     [Program (lambda (pr Expr)

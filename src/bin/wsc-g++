@@ -39,6 +39,11 @@ while [ $# != 0 ];  do
   then DYNAMICLINK=1; 
   elif [ "$1" == "-static" ];
   then DYNAMICLINK=0;
+
+  elif [ "$1" == "-nothreads" ];
+  then 
+   echo Configuring for SINGLE THREADED mode.
+   CCARGS="$CCARGS -DBOOST_SP_DISABLE_THREADS"
   elif [ "$1" == "--scheduler" ];
   then shift;
        SCHEDULER="$1";
@@ -62,6 +67,7 @@ MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 
 # -fPIC | -O1/2/3 | -g
 #WS_FLAGS="-fPIC -pg $CCARGS"
+echo SENDING OFF CCARGS: $CCARGS
 WS_FLAGS=" $CCARGS $COPTFLAG"
 
 
@@ -83,7 +89,8 @@ esac
 #WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function "
 WS_WARNINGS=""
 WS_INCLUDES="-I$WAVESCOPED/include "
-WS_MACROS="-DSegList -DuseArray -Di386 -DTIMING_RDTSC $SCHEDULER_MACRO"
+WS_MACROS="-DSegList -DuseArray -Di386  $SCHEDULER_MACRO"
+# [2007.11.14] Removing this by default: -DTIMING_RDTSC
 #WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
 WS_LINK=" -lpthread  " # -lpapi
 

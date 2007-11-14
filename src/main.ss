@@ -487,6 +487,7 @@
   (IFCHEZ
    (when (memq 'rewrites (ws-optimizations-enabled))
     (ws-run-pass p hide-special-libfuns)
+    (dump-compiler-intermediate (strip-annotations p) ".__hidden.ss")
     (parameterize ([regiment-primitives
 		    (append (map (match-lambda ([,lhs ,ty ,rhs]) 
 				   (match ty
@@ -497,12 +498,13 @@
       (ws-run-pass p interpret-meta) (do-early-typecheck)
       (ws-run-pass p rename-vars)
       (dump-compiler-intermediate (strip-annotations p) ".__presmooshed.ss")
-      (ws-run-pass p smoosh-together)
+      (ws-run-pass p smoosh-together)      
       (dump-compiler-intermediate (strip-annotations p) ".__smooshed.ss")
 
-      (inspect (match p [(,lang '(program ,bod . ,_)) bod]))
+      ;(inspect (match p [(,lang '(program ,bod . ,_)) bod]))
       (ws-run-pass p rewrite-rules)
-      (inspect (match p [(,lang '(program ,bod . ,_)) bod]))
+      (dump-compiler-intermediate (strip-annotations p) ".__rewritten.ss")
+      ;(inspect (match p [(,lang '(program ,bod . ,_)) bod]))
       (ws-run-pass p reveal-special-libfuns)))
    (void))
   ;; -----------------------------------------
@@ -537,10 +539,11 @@
 
 ;  (inspect p)  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
+  ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
-
+  ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
 
   (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
@@ -1476,6 +1479,8 @@
 
 	  [(-opt ,name ,rest ...)
 	   (unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
+	   (unless (memq name '(rewrites fuse merge-iterates profile))
+	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
 

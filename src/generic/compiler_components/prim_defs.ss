@@ -61,7 +61,7 @@
  	   distributed-primitive?
  	   token-machine-primitive?
 
-	   special-rewrite-libfuns
+	   ;special-rewrite-libfuns
 	   )
 
   (chezimports )
@@ -133,6 +133,7 @@
     [ifft]))
 ;; These don't need types because they're defined in WS types.  The
 ;; inferencer infers types normally.
+#;
 (define special-rewrite-libfuns
   '(window dewindow rewindow 
 	   

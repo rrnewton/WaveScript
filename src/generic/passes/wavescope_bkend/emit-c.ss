@@ -1291,7 +1291,8 @@
             (map UnionDef uniondefs)
             funs
             (make-output-printer typ)))
-    
+
+    #;
     (unless (regiment-quiet)
       (printf "WSQ connection graph:\n")
       (newline)(display (text->string wsq))(newline)(newline))
@@ -1500,6 +1501,7 @@
 
       ;; These use FFTW
       [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
+       ;(if (eq? var  'memoized_fftR2C) (inspect 'gotit))
        (add-include! "<fftw3.h>")
        (add-include! (list "\"" (REGIMENTD) 
 			   "/src/linked_lib/FFTW_wrappers.cpp\""))

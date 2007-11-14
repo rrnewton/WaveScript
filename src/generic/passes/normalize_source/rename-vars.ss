@@ -40,7 +40,7 @@
        (define (make-new-name sym)
 	 ;; [2007.10.21] We don't touch special names.  It's currently
 	 ;; up to the user to insure that they are only defined once.
-	 (if (memq sym special-rewrite-libfuns)
+	 (if (IFCHEZ (memq sym special-rewrite-libfuns) #f)
 	     sym
 	     (unique-name sym)))
 
