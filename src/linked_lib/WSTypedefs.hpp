@@ -328,6 +328,7 @@ struct WSArrayStruct {
   //Mutex mut;
 #endif
   T* data;
+  //  int32_t padding[64];
 };
 
 template <class T>

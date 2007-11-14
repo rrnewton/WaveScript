@@ -70,10 +70,20 @@ Mutex planner_lock;
 // Need to implement the memoized version to play nicer with thread safety.
 
 
+int        initialized = 0;
 int        last_plan_size = 0;
 fftwf_plan cached_plan;
 float*     cached_inbuf;
 _Complex float*   cached_outbuf;
+
+
+/*  how we would realloc a plan...
+        planner_lock.lock();
+      	fftwf_destroy_plan(cached_plan);
+	fftwf_free(cached_inbuf);
+	fftwf_free(cached_outbuf);
+        planner_lock.unlock();
+*/
 
 static complexarr memoized_fftR2C(floatarr& input) {
       int len = input->len;
@@ -81,28 +91,36 @@ static complexarr memoized_fftR2C(floatarr& input) {
       wsfloat_t*   in_buf  = (wsfloat_t*)input->data; 
       wscomplex_t* out_buf = new wscomplex_t[len_out];
 
-      // First we worry about setting up the plan:
-      if (last_plan_size == 0) {
-        fprintf(stderr, "Allocating fftw plan for the first time, size %d\n", len);
-	fflush(stderr);
-      } else if (last_plan_size != len) {
-        fprintf(stderr, "REALLOCATING cached fftw plan, size %d\n", len);
-	fflush(stderr);
+      // thread safe initialization
+      if (initialized == 0) {
+
+        // grab the lock
         planner_lock.lock();
-      	fftwf_destroy_plan(cached_plan);
-	fftwf_free(cached_inbuf);
-	fftwf_free(cached_outbuf);
+
+        // ok.. if we have the lock then either someone already initialized it
+        // ahead of us, or we must init it.  if initialized is still 0...
+
+        if (initialized == 0) {
+          fprintf(stderr, "Allocating fftw plan for the first time, size %d\n", len);
+  	  fflush(stderr);
+
+  	  last_plan_size = len;
+	  cached_inbuf  = (float*)fftwf_malloc(len     * sizeof(float));
+	  cached_outbuf = (_Complex float*)fftwf_malloc(len_out * sizeof(_Complex float));	
+	  // FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
+          cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE | FFTW_UNALIGNED);
+        }
+
+        // OK it is init'd now
+        initialized = 1;
         planner_lock.unlock();
       }
+
       if (last_plan_size != len) {
-	last_plan_size = len;
-	cached_inbuf  = (float*)fftwf_malloc(len     * sizeof(float));
-	cached_outbuf = (_Complex float*)fftwf_malloc(len_out * sizeof(_Complex float));	
-	// FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
-        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE | FFTW_UNALIGNED);
+        fprintf(stderr, "ack, we're screwed.. fftw plan for %d, not %d\n",
+		last_plan_size, len);
       }
       
-
       //fprintf(stderr, "   EXECUTING PLAN size %d\n", len);
       fftwf_execute_dft_r2c(cached_plan, in_buf, (float(*)[2])out_buf);
 
