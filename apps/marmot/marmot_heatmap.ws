@@ -193,14 +193,17 @@ fun convertcoord((x_pixels, y_pixels, x_width, y_width, x_min, y_min), (x,y)) {
 doa_fuse :: (AxesBounds, Float, List (Tagged AML)) -> LikelihoodMap;
 fun doa_fuse(axes, grid_scale, taggedamls) {
 
+  startT = realtime();
   let (xpixels,ypixels) = getpixeldims(axes,grid_scale);
   { let (xmin,xmax,ymin,ymax) = axes;
     log(1, "Starting DOA fuse.  Gridsize "++xpixels++" x "++ypixels++
-          "  Axes: ("++xmin`f2i++", "++ymin`f2i++") to ("++xmax`f2i++", "++ymax`f2i++")");
+          "  Axes: ("++xmin`f2i++", "++ymin`f2i++") to ("++xmax`f2i++", "++ymax`f2i++") time="
+	  ++startT);
     assert("xmax > xmin", xmax>xmin);
     assert("ymax > ymin", ymax>ymin);
   };
 
+  result = 
   // Build the likelihood map:
   (Matrix:build(xpixels, ypixels,
     fun(u,v) {
@@ -212,7 +215,7 @@ fun doa_fuse(axes, grid_scale, taggedamls) {
       // Should use List:foldi
       List:foldi(
 	// Each node record contains location/orientation as well as doas likelihood vector:
-        fun(k, sum, ((id,x,y,yaw), (doavec, startsamp, tb))) {
+        fun(k, sum, ((id,x,y,yaw), (doavec, startsamp, tb))) { 
 
 	  nr = yaw * const_PI / 180.0; // node rotation	       
 	  theta = atan2(c_y - y, c_x - x);
@@ -228,7 +231,9 @@ fun doa_fuse(axes, grid_scale, taggedamls) {
 
 	  // Access the likelihood vector for that node in appropriate direction.
 	  // Add it into our total for this grid square:
-	  sum + doavec[dir]
+  	  // [2007.11.13] With the current C++ codegen running into a bug where doavec is a null pointer.
+	  // Segfaults on this line
+	  sum + if EVILHACKS then 0.0 else doavec[dir]
         },
 	0.0, taggedamls)
    }), 
@@ -236,7 +241,11 @@ fun doa_fuse(axes, grid_scale, taggedamls) {
    {
      let (_,(_,st0,_)) = List:ref(taggedamls,0);
      List:fold(fun(mx, (_, (_,startsamp, _))) max(mx,startsamp), st0, taggedamls)
-   })
+   });
+
+  endT = realtime();
+  log(1, "Finished DOA FUSE, end time "++endT++" elapsed time: "++ endT-startT);
+  result;
 }
 
 

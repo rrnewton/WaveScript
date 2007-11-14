@@ -147,6 +147,14 @@
 ; ================================================================================ ;
 ;;; Interpreter
 
+;; This is a hack for manually pinning CPUs.
+(define (set-cpu! int strm)
+  (set-streamop-params! strm
+	    (match (streamop-params strm)
+	      [((annotations ,alist ...) . ,rest)
+	       `((annotations (cpu-pin . ,(plain-val int)) . ,alist)
+		 . ,rest)])))
+
 ;; This evaluates the meta program.  The result is a *value*
 ;;
 ;; .param pretty-name -- uses this to hang onto names for the closures
@@ -233,16 +241,21 @@
 ;    [(foreign ,[x*] ...) (cons 'foreign x*)]
     ;; ----------------------------------------
 
-
+    
     ;; [2007.11.07] HACKS for manually pinning to different CPUs:
     [(SETCPU ,[int] ,[strm])
      (ASSERT streamop? strm)
      (ASSERT fixnum? (plain-val int))
-     (set-streamop-params! strm
-	(match (streamop-params strm)
-	  [((annotations ,alist ...) . ,rest)
-	   `((annotations (cpu-pin . ,(plain-val int)) . ,alist)
-	     . ,rest)]))
+     (set-cpu! int strm)
+     strm]
+
+    ;; Assumes no cycles!!
+    [(SETCPUDEEP ,[int] ,[strm])
+     (ASSERT streamop? strm)
+     (ASSERT fixnum? (plain-val int))
+     (let loop ((x strm))
+       (set-cpu! int x)
+       (for-each loop (streamop-parents x)))
      strm]
 
     ;; Unionlist is a tad different because it takes a list of streams:

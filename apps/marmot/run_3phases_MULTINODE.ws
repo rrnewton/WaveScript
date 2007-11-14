@@ -1,5 +1,13 @@
 
 
+// [2007.11.13]
+// Doing a little timing on faith.
+//  ws.opt takes 12.8 seconds to go through my multinode48khz dataset and do one detection.
+//  mlton O2 takes 1.25/1.2 real/user
+//  wsc.new -t O2 takes 5.5/4.6 sec (and you know, that's without thread safety disabled)
+//    In O3 it takes ~5.2/4.3... or 5.0/4.2
+//    Btw... this spends serious time in DOA fuse.
+
 
 LOG_TIMING = 255;
 // from elog.h in emstar
@@ -34,6 +42,7 @@ winsize = 4 * 4096;
 
 include "nodelocs.ws";
 nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+//nodes = [node1, node2]
 //nodes = nodels
 
 /*
@@ -62,7 +71,7 @@ axes :: (Float * Float * Float * Float);
 axes = auto_axes(nodes)
 
 // AUTO GRID SIZE:
-desired_min_pixel_dimm = 300
+desired_min_pixel_dimm = if EVILHACKS then 100 else 300
 grid_scale = {
   let (xmin, xmax, ymin, ymax) = axes;
   min(absF(xmax - xmin) / desired_min_pixel_dimm`i2f,
@@ -72,10 +81,13 @@ grid_scale = {
 
 //================================================================================
 
+globaldriver = timer(samp_rate * 4.0 / winsize`i2f);
+
 fun read_audio((id, _,_,_)) {
   fn = "multinode48khz/"++id++".raw";
   
   driver = timer(samp_rate * 4.0 / winsize`i2f);
+  //driver = globaldriver;
   chans = (readFile(fn, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
 
   fun onechan(offset)
@@ -109,9 +121,10 @@ alldetections = map(detector, alldata)
 
 // AML results from each node.
 allamls :: List (Stream AML);
-allamls = map(fun(((id,_,_,yaw),strm)) 
+allamls = List:mapi(fun(ind, ((id,_,_,yaw),strm))
 	      //                maybe_graph_aml(id, yaw, 
-		     smap(normalize_aml, oneSourceAMLTD(strm, 4096)),
+		    SETCPUDEEP(moduloI(ind,max(1,NUMTHREADS-1))+1,
+		     smap(normalize_aml, oneSourceAMLTD(strm, 4096))),
 //	             oneSourceAMLTD(strm, 4096),
               List:zip(nodes,alldetections))
 
