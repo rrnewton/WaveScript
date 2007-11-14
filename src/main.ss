@@ -407,7 +407,11 @@
 (define (ws-compile-until-typed p)
 
   (ws-run-pass p verify-regiment)
+
+  ;; TEMPTOGGLE:
+  ;(ws-run-pass p eta-primitives)
   (ws-run-pass p pass_desugar-pattern-matching)
+
   (ws-run-pass p resolve-varrefs)
 
   ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
@@ -465,7 +469,6 @@
   (ws-run-pass p rename-vars)
 
 ;  (DEBUGMODE (do-early-typecheck) (void))
-
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)

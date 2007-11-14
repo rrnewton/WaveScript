@@ -116,7 +116,7 @@ allamls = map(fun(((id,_,_,yaw),strm))
               List:zip(nodes,alldetections))
 
 merged :: Stream (Tagged AML);
-merged = List:fold1(merge, tag(allamls))
+merged = List:fold1(fun (x,y) merge(x,y), tag(allamls))
 clusters :: Stream (List (Tagged AML));
 clusters = temporal_cluster_amls(3, merged);
 heatmaps :: Stream LikelihoodMap;

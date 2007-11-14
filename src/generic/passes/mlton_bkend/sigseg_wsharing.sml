@@ -65,7 +65,8 @@ fun toArray {dat, st, sz,off,tb} =
 
     (* Here's a potential OPTIMIZATION: *)
     (* We don't necessarily copy.  But you'd better not mutate!! *)    
-    if oPTLVL=3 andalso off=0 andalso null(tl dat) andalso sz = Array.length (hd dat) then hd dat else  
+    if (*oPTLVL=3 andalso *)
+       off=0 andalso null(tl dat) andalso sz = Array.length (hd dat) then hd dat else  
     let  
 (*         val _ = checkseg {dat=dat,off=off,sz=sz,st=st} *)
 	(* Should use unsafe make array here *)
