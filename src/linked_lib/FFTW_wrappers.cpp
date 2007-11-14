@@ -99,7 +99,7 @@ static complexarr memoized_fftR2C(floatarr& input) {
 	cached_inbuf  = (float*)fftwf_malloc(len     * sizeof(float));
 	cached_outbuf = (_Complex float*)fftwf_malloc(len_out * sizeof(_Complex float));	
 	// FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
-        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE);
+        cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE | FFTW_UNALIGNED);
       }
       
 
