@@ -240,10 +240,10 @@
 			)))]
 	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
-	   [(unionN ,annot ,strms ...)
-	    (let-values ([(v* decls) (make-simples strms tenv)])
-	      (vector `(unionN ,annot ,@v*)
-		      decls))]
+       [(unionN ,annot ,strms ...)
+	(let-values ([(v* decls) (make-simples strms tenv)])
+	  (vector `(unionN ,annot ,@v*)
+		  decls))]
 
       [(_merge ,annot ,s1 ,s2)
        (let-values ([(v* decls) (make-simples `(,s1 ,s2) tenv)])

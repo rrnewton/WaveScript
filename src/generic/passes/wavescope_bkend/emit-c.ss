@@ -1910,7 +1910,7 @@
 	     (Prim `(Array:length ,varsym) len (Type 'Int))
 	     (make-for ind "0" len
 		       (list 
-			"if ("ind">0) " (printf ", %s" "\"\"") ;(stream "\", \"")
+			"if ("ind">0) {" (printf ", %s" "\"\"") "}\n" ;(stream "\", \"")
 			;; This can be an unsafe access if we want (no null check), but it doesn't matter much:
 			(Emit-Print/Show-Helper (list "("var"->data)["ind"]")
 						ty printf stream)
@@ -1940,7 +1940,7 @@
    e typ
    (lambda (s e) (let ([tmp (Var (unique-name "showtmp"))])
 		   `("char ",tmp"[100];\n"
-		     "sprintf(",tmp", \"",s"\", ",e");\n"
+		     "snprintf(",tmp", 100, \"",s"\", ",e");\n"
 		     "string ",name"(",tmp");\n"
 		     )))
    (lambda (e)   
