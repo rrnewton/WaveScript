@@ -8,6 +8,10 @@
 //    In O3 it takes ~5.2/4.3... or 5.0/4.2
 //    Btw... this spends serious time in DOA fuse.
 
+// Running -n 2 on awd... 
+//   with -j 1 I get 2.3s
+//   with -j 2 I get 5.2s
+// Trying with global driver.
 
 LOG_TIMING = 255;
 // from elog.h in emstar
@@ -86,8 +90,8 @@ globaldriver = timer(samp_rate * 4.0 / winsize`i2f);
 fun read_audio((id, _,_,_)) {
   fn = "multinode48khz/"++id++".raw";
   
-  driver = timer(samp_rate * 4.0 / winsize`i2f);
-  //driver = globaldriver;
+  //driver = timer(samp_rate * 4.0 / winsize`i2f);
+  driver = globaldriver;
   chans = (readFile(fn, "mode: binary window: "++winsize, driver) :: Stream Sigseg (Int16));
 
   fun onechan(offset)
@@ -119,11 +123,18 @@ alldetections = map(detector, alldata)
 
 //tagged = tag(detections);
 
+fun assignCPU(ind) {
+/*   if NUMTHREADS=1  */
+/*   then 0 */
+/*   else moduloI(ind, NUMTHREADS-1) + 1 */
+  ind+1
+}
+
 // AML results from each node.
 allamls :: List (Stream AML);
 allamls = List:mapi(fun(ind, ((id,_,_,yaw),strm))
 	      //                maybe_graph_aml(id, yaw, 
-		    SETCPUDEEP(moduloI(ind,max(1,NUMTHREADS-1))+1,
+		    SETCPUDEEP(assignCPU(ind),
 		     smap(normalize_aml, oneSourceAMLTD(strm, 4096))),
 //	             oneSourceAMLTD(strm, 4096),
               List:zip(nodes,alldetections))
