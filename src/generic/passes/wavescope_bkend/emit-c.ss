@@ -1548,6 +1548,13 @@
        `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
        ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
        ))]
+    ; FIXME: this is really just a quick hack
+    [(^. ,[Simple -> x] ,[Simple -> y])
+     (let ([tmp (Var (unique-name 'tmp))])
+       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
+       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
+       ))]
+
     
     ;; TODO: tupref, exponentiation 
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])
