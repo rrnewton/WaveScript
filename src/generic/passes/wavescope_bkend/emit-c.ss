@@ -1033,7 +1033,7 @@
 	    ,(insert-between "  oss << \", \";\n"
 			     (map (lambda (fld typ)
 				    (let ([tmp (Var (unique-name "tupprinttmp"))])				      
-				      `(,(EmitShow (format "rec.~a" fld) typ tmp)
+				      `(,(EmitShow (format "rec.~a" fld) typ tmp "string")
 					"  oss << ",tmp";\n")))
 			       fld* typ*))
 	    "  oss << \")\";\n"
@@ -1663,7 +1663,7 @@
 	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
 	     ,(wrap tmp)))]
 
-	[(show (assert-type ,t ,[Simple -> e])) (EmitShow e t name)]
+	[(show (assert-type ,t ,[Simple -> e])) (EmitShow e t name type)]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
 	;; FIXME  FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
@@ -1934,20 +1934,21 @@
    (lambda (e)   `("cout << " ,e ";\n"))))
                          
 ;; This emits code for a show.
-(define (EmitShow e typ name)
+(define (EmitShow e typ name ctyp)
   (ASSERT string? name)
+  (ASSERT string? ctyp)
   (Emit-Print/Show-Helper 
    e typ
    (lambda (s e) (let ([tmp (Var (unique-name "showtmp"))])
 		   `("char ",tmp"[100];\n"
 		     "snprintf(",tmp", 100, \"",s"\", ",e");\n"
-		     "string ",name"(",tmp");\n"
+		     ,ctyp" ",name"(",tmp");\n"
 		     )))
    (lambda (e)   
      (let ([tmp (Var (unique-name "showstrmtmp"))])
        `("ostringstream ",tmp"(ostringstream::out);\n"
 	 ,tmp" << ",e";\n"
-	 "string ",name" = ",tmp".str();\n")))
+	 ,ctyp" ",name" = ",tmp".str();\n")))
    ;(lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e")); \n"))
    ;(lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e "); \n"))
    ))
