@@ -31,7 +31,9 @@ chans =
          repeater(21, __chans); }
   else { file = "6sec_marmot_sample.raw";
          mytimer = timer(80.0);
-	 (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Float));
+	 deep_stream_map(int16ToFloat,
+	   (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Int16))
+	   	 )
        };
 
 

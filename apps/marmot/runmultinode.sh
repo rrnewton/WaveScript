@@ -11,10 +11,13 @@ mkdir temp
 
 echo "#h numthreads realtime cputime" > RESULTS.txt 
 
+#export LD_PRELOAD="/home/stoledo/libhoard.so:/lib64/libdl-2.6.so"
+export LD_PRELOAD="~/libhoard.so:/lib64/libdl-2.6.so"
+
 wsc.new run_3phases_MULTINODE.ws -t -dot -dbg
 #mv query.exe onethread.
 
-for threads in `seq 1 2`; do
+for threads in `seq 1 8`; do
   export NUMTHREADS=$threads
 
 if [ ! true ]; then

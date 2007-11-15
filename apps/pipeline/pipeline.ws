@@ -18,21 +18,30 @@ pi   = 3.141592653589793;
 
 to64 = intToInt64
 
-fun rewindow(sig, newwidth, step)
-{
-  if step > newwidth
-  then wserror("rewindow won't allow the creation of non-contiguous output streams")
-  else iterate (w in sig) {
-    state { acc = nullseg; }
-    acc := joinsegs(acc, w);
-    for i = 1 to w.width {
-      if acc.width > newwidth
-      then {emit subseg(acc, acc.start, newwidth);
-            acc := subseg(acc, acc.start + step.to64, acc.width - step)}
-      else break;
-    }
-  };
-}
+include "stdlib.ws";
+
+/* fun repeater(n,s) */
+/*   iterate x in s { */
+/*     for i = 1 to n { */
+/*       emit x; */
+/*     } */
+/*   } */
+
+/* fun rewindow(sig, newwidth, step) */
+/* { */
+/*   if step > newwidth */
+/*   then wserror("rewindow won't allow the creation of non-contiguous output streams") */
+/*   else iterate (w in sig) { */
+/*     state { acc = nullseg; } */
+/*     acc := joinsegs(acc, w); */
+/*     for i = 1 to w.width { */
+/*       if acc.width > newwidth */
+/*       then {emit subseg(acc, acc.start, newwidth); */
+/*             acc := subseg(acc, acc.start + step.to64, acc.width - step)} */
+/*       else break; */
+/*     } */
+/*   }; */
+/* } */
 
 
 /*
@@ -224,8 +233,10 @@ fun gaussian_likelihood(mean, stddev, peakRatio)
 
 source = (readFile("./pipeline1.data", "mode: text  window: 600 ", timer(10000.0)) :: Stream (Sigseg Float))
 
+// [2007.11.15] HACK FOR TESTING
+
 rw :: Stream (Sigseg Float);
-rw = rewindow(source, 8192, 500);
+rw = repeater(1000, rewindow(source, 8192, -500));
 //rw = rewindow(source, 8192, 500-8192);
 
 

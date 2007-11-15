@@ -735,7 +735,6 @@ fun snoop_every(everyN, fn, strm) {
 fun repeater(n,s)
   iterate x in s {
     for i = 1 to n {
-      print("  Emitting from repeater, "++i++"\n");
       emit x;
     }
   }

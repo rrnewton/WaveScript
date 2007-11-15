@@ -1535,7 +1535,7 @@
 			       [(< i x) (first)]
 			       ;; We're in the overlap:
 			       [(and (<= i b) (<= x i) (<= i y))
-				(if (eq? (first) (second))
+				(if (eqv? (first) (second))
 				    (first)
 				    (error 'joinsegs "overlapping segs had different values: ~s vs. ~s at seq# ~a"
 					   (first) (second) i))]

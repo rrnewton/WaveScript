@@ -45,7 +45,8 @@ samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigse
 winsize = 4 * 4096;
 
 include "nodelocs.ws";
-nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+//nodes = [node1, node2, node3, node4, node5, node6, node7, node8]
+nodes = [node1, node2, node3, node4]
 //nodes = [node1, node2]
 //nodes = nodels
 
@@ -150,6 +151,7 @@ ignored = draw_multi_amls(nodes,allamls)
 ignored2 = draw_multi_detections(nodes,alldetections)
 
 BASE <- 
-//merge(merge(ignored,ignored2),
-      common_backend(heatmaps, axes, grid_scale)
-      //      )
+merged
+////merge(merge(ignored,ignored2),
+//      common_backend(heatmaps, axes, grid_scale)
+////      )
