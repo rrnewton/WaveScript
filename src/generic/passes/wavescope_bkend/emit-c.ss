@@ -1032,7 +1032,7 @@
 	    "  oss << \"(\";\n"
 	    ,(insert-between "  oss << \", \";\n"
 			     (map (lambda (fld typ)
-				    (let ([tmp (Var (unique-name "tupprinttmp"))])				      
+				    (let ([tmp (Var (unique-name "tupprinttmp"))])
 				      `(,(EmitShow (format "rec.~a" fld) typ tmp "string")
 					"  oss << ",tmp";\n")))
 			       fld* typ*))
@@ -1899,6 +1899,7 @@
 			       (stream "\" \"")
 			       (list var" = "var"->cdr;\n")))
 	     (stream "\"]\"")))]
+
     [(Array ,ty)
      (let* ([varsym (unique-name 'arrtmp)] [var (Var varsym)]
 	    [len (Var (unique-name 'len))]
@@ -1934,24 +1935,27 @@
    (lambda (e)   `("cout << " ,e ";\n"))))
                          
 ;; This emits code for a show.
+;; Produces LINES.  Any var binding can't be in a nested scope.
 (define (EmitShow e typ name ctyp)
   (ASSERT string? name)
   (ASSERT string? ctyp)
+  (list 
+   (if (equal? ctyp "") "" `(,ctyp" ",name";\n"))
   (Emit-Print/Show-Helper 
    e typ
    (lambda (s e) (let ([tmp (Var (unique-name "showtmp"))])
 		   `("char ",tmp"[100];\n"
 		     "snprintf(",tmp", 100, \"",s"\", ",e");\n"
-		     ,ctyp" ",name"(",tmp");\n"
+		     " ",name" = string(",tmp");\n"
 		     )))
    (lambda (e)   
      (let ([tmp (Var (unique-name "showstrmtmp"))])
        `("ostringstream ",tmp"(ostringstream::out);\n"
 	 ,tmp" << ",e";\n"
-	 ,ctyp" ",name" = ",tmp".str();\n")))
+	 " ",name" = ",tmp".str();\n")))
    ;(lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e")); \n"))
    ;(lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e "); \n"))
-   ))
+   )))
 
 
 
