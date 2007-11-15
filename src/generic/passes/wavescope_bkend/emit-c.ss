@@ -1032,9 +1032,9 @@
 	    "  oss << \"(\";\n"
 	    ,(insert-between "  oss << \", \";\n"
 			     (map (lambda (fld typ)
-				    `("  oss << "
-				      ,(EmitShow (format "rec.~a" fld) typ)
-				      ";\n"))
+				    (let ([tmp (Var (unique-name "tupprinttmp"))])				      
+				      `(,(EmitShow (format "rec.~a" fld) typ tmp)
+					"  oss << ",tmp";\n")))
 			       fld* typ*))
 	    "  oss << \")\";\n"
 	    "  return oss.str();"
@@ -1151,7 +1151,7 @@
 			    '()]
 			   [,else 
 			    `("if(WSOUTPUT_PREFIX) printf(\"WSOUT: \");\n"
-			      ,(EmitPrint "(*element)" typ) ";\n"
+			      ,(EmitPrint "(*element)" typ) ;";\n"
 			      "printf(\"\\n\");\n")])
 
 			" curTuples++;\n"
@@ -1663,7 +1663,7 @@
 	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
 	     ,(wrap tmp)))]
 
-	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
+	[(show (assert-type ,t ,[Simple -> e])) (EmitShow e t name)]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
 	;; FIXME  FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
@@ -1934,11 +1934,23 @@
    (lambda (e)   `("cout << " ,e ";\n"))))
                          
 ;; This emits code for a show.
-(define (EmitShow e typ)
+(define (EmitShow e typ name)
+  (ASSERT string? name)
   (Emit-Print/Show-Helper 
    e typ
-   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e")); \n"))
-   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e "); \n"))))
+   (lambda (s e) (let ([tmp (Var (unique-name "showtmp"))])
+		   `("char ",tmp"[100];\n"
+		     "sprintf(",tmp", \"",s"\", ",e");\n"
+		     "string ",name"(",tmp");\n"
+		     )))
+   (lambda (e)   
+     (let ([tmp (Var (unique-name "showstrmtmp"))])
+       `("ostringstream ",tmp"(ostringstream::out);\n"
+	 ,tmp" << ",e";\n"
+	 "string ",name" = ",tmp".str();\n")))
+   ;(lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e")); \n"))
+   ;(lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e "); \n"))
+   ))
 
 
 

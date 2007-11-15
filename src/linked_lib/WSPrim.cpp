@@ -4,8 +4,8 @@
 bool WSOUTPUT_PREFIX = TRUE;
 
 // This is a lame work-around:
-static char global_show_buffer[500];
-static ostringstream global_show_stream(ostringstream::out);
+//static char global_show_buffer[500];
+//static ostringstream global_show_stream(ostringstream::out);
 
 static bool stopalltimers = 0;
 
@@ -89,7 +89,8 @@ uint32_t getTotalByteSize(const SigSeg<T> &e)
      if (b < 0) q *= -1;
      return p + (q * 1.0fi);
    }
-  
+
+   /*  
    // This is a work-around to the fact that we can't have stmt blocks
    // {...} in expression position.
    inline static string show_helper(int ignored) {
@@ -102,6 +103,8 @@ uint32_t getTotalByteSize(const SigSeg<T> &e)
      global_show_stream.str(string(""));
      return string(result);
    }
+  */
+
    static wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
      return A + B;
    }
