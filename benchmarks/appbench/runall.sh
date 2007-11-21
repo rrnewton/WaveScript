@@ -87,9 +87,24 @@ mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running marmot multinode offline  " > RESULTS.txt
-runallbackends run_3phases_MULTINODE $TEMP 0 3
+#runallbackends run_3phases_MULTINODE $TEMP 0 3
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+
+cd "$REGIMENTD/apps/pipeline/";
+echo "## Running pipeline   " > RESULTS.txt
+#runallbackends pipeline $TEMP 0 7000
+cd "$START"
+mv "$REGIMENTD/apps/pipeline/RESULTS.txt" ./marmot2.dat
+
+
+cd "$REGIMENTD/apps/potholes";
+echo "## Running pothole   " > RESULTS.txt
+runallbackends pothole_custom $TEMP 0 1000
+cd "$START"
+mv "$REGIMENTD/apps/potholes/RESULTS.txt" ./marmot2.dat
+
+
 
 
 

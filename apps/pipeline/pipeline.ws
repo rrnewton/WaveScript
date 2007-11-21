@@ -231,12 +231,16 @@ fun gaussian_likelihood(mean, stddev, peakRatio)
    constant *. exponent;
 }
 
-source = (readFile("./pipeline1.data", "mode: text  window: 600 ", timer(10000.0)) :: Stream (Sigseg Float))
 
 // [2007.11.15] HACK FOR TESTING
+/* source = (readFile("./pipeline1.data", "mode: text  window: 600 ", timer(10000.0)) :: Stream (Sigseg Float)) */
+/* rw :: Stream (Sigseg Float); */
+/* rw = repeater(1000, rewindow(source, 8192, -500)); */
 
+source = (readFile("./pipeline1.data", "mode: text  ", timer(10000.0)) :: Stream (Float))
 rw :: Stream (Sigseg Float);
-rw = repeater(1000, rewindow(source, 8192, -500));
+rw = repeater(7000, rewindow(window(source, 4000), 8192, -500));
+
 //rw = rewindow(source, 8192, 500-8192);
 
 

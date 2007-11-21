@@ -31,6 +31,25 @@
 ;; straight in the pattern representation but that would be ugly
 ;; because we've already used unquote ;).
 
+
+(module rewrite_opts mzscheme
+  (require "../../../plt/common.ss"
+	   "../../../plt/hashtab.ss"	   
+	   ;"normalize_query/ws-remove-complex-opera.ss"
+	   ;"../compiler_components/type_environments.ss"
+	   )
+  (provide special-rewrite-libfuns
+	   rewrite-rule-table
+	   rewrite-rules	   
+           )
+  (chezimports)
+  (require-for-syntax "../../../plt/common.ss")
+
+
+
+
+
+
 ;; ================================================================================
 ;; Rewrite rules
 
@@ -225,3 +244,5 @@
   (default-unit-tester 
     "Rewrite-opts: Apply rewrite rules to optimize program." 
     rewrite-tests))
+
+) ;; End module

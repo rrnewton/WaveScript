@@ -132,7 +132,7 @@ function runallbackends() {
   fi
 
   ## NOW THE NEW SCHEDULER:
-  runcpp_corefit_nothreads
+#  runcpp_corefit_nothreads
 #  runcpp_corefit
 
 #  runscheme

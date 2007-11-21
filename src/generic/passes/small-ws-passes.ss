@@ -8,6 +8,7 @@
   (require "../../plt/common.ss"
 	   "../../plt/hashtab.ss"	   
 	   "normalize_query/ws-remove-complex-opera.ss"
+	   "optimizations/rewrite_opts.ss"
 	   "../compiler_components/type_environments.ss"
 	   )
   (provide 

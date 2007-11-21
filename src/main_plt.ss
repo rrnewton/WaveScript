@@ -89,7 +89,7 @@
 (all-except "generic/passes/static_elaborate/split-union-types.ss" these-tests test-this)
 
 (all-except "generic/passes/optimizations/smoosh-together.ss")
-;(all-except"generic/passes/optimizations/rewrite_opts.ss")
+(all-except"generic/passes/optimizations/rewrite_opts.ss")
 ;(all-except"generic/passes/optimizations/data_reps.ss")
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
