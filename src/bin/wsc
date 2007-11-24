@@ -80,8 +80,10 @@ rm -f "$OUTFILE"
 if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
 
 #echo PASSING THROUGH ARGS: $REGPASSTHRU
+
+if [ "$REGFLAG" == "" ]; then REGFLAG=wscomp; fi
 export REGIMENT_OR_WAVESCRIPT=WS
-if "$REGIMENTEXEC" wscomp $abspath $REGPASSTHRU ;
+if "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
 then echo
 else #rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.

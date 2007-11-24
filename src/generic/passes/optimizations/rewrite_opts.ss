@@ -218,8 +218,6 @@
 	       #f))]
     [,oth (error 'rewrite-rules:get-value "don't know how to get a value from this expr: ~s" oth)]))
 
-;; Currently using eval for pred names, so put these at top-level:
-(define-top-level-value 'nonpositive? (lambda (n) (<= n 0)))
 
 (define-testing rewrite-tests
 `(
@@ -244,5 +242,8 @@
   (default-unit-tester 
     "Rewrite-opts: Apply rewrite rules to optimize program." 
     rewrite-tests))
+
+;; Currently using eval for pred names, so put these at top-level:
+(define-top-level-value 'nonpositive? (lambda (n) (<= n 0)))
 
 ) ;; End module

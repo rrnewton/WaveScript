@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export REGFLAG=wsc2
+
+wsc $*

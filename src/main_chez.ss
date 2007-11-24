@@ -498,6 +498,12 @@
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
 (include "generic/compiler_components/source_loader.ss") (import source_loader) 
 
+
+(include "generic/passes/optimizations/smoosh-together.ss") (import smoosh-together)
+(include "generic/passes/optimizations/rewrite_opts.ss") (import rewrite_opts)
+(include "generic/passes/optimizations/data_reps.ss")
+
+
 (include "generic/passes/normalize_source/resolve-varrefs.ss") (import resolve-varrefs)
 (include "generic/passes/normalize_source/ws-label-mutable.ss") (import ws-label-mutable)
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
@@ -516,9 +522,6 @@
 (include "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
-(include "generic/passes/optimizations/smoosh-together.ss") (import smoosh-together)
-(include "generic/passes/optimizations/rewrite_opts.ss")
-(include "generic/passes/optimizations/data_reps.ss")
 
 (include "generic/passes/optimizations/merge-iterates.ss") (import merge-iterates)
 (include "generic/passes/optimizations/simple-merge-iterates.ss") (import simple-merge-iterates)
@@ -603,6 +606,7 @@
 
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
+(include "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
 
 (include "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 

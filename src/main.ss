@@ -945,6 +945,8 @@
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
    (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
                                             `(,ws-default-wavescope-scheduler))))
+   ;; [2007.11.23] Are we running the new C backend?
+   (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
    
    ;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
 
@@ -979,29 +981,29 @@
    (parameterize ([inferencer-enable-LUB #t]
 		  [inferencer-let-bound-poly #f])
      (ws-run-pass p retypecheck))
-
+   
    (ws-run-pass prog nominalize-types)
-
-
-;   (inspect `(NOMINALIZED ,prog))
 
    (when (regiment-verbose)
     (pretty-print prog)
     ;;   (printf "================================================================================\n")
     (printf "\nNow emitting C code:\n"))
 
-   (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))
-   
-;   (inspect (deep-assq-all 'wsequal? prog))
-;   (inspect (explicit-stream-wiring prog))  
+   (if new-version?
+       (begin 
+	 (ws-run-pass prog explicit-stream-wiring)
+	 (inspect prog)
+	 )
+       (begin 
+	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   
+	 (string->file 
+	  (text->string 
+	   (wsquery->text prog wavescope-scheduler))
+	  outfile)   
+	 (unless (regiment-quiet)
+	   (printf "\nGenerated C++ output to ~s.\n" outfile))
 
-   (string->file 
-    (text->string 
-     (wsquery->text prog wavescope-scheduler))
-    outfile)
-   
-   (unless (regiment-quiet)
-     (printf "\nGenerated C++ output to ~s.\n" outfile))
+	 ))
    )
  ) ; End wscomp
 
@@ -1076,6 +1078,7 @@
   (printf "  log      (l)  simulator trace manipulation mode~n")
   (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
   (printf "  wscomp   (wscomp) WaveScript (C++) compiler mode~n")
+  (printf "  wsc2     (wsc2)   WaveScript (C) compiler mode ver 2~n")
   (printf "  wscaml   (wsml)   WaveScript compiler SML backend~n")
   (printf "  wscaml   (wscaml) WaveScript compiler Caml backend~n")
   (printf "~n")
@@ -1435,6 +1438,10 @@
 	   (let ()
 	     (define port (acquire-input-prog 'wscomp))
 	     (apply wscomp port input-parameters opts))]
+
+	  [(wsc2)
+	   (let ((port (acquire-input-prog 'wscomp)))
+	     (apply wscomp port input-parameters 'wsc2 opts))]
 
 	  [(wscaml)
 	   (let ()
