@@ -490,34 +490,32 @@
   (lambda args
     (if (eq? (car args) reflect-msg)
 	;; This means that we want to convert back to the transparent closure object.
-	c
-	
-	)
-    (begin 
-      
-      (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-      (match (closure-type c)
-	;; We need to tag the types onto values that we store in the environment.
-	[(,argty* ... -> ,retty)
-	 (unwrap-plain
-	  (Eval (closure-code c) 
-		(extend-env (closure-formals c) 
-			    ;;args 
-			    ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-			    (map (lambda (arg argty)
-				   ;; Let's say you map(streamtransformer, list)...
-				   ;; That requires passing closures that handle streams.
-				   #;
-				   (when (streamop? x)
-				     (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
+	c 
+	(begin 
+	  (DEBUGASSERT (curry andmap (compose not procedure?)) args)
+	  (match (closure-type c)
+	    ;; We need to tag the types onto values that we store in the environment.
+	    [(,argty* ... -> ,retty)
+	     (unwrap-plain
+	      (Eval (closure-code c) 
+		    (extend-env (closure-formals c) 
+				;;args 
+				;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
+				(map (lambda (arg argty)
+				       ;; Let's say you map(streamtransformer, list)...
+				       ;; That requires passing closures that handle streams.
+				       #;
+				       (when (streamop? x)
+					 (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
 					;(ASSERT (compose not wrapped?) x)
 					;(make-plain x)
-				   (let ([wrapped (maybe-wrap arg)])
-				     (set-value-type! wrapped argty)
-				     wrapped))
-			      args argty*)
-			    (closure-env c))
-		#f))]))))
+				       (let ([wrapped (maybe-wrap arg)])
+					 (set-value-type! wrapped argty)
+					 wrapped))
+				  args argty*)
+				(closure-env c))
+		    #f))]))
+	)))
 
 #;
 ;; This adds code around a closure that wraps/unwraps the arguments
