@@ -395,7 +395,13 @@
     (absF (Float) Float)
     (absD (Double) Double)
     (absC (Complex) Float)
+
+;    (logI (Int) Int)
+;    (logF (Float) Float)
+    (logD (Double) Double)
     
+    (exptI (Int Int) Int)
+
 ;    (modF (Float Float) Float)
     
     (cos (Float) Float)

@@ -1364,6 +1364,7 @@
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
+		   exptI logD logF
 
 		   gnuplot_array gnuplot_array2d
 		   

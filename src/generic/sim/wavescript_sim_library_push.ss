@@ -55,6 +55,8 @@
 		 +I64 -I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
+		 logD logF ;logI 
+		 exptI exptD exptF
 		 ;modI modF 
 		 roundF		 
 		 
@@ -1122,6 +1124,13 @@
 			 (let ([x (cfl-real-part c)] 
 			       [y (cfl-imag-part c)])					   
 			   (sqrt (+ (* x x) (* y y)))))))
+
+  (define logF log)
+  (define logD log)
+
+  (define exptI expt)
+  (define exptF expt)
+  (define exptD expt)
 
   ;(define (makeComplex re im) (s:fl-make-rectangular re im))
   (define (makeComplex re im) (s:make-rectangular re im))

@@ -545,7 +545,7 @@
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
 
-  (DEBUGMODE (dump-compiler-intermediate p ".__elaborated.ss"))
+  (when (or (regiment-verbose) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
 ;  (inspect (let-spine 4 p))
 ;  (inspect p)
@@ -992,7 +992,8 @@
    (if new-version?
        (begin 
 	 (ws-run-pass prog explicit-stream-wiring)
-	 (inspect prog)
+	 (display 
+	  (text->string (emit-c2 prog)))
 	 )
        (begin 
 	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   

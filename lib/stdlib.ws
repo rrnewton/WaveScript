@@ -148,6 +148,7 @@ thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
   // This takes an unwindowed stream and produces a stream of sigsegs:
 window          :: (Stream t, Int) -> SS t;
 dewindow        ::  SS t           -> Stream t;
+dewindowArrays  ::  Stream (Array t) -> Stream t;
 
   // Don't change the data, but redo the windowing:
 rewindow        :: (SS t, Int, Int) -> SS t;
@@ -937,6 +938,7 @@ fun zipN(bufsize, slist) {
 // implementations.
 
 
+
 // This is an internal helper that can be parameterized in two ways to
 // form "syncN" and "syncN_no_delete".
 Internal:syncN_aux = 
@@ -1121,7 +1123,16 @@ fun window(S, len)
 fun dewindow(s) {
   iterate w in s {
     for i = 0 to w `width - 1 {
+      // This is a horrible method, Sigsegs are *lists*, and this is quadratic!
       emit w[[i]];
+    }
+  }
+}
+
+fun dewindowArrays(sm) {
+  iterate arr in sm {
+    for i = 0 to Array:length(arr)-1 {
+      emit arr[i]
     }
   }
 }
@@ -1683,3 +1694,26 @@ fun parmap(n, fn, src) {
     joiner(10, processed);
     //joiner(10, routed);
   };
+
+fun roundRobinSplit(n, strm) {
+    split = iterate x in strm {
+      state { cnt = 0 }
+      old = cnt;
+      cnt += 1;
+      // NEED MODULO:
+      if cnt == n then cnt := 0;
+      emit (old, x);
+    };
+    routed = List:build(n, 
+      fun(i) iterate (ind,x) in split {
+        if ind == i then emit x;
+      });
+    routed
+}
+
+roundRobinJoin = joiner;
+
+fun roundRobinMap(n, fn, strm) {
+  split = roundRobinSplit(n, strm);
+  roundRobinJoin(n, map(fn,split));
+}

@@ -127,20 +127,20 @@ function runallbackends() {
   ## FIRST THE OLD SCHEDULER:  
   if [ "$OMITOLD" == "" ]; then 
    echo
-#    runcpp
-#    runcpp_df
+    runcpp
+    runcpp_df
   fi
 
   ## NOW THE NEW SCHEDULER:
-#  runcpp_corefit_nothreads
-#  runcpp_corefit
+  runcpp_corefit_nothreads
+  runcpp_corefit
 
-#  runscheme
+  runscheme
   runschemeO3
   
   if [ "$OMITMLTON" == "" ]; then 
     runmlton; 
-#    runmltonO3;
+    runmltonO3;
   fi
 
   #SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`
@@ -165,9 +165,9 @@ function runallbackends() {
   if [ ! "$CPPNEW_BROKE" == "" ]; then CPPNEW="-1"; fi
 
   # ================================================================================
-  #echo RESULTS: 1 $NAME 2 $SCHEME 3 $SCHEMEO3 4 $CPP 5 $CPPDF 6 $CPPNOTHREADS 7 $CPPNEW 8 $ML 9 $MLO3 
-  #echo $NAME $SCHEME $SCHEMEO3 $CPP $CPPDF $CPPNOTHREADS $CPPNEW $ML $MLO3 >> RESULTS.txt
+  echo RESULTS: 1 $NAME 2 $SCHEME 3 $SCHEMEO3 4 $CPP 5 $CPPDF 6 $CPPNEW 7 $CPPNOTHREADS 8 $ML 9 $MLO3 
+  echo $NAME $SCHEME $SCHEMEO3 $CPP $CPPDF $CPPNEW $CPPNOTHREADS  $ML $MLO3 >> RESULTS.txt
 
-  echo RESULTS: $NAME $SCHEMEO3 $CPPNOTHREADS $ML 
-  echo $NAME $SCHEMEO3 $CPPNOTHREADS $ML >> RESULTS.txt
+  #echo RESULTS: $NAME $SCHEMEO3 $CPPNOTHREADS $ML 
+  #echo $NAME $SCHEMEO3 $CPPNOTHREADS $ML >> RESULTS.txt
 }

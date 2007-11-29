@@ -49,22 +49,6 @@
   (unless (member fn link-files)
     (set! link-files (cons fn link-files))))
 
-;; Should I use this sort of name mangling?  The numbers from unique
-;; names will keep things unique...  Currently no, we just enforce
-;; C-names from the start for WaveScript.
-#|
-(define acceptable_chars 
-  '(#\_ 
-    #\a #\b #\c #\d #\e #\f #\g #\h #\i #\j #\k #\l #\m #\n #\o #\p #\q #\r #\s #\t #\u #\v #\w #\x #\y #\z 
-    #\A #\B #\C #\D #\E #\F #\G #\H #\I #\J #\K #\L #\M #\N #\O #\P #\Q #\R #\S #\T #\U #\V #\W #\X #\Y #\Z
-    #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
-;; String -> String
-(define (mangle-name str)
-  (list->string (filter (lambda (c) (memq c acceptable_chars))
-		  (string->list str))))
-|#
-
-
 ;; This insures no recursion in a given letrec.  That is, it makes
 ;; sure it's not really a letrec.
 (define (no-recursion! binds)
@@ -2140,7 +2124,10 @@ int main(int argc, char ** argv)
 		   List:assoc List:assoc_update
 		   HashTable:rem HashTable:set ;; pure versions
 		   Array:map Array:fold
+
 		   ifftC2R fftC ifftC
+		   exptI logD logF
+
 		   internString uninternString
 
 		   exclusivePtr getPtr

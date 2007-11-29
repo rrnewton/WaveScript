@@ -90,6 +90,7 @@
   (if (plain? x) (plain-val x) x))
 
 (define (maybe-wrap x)
+  (ASSERT (not (procedure? x)))
   (if (wrapped? x) x (make-plain x #f)))
 
 (define (unknown-type . _) `',(unique-name 'ty))
@@ -384,13 +385,15 @@
 				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 			  x*)))])
 	  ;(ASSERT (not (eq? raw (void))))
-	  (let ([final (if (wrapped? raw) raw (make-plain raw #f))])
+	  (ASSERT (not (procedure? raw)))
+	  (let ([final (maybe-wrap raw)])
 	    (set-value-type! final retty) ;; Necessary?
 	    final))])]
     ;; [2007.09.14] Supporting sums:
     [(construct-data ,tag ,[val]) (make-plain (make-uniontype tag val) #f)]
 
     [(app ,[f] ,[e*] ...)
+     (ASSERT closure? f)
      (if (foreign-closure? f)
 	 ;; Foreign app is suspended for later:
 	 (begin
@@ -475,38 +478,46 @@
   ;(printf "BUILT DICTIONARY!\n")
   )
 
-
+(define reflect-msg (gensym "reflect"))
 
 ;; Make a *real* procedure that evaluates a closure.  Thus we can pass
 ;; it to one of the higher-order WS primitives that's implemented in a
 ;; separate library (wavescript_sim_library_push.ss).
 (define (reify-closure c)
+  (ASSERT closure? c)
   (ASSERT (not (foreign-closure? c)))
   ;; This is called within wavescript_sim_library_push.ss:
   (lambda args
-    (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-    (match (closure-type c)
-      ;; We need to tag the types onto values that we store in the environment.
-      [(,argty* ... -> ,retty)
-       (unwrap-plain
-	(Eval (closure-code c) 
-	      (extend-env (closure-formals c) 
-			  ;;args 
-			  ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
-			  (map (lambda (arg argty)
-				 ;; Let's say you map(streamtransformer, list)...
-				 ;; That requires passing closures that handle streams.
-				 #;
-				 (when (streamop? x)
-				   (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
+    (if (eq? (car args) reflect-msg)
+	;; This means that we want to convert back to the transparent closure object.
+	c
+	
+	)
+    (begin 
+      
+      (DEBUGASSERT (curry andmap (compose not procedure?)) args)
+      (match (closure-type c)
+	;; We need to tag the types onto values that we store in the environment.
+	[(,argty* ... -> ,retty)
+	 (unwrap-plain
+	  (Eval (closure-code c) 
+		(extend-env (closure-formals c) 
+			    ;;args 
+			    ;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
+			    (map (lambda (arg argty)
+				   ;; Let's say you map(streamtransformer, list)...
+				   ;; That requires passing closures that handle streams.
+				   #;
+				   (when (streamop? x)
+				     (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
 					;(ASSERT (compose not wrapped?) x)
 					;(make-plain x)
-				 (let ([wrapped (if (wrapped? arg) arg (make-plain arg #f))])
-				   (set-value-type! wrapped argty)
-				   wrapped))
-			    args argty*)
-			  (closure-env c))
-	      #f))])))
+				   (let ([wrapped (maybe-wrap arg)])
+				     (set-value-type! wrapped argty)
+				     wrapped))
+			      args argty*)
+			    (closure-env c))
+		#f))]))))
 
 #;
 ;; This adds code around a closure that wraps/unwraps the arguments

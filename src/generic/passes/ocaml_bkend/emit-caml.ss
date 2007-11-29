@@ -884,6 +884,8 @@
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
+		   exptI logD logF
+
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
 		   Array:map Array:fold
