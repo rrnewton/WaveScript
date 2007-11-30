@@ -233,6 +233,22 @@
 ;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
 (define (inspect/continue x) (inspect x) x)
 
+(define (continuation->sourcelocs k)
+    (let loop ([ob (inspect/object k)])
+      (when (> (ob 'depth) 1)
+	;(write (ob 'source) (current-output-port))
+	;(if (ob 'source) ((ob 'source) 'write  (current-output-port)))
+	(call-with-values (lambda () (ob 'source-path))
+	  (lambda args
+	    (when (= (length args) 3) ;; Success
+	      (apply printf "File: ~a, line ~a char ~a\n" args)
+	      )))
+	;(newline)
+	(loop (ob 'link))
+	)))
+(define k->files continuation->sourcelocs)
+
+
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
 (define stderr  

@@ -14,6 +14,7 @@
     ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
 		  reg:include
 		  IFCHEZ IF_GRAPHICS IF_THREADS
+;		  continuation->sourcelocs
 		  )
   (import scheme)
   

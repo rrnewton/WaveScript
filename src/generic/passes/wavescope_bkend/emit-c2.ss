@@ -49,6 +49,7 @@
 (define (Linkage name val) 
   99)
 
+#;
     ;; Generates code for an emit.  (curried)
     ;; .param down*   A list of sinks (names of functions) to emit to.
     ;;                These can also be (NUM NAME) pairs for indexed ports.
@@ -83,8 +84,12 @@
      (Value rhs (lambda (x) `(,v ,t ,x)))]
     [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]) )
 
+
+
 (define (Effect xp emitter)
   (match xp
+#;
+
     [(emit ,[Simple -> x])
      (Linkage ??? x)
      
@@ -129,6 +134,7 @@
        [(let ([,lhs* ,ty* ,rhs*]) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))	
 	(values 
 
+#;
 	 (make-fun-decl name			
 			(Value bod (lambda (x) (make-lines `("return ",(expression-text x)";\n"))))
 	  )
@@ -150,7 +156,7 @@
 	    
 	    ;; state** ?? 
 
-	    (map line-text (list cb* init* src* oper* ))]
+	    (map lines-text (list cb* init* src* oper* ))]
 
 	   [,other ;; Otherwise it's an invalid program.
 	    (error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)]))]

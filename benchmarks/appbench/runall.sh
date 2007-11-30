@@ -63,11 +63,11 @@ runallbackends test_heatmap $TEMP 0 7
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot multinode offline  " > RESULTS.txt
-runallbackends run_3phases_MULTINODE $TEMP 0 3
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot multinode offline  " > RESULTS.txt
+# runallbackends run_3phases_MULTINODE $TEMP 0 3
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
 
 
 
@@ -136,6 +136,6 @@ print_results_header
 cat marmot1.dat >> RESULTS.txt
 cat marmot2.dat >> RESULTS.txt
 cat marmot3.dat >> RESULTS.txt
-cat marmot_multi.dat >> RESULTS.txt
+#cat marmot_multi.dat >> RESULTS.txt
 #cat pipeline.dat >> RESULTS.txt
 #cat pothole.dat >> RESULTS.txt

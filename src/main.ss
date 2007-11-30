@@ -989,6 +989,9 @@
     ;;   (printf "================================================================================\n")
     (printf "\nNow emitting C code:\n"))
 
+
+   (IFCHEZ 
+    
    (if new-version?
        (begin 
 	 (ws-run-pass prog explicit-stream-wiring)
@@ -1005,6 +1008,8 @@
 	   (printf "\nGenerated C++ output to ~s.\n" outfile))
 
 	 ))
+   (error 'wsc2 "not ready for PLT yet")
+   )
    )
  ) ; End wscomp
 

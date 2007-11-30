@@ -90,8 +90,11 @@
   (if (plain? x) (plain-val x) x))
 
 (define (maybe-wrap x)
-  (ASSERT (not (procedure? x)))
-  (if (wrapped? x) x (make-plain x #f)))
+  (cond 
+   [(wrapped? x) x]
+   [(procedure? x) (x reflect-msg)]
+   [else  (make-plain x #f)]
+   ))
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
@@ -490,7 +493,7 @@
   (lambda args
     (if (eq? (car args) reflect-msg)
 	;; This means that we want to convert back to the transparent closure object.
-	c 
+	(begin (printf "REFLECTING ~a ~a\n" (closure-name c) (closure-type c)) c)
 	(begin 
 	  (DEBUGASSERT (curry andmap (compose not procedure?)) args)
 	  (match (closure-type c)
