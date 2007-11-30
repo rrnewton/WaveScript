@@ -192,10 +192,12 @@
  ;; functionality used by the generic code.
  ;; The escape handler had *better* escape.
  (define (with-error-handlers display escape th)
-   (parameterize ([#%error-handler (lambda args 
-				   (apply display args)
-				   (escape))])
-		 (th)))
+   (let ([orig-error (#%error-handler)])
+     (parameterize ([#%error-handler (lambda args 
+				       (parameterize ([#%error-handler orig-error])
+					 (apply display args)
+					 (escape)))])
+		 (th))))
 (define (with-warning-handler fun th)
   (parameterize ([#%warning-handler fun])
     (th)))
@@ -2360,4 +2362,4 @@
         (loop (+ i 1) (cons (apply p args) results))
         results)))
 
-)
+) ;; End module.

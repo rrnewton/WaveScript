@@ -159,6 +159,13 @@
 	       `((annotations (cpu-pin . ,(plain-val int)) . ,alist)
 		 . ,rest)])))
 
+;; This is mutated by the interpreter to track source positions as we
+;; descend into the AST.  I hate to see the new interpret-meta pass
+;; take on this kind of ugliness.  It's an artifact of the fact that
+;; annotations are not properly attached to expression variants (such
+;; as primitive applications).
+(define current-src-pos #f)
+
 ;; This evaluates the meta program.  The result is a *value*
 ;;
 ;; .param pretty-name -- uses this to hang onto names for the closures
@@ -454,6 +461,7 @@
 
     ;; Handles assert-type, src-pos...
     ;; FIXME: Should attach source info to closures:
+    [(src-pos ,p ,e) (fluid-let ([current-src-pos p]) (Eval e env pretty-name))]
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
 
@@ -493,7 +501,7 @@
   (lambda args
     (if (eq? (car args) reflect-msg)
 	;; This means that we want to convert back to the transparent closure object.
-	(begin (printf "REFLECTING ~a ~a\n" (closure-name c) (closure-type c)) c)
+	c;(begin (printf "REFLECTING ~a ~a\n" (closure-name c) (closure-type c)) c)
 	(begin 
 	  (DEBUGASSERT (curry andmap (compose not procedure?)) args)
 	  (match (closure-type c)
@@ -976,16 +984,36 @@
 	    (define-syntax maybtime
 	      (syntax-rules ()
 		[(_ e) (if (regiment-quiet) e (time e))]))
-	    (parameterize ([marshal-cache (make-default-hash-table 1000)])
-	      (let* (
-		     [evaled    (maybtime (Eval x '() #f))]
-		     [marshaled (maybtime (Marshal evaled))]
-		     )
-	      (do-basic-inlining 
-	       (id;inspect/continue
-		marshaled))
-		)
-	      ))])
+	    (define (main-work) 
+	      (parameterize ([marshal-cache (make-default-hash-table 1000)])
+		(let* (
+		       [evaled    (maybtime (Eval x '() #f))]
+		       [marshaled (maybtime (Marshal evaled))]
+		       )
+		  (do-basic-inlining 
+		   (id;inspect/continue
+		    marshaled))
+		  )
+		))
+	    ;; We set up the error handler to give some source info.
+;	    (main-work)
+	    (with-error-handlers
+	     (lambda args 
+	       (printf "\n========================================\n")
+	       (printf "Ran into error during interpret-meta.\n")
+	       (printf "  Probably encountered when evaluating a primitive using the Scheme embedding.\n")
+	       (if current-src-pos
+		   (begin (printf "  The approximate source location was:\n\n   ~a\n\n" 
+				  (src-pos->string current-src-pos))
+			  ;(display (get-snippet `(src-pos ,current-src-pos ignored)))
+			  )
+		   (printf "  The source location is unknown.\n\n"))
+	       
+	       (printf "  The Scheme error was:\n")
+	       (apply inspector-error-handler args)) ;; display
+	     (lambda () (void))   ;; escape
+	     main-work)
+)])
 
 ; ================================================================================ ;
 

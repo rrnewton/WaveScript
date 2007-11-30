@@ -234,17 +234,17 @@
 (define (inspect/continue x) (inspect x) x)
 
 (define (continuation->sourcelocs k)
-    (let loop ([ob (inspect/object k)])
+    (let loop ([depth 0] [ob (inspect/object k)])
       (when (> (ob 'depth) 1)
 	;(write (ob 'source) (current-output-port))
 	;(if (ob 'source) ((ob 'source) 'write  (current-output-port)))
 	(call-with-values (lambda () (ob 'source-path))
 	  (lambda args
 	    (when (= (length args) 3) ;; Success
-	      (apply printf "File: ~a, line ~a char ~a\n" args)
+	      (apply printf "~a: File: ~a, line ~a char ~a\n" depth args)
 	      )))
 	;(newline)
-	(loop (ob 'link))
+	(loop (add1 depth) (ob 'link))
 	)))
 (define k->files continuation->sourcelocs)
 
@@ -310,7 +310,7 @@
 (unless (top-level-bound? 'default-error-handler)
   (define-top-level-value 'default-error-handler (error-handler)))
 
-(error-handler
+(define inspector-error-handler
  (lambda (who msg . args)
    (call/cc (lambda (k) 	     
 	      (parameterize ([error-handler default-error-handler]
@@ -329,8 +329,9 @@
 		(fprintf (console-output-port)
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")		
 		;; Set the current directory so that the inspector can find line numbers:
-		(inspect k))))
-   ))
+		(inspect k))))))
+
+(error-handler inspector-error-handler)
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))

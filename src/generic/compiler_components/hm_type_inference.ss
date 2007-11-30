@@ -151,8 +151,7 @@
 ;; This is similar to get-location but gets the actual snippet.
 (define (get-snippet x)
   (match x
-#;
-    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,e)
+    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,exp)
      (if (file-exists? fn)
 	 (let ([port (open-input-file fn)])
 	   (let ([lines '()])
@@ -180,7 +179,7 @@
 				 (list (substring (rac lines) 0 col2))))))
 	     (close-input-port port)	     	     	    	  
 	     (apply string-append lines)))
-	 (get-snippet e))]
+	 (get-snippet exp))]
     [,x 
      (format "(in abstract syntax)\n   ~s\n" 
 	     ;; This is HACKISH, and error-prone, but it makes messages nicer:

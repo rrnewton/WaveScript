@@ -73,6 +73,9 @@
   (define print-level pretty-print-depth)          ;; Same param, diff name
   (define pretty-line-length pretty-print-columns) ;; Same param, diff name
   
+  ;; There's no interactive inspector for PLT:
+  (define (inspector-error-handler . args) (apply error args))
+  
   ;(define print-length pretty-print-length)
   ;; Can't adjust the length from PLT:
   ;; So this does nothing:
