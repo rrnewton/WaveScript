@@ -561,8 +561,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/benchmarks" test-root)))
   ;; [2007.10.30] building incrementally, so we see what fails:
   (run-test "    Setup Engines:             " 
-	    (format "./setup_engines.sh &> ~a/bench_setup.log" test-directory))
-  
+	    (format "make engine &> ~a/bench_setup.log" test-directory))
+  (ASSERT (system "make topbefore"))
+ 
   (current-directory (format "~a/benchmarks/microbench" test-root))
   (run-test "    Run microbenchmarks:              " 
 	    (format "make &> ~a/bench_micro.log" test-directory))
@@ -580,8 +581,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
   (current-directory (format "~a/benchmarks" test-root))
+  (run-test "    Verify dependencies, do a few file conversions:" 
+	    (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
+  (ASSERT (system "make topafter"))
   (run-test "    Compile results, build full report: " 
-	    (format "make &> ~a/bench_perfreport.log" test-directory))
+	    (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
   )
 
 ;; POTHOLE 

@@ -7,22 +7,28 @@ TOPDF=ps2pdf
 all: 
 	@echo "  Running all benchmarks to generate report, takes approximately ?? minutes."
 	$(MAKE) engine
+	$(MAKE) topbefore
+	$(MAKE) alldeps
+	$(MAKE) topafter
+	$(MAKE) perfreport.pdf
+## Really, the correct thing to do would be to monitor CPU utilization
+## during the execution of the benchmarks to make sure nothing else
+## was stealing CPU from us.
+
+topbefore:
 	echo '\begin{verbatim}' > top_before.tex
 	top -b | head -n 20    >> top_before.tex
 	echo '\end{verbatim}'  >> top_before.tex
-	$(MAKE) foobarbaz
+
+topafter:
 	echo '\begin{verbatim}' > top_after.tex
 	top -b | head -n 20    >> top_after.tex
 	echo '\end{verbatim}'  >> top_after.tex
-	$(MAKE) perfreport.pdf
-## Really, the correct thing to do would be to modify CPU utilization
-## during the execution of the benchmarks to make sure nothing else
-## was stealing CPU from us.
 
 engine: 
 	./setup_engines.sh
 
-foobarbaz: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/marmot.pdf 
+alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
@@ -70,6 +76,11 @@ language_shootout/RESULTS.tex: language_shootout/RESULTS.txt
 	echo '\begin{verbatim}'            > language_shootout/RESULTS.tex
 	cat language_shootout/RESULTS.txt >> language_shootout/RESULTS.tex
 	echo '\end{verbatim}'             >> language_shootout/RESULTS.tex
+appbench/RESULTS.tex: appbench/RESULTS.txt
+	echo '\begin{verbatim}'            > appbench/RESULTS.tex
+	cat appbench/RESULTS.txt          >> appbench/RESULTS.tex
+	echo '\end{verbatim}'             >> appbench/RESULTS.tex
+
 
 clean:
 	rm -f machineinfo.tex perfreport.pdf perfreport.log perfreport.aux top_*.txt wssvn.tex enginesvn.tex
