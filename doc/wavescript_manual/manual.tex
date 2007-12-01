@@ -35,6 +35,8 @@ $\tt #1 $&$ \arr $&$ #2 $
 
 \newcommand{\cd}{\tt}
 
+\newcommand{\ws}{WaveScript}
+
 \newcommand{\ra}{\ensuremath{\rightarrow}}
 
 \newenvironment{wscode}{\begin{center}\tt}{\end{center}}
@@ -51,8 +53,10 @@ $\tt #1 $&$ \arr $&$ #2 $
 
 \chapter{Introduction}
 
-WaveScript is a functional metaprogramming language for writing highly abstract
-programs that generate efficient dataflow graphs.  These graphs are
+% [2007.12.01] nixing metaprogramming ...
+WaveScript is a functional language for writing highly abstract
+programs that generate efficient dataflow graphs through a two-stage
+evaluation model.  These graphs are
 executable in several backends (Scheme, ML, C++) that offer different
 tradeoffs in features, performance, and compile times.  The compiler
 has several command line entrypoints for the different backends.
@@ -60,7 +64,64 @@ has several command line entrypoints for the different backends.
 %Calling {\bf ws}
 % linking them to the {\em XStream} engine.
 
-\section{Using WaveScript}
+%\section{Bottom-up Tutorial}
+\section{A taste of the language}\label{s:taste}
+
+The academic publications on WaveScript will give you a top-down
+account of its features, reason for being, and so on.  In this manual,
+our goal is instead to introduce you to programming in WaveScript in a
+bottom-up manner.  We'll start from ``Hello-world'' and proceed from
+there.
+
+%Here's the simplest complete WaveScript program that you can write:
+Here's a simple but complete {\ws} program:
+\begin{verbatim}
+  main = timer(10.0)
+\end{verbatim}
+This creates a timer that fires at 10hz.  The {\em return value} of
+the {\cd timer} function is a stream of empty-tuples (events carrying
+no information).  The return value of the whole program is, by
+convention, the stream named ``main''.  The {\em type} of the above
+program is {\cd Stream ()}, where {\cd ()} designates the empty-tuple.
+
+In our next program, we will print ``Hello world'' forever.
+\begin{verbatim}
+  main = iterate x in timer(10.0) {
+           emit "Hello world!";
+         }
+\end{verbatim}
+The {\cd iterate} keyword provides a special syntax for accessing
+every element in a stream, running arbitrary code using that element's
+value, and producing a new stream as output.  In the above example,
+our {\cd iterate} ignores the values in the timer stream (``x''), and
+produces one string value on the output stream on each invocation
+(thus, it prints ``Hello world!'' at 10hz).  The type of the program
+is {\tt Stream String}. 
+
+Note, that we may produce two or more elements on the output stream
+during each invocation.  For example, the following would produce two
+string elements for each input element on the timer stream.
+\begin{verbatim}
+  main = iterate x in timer(10.0) {
+           emit "Hello world!";
+           emit "Hello again!";
+         }
+\end{verbatim}
+
+
+\section{Pragmatics: Using WaveScript}
+
+% This section discusses to setup and run {\ws}, what the different
+% backends are, and how to make best use of them.  If you want to first
+% find out more about the language, skip to Chapter~\ref{s:lang} and
+% return here later.
+
+This section addresses pragmatic issues concerning invoking
+the system and running dataflow graphs.  If you are new to WaveScript,
+it may help to skip to chapter \ref{s:lang} to get a sense for the
+language itself, then come back to this section afterwards.
+
+\subsection*{Installing}
 
 See the README for install instructions.  The bottom line is that you
 will need Mzscheme and Petite Chez Scheme to run the WaveScript
@@ -72,10 +133,7 @@ Once the system is installed you should be able to execute {\bf \tt
   ws} on any WaveScript source files ({\tt .ws} files).  This will
 compile the query and execute it directly in the Scheme backend.
 Other backends (and variations on this one) will be discussed in this
-chapter.  This chapter addresses pragmatic issues concerning invoking
-the system and running dataflow graphs.  If you are new to WaveScript,
-it may help to skip to chapter \ref{s:lang} to get a sense for the
-language itself, then come back to this section afterwards.
+section.  
 
 \subsection*{Develop Incrementally}
 
@@ -177,7 +235,7 @@ structure invariants to help ensure proper operation.
 \subsubsection*{For very low compile times: {\tt \bf ws.early}}
 
 If you are running many small programs --- stream ``queries'' --- then
-the latency introduced by compilation may be more significant than the
+the latency of compilation may be more important to you than the
 throughput of the query once it is running.  In this case it is
 reasonable to use {\tt ws.early}.
 
@@ -188,46 +246,126 @@ reasonable to use {\tt ws.early}.
 %conformance to explicit grammars.  Further it inserts extra
 %type-checks to make sure that the intermediate programs are well-formed.
 
-\subsection{The WaveScript C++ Backend}
 
-The WaveScript emulator provides a reference implementation suitable
-to prototyping and debugging applications.  The eventual target is to
-generate an efficient C++ program from the WaveScript source.  This is
-accomplished with the {\bf wsc} compiler.  In practice, as WaveScript
-undergoes development, the {\bf wsc} compiler often lags behind the {\bf ws}
-emulator in terms of features and functionality.  Again, develop
-incrementally, refer to {\tt wavescript/demos/wavescope} for programs that
-should work with {\bf wsc}.
+\subsection{The WaveScript MLton Backend}
+
+The WaveScript Scheme backend (ws) provides a reference implementation suitable
+to prototyping and debugging applications.  The eventual target for
+most WaveScript programs is to generate an efficient stand-alone
+binary using one of our other backends.  One of these backends is the
+MLton backend, invoked with {\bf wsmlton}.
+
+MLton is an aggressive, whole-program optimizing compiler for Standard
+ML.  Generating ML code from the {\ws} dataflow graph is
+straightforward because of the similarities between the languages'
+type systems.  This provides us with an easy to implement
+single-threaded solution that exhibits surprisingly good performance
+\cite{mlton}, while also ensuring type- and memory-safe
+execution.  
+
+\subsection{The WaveScript CaML Backend}
+
+\rednote{This backend is no longer supported and will receive no new features!}
+
+\subsection{The WaveScript C++ Backend}
+The C++ backend\footnote{It uses a C++ compiler not because it
+  generates object-oriented code, but because the runtime engine it
+  links with has been engineered in C++.} is invoked the {\bf wsc}
+command.  
+In practice, as WaveScript undergoes development, the {\bf wsc}
+compiler often lags behind {\bf ws} in terms of features and
+functionality.  Again, develop incrementally, refer to {\tt
+  wavescript/demos/wavescope} for programs that should work with {\bf
+  wsc}.
 
 Refer to the XStream documentation\footnote{\rednote{[2007.03.09] Currently nonexistent}} 
 for information on how to configure the XStream engine
 (number of threads, scheduling policy, etc)).
 
 \rednote{[2007.03.09] Ideally the output from the XStream-executed
-query would be the same as the emulator output.  Currently, however, there are
+query would be the same as the ws's output.  Currently, however, there are
 some basic disparities in how objects are printed to text form.  Hopefully, these
 are straightforward to work around, and should go away shortly.}
 
+Originally, we had intended for our C++ backend to be the
+best-performing of our backends, as it includes a low-level
+runtime specifically tailored for our streaming domain.
+%, as C and C++ are generally regarded as the languages of choice for performance-oriented systems programming. 
+However, in our current implementation the MLton backend actually
+outperforms our C++ backend, due to three primary factors:  
+%
+\vspace{-1.5mm}
+\begin{enumerate}
 
-\subsubsection*{The WaveScript CaML Backend}
+\item The C++ backend leverages the flexible XStream scheduling engine for
+executing stream graphs.  The cost of this flexibility is that
+transferring control between operators is at least a virtual method
+invocation, and may involve a queue. The MLton and Scheme backends
+support only single-threaded depth-first traversal, where control
+transfers between operators are direct function calls.
 
-\rednote{This backend is no longer supported and will receive no new features!}
+%% that attempts to
+%% distribute operators across a collection of processors which introduces
+%% some overhead; though our compiler optimizations try to limit this
+%% overhead by reducing operators where possible, it is still slower than
 
-\subsubsection*{The WaveScript MLton Backend}
+\item MLton incorporates years of work on high-level program
+optimizations that GCC cannot reproduce (the abstractions are lost by
+the time it gets to C code), and which we do not have time to reproduce
+within the {\ws} compiler.
+
+\item Our prototype uses a naive reference counting scheme that is less
+efficient than MLton's tracing collector.  (Although it does reduce
+pauses relative to MLton's collector; the C++ backend uses the type
+system to enforce that cycles cannot occur, and thus pure reference
+counting is sufficient.) 
+%
+In the future we believe that we can implement a substantially more
+efficient collector by combining deferred reference counting with the
+fact that our stream operators do not share mutable state.
+
+%% In particular, our collector can take advantage
+%% of the fact that {\ws} code must be first-order and monomorphic, and
+%% there can be no mutable pointers to recursive datatypes.  The former we
+%% ensure by defunctionalization and specialization and the latter we
+%% simply do not allow the programmer to express. Thee restrictions ensure
+%% there are no cyclic data structures and therefore avoid the necessity of
+%% a backup tracing collector and the pauses it entails.  Unfortunately,
+%% our current system XXX \srm{ryan,fill in something here about why what
+%% we have is slow -- Boost pointers???}.
+
+\end{enumerate}
+%
+%We are exploring methods to reflect this restriction in the type
+%system of the source language without undue burden on the programmer.
+%However, even the with the current method, a violation of these
+%restrictions gives a compile-time error with a source location.  The
+%status quo is not bad.
+
+%% There is another substantial advantage to our C++ backend, which
+%% motivates us to continue to further develop it: it is the only backend
+%% which currently supports intra-machine parallelism -- that is,
+%% scheduling of stream graphs on multiple processors in a single
+%% machine, which 
+
+However, in spite of its limitations, our current prototype C++
+runtime is the best choice when parallelism is available.  The MLton
+runtime and garbage collector do not support concurrent threads.
+
 
 
 
 %================================================================================
 \chapter{Language Basics}\label{s:lang}
 
-Please make liberal use of {\tt wavescript/demos/wavescope/*.ws} as a reference
+Please make liberal use of the demo files located at {\tt wavescript/demos/wavescope/*.ws} as a reference
 when learning WaveScript.  These demos cover most of the basic
 functionality in the language.
 
 %\section{Naming conventions}
 %\chapter{Basics}
 
-WaveScript is a functional language with many similarities to ML or
+Wavescript is a functional language with many similarities to ML or
 Haskell.  Functions are values.  The language is strongly typed and uses a
 type-inference algorithm to infer types from variable usages.
 It provides the usual basic datatypes, including various
@@ -250,6 +388,10 @@ expression position.
 %
 \evalsto{3 + (if true then 1 else 2)} {4}
 %
+(Note that the arrow above means ``evaluates to'', but {\ws} does not
+currently have an interactive read-eval-print-loop in which you can
+type such incomplete program fragments.)
+
 Moreover, {\em blocks} in WaveScript---delimited by curly
 braces---are just expressions!
 
@@ -286,16 +428,87 @@ a function body consists of curly braces, it needn't be followed by a semi-colon
   semi-colon error may appear as a strange parse error in the next
   or previous line.}
 
+%================================================================================
+\subsection{Streams}
+
+WaveScript is for stream-processing and it would be useless without
+Streams.  
+Streams in WaveScript are like any other values: bound to variables,
+passed and returned from functions.
+The primary means of operating on the data inside streams is the {\tt
+  iterate} syntactic construct.
+
+\begin{verbatim}
+        S2 = iterate x in S1  {
+          state{ counter = 0 }
+          counter := counter + 1;
+          emit counter + x;
+        }
+\end{verbatim}
+
+The {\tt iterate} construct can be placed in any {\em expression
+position}.  It produces a new stream by applying the supplied code to
+every element of its input stream.  The above example executes the
+body of the iterate every time data is received on the stream {\tt
+  S1}, it adds an increasing quantity to each element of {\tt S1}, and the
+resulting stream is bound to the variable {\tt S2}.
+
+In addition to {\tt iterate} several library procedures (such as {\tt
+stream\_map}) and many primitives (such as {\tt unionList}) operate on
+{\tt Stream} values.  For example, {\tt merge} combines two streams of the same
+type (their tuples interleaved in real time), whereas {\tt
+  unionList} also combines streams of the same type, but tags all
+output tuples with an integer index indicating from which of the input
+streams it originated.
+
+
+%========================================
+\subsection{Defining functions}
+\label{udfs}
+
+Named functions can be defined at the top-level, or within a {\tt
+  \{\ldots\}} block as follows:
+\begin{verbatim}
+       fun f(x,y) {
+         z = x+y;
+         sqrt(z)
+       }
+\end{verbatim}
+
+The function body, following the argument list can be any expression.
+Above it happens to be a statement block that returns the
+square-root of {\tt z}.
+
+Unnamed, or anonymous, functions can occur anywhere that an expression
+might occur. In the following we pass an anonymous ``plus three''
+function as the first input to {\tt stream\_map}.  Note that the body
+of the function is a single expression, not a statement block, and is
+not delimited by curly braces.
+
+\begin{wscode}
+stream\_map(fun(x) x+3, S)
+\end{wscode}
+
+%========================================
 \subsection{Constructing complete programs}
 
-A complete program file contains function and variable
-declarations as well as a {\em stream wiring statement} of the form:
+A complete program file contains function and variable declarations.
+As seen in Section~\ref{s:taste}, a special variable declaration
+binds the name ``main'' to a stream:
+%as well as a {\em stream wiring statement} of the form:
 \begin{wscode}
-BASE <- expression;
+main = stream-valued-expression;
 \end{wscode}
-This wiring statement determines the stream of values returned as
-a result of running the program.
+%This wiring statement determines the stream of values returned as
+%a result of running the program.
+As a side-note, {\ws} can be called with a ``-ret foo'' flag to return
+the stream ``foo'' instead of the stream ``main''.  This is frequently
+useful for invoking testing entrypoints as well as the production
+entrypoint for the program.  
 
+Note also that {\em only} the returned stream is instantiated at runtime.
+Other streams declared in the program will simply be ignored.  They
+become dead code.
 
 
 %================================================================================
@@ -317,8 +530,8 @@ described in section \ref{s:patterns}.
 \subsection{Numbers}
 
 WaveScript supports several different types of numbers.  \rednote{Currently,
-this set includes Int, Int16, Float, Complex, but it will be extended
-to include 8-bit integers, unsigned integers, doubles, and complex-doubles.}
+this set includes Int, Int16, Int64, Float, Double, Complex, but it will be extended
+to include 8-bit integers, unsigned integers, and complex-doubles.}
 WaveScript includes generic numeric arithmetic operations ($+$, $-$,
 $*$, $/$) that work for any numeric types, but must be used on two
 numbers of the same type.  There are also type-specific numeric
@@ -332,12 +545,15 @@ Int              & : & $\tt +\_ -\_ *\_ /\_ \^{}\_ $ \\
 Float            & : & $\tt +. -. *. /. \^{}. $ \\
 Complex          & : & $\tt +: -: *: /: \^{}: $ \\
 Int16            & : & $\tt +I16 -I16 *I16 /I16 \^{}I16 $   \\
+Int64            & : & $\tt +I64 -I64 *I64 /I64 \^{}I64 $   \\
 \end{array}
 \]
 
 Other numeric operations, such as {\tt abs} or {\tt sqrt}, follow the
 naming convention {\tt absI} for integers, {\tt absF} for floats, {\tt
 absC} for complex, and {\tt absI16} for 16-bit integers.
+\rednote{Eventually, {\ws} will include a type-class facility which
+  will simplify the treatment of numeric operations.}
 
 % int, uint16, uint8, float, double, complex 
 
@@ -374,10 +590,8 @@ only, not building a new list.  {\tt List:build(len, f)} builds a new
 list, using a function (on index) to populate each position in the
 list.
 
-Many of these operators (map/filter/foreach/mapi/fold/build) are used consistently
+Many of these operators (map, filter, foreach, mapi, fold, build, etc) are used consistently
 for different container types (lists, arrays, matrices, etc).
-
-\rednote{DESCRIBE BUILD, FOREACH, MAPI, ETC}
 
 \subsection{Arrays}
 
@@ -428,35 +642,6 @@ directory.  These files, for example {\tt ``stdlib.ws''} and {\tt
 a general design principle, it is best to implement as much as
 possible in the language, while keeping the set of built-in primitives
 relatively small.
-
-
-%================================================================================
-\section{User defined functions}
-\label{udfs}
-
-Named functions can be defined at the top-level, or within a {\tt
-  \{\ldots\}} block as follows:
-
-\begin{verbatim}
-       fun f(x,y) {
-         z = x+y;
-         sqrt(z)
-       }
-\end{verbatim}
-
-The function body, following the argument list can be any expression.
-Above it happens to be a statement block that returns the
-square-root of {\tt z}.
-
-Unnamed, or anonymous, functions can occur anywhere that an expression
-might occur. In the following we pass an anonymous ``plus three''
-function as the first input to {\tt stream\_map}.  Note that the body
-of the function is a single expression, not a statement block, and is
-not delimited by curly braces.
-
-\begin{wscode}
-stream\_map(fun(x) x+3, S)
-\end{wscode}
 
 
 
@@ -603,40 +788,6 @@ define aliases, or shorthands, similar to C/C++'s {\tt typedef}s.
 
 
 %================================================================================
-\section{Streams}
-
-WaveScript is for stream-processing and it would be useless without
-Streams.  
-Streams in WaveScript are like any other values: bound to variables,
-passed and returned from functions.
-The primary means of operating on the data inside streams is the {\tt
-  iterate} syntactic construct.
-
-\begin{verbatim}
-        S2 = iterate x in S1  {
-          state{ counter = 0 }
-          counter := counter + 1;
-          emit counter + x;
-        }
-\end{verbatim}
-
-The {\tt iterate} construct can be placed in any {\em expression
-position}.  It produces a new stream by applying the supplied code to
-every element of its input stream.  The above example executes the
-body of the iterate every time data is received on the stream {\tt
-  S1}, it adds an increasing quantity to each element of {\tt S1}, and the
-resulting stream is bound to the variable {\tt S2}.
-
-In addition to {\tt iterate} several library procedures (such as {\tt
-stream\_map}) and many primitives (such as {\tt unionList}) operate on
-{\tt Stream} values.  For example, {\tt merge} combines two streams of the same
-type (their tuples interleaved in real time), whereas {\tt
-  unionList} also combines streams of the same type, but tags all
-output tuples with an integer index indicating from which of the input
-streams it originated.
-
-
-%================================================================================
 \section{Sigsegs}
 
 Sigsegs are a flexible ADT for representing windows of samples on a stream.
@@ -765,10 +916,30 @@ ls.tail.tail.head
 \vspace{-2mm}
 
 
+\subsection{\$: ``Unary parentheses''}
+
+The ``\$'' operator for procedure application is taken from Haskell
+and sometimes called the ``unary parenthesis''.  Instead of {\cd
+  f(g(x))}, we write ``{\cd f \$ g \$ x}''.
+This is useful if you have a large expression spanning many lines to
+which you want to apply a function:
+\begin{verbatim}
+   iterate x in strm { 
+      (many lines) ... 
+\end{verbatim}
+We can apply a function {\cd myfunction} without scrolling down to
+insert a close parenthesis:
+\begin{verbatim}
+   myfunction $
+   iterate x in strm { 
+      (many lines) ... 
+\end{verbatim}
+
+
 \subsection{Stream Projectors}
 
-WaveScript also includes a syntax for binding variables to
-Stream-of-tuple values that binds projector functions for each of
+WaveScript also includes a syntax for binding streams of tuples in a
+ way that associates a projector function for each of
 the tuples' fields.  For example:
 
 \begin{wscode}
@@ -776,7 +947,7 @@ S as (a,b) = someStream;
 \end{wscode}
 
 Subsequently, ``{\tt S.(a)}'' or ``{\tt S.(a,b,a)}'' can be used to
-project-out a new stream where each tuple represents an arrangement of
+project a new stream where each tuple represents an arrangement of
 the fields within each tuple in {S}.  If used in conjunction with the
 type-annotation syntax, note that the ``{\tt as}'' clause must go first:
 
