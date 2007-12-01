@@ -1004,7 +1004,10 @@ return {\tt Stream} values.
 
 \rednote{\em \bf Keep the metaprogram pure for now! (free of side-effects)}
 
-\chapter{WaveScript Execution Model}
+%\chapter{WaveScript Execution Model}
+\section{Execution Model}
+
+\rednote{UNFINISHED}
 
 After the metaprogram evaluates, what is left is a dataflow graph of
 stream operators (kernels).  Now you may ask: what are the semantics
@@ -1037,6 +1040,20 @@ the pain of asynchronicity as possible.
 \section{Debugging}
 
 \rednote{TODO}
+
+\appendix
+\chapter{Primitive table}\label{s:primtable}
+
+This is an automatically generated table of primitives and their type
+signatures.  Also see the libraries in {\cd wavescript/lib} for
+additional standard functions.
+
+{
+%\footnotesize
+\scriptsize
+\input{primtable.tex}
+}
+
 
 %% pos#0: 
 %% seg-get: index 474 is out of bounds for sigseg:

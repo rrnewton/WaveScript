@@ -7,15 +7,15 @@ install:
 	cp -a manual.pdf /var/www/
 	(cd /var/www; ./setperms)
 
-primtable.txt:
-	echo '\begin{verbatim}' > primtable.txt
-	echo '(with-output-to-file "primtable.txt" (lambda () (print-ws-prim-table)) (quote append))' | regiment i
-	echo '\end{verbatim}' >> primtable.txt
+primtable.tex:
+	echo '\begin{verbatim}' > primtable.tex
+	echo '(with-output-to-file "primtable.tex" (lambda () (print-ws-prim-table)) (quote append))' | regiment i
+	echo '\end{verbatim}' >> primtable.tex
 
-pdf: primtable.txt
+pdf: primtable.tex
 	pdflatex manual
 
-html: primtable.txt
+html: primtable.tex
 	latex2html -split 1 manual.tex
 
 clean:
