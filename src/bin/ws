@@ -5,8 +5,10 @@
 source `dirname $0`/assert_regimentd
 
 if [ ! -f "$1" ];
-then echo Usage: "ws <file> <options ...>";
-     echo   File \"$1\" does not exist.
+then echo Usage: "ws <file> <option> ...";
+     if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
+     else cat $REGIMENTD/bin/ws_opts.txt
+     fi
      exit 1;
 fi
 

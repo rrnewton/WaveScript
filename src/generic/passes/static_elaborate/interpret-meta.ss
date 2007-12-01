@@ -177,6 +177,10 @@
     ;(and pretty-name (unique-name pretty-name))    
     )
 
+  ;; Is name A worthier than B?
+  (define (better-name? a b)
+    (or (not (eq? 'anonstreamop b))
+	(= 1 (string-length (symbol->string b)))))
   (define (prettify-names! names vals)
     (for-each (lambda (name val)
 		       (cond
@@ -187,11 +191,9 @@
 			 ;; override the streamop name from its creation site?
 			 ;; [2007.11.12] Trying just overwriting it always... 
 			 ;; Is the *last* name a good name?
-			 (unless (and #f 
-				      (streamop-name val) 
-				      (not (eq? 'anonstreamop (deunique-name (streamop-name val)))))
-;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)
-			   
+			 (unless (and (streamop-name val)
+				      (better-name? name (deunique-name (streamop-name val))))
+;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)			   
 			   (set-streamop-name! val (unique-name name)))]))
       names vals))
 

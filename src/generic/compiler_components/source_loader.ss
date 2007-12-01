@@ -360,14 +360,6 @@
   (let ([typevs (map car types)]
 	[defvs  (map car defs)])
 
-    ;; DEFENSE:
-    (unless (= 1 (length routes))
-      (if (zero? (length routes))
-	  (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- timer(1)\"")		   
-		 (set! routes `((BASE (timer '1.0)))))
-	  (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
-    (unless (eq? 'BASE (caar routes))
-      (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
     (unless (list-subset? typevs defvs)
       (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
     (unless (list-is-set? (map car typealiases))
@@ -378,7 +370,21 @@
     ;; Now let's build that expression:
     (let ()
       ;; Pull out the "BASE <-" returned expression:
-      (define body (cadar routes))
+      (define body 
+	(begin 
+	  ;; DEFENSE:
+	  (if (= 1 (length routes))
+	      (if (eq? 'BASE (caar routes)) (cadar routes) ;; Here's our body.
+		  (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
+	      (if (zero? (length routes))
+		  ;; [2007.12.01] Allowing a new convention.  Return the stream named "main".
+		  (let ([return-name (or (ws-alternate-return-stream) 'main)])
+		    (if (assq return-name defs)
+			return-name ;; The returned stream is whatever the most recent binding of the return name is.
+			(begin (warning 'ws-postprocess "Return stream unbound, defaulting to \"timer(1)\"")
+			       ;(set! routes `((BASE (timer '1.0))))
+			       '(timer '1.0))))
+		  (error 'ws-postprocess "Must have only one stream-wiring (<-) expression for now! ~a" routes)))))
       (define final-expression
 	(match defs
 	  [() body]

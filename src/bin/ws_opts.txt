@@ -1,0 +1,14 @@
+
+WSINT (ws) options:
+  -dump <file>  don't go into stream browser, dump output stream to file
+  -n <int>      dump only a certain number of tuples and stop 
+  -t            time how long it takes to produce that many tuples 
+WSCOMP (wsc) options: 
+  -c0           only run the WaveScript compiler, stop at C++
+  --scheduler <name> xstream scheduler policy; can be train-scheduler,
+                     corefit-scheduler-ex, corefit-scheduler-df
+
+Options for all WaveScript (ws*) configurations: 
+  -dot          dump compiled program to graphviz 
+  -ret <name>   custom return stream, rather than 'main'
+  --disable-pass <pass-name> suppress a specific pass 

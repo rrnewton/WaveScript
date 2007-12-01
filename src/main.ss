@@ -1085,7 +1085,7 @@
   (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
   (printf "  wscomp   (wscomp) WaveScript (C++) compiler mode~n")
   (printf "  wsc2     (wsc2)   WaveScript (C) compiler mode ver 2~n")
-  (printf "  wscaml   (wsml)   WaveScript compiler SML backend~n")
+  (printf "  wsml     (wsml)   WaveScript compiler SML (MLton) backend~n")
   (printf "  wscaml   (wscaml) WaveScript compiler Caml backend~n")
   (printf "~n")
   (printf "General Options:  ~n")
@@ -1118,18 +1118,42 @@
   (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world~n")
   (printf "~n")
-
-  (printf "WSINT options: ~n")
-  (printf "  -dump <file>  don't go into stream browser, dump output stream to file~n")
-  (printf "  -n <int>      dump only a certain number of tuples and stop ~n")
-  (printf "  -t            time how long it takes to dump that many tuples ~n")
-  (printf "WSCOMP options: ~n")
-  (printf "  -c0           only run the WaveScript compiler, stop at C++~n")
-  (printf "Options for all WaveScript configurations: ~n")
-  (printf "  -dot          dump compiled program to graphviz ~n")
-  (printf "  --disable-pass <pass-name> suppress a specific pass ~n")
-  (printf "  --scheduler <name> xstream scheduler; can be train-scheduler or corefit-scheduler-ex~n")
+  ;(display (file->string (string-append (REGIMENTD) "bin/regiment_opts.txt")))
+  (display (file->string (string-append (REGIMENTD) "/bin/ws_opts.txt")))
   )
+
+(define (print-ws-prim-table)
+  (define prims (difference (regiment-primitives) regiment-distributed-primitives))
+  ;; These are prims that we don't want to publicize for whatever reason:
+  (define secret-prims
+    `(world anchor locdiff sense nodeid 
+      HACK_O_RAMA Secret:newTimebase
+      tuple tupref
+      static statref
+      ,@(filter (lambda (n) (define str (symbol->string n))
+			(or (memq #\? (string->list str))
+			    (and (> (string-length str) 3)
+				 (equal? (substring str 0 2) "__"))))
+	  (map car prims)))
+    )
+  (define (pad name)
+    (define namestr (format "~a" name))
+    (define padincr 6)
+    (define padsize (- padincr (remainder (string-length namestr) padincr)))
+    (define padding (make-string (if (= padsize padincr) 0 padsize) #\space))
+    (format "~a~a" name padding))
+  (for-each (lambda (entry)
+	      (match entry
+		[(,name ,args ,retty . ,rest)
+		 (unless (null? rest) (inspect rest))
+		 (when (and (list? args) (not (memq name secret-prims)))
+		   (printf "~a :: ~a\n" (pad name) (show-type `(,@args -> ,retty))))]
+		;; Constants:
+		[(,name ,ty)
+		 (unless (memq name secret-prims)		   
+		   (printf "~a :: ~a\n" (pad name) (show-type ty)))
+		 ])
+	      ) prims))
 
 (define (print-types-and-exit prog . opts)
   (define verbose? (memq 'verbose opts))
@@ -1537,6 +1561,7 @@
 	   (loop rest)]
 
 	  [(-dot ,rest ...) (dump-graphviz-output #t) (loop rest)]
+	  [(-ret ,name ,rest ...) (ws-alternate-return-stream name) (loop rest)]
 	  
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 	  [(-debug ,rest ...)		     

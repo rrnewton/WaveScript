@@ -80,7 +80,7 @@
 	   strip-types do-all-late-unifies!
 	   strip-annotations
 	
-	   print-var-types
+	   print-var-types print-type show-type
 	   dealias-type
 	   realias-type
 
@@ -1459,50 +1459,46 @@
 ; ======================================================================
 ;; Printing the type-signatures inside a large expressions:
 
-;; Prints a type in a WaveScript format way rather than the raw sexp.
-;; Added a hack to omit parens around the outermost type constructor.
-(define (print-type t . p)
-  (DEBUGASSERT type? t)
-  (let ([port (if (null? p) (current-output-port) (car p))])
-    (define (loop outer?) 
-      (lambda (t)
-	(match t
-	  [(quote ,[var]) (++ "'" var)]
-	  [(NUM ,[var]) (++ "#" var)]
-	  [(-> ,b) (++ "() -> " ((loop #t) b))]
-
-	  ;; One arg functions:
-	  [(, left -> ,[(loop #t) -> right])
-	   (if (arrow-type? left)
-	       (++ "(" ((loop #t) left) ") -> " right)
-	       (++     ((loop #t) left)  " -> " right))]
-	  [(,[(loop #t) -> arg*] ... -> ,[(loop #t) -> b])
-	   (++ "(" (apply string-append (insert-between ", " arg*)) ")"
-	       " -> "b)]
-
-	  [#(,[(loop #t) -> x*] ...)
-	   (++ "(" (apply string-append (insert-between " * " x*)) ")")]
-
-	  ;; [2006.12.01] Removing assumption that TC's have only one arg:
-	  [(,[tc] ,arg* ...)
-	   (let ([inside (apply string-append (insert-between " " (map (loop #f) arg*)))])
-	     (if outer?		 
-		 (++     tc " " inside )
-		 (++ "(" tc " " inside ")")))]
-	  [,sym (guard (symbol? sym))
-		(symbol->string sym)]
-	  [,s (guard (string? s)) (format "~s" s)] ;; Allowing strings for uninterpreted C types.
-	  [,other (error 'print-type "bad type: ~s" other)])))
-    (display 
-     ((loop #t) t)
-     ;((loop #f) t)
-     ;; Prettification: we drop the loop parens:
-     port)))
 
 (define (show-type ty)
-  (let ([p (open-output-string)])    
-    (print-type ty p)
-    (get-output-string p)))
+  (define (loop outer?) 
+    (lambda (t)
+      (match t
+	[(quote ,[var]) (++ "'" var)]
+	[(NUM ,[var]) (++ "#" var)]
+	[(-> ,b) (++ "() -> " ((loop #t) b))]
+
+	;; One arg functions:
+	[(, left -> ,[(loop #t) -> right])
+	 (if (arrow-type? left)
+	     (++ "(" ((loop #t) left) ") -> " right)
+	     (++     ((loop #t) left)  " -> " right))]
+	[(,[(loop #t) -> arg*] ... -> ,[(loop #t) -> b])
+	 (++ "(" (apply string-append (insert-between ", " arg*)) ")"
+	     " -> "b)]
+
+	[#(,[(loop #t) -> x*] ...)
+	 (++ "(" (apply string-append (insert-between " * " x*)) ")")]
+
+	;; [2006.12.01] Removing assumption that TC's have only one arg:
+	[(,[tc] ,arg* ...)
+	 (let ([inside (apply string-append (insert-between " " (map (loop #f) arg*)))])
+	   (if outer?		 
+	       (++     tc " " inside )
+	       (++ "(" tc " " inside ")")))]
+	[,sym (guard (symbol? sym))
+	      (symbol->string sym)]
+	[,s (guard (string? s)) (format "~s" s)] ;; Allowing strings for uninterpreted C types.
+	[,other (error 'print-type "bad type: ~s" other)])))
+  ;; Prettification: we drop the loop parens:
+  ((loop #t) ty))
+
+;; Prints a type in a WaveScript format way rather than the raw sexp.
+;; Added a hack to omit parens around the outermost type constructor.
+(define (print-type t . p)  
+  (DEBUGASSERT type? t)
+  (let ([port (if (null? p) (current-output-port) (car p))])
+    (display (show-type t) port)))
 
 #|
 

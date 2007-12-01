@@ -146,6 +146,7 @@
 	 ws-optimization-level
 
 	 dump-graphviz-output
+	 ws-alternate-return-stream
 
 	 varied-param
 	 dummy-param
@@ -379,6 +380,9 @@
 (define-regiment-parameter mlton-ascribe-types #t)
 
 (define-regiment-parameter dump-graphviz-output #f)
+
+;; [2007.12.01] Should we return something other than 'main
+(define-regiment-parameter ws-alternate-return-stream #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns

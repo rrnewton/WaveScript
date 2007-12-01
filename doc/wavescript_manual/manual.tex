@@ -22,7 +22,7 @@
 
 % page size commands
 
-\title{WaveScript 0.1.4 Users Manual}
+\title{WaveScript Rev 2930 Users Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -708,7 +708,7 @@ when importing data from a file.  This is done with the primitive {\tt
 readFile}.
 %
 \begin{verbatim}
-       BASE <- 
+       main = 
          (readFile("foo.txt", "") 
           :: Stream (Int16 * Float))
 \end{verbatim}
@@ -722,7 +722,7 @@ more efficient.  All that is required is to specify a stream of
 {\tt Sigseg} type, as follows.
 
 \begin{verbatim}
-       BASE <- 
+       main =
          (readFile("foo.dat", 
                    "mode: binary  repeat: 3")
           :: Stream (Sigseg Int16))
@@ -942,7 +942,7 @@ insert a close parenthesis:
    iterate x in strm { 
       (many lines) ... 
 \end{verbatim}
-
+%$
 
 \subsection{Stream Projectors}
 

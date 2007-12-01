@@ -857,7 +857,6 @@
        ls)
      ls)))
 
-
 ;; These are the ones that take or return Stream values:
 ;; Be wary that this is only computed once while "regiment-primitives" might change.
 (define wavescript-stream-primitives
