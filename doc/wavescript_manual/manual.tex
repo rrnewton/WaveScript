@@ -605,7 +605,11 @@ additional primitives below.
 
 \subsection{Additional primitive functions}
 
-Please refer to this file within your working copy:
+Appendix~\ref{s:primtable} contains a table of all currently supported
+{\ws} primitives, together with their type signatures.
+
+For more documentation on these primitives, please refer to this file
+within your working copy:
 \vspace{-2mm}
 \begin{center}
 {\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
@@ -643,7 +647,11 @@ a general design principle, it is best to implement as much as
 possible in the language, while keeping the set of built-in primitives
 relatively small.
 
-
+For various historical reasons there are several primitives included
+in the current primitive table that {\em should not} ultimately be
+primitive.  These will eventually be removed and implemented instead
+as library routines.  Likewise, there are certainly many additional
+primitives that one might like to see incorporated as the language matures.
 
 
 %================================================================================
