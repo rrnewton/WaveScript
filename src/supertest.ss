@@ -581,7 +581,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
   (current-directory (format "~a/benchmarks" test-root))
-  (run-test "    Verify dependencies, do a few file conversions:" 
+  (run-test "    Verify dependencies, do conversions:" 
 	    (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
   (ASSERT (system "make topafter"))
   (run-test "    Compile results, build full report: " 

@@ -170,22 +170,20 @@ graph for the inline C code to be included.
 You can do this by using the {\tt merge} primitive to combine it with any
 other Stream (this will not affect that other stream, as {\tt
 inline\_C} never produces any tuples).  Alternatively, you can return the
-output of {\tt inline\_C} directly to the {\tt BASE} (the root sink),
+output of {\tt inline\_C} directly to the ``main'' stream,
 as follows:
 
 \begin{wscode}
-BASE <- inline\_C(\dots)
+main = inline\_C(\dots)
 \end{wscode}
 
-Note that a WaveScript program can contain multiple ``{\tt BASE <-}''
-statements that are implicitly combined with the {\tt merge}
-primitive.  Of course, all the streams returned in this way must be of
-the same type.
-%
-\rednote{Actually, this feature is planned but not implemented at the
-  moment [2007.08.24].}
-
-
+%% Note that a WaveScript program can contain multiple ``{\tt BASE <-}''
+%% statements that are implicitly combined with the {\tt merge}
+%% primitive.  Of course, all the streams returned in this way must be of
+%% the same type.
+%% %
+%% \rednote{Actually, this feature is planned but not implemented at the
+%%   moment [2007.08.24].}
 
 
 \section{Backend support}

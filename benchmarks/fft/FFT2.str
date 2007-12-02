@@ -1,8 +1,10 @@
 
+//void->void pipeline FFT2() {
 void->void pipeline FFT2() {
 
   add FFTTestSource(64);
-  add FFTKernel2(64);
+  //add FFTKernel2(64);
+  add FFTKernel3(64);
   add FloatPrinter();
 }
 
@@ -87,6 +89,11 @@ float->float filter FFTReorderSimple(int n) {
   work push 2*n pop 2*n {
         int i;
         
+	print("Firing reorder simple ");
+	print(n);
+	print(" ");
+	println(peek(i));
+
         for (i = 0; i < totalData; i+=4)
         {
             push(peek(i));
@@ -143,6 +150,11 @@ float->float splitjoin FFTKernel2(int n) {
   join roundrobin(2*n);
 }
 
+// rrn: Do it without the split/join
+float->float pipeline FFTKernel3(int n) {
+    add FFTReorder(n);
+    //    for(int j=2; j<=n; j*=2)  add CombineDFT(j);
+}
 
 void->float filter FFTTestSource(int N) {
 

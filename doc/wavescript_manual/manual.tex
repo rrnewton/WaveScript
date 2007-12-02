@@ -108,6 +108,39 @@ string elements for each input element on the timer stream.
          }
 \end{verbatim}
 
+Actually, timers are the only built-in {\ws} stream {\em sources}.
+All other built-in stream procedures only transform existing streams.
+
+Iterate also allows persistent, mutable state to be kept between
+invocations.  This is introduced with the sub-keyword {\cd state}.
+For example, the following produces an infinite stream of integers
+counting up from zero.
+
+\begin{verbatim}
+  main = iterate x in timer(10.0) {
+           state { cnt = 0; }
+           emit cnt;
+           cnt := cnt + 1;
+         }
+\end{verbatim}
+
+Notice that the assignment operator for mutating mutable variables
+({\cd :=}) is different than the operator used for declaring new
+variables ({\cd =}).  ({\ws} also has {\cd +=}, {\cd -=} etc for use
+on mutable variables.)
+
+As a final example, we'll merge two streams operating at different
+frequencies.
+
+\begin{verbatim}
+  s1 = iterate x in timer(3.0) { emit 0; }
+  s2 = iterate x in timer(4.0) { emit 1; }
+  main = merge(s1,s2)
+\end{verbatim}
+
+This will output a sequence of zeros and ones, with four ones for
+every three zeroes.  The {\cd merge} operator combines two streams of
+the same type, interleaving their elements in real time.
 
 \section{Pragmatics: Using WaveScript}
 
@@ -705,11 +738,13 @@ constructors as in {\tt List (List T)}.
 
 The one place where type annotations {\em are} currently mandated is
 when importing data from a file.  This is done with the primitive {\tt
-readFile}.
+readFile}.  Readfile is not a stream {\em source}, but rather is driven by
+another stream, reading a tuple from the file for every element on its
+input stream.  This makes it more general.
 %
 \begin{verbatim}
        main = 
-         (readFile("foo.txt", "") 
+         (readFile("foo.txt", "", timer(10.0))
           :: Stream (Int16 * Float))
 \end{verbatim}
 
@@ -724,7 +759,8 @@ more efficient.  All that is required is to specify a stream of
 \begin{verbatim}
        main =
          (readFile("foo.dat", 
-                   "mode: binary  repeat: 3")
+                   "mode: binary  repeat: 3", 
+                   timer(10.0))
           :: Stream (Sigseg Int16))
 \end{verbatim}
 

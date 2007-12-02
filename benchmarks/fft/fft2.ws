@@ -35,13 +35,16 @@ fun FFTReorderSimple(n, strm) {
   //dewindow $ iterate ss in window(strm, totalData) {
   iterate ss in rewindow(strm, totalData, 0) {
   //iterate ss in strm {
+
+    println("Firing reord simple "++n++" "++ss[[0]]);
+
     direct = toArray(ss);
     arr1 = Array:build(n, fun(i) direct[i/2 * 4 + remainder(i,2)]);
     arr2 = Array:build(n, fun(i) direct[i/2 * 4 + remainder(i,2) + 2]);
 
-    println("  "++n++" Got direct, length "++direct`Array:length++
-            " arr1/2: "++Array:length(arr1)++" "++Array:length(arr2)
-            ++"  start "++ss`start);
+/*     println("  "++n++" Got direct, length "++direct`Array:length++ */
+/*             " arr1/2: "++Array:length(arr1)++" "++Array:length(arr2) */
+/*             ++"  start "++ss`start); */
 
     emit toSigseg(arr1, ss`start, ss`timebase);     // start is bogus
     emit toSigseg(arr2, ss`start + to64(n), ss`timebase); 
@@ -53,11 +56,13 @@ fun FFTReorderSimple(n, strm) {
 //FFTReorder :: (Int, Stream Float) -> Stream Float;
 fun FFTReorder(n,strm) {
   half = n/2;
-  fun loop(i) {
-    if i >= half then strm
-    else FFTReorderSimple(n/i, loop(i*2))
+  fun loop(i, acc) {
+    if i >= half then acc
+    else loop(i*2, FFTReorderSimple(n/i, acc))
   };
-  rewindow(loop(1), n*2, 0)
+  result = loop(1, strm);
+  final = rewindow(result, n*2, 0);
+  result;
 }
 
 
@@ -125,8 +130,10 @@ fun FFTKernel2(n,strm) {
   // Create a reorder followed by a number of combine's:  
   fn2 = composeAll $ List:build(log2(n), fun(i) fun(s) CombineDFT(exptI(2,i+1),s));
   fn3 = compose(fn2, fn1);
-  snoop("RoundRobOUT:", roundRobinMap(2, fn1, strm));
+  //snoop("RoundRobOUT:", roundRobinMap(2, fn1, strm));
+  // [2007.12.02] Can't split it right now because it yields gapped windowed streams.
   //roundRobinMap(2, fun(s) window(fn3(dewindow(s)), 2*n), window(strm, 2*n));
+  fn1(strm)
 }
 
 fun FFTTestSource(n) {
