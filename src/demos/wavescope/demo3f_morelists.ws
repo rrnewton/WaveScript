@@ -92,13 +92,13 @@ s5 = iterate(ls in s4) {
 }
 
 // No problem
-//BASE <- s2;
+//main = s2;
 
 // This has no problem
-//BASE <- iterate x in s2 { emit List:append(x,x) };
+//main = iterate x in s2 { emit List:append(x,x) };
 
 // PROBLEM!
-//BASE <- s3;
-//BASE <- s3b;
+//main = s3;
+//main = s3b;
 
-BASE <- s5;
+main = s5;

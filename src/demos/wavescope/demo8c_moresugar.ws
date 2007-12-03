@@ -13,4 +13,4 @@ s1 = iterate(_ in s0) {
 
 val = (s1,s1);
 
-BASE <- s1;
+main = s1;

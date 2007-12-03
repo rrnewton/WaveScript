@@ -26,4 +26,4 @@ s4 = f(iterate(() in s2){ emit (1,2) });
 
 s5 as (a,b,c) = s4;
 
-BASE <- s5.(a,b,c, a,b,c)
+main = s5.(a,b,c, a,b,c)

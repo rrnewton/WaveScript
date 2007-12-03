@@ -7,7 +7,7 @@ uniontype Foo = A Int | B Float | C ();
 
 f = (3 *);
 
-BASE <- iterate _ in timer(3.0) { 
+main = iterate _ in timer(3.0) { 
 
   x = A(3);
   y :: Int = (+ 3) $ 4;

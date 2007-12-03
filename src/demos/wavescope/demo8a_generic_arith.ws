@@ -31,4 +31,4 @@ s2 = iterate (w in s1) {
 
 }
 
-BASE <- s2;
+main = s2;

@@ -5,6 +5,6 @@ include "timersource.ws";
 
 s = timer_source("test", 1000);
 
-BASE <- iterate f in s {
+main = iterate f in s {
   print("got counter " ++ f ++ "\n");
 }

@@ -88,6 +88,6 @@ sb = rewindow(window(dewindow(windowed), 10), 3, 0);
 fun ignore(str,strm) stream_map(fun(x) {println(str++x); ()}, strm);
 
 // We have to refer to 'windowed' in two places to keep it from getting inlined.
-BASE <- merge(ignore("sa: ",sa), 
+main = merge(ignore("sa: ",sa), 
         merge(ignore("sb: ",sb), 
               ignore("_:",windowed)));

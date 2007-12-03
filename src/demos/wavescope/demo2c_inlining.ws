@@ -11,4 +11,4 @@ rw1 = iterate (w in ch1) {
   emit( marmotscore(w) );
 };
 
-BASE <- rw1;
+main = rw1;

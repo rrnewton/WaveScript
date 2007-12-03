@@ -15,5 +15,5 @@ s3 = iterate( ls in s2) {
   emit ls.head;
 }
 
-BASE <- s3;
+main = s3;
 

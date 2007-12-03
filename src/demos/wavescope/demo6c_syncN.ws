@@ -111,7 +111,7 @@ ctrl = iterate(w in ch1) {
   flag := if flag then false else true;
 };
 
-BASE <- syncN([ch1, ch2], ctrl);
+main = syncN([ch1, ch2], ctrl);
 
 
 //======================================================================

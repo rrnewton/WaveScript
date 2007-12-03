@@ -7,7 +7,7 @@ include "common.ws";
 
 s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
-BASE <- iterate w in s1 {
+main = iterate w in s1 {
    state { pos = gint(0) }
 
    //========================================

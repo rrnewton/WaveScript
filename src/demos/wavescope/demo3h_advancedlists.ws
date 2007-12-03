@@ -29,5 +29,5 @@ s4 = iterate( ls in s3) {
   emit ();
 }
 
-BASE <- s4;
+main = s4;
 

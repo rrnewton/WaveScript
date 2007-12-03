@@ -175,7 +175,7 @@ s3 = iterate (win in s2) {
 };
 */
 
-BASE <- 
+main = 
 //s3
 s2
 //s3

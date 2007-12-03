@@ -20,5 +20,5 @@ s3 = iterate( (w, ht) in s2) {
   emit HashTable:get(ht, (w.start, w.end));
 }
 
-BASE <- s3;
+main = s3;
 

@@ -34,7 +34,7 @@ s1b = union3(CONST(1.0),CONST('h'),CONST(99));
 s2 = union2(s1,s1b);
 //s2 = union2(s1,s1);
 
-BASE <- iterate sum in s2 {
+main = iterate sum in s2 {
      
     case sum {
       Oneof2(x): print("Got left! "++x++"\n")

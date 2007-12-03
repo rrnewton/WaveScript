@@ -27,7 +27,7 @@ fun println(str) {
 metals  =  List:build(10, fun(x)x);
 metaarr = Array:build(10, fun(x)x);
 
-BASE <- iterate(w in s1) {  
+main = iterate(w in s1) {  
   arr = toArray(subseg(w, w.start, 20));
   ls = Array:toList(arr);
 

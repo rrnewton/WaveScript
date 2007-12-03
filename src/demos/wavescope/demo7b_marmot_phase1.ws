@@ -484,7 +484,7 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 
 // [2007.08.09] DETECTIONS IS BROKEN.  FOR SOME ODD REASON THE 64BIT SAMPLE NUMBERS BROKE THE DECTOR.
 // DISABLING FOR NOW BECAUSE IT'S NOT A PRIORITY.
-BASE <- 
+main = 
 //synced
 //positives
 //detections

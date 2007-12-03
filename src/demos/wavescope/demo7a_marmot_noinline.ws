@@ -68,4 +68,4 @@ detections =
 
 //synced = sync4( 
 
-BASE <- detections;
+main = detections;

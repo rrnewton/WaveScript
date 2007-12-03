@@ -3,7 +3,7 @@ include "stdlib.ws";
 include "ptolemy.ws";
 
 
-BASE <- iterate x in timer(3.0) {
+main = iterate x in timer(3.0) {
 
 data = List:toArray([ 1,2,3,4,5,6,7,8,9 ]);
 

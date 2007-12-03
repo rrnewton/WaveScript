@@ -11,4 +11,4 @@ s2 = iterate f in s1 {
   emit(f);
 };
 
-BASE <- netpub_int(s2, "test");
+main = netpub_int(s2, "test");

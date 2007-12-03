@@ -42,4 +42,4 @@ s2b = iterate f in strm2 {
   emit ();
 }
 
-BASE <- merge(toplevel, merge(s1b,s2b));
+main = merge(toplevel, merge(s1b,s2b));

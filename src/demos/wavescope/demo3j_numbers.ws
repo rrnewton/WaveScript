@@ -15,7 +15,7 @@ fun assert_eq(str,a,b) if a==b
   then print("passed: "++str++"\n")
   else wserror("Assert failed: "++str++ " "++ a ++" not equal "++ b);
 
-BASE <- iterate(w in s0) {  
+main = iterate(w in s0) {  
   n = w`width;
   i = n`intToInt16;
   l = n`intToInt64;

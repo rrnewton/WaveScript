@@ -16,5 +16,5 @@ s1 = (readFile("./countup.raw",
       :: Stream (Sigseg (Int16)))
       //:: Stream Int16);
 
-//BASE <- s1;
-BASE <- iterate(w in s1) {emit (w[[0]], w[[1]], w[[2]]) }
+//main = s1;
+main = iterate(w in s1) {emit (w[[0]], w[[1]], w[[2]]) }

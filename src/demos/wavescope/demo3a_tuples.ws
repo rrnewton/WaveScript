@@ -15,6 +15,6 @@ s3 = iterate((x,y,z) in s2) {
   emit ();
 }
 
-BASE <- s3;
+main = s3;
 
 

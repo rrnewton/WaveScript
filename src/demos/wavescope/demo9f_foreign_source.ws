@@ -14,7 +14,7 @@ s2 = iterate x in src2 {
   emit ();
 }
 
-BASE <- iterate x in unionList([s1,s2]) {
+main = iterate x in unionList([s1,s2]) {
   //print("Got from foreign: "++x++" \n");
   emit x;
 }

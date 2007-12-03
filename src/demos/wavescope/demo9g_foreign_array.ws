@@ -10,4 +10,4 @@ s1 = iterate (p,len) in src {
   emit arr;
 }
 
-BASE <- s1;
+main = s1;

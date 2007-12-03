@@ -58,6 +58,6 @@ fun b2(strm) {
 //BASE(b1(s1));
 //MAIN = b1(s1);
 
-BASE <- b2(b1(s1));
+main = b2(b1(s1));
 
      */

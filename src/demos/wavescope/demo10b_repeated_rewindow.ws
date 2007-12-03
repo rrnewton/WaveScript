@@ -70,7 +70,7 @@ fun rewindow(sig, newwidth, gap) {
 src = iterate _ in timer(3.0) { state{cnt=0} cnt += 1; emit cnt };
 windowed = window(src, 10);
 
-BASE <- 
+main = 
  List:fold(
     fun(strm,wid) rewindow(strm, wid, 0), 
     windowed,

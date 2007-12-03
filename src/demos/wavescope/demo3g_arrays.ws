@@ -69,5 +69,5 @@ s3 = iterate( arr in s2) {
   emit arr;
 }
 
-BASE <- s3;
+main = s3;
 

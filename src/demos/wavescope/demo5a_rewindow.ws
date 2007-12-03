@@ -79,4 +79,4 @@ s2 = iterate (win in s1) {
    }
 };
 
-BASE <- s2;
+main = s2;

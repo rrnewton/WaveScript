@@ -8,7 +8,7 @@ s2 = iterate((i,f) in s1) { emit int16ToFloat(i) };
 //s3 = iterate((i,f) in s1) { emit floatToInt(f) + 100 };
 s3 = iterate((i,f) in s1) { emit int16ToFloat(f) + 100.0 };
 
-//BASE <- s3;
-//BASE <- s2;
+//main = s3;
+//main = s2;
 
-BASE <- unionList([s2, s3]);
+main = unionList([s2, s3]);

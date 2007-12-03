@@ -14,4 +14,4 @@ s2 = iterate f in s1 {
   emit(f);
 };
 
-BASE <- s2
+main = s2

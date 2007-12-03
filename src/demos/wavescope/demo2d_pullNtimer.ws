@@ -11,4 +11,4 @@ fun pullN(N, S) {
   }
 }
 
-BASE <- pullN((5::Int), timer(2.0));
+main = pullN((5::Int), timer(2.0));

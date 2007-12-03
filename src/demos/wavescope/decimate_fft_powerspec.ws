@@ -25,4 +25,4 @@ s3 = iterate (w in s2) {
 };
 
 // Return the result to the user.
-BASE <- s3;
+main = s3;

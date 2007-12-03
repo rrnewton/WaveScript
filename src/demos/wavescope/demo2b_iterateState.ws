@@ -20,4 +20,4 @@ s2 = iterate( w in s1 ) {
   emit counter;
 };
 
-BASE <- s2;
+main = s2;

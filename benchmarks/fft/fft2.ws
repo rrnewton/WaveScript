@@ -94,7 +94,7 @@ fun CombineDFT(n, strm) {
       loop(0, 1.0, 0.0)
     }}
 
-    println("Running combine n "++n++"  w[1]="++w[1]++"  ss[[0]]="++ss[[0]]);
+    //println("Running combine n "++n++"  w[1]="++w[1]++"  ss[[0]]="++ss[[0]]);
 
     inp = ss`toArray;
     results = Array:make(2*n, 0.0);

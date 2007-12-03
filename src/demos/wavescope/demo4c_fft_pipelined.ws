@@ -81,4 +81,4 @@ s3 = iterate (win in s2) {
   pos += 1;
 };
 
-BASE <- s3
+main = s3

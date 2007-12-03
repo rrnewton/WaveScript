@@ -17,7 +17,7 @@ bar :: Int -> Int = foreign("bar", ["bar.h", "./bar.o"])
 //src = (foreign_source "bar_src" in "foo.c" :: Stream Int);
 
 
-BASE <- iterate _ in timer(30.0) { 
+main = iterate _ in timer(30.0) { 
   state {
     _ = SHELL("gcc -c bar.c")
   }

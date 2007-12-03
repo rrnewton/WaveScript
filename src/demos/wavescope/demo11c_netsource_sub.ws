@@ -9,4 +9,4 @@ s2 = iterate f in s1 {
   print("got counter from breeze " ++ f ++ "\n");
 };
 
-BASE <- s2;
+main = s2;

@@ -33,4 +33,4 @@ countup = iterate(_ in timer(0.33333)) {
 s1 = countup;
 s2 = smap(fun(x) x+1, countup);
 
-BASE <- zip(s1,s2);
+main = zip(s1,s2);

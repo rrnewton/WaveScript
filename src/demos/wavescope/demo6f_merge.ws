@@ -17,4 +17,4 @@ s2 = iterate _ in timer(4.0){
   emit c
 }
 
-BASE <- merge(s1,s2)
+main = merge(s1,s2)

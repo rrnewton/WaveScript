@@ -9,7 +9,7 @@ fun println(s) {
 
 fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
-BASE <- iterate(w in s0) {  
+main = iterate(w in s0) {  
   n = w`width;
   i = n`intToInt16;
   l = n`intToInt64;

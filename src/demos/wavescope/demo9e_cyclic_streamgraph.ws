@@ -63,7 +63,7 @@ s2 = takeRight$
 //s2a = iterate x in s2 { case x { Left(x): emit x   Right(x): {}     } };
 //s2b = iterate x in s2 { case x { Left(x): {}       Right(x): emit x } };
 
-BASE <- s2
+main = s2
 
 /* 
 Could use this syntactic sugar:

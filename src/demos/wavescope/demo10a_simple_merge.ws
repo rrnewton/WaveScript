@@ -18,7 +18,7 @@ s3 = iterate (y in iterate (x in s2) {
 //  emit (x+1)*(x+1);
 //}
 
-BASE <- s3;
+main = s3;
 
 
 // x -> [ a of x ] -> [ b of y ] -> ??? ... 

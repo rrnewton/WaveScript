@@ -65,4 +65,4 @@ fun id2(x)
 myvar = (((((((333)))))));
 
 
-BASE <- audio(0,100,0);
+main = audio(0,100,0);

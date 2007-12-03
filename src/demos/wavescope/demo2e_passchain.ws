@@ -6,4 +6,4 @@ fun loop (n, S) {
   else loop(n-1, iterate((t1,t2,x) in S) { emit (t1,t2,x+1) })
 }
 
-BASE <- loop(10, (iterate (() in timer(30.0)) {emit (99,99,0)}))
+main = loop(10, (iterate (() in timer(30.0)) {emit (99,99,0)}))

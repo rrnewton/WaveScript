@@ -12,7 +12,7 @@ libc = if plat == "Linux\n"
 malloc :: Int -> Pointer "void*" = foreign("malloc", [libc])
 free   :: Pointer "void*" -> ()  = foreign("free",   [libc])
 
-BASE <- iterate _ in timer(30.0) { 
+main = iterate _ in timer(30.0) { 
   print("Running on platform: "++plat++"\n");
  
   p1 = malloc(300);

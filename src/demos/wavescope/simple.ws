@@ -67,7 +67,7 @@ s1 = window(s0, 30);
 
 s2 = rewindow(s1, 11, 0);
 
-BASE <- iterate x in s2 {
+main = iterate x in s2 {
   print("woot\n");
   print(x);
   print("\n");

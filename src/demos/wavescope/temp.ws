@@ -25,7 +25,7 @@ fun println(str) {
 };
 
 
-BASE <- iterate(w in s1) {  
+main = iterate(w in s1) {  
   arr = toArray(subseg(w, w.start, 20));
 
   arr2 = Array:map((/ 100), arr);

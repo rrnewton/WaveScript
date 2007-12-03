@@ -124,7 +124,7 @@ ctrl = iterate(w in ch1) {
   pos := pos + outwidth;
 };
 
-BASE <- sync2(ctrl, ch1, ch2);
+main = sync2(ctrl, ch1, ch2);
 
 
 //======================================================================
