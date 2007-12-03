@@ -1,5 +1,7 @@
 
 
 
-BASE <- iterate ( () in timer(30.0)) { emit 39 };
+
+
+main = iterate ( () in timer(30.0)) { emit 39 };
 

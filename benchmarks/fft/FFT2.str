@@ -34,6 +34,13 @@ float->float filter CombineDFT(int n) {
         int i;
 	float[2*n] results;
 
+	print("Running combine n ");
+	print(n);
+	print("  w[1]=");
+	print(w[1]);
+	print("  peek(0)=");
+	println(peek(0));
+
         for (i = 0; i < n; i += 2)
         {
 	    // this is a temporary work-around since there seems to be
@@ -89,10 +96,7 @@ float->float filter FFTReorderSimple(int n) {
   work push 2*n pop 2*n {
         int i;
         
-	print("Firing reorder simple ");
-	print(n);
-	print(" ");
-	println(peek(i));
+	//print("Firing reorder simple "); print(n); print(" "); println(peek(i));
 
         for (i = 0; i < totalData; i+=4)
         {
@@ -153,7 +157,7 @@ float->float splitjoin FFTKernel2(int n) {
 // rrn: Do it without the split/join
 float->float pipeline FFTKernel3(int n) {
     add FFTReorder(n);
-    //    for(int j=2; j<=n; j*=2)  add CombineDFT(j);
+      for(int j=2; j<=n; j*=2)  add CombineDFT(j);
 }
 
 void->float filter FFTTestSource(int N) {

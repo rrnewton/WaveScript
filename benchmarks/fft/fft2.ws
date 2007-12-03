@@ -36,7 +36,7 @@ fun FFTReorderSimple(n, strm) {
   iterate ss in rewindow(strm, totalData, 0) {
   //iterate ss in strm {
 
-    println("Firing reord simple "++n++" "++ss[[0]]);
+    //println("Firing reord simple "++n++" "++ss[[0]]);
 
     direct = toArray(ss);
     arr1 = Array:build(n, fun(i) direct[i/2 * 4 + remainder(i,2)]);
@@ -93,6 +93,9 @@ fun CombineDFT(n, strm) {
       };
       loop(0, 1.0, 0.0)
     }}
+
+    println("Running combine n "++n++"  w[1]="++w[1]++"  ss[[0]]="++ss[[0]]);
+
     inp = ss`toArray;
     results = Array:make(2*n, 0.0);
     last = 2*n-1;
@@ -128,12 +131,13 @@ fun CombineDFT(n, strm) {
 fun FFTKernel2(n,strm) {
   fn1 = fun(s) FFTReorder(n,s);
   // Create a reorder followed by a number of combine's:  
-  fn2 = composeAll $ List:build(log2(n), fun(i) fun(s) CombineDFT(exptI(2,i+1),s));
+  fn2 = composeAll $ List:reverse $
+        List:build(log2(n), fun(i) fun(s) CombineDFT(exptI(2,i+1),s));
   fn3 = compose(fn2, fn1);
   //snoop("RoundRobOUT:", roundRobinMap(2, fn1, strm));
   // [2007.12.02] Can't split it right now because it yields gapped windowed streams.
   //roundRobinMap(2, fun(s) window(fn3(dewindow(s)), 2*n), window(strm, 2*n));
-  fn1(strm)
+  fn3(strm)
 }
 
 fun FFTTestSource(n) {
