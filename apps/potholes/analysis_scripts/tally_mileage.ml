@@ -126,14 +126,19 @@ let denone x = match x with None -> raise (Failure "denone") | Some y -> y
 [2007.12.03] I think that I used %s to get the damn newline also.
 *)
 let rec loop linecount lastx lasty lasttime  = 
-  try 
-  Scanf.fscanf dat "%f %f %f %Ld %Ld %Ld %Ld %s" 
-    (fun time lat lon _x _y _z _dir _speed ->       
-       ();
-       let x = (int_of_float (lat /. 0.001))
-       and y = (int_of_float (lon /. -0.001)) in 
-       let xp = x - 42000 + shiftx
-       and yp = y - 71000 + shifty in
+  let (time,lat,lon) = 
+    try Scanf.fscanf dat "%f %f %f %Ld %Ld %Ld %Ld %s" (fun time lat lon _x _y _z _dir _speed -> (time,lat,lon))
+    with Scanf.Scan_failure str -> 
+      (printf "!!! Got a scan failure: %s\n" str;
+       printf "  Line number was %Ld\n" linecount;
+       printf "Continuing on rest of file.\n";
+       let _ = input_line dat in 
+       loop (Int64.add  linecount Int64.one) lastx lasty lasttime;     
+       ) in 
+  let x = (int_of_float (lat /. 0.001))
+  and y = (int_of_float (lon /. -0.001)) in 
+  let xp = x - 42000 + shiftx
+  and yp = y - 71000 + shifty in
 
 (* using a calculator:
    dist 42 long to 43 long: 
@@ -201,11 +206,7 @@ lon = 68.9 miles
 	       end;
 	     incr count;
 	     loop (Int64.add  linecount Int64.one) xp yp time 
-	 end)
-  with Scanf.Scan_failure str -> 
-    (printf "Got a scan failure: %s\n" str;
-     printf "Line number was %Ld\n" linecount)
-     (*printf "Line number was %d, text was:\n%s\n" linecount*)  
+	   end
 ;;
 
 loop Int64.zero 0 0 0.0
