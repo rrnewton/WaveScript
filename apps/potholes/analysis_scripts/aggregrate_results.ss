@@ -1,4 +1,5 @@
 
+; [2007.12.03] THIS LOOKS UNFINISHED.
 
 (define files 
   '("/home/newton/data/slave10.txt.dstlog"

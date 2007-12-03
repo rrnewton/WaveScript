@@ -122,10 +122,12 @@ let lastpos = ref 0
 
 let timeorigin = ref None
 let denone x = match x with None -> raise (Failure "denone") | Some y -> y
-
+(*
+[2007.12.03] I think that I used %s to get the damn newline also.
+*)
 let rec loop lastx lasty lasttime  = 
-  Scanf.fscanf dat "%f %f %f %d %d %d %d %s" 
-    (fun time lat lon x y z dir speed ->
+  Scanf.fscanf dat "%f %f %f %d %d %d %f %s" 
+    (fun time lat lon x y z _dir _speed ->
        ();
        let x = (int_of_float (lat /. 0.001))
        and y = (int_of_float (lon /. -0.001)) in 

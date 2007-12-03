@@ -1,4 +1,4 @@
-
+// [2007.12.03] THIS LOOKS UNFINISHED.
 
 base = "/home/newton/data/"
 files = [ base ++ "slave10.txt.dstlog",
