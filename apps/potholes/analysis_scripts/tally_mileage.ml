@@ -125,9 +125,10 @@ let denone x = match x with None -> raise (Failure "denone") | Some y -> y
 (*
 [2007.12.03] I think that I used %s to get the damn newline also.
 *)
-let rec loop lastx lasty lasttime  = 
-  Scanf.fscanf dat "%f %f %f %d %d %d %f %s" 
-    (fun time lat lon x y z _dir _speed ->
+let rec loop linecount lastx lasty lasttime  = 
+  try 
+  Scanf.fscanf dat "%f %f %f %Ld %Ld %Ld %Ld %s" 
+    (fun time lat lon _x _y _z _dir _speed ->       
        ();
        let x = (int_of_float (lat /. 0.001))
        and y = (int_of_float (lon /. -0.001)) in 
@@ -157,7 +158,7 @@ lon = 68.9 miles
 
 	 (* HACKISH*)
 	 if time < 4900000. || xp < 0 || yp < 0 
-	 then loop lastx lasty lasttime 
+	 then loop (Int64.add linecount Int64.one) lastx lasty lasttime 
 	 else 
 	   begin
 	     if !count mod 400000 == 0 
@@ -199,11 +200,14 @@ lon = 68.9 miles
 		     (*sincelaststep := 0.0;*)
 	       end;
 	     incr count;
-	     loop xp yp time 
-	 end);
-  
+	     loop (Int64.add  linecount Int64.one) xp yp time 
+	 end)
+  with Scanf.Scan_failure str -> 
+    (printf "Got a scan failure: %s\n" str;
+     printf "Line number was %Ld\n" linecount)
+     (*printf "Line number was %d, text was:\n%s\n" linecount*)  
 ;;
 
-loop 0 0 0.0
+loop Int64.zero 0 0 0.0
 
 
