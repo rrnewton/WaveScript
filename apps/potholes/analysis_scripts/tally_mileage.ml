@@ -107,6 +107,8 @@ let draw_screen arr =
 
 
 let filepos = ref 0.0 (*Int64.zero*)
+
+(* This is used for redraws and stuff. *)
 let count   = ref 0 
 (*let totalcount = ref Int64.zero*)
 (*let sincelaststep = ref 0.0
@@ -134,7 +136,12 @@ let rec loop linecount lastx lasty lasttime  =
        printf "Continuing on rest of file.\n";
        let _ = input_line dat in 
        loop (Int64.add  linecount Int64.one) lastx lasty lasttime;     
-       ) in 
+       ) 
+   | Sys_error str -> 
+       printf "XXX Got a fatal Sys_error: %s\n" str;
+       printf "  Line number was %Ld\n" linecount;
+       raise (Sys_error str);
+  in 
   let x = (int_of_float (lat /. 0.001))
   and y = (int_of_float (lon /. -0.001)) in 
   let xp = x - 42000 + shiftx
