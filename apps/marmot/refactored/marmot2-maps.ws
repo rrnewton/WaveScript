@@ -15,6 +15,7 @@ Currently running -j 1, -n 3 gives real 9s user 1.1s.
 
 *** glibc detected *** ./query.exe: double free or corruption (out): 0xb6337f00 ***                                                                    
 
+
 */
 
 
@@ -239,7 +240,7 @@ fun actualAML(start, count, grid_size,
       result
     };
 
-    log(1, "INSIDE ACTUALAML, start "++start);
+    //log(1, "INSIDE ACTUALAML, start "++start);
 
     Array:build(count, fun(i) do_aml_angle(start+i));
 }
@@ -285,7 +286,8 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
 	    synced_floats);
 
   // num_src = 1; // we're only interested in one source, this var is not used..
-  grid_size = 360; // 1 unit per degree.
+  grid_size = if GETENV("GRIDSIZE") == "" then 360 else stringToInt(GETENV("GRIDSIZE"));
+  //grid_size = 3600; // 1 unit per degree.
 
   // Project out the range of data we want to look at:
   projected = smap(fun((mat, st, tb)) {
@@ -300,36 +302,81 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
 
   // this is just one big iterate - there's only ever one iteration, so I'm assuming this is a convention to processing.. ?  
 
-  temp = smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
+/*
+  type Megatuple = ((((Array Float) * (Array Float) * Int) * 
+                     (Int * (Array Int) * Float * Float * (Array (Array Complex)))) *
+           	    Int64 * Timebase);
+*/
 
+  temp :: (Stream ((((Array Float) * (Array Float) * Int) * 
+                     (Int * (Array Int) * Float * Float * (Array (Array Complex)))) *
+           	    Int64 * Timebase)) =
+     smap(fun((m_in, st,tb)) (prepAML(m_in, radius,theta, sens_num), st,tb), projected);  
 
+  deepcopy = not(GETENV("DEEPCOPY") == "");
+  fun maybedeepcopy(tup) {
+    if deepcopy then {
+      let ((radius, theta, sens_num),
+           (sel_bin_size, order, _window_size, _sens_num, data_f)) = tup;
+      (((Array:copy(radius),Array:copy(theta),sens_num),
+        (sel_bin_size, Array:copy(order), _window_size, _sens_num, Matrix:copy(data_f))))
+    }
+    else tup
+  };
 
-
-  fun onepiece(i,total) {
+  fun onepiece(i,total,environment) {
     chunk = grid_size/total;
-    smap(fun((tup,st,tb)) (actualAML(i*chunk, (i+1)*chunk , grid_size, tup),st,tb), temp);
+    smap(fun((tup,st,tb)) {
+          //T println("\noncore "++clock()++" "++i); 
+	  x = (actualAML(i*chunk, chunk , grid_size, maybedeepcopy(tup)),st,tb);
+ 	  //T println("\nbeforeq "++clock()++" "++i);
+          x
+     }, environment);
   };
 
   
-  fun doaml((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb);
+  fun doaml((tup,st,tb)) {
+    ((actualAML)(0, grid_size, grid_size, maybedeepcopy(tup)),st,tb)
+  };
 
-  threads = if GETENV("NUMTHREADS") == "" then 4 else stringToInt(GETENV("NUMTHREADS"));
+  fun dummyaml((tup,st,tb)) {
+   var = Mutable:ref(0.0);
+   for j = 0 to 100 {
+   for i = 0 to 1000*1000 {
+     var := sqrtF(var) + 2;
+   }};
+   ((Array:make(360, var)),st,tb)
+  };
+
+  threads = if GETENV("NUMTHREADS") == "" then 4 
+       else if stringToInt(GETENV("NUMTHREADS")) == 0 then 1
+            else stringToInt(GETENV("NUMTHREADS"));
+
   components = List:build(threads,
     fun(i) {
-      SETCPU(i, onepiece(i,threads))
+      clockit("afterq", SETCPU(i+1, onepiece(i,threads,
+iterate x in temp {
+  //T println("\nforking "++clock()++" "++i);
+  emit(x) 
+})))
     });
+
 
   split = 
     smap(fun(ls) {
            arrs = List:map(fun((a,_,_)) a,ls);
 	   let (_,st,tb) = head(ls);
-           print("  Got zipped results...\n");
+           //P print("  Got zipped results...\n");
 	   (Array:concat(arrs), st,tb)
            //(Array:append(a,b), st,tb)
          },
-         zipN_sametype(20, components));
+         clockit("postzip ", zipN_sametype(20, components)));
 
-   duplicated = parmap(threads, doaml, temp);
+   duplicated =
+     if GETENV("DODUMMYAML") == "" then
+      parmap(threads, doaml, temp)
+     else
+      parmap(threads, dummyaml, temp);
 
     /*  
   // SPLIT VERSION:
@@ -339,7 +386,7 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
     half1 = SETCPU(1,_half1);
     half2 = smap(fun((tup,st,tb)) (actualAML(grid_size/2, grid_size/2, grid_size, tup),st,tb), temp);
     smap(fun(((a,st,tb),(b,_,_))) {
-           print("  Got zipped results...\n");
+           //P print("  Got zipped results...\n");
            (Array:append(a,b), st,tb)
          },
          zip2_sametype(half1,half2)) 
@@ -349,12 +396,24 @@ fun oneSourceAMLTD_helper(synced_floats, win_size) {
   // MONOLITHIC VERSION:
   aml_result = smap(fun((tup,st,tb)) ((actualAML)(0, grid_size, grid_size, tup),st,tb), temp);
 
+  //full parallel
+  fun doFull(tup) {
+    let (m_in, st,tb) = tup;
+    mat2 :: Matrix Float = build(sens_num, win_size, fun(i,j) get(m_in, i, j));    
+    ((actualAML(0, grid_size, grid_size, 
+              prepAML(mat2, Array:copy(radius), Array:copy(theta), sens_num))), st,tb)
+  };
+  fullpar = parmap(threads, doFull, projected);
+  //fullpar = parmap(threads, doFull, repeater(10,projected));  
+
   //smap(inspect, split)
 
   if      not(GETENV("HANDOPT_MAPSPLIT") == "")
   then { print("\n   USING DUPLICATED!\n\n"); duplicated }
   else if not(GETENV("HANDOPT_BUILDSPLIT") == "")
   then { print("\n   USING SPLIT!\n\n"); split }
+  else if not(GETENV("HANDOPT_FULLPAR") == "")
+  then { print("\n   USING FULLPAR!\n\n"); fullpar }
   else { print("\n   USING DEFAULT!\n\n"); aml_result }
 }
 
@@ -477,7 +536,7 @@ Gnuplot:array_streamXY_multiplot(
    map(fun(((id,_,_,_), strm)) 
        smap(fun(sigsegs) {
   	   arr = toArray$ List:ref(sigsegs,0);
-           println("DETECTIONMIN: "++Array:fold1(min,arr));	   
+           //P println("DETECTIONMIN: "++Array:fold1(min,arr));	   
            Array:mapi(fun(i,x) 
 	      if x == intToInt16(-32768) then  wserror("\n\nGOT LEAST NEGATIVE INT16!!!\n\n") else
 	      if x < 0`gint then (i,absI16(x)) else (i,(x)), arr);
