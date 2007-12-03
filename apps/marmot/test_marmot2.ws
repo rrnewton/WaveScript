@@ -30,7 +30,7 @@ chans =
          __chans = window(_chans, 8192);
          repeater(21, __chans); }
   else { file = "6sec_marmot_sample.raw";
-         mytimer = timer(80.0);
+         mytimer = repeater(600,timer(80.0));
 	 deep_stream_map(int16ToFloat,
 	   (readFile(file, "mode: binary window: 8192", mytimer) :: Stream (Sigseg Int16))
 	   	 )
@@ -54,7 +54,7 @@ ch1 = iterate x in _ch1 {
   emit x;
 };
 
-synced0 = zipN_sametype(0, [ch1,ch2,ch3,ch4]);
+synced0 = clockit("start",zipN_sametype(0, [ch1,ch2,ch3,ch4]));
 
 synced1 = iterate ls in synced0 {
   using List;
@@ -98,4 +98,5 @@ doas
 
 //BASE <- run_it(chans)
 
-BASE <- smap(fun(_)(), timeTransformer(30, chans, run_it))
+
+BASE <- clockit("AMLdone",smap(fun(_)(), timeTransformer(600, chans, run_it)))
