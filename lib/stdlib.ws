@@ -1717,3 +1717,12 @@ fun roundRobinMap(n, fn, strm) {
   split = roundRobinSplit(n, strm);
   roundRobinJoin(n, map(fn,split));
 }
+
+fun clockit(str, s) {
+  s
+/* to enable: this outputs a clock value:
+  iterate x in s { println(str++": "++clock()); emit(x); }
+*/
+}
+
+
