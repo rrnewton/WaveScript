@@ -11,7 +11,7 @@ let (gridsize, shiftx, shifty, maxx, maxy) = 0.0001, 900, 3700, 8192, 8192;;
 
 (* let smallgrid = "" *)
 let smallgrid = "_SMALLGRID"
-
+let desiredinterval = 0.002631579 
 
 (* Lewis uses 0.0001 *) 
 
@@ -45,6 +45,8 @@ let denone x = match x with None -> raise (Failure "denone") | Some y -> y
 
 let lastfiletime = ref 0.0
 
+let linecount = ref Int64.zero 
+
 let rec process_file basetime file =
   printf "\n;===========================================\n";
   printf "STARTING NEW FILE: basetime: %f  last time was: %f\n\n" basetime !lastfiletime;
@@ -57,9 +59,26 @@ let rec process_file basetime file =
   let dat = open_in file in
 
   let rec loop lastx lasty  = 
-  Scanf.fscanf dat "%f %f %f %d %d %d %d %s" 
-    (fun time lat lon x y z dir speed ->    
-       let x = (int_of_float ((lat -. 42.) /. gridsize))
+(*  Scanf.fscanf dat "%f %f %f %d %d %d %d %s"  (fun time lat lon x y z dir speed -> (lat,lon))*)
+
+   let (time,lat,lon) = 
+   (* [2007.12.03] I think that I used %s to get the damn newline also. *)
+    try Scanf.fscanf dat "%f %f %f %Ld %Ld %Ld %Ld %s" (fun time lat lon _x _y _z _dir _speed -> (time,lat,lon))
+    with Scanf.Scan_failure str -> 
+      (printf "!!! Got a scan failure: %s\n" str;
+       printf "  Line number was %Ld\n" !linecount;
+       printf "Continuing on rest of file.\n";
+       let _ = input_line dat in 
+       loop lastx lasty ;     
+       ) 
+   | Sys_error str -> 
+       printf "XXX Got a fatal Sys_error: %s\n" str;
+       printf "  Line number was %Ld\n" !linecount;
+       raise (Sys_error str);
+  in 
+  linecount := (Int64.add !linecount Int64.one);
+
+      (let x = (int_of_float ((lat -. 42.) /. gridsize))
        and y = (int_of_float ((lon +. 71.) /. (0.0 -. gridsize))) in 
        let xp = x + shiftx
        and yp = y + shifty in
@@ -85,12 +104,6 @@ lon = 68.9 miles
 (*	 if xp<0 then (printf "x neg %d\n" xp; assert false);
 	 if yp<0 then (printf "y neg %d\n" xp; assert false);*)
 
-	 (* HACKISH: Here we just throw out the data *)
-	 if time < 4900000. 
-	    || xp < 0 || yp < 0 
-            || xp >= maxx || yp >= maxy
-	 then loop lastx lasty 
-	 else 
 	   begin
 	     if !count mod 400000 == 0 
 	     then (
@@ -100,10 +113,7 @@ lon = 68.9 miles
 	       draw_screen theworld;
 	     );
 	     if !count mod 10000 == 0 
-	     then (
-	     	 update_scroll();
-(*		 printf "line read lat %f  lon %f   x %d y %d  xp %d  yp %d\n" lat lon x y xp yp; flush stdout;*)
-		  );
+	     then update_scroll();
 	     if !count mod 100000 == 0
 	     then (
 	       let fp = pos_in dat in
@@ -134,9 +144,11 @@ lon = 68.9 miles
 		       set theworld xp yp 1;
 		       cellcount := Int64.add !cellcount Int64.one;
 		       fprintf distlog "%f  %Ld %Ld \n" 
-			 thistime
+		         (Int64.to_float !linecount *. desiredinterval)
+			 (*thistime			 *)
 			 (*(!timemoving -. origin)*)
 			 !stepsforward !cellcount (*!sincelaststep*);
+		       flush distlog;
 		     )
 		     else 
 		      set theworld xp yp (old + 1);
@@ -144,13 +156,20 @@ lon = 68.9 miles
 	       end;
 	     incr count;
 	     loop xp yp 
-	 end)
+         end)
+
+
   in loop 0 0 
 ;;
 
 
 
 (*process_file Sys.argv.(1);;*)
+
+try process_file !lastfiletime "/home/newton/data/slave31.txt" with End_of_file -> 
+try process_file !lastfiletime "/home/newton/data/slave31.txt" with End_of_file -> 
+
+(*
 
 try process_file !lastfiletime "/home/newton/data/slave6.txt" with End_of_file -> 
 try process_file !lastfiletime "/home/newton/data/slave10.txt" with End_of_file -> 
@@ -162,8 +181,8 @@ try process_file !lastfiletime "/home/newton/data/slave19.txt" with End_of_file 
 try process_file !lastfiletime "/home/newton/data/slave22.txt" with End_of_file -> 
 try process_file !lastfiletime "/home/newton/data/slave24.txt" with End_of_file -> 
 try process_file !lastfiletime "/home/newton/data/slave29.txt" with End_of_file -> 
-
-   printf "Finished.  Reached end of all files."
+*)
+   printf "Finished.  Reached end of all files."; (0.0,0.0,0.0)
 ;;
 
 (* Then just leave the picture up till the user kills us. *)
