@@ -122,7 +122,10 @@ let stepsforward = ref Int64.zero
 let cellcount = ref Int64.zero
 let lastpos = ref 0
 
-let timeorigin = ref None
+
+(*let timeorigin = ref None*)
+(*let actualinterval = ref None*)
+let desiredinterval = 0.002631579
 let denone x = match x with None -> raise (Failure "denone") | Some y -> y
 (*
 [2007.12.03] I think that I used %s to get the damn newline also.
@@ -169,9 +172,9 @@ lon = 68.9 miles
 	 if yp<0 then (printf "y neg %d\n" xp; assert false);*)
 
 	 (* HACKISH*)
-	 if time < 4900000. || xp < 0 || yp < 0 
+	 (*if time < 4900000. || xp < 0 || yp < 0 
 	 then loop (Int64.add linecount Int64.one) lastx lasty lasttime 
-	 else 
+	 else *)
 	   begin
 	     if !count mod 400000 == 0 
 	     then (
@@ -180,7 +183,7 @@ lon = 68.9 miles
 		 flush stdout;*)
 	       draw_screen theworld;
 	     );
-	     if !count mod 100000 == 0
+	     (if !count mod 100000 == 0
 	     then (
 	       let fp = pos_in dat in
 		 if fp - !lastpos > 0
@@ -189,10 +192,18 @@ lon = 68.9 miles
 		 printf " Filepos: %f mb \n" (!filepos /. 1000000.);
 		 flush stdout;
 	     );
+(*
 	     let origin = 
 	       match !timeorigin with
 		   None -> timeorigin := Some time; time
-		 | Some x -> x in
+		 | Some x -> 
+		 (match !actualinterval with
+		    None -> actualinterval := Some (time -. x);
+		            printf "Discovered interval of %f\n" (denone !actualinterval)
+		  | Some inter -> ());
+		  x in
+*)
+
 	     (*let delta = time -. lasttime in*)
 	       if (xp == lastx && yp == lasty)
 	       then () (*sincelaststep := !sincelaststep +. delta*)
@@ -204,13 +215,18 @@ lon = 68.9 miles
 		     if 0 == old then (
 		       set theworld xp yp 1;
 		       cellcount := Int64.add !cellcount Int64.one;
-		       fprintf distlog "%f  %Ld %Ld \n" 
-			 (time -. origin)
-			 (*(!timemoving -. origin)*)
-			 !stepsforward !cellcount (*!sincelaststep*);
+(*		       match !actualinterval with
+                         None -> ()
+		       | Some inter -> *)
+		          fprintf distlog "%f  %Ld %Ld \n" 
+ 			    (Int64.to_float linecount *. desiredinterval)
+			    (*(abs_float ((time -. origin) /. inter) *. desiredinterval)*)
+			    (*(!timemoving -. origin)*)
+			    !stepsforward !cellcount (*!sincelaststep*);
+			  flush distlog;
 		     );
 		     (*sincelaststep := 0.0;*)
-	       end;
+	       end);
 	     incr count;
 	     loop (Int64.add  linecount Int64.one) xp yp time 
 	   end
