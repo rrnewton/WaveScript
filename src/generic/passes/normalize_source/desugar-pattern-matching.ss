@@ -148,7 +148,7 @@
 			      (cond 
 			       [(memq (compiler-invocation-mode) '(wavescript-compiler-caml))
 				`(lambda ,v* ,(map (lambda (_) (notype)) v*) ,rhs)]
-			       [(memq (compiler-invocation-mode) '(wavescript-compiler-cpp wavescript-simulator))
+			       [(memq (compiler-invocation-mode) '(wavescript-compiler-xstream wavescript-simulator))
 				;; Feed it back through to break up that tuple pattern:
 				(process-expr `(lambda (#(,(unique-name 'tag) ,@v*)) (,(notype)) ,rhs)
 					      fallthrough)]

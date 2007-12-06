@@ -454,6 +454,7 @@
 
    [(tuple? c) (list->vector (map type-const (tuple-fields c)))]
 
+   ;; This is strange, but we need an actual representation of "no value" or "any value" at some points.
    [(eq? c 'BOTTOM) (make-tcell)]
    [(eq? c 'UNIT)   #()]
    

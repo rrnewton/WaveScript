@@ -17,7 +17,7 @@ s2 = iterate( w in s1 ) {
   emit List:reverse([w.start.int64ToInt, w.end.int64ToInt]);
 };
 
-s3 = iterate ( x in s2) { emit append(x,x) }
+s3 = iterate  x in s2 { emit append(x,x) }
 
 // Test append:
 

@@ -4,9 +4,9 @@
 
 s1 = (readFile("./countup.raw", "mode: binary  window: 10", timer(2400.0)) :: Stream (Sigseg Int));
 
-s2 = iterate (sigseg in s1) { emit sigseg[[0]]; }
+s2 = iterate sigseg in s1 { emit sigseg[[0]]; }
 
-s3 = iterate (y in iterate (x in s2) {  
+s3 = iterate (y in iterate x in s2 {  
                       emit x - 1;
                    }
              )
@@ -14,7 +14,7 @@ s3 = iterate (y in iterate (x in s2) {
   emit y / 100;
 }
 
-//s3 = iterate (x in s2) {
+//s3 = iterate x in s2 {
 //  emit (x+1)*(x+1);
 //}
 

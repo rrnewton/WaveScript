@@ -4,7 +4,7 @@
 fun rewindow(sig, newwidth, step) 
   if step > newwidth
   then wserror("rewindow won't allow the creation of non-contiguous output streams")
-  else iterate (w in sig) {
+  else iterate w in sig {
     state { acc = nullseg; }
     acc := joinsegs(acc, w);
     

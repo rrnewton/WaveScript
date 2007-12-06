@@ -15,7 +15,7 @@ fun g(x, y) { x + y }
 
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
-s2 = iterate (w in s1) {
+s2 = iterate w in s1 {
   emit (f(3), f(4.5));
   emit (99, g(2.0, 1.0)); 
 

@@ -7,7 +7,7 @@ ch1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: S
 
 newwidth = 32;
 step = 32;
-rw1 = iterate (w in ch1) {
+rw1 = iterate w in ch1 {
   emit( marmotscore(w) );
 };
 

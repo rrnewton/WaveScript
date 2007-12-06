@@ -65,7 +65,7 @@ s2b = pipe2(sigseg_fftR2C, s1);
 // SWITCH THIS BETWEEN s2a AND s2b TO COMPARE PERFORMANCE:
 s2 = s2b;
 
-s3 = iterate (win in s2) {
+s3 = iterate win in s2 {
   state { pos=0 }
 
   x :: Int = 3;  // Explicit type annotation on local var.

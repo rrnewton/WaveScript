@@ -339,6 +339,8 @@
     (stringToFloat   (String)  Float)
     (stringToDouble  (String)  Double)
     (stringToComplex (String)  Complex)
+
+    ;(intToString     (Int)  String)
     
     ;; Rounding instead of truncation:    
     (roundF         (Float)   Float)

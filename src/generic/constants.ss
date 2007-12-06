@@ -344,7 +344,7 @@
 ;; Is this run of the compiler a WS run?
 ;; Should be set to:
 ;;   'wavescript-simulator
-;;   'wavescript-compiler-cpp
+;;   'wavescript-compiler-xstream
 ;;   'wavescript-compiler-caml
 ;;   'regiment-simulator
 ;; [2007.03.20] This is now deprecated!!

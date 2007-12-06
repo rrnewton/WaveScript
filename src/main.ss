@@ -626,9 +626,13 @@
   (IFDEBUG (do-late-typecheck) (void))
 
   (ws-run-pass p type-annotate-misc)
+
+  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+    (ws-run-pass p explicit-toplevel-print))
+
   (ws-run-pass p generate-printing-code)
 #;
-  (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-cpp)
+  (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-xstream)
     (ws-run-pass p generate-comparison-code)
     )
 
@@ -678,7 +682,10 @@
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 
   ;; This is an example of the experimental pass-fusion mechanism.
-  (ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
+  ;(ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
+  (ws-run-pass p ws-normalize-context)
+  (pretty-print p)
+  (ws-run-pass p ws-lift-let)
   
   ; --mic, <OPTIMIZATION>
   (unless (memq 'propagate-copies disabled-passes)
@@ -727,7 +734,8 @@
   
   p)) ;; End run-that-compiler
 
-  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml)))
+  (ASSERT (memq (compiler-invocation-mode)  
+    '(wavescript-simulator wavescript-compiler-c wavescript-compiler-xstream wavescript-compiler-caml)))
   
   (if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
 
@@ -934,12 +942,11 @@
 ;; WaveScript Compiler Entrypoint:
 
 (define (wscomp x input-params . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler-cpp]
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler-xstream]
 ;		[included-var-bindings '()]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
-   (define outfile "./query.cpp")
    (define prog (coerce-to-ws-prog x input-params))
    (define typed (ws-compile-until-typed prog))
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
@@ -947,6 +954,8 @@
                                             `(,ws-default-wavescope-scheduler))))
    ;; [2007.11.23] Are we running the new C backend?
    (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
+   (define outfile (if new-version? "./query.c" "./query.cpp"))
+   (when new-version? (compiler-invocation-mode 'wavescript-compiler-c))
    
    ;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
 
@@ -995,8 +1004,11 @@
    (if new-version?
        (begin 
 	 (ws-run-pass prog explicit-stream-wiring)
-	 (display 
-	  (text->string (emit-c2 prog)))
+	 (string->file 
+	  (text->string (emit-c2 prog))
+	  outfile)
+	 (unless (regiment-quiet)
+	   (printf "\nGenerated C output to ~s.\n" outfile))
 	 )
        (begin 
 	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   
@@ -1005,8 +1017,7 @@
 	   (wsquery->text prog wavescope-scheduler))
 	  outfile)   
 	 (unless (regiment-quiet)
-	   (printf "\nGenerated C++ output to ~s.\n" outfile))
-
+	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 ))
    (error 'wsc2 "not ready for PLT yet")
    )

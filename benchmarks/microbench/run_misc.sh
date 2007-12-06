@@ -6,7 +6,7 @@ START=`pwd`
 source ../shared.sh
 
 ## ================================================================================ ##
-echo;echo;echo " *** Running all microbenchmarks  Takes approx 5-10 minutes. ***"; echo; 
+echo;echo;echo " *** Running misc microbenchmarks  Takes approx ?? minutes. ***"; echo; 
 
 rm -rf $TEMP
 mkdir $TEMP
@@ -31,7 +31,6 @@ runallbackends readfile_bigwins   $TEMP $((63 * 30))             30
 
 
 #runallbackends just_timer         $TEMP 1  35 
-runallbackends edge_stress         $TEMP  1  1
 runallbackends printing_lists     $TEMP 1  8000
 runallbackends conv_SigsegArr     $TEMP 1  5
 runallbackends fft                $TEMP 1  100
@@ -44,3 +43,4 @@ runallbackends fft                $TEMP 1  100
 #runallbackends "../../demos/wavescope/demo4a_fft.ws" $TEMP 1
 # And then add it back in our own way:
 
+mv RESULTS.txt RESULTS_misc.txt

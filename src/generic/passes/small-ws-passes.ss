@@ -25,6 +25,7 @@
 	   ws-normalize-context
 	   generate-comparison-code
 	   generate-printing-code
+	   explicit-toplevel-print
 	   strip-unnecessary-ascription
 
 	   hide-special-libfuns
@@ -228,6 +229,12 @@
 			   ,(addstr! ''", "))
 		       (set! ,ptr (cdr (deref ,ptr)))))
 	      ,(addstr! ''"]"))))]
+
+#;      
+      [Int (if (eq? which 'print)
+	       `(print (assert-type ty (intToString ,expr)))
+	       `(assert-type ty (intToString ,expr)))]
+
       ;[,oth `(,which (assert-type ,ty ,expr))]
       [,oth #f]
       ))
@@ -253,6 +260,34 @@
        [(show . ,_)(error 'generate-printing-code "show was missing type annotation: ~s" `(print . ,_))]
        [,oth (fallthru oth)]
        ))])
+
+
+;; Make the toplevel print exlplicit.  Return only unit.
+(define-pass explicit-toplevel-print
+  [Program 
+   (lambda (pr Expr)
+     (match pr
+       [(,lang '(program (letrec ,binds ,bod) ,meta* ... (Stream ,topty)))
+	(ASSERT symbol? bod)
+	(let ([finalstrm (unique-name "finalstrm")]
+	      [x  (unique-name "x")]
+	      [vq (unique-name "___VIRTQUEUE___")])
+	  `(,lang '(program 
+		       (letrec (,@binds 
+				 [,finalstrm (Stream #())
+				      (iterate 
+				       (annotations (name printerbox))
+				       (let ()
+					 (lambda (,x ,vq)
+					   (,topty (VQueue #()))
+					   (begin (print (assert-type ,topty ,x))
+						  (print (assert-type String '"\n"))
+						  (emit ,vq (tuple))
+						  ,vq)))
+					      ,bod)])
+			  ,finalstrm)
+		     ,@meta* (Stream #()))))]))])
+
 ;(generate-printing-code '(lang '(program (print (assert-type (List Int) '[2])) #())))
 
 ;; [2007.05.01] This pulls complex constants up to the top of the program.
@@ -509,22 +544,61 @@
 ;; Pass properties: complete-ast-coverage
 ;; 
 ;; Handles: set!, for, effectful prims
+;;
+;; [2007.12.04] Hmm, this version looks like it naively lifts up
+;; effectful constructs even if they are *already* in effect position.
+;; It could do better.
 (define-pass ws-normalize-context
-    [Expr (lambda (x fallthru)
-	    (match x  
-	      ;; This catches all effectful prims/constructs and puts them in effect context.
-	      ;[(break)           `(begin (break)       (tuple))]
-	      ;[(emit ,[vq] ,[e]) `(begin (emit ,vq ,e) (tuple))]
-	      [(set! ,v ,[e])    `(begin (set! ,v ,e)  (tuple))]
-	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
-	      [(while ,[test] ,[bod]) 
-	       `(begin (while ,test ,bod)  (tuple))]
-	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
-	       (let ([entry (assq prim wavescript-effectful-primitives)])
-                 (match (caddr entry)
-                   [(quote ,v) `(begin (,prim . ,simple) 'BOTTOM)]
-                   [#()        `(begin (,prim . ,simple) 'UNIT)]))]
-	      [,oth (fallthru oth)]))])
+  (define (effectform? sym) 
+    (or (memq sym '(set! print for while))
+	;(assq prim wavescript-effectful-primitives)
+	))
+
+  (define Value 
+    (core-generic-traverse
+     (lambda (x fallthru)
+       (match x        
+	 ;; This catches all effectful prims/constructs and puts them in effect context.
+	 ;;[(emit ,[vq] ,[e]) `(begin (emit ,vq ,e) (tuple))]
+	 [(,kwd . ,args) (guard (effectform? kwd))
+	  `(begin ,(fallthru (cons kwd args)) 'UNIT)]
+	 
+	 [(,prim ,[simple*] ...) (guard (assq prim wavescript-effectful-primitives))
+	  (let ([entry (assq prim wavescript-effectful-primitives)])
+	    (match (caddr entry)	      
+	      [(quote ,v) `(begin (,prim . ,simple*) 'BOTTOM)] ;; WSerror return value...
+	      [#()        `(begin (,prim . ,simple*) 'UNIT)]))]
+
+	 ;; Here we switch over to effect context:
+	 [(begin ,[Effect -> e*] ... ,[last])  `(begin ,@e* ,last)]
+	 [,x (fallthru x)]))
+     (lambda (ls k) (apply k ls))))
+
+  (define (Effect x)
+    (match x 
+      [,v (guard (symbol? v)) ''UNIT]
+      [(set! ,v ,[Value -> e]) `(set! ,v ,e)]
+      [(print ,[Value -> e])   `(print ,e)]
+      [(for (,i ,[Value -> st] ,[Value -> en]) ,[bod])
+       `(for (,i ,st ,en) ,bod)]
+      [(while ,[Value -> test] ,[bod]) `(while ,test ,bod)]
+      [(,prim ,[Value -> simple*] ...)
+       (guard (assq prim wavescript-effectful-primitives))
+       (cons prim simple*)]
+      [(let ([,lhs* ,ty* ,[Value -> rhs*]] ...) ,[bod])
+       (printf "LET IN EFFECT CONTEXT: ~s\n" lhs*)
+       `(let ,(map list lhs* ty* rhs*) ,bod)]
+      ;; For simplicity we are not allowing conditionals directly in effect context.
+      ;; [2007.12.06] Disabling this because it produces worse output code:
+      [(if ,[Value -> a] ,[Value -> b] ,[Value -> c])
+       (let ([tmp (unique-name "iftmp")])
+	 `(let ([tmp #() (if ,a ,b ,c)])
+	    'UNIT))]
+      [(begin ,[e*] ...) `(begin ,@e*)]
+      [,form (error 'ws-normalize-context "unhandled form in effect context: ~s" form)]))
+  
+  ;; We start out in value context.
+  [Expr (lambda (x _) (Value x))])
 
 
 ; --mic

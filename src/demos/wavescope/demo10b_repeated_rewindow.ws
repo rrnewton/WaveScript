@@ -32,7 +32,7 @@ fun rewindow(sig, newwidth, gap) {
     then wserror("rewindow cannot step backwards: width "++ show(newwidth) ++" gap "++show(gap))
     else 
      
-   iterate (win in sig) {
+   iterate win in sig {
     state { 
       acc = nullseg; 
       // This bool helps to handle an output streams with gaps.

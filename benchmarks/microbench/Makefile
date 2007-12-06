@@ -5,13 +5,17 @@ BENCHS=" just_timer.ws read_filedata_bigwins.ws read_filedata_smallwins.ws"
 
 all: /tmp/dummyfile.bin
 	@echo "   Running all MICRObenchmarks, building pdf summary."
-	./runall.sh
+	./run_misc.sh
+	./run_datapass.sh
 	$(MAKE) graph
 
 graph:
-	gnuplot plot.gp > microbench.eps
-	ps2pdf microbench.eps
-
+	cp RESULTS_misc.txt RESULTS.txt
+	gnuplot plot.gp > microbench1.eps
+	ps2pdf microbench1.eps
+	cp RESULTS_datapass.txt RESULTS.txt
+	gnuplot plot.gp > microbench2.eps
+	ps2pdf microbench2.eps
 
 # This makse a ~40MB file.
 # 
@@ -25,5 +29,5 @@ graph:
 	rm -f /tmp/two
 
 clean:
-	rm -f *~ __* .__* query.* /tmp/dummyfile.bin microbench.eps microbench.pdf 6sec_marmot_sample.raw
+	rm -f *~ __* .__* query.* /tmp/dummyfile.bin microbench*.eps microbench*.pdf 6sec_marmot_sample.raw
 

@@ -1,7 +1,7 @@
 
 
 fun stream_map(fn,strm) {
-  iterate (elm in strm) {
+  iterate elm in strm {
     emit fn(elm);
   }
 }

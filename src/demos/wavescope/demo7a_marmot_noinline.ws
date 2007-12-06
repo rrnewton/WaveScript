@@ -34,7 +34,7 @@ ch4 = window(iterate((_,_,_,d) in chans){ emit int16ToFloat(d) }, 4096);
 
 newwidth = 32;
 step = 32;
-rw1 = iterate (w in ch1) {
+rw1 = iterate w in ch1 {
   state { acc = nullseg; }
   acc := joinsegs(acc, w);
   while acc.width > newwidth {
@@ -52,13 +52,13 @@ freq = iterate(x in hn) { emit sigseg_fftR2C(x) };
 
 //fun marmotscore(w) { 3.8 }
 
-wscores = iterate (w in freq) {
+wscores = iterate w in freq {
   //emit(marmotscore(w), w);
   emit (3.8, w); 
 };
 
 detections = 
-  iterate (pr in wscores) {
+  iterate pr in wscores {
     let (sc,w) = pr;
 
     // PAD IT FOR TESTALL_DEMOS:

@@ -1,7 +1,7 @@
 I'm writing down most of my *thinking* in my personal
 AMORIDEAS.emacs.txt file.  But I realized that my day-to-day
 development issues should go in a separate file; so here we
-are. -2004.04.29
+are. [2004.04.29]
 
 [2004.04.29]
   Hmm, without "identifier-syntax" I can't get things working fully
@@ -1254,3 +1254,91 @@ Ah, what would things have been like if we'de used records for ASTs?
 		 ;(traverse loop x)
 		 (make-streamop 'iterate _ _ _ _ _)
 		 )]))
+
+[2007.12.03] {The new C backend and garbage collector}
+.
+Progress has been slow on this new backends.  There are a lot of
+issues to deal with.  For example, for the optimized deferred
+refcounting GC algorithm to work, emit essentially needs to be a tail
+call.  We need to buffer up additional emits until the end.  How do we
+do this?  We could complexify the interface with the scheduler,
+provide a way for the "box" to specify desired scheduling/buffering
+policies.  Or we can try to do as much as possible with
+source-to-source transforms.  For example, we can take all non-tail
+emits and redirect them to an explicit wavescript buffer that we
+introduce.  Then the actual emit just sends off the whole buffer.
+
+Even though it is disallowed in the language, there are reasons for
+using shared state at intermediate points in the compiler.  It would
+be nice to have detailed control over buffer management.  For example,
+we may decide to double-buffer a communication channel to another
+core, with both upstream and downstream boxes reading and writing the
+same memory.  Unfortunately, this would also require more from the
+scheduler, because  now the two boxes need to synchronoize before
+swapping the buffers and moving on to the next round.
+
+But if we don't have that kind of communication pattern, that means
+all we can do is allocate new arrays to send downstream.  Maybe
+that's for the best, however.  If we had a custom memory allocator, it
+could do a good job of reusing the same address ranges to approximate
+the double-buffered solution.
+
+There are a whole bunch of issues mixed up, however.  When thinking
+about the FFT benchmark (copied from streamit), it becomes desirable
+to statically allocate the communication buffers, because of the pain
+of many small arrays.  But then again, if we can do "execution
+scaling" in a source to source transform, then that results in much
+larger buffers, and the pain of allocation is greatly reduced.  
+
+Yet another issue is how we handle this stuff when we "merge" boxes
+for coexistence within a single core.  You can still do execution
+scaling and maintain buffers for "emit"s.  In fact, situation is in
+most ways improved because the compiler has full control over the edge
+between the boxes.  However, the GC model where we collect at the end
+of every operator.... that gets strained.  The granularity is
+increased by merging operators.
+. 
+But if the calls between the now-merged operators are in tail
+position, then we should be able to maintain the same GC strategy as
+before.  That is, we collect when we transfer control internally.
+.
+Really, any collection strategy is going to have to have a backup
+stack-tracing method if a ton of allocation occurs in one iterate.  We
+probably won't implement that for a while, and will just avoid that
+situation.  (You'd also have to trigger that if the ZCT overflows.)
+
+
+Execution Scaling:
+========================================
+One interesting way of doing this may be to perform a simple execution
+scaling without regard for the type of data passed (arrays or
+scalars).  Then, as a separate transformation, we could observe the
+Array of small Arrays produced by the scaling, and then flatten it
+using the data representation transforms that we have been discussing.
+
+The alternative is to do this in one go -- where we recognize the
+array passing structure (and the static size of the arrays), and we
+transform all reads and writes to those small arrays directly into
+reads and writes in a "scaled" array.
+
+
+
+New C codegen:
+========================================
+
+Will the type mapping be isomorphic?  Will any special packing or
+unpacking have to happen on comm channels?  (Well, other than the GC
+ownership transfer.) 
+
+How is that ownership transfer best accomplished?  At the end of an
+execution, we process the queued data, checking ref counts.  Ref
+counts of one (including the pointer from the queue itself), mean that
+we can transfer ownership.  Otherwise a copy occurs.
+
+But even that copy doesn't always make sense IF we know we have a
+depth-first edge AND that the downstream won't modify the array (which
+it's not allowed to).
+
+
+[2007.12.04]
+

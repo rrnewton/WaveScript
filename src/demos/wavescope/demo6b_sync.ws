@@ -29,7 +29,7 @@ type Union3 (a, b, c) = Firstof3  a
                       | Secondof3 b
                       | Thirdof3  c
 
-iterate (x in S) {
+iterate x in S {
   case x of
     | Firstof3 n -> f(n)
     | other -> other

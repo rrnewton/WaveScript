@@ -102,7 +102,7 @@
 	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
 	    (values ''() type #f)
 #;
-	    (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
+	    (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-xstream wavescript-compiler-caml))
 		(begin
 		  (ASSERT type)
 		  (ASSERT (compose not polymorphic-type?) type)

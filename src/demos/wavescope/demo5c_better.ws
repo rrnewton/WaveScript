@@ -32,7 +32,7 @@ main = rewindow((readFile("./countup.raw", "mode: binary  window: 4096", timer(1
 /*     then wserror("rewindow expets step>=0, received: "++show(step)) */
 /*     else  */
      
-/*    iterate (win in sig) { */
+/*    iterate win in sig { */
 /*     state {  */
 /*       acc = nullseg;  */
 /*       // This bool helps to handle an output streams with gaps. */

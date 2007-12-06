@@ -4,10 +4,10 @@
 (*
 let (gridsize, shiftx, shifty, maxx, maxy) = 0.001, 2000, 2500, 4096, 4096;;    (* APPROX 316 feet *)
 let (gridsize, shiftx, shifty, maxx, maxy) = 0.0007, 1900, 2100, 4096, 4096;;
-
+let (gridsize, shiftx, shifty, maxx, maxy) = 0.0001, 900, 3700, 8192, 8192;;   
 *)
 
-let (gridsize, shiftx, shifty, maxx, maxy) = 0.0001, 900, 3700, 8192, 8192;;   
+let (gridsize, shiftx, shifty, maxx, maxy) = 0.001, 2000, 2500, 4096, 4096;;    (* APPROX 316 feet *)
 
 (* let smallgrid = "" *)
 let smallgrid = "_SMALLGRID"
@@ -166,8 +166,8 @@ lon = 68.9 miles
 
 (*process_file Sys.argv.(1);;*)
 
-try process_file !lastfiletime "/home/newton/data/slave31.txt" with End_of_file -> 
-try process_file !lastfiletime "/home/newton/data/slave31.txt" with End_of_file -> 
+try process_file !lastfiletime "/home/newton/data/slave14.txt" with End_of_file -> 
+try process_file !lastfiletime "/home/newton/data/slave14.txt" with End_of_file -> 
 
 (*
 

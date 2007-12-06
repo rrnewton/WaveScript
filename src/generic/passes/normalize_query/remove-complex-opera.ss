@@ -110,7 +110,7 @@
 	   ;; DEPENDS ON LAZINESS/PURITY:
 	   [(if ,a ,b ,c)
 	    ;; [2007.03.20] Eliminating this:  This pass is no longer used for WS:
-	    (if #f ;(memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler-cpp wavescript-compiler-caml))
+	    (if #f ;(memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler-xstream wavescript-compiler-caml))
 		(mvlet ([(test test-decls)     (make-simple a tenv)])
 		  (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
 			      [#(,altern ,altern-decls) (process-expr c tenv)])

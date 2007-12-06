@@ -121,8 +121,8 @@ snoop           :: (a, Stream b) -> Stream b;
   // This lets you call a progress report every N samples of a stream.
 snoop_every     :: (Int, ((Int64, a) -> String), Stream a) -> Stream a;
 
+repeater        :: (Int, Stream t) -> Stream t;
 // sparsify 
-// repeater
 // holdAndRepeat
 // timeTransformer
 
@@ -148,10 +148,15 @@ thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
   // This takes an unwindowed stream and produces a stream of sigsegs:
 window          :: (Stream t, Int) -> SS t;
 dewindow        ::  SS t           -> Stream t;
-dewindowArrays  ::  Stream (Array t) -> Stream t;
-
   // Don't change the data, but redo the windowing:
 rewindow        :: (SS t, Int, Int) -> SS t;
+
+
+/* ArrayStream:window    :: (Stream t, Int) -> Stream (Array t); */
+/* ArrayStream:rewindow  :: (Stream (Array t), Int, Int) -> Stream (Array t); */
+/* ArrayStream:dewindow  ::  Stream (Array t) -> Stream t; */
+
+
 deinterleave    :: (Int, Stream t)  -> List (Stream t);
 deinterleaveSS  :: (Int, Int, SS t) -> List (SS t);
 makeHanning     :: Int      -> Array Float;
@@ -1101,6 +1106,13 @@ fun thresh_extract(search,streamlist,thresh,_pad) {
   syncN(ctrl,streamlist);
 }
 
+
+
+//======================================================================
+// Windowed streams:
+
+// First, using sigsegs.
+
 fun window(S, len) 
   iterate(x in S) {
     state{ 
@@ -1244,6 +1256,39 @@ fun interleave(ls, bufsize) {
   }
 }
 */
+
+
+// ========================================
+// Second, using Arrays.
+
+/* namespace ArrayStream { */
+
+/*   fun window(S, len)  */
+/*     iterate x in S { */
+/*       state{  */
+/*         // Can't use makeUNSAFE at meta-time currently: */
+/*         arr = Array:null; */
+/*         ind = 0;  */
+/*       } */
+/*       if ind == 0 then arr := Array:make(len, x); */
+/*       arr[ind] := x; */
+/*       ind += 1; */
+/*       if ind == len */
+/*       then { */
+/*         emit arr; */
+/*         ind := 0; */
+/*         arr := Array:make(len, x);  */
+/*         startsamp := startsamp + len`intToInt64; */
+/*       } */
+/*   }; */
+
+/*   fun dewindow(s) { */
+/*     iterate w in s { */
+/*       for i = 0 to Array:length(w) - 1 { emit w[i] } */
+/*     } */
+/*   } */
+
+/* } */
 
 // This version takes a plain stream:
 // 

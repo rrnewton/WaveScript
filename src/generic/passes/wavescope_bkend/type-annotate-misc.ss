@@ -58,17 +58,20 @@
 		    joinsegs subseg width toSigseg toArray timebase start end seg-get
 		    ))
 
+    (define (maybewrap x tenv)
+      (match x
+	[(assert-type ,ty ,_) x]
+	[,_ `(assert-type ,(recover-type x tenv) ,x)]))
+
     (define (process-expr x tenv fallthru)
 ;      (printf "PE: \n")
       (match x
 
 	;; These primitives need their assert-types on the INSIDE:
-
-	[(List:make ,[n] (assert-type ,ty ,[init]))
-	 `(List:make ,n (assert-type ,ty ,init))]
-	[(List:make ,[n] ,[init])
-	 `(List:make ,n (assert-type ,(recover-type init tenv) ,init))]
-
+       
+	[(List:make ,[n] ,[init])  `(List:make ,n ,(maybewrap init tenv))]
+	[(set! ,v ,[x])  `(set! ,v ,(maybewrap x tenv))]
+	
 	;; TODO, FIXME: THIS IS A HACKISH AND BROKEN APPROACH:
 	
        	;; Here we catch these primitives where they're bound and just

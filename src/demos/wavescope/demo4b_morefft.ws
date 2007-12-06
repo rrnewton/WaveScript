@@ -70,7 +70,7 @@ s1 = s1b;
 
 
 //s2 :: Stream (Sigseg Complex);
-s2 = iterate (w in s1) {
+s2 = iterate w in s1 {
 
   println("First, just a forward fft... ");
   first = sigseg_fftR2C(w)`toArray;
@@ -158,7 +158,7 @@ s2 = iterate (w in s1) {
 /*
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
-s3 = iterate (win in s2) {
+s3 = iterate win in s2 {
   state { pos=0 }
 
   x :: Int = 3;  // Explicit type annotation on local var.

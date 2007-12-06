@@ -215,7 +215,7 @@
 			 ;(not (pair? imm)) (not (vector? imm))
 			 ) #t]
     ;; Void value:
-    ;[(tuple) #t] ;; [2007.03.19] Why had I commented this before?
+    [(tuple) #t] ;; [2007.03.19] Why had I commented this before? Using 'UNIT instead.
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
 
     ;; Annotations can still be simple.
@@ -223,9 +223,7 @@
 
     ;; [2007.10.16] This is now considered simple:
     [(deref ,var) (DEBUGASSERT symbol? var) #t]
-
     [,otherwise #f]))
-
 
 ;; This is a litlte helper that introduces a new binding ONLY if the
 ;; RHS in question is not simple.  This avoids unnecessary aliasing

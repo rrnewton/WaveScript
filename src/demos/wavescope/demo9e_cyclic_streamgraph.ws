@@ -4,7 +4,7 @@
 uniontype Union2 a b       = Left a | Right b;
 
 fun stream_map(f,s)
-  iterate (x in s) {
+  iterate x in s {
     emit f(x);
   }
 

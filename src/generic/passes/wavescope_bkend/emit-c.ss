@@ -108,7 +108,7 @@
     [Char   "wschar_t"]
     [String "wsstring_t"] ;; Not boosted.
     
-    [(Ref ,[t]) t]  ;; These disappar.
+    [(Ref ,[t]) t]  ;; These disappear.
     [(VQueue ,_) "void*"]
 
     ;; Went back and forth on whether this should be a pointer:
@@ -273,7 +273,6 @@
 	;; And therefore, we handle begin's here:
 #;
 	[(begin ,[(lambda (e) ((Block tenv) #f #f e)) -> e*] ... ,[q])
-	 (inspect "GOINGOINGINIGINGINIG")
 	 (values ?????????)]
 
 	[(let ([,lhs ,ty ,rhs]) ,bod)

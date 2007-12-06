@@ -185,7 +185,7 @@ fun rewindow(sig, newwidth, gap) {
     then wserror("rewindow cannot step backwards: width "++ show(newwidth) ++" gap "++show(gap))
     else 
      
-   iterate (win in sig) {
+   iterate win in sig {
     state { 
       acc = nullseg; 
       // This bool helps to handle an output streams with gaps.
@@ -407,7 +407,7 @@ fun detect(scorestrm) {
 
 stream_filter :: (t -> Bool, Stream t) -> Stream t;
 fun stream_filter(f,s) {
-  iterate (x in s) {
+  iterate x in s {
     if f(x) then emit x
     //   else print("Discarded: "++ x ++"\n")
   }
@@ -415,7 +415,7 @@ fun stream_filter(f,s) {
 
 // This doesn't create a shared structure:
 fun deep_smap(f,S) {
-  iterate (w in S) {
+  iterate w in S {
     output = Array:build(w`width, fun (i) f(w[[i]]));
     emit toSigseg(output, w`start, w`timebase);
   }
@@ -469,7 +469,7 @@ hn = myhanning(rw1);
 freq = iterate(x in hn) { emit (sigseg_fftR2C(x),x) };
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate ((w,orig) in freq) { emit (marmotscore(w), orig); }
+wscores = iterate (w,orig) in freq { emit (marmotscore(w), orig); }
 
 detections = detect(wscores);
 

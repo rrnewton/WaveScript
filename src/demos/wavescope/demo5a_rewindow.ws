@@ -40,7 +40,7 @@ s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: St
 newwidth = 1024;
 step = gint(512);
 
-s2 = iterate (win in s1) {
+s2 = iterate win in s1 {
    state { acc = nullseg; 
          }
 

@@ -9,13 +9,13 @@ s1 = audio(0, 1024, 0);
 
 // Run an FFT.
 //s2 : Stream (Array complex);
-s2 = iterate (w in s1) {
+s2 = iterate w in s1 {
   emit ss_fft (w);
 };
 
 // Finally, take the power spectrum.
 //s3 : Stream float;
-s3 = iterate (w in s2) {
+s3 = iterate w in s2 {
   arr = toArray w;
 
   if arr[100].realpart > 224192.0

@@ -82,7 +82,7 @@ s2 = if GETENV("MEMOIZE") == "" then s2b else s2a;
 
 // Emit a number drawn from a fixed position in the fft output.
 //s3 :: Stream Float;
-s3 = iterate (win in s2) {
+s3 = iterate win in s2 {
   state { pos::Int = 0 ;
           strttime = 0;
           first = true;

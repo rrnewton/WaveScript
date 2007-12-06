@@ -31,14 +31,14 @@ fun log2(n) {
 //FFTReorderSimple :: (Int, Stream (Sigseg Float)) -> Stream (Sigseg Float);
 //fun FFTReorderSimple(n) fun (strm) {
 fun FFTReorderSimple(n, strm) {
-  totalData = 2*n;
-  //dewindow $ iterate ss in window(strm, totalData) {
-  iterate ss in rewindow(strm, totalData, 0) {
-  //iterate ss in strm {
+  using Array;
+  //totalData = 2*n;
+  //iterate ss in rewindow(strm, totalData, 0) {
+  iterate direct in strm {
+    assert("right size", direct`length == 2*n);
 
     //println("Firing reord simple "++n++" "++ss[[0]]);
 
-    direct = toArray(ss);
     arr1 = Array:build(n, fun(i) direct[i/2 * 4 + remainder(i,2)]);
     arr2 = Array:build(n, fun(i) direct[i/2 * 4 + remainder(i,2) + 2]);
 
@@ -46,10 +46,8 @@ fun FFTReorderSimple(n, strm) {
 /*             " arr1/2: "++Array:length(arr1)++" "++Array:length(arr2) */
 /*             ++"  start "++ss`start); */
 
-    emit toSigseg(arr1, ss`start, ss`timebase);     // start is bogus
-    emit toSigseg(arr2, ss`start + to64(n), ss`timebase); 
-
-    //emit toSigseg(Array:append(arr1,arr2), 0, nulltimebase)
+    emit arr1;
+    emit arr2;
   }
 }
 
@@ -61,7 +59,7 @@ fun FFTReorder(n,strm) {
     else loop(i*2, FFTReorderSimple(n/i, acc))
   };
   result = loop(1, strm);
-  final = rewindow(result, n*2, 0);
+  final = ArrayStream:rewindow(result, n*2, 0);
   result;
 }
 
@@ -72,7 +70,7 @@ fun CombineDFT(n, strm) {
 /*   work push 2*n pop 2*n { */
   if n<2 then wserror("CombineDFT, window size must be greater than 1");
   //iterate ss in strm {
-  iterate ss in rewindow(strm, 2*n, 0) {
+  iterate inp in ArrayStream:rewindow(strm, 2*n, 0) {
   //dewindowArrays $ iterate ss in window(strm, n*2) {
     // coefficients, real and imaginary interleaved
     state { 
@@ -96,7 +94,6 @@ fun CombineDFT(n, strm) {
 
     //println("Running combine n "++n++"  w[1]="++w[1]++"  ss[[0]]="++ss[[0]]);
 
-    inp = ss`toArray;
     results = Array:make(2*n, 0.0);
     last = 2*n-1;
     for i0 = 0 to (n/2)-1 {
@@ -120,10 +117,8 @@ fun CombineDFT(n, strm) {
 
       results[last-(n + i)]     := y0_r - y1w_r;
       results[last-(n + i + 1)] := y0_i - y1w_i;
-
-      //emit results;
-     };
-     emit toSigseg(results,ss`start,ss`timebase);
+     }
+     emit results;
   }
 }
 
@@ -159,7 +154,7 @@ fun FFTTestSourceWindowed(n) {
     arr = Array:make(2*n, 0.0);
     arr[2] := 1.0;
     cnt += to64(2*n);
-    emit toSigseg(arr,cnt,nulltimebase);
+    emit arr;
   }
 }
 
@@ -168,7 +163,8 @@ fun FFTTestSourceWindowed(n) {
 //================================================================================
 // FINAL RETURN STREAM:
 
-BASE <- dewindow $ FFTKernel2(64, FFTTestSourceWindowed(64));
+main = dewindow $ 
+    FFTKernel2(64, FFTTestSourceWindowed(64));
 
 //BASE <- FFTKernel2(8, FFTTestSource(8));
 //BASE <- FFTKernel2(64, window(FFTTestSource(64), 128));

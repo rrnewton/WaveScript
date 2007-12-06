@@ -52,9 +52,9 @@ fun Pull:pullwith(pstream, strm) pstream(strm)
 //Pull:counter :: Int -> PullStream Int;
 fun Pull:counter(strt)
  fun (pulls)
-   iterate x::() in pulls {
-     state{ counter = strt - gint(1) }
-     counter += gint(1);
+   iterate _ in pulls {
+     state{ counter = strt - 1 }
+     counter += 1;
      emit counter;
    }
 

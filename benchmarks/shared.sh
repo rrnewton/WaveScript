@@ -143,19 +143,22 @@ function runallbackends() {
     runmltonO3;
   fi
 
-  #SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`
-  SCHEME="-1"
+  SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`
   SCHEMEO3=`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`
-  #CPP=`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`
-  #CPPDF=`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`
-  #CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`
-  CPPNEW="-1"
-  CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`
-#  CPPNOTHREADS=-1
   ML=`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`
-#  MLO3=`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`
-  MLO3="-1"
- 
+  MLO3=`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`
+  CPP=`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`
+  CPPDF=`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`
+  CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`
+  CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`
+
+## Temporarilly disabling some backends:
+#  SCHEME="-1"
+#  CPPNEW="-1"
+#  CPPNOTHREADS=-1
+#  MLO3="-1"
+
+  ## This automatically catches it if one of the backends above was disabled. 
   CPP_BROKE=`echo $CPP | grep File`
   CPPDF_BROKE=`echo $CPPDF | grep File`
   CPPNEW_BROKE=`echo $CPPNEW | grep File`
@@ -165,7 +168,7 @@ function runallbackends() {
   if [ ! "$CPPNEW_BROKE" == "" ]; then CPPNEW="-1"; fi
 
   # ================================================================================
-  echo RESULTS: 1 $NAME 2 $SCHEME 3 $SCHEMEO3 4 $CPP 5 $CPPDF 6 $CPPNEW 7 $CPPNOTHREADS 8 $ML 9 $MLO3 
+  echo "RESULTS: (1) $NAME (2) $SCHEME (3) $SCHEMEO3 (4) $CPP (5) $CPPDF (6) $CPPNEW (7) $CPPNOTHREADS (8) $ML (9) $MLO3"
   echo $NAME $SCHEME $SCHEMEO3 $CPP $CPPDF $CPPNEW $CPPNOTHREADS  $ML $MLO3 >> RESULTS.txt
 
   #echo RESULTS: $NAME $SCHEMEO3 $CPPNOTHREADS $ML 

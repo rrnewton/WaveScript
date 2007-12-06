@@ -58,7 +58,7 @@ rewindow : (Stream 'a, int, int) -> Stream 'a;
 fun rewindow(s, newwidth, step) {
   if step >= newwidth
   then error("rewindow won't allow the creation of non-contiguous output streams")
-  else iterate (w in s) {
+  else iterate w in s {
    state { acc = nullseg; }
    acc := joinsegs(acc, w);
    // We do this entirely with index numbers, no abstract Time objects are used:
@@ -94,7 +94,7 @@ fun arrmagnitude(w) {
 // This version produces a new Sigref
 magnitude : Stream (Sigseg complex) -> Stream (Sigseg float);
 fun magnitude(s) {
-  deep_iterate (c in s) {
+  deep_iterate c in s {
     emit sqrt( sqr(c.realpart) +. sqr(c.imagpart));
   }
 }

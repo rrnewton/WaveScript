@@ -2,4 +2,20 @@
 
 export REGFLAG=wsc2
 
-wsc $*
+wsc $* -no-gcc
+
+MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
+if [ "$MATCH" != "" ];
+then 
+   EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
+   WS_LINK="$WS_LINK $EXTRALIBS"
+   echo Linking extra libraries requested by query file: $EXTRALIBS
+fi
+
+CMD="gcc -O2 -g -o query.exe $WS_LINK query.c"
+echo "$CMD"
+if $CMD;
+then echo Compiled .c output successfully.
+else echo ERROR, gcc failed.
+fi
+
