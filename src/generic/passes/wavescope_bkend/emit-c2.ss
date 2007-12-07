@@ -27,9 +27,14 @@
 ;; These should just be wrappers on the outside.  You should never find them nested.
 (reg:define-struct (lines text))
 ;(reg:define-struct (expression text))
-(trace-define (append-lines . ls) (make-lines (map lines-text ls)))
+(define (append-lines . ls) (make-lines (map lines-text ls)))
 ;(define (idk x) (ASSERT expression? x) x)
 ;(define (idk x) x)
+
+(define-syntax debug-return-contract
+  (syntax-rules ()
+    [(_ pred fun) (IFDEBUG (lambda args (let ([result (apply fun args)]) (pred result) result))
+			   fun)]))
 
 ;================================================================================
 ;;; Input grammar
@@ -39,15 +44,6 @@
 ;================================================================================
 ;;; Hooks for garbage collection.
 
-(define-syntax debug-return-contract
-  (syntax-rules ()
-    [(_ pred fun) (IFDEBUG (lambda args (let ([result (apply fun args)]) (pred result) result))
-			   fun)]))
-
-#;
-(define-syntax debug-return-contract
-  (syntax-rules ()
-    [(_ pred fun) (lambda args (let ([result (apply fun args)]) (pred result) result))]))
 
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 (define (gen-incr-code ty ptr)
@@ -86,9 +82,8 @@
 ;================================================================================
 ;;; Low level routines for generating syntax.
 
-(define (mangle-name n) (symbol->string n))
+;(define (mangle-name n) (symbol->string n))
 (define sym2str  symbol->string)
-
 
 (define (cap x) (list x ";\n"))
 
@@ -147,7 +142,7 @@
 ;================================================================================
 
 ;; [2007.12.04] TEMP!!!!! SHOULD NOT DUPLICATE CODE
-(trace-define Const
+(define Const
   (lambda (datum wrap)
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
@@ -220,11 +215,12 @@
     [(Ref ,[ty]) ty]
     ))
 
-(define Var mangle-name)
+;(define Var mangle-name)
+(define Var sym2str)
 
 ;; These are the expressions that make valid operands (post flattening)
 ;;   .returns A string.  Could return an "expression".
-(trace-define (Simple expr)
+(define (Simple expr)
   (match expr
     [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var v)]
     ;[',c (format "~a" c)] ;;TEMPTEMP
@@ -236,7 +232,7 @@
     ;[nulltimebase (Const #f #f 'nulltimebase)]    
        
     [(assert-type ,_ ,[x]) x]
-    [,else (error 'Simple "not simple expression: ~s" x)]
+    [,else (error 'Simple "not simple expression: ~s" else)]
     ))
 
 ;; Generates code for an emit.  (curried)
@@ -285,8 +281,13 @@
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
       
-      ;;[(set! )]
-      ;;[(for)]
+      [(set! ,[Var -> v] ,[Simple -> e]) (make-lines `(,v " = " ,e ";\n"))]
+
+      [(for (,[Var -> ind] ,[Simple -> st] ,[Simple -> en]) ,[bod])
+       (make-lines
+	(list `(,(Type 'Int)" ",ind";\n")
+	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
+		     (lines-text bod))))]
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
       ;; Otherwise we needlessly allocate string objects.
       [(print (assert-type ,ty ,[Simple -> e]))
@@ -330,7 +331,7 @@
 ;; k is expected to return text of the form "lines" that stores away this result.
 (define (Value emitter)
   (debug-return-contract lines?
-   (trace-lambda V (xp k)
+   (lambda (xp k)
      ;; This is a debug wrapper that respects the funky interface to the continuation:
      (IFDEBUG (set! k (let ([oldk k]) (lambda (x) 
 			  (call-with-values (lambda () (oldk x))
@@ -403,6 +404,46 @@
       [else (error 'emitC2:PrimApp "primitive not specifically handled: ~s" var)]
       ))
 
+
+     (define (wszero? ty obj)
+       (match ty
+	 [,ty (guard (memq ty num-types))
+	      (match obj
+		[',x (and (number? x) (= x 0))]
+		[,_ #f])]
+	 [(Array ,_) #f] ;; No zero for this type.  It's a pointer.
+	 [,ty (error 'wszero? "Not yet handling zeros for this type: ~s" ty)]))
+     (define (make-array len init ty)
+       (let ([len (Simple len)])
+	 (match ty
+	   [(Array ,elt)
+	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
+	   (let* ([_elt (Type elt)]
+		  [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
+		  [tmp (Var (unique-name "arrtmp"))]
+		  [alloc (if (wszero? elt init)
+			     `("calloc(",size", 1)")
+			     `("malloc(",size")"))]
+		  [cast `("(",_elt"*)",tmp)])
+	     (append-lines 
+	      (make-lines `("int* ",tmp" = ((int*)",alloc" + 2);\n"
+			    ,tmp"[-1] = 0;\n"
+			    ,tmp"[-2] = ",len";\n"
+			    ;; Now fill the array, if we need to:
+			    ,(if (not (wszero? elt init))
+				 (let ([i (unique-name "i")]
+				       [tmp2 (unique-name "arrtmpb")]
+				       [len2 (unique-name "lenmin1")])
+				   (list `(,_elt"* ",(Var tmp2) " = ",cast";\n")
+					 `("int ",(Var len2) " = ",len" - 1;\n")
+					 (lines-text
+					  ((Effect (emit-err 'array:make-constant))
+					   `(for (,i '0 ,len2)
+						(Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
+				 "")))
+	      (k cast))
+	     )])))
+
      (match app
        ;; Refs and sets are pure simplicity:
        [(Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
@@ -411,18 +452,9 @@
 	;; Length is -2 and refcount is -1:
 	(k `("((int*)",arr")[-2]"))]
        ;; This is the more complex part:
-       [(Array:make ,[Simple -> len] ,[Simple -> init])       
-	(match mayberetty
-	  [(Array ,[Type -> elt])
-	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
-	   (let ([size `("sizeof(",elt") * ",len" + 2")]
-		 [tmp (Var (unique-name "arrtmp"))])
-	     (append-lines 
-	      (make-lines `("int* ",tmp" = ((int*)malloc(",size") + 2);\n"
-			    ,tmp"[-1] = 0;\n"
-			    ,tmp"[-2] = ",len";\n"))
-	      (k `("(",elt"*)",tmp)))
-	     )])]
+
+       [(Array:make ,len ,init) (make-array len init mayberetty)]
+       [(Array:makeUNSAFE ,len) (make-array len #f   mayberetty)]
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? (assert-type ,ty ,[Simple -> left]) ,[Simple -> right])

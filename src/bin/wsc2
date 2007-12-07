@@ -12,10 +12,70 @@ then
    echo Linking extra libraries requested by query file: $EXTRALIBS
 fi
 
-CMD="gcc -O2 -g -o query.exe $WS_LINK query.c"
+
+
+
+ALWAYSON="-O3 -funroll-loops"
+# max-unroll-times Seems to be 8 by default.
+OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
+#OPTFLAGS="-g -O0"
+
+
+#CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c -fprofile-arcs"
+CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
 echo "$CMD"
 if $CMD;
 then echo Compiled .c output successfully.
 else echo ERROR, gcc failed.
 fi
+
+## Run again to profile branches:
+# ./query.exe
+# CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c -fbranch-probabilities"
+# echo $CMD; $CMD
+
+
+
+# GCC flags not enabled by -O3:
+#       -fforce-addr
+#       -funroll-loops / unroll-all-loops
+#       -finline-limit=n
+#       -fno-keep-static-consts
+#       -fmerge-all-constants (non conforming behavior)
+
+#       -fsched-spec-load
+#       -fsched-spec-load-dangerous
+#       -fmove-all-movables
+
+#       -fbranch-probabilities
+#       -fno-guess-branch-probability
+
+#       -fprefetch-loop-arrays
+
+# Experimental:
+#       -fnew-ra - Experimental register allocator
+#       -ftracer
+#       -fssa  - not ready for productio use
+#      -ffunction-sections  -fdata-sections  -- place functions and data into their own sections, helps linker.
+
+
+# Our array representation is going to require disabling:
+#       -fstrict-aliasing
+
+
+# May or may not increase performance (might disable)
+#       -fcrossjumping
+#       -freduce-all-givs
+#       -falign-labels
+
+
+# DANGER opts that must be turned on by hand, breaks IEEE math.
+#       -ffast-math
+#       -fno-math-errno
+#       -funsafe-math-optimizations
+#       -ffinite-math-only   - disable handling of NANs and INFs
+#       -fno-trapping-math   - don't worry about DIV zero and so on
+#       -fsingle-precision-constant
+
+
 
