@@ -384,19 +384,17 @@
     (fluid-let ([driven-by-foreign #f]
 		[extraCdecls      ()]
 		[CinitCalls       ()]
-		[foreign-includes ()])
+		[foreign-includes ()]
+		[union-types (cdr (ASSERT (project-metadata 'union-types prog)))])
       (match prog
-	[(,__ '(graph ,_ ... (union-types ,user-type-decls* ...)))
-	 (fluid-let ([union-types user-type-decls*])
-	 (match prog
-	   [(,lang '(graph (const ,[ConstBind -> cb*] ...)
-			   (init  ,[Effect -> init*] ...)
-			   (sources ,[Source -> src* state1** init1*] ...)
-			   (operators ,[Operator -> oper* state2**] ...)
+	[(,lang '(graph (const ,[ConstBind -> cb*] ...)
+			(init  ,[Effect -> init*] ...)
+			(sources ,[Source -> src* state1** init1*] ...)
+			(operators ,[Operator -> oper* state2**] ...)
 					;		      (unions ,[Union -> union*] ...)
-			   (sink ,base ,basetype)
-			   ,_
-			   ))
+			(sink ,base ,basetype)			
+			,meta* 		 ...
+			))
 	 
 	 ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
 	 (let ([tmpfile "__temp__inlinedC.c"])
@@ -431,7 +429,8 @@
 		           header1 header5 header2  header3a header3b header4  "\n" 
 			   
 			   "datatype Ignored = Ignored of int\n"
-			   (map TypeDecl user-type-decls*)
+			   ;(map TypeDecl user-type-decls*)
+			   (map TypeDecl union-types)
 
 			   ;; wsinit happens before the individual inits below, and before wsmain:
 			   (if driven-by-foreign
@@ -498,8 +497,7 @@
 			   )])
 	   result)]
 	   [,other ;; Otherwise it's an invalid program.
-	    (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)]))
-	 ]))))
+	    (error 'emit-mlton-wsquery "ERROR: bad top-level WS program: ~s" other)]))))
 
 
 ; ======================================================================

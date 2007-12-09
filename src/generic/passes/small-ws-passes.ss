@@ -592,7 +592,11 @@
       ;; [2007.12.06] Disabling this because it produces worse output code:
       [(if ,[Value -> a] ,[Value -> b] ,[Value -> c])
        (let ([tmp (unique-name "iftmp")])
-	 `(let ([tmp #() (if ,a ,b ,c)])
+	 `(let ([tmp 'anyliftif (if ,a ,b ,c)])
+	    'UNIT))]
+      [(wscase ,[Value -> x] (,tag* ,[Value -> fun*]) ...)
+       (let ([tmp (unique-name "iftmp")])
+	 `(let ([tmp 'anyliftwscase (wscase ,x ,@(map list tag* fun*))])
 	    'UNIT))]
       [(begin ,[e*] ...) `(begin ,@e*)]
       [,form (error 'ws-normalize-context "unhandled form in effect context: ~s" form)]))

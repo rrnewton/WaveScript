@@ -181,6 +181,7 @@
 (define (project-metadata tag prog)
   (match prog
     [(,lang '(program ,body ,meta ... ,ty))  (assq tag meta)]
+    [(,lang '(graph ,body ,meta ...))  (assq tag meta)]
     [,else #f]))
 
 ;; Another little helper to avoid destructuring the program syntax all the time.

@@ -19,7 +19,7 @@
 	    (all-except "nominalize-types.ss" test-this these-tests)
 	    "convert-sums-to-tuples.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-c2)
+  (provide emit-c2 gather-heap-types)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -30,6 +30,10 @@
 (define (append-lines . ls) (make-lines (map lines-text ls)))
 ;(define (idk x) (ASSERT expression? x) x)
 ;(define (idk x) x)
+
+;; This is mutated below with fluid-let to contain a table mapping
+;; types to the free-function for that type.
+(define free-fun-table '())
 
 (define-syntax debug-return-contract
   (syntax-rules ()
@@ -42,38 +46,112 @@
 ;(define emit-c2-input-grammar)
 
 ;================================================================================
-;;; Hooks for garbage collection.
 
+(define-pass gather-heap-types
+    ;; This is a mutated accumulator:
+    (define acc '())
+    (define (excluded? ty)
+      (or (and (symbol? ty) (memq ty num-types))
+	  (eq? ty 'Bool)
+	  (deep-assq 'Stream ty)
+	  (deep-assq 'VQueue ty)))
+    [Bindings 
+     (lambda (vars types exprs reconstr exprfun)
+       (for-each (lambda (ty)
+		   (unless (or (excluded? ty) (member ty acc))
+		     (set! acc (cons ty acc))))
+	 types)
+       (for-each exprfun exprs))]
+    [Program 
+     (lambda (pr Expr!)
+      (fluid-let ([acc ()])
+	(match pr
+	  [(,lang '(program ,bod . ,rest))
+	   (Expr! bod)
+	   `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@rest))])))])
+
+
+;; This builds a set of top level function definitions that free all
+;; the heap-allocated types present in the system.  It also returns a
+;; table mapping types onto syntax-generating functions that call the
+;; appropriate free-ing code.
+;;
+;; It is this function that decides what freeing will be "open coded"
+;; vs. relegated to separately defined functions.
+(trace-define (build-free-fun-table heap-types)
+  (define (heap-allocated? ty)
+    (match ty
+      [Bool #f] 
+      [,numt (guard (memq numt num-types)) #f]
+      [,v (guard (vector? v)) #f]
+      [(Array ,_) #t]
+      [(Ref ,_) #t] ;; ??      
+      ))
+  (define fun-def-acc '()) ;; mutated below
+  (define name-table
+    (filter id
+      (map (lambda (ty) 
+	     (let loop ([ty ty])
+	       (match ty
+		 ;; Tuples are not heap allocated for now (at least the bigger ones should be):
+		 [,tup (guard (vector? tup)) #f] ;; No entry in the table.
+		 [Bool  #f] 
+		 [,numt (guard (memq numt num-types)) #f] 
+		 [(Ref ,elt) (loop elt)]
+		 [(Array ,elt)
+		  (cons ty 
+			(if (not (heap-allocated? elt))
+			    (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
+			    (let ([name (type->name ty)]
+				  [ind (Var (unique-name "i"))])
+			      (set! fun-def-acc
+				    (cons (make-lines 
+					   (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
+						  `("int ",ind";\n"
+						    ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
+							    (lines-text ((cdr (loop elt)) `("ptr[",ind"]"))))
+						    "free((int*)ptr - 2);\n")))
+					  fun-def-acc))
+			      (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+			    ))])))
+      heap-types)))
+  (values (apply append-lines fun-def-acc)
+	  name-table))
+
+
+;================================================================================
+;;; Hooks for garbage collection.
 
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 (define (gen-incr-code ty ptr)
   (match ty
-    [(Array ,elt) (make-lines `("(int*)",ptr"[-1]++; /* incr refcount */\n"))]
+    [(Array ,elt) (make-lines `("(int*)",ptr"[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
+    [(Ref ,[ty]) ty]
     ;; Other types are not heap allocated:
     [,_ (make-lines "")]
     ))
 
 ;; "ptr" should be text representing a C lvalue
-(define (gen-decr-code ty ptr ifzero)
+(define (gen-decr-code ty ptr freefun)
   (match ty
-    [(Array ,elt) (make-lines (block `("if (--(((int*)",ptr")[-1]) == 0) /* decr refcount */ ") (lines-text ifzero)))]
+    [(Array ,elt) (make-lines (block `("if (--(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ") 
+				     (lines-text (freefun ty ptr))))]
+    [(Ref ,[ty]) ty]
     [,_ (make-lines "")]))
 
-(define (default-free ty ptr)
-  (let ([offset (match ty 
-		  [(Array ,elt) " - 2"]
-		  [,_ ""])]
-	[debugprint `("printf(\"  FREEING %p\\n\", ",ptr");\n")])
-    (make-lines `(  ;,debugprint
-		  "free(",ptr,offset");\n"))))
+;; Should only be called for types that are actually heap allocated.
+(define (default-free ty ptr)  
+  (append-lines 
+   (make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
+   ((cdr (ASSERT (assoc ty free-fun-table))) ptr)))
 
 (define incr-local-refcount gen-incr-code)
 (define (decr-local-refcount ty ptr)  
-  (gen-decr-code ty ptr (default-free ty ptr)))
+  (gen-decr-code ty ptr default-free))
 
 (define incr-heap-refcount gen-incr-code)
 (define (decr-heap-refcount ty ptr)
-  (gen-decr-code ty ptr (default-free ty ptr)))
+  (gen-decr-code ty ptr default-free))
 
 ;; Do anything special that's required as a value is sent off through an emit.
 ;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
@@ -89,6 +167,12 @@
 
 (define (make-app rator rands)
   (list rator "("(insert-between ", " rands)")"))
+
+(define (type->name ty)
+  (match ty
+    [,numt (guard (memq numt num-types)) (sym2str numt)]
+    [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
+    [(Array ,[ty]) (string-append "Array_" ty)]))
 
 ;(define (make-fundef type name rand bod) 0)
 
@@ -255,6 +339,7 @@
 (define (emit-err where)
   (lambda (_) (error where "should not run into an emit!")))
 
+;; This is used for local bindings.  But it does not increment the reference count itself.
 (define (Binding emitter)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
@@ -262,16 +347,30 @@
       [(,vr ,ty ,rhs) ;(,[Var -> v] ,[Type -> t] ,rhs) 
        ((Value emitter) rhs (varbindk vr ty))]
       [,oth (error 'Binding "Bad Binding, got ~s" oth)])))
+
+;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
+;; This version also DOES inject a refcount incr.
 (define (SplitBinding emitter)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
       [(,vr ,ty ,rhs) 
        ;; We derive a setter continuation by "splitting" the varbind continuation:
-       (define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
+       ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
+       (define set-and-incr-k	 
+	 (lambda (x)      
+	   (printf "  CALLED SETTER K: ~a\n" x)
+	   (if (eq? x split-msg)
+	       (values (make-lines "")	set-and-incr-k)
+	       (append-lines (make-lines `(" ",(Var vr)" = ",x";\n"))
+			     (make-lines "/* I AM HEAP INCR */\n")
+			     (incr-heap-refcount ty (Var vr))
+			     ))))
+       (printf "SPLITBINDING ~a\n" vr)
+
        (values (make-lines `(,(Type ty)" ",(Var vr)";\n"))
-	       ((Value emitter) rhs setterk))]
+	       ((Value emitter) rhs set-and-incr-k))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
 
 (define (Effect emitter)
@@ -295,7 +394,13 @@
        (define flag
 	 (match ty
 	   [String "%s"]
-	   [Int    "%d"]))
+	   [Bool   "%d"]
+	   [Int    "%d"]
+	   [Int16  "%hd"]
+	   [Int64  "%lld"]
+	   [Float  "%f"]	   
+	   [Double "%lf"]
+	   [(Pointer ,_) "%p"]))
        (make-lines `("printf(\"",flag"\", ",e");\n"))]
       
       [(set! ,[Var -> v] (assert-type ,ty ,[Simple -> x]))
@@ -306,11 +411,12 @@
 	(incr-heap-refcount ty v)  ;; In with the new.
 	)]
 
-      [(Array:set (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind] ,[Simple -> val])
+      [(Array:set (assert-type (Array ,elt) ,[Simple -> arr]) ,[Simple -> ind] ,[Simple -> val])
        (append-lines 	
-	(decr-heap-refcount ty `(,arr"[",ind"]"))  ;; Out with the old.	
+	(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
+	(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.	
 	(make-lines `(,arr"[",ind"] = ",val";\n"))
-	(incr-heap-refcount ty `(,arr"[",ind"]"))  ;; In with the new.
+	(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.
 	)]
 
       [(emit ,vq ,x) (emitter x)]
@@ -430,7 +536,7 @@
 			    ,tmp"[-1] = 0;\n"
 			    ,tmp"[-2] = ",len";\n"
 			    ;; Now fill the array, if we need to:
-			    ,(if (not (wszero? elt init))
+			    ,(if (and init (not (wszero? elt init)))
 				 (let ([i (unique-name "i")]
 				       [tmp2 (unique-name "arrtmpb")]
 				       [len2 (unique-name "lenmin1")])
@@ -533,6 +639,9 @@
 (define-pass emit-c2
   [Program 
    (lambda (prog Expr)
+     (let-values ([(freefundefs table) (build-free-fun-table (cdr (ASSERT (project-metadata 'heap-types prog))))])
+       (fluid-let ([free-fun-table table])
+     ;(assq 'c-includes meta*)
      (match prog
        [(,lang '(graph (const ,[(Binding (emit-err 'Binding)) -> cb*] ...) ;; These had better be *constants* for GCC
 		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
@@ -540,33 +649,33 @@
 		       (sources ,[Source -> srcname* src*  state1*] ...)
 		       (operators ,[Operator -> oper* state2** init**] ...)
 		       (sink ,base ,basetype)
-		       ,_))	
-	;(assq 'c-includes meta*)
-
-	(define includes (string-append "#include<stdio.h>\n" 
-					"#include<stdlib.h>\n"
-					"#include \""(++ (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
-					))
-	(define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
-	(define ops      (text->string (map lines-text (reverse oper*))))
-	(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
-	(define init     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**))))))
-	(define driver   (text->string (lines-text (build-main-source-driver srcname*))))
-	;(define toplevelsink "void BASE(int x) { }\n")
-
-	(define total (apply string-append 
+		       ,meta* ...))       
+	  (define includes (string-append "#include<stdio.h>\n" 
+					  "#include<stdlib.h>\n"
+					  "#include \""(++ (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
+					  ))
+	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
+	  (define ops      (text->string (map lines-text (reverse oper*))))
+	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
+	  (define init     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**))))))
+	  (define driver   (text->string (lines-text (build-main-source-driver srcname*))))
+	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
+	  (define total (apply string-append 
 			(insert-between "\n"
-			  (list includes allstate
+			  (list includes 
+				(text->string (lines-text freefundefs))
+				allstate
 				;toplevelsink
 				ops srcfuns 
 				init driver))))
 
-	;(printf "====================\n\n")	
-	;(display total)
-	total]
+	  ;;(printf "====================\n\n")	
+	  ;;(display total)
+	  total]
 
        [,other ;; Otherwise it's an invalid program.
-	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)]))]
+	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)]))
+	 ))]
   ) ;; End pass
 
 

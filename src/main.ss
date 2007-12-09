@@ -684,7 +684,6 @@
   ;; This is an example of the experimental pass-fusion mechanism.
   ;(ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
   (ws-run-pass p ws-normalize-context)
-  (pretty-print p)
   (ws-run-pass p ws-lift-let)
   
   ; --mic, <OPTIMIZATION>
@@ -1003,10 +1002,12 @@
     
    (if new-version?
        (begin 
+	 (ws-run-pass prog gather-heap-types)
+	 (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
 	 (ws-run-pass prog explicit-stream-wiring)
-	 (string->file 
-	  (text->string (emit-c2 prog))
-	  outfile)
+	 (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
+	 (ws-run-pass prog emit-c2)
+	 (string->file (text->string prog) outfile)
 	 (unless (regiment-quiet)
 	   (printf "\nGenerated C output to ~s.\n" outfile))
 	 )

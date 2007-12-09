@@ -297,9 +297,11 @@
 		    (operators  . ,op*)
 ;		    (iterates  . ,iter*)
 ;		    (unions    . ,union*)
-		    (sink ,basename ,t)
+		    (sink ,basename ,t)		    
 		    (union-types . ,union-types)
-		    )))]))]
+		    ,@(assq-remove-all 'union-types meta*)
+		    )	    
+	    ))]))]
   )
 
 
