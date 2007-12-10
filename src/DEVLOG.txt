@@ -1340,5 +1340,45 @@ depth-first edge AND that the downstream won't modify the array (which
 it's not allowed to).
 
 
-[2007.12.04]
 
+[2007.12.09]
+
+benchmarks/microbench:
+
+Interesting.  Begining to test the performance of my new refcounting
+scheme.  Works great for passing a stream of arrays.  But then it
+worked pretty terribly for passing square 2D arrays.
+
+Testing with manual_best.c, which represents the theoretical best
+performance we can achieve (no refcounting overhead).
+
+For allocating 200 million units worth (in 1000x1000 arrays), it was
+taking 1200 ms total, almost half of which was SYSTEM TIME (680ms
+user).  BUT, it turns out that using either hoard or tcmalloc greatly
+improves this.  Hoard gives us 560ms and tcmalloc 750ms, both with
+neglible system time.
+
+Tried nedmalloc... 608ms or 696ms.
+
+ptmalloc3 does a *little* better than whatever is default on faith, it
+gets 877ms (648/228 real/user).
+
+The naive reference counting scheme takes 650ms with hoard as opposed
+to 560 with the manual no-refcount version.  The ZCT algorithm
+shouldn't do much better, and may do worse.
+
+Interesting... my idealized manual_zct version gets 568ms (hoard).  Deffered
+RC does offer benefit here.
+
+It's going to be tricky to figure out :
+ (1) How to best represent type information at runtime in the ZCT for
+     the purpose of calling the appropriate free code.  (Could just
+     store a function pointer to freeing code... or could use some
+     bits to try to describe the type...)
+ (2) How to best handle newly created objects with the deferred
+     scheme.  Could enter them in the ZCT immediately.  But then we
+     may have to process the ZCT multiple times, because it will
+     include non-zero-refcount objects.  Even if we do it this way,
+     the compiler can still omit those ZCT entries as an optimization.
+
+     This must be a standard problem with deferred refcounting GC's.

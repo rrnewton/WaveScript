@@ -215,6 +215,7 @@
 		         (simple-constant? imm)
 			 ;(not (pair? imm)) (not (vector? imm))
 			 ) #t]
+;    [Array:null #t] ;; [2007.12.09] Adding...
     ;; Void value:
     [(tuple) #t] ;; [2007.03.19] Why had I commented this before? Using 'UNIT instead.
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]

@@ -13,6 +13,9 @@
 ;;;; It produces "lower level" C code than the first version, meant to
 ;;;; be used with a custom garbage collector.
 
+;;;; TODO: The pass that INSERTS refcount incr's and decr's can be
+;;;; extracted from this pass.
+
 (module emit-c2 mzscheme 
   (require  "../../../plt/common.ss"
 	    (all-except (lib "list.ss") sort sort! filter)
@@ -72,13 +75,15 @@
 
 
 ;; This builds a set of top level function definitions that free all
-;; the heap-allocated types present in the system.  It also returns a
+;; the heap-allocated types present in the system.  It also builds a
 ;; table mapping types onto syntax-generating functions that call the
 ;; appropriate free-ing code.
+;; 
+;; Currently this routine mutates the table "free-fun-table" on the fly.
 ;;
 ;; It is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
-(trace-define (build-free-fun-table heap-types)
+(trace-define (build-free-fun-table! heap-types)
   (define (heap-allocated? ty)
     (match ty
       [Bool #f] 
@@ -88,35 +93,42 @@
       [(Ref ,_) #t] ;; ??      
       ))
   (define fun-def-acc '()) ;; mutated below
-  (define name-table
-    (filter id
-      (map (lambda (ty) 
-	     (let loop ([ty ty])
-	       (match ty
-		 ;; Tuples are not heap allocated for now (at least the bigger ones should be):
-		 [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-		 [Bool  #f] 
-		 [,numt (guard (memq numt num-types)) #f] 
-		 [(Ref ,elt) (loop elt)]
-		 [(Array ,elt)
-		  (cons ty 
-			(if (not (heap-allocated? elt))
-			    (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
-			    (let ([name (type->name ty)]
-				  [ind (Var (unique-name "i"))])
-			      (set! fun-def-acc
-				    (cons (make-lines 
-					   (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
-						  `("int ",ind";\n"
-						    ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
-							    (lines-text ((cdr (loop elt)) `("ptr[",ind"]"))))
+  (for-each
+      (lambda (ty) 
+	 (let loop ([ty ty])
+	   (match ty
+	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
+	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
+	     [Bool  #f] 
+	     [,numt (guard (memq numt num-types)) #f]
+	     [(Ref ,elt) (loop elt)]
+	     [(Array ,elt)
+	      (set! free-fun-table
+		    (cons (cons ty 
+				(if (not (heap-allocated? elt))
+				    (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
+				    (let ([name (type->name ty)]
+					  [ind (Var (unique-name "i"))])
+				      (set! fun-def-acc
+					    (cons (make-lines 
+						   (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
+							  `("int ",ind";\n"
+							    ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
+							    ;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
+							    (begin (loop elt) ;; For side effect
+								   (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
+							    )
 						    "free((int*)ptr - 2);\n")))
 					  fun-def-acc))
 			      (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-			    ))])))
-      heap-types)))
-  (values (apply append-lines fun-def-acc)
-	  name-table))
+			    ))
+			  free-fun-table))])))
+      heap-types)
+  (apply append-lines 
+	 ;; This will have to be per-thread...
+	 (make-lines (list "void* ZCT[1000];\n"
+			   "int ZCT_count;\n"))
+	 fun-def-acc))
 
 
 ;================================================================================
@@ -125,33 +137,54 @@
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 (define (gen-incr-code ty ptr)
   (match ty
-    [(Array ,elt) (make-lines `("(int*)",ptr"[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
+    [(Array ,elt) 
+     (make-lines `("if (",ptr") ((int*)",ptr")[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Other types are not heap allocated:
     [,_ (make-lines "")]
     ))
 
 ;; "ptr" should be text representing a C lvalue
-(define (gen-decr-code ty ptr freefun)
+(trace-define (gen-decr-code ty ptr freefun)
   (match ty
-    [(Array ,elt) (make-lines (block `("if (--(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ") 
-				     (lines-text (freefun ty ptr))))]
+    [(Array ,elt) 
+     (make-lines 
+      (block `("if (",ptr" && --(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ") 
+	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
     [,_ (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
 (define (default-free ty ptr)  
   (append-lines 
-   (make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
+   ;(make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
    ((cdr (ASSERT (assoc ty free-fun-table))) ptr)))
 
-(define incr-local-refcount gen-incr-code)
-(define (decr-local-refcount ty ptr)  
-  (gen-decr-code ty ptr default-free))
+;; This version represents plain old reference counting.
+#;
+(begin
+  (define (incr-local-refcount ty ptr) (gen-incr-code ty ptr))
+  (define (decr-local-refcount ty ptr) (gen-decr-code ty ptr default-free))
+  
+  (define incr-heap-refcount gen-incr-code)
+  (define (decr-heap-refcount ty ptr)
+    (gen-decr-code ty ptr default-free))
+  (define (potential-collect-point) (make-lines ""))
+  )
 
-(define incr-heap-refcount gen-incr-code)
-(define (decr-heap-refcount ty ptr)
-  (gen-decr-code ty ptr default-free))
+;; This version uses deferred reference counting.
+(begin 
+  (define (incr-local-refcount ty ptr) (make-lines ""))
+  (define (decr-local-refcount ty ptr) (make-lines ""))
+
+  (define incr-heap-refcount gen-incr-code)
+  (define (decr-heap-refcount ty ptr)
+    (gen-decr-code ty ptr default-free))
+
+  (define (potential-collect-point)
+    (make-lines ""))
+  )
+
 
 ;; Do anything special that's required as a value is sent off through an emit.
 ;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
@@ -467,10 +500,13 @@
 		      bod
 		      (decr-local-refcount ty (Var lhs)))]
        
-	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
-	 (PrimApp (cons prim rand*) k #f )]
-	[(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	 (PrimApp (cons prim rand*) k ty)]
+       ;; PolyConstants:
+       [(assert-type ,[Type -> ty] Array:null) (k `("(",ty")0"))] ;; A null pointer.
+       
+       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	(PrimApp (cons prim rand*) k #f )]
+       [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+	(PrimApp (cons prim rand*) k ty)]
        ))))
 
 
@@ -495,7 +531,6 @@
 
 #;
       [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
-       ;(if (eq? var  'memoized_fftR2C) (inspect 'gotit))
        (add-include! "<fftw3.h>")
        (add-include! (list "\"" (REGIMENTD) 
 			   "/src/linked_lib/FFTW_wrappers.cpp\""))
@@ -517,7 +552,14 @@
 	      (match obj
 		[',x (and (number? x) (= x 0))]
 		[,_ #f])]
-	 [(Array ,_) #f] ;; No zero for this type.  It's a pointer.
+	 ;; Vacillating on whether the null array should be a single
+	 ;; object (a null pointer).
+	 [(Array ,_)
+	  (printf "ISARRZERO??? ~a\n" obj)
+	  (match obj
+	    [Array:null #t]
+	    [(assert-type ,_ ,[x]) x]
+	    [,else #f])]
 	 [,ty (error 'wszero? "Not yet handling zeros for this type: ~s" ty)]))
      (define (make-array len init ty)
        (let ([len (Simple len)])
@@ -639,8 +681,8 @@
 (define-pass emit-c2
   [Program 
    (lambda (prog Expr)
-     (let-values ([(freefundefs table) (build-free-fun-table (cdr (ASSERT (project-metadata 'heap-types prog))))])
-       (fluid-let ([free-fun-table table])
+     (fluid-let ([free-fun-table ()])
+       (let ([freefundefs (build-free-fun-table! (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
      (match prog
        [(,lang '(graph (const ,[(Binding (emit-err 'Binding)) -> cb*] ...) ;; These had better be *constants* for GCC

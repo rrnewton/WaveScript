@@ -13,14 +13,17 @@
 
 //printevery = 20 * 1000;
 printevery = 20;
+//printevery = 1;
 
-size = 10
+size = 1000
 
 source = iterate _ in timer(10.0) {
-  arr = Array:build(size, fun(i) Array:make(size, 0));
-  arr2 = arr[size/2];
-  arr2[size/2] := 39;
-  //print(" Alloc'd one!\n");
+  // Don't know how makeUNSAFE can work with the reference counting scheme:
+  //arr = Array:build(size, fun(i) Array:make(size, 0));
+  arr = Array:make(size, Array:null);
+  for i = 0 to size-1 { arr[i] := Array:make(size,0); };
+  arrinner = arr[size/2];
+  arrinner[size/2] := 39;
   emit arr;
 }
 // We don't want to print too much output, only produce an output every once in a while
@@ -29,8 +32,21 @@ BASE <- iterate arr in source {
   count += 1;
   if count == printevery then {
     count := 0;
-    //print(arr[500]);
-    //print("\n");
     emit (arr[size/2])[size/2]; 
+    //emit 99;
   }
 }
+
+
+/*
+
+export LD_PRELOAD=/usr/lib/libhoard.so
+
+export LD_PRELOAD="/home/newton/build/hoard-37/src/libhoard.so"
+
+export LD_PRELOAD="/home/newton/build/hoard-37/src/libhoard.so:/lib/libdl-2.7.so"
+
+export LD_PRELOAD="/usr/lib/libtcmalloc.so.0"
+
+
+*/
