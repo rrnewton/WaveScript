@@ -35,7 +35,7 @@
 		 ;dump-binfile 
 		 ;audio 
 		 timer timer-bench
-		 show
+		 show __show_ARRAY
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
 		 gnuplot_process spawnprocess
@@ -98,7 +98,7 @@
 
 		 assert-type
 		 
-		 wserror inspect 
+		 wserror __wserror_ARRAY inspect 
 		 emit return
 		 ;smap sfilter
 		 iterate break ;deep-iterate
@@ -1271,6 +1271,8 @@
     (inverse-dft arr))
 
   (define (wserror str) ((wserror-handler) str))
+  (define (__wserror_ARRAY vec) (wserror (list->string (vector->list vec))))
+
   (IFCHEZ (define inspect inspect/continue)
              ;; Don't know of an interactive object inspector in PLT:
 	  (define (inspect x) x))      
@@ -1396,7 +1398,9 @@
        )
 
      (define show ws-show)
+     (trace-define (__show_ARRAY x) (list->vector (string->list (ws-show x))))
 
+     ;; Inefficient, show should be defined in terms of print, not vice-versa
      (define (ws-print x)
        (parameterize ([current-output-port (ws-print-output-port)])
 	 (if (string? x)

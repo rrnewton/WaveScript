@@ -36,6 +36,7 @@
 	   local-node-primitives
 	   meta-only-primitives
 	   higher-order-primitives
+	   library-primitives
 	   regiment-constants
 	   regiment-distributed-primitives
 	   regiment-primitives
@@ -174,6 +175,24 @@
     ))
 
 
+;; These are primitives that are defined in a library.  Currently they
+;; actually aren't considered primitive by "regiment-primitive?", but
+;; the names are recognized as special.
+;;
+;; There are many other possible conventions here... if we wanted we
+;; could extract the special names from internal.ws and avoid the
+;; extra overhead of a table-entry here...
+;; 
+;; The primitives in this table, together with those names used in
+;; rewrite-optimizations (special-rewrite-libfuns) make up all the
+;; names that are treated as special.  In the future, we may require
+;; that special-rewrite-libfuns symbols are a subset of those in this
+;; table.
+(define library-primitives
+  '(
+    [Array:blit  ((Array 't) Int (Array 't) Int Int) (Array 't)]
+    ))
+
 ;; Only for the meta-language, shouldn't exist after static-elaborate.
 ;; TODO: FIXME: Don't think I enforce this right now!!
 (define meta-only-primitives
@@ -212,6 +231,7 @@
      (HashTable:set_BANG ((HashTable 'key 'val) 'key 'val) #())
      (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
      (print            ('a) #())
+     ;(__print            ((Array Char)) #())
 
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
      (emit           ((VQueue 'a) 'a)                #())
@@ -221,6 +241,8 @@
 
      ;; Signals an error, has any return type:
      (wserror         (String)                  'a)
+     (__wserror_ARRAY ((Array Char))            'a) ;; Internal
+
      (inspect         ('a)                      'a)
 
      )))
@@ -667,6 +689,7 @@
     ;----------------------------------------------------------------------
 
     (show             ('a) String)
+    (__show_ARRAY     ('a) (Array Char)) ;; Internal
 
     ;; These keep a gnuplot window open and repeatedly update it.
     ;; Shouldn't need both of these, one should be defined in wavescript:
@@ -1084,14 +1107,11 @@
 (define get-primitive-entry
   (lambda (prim)
     (or 
-     #;(let ([entry (hashtab-get primitives-hash prim)])
-	  (if entry (cons prim entry) #f))
-    (let ([entry (regiment-primitive? prim)])
-      (if entry (cons prim entry) #f))
-
-    (assq prim token-machine-primitives)
-    (error 'get-primitive-entry
-           "no entry for this primitive: ~a" prim))))
+     (let ([entry (regiment-primitive? prim)])
+       (if entry (cons prim entry) #f))     
+     (assq prim token-machine-primitives)
+     (error 'get-primitive-entry
+	    "no entry for this primitive: ~a" prim))))
 
 ;; Gotta remember to update this if I change the format of prim entries..
 (define (get-primitive-return-type prim)
@@ -1111,19 +1131,14 @@
        [else (cons (f (car args) types)
 		   (loop (cdr args) types))]))))
 
-#;
-(define (get-primitive-arity prim)
-  (let* ([entry (get-primitive-entry prim)]
-	 [args (cadr entry)])
-    (cond
-     [(eq? 'Constant args) #f]
-     [else (length args)])))
-
 ;; Is it a regiment primitive?
-;(define (regiment-primitive? x) (hashtab-get primitives-hash x))
-(define (regiment-primitive? x) 
-  (let ([entry (assq x (regiment-primitives))])
-    (and entry (cdr entry))))
+(define regiment-primitive? 
+  ;; TOGGLE: list or hashtab based implementaition:
+  (lambda (x) (hashtab-get primitives-hash x))
+#;
+  (lambda (x) 
+    (let ([entry (assq x (regiment-primitives))])
+      (and entry (cdr entry)))))
 
 ;; Is it a regiment constant?
 (define (regiment-constant? x)

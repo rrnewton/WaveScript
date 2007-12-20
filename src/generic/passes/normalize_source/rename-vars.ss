@@ -18,6 +18,11 @@
            test-rename-vars)
   (chezimports)
 
+  ;; These are names that we don't mangle.  They're faux-primitive.
+  (define special-names    
+    (union (IFCHEZ special-rewrite-libfuns '()) ;; HACK
+	   (map car library-primitives)))
+
   ;; This is a bit of a hack... really should split rename-var into
   ;; two separate passes for the two places it's used.
   (define rename-vars-grammar
@@ -40,10 +45,9 @@
        (define (make-new-name sym)
 	 ;; [2007.10.21] We don't touch special names.  It's currently
 	 ;; up to the user to insure that they are only defined once.
-	 (if (IFCHEZ (memq sym special-rewrite-libfuns) #f)
-	     sym
+	 (if (memq sym special-names)  sym
 	     (unique-name sym)))
-
+       
        (define (process-expr expr var-table)
 	 (define (driver x fallthrough)
 	   (match x
@@ -52,6 +56,7 @@
 		   (cond
 		    [(assq var var-table) (cdr (assq var var-table))]
 		    [(regiment-primitive? var) var]
+		    ;; FIXME: Currently library-primitives are only allowed as operators...
 		    [else (error 'rename-vars "variable was not bound, how can this happen?: ~a ~a"
 				 var var-table)])]
 	     [(lambda (,v* ...) (,t* ...) ,expr)

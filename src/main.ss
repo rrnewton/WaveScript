@@ -472,6 +472,10 @@
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)
+
+  (let ([tmp (deep-assq-all 'String p)])
+    (unless (null? tmp) (inspect tmp)))
+
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
@@ -544,6 +548,8 @@
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
+
+  ;;;;;;;;;;;;;; POST ELABORATION: ;;;;;;;;;;;;;;;;;;;;;
 
   (when (or (regiment-verbose) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
@@ -630,7 +636,12 @@
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p explicit-toplevel-print))
 
+  (ws-run-pass p optimize-print-and-show)
+
   (ws-run-pass p generate-printing-code)
+  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+    (ws-run-pass p embed-strings-as-arrays))
+
 #;
   (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-xstream)
     (ws-run-pass p generate-comparison-code)

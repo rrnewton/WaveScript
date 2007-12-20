@@ -25,6 +25,7 @@
 	   ws-normalize-context
 	   generate-comparison-code
 	   generate-printing-code
+	   optimize-print-and-show
 	   explicit-toplevel-print
 	   strip-unnecessary-ascription
 
@@ -208,9 +209,28 @@
        ))])
 
 
+;; [2007.12.18] I had talked about doing this but not got around to
+;; it.  Here we distribute print's over string-appends, and eliminate
+;; show applied to a string, and print applied to show.
+(define-pass optimize-print-and-show
+    (define (Expr xp fall)
+	    (match xp
+	      [(print ,shw)	       
+	       (match (peel-annotations shw)
+		 [(show ,x) (Expr `(print ,x) fall)]
+		 [(string-append ,a ,b) 
+		  (Expr `(begin (print (assert-type String ,a))
+				(print (assert-type String ,b))) fall)]
+		 [,_ `(print ,(Expr shw fall))])]
+	      [(show (assert-type String ,strE)) `(assert-type String ,strE)]
+	      [,oth (fall oth)]))
+  [Expr Expr])
+
 ;; [2007.10.28] Factoring this out of emit-c.
 ;; It builds code to print a particular type of value.
 ;; It should work across backends.
+;; Ideally, this should leave print accepting only strings or scalars.
+;;
 (define-pass generate-printing-code
   (define (build-print which ty expr addstr!)
     (match ty
@@ -230,13 +250,17 @@
 		       (set! ,ptr (cdr (deref ,ptr)))))
 	      ,(addstr! ''"]"))))]
 
+      [String #f] ;; No change
+      
+      ;; Scalars we let through.
+      ;[,ty (guard (scalar-type? ,ty)) `(,which (assert-type ,ty ,expr))]
+      [,ty (guard (scalar-type? ty)) #f]
 #;      
       [Int (if (eq? which 'print)
 	       `(print (assert-type ty (intToString ,expr)))
-	       `(assert-type ty (intToString ,expr)))]
-
-      ;[,oth `(,which (assert-type ,ty ,expr))]
-      [,oth #f]
+	       `(assert-type ty (intToString ,expr)))]      
+      ;[,oth #f]
+      [,oth (error 'generate-printing-code "Unhandled type: ~s" oth)]
       ))
   [Expr 
    (lambda (x fallthru)
@@ -251,6 +275,12 @@
        ;; This is nastier... currently quadradic append behavior.
        ;; The solution, of course, is to expose more (mutable string
        ;; buffers) or, alternatively, to form a list of strings and then append once
+       ;;
+       ;; [2007.12.18] One simple way to accomplish this is to just expose a destructive string-append!...
+       ;; When the first string-append! happens, that tells it to allocate some extra space, 
+       ;; because it will happen again.  This is a hack that doesn't require a new type.  But it 
+       ;; does require a representation of strings that store the length of the allocation separate 
+       ;; from the null terminator (our embedding into arrays enables that).
        [(show (assert-type ,ty ,[exp]))
 	(let ([acc (unique-name 'acc)])
 	  (let ([printer (build-print 'show ty exp (lambda (x) `(set! ,acc (string-append (deref ,acc) ,x))))])

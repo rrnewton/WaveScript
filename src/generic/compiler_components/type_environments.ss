@@ -220,8 +220,10 @@
 	  [Double  (flonum? c)]
 	  [Complex (cflonum? c)]
 	  [Bool  (boolean? c)]
+	  [Char (char? c)]
 	  [String (string? c)]
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
+	  [(Array ,t) (and (vector? c) (andmap (lambda (x) (constant-typeable-as? x t)) (vector->list c)))]
 	  [#()   (eq? c 'UNIT)]
 
 	  ;; Type variable, matches anything:

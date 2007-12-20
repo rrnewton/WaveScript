@@ -341,7 +341,8 @@
       [,other  (values (list other) all-includes)]))
 
   ;; First we use "process" to handle includes and namespaces.
-  (define  ws (first-value (process* origws '() #f)))
+  ;; We automatially inject an include of "internal.ws"
+  (define  ws (first-value (process* (cons '(include "internal.ws") origws) '() #f)))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
   (define (f2 x) (or (memq (car x) '(define using define-as)) ))

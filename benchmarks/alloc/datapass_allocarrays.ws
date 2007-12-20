@@ -15,11 +15,16 @@
 //   wsc.new  - 3064/1768 real/user  (this is O3 but with thread support)
 //   wsc.new  - 2886/1624 real/usr   (O2)
 
-printevery = 20 * 1000;
+scalefactor = stringToInt(GETENV("SCALEFACTOR"))
+
+// Target is 40 million units
+printevery = (40 * 1000 * 1000) / scalefactor
+
+size = 1 * scalefactor
 
 source = iterate _ in timer(10.0) {
-  arr = Array:make(1000,0);
-  arr[500] := 39;
+  arr = Array:make(size,0);
+  arr[2] := 39;
   //print(" Alloc'd one!\n");
   emit arr;
 }
@@ -31,6 +36,6 @@ BASE <- iterate arr in source {
     count := 0;
     //print(arr[500]);
     //print("\n");
-    emit arr[500]; 
+    emit arr[2]; 
   }
 }

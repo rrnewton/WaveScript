@@ -998,7 +998,8 @@
 		  )
 		))
 	    ;; We set up the error handler to give some source info.
-;	    (main-work)
+	    (main-work)
+#;
 	    (with-error-handlers
 	     (lambda args 
 	       (printf "\n========================================\n")

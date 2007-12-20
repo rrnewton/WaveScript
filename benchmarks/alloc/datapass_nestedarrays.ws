@@ -11,11 +11,14 @@
 //   wsc.new  - 3064/1768 real/user  (this is O3 but with thread support)
 //   wsc.new  - 2886/1624 real/usr   (O2)
 
-//printevery = 20 * 1000;
-printevery = 20;
+scalefactor = stringToInt(GETENV("SCALEFACTOR"))
+
+// Target is 40 million units
+// Target is 100 million units
+printevery = 100 * 1000 * 1000 / (scalefactor * scalefactor)
 //printevery = 1;
 
-size = 1000
+size = 1 * scalefactor
 
 source = iterate _ in timer(10.0) {
   // Don't know how makeUNSAFE can work with the reference counting scheme:
@@ -30,7 +33,7 @@ source = iterate _ in timer(10.0) {
 BASE <- iterate arr in source {
   state { count :: Int = 0 }
   count += 1;
-  if count == printevery then {
+  if count >= printevery then {
     count := 0;
     emit (arr[size/2])[size/2]; 
     //emit 99;

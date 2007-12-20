@@ -13,7 +13,8 @@ UTIME=`tail -n 25 $1  | grep "real" | tail -n 1 | awk '{ print $2 }' | sed -e 's
 MIN=`echo $UTIME | awk '{ print $1 }'`
 SEC=`echo $UTIME | awk '{ print $2 }'`
 
-if [ "$UTIME" == "" ]; then echo "Couldn't extract time!"; exit -1; fi
+# Causing errors... why?
+#if [ "$UTIME" == "" ]; then echo "Couldn't extract time!"; exit -1; fi
 
 # convert to milliseconds
 echo "(* (+ 0 (* 60 $MIN) $SEC) 1000)" | petite -q

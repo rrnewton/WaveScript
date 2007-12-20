@@ -20,8 +20,6 @@ ALWAYSON="-O3 -funroll-loops"
 OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
 #OPTFLAGS="-g -O0"
 
-
-#CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c -fprofile-arcs"
 CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
 echo "$CMD"
 if $CMD;

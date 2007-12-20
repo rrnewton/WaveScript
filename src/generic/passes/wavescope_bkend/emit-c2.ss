@@ -22,7 +22,9 @@
 	    (all-except "nominalize-types.ss" test-this these-tests)
 	    "convert-sums-to-tuples.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-c2 gather-heap-types)
+  (provide emit-c2 
+	   gather-heap-types
+	   embed-strings-as-arrays)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -74,6 +76,63 @@
 	   `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@rest))])))])
 
 
+(define-pass embed-strings-as-arrays
+    (define (Type ty) 
+      (match ty
+	[String `(Array Char)]
+	[,s (guard (symbol? s)) s]
+	[(,qt ,tvar) (guard (memq qt '(NUM quote))) `(,qt ,tvar)]
+	[#(,[t*] ...) (list->vector t*)]
+	[(,[arg*] ... -> ,[res]) `(,@arg* -> ,res)]
+	[,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
+	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)] ; Type constructor
+	[,other (error 'embed-strings-as-arrays "malformed type: ~a" ty)]))
+    [Expr (lambda (xp fallthru)
+	    (match xp
+	      ;; make a constant vector.
+	      [',str (guard (string? str))
+		     `',(list->vector (append ;(make-list 8 #\nul)
+					      (string->list str)
+					      (list #\nul)))]
+	      [(string-append ,[s1] ,[s2])
+	       (let ([a1 (unique-name "strarr1")]
+		     [a2 (unique-name "strarr2")]
+		     [i1 (unique-name "i")]
+		     [i2 (unique-name "i")]
+		     [len1 (unique-name "len")]
+		     [result (unique-name "result")])
+		 `(let ([,a1 (Array Char) ,s1] 
+			[,a2 (Array Char) ,s2])
+		    (let ([,len1 Int (Array:length ,a1)]
+			  [,result (Array Char) 
+				   (Array:makeUNSAFE (-_ (+_ ,len1 (Array:length ,a2)) '1))])
+		      (begin 
+			(for (,i1 '0 (-_ ,len1 '1))
+			    (Array:set ,result ,i1 (Array:ref ,a1 ,i1)))
+			(for (,i2 '0 (-_ (Array:length ,a2) '1))
+			    (Array:set ,result (+_ ,len1 ,i2) (Array:ref ,a2 ,i2)))
+			;(app Array:blit ,result '0 ,a1 '0 (-_ (Array:length ,a1) '1))
+			;(app Array:blit ,result (-_ (Array:length ,a1) '1) ,a2 '0 (Array:length ,a2))
+			,result))))]
+
+	      [(String:length ,[str]) `(Array:length ,str)]
+	      
+	      [(show ,[x]) `(__show_ARRAY ,x)]
+	      [(wserror ,[x]) `(__wserror_ARRAY ,x)]
+
+	      [(assert-type ,[Type -> ty] ,[e])  `(assert-type ,ty ,e)]
+
+	      [,oth (fallthru oth)]
+
+	      ;; Not implemented at runtime yet:
+	      ;[(String:explode   (String) (List Char))]
+	      ;[(String:implode   ((List Char)) String)]
+	      )
+	    )]  
+    [Bindings
+     (lambda (vars types exprs reconstr exprfun)
+       (reconstr vars (map Type types) (map exprfun exprs)))])
+
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
 ;; table mapping types onto syntax-generating functions that call the
@@ -93,6 +152,8 @@
       [(Ref ,_) #t] ;; ??      
       ))
   (define fun-def-acc '()) ;; mutated below
+  (define (add-to-table! ty fun)    
+    (set! free-fun-table (cons (cons ty fun) free-fun-table)))
   (for-each
       (lambda (ty) 
 	 (let loop ([ty ty])
@@ -103,31 +164,29 @@
 	     [,numt (guard (memq numt num-types)) #f]
 	     [(Ref ,elt) (loop elt)]
 	     [(Array ,elt)
-	      (set! free-fun-table
-		    (cons (cons ty 
-				(if (not (heap-allocated? elt))
-				    (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
-				    (let ([name (type->name ty)]
-					  [ind (Var (unique-name "i"))])
-				      (set! fun-def-acc
-					    (cons (make-lines 
-						   (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
-							  `("int ",ind";\n"
-							    ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
-							    ;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
-							    (begin (loop elt) ;; For side effect
-								   (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
-							    )
-						    "free((int*)ptr - 2);\n")))
-					  fun-def-acc))
-			      (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-			    ))
-			  free-fun-table))])))
-      heap-types)
+	      (add-to-table! 
+	       ty 	       
+	       (if (not (heap-allocated? elt))
+		   (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
+		   (let ([name (type->name ty)]
+			 [ind (Var (unique-name "i"))])
+		     (set! fun-def-acc
+			   (cons (make-lines 
+				  (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
+					 `("int ",ind";\n"
+					   ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
+						   ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
+						   (begin (loop elt) ;; For side effect
+							  (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
+						   )
+					   "free((int*)ptr - 2);\n")))
+				 fun-def-acc))
+		     (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+		   ))])))
+    heap-types)
   (apply append-lines 
-	 ;; This will have to be per-thread...
-	 (make-lines (list "void* ZCT[1000];\n"
-			   "int ZCT_count;\n"))
+	 ;; This will have to be per-thread...	 
+	 ;(make-lines " void* ZCT[1000];\n int ZCT_count;\n")
 	 fun-def-acc))
 
 
@@ -161,7 +220,6 @@
    ((cdr (ASSERT (assoc ty free-fun-table))) ptr)))
 
 ;; This version represents plain old reference counting.
-#;
 (begin
   (define (incr-local-refcount ty ptr) (gen-incr-code ty ptr))
   (define (decr-local-refcount ty ptr) (gen-decr-code ty ptr default-free))
@@ -172,6 +230,7 @@
   (define (potential-collect-point) (make-lines ""))
   )
 
+#;
 ;; This version uses deferred reference counting.
 (begin 
   (define (incr-local-refcount ty ptr) (make-lines ""))

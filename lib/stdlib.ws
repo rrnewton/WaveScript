@@ -66,7 +66,6 @@ Array:fold1     :: ((t, t) -> t, Array t) -> t;
 //Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
-Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
 Array:append    :: (Array t, Array t) -> Array t;
 Array:concat    :: (List (Array t)) -> Array t;
 Array:sub       :: (Array t, Int, Int) -> Array t;
@@ -552,15 +551,6 @@ namespace Array {
   fun fill(arr,v) {
     for i = 0 to Array:length(arr) - 1 {
       arr[i] := v;
-    }
-  }
-
-  // Should maybe call "blockcopy", but that's less fun.
-  // Like memcpy... might want to make
-  // TODO: add some defense!!  
-  fun blit(dst, dstpos, src, srcpos, len) {
-    for i = 0 to len - 1 {
-      dst[i+dstpos] := src[srcpos+i];      
     }
   }
 

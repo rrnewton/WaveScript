@@ -38,10 +38,8 @@ void anonstreamop_1(int** arr_8) {
   char tmp;
   if (tmp_75) {
     count_4 = (int)0;
-    int tmp_77 = (size_5 / (int)2);
-    int* tmp_79 = arr_8[tmp_77];
-    int tmp_81 = (size_5 / (int)2);
-    int tmp_83 = tmp_79[tmp_81];
+    int* tmp_79 = arr_8[2];
+    int tmp_83 = tmp_79[2];
     finalstrm_57(tmp_83);
     char tmp_85 = ((char)0);
     tmp = tmp_85;
@@ -65,11 +63,8 @@ void source_2(char __11) {
     arr_12[i_14] = tmp_67;
     char tmp_69 = ((char)0);
   }
-  int tmp_61 = 5;
-  int* arrinner_13 = arr_12[tmp_61];
-  int tmp_63 = 5;
-  /* I AM ARRAY:SET DECR/INCR */
-  arrinner_13[tmp_63] = (int)39;
+  int* arrinner_13 = arr_12[2];
+  arrinner_13[2] = (int)39;
   anonstreamop_1(arr_12);
   free_Array_Array_Int(arr_12);
 }
@@ -79,15 +74,24 @@ void anonstreamop_3() {
 } 
 
 void initState() {
-   size_9 = (int)1000;
-  /* I AM HEAP INCR */
-  printevery_6 = (int)20;
-  /* I AM HEAP INCR */
-   size_5 = (int)10;
-  /* I AM HEAP INCR */
+
+  char* str = getenv("SCALEFACTOR");
+  if (0 == str) {
+    printf("Environment var SCALEFACTOR was not bound.\n");
+    exit(-1);
+  }
+  int scalefactor = atoi(str);
+  //printf("GOT SCALE: %d\n", scalefactor);
+
+  size_9 = (int)1 * scalefactor;
+
+  // 100 Million work units.
+  printevery_6 = (int)100 * 1000 * 1000 / (scalefactor * scalefactor);
+
+  size_5 = (int)size_9;
   int tmp_73 = (int)0;
-   count_4 = tmp_73;
-  /* I AM HEAP INCR */
+  count_4 = tmp_73;
+
 } 
 
 int main() {

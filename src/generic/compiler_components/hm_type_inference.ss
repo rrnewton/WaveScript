@@ -266,7 +266,7 @@
 	     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
 	     [,other (error 'instantiate-type "bad type: ~a" other)]
 	     ))))
-       (DEBUGASSERT (type? result))
+       (DEBUGASSERT type? result)
        result)]))
 
 ;; This takes away the mutable cells, thereby converting to the

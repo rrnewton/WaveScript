@@ -76,9 +76,8 @@
 ;; Unification will be triggered in the first place by the occurrence
 ;; of an application of the head operator (e.g. rewindow).
 
-
 (define special-rewrite-libfuns ;rewrite-heads  
-  (map caadr rewrite-rule-table))
+  (ASSERT list-is-set? (map caadr rewrite-rule-table)))
 
 (define rewrite-heads special-rewrite-libfuns)
 
