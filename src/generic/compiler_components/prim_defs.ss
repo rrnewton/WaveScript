@@ -569,7 +569,7 @@
     (HACK_O_RAMA (String) (Stream #(Int (List (Sigseg Int16)))))
 
     ;; Internal:
-    (readFile   ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
+    ;(readFile   ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     (__readFile ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     (readFile-wsearly  (String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
     
@@ -701,6 +701,8 @@
     (gnuplot_sigseg_stream2d ((Stream (Sigseg #((NUM a) (NUM b))))) (Stream (Sigseg #((NUM a) (NUM b)))))
 
     (string-append    (String String) String) ;; Rename String:append!!
+    ;(string-append!    (String String) String) ;; Internal -- destructive version.
+
     (String:length    (String) Int)
     (String:explode   (String) (List Char))
     (String:implode   ((List Char)) String)
@@ -1136,7 +1138,7 @@
   ;; TOGGLE: list or hashtab based implementaition:
   (lambda (x) (hashtab-get primitives-hash x))
 #;
-  (lambda (x) 
+  (lambda (x) ;; Slower association list version:
     (let ([entry (assq x (regiment-primitives))])
       (and entry (cdr entry)))))
 

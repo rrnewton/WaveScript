@@ -472,10 +472,7 @@
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)
-
-  (let ([tmp (deep-assq-all 'String p)])
-    (unless (null? tmp) (inspect tmp)))
-
+ 
   ;; Run this twice!!!
   ;;;;(ws-run-pass p degeneralize-arithmetic)
 
@@ -560,14 +557,11 @@
     (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
     (dump-compiler-intermediate p ".__elaborated.ss")
     (inspect (let-spine 4 p))
-    (inspect p)
     (exit 0)
     )
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
-
-;(inspect p)
 
 ;  (DEBUGMODE (do-late-typecheck))
 ;  (do-late-typecheck)
@@ -640,8 +634,13 @@
 
   (ws-run-pass p generate-printing-code)
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
-    (ws-run-pass p embed-strings-as-arrays))
-
+    (ws-run-pass p embed-strings-as-arrays)
+    (DEBUGMODE 
+     (let ([tmp (deep-assq-all 'String p)])
+       (unless (null? tmp) 
+	 (warning 'embed-strings-as-arrays "The symbol String occured in the output.  Here's a snippet:")
+	 (inspect tmp)))))
+  
 #;
   (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-xstream)
     (ws-run-pass p generate-comparison-code)

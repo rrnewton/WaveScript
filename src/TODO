@@ -266,6 +266,19 @@ supposed to return an intermediate record.
 [2007.12.07]
   *) I *really* need to optimize large arrays at interpret-meta time.
 
+
+[2007.12.20] {Doing the right thing for wsparse}
+
+  *) The wsparse "server" solution is really quite silly.  What I should do
+is just have a command line version (like plain "wsparse") that is
+called once, and kept open.  You pay the startup cost only once,
+irrespective of how many files you parse.  So it's almost as good as
+the server without the fragilities.
+
+  *) Add monomorphic first-order functions to the backends.
+     Gotta work with Michael to get merging going right.
+
+
 ================================================================================
 COMPLETELY FINISHED:
 
@@ -309,6 +322,5 @@ that point.  This new pass could be similar to nominalize-types...
 Right now, if you try to instantiate the same data
 constructor with different types in different parts of the program, it
 will break!
-
 
 

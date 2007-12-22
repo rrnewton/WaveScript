@@ -514,7 +514,6 @@
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
 			  ;(when (regiment-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
-			  ;(inspect (map available? fv*))
 			  (andmap available? fv*))]
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.

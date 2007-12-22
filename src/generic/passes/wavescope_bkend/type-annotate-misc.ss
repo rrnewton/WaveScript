@@ -49,7 +49,8 @@
 		  ))
 
     (define annotate-first-arg 
-      '(List:append List:length List:ref print show  seg-get toArray
+      '(List:append List:length List:ref seg-get toArray
+		    print show __show_ARRAY 
 		    Array:ref Array:set Array:length
 
 		    < <= > >= max min

@@ -137,6 +137,10 @@
 
 ;; [2007.08.02] This kind of thing should not be done in the actual
 ;; code generators if it can be helped.
+;;
+;; [2007.12.22] But, as with the printing code, it would be nice to
+;; generate function definitions and leave it up to the inliner as to
+;; whether its worth inlining.
 (define-pass generate-comparison-code
   (define (build-comparison origtype e1 e2)
     (match origtype ;; NO MATCH RECURSION!.
@@ -231,27 +235,58 @@
 ;; It should work across backends.
 ;; Ideally, this should leave print accepting only strings or scalars.
 ;;
+;; Also, ideally, this should coallesce printing functions for a given
+;; type and leave them abstracted as a function.  Otherwise it's just
+;; too much code bloat.  Especilly when it comes to sum types.  This
+;; should make one traversal to gather the types that are printed and
+;; replace calls to "print" with "print_type".  Then, at top-level,
+;; definitions for all the necessary "print_type" functions are
+;; injected.
 (define-pass generate-printing-code
+  ;(define ) ;; Mutated below, but scoped out here.
+
   (define (build-print which ty expr addstr!)
+    (define (recur ty expr)
+      (or (build-print which ty expr addstr!)
+	  (match which
+	    [print `(,which (assert-type ,ty ,expr))]
+	    [show   (addstr! `(,which (assert-type ,ty ,expr)))])))
     (match ty
       [(List ,elt)
-       (let* ([ptr (unique-name 'ptr)]
-	      [do-elt (or (build-print which elt `(car (deref ,ptr)) addstr!)
-			  `(,which (assert-type ,elt (car (deref ,ptr)))))])
+       (let* ([ptr (unique-name 'ptr)])
 	 `(let ([,ptr (Ref (List ,elt)) (Mutable:ref ,expr)])
 	    (begin 
 	      ,(addstr! ''"[")	      
 	      (while (not (wsequal? (deref ,ptr) (assert-type (List ,elt) '())))
 		     (begin
-		       ,(addstr! do-elt)
+		       ,(recur elt `(car (deref ,ptr)))
 		       (if (wsequal? (cdr (deref ,ptr))  (assert-type (List ,elt) '()))
 			   (tuple)
 			   ,(addstr! ''", "))
 		       (set! ,ptr (cdr (deref ,ptr)))))
 	      ,(addstr! ''"]"))))]
 
+
+      ;; TEMP FIXME: [2007.12.22] For now only for the new C backend.
+      [(Array ,elt) (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+       (let* ([arr (unique-name "arr")]
+	      [ind (unique-name "ind")])
+	 `(let ([,arr (Array ,elt) ,expr])
+	    (begin 
+	      ,(addstr! ''"#[")
+	      (for (,ind '0 (-_ (Array:length ,arr) '1))
+		  (begin 
+		    ,(recur elt `(Array:ref ,arr ,ind))
+		    (if (not (wsequal? ,ind (-_ (Array:length ,arr) '1)))
+			,(addstr! ''", ")
+			(tuple))))
+	      ,(addstr! ''"]"))))]
+
+
       [String #f] ;; No change
       
+      [(Sum ,ty) #f] ;; TODO: Need to implement sums.
+
       ;; Scalars we let through.
       ;[,ty (guard (scalar-type? ,ty)) `(,which (assert-type ,ty ,expr))]
       [,ty (guard (scalar-type? ty)) #f]
@@ -259,8 +294,8 @@
       [Int (if (eq? which 'print)
 	       `(print (assert-type ty (intToString ,expr)))
 	       `(assert-type ty (intToString ,expr)))]      
-      ;[,oth #f]
-      [,oth (error 'generate-printing-code "Unhandled type: ~s" oth)]
+      [,oth #f]
+      ;[,oth (error 'generate-printing-code "Unhandled type: ~s" oth)]
       ))
   [Expr 
    (lambda (x fallthru)
@@ -616,7 +651,6 @@
        (guard (assq prim wavescript-effectful-primitives))
        (cons prim simple*)]
       [(let ([,lhs* ,ty* ,[Value -> rhs*]] ...) ,[bod])
-       (printf "LET IN EFFECT CONTEXT: ~s\n" lhs*)
        `(let ,(map list lhs* ty* rhs*) ,bod)]
       ;; For simplicity we are not allowing conditionals directly in effect context.
       ;; [2007.12.06] Disabling this because it produces worse output code:
@@ -624,6 +658,8 @@
        (let ([tmp (unique-name "iftmp")])
 	 `(let ([tmp 'anyliftif (if ,a ,b ,c)])
 	    'UNIT))]
+      ;; Same for case statements as conditionals: 
+      ;; (eventually it would be nice to compile conditions *to* case statements a la GHC)
       [(wscase ,[Value -> x] (,tag* ,[Value -> fun*]) ...)
        (let ([tmp (unique-name "iftmp")])
 	 `(let ([tmp 'anyliftwscase (wscase ,x ,@(map list tag* fun*))])

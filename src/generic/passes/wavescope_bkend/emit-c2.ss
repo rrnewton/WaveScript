@@ -100,7 +100,7 @@
 		     [i1 (unique-name "i")]
 		     [i2 (unique-name "i")]
 		     [len1 (unique-name "len")]
-		     [result (unique-name "result")])
+		     [result (unique-name "appendresult")])
 		 `(let ([,a1 (Array Char) ,s1] 
 			[,a2 (Array Char) ,s2])
 		    (let ([,len1 Int (Array:length ,a1)]
@@ -140,13 +140,12 @@
 ;; 
 ;; Currently this routine mutates the table "free-fun-table" on the fly.
 ;;
-;; It is this function that decides what freeing will be "open coded"
+;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
 (trace-define (build-free-fun-table! heap-types)
   (define (heap-allocated? ty)
     (match ty
-      [Bool #f] 
-      [,numt (guard (memq numt num-types)) #f]
+      [,scl (guard (scalar-type? scl)) #f]
       [,v (guard (vector? v)) #f]
       [(Array ,_) #t]
       [(Ref ,_) #t] ;; ??      
@@ -160,8 +159,7 @@
 	   (match ty
 	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
 	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-	     [Bool  #f] 
-	     [,numt (guard (memq numt num-types)) #f]
+	     [,scl (guard (scalar-type? scl)) #f]
 	     [(Ref ,elt) (loop elt)]
 	     [(Array ,elt)
 	      (add-to-table! 
@@ -204,7 +202,7 @@
     ))
 
 ;; "ptr" should be text representing a C lvalue
-(trace-define (gen-decr-code ty ptr freefun)
+(define (gen-decr-code ty ptr freefun)
   (match ty
     [(Array ,elt) 
      (make-lines 
@@ -215,9 +213,8 @@
 
 ;; Should only be called for types that are actually heap allocated.
 (define (default-free ty ptr)  
-  (append-lines 
    ;(make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
-   ((cdr (ASSERT (assoc ty free-fun-table))) ptr)))
+  ((cdr (ASSERT (assoc ty free-fun-table))) ptr))
 
 ;; This version represents plain old reference counting.
 (begin
@@ -391,6 +388,19 @@
     [(Ref ,[ty]) ty]
     ))
 
+;; For the set of types that are printable at this point, we can use a simple printf flag.
+(define (type->printf-flag ty)
+  (match ty
+    [String "%s"]
+    [(Array Char) "%s"] ;; These are strings in disguise.
+    [Bool   "%d"]
+    [Int    "%d"]
+    [Int16  "%hd"]
+    [Int64  "%lld"]
+    [Float  "%f"]	   
+    [Double "%lf"]
+    [(Pointer ,_) "%p"]))
+
 ;(define Var mangle-name)
 (define Var sym2str)
 
@@ -420,11 +430,9 @@
   (lambda (expr)
     (ASSERT simple-expr? expr)
     (let ([element (Simple expr)])
-      (append-lines 
-       ;(say-goodbye TYPE? element)
-       (make-lines (map (lambda (down)
-			  (cap (make-app (Var down) (list element))))
-		     down*))))
+      (make-lines (map (lambda (down)
+			 (cap (make-app (Var down) (list element))))
+		    down*)))
     ;(make-lines `("emit ",(Simple expr)";"))
     ))
 
@@ -482,18 +490,8 @@
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
       ;; Otherwise we needlessly allocate string objects.
       [(print (assert-type ,ty ,[Simple -> e]))
-       ;(ASSERT (eq? t 'String))
-       (define flag
-	 (match ty
-	   [String "%s"]
-	   [Bool   "%d"]
-	   [Int    "%d"]
-	   [Int16  "%hd"]
-	   [Int64  "%lld"]
-	   [Float  "%f"]	   
-	   [Double "%lf"]
-	   [(Pointer ,_) "%p"]))
-       (make-lines `("printf(\"",flag"\", ",e");\n"))]
+       ;(ASSERT (eq? t 'String))       
+       (make-lines `("printf(\"",(type->printf-flag ty)"\", ",e");\n"))]
       
       [(set! ,[Var -> v] (assert-type ,ty ,[Simple -> x]))
        (append-lines 	
@@ -512,7 +510,9 @@
 	)]
 
       [(emit ,vq ,x) (emitter x)]
-      [(begin ,[e*] ...) (apply append-lines e*)]
+      [(begin ,[e*] ...) 
+       (ASSERT (andmap lines? e*))
+       (apply append-lines e*)]
 
       ;; DUPLICATED CASES WITH Value:
       ;; ========================================
@@ -520,9 +520,12 @@
        ;; Here we incr the refcount for a *local* reference
        (append-lines ((Binding emitter) (list lhs ty rhs))
 		     (incr-local-refcount ty (Var lhs))
-		     bod
+		     (ASSERT lines? bod)
 		     (decr-local-refcount ty (Var lhs)))]
       ;; ========================================
+
+       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "wserror("str")"))]
+
       ))))
 
 ;; The continuation k is invoked on a piece of text representing the return expression.
@@ -536,11 +539,24 @@
 			    (lambda args (ASSERT lines? (car args)) (apply values args)))))) (void))
      (match xp
        [,simp (guard (simple-expr? simp)) (k (Simple simp))]
+
+       ;; With the strings-as-arrays system we'll still get string
+       ;; constants here, technically these are complex-constants.
+       [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
+        (ASSERT (vector-andmap char? vec))
+	(k (format "~a" (list->string (vector->list vec))))]
+       
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,[Simple -> x]) (k x)]
        [(begin ,[e]) e]
        [(begin ,[(Effect emitter) -> e1] ,e* ...)
-	(define rest ((Value emitter) `(begin ,@e*) k))
+	(define rest 
+	  (begin 
+	    ;(inspect (cons 'e1 e1))
+	    ((Value emitter) `(begin ,@e*) k)))
+	;(inspect (cons 'rest rest))
+	(ASSERT lines? e1)
+	(ASSERT lines? rest)
 	(append-lines e1 rest)]
        ;; This splits the continuation, using it twice.
        [(if ,[Simple -> test] ,conseq ,altern)
@@ -556,16 +572,18 @@
 	;; Here we incr the refcount for a *local* reference
 	(append-lines ((Binding emitter) (list lhs ty rhs))
 		      (incr-local-refcount ty (Var lhs))
-		      bod
+		      (ASSERT lines? bod)
 		      (decr-local-refcount ty (Var lhs)))]
        
        ;; PolyConstants:
-       [(assert-type ,[Type -> ty] Array:null) (k `("(",ty")0"))] ;; A null pointer.
-       
+       [(assert-type ,[Type -> ty] Array:null) (k `("(",ty")0"))] ;; A null pointer.       
+
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp (cons prim rand*) k #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
 	(PrimApp (cons prim rand*) k ty)]
+       
+       [(assert-type ,ty ,[e]) e]
        ))))
 
 
@@ -611,10 +629,15 @@
 	      (match obj
 		[',x (and (number? x) (= x 0))]
 		[,_ #f])]
+	 ;; This is arbitrary, false is "zero"
+	 [Bool (not obj)]
+
+	 ;; This is arbitrary, #\nul is "zero"
+	 [Char (eq? obj (integer->char 0))]
+
 	 ;; Vacillating on whether the null array should be a single
 	 ;; object (a null pointer).
 	 [(Array ,_)
-	  (printf "ISARRZERO??? ~a\n" obj)
 	  (match obj
 	    [Array:null #t]
 	    [(assert-type ,_ ,[x]) x]
@@ -668,6 +691,16 @@
 	(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
 	(k `("(",left" == ",right")"))]
 
+       [(__show_ARRAY (assert-type ,ty ,[Simple -> obj]))
+	(match ty
+	  [String obj]
+	  [(Array Char) obj]
+	  [,_ 
+	   (let ([str (unique-name str)])
+	     (append-lines 
+	      (ASSERT lines? ((Binding emitter) (list str '(Array Char) rhs)))
+	      (make-lines (list "snprintf("str", 100, "(type->printf-flag ty)", )"))))])]
+       
        [(,infix_prim ,[Simple -> left] ,[Simple -> right])
 	(guard (memq infix_prim '(;+ - * /
 				  +. -. *. /. 
@@ -758,7 +791,8 @@
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
-	  (define init     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**))))))
+	  (define init     (begin (ASSERT (andmap lines? init**))
+			     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**)))))))
 	  (define driver   (text->string (lines-text (build-main-source-driver srcname*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  (define total (apply string-append 

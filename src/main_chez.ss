@@ -160,7 +160,6 @@
 		       (get-output-string p))
 		     (begin (display c p)
 			    (loop (read-char in))))))))
-	 (inspect 'woot)
 	 (if (eq? (machine-type) 'i3nt)
 	     -9999
 	     (and (zero? (system "which svn > /dev/null"))
@@ -202,11 +201,6 @@
 ;; [2006.11.24] This is just a temporary thing so I can watch how fast things load.
 (define VERBOSE-LOAD #f)
 
-
-;  (source-directories (list "./"))
-;(cd (car (source-directories)))
-;  (inspect (list (source-directories) (cd)))
-
 ;(include "./config.ss") ;; Need to do this for windows... haven't got a good system yet.
 (include "config.ss")
 
@@ -224,14 +218,23 @@
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.
-#|(if (not (top-level-bound? 'default-break-handler))
-    (define-top-level-value 'default-break-handler (break-handler)))
+#|
+(if (not (top-level-bound? 'default-break-handler))
+(define-top-level-value 'default-break-handler (break-handler)))
 (break-handler (lambda args 
 		 (apply default-break-handler args)
 		 (if (null? args) (void) (car args))))
 |#
 ;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
 (define (inspect/continue x) (inspect x) x)
+
+;; Debugging, find out where a spurious inspect is!!
+(define (debug-inspect x) (warning 'inspect "inspector called! ~s" x) (call/cc #%inspect))
+#;
+(begin 
+  (optimize-level 0)
+  (define-top-level-value 'inspect debug-inspect)
+  (define-top-level-value 'inspect/continue debug-inspect))
 
 (define (continuation->sourcelocs k)
     (let loop ([depth 0] [ob (inspect/object k)])
@@ -636,8 +639,6 @@
 (eval-when (compile eval load) (compile-profile #f))
 
 
-
-;(inspect (emit-caml-wsquery caml-example))
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
