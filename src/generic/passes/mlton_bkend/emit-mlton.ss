@@ -1356,7 +1356,7 @@
 		   		   
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   		   
-		   wsequal? print show seg-get toArray
+		   wsequal? print show seg-get toArray __show_ARRAY __wserror_ARRAY
 
 		   stringToComplex moduloI
 

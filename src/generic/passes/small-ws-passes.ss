@@ -664,7 +664,17 @@
        (let ([tmp (unique-name "iftmp")])
 	 `(let ([tmp 'anyliftwscase (wscase ,x ,@(map list tag* fun*))])
 	    'UNIT))]
-      [(begin ,[e*] ...) `(begin ,@e*)]
+      [(begin ,[e*] ...) (make-begin e*)]
+
+      ;; Now we address normal value primitives.
+      ;; Some of these may go away (optimization)
+      [(,prim ,rand* ...)
+       (if (>= (ws-optimization-level) 3)
+	   ;; [2007.12.22] This is the most extreme version: 
+	   ;; Kill all value primitives, assume no error conditions.  (And by definition, no side effects.)
+	   (make-begin (map Effect rand*))
+	   (error 'ws-normalize-context "Value primitive in effect context, temporarily an error:\n ~s\n" (cons prim rand*)))]
+
       [,form (error 'ws-normalize-context "unhandled form in effect context: ~s" form)]))
   
   ;; We start out in value context.

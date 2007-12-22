@@ -245,6 +245,8 @@
 
      (inspect         ('a)                      'a)
 
+     ;;(string-append!    (String String) String) ;; Internal -- destructive version.
+
      )))
 
 ;=============================================================
@@ -701,7 +703,6 @@
     (gnuplot_sigseg_stream2d ((Stream (Sigseg #((NUM a) (NUM b))))) (Stream (Sigseg #((NUM a) (NUM b)))))
 
     (string-append    (String String) String) ;; Rename String:append!!
-    ;(string-append!    (String String) String) ;; Internal -- destructive version.
 
     (String:length    (String) Int)
     (String:explode   (String) (List Char))

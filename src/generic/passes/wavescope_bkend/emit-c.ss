@@ -2111,7 +2111,7 @@ int main(int argc, char ** argv)
 		   
 		   realtime
 
-		   wsequal? print show seg-get toArray 
+		   wsequal? print show seg-get toArray  __show_ARRAY __wserror_ARRAY
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll
