@@ -32,7 +32,9 @@
 ;; These should just be wrappers on the outside.  You should never find them nested.
 (reg:define-struct (lines text))
 ;(reg:define-struct (expression text))
-(define (append-lines . ls) (make-lines (map lines-text ls)))
+(define (append-lines . ls) 
+  (DEBUGASSERT (andmap lines? ls))
+  (make-lines (map lines-text ls)))
 ;(define (idk x) (ASSERT expression? x) x)
 ;(define (idk x) x)
 
@@ -42,8 +44,18 @@
 
 (define-syntax debug-return-contract
   (syntax-rules ()
-    [(_ pred fun) (IFDEBUG (lambda args (let ([result (apply fun args)]) (pred result) result))
-			   fun)]))
+    [(_ pred fun) (debug-return-contract "<unknownFun>" pred fun)]
+    [(_ name pred fun) 
+     (IFDEBUG (lambda args 
+		(if (eq? 'name 'PrimAppK) (printf "IN PRIMAPPK"))
+		(let ([result (apply fun args)])
+			     ;(printf "Got debug contract result: ~s\n" 'name)
+		  (if (pred result) result
+		      (begin 
+			(warning 'debug-return-contract "failed contract on return value, function: ~s\nvalue: ~s\nContinuation:\n"
+				 'name result)
+			(call/cc inspect)))))
+	      fun)]))
 
 ;================================================================================
 ;;; Input grammar
@@ -105,7 +117,8 @@
 			[,a2 (Array Char) ,s2])
 		    (let ([,len1 Int (Array:length ,a1)]
 			  [,result (Array Char) 
-				   (Array:makeUNSAFE (-_ (+_ ,len1 (Array:length ,a2)) '1))])
+				   (assert-type (Array Char)
+						(Array:makeUNSAFE (-_ (+_ ,len1 (Array:length ,a2)) '1)))])
 		      (begin 
 			(for (,i1 '0 (-_ ,len1 '1))
 			    (Array:set ,result ,i1 (Array:ref ,a1 ,i1)))
@@ -151,8 +164,9 @@
       [(Ref ,_) #t] ;; ??      
       ))
   (define fun-def-acc '()) ;; mutated below
-  (define (add-to-table! ty fun)    
-    (set! free-fun-table (cons (cons ty fun) free-fun-table)))
+  (define (add-to-table! ty fun) 
+    (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
+			       free-fun-table)))
   (for-each
       (lambda (ty) 
 	 (let loop ([ty ty])
@@ -212,9 +226,11 @@
     [,_ (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
-(define (default-free ty ptr)  
+(define default-free
+  (debug-return-contract lines?
+  (lambda (ty ptr)    
    ;(make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
-  ((cdr (ASSERT (assoc ty free-fun-table))) ptr))
+    ((cdr (ASSERT (assoc ty free-fun-table))) ptr))))
 
 ;; This version represents plain old reference counting.
 (begin
@@ -441,12 +457,13 @@
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
 (define (Binding emitter)
-  (lambda (cb)
+  (debug-return-contract Binding lines?
+   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
       [(,vr ,ty ,rhs) ;(,[Var -> v] ,[Type -> t] ,rhs) 
        ((Value emitter) rhs (varbindk vr ty))]
-      [,oth (error 'Binding "Bad Binding, got ~s" oth)])))
+      [,oth (error 'Binding "Bad Binding, got ~s" oth)]))))
 
 ;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
@@ -474,7 +491,7 @@
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
 
 (define (Effect emitter)
-  (debug-return-contract lines?
+  (debug-return-contract Effect lines?
   (lambda (xp)
     (match xp
       ['UNIT   (make-lines "")]
@@ -511,7 +528,7 @@
 
       [(emit ,vq ,x) (emitter x)]
       [(begin ,[e*] ...) 
-       (ASSERT (andmap lines? e*))
+       (DEBUGASSERT (andmap lines? e*))
        (apply append-lines e*)]
 
       ;; DUPLICATED CASES WITH Value:
@@ -531,36 +548,34 @@
 ;; The continuation k is invoked on a piece of text representing the return expression.
 ;; k is expected to return text of the form "lines" that stores away this result.
 (define (Value emitter)
-  (debug-return-contract lines?
-   (lambda (xp k)
+  (debug-return-contract Value lines?
+   (lambda (xp kont)
      ;; This is a debug wrapper that respects the funky interface to the continuation:
-     (IFDEBUG (set! k (let ([oldk k]) (lambda (x) 
-			  (call-with-values (lambda () (oldk x))
-			    (lambda args (ASSERT lines? (car args)) (apply values args)))))) (void))
+     ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
      (match xp
-       [,simp (guard (simple-expr? simp)) (k (Simple simp))]
+       [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
 
        ;; With the strings-as-arrays system we'll still get string
        ;; constants here, technically these are complex-constants.
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
-	(k (format "~a" (list->string (vector->list vec))))]
+	(kont (format "~a" (list->string (vector->list vec))))]
        
        ;; This doesn't change the runtime rep at all.
-       [(Mutable:ref ,[Simple -> x]) (k x)]
+       [(Mutable:ref ,[Simple -> x]) (kont x)]
        [(begin ,[e]) e]
        [(begin ,[(Effect emitter) -> e1] ,e* ...)
 	(define rest 
 	  (begin 
 	    ;(inspect (cons 'e1 e1))
-	    ((Value emitter) `(begin ,@e*) k)))
+	    ((Value emitter) `(begin ,@e*) kont)))
 	;(inspect (cons 'rest rest))
 	(ASSERT lines? e1)
 	(ASSERT lines? rest)
 	(append-lines e1 rest)]
        ;; This splits the continuation, using it twice.
        [(if ,[Simple -> test] ,conseq ,altern)
-	(let-values ([(lines newk) (k split-msg)])
+	(let-values ([(lines newk) (kont split-msg)])
 	  (make-lines
 	     `(,(lines-text lines)
 	       "if (" ,test ") {\n"
@@ -576,35 +591,40 @@
 		      (decr-local-refcount ty (Var lhs)))]
        
        ;; PolyConstants:
-       [(assert-type ,[Type -> ty] Array:null) (k `("(",ty")0"))] ;; A null pointer.       
+       [(assert-type ,[Type -> ty] Array:null) (kont `("(",ty")0"))] ;; A null pointer.       
 
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-	(PrimApp (cons prim rand*) k #f )]
+	(PrimApp (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	(PrimApp (cons prim rand*) k ty)]
+	(PrimApp (cons prim rand*) kont ty)]
        
        [(assert-type ,ty ,[e]) e]
        ))))
 
 
 (define PrimApp
-  (debug-return-contract lines?
-   (lambda (app k mayberetty)
+  (debug-return-contract PrimApp lines?
+   (lambda (app kontorig mayberetty)
+
+     (define (kont x) (kontorig x)) ;; A place to throw in traces.
+
      ;; If we fall through to the "SimplePrim" case that means it's a
      ;; primitive with a one-to-one correspondence to a C function.
-     (define (SimplePrim var)
-       (case var
-	 [(not) "!"]
-	 ;; These are the same as their C++ names:
-	 [(cos sin tan acos asin atan max min)   (sym2str var)]
-	 [(absF absD absI absI16 absI64)         "abs"]
-	 [(roundF)                             "round"]
-	 [(sqrtI sqrtF)                         "sqrt"]
-	 ;; These are from the WS runtime library:
-	 [(moduloI)                          "moduloI"]
-	 [(sqrtC)                              "csqrt"]
-      ;[(toArray)                (fromlib "toArray")]      
-      ;; These use FFTW
+     (define SimplePrim
+       (debug-return-contract SimplePrim string?
+	(lambda (var)
+	  (case var
+	    [(not) "!"]
+	    ;; These are the same as their C++ names:
+	    [(cos sin tan acos asin atan max min)   (sym2str var)]
+	    [(absF absD absI absI16 absI64)         "abs"]
+	    [(roundF)                             "round"]
+	    [(sqrtI sqrtF)                         "sqrt"]
+	    ;; These are from the WS runtime library:
+	    [(moduloI)                          "moduloI"]
+	    [(sqrtC)                              "csqrt"]
+	    ;;
+	    ;; These use FFTW
 
 #;
       [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
@@ -620,7 +640,7 @@
         String:implode)
        (Var var)]
       [else (error 'emitC2:PrimApp "primitive not specifically handled: ~s" var)]
-      ))
+      ))))
 
 
      (define (wszero? ty obj)
@@ -671,16 +691,16 @@
 					   `(for (,i '0 ,len2)
 						(Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
 				 "")))
-	      (k cast))
+	      (kont cast))
 	     )])))
-
+     
      (match app
        ;; Refs and sets are pure simplicity:
        [(Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
-	(k `(,arr"[",ind"]"))]
+	(kont `(,arr"[",ind"]"))]
        [(Array:length ,[Simple -> arr])
 	;; Length is -2 and refcount is -1:
-	(k `("((int*)",arr")[-2]"))]
+	(kont `("((int*)",arr")[-2]"))]
        ;; This is the more complex part:
 
        [(Array:make ,len ,init) (make-array len init mayberetty)]
@@ -689,17 +709,20 @@
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? (assert-type ,ty ,[Simple -> left]) ,[Simple -> right])
 	(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
-	(k `("(",left" == ",right")"))]
+	(kont `("(",left" == ",right")"))]
 
        [(__show_ARRAY (assert-type ,ty ,[Simple -> obj]))
 	(match ty
-	  [String obj]
-	  [(Array Char) obj]
+	  [String       (kont obj)]
+	  [(Array Char) (kont obj)]
 	  [,_ 
-	   (let ([str (unique-name str)])
+	   (let* ([str (unique-name "str")]
+		  [_str (Var str)])
 	     (append-lines 
-	      (ASSERT lines? ((Binding emitter) (list str '(Array Char) rhs)))
-	      (make-lines (list "snprintf("str", 100, "(type->printf-flag ty)", )"))))])]
+	      ((Binding (emit-err '__show_ARRAY)) 
+	       (list str '(Array Char) '(assert-type (Array Char) (Array:makeUNSAFE '100))))
+	      (make-lines (list "snprintf("_str", 100, "(type->printf-flag ty)", )"))
+	      (kont _str)))])]
        
        [(,infix_prim ,[Simple -> left] ,[Simple -> right])
 	(guard (memq infix_prim '(;+ - * /
@@ -728,11 +751,11 @@
 			      )
 			(substring (sym2str infix_prim) 0 1)]
 		       )])
-	  (k `("(" ,left ,(format " ~a " cname) ,right ")")))]
+	  (kont `("(" ,left ,(format " ~a " cname) ,right ")")))]
 
 
        [(,other ,[Simple -> rand*] ...)
-	(k `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
+	(kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
        ))))
 
 
@@ -761,7 +784,7 @@
 	      (outgoing ,down* ...))
      (define emitter (Emit down*))
      (match itercode
-       [(let (,[(SplitBinding (emit-err 'Binding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
+       [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
 	 (wrap-iterate-as-simple-fun name v vty 
 	    ((Value emitter) bod nullk))
@@ -777,7 +800,7 @@
        (let ([freefundefs (build-free-fun-table! (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
      (match prog
-       [(,lang '(graph (const ,[(Binding (emit-err 'Binding)) -> cb*] ...) ;; These had better be *constants* for GCC
+       [(,lang '(graph (const ,[(Binding (emit-err 'TopBinding)) -> cb*] ...) ;; These had better be *constants* for GCC
 		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
 				-> init*] ...)
 		       (sources ,[Source -> srcname* src*  state1*] ...)
@@ -791,7 +814,7 @@
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
-	  (define init     (begin (ASSERT (andmap lines? init**))
+	  (define init     (begin (ASSERT (andmap lines? (apply append init**)))
 			     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**)))))))
 	  (define driver   (text->string (lines-text (build-main-source-driver srcname*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
