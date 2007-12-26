@@ -8,6 +8,7 @@
 			       "config.ss"
 			       "main.ss"
 			       "main_chez.ss"
+			       "main_larceny.ss"
 ;			       "main_plt.ss"
 			       "match_larceny.ss"
 			       "regiment.ss"

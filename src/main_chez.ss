@@ -308,6 +308,7 @@
 
 ;; Import the IU matcher globally:
 (import iu-match)
+;(import rn-match) ;; Can't yet use rn-match globally.
 
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.

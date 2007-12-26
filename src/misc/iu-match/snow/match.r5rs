@@ -48,7 +48,7 @@
   (syntax-rules ()
     ((_ e) (delay e))))
 
-;; Do I really need a promise?
+;; Do I really even need a promise?
 (define-syntax delay-values
   (syntax-rules ()
     ((_ e) (lambda () e))))

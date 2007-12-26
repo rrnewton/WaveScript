@@ -48,9 +48,14 @@
      (lambda (ls k) (apply k ls))))
 
   (define (Effect x)
+    (define (lift-into-let code)
+      (let ([tmp (unique-name "ignored_valInEffect")])
+	`(let ([,tmp 'anyeffectlift ,code])
+	   'UNIT)))
     (match x 
       [,v (guard (symbol? v)) ''UNIT]
       [(deref ,v) (ASSERT (symbol? v)) ''UNIT]
+      [(tuple) ''UNIT]
       [(set! ,v ,[Value -> e]) `(set! ,v ,e)]
       [(print ,[Value -> e])   `(print ,e)]
       [(for (,i ,[Value -> st] ,[Value -> en]) ,[bod])
@@ -61,30 +66,35 @@
        (cons prim simple*)]
       [(let ([,lhs* ,ty* ,[Value -> rhs*]] ...) ,[bod])
        `(let ,(map list lhs* ty* rhs*) ,bod)]
+
+;; Subsuming these two with a fallthrough case at the bottom.
+#|
       ;; For simplicity we are not allowing conditionals directly in effect context.
       ;; [2007.12.06] Disabling this because it produces worse output code:
       [(if ,[Value -> a] ,[Value -> b] ,[Value -> c])
-       (let ([tmp (unique-name "iftmp")])
-	 `(let ([tmp 'anyliftif (if ,a ,b ,c)])
-	    'UNIT))]
+       (lift-into-let `(if ,a ,b ,c))]
       ;; Same for case statements as conditionals: 
       ;; (eventually it would be nice to compile conditions *to* case statements a la GHC)
       [(wscase ,[Value -> x] (,tag* ,[Value -> fun*]) ...)
-       (let ([tmp (unique-name "iftmp")])
-	 `(let ([tmp 'anyliftwscase (wscase ,x ,@(map list tag* fun*))])
-	    'UNIT))]
+       (lift-into-let `(wscase ,x ,@(map list tag* fun*)))] 
+|#
+
       [(begin ,[e*] ...) (make-begin e*)]
 
       ;; Now we address normal value primitives.
       ;; Some of these may go away (optimization)
-      [(,prim ,rand* ...)
+      [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (if (>= (ws-optimization-level) 3)
 	   ;; [2007.12.22] This is the most extreme version: 
 	   ;; Kill all value primitives, assume no error conditions.  (And by definition, no side effects.)
 	   (make-begin (map Effect rand*))
 	   (error 'ws-normalize-context "Value primitive in effect context, temporarily an error:\n ~s\n" (cons prim rand*)))]
 
-      [,form (error 'ws-normalize-context "unhandled form in effect context: ~s" form)]))
+      ;; Anything else we force into a value context by introducing a let binding
+      ;; This might be dangerous, because there are cases we may be forgetting about.
+      [,form (lift-into-let (Value form))]
+      ;[,form (error 'ws-normalize-context "unhandled form in effect context: ~s" form)]
+      ))
   
   ;; We start out in value context.
   [Expr (lambda (x _) (Value x))])

@@ -58,6 +58,8 @@
   (syntax-rules ()
     ((_ e) (delay e))))
 
+ (define simple-eval eval)
+
 #;
   (define-syntax ellipsis?
     (syntax-rules ()
