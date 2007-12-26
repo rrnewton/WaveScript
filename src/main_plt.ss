@@ -128,6 +128,7 @@
 (all-except "generic/passes/normalize_query/ws-remove-letrec.ss") 
 (all-except "generic/passes/normalize_query/ws-remove-complex-opera.ss") 
 (all-except "generic/passes/normalize_query/ws-lift-let.ss") 
+(all-except "generic/passes/normalize_query/ws-normalize-context.ss") 
 
 ) 
 
@@ -279,6 +280,7 @@
 	 (all-from "generic/passes/normalize_query/remove-lazy-letrec.ss" ) 
 	 (all-from "generic/passes/normalize_query/verify-core.ss" )
 	 (all-from "generic/passes/normalize_query/ws-lift-let.ss") 
+	 (all-from "generic/passes/normalize_query/ws-normalize-context.ss")
 
 
 ;	 (all-from )

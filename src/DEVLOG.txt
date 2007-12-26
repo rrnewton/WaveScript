@@ -1382,3 +1382,17 @@ It's going to be tricky to figure out :
      the compiler can still omit those ZCT entries as an optimization.
 
      This must be a standard problem with deferred refcounting GC's.
+
+[2007.12.26] {Looking at Larceny again}
+.
+Version 0.96 of larceny was just released (has r6rs support).  I
+recall looking at larceny before and determining that it was missing
+some bits that I would need to easily support it.  It's got saved
+heaps, which is very nice.  Syntax-case was probably one of the main
+pieces I found missing (which is needed for iu-match).  However, this
+new Larceny has syntax case!  Unfortunately, it's only available or
+the R6RS mode, not the R5RS mode.  Well it looks like I may be able to
+use the ERR5RS mode.
+
+
+

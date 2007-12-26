@@ -558,6 +558,7 @@ namespace Array {
   fun concat(loa) {
     size = List:fold(fun(sz, ar) sz + length(ar), 0, loa);
     newarr = makeUNSAFE(size);
+    // Here we call a fold for effect only.
     List:fold(fun (cntr, ar) {
       len = length(ar);
       blit(newarr, cntr, ar, 0, len);

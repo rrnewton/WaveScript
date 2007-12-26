@@ -14,7 +14,6 @@
     ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
 		  reg:include
 		  IFCHEZ IF_GRAPHICS IF_THREADS
-;		  continuation->sourcelocs
 		  )
   (import scheme)
   
@@ -136,12 +135,12 @@
 			 lookup-failure))))))
     (define (reg:struct->list x) (cdr (vector->list x)))
     |#
-
-    
+   
 ) ;; End module
 
-;(import chez_constants)
+;; MISC: This is for PLT compat:
+(define path->string (lambda (x) x))
 
 (include "../generic/constants.ss")
 (import constants) ;; Certain bindings are re-exported through the generic module.
-;(import chez_constants)
+

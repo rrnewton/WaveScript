@@ -140,60 +140,6 @@
 
 (bind-svn-revision)
 
-#;
-(eval-when (compile eval)
-  (define-syntax svn-revision
-    (syntax-case ()
-      [(_)
-       (let ()
-	 (define (system-to-str str)
-	   (let* ([pr (process str)]
-		  [in (car pr)]
-		  [out (cadr pr)]
-		  [id  (caddr pr)])
-	     (let ((p (open-output-string)))
-	       (let loop ((c (read-char in)))
-		 (if (eof-object? c)	  
-		     (begin 
-		       (close-input-port in)
-		       (close-output-port out)
-		       (get-output-string p))
-		     (begin (display c p)
-			    (loop (read-char in))))))))
-	 (if (eq? (machine-type) 'i3nt)
-	     -9999
-	     (and (zero? (system "which svn > /dev/null"))
-		  (parameterize ([current-directory (default-regimentd)])
-		    (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
-		    (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
-		    ))))])))
-
-
-#;
-(eval-when (compile eval)
-  (define svn-revision
-    (let ()
-      (define (system-to-str str)
-	(let* ([pr (process str)]
-	       [in (car pr)]
-	       [out (cadr pr)]
-	       [id  (caddr pr)])
-	  (let ((p (open-output-string)))
-	    (let loop ((c (read-char in)))
-	      (if (eof-object? c)	  
-		  (begin 
-		    (close-input-port in)
-		    (close-output-port out)
-		    (get-output-string p))
-		  (begin (display c p)
-			 (loop (read-char in))))))))
-      (if (eq? (machine-type) 'i3nt)
-	  -9999
-	  (and (zero? (system "which svn > /dev/null"))
-	       (parameterize ([current-directory (default-regimentd)])
-		 (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
-		 (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
-		 ))))))
 
 ;======================================================================
 ;;; Setup stuff.
@@ -218,13 +164,7 @@
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.
-#|
-(if (not (top-level-bound? 'default-break-handler))
-(define-top-level-value 'default-break-handler (break-handler)))
-(break-handler (lambda args 
-		 (apply default-break-handler args)
-		 (if (null? args) (void) (car args))))
-|#
+;; ...<removed>...
 ;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
 (define (inspect/continue x) (inspect x) x)
 
@@ -236,80 +176,8 @@
   (define-top-level-value 'inspect debug-inspect)
   (define-top-level-value 'inspect/continue debug-inspect))
 
-(define (continuation->sourcelocs k)
-    (let loop ([depth 0] [ob (inspect/object k)])
-      (when (> (ob 'depth) 1)
-	;(write (ob 'source) (current-output-port))
-	;(if (ob 'source) ((ob 'source) 'write  (current-output-port)))
-	(call-with-values (lambda () (ob 'source-path))
-	  (lambda args
-	    (when (= (length args) 3) ;; Success
-	      (apply printf "~a: File: ~a, line ~a char ~a\n" depth args)
-	      )))
-	;(newline)
-	(loop (add1 depth) (ob 'link))
-	)))
-(define k->files continuation->sourcelocs)
-
-
-;; This forces the output to standard error in spite the Scheme
-;; parameters console-output-port and current-output-port.
-(define stderr  
-  (let ((buffer-size 1))
-    (let ((p (make-output-port 2 (make-string buffer-size))))
-      (set-port-output-size! p (- buffer-size 1))
-      p)))
-
-;======================================================================
-
-(fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a...\n"
-	 (let ([ws #f]  [reg #f])
-	   (IFWAVESCOPE (set! ws #t) (set! reg #t))
-	   (cond 
-	    [(and ws reg) "ws+reg"]
-	    [ws   "ws"]
-	    [reg "reg"]))
-	 (if (top-level-bound? 'regiment-origin)
-	     (format " (from ~a)" regiment-origin)    
-	     "(LOADED VIA UNKNOWN METHOD!?)"
-	     ))
-
-;======================================================================
-;;; Begin loading files.
-
-(eval-when (compile load eval) 
-  (define-top-level-value 'pre-load-directory (current-directory))
-  (current-directory (string-append (default-regimentd) "/src/chez")))
-
-(include "chez/match.ss")      ;; Pattern matcher, dependency.
-(include "chez/rn-match.ss")      ;; My version of the pattern matcher.
-
-;; To completely DISABLE my new prototype matcher, uncomment this:
-;; This may be useful for debugging, the iu-matcher gives better source locations.
-;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
-;;
-;; [2007.04.19] Currently, just having rn-match in the type-checker
-;; plus the static elaborator bloats the code size a noticable amount.
-
-;; Import the IU matcher globally:
-(import iu-match)
-
-;; After this point, everything must use chez:module for native chez modules.
-;; 'module' will become my chez/plt portable regiment modules.
-(eval-when (load eval)
-  (include "chez/regmodule.ss")  ;; Common module syntax.
-  (import reg:module)  
-  )
-
-
- 
- ;; Load this first.  Widely visible constants/parameters.
-(include "chez/chez_constants.ss")
-
-
-(if VERBOSE-LOAD (printf "  Starting load...\n"))
-
 ;; Because I run from command line, it helps to enter the inspector after an error.
+;; First let's backup the existing error-handler:
 (unless (top-level-bound? 'default-error-handler)
   (define-top-level-value 'default-error-handler (error-handler)))
 
@@ -335,6 +203,127 @@
 		(inspect k))))))
 
 (error-handler inspector-error-handler)
+
+;; A Chez hack to see all the source locations in a continuation.
+(define (continuation->sourcelocs k)
+    (let loop ([depth 0] [ob (inspect/object k)])
+      (when (> (ob 'depth) 1)
+	(call-with-values (lambda () (ob 'source-path))
+	  (lambda args
+	    (when (= (length args) 3) ;; Success
+	      (apply printf "~a: File: ~a, line ~a char ~a\n" depth args)
+	      )))
+	(loop (add1 depth) (ob 'link)))))
+(define k->files continuation->sourcelocs)
+
+
+;; This forces the output to standard error in spite the Scheme
+;; parameters console-output-port and current-output-port.
+(define stderr  
+  (let ((buffer-size 1))
+    (let ((p (make-output-port 2 (make-string buffer-size))))
+      (set-port-output-size! p (- buffer-size 1))
+      p)))
+
+
+
+;; This is an (attempted) hack for maintaining clean seperation between repeated loads.
+;;
+;; [2006.03.27] This doesn't work yet, repeated loads still allocate more memory. 
+;; Chez garbage collects compiled code, right?
+;; Ahh, Chez doesn't collect space used by environments.
+;; So I WOULD need that part that tries to wipe all the bindings.
+(define (wipe) ;; shorthand
+  (define set-difference
+    (lambda (set1 set2)
+      (let loop ([set1 set1] [set2 set2])
+	(cond
+	 ((null? set1) '())
+	 ((memq (car set1) set2) (loop (cdr set1) set2))
+	 (else (cons (car set1)  (loop (cdr set1) set2)))))))
+  (time 
+   (begin 
+     (collect (collect-maximum-generation))
+     (let ([stats (statistics)])
+       (printf "Pre-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
+     (eval '(import scheme))
+     ;; This is a simple version:
+     (for-each (lambda (s)
+		 (when (and (top-level-bound? s) 
+			    (not (memq s '(wipe 
+					   ;; Don't kill my little loading mechanism:
+					;bl2 bln __UTILSDIR __utilsdir
+					   ))))
+					;(printf "Killing ~s\n" s)
+		   (set-top-level-value! s #f)))
+       (set-difference (environment-symbols (interaction-environment))
+		       (environment-symbols (scheme-environment))))
+     (collect (collect-maximum-generation))
+     (let ([stats (statistics)]) 
+       (printf "Post-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats)))))))
+
+;; This wipes bindings and reloads.
+(define (reload) 
+  ;(define main (++ (REGIMENTD) "/src/main_chez.ss"))
+  (current-directory (REGIMENTD))
+  (current-directory "src")
+  ;(wipe) 
+  ;(load main)
+  (load "main_chez.ss")
+  )
+
+
+
+;======================================================================
+;;; Print a banner message.
+
+(fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a...\n"
+	 (let ([ws #f]  [reg #f])
+	   (IFWAVESCOPE (set! ws #t) (set! reg #t))
+	   (cond 
+	    [(and ws reg) "ws+reg"]
+	    [ws   "ws"]
+	    [reg "reg"]))
+	 (if (top-level-bound? 'regiment-origin)
+	     (format " (from ~a)" regiment-origin)    
+	     "(LOADED VIA UNKNOWN METHOD!?)"
+	     ))
+
+;======================================================================
+;;; Begin loading files.  First some setup stuff.
+
+(eval-when (compile load eval) 
+  (define-top-level-value 'pre-load-directory (current-directory))
+  (current-directory (string-append (default-regimentd) "/src/chez")))
+
+(include "chez/match.ss")      ;; Pattern matcher, dependency.
+(include "chez/rn-match.ss")      ;; My version of the pattern matcher.
+
+;; To completely DISABLE my new prototype matcher, uncomment this:
+;; This may be useful for debugging, the iu-matcher gives better source locations.
+;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
+;;
+;; [2007.04.19] Currently, just having rn-match in the type-checker
+;; plus the static elaborator bloats the code size a noticable amount.
+
+;; Import the IU matcher globally:
+(import iu-match)
+
+;; After this point, everything must use chez:module for native chez modules.
+;; 'module' will become my chez/plt portable regiment modules.
+(eval-when (load eval)
+  (include "chez/regmodule.ss")  ;; Common module syntax.
+  (import reg:module)  
+  )
+
+;======================================================================
+;;; Now begin loading Regiment/WaveScript proper. 
+
+
+ ;; Load this first.  Widely visible constants/parameters.
+(include "chez/chez_constants.ss")
+(if VERBOSE-LOAD (printf "  Starting load...\n"))
+
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))
@@ -565,6 +554,7 @@
 ;(eval-when (compile eval load) (compile-profile #f))
 
 (include "generic/passes/normalize_query/ws-lift-let.ss") (import ws-lift-let)
+(include "generic/passes/normalize_query/ws-normalize-context.ss") (import ws-normalize-context)
 (include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
 (include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
 
@@ -734,125 +724,9 @@
 ;; Open this up so we can read the global counters:
 (IFWAVESCOPE (begin) (import simulator_alpha_datatypes))
 
-;; This is an (attempted) hack for maintaining clean seperation between repeated loads.
-;;
-;; [2006.03.27] This doesn't work yet, repeated loads still allocate more memory. 
-;; Chez garbage collects compiled code, right?
-;; Ahh, Chez doesn't collect space used by environments.
-;; So I WOULD need that part that tries to wipe all the bindings.
-(define wipe ;; shorthand
-  (let ([diff difference])
-    (lambda () 
-  (time 
-   (begin 
-     (collect (collect-maximum-generation))
-
-     (let ([stats (statistics)])
-       (printf "Pre-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
-     (eval '(import scheme))
-
-     ;; This is a simple version:
-     (for-each (lambda (s)
-		 (when (and (top-level-bound? s) 
-			    (not (memq s '(wipe 
-					   ;; Don't kill my little loading mechanism:
-					   ;bl2 bln __UTILSDIR __utilsdir
-					   ))))
-		   ;(printf "Killing ~s\n" s)
-		   (set-top-level-value! s #f)))
-       (diff (environment-symbols (interaction-environment))
-	     (environment-symbols (scheme-environment))))
-
-#;
-     (let ([newenv (copy-environment ;(interaction-environment)
-				     (scheme-environment) 
-				     #t
-				     (cons 'b (environment-symbols (scheme-environment))))])
-       ;; First we anihilate our existing environment.  Possibly unnecessary.
-       ;; This doesn't work because I keep running into read-only
-       ;; bindings, even if I avoid the (import scheme) above....
-       (let ([tlb? top-level-bound?]
-	     [stlv! set-top-level-value!]
-	     [evl eval])
-	 (for-each (lambda (s)
-		     (when (tlb? s)
-		       (printf "Killing ~s\n" s)
-		       ;; Not mutable for some reason:
-		       (stlv! s #f)
-		       ;(evl `(set! ,s #f))
-		       ))
-	   (environment-symbols (interaction-environment))))
-       (interaction-environment  newenv))
-     
-     (collect (collect-maximum-generation))
-     (let ([stats (statistics)]) 
-       (printf "Post-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
-
-     ))
-  )))
-
-;; This wipes bindings and reloads.
-(define (reload) 
-  ;(define main (++ (REGIMENTD) "/src/main_chez.ss"))
-  (current-directory (REGIMENTD))
-  (current-directory "src")
-  ;(wipe) 
-  ;(load main)
-  (load "main_chez.ss")
-  )
-
-;; MISC: This is for PLT compat:
-(define path->string (lambda (x) x))
 
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
 (eval-when (compile load eval) 
   (current-directory (top-level-value 'pre-load-directory)))
 
-
-
-
-
-
-
-
-
-
-
-
-
-#|
-(define caml-example 
-'(type-annotate-misc-language
-  '(program
-       (let ([tmp_1 (Stream Int)
-		    (dataFile '"fake.txt" '"text" '44000 '0)])
-	 tmp_1)
-     (Stream Int))))
-
-(define caml-example2
-  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
-    (run-ws-compiler 
-     (ws-postprocess
-      '((define s1 (app audioFile "./countup.raw" 40 0 44000))
-	(define s2
-	  (iterate
-	   (lambda (w ___VIRTQUEUE___)
-	     (begin (emit ___VIRTQUEUE___ w) ___VIRTQUEUE___))
-	   s1))
-	(<- BASE s2))))))
-
-(define caml-example3
-  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
-    (run-ws-compiler 
-     (ws-postprocess
-      '((<-
-	 BASE
-	 (iterate
-	  (lambda (#0() ___VIRTQUEUE___)
-	    (begin (emit ___VIRTQUEUE___ 39) ___VIRTQUEUE___))
-	  (app timer 30.0))))
-      ))))
-
-(newline)(display (text->string (emit-caml-wsquery (explicit-stream-wiring caml-example3))))(newline)
-|#
 
