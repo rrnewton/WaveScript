@@ -694,7 +694,6 @@
   ;; This is an example of the experimental pass-fusion mechanism.
   ;(ws-run-fused/disjoint p ws-normalize-context ws-lift-let)
   (ws-run-pass p ws-normalize-context)
-  (inspect p)
   (ws-run-pass p ws-lift-let)
   
   ; --mic, <OPTIMIZATION>

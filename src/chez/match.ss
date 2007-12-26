@@ -61,13 +61,9 @@
         (trace-match match-help match-help1 clause-body let-values**
           guard-body convert-pat mapper my-backquote extend-backquote
           sexp-dispatch)
-	;; RRN: Adding these [2005.10.24]
-;	(let-match match)
-;	(match-lambda match)
 	)
 
-(import scheme)
-
+;(import scheme)
 
 (define-syntax match+
   (lambda (x)
@@ -161,21 +157,31 @@
               #'(mapper rest vars tIds)))))
     (syntax-case x ()
       ((_ Cata ((CVar CDepth CMyCata CFormal ...) ...) (ThreadedId ...) B)
-       (with-syntax (((Mapper ...)
-                      (map (lambda (mycata formals depth)
-                             (build-mapper formals
-                               (syntax-object->datum depth)
-                               (syntax-case mycata ()
-                                 [#f #'Cata]
-                                 [exp #'exp])
-                               #'(ThreadedId ...)))
-                        #'(CMyCata ...)
-                        #'((CFormal ...) ...)
-                        #'(CDepth ...))))
-         #'(let-values** (([ThreadedId ... CFormal ...]
-                           (Mapper ThreadedId ... CVar))
-                          ...)
-             B))))))
+       ;;; RRN: Hacking this a bit for larceny compat:
+       (with-syntax ((((TIDs ...) ...)
+		      (datum->syntax-object #'_
+		       (map (lambda _ #'(ThreadedId ...))
+			 (syntax-object->datum #'((CFormal ...) ...))))))
+	 (with-syntax (((Mapper ...)
+			(map (lambda (mycata formals depth)
+			       (build-mapper formals
+					     (syntax-object->datum depth)
+					     (syntax-case mycata ()
+							  [#f #'Cata]
+							  [exp #'exp])
+					     #'(ThreadedId ...)))
+			  #'(CMyCata ...)
+			  #'((CFormal ...) ...)
+			  #'(CDepth ...))))
+	   ;; [2007.12.26] RRN: Removing ellipses from references to ThreadedId here:
+	   ;; This appears to have been a bug.  Introducing TIDs instead.	
+	   #'(let-values** (([TIDs ... CFormal ...]
+			     (Mapper TIDs ... CVar))
+			    ...)
+			   B)
+
+	   )
+	 )))))
 
 (define-syntax guard-body
   (lambda (x)
@@ -230,14 +236,14 @@
            (((unquote [MyCata -> Var ...]) Dots)
             (andmap Var? #'(Var ...))
             (with-syntax (((Temp) (generate-temporaries '(x)))
-                          (Depth+1 (add1 depth)))
+                          (Depth+1 (+ 1 depth)))
               (values #'each-any
                       (cons #'Temp vars)
                       (cons #'[Temp Depth+1 MyCata Var ...] cdecls))))
            (((unquote [Var ...]) Dots)
             (andmap Var? #'(Var ...))
             (with-syntax (((Temp) (generate-temporaries '(x)))
-                          (Depth+1 (add1 depth)))
+                          (Depth+1 (+ 1 depth)))
               (values #'each-any
                       (cons #'Temp vars)
                       (cons #'[Temp Depth+1 #f Var ...] cdecls))))
@@ -248,7 +254,7 @@
         ((Pat Dots)
          (ellipsis? #'Dots)
          (let-synvalues* (((Dpat Dvars Dcdecls)
-                           (f #'Pat vars cdecls (add1 depth))))
+                           (f #'Pat vars cdecls (+ 1 depth))))
            (with-syntax ((Size (- (length #'Dvars) (length vars))))
              (values #'#(each Dpat Size) #'Dvars #'Dcdecls))))
         ((Pat Dots . Rest)
@@ -347,7 +353,7 @@
         (syntax-case x (quasiquote unquote unquote-splicing)
           ;; inner quasiquote
           ((quasiquote Exp)
-           (with-values (destruct Orig #'Exp (add1 depth))
+           (with-values (destruct Orig #'Exp (+ 1 depth))
              (syntax-lambda (Builder Vars Exps)
                (if (null? #'Vars)
                    (values #''(quasiquote Exp) '() '())
@@ -358,7 +364,7 @@
            (with-temp X
              (values #'X (list #'X) (list #'Exp))))
           ((unquote Exp)
-           (with-values (destruct Orig #'Exp (sub1 depth))
+           (with-values (destruct Orig #'Exp (+ -1 depth))
              (syntax-lambda (Builder Vars Exps)
                (if (null? #'Vars)
                    (values #''(unquote Exp) '() '())
@@ -383,7 +389,7 @@
                      (values #'(append X ... Builder)
                              #'(X ... . Vars) #'(Exp ... . Exps)))))))
           ((unquote-splicing Exp ...)
-           (with-values (destruct Orig #'(Exp ...) (sub1 depth))
+           (with-values (destruct Orig #'(Exp ...) (+ -1 depth))
              (syntax-lambda (Builder Vars Exps)
                (if (null? #'Vars)
                    (values #''(unquote-splicing Exp ...) '() '())
@@ -601,7 +607,8 @@
 
 ) ;; End Module
 
-#!eof
+
+#|
 
 ;;; examples of passing along threaded information.
 
@@ -785,3 +792,4 @@
 ;;    (,v ,w) ... ==> ,@(map list v w)
 ;;    etc.
 
+|#

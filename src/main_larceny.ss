@@ -31,7 +31,10 @@
     [(_ name parent (require __ ...) (provide exports ...) (chezimports imp ...) exp ...)
      (begin exp ...)]
     [(_ name parent (require __ ...) (provide exports ...) (chezprovide chezexports ...) (chezimports imp ...) exp ...)
-     (begin exp ...)]))
+     (begin exp ...)]
+    ;; This is a raw chez module, as opposed to a Regiment/WS module:
+    [(_ name (exports ...) exp ...)  (begin exp ...)]    
+    ))
 
 (module foo mzscheme (require) (provide) (chezimports)
    (define w 11111)
@@ -41,22 +44,28 @@
 (define z 9292)
 
 
-(library (ellipse-pred)
-  (export symbolic-identifier=? ellipsis? delay-values 
-	  extend-backquote simple-eval syntax-error
+
+
+(library (misc-larceny-compat)
+  (export literal-identifier=? ellipsis? delay-values 
+	  extend-backquote simple-eval 
+	  syntax-error datum->syntax-object syntax-object->datum
 	  andmap call/1cc
 	  )
   (import (for (rnrs) run expand)
 	  (rnrs r5rs) (rnrs eval))
 
-  (define symbolic-identifier=?
+  (define datum->syntax-object datum->syntax)
+  (define syntax-object->datum syntax->datum)
+
+  (define literal-identifier=?
     (lambda (x y)
       (eq? (syntax->datum x)
 	   (syntax->datum y))))
 	 
   (define ellipsis?
     (lambda (x)
-      (and (identifier? x) (symbolic-identifier=? x #'(... ...)))))
+      (and (identifier? x) (literal-identifier=? x #'(... ...)))))
 
   (define-syntax delay-values
     (syntax-rules ()
@@ -86,15 +95,15 @@
 	(and (fun (car ls)) (andmap fun (cdr ls)))))
 
   (define call/1cc call/cc)
-
 )
 
-(import (for (ellipse-pred) run expand))
+(import (for (misc-larceny-compat) run expand))
 
 
-;(load "larceny/larc_match.ss") ;; this seems to work
+(load "larceny/larc_match.ss") ;; this seems to work
+(load "chez/match.ss") 
 
-(load "generic/util/rn-match.r5rs") ;(test-match)
+;(load "generic/util/rn-match.r5rs") ;(test-match)
 (display "TEST: ")(display (match 3 [3 9] [4 2]))(newline)
 
 ;(dump-interactive-heap "larc.heap")
