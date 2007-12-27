@@ -721,6 +721,7 @@
 			 (list x ";\n")))
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
+      [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))] ;; Considered "simple" now.
       [(deref ,v) (guard (symbol? v)) (if name (wrap (Var v)) "")]
 
       [(quote ,c)             (if name ((Value tenv) name type `',c) "")]

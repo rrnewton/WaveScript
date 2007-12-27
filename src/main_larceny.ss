@@ -192,5 +192,12 @@
 (time (load  "generic/util/reg_macros.ss"))
 
 
+(time (load "generic/util/hash.ss")) 
+(time (load "generic/util/slib_hashtab.ss"))
+
+
+
+
+
 (dump-interactive-heap "larc.heap")
 ;(dump-heap "larc.heap" (lambda args (display "Starting from heap... YAY \n") (newline)))

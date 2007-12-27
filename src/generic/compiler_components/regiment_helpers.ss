@@ -161,7 +161,7 @@
 ;; 
 (define make-begin
   (lambda  (expr*)
-    (IFCHEZ (import rn-match) (begin))
+    (cond-expand [chez (import rn-match)] [else (void)])
     (let ([initlst (match expr*
 			  [(begin ,x* ...) x*]
 			  [,ls ls])])
@@ -208,7 +208,7 @@
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
 (define (simple-expr? x)
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   (match x
     ;; [2007.03.11] Making complex constants *NON* simple
     [(quote ,imm) (guard ;(not (null? imm)) 
@@ -276,14 +276,14 @@
 
 ;; A potentially quoted integer.
 (define (qinteger? n)
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   (match n
     [,i (guard (integer? i)) #t]
     [',i (guard (integer? i)) #t]
     [,else #f]))
 ;; Get the value of a potentially quoted integer.
 (define (qinteger->integer n)
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   (match n
     [,i (guard (integer? i)) i]
     [(quote ,i) 
@@ -688,7 +688,7 @@
 
 ;; [2004.06.13] Tokens will be more complex later.
 (define (token-name? t) 
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   ;(or (symbol? t)
   ;(and (pair? t) (symbol? (car t)) (integer? (cdr t))))
   (match t
@@ -698,7 +698,7 @@
     [else #f]))
 
 (define (token->name t)
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   (match t
 	 [(tok ,name) name]
 	 [(tok ,name ,num) name]
@@ -706,7 +706,7 @@
 	 [,name (guard (symbol? name)) name]
 	 [,other (error 'token->name "bad token: ~a" other)]))
 (define (token->subtok t)
-  (IFCHEZ (import rn-match) (begin))
+  (cond-expand [chez (import rn-match)] [else (void)])
   (match t
 	 [(tok ,name) 0]
 	 [(tok ,name ,num) num]
@@ -767,27 +767,26 @@
 
   ;; NOTE: This is currently unisolated anyways.  So it's just a
   ;; common interface into Chez/PLT's RNG's.  Need to go further than that.
-  (IFCHEZ
-   (begin 
-   ;; A random integer. 
-   (define reg:random-int
-     (case-lambda 
-       [() (#%random (#%most-positive-fixnum))]
-       [(k) (#%random k)]))
-   
-   ;; A random real number.
-   (define reg:random-real
-     (case-lambda
-       [() (#%random 1.0)]
-       [(n) (#%random n)]))
-   
-   ;; Get the state of the RNG.
-   (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
-   
-   ;; Set the state of the RNG.
-   (define (reg:set-random-state! s) (random-seed s))
-   )
-   (begin
+  (cond-expand 
+    [chez 
+     ;; A random integer. 
+     (define reg:random-int
+       (case-lambda 
+	 [() (#%random (#%most-positive-fixnum))]
+	 [(k) (#%random k)]))
+     
+     ;; A random real number.
+     (define reg:random-real
+       (case-lambda
+	 [() (#%random 1.0)]
+	 [(n) (#%random n)]))
+     
+     ;; Get the state of the RNG.
+     (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
+     
+     ;; Set the state of the RNG.
+     (define (reg:set-random-state! s) (random-seed s))]
+    [plt 
      (define reg:random-int
        (case-lambda
          [() (reg:random-int (- (expt 2 31) 1))]
@@ -800,8 +799,8 @@
      (define (reg:get-random-state)
        (pseudo-random-generator->vector (current-pseudo-random-generator)))
      (define (reg:set-random-state! s)
-       (current-pseudo-random-generator (vector->pseudo-random-generator s)))   
-     ))
+       (current-pseudo-random-generator (vector->pseudo-random-generator s)))])
+
       
 ;; [2006.03.01] UNFINISHED
 #;

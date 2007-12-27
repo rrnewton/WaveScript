@@ -13,7 +13,8 @@
     ;; Exports:
     ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
 		  reg:include
-		  IFCHEZ IF_GRAPHICS IF_THREADS
+		  IFCHEZ 
+		  IF_GRAPHICS IF_THREADS
 		  hash-percent cond-expand
 		  )
   (import scheme)
@@ -49,29 +50,23 @@
       ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
   
   ;; Pre-processor macro for switching between Chez/PLT versions.
-  (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) chez]))
+  (define-syntax IFCHEZ 
+    (syntax-rules (chez plt) 
+      ;[(_ a)   (cond-expand [chez a] [else (begin)])]
+      [(_ a b) (cond-expand [chez a] [plt b])]))
 
   ;; This preprocessor form is used like an #IFDEF, evaluate code only
   ;; if we've got a GUI loaded.
   (define-syntax IF_GRAPHICS
-    (lambda (x)
-      (syntax-case x ()
-		   [(_ E1 E2)
-		    ;; The swl script sets this variable:
-		    ;; When we build through SWL, we link in the SWL code.  Otherwise not.
-		    (if (getenv "SWL_ROOT")
-			#'E1
-			#'E2)]
-		   [(_ E1)
-		    #'(IF_GRAPHICS E1 (void))])))
+    (syntax-rules (chez plt) 
+      [(_ a b) (cond-expand [(and chez graphics) a] [else b])]
+      [(_ a)   (cond-expand [(and chez graphics) a] [else (begin)])]))
 
   (define-syntax IF_THREADS
-    (lambda (x)
-      (syntax-case x ()
-	[(_ E1 E2)
-	 (if (top-level-bound? 'fork-thread)
-	     #'E1 #'E2)]
-	[(_ E1) #'(IF_THREADS E1 (void))])))
+    (syntax-rules (chez plt) 
+      [(_ a b) (cond-expand [(and chez threads) a] [else b])]
+      [(_ a)   (cond-expand [(and chez threads) a] [else (begin)])]))
+
   
   ;; This is a common syntax for including other source files inline.
   ;; I use it in both PLT and Chez.
