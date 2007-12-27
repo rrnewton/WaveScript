@@ -1398,7 +1398,8 @@
       (lambda (x)
 	(match x 
           [(tuple) "((wsunit_t)0)"]
-	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
+	  [(assert-type ,t '())        (wrap (PolyConst '() t))]
+          [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
 	  ['() (error 'Simple "null list without type annotation")]
 	  [(quote ,c) (Const #f #f c)]
           [nulltimebase (Const #f #f 'nulltimebase)]
