@@ -264,7 +264,7 @@
 
 ;; This wipes bindings and reloads.
 (define (reload) 
-  ;(define main (++ (REGIMENTD) "/src/main_chez.ss"))
+  ;(define main (** (REGIMENTD) "/src/main_chez.ss"))
   (current-directory (REGIMENTD))
   (current-directory "src")
   ;(wipe) 

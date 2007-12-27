@@ -34,7 +34,7 @@
       let-match match?
       mvlet
       match-lambda
-      ++ ^ ;; Exponentiation
+      ** ^ ;; Exponentiation
       define-id-syntax
       rec 
       ;;reg:define-struct ;; Moved to constants.ss 
@@ -279,13 +279,13 @@
 				  (syntax-object->datum #'(x ...)))))
 	 #'(let* ((tmp x) ...) (f tmp ...)))])))
 
-;; '++' is a string-append shorthand
-#;(define-syntax ++
+;; '**' is a string-append shorthand
+#;(define-syntax **
   (lambda (x)
     (syntax-case x ()
 		 [id (identifier? #'id) #'string-append]
 		 [(_ E ...) #'(string-append E ...)])))
-(define ++ string-append)  ;; Trust the inliner. [2006.03.02]
+(define ** string-append)  ;; Trust the inliner. [2006.03.02]
 
 ;; This is used for defining convenient shorthands than need no parentheses!
 (define-syntax define-id-syntax  

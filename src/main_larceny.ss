@@ -20,7 +20,7 @@
 (import (for (primitives pretty-print make-parameter time 
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
-			 set-car!
+			 global-optimization
 			 ) run expand))
 ;(import (larceny benchmarking))
 
@@ -36,12 +36,6 @@
      ;(pretty-print '(begin exp ...))
      (begin exp ...)]
     ))
-
-(define-syntax IFCHEZ 
-  (syntax-rules ()
-    [(_ a b) (void)]
-    [(_ a) (void)]))
-
 
 ;; Compatibility bindings:
 (library (misc-larceny-compat)
@@ -124,9 +118,40 @@
   (define (unbox x) (vector-ref x 0))
   (define (set-box! b x) (vector-set! b 0 x))
 )
-
 (import (for (misc-larceny-compat) run expand))
 
+(define-syntax IFCHEZ 
+  (syntax-rules ()
+    [(_ a b) (void)]
+    [(_ a) (void)]))
+
+;; Expand the appropriate code for loading in Larceny:
+(define-syntax cond-expand
+    (lambda (syn)
+      (syntax-case syn (and or not else 
+			    chez plt larceny graphics threads)
+      ;; Standard clauses:
+      ((cond-expand) (syntax-error #'syn "Unfulfilled cond-expand"))
+      ((cond-expand (else body ...))  #'(begin body ...))
+      ((cond-expand ((and) body ...) more-clauses ...) #'(begin body ...))
+      ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (cond-expand ((and req2 ...) body ...) more-clauses ...)) more-clauses ...))
+      ((cond-expand ((or) body ...) more-clauses ...) #'(cond-expand more-clauses ...))
+      ((cond-expand ((or req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (begin body ...)) (else (cond-expand ((or req2 ...) body ...) more-clauses ...))))
+      ((cond-expand ((not req) body ...) more-clauses ...)
+       #'(cond-expand (req (cond-expand more-clauses ...)) (else body ...)))
+
+      ;; Enabled features (or potentially enabled):
+      ((cond-expand (larceny body ...) more-clauses ...) #'(begin body ...))
+      ;; 'threads' and 'graphics' are disabled for now under larceny.
+      
+      ;; Otherwise, it's disabled:
+      ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
+
+
+;; TEMPORARY: Let's turn this off to load a little faster.
+(global-optimization #f)
 
 ;======================================================================
 ;;; Print a banner message.

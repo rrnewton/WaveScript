@@ -25,7 +25,7 @@
 
 (define (prepend-all x ls)
   (if (null? ls) ()
-      (cons (++ x (car ls)) (prepend-all x (cdr ls)))))
+      (cons (** x (car ls)) (prepend-all x (cdr ls)))))
 
 ;; This should filter out illegal characters!!
 (define (tokname x)
@@ -45,7 +45,7 @@
 (define (upcase s) (list->string (map char-upcase (string->list s))))
 
 ;; This takes a token to a string identifying its ActiveMessage number:
-(define (tok_id t)  (++ "AM_" (upcase (tokname t))))
+(define (tok_id t)  (** "AM_" (upcase (tokname t))))
 
 (define (dequote x) 
   (match x [(quote ,v) v] [,else (error 'dequote "not quoted! ~s" x)]))
@@ -136,13 +136,13 @@
 	      rhs)]
       
       [(if ,[Basic -> t] 
-	   (begin ,[(Expr (++ "  " indent) k tokargs) -> c*] ...) 
-	   (begin ,[(Expr (++ "  " indent) k tokargs) -> a*] ...))       
-       `(,(++ indent "if (" t ") {\n")	 
+	   (begin ,[(Expr (** "  " indent) k tokargs) -> c*] ...) 
+	   (begin ,[(Expr (** "  " indent) k tokargs) -> a*] ...))       
+       `(,(** indent "if (" t ") {\n")	 
 	 ,@(apply append c*) ;(map list (make-list (length c*) indent) c*)
-	 ,(++ indent "} else {\n")
+	 ,(** indent "} else {\n")
 	 ,@(apply append a*) ; (map list (make-list (length a*) indent) a*)
-	 ,(++ indent "}\n"))]
+	 ,(** indent "}\n"))]
 
 					;    TMS.Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
 					;    TMS.Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
@@ -161,23 +161,23 @@
        (disp "CALL" t sub args)
        
        (list
-	(++ indent "the_packet.type = " (tok_id t) ";\n")
-	(apply ++ `(,indent "dbg(DBG_USR1, \"TM TestMachine: local call to: " ,t 
+	(** indent "the_packet.type = " (tok_id t) ";\n")
+	(apply ** `(,indent "dbg(DBG_USR1, \"TM TestMachine: local call to: " ,t 
 			    " with " ,(number->string (length args)) " args: "
 			    ,@(make-list (length args) " %d") "\\n\""
 			    ,@(prepend-all ", " args) ");\n"))
-	(++ indent 
-	    (k (apply ++ `("call token_" ,(tokname t) "(" ,@(insert-between ", " args) ")")))
+	(** indent 
+	    (k (apply ** `("call token_" ,(tokname t) "(" ,@(insert-between ", " args) ")")))
 	    ";\n")
 	)]
 					;-- FIXME FILL IN ARG DATA HERE...
-					;--indent ++"/* Should fill in arg data here... */\n",
+					;--indent **"/* Should fill in arg data here... */\n",
 					;-- Not going through the FIFO right now...
-					;--indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
-					;--indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
+					;--indent**"call TMComm_"** tokname t **".add_msg(the_packet);\n" 
+					;--indent **"/* It's sketchy that I use the_packet for this without copying it... */\n",
 
-					;--    Ssocreturn b -> []--[ indent ++ "call TMComm.socreturn("++ process_basic b ++");\n" ]
-					;--    Ssocfinished -> []--[ indent ++ "call TMComm.socfinished();\n"]
+					;--    Ssocreturn b -> []--[ indent ** "call TMComm.socreturn("** process_basic b **");\n" ]
+					;--    Ssocfinished -> []--[ indent ** "call TMComm.socfinished();\n"]
       
       [(,prim ,args ...)
        (guard (token-machine-primitive? prim))
@@ -199,15 +199,15 @@
 		       [(dbg printf)
 			(format "dbg(DBG_USR1, ~s~a);\n"
 				(if (eq? prim 'dbg)
-				    (++ "TMDBG: " (dequote (car args)))
-				    (++ "TMPRNT: " (dequote (car args))))
-				(apply ++ (prepend-all ", " (map Basic (cdr args)))))]
+				    (** "TMDBG: " (dequote (car args)))
+				    (** "TMPRNT: " (dequote (car args))))
+				(apply ** (prepend-all ", " (map Basic (cdr args)))))]
 		       [else (err)])))
-	 (list (++ indent result)))]
+	 (list (** indent result)))]
 
 
       [(return ,[Basic -> b])
-       (list (++ indent "return " b ";\n"))]
+       (list (** indent "return " b ";\n"))]
       [(leds ,what ,which)
        (let ([what (case what
 		     [(on) "On"]
@@ -224,10 +224,10 @@
 					;     let body = concat $ map (process_stmt indent tokargs) stmts
 					;         defs = concat $ map (process_localdef indent) locals
 					;     in ([], 
-					; 	defs ++ body)
+					; 	defs ** body)
 
 					; process_localdef :: String -> Id -> [String]
-					; process_localdef indent (Id id) = [indent ++"uint16_t "++ id ++";\n"]
+					; process_localdef indent (Id id) = [indent **"uint16_t "** id **";\n"]
 
 					; build_fun formals body = 
 					;     " foo " 
@@ -267,7 +267,7 @@
 (define (Handler tb)
   (mvlet ([(tok subid args stored bindings body) (destructure-tokbind tb)])
        ;; Return code for function defs, as well as code for the switch statement.
-       (vector (apply ++ 
+       (vector (apply ** 
 	      `("  command uint16_t token_" ,(tokname tok) "(" 
 		,@(insert-between ", " (prepend-all "uint16_t " (map symbol->string args)))
 		") { \n"
@@ -280,7 +280,7 @@
 		"  }\n"
 		;,@funs ;; [2005.11.10] No functions generated from processing statements currently
 		))
-	       (apply ++
+	       (apply **
 		`("     case " ,(tok_id tok) ": \n"		    
                   ;-- DEBUG CODE
 		  "        dbg(DBG_USR1, \"TM TestMachine: tok fired: type %d \\n\", tok);\n"
@@ -295,11 +295,11 @@
 ;; process_handlers :: [TMS.TokHandler] -> String
 (define (Handlers tbs)
   (let-match ([(#(,funs ,bods) ...) (map Handler tbs)])
-    (++ (apply ++ funs)
+    (** (apply ** funs)
 "
 command void apply_token(uint16_t tok, uint16_t* args) {
     switch (tok) {
-" (apply ++ bods) "
+" (apply ** bods) "
     default:
       dbg(DBG_USR1, \"TM TestMachine: apply_token, UNMATCHED TOK: %d\\n\", tok);
     }
@@ -325,7 +325,7 @@ command void apply_token(uint16_t tok, uint16_t* args) {
 (define (build_module_header toks)
   (let ([toknames (map symbol->string (map handler->tokname toks))]
 	[arglsts  (map handler->formals toks)])
-    (++ "
+    (** "
 module " emit-nesc-modname "M 
 {
   provides interface StdControl as Control; 
@@ -334,10 +334,10 @@ module " emit-nesc-modname "M
   // Helper functions only: 
   provides command void apply_token(uint16_t tok, uint16_t* args);
   uses interface Leds;\n"
-  (apply ++ 
+  (apply ** 
 	 (map (lambda (name args)
-		(++ "  provides command uint16_t token_" (tokname name) "("
-		    (apply ++ (insert-between ", " (prepend-all "uint16_t " (map symbol->string args))))
+		(** "  provides command uint16_t token_" (tokname name) "("
+		    (apply ** (insert-between ", " (prepend-all "uint16_t " (map symbol->string args))))
 		    ");\n"))
 	   toknames arglsts))
   "
@@ -352,7 +352,7 @@ module " emit-nesc-modname "M
     "\n")
 ;build_implementation_footer :: [TMS.TokHandler] -> [Token] -> String
 (define (build_implementation_footer tokhands startup)
-  (++ "  
+  (** "  
   command result_t Control.init() {
     the_payload_args = (uint16_t*)(the_payload->args);
     the_retpayload_args = (uint16_t*)(the_retpayload->return_vals);
@@ -380,15 +380,15 @@ module " emit-nesc-modname "M
 ;; build_socfun :: [TMS.ConstBind] -> TMS.Block -> String
 (define (build_socfun consts block) ;(TMS.Block locals stmts) =
   (let ((indent "    "))
-    (++ "  task void socpgm() {\n"
+    (** "  task void socpgm() {\n"
      ; --"    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\\n\");\n"++
-	(apply ++ (prepend-all indent (map ConstBind consts)))
+	(apply ** (prepend-all indent (map ConstBind consts)))
 					;-- FIXME TODO INCLUDE FUNS HERE!!!
 					;-- Generate code for all the statements in 
 
-;	(apply ++ (apply append (map (Expr indent id ()) block ;stmts
+;	(apply ** (apply append (map (Expr indent id ()) block ;stmts
 ;                                     )))
-	(apply ++ (Block indent () block))
+	(apply ** (Block indent () block))
 
 	"  }\n\n"
 	"  command void start_socpgm() {\n"
@@ -399,10 +399,10 @@ module " emit-nesc-modname "M
   (match prog
     [(,lang '(program (bindings ,cb* ...) (nodepgm (tokens ,tb* ...))))
       ;-- First spit out just a little header:
-     (++ "
+     (** "
 // " (date-and-time) "
 // Automatically generated module for " (number->string (length tb*)) " token handlers:
-" (apply ++ (map (lambda (tb) (format "//   ~a\n" (handler->tokname tb))) tb*))	"
+" (apply ** (map (lambda (tb) (format "//   ~a\n" (handler->tokname tb))) tb*))	"
 includes TestMachine;
 includes TokenMachineRuntime;
 
@@ -416,7 +416,7 @@ implementation {
   uint16_t* the_retpayload_args;
     
   // The constant bindings:
-" (apply ++ "  " (map ConstBind cb*))
+" (apply ** "  " (map ConstBind cb*))
   (build_implementation_header tb* 'node-start)
   ;(map ConstBind socconsts)
 "
@@ -441,7 +441,7 @@ implementation {
 ;-- [2005.11.09] Don't have any of these now that I am removing all gradient code.
 (define (handwritten_helpers toks) "\n")
 ;    let mkcase s t = "      case "++tok_id t++": \n"++
-;		     "        return call TMComm_"++ tokname t ++"."++ s ++";\n"++ 
+;		     "        return call TMComm_"** tokname t **"."** s **";\n"** 
 ;		     "      break;\n"
 ;    in ("\n")
 
@@ -451,7 +451,7 @@ implementation {
 
 (define (build_configuration prog)
   (let ((toknames (map handler->tokname (prog->tokens prog))))
-    (apply ++ `("
+    (apply ** `("
 // " ,(date-and-time) "
 // Automatically generated configuration file
 includes TestMachine;
@@ -475,14 +475,14 @@ includes TokenMachineRuntime;
 (define (build_header_file prog) ; (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
   (match prog
     [(,lang '(program (bindings ,cb* ...) (nodepgm (tokens ,tb* ...))))
-     (++ "
+     (** "
 // " (date-and-time) "
 // Automatically generated header file supporting Token Machine code.
 #define BASE_STATION 0
 #define NUM_TOKS " (number->string (length tb*)) "
 enum {
 " 
-(apply ++ (prepend-all 
+(apply ** (prepend-all 
 	   "  "
 	   (mapi (lambda (i t)
 		  (format "~a = ~a,\n" (tok_id t) i))

@@ -821,7 +821,7 @@
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
       ; For this unit test we simply run this long enough to get one round of returns back.
-      (load-regiment (++ (REGIMENTD) "/src/demos/token_machs/manual_tree.tm")
+      (load-regiment (** (REGIMENTD) "/src/demos/token_machs/manual_tree.tm")
 		     '[sim-timeout 1500])
       unspecified]
 
@@ -2347,7 +2347,7 @@
 
     ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
-      , (tm-to-list (car (file->slist (++ (REGIMENTD) "/src/demos/token_machs/buffered_gradients.tm")))
+      , (tm-to-list (car (file->slist (** (REGIMENTD) "/src/demos/token_machs/buffered_gradients.tm")))
 		    '[sim-timeout 5000])
 	unspecified]
      
@@ -2548,7 +2548,7 @@
 
 ["Demos: smap2_two_anchors.rs"
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/smap2_two_anchors.rs")))
+   (load-regiment (** (REGIMENTD) "/src/demos/regiment/smap2_two_anchors.rs")))
  ,(lambda (x) 
     (match (map cadr x)
       ;; Receive one or the other first:
@@ -2558,7 +2558,7 @@
 
 ["Demos: simple/events.rs" retry
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/simple/events.rs")))
+   (load-regiment (** (REGIMENTD) "/src/demos/regiment/simple/events.rs")))
  ,(lambda (ls)
     (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
 
@@ -2576,7 +2576,7 @@
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
    (sort < (list-rem-dups 
-	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions.rs")))
+	    (load-regiment (** (REGIMENTD) "/src/demos/regiment/nested_regions.rs")))
 	 ))
  ,(lambda (set1)
     (let ([sim (simalpha-current-simworld)])
@@ -2606,10 +2606,10 @@
 		[simalpha-failure-model 'none]
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
-   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs"))
+   (load-regiment (** (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs"))
 #;
    (sort < (list-rem-dups 
-	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs")))
+	    (load-regiment (** (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs")))
 	 ))
 
  unspecified]
@@ -2665,7 +2665,7 @@
 
 #;
 ["Demos: "
- (load-regiment (++ (REGIMENTD) "/src/demos/regiment/"))
+ (load-regiment (** (REGIMENTD) "/src/demos/regiment/"))
  3]
 
 ;; TODO: simple/events

@@ -11,14 +11,40 @@
 	 IFCHEZ
 	 IF_GRAPHICS 
 	 IF_THREADS
+	 cond-expand
 	 reg:define-struct
          reg:struct?
 	 reg:struct->list
-         reg:list->struct
+         reg:list->struct	
 	 )
 	
   ;; Pre-processor macro for switching between Chez/PLT versions.
   (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) plt]))
+  
+  ;; [2007.12.27] Considering switching over to a cond-expand system.
+  (define-syntax cond-expand
+    (lambda (syn)
+      (syntax-case syn (and or not else 
+			    chez plt larceny graphics threads)
+      ;; Standard clauses:
+      ((cond-expand) (raise-syntax-error #f "Unfulfilled cond-expand" #'syn))
+      ((cond-expand (else body ...))  #'(begin body ...))
+      ((cond-expand ((and) body ...) more-clauses ...) #'(begin body ...))
+      ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (cond-expand ((and req2 ...) body ...) more-clauses ...)) more-clauses ...))
+      ((cond-expand ((or) body ...) more-clauses ...) #'(cond-expand more-clauses ...))
+      ((cond-expand ((or req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (begin body ...)) (else (cond-expand ((or req2 ...) body ...) more-clauses ...))))
+      ((cond-expand ((not req) body ...) more-clauses ...)
+       #'(cond-expand (req (cond-expand more-clauses ...)) (else body ...)))
+
+      ;; Enabled features (or potentially enabled):
+      ((cond-expand (plt body ...) more-clauses ...) #'(begin body ...))
+      ;; 'threads' and 'graphics' are disabled for now under plt.
+      
+      ;; Otherwise, it's disabled:
+      ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
+
 
   ;; [2005.11.04] This is lame, but the only way I know of to check for MrED is
   ;; to try to require it -- if we get an error, it's not there.

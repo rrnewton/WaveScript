@@ -809,7 +809,7 @@
 		       ,meta* ...))       
 	  (define includes (string-append "#include<stdio.h>\n" 
 					  "#include<stdlib.h>\n"
-					  "#include \""(++ (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
+					  "#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
 					  ))
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))

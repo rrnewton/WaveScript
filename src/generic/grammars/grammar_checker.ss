@@ -317,7 +317,7 @@
     (define-top-level-value 'grammar-original origexpr)
     (define-top-level-value 'grammar-failed x)
     (warning 'check-grammar
-	   (++ (format "in ~a: " context)
+	   (** (format "in ~a: " context)
 	       "could not parse expr ~s with production/pattern ~s\n  "
 	       "Context stored in 'grammar-context', look at the location of FAIL.\n"
 	       "Original expression in 'grammar-original'.\n" 

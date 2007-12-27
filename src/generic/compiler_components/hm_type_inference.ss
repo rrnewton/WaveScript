@@ -127,7 +127,7 @@
     (match pos
       [#f "unknown"]
       [#((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2)
-       (++ (format "in file ~s\n   "  fn)
+       (** (format "in file ~s\n   "  fn)
 	   (if (= ln1 ln2)
 	       (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
 	       (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))
@@ -158,11 +158,11 @@
 	     (rep (sub1 ln1) (read-line port)) ;; Ignore leading text
 	     (rep (add1 (- ln2 ln1)) (set! lines (cons (read-line port) lines)))
 	     ;; Cap each line with a newline:
-	     (set! lines (map (lambda (ln) (++ ln "\n")) lines))
+	     (set! lines (map (lambda (ln) (** ln "\n")) lines))
 	     (set! lines (reverse lines))
 
 	     ;; Prune the first line:
-	     (set! lines (cons (++ (make-string col1 #\space) 
+	     (set! lines (cons (** (make-string col1 #\space) 
 				   (substring (car lines) col1 
 					      (string-length (car lines))))
 			       (cdr lines)))
@@ -189,7 +189,7 @@
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-mismatch msg t1 t2 exp)
   (type-error 'type-checker
-	 (++ "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+	 (** "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
 	     "Type mismatch: ~a doesn't match ~a \n~a"
 	     "\nLocation:\n   ~a\n" ;; Location
 	     "\nExpression:\n~a\n")
@@ -1465,28 +1465,28 @@
   (define (loop outer?) 
     (lambda (t)
       (match t
-	[(quote ,[var]) (++ "'" var)]
-	[(NUM ,[var]) (++ "#" var)]
-	[(-> ,b) (++ "() -> " ((loop #t) b))]
+	[(quote ,[var]) (** "'" var)]
+	[(NUM ,[var]) (** "#" var)]
+	[(-> ,b) (** "() -> " ((loop #t) b))]
 
 	;; One arg functions:
 	[(, left -> ,[(loop #t) -> right])
 	 (if (arrow-type? left)
-	     (++ "(" ((loop #t) left) ") -> " right)
-	     (++     ((loop #t) left)  " -> " right))]
+	     (** "(" ((loop #t) left) ") -> " right)
+	     (**     ((loop #t) left)  " -> " right))]
 	[(,[(loop #t) -> arg*] ... -> ,[(loop #t) -> b])
-	 (++ "(" (apply string-append (insert-between ", " arg*)) ")"
+	 (** "(" (apply string-append (insert-between ", " arg*)) ")"
 	     " -> "b)]
 
 	[#(,[(loop #t) -> x*] ...)
-	 (++ "(" (apply string-append (insert-between " * " x*)) ")")]
+	 (** "(" (apply string-append (insert-between " * " x*)) ")")]
 
 	;; [2006.12.01] Removing assumption that TC's have only one arg:
 	[(,[tc] ,arg* ...)
 	 (let ([inside (apply string-append (insert-between " " (map (loop #f) arg*)))])
 	   (if outer?		 
-	       (++     tc " " inside )
-	       (++ "(" tc " " inside ")")))]
+	       (**     tc " " inside )
+	       (** "(" tc " " inside ")")))]
 	[,sym (guard (symbol? sym))
 	      (symbol->string sym)]
 	[,s (guard (string? s)) (format "~s" s)] ;; Allowing strings for uninterpreted C types.
@@ -1609,7 +1609,7 @@
                  ;		 (print-type (realias-type aliases t) port) (newline port))
                  (print-type t port) (fprintf port ";\n"))
                
-               (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
+               (pvtloop subvars (fx+ 1 depth) (** indent "  "))]
               [,ls (guard (list? ls))
                    (for-each (lambda (x) (pvtloop x depth indent))
                      ls)]

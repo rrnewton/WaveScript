@@ -1261,14 +1261,14 @@
 		     (if lib (list " -l" lib) fn)))
 	      link-files)
 	    "\n"
-            (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
-	    (file->string (++ (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
+            (file->string (** (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
+	    (file->string (** (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
 	    
 	    ;; After the types are declared we can bring in the user includes:
 	    "\n\n" (map (lambda (fn) `("#include ",fn "\n")) 
 		     (reverse include-files)) "\n\n"
 
-            (file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
+            (file->string (** (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
             (map UnionDef uniondefs)

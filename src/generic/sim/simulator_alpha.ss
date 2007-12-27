@@ -138,9 +138,9 @@
 
   ;; We are loaded from the root directory, not the chez subdirectory.
   ;;(include "generic/simulator_nought.examples.ss")
-;  (include (++ (REGIMENTD) "/src/generic/simalpha_ui.ss"))
-;  (include (++ (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
-;  (include (++ (REGIMENTD) "/src/generic/simulator_alpha.ss"))
+;  (include (** (REGIMENTD) "/src/generic/simalpha_ui.ss"))
+;  (include (** (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
+;  (include (** (REGIMENTD) "/src/generic/simulator_alpha.ss"))
 
   
 (IFCHEZ

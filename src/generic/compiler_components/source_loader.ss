@@ -241,9 +241,9 @@
    [(not (ws-relative-path? file)) file]
    ;; Safety: Can't use ".." wrt to lib directory:
    [(and (not (substring? ".." file)) 
-	 (file-exists? (++ (REGIMENTD) "/lib/" file)))
-    (++ (REGIMENTD) "/lib/" file)]
-   [else (++ (path->string (current-directory)) "/" file)]
+	 (file-exists? (** (REGIMENTD) "/lib/" file)))
+    (** (REGIMENTD) "/lib/" file)]
+   [else (** (path->string (current-directory)) "/" file)]
    ))
 
 ;================================================================================
@@ -453,7 +453,7 @@
 
    (define (try-from-source)
      (eprintf
-      (++ "  Falling back to wsparse.ss from source, but you probably"
+      (** "  Falling back to wsparse.ss from source, but you probably"
 	  " want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n"))
      ;; We want only the stdout not the stderr.
      ;; UNFORTUNATELY, this 

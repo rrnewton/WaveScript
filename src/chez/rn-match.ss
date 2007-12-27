@@ -284,7 +284,7 @@
 	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
 	       (fprintf port "~a~a :: " indent v)
 	       (print-type t port) (newline port))
-	     (loop subvars (fx+ 1 depth) (++ indent "  "))]
+	     (loop subvars (fx+ 1 depth) (** indent "  "))]
 	    [,ls (guard (list? ls))
 		 (for-each (lambda (x) (loop x depth indent))
 		   ls)]

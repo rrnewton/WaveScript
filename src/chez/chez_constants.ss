@@ -24,7 +24,7 @@
       (syntax-case syn (and or not else 
 			    chez plt larceny graphics threads)
       ;; Standard clauses:
-      ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
+      ((cond-expand) (syntax-error #'syn "Unfulfilled cond-expand"))
       ((cond-expand (else body ...))  #'(begin body ...))
       ((cond-expand ((and) body ...) more-clauses ...) #'(begin body ...))
       ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
