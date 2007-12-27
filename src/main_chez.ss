@@ -325,7 +325,6 @@
 (include "chez/chez_constants.ss")
 (if VERBOSE-LOAD (printf "  Starting load...\n"))
 
-
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)

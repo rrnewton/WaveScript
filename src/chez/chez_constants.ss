@@ -14,8 +14,39 @@
     ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
 		  reg:include
 		  IFCHEZ IF_GRAPHICS IF_THREADS
+		  hash-percent cond-expand
 		  )
   (import scheme)
+
+  ;; [2007.12.27] Considering switching over to a cond-expand system.
+  (define-syntax cond-expand
+    (lambda (syn)
+      (syntax-case syn (and or not else 
+			    chez plt larceny graphics threads)
+      ;; Standard clauses:
+      ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
+      ((cond-expand (else body ...))  #'(begin body ...))
+      ((cond-expand ((and) body ...) more-clauses ...) #'(begin body ...))
+      ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (cond-expand ((and req2 ...) body ...) more-clauses ...)) more-clauses ...))
+      ((cond-expand ((or) body ...) more-clauses ...) #'(cond-expand more-clauses ...))
+      ((cond-expand ((or req1 req2 ...) body ...) more-clauses ...)
+       #'(cond-expand (req1 (begin body ...)) (else (cond-expand ((or req2 ...) body ...) more-clauses ...))))
+      ((cond-expand ((not req) body ...) more-clauses ...)
+       #'(cond-expand (req (cond-expand more-clauses ...)) (else body ...)))
+
+      ;; Enabled features (or potentially enabled):
+      ((cond-expand (chez body ...) more-clauses ...) #'(begin body ...))
+      ((cond-expand (graphics body ...) more-clauses ...) 
+       (if (getenv "SWL_ROOT")  #'(begin body ...)
+	   #'(cond-expand more-clauses ...)))
+      ((cond-expand (threads body ...) more-clauses ...)
+       (if (top-level-bound? 'fork-thread)
+	   #'(begin body ...)
+	   #'(cond-expand more-clauses ...)))
+
+      ;; Otherwise, it's disabled:
+      ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
   
   ;; Pre-processor macro for switching between Chez/PLT versions.
   (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) chez]))
@@ -135,6 +166,12 @@
 			 lookup-failure))))))
     (define (reg:struct->list x) (cdr (vector->list x)))
     |#
+
+    ;; This is a hack to emulate Chez's #%prim syntax without breaking
+    ;; other readers that can't handle it.
+    (define-syntax (hash-percent syn)
+      (syntax-case syn ()
+	[(_ prim) (datum->syntax-object #'_ `(let () (import scheme) ,(datum prim)))]))
    
 ) ;; End module
 

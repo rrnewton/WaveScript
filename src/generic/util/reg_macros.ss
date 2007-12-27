@@ -352,24 +352,6 @@
        (if (null? ls) (reverse! acc)
 	   (map-inlined-loop (cdr ls) (cons (f (car ls)) acc))))]))
 
-;(define-testing these-tests 
-;  `(
-;    
-;;     reg-include
-;;   
-;;      for grep rep
-;;      let-match 
-;;      mvlet
-;;      match-lambda
-;;      ++ ^ ;; Exponentiation
-;;      define-id-syntax
-;;      rec 
-;;      ;;reg:define-struct ;; Moved to constants.ss 
-;;      apply-ordered
-;    ))
-;  
-;(define test-reg_macros
-;  (default-unit-tester "reg_macros: various utility macros for the system" these-tests))
 
 ) ;; End module.
 

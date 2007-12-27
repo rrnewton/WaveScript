@@ -207,7 +207,7 @@
 
 ;; First we define a common make-parameter abstraction for Chez and PLT:
 (IFCHEZ 
- (define-syntax reg:make-parameter (identifier-syntax #%make-parameter))
+ (define-syntax reg:make-parameter (identifier-syntax (hash-percent make-parameter)))
  ;; The make-parameter function should call the guard even the first time.
  ;; This is not default PLT behavior:
  (define-syntax reg:make-parameter 
@@ -261,11 +261,11 @@
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
-(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) '())]))
 
 ;; This is for debug annotations that take a really long time.
 ;; For now it's enabled at the same time that DEBUGMODE is.
-(define-syntax UBERDEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
+(define-syntax UBERDEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) '())]))
 
 ;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
 #;
@@ -390,18 +390,19 @@
 ;; .returns Its arguments in list form or the null list.
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
-    [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
+    [(_ expr ...) (if (regiment-emit-debug) (list expr ...) '())]))
 
 
 ;; [2006.03.20] This enables me to explicitely label the nasty hacks in the system.
 ;; May want to change this in the future to give throw warnings or whatnot.
-(define-syntax (HACK x)
-  (syntax-case x ()
+(define-syntax HACK 
+  (lambda (x) 
+    (syntax-case x ()
     [(_ str expr)
      (if (not (string? (syntax-object->datum #'str)))
 	 (error 'HACK "bad syntax, should be string ~s" #'str))
      #'expr]
-    [(_ expr) #'expr]))
+    [(_ expr) #'expr])))
 
 
 
@@ -453,7 +454,7 @@
 ;; Times how long it takes to pull the tuples from the stream.
 (define-regiment-parameter wsint-time-query #f)
 
-(define wserror-handler (make-parameter  (lambda (str) (error 'wserror str))))
+(define wserror-handler (reg:make-parameter  (lambda (str) (error 'wserror str))))
 
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a

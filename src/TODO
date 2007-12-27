@@ -279,6 +279,11 @@ the server without the fragilities.
      Gotta work with Michael to get merging going right.
 
 
+[2007.12.27] 
+  *) Need to switch regression over to wsc.new, and start including wsc2
+
+
+
 ================================================================================
 COMPLETELY FINISHED:
 
@@ -322,5 +327,4 @@ that point.  This new pass could be similar to nominalize-types...
 Right now, if you try to instantiate the same data
 constructor with different types in different parts of the program, it
 will break!
-
 
