@@ -323,13 +323,6 @@
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
-(if VERBOSE-LOAD (printf "  Starting load...\n"))
-
-(IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
-	     (fprintf stderr "(No GUI available.)\n"))
-(flush-output-port stderr)
-
-(include "generic/util/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
@@ -337,55 +330,129 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (default-regimentd))
 
-(include "generic/util/hash.ss") (import hash) ;; TEMPORARY, used for "hash" function from slib.
+(if VERBOSE-LOAD (printf "  Starting load...\n"))
+
+(IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
+	     (fprintf stderr "(No GUI available.)\n"))
+(flush-output-port stderr)
+
+(define (basename pathstr)
+  ;; Everything after the last "#/"
+  (define file (let loop ([ls (reverse! (string->list pathstr))])
+		 (cond 
+		  [(null? ls) ()]
+		  [(eq? (car ls) #\/) ()]
+		  [else (cons (car ls) (loop (cdr ls)))])))
+  (list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
+
+(alias todo:common:load-source include)
+
+(define-syntax (common:load-source x)
+  (syntax-case x () 
+   [(_ file) 
+    ;; Make sure we put the *real* symbol include in there.  
+    ;; Having problems with this for some reason:
+    (with-syntax ([incl (datum->syntax-object #'_ 'include)]
+		  [modname (datum->syntax-object #'_
+			     (string->symbol (basename (datum file))))])
+      #'(begin (incl file)
+	       (import modname)))
+    ])
+  )
+
+#;
+(define-syntax common:load-source
+  (lambda (x)
+    (define read-file
+      (lambda (fn k)
+        (let ([p (open-input-file fn)])
+          (let f ([x (read p)])
+            (if (eof-object? x)
+                (begin (close-input-port p) '())
+                (cons (datum->syntax-object k x)
+                      (f (read p))))))))
+    (syntax-case x ()
+      [(k filename)
+       (let ([fn (datum filename)])
+         (with-syntax ([(exp ...) (read-file fn #'k)])
+           #'(begin exp ...)))])))
+
+;;====================================================================================================;;
+;;====================================================================================================;;
+;;====================================================================================================;;
+;; This loads the bulk of the source files.
+
+
+(begin 
+
+(todo:common:load-source "generic/util/reg_macros.ss") (import reg_macros)
+
+
+(todo:common:load-source "generic/util/hash.ss") (import hash) ;; TEMPORARY, used for "hash" function from slib.
 ;; Including full slib hash tables also... nesed equal?-based hashtabs sometime.
-(include "generic/util/slib_hashtab.ss") (import (add-prefix slib_hashtab slib:))
-(include "chez/hashtab.ss")              (import hashtab) ;; eq? based.
-(include "generic/util/helpers.ss") (import (except helpers test-this these-tests))
-(include "generic/util/streams.ss") (import (except streams test-this these-tests))
-;; Not using these currently:
-;(include "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
+(todo:common:load-source "generic/util/slib_hashtab.ss") (import (add-prefix slib_hashtab slib:))
+(todo:common:load-source "chez/hashtab.ss")              (import hashtab) ;; eq? based.
+(todo:common:load-source "generic/util/helpers.ss") (import (except helpers test-this these-tests))
+
+
 
 ;; These provide some more utility code related to threads:
-(IF_THREADS 
- (begin (printf "Configuring for multithreaded execution.\n")
-	(include "chez/threaded_utils.ss")
-	(import threaded_utils)
-	;; Threads don't get initialized until we run the compiler.
-	)
+(cond-expand
+ [(and chez threads)
+  (printf "Configuring for multithreaded execution.\n")
+  (todo:common:load-source "chez/threaded_utils.ss")
+  ;; Threads don't get initialized until we run the compiler.
+  (import threaded_utils)]
  ;; Otherwise provide a dummy implementation of "par":
- (begin (define par list)
-	(define parmv values)
-	(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
-	(define par-map map)
-	(define (init-par cpus) (void))
-	(define (par-status) (void))
-	(define (par-reset!) (void))
-	(define (shutdown-par) (void))
-	)
- )
+ [else 
+  (define par list)
+  (define parmv values)
+  (define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
+  (define par-map map)
+  (define (init-par cpus) (void))
+  (define (par-status) (void))
+  (define (par-reset!) (void))
+  (define (shutdown-par) (void))])
 
+
+(todo:common:load-source "generic/util/streams.ss") (import (except streams test-this these-tests))
+
+;; Not using these currently:
+;(common:load-source "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
+
+
+
+                                   (include "common_loader.ss")
+
+
+
+
+
+
+(import prim_defs)
+
+(printf "PRIMDEFS LOADED\n")(flush-output-port)
 
 ;; Lists all the Regiment primitives and their types:
-(include "generic/compiler_components/prim_defs.ss") (import prim_defs)
-(include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(todo:common:load-source "generic/compiler_components/prim_defs.ss") (import prim_defs)
+(todo:common:load-source "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
-(include "generic/compiler_components/type_environments.ss") (import type_environments)
+(todo:common:load-source "generic/compiler_components/type_environments.ss") (import type_environments)
 
-(include "generic/compiler_components/annotations.ss") (import annotations)
+(todo:common:load-source "generic/compiler_components/annotations.ss") (import annotations)
 
-(include "generic/grammars/grammar_checker.ss") (import grammar_checker)
-(include "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
-(include "chez/pregexp.ss") (import pregexp_module)
+(todo:common:load-source "generic/grammars/grammar_checker.ss") (import grammar_checker)
+(todo:common:load-source "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
+(todo:common:load-source "chez/pregexp.ss") (import pregexp_module)
 
-(include "generic/compiler_components/c_generator.ss") (import c_generator)
-(include "generic/util/scheme_fft.ss") ;; FFT from the chez users guide
-(include "generic/util/slib_fft.ss")   ;; FFT from slib.
-(include "generic/util/fft.ss") (import fft)
+(todo:common:load-source "generic/compiler_components/c_generator.ss") (import c_generator)
+(todo:common:load-source "generic/util/scheme_fft.ss") ;; FFT from the chez users guide
+(todo:common:load-source "generic/util/slib_fft.ss")   ;; FFT from slib.
+(todo:common:load-source "generic/util/fft.ss") (import fft)
 
 (IFWAVESCOPE (begin)	     
-  (begin (include "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)))
+  (begin (todo:common:load-source "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)))
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
@@ -397,8 +464,8 @@
       (import swl:option)
       (import swl:threads)
 
-      (include "chez/basic_graphics.ss")
-      (include "chez/graphics_stub.ss")
+      (todo:common:load-source "chez/basic_graphics.ss")
+      (todo:common:load-source "chez/graphics_stub.ss")
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
@@ -439,193 +506,193 @@
 (IFWAVESCOPE
  (begin)
  (begin 
-   (include "generic/compiler_components/logfiles.ss") (import logfiles)
+   (todo:common:load-source "generic/compiler_components/logfiles.ss") (import logfiles)
 
-   (include "generic/sim/alpha_lib.ss") 
+   (todo:common:load-source "generic/sim/alpha_lib.ss") 
    (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 
-   (include "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
-					;(include "generic/alpha_lib_scheduler.ss")
+   (todo:common:load-source "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+					;(todo:common:load-source "generic/alpha_lib_scheduler.ss")
 
-   (include "generic/sim/simulator_alpha.ss") (import simulator_alpha)
-   (include "generic/sim/firelightning_sim.ss")
-   (include "generic/passes/nesc_bkend/tossim.ss")
+   (todo:common:load-source "generic/sim/simulator_alpha.ss") (import simulator_alpha)
+   (todo:common:load-source "generic/sim/firelightning_sim.ss")
+   (todo:common:load-source "generic/passes/nesc_bkend/tossim.ss")
    ))
 
 (IFWAVESCOPE (begin) 
    ;; This is used by the subsequent passes that process TML:
-   (begin (include "generic/compiler_components/tml_generic_traverse.ss")
+   (begin (todo:common:load-source "generic/compiler_components/tml_generic_traverse.ss")
 	  (import tml_generic_traverse)))
-(include "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
+(todo:common:load-source "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
 
 ;; Type inference is used by verify-regiment, below.
-(include "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
+(todo:common:load-source "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
 
-(include "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
-(include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
-(include "generic/passes/graphviz.ss") (import graphviz)
+(todo:common:load-source "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
+(todo:common:load-source "generic/passes/pass-mechanism.ss") (import pass-mechanism)
+(todo:common:load-source "generic/passes/graphviz.ss") (import graphviz)
 
 
 ;; Load this pass early because it's used in a couple places.
 (IFWAVESCOPE (begin)  
-  (begin (include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)))
+  (begin (todo:common:load-source "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)))
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
-(include "generic/langs/language-mechanism.ss")
+(todo:common:load-source "generic/langs/language-mechanism.ss")
 
-(include "generic/langs/lang_wavescript.ss")(import lang_wavescript)
-(include "../../depends/matpak.ss") (import matpak)
-;(include "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
-;(include "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
-(include "generic/sim/wavescript_sim_library_push.ss")
-(include "generic/testing/lang_wavescript_tests.ss") (import lang_wavescript_tests)
+(todo:common:load-source "generic/langs/lang_wavescript.ss")(import lang_wavescript)
+(todo:common:load-source "../../depends/matpak.ss") (import matpak)
+;(todo:common:load-source "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
+;(todo:common:load-source "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
+(todo:common:load-source "generic/sim/wavescript_sim_library_push.ss")
+(todo:common:load-source "generic/testing/lang_wavescript_tests.ss") (import lang_wavescript_tests)
 
-(include "generic/langs/lang00.ss")
+(todo:common:load-source "generic/langs/lang00.ss")
 
-(include "generic/langs/lang06_uncover-free.ss")
-(include "generic/langs/lang07_lift-letrec.ss")
+(todo:common:load-source "generic/langs/lang06_uncover-free.ss")
+(todo:common:load-source "generic/langs/lang07_lift-letrec.ss")
 
 (IFWAVESCOPE (begin)
   (begin 
-    (include "generic/langs/lang11_classify-names.ss")
-    (include "generic/langs/lang12_heartbeats.ss")
-    (include "generic/langs/lang13_control-flow.ss")
-    (include "generic/langs/lang14_places.ss")
+    (todo:common:load-source "generic/langs/lang11_classify-names.ss")
+    (todo:common:load-source "generic/langs/lang12_heartbeats.ss")
+    (todo:common:load-source "generic/langs/lang13_control-flow.ss")
+    (todo:common:load-source "generic/langs/lang14_places.ss")
 
-    (include "generic/langs/lang20_deglobalize.ss") 
+    (todo:common:load-source "generic/langs/lang20_deglobalize.ss") 
 
-    (include "generic/scrap/lang30_haskellize-tokmac.ss") 
-    (include "generic/langs/lang32_emit-nesc.ss")))
+    (todo:common:load-source "generic/scrap/lang30_haskellize-tokmac.ss") 
+    (todo:common:load-source "generic/langs/lang32_emit-nesc.ss")))
 
 (if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
 
-(include "generic/passes/normalize_source/verify-regiment.ss")          (import verify-regiment)
-(include "generic/passes/normalize_source/typecheck.ss")                (import typecheck)
-(include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
+(todo:common:load-source "generic/passes/normalize_source/verify-regiment.ss")          (import verify-regiment)
+(todo:common:load-source "generic/passes/normalize_source/typecheck.ss")                (import typecheck)
+(todo:common:load-source "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
-(include "generic/compiler_components/source_loader.ss") (import source_loader) 
+(todo:common:load-source "generic/compiler_components/source_loader.ss") (import source_loader) 
 
 
-(include "generic/passes/optimizations/smoosh-together.ss") (import smoosh-together)
-(include "generic/passes/optimizations/rewrite_opts.ss") (import rewrite_opts)
-(include "generic/passes/optimizations/data_reps.ss")
+(todo:common:load-source "generic/passes/optimizations/smoosh-together.ss") (import smoosh-together)
+(todo:common:load-source "generic/passes/optimizations/rewrite_opts.ss") (import rewrite_opts)
+(todo:common:load-source "generic/passes/optimizations/data_reps.ss")
 
 
-(include "generic/passes/normalize_source/resolve-varrefs.ss") (import resolve-varrefs)
-(include "generic/passes/normalize_source/ws-label-mutable.ss") (import ws-label-mutable)
-(include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
-(include "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
-(include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
-(include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
+(todo:common:load-source "generic/passes/normalize_source/resolve-varrefs.ss") (import resolve-varrefs)
+(todo:common:load-source "generic/passes/normalize_source/ws-label-mutable.ss") (import ws-label-mutable)
+(todo:common:load-source "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
+(todo:common:load-source "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
+(todo:common:load-source "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
+(todo:common:load-source "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
 
 ;(eval-when (compile eval load) (compile-profile #t))
-(include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
-(include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
-(include "generic/passes/normalize_query/ws-remove-letrec.ss") (import ws-remove-letrec)
-(include "generic/passes/static_elaborate/interpret-meta.ss")  (import interpret-meta)
+(todo:common:load-source "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+(todo:common:load-source "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
+(todo:common:load-source "generic/passes/normalize_query/ws-remove-letrec.ss") (import ws-remove-letrec)
+(todo:common:load-source "generic/passes/static_elaborate/interpret-meta.ss")  (import interpret-meta)
 ;(eval-when (compile eval load) (compile-profile #f))
 
-(include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
-(include "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
-(include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
+(todo:common:load-source "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
+(todo:common:load-source "generic/passes/static_elaborate/split-union-types.ss")  (import split-union-types)
+(todo:common:load-source "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
 
-(include "generic/passes/optimizations/merge-iterates.ss") (import merge-iterates)
-(include "generic/passes/optimizations/simple-merge-iterates.ss") (import simple-merge-iterates)
-(include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
-(include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss") (import flatten-iterate-spine)
+(todo:common:load-source "generic/passes/optimizations/merge-iterates.ss") (import merge-iterates)
+(todo:common:load-source "generic/passes/optimizations/simple-merge-iterates.ss") (import simple-merge-iterates)
+(todo:common:load-source "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
+(todo:common:load-source "generic/passes/wavescope_bkend/flatten-iterate-spine.ss") (import flatten-iterate-spine)
 
-(include "generic/passes/wavescope_bkend/anihilate-higher-order.ss") (import anihilate-higher-order)
+(todo:common:load-source "generic/passes/wavescope_bkend/anihilate-higher-order.ss") (import anihilate-higher-order)
 
-(include "generic/passes/normalize_query/remove-complex-constant.ss") (import remove-complex-constant)
+(todo:common:load-source "generic/passes/normalize_query/remove-complex-constant.ss") (import remove-complex-constant)
 ; pass07_verify-stage2.ss
-(include "generic/passes/normalize_query/uncover-free.ss") (import uncover-free)
+(todo:common:load-source "generic/passes/normalize_query/uncover-free.ss") (import uncover-free)
 
-(include "generic/passes/normalize_query/lift-letrec.ss")          (import lift-letrec)
-(include "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
-(include "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
+(todo:common:load-source "generic/passes/normalize_query/lift-letrec.ss")          (import lift-letrec)
+(todo:common:load-source "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
+(todo:common:load-source "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
 
 
 
 ;(eval-when (compile eval load) (compile-profile #t))
-(include "generic/passes/normalize_query/ws-remove-complex-opera.ss") (import ws-remove-complex-opera)
+(todo:common:load-source "generic/passes/normalize_query/ws-remove-complex-opera.ss") (import ws-remove-complex-opera)
 ;(eval-when (compile eval load) (compile-profile #f))
 
-(include "generic/passes/normalize_query/ws-lift-let.ss") (import ws-lift-let)
-(include "generic/passes/normalize_query/ws-normalize-context.ss") (import ws-normalize-context)
-(include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
-(include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
+(todo:common:load-source "generic/passes/normalize_query/ws-lift-let.ss") (import ws-lift-let)
+(todo:common:load-source "generic/passes/normalize_query/ws-normalize-context.ss") (import ws-normalize-context)
+(todo:common:load-source "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
+(todo:common:load-source "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
 
 (IFWAVESCOPE (begin)
   (begin
-    (include "generic/passes/analyze_query/classify-names.ss")   (import classify-names)
-    (include "generic/passes/analyze_query/add-heartbeats.ss")   (import add-heartbeats)
-    (include "generic/passes/analyze_query/add-control-flow.ss") (import add-control-flow)
-    (include "generic/passes/analyze_query/add-places.ss")       (import add-places)
-    (include "generic/passes/analyze_query/analyze-places.ss")   (import analyze-places)
+    (todo:common:load-source "generic/passes/analyze_query/classify-names.ss")   (import classify-names)
+    (todo:common:load-source "generic/passes/analyze_query/add-heartbeats.ss")   (import add-heartbeats)
+    (todo:common:load-source "generic/passes/analyze_query/add-control-flow.ss") (import add-control-flow)
+    (todo:common:load-source "generic/passes/analyze_query/add-places.ss")       (import add-places)
+    (todo:common:load-source "generic/passes/analyze_query/analyze-places.ss")   (import analyze-places)
 
-    (include "generic/passes/analyze_query/resolve-fold-trees.ss") (import resolve-fold-trees)
-					;(include "generic/pass18_add-routing.ss")
+    (todo:common:load-source "generic/passes/analyze_query/resolve-fold-trees.ss") (import resolve-fold-trees)
+					;(todo:common:load-source "generic/pass18_add-routing.ss")
 
-    (include "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
+    (todo:common:load-source "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
 
-    (include "generic/passes/deglobalize/deglobalize2.ss") (import deglobalize2)
-    (include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
+    (todo:common:load-source "generic/passes/deglobalize/deglobalize2.ss") (import deglobalize2)
+    (todo:common:load-source "generic/passes/deglobalize/deglobalize2_tmgen.ss")
 
     ;; Uses delazy-bindings:
-    (include "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
+    (todo:common:load-source "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
 
-					;(include "generic/pass22_desugar-soc-return.ss")
+					;(todo:common:load-source "generic/pass22_desugar-soc-return.ss")
     ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-    (include "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
-    (include "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
-    (include "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
-					;(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
-					;(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
-					;(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
+    (todo:common:load-source "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
+    (todo:common:load-source "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
+    (todo:common:load-source "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
+					;(todo:common:load-source "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+					;(todo:common:load-source "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
+					;(todo:common:load-source "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
 
-    (include "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
-    (include "generic/passes/tokmac_bkend/rename-stored.ss")      (import rename-stored)
+    (todo:common:load-source "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
+    (todo:common:load-source "generic/passes/tokmac_bkend/rename-stored.ss")      (import rename-stored)
 
-					;(include "generic/pass24_analyze-calls.ss")
-					;(include "generic/pass25_inline.ss")
-					;(include "generic/pass26_prune-returns.ss")
-    (include "generic/passes/tokmac_bkend/cps-tokmac.ss")       (import cps-tokmac) 
-    (include "generic/passes/tokmac_bkend/sever-cont-state.ss") (import sever-cont-state)
-    ;; (include "generic/pass27.2_add-kclosure.ss")
-    (include "generic/passes/tokmac_bkend/closure-convert.ss")  (import closure-convert)
-    (include "generic/passes/tokmac_bkend/inline-tokens.ss")    (import inline-tokens)
+					;(todo:common:load-source "generic/pass24_analyze-calls.ss")
+					;(todo:common:load-source "generic/pass25_inline.ss")
+					;(todo:common:load-source "generic/pass26_prune-returns.ss")
+    (todo:common:load-source "generic/passes/tokmac_bkend/cps-tokmac.ss")       (import cps-tokmac) 
+    (todo:common:load-source "generic/passes/tokmac_bkend/sever-cont-state.ss") (import sever-cont-state)
+    ;; (todo:common:load-source "generic/pass27.2_add-kclosure.ss")
+    (todo:common:load-source "generic/passes/tokmac_bkend/closure-convert.ss")  (import closure-convert)
+    (todo:common:load-source "generic/passes/tokmac_bkend/inline-tokens.ss")    (import inline-tokens)
 
     ;; This is out of use, but not deleted yet:
-    (include "generic/scrap/pass30_haskellize-tokmac.ss")
+    (todo:common:load-source "generic/scrap/pass30_haskellize-tokmac.ss")
 
-    (include "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
-    (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
+    (todo:common:load-source "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
+    (todo:common:load-source "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
     ))
 
 
 ;; These are miscellaneous small passes used by wavescript:
-(include "generic/passes/small-ws-passes.ss")             (import small-ws-passes)
+(todo:common:load-source "generic/passes/small-ws-passes.ss")             (import small-ws-passes)
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
-(include "generic/passes/wavescope_bkend/reify-certain-types.ss") (import reify-certain-types)
-(include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
-(include "generic/passes/wavescope_bkend/convert-sums-to-tuples.ss") (import convert-sums-to-tuples)
+(todo:common:load-source "generic/passes/wavescope_bkend/reify-certain-types.ss") (import reify-certain-types)
+(todo:common:load-source "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
+(todo:common:load-source "generic/passes/wavescope_bkend/convert-sums-to-tuples.ss") (import convert-sums-to-tuples)
 
-(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
-(include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
-(include "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
+(todo:common:load-source "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
+(todo:common:load-source "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
+(todo:common:load-source "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
 
-(include "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
+(todo:common:load-source "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 
-(include "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
+(todo:common:load-source "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
 
 (eval-when (compile eval load) (compile-profile #t))
-(include "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
-(include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
-(include "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
+(todo:common:load-source "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
+(todo:common:load-source "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
+(todo:common:load-source "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
 (eval-when (compile eval load) (compile-profile #f))
 
 
@@ -653,7 +720,7 @@
 
 ;;; NOW INCLUDE THE (GENERIC) MAIN FILE:
 ;===============================================================================
-(include "main.ss")
+(todo:common:load-source "main.ss")
 
 (if VERBOSE-LOAD (printf "  Finished init routines in main file..\n"))
 
@@ -670,19 +737,27 @@
 (IFWAVESCOPE
     (begin)
   (begin 
-    (include "generic/testing/driver.ss")
+    (todo:common:load-source "generic/testing/driver.ss")
     (game-eval eval)
     (host-eval (lambda args 'unspecified))
-    (include "generic/testing/tests_noclosure.ss")
+    (todo:common:load-source "generic/testing/tests_noclosure.ss")
     ))
 
-(include "generic/testing/tests.ss")
+(todo:common:load-source "generic/testing/tests.ss")
 
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
-(IFWAVESCOPE (begin) (include "generic/scrap/repl.ss"))
+(IFWAVESCOPE (begin) (todo:common:load-source "generic/scrap/repl.ss"))
 
-(include "generic/shortcuts.ss")
+(todo:common:load-source "generic/shortcuts.ss")
+
+)
+
+;; END COMMON LOADER
+;;====================================================================================================;;
+;;====================================================================================================;;
+;;====================================================================================================;;
+
 
 
 ;; DISABLED TEMPORARILY:

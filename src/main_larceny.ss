@@ -181,7 +181,6 @@
 	    ;(define reg:struct-dummy-val (record-reader 'name (type-descriptor name)))
 	    )]))
 
-
 (import (larceny compiler)) 
 
  ;; Load this first.  Widely visible constants/parameters.

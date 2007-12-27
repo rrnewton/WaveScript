@@ -43,7 +43,7 @@
 
 	 ;; Chez/PLT specific (included from respective modules).
 	 reg:define-struct reg:struct? reg:struct->list reg:list->struct 
-	 IFCHEZ IF_GRAPHICS IF_THREADS cond-expand hash-percent
+	 IFCHEZ IF_GRAPHICS IF_THREADS cond-expand 
 ;	 reg:include	 
 
 	 
@@ -189,6 +189,8 @@
 	 set-bench-stats-bytes! set-bench-stats-tuples! set-bench-stats-cpu-time!
 
          ) ;; End provide
+
+	(chezprovide hash-percent path->string)
 		
 	;; Import the platform specific constants.
 	(chezimports chez_constants)

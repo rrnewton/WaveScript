@@ -15,7 +15,8 @@
 		  reg:include
 		  IFCHEZ 
 		  IF_GRAPHICS IF_THREADS
-		  hash-percent cond-expand
+		  cond-expand
+		  hash-percent path->string
 		  )
   (import scheme)
 
@@ -60,12 +61,12 @@
   (define-syntax IF_GRAPHICS
     (syntax-rules (chez plt) 
       [(_ a b) (cond-expand [(and chez graphics) a] [else b])]
-      [(_ a)   (cond-expand [(and chez graphics) a] [else (begin)])]))
+      [(_ a)   (cond-expand [(and chez graphics) a] [else (void)])]))
 
   (define-syntax IF_THREADS
     (syntax-rules (chez plt) 
       [(_ a b) (cond-expand [(and chez threads) a] [else b])]
-      [(_ a)   (cond-expand [(and chez threads) a] [else (begin)])]))
+      [(_ a)   (cond-expand [(and chez threads) a] [else (void)])]))
 
   
   ;; This is a common syntax for including other source files inline.
@@ -167,11 +168,12 @@
     (define-syntax (hash-percent syn)
       (syntax-case syn ()
 	[(_ prim) (datum->syntax-object #'_ `(let () (import scheme) ,(datum prim)))]))
+
+    ;; MISC: This is for PLT compat:
+    (define path->string (lambda (x) x))
    
 ) ;; End module
 
-;; MISC: This is for PLT compat:
-(define path->string (lambda (x) x))
 
 (include "../generic/constants.ss")
 (import constants) ;; Certain bindings are re-exported through the generic module.

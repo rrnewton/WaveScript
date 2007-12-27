@@ -60,14 +60,35 @@
 (print-struct #f)
 
 
+(define-syntax (common:load-source x)
+  (syntax-case x ()
+    [(_ file) 
+     (with-syntax ([req   (datum->syntax-object #'_ 'require)]
+		   [prov  (datum->syntax-object #'_ 'provide)]
+		   [allfr (datum->syntax-object #'_ 'all-from)])
+       ;(display (cons 'yayexpanding #'file))(newline)       
+       ;#'(req (all-except file these-tests test-this))
+       #'(begin (req file)
+		(prov (allfr file)))
+       )]))
+
+;================================================================================
+;; This loads the bulk of the source files.
+
+
+
+(require 
+  ;; Include these at top-level for the system tests:
+  (all-except "generic/util/streams.ss" these-tests test-this)
+
+)
+
+                        (include "common_loader.ss")
+
+
 (require 
 
-
-;; Include these at top-level for the system tests:
-(all-except "generic/util/streams.ss" these-tests test-this)
-(all-except "generic/compiler_components/prim_defs.ss" these-tests test-this)
-
-
+;; prim_defs.ss
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
 ;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
@@ -239,7 +260,7 @@
 	 (all-from "generic/util/hash.ss")
 	 (all-from "generic/langs/lang_wavescript.ss")
 
-	 (all-from "generic/compiler_components/prim_defs.ss" )
+	 ;(all-from "generic/compiler_components/prim_defs.ss" )
 	 (all-from "generic/compiler_components/hm_type_inference.ss" )
 	 (all-from "generic/passes/normalize_source/desugar-pattern-matching.ss" )
 	 (all-from "generic/passes/normalize_source/verify-regiment.ss" )
