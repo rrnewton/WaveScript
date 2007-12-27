@@ -12,8 +12,8 @@ function go () {
     echo "============================================================"
 #    if ! wsc --scheduler corefit-scheduler-df $1 -exit-error; then exit 1; fi
 #    if ! wsc --scheduler corefit-scheduler-ex $1 -exit-error; then exit 1; fi
-#    if ! wsc --scheduler train-scheduler $1 -dbg -exit-error; then exit 1; fi
-    if ! wsc.new $1 -exit-error; then exit 1; fi
+    if ! wsc --scheduler train-scheduler $1 -dbg -exit-error; then exit 1; fi
+#    if ! wsc.new $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
 ##    ./run_query | head -20 >> $RUN
