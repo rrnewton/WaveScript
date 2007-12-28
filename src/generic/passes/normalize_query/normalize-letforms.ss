@@ -176,6 +176,6 @@
       
       ;; Return the appropriately sorted bindings:
       (map (lambda (v) (assq v pruned-binds))
-	(reverse! (tsort edges))))
+	(reverse! (topological-sort edges))))
 ;    pruned-binds
     ))

@@ -23,8 +23,7 @@
   ;; [2007.12.27] Considering switching over to a cond-expand system.
   (define-syntax cond-expand
     (lambda (syn)
-      (syntax-case syn (and or not else 
-			    chez plt larceny graphics threads)
+      (syntax-case syn (and or not else chez plt larceny r6rs r5rs graphics threads)
       ;; Standard clauses:
       ((cond-expand) (syntax-error #'syn "Unfulfilled cond-expand"))
       ((cond-expand (else body ...))  #'(begin body ...))

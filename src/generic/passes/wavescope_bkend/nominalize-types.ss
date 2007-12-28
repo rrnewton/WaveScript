@@ -87,7 +87,7 @@
 		   defs)])
       (map (lambda (name)
 	     (assq name defs))
-	(reverse (tsort edges)))))
+	(reverse (topological-sort edges)))))
     
   ; ========================================
   ;;; ADT for typedef collections

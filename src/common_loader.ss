@@ -38,3 +38,19 @@
 ;; Lists all the Regiment primitives and their types:
 (common:load-source "generic/compiler_components/prim_defs.ss")
 
+(common:load-source "generic/compiler_components/regiment_helpers.ss")
+
+;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
+(common:load-source "generic/compiler_components/type_environments.ss") 
+
+;; Michael's tools for manipulating expression annotations:
+(common:load-source "generic/compiler_components/annotations.ss")
+
+(common:load-source "generic/grammars/grammar_checker.ss") 
+
+(cond-expand
+ [(or chez larceny) 
+  (common:load-source "generic/util/tsort.ss")]
+ [plt (void)])
+
+ 

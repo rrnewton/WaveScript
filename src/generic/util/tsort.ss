@@ -6,12 +6,12 @@
 	   "../constants.ss"
            (all-except "helpers.ss" test-this these-tests)
            (all-except "../../plt/hashtab.ss" test-this these-tests))
-  (provide tsort topological-sort cyclic?
+  (provide topological-sort cyclic?
 	   test-this these-tests test-tsort)
   (chezimports)
 
 ;; DAG = ([VertSource VertAdjacent ...] ...)
-(define (tsort dag )
+(define (topological-sort dag )
   (if (null? dag)
       '()
       (let* ((adj-table (make-default-hash-table))
@@ -43,8 +43,6 @@
 			    (visit (car def) (cdr def)))))
 		    (cdr dag)))
 	sorted)))
-
-(define topological-sort tsort)
 
 ;; Tells whether or not a graph is cyclic.  
 ;; Requires canonical form where each node has exactly one entry.
@@ -86,7 +84,7 @@
 	    cycles)))))
 
 (define-testing these-tests  
-  `([(,tsort '((shirt tie belt)
+  `([(,topological-sort '((shirt tie belt)
 	     (tie jacket)
 	     (belt jacket)
 	     (watch)
@@ -95,7 +93,7 @@
 	     (socks shoes))
             );eq?)
     unspecified]
-  [(,tsort '((a b) (b c) (c a)
+  [(,topological-sort '((a b) (b c) (c a)
 	     (d e) (e f))
            );eq?)
     unspecified]

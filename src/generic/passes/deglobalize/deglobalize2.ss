@@ -236,7 +236,7 @@
 	   (let ([result (reverse!
 			  (filter id 
 			    (map (lambda (v) (assq v bnds))
-			      (tsort edges))))])
+			      (topological-sort edges))))])
 	     result))
 
 	 (define (transform-varref x)

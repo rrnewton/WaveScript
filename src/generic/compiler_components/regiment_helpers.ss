@@ -376,7 +376,7 @@
 			  (symbol-append basesym (hashtab-get (cdr entry) s))))
       (let loop ((ls expr))
 	(cond
-	 [(null? ls) ()]
+	 [(null? ls) '()]
 	 [(or (simple-constant? (car ls))
 	      (match (car ls) [(quote ,c) (guard (simple-constant? c)) #t] [,_ #f]))
 	  (cons (car ls) (loop (cdr ls)))]
@@ -561,8 +561,8 @@
   (lambda (formals args)
     (let loop ((f formals) (a args))
       (cond
-       [(and (null? f) (null? a)) ()]
-       [(and (symbol? f) (null? a)) ()]
+       [(and (null? f) (null? a)) '()]
+       [(and (symbol? f) (null? a)) '()]
        [(and (pair? f) (pair? a))
 	(cons (car f) (loop (cdr f) (cdr a)))]
        [(and (symbol? f) (pair? a))
@@ -772,14 +772,14 @@
      ;; A random integer. 
      (define reg:random-int
        (case-lambda 
-	 [() (#%random (#%most-positive-fixnum))]
-	 [(k) (#%random k)]))
+	 [() ((hash-percent random) ((hash-percent most-positive-fixnum)))]
+	 [(k) ((hash-percent random) k)]))
      
      ;; A random real number.
      (define reg:random-real
        (case-lambda
-	 [() (#%random 1.0)]
-	 [(n) (#%random n)]))
+	 [() ((hash-percent random) 1.0)]
+	 [(n) ((hash-percent random) n)]))
      
      ;; Get the state of the RNG.
      (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
@@ -799,7 +799,22 @@
      (define (reg:get-random-state)
        (pseudo-random-generator->vector (current-pseudo-random-generator)))
      (define (reg:set-random-state! s)
-       (current-pseudo-random-generator (vector->pseudo-random-generator s)))])
+       (current-pseudo-random-generator (vector->pseudo-random-generator s)))]
+    [larceny ;r6rs
+     ;(import (rnrs random (6)))
+     (import (primitives random most-positive-fixnum))
+     (define reg:random-int
+       (case-lambda 
+	 [() (reg:random-int (most-positive-fixnum))]
+	 [(k) (random k)]))
+     (define reg:random-real
+       (case-lambda
+         [() (reg:random-real 1.0)]
+         [(k) (/ (* k (reg:random-int (most-positive-fixnum)))
+		 (exact->inexact (most-positive-fixnum)))]))     
+     (define (reg:get-random-state) (error 'reg:get-random-state "cannot do this in larceny!"))
+     (define (reg:set-random-state!) (error 'reg:set-random-state! "cannot do this in larceny!"))     
+     ])
 
       
 ;; [2006.03.01] UNFINISHED
@@ -878,7 +893,7 @@
     (driver e 
 	    (lambda (x)
 	      (cond
-	       [(atom? x) (fuser x () (lambda () x))]
+	       [(atom? x) (fuser x '() (lambda () x))]
 	       [(pair? x) (fuser x (list (loop (car x)) (loop (cdr x)))
 				 (lambda (a d) (cons a d)))]
 	       [(vector? x) (fuser x (map loop (vector->list x))
@@ -1039,7 +1054,7 @@
   (match e
     [(,ann ,_ ,[e a*]) (guard (annotation? ann))
      (values e (cons (list ann _) a*))]
-    [,e (values e ())]))
+    [,e (values e '())]))
 
 
 ;; This is a simple interactive debugging tool.  It shows the binding

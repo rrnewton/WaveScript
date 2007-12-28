@@ -437,7 +437,7 @@
       (cons (car tenv)
 	    ;; This doesn't provide any speedup:
 #;
-	    (let loop ([v* syms] [t* types] [acc ()])
+	    (let loop ([v* syms] [t* types] [acc '()])
 	      (if (null? v*)
 		  (append! (reverse! acc) (cdr tenv))
 		  (let-values ([(rhs flg) (build-entry (car v*) (car t*) flag)])
@@ -570,8 +570,12 @@
     [(export-type ''(f . Int)) Int]
 
   ;; This one doesn't actually verify shared structure:
-  [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
-   ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
+  [,(let ([ob5 ''(a . #f)]  
+	  [ob6 ''(b . #f)])      
+      `(instantiate-type '((,ob5 -> ,ob6) (Area ,ob5) -> (Area ,ob6))))
+   ,(let ([ob7 ''(unspecified . #f)]
+	  [ob8 ''(unspecified . #f)])
+      `((,ob7 -> ,ob8) (Area ,ob7) -> (Area ,ob8)))]
 
   ["instantiate-type: Make sure we don't copy internal nongeneric vars."
    (instantiate-type ''(at '(av . #f) -> '(av . #f)) '(av))
@@ -581,8 +585,6 @@
 
 ;; Unit tester.
 (define-testing test-type_environments (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
-
-
 
 
 ) ;; End module

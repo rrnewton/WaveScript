@@ -382,16 +382,8 @@
 
                                    (include "common_loader.ss")
 
-(common:load-source "generic/compiler_components/regiment_helpers.ss")
-
-;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
-(todo:common:load-source "generic/compiler_components/type_environments.ss") (import type_environments)
-
-(todo:common:load-source "generic/compiler_components/annotations.ss") (import annotations)
-
-(todo:common:load-source "generic/grammars/grammar_checker.ss") (import grammar_checker)
-(todo:common:load-source "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
-(todo:common:load-source "chez/pregexp.ss") (import pregexp_module)
+;; [2007.12.28] Not sure what this is being used for:
+;(todo:common:load-source "chez/pregexp.ss") (import pregexp_module)
 
 (todo:common:load-source "generic/compiler_components/c_generator.ss") (import c_generator)
 (todo:common:load-source "generic/util/scheme_fft.ss") ;; FFT from the chez users guide

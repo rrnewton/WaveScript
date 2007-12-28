@@ -24,7 +24,8 @@
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
 			 global-optimization format
-			 time repl 
+			 time repl  exit
+			 random
 			 ) run expand))
 ;(import (larceny benchmarking))
 
@@ -182,8 +183,7 @@
 ;; Expand the appropriate code for loading in Larceny:
 (define-syntax cond-expand
     (lambda (syn)
-      (syntax-case syn (and or not else 
-			    chez plt larceny graphics threads)
+      (syntax-case syn (and or not else chez plt larceny r6rs r5rs graphics threads)
       ;; Standard clauses:
       ((cond-expand) (syntax-error #'syn "Unfulfilled cond-expand"))
       ((cond-expand (else body ...))  #'(begin body ...))
@@ -198,9 +198,11 @@
 
       ;; Enabled features (or potentially enabled):
       ((cond-expand (larceny body ...) more-clauses ...) #'(begin body ...))
+      ((cond-expand (r6rs    body ...) more-clauses ...) #'(begin body ...))
       ;; 'threads' and 'graphics' are disabled for now under larceny.
       
       ;; Otherwise, it's disabled:
+      ;; It seems that in larceny we can't help but expand the ignored code anyway:
       ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
 
 
@@ -227,7 +229,7 @@
 ;======================================================================
 ;;; Now begin loading Regiment/WaveScript proper. 
 
-(define-syntax reg:make-parameter 
+(define-syntax reg:Kmake-parameter 
    (syntax-rules ()
      [(_ x) (make-parameter 'reg:make-parameter x)]
      [(_ x g) (let ([guard g])
@@ -254,9 +256,13 @@
 ;(common:load-source "generic/util/hash.ss") 
 ;(common:load-source "generic/util/slib_hashtab.ss")
 
-(load "common_loader.ss")
+;; Checkpoint:
+;(dump-interactive-heap "larc.heap")(exit)
+;(dump-heap "larc.heap" (lambda args (load "common_loader.ss"))) (exit)
+
+         (load "common_loader.ss")
 
 (repl)
 
-(dump-interactive-heap "larc.heap")
+
 ;(dump-heap "larc.heap" (lambda args (display "Starting from heap... YAY \n") (newline)))

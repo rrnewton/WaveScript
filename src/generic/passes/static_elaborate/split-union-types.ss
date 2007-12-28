@@ -67,7 +67,7 @@
       (let ([new (map (lambda (name)
 			(let ([entry (assq name lookup)])
 			  (cons (list (car entry)) (cdr entry))))
-		   (tsort ordering))])
+		   (topological-sort ordering))])
 	(unless (regiment-quiet)
 	  (printf "Split and sorted union types into:\n")
 	  (pretty-print new))

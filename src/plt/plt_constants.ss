@@ -24,10 +24,9 @@
   ;; [2007.12.27] Considering switching over to a cond-expand system.
   (define-syntax cond-expand
     (lambda (syn)
-      (syntax-case syn (and or not else 
-			    chez plt larceny graphics threads)
+      (syntax-case syn (and or not else chez plt larceny r6rs r5rs graphics threads)
       ;; Standard clauses:
-      ((cond-expand) (raise-syntax-error #f "Unfulfilled cond-expand" #'syn))
+      ((cond-expand) (raise-syntax-error 'cond-expand "Unfulfilled cond-expand" #'syn))
       ((cond-expand (else body ...))  #'(begin body ...))
       ((cond-expand ((and) body ...) more-clauses ...) #'(begin body ...))
       ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)

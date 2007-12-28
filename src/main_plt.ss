@@ -31,7 +31,8 @@
 	 "plt/hashtab.ss"
 	 "plt/chez_compat.ss"
 	 "generic/util/hash.ss"
-         (all-except "generic/grammars/grammar_checker.ss" these-tests test-this))
+;         (all-except "generic/grammars/grammar_checker.ss" these-tests test-this)
+ )
 
 (require-for-syntax "plt/identifier-syntax.ss")
 
@@ -77,17 +78,13 @@
 
 
 
-
-                        (include "common_loader.ss")
-
-(require          (all-except "generic/compiler_components/regiment_helpers.ss"))         
-
+                                    (include "common_loader.ss")
 
 (require 
 
+
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
-;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
@@ -246,7 +243,7 @@
 	 (all-from "generic/compiler_components/source_loader.ss")
 ;	 (all-from  "generic/util/streams.ss")
 	 (all-from "generic/passes/normalize_source/typecheck.ss")
-	 (all-from "generic/grammars/grammar_checker.ss")
+;	 (all-from "generic/grammars/grammar_checker.ss")
 	 (all-from "generic/compiler_components/regiment_helpers.ss")
 	 (all-from "generic/compiler_components/hm_type_inference.ss")
          (all-from "generic/passes/pass-mechanism_basic.ss")
