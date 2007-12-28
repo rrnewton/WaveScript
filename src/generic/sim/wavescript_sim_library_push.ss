@@ -51,8 +51,8 @@
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
 		 +D -D *D /D ^D
-		 +I16 -I16 *I16 /I16 ^I16
-		 +I64 -I64 *I64 /I64 ^I64
+		 _+I16 _-I16 *I16 /I16 ^I16
+		 _+I64 _-I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
 		 logD logF ;logI 
@@ -1081,8 +1081,8 @@
   (define _+_ s:+)    (define _-_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
 
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
-  (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
-  (define +I64 s:+)  (define -I64 s:-)  (define *I64 s:*)  
+  (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
+  (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
   (define +D fl+)    (define -D fl-)    (define *D fl*)    (define /D fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)

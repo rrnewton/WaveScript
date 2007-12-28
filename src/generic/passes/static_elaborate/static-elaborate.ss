@@ -190,8 +190,8 @@
 	(_+_ +) (_-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
-	(+I16 +) (-I16 -) (*I16 *) (/I16 /) (^I16 expt) 
-	(+I64 +) (-I64 -) (*I64 *) (/I64 /) (^I64 expt) 
+	(_+I16 +) (_-I16 -) (*I16 *) (/I16 /) (^I16 expt) 
+	(_+I64 +) (_-I64 -) (*I64 *) (/I64 /) (^I64 expt) 
 
 	;; This doesn't give it the right representation:
 	;; We don't yet know for sure what the type should be.

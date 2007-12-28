@@ -1548,8 +1548,8 @@
 			       +D -D *D /D
 			       _+_ *_ _-_ /_
 				  +: *: -: /:
-				  +I16 *I16 -I16 /I16
-				  +I64 *I64 -I64 /I64
+				  _+I16 *I16 _-I16 /I16
+				  _+I64 *I64 _-I64 /I64
 				  < > <= >= =
 				  ^_ ^. ^: ^D ^I16 ^I64
 				  )))
@@ -1564,8 +1564,8 @@
 		      ^_ ^. ^D
 			 ) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16 ^I16
-                      +I64 -I64 *I64 /I64 ^I64
+		    [(_+I16 _-I16 *I16 /I16 ^I16
+                      _+I64 _-I64 *I64 /I64 ^I64
 		      )
 		     (substring (sym2str infix_prim) 0 1)]
 		    )])

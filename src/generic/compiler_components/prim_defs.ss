@@ -375,14 +375,14 @@
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int) ;; exponentiation
 
-    (+I16 (Int16 Int16) Int16)
-    (-I16 (Int16 Int16) Int16) 
+    (_+I16 (Int16 Int16) Int16)
+    (_-I16 (Int16 Int16) Int16) 
     (*I16 (Int16 Int16) Int16) 
     (/I16 (Int16 Int16) Int16) 
     (^I16 (Int16 Int16) Int16) ;; exponentiation
 
-    (+I64 (Int64 Int64) Int64)
-    (-I64 (Int64 Int64) Int64) 
+    (_+I64 (Int64 Int64) Int64)
+    (_-I64 (Int64 Int64) Int64) 
     (*I64 (Int64 Int64) Int64) 
     (/I64 (Int64 Int64) Int64) 
     (^I64 (Int64 Int64) Int64) ;; exponentiation

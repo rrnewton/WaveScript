@@ -667,8 +667,8 @@
       [/: "Complex.div"]
       [^: "Complex.pow"]
 
-      [+I16 "(+)"]
-      [-I16 "(-)"] 
+      [_+I16 "(+)"]
+      [_-I16 "(-)"] 
       [*I16 "( * )"] 
       [/I16 "(/)"]
       [^I16 "powInt"]
@@ -877,7 +877,7 @@
 		   ;; [2007.07.24] Because the caml backend isn't really supported, we're not doing Int64s:
 		   int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex
 		   int16ToInt64 intToInt64 floatToInt64 doubleToInt64 complexToInt64
-   		   +I64 -I64 *I64 /I64 ^I64 absI64 
+   		   _+I64 _-I64 *I64 /I64 ^I64 absI64 
 
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   moduloI
