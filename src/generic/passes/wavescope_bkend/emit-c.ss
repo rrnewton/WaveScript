@@ -1557,12 +1557,14 @@
 		    [(=) "=="]
 		    [(;+ * - / 
 		      < > <= >=) infix_prim]
+		    [(_+_ _-_) ;; Take the second character:
+		      (substring (sym2str infix_prim) 1 2)]
 		    [(+. *. -. /.
-		      _+_ *_ _-_ /_
+		       *_ /_
 		      +D *D -D /D
 		      +: *: -: /:
 		      ^_ ^. ^D
-			 ) ;; Chop off the extra character.
+		      ) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]
 		    [(_+I16 _-I16 *I16 /I16 ^I16
                       _+I64 _-I64 *I64 /I64 ^I64
