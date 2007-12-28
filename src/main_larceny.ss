@@ -229,7 +229,7 @@
 ;======================================================================
 ;;; Now begin loading Regiment/WaveScript proper. 
 
-(define-syntax reg:Kmake-parameter 
+(define-syntax reg:make-parameter 
    (syntax-rules ()
      [(_ x) (make-parameter 'reg:make-parameter x)]
      [(_ x g) (let ([guard g])
