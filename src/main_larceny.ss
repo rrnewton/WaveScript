@@ -15,6 +15,8 @@
  (err5rs load)
  (for (rnrs r5rs) expand run) ;; backwards compat
  (rnrs lists)
+ (rnrs control)  ;; case-lambda
+ (rnrs arithmetic fixnums)  ;; case-lambda
  )
 
 ;; Import other larceny primitives:
@@ -22,7 +24,7 @@
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
 			 global-optimization format
-			 time case-lambda
+			 time repl 
 			 ) run expand))
 ;(import (larceny benchmarking))
 
@@ -46,7 +48,8 @@
 	  syntax-error datum->syntax-object syntax-object->datum datum
 	  andmap call/1cc void 
 	  box unbox set-box! printf
-	  include
+	  include identifier-syntax
+	  fx= ;fx+ fx- fx* fx/
 	  )
   (import (for (rnrs base) run expand)
 	  (for (rnrs io ports) expand)
@@ -54,6 +57,7 @@
 	  (rnrs r5rs)
 	  (rnrs eval)
 	  (for (rnrs syntax-case) run expand)
+	  (rnrs arithmetic fixnums)
 	  (primitives format))
 
   (define datum->syntax-object datum->syntax)
@@ -94,6 +98,17 @@
   ;(define (simple-eval x) (eval x (environment '(r6rs))))
   (define (simple-eval x) (eval x (environment '(rnrs))))
 
+#;
+  (define-syntax identifier-syntax
+   (lambda (x)
+     (syntax-case x ()
+      [(_ e)
+       #'(lambda (x)
+           (syntax-case x ()
+             [id  (identifier? #'id)  #'e]
+             [(id x (... ...))  (identifier? #'id)
+              #'(e x (... ...))]))])))
+
   (define-syntax include
     (lambda (x)
       (define read-file
@@ -123,10 +138,41 @@
   (define (unbox x) (vector-ref x 0))
   (define (set-box! b x) (vector-set! b 0 x))
 
-  (define (printf str . args)
-    (display (apply format str args)))
+  (define (printf str . args) (display (apply format str args)))
+  (define fx= fx=?) ;(define-syntax fx= (syntax-case  fx=?))
 )
+
+;; Hash tables 
+(library (larceny-hashtab)
+	 (export make-default-hash-table 
+		 hashtab-get  hashtab-set!
+		 hashtab-for-each hashtab-remove!)
+	 (import (rnrs base)
+		 (rnrs hashtables)
+		 (rnrs control)
+		 (rnrs arithmetic fixnums))
+	
+  (define make-default-hash-table
+    (case-lambda 
+      [() (make-default-hash-table 50)]
+      [(n) (make-eq-hashtable n)]))
+
+  (define (hashtab-get ht key) (hashtable-ref ht key #f))
+  (define hashtab-set!          hashtable-set!)
+  (define hashtab-remove!       hashtable-delete!)
+  (define (hashtab-for-each fn ht)
+    ;; Hmm... a little surprising that there's not a more efficient way to do this.
+    (let-values ([(keys vals) (hashtable-entries ht)])
+      (define len (vector-length keys))
+      (let loop ([i 0])
+	(unless (fx=? i len)
+	  (fn (vector-ref keys i) (vector-ref vals i)))))))
+
 (import (for (misc-larceny-compat) run expand))
+(import (for (larceny-hashtab) run expand))
+
+;======================================================================
+;;; Extra macros and global settings 
 
 (define-syntax IFCHEZ 
   (syntax-rules ()
@@ -205,12 +251,12 @@
 ;(time (compile-file "generic/util/reg_macros.ss"))
 (common:load-source "generic/util/reg_macros.ss")
 
-(common:load-source "generic/util/hash.ss") 
-(common:load-source "generic/util/slib_hashtab.ss")
-
+;(common:load-source "generic/util/hash.ss") 
+;(common:load-source "generic/util/slib_hashtab.ss")
 
 (load "common_loader.ss")
 
+(repl)
 
 (dump-interactive-heap "larc.heap")
 ;(dump-heap "larc.heap" (lambda args (display "Starting from heap... YAY \n") (newline)))

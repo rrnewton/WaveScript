@@ -60,7 +60,7 @@
 	(filter id
 	   (map (lambda (prm) 
 		  ;; Err... these really might should have different names:
-		  (if (memq (car prm) '(+: *: -: /: ^:))
+		  (if (memq (car prm) '(_+: *: _-: /: ^:))
 		      #f
 		      (let ([boom (explode-id (car prm))])
 			(if (not (null? (cdr boom)))

@@ -48,9 +48,9 @@
 		 gint
 		 g+ g- g* g/ g^
 		 _+_ _-_ *_ /_ ^_
-		 +. -. *. /. ^.
-		 +: -: *: /: ^:
-		 +D -D *D /D ^D
+		 _+. _-. *. /. ^.
+		 _+: _-: *: /: ^:
+		 _+D _-D *D /D ^D
 		 _+I16 _-I16 *I16 /I16 ^I16
 		 _+I64 _-I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI moduloI
@@ -1083,9 +1083,9 @@
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
   (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  
-  (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
-  (define +D fl+)    (define -D fl-)    (define *D fl*)    (define /D fl/)
-  (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
+  (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
+  (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
+  (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
 
   (define (/I64 a b) (floor (s:/ a b)))
 

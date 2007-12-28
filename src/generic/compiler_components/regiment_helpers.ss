@@ -390,7 +390,7 @@
 	 [else (error 'reunique-names "bad subexpression: ~s" (car ls))]))))
 
 ;; unique-name produces a unique name derived the input name by
-;; adding a unique suffix of the form .<digit>+.  creating a unique
+;; adding a unique suffix of the form .<digit>+  creating a unique
 ;; name from a unique name has the effect of replacing the old
 ;; unique suffix with a new one.
 ;;

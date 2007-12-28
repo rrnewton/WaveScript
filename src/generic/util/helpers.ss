@@ -1530,7 +1530,7 @@
       (if (zero? cnt) (list (reverse! acc))
 	  (error 'group "List length ~s was not divisible by: ~s" (length origls) n))]
      [(zero? cnt)
-      (cons (reverse! acc) (loop n () ls))]
+      (cons (reverse! acc) (loop n '() ls))]
      [else (loop (fx- cnt 1) (cons (car ls) acc) (cdr ls))]     
      )))
 
@@ -2056,7 +2056,7 @@
 
 
     ["Test with-error-handlers"
-     (let ((return ()))
+     (let ((return '()))
        (let/ec k
 	 (with-error-handlers disp
 			      (lambda () (k (void)))
@@ -2103,7 +2103,7 @@
 |#
 
     ["Apply ordered." 
-     (let ((x ())) 
+     (let ((x '())) 
        (apply-ordered list (set! x (cons 1 x)) (set! x (cons 2 x)) (set! x (cons 3 x))) 
        (reverse x))
      (1 2 3)]
@@ -2344,7 +2344,7 @@
 ; gives an error if too few args.
 ;
 (define (find-in-flags sym n flags)
-  (cond [(null? flags) ()]
+  (cond [(null? flags) '()]
         [(eq? (car flags) sym)
          (cons (list-head flags (+ n 1))
                (find-in-flags sym n (list-tail flags (+ n 1))))]
@@ -2357,7 +2357,7 @@
 ;
 (define (n-times p n . args)
   (let loop ((i 0)
-             (results ()))
+             (results '()))
     (if (< i n)
         (loop (+ i 1) (cons (apply p args) results))
         results)))

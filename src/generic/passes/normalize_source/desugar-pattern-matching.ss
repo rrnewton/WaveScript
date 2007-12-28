@@ -9,7 +9,7 @@
 ;;;; list.  It pulls these outside the lambda.
 
 ;;;; NOTE: This is messier than I would like, but this pass also
-;;;; desugars + into g+.  The earlier this happens, the better, and
+;;;; desugars + into g+  The earlier this happens, the better, and
 ;;;; this was about as early as it could happen.
 
 ;;;; [2007.09.21] One more thing, now it desugars integer constants into gint()s

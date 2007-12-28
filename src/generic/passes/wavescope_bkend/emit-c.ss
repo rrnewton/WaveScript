@@ -1544,10 +1544,10 @@
     ;; TODO: tupref, exponentiation 
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])
      (guard (memq infix_prim '(;+ - * /
-			       +. -. *. /. 
-			       +D -D *D /D
+			       _+. _-. *. /. 
+			       _+D _-D *D /D
 			       _+_ *_ _-_ /_
-				  +: *: -: /:
+				  _+: *: _-: /:
 				  _+I16 *I16 _-I16 /I16
 				  _+I64 *I64 _-I64 /I64
 				  < > <= >= =
@@ -1559,10 +1559,10 @@
 		      < > <= >=) infix_prim]
 		    [(_+_ _-_) ;; Take the second character:
 		      (substring (sym2str infix_prim) 1 2)]
-		    [(+. *. -. /.
+		    [(_+. *. _-. /.
 		       *_ /_
-		      +D *D -D /D
-		      +: *: -: /:
+		      _+D *D _-D /D
+		      _+: *: _-: /:
 		      ^_ ^. ^D
 		      ) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]

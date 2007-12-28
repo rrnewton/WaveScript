@@ -34,7 +34,7 @@
 
 
   (import constants)
-  ;; Only for swl1.0+.  Gives us define-class, etc.
+  ;; Only for swl1.0+ Gives us define-class, etc.
   (import swl:oop)
   (import (except swl:generics rgb-red rgb-green rgb-blue))
   (import (except swl:macros mvlet))

@@ -1,6 +1,6 @@
 
 ;; Now that the program is elaborated, we can translate generic
-;; arithmetic ops (g+) into their specialized equivalents (+.).
+;; arithmetic ops (g+) into their specialized equivalents (_+.).
 
 (module degeneralize-arithmetic mzscheme
   (require "../../../plt/common.ss"
@@ -27,9 +27,9 @@
 		[,other (fallthru other)]))])
 
   (define (int x)     (match x [g+ '_+_] [g- '_-_] [g* '*_] [g/ '/_] [g^ '^_] [abs 'absI]))
-  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g^ '^.] [abs 'absF]))
-  (define (double x)  (match x [g+ '+D] [g- '-D] [g* '*D] [g/ '/D] [g^ '^D] [abs 'absD]))
-  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
+  (define (float x)   (match x [g+ '_+.] [g- '_-.] [g* '*.] [g/ '/.] [g^ '^.] [abs 'absF]))
+  (define (double x)  (match x [g+ '_+D] [g- '_-D] [g* '*D] [g/ '/D] [g^ '^D] [abs 'absD]))
+  (define (complex x) (match x [g+ '_+:] [g- '_-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
   (define (int16 x)   (match x [g+ '_+I16] [g- '_-I16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
   (define (int64 x)   (match x [g+ '_+I64] [g- '_-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))

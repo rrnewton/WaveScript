@@ -27,7 +27,7 @@
  
 (require (lib "include.ss")
 ;         (all-except "generic/util/helpers.ss" id rec)
-         (all-except "generic/compiler_components/regiment_helpers.ss")         
+;         (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/chez_compat.ss"
 	 "generic/util/hash.ss"
@@ -80,11 +80,10 @@
 
                         (include "common_loader.ss")
 
-
+(require          (all-except "generic/compiler_components/regiment_helpers.ss"))         
 
 
 (require 
-
 
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 

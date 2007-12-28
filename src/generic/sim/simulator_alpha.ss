@@ -256,8 +256,8 @@
     '(;; [2007.01.28] Should phase these plain versions out:
       [+ fx+] [- fx-] [* fx*] [/ fx/]
       [_+_ fx+] [_-_ fx-] [*_ fx*] [/_ fx/]
-      [+. fl+] [-. fl-] [*. fl*] [/. fl/]
-      [+: cfl+] [-: cfl-] [*: cfl*] [/: cfl/]
+      [_+. fl+] [_-. fl-] [*. fl*] [/. fl/]
+      [_+: cfl+] [_-: cfl-] [*: cfl*] [/: cfl/]
       [^ expt] [^_ expt] [^. expt] [^: expt]
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]

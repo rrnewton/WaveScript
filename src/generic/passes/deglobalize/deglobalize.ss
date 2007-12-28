@@ -601,8 +601,8 @@
 ;			    ]
 		 ;; Returns our score:
 		 [,calcdist ()
-;			    ( printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
-			    (-. 0. (locdiff (loc) ,target))]
+;			    ( printf "\nOurscore: ~a\n" (_-. 0. (locdiff (loc) ,target)))
+			    (_-. 0. (locdiff (loc) ,target))]
 
 		 ;; Extra visualization code:
 		 [,form () 

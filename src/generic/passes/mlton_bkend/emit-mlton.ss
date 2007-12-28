@@ -1174,14 +1174,14 @@
       [/_ ,(format "(~s.quot)" int-module)]
       [^_ powInt] ;; Defined in prims.sml
 
-      [+. "( Real32.+ )"]
-      [-. "( Real32.- )"] 
+      [_+. "( Real32.+ )"]
+      [_-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
       [/. "( Real32./ )"]
       [^. "( Real32.Math.pow )"]
 
-      [+D "( Real64.+ )"]
-      [-D "( Real64.- )"] 
+      [_+D "( Real64.+ )"]
+      [_-D "( Real64.- )"] 
       [*D "( Real64.* )"] 
       [/D "( Real64./ )"]
       [^D "( Real64.Math.pow )"]
@@ -1211,8 +1211,8 @@
 
 
 
-      [+: "Complex.+"]
-      [-: "Complex.-"] 
+      [_+: "Complex.+"]
+      [_-: "Complex.-"] 
       [*: "Complex.*"] 
       [/: "Complex./"]
       [^: "Complex.pow"]

@@ -388,20 +388,20 @@
     (^I64 (Int64 Int64) Int64) ;; exponentiation
 
 
-    (+. (Float Float) Float)
-    (-. (Float Float) Float)
+    (_+. (Float Float) Float)
+    (_-. (Float Float) Float)
     (*. (Float Float) Float)
     (/. (Float Float) Float)
     (^. (Float Float) Float) ;; exponentiation
 
-    (+D (Double Double) Double)
-    (-D (Double Double) Double)
+    (_+D (Double Double) Double)
+    (_-D (Double Double) Double)
     (*D (Double Double) Double)
     (/D (Double Double) Double)
     (^D (Double Double) Double) ;; exponentiation
 
-    (+: (Complex Complex) Complex)
-    (-: (Complex Complex) Complex) 
+    (_+: (Complex Complex) Complex)
+    (_-: (Complex Complex) Complex) 
     (*: (Complex Complex) Complex) 
     (/: (Complex Complex) Complex)
     (^: (Complex Complex) Complex)
@@ -954,8 +954,8 @@
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int)
 
-    (+. (Float Float) Float) 
-    (-. (Float Float) Float) 
+    (_+. (Float Float) Float) 
+    (_-. (Float Float) Float) 
     (*. (Float Float) Float) 
     (/. (Float Float) Float) 
     (^. (Float Float) Float) 

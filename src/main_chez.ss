@@ -382,10 +382,7 @@
 
                                    (include "common_loader.ss")
 
-
-
-
-(todo:common:load-source "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(common:load-source "generic/compiler_components/regiment_helpers.ss")
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
 (todo:common:load-source "generic/compiler_components/type_environments.ss") (import type_environments)
@@ -407,7 +404,7 @@
 ;; Load this before the simulator.
 (IF_GRAPHICS
     (begin
-      ;; Only for swl1.0+.  Gives us define-class, etc.
+      ;; Only for swl1.0+ .  Gives us define-class, etc.
       (import swl:oop) 
       (import swl:generics) 
       (import (except swl:macros mvlet))

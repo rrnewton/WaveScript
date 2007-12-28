@@ -2336,7 +2336,7 @@
 
 	  (avg_aggr (x y)
 		    ;(printf "Average acc: ~a ~a\n"  x y)
-		    (return (list (+. (car x) (car y))
+		    (return (list (_+. (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
 	  '[regiment-verbose #f]
 	  '[sim-timeout 4000]
