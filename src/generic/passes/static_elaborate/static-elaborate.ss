@@ -187,7 +187,7 @@
       `((+ +) (- -) (* *) (/ /) (^ expt) 
 	(g+ +) (g- -) (g* *) (g^ expt)
 	(g/ ,(lambda (env a b) `',(generic-div a b)))
-	(_+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
+	(_+_ +) (_-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
 	(+I16 +) (-I16 -) (*I16 *) (/I16 /) (^I16 expt) 
@@ -1194,7 +1194,7 @@
     ["Reduce away fact of 6." 
      (static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
-			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
+			       (if (= '0 n) '1 (*_ n (app fact (_-_ n '1)))))])
 	(app fact '6))
       (union-types) 'notype)))
      (static-elaborate-language '(program '720 (union-types) 'notype))]
@@ -1213,7 +1213,7 @@
 				 (letrec ([loop 't (lambda (n) ('t)
 							  (if (= '0 n)
 							      world
-							      (rfilter f (app loop (-_ n '1)))))])
+							      (rfilter f (app loop (_-_ n '1)))))])
 				   (app loop '5)))
 			       'notype)))
 

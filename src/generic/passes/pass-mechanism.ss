@@ -350,16 +350,16 @@
        (define-pass P1 [Expr (lambda (x f) (match x ['3 ''333] [,_ (f x)]))])
        (define-pass P3 [Expr (lambda (x f) (match x [',n (guard (number? n)) `',(add1 n)] [,_ (f x)]))])
        (define F (fuse-passes/disjoint P1 P3))
-       (F '(lang '(program (_+_ '3 (*_ '1 (-_ '4 '3))) 'ty))))
-     (lang '(program (_+_ '333 (*_ '2 (-_ '5 '333))) 'ty))]
+       (F '(lang '(program (_+_ '3 (*_ '1 (_-_ '4 '3))) 'ty))))
+     (lang '(program (_+_ '333 (*_ '2 (_-_ '5 '333))) 'ty))]
     ["Verify that the non-disjoint fusion actually applies the second pass to the output of the first."
      (let ()
        (define-pass P1 [Expr (lambda (x f) (match x ['3 ''333] [,_ (f x)]))])
        (define-pass P3 [Expr (lambda (x f) (match x [',n (guard (number? n)) `',(add1 n)] [,_ (f x)]))])
        (define G (fuse-passes P1 P3))
-       ;(G '(lang '(program (_+_ '3 (*_ '1 (-_ '4 '3))) 'ty)))
-       (G '(_+_ '3 (*_ '1 (-_ '4 '3)))))
-     (_+_ '334 (*_ '2 (-_ '5 '334)))]))
+       ;(G '(lang '(program (_+_ '3 (*_ '1 (_-_ '4 '3))) 'ty)))
+       (G '(_+_ '3 (*_ '1 (_-_ '4 '3)))))
+     (_+_ '334 (*_ '2 (_-_ '5 '334)))]))
 
 
 (define-testing test-pass-mechanism 

@@ -1030,7 +1030,7 @@
     [(,plain-val (,Eval '(letrec ([x Int '3]) (wsequal? x '3)) '() #f)) #t]
     [(,plain-val (,Eval 
      '(letrec ([fact 'a (lambda (n) (Int) 
-        (if (wsequal? '1 n) '1 (*_ n (app fact (-_ n '1)))))])
+        (if (wsequal? '1 n) '1 (*_ n (app fact (_-_ n '1)))))])
 	(app fact '6)) '() #f)) 
      720]
     [(,plain-val (,Eval 
@@ -1079,7 +1079,7 @@
      (interpret-meta '(foo '(program 
       (letrec ([fact (Int -> Int)
 		     (lambda (n) (Int)
-			     (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
+			     (if (= '0 n) '1 (*_ n (app fact (_-_ n '1)))))])
 	(app fact '6))
       (union-types) 'notype)))
      ;(unspecified '(program (gint '720) (union-types) 'notype))

@@ -644,7 +644,7 @@
     '([memoized_fftR2C fftR2C]
 
       [_+_ "(+)"]  
-      [-_ "(-)"] 
+      [_-_ "(-)"] 
       [*_ "( * )"]
       [/_ "(/)"]
       [^_ powInt] ;; Defined in prims.ml

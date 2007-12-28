@@ -83,7 +83,7 @@
 	      (let ([,len Int (Array:length ,tmp)])
 		(begin 
 		  (for (,i '1 ,len)
-		   (set! ,out (cons (Array:ref ,tmp (-_ ,len ,i)) (deref ,out))))
+		   (set! ,out (cons (Array:ref ,tmp (_-_ ,len ,i)) (deref ,out))))
 		  (deref ,out)))))]
 
 	[(Array:map (lambda (,v) (,ty) ,[e1]) ,[e2])
@@ -101,7 +101,7 @@
 					  ;(Array:ref ,tmp '0)
 					  )])
 		    (begin 
-		      (for (,i '0 (-_ (Array:length ,tmp) '1))
+		      (for (,i '0 (_-_ (Array:length ,tmp) '1))
 			  (Array:set ,out ,i
 		             (let ([,v ,ty (Array:ref ,tmp ,i)]) ,e1)))
 		      ,out)))))]
@@ -112,7 +112,7 @@
 	   `(let ([,tmp (Array ,ty2) ,e2]
 		  [,x (Ref ,ty1) (Mutable:ref ,zer)])
 	      (begin 
-		(for (,i '0 (-_ (Array:length ,tmp) '1))
+		(for (,i '0 (_-_ (Array:length ,tmp) '1))
 		    (set! ,x 
 		       (let ([,acc ,ty1 (deref ,x)]
 			     [,v ,ty2 (Array:ref ,tmp ,i)])
@@ -145,7 +145,7 @@
 	   `(let ([,len Int ,n])
 	      (let ([,out (Array ',notype) (Array:makeUNSAFE ,len)])
 		(begin 
-		  (for (,i '0 (-_ ,len '1))
+		  (for (,i '0 (_-_ ,len '1))
 		      (Array:set ,out ,i (let ([,v Int ,i]) ,e1)))
 		  ,out))))]
 
@@ -157,7 +157,7 @@
 	   `(let ([,len Int ,n])
 	      (let ([,acc (Ref (List ',notype)) (Mutable:ref '())])
 		(begin 
-		  (for (,i '0 (-_ ,len '1))
+		  (for (,i '0 (_-_ ,len '1))
 		      (set! ,acc (cons (let ([,v Int ,i]) ,e1) (deref ,acc))))
 		  (List:reverse (deref ,acc))))))]
 	

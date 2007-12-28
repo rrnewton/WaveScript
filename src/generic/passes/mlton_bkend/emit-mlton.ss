@@ -1169,7 +1169,7 @@
       [^I64 "powInt64"]
 
       [_+_ ,(format "(~s.+)" int-module)]  
-      [-_ ,(format "(~s.-)" int-module)] 
+      [_-_ ,(format "(~s.-)" int-module)] 
       [*_ ,(format "(~s.*)" int-module)]
       [/_ ,(format "(~s.quot)" int-module)]
       [^_ powInt] ;; Defined in prims.sml

@@ -118,14 +118,14 @@
 		    (let ([,len1 Int (Array:length ,a1)]
 			  [,result (Array Char) 
 				   (assert-type (Array Char)
-						(Array:makeUNSAFE (-_ (_+_ ,len1 (Array:length ,a2)) '1)))])
+						(Array:makeUNSAFE (_-_ (_+_ ,len1 (Array:length ,a2)) '1)))])
 		      (begin 
-			(for (,i1 '0 (-_ ,len1 '1))
+			(for (,i1 '0 (_-_ ,len1 '1))
 			    (Array:set ,result ,i1 (Array:ref ,a1 ,i1)))
-			(for (,i2 '0 (-_ (Array:length ,a2) '1))
+			(for (,i2 '0 (_-_ (Array:length ,a2) '1))
 			    (Array:set ,result (_+_ ,len1 ,i2) (Array:ref ,a2 ,i2)))
-			;(app Array:blit ,result '0 ,a1 '0 (-_ (Array:length ,a1) '1))
-			;(app Array:blit ,result (-_ (Array:length ,a1) '1) ,a2 '0 (Array:length ,a2))
+			;(app Array:blit ,result '0 ,a1 '0 (_-_ (Array:length ,a1) '1))
+			;(app Array:blit ,result (_-_ (Array:length ,a1) '1) ,a2 '0 (Array:length ,a2))
 			,result))))]
 
 	      [(String:length ,[str]) `(Array:length ,str)]
@@ -728,7 +728,7 @@
 	(guard (memq infix_prim '(;+ - * /
 				  +. -. *. /. 
 				     +D -D *D /D
-				     _+_ *_ -_ /_
+				     _+_ *_ _-_ /_
 				     +: *: -: /:
 				     +I16 *I16 -I16 /I16
 				     +I64 *I64 -I64 /I64
@@ -740,7 +740,7 @@
 		       [(;+ * - / 
 			 < > <= >=) infix_prim]
 		       [(+. *. -. /.
-			    _+_ *_ -_ /_
+			    _+_ *_ _-_ /_
 			    +D *D -D /D
 			    +: *: -: /:
 			    ^_ ^. ^D

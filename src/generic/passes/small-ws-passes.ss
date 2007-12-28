@@ -273,10 +273,10 @@
 	 `(let ([,arr (Array ,elt) ,expr])
 	    (begin 
 	      ,(addstr! ''"#[")
-	      (for (,ind '0 (-_ (Array:length ,arr) '1))
+	      (for (,ind '0 (_-_ (Array:length ,arr) '1))
 		  (begin 
 		    ,(recur elt `(Array:ref ,arr ,ind))
-		    (if (not (wsequal? ,ind (-_ (Array:length ,arr) '1)))
+		    (if (not (wsequal? ,ind (_-_ (Array:length ,arr) '1)))
 			,(addstr! ''", ")
 			(tuple))))
 	      ,(addstr! ''"]"))))]

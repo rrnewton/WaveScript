@@ -46,8 +46,8 @@
            `(anchor-maximizing 
 					;		    (letrec ([,xvar Int ,x]
 					;			     [,yvar Int ,y])
-             (lambda (n) (Node) (-_ '0 (_+_ (^_ (-_ (sense '"xpos" n) ,x) '2) 
-                                           (^_ (-_ (sense '"ypos" n) ,y) '2))))
+             (lambda (n) (Node) (_-_ '0 (_+_ (^_ (_-_ (sense '"xpos" n) ,x) '2) 
+                                           (^_ (_-_ (sense '"ypos" n) ,y) '2))))
              world))]
 
         [(node_to_anchor ,n) `(node->anchor ,n)]

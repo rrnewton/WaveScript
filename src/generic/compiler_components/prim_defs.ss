@@ -370,7 +370,7 @@
     (roundF         (Float)   Float)
 
     (_+_ (Int Int) Int)
-    (-_ (Int Int) Int) 
+    (_-_ (Int Int) Int) 
     (*_ (Int Int) Int) 
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int) ;; exponentiation
@@ -949,7 +949,7 @@
     (^ (Int Int) Int)
 
     (_+_ (Int Int) Int) 
-    (-_ (Int Int) Int) 
+    (_-_ (Int Int) Int) 
     (*_ (Int Int) Int) 
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int)
