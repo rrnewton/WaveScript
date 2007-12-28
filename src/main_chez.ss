@@ -345,6 +345,9 @@
 		  [else (cons (car ls) (loop (cdr ls)))])))
   (list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
 
+
+
+
 (alias todo:common:load-source include)
 
 (define-syntax (common:load-source x)
@@ -359,23 +362,6 @@
 	       (import modname)))
     ])
   )
-
-#;
-(define-syntax common:load-source
-  (lambda (x)
-    (define read-file
-      (lambda (fn k)
-        (let ([p (open-input-file fn)])
-          (let f ([x (read p)])
-            (if (eof-object? x)
-                (begin (close-input-port p) '())
-                (cons (datum->syntax-object k x)
-                      (f (read p))))))))
-    (syntax-case x ()
-      [(k filename)
-       (let ([fn (datum filename)])
-         (with-syntax ([(exp ...) (read-file fn #'k)])
-           #'(begin exp ...)))])))
 
 ;;====================================================================================================;;
 ;;====================================================================================================;;
@@ -392,34 +378,6 @@
 ;; Including full slib hash tables also... nesed equal?-based hashtabs sometime.
 (todo:common:load-source "generic/util/slib_hashtab.ss") (import (add-prefix slib_hashtab slib:))
 (todo:common:load-source "chez/hashtab.ss")              (import hashtab) ;; eq? based.
-(todo:common:load-source "generic/util/helpers.ss") (import (except helpers test-this these-tests))
-
-
-
-;; These provide some more utility code related to threads:
-(cond-expand
- [(and chez threads)
-  (printf "Configuring for multithreaded execution.\n")
-  (todo:common:load-source "chez/threaded_utils.ss")
-  ;; Threads don't get initialized until we run the compiler.
-  (import threaded_utils)]
- ;; Otherwise provide a dummy implementation of "par":
- [else 
-  (define par list)
-  (define parmv values)
-  (define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
-  (define par-map map)
-  (define (init-par cpus) (void))
-  (define (par-status) (void))
-  (define (par-reset!) (void))
-  (define (shutdown-par) (void))])
-
-
-(todo:common:load-source "generic/util/streams.ss") (import (except streams test-this these-tests))
-
-;; Not using these currently:
-;(common:load-source "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
-
 
 
                                    (include "common_loader.ss")
@@ -427,14 +385,6 @@
 
 
 
-
-
-(import prim_defs)
-
-(printf "PRIMDEFS LOADED\n")(flush-output-port)
-
-;; Lists all the Regiment primitives and their types:
-(todo:common:load-source "generic/compiler_components/prim_defs.ss") (import prim_defs)
 (todo:common:load-source "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss

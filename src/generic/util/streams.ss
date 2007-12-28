@@ -42,7 +42,9 @@
 ;;; they wish.
 
 ;; This is too lenient, but there's no other option.
-(IFCHEZ (define promise? procedure?) (void))
+(cond-expand
+ [(or chez larceny) (define promise? procedure?)] 
+ [plt (void)])
 
 ;; Is the object potentially a stream?  Can't tell for sure because
 ;; promises are opaque.
@@ -157,7 +159,7 @@
 				(unless (regiment-quiet)
 				  (fprintf (current-error-port) "Finished, dumped ~a stream elements.\n" count))
 				(let ([elem (stream-car stream)])
-				  (unless (equal? elem #())
+				  (unless (equal? elem '#())
 				    (write elem port)(newline port))
 				  ;(set! pos (add1 pos))
 				  (set! count (add1 count))
@@ -294,24 +296,26 @@
 	  [(,dump ,file) (guard (memq dump '(d du dum dump)))
 	   (stream-dump stream file)]
 
-	  [(profile)  
-	   (IFCHEZ
-	    (with-output-to-file "/tmp/pdump"
-	      (lambda () 
+	  [(profile)  	   
+	   (cond-expand
+	    [chez 
+	     (with-output-to-file "/tmp/pdump"
+	       (lambda () 
 		(parameterize ([print-level #f]
 			       [print-length #f]
 			       [print-graph #t])
 		  (write (profile-dump))))
-	      'replace)
-	    (error 'browse-stream "can't dump profile in PLT."))]
+	      'replace)]
+	    [(or plt larceny)
+	     (error 'browse-stream "can't dump profile in this Scheme backend.")])]
 
 	  ;; Wavescope-specific.	  
 	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))
-	   (IFCHEZ 
-	    (let ([failename (format "~a" file)])
-	      (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
-	    (error 'bindump "unimplemented in plt"))
-	   ]
+	   (cond-expand
+	    [chez 
+	     (let ([failename (format "~a" file)])
+	       (wavescript-language `(dump-binfile ,filename ,stream ,pos)))]
+	    [else (error 'bindump "only implemented under Chez scheme")])]
 
 	  [(,until ,predtext) (guard (memq until '(u un unt unti until)))
 	   (let ([pred (eval predtext)])

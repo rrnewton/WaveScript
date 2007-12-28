@@ -14,13 +14,15 @@
  (for (rnrs syntax-case) expand run (meta 2))
  (err5rs load)
  (for (rnrs r5rs) expand run) ;; backwards compat
+ (rnrs lists)
  )
 
 ;; Import other larceny primitives:
-(import (for (primitives pretty-print make-parameter time 
+(import (for (primitives pretty-print make-parameter 
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
-			 global-optimization
+			 global-optimization format
+			 time case-lambda
 			 ) run expand))
 ;(import (larceny benchmarking))
 
@@ -42,15 +44,17 @@
   (export literal-identifier=? ellipsis? delay-values 
 	  extend-backquote simple-eval 
 	  syntax-error datum->syntax-object syntax-object->datum datum
-	  andmap call/1cc void include
-	  box unbox set-box!
+	  andmap call/1cc void 
+	  box unbox set-box! printf
+	  include
 	  )
   (import (for (rnrs base) run expand)
 	  (for (rnrs io ports) expand)
-	  (for (rnrs io simple) expand)
+	  (for (rnrs io simple) run expand)
 	  (rnrs r5rs)
 	  (rnrs eval)
-	  (for (rnrs syntax-case) run expand))
+	  (for (rnrs syntax-case) run expand)
+	  (primitives format))
 
   (define datum->syntax-object datum->syntax)
   (define syntax-object->datum syntax->datum)
@@ -111,12 +115,16 @@
 	(and (fun (car ls)) (andmap fun (cdr ls)))))
 
   (define call/1cc call/cc)
-  (define-syntax void (syntax-rules () [(_) (begin)]))
+  (define-syntax void (syntax-rules () [(_) (if #f #t)]))
+  ;(define (void) (if #f #t))
 
   ;; Could use lists, but that would require mutable pairs:
   (define (box x) (vector x))
   (define (unbox x) (vector-ref x 0))
   (define (set-box! b x) (vector-set! b 0 x))
+
+  (define (printf str . args)
+    (display (apply format str args)))
 )
 (import (for (misc-larceny-compat) run expand))
 
@@ -153,13 +161,21 @@
 ;; TEMPORARY: Let's turn this off to load a little faster.
 (global-optimization #f)
 
+(import (larceny compiler)) 
+
+(define-syntax common:load-source
+  (syntax-rules ()
+    [(_ file) (begin ;(printf " LOADING FILE: ~a\n" file)
+		     (display "\n   LOADING FILE: ")(display file)(newline)
+		     (time (load file)))]))
+
 ;======================================================================
 ;;; Print a banner message.
 
 ;======================================================================
 ;;; Begin loading files.  First some setup stuff.
 
-(time (load "chez/match.ss"))
+(common:load-source "chez/match.ss")
 ;(display "TEST: ")(display (match 3 [3 9] [4 2]))(newline)
 
 ;======================================================================
@@ -181,21 +197,19 @@
 	    ;(define reg:struct-dummy-val (record-reader 'name (type-descriptor name)))
 	    )]))
 
-(import (larceny compiler)) 
 
  ;; Load this first.  Widely visible constants/parameters.
 ;(time (compile-file "generic/constants.ss"))
-(time (load "generic/constants.ss"))
+(common:load-source "generic/constants.ss")
 
 ;(time (compile-file "generic/util/reg_macros.ss"))
-(time (load  "generic/util/reg_macros.ss"))
+(common:load-source "generic/util/reg_macros.ss")
+
+(common:load-source "generic/util/hash.ss") 
+(common:load-source "generic/util/slib_hashtab.ss")
 
 
-(time (load "generic/util/hash.ss")) 
-(time (load "generic/util/slib_hashtab.ss"))
-
-
-
+(load "common_loader.ss")
 
 
 (dump-interactive-heap "larc.heap")

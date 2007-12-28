@@ -26,7 +26,7 @@
 
  
 (require (lib "include.ss")
-         (all-except "generic/util/helpers.ss" id rec)
+;         (all-except "generic/util/helpers.ss" id rec)
          (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/chez_compat.ss"
@@ -77,18 +77,15 @@
 
 
 
-(require 
-  ;; Include these at top-level for the system tests:
-  (all-except "generic/util/streams.ss" these-tests test-this)
-
-)
 
                         (include "common_loader.ss")
 
 
+
+
 (require 
 
-;; prim_defs.ss
+
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
 ;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
@@ -246,9 +243,9 @@
 	 (all-from "plt/chez_compat.ss")
 	 (all-from "generic/constants.ss")
 	 (all-from "plt/iu-match.ss")
-	 (all-from "generic/util/helpers.ss")
+;	 (all-from "generic/util/helpers.ss")
 	 (all-from "generic/compiler_components/source_loader.ss")
-	 (all-from  "generic/util/streams.ss")
+;	 (all-from  "generic/util/streams.ss")
 	 (all-from "generic/passes/normalize_source/typecheck.ss")
 	 (all-from "generic/grammars/grammar_checker.ss")
 	 (all-from "generic/compiler_components/regiment_helpers.ss")

@@ -192,14 +192,14 @@
  ;; functionality used by the generic code.
  ;; The escape handler had *better* escape.
  (define (with-error-handlers display escape th)
-   (let ([orig-error (#%error-handler)])
-     (parameterize ([#%error-handler (lambda args 
-				       (parameterize ([#%error-handler orig-error])
+   (let ([orig-error ((hash-percent error-handler))])
+     (parameterize ([error-handler (lambda args 
+				       (parameterize ([error-handler orig-error])
 					 (apply display args)
 					 (escape)))])
 		 (th))))
 (define (with-warning-handler fun th)
-  (parameterize ([#%warning-handler fun])
+  (parameterize ([warning-handler fun])
     (th)))
 
 
@@ -222,12 +222,12 @@
 ; ======================================================================
 
 ;; The unit tester lives in its own file:
-(IFCHEZ 
+(cond-expand
  ;; We play nasty tricks with symbolic links here. 
  ;; It doesn't matter if we load this file from "src" or "src/chez"
  ;; because we've linked the "generic" subdir from both locations.
- (include "generic/util/unit_tester.ss")
- (include "unit_tester.ss"))
+ [(or larceny chez) (include "generic/util/unit_tester.ss")]
+ [(or plt) (include "unit_tester.ss")])
 
 ; ======================================================================
 ;;;  BEGIN Generic core of helpers.ss:
@@ -428,7 +428,7 @@
 
 (define list-build
   (lambda (n f)
-    (let loop ([i 0] [acc ()])
+    (let loop ([i 0] [acc '()])
       (if (fx= i n)
 	  (reverse! acc)
 	  (loop (fx+ 1 i) (cons (f i) acc))))))
@@ -455,7 +455,7 @@
      [else (cons (car ls) (loop (cdr ls)))])))
 
 (define (remq-all x ls)
-  (let loop ((ls ls) (acc ()))
+  (let loop ((ls ls) (acc '()))
     (cond 
      [(null? ls) (reverse! acc)]
      [(eq? x (car ls)) (loop (cdr ls) acc)]
@@ -874,8 +874,8 @@
          [(memq (car set1) set2) (loop (cdr set1))]
          [else (cons (car set1) (loop (cdr set1)))]))]
     [() '()]
-    [(set1 . sets)
-     (let loop ([set1 set1] [sets sets])
+    [all
+     (let loop ([set1 (car all)] [sets (cdr all)])
        (if (null? sets)
            set1
            (loop (union set1 (car sets)) (cdr sets))))]))
@@ -889,8 +889,8 @@
          [(null? set1) '()]
          [(memq (car set1) set2) (cons (car set1) (loop (cdr set1)))]
          [else (loop (cdr set1))]))]
-    [(set1 . sets)
-     (let loop ([set1 set1] [sets sets])
+    [all 
+     (let loop ([set1 (car all)] [sets (cdr all)])
        (if (null? sets)
            set1
            (loop (intersection set1 (car sets)) (cdr sets))))]))
@@ -1287,7 +1287,7 @@
     h))
 
 (define (hashtab->list h)
-  (let ((ls ()))
+  (let ((ls '()))
     (hashtab-for-each (lambda (k x)
 			(set! ls (cons (cons k x) ls)))
 		      h)
@@ -1407,11 +1407,11 @@
       (unless (null? current)
 	(loop (apply append 
 		     (map (lambda (point)
-			    (if (hashtab-get dists point) ()
+			    (if (hashtab-get dists point) '()
 				(begin 
 				  (hashtab-set! dists point dist)
 				  (let ((nbrs (hashtab-get hgraph point)))
-				    (if nbrs nbrs ())))))
+				    (if nbrs nbrs '())))))
 		       current))
 	      (add1 dist))))
 

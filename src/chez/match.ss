@@ -61,6 +61,9 @@
         (trace-match match-help match-help1 clause-body let-values**
           guard-body convert-pat mapper my-backquote extend-backquote
           sexp-dispatch)
+
+	;; TEMP 
+	clause-body extend-backquote
 	)
 
 ;(import scheme)
@@ -145,6 +148,7 @@
              ls/false)
            (match-help Template Cata Obj ThreadedIds Rest ...))))))
 
+;((clause-body f () () (extend-backquote _ (void))))
 (define-syntax clause-body
   (lambda (x)
     (define build-mapper
@@ -604,6 +608,7 @@
               (if (eqv? obj pat)
                   vals
                   (fail)))))))))
+
 
 ) ;; End Module
 
