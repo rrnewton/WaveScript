@@ -2231,7 +2231,7 @@
 	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) (cons 1 '())))
 				   world)]
 		   [aggr (lambda (x y)
-			   (cons (+_ (car x)
+			   (cons (_+_ (car x)
 				     (car y))
 				 (cons (+ (car (cdr x))
 					  (car (cdr y)))

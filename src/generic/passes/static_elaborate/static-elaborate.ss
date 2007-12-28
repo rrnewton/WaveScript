@@ -187,7 +187,7 @@
       `((+ +) (- -) (* *) (/ /) (^ expt) 
 	(g+ +) (g- -) (g* *) (g^ expt)
 	(g/ ,(lambda (env a b) `',(generic-div a b)))
-	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
+	(_+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
 	(+I16 +) (-I16 -) (*I16 *) (/I16 /) (^I16 expt) 
@@ -1182,7 +1182,7 @@
   `( 
 
     ["Make sure it folds some simple constants." 
-     (static-elaborate '(foo '(program (+_ '3 '4) (union-types) 'notype)))
+     (static-elaborate '(foo '(program (_+_ '3 '4) (union-types) 'notype)))
      (static-elaborate-language '(program '7 (union-types) 'notype))]
 
     [(static-elaborate
@@ -1200,11 +1200,11 @@
      (static-elaborate-language '(program '720 (union-types) 'notype))]
     
     ["Reduce a tuple reference."
-     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+_ '100 (tupref 0 2 x))) 'notype)))
+     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (_+_ '100 (tupref 0 2 x))) 'notype)))
      (static-elaborate-language '(program '103 'notype))]
 
     ["Reduce a primop underneath a lambda."
-     (static-elaborate '(foolang '(program (lambda (x) ('t) (cons (+_ '3 '4) x)) 'notype)))
+     (static-elaborate '(foolang '(program (lambda (x) ('t) (cons (_+_ '3 '4) x)) 'notype)))
      (static-elaborate-language '(program (lambda (x) ('t) (cons '7 x)) 'notype))]
 
     ["Use a loop to apply a chain of rfilters"
@@ -1232,7 +1232,7 @@
      ]
 
     ["Simple test to make sure we keep the quotes on:" 
-     (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) 'notype)))
+     (static-elaborate '(foolang '(program (cons (_+_ '3 '4) world) 'notype)))
      (static-elaborate-language '(program (cons (quote 7) world)
 		 'notype))]
 

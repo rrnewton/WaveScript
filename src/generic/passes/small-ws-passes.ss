@@ -162,7 +162,7 @@
 				 (let ([,el1 ,elt (Array:ref ,arr1 (deref ,i))])
 				   (let ([,el2 ,elt (Array:ref ,arr2 (deref ,i))])
 				     (if ,(build-comparison elt el1 el2)
-					 (set! ,i (+_ (deref ,i) '1))
+					 (set! ,i (_+_ (deref ,i) '1))
 					 (set! ,stop '#t)
 					 ))))
 			  (not (deref ,stop))))))

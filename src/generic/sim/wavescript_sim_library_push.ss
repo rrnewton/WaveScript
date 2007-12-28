@@ -47,7 +47,7 @@
 
 		 gint
 		 g+ g- g* g/ g^
-		 +_ -_ *_ /_ ^_
+		 _+_ -_ *_ /_ ^_
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
 		 +D -D *D /D ^D
@@ -1078,9 +1078,9 @@
   (define ws+ fx+)   (define ws- fx-)   (define ws* fx*)   (define ws/ fx/)
 
   ;; Ok, ints are 32 bit so fx+ can't be used from now on:
-  (define +_ s:+)    (define -_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
+  (define _+_ s:+)    (define -_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
 
-  ;(define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
+  ;(define _+_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
   (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define +I64 s:+)  (define -I64 s:-)  (define *I64 s:*)  
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)

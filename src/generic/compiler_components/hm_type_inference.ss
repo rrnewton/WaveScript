@@ -1743,14 +1743,14 @@
     [(let-values ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
      ((NUM unspecified) -> (NUM unspecified))]
     
-    [(export-type (,type-expression '(+_ 1 1) (empty-tenv))) Int]
+    [(export-type (,type-expression '(_+_ 1 1) (empty-tenv))) Int]
     [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(Int) (empty-tenv) '())]) t))
+    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(_+_ v v) '(Int) (empty-tenv) '())]) t))
      (Int -> Int)]
-    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '('alpha) (empty-tenv) '())]) t))
+    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(_+_ v v) '('alpha) (empty-tenv) '())]) t))
      ;((NUM unspecified) -> (NUM unspecified))
      (Int -> Int)]
     
@@ -1759,7 +1759,7 @@
      '(a . '(b . #f))]
    
     ["Invalid explicitly annotated type"
-     (export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(String) (empty-tenv) '())]) t))
+     (export-type (let-values ([(_ t) (,annotate-lambda '(v) '(_+_ v v) '(String) (empty-tenv) '())]) t))
      error]
 
     ["Explicitly typed let narrowing identity function's signature"
@@ -1776,7 +1776,7 @@
 
     [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Int]
 
-    [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+_ x 4))) (empty-tenv)))
+    [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (_+_ x 4))) (empty-tenv)))
      (Int -> Int)]
 
     [(export-type (,type-expression '(rmap (lambda (n) (sense "light" n)) world) (empty-tenv)))
@@ -1853,7 +1853,7 @@
   
   ;; Now let's see about partially annotated programs.
   ["Partially (erroneously) annotated letrec"
-   (let-values ([(p t) (annotate-program '(letrec ([i String 3]) (+_ i 59)))]) p)
+   (let-values ([(p t) (annotate-program '(letrec ([i String 3]) (_+_ i 59)))]) p)
    error]
 
   ["An example function from nested_regions_folded.ss"

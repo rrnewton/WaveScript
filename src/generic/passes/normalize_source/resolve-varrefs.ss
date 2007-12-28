@@ -179,13 +179,13 @@
      `(
 
        [(,resolve-varrefs '(some-lang '(program (letrec ((x Int 1)) 
-					    (+_ (app (lambda (x) (Int) x) 3) x)) (union-types) Int)))
+					    (_+_ (app (lambda (x) (Int) x) 3) x)) (union-types) Int)))
 	,(lambda (p)
 	   (match p
 	     [(resolve-varrefs-language
 	       '(program
 		    (letrec ([,x_1 Int 1])
-		      (+_ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
+		      (_+_ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
 		  (union-types) Int))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]

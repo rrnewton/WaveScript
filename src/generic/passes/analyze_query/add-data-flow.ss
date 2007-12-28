@@ -357,9 +357,9 @@
 		      '(lazy-letrec ([resultofanonlambda_8 Int () '89]
 				     [var_2 Int () 
 					    (lazy-letrec ([foo Int () '100]
-							  [res1 Int () (+_ foo '389)])
+							  [res1 Int () (_+_ foo '389)])
 						    res1)]
-				     [res2 Int () (+_ resultofanonlambda_8 var_2)])
+				     [res2 Int () (_+_ resultofanonlambda_8 var_2)])
 				    res2)
 		      (,empty-dfg)))
 		     ,(lambda (x)
@@ -426,7 +426,7 @@
 			h)]
 	      [v (Area Int) ()
 		 (rmap (lambda (r2) ((Area Int)) 
-			       (rfold +_ '0 r2)) h2)]
+			       (rfold _+_ '0 r2)) h2)]
 	      )
 	     v)
 	    (Area Int))))

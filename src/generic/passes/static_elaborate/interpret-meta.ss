@@ -1021,7 +1021,7 @@
 ; ================================================================================ ;
 
 (define-testing these-tests
-  `([(,plain-val (,Eval '(+_ '1 '2) '() #f)) 3]
+  `([(,plain-val (,Eval '(_+_ '1 '2) '() #f)) 3]
     [(,plain-val (,Eval '(app (lambda (x) (Int) x) '3) '()  #f)) 3]
     [(,plain-val (,Eval '(car (cons '39 '())) '() #f)) 39]
     [(,Eval '(timer (annotations) '3) '() #f) ,streamop?]
@@ -1039,11 +1039,11 @@
 	       (deref v))) '() #f))    89]
     [(,plain-val (,Eval 
      '(letrec ([v (Ref 'a) (Mutable:ref '0)])
-	(begin (for (i '1 '10) (set! v (+_ (deref v) '1)))
+	(begin (for (i '1 '10) (set! v (_+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     [(,plain-val (,Eval 
      '(letrec ([v (Ref 'a) (Mutable:ref '0)])
-	(begin (while (< (deref v) '10) (set! v (+_ (deref v) '1)))
+	(begin (while (< (deref v) '10) (set! v (_+_ (deref v) '1)))
 	       (deref v))) '() #f))    10]
     
     [(parameterize ([,marshal-cache (make-default-hash-table 1000)])
@@ -1070,7 +1070,7 @@
     ["inline a function successfully"
      (deep-assq 'f
      (interpret-meta '(lang '(program 
-       (letrec ([f 'b (lambda (x) (Int) (+_ x x))])
+       (letrec ([f 'b (lambda (x) (Int) (_+_ x x))])
 	 (iterate (annotations) (lambda (_) ('a) (app f '9)) (timer (annotations) '3.0))) Int))))
      #f]
 

@@ -26,7 +26,7 @@
 		      ,tmp))]
 		[,other (fallthru other)]))])
 
-  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g^ '^_] [abs 'absI]))
+  (define (int x)     (match x [g+ '_+_] [g- '-_] [g* '*_] [g/ '/_] [g^ '^_] [abs 'absI]))
   (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g^ '^.] [abs 'absF]))
   (define (double x)  (match x [g+ '+D] [g- '-D] [g* '*D] [g/ '/D] [g^ '^D] [abs 'absD]))
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))

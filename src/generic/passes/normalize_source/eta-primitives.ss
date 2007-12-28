@@ -82,13 +82,13 @@
 	["Simple test of eta-primitives"
 	 (reunique-names (eta-primitives '(base-language
 			   '(program
-				(rfold +_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
+				(rfold _+_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
 			      (union-types) 
 			      (Stream Int)))))
 	 (eta-primitives-language
 	  '(program
 	       (rfold
-		(lambda (a b) (Int Int) (+_ a b))
+		(lambda (a b) (Int Int) (_+_ a b))
 		0
 		(rmap
 		 (lambda (a_1) (Node) (nodeid a_1))

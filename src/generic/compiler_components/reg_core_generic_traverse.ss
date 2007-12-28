@@ -541,24 +541,24 @@
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
-      '(+_ '3 '4))
-     (+_ '3 '4)]
+      '(_+_ '3 '4))
+     (_+_ '3 '4)]
     
     ["run traversal over rfold & letrec"
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))          
-      '(rfold +_ 0
+      '(rfold _+_ 0
 	      (letrec ([myhood Region (khood (anchor-at 50 10) 2)])
 		(rmap nodeid myhood))))
-     (rfold +_ 0 (letrec ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
+     (rfold _+_ 0 (letrec ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
 
     ["run traversal over lambda"
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
-      '(lambda (x) (Int) (+_ '3 '4)))
-     (lambda (x) (Int) (+_ '3 '4))]
+      '(lambda (x) (Int) (_+_ '3 '4)))
+     (lambda (x) (Int) (_+_ '3 '4))]
     
     ["core-free-vars "
      (core-free-vars '(readFile '"countup.raw" '"" x))
@@ -570,7 +570,7 @@
      (hashtab->list (core-refcount '(lambda (x) (Int) x)))
      ((x . 1))]
     ["core-refcount2"
-     (hashtab->list (core-refcount '(let ([x Int '3]) (lambda (y) (Int) (*_ y (+_ x x))))))
+     (hashtab->list (core-refcount '(let ([x Int '3]) (lambda (y) (Int) (*_ y (_+_ x x))))))
      ,(lambda (ls) (set-equal? (list->set ls) (list->set '((y . 1) (x . 2)))))]
 
 

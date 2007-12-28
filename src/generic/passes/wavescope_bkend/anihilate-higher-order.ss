@@ -133,7 +133,7 @@
 			 (begin (if (let ([,v ,ty (Array:ref ,tmp (deref ,i))]) ,e1)
 				    (tuple)
 				    (set! ,x '#f))
-				(set! ,i (+_ (deref ,i) '1))))
+				(set! ,i (_+_ (deref ,i) '1))))
 		  (deref ,x)))
 	      ))]
 

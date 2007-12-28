@@ -1168,7 +1168,7 @@
       [/I64 "( Int64.quot )"]
       [^I64 "powInt64"]
 
-      [+_ ,(format "(~s.+)" int-module)]  
+      [_+_ ,(format "(~s.+)" int-module)]  
       [-_ ,(format "(~s.-)" int-module)] 
       [*_ ,(format "(~s.*)" int-module)]
       [/_ ,(format "(~s.quot)" int-module)]

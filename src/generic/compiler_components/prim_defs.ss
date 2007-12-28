@@ -369,7 +369,7 @@
     ;; Rounding instead of truncation:    
     (roundF         (Float)   Float)
 
-    (+_ (Int Int) Int)
+    (_+_ (Int Int) Int)
     (-_ (Int Int) Int) 
     (*_ (Int Int) Int) 
     (/_ (Int Int) Int) 
@@ -948,7 +948,7 @@
     (/ (Int Int) Int) 
     (^ (Int Int) Int)
 
-    (+_ (Int Int) Int) 
+    (_+_ (Int Int) Int) 
     (-_ (Int Int) Int) 
     (*_ (Int Int) Int) 
     (/_ (Int Int) Int) 
