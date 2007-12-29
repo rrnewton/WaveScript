@@ -31,7 +31,7 @@
 	(require 
 	 (lib "include.ss")
 ;	 "../plt/regmodule.ss"
-	 "../plt/plt_constants.ss"
+	 "../plt/plt_constants.ss"	 
 	 )
 
 	;; Many exports:
@@ -49,7 +49,7 @@
 	 
          ;; Syntax:
 	 IFDEBUG 
-         DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
+         DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT format-syntax
          REGIMENT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
 	 IFWAVESCOPE ;; Load WS extensions or no?
          ;chezprovide chezimports ;; To make the common module facility work.         
@@ -202,22 +202,46 @@
 	(define-syntax chezprovide
 	  (syntax-rules ()
 	    [(_ e ...) (begin (void))]))
+	 
+  ;; Pre-processor macro for switching between Chez/PLT versions.
+  (define-syntax IFCHEZ 
+    (syntax-rules (chez plt) 
+      ;[(_ a)   (cond-expand [chez a] [else (begin)])]
+      [(_ a b) (cond-expand [chez a] [plt b] [else (display "WARNING: IFCHEZ used in non-chez non-plt mode\n")])]))
+
+  ;; This preprocessor form is used like an #IFDEF, evaluate code only
+  ;; if we've got a GUI loaded.
+  (define-syntax IF_GRAPHICS
+    (syntax-rules (chez plt) 
+      [(_ a b) (cond-expand [(and chez graphics) a] [else b])]
+      [(_ a)   (cond-expand [(and chez graphics) a] [else (void)])]))
+
+  (define-syntax IF_THREADS
+    (syntax-rules (chez plt) 
+      [(_ a b) (cond-expand [(and chez threads) a] [else b])]
+      [(_ a)   (cond-expand [(and chez threads) a] [else (void)])]))
 	
 ;=======================================================================
 
 ;;; Regiment parameters.
 
 ;; First we define a common make-parameter abstraction for Chez and PLT:
-(IFCHEZ 
- (define-syntax reg:make-parameter (identifier-syntax (hash-percent make-parameter)))
- ;; The make-parameter function should call the guard even the first time.
- ;; This is not default PLT behavior:
- (define-syntax reg:make-parameter 
-   (syntax-rules ()
-     [(_ x) (make-parameter x)]
-     [(_ x g) (let ([val x] [guard g])
-	      (make-parameter (guard val) guard))])))
-
+(cond-expand
+ [chez (define-syntax reg:make-parameter (identifier-syntax (hash-percent make-parameter)))]
+ [plt
+  ;; The make-parameter function should call the guard even the first time.
+  ;; This is not default PLT behavior:
+  (define-syntax reg:make-parameter 
+    (syntax-rules ()
+      [(_ x) (make-parameter x)]
+      [(_ x g) (let ([val x] [guard g])
+		 (make-parameter (guard val) guard))]))]
+ [larceny
+  (define-syntax reg:make-parameter 
+    (syntax-rules ()
+      [(_ x) (make-parameter 'reg:make-parameter x)]
+      [(_ x g) (let ([guard g])
+		 (make-parameter 'reg:make-parameter (guard x) guard))]))])
 
 
 ;; In the following manner we distinguish regiment parameters from normal
@@ -283,9 +307,12 @@
 	  (error obj "DEBUGASSERT failed: ~s" (quote expr))))]
     ))
 
+;; PLT needs some help printing out the line numbers.
 (define (format-syntax x)
-  (format "Syntax ~a, line ~a in ~a" 
-	  (syntax-object->datum x) (syntax-line x) (syntax-source x)))
+  (cond-expand 
+   [plt (format "Syntax ~a, line ~a in ~a" 
+		(syntax-object->datum x) (syntax-line x) (syntax-source x))]
+   [else x]))
 
 (define-syntax DEBUGASSERT
   (lambda (x)
@@ -293,7 +320,8 @@
       [(_ expr) 
        #'(DEBUGMODE
 	  (if expr #t 
-	      (error 'DEBUGASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax  #'expr)) )))]
+	      (error 'DEBUGASSERT "failed: ~s" 
+		     (format-syntax #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       ;; NOTE!!! It still evaluates and returns the VALUE in nondebugmode, it just skips the predictae.
       [(_ fun val) #'(IFDEBUG 
@@ -301,14 +329,14 @@
 		       (if (fun v) v			   
 			   (error 'DEBUGASSERT 
 				  "failed: ~s\n Value which did not satisfy above predicate: ~s" 
-				  (IFCHEZ #'fun (format-syntax #'fun))
+				  (format-syntax #'fun)
 				  v)))
 		      val)])))
 
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (IFCHEZ #'expr (format-syntax #'expr))))]
+      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (format-syntax #'expr)))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(ASSERT "" fun val)]
       [(_ str fun val) 
@@ -316,7 +344,7 @@
 	   (if (fun v) v			   
 	       (error 'ASSERT "failed, ~s:\n ~s\n Value which did not satisfy above predicate: ~s" 
 		      str
-		      (IFCHEZ #'fun (format-syntax #'fun))
+		      (format-syntax #'fun)
 		      v)))]
       )))
 
@@ -435,7 +463,7 @@
 ;;          This greatly reduces file size and also increases reading speed.
 ;;  [500 is good for running large simulations.]
 (define-regiment-parameter simulation-logger-fasl-batched 500
-  (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x)))) 
+  (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x))))
 	  x))
 
 ;; Controls whether a .log or .log.gz is produced.
@@ -936,10 +964,12 @@
 ;;; PLT doesn't support compressed or fasl log writing currently.  We
 ;;; make sure that's turned off if we're loading under PLT.
 
-(IFCHEZ (void)
- (begin 
-   (simulation-logger-fasl-batched #f)
-   (simulation-logger-gzip-output #f)))
+(cond-expand
+ [chez]
+ [larceny] ;; This should do what PLT does probably...
+ [plt ;(or  larceny)
+  (simulation-logger-fasl-batched #f)
+  (simulation-logger-gzip-output #f)])
 
 ; ======================================================================
 

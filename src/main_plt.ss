@@ -66,7 +66,10 @@
     [(_ file) 
      (with-syntax ([req   (datum->syntax-object #'_ 'require)]
 		   [prov  (datum->syntax-object #'_ 'provide)]
-		   [allfr (datum->syntax-object #'_ 'all-from)])
+		   [allfr (datum->syntax-object #'_ 'all-from)]
+		   ;[testths   (datum->syntax-object #'_ 'test-this)]
+		   ;[thesetsts (datum->syntax-object #'_ 'these-tests)]
+		   )
        ;(display (cons 'yayexpanding #'file))(newline)       
        ;#'(req (all-except file these-tests test-this))
        #'(begin (req file)
@@ -83,7 +86,7 @@
 (require 
 
 
-(all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
+;(all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
@@ -158,7 +161,7 @@
 (all-except "generic/passes/deglobalize/deglobalize.ss" these-tests test-this)
 (all-except "generic/passes/deglobalize/deglobalize2.ss" these-tests test-this)
 
-(all-except "generic/passes/tokmac_bkend/cleanup-token-machine.ss" these-tests test-this)
+;(all-except "generic/passes/tokmac_bkend/cleanup-token-machine.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/desugar-macros.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/find-emittoks.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/desugar-gradients.ss" these-tests test-this)
@@ -189,17 +192,17 @@
   (all-except "plt/graphics_stub.ss" these-test test-this)))
 
 ;; Import these for the benefit of the unit tests below:
-(IFWAVESCOPE (begin)  
-  (require "generic/sim/simulator_alpha_datatypes.ss"))
+;(IFWAVESCOPE (begin)  (require "generic/sim/simulator_alpha_datatypes.ss"))
 
 ;(require (all-except "generic/sim/wavescript_sim_library_push.ss" these-tests test-this))
-(require (all-except "generic/langs/lang_wavescript.ss" these-tests test-this))
+;(require (all-except "generic/langs/lang_wavescript.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
 
+#;
 (IFWAVESCOPE (begin) (begin
-  (require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
-  (require "generic/sim/alpha_lib.ss")
-  (require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
+;  (require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
+;  (require "generic/sim/alpha_lib.ss")
+;  (require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
 ))
 
 (include "generic/testing/tests.ss")
@@ -208,11 +211,11 @@
 ;; INLINE THE MAIN COMPILER CODE
 
 ;; Bring these into top-level for some of the mini-passes defined in main.ss.
-(require (all-except "generic/passes/pass-mechanism_basic.ss" these-tests test-this))
-(require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
-(require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
+;(require (all-except "generic/passes/pass-mechanism_basic.ss" these-tests test-this))
+;(require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
+;(require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
 
-(require "generic/compiler_components/c_generator.ss")
+;(require "generic/compiler_components/c_generator.ss")
 (include "main.ss")
 
 ;============================================================
@@ -246,12 +249,12 @@
 ;	 (all-from "generic/grammars/grammar_checker.ss")
 	 (all-from "generic/compiler_components/regiment_helpers.ss")
 	 (all-from "generic/compiler_components/hm_type_inference.ss")
-         (all-from "generic/passes/pass-mechanism_basic.ss")
-         (all-from "generic/passes/pass-mechanism.ss")
-	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
+;         (all-from "generic/passes/pass-mechanism_basic.ss")
+;         (all-from "generic/passes/pass-mechanism.ss")
+;	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
 	 (all-from "plt/hashtab.ss")	 	 
 	 (all-from "generic/util/hash.ss")
-	 (all-from "generic/langs/lang_wavescript.ss")
+;	 (all-from "generic/langs/lang_wavescript.ss")
 
 	 ;(all-from "generic/compiler_components/prim_defs.ss" )
 	 (all-from "generic/compiler_components/hm_type_inference.ss" )
@@ -310,7 +313,7 @@
    (all-from "generic/sim/alpha_lib.ss")
    (all-from "generic/sim/simulator_alpha.ss")
 
-   (all-from "generic/passes/tokmac_bkend/cleanup-token-machine.ss" )
+;   (all-from "generic/passes/tokmac_bkend/cleanup-token-machine.ss" )
    (all-from "generic/passes/tokmac_bkend/desugar-macros.ss" )
    (all-from "generic/passes/tokmac_bkend/find-emittoks.ss" )
    (all-from "generic/passes/tokmac_bkend/desugar-gradients.ss" )

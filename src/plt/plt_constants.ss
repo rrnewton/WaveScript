@@ -8,9 +8,7 @@
 
 	(provide 
 
-	 IFCHEZ
-	 IF_GRAPHICS 
-	 IF_THREADS
+	 ;IFCHEZ   IF_GRAPHICS 	IF_THREADS
 	 cond-expand
 	 reg:define-struct
          reg:struct?
@@ -19,7 +17,7 @@
 	 )
 	
   ;; Pre-processor macro for switching between Chez/PLT versions.
-  (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) plt]))
+  ;(define-syntax IFCHEZ (syntax-rules () [(_ chez plt) plt]))
   
   ;; [2007.12.27] Considering switching over to a cond-expand system.
   (define-syntax cond-expand
@@ -58,13 +56,14 @@
         (syntax-case  x ()
           [(_ E1 E2) (if flag #'E1 #'E2)]
           [(_ E1) (if flag #'E1)]))))
+#;
    ;; [2005.11.04] I was having trouble with that.  When compiling from
    ;; command line I'd get an error.  Let's just set it manually:
    (define-syntax IF_GRAPHICS
      (syntax-rules ()
        [(_ t f) f]
        [(_ t)   (void)]))
-
+#;
    ;; [2006.07.28] Not supporting THREADS under PLT currently (but this would be easy).
    (define-syntax IF_THREADS
      (syntax-rules ()

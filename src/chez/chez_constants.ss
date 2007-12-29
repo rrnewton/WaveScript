@@ -13,12 +13,12 @@
     ;; Exports:
     ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
 		  reg:include
-		  IFCHEZ 
-		  IF_GRAPHICS IF_THREADS
+		  ;IFCHEZ IF_GRAPHICS IF_THREADS
 		  cond-expand
 		  hash-percent path->string
 		  )
   (import scheme)
+
 
   ;; [2007.12.27] Considering switching over to a cond-expand system.
   (define-syntax cond-expand
@@ -48,25 +48,6 @@
 
       ;; Otherwise, it's disabled:
       ((cond-expand (feature-id body ...) more-clauses ...) #'(cond-expand more-clauses ...)))))
-  
-  ;; Pre-processor macro for switching between Chez/PLT versions.
-  (define-syntax IFCHEZ 
-    (syntax-rules (chez plt) 
-      ;[(_ a)   (cond-expand [chez a] [else (begin)])]
-      [(_ a b) (cond-expand [chez a] [plt b])]))
-
-  ;; This preprocessor form is used like an #IFDEF, evaluate code only
-  ;; if we've got a GUI loaded.
-  (define-syntax IF_GRAPHICS
-    (syntax-rules (chez plt) 
-      [(_ a b) (cond-expand [(and chez graphics) a] [else b])]
-      [(_ a)   (cond-expand [(and chez graphics) a] [else (void)])]))
-
-  (define-syntax IF_THREADS
-    (syntax-rules (chez plt) 
-      [(_ a b) (cond-expand [(and chez threads) a] [else b])]
-      [(_ a)   (cond-expand [(and chez threads) a] [else (void)])]))
-
   
   ;; This is a common syntax for including other source files inline.
   ;; I use it in both PLT and Chez.
@@ -160,7 +141,8 @@
 					 (vector-ref x 0) lookup-failure)
 			 lookup-failure))))))
     (define (reg:struct->list x) (cdr (vector->list x)))
-    |#
+  )
+  |#
 
     ;; This is a hack to emulate Chez's #%prim syntax without breaking
     ;; other readers that can't handle it.

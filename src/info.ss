@@ -20,6 +20,8 @@
 			       "scrap.ss"
 			       "supertest.ss"
 			       "tests.ss"
+;; Temp:
+			       "newloads.ss"
 			       ))
   (define compile-subcollections  '(				    
 				    ("plt")

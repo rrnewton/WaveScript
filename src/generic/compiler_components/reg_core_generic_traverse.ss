@@ -39,7 +39,7 @@
   ;; Insure provision of verify-regiment:
   (provide core-generic-traverse
 	   core-generic-traverse/types
-           test-this test-core-generic-traverse
+	   test-core-generic-traverse
 	   binding-form? 
 	   binding-form->unscoped-exprs binding-form->scoped-exprs
 	   binding-form->vars binding-form->types

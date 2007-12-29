@@ -26,7 +26,7 @@
    )
 
   (provide
-      reg-include
+;      reg-include
 
       eq-any?
       for grep rep
@@ -74,34 +74,37 @@
 	  [_ (syntax (lambda args (void)))]
 	  )))
 
-  (IFCHEZ
-   ;; multiple-value let
-   (define-syntax mvlet
-     (lambda (x)
-       (define domvlet
-	 (lambda (bindings ids tmps body)
-	   (if (null? bindings)
-	       `((,#'lambda ,ids ,@body) ,@tmps)
-	       (syntax-case (car bindings) ()
-			    [(*ids expr)
-			     (with-syntax ([*tmps (generate-temporaries #'*ids)])
-			       (with-syntax ([body (domvlet (cdr bindings)
-							    (append #'*ids ids)
-							    (append #'*tmps tmps)
-							    body)])
-				 #'(call-with-values
-				       (lambda () expr)
-				     (lambda *tmps body))))]))))
-       (syntax-case x ()
-		    [(_ (((id ...) expr) ...) form ...)
-		     (andmap (lambda (ls) (andmap identifier? ls))
-			     #'((id ...) ...))
-		     (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
-   ;; In PLT this is just the same as let-values.
-   (define-syntax mvlet
-     (syntax-rules ()
-       [(mvlet stuff ...) (let-values stuff ...)])))
+  ;; multiple-value let
+  (cond-expand
+   [chez
+    (define-syntax mvlet
+      (lambda (x)
+	(define domvlet
+	  (lambda (bindings ids tmps body)
+	    (if (null? bindings)
+		`((,#'lambda ,ids ,@body) ,@tmps)
+		(syntax-case (car bindings) ()
+			     [(*ids expr)
+			      (with-syntax ([*tmps (generate-temporaries #'*ids)])
+				(with-syntax ([body (domvlet (cdr bindings)
+							     (append #'*ids ids)
+							     (append #'*tmps tmps)
+							     body)])
+				  #'(call-with-values
+					(lambda () expr)
+				      (lambda *tmps body))))]))))
+	(syntax-case x ()
+		     [(_ (((id ...) expr) ...) form ...)
+		      (andmap (lambda (ls) (andmap identifier? ls))
+			      #'((id ...) ...))
+		      (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))]
+   [(or plt larceny)
+    ;; In PLT this is just the same as let-values.
+    (define-syntax mvlet
+      (syntax-rules ()
+	[(mvlet stuff ...) (let-values stuff ...)]))])
 
+#;  
   (IFCHEZ
    (define-syntax reg-include
      (syntax-rules ()
@@ -114,10 +117,12 @@
     (syntax-rules ()
       ((_ x e) (letrec ((x e)) x))))
 
-(IFCHEZ (define-syntax let/cc
+  (cond-expand
+   [(or chez larceny)
+    (define-syntax let/cc
 	  (syntax-rules ()
-	    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
-	(begin))
+	    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))]
+   [plt])
 
 ;; [2007.04.20] This hack doesn't seem to yield any benefit vs. doing
 ;; a (memq)... Chez must be doing the right thing for the memq in a constant list.

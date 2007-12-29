@@ -15,7 +15,7 @@
  (err5rs load)
  (for (rnrs r5rs) expand run) ;; backwards compat
  (rnrs lists)
- (rnrs control)  ;; case-lambda
+ (for (rnrs control) expand run)  ;; case-lambda
  (rnrs arithmetic fixnums)  ;; case-lambda
  )
 
@@ -24,7 +24,7 @@
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
 			 global-optimization format
-			 time repl  exit
+			 time repl  exit issue-warnings
 			 random
 			 ) run expand))
 ;(import (larceny benchmarking))
@@ -46,31 +46,45 @@
 (library (misc-larceny-compat)
   (export literal-identifier=? ellipsis? delay-values 
 	  extend-backquote simple-eval 
-	  syntax-error datum->syntax-object syntax-object->datum datum
+	  syntax-error datum->syntax-object syntax-object->datum datum syntax->list
 	  andmap call/1cc void 
 	  box unbox set-box! printf
-	  include identifier-syntax
+	   include identifier-syntax define-values
 	  fx= ;fx+ fx- fx* fx/
+	  add1 sub1
+	  list-copy
 	  )
   (import (for (rnrs base) run expand)
 	  (for (rnrs io ports) expand)
 	  (for (rnrs io simple) run expand)
-	  (rnrs r5rs)
-	  (rnrs eval)
+	  (rnrs r5rs)  (rnrs eval) 
+	  (for (rnrs control) run expand)
 	  (for (rnrs syntax-case) run expand)
 	  (rnrs arithmetic fixnums)
 	  (primitives format))
 
   (define datum->syntax-object datum->syntax)
   (define syntax-object->datum syntax->datum)
+  ;; [2007.12.28] Using r6rs I don't know how to unwrape only the outside layer without stripping all syntax info.
+#;
+  (define (syntax->list syn)
+    (map (lambda (x) (datum->syntax syn x))
+      (syntax->datum syn)))
+  (define syntax->list
+    (lambda (ls)
+      (syntax-case ls ()
+	[() '()]
+	[(x . r) (cons #'x (syntax->list #'r))])))
+
+  
   (define-syntax datum
     (syntax-rules ()
       [(_ t) (syntax-object->datum (syntax t))]))
 
   (define-syntax syntax-error
     (syntax-rules ()
-      [(kwd form msg) 
-       (syntax-violation #f msg form)]))
+      [(kwd form msg) (syntax-violation #f msg form)]
+      [(kwd msg)      (syntax-violation #f msg #f)]))
 
   (define literal-identifier=?
     (lambda (x y)
@@ -125,6 +139,21 @@
 	  (let ([fn (syntax->datum (syntax filename))])
 	    (with-syntax ([(exp ...) (read-file fn #'k)])
 	      #'(begin exp ...)))])))
+
+  (define-syntax define-values 
+   (lambda (x)
+    (define iota 
+      (case-lambda [(n) (iota 0 n)]
+		   [(i n) (if (= n 0) '() (cons i (iota (+ i 1) (- n 1))))]))
+    (syntax-case x ()  
+     [(define-values (vars ...) exp)
+      (with-syntax ([(nums ...) (datum->syntax  
+				 #'define-values 
+				 (iota (length (syntax->datum #'(vars ...)))))])
+	#'(begin  
+	    (define newtempvar (call-with-values (lambda () exp) vector))
+	    (define vars (vector-ref newtempvar nums))
+	    ...))])))
   
   (define (andmap fun ls)
     (if (null? ls) #t
@@ -141,6 +170,20 @@
 
   (define (printf str . args) (display (apply format str args)))
   (define fx= fx=?) ;(define-syntax fx= (syntax-case  fx=?))
+  (define (add1 n) (+ n 1))
+  (define (sub1 n) (- n 1))
+  
+  ;; I don't really have a firm idea of whether this should be tail-recursive or not.
+  #;
+  (define (list-copy ls)
+    (let loop ([ls ls] [acc '()])
+      (if (null? ls) (reverse! acc)
+	  (loop (cdr ls) (cons (car ls) acc)))))
+  (define (list-copy ls)
+    (let loop ([ls ls])
+      (if (null? ls) '()
+	  (cons (car ls) (loop (cdr ls))))))
+  
 )
 
 ;; Hash tables 
@@ -168,17 +211,37 @@
       (let loop ([i 0])
 	(unless (fx=? i len)
 	  (fn (vector-ref keys i) (vector-ref vals i)))))))
-
-(import (for (misc-larceny-compat) run expand))
 (import (for (larceny-hashtab) run expand))
+(import (for (misc-larceny-compat) run expand))
 
 ;======================================================================
 ;;; Extra macros and global settings 
 
-(define-syntax IFCHEZ 
-  (syntax-rules ()
-    [(_ a b) (void)]
-    [(_ a) (void)]))
+
+;; Temp, working around larceny 0.96 bug with dumping heaps after hash tables are made.
+(import (primitives sro)
+	(rnrs hashtables))
+(define (report-on-problematic-hashtables)
+ (let* ((record-like-objects (sro 3 5 -1))
+        (hashtables
+         (filter hashtable? (vector->list record-like-objects)))
+        (problematic-hashtables
+         (filter (lambda (ht) (not (hashtable-hash-function ht)))
+                 hashtables)))
+   (if (null? problematic-hashtables)
+       (begin (display "No problematic hashtables were found.")
+              (newline))
+       (for-each (lambda (ht)
+                   (display "Problematic hashtable found.")
+                   (newline)
+                   (display (hashtable-size ht))
+                   (display " entries with keys:")
+                   (newline)
+                   (write (hashtable-keys ht))
+                   (newline))
+                 problematic-hashtables))))
+
+
 
 ;; Expand the appropriate code for loading in Larceny:
 (define-syntax cond-expand
@@ -208,6 +271,7 @@
 
 ;; TEMPORARY: Let's turn this off to load a little faster.
 (global-optimization #f)
+(issue-warnings #f)
 
 (import (larceny compiler)) 
 
@@ -229,14 +293,9 @@
 ;======================================================================
 ;;; Now begin loading Regiment/WaveScript proper. 
 
-(define-syntax reg:make-parameter 
-   (syntax-rules ()
-     [(_ x) (make-parameter 'reg:make-parameter x)]
-     [(_ x g) (let ([guard g])
-		(make-parameter 'reg:make-parameter (guard x) guard))]))
-
-(import (rnrs records syntactic))
-
+;; [2007.12.28] Can't use records right now because of the dump-heap bug.
+;(import (rnrs records syntactic))
+#;
 (define-syntax reg:define-struct
   (syntax-rules ()
     [(_ (name field ...))
@@ -244,11 +303,82 @@
 	    ;; Allows the reader to read in regiment records.  System should work without this:
 	    ;(define reg:struct-dummy-val (record-reader 'name (type-descriptor name)))
 	    )]))
+;; TEMPTOGGLE: This is a simple vector based struct instead:
+(begin 
+  (define-syntax define-structure
+  (lambda (x)
+    (define gen-id
+      (lambda (template-id . args)
+        (datum->syntax-object template-id
+          (string->symbol
+            (apply string-append
+                   (map (lambda (x)
+                          (if (string? x)
+                              x
+                              (symbol->string
+                                (syntax-object->datum x))))
+                        args))))))
+    (syntax-case x ()
+      ((_ (name field1 ...))
+       (andmap identifier? (syntax (name field1 ...)))
+       (syntax (define-structure (name field1 ...) ())))
+      ((_ (name field1 ...) ((field2 init) ...))
+       (andmap identifier? (syntax (name field1 ... field2 ...)))
+       (with-syntax
+         ((constructor (gen-id (syntax name) "make-" (syntax name)))
+          (predicate (gen-id (syntax name) (syntax name) "?"))
+          ((access ...)
+           (map (lambda (x) (gen-id x (syntax name) "-" x))
+                (syntax (field1 ... field2 ...))))
+          ((assign ...)
+           (map (lambda (x) (gen-id x "set-" (syntax name) "-" x "!"))
+                (syntax (field1 ... field2 ...))))
+          (structure-length
+           (+ (length (syntax (field1 ... field2 ...))) 1))
+          ((index ...)
+           (let f ((i 1) (ids (syntax (field1 ... field2 ...))))
+              (if (null? ids)
+                  '()
+                  (cons i (f (+ i 1) (cdr ids)))))))
+         (syntax (begin
+                   (define constructor
+                     (lambda (field1 ...)
+                       (let* ((field2 init) ...)
+                         (vector 'name field1 ... field2 ...))))
+                   (define predicate
+                     (lambda (x)
+                       (and (vector? x)
+                            (fx= (vector-length x) structure-length)
+                            (eq? (vector-ref x 0) 'name))))
+                   (define access
+                     (lambda (x)
+                       (vector-ref x index)))
+                   ...
+                   (define assign
+                     (lambda (x update)
+                       (vector-set! x index update)))
+                   ...)))))))
+    (define-syntax reg:define-struct
+      (syntax-rules ()
+	[(_ (name field ...))  (define-structure (name field ...))]))
+    ;; This is a very wimpy approximation.
+    (define (reg:struct? x)
+      (and (vector? x) (> (vector-length x) 0) (symbol? (vector-ref x 0))))
+    (define (reg:struct->list x) (cdr (vector->list x))))
 
 
  ;; Load this first.  Widely visible constants/parameters.
 ;(time (compile-file "generic/constants.ss"))
+
 (common:load-source "generic/constants.ss")
+
+;; TEMPTTOGGLE: [2007.12.28]
+;; Overwrite the IFWAVESCOPE macro from constants.ss:
+;;  Doing wavescope-only for Larceny right now:
+(define-syntax IFWAVESCOPE 
+  (syntax-rules ()
+    [(_ a b) a]
+    [(_ a)   a]))
 
 ;(time (compile-file "generic/util/reg_macros.ss"))
 (common:load-source "generic/util/reg_macros.ss")
@@ -257,12 +387,12 @@
 ;(common:load-source "generic/util/slib_hashtab.ss")
 
 ;; Checkpoint:
+;(report-on-problematic-hashtables)
 ;(dump-interactive-heap "larc.heap")(exit)
-;(dump-heap "larc.heap" (lambda args (load "common_loader.ss"))) (exit)
 
          (load "common_loader.ss")
 
+;(report-on-problematic-hashtables)
 (repl)
-
 
 ;(dump-heap "larc.heap" (lambda args (display "Starting from heap... YAY \n") (newline)))

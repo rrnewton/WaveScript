@@ -110,7 +110,7 @@
 	       rn-match
 	       )
 
-(IFCHEZ (begin) (provide (all-from "type_environments.ss")))
+(cond-expand [plt (provide (all-from "type_environments.ss"))] [else])
 
 
 ; ======================================================================
@@ -130,8 +130,7 @@
        (** (format "in file ~s\n   "  fn)
 	   (if (= ln1 ln2)
 	       (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
-	       (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))
-       ])))
+	       (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))])))
 
 (define (get-location x)
   (match x
@@ -147,6 +146,7 @@
 	  (format "within file ~s\n   in the vicinity of line ~s column ~s"
 		  fn ln1 col1)
 	  ]))]))
+
 
 ;; This is similar to get-location but gets the actual snippet.
 (define (get-snippet x)
@@ -290,6 +290,7 @@
     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [,other (error 'export-type "bad type: ~s" other)]))
 
+
 ;; [2007.02.21]
 ;; HACK: including this unifier and unifying each of these again:
 ;; Shouldn't have to do this, but there's a problem with the design.
@@ -369,6 +370,7 @@
     (and (> (string-length str) 0)
 	 (char-lower-case? (string-ref str 0)))))
   
+
   
 ; ======================================================================
 
@@ -770,7 +772,8 @@
       ))]) ;; End main-loop "l"    
 
     ;; Initiate main loop:
-    #;(let ([result (l exp)])
+    #;
+(let ([result (l exp)])
       ;; On the way out we do late unifications:
       (do-all-late-unifies! result)
       result
@@ -830,6 +833,8 @@
 	 (let-values ([(bod bodty) (annotate-expression bod tenv nongeneric)])
 	   (values `(let ,(map list id* newtype* newrhs*) ,bod) bodty)))]
       )))
+
+
 
 ;; Extend a type environment and turn on let-bound polymorphism based
 ;; on parameter settings and on whether the right-hand-side meets the
@@ -989,6 +994,9 @@
     [,c (guard (simple-constant? c))                                 (void)]
     ))
 
+
+
+
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
 (define (strip-types p)
@@ -1055,13 +1063,15 @@
 
 ;; [2007.04.30] This is useful for printing
 
-#;(define-pass strip-annotations
+#;
+(define-pass strip-annotations
     [Expr (lambda (x fallthru)
 	    (match x
 	      [(src-pos ,_ ,[e]) e]
 	      [(assert-type ,_ ,[e]) e]
 	      [(using ,M ,[e]) `(using ,M ,e)]
 	      [,other (fallthru other)]))])
+
 
 (define strip-annotations
   (let ()
@@ -1295,6 +1305,8 @@
     [[,x . ,y] (guard (string? t1) (string? t2)) (void)]
 
     [,otherwise (raise-type-mismatch msg t1 t2 exp)]))
+
+
  
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp msg)
@@ -1501,6 +1513,8 @@
   (let ([port (if (null? p) (current-output-port) (car p))])
     (display (show-type t) port)))
 
+
+
 #|
 
 ;; Bad:
@@ -1616,12 +1630,15 @@
               [,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))))
     ))
 
+
+
 ;; Should take either an instantiated or non-instantiated type.
 ;; This takes the union types just so it can distinguish whether a type constructor is valid.
 (define (dealias-type aliases union-types t)
   (define user-datatypes (map caar (cdr union-types)))
   (let loop ([t t])
   (match t
+
       ;; A type alias with no type arguments:
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
@@ -1635,6 +1652,7 @@
 		  (loop (caddr entry)))
 		s))]
       [',n                                     `(quote ,n)]
+
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
       [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
       [(NUM (,v . ,t))                          (if t (loop t) `(NUM ,v))]
@@ -1643,8 +1661,10 @@
 
       [(Pointer ,name)          `(Pointer ,name)]
       [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
+
       ;; This is simple substitition of the type arguments:
       [(,s ,[t*] ...) (guard (symbol? s))
+
        (let ([entry (or (assq s aliases)
 			(assq s regiment-type-aliases))])
 ;	 (import iu-match) ;; Having problems!
@@ -1652,9 +1672,10 @@
 	   [#f 
 	    (unless (or (memq s built-in-type-constructors)
 			(memq s user-datatypes))
-	      (error'dealias-type "This type constructor is not in the alias table, nor is it builtin: ~s\n  Aliases: ~s" 
+	      (error 'dealias-type "This type constructor is not in the alias table, nor is it builtin: ~s\n  Aliases: ~s" 
 		    s (map car aliases)))
 	    `(,s ,@t*)]
+
 	   [(,v ,rhs) (error 'resolve-type-aliases 
 			     "alias ~s should not be instantiated with arguments!: ~s" 
 			     s (cons s t*))]
@@ -1671,8 +1692,13 @@
 		      (export-type rhs)])])
 	      ;; Finally, recursively dealias in case there are more aliases left.
 	      (loop result)
-	      )]))]
-      [,other (error 'resolve-type-aliases "bad type: ~s" other)])))
+	      )]
+
+	   ))]
+      [,other (error 'resolve-type-aliases "bad type: ~s" other)]
+)))
+
+
 
 (define realias-type
   (let ()
@@ -1783,7 +1809,7 @@
      (Area Int)]
     
     [(export-type (,type-expression '(tuple 1 2.0 3) (empty-tenv)))
-     #3(Int Float Int)]
+     #(Int Float Int)]
 
     [(export-type (,type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
      ,(lambda (x)
@@ -1992,6 +2018,8 @@
 
   ))
 
+
+
 (define-testing test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
 ;; Unit tester.
 (define test-inferencer test-this)
@@ -2011,6 +2039,7 @@
 		(DEBUGASSERT (curry andmap type?) args)]
 	       [,else (error 'hm_type_inferencer "bad entry in primitive table: ~s" else)]))
    (regiment-primitives)))
+
 
 ) ; End module. 
 

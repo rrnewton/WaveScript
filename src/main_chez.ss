@@ -336,6 +336,33 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
+
+;======================================================================
+;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
+;; This tries to dynamically load the shared object the first time the function is called:
+(define (sleep t)
+  (IF_GRAPHICS
+   (thread-sleep t) ;; This uses the SWL thread library.  (Not real OS threads.)
+   (begin
+    ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
+     (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))
+       (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
+	   ;; This even resorts to calling make to build the sleep object!!
+	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.
+	   (system "(cd C; make usleep_libc)"))
+       (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
+					;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
+	   (load (format "build/~a/usleep_libc.so" (machine-type)))
+	   ;; If that build failed and we still don't have it we have to throw an error:
+	   (define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
+     (sleep t))))
+
+;; [2007.03.13] Haven't been using this recently, disabling it due to Windows incompatibility:
+;; Only make a system call once to sync us with the outside world.
+;(define current-time (seconds-since-1970))
+;======================================================================
+
+
 (define (basename pathstr)
   ;; Everything after the last "#/"
   (define file (let loop ([ls (reverse! (string->list pathstr))])
@@ -344,8 +371,6 @@
 		  [(eq? (car ls) #\/) ()]
 		  [else (cons (car ls) (loop (cdr ls)))])))
   (list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
-
-
 
 
 (alias todo:common:load-source include)
@@ -385,107 +410,17 @@
 ;; [2007.12.28] Not sure what this is being used for:
 ;(todo:common:load-source "chez/pregexp.ss") (import pregexp_module)
 
-(todo:common:load-source "generic/compiler_components/c_generator.ss") (import c_generator)
-(todo:common:load-source "generic/util/scheme_fft.ss") ;; FFT from the chez users guide
-(todo:common:load-source "generic/util/slib_fft.ss")   ;; FFT from slib.
-(todo:common:load-source "generic/util/fft.ss") (import fft)
-
-(IFWAVESCOPE (begin)	     
-  (begin (todo:common:load-source "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)))
-
-;; Load this before the simulator.
-(IF_GRAPHICS
-    (begin
-      ;; Only for swl1.0+ .  Gives us define-class, etc.
-      (import swl:oop) 
-      (import swl:generics) 
-      (import (except swl:macros mvlet))
-      (import swl:option)
-      (import swl:threads)
-
-      (todo:common:load-source "chez/basic_graphics.ss")
-      (todo:common:load-source "chez/graphics_stub.ss")
-      (import basic_graphics)
-      (import graphics_stub))
-    ;; Otherwise, throw in some stubs that are invoked by the generated code:
-    (begin ;; [2006.03.01] Nixing these.  Instead we should be disciplined about not generating any such calls.
-           ;(define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
-	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
-	   ))
-
-
-;======================================================================
-;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
-;; This tries to dynamically load the shared object the first time the function is called:
-(define (sleep t)
-  (IF_GRAPHICS
-   (thread-sleep t) ;; This uses the SWL thread library.  (Not real OS threads.)
-   (begin
-    ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
-     (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))
-       (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
-	   ;; This even resorts to calling make to build the sleep object!!
-	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.
-	   (system "(cd C; make usleep_libc)"))
-       (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
-					;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
-	   (load (format "build/~a/usleep_libc.so" (machine-type)))
-	   ;; If that build failed and we still don't have it we have to throw an error:
-	   (define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
-     (sleep t))))
-
-;; [2007.03.13] Haven't been using this recently, disabling it due to Windows incompatibility:
-;; Only make a system call once to sync us with the outside world.
-;(define current-time (seconds-since-1970))
-;======================================================================
 
 
 
-;; Don't use these yet from WS:
-(IFWAVESCOPE
- (begin)
- (begin 
-   (todo:common:load-source "generic/compiler_components/logfiles.ss") (import logfiles)
-
-   (todo:common:load-source "generic/sim/alpha_lib.ss") 
-   (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
-
-   (todo:common:load-source "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
-					;(todo:common:load-source "generic/alpha_lib_scheduler.ss")
-
-   (todo:common:load-source "generic/sim/simulator_alpha.ss") (import simulator_alpha)
-   (todo:common:load-source "generic/sim/firelightning_sim.ss")
-   (todo:common:load-source "generic/passes/nesc_bkend/tossim.ss")
-   ))
-
-(IFWAVESCOPE (begin) 
-   ;; This is used by the subsequent passes that process TML:
-   (begin (todo:common:load-source "generic/compiler_components/tml_generic_traverse.ss")
-	  (import tml_generic_traverse)))
-(todo:common:load-source "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
-
-;; Type inference is used by verify-regiment, below.
-(todo:common:load-source "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
-
-(todo:common:load-source "generic/passes/pass-mechanism_basic.ss") (import pass-mechanism_basic)
-(todo:common:load-source "generic/passes/pass-mechanism.ss") (import pass-mechanism)
-(todo:common:load-source "generic/passes/graphviz.ss") (import graphviz)
 
 
-;; Load this pass early because it's used in a couple places.
-(IFWAVESCOPE (begin)  
-  (begin (todo:common:load-source "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)))
 
-;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
-;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
-(todo:common:load-source "generic/langs/language-mechanism.ss")
-
-(todo:common:load-source "generic/langs/lang_wavescript.ss")(import lang_wavescript)
-(todo:common:load-source "../../depends/matpak.ss") (import matpak)
 ;(todo:common:load-source "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
 ;(todo:common:load-source "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
 (todo:common:load-source "generic/sim/wavescript_sim_library_push.ss")
 (todo:common:load-source "generic/testing/lang_wavescript_tests.ss") (import lang_wavescript_tests)
+
 
 (todo:common:load-source "generic/langs/lang00.ss")
 

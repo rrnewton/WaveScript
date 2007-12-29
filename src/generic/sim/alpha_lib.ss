@@ -54,7 +54,7 @@
 
          sim-print
 
-	 test-this these-tests test-alphalib   
+	 test-alphalib   
 ;           (all-from "simulator_alpha.ss"))
    )
 

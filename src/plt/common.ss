@@ -30,7 +30,7 @@
            (all-from "../generic/compiler_components/regiment_helpers.ss")
 	   (all-from "../generic/compiler_components/type_environments.ss")
            (all-from "../generic/compiler_components/hm_type_inference.ss")
-           (all-from-except "../generic/compiler_components/reg_core_generic_traverse.ss" test-this)
+           (all-from "../generic/compiler_components/reg_core_generic_traverse.ss" )
            (all-from "../generic/grammars/grammar_checker.ss")
            (all-from "../generic/passes/pass-mechanism_basic.ss")
            (all-from "../generic/passes/pass-mechanism.ss"))

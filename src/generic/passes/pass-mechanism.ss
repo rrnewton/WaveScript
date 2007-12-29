@@ -8,7 +8,7 @@
 (module pass-mechanism mzscheme 
   (require "../../plt/iu-match.ss"
            "../util/helpers.ss"
-           (only "../constants.ss" chezimports ASSERT DEBUGASSERT define-testing)
+           (only "../constants.ss" chezimports ASSERT DEBUGASSERT define-testing cond-expand)
            "../compiler_components/regiment_helpers.ss"
            "../compiler_components/reg_core_generic_traverse.ss"
 	   "../compiler_components/hm_type_inference.ss"
@@ -21,9 +21,12 @@
 	   ;P1 P2 F G
 	   )
   (chezimports)
-  (require-for-syntax "../../plt/chez_compat.ss"
-                      ;(only "../util/helpers.ss" compose)
-                      "../compiler_components/reg_core_generic_traverse.ss")
+  (cond-expand 
+   [plt 
+    (require-for-syntax "../../plt/chez_compat.ss"
+					;(only "../util/helpers.ss" compose)
+			"../compiler_components/reg_core_generic_traverse.ss")]
+   [else])
 
 ;; Usage:
 ;;   (define-pass <pass-name> <clauses and defs> ...)
@@ -93,8 +96,6 @@
 				(core-generic-traverse/types d f e)
 				(core-generic-traverse/types d f e (car tenv))))
 			#'(lambda (d f e . _) (core-generic-traverse d f e)))))
-
-		(define dso datum->syntax-object)
 
 		(define default-expr (or expr expr/types #'(lambda (x fallthrough) (fallthrough x))))
 		(define default-fuser (or fuser #'(lambda (ls k) (apply k ls))))

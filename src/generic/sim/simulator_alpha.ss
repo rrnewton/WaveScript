@@ -77,7 +77,6 @@
 
    run-simulator-alpha rerun-simulator-alpha clean-simworld!
    compile-simulate-alpha csa ; shorthand
-   test-this these-tests
    
    simalpha-total-messages
    print-stats print-node-stats 

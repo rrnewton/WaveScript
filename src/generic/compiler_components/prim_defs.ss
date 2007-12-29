@@ -1137,8 +1137,8 @@
 ;; Is it a regiment primitive?
 (define regiment-primitive? 
   ;; TOGGLE: list or hashtab based implementaition:
-  (lambda (x) (hashtab-get primitives-hash x))
 #;
+  (lambda (x) (hashtab-get primitives-hash x))
   (lambda (x) ;; Slower association list version:
     (let ([entry (assq x (regiment-primitives))])
       (and entry (cdr entry)))))

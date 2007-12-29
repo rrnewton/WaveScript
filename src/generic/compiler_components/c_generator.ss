@@ -201,7 +201,7 @@
 
     ;; This one is overly strict.  text->lines needn't actually flatten to this extent.
     [(,text->lines '((("one" "\n") ("two")) (("too" "\n") (("three" ((("f\nour\n"))))))))
-     (("one" #0="\n") ("twotoo" #0#) ("threef" #0#) ("our" "\n"))]
+     (("one" "\n") ("twotoo" "\n") ("threef" "\n") ("our" "\n"))]
 
     [(,text->string "foo") "foo"]
     [(,text->string '("foo" "bar")) "foobar"]
