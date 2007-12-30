@@ -134,8 +134,46 @@
 
 (common:load-source "../../depends/matpak.ss") 
 
+;(todo:common:load-source "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
+;(todo:common:load-source "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
+;; Don't want to import this one into top-level:
+(cond-expand [chez (include "generic/sim/wavescript_sim_library_push.ss")]  [(or larceny plt)])
+
+(cond-expand [(or chez plt)
+	      (common:load-source "generic/testing/lang_wavescript_tests.ss")]
+	     [larceny])
 
 
+(cond-expand
+ [chez 
+  (include "generic/langs/lang00.ss")
+  (include "generic/langs/lang06_uncover-free.ss")
+  (include "generic/langs/lang07_lift-letrec.ss")
 
+  (IFWAVESCOPE (begin)
+    (begin 
+      (include "generic/langs/lang11_classify-names.ss")
+      (include "generic/langs/lang12_heartbeats.ss")
+      (include "generic/langs/lang13_control-flow.ss")
+      (include "generic/langs/lang14_places.ss")
+
+      (include "generic/langs/lang20_deglobalize.ss") 
+
+      (include "generic/scrap/lang30_haskellize-tokmac.ss") 
+      (include "generic/langs/lang32_emit-nesc.ss")))
+  ] [else])
+
+(if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
+
+
+(common:load-source "generic/passes/normalize_source/verify-regiment.ss")          
+(common:load-source "generic/passes/normalize_source/typecheck.ss")                
+(common:load-source "generic/passes/normalize_source/desugar-pattern-matching.ss") 
+
+
+;;================================================================================;;
 ;(call/cc (lambda (topk) (dump-heap "larc.heap" (lambda args (topk))) (repl) (exit)))
-(cond-expand [larceny (dump-heap "larc.heap" (lambda args (load "newloads.ss") (repl) (exit)))] [else])
+(cond-expand [larceny (dump-heap "larc.heap" (lambda args (load "newloads.ss") 
+						     ;(repl)
+						     (exit)))]
+	     [else])

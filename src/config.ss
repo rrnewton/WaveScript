@@ -65,3 +65,7 @@
    [else 2]  ;; <-- CHANGE DEFAULT HERE
    ))
 ;; Note that this is separate from IFDEBUG above.
+
+
+;; [2006.11.24] This is just a temporary thing so I can watch how fast things load.
+(define VERBOSE-LOAD #f)

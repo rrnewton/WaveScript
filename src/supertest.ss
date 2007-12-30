@@ -350,6 +350,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (run-test "plt: Running tests in PLT:" "regiment.plt test &> plt_UNIT_TESTS.log"))
 
+
+;; Now let's see if we can load in larceny:
+(run-test "larceny: Testing compile in Larceny Scheme:" 
+	  "echo '(import (err5rs load)) (load \"main_larceny.ss\")' | larceny -err5rs -stopcopy")
+
+
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")
 (fpf "========================================\n")
 

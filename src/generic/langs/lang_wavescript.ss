@@ -18,7 +18,7 @@
   (chezimports )
   
   ;; Provide for PLT only, in Chez it goes to top-level.
-  (IFCHEZ (begin) (provide wavescript-language))
+  (cond-expand [plt (provide wavescript-language)] [else])
   
 ;;======================================================================
 

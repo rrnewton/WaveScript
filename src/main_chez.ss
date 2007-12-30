@@ -144,9 +144,6 @@
 ;======================================================================
 ;;; Setup stuff.
 
-;; [2006.11.24] This is just a temporary thing so I can watch how fast things load.
-(define VERBOSE-LOAD #f)
-
 ;(include "./config.ss") ;; Need to do this for windows... haven't got a good system yet.
 (include "config.ss")
 
@@ -412,38 +409,6 @@
 
 
 
-
-
-
-
-;(todo:common:load-source "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
-;(todo:common:load-source "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
-(todo:common:load-source "generic/sim/wavescript_sim_library_push.ss")
-(todo:common:load-source "generic/testing/lang_wavescript_tests.ss") (import lang_wavescript_tests)
-
-
-(todo:common:load-source "generic/langs/lang00.ss")
-
-(todo:common:load-source "generic/langs/lang06_uncover-free.ss")
-(todo:common:load-source "generic/langs/lang07_lift-letrec.ss")
-
-(IFWAVESCOPE (begin)
-  (begin 
-    (todo:common:load-source "generic/langs/lang11_classify-names.ss")
-    (todo:common:load-source "generic/langs/lang12_heartbeats.ss")
-    (todo:common:load-source "generic/langs/lang13_control-flow.ss")
-    (todo:common:load-source "generic/langs/lang14_places.ss")
-
-    (todo:common:load-source "generic/langs/lang20_deglobalize.ss") 
-
-    (todo:common:load-source "generic/scrap/lang30_haskellize-tokmac.ss") 
-    (todo:common:load-source "generic/langs/lang32_emit-nesc.ss")))
-
-(if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
-
-(todo:common:load-source "generic/passes/normalize_source/verify-regiment.ss")          (import verify-regiment)
-(todo:common:load-source "generic/passes/normalize_source/typecheck.ss")                (import typecheck)
-(todo:common:load-source "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
 (todo:common:load-source "generic/compiler_components/source_loader.ss") (import source_loader) 

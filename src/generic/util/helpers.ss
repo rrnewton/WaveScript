@@ -149,16 +149,15 @@
 ;; [2005.11.26] Moved reg:define-struct to chez/constants.ss
 
 ;; Extra import/export:
-(IFCHEZ
- (begin   
+(cond-expand
+ (chez
   ;(import (except topsort-module test-this these-tests))
   ;(import (except scheme atom?))
   (import scheme))
-
- (provide  ;; For chez compatibility:
-  (all-from "../../plt/chez_compat.ss")
-  (all-from "reg_macros.ss")
-  )
+ [plt  (provide  ;; For chez compatibility:
+	(all-from "../../plt/chez_compat.ss")
+	(all-from "reg_macros.ss")
+	)
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
@@ -166,58 +165,64 @@
 ;   (all-from (lib "rutils_generic.ss") )
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?)  
- )
+       ]
+ [larceny])
 
-(IFCHEZ 
- (begin 
-   
-   ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
-   ;; substitute.  That's the kind of thing I'd like my
-   ;; scheme-meta-language/package-manager to do for me!!
-(define-syntax let/ec
-  (syntax-rules ()
-    [(_ v exp ...)
-     (call/1cc (lambda (v) exp ...))]))
-;(alias call/ec call/1cc)
-(define call/ec call/1cc)
-
-;(define-syntax define-values
-;  (syntax-rules ()
-;    [(_ (v ...) exp)
-;     (begin 
-;       (call-with-values
-		
-
- ;; [2004.06.13] Matches the function defined in plt, provides
- ;; functionality used by the generic code.
- ;; The escape handler had *better* escape.
- (define (with-error-handlers display escape th)
-   (let ([orig-error ((hash-percent error-handler))])
-     (parameterize ([error-handler (lambda args 
-				       (parameterize ([error-handler orig-error])
-					 (apply display args)
-					 (escape)))])
-		 (th))))
-(define (with-warning-handler fun th)
-  (parameterize ([warning-handler fun])
-    (th)))
+(cond-expand
+ [(or chez larceny) 
+  ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
+  ;; substitute.  That's the kind of thing I'd like my
+  ;; scheme-meta-language/package-manager to do for me!!
+  (define-syntax let/ec
+    (syntax-rules ()
+      [(_ v exp ...)
+       (call/1cc (lambda (v) exp ...))]))
+  
+  ;;(alias call/ec call/1cc)
+  (define call/ec call/1cc)]
+ [plt])
 
 
-;; This is a hack, it's not safe because it can report false
-;; positives.  This is used to tell when something is a graphics
-;; screen object as constructed with SWL's (make <foo> ...):
-(define gobj?
-  (lambda (x)
-    (and (vector? x)
-	 (> (vector-length x) 2)
-	 (procedure? (vector-ref x 0))
-	 (vector? (vector-ref x 1))
-	 (> (vector-length (vector-ref x 1)) 1)
-	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
+(cond-expand
+ [chez 
+  ;; [2004.06.13] Matches the function defined in plt, provides
+  ;; functionality used by the generic code.
+  ;; The escape handler had *better* escape.
+  (define (with-error-handlers display escape th)
+    (let ([orig-error ((hash-percent error-handler))])
+      (parameterize ([error-handler (lambda args 
+				      (parameterize ([error-handler orig-error])
+					(apply display args)
+					(escape)))])
+	(th))))
+  (define (with-warning-handler fun th)
+    (parameterize ([warning-handler fun])
+      (th)))
+  ;; This is a hack, it's not safe because it can report false
+  ;; positives.  This is used to tell when something is a graphics
+  ;; screen object as constructed with SWL's (make <foo> ...):
+  (define gobj?
+    (lambda (x)
+      (and (vector? x)
+	   (> (vector-length x) 2)
+	   (procedure? (vector-ref x 0))
+	   (vector? (vector-ref x 1))
+	   (> (vector-length (vector-ref x 1)) 1)
+	   (eq? 'class (vector-ref (vector-ref x 1) 0)))))
+  (define current-error-port (reg:make-parameter stderr))
+  ]
+ [larceny
+  (define (with-error-handlers display escape th)
+    (let ([orig-error (error-handler)])
+      (parameterize ([error-handler (lambda args 
+				      (parameterize ([error-handler orig-error])
+					(decode-error args);(apply display args)
+					(escape)))])
+	(th))))
+  (define (with-warning-handler fun th) 
+    (parameterize ([warning-handler fun]) (th)))]
+ [plt])
 
-(define current-error-port (reg:make-parameter stderr))
-
-) (void)) ; End IFCHEZ
 
 ; ======================================================================
 
@@ -394,18 +399,18 @@
 
 ;; [2006.02]
 (define progress-dots 
-  (IFCHEZ
-  (case-lambda 
-    [(th)      (progress-dots th 50000000)]
-    [(th fuel) (progress-dots th fuel 
-			      (lambda () (display #\.) (flush-output-port)))]
-    [(th fuel progress)
-     (let loop ((engine (make-engine th)))
-       (progress)
-       (engine fuel
-	       (lambda (time-remaining val) (newline) (flush-output-port) val)
-	       loop))])
-  (lambda args (error 'progress-dots "not implemented in chez"))))
+  (cond-expand
+   [chez (case-lambda 
+	   [(th)      (progress-dots th 50000000)]
+	   [(th fuel) (progress-dots th fuel 
+				     (lambda () (display #\.) (flush-output-port)))]
+	   [(th fuel progress)
+	    (let loop ((engine (make-engine th)))
+	      (progress)
+	      (engine fuel
+		      (lambda (time-remaining val) (newline) (flush-output-port) val)
+		      loop))])]
+   [else (lambda args (error 'progress-dots "not implemented except in chez"))]))
 
 ;; [2006.02.20] A simple utility for running a long-running expression for only N ticks.
 (define-syntax runN
@@ -995,7 +1000,7 @@
 ;;RRN [01.09.17] :
 (define make-code
   (lambda (expr*)
-    (IFCHEZ (import rn-match) (begin))
+    (cond-expand [chez (import rn-match)] [else])
     (match (match `(code ,@expr*)
              [(code ,[expr*] ...) (apply append expr*)]
              [,expr (list expr)])
@@ -1650,8 +1655,9 @@
   
   )))))
 
-(IFCHEZ
- 
+
+(cond-expand [chez  
+
 ;; gnuplot_stream
 ;; .param flags 
 ;; .returns A function that takes new data and updates the graph.
@@ -1808,9 +1814,8 @@
 	;;(printf "Data written to pipe.\n")
 	])
       )))))
-(define gnuplot_pipe 'gnuplot_pipe_unimplemented_in_plt)) ; End IFCHEZ
+] [else (define gnuplot_pipe 'gnuplot_pipe_unimplemented_except_in_chez)]) ; End cond-expand
   
-
 
 ;; Example:
 #;
@@ -2122,7 +2127,7 @@
 ; ======================================================================
 
 
-(IFCHEZ (begin
+(cond-expand (chez
 	  
 (define (crit-printf . args)
   (critical-section (apply printf args)))
@@ -2326,7 +2331,8 @@
 	(+ (- (quotient (real-time) 1000) syncpoint)
 	   absolute)))))
 
-	  ) (void))  ;; End IFCHEZ
+	  ) 
+[else])  ;; End cond-expand
 
 
 (define (foldl1 f ls)  

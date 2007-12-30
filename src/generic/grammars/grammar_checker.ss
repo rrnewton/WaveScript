@@ -474,9 +474,9 @@
 
 
 ;; This contains actual grammar definitions (used in unit tests below).
-(IFCHEZ 
- (include "generic/grammars/grammars.ss")
- (include "grammars.ss"))
+(cond-expand 
+ [(or chez larceny) (include "generic/grammars/grammars.ss")]
+ [(or plt) (include "grammars.ss")])
 
 ; =======================================================================
 ;;; Unit tests.

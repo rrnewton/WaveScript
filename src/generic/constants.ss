@@ -48,7 +48,7 @@
 
 	 
          ;; Syntax:
-	 IFDEBUG 
+	 IFDEBUG  VERBOSE-LOAD
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT format-syntax
          REGIMENT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
 	 IFWAVESCOPE ;; Load WS extensions or no?

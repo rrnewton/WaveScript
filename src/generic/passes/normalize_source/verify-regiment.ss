@@ -13,8 +13,7 @@
 
 (module verify-regiment  mzscheme  
   (require "../../../plt/common.ss")
-  (provide verify-regiment 
-	   these-tests test-this test00 tests00)  
+  (provide verify-regiment  test00 tests00)  
   (chezimports)
 
 ; ----------------------------------------
@@ -90,7 +89,7 @@
 	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" len))
 	   `(tupref ,n ,len ,e)]
  
-          [(lambda (,v* ...) ,optionaltypes ...,expr)
+          [(lambda (,v* ...) ,optionaltypes ... ,expr)
            (guard (not (memq 'lambda env)))
 	   (for-each pattern! v*)	   
 	   (let ([types (match optionaltypes 

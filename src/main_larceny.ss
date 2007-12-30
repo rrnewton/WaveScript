@@ -6,7 +6,6 @@
  echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs
 |#
 
-
 ;;  Load some basics.
 (import  
  (for (rnrs base) expand run (meta 2))
@@ -16,16 +15,19 @@
  (for (rnrs r5rs) expand run) ;; backwards compat
  (rnrs lists)
  (for (rnrs control) expand run)  ;; case-lambda
- (rnrs arithmetic fixnums)  ;; case-lambda
+ (rnrs arithmetic fixnums)  
+ (rnrs arithmetic flonums)  
  )
+
 
 ;; Import other larceny primitives:
 (import (for (primitives pretty-print make-parameter 
 			 set-box! box unbox gensym getenv
 			 dump-heap dump-interactive-heap
-			 global-optimization format
-			 time repl  exit issue-warnings
+			 global-optimization 
+			 time repl  exit issue-warnings current-directory
 			 random
+			 open-output-string flush-output-port error-handler decode-error
 			 ) run expand))
 ;(import (larceny benchmarking))
 
@@ -48,20 +50,27 @@
 	  extend-backquote simple-eval 
 	  syntax-error datum->syntax-object syntax-object->datum datum syntax->list
 	  andmap call/1cc void 
-	  box unbox set-box! printf
+	  box unbox set-box! printf format
 	   include identifier-syntax define-values
-	  fx= ;fx+ fx- fx* fx/
+	  atom? cflonum? fx= ;fx+ fx- fx* fx/
 	  add1 sub1
-	  list-copy
+	  list-copy make-list
+	  warning warning-handler get-output-string ;; Chez compat version
 	  )
   (import (for (rnrs base) run expand)
-	  (for (rnrs io ports) expand)
+	  (for (rnrs io ports) run expand)
 	  (for (rnrs io simple) run expand)
 	  (rnrs r5rs)  (rnrs eval) 
 	  (for (rnrs control) run expand)
 	  (for (rnrs syntax-case) run expand)
 	  (rnrs arithmetic fixnums)
-	  (primitives format))
+	  ;(primitives (open-output-string get-output-string))
+	  (prefix (primitives make-parameter format open-output-string get-output-string reset-output-string) builtin:))
+
+  (define (get-output-string sp)
+    (let ([res (builtin:get-output-string sp)])
+      (builtin:reset-output-string sp)
+      res))
 
   (define datum->syntax-object datum->syntax)
   (define syntax-object->datum syntax->datum)
@@ -168,10 +177,27 @@
   (define (unbox x) (vector-ref x 0))
   (define (set-box! b x) (vector-set! b 0 x))
 
-  (define (printf str . args) (display (apply format str args)))
+  (define (format str . args) 
+    (call-with-string-output-port
+     (lambda (prt)
+       (apply builtin:format prt str args))))
+  (define (printf str . args) 
+    (apply builtin:format (current-output-port) str args))
+
+  (define warning-handler 
+    (builtin:make-parameter
+     'warning-handler
+     (lambda (who str . args)
+       (printf "Warning in ~a: ~a" who (apply format str args)))
+     procedure?))
+  (define (warning who str . args)
+    (apply (warning-handler) who str args))
+  
   (define fx= fx=?) ;(define-syntax fx= (syntax-case  fx=?))
+  (define (cflonum? n) (and (number? n) (inexact? n) (not (eqv? 0 (imag-part n)))))
   (define (add1 n) (+ n 1))
   (define (sub1 n) (- n 1))
+  (define (atom? x) (not (pair? x)))
   
   ;; I don't really have a firm idea of whether this should be tail-recursive or not.
   #;
@@ -183,7 +209,12 @@
     (let loop ([ls ls])
       (if (null? ls) '()
 	  (cons (car ls) (loop (cdr ls))))))
-  
+  (define make-list
+    (case-lambda 
+      [(n) (make-list n #f)]
+      [(n x) (let loop ([n n])
+	       (if (zero? n) '()
+		   (cons x (loop (fx- n 1)))))]))
 )
 
 ;; Hash tables 
