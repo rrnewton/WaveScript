@@ -60,11 +60,12 @@
   (import (for (rnrs base) run expand)
 	  (for (rnrs io ports) run expand)
 	  (for (rnrs io simple) run expand)
-	  (rnrs r5rs)  (rnrs eval) 
+	  (rnrs r5rs)  ;(rnrs eval) 
 	  (for (rnrs control) run expand)
 	  (for (rnrs syntax-case) run expand)
 	  (rnrs arithmetic fixnums)
 	  ;(primitives (open-output-string get-output-string))
+	  (primitives aeryn-evaluator)
 	  (prefix (primitives make-parameter format open-output-string get-output-string reset-output-string) builtin:))
 
   (define (get-output-string sp)
@@ -120,7 +121,8 @@
       (syntax-case x () ((kwd Template Exp ...) #'(begin Exp ...)))))
 
   ;(define (simple-eval x) (eval x (environment '(r6rs))))
-  (define (simple-eval x) (eval x (environment '(rnrs))))
+  ;(define (simple-eval x) (eval x (environment '(rnrs))))
+  (define simple-eval aeryn-evaluator)
 
 #;
   (define-syntax identifier-syntax
@@ -244,6 +246,8 @@
 	  (fn (vector-ref keys i) (vector-ref vals i)))))))
 (import (for (larceny-hashtab) run expand))
 (import (for (misc-larceny-compat) run expand))
+
+(define eval simple-eval)
 
 ;======================================================================
 ;;; Extra macros and global settings 

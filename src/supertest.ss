@@ -352,8 +352,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Now let's see if we can load in larceny:
-(run-test "larceny: Testing compile in Larceny Scheme:" 
-	  "echo '(import (err5rs load)) (load \"main_larceny.ss\")' | larceny -err5rs -stopcopy")
+(run-test "larceny: Testing compile in Larceny Scheme:"  "make larceny")
 
 
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")

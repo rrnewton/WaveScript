@@ -132,7 +132,9 @@
 
 (common:load-source "generic/langs/lang_wavescript.ss")
 
-(common:load-source "../../depends/matpak.ss") 
+(cond-expand
+ [plt  (common:load-source "depends/matpak.ss")]
+ [else (common:load-source "../../depends/matpak.ss")])
 
 ;(todo:common:load-source "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
 ;(todo:common:load-source "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove

@@ -136,6 +136,9 @@ wsparse_full:
 
 #----------------------------------------
 
+larc:
+	echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs -stopcopy
+
 # This compiles the source into loadable object files
 chez: chez_native
 chez_native:

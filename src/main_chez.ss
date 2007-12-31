@@ -359,31 +359,28 @@
 ;(define current-time (seconds-since-1970))
 ;======================================================================
 
-
-(define (basename pathstr)
-  ;; Everything after the last "#/"
-  (define file (let loop ([ls (reverse! (string->list pathstr))])
-		 (cond 
-		  [(null? ls) ()]
-		  [(eq? (car ls) #\/) ()]
-		  [else (cons (car ls) (loop (cdr ls)))])))
-  (list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
-
-
 (alias todo:common:load-source include)
 
 (define-syntax (common:load-source x)
   (syntax-case x () 
    [(_ file) 
-    ;; Make sure we put the *real* symbol include in there.  
-    ;; Having problems with this for some reason:
-    (with-syntax ([incl (datum->syntax-object #'_ 'include)]
-		  [modname (datum->syntax-object #'_
-			     (string->symbol (basename (datum file))))])
-      #'(begin (incl file)
-	       (import modname)))
-    ])
-  )
+    (let ()
+      (define (basename pathstr)
+	;; Everything after the last "#/"
+	(define file (let loop ([ls (reverse! (string->list pathstr))])
+		       (cond 
+			[(null? ls) ()]
+			[(eq? (car ls) #\/) ()]
+			[else (cons (car ls) (loop (cdr ls)))])))
+	(list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
+      ;; Make sure we put the *real* symbol include in there.  
+      ;; Having problems with this for some reason:
+      (with-syntax ([incl (datum->syntax-object #'_ 'include)]
+		    [modname (datum->syntax-object #'_
+						   (string->symbol (basename (datum file))))])
+	#'(begin (incl file)
+		 (import modname)))
+    )]))
 
 ;;====================================================================================================;;
 ;;====================================================================================================;;

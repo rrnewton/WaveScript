@@ -1555,22 +1555,15 @@
 				  )))
      (let ([cname (case infix_prim
 		    [(=) "=="]
-		    [(;+ * - / 
-		      < > <= >=) infix_prim]
-		    [(_+_ _-_) ;; Take the second character:
+		    [(< > <= >=) (sym2str infix_prim)]
+		    [(_+I64 _-I64 _+I16 _-I16 _+. _-. _+_ _-_ _+D _+: _-: _-D) ;; Take the second character:
 		      (substring (sym2str infix_prim) 1 2)]
-		    [(_+. *. _-. /.
-		       *_ /_
-		      _+D *D _-D /D
-		      _+: *: _-: /:
-		      ^_ ^. ^D
-		      ) ;; Chop off the extra character.
+		    [(*. /. *_ /_ *D  /D *:  /: ^_ ^. ^D) ;; Chop off the extra character.
 		     (substring (sym2str infix_prim) 0 1)]
-		    [(_+I16 _-I16 *I16 /I16 ^I16
-                      _+I64 _-I64 *I64 /I64 ^I64
-		      )
+		    [( *I16 /I16 ^I16 *I64 /I64 ^I64)  ;; Same here
 		     (substring (sym2str infix_prim) 0 1)]
 		    )])
+       (ASSERT (member cname '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">=")))
        (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
