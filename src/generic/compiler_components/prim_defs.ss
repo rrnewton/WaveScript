@@ -46,6 +46,7 @@
 	   stream-primitive?
 	   temp-hack-stream-primitives 
 	   temp-hack-stream-primitive?
+	   infix-arith-prims
 
 	   built-in-type-constructors
 	   generic-arith-primitives
@@ -276,6 +277,58 @@
     
     ))
 
+(define infix-arith-prims
+  '(
+
+    (_+_ (Int Int) Int)
+    (_-_ (Int Int) Int) 
+    (*_ (Int Int) Int) 
+    (/_ (Int Int) Int) 
+    (^_ (Int Int) Int) ;; exponentiation
+
+    (_+I16 (Int16 Int16) Int16)
+    (_-I16 (Int16 Int16) Int16) 
+    (*I16 (Int16 Int16) Int16) 
+    (/I16 (Int16 Int16) Int16) 
+    (^I16 (Int16 Int16) Int16) ;; exponentiation
+
+    (_+I64 (Int64 Int64) Int64)
+    (_-I64 (Int64 Int64) Int64) 
+    (*I64 (Int64 Int64) Int64) 
+    (/I64 (Int64 Int64) Int64) 
+    (^I64 (Int64 Int64) Int64) ;; exponentiation
+
+
+    (_+. (Float Float) Float)
+    (_-. (Float Float) Float)
+    (*. (Float Float) Float)
+    (/. (Float Float) Float)
+    (^. (Float Float) Float) ;; exponentiation
+
+    (_+D (Double Double) Double)
+    (_-D (Double Double) Double)
+    (*D (Double Double) Double)
+    (/D (Double Double) Double)
+    (^D (Double Double) Double) ;; exponentiation
+
+    (_+: (Complex Complex) Complex)
+    (_-: (Complex Complex) Complex) 
+    (*: (Complex Complex) Complex) 
+    (/: (Complex Complex) Complex)
+    (^: (Complex Complex) Complex)
+
+
+    ; predicates
+    ;; Restricted version for numbers:
+    ;(=  ((NUM a) (NUM a)) Bool)
+    (=  ('a 'a) Bool)     ;; <- PHASE OUT
+    (<  ('a 'a) Bool)
+    (>  ('a 'a) Bool)
+    (<=  ('a 'a) Bool)
+    (>=  ('a 'a) Bool)
+
+))
+
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
     ; value primitives
@@ -369,42 +422,7 @@
     ;; Rounding instead of truncation:    
     (roundF         (Float)   Float)
 
-    (_+_ (Int Int) Int)
-    (_-_ (Int Int) Int) 
-    (*_ (Int Int) Int) 
-    (/_ (Int Int) Int) 
-    (^_ (Int Int) Int) ;; exponentiation
-
-    (_+I16 (Int16 Int16) Int16)
-    (_-I16 (Int16 Int16) Int16) 
-    (*I16 (Int16 Int16) Int16) 
-    (/I16 (Int16 Int16) Int16) 
-    (^I16 (Int16 Int16) Int16) ;; exponentiation
-
-    (_+I64 (Int64 Int64) Int64)
-    (_-I64 (Int64 Int64) Int64) 
-    (*I64 (Int64 Int64) Int64) 
-    (/I64 (Int64 Int64) Int64) 
-    (^I64 (Int64 Int64) Int64) ;; exponentiation
-
-
-    (_+. (Float Float) Float)
-    (_-. (Float Float) Float)
-    (*. (Float Float) Float)
-    (/. (Float Float) Float)
-    (^. (Float Float) Float) ;; exponentiation
-
-    (_+D (Double Double) Double)
-    (_-D (Double Double) Double)
-    (*D (Double Double) Double)
-    (/D (Double Double) Double)
-    (^D (Double Double) Double) ;; exponentiation
-
-    (_+: (Complex Complex) Complex)
-    (_-: (Complex Complex) Complex) 
-    (*: (Complex Complex) Complex) 
-    (/: (Complex Complex) Complex)
-    (^: (Complex Complex) Complex)
+    ,@infix-arith-prims
 
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
@@ -442,15 +460,6 @@
     ;; These should take NUM inputs too, as should < <= etc.
     (max ('a 'a) 'a)
     (min ('a 'a) 'a)
-
-    ; predicates
-    ;; Restricted version for numbers:
-    ;(=  ((NUM a) (NUM a)) Bool)
-    (=  ('a 'a) Bool)     ;; <- PHASE OUT
-    (<  ('a 'a) Bool)
-    (>  ('a 'a) Bool)
-    (<=  ('a 'a) Bool)
-    (>=  ('a 'a) Bool)
 
 ;    (eq? (Object Object) Bool)
     (wsequal? ('a 'a) Bool)

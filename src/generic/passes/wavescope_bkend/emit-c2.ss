@@ -559,7 +559,8 @@
        ;; constants here, technically these are complex-constants.
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
-	(kont (format "~a" (list->string (vector->list vec))))]
+	;; Strip out any null characters??
+	(kont (format "\"~a\"" (list->string (vector->list vec))))]
        
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,[Simple -> x]) (kont x)]
@@ -724,34 +725,16 @@
 	      (make-lines (list "snprintf("_str", 100, "(type->printf-flag ty)", )"))
 	      (kont _str)))])]
        
-       [(,infix_prim ,[Simple -> left] ,[Simple -> right])
-	(guard (memq infix_prim '(;+ - * /
-				  _+. _-. *. /. 
-				     _+D _-D *D /D
-				     _+_ *_ _-_ /_
-				     _+: *: _-: /:
-				     _+I16 *I16 _-I16 /I16
-				     _+I64 *I64 _-I64 /I64
-				     < > <= >= =
-				     ^_ ^. ^: ^D ^I16 ^I64
-				     )))
-	(let ([cname (case infix_prim
-		       [(=) "=="]
-		       [(;+ * - / 
-			 < > <= >=) infix_prim]
-		       [(_+. *. _-. /.
-			    _+_ *_ _-_ /_
-			    _+D *D _-D /D
-			    _+: *: _-: /:
-			    ^_ ^. ^D
-			    ) ;; Chop off the extra character.
-			(substring (sym2str infix_prim) 0 1)]
-		       [(_+I16 _-I16 *I16 /I16 ^I16
-			      _+I64 _-I64 *I64 /I64 ^I64
-			      )
-			(substring (sym2str infix_prim) 0 1)]
-		       )])
-	  (kont `("(" ,left ,(format " ~a " cname) ,right ")")))]
+       [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
+	(guard (memq infix_prim infix-arith-prims))
+	(define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
+	(match infix_prim
+	  [(=) "=="]
+	  [(< > <= >=) (sym2str infix_prim)]
+	  [,else 
+	   (match (string->list (sym2str infix_prim))	  
+	     [(#\_ ,op ,suffix ...) (list->string (list op))]
+	     [(,op ,suffix ...)     (list->string (list op))])])]
 
 
        [(,other ,[Simple -> rand*] ...)

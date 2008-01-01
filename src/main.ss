@@ -1016,6 +1016,7 @@
 	 (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
 	 (ws-run-pass prog explicit-stream-wiring)
 	 (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
+	 (inspect prog)
 	 (ws-run-pass prog emit-c2)
 	 (string->file (text->string prog) outfile)
 	 (unless (regiment-quiet)

@@ -28,7 +28,7 @@ topafter:
 engine: 
 	./setup_engines.sh
 
-alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
+alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
@@ -57,18 +57,23 @@ appbench/marmot.pdf:
 datareps/alloc_arrarr.pdf:
 	(cd datareps; $(MAKE))
 
-microbench/microbench.pdf: microbench/microbench.eps
-	(cd microbench; $(TOPDF) microbench.eps)
-microbench/microbench.eps:
+microbench/microbench1.pdf: microbench/microbench1.eps
+	(cd microbench; $(TOPDF) microbench1.eps)
+#                            microbench/RESULTS.txt
+# This does the real work to run the microbenches:
+microbench/microbench1.eps: 
 	(cd microbench; $(MAKE))
+
+#microbench/RESULTS.txt:
+#	(cd microbench; $(MAKE))
 
 language_shootout/shootout.pdf: language_shootout/shootout.eps
 	(cd language_shootout; $(TOPDF) shootout.eps)
 language_shootout/shootout.eps:
 	(cd language_shootout; $(MAKE))
 
-
-microbench/RESULTS.tex: microbench/RESULTS.txt
+#microbench/RESULTS.txt
+microbench/RESULTS.tex: microbench/microbench1.pdf 
 	echo '\begin{verbatim}'            > microbench/RESULTS.tex
 	cat microbench/RESULTS.txt        >> microbench/RESULTS.tex
 	echo '\end{verbatim}'             >> microbench/RESULTS.tex
