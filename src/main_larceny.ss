@@ -29,6 +29,7 @@
 			 random
 			 open-output-string flush-output-port error-handler decode-error
 			 ) run expand))
+(define cd current-directory)
 ;(import (larceny benchmarking))
 
 ;; Dummy module syntax.

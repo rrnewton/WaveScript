@@ -275,7 +275,9 @@
 
 ;=======================================================================;;
 ;; [2006.09.11] Factored some config parameters that the user will want to change.
-(include "../config.ss")
+(cond-expand
+ [(or chez plt) (include "../config.ss")]
+ [larceny       (include "./config.ss")])
 ;=======================================================================;;
 
 
