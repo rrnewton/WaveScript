@@ -640,7 +640,7 @@
         width start end joinsegs subseg toSigseg
         String:implode)
        (Var var)]
-      [else (error 'emitC2:PrimApp "primitive not specifically handled: ~s" var)]
+      [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
       ))))
 
 
@@ -726,17 +726,19 @@
 	      (kont _str)))])]
        
        [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
-	(guard (memq infix_prim infix-arith-prims))
+	(guard (assq infix_prim infix-arith-prims))
 	(define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
-	(match infix_prim
-	  [(=) "=="]
-	  [(< > <= >=) (sym2str infix_prim)]
-	  [,else 
-	   (match (string->list (sym2str infix_prim))	  
-	     [(#\_ ,op ,suffix ...) (list->string (list op))]
-	     [(,op ,suffix ...)     (list->string (list op))])])]
-
-
+	(define result
+	  (match infix_prim
+	    [(=) "=="]
+	    [(< > <= >=) (sym2str infix_prim)]
+	    [,else 
+	     (match (string->list (sym2str infix_prim))	  
+	       [(#\_ ,op ,suffix ...) (list->string (list op))]
+	       [(,op ,suffix ...)     (list->string (list op))])]))
+	(ASSERT (member result valid-outputs))
+	(make-lines result)]
+       
        [(,other ,[Simple -> rand*] ...)
 	(kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
        ))))
