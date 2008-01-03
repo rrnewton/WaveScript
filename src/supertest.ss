@@ -446,7 +446,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ;; This runs faster if we load Regiment pre-compiled:
  ;(current-directory test-directory) (ASSERT (system "make chez"))
   (run-test "wsc: Running WaveScript Demos with WSC:"
-	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory)))
+	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
+
+  (run-test "wsc2: Running (select) WaveScript Demos with WSC2:"
+	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
+  )
 
 
 #;

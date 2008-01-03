@@ -515,7 +515,7 @@
 
       [(for (,[Var -> ind] ,[Simple -> st] ,[Simple -> en]) ,[bod])
        (make-lines
-	(list `(,(Type 'Int)" ",ind";\n")
+	(list `(" ",(Type 'Int)" ",ind";\n")
 	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
 		     (lines-text bod))))]
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
@@ -555,7 +555,7 @@
 		     (decr-local-refcount ty (Var lhs)))]
       ;; ========================================
 
-       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "wserror("str")"))]
+       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "error("str");\n"))]
 
       ))))
 
@@ -753,7 +753,7 @@
 	     (append-lines 
 	      ((Binding (emit-err '__show_ARRAY)) 
 	       (list str '(Array Char) '(assert-type (Array Char) (Array:makeUNSAFE '100))))
-	      (make-lines (list "snprintf("_str", 100, "(type->printf-flag ty)", )"))
+	      (make-lines (list "snprintf("_str", 100, \""(type->printf-flag ty)"\", "obj");\n"))
 	      (kont _str)))])]
        
        [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
@@ -768,7 +768,7 @@
 	       [(#\_ ,op ,suffix ...) (list->string (list op))]
 	       [(,op ,suffix ...)     (list->string (list op))])]))
 	(ASSERT (member result valid-outputs))
-	(make-lines result)]
+	(kont (list "(" left " " result " " right ")"))]
        
        [(,other ,[Simple -> rand*] ...)
 	(kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
