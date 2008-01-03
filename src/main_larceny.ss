@@ -430,6 +430,6 @@
          (load "common_loader.ss")
 
 ;(report-on-problematic-hashtables)
-(repl)
+;(repl)
 
 ;(dump-heap "larc.heap" (lambda args (display "Starting from heap... YAY \n") (newline)))
