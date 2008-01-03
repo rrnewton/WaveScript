@@ -28,6 +28,7 @@
 			 time repl  exit issue-warnings current-directory
 			 random
 			 open-output-string flush-output-port error-handler decode-error
+			 char-upper-case? char-lower-case?
 			 ) run expand))
 (define cd current-directory)
 ;(import (larceny benchmarking))

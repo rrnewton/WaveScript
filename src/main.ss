@@ -639,7 +639,8 @@
      (let ([tmp (deep-assq-all 'String p)])
        (unless (null? tmp) 
 	 (warning 'embed-strings-as-arrays "The symbol String occured in the output.  Here's a snippet:")
-	 (inspect tmp)))))
+	 (inspect tmp))))
+    (ws-run-pass p remove-complex-constant))
   
 #;
   (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-xstream)
@@ -1016,7 +1017,7 @@
 	 (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
 	 (ws-run-pass prog explicit-stream-wiring)
 	 (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
-	 (inspect prog)
+;	 (inspect prog)
 	 (ws-run-pass prog emit-c2)
 	 (string->file (text->string prog) outfile)
 	 (unless (regiment-quiet)

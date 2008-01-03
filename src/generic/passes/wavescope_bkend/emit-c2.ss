@@ -57,6 +57,19 @@
 			(call/cc inspect)))))
 	      fun)]))
 
+(define (insert-c-string-escapes str)
+  (list "\""
+    (list->string
+     (match (string->list str)
+       [() ()]       
+       [(#\nul     . ,[tl]) (list* #\\ #\0 #\0 #\0 tl)]
+       [(#\newline . ,[tl]) (list* #\\ #\n tl)]
+       [(#\tab     . ,[tl]) (list* #\\ #\t tl)]
+       [(#\" . ,[tl])       (list* #\\ #\" tl)]
+       [(#\\ . ,[tl])       (list* #\\ #\\ tl)]
+       [(,a . ,[tl])        (cons a tl)]))
+    "\""))
+
 ;================================================================================
 ;;; Input grammar
 
@@ -341,7 +354,8 @@
      [(eq? datum #f) (wrap "FALSE")]
      [(string? datum) (wrap (format "~s" datum))]
      ;; FIXME THIS WON'T HANDLE NON-PRINTING CHARACTERS YET!!
-     [(char? datum) (wrap (format "'~a'" datum))]
+     ;[(char? datum) (wrap (format "'~a'" datum))]
+     [(char? datum) (wrap (format "~a" (char->integer datum)))]
 
 
      ;; Hacked this to handle NAN (not in a pretty way).
@@ -557,10 +571,27 @@
 
        ;; With the strings-as-arrays system we'll still get string
        ;; constants here, technically these are complex-constants.
+#;
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
 	;; Strip out any null characters??
-	(kont (format "\"~a\"" (list->string (vector->list vec))))]
+	(let* ([ls (vector->list vec)]
+	       [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
+		(if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
+		    (rdc ls) 
+		    ls)])
+	  (append-lines
+	   (make-lines (list "malloc(2*sizeof(int) + len);\n"
+			     ""
+			     (format "memcpy(tmp, ~s);\n" (list->string ls2))))
+	   (kont 
+	   ;(format "\"~a\"" (insert-c-string-escapes (list->string ls2)))
+	   ;(format "(~s+(2*sizeof(int)))" (list->string (append (make-lines #\null 8) ls2)))
+	   ;; FIXME Erk, need to know sizeof(int) at compile time!!!
+	   ;(format "(~s+8)" (list->string (append (make-list 8 #\_) ls2)))
+	    "tmp"
+	   )
+	   ))]
        
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,[Simple -> x]) (kont x)]
