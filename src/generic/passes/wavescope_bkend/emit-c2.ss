@@ -77,12 +77,29 @@
 
 ;================================================================================
 
+;; The default wavescript scalar-type? predicate returns #t only for
+;; numbers and characters.  It returns #f for tuples. For this backend
+;; we have a somewhat tricker notion predicate heap-allocated?.
+;; Currently, it reflects the decision that tuples are value types,
+;; but they may contain pointers...
+(define (heap-allocated? ty)
+  (match ty
+    [,scl (guard (scalar-type? scl)) #f]
+    ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
+    [#(,[flds] ...) (ormap id flds)]
+    [(Array ,_) #t]
+    [(List ,_)  #t]
+    [(Ref ,_)   #t] ;; ?? 
+    [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
+    [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
+    ))
+
 (define-pass gather-heap-types
     ;; This is a mutated accumulator:
     (define acc '())
     (define (excluded? ty)
-      (or (and (symbol? ty) (memq ty num-types))
-	  (eq? ty 'Bool)
+      (or (not (heap-allocated? ty))
+	  ;; HACKISH: 
 	  (deep-assq 'Stream ty)
 	  (deep-assq 'VQueue ty)))
     [Bindings 
@@ -146,6 +163,11 @@
 	      [(show ,[x]) `(__show_ARRAY ,x)]
 	      [(wserror ,[x]) `(__wserror_ARRAY ,x)]
 
+	      ;[(show ,[x]) `(__Hack:fromOldString (show ,x))]
+	      ;[(wserror ,[x]) `(wserror (__Hack:backToString ,x))]
+	      ;[(readFile ...) ????]
+	      ;[(__readFile ...) ????]
+
 	      [(assert-type ,[Type -> ty] ,[e])  `(assert-type ,ty ,e)]
 
 	      [,oth (fallthru oth)]
@@ -159,6 +181,7 @@
      (lambda (vars types exprs reconstr exprfun)
        (reconstr vars (map Type types) (map exprfun exprs)))])
 
+
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
 ;; table mapping types onto syntax-generating functions that call the
@@ -169,32 +192,41 @@
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
 (trace-define (build-free-fun-table! heap-types)
-  (define (heap-allocated? ty)
-    (match ty
-      [,scl (guard (scalar-type? scl)) #f]
-      [,v (guard (vector? v)) #f]
-      [(Array ,_) #t]
-      [(Ref ,_) #t] ;; ??      
-      ))
   (define fun-def-acc '()) ;; mutated below
   (define (add-to-table! ty fun) 
     (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
 			       free-fun-table)))
   (for-each
       (lambda (ty) 
-	 (let loop ([ty ty])
-	   (match ty
+	(define name (type->name ty))
+	(define default-specialized_fun
+	  (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+	(let loop ([ty ty])
+	   (match ty ;; <- No match recursion!
 	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
 	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-	     [,scl (guard (scalar-type? scl)) #f]
+	     [,scl (guard (not (heap-allocated? scl))) #f]
 	     [(Ref ,elt) (loop elt)]
+	     [(List ,elt)
+	      ;; We always build an explicit function for freeing list types:
+	      (set! fun-def-acc
+		    (cons
+		      (make-lines 
+		       (block `("void free_",name"(",(Type ty)" ptr)")
+		        (block (list "if(ptr)") ;; If not null.
+		         `("free_",name"(((",(Type ty)" *)ptr)[-2]);\n"   ;; Recursively free tail.			
+ 			   ;; If heap allocated, free the CAR:
+			   ,(if (heap-allocated? elt)
+				(gen-decr-code elt `("(*ptr)") default-free)
+				"")
+			   "free((int*)ptr - 2);\n"))))
+		      fun-def-acc))
+	      (add-to-table! ty default-specialized_fun)]
 	     [(Array ,elt)
-	      (add-to-table! 
-	       ty 	       
+	      (add-to-table! ty 	       
 	       (if (not (heap-allocated? elt))
 		   (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
-		   (let ([name (type->name ty)]
-			 [ind (Var (unique-name "i"))])
+		   (let ([ind (Var (unique-name "i"))])
 		     (set! fun-def-acc
 			   (cons (make-lines 
 				  (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
@@ -206,8 +238,9 @@
 						   )
 					   "free((int*)ptr - 2);\n")))
 				 fun-def-acc))
-		     (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-		   ))])))
+		     default-specialized_fun)))]
+	     
+	     )))
     heap-types)
   (apply append-lines 
 	 ;; This will have to be per-thread...	 
@@ -221,22 +254,23 @@
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 (define (gen-incr-code ty ptr)
   (match ty
-    [(Array ,elt) 
+    ;; Both of these types just decr the -1 offset:
+    [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines `("if (",ptr") ((int*)",ptr")[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Other types are not heap allocated:
-    [,_ (make-lines "")]
+    [,ty (guard (not (heap-allocated? ty)))(make-lines "")]
     ))
 
 ;; "ptr" should be text representing a C lvalue
 (define (gen-decr-code ty ptr freefun)
   (match ty
-    [(Array ,elt) 
+    [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
       (block `("if (",ptr" && --(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ") 
 	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
-    [,_ (make-lines "")]))
+    [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
 (define default-free
@@ -247,7 +281,7 @@
 
 ;; This version represents plain old reference counting.
 (begin
-  (define (incr-local-refcount ty ptr) (gen-incr-code ty ptr))
+  (define incr-local-refcount  gen-incr-code)
   (define (decr-local-refcount ty ptr) (gen-decr-code ty ptr default-free))
   
   (define incr-heap-refcount gen-incr-code)
@@ -288,9 +322,12 @@
 
 (define (type->name ty)
   (match ty
-    [,numt (guard (memq numt num-types)) (sym2str numt)]
+    [#(,[flds] ...) (apply string-append "TupleOf_" flds)]
+    [,scalt (guard (scalar-type? scalt)) (sym2str scalt)]
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
-    [(Array ,[ty]) (string-append "Array_" ty)]))
+    [(Array ,[ty]) (string-append "Array_" ty)]
+    [(List  ,[ty]) (string-append "List_"  ty)]
+    ))
 
 ;(define (make-fundef type name rand bod) 0)
 
@@ -414,7 +451,12 @@
     [String  "char*"] ;; Not boosted.
     [#()      "char"]
 
+    ;; An array looks like a C array, except the -1 word offset is a refcount and -2 is length.
     [(Array ,[elt]) (list elt "*")] ;[(Array ,[elt]) (list "(" elt "*)")]
+
+    ;; A cons cell is just looks like a pointer, except the -1 offset is a refcount, and -2 is the CDR.
+    [(List ,[elt]) (list elt "*")]
+
     [(Ref ,[ty]) ty]
     ))
 
@@ -440,7 +482,14 @@
   (match expr
     [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var v)]
     ;[',c (format "~a" c)] ;;TEMPTEMP
+
+    ;; PolyConstants:
+    [(assert-type ,[Type -> ty] Array:null) `("(",ty")0")] ;; A null pointer.       
+    [(assert-type ,[Type -> ty] '())        `("(",ty")0")] ;; A null pointer.       
+
+    ;; All other constants:
     [',c (Const c (lambda (x) x))]
+
     [(tuple) (list "(("(Type #())")0)")]
     [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
     ;[(assert-type ,t '())  (wrap (PolyConst '() t))]
@@ -567,6 +616,7 @@
      ;; This is a debug wrapper that respects the funky interface to the continuation:
      ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
      (match xp
+
        [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
 
        ;; With the strings-as-arrays system we'll still get string
@@ -622,9 +672,6 @@
 		      (ASSERT lines? bod)
 		      (decr-local-refcount ty (Var lhs)))]
        
-       ;; PolyConstants:
-       [(assert-type ,[Type -> ty] Array:null) (kont `("(",ty")0"))] ;; A null pointer.       
-
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
@@ -730,6 +777,22 @@
        ;; Refs and sets are pure simplicity:
        [(Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
 	(kont `(,arr"[",ind"]"))]
+
+       [(car ,[Simple -> pr]) (kont `("(*",pr")"))]
+       [(cdr (assert-type ,[Type -> ty] ,[Simple -> pr])) (kont `("((",ty"*)",pr")[-2]"))]
+       [(cons ,[Simple -> hd] ,[Simple -> tl])
+	(ASSERT mayberetty)
+	(match mayberetty
+	  [(List ,elt)
+	   (let ([tmp (Var (unique-name "tmpcell"))]
+		 [ty (Type mayberetty)])
+	     (append-lines 
+	      (make-lines `(,ty" ",tmp" = (int*)malloc(2 * sizeof(void*) + sizeof(",(Type elt)")) + 2;\n"
+			       "((int*)",tmp")[-1] = 0;\n"
+			       "((",ty" *)",tmp")[-2] = ",tl";\n"
+			       ,tmp"[0] = ",hd";\n"))
+	      (kont tmp)))])]
+       
        [(Array:length ,[Simple -> arr])
 	;; Length is -2 and refcount is -1:
 	(kont `("((int*)",arr")[-2]"))]

@@ -27,7 +27,7 @@ go "demo1c_timer.ws"
 # #go "demo2e_passchain.ws"
 
 # go "demo3a_tuples.ws"
-# go "demo3c_lists.ws"
+go "demo3c_lists.ws"
 # go "demo3d_tuples_of_tuples.ws"
 # #TEMP# go "demo3e_hashtables.ws"
 # go "demo3f_morelists.ws"
