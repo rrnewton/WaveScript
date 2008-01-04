@@ -85,7 +85,7 @@
 ;; we have a somewhat tricker notion predicate heap-allocated?.
 ;; Currently, it reflects the decision that tuples are value types,
 ;; but they may contain pointers...
-(trace-define heap-allocated? 
+(define heap-allocated? 
   (case-lambda 
     [(ty) (heap-allocated? ty global-struct-defs)]
     [(ty struct-defs)

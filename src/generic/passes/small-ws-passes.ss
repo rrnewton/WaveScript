@@ -250,7 +250,7 @@
 	  (match which
 	    [print `(,which (assert-type ,ty ,expr))]
 	    [show   (addstr! `(,which (assert-type ,ty ,expr)))])))
-    (match ty
+    (match ty ;; <- No match recursion
       [(List ,elt)
        (let* ([ptr (unique-name 'ptr)])
 	 `(let ([,ptr (Ref (List ,elt)) (Mutable:ref ,expr)])
@@ -281,6 +281,17 @@
 			(tuple))))
 	      ,(addstr! ''"]"))))]
 
+      [#(,fld* ...)
+       (let ([tup (unique-name "tup")]
+	     [len (length fld*)])
+	 `(let ([,tup ,ty ,expr])
+	    (begin
+	      ,(addstr! ''"(")
+	      ,@(insert-between (addstr! ''", ")
+		 (mapi (lambda (i fldty)
+		       (recur fldty `(tupref ,i ,len ,tup)))
+		  fld*))
+	      ,(addstr! ''")"))))]
 
       [String #f] ;; No change
       
