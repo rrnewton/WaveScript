@@ -42,6 +42,9 @@
 ;; types to the free-function for that type.
 (define free-fun-table '())
 
+;; This is mutated below:
+(define global-struct-defs '())
+
 (define-syntax debug-return-contract
   (syntax-rules ()
     [(_ pred fun) (debug-return-contract "<unknownFun>" pred fun)]
@@ -82,23 +85,34 @@
 ;; we have a somewhat tricker notion predicate heap-allocated?.
 ;; Currently, it reflects the decision that tuples are value types,
 ;; but they may contain pointers...
-(define (heap-allocated? ty)
-  (match ty
-    [,scl (guard (scalar-type? scl)) #f]
-    ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
-    [#(,[flds] ...) (ormap id flds)]
-    [(Array ,_) #t]
-    [(List ,_)  #t]
-    [(Ref ,_)   #t] ;; ?? 
-    [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
-    [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
-    ))
+(trace-define heap-allocated? 
+  (case-lambda 
+    [(ty) (heap-allocated? ty global-struct-defs)]
+    [(ty struct-defs)
+     (match ty
+       [,scl (guard (scalar-type? scl)) #f]
+       ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
+       [#() #f]
+       ;[#(,[flds] ...) (ormap id flds)]
+       [(Struct ,tuptyp) 
+	(let ([entry (assq tuptyp struct-defs)])
+	  (unless entry
+	    (error 'heap-allocated? "no struct-def entry for type: ~s" tuptyp))
+	  (ormap (lambda (x) (heap-allocated? x struct-defs)) 
+		 (map cadr (cdr entry))))]
+       [(Array ,_) #t]
+       [(List ,_)  #t]
+       [(Ref ,_)   #t] ;; ?? 
+       [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
+       [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
+       )]))
 
 (define-pass gather-heap-types
     ;; This is a mutated accumulator:
     (define acc '())
+    (define struct-defs '())
     (define (excluded? ty)
-      (or (not (heap-allocated? ty))
+      (or (not (heap-allocated? ty struct-defs))
 	  ;; HACKISH: 
 	  (deep-assq 'Stream ty)
 	  (deep-assq 'VQueue ty)))
@@ -113,9 +127,11 @@
      (lambda (pr Expr!)
       (fluid-let ([acc ()])
 	(match pr
-	  [(,lang '(program ,bod . ,rest))
-	   (Expr! bod)
-	   `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@rest))])))])
+	  [(,lang '(program ,bod . ,meta*))
+	   (fluid-let ([struct-defs (cdr (ASSERT (assq 'struct-defs meta*)))])
+	     (Expr! bod)
+	     `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@meta*))
+	     )])))])
 
 
 (define-pass embed-strings-as-arrays
@@ -191,7 +207,7 @@
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
-(trace-define (build-free-fun-table! heap-types)
+(define (build-free-fun-table! heap-types)
   (define fun-def-acc '()) ;; mutated below
   (define (add-to-table! ty fun) 
     (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
@@ -199,6 +215,7 @@
   (for-each
       (lambda (ty) 
 	(define name (type->name ty))
+	(define default-fun_name `("void free_",name"(",(Type ty)" ptr)"))
 	(define default-specialized_fun
 	  (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
 	(let loop ([ty ty])
@@ -206,18 +223,29 @@
 	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
 	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
 	     [,scl (guard (not (heap-allocated? scl))) #f]
+	     [(Struct ,tuptyp)
+	      (let ([flds (cdr (ASSERT (assq tuptyp global-struct-defs)))])
+		(set! fun-def-acc
+		      (cons 
+		       (make-lines
+			(block default-fun_name
+			 (map (match-lambda ((,fldname ,ty))
+				(lines-text (gen-decr-code ty (list "ptr."(sym2str fldname)) default-free)))
+			   flds)))
+		       fun-def-acc))
+		(add-to-table! ty default-specialized_fun))]
 	     [(Ref ,elt) (loop elt)]
 	     [(List ,elt)
 	      ;; We always build an explicit function for freeing list types:
 	      (set! fun-def-acc
 		    (cons
 		      (make-lines 
-		       (block `("void free_",name"(",(Type ty)" ptr)")
+		       (block default-fun_name
 		        (block (list "if(ptr)") ;; If not null.
 		         `("free_",name"(((",(Type ty)" *)ptr)[-2]);\n"   ;; Recursively free tail.			
  			   ;; If heap allocated, free the CAR:
 			   ,(if (heap-allocated? elt)
-				(gen-decr-code elt `("(*ptr)") default-free)
+				(lines-text (gen-decr-code elt `("(*ptr)") default-free))
 				"")
 			   "free((int*)ptr - 2);\n"))))
 		      fun-def-acc))
@@ -229,7 +257,7 @@
 		   (let ([ind (Var (unique-name "i"))])
 		     (set! fun-def-acc
 			   (cons (make-lines 
-				  (block `("void free_",name"(",(Type `(Array ,elt))" ptr)")
+				  (block default-fun_name
 					 `("int ",ind";\n"
 					   ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
 						   ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
@@ -263,6 +291,7 @@
     ))
 
 ;; "ptr" should be text representing a C lvalue
+;; returns "lines"
 (define (gen-decr-code ty ptr freefun)
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
@@ -322,7 +351,10 @@
 
 (define (type->name ty)
   (match ty
-    [#(,[flds] ...) (apply string-append "TupleOf_" flds)]
+    ;[#(,[flds] ...) (apply string-append "TupleOf_" flds)]
+    [(Struct ,tuptyp) (apply string-append "TupleOf_" 
+			     (map type->name (map cadr 
+			       (cdr (ASSERT (assq tuptyp global-struct-defs))))))]
     [,scalt (guard (scalar-type? scalt)) (sym2str scalt)]
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
     [(Array ,[ty]) (string-append "Array_" ty)]
@@ -351,7 +383,9 @@
 
 
 (define (wrap-iterate-as-simple-fun name arg argty code)
-  (make-lines (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")") (lines-text code))))
+  (make-lines 
+   (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")") (lines-text code))
+	 "\n")))
 
 ;================================================================================
 ;;; "Continuations" used for syntax production.
@@ -450,6 +484,7 @@
     [Char    "char"]
     [String  "char*"] ;; Not boosted.
     [#()      "char"]
+    [(Struct ,name) (list "struct "(sym2str name))] ;; Value type.
 
     ;; An array looks like a C array, except the -1 word offset is a refcount and -2 is length.
     [(Array ,[elt]) (list elt "*")] ;[(Array ,[elt]) (list "(" elt "*)")]
@@ -459,6 +494,19 @@
 
     [(Ref ,[ty]) ty]
     ))
+
+
+;; Generate a struct definition.
+(define (StructDef entry)
+     (match entry
+       [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
+	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
+	      [ctype* (map Type typ*)])
+	  `(,(block `("struct ",name)
+		    (map (lambda (ctype fld) `[,ctype " " ,fld ";\n"])
+		      ctype* fld*))
+	    ";\n"
+            ))]))
 
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
 (define (type->printf-flag ty)
@@ -471,6 +519,7 @@
     [Int64  "%lld"]
     [Float  "%f"]	   
     [Double "%lf"]
+    [#() "()"]
     [(Pointer ,_) "%p"]))
 
 ;(define Var mangle-name)
@@ -671,6 +720,11 @@
 		      (incr-local-refcount ty (Var lhs))
 		      (ASSERT lines? bod)
 		      (decr-local-refcount ty (Var lhs)))]
+
+       [(make-struct ,name ,[Simple -> arg*] ...)
+	(kont `("{",(insert-between ", " arg*)"}"))]
+       [(struct-ref ,[Simple -> x] ,fld)
+	(kont `("(",x "." ,(sym2str fld)")"))]
        
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp (cons prim rand*) kont #f )]
@@ -875,7 +929,8 @@
 (define-pass emit-c2
   [Program 
    (lambda (prog Expr)
-     (fluid-let ([free-fun-table ()])
+     (fluid-let ([free-fun-table ()]
+		 [global-struct-defs (cdr (project-metadata 'struct-defs prog))])
        (let ([freefundefs (build-free-fun-table! (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
      (match prog
@@ -885,7 +940,7 @@
 		       (sources ,[Source -> srcname* src*  state1*] ...)
 		       (operators ,[Operator -> oper* state2** init**] ...)
 		       (sink ,base ,basetype)
-		       ,meta* ...))       
+		       ,meta* ...))
 	  (define includes (string-append "#include<stdio.h>\n" 
 					  "#include<stdlib.h>\n"
 					  "#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
@@ -900,6 +955,7 @@
 	  (define total (apply string-append 
 			(insert-between "\n"
 			  (list includes 
+				(text->string (map StructDef global-struct-defs))
 				(text->string (lines-text freefundefs))
 				allstate
 				;toplevelsink
