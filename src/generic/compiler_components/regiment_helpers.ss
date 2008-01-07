@@ -250,7 +250,7 @@
         (null? x) ;; This means you can type () without a quote.
         (boolean? x)
         (char? x)
-        (string? x) 
+        ;(string? x) ;; [2008.01.04] Making this complex.
 
 	(eq? x 'BOTTOM)
 	(eq? x 'UNIT)
@@ -261,7 +261,7 @@
 ;; (Includes simple constants as well.)
 (define complex-constant?
   (lambda (x)
-    (or (simple-constant? x)
+    (or (simple-constant? x)	
 	(and (pair? x) 
 	     (complex-constant? (car x)) 
 	     (complex-constant? (cdr x)))
@@ -272,6 +272,7 @@
 	;; This is only for nullseg, it's a bit sketchy.
 	(and (sigseg? x)
 	     (fx= 0 (vector-length (sigseg-vec x))))
+	(string? x)
 	)))
 
 ;; A potentially quoted integer.

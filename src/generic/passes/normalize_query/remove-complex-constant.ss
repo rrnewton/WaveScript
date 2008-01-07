@@ -73,7 +73,6 @@
                      (letrec ,body-b* ,body)
                    ,meta* ...  ,type))))]))]
 
-  ;; Works just for lists right now.
   (define datum->code
     (let* ([pow32 (expt 2 32)]
 	   [pow31 (expt 2 31)]
@@ -109,7 +108,7 @@
 		  (values `(assert-type ,type '()) type #f))
 		(values ''() type #f))]
 
-	   ;; Vectors are mutable and can't be lifted to the top.
+	   ;; Vectors are mutable and can't be lifted to the top with our current semantics.
 	   [(vector? x) ;(ASSERT type)
 	    (match type
 	      [(Array ,elt-ty)	       

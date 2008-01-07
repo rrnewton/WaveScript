@@ -16,6 +16,7 @@
 	   lift-polymorphic-constant
 	   unlift-polymorphic-constant
 	   strip-irrelevant-polymorphism
+	   lift-immutable-constants
 	   strip-src-pos
 	   ;purify-letrec  ;; Disabled
 	   standardize-iterate
@@ -389,6 +390,24 @@
 	       (match (fallthru other)
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
+
+(define-pass lift-immutable-constants
+    (define acc '()) ;; Accumulates constant bindings.
+    [Expr 
+     (lambda (xp fallthru)
+       (match xp
+	 [',const (guard (not (simple-constant? const))			 
+			 ;; Arrays are mutable:
+			 (not (vector? const)))
+	  (let ([tmp (unique-name "tmpconstlift")])
+	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
+	    tmp)]
+	 [,oth (fallthru oth)]))]
+    [Program (lambda (prog Expr)
+	       (fluid-let ([acc '()])
+		 (match prog 
+		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
+		   `(,lang '(program `(let ,acc ,bod)) ,@meta*)])))])
 
 ;; [2007.03.17] Including Array:makeUNSAFE here even though it's not "constant"
 ;; [2007.10.11] Adjusting this to apply to data constructors/destructors as well.
