@@ -170,6 +170,37 @@
 		  '#f)
 	      )))]
 
+      ;; [2008.01.07] Only for wsc2 at the moment:
+      [(List ,elt) (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+       (let ([ptr1 (unique-name "lsptr1")]
+	     [ptr2 (unique-name "lsptr2")]
+	     [el1  (unique-name "lsel1")]
+	     [el2  (unique-name "lsel2")]
+	     [stop (unique-name "stop")]
+	     [result (unique-name "result")])
+	 `(let ([,ptr1 (Ref (List ,elt)) (Mutable:ref ,e1)])
+	    (let ([,ptr2 (Ref (List ,elt)) (Mutable:ref ,e2)])
+	      (let ([,stop (Ref Bool) (Mutable:ref '#f)])
+		(let ([,result (Ref Bool) (Mutable:ref '#f)])
+		  (begin
+		    (while (not (deref ,stop))
+			   (if (List:is_null (deref ,ptr1))			     
+			       (if (List:is_null (deref ,ptr2))
+				   (set! ,result '#t) ;; Equal
+				   (set! ,stop '#t))
+			       (if (List:is_null (deref ,ptr2))
+				   (set! ,stop '#t)
+				   (let ([,el1 ,elt (car (deref ,ptr1))])
+				     (let ([,el2 ,elt (car (deref ,ptr2))])
+				       (if ,(build-comparison elt el1 el2)
+					   (begin 
+					     (set! ,ptr1 (cdr (deref ,ptr1)))
+					     (set! ,ptr2 (cdr (deref ,ptr2))))
+					   (set! ,stop '#t)
+					   ))))))
+		    (deref ,result))
+		  )))))]
+
       ;; [2007.11.01] Doing tuples here.
       ;; (This actually makes for worse-code for Scheme... could do this conditionally:)
       ;; TODO FIXME: Remove the relevant code from the different backends.      
@@ -187,8 +218,6 @@
 		  `(if ,head
 		       (loop (cdr types) (fx+ 1 ind))
 		       '#f)))))]
-
-      ;; TODO: Lists, etc.
 
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,origtype ,e1) ,e2)]))
@@ -343,6 +372,23 @@
   [Program 
    (lambda (pr Expr)
      (match pr
+       ;; [2008.01.07] Making this work before program "flattening" into one big list of bindings.
+       [(,lang '(program ,bod ,meta* ... (Stream ,topty)))
+	(let ([x  (unique-name "x")]
+	      [vq (unique-name "___VIRTQUEUE___")])
+	  `(,lang '(program (iterate 
+			     (annotations (name printerbox))
+			     (let ()
+			       (lambda (,x ,vq)
+				 (,topty (VQueue #()))
+				 (begin (print (assert-type ,topty ,x))
+					(print (assert-type String '"\n"))
+					(emit ,vq (tuple))
+					,vq)))
+			     ,bod)
+		     ,@meta* (Stream #()))))]
+
+#;
        [(,lang '(program (letrec ,binds ,bod) ,meta* ... (Stream ,topty)))
 	(ASSERT symbol? bod)
 	(let ([finalstrm (unique-name "finalstrm")]

@@ -305,8 +305,11 @@
 (define default-free
   (debug-return-contract lines?
   (lambda (ty ptr)    
+    (define (strip-refs ty)
+      (match ty [(Ref ,ty) ty] [,ty ty]))
    ;(make-lines `("printf(\"FREEING ",(format "~a" ty)"\\n\");\n"))
-    ((cdr (ASSERT (assoc ty free-fun-table))) ptr))))
+    (let ([newty (strip-refs ty)])
+      ((cdr (ASSERT (assoc newty free-fun-table))) ptr)))))
 
 ;; This version represents plain old reference counting.
 (begin
@@ -511,6 +514,7 @@
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
 (define (type->printf-flag ty)
   (match ty
+    [#()    "()"]
     [String "%s"]
     [(Array Char) "%s"] ;; These are strings in disguise.
     [Bool   "%d"]
@@ -616,6 +620,18 @@
 	(list `(" ",(Type 'Int)" ",ind";\n")
 	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
 		     (lines-text bod))))]
+
+      [(while ,test ,[bod])
+       (let ([flag (unique-name "grosshack")])
+	 (make-lines 
+	  (block `("while (1)") 
+		 (list 
+		  (lines-text ((Value emitter) test (varbindk flag 'Bool)))
+		  "if ("(Var flag)") {\n"
+		  (indent (lines-text bod) "  ")
+		  "} else break; \n"
+		  ))))]
+
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
       ;; Otherwise we needlessly allocate string objects.
       [(print (assert-type ,ty ,[Simple -> e]))
@@ -756,6 +772,10 @@
 	    ;; These are from the WS runtime library:
 	    [(moduloI)                          "moduloI"]
 	    [(sqrtC)                              "csqrt"]
+
+	    [(List:length List:ref List:make)
+	     (list->string (remq-all #\: (string->list (sym2str var))))]
+
 	    ;;
 	    ;; These use FFTW
 
@@ -833,7 +853,11 @@
 	(kont `(,arr"[",ind"]"))]
 
        [(car ,[Simple -> pr]) (kont `("(*",pr")"))]
-       [(cdr (assert-type ,[Type -> ty] ,[Simple -> pr])) (kont `("((",ty"*)",pr")[-2]"))]
+       [(cdr ,[Simple -> pr]) (kont `("((void**)",pr")[-2]"))]
+       ;[(cdr (assert-type ,[Type -> ty] ,[Simple -> pr])) (kont `("((",ty"*)",pr")[-2]"))]
+
+       [(List:is_null ,[Simple -> pr]) (kont `("(",pr" == 0)"))]
+
        [(cons ,[Simple -> hd] ,[Simple -> tl])
 	(ASSERT mayberetty)
 	(match mayberetty
@@ -857,7 +881,8 @@
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? (assert-type ,ty ,[Simple -> left]) ,[Simple -> right])
-	(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
+	;(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
+	(ASSERT scalar-type? ty)		
 	(kont `("(",left" == ",right")"))]
 
        [(__show_ARRAY (assert-type ,ty ,[Simple -> obj]))

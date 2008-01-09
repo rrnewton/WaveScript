@@ -354,6 +354,8 @@
     (List:length ((List 'a)) Int)
     (List:reverse ((List 'a)) (List 'a))
     ;(reverse_BANG ((List 'a)) (List 'a))
+    
+    (List:is_null  ((List 'a)) Bool)
   
     ;; TODO, add these:
     (List:toArray ((List 'a)) (Array 'a))

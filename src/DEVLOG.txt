@@ -1394,6 +1394,24 @@ new Larceny has syntax case!  Unfortunately, it's only available or
 the R6RS mode, not the R5RS mode.  Well it looks like I may be able to
 use the ERR5RS mode.
 
+[2008.01.08] {Lots of outstanding implementation}
 
+There are many things that need to be implemented: 
+ *) Marshaling
+ *) Monomorphic function defs in backends.
+ *) Recursive stream graphs in backends.
+ *) Type classes
+ *) Wrapping up PLDI optimizations.
+ *) Memory management (GC + static alloc analysis)
+ *) Finish filling out the new C backend
 
+But the question is what will make research hay right now?  I imagine
+most of the scutwork will get put off until the next application makes
+it necessary.  
+
+If we're thinking about focusing on a distributed scheduling/placement
+sort of paper, what ingredients will we need?  We already have
+infrastructure for statically assigning operators to cores in an SMP.
+
+  *) How to deal with memory constrainst on Cell SPEs? Static? Microheaps?
 

@@ -631,8 +631,8 @@
     (ws-run-pass p explicit-toplevel-print))
 
   (ws-run-pass p optimize-print-and-show)
-
   (ws-run-pass p generate-printing-code)
+
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p embed-strings-as-arrays)
     (DEBUGMODE 
@@ -642,9 +642,14 @@
 	 (inspect tmp))))
     (ws-run-pass p remove-complex-constant))
   
-#;
-  (when #t ;(eq? (compiler-invocation-mode) 'wavescript-compiler-xstream)
+  (when (eq-any? (compiler-invocation-mode) 
+	     'wavescript-compiler-c
+	     ;'wavescript-compiler-xstream
+	     )
+    (ws-run-pass p type-annotate-misc)
+    (inspect (deep-assq-all 'wsequal? p))
     (ws-run-pass p generate-comparison-code)
+    (inspect (deep-assq-all 'wsequal? p))
     )
 
   ;; Should also generate printing code:

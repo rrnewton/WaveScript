@@ -88,7 +88,7 @@
 		 
 		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
 
-		 List:ref List:append List:reverse List:map List:fold List:length List:make 
+		 List:ref List:append List:reverse List:map List:fold List:length List:make List:is_null
 		 List:head List:tail head tail
 		 List:assoc List:assoc_update
 		 List:build List:toArray List:zip
@@ -1281,6 +1281,7 @@
      (define (tupref ind _ tup) (list-ref (tuple-fields tup) ind))
 
      (define-alias List:length s:length)
+     (define-alias List:is_null s:null?)
      (define-alias List:ref list-ref)
 
      (define-alias List:make make-list)

@@ -11,3 +11,7 @@ void BASE(char x) {
   outputcount++;
   if (outputcount >= tuplimit) exit(0);
 }
+
+int ListLength(void* list) {
+  return 0; 
+}
