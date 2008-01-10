@@ -201,6 +201,8 @@
 		    (deref ,result))
 		  )))))]
 
+      [#() `(begin ,e1 ,e2 '#t)]
+
       ;; [2007.11.01] Doing tuples here.
       ;; (This actually makes for worse-code for Scheme... could do this conditionally:)
       ;; TODO FIXME: Remove the relevant code from the different backends.      
@@ -217,7 +219,7 @@
 		  head
 		  `(if ,head
 		       (loop (cdr types) (fx+ 1 ind))
-		       '#f)))))]
+		       '#f)))))]      
 
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,origtype ,e1) ,e2)]))
@@ -227,7 +229,7 @@
        [(wsequal? (assert-type ,ty ,[e1]) ,[e2])
 	;(ASSERT simple-expr? e1)
 	;(ASSERT simple-expr? e2)
-	(build-comparison ty e1 e2)	
+	(build-comparison ty `(assert-type ,ty ,e1) e2)
 	#;
 	(maybe-let e1 ty
 	  (lambda (e1)

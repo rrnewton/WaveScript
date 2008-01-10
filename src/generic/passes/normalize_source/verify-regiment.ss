@@ -69,7 +69,7 @@
 	   [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
 	   [(src-pos ,p ,[e]) `(src-pos ,p ,e)]	   
 	   
-	   [,const (guard (simple-constant? const)) const]
+	   [,const (guard (or (simple-constant? const) (string? const))) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
 	    `(quote ,datum)]

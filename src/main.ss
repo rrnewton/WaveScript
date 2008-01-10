@@ -450,6 +450,17 @@
   ; already-typed is now its own param. --mic
   ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
   
+  ;; [2008.01.10] This is a need that pops up frequently.
+  ;; When there's a stray datum that should be type annotated, this helps find it.
+  (define (assure-type-annotated prog pred)
+    (define asserts (deep-assq-all 'assert-type prog))
+    (define hits    (deep-all-matches pred prog))
+    (for-each (lambda (hit)
+		(unless (ormap (match-lambda ((assert-type ,ty ,ob)) (eq? ob hit))
+			       asserts)
+		  (warning 'assure-type-annotated "object was not type annotated: ~s" hit)))
+      hits))
+
   (define (run-that-compiler)
     (parameterize ()
       (ws-pass-optional-stop p)
@@ -626,6 +637,7 @@
   (IFDEBUG (do-late-typecheck) (void))
 
   (ws-run-pass p type-annotate-misc)
+  (assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p explicit-toplevel-print))
@@ -647,9 +659,7 @@
 	     ;'wavescript-compiler-xstream
 	     )
     (ws-run-pass p type-annotate-misc)
-    (inspect (deep-assq-all 'wsequal? p))
     (ws-run-pass p generate-comparison-code)
-    (inspect (deep-assq-all 'wsequal? p))
     )
 
   ;; Should also generate printing code:
@@ -717,6 +727,7 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
+  (assure-type-annotated p (lambda (x) (equal? x ''())))
   (ws-run-pass p reify-certain-types)
 
   ;; for analysis of data rates between boxes

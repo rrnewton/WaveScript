@@ -10,6 +10,11 @@
 ;;;;
 ;;;; .author Ryan Newton
 
+;;;; [2008.01.10] Much time has passed, now we're using interpret-meta
+;;;; exclusively, and it is definitey safe for mutable-refs.
+;;;; Therefore, it should be no problem to define these higher order
+;;;; prims in WS directly.  I'm gradually moving these into internal.ws.
+
 ;===============================================================================
 
 (module anihilate-higher-order mzscheme
@@ -33,6 +38,7 @@
     (define (Expr x fallthru)
       (match x
 
+#;
 	[(List:map (lambda (,v) (,ty) ,[e1]) ,[e2])
 	 (let ([out (unique-name 'outls)]
 	       [newty (unique-name 'notyy)]
@@ -53,6 +59,7 @@
 		;; Return reverse of the accumulator:
 		;; (Shouldbe reverse!))
 		(List:reverse (deref ,out)))))]
+#;
 	[(List:fold (lambda (,acc ,v) (,ty1 ,ty2) ,[e1]) ,[zer] ,[e2])
 	 (let ([x (unique-name 'acc)]
 	       [ptr (unique-name 'ptr)]
@@ -149,6 +156,7 @@
 		      (Array:set ,out ,i (let ([,v Int ,i]) ,e1)))
 		  ,out))))]
 
+#;
 	[(List:build ,[n] (lambda (,v) (Int) ,[e1]))
 	 (let ([notype (unique-name 'notype)]
 	       [acc (unique-name 'acc)]

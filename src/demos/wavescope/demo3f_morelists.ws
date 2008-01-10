@@ -15,6 +15,7 @@ s1 = timer(50.0);
 
 // Test reverse:
 s2 = iterate( w in s1 ) {
+  print("In s2...\n");
   //emit List:reverse([w.start.int64ToInt, w.end.int64ToInt]);
   emit List:reverse([10, 100]);
 };

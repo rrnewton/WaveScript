@@ -250,7 +250,7 @@
         (null? x) ;; This means you can type () without a quote.
         (boolean? x)
         (char? x)
-        ;(string? x) ;; [2008.01.04] Making this complex.
+        (string? x) ;; [2008.01.04] Making this complex.
 
 	(eq? x 'BOTTOM)
 	(eq? x 'UNIT)

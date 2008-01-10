@@ -1,4 +1,7 @@
 
+;;;; Pass: Reify Certain Types
+;;;; This pass passes types as explicit arguments to those primitives that need them.
+
 ;; [2007.07.05] Adapting this for use by ws.early.  It needs to accept
 ;; pre-static elaborate input.  Thus it must be versatile enough to be
 ;; called near the front or near the end of the compiler.

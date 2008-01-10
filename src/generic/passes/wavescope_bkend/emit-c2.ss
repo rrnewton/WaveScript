@@ -209,9 +209,12 @@
 ;; vs. relegated to separately defined functions.
 (define (build-free-fun-table! heap-types)
   (define fun-def-acc '()) ;; mutated below
-  (define (add-to-table! ty fun) 
-    (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
-			       free-fun-table)))
+  (define (add-to-table! ty fun definition)
+    ;; Inefficient: should use hash table:
+    (unless (assoc ty free-fun-table)
+      (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
+				 free-fun-table))
+      (set! fun-def-acc (cons definition fun-def-acc))))
   (for-each
       (lambda (ty) 
 	(define name (type->name ty))
@@ -225,21 +228,17 @@
 	     [,scl (guard (not (heap-allocated? scl))) #f]
 	     [(Struct ,tuptyp)
 	      (let ([flds (cdr (ASSERT (assq tuptyp global-struct-defs)))])
-		(set! fun-def-acc
-		      (cons 
-		       (make-lines
+		(add-to-table! ty default-specialized_fun
+                   (make-lines
 			(block default-fun_name
 			 (map (match-lambda ((,fldname ,ty))
 				(lines-text (gen-decr-code ty (list "ptr."(sym2str fldname)) default-free)))
-			   flds)))
-		       fun-def-acc))
-		(add-to-table! ty default-specialized_fun))]
+			   flds)))))]
 	     [(Ref ,elt) (loop elt)]
 	     [(List ,elt)
 	      ;; We always build an explicit function for freeing list types:
-	      (set! fun-def-acc
-		    (cons
-		      (make-lines 
+	      (add-to-table! ty default-specialized_fun
+                (make-lines 
 		       (block default-fun_name
 		        (block (list "if(ptr)") ;; If not null.
 		         `("free_",name"(((",(Type ty)" *)ptr)[-2]);\n"   ;; Recursively free tail.			
@@ -247,29 +246,28 @@
 			   ,(if (heap-allocated? elt)
 				(lines-text (gen-decr-code elt `("(*ptr)") default-free))
 				"")
-			   "free((int*)ptr - 2);\n"))))
-		      fun-def-acc))
-	      (add-to-table! ty default-specialized_fun)]
+			   "free((int*)ptr - 2);\n")))))]
 	     [(Array ,elt)
-	      (add-to-table! ty 	       
-	       (if (not (heap-allocated? elt))
-		   (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n")))
+	      (if (not (heap-allocated? elt))
+		  (add-to-table! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))) 
+				 (make-lines ""))
+		  (add-to-table! ty default-specialized_fun
 		   (let ([ind (Var (unique-name "i"))])
-		     (set! fun-def-acc
-			   (cons (make-lines 
-				  (block default-fun_name
-					 `("int ",ind";\n"
-					   ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
-						   ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
-						   (begin (loop elt) ;; For side effect
-							  (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
-						   )
-					   "free((int*)ptr - 2);\n")))
-				 fun-def-acc))
-		     default-specialized_fun)))]
+		     (make-lines 
+		      (block default-fun_name
+			     `("int ",ind";\n"
+			       ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
+				       ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
+				       (begin (loop elt) ;; For side effect
+					      (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
+				       )
+			       "free((int*)ptr - 2);\n")))
+		     )))]
 	     
 	     )))
     heap-types)
+
+
   (apply append-lines 
 	 ;; This will have to be per-thread...	 
 	 ;(make-lines " void* ZCT[1000];\n int ZCT_count;\n")
@@ -362,6 +360,7 @@
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
     [(Array ,[ty]) (string-append "Array_" ty)]
     [(List  ,[ty]) (string-append "List_"  ty)]
+    [#() "Unit"]
     ))
 
 ;(define (make-fundef type name rand bod) 0)
@@ -539,6 +538,7 @@
     ;; PolyConstants:
     [(assert-type ,[Type -> ty] Array:null) `("(",ty")0")] ;; A null pointer.       
     [(assert-type ,[Type -> ty] '())        `("(",ty")0")] ;; A null pointer.       
+    ['() (error 'EmitC2:Simple "null list without type annotation")]
 
     ;; All other constants:
     [',c (Const c (lambda (x) x))]
@@ -669,7 +669,7 @@
 		     (decr-local-refcount ty (Var lhs)))]
       ;; ========================================
 
-       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "error("str");\n"))]
+       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "wserror("str");\n"))]
 
       ))))
 
@@ -773,7 +773,8 @@
 	    [(moduloI)                          "moduloI"]
 	    [(sqrtC)                              "csqrt"]
 
-	    [(List:length List:ref List:make)
+	    #;
+	    [(List:length List:ref List:append List:reverse) ;; List:make 
 	     (list->string (remq-all #\: (string->list (sym2str var))))]
 
 	    ;;
@@ -865,7 +866,7 @@
 	   (let ([tmp (Var (unique-name "tmpcell"))]
 		 [ty (Type mayberetty)])
 	     (append-lines 
-	      (make-lines `(,ty" ",tmp" = (int*)malloc(2 * sizeof(void*) + sizeof(",(Type elt)")) + 2;\n"
+	      (make-lines `(,ty" ",tmp" = (",ty")((int*)malloc(2 * sizeof(void*) + sizeof(",(Type elt)")) + 2);\n"
 			       "((int*)",tmp")[-1] = 0;\n"
 			       "((",ty" *)",tmp")[-2] = ",tl";\n"
 			       ,tmp"[0] = ",hd";\n"))
@@ -959,7 +960,7 @@
        (let ([freefundefs (build-free-fun-table! (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
      (match prog
-       [(,lang '(graph (const ,[(Binding (emit-err 'TopBinding)) -> cb*] ...) ;; These had better be *constants* for GCC
+       [(,lang '(graph (const ,[(SplitBinding (emit-err 'TopBinding)) -> cb* cbinit*] ...) ;; These had better be *constants* for GCC
 		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
 				-> init*] ...)
 		       (sources ,[Source -> srcname* src*  state1*] ...)
@@ -974,7 +975,9 @@
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
 	  (define init     (begin (ASSERT (andmap lines? (apply append init**)))
-			     (text->string (block "void initState()" (lines-text (apply append-lines (apply append init**)))))))
+			     (text->string (block "void initState()" 
+				 (list (lines-text (apply append-lines (apply append init**)))
+				       (lines-text (apply append-lines cbinit*)))))))
 	  (define driver   (text->string (lines-text (build-main-source-driver srcname*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  (define total (apply string-append 

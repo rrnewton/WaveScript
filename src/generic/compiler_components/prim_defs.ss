@@ -153,11 +153,13 @@
 
     ;; These should be defined IN the language, but they're not right now:
     ;; [2007.07.13] We have while loops and second class refs... should put these in.
-    (List:map (('a -> 'b) (List 'a)) (List 'b))
+;    (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:zip ((List 'a) (List 'b)) (List #('a 'b)))
-    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+;    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
     ;(List:map2 (('a, 'b -> 'c) (List 'a) (List 'b)) (List 'c))
+
+    ;(List:build        (Int (Int -> 'a)) (List 'a))
 
     ;; A lot of these can be defined in the language once we figure
     ;; out a story for "library" (non-inlined) procedures and
@@ -172,7 +174,7 @@
     ;; It's zero-based!
     (Array:build       (Int (Int -> 'a)) (Array 'a))
 
-    (List:build        (Int (Int -> 'a)) (List 'a))
+    
     ))
 
 
@@ -191,7 +193,15 @@
 ;; table.
 (define library-primitives
   '(
-    [Array:blit  ((Array 't) Int (Array 't) Int Int) (Array 't)]
+    [Array:blit   ((Array 't) Int (Array 't) Int Int) (Array 't)]
+    [List:make    (Int 't) (List 't)]
+    [List:length ((List 'a)) Int]
+    [List:ref     ((List 't) Int) 't]
+    [List:append  ((List 'a) (List 'a)) (List 'a)]
+    [List:reverse ((List 'a)) (List 'a)]
+    (List:map (('a -> 'b) (List 'a)) (List 'b))
+    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+    (List:build        (Int (Int -> 'a)) (List 'a))
     ))
 
 ;; Only for the meta-language, shouldn't exist after static-elaborate.
@@ -348,13 +358,15 @@
     ;; The List namespace:
     (List:head ((List 'a)) 'a)
     (List:tail ((List 'a)) (List 'a))
-    (List:ref  ((List 'a) Int) 'a)
-    (List:append ((List 'a) (List 'a)) (List 'a))
-    (List:make   (Int 'a) (List 'a))
-    (List:length ((List 'a)) Int)
-    (List:reverse ((List 'a)) (List 'a))
+
+;    (List:make   (Int 'a) (List 'a))
+;    (List:length ((List 'a)) Int)
+;    (List:reverse ((List 'a)) (List 'a))
+;    (List:ref  ((List 'a) Int) 'a)
+;    (List:append ((List 'a) (List 'a)) (List 'a))    
+
     ;(reverse_BANG ((List 'a)) (List 'a))
-    
+
     (List:is_null  ((List 'a)) Bool)
   
     ;; TODO, add these:

@@ -67,16 +67,16 @@
 			tenv
 			fallthrough)]
 
-	  [(head ,[x])      `(car ,x)]
-	  [(tail ,[x])      `(cdr ,x)]
+	  ;[(head ,[x])      `(car ,x)]
+	  ;[(tail ,[x])      `(cdr ,x)]
 	  [(List:head ,[x]) `(car ,x)]
 	  [(List:tail ,[x]) `(cdr ,x)]
 
 	  ;[(= ,x ,y) `(equal? ,x ,y)]
 
-	  [(append ,[x] ,[y]) `(List:append ,x ,y)]
+	  ;[(append ,[x] ,[y]) `(List:append ,x ,y)]
 	  [(fold ,[x] ,[y])   `(List:fold ,x ,y)]
-	  [(map ,[x] ,[y])    `(List:map ,x ,y)]
+	  ;[(map ,[x] ,[y])    `(List:map ,x ,y)]
 
 	  ;; For now we just expand this into the forloop.
 	  ;; Might want to do something else later.
