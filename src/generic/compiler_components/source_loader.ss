@@ -31,7 +31,7 @@
    ws-relative-path?
 
    read-wavescript-source-file ;; Read a WS file, invoking "wsparse", also doing post-processing
-   ws-postprocess              ;; Take parsed decls and turn into a single top level expression.
+   wsparse-postprocess              ;; Take parsed decls and turn into a single top level expression.
 
    ;test_sourceloader
    ) ;; End provide
@@ -99,7 +99,7 @@
     (if (equal? "ws" (extract-file-extension fn))
 	(let ([decls (ws-parse-file fn)])
 ;	  (printf "POSTPROCESSING: ~s\n" decls)
-	  (match (ws-postprocess decls)
+	  (match (wsparse-postprocess decls)
 	    [(let* ,decls ,bod)
 	     (values `(base-lang '(program (letrec ,decls ,bod))) ())]))
 	(match (file->slist fn)
@@ -252,7 +252,7 @@
 ;;
 ;; [2007.03.19] Note: top level type declarations don't have to occur
 ;; in any particular position in the file.
-(define (ws-postprocess origws)
+(define (wsparse-postprocess origws)
   ;; First we expand includes:  
   ;; NOTE: Should be tail recursive.  The number of forms could grow large.
   (define (process* forms all-includes current-file)
@@ -336,7 +336,7 @@
       [(uniondef ,ty ,def) (values `((uniondef ,ty ,def)) all-includes)]
 
       [(namespace . ,other)
-       (error 'ws-postprocess "bad namespace form: ~s" (cons 'namespace other))]
+       (error 'wsparse-postprocess "bad namespace form: ~s" (cons 'namespace other))]
       
       [,other  (values (list other) all-includes)]))
 
@@ -357,14 +357,14 @@
   (define uniondefs   (map cdr (filter f5 ws)))
   (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)) (not (f5 x)))) ws))
 
-  (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
+  (unless (null? other) (error 'wsparse-postprocess "unknown forms: ~s" other))
   (let ([typevs (map car types)]
 	[defvs  (map car defs)])
 
     (unless (list-subset? typevs defvs)
-      (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
+      (error 'wsparse-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
     (unless (list-is-set? (map car typealiases))
-      (error 'ws-postprocess 
+      (error 'wsparse-postprocess 
 	     "Got two type aliases with the same name!\nAll aliases: ~s"
 	     typealiases))
 
@@ -376,16 +376,16 @@
 	  ;; DEFENSE:
 	  (if (= 1 (length routes))
 	      (if (eq? 'BASE (caar routes)) (cadar routes) ;; Here's our body.
-		  (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
+		  (error 'wsparse-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
 	      (if (zero? (length routes))
 		  ;; [2007.12.01] Allowing a new convention.  Return the stream named "main".
 		  (let ([return-name (or (ws-alternate-return-stream) 'main)])
 		    (if (assq return-name defs)
 			return-name ;; The returned stream is whatever the most recent binding of the return name is.
-			(begin (warning 'ws-postprocess "Return stream unbound, defaulting to \"timer(1)\"")
+			(begin (warning 'wsparse-postprocess "Return stream unbound, defaulting to \"timer(1)\"")
 			       ;(set! routes `((BASE (timer '1.0))))
 			       '(timer '1.0))))
-		  (error 'ws-postprocess "Must have only one stream-wiring (<-) expression for now! ~a" routes)))))
+		  (error 'wsparse-postprocess "Must have only one stream-wiring (<-) expression for now! ~a" routes)))))
       (define final-expression
 	(match defs
 	  [() body]
@@ -408,7 +408,7 @@
 		    ,rest)]))
 ;      (inspect final-expression)
       
-      `(ws-postprocess-language
+      `(wsparse-postprocess-language
 	'(program ,final-expression
 	   (type-aliases . ,typealiases)
 	   (union-types . ,uniondefs)
@@ -434,65 +434,81 @@
  ;; Expects absolute path!!
  ;;
  ;; [2007.07.19] Removing code to call the old server (through pipes).
- (define (ws-parse-file fn)    
-   ;; FIXME: DELETE THIS.  It's obsoleted by the vastly more reliable TCP based server.
+ (define ws-parse-file
+   (let ([outport #f] [inport #f]) ;; Ports to parser process.
+     (lambda (fn)
+       ;; FIXME: DELETE THIS.  It's obsoleted by the vastly more reliable TCP based server.
 
-     ;; We don't even track source locations in ws.opt
-   (define dont-track (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL))))
-   (define extra-opts (if dont-track " --nopos" ""))
+       ;; We don't even track source locations in ws.opt
+       (define dont-track (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL))))
+       (define extra-opts (if dont-track " --nopos" ""))
 
-   (define (try-command)
-     ;; HACK: WON'T WORK IN WINDOWS:
-     (if (zero? (system "which wsparse")) 
-	 ;; Use pre-compiled executable:
-	 (begin 
-	   (eprintf "  Falling back to wsparse executable to parse file: ~a\n" fn)
-	   (system-to-str 
-	    (string-append "wsparse " fn  " --nopretty" extra-opts)))
-	 #f))
+       (define (try-command)
+	 ;; HACK: WON'T WORK IN WINDOWS:
+	 (if (zero? (system "which wsparse")) 
+	     ;; Use pre-compiled executable:
+	     (begin 
+	       (eprintf "  Falling back to wsparse executable to parse file: ~a\n" fn)
+	       (system-to-str 
+		(string-append "wsparse " fn  " --nopretty" extra-opts)))
+	     #f))
 
-   (define (try-from-source)
-     (eprintf
-      (** "  Falling back to wsparse.ss from source, but you probably"
-	  " want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n"))
-     ;; We want only the stdout not the stderr.
-     ;; UNFORTUNATELY, this 
-     (system-to-str 
-      (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty ~a" 
-	      (REGIMENTD) fn extra-opts)))
+       (define (try-from-source)
+	 (eprintf
+	  (** "  Falling back to wsparse.ss from source, but you probably"
+	      " want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n"))
+	 ;; We want only the stdout not the stderr.
+	 ;; UNFORTUNATELY, this 
+	 (system-to-str 
+	  (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty ~a" 
+		  (REGIMENTD) fn extra-opts)))
 
-   (define (try-client/server)
-     (if (file-exists? "/tmp/wsparse_server_tcp_running")
-	 (begin 
-	   (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn)
-	   ;; Ideally, we want only the stdout not the stderr, but can't do that.
-	   ;; I don't want this command line to be bash-dependent if possible.
-	   (let ([str (system-to-str
-		       (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a ~a " (REGIMENTD) fn extra-opts))])
-	     (if (or (equal? str "#f") (equal? str "#f\n")) 
-		 #f
-		 str)))
-	 #f))
+       (define (try-client/server)
+	 (if (file-exists? "/tmp/wsparse_server_tcp_running")
+	     (begin 
+	       (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn)
+	       ;; Ideally, we want only the stdout not the stderr, but can't do that.
+	       ;; I don't want this command line to be bash-dependent if possible.
+	       (let ([str (system-to-str
+			   (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a ~a " (REGIMENTD) fn extra-opts))])
+		 (if (or (equal? str "#f") (equal? str "#f\n")) 
+		     #f
+		     str)))
+	     #f))
 
-   ;; ========================================
-   
-   (when (eq? 'i3nt (machine-type))
-     (set! fn (de-cygwin-path fn)))
+       ;; [2008.01.12] Adding this method.  Probably almost always good enough.
+       (define (try-command-persist)     
+	 ;; HACK: WON'T WORK IN WINDOWS:
+	 (if (zero? (system "which wsparse")) 
+	     ;; Use pre-compiled executable:
+	     (begin 
+	       (unless outport
+		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty" extra-opts))])
+		   (printf "  wsparse process started.\n")
+		   (set! inport in)
+		   (set! outport out)))
+	       (eprintf "  Using wsparse process to parse file: ~a\n" fn)
+	       (write fn outport)(newline outport)
+	       (eprintf "WROTE OUTPUT...\n")
+	       (read inport))
+	     #f))
 
-   (let* ([result 
-	   (or (try-client/server)	      
-	       (begin ;(printf "Server failed, trying command.\n")
-		      (try-command))
-	       (begin 
-		 (try-from-source)))]
-	  [decls (read (open-input-string result))])
+       ;; ========================================   
+       (when (eq? 'i3nt (machine-type))  (set! fn (de-cygwin-path fn)))
 
-     ;; This is very hackish:
-     (when (or (eq? decls 'ERROR) (eq? decls 'PARSE)) ;; From "PARSE ERROR"
-       (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
-     
-     decls
-))
+       (let* ([result 
+	       (or (try-client/server)
+		   (try-command-persist)
+		   (try-command)       
+		   (try-from-source))]
+	      [decls (if (string? result) (read (open-input-string result)) result)])
+
+	 ;; This is very hackish:
+	 (when (or (eq? decls 'ERROR) (eq? decls 'PARSE)) ;; From "PARSE ERROR"
+	   (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+	 
+	 decls
+	 ))))
 
  ;; The PLT version is imported above: (from regiment_parser.ss)
  (begin)
@@ -507,7 +523,7 @@
 	   "should only be used on a .ws file, not: ~s" fn))
   (let ([parsed (ws-parse-file fn)])
     (if parsed 
-	(ws-postprocess parsed)
+	(wsparse-postprocess parsed)
 	#f)))
 
 ) ;; End Module.

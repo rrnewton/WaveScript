@@ -91,15 +91,15 @@
    list-rem-dups
    list-is-setq? list-subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
-   filter list-index snoc rac rdc rdc! rac&rdc! last 
+   list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
    list-build
    foldl foldl1
    
-   vector-for-each vector-map vector-map! vector-fold
+  vector-map! vector-fold
    vector-build vector-blit! vector-andmap
 
-   insert-between iota compose compose/values disp pp
+   insert-between  compose compose/values disp pp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
    file->lines string->lines string->slist port->slist
@@ -110,7 +110,7 @@
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
    unfold-list average clump
-    partition partition-equal split-before group
+   partition-equal split-before group
    myequal?
       
    with-evaled-params
@@ -157,6 +157,8 @@
  [plt  (provide  ;; For chez compatibility:
 	(all-from "../../plt/chez_compat.ss")
 	(all-from "reg_macros.ss")
+
+	filter partition iota vector-map vector-for-each ;; [2008.01.12] Primitive in Chez now
 	)
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
@@ -279,12 +281,17 @@
 		  (loop (cdr ls) (car ls) thisval)
 		  (loop (cdr ls) maxelem maxval)))))))	    
 
-(define filter
-  (lambda (pred lst)
-    (cond
-      [(null? lst) '()]
-      [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
-      [else (filter pred (cdr lst))])))
+;; [2008.01.12] Phasing out for Chez 7.4 (now primitive):
+(cond-expand 
+ [(or plt )
+  (define filter
+    (lambda (pred lst)
+      (cond
+       [(null? lst) '()]
+       [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
+       [else (filter pred (cdr lst))])))]
+ [else])
+
 
 ;; This is mainly used by the system in language-mechanism.  
 ;;   Clumps a list into sublists (clumps) all of whose members satisfy
@@ -494,23 +501,30 @@
       [(equal? x (car lst)) (list-remove-all x (cdr lst))]
       [else (cons (car lst) (list-remove-all x (cdr lst)))])))
 
-(define vector-for-each
-  (lambda (f! v)
-    (let ([len (vector-length v)])
-      (do ([i 0 (add1 i)])
-          ((= i len) (void))
-          (f! (vector-ref v i))))))
 (define vector-map!
   (lambda (f v)
     (do ([i (sub1 (vector-length v)) (sub1 i)])
         ((= -1 i) v)
         (vector-set! v i (f (vector-ref v i))))))
-(define vector-map
-  (lambda (f v)
-    (let ([newv (make-vector (vector-length v))])
-      (do ([i (sub1 (vector-length v)) (sub1 i)])
-          ((= -1 i) newv)
-          (vector-set! newv i (f (vector-ref v i)))))))
+
+
+;; [2008.01.12] Phasing out for Chez 7.4 (now primitive):
+(cond-expand 
+ [(or plt )
+  (define vector-for-each
+    (lambda (f! v)
+      (let ([len (vector-length v)])
+	(do ([i 0 (add1 i)])
+	    ((= i len) (void))
+          (f! (vector-ref v i))))))
+  (define vector-map
+    (lambda (f v)
+      (let ([newv (make-vector (vector-length v))])
+	(do ([i (sub1 (vector-length v)) (sub1 i)])
+	    ((= -1 i) newv)
+          (vector-set! newv i (f (vector-ref v i)))))))]
+ [else])
+
 (define vector-andmap
   (lambda (pred v)
     (let ([len (vector-length v)])
@@ -939,13 +953,18 @@
 ;; Produce a list of consecutive integers.
 ;; .example (iota n) => (0 1 ... n-1)
 ;; .example (iota i n) => (i i+1 ... i+n-1)
-(define iota
-  (case-lambda
-    [(n) (iota 0 n)]
-    [(i n) (ASSERT integer? i) (ASSERT integer? n)
-     (if (= n 0)
-         '()
-         (cons i (iota (+ i 1) (- n 1))))]))
+;; [2008.01.12] Phasing out for Chez 7.4 (now primitive):
+(cond-expand 
+ [(or plt larceny)
+  (define iota
+    (case-lambda
+      [(n) (iota 0 n)]
+      [(i n) (ASSERT integer? i) (ASSERT integer? n)
+       (if (= n 0)
+	   '()
+         (cons i (iota (+ i 1) (- n 1))))]))]
+ [else])
+
 
 ;; For one-argument functions:
 (define compose
@@ -1502,15 +1521,19 @@
      
 ;; Filter a list into two parts based ona predicate.
 ;; Doesn't maintain ordering.
-(define partition
-  (lambda (lst f)
-    (letrec ((loop
-               (lambda (lst acc1 acc2)
-                 (cond
+;; [2008.01.12] Phasing out for Chez 7.4 (now primitive):
+(cond-expand 
+ [(or plt larceny)
+  (define partition
+    (lambda (lst f)
+      (letrec ((loop
+		(lambda (lst acc1 acc2)
+		  (cond
                    [(null? lst) (list acc1 acc2)]
                    [(f (car lst)) (loop (cdr lst) (cons (car lst) acc1) acc2)]
                    [else (loop (cdr lst) acc1 (cons (car lst) acc2))]))))
-      (loop lst '() '()))))
+	(loop lst '() '()))))]
+ [else])
 
 (define partition-equal
   (lambda (lst eq)

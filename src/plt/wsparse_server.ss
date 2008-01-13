@@ -20,8 +20,8 @@ exec mzscheme -qt "$0" ${1+"$@"}
 (define outpipe #f)
 
 ;; Now just write it to stdout:
-;(display (ws-postprocess (reg-parse-file filename)))(newline)
-;(pretty-print (ws-postprocess (reg-parse-file filename)))
+;(display (wsparse-postprocess (reg-parse-file filename)))(newline)
+;(pretty-print (wsparse-postprocess (reg-parse-file filename)))
 
 (printf "Starting server loop...\n")
 (define (server-loop)  

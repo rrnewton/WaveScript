@@ -10,27 +10,30 @@ exec mzscheme -mqt "$0" ${1+"$@"}
 (require "regiment_parser.ss")
 (require (lib "pretty.ss"))
 
-#;
-(if (not (= 1 (vector-length (current-command-line-arguments))))
-    (error 'wsparse "Takes only one argument: name of file to parse. Given: ~s" 
-	   (current-command-line-arguments)))
-
-;(define filename (format "~a" (read)))
-(define filename (vector-ref (current-command-line-arguments) 0))
-
-;; Now just write it to stdout:
-;(display (ws-postprocess (reg-parse-file filename)))(newline)
-;(pretty-print (ws-postprocess (reg-parse-file filename)))
+(define allargs (vector->list (current-command-line-arguments)))
 
 (print-graph #t)
-(when (member "--nopos" (vector->list (current-command-line-arguments)))
-  (source-position-tracking #f))
+(when (member "--nopos" allargs) (source-position-tracking #f))
 
-(if (member "--nopretty" (vector->list (current-command-line-arguments)))
-    (write (ws-parse-file filename))
-    (pretty-print (ws-parse-file filename)))
+(define pretty? (not (member "--nopretty" allargs)))
 
+(define (main filename)
+  (if pretty?      
+      (pretty-print (ws-parse-file filename))
+      (write (ws-parse-file filename))))
+
+
+;; When run in --persist mode we run in a loop.
+(if (member "--persist" allargs)
+    (let loop ()
+      (define filename (read))
+      (unless (equal? filename 'exit)
+	(main filename) 
+	(loop)))
+    ;; Otherwise the (single) file to parse is the first argument.
+    (main (car allargs)))
 (exit 0)
+
 )
 
 ;(require wsparse)

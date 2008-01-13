@@ -22,6 +22,7 @@
 			       "tests.ss"
 ;; Temp:
 			       "newloads.ss"
+			       "foo.ss"
 			       ))
   (define compile-subcollections  '(				    
 				    ("plt")

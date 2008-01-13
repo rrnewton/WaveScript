@@ -779,7 +779,7 @@
          (cond  [(input-port? x)
                  (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
                  ;; We assume this is parsed but not post-processed:
-                 (ws-postprocess (read x))]
+                 (wsparse-postprocess (read x))]
                 [(string? x) 
                  (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
                  (read-wavescript-source-file x)]
@@ -1224,6 +1224,7 @@
 
 
 ;; *THE* Main function for the regiment/wavescript process.
+;; Takes an arbitrary number of strings (flags) as arguments.
 (define main 
   (lambda args    
     (define makesimcode #f)
@@ -1557,6 +1558,7 @@
 	   (unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
 	   (unless (memq name '(rewrites fuse merge-iterates profile))
 	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
+	   (unless (regiment-quiet) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
 

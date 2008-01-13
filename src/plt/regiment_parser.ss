@@ -811,7 +811,7 @@
 ;; This parses the file and does post-processing:
 (define (ws-parse-file fn)
   (define raw (ws-parse-file-raw fn))
-  ;(ws-postprocess raw) 
+  ;(wsparse-postprocess raw) 
   raw
   )
 
@@ -823,7 +823,7 @@
 ;;(pretty-print parsed)
 
   
-;(define processed (ws-postprocess parsed))
+;(define processed (wsparse-postprocess parsed))
 ;(pretty-print processed)
 
 ;(require "plt/hm_type_inference.ss")
