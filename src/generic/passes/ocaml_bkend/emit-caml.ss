@@ -859,7 +859,7 @@
 		   or and dataFile 
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
-		   List:head List:tail 
+		   List:head List:tail  List:is_null 
 
 		   ptrToArray ptrIsNull
 

@@ -1525,29 +1525,28 @@
 (cond-expand 
  [(or plt larceny)
   (define partition
-    (lambda (lst f)
+    (lambda (f lst)
       (letrec ((loop
 		(lambda (lst acc1 acc2)
 		  (cond
-                   [(null? lst) (list acc1 acc2)]
+                   [(null? lst) (values acc1 acc2)]
                    [(f (car lst)) (loop (cdr lst) (cons (car lst) acc1) acc2)]
                    [else (loop (cdr lst) acc1 (cons (car lst) acc2))]))))
 	(loop lst '() '()))))]
  [else])
 
+;; Quadratic complexity, should use hash tables:
 (define partition-equal
   (lambda (lst eq)
     (if (not (or (pair? lst) (null? lst)))
 	(error 'partition-equal "input must be a list: ~s" lst))
     (let loop ((lst lst))
       (if (null? lst) '()
-	  (let* ([first (car lst)]
-		 [pr (partition (cdr lst) 
-				(lambda (x) (eq x first)))]
-		 [ingroup (car pr)]
-		 [outgroup (cadr pr)])
-	    (cons (cons first ingroup) 
-		  (loop outgroup)))))))
+	  (let* ([first (car lst)])
+	    (let-values ([(ingroup outgroup) (partition (lambda (x) (eq x first)) (cdr lst))])
+	      (cons (cons first ingroup) 
+		    (loop outgroup))
+	      ))))))
 
 ;; Simple utility, group a list into groups of N elements.  List lengt
 ;; must be divisible by N.

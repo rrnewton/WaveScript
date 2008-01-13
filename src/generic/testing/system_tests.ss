@@ -110,7 +110,7 @@
 		  'outport prt)
 		 (display ")" prt)
 		 (read (open-input-string (get-output-string prt))))
-	       (cons BASE_ID (iota 2000 29))
+	       (cons BASE_ID (map (curry + 2000) (iota 29)))
 	       )
        )
      ,(lambda (ls) 	
@@ -2177,7 +2177,7 @@
 	;; UNLESS, RADIO_DELAY is set really large:
 	(and (> (length ls) (* 2 (sim-num-nodes)))
 	     (equal?
-	      (sort < (cons BASE_ID (iota 1 29)))
+	      (sort < (cons BASE_ID (cdr (iota 30))))
 	      (sort < (list-rem-dups ls)))))]
 
     ;; [2005.11.14] Huh, just started getting some errors on this when running from command line.
@@ -2370,7 +2370,7 @@
 	  (let ((ls (list-head (reverse ls) 2)))
 	    (and (apply equal? ls)
 		 (equal? (car ls) 
-			 (sort < (cons BASE_ID (iota 200 9))))
+			 (sort < (cons BASE_ID (map (curry + 200) (iota 9)))))
 		 )))]
 
      ["Regiment: Fire a simple event when a threshold is crossed."

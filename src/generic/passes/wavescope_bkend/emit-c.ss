@@ -484,7 +484,7 @@
 				       "// Nasty hack to handle string fields separately, since we're not using C strings:\n"
 				       "// Cap of a 100 on length of strings read in:\n"
 				       (format "char str~a[100];\n" i)))
-				 (iota 1 numstrings))
+				 (cdr (iota (add1 numstrings))))
 			      "int status = 0;\n"
 			      ,(block "if (!binarymode)"
 				      ;; Text mode is more complicated:
@@ -512,7 +512,7 @@
 				      (if (eq? ty 'String)
 					  (format "tup.~a = str~a;\n" fld n)
 					  '()))
-				 (iota 1 (length types))
+				 (cdr (iota (add1 (length types))))
 				 (list-head standard-struct-field-names (length types))
 				 types)
 			      
@@ -2112,7 +2112,7 @@ int main(int argc, char ** argv)
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll
-		   List:toArray ptrToArray ptrIsNull ptrMakeNull
+		   List:is_null List:toArray ptrToArray ptrIsNull ptrMakeNull
 		   gnuplot_array gnuplot_array2d
 		   String:length String:explode String:implode
 		   intToChar charToInt Secret:newTimebase

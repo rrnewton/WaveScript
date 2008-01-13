@@ -487,9 +487,8 @@
 		   (printf "  wsparse process started.\n")
 		   (set! inport in)
 		   (set! outport out)))
-	       (eprintf "  Using wsparse process to parse file: ~a\n" fn)
+	       (eprintf "  Using wsparse process on file: ~a\n" fn)
 	       (write fn outport)(newline outport)
-	       (eprintf "WROTE OUTPUT...\n")
 	       (read inport))
 	     #f))
 

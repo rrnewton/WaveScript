@@ -1341,7 +1341,7 @@
 		   or and dataFile 
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
-		   List:head List:tail 
+		   List:head List:tail  List:is_null 
 
 		   ;; This are handled specially by DispatchOnArrayType.
 		   ;; This is due to the dual-representation for arrays.
