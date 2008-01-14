@@ -283,7 +283,7 @@
 	   
 	   (if (member path all-includes)
 	       (begin
-		 (eprintf "  Suppressing repeated include of file!: ~s\n" path)
+		 (eprintf "   Suppressing repeated include of file!: ~s\n" path)
 		 (values '() all-includes))
 	       (begin 
 		 ;; This is usually a relative file path!
@@ -478,19 +478,19 @@
 
        ;; [2008.01.12] Adding this method.  Probably almost always good enough.
        (define (try-command-persist)     
-	 ;; HACK: WON'T WORK IN WINDOWS:
-	 (if (zero? (system "which wsparse")) 
-	     ;; Use pre-compiled executable:
+	 (if outport
 	     (begin 
-	       (unless outport
-		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty" extra-opts))])
-		   (printf "  wsparse process started.\n")
-		   (set! inport in)
-		   (set! outport out)))
 	       (eprintf "  Using wsparse process on file: ~a\n" fn)
 	       (write fn outport)(newline outport)
 	       (read inport))
-	     #f))
+	     ;; HACK: WON'T WORK IN WINDOWS:
+	     (if (zero? (system "which wsparse > /dev/null"))		 
+		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty" extra-opts))])
+		   (printf "  wsparse process started.\n")
+		   (set! inport in)
+		   (set! outport out)
+		   (try-command-persist))
+		 #f)))
 
        ;; ========================================   
        (when (eq? 'i3nt (machine-type))  (set! fn (de-cygwin-path fn)))

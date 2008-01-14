@@ -144,6 +144,7 @@
          ws-print-output-port ;; For the WS simulator.
 	 ws-optimizations-enabled
 	 ws-optimization-level
+	 ws-profile-limit
 
 	 dump-graphviz-output
 	 ws-alternate-return-stream
@@ -392,6 +393,13 @@
 ;; This parameter is read by various parts of the compiler.
 ;; It's value is 0,1,2, or 3.  -O3 enables unsafe optimizations.
 (define-regiment-parameter ws-optimization-level 2)
+
+;; Profiling controls:
+;; Used by annotate-with-data-rates:
+;; We can limit the amount of profiling performed either by amount of
+;; time elapsed, number of output elements, or not at all.
+;; Valid values: 'none, '(time <ms>), or '(elements <n>)
+(define-regiment-parameter ws-profile-limit '(time 3000))
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
@@ -942,6 +950,7 @@
 
 ;; Used for profiling and annotating data rates.
 (reg:define-struct (bench-stats bytes tuples cpu-time))
+
 
 ; ======================================================================
 

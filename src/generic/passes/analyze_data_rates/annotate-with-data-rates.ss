@@ -56,7 +56,10 @@
                ;(hash-table-map rates-table (lambda (k v) (printf "~a: ~a~n" k v)))
 
                ; convert back to regular program, with data-rate annotations
-               (annotate-iterates-with-rates annotated rates-table))])
+	       (let ([result (annotate-iterates-with-rates annotated rates-table)])
+		 (inspect (deep-assq-all 'data-rates result))
+		 (inspect result)
+		 result))])
 
 
 ;; it makes me unhappy that i have to add a new expression to strip-types,
@@ -246,14 +249,25 @@
 	     (apply append ty**)))]))
 
 
+;; rrn: "completion" is now defined by the parameter ws-profile-limit
 ;;
+;; Note this can't currently preempt the running graph, it can only
+;; stop after each output element is produced.  Could use engines for
+;; this if they weren't already used in the stream implementation.
 (define (run-stream-to-completion stream)
-  (let loop ()
-    (if (stream-empty? stream)
-        #t
-        (begin
-          (set! stream (stream-cdr stream))
-          (loop)))))
+  (define timelimit #f)
+  (define elemlimit #f)
+  (match (ws-profile-limit)
+    [none (void)]
+    [(time ,t)     (ASSERT integer? t) (set! timelimit t)]
+    [(elements ,n) (ASSERT integer? n) (set! elemlimit n)])    
+  (let ([end-time (and timelimit (+ timelimit (cpu-time)))])
+    (let loop ([stream stream] [elems 0])
+      (if (or (stream-empty? stream)
+	      (and end-time (> (cpu-time) end-time))
+	      (and elemlimit (>= elems elemlimit)))
+	  (printf " Finished profiling program.\n")
+	  (loop (stream-cdr stream) (fx+ 1 elems))))))
 
 
 ) ;; End module
