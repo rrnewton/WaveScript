@@ -185,9 +185,11 @@
 		  (begin
 		    (while (not (deref ,stop))
 			   (if (List:is_null (deref ,ptr1))			     
-			       (if (List:is_null (deref ,ptr2))
-				   (set! ,result '#t) ;; Equal
-				   (set! ,stop '#t))
+			       (begin 
+				 (if (List:is_null (deref ,ptr2))
+				     (set! ,result '#t) ;; Equal
+				     (tuple))
+				 (set! ,stop '#t))
 			       (if (List:is_null (deref ,ptr2))
 				   (set! ,stop '#t)
 				   (let ([,el1 ,elt (car (deref ,ptr1))])

@@ -1399,6 +1399,7 @@ use the ERR5RS mode.
 There are many things that need to be implemented: 
  *) Marshaling
  *) Monomorphic function defs in backends.
+ *) Shared representation of repeated stream kernels.
  *) Recursive stream graphs in backends.
  *) Type classes
  *) Wrapping up PLDI optimizations.
@@ -1414,4 +1415,16 @@ sort of paper, what ingredients will we need?  We already have
 infrastructure for statically assigning operators to cores in an SMP.
 
   *) How to deal with memory constrainst on Cell SPEs? Static? Microheaps?
+  *) Simply compiling to Streamit would be another approach.
+     (but very limited)
+  *) static alloc and static refcount opt are just applying known
+     techniques.
+  *) optimized deferred refcount is at least novel
+  *) better perf measurement infrastructure would probably be
+     informative in any case.
+
+
+ -) Data reps haven yet been really justified. (2d arrays was good
+    counter argument.)
+
 

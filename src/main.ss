@@ -652,7 +652,8 @@
        (unless (null? tmp) 
 	 (warning 'embed-strings-as-arrays "The symbol String occured in the output.  Here's a snippet:")
 	 (inspect tmp))))
-    (ws-run-pass p remove-complex-constant))
+    ;(ws-run-pass p remove-complex-constant) ;; Should we leave those array constants?
+    )
   
   (when (eq-any? (compiler-invocation-mode) 
 	     'wavescript-compiler-c

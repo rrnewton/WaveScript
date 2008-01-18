@@ -111,6 +111,7 @@
 	   ;; Vectors are mutable and can't be lifted to the top with our current semantics.
 	   [(vector? x) ;(ASSERT type)
 	    (match type
+	      ;[(Array Char) (values `',x type #f)]
 	      [(Array ,elt-ty)	       
 	       (values
 		(let ([tmp (unique-name 'tmparr)])

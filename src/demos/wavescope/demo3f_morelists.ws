@@ -17,9 +17,17 @@ s1 = timer(50.0);
 s2 = iterate( w in s1 ) {
   print("In s2...\n");
   //emit List:reverse([w.start.int64ToInt, w.end.int64ToInt]);
-  emit List:reverse([10, 100]);
+  //emit List:reverse([10, 100]);
+  //emit [10, 100];
+  x = [10, 100];
+  //y = [];
+  //print("ConstructedList\n");
+  //print([1]==[1]);
+  //print("\nPrintedList\n");
+  emit 99;
 };
 
+/*
 s3 = iterate  x in s2 { emit append(x,x) }
 
 // Test append:
@@ -94,6 +102,8 @@ s5 = iterate(ls in s4) {
   emit ();
 }
 
+*/
+
 // No problem
 //main = s2;
 
@@ -101,7 +111,6 @@ s5 = iterate(ls in s4) {
 //main = iterate x in s2 { emit List:append(x,x) };
 
 // PROBLEM!
-//main = s3;
-//main = s3b;
+main = s2;
 
-main = s5;
+//main = s5;

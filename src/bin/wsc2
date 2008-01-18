@@ -18,7 +18,9 @@ fi
 ALWAYSON="-O3 -funroll-loops"
 # max-unroll-times Seems to be 8 by default.
 OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
-#OPTFLAGS="-g -O0"
+
+## DEBUG MODE:
+OPTFLAGS="-g -O0"
 
 CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
 echo "$CMD"

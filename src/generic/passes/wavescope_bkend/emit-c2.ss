@@ -39,7 +39,8 @@
 ;(define (idk x) x)
 
 ;; This is mutated below with fluid-let to contain a table mapping
-;; types to the free-function for that type.
+;; types to a scheme function that generates free-code (when given
+;; text representing the pointer to free).
 (define free-fun-table '())
 
 ;; This is mutated below:
@@ -209,12 +210,17 @@
 ;; vs. relegated to separately defined functions.
 (define (build-free-fun-table! heap-types)
   (define fun-def-acc '()) ;; mutated below
-  (define (add-to-table! ty fun definition)
+  ;; Do both:
+  (define (add-to-tables! ty fun definition-or-thunk)
     ;; Inefficient: should use hash table:
     (unless (assoc ty free-fun-table)
       (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
 				 free-fun-table))
-      (set! fun-def-acc (cons definition fun-def-acc))))
+      (set! fun-def-acc
+	    (cons (if (procedure? definition-or-thunk)
+		      (definition-or-thunk)
+		      definition-or-thunk) 
+		  fun-def-acc))))
   (for-each
       (lambda (ty) 
 	(define name (type->name ty))
@@ -228,7 +234,7 @@
 	     [,scl (guard (not (heap-allocated? scl))) #f]
 	     [(Struct ,tuptyp)
 	      (let ([flds (cdr (ASSERT (assq tuptyp global-struct-defs)))])
-		(add-to-table! ty default-specialized_fun
+		(add-to-tables! ty default-specialized_fun
                    (make-lines
 			(block default-fun_name
 			 (map (match-lambda ((,fldname ,ty))
@@ -237,21 +243,35 @@
 	     [(Ref ,elt) (loop elt)]
 	     [(List ,elt)
 	      ;; We always build an explicit function for freeing list types:
-	      (add-to-table! ty default-specialized_fun
-                (make-lines 
-		       (block default-fun_name
-		        (block (list "if(ptr)") ;; If not null.
-		         `("free_",name"(((",(Type ty)" *)ptr)[-2]);\n"   ;; Recursively free tail.			
+	      ;; Here's a hack to enable us to recursively free the same type.
+	      (add-to-tables! ty default-specialized_fun
+                  (lambda ()
+		    (make-lines 
+		     (block default-fun_name
+			    (block (list "if(ptr)") ;; If not null.
+				   `(
+				     ;; Recursively decr tail:
+			   ;"free_",name"(((",(Type ty)" *)ptr)[-2]);\n" 
+			   ;,((Binding (emit-err 'build-free-fun-table!)) `(,ptr2 ,ty (cdr ptr)))
+			   ,(Type `(List ,elt))" ptr2 = CDR(ptr);\n"
+			   ,(lines-text (gen-decr-code `(List ,elt) "ptr2" default-free))
  			   ;; If heap allocated, free the CAR:
 			   ,(if (heap-allocated? elt)
 				(lines-text (gen-decr-code elt `("(*ptr)") default-free))
 				"")
-			   "free((int*)ptr - 2);\n")))))]
+			   "free((int*)ptr - 2);\n"))))))
+	      #;
+	      (unless (assoc ty free-fun-table)
+		(add-freeing-fun! ty default-specialized_fun)
+		)	      
+	      
+	      ;(set-car! mutable-cell (gen-decr-code `(List ,elt) "ptr" default-free))
+	      ]
 	     [(Array ,elt)
 	      (if (not (heap-allocated? elt))
-		  (add-to-table! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))) 
+		  (add-to-tables! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))) 
 				 (make-lines ""))
-		  (add-to-table! ty default-specialized_fun
+		  (add-to-tables! ty default-specialized_fun
 		   (let ([ind (Var (unique-name "i"))])
 		     (make-lines 
 		      (block default-fun_name
@@ -464,18 +484,6 @@
 
 (define (Type ty)
   (match ty
-    ;; Keeping typedefs for these on the C side:
-;     [Bool    "wsbool_t"]
-;     [Int     "wsint_t"]
-;     [Int16   "wsint16_t"]
-;     [Int64   "wsint64_t"]
-;     [Double  "wsdouble_t"]
-;     [Float   "wsfloat_t"]
-;     [Complex "wscomplex_t"]
-;     [Char    "wschar_t"]
-;     [String  "wsstring_t"] ;; Not boosted.
-;     [#()      "wsunit_t"]
-
     [Bool    "char"]
     [Int     "int"]
     [Int16   "int16_t"]
@@ -563,7 +571,9 @@
     (ASSERT simple-expr? expr)
     (let ([element (Simple expr)])
       (make-lines (map (lambda (down)
-			 (cap (make-app (Var down) (list element))))
+			 (cap 
+			  (list (make-app (Var down) (list element))
+				" /* emit */")))
 		    down*)))
     ;(make-lines `("emit ",(Simple expr)";"))
     ))
@@ -682,31 +692,29 @@
      ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
      (match xp
 
-       [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
-
        ;; With the strings-as-arrays system we'll still get string
-       ;; constants here, technically these are complex-constants.
-#;
+       ;; constants here, technically these are complex-constants.  We
+       ;; could treat them the same way as other constant arrays, but
+       ;; we get much less bloated, much more readable code if we do
+       ;; the following:
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
 	;; Strip out any null characters??
-	(let* ([ls (vector->list vec)]
+	(let* ([tmp (unique-name "tmpchararr")]
+	       [ls (vector->list vec)]
 	       [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
 		(if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
 		    (rdc ls) 
-		    ls)])
-	  (append-lines
-	   (make-lines (list "malloc(2*sizeof(int) + len);\n"
-			     ""
-			     (format "memcpy(tmp, ~s);\n" (list->string ls2))))
-	   (kont 
-	   ;(format "\"~a\"" (insert-c-string-escapes (list->string ls2)))
-	   ;(format "(~s+(2*sizeof(int)))" (list->string (append (make-lines #\null 8) ls2)))
-	   ;; FIXME Erk, need to know sizeof(int) at compile time!!!
-	   ;(format "(~s+8)" (list->string (append (make-list 8 #\_) ls2)))
-	    "tmp"
-	   )
-	   ))]
+		    ls)]
+	       [newk (varbindk tmp '(Array Char))])
+	  (append-lines 
+	   ((Value emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
+	   (make-lines
+	    (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
+		    (list->string ls2) (vector-length vec)))
+	   (kont (Var tmp))))]
+
+       [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
        
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,[Simple -> x]) (kont x)]
@@ -870,6 +878,11 @@
 			       "((int*)",tmp")[-1] = 0;\n"
 			       "((",ty" *)",tmp")[-2] = ",tl";\n"
 			       ,tmp"[0] = ",hd";\n"))
+	      ;; Increment cdr and car refcounts:
+	      (make-lines " /* incr car: */ ")
+	      (incr-heap-refcount elt hd) 
+	      (make-lines " /* incr cdr: */ ")
+	      (incr-heap-refcount mayberetty tl) 
 	      (kont tmp)))])]
        
        [(Array:length ,[Simple -> arr])
@@ -969,6 +982,7 @@
 		       ,meta* ...))
 	  (define includes (string-append "#include<stdio.h>\n" 
 					  "#include<stdlib.h>\n"
+					  "#include<string.h>\n"
 					  "#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
 					  ))
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
