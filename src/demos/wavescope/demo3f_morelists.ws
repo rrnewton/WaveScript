@@ -15,19 +15,9 @@ s1 = timer(50.0);
 
 // Test reverse:
 s2 = iterate( w in s1 ) {
-  print("In s2...\n");
-  //emit List:reverse([w.start.int64ToInt, w.end.int64ToInt]);
-  //emit List:reverse([10, 100]);
-  //emit [10, 100];
-  x = [10, 100];
-  //y = [];
-  //print("ConstructedList\n");
-  //print([1]==[1]);
-  //print("\nPrintedList\n");
-  emit 99;
+  emit List:reverse([10, 100]);
 };
 
-/*
 s3 = iterate  x in s2 { emit append(x,x) }
 
 // Test append:
@@ -41,9 +31,8 @@ s3 = iterate( w in mywindow(s2, 2)) {
  }
 */
 
-
 // Test equality, printing:
-s4 = iterate( ls in s3) {
+s4 = iterate ls in s3 {
   state { myls :: List Int = [3,4,5,6];
           testappend = [] }
   // Assignment overwriting state:
@@ -84,6 +73,7 @@ s4 = iterate( ls in s3) {
   emit myls;
 }
 
+
 // Test List:ref, List:length, List:make.
 s5 = iterate(ls in s4) {
 
@@ -102,7 +92,6 @@ s5 = iterate(ls in s4) {
   emit ();
 }
 
-*/
 
 // No problem
 //main = s2;
@@ -111,6 +100,6 @@ s5 = iterate(ls in s4) {
 //main = iterate x in s2 { emit List:append(x,x) };
 
 // PROBLEM!
-main = s2;
+main = s5;
 
 //main = s5;

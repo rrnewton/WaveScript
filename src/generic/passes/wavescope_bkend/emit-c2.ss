@@ -199,6 +199,36 @@
        (reconstr vars (map Type types) (map exprfun exprs)))])
 
 
+;; [2008.01.18] Experimenting with moving the refcounting into another
+;; pass so we can start to think about optimizing away refcounts.
+(define-pass insert-refcounts
+ [Expr
+  (lambda (xp fallthru)
+    ;[',const ]
+
+    [(set! ,v ,e) (ASSERT simple-expr? e)
+     `((decr-heap-refcount ,v) ;; type?
+       (set! ,v ,e)
+       (incr-heap-refcount ,v))]
+
+    [(let ([,v ,ty ,[e]]) ,[bod])
+     `(let ([,v ,ty ,e]
+	    [result ,? (Mutable:ref ??)])
+	(incr-local-refcount ty (Var lhs))
+	(set! ,result body)
+	(decr-local-refcount ty (Var lhs))
+	;; Return val?
+	)]
+      [(let ([,lhs ,ty ,rhs]) ,[bod])
+       ;; Here we incr the refcount for a *local* reference
+       (append-lines ((Binding emitter) (list lhs ty rhs))
+		     (incr-local-refcount ty (Var lhs))
+		     (ASSERT lines? bod)
+		     (decr-local-refcount ty (Var lhs)))]
+
+
+    )])
+
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
 ;; table mapping types onto syntax-generating functions that call the
@@ -622,8 +652,6 @@
     (match xp
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
-      
-      [(set! ,[Var -> v] ,[Simple -> e]) (make-lines `(,v " = " ,e ";\n"))]
 
       [(for (,[Var -> ind] ,[Simple -> st] ,[Simple -> en]) ,[bod])
        (make-lines

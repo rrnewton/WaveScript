@@ -759,6 +759,8 @@
     (time (system "dot -Tpng query.dot -oquery.png")))
    (void))
   
+;  (inspect p)
+
   p)) ;; End run-that-compiler
 
   (ASSERT (memq (compiler-invocation-mode)  
