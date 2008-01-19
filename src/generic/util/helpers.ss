@@ -60,7 +60,7 @@
   ;; Syntax:
   values->list
   first-value second-value
-  curry
+  curry curry2
   
    ;; Values:
   
@@ -251,6 +251,9 @@
 
 (define-syntax curry
   (syntax-rules () [(_ f x ...) (lambda (y) (f x ... y))]))
+(define-syntax curry2
+  (syntax-rules () [(_ f x ...) (lambda (y z) (f x ... y z))]))
+
 
 ;==============================================================================;
 
