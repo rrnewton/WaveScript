@@ -41,7 +41,7 @@
 	  ;immediate? 
 	  simple-constant? complex-constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
-	  simple-expr? maybe-let
+	  simple-expr? maybe-bind-tmp
 
 	  token-machine? token-machine->program token-machine-keyword?
 
@@ -230,7 +230,11 @@
 ;; This is a litlte helper that introduces a new binding ONLY if the
 ;; RHS in question is not simple.  This avoids unnecessary aliasing
 ;; and code-bloat.
-(define (maybe-let rhs ty k)
+;;
+;; We can use propagate-copies to get rid of spurious
+;; temporary variables.  But that's no reason to be particularly
+;; sloppy about introducing them, if it's easy not to.  
+(define (maybe-bind-tmp rhs ty k)
   (if (simple-expr? rhs)
       (k rhs)
       (let ([name (unique-name 'tmp)])

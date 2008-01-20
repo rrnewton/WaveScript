@@ -232,11 +232,6 @@
 	;(ASSERT simple-expr? e1)
 	;(ASSERT simple-expr? e2)
 	(build-comparison ty `(assert-type ,ty ,e1) e2)
-	#;
-	(maybe-let e1 ty
-	  (lambda (e1)
-	    (maybe-let )
-	    ))
 	]
        [(wsequal? . ,_) 
 	(error 'generate-comparison-code 

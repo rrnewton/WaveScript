@@ -207,23 +207,38 @@
 ;; refcounts on repeat executions.  It uses 'let' to name both the
 ;; pre-refcounted and post-refcounted construct.
 (define-pass insert-refcounts
+ (define (WrapIncr exp ty)
+   (define tmp (unique-name "tmp"))
+   (maybe-bind-tmp exp ty
+      (lambda (tmp)
+	 `(begin (incr-heap-refcount ,ty ,tmp)
+		 ,tmp))))
  [Expr
   (lambda (xp fallthru)
    (match xp
-      ;[',const ]
+    ;[',const (ASSERT simple-constant? const) `',const]
 
     [(set! ,v (assert-type ,ty ,[e]))
      `(begin 
 	(decr-heap-refcount ,ty ,v)
-	(set! ,v ,[e]) 
+	(set! ,v ,e)
 	(incr-heap-refcount ,ty ,v))]
-   
+
+    [(iterate (annotations ,anot* ...) 
+	      (let ([,lhs* ,ty* ,[rhs*]] ...) ,[fun]) ,[strm])
+     `(iterate (annotations ,anot* ...) 
+	       (let ([,lhs* ,ty* ,(map WrapIncr rhs* ty*)] ...) ,fun)
+	       ,strm)]
+    
     [(let ([,lhs ,ty ,[rhs]]) ,[bod])
+     (define result (unique-name "result"))
      `(let ([,lhs ,ty ,rhs])
-	(incr-local-refcount ty lhs)
-	(let ([[result ,ty?? ,bod]])
-	  (decr-local-refcount ty lhs)
-	  ,result))]
+	(begin
+	  (incr-local-refcount ,ty ,lhs)
+	  (let ([[,result 'unknownt ,bod]])  ;; Uh-oh, need type inference again.
+	    (begin 
+	      (decr-local-refcount ,ty ,lhs)
+	      ,result))))]
 
     [(Array:set (assert-type (Array ,elt) ,[arr]) ,[ind] ,[val])
      (ASSERT simple-expr? ind)
@@ -247,7 +262,32 @@
     [(,form . ,rest) (guard (memq form '(set! let Array:set cons)))
      (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
-    [,oth (fallthru oth)]))])
+    [,oth (fallthru oth)]))]
+
+ [Program
+  (lambda (prg Expr)
+    (match prg      
+      [(,input-language 
+	'(graph (const (,cbv* ,cbty* ,[Expr -> cbexp*]) ...)
+		(init  ,[Expr -> init*] ...)
+		(sources ((name ,nm) (output-type ,s_ty) (code ,[Expr -> scode]) (outgoing ,down* ...)) ...)
+		(operators (iterate (name ,name) 
+				    (output-type ,o_ty)
+				    (code ,[Expr -> itercode])
+				    (incoming ,o_up)
+				    (outgoing ,o_down* ...)) ...)
+		(sink ,base ,basetype)	,meta* ...))
+       `(,input-language 
+	 '(graph (const (,cbv* ,cbty* ,(map WrapIncr cbexp* cbty*)) ...)
+		 (init ,@init*) 
+		 (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
+		 (operators (iterate (name ,name) 
+				    (output-type ,o_ty)
+				    (code ,itercode)
+				    (incoming ,o_up)
+				    (outgoing ,o_down* ...)) ...)
+		 (sink ,base ,basetype)
+		 ,@meta*))]))])
 
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
@@ -350,7 +390,6 @@
   (match ty
     ;; Both of these types just decr the -1 offset:
     [(,Container ,elt) (guard (memq Container '(Array List)))
-     ;(make-lines `("if (",ptr") ((int*)",ptr")[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
      (make-lines `("INCR_RC(",ptr"); /* type: ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Other types are not heap allocated:
@@ -363,8 +402,7 @@
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
-      (block ;`("if (",ptr" && --(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ")
-             `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */\n")
+      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */\n")
 	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
     [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
@@ -757,9 +795,10 @@
 	       [newk (varbindk tmp '(Array Char))])
 	  (append-lines 
 	   ((Value emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
-	   (make-lines
-	    (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
-		    (list->string ls2) (vector-length vec)))
+	   (let ([str (list->string ls2)])
+	     (make-lines
+	      (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
+		      str (string-length str))))
 	   (kont (Var tmp))))]
 
        [,simp (guard (simple-expr? simp)) (kont (Simple simp))]

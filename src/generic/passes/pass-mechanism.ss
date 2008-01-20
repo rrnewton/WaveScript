@@ -115,6 +115,10 @@
 					;,uniondefs ,@(remq uniondefs metadata)
 				     . ,metadata
 				     )))]
+
+			  ;; [2008.01.20] Extend this to also handle explicit graphs as well??
+			  
+			  
 			  [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
 			)))
 
