@@ -7,8 +7,21 @@
 #define TRUE  1
 #define FALSE 0
 
-#define CAR(ptr) (*ptr)
-#define CDR(ptr) (((void**)ptr)[-2])
+// Handle Cons Cell memory layout:
+#define CONSCELL(ty)   ((int*)malloc(2 * sizeof(void*) + sizeof(ty)) + 2);
+#define CAR(ptr)       (*ptr)
+#define CDR(ptr)       (((void**)ptr)[-2])
+#define SETCDR(ptr,tl) (((void**)ptr)[-2])=tl
+#define SETCAR(ptr,hd) ptr[0]=hd
+
+// Handle Array memory layout:
+#define ARRLEN(ptr)        ((int*)ptr)[-2]
+#define SETARRLEN(ptr,len) ((int*)ptr)[-2]=len
+
+// Handle RCs on Cons Cells and Arrays:
+#define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
+#define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
+#define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
 
 int outputcount = 0;
 int tuplimit = 10;

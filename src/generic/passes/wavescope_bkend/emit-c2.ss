@@ -24,7 +24,8 @@
 	    "../../compiler_components/c_generator.ss" )
   (provide emit-c2 
 	   gather-heap-types
-	   embed-strings-as-arrays)
+	   embed-strings-as-arrays
+	   insert-refcounts)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -201,34 +202,52 @@
 
 ;; [2008.01.18] Experimenting with moving the refcounting into another
 ;; pass so we can start to think about optimizing away refcounts.
-#;
+;;
+;; This is NOT idempotent. It will keep inserting more and more
+;; refcounts on repeat executions.  It uses 'let' to name both the
+;; pre-refcounted and post-refcounted construct.
 (define-pass insert-refcounts
  [Expr
   (lambda (xp fallthru)
-    ;[',const ]
+   (match xp
+      ;[',const ]
 
-    [(set! ,v ,e) (ASSERT simple-expr? e)
-     `((decr-heap-refcount ,v) ;; type?
-       (set! ,v ,e)
-       (incr-heap-refcount ,v))]
+    [(set! ,v (assert-type ,ty ,[e]))
+     `(begin 
+	(decr-heap-refcount ,ty ,v)
+	(set! ,v ,[e]) 
+	(incr-heap-refcount ,ty ,v))]
+   
+    [(let ([,lhs ,ty ,[rhs]]) ,[bod])
+     `(let ([,lhs ,ty ,rhs])
+	(incr-local-refcount ty lhs)
+	(let ([[result ,ty?? ,bod]])
+	  (decr-local-refcount ty lhs)
+	  ,result))]
 
-    [(let ([,v ,ty ,[e]]) ,[bod])
-     `(let ([,v ,ty ,e]
-	    [result ,? (Mutable:ref ??)])
-	(incr-local-refcount ty (Var lhs))
-	(set! ,result body)
-	(decr-local-refcount ty (Var lhs))
-	;; Return val?
+    [(Array:set (assert-type (Array ,elt) ,[arr]) ,[ind] ,[val])
+     (ASSERT simple-expr? ind)
+     (ASSERT simple-expr? arr)
+     `(begin 
+	(decr-heap-refcount ,elt (Array:ref ,arr ,ind))  ;; Out with the old.
+	(Array:set (assert-type (Array ,elt) ,arr) ,ind ,val)
+	(incr-heap-refcount ,elt (Array:ref ,arr ,ind))  ;; In with the new.
 	)]
-      [(let ([,lhs ,ty ,rhs]) ,[bod])
-       ;; Here we incr the refcount for a *local* reference
-       (append-lines ((Binding emitter) (list lhs ty rhs))
-		     (incr-local-refcount ty (Var lhs))
-		     (ASSERT lines? bod)
-		     (decr-local-refcount ty (Var lhs)))]
 
+    [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
+     (ASSERT simple-expr? hd)
+     (ASSERT simple-expr? tl)     
+     ;(define hdv (unique-name "hd"))
+     ;(define tlv (unique-name "tl"))     
+     `(begin (incr-heap-refcount ,elt ,hd)
+	     (incr-heap-refcount (List ,elt) ,tl)
+	     (assert-type (List ,elt) (cons ,hd ,tl)))]
+    
+    ;; Safety net:
+    [(,form . ,rest) (guard (memq form '(set! let Array:set cons)))
+     (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
-    )])
+    [,oth (fallthru oth)]))])
 
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
@@ -282,8 +301,6 @@
 			    (block (list "if(ptr)") ;; If not null.
 				   `(
 				     ;; Recursively decr tail:
-			   ;"free_",name"(((",(Type ty)" *)ptr)[-2]);\n" 
-			   ;,((Binding (emit-err 'build-free-fun-table!)) `(,ptr2 ,ty (cdr ptr)))
 			   ,(Type `(List ,elt))" ptr2 = CDR(ptr);\n"
 			   ,(lines-text (gen-decr-code `(List ,elt) "ptr2" default-free))
  			   ;; If heap allocated, free the CAR:
@@ -307,7 +324,7 @@
 		     (make-lines 
 		      (block default-fun_name
 			     `("int ",ind";\n"
-			       ,(block `("for (",ind" = 0; ",ind" < ((int*)ptr)[-2]; ",ind"++)")
+			       ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
 				       ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
 				       (begin (loop elt) ;; For side effect
 					      (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
@@ -333,7 +350,8 @@
   (match ty
     ;; Both of these types just decr the -1 offset:
     [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("if (",ptr") ((int*)",ptr")[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
+     ;(make-lines `("if (",ptr") ((int*)",ptr")[-1]++; /* incr refcount ",(format "~a" ty)" */\n"))]
+     (make-lines `("INCR_RC(",ptr"); /* type: ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Other types are not heap allocated:
     [,ty (guard (not (heap-allocated? ty)))(make-lines "")]
@@ -345,7 +363,8 @@
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
-      (block `("if (",ptr" && --(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ") 
+      (block ;`("if (",ptr" && --(((int*)",ptr")[-1]) == 0) /* decr refcount ",(format "~a" ty)" */ ")
+             `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */\n")
 	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
     [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
@@ -868,8 +887,8 @@
 		  [cast `("(",_elt"*)",tmp)])
 	     (append-lines 
 	      (make-lines `("int* ",tmp" = ((int*)",alloc" + 2);\n"
-			    ,tmp"[-1] = 0;\n"
-			    ,tmp"[-2] = ",len";\n"
+			    "CLEAR_RC(",tmp");\n"           
+			    "SETARRLEN(",tmp", ",len");\n"  
 			    ;; Now fill the array, if we need to:
 			    ,(if (and init (not (wszero? elt init)))
 				 (let ([i (unique-name "i")]
@@ -890,9 +909,9 @@
        [(Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
 	(kont `(,arr"[",ind"]"))]
 
-       [(car ,[Simple -> pr]) (kont `("(*",pr")"))]
-       [(cdr ,[Simple -> pr]) (kont `("((void**)",pr")[-2]"))]
-       ;[(cdr (assert-type ,[Type -> ty] ,[Simple -> pr])) (kont `("((",ty"*)",pr")[-2]"))]
+       ;; Using some simple C macros here:
+       [(car ,[Simple -> pr]) (kont `("CAR(",pr")"))]
+       [(cdr ,[Simple -> pr]) (kont `("CDR(",pr")"))]
 
        [(List:is_null ,[Simple -> pr]) (kont `("(",pr" == 0)"))]
 
@@ -903,10 +922,12 @@
 	   (let ([tmp (Var (unique-name "tmpcell"))]
 		 [ty (Type mayberetty)])
 	     (append-lines 
-	      (make-lines `(,ty" ",tmp" = (",ty")((int*)malloc(2 * sizeof(void*) + sizeof(",(Type elt)")) + 2);\n"
-			       "((int*)",tmp")[-1] = 0;\n"
-			       "((",ty" *)",tmp")[-2] = ",tl";\n"
-			       ,tmp"[0] = ",hd";\n"))
+	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",(Type elt)");\n"
+			       "CLEAR_RC(",tmp");\n"           
+			       "SETCDR(",tmp", ",tl");\n"  
+			       "SETCAR(",tmp", ",hd");\n"  
+			       ;,tmp"[0] = ",hd";\n"
+			       ))
 	      ;; Increment cdr and car refcounts:
 	      (make-lines " /* incr car: */ ")
 	      (incr-heap-refcount elt hd) 
@@ -916,7 +937,8 @@
        
        [(Array:length ,[Simple -> arr])
 	;; Length is -2 and refcount is -1:
-	(kont `("((int*)",arr")[-2]"))]
+	(kont `("ARRLEN(",arr")"))
+	]
        ;; This is the more complex part:
 
        [(Array:make ,len ,init) (make-array len init mayberetty)]

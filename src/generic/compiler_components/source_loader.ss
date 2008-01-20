@@ -31,7 +31,7 @@
    ws-relative-path?
 
    read-wavescript-source-file ;; Read a WS file, invoking "wsparse", also doing post-processing
-   wsparse-postprocess              ;; Take parsed decls and turn into a single top level expression.
+   wsparse-postprocess         ;; Take parsed decls and turn into a single top level expression.
 
    ;test_sourceloader
    ) ;; End provide

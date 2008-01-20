@@ -22,6 +22,8 @@ There are separate scripts for invoking the WaveScript variant of the
 system.  Use "ws", "wsc", and so on.  See the wavescript manual under
 doc/wavescript_manual.
 
+(wsint "file.ws" '())
+
 
 <Documentation>
 ======================================================================
