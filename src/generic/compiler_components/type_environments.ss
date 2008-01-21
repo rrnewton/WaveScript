@@ -466,7 +466,7 @@
 	      (lambda (x) 
 		(match x 
 		  [(,v ,t ,flag) `(,v ,(f t) ,flag)]
-		  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
+		  [,other (error 'tenv-map "bad tenv entry: ~s" other)]))
 	    (cdr tenv))))
 ) ;; End list-based TENV ADT.
 

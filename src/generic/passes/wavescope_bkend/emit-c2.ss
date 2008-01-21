@@ -29,6 +29,8 @@
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
+;  (cond-expand [chez (import rn-match)] [else (void)])
+
 ;; These are just for sanity checking.  Disjoint types keep mix-ups from happening.
 ;; These should just be wrappers on the outside.  You should never find them nested.
 (reg:define-struct (lines text))
@@ -200,73 +202,144 @@
        (reconstr vars (map Type types) (map exprfun exprs)))])
 
 
+#;
+(define (traverse-by-context UserValue UserEffect)
+  (define Value
+    (core-generic-traverse
+     (lambda (xp fallthru)
+       (match xp
+	 [,oth (fallthru oth)]))))
+  (define Effect
+    (core-generic-traverse
+     (lambda (xp fallthru)
+       (match xp
+	 [,oth (fallthru oth)]))))  
+  Value)
+
+
 ;; [2008.01.18] Experimenting with moving the refcounting into another
 ;; pass so we can start to think about optimizing away refcounts.
 ;;
 ;; This is NOT idempotent. It will keep inserting more and more
 ;; refcounts on repeat executions.  It uses 'let' to name both the
 ;; pre-refcounted and post-refcounted construct.
-(define-pass insert-refcounts
- (define (WrapIncr exp ty)
-   (define tmp (unique-name "tmp"))
-   (maybe-bind-tmp exp ty
-      (lambda (tmp)
-	 `(begin (incr-heap-refcount ,ty ,tmp)
-		 ,tmp))))
- [Expr
-  (lambda (xp fallthru)
-   (match xp
-    ;[',const (ASSERT simple-constant? const) `',const]
+(define insert-refcounts
+  (let ()
+    (define (WrapIncr exp ty)  
+      (maybe-bind-tmp exp ty
+        (lambda (tmp)
+	  `(begin (incr-heap-refcount ,ty ,tmp)
+		  ,tmp))))
+    (define (Value xp tenv)
+      (core-generic-traverse/types
+       (lambda (xp tenv fallthru)
+	 (match xp
+	   ;;[',const (ASSERT simple-constant? const) `',const]
 
-    [(set! ,v (assert-type ,ty ,[e]))
-     `(begin 
-	(decr-heap-refcount ,ty ,v)
-	(set! ,v ,e)
-	(incr-heap-refcount ,ty ,v))]
+	   [(iterate (annotations ,anot* ...) 
+		     (let ([,lhs* ,ty* ,[rhs*]] ...) ,fun) ,[strm])
+	    (define newenv (tenv-extend tenv lhs* ty*))
+	    (define newfun (Value fun newenv))
+	    `(iterate (annotations ,anot* ...)
+		      (let ([,lhs* ,ty* ,(map WrapIncr rhs* ty*)] ...) 
+			,newfun)
+		      ,strm)]
+	   
+	   [(let ([,lhs ,ty ,[rhs]]) ,bod)
+	    (define result (unique-name "result"))
+	    (define newenv (tenv-extend tenv (list lhs) (list ty)))
+	    (define newbod (Value bod newenv))
 
-    [(iterate (annotations ,anot* ...) 
-	      (let ([,lhs* ,ty* ,[rhs*]] ...) ,[fun]) ,[strm])
-     `(iterate (annotations ,anot* ...) 
-	       (let ([,lhs* ,ty* ,(map WrapIncr rhs* ty*)] ...) ,fun)
-	       ,strm)]
-    
-    [(let ([,lhs ,ty ,[rhs]]) ,[bod])
-     (define result (unique-name "result"))
-     `(let ([,lhs ,ty ,rhs])
-	(begin
-	  (incr-local-refcount ,ty ,lhs)
-	  (let ([[,result 'unknownt ,bod]])  ;; Uh-oh, need type inference again.
-	    (begin 
+	    ;(inspect (vector newbod (map car (cdr newenv))))
+	    ;(inspect (recover-type newbod newenv))
+
+	    `(let ([,lhs ,ty ,rhs])
+	       (begin
+		 (incr-local-refcount ,ty ,lhs)
+		 (let ([,result ,(recover-type bod newenv) ,newbod])  ;; Uh-oh, need type inference again.		   
+		   (begin 
+		     (decr-local-refcount ,ty ,lhs)
+		     ,result))))]
+
+	   [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
+	    (ASSERT simple-expr? hd)
+	    (ASSERT simple-expr? tl)     
+	    `(begin (incr-heap-refcount ,elt ,hd)
+		    (incr-heap-refcount (List ,elt) ,tl)
+		    (assert-type (List ,elt) (cons ,hd ,tl)))]
+	   
+	   ;; Safety net:
+	   [(,form . ,rest) (guard (memq form '(let cons iterate)))
+	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
+
+	   ;; These jump us to effect context.
+	   [(begin ,[(lambda (x) (Effect x tenv)) -> e*] ... ,[last])  `(begin ,@e* ,last)]
+	   [(for (,i ,[st] ,[en]) ,bod)
+	    `(for (,i ,st ,en) ,(Effect bod (tenv-extend tenv (list i) '(Int))))]
+	   [(while ,[test] ,bod) `(while ,test ,(Effect bod tenv))]
+
+	   [,oth (fallthru oth tenv)]))
+       (lambda (ls k) (apply k ls))
+       xp
+       tenv))
+
+ ;; Treating effect context differently because of let's:
+ (define (Effect xp tenv)
+   (define (Val x) (Value x tenv))
+   ;(printf "SWITCHING EFFECT CONTEXT: ~s\n" (car xp))
+   (core-generic-traverse/types
+    (lambda (xp tenv fallthru)
+      (match xp
+	
+	[(let ([,lhs ,ty ,[Val -> rhs]]) ,bod)
+	 (define newenv (tenv-extend tenv (list lhs) (list ty)))
+	 (define newbod (Effect bod newenv))
+	 `(let ([,lhs ,ty ,rhs])
+	    (begin
+	      (incr-local-refcount ,ty ,lhs)
+	      ,newbod
 	      (decr-local-refcount ,ty ,lhs)
-	      ,result))))]
+	      (tuple)))]
+	[(set! ,v (assert-type ,ty ,[e]))
+	 `(begin 
+	    (decr-heap-refcount ,ty ,v)
+	    (set! ,v (assert-type ,ty ,e))
+	    (incr-heap-refcount ,ty ,v))]
+	[(Array:set (assert-type (Array ,elt) ,[arr]) ,[ind] ,[val])
+	 (define tmp1 (unique-name "tmp"))
+	 (define tmp2 (unique-name "tmp"))
+	 (ASSERT simple-expr? ind)
+	 (ASSERT simple-expr? arr)	 
+	 `(begin 
+	    (let ([,tmp1 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
+	      (decr-heap-refcount ,elt ,tmp1))  ;; Out with the old.
+	    (Array:set (assert-type (Array ,elt) ,arr) ,ind ,val)
+	    (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
+	      (incr-heap-refcount ,elt ,tmp2))  ;; In with the new.
+	    )]
 
-    [(Array:set (assert-type (Array ,elt) ,[arr]) ,[ind] ,[val])
-     (ASSERT simple-expr? ind)
-     (ASSERT simple-expr? arr)
-     `(begin 
-	(decr-heap-refcount ,elt (Array:ref ,arr ,ind))  ;; Out with the old.
-	(Array:set (assert-type (Array ,elt) ,arr) ,ind ,val)
-	(incr-heap-refcount ,elt (Array:ref ,arr ,ind))  ;; In with the new.
-	)]
+	;; Control flow structures keep us in Effect context:
+	[(begin ,[e*] ...) `(begin ,@e*)]
+	[(for (,i ,[Val -> st] ,[Val -> en]) ,[bod]) `(for (,i ,st ,en) ,bod)]
+	[(while ,[Val -> test] ,[bod]) `(while ,test ,bod)]
+	[(if ,[Val -> test] ,[left] ,[right]) `(if ,test ,left ,right)]
+	;; TODO WSCASE!
+	[(wscase . ,rest) (error 'insert-refcounts "wscase not implemented yet")]
 
-    [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
-     (ASSERT simple-expr? hd)
-     (ASSERT simple-expr? tl)     
-     ;(define hdv (unique-name "hd"))
-     ;(define tlv (unique-name "tl"))     
-     `(begin (incr-heap-refcount ,elt ,hd)
-	     (incr-heap-refcount (List ,elt) ,tl)
-	     (assert-type (List ,elt) (cons ,hd ,tl)))]
-    
-    ;; Safety net:
-    [(,form . ,rest) (guard (memq form '(set! let Array:set cons)))
-     (error 'insert-refcounts "missed form: ~s" (cons form rest))]
-
-    [,oth (fallthru oth)]))]
-
- [Program
-  (lambda (prg Expr)
-    (match prg      
+	[(,form . ,rest) (guard (memq form '(let Array:set set!)))
+	 (error 'insert-refcounts "missed effect form: ~s" (cons form rest))]
+	
+	;; For handling the other leaves, go back to Value context:
+	;[,oth (Value oth tenv)]
+	[,oth (fallthru oth tenv)]
+	))
+    (lambda (ls k) (apply k ls))
+    xp
+    tenv))
+ ;; Main pass body:
+ (lambda (prog)
+   (define (Expr x) (Value x (empty-tenv)))
+    (match prog
       [(,input-language 
 	'(graph (const (,cbv* ,cbty* ,[Expr -> cbexp*]) ...)
 		(init  ,[Expr -> init*] ...)
@@ -282,12 +355,14 @@
 		 (init ,@init*) 
 		 (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
 		 (operators (iterate (name ,name) 
-				    (output-type ,o_ty)
-				    (code ,itercode)
-				    (incoming ,o_up)
-				    (outgoing ,o_down* ...)) ...)
+				     (output-type ,o_ty)
+				     (code ,itercode)
+				     (incoming ,o_up)
+				     (outgoing ,o_down* ...)) ...)
 		 (sink ,base ,basetype)
-		 ,@meta*))]))])
+		 ,@meta*))]))))
+
+
 
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
@@ -402,7 +477,7 @@
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
-      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */\n")
+      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
 	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
     [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
@@ -696,7 +771,7 @@
 	       (values (make-lines "")	set-and-incr-k)
 	       (append-lines (make-lines `(" ",(Var vr)" = ",x";\n"))
 			     (make-lines "/* I AM HEAP INCR */\n")
-			     (incr-heap-refcount ty (Var vr))
+			     #|(incr-heap-refcount ty (Var vr))|#
 			     ))))
        (printf "SPLITBINDING ~a\n" vr)
 
@@ -710,6 +785,13 @@
     (match xp
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
+      ;; Thanks to insert-refcounts this can get in here:
+      [,v (guard (symbol? v)) (make-lines "")]
+
+      [(incr-heap-refcount  ,ty ,[Simple -> val]) (incr-heap-refcount  ty val)]
+      [(incr-local-refcount ,ty ,[Simple -> val]) (incr-local-refcount ty val)]
+      [(decr-heap-refcount  ,ty ,[Simple -> val]) (decr-heap-refcount  ty val)]
+      [(decr-local-refcount ,ty ,[Simple -> val]) (decr-local-refcount ty val)]
 
       [(for (,[Var -> ind] ,[Simple -> st] ,[Simple -> en]) ,[bod])
        (make-lines
@@ -737,17 +819,17 @@
       [(set! ,[Var -> v] (assert-type ,ty ,[Simple -> x]))
        (append-lines 	
 	;; Set! changes Ref objects, which are on the heap:
-	(decr-heap-refcount ty v)  ;; Out with the old.
+	#|(decr-heap-refcount ty v)  ;; Out with the old.|#
 	(make-lines `(,v" = ",x";\n"))
-	(incr-heap-refcount ty v)  ;; In with the new.
+	#|(incr-heap-refcount ty v)  ;; In with the new.|#
 	)]
 
       [(Array:set (assert-type (Array ,elt) ,[Simple -> arr]) ,[Simple -> ind] ,[Simple -> val])
        (append-lines 	
-	(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
-	(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.	
+	;(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
+	#|(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.|#
 	(make-lines `(,arr"[",ind"] = ",val";\n"))
-	(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.
+	#|(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.|#
 	)]
 
       [(emit ,vq ,x) (emitter x)]
@@ -760,9 +842,10 @@
       [(let ([,lhs ,ty ,rhs]) ,[bod])
        ;; Here we incr the refcount for a *local* reference
        (append-lines ((Binding emitter) (list lhs ty rhs))
-		     (incr-local-refcount ty (Var lhs))
+		     #|(incr-local-refcount ty (Var lhs))|#
 		     (ASSERT lines? bod)
-		     (decr-local-refcount ty (Var lhs)))]
+		     #|(decr-local-refcount ty (Var lhs))|#
+		     )]
       ;; ========================================
 
        [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "wserror("str");\n"))]
@@ -792,13 +875,16 @@
 		(if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
 		    (rdc ls) 
 		    ls)]
-	       [newk (varbindk tmp '(Array Char))])
+	       [newk (varbindk tmp '(Array Char))]
+	       [str (list->string ls2)]
+	       [copylen (add1 (string-length str)) ;; Copy the null terminator
+		      ;(vector-length vec)
+			])
 	  (append-lines 
 	   ((Value emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
-	   (let ([str (list->string ls2)])
-	     (make-lines
-	      (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
-		      str (string-length str))))
+	   (make-lines
+	    (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
+		    str copylen))
 	   (kont (Var tmp))))]
 
        [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
@@ -828,9 +914,10 @@
        [(let ([,lhs ,ty ,rhs]) ,[bod])
 	;; Here we incr the refcount for a *local* reference
 	(append-lines ((Binding emitter) (list lhs ty rhs))
-		      (incr-local-refcount ty (Var lhs))
+		      #|(incr-local-refcount ty (Var lhs))|#
 		      (ASSERT lines? bod)
-		      (decr-local-refcount ty (Var lhs)))]
+		      #|(decr-local-refcount ty (Var lhs))|#
+		      )]
 
        [(make-struct ,name ,[Simple -> arg*] ...)
 	(kont `("{",(insert-between ", " arg*)"}"))]
@@ -968,10 +1055,10 @@
 			       ;,tmp"[0] = ",hd";\n"
 			       ))
 	      ;; Increment cdr and car refcounts:
-	      (make-lines " /* incr car: */ ")
-	      (incr-heap-refcount elt hd) 
-	      (make-lines " /* incr cdr: */ ")
-	      (incr-heap-refcount mayberetty tl) 
+	      ;(make-lines " /* incr car: */ ")
+	      #|(incr-heap-refcount elt hd) |#
+	      ;(make-lines " /* incr cdr: */ ")
+	      #|(incr-heap-refcount mayberetty tl) |#
 	      (kont tmp)))])]
        
        [(Array:length ,[Simple -> arr])

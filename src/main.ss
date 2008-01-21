@@ -1035,14 +1035,16 @@
 	 (ws-run-pass prog gather-heap-types)
 	 (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
 	 
-;	 (inspect (insert-refcounts prog))
-
 	 (ws-run-pass prog explicit-stream-wiring)
 	 (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
 
-;	 (inspect (insert-refcounts prog))
+	 (printf "  PROGSIZE: ~s\n" (count-nodes prog))
+	 ;(pp (let-spine prog 4))
 	 (ws-run-pass prog insert-refcounts)
-
+	 ;(pp (deep-assq-all 'incr-heap-refcount prog))
+	 ;(pp (let-spine prog 4))
+	 (printf "  PROGSIZE: ~s\n" (count-nodes prog))
+	 
 	 (ws-run-pass prog emit-c2)
 	 (string->file (text->string prog) outfile)
 	 (unless (regiment-quiet)
