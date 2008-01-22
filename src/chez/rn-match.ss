@@ -233,7 +233,9 @@
                           (lambda (x)
                             (syntax-case x ()
                               ((_ Foo) #'(my-backquote Foo))))))
-             Exp ...))))))
+             
+	     (let () Exp ...)
+	     ))))))
 
 
 

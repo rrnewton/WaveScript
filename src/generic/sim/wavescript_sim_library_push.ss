@@ -1399,14 +1399,25 @@
        )
 
      (define show ws-show)
-     (trace-define (__show_ARRAY x) (list->vector (string->list (ws-show x))))
+     ;; Null terminate:
+     (define (__show_ARRAY x) 
+       (let* ((str (ws-show x))
+	      [arr (make-vector (fx+ 1 (string-length str)))])
+	 (vector-set! arr (fx- (vector-length arr) 1) (integer->char 0))
+	 (let loop ([i 0])
+	  (when (< i (fx- (vector-length arr) 1))
+	    (vector-set! arr i (string-ref str i))
+	    (loop (fx+ 1 i))))
+	 arr))
 
      ;; Inefficient, show should be defined in terms of print, not vice-versa
      (define (ws-print x)
        (parameterize ([current-output-port (ws-print-output-port)])
-	 (if (string? x)
-	     (display (ws-show x))
-	     (display-constrained (list (ws-show x) 300)))
+	 (cond
+	  [(string? x) (display (ws-show x))]
+	  [(and (vector? x) (> (vector-length x) 0) (char? (vector-ref x 0)))
+	   (vector-for-each display x)]
+	  [else (display-constrained (list (ws-show x) 300))])
 	 (IFDEBUG (flush-output-port) (void))
 	 ))
 

@@ -34,6 +34,8 @@
 
            ; --mic
 	   propagate-copies
+	   
+	   embed-strings-as-arrays
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
@@ -721,6 +723,78 @@
 
             (lambda (x f) (do-expr x f ())) )]
 )
+
+
+;; This is so the new C backend (emit-c2) can avoid handling strings.
+;; A string is mapped onto an array of characters, augmented with a null terminator character.
+(define-pass embed-strings-as-arrays
+    (define (Type ty) 
+      (match ty
+	[String `(Array Char)]
+	[,s (guard (symbol? s)) s]
+	[(,qt ,tvar) (guard (memq qt '(NUM quote))) `(,qt ,tvar)]
+	[#(,[t*] ...) (list->vector t*)]
+	[(,[arg*] ... -> ,[res]) `(,@arg* -> ,res)]
+	[,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
+	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)] ; Type constructor
+	[,other (error 'embed-strings-as-arrays "malformed type: ~a" ty)]))
+    [Expr (lambda (xp fallthru)
+	    (match xp
+	      ;; make a constant vector.
+	      [',str (guard (string? str))
+		     (printf "  Converting to array: ~s \n" str)
+		     
+		     `',(list->vector (append ;(make-list 8 #\nul)
+				       (string->list str)
+				       (list (integer->char 0))))]
+	      [(string-append ,[s1] ,[s2])
+	       (let ([a1 (unique-name "strarr1")]
+		     [a2 (unique-name "strarr2")]
+		     [i1 (unique-name "i")]
+		     [i2 (unique-name "i")]
+		     [len1 (unique-name "len")]
+		     [result (unique-name "appendresult")])
+		 `(let ([,a1 (Array Char) ,s1] 
+			[,a2 (Array Char) ,s2])
+		    (let ([,len1 Int (_-_ (Array:length ,a1) '1)]) ; Number of non-null characters.
+		      (let ([,result (Array Char) 
+				   (assert-type (Array Char)
+						(Array:makeUNSAFE (_+_ ,len1 (Array:length ,a2))))])
+			(begin 
+			  ;(print '"APPENDING\n");
+			  (for (,i1 '0 (_-_ ,len1 '1)) ; Don't copy null char.
+			      (Array:set ,result ,i1 (Array:ref ,a1 ,i1)))
+			  (for (,i2 '0 (_-_ (Array:length ,a2) '1))
+			      (Array:set ,result (_+_ ,len1 ,i2) (Array:ref ,a2 ,i2)))
+			;(app Array:blit ,result '0 ,a1 '0 (_-_ (Array:length ,a1) '1))
+			;(app Array:blit ,result (_-_ (Array:length ,a1) '1) ,a2 '0 (Array:length ,a2))
+			,result)
+			))))]
+
+	      ;; Should not include null character:
+	      [(String:length ,[str]) `(_-_ (Array:length ,str) '1)]
+	      
+	      [(show ,[x]) `(__show_ARRAY ,x)]
+	      [(wserror ,[x]) `(__wserror_ARRAY ,x)]
+
+	      ;[(show ,[x]) `(__Hack:fromOldString (show ,x))]
+	      ;[(wserror ,[x]) `(wserror (__Hack:backToString ,x))]
+	      ;[(readFile ...) ????]
+	      ;[(__readFile ...) ????]
+
+	      [(assert-type ,[Type -> ty] ,[e])  `(assert-type ,ty ,e)]
+
+	      [,oth (fallthru oth)]
+
+	      ;; Not implemented at runtime yet:
+	      ;[(String:explode   (String) (List Char))]
+	      ;[(String:implode   ((List Char)) String)]
+	      )
+	    )]  
+    [Bindings
+     (lambda (vars types exprs reconstr exprfun)
+       (reconstr vars (map Type types) (map exprfun exprs)))])
+
 
 
 

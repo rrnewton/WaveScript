@@ -298,7 +298,7 @@
 
 ;; To completely DISABLE my new prototype matcher, uncomment this:
 ;; This may be useful for debugging, the iu-matcher gives better source locations.
-;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
+(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
 ;;
 ;; [2007.04.19] Currently, just having rn-match in the type-checker
 ;; plus the static elaborator bloats the code size a noticable amount.
@@ -520,6 +520,7 @@
 (todo:common:load-source "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (todo:common:load-source "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 (todo:common:load-source "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
+(todo:common:load-source "generic/passes/wavescope_bkend/insert-refcounts.ss") (import insert-refcounts)
 
 (todo:common:load-source "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 

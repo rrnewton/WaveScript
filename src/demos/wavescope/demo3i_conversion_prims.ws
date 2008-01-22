@@ -1,13 +1,15 @@
 
 s0 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
+/*
 fun println(s) {
   print("  ");
   print(s);
   print("\n");
 };
+*/
 
-fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
+//fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
 main = iterate(w in s0) {  
   n = w`width;
@@ -19,11 +21,11 @@ main = iterate(w in s0) {
 
   // Roundtripping: 
   // 4096 is representable as any of our numbers and as such should be convertible without loss:
-  assert_eq(n, i`int16ToInt);
-  assert_eq(n, l`int64ToInt);
-  assert_eq(n, f`floatToInt);
-  assert_eq(n, d`doubleToInt);
-  assert_eq(n, c`complexToInt);
+  assert_eq("", n, i`int16ToInt);
+  assert_eq("", n, l`int64ToInt);
+  assert_eq("", n, f`floatToInt);
+  assert_eq("", n, d`doubleToInt);
+  assert_eq("", n, c`complexToInt);
 
   print("\nFrom int16:\n");
   println( i`int16ToInt );
@@ -55,9 +57,9 @@ main = iterate(w in s0) {
 
   print("\nFrom string:\n");
   //println( i ` show ` stringToInt16 );
-  println( n ` show ` stringToInt );
-  println( f ` show ` stringToFloat );
-  println( f ` show ` stringToDouble );
+  println( (n ` show) ` stringToInt );
+  println( (f ` show) ` stringToFloat );
+  println( (f ` show) ` stringToDouble );
 
   // [2007.06.30] Leaving this one off for now:
   //  println( c ` show ` stringToComplex );

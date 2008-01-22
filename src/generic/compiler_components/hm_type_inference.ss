@@ -641,6 +641,12 @@
                (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
                  (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
                  (vector-ref newtypes (qinteger->integer n))))]
+
+      ;; [2008.01.21] Adding limited support for post-nominalize types language:
+      [(struct-ref ,type ,fld ,[l -> e t])  
+       (values `(struct-ref ,type ,fld ,e) type)]
+      [(make-struct ,type ,[l -> e* t*] ...)
+       (values `(make-struct ,type ,@e*) `(Struct ,type))]
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
@@ -971,6 +977,9 @@
     [(src-pos ,t ,[e])                                        (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])        (void)]
     [(tupref ,n ,[e])                                         (void)]
+    [(struct-ref ,nm ,fld ,[e])                               (void)]
+    [(make-struct ,nm ,[e*] ...)                              (void)]
+
     [(set! ,v ,[e])                                           (void)]
 
     ;; All these simple cases just recur on all arguments:

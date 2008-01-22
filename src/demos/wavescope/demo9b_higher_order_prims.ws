@@ -1,6 +1,7 @@
 
 //s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
 s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+//s1 = timer(30.0);
 
 //	       "mode: binary  rate: 44000  repeats: 0 "++
 //	       "skipbytes: 2  window: 50 offset: 2")
@@ -28,7 +29,7 @@ metals  =  List:build(10, fun(x)x);
 metaarr = Array:build(10, fun(x)x);
 
 main = iterate(w in s1) {  
-  arr = toArray(subseg(w, w.start, 20));
+  arr = toArray(subseg(w, w`start, 20));
   ls = Array:toList(arr);
 
   assert_prnt("meta built eq len", metals`List:length, metaarr`Array:length);

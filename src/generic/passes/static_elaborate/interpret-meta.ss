@@ -910,6 +910,8 @@
 
 ;; After meta-program evaluation, what normalization do we want to do to the stream kernels?
 ;; Currently, we'd like to get rid of applications.  This function exhaustively inlines.
+;;
+;; [2008.01.22] Currently, expanding this to inline *simple* constants also.
 (define (do-basic-inlining e)
   (define (Expr e subst)
     (core-generic-traverse
@@ -925,17 +927,17 @@
 		   v))]
 
 	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
-	  (let* (;[binds (map list lhs* ty* rhs*)]
-		 [lambind? (lambda (b) (lambda? (caddr b)))]
-		 [newbinds (filter (compose not lambind?) binds)]
-		 [lambs    (filter lambind? binds)])
-	    ;; This is a hack that depends on unique naming.  That's
-	    ;; how we handle let in the same way as letrec.  The lhs*
-	    ;; simply won't occur in the rhs* for a let..
-	    (if (null? lambs)
-		(fallthru `(,lett ,newbinds ,bod))
-		;; This is an inefficent hack, but we loop through again just to change the subst.
-		(Expr `(,lett ,newbinds ,bod) (append lambs subst))))]
+	  (define (lambind? b)  (lambda? (caddr b)))
+	  (define (constbind? b) (match b [(,_ ,__ ',c) (simple-constant? c)] [,_ #f]))
+	  (define (either? b) (or (lambind? b) (constbind? b)))
+	  (define-values (tosubst remainder) (partition either? binds))
+	  ;; This is a hack that depends on unique naming.  That's
+	  ;; how we handle let in the same way as letrec.  The lhs*
+	  ;; simply won't occur in the rhs* for a let..
+	  (if (null? tosubst)
+	      (fallthru `(,lett ,remainder ,bod))
+	      ;; This is an inefficent hack, but we loop through again just to change the subst.
+	      (Expr `(,lett ,remainder ,bod) (append tosubst subst)))]
 
 	 ;; [2007.08.30] Adding basic eta-reduction also.
 	 ;; FIXME: Make sure this can't break an iterate's special syntactic structure.

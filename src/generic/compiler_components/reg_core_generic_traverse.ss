@@ -251,9 +251,9 @@
 	  [(make-struct ,name  ,[loop -> args] ...)
 	   (guard (symbol? name))
 	   (fuse args (lambda args `(make-struct ,name . ,args)))]
-	  [(struct-ref ,[loop -> expr] ,fldname)
+	  [(struct-ref ,type ,fldname ,[loop -> expr])
 	   (guard (symbol? fldname))
-	   (fuse (list expr) (lambda (expr) `(struct-ref ,expr ,fldname)))]
+	   (fuse (list expr) (lambda (expr) `(struct-ref ,type ,fldname ,expr)))]
 
 	  ;; No looping on types.
 	  ;; Let is treated same as letrec because we're not maintaining environment.
@@ -407,7 +407,7 @@
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
 		      [,other 
-		       (DEBUGASSERT (compose not binding-form?) other)
+		       (ASSERT (not (binding-form? other)) )
 		       (autoloop other)])]
 		   [other (error 'core-generic-traverse/types
 			       "user driver function called fallthrough function (autolooper) with wrong number of args, expected expr & tenv:\n~s"

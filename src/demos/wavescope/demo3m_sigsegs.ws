@@ -5,10 +5,17 @@
 
 include "common.ws";
 
-s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
+s1 = timer(10.0);
+//s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
-main = iterate w in s1 {
+//include "internal_wsc2.ws";
+
+main = iterate _ in s1 {
    state { pos = gint(0) }
+
+   using Sigseg;
+
+   w = toSigseg(Array:make(100, 90), pos, nulltimebase);
 
    //========================================
    // Test nullsegs
@@ -17,7 +24,6 @@ main = iterate w in s1 {
    assert_eq_prnt("nullseg eq1", v,v);
    assert_eq_prnt("nullseg eq2", v, (nullseg :: Sigseg Int16));
    assert_eq_prnt("nullseg eq3", (nullseg :: Sigseg Int16), (nullseg :: Sigseg Int16));
-
 
    //========================================
    // API basics

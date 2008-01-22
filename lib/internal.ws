@@ -9,21 +9,63 @@
 // compiler itself depends on (for example, because other primitives
 // desugar to use them).
 
-Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
+println     :: a -> ();
+assert      :: (String, Bool) -> ();
+assert_eq   :: (String, a,a)  -> ();
 
+Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
+Array:append    :: (Array t, Array t) -> Array t;
+Array:sub       :: (Array t, Int, Int) -> Array t;
 
 // Rewindow:
 
 
+/*===============================================================================*/
+
+fun println(s) {
+  print(s);
+  print("\n");
+};
+
+
+//fun assert(b)      if not(b)    then wserror("Assert failed.");
+//fun asserteq(a,b)  if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
+
+// Named asserts:
+fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
+fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+
+
+/*===============================================================================*/
 
 // Should maybe call "blockcopy", but that's less fun.
 // Like memcpy... might want to make
 // TODO: add some defense!!  
 // [2007.12.10] TODO: unroll this loop manually!
-fun Array:blit(dst, dstpos, src, srcpos, len) {
-  for i = 0 to len - 1 {
-    dst[i+dstpos] := src[srcpos+i];      
+namespace Array {
+  fun blit(dst, dstpos, src, srcpos, len) {
+    for i = 0 to len - 1 {
+      dst[i+dstpos] := src[srcpos+i];      
+    }
   }
+
+  // Append just two arrays.  
+  fun append(aa,bb) {
+    // Don't know if it's better to blit here, or just use Array:build.
+    len1 = length(aa);
+    len2 = length(bb);
+    newarr = makeUNSAFE(len1 + len2);
+    blit(newarr, 0, aa, 0, len1);
+    blit(newarr, len1, bb, 0, len2);
+    newarr
+  }
+  
+  // Extract a sub-array.
+  // This could be more efficient if it were implemented as a primitive.
+  // You could do bounds check once, etc.
+  fun sub(arr, pos, len)
+     build(len, fun(i) arr[pos+i])
+  
 }
 
 namespace List {

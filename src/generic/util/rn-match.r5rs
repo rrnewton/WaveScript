@@ -444,7 +444,7 @@
 		 (project (lambda (VAL)
 			    (rn-convert-pat ((VAL P0) ())
 					 build-list ;; Replacement for exec-body
-					 'IGNORED #t Cata failed () ()))))
+					 'MATCH_SHOULD_IGNORE #t Cata failed () ()))))
 	    ;; Here is the code that loops through the list at runtime.
 	    ;; Projecting out a set of variables from each list element.
 	    (if (or (null? Obj) (pair? Obj))

@@ -416,6 +416,7 @@
 
   ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
   (ws-run-pass p resolve-type-aliases)
+
   (ws-run-pass p ws-label-mutable)
 
 ;  (inspect p)
@@ -642,11 +643,12 @@
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p explicit-toplevel-print))
 
-  (ws-run-pass p optimize-print-and-show)
+  (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
-  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c)  ;'wavescript-simulator
     (ws-run-pass p embed-strings-as-arrays)
+
     (DEBUGMODE 
      (let ([tmp (deep-assq-all 'String p)])
        (unless (null? tmp) 
@@ -766,7 +768,8 @@
   (ASSERT (memq (compiler-invocation-mode)  
     '(wavescript-simulator wavescript-compiler-c wavescript-compiler-xstream wavescript-compiler-caml)))
   
-  (if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
+  (run-that-compiler)
+  ;(if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
 
 ]))
 
@@ -984,73 +987,71 @@
    ;; [2007.11.23] Are we running the new C backend?
    (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
    (define outfile (if new-version? "./query.c" "./query.cpp"))
-   (when new-version? (compiler-invocation-mode 'wavescript-compiler-c))
    
-   ;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
+   (define (run-wscomp)
+     (when new-version? (compiler-invocation-mode 'wavescript-compiler-c))
+     
+     ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
+     
+     ;;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
+     ;;;(pretty-print prog)
 
-   ;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
-   ;;(pretty-print prog)
+     (unless (regiment-quiet)
+       (printf "\nTypecheck complete, program types:\n\n")
+       (if (regiment-verbose) 
+	   (print-var-types typed +inf.0)
+	   (print-var-types typed 1))
+       (flush-output-port))
+     
+     ;; Run the main body of the compiler.
+     (set! prog (run-ws-compiler typed input-params disabled-passes #t))
+     
+     (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
 
-   (unless (regiment-quiet)
-     (printf "\nTypecheck complete, program types:\n\n")
-     (if (regiment-verbose) 
-	 (print-var-types typed +inf.0)
-	 (print-var-types typed 1))
-     (flush-output-port))
-   
-   (set! prog (run-ws-compiler typed input-params disabled-passes #t))
-   
-   (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
+     ;;(inspect (deep-assq-all 'wsequal? prog))
+     ;;(ws-run-pass prog generate-comparison-code) ;; RUNNING AGAIN
+     ;;(ws-run-pass prog ws-lift-let)
+     ;;(inspect (deep-assq-all 'wsequal? prog))
 
-   ;(inspect (deep-assq-all 'wsequal? prog))
-   ;(ws-run-pass prog generate-comparison-code) ;; RUNNING AGAIN
-   ;(ws-run-pass prog ws-lift-let)
-   ;(inspect (deep-assq-all 'wsequal? prog))
+     (ws-run-pass prog convert-sums-to-tuples)
+     #;
+     ;; Retypecheck to bring back some types that were lost:
+     (parameterize ([inferencer-enable-LUB #t]
+		    [inferencer-let-bound-poly #f])
+       (ws-run-pass p retypecheck))
+     
+     (when (regiment-verbose)
+       (pretty-print prog)
+       ;;   (printf "================================================================================\n")
+       (printf "\nNow emitting C code:\n"))
 
-   (ws-run-pass prog convert-sums-to-tuples)
+     (IFCHEZ 
+      
+      (if new-version?
+	  (begin 
+	    (ws-run-pass prog nominalize-types)
+	    (ws-run-pass prog gather-heap-types)
 
-;   (inspect `(CONVERTED ,prog))
+	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
+	    
+	    (ws-run-pass prog explicit-stream-wiring)
+	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
 
-#;
-   (when (regiment-verbose)
-    (printf "\n Type checking one last time."))
-#;
-   ;; Retypecheck to bring back some types that were lost:
-   (parameterize ([inferencer-enable-LUB #t]
-		  [inferencer-let-bound-poly #f])
-     (ws-run-pass p retypecheck))
-   
-   (ws-run-pass prog nominalize-types)
+	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
+	    (time (ws-run-pass prog insert-refcounts))
+	    ;(print-graph #f)  (inspect prog)
 
-   (when (regiment-verbose)
-    (pretty-print prog)
-    ;;   (printf "================================================================================\n")
-    (printf "\nNow emitting C code:\n"))
+	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
+	    (time (ws-run-pass prog emit-c2))
 
-
-   (IFCHEZ 
-    
-   (if new-version?
+	    
+	    (string->file (text->string prog) outfile)
+	    (unless (regiment-quiet)
+	      (printf "\nGenerated C output to ~s.\n" outfile))
+	    )
        (begin 
-	 (ws-run-pass prog gather-heap-types)
-	 (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
-	 
-	 (ws-run-pass prog explicit-stream-wiring)
-	 (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
+	 (ws-run-pass prog nominalize-types)
 
-	 (printf "  PROGSIZE: ~s\n" (count-nodes prog))
-	 ;(pp (let-spine prog 4))
-	 (ws-run-pass prog insert-refcounts)
-	 ;(pp (deep-assq-all 'incr-heap-refcount prog))
-	 ;(pp (let-spine prog 4))
-	 (printf "  PROGSIZE: ~s\n" (count-nodes prog))
-	 
-	 (ws-run-pass prog emit-c2)
-	 (string->file (text->string prog) outfile)
-	 (unless (regiment-quiet)
-	   (printf "\nGenerated C output to ~s.\n" outfile))
-	 )
-       (begin 
 	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   
 	 (string->file 
 	  (text->string 
@@ -1060,7 +1061,9 @@
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 ))
    (error 'wsc2 "not ready for PLT yet")
-   )
+   ))
+   
+   (if (regiment-quiet) (run-wscomp) (time (run-wscomp)))
    )
  ) ; End wscomp
 

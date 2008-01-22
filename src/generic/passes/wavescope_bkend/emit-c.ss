@@ -901,7 +901,7 @@
 	[(make-struct ,name ,[Simple -> arg*] ...)
 	 (wrap `(,(sym2str name)"(",(insert-between ", " arg*)")"))]
 	;; Referencing tuples.
-	[(struct-ref ,[Simple -> x] ,fld)
+	[(struct-ref ,type ,fld ,[Simple -> x])
 	 (wrap `("(",x "." ,(sym2str fld)")"))]
 
 	; ============================================================

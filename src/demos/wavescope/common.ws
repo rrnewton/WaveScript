@@ -1,8 +1,8 @@
 
 // [2007.11.01] Going ahead and factoring these out because of their utility in all demos.
 
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
-fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
+//fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+//fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
 
 assertchatter = GETENV("ASSERTSILENT") == ""
 

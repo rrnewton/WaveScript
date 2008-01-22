@@ -10,7 +10,8 @@ fun assert(str, bool) {
   }
 }
 
-main = iterate (_ in (readFile("./countup.raw", "mode: binary  window: 1000", timer(10.0)) :: Stream (Sigseg Int16))) {
+//main = iterate (_ in (readFile("./countup.raw", "mode: binary  window: 1000", timer(10.0)) :: Stream (Sigseg Int16))) {
+main = iterate (_ in timer(10.0)) {
   state { 
     run = true;
     arr1 = Array:null;

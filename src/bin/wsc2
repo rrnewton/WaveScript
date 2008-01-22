@@ -2,7 +2,11 @@
 
 export REGFLAG=wsc2
 
-wsc $* -no-gcc
+rm -f query.c
+if wsc $* -no-gcc;
+then echo ERROR, wsc2 failed with code $?.; exit 1;
+else echo
+fi
 
 MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 if [ "$MATCH" != "" ];
@@ -26,7 +30,7 @@ CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
 echo "$CMD"
 if $CMD;
 then echo Compiled .c output successfully.
-else echo ERROR, gcc failed.
+else echo ERROR, gcc failed.; exit 1
 fi
 
 ## Run again to profile branches:

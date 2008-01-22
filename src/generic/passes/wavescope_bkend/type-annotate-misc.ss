@@ -87,12 +87,12 @@
 	 (fallthru 
 	  (mvlet ([(vars types rhs* other k) (binding-form-visit-knowncode frm)])	    
 	    (k vars types 
-	      (map (lambda (type rhs) ;rhs may be #f for 'unavailable'
-		    (if (and (pair? rhs) (memq (car rhs) annotate-outside-prims))		       
-			`(assert-type ,type ,rhs)
-			rhs))
-	       types rhs*)
-	      other))
+	       (map (lambda (type rhs) ;rhs may be #f for 'unavailable'
+		      (if (and (pair? rhs) (memq (car rhs) annotate-outside-prims))		       
+			  `(assert-type ,type ,rhs)
+			  rhs))
+		 types rhs*)
+	       other))
 	  tenv)]
 	
 	[(,annfirst (assert-type ,ty ,[x]) ,[y*] ...) (guard (memq annfirst annotate-first-arg))

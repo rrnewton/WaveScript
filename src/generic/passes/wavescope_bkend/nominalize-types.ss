@@ -194,22 +194,28 @@
 
   (define-pass convert-tuples 
    [Expr/Types (lambda (x tenv fallthru)
-     (match x 
+     (let loop ((x x))
+      (match x 
        [(tuple) '(tuple)]
-       [(tuple ,[arg*] ...)
+       [(tuple ,arg* ...)
 	;; INEFFICIENT: (as are all uses of recover-type...)
 	;; Since the program is flattened we can grab this at the let-binding...
 	(match (recover-type `(tuple . ,arg*) tenv)
 	  [#(,argtypes ...)
-	   ;(printf "ERK argtypes ~s and tupdefs ~s\n" argtypes tupdefs)
-	   `(make-struct ,(last (ASSERT (assoc argtypes tupdefs))) ,@arg*)])]
+	   `(make-struct ,(last (ASSERT (assoc argtypes tupdefs))) 
+			 ,@(map loop arg*))])]
        ;; tuprefs are simple:
-       [(tupref ,i ,len ,[x])
-	`(struct-ref ,x ,(list-ref standard-struct-field-names i))]
+       [(tupref ,i ,len ,x)
+	(match (recover-type x tenv)
+	  [#(,argtypes ...)
+	   `(struct-ref ;,(last (ASSERT (assoc argtypes tupdefs)))
+	                ,(list-ref argtypes i)
+		        ,(list-ref standard-struct-field-names i)
+			,(loop x))])]
 
        [(cast-variant-to-parent ,tc ,t ,[e]) `(cast-variant-to-parent ,tc ,t ,e)]
        [,oth (fallthru oth tenv)]
-       ))])
+       )))])
 
   ;; ============================================================
   ;;; Third pass -- go back through and insert struct names where
@@ -223,6 +229,7 @@
 	      ;; We handle ascription (assert-type) specially.  It is not
 	      ;; caught by the "Binding" form.
 	      [(assert-type ,t ,[e])    `(assert-type   ,(convert-type t tupdefs) ,e)]
+	      [(struct-ref ,t ,fld ,[e]) `(struct-ref ,(convert-type t tupdefs) ,fld ,e)]
 	      [(cast-variant-to-parent ,tc ,t ,[e])  `(cast-variant-to-parent ,tc ,(convert-type t tupdefs) ,e)]
 	      [,oth (fallthr oth)]))]
     [Bindings 

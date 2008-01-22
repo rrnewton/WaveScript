@@ -129,6 +129,7 @@
 (all-except "generic/passes/wavescope_bkend/explicit-stream-wiring.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/emit-c.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/emit-c2.ss")
+(all-except "generic/passes/wavescope_bkend/insert-refcounts.ss")
 (all-except "generic/passes/ocaml_bkend/emit-caml.ss" these-tests test-this)
 (all-except "generic/passes/mlton_bkend/emit-mlton.ss" these-tests test-this)
 

@@ -15,10 +15,6 @@ const_E    :: Float;
 
 ///  Library POD (plain old data) functions: 
 
-println     :: String -> ();
-assert      :: (String, Bool) -> ();
-assert_eq   :: (String, a,a)  -> ();
-
 fst         :: (a * b) -> a;
 snd         :: (a * b) -> b;
 
@@ -66,9 +62,7 @@ Array:fold1     :: ((t, t) -> t, Array t) -> t;
 //Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
-Array:append    :: (Array t, Array t) -> Array t;
 Array:concat    :: (List (Array t)) -> Array t;
-Array:sub       :: (Array t, Int, Int) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 
@@ -226,20 +220,8 @@ const_E    = 2.718281828459045;
 //======================================================================
 // Library POD (plain old data) functions:
 
-fun println(s) {
-  print(s);
-  print("\n");
-};
-
 fun fst((a,_)) a
 fun snd((_,b)) b
-
-//fun assert(b)      if not(b)    then wserror("Assert failed.");
-//fun asserteq(a,b)  if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
-
-// Named asserts:
-fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
 
 // Some additional math functions.
 
@@ -566,24 +548,7 @@ namespace Array {
     }, 0, loa);
     newarr // final result.
   }
-
-  // Append just two arrays.  
-  fun append(aa,bb) {
-    // Don't know if it's better to blit here, or just use Array:build.
-    len1 = length(aa);
-    len2 = length(bb);
-    newarr = makeUNSAFE(len1 + len2);
-    blit(newarr, 0, aa, 0, len1);
-    blit(newarr, len1, bb, 0, len2);
-    newarr
-  }
   
-  // Extract a sub-array.
-  // This could be more efficient if it were implemented as a primitive.
-  // You could do bounds check once, etc.
-  fun sub(arr, pos, len)
-     build(len, fun(i) arr[pos+i])
-
   fun foreach(f,arr) {
     for i = 0 to arr.length-1 {
       f(arr[i])

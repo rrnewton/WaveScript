@@ -10,7 +10,7 @@ exit 0;
   (error 'svn-up-good "wrong number of command line arguments"))
 
 (load "depends/xml-parser.ss")
-(load "src/chez/match.ss")
+(load "src/chez/match.ss")(import iu-match)
 
 ;; This script updates to the latest svn rev that DOES NOT include "brokenrev" in its message.
 
@@ -30,7 +30,7 @@ exit 0;
 
 (define log (ssax:xml->sxml (open-input-file tmpfile) '()))
 
-(delete-file tmpfile)
+;(delete-file tmpfile)
 
 (define substring?
   (lambda (s1 s2)
@@ -47,7 +47,9 @@ exit 0;
   (match log
   [(*top* (*pi* ,_ ...) (log . ,[entries])) entries]
   
-  [((logentry (@ (revision ,rev)) ,_ ,__ (msg . ,msg)) . ,rest)
+  [((logentry (@ (revision ,rev)) ,other* ...) . ,rest)
+   (define msg (cdr (ASSERT (assq 'msg other*))))
+   (printf "  Considering: ~a...\n" rev)
    (if (and (not (null? msg)) (substring? "broken" (car msg)))
        (begin (printf "Rev ~a: includes 'brokenrev'.\n" rev)
 	      (loop rest))
