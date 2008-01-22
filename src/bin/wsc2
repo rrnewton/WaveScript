@@ -28,10 +28,12 @@ OPTFLAGS="-g -O0"
 
 CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
 echo "$CMD"
-if $CMD;
+if time $CMD;
 then echo Compiled .c output successfully.
 else echo ERROR, gcc failed.; exit 1
 fi
+
+wc query.c
 
 ## Run again to profile branches:
 # ./query.exe

@@ -211,19 +211,19 @@
       ;; (This actually makes for worse-code for Scheme... could do this conditionally:)
       ;; TODO FIXME: Remove the relevant code from the different backends.      
       [#(,ty0 ,ty* ...)
-       (define len (fx+ 1 (length ty0)))
-       (define tmp1 '(unique-name "tmptupa"))
-       (define tmp2 '(unique-name "tmptupb"))
-       `(let ([,tmp1 ,origtype ,e1])
-	  (let ([,tmp2 ,origtype ,e2])	    
-	    ,(let loop ([types (cons ty0 ty*)]
+       (define len (fx+ 1 (length ty*)))
+       (maybe-bind-tmp e1 origtype
+	(lambda (tmp1)
+	  (maybe-bind-tmp e2 origtype
+	   (lambda (tmp2)
+	     (let loop ([types (cons ty0 ty*)]
 			[ind 0])
-	      (define head (build-comparison (car types) `(tupref ,ind ,len ,tmp1) `(tupref ,ind ,len ,tmp2)))
-	      (if (null? (cdr types))
-		  head
-		  `(if ,head
-		       (loop (cdr types) (fx+ 1 ind))
-		       '#f)))))]      
+	       (define head (build-comparison (car types) `(tupref ,ind ,len ,tmp1) `(tupref ,ind ,len ,tmp2)))
+	       (if (null? (cdr types))
+		   head
+		   `(if ,head
+			,(loop (cdr types) (fx+ 1 ind))
+			'#f)))))))]
 
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,origtype ,e1) ,e2)]))
@@ -742,8 +742,7 @@
 	    (match xp
 	      ;; make a constant vector.
 	      [',str (guard (string? str))
-		     (printf "  Converting to array: ~s \n" str)
-		     
+		     ;(printf "  Converting to array: ~s \n" str)
 		     `',(list->vector (append ;(make-list 8 #\nul)
 				       (string->list str)
 				       (list (integer->char 0))))]

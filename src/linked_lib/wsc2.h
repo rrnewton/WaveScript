@@ -15,7 +15,8 @@
 #define SETCAR(ptr,hd) ptr[0]=hd
 
 // Handle Array memory layout:
-#define ARRLEN(ptr)        ((int*)ptr)[-2]
+#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
+// This should not be used on a null pointer:
 #define SETARRLEN(ptr,len) ((int*)ptr)[-2]=len
 
 // Handle RCs on Cons Cells and Arrays:

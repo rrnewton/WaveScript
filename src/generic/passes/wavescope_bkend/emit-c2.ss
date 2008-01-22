@@ -145,7 +145,7 @@
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
-(trace-define (build-free-fun-table! heap-types)
+(define (build-free-fun-table! heap-types)
   (define fun-def-acc '()) ;; mutated below  
   (define (add-to-freefuns! ty fun)
     ;; Inefficient: should use hash table:
@@ -187,15 +187,17 @@
 	  (define default-fun_name `("void free_",name"(",(Type ty)" ptr)"))
 	  (define default-specialized_fun
 	    (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-	     (let loop ([ty ty])
+	  (let loop ([ty ty])
 	       (match ty ;; <- No match recursion!
 		 [(Struct ,tuptyp)
 		  (let ([flds (cdr (ASSERT (assq tuptyp global-struct-defs)))])
 		    (make-lines
+		     (list
+		     "/* Freeing struct: "(sym2str tuptyp)"*/\n"
 		     (block default-fun_name
 			    (map (match-lambda ((,fldname ,ty))
 				   (lines-text (gen-decr-code ty (list "ptr."(sym2str fldname)) default-free)))
-			      flds))))]
+			      flds)))))]
 		 [(List ,elt)
 		  ;; We always build an explicit function for freeing list types:
 		  ;; Here's a hack to enable us to recursively free the same type.
@@ -239,6 +241,13 @@
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines `("INCR_RC(",ptr"); /* type: ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
+    ;; Could make this a separate function:
+    [(Struct ,name) 
+     (apply append-lines
+	    (make-lines (format "/* Incr tuple refcount, Struct ~a */\n" name))
+	    (map (match-lambda ((,fldname ,ty))
+		   (gen-incr-code ty (list ptr "." (sym2str fldname))))
+	      (cdr (assq name global-struct-defs))))]
     ;; Other types are not heap allocated:
     [,ty (guard (not (heap-allocated? ty)))(make-lines "")]
     ))
@@ -252,6 +261,13 @@
       (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
 	     (lines-text (freefun ty ptr))))]
     [(Ref ,[ty]) ty]
+    ;; Could make this a separate function:
+    [(Struct ,name) 
+     (apply append-lines
+	    (make-lines (format "/* Decr tuple refcount, Struct ~a */\n" name))
+	    (map (match-lambda ((,fldname ,ty))
+		   (gen-decr-code ty (list ptr "." (sym2str fldname)) freefun))
+	      (cdr (assq name global-struct-defs))))]
     [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
@@ -307,9 +323,13 @@
 (define (type->name ty)
   (match ty
     ;[#(,[flds] ...) (apply string-append "TupleOf_" flds)]
-    [(Struct ,tuptyp) (apply string-append "TupleOf_" 
-			     (map type->name (map cadr 
-			       (cdr (ASSERT (assq tuptyp global-struct-defs))))))]
+    [(Struct ,tuptyp) 
+     (string-append
+      (apply string-append "TupleOf_" 
+			     (insert-between "_"
+			      (map type->name (map cadr 
+			       (cdr (ASSERT (assq tuptyp global-struct-defs)))))))
+      "__")]
     [,scalt (guard (scalar-type? scalt)) (sym2str scalt)]
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
     [(Array ,[ty]) (string-append "Array_" ty)]
@@ -478,7 +498,7 @@
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
     ;; PolyConstants:
-    [(assert-type ,[Type -> ty] Array:null) `("(",ty")0")] ;; A null pointer.       
+    [(assert-type ,[Type -> ty] Array:null) `("(",ty")0")] ;; A null pointer. This choice is debatable.
     [(assert-type ,[Type -> ty] '())        `("(",ty")0")] ;; A null pointer.       
     ['() (error 'EmitC2:Simple "null list without type annotation")]
 
@@ -769,7 +789,10 @@
 	    [Array:null #t]
 	    [(assert-type ,_ ,[x]) x]
 	    [,else #f])]
-	 [,ty (error 'wszero? "Not yet handling zeros for this type: ~s" ty)]))
+
+	 [(Struct ,_) #f]
+	 
+	 [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)]))
      (define (make-array len init ty)
        (let ([len (Simple len)])
 	 (match ty
@@ -874,10 +897,10 @@
 	(guard (assq infix_prim infix-arith-prims))
 	(define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
 	(define result
-	  (match infix_prim
+	  (case infix_prim
 	    [(=) "=="]
 	    [(< > <= >=) (sym2str infix_prim)]
-	    [,else 
+	    [else 
 	     (match (string->list (sym2str infix_prim))	  
 	       [(#\_ ,op ,suffix ...) (list->string (list op))]
 	       [(,op ,suffix ...)     (list->string (list op))])]))

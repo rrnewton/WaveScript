@@ -105,6 +105,7 @@ main = iterate _ in s1 {
    //   inspect$ chunks;
    for i = 0 to 8 {
      assert_eq_prnt("chunks width", chunks[i]`width, 11);
+     //println("chunks[i].start "++chunks[i]`start++" w.start "++w`start++ " GTE "++chunks[i]`start >= w`start);
      assert_prnt("chunks start", chunks[i]`start >= w`start);     
      ch = chunks[i];
      ch2 = chunks[i+1];

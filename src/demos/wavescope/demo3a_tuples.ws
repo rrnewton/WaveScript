@@ -13,6 +13,9 @@ s2 = iterate( w in s1 ) {
 
 s3 = iterate((x,y,z) in s2) {
 
+  tup = ([1], 2, Array:make(5,3));
+  println("Tuple of pointer type: "++tup);
+
   print(y); print(" "); print(x); print(" "++show(z)++"\n");  
   emit ();
 }

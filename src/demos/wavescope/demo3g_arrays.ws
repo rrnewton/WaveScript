@@ -30,6 +30,8 @@
 
 //fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
+include "common.ws";
+
 // Audio channel 1 with no overlap.
 //s1 = (readFile("./countup.raw", "mode: binary  window: 15000", timer(1.0)) :: Stream (Sigseg Int16));
 s1 = timer(10.0)
@@ -56,6 +58,8 @@ s3 = iterate( arr in s2) {
   print(" Assigned: "++ show(arr[0]) ++" "++ show(arr[1]) ++"\n");
   assert_eq("",arr[0], 3.0);
   assert_eq("",arr[1], 4.0);
+
+  assert_eq_prnt("zerolen", Array:length(Array:null), 0);
 
   print(" Stressing array allocation and GC.\n");
   results = Array:make(1,0);
