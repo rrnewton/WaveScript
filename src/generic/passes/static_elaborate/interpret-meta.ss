@@ -928,7 +928,8 @@
 
 	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
 	  (define (lambind? b)  (lambda? (caddr b)))
-	  (define (constbind? b) (match b [(,_ ,__ ',c) (simple-constant? c)] [,_ #f]))
+	  (define (constbind? b) (match (peel-annotations (caddr b))
+				   [',c (simple-constant? c)] [,_ #f]))
 	  (define (either? b) (or (lambind? b) (constbind? b)))
 	  (define-values (tosubst remainder) (partition either? binds))
 	  ;; This is a hack that depends on unique naming.  That's

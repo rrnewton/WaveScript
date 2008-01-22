@@ -1654,7 +1654,7 @@
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
 	;; FIXME  FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
-	;; THIS HAS THE WRONG COMPLEXITY!!  It does a seg-get every time.
+	;; THIS HAS THE WRONG COMPLEXITY!!  It does a seg_get every time.
 #;
 	[(toArray (assert-type (Sigseg ,t) ,sigseg))
 	 (let ([tmp (Var (unique-name 'tmp))]
@@ -1667,7 +1667,7 @@
 	     ,type" ",name" = makeArrayUnsafe(",len", (",tt")(",(make-zero-for-type t)"));\n"
 	     ;,type" ",name" = makeArrayUnsafe(",len");\n"
 	     "for(int i=0; i<",len"; i++) {\n"
-	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
+	     "  ",(Prim `(seg_get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
 	     "  ((",tt" *)",name"->data)[i] = ",tmp2";\n"
 	     "}\n"
 	     ))]
@@ -1699,12 +1699,12 @@
 
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
+	[(seg_get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
 	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
 	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
-	[(seg-get ,foo ...)
-	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
-		`(seg-get ,@foo))]
+	[(seg_get ,foo ...)
+	 (error 'emit-c:Value "seg_get without or with badtype annotation: ~s" 
+		`(seg_get ,@foo))]
 	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
 	
 	;; Need to use type environment to find out what alpha is.
@@ -2108,7 +2108,7 @@ int main(int argc, char ** argv)
 		   
 		   realtime
 
-		   wsequal? print show seg-get toArray  __show_ARRAY __wserror_ARRAY
+		   wsequal? print show seg_get toArray  __show_ARRAY __wserror_ARRAY
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll

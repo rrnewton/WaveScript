@@ -8,7 +8,10 @@ include "common.ws";
 s1 = timer(10.0);
 //s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
-//include "internal_wsc2.ws";
+// Testing WS-defined sigsegs:
+include "sigseg_copyalways.ws";
+using Sigseg;
+//fun make_nullseg() nullseg
 
 main = iterate _ in s1 {
    state { pos = gint(0) }
@@ -20,10 +23,10 @@ main = iterate _ in s1 {
    //========================================
    // Test nullsegs
 
-   v :: Sigseg Int16 = nullseg;
+   v :: Sigseg Int16 = make_nullseg();
    assert_eq_prnt("nullseg eq1", v,v);
-   assert_eq_prnt("nullseg eq2", v, (nullseg :: Sigseg Int16));
-   assert_eq_prnt("nullseg eq3", (nullseg :: Sigseg Int16), (nullseg :: Sigseg Int16));
+   assert_eq_prnt("nullseg eq2", v, (make_nullseg() :: Sigseg Int16));
+   assert_eq_prnt("nullseg eq3", (make_nullseg() :: Sigseg Int16), (make_nullseg() :: Sigseg Int16));
 
    //========================================
    // API basics
@@ -92,7 +95,7 @@ main = iterate _ in s1 {
    //========================================
    // Split into several small, overlapping chunks.
 
-   chunks = Array:make(10,nullseg);
+   chunks = Array:make(10,make_nullseg());
 
    for i = 0 to 8 { 
      // These chunks ovelap by one

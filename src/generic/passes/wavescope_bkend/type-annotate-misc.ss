@@ -36,7 +36,7 @@
 ;; Adds types to various primitives for code generation.
 (define-pass type-annotate-misc
     
-    ;(define annotated-prims '(print show cons hashtable seg-get))
+    ;(define annotated-prims '(print show cons hashtable seg_get))
     (define annotate-outside-prims 
       '(hashtable prim_window List:append List:reverse cons
 		  Array:make Array:makeUNSAFE
@@ -49,14 +49,14 @@
 		  ))
 
     (define annotate-first-arg 
-      '(List:append List:length List:ref seg-get toArray
+      '(List:append List:length List:ref seg_get toArray
 		    print show __show_ARRAY 
 		    Array:ref Array:set Array:length
 
 		    < <= > >= max min
 		    
 		    = wsequal?
-		    joinsegs subseg width toSigseg toArray timebase start end seg-get
+		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    ))
 
     (define (maybewrap x tenv)

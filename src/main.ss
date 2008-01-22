@@ -415,8 +415,8 @@
   (ws-run-pass p resolve-varrefs)
 
   ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
-  (ws-run-pass p resolve-type-aliases)
 
+  (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
 ;  (inspect p)

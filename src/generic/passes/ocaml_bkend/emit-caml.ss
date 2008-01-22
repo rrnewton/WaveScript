@@ -556,7 +556,7 @@
 
 ;; It is error prone to keep writing this:
 (define (sigseg-prim? p)
-  (memq p '(joinsegs subseg width toSigseg toArray timebase start end seg-get)))
+  (memq p '(joinsegs subseg width toSigseg toArray timebase start end seg_get)))
 
 ;; Converts an operator based on the array element type.
 (define (DispatchOnArrayType op elt)
@@ -740,7 +740,7 @@
 
       [start   ss_start]
       [end     ss_end]
-      [seg-get ss_get]
+      [seg_get ss_get]
       ))
   (cond 
    [(memq sym sametable) (Var sym)]
@@ -866,13 +866,13 @@
 		   ;; This are handled specially by DispatchOnArrayType.
 		   ;; This is due to the dual-representation for arrays.
 		   Array:toList Array:make Array:makeUNSAFE Array:get Array:ref Array:length
-		   joinsegs subseg width toSigseg toArray timebase start end seg-get
+		   joinsegs subseg width toSigseg toArray timebase start end seg_get
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
 		   		   
-		   wsequal? print show seg-get toArray __show_ARRAY __wserror_ARRAY
+		   wsequal? print show seg_get toArray __show_ARRAY __wserror_ARRAY
 
 		   ;; [2007.07.24] Because the caml backend isn't really supported, we're not doing Int64s:
 		   int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex

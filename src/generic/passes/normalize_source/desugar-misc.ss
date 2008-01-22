@@ -85,7 +85,7 @@
 		 [tmp (unique-name 'tmp)])
 	     `(letrec ([,tmp ,(recover-type s tenv) ,s])
 		(for (,i 0 (- (width ,tmp) 1))
-		    (app ,f (seg-get ,tmp ,i))
+		    (app ,f (seg_get ,tmp ,i))
 		  )))]
 
 	  ;; DESUGAR LET'S INTO LEFT LEFT LAMBDA:

@@ -1658,7 +1658,7 @@
 		  (unless (null? (cadr entry))
                     (error 'dealias-type "this alias should have had arguments: ~s" s))
 		  ;; Recursively dealias:
-		  (loop (caddr entry)))
+		  (loop (caddr entry))) ;; Instantiate?
 		s))]
       [',n                                     `(quote ,n)]
 
@@ -1696,8 +1696,9 @@
 		     ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
 		     [(Magic #(,cells ...) ,rhs)
 		      ;; Now use the unifier to set all those mutable cellS:
+		      (define newt* (cdr (instantiate-type (cons s t*)))) ;; [2008.01.22] Fixing by adding this.
 		      (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
-			cells t*)
+			cells newt*)
 		      (export-type rhs)])])
 	      ;; Finally, recursively dealias in case there are more aliases left.
 	      (loop result)

@@ -560,9 +560,9 @@
 ;	 [(foreign exp in exp)  `(foreign ,$2 ,$4)]
 
          
-;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]
-         [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,(wrap $1-start-pos $1-end-pos $1) ,$4)]
-;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
+;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg_get ,$4 ,$1)]
+         [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(app seg_get ,(wrap $1-start-pos $1-end-pos $1) ,$4)]
+;         [(VAR BAR exp BAR)  `(seg_get ,$1 ,$3)]
 
 	 ;; Alternate syntax for "dot syntax".  Might switch to this
 	 ;; to free up period for future record syntax.

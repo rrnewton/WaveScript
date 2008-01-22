@@ -53,9 +53,9 @@
               (ws:subseg (ws:make-sigseg 10 19 (list->vector (iota 10)) ws:nulltimebase) 11 5))))
          ("sigseg" 11 15 #(1 2 3 4 5) ,ws:nulltimebase)]
         
-        ["seg-get"
+        ["seg_get"
          (,(lambda ()	
-             (ws:seg-get (ws:make-sigseg 10 19 (list->vector (iota 10)) ws:nulltimebase) 2)))
+             (ws:seg_get (ws:make-sigseg 10 19 (list->vector (iota 10)) ws:nulltimebase) 2)))
          2]
         
         ["width/start/end"

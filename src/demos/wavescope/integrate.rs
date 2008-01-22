@@ -8,7 +8,7 @@
 			 (tuple sum (+ 1 sum)))
 		       0 s1))
 
-(define s3 (lambda (x) (seg-get x 3)))
+(define s3 (lambda (x) (seg_get x 3)))
 
 ;(sintegrate (lambda ))
 

@@ -93,7 +93,7 @@
 		 List:assoc List:assoc_update
 		 List:build List:toArray List:zip
 
-		 joinsegs subseg seg-get width start end timebase Secret:newTimebase
+		 joinsegs subseg seg_get width start end timebase Secret:newTimebase
 		 toArray toSigseg 
 
 		 assert-type
@@ -678,8 +678,8 @@
       (if (<= winsize 0)
           (if bench?
               (iterate-bench annot output-type box-name edge-counts-table sum-type-declarations
-                             (lambda (x vq) (emit vq (seg-get x 0)) vq) source)
-              (iterate annot (lambda (x vq) (emit vq (seg-get x 0)) vq) source))
+                             (lambda (x vq) (emit vq (seg_get x 0)) vq) source)
+              (iterate annot (lambda (x vq) (emit vq (seg_get x 0)) vq) source))
           source))
 
     (define thestream
@@ -1604,11 +1604,11 @@
 
 
      ;; [2007.01.26] Changing this back to be zero-based.
-     (define (seg-get w ind) 
+     (define (seg_get w ind) 
        (DEBUGASSERT valid-sigseg? w)
-       (if (nullseg? w) (error 'seg-get "cannot get element from nullseg!"))
+       (if (nullseg? w) (error 'seg_get "cannot get element from nullseg!"))
        (DEBUGMODE (if (or (< ind 0) (>= ind (width w)))
-		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
+		      (error 'seg_get "index ~a is out of bounds for sigseg:\n~s" ind w)))
        (vector-ref (sigseg-vec w) ind))
      (define (width w) 
        (DEBUGASSERT valid-sigseg? w)

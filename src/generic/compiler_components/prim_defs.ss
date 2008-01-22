@@ -749,7 +749,7 @@
     (subseg          ((Sigseg 'a) Int64 Int) (Sigseg 'a))
 
     ;; This is now zero indexed:
-    (seg-get      ((Sigseg 'a) Int) 'a)
+    (seg_get      ((Sigseg 'a) Int) 'a)
     (width        ((Sigseg 'a)) Int)
     
     ;; Returns absolute sample indexes.
