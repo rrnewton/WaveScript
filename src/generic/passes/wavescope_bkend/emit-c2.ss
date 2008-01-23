@@ -22,12 +22,14 @@
 	    (all-except "nominalize-types.ss" test-this these-tests)
 	    "convert-sums-to-tuples.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-c2 
-	   gather-heap-types)
+  (provide emit-c2)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
   (cond-expand [chez (import rn-match)] [else (void)])
+
+;; Mutated below:
+(define global-struct-defs '())
 
 ;; These are just for sanity checking.  Disjoint types keep mix-ups from happening.
 ;; These should just be wrappers on the outside.  You should never find them nested.
@@ -43,9 +45,6 @@
 ;; types to a scheme function that generates free-code (when given
 ;; text representing the pointer to free).
 (define free-fun-table '())
-
-;; This is mutated below:
-(define global-struct-defs '())
 
 (define-syntax debug-return-contract
   (syntax-rules ()
@@ -82,59 +81,6 @@
 
 ;================================================================================
 
-;; The default wavescript scalar-type? predicate returns #t only for
-;; numbers and characters.  It returns #f for tuples. For this backend
-;; we have a somewhat tricker notion predicate heap-allocated?.
-;; Currently, it reflects the decision that tuples are value types,
-;; but they may contain pointers...
-(define heap-allocated? 
-  (case-lambda 
-    [(ty) (heap-allocated? ty global-struct-defs)]
-    [(ty struct-defs)
-     (match ty
-       [,scl (guard (scalar-type? scl)) #f]
-       ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
-       [#() #f]
-       ;[#(,[flds] ...) (ormap id flds)]
-       [(Struct ,tuptyp) 
-	(let ([entry (assq tuptyp struct-defs)])
-	  (unless entry
-	    (error 'heap-allocated? "no struct-def entry for type: ~s" tuptyp))
-	  (ormap (lambda (x) (heap-allocated? x struct-defs)) 
-		 (map cadr (cdr entry))))]
-       [(Array ,_) #t]
-       [(List ,_)  #t]
-       [(Ref ,_)   #t] ;; ?? 
-       [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
-       [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
-       )]))
-
-(define-pass gather-heap-types
-    ;; This is a mutated accumulator:
-    (define acc '())
-    (define struct-defs '())
-    (define (excluded? ty)
-      (or (not (heap-allocated? ty struct-defs))
-	  ;; HACKISH: 
-	  (deep-assq 'Stream ty)
-	  (deep-assq 'VQueue ty)))
-    [Bindings 
-     (lambda (vars types exprs reconstr exprfun)
-       (for-each (lambda (ty)
-		   (unless (or (excluded? ty) (member ty acc))
-		     (set! acc (cons ty acc))))
-	 types)
-       (for-each exprfun exprs))]
-    [Program 
-     (lambda (pr Expr!)
-      (fluid-let ([acc ()])
-	(match pr
-	  [(,lang '(program ,bod . ,meta*))
-	   (fluid-let ([struct-defs (cdr (ASSERT (assq 'struct-defs meta*)))])
-	     (Expr! bod)
-	     `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@meta*))
-	     )])))])
-
 
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
@@ -169,12 +115,12 @@
 	   (match ty ;; <- No match recursion!
 	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
 	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-	     [,scl (guard (not (heap-allocated? scl))) #f]
+	     [,scl (guard (not (heap-allocated? scl global-struct-defs))) #f]
 	     [(Struct ,tuptyp) (add-to-freefuns! ty default-specialized_fun)]
 	     [(Ref ,elt) (loop elt)]
 	     [(List ,elt) (add-to-freefuns! ty default-specialized_fun)]
 	     [(Array ,elt)
-	      (if (not (heap-allocated? elt))
+	      (if (not (heap-allocated? elt global-struct-defs))
 		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))))
 		  (add-to-freefuns! ty default-specialized_fun))])))
     heap-types)
@@ -209,12 +155,12 @@
 				   ,(Type `(List ,elt))" ptr2 = CDR(ptr);\n"
 				   ,(lines-text (gen-decr-code `(List ,elt) "ptr2" default-free))
 				   ;; If heap allocated, free the CAR:
-				   ,(if (heap-allocated? elt)
+				   ,(if (heap-allocated? elt global-struct-defs)
 					(lines-text (gen-decr-code elt `("(*ptr)") default-free))
 					"")
 				   "free((int*)ptr - 2);\n"))))]
 		 [(Array ,elt)
-		  (if (not (heap-allocated? elt))
+		  (if (not (heap-allocated? elt global-struct-defs))
 		      (make-lines "")
 		      (let ([ind (Var (unique-name "i"))])
 			(make-lines 
@@ -249,7 +195,7 @@
 		   (gen-incr-code ty (list ptr "." (sym2str fldname))))
 	      (cdr (assq name global-struct-defs))))]
     ;; Other types are not heap allocated:
-    [,ty (guard (not (heap-allocated? ty)))(make-lines "")]
+    [,ty (guard (not (heap-allocated? ty global-struct-defs)))(make-lines "")]
     ))
 
 ;; "ptr" should be text representing a C lvalue
@@ -268,7 +214,7 @@
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-decr-code ty (list ptr "." (sym2str fldname)) freefun))
 	      (cdr (assq name global-struct-defs))))]
-    [,ty (guard (not (heap-allocated? ty))) (make-lines "")]))
+    [,ty (guard (not (heap-allocated? ty global-struct-defs))) (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
 (define default-free

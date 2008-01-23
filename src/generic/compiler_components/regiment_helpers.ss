@@ -164,11 +164,26 @@
     (cond-expand [chez (import rn-match)] [else (void)])
     (let ([initlst (match expr*
 			  [(begin ,x* ...) x*]
-			  [,ls ls])])
+			  [,ls ls])])    
+      (match (let loop ([ls initlst])
+	       (match ls
+		 [() '()]
+		 [((begin ,sub* ...) . ,[rest]) (append (loop sub*) rest)]
+		 [(,x) (list x)]
+		 [((tuple) . ,[rest])  rest]
+		 [('UNIT   . ,[rest])  rest]
+		 [(,fst . ,[rest]) (cons fst rest)]))
+	;[() '(tuple)]
+	[() 'UNIT]
+	[(,x) x]
+	[(,x ,x* ...) `(begin ,x ,@x*)])
+
+      #;
       (match (match `(begin ,@initlst)
-		    [(begin ,[expr*] ...) (apply append expr*)]
-		    [,other (list other)])
-      [() (void)]
+	       [(begin (tuple) ,rest) (loop `(begin ,rest))]
+	       [(begin ,[expr*] ...) (apply append expr*)]
+	       [,other (list other)])
+      [() '(tuple)]
       [(,x) x]
       [(,x ,x* ...) `(begin ,x ,@x*)]))))
 

@@ -519,8 +519,8 @@
 
 (todo:common:load-source "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (todo:common:load-source "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
-(todo:common:load-source "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
 (todo:common:load-source "generic/passes/wavescope_bkend/insert-refcounts.ss") (import insert-refcounts)
+(todo:common:load-source "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
 
 (todo:common:load-source "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 

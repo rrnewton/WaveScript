@@ -563,7 +563,7 @@
   (when (or (regiment-verbose) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
 ;  (inspect (let-spine 1 p))
 ;  (inspect (let-spine 4 p))
-;  (inspect p)
+
 #;
   (begin 
     (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
@@ -761,7 +761,6 @@
     (time (system "dot -Tpng query.dot -oquery.png")))
    (void))
   
-;  (inspect p)
 
   p)) ;; End run-that-compiler
 
@@ -1038,12 +1037,20 @@
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
 	    (time (ws-run-pass prog insert-refcounts))
-	    ;; It's painful, but we need to typecheck again.
-	    (parameterize ([inferencer-enable-LUB #t]
-			   [inferencer-let-bound-poly #f])
-	      (time (ws-run-pass prog retypecheck)))
 	    
-	    ;(print-graph #f)  (inspect prog)
+	    ;; It's painful, but we need to typecheck again.
+	    ;; HACK: Let's only retypecheck if there were any unknown result types:
+	    (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
+	      (unless (zero? len)
+		(printf "*** GOT AN UNKNOWN RESULT TYPE ***\n")
+		;(inspect prog)		
+		(parameterize ([inferencer-enable-LUB #t]
+			       [inferencer-let-bound-poly #f])
+		  (time (ws-run-pass prog retypecheck)))))
+
+;	    (print-graph #f)  (inspect prog)
+
+	    (dump-compiler-intermediate prog ".__after_refcounts.ss")
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 	    (time (ws-run-pass prog emit-c2))

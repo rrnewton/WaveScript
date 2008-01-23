@@ -35,14 +35,23 @@ Wed Nov  7 11:08:07.275 2007: run: cond_wait returned error: Invalid argument
 
 fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
 
-s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+//s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+
+s1 = iterate _ in timer(10.0) {
+  state { pos = 0 }
+  ss = toSigseg(Array:make(4096, intToInt16(99)), pos, nulltimebase);
+  println("Sending out " ++ ss`width);
+  println("null arr width " ++ (Array:null :: Array Int)`Array:length);
+  println("null width " ++ (nullseg :: Sigseg Int)`width);
+  emit ss;
+  pos += 4096;
+}
 
 newwidth = 1024;
 step = gint(512);
 
 s2 = iterate win in s1 {
-   state { acc = nullseg; 
-         }
+   state { acc = make_nullseg() }
 
    print("\nIncoming width ");
    print(win`width);

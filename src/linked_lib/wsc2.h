@@ -16,6 +16,7 @@
 
 // Handle Array memory layout:
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
+//#define ARRLEN(ptr)        ((int*)ptr)[-2]
 // This should not be used on a null pointer:
 #define SETARRLEN(ptr,len) ((int*)ptr)[-2]=len
 
