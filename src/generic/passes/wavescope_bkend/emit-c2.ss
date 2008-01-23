@@ -358,9 +358,12 @@
   (make-lines (block `("void ",(Var name) "()") (lines-text code))))
 
 
-(define (wrap-iterate-as-simple-fun name arg argty code)
+(define (wrap-iterate-as-simple-fun name arg vqarg argty code)
   (make-lines 
-   (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")") (lines-text code))
+   (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
+		(list
+		 "char "(Var vqarg)";\n"
+		 (lines-text code)))
 	 "\n")))
 
 ;================================================================================
@@ -457,6 +460,10 @@
     [(List ,[elt]) (list elt "*")]
 
     [(Ref ,[ty]) ty]
+
+    ;; This is an unused value.
+    [(VQueue ,_) "char"]
+
     ))
 
 
@@ -986,7 +993,7 @@
      (match itercode
        [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
-	 (wrap-iterate-as-simple-fun name v vty 
+	 (wrap-iterate-as-simple-fun name v vq vty 
 	    ((Value emitter) bod nullk))
 	 bind* init*)]
        )]))

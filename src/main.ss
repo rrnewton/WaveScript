@@ -1025,8 +1025,7 @@
        ;;   (printf "================================================================================\n")
        (printf "\nNow emitting C code:\n"))
 
-     (IFCHEZ 
-      
+
       (if new-version?
 	  (begin 
 	    (ws-run-pass prog nominalize-types)
@@ -1039,6 +1038,11 @@
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
 	    (time (ws-run-pass prog insert-refcounts))
+	    ;; It's painful, but we need to typecheck again.
+	    (parameterize ([inferencer-enable-LUB #t]
+			   [inferencer-let-bound-poly #f])
+	      (time (ws-run-pass prog retypecheck)))
+	    
 	    ;(print-graph #f)  (inspect prog)
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
@@ -1059,9 +1063,7 @@
 	  outfile)   
 	 (unless (regiment-quiet)
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
-	 ))
-   (error 'wsc2 "not ready for PLT yet")
-   ))
+	 )))
    
    (if (regiment-quiet) (run-wscomp) (time (run-wscomp)))
    )
@@ -1525,8 +1527,10 @@
 	     (apply wscomp port input-parameters opts))]
 
 	  [(wsc2)
-	   (let ((port (acquire-input-prog 'wscomp)))
-	     (apply wscomp port input-parameters 'wsc2 opts))]
+	   ;; HACK: need to set compiler-invocation-mode EARLY for wsc2 (for parsing):
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wsc2 opts)))]
 
 	  [(wscaml)
 	   (let ()

@@ -9,8 +9,8 @@ s1 = timer(10.0);
 //s1 = (readFile("countup.raw", "mode: binary window: 100", timer(10.0)) :: Stream (Sigseg Int16))
 
 // Testing WS-defined sigsegs:
-include "sigseg_copyalways.ws";
-using Sigseg;
+//include "sigseg_copyalways.ws"; 
+//using Sigseg;
 //fun make_nullseg() nullseg
 
 main = iterate _ in s1 {

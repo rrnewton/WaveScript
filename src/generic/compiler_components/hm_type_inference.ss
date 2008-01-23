@@ -641,12 +641,6 @@
                (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
                  (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
                  (vector-ref newtypes (qinteger->integer n))))]
-
-      ;; [2008.01.21] Adding limited support for post-nominalize types language:
-      [(struct-ref ,type ,fld ,[l -> e t])  
-       (values `(struct-ref ,type ,fld ,e) type)]
-      [(make-struct ,type ,[l -> e* t*] ...)
-       (values `(make-struct ,type ,@e*) `(Struct ,type))]
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
@@ -767,6 +761,25 @@
       
       [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
       
+      ;; [2008.01.21] Adding limited support for post-nominalize types language:
+      [(struct-ref ,type ,fld ,[l -> e t])  
+       (values `(struct-ref ,type ,fld ,e) type)]
+      [(make-struct ,type ,[l -> e* t*] ...)
+       (values `(make-struct ,type ,@e*) `(Struct ,type))]
+
+      ;; [2008.01.22] Sigh, adding to support output of insert-refcounts:
+      ;; We probably shouldn't even need to typecheck the subexpression--it should be simple.
+      [(,refcnt ,ty ,e)
+       (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
+  		              'decr-heap-refcount  'incr-heap-refcount))
+       (ASSERT simple-expr? e)
+       (values `(,refcnt ,ty ,e) #())]
+      #;
+      [(,refcnt ,ty ,[l -> e et]) 
+       (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
+  		              'decr-heap-refcount  'incr-heap-refcount))
+       (values `(,refcnt ,ty ,e) #())]
+
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
@@ -960,6 +973,14 @@
 
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c)) c]
+
+    [(struct-ref ,nm ,fld ,[e])   `(struct-ref ,nm ,fld ,e)]
+    [(make-struct ,nm ,[e*] ...)  `(make-struct ,nm ,@e*)]
+    [(,refcnt ,ty ,[e])
+     (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
+  		            'decr-heap-refcount  'incr-heap-refcount))
+     `(,refcnt ,ty ,e)]
+    
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
     ;;[,other other]; don't need to do anything here...
@@ -977,8 +998,6 @@
     [(src-pos ,t ,[e])                                        (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])        (void)]
     [(tupref ,n ,[e])                                         (void)]
-    [(struct-ref ,nm ,fld ,[e])                               (void)]
-    [(make-struct ,nm ,[e*] ...)                              (void)]
 
     [(set! ,v ,[e])                                           (void)]
 
@@ -1001,6 +1020,13 @@
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c))                                 (void)]
+
+    [(struct-ref ,nm ,fld ,[e])                               (void)]
+    [(make-struct ,nm ,[e*] ...)                              (void)]
+    [(,refcnt ,ty ,[e])
+     (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
+		     'decr-heap-refcount  'incr-heap-refcount))
+     (void)]
     ))
 
 
@@ -1119,8 +1145,41 @@
        (let-values ([(e t) (Expr bod (sumdecls->tenv
                                  (cdr (or (assq 'union-types metadat*) '(union-types)))))])
          `(typechecked-lang '(program ,e ,@metadat* ,t)))]
-      [,other 
-       (Expr other (empty-tenv))])))
+      ;; [2008.01.22] I'm adding this for the output of insert-refcounts.
+      ;; Rather than reconstructing a complete program, this
+      ;; typechecks the parts in isolation.  Thus, while existing type
+      ;; annotations may be missing inside individual pieces, the
+      ;; interfaces between them better be correctly specified.
+      ;; (For example, the output type of each iterate.)
+      [(,lang 
+	'(graph (const (,cbv* ,cbty* ,cbexp*) ...)
+		(init  ,init* ...)
+		(sources ((name ,s_nm*) (output-type ,s_ty*) (code ,scode) (outgoing ,down* ...)) ...)
+		(operators (iterate (name ,itername*) 
+				    (output-type ,o_ty*)
+				    (code ,itercode)
+				    (incoming ,o_up)
+				    (outgoing ,o_down* ...)) ...)
+		(sink ,base ,basetype)	,meta* ...))
+       ;(define sumtenv (sumdecls->tenv (cdr (or (assq 'union-types meta*) '(union-types)))))
+       (define fulltenv 
+         (tenv-extend (sumdecls->tenv (cdr (or (assq 'union-types meta*) '(union-types))))
+		      (append cbv* itername* s_nm*)
+		      (append cbty* o_ty* s_ty*)))
+       (define (Doit x) (first-value (Expr x fulltenv)))
+       `(,lang
+	 '(graph (const (,cbv* ,cbty* ,(map Doit cbexp*)) ...)
+		 (init ,@(map Doit init*))
+		 (sources ((name ,s_nm*) (output-type ,s_ty*) (code ,(map Doit scode)) (outgoing ,down* ...)) ...)
+		 (operators (iterate (name ,itername*) 
+				     (output-type ,o_ty*)
+				     (code ,(map Doit itercode))
+				     (incoming ,o_up)
+				     (outgoing ,o_down* ...)) ...)
+		 (sink ,base ,basetype)
+		 ,@meta*))]
+
+      [,other (Expr other (empty-tenv))])))
 
 
 

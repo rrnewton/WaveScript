@@ -19,6 +19,8 @@ Array:sub       :: (Array t, Int, Int) -> Array t;
 
 // Rewindow:
 
+// Due to polymorphism/metaprogramming problems I may need to move towards this:
+fun make_nullseg() { nullseg }
 
 /*===============================================================================*/
 

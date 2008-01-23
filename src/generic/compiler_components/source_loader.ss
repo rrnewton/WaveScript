@@ -342,7 +342,14 @@
 
   ;; First we use "process" to handle includes and namespaces.
   ;; We automatially inject an include of "internal.ws"
-  (define  ws (first-value (process* (cons '(include "internal.ws") origws) '() #f)))
+  (define  ws (first-value 
+	       (process* 
+		(append '((include "internal.ws"))
+			(if (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+			    '((include "internal_wsc2.ws"))
+			    '())
+			origws)
+		'() #f)))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
   (define (f2 x) (or (memq (car x) '(define using define-as)) ))

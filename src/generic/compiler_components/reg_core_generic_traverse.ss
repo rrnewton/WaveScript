@@ -195,9 +195,8 @@
 	    ;; In this case we have a change to the driver function as we go down.
        [(expr newdriver) (build-traverser newdriver fuse expr)]
 
-
-	    [(expression)       	      
-	     (match  expression
+       [(expression)       	      
+	(match  expression
 ;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (simple-constant? const)) (fuse () (lambda () const))]
@@ -210,6 +209,12 @@
 	  ;; We don't put any restrictions (HERE) on what can be in a quoted constant:
 	  [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
 	  [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
+
+	  ;; Annotations, these are actually quite common:
+	  [(,annot ,t ,[loop -> e])
+	   ;(guard (eq-any? annot 'assert-type 'src-pos 'data-rate))
+	   (guard (annotation? annot))
+	   (fuse (list e) (lambda (x) `(,annot ,t ,x)))]
 
 	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
@@ -231,29 +236,10 @@
 	   (guard (memq varargkeyword '(tuple vector)))
 	   (fuse args (lambda args `(,varargkeyword ,@args)))]
 
-     ;; FIXME: THIS SHOULD BE EXPANDED TO ALL wavescript-stream-primitive's 
-     [(,streamop ,annot ,[loop -> args] ...)
-      ;(guard (stream-primitive? streamop))
-      (guard (temp-hack-stream-primitive? streamop))
-      (fuse args (lambda ls `(,streamop ,annot ,@ls)))]
-
-#|
-     [(unionN ,annot ,[loop -> args] ...)
-      (fuse args (lambda ls `(unionN ,annot . ,ls)))]
-     [(_merge ,annot ,[loop -> s1] ,[loop -> s2])
-      (fuse `(,s1 ,s2) (lambda ls `(_merge ,annot . ,ls)))]
-     [(__readFile ,annot ,[loop -> args] ...)
-      (fuse args (lambda ls `(__readFile ,annot . ,ls)))]
-     [(timer ,annot ,[loop -> args] ...)
-      (fuse args (lambda ls `(timer ,annot . ,ls)))]
-|#
-	  ;; Adding this special syntax as well (output of nominalize-types)
-	  [(make-struct ,name  ,[loop -> args] ...)
-	   (guard (symbol? name))
-	   (fuse args (lambda args `(make-struct ,name . ,args)))]
-	  [(struct-ref ,type ,fldname ,[loop -> expr])
-	   (guard (symbol? fldname))
-	   (fuse (list expr) (lambda (expr) `(struct-ref ,type ,fldname ,expr)))]
+	  ;; FIXME: THIS SHOULD BE EXPANDED TO ALL wavescript-stream-primitive's 
+	  [(,streamop ,annot ,[loop -> args] ...)
+	   (guard (temp-hack-stream-primitive? streamop))
+	   (fuse args (lambda ls `(,streamop ,annot ,@ls)))]
 
 	  ;; No looping on types.
 	  ;; Let is treated same as letrec because we're not maintaining environment.
@@ -269,25 +255,10 @@
 		  `(letrec ([,lhs* ,rhs*] ...) ,bod))
 	   (inspect `(letrec ,(map list lhs* rhs*) ,bod))
 	   (error 'core-generic-traverse "")]
-	  [(letrec ,other ...)
-	   (warning 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
-		    `(letrec ,@other))
-	   (inspect `(letrec ,@other))
-	   (error 'core-generic-traverse "")]
 
 	  ;; Again, no looping on types.  This is an expression traversal only.
 	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
 	   (fuse (list e) (lambda (x) `(lambda ,v* ,t* ,x)))]
-	  [(lambda (,v* ...) ,e)
-	   (warning 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
-		    `(lambda ,v* ,e))
-	   (inspect `(lambda ,v* ,e))
-	   (error 'core-generic-traverse "")]
-	  [(lambda ,other ...)
-	   (warning 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
-		    `(lambda ,@other))
-	   (inspect `(lambda ,@other))
-	   (error 'core-generic-traverse "")]
 	  
 	  ; WAVESCRIPT
 	  ; ========================================
@@ -310,36 +281,55 @@
 	  ; ========================================
 
 	  ;; Applications must be tagged explicitely.
-     [(app ,[loop -> rator] (annotations) ,[loop -> rands] ...)
-      (fuse `(,rator (annotations) ,@rands) (lambda (x . ls) `(app ,x ,@ls)))]
+	  [(app ,[loop -> rator] (annotations) ,[loop -> rands] ...)
+	   (fuse `(,rator (annotations) ,@rands) (lambda (x . ls) `(app ,x ,@ls)))]
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,@ls)))]
 	  [(construct-data ,tc ,[loop -> rand*] ...)
 	   (fuse rand* (lambda r* `(construct-data ,tc ,@r*)))]
 	  [(foreign-app ',realname ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls) `(foreign-app ',realname ,x ,@ls)))]
-
-	  [(,annot ,t ,[loop -> e])
-	   (guard (memq annot '(assert-type src-pos data-rate)))
-	   (fuse (list e) (lambda (x) `(,annot ,t ,x)))]
-
-	  ;; Annotations:
-;	  [(src-pos     ,p ,[loop -> e]) (fuse (list e) (lambda (x) `(src-pos     ,p ,x)))]
-;	  [(assert-type ,t ,[loop -> e]) (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
-
-     [(iterate ,annot ,[loop -> f] ,[loop -> s])
-      (fuse `(,f ,s) (lambda ls `(iterate ,annot . ,ls)))] ; FIXME: is this at all dangerous?
-        
-     
-     #;
-     [(iterate ,a ,[loop -> rands] ...)
-      (begin
-        (fuse rands (lambda ls `(iterate ,a . ,ls))))]
+	  
+	  [(iterate ,annot ,[loop -> f] ,[loop -> s])
+	   (fuse `(,f ,s) (lambda ls `(iterate ,annot . ,ls)))] ; FIXME: is this at all dangerous?
 
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)
 		      (basic-primitive? prim)))
-      (fuse rands (lambda ls `(,prim . ,ls)))]
+	   (fuse rands (lambda ls `(,prim . ,ls)))]
+
+	  ;; ========================================
+	  ;; Adding this special syntax as well (output of nominalize-types)
+	  [(make-struct ,name  ,[loop -> args] ...)
+	   (guard (symbol? name))
+	   (fuse args (lambda args `(make-struct ,name . ,args)))]
+	  [(struct-ref ,type ,fldname ,[loop -> expr])
+	   (guard (symbol? fldname))
+	   (fuse (list expr) (lambda (expr) `(struct-ref ,type ,fldname ,expr)))]
+
+	  ;; [2008.01.22] Yet more accomodation of special internal syntax:
+	  [(,refcnt ,ty ,[e])
+	   (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
+			   'decr-heap-refcount  'incr-heap-refcount))
+	   `(,refcnt ,ty ,e)]
+
+	  ;; ========================================
+	  ;; Specific error catching:
+	  [(letrec ,other ...)
+	   (warning 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
+		    `(letrec ,@other))
+	   (inspect `(letrec ,@other))
+	   (error 'core-generic-traverse "")]
+	  [(lambda (,v* ...) ,e)
+	   (warning 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
+		    `(lambda ,v* ,e))
+	   (inspect `(lambda ,v* ,e))
+	   (error 'core-generic-traverse "")]
+	  [(lambda ,other ...)
+	   (warning 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
+		    `(lambda ,@other))
+	   (inspect `(lambda ,@other))
+	   (error 'core-generic-traverse "")]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)

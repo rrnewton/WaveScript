@@ -1044,7 +1044,7 @@
 
 ;; This defines the set of "annotations" recognized by the compiler.
 (define (annotation? sym)
-  (memq sym '(assert-type src-pos data-rate)))
+  (eq-any? sym 'assert-type 'src-pos 'data-rate))
 
 ;; Takes off just the outer layer of annotations
 (define (peel-annotations e)
