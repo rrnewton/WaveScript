@@ -15,6 +15,14 @@ fun rewindow(sig, newwidth, step)
   };
 
 
+//s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16))
 
-main = rewindow((readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) 
-		  :: Stream (Sigseg Int16)), 1024, 512); 
+size = 4096;
+s1 = iterate _ in timer(10.0) {
+  state { pos = 0 }
+  ss = toSigseg(Array:make(size, intToInt16(99)), pos, nulltimebase);
+  emit ss;
+  pos += gint(size);
+}
+
+main = rewindow(s1, 1024, 512); 

@@ -76,7 +76,7 @@
  	[(^ ,[a] ,[b]) `(g^ ,a ,b)]
 
 	;; This is a work-around for a name conflict:
-	[merge '_merge]
+   [merge '(lambda (x y) ('noty 'noty) (_merge (annotations) x y))]
    [(app merge ,[s1] ,[s2]) `(_merge (annotations) ,s1 ,s2)]
    ; FIXME: is this dangerous?
    [(app (src-pos ,sp1 merge) ,[s1] ,[s2])

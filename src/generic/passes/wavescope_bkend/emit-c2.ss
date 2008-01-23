@@ -303,15 +303,6 @@
 (define (wrap-source-as-plain-thunk name code)
   (make-lines (block `("void ",(Var name) "()") (lines-text code))))
 
-
-(define (wrap-iterate-as-simple-fun name arg vqarg argty code)
-  (make-lines 
-   (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
-		(list
-		 "char "(Var vqarg)";\n"
-		 (lines-text code)))
-	 "\n")))
-
 ;================================================================================
 ;;; "Continuations" used for syntax production.
 ;;; These are actually simple objects.
@@ -929,6 +920,13 @@
 
 ;; .returns top-level decls (lines)
 (define (Operator op)
+  (define (wrap-iterate-as-simple-fun name arg vqarg argty code)
+    (make-lines 
+     (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
+		  (list
+		   "char "(Var vqarg)";\n"
+		   (lines-text code)))
+	   "\n")))
   (match op
     [(iterate (name ,name) 
 	      (output-type ,ty)
@@ -939,10 +937,47 @@
      (match itercode
        [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
+	 (wrap-iterate-as-simple-fun name v vq vty ((Value emitter) bod nullk))
+	 bind* init*)])]
+
+
+    [(_merge (name ,name) (output-type (Stream ,elt))
+	     (code ,__)
+	     (incoming ,a ,b) (outgoing ,down* ...))
+     (define emitter (Emit down*))
+     (define arg (unique-name "arg"))
+     (values (make-lines 
+	      (list (block `("void ",(Var name) "(",(Type elt)" ",(Var arg)")")
+			   (lines-text (emitter arg)))
+		    "\n"))
+	     '() '())]
+    
+#;
+    [(unionN (name ,name) (output-type ,o_ty)
+	     (code ,__)
+	     (incoming ,a ,b) (outgoing ,down* ...))
+     (define emitter (Emit down*))
+     (define arg )
+     (make-lines 
+      (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
+		   (emitter (Var arg)))
+	    "\n"))
+     
+     ((Value emitter) bod nullk)
+     
+
+     (match itercode
+       [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
+	(values 
 	 (wrap-iterate-as-simple-fun name v vq vty 
-	    ((Value emitter) bod nullk))
+				     )
 	 bind* init*)]
-       )]))
+       )
+
+     `(unionN (name ,name) (output-type ,o_ty)
+	      (code ,unioncode)		 
+	      (incoming ,a ,b) (outgoing ,@down*))]
+    ))
 
 ;================================================================================
 

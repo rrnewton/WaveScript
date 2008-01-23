@@ -33,18 +33,28 @@ Wed Nov  7 11:08:07.275 2007: run: cond_wait returned error: Invalid argument
 
 // This serves as a test of sigseg operations.
 
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+include "common.ws";
+
+//fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+
+size = 40;
 
 //s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
+fun print_sigseg(ss) {
+  print("["++ ss`start ++" -> "++ ss`end ++"]");
+}
+
 s1 = iterate _ in timer(10.0) {
   state { pos = 0 }
-  ss = toSigseg(Array:make(4096, intToInt16(99)), pos, nulltimebase);
+  ss = toSigseg(Array:make(size, intToInt16(99)), pos, nulltimebase);
   println("Sending out " ++ ss`width);
-  println("null arr width " ++ (Array:null :: Array Int)`Array:length);
+  assert_eq_prnt("null arr width ", 0, (Array:null :: Array Int)`Array:length);
   println("null width " ++ (nullseg :: Sigseg Int)`width);
+  //assert_eq_prnt("null width ", 0, (nullseg :: Sigseg Int)`width);
+  assert_eq_prnt("make_null width ", 0, (make_nullseg() :: Sigseg Int)`width);
   emit ss;
-  pos += 4096;
+  pos += gint(size);
 }
 
 newwidth = 1024;
@@ -58,7 +68,7 @@ s2 = iterate win in s1 {
    print(" Current ACC/width ");
    print(acc`width);
    print(": ");
-   print(acc);
+   print_sigseg(acc);
    print("\n");
 
 
@@ -72,7 +82,7 @@ s2 = iterate win in s1 {
    print("JOINED Current ACC/width ");
    print(acc.width);
    print(": ");
-   print(acc);
+   print_sigseg(acc);
    print("\n");
 
    while acc.width > newwidth {

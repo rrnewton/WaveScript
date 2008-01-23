@@ -419,8 +419,6 @@
   (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
-;  (inspect p)
-
   ;; This is the initial typecheck. 
   (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])
@@ -1048,9 +1046,8 @@
 			       [inferencer-let-bound-poly #f])
 		  (time (ws-run-pass prog retypecheck)))))
 
-;	    (print-graph #f)  (inspect prog)
-
 	    (dump-compiler-intermediate prog ".__after_refcounts.ss")
+	    ;(print-graph #f)  (inspect prog)
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 	    (time (ws-run-pass prog emit-c2))
