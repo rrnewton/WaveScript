@@ -8,45 +8,147 @@ include "matrix.ws";
 
 type Graph = Matrix Int;
 
-
 // A chromosome is simply an assignment of task to processors for now.
-type Chromosome = Array Int16;
+type Chromosome = Array Int; //Int16;
 
-popsize = 5;
+popsize = 100;
 total_generations = 10;
+
+// Mutation happens to an individual one in N generations:
+mutaterate = 10;
+crossrate  = 10;
 
 //================================================================================
 
+nullchrom = Array:null;
 
+// Computation power of processors:
+processors = List:toArray$ 
+   [1, 1, 1];
 
+// Communication cost of network links (delays)
+commnetwork = Matrix:fromList2d$
+  [[0, 3, 3],
+   [3, 0, 3],
+   [3, 3, 0]];
 
+// Computational cost of each task.
+taskweights = List:toArray$ 
+  [20, 30, 40, 50];
 
+// A pipeline topology, weights represent communication quantity.
+taskgraph = Matrix:fromList2d$
+  [[0, 1, 0, 0],
+   [0, 0, 1, 0],
+   [0, 0, 0, 1],
+   [0, 0, 0, 0]];
 
+numprocs   = Array:length(processors);
+numtasks   = Array:length(taskweights);
+sumweights = Array:fold1((+), taskweights);
 
+sumcomms   = Matrix:fold((+), 0, taskgraph);
 
 //================================================================================
 // Implement the GA itself.
 
 fun fitness(chrom) {
-  99 + chrom[2]
+  using Array; using Mutable;
+  // Sum the weights across.
+  bins = make(length(processors), 0);
+  for i = 0 to taskweights.length - 1 {
+    ind = chrom[i];
+    bins[ind] := bins[ind] + taskweights[i];
+  };
+  procbalance = sumweights - fold1(max, bins);
+
+  // Sum the cost of each edge in the graph
+  commcost = ref(0);
+  Matrix:foreachi(fun(i,j, weight)  // Could use foldi if it existed.
+    {
+      commcost += weight * Matrix:get(commnetwork, chrom[i], chrom[j]);
+    }, taskgraph);
+
+  //println(" Total commcost is "++commcost++" for "++chrom);
+
+  // Return a combination of these measures.
+  procbalance + commcost
 }
 
-crossover :: (Chromosome, Chromosome) -> Chromosome;
+crossover :: (Chromosome, Chromosome) -> (Chromosome * Chromosome);
 fun crossover(chrom1, chrom2) {
-  chrom1
+  using Array;
+  // Single point crossover:
+  if (0 == crossrate) then {
+    len = chrom1.length;
+    ind = randomI(len);
+    new1 = makeUNSAFE(len);
+    new2 = makeUNSAFE(len);
+    blit(new1,0, chrom1,0, ind);
+    blit(new2,0, chrom2,0, ind);
+    blit(new1,ind, chrom2,ind, len-ind);
+    blit(new2,ind, chrom1,ind, len-ind);
+    (new1,new2)
+  } else (chrom1, chrom2)
+}
+
+fun cross_all(pop) {
+  newpop = Array:make(popsize, nullchrom);
+  for i = 0 to (popsize/2)-1 {
+    let (a,b) = crossover(pop[i*2], pop[(i*2) +1]);
+    newpop[i*2]   := a;
+    newpop[(i*2)+1] := b;
+  };
+  newpop  
 }
 
 fun mutate(chrom) {
-  chrom2 = Array:copy(chrom);
-  chrom2[2] := 99;
-  chrom2
+  if randomI(mutaterate) == 0 then {
+    chrom2 = Array:copy(chrom);
+    // Move a random task to a random processor:
+    chrom2[randomI(Array:length(chrom2))]
+      := randomI(Array:length(processors));
+    chrom2
+  } else chrom;
+}
+
+fun mutate_all(pop) {
+  Array:map(mutate, pop);
+}
+
+// Centralized selection.
+fun selection(taggedpop) {
+  using Array;
+  //fits = build(popsize, fun(i) fitness(pop[i]));
+  //map(fun(c) println("Fitness "++fitness(c)++" "++c), pop);
+
+  newpop = Array:make(popsize, nullchrom);
+  // No elitism currently.
+  for i = 0 to popsize-1 {
+    xi = randomI(popsize);
+    yi = randomI(popsize);
+    let (x,fitx) = taggedpop[xi];
+    let (y,fity) = taggedpop[yi];
+    if fitx > fity   //fits[xi] > fits[yi]
+    then newpop[i] := x //pop[xi]
+    else newpop[i] := y //pop[yi]    
+  };
+  newpop
 }
 
 // Takes a whole population in an Array and produces the next generation.
 fun advance_population(pop) {
   using Array;
-  pop1 = map(mutate, pop);
-  pop1 
+  pop0 = map(fun(x) (x, fitness(x)), pop);
+  pop1 = selection(pop0);
+  pop2 = map(mutate, pop1);
+  pop3 = cross_all(pop2);
+  /*  println("Fitness  : "++pop0);
+  println("Selection: "++pop1);
+  println("Mutation : "++pop2);
+  println("Crossover: "++pop3);*/
+
+  pop3
 }
 
 
@@ -78,7 +180,7 @@ fun simple_mixer(size, strm) {
 
 
 //================================================================================
-// Setup 
+// Setup the stream dataflow graph that will run the GA
 
 uniontype Tag t = Orig t | Recycle t | Output t ;
 fun detag(t) {
@@ -105,6 +207,7 @@ fun mainloop(instrm) {
          Recycle(pop): {
            generation += 1;
 	   println(" Running generation "++generation);
+	   //println(" Pop: "++pop);
 	   pop2 = advance_population(pop);
 	   if (generation >= total_generations)
 	   then emit Output(pop2)
@@ -126,18 +229,46 @@ fun oneiter(initpop) {
   smap(advance_population, batches);
 }
 
+fun tagWith(fn, strm) smap(fun(x) (x,fn(x)), strm);
 
+fun pipelined(initpop) {
+  batches = smap(toArray, window(initpop, popsize));
+  using Curry;
+  smap(cross_all)  $ 
+  smap(mutate_all) $ 
+  smap(selection)  $ 
+    // window
+    // tagWith(fitness,x)
+    // dewindow
+    //smap(fun(x) )$ a
+    batches;
+}
+
+fun pickwinner(strm) {
+  smap(fun(arr) {
+    println("Extracting winner from final population.");
+    Array:fold(fun((best,bfit), new) {
+        fit = fitness(new);
+        if fit > bfit
+	then (new,fit)
+	else (best,bfit)
+      }, 
+      (arr[0], fitness(arr[0])),
+      arr)
+  }, strm)
+}
 
 seedpop :: Stream Chromosome;
 seedpop = iterate i in FINITE(popsize) {
-  emit Array:make(5,(5::Int16));
+  emit Array:build(numtasks, fun(_) randomI(numprocs));
 }
 
-//main = mainloop(seedpop)
-main = simple_mixer(10, COUNTUP(0));
+main = pickwinner$ mainloop(seedpop)
+//main = simple_mixer(10, COUNTUP(0));
 
 // This is non-recursive.
 //main = oneiter(seedpop);
+//main = pipelined(seedpop);
 
 /*
 main = iterate _ in timer(10) {  

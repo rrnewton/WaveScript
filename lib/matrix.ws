@@ -107,6 +107,12 @@ dims   ::  Matrix t               -> (Int * Int);
    }
  }
 
+ fun fold(fn, zer, mat) {
+   acc = Mutable:ref(zer);
+   foreachi(fun(i,j,x) acc := fn(acc,x), mat);
+   acc
+ }
+
  fun map_inplace(f, mat) {
    foreachi(fun(i,j,x) set(mat, i,j, f(x)), mat)
  }
