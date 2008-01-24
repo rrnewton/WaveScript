@@ -547,7 +547,8 @@
   ;; -----------------------------------------
 
 
-
+  ;; <METAPROGRAM-EVAL>: 
+  ;; -----------------------------------------
 ;  (inspect p)  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")

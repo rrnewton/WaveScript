@@ -55,6 +55,7 @@
 		 _+I64 _-I64 *I64 /I64 ^I64
 		 sqrtF sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
+		 randomI
 		 logD logF ;logI 
 		 exptI exptD exptF
 		 ;modI modF 
@@ -1124,6 +1125,8 @@
 			 (let ([x (cfl-real-part c)] 
 			       [y (cfl-imag-part c)])					   
 			   (sqrt (+ (* x x) (* y y)))))))
+
+  (define randomI s:random)
 
   (define logF log)
   (define logD log)

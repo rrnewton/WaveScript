@@ -454,6 +454,8 @@
     (absD (Double) Double)
     (absC (Complex) Float)
 
+    (randomI (Int) Int)
+
 ;    (logI (Int) Int)
 ;    (logF (Float) Float)
     (logD (Double) Double)

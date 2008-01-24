@@ -104,6 +104,7 @@ type SLS t = Stream (List   (Sigseg t));
 
 CONST           :: t -> S t;
 COUNTUP         :: Int -> S Int;
+FINITE          :: Int -> S Int;
 ONCE            :: (() -> ()) -> S ();
 
 //easyReadFile    :: String -> Stream t;
@@ -658,6 +659,16 @@ fun COUNTUP(n)
     state { counter :: Int = n }
     emit counter;
     counter += 1;
+  }
+
+// Emits 0...n-1 and then stops.
+fun FINITE(n)
+  iterate _ in timer(100) {
+    state { counter :: Int = 0 }
+    if counter < n then {
+      emit counter;
+      counter += 1;
+    }
   }
 
 // Useful for benchmarks and tests.  Runs a "normal" (non-streaming)

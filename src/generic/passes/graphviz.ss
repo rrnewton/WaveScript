@@ -15,9 +15,11 @@
        [(,lang '(graph (const ,_ ...)
 		       (init  ,__ ...)
 		       (sources ((name ,srcv*) (output-type ,st*) (code ,se*) (outgoing ,sdownstrm** ...)) ...)
-		       (operators (,op* (name ,opv*) (output-type ,ot*) (code ,oe*) (incoming ,oin* ...) (outgoing ,odownstrm** ...)) ...)
+		       (operators (,op* (name ,opv*) (output-type ,ot*) (code ,oe*) 
+					(incoming ,oin* ...) (outgoing ,odownstrm** ...))
+				  ...)
 		       (sink ,base ,basetype)
-		       ,___))
+		       ,meta* ...))
 	(define (denumber x) (if (symbol? x) x (begin (ASSERT (list? x)) (denumber (cadr x)))))
 	(define(blowup src dest*) 
 	  ;; Could use deunique-name for the "label" of the node.
@@ -69,3 +71,6 @@
 
 
 ) ;; End module
+
+
+  

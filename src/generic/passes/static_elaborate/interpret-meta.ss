@@ -431,13 +431,13 @@
 		result
 		)])))]
     
-    [(for (,i ,[st] ,[en]) ,bod)
+    [(for (,indvar ,[st] ,[en]) ,bod)
      (ASSERT (plain? st))
      (ASSERT (plain? en))
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
 	   ((> i end) (make-plain #() #f))
-	 (Eval bod (extend-env '(i) (list (make-plain i #f)) env) pretty-name)))]
+	 (Eval bod (extend-env (list indvar) (list (make-plain i #f)) env) pretty-name)))]
     [(while ,tst ,bod)     
      (let loop ()
        (let ([test (Eval tst env pretty-name)])

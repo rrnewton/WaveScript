@@ -10,7 +10,8 @@
 
 
 // Audio channel 1 with no overlap.
-s1 = (readFile("./countup.raw", "mode: binary  window: 40", timer(1000.0 / 40.0)) :: Stream (Sigseg Int16));
+//s1 = (readFile("./countup.raw", "mode: binary  window: 40", timer(1000.0 / 40.0)) :: Stream (Sigseg Int16));
+s1 = timer(10.0);
 
 // Identity iterate.
 s2 = iterate w in s1 {
