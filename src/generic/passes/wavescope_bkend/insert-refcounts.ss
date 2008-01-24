@@ -28,6 +28,7 @@
        [,scl (guard (scalar-type? scl)) #f]
        ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
        [#() #f]
+       [String #t]
        ;[#(,[flds] ...) (ormap id flds)]
        [(Struct ,tuptyp) 
 	(let ([entry (assq tuptyp struct-defs)])
@@ -223,14 +224,10 @@
 		   (code ,itercode)
 		   (incoming ,o_up) (outgoing ,o_down* ...))]
 	;; This has no code to speak of:
-	[(_merge (name ,name) (output-type ,o_ty)
-		 (code ,code)
-		 (incoming ,a ,b) (outgoing ,down* ...))
-	 op]
-	[(unionN (name ,name) (output-type ,o_ty)
-		 (code ,unioncode)
-		 (incoming ,in* ...) (outgoing ,down* ...))
-	 op]))
+	[(_merge . ,_) op]
+	;; Nor does this:
+	[(__readFile . ,_) op]
+	[(unionN . ,_) op]))
     ;; Main pass body:
     (lambda (prog)
       (cond-expand [chez (import iu-match)] [else (void)])

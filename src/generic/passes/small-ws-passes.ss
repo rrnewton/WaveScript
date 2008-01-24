@@ -775,6 +775,13 @@
 	      
 	      [(show ,[x]) `(__show_ARRAY ,x)]
 	      [(wserror ,[x]) `(__wserror_ARRAY ,x)]
+	      
+	      [(readFile ,annot ',str1 ',str2 ,[strm])
+	       (ASSERT string? str1) (ASSERT string? str2)
+	       `(readFile ,annot ',str1 ',str2 ,strm)]
+	      [(readFile ,annot ,[str1] ,[str2] ,[strm])
+	       (error 'embed-strings-as-arrays "For now readfiles must have explicit quoted string arguments at this point.")
+	       `(readFile ,annot (__backtoSTR ,str1) (__backtoSTR ,str2) ,strm)]
 
 	      ;[(show ,[x]) `(__Hack:fromOldString (show ,x))]
 	      ;[(wserror ,[x]) `(wserror (__Hack:backToString ,x))]

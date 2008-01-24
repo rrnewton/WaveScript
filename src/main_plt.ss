@@ -371,6 +371,8 @@
   (current-directory "~/wavescript/demos/wavescope")
   (wsmlton "demo1c_timer.ws"))
 
-
+(current-directory "~/demos")
+(wsc2 "demo1e_readFile.ws")
   
 ) ; End module
+

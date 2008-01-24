@@ -35,7 +35,7 @@
 		 ;dump-binfile 
 		 ;audio 
 		 timer timer-bench
-		 show __show_ARRAY
+		 show __show_ARRAY __backtoSTR
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
 		 gnuplot_process spawnprocess
@@ -1409,6 +1409,9 @@
 	    (vector-set! arr i (string-ref str i))
 	    (loop (fx+ 1 i))))
 	 arr))
+     (define (__backtoSTR arr)
+       (list->string (rdc (vector->list arr))))
+
 
      ;; Inefficient, show should be defined in terms of print, not vice-versa
      (define (ws-print x)

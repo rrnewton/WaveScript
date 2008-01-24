@@ -715,6 +715,9 @@
 
     (show             ('a) String)
     (__show_ARRAY     ('a) (Array Char)) ;; Internal
+    ;; This is a virtual primitive used to convert back to strings
+    ;; when strings are converted to arrays.
+    (__backtoSTR      ((Array Char)) String)
 
     ;; These keep a gnuplot window open and repeatedly update it.
     ;; Shouldn't need both of these, one should be defined in wavescript:

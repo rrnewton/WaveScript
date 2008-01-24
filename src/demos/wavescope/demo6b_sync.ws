@@ -1,6 +1,6 @@
 
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
-fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
+//fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
+//fun assert(s,bool)   if not(bool) then wserror("Assert failed in '"++s++"' ");
 
 fun window(S, len) 
   iterate(x in S) {

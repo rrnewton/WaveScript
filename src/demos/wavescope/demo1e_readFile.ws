@@ -13,8 +13,8 @@ s1 = (readFile("./countup.raw",
 	       timer(44000.0 / 255.0))
       //:: Stream (Sigseg (Int16 * Int16 * Int16)))
       //:: Stream (Int16 * Int16 * Int16))
-      :: Stream (Sigseg (Int16)))
-      //:: Stream Int16);
+      //:: Stream (Sigseg (Int16)))
+      :: Stream Int16);
 
-//main = s1;
-main = iterate(w in s1) {emit (w[[0]], w[[1]], w[[2]]) }
+main = s1;
+//main = iterate(w in s1) {emit (w[[0]], w[[1]], w[[2]]) }

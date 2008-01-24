@@ -89,6 +89,9 @@
        (guard (and (pair? annot) (eq? 'annotations (car annot))))
        (match (prim-entry prim `(,annot ,@rand*))
          [(,_ ,argty* ,result)
+          (unless (= (length rand*) (length (cdr argty*)))
+            (error 'explicit-stream-wiring 
+                   "Wrong number of arguments to prim ~s: ~s" prim rand*))
           (let ([src*
                  (apply append
                         (map (lambda (rand argty)

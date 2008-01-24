@@ -18,9 +18,8 @@
 
 (module emit-c2 mzscheme 
   (require  "../../../plt/common.ss"
-	    (all-except (lib "list.ss") sort sort! filter)
-	    (all-except "nominalize-types.ss" test-this these-tests)
-	    "convert-sums-to-tuples.ss"
+            "insert-refcounts.ss"
+            "nominalize-types.ss"
 	    "../../compiler_components/c_generator.ss" )
   (provide emit-c2)
   (chezprovide )  
@@ -896,7 +895,6 @@
 ; 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
 ; 	 (kont `("((wscomplex_t)(",re" + (",im" * 1.0fi)))"))]
 	;;========================================
-
        
        [(,other ,[Simple -> rand*] ...)
 	(kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
@@ -910,7 +908,7 @@
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
      (match cd 
        [(timer ,annot ',rate)
-	(ASSERT integer? rate)
+	;(ASSERT integer? rate)
 	;; For the basic backend, we simply call the downstream
 	;; operator when we ourselves are asked for data (invoked).
 	(values nm
@@ -952,31 +950,107 @@
 		    "\n"))
 	     '() '())]
     
-#;
-    [(unionN (name ,name) (output-type ,o_ty)
-	     (code ,__)
-	     (incoming ,a ,b) (outgoing ,down* ...))
-     (define emitter (Emit down*))
-     (define arg )
-     (make-lines 
-      (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
-		   (emitter (Var arg)))
-	    "\n"))
-     
-     ((Value emitter) bod nullk)
-     
+    [(__readFile (name ,name) (output-type (Stream ,elt))
+		 (code (__readFile (annotations .  ,annot)
+				   ',file          ,source
+				   ',mode          ,[Simple -> repeats] 
+				   ',skipbytes     ,[Simple -> offset] 
+				   ',winsize      ',types_ignored))
+		 (incoming ,in) (outgoing ,down* ...))
+     (ASSERT symbol? source)  (ASSERT string? file)
+     (printf "GOT READFILE\n");
+     (let* (
+	    ;; Do we output a struct of values or just a single value:
+	    [structoutput? (match elt
+			     [(Struct ,name) name] 
+			     [(Sigseg (Struct ,name)) name] 
+			     [,else #f])]
+	    [tuptype (match elt
+		       [(Struct ,structname) `("struct ",(sym2str structname))]
+		       [(Sigseg ,[t]) t]
+		       [,other (ASSERT (not (eq? other 'String))) (Type other)])]
+	    [types (if structoutput?
+		       (map cadr (cdr (ASSERT (assq structoutput? global-struct-defs))))
+		       (match elt
+			 [(Sigseg ,t) (list t)]
+			 [,oth        (list oth)]))]
+	    ;[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 
-     (match itercode
-       [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
-	(values 
-	 (wrap-iterate-as-simple-fun name v vq vty 
-				     )
-	 bind* init*)]
-       )
+	    [binarymode (equal? mode "binary")]
+	    [handle (Var (unique-name "_f"))]
+	    [sampnum (Var (unique-name "sampnum"))]
 
-     `(unionN (name ,name) (output-type ,o_ty)
-	      (code ,unioncode)		 
-	      (incoming ,a ,b) (outgoing ,@down*))]
+	    [init (make-lines `(
+		,handle" = fopen(\"",file"\", ",(if binarymode "\"rb\"" "\"r\"")");\n"
+		"if (",handle" == NULL) {\n"
+		"  printf(\"Unable to open data file %s: %m\", \"",file"\");\n"
+		"  exit(1);\n"
+		"}\n"
+		"fseek(",handle", ",offset", SEEK_SET);\n"
+		,(if (> winsize 0) "sampnum = 0;\n" "")
+		))]
+	    [state (make-lines 
+		    `("FILE* ",handle";\n"
+		      ,(if (> winsize 0) (list "int "sampnum";\n" "") ())))]
+	    [maintext ;; Code for the funcion that drives the file reading.
+	     (list `(,(if (> winsize 0)
+			  `("SigSeg< ",tuptype" > storage(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
+			    ,tuptype"* buf = storage.getDirect(0, ",(number->string winsize)");\n")
+			  `(,tuptype" tup;\n"))
+		     ;; TODO: HANDLE STRINGS:
+		     #;
+		     ,(map (lambda (i) 
+			     (list 
+			      "// Cap of a 100 on length of strings read in:\n"
+			      (format "char str~a[100];\n" i)))
+			(cdr (iota (add1 numstrings))))
+		     "int status = 0;\n"
+		     ("// The binary format of tuples matches that in the file:\n"
+		       ,(let ([readcmd 
+			       (lambda (n dest)
+				 `("status += fread((void*)",dest
+				   ",sizeof(",tuptype"), ",(number->string n)", ",handle");\n"))])
+			  (if (> winsize 0)
+			      "FINISHME"
+			      #;
+			      (if (> skipbytes 0)
+				  ;; Have to interleave reading and skipping forward:
+				  (block `("for (wsint_t i=0; i<",(number->string winsize)"; i++)")
+					 (list (readcmd 1 `("(buf+i)"))
+					       "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n"))
+				  ;; Otherwise can do one read:
+				  (readcmd winsize "buf"))
+			      (readcmd 1 "&tup"))))
+		     
+		     ;; Now with that nasty scanf finished we still
+		     ;; have to put the strings into the right fields:
+		     #;
+		     ,(map (lambda (n fld ty)
+			     (if (eq? ty 'String)
+				 (format "tup.~a = str~a;\n" fld n)
+				 '()))
+			(cdr (iota (add1 (length types))))
+			(list-head standard-struct-field-names (length types))
+			types)
+		     
+		     ,(block `("if (status != ",(number->string (max 1 winsize))
+			       " * ",(if binarymode "1" (number->string (length types)))")")
+			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
+			       "exit(0);\n"))
+		     ,(if (> winsize 0)
+			  "FINISHME"
+			  #;
+			  `("storage.release(buf);\n"
+			    "emit(storage);\n"
+			    "storage = SigSeg< ",tuptype" >(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
+			    "sampnum += ",(number->string winsize)";\n")			  
+			  
+			  (lines-text ((Emit down*) 'tup)))))])
+
+       (values 
+	(make-lines (block (list "void "(sym2str name)"("(Type '#())" ignored)") maintext))
+         ;(wrap-iterate-as-simple-fun name 'ignored 'ignoredVQ (Type '#()) maintext)
+	(list state) (list init)))] ;; End readFile
     ))
 
 ;================================================================================

@@ -1278,7 +1278,7 @@
       ;; This determines what mode we're in then calls "loop" to process the flags.
       (define (main)		
         ;; I keep disjoint options for the modes so I use the same option-processor for all modes (loop)
-	(let ([symargs (map string->symbol args)])
+	(let ([symargs (map (lambda (x) (if (symbol? x) x (string->symbol x))) args)])
 
 	  ;; [2007.01.29] Killing this:
 	  ;(unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
@@ -1678,6 +1678,13 @@
 
       (main) ;; Call the entrypoint above.      
       )))
+
+;; ENTRYPOINTS:  These mimic the shell commands but are callable from within Scheme.
+(define (ws prog . args)   (apply main "wsint"  prog args))
+(define (wsc2 prog . args) 
+  (apply main "wsc2"   prog args)
+  (system "wsc2-gcc"))
+;(define (wsc prog . args)  (apply main "wscomp" prog args))
 
 ;===============================================================================
 ;;; TESTING:
