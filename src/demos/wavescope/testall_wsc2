@@ -18,7 +18,8 @@ function go () {
 
 go "demo1c_timer.ws"
 # go "demo1d_readFile_text.ws"
-go "demo1e_readFile.ws"
+#go "demo1e_readFile.ws" # no sigseg reading yet
+###go "demo1f_readFile_sigseg.ws" 
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"

@@ -42,7 +42,8 @@ size = 40;
 //s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
 
 fun print_sigseg(ss) {
-  print("["++ ss`start ++" -> "++ ss`end ++"]");
+  if ss.width == 0 then print("[->]")  else 
+  print("["++ ss`start ++" -> "++ ss`end ++"]")
 }
 
 s1 = iterate _ in timer(10.0) {

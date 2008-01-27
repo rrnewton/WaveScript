@@ -622,15 +622,6 @@
 	  (error 'Effect
 		 "shouldn't have any 'emit's within an initialization expression"))))
 
-
-#|
-      ;; Special Constants:
-      [(assert-type ,t '())     (wrap (PolyConst '() t))]
-      [nulltimebase             (Const name type 'nulltimebase)]      
-|#
-
-
-
 ;; ================================================================================
 
 ;; Converts hertz to microseconds:
@@ -958,7 +949,7 @@
   (match expr
 
     ;; Handle equality tests.  This is more laborious than in Caml.
-    [(,eq (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y]) 
+    [(,eq (assert-type ,ty ,[myExpr -> x]) ,[myExpr -> y])
      (guard (memq eq '(wsequal? =)))
      (make-app (build-equality-test ty) (list (make-tuple-code x y)))]
 
@@ -986,10 +977,12 @@
     [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
      (guard (memq prim '(Array:make Array:makeUNSAFE)))
      (make-prim-app (DispatchOnArrayType prim elt) arg*)]
-    [(,prim (assert-type (Array ,elt) ,[myExpr -> first]) ,[myExpr -> rest] ...)
+    [(,prim ,first ,[myExpr -> rest] ...)
      (guard (memq prim '(Array:ref Array:set Array:length)))
-     (make-prim-app (DispatchOnArrayType prim elt)
-	       (cons first rest))]
+     (match first 
+       [(assert-type (Array ,elt) ,_)
+	(make-prim-app (DispatchOnArrayType prim elt)
+		       (cons (myExpr first) rest))])]
 
     [(ptrIsNull ,[myExpr -> ptr]) 
      "(EQUAL == MLton.Pointer.compare (Mlton.Pointer.null, "ptr"))"]
@@ -1096,6 +1089,8 @@
 ;;================================================================================
 ;; Import the rest of our functionality from the shared module.
 
+;; For this, we use a little bit of an inheritance hack, we don't want
+;; to actually bother with some real OOP system just for this.
 
 ;; This packages up the MLton specific functionality to pass back up to the parent module.
 ;; This is not complete, just what I happen to be using.
@@ -1200,6 +1195,9 @@
       [absF   Real32.abs]
       [absD   Real64.abs]
       [absC   Complex.magnitude]
+
+      ;; How to convert a word to an int?
+      ;[randomI "(fn n => Random.rand() )"]
 
       [string-append "(String.^)"] 
       [List:append List.@]
@@ -1354,6 +1352,8 @@
 		   List:ref List:append List:reverse List:length List:make 
 		   < <= >= > max min = 
 		   		   
+		   randomI
+
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   		   
 		   wsequal? print show seg_get toArray __show_ARRAY __wserror_ARRAY __backtoSTR

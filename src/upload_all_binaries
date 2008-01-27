@@ -4,7 +4,7 @@
 ## This script goes through the revisions and for every revision not
 ## present on the website, it builds and uploads binaries.
 
-STARTREV=1900
+STARTREV=2983
 WORKINGDIR=~/WS_test_copy
 
 MT=`../depends/get_machine_type`
@@ -12,12 +12,13 @@ MT=`../depends/get_machine_type`
 echo MACHINE TYPE: $MT
 
 # Careful... let's destroy this working dir.
-rm -rf $WORKINGDIR/
+#rm -rf $WORKINGDIR/
 
 # Now we unpack the repository into it.
-svn co https://macroprogramming.ffh.us/repos/branches/wavescope $WORKINGDIR
+svn co https://svn.csail.mit.edu/wavescript/branches/wavescope $WORKINGDIR
 
 # Switch to it
+mkdir $WORKINGDIR
 cd $WORKINGDIR
 # For now DON'T install environment vars.
 #source install_environment_vars
@@ -29,7 +30,7 @@ if [ "" == "$1" ];
 then ENDREV=`cat svn_rev.txt`;
 else ENDREV="$1";
 fi
-#ENDREV=1950
+ENDREV=2983
 
 echo
 echo Start at $STARTREV and end at $ENDREV

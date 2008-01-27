@@ -878,6 +878,7 @@
 		   int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex
 		   int16ToInt64 intToInt64 floatToInt64 doubleToInt64 complexToInt64
    		   _+I64 _-I64 *I64 /I64 ^I64 absI64 
+		   randomI
 
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   moduloI

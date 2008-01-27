@@ -282,12 +282,12 @@ the server without the fragilities.
 [2007.12.27] 
   *) Need to switch regression over to wsc.new, and start including wsc2
 
-
-
-
-
-
-
+[2008.01.25]
+  *) Should do some renaming:
+     wsc     -> wscpp.old
+     wsc.new -> wscpp.corefit
+     wsc2    -> 
+   How do I configure either wscpp for 
 
 
 

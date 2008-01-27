@@ -155,17 +155,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
-  (when (directory-exists? "/var/www/regression")
-    (printf "Going to try publishing to website.\n")
-    (let* ([webfile (format "/var/www/regression/~a" webfilename)])
-      (publish logfile webfile))
-    ;; Now do the performance report:
-    (let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
-      (if (file-exists? perfreport)
-	  (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
-				  svn-revision engine-svn-revision)])
-	    (publish perfreport webfile))))))
-
+  (if (directory-exists? "/var/www/regression")
+      (begin 
+	(printf "Going to try publishing to website.\n")
+	(let* ([webfile (format "/var/www/regression/~a" webfilename)])
+	  (publish logfile webfile))
+	;; Now do the performance report:
+	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
+	  (if (file-exists? perfreport)
+	      (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
+				      svn-revision engine-svn-revision)])
+		(publish perfreport webfile)))))
+      ;; Otherwise we could try to scp it...
+      (void)
+      ))
 
 ;; Partway through refactoring all the tests below to use this helper:
 (define (run-test title cmd) 

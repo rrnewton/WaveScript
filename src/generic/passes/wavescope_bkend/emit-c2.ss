@@ -78,6 +78,15 @@
 
 ;(define emit-c2-input-grammar)
 
+
+;(define-class <refcounter> (<class>) ())
+;(define-class <emit-c2> (<class>) (rc))
+
+; (specialise! initialise <emit-c2>
+;   (lambda (call-next self . args) (call-next)
+;     (slot-set! self 'rc (get-arg args 'rc))))
+;(define-generic Emit)
+
 ;================================================================================
 
 

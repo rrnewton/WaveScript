@@ -1798,6 +1798,8 @@
 	
 	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
+	[(randomI ,[Simple -> n]) `("(rand() % ",n")")]
+
 	;; Generate equality comparison:
 	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])	
 	 (let* ([a (Simple `(assert-type ,ty ,e1))])

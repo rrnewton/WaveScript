@@ -59,6 +59,7 @@
 
 	  [(tuple ,[rands] ...)   (apply make-tuple-code rands)]
 	  [(tupref ,i ,len ,[v])
+	   ;(printf "TUPREF: ~s ~s\n" i len)
 	   (let ([pat 
 		  (apply make-tuple-code
 			 (append (make-list i "_") '("x")			
@@ -89,10 +90,16 @@
 
 	  ;; TODO: FOREIGN_SOURCE
 
-     ;; strip out annotations
-     [(,prim ,annot ,rand* ...)
-      (guard (and (real-primitive? prim) (pair? annot) (eq? 'annotations (car annot))))
-      (obj 'Prim (cons prim rand*) emitter)]
+	  ;; Safety net:
+#;
+	  [(,form . ,_) (guard (eq-any? form 'tuple 'tupref))
+	   (error 'sharedEmitCases "missed a construct we should have caught: ~s" 
+		  (cons form _))]
+
+	  ;; strip out annotations
+	  [(,prim ,annot ,rand* ...)
+	   (guard (and (real-primitive? prim) (pair? annot) (eq? 'annotations (car annot))))
+	   (obj 'Prim (cons prim rand*) emitter)]
 
 	  [(,prim ,rand* ...) (guard (real-primitive? prim))
 	   (obj 'Prim (cons prim rand*) emitter)]

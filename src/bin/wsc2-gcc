@@ -1,0 +1,18 @@
+#!/bin/sh
+
+
+ALWAYSON="-O3 -funroll-loops"
+# max-unroll-times Seems to be 8 by default.
+OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
+
+## DEBUG MODE:
+OPTFLAGS="-g -O0"
+
+CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c"
+echo "$CMD"
+if time $CMD;
+then echo Compiled .c output successfully.
+else echo ERROR, gcc failed.; exit 1
+fi
+
+wc query.c

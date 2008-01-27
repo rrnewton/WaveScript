@@ -388,6 +388,12 @@
 ;; This loads the bulk of the source files.
 
 
+;; This is a simple, lightweight object system:
+;(include "../depends/bos/macros.scm")
+;(include "../depends/bos/bos.scm")
+;(include "../depends/bos/utilities.scm")    
+
+
 (begin 
 
 (todo:common:load-source "generic/util/reg_macros.ss") (import reg_macros)
