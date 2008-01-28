@@ -152,6 +152,7 @@
 (define (get-snippet x)
   (match x
     [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,exp)
+     (define (get-prefix str num) (substring str 0 (min (sub1 (string-length str)) num)))
      (if (file-exists? fn)
 	 (let ([port (open-input-file fn)])
 	   (let ([lines '()])
@@ -176,7 +177,7 @@
 		   ;; Prune the last line:
 		   (set! lines
 			 (append (rdc lines)
-				 (list (substring (rac lines) 0 col2))))))
+				 (list (get-prefix (rac lines) col2))))))
 	     (close-input-port port)	     	     	    	  
 	     (apply string-append lines)))
 	 (get-snippet exp))]

@@ -817,18 +817,23 @@
        [(min ,[Simple -> a] ,[Simple -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
 
        ;; These use FFTW currently
-       [(memoized_fftR2C ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
-	(define len (unique-name "len"))
+       [(,fft ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
+	(guard (memq fft '(memoized_fftR2C fftR2C))) ;; TEMP: Just using memoized for the normal one too!
+	(define len0 (unique-name "len"))
+	(define len1 (unique-name "len"))
+	(define len2 (unique-name "len"))
 	(define tmp (unique-name "tmp"))
 	(ASSERT simple-expr? arr)
 	(add-include! "<fftw3.h>")
 	(add-include! (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
 	(add-link! "libfftw3f.so")		
-	(append-lines ((Binding (emit-err 'memoized_fftR2C)) (list len 'Int `(Array:length ,arr)))
+	(append-lines ((Binding (emit-err 'memoized_fftR2C)) (list len0 'Int `(Array:length ,arr)))
+		      ((Binding (emit-err 'memoized_fftR2C)) (list len1 'Int `(/_ ,len0 '2)))
+		      ((Binding (emit-err 'memoized_fftR2C)) (list len2 'Int `(_+_ ,len1 '1)))
 		      ((Binding (emit-err 'memoized_fftR2C)) 
 				   (list tmp '(Array Complex) 
 					 ;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
-					 `(assert-type (Array Complex) (Array:make ,len (assert-type Complex '0+0i)))
+					 `(assert-type (Array Complex) (Array:make ,len2 (assert-type Complex '0+0i)))
 					 ))
 		      (make-lines `("memoized_fftR2C(",(Simple arr)", ",(Var tmp)");\n"))
 		      (kont (Var tmp)))]

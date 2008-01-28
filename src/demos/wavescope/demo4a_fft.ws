@@ -73,11 +73,18 @@ s1b = iterate w in s0 {
 s1 = s1b;
 
 
+testarr = List:toArray$ [1.0, 2.0, 3.0, 4.0];
+
 s2a = iterate w in s1 { emit sigseg_fftR2C(w) }
 s2b = iterate w in s1 {
-  println("  Going in: "++w[[50]]);
+
+  //println("TEST: "++ memoized_fftR2C$ List:toArray$ [1, 2, 3, 4] );
+  println("TEST1: "++ testarr );
+  println("TEST2: "++ memoized_fftR2C$ testarr );
+
+  println("  Going in: "++w[[0]]);
   out = memosigseg_fftR2C(w);
-  println("   Coming out: "++out[[50]]);
+  println("   Coming out: "++out[[0]]);
   emit out;
 }
 

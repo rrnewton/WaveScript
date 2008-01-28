@@ -40,7 +40,7 @@ go "demo3j_numbers.ws"
 # go "demo3l_moreunions.ws"
 go "demo3m_sigsegs.ws"
 
-# go "demo4a_fft.ws"
+go "demo4a_fft.ws"
 # #go "demo4c_quoted_constants.ws"
 # # This one doesn't work for currently unknown reasons.
 # # It produces ZEROs as output...
@@ -56,15 +56,15 @@ go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
 
 go "demo6a_unionList.ws"
-# go "demo6b_sync.ws"
+go "demo6b_sync.ws"
 # go "demo6c_syncN.ws" ## [2007.10.10] SEGFAULTS!
 # go "demo6e_stdlib_sync.ws"
 # #go "demo6f_merge.ws"
 
-# go "demo7a_marmot_noinline.ws"
-# go "demo7b_marmot_phase1.ws"
+go "demo7a_marmot_noinline.ws"
+go "demo7b_marmot_phase1.ws"
 
-# go "demo8a_generic_arith.ws" 
+go "demo8a_generic_arith.ws" 
 go "demo8b_sugars.ws"
 go "demo8c_moresugar.ws"
 
