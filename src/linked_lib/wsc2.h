@@ -2,6 +2,17 @@
 
 // [2007.12.06] This is the header that goes with my new C backend. -Ryan
 
+// Headers that we need for the generated code:
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<complex.h>
+#include<math.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
+
 //int* arrayMake(size_t size, int len, ) { }
 
 #define TRUE  1
@@ -81,3 +92,4 @@ inline static float cNorm(complex c) {
    float im =  __imag__ (c);
    return sqrt ((re*re) + (im*im));
 }
+

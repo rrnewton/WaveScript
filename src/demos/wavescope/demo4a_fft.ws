@@ -46,7 +46,6 @@ fun amplify(n,s)
     }
   }
 
-
 winsize = 4096
 //winsize = 32;
 
@@ -75,7 +74,12 @@ s1 = s1b;
 
 
 s2a = iterate w in s1 { emit sigseg_fftR2C(w) }
-s2b = iterate w in s1 { emit memosigseg_fftR2C(w) }
+s2b = iterate w in s1 {
+  println("  Going in: "++w[[50]]);
+  out = memosigseg_fftR2C(w);
+  println("   Coming out: "++out[[50]]);
+  emit out;
+}
 
 s2 :: Stream (Sigseg Complex);
 s2 = if GETENV("MEMOIZE") == "" then s2b else s2a;
@@ -111,11 +115,6 @@ s3 = iterate win in s2 {
 };
 
 
-main = 
-s3
-//s2
-//s3
-//s1
-//s1
+main = s3
 //iterate(x in s2) { emit x[[30]] };
 //iterate(x in s1) { emit x`width };

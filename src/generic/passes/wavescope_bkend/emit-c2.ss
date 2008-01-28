@@ -30,6 +30,24 @@
 ;; Mutated below:
 (define global-struct-defs '())
 
+
+;; This is mutated below with fluid-let to contain a table mapping
+;; types to a scheme function that generates free-code (when given
+;; text representing the pointer to free).
+(define free-fun-table '())
+
+(define include-files ())
+(define link-files    ())
+
+(define (add-include! fn)
+  (unless (member fn include-files)
+    (set! include-files (cons fn include-files))))
+(define (add-link! fn)
+  (unless (member fn link-files)
+    (set! link-files (cons fn link-files))))
+
+;;========================================
+
 ;; These are just for sanity checking.  Disjoint types keep mix-ups from happening.
 ;; These should just be wrappers on the outside.  You should never find them nested.
 (reg:define-struct (lines text))
@@ -39,11 +57,6 @@
   (make-lines (map lines-text ls)))
 ;(define (idk x) (ASSERT expression? x) x)
 ;(define (idk x) x)
-
-;; This is mutated below with fluid-let to contain a table mapping
-;; types to a scheme function that generates free-code (when given
-;; text representing the pointer to free).
-(define free-fun-table '())
 
 (define-syntax debug-return-contract
   (syntax-rules ()
@@ -690,7 +703,7 @@
 	  (case var
 	    [(not) "!"]
 	    ;; These are the same as their C++ names:
-	    [(cos sin tan acos asin atan max min)   (sym2str var)]
+	    [(cos sin tan acos asin atan)   (sym2str var)]
 	    [(absF absD absI absI16 absI64)         "abs"]
 	    [(roundF)                             "round"]
 	    [(sqrtI sqrtF)                         "sqrt"]
@@ -702,25 +715,9 @@
 	    [(List:length List:ref List:append List:reverse) ;; List:make 
 	     (list->string (remq-all #\: (string->list (sym2str var))))]
 
-	    ;;
-	    ;; These use FFTW
-
-#;
-      [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
-       (add-include! "<fftw3.h>")
-       (add-include! (list "\"" (REGIMENTD) 
-			   "/src/linked_lib/FFTW_wrappers.cpp\""))
-       (add-link! "libfftw3f.so")
-       (mangle var)]
-
- #;
-      [(string-append 
-        width start end joinsegs subseg toSigseg
-        String:implode)
-       (Var var)]
-      [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
-      ))))
-
+	    [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
+	    ))))
+     
 
      (define (wszero? ty obj)
        (match ty
@@ -815,6 +812,26 @@
 
        [(Array:make ,len ,init) (make-array len init mayberetty)]
        [(Array:makeUNSAFE ,len) (make-array len #f   mayberetty)]
+
+       [(max ,[Simple -> a] ,[Simple -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
+       [(min ,[Simple -> a] ,[Simple -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
+
+       ;; These use FFTW currently
+       [(memoized_fftR2C ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
+	(define len (unique-name "len"))
+	(define tmp (unique-name "tmp"))
+	(ASSERT simple-expr? arr)
+	(add-include! "<fftw3.h>")
+	(add-include! (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
+	(add-link! "libfftw3f.so")		
+	(append-lines ((Binding (emit-err 'memoized_fftR2C)) (list len 'Int `(Array:length ,arr)))
+		      ((Binding (emit-err 'memoized_fftR2C)) 
+				   (list tmp '(Array Complex) 
+					 ;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
+					 `(assert-type (Array Complex) (Array:make ,len (assert-type Complex '0+0i)))
+					 ))
+		      (make-lines `("memoized_fftR2C(",(Simple arr)", ",(Var tmp)");\n"))
+		      (kont (Var tmp)))]
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? (assert-type ,ty ,[Simple -> left]) ,[Simple -> right])
@@ -931,9 +948,16 @@
 	      ,(lines-text (kont `(,tmp1"+(",tmp2"*1.0fi)"))))))]
 
 	;;========================================
+
+	[(clock) (kont "(clock() * 1000 / CLOCKS_PER_SEC)")]
+	[(realtime) 
+	 (define tmp (symbol->string (unique-name "tmp")))
+	 `("struct timeval ",tmp";\n"
+	   "gettimeofday(&",tmp", NULL);\n"
+	   ,(kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))]
        
-       [(,other ,[Simple -> rand*] ...)
-	(kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
+	[(,other ,[Simple -> rand*] ...)
+	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
        ))))
 
 
@@ -985,7 +1009,8 @@
 			   (lines-text (emitter arg)))
 		    "\n"))
 	     '() '())]
-    
+
+    ;; This doesn't work for sigsegs, only arrays:
     [(__readFile (name ,name) (output-type (Stream ,elt))
 		 (code (__readFile (annotations .  ,annot)
 				   ',file          ,source
@@ -994,27 +1019,28 @@
 				   ',winsize      ',types_ignored))
 		 (incoming ,in) (outgoing ,down* ...))
      (ASSERT symbol? source)  (ASSERT string? file)
-     (printf "GOT READFILE\n");
      (let* (
 	    ;; Do we output a struct of values or just a single value:
 	    [structoutput? (match elt
 			     [(Struct ,name) name] 
-			     [(Sigseg (Struct ,name)) name] 
+			     ;[(Sigseg (Struct ,name)) name] 
+			     [(Array (Struct ,name)) name]
 			     [,else #f])]
 	    [tuptype (match elt
 		       [(Struct ,structname) `("struct ",(sym2str structname))]
-		       [(Sigseg ,[t]) t]
+		       ;[(Sigseg ,[t]) t]
+		       [(Array ,[t]) t]
 		       [,other (ASSERT (not (eq? other 'String))) (Type other)])]
 	    [types (if structoutput?
 		       (map cadr (cdr (ASSERT (assq structoutput? global-struct-defs))))
 		       (match elt
-			 [(Sigseg ,t) (list t)]
+			 ;[(Sigseg ,t) (list t)]
+			 [(Array ,t) (list t)]
 			 [,oth        (list oth)]))]
 	    ;[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 
 	    [binarymode (equal? mode "binary")]
 	    [handle (Var (unique-name "_f"))]
-	    [sampnum (Var (unique-name "sampnum"))]
 
 	    [init (make-lines `(
 		,handle" = fopen(\"",file"\", ",(if binarymode "\"rb\"" "\"r\"")");\n"
@@ -1023,65 +1049,56 @@
 		"  exit(1);\n"
 		"}\n"
 		"fseek(",handle", ",offset", SEEK_SET);\n"
-		,(if (> winsize 0) "sampnum = 0;\n" "")
 		))]
-	    [state (make-lines 
-		    `("FILE* ",handle";\n"
-		      ,(if (> winsize 0) (list "int "sampnum";\n" "") ())))]
+	    [state (make-lines `("FILE* ",handle";\n"))]
+	    [_buf (Var 'buf)]
 	    [maintext ;; Code for the funcion that drives the file reading.
-	     (list `(,(if (> winsize 0)
-			  `("SigSeg< ",tuptype" > storage(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
-			    ,tuptype"* buf = storage.getDirect(0, ",(number->string winsize)");\n")
-			  `(,tuptype" tup;\n"))
+	     (list `(
+		     ,(if (> winsize 0)
+			  (lines-text ((Value (emit-err 'readFile)) `(assert-type ,elt (Array:makeUNSAFE ',winsize)) 
+				       (varbindk 'buf elt)))
+			  ;(Binding (list 'buf elt (make-zero-for-type elt)))
+			  ;; A binding with no init:
+			  (list (Type elt) " " _buf ";\n"))
+		     
 		     ;; TODO: HANDLE STRINGS:
-		     #;
-		     ,(map (lambda (i) 
-			     (list 
-			      "// Cap of a 100 on length of strings read in:\n"
-			      (format "char str~a[100];\n" i)))
-			(cdr (iota (add1 numstrings))))
-		     "int status = 0;\n"
+; 		     ,(map (lambda (i) 
+; 			     (list 
+; 			      "// Cap of a 100 on length of strings read in:\n"
+; 			      (format "char str~a[100];\n" i)))
+; 			(cdr (iota (add1 numstrings))))
+
+		     "int i, status = 0;\n"
 		     ("// The binary format of tuples matches that in the file:\n"
 		       ,(let ([readcmd 
 			       (lambda (n dest)
 				 `("status += fread((void*)",dest
 				   ",sizeof(",tuptype"), ",(number->string n)", ",handle");\n"))])
 			  (if (> winsize 0)
-			      "FINISHME"
-			      #;
 			      (if (> skipbytes 0)
 				  ;; Have to interleave reading and skipping forward:
-				  (block `("for (wsint_t i=0; i<",(number->string winsize)"; i++)")
-					 (list (readcmd 1 `("(buf+i)"))
+				  (block `("for (i=0; i<",(number->string winsize)"; i++)")
+					 (list (readcmd 1 `("(",_buf"+i)"))
 					       "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n"))
 				  ;; Otherwise can do one read:
 				  (readcmd winsize "buf"))
-			      (readcmd 1 "&tup"))))
+			      (readcmd 1 (** "&" _buf)))))
 		     
 		     ;; Now with that nasty scanf finished we still
 		     ;; have to put the strings into the right fields:
-		     #;
-		     ,(map (lambda (n fld ty)
-			     (if (eq? ty 'String)
-				 (format "tup.~a = str~a;\n" fld n)
-				 '()))
-			(cdr (iota (add1 (length types))))
-			(list-head standard-struct-field-names (length types))
-			types)
+; 		     ,(map (lambda (n fld ty)
+; 			     (if (eq? ty 'String)
+; 				 (format "tup.~a = str~a;\n" fld n)
+; 				 '()))
+; 			(cdr (iota (add1 (length types))))
+; 			(list-head standard-struct-field-names (length types))
+; 			types)
 		     
 		     ,(block `("if (status != ",(number->string (max 1 winsize))
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "exit(0);\n"))
-		     ,(if (> winsize 0)
-			  "FINISHME"
-			  #;
-			  `("storage.release(buf);\n"
-			    "emit(storage);\n"
-			    "storage = SigSeg< ",tuptype" >(Unitless, sampnum, ",(number->string winsize)", DataSeg);\n"
-			    "sampnum += ",(number->string winsize)";\n")			  
-			  
-			  (lines-text ((Emit down*) 'tup)))))])
+		     ,(lines-text ((Emit down*) 'buf))))])
 
        (values 
 	(make-lines (block (list "void "(sym2str name)"("(Type '#())" ignored)") maintext))
@@ -1106,13 +1123,19 @@
 		       (operators ,[Operator -> oper* state2** init**] ...)
 		       (sink ,base ,basetype)
 		       ,meta* ...))
-	  (define includes (string-append "#include<stdio.h>\n" 
-					  "#include<stdlib.h>\n"
-					  "#include<string.h>\n"
-					  "#include<complex.h>\n"
-					  "#include<math.h>\n"
-					  "#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
-					  ))
+	(define includes (text->string 
+			  (list "//WSLIBDEPS: "
+				(map (lambda (fn) 
+				       (let ([lib (extract-lib-name fn)])
+					 (if lib (list " -l" lib) fn)))
+				  link-files)
+				"\n"
+				
+				"#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
+				
+				;; After the types are declared we can bring in the user includes:
+				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
+					 (reverse include-files)) "\n\n")))
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))

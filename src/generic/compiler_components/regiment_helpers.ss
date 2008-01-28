@@ -1027,6 +1027,7 @@
 		    (error 'readFile "expected numeric parameter, got: ~s" n)))]
 	 [types (match typ
 		  [#(,t* ...)  t*]
+		  [(Array  ,[t]) t]
 		  [(Sigseg ,[t]) t]
 		  [,t   	(list t)])])
     (for-each (match-lambda ((,flag ,val))
@@ -1052,6 +1053,7 @@
     ;; If we're not producing a sigseg, we must set the winsize to zero:
     (match typ
       [(Sigseg ,t) (void)]
+      [(Array ,t) (void)]
       [,else (set! winsize 0)])
     `(__readFile ,annot ,fn ,src ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
 

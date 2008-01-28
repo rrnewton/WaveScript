@@ -94,6 +94,7 @@
     `(timer (annotations) ,@args)]
    [(timer ,[args] ...) `(timer (annotations) ,@args)]
 
+
 	;[ref (inspect "HMRM Ref in desugar pat match")'Mutable:ref]
 
 	;;======================================================================	
@@ -209,8 +210,26 @@
 			      ,vq))
 		     ,src))]
 
+
 	;; We don't desugar this here, it lives for one more pass:
 	[(using ,M ,[e]) `(using ,M ,e)]
+
+
+	;; [2008.01.27] Here's a bit of extra desugaring for wsc2:
+	[(assert-type (Stream (Sigseg ,elt)) ,bod)
+	 (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+		(match (peel-annotations bod)
+		  [(app ,rator . ,_)
+		   (eq? (peel-annotations rator) 'readFile)]
+		  [,_ #f]))	 
+	 (define x (unique-name "x"))
+	 (define vq (unique-name "vq"))
+	 `(iterate (annotations) 
+		   (let ()
+		     (lambda (,x ,vq) ((Array ,elt) 'vqty)
+			     (begin (emit ,vq (app toSigseg ,x (gint '0) nulltimebase))
+				    ,vq)))
+		   ,(process-expr `(assert-type (Stream (Array ,elt)) ,bod) fallthrough))]
 	
 	[,other (fallthrough other)])))
 

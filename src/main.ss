@@ -972,8 +972,9 @@
 ;; WaveScript Compiler Entrypoint:
 
 (define (wscomp x input-params . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler-xstream]
-;		[included-var-bindings '()]
+  (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
+ (parameterize ([compiler-invocation-mode 
+		 (if new-version? 'wavescript-compiler-c 'wavescript-compiler-xstream)]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -983,11 +984,10 @@
    (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
                                             `(,ws-default-wavescope-scheduler))))
    ;; [2007.11.23] Are we running the new C backend?
-   (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
-   (define outfile (if new-version? "./query.c" "./query.cpp"))
    
+   (define outfile (if new-version? "./query.c" "./query.cpp"))  
+
    (define (run-wscomp)
-     (when new-version? (compiler-invocation-mode 'wavescript-compiler-c))
      
      ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
      
