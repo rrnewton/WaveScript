@@ -306,19 +306,6 @@
 
 ;(define (make-fundef type name rand bod) 0)
 
-;; .param src* blocks of code (lines) for the body of each source.
-(define (build-main-source-driver srcname*)
-  (if (= 1 (length srcname*))
-      ;(make-fundef "int" "main" ("return 0;\n"))
-      (make-lines        
-       (block "int main()" 
-	      (list 
-	       "initState();\n"
-	       (block "while(1)"
-		      (map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*))
-	       "return 0;\n")))
-      (error 'emit-c2 "only single-sources supported right now")))
-
 
 ;; This is the simplest way to package a source.
 (define (wrap-source-as-plain-thunk name code)
@@ -970,6 +957,35 @@
 
 
 
+;; .param srccode* blocks of code (lines) for the body of each source.
+(define (build-main-source-driver srcname* srccode* srcrates*)
+  (printf "   TIMER RATES: ~s\n" srcrates*)
+  (let  ([counter_marks
+	  (cond
+	   [(= 1 (length srcrates*)) '(1)]
+	   [(andmap integer? srcrates*)
+	    (let ([common-rate (apply lcm srcrates*)])	    
+	      (map (lambda (rate)
+		     (inexact->exact (quotient common-rate rate)))
+		srcrates*))]
+	   [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
+    (make-lines        
+     (block "int main()" 
+	    (list 
+	     "initState();\n"
+	     (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
+	     (block "while(1)"		 
+		    (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
+			  (map (lambda (name code mark)
+				 (block (format "if (counter_~a == ~a)" name mark)
+					(list (lines-text code)
+					      (format "counter_~a = 0;\n" name))))
+			    srcname* srccode* counter_marks)
+			  )
+		  ;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
+		  )
+	   "return 0;\n")))))
+
 ;; .returns function def that executes the source (lines) and state decls (lines)
 (define (Source xp)
    (match xp
@@ -983,7 +999,8 @@
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (values nm
 		   ((Emit down*) ''UNIT) ;; Code
-		   (make-lines ())) ;; State 	
+		   (make-lines ()) ;; State 	
+		   rate)
 	   ])])]))
 
 ;; .returns top-level decls (lines)
@@ -1129,7 +1146,7 @@
        [(,lang '(graph (const ,[(SplitBinding (emit-err 'TopBinding)) -> cb* cbinit*] ...) ;; These had better be *constants* for GCC
 		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
 				-> init*] ...)
-		       (sources ,[Source -> srcname* src*  state1*] ...)
+		       (sources ,[Source -> srcname* srccode*  state1* srcrate*] ...)
 		       (operators ,[Operator -> oper* state2** init**] ...)
 		       (sink ,base ,basetype)
 		       ,meta* ...))
@@ -1148,12 +1165,12 @@
 					 (reverse include-files)) "\n\n")))
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
-	  (define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* src*))))
+	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	  (define init     (begin (ASSERT (andmap lines? (apply append init**)))
 			     (text->string (block "void initState()" 
 				 (list (lines-text (apply append-lines (apply append init**)))
 				       (lines-text (apply append-lines cbinit*)))))))
-	  (define driver   (text->string (lines-text (build-main-source-driver srcname*))))
+	  (define driver   (text->string (lines-text (build-main-source-driver srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  (define total (apply string-append 
 			(insert-between "\n"
@@ -1162,7 +1179,7 @@
 				(text->string (lines-text freefundefs))
 				allstate
 				;toplevelsink
-				ops srcfuns 
+				ops ;srcfuns 
 				init driver))))
 
 	  ;;(printf "====================\n\n")	
