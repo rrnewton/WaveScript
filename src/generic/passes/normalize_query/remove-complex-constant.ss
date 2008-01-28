@@ -39,6 +39,7 @@
             [(assert-type ,ty (quote ,datum))
              (match (do-datum datum ty)
                [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
+	    ;; This is not very safe now that we have more numeric types than Scheme representations:
             [(quote ,datum)   (do-datum datum #f)]
             
             ;; Don't lift out these complex constants!
@@ -81,52 +82,41 @@
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
       (lambda (orig origty)
+	(when (and (not origty) (not (string? orig))) (printf " INFERRING TYPE OF CONST: ~s\n" orig))
 	;; Empty tenv is ok, it's just a constant:
 	(let loop ([x orig] 
 		   ;[type (or origty (recover-type `',orig (empty-tenv)))]
-		   [type (recover-type `',orig (empty-tenv))]
-		   )
-	  (cond		     
+		   ;[type (recover-type `',orig (empty-tenv))]
+		   ;[type (type-const orig)]
+		   [type (or origty (type-const orig))])
+	  (match type
 
-	   [(pair? x)
-	    (match type
-	      [(List ,elt-t)
-	       ;; Really mutability is a function of the type, not the value.  This is a bit silly.
-	       (let-values ([(e1 t1 mu1?) (loop (car x) elt-t)]
-			    [(e2 t2 mu2?) (loop (cdr x) type)])
-		 (values `(cons ,e1 ,e2) type (or mu1? mu2?)))])]
-	   
-	   ;; Respect the invariant that nulls have type assertions:
-	   [(null? x) 
-	    ;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
-	    (values ''() type #f)
-#;
-	    (if (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler-xstream wavescript-compiler-caml))
-		(begin
-		  (ASSERT type)
-		  (ASSERT (compose not polymorphic-type?) type)
-		  (values `(assert-type ,type '()) type #f))
-		(values ''() type #f))]
-
+	   [(List ,elt-t)
+	    ;; Respect the invariant that nulls have type assertions?
+	    (if (null? x)
+		;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
+		(values ''() type #f)
+		;; Really mutability is a function of the type, not the value.  This is a bit silly.
+		(let-values ([(e1 t1 mu1?) (loop (car x) elt-t)]
+			     [(e2 t2 mu2?) (loop (cdr x) type)])
+		  (values `(cons ,e1 ,e2) type (or mu1? mu2?))))]
+	   	   
 	   ;; Vectors are mutable and can't be lifted to the top with our current semantics.
-	   [(vector? x) ;(ASSERT type)
-	    (match type
-	      ;[(Array Char) (values `',x type #f)]
-	      [(Array ,elt-ty)	       
-	       (values
-		(let ([tmp (unique-name 'tmparr)])
-		  `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
-		     (begin 
-		       ,@(list-build 
-			  (vector-length x)
-			  (lambda (i) 
-			    `(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
-			  )
-		       ,tmp)))
-		type #t)])]
+	   [(Array ,elt-ty)
+	    (values
+	     (let ([tmp (unique-name 'tmparr)])
+	       `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
+		  (begin 
+		    ,@(list-build 
+		       (vector-length x)
+		       (lambda (i) 
+			 `(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
+		       )
+		    ,tmp)))
+	     type #t)]
 
 	   ;; This is kind of pointless... we turn tuples back into code.
-	   [(tuple? x) 
+	   [,vec (guard (vector? vec))
 	    (let* ([anymuts? #f]
 		   [expr `(tuple ,@(map (lambda (x ty) 
 					  (let-values ([(e ty mut?) (loop x ty)])
@@ -136,13 +126,19 @@
 	      (values expr type anymuts?))]
 	   
 	   ;; This is only for nullseg:
-	   [(sigseg? x)
+	   [(Sigseg ,elt-t)
 	    (ASSERT (fx= 0 (vector-length (sigseg-vec x))))
 	    (values 'nullseg type #f)]
-
-	   [(simple-constant? x) (values `',x type #f)]
+	   
+	   [Int (values `',x type #f)]
+	   [,othernum (guard (memq othernum num-types)) 
+		      (values `(assert-type ,type ',x) type #f)]
+	   ;; Anything else doesn't need an assert-type:
+	   [,_ (guard (simple-constant? x)) (values `',x type #f)]
+	   ;[(simple-constant? x) (values `',x type #f)]
+	   
 	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
-	   [(symbol? x)  (values `',x type #f)]
+	   [,_ (guard (symbol? x))  (values `',x type #f)]
 
 	   [else (error 'datum->code "unhandled quoted constant: ~s" x)]
 	   )))))

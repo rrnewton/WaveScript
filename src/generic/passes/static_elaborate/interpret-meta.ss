@@ -82,7 +82,7 @@
 (define (make-foreign-closure name includes ty)
   (DEBUGASSERT string? name) 
   (DEBUGASSERT (andmap string? includes))
-  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f #f))
+  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f ty))
 
 ;; Unwraps plain only:
 (define (unwrap-plain x) 
@@ -111,11 +111,11 @@
 ;; This tags a value with a type.
 ;; This is necessary for not losing type information for constants.
 (define (set-value-type! val type)
-    ;;
     (define (fold-in ty1 ty2) 
-      (if ty2
-	  (types-compat? ty1 ty2)
-	  ty1))
+      (ASSERT ty1)
+      (let ((result (if ty2 (types-compat? ty1 ty2) ty1)))
+	(ASSERT result)
+	result))
     (cond
      [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
      ;; Must recursively handle the insides of the ref also:
@@ -343,8 +343,8 @@
 	 cells lhs* ty* rhs*)
        (Eval bod newenv pretty-name))]
 
-    [(lambda ,formal* ,ty* ,bod) 
-     (make-closure #f formal* bod env `(,@ty* -> 'any))]
+    [(lambda ,formal* ,ty* ,bod)      
+     (make-closure #f formal* bod env `(,@ty* -> ',(unique-name "anytype")))]
  
     [(Mutable:ref ,[x]) (make-ref x #f)]
     [(deref ,[x])       (ref-contents x)]
@@ -627,17 +627,10 @@
                 (case (streamop-op op)
                   [(unionN)
                    (cons '(List Annotation)
-                         (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types. Contents unimportant.
-                         )]
+			 ;; All stream types. Contents unimportant:
+                         (map (lambda (_) `(Stream ',(unique-name "anytype"))) (streamop-parents op)))]
                   [else
-                   (car (ASSERT (regiment-primitive? (streamop-op op))))])]
-               #;
-               [argty* (if (eq? 'unionN (streamop-op op)) ;; special case, not a prim
-                           (cons '(List Annotation)
-                                 (map (lambda (_) '(Stream 'any)) (streamop-parents op)) ;; All stream types.  Contents unimportant.
-                                 )
-                           (car (ASSERT (regiment-primitive? (streamop-op op)))))]
-                           
+                   (car (ASSERT (regiment-primitive? (streamop-op op))))])]                                          
                [params  (streamop-params op)]
                [parents (streamop-parents op)])
       (cond
@@ -677,7 +670,7 @@
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
   (ASSERT (plain? p))
   
-  (let loop ([val (plain-val p)]
+  (trace-let loop ([val (plain-val p)]
 	     [ty  (plain-type p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
@@ -713,7 +706,6 @@
      ;; constants, as a stopgap we could cast them from float
      ;; constants (unless they're too big).
 
-;
      [(list? val)
       ;; This value is thrown away:
       ;; TODO, do a proper check to make sure there are no streamops/closures
@@ -721,11 +713,11 @@
       (match (or ty (type-const val))
         [(List ,elt)
          (for-each (lambda (x) (loop x elt)) val)])
-      `',val]
+      `(assert-type ,ty ',val)]
 
      [(vector? val)
-      ;; FIXME
-      `',val ]
+      ;; FIXME, should COMPRESS here if possible.
+      `(assert-type ,ty ',val)]
 
      ;; FIXME: GET RID OF THIS FALLTHROUGH!
      [else
@@ -1074,7 +1066,7 @@
      (deep-assq 'f
      (interpret-meta '(lang '(program 
        (letrec ([f 'b (lambda (x) (Int) (_+_ x x))])
-	 (iterate (annotations) (lambda (_) ('a) (app f '9)) (timer (annotations) '3.0))) Int))))
+	 (iterate (annotations) (lambda (_ vq) ('a 'vq) (app f '9)) (timer (annotations) '3.0))) Int))))
      #f]
 
 

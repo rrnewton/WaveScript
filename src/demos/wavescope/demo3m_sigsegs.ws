@@ -18,7 +18,7 @@ main = iterate _ in s1 {
 
    using Sigseg;
 
-   w = toSigseg(Array:make(100, 90), pos, nulltimebase);
+   w = toSigseg(Array:make(100, intToInt16(90)), pos, nulltimebase);
 
    //========================================
    // Test nullsegs

@@ -139,12 +139,14 @@ ch4 = stream_map(fun(x) List:ref(x, 3), chans)
 fun projectabit(ls)
  ("GotDetectionFromTo", ls.head.start, ls.head.end)
 
+  /*
 withplotting =
  zipN_sametype(10,
   [gnuplot_sigseg_stream(ch1),
    gnuplot_sigseg_stream(ch2),
    gnuplot_sigseg_stream(ch3),
    gnuplot_sigseg_stream(ch4)])
+  */
 
 // Turning plotting off in the checked in version (for now)
 /* BASE <- smap(projectabit,withplotting) */

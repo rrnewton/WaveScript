@@ -202,18 +202,18 @@
 ;;; Hooks for garbage collection.
 
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
-(define (gen-incr-code ty ptr)
+(define (gen-incr-code ty ptr msg)
   (match ty
     ;; Both of these types just decr the -1 offset:
     [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("INCR_RC(",ptr"); /* type: ",(format "~a" ty)" */\n"))]
+     (make-lines `("INCR_RC(",ptr"); /* ",msg" type: ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 
      (apply append-lines
 	    (make-lines (format "/* Incr tuple refcount, Struct ~a */\n" name))
 	    (map (match-lambda ((,fldname ,ty))
-		   (gen-incr-code ty (list ptr "." (sym2str fldname))))
+		   (gen-incr-code ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name global-struct-defs))))]
     ;; Other types are not heap allocated:
     [,ty (guard (not (heap-allocated? ty global-struct-defs)))(make-lines "")]
@@ -248,10 +248,10 @@
 
 ;; This version represents plain old reference counting.
 (begin
-  (define incr-local-refcount  gen-incr-code)
+  (define (incr-local-refcount ty ptr) (gen-incr-code ty ptr "local"))
   (define (decr-local-refcount ty ptr) (gen-decr-code ty ptr default-free))
   
-  (define incr-heap-refcount gen-incr-code)
+  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
   (define (decr-heap-refcount ty ptr)
     (gen-decr-code ty ptr default-free))
   (define (potential-collect-point) (make-lines ""))
@@ -263,7 +263,7 @@
   (define (incr-local-refcount ty ptr) (make-lines ""))
   (define (decr-local-refcount ty ptr) (make-lines ""))
 
-  (define incr-heap-refcount gen-incr-code)
+  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
   (define (decr-heap-refcount ty ptr)
     (gen-decr-code ty ptr default-free))
 
@@ -972,14 +972,16 @@
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
      (match cd 
-       [(timer ,annot ',rate)
-	;(ASSERT integer? rate)
-	;; For the basic backend, we simply call the downstream
-	;; operator when we ourselves are asked for data (invoked).
-	(values nm
-	 ((Emit down*) ''UNIT) ;; Code
-	 (make-lines ())) 	 ;; State 	
-	])]))
+       [(timer ,annot ,rate)
+	(match (peel-annotations rate)
+	  [',rate
+	   ;;(ASSERT integer? rate)
+	   ;; For the basic backend, we simply call the downstream
+	   ;; operator when we ourselves are asked for data (invoked).
+	   (values nm
+		   ((Emit down*) ''UNIT) ;; Code
+		   (make-lines ())) ;; State 	
+	   ])])]))
 
 ;; .returns top-level decls (lines)
 (define (Operator op)

@@ -223,8 +223,10 @@
 	  [Char (char? c)]
 	  [String (string? c)]
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
-	  [(Array ,t) (and (vector? c) (andmap (lambda (x) (constant-typeable-as? x t)) (vector->list c)))]
+	  [(Array ,t) (and (vector? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) c))]
 	  [#()   (eq? c 'UNIT)]
+
+	  [(Sigseg ,t) (and (sigseg? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) (sigseg-vec c)))]
 
 	  ;; Type variable, matches anything:
 	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]

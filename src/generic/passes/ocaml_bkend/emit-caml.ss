@@ -873,6 +873,7 @@
 		   List:ref List:append List:reverse List:length List:make 
 		   		   
 		   wsequal? print show seg_get toArray __show_ARRAY __wserror_ARRAY __backtoSTR
+		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 
 		   ;; [2007.07.24] Because the caml backend isn't really supported, we're not doing Int64s:
 		   int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex

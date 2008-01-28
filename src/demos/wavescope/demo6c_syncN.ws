@@ -19,6 +19,9 @@ fun window(S, len)
 
 //======================================================================
 
+//syncN :: (List (Stream (Sigseg Float)), Stream (Bool * Int64 * Int64)) 
+syncN :: (List (Stream (Sigseg Float)), Stream (Bool * Int * Int)) 
+      -> Stream (List (Sigseg Float));
 fun syncN (strms, ctrl) {
   let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, (nullseg :: Sigseg Float)); };
   let f = fun(s) { iterate(win :: Sigseg Float in s) { 
@@ -55,6 +58,14 @@ fun syncN (strms, ctrl) {
     then {} // Can't do anything yet...
     else {
       let (fl, st, en) = requests.head;
+
+      /*
+      test0 = not(seg == nullseg);
+      test1 = (seg.start > st.intToInt64);
+      test2 = not(seg.end   < en`intToInt64);
+      let allready = false;
+      */
+
       let allready = 
 	// This should be andmap, not fold:
 	Array:fold(fun (bool, seg)
@@ -99,7 +110,8 @@ chans = (readFile("6sec_marmot_sample.raw", "mode: binary", timer(44000.0))
 ch1 = window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 128);
 ch2 = window(iterate((_,b,_,_) in chans){ emit int16ToFloat(b) }, 128);
 
-outwidth = 100;
+//outwidth :: Int64 = 100;
+outwidth :: Int = 100;
 
 ctrl = iterate(w in ch1) {
   state { 

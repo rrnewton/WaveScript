@@ -44,6 +44,7 @@ go "demo3j_numbers.ws"
 go "demo3k_uniontype.ws"
 go "demo3l_moreunions.ws"
 go "demo3m_sigsegs.ws"
+go "demo3n_static_vals.ws"
 
 go "demo4a_fft.ws"
 go "demo4b_morefft.ws"

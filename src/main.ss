@@ -578,6 +578,9 @@
 ;  (do-late-typecheck)
 
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
+  ;(print-graph #f)(inspect p)
+  ;(do-early-typecheck)
+  ;(inspect (strip-annotations p))
   (ws-run-pass p degeneralize-arithmetic)
 
   ;; We MUST typecheck before verify-elaborated.
@@ -606,6 +609,7 @@
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
+;  (print-graph #f)(inspect p)
 
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
@@ -1060,6 +1064,8 @@
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)
+
+	 (inspect prog)
 
 	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   
 	 (string->file 

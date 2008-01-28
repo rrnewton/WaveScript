@@ -115,14 +115,14 @@
   [Expr (lambda (e fallthru)
 	  (match e
 	    ;; FIXME: HACK: [2007.10.10] Just prune out the polymorphic asserts around constants.
-	    [(assert-type ,ty (quote ,[x])) 
+	    [(assert-type ,ty (quote ,x))
 	     (guard (not (polymorphic-type? ty)))
 	     `(assert-type ,ty ',x)]
-       [(assert-type ,t (,op ,annot ,[x*] ...))
-        (guard (and (memq op required-ops)
-                    (pair? annot)
-                    (eq? 'annotations (car annot))))
-        `(assert-type ,t (,op ,annot ,@x*))]
+	    [(assert-type ,t (,op ,annot ,[x*] ...))
+	     (guard (and (memq op required-ops)
+			 (pair? annot)
+			 (eq? 'annotations (car annot))))
+	     `(assert-type ,t (,op ,annot ,@x*))]
 	    [(assert-type ,t (,op ,[x*] ...)) 
 	     (guard (memq op required-ops))
 	     `(assert-type ,t ,(cons op x*))]

@@ -120,10 +120,12 @@
 		      (let ,(map list lhs* ty* (map Value (map TopIncr rhs* ty*)))
 			,newfun)
 		      ,strm)]
-	   
+
 	   [(let ([,lhs ,ty ,rhs]) ,[bod])
 	    (define result (unique-name "result"))
-	    ;; Drive the RC incr for the varbind inside:
+	    
+	    ;; TODO: *IF* RHS allocates, add to ZCT UNLESS it flows to a heap incr-point.
+
 	    (if (not-heap-allocated? ty) ; (simple-expr? bod)		
 		`(let ([,lhs ,ty ,(Value rhs)]) ,bod)
 		;; FIXME: INCORRECT:
@@ -133,13 +135,29 @@
 						(Value rhs) ty)])
 		   ,(DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) bod 
 				 '''unknown_result_ty)))]
-
+	  
+	   ;; Allocation routines -- add to ZCT?
 	   [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
 	    (ASSERT simple-expr? hd)
 	    (ASSERT simple-expr? tl)     
 	    `(begin ,@(if (not-heap-allocated? elt) () `((incr-heap-refcount ,elt ,hd)))
 		    (incr-heap-refcount (List ,elt) ,tl)
 		    (assert-type (List ,elt) (cons ,hd ,tl)))]
+	   ;; This could be more efficient, could bump it all at once
+	   ;; without the for-loop.  incr-heap-refcount would have to
+	   ;; take a numeric argument.  In the common case, the
+	   ;; initialization will most likely be the null array, and
+	   ;; getting rid of this for loop would do well.
+	   [(assert-type (Array ,elt) (Array:make ,[len] ,[init]))
+	    (guard (not (not-heap-allocated? elt)))
+	    (define tmp  (unique-name "tmp"))
+	    (define tmp2 (unique-name "tmp"))
+	    (define ind  (unique-name "ind"))
+	    `(let ([,tmp (Array ,elt) (assert-type (Array ,elt) (Array:make ,len ,init))])
+	       (begin (for (,ind '0 ,len)
+			  (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,tmp) ,ind)])
+			    (incr-heap-refcount ,elt ,tmp2)))
+		      ,tmp))]
 	   
 	   ;; Safety net:
 	   [(,form . ,rest) (guard (memq form '(let cons iterate)))
@@ -246,5 +264,26 @@
 		     (operators ,@oper*)
 		     (sink ,base ,basetype)
 		     ,@meta*))])))))
+
+
+(define insert-zct
+  (let ()
+    
+    (lambda (xp fall)
+      (match xp
+	[(begin ,effect ... ,truetail ,var) (guard (symbol? var))
+	 
+	 ]
+
+	;; (add-to-zct ,v)
+
+	;; (clear-zct)
+	;; (emit-clear-zct ,vq ,x)
+	
+	)
+      )
+    
+
+    0))
 
 ) ;; End module

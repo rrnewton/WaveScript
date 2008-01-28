@@ -2080,6 +2080,10 @@
 	 (eq? v1 v2)]
 	[,else #f]))]
 
+  ["This is a behavior that needs to change, infers INT:"
+   (type-const (vector [make-tuple (list #() 0)]))
+   (Array #2((Array unspecified) Int))]
+
   #;
   ;; Should we type-check with patterns in there?
   [(let-values ([(p t) (annotate-program '(lambda (#(_ t)) (> t 90)))]) t)

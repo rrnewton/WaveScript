@@ -1346,7 +1346,10 @@
 				    (cfl-real-part datum)
 				    (cfl-imag-part datum)))]
 	  [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
-	  [(integer? datum) (wrap (format "(wsint_t)~a" datum))]
+          ;; FIXME: Doesn't work for constants of type Int16 or Int64:
+	  [(integer? datum) (wrap (format "(~a)~a" 
+					  "wsint_t";(if type (Type type) (Type 'Int))
+					  datum))]
 	  [(vector? datum)
            (ASSERT name)
 	   (let ([contenttype (if (zero? (vector-length datum))
@@ -2113,6 +2116,7 @@ int main(int argc, char ** argv)
 		   realtime
 
 		   wsequal? print show seg_get toArray  __show_ARRAY __wserror_ARRAY __backtoSTR
+		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll
