@@ -755,23 +755,26 @@
 			     `("malloc(",size")"))]
 		  [cast `("(",_elt"*)",tmp)])
 	     (append-lines 
-	      (make-lines `("int* ",tmp" = ((int*)",alloc" + 2);\n"
-			    "CLEAR_RC(",tmp");\n"           
-			    "SETARRLEN(",tmp", ",len");\n"  
-			    ;; Now fill the array, if we need to:
-			    ,(if (and init (not (wszero? elt init)))
-				 (let ([i (unique-name "i")]
-				       [tmp2 (unique-name "arrtmpb")]
-				       [len2 (unique-name "lenmin1")])
-				   (list `(,_elt"* ",(Var tmp2) " = ",cast";\n")
-					 `("int ",(Var len2) " = ",len" - 1;\n")
-					 (lines-text
-					  ((Effect (emit-err 'array:make-constant))
-					   `(for (,i '0 ,len2)
-						(Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
-				 "")))
-	      (kont cast))
-	     )])))
+	      (make-lines 
+	       (list
+		`("int* ",tmp" = (int*)0;\n")
+		(block `("if (",len")")
+		       `(,tmp" = ((int*)",alloc" + 2);\n"
+			     "CLEAR_RC(",tmp");\n"           
+			     "SETARRLEN(",tmp", ",len");\n"  
+			     ;; Now fill the array, if we need to:
+			     ,(if (and init (not (wszero? elt init)))
+				  (let ([i (unique-name "i")]
+					[tmp2 (unique-name "arrtmpb")]
+					[len2 (unique-name "lenmin1")])
+				    (list `(,_elt"* ",(Var tmp2) " = ",cast";\n")
+					  `("int ",(Var len2) " = ",len" - 1;\n")
+					  (lines-text
+					   ((Effect (emit-err 'array:make-constant))
+					    `(for (,i '0 ,len2)
+						 (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
+				  "")))))
+	      (kont cast)))])))
      
      (match app
        ;; Refs and sets are pure simplicity:

@@ -227,7 +227,10 @@
 	  [#()   (eq? c 'UNIT)]
 
 	  [(Sigseg ,t) (and (sigseg? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) (sigseg-vec c)))]
-
+	  [#(,t* ...)
+	   (and (tuple? c) (andmap (lambda (x t) (constant-typeable-as? x t))
+				   (tuple-fields c) t*))]
+	  
 	  ;; Type variable, matches anything:
 	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]
 
