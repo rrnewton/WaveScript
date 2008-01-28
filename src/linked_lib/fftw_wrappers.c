@@ -14,9 +14,9 @@ int        initialized = 0;
 int        last_plan_size = 0;
 fftwf_plan cached_plan;
 float*     cached_inbuf;
-complex*   cached_outbuf;
+float complex*   cached_outbuf;
 
-static void memoized_fftR2C(float* in_buf, complex* out_buf) {
+static void memoized_fftR2C(float* in_buf, float complex* out_buf) {
       int len = ARRLEN(in_buf);
       int len_out = (len / 2) + 1;     
       //complex* out_buf = malloc(len_out * sizeof(complex));
@@ -37,7 +37,7 @@ static void memoized_fftR2C(float* in_buf, complex* out_buf) {
   	  fflush(stderr);
   	  last_plan_size = len;
 	  cached_inbuf  = (float*)fftwf_malloc(len     * sizeof(float));
-	  cached_outbuf = (complex*)fftwf_malloc(len_out * sizeof(complex));
+	  cached_outbuf = (float complex*)fftwf_malloc(len_out * sizeof(float complex));
 	  cached_plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE | FFTW_UNALIGNED);
 
 	  // FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
@@ -58,26 +58,27 @@ static void memoized_fftR2C(float* in_buf, complex* out_buf) {
       }
       
       //fprintf(stderr, "   EXECUTING PLAN size %d\n", len);
-      //fftwf_execute_dft_r2c(cached_plan, in_buf, (fftwf_complex*)out_buf);
+      fftwf_execute_dft_r2c(cached_plan, in_buf, (fftwf_complex*)out_buf);
 
-      memcpy(cached_inbuf,  in_buf,  len * sizeof(float));
-      memcpy(cached_outbuf, out_buf, len_out * sizeof(complex));
+      //memcpy(cached_inbuf,  in_buf,  len * sizeof(float));
+      //memcpy(cached_outbuf, out_buf, len_out * sizeof(complex));
       //fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE | FFTW_UNALIGNED);
-      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE);
-      fftwf_execute(plan);
-      fftwf_destroy_plan(plan);  
-      memcpy(in_buf,  cached_inbuf,  len * sizeof(float));
-      memcpy(out_buf, cached_outbuf, len_out * sizeof(complex));
 
-      printf("    READ FROM len? %d %p len %d [1] %f\n", len, in_buf, ARRLEN(in_buf), in_buf[1]);
+/*       fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, cached_inbuf, (fftwf_complex*)cached_outbuf, FFTW_ESTIMATE); */
+/*       fftwf_execute(plan); */
+/*       fftwf_destroy_plan(plan);   */
+/*       memcpy(in_buf,  cached_inbuf,  len * sizeof(float)); */
+/*       memcpy(out_buf, cached_outbuf, len_out * sizeof(complex)); */
 
-      printf("    WRITING INTO %p len %d [0] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[0]);
-      printf("    WRITING INTO %p len %d [1] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[1]);
-      printf("    WRITING INTO %p len %d [2] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[2]);
+/*       printf("    READ FROM len? %d %p len %d [1] %f\n", len, in_buf, ARRLEN(in_buf), in_buf[1]); */
 
-      printf("    WRITING INTO %p len %d [0] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[0]);
-      printf("    WRITING INTO %p len %d [1] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[1]);
-      printf("    WRITING INTO %p len %d [2] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[2]);
+/*       printf("    WRITING INTO %p len %d [0] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[0]); */
+/*       printf("    WRITING INTO %p len %d [1] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[1]); */
+/*       printf("    WRITING INTO %p len %d [2] %f\n", out_buf, ARRLEN(out_buf), __real__ out_buf[2]); */
+
+/*       printf("    WRITING INTO %p len %d [0] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[0]); */
+/*       printf("    WRITING INTO %p len %d [1] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[1]); */
+/*       printf("    WRITING INTO %p len %d [2] imag %f\n", out_buf, ARRLEN(out_buf), __imag__ out_buf[2]); */
 
 
       //      return out_buf;

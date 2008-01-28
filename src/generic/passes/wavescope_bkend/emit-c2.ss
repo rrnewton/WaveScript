@@ -405,7 +405,7 @@
     [Int64   "int64_t"]
     [Double  "double"]
     [Float   "float"]
-    [Complex "complex"]
+    [Complex "float complex"]
     [Char    "char"]
     [String  "char*"] ;; Not boosted.
     [#()      "char"]
