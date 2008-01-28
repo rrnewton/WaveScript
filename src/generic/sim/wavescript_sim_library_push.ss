@@ -72,6 +72,7 @@
 		 complexToInt16 complexToInt64 complexToInt complexToDouble complexToFloat
 		 
 		 stringToInt stringToFloat stringToDouble stringToComplex
+		 __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 		 intToChar charToInt
 		 String:length String:explode String:implode
 		 
@@ -1195,6 +1196,12 @@
 		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
 		      [(ws-float? x) (s:fl-make-rectangular x 0.0)]
 		      [else (ASSERT ws-complex? x)]))))
+
+  (define (ArrayStringWrapper fn) (lambda (x) (fn (list->string (vector->list x)))))
+  (define __stringToInt_ARRAY     (ArrayStringWrapper stringToInt))
+  (define __stringToFloat_ARRAY   (ArrayStringWrapper stringToFloat))
+  (define __stringToDouble_ARRAY  (ArrayStringWrapper stringToDouble))
+  (define __stringToComplex_ARRAY (ArrayStringWrapper stringToComplex))
 
   (define String:length string-length)
   (define String:explode string->list)

@@ -1,5 +1,11 @@
 
-s0 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+//s0 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+s0 = iterate _ in timer$10 {
+  state { cnt = 0 }
+  cnt += 1;
+  emit cnt;
+}
+
 
 /*
 fun println(s) {
@@ -12,7 +18,8 @@ fun println(s) {
 //fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 
 main = iterate(w in s0) {  
-  n = w`width;
+  //  n = w`width;
+  n = w;
   i = n`intToInt16;
   l = n`intToInt64;
   f = n`intToFloat;

@@ -240,6 +240,7 @@
 
     ;; [2007.10.16] This is now considered simple:
     [(deref ,var) (DEBUGASSERT symbol? var) #t]
+
     [,otherwise #f]))
 
 ;; This is a litlte helper that introduces a new binding ONLY if the

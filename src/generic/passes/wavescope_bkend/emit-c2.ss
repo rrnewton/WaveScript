@@ -392,7 +392,7 @@
     [Int64   "int64_t"]
     [Double  "double"]
     [Float   "float"]
-    [Complex "wscomplex_t"]
+    [Complex "complex"]
     [Char    "char"]
     [String  "char*"] ;; Not boosted.
     [#()      "char"]
@@ -861,21 +861,17 @@
 
 
        ;;========================================
-; 	;[(realpart ,[v]) `("(" ,v ".real)")]
-; 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-; 	[(imagpart ,[Simple -> v])   (kont `("__imag__ (" ,v ")"))]
+; 	[(realpart ,[v]) `("(" ,v ".real)")]
+; 	[(imagpart ,[v]) `("(" ,v ".imag)")]
+ 	[(realpart ,[Simple -> v])   (kont `("__real__ (" ,v ")"))]
+ 	[(imagpart ,[Simple -> v])   (kont `("__imag__ (" ,v ")"))]
 
 ; 	;; Wait... do we need to cast to double here?
 ; 	[(,extractreal ,[Simple -> v]) 
 ; 	 (guard (memq extractreal '(realpart complexToFloat complexToDouble)))
 ; 	 (kont `("__real__ (" ,v ")"))]
-; 	[(complexToInt   ,[Simple -> v])   (kont `("wsint_t((int)__real__ (" ,v "))"))]
-; 	[(complexToInt16 ,[Simple -> v])   (kont `("wsint16_t((int16_t)__real__ (" ,v "))"))]
-; 	[(complexToInt64 ,[Simple -> v])   (kont `("wsint64_t((int64_t)__real__ (" ,v "))"))]
 
-;; Makes gcc 3.4.3 barf:
-;;	[(absC ,[Simple -> c]) (kont `("abs((complex<float>)",c")"))]
-	[(absC ,[Simple -> c]) (kont `("WSPrim::CNorm(",c")"))]
+	[(absC ,[Simple -> c]) (kont `("cNorm(",c")"))]
 
 	[(intToChar ,[Simple -> e]) (kont `("(wschar_t)",e))]
 	[(,toint     ,[Simple -> e]) 
@@ -894,15 +890,46 @@
 	 (guard (memq todouble '(intToDouble int16ToDouble int64ToDouble floatToDouble)))
 	 (kont `("(double)",e))]
 
-; 	;[(complexToInt16 ,e)   (kont `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
-; 	;[(complexToInt ,e)     (kont `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
-; 	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
-; 	[(,ToComplex ,[Simple -> e])
-; 	 (guard (memq ToComplex 
-; 		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))
-;     	 (kont `("wscomplex_t(",e" + 0.0fi)"))]
-; 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
-; 	 (kont `("((wscomplex_t)(",re" + (",im" * 1.0fi)))"))]
+ 	[(complexToFloat ,e)   (PrimApp `(realpart ,e) kont mayberetty)]
+ 	[(complexToInt16 ,e)   (kont `("(int16_t)" ,(PrimApp `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToInt64 ,e)   (kont `("(int64_t)" ,(PrimApp `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToInt ,e)     (kont `("(int)"     ,(PrimApp `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToDouble ,e)  (kont `("(double)"  ,(PrimApp `(complexToFloat ,e) id 'Float)))]
+ 	[(,ToComplex ,[Simple -> e])
+ 	 (guard (memq ToComplex 
+ 		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))
+     	 (kont `("(",e" + 0.0fi)"))]
+ 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
+ 	 (kont `("(",re" + (",im" * 1.0fi))"))]
+	;;========================================
+
+	[(__stringToInt_ARRAY ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   (make-lines 
+	    `("int ",tmp";\n" 
+	      "sscanf(",e", \"%d\", &",tmp");\n"
+	      ,(lines-text (kont tmp)))))]
+	[(__stringToFloat_ARRAY ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   (make-lines 
+	    `("float ",tmp";\n"
+	      "sscanf(",e", \"%f\", &",tmp");\n"
+	      ,(lines-text (kont tmp)))))]
+	[(__stringToDouble_ARRAY ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   (make-lines
+	    `("double ",tmp";\n"
+	      "sscanf(",e", \"%lf\", &",tmp");\n"
+	      ,(lines-text (kont tmp)))))]
+	[(__stringToComplex_ARRAY ,[Simple -> e]) 
+	 (let ([tmp1 (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))])
+	   (make-lines
+	    `("float ",tmp1";\n"
+	      "float ",tmp2";\n"
+	      "sscanf(",e", \"%f+%fi\", &",tmp1", &",tmp2");\n"
+	      ,(lines-text (kont `(,tmp1"+(",tmp2"*1.0fi)"))))))]
+
 	;;========================================
        
        [(,other ,[Simple -> rand*] ...)
@@ -1082,6 +1109,8 @@
 	  (define includes (string-append "#include<stdio.h>\n" 
 					  "#include<stdlib.h>\n"
 					  "#include<string.h>\n"
+					  "#include<complex.h>\n"
+					  "#include<math.h>\n"
 					  "#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
 					  ))
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))

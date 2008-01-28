@@ -74,3 +74,10 @@ int Listref(void* list, int n) {
   return 0; 
 }
 */
+
+
+inline static float cNorm(complex c) {
+   float re =  __real__ (c);
+   float im =  __imag__ (c);
+   return sqrt ((re*re) + (im*im));
+}

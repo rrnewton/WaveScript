@@ -311,7 +311,7 @@
 			,(addstr! ''", ")
 			(tuple))))
 	      ,(addstr! ''"]"))))]
-
+      
       [#(,fld* ...)
        (let ([tup (unique-name "tup")]
 	     [len (length fld*)])
@@ -323,6 +323,15 @@
 		       (recur fldty `(tupref ,i ,len ,tup)))
 		  fld*))
 	      ,(addstr! ''")"))))]
+
+
+      [Complex (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+       (maybe-bind-tmp expr 'Complex
+        (lambda (tmp)
+	  `(begin ,(recur 'Float `(realpart ,tmp))
+		  ,(addstr! ''"+")
+		  ,(recur 'Float `(imagpart ,tmp))
+		  ,(addstr! ''"i"))))]
 
       [String #f] ;; No change
       
@@ -781,7 +790,13 @@
 	       `(readFile ,annot ',str1 ',str2 ,strm)]
 	      [(readFile ,annot ,[str1] ,[str2] ,[strm])
 	       (error 'embed-strings-as-arrays "For now readfiles must have explicit quoted string arguments at this point.")
-	       `(readFile ,annot (__backtoSTR ,str1) (__backtoSTR ,str2) ,strm)]
+	       ;`(readFile ,annot (__backtoSTR ,str1) (__backtoSTR ,str2) ,strm)
+	       ]
+	      
+	      [(stringToInt ,[x])     `(__stringToInt_ARRAY ,x)]
+	      [(stringToFloat ,[x])   `(__stringToFloat_ARRAY ,x)]
+	      [(stringToDouble ,[x])  `(__stringToDouble_ARRAY  ,x)]
+	      [(stringToComplex ,[x]) `(__stringToComplex_ARRAY ,x)]
 
 	      ;[(show ,[x]) `(__Hack:fromOldString (show ,x))]
 	      ;[(wserror ,[x]) `(wserror (__Hack:backToString ,x))]

@@ -1051,8 +1051,8 @@
 	    ;(print-graph #f)  (inspect prog)
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
-	    (time (ws-run-pass prog emit-c2))
 
+	    (time (ws-run-pass prog emit-c2))
 	    
 	    (string->file (text->string prog) outfile)
 	    (unless (regiment-quiet)
