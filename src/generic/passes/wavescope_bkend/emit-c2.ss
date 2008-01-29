@@ -509,15 +509,12 @@
        ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
        (define set-and-incr-k	 
 	 (lambda (x)      
-	   (printf "  CALLED SETTER K: ~a\n" x)
 	   (if (eq? x split-msg)
 	       (values (make-lines "")	set-and-incr-k)
 	       (append-lines (make-lines `(" ",(Var vr)" = ",x";\n"))
 			     (make-lines "/* I AM HEAP INCR */\n")
 			     #|(incr-heap-refcount ty (Var vr))|#
 			     ))))
-       (printf "SPLITBINDING ~a\n" vr)
-
        (values (make-lines `(,(Type ty)" ",(Var vr)";\n"))
 	       ((Value emitter) rhs set-and-incr-k))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))

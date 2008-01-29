@@ -91,10 +91,17 @@
     (define (not-heap-allocated? ty) (not (heap-allocated? ty global-struct-defs)))
     (define (DriveInside injection xp retty)
       (match xp
-	[(let ([,lhs ,ty ,rhs]) ,[bod])
-	 `(let ([,lhs ,ty ,rhs]) ,bod)]
+	[(let ([,lhs ,ty ,rhs]) ,[bod]) `(let ([,lhs ,ty ,rhs]) ,bod)]
 	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
+	;; Go down both control paths:
+	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
 	[,oth 
+	 (define tmp (unique-name "tmp"))
+	 (if (simple-expr? oth)	     
+	     `(begin ,(injection oth) ,oth)
+	     `(let-not-counted ([,tmp ,retty ,oth])
+	       (begin ,(injection tmp) ,tmp)))
+	 #;
 	 (maybe-bind-tmp oth retty
 	   (lambda (tmp)
 	     `(begin ,(injection tmp) ,tmp)))]))
@@ -103,6 +110,7 @@
     (define (TopIncr exp ty)  
       (DriveInside (lambda (x) `(incr-heap-refcount ,ty ,x)) exp ty))
 
+   
     (define Value 
       (core-generic-traverse
        (lambda (xp fallthru)
@@ -121,20 +129,31 @@
 			,newfun)
 		      ,strm)]
 
-	   [(let ([,lhs ,ty ,rhs]) ,[bod])
+	   [(let ([,lhs ,ty ,rhs]) ,bod)
 	    (define result (unique-name "result"))
 	    
 	    ;; TODO: *IF* RHS allocates, add to ZCT UNLESS it flows to a heap incr-point.
 
 	    (if (not-heap-allocated? ty) ; (simple-expr? bod)		
-		`(let ([,lhs ,ty ,(Value rhs)]) ,bod)
+		`(let ([,lhs ,ty ,(Value rhs)]) ,(Value bod))
 		;; FIXME: INCORRECT:
 		;; Does this work? DriveInside should come *before* recursion.
 		;; BUT, that leads to an infinite loop.
-		`(let ([,lhs ,ty ,(DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
-						(Value rhs) ty)])
-		   ,(DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) bod 
-				 '''unknown_result_ty)))]
+		;; DriveInside introduces extra let-expressions, which then lead to extra calls to DriveInside.
+		`(let ([,lhs ,ty ,(Value
+				   (DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
+						rhs ty))])
+		   
+		   #;
+		   ,(DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) 
+				 (Value bod)  '''unknown_result_ty)
+
+		   ,(Value
+		     (DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) bod 
+				 '''unknown_result_ty))))]
+	   
+	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
+	    `(let-not-counted ([,lhs ,ty ,rhs]) ,bod)]
 	  
 	   ;; Allocation routines -- add to ZCT?
 	   [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
@@ -187,8 +206,9 @@
 	    (if (not-heap-allocated? ty) ;; No reason to pollute things
 		`(let ([,lhs ,ty ,(Value rhs)]) ,bod)
 		;; FIXME: INCORRECT:
-		`(let ([,lhs ,ty ,(DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
-					       (Value rhs) ty)])
+		`(let ([,lhs ,ty ,(Value 
+				   (DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
+						rhs ty))])
 		   ,(make-begin
 		     `(begin
 			,bod
@@ -236,10 +256,19 @@
 	   [,oth (fallthru oth)]
 	   ))))
 
+    ;; Value plus a hackish post-process step:
+    (define (Value+ x)
+      ;; Here we do the unthinkable: mutate an AST.
+      (let* ([result (Value x)]
+	     [hits (deep-assq-all 'let-not-counted result)])	  
+	(for-each (lambda (hit) (set-car! hit 'let)) hits)
+	;(inspect hits) (inspect result)
+	result))
+
     (define (Operator op)
       (match op
 	[(iterate (name ,name) (output-type ,o_ty)
-		  (code ,[Value -> itercode])
+		  (code ,[Value+ -> itercode])
 		  (incoming ,o_up) (outgoing ,o_down* ...))
 	 `(iterate (name ,name) (output-type ,o_ty)
 		   (code ,itercode)
@@ -249,19 +278,20 @@
 	;; Nor does this:
 	[(__readFile . ,_) op]
 	[(unionN . ,_) op]))
+
     ;; Main pass body:
     (lambda (prog)
-      (cond-expand [chez (import iu-match)] [else (void)])
+      (cond-expand [chez (import iu-match)] [else (void)])    
       (fluid-let ([global-struct-defs (cdr (project-metadata 'struct-defs prog))])
 	(match prog
 	  [(,input-language 
 	    '(graph (const (,cbv* ,cbty* ,cbexp*) ...)
-		    (init  ,[Value -> init*] ...)
-		    (sources ((name ,nm) (output-type ,s_ty) (code ,[Value -> scode]) (outgoing ,down* ...)) ...)
+		    (init  ,[Value+ -> init*] ...)
+		    (sources ((name ,nm) (output-type ,s_ty) (code ,[Value+ -> scode]) (outgoing ,down* ...)) ...)
 		    (operators ,[Operator -> oper*] ...)
 		    (sink ,base ,basetype)	,meta* ...))
 	   `(,input-language 
-	     '(graph (const (,cbv* ,cbty* ,(map Value (map TopIncr cbexp* cbty*))) ...)
+	     '(graph (const (,cbv* ,cbty* ,(map Value+ (map TopIncr cbexp* cbty*))) ...)
 		     (init ,@init*) 
 		     (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
 		     (operators ,@oper*)

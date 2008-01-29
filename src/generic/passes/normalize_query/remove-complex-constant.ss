@@ -87,8 +87,8 @@
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
       (lambda (orig origty)
-	(when (and (not origty) (not (string? orig)) (not (boolean? orig)))
-	  (printf " INFERRING TYPE OF CONST: ~s\n" orig))
+	;(when (and (not origty) (not (string? orig)) (not (boolean? orig)))
+	;  (printf " INFERRING TYPE OF CONST: ~s\n" orig))
 	;; Empty tenv is ok, it's just a constant:
 	(let loop ([x orig] 
 		   ;[type (or origty (recover-type `',orig (empty-tenv)))]

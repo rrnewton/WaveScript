@@ -670,8 +670,8 @@
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
   (ASSERT (plain? p))
   
-  (trace-let loop ([val (plain-val p)]
-		   [ty  (plain-type p)])
+  (let loop ([val (plain-val p)]
+	     [ty  (plain-type p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
      ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
