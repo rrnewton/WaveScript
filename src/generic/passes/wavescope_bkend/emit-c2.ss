@@ -808,24 +808,28 @@
 
        ;; These use FFTW currently
        [(,fft ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
-	(guard (memq fft '(memoized_fftR2C fftR2C))) ;; TEMP: Just using memoized for the normal one too!
+	(guard (memq fft '(memoized_fftR2C fftR2C ifftC2R))) ;; TEMP: Just using memoized for the normal one too!
+	(define inverse? (eq? fft 'ifftC2R))
 	(define len0 (unique-name "len"))
 	(define len1 (unique-name "len"))
 	(define len2 (unique-name "len"))
 	(define tmp (unique-name "tmp"))
+	(define name (if inverse? "memoized_ifftC2R" "memoized_fftR2C"))
 	(ASSERT simple-expr? arr)
 	(add-include! "<fftw3.h>")
 	(add-include! (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
 	(add-link! "libfftw3f.so")		
-	(append-lines ((Binding (emit-err 'memoized_fftR2C)) (list len0 'Int `(Array:length ,arr)))
-		      ((Binding (emit-err 'memoized_fftR2C)) (list len1 'Int `(/_ ,len0 '2)))
-		      ((Binding (emit-err 'memoized_fftR2C)) (list len2 'Int `(_+_ ,len1 '1)))
-		      ((Binding (emit-err 'memoized_fftR2C)) 
-				   (list tmp '(Array Complex) 
-					 ;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
-					 `(assert-type (Array Complex) (Array:make ,len2 (assert-type Complex '0+0i)))
-					 ))
-		      (make-lines `("memoized_fftR2C(",(Simple arr)", ",(Var tmp)");\n"))
+	(append-lines ((Binding (emit-err 'fft)) (list len0 'Int `(Array:length ,arr)))
+		      ((Binding (emit-err 'fft)) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
+		      ((Binding (emit-err 'fft)) (list len2 'Int (if inverse? `(*_ ,len1 '2) `(_+_ ,len1 '1) )))
+		      ((Binding (emit-err 'fft))
+				   (list tmp 
+					 (if inverse? '(Array Float) '(Array Complex))
+					;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
+					 (if inverse?
+					     `(assert-type (Array Float)   (Array:makeUNSAFE ,len2))
+					     `(assert-type (Array Complex) (Array:makeUNSAFE ,len2)))))
+		      (make-lines `(,name"(",(Simple arr)", ",(Var tmp)");\n"))
 		      (kont (Var tmp)))]
        
        ;; wsequal? should only exist for scalars at this point:

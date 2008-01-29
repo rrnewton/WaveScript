@@ -6,7 +6,6 @@ include "stdlib.ws";
 
 //if GETENV("WSARCH") == "ENSBox" 
 
-
 fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
 fun conj(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
 
@@ -120,8 +119,6 @@ s2 = iterate w in s1 {
 
   for i = 0 to 4 { print(a[[i]]++" \n") }; print("\n");
   for i = 0 to 4 { print(b[[i]]++" \n") }; print("\n");
-
-
 
 
   inspect $ toArray $ a;
