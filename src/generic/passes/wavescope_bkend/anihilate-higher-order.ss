@@ -36,6 +36,7 @@
   ;; Accordingly, references to them must be dereferences.
   (define-pass anihilate-higher-order
     (define (Expr x fallthru)
+      (define (recur x) (Expr x fallthru))
       (match x
 
 #;
@@ -93,16 +94,18 @@
 		   (set! ,out (cons (Array:ref ,tmp (_-_ ,len ,i)) (deref ,out))))
 		  (deref ,out)))))]
 
-	[(Array:map (lambda (,v) (,ty) ,[e1]) ,[e2])
-	 (let ([tmp (unique-name 'tmp)]
-	       [out (unique-name 'outls)]
-	       [newty (unique-name 'noty)]
-	       [i (unique-name 'i)])		
-	   ;; Need Array:makeZeroed or Array:makeUNSAFE !!
-	   `(let ([,tmp (Array ,ty) ,e2])
-	      (if (wsequal? ,tmp Array:null)
-		  Array:null
-		  (let ([,out (Array ',newty)
+	[(Array:map ,op ,[e2])
+	 (match (peel-annotations op)
+	   [(lambda (,v) (,ty) ,[recur -> e1])
+	    (let ([tmp (unique-name 'tmp)]
+		  [out (unique-name 'outls)]
+		  [newty (unique-name 'noty)]
+		  [i (unique-name 'i)])
+	      ;; Need Array:makeZeroed or Array:makeUNSAFE !!
+	      `(let ([,tmp (Array ,ty) ,e2])
+		 (if (wsequal? ,tmp Array:null)
+		     Array:null
+		     (let ([,out (Array ',newty)
 			      ;(Array ,ty)
 			      (Array:makeUNSAFE (Array:length ,tmp) 
 					  ;(Array:ref ,tmp '0)
@@ -111,50 +114,57 @@
 		      (for (,i '0 (_-_ (Array:length ,tmp) '1))
 			  (Array:set ,out ,i
 		             (let ([,v ,ty (Array:ref ,tmp ,i)]) ,e1)))
-		      ,out)))))]
-	[(Array:fold (lambda (,acc ,v) (,ty1 ,ty2) ,[e1]) ,[zer] ,[e2])
-	 (let ([tmp (unique-name 'tmp)]
-	       [x (unique-name 'acc)]
-	       [i (unique-name 'i)])
-	   `(let ([,tmp (Array ,ty2) ,e2]
-		  [,x (Ref ,ty1) (Mutable:ref ,zer)])
-	      (begin 
-		(for (,i '0 (_-_ (Array:length ,tmp) '1))
-		    (set! ,x 
-		       (let ([,acc ,ty1 (deref ,x)]
-			     [,v ,ty2 (Array:ref ,tmp ,i)])
-			 ,e1)))
-		(deref ,x))))]
+		      ,out)))))])]
 
-	[(Array:andmap (lambda (,v) (,ty) ,[e1]) ,[e2])
-	 (let ([tmp (unique-name 'tmp)]
-	       [x (unique-name 'flag)]
-	       [i (unique-name 'i)]
-	       [len (unique-name 'len)])
-	   `(let ([,tmp (Array ,ty) ,e2]
-		  [,x (Ref Bool) (Mutable:ref '#t)]
-		  [,i (Ref Int) (Mutable:ref '0)])
-	      (let ([,len Int (Array:length ,tmp)])
-		(begin 
-		  (while (if (deref ,x) (< (deref ,i) ,len) '#f)
-			 (begin (if (let ([,v ,ty (Array:ref ,tmp (deref ,i))]) ,e1)
-				    (tuple)
-				    (set! ,x '#f))
-				(set! ,i (_+_ (deref ,i) '1))))
-		  (deref ,x)))
-	      ))]
+	[(Array:fold ,op ,[zer] ,[e2])
+	 (match (peel-annotations op)
+	   [(lambda (,acc ,v) (,ty1 ,ty2) ,[recur -> e1])
+	    (let ([tmp (unique-name 'tmp)]
+		  [x (unique-name 'acc)]
+		  [i (unique-name 'i)])
+	      `(let ([,tmp (Array ,ty2) ,e2]
+		     [,x (Ref ,ty1) (Mutable:ref ,zer)])
+		 (begin 
+		   (for (,i '0 (_-_ (Array:length ,tmp) '1))
+		       (set! ,x 
+			     (let ([,acc ,ty1 (deref ,x)]
+				   [,v ,ty2 (Array:ref ,tmp ,i)])
+			       ,e1)))
+		   (deref ,x))))])]
 
-	[(Array:build ,[n] (lambda (,v) (Int) ,[e1]))
-	 (let ([notype (unique-name 'notype)]
-	       [out (unique-name 'outls)]
-	       [len (unique-name 'len)]
-	       [i (unique-name 'i)])
-	   `(let ([,len Int ,n])
-	      (let ([,out (Array ',notype) (Array:makeUNSAFE ,len)])
-		(begin 
-		  (for (,i '0 (_-_ ,len '1))
-		      (Array:set ,out ,i (let ([,v Int ,i]) ,e1)))
-		  ,out))))]
+	[(Array:andmap ,op ,[e2])
+	 (match (peel-annotations op)
+	   [(lambda (,v) (,ty) ,[recur -> e1])
+	    (let ([tmp (unique-name 'tmp)]
+		  [x (unique-name 'flag)]
+		  [i (unique-name 'i)]
+		  [len (unique-name 'len)])
+	      `(let ([,tmp (Array ,ty) ,e2]
+		     [,x (Ref Bool) (Mutable:ref '#t)]
+		     [,i (Ref Int) (Mutable:ref '0)])
+		 (let ([,len Int (Array:length ,tmp)])
+		   (begin 
+		     (while (if (deref ,x) (< (deref ,i) ,len) '#f)
+			    (begin (if (let ([,v ,ty (Array:ref ,tmp (deref ,i))]) ,e1)
+				       (tuple)
+				       (set! ,x '#f))
+				   (set! ,i (_+_ (deref ,i) '1))))
+		     (deref ,x)))
+		 ))])]
+	
+	[(Array:build ,[n] ,op)
+	 (match (peel-annotations op)
+	   [(lambda (,v) (Int) ,[recur -> e1])
+	    (let ([notype (unique-name 'notype)]
+		  [out (unique-name 'outls)]
+		  [len (unique-name 'len)]
+		  [i (unique-name 'i)])
+	      `(let ([,len Int ,n])
+		 (let ([,out (Array ',notype) (Array:makeUNSAFE ,len)])
+		   (begin 
+		     (for (,i '0 (_-_ ,len '1))
+			 (Array:set ,out ,i (let ([,v Int ,i]) ,e1)))
+		     ,out))))])]
 
 #;
 	[(List:build ,[n] (lambda (,v) (Int) ,[e1]))
@@ -169,10 +179,6 @@
 		      (set! ,acc (cons (let ([,v Int ,i]) ,e1) (deref ,acc))))
 		  (List:reverse (deref ,acc))))))]
 	
-;     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
-
-;     (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
-
 	;; Safety net:
 	[(,prim ,rands ...) (guard (assq prim higher-order-primitives))
 	 (error 'anihilate-higher-order "missed this, possible not fully elaborated:\n  Code: ~a\n  Location: ~a\n" 

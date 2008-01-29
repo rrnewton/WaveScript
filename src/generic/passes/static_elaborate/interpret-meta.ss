@@ -671,7 +671,7 @@
   (ASSERT (plain? p))
   
   (trace-let loop ([val (plain-val p)]
-	     [ty  (plain-type p)])
+		   [ty  (plain-type p)])
     (cond
      [(hash-table? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
      ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
@@ -700,7 +700,13 @@
       (and (integer? val) (exact? val))
       ;(ASSERT (plain-type p))
       (unless ty (error 'Marshal-Plain "No type for this int ~s" val))
-      `(assert-type ,ty (gint ',val))]
+      ;(ASSERT (compose not polymorphic-type?) ty)
+      #;
+      (if (polymorphic-type? ty)
+	  `(gint ',val)
+	  `(assert-type ,ty (gint ',val)))
+      `(gint ',val)
+      ]
      ;; No double's in meta program currently!!!
      ;; ANNOYING, FIXME: We don't have a direct syntax for double
      ;; constants, as a stopgap we could cast them from float
@@ -709,15 +715,19 @@
      [(list? val)
       ;; This value is thrown away:
       ;; TODO, do a proper check to make sure there are no streamops/closures
-      ;; FIXME: IS THIS NECESSARY:
-      (match (or ty (type-const val))
-        [(List ,elt)
-         (for-each (lambda (x) (loop x elt)) val)])
-      `(assert-type ,ty ',val)]
+      (DEBUGMODE
+       (match (or ty (type-const val))
+	 ;; Going through just to make sure there are no errors:
+	 [(List ,elt) (for-each (lambda (x) (loop x elt)) val)]))
+      ;`(assert-type ,ty ',val)
+      `',val
+      ]
 
      [(vector? val)
       ;; FIXME, should COMPRESS here if possible.
-      `(assert-type ,ty ',val)]
+      ;`(assert-type ,ty ',val)
+      `',val
+      ]
 
      ;; FIXME: GET RID OF THIS FALLTHROUGH!
      [else

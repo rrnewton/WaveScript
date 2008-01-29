@@ -150,14 +150,17 @@
 	   ;; getting rid of this for loop would do well.
 	   [(assert-type (Array ,elt) (Array:make ,[len] ,[init]))
 	    (guard (not (not-heap-allocated? elt)))
+	    (define end  (unique-name "end"))
 	    (define tmp  (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))
 	    (define ind  (unique-name "ind"))
 	    `(let ([,tmp (Array ,elt) (assert-type (Array ,elt) (Array:make ,len ,init))])
-	       (begin (for (,ind '0 ,len)
-			  (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,tmp) ,ind)])
-			    (incr-heap-refcount ,elt ,tmp2)))
-		      ,tmp))]
+	       (let ([,end Int (_-_ ,len '1)])
+		 (begin (for (,ind '0 ,end)
+			    (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,tmp) ,ind)])
+			      (incr-heap-refcount ,elt ,tmp2)))
+			,tmp)
+		 ))]
 	   
 	   ;; Safety net:
 	   [(,form . ,rest) (guard (memq form '(let cons iterate)))

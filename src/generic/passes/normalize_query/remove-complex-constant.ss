@@ -39,6 +39,10 @@
             [(assert-type ,ty (quote ,datum))
              (match (do-datum datum ty)
                [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
+
+	    ;; Catch the type assertion at the binding site?
+	    ;[(let )]
+
 	    ;; This is not very safe now that we have more numeric types than Scheme representations:
             [(quote ,datum)   (do-datum datum #f)]
             
@@ -74,6 +78,7 @@
                      (letrec ,body-b* ,body)
                    ,meta* ...  ,type))))]))]
 
+  ;; Returns (1) Expr (2) Type (3) Mutable?
   (define datum->code
     (let* ([pow32 (expt 2 32)]
 	   [pow31 (expt 2 31)]
@@ -82,13 +87,14 @@
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
       (lambda (orig origty)
-	(when (and (not origty) (not (string? orig))) (printf " INFERRING TYPE OF CONST: ~s\n" orig))
+	(when (and (not origty) (not (string? orig)) (not (boolean? orig)))
+	  (printf " INFERRING TYPE OF CONST: ~s\n" orig))
 	;; Empty tenv is ok, it's just a constant:
 	(let loop ([x orig] 
 		   ;[type (or origty (recover-type `',orig (empty-tenv)))]
 		   ;[type (recover-type `',orig (empty-tenv))]
 		   ;[type (type-const orig)]
-		   [type (or origty (type-const orig))])
+		   [type (or origty (export-type (type-const orig)))])
 	  (match type
 
 	   [(List ,elt-t)
@@ -102,18 +108,34 @@
 		  (values `(cons ,e1 ,e2) type (or mu1? mu2?))))]
 	   	   
 	   ;; Vectors are mutable and can't be lifted to the top with our current semantics.
+	   ;; This generates awfully verbose code:
 	   [(Array ,elt-ty)
-	    (values
-	     (let ([tmp (unique-name 'tmparr)])
-	       `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
-		  (begin 
-		    ,@(list-build 
-		       (vector-length x)
-		       (lambda (i) 
-			 `(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
-		       )
-		    ,tmp)))
-	     type #t)]
+	    (cond
+	     [(= 0 (vector-length x))
+	      ;(values `(assert-type ,type Array:null) type #f)
+	      (values 'Array:null type #f)
+	      ]
+	     
+	     ;; If they're all equal, reduce to 
+	     [(and (all-equal? (vector->list x))
+		   (not (type-containing-mutable? elt-ty)))
+	      (printf " ** Note: Found compile-time vector with constant contents.\n")
+	      ;`(Array:make ,(vector-length x) (assert-type ,elt-ty ,(vector-ref x 1)))
+	      (values
+	       `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty)))
+	       type #f)]
+
+	     [else (values
+		    (let ([tmp (unique-name 'tmparr)])
+		      `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
+			 (begin 
+			   ,@(list-build 
+			      (vector-length x)
+			      (lambda (i) 
+				`(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
+			      )
+			   ,tmp)))
+		    type #t)])]
 
 	   ;; This is kind of pointless... we turn tuples back into code.
 	   [,vec (guard (vector? vec))
@@ -130,9 +152,8 @@
 	    (ASSERT (fx= 0 (vector-length (sigseg-vec x))))
 	    (values 'nullseg type #f)]
 	   
-	   [Int (values `',x type #f)]
-	   [,othernum (guard (memq othernum num-types)) 
-		      (values `(assert-type ,type ',x) type #f)]
+	   ;[Int (values `',x type #f)]
+	   ;[,othernum (guard (memq othernum num-types))  (values `(assert-type ,othernum ',x) type #f)]
 	   ;; Anything else doesn't need an assert-type:
 	   [,_ (guard (simple-constant? x)) (values `',x type #f)]
 	   ;[(simple-constant? x) (values `',x type #f)]

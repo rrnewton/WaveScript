@@ -159,7 +159,6 @@
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [,else #f]))
 
-
 (define (type-replace-polymorphic ty dummy-type)
   (match ty
     [(,qt ,v) (guard (memq qt '(quote NUM)))

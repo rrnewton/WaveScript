@@ -59,11 +59,17 @@
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    ))
 
+    (define (wrap ty x)
+      `(assert-type ,ty ,x))
+
     (define (maybewrap x tenv)
       (match x
 	[(assert-type ,ty ,_) x]
-	[,_ `(assert-type ,(recover-type x tenv) ,x)]))
-
+	[,_ 
+	 (define recovered (recover-type x tenv))
+	 (DEBUGASSERT (not (polymorphic-type? recovered)))
+	 (wrap recovered x)]))
+    
     (define (process-expr x tenv fallthru)
 ;      (printf "PE: \n")
       (match x
@@ -89,16 +95,14 @@
 	    (k vars types 
 	       (map (lambda (type rhs) ;rhs may be #f for 'unavailable'
 		      (if (and (pair? rhs) (memq (car rhs) annotate-outside-prims))		       
-			  `(assert-type ,type ,rhs)
+			  (wrap type rhs)
 			  rhs))
 		 types rhs*)
 	       other))
 	  tenv)]
-	
-	[(,annfirst (assert-type ,ty ,[x]) ,[y*] ...) (guard (memq annfirst annotate-first-arg))
-	 `(,annfirst (assert-type ,ty ,x)  . ,y*)]
+		
 	[(,annfirst ,[x] ,[y*] ...) (guard (memq annfirst annotate-first-arg))
-	 `(,annfirst (assert-type ,(recover-type x tenv) ,x)  . ,y*)]
+	 `(,annfirst ,(maybewrap x tenv)  . ,y*)]
 
 	;; Generically handle all the annotate-outside forms:
 	;; Wouldn't need this if the program were flattened so that
@@ -106,19 +110,13 @@
 #;
 	[(,annprim ,[e*] ...) (guard (memq annprim annotate-outside-prims))
 	 (let ([exp `(,annprim . ,e*)])
-	   (assert-type ,(recover-type exp tenv)
-			,exp))]
+	   ,(maybewrap exp tenv))]
 
 	;; Tag the applications too:	
-	[(foreign-app ',realname (assert-type ,ty ,rator) ,[arg*] ...)
-;	 (ASSERT symbol? rator) ;; [2007.10.26] Not sure why this would need to be the case...
-	 `(foreign-app ',realname
-		       (assert-type ,ty ,rator)
-		       ,@arg*)]
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 ;	 (ASSERT symbol? rator) ;; [2007.10.26] Not sure why this would need to be the case...
 	 `(foreign-app ',realname
-		       (assert-type ,(recover-type rator tenv) ,rator)
+		       ,(maybewrap rator tenv)
 		       ,@arg*)]
 
 	;; Anything already in assert form is covered.

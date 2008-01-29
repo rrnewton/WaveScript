@@ -557,63 +557,38 @@
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
 
-  ;;;;;;;;;;;;;; POST ELABORATION: ;;;;;;;;;;;;;;;;;;;;;
+
+  ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
   (when (or (regiment-verbose) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
-;  (inspect (let-spine 1 p))
-;  (inspect (let-spine 4 p))
-
-#;
-  (begin 
-    (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
-    (dump-compiler-intermediate p ".__elaborated.ss")
-    (inspect (let-spine 4 p))
-    (exit 0)
-    )
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
 
-;  (DEBUGMODE (do-late-typecheck))
-;  (do-late-typecheck)
-
-  ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
-  ;(print-graph #f)(inspect p)
-  ;(do-early-typecheck)
-  ;(inspect (strip-annotations p))
   (ws-run-pass p degeneralize-arithmetic)
-
-  ;; We MUST typecheck before verify-elaborated.
-  ;; This might kill lingering polymorphic types ;)
+  ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
   (do-late-typecheck)
-
-  (IFDEBUG 
-   (unless (regiment-quiet)
-     (printf "Post elaboration types: \n")
-     (print-var-types p +inf.0)) 
-   (void))
   
   ;; This just fills polymorphic types with unit.  These should be
   ;; things that don't matter.  We typecheck afterwards to make sure
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
-  (ws-run-pass p strip-unnecessary-ascription)  
-  (ws-run-pass p verify-elaborated)
+  ;; We strip out ascriptions so we don't have any polymophic hanging around in there:
+  (ws-run-pass p strip-unnecessary-ascription)
+
+  (IFDEBUG (do-late-typecheck) (void))
 
   ;; [2007.10.27] For MLton we might should remove at least part of this pass:
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
-
-  (IFDEBUG (do-late-typecheck) (void))
 
   ;; NOTE: wavescript-language won't work until we've removed complex constants.
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
-;  (print-graph #f)(inspect p)
 
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
-  (do-late-typecheck)
+  (IFDEBUG (do-late-typecheck) (void))
 
   ;; Trying this *before* unlift.  
   ;; The function here is to strip all but the essential type annotations.
@@ -623,31 +598,41 @@
   ;; This is a hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
   (do-late-typecheck)
-
-  (ws-run-pass p unlift-polymorphic-constant)
-  (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
-
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
+  (ws-run-pass p unlift-polymorphic-constant)   
+
+  (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
+
+  (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.
+
+  (IFDEBUG 
+   (unless (regiment-quiet)
+     (printf "Post elaboration types: \n")
+     (print-var-types p +inf.0)) 
+   (void))
+
+  ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
+  
+  (do-late-typecheck)  ;; Anihilate introduced type variables.
 
   ;; <-------- NOTE: Old location for merge-iterates. [2007.11.01]
 
-  (IFDEBUG (do-late-typecheck) (void))
+  ;(IFDEBUG (do-late-typecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
   (ws-run-pass p reduce-primitives) ; w/g 
  
   (IFDEBUG (do-late-typecheck) (void))
-
   (ws-run-pass p type-annotate-misc)
-  (assure-type-annotated p (lambda (x) (equal? x ''())))
+;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p explicit-toplevel-print))
-
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
+
 
   (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c)  ;'wavescript-simulator
     (ws-run-pass p embed-strings-as-arrays)
@@ -733,7 +718,7 @@
   (DEBUGMODE (dump-compiler-intermediate p ".__nocomplexopera.ss"))
 
   (ws-run-pass p type-annotate-misc)
-  (assure-type-annotated p (lambda (x) (equal? x ''())))
+;(assure-type-annotated p (lambda (x) (equal? x ''()))) ;; TEMP HACK
   (ws-run-pass p reify-certain-types)
 
   ;; for analysis of data rates between boxes
@@ -995,9 +980,6 @@
      
      ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
      
-     ;;(unless (regiment-quiet) (printf "Compiling program for C++/XStream backend\n\n"))
-     ;;;(pretty-print prog)
-
      (unless (regiment-quiet)
        (printf "\nTypecheck complete, program types:\n\n")
        (if (regiment-verbose) 
@@ -1007,28 +989,10 @@
      
      ;; Run the main body of the compiler.
      (set! prog (run-ws-compiler typed input-params disabled-passes #t))
-     
-     (unless (regiment-quiet) (printf "\nFinished normal compilation, now emitting C++ code.\n"))
-
-     ;;(inspect (deep-assq-all 'wsequal? prog))
-     ;;(ws-run-pass prog generate-comparison-code) ;; RUNNING AGAIN
-     ;;(ws-run-pass prog ws-lift-let)
-     ;;(inspect (deep-assq-all 'wsequal? prog))
-
+         
      (ws-run-pass prog convert-sums-to-tuples)
-     #;
-     ;; Retypecheck to bring back some types that were lost:
-     (parameterize ([inferencer-enable-LUB #t]
-		    [inferencer-let-bound-poly #f])
-       (ws-run-pass p retypecheck))
      
-     (when (regiment-verbose)
-       (pretty-print prog)
-       ;;   (printf "================================================================================\n")
-       (printf "\nNow emitting C code:\n"))
-
-
-      (if new-version?
+     (if new-version?
 	  (begin 
 	    (ws-run-pass prog nominalize-types)
 	    (ws-run-pass prog gather-heap-types)
@@ -1046,13 +1010,11 @@
 	    (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
 	      (unless (zero? len)
 		(printf "*** GOT AN UNKNOWN RESULT TYPE ***\n")
-		;(inspect prog)		
 		(parameterize ([inferencer-enable-LUB #t]
 			       [inferencer-let-bound-poly #f])
 		  (time (ws-run-pass prog retypecheck)))))
 
 	    (dump-compiler-intermediate prog ".__after_refcounts.ss")
-	    ;(print-graph #f)  (inspect prog)
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
@@ -1064,8 +1026,6 @@
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)
-
-	 (inspect prog)
 
 	 (DEBUGASSERT (dump-compiler-intermediate prog ".__almostC.ss"))   
 	 (string->file 

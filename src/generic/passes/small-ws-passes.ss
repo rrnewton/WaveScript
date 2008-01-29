@@ -15,7 +15,7 @@
            introduce-lazy-letrec
 	   lift-polymorphic-constant
 	   unlift-polymorphic-constant
-	   strip-irrelevant-polymorphism
+	   strip-irrelevant-polymorphism strip-polymorphic-type
 	   lift-immutable-constants
 	   strip-src-pos
 	   ;purify-letrec  ;; Disabled
@@ -110,14 +110,18 @@
 
 
 ;; [2007.10.09] 
+;; We strip out ascriptions so we don't have any polymophic hanging around in there:
 (define-pass strip-unnecessary-ascription
   (define required-ops '(readFile foreign foreign_source))
   [Expr (lambda (e fallthru)
 	  (match e
 	    ;; FIXME: HACK: [2007.10.10] Just prune out the polymorphic asserts around constants.
+	    ;; [2008.01.28] Nah, throwing out all of these, we will get them back in the proper way.
+	    #;
 	    [(assert-type ,ty (quote ,x))
 	     (guard (not (polymorphic-type? ty)))
 	     `(assert-type ,ty ',x)]
+
 	    [(assert-type ,t (,op ,annot ,[x*] ...))
 	     (guard (and (memq op required-ops)
 			 (pair? annot)
@@ -465,6 +469,29 @@
 		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
 		   `(,lang '(program `(let ,acc ,bod)) ,@meta*)])))])
 
+
+;; Is the value represented by this scheme representation polymorphic?
+(define (polymorphic-const? x) 
+  (polymorphic-type? (export-type (type-const x)))
+  #;
+  (match x
+    [,n (guard (integer? n)) #t] ;; Integer constants themselves are polymorphic.
+    [()     #t]
+    [#()    #t]
+    [(,[x*] ...)  (ormap id x*)]
+    [#(,[x*] ...) (ormap id x*)]
+    [,else   #f]))
+
+;; Does the expression represent a polymorphic constant?
+(define (polymorphic-const-expr? x) 
+  (match x
+    [',n (guard (polymorphic-const? n)) #t]
+    [nullseg #t]
+    [Array:null #t]
+    [(Array:makeUNSAFE ,n) #t]
+    [(construct-data ,name . ,_) #t]
+    [,else   #f]))
+
 ;; [2007.03.17] Including Array:makeUNSAFE here even though it's not "constant"
 ;; [2007.10.11] Adjusting this to apply to data constructors/destructors as well.
 (define-pass lift-polymorphic-constant
@@ -474,9 +501,15 @@
 		    [t   (unique-name 'alpha)])
 		`(let ([,tmp (quote ,t) ,x]) ,tmp)))
 	    (match x
-	      [nullseg (f x)]
-	      [Array:null (f x)]
-	      ['()  (f x)]
+
+	      [,pc (guard (polymorphic-const-expr? pc)) (f pc)]
+
+	      ;; [2008.01.28] Plain integers are also polymorphic:	      
+	      ;[',n (guard (integer? n)) (f x)]
+	      ;[nullseg (f x)]
+	      ;[Array:null (f x)]
+	      ;['()  (f x)]
+	      
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
 	      [(construct-data ,name ,[x*] ...) (f `(construct-data ,name ,@x*))]
 	      [(wscase ,[x] (,tag* ,[fun*]) ...) 
@@ -488,16 +521,11 @@
 	      [,other (fallthru other)]))])
 
 ;; [2007.10.11] Adjusting this to apply to data constructors/destructors as well.
-(define-pass unlift-polymorphic-constant
-    (define (pconst? x) 
-      (match x
-	[nullseg #t]
-	[Array:null #t]
-	['()     #t]
-	[()     #t]
-	[(Array:makeUNSAFE ,n) #t]
-	[(construct-data ,name . ,_) #t]
-	[,else   #f]))
+(define-pass unlift-polymorphic-constant    
+    ;; If you can't say anything nice, don't say anything at all.
+    ;; (Any polymorphism left is irrelevant, and will be stripped away.)
+    (define (make-assert t x)
+      (if (polymorphic-type? t) x `(assert-type ,t ,x)))
   [Expr (lambda (x fallthru)
 	  (match x
 	    ;; Don't touch these:
@@ -505,34 +533,37 @@
 	    [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
 	   
 	    [(let ([,v1 ,t ,c]) ,v2)
-	       (guard (eq? v1 v2) (pconst? c))
+	       (guard (eq? v1 v2) (polymorphic-const-expr? c))
 ;; [2007.07.08] Removing this assert because we clean up below:
 ;	       (ASSERT (lambda (t) (not (polymorphic-type? t))) t)
-	       `(assert-type ,t ,c)]
+	       (make-assert t c)]
 	   
 	    [(wscase (let ([,v1 ,t ,[x]]) ,v2) (,tag* ,[fun*]) ...)
 	     (guard (eq? v1 v2))
+	     (ASSERT (compose not polymorphic-type?) t)
 	     `(wscase (assert-type ,t ,x) ,@(map list tag* fun*))]
 
-	    [,c (guard (pconst? c))
-		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
+	    [',c (guard (polymorphic-const? c))
+		 (error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
 
 	    ;; Don't touch these:
 	    [(foreign ,x ,y) `(foreign ,x ,y)]
 	    [,other (fallthru other)]))])
 
+;; Insert a dummy type in place of polymorphic types:
+(define (strip-polymorphic-type t)
+  ;(define dummy-type #()) ;; Type to insert.    
+  (define dummy-type 'Int) ;; Type to insert.  
+  (type-replace-polymorphic t dummy-type))
 
 ;; [2007.07.08]
 ;; Remaining polymorphism at this phase of the compiler is
 ;; "irrelevent" in the sense that it describes only uninspected values.
 ;; Thus it is equivalent to insert unit in all such places.
 (define-pass strip-irrelevant-polymorphism
-    (define dummy-type #()) ;; Type to insert.    
     (define (data-source? e)
       (let ([expr (peel-annotations e)])
 	(and (pair? expr) (memq (car expr) '(readFile dataFile)))))
-
-    (define (Type t) (type-replace-polymorphic t dummy-type))
     (define Expr
       (lambda (x fallthru)
 	  (match x
@@ -558,14 +589,19 @@
 	     ]
 
 	    ;; [2007.10.10] NOW we strip polymorphism even from the ascription:
-	    [(assert-type ,[Type -> ty] ,[e])
+	    [(assert-type ,[strip-polymorphic-type -> ty] ,[e])
 	     `(assert-type ,ty ,e)]
 
 	    [,oth (fallthru oth)])))
   [Expr Expr]
   [Bindings 
    (lambda (vars types exprs reconstr exprfun)
-     (reconstr vars (map Type types) (map exprfun exprs)))])
+     (reconstr vars (map strip-polymorphic-type types) (map exprfun exprs)))]
+  [Program
+   (lambda (pr Expr)
+     (match pr
+       [(,lang '(program ,[Expr -> bod] ,meta* ... ,[strip-polymorphic-type -> topty]))
+	`(,lang '(program ,bod ,@meta* ,topty))]))])
 
 
 ;; Purify-letrec: makes sure letrec's only bind functions.
