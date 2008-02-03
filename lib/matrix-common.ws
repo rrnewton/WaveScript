@@ -88,7 +88,6 @@ namespace Matrix {
   m3 // Return.
  }
 
-
  // [2007.07.12] These ape the structure of the matrix_gsl.ws for interoperability.
  namespace Float {
    fun create(i,j) Matrix:create(i,j, 0.0);
@@ -126,7 +125,6 @@ namespace Matrix {
    map2         :: ((Float,Float) -> Float, Matrix Float, Matrix Float) -> Matrix Float = Matrix:map2;
    map2_inplace :: ((Float,Float) -> Float, Matrix Float, Matrix Float) -> ()   = Matrix:map2_inplace;
  }
-
 
  // The below namespaces are cut/paste from "Float" above.
  namespace Double {
@@ -206,7 +204,7 @@ namespace Matrix {
  // Except this bit:
  fun Double:create(i,j) Matrix:create(i,j, floatToDouble(0.0));
  fun Complex:create(i,j) Matrix:create(i,j, 0.0+0.0i);
-
   
 };
+
 

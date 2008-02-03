@@ -5,6 +5,17 @@
 // How long does it take to get one tuple??
 // ws: 2631 ms (1941 in ws.opt), 84 ms, 
 
+/*
+
+[2008.01.31] {Now with wsc2}
+With wsc2 -O3 this takes about the same amount of time as wsmlton (1s
+for ten outputs on chastity).  MLton is spending *negligable* time in
+GC for just run_marmot2.ws.  Not really room for improvement there.
+
+First phase by itself shows <2% GC time for MLton.
+
+*/
+
 
 include "sources_from_file.ws";
 include "marmot_first_phase.ws";

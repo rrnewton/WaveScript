@@ -5,6 +5,10 @@
 ;;;;
 ;;;; .author Ryan Newton
 
+;; Introduces "cast-variant-to-parent" form.
+;; Modifies wscase form.
+;; Introduces "Union" type construct to distinguish from the previous "Sum".
+
 ;============================================================
 
 (module convert-sums-to-tuples mzscheme 

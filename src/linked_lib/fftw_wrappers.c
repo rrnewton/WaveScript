@@ -20,7 +20,7 @@ fftwf_plan cached_ifft_plan;
   static void memoized_fftR2C(float* in_buf, float complex* out_buf) {
       int len = ARRLEN(in_buf);
       // thread safe initialization
-      if (initialized == 0) {
+      if (initialized == 0 || last_plan_size != len) {
         // grab the lock
 #ifndef DISABLE_THREADS
 	//        planner_lock.lock();
@@ -29,20 +29,18 @@ fftwf_plan cached_ifft_plan;
         // ahead of us, or we must init it.  if initialized is still 0...
         if (initialized == 0) {
           initialized = 1;
-          fprintf(stderr, "  Allocating fftw plan for the first time, size %d\n", len);
-  	  fflush(stderr);
-  	  last_plan_size = len;
-	  // FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
-	  cached_plan = fftwf_plan_dft_r2c_1d(len, (float*)0, (fftwf_complex*)0, FFTW_ESTIMATE | FFTW_UNALIGNED);
-        }
+          fprintf(stderr, "  (re)Allocating fft plan, size %d\n", len); 
+        } else {
+	  fftwf_destroy_plan(cached_plan);
+          fprintf(stderr, "  Reallocating fft plan, size %d (was %d)\n", len, last_plan_size);
+	}
+	last_plan_size = len;
+	// FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE
+	cached_plan = fftwf_plan_dft_r2c_1d(len, (float*)0, (fftwf_complex*)0, FFTW_ESTIMATE | FFTW_UNALIGNED);
+
 #ifndef DISABLE_THREADS
 	//   planner_lock.unlock();
 #endif
-      }
-      if (last_plan_size != len) {
-        fprintf(stderr, "ack, we're screwed.. fftw plan for %d, not %d\n",
-		last_plan_size, len);
-	exit(-1);
       }
       //fprintf(stderr, "   EXECUTING PLAN size %d\n", len);
       fftwf_execute_dft_r2c(cached_plan, in_buf, (fftwf_complex*)out_buf);
@@ -61,8 +59,11 @@ fftwf_plan cached_ifft_plan;
 #endif
         if (initialized_ifft == 0) {
           initialized_ifft = 1;
-          fprintf(stderr, "  (re)Allocating ifftw plan, size %d\n", len); 
-        } else fftwf_destroy_plan(cached_ifft_plan);
+          fprintf(stderr, "  Allocating ifft plan, size %d\n", len); 
+        } else {
+	  fftwf_destroy_plan(cached_ifft_plan);
+          fprintf(stderr, "  Reallocating ifft plan, size %d\n", len); 
+	}
 	last_ifft_size = len;
 	cached_plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)0, (float*)0, FFTW_ESTIMATE | FFTW_UNALIGNED);
 #ifndef DISABLE_THREADS

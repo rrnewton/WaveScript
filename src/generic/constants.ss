@@ -145,6 +145,7 @@
 	 ws-optimizations-enabled
 	 ws-optimization-level
 	 ws-profile-limit
+	 ws-compiler-hooks
 
 	 dump-graphviz-output
 	 ws-alternate-return-stream
@@ -177,7 +178,8 @@
 
 	 nodeid?
 
-	 int16? int32? int64?
+	 int16? int32? int64? 
+	 basename dirname
 
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
@@ -400,6 +402,12 @@
 ;; time elapsed, number of output elements, or not at all.
 ;; Valid values: 'none, '(time <ms>), or '(elements <n>)
 (define-regiment-parameter ws-profile-limit '(time 3000))
+
+;; This parameter stores an association list binding the names of
+;; passes to hooks (functions) that should run after the specified
+;; pass runs.  This is useful for writing scripts that measure
+;; properties of the compiler.
+(define-regiment-parameter ws-compiler-hooks '())
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
@@ -966,6 +974,24 @@
 (define (int16? c) (and (< c (expt 2 15)) (>= c (- (expt 2 15)))))
 (define (int32? c) (and (< c (expt 2 31)) (>= c (- (expt 2 31)))))
 (define (int64? c) (and (< c (expt 2 63)) (>= c (- (expt 2 63)))))
+
+;; The directory name of a path.
+(define (dirname pathstr)
+  ;; Everything up until the last "#/"
+  (define chars (string->list pathstr))
+  (define dir (reverse! (or (memq #\/ (reverse! chars)) '(#\.))))
+  (list->string dir))
+
+;; The filename, the *last* part of a path.
+(define (basename pathstr)
+  ;; Everything after the last "#/"
+  (define file (let loop ([ls (reverse! (string->list pathstr))])
+		 (cond 
+		  [(null? ls) ()]
+		  [(eq? (car ls) #\/) ()]
+		  [else (cons (car ls) (loop (cdr ls)))])))
+  (list->string (reverse! (cdr (or (memq #\. file) (cons #\. file))))))
+
 
 
 ; ======================================================================

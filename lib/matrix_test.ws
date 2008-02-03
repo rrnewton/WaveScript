@@ -1,4 +1,6 @@
 
+// TESTS *OLD* matrix file.
+
 // Matrix.ws needs stdlib.ws.
 
 include "stdlib.ws";
@@ -34,27 +36,19 @@ result = iterate (() in timer(30.0)) {
     
     simple = list_to_matrix([[1.0, 2.0], [3.0 , 4.0]]);
 
-    println("\n");
-
-    println("Double Inverted, simple");
-    print(m_invert( m_invert(simple)));
-    println("\n");
-
+    // Removing matrix inversion as a primitive:
+/*
+    println("\nDouble Inverted, simple");
+    println(m_invert( m_invert(simple)));
     println("Multiply by inverse, simple:");
-    print(m_mult(simple, m_invert(simple)));
-    println("\n");
-
-    println("Multiply by inverse, pure:");
-    print(pure_m_mult(simple, m_invert(simple)));
-    println("\n");
-    
+    println(m_mult(simple, m_invert(simple)));
+    println("Multiply by inverse, pure: ");
+    println(pure_m_mult(simple, m_invert(simple)));
     println("Double Inverted, bigger:");
-    print(m_invert(m_invert(mat)));
-    println("\n");
-
+    println(m_invert(m_invert(mat)));
     println("Multiply by inverse:");
-    print(m_mult(mat, m_invert(mat)));
-    println("\n");
+    println(m_mult(mat, m_invert(mat)));
+*/ 
 
     //println("Numeric test:  " ++ );
   

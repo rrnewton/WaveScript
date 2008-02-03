@@ -29,6 +29,7 @@
 
 ;; Mutated below:
 (define global-struct-defs '())
+(define global-union-types '())
 
 
 ;; This is mutated below with fluid-let to contain a table mapping
@@ -136,12 +137,12 @@
 	   (match ty ;; <- No match recursion!
 	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
 	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-	     [,scl (guard (not (heap-allocated? scl global-struct-defs))) #f]
+	     [,scl (guard (not (heap-allocated? scl global-struct-defs global-union-types))) #f]
 	     [(Struct ,tuptyp) (add-to-freefuns! ty default-specialized_fun)]
 	     [(Ref ,elt) (loop elt)]
 	     [(List ,elt) (add-to-freefuns! ty default-specialized_fun)]
 	     [(Array ,elt)
-	      (if (not (heap-allocated? elt global-struct-defs))
+	      (if (not (heap-allocated? elt global-struct-defs global-union-types))
 		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))))
 		  (add-to-freefuns! ty default-specialized_fun))])))
     heap-types)
@@ -176,12 +177,12 @@
 				   ,(Type `(List ,elt))" ptr2 = CDR(ptr);\n"
 				   ,(lines-text (gen-decr-code `(List ,elt) "ptr2" default-free))
 				   ;; If heap allocated, free the CAR:
-				   ,(if (heap-allocated? elt global-struct-defs)
+				   ,(if (heap-allocated? elt global-struct-defs global-union-types)
 					(lines-text (gen-decr-code elt `("(*ptr)") default-free))
 					"")
 				   "free((int*)ptr - 2);\n"))))]
 		 [(Array ,elt)
-		  (if (not (heap-allocated? elt global-struct-defs))
+		  (if (not (heap-allocated? elt global-struct-defs global-union-types))
 		      (make-lines "")
 		      (let ([ind (Var (unique-name "i"))])
 			(make-lines 
@@ -216,7 +217,7 @@
 		   (gen-incr-code ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name global-struct-defs))))]
     ;; Other types are not heap allocated:
-    [,ty (guard (not (heap-allocated? ty global-struct-defs)))(make-lines "")]
+    [,ty (guard (not (heap-allocated? ty global-struct-defs global-union-types)))(make-lines "")]
     ))
 
 ;; "ptr" should be text representing a C lvalue
@@ -235,7 +236,7 @@
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-decr-code ty (list ptr "." (sym2str fldname)) freefun))
 	      (cdr (assq name global-struct-defs))))]
-    [,ty (guard (not (heap-allocated? ty global-struct-defs))) (make-lines "")]))
+    [,ty (guard (not (heap-allocated? ty global-struct-defs global-union-types))) (make-lines "")]))
 
 ;; Should only be called for types that are actually heap allocated.
 (define default-free
@@ -704,37 +705,47 @@
      
 
      (define (wszero? ty obj)
-       (match ty
-	 [,ty (guard (memq ty num-types))
-	      (match obj
-		[',x (and (number? x) (= x 0))]
-		[,_ #f])]
-	 ;; This is arbitrary, false is "zero"
-	 [Bool (not obj)]
+       (match obj
+	 [(assert-type ,_ ,[x]) x]
+	 [,obj
+	  (match ty
+	    [,ty (guard (memq ty num-types))
+		 (match obj
+		   [',x (and (number? x) (= x 0))]
+		   [,_ #f])]
+	    ;; This is arbitrary, false is "zero"
+	    [Bool (not obj)]
 
-	 ;; This is arbitrary, #\nul is "zero"
-	 [Char (eq? obj (integer->char 0))]
+	    ;; This is arbitrary, #\nul is "zero"
+	    [Char (eq? obj (integer->char 0))]
 
-	 ;; Vacillating on whether the null array should be a single
-	 ;; object (a null pointer).
-	 [(Array ,_)
-	  (match obj
-	    [Array:null #t]
-	    [(assert-type ,_ ,[x]) x]
-	    [,else #f])]
+	    ;; Vacillating on whether the null array should be a single
+	    ;; object (a null pointer).
+	    [(Array ,_) (eq? obj 'Array:null)]
+	    [(List ,_)  (eq? obj '())]
 
-	 [(Struct ,_) #f]
-	 
-	 [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)]))
+	    [(Struct ,_) #f]
+	    
+	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))
      (define (make-array len init ty)
        (let ([len (Simple len)])
 	 (match ty
 	   [(Array ,elt)
 	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
+	    
+	    ;(when (and (heap-allocated? elt global-struct-defs) (not init))
+	    ;(error make-array "DANGER DANGER: ~s" elt))
+	    
+	    ;; We fill with zeros if we've got Array:make with a zero scalar.
+	    ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
+	    (define zero-fill?
+	      (or (and init (wszero? elt init))
+		  (and (not init) (heap-allocated? elt global-struct-defs global-union-types))))
+
 	   (let* ([_elt (Type elt)]
 		  [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
 		  [tmp (Var (unique-name "arrtmp"))]
-		  [alloc (if (wszero? elt init)
+		  [alloc (if zero-fill?
 			     `("calloc(",size", 1)")
 			     `("malloc(",size")"))]
 		  [cast `("(",_elt"*)",tmp)])
@@ -747,7 +758,7 @@
 			     "CLEAR_RC(",tmp");\n"           
 			     "SETARRLEN(",tmp", ",len");\n"  
 			     ;; Now fill the array, if we need to:
-			     ,(if (and init (not (wszero? elt init)))
+			     ,(if (and init (not zero-fill?))
 				  (let ([i (unique-name "i")]
 					[tmp2 (unique-name "arrtmpb")]
 					[len2 (unique-name "lenmin1")])
@@ -948,9 +959,10 @@
 	[(clock) (kont "(clock() * 1000 / CLOCKS_PER_SEC)")]
 	[(realtime) 
 	 (define tmp (symbol->string (unique-name "tmp")))
-	 `("struct timeval ",tmp";\n"
-	   "gettimeofday(&",tmp", NULL);\n"
-	   ,(kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))]
+	 (make-lines
+	  `("struct timeval ",tmp";\n"
+	    "gettimeofday(&",tmp", NULL);\n"
+	    ,(lines-text (kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))))]
        
 	[(,other ,[Simple -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
@@ -1148,7 +1160,7 @@
 		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
 				-> init*] ...)
 		       (sources ,[Source -> srcname* srccode*  state1* srcrate*] ...)
-		       (operators ,[Operator -> oper* state2** init**] ...)
+		       (operators ,[Operator -> oper* state2** opinit**] ...)
 		       (sink ,base ,basetype)
 		       ,meta* ...))
 	(define includes (text->string 
@@ -1167,10 +1179,11 @@
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
-	  (define init     (begin (ASSERT (andmap lines? (apply append init**)))
+	  (define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			     (text->string (block "void initState()" 
-				 (list (lines-text (apply append-lines (apply append init**)))
-				       (lines-text (apply append-lines cbinit*)))))))
+				 (list 
+				       (lines-text (apply append-lines cbinit*))
+				       (lines-text (apply append-lines (apply append opinit**))))))))
 	  (define driver   (text->string (lines-text (build-main-source-driver srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  (define total (apply string-append 

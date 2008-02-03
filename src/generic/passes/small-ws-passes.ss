@@ -728,47 +728,41 @@
 
 
 ; --mic
-(define (first-true ls p)
-  (cond ((null? ls) #f)
-        ((p (car ls)) (car ls))
-        (else (first-true (cdr ls) p))))
 
-; --mic
 (define-pass propagate-copies
+    (define (substitutable? bind) 
+      (match bind
+	[(,lhs ,ty ,[peel-annotations -> rhs])
+	 (or (symbol? rhs) (constant-expr? rhs))]))
     ; FIXME: count all var. lookup stats
-    [Expr (letrec ((do-expr
-                    ; substs is a hash table of variable substitions
+  [Expr (letrec ((do-expr
+                    ; substs is an association list of variable substitions
                     (lambda (x fallthru substs)
-
                       (match x
-
-                        [(let ((,v1 ,t1 ,v0)) ,body)
-                         (guard (and (symbol? v0)
-                                     (not (and (pair? t1)
-                                               (eq? (car t1) 'Ref)))))
-                         (begin
-                           (let ((subst-binding (first-true substs (lambda (b) (eq? v0 (car b))))))
-                             (fallthru
-                              body
-                              (lambda (x f)
-                                (do-expr x f (cons `(,v1 . ,(if subst-binding (cdr subst-binding) v0))
-                                                   substs)))))
-                           )]
-                        
-                        [,var
-                         (guard (symbol? var))
-                              
-                         ; newest
-                         (let ((subst-binding (first-true substs (lambda (b) (eq? var (car b))))))
+                        [(let ([,lhs* ,ty* ,[rhs*]] ...) ,body)
+			 (let-values ([(tosubst newbinds) 
+				       (partition substitutable? (map list lhs* ty* rhs*))])
+			   (define newsubst (append tosubst substs))
+			   (define (newdriver x f) (do-expr x f newsubst))
+			   (if (null? newbinds)
+			       (fallthru body newdriver)
+			       `(let ,newbinds ,(fallthru body newdriver))))]
+			;; Have to make sure we leave a let behind:
+			[(iterate ,annot ,[fn] ,[strm])
+			 `(iterate ,annot
+				   ,(match fn [(let . ,_) fn] [,oth `(let () ,oth)])
+				   ,strm)]
+                        [,var (guard (symbol? var))
+			 ;;(printf "Testing var: ~s\n" var)
+                         (let ((subst-binding (assq var substs)))
                            (if subst-binding
-                               (cdr subst-binding)
-                               (fallthru x)))]
-                        
-                        [,oth (fallthru oth)]))))
-
-            (lambda (x f) (do-expr x f ())) )]
-)
-
+                               (begin
+				 ;(printf "    OPT: copy propagate ~s -> ~s\n" var (caddr subst-binding))
+				 (caddr subst-binding))
+                               var))]
+                        [,oth (fallthru oth)] ;(lambda (x f) (do-expr x f subst))
+			))))
+            (lambda (x f) (do-expr x f ())))])
 
 ;; This is so the new C backend (emit-c2) can avoid handling strings.
 ;; A string is mapped onto an array of characters, augmented with a null terminator character.

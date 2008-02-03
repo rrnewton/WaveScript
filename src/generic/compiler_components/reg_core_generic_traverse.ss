@@ -189,11 +189,13 @@
     (define (build-traverser driver fuse e)
 ;      (call/cc inspect)
       (let loop ((e e))	
-	(driver e 
-	  ;; This is the fallthrough/autolooper function that is passed to the driver.
+	;; This is the fallthrough/autolooper function that is passed to the driver.
+	(define fallthru
           (case-lambda 
 	    ;; In this case we have a change to the driver function as we go down.
-       [(expr newdriver) (build-traverser newdriver fuse expr)]
+	    ;; Yet, this has the odd behavior of running the new
+	    ;; driver immediately, rather than doing the fallthrough first.
+	    [(expr newdriver) (build-traverser newdriver fuse expr)]
 
        [(expression)       	      
 	(match  expression
@@ -334,7 +336,8 @@
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)
 		      (error 'core-generic-traverse "")]
-	  )]	    ))))
+	  )])) ;; End fallthru
+	(driver e fallthru)))
 
   ;; Main body of core-generic-traverse:
   (case-lambda 

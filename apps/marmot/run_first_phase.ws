@@ -111,7 +111,13 @@ In this way, it can process 73.6 mb in a second.
 //
 // 
 
+//==============================================================================
+// [2008.01.29] {Runs with wsc2}
 
+// Even on the first try, wsc2 beat mlton by a small margin (805 to
+// 870ms for 10 detections, replicated 1.5mb "6sec" file, on chastity
+// core2 duo 2.4ghz), and that's using naive reference counting and a
+// copy-always sigseg implementation.
 
 
 

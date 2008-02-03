@@ -21,6 +21,37 @@ TOOPTIMIZE:
 
 ================================================================================
 
+
+
+
+[2008.01.25]
+  *) Should do some renaming:
+     wsc     -> wscpp.old
+     wsc.new -> wscpp.corefit
+     wsc2    -> 
+   How do I configure either wscpp for 
+
+
+[2007.12.27] 
+  *) Need to switch regression over to wsc.new, and start including wsc2
+
+
+[2007.12.20] {Doing the right thing for wsparse}
+
+  X) The wsparse "server" solution is really quite silly.  What I should do
+is just have a command line version (like plain "wsparse") that is
+called once, and kept open.  You pay the startup cost only once,
+irrespective of how many files you parse.  So it's almost as good as
+the server without the fragilities.
+
+  *) Add monomorphic first-order functions to the backends.
+     Gotta work with Michael to get merging going right.
+
+
+[2007.12.07]
+  *) I *really* need to optimize large arrays at interpret-meta time.
+
+
 [2007.10.22] {Sharing in Stream DAG}
    *) It's been clear for a while now that the stream DAG notation
       should be able to capture repeated identical operators.  This
@@ -261,34 +292,6 @@ supposed to return an intermediate record.
   X) Rework type system.
   X) Add and use generic traverse for Regiment as well as TML.
   x) Lift out certain Regiment utilities from individual passes into common files.
-
-
-[2007.12.07]
-  *) I *really* need to optimize large arrays at interpret-meta time.
-
-
-[2007.12.20] {Doing the right thing for wsparse}
-
-  *) The wsparse "server" solution is really quite silly.  What I should do
-is just have a command line version (like plain "wsparse") that is
-called once, and kept open.  You pay the startup cost only once,
-irrespective of how many files you parse.  So it's almost as good as
-the server without the fragilities.
-
-  *) Add monomorphic first-order functions to the backends.
-     Gotta work with Michael to get merging going right.
-
-
-[2007.12.27] 
-  *) Need to switch regression over to wsc.new, and start including wsc2
-
-[2008.01.25]
-  *) Should do some renaming:
-     wsc     -> wscpp.old
-     wsc.new -> wscpp.corefit
-     wsc2    -> 
-   How do I configure either wscpp for 
-
 
 
 

@@ -23,7 +23,8 @@
 (define heap-allocated? 
   (case-lambda 
     ;[(ty) (heap-allocated? ty global-struct-defs)]
-    [(ty struct-defs)
+    [(ty struct-defs union-types)
+     (define (recur x) (heap-allocated? x struct-defs union-types))
      (match ty
        [,scl (guard (scalar-type? scl)) #f]
        ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
@@ -34,13 +35,19 @@
 	(let ([entry (assq tuptyp struct-defs)])
 	  (unless entry
 	    (error 'heap-allocated? "no struct-def entry for type: ~s" tuptyp))
-	  (ormap (lambda (x) (heap-allocated? x struct-defs)) 
-		 (map cadr (cdr entry))))]
+	  (ormap recur (map cadr (cdr entry))))]
+
+       ;; Currently tagged unions are just like tuples:
+       [(Union ,name)
+	(define entry (ASSERT (assoc (list name) union-types)))
+	(ormap recur (map cadr (cdr entry)))]
+
        [(Array ,_) #t]
        [(List ,_)  #t]
        [(Ref ,_)   #t] ;; ?? 
        [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
        [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
+
        )]))
 
 ;; Helper pass.
@@ -48,8 +55,9 @@
     ;; This is a mutated accumulator:
     (define acc '())
     (define struct-defs '())
+    (define union-types '())
     (define (excluded? ty)
-      (or (not (heap-allocated? ty struct-defs))
+      (or (not (heap-allocated? ty struct-defs union-types))
 	  ;; HACKISH: 
 	  (deep-assq 'Stream ty)
 	  (deep-assq 'VQueue ty)))
@@ -60,12 +68,19 @@
 		     (set! acc (cons ty acc))))
 	 types)
        (for-each exprfun exprs))]
+    [Expr 
+     (lambda (xp fallthru)
+       (match xp 
+	 [(cast-variant-to-parent ,TC ,ty ,[exp])
+	  `(cast-variant-to-parent ,TC ,ty ,exp)]
+	 [,oth (fallthru oth)]))]
     [Program 
      (lambda (pr Expr!)
       (fluid-let ([acc ()])
 	(match pr
 	  [(,lang '(program ,bod . ,meta*))
-	   (fluid-let ([struct-defs (cdr (ASSERT (assq 'struct-defs meta*)))])
+	   (fluid-let ([struct-defs (cdr (ASSERT (assq 'struct-defs meta*)))]
+		       [union-types (cdr (ASSERT (assq 'union-types meta*)))])
 	     (Expr! bod)
 	     `(gather-heap-types-lang '(program ,bod (heap-types ,@acc) ,@meta*))
 	     )])))])
@@ -87,8 +102,9 @@
   (let ()
     (cond-expand [chez (import rn-match)] [else (begin)])
     ;; This is mutated below.
-    (define global-struct-defs '())
-    (define (not-heap-allocated? ty) (not (heap-allocated? ty global-struct-defs)))
+    (define global-struct-defs '())    
+    (define global-union-types '())
+    (define (not-heap-allocated? ty) (not (heap-allocated? ty global-struct-defs global-union-types)))
     (define (DriveInside injection xp retty)
       (match xp
 	[(let ([,lhs ,ty ,rhs]) ,[bod]) `(let ([,lhs ,ty ,rhs]) ,bod)]
@@ -194,7 +210,8 @@
 	   
 	   [(make-struct ,ty ,[fld*] ...) `(make-struct ,ty ,@fld*)]
 	   [(struct-ref ,type ,fld ,[x]) `(struct-ref ,type ,fld ,x)]
-
+	   [(cast-variant-to-parent ,TC ,ty ,[exp]) `(cast-variant-to-parent ,TC ,ty ,exp)]
+	  
 	   [,oth (fallthru oth)]))))
     ;; Treating effect context differently because of let's:
     (define Effect 
@@ -282,7 +299,8 @@
     ;; Main pass body:
     (lambda (prog)
       (cond-expand [chez (import iu-match)] [else (void)])    
-      (fluid-let ([global-struct-defs (cdr (project-metadata 'struct-defs prog))])
+      (fluid-let ([global-struct-defs (cdr (project-metadata 'struct-defs prog))]
+		  [global-union-types (cdr (project-metadata 'union-types prog))])
 	(match prog
 	  [(,input-language 
 	    '(graph (const (,cbv* ,cbty* ,cbexp*) ...)

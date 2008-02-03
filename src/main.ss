@@ -373,8 +373,13 @@
 	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port))
        (if (regiment-verbose)
 	   (time (set! v (ws-pass-optional-stop (pass v))))
-	   (set! v (ws-pass-optional-stop (pass v)))))
-     ]))
+	   (set! v (ws-pass-optional-stop (pass v))))
+       ;; Allows multiple hooks:
+       (let ([hooks (map cadr 
+		      (filter (lambda (pr) (eq? (car pr) 'pass))
+			(ws-compiler-hooks)))])
+	 (for-each (lambda (hk) (hk v))
+	   hooks)))]))
 
 ;; EXPERIMENTAL:
 ;; Playing around with fusing passes.
@@ -549,14 +554,12 @@
 
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------
-;  (inspect p)  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
-
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
@@ -705,8 +708,9 @@
   
   ; --mic, <OPTIMIZATION>
   (unless (memq 'propagate-copies disabled-passes)
-    (ws-run-pass p propagate-copies)
-    )
+    (time (ws-run-pass p propagate-copies))
+   )
+  ;(pp (blaze-path-to/assq p 'Array:make 'Array:makeUNSAFE))
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
@@ -1003,7 +1007,8 @@
 	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
-	    (time (ws-run-pass prog insert-refcounts))
+;	    (print-graph #f)(inspect prog)
+	    (ws-run-pass prog insert-refcounts)
 	    
 	    ;; It's painful, but we need to typecheck again.
 	    ;; HACK: Let's only retypecheck if there were any unknown result types:
@@ -1017,6 +1022,8 @@
 	    (dump-compiler-intermediate prog ".__after_refcounts.ss")
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
+
+;(inspect (blaze-path-to/assq prog 'timeval 'tmp_3739))
 
 	    (time (ws-run-pass prog emit-c2))
 	    
@@ -1618,6 +1625,11 @@
 	  ;; FIXME: add to print-help (or automate print-help)
 	  [(--disable-pass ,pass-name ,rest ...)
 	   (set! opts (append `(disable ,pass-name) opts))
+	   (loop rest)]
+
+	  [(--inspect ,pass-name ,rest ...)
+	   (ws-compiler-hooks
+	    (cons `[,pass-name ,inspect] (ws-compiler-hooks)))
 	   (loop rest)]
 
      ;; --mic

@@ -12,3 +12,4 @@ Options for all WaveScript (ws*) configurations:
   -dot          dump compiled program to graphviz 
   -ret <name>   custom return stream, rather than 'main'
   --disable-pass <pass-name> suppress a specific pass 
+  --inspect <pass-name> inspect output of <pass-name>

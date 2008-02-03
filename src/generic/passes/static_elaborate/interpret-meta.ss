@@ -111,11 +111,12 @@
 ;; This tags a value with a type.
 ;; This is necessary for not losing type information for constants.
 (define (set-value-type! val type)
+    ;;
     (define (fold-in ty1 ty2) 
-      (ASSERT ty1)
-      (let ((result (if ty2 (types-compat? ty1 ty2) ty1)))
-	(ASSERT result)
-	result))
+      (if ty2
+	  (types-compat? ty1 ty2)
+	  ty1))
+    (void)
     (cond
      [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
      ;; Must recursively handle the insides of the ref also:
@@ -123,7 +124,12 @@
       (match type
 	[(Ref ,elt) (set-value-type! (ref-contents val) elt)])]
      [(closure? val)
-      (set-closure-type! val (fold-in type (closure-type val)))]
+      ;; This doesn't work, a single (polymorphic) closure value may
+      ;; appear in multiple contexts with different concrete types.
+      ;; Those contexts may not *change* the type of the closure.
+      ;; In fact, this whole practice of set-value-type! may be defunct.
+      ;(set-closure-type! val (fold-in type (closure-type val)))
+      (void)]
      [(suspension? val)  (void)]
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
      [else (error 'set-value-type! "not handled yet: ~s" val)]

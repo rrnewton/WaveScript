@@ -41,7 +41,7 @@
 	  ;immediate? 
 	  simple-constant? complex-constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
-	  simple-expr? maybe-bind-tmp
+	  constant-expr? simple-expr? maybe-bind-tmp
 
 	  token-machine? token-machine->program token-machine-keyword?
 
@@ -52,6 +52,7 @@
 
 	  project-metadata
 	  apply-to-program-body
+	  map-graph-exprs 
 
 	  regiment-print-params	 
 
@@ -206,6 +207,29 @@
     [,_ (error 'apply-to-program-body "bad program form: ~s" prog)]))
 
 
+;; Apply a function to all the *Expressions* within an explicit graph
+;; representation (resulting from explicit-stream-wiring).
+(define (map-graph-exprs fn graph)
+  (match graph
+    [(,lang '(graph (const (,cbv* ,cbty* ,[fn -> cbexp*]) ...)
+		    (init  ,[fn -> init*] ...)
+		    (sources ((name ,nm) (output-type ,s_ty) (code ,[fn -> scode]) (outgoing ,down* ...)) ...)
+		    (operators 
+		     (,op (name ,name) (output-type ,o_ty)
+			  (code ,[fn -> itercode])
+			  (incoming ,o_up ...) (outgoing ,o_down* ...))
+		     ...)
+		    (sink ,base ,basetype) ,meta* ...))
+     `(,lang '(graph (const (,cbv* ,cbty* ,cbexp*) ...)
+		     (init  ,init* ...)
+		     (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
+		     (operators (,op (name ,name) (output-type ,o_ty)
+				     (code ,itercode)
+				     (incoming ,o_up ...) (outgoing ,o_down* ...)) ...)
+		     (sink ,base ,basetype) ,meta* ...))]
+    [,oth (inspect oth)]
+    ))
+
      
 ;=============================================================
 
@@ -257,7 +281,6 @@
 	`(let ([,name ,ty ,rhs])
 	   ,(k name)))))
 
-
 ;; This describes what can go inside a (quote _) expression
 ;; after the complex constants have been removed.
 (define simple-constant?
@@ -276,6 +299,13 @@
 	(eq? x 'UNIT)
 	
         )))
+
+;; Is it an *expression* that always returns the same value.
+(define (constant-expr? xp)
+  (match xp
+    [',c (simple-constant? c)]
+    [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
+    [,_ #f]))
 
 ;; Valid complex constants in Regiment.
 ;; (Includes simple constants as well.)

@@ -17,16 +17,19 @@ result1 = iterate _ in timer(30.0)
   print("Shared matrix tests..\n\n");  
 
   m :: Matrix Float = create(2,3);
+
   print("Ref: "++ get(m,0,0)  ++"\n");
   print("Ref: "++ get(m,1,2)  ++"\n");
   set(m, 1,2, 3.0);
   set(m, 1,1, 9.0);
   print("  Set... \n");
   print("  Ref: "++ get(m,1,2)  ++"\n");
+
   arr = m ` toArray;
   print(" Converted to array: "++ arr ++"\n");
   mat2 = fromArray(arr,2);
   print(" Converted back to matrix: "++ mat2 ++"\n");
+ 
   print(" And back to array : "++ mat2 ` toArray ++"\n\n");
 
   //  emit m;
@@ -90,7 +93,6 @@ result1 = iterate _ in timer(30.0)
   };
   emit dub;
   //  emit Matrix:Complex:create(3,3);
-
 }
 
 //BASE <- result

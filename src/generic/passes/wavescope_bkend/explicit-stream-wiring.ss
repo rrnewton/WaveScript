@@ -5,7 +5,9 @@
 
 (module explicit-stream-wiring mzscheme
   (require "../../../plt/common.ss")
-  (provide explicit-stream-wiring )
+  (provide explicit-stream-wiring 
+	   stream-wiring-ast-size
+	   program-ast-size)
   (chezimports)
 
 ;; These are the types of objects we dig up in the code as we process it.
@@ -306,6 +308,39 @@
 		    )	    
 	    ))]))]
   )
+
+
+
+(define exp-counter
+  (core-generic-traverse
+   (lambda (xp fallthr)
+     (match xp
+       [(,rc ,_ ,__) 
+	(guard (eq-any? rc 'incr-local-refcount 'decr-local-refcount
+			'incr-heap-refcount 'decr-heap-refcount)) 1]
+       [(cast-variant-to-parent ,_ ,__ ,[x]) x]
+       [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
+       [,oth (fallthr oth)]))
+   (lambda (ls k)      
+     (apply + 1 ls))))
+
+
+;; Measure the size of an AST in terms of number of non-leaf non-annotation nodes.
+(define (stream-wiring-ast-size graph)
+  (define tally 0)
+  (map-graph-exprs 
+   (lambda (exp)     
+     (set! tally (+ tally (exp-counter exp))))
+   graph)  tally)
+
+;; Here's the version 
+(define (program-ast-size prog)
+  (define tally 0)
+  (apply-to-program-body 
+   (lambda (exp)     
+     (set! tally (+ tally (exp-counter exp))))
+   prog)  
+  tally)
 
 
 ) ;; End module

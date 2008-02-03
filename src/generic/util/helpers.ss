@@ -108,7 +108,7 @@
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
    graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple
-   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
+   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter blaze-path-to blaze-path-to/assq
    unfold-list average clump
    partition-equal split-before group
    myequal?
@@ -1169,6 +1169,38 @@
 	   [(deep-assq ob (vector-ref struct i)) => id]
 	   [else (vloop (fx+ 1 i))])))]
      [else #f])))
+
+
+;; This is very useful for visualizing large SExp's with one or more
+;; interesting small bits inside them.  You want to see the small
+;; bits, and you want to see their position in the larger expression,
+;; but you don't want to be swamped by everything else.
+;; .param exp - The expression to search inside.
+;; .param pred - A predicate indicating a substructure of interest.
+(define (blaze-path-to exp pred)
+  (define (show x) (or x '_))
+  (let loop ([x exp])    
+    (match x
+     [,hit (guard (pred hit)) hit]
+     [(,first ,[rest] ...)
+      (cond 
+       [(pred first)
+	(cons first (map show rest))]
+       [(loop first)
+	=> (lambda (fst) (cons fst (map show rest)))]
+       [(ormap id rest)
+	(if (symbol? first)
+	    (cons first (map show rest))
+	    (cons '_ (map show rest)))]
+       [else #f])]
+     [,else #f])))
+;; Frequent use case:
+(define (blaze-path-to/assq exp . syms)
+  (let* ([obs (apply append 
+		     (map (lambda (sym) (deep-assq-all sym exp))
+		       syms))])
+    (blaze-path-to exp (lambda (x) (memq x obs)))
+    ))
 
 (define (deep-assq-all ob struct)
   (deep-all-matches (lambda (x) (and (pair? x) (eq? ob (car x))))

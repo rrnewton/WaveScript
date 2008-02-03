@@ -21,7 +21,7 @@ namespace Gnuplot {
       
     }
 
-    // TODO: This should build up teh command stream without starting the process.
+    // TODO: This should build up the command stream without starting the process.
     fun simpleStreamOp (extracmds, plotsuffix, strm, spewdata) {
       pipe = spawnprocess("gnuplot -persist",
 			  iterate x in strm {
