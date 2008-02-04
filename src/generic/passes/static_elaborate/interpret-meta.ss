@@ -1095,7 +1095,9 @@
       (union-types) 'notype)))
      ;(unspecified '(program (gint '720) (union-types) 'notype))
      (unspecified
-      '(program (assert-type Int (gint '720)) (union-types) 'notype))
+      ;; No longer decorating output ints' types:
+      ;'(program (assert-type Int (gint '720)) (union-types) 'notype))
+      '(program (gint '720) (union-types) 'notype))
      ]
 
     ))

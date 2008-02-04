@@ -1832,23 +1832,28 @@
 ; ======================================================================
 ;;; Unit tests.
 
+;; [2008.02] Recently changed this policy:
+;(define int-constant-type-as 'Int)
+(define int-constant-type-as '(NUM unspecified))
+
 ;; These use quite a bit of stuff from type_environments.ss as well:
 (define-testing these-tests
   `(
 
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
     [(let-values ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
-     ((NUM unspecified) -> (NUM unspecified))]
+     (,int-constant-type-as -> ,int-constant-type-as)]
     
     [(export-type (,type-expression '(_+_ 1 1) (empty-tenv))) Int]
-    [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Int)]
-    [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
-    [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
+    [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List ,int-constant-type-as)] 
+    [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv)))     (List ,int-constant-type-as)]
+    [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) #|error|# (List Float)]
+    [(export-type (,type-expression '(cons (assert-type Int '1) '(2 3 4.)) (empty-tenv))) error]
 
     [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(_+_ v v) '(Int) (empty-tenv) '())]) t))
      (Int -> Int)]
     [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(_+_ v v) '('alpha) (empty-tenv) '())]) t))
-     ;((NUM unspecified) -> (NUM unspecified))
+     ;(,int-constant-type-as -> ,int-constant-type-as)
      (Int -> Int)]
     
     ["types-equal!: make sure that (by convention) the first argument is mutated"
@@ -1871,7 +1876,7 @@
 	  [(',a -> ',b) (eq? a b)]
 	  [,else #f]))]
 
-    [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Int]
+    [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) ,int-constant-type-as]
 
     [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (_+_ x 4))) (empty-tenv)))
      (Int -> Int)]
@@ -1879,9 +1884,8 @@
     [(export-type (,type-expression '(rmap (lambda (n) (sense "light" n)) world) (empty-tenv)))
      (Area Int)]
     
-    [(export-type (,type-expression '(tuple 1 2.0 3) (empty-tenv)))
-     #(Int Float Int)]
-
+    [(export-type (,type-expression '(tuple (assert-type Int '1) 2.0 3) (empty-tenv)))
+     #(Int Float ,int-constant-type-as)]
     [(export-type (,type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
      ,(lambda (x)
 	(match x
@@ -1892,7 +1896,7 @@
 		   '(letrec ([f (lambda (x) x)])
 		      (tuple (app f 3) "foo" f))
 		  (empty-tenv)))
-     #(Int String ('unspecified -> 'unspecified))
+     #(,int-constant-type-as String ('unspecified -> 'unspecified))
      ;#(Int String (Int -> Int))
      ]
   
@@ -1912,8 +1916,8 @@
      (export-type (,type-expression '(lambda (f) (tuple (app f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
-	  [((Int -> ,v1) -> #(,v2 (Int -> ,v3)))
-	   (guard (equal? v1 v2) (equal? v2 v3)) 
+	  [((,num1 -> ,v1) -> #(,v2 (,num2 -> ,v3)))
+	   (guard (equal? v1 v2) (equal? v2 v3))
 	   #t]
 	  [,else #f]))]
   ["Non polymorphic funs cannot be applied differently."
@@ -2008,7 +2012,7 @@
    (let-values ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
 				       (tuple (app f 3) (app f 4.0) f)))])
      t)
-   #(Int Float ((NUM unspecified) -> (NUM unspecified)))]
+   #(,int-constant-type-as Float ((NUM unspecified) -> (NUM unspecified)))]
 
   ["Now let's test something outside the bounds of the NUM subkind" 
    (let-values ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
@@ -2077,13 +2081,13 @@
       (match x
        	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (,unspecified) x)])
 	    (tuple (app f '3) (app f '4.5)))
-	  #(Int Float))
+	  #(,int-constant-type-as Float))
 	 (eq? v1 v2)]
 	[,else #f]))]
 
-  ["This is a behavior that needs to change, infers INT:"
+  ["Type a complex constant"
    (type-const (vector [make-tuple (list #() 0)]))
-   (Array #2((Array unspecified) Int))]
+   (Array #2((Array unspecified) ,int-constant-type-as))]
 
   #;
   ;; Should we type-check with patterns in there?

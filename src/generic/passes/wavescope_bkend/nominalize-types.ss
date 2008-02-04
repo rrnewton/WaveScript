@@ -374,14 +374,14 @@
 	(nominalize-types
 	 '(type-print/show-language
 	   '(program
-		(let ((x #(Int Int) (tuple 2 3)))
-		  (tuple 1 x))
+		(let ((x #(Int Int) (tuple (assert-type Int '2) (assert-type Int '3))))
+		  (tuple (assert-type Int '1) x))
 	      (union-types)
 	      (Stream #(Int #(Int Int)))))))
        (nominalize-types-language
 	'(program
-	     (let ([x (Struct tuptyp) (make-struct tuptyp 2 3)])
-	       (make-struct tuptyp_1 1 x))
+	     (let ([x (Struct tuptyp) (make-struct tuptyp (assert-type Int '2) (assert-type Int '3))])
+	       (make-struct tuptyp_1 (assert-type Int '1) x))
 	   (struct-defs
 	    (tuptyp (fld1 Int) (fld2 Int))
 	    (tuptyp_1 (fld1 Int) (fld2 (Struct tuptyp))))
