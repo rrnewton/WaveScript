@@ -19,7 +19,8 @@
 (module emit-c2 mzscheme 
   (require  "../../../plt/common.ss"
             "insert-refcounts.ss"
-            "nominalize-types.ss"
+            ;"nominalize-types.ss"
+	    "emit-c.ss"
 	    "../../compiler_components/c_generator.ss" )
   (provide emit-c2)
   (chezprovide )  
