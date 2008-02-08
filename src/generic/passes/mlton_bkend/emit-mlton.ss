@@ -878,7 +878,7 @@
     [(Array:set)    "Array.update"]
     [(Array:ref)    "Array.sub"]
 
-    [(nullseg) "nullseg()"]
+    [(nullseg) "(nullseg())"]
     ;; We just use the normal name conversion:
     [else (if (sigseg-prim? op)
 	      (ASSERT (PrimName op)) ;; Defined in the libray.

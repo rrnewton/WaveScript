@@ -607,7 +607,7 @@
 
   (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
 
-  (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.
+  (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.  
 
   (IFDEBUG 
    (unless (regiment-quiet)
@@ -1006,9 +1006,15 @@
 	    (ws-run-pass prog explicit-stream-wiring)
 	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
 
+	    ;(ws-run-pass heuristic-parallel-schedule)
+
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
 ;	    (print-graph #f)(inspect prog)
 	    (ws-run-pass prog insert-refcounts)
+
+;	    (pp (blaze-path-to prog (curry eq? 'Array:null)))
+;	    (inspect prog)
+
 	    
 	    ;; It's painful, but we need to typecheck again.
 	    ;; HACK: Let's only retypecheck if there were any unknown result types:
@@ -1636,6 +1642,7 @@
      ;; FIXME: add to print-help (or automate print-help)
      ;; FIXME: get rid of this; put it into input-parameters
      [(--scheduler ,sched-name ,rest ...)
+      (unless (regiment-quiet) (printf "Setting scheduler: ~s\n" sched-name))
       (set! opts (append `(scheduler ,sched-name) opts))
       (loop rest)]
 

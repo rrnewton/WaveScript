@@ -5,12 +5,87 @@
 // do the first phase event detector, and THEN do the AML.
 
 
+/*
+
+[2008.02.07] Doing some detective work.
+ACK, it looks like -O3 wasn't turned on on the C version previously!!
+
+Here's cachegrind output from the C version.  Executable is 76K.  Bottom line: excellent locality!!
+
+==11015== Cachegrind, an I1/D1/L2 cache profiler.
+<05,1202419856.231097>main: reading testdata.txt succesfull
+<05,1202419891.091695>main: farfield aml succesfull
+<05,1202419891.146889>main: writing result to result.txt succesfull
+==11015== 
+==11015== I   refs:      1,430,539,671
+==11015== I1  misses:            1,791
+==11015== L2i misses:            1,387
+==11015== I1  miss rate:          0.00%
+==11015== L2i miss rate:          0.00%
+==11015== 
+==11015== D   refs:        735,148,661  (519,818,863 rd + 215,329,798 wr)
+==11015== D1  misses:          173,573  (     69,711 rd +     103,862 wr)
+==11015== L2d misses:            3,979  (      2,421 rd +       1,558 wr)
+==11015== D1  miss rate:           0.0% (        0.0%   +         0.0%  )
+==11015== L2d miss rate:           0.0% (        0.0%   +         0.0%  )
+==11015== 
+==11015== L2 refs:             175,364  (     71,502 rd +     103,862 wr)
+==11015== L2 misses:             5,366  (      3,808 rd +       1,558 wr)
+==11015== L2 miss rate:            0.0% (        0.0%   +         0.0%  )
+
+
+And for wsmlton -O3.  Again, pretty excellent locality.
+
+==11020== Cachegrind, an I1/D1/L2 cache profiler.
+
+STARTTIMECPU: 2916
+
+STARTTIMEREAL: 2962
+Got a window on ch1, first element:~0.0442504882812
+Allocating fftw plan for the first time, size 2048
+
+ENDTIMECPU: 39890
+
+ENDTIMEREAL: 39903
+==11020== 
+==11020== I   refs:      1,696,782,114
+==11020== I1  misses:            8,723
+==11020== L2i misses:            5,447
+==11020== I1  miss rate:          0.00%
+==11020== L2i miss rate:          0.00%
+==11020== 
+==11020== D   refs:        694,521,556  (522,566,711 rd + 171,954,845 wr)
+==11020== D1  misses:          936,846  (    367,831 rd +     569,015 wr)
+==11020== L2d misses:          298,912  (     19,188 rd +     279,724 wr)
+==11020== D1  miss rate:           0.1% (        0.0%   +         0.3%  )
+==11020== L2d miss rate:           0.0% (        0.0%   +         0.1%  )
+==11020== 
+==11020== L2 refs:             945,569  (    376,554 rd +     569,015 wr)
+==11020== L2 misses:           304,359  (     24,635 rd +     279,724 wr)
+==11020== L2 miss rate:            0.0% (        0.0%   +         0.1%  )
+
+For reference, wsc2 is virtually the same as wsmlton above.  (Even to
+the point of having a little bit of D1 misses that the raw C version
+doesn't -- maybe the refcounts....)
+
+*/
+
+
+
 
 include "stdlib.ws";
 include "gnuplot.ws";
 
 // When we're not live we just print log messages to the stream.
-fun log(l,s) println(s)
+//fun log(l,s) println(s)
+fun log(l,s) {}
+
+fun clockit(str, s) {
+  s
+/* to enable: this outputs a clock value:
+  iterate x in s { println(str++": "++clock()); emit(x); }
+*/
+}
 
 GUIENABLED = false
 
@@ -23,7 +98,7 @@ samp_rate = 24000.0;
 // [2007.11.07] Disabling this because of problems with DF and amplification.
 
 chans = 
-  if false
+  if true
   then { file = "testdata.txt";
          mytimer = repeater(2400, timer(20.0));
          _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
@@ -73,7 +148,7 @@ fun SLSSmap(fn,slss)
 
 //converted = SLSSmap(floatToInt16, synced0)
 
-doas = oneSourceAMLTD_helper(synced0, 2048);
+doas = oneSourceAMLTD_helper(repeater(200,synced0), 2048);
 doas
 }
 
@@ -99,4 +174,6 @@ doas
 //BASE <- run_it(chans)
 
 
-BASE <- clockit("AMLdone",smap(fun(_)(), timeTransformer(600, chans, run_it)))
+BASE <- clockit("AMLdone",   
+   smap(fun(_)(), timeTransformer(100, chans, run_it))
+   )

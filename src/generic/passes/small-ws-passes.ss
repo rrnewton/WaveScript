@@ -173,8 +173,7 @@
 					 (set! ,stop '#t)
 					 ))))
 			  (not (deref ,stop))))))
-		  '#f)
-	      )))]
+		  '#f))))]
 
       ;; [2008.01.07] Only for wsc2 at the moment:
       [(List ,elt) (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))

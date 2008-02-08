@@ -355,7 +355,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Now let's see if we can load in larceny:
-(run-test "larceny: Testing compile in Larceny Scheme:"  "make larc &> larceny.log")
+;; Disabling for now because it's explodiing faith's HD:!!!
+;(run-test "larceny: Testing compile in Larceny Scheme:"  "make larc &> larceny.log")
 
 
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")

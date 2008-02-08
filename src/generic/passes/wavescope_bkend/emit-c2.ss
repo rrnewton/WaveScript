@@ -452,8 +452,8 @@
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
     ;; PolyConstants:
-    [(assert-type ,[Type -> ty] Array:null) `("(",ty")0")] ;; A null pointer. This choice is debatable.
-    [(assert-type ,[Type -> ty] '())        `("(",ty")0")] ;; A null pointer.       
+    [(assert-type ,[Type -> ty] Array:null) `("((",ty")0)")] ;; A null pointer. This choice is debatable.
+    [(assert-type ,[Type -> ty] '())        `("((",ty")0)")] ;; A null pointer.       
     ['() (error 'EmitC2:Simple "null list without type annotation")]
 
     ;; All other constants:
@@ -468,6 +468,10 @@
     [(assert-type ,_ ,[x]) x]
     [,else (error 'Simple "not simple expression: ~s" else)]
     ))
+
+(define (TyAndSimple expr)
+  (match expr
+    [(assert-type ,ty ,_)  (values ty (Simple expr))]))
 
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
@@ -554,11 +558,11 @@
 
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
       ;; Otherwise we needlessly allocate string objects.
-      [(print (assert-type ,ty ,[Simple -> e]))
+      [(print ,[TyAndSimple -> ty x])
        ;(ASSERT (eq? t 'String))       
-       (make-lines `("printf(\"",(type->printf-flag ty)"\", ",e");\n"))]
+       (make-lines `("printf(\"",(type->printf-flag ty)"\", ",x");\n"))]
       
-      [(set! ,[Var -> v] (assert-type ,ty ,[Simple -> x]))
+      [(set! ,[Var -> v] ,[TyAndSimple -> ty x])
        (append-lines 	
 	;; Set! changes Ref objects, which are on the heap:
 	#|(decr-heap-refcount ty v)  ;; Out with the old.|#
@@ -566,13 +570,14 @@
 	#|(incr-heap-refcount ty v)  ;; In with the new.|#
 	)]
 
-      [(Array:set (assert-type (Array ,elt) ,[Simple -> arr]) ,[Simple -> ind] ,[Simple -> val])
-       (append-lines 	
-	;(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
-	#|(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.|#
-	(make-lines `(,arr"[",ind"] = ",val";\n"))
-	#|(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.|#
-	)]
+      [(Array:set ,[TyAndSimple -> ty arr] ,[Simple -> ind] ,[Simple -> val])
+       (let-match ([(Array ,elt) ty])
+	 (append-lines 	
+	  ;;(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
+	  #|(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.|#
+	  (make-lines `(,arr"[",ind"] = ",val";\n"))
+	  #|(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.|#
+	  ))]
 
       [(emit ,vq ,x) (emitter x)]
       [(begin ,[e*] ...) 
@@ -774,7 +779,7 @@
      
      (match app
        ;; Refs and sets are pure simplicity:
-       [(Array:ref (assert-type (Array ,[Type -> ty]) ,[Simple -> arr]) ,[Simple -> ind])
+       [(Array:ref ,[Simple -> arr] ,[Simple -> ind])
 	(kont `(,arr"[",ind"]"))]
 
        ;; Using some simple C macros here:
@@ -842,12 +847,12 @@
 		      (kont (Var tmp)))]
        
        ;; wsequal? should only exist for scalars at this point:
-       [(wsequal? (assert-type ,ty ,[Simple -> left]) ,[Simple -> right])
+       [(wsequal? ,[TyAndSimple -> ty left] ,[Simple -> right])
 	;(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
 	(ASSERT scalar-type? ty)		
 	(kont `("(",left" == ",right")"))]
 
-       [(__show_ARRAY (assert-type ,ty ,[Simple -> obj]))
+       [(__show_ARRAY ,[TyAndSimple -> ty obj])
 	(define max-show-size 100)
 	(match ty
 	  [String       (kont obj)]

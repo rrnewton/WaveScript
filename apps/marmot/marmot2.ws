@@ -195,7 +195,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     max_ind = ref(0);
     order = Array:make(sel_bin_size,0); // order of array
 
-    // the actual sort
+    /* <<<<<< the actual sort >>>>>> */
     for i = 0 to (sel_bin_size-1) {
       temp_val := psds[i];
       temp_ind := psd_index[i];
@@ -220,6 +220,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 
 
     //    gnuplot_array(order);
+
+
+
+
+    /* <<<<<<<<<<<<<<<<<<<< ANGLE SEARCH >>>>>>>>>>>>>>>>>>>> */
     // now do the actual AML calculation, searching thru each angle
     for i = 0 to (grid_size - 1) {
       try_angle = intToFloat(i)*2.00*const_PI/intToFloat(grid_size);
@@ -258,7 +263,11 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	}
       }
 
-    };
+    }
+
+
+
+;
 
     // gnuplot_array(Jvec);
     //    emit(Jvec); // and, we're done!

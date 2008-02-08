@@ -1248,11 +1248,12 @@
   ;; Main body:
   ;; Here we stitch together the file out of its composite bits.
 
-  (ASSERT (or (eq? scheduler 'default-scheduler)
+(unless (or (eq? scheduler 'default-scheduler)
 	      (eq? scheduler 'depth-first) ;; Old scheduler
               (eq? scheduler 'train-scheduler) ;; Old scheduler
               (eq? scheduler 'corefit-scheduler-ex)
-              (eq? scheduler 'corefit-scheduler-df)))
+              (eq? scheduler 'corefit-scheduler-df))
+  (error 'EmitC "unknown XStream Scheduler mode: ~s\n" scheduler))
 
   (fluid-let ([include-files ()]
 	      [link-files    ()])
@@ -1411,7 +1412,7 @@
           [nulltimebase (Const #f #f 'nulltimebase)]
 
           [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
-          [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var v)]
+          [,v (guard (symbol? v)) (ASSERT (compose not regiment-primitive?) v) (Var v)]
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
