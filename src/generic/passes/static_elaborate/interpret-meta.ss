@@ -403,7 +403,7 @@
 				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 			  x*)))])
 	  ;(ASSERT (not (eq? raw (void))))
-	  (ASSERT (not (procedure? raw)))
+	  ;(ASSERT (not (procedure? raw)))
 	  (let ([final (maybe-wrap raw)])
 	    (set-value-type! final retty) ;; Necessary?
 	    final))])]
@@ -497,6 +497,7 @@
   ;(printf "BUILT DICTIONARY!\n")
   )
 
+;; This is used to turn scheme procedures back into closures.
 (define reflect-msg (gensym "reflect"))
 
 ;; Make a *real* procedure that evaluates a closure.  Thus we can pass

@@ -10,6 +10,8 @@
 [2008.02.07] Doing some detective work.
 ACK, it looks like -O3 wasn't turned on on the C version previously!!
 
+After turning it on: 1564-32 in mlton (chastity) and....
+
 Here's cachegrind output from the C version.  Executable is 76K.  Bottom line: excellent locality!!
 
 ==11015== Cachegrind, an I1/D1/L2 cache profiler.
@@ -68,6 +70,16 @@ For reference, wsc2 is virtually the same as wsmlton above.  (Even to
 the point of having a little bit of D1 misses that the raw C version
 doesn't -- maybe the refcounts....)
 
+[2008.02.10] {Binary sizes}
+
+For test_marmot2.ws by itself:
+
+56K - farfield_ex ARM version.
+
+70K - farfield_ex 
+106K - wsc2
+288K - wsc.new
+421K - wsmlton -O3  (ODD...)
 */
 
 

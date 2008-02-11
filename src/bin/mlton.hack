@@ -1,6 +1,7 @@
 #!/bin/sh
 
-
+# NOTE, to get GC stats pass the compiled executable this flag:
+# ./query.mlton.exe @MLton gc-summary 
 
 #UNSAFE="-const 'MLton.safe false' -const 'MLton.detectOverflow false'"
 

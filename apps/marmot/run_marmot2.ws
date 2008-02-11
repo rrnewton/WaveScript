@@ -14,6 +14,16 @@ GC for just run_marmot2.ws.  Not really room for improvement there.
 
 First phase by itself shows <2% GC time for MLton.
 
+[2008.02.10]
+
+Binary sizes: 
+
+356K - mlton no inline
+368K - mlton
+439K - wsc2.new
+721K - wsc2 with naive refcounting and inlined sigseg copyalways
+
+
 */
 
 

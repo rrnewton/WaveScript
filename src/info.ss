@@ -9,7 +9,7 @@
 			       "main.ss"
 			       "main_chez.ss"
 			       "main_larceny.ss"
-;			       "main_plt.ss"
+			       "main_plt.ss"
 			       "common_loader.ss"
 			       "match_larceny.ss"
 			       "regiment.ss"
