@@ -21,6 +21,14 @@
 (define *name-offset* 2)
 (define *slot-names-offset* 3)
 
+;(define pack-generic list)
+;(define unpack-generic car)
+;(define pack-generic vector)
+;(define (unpack-generic x) (vector-ref x 0))
+;(define (pack-generic x) (x))
+;(define (unpack-generic x) ???)
+(define (generic->unique x) (x))
+
 ; We keep all superclasses of a class in one list; this makes generic
 ; function dispatch and calling overridden methods easier.
 ;
@@ -113,50 +121,57 @@
 (define *unspecific* (if #f #f))
 
 (define (make-generic)
+  ;(define unique-tag (cons 0 ()))
+  (define unique-tag (gensym "genericmethod"))
   (letrec ((this-function
-	    (lambda (object . arguments)
-	      (let* ((class (vector-ref object *class-offset*))
-		     (classes (cons class
-				    (vector-ref class
-						*superclasses-offset*)))
-		     (have-specialised #f)
-		     (my-classes classes))
-		(letrec ((call-next-method
-			  (lambda ()
-			    (if (null? my-classes)
-				(if have-specialised
-				    *unspecific*
-				    (error 'make-generic "method not specialised" ))
-				(let* ((class (car my-classes))
-				       (specialised-methods
-					(vector-ref
-					 class *specialised-methods-offset*))
-				       (this-method
-					(assq this-function
-					      specialised-methods)))
-				  (set! my-classes (cdr my-classes))
-				  (if this-method
-				      (begin
-					(set! have-specialised #t)
-					(apply (cdr this-method)
-					       (cons call-next-method
-						     (cons object arguments))))
-				      (call-next-method)))))))
-		  (set! have-specialised #f)
-		  (set! my-classes classes)
-		  (call-next-method))))))
+	    (case-lambda
+	      [() unique-tag]
+	      [(object . arguments)
+	       (let* ((class (vector-ref object *class-offset*))
+		      (classes (cons class
+				     (vector-ref class
+						 *superclasses-offset*)))
+		      (have-specialised #f)
+		      (my-classes classes))
+		 (letrec ((call-next-method
+			   (lambda ()
+			     (if (null? my-classes)
+				 (if have-specialised
+				     *unspecific*
+				     (error 'make-generic "method not specialised" ))
+				 (let* ((class (car my-classes))
+					(specialised-methods
+					 (vector-ref
+					  class *specialised-methods-offset*))
+					(this-method
+					 (assq unique-tag ;(generic->unique this-function)
+					       specialised-methods)))
+				   (set! my-classes (cdr my-classes))
+				   (if this-method
+				       (begin
+					 (set! have-specialised #t)
+					 (apply (cdr this-method)
+						(cons call-next-method
+						      (cons object arguments))))
+				       (call-next-method)))))))
+		   (set! have-specialised #f)
+		   (set! my-classes classes)
+		   (call-next-method)))])))
+    ;; rrn: boxing this so that eq? is well defined:
     this-function))
 
 ; Specialise a generic method with respect to a particular class.
 
 (define (specialise! generic class procedure)
+  (define tag (generic->unique generic))
   (let* ((specialised-methods (vector-ref class
 					  *specialised-methods-offset*))
-	 (this-method (assq generic specialised-methods)))
+	 (this-method (assq tag specialised-methods)))
+    ;(printf "SPECILIASING specialised: ~s this: ~s\n" specialised-methods this-method)
     (if this-method
 	(set-cdr! this-method procedure)
 	(vector-set! class *specialised-methods-offset*
-		     (cons (cons generic procedure) specialised-methods)))))
+		     (cons (cons tag procedure) specialised-methods)))))
 
 ; I prefer to do slot accessing dynamically rather than statically; it
 ; costs a little in terms of runtime and `opacity', but what the hell.

@@ -162,6 +162,9 @@
 (define (make-app rator rands)
   (list rator "("(insert-between ", " rands)")"))
 
+(define (emit-err where)
+  (lambda (_) (error where "should not run into an emit!")))
+
 (__spec type->name <emitC2> (self ty)
   (match ty
     ;[#(,[flds] ...) (apply string-append "TupleOf_" flds)]
@@ -305,11 +308,11 @@
 				  ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
 					  ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
 					  (begin ;(loop elt) ;; For side effect
-						 (lines-text (gen-decr-code self elt `("ptr[",ind"]"))))
-					  )
+						 (lines-text (gen-decr-code self elt `("ptr[",ind"]")))))
 				  "free((int*)ptr - 2);\n")))
 			))])))
-     (slot-ref self 'free-fun-table))))
+     (slot-ref self 'free-fun-table)))
+  )
 
 
 
@@ -558,9 +561,6 @@
 		    down*)))
     ;(make-lines `("emit ",(Simple expr)";"))
     ))
-
-(define (emit-err where)
-  (lambda (_) (error where "should not run into an emit!")))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
 (__spec Binding <emitC2> (self emitter)
@@ -1240,7 +1240,7 @@
 
 
 ;; Run the pass and generate C code:
-(__spec Run <emitC2> (self)
+(__spec Run <emitC2> (self . args)
   (printf "BUILDING TABLE\n")
   (let* ([prog (slot-ref self 'theprog)]
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
@@ -1316,9 +1316,10 @@
   )
 
 
-(trace-define (emit-c2 prog)
-  (printf "CALLING emit-c2\n")
-  (Run (make-object <emitC2> prog)))
+(define (emit-c2 prog)
+  (define obj (make-object <emitC2> prog))
+  (printf "Obj creation finished\n")
+  (Run obj))
 
 ) ;; End module
 
