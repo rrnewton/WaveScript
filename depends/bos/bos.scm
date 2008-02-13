@@ -126,7 +126,7 @@
 			    (if (null? my-classes)
 				(if have-specialised
 				    *unspecific*
-				    (error 'make-generic "method not specialised"))
+				    (error 'make-generic "method not specialised" ))
 				(let* ((class (car my-classes))
 				       (specialised-methods
 					(vector-ref

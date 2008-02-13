@@ -2646,7 +2646,7 @@
 	 `(first-value (stream-take 2 (wsint-early
           '(lang '(program (assert-type (Stream Int16) 
             (readFile
-		      ',(string-append (getenv "REGIMENTD") "/demos/wavescope/countup.txt") 
+		      ',(string-append (REGIMENTD) "/demos/wavescope/countup.txt") 
 		      '"mode: text" (timer '1000.0))) (Stream Int16))) '())))])
     `(begin   ,prog ,prog ,prog))
  unspecified]

@@ -372,7 +372,12 @@
   (wsmlton "demo1c_timer.ws"))
 
 (current-directory "~/demos")
-(wsc2 "demo1e_readFile.ws")
+;(wsc2 "demo1c_timer.ws")
+;(wsc2 "demo3d_tuples_of_tuples.ws")
+;(wsc2 "demo2b_iterateState.ws")
+;(wsc2 "demo3a_tuples.ws")
+;(wsc2 "demo3g_arrays.ws")
+;(wsc2 "demo3m_sigsegs.ws")
   
 ) ; End module
 

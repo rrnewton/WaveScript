@@ -91,7 +91,7 @@ ocaml:
 #----------------------------------------
 bc:pltbc
 pltbc:
-	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
+	find -name "._*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
 	$(MAKE) pltquick

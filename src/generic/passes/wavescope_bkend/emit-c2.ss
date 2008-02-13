@@ -21,6 +21,7 @@
             "insert-refcounts.ss"
             ;"nominalize-types.ss"
 	    "emit-c.ss"
+            "../../util/bos_oop.ss"
 	    "../../compiler_components/c_generator.ss" )
   (provide emit-c2)
   (chezprovide )  
@@ -28,26 +29,72 @@
 
   (cond-expand [chez (import rn-match)] [else (void)])
 
-;; Mutated below:
-(define global-struct-defs '())
-(define global-union-types '())
+  
+  ;; An object of this class is a compiler pass.  It is not reentrant,
+  ;; because it maintains state for the program it is compiling.
+  (define-class <emitC2> (<class>) 
+    (theprog ;; <- holds on to the program we're compiling
+     struct-defs union-types ;; <- cache these two pieces of metadata from theprog
+     free-fun-table ;; <- This contains a table mapping
+     ;;   types to a scheme function that generates free-code (when given
+     ;;   text representing the pointer to free).
+     include-files link-files ;; <- accumulate a list of files to include/link
+     ))
+
+  ;; We define a single top-level instance of our pass-class:
+  ;(define-object obj <emitC2>)
+
+  ;; These are the methods:
+  (define-generic build-free-fun-table!)
+  (define-generic heap-type?)
+  (define-generic add-include!)
+  (define-generic add-link!)
+
+  (define-generic gen-incr-code)
+  (define-generic gen-decr-code)
+  (define-generic gen-free-code)
+  (define-generic incr-local-refcount)
+  (define-generic decr-local-refcount)
+  (define-generic incr-heap-refcount)
+  (define-generic decr-heap-refcount)
 
 
-;; This is mutated below with fluid-let to contain a table mapping
-;; types to a scheme function that generates free-code (when given
-;; text representing the pointer to free).
-(define free-fun-table '())
+  (define-generic potential-collect-point)
+  (define-generic say-goodbye)
+  ;(define-generic make-app)
+  (define-generic type->name)
+  ;(define-generic wrap-source-as-plain-thunk)
+;  (define-generic wrap-iterate-as-simple-fun)
+  (define-generic Const)
+  (define-generic Var)
+  (define-generic Simple)
+  (define-generic TyAndSimple)
+  (define-generic Type)
+  (define-generic Value)
+  (define-generic Effect)
+  (define-generic StructDef)
+  (define-generic Source)
+  (define-generic Operator)
+  (define-generic Emit)
+  (define-generic type->printf-flag)
+  (define-generic Binding)
+  (define-generic SplitBinding)
+  (define-generic PrimApp)
+;  (define-generic Program)
+  (define-generic Run)
+  (define-generic BuildSourceDriver)
+  (define-generic varbindk)
 
-(define include-files ())
-(define link-files    ())
-
-(define (add-include! fn)
-  (unless (member fn include-files)
-    (set! include-files (cons fn include-files))))
-(define (add-link! fn)
-  (unless (member fn link-files)
-    (set! link-files (cons fn link-files))))
-
+   
+  (__spec add-include! <emitC2> (self fn)
+    (define files (slot-ref self 'include-files))
+    (unless (member fn files)
+      (slot-set! self 'include-files (cons fn files))))
+  (__spec add-link! <emitC2> (self fn)
+    (define files (slot-ref self 'link-files))
+    (unless (member fn files)
+      (slot-set! self 'link-files (cons fn files))))
+  
 ;;========================================
 
 ;; These are just for sanity checking.  Disjoint types keep mix-ups from happening.
@@ -88,6 +135,7 @@
        [(,a . ,[tl])        (cons a tl)]))
     "\""))
 
+
 ;================================================================================
 ;;; Input grammar
 
@@ -102,181 +150,6 @@
 ;     (slot-set! self 'rc (get-arg args 'rc))))
 ;(define-generic Emit)
 
-;================================================================================
-
-
-;; This builds a set of top level function definitions that free all
-;; the heap-allocated types present in the system.  It also builds a
-;; table mapping types onto syntax-generating functions that call the
-;; appropriate free-ing code.
-;; 
-;; Currently this routine mutates the table "free-fun-table" on the fly.
-;;
-;; This is this function that decides what freeing will be "open coded"
-;; vs. relegated to separately defined functions.
-(define (build-free-fun-table! heap-types)
-  (define fun-def-acc '()) ;; mutated below  
-  (define (add-to-freefuns! ty fun)
-    ;; Inefficient: should use hash table:
-    (unless (assoc ty free-fun-table)
-      (set! free-fun-table (cons (cons ty (debug-return-contract lines? fun))
-				 free-fun-table))))  
-  (define (add-to-defs! ty def)
-    ;; Inefficient: should use hash table:
-    (unless (assoc ty free-fun-table)
-      (set! fun-def-acc (cons def fun-def-acc))))
-
-  ;; First we add the freefuns name entries, because we might need
-  ;; those to generate the defs.
-  (for-each
-      (lambda (ty) 
-	(define name (type->name ty))
-	(define default-fun_name `("void free_",name"(",(Type ty)" ptr)"))
-	(define default-specialized_fun
-	  (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-	(let loop ([ty ty])
-	   (match ty ;; <- No match recursion!
-	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
-	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
-	     [,scl (guard (not (heap-allocated? scl global-struct-defs global-union-types))) #f]
-	     [(Struct ,tuptyp) (add-to-freefuns! ty default-specialized_fun)]
-	     [(Ref ,elt) (loop elt)]
-	     [(List ,elt) (add-to-freefuns! ty default-specialized_fun)]
-	     [(Array ,elt)
-	      (if (not (heap-allocated? elt global-struct-defs global-union-types))
-		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))))
-		  (add-to-freefuns! ty default-specialized_fun))])))
-    heap-types)
-
-  ;; Now, for every name we've added to the table, we need to generate a definition:  
-  (apply append-lines 
-   (map (lambda (entry) 
-	  (define ty (car entry))
-	  (define name (type->name ty))
-	  (define default-fun_name `("void free_",name"(",(Type ty)" ptr)"))
-	  (define default-specialized_fun
-	    (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-	  (let loop ([ty ty])
-	       (match ty ;; <- No match recursion!
-		 [(Struct ,tuptyp)
-		  (let ([flds (cdr (ASSERT (assq tuptyp global-struct-defs)))])
-		    (make-lines
-		     (list
-		     "/* Freeing struct: "(sym2str tuptyp)"*/\n"
-		     (block default-fun_name
-			    (map (match-lambda ((,fldname ,ty))
-				   (lines-text (gen-decr-code ty (list "ptr."(sym2str fldname)) default-free)))
-			      flds)))))]
-		 [(List ,elt)
-		  ;; We always build an explicit function for freeing list types:
-		  ;; Here's a hack to enable us to recursively free the same type.
-		  (make-lines 
-		   (block default-fun_name
-			  (block (list "if(ptr)") ;; If not null.
-				 `(
-				   ;; Recursively decr tail:
-				   ,(Type `(List ,elt))" ptr2 = CDR(ptr);\n"
-				   ,(lines-text (gen-decr-code `(List ,elt) "ptr2" default-free))
-				   ;; If heap allocated, free the CAR:
-				   ,(if (heap-allocated? elt global-struct-defs global-union-types)
-					(lines-text (gen-decr-code elt `("(*ptr)") default-free))
-					"")
-				   "free((int*)ptr - 2);\n"))))]
-		 [(Array ,elt)
-		  (if (not (heap-allocated? elt global-struct-defs global-union-types))
-		      (make-lines "")
-		      (let ([ind (Var (unique-name "i"))])
-			(make-lines 
-			 (block default-fun_name
-				`("int ",ind";\n"
-				  ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
-					  ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
-					  (begin ;(loop elt) ;; For side effect
-						 (lines-text (gen-decr-code elt `("ptr[",ind"]") default-free)))
-					  )
-				  "free((int*)ptr - 2);\n")))
-			))])))
-     free-fun-table)))
-
-
-
-;================================================================================
-;;; Hooks for garbage collection.
-
-;; For the naive strategy we'de allow shared pointers but would need a CAS here.
-(define (gen-incr-code ty ptr msg)
-  (match ty
-    ;; Both of these types just decr the -1 offset:
-    [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("INCR_RC(",ptr"); /* ",msg" type: ",(format "~a" ty)" */\n"))]
-    [(Ref ,[ty]) ty]
-    ;; Could make this a separate function:
-    [(Struct ,name) 
-     (apply append-lines
-	    (make-lines (format "/* Incr tuple refcount, Struct ~a */\n" name))
-	    (map (match-lambda ((,fldname ,ty))
-		   (gen-incr-code ty (list ptr "." (sym2str fldname)) msg))
-	      (cdr (assq name global-struct-defs))))]
-    ;; Other types are not heap allocated:
-    [,ty (guard (not (heap-allocated? ty global-struct-defs global-union-types)))(make-lines "")]
-    ))
-
-;; "ptr" should be text representing a C lvalue
-;; returns "lines"
-(define (gen-decr-code ty ptr freefun)
-  (match ty
-    [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines 
-      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
-	     (lines-text (freefun ty ptr))))]
-    [(Ref ,[ty]) ty]
-    ;; Could make this a separate function:
-    [(Struct ,name) 
-     (apply append-lines
-	    (make-lines (format "/* Decr tuple refcount, Struct ~a */\n" name))
-	    (map (match-lambda ((,fldname ,ty))
-		   (gen-decr-code ty (list ptr "." (sym2str fldname)) freefun))
-	      (cdr (assq name global-struct-defs))))]
-    [,ty (guard (not (heap-allocated? ty global-struct-defs global-union-types))) (make-lines "")]))
-
-;; Should only be called for types that are actually heap allocated.
-(define default-free
-  (debug-return-contract lines?
-  (lambda (ty ptr)    
-    (define (strip-refs ty)
-      (match ty [(Ref ,ty) ty] [,ty ty]))
-    (let ([newty (strip-refs ty)])
-      ((cdr (ASSERT (assoc newty free-fun-table))) ptr)))))
-
-;; This version represents plain old reference counting.
-(begin
-  (define (incr-local-refcount ty ptr) (gen-incr-code ty ptr "local"))
-  (define (decr-local-refcount ty ptr) (gen-decr-code ty ptr default-free))
-  
-  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
-  (define (decr-heap-refcount ty ptr)
-    (gen-decr-code ty ptr default-free))
-  (define (potential-collect-point) (make-lines ""))
-  )
-
-#;
-;; This version uses deferred reference counting.
-(begin 
-  (define (incr-local-refcount ty ptr) (make-lines ""))
-  (define (decr-local-refcount ty ptr) (make-lines ""))
-
-  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
-  (define (decr-heap-refcount ty ptr)
-    (gen-decr-code ty ptr default-free))
-
-  (define (potential-collect-point)
-    (make-lines ""))
-  )
-
-
-;; Do anything special that's required as a value is sent off through an emit.
-;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
-(define (say-goodbye ty ptr) (make-lines ""))
 
 ;================================================================================
 ;;; Low level routines for generating syntax.
@@ -289,15 +162,15 @@
 (define (make-app rator rands)
   (list rator "("(insert-between ", " rands)")"))
 
-(define (type->name ty)
+(__spec type->name <emitC2> (self ty)
   (match ty
     ;[#(,[flds] ...) (apply string-append "TupleOf_" flds)]
     [(Struct ,tuptyp) 
      (string-append
       (apply string-append "TupleOf_" 
 			     (insert-between "_"
-			      (map type->name (map cadr 
-			       (cdr (ASSERT (assq tuptyp global-struct-defs)))))))
+			      (map (curry type->name self) (map cadr 
+			       (cdr (ASSERT (assq tuptyp (slot-ref self 'struct-defs))))))))
       "__")]
     [,scalt (guard (scalar-type? scalt)) (sym2str scalt)]
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
@@ -321,32 +194,222 @@
 
 (define (idk x)   (if (eq? x split-msg) (values (make-lines "") idk) (make-lines x)))
 (define (nullk x) (if (eq? x split-msg) (values (make-lines "") idk) (make-lines "")))
-(define (varbindk name typ)
+(__spec varbindk <emitC2> (self name typ)
   (define (split-k x)
     (if (eq? x 'split-msg) 
 	;; Further splits have no effect:
 	(values (make-lines "") split-k)
 	;; After a split we mutate the variable rater than binding it.
-	(make-lines `(,(Var name)" = ",x";\n"))))
+	(make-lines `(,(Var self name)" = ",x";\n"))))
   (lambda (x)      
     (if (eq? x split-msg)
 	;; At the split point we bind the variable.
 	;; And we return a new continuation.
-	(values (make-lines `(,(Type typ)" ",(Var name)";\n"))
+	(values (make-lines `(,(Type self typ)" ",(Var self name)";\n"))
 		split-k)
 	;; Here we bind & set the variable.
-	(make-lines `(,(Type typ)" ",(Var name)" = ",x";\n"))
+	(make-lines `(,(Type self typ)" ",(Var self name)" = ",x";\n"))
 	)))
 
 ;================================================================================
 
+  
+(__spec heap-type? <emitC2> (self ty) 
+        (heap-allocated? ty (slot-ref self 'struct-defs) (slot-ref self 'union-types)))
+
+;; This builds a set of top level function definitions that free all
+;; the heap-allocated types present in the system.  It also builds a
+;; table mapping types onto syntax-generating functions that call the
+;; appropriate free-ing code.
+;; 
+;; Currently this routine mutates the table "free-fun-table" on the fly.
+;;
+;; This is this function that decides what freeing will be "open coded"
+;; vs. relegated to separately defined functions.
+(__spec build-free-fun-table! <emitC2> (self heap-types)
+  (define fun-def-acc '()) ;; mutated below  
+  (define (add-to-freefuns! ty fun)
+    ;; Inefficient: should use hash table:
+    (unless (assoc ty (slot-ref self 'free-fun-table))
+      (slot-set! self 'free-fun-table 
+                 (cons (cons ty (debug-return-contract lines? fun))
+                       (slot-ref self 'free-fun-table)))))
+  (define (add-to-defs! ty def)
+    ;; Inefficient: should use hash table:
+    (unless (assoc ty (slot-ref self 'free-fun-table))
+      (set! fun-def-acc (cons def fun-def-acc))))
+  
+  ;; First we add the freefuns name entries, because we might need
+  ;; those to generate the defs.
+  (for-each
+      (lambda (ty) 
+	(define name (type->name self ty))
+	(define default-fun_name `("void free_",name"(",(Type self ty)" ptr)"))
+	(define default-specialized_fun
+	  (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+	(let loop ([ty ty])
+	   (match ty ;; <- No match recursion!
+	     ;; Tuples are not heap allocated for now (at least the bigger ones should be):
+	     [,tup (guard (vector? tup)) #f] ;; No entry in the table.
+	     [,scl (guard (not (heap-type? self scl))) #f]
+	     [(Struct ,tuptyp) (add-to-freefuns! ty default-specialized_fun)]
+	     [(Ref ,elt) (loop elt)]
+	     [(List ,elt) (add-to-freefuns! ty default-specialized_fun)]
+	     [(Array ,elt)
+	      (if (not (heap-type? self elt))
+		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))))
+		  (add-to-freefuns! ty default-specialized_fun))])))
+    heap-types)
+
+  ;; Now, for every name we've added to the table, we need to generate a definition:  
+  (apply append-lines 
+   (map (lambda (entry) 
+	  (define ty (car entry))
+	  (define name (type->name self ty))
+	  (define default-fun_name `("void free_",name"(",(Type self ty)" ptr)"))
+	  (define default-specialized_fun
+	    (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+	  (let loop ([ty ty])
+	       (match ty ;; <- No match recursion!
+		 [(Struct ,tuptyp)
+		  (let ([flds (cdr (ASSERT (assq tuptyp (slot-ref self 'struct-defs))))])
+		    (make-lines
+		     (list
+		     "/* Freeing struct: "(sym2str tuptyp)"*/\n"
+		     (block default-fun_name
+			    (map (match-lambda ((,fldname ,ty))
+				   (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)))))
+			      flds)))))]
+		 [(List ,elt)
+		  ;; We always build an explicit function for freeing list types:
+		  ;; Here's a hack to enable us to recursively free the same type.
+		  (make-lines 
+		   (block default-fun_name
+			  (block (list "if(ptr)") ;; If not null.
+				 `(
+				   ;; Recursively decr tail:
+				   ,(Type self `(List ,elt))" ptr2 = CDR(ptr);\n"
+				   ,(lines-text (gen-decr-code self `(List ,elt) "ptr2"))
+				   ;; If heap allocated, free the CAR:
+				   ,(if (heap-type? self elt)
+					(lines-text (gen-decr-code self elt `("(*ptr)")))
+					"")
+				   "free((int*)ptr - 2);\n"))))]
+		 [(Array ,elt)
+		  (if (not (heap-type? self elt))
+		      (make-lines "")
+		      (let ([ind (Var self (unique-name "i"))])
+			(make-lines 
+			 (block default-fun_name
+				`("int ",ind";\n"
+				  ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
+					  ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
+					  (begin ;(loop elt) ;; For side effect
+						 (lines-text (gen-decr-code self elt `("ptr[",ind"]"))))
+					  )
+				  "free((int*)ptr - 2);\n")))
+			))])))
+     (slot-ref self 'free-fun-table))))
+
+
+
+
+;================================================================================
+;;; Hooks for garbage collection.
+
+;; These underlying methods do the actual code generation:
+;; For the naive strategy we'de allow shared pointers but would need a CAS here.
+(__spec gen-incr-code <emitC2> (self ty ptr msg)
+  (match ty
+    ;; Both of these types just decr the -1 offset:
+    [(,Container ,elt) (guard (memq Container '(Array List)))
+     (make-lines `("INCR_RC(",ptr"); /* ",msg" type: ",(format "~a" ty)" */\n"))]
+    [(Ref ,[ty]) ty]
+    ;; Could make this a separate function:
+    [(Struct ,name) 
+     (apply append-lines
+	    (make-lines (format "/* Incr tuple refcount, Struct ~a */\n" name))
+	    (map (match-lambda ((,fldname ,ty))
+		   (gen-incr-code self ty (list ptr "." (sym2str fldname)) msg))
+	      (cdr (assq name (slot-ref self 'struct-defs)))))]
+    ;; Other types are not heap allocated:
+    [,ty (guard (not (heap-type? self ty)))(make-lines "")]
+    ))
+
+;; "ptr" should be text representing a C lvalue
+;; returns "lines"
+(__spec gen-decr-code <emitC2> (self ty ptr)
+  (match ty
+    [(,Container ,elt) (guard (memq Container '(Array List)))
+     (make-lines 
+      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
+	     (lines-text (gen-free-code self ty ptr))))]
+    [(Ref ,[ty]) ty]
+    ;; Could make this a separate function:
+    [(Struct ,name) 
+     (apply append-lines
+	    (make-lines (format "/* Decr tuple refcount, Struct ~a */\n" name))
+	    (map (match-lambda ((,fldname ,ty))
+		   (gen-decr-code self ty (list ptr "." (sym2str fldname))))
+	      (cdr (assq name (slot-ref self 'struct-defs)))))]
+    [,ty (guard (not (heap-type? self ty))) (make-lines "")]))
+
+;; This generates free code for a type (using free-fun-table).
+;; Should only be called for types that are actually heap allocated.
+(define _ 
+  (specialise! gen-free-code <emitC2>
+     (debug-return-contract lines?
+       (lambda (next self ty ptr)
+	 (next)
+	 (let* ([strip-refs (lambda(ty)
+			      (match ty [(Ref ,ty) ty] [,ty ty]))]
+		[newty (strip-refs ty)])
+	   ((cdr (ASSERT (assoc newty (slot-ref self 'free-fun-table)))) 
+	    ptr))))))
+
+
+;; These methods represent the actions to take when encountering local or heap refs.
+;; The default version represents plain old reference counting.
+(__spec incr-local-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "local"))
+(__spec decr-local-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr))
+
+(__spec incr-heap-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "heap"))
+(__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr))
+
+;; TODO -- not used yet
+(__spec potential-collect-point <emitC2> (self) (make-lines ""))
+
+
+
+#;
+;; This version uses deferred reference counting.
+(begin 
+  (define (incr-local-refcount ty ptr) (make-lines ""))
+  (define (decr-local-refcount ty ptr) (make-lines ""))
+
+  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
+  (define (decr-heap-refcount ty ptr)
+    (gen-decr-code ty ptr default-free))
+
+  (define (potential-collect-point)
+    (make-lines ""))
+  )
+
+
+;; TODO -- not used yet
+;; Do anything special that's required as a value is sent off through an emit.
+;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
+(__spec say-goodbye <emitC2> (self ty ptr) (make-lines ""))
+
+
+;================================================================================
+
 ;; [2007.12.04] TEMP!!!!! SHOULD NOT DUPLICATE CODE
-(define Const
-  (lambda (datum wrap)
+(__spec Const <emitC2> (self datum wrap)
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
      [(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
-     [(eq? datum 'UNIT) (wrap (Simple '(tuple)))]
+     [(eq? datum 'UNIT) (wrap (Simple self '(tuple)))]
      [(eq? datum #t) (wrap "TRUE")]
      [(eq? datum #f) (wrap "FALSE")]
      [(string? datum) (wrap (format "~s" datum))]
@@ -358,16 +421,16 @@
      ;; Hacked this to handle NAN (not in a pretty way).
      [(flonum? datum) 
             ;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
-      (wrap (format "(~a)~a" (Type 'Float)
+      (wrap (format "(~a)~a" (Type self 'Float)
 		    (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
 			"(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
 			datum)					 
 		    ))]
-     [(cflonum? datum) (wrap (format "(~a)(~a + ~afi)" (Type 'Complex)
+     [(cflonum? datum) (wrap (format "(~a)(~a + ~afi)" (Type self 'Complex)
 				     (cfl-real-part datum)
 				     (cfl-imag-part datum)))]
      [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
-     [(integer? datum) (wrap (format "(~a)~a" (Type 'Int) datum))]
+     [(integer? datum) (wrap (format "(~a)~a" (Type self 'Int) datum))]
 
 #;
      [(vector? datum)
@@ -379,14 +442,16 @@
 	`(,type" ",name" = makeArrayUnsafe(",(number->string (vector-length datum))
 	       ", "
 	       ;;"sizeof(",contenttype")"
-	       "("(Type contenttype)")"(make-zero-for-type contenttype)
+	       "("(Type self contenttype)")"(make-zero-for-type contenttype)
 	       ");\n" 
 	       ,(mapi (lambda (i x) (Const `("(",name"->data)[",(number->string i)"]")
 					   "" x))
 		      (vector->list datum))))]
-     [else (error 'emitC2:Const "not a C-compatible literal: ~s" datum)])))
+     [else (error 'emitC2:Const "not a C-compatible literal: ~s" datum)]))
 
-(define (Type ty)
+
+
+(__spec Type <emitC2> (self ty)
   (match ty
     [Bool    "char"]
     [Int     "int"]
@@ -415,11 +480,11 @@
 
 
 ;; Generate a struct definition.
-(define (StructDef entry)
+(__spec StructDef <emitC2> (self entry)
      (match entry
        [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
 	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
-	      [ctype* (map Type typ*)])
+	      [ctype* (map (curry Type self) typ*)])
 	  `(,(block `("struct ",name)
 		    (map (lambda (ctype fld) `[,ctype " " ,fld ";\n"])
 		      ctype* fld*))
@@ -427,7 +492,7 @@
             ))]))
 
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
-(define (type->printf-flag ty)
+(__spec type->printf-flag <emitC2> (self ty)
   (match ty
     [#()    "()"]
     [String "%s"]
@@ -441,50 +506,54 @@
     [#() "()"]
     [(Pointer ,_) "%p"]))
 
+
 ;(define Var mangle-name)
-(define Var sym2str)
+(__spec Var <emitC2> (self x) (sym2str x))
 
 ;; These are the expressions that make valid operands (post flattening)
 ;;   .returns A string.  Could return an "expression".
-(define (Simple expr)
+(__spec Simple <emitC2> (self expr)
   (match expr
-    [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var v)]
+    [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var self v)]
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
     ;; PolyConstants:
-    [(assert-type ,[Type -> ty] Array:null) `("((",ty")0)")] ;; A null pointer. This choice is debatable.
-    [(assert-type ,[Type -> ty] '())        `("((",ty")0)")] ;; A null pointer.       
+    [(assert-type ,ty Array:null) `("((",(Type self ty)")0)")] ;; A null pointer. This choice is debatable.
+    [(assert-type ,ty '())        `("((",(Type self ty)")0)")] ;; A null pointer.       
     ['() (error 'EmitC2:Simple "null list without type annotation")]
 
     ;; All other constants:
-    [',c (Const c (lambda (x) x))]
+    [',c (Const self c (lambda (x) x))]
 
-    [(tuple) (list "(("(Type #())")0)")]
-    [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
+    [(tuple) (list "(("(Type self #())")0)")]
+    [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var self var)]
     ;[(assert-type ,t '())  (wrap (PolyConst '() t))]
     ;['() (error 'Simple "null list without type annotation")]
     ;[nulltimebase (Const #f #f 'nulltimebase)]    
        
     [(assert-type ,_ ,[x]) x]
-    [,else (error 'Simple "not simple expression: ~s" else)]
+    [,else (error 'Simple "<emitC2> not simple expression: ~s" else)]
     ))
 
-(define (TyAndSimple expr)
-  (match expr
-    [(assert-type ,ty ,_)  (values ty (Simple expr))]))
+(__spec TyAndSimple <emitC2> (self)
+  (lambda (expr)
+    (match expr
+      [(assert-type ,ty ,_)  (values ty (Simple self expr))])))
+
+
 
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
 ;;                These can also be (NUM NAME) pairs for indexed ports.
 ;; .returns lines representing command-code
-(define (Emit down*)
+(__spec Emit <emitC2> (self down*)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
     (ASSERT simple-expr? expr)
-    (let ([element (Simple expr)])
+    (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
 			 (cap 
-			  (list (make-app (Var down) (list element))
+			  (list (make-app (Var self down) (list element))
 				" /* emit */")))
 		    down*)))
     ;(make-lines `("emit ",(Simple expr)";"))
@@ -494,54 +563,57 @@
   (lambda (_) (error where "should not run into an emit!")))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
-(define (Binding emitter)
+(__spec Binding <emitC2> (self emitter)
   (debug-return-contract Binding lines?
    (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
       [(,vr ,ty ,rhs) ;(,[Var -> v] ,[Type -> t] ,rhs) 
-       ((Value emitter) rhs (varbindk vr ty))]
+       ((Value self emitter) rhs (varbindk self vr ty))]
       [,oth (error 'Binding "Bad Binding, got ~s" oth)]))))
 
 ;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
 ;; This version also DOES inject a refcount incr.
-(define (SplitBinding emitter)
+(__spec SplitBinding <emitC2> (self emitter)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
-      [(,vr ,ty ,rhs) 
+      [(,vr ,ty ,rhs)
        ;; We derive a setter continuation by "splitting" the varbind continuation:
        ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
        (define set-and-incr-k	 
 	 (lambda (x)      
 	   (if (eq? x split-msg)
 	       (values (make-lines "")	set-and-incr-k)
-	       (append-lines (make-lines `(" ",(Var vr)" = ",x";\n"))
+	       (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))
 			     (make-lines "/* I AM HEAP INCR */\n")
 			     #|(incr-heap-refcount ty (Var vr))|#
 			     ))))
-       (values (make-lines `(,(Type ty)" ",(Var vr)";\n"))
-	       ((Value emitter) rhs set-and-incr-k))]
+       (values (make-lines `(,(Type self ty)" ",(Var self vr)";\n"))
+	       ((Value self emitter) rhs set-and-incr-k))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
 
-(define (Effect emitter)
+
+(__spec Effect <emitC2> (self emitter)
   (debug-return-contract Effect lines?
   (lambda (xp)
+    (define (Simp x) (Simple self x))
+    (define (Vr x)   (Var self x))
     (match xp
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
       ;; Thanks to insert-refcounts this can get in here:
       [,v (guard (symbol? v)) (make-lines "")]
 
-      [(incr-heap-refcount  ,ty ,[Simple -> val]) (incr-heap-refcount  ty val)]
-      [(incr-local-refcount ,ty ,[Simple -> val]) (incr-local-refcount ty val)]
-      [(decr-heap-refcount  ,ty ,[Simple -> val]) (decr-heap-refcount  ty val)]
-      [(decr-local-refcount ,ty ,[Simple -> val]) (decr-local-refcount ty val)]
+      [(incr-heap-refcount  ,ty ,[Simp -> val]) (incr-heap-refcount  self ty val)]
+      [(incr-local-refcount ,ty ,[Simp -> val]) (incr-local-refcount self ty val)]
+      [(decr-heap-refcount  ,ty ,[Simp -> val]) (decr-heap-refcount  self ty val)]
+      [(decr-local-refcount ,ty ,[Simp -> val]) (decr-local-refcount self ty val)]
 
-      [(for (,[Var -> ind] ,[Simple -> st] ,[Simple -> en]) ,[bod])
+      [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[bod])
        (make-lines
-	(list `(" ",(Type 'Int)" ",ind";\n")
+	(list `(" ",(Type self 'Int)" ",ind";\n")
 	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
 		     (lines-text bod))))]
 
@@ -550,19 +622,19 @@
 	 (make-lines 
 	  (block `("while (1)") 
 		 (list 
-		  (lines-text ((Value emitter) test (varbindk flag 'Bool)))
-		  "if ("(Var flag)") {\n"
+		  (lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
+		  "if ("(Var self flag)") {\n"
 		  (indent (lines-text bod) "  ")
 		  "} else break; \n"
 		  ))))]
 
       ;; [2007.12.04] Would probably improve efficiency to at least handle scalars as well here:
       ;; Otherwise we needlessly allocate string objects.
-      [(print ,[TyAndSimple -> ty x])
+      [(print ,[(TyAndSimple self) -> ty x])
        ;(ASSERT (eq? t 'String))       
-       (make-lines `("printf(\"",(type->printf-flag ty)"\", ",x");\n"))]
+       (make-lines `("printf(\"",(type->printf-flag self ty)"\", ",x");\n"))]
       
-      [(set! ,[Var -> v] ,[TyAndSimple -> ty x])
+      [(set! ,[Vr -> v] ,[(TyAndSimple self) -> ty x])
        (append-lines 	
 	;; Set! changes Ref objects, which are on the heap:
 	#|(decr-heap-refcount ty v)  ;; Out with the old.|#
@@ -570,7 +642,7 @@
 	#|(incr-heap-refcount ty v)  ;; In with the new.|#
 	)]
 
-      [(Array:set ,[TyAndSimple -> ty arr] ,[Simple -> ind] ,[Simple -> val])
+      [(Array:set ,[(TyAndSimple self) -> ty arr] ,[Simp -> ind] ,[Simp -> val])
        (let-match ([(Array ,elt) ty])
 	 (append-lines 	
 	  ;;(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
@@ -588,24 +660,25 @@
       ;; ========================================
       [(let ([,lhs ,ty ,rhs]) ,[bod])
        ;; Here we incr the refcount for a *local* reference
-       (append-lines ((Binding emitter) (list lhs ty rhs))
+       (append-lines ((Binding self emitter) (list lhs ty rhs))
 		     #|(incr-local-refcount ty (Var lhs))|#
 		     (ASSERT lines? bod)
 		     #|(decr-local-refcount ty (Var lhs))|#
 		     )]
       ;; ========================================
 
-       [(__wserror_ARRAY ,[Simple -> str]) (make-lines (list "wserror("str");\n"))]
+      [(__wserror_ARRAY ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
 
       ))))
 
 ;; The continuation k is invoked on a piece of text representing the return expression.
 ;; k is expected to return text of the form "lines" that stores away this result.
-(define (Value emitter)
+(__spec Value <emitC2> (self emitter)
   (debug-return-contract Value lines?
    (lambda (xp kont)
      ;; This is a debug wrapper that respects the funky interface to the continuation:
      ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
+     (define (Simp x) (Simple self x))
      (match xp
 
        ;; With the strings-as-arrays system we'll still get string
@@ -622,69 +695,74 @@
 		(if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
 		    (rdc ls) 
 		    ls)]
-	       [newk (varbindk tmp '(Array Char))]
+	       [newk (varbindk self tmp '(Array Char))]
 	       [str (list->string ls2)]
 	       [copylen (add1 (string-length str)) ;; Copy the null terminator
 		      ;(vector-length vec)
-			])
+			]
+	       [_tmp (Var self tmp)])
 	  (append-lines 
-	   ((Value emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
+	   ((Value self emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
 	   (make-lines
-	    (format "memcpy(~a, ~s, ~s);\n" (text->string (Var tmp))
+	    (format "memcpy(~a, ~s, ~s);\n" (text->string _tmp)
 		    str copylen))
-	   (kont (Var tmp))))]
+	   (kont _tmp)))]
 
-       [,simp (guard (simple-expr? simp)) (kont (Simple simp))]
+       [,simp (guard (simple-expr? simp)) (kont (Simple self simp))]
        
        ;; This doesn't change the runtime rep at all.
-       [(Mutable:ref ,[Simple -> x]) (kont x)]
+       [(Mutable:ref ,x) (kont (Simple self x))]
        [(begin ,[e]) e]
-       [(begin ,[(Effect emitter) -> e1] ,e* ...)
+       [(begin ,[(Effect self emitter) -> e1] ,e* ...)
 	(define rest 
 	  (begin 
 	    ;(inspect (cons 'e1 e1))
-	    ((Value emitter) `(begin ,@e*) kont)))
+	    ((Value self emitter) `(begin ,@e*) kont)))
 	;(inspect (cons 'rest rest))
 	(ASSERT lines? e1)
 	(ASSERT lines? rest)
 	(append-lines e1 rest)]
        ;; This splits the continuation, using it twice.
-       [(if ,[Simple -> test] ,conseq ,altern)
+       [(if ,[Simp -> test] ,conseq ,altern)
 	(let-values ([(lines newk) (kont split-msg)])
 	  (make-lines
 	     `(,(lines-text lines)
 	       "if (" ,test ") {\n"
-	       ,(indent (lines-text ((Value emitter) conseq newk)) "  ")
+	       ,(indent (lines-text ((Value self emitter) conseq newk)) "  ")
 	       "} else {\n"
-	       ,(indent (lines-text ((Value emitter) altern newk)) "  ")
-	       "}\n")))]       
+	       ,(indent (lines-text ((Value self emitter) altern newk)) "  ")
+	       "}\n")))]
        [(let ([,lhs ,ty ,rhs]) ,[bod])
 	;; Here we incr the refcount for a *local* reference
-	(append-lines ((Binding emitter) (list lhs ty rhs))
+	(append-lines ((Binding self emitter) (list lhs ty rhs))
 		      #|(incr-local-refcount ty (Var lhs))|#
 		      (ASSERT lines? bod)
 		      #|(decr-local-refcount ty (Var lhs))|#
 		      )]
 
-       [(make-struct ,name ,[Simple -> arg*] ...)
+       [(make-struct ,name ,[Simp -> arg*] ...)
 	(kont `("{",(insert-between ", " arg*)"}"))]
-       [(struct-ref ,type ,fld ,[Simple -> x])
+       [(struct-ref ,type ,fld ,[Simp -> x])
 	(kont `("(",x "." ,(sym2str fld)")"))]
        
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-	(PrimApp (cons prim rand*) kont #f )]
+	(PrimApp self (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	(PrimApp (cons prim rand*) kont ty)]
+	(PrimApp self (cons prim rand*) kont ty)]
        
        [(assert-type ,ty ,[e]) e]
        ))))
 
 
-(define PrimApp
-  (debug-return-contract PrimApp lines?
-   (lambda (app kontorig mayberetty)
-
+(define __
+  (specialise! PrimApp <emitC2> 
+   (debug-return-contract PrimApp lines?
+     (lambda (next self app kontorig mayberetty)
+       (define ___ (next))
+     
      (define (kont x) (kontorig x)) ;; A place to throw in traces.
+
+     (define (Simp x) (Simple self x))
 
      ;; If we fall through to the "SimplePrim" case that means it's a
      ;; primitive with a one-to-one correspondence to a C function.
@@ -734,7 +812,7 @@
 	    
 	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))
      (define (make-array len init ty)
-       (let ([len (Simple len)])
+       (let ([len (Simp len)])
 	 (match ty
 	   [(Array ,elt)
 	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
@@ -746,11 +824,11 @@
 	    ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
 	    (define zero-fill?
 	      (or (and init (wszero? elt init))
-		  (and (not init) (heap-allocated? elt global-struct-defs global-union-types))))
+		  (and (not init) (heap-type? self elt))))
 
-	   (let* ([_elt (Type elt)]
+	   (let* ([_elt (Type self elt)]
 		  [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
-		  [tmp (Var (unique-name "arrtmp"))]
+		  [tmp (Var self (unique-name "arrtmp"))]
 		  [alloc (if zero-fill?
 			     `("calloc(",size", 1)")
 			     `("malloc(",size")"))]
@@ -768,10 +846,10 @@
 				  (let ([i (unique-name "i")]
 					[tmp2 (unique-name "arrtmpb")]
 					[len2 (unique-name "lenmin1")])
-				    (list `(,_elt"* ",(Var tmp2) " = ",cast";\n")
-					  `("int ",(Var len2) " = ",len" - 1;\n")
+				    (list `(,_elt"* ",(Var self tmp2) " = ",cast";\n")
+					  `("int ",(Var self len2) " = ",len" - 1;\n")
 					  (lines-text
-					   ((Effect (emit-err 'array:make-constant))
+					   ((Effect self (emit-err 'array:make-constant))
 					    `(for (,i '0 ,len2)
 						 (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
 				  "")))))
@@ -779,23 +857,23 @@
      
      (match app
        ;; Refs and sets are pure simplicity:
-       [(Array:ref ,[Simple -> arr] ,[Simple -> ind])
+       [(Array:ref ,[Simp -> arr] ,[Simp -> ind])
 	(kont `(,arr"[",ind"]"))]
 
        ;; Using some simple C macros here:
-       [(car ,[Simple -> pr]) (kont `("CAR(",pr")"))]
-       [(cdr ,[Simple -> pr]) (kont `("CDR(",pr")"))]
+       [(car ,[Simp -> pr]) (kont `("CAR(",pr")"))]
+       [(cdr ,[Simp -> pr]) (kont `("CDR(",pr")"))]
 
-       [(List:is_null ,[Simple -> pr]) (kont `("(",pr" == 0)"))]
+       [(List:is_null ,[Simp -> pr]) (kont `("(",pr" == 0)"))]
 
-       [(cons ,[Simple -> hd] ,[Simple -> tl])
+       [(cons ,[Simp -> hd] ,[Simp -> tl])
 	(ASSERT mayberetty)
 	(match mayberetty
 	  [(List ,elt)
-	   (let ([tmp (Var (unique-name "tmpcell"))]
-		 [ty (Type mayberetty)])
+	   (let ([tmp (Var self (unique-name "tmpcell"))]
+		 [ty (Type self mayberetty)])
 	     (append-lines 
-	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",(Type elt)");\n"
+	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",(Type self elt)");\n"
 			       "CLEAR_RC(",tmp");\n"           
 			       "SETCDR(",tmp", ",tl");\n"  
 			       "SETCAR(",tmp", ",hd");\n"  
@@ -808,7 +886,7 @@
 	      #|(incr-heap-refcount mayberetty tl) |#
 	      (kont tmp)))])]
        
-       [(Array:length ,[Simple -> arr])
+       [(Array:length ,[Simp -> arr])
 	;; Length is -2 and refcount is -1:
 	(kont `("ARRLEN(",arr")"))
 	]
@@ -817,8 +895,8 @@
        [(Array:make ,len ,init) (make-array len init mayberetty)]
        [(Array:makeUNSAFE ,len) (make-array len #f   mayberetty)]
 
-       [(max ,[Simple -> a] ,[Simple -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
-       [(min ,[Simple -> a] ,[Simple -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
+       [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
+       [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
 
        ;; These use FFTW currently
        [(,fft ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
@@ -830,52 +908,52 @@
 	(define tmp (unique-name "tmp"))
 	(define name (if inverse? "memoized_ifftC2R" "memoized_fftR2C"))
 	(ASSERT simple-expr? arr)
-	(add-include! "<fftw3.h>")
-	(add-include! (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
-	(add-link! "libfftw3f.so")		
-	(append-lines ((Binding (emit-err 'fft)) (list len0 'Int `(Array:length ,arr)))
-		      ((Binding (emit-err 'fft)) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
-		      ((Binding (emit-err 'fft)) (list len2 'Int (if inverse? `(*_ ,len1 '2) `(_+_ ,len1 '1) )))
-		      ((Binding (emit-err 'fft))
+	(add-include! self "<fftw3.h>")
+	(add-include! self (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
+	(add-link! self "libfftw3f.so")		
+	(append-lines ((Binding self (emit-err 'fft)) (list len0 'Int `(Array:length ,arr)))
+		      ((Binding self (emit-err 'fft)) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
+		      ((Binding self (emit-err 'fft)) (list len2 'Int (if inverse? `(*_ ,len1 '2) `(_+_ ,len1 '1) )))
+		      ((Binding self (emit-err 'fft))
 				   (list tmp 
 					 (if inverse? '(Array Float) '(Array Complex))
 					;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
 					 (if inverse?
 					     `(assert-type (Array Float)   (Array:makeUNSAFE ,len2))
 					     `(assert-type (Array Complex) (Array:makeUNSAFE ,len2)))))
-		      (make-lines `(,name"(",(Simple arr)", ",(Var tmp)");\n"))
-		      (kont (Var tmp)))]
+		      (make-lines `(,name"(",(Simp arr)", ",(Var self tmp)");\n"))
+		      (kont (Var self tmp)))]
        
        ;; wsequal? should only exist for scalars at this point:
-       [(wsequal? ,[TyAndSimple -> ty left] ,[Simple -> right])
+       [(wsequal? ,[(TyAndSimple self) -> ty left] ,[Simp -> right])
 	;(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
 	(ASSERT scalar-type? ty)		
 	(kont `("(",left" == ",right")"))]
 
-       [(__show_ARRAY ,[TyAndSimple -> ty obj])
+       [(__show_ARRAY ,[(TyAndSimple self) -> ty obj])
 	(define max-show-size 100)
 	(match ty
 	  [String       (kont obj)]
 	  [(Array Char) (kont obj)]
 	  [,_ 
 	   (let* ([str (unique-name "str")]
-		  [_str (Var str)]
-		  [_realsize (Var (unique-name "realsize"))]
+		  [_str (Var self str)]
+		  [_realsize (Var self (unique-name "realsize"))]
 		  [_max (number->string max-show-size)])
 	     (append-lines 
-	      ((Binding (emit-err '__show_ARRAY)) 
+	      ((Binding self (emit-err '__show_ARRAY)) 
 	       (list str '(Array Char) `(assert-type (Array Char) (Array:makeUNSAFE ',max-show-size))))
 	      (make-lines (list 			   
 			   "int "_realsize" = snprintf("_str", "
 			           _max", \""
-				   (type->printf-flag ty)"\", "obj");\n"
+				   (type->printf-flag self ty)"\", "obj");\n"
 			   "if ("_realsize" >= "_max") { printf(\"Error, show overflowed fixed length "
 			   _max" buffer\\n\"); exit(-1); }\n"
 			   "SETARRLEN("_str", "_realsize" + 1); /* set virtual length */ \n"
 			   ))
 	      (kont _str)))])]
        
-       [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
+       [(,infix_prim ,[Simp -> left] ,[Simp -> right])	
 	(guard (assq infix_prim infix-arith-prims))
 	(define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
 	(define result
@@ -893,67 +971,67 @@
        ;;========================================
 ; 	[(realpart ,[v]) `("(" ,v ".real)")]
 ; 	[(imagpart ,[v]) `("(" ,v ".imag)")]
- 	[(realpart ,[Simple -> v])   (kont `("__real__ (" ,v ")"))]
- 	[(imagpart ,[Simple -> v])   (kont `("__imag__ (" ,v ")"))]
+ 	[(realpart ,[Simp -> v])   (kont `("__real__ (" ,v ")"))]
+ 	[(imagpart ,[Simp -> v])   (kont `("__imag__ (" ,v ")"))]
 
 ; 	;; Wait... do we need to cast to double here?
-; 	[(,extractreal ,[Simple -> v]) 
+; 	[(,extractreal ,[Simp -> v]) 
 ; 	 (guard (memq extractreal '(realpart complexToFloat complexToDouble)))
 ; 	 (kont `("__real__ (" ,v ")"))]
 
-	[(absC ,[Simple -> c]) (kont `("cNorm(",c")"))]
+	[(absC ,[Simp -> c]) (kont `("cNorm(",c")"))]
 
-	[(intToChar ,[Simple -> e]) (kont `("(wschar_t)",e))]
-	[(,toint     ,[Simple -> e]) 
+	[(intToChar ,[Simp -> e]) (kont `("(wschar_t)",e))]
+	[(,toint     ,[Simp -> e]) 
 	 (guard (memq toint '(int16ToInt int64ToInt floatToInt doubleToInt charToInt)))
 	 (kont `("(int)",e))]
-	[(,toint16     ,[Simple -> e]) 
+	[(,toint16     ,[Simp -> e]) 
 	 (guard (memq toint16 '(intToInt16 int64ToInt16 floatToInt16 doubleToInt16)))
 	 (kont `("(int16_t)",e))]
-	[(,toint64    ,[Simple -> e]) 
+	[(,toint64    ,[Simp -> e]) 
 	 (guard (memq toint64 '(int16ToInt64 intToInt64 floatToInt64 doubleToInt64)))
 	 (kont `("(int64_t)",e))]
-	[(,tofloat  ,[Simple -> e]) 
+	[(,tofloat  ,[Simp -> e]) 
 	 (guard (memq tofloat '(intToFloat int16ToFloat int64ToFloat doubleToFloat)))
 	 (kont `("(float)",e))]
-	[(,todouble  ,[Simple -> e]) 
+	[(,todouble  ,[Simp -> e]) 
 	 (guard (memq todouble '(intToDouble int16ToDouble int64ToDouble floatToDouble)))
 	 (kont `("(double)",e))]
 
- 	[(complexToFloat ,e)   (PrimApp `(realpart ,e) kont mayberetty)]
- 	[(complexToInt16 ,e)   (kont `("(int16_t)" ,(PrimApp `(complexToFloat ,e) id 'Float)))]
- 	[(complexToInt64 ,e)   (kont `("(int64_t)" ,(PrimApp `(complexToFloat ,e) id 'Float)))]
- 	[(complexToInt ,e)     (kont `("(int)"     ,(PrimApp `(complexToFloat ,e) id 'Float)))]
- 	[(complexToDouble ,e)  (kont `("(double)"  ,(PrimApp `(complexToFloat ,e) id 'Float)))]
- 	[(,ToComplex ,[Simple -> e])
+ 	[(complexToFloat ,e)   (PrimApp self `(realpart ,e) kont mayberetty)]
+ 	[(complexToInt16 ,e)   (kont `("(int16_t)" ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToInt64 ,e)   (kont `("(int64_t)" ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToInt ,e)     (kont `("(int)"     ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToDouble ,e)  (kont `("(double)"  ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
+ 	[(,ToComplex ,[Simp -> e])
  	 (guard (memq ToComplex 
  		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))
      	 (kont `("(",e" + 0.0fi)"))]
- 	[(makeComplex ,[Simple -> re] ,[Simple -> im])
+ 	[(makeComplex ,[Simp -> re] ,[Simp -> im])
  	 (kont `("(",re" + (",im" * 1.0fi))"))]
 	;;========================================
 
-	[(__stringToInt_ARRAY ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
+	[(__stringToInt_ARRAY ,[Simp -> e]) 
+	 (let ([tmp (Var self (unique-name 'tmp))])
 	   (make-lines 
 	    `("int ",tmp";\n" 
 	      "sscanf(",e", \"%d\", &",tmp");\n"
 	      ,(lines-text (kont tmp)))))]
-	[(__stringToFloat_ARRAY ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
+	[(__stringToFloat_ARRAY ,[Simp -> e]) 
+	 (let ([tmp (Var self (unique-name 'tmp))])
 	   (make-lines 
 	    `("float ",tmp";\n"
 	      "sscanf(",e", \"%f\", &",tmp");\n"
 	      ,(lines-text (kont tmp)))))]
-	[(__stringToDouble_ARRAY ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
+	[(__stringToDouble_ARRAY ,[Simp -> e]) 
+	 (let ([tmp (Var self (unique-name 'tmp))])
 	   (make-lines
 	    `("double ",tmp";\n"
 	      "sscanf(",e", \"%lf\", &",tmp");\n"
 	      ,(lines-text (kont tmp)))))]
-	[(__stringToComplex_ARRAY ,[Simple -> e]) 
-	 (let ([tmp1 (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))])
+	[(__stringToComplex_ARRAY ,[Simp -> e]) 
+	 (let ([tmp1 (Var self (unique-name 'tmp))]
+	       [tmp2 (Var self (unique-name 'tmp))])
 	   (make-lines
 	    `("float ",tmp1";\n"
 	      "float ",tmp2";\n"
@@ -970,14 +1048,15 @@
 	    "gettimeofday(&",tmp", NULL);\n"
 	    ,(lines-text (kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))))]
        
-	[(,other ,[Simple -> rand*] ...)
+	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
+       )  
        ))))
 
 
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
-(define (build-main-source-driver srcname* srccode* srcrates*)
+(__spec BuildSourceDriver <emitC2> (self srcname* srccode* srcrates*)
   (printf "   TIMER RATES: ~s\n" srcrates*)
   (let  ([counter_marks
 	  (cond
@@ -1006,7 +1085,7 @@
 	   "return 0;\n")))))
 
 ;; .returns function def that executes the source (lines) and state decls (lines)
-(define (Source xp)
+(__spec Source <emitC2> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
      (match cd 
@@ -1017,41 +1096,44 @@
 	   ;; For the basic backend, we simply call the downstream
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (values nm
-		   ((Emit down*) ''UNIT) ;; Code
+		   ((Emit self down*) ''UNIT) ;; Code
 		   (make-lines ()) ;; State 	
 		   rate)
 	   ])])]))
 
 ;; .returns top-level decls (lines)
-(define (Operator op)
+(__spec Operator <emitC2> (self op)
+
   (define (wrap-iterate-as-simple-fun name arg vqarg argty code)
     (make-lines 
-     (list (block `("void ",(Var name) "(",(Type argty)" ",(Var arg)")")
+     (list (block `("void ",(Var self name) "(",(Type self argty)" ",(Var self arg)")")
 		  (list
-		   "char "(Var vqarg)";\n"
+		   "char "(Var self vqarg)";\n"
 		   (lines-text code)))
 	   "\n")))
+  (define (Simp x) (Simple self x))
   (match op
     [(iterate (name ,name) 
 	      (output-type ,ty)
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define emitter (Emit down*))
+     (define emitter (Emit self down*))
      (match itercode
-       [(let (,[(SplitBinding (emit-err 'OperatorBinding)) -> bind* init*] ...) (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
+       [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...) 
+	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
-	 (wrap-iterate-as-simple-fun name v vq vty ((Value emitter) bod nullk))
+	 (wrap-iterate-as-simple-fun name v vq vty ((Value self emitter) bod nullk))
 	 bind* init*)])]
 
 
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
 	     (incoming ,a ,b) (outgoing ,down* ...))
-     (define emitter (Emit down*))
+     (define emitter (Emit self down*))
      (define arg (unique-name "arg"))
      (values (make-lines 
-	      (list (block `("void ",(Var name) "(",(Type elt)" ",(Var arg)")")
+	      (list (block `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")")
 			   (lines-text (emitter arg)))
 		    "\n"))
 	     '() '())]
@@ -1060,8 +1142,8 @@
     [(__readFile (name ,name) (output-type (Stream ,elt))
 		 (code (__readFile (annotations .  ,annot)
 				   ',file          ,source
-				   ',mode          ,[Simple -> repeats] 
-				   ',skipbytes     ,[Simple -> offset] 
+				   ',mode          ,[Simp -> repeats] 
+				   ',skipbytes     ,[Simp -> offset] 
 				   ',winsize      ',types_ignored))
 		 (incoming ,in) (outgoing ,down* ...))
      (ASSERT symbol? source)  (ASSERT string? file)
@@ -1076,17 +1158,17 @@
 		       [(Struct ,structname) `("struct ",(sym2str structname))]
 		       ;[(Sigseg ,[t]) t]
 		       [(Array ,[t]) t]
-		       [,other (ASSERT (not (eq? other 'String))) (Type other)])]
+		       [,other (ASSERT (not (eq? other 'String))) (Type self other)])]
 	    [types (if structoutput?
-		       (map cadr (cdr (ASSERT (assq structoutput? global-struct-defs))))
+		       (map cadr (cdr (ASSERT (assq structoutput? (slot-ref self 'struct-defs)))))
 		       (match elt
 			 ;[(Sigseg ,t) (list t)]
 			 [(Array ,t) (list t)]
-			 [,oth        (list oth)]))]
+			 [,oth       (list oth)]))]
 	    ;[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 
 	    [binarymode (equal? mode "binary")]
-	    [handle (Var (unique-name "_f"))]
+	    [handle (Var self (unique-name "_f"))]
 
 	    [init (make-lines `(
 		,handle" = fopen(\"",file"\", ",(if binarymode "\"rb\"" "\"r\"")");\n"
@@ -1097,15 +1179,16 @@
 		"fseek(",handle", ",offset", SEEK_SET);\n"
 		))]
 	    [state (make-lines `("FILE* ",handle";\n"))]
-	    [_buf (Var 'buf)]
+	    [_buf (Var self 'buf)]
 	    [maintext ;; Code for the funcion that drives the file reading.
 	     (list `(
 		     ,(if (> winsize 0)
-			  (lines-text ((Value (emit-err 'readFile)) `(assert-type ,elt (Array:makeUNSAFE ',winsize)) 
-				       (varbindk 'buf elt)))
+			  (lines-text ((Value self (emit-err 'readFile)) 
+				       `(assert-type ,elt (Array:makeUNSAFE ',winsize)) 
+				       (varbindk self 'buf elt)))
 			  ;(Binding (list 'buf elt (make-zero-for-type elt)))
 			  ;; A binding with no init:
-			  (list (Type elt) " " _buf ";\n"))
+			  (list (Type self elt) " " _buf ";\n"))
 		     
 		     ;; TODO: HANDLE STRINGS:
 ; 		     ,(map (lambda (i) 
@@ -1144,58 +1227,68 @@
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "exit(0);\n"))
-		     ,(lines-text ((Emit down*) 'buf))))])
+		     ,(lines-text ((Emit self down*) 'buf))))])
 
        (values 
-	(make-lines (block (list "void "(sym2str name)"("(Type '#())" ignored)") maintext))
-         ;(wrap-iterate-as-simple-fun name 'ignored 'ignoredVQ (Type '#()) maintext)
+	(make-lines (block (list "void "(sym2str name)"("(Type self '#())" ignored)") maintext))
+         ;(wrap-iterate-as-simple-fun name 'ignored 'ignoredVQ (Type self '#()) maintext)
 	(list state) (list init)))] ;; End readFile
     ))
 
+
 ;================================================================================
 
-(define-pass emit-c2
-  [Program 
-   (lambda (prog Expr)
-     (fluid-let ([free-fun-table ()]
-		 [global-struct-defs (cdr (project-metadata 'struct-defs prog))])
-       (let ([freefundefs (build-free-fun-table! (cdr (ASSERT (project-metadata 'heap-types prog))))])
+
+;; Run the pass and generate C code:
+(__spec Run <emitC2> (self)
+  (printf "BUILDING TABLE\n")
+  (let* ([prog (slot-ref self 'theprog)]
+	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
+
+    (printf "RUNNING\n")
+
      (match prog
-       [(,lang '(graph (const ,[(SplitBinding (emit-err 'TopBinding)) -> cb* cbinit*] ...) ;; These had better be *constants* for GCC
-		       (init  ,[(Effect (lambda _ (error 'top-level-init "code should not 'emit'"))) 
-				-> init*] ...)
-		       (sources ,[Source -> srcname* srccode*  state1* srcrate*] ...)
-		       (operators ,[Operator -> oper* state2** opinit**] ...)
-		       (sink ,base ,basetype)
-		       ,meta* ...))
+       [(,lang '(graph 
+		 ;; These had better be *constants* for GCC:
+		 (const ,[(SplitBinding self (emit-err 'TopBinding)) -> cb* cbinit*] ...)
+		 (init  ,[(Effect self (lambda _ (error 'top-level-init "code should not 'emit'")))
+			  -> init*] ...)
+		 (sources ,[(curry Source self) -> srcname* srccode*  state1* srcrate*] ...)
+		 (operators ,[(curry Operator self) -> oper* state2** opinit**] ...)
+		 (sink ,base ,basetype)
+		 ,meta* ...))
+
+
 	(define includes (text->string 
 			  (list "//WSLIBDEPS: "
 				(map (lambda (fn) 
 				       (let ([lib (extract-lib-name fn)])
 					 (if lib (list " -l" lib) fn)))
-				  link-files)
+				  (slot-ref self 'link-files))
 				"\n"
 				
 				"#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
 				
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
-					 (reverse include-files)) "\n\n")))
+					 (reverse (slot-ref self 'include-files))) "\n\n")))
+	(define ______ (printf "GOT THE PIECES\n"))
+
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	  (define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			     (text->string (block "void initState()" 
 				 (list 
-				       (lines-text (apply append-lines cbinit*))
-				       (lines-text (apply append-lines (apply append opinit**))))))))
-	  (define driver   (text->string (lines-text (build-main-source-driver srcname* srccode* srcrate*))))
+				  (lines-text (apply append-lines cbinit*))
+				  (lines-text (apply append-lines (apply append opinit**))))))))
+	  (define driver   (text->string (lines-text (BuildSourceDriver self srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  (define total (apply string-append 
 			(insert-between "\n"
 			  (list includes 
-				(text->string (map StructDef global-struct-defs))
+				(text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
 				(text->string (lines-text freefundefs))
 				allstate
 				;toplevelsink
@@ -1207,12 +1300,25 @@
 	  total]
 
        [,other ;; Otherwise it's an invalid program.
-	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)]))
-	 ))]
-  ) ;; End pass
+	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)])))
 
 
+;; Constructor, parse out the pieces of the program.
+(__spec initialise <emitC2> (self prog . rest)
+  (printf "CONSTRUCTOR\n")
+  (slot-set! self 'free-fun-table '())
+  (slot-set! self 'struct-defs (cdr (project-metadata 'struct-defs prog)))
+  (slot-set! self 'union-types (cdr (project-metadata 'union-types prog)))
+  (slot-set! self 'theprog prog)
+  (slot-set! self 'link-files '())
+  (slot-set! self 'include-files '())
+  (printf "CONSTRUCTOR FIN\n")
+  )
 
+
+(trace-define (emit-c2 prog)
+  (printf "CALLING emit-c2\n")
+  (Run (make-object <emitC2> prog)))
 
 ) ;; End module
 
