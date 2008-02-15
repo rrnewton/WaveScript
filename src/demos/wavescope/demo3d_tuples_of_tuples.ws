@@ -12,8 +12,8 @@ s2 = iterate( w in s1 ) {
 };
 
 s3 = iterate((x,y) in s2) {
-  assert_prnt("comparison", (1,(2,3)) == (1,(2,3)));
-  assert_prnt("negative comparison", not((1,(2,3)) == (4,(4,4))));
+  //assert_prnt("comparison", (1,(2,3)) == (1,(2,3)));
+  //assert_prnt("negative comparison", not((1,(2,3)) == (4,(4,4))));
 
   emit (y, (x,x), 3.0);
 }

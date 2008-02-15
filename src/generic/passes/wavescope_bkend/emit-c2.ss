@@ -80,6 +80,7 @@
   (define-generic Simple)
   (define-generic TyAndSimple)
   (define-generic Type)
+  (define-generic Let)
   (define-generic Value)
   (define-generic Effect)
   (define-generic StructDef)
@@ -634,6 +635,16 @@
 		(make-lines "")))]))
 
 
+(__spec Let <emitC2> (self form emitter recur)
+  (match form     
+    [(([,lhs ,ty ,rhs]) ,[recur -> bod])
+     ;; Here we incr the refcount for a *local* reference
+     (let ([result (append-lines ((Binding self emitter) (list lhs ty rhs))
+				 (ASSERT lines? bod))])
+       ;; result
+       ;; HACK:
+       (make-lines (block "" (lines-text result))))]))
+
 (__spec Effect <emitC2> (self emitter)
   (debug-return-contract Effect lines?
   (lambda (xp)
@@ -697,13 +708,7 @@
 
       ;; DUPLICATED CASES WITH Value:
       ;; ========================================
-      [(let ([,lhs ,ty ,rhs]) ,[bod])
-       ;; Here we incr the refcount for a *local* reference
-       (append-lines ((Binding self emitter) (list lhs ty rhs))
-		     #|(incr-local-refcount ty (Var lhs))|#
-		     (ASSERT lines? bod)
-		     #|(decr-local-refcount ty (Var lhs))|#
-		     )]
+      [(let . ,_) (Let self _ emitter (lambda (x) ((Effect self emitter) x)))]
       ;; ========================================
 
       [(__wserror_ARRAY ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
@@ -776,13 +781,8 @@
 	       "} else {\n"
 	       ,(indent (lines-text ((Value self emitter) altern newk)) "  ")
 	       "}\n")))]
-       [(let ([,lhs ,ty ,rhs]) ,[bod])
-	;; Here we incr the refcount for a *local* reference
-	(append-lines ((Binding self emitter) (list lhs ty rhs))
-		      #|(incr-local-refcount ty (Var lhs))|#
-		      (ASSERT lines? bod)
-		      #|(decr-local-refcount ty (Var lhs))|#
-		      )]
+
+       [(let . ,_) (Let self _ emitter (lambda (x) ((Value self emitter) x kont)))]
 
        [(make-struct ,name ,[Simp -> arg*] ...)
 	(kont `("{",(insert-between ", " arg*)"}"))]
@@ -1414,9 +1414,19 @@
 	[,else (next)]
 	))))
 
+(define __PrimApp
+  (specialise! PrimApp <tinyos>
+   (lambda (next self app kontorig mayberetty)
+     (match app
+       [(,alloc-prim . ,_) 
+	(guard (eq-any? alloc-prim 'cons 'Array:make 'Array:makeUNSAFE))
+	(error 'emitC2:tinyos "Cannot generate code for dynamic allocation currently: ~s" 
+	       (cons alloc-prim _))]
+       [,else (next)]))))
+
 ;; Increments and decrements do nothing.  Everything is statically allocated currently:
-(__spec gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */" ty)))
-(__spec gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */" ty)))
+(__spec gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
+(__spec gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
 
 ;; Wrap work functions as tasks.
 (__spec GenWorkFunction <tinyos> (self name arg vqarg argty code)
