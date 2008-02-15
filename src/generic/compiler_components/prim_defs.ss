@@ -545,7 +545,7 @@
     ;;  (3) module block
     ;;  (4) module/implementation block
     ;;  (5) Boot-time code    
-    (inline_TOS     (String String String String String) (Stream 'a))
+    (inline_TOS     (String String String String String String) (Stream 'a))
 
     ;; Not implemented yet:
     ;(marshal        ('a) String)

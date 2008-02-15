@@ -1346,7 +1346,7 @@
 	  (define driver   (text->string (lines-text (BuildSourceDriver self srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  
-	  ;;(printf "====================\n\n")	
+	  ;; This is called last:
 	  (BuildOutputFiles self includes freefundefs allstate ops init driver)]
 
        [,other ;; Otherwise it's an invalid program.
@@ -1387,7 +1387,7 @@
 
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
-  (config-acc module-acc boot-acc impl-acc proto-acc
+  (top-acc config-acc module-acc boot-acc impl-acc proto-acc 
    ;;This is a flag to tell us if printf has already been included.:
    print-included
    ))
@@ -1395,6 +1395,7 @@
 (__spec initialise <tinyos> (self prog)
 	;; Don't include wsc2.h!!
 	(slot-set! self 'include-files '())
+	(slot-set! self 'top-acc '())
 	(slot-set! self 'config-acc '())
 	(slot-set! self 'module-acc '())
 	(slot-set! self 'boot-acc '())
@@ -1477,8 +1478,9 @@ event void PrintfControl.stopDone(error_t error) {
 	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
 	 (match cd 
 	   [(sensor_stream ,_ ...) (inspect _)]
-	   [(inline_TOS ',conf1 ',conf2 ',mod1 ',mod2 ',boot)
+	   [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot)
 	    ;; conf1
+	    (slot-cons! self 'top-acc top)
 	    (slot-cons! self 'config-acc conf2)
 	    (slot-cons! self 'module-acc mod1)
 	    (slot-cons! self 'impl-acc mod2)
@@ -1541,6 +1543,7 @@ event void PrintfControl.stopDone(error_t error) {
 
 
 (__spec BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)
+  ;(define _ (inspect (slot-ref self 'proto-acc)))
   (define config (list
 "
 configuration WSQueryApp { }
@@ -1555,6 +1558,8 @@ implementation {
       includes 
 "#include \"Timer.h\"
 
+"(slot-ref self 'top-acc)"
+
 module WSQuery {
   uses interface Leds;
   uses interface Boot;
@@ -1562,10 +1567,12 @@ module WSQuery {
 }
 implementation {
 
+  /* Prototypes */
+  void initState();
 "(slot-ref self 'proto-acc)"
 
   event void Boot.booted() {
-    //initState(); /* SHOULD POST A TASK */
+    initState(); /* SHOULD POST A TASK */
 "(indent (slot-ref self 'boot-acc) "    ")"
   }
 

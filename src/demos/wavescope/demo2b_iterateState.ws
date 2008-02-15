@@ -16,7 +16,7 @@ s2 = iterate( w in s1 ) {
   //  state{ static counter = 0 }
   //  counter := static(statref(counter) + 1);
   //state{ counter :: Int = 0 }
-  state{ counter = 0 } // [2007.10.02] It will default to int....
+  state{ counter = 99 } // [2007.10.02] It will default to int....
   counter += 1;
   emit counter;
 };
