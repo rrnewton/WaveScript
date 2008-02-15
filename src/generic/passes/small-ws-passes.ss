@@ -176,7 +176,7 @@
 		  '#f))))]
 
       ;; [2008.01.07] Only for wsc2 at the moment:
-      [(List ,elt) (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+      [(List ,elt) (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
        (let ([ptr1 (unique-name "lsptr1")]
 	     [ptr2 (unique-name "lsptr2")]
 	     [el1  (unique-name "lsel1")]
@@ -301,7 +301,7 @@
 
 
       ;; TEMP FIXME: [2007.12.22] For now only for the new C backend.
-      [(Array ,elt) (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+      [(Array ,elt) (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
        (let* ([arr (unique-name "arr")]
 	      [ind (unique-name "ind")])
 	 `(let ([,arr (Array ,elt) ,expr])
@@ -328,7 +328,7 @@
 	      ,(addstr! ''")"))))]
 
 
-      [Complex (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c))
+      [Complex (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
        (maybe-bind-tmp expr 'Complex
         (lambda (tmp)
 	  `(begin ,(recur 'Float `(realpart ,tmp))

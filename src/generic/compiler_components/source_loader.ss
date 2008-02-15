@@ -337,9 +337,10 @@
   (define  ws (first-value 
 	       (process* 
 		(append '((include "internal.ws"))
-			(if (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
-			    '((include "internal_wsc2.ws"))
-			    '())
+			(case (compiler-invocation-mode)
+			  [(wavescript-compiler-c)    '((include "internal_wsc2.ws"))]
+			  [(wavescript-compiler-nesc) '((include "internal_wstiny.ws"))]
+			  [else '()])
 			origws)
 		'() #f)))
   (define (f1 x) (eq? (car x) '::))

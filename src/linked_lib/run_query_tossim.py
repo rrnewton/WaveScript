@@ -38,8 +38,8 @@ t.addChannel("Boot", sys.stdout)
 #   t.getNode(i).createNoiseModel()
 
 t.getNode(1).bootAtTime(100001);
-t.getNode(2).bootAtTime(800008);
-t.getNode(3).bootAtTime(1800009);
+#t.getNode(2).bootAtTime(800008);
+#t.getNode(3).bootAtTime(1800009);
 
 for i in range(0, 100):
   t.runNextEvent()

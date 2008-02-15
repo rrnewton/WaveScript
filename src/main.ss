@@ -481,6 +481,7 @@
   ;; [2007.07.06] Moving this back where it belongs... after typechecking
   ;; The only reason it was moved earlier was to accomodate using a hash table for type environments
   ;; ... which didn't work anyway.
+
   (ws-run-pass p rename-vars)
 
 ;  (DEBUGMODE (do-early-typecheck) (void))
@@ -512,6 +513,7 @@
 			    (regiment-primitives))])
       (ws-run-pass p eta-primitives)
       (ws-run-pass p interpret-meta) (do-early-typecheck)
+
       (ws-run-pass p rename-vars)
       (dump-compiler-intermediate (strip-annotations p) ".__presmooshed.ss")
       (ws-run-pass p smoosh-together)      
@@ -553,13 +555,14 @@
 
 
   ;; <METAPROGRAM-EVAL>: 
-  ;; -----------------------------------------
+  ;; -----------------------------------------  
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
   (printf "  PROGSIZE: ~s\n" (count-nodes p))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
+  
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
@@ -635,7 +638,7 @@
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
 
-  (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)
     (ws-run-pass p explicit-toplevel-print))
 
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
@@ -643,7 +646,7 @@
 
   (ws-run-pass p lift-immutable-constants)
 
-  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c)  ;'wavescript-simulator
+  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)  ;'wavescript-simulator
     (ws-run-pass p embed-strings-as-arrays)
 
     (DEBUGMODE 
@@ -655,7 +658,8 @@
     )
   
   (when (eq-any? (compiler-invocation-mode) 
-	     'wavescript-compiler-c
+		 'wavescript-compiler-c
+		 'wavescript-compiler-nesc
 	     ;'wavescript-compiler-xstream
 	     )
     (ws-run-pass p type-annotate-misc)
@@ -763,7 +767,8 @@
   p)) ;; End run-that-compiler
 
   (ASSERT (memq (compiler-invocation-mode)  
-    '(wavescript-simulator wavescript-compiler-c wavescript-compiler-xstream wavescript-compiler-caml)))
+    '(wavescript-simulator wavescript-compiler-c wavescript-compiler-nesc wavescript-compiler-xstream 
+			   wavescript-compiler-caml)))
   
   (run-that-compiler)
   ;(if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
@@ -971,10 +976,10 @@
 ;; WaveScript Compiler Entrypoint:
 
 (define (wscomp x input-params . flags)                                 ;; Entrypoint.  
-  (define new-version? (not (null? (find-in-flags 'wsc2 0 flags))))
- (parameterize ([compiler-invocation-mode 
-		 (if new-version? 'wavescript-compiler-c 'wavescript-compiler-xstream)]
-		[regiment-primitives
+  (define new-version? (or (not (null? (find-in-flags 'wsc2 0 flags)))
+			   (not (null? (find-in-flags 'wstiny 0 flags)))))
+  (unless new-version? (compiler-invocation-mode 'wavescript-compiler-xstream))
+  (parameterize ([regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define prog (coerce-to-ws-prog x input-params))
@@ -1036,6 +1041,7 @@
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
 	    ;(inspect (blaze-path-to/assq prog 'quote))
+	    ;(inspect prog)
 	    (time (ws-run-pass prog emit-c2))	    
 	    ;; Now "prog" is an alist of [file text] bindings.
 	    (for-each (lambda (pr) 
@@ -1523,6 +1529,12 @@
 	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 	     (let ((port (acquire-input-prog 'wscomp)))
 	       (apply wscomp port input-parameters 'wsc2 opts)))]
+
+	  ;; NesC/TinyOS target, similar to wsc2:
+	  [(wstiny)
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-nesc])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wstiny opts)))]
 
 	  [(wscaml)
 	   (let ()

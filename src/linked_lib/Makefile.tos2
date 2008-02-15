@@ -1,0 +1,6 @@
+
+CFLAGS += -I$(TOSDIR)/lib/printf
+#CFLAGS += -DPRINTF_BUFFER_SIZE=XXX
+
+COMPONENT=WSQueryApp
+include $(MAKERULES)

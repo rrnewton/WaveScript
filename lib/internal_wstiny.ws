@@ -17,4 +17,11 @@ fun tos_timer(rate) {
   merge(s1,s2);
 }
 
+fun sensor_stream(which, rate) {
+  if which == "LIGHT"
+  then 0
+  else 0
+}
 
+// Alias the default timer primitive:
+//timer = tos_timer;

@@ -1331,7 +1331,7 @@
 				  (slot-ref self 'default-includes))				
 				
 				;; After the types are declared we can bring in the user includes:
-				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
+				"\n\n" (map (lambda (fn) `("#include \"",fn "\"\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
 
 	  (define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
@@ -1365,9 +1365,10 @@
   )
 
 (define (emit-c2 prog)
-  ;(define obj (make-object <emitC2> prog))
   ;(define obj (make-object <zct> prog))
-  (define obj (make-object <tinyos> prog))
+  (define obj (match (compiler-invocation-mode)
+		[wavescript-compiler-c    (make-object <emitC2> prog)]
+		[wavescript-compiler-nesc (make-object <tinyos> prog)]))
   (Run obj))
 
 ;;================================================================================
@@ -1386,7 +1387,10 @@
 
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
-  (config-acc module-acc boot-acc impl-acc proto-acc))
+  (config-acc module-acc boot-acc impl-acc proto-acc
+   ;;This is a flag to tell us if printf has already been included.:
+   print-included
+   ))
 
 (__spec initialise <tinyos> (self prog)
 	;; Don't include wsc2.h!!
@@ -1396,6 +1400,8 @@
 	(slot-set! self 'boot-acc '())
 	(slot-set! self 'impl-acc '())
 	(slot-set! self 'proto-acc '())
+
+	(slot-set! self 'print-included #f)
 	)
 
 (define __Type 
@@ -1406,13 +1412,61 @@
 	[,else (next)]
 	))))
 
+#|
+configuration TestPrintfAppC{
+}
+implementation {
+  components MainC, TestPrintfC, LedsC;
+  components PrintfC;
+
+  TestPrintfC.Boot -> MainC;
+  TestPrintfC.Leds -> LedsC;
+}
+
+|#
+
+
 (define __Effect
   (specialise! Effect <tinyos>
     (lambda (next self emitter)
       (lambda (xp)
 	(match xp
 	  [(print ,[(TyAndSimple self) -> ty x])
-	   (make-lines `("dbg(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"))]
+	   #;
+	   (unless (slot-ref self 'print-included)
+	     (slot-set! self 'print-included #t)
+	     (add-include! self "printf.h")
+	     (slot-cons! self 'config-acc "
+  components PrintfC;
+  WSQuery.PrintfControl -> PrintfC;
+  WSQuery.PrintfFlush   -> PrintfC;
+")
+	     (slot-cons! self 'module-acc "
+  uses interface SplitControl as PrintfControl;
+  uses interface PrintfFlush;
+")
+	     (slot-cons! self 'impl-acc "
+event void PrintfControl.startDone(error_t error) {
+  call PrintfFlush.flush();
+}
+
+event void PrintfFlush.flushDone(error_t error) {
+  //call PrintfFlush.flush();
+  //call PrintfControl.stop();
+}
+
+event void PrintfControl.stopDone(error_t error) {
+    call PrintfFlush.flush();
+}
+
+")
+	     (slot-cons! self 'boot-acc "
+  call PrintfControl.start();
+")
+	     )
+	   ;(make-lines `("printf(\"",(type->printf-flag self ty)"\", ",x");\n"))
+	   (make-lines `("dbg_clear(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"))
+	   ]
 	  [,oth ((next) xp)])))))
 
 (define __Source
@@ -1487,7 +1541,6 @@
 
 
 (__spec BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)
-  (define makefile "COMPONENT=WSQueryApp\n include $(MAKERULES)\n")
   (define config (list
 "
 configuration WSQueryApp { }
@@ -1535,10 +1588,12 @@ implementation {
 "))
 
   ;; HACK: For now we just write the files ourselves...
-  (list (list "Makefile.tos2" makefile)
+  (list (list "Makefile.tos2" (file->string (** (REGIMENTD) "/src/linked_lib/Makefile.tos2")))
 	(list "WSQueryApp.nc" (text->string config))
 	(list "WSQuery.nc"    (text->string module))
 	(list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
 	))
 
 ) ;; End module
+
+

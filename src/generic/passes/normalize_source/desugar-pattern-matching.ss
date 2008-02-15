@@ -75,6 +75,9 @@
  	[(/ ,[a] ,[b]) `(g/ ,a ,b)]
  	[(^ ,[a] ,[b]) `(g^ ,a ,b)]
 
+
+	;;; THESE HACKS BREAK OVERRIDING OF THE PRIMITIVE NAMES:
+
 	;; This is a work-around for a name conflict:
    [merge '(lambda (x y) ('noty 'noty) (_merge (annotations) x y))]
    [(app merge ,[s1] ,[s2]) `(_merge (annotations) ,s1 ,s2)]
@@ -88,9 +91,13 @@
     `(readFile (annotations) ,@args)]
    [(readFile ,[args] ...) `(readFile (annotations) ,@args)]
 
-   [(app timer ,[args] ...) `(timer (annotations) ,@args)]
-   ; FIXME: is this dangerous?
-   [(app (src-pos ,sp1 timer) ,[args] ...)
+   ;; THIS IS A HACK ON A HACK:
+   [(app ,timer ,[args] ...) 
+    (guard (eq? (peel-annotations timer) 'timer)
+	   (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc))
+    `(app tos_timer ,@args)]
+
+   [(app ,timer ,[args] ...) (guard (eq? (peel-annotations timer) 'timer))
     `(timer (annotations) ,@args)]
    [(timer ,[args] ...) `(timer (annotations) ,@args)]
 
@@ -217,7 +224,8 @@
 
 	;; [2008.01.27] Here's a bit of extra desugaring for wsc2:
 	[(assert-type (Stream (Sigseg ,elt)) ,bod)
-	 (guard (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
+	 (guard (eq-any? (compiler-invocation-mode) 
+			 'wavescript-compiler-c 'wavescript-compiler-nesc)
 		(match (peel-annotations bod)
 		  [(app ,rator . ,_)
 		   (eq? (peel-annotations rator) 'readFile)]

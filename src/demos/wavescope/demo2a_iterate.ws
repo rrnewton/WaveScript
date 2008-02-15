@@ -26,7 +26,7 @@ s2 = iterate w in s1 {
   
   //  wserror("testing...");  
 
-  emit w;
+  emit 39;
 };
 
 

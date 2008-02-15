@@ -210,6 +210,8 @@
   `(
     (GETENV (String) String) ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
+    ;(FILECONTENTS (String) String)
+
     (SHELL (String) String)  ; Returns a string containing the output of the subprocess.
 
     ;; [2007.11.07] These are hacks to manually parallelize programs.
