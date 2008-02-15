@@ -121,11 +121,6 @@
 	 (maybe-bind-tmp oth retty
 	   (lambda (tmp)
 	     `(begin ,(injection tmp) ,tmp)))]))
-    ;; For "global" variables:
-    ;; Must happen *BEFORE* the local decrements are inserted (before recurring).
-    (define (TopIncr exp ty)  
-      (DriveInside (lambda (x) `(incr-heap-refcount ,ty ,x)) exp ty))
-
    
     (define Value 
       (core-generic-traverse
@@ -282,6 +277,20 @@
 	;(inspect hits) (inspect result)
 	result))
 
+    ;; A binding that gets evaluated exactly once.
+    (define (StaticBind lhs ty rhs)
+      `(,lhs ,ty
+	     ,(match rhs
+		;; What kinds of things can we switch to static allocation?
+		;; Currently just quoted constants:
+		[',c `(static-allocate ',c)] ;(TopIncr `(static-allocate ',c) ty)
+		[,oth (Value+ (TopIncr oth ty))])))
+
+    ;; For "global" variables:
+    ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).
+    (define (TopIncr exp ty)  
+      (DriveInside (lambda (x) `(incr-heap-refcount ,ty ,x)) exp ty))
+
     (define (Operator op)
       (match op
 	[(iterate (name ,name) (output-type ,o_ty)
@@ -309,7 +318,7 @@
 		    (operators ,[Operator -> oper*] ...)
 		    (sink ,base ,basetype)	,meta* ...))
 	   `(,input-language 
-	     '(graph (const (,cbv* ,cbty* ,(map Value+ (map TopIncr cbexp* cbty*))) ...)
+	     '(graph (const ,(map StaticBind cbv* cbty* cbexp*) ...)
 		     (init ,@init*) 
 		     (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
 		     (operators ,@oper*)

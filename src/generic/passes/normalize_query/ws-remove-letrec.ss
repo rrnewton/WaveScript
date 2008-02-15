@@ -19,12 +19,16 @@
   (chezimports tsort)
 
 (define remove-letrec-grammar 
-  (filter (lambda (prod)
-	    (match prod
-	      [(Expr ('letrec ,_ ...)) #f]
-	      ;;[(Expr ('lazy-letrec ,_ ...)) #f]
-	      [,_ #t]))
-    reduce-primitives-grammar))
+(cons 
+ ;; Let's only have one binding after this:
+ `[Expr ('let ((LHS Type Expr)) Expr)]
+ (filter (lambda (prod)
+	   (match prod
+	     [(Expr ('letrec ,_ ...)) #f]
+	     [(,__   ('let ,_ ...))   #f]
+	     ;;[(Expr ('lazy-letrec ,_ ...)) #f]
+	     [,_ #t]))
+   reduce-primitives-grammar)))
 
 (define ProcessExpr 
   (lambda (x fallthru)
@@ -66,6 +70,7 @@
 
 ;; This handles only the letrec case.
 (define-pass remove-letrec 
+    [OutputProps single-bind-let]
     [OutputGrammar remove-letrec-grammar]
     [Expr ProcessExpr])
 

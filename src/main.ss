@@ -584,6 +584,9 @@
   ;; [2007.10.27] For MLton we might should remove at least part of this pass:
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
 
+  ;; Pull constants up to the top.
+  ;(ws-run-pass p lift-complex-constant)
+
   ;; NOTE: wavescript-language won't work until we've removed complex constants.
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
@@ -631,11 +634,14 @@
   (ws-run-pass p type-annotate-misc)
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
+
   (when (eq? (compiler-invocation-mode) 'wavescript-compiler-c)
     (ws-run-pass p explicit-toplevel-print))
+
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
+  (ws-run-pass p lift-immutable-constants)
 
   (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c)  ;'wavescript-simulator
     (ws-run-pass p embed-strings-as-arrays)
@@ -978,7 +984,7 @@
                                             `(,ws-default-wavescope-scheduler))))
    ;; [2007.11.23] Are we running the new C backend?
    
-   (define outfile (if new-version? "./query.c" "./query.cpp"))  
+   (define outfile (if new-version? #f "./query.cpp")) ;; The new version isn't controlled by "outfile"
 
    (define (run-wscomp)
      
@@ -1029,13 +1035,16 @@
 
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
-;(inspect (blaze-path-to/assq prog 'timeval 'tmp_3739))
-
-	    (time (ws-run-pass prog emit-c2))
+	    ;(inspect (blaze-path-to/assq prog 'quote))
+	    ;(inspect prog)
+	    (time (ws-run-pass prog emit-c2))	    
+	    ;; Now "prog" is an alist of [file text] bindings.
+	    (for-each (lambda (pr) 
+			(string->file (text->string (cadr pr)) (car pr)))
+	      prog)
 	    
-	    (string->file (text->string prog) outfile)
 	    (unless (regiment-quiet)
-	      (printf "\nGenerated C output to ~s.\n" outfile))
+	      (printf "\nGenerated output to files ~s.\n" (map car prog)))
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)

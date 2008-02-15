@@ -16,8 +16,10 @@ then
    echo Linking extra libraries requested by query file: $EXTRALIBS
 fi
 
-exec wsc2-gcc
-
+if [ -f "query.c" ]; 
+then exec wsc2-gcc;
+else echo query.c not found...
+fi
 
 ## Run again to profile branches:
 # ./query.exe

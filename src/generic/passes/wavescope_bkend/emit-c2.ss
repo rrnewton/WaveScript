@@ -16,6 +16,16 @@
 ;;;; TODO: The pass that INSERTS refcount incr's and decr's can be
 ;;;; extracted from this pass.
 
+;; Note on efficiency: 
+;;   On demo3m for example, 
+;;     Non-OOP:  chez: 266(15)   plt: 564(68)                                   47.4 mb alloced
+;;     BOS version: chez: 293(15ms)   plt: 660(92)  (chastity chez from .boot)  52.7 mb alloced
+;;     BOS version: chez: 385(105, 13 collections)   plt: 660(96)  (chastity chez from src)
+;;     BOS version: 315(21) chez 950(180) plt (laptop core2duo)
+;; Wow - are collections worse when running from source? (because more code is loaded?)
+;; It's also probably fair to say that the extra allocation from BOS
+;; makes the probability of length collections higher.
+
 (module emit-c2 mzscheme 
   (require  "../../../plt/common.ss"
             "insert-refcounts.ss"
@@ -79,10 +89,12 @@
   (define-generic type->printf-flag)
   (define-generic Binding)
   (define-generic SplitBinding)
+  (define-generic StaticAllocate)
   (define-generic PrimApp)
 ;  (define-generic Program)
   (define-generic Run)
   (define-generic BuildSourceDriver)
+  (define-generic BuildOutputFiles)
   (define-generic varbindk)
 
    
@@ -156,6 +168,8 @@
 
 ;(define (mangle-name n) (symbol->string n))
 (define sym2str  symbol->string)
+
+(define (slot-cons! obj fld x) (slot-set! obj fld (cons x (slot-ref obj fld))))
 
 (define (cap x) (list x ";\n"))
 
@@ -499,7 +513,7 @@
   (match ty
     [#()    "()"]
     [String "%s"]
-    [(Array Char) "%s"] ;; These are strings in disguise.
+    [(Array Char) "%s"] ;; HACK: These are strings in disguise.
     [Bool   "%d"]
     [Int    "%d"]
     [Int16  "%hd"]
@@ -579,6 +593,13 @@
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
+      ;; Currently [2008.02.14] we don't allow the static-allocate
+      ;; annotation to float around in arbitrary code.  We catch it right here.
+      ;; Further, we only allow constants right now, this needs to be
+      ;; changed to handle allocating primitives like Array:make...
+      [(,vr ,ty (static-allocate ,rhs))
+       (match rhs
+	 [',c (StaticAllocate self vr ty rhs)])]
       [(,vr ,ty ,rhs)
        ;; We derive a setter continuation by "splitting" the varbind continuation:
        ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
@@ -587,12 +608,29 @@
 	   (if (eq? x split-msg)
 	       (values (make-lines "")	set-and-incr-k)
 	       (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))
-			     (make-lines "/* I AM HEAP INCR */\n")
 			     #|(incr-heap-refcount ty (Var vr))|#
 			     ))))
        (values (make-lines `(,(Type self ty)" ",(Var self vr)";\n"))
 	       ((Value self emitter) rhs set-and-incr-k))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
+
+
+
+;; For those allocation-forms that we can do statically:
+;; Like SplitBinding returns two values: decl & init code.
+(__spec StaticAllocate <emitC2> (self lhs ty rhs)
+  (match rhs
+    [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
+      (ASSERT (vector-andmap char? vec))
+      ;; Strip out any null characters??
+      (let* ([ls (vector->list vec)]
+	     [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
+	      (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
+		  (rdc ls) 
+		  ls)]
+	     [str (list->string ls2)])
+	(values (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+		(make-lines "")))]))
 
 
 (__spec Effect <emitC2> (self emitter)
@@ -686,6 +724,11 @@
        ;; could treat them the same way as other constant arrays, but
        ;; we get much less bloated, much more readable code if we do
        ;; the following:
+       [',vec (guard (vector? vec) (vector-andmap char? vec))
+	      (error 'emitC2:Value "should have lifted all the strings: ~s" 
+		     (list->string (vector->list vec)))]
+       ;; [2008.02.14] Disabling this because now string constants should ALL be statically allocated.
+       #;
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
 	;; Strip out any null characters??
@@ -1070,8 +1113,8 @@
     (make-lines        
      (block "int main()" 
 	    (list 
-	     "initState();\n"
 	     (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
+	     "initState();\n"
 	     (block "while(1)"		 
 		    (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 			  (map (lambda (name code mark)
@@ -1239,15 +1282,25 @@
 ;================================================================================
 
 
+(__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+  (define text
+    (apply string-append 
+         (insert-between "\n"
+           (list includes 
+                 (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
+                 (text->string (lines-text freefundefs))
+                 state
+                 ;toplevelsink
+                 ops ;srcfuns 
+                 init driver))))
+  ;; Return an alist of files:
+  (list (list "query.c" text)))
+  
 ;; Run the pass and generate C code:
-(__spec Run <emitC2> (self . args)
-  (printf "BUILDING TABLE\n")
+(__spec Run <emitC2> (self)
   (let* ([prog (slot-ref self 'theprog)]
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
      ;(assq 'c-includes meta*)
-
-    (printf "RUNNING\n")
-
      (match prog
        [(,lang '(graph 
 		 ;; These had better be *constants* for GCC:
@@ -1259,7 +1312,6 @@
 		 (sink ,base ,basetype)
 		 ,meta* ...))
 
-
 	(define includes (text->string 
 			  (list "//WSLIBDEPS: "
 				(map (lambda (fn) 
@@ -1267,13 +1319,14 @@
 					 (if lib (list " -l" lib) fn)))
 				  (slot-ref self 'link-files))
 				"\n"
-				
-				"#include \""(** (REGIMENTD) "/src/linked_lib/wsc2.h")"\"\n"
+							       
+				#;
+				(map (lambda (definc) (list "#include \""definc"\"\n"))
+				  (slot-ref self 'default-includes))				
 				
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
-	(define ______ (printf "GOT THE PIECES\n"))
 
 	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
@@ -1281,45 +1334,224 @@
 	  (define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			     (text->string (block "void initState()" 
 				 (list 
+                                  (lines-text (apply append-lines init*))
 				  (lines-text (apply append-lines cbinit*))
 				  (lines-text (apply append-lines (apply append opinit**))))))))
 	  (define driver   (text->string (lines-text (BuildSourceDriver self srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
-	  (define total (apply string-append 
-			(insert-between "\n"
-			  (list includes 
-				(text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
-				(text->string (lines-text freefundefs))
-				allstate
-				;toplevelsink
-				ops ;srcfuns 
-				init driver))))
-
+	  
 	  ;;(printf "====================\n\n")	
-	  ;;(display total)
-	  total]
+	  (BuildOutputFiles self includes freefundefs allstate ops init driver)]
 
        [,other ;; Otherwise it's an invalid program.
 	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)])))
 
 
 ;; Constructor, parse out the pieces of the program.
-(__spec initialise <emitC2> (self prog . rest)
-  (printf "CONSTRUCTOR\n")
+(__spec initialise <emitC2> (self prog)
   (slot-set! self 'free-fun-table '())
   (slot-set! self 'struct-defs (cdr (project-metadata 'struct-defs prog)))
   (slot-set! self 'union-types (cdr (project-metadata 'union-types prog)))
   (slot-set! self 'theprog prog)
   (slot-set! self 'link-files '())
-  (slot-set! self 'include-files '())
-  (printf "CONSTRUCTOR FIN\n")
+  ;; Our default includes
+  (slot-set! self 'include-files (list (** (REGIMENTD) "/src/linked_lib/wsc2.h")))
   )
 
-
 (define (emit-c2 prog)
-  (define obj (make-object <emitC2> prog))
-  (printf "Obj creation finished\n")
+  ;(define obj (make-object <emitC2> prog))
+  ;(define obj (make-object <zct> prog))
+  (define obj (make-object <tinyos> prog))
   (Run obj))
 
+;;================================================================================
+
+(define-class <zct> (<emitC2>) ())
+
+#;
+(specialise! Var <zct> 
+ (lambda (next self v)
+   (string-append (next) "____")
+   ))
+
+
+;;================================================================================
+
+
+(define-class <tinyos> (<emitC2>) 
+  ;; Has some new fields to store accumulated bits of text:
+  (config-acc module-acc boot-acc impl-acc))
+
+(__spec initialise <tinyos> (self prog)
+	;; Don't include wsc2.h!!
+	(slot-set! self 'include-files '())
+	(slot-set! self 'config-acc '())
+	(slot-set! self 'module-acc '())
+	(slot-set! self 'boot-acc '())
+	(slot-set! self 'impl-acc '())
+	;(slot-set! self 'timers '())
+	)
+
+(define __Type 
+  (specialise! Type <tinyos> 
+    (lambda (next self ty)
+      (match ty
+	[Int     "int16_t"]
+	[,else (next)]
+	))))
+
+(define __Effect
+  (specialise! Effect <tinyos>
+    (lambda (next self emitter)
+      (lambda (xp)
+	(match xp
+	  [(print ,[(TyAndSimple self) -> ty x])
+	   (make-lines `("dbg(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"))]
+	  [,oth ((next) xp)])))))
+
+(define __Source
+  (specialise! Source <tinyos>
+    (lambda (next self xp)
+      (match xp
+	;; TODO: streams of sensor data
+	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
+	 (match cd 
+	   [(sensor_stream ,_ ...) (inspect _)]
+	   [,_ (next)]
+	   #;
+	   [(timer ,annot ,rate)
+	    (match (peel-annotations rate)
+	      [',rate
+	       (values nm
+		       ((Emit self down*) ''UNIT) ;; Code
+		       (make-lines ()) ;; State 	
+		       rate)
+	       ])])]))))
+
+
+(__spec BuildSourceDriver <tinyos> (self srcname* srccode* srcrates*)
+  (define millis (map (lambda (period) (inexact->exact (round (/ 1000. period)))) srcrates*))
+  (printf "   TIMER RATES: ~s\n" millis)
+  (for-each
+   (lambda (i milli src)
+     (define n (number->string i))
+     (slot-cons! self 'config-acc
+		 `("  components new TimerMilliC() as Timer",n";\n"
+		   "  WSQuery.Timer",n" -> Timer",n";\n"))
+     (slot-cons! self 'module-acc
+		 `("  uses interface Timer<TMilli> as Timer",n";\n"))
+     (slot-cons! self 'boot-acc
+		 `("    call Timer",n".startPeriodic( ",(number->string milli)" );\n"))
+     (slot-cons! self 'impl-acc 
+`("  event void Timer",n".fired() {
+    dbg(\"WSQuery\", \"Timer 0 fired @ %s.\\n\", sim_time_string());
+    call Leds.led0Toggle();
+    ",(lines-text src)"
+  }"))
+     )
+   (iota (length millis)) millis srccode*)
+  
+  ;; Need to do something with srccode*
+  (make-lines ""))
+
+
+(__spec BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)
+  (define makefile "COMPONENT=WSQueryApp\n include $(MAKERULES)\n")
+  (define config (list
+"
+configuration WSQueryApp { }
+implementation {
+  components MainC, WSQuery, LedsC;
+  WSQuery -> MainC.Boot;
+  WSQuery.Leds -> LedsC;
+"(slot-ref self 'config-acc)"
+}"))
+  (define module 
+    (list 
+      includes 
+"#include \"Timer.h\"
+
+module WSQuery {
+  uses interface Leds;
+  uses interface Boot;
+"(slot-ref self 'module-acc)"
+}
+implementation {
+
+  event void Boot.booted() {
+"(slot-ref self 'boot-acc)"
+  }
+
+  void BASE(char x) {}
+
+"	 
+	 (insert-between "\n"
+           (list 
+                 (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
+                 (text->string (lines-text freefundefs))
+                 state
+                 ;toplevelsink
+                 ops ;srcfuns 
+                 init driver))
+ "
+
+"(slot-ref self 'impl-acc)"
+
+}
+"))
+
+  ;; HACK: For now we just write the files ourselves...
+  (list (list "Makefile.tos2" makefile)
+	(list "WSQueryApp.nc" (text->string config))
+	(list "WSQuery.nc"    (text->string module))
+	(list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
+	))
+
 ) ;; End module
+
+
+#|
+
+
+  //command void foo() {  }
+  void plainfun(int x) {
+    dbg("BlinkC", "Inside plainfun\n");
+  }
+  task void mytask()  {}
+
+  event void Boot.booted()
+  {
+    call Timer0.startPeriodic( 250 );
+    call Timer1.startPeriodic( 500 );
+    call Timer2.startPeriodic( 1000 );
+  }
+
+  event void Timer0.fired()
+  {
+    dbg("BlinkC", "Timer 0 fired @ %s.\n", sim_time_string());
+    plainfun(939);
+    call Leds.led0Toggle();
+  }
+  
+  event void Timer1.fired()
+  {
+    dbg("BlinkC", "Timer 1 fired @ %s \n", sim_time_string());
+    call Leds.led1Toggle();
+  }
+  
+  event void Timer2.fired()
+  {
+    dbg("BlinkC", "Timer 2 fired @ %s.\n", sim_time_string());
+    call Leds.led2Toggle();
+  }
+}
+
+
+
+
+
+
+
+|#
+
 

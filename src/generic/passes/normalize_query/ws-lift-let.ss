@@ -28,6 +28,7 @@
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))
 	      
+	      ;; Shouldn't these be SINGLE BIND lets?
 	      (Query ('iterate ('let ((LHS Type Block) ...)
 				 ('lambda (Var Var) (Type Type) Block)) Simple))
 	      (Query ('unionN Simple Simple ...))
@@ -142,7 +143,7 @@
                   (pair? annot)
                   (eq? (car annot) 'annotations)))
       `(let ([,v ,ty (assert-type ,ty3 (,prim ,annot . ,rand*))]) ,bod)]
-	  [(let ([,v ,ty (assert-type ,ty3 (,prim ,[rand*] ...))]) ,[bod])
+     [(let ([,v ,ty (assert-type ,ty3 (,prim ,[rand*] ...))]) ,[bod])
 	   (guard (normal-prim? prim))
 	   `(let ([,v ,ty (assert-type ,ty3 (,prim . ,rand*))]) ,bod)]
 
@@ -188,6 +189,9 @@
 	  [(begin ,[e])  e]
 
 	  [,oth (fallthru oth)])))
+    
+    [InputProps single-bind-let]
+
     ;; Assumes lets only bind one variable (except for iterates)
     [Expr process-expr]
 

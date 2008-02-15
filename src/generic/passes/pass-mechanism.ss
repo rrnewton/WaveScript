@@ -4,6 +4,8 @@
 ;;;; This file declares "define-pass" which is a super-sweet syntactic
 ;;;; sugar for concisely defining pass-transformations.  It lets you
 ;;;; optionally provide only the cases you need.
+;;;;
+;;;; It's based on the underlying build-compiler-pass mechanism.
 
 (module pass-mechanism mzscheme 
   (require "../../plt/iu-match.ss"
@@ -35,6 +37,12 @@
 ;;   [OutputGrammar <g>]
 ;;      These define input/output grammars for the pass in the style of grammar_checker.ss.
 ;;      These grammars are checked only in debugmode. See the obsoleted build-compiler-pass function.
+;;   [InputProps <prop> ...]
+;;   [OutputProps <prop> ...]
+;;      These are an experimental feature wherein passes will declare properties like "unique-names"
+;;      that they require or produce.  A "prop" is a symbol or the list '(not <symbol>).
+;;      Currently are just documentation, but in the future they could be machine checked.
+;;      The property list could be kept in the program metadata.
 ;;
 ;;   [Program <fun: prog, ExprFun -> pass-result>]
 ;;      This form takes a user procedure to handle the top-level input to the pass, the "program".
@@ -74,7 +82,7 @@
     (syntax-case x ()
       [(_ name clauses ...)
        (let ([gen-code 
-	      (lambda (ingram outgram bnds expr/types expr prog fuser extra-defs)
+	      (lambda (ingram outgram inprop outprop bnds expr/types expr prog fuser extra-defs)
 
 		(define output-language 
 		  (datum->syntax-object #'name
@@ -224,7 +232,7 @@
 		  (if (and prog (or bnds expr))
 		      (error 'define-pass "cannot define both Program and Bindings/Expr: ~s" 
 			     #'_))
-
+		  
 		  #'(define name 
 		      (let () 
 			extra-defs ...
@@ -246,9 +254,42 @@
 
 		))])
 	 ;; Here are all the default values for these components:
+	 ;; This is probably a scenario where set! would be much more appropriate.
+
+
+
+
+	 (let ([ingram #f] [outgram #f]
+	       [inprop #f] [outprop #f]
+	       [bnds #f]
+	       [expr/types #f] [expr #f]
+	       [prog #f]   [fuser #f])
+	   (let loop ([cl (syntax->list #'(clauses ...))]		    
+		      [extras '()])
+	   (if (null? cl)
+	       (gen-code ingram outgram inprop outprop bnds expr/types expr prog fuser (reverse extras))
+	       (syntax-case (car cl) 
+		 (InputGrammar OutputGrammar InputProps OutputProps Bindings Expr/Types Expr Program Fuser)
+		 [(InputGrammar g)  (set! ingram  #'g)    (loop (cdr cl) extras)]
+		 [(OutputGrammar g) (set! outgram #'g)    (loop (cdr cl) extras)]
+		 [(InputProps g)    (set! inprop  #'g)    (loop (cdr cl) extras)]
+		 [(OutputProps g)   (set! outprop #'g)    (loop (cdr cl) extras)]
+		 [(Bindings f)      (set! bnds    #'f)    (loop (cdr cl) extras)]
+		 [(Expr/Types f)    (set! expr/types #'f) (loop (cdr cl) extras)]
+		 [(Expr f)          (set! expr    #'f)    (loop (cdr cl) extras)]
+		 [(Program f)       (set! prog    #'f)    (loop (cdr cl) extras)]
+		 [(Fuser f)         (set! fuser   #'f)    (loop (cdr cl) extras)]
+		 [else              (loop (cdr cl) (cons (car cl) extras))]
+		 )))
+	   )
+
+
+#;
 	 (let loop ([cl (syntax->list #'(clauses ...))]
 		    [ingram #f]
 		    [outgram #f]
+		    [incond #f]
+		    [outcond #f]
 		    [bnds #f]
 		    [expr/types #f]
 		    [expr #f]
@@ -265,16 +306,18 @@
 	   (if (null? cl)
 	       (gen-code ingram outgram bnds expr/types expr prog fuser (reverse extras))
 	       (syntax-case (car cl) (InputGrammar OutputGrammar Bindings Expr/Types Expr Program Fuser)
-			    [(InputGrammar g)  (loop (cdr cl) #'g    outgram bnds expr/types expr prog fuser extras)]
-			    [(OutputGrammar g) (loop (cdr cl) ingram #'g     bnds expr/types expr prog fuser extras)]
-			    [(Bindings f)      (loop (cdr cl) ingram outgram #'f  expr/types expr prog fuser extras)]
-			    [(Expr/Types f)    (loop (cdr cl) ingram outgram bnds #'f        expr prog fuser extras)]
-			    [(Expr f)          (loop (cdr cl) ingram outgram bnds expr/types #'f  prog fuser extras)]
-			    [(Program f)       (loop (cdr cl) ingram outgram bnds expr/types expr #'f  fuser extras)]
-			    [(Fuser f)         (loop (cdr cl) ingram outgram bnds expr/types expr prog #'f   extras)]
-			    [else (loop (cdr cl) ingram outgram bnds expr/types expr prog fuser 
-					(cons (car cl) extras))]
-			    ))))
+		 [(InputGrammar g)  (loop (cdr cl) #'g    outgram inprop outprop bnds expr/types expr prog fuser extras)]
+		 [(OutputGrammar g) (loop (cdr cl) ingram #'g     inprop outprop bnds expr/types expr prog fuser extras)]
+		 [(InputProps g)    (loop (cdr cl) ingram outgram #'g    outprop bnds expr/types expr prog fuser extras)]
+		 [(OutputProps g)   (loop (cdr cl) ingram outgram inprop #'g     bnds expr/types expr prog fuser extras)]
+		 [(Bindings f)      (loop (cdr cl) ingram outgram inprop outprop #'f  expr/types expr prog fuser extras)]
+		 [(Expr/Types f)    (loop (cdr cl) ingram outgram inprop outprop bnds #'f        expr prog fuser extras)]
+		 [(Expr f)          (loop (cdr cl) ingram outgram inprop outprop bnds expr/types #'f  prog fuser extras)]
+		 [(Program f)       (loop (cdr cl) ingram outgram inprop outprop bnds expr/types expr #'f  fuser extras)]
+		 [(Fuser f)         (loop (cdr cl) ingram outgram inprop outprop bnds expr/types expr prog #'f   extras)]
+		 [else              (loop (cdr cl) ingram outgram inprop outprop bnds expr/types expr prog fuser 
+					  (cons (car cl) extras))]
+		 ))))
        ])))
 
 ;; This has not been sufficiently tested yet:

@@ -450,24 +450,6 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-(define-pass lift-immutable-constants
-    (define acc '()) ;; Accumulates constant bindings.
-    [Expr 
-     (lambda (xp fallthru)
-       (match xp
-	 [',const (guard (not (simple-constant? const))			 
-			 ;; Arrays are mutable:
-			 (not (vector? const)))
-	  (let ([tmp (unique-name "tmpconstlift")])
-	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
-	    tmp)]
-	 [,oth (fallthru oth)]))]
-    [Program (lambda (prog Expr)
-	       (fluid-let ([acc '()])
-		 (match prog 
-		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
-		   `(,lang '(program `(let ,acc ,bod)) ,@meta*)])))])
-
 
 ;; Is the value represented by this scheme representation polymorphic?
 (define (polymorphic-const? x) 
@@ -848,11 +830,64 @@
 
 
 
+;; Any complex (immutable) constants are lifted to the top of the program.
+;; Assumes unique variable names (a la rename-vars).
 #;
-     [Program (lambda (p E)
-	       (fluid-let ([substs (make-default-hash-table)])
-		 )
-	       
-	       )]
+(define-pass lift-immutable-constants ;lift-complex-constants
+  [InputProps unique-names]
+  [Expr (lambda (xp fallthr)
+	  (match xp
+	    [',c 
+	     (guard (or (string? c) (not (simple-constant? c))) ;; Allowing strings!
+		    (not (type-containing-mutable? (export-type (type-const c)))))
+	     (printf "  LIFTING CONSTANT: ~s\n" c)
+	     (let ([tmp (unique-names "cnstlift")])
+	       (vector tmp `([,tmp ,(export-type (type-const '(1 2 3))) ',c])))
+	     ]))]
+  [Fuser (lambda (ls k)
+	   (match ls
+	     [(#(,expr* ,bind*) ...)
+	      (vector (apply k expr*)
+		      (apply append bind*))]))]
+  [Program
+   (lambda (pr Expr)
+     (match pr
+       [(,lang '(program ,[Expr -> bod cbinds] ,meta* ... ,topty))
+	`(,lang '(program (let ,cbinds ,bod) ;,(make-nested-lets cbinds bod)
+		   ,meta* ... ,topty))
+	]))])
+
+(define-pass lift-immutable-constants
+    (define acc '()) ;; Accumulates constant bindings.
+    [OutputProps (not single-bind-let)]
+    [Expr 
+     (lambda (xp fallthru)
+       (match xp
+	 ;; This is troublesome, readFile should really be a special
+	 ;; syntax at this point, not masquerading as a primitive application.
+	 [(readFile ,annot ',str1 ',str2 ,[strm])
+	  (ASSERT string? str1) (ASSERT string? str2)
+	  `(readFile ,annot ',str1 ',str2 ,strm)]
+	 [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
+			 (not (type-containing-mutable? (export-type (type-const const)))))
+	  (printf "  LIFTING CONSTANT: ~s\n" const)
+	  (let ([tmp (unique-name "tmpconstlift")])
+	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
+	    tmp)]
+	 [,oth (fallthru oth)]))]
+    [Program (lambda (prog Expr)
+	       (fluid-let ([acc '()])
+		 (match prog 
+		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
+		   `(,lang '(program (let ,acc ,bod) ,@meta*))])))])
+
+ 
+
+
+#;
+[Program (lambda (p E)
+	   (fluid-let ([substs (make-default-hash-table)])
+	     )	   
+	   )]
   
 ) ;; End module
