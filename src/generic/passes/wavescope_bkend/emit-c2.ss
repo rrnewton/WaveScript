@@ -84,6 +84,7 @@
   (define-generic Effect)
   (define-generic StructDef)
   (define-generic Source)
+  (define-generic GenWorkFunction)
   (define-generic Operator)
   (define-generic Emit)
   (define-generic type->printf-flag)
@@ -1150,16 +1151,16 @@
 		   rate)
 	   ])])]))
 
+(__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
+  (make-lines 
+   (list (block `("void ",(Var self name) "(",(Type self argty)" ",(Var self arg)")")
+		(list
+		 "char "(Var self vqarg)";\n"
+		 (lines-text code)))
+	 "\n")))
+
 ;; .returns top-level decls (lines)
 (__spec Operator <emitC2> (self op)
-
-  (define (wrap-iterate-as-simple-fun name arg vqarg argty code)
-    (make-lines 
-     (list (block `("void ",(Var self name) "(",(Type self argty)" ",(Var self arg)")")
-		  (list
-		   "char "(Var self vqarg)";\n"
-		   (lines-text code)))
-	   "\n")))
   (define (Simp x) (Simple self x))
   (match op
     [(iterate (name ,name) 
@@ -1172,7 +1173,7 @@
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...) 
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
-	 (wrap-iterate-as-simple-fun name v vq vty ((Value self emitter) bod nullk))
+	 (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))
 	 bind* init*)])]
 
 
@@ -1413,19 +1414,31 @@
 	[,else (next)]
 	))))
 
-#|
-configuration TestPrintfAppC{
-}
-implementation {
-  components MainC, TestPrintfC, LedsC;
-  components PrintfC;
+;; Increments and decrements do nothing.  Everything is statically allocated currently:
+(__spec gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */" ty)))
+(__spec gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */" ty)))
 
-  TestPrintfC.Boot -> MainC;
-  TestPrintfC.Leds -> LedsC;
-}
-
-|#
-
+;; Wrap work functions as tasks.
+(__spec GenWorkFunction <tinyos> (self name arg vqarg argty code)
+  (define _arg (Var self arg))
+  (define _argty (Type self argty))
+  (define _name (Var self name))
+  (printf "GENNING CODE FOR: ~s\n" name)
+  (make-lines 
+   (list 
+    ;; First the task:
+    (block `("task void ",_name"_task()")
+		(list
+		 "char "(Var self vqarg)";\n"
+		 _argty" "_arg" = *(("_argty" *)WS_STRM_BUF);\n"
+		 (lines-text code)))
+    ;; And then the function for posting the task:
+    (block `("void ",(Var self name) "(",_argty" ",_arg")")
+	   `(;"memcpy(",_arg", WS_STRM_BUF, sizeof(",_argty"));\n"
+	     "(*(",_argty" *)WS_STRM_BUF) = ",_arg";\n"
+	     "post ",_name"_task();\n"
+	     ))
+	 "\n")))
 
 (define __Effect
   (specialise! Effect <tinyos>
@@ -1566,6 +1579,8 @@ module WSQuery {
 "(slot-ref self 'module-acc)"
 }
 implementation {
+
+  char WS_STRM_BUF[128];
 
   /* Prototypes */
   void initState();
