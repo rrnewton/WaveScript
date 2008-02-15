@@ -1100,34 +1100,40 @@
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
 (__spec BuildSourceDriver <emitC2> (self srcname* srccode* srcrates*)
-  (printf "   TIMER RATES: ~s\n" srcrates*)
-  (let  ([counter_marks
-	  (cond
-	   [(= 1 (length srcrates*)) '(1)]
-	   [(andmap integer? srcrates*)
-	    (let ([common-rate (apply lcm srcrates*)])	    
-	      (map (lambda (rate)
-		     (inexact->exact (quotient common-rate rate)))
-		srcrates*))]
-	   [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
-    (make-lines        
-     (block "int main()" 
-	    (list 
-	     (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
-	     "initState();\n"
-	     (block "while(1)"		 
-		    (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
-			  (map (lambda (name code mark)
-				 (block (format "if (counter_~a == ~a)" name mark)
-					(list (lines-text code)
-					      (format "counter_~a = 0;\n" name))))
-			    srcname* srccode* counter_marks)
-			  )
-		  ;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
-		  )
-	   "return 0;\n")))))
+  ;; If the rate is #f we don't build in that entry:
+  (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
+	       (filter id
+		 (map (lambda (nm code rate)
+		      (if rate (list nm code rate) #f))
+		 srcname* srccode* srcrates*))])   
+    (printf "   TIMER RATES: ~s\n" srcrates*)
+    (let  ([counter_marks
+	    (cond
+	     [(= 1 (length srcrates*)) '(1)]
+	     [(andmap integer? srcrates*)
+	      (let ([common-rate (apply lcm srcrates*)])	    
+		(map (lambda (rate)
+		       (inexact->exact (quotient common-rate rate)))
+		  srcrates*))]
+	     [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
+      (make-lines        
+       (block "int main()" 
+	      (list 
+	       (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
+	       "initState();\n"
+	       (block "while(1)"		 
+		      (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
+			    (map (lambda (name code mark)
+				   (block (format "if (counter_~a == ~a)" name mark)
+					  (list (lines-text code)
+						(format "counter_~a = 0;\n" name))))
+			      srcname* srccode* counter_marks)
+			    )
+					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
+		      )
+	       "return 0;\n"))))))
 
-;; .returns function def that executes the source (lines) and state decls (lines)
+;; .returns a function def in several parts: name, code, state, rate
 (__spec Source <emitC2> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
@@ -1328,7 +1334,7 @@
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
 
-	  (define allstate (text->string (map lines-text (apply append cb* state1* state2**))))
+	  (define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
 	  (define ops      (text->string (map lines-text (reverse oper*))))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	  (define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
@@ -1380,7 +1386,7 @@
 
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
-  (config-acc module-acc boot-acc impl-acc))
+  (config-acc module-acc boot-acc impl-acc proto-acc))
 
 (__spec initialise <tinyos> (self prog)
 	;; Don't include wsc2.h!!
@@ -1389,7 +1395,7 @@
 	(slot-set! self 'module-acc '())
 	(slot-set! self 'boot-acc '())
 	(slot-set! self 'impl-acc '())
-	;(slot-set! self 'timers '())
+	(slot-set! self 'proto-acc '())
 	)
 
 (define __Type 
@@ -1417,6 +1423,31 @@
 	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
 	 (match cd 
 	   [(sensor_stream ,_ ...) (inspect _)]
+	   [(inline_TOS ',conf1 ',conf2 ',mod1 ',mod2 ',boot)
+	    ;; conf1
+	    (slot-cons! self 'config-acc conf2)
+	    (slot-cons! self 'module-acc mod1)
+	    (slot-cons! self 'impl-acc mod2)
+	    (slot-cons! self 'boot-acc boot)
+	    (values #f #f #f #f)]
+	   [(__foreign_source ',name ',filels '(Stream ,type))
+	    (define ty (Type self type))
+	    (define arg (unique-name "tmp"))
+	    (for-each (lambda (file)
+			(let ([ext (extract-file-extension file)])
+			  (cond
+			   [(member ext '("nc" "h"))
+			    (add-include! (list "\"" file "\""))]
+			   [else (error 'emit-c:foreign 
+					"cannot load NesC extension from this type of file: ~s" file)])))
+	      filels)
+	    ;; Create a function for the entrypoint.
+	    ;; It should post a task!!
+	    (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
+	    (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
+					       (lines-text ((Emit self down*) arg))))
+	    (values #f #f #f #f)]
+
 	   [,_ (next)]
 	   #;
 	   [(timer ,annot ,rate)
@@ -1430,7 +1461,7 @@
 
 
 (__spec BuildSourceDriver <tinyos> (self srcname* srccode* srcrates*)
-  (define millis (map (lambda (period) (inexact->exact (round (/ 1000. period)))) srcrates*))
+  (define millis (map (lambda (period) (inexact->exact (round (/ 1000. period)))) (filter id srcrates*)))
   (printf "   TIMER RATES: ~s\n" millis)
   (for-each
    (lambda (i milli src)
@@ -1449,7 +1480,7 @@
     ",(lines-text src)"
   }"))
      )
-   (iota (length millis)) millis srccode*)
+   (iota (length millis)) millis (filter id srccode*))
   
   ;; Need to do something with srccode*
   (make-lines ""))
@@ -1478,8 +1509,11 @@ module WSQuery {
 }
 implementation {
 
+"(slot-ref self 'proto-acc)"
+
   event void Boot.booted() {
-"(slot-ref self 'boot-acc)"
+    //initState(); /* SHOULD POST A TASK */
+"(indent (slot-ref self 'boot-acc) "    ")"
   }
 
   void BASE(char x) {}
@@ -1508,50 +1542,3 @@ implementation {
 	))
 
 ) ;; End module
-
-
-#|
-
-
-  //command void foo() {  }
-  void plainfun(int x) {
-    dbg("BlinkC", "Inside plainfun\n");
-  }
-  task void mytask()  {}
-
-  event void Boot.booted()
-  {
-    call Timer0.startPeriodic( 250 );
-    call Timer1.startPeriodic( 500 );
-    call Timer2.startPeriodic( 1000 );
-  }
-
-  event void Timer0.fired()
-  {
-    dbg("BlinkC", "Timer 0 fired @ %s.\n", sim_time_string());
-    plainfun(939);
-    call Leds.led0Toggle();
-  }
-  
-  event void Timer1.fired()
-  {
-    dbg("BlinkC", "Timer 1 fired @ %s \n", sim_time_string());
-    call Leds.led1Toggle();
-  }
-  
-  event void Timer2.fired()
-  {
-    dbg("BlinkC", "Timer 2 fired @ %s.\n", sim_time_string());
-    call Leds.led2Toggle();
-  }
-}
-
-
-
-
-
-
-
-|#
-
-

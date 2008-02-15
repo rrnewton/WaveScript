@@ -506,6 +506,7 @@
     ;;  (1) function name 
     ;;  (2) foreign files (.c .h .so etc) to load function from
     (foreign        (String (List String)) 'any)
+    ;; Takes (export) function name, file list:
     (foreign_source (String (List String)) (Stream 'any))
 
     ;; (Internal) This is the same but has the type tagged on the end:
@@ -534,6 +535,15 @@
     ;; The second argument is either the null string, or the name of
     ;; an initialization function to call from main().
     (inline_C       (String String) (Stream 'a))
+
+    ;; This is much more complicated in the TinyOS context because
+    ;; there are several different places that one needs to inject code:
+    ;;  (1) configuration block 
+    ;;  (2) configuration/implementation block 
+    ;;  (3) module block
+    ;;  (4) module/implementation block
+    ;;  (5) Boot-time code    
+    (inline_TOS     (String String String String String) (Stream 'a))
 
     ;; Not implemented yet:
     ;(marshal        ('a) String)

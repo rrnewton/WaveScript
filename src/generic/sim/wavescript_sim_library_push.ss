@@ -27,7 +27,7 @@
 		 run-stream-query reset-wssim-state! print-wssim-state
 
 		 __readFile 
-		 __foreign __foreign_source inline_C
+		 __foreign __foreign_source inline_C inline_TOS
 					;__syncN
 		 ;; Just stubs that give errors:
 		 ensBoxAudio ensBoxAudioF ensBoxAudioAll
@@ -1681,6 +1681,8 @@
 (define (__foreign_source . _)
   (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
 (define (inline_C . _)
+  (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend."))
+(define (inline_TOS . _)
   (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend."))
 
 

@@ -803,6 +803,18 @@
 	       (error 'embed-strings-as-arrays "For now readfiles must have explicit quoted string arguments at this point.")
 	       ;`(readFile ,annot (__backtoSTR ,str1) (__backtoSTR ,str2) ,strm)
 	       ]
+
+	      ;; Similarly:
+	      [(,totally_ignored . ,_) 
+	       (guard (memq totally_ignored '(inline_C inline_TOS)))
+	       (cons totally_ignored _)]
+	      [(,ignore_first ,_ ,[second])
+	       (guard (memq ignore_first '(foreign foreign_source)))
+	       `(,ignore_first ,_ ,second)]
+	      [(,safety . ,_) 
+	       (guard (memq safety '(inline_C inline_TOS foreign foreign_source)))
+	       (error 'embed-strings-as-arrays "missed this: ~s" (cons safety _))]
+
 	      
 	      [(stringToInt ,[x])     `(__stringToInt_ARRAY ,x)]
 	      [(stringToFloat ,[x])   `(__stringToFloat_ARRAY ,x)]
@@ -868,6 +880,16 @@
 	 [(readFile ,annot ',str1 ',str2 ,[strm])
 	  (ASSERT string? str1) (ASSERT string? str2)
 	  `(readFile ,annot ',str1 ',str2 ,strm)]
+	 [(,totally_ignored . ,_) 
+	  (guard (memq totally_ignored '(inline_C inline_TOS)))
+	  (cons totally_ignored _)]
+	 [(,ignore_first ,_ ,[second])
+	  (guard (memq ignore_first '(foreign foreign_source)))
+	  `(,ignore_first ,_ ,second)]
+	 [(,safety . ,_) 
+	  (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile)))
+	  (error 'embed-strings-as-arrays "missed this: ~s" (cons safety _))]
+
 	 [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
 			 (not (type-containing-mutable? (export-type (type-const const)))))
 	  (printf "  LIFTING CONSTANT: ~s\n" const)
