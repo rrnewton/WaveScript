@@ -480,17 +480,18 @@
     [Float   "float"]
     [Complex "float complex"]
     [Char    "char"]
-    [String  "char*"] ;; Not boosted.
+    ;[String  "const char*"] 
+    [String  "char*"] 
     [#()      "char"]
     [(Struct ,name) (list "struct "(sym2str name))] ;; Value type.
 
     ;; An array looks like a C array, except the -1 word offset is a refcount and -2 is length.
-    [(Array ,[elt]) (list elt "*")] ;[(Array ,[elt]) (list "(" elt "*)")]
+    [(Array ,elt) (list (Type self elt) "*")] ;[(Array ,[elt]) (list "(" elt "*)")]
 
     ;; A cons cell is just looks like a pointer, except the -1 offset is a refcount, and -2 is the CDR.
-    [(List ,[elt]) (list elt "*")]
+    [(List ,elt) (list (Type self elt) "*")]
 
-    [(Ref ,[ty]) ty]
+    [(Ref ,ty) (Type self ty)]
 
     ;; This is an unused value.
     [(VQueue ,_) "char"]
@@ -609,9 +610,7 @@
 	 (lambda (x)      
 	   (if (eq? x split-msg)
 	       (values (make-lines "")	set-and-incr-k)
-	       (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))
-			     #|(incr-heap-refcount ty (Var vr))|#
-			     ))))
+	       (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))))))
        (values (make-lines `(,(Type self ty)" ",(Var self vr)";\n"))
 	       ((Value self emitter) rhs set-and-incr-k))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
@@ -631,26 +630,43 @@
 		  (rdc ls) 
 		  ls)]
 	     [str (list->string ls2)])
-	(values (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	        (make-lines (format "char* ~a = ~s;\n" (text->string (Var self lhs)) str))
 		(make-lines "")))]))
+
+
+#;
+(__spec Let <emitC2> (self form emitter recur)
+  (match form     
+    [(([,lhs ,ty ,rhs]) ,[recur -> bod])
+     (append-lines ((Binding self emitter) (list lhs ty rhs))
+		   (ASSERT lines? bod))]))
 
 
 (__spec Let <emitC2> (self form emitter recur)
   (match form     
     [(([,lhs ,ty ,rhs]) ,[recur -> bod])
-     ;; Here we incr the refcount for a *local* reference
-     (let ([result (append-lines ((Binding self emitter) (list lhs ty rhs))
-				 (ASSERT lines? bod))])
-       ;; result
-       ;; HACK:
-       (make-lines (block "" (lines-text result))))]))
+     ;; A hack on a hack, make-struct must be handled differently:
+     (match (peel-annotations rhs)
+       [(make-struct . ,_)
+	(let ([result (append-lines ((Binding self emitter) (list lhs ty rhs))
+				    bod)])
+	  (make-lines (block "" (lines-text result))))]
+       [,_ 
+	(let-values ([(bind* init*) ((SplitBinding self (emit-err 'OperatorBinding))
+				     (list lhs ty rhs))])
+	  (let ([result (append-lines bind* init* bod)])
+	    (make-lines (block "" (lines-text result)))))])]))
 
 (__spec Effect <emitC2> (self emitter)
   (debug-return-contract Effect lines?
-  (lambda (xp)
+  (trace-lambda NORMALEFFECT (xp)
+    (define __ (printf "ENTRY\n"))
+    (define (Loop x) ((Effect self emitter) x)) ;; Eta reducing this BREAKS things.
     (define (Simp x) (Simple self x))
     (define (Vr x)   (Var self x))
-    (match xp
+    (printf "LOOP : ~s\n" Loop)
+    (match xp ;; no recursion
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
       ;; Thanks to insert-refcounts this can get in here:
@@ -661,18 +677,22 @@
       [(decr-heap-refcount  ,ty ,[Simp -> val]) (decr-heap-refcount  self ty val)]
       [(decr-local-refcount ,ty ,[Simp -> val]) (decr-local-refcount self ty val)]
 
-      [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[bod])
+      [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[Loop -> bod])
        (make-lines
 	(list `(" ",(Type self 'Int)" ",ind";\n")
 	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
 		     (lines-text bod))))]
 
-      [(while ,test ,[bod])
+      [(while ,test ,[Loop -> bod])
        (let ([flag (unique-name "grosshack")])
 	 (make-lines 
 	  (block `("while (1)") 
 		 (list 
-		  (lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
+		  ;(lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
+		  (let-values ([(bind* init*) ((SplitBinding self (emit-err 'OperatorBinding))
+					       (list flag 'Bool test))])
+		    (list (lines-text bind*)
+			  (lines-text init*)))
 		  "if ("(Var self flag)") {\n"
 		  (indent (lines-text bod) "  ")
 		  "} else break; \n"
@@ -702,7 +722,7 @@
 	  ))]
 
       [(emit ,vq ,x) (emitter x)]
-      [(begin ,[e*] ...) 
+      [(begin ,[Loop -> e*] ...) 
        (DEBUGASSERT (andmap lines? e*))
        (apply append-lines e*)]
 
@@ -1332,7 +1352,7 @@
 				  (slot-ref self 'default-includes))				
 				
 				;; After the types are declared we can bring in the user includes:
-				"\n\n" (map (lambda (fn) `("#include \"",fn "\"\n"))
+				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
 
 	  (define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
@@ -1362,7 +1382,7 @@
   (slot-set! self 'theprog prog)
   (slot-set! self 'link-files '())
   ;; Our default includes
-  (slot-set! self 'include-files (list (** (REGIMENTD) "/src/linked_lib/wsc2.h")))
+  (slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
   )
 
 (define (emit-c2 prog)
@@ -1453,13 +1473,13 @@
 (define __Effect
   (specialise! Effect <tinyos>
     (lambda (next self emitter)
-      (lambda (xp)
+      (trace-lambda TOSEFFECT (xp)
 	(match xp
 	  [(print ,[(TyAndSimple self) -> ty x])
 	   #;
 	   (unless (slot-ref self 'print-included)
 	     (slot-set! self 'print-included #t)
-	     (add-include! self "printf.h")
+	     (add-include! self "\"printf.h\"")
 	     (slot-cons! self 'config-acc "
   components PrintfC;
   WSQuery.PrintfControl -> PrintfC;
@@ -1491,7 +1511,14 @@ event void PrintfControl.stopDone(error_t error) {
 	   ;(make-lines `("printf(\"",(type->printf-flag self ty)"\", ",x");\n"))
 	   (make-lines `("dbg_clear(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"))
 	   ]
-	  [,oth ((next) xp)])))))
+	  [,oth 
+	   (printf " -- CALLING SUPER\n")
+	   (let ([oper (next)])
+	     (ASSERT procedure? oper)
+;	     (inspect oper)
+;	     (inspect xp)
+;	     (inspect (oper xp))
+	     (oper xp))])))))
 
 (define __Source
   (specialise! Source <tinyos>

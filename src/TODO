@@ -22,6 +22,9 @@ TOOPTIMIZE:
 ================================================================================
 
 
+[2008.02.15]
+
+  *) Modify lift-immutable-constants to eliminate duplicates.
 
 
 [2008.01.25]
@@ -292,8 +295,6 @@ supposed to return an intermediate record.
   X) Rework type system.
   X) Add and use generic traverse for Regiment as well as TML.
   x) Lift out certain Regiment utilities from individual passes into common files.
-
-
 
 
 

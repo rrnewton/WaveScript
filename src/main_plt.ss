@@ -378,6 +378,7 @@
 ;(wsc2 "demo3a_tuples.ws")
 ;(wsc2 "demo3g_arrays.ws")
 ;(wsc2 "demo3m_sigsegs.ws")
+(wstiny "demo3d_tuples_of_tuples.ws")
   
 ) ; End module
 

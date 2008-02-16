@@ -1041,7 +1041,7 @@
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
 	    ;(inspect (blaze-path-to/assq prog 'quote))
-	    ;(inspect prog)
+;					(inspect prog)
 	    (time (ws-run-pass prog emit-c2))	    
 	    ;; Now "prog" is an alist of [file text] bindings.
 	    (for-each (lambda (pr) 
@@ -1690,6 +1690,12 @@
 (define (wsc2 prog . args) 
   (apply main "wsc2"   prog args)
   (system "wsc2-gcc"))
+
+(define (wstiny prog . args) 
+  (apply main "wstiny"   prog args)
+  ;(system "wsc2-gcc")
+  )
+
 ;(define (wsc prog . args)  (apply main "wscomp" prog args))
 
 ;===============================================================================

@@ -168,7 +168,7 @@
 
 ;; This wraps lines in curly braces:
 (define (block header contents . footer)
-  `(,header " {\n"
+  `(,header ,(if (equal? header "") "" " ") "{\n"
     ,@(indent contents "  ")
     "} " ,@footer "\n"
     ))
