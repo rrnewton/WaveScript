@@ -1041,8 +1041,8 @@
 	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
 	    ;(inspect (blaze-path-to/assq prog 'quote))
-;					(inspect prog)
-	    (time (ws-run-pass prog emit-c2))	    
+	    ;(print-graph #f)(inspect prog)
+	    (time (ws-run-pass prog emit-c2))
 	    ;; Now "prog" is an alist of [file text] bindings.
 	    (for-each (lambda (pr) 
 			(string->file (text->string (cadr pr)) (car pr)))

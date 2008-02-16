@@ -493,6 +493,9 @@
 
     [(Ref ,ty) (Type self ty)]
 
+    ;; Values of this type aren't really used.
+    [(,_ ... -> ,__) "char"]
+
     ;; This is an unused value.
     [(VQueue ,_) "char"]
 
@@ -660,12 +663,10 @@
 
 (__spec Effect <emitC2> (self emitter)
   (debug-return-contract Effect lines?
-  (trace-lambda NORMALEFFECT (xp)
-    (define __ (printf "ENTRY\n"))
+  (lambda (xp)
     (define (Loop x) ((Effect self emitter) x)) ;; Eta reducing this BREAKS things.
     (define (Simp x) (Simple self x))
     (define (Vr x)   (Var self x))
-    (printf "LOOP : ~s\n" Loop)
     (match xp ;; no recursion
       ['UNIT   (make-lines "")]
       [(tuple) (make-lines "")] ;; This should be an error.
@@ -809,11 +810,20 @@
        [(struct-ref ,type ,fld ,[Simp -> x])
 	(kont `("(",x "." ,(sym2str fld)")"))]
        
+       [(__foreign ,_ ...) (kont "0")] ;; Does nothing atm.
+       [(foreign-app ',name ,ignored ,[Simp -> rand*] ...)
+	;; Here's a hack for when the return type is unit/void.  This will let us slip "call" forms through.
+	(if #t ;; RETURN TYPE IS UNIT??
+	    (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
+			  (kont (Const self 'UNIT (lambda (x) x))))
+	    (kont `(,name"(",(insert-between ", " rand*)")")))
+	]
+
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp self (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
 	(PrimApp self (cons prim rand*) kont ty)]
-       
+              
        [(assert-type ,ty ,[e]) e]
        ))))
 
@@ -1473,25 +1483,30 @@
 (define __Effect
   (specialise! Effect <tinyos>
     (lambda (next self emitter)
-      (trace-lambda TOSEFFECT (xp)
+      (lambda (xp)
 	(match xp
-	  [(print ,[(TyAndSimple self) -> ty x])
-	   #;
-	   (unless (slot-ref self 'print-included)
-	     (slot-set! self 'print-included #t)
-	     (add-include! self "\"printf.h\"")
-	     (slot-cons! self 'config-acc "
+	  [(print ,[(TyAndSimple self) -> ty x])	   
+	   (begin
+	     (unless (slot-ref self 'print-included)
+	       (slot-set! self 'print-included #t)
+	       (add-include! self "\"printf.h\"")
+	       (slot-cons! self 'config-acc "
+#ifndef TOSSIM
   components PrintfC;
   WSQuery.PrintfControl -> PrintfC;
   WSQuery.PrintfFlush   -> PrintfC;
+#endif
 ")
-	     (slot-cons! self 'module-acc "
+	       (slot-cons! self 'module-acc "
+#ifndef TOSSIM
   uses interface SplitControl as PrintfControl;
   uses interface PrintfFlush;
+#endif
 ")
-	     (slot-cons! self 'impl-acc "
+	       (slot-cons! self 'impl-acc "
+#ifndef TOSSIM
 event void PrintfControl.startDone(error_t error) {
-  call PrintfFlush.flush();
+  //call PrintfFlush.flush();
 }
 
 event void PrintfFlush.flushDone(error_t error) {
@@ -1500,24 +1515,30 @@ event void PrintfFlush.flushDone(error_t error) {
 }
 
 event void PrintfControl.stopDone(error_t error) {
-    call PrintfFlush.flush();
+  //call PrintfFlush.flush();
 }
-
+#endif
 ")
-	     (slot-cons! self 'boot-acc "
+	       (slot-cons! self 'boot-acc "
+#ifndef TOSSIM
   call PrintfControl.start();
+#endif
 ")
-	     )
-	   ;(make-lines `("printf(\"",(type->printf-flag self ty)"\", ",x");\n"))
-	   (make-lines `("dbg_clear(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"))
+	       )
+	     (make-lines `("#ifdef TOSSIM\n"
+			   "  dbg_clear(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"
+			   "#else\n"
+			   "  printf(\"",(type->printf-flag self ty)"\", ",x");\n"
+			   "#endif\n"
+			   ;"call PrintfFlush.flush();\n" ;; For now we flush when we get to the end of an event-chain (BASE)
+			   ;"call Leds.led0Toggle();\n"
+			   )))
+	   ;(make-lines "call Leds.led0Toggle();\n")
+	   ;(make-lines `())
 	   ]
 	  [,oth 
-	   (printf " -- CALLING SUPER\n")
 	   (let ([oper (next)])
 	     (ASSERT procedure? oper)
-;	     (inspect oper)
-;	     (inspect xp)
-;	     (inspect (oper xp))
 	     (oper xp))])))))
 
 (define __Source
@@ -1625,10 +1646,16 @@ implementation {
 
   event void Boot.booted() {
     initState(); /* SHOULD POST A TASK */
+    call Leds.led1Toggle();
+
 "(indent (slot-ref self 'boot-acc) "    ")"
   }
 
-  void BASE(char x) {}
+  void BASE(char x) {
+    #ifndef TOSSIM
+      call PrintfFlush.flush();
+    #endif
+  }
 
 "	 
 	 (insert-between "\n"

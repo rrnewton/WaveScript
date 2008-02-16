@@ -42,6 +42,9 @@
 	(define entry (ASSERT (assoc (list name) union-types)))
 	(ormap recur (map cadr (cdr entry)))]
 
+       ;; This is a function point, no closures at this point:
+       [(,_ ... -> ,__) #f]
+
        [(Array ,_) #t]
        [(List ,_)  #t]
        [(Ref ,_)   #t] ;; ?? 

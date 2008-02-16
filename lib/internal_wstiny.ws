@@ -24,5 +24,25 @@ fun sensor_stream(which, rate) {
   else 0
 }
 
+fun leds_toggle() {
+}
+
+led0Toggle = (foreign("call Leds.led0Toggle", []) :: () -> ());
+led1Toggle = (foreign("call Leds.led1Toggle", []) :: () -> ());
+led2Toggle = (foreign("call Leds.led2Toggle", []) :: () -> ());
+
+// Shoud use a union type for this "enum":
+/* led_toggle = { */
+/*   fun (type) { */
+/*     if type == "RED"   then led0Toggle() else */
+/*     if type == "GREEN" then led1Toggle() else */
+/*     if type == "BLUE"  then led2Toggle() else */
+/*     wserror("Invalid LED specifier to led_toggle: "++type); */
+/*   } */
+/* } */
+
+
+
+
 // Alias the default timer primitive:
 //timer = tos_timer;

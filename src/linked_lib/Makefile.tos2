@@ -2,5 +2,19 @@
 CFLAGS += -I$(TOSDIR)/lib/printf
 #CFLAGS += -DPRINTF_BUFFER_SIZE=XXX
 
+
+BUILD_EXTRA_DEPS += PrintfMsg.class PrintfClient.class
+
+%.class: %.java
+	javac $<
+
+PrintfClient.java:
+	cp $(REGIMENTD)/src/linked_lib/PrintfClient.java .
+
+PrintfMsg.java: $(TOSDIR)/lib/printf/printf.h
+	mig java -target=$(PLATFORM) $(CFLAGS) \
+		-java-classname=PrintfMsg \
+		$(TOSDIR)/lib/printf/printf.h printf_msg -o $@
+
 COMPONENT=WSQueryApp
 include $(MAKERULES)

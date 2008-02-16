@@ -9,7 +9,7 @@
 
 // Audio channel 1 with no overlap.
 //s1 = (readFile("./countup.raw", "mode: binary  window: 40", timer(1000.0 / 40.0)) :: Stream (Sigseg Int16));
-s1 = timer(10);
+s1 = timer(1);
 
 // Identity iterate.
 s2 = iterate( w in s1 ) {
@@ -18,6 +18,9 @@ s2 = iterate( w in s1 ) {
   //state{ counter :: Int = 0 }
   state{ counter = 99 } // [2007.10.02] It will default to int....
   counter += 1;
+
+  if counter == 100
+  then print("\nSTARTING:\n");
   emit counter;
 };
 
