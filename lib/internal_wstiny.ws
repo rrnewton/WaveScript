@@ -1,10 +1,11 @@
 
 
-timer_count = Mutable:ref(0);
+
+source_count = Mutable:ref(0);
 
 fun tos_timer(rate) {
-  n = timer_count;
-  timer_count += 1;
+  n = source_count;
+  source_count += 1;
   funname = "timer_ws_entry"++n;
   s1 = (foreign_source(funname, []) :: Stream ());
   top = "";  
@@ -18,14 +19,6 @@ fun tos_timer(rate) {
   merge(s1,s2);
 }
 
-fun sensor_stream(which, rate) {
-  if which == "LIGHT"
-  then 0
-  else 0
-}
-
-fun leds_toggle() {
-}
 
 led0Toggle = (foreign("call Leds.led0Toggle", []) :: () -> ());
 led1Toggle = (foreign("call Leds.led1Toggle", []) :: () -> ());
@@ -40,6 +33,45 @@ led2Toggle = (foreign("call Leds.led2Toggle", []) :: () -> ());
 /*     wserror("Invalid LED specifier to led_toggle: "++type); */
 /*   } */
 /* } */
+
+fun sensor_stream(which, rate) {
+    //new VoltageC() as Sensor, 
+  if which == "LIGHT"
+  then 0
+  else 0
+
+}
+
+// Sets up a timer which drives a sensor.  Returns a stream of results.
+fun sensor_uint16(name, rate) {
+  n = source_count;
+  source_count += 1;
+  funname = "sensor_ws_entry"++n;
+  s1 = (foreign_source(funname, []) :: Stream Int16);
+  mod = "SensorStrm"++n;
+  conf2 = "components new "++name++"() as "++mod++";\n"++
+          "WSQuery."++mod++" -> "++mod++";\n" ++
+	  "components new TimerMilliC() as Timer"++n++";\n"++
+          "WSQuery.Timer"++n++" -> Timer"++n++";\n";
+  mod1  = "uses interface Read<uint16_t> as "++mod++";\n" ++
+          "uses interface Timer<TMilli> as Timer"++n++";\n";
+  boot  = "call Timer"++n++".startPeriodic( "++(1000.0 / rate)++" );\n";
+  mod2  = "
+event void Timer"++n++".fired() { call "++mod++".read(); }
+event void "++mod++".readDone(error_t result, uint16_t data) { 
+    if (result != SUCCESS)
+      {
+	data = 0xffff;
+	//wserror(\"ReadDone failure\");
+      }
+   "++funname++"(data);
+  }
+";
+  s2 = inline_TOS("", "", conf2, mod1, mod2, boot);
+  merge(s1,s2);
+}
+
+
 
 
 

@@ -25,7 +25,9 @@ TOOPTIMIZE:
 [2008.02.15]
 
   *) Modify lift-immutable-constants to eliminate duplicates.
-
+  *) Statically allocate arrays as well as strings.
+  *) Allow emit-static-array as idiom for communication.
+  *) Support sensors, radio
 
 [2008.01.25]
   *) Should do some renaming:

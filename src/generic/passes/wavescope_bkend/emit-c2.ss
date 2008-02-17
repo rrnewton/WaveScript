@@ -604,8 +604,7 @@
       ;; Further, we only allow constants right now, this needs to be
       ;; changed to handle allocating primitives like Array:make...
       [(,vr ,ty (static-allocate ,rhs))
-       (match rhs
-	 [',c (StaticAllocate self vr ty rhs)])]
+       (StaticAllocate self vr ty rhs)]
       [(,vr ,ty ,rhs)
        ;; We derive a setter continuation by "splitting" the varbind continuation:
        ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
@@ -635,7 +634,26 @@
 	     [str (list->string ls2)])
 	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
 	        (make-lines (format "char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-		(make-lines "")))]))
+		(make-lines "")))]
+
+    ;; This is TINYOS specific currently:
+    ;; gen-incr-code
+    [(assert-type (Array ,elt) (Array:make ,e ,x))
+     (match (peel-annotations e)
+       [',[number->string -> n]
+	(define tmp (Var self (unique-name "tmptoparr")))
+	(define _elt (Type self elt))
+	(define _lhs (Var self lhs))
+	(values ;(make-lines `(,(Type self elt)" ",(Var self lhs)"[",n"];\n"))
+	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + sizeof(uint16_t)];\n"
+				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"			      
+			      ))
+		(make-lines (list 
+			     ;"((uint16_t*)"tmp")[0] = "n";\n"
+			     "SETARRLEN("_lhs", "n");\n"
+			     "// ACCK WHAT ABOUT FILLING IT IN\n")))
+	])]
+))
 
 
 #;
@@ -680,9 +698,10 @@
 
       [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[Loop -> bod])
        (make-lines
-	(list `(" ",(Type self 'Int)" ",ind";\n")
-	      (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
-		     (lines-text bod))))]
+	(block ""
+	       (list `(" ",(Type self 'Int)" ",ind";\n")
+		     (block `("for (",ind" = ",st"; ",ind" <= ",en"; ",ind"++)")
+			    (lines-text bod)))))]
 
       [(while ,test ,[Loop -> bod])
        (let ([flag (unique-name "grosshack")])
@@ -1425,7 +1444,7 @@
 
 (__spec initialise <tinyos> (self prog)
 	;; Don't include wsc2.h!!
-	(slot-set! self 'include-files '())
+	(slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wstiny.h\"")))       
 	(slot-set! self 'top-acc '())
 	(slot-set! self 'config-acc '())
 	(slot-set! self 'module-acc '())

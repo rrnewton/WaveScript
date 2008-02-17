@@ -283,10 +283,11 @@
     ;; A binding that gets evaluated exactly once.
     (define (StaticBind lhs ty rhs)
       `(,lhs ,ty
-	     ,(match rhs
+	     ,(match (peel-annotations rhs) ;; no recursion!
 		;; What kinds of things can we switch to static allocation?
 		;; Currently just quoted constants:
-		[',c `(static-allocate ',c)] ;(TopIncr `(static-allocate ',c) ty)
+		[',c `(static-allocate ,rhs)] ;(TopIncr `(static-allocate ',c) ty)
+		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) `(static-allocate ,rhs)]
 		[,oth (Value+ (TopIncr oth ty))])))
 
     ;; For "global" variables:
