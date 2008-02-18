@@ -36,6 +36,7 @@
 	   propagate-copies
 	   
 	   embed-strings-as-arrays
+	   partition-graph-by-namespace
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
@@ -902,6 +903,96 @@
 		 (match prog 
 		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
 		   `(,lang '(program (let ,acc ,bod) ,@meta*))])))])
+
+;; A hack to do program partitioning based on the names of top-level streams.
+(define-pass partition-graph-by-namespace
+    (define (node-name? nm)
+      (define str (symbol->string nm))
+      (define len (string-length "Node:"))
+      (and (> (string-length str) len)
+	   (or ;(equal? "Node:" (substring str 0 len))
+	       (equal? "Node_" (substring str 0 len)))))
+    ;; TODO: Need to do this recursively (scan for downstream node-side ops)
+    (define (Source node-ops)
+      (define all-incoming (apply append (map (lambda (op) (cdr (assq 'incoming (cdr op)))) node-ops)))
+      (printf "ALL NODE INCOMING: ~s\n" all-incoming)
+      (lambda (xp)	
+	(match xp
+	  [((name ,nm) (output-type ,ty) (code ,code) (outgoing ,down* ...))
+	   (if (or (node-name? nm) (memq nm all-incoming))
+	       (values (list xp) '())
+	       (values '() (list xp)))])))
+    (define (cutpoint-node ty src dest) 
+	`(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty)))
+    (define (cutpoint-server ty src dest) 
+	`(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty)))
+    (define (Operator op)
+       (let ([name (cadr (assq 'name (cdr op)))]
+	     [type (cadr (assq 'output-type (cdr op)))]
+	     [incoming (cdr (assq 'incoming (cdr op)))]
+	     [outgoing (cdr (assq 'outgoing (cdr op)))])
+	 (define me? (node-name? name))
+	 ;(define up?* (map node-name? incoming))
+	 ;(define all-up? (andmap id up?*))
+	 ;(define some-up? (ormap id up?*))
+	 (define down?* (map node-name? outgoing))
+	 (define all-down? (andmap id down?*))
+	 (define some-down? (ormap id down?*))
+	 #;
+	 (when (and (not all-up?) some-up?)
+	   (error 'partition-graph-by-namespace 
+		  "operator cannot currently have some input streams node-side and some server: ~a ~s" 
+		  name incoming))
+	 (cond
+	  ;[(and all-up? me?)              (values (list op) '())] ;; Purely node.
+
+	  ;; A cut point, node-side:
+	  [(and me? (not all-down?))
+	   (let ([serv-downstrm (filter id (map (lambda (x y) (and (not x) y)) down?* outgoing))])
+	     (printf "GENERATING CUT POINTS: ~s ~s ~s ~s\n" name serv-downstrm down?* outgoing)
+	     (values (cons op (map (lambda (down) (cutpoint-node type  name down))
+				serv-downstrm))
+		     (map (lambda (down) (cutpoint-server type name down))
+		       serv-downstrm)))]
+
+	  [(or me? (ormap id down?*))      (values (list op) '())] ;; Node.
+	  ;[(and (not all-up?) some-up?)   (values '() (list op))] ;; Server, e.g. merge.
+	  [else                           (values '() (list op))]) ;; Server.
+	))
+    [Program 
+     (lambda (prog Expr)
+       (match prog
+	 [(,input-language 
+	   '(graph (const ,cnst* ...)
+		   (init  ,init* ...)
+		   (sources ,src* ...)
+		   (operators ,[Operator -> node-oper** server-oper**] ...)
+		   (sink ,base ,basetype)	,meta* ...))
+	  (define nodeops (apply append node-oper**))
+	  (let-match ([(,[(Source nodeops) -> node-src** server-src**] ...) src*])
+	  
+	    ;(inspect (vector 'nodesrc node-src**))
+	    ;(inspect (vector 'servsrc server-src**))
+	    ;(inspect (vector 'nodeop node-oper**))
+	    ;(inspect (vector 'servop server-oper**))
+	    (printf "DONE\n")
+	    ;; TODO: Should filter the constants appropriately:
+	    (vector
+	     `(,input-language 
+	       '(graph (const ,cnst* ...) (init ,@init*)
+		       (sources ,@(apply append node-src**))
+		       (operators ,@nodeops)
+		       (sink #f #f)
+		       ,@meta*))
+	     `(,input-language 
+	       '(graph (const ,cnst* ...) (init ,@init*)
+		       (sources ,@(apply append server-src**))
+		       (operators ,@(apply append server-oper**))
+		       (sink ,base ,basetype)
+		       ,@meta*)))
+	    )]))]
+
+    )
 
  
 

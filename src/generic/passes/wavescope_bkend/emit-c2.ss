@@ -87,6 +87,7 @@
   (define-generic Source)
   (define-generic GenWorkFunction)
   (define-generic Operator)
+  (define-generic Cutpoint)
   (define-generic Emit)
   (define-generic type->printf-flag)
   (define-generic Binding)
@@ -95,7 +96,7 @@
   (define-generic PrimApp)
 ;  (define-generic Program)
   (define-generic Run)
-  (define-generic BuildSourceDriver)
+  (define-generic BuildTimerSourceDriver)
   (define-generic BuildOutputFiles)
   (define-generic varbindk)
 
@@ -541,7 +542,7 @@
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
     ;; PolyConstants:
-    [(assert-type ,ty Array:null) `("((",(Type self ty)")0)")] ;; A null pointer. This choice is debatable.
+    [(assert-type ,ty Array:null) `("((",(Type self ty)")0) /* Array:null */")] ;; A null pointer. This choice is debatable.
     [(assert-type ,ty '())        `("((",(Type self ty)")0)")] ;; A null pointer.       
     ['() (error 'EmitC2:Simple "null list without type annotation")]
 
@@ -1149,7 +1150,7 @@
 
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
-(__spec BuildSourceDriver <emitC2> (self srcname* srccode* srcrates*)
+(__spec BuildTimerSourceDriver <emitC2> (self srcname* srccode* srcrates*)
   ;; If the rate is #f we don't build in that entry:
   (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
 	       (filter id
@@ -1208,6 +1209,13 @@
 		 (lines-text code)))
 	 "\n")))
 
+;; A cut point on the server, currently only coming FROM the network.
+;; Returns decls, top lvl binds, init code
+(__spec Cutpoint <emitC2> (self type in out)
+   ;; Need to use a serialforwardera
+   (values (make-lines (format " /* CUTPOINT server ~a ~a */ \n" in out)) '() '())
+   )
+
 ;; .returns top-level decls (lines)
 (__spec Operator <emitC2> (self op)
   (define (Simp x) (Simple self x))
@@ -1225,6 +1233,8 @@
 	 (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))
 	 bind* init*)])]
 
+    [(cutpoint (incoming ,in) (outgoing ,out) (output-type ,type))
+     (Cutpoint self type in out)]
 
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
@@ -1393,7 +1403,7 @@
                                   (lines-text (apply append-lines init*))
 				  (lines-text (apply append-lines cbinit*))
 				  (lines-text (apply append-lines (apply append opinit**))))))))
-	  (define driver   (text->string (lines-text (BuildSourceDriver self srcname* srccode* srcrate*))))
+	  (define driver   (text->string (lines-text (BuildTimerSourceDriver self srcname* srccode* srcrate*))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  
 	  ;; This is called last:
@@ -1440,6 +1450,7 @@
   (top-acc config-acc module-acc boot-acc impl-acc proto-acc 
    ;;This is a flag to tell us if printf has already been included.:
    print-included
+   amsender-count
    ))
 
 (__spec initialise <tinyos> (self prog)
@@ -1453,6 +1464,7 @@
 	(slot-set! self 'proto-acc '())
 
 	(slot-set! self 'print-included #f)
+	(slot-set! self 'amsender-count 0)
 	)
 
 (define __Type 
@@ -1482,7 +1494,6 @@
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (define _name (Var self name))
-  (printf "GENNING CODE FOR: ~s\n" name)
   (make-lines 
    (list 
     ;; First the task:
@@ -1498,6 +1509,81 @@
 	     "post ",_name"_task();\n"
 	     ))
 	 "\n")))
+
+
+;; FIXME: This does not work for arrays yet:
+(__spec Cutpoint <tinyos> (self ty in out)
+   (define name (format "BASESender~a" (slot-ref self 'amsender-count)))
+   ;(define ampkt (format "AMPacket~a" (slot-ref self 'amsender-count)))
+   (define AM_NUM (number->string (+ 10 (slot-ref self 'amsender-count))))
+   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))
+   (define fun (list "
+  // CutPoint to server side:
+  void "(Var self out)"("_ty" x) {
+    "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
+    payload[0] = x;
+    dbg_clear(\"WSQuery\", \"Sending on serial interface\\n\");
+    if (call "name".send(AM_BROADCAST_ADDR, &serial_pkt, sizeof("_ty")) == SUCCESS) {
+      serial_busy = TRUE;
+    }
+  }
+"))
+   (printf "  CUTTING AT TYPE: ~s\n" ty)
+   (when (zero? (slot-ref self 'amsender-count))
+     ;(slot-cons! self 'top-acc "")
+     (slot-cons! self 'config-acc "
+#ifdef WSRADIOMODE
+  #define AMCOMPONENT ActiveMessageC
+#else 
+  #define AMCOMPONENT SerialActiveMessageC
+#endif
+  components AMCOMPONENT;
+  WSQuery.AMControl -> AMCOMPONENT;
+  WSQuery.Packet    -> AMCOMPONENT;
+  WSQuery.AMPacket  -> AMCOMPONENT;
+")
+     (slot-cons! self 'boot-acc (list "
+  call AMControl.start();
+"))
+     (slot-cons! self 'module-acc (list "
+  uses interface Packet;
+  uses interface AMPacket;
+")))1
+
+   (slot-cons! self 'config-acc (list "
+  components new SerialAMSenderC("AM_NUM") as "name";
+  WSQuery."name" -> "name";
+  WSQuery.AMPacket -> "name";
+"))
+   (slot-cons! self 'module-acc (list "
+  uses interface AMSend as "name";
+  //uses interface Packet;
+  uses interface SplitControl as AMControl;
+"))
+   (slot-cons! self 'proto-acc (list "
+  bool serial_busy = FALSE;
+  message_t serial_pkt;
+"))
+   (slot-cons! self 'impl-acc (list "
+  event void "name".sendDone(message_t* msg, error_t error) {
+      dbg_clear(\"WSQuery\", \" Finished sending on serial interface\\n\");
+    if (&serial_pkt == msg) {
+      serial_busy = FALSE;
+    }
+  }
+  event void AMControl.startDone(error_t error) {}
+  event void AMControl.stopDone(error_t error) {}
+"))   
+   ;; Need to use a serialforwarder:
+   ;(values (make-lines (format " /* CUTPOINT server ~a ~a */ \n" in out)) '() '())
+   (slot-set! self 'amsender-count (add1 (slot-ref self 'amsender-count)))
+   (values (make-lines fun)
+	   '() ;; Binds
+	   '() ;; Init code
+	   )
+   )
+
+
 
 (define __Effect
   (specialise! Effect <tinyos>
@@ -1606,7 +1692,12 @@ event void PrintfControl.stopDone(error_t error) {
 	       ])])]))))
 
 
-(__spec BuildSourceDriver <tinyos> (self srcname* srccode* srcrates*)
+(__spec BuildTimerSourceDriver <tinyos> (self srcname* srccode* srcrates*)
+  (unless (null? (filter id srcrates*))
+    (error 'emitC2:BuildTimerSourceDriver 
+	   "Should not be encountering built-in timer sources for tinyos backend currently: ~a" srcname*))
+  (make-lines "")
+#|
   (define millis (map (lambda (period) (inexact->exact (round (/ 1000. period)))) (filter id srcrates*)))
   (printf "   TIMER RATES: ~s\n" millis)
   (for-each
@@ -1629,7 +1720,9 @@ event void PrintfControl.stopDone(error_t error) {
    (iota (length millis)) millis (filter id srccode*))
   
   ;; Need to do something with srccode*
-  (make-lines ""))
+  (make-lines "")
+|#
+)
 
 
 (__spec BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)

@@ -1012,44 +1012,48 @@
 	    (ws-run-pass prog nominalize-types)
 	    (ws-run-pass prog gather-heap-types)
 
-	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")
-	    
+	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")	    
 	    (ws-run-pass prog explicit-stream-wiring)
 	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
-
-	    ;(ws-run-pass heuristic-parallel-schedule)
-
-	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))
-;	    (print-graph #f)(inspect prog)
-	    (ws-run-pass prog insert-refcounts)
-
-;	    (pp (blaze-path-to prog (curry eq? 'Array:null)))
-;	    (inspect prog)
-
 	    
-	    ;; It's painful, but we need to typecheck again.
-	    ;; HACK: Let's only retypecheck if there were any unknown result types:
-	    (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
-	      (unless (zero? len)
-		(printf "*** GOT AN UNKNOWN RESULT TYPE ***\n")
-		(parameterize ([inferencer-enable-LUB #t]
-			       [inferencer-let-bound-poly #f])
-		  (time (ws-run-pass prog retypecheck)))))
+	    ;; Encapsulate the last-few-steps to use on different graph partitions.
+	    (let ([last-few-steps
+		   (lambda (prog)
+		     ;;(ws-run-pass heuristic-parallel-schedule)
 
-	    (dump-compiler-intermediate prog ".__after_refcounts.ss")
+		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))
+		     (ws-run-pass prog insert-refcounts)
+		     ;; It's painful, but we need to typecheck again.
+		     ;; HACK: Let's only retypecheck if there were any unknown result types:
+		     (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
+		       (unless (zero? len)
+			 (printf "*** GOT AN UNKNOWN RESULT TYPE ***\n")
+			 (parameterize ([inferencer-enable-LUB #t]
+					[inferencer-let-bound-poly #f])
+			   (time (ws-run-pass prog retypecheck)))))
+		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
+		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
-	    (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
+		     (time (ws-run-pass prog emit-c2))
+		     ;; Now "prog" is an alist of [file text] bindings.
+		     (for-each (lambda (pr) 
+				 (string->file (text->string (cadr pr)) (car pr)))
+		       prog)
+		     (unless (regiment-quiet)
+		       (printf "\nGenerated output to files ~s.\n" (map car prog)))
+		     )])
 
-	    ;(inspect (blaze-path-to/assq prog 'quote))
-	    ;(print-graph #f)(inspect prog)
-	    (time (ws-run-pass prog emit-c2))
-	    ;; Now "prog" is an alist of [file text] bindings.
-	    (for-each (lambda (pr) 
-			(string->file (text->string (cadr pr)) (car pr)))
-	      prog)
-	    
-	    (unless (regiment-quiet)
-	      (printf "\nGenerated output to files ~s.\n" (map car prog)))
+	    ;; Currently we partition the program VERY late into node and server components:
+	      (if (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
+		       (memq 'split (ws-optimizations-enabled)))
+		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
+		  (printf "============================================================\n")
+		  (last-few-steps node-part)
+		  (printf "============================================================\n")
+		  (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
+		    (last-few-steps server-part)
+		    (printf "============================================================\n")))
+		(last-few-steps prog)))
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)
@@ -1583,6 +1587,12 @@
 	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
 	   (unless (regiment-quiet) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
+	   (loop rest)]
+
+	  ;; This tells wstiny to split the program into node and server components:
+	  [(-split ,rest ...)
+	   ;; Using the optimization list as a place to keep track of this:
+	   (ws-optimizations-enabled (cons 'split (ws-optimizations-enabled)))
 	   (loop rest)]
 
 	  ;; This signals that we include whatever debugging info we can in the output code.

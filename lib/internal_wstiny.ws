@@ -48,17 +48,18 @@ fun sensor_uint16(name, rate) {
   source_count += 1;
   funname = "sensor_ws_entry"++n;
   s1 = (foreign_source(funname, []) :: Stream Int16);
-  mod = "SensorStrm"++n;
-  conf2 = "components new "++name++"() as "++mod++";\n"++
-          "WSQuery."++mod++" -> "++mod++";\n" ++
-	  "components new TimerMilliC() as Timer"++n++";\n"++
-          "WSQuery.Timer"++n++" -> Timer"++n++";\n";
-  mod1  = "uses interface Read<uint16_t> as "++mod++";\n" ++
-          "uses interface Timer<TMilli> as Timer"++n++";\n";
-  boot  = "call Timer"++n++".startPeriodic( "++(1000.0 / rate)++" );\n";
+  smod = "SensorStrm"++n;
+  tmod = "SensorTimer"++n;
+  conf2 = "components new "++name++"() as "++smod++";\n"++
+          "WSQuery."++smod++" -> "++smod++";\n" ++
+	  "components new TimerMilliC() as "++tmod++";\n"++
+          "WSQuery."++tmod++" -> "++tmod++";\n";
+  mod1  = "uses interface Read<uint16_t> as "++smod++";\n" ++
+          "uses interface Timer<TMilli> as "++tmod++";\n";
+  boot  = "call "++tmod++".startPeriodic( "++(1000.0 / rate)++" );\n";
   mod2  = "
-event void Timer"++n++".fired() { call "++mod++".read(); }
-event void "++mod++".readDone(error_t result, uint16_t data) { 
+event void "++tmod++".fired() { call "++smod++".read(); }
+event void "++smod++".readDone(error_t result, uint16_t data) { 
     if (result != SUCCESS)
       {
 	data = 0xffff;
@@ -72,9 +73,6 @@ event void "++mod++".readDone(error_t result, uint16_t data) {
 }
 
 
-
-
-
-
 // Alias the default timer primitive:
 //timer = tos_timer;
+Node:timer = tos_timer;

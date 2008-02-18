@@ -94,7 +94,9 @@
    ;; THIS IS A HACK ON A HACK:
    [(app ,timer ,[args] ...) 
     (guard (eq? (peel-annotations timer) 'timer)
-	   (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc))
+	   (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
+	   ;; Only when we're NOT splitting into server/node do we do this:
+	   (not (memq 'split (ws-optimizations-enabled))))
     `(app tos_timer ,@args)]
 
    [(app ,timer ,[args] ...) (guard (eq? (peel-annotations timer) 'timer))

@@ -303,10 +303,10 @@
 	 `(iterate (name ,name) (output-type ,o_ty)
 		   (code ,itercode)
 		   (incoming ,o_up) (outgoing ,o_down* ...))]
-	;; This has no code to speak of:
+	;; All of these have no code to speak of:
 	[(_merge . ,_) op]
-	;; Nor does this:
 	[(__readFile . ,_) op]
+	[(cutpoint . ,_) op]
 	[(unionN . ,_) op]))
 
     ;; Main pass body:
