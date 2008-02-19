@@ -1595,6 +1595,9 @@
 	     (unless (slot-ref self 'print-included)
 	       (slot-set! self 'print-included #t)
 	       (add-include! self "\"printf.h\"")
+	       (slot-cons! self 'top-acc "
+#define PRINTFLOADED
+")
 	       (slot-cons! self 'config-acc "
 #ifndef TOSSIM
   components PrintfC;
@@ -1765,7 +1768,9 @@ implementation {
 
   void BASE(char x) {
     #ifndef TOSSIM
+    #ifdef PRINTFLOADED
       call PrintfFlush.flush();
+    #endif
     #endif
   }
 

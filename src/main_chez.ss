@@ -50,11 +50,10 @@
 	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
 	   (source-directories (#%list 
-				;"."
 ;				(string-append (default-regimentd) "/src/chez")
 ;				(string-append (default-regimentd) "/src/generic")
 				(string-append (default-regimentd) "/src")
-				;"."
+				;"."  ;; Alas this causes some problems currently...
 				))
 	   
 	   ;(optimize-level 0) ;0/1/2/3)
@@ -650,5 +649,6 @@
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
 (eval-when (compile load eval) 
   (current-directory (top-level-value 'pre-load-directory)))
-
+;; [2008.02.18] On the way out lets set this to something sane:
+(source-directories '("."))
 
