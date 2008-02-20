@@ -35,3 +35,7 @@ COMPONENT=WSQueryApp
 include $(MAKERULES)
 
 
+# mig c -target=telosb -java-classname=TestSerialMsg WSQuery.nc cut_type -o WSQueryMsg.h
+#  gcc serialsource.c seriallisten.c 
+#  gcc libmote.a message.c serialsource.c seriallisten.c WSQueryMsg.c -I/opt/tinyos-2.x/support/sdk/c
+

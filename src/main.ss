@@ -1036,11 +1036,14 @@
 
 		     (time (ws-run-pass prog emit-c2))
 		     ;; Now "prog" is an alist of [file text] bindings.
-		     (for-each (lambda (pr) 
-				 (string->file (text->string (cadr pr)) (car pr)))
-		       prog)
-		     (unless (regiment-quiet)
-		       (printf "\nGenerated output to files ~s.\n" (map car prog)))
+		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
+		       (for-each (lambda (file contents)
+				   (string->file (text->string contents) file))
+			 file* contents*)
+		       (unless (regiment-quiet)
+			 (printf "\nGenerated output to files ~s.\n" file*))
+		       ;; And then execute the post-write thunk in the same directory:
+		       (thunk))
 		     )])
 
 	    ;; Currently we partition the program VERY late into node and server components:

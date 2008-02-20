@@ -9,4 +9,7 @@ scheme:
 	./testall_demos.ss
 
 clean:
-	rm -f query.* .*.o ._* __* *.o
+	rm -f query.* .*.o ._* __* *.o WSQuery*
+	make -f Makefile.tos2 clean
+	rm Makefile.tos2
+

@@ -26,6 +26,7 @@
 	       (define-generic i-make-class )
 	       (make-class i-make-class )
 	       (__spec specialise!)
+	       (__specreplace specialise!)
 	       )
   (chezimports)
   (IFCHEZ (begin) (provide define-class define-object  define-generic  make-class __spec))
@@ -59,6 +60,20 @@
        (define _ignored
 	 (specialise! method class 
 		      (lambda (call-next . args) (call-next) (let () bod ...))))]))
+
+  ;; This one DOES NOT call the super method.
+  (define-syntax __specreplace
+    (syntax-rules ()
+      #;
+      [(_ method class args)
+       (define _ignored
+	 (specialise! method class 
+		      (lambda (call-next . args)  (void))))]
+      [(_ method class args bod ...) 
+       (define _ignored
+	 (specialise! method class 
+		      (lambda (call-next . args)  (let () bod ...))))]))
+
 
 
   (define-class <point> (<class>) (x y))

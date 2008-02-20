@@ -29,7 +29,7 @@ export REGFLAG=wstiny
 #         esac
 # done
 
-rm -f query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
+rm -f query.c query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
 if wsc $* -no-gcc;
 then echo ERROR, wstiny failed with code $?.; exit 1;
 else echo
@@ -46,6 +46,13 @@ fi
 
 if [ -f "WSQuery.nc" ];
 then chmod +x query.py;
-     exec make -f Makefile.tos2 micaz sim;
+     echo "BUILDING TINYOS COMPONENTS:" 
+     make -f Makefile.tos2 micaz sim;
 else echo WSQuery.nc found...
 fi
+
+if [ -f "query.c" ]; 
+then echo "BUILDING PC-SIDE COMPONENTS:" 
+     wsc2-gcc;
+fi
+

@@ -49,6 +49,7 @@
      ;;   types to a scheme function that generates free-code (when given
      ;;   text representing the pointer to free).
      include-files link-files ;; <- accumulate a list of files to include/link
+     server-cutpoints ;; <- names of cutpoints
      ))
 
   ;; We define a single top-level instance of our pass-class:
@@ -620,41 +621,9 @@
 
 
 
-;; For those allocation-forms that we can do statically:
-;; Like SplitBinding returns two values: decl & init code.
+;; For the x86 version we currently don't statically allocate anything.
 (__spec StaticAllocate <emitC2> (self lhs ty rhs)
-  (match rhs
-    [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
-      (ASSERT (vector-andmap char? vec))
-      ;; Strip out any null characters??
-      (let* ([ls (vector->list vec)]
-	     [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
-	      (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
-		  (rdc ls) 
-		  ls)]
-	     [str (list->string ls2)])
-	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-	        (make-lines (format "char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-		(make-lines "")))]
-
-    ;; This is TINYOS specific currently:
-    ;; gen-incr-code
-    [(assert-type (Array ,elt) (Array:make ,e ,x))
-     (match (peel-annotations e)
-       [',[number->string -> n]
-	(define tmp (Var self (unique-name "tmptoparr")))
-	(define _elt (Type self elt))
-	(define _lhs (Var self lhs))
-	(values ;(make-lines `(,(Type self elt)" ",(Var self lhs)"[",n"];\n"))
-	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + sizeof(uint16_t)];\n"
-				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"			      
-			      ))
-		(make-lines (list 
-			     ;"((uint16_t*)"tmp")[0] = "n";\n"
-			     "SETARRLEN("_lhs", "n");\n"
-			     "// ACCK WHAT ABOUT FILLING IT IN\n")))
-	])]
-))
+  ((SplitBinding self (emit-err 'splitbind)) (list lhs ty rhs)))
 
 
 #;
@@ -770,12 +739,7 @@
        ;; constants here, technically these are complex-constants.  We
        ;; could treat them the same way as other constant arrays, but
        ;; we get much less bloated, much more readable code if we do
-       ;; the following:
-       [',vec (guard (vector? vec) (vector-andmap char? vec))
-	      (error 'emitC2:Value "should have lifted all the strings: ~s" 
-		     (list->string (vector->list vec)))]
-       ;; [2008.02.14] Disabling this because now string constants should ALL be statically allocated.
-       #;
+       ;; the following:       
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
         (ASSERT (vector-andmap char? vec))
 	;; Strip out any null characters??
@@ -1151,38 +1115,79 @@
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
 (__spec BuildTimerSourceDriver <emitC2> (self srcname* srccode* srcrates*)
-  ;; If the rate is #f we don't build in that entry:
-  (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
-	       (filter id
-		 (map (lambda (nm code rate)
-		      (if rate (list nm code rate) #f))
-		 srcname* srccode* srcrates*))])   
-    (printf "   TIMER RATES: ~s\n" srcrates*)
-    (let  ([counter_marks
-	    (cond
-	     [(= 1 (length srcrates*)) '(1)]
-	     [(andmap integer? srcrates*)
-	      (let ([common-rate (apply lcm srcrates*)])	    
-		(map (lambda (rate)
-		       (inexact->exact (quotient common-rate rate)))
-		  srcrates*))]
-	     [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
-      (make-lines        
-       (block "int main()" 
-	      (list 
-	       (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
-	       "initState();\n"
-	       (block "while(1)"		 
-		      (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
-			    (map (lambda (name code mark)
-				   (block (format "if (counter_~a == ~a)" name mark)
-					  (list (lines-text code)
-						(format "counter_~a = 0;\n" name))))
-			      srcname* srccode* counter_marks)
-			    )
+   ;; There are two options here.
+   ;;  (1) We run a system of virtual timers.
+   ;;  (2) We are driven by a serial port connected to a mote.
+   (if (= (length (slot-ref self 'server-cutpoints)) 0)
+      ;; Option (1):
+      ;; If the rate is #f we don't build in that entry:
+      (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
+		   (filter id
+		     (map (lambda (nm code rate)
+			    (if rate (list nm code rate) #f))
+		       srcname* srccode* srcrates*))])   
+	(printf "   TIMER RATES: ~s\n" srcrates*)
+	(let  ([counter_marks
+		(cond
+		 [(= 1 (length srcrates*)) '(1)]
+		 [(andmap integer? srcrates*)
+		  (let ([common-rate (apply lcm srcrates*)])	    
+		    (map (lambda (rate)
+			   (inexact->exact (quotient common-rate rate)))
+		      srcrates*))]
+		 [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
+	  (make-lines        
+	   (block "int main()" 
+		  (list 
+		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
+		   "initState();\n"
+		   (block "while(1)"		 
+			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
+				(map (lambda (name code mark)
+				       (block (format "if (counter_~a == ~a)" name mark)
+					      (list (lines-text code)
+						    (format "counter_~a = 0;\n" name))))
+				  srcname* srccode* counter_marks)
+				)
 					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
-		      )
-	       "return 0;\n"))))))
+			  )
+		   "return 0;\n")))))
+      ;; Option (2):
+      (begin
+	(unless (= (length (slot-ref self 'server-cutpoints)) 1)
+	  (error 'BuildTimerSourceDriver 
+		 "Currently can't handle multiple return streams multiplexed onto serial port"))
+	(make-lines (list "
+#include <message.h>
+#include \"/opt/tinyos-2.x/support/sdk/c/serialsource.h\"
+#include \"/opt/tinyos-2.x/support/sdk/c/message.h\"
+
+// This is a driver that takes serial messages (from a mote) and pumps them into WS.
+int main(int argc, char **argv)
+{
+  serial_source src;
+  if (argc != 3)  {
+      fprintf(stderr, \"Usage: %s <device> <rate> - get packets from a serial port\\n\", argv[0]);
+      exit(2);
+  }
+  //src = open_serial_source(argv[1], platform_baud_rate(argv[2]), 0, stderr_msg);
+  if (!src)  {
+      fprintf(stderr, \"Couldn't open serial port at %s:%s\\n\", argv[1], argv[2]);
+      exit(1);
+  }
+  for (;;) {
+      int len, i;
+      const unsigned char *packet = read_serial_packet(src, &len);
+      if (!packet) exit(0);
+      tmsg_t* incoming_msg = new_tmsg((void*)packet,len);
+      "(Var self (car (slot-ref self 'server-cutpoints)))"(incoming_msg);
+      free((void *)packet);
+      free((void *)incoming_msg);
+    }
+}
+
+")))))
+
 
 ;; .returns a function def in several parts: name, code, state, rate
 (__spec Source <emitC2> (self xp)
@@ -1209,12 +1214,38 @@
 		 (lines-text code)))
 	 "\n")))
 
+
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
 (__spec Cutpoint <emitC2> (self type in out)
-   ;; Need to use a serialforwardera
-   (values (make-lines (format " /* CUTPOINT server ~a ~a */ \n" in out)) '() '())
-   )
+   ;(define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
+   (slot-cons! self 'server-cutpoints in)
+   (match type
+     [(Stream ,elt)
+      (define _elt (Type self elt))
+      ;; This is extremly annoying.  MIG won't build us a struct, it will
+      ;; just give us accessor methods.  Therefore we need to build our
+      ;; own bit of code that will build up the struct using these accessors.
+      (trace-define (copycode dest src)
+	  (let ([destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME FIXME FIXME FIXME
+	    (match elt
+	      [,scl (guard (scalar-type? scl))
+		    (** destpos " = " srcpos "_get(" src ");\n")
+		    ])
+	    ))
+      (values (make-lines
+	       (list 
+		"
+  // CutPoint from node side:
+  void "(Var self in)"(void* nodeobj) {
+    "_elt" localobj;
+"(indent (copycode "localobj" "nodeobj") "    ")"
+    "(Var self out)"(localobj);
+  }"
+))
+'() '()
+)]))
+
 
 ;; .returns top-level decls (lines)
 (__spec Operator <emitC2> (self op)
@@ -1347,7 +1378,10 @@
 
 ;================================================================================
 
-
+;; This has a quirky return type.  Ugly abstraction boundaries.
+;; Returns a vector of two elements:
+;;   (1) Association list of file-name, file-contents to write.
+;;   (2) Thunk to execute after files are written.
 (__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
   (define text
     (apply string-append 
@@ -1360,9 +1394,11 @@
                  ops ;srcfuns 
                  init driver))))
   ;; Return an alist of files:
-  (list (list "query.c" text)))
+  (vector (list (list "query.c" text))
+	  void))
   
 ;; Run the pass and generate C code:
+;; Same return type as BuildOutputFiles
 (__spec Run <emitC2> (self)
   (let* ([prog (slot-ref self 'theprog)]
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
@@ -1422,6 +1458,7 @@
   (slot-set! self 'link-files '())
   ;; Our default includes
   (slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
+  (slot-set! self 'server-cutpoints '())
   )
 
 (define (emit-c2 prog)
@@ -1444,6 +1481,9 @@
 
 ;;================================================================================
 
+;; I'm not sure how the "namespace" is managed for AM messages.  Broadcast is zero right?
+;; This is a constant offset which is applied to all the AM messages generated by WScript.
+(define AM_OFFSET 10)
 
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
@@ -1467,6 +1507,7 @@
 	(slot-set! self 'amsender-count 0)
 	)
 
+
 (define __Type 
   (specialise! Type <tinyos> 
     (lambda (next self ty)
@@ -1485,12 +1526,25 @@
 	       (cons alloc-prim _))]
        [,else (next)]))))
 
+;; [2008.02.19] This is currently just to catch an error condition:
+(define __Value 
+  (specialise! Value <tinyos> 
+    (lambda (next self emitter)
+      (lambda (xp kont)
+	(match xp
+	  ;; [2008.02.14] Disabling for tinyOS because now 
+	  ;; string constants should ALL be statically allocated.
+	  [',vec (guard (vector? vec) (vector-andmap char? vec))
+		 (error 'emitC2:Value "should have lifted all the strings: ~s" 
+			(list->string (vector->list vec)))]
+	  [,_ ((next) xp kont)])))))
+
 ;; Increments and decrements do nothing.  Everything is statically allocated currently:
-(__spec gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
-(__spec gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
+(__specreplace gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
+(__specreplace gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
 
 ;; Wrap work functions as tasks.
-(__spec GenWorkFunction <tinyos> (self name arg vqarg argty code)
+(__specreplace GenWorkFunction <tinyos> (self name arg vqarg argty code)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (define _name (Var self name))
@@ -1511,12 +1565,53 @@
 	 "\n")))
 
 
+;; For those allocation-forms that we can do statically:
+;; Like SplitBinding returns two values: decl & init code.
+;;
+;; FIXME: This currently assumes no reference counts it uses tinyos
+;; specific representations that don't have the RC fields because
+;; there's currently no GC.
+(__specreplace StaticAllocate <tinyos> (self lhs ty rhs)
+  (match rhs
+    [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
+      (ASSERT (vector-andmap char? vec))
+      ;; Strip out any null characters??
+      (let* ([ls (vector->list vec)]
+	     [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
+	      (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
+		  (rdc ls) 
+		  ls)]
+	     [str (list->string ls2)])
+	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	        (make-lines (format "char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+		(make-lines "")))]
+
+    ;; This is TINYOS specific currently:
+    ;; gen-incr-code
+    [(assert-type (Array ,elt) (Array:make ,e ,x))
+     (match (peel-annotations e)
+       [',[number->string -> n]
+	(define tmp (Var self (unique-name "tmptoparr")))
+	(define _elt (Type self elt))
+	(define _lhs (Var self lhs))
+	(values ;(make-lines `(,(Type self elt)" ",(Var self lhs)"[",n"];\n"))
+	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + sizeof(uint16_t)];\n"
+				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"			      
+			      ))
+		(make-lines (list 
+			     ;"((uint16_t*)"tmp")[0] = "n";\n"
+			     "SETARRLEN("_lhs", "n");\n"
+			     "// ACCK WHAT ABOUT FILLING IT IN\n")))
+	])]
+))
+
+
 ;; FIXME: This does not work for arrays yet:
-(__spec Cutpoint <tinyos> (self ty in out)
+(__specreplace Cutpoint <tinyos> (self ty in out)
    (define name (format "BASESender~a" (slot-ref self 'amsender-count)))
    ;(define ampkt (format "AMPacket~a" (slot-ref self 'amsender-count)))
-   (define AM_NUM (number->string (+ 10 (slot-ref self 'amsender-count))))
-   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))
+   (define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
+   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))   
    (define fun (list "
   // CutPoint to server side:
   void "(Var self out)"("_ty" x) {
@@ -1528,9 +1623,7 @@
     }
   }
 "))
-   (printf "  CUTTING AT TYPE: ~s\n" ty)
-   (when (zero? (slot-ref self 'amsender-count))
-     ;(slot-cons! self 'top-acc "")
+   (when (zero? (slot-ref self 'amsender-count))     
      (slot-cons! self 'config-acc "
 #ifdef WSRADIOMODE
   #define AMCOMPONENT ActiveMessageC
@@ -1548,8 +1641,20 @@
      (slot-cons! self 'module-acc (list "
   uses interface Packet;
   uses interface AMPacket;
-")))1
+")))
 
+   (printf "  CUTTING AT TYPE: ~s\n" ty)
+
+   ;; Everything below happens FOR EACH cut point:
+(slot-cons! self 'top-acc (list "
+// This is a dummy struct for MIG's benefit:
+struct cuttype"AM_NUM" {
+  "_ty" theitem;
+};
+enum {
+  AM_CUTTYPE"AM_NUM" = "AM_NUM"
+};
+"))
    (slot-cons! self 'config-acc (list "
   components new SerialAMSenderC("AM_NUM") as "name";
   WSQuery."name" -> "name";
@@ -1695,40 +1800,14 @@ event void PrintfControl.stopDone(error_t error) {
 	       ])])]))))
 
 
-(__spec BuildTimerSourceDriver <tinyos> (self srcname* srccode* srcrates*)
+(__specreplace BuildTimerSourceDriver <tinyos> (self srcname* srccode* srcrates*)
   (unless (null? (filter id srcrates*))
     (error 'emitC2:BuildTimerSourceDriver 
 	   "Should not be encountering built-in timer sources for tinyos backend currently: ~a" srcname*))
-  (make-lines "")
-#|
-  (define millis (map (lambda (period) (inexact->exact (round (/ 1000. period)))) (filter id srcrates*)))
-  (printf "   TIMER RATES: ~s\n" millis)
-  (for-each
-   (lambda (i milli src)
-     (define n (number->string i))
-     (slot-cons! self 'config-acc
-		 `("  components new TimerMilliC() as Timer",n";\n"
-		   "  WSQuery.Timer",n" -> Timer",n";\n"))
-     (slot-cons! self 'module-acc
-		 `("  uses interface Timer<TMilli> as Timer",n";\n"))
-     (slot-cons! self 'boot-acc
-		 `("    call Timer",n".startPeriodic( ",(number->string milli)" );\n"))
-     (slot-cons! self 'impl-acc 
-`("  event void Timer",n".fired() {
-    dbg(\"WSQuery\", \"Timer 0 fired @ %s.\\n\", sim_time_string());
-    call Leds.led0Toggle();
-    ",(lines-text src)"
-  }"))
-     )
-   (iota (length millis)) millis (filter id srccode*))
-  
-  ;; Need to do something with srccode*
-  (make-lines "")
-|#
-)
+  (make-lines ""))
 
 
-(__spec BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)
+(__specreplace BuildOutputFiles <tinyos> (self includes freefundefs state ops init driver)
   ;(define _ (inspect (slot-ref self 'proto-acc)))
   (define config (list
 "
@@ -1790,12 +1869,23 @@ implementation {
 }
 "))
 
-  ;; HACK: For now we just write the files ourselves...
-  (list (list "Makefile.tos2" (file->string (** (REGIMENTD) "/src/linked_lib/Makefile.tos2")))
-	(list "WSQueryApp.nc" (text->string config))
-	(list "WSQuery.nc"    (text->string module))
-	(list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
-	))
+  ;; We return an association list of files to write.
+  (vector
+   (list (list "Makefile.tos2" (file->string (** (REGIMENTD) "/src/linked_lib/Makefile.tos2")))
+	 (list "WSQueryApp.nc" (text->string config))
+	 (list "WSQuery.nc"    (text->string module))
+	 (list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
+	 )
+   ;; We also return a post-file-write thunk to execute:
+   (lambda ()
+     (printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
+     (for i = 0 to (sub1 (slot-ref self 'amsender-count))
+	  (printf "      CALLING MIG ~a\n" i)
+	  (system (format "mig c -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h"
+			  (+ AM_OFFSET i) i))
+	  )
+     (void))
+   ))
 
 ) ;; End module
 
