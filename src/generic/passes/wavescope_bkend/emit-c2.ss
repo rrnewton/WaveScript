@@ -1307,12 +1307,16 @@ int main(int argc, char **argv)
       ;; This is extremly annoying.  MIG won't build us a struct, it will
       ;; just give us accessor methods.  Therefore we need to build our
       ;; own bit of code that will build up the struct using these accessors.
-      (trace-define (copycode dest src)
-	  (let ([destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME FIXME FIXME FIXME
+      (define (copycode dest src)
+	  (let loop ([elt elt] [destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME
 	    (match elt
 	      [,scl (guard (scalar-type? scl))
-		    (** destpos " = " srcpos "_get(" src ");\n")
-		    ])
+		 (list destpos " = " srcpos "_get(" src ");\n")]
+	      [(Struct ,name)
+	       (map (match-lambda ((,fldname ,fldty))
+		      (loop fldty (list destpos "." (sym2str fldname)) (list srcpos "_" (sym2str fldname))))
+		 (cdr (assq name (slot-ref self 'struct-defs))))]
+	      )
 	    ))
       (values (make-lines
 	       (list 
@@ -1911,6 +1915,7 @@ implementation {
       includes 
 "#include \"Timer.h\"
 
+"(text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))"
 "(slot-ref self 'top-acc)"
 
 module WSQuery {
@@ -1940,16 +1945,12 @@ implementation {
     #endif
   }
 
-"	 
-	 (insert-between "\n"
-           (list 
-                 (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
-                 (text->string (lines-text freefundefs))
+"(insert-between "\n"
+           (list (text->string (lines-text freefundefs))
                  state
                  ;toplevelsink
                  ops ;srcfuns 
-                 init driver))
- "
+                 init driver))"
 
 "(slot-ref self 'impl-acc)"
 
@@ -1968,8 +1969,10 @@ implementation {
      (printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
      (for i = 0 to (sub1 (slot-ref self 'amsender-count))
 	  (printf "      CALLING MIG ~a\n" i)
-	  (system (format "mig c -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h"
-			  (+ AM_OFFSET i) i))
+	  (let ([cmd (format "mig c -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" (+ AM_OFFSET i) i)])
+	    (display cmd)(newline)
+	    (system cmd))
+	  
 	  )
      (void))
    ))
