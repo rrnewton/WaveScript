@@ -8,13 +8,13 @@ then echo ERROR, wsc2 failed with code $?.; exit 1;
 else echo
 fi
 
-MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
-if [ "$MATCH" != "" ];
-then 
-   export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
-   export WS_LINK="$WS_LINK $EXTRALIBS"
-   echo Linking extra libraries requested by query file: $EXTRALIBS
-fi
+# MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
+# if [ "$MATCH" != "" ];
+# then 
+#    export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
+#    export WS_LINK="$WS_LINK $EXTRALIBS"
+#    echo Linking extra libraries requested by query file: $EXTRALIBS
+# fi
 
 if [ -f "query.c" ]; 
 then exec wsc2-gcc;

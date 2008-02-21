@@ -57,6 +57,7 @@
 
 
 ;; This is a lame hack to distinguish system libraries.
+;; Only works for dynamic libraries.
 (define (extract-lib-name fn)
   (let ([ext (extract-file-extension fn)]
 	[sansext (remove-file-extension fn)])

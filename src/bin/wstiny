@@ -46,13 +46,14 @@ fi
 
 if [ -f "WSQuery.nc" ];
 then chmod +x query.py;
+     echo
      echo "BUILDING TINYOS COMPONENTS:" 
      make -f Makefile.tos2 micaz sim;
 else echo WSQuery.nc found...
 fi
 
 if [ -f "query.c" ]; 
-then echo "BUILDING PC-SIDE COMPONENTS:" 
+then echo;echo "BUILDING PC-SIDE COMPONENTS:" 
      wsc2-gcc;
 fi
 

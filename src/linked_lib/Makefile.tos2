@@ -18,7 +18,7 @@
 
 
 CFLAGS += -I$(TOSDIR)/lib/printf 
-BUILD_EXTRA_DEPS += PrintfMsg.class PrintfClient.class
+BUILD_EXTRA_DEPS += PrintfMsg.class PrintfClient.class 
 
 # init:
 #	if [ $(WSRADIOMODE) != "" ]; then echo SETTING; export CFLAGS="$(CFLAGS) -DWSRADIOMODE"; fi
@@ -39,3 +39,4 @@ include $(MAKERULES)
 #  gcc serialsource.c seriallisten.c 
 #  gcc libmote.a message.c serialsource.c seriallisten.c WSQueryMsg.c -I/opt/tinyos-2.x/support/sdk/c
 
+# gcc query.c WSQueryMsg*.c -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote

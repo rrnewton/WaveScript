@@ -2,6 +2,27 @@
 #define ARRLEN(ptr)        (ptr ? ((uint16_t*)ptr)[-1] : 0)
 #define SETARRLEN(ptr,len) ((uint16_t*)ptr)[-1]=len 
 
+// This seems insane to me, but the memcpy implementation on Telos
+// doesn't work for unaligned addresses!  Here's a hack:
+void my_memcpy(void* dst, const void* src, size_t num) {
+  int s = (int)src;
+  int d = (int)dst;
+  //ASSERT num > 0
+
+  // Alligned version:  
+  if (!(d & 1) && !(s & 1)) 
+    memcpy(dst,src,num);
+  // Both unaligned:
+  else if ((d & 1) && (s & 1)) {
+    ((char*)dst)[0] = ((char*)src)[0];
+    memcpy(dst+1,src+1,num-1);
+    // Do we need to handle the tail specially also?
+  } else {
+    int i;  
+    for (i=0; i<num; i++) ((char*)dst)[i] = ((char*)src)[i];
+  }
+}
+
 /* // [2007.12.06] This is the header that goes with my new C backend. -Ryan */
 
 /* // Headers that we need for the generated code: */

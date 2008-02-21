@@ -20,8 +20,17 @@ OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
 ## DEBUG MODE:
 OPTFLAGS="-g -O0"
 
-CMD="gcc $WS_LINK -lm $OPTFLAGS -o query.exe $WS_LINK query.c"
+## ACK - include WS_LINK at front and end?!?
+
+echo TOSROOT is $TOSROOT
+echo CPATH is $CPATH
+echo C_INCLUDE_PATH is $C_INCLUDE_PATH
+
+
+CMD="gcc $WS_LINK -lm $OPTFLAGS -o query.exe query.c $WS_LINK"
 echo "$CMD"
+#if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
+
 if time $CMD;
 then echo Compiled .c output successfully.
 else echo ERROR, gcc failed.; exit 1

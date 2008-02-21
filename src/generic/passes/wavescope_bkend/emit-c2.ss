@@ -49,6 +49,7 @@
      ;;   types to a scheme function that generates free-code (when given
      ;;   text representing the pointer to free).
      include-files link-files ;; <- accumulate a list of files to include/link
+     compile-flags ;; Accumulate a list of flags to send to gcc, datatype "text"
      server-cutpoints ;; <- names of cutpoints
      ))
 
@@ -1157,20 +1158,65 @@
 	(unless (= (length (slot-ref self 'server-cutpoints)) 1)
 	  (error 'BuildTimerSourceDriver 
 		 "Currently can't handle multiple return streams multiplexed onto serial port"))
+	
+	;; This is SUPER hackish, just sticking all the WSQueryMsg.c files in the flags!
+	(printf "ADDING HEADING\n")
+	;(slot-cons! self 'compile-flags " -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/")
+	;; ACK: fixing the TINYOS install dir at compile time.  Can't get quoting/env-vars to work out:
+	(slot-cons! self 'compile-flags 
+		    (format " -I~a/support/sdk/c  -L~a/support/sdk/c -lmote "
+			    (getenv "TOSROOT") (getenv "TOSROOT")))
+	(for i = 0 to (sub1 (length (slot-ref self 'server-cutpoints)))
+	     (add-include! self (format "\"WSQueryMsg~a.c\"" i)))
+	
+	;; -lmote
+	;(add-link! "libmote.a")
+
 	(make-lines (list "
 #include <message.h>
-#include \"/opt/tinyos-2.x/support/sdk/c/serialsource.h\"
-#include \"/opt/tinyos-2.x/support/sdk/c/message.h\"
+//#include \"/opt/tinyos-2.x/support/sdk/c/serialsource.h\"
+//#include \"/opt/tinyos-2.x/support/sdk/c/message.h\"
+#include \"serialsource.h\"
+#include \"serialpacket.h\"
+#include \"serialprotocol.h\"
+#include \"message.h\"
+
+static char *msgs[] = {
+  \"unknown_packet_type\",
+  \"ack_timeout\"	,
+  \"sync\"	,
+  \"too_long\"	,
+  \"too_short\"	,
+  \"bad_sync\"	,
+  \"bad_crc\"	,
+  \"closed\"	,
+  \"no_memory\"	,
+  \"unix_error\"
+};
+void stderr_msg(serial_source_msg problem) {
+  fprintf(stderr, \"Note: %s\\n\", msgs[problem]);
+}
+
+
+void hexprint(uint8_t *packet, int len)
+{
+  int i;
+
+  for (i = 0; i < len; i++)
+    printf(\"%02x \", packet[i]);
+}
+
 
 // This is a driver that takes serial messages (from a mote) and pumps them into WS.
 int main(int argc, char **argv)
 {
   serial_source src;
+  initState();
   if (argc != 3)  {
       fprintf(stderr, \"Usage: %s <device> <rate> - get packets from a serial port\\n\", argv[0]);
       exit(2);
   }
-  //src = open_serial_source(argv[1], platform_baud_rate(argv[2]), 0, stderr_msg);
+  src = open_serial_source(argv[1], platform_baud_rate(argv[2]), 0, stderr_msg);
   if (!src)  {
       fprintf(stderr, \"Couldn't open serial port at %s:%s\\n\", argv[1], argv[2]);
       exit(1);
@@ -1179,10 +1225,45 @@ int main(int argc, char **argv)
       int len, i;
       const unsigned char *packet = read_serial_packet(src, &len);
       if (!packet) exit(0);
-      tmsg_t* incoming_msg = new_tmsg((void*)packet,len);
-      "(Var self (car (slot-ref self 'server-cutpoints)))"(incoming_msg);
+
+      //for ( i = 0; i < len; i++ ) printf(\"%02x \", packet[i]); putchar('\\n');
+
+      if (len >= 1 + SPACKET_SIZE &&
+	  packet[0] == SERIAL_TOS_SERIAL_ACTIVE_MESSAGE_ID)
+	{
+/*
+	  tmsg_t *msg = new_tmsg((void*)packet + 1, len - 1);
+	  if (!msg) exit(0);
+
+	  printf(\"dest %u, src %u, length %u, group %u, type %u\\n  \",
+		 spacket_header_dest_get(msg),
+		 spacket_header_src_get(msg),
+		 spacket_header_length_get(msg),
+		 spacket_header_group_get(msg),
+		 spacket_header_type_get(msg));
+	  hexprint((uint8_t *)tmsg_data(msg) + spacket_data_offset(0),
+		   tmsg_length(msg) - spacket_data_offset(0));
+
+	  printf(\"\\n\");
+	  free(msg);
+*/
+	  // We shouldn't HAVE to do this:
+	  // The MIG generated code uses offset 0, so we hack this:
+	  //msg->data = msg->data + spacket_data_offset(0);
+          tmsg_t *msg2 = new_tmsg((void*)packet + 1 + spacket_data_offset(0), len - 1);
+
+          "(Var self (car (slot-ref self 'server-cutpoints)))"(msg2);
+	  free(msg2);
+	}
+      else
+	{
+	  printf(\"non-AM packet: \");
+	  hexprint(packet, len);
+	}
+     
+      //tmsg_t* incoming_msg = new_tmsg((void*)packet,len);
       free((void *)packet);
-      free((void *)incoming_msg);
+      //free((void *)incoming_msg);
     }
 }
 
@@ -1237,7 +1318,7 @@ int main(int argc, char **argv)
 	       (list 
 		"
   // CutPoint from node side:
-  void "(Var self in)"(void* nodeobj) {
+  void "(Var self in)"(tmsg_t* nodeobj) {
     "_elt" localobj;
 "(indent (copycode "localobj" "nodeobj") "    ")"
     "(Var self out)"(localobj);
@@ -1413,9 +1494,12 @@ int main(int argc, char **argv)
 		 (operators ,[(curry Operator self) -> oper* state2** opinit**] ...)
 		 (sink ,base ,basetype)
 		 ,meta* ...))
-
-	(define includes (text->string 
+	;; This must be called early, for side effects to the object fields:
+	(define driver   (text->string (lines-text (BuildTimerSourceDriver self srcname* srccode* srcrate*))))
+	(define includes (text->string 			  
 			  (list "//WSLIBDEPS: "
+				;; This is a bit hackish, throw the flags in there also:
+				(slot-ref self 'compile-flags)
 				(map (lambda (fn) 
 				       (let ([lib (extract-lib-name fn)])
 					 (if lib (list " -l" lib) fn)))
@@ -1429,17 +1513,15 @@ int main(int argc, char **argv)
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
-
-	  (define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
-	  (define ops      (text->string (map lines-text (reverse oper*))))
+	(define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
+	(define ops      (text->string (map lines-text (reverse oper*))))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
-	  (define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
-			     (text->string (block "void initState()" 
-				 (list 
-                                  (lines-text (apply append-lines init*))
-				  (lines-text (apply append-lines cbinit*))
-				  (lines-text (apply append-lines (apply append opinit**))))))))
-	  (define driver   (text->string (lines-text (BuildTimerSourceDriver self srcname* srccode* srcrate*))))
+	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
+			   (text->string (block "void initState()" 
+						(list 
+						 (lines-text (apply append-lines init*))
+						 (lines-text (apply append-lines cbinit*))
+						 (lines-text (apply append-lines (apply append opinit**))))))))	
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  
 	  ;; This is called last:
@@ -1456,6 +1538,7 @@ int main(int argc, char **argv)
   (slot-set! self 'union-types (cdr (project-metadata 'union-types prog)))
   (slot-set! self 'theprog prog)
   (slot-set! self 'link-files '())
+  (slot-set! self 'compile-flags '())
   ;; Our default includes
   (slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
   (slot-set! self 'server-cutpoints '())
@@ -1606,6 +1689,7 @@ int main(int argc, char **argv)
 ))
 
 
+;; We just memcpy the representation straight into the packet.
 ;; FIXME: This does not work for arrays yet:
 (__specreplace Cutpoint <tinyos> (self ty in out)
    (define name (format "BASESender~a" (slot-ref self 'amsender-count)))
@@ -1616,7 +1700,11 @@ int main(int argc, char **argv)
   // CutPoint to server side:
   void "(Var self out)"("_ty" x) {
     "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
-    payload[0] = x;
+
+    //if ((int)payload & 1) call Leds.led0Toggle(); else call Leds.led1Toggle();
+
+    my_memcpy(payload, &x, sizeof(x));
+    //payload[0] = x;
     dbg_clear(\"WSQuery\", \"Sending on serial interface\\n\");
     if (call "name".send(AM_BROADCAST_ADDR, &serial_pkt, sizeof("_ty")) == SUCCESS) {
       serial_busy = TRUE;
@@ -1840,7 +1928,6 @@ implementation {
 
   event void Boot.booted() {
     initState(); /* SHOULD POST A TASK */
-    call Leds.led1Toggle();
 
 "(indent (slot-ref self 'boot-acc) "    ")"
   }
