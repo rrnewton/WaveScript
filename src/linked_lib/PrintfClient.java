@@ -57,14 +57,22 @@ public class PrintfClient implements MessageListener {
   
   public static void main(String[] args) throws Exception {
     String source = "";
+
+    //System.out.print("MOTECOM: ");
+    //System.out.println(System.getenv("MOTECOMTT"));
+
+    String envvar = System.getenv("MOTECOM");
+    
     if (args.length == 2) {
       if (!args[0].equals("-comm")) {
 	       usage();
 	       System.exit(1);
       }
       source = args[1];
-    }
-    else {
+    } if (envvar != null) {
+      System.out.println(String.format("Setting source to $MOTECOM: %s\n", envvar));
+      source = envvar;
+    } else {
       usage();
       System.exit(1);
     }

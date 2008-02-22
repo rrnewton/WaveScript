@@ -196,15 +196,9 @@
 ;; Taken instantiated or uninstantiated type:
 (define constant-typeable-as? 
   (lambda (c ty)
-#;
-    (cond 
-     [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-     [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-     [(and (flonum? c))                 (eq? ty 'Float)]
-     [else #f])
-
     (if (eq? c 'BOTTOM) #t
 	(match ty
+	  [Uint16 (guard (fixnum? c)) (uint16? c)]
 	  [Int16 (guard (fixnum? c))  (int16? c)]
 	  [Int   (guard (fixnum? c))  (int32? c)]
 	  [Int64 (guard (fixnum? c))  (int64? c)]

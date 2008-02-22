@@ -186,13 +186,63 @@ main = inline\_C(\dots)
 %%   moment [2007.08.24].}
 
 
-\section{Backend support}
+\section{Foreign code in TinyOS}\label{s:foreigntos}
 
-The foreign interface works to varying degrees under the {\bf Scheme},
- {\bf MLton}, and {\bf C++/XStream} backends ({\tt ws}, {\tt wsmlton},
- and {\tt wsc} respectively).  Below we discuss the current  limitations in each
+There are a few differences in how foreign code works in TinyOS. The {\cde
+foreign\_source} function is virtually the same.  The {\cde foreign} function is similar,
+but it should be noted that one can cheat a little by suppying an
+arbitrary string for the function name.  For example, here is a
+foreign function that toggles an LED, written using NesC's {\tt call} syntax:
+
+\begin{verbatim}
+led0Toggle = 
+  (foreign("call Leds.led0Toggle", []) 
+   :: () -> ());
+\end{verbatim}
+
+\rednote{Currently [2008.02.22] foreign only works for functions
+  returning {\cde void}.  Bug me to fix this.}
+
+The major difference lies in {\cde inline\_C}, which is replaced by
+{\cde inline\_TOS}.  TinyOS simply has more places that one might want
+to stick code, thus more hooks are exposed:
+
+\begin{wscode}
+inline\_TOS({\em top}, {\em conf1}, {\em conf2}, {\em mod1}, {\em mod2}, {\em boot})
+\end{wscode}
+
+All arguments are strings.  They inject code into different contexts
+as follows:
+\begin{enumerate}
+\item {\bf top}: Inject code at top-level, not iside a {\em configuration}
+  or {\em module} block.
+\item {\bf conf1}: Inject code into the {\cde configuration} block produced
+  by the WaveScript compiler.
+\item {\bf conf2}: Inject code into the {\cde implementation} section of
+  that {\cde configuration} block.
+\item {\bf mod1}: Inject code into the {\cde module} block produced
+  by the WaveScript compiler.
+\item {\bf mod2}: Inject code into the {\cde implementation} section of
+  that {\cde module} block.
+\item {\bf boot}: Inject code into the {\cde Boot.booted()} event handler.
+\end{enumerate}
+
+This mechanism for inlining NesC code can be used for adding support
+for new timers or data sources.  In fact, this is how existing
+ functions like {\cde tos\_timer} and {\cde sensor\_uint16}
+are implemented.  (See {\cde internal\_wstiny.ws} inside the {\tt
+  lib/} directory.)
+
+\section{Other backend's support}
+
+The foreign interface works to varying degrees under each backend.
+%the {\bf Scheme}, {\bf MLton}, and {\bf C++/XStream} backends ({\tt
+%  ws}, {\tt wsmlton}, and {\tt wsc} respectively).
+Below we discuss the current  limitations in each
  backend.  The feature matrix in Figure \ref{f:features} gives an
  overview.
+
+\rednote{This has not been updated to address {\bf wsc2}.}
 
 \begin{figure}
 \begin{center}

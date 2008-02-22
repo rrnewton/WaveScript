@@ -178,7 +178,7 @@
 
 	 nodeid?
 
-	 int16? int32? int64? 
+	 int16? int32? int64? uint16?
 	 basename dirname
 
 ;	 special-nullseg-object
@@ -974,6 +974,8 @@
 (define (int16? c) (and (< c (expt 2 15)) (>= c (- (expt 2 15)))))
 (define (int32? c) (and (< c (expt 2 31)) (>= c (- (expt 2 31)))))
 (define (int64? c) (and (< c (expt 2 63)) (>= c (- (expt 2 63)))))
+
+(define (uint16? c) (and (< c (expt 2 16)) (>= c 0)))
 
 ;; The directory name of a path.
 (define (dirname pathstr)

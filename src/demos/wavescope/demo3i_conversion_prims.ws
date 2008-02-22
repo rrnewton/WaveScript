@@ -28,7 +28,6 @@ main = iterate(w in s0) {
 
   ui = (cast_num(n) :: Uint16);
   print("UINT * 2: "++(ui + ui)++"\n");
-
   print("CASTING: "); println((cast_num(f) :: Int16));
 
   // Roundtripping: 

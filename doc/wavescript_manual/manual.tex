@@ -3,7 +3,7 @@
 %\documentstyle[twocolumn]{report}
 \documentclass[twocolumn]{report}
 \usepackage{color}
-%\usepackage{code}
+\usepackage{code}
 
 %\usepackage{hyperref}
 \usepackage{html}
@@ -33,7 +33,7 @@ $\tt #1 $&$ \arr $&$ #2 $
 
 \newcommand{\arr}{\ensuremath{\rightarrow}}
 
-\newcommand{\cd}{\tt}
+\newcommand{\cde}{\tt}
 
 \newcommand{\ws}{WaveScript}
 
@@ -52,6 +52,8 @@ $\tt #1 $&$ \arr $&$ #2 $
 \clearpage
 
 \chapter{Introduction}
+
+%\rednote{NOTES FOR THIS PARTICULAR REVISION:}
 
 % [2007.12.01] nixing metaprogramming ...
 WaveScript is a functional language for writing highly abstract
@@ -79,10 +81,10 @@ Here's a simple but complete {\ws} program:
   main = timer(10.0)
 \end{verbatim}
 This creates a timer that fires at 10hz.  The {\em return value} of
-the {\cd timer} function is a stream of empty-tuples (events carrying
+the {\cde timer} function is a stream of empty-tuples (events carrying
 no information).  The return value of the whole program is, by
 convention, the stream named ``main''.  The {\em type} of the above
-program is {\cd Stream ()}, where {\cd ()} designates the empty-tuple.
+program is {\cde Stream ()}, where {\cde ()} designates the empty-tuple.
 
 In our next program, we will print ``Hello world'' forever.
 \begin{verbatim}
@@ -90,10 +92,10 @@ In our next program, we will print ``Hello world'' forever.
            emit "Hello world!";
          }
 \end{verbatim}
-The {\cd iterate} keyword provides a special syntax for accessing
+The {\cde iterate} keyword provides a special syntax for accessing
 every element in a stream, running arbitrary code using that element's
 value, and producing a new stream as output.  In the above example,
-our {\cd iterate} ignores the values in the timer stream (``x''), and
+our {\cde iterate} ignores the values in the timer stream (``x''), and
 produces one string value on the output stream on each invocation
 (thus, it prints ``Hello world!'' at 10hz).  The type of the program
 is {\tt Stream String}. 
@@ -112,7 +114,7 @@ Actually, timers are the only built-in {\ws} stream {\em sources}.
 All other built-in stream procedures only transform existing streams.
 
 Iterate also allows persistent, mutable state to be kept between
-invocations.  This is introduced with the sub-keyword {\cd state}.
+invocations.  This is introduced with the sub-keyword {\cde state}.
 For example, the following produces an infinite stream of integers
 counting up from zero.
 
@@ -125,8 +127,8 @@ counting up from zero.
 \end{verbatim}
 
 Notice that the assignment operator for mutating mutable variables
-({\cd :=}) is different than the operator used for declaring new
-variables ({\cd =}).  ({\ws} also has {\cd +=}, {\cd -=} etc for use
+({\cde :=}) is different than the operator used for declaring new
+variables ({\cde =}).  ({\ws} also has {\cde +=}, {\cde -=} etc for use
 on mutable variables.)
 
 As a final example, we'll merge two streams operating at different
@@ -139,7 +141,7 @@ frequencies.
 \end{verbatim}
 
 This will output a sequence of zeros and ones, with four ones for
-every three zeroes.  The {\cd merge} operator combines two streams of
+every three zeroes.  The {\cde merge} operator combines two streams of
 the same type, interleaving their elements in real time.
 
 \section{Pragmatics: Using WaveScript}
@@ -298,17 +300,19 @@ execution.
 
 \subsection{The WaveScript CaML Backend}
 
-\rednote{This backend is no longer supported and will receive no new features!}
+\rednote{This backend is no longer supported and will receive no new
+  features!  But if you need to use it, let me know.}
 
-\subsection{The WaveScript C++ Backend}
+\subsection{The C++/XStream Backend}
 The C++ backend\footnote{It uses a C++ compiler not because it
-  generates object-oriented code, but because the runtime engine it
-  links with has been engineered in C++.} is invoked the {\bf wsc}
+  generates object-oriented code, but because the XStream runtime engine it
+  links with has been engineered in C++.} generates code that uses the
+XStream runtime/scheduling engine.  It is invoked with the {\bf wsc}
 command.  
 In practice, as WaveScript undergoes development, the {\bf wsc}
 compiler often lags behind {\bf ws} in terms of features and
 functionality.  Again, develop incrementally, refer to {\tt
-  wavescript/demos/wavescope} for programs that should work with {\bf
+  demos/wavescope} for programs that should work with {\bf
   wsc}.
 
 Refer to the XStream documentation\footnote{\rednote{[2007.03.09] Currently nonexistent}} 
@@ -387,11 +391,181 @@ runtime and garbage collector do not support concurrent threads.
 
 
 
+\subsection{The ``Low-Level'' C Backend}
+
+Invoked with ``{\bf wsc2}''.
+
+Moving forward, this will serve as the {\em primary} WaveScript
+backend.  It has three purposes.  First, it generates the most
+efficient code.  Second, it serves as a platform for us to build
+custom garbage collectors (the C++ backend simply uses Boost smart
+pointers) and experiment with other aspects of the runtime.  Third, it
+generates code with minimal dependencies (not requiring a runtime
+scheduler).  This last point was critical in adapting the backend to
+target TinyOS (described in the next section).
+
+
+
+\subsection{The NesC/TinyOS 2.0 Backend}
+
+Invoked with ``{\bf wstiny}''.
+
+This backend ``inherits'' from {\bf wsc2} and modifies it to support
+TinyOS.  As of this writing [2008.02.22], the TinyOS backend is
+limitted in its supported language features.  (See the end of this
+section for a list of limitations.)
+
+{\bf wstiny} can be invoked in multiple ways.  First, simply invoking
+{\bf wstiny} on a WaveScript file (in the same way as any other backend)
+will compile the entire application to run on the mote.
+
+\begin{code}
+  [joe@computer] wstiny demo11g\_tinyos.ws
+\end{code}
+
+In the same way that one invokes ``{\tt query.exe}'' or ``{\tt
+  query.mlton.exe}'' when using another WaveScript backend, one can
+run the {\bf wstiny} program with ``{\tt query.py}'':
+
+\begin{code}
+  [joe@computer] ./query.py
+\end{code}
+
+This is a python script that invokes TOSSIM, the TinyOS simulator.
+The output of the program will be printed to the terminal---including
+printed output and return values on the main stream---again, just like
+any other backend.
+
+Of course, the point of compiling for TinyOS is to run code on a {\em
+  mote}!  This is slightly more involved.  After executing {\bf
+  wstiny}, we need to build the binary for the particular mote
+platform.  And then we invoke a listener on the serial port to see the
+output of the program.
+
+\begin{code}
+[joe@computer] make -f Makefile.tos2 telosb install
+[joe@computer] MOTECOM=serial@/dev/ttyUSB0:telosb
+[joe@computer] export MOTECOM
+[joe@computer] java PrintfClient 
+\end{code}
+
+%The ``-comm'' argument can be omitted if the MOTECOM environment
+%variable is set (see the TinyOS documentation).  
+
+{\bf wstiny} has polluted your working directory with several files,
+including  {\tt Makefile.tos2}, {\tt PrintfClient.java}, {\tt query.py} and others.
+%
+The PrintfClient program can listen to a particular device specified
+either through the {\tt MOTECOM} environment variable, or through a
+``{\tt -comm}'' flag.  Please refer to the the TinyOS documentation
+for instructions on how to connect motes to your computer.
+
+\subsubsection*{Executing across mote {\em and} PC}
+
+Alas, it is not very interesting to simply run code on a mote that is
+attached to a PC's serial port.  For a real sensor network
+application, we need to run WS code on an entire sensor network {\em
+  and} on the PC connected to the network, seemlessly splitting the
+application across the two tiers.
+
+Currently, {\bf wstiny} supports a method for manually splitting
+programs across tiers.  This is implemented using a simple naming
+convention.  A ``{\cde Node}'' namespace contains all the streams that will
+live inside the network, and everything outside of that namespace
+lives on the PC.  The following program illustrates this method, but
+it may help to return to it after reading Section~\ref{s:lang}, and in particular
+Section~\ref{s:namespaces} which explains namespaces.
+
+\begin{code}
+  namespace Node \{
+    s1 = ...
+    s2 = ...
+  \}
+  main = smap((+ 1), Node:s2);
+\end{code}
+
+Only the ``(+ 1)'' operation is executed on the PC.  The ``cut point''
+that splits {\cde s2} between the mote and PC will cause the compiler
+to generate code on both sides that accomplishes the communication.
+To compile this program, and execute it across the PC and a single
+mote connected to a serial interface, we type the following:
+
+\begin{code}
+[joe@computer] wstiny -split demo11g\_tinyos.ws
+[joe@computer] make -f Makefile.tos2 telosb install
+[joe@computer] ./query.exe
+\end{code}
+
+First, we compile the program, producing code for both platforms.
+Second, we install the progam onto the mote.  Third, we execute the PC
+portion of the program, which listens to the serial port, unpacks the
+messages from the stream {\cde s2}, and executes the rest of the
+program, producing output to {\tt stdout} as usual.
+%
+If we had compiled {\em without} {\cde -split}, then the entire
+application would run on the mote.
+
+Note, the mote-side communication is accomplished using the TinyOS
+interface {\cde AMSend}, which by default is wired to a {\cde
+  SerialAMSenderC} component.  If we want to execute on more than one
+mote, we must instead wire this interface to the radio (the {\cde
+  AMSenderC} component).  This is accomplished with:
+
+\begin{code}
+[joe@computer] wstiny -split-radio demo11g...
+\end{code}
+
+Which is just shorthand for:
+
+\begin{code}
+[joe@computer] wstiny -split-with "AMSenderC" ...
+\end{code}
+
+The resulting NessC code can be used to program several motes.  Then
+the TinyOS-included ``BaseStation'' application can be used to enable
+a PC to receive these radio messages on its serial port.  This method
+described in the here:  \htmladdnormallink{Lesson 4: Mote-PC serial communication}
+  {http://www.tinyos.net/tinyos-2.x/doc/html/tutorial/lesson4.html}.
+
+Note that the semantics of this method is that the messages from {\em
+  every} mote's {\cde s2} stream are combined to form the {\cde s2}
+stream seen on the PC.  Thus, the {\cde s2} streams will most likely
+include the a node identifier so that the PC can demultiplex the
+stream.  Please see Section~\ref{s:foreigntos} for information on integrating
+legacy TinyOS code with a WaveScript application.
+
+\subsubsection*{Limitations}
+
+\begin{itemize}
+\item The above {\tt -split} methodology only works for
+  one-hop networks.  We must adapt it to use the CTP (Collection
+  Tree Protocol) to work over larger networks.
+\item Code running on motes may not currently allocate memory
+  dynamically.
+\item Only string constants, static arrays, numbers, and tuples are
+  currently supported.
+\item Not all datatypes can be sent across a ``cut'' stream.
+  Currently, tuples and numbers support marshaling (including nested
+  tuples).  Arrays support marshaling but *only* if the array is not
+  contained within a tuple.
+\end{itemize}
+
+\subsubsection*{Future plans}
+
+We are in the process of removing the above limitations and adding
+support for new features:
+
+\begin{itemize}
+\item Dynamic allocation and garbage collection.
+\item Automatic and semi-automatic partitioning of stream programs
+  across PCs and motes.
+\end{itemize}
+
 
 %================================================================================
 \chapter{Language Basics}\label{s:lang}
 
-Please make liberal use of the demo files located at {\tt wavescript/demos/wavescope/*.ws} as a reference
+Please make liberal use of the demo files located at {\tt demos/wavescope/*.ws} as a reference
 when learning WaveScript.  These demos cover most of the basic
 functionality in the language.
 
@@ -563,8 +737,8 @@ described in section \ref{s:patterns}.
 \subsection{Numbers}
 
 WaveScript supports several different types of numbers.  \rednote{Currently,
-this set includes Int, Int16, Int64, Float, Double, Complex, but it will be extended
-to include 8-bit integers, unsigned integers, and complex-doubles.}
+this set includes Int, Int16, Uint16, Int64, Float, Double, Complex, but it will be extended
+to include 8-bit integers, other unsigned integers, and complex-doubles.}
 WaveScript includes generic numeric arithmetic operations ($+$, $-$,
 $*$, $/$) that work for any numeric types, but must be used on two
 numbers of the same type.  There are also type-specific numeric
@@ -645,7 +819,7 @@ For more documentation on these primitives, please refer to this file
 within your working copy:
 \vspace{-2mm}
 \begin{center}
-{\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
+{\tt{src/generic/\\compiler\_components/prim\_defs.ss}}
 \end{center}
 
 You can find the online documentation at:
@@ -673,8 +847,8 @@ which is defined in terms of
 and
 \htmladdnormallink{regiment-constants}             {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#regiment-constants}~.
 
-Please also examine the library files found in the {\tt wavescript/lib}
-directory.  These files, for example {\tt ``stdlib.ws''} and {\tt
+Please also examine the library files found in the {\tt lib/}
+sub-directory.  These files, for example {\tt ``stdlib.ws''} and {\tt
   ``matrix.ws''}, include library routines written in WaveScript.  As
 a general design principle, it is best to implement as much as
 possible in the language, while keeping the set of built-in primitives
@@ -866,7 +1040,7 @@ type signatures of the Sigseg primitives.
 
 
 %================================================================================
-\section{Namespaces}
+\section{Namespaces}\label{s:namespaces}
 
 WaveScript, while not having a sophisticated module system, does
 include a simple system for managing namespaces.
@@ -936,7 +1110,7 @@ of making reading code more difficult for the uninitiated).
 \subsection{Dot syntax}
   For convenience, functions can be applied using an
 alternative ``dot syntax''.  For example rather than taking the first
-element of a list with ``{\cd head(ls)}'', we can write ``{\cd ls.head}''.
+element of a list with ``{\cde head(ls)}'', we can write ``{\cde ls.head}''.
 This generalizes to functions of more than one argument; only the
 first argument is moved before the dot.  For example, 
 \vspace{-2mm}
@@ -963,15 +1137,15 @@ ls.tail.tail.head
 \subsection{\$: ``Unary parentheses''}
 
 The ``\$'' operator for procedure application is taken from Haskell
-and sometimes called the ``unary parenthesis''.  Instead of {\cd
-  f(g(x))}, we write ``{\cd f \$ g \$ x}''.
+and sometimes called the ``unary parenthesis''.  Instead of {\cde
+  f(g(x))}, we write ``{\cde f \$ g \$ x}''.
 This is useful if you have a large expression spanning many lines to
 which you want to apply a function:
 \begin{verbatim}
    iterate x in strm { 
       (many lines) ... 
 \end{verbatim}
-We can apply a function {\cd myfunction} without scrolling down to
+We can apply a function {\cde myfunction} without scrolling down to
 insert a close parenthesis:
 \begin{verbatim}
    myfunction $
@@ -1081,7 +1255,7 @@ the pain of asynchronicity as possible.
 \chapter{Primitive table}\label{s:primtable}
 
 This is an automatically generated table of primitives and their type
-signatures.  Also see the libraries in {\cd wavescript/lib} for
+signatures.  Also see the libraries in {\cde lib/} for
 additional standard functions.
 
 {

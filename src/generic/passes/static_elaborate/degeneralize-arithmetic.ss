@@ -56,9 +56,10 @@
 		    (match (list t (strip-annotations (car args)))
 		      [(Int16   (quote ,n))  
 		       (ASSERT (constant-typeable-as? n 'Int16))
-		       `(assert-type Int16 (quote ,n))
-			;(quote Int16 ,n)
-			]
+		       `(assert-type Int16 (quote ,n))]
+		      [(Uint16   (quote ,n))
+		       (ASSERT (constant-typeable-as? n 'Uint16))
+		       `(assert-type Uint16 (quote ,n))]
 
 		       [(Int64   (quote ,n))  
 			(ASSERT (constant-typeable-as? n 'Int64))
@@ -69,10 +70,10 @@
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
-		       [(Int16   ,e)  
+		       [(,i16   ,e)  (guard (eq-any? i16 'Int16 'Uint16))
 			(error 'degeneralize-arithmetic
-			       "cannot currently use gint with an arbitrary expression and output type Int16, it might overflow: ~s"
-			       `(gint ,e))]
+			       "cannot currently use gint with an arbitrary expression and output type ~a, it might overflow: ~s"
+			       i16 `(gint ,e))]
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Double  ,e)  `(intToDouble ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]

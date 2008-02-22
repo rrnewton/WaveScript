@@ -47,7 +47,7 @@ fun sensor_uint16(name, rate) {
   n = source_count;
   source_count += 1;
   funname = "sensor_ws_entry"++n;
-  s1 = (foreign_source(funname, []) :: Stream Int16);
+  s1 = (foreign_source(funname, []) :: Stream Uint16);
   smod = "SensorStrm"++n;
   tmod = "SensorTimer"++n;
   conf2 = "components new "++name++"() as "++smod++";\n"++
