@@ -1,19 +1,25 @@
 
-// This file uses the foreign interface to provide access to some file
-// IO, shell access, and unix system calls.  A comprehensive job would
-// be very involved, so we're adding to this as need arrises (as with
-// all our libraries, really).
 
-// Author: Ryan Newton
+
+/* 
+   This file uses the foreign interface to provide access to some file
+   IO, shell access, and unix system calls.  A comprehensive job would
+   be very involved, so we're adding to this as need arrises (as with
+   all our libraries, really).
+  
+  .author Ryan Newton
+  
+ */
+
+/******************************************************************************/
+/*    This namespace contains things that are direct wrappers to Unix calls   */
 
 type FileDescr = Pointer "FILE*";
 
 namespace Unix {
 
   namespace Internal {
-
     ext = "dylib" // or .so
-
     //libc = ["libc."++ext]
     //libc = ["./libc.so"]
     libc = []
@@ -21,35 +27,39 @@ namespace Unix {
 
   //using Internal;
 
-stdio = "stdio.h":::Internal:libc;
+  stdio = "stdio.h":::Internal:libc;
 
-// Can we support error codes across backends?
-system :: String -> Int = 
-   foreign("system", "stdlib.h":::Internal:libc)
+  // Can we support error codes across backends?
+  system :: String -> Int = 
+     foreign("system", "stdlib.h":::Internal:libc)
 
-usleep :: Int -> () = 
-   foreign("usleep","unistd.h":::Internal:libc)
+  usleep :: Int -> () = 
+     foreign("usleep","unistd.h":::Internal:libc)
 
-fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
-fclose :: FileDescr -> Int              = foreign("fclose", stdio);
+  fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
+  fclose :: FileDescr -> Int              = foreign("fclose", stdio);
 
-// This is kind of funny, we have two entries to the same functions.
-fread :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
-   foreign("fread", stdio)
-fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
-   foreign("fwrite", stdio)
+  // This is kind of funny, we have two entries to the same functions.
+  fread :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+     foreign("fread", stdio)
+  fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+     foreign("fwrite", stdio)
 
-// Damn, strings are not mutable...
-fread_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
-   foreign("fread", stdio)
-fwrite_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
-  //fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
-   foreign("fwrite", stdio)
+  // Damn, strings are not mutable...
+  fread_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
+    foreign("fread", stdio)
+  fwrite_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
+    //fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+    foreign("fwrite", stdio)
 
-malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
+  malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
 
 } // End namespace
 
+
+/******************************************************************************/
+/* The rest of this file contains functionality built on top of the
+   basic unix calls. */
 
 
 /* // Write a stream of strings to disk.  Returns an empty stream */
@@ -92,14 +102,17 @@ fun fileSink (filename, mode, strm) {
 }
 
 
-
-strings = iterate _ in timer(3.0) {
-  state { cnt = 0 }
-  if cnt < 15 then emit cnt++"\n";
-  cnt += 1;  
+// A simple test:
+main = { 
+  strings = iterate _ in timer(3.0) {
+    state { cnt = 0 }
+    if cnt < 15 then emit cnt++"\n";
+    cnt += 1;  
+  };
+  fileSink("stream.out", "w", strings);
+  //strings
 }
 
-BASE <- fileSink("stream.out", "w", strings)
 
 
 /*

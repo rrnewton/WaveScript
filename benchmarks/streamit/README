@@ -1,0 +1,14 @@
+
+
+This directory includes ported StreamIT benchmarks.  These are useful
+for a few reasons:
+
+ (1) Comparing performance against StreamIT.
+ (2) Having more benchmarks is always good.
+ (3) Testing the effectivenes of the "streamit.ws" embeddeding of
+     StreamIT within WS.
+
+There are two sets of benchmarks, those that use streamit.ws are in
+the "pushpop" directory.  And those that represent "natural" WS
+translations of the originals are in the "natural" directory.
+

@@ -41,7 +41,7 @@ fun filter(peekN,popN,pushN, fn)
       fn(peek, pop, push);      
       assert_eq("Popped as we were supposed to.", advance, popN);
       emit toSigseg(buf, timestamp, nulltimebase);
-      println("SETTING "++acc++" to "++ subseg(acc, acc.start + popN.gint, acc.width - popN));
+      //println("SETTING "++acc++" to "++ subseg(acc, acc.start + popN.gint, acc.width - popN));
       acc := subseg(acc, acc.start + popN.gint, acc.width - popN);      
       advance := 0;
       ind := 0;
@@ -60,6 +60,7 @@ fun pipeline(ls) List:fold(compose, fun(x) x, ls);
 
 uniontype SplitJoin = Duplicate () | RoundRobin Int;
 
+// TOFINISH
 fun splitjoin() {
 }
 
