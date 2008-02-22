@@ -144,6 +144,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
 	    (read (open-input-file "svn_rev.txt"))))))
 
+(define webroot "/var/www")
+(define webdir  "/var/www/regression")
+
 (define (post-to-web webfilename) 
   (define publish 
     (lambda (logfile webfile)
@@ -155,15 +158,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
-  (if (directory-exists? "/var/www/regression")
+  (if (directory-exists? webdir)
       (begin 
 	(printf "Going to try publishing to website.\n")
-	(let* ([webfile (format "/var/www/regression/~a" webfilename)])
+	(let* ([webfile (format "~a/~a" webdir webfilename)])
 	  (publish logfile webfile))
 	;; Now do the performance report:
 	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
 	  (if (file-exists? perfreport)
-	      (let* ([webfile (format "/var/www/regression/rev~a_eng~a_perfreport.pdf"
+	      (let* ([webfile (format "~a/rev~a_eng~a_perfreport.pdf" webdir
 				      svn-revision engine-svn-revision)])
 		(publish perfreport webfile)))))
       ;; Otherwise we could try to scp it...
@@ -409,9 +412,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
-(setup-engine-dir!) 
 #; ;; Disabling
 (begin 
+(setup-engine-dir!) 
 
 (fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
 (fpf "========================================\n")
@@ -695,11 +698,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Finally, copy all logs 
 (fprintf orig-console "Copying all logs to website...\n")
-(system "rm -f /var/www/regression/most_recent_logs/*")
-(system (format "cp ~a/*.log /var/www/regression/most_recent_logs/"
+(system (format "rm -f ~a/most_recent_logs/*" webdir))
+(system (format "cp ~a/*.log ~a/most_recent_logs/" webdir
 		test-directory))
 (fprintf orig-console "Copied all logs to website.\n")
 
-(current-directory "/var/www")
+(current-directory webroot)
 (system "./setperms")
 
