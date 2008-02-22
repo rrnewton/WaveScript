@@ -6,7 +6,7 @@
 
 (module type_environments mzscheme
   (require ;`"../../plt/common.ss"
-;           "prim_defs.ss"
+           "prim_defs.ss"
            "../../plt/iu-match.ss"
            "../../plt/hashtab.ss"
 ;           "../../plt/chez_compat.ss"

@@ -111,6 +111,8 @@ Step 5: OPTIONAL EXTRAS.
        system (that runs in Scheme).  For example, this includes an
        interface to FFTW for faster fourier transforms.
 
+   (*) If you want to use the GSL matrix library, install blas.
+       (On debian you can use the refblas3-dev package & atlas3-base-dev.)
 
 
 

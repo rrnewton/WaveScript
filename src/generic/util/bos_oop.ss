@@ -29,7 +29,7 @@
 	       (__specreplace specialise!)
 	       )
   (chezimports)
-  (IFCHEZ (begin) (provide define-class define-object  define-generic  make-class __spec))
+  (IFCHEZ (begin) (provide define-class define-object  define-generic  make-class __spec __specreplace))
 
   ;(IFCHEZ (source-directories (cons "." (source-directories))) (begin))
 

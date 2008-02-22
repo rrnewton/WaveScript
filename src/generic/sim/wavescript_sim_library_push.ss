@@ -939,10 +939,6 @@
       [(_ variant) (make-uniontype 'variant (void))]
       [(_ variant arg) (make-uniontype 'variant arg)]))
 
-  (define-syntax assert-type
-    (syntax-rules ()
-      [(_ t e) e]))
-
   ;; For these programs, need letrec*.
 #;
   (define-syntax ws-letrec
@@ -1098,7 +1094,24 @@
   (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
   (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
 
-  (define (cast_num x) (error 'cast_num "should not be called at metaprogram eval"))
+  ;; [2008.02.22] New strategy: cast_num does nothing, whereas
+  ;; assert-type ensures conformance with our numeric representation
+  ;; policy.
+  ;(define (cast_num x) (error 'cast_num "should not be called at metaprogram eval"))
+  (define (cast_num x) x)
+  (define-syntax assert-type
+    ;; TODO Rewrite this with syntax-case and remove code duplication.
+    (syntax-rules (Int Int16 Int64 Uint16 
+		       Float Double Complex)
+      [(_ Int   e)  (__cast_num #f 'Int   e)]
+      [(_ Int16 e)  (__cast_num #f 'Int16 e)]
+      [(_ Int64 e)  (__cast_num #f 'Int64 e)]
+      [(_ Uint16 e) (__cast_num #f 'Uint16 e)]
+      [(_ Float e)  (__cast_num #f 'Float e)]
+      [(_ Double e) (__cast_num #f 'Double e)]
+      [(_ Complex e) (__cast_num #f 'Complex e)]
+      [(_ other e) e]
+      ))
 
   ;; Currently we "overflow" by just changing the number to zero.
   ;; That is, overflow behavior is not well defined across platforms.
