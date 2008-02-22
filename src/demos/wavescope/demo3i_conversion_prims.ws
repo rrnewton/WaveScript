@@ -26,6 +26,11 @@ main = iterate(w in s0) {
   d = n`intToDouble;
   c = n`intToComplex;
 
+  ui = (cast_num(n) :: Uint16);
+  print("UINT * 2: "++(ui + ui)++"\n");
+
+  print("CASTING: "); println((cast_num(f) :: Int16));
+
   // Roundtripping: 
   // 4096 is representable as any of our numbers and as such should be convertible without loss:
   assert_eq("", n, i`int16ToInt);

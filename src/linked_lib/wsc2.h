@@ -36,6 +36,9 @@
 #define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
 #define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
 
+//typedef unsigned int16_t uint16_t;
+typedef unsigned short int uint16_t;
+
 int outputcount = 0;
 int tuplimit = 10;
 

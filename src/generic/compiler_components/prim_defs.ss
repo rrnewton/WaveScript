@@ -31,6 +31,8 @@
            "../util/helpers.ss"
            )
   (provide 
+           num-types ;; List of the numeric types
+
            regiment-type-aliases
 	   regiment-basic-primitives
 	   local-node-primitives
@@ -80,6 +82,16 @@
     ; [(Area 'a) (Stream (Space 'a))]
     ))
 
+;; Added a subkind for numbers, here are the types in that subkind.
+(define num-types '(Int Float Double Complex 
+		    Int16 Int64
+		    ;; Eventually:
+		    ;; Int8 Int16 Int64 Double Complex64
+		    Uint16
+		    ;; Following haskell's example and having "words" rather than uints:
+		    ;Word16
+		    ))
+
 ;=============================================================
 
 ;;; Type signatures for primitives that are singled out in some way.
@@ -109,6 +121,9 @@
     (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
 
     ;; TODO: Add more generic operations.  UNFINISHED:
+
+    ;; Considering this instead of all the separate conversions.
+    (cast_num ((NUM a)) (NUM b))
     
     ; Here are some "upcasts".
     ; Throws an error if you try to downcast??
@@ -310,6 +325,11 @@
     (/I64 (Int64 Int64) Int64) 
     (^I64 (Int64 Int64) Int64) ;; exponentiation
 
+    (_+U16 (Uint16 Uint16) Uint16)
+    (_-U16 (Uint16 Uint16) Uint16) 
+    (*U16 (Uint16 Uint16) Uint16) 
+    (/U16 (Uint16 Uint16) Uint16) 
+    (^U16 (Uint16 Uint16) Uint16) ;; exponentiation
 
     (_+. (Float Float) Float)
     (_-. (Float Float) Float)
@@ -340,6 +360,19 @@
     (>=  ('a 'a) Bool)
 
 ))
+
+#;
+(define numeric-conversion-prims
+  (apply append 
+	      (map (lambda (ty1)
+		     (filter id 
+		       (map (lambda (ty2)
+			      (and (not (eq? ty1 ty2))
+				   `(,(string->symbol 
+				       (** (lowercase (symbol->string ty1))
+					   "To" (symbol->string ty2)))
+				     (,ty1) ,ty2)))
+			 num-types))) num-types)))
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
@@ -391,17 +424,29 @@
     ;; We should follow SML's system of "toLarge" and "fromLarge"
     ;; Alternatively, We should at least programmatically generate these specs:
     
+    ;,@numeric-conversion-prims
+
+    (__cast_num (Symbol Symbol (NUM a)) (NUM b))
+
+;    (int16ToUint16  (Int16)   Uint16)
     (int16ToInt     (Int16)   Int)
     (int16ToInt64   (Int16)   Int64)
     (int16ToFloat   (Int16)   Float)
     (int16ToDouble  (Int16)   Double)
     (int16ToComplex (Int16)   Complex)
 
+;    (int64ToUint16  (Int64)   Uint16)
     (int64ToInt     (Int64)   Int)
     (int64ToInt16   (Int64)   Int16)
     (int64ToFloat   (Int64)   Float)
     (int64ToDouble  (Int64)   Double)
     (int64ToComplex (Int64)   Complex)
+
+;     (uint16ToInt     (Uint16)   Int)
+;     (uint16ToInt64   (Uint16)   Int64)
+;     (uint16ToFloat   (Uint16)   Float)
+;     (uint16ToDouble  (Uint16)   Double)
+;     (uint16ToComplex (Uint16)   Complex)
 
     (intToInt16     (Int)   Int16)
     (intToInt64     (Int)   Int64)
@@ -426,6 +471,7 @@
     (complexToInt    (Complex) Int)
     (complexToDouble (Complex) Double)
     (complexToFloat  (Complex) Float)
+
 
     ;(stringToInt64  (String)  Int64)
     (stringToInt     (String)  Int)

@@ -41,6 +41,7 @@
 		 gnuplot_process spawnprocess
 		 prim_window
 
+		 ;; Unmarshall from strings:
 		 to-uint16 to-int16 uint16->string
 
 		 wsequal?
@@ -53,6 +54,9 @@
 		 _+D _-D *D /D ^D
 		 _+I16 _-I16 *I16 /I16 ^I16
 		 _+I64 _-I64 *I64 /I64 ^I64
+
+		 _+U16 _-U16 *U16 /U16 ^U16
+
 		 sqrtF sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
 		 randomI
@@ -63,6 +67,10 @@
 		 
 		 makeComplex
 		 
+		 cast_num __cast_num
+
+		 ;uint16ToInt     uint16ToInt64  uint16ToFloat uint16ToDouble uint16ToComplex
+
 		 int16ToInt     int16ToInt64  int16ToFloat int16ToDouble int16ToComplex
 		 int64ToInt16   int64ToInt    int64ToFloat int64ToDouble int64ToComplex
 
@@ -1084,10 +1092,29 @@
 
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
   (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
+  (define _+U16 fx+)  (define _-U16 fx-)  (define *U16 fx*)  (define /U16 fx/)
   (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  
   (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
   (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
   (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
+
+  (define (cast_num x) (error 'cast_num "should not be called at metaprogram eval"))
+
+  ;; Currently we "overflow" by just changing the number to zero.
+  ;; That is, overflow behavior is not well defined across platforms.
+  (define (__cast_num from to num) 
+    (case to
+      [(Int Int16 Int64) 
+       (let ([x (inexact->exact (floor num))]
+	     [pred (match to
+		     [Int16 int16?]
+		     ;[Int   int32?]  ;; Ints are not defined as 32 bits
+		     [Int   fixnum?]
+		     [Int64 int16?])])
+	 (if pred x 0))]
+      [(Float Double) (exact->inexact num)]
+      [(Complex) (+ num 0.0+0.0i)]
+      [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
 
   (define (/I64 a b) (floor (s:/ a b)))
 
@@ -1095,6 +1122,7 @@
   (define g^ expt)
   (define ^_ expt)
   (define ^I16 expt)
+  (define ^U16 expt)
   (define ^I64 expt)
   (define ^D expt)
   (define ^. expt)

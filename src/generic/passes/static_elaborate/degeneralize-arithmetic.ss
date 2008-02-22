@@ -34,6 +34,8 @@
   (define (int16 x)   (match x [g+ '_+I16] [g- '_-I16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
   (define (int64 x)   (match x [g+ '_+I64] [g- '_-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
+  (trace-define (uint16 x)  (match x [g+ '_+U16] [g- '_-U16] [g* '*U16] [g/ '/U16] [g^ '^U16])) ; [abs 'abs16]
+
   (define degeneralize-arithmetic-grammar
     (filter (lambda (x)
 	      (match x
@@ -42,53 +44,63 @@
 	static-elaborate-grammar))
 
   (define-pass degeneralize
-      [Expr (lambda (x fallthru)
-	      (match x
-		[(let ([,v ,t (,genop ,[args] ...)]) ,v2)
+      [Expr/Types
+       (lambda (x tenv fallthru)
+	 (match x
+	   [(let ([,v ,t (,genop ,[args] ...)]) ,v2)
 		 (guard (eq? v v2) (assq genop generic-arith-primitives))		 
-		 (if (eq? genop 'gint)		     
-		     ;; Strip annotations so they don't throw off our pattern matching:
-		     (match (list t (strip-annotations (car args)))
-		       [(Int16   (quote ,n))  
-			(ASSERT (constant-typeable-as? n 'Int16))
-			`(assert-type Int16 (quote ,n))
+		 ;; "gint" allows converting from int->anything
+		 (case genop
+		   [(gint)
+		    ;; Strip annotations so they don't throw off our pattern matching:
+		    (match (list t (strip-annotations (car args)))
+		      [(Int16   (quote ,n))  
+		       (ASSERT (constant-typeable-as? n 'Int16))
+		       `(assert-type Int16 (quote ,n))
 			;(quote Int16 ,n)
 			]
 
 		       [(Int64   (quote ,n))  
 			(ASSERT (constant-typeable-as? n 'Int64))
 			`(assert-type Int64 (quote ,n))]
-
 		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
-
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
 		       [(Int16   ,e)  
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type Int16, it might overflow: ~s"
 			       `(gint ,e))]
-
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Double  ,e)  `(intToDouble ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
 		       
 		       ;; DANGER: FIXME: Don't know if this is a good idea:
 		       [((NUM ,_) ,e) e]
-
 		       [,else 
 			(error 'degeneralize-arithmetic
 			       "unhandled output type demanded of gint, ~s, expression: ~s"
-			       t (cons 'gint args))])
-;; NOTE: THIS WON'T WORK FOR ABS YET...
-;; IT WORKS BASED ON THE RETURN TYPE, WHICH IS AMBIGUOUS FOR ABS.
-
+			       t (cons 'gint args))])]
+		   [(cast_num) 
+		    ;(inspect (vector 'got-cast t))
+		    ;; Ouch, might be expensive:
+		    (match (car args)
+		      ;[',c ]
+		      [,oth 
+		       (let ([in_type (recover-type oth tenv)]
+			     [out_type t])
+			 (ASSERT symbol? in_type) (ASSERT symbol? out_type)
+			 `(__cast_num ',in_type ',out_type ,oth))])]
+		   [else 		    
+		    ;; NOTE: THIS WON'T WORK FOR ABS YET...
+		    ;; IT WORKS BASED ON THE RETURN TYPE, WHICH IS AMBIGUOUS FOR ABS.
 		     (case t
 		       [(Int)     `(,(int     genop) . ,args)]
 		       [(Int16)   `(,(int16   genop) . ,args)]
 		       [(Int64)   `(,(int64   genop) . ,args)]
+		       [(Uint16)  `(,(uint16  genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]
 		       [(Double)  `(,(double  genop) . ,args)]
 		       [(Complex) `(,(complex genop) . ,args)]
@@ -100,8 +112,8 @@
 		       [else (error 'degeneralize-arithmetic
 				    "generic operation did not have concrete numeric type after elaboration: ~s"
 				    (cons genop args))]
-		       ))]
-		[,oth (fallthru oth)]))])
+		       )])]
+		[,oth (fallthru oth tenv)]))])
 
   (define (degeneralize-arithmetic p)
     (degeneralize 

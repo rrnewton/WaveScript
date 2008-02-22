@@ -1109,19 +1109,25 @@
 	      [(using ,M ,[e]) `(using ,M ,e)]
 	      [,other (fallthru other)]))])
 
-
+;; Optionally takes symbols indicating which annotations to strip.
+;; Otherwise, strips all.
 (define strip-annotations
   (let ()
+    (define tostrip #f)
     (define (Expr x fallthru)
       (match x
-	[(src-pos ,_ ,[e]) e]
-	[(assert-type ,_ ,[e]) e]
 	[(using ,M ,[e]) `(using ,M ,e)]
+	[(,annot ,_ ,[e]) (guard (annotation? annot)
+				 (or (not tostrip) 
+				     (and tostrip (memq annot tostrip))))
+	 e]
 	[,other (fallthru other)]))
-    (lambda (p)
-      (match p 
-	[(,lang '(program ,[E] ,_ ...))  `(,lang '(program ,E ,@_))]
-	[,expr ((core-generic-traverse Expr) expr)]
+    (lambda (p . args)
+      (fluid-let ([tostrip (if (null? args) #f args)])
+	(match p 
+	  [(,lang '(program ,[E] ,_ ...))  `(,lang '(program ,E ,@_))]
+	  [,expr ((core-generic-traverse Expr) expr)]
+	  )
 	))))
 
 ;; This annotates the program, and then exports all the types to their

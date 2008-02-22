@@ -19,9 +19,7 @@ s2 = iterate( w in s1 ) {
   state{ counter = 99 } // [2007.10.02] It will default to int....
   counter += 1;
 
-  led0Toggle();
-  led1Toggle();
-  led2Toggle();
+  //led0Toggle(); led1Toggle(); led2Toggle();
 
   print("why?\n");
 

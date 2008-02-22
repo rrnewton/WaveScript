@@ -56,8 +56,8 @@ exec regiment i --script "$0" ${1+"$@"};
     `(
 
     ["demo1c_timer.ws"         ,(lambda (a b) 
-				  (ASSERT (equal? a 39))
-				  (ASSERT (equal? b 39)))]
+				  (ASSERT (equal? a #()))
+				  (ASSERT (equal? b #())))]
 
     ;; This one specifically sabatoges the next one.
     ["demo1d_readFile_text.ws"  ,(lambda (a b) (void))]

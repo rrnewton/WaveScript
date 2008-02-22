@@ -50,7 +50,7 @@
        [(Ref ,_)   #t] ;; ?? 
        [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
        [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
-
+       [Symbol #f] ;; Meaningless answer.  No runtime representation... used internally.
        )]))
 
 ;; Helper pass.

@@ -251,9 +251,11 @@
   (match x
     ;; [2007.03.11] Making complex constants *NON* simple
     [(quote ,imm) (guard ;(not (null? imm)) 
-		         (simple-constant? imm)
+		         (or (simple-constant? imm)
+			     (symbol? imm))
 			 ;(not (pair? imm)) (not (vector? imm))
 			 ) #t]
+
     [Array:null #t] ;; [2007.12.09] Adding...
     ;; Void value:
     [(tuple) #t] ;; [2007.03.19] Why had I commented this before? Using 'UNIT instead.
@@ -298,6 +300,11 @@
 	(eq? x 'BOTTOM)
 	(eq? x 'UNIT)
 	
+	#;
+	(if (symbol? x) ;; Just for compiler internal stuff.
+	    (printf "TRUE FOR SYM: ~s\n" x)
+	    #f
+	    ) 
         )))
 
 ;; Is it an *expression* that always returns the same value.

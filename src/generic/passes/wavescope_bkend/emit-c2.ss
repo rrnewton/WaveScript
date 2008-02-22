@@ -479,6 +479,7 @@
     [Int     "int"]
     [Int16   "int16_t"]
     [Int64   "int64_t"]
+    [Uint16  "uint16_t"]
     [Double  "double"]
     [Float   "float"]
     [Complex "float complex"]
@@ -527,6 +528,7 @@
     [Int    "%d"]
     [Int16  "%hd"]
     [Int64  "%lld"]
+    [Uint16  "%hu"]
     [Float  "%f"]	   
     [Double "%lf"]
     [#() "()"]
@@ -1041,6 +1043,11 @@
 	[(absC ,[Simp -> c]) (kont `("cNorm(",c")"))]
 
 	[(intToChar ,[Simp -> e]) (kont `("(wschar_t)",e))]
+       
+	[(__cast_num ',from ',to ,[Simp -> e])
+	 ;(inspect (vector from to))
+	 (kont `("(",(Type self to)")",e))]
+
 	[(,toint     ,[Simp -> e]) 
 	 (guard (memq toint '(int16ToInt int64ToInt floatToInt doubleToInt charToInt)))
 	 (kont `("(int)",e))]

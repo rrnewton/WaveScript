@@ -571,9 +571,18 @@
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
 
+
+  ;(inspect (blaze-path-to/assq p 'cast))
+  ;(inspect (deep-assq-all 'cast p))
+;  (inspect (strip-annotations p 'src-pos))
+
+  ;; This is expensive because it lifts generic ops, and retypechecks:
+  ;; (Like we later do for polymorphic constants)
+(inspect p)
   (ws-run-pass p degeneralize-arithmetic)
+(inspect p)
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
-  (do-late-typecheck)
+  (DEBUGMODE (do-late-typecheck)) ;; [2008.02.21] changing to debug-only
   
   ;; This just fills polymorphic types with unit.  These should be
   ;; things that don't matter.  We typecheck afterwards to make sure

@@ -892,7 +892,9 @@
 	  (error 'embed-strings-as-arrays "missed this: ~s" (cons safety _))]
 
 	 [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
-			 (not (type-containing-mutable? (export-type (type-const const)))))
+			 (not (type-containing-mutable? (export-type (type-const const))))
+			 (not (symbol? const))
+			 )
 	  ;(printf "  LIFTING CONSTANT: ~s\n" const)
 	  (let ([tmp (unique-name "tmpconstlift")])
 	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))

@@ -24,7 +24,7 @@
            )
 
   (provide 
-           num-types scalar-type?
+           scalar-type?
 
 	   type? 
 	   instantiated-type?
@@ -68,13 +68,6 @@
 ;;; and instantiated-types totally disjoint; at the cost of boxing
 ;;; them.  Currently I believe I'm being sloppy in places.
 
-
-;; Added a subkind for numbers, here are the types in that subkind.
-(define num-types '(Int Float Double Complex 
-		    Int16 Int64
-		    ;; Eventually:
-		    ;; Int8 Int16 Int64 Double Complex64
-			))
 
 (define (scalar-type? ty) (or (memq ty num-types) (memq ty '(Bool Char))))
 
