@@ -1548,6 +1548,22 @@
        ))]
 
     
+    ;; Yuck, duplicated code, copying this from emit-c2.ss
+    [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
+     (guard (assq infix_prim infix-arith-prims))
+     (define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
+     (define result
+       (case infix_prim
+	 [(=) "=="]
+	 [(< > <= >=) (sym2str infix_prim)]
+	 [else 
+	  (match (string->list (sym2str infix_prim))	  
+	    [(#\_ ,op ,suffix ...) (list->string (list op))]
+	    [(,op ,suffix ...)     (list->string (list op))])]))
+     (ASSERT (member result valid-outputs))
+     (wrap (list "(" left " " result " " right ")"))]
+
+#;
     ;; TODO: tupref, exponentiation 
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])
      (guard (memq infix_prim '(;+ - * /
@@ -1572,6 +1588,7 @@
 		    )])
        (ASSERT (member cname '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">=")))
        (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
+
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
@@ -2117,6 +2134,7 @@ int main(int argc, char ** argv)
 		   
 		   realtime
 
+		   __cast_num
 		   wsequal? print show seg_get toArray  __show_ARRAY __wserror_ARRAY __backtoSTR
 		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 

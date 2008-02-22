@@ -1,11 +1,13 @@
 
 
+WWWDIR=/var/www/chastity/
+
 all: pdf html
 
 install:
-	cp -a manual/* /var/www/wsmanual/
-	cp -a manual.pdf /var/www/
-	(cd /var/www; ./setperms)
+	cp -a manual/* $(WWWDIR)/wsmanual/
+	cp -a manual.pdf $(WWWDIR)
+	(cd $(WWWDIR); ./setperms)
 
 primtable.tex:
 	echo '\begin{verbatim}' > primtable.tex

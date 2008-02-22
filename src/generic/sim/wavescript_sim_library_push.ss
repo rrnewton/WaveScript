@@ -1104,10 +1104,11 @@
   ;; That is, overflow behavior is not well defined across platforms.
   (define (__cast_num from to num) 
     (case to
-      [(Int Int16 Int64) 
+      [(Int Uint16 Int16 Int64)
        (let ([x (inexact->exact (floor num))]
 	     [pred (match to
 		     [Int16 int16?]
+		     [Uint16 uint16?]
 		     ;[Int   int32?]  ;; Ints are not defined as 32 bits
 		     [Int   fixnum?]
 		     [Int64 int16?])])

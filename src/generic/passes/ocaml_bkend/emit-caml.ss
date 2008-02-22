@@ -871,7 +871,9 @@
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
-		   		   
+
+		   __cast_num  _+U16 *U16 _-U16 /U16 ^U16
+	   
 		   wsequal? print show seg_get toArray __show_ARRAY __wserror_ARRAY __backtoSTR
 		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 

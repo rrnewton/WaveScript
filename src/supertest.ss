@@ -410,6 +410,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; WAVESCOPE ENGINE:
 
 (setup-engine-dir!) 
+#; ;; Disabling
 (begin 
 
 (fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
@@ -446,6 +447,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
+#; ;; Disabling
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   ;; This runs faster if we load Regiment pre-compiled:
  ;(current-directory test-directory) (ASSERT (system "make chez"))
@@ -456,17 +458,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
   )
 
-
-#;
-(parameterize ((current-directory (format "~a/lib/" test-root)))
-  (run-test "wsc: Compiling stdlib_test:"
-	    (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))
-  #;
-  (run-test "wsc: Running stdlib_test:"
-	    (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory)))
+; (parameterize ((current-directory (format "~a/lib/" test-root)))
+;   (run-test "wsc: Compiling stdlib_test:"
+; 	    (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))
+;   #;
+;   (run-test "wsc: Running stdlib_test:"
+; 	    (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory)))
 
 
-#|
+#| ;; DISABLING
 ;;================================================================================
 ;; Now test WSCAML:
 
@@ -484,19 +484,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 |#
 
-(fpf "\n\nWaveScript MLTON Backend:\n" )
-(fpf "========================================\n")
+#; ;; Disabling
+(begin 
+  (fpf "\n\nWaveScript MLTON Backend:\n" )
+  (fpf "========================================\n")
 
-(parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
-  (newline)       
-  (run-test "wsmlton: Running Demos through MLton:" 
-	    (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory)))
+  (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
+    (newline)       
+    (run-test "wsmlton: Running Demos through MLton:" 
+	      (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory)))
 
-(parameterize ((current-directory (format "~a/lib/" test-root)))  
-  (run-test "wsmlton: Compiling stdlib_test:"
-	    (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))
-  (run-test "wsmlton: Running stdlib_test:    "
-	    (format "./query.mlton.exe -n 10 -exit-error &> ~a/wsmlton_stdlib_run.log" test-directory)))
+  (parameterize ((current-directory (format "~a/lib/" test-root)))  
+    (run-test "wsmlton: Compiling stdlib_test:"
+	      (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))
+    (run-test "wsmlton: Running stdlib_test:    "
+	      (format "./query.mlton.exe -n 10 -exit-error &> ~a/wsmlton_stdlib_run.log" test-directory)))
+)
 
 
 ;;================================================================================
@@ -536,31 +539,34 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "ws: Running marmot app (3phases): "
 	    (format "ws.debug run_3phases.ws -n 1 -exit-error &> ~a/ws_marmot123.log" test-directory))
 
-  (run-test "wsmlton: Compiling marmot app (first phase):  "
-	    (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))
-  (run-test "wsmlton: Running marmot app (first phase):   "
-	    (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot1_run.log" test-directory))
+  #; ;; Disabling
+  (begin
+    (run-test "wsmlton: Compiling marmot app (first phase):  "
+	      (format "wsmlton run_first_phase.ws -exit-error &> ~a/wsmlton_marmot1_build.log" test-directory))
+    (run-test "wsmlton: Running marmot app (first phase):   "
+	      (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot1_run.log" test-directory))
+    
+    ;; Third phase won't work in "ws" because of writing ppm file.
+    (run-test "wsmlton: Compiling marmot app (3phases):   "
+	      (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))
+    (run-test "wsmlton: Running marmot app (3phases):  "
+	      (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory)))
   
-  ;; Third phase won't work in "ws" because of writing ppm file.
-  (run-test "wsmlton: Compiling marmot app (3phases):   "
-	    (format "wsmlton run_3phases.ws -exit-error &> ~a/wsmlton_marmot123_build.log" test-directory))
-  (run-test "wsmlton: Running marmot app (3phases):  "
-	    (format "./query.mlton.exe -n 1 &> ~a/wsmlton_marmot123_run.log" test-directory))
-  
-
   ;; FIXME: ADD THIRD STAGE MULTINODE ETC!!!
 
-  (run-test "wsc: Compiling marmot app (first phase):  "
-	    (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
-		    test-directory))
-  (run-test "wsc: Running marmot app (first phase):  "
-	    (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))
-  (run-test "wsc: Compiling marmot app (second phase):  "
-	    (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))
-  ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
-  (run-test "wsc: Running marmot app (second phase): "
-	    (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory))
-
+  #; ;; Disabling
+  (begin 
+    (run-test "wsc: Compiling marmot app (first phase):  "
+	      (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
+		      test-directory))
+    (run-test "wsc: Running marmot app (first phase):  "
+	      (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))
+    (run-test "wsc: Compiling marmot app (second phase):  "
+	      (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))
+    ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
+    (run-test "wsc: Running marmot app (second phase): "
+	      (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory)))
+  
   ) ;; End MARMOT
 
 
@@ -571,6 +577,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
+#; ;; Disabling
 (parameterize ((current-directory (format "~a/benchmarks" test-root)))
   ;; [2007.10.30] building incrementally, so we see what fails:
   (run-test "    Setup Engines:             " 

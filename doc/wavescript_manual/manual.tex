@@ -22,7 +22,8 @@
 
 % page size commands
 
-\title{WaveScript Rev 2930 Users Manual}
+%% Need to automatically grab the revision number.
+\title{WaveScript Rev 3042 User Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -419,17 +420,17 @@ section for a list of limitations.)
 {\bf wstiny} on a WaveScript file (in the same way as any other backend)
 will compile the entire application to run on the mote.
 
-\begin{code}
-  [joe@computer] wstiny demo11g\_tinyos.ws
-\end{code}
+\begin{verbatim}
+  [joe@computer] wstiny demo11g_tinyos.ws
+\end{verbatim}
 
 In the same way that one invokes ``{\tt query.exe}'' or ``{\tt
   query.mlton.exe}'' when using another WaveScript backend, one can
 run the {\bf wstiny} program with ``{\tt query.py}'':
 
-\begin{code}
+\begin{verbatim}
   [joe@computer] ./query.py
-\end{code}
+\end{verbatim}
 
 This is a python script that invokes TOSSIM, the TinyOS simulator.
 The output of the program will be printed to the terminal---including
@@ -442,12 +443,12 @@ Of course, the point of compiling for TinyOS is to run code on a {\em
 platform.  And then we invoke a listener on the serial port to see the
 output of the program.
 
-\begin{code}
+\begin{verbatim}
 [joe@computer] make -f Makefile.tos2 telosb install
 [joe@computer] MOTECOM=serial@/dev/ttyUSB0:telosb
 [joe@computer] export MOTECOM
 [joe@computer] java PrintfClient 
-\end{code}
+\end{verbatim}
 
 %The ``-comm'' argument can be omitted if the MOTECOM environment
 %variable is set (see the TinyOS documentation).  
@@ -476,13 +477,13 @@ lives on the PC.  The following program illustrates this method, but
 it may help to return to it after reading Section~\ref{s:lang}, and in particular
 Section~\ref{s:namespaces} which explains namespaces.
 
-\begin{code}
-  namespace Node \{
+\begin{verbatim}
+  namespace Node {
     s1 = ...
     s2 = ...
-  \}
+  }
   main = smap((+ 1), Node:s2);
-\end{code}
+\end{verbatim}
 
 Only the ``(+ 1)'' operation is executed on the PC.  The ``cut point''
 that splits {\cde s2} between the mote and PC will cause the compiler
@@ -490,11 +491,11 @@ to generate code on both sides that accomplishes the communication.
 To compile this program, and execute it across the PC and a single
 mote connected to a serial interface, we type the following:
 
-\begin{code}
-[joe@computer] wstiny -split demo11g\_tinyos.ws
+\begin{verbatim}
+[joe@computer] wstiny -split demo11g_tinyos.ws
 [joe@computer] make -f Makefile.tos2 telosb install
 [joe@computer] ./query.exe
-\end{code}
+\end{verbatim}
 
 First, we compile the program, producing code for both platforms.
 Second, we install the progam onto the mote.  Third, we execute the PC
@@ -511,15 +512,15 @@ interface {\cde AMSend}, which by default is wired to a {\cde
 mote, we must instead wire this interface to the radio (the {\cde
   AMSenderC} component).  This is accomplished with:
 
-\begin{code}
+\begin{verbatim}
 [joe@computer] wstiny -split-radio demo11g...
-\end{code}
+\end{verbatim}
 
 Which is just shorthand for:
 
-\begin{code}
+\begin{verbatim}
 [joe@computer] wstiny -split-with "AMSenderC" ...
-\end{code}
+\end{verbatim}
 
 The resulting NessC code can be used to program several motes.  Then
 the TinyOS-included ``BaseStation'' application can be used to enable
