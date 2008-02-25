@@ -6,6 +6,7 @@
 #UNSAFE="-const 'MLton.safe false' -const 'MLton.detectOverflow false'"
 
 #EXTRAMLTONFLAGS=$EXTRAMLTONFLAGS
+#EXTRAMLTONFLAGS=$EXTRAMLTONFLAGS -profile count
 
 #mlton $EXTRAMLTONFLAGS -const 'MLton.safe false' -const 'MLton.detectOverflow false' -default-ann 'allowFFI true' -codegen x86 $*
 

@@ -854,6 +854,10 @@ zip3_sametype = fun (s1,s2,s3) {
   }
 }
 
+// Here's a constant that controls how much we buffer zips by default.
+// This might need to be changed for different runtimes/schedulers
+DEFAULT_ZIP_BUFSIZE = 2;
+
 fun zip4_sametype(bufsize, s1,s2,s3,s4) {
   iterate (ind, elem) in unionList([s1,s2,s3,s4]) {
     state { 
@@ -1196,173 +1200,34 @@ fun degap(s, init, max_gap)
 }
 
 
-
-// This should take a buffer size argument:
-// This is much like a zip:
-/*
-fun interleave(ls, bufsize) {
-  using FIFO;
-  n = ls`length;
-  iterate (newi,newdat) in unionList(ls) {
-    state { 
-      //bufs = Array:build(n, fun(i) Array:makeUNSAFE(bufsize));
-      // bufs = Array:make(n, ls);
-
-      // An array of Queues:
-      bufs = Array:build(n, fun(i) make(bufsize));
-      ind = 0;
-    }
-    // Add the data.    
-    enqueue(bufs[newi], newdat);
-    if empty(bufs[ind])
-    then {}
-    else {
-      emit dequeue(bufs);
-      
-    }
-  }
-}
-*/
-
-
 // ========================================
 // Second, using Arrays.
 
-/* namespace ArrayStream { */
+namespace ArrayStream {
 
-/*   fun window(S, len)  */
-/*     iterate x in S { */
-/*       state{  */
-/*         // Can't use makeUNSAFE at meta-time currently: */
-/*         arr = Array:null; */
-/*         ind = 0;  */
-/*       } */
-/*       if ind == 0 then arr := Array:make(len, x); */
-/*       arr[ind] := x; */
-/*       ind += 1; */
-/*       if ind == len */
-/*       then { */
-/*         emit arr; */
-/*         ind := 0; */
-/*         arr := Array:make(len, x);  */
-/*         startsamp := startsamp + len`intToInt64; */
-/*       } */
-/*   }; */
+  fun window(S, len)
+    iterate x in S {
+      state{
+        // Can't use makeUNSAFE at meta-time currently:
+        arr = Array:null;
+        ind = 0;
+      }
+      if ind == 0 then arr := Array:make(len, x);
+      arr[ind] := x;
+      ind += 1;
+      if ind == len then {
+        emit arr;
+        ind := 0;
+      }
+   }
 
-/*   fun dewindow(s) { */
-/*     iterate w in s { */
-/*       for i = 0 to Array:length(w) - 1 { emit w[i] } */
-/*     } */
-/*   } */
-
-/* } */
-
-// This version takes a plain stream:
-// 
-// rrn: would be nice if iterator-merging could allow us to operate on
-// raw streams more often, and automatically merge the "window"
-// operators into something like "deinterleave".
-//
-// In fact (dewindow o dinterleave o window) should be efficient.
-fun deinterleave(n, strm) {
- List:build(n,
-   fun(offset) {
-     iterate x in strm {
-       state { counter :: Int = 0 }
-       if counter == offset  then emit x; 
-       counter += 1;
-       if counter == n       then counter := 0;              
-     }
-   })
-}
-
-// This version takes the number of streams to split int, the desired
-// size of output sigsegs, and stream of sigsegs.
-fun deinterleaveSS(n, outsize, strm) {
- List:build(n,
-   fun(offset) {
-     iterate win in strm {
-       state { counter :: Int = 0;
-               newwin = Array:null;
-	       firsttime = true;
-               newind = 0 }
-       // We can't use makeUNSAFE at meta-time currently:
-       if firsttime then { firsttime := false; newwin := Array:makeUNSAFE(outsize) };
-       for i = 0 to win`width - 1 {
-         if counter == offset  
-         then {
-	   newwin[newind] := win[[i]]; 
-	   newind += 1;
-	   if newind == outsize then {
-	     sampnum = (win`start + i`intToInt64) / n`gint - (outsize`gint - 1`gint);
-	     emit toSigseg(newwin, sampnum, win`timebase);
-	     newwin := Array:makeUNSAFE(outsize);
-	     newind := 0;
-	   }
-	 };
-         counter += 1;
-         if counter == n then counter := 0; 
-       }
-     }
-   })
-}
-
-// Extracts one interleaved channel
-fun one_deinterleaveSS2(n, offset, strm) {
-  iterate win in strm {
-    
-    // emit nullsegs to indicate gaps
-    state {
-      last_counter = 0`gint;
-      nulled = false;
-      counter :: Int = 0;
-      newind = 0;
+  fun dewindow(s) 
+    iterate w in s {
+      for i = 0 to Array:length(w) - 1 { 
+        emit w[i] 
+      }
     }
-    
-    // handle input nullsegs
-    if (win == nullseg) then {
-      if (nulled != true) then { emit(nullseg); };
-      nulled := true;
-    }
-    
-    else {
-      
-      // detect discontinuities
-      if (last_counter != win`start) then {
-	if (nulled != true) then { emit(nullseg); };
-	nulled := true;
-	last_counter := win`start;
-      };
-      last_counter := last_counter + win`width`intToInt64;
-      
-      counter := 0;
-      newind := 0;
-      outsize = win`width / n;
-      newwin = Array:makeUNSAFE(outsize);
-      
-      for i = 0 to (outsize * n - 1) {	 
-	if counter == (offset :: Int)
-	then {
-	  newwin[newind] := win[[i]]; 
-	  newind += 1;
-	};
-	counter += 1;
-	if counter == n then counter := 0; 
-      };
-      
-      sampnum = win`start / n`gint;
-      emit toSigseg(newwin, sampnum, win`timebase);
-      nulled := false;
-    }
-  }
-}
 
-
-// This version takes a stream of sigsegs:
-// it outputs whole wins as they come, and deals with gaps OK
-fun deinterleaveSS2(n, strm) {
-  List:build(n,
-	     fun(offset) { one_deinterleaveSS2(n, offset, strm); } )
 }
 
 
@@ -1564,6 +1429,327 @@ fun deep_stream_map2(f,sss) {
 
 
 //======================================================================
+
+/// Taking apart and putting together streams.
+
+// This version takes a plain stream:
+// 
+// rrn: would be nice if iterator-merging could allow us to operate on
+// raw streams more often, and automatically merge the "window"
+// operators into something like "deinterleave".
+//
+// In fact (dewindow o dinterleave o window) should be efficient.
+fun deinterleave(n, strm) {
+ List:build(n,
+   fun(offset) {
+     iterate x in strm {
+       state { counter :: Int = 0 }
+       if counter == offset  then emit x; 
+       counter += 1;
+       if counter == n       then counter := 0;              
+     }
+   })
+}
+
+// This version takes the number of streams to split into, the desired
+// size of output sigsegs, and stream of sigsegs.
+//
+// TODO: Should handle interleaved blocks of more than one element.
+fun deinterleaveSS(n, outsize, strm) {
+ List:build(n,
+   fun(offset) {
+     iterate win in strm {
+       state { counter :: Int = 0;
+               newwin = Array:null;
+	       firsttime = true;
+               newind = 0 }
+       // We can't use makeUNSAFE at meta-time currently:
+       if firsttime then { firsttime := false; newwin := Array:makeUNSAFE(outsize) };
+       for i = 0 to win`width - 1 {
+         if counter == offset  
+         then {
+	   newwin[newind] := win[[i]]; 
+	   newind += 1;
+	   if newind == outsize then {
+	     sampnum = (win`start + i`intToInt64) / n`gint - (outsize`gint - 1`gint);
+	     emit toSigseg(newwin, sampnum, win`timebase);
+	     newwin := Array:makeUNSAFE(outsize);
+	     newind := 0;
+	   }
+	 };
+         counter += 1;
+         if counter == n then counter := 0; 
+       }
+     }
+   })
+}
+
+
+// RRN: this is the same thing as sparsify... (except the gapped version)
+// Need to consolidate.
+//
+// lg: Internal: Extracts one interleaved channel
+fun one_deinterleaveSS2(n, offset, strm) {
+  iterate win in strm {
+    
+    // emit nullsegs to indicate gaps
+    state {
+      last_counter = 0`gint;
+      nulled = false;
+      counter :: Int = 0;
+      newind = 0;
+    }
+    
+    // handle input nullsegs
+    if (win == nullseg) then {
+      if (nulled != true) then { emit(nullseg); };
+      nulled := true;
+    }
+    
+    else {
+      
+      // detect discontinuities
+      if (last_counter != win`start) then {
+	if (nulled != true) then { emit(nullseg); };
+	nulled := true;
+	last_counter := win`start;
+      };
+      last_counter := last_counter + win`width`intToInt64;
+      
+      counter := 0;
+      newind := 0;
+      outsize = win`width / n;
+      newwin = Array:makeUNSAFE(outsize);
+      
+      for i = 0 to (outsize * n - 1) {	 
+	if counter == (offset :: Int)
+	then {
+	  newwin[newind] := win[[i]]; 
+	  newind += 1;
+	};
+	counter += 1;
+	if counter == n then counter := 0; 
+      };
+      
+      sampnum = win`start / n`gint;
+      emit toSigseg(newwin, sampnum, win`timebase);
+      nulled := false;
+    }
+  }
+}
+
+
+// This version takes a stream of sigsegs:
+// it outputs whole wins as they come, and deals with gaps OK
+fun deinterleaveSS2(n, strm) {
+  List:build(n,
+	     fun(offset) { one_deinterleaveSS2(n, offset, strm); } )
+}
+
+
+
+/*
+// This should take a buffer size argument:
+fun interleave(ls, bufsize) {
+  using FIFO;
+  n = ls`length;
+  iterate (newi,newdat) in unionList(ls) {
+    state { 
+      //bufs = Array:build(n, fun(i) Array:makeUNSAFE(bufsize));
+      // bufs = Array:make(n, ls);
+
+      // An array of Queues:
+      bufs = Array:build(n, fun(i) make(bufsize));
+      ind = 0;
+    }
+    // Add the data.    
+    enqueue(bufs[newi], newdat);
+    if empty(bufs[ind])
+    then {}
+    else {
+      emit dequeue(bufs);
+      
+    }
+  }
+}
+*/
+
+// Round robin join a list of streams.
+fun interleave(bufsize, slist) {
+  using List; 
+  len = slist`List:length;
+  iterate (ind, elem) in unionList(slist) {
+    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize));
+            pos = 0; // The next guy in line
+           }
+    using FIFO;
+    //println("joiner received: "++(ind,elem));
+    if ind == pos then {
+      emit elem;
+      pos += 1;
+      if pos == len then pos := 0;
+      // Relieve any pent-up data
+      while not(empty(bufs[pos])) {
+        emit dequeue(bufs[pos]);
+        pos += 1;	
+	if pos == len then pos := 0;
+      }
+    } else enqueue(bufs[ind], elem);
+  }
+}
+
+
+
+// Explicitly controlled output size.
+// .param bufsize - amount to buffer each input stream
+// .param outsize - size of output sigsegs
+// .param chunksize - size of interleaved blocks of elements
+// .param slist - input streams
+fun interleaveSS_sized(bufsize, outsize, chunksize, slist) {
+  using List; 
+  len = slist`List:length;
+  assert_eq("interleaveSS: chunksize divides output size", 
+            0, outsize.moduloI(chunksize));
+  iterate (ind, win) in unionList(slist) {
+    state { accs = Array:make(len, nullseg);
+            pos = 0; // The next guy in line
+	    outbuf = Array:null;
+	    outind = 0; // Index into outbuf
+	    timestamp = 0;
+           }
+    //println("joiner received: "++(ind,elem));
+    // TEMP: again, limitation of makeUNSAFE at meta eval:
+    if outbuf.Array:length == 0 then outbuf := Array:makeUNSAFE(outsize);
+    accs[ind] := joinsegs(accs[ind], win);
+    // simple but INEFFICIENT, lots of subsegs:
+    while accs[pos].width >= chunksize 
+    {
+      ss = accs[pos];
+      for i = 0 to chunksize-1 {
+        outbuf[outind] := ss[[i]];
+	outind += 1;
+      };
+      accs[pos] := subseg(ss, ss.start + chunksize.gint, ss.width - chunksize);
+      pos += 1;
+      if pos == len then pos := 0;
+
+      // Time to produce output:
+      if outind == outsize then {
+        emit toSigseg(outbuf, timestamp, nulltimebase);
+	timestamp += intToInt64(outsize);
+	outbuf := Array:makeUNSAFE(outsize);
+	outind := 0;
+      }
+    }
+  }
+}
+
+
+// VARIANT of above: dynamically output size based on input size.
+// .param bufsize - amount to buffer each input stream
+// .param chunksize - size of interleaved blocks of elements
+// .param slist - input streams
+fun interleaveSS(bufsize, outsize, chunksize, slist) {
+  using List; 
+  len = slist`List:length;
+  assert_eq("interleaveSS: chunksize divides output size", 
+            0, outsize.moduloI(chunksize));
+  iterate (ind, win) in unionList(slist) {
+    state { accs = Array:make(len, nullseg);
+            pos = 0; // The next guy in line
+	    outbuf = Array:null;
+	    outind = 0; // Index into outbuf
+	    timestamp = 0;
+           }
+    //println("joiner received: "++(ind,elem));
+    // TEMP: again, limitation of makeUNSAFE at meta eval:
+    if outbuf.Array:length == 0 then outbuf := Array:makeUNSAFE(outsize);
+    accs[ind] := joinsegs(accs[ind], win);
+    // simple but INEFFICIENT, lots of subsegs:
+    while accs[pos].width >= chunksize 
+    {
+      ss = accs[pos];
+      for i = 0 to chunksize-1 {
+        outbuf[outind] := ss[[i]];
+	outind += 1;
+      };
+      accs[pos] := subseg(ss, ss.start + chunksize.gint, ss.width - chunksize);
+      pos += 1;
+      if pos == len then pos := 0;
+
+      // Time to produce output:
+      if outind == outsize then {
+        emit toSigseg(outbuf, timestamp, nulltimebase);
+	timestamp += intToInt64(outsize);
+	outbuf := Array:makeUNSAFE(outsize);
+	outind := 0;
+      }
+    }
+  }
+}
+
+
+
+
+
+// Map a function over a stream with N separate instances for pipelining.
+// Manually sets workers onto CPUs in a round-robin fashion.
+parmap  :: (Int, (a -> b), Stream a) -> Stream b;
+fun parmap(n, fn, src) {
+    split = iterate x in src {
+      state { cnt = 0 }
+      // NEED MODULO:
+      emit (cnt, x);
+      cnt += 1;
+      if cnt == n then cnt := 0;
+    };
+    routed = List:build(n, 
+      fun(i) iterate (ind,x) in split {
+        if ind == i then emit x;
+      });
+    // route before processing so spurious tuples don't go across CPU boundaries.
+    processed = List:mapi(fun(i,filtered) SETCPU(i,smap(fn, filtered)), routed);
+    // Use zipN for simplicity.
+    // Could optimize this a little bit.
+    //joined = zipN(10,routed); 
+    // Finally, spool them out.
+    //iterate arr in joined { Array:foreach(fun(x) emit x, arr)  }
+ 
+    interleave(10, processed);
+    //joiner(10, routed);
+  };
+
+
+/*
+fun roundRobinSplit(n, strm) {
+    split = iterate x in strm {
+      state { cnt = 0 }
+      old = cnt;
+      cnt += 1;
+      // NEED MODULO:
+      if cnt == n then cnt := 0;
+      emit (old, x);
+    };
+    routed = List:build(n, 
+      fun(i) iterate (ind,x) in split {
+        if ind == i then emit x;
+      });
+    routed
+}
+*/
+
+roundRobinSplit = deinterleave;
+roundRobinJoin = interleave;
+
+fun roundRobinMap(n, fn, strm) {
+  split = roundRobinSplit(n, strm);
+  roundRobinJoin(n, map(fn,split));
+}
+
+
+
+
+//======================================================================
 // Useful aliases:
 
 i2f = intToFloat;
@@ -1656,78 +1842,7 @@ union Choose5 (a, b, c, d, e) = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | F
 */
 
 
-
-
-fun joiner(bufsize, slist) {
-  using List; 
-  len = slist`List:length;
-  iterate (ind, elem) in unionList(slist) {
-    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize));
-            pos = 0; // The next guy in line
-           }
-    using FIFO;
-    //println("joiner received: "++(ind,elem));
-    if ind == pos then {
-      emit elem;
-      pos += 1;
-      if pos == len then pos := 0;
-      // Relieve any pent-up data
-      while not(empty(bufs[pos])) {
-        emit dequeue(bufs[pos]);
-        pos += 1;	
-	if pos == len then pos := 0;
-      }
-    } else enqueue(bufs[ind], elem);
-  }
-}
-
-// Map a function over a stream with N separate instances for pipelining.
-parmap  :: (Int, (a -> b), Stream a) -> Stream b;
-fun parmap(n, fn, src) {
-    split = iterate x in src {
-      state { cnt = 0 }
-      // NEED MODULO:
-      emit (cnt, x);
-      cnt += 1;
-      if cnt == n then cnt := 0;
-    };
-    routed = List:build(n, 
-      fun(i) iterate (ind,x) in split {
-        if ind == i then emit x;
-      });
-    // route before processing so spurious tuples don't go across CPU boundaries.
-    processed = List:mapi(fun(i,filtered) SETCPU(i,smap(fn, filtered)), routed);
-    // Use zipN for simplicity.
-    // Could optimize this a little bit.
-    //joined = zipN(10,routed); 
-    // Finally, spool them out.
-    //iterate arr in joined { Array:foreach(fun(x) emit x, arr)  }
- 
-    joiner(10, processed);
-    //joiner(10, routed);
-  };
-
-fun roundRobinSplit(n, strm) {
-    split = iterate x in strm {
-      state { cnt = 0 }
-      old = cnt;
-      cnt += 1;
-      // NEED MODULO:
-      if cnt == n then cnt := 0;
-      emit (old, x);
-    };
-    routed = List:build(n, 
-      fun(i) iterate (ind,x) in split {
-        if ind == i then emit x;
-      });
-    routed
-}
-
-roundRobinJoin = joiner;
-
-fun roundRobinMap(n, fn, strm) {
-  split = roundRobinSplit(n, strm);
-  roundRobinJoin(n, map(fn,split));
-}
-
-
+//main = COUNTUP(0) . window(10) . deinterleaveSS() . interleaveSS() 
+     main = interleaveSS(2, 10, 1,
+       deinterleaveSS(3, 10,
+       window(COUNTUP(0), 10)))

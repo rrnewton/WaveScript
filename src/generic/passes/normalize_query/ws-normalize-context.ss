@@ -84,11 +84,16 @@
       ;; Now we address normal value primitives.
       ;; Some of these may go away (optimization)
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-       (if (>= (ws-optimization-level) 3)
+       (if #f ;(>= (ws-optimization-level) 3) ;; TEMPTOGGLE
 	   ;; [2007.12.22] This is the most extreme version: 
 	   ;; Kill all value primitives, assume no error conditions.  (And by definition, no side effects.)
 	   (make-begin (map Effect rand*))
-	   (error 'ws-normalize-context "Value primitive in effect context, temporarily an error:\n ~s\n" (cons prim rand*)))]
+	   ;;(error 'ws-normalize-context "Value primitive in effect context, temporarily an error:\n ~s\n" (cons prim rand*))
+	   ;; Otherwise we keep the primitive around, but discard its return value:
+	   (let ([tmp (unique-name "ignoredval")])
+	     `(let ([,tmp 'tyy (,prim ,@rand*)])
+		(tuple)))
+	   )]
 
       ;; Anything else we force into a value context by introducing a let binding
       ;; This might be dangerous, because there are cases we may be forgetting about.

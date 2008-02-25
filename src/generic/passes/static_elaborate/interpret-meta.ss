@@ -460,11 +460,12 @@
     ;; TODO: Need to add the data *constructors*... this is incomplete currently.
     [(wscase ,[x] (,pat* ,[rhs*]) ...) 
      (let* ([alts (map list pat* rhs*)]
-	    [case (assq (uniontype-tag x) alts)]
+	    [case (assq (uniontype-tag (plain-val x)) alts)]
 	    [clos (cadr case)])
        (Eval (closure-code clos) 
-	     (extend-env (closure-formals clos) (list (uniontype-val x))
-			 (closure-env clos)) 
+	     (extend-env (closure-formals clos) 
+			 (list (uniontype-val (plain-val x)))
+			 (closure-env clos))
 	     pretty-name))]
 
     ;; Handles assert-type, src-pos...

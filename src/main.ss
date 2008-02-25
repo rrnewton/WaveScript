@@ -556,11 +556,11 @@
 
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------  
-  (printf "  PROGSIZE: ~s\n" (count-nodes p))
+  (unless (regiment-quiet) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
   ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
   (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
-  (printf "  PROGSIZE: ~s\n" (count-nodes p))
+  (unless (regiment-quiet) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
   
 
@@ -725,7 +725,7 @@
   
   ; --mic, <OPTIMIZATION>
   (unless (memq 'propagate-copies disabled-passes)
-    (time (ws-run-pass p propagate-copies))
+    (ws-run-pass p propagate-copies)
    )
   ;(pp (blaze-path-to/assq p 'Array:make 'Array:makeUNSAFE))
 

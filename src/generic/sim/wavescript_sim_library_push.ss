@@ -1696,8 +1696,9 @@
        (DEBUGASSERT valid-timebase? tb)
        (if (not (= (vector-length ar) (s:+ en (s:- st) 1)))
 	   (error 'toSigseg "vector's size did not match start/end tags: ~s:~s ~s" st en ar))
-       (DEBUGASSERT valid-sigseg?
-		    (make-sigseg st en ar tb)))
+       (let ([result (make-sigseg st en ar tb)])
+	 (DEBUGASSERT valid-sigseg? result)
+	 result))
        
 
      ;; Export these, they override the default scheme bindings.
