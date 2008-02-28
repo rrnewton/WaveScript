@@ -70,7 +70,7 @@ public class PrintfClient implements MessageListener {
       }
       source = args[1];
     } if (envvar != null) {
-      System.out.println(String.format("Setting source to $MOTECOM: %s\n", envvar));
+      System.out.println(String.format(";; Setting source to $MOTECOM: %s\n", envvar));
       source = envvar;
     } else {
       usage();

@@ -366,14 +366,13 @@
 	x)))
 (define-syntax ws-run-pass
   (syntax-rules ()
-    [(_ v pass)
-     ;;(time (set! p (optional-stop (pass p))))
+    [(_ v pass args ...)
      (parameterize ([regiment-current-pass 'pass])
        (unless (regiment-quiet)
 	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port))
        (if (regiment-verbose)
-	   (time (set! v (ws-pass-optional-stop (pass v))))
-	   (set! v (ws-pass-optional-stop (pass v))))
+	   (time (set! v (ws-pass-optional-stop (pass v args ...))))
+	   (set! v (ws-pass-optional-stop (pass v args ...))))
        ;; Allows multiple hooks:
        (let ([hooks (map cadr 
 		      (filter (lambda (pr) (eq? (car pr) 'pass))
@@ -1025,7 +1024,7 @@
 	    
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
 	    (let ([last-few-steps
-		   (lambda (prog)
+		   (lambda (prog class)
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 
 		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))
@@ -1041,8 +1040,9 @@
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
 		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
-		     (time (ws-run-pass prog emit-c2))
-		     ;; Now "prog" is an alist of [file text] bindings.
+		     (time (ws-run-pass prog emit-c2 class))
+		     ;; Now "prog" is an alist of [file text] bindings, along with 
+		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
 		       (for-each (lambda (file contents)
 				   (string->file (text->string contents) file))
@@ -1053,17 +1053,108 @@
 		       (thunk))
 		     )])
 
+
+	    (define (process-read/until-garbage-or-pred str pred)
+	      (let-match ([(,inp ,outp ,pid) (process str)])
+		(printf "Reading serial interface through java process with ID ~s\n" pid)
+		(flush-output-port)
+		(let loop ([n 0] [acc '()])
+		  (let ([x ;(read-line inp)
+			 (read inp)
+			   ])
+		    (printf "Read: ~a\n" x)
+		    (flush-output-port)
+		    (if (pred x) ; (> n 15)
+			(begin 
+			  (close-output-port outp)
+			  (close-input-port  inp)
+			  ;; For some reason that's not enough to kill it:
+			  (printf "Killing off stray java process...\n")
+			  (system (format "kill ~a" pid))
+			  (reverse! (cons x acc)))
+			(loop (add1 n) (cons x acc))
+			)))
+		;; TODO: handle read errors:
+		))
+
+	    (define (extract-time-intervals log)
+	      ;; ASSUMPTION: uint16_t counter:
+	      (define (diff st en)
+		(let ([elapsed (- en st)])
+		  (ASSERT (> elapsed 0))
+		  elapsed
+		  #;
+		  (if (< elapsed 0)
+		      (inspect elapsed) ;(+ (^ 2 16) elapsed)
+		      elapsed)))
+	      (define (combine overflow n) (+ (* (^ 2 16) overflow) n))
+	      (let loop ([alist '()] [open #f] [strt #f] [log log])
+		(match log 
+		  [() (inspect/continue alist)]
+		  [((Start ,name ,overflow ,t) . ,_) (ASSERT (not (assq name alist)))
+		   ;(set! alist (cons name t))
+		   (loop alist name (combine overflow t) _)]
+		  [((End ,name ,overflow ,tme) . ,_)
+		   (ASSERT (eq? name open))
+		   (loop (cons (cons name (diff strt (combine overflow tme))) alist) #f #f _)]
+		  ;; HACK: End message ALSO serves to close off the open measurement.
+		  [((EndTraverse ,overflow ,tme) . ,_)
+		   (ASSERT null? _)
+		   (loop (if open 
+			     (cons (cons open (diff strt (combine overflow tme))) alist)
+			     alist)
+			 #f #f _)]
+		  ;; Ignoring garbage for now:
+		  [(,oth . ,[rest]) rest])))
+
+
 	    ;; Currently we partition the program VERY late into node and server components:
 	      (if (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
 		       (memq 'split (ws-optimizations-enabled)))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
+
+		  ;; PROFILING:
+		  (when (memq 'autosplit (ws-optimizations-enabled))
+		    (printf "============================================================\n")		  
+		    (printf "       PROFILING ON TELOS: \n")
+		    (printf "============================================================\n")
+		    
+		    (last-few-steps node-part <tinyos-timed>)
+		    
+		    (unless (zero? (system "make -f Makefile.tos2 telosb install"))
+		      (error 'wstiny "error when trying to build profiling code for telosb"))
+		    (printf "============================================================\n")
+		    ;; Here we perform a hack to prune a spurious line from the printfClient output.
+		    ;(system "java PrintfClient | grep -v \"^Thread\\[\"")
+
+		    ;; We read past TWO end markers to make sure we got a whole cycle:
+		    (extract-time-intervals
+		     (process-read/until-garbage-or-pred 
+		      ;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
+		      "java PrintfClient"
+		      (lambda (exp) 
+			(match exp
+			  [(EndTraverse . ,_) #t]
+			  [,else #f]))))
+		    (exit)
+		    
+		    #;
+		    (let* ([instrumented (instrument-for-timing node-part)]
+			   [compiled (last-few-steps instrumented)])
+		      (inspect "finished instrumenting and compiling")
+		      )
+		    )
+
 		  (printf "============================================================\n")
-		  (last-few-steps node-part)
+		  (last-few-steps node-part <tinyos>)
 		  (printf "============================================================\n")
 		  (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
-		    (last-few-steps server-part)
+		    (last-few-steps server-part <emitC2>)
 		    (printf "============================================================\n")))
-		(last-few-steps prog)))
+		(last-few-steps prog
+		  (match (compiler-invocation-mode)
+		    [wavescript-compiler-c <emitC2>]
+		    [wavescript-compiler-nesc <tinyos>]))))
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)
@@ -1593,7 +1684,7 @@
 
 	  [(-opt ,name ,rest ...)
 	   (unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
-	   (unless (memq name '(rewrites fuse merge-iterates profile))
+	   (unless (memq name '(rewrites fuse merge-iterates profile autosplit))
 	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
 	   (unless (regiment-quiet) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))

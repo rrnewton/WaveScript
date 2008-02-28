@@ -27,6 +27,8 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-o" ]
   then shift;
        OUTFILE="$1"; 
+  elif [ "$1" == "-opt" ]
+  then REGPASSTHRU="$REGPASSTHRU $1 $2"; shift
   elif [ "$1" == "-exit-error" ] ||
        [ "$1" == "-split" ] ||
        [ "$1" == "-dot" ] ||

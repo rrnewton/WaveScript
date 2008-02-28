@@ -1,1 +1,37 @@
-scripts for gathering and recording measurements
+
+
+This directory contains various WaveScript Benchmarks.
+
+Various subdirectories contain different categories of benchmarks.
+There are some shared files in this directory that are used by
+multiple subdirectories.
+
+Here is an index of the subdirectories:
+
+ alloc/
+   Testing allocation/collection.
+
+ appbench/
+   Application benchmarks.  Mostly these are scripts to run 
+   code that lives in the ../apps/ directory.
+
+ compile_stats/
+   These aren't really benchmarks.  Rather they're scripts that run
+   the compiler on a set of programs, and take statistics on those
+   compilations.  For example, what percentage of allocation sites
+   match certain criteria.
+
+ datareps/
+   Comparing data representations, e.g. nested arrays and flat arrays.
+
+ language_shootout/
+   Benchmarks from the "great language shootout".
+
+ matrix/
+   Matrix tests.
+
+ michael/
+   A benchmarking infrastructure written by Michael Craig.
+
+ microbench/
+   Small benchmarks testing one particular language feature.

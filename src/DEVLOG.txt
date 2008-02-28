@@ -1428,3 +1428,43 @@ infrastructure for statically assigning operators to cores in an SMP.
     counter argument.)
 
 
+[2008.02.26] {wstiny automatic partitioning}
+
+I've tried three simulators for msp430 (telos):
+  *) MSPSim
+  *) Simics
+  *) cdk-msp-gdb
+
+I'm not entirely sure at what level each of these simulates the CPU in
+the first place.  Do any of them model USART timing?  I'm currently
+stuck in some way or another with all of them.  I can't get gdb to
+work at all.  MSPSim works but I'm having problems getting the serial
+output.  And I think I was also having a problem with serial output on
+simics.
+
+MSPSim:
+
+The Java code is pretty easy to navigate.  I can disable the GUI and
+add extra print messages to USART.write and
+USARTListener.dataReceived.  I guess the next step would be to trace
+this back further.
+
+Simics:
+
+Useful commands:
+  new-tracer 
+
+I tried making a simple .simics file using their
+telos-mote-with-serial-common.simics.  
+
+I've tried it with a simple version of Blink that performs printfs.
+I can't get anything to come up on the "console" window.
+
+Trying with BaseStation... Nothing on console.
+
+Trying with TinyOS 1.0.  
+
+
+
+
+

@@ -996,13 +996,43 @@
 
     )
 
- 
 
 
 #;
-[Program (lambda (p E)
-	   (fluid-let ([substs (make-default-hash-table)])
-	     )	   
-	   )]
+(define-pass instrument-for-timing
+  (define (Operator op)
+    (match op
+      [(iterate (name ,name) (output-type ,ty)
+		(code (iterate ,annot ,itercode ,_))
+		(incoming ,up)
+		(outgoing ,down* ...))
+       (match itercode
+	 [(let ,binds (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
+	  ;; Capture time in the beginning and end:
+	  `(let ,binds (lambda (,v ,vq) (,vty (VQueue ,outty)) 
+	     (begin 
+	       ;; get start time
+	       ,bod
+	       ;; get end time
+	       ;; print time interval
+	       ;; return result
+	       )))
+	  ])]))
+  [Program 
+   (lambda (prog Expr)
+     (match prog
+       [(,input-language 
+	 '(graph (const ,cnst* ...) (init  ,init* ...)
+		 (sources ,src* ...)
+		 (operators ,[Operator -> oper*] ...)
+		 (sink ,base ,basetype)	,meta* ...))
+	`(,input-language 
+	  '(graph (const ,cnst* ...) (init  ,init* ...)
+		  (sources ,src* ...)
+		  (operators ,oper* ...)
+		  (sink ,base ,basetype)	,meta* ...))]))])
+ 
+
+
   
 ) ;; End module

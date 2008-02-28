@@ -605,8 +605,15 @@
     ;; This won't work in the schem backend...
 
     ;; System CPU time
+    ;; This returns milleseconds, but we needa better system for cross-platform support.
     (clock () Double)
     (realtime () Int64) ;; EXPERIMENTAL: Realtime since process started ms (or virtual time).
+    
+    ;; It would be nice to use the same primitives for time, but
+    ;; TinyOS needs very particular notions of timers.
+    ;; Also, I wanted to do this as a foreign function, but the compiler needs 
+    ;(TOS:clock32khz () Uint16)
+
     ;(exit () 'any)
     
     (locdiff (Location Location) Float)

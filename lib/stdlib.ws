@@ -48,6 +48,7 @@ FIFO:dequeue    ::  Queue t -> t;
 // WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
 List:map2       :: ((a,b) -> c, List a, List b) -> List c;
+List:zip        :: (List a, List b) -> List (a * b);
 List:mapi       :: ((Int,a) -> b, List a) -> List b;
 List:foreach    :: (      a -> (), List a) -> ();
 List:foreachi   :: ((Int,a) -> (), List a) -> ();
@@ -369,6 +370,9 @@ namespace List {
     };
     List:reverse(acc)
   }
+
+  fun zip(ls1, ls2)
+    map2(fun(x,y) (x,y), ls1, ls2);
   
   fun fold1 (f,ls) {
     if ls == []

@@ -33,7 +33,12 @@
 	    "emit-c.ss"
             "../../util/bos_oop.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-c2)
+  (provide emit-c2
+	   ;emit-c2-generate-timed-code
+	   <emitC2>
+	   <tinyos>
+	   <tinyos-timed>
+	   )
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -798,14 +803,20 @@
 	(kont `("(",x "." ,(sym2str fld)")"))]
        
        [(__foreign ,_ ...) (kont "0")] ;; Does nothing atm.
-       [(foreign-app ',name ,ignored ,[Simp -> rand*] ...)
-	;; Here's a hack for when the return type is unit/void.  This will let us slip "call" forms through.
-	(if #t ;; RETURN TYPE IS UNIT??
-	    (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
-			  (kont (Const self 'UNIT (lambda (x) x))))
-	    (kont `(,name"(",(insert-between ", " rand*)")")))
-	]
+       
+       ;; [2008.02.26] Had a problem with substituting this pattern for 'ty': (,argty* ... -> ,retty)
+       [(foreign-app ',name (assert-type ,ty ,ignored) ,[Simp -> rand*] ...)
+	(match ty 
+	  [(,argty* ... -> ,retty)
+	   ;; Here's a hack for when the return type is unit/void.  This will let us slip "call" forms through.
+	   (if (equal? retty '#())
+	       ;; The problem is that you can't do anything with a "void" value in C:
+	       (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
+			     (kont (Const self 'UNIT (lambda (x) x))))	    
+	       (kont `(,name"(",(insert-between ", " rand*)")")))])]
+       [(foreign-app . ,_) (error 'emitC2 "foreign-app without type annotation: ~s" (cons 'foreign-app _))]
 
+       
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp self (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
@@ -1555,11 +1566,15 @@ int main(int argc, char **argv)
   (slot-set! self 'server-cutpoints '())
   )
 
-(define (emit-c2 prog)
+(define (emit-c2 prog class)
   ;(define obj (make-object <zct> prog))
-  (define obj (match (compiler-invocation-mode)
-		[wavescript-compiler-c    (make-object <emitC2> prog)]
-		[wavescript-compiler-nesc (make-object <tinyos> prog)]))
+#;
+  (define class
+    (if (emit-c2-generate-timed-code) <tinyos-timed>
+	(match (compiler-invocation-mode)
+	  [wavescript-compiler-c          <emitC2>]
+	  [wavescript-compiler-nesc       <tinyos>])))
+  (define obj (make-object class prog))
   (Run obj))
 
 ;;================================================================================
@@ -1618,6 +1633,19 @@ int main(int argc, char **argv)
 	(guard (eq-any? alloc-prim 'cons 'Array:make 'Array:makeUNSAFE))
 	(error 'emitC2:tinyos "Cannot generate code for dynamic allocation currently: ~s" 
 	       (cons alloc-prim _))]
+
+#;
+       [(TOS:clock32khz)
+	(inspect 'gotclock)
+
+	"
+  components new Msp430CounterC(TMilli) as Cntr;
+  components Msp430TimerC;
+  Cntr.Msp430Timer -> Msp430TimerC.TimerB;  
+  WSQuery.Cntr -> Cntr.Counter;
+"
+]
+
        [,else (next)]))))
 
 ;; [2008.02.19] This is currently just to catch an error condition:
@@ -1637,6 +1665,12 @@ int main(int argc, char **argv)
 (__specreplace gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
 (__specreplace gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
 
+(define-generic IterStartHook)
+(define-generic IterEndHook)
+
+(__specreplace IterStartHook <tinyos> (self name arg argty) "")
+(__specreplace IterEndHook   <tinyos> (self name arg argty) "")
+
 ;; Wrap work functions as tasks.
 (__specreplace GenWorkFunction <tinyos> (self name arg vqarg argty code)
   (define _arg (Var self arg))
@@ -1649,7 +1683,9 @@ int main(int argc, char **argv)
 		(list
 		 "char "(Var self vqarg)";\n"
 		 _argty" "_arg" = *(("_argty" *)WS_STRM_BUF);\n"
-		 (lines-text code)))
+		 (IterStartHook self name arg argty)
+		 (lines-text code)
+		 (IterEndHook self name arg argty)))
     ;; And then the function for posting the task:
     (block `("void ",(Var self name) "(",_argty" ",_arg")")
 	   `(;"memcpy(",_arg", WS_STRM_BUF, sizeof(",_argty"));\n"
@@ -1789,16 +1825,17 @@ enum {
 
 
 
-(define __Effect
-  (specialise! Effect <tinyos>
-    (lambda (next self emitter)
-      (lambda (xp)
-	(match xp
-	  [(print ,[(TyAndSimple self) -> ty x])	   
-	   (begin
-	     (unless (slot-ref self 'print-included)
+;; Add printf component to the accumulators.
+(define-generic LoadPrintf)
+
+(__specreplace LoadPrintf <tinyos> (self)
+  (unless (slot-ref self 'print-included)
 	       (slot-set! self 'print-included #t)
-	       (add-include! self "\"printf.h\"")
+	       ;/opt/tinyos-2.x/tos/lib/printf/printf.h	       
+	       ;; Making this an absolute link:
+	       ;(add-include! self "\"printf.h\"")
+	       (add-include! self (format "\"~a/lib/printf/printf.h\"" (getenv "TOSDIR")))
+
 	       (slot-cons! self 'top-acc "
 #define PRINTFLOADED
 ")
@@ -1818,7 +1855,11 @@ enum {
 	       (slot-cons! self 'impl-acc "
 #ifndef TOSSIM
 event void PrintfControl.startDone(error_t error) {
-  //call PrintfFlush.flush();
+  printf(\";; PrintfControl started (1/3)...\\n\");
+  printf(\";; PrintfControl started (2/3)...\\n\");
+  printf(\";; PrintfControl started (3/3)...\\n\");
+  call PrintfFlush.flush();
+  //call Leds.led0Toggle();
 }
 
 event void PrintfFlush.flushDone(error_t error) {
@@ -1835,8 +1876,16 @@ event void PrintfControl.stopDone(error_t error) {
 #ifndef TOSSIM
   call PrintfControl.start();
 #endif
-")
-	       )
+")))
+
+(define __Effect
+  (specialise! Effect <tinyos>
+    (lambda (next self emitter)
+      (lambda (xp)
+	(match xp
+	  [(print ,[(TyAndSimple self) -> ty x])	   
+	   (begin
+	     (LoadPrintf self)
 	     (make-lines `("#ifdef TOSSIM\n"
 			   "  dbg_clear(\"WSQuery\", \"",(type->printf-flag self ty)"\", ",x");\n"
 			   "#else\n"
@@ -1844,10 +1893,7 @@ event void PrintfControl.stopDone(error_t error) {
 			   "#endif\n"
 			   ;"call PrintfFlush.flush();\n" ;; For now we flush when we get to the end of an event-chain (BASE)
 			   ;"call Leds.led0Toggle();\n"
-			   )))
-	   ;(make-lines "call Leds.led0Toggle();\n")
-	   ;(make-lines `())
-	   ]
+			   )))]
 	  [,oth 
 	   (let ([oper (next)])
 	     (ASSERT procedure? oper)
@@ -1976,13 +2022,74 @@ implementation {
      (printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
      (for i = 0 to (sub1 (slot-ref self 'amsender-count))
 	  (printf "      CALLING MIG ~a\n" i)
-	  (let ([cmd (format "mig c -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" (+ AM_OFFSET i) i)])
+	  (let ([cmd (format "mig c -I~a -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" 
+			     (string-append (getenv "TOSDIR") "/lib/printf")
+			     (+ AM_OFFSET i) i)])
 	    (display cmd)(newline)
 	    (system cmd))
 	  
 	  )
      (void))
    ))
+
+
+;;================================================================================
+
+(define-class <tinyos-timed> (<tinyos>) ())
+
+;; Load the counter component:
+(__spec initialise <tinyos-timed> (self prog) 
+  (slot-cons! self 'config-acc " 
+  components new Msp430CounterC(TMilli) as Cntr;
+  components Msp430TimerC;
+  Cntr.Msp430Timer -> Msp430TimerC.TimerB;  
+  WSQuery.Cntr -> Cntr.Counter;\n")
+  (slot-cons! self 'module-acc "uses interface Counter<TMilli,uint16_t> as Cntr;\n")
+  (slot-cons! self 'proto-acc "  uint16_t overflow_count = 0;\n")
+  (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n"))
+
+(__specreplace IterStartHook <tinyos-timed> (self name arg argty) 
+    (LoadPrintf self)
+    (format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name))
+(__specreplace IterEndHook   <tinyos-timed> (self name arg argty) 
+    (LoadPrintf self)
+    (format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name))
+
+;; Generate nothing for the cutpoints... we're just interested in the Printf output:
+;; We use this as an opportunity to flush:
+(__specreplace Cutpoint <tinyos-timed> (self ty in out) 
+   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))   
+   (define fun (list "void "(Var self out)"("_ty" x) { 
+  printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
+  call PrintfFlush.flush(); 
+}"))
+   (values (make-lines fun) '() '()))
+
+;; Here we need to delay startup to wait for the profiler to connect.
+;; This needs to be called LAST:
+(define __BuildOutputFiles
+  (specialise! BuildOutputFiles <tinyos-timed> 
+    (lambda (next self includes freefundefs state ops init driver)
+   (slot-cons! self 'config-acc "
+  components new TimerMilliC() as Timer000;
+  WSQuery.Timer000 -> Timer000;\n")
+  (slot-cons! self 'module-acc "uses interface Timer<TMilli> as Timer000;\n")
+  
+  ;; Move the old boot code into a new dummy function:
+  (slot-cons! self 'impl-acc (list "
+void dummy_boot() {
+"(slot-ref self 'boot-acc)"
+}
+event void Timer000.fired() {
+  dummy_boot();
+}
+"))
+  ;; All the real boot routine will do will be to set the timer:
+  (slot-set! self 'boot-acc "call Timer000.startOneShot( 3000 );\n")
+  (next)
+  )))
+
+
 
 ) ;; End module
 

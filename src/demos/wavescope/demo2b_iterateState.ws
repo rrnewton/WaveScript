@@ -21,8 +21,9 @@ s2 = iterate( w in s1 ) {
 
   //led0Toggle(); led1Toggle(); led2Toggle();
 
-  print("why?\n");
-
+  //print("why?\n");
+  //println(clock());
+  
   if counter == 100
   then print("\nSTARTING:\n");
   emit counter;

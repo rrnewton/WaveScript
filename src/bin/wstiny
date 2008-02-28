@@ -35,14 +35,14 @@ then echo ERROR, wstiny failed with code $?.; exit 1;
 else echo
 fi
 
-# No nesC separate compilation:
-# MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
-# if [ "$MATCH" != "" ];
-# then 
-#    export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
-#    export WS_LINK="$WS_LINK $EXTRALIBS"
-#    echo Linking extra libraries requested by query file: $EXTRALIBS
-# fi
+# # No nesC separate compilation:
+# # MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
+# # if [ "$MATCH" != "" ];
+# # then 
+# #    export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
+# #    export WS_LINK="$WS_LINK $EXTRALIBS"
+# #    echo Linking extra libraries requested by query file: $EXTRALIBS
+# # fi
 
 if [ -f "WSQuery.nc" ];
 then chmod +x query.py;
