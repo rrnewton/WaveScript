@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include<getopt.h>
 
 //int* arrayMake(size_t size, int len, ) { }
 
@@ -31,6 +32,11 @@
 // This should not be used on a null pointer:
 #define SETARRLEN(ptr,len) ((int*)ptr)[-2]=len
 
+#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
+// Get a pointer to the *start* of the thing (the pointer to free)
+#define ARRPTR(ptr)        (((void**)ptr)-2),
+
+
 // Handle RCs on Cons Cells and Arrays:
 #define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
 #define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
@@ -40,11 +46,28 @@
 typedef unsigned short int uint16_t;
 
 int outputcount = 0;
-int tuplimit = 10;
+int wsc2_tuplimit = 10;
 
 void BASE(char x) { 
   outputcount++;
-  if (outputcount >= tuplimit) exit(0);
+  if (outputcount == wsc2_tuplimit) exit(0);
+}
+
+void parseOptions(int argc, char** argv) {
+  int i, c;
+  for (i=0; i<argc; i++)
+    printf("PARSING OPTION: %s\n", argv[i]);
+  while ((c = getopt(argc, argv, "n:")) != -1) {
+	switch (c) {
+	case 'n':
+	        wsc2_tuplimit = atoi(optarg);
+		break;
+	default:
+	  //		usage();
+	  //		return 1;
+		break;
+	}
+  }
 }
 
 void wserror(char* msg) {

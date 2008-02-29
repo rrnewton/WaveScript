@@ -643,7 +643,6 @@
   (ws-run-pass p type-annotate-misc)
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
-
   (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)
     (ws-run-pass p explicit-toplevel-print))
 
@@ -749,9 +748,10 @@
        (ws-run-pass p annotate-with-data-rates)))
    (void))
 
+  ;; ========================================
+  ;; End passes
 
-;   (set! prog (ws-add-return-statements prog))
-  ;(ws-run-pass p ws-add-return-statements)
+;(assure-type-annotated p (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 
   (unless (regiment-quiet)
     (printf "Total typechecker time used:\n")
@@ -763,12 +763,12 @@
   ;; Wasted work if we're going to apply explicit-stream-wiring again later.
   (IFCHEZ
    (when (dump-graphviz-output)
-    (string->file (output-graphviz (explicit-stream-wiring p)) "query.dot")
+     (string->file (output-graphviz (explicit-stream-wiring p)) "query.dot")
     ;; If this fails, oh well:
     (system "rm -f query.png")
     (time (system "dot -Tpng query.dot -oquery.png")))
    (void))
-  
+ 
 
   p)) ;; End run-that-compiler
 
@@ -1056,24 +1056,25 @@
 
 	    (define (process-read/until-garbage-or-pred str pred)
 	      (let-match ([(,inp ,outp ,pid) (process str)])
+		(define (shutdown) 
+		  (close-output-port outp)
+		  (close-input-port  inp)
+		  ;; For some reason that's not enough to kill it:
+		  (printf "Killing off stray java process...\n")
+		  (system (format "kill ~a" pid)))
 		(printf "Reading serial interface through java process with ID ~s\n" pid)
 		(flush-output-port)
 		(let loop ([n 0] [acc '()])
 		  (let ([x ;(read-line inp)
 			 (read inp)
-			   ])
+			 ])
 		    (printf "Read: ~a\n" x)
 		    (flush-output-port)
-		    (if (pred x) ; (> n 15)
-			(begin 
-			  (close-output-port outp)
-			  (close-input-port  inp)
-			  ;; For some reason that's not enough to kill it:
-			  (printf "Killing off stray java process...\n")
-			  (system (format "kill ~a" pid))
-			  (reverse! (cons x acc)))
-			(loop (add1 n) (cons x acc))
-			)))
+		    (cond 
+		     [(eof-object? x) (shutdown) (reverse! acc)]
+		     [(pred x) ; (> n 15)
+		      (shutdown) (reverse! (cons x acc))]
+		     [else (loop (add1 n) (cons x acc))])))
 		;; TODO: handle read errors:
 		))
 
@@ -1090,7 +1091,7 @@
 	      (define (combine overflow n) (+ (* (^ 2 16) overflow) n))
 	      (let loop ([alist '()] [open #f] [strt #f] [log log])
 		(match log 
-		  [() (inspect/continue alist)]
+		  [() alist]
 		  [((Start ,name ,overflow ,t) . ,_) (ASSERT (not (assq name alist)))
 		   ;(set! alist (cons name t))
 		   (loop alist name (combine overflow t) _)]
@@ -1108,7 +1109,32 @@
 		  [(,oth . ,[rest]) rest])))
 
 
-	    ;; Currently we partition the program VERY late into node and server components:
+	    ;; Inserts a (measured-cycles <elapsed> <timer-frequency>) annotation:
+	    (define (inject-times prog times)
+	      (define (Operator op)
+		(match op
+		  [(iterate (name ,nm) ,ot
+			    (code (iterate (annotations ,annot* ...) ,itercode ,_))
+			    ,rest ...)
+		   (printf "LOOKING UP ~a in ~a\n" nm times)
+		   (let ([entry (assq nm times)])		     
+		     (if entry
+			 `(iterate (name ,nm) ,ot 
+				   (code (iterate (annotations (measured-cycles ,(cdr entry) 32000) ,@annot*)
+						  ,itercode ,_))
+				   ,@rest)
+			 op))]
+		  [,oth oth]))
+	      (match prog
+		[(,input-language 
+		  '(graph ,cnst ,init ,src
+			  (operators ,[Operator -> oper*] ...) ,rest ...))
+		 `(,input-language 
+		  '(graph ,cnst ,init ,src
+			  (operators ,oper* ...) ,rest ...))]))
+
+
+	      ;; Currently we partition the program VERY late into node and server components:
 	      (if (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
 		       (memq 'split (ws-optimizations-enabled)))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
@@ -1121,6 +1147,7 @@
 		    
 		    (last-few-steps node-part <tinyos-timed>)
 		    
+		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		    (unless (zero? (system "make -f Makefile.tos2 telosb install"))
 		      (error 'wstiny "error when trying to build profiling code for telosb"))
 		    (printf "============================================================\n")
@@ -1128,14 +1155,23 @@
 		    ;(system "java PrintfClient | grep -v \"^Thread\\[\"")
 
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
-		    (extract-time-intervals
-		     (process-read/until-garbage-or-pred 
-		      ;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
-		      "java PrintfClient"
-		      (lambda (exp) 
-			(match exp
-			  [(EndTraverse . ,_) #t]
-			  [,else #f]))))
+		    (let* ([times 
+			   (extract-time-intervals
+			    (process-read/until-garbage-or-pred 
+			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
+			     "java PrintfClient"
+			     (lambda (exp) 
+			       (match exp
+				 [(EndTraverse . ,_) #t]
+				 [,else #f]))))]
+			  [newprog (inject-times prog times)])
+		      (string->file (output-graphviz newprog)
+				    "query_profiled.dot")
+		      (delete-file "query_profiled.png")
+		      (time (system "dot -Tpng query_profiled.dot -oquery_profiled.png"))
+		      ;(inspect newprog)
+		      )
+		    
 		    (exit)
 		    
 		    #;

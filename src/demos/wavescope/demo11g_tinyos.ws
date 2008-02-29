@@ -16,9 +16,15 @@ commbuf = Array:make(5, 0);
 
 using TOS;
 namespace Node {
-  s2 = iterate( reading in sensor_uint16("DemoSensorC", 1.0) ) {
-    //println("Got sensor reading...");
+  s1 = iterate( reading in sensor_uint16("DemoSensorC", 1.0) ) {
+    emit reading;
+  };
+
+  s2 = iterate reading in s1 {
     commbuf[0] := reading;
+    for i = 1 to 4 {
+      commbuf[i] := (cast_num(i) :: Uint16);
+    }
     emit commbuf;
   }
   ;//.merge(load_telos32khzCounter); // Ugly way to link in a component.
@@ -35,27 +41,27 @@ namespace Node {
     //print("Time is "++ cur ++" diff "++  cur - lasttime ++"\n");
     //lasttime := cur;
 
+    //for i = 1 to 500 { lasttime += 1; }
     emit (Array:fold((+), 0, buf), 515);
   };
 
   s4 = iterate x in s3 {
     sum = Mutable:ref$ (0::Int64);
-    for i = 1 to 1000 {  // 1000000
-      for j = 1 to 1000 {
-        sum += 1;
-      }
-    }
+    //for i = 1 to 1000 { sum += 1; }
     emit (x,sum);
   }
-
 }
 
 s5 = iterate _ in timer$ 0.66 { emit (0,1); }
 
 //main = merge(s5, Node:s3);
 
-main = smap(fun(((x,y),z)) {
+
+_main = smap(fun(((x,y),z)) {
     //println("I'M ON SERVER "++y);
     //println("I'M ON NODE ");
     (x,y+1,z)
   }, Node:s4);
+
+
+main = Node:s2;

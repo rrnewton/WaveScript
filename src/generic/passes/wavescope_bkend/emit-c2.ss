@@ -652,7 +652,7 @@
 				    bod)])
 	  (make-lines (block "" (lines-text result))))]
        [,_ 
-	(let-values ([(bind* init*) ((SplitBinding self (emit-err 'OperatorBinding))
+	(let-values ([(bind* init*) ((SplitBinding self emitter)
 				     (list lhs ty rhs))])
 	  (let ([result (append-lines bind* init* bod)])
 	    (make-lines (block "" (lines-text result)))))])]))
@@ -687,7 +687,7 @@
 	  (block `("while (1)") 
 		 (list 
 		  ;(lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
-		  (let-values ([(bind* init*) ((SplitBinding self (emit-err 'OperatorBinding))
+		  (let-values ([(bind* init*) ((SplitBinding self emitter)
 					       (list flag 'Bool test))])
 		    (list (lines-text bind*)
 			  (lines-text init*)))
@@ -883,14 +883,15 @@
 	    [(Struct ,_) #f]
 	    
 	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))
-     (define (make-array len init ty)
+
+     (define (array-constructor-codegen len init ty)
        (let ([len (Simp len)])
 	 (match ty
 	   [(Array ,elt)
 	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
 	    
 	    ;(when (and (heap-allocated? elt global-struct-defs) (not init))
-	    ;(error make-array "DANGER DANGER: ~s" elt))
+	    ;(error array-constructor-codegen "DANGER DANGER: ~s" elt))
 	    
 	    ;; We fill with zeros if we've got Array:make with a zero scalar.
 	    ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
@@ -964,8 +965,8 @@
 	]
        ;; This is the more complex part:
 
-       [(Array:make ,len ,init) (make-array len init mayberetty)]
-       [(Array:makeUNSAFE ,len) (make-array len #f   mayberetty)]
+       [(Array:make ,len ,init) (array-constructor-codegen len init mayberetty)]
+       [(Array:makeUNSAFE ,len) (array-constructor-codegen len #f   mayberetty)]
 
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
@@ -1146,6 +1147,9 @@
 			    (if rate (list nm code rate) #f))
 		       srcname* srccode* srcrates*))])   
 	(printf "   TIMER RATES: ~s\n" srcrates*)
+	;; This is a hack: rather than maintain a sorted list of
+	;; upcoming events, we simply compute a common tick frequency
+	;; and go tick by tick:
 	(let  ([counter_marks
 		(cond
 		 [(= 1 (length srcrates*)) '(1)]
@@ -1156,8 +1160,9 @@
 		      srcrates*))]
 		 [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
 	  (make-lines        
-	   (block "int main()" 
+	   (block "int main(int argc, char** argv)" 
 		  (list 
+		   "parseOptions(argc,argv);\n"
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
 		   (block "while(1)"		 
@@ -1230,10 +1235,12 @@ int main(int argc, char **argv)
 {
   serial_source src;
   initState();
-  if (argc != 3)  {
-      fprintf(stderr, \"Usage: %s <device> <rate> - get packets from a serial port\\n\", argv[0]);
+  if (argc < 3)  {
+      fprintf(stderr, \"Usage: %s <device> <rate> - get packets from a serial port\\nExample: device=/dev/ttyUSB0, rate=telosb\\n\", argv[0]);
       exit(2);
   }
+  parseOptions(argc-2,argv+2);
+
   src = open_serial_source(argv[1], platform_baud_rate(argv[2]), 0, stderr_msg);
   if (!src)  {
       fprintf(stderr, \"Couldn't open serial port at %s:%s\\n\", argv[1], argv[2]);
@@ -1326,16 +1333,28 @@ int main(int argc, char **argv)
       ;; just give us accessor methods.  Therefore we need to build our
       ;; own bit of code that will build up the struct using these accessors.
       (define (copycode dest src)
-	  (let loop ([elt elt] [destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME
-	    (match elt
-	      [,scl (guard (scalar-type? scl))
-		 (list destpos " = " srcpos "_get(" src ");\n")]
-	      [(Struct ,name)
-	       (map (match-lambda ((,fldname ,fldty))
-		      (loop fldty (list destpos "." (sym2str fldname)) (list srcpos "_" (sym2str fldname))))
-		 (cdr (assq name (slot-ref self 'struct-defs))))]
-	      )
-	    ))
+	(let loop ([elt elt] [destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME
+	  (match elt
+	    [,scl (guard (scalar-type? scl))
+		  (list destpos " = " srcpos "_get(" src ");\n")]
+	    [(Struct ,name)
+	     (map (match-lambda ((,fldname ,fldty))
+		    (loop fldty (list destpos "." (sym2str fldname)) (list srcpos "_" (sym2str fldname))))
+	       (cdr (assq name (slot-ref self 'struct-defs))))]
+	    ;; For a single array we can handle this (but not yet packed inside a tuple)
+	    [(Array ,elt)
+	     (define ty `(Array ,elt))
+	     (define tmp (unique-name "tmp"))
+	     (define _tmp (Var self tmp))
+	     (define _elt (Type self elt))
+	     (list (lines-text (PrimApp self `(Array:makeUNSAFE '10) (varbindk self tmp ty) ty))
+	           ; (array-constructor-codegen "((uint16_t*)ptr)[-1]")
+		   "char* ptr = ((char*)"src") + " srcpos "_offset(0);\n"
+		   "printf(\"OFFSET WAS %d\\n\", "srcpos"_offset(0));\n"
+		   ;;"SETARRLEN("_tmp", ((uint16_t*)ptr)[-1]);\n"
+		   "memcpy("_tmp", ((uint16_t*)ptr)+1, sizeof("_elt") * ARRLEN("_tmp"));\n"
+		   )]
+	    )))
       (values (make-lines
 	       (list 
 		"
@@ -1594,12 +1613,15 @@ int main(int argc, char **argv)
 ;; This is a constant offset which is applied to all the AM messages generated by WScript.
 (define AM_OFFSET 10)
 
+;; Note: wstiny uses different memory layouts for things like arrays!
+
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
   (top-acc config-acc module-acc boot-acc impl-acc proto-acc 
    ;;This is a flag to tell us if printf has already been included.:
    print-included
    amsender-count
+   foreign-source-hook
    ))
 
 (__spec initialise <tinyos> (self prog)
@@ -1615,7 +1637,6 @@ int main(int argc, char **argv)
 	(slot-set! self 'print-included #f)
 	(slot-set! self 'amsender-count 0)
 	)
-
 
 (define __Type 
   (specialise! Type <tinyos> 
@@ -1660,6 +1681,7 @@ int main(int argc, char **argv)
 		 (error 'emitC2:Value "should have lifted all the strings: ~s" 
 			(list->string (vector->list vec)))]
 	  [,_ ((next) xp kont)])))))
+
 
 ;; Increments and decrements do nothing.  Everything is statically allocated currently:
 (__specreplace gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
@@ -1738,22 +1760,35 @@ int main(int argc, char **argv)
 
 ;; We just memcpy the representation straight into the packet.
 ;; FIXME: This does not work for arrays yet:
+;;
+;; Alas, even if we had general purpose marshalling functionality,
+;; this would not help us much here.  This code is all about unpacking
+;; the TinyOS binary format, not one that we get to choose ourselves.
+;; Luckily, MIG helps us.
 (__specreplace Cutpoint <tinyos> (self ty in out)
    (define name (format "BASESender~a" (slot-ref self 'amsender-count)))
    ;(define ampkt (format "AMPacket~a" (slot-ref self 'amsender-count)))
    (define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
-   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))   
+   (define _ty  (match ty [(Stream (Array ,elt)) (Type self elt)] 		      
+		          [(Stream ,elt)         (Type self elt)]))
+   (define copyit
+     (match ty
+       [(Stream (Array ,elt)) 
+	(list "uint16_t bytesize = sizeof(uint16_t) + (sizeof("(Type self elt)") * ARRLEN(x));\n"
+	      (block "if (bytesize > call Packet.maxPayloadLength()) "
+		     TOS-signal-error)
+	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
+       [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
+			   "my_memcpy(payload, &x, sizeof(x));")]))
    (define fun (list "
   // CutPoint to server side:
   void "(Var self out)"("_ty" x) {
     "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
 
-    //if ((int)payload & 1) call Leds.led0Toggle(); else call Leds.led1Toggle();
+"(indent copyit "    ")"
 
-    my_memcpy(payload, &x, sizeof(x));
-    //payload[0] = x;
     dbg_clear(\"WSQuery\", \"Sending on serial interface\\n\");
-    if (call "name".send(AM_BROADCAST_ADDR, &serial_pkt, sizeof("_ty")) == SUCCESS) {
+    if (call "name".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
       serial_busy = TRUE;
     }
   }
@@ -1784,7 +1819,11 @@ int main(int argc, char **argv)
 (slot-cons! self 'top-acc (list "
 // This is a dummy struct for MIG's benefit:
 struct cuttype"AM_NUM" {
-  "_ty" theitem;
+  "(match ty 
+     [(Stream (Array ,elt))
+      "// This is a little odd, we just make it the max size, even though we won't use it.\n"
+      "  char theitem[255];"]
+     [,else (list _ty" theitem;")])"
 };
 enum {
   AM_CUTTYPE"AM_NUM" = "AM_NUM"
@@ -1878,6 +1917,8 @@ event void PrintfControl.stopDone(error_t error) {
 #endif
 ")))
 
+(define TOS-signal-error "call Leds.led0On();\n")
+
 (define __Effect
   (specialise! Effect <tinyos>
     (lambda (next self emitter)
@@ -1894,10 +1935,16 @@ event void PrintfControl.stopDone(error_t error) {
 			   ;"call PrintfFlush.flush();\n" ;; For now we flush when we get to the end of an event-chain (BASE)
 			   ;"call Leds.led0Toggle();\n"
 			   )))]
+	  ;; Signal an error condition, currently just turns on a red light.
+	  [(__wserror_ARRAY ,_) (make-lines TOS-signal-error)]
 	  [,oth 
 	   (let ([oper (next)])
 	     (ASSERT procedure? oper)
 	     (oper xp))])))))
+
+(define-generic ForeignSourceHook)
+
+(__specreplace ForeignSourceHook <tinyos> (self name callcode) callcode)
 
 (define __Source
   (specialise! Source <tinyos>
@@ -1906,9 +1953,8 @@ event void PrintfControl.stopDone(error_t error) {
 	;; TODO: streams of sensor data
 	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
 	 (match cd 
-	   [(sensor_stream ,_ ...) (inspect _)]
 	   [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot)
-	    ;; conf1
+	    ;; FIXME: conf1!!!
 	    (slot-cons! self 'top-acc top)
 	    (slot-cons! self 'config-acc conf2)
 	    (slot-cons! self 'module-acc mod1)
@@ -1930,19 +1976,12 @@ event void PrintfControl.stopDone(error_t error) {
 	    ;; It should post a task!!
 	    (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
 	    (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
-					       (lines-text ((Emit self down*) arg))))
+					       (ForeignSourceHook self name
+								  (lines-text ((Emit self down*) arg)))))
 	    (values #f #f #f #f)]
 
-	   [,_ (next)]
 	   #;
-	   [(timer ,annot ,rate)
-	    (match (peel-annotations rate)
-	      [',rate
-	       (values nm
-		       ((Emit self down*) ''UNIT) ;; Code
-		       (make-lines ()) ;; State 	
-		       rate)
-	       ])])]))))
+	   [,_ (next)])]))))
 
 
 (__specreplace BuildTimerSourceDriver <tinyos> (self srcname* srccode* srcrates*)
@@ -2045,8 +2084,22 @@ implementation {
   Cntr.Msp430Timer -> Msp430TimerC.TimerB;  
   WSQuery.Cntr -> Cntr.Counter;\n")
   (slot-cons! self 'module-acc "uses interface Counter<TMilli,uint16_t> as Cntr;\n")
-  (slot-cons! self 'proto-acc "  uint16_t overflow_count = 0;\n")
-  (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n"))
+  (slot-cons! self 'proto-acc "  
+   uint16_t overflow_count = 0;
+   bool ws_currently_running = 0;\n")
+  (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n") 
+  )
+
+;; Returns text to put in the function body that implements the foreign source.
+;; Callcode is code that invokes all the downstream processing of the event.
+(__specreplace ForeignSourceHook <tinyos-timed> (self name callcode)
+  (list
+   (block "if (ws_currently_running)"
+	  (format "printf(\"(ForeignBlocked ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name))
+   (block "else"
+	  (list (format "printf(\"(ForeignSource ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+		"ws_currently_running = 1;\n"
+		callcode))))
 
 (__specreplace IterStartHook <tinyos-timed> (self name arg argty) 
     (LoadPrintf self)
@@ -2062,6 +2115,8 @@ implementation {
    (define fun (list "void "(Var self out)"("_ty" x) { 
   printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
   call PrintfFlush.flush(); 
+  // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
+  ws_currently_running = 0;\n
 }"))
    (values (make-lines fun) '() '()))
 

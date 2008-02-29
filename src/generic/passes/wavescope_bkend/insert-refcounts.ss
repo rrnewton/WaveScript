@@ -231,14 +231,14 @@
 			;;(tuple)
 			))))]
 
-	   [(set! ,v (assert-type ,ty ,[e]))
+	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
 		`(begin 
 		   (decr-heap-refcount ,ty ,v)
 		   (set! ,v (assert-type ,ty ,e))
 		   (incr-heap-refcount ,ty ,v)))]
-	   [(Array:set (assert-type (Array ,elt) ,[arr]) ,[ind] ,[val])
+	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))
 	    (define setit `(Array:set (assert-type (Array ,elt) ,arr) ,ind ,val))
@@ -288,7 +288,7 @@
 		;; Currently just quoted constants:
 		[',c `(static-allocate ,rhs)] ;(TopIncr `(static-allocate ',c) ty)
 		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) `(static-allocate ,rhs)]
-		[,oth (Value+ (TopIncr oth ty))])))
+		[,oth (Value+ (TopIncr rhs ty))])))
 
     ;; For "global" variables:
     ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).

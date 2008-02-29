@@ -57,8 +57,8 @@
 
                ; convert back to regular program, with data-rate annotations
 	       (let ([result (annotate-iterates-with-rates annotated rates-table)])
-		 (inspect (deep-assq-all 'data-rates result))
-		 (inspect result)
+		 ;(inspect (deep-assq-all 'data-rates result))
+		 ;(inspect result)
 		 result))])
 
 

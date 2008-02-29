@@ -18,7 +18,7 @@ fi
 
 if [ -f "query.c" ]; 
 then exec wsc2-gcc;
-else echo query.c not found...
+else echo query.c not found...; exit 1
 fi
 
 ## Run again to profile branches:

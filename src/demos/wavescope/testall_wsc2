@@ -10,7 +10,9 @@ function go () {
     echo; echo; echo; echo; echo; echo; echo;  
     echo "testall_wsc2: Running $1"
     echo "============================================================"
-    if ! wsc2 $1 -exit-error; then exit 1; fi
+    if ! wsc2 $1 -exit-error; 
+    then echo wsc2 Returned error code!; exit 1; 
+    fi
     echo >> $RUN
     echo $1 : >> $RUN
     if ! ./query.exe | head -n 20 >> $RUN; then exit 1; fi

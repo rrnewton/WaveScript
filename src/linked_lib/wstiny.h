@@ -2,6 +2,9 @@
 #define ARRLEN(ptr)        (ptr ? ((uint16_t*)ptr)[-1] : 0)
 #define SETARRLEN(ptr,len) ((uint16_t*)ptr)[-1]=len 
 
+// Get a pointer to the *start* of the thing (the pointer to free)
+#define ARRPTR(ptr)        (((uint16_t*)ptr)-1)
+
 // This seems insane to me, but the memcpy implementation on Telos
 // doesn't work for unaligned addresses!  Here's a hack:
 void my_memcpy(void* dst, const void* src, size_t num) {

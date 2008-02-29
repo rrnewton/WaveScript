@@ -906,6 +906,8 @@
 		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
 		   `(,lang '(program (let ,acc ,bod) ,@meta*))])))])
 
+;(define (is-in-Node-namespace? name))
+
 ;; A hack to do program partitioning based on the names of top-level streams.
 (define-pass partition-graph-by-namespace
     (define (node-name? nm)
@@ -995,44 +997,6 @@
 	    )]))]
 
     )
-
-
-
-#;
-(define-pass instrument-for-timing
-  (define (Operator op)
-    (match op
-      [(iterate (name ,name) (output-type ,ty)
-		(code (iterate ,annot ,itercode ,_))
-		(incoming ,up)
-		(outgoing ,down* ...))
-       (match itercode
-	 [(let ,binds (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
-	  ;; Capture time in the beginning and end:
-	  `(let ,binds (lambda (,v ,vq) (,vty (VQueue ,outty)) 
-	     (begin 
-	       ;; get start time
-	       ,bod
-	       ;; get end time
-	       ;; print time interval
-	       ;; return result
-	       )))
-	  ])]))
-  [Program 
-   (lambda (prog Expr)
-     (match prog
-       [(,input-language 
-	 '(graph (const ,cnst* ...) (init  ,init* ...)
-		 (sources ,src* ...)
-		 (operators ,[Operator -> oper*] ...)
-		 (sink ,base ,basetype)	,meta* ...))
-	`(,input-language 
-	  '(graph (const ,cnst* ...) (init  ,init* ...)
-		  (sources ,src* ...)
-		  (operators ,oper* ...)
-		  (sink ,base ,basetype)	,meta* ...))]))])
- 
-
 
   
 ) ;; End module
