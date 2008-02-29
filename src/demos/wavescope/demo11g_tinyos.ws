@@ -9,7 +9,7 @@
 
 include "stdlib.ws";
 
-commbuf = Array:make(5, 0);
+commbuf = Array:make(10, 0);
 
 // If events occur at the same time... that's a problem.
 // They collide in the shared buffer space used to cummunicate tuples.
@@ -21,10 +21,14 @@ namespace Node {
   };
 
   s2 = iterate reading in s1 {
+    state { cntr = 0 }
     commbuf[0] := reading;
     for i = 1 to 4 {
       commbuf[i] := (cast_num(i) :: Uint16);
     }
+    //print("length: "++ Array:length(commbuf) ++"\n");
+    commbuf[Array:length(commbuf)-1] := cntr;
+    cntr += 1;
     emit commbuf;
   }
   ;//.merge(load_telos32khzCounter); // Ugly way to link in a component.

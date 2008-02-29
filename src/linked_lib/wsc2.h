@@ -55,8 +55,6 @@ void BASE(char x) {
 
 void parseOptions(int argc, char** argv) {
   int i, c;
-  for (i=0; i<argc; i++)
-    printf("PARSING OPTION: %s\n", argv[i]);
   while ((c = getopt(argc, argv, "n:")) != -1) {
 	switch (c) {
 	case 'n':

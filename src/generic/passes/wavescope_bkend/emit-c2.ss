@@ -238,6 +238,16 @@
 	(make-lines `(,(Type self typ)" ",(Var self name)" = ",x";\n"))
 	)))
 
+;; This is simpler, we just set it without binding it:
+;(trace-define (setterk self vr ty) (let-values ([(_ newk) ((varbindk self vr ty) split-msg)]) newk))
+(define (setterk self vr ty)
+  (define thekont
+    (lambda (x)      
+      (if (eq? x split-msg)
+	  (values (make-lines "")	thekont)
+	  (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))))))
+  thekont)
+
 ;================================================================================
 
   
@@ -616,17 +626,11 @@
       [(,vr ,ty (static-allocate ,rhs))
        (StaticAllocate self vr ty rhs)]
       [(,vr ,ty ,rhs)
-       ;; We derive a setter continuation by "splitting" the varbind continuation:
-       ;(define setterk (let-values ([(_ newk) ((varbindk vr ty) split-msg)]) newk))
-       (define set-and-incr-k	 
-	 (lambda (x)      
-	   (if (eq? x split-msg)
-	       (values (make-lines "")	set-and-incr-k)
-	       (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))))))
+       ;; We derive a setter continuation by "splitting" the varbind continuation:       
        (values (make-lines `(,(Type self ty)" ",(Var self vr)";\n"))
-	       ((Value self emitter) rhs set-and-incr-k))]
+	       ;((Value self emitter) rhs set-and-incr-k)
+	       ((Value self emitter) rhs (setterk self vr ty)))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
-
 
 
 ;; For the x86 version we currently don't statically allocate anything.
@@ -826,6 +830,73 @@
        ))))
 
 
+(define (array-constructor-codegen self len init ty kont)
+  (match ty
+    [(Array ,elt)
+					;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
+     
+					;(when (and (heap-allocated? elt global-struct-defs) (not init))
+					;(error array-constructor-codegen "DANGER DANGER: ~s" elt))
+     
+     ;; We fill with zeros if we've got Array:make with a zero scalar.
+     ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
+     (define zero-fill?
+       (or (and init (wszero? elt init))
+	   (and (not init) (heap-type? self elt))))
+
+     (let* ([_elt (Type self elt)]
+	    [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
+	    [tmp (Var self (unique-name "arrtmp"))]
+	    [alloc (if zero-fill?
+		       `("calloc(",size", 1)")
+		       `("malloc(",size")"))]
+	    [cast `("(",_elt"*)",tmp)])
+       (append-lines 
+	(make-lines 
+	 (list
+	  `("int* ",tmp" = (int*)0;\n")
+	  (block `("if (",len")")
+		 `(,tmp" = ((int*)",alloc" + 2);\n"
+		       "CLEAR_RC(",tmp");\n"           
+		       "SETARRLEN(",tmp", ",len");\n"  
+		       ;; Now fill the array, if we need to:
+		       ,(if (and init (not zero-fill?))
+			    (let ([i (unique-name "i")]
+				  [tmp2 (unique-name "arrtmpb")]
+				  [len2 (unique-name "lenmin1")])
+			      (list `(,_elt"* ",(Var self tmp2) " = ",cast";\n")
+				    `("int ",(Var self len2) " = ",len" - 1;\n")
+				    (lines-text
+				     ((Effect self (emit-err 'array:make-constant))
+				      `(for (,i '0 ,len2)
+					   (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
+			    "")))))
+	(kont cast)))]))
+  
+(define (wszero? ty obj)
+       (match obj
+	 [(assert-type ,_ ,[x]) x]
+	 [,obj
+	  (match ty
+	    [,ty (guard (memq ty num-types))
+		 (match obj
+		   [',x (and (number? x) (= x 0))]
+		   [,_ #f])]
+	    ;; This is arbitrary, false is "zero"
+	    [Bool (not obj)]
+
+	    ;; This is arbitrary, #\nul is "zero"
+	    [Char (eq? obj (integer->char 0))]
+
+	    ;; Vacillating on whether the null array should be a single
+	    ;; object (a null pointer).
+	    [(Array ,_) (eq? obj 'Array:null)]
+	    [(List ,_)  (eq? obj '())]
+
+	    [(Struct ,_) #f]
+	    
+	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))  
+  
 (define __
   (specialise! PrimApp <emitC2> 
    (debug-return-contract PrimApp lines?
@@ -859,75 +930,7 @@
 	    [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
 	    ))))
      
-
-     (define (wszero? ty obj)
-       (match obj
-	 [(assert-type ,_ ,[x]) x]
-	 [,obj
-	  (match ty
-	    [,ty (guard (memq ty num-types))
-		 (match obj
-		   [',x (and (number? x) (= x 0))]
-		   [,_ #f])]
-	    ;; This is arbitrary, false is "zero"
-	    [Bool (not obj)]
-
-	    ;; This is arbitrary, #\nul is "zero"
-	    [Char (eq? obj (integer->char 0))]
-
-	    ;; Vacillating on whether the null array should be a single
-	    ;; object (a null pointer).
-	    [(Array ,_) (eq? obj 'Array:null)]
-	    [(List ,_)  (eq? obj '())]
-
-	    [(Struct ,_) #f]
-	    
-	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))
-
-     (define (array-constructor-codegen len init ty)
-       (let ([len (Simp len)])
-	 (match ty
-	   [(Array ,elt)
-	   ;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
-	    
-	    ;(when (and (heap-allocated? elt global-struct-defs) (not init))
-	    ;(error array-constructor-codegen "DANGER DANGER: ~s" elt))
-	    
-	    ;; We fill with zeros if we've got Array:make with a zero scalar.
-	    ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
-	    (define zero-fill?
-	      (or (and init (wszero? elt init))
-		  (and (not init) (heap-type? self elt))))
-
-	   (let* ([_elt (Type self elt)]
-		  [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
-		  [tmp (Var self (unique-name "arrtmp"))]
-		  [alloc (if zero-fill?
-			     `("calloc(",size", 1)")
-			     `("malloc(",size")"))]
-		  [cast `("(",_elt"*)",tmp)])
-	     (append-lines 
-	      (make-lines 
-	       (list
-		`("int* ",tmp" = (int*)0;\n")
-		(block `("if (",len")")
-		       `(,tmp" = ((int*)",alloc" + 2);\n"
-			     "CLEAR_RC(",tmp");\n"           
-			     "SETARRLEN(",tmp", ",len");\n"  
-			     ;; Now fill the array, if we need to:
-			     ,(if (and init (not zero-fill?))
-				  (let ([i (unique-name "i")]
-					[tmp2 (unique-name "arrtmpb")]
-					[len2 (unique-name "lenmin1")])
-				    (list `(,_elt"* ",(Var self tmp2) " = ",cast";\n")
-					  `("int ",(Var self len2) " = ",len" - 1;\n")
-					  (lines-text
-					   ((Effect self (emit-err 'array:make-constant))
-					    `(for (,i '0 ,len2)
-						 (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
-				  "")))))
-	      (kont cast)))])))
-     
+         
      (match app
        ;; Refs and sets are pure simplicity:
        [(Array:ref ,[Simp -> arr] ,[Simp -> ind])
@@ -965,8 +968,8 @@
 	]
        ;; This is the more complex part:
 
-       [(Array:make ,len ,init) (array-constructor-codegen len init mayberetty)]
-       [(Array:makeUNSAFE ,len) (array-constructor-codegen len #f   mayberetty)]
+       [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]
+       [(Array:makeUNSAFE ,[Simp -> len]) (array-constructor-codegen self len #f   mayberetty kont)]
 
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
@@ -1324,16 +1327,19 @@ int main(int argc, char **argv)
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
 (__spec Cutpoint <emitC2> (self type in out)
+   (define local (unique-name "local"))
+   (define _local (Var self local))
    ;(define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
-   (slot-cons! self 'server-cutpoints in)
+   (slot-cons! self 'server-cutpoints in)   
    (match type
      [(Stream ,elt)
       (define _elt (Type self elt))
+      (define root (format "cuttype~a" 10)) ;; TEMP HACK FIXME
       ;; This is extremly annoying.  MIG won't build us a struct, it will
       ;; just give us accessor methods.  Therefore we need to build our
       ;; own bit of code that will build up the struct using these accessors.
       (define (copycode dest src)
-	(let loop ([elt elt] [destpos dest] [srcpos (format "cuttype~a_theitem" 10)]) ;; TEMP HACK FIXME
+	(let loop ([elt elt] [destpos dest] [srcpos (format "~a_theitem" root)])
 	  (match elt
 	    [,scl (guard (scalar-type? scl))
 		  (list destpos " = " srcpos "_get(" src ");\n")]
@@ -1344,25 +1350,29 @@ int main(int argc, char **argv)
 	    ;; For a single array we can handle this (but not yet packed inside a tuple)
 	    [(Array ,elt)
 	     (define ty `(Array ,elt))
-	     (define tmp (unique-name "tmp"))
-	     (define _tmp (Var self tmp))
 	     (define _elt (Type self elt))
-	     (list (lines-text (PrimApp self `(Array:makeUNSAFE '10) (varbindk self tmp ty) ty))
-	           ; (array-constructor-codegen "((uint16_t*)ptr)[-1]")
-		   "char* ptr = ((char*)"src") + " srcpos "_offset(0);\n"
-		   "printf(\"OFFSET WAS %d\\n\", "srcpos"_offset(0));\n"
-		   ;;"SETARRLEN("_tmp", ((uint16_t*)ptr)[-1]);\n"
-		   "memcpy("_tmp", ((uint16_t*)ptr)+1, sizeof("_elt") * ARRLEN("_tmp"));\n"
-		   )]
+	     (list
+	      ;; Could use nx_ types here and then we could unpack this ourselves (without MIG):
+	      "int i;\n"
+	      "int arrsize = "root"_len_get(" src ");\n"
+	      ;;"char* ptr = ((char*)tmsg_data(" src ")) + sizeof(uint16_t);\n"
+	      ;;;;"int arrsize = ((uint16_t*)ptr)[-1];\n"
+	      ;;;;"char* ptr = ((char*)"src") + " srcpos "_offset(0);\n"
+	      (lines-text (array-constructor-codegen self "arrsize" #f ty (setterk self local ty)))
+	      ;;"printf(\"arrsize %d %x tmsg addr %p Offset addr %p\\n\", arrsize, arrsize, "src", tmsg_data("src"));\n"
+	      ;;"memcpy("_local", ((uint16_t*)ptr)+1, sizeof("_elt") * ARRLEN("_local"));\n"
+	      (block "for (i=0; i<arrsize; i++)"
+		     (list _local"[i] = " srcpos "_get("src", i);\n"))
+	      )]
 	    )))
       (values (make-lines
 	       (list 
 		"
   // CutPoint from node side:
   void "(Var self in)"(tmsg_t* nodeobj) {
-    "_elt" localobj;
-"(indent (copycode "localobj" "nodeobj") "    ")"
-    "(Var self out)"(localobj);
+    "_elt" "_local";
+"(indent (copycode _local "nodeobj") "    ")"
+    "(Var self out)"("_local");
   }"
 ))
 '() '()
@@ -1821,8 +1831,10 @@ int main(int argc, char **argv)
 struct cuttype"AM_NUM" {
   "(match ty 
      [(Stream (Array ,elt))
-      "// This is a little odd, we just make it the max size, even though we won't use it.\n"
-      "  char theitem[255];"]
+      (list 
+       "uint16_t len;\n"
+       "  // This is a little odd, we just make it the max size, even though we won't use it.\n"
+       "  "_ty" theitem[255];\n")]
      [,else (list _ty" theitem;")])"
 };
 enum {
