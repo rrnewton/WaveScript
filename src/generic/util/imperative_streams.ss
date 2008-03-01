@@ -122,7 +122,7 @@
   (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
   ;; prompt and ask the user what we should do with it:
-  (unless (regiment-quiet)
+  (unless (<= (regiment-verbosity) 0)
     (printf "\nQuery processed.")
     (printf "\nYou can now control the output stream, commands are:\n")
     (printf "     <n>          print n stream element, advance position\n")
@@ -190,7 +190,7 @@
 			   (lambda ()
 			     (let loop ()
 			       (if (stream-empty? stream)
-				   (unless (regiment-quiet)
+				   (unless (<= (regiment-verbosity) 0)
 				     (printf "Finished, dumped ~a stream elements.\n" pos))
 				   (let ([elem (stream-car stream)])
 				     (unless (equal? elem #())
@@ -201,10 +201,10 @@
 				     ))))
 			   50000000 
 			   (lambda ()
-			     (unless (regiment-quiet)
+			     (unless (<= (regiment-verbosity) 0)
 			       (printf "  POS# ~a dumped...\n" pos))
 			     )))])
-		   (if (regiment-quiet)		       
+		   (if (<= (regiment-verbosity) 0)		       
 		       (go)
 		       (time (go))
 		       ))))]

@@ -67,7 +67,7 @@
 				   (match outspec
 				     ;; Check output grammar:	   
 				     [(grammar ,gram ,optional_initialprod ...)
-				      (if (regiment-verbose) 
+				      (if (>= (regiment-verbosity) 2) 
 					  (printf "~a: Got result, checking output grammar...\n" name))
 				      (or (apply check-grammar `(,name ,result ,gram ,@optional_initialprod))
 					;(inspect (apply list 'FOOFOO name result gram optional_initialprod))
@@ -75,7 +75,7 @@
 					  (error 'build-compiler-pass 
 						 "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
 						 name prog))
-				      (if (regiment-verbose)
+				      (if (>= (regiment-verbosity) 2)
 					  (printf "~a: Output grammar passed.\n" name))]
 				     [(assert ,f)
 				      (unless (f prog)

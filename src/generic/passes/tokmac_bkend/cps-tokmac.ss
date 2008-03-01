@@ -564,7 +564,7 @@
 		     returntokbinds)
              (let ([subonly (difference subcalledtoks returntoks)]
 		   [retonly (difference returntoks subcalledtoks)])
-	       ;(if (regiment-verbose)
+	       ;(if (>= (regiment-verbosity) 2)
 	       ;(disp "Results, sub&ret: " (intersection subcalledtoks returntoks)  subonly retonly)
 	       
 	     ;; Issue warnings for tokens that are subcalled but don't have return statements.

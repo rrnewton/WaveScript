@@ -229,7 +229,7 @@
 		     (if (eq? call 'direct-subcall)
 			 (error 'cleanup-token-machine:check-tok
 				"direct-subcall must be to a known-token: ~s" name)
-			 (if (regiment-verbose)		     
+			 (if (>= (regiment-verbosity) 2)		     
 			     (warning 'cleanup-token-machine
 				      "~s to unknown token: ~s" call tokexp)))
 
@@ -362,7 +362,7 @@
 		   (call (tok ,t ,n) ,@args*)
 		   (void))]
 	     [(activate ,[e] ,[args*] ...)
-	      (if (regiment-verbose) (printf "\nDesugaring activate call to: ~a args: ~a\n" e args*))
+	      (if (>= (regiment-verbosity) 2) (printf "\nDesugaring activate call to: ~a args: ~a\n" e args*))
 	      (match e
 		[(tok ,t ,v) 
 		 `(if (not (token-scheduled? ,e))

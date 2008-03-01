@@ -1035,7 +1035,7 @@
 			     simulation-logger-level
 			     simulation-logger
 			     regiment-emit-debug
-			     regiment-verbose
+			     regiment-verbosity
 			     ))))
 	(regiment-parameters))
       )))

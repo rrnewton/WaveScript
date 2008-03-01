@@ -998,7 +998,10 @@
     [Expr (lambda (x fallthru) 
 	    (define-syntax maybtime
 	      (syntax-rules ()
-		[(_ e) (if (regiment-quiet) e (time e))]))
+		[(_ e) 
+		 ;(if (<= (regiment-verbosity) 0) e (time e))
+		 (if (>= (regiment-verbosity) 2) (time e) e)
+		 ]))
 	    (define (main-work) 
 	      (parameterize ([marshal-cache (make-default-hash-table 1000)])
 		(let* (

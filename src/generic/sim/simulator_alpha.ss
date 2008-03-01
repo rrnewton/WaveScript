@@ -504,7 +504,7 @@
 			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
 					(simtok-equal? ,tok simtok)
 					(begin 	       
-					  (if (regiment-verbose)
+					  (if (>= (regiment-verbosity) 2)
 					  (DEBUGMODE (printf "Wow! we actually found the answer to ~s\n"
 							     "token-scheduled? in the scheduler-queue!")))
 					  #t)

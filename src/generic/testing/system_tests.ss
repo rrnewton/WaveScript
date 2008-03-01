@@ -1551,7 +1551,7 @@
 				 (seed 0)
 				 (aggr sum)))
 		  (sum (x y) (+ x y)))
-		'[regiment-verbose #f]
+		'[regiment-verbosity 1]
 		'[simalpha-placement-type 'connected]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-failure-model 'none]		
@@ -1608,7 +1608,7 @@
 			 (seed ())
 			 (aggr f)))
 	  (f (x y) (append x y)))
-	'[regiment-verbose #f]
+	'[regiment-verbosity 1]
 	'[sim-timeout 10.0]
 	'[simalpha-placement-type 'connected]
 	'[simalpha-consec-ids 2000]
@@ -1644,7 +1644,7 @@
 			 (seed ())
 			 (aggr f)))
 	  (f (x y) (append x y)))
-	'[regiment-verbose #f]
+	'[regiment-verbosity 1]
 	'[sim-timeout 5000]
 	))
       ;; Epoch staggered aggregation
@@ -2338,7 +2338,7 @@
 		    ;(printf "Average acc: ~a ~a\n"  x y)
 		    (return (list (_+. (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
-	  '[regiment-verbose #f]
+	  '[regiment-verbosity 1]
 	  '[sim-timeout 4000]
 	  '[simalpha-zeropad-args 'warning] ;; Must be on for sensing
 ;	  '[simalpha-stream-result #t]

@@ -91,7 +91,7 @@
    list-rem-dups
    list-is-setq? list-subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
-   list-index snoc rac rdc rdc! rac&rdc! last 
+   list-index snoc rac rdc rdc! rac&rdc! last  mapleft mapright
    list-find-position list-remove-before
    list-build
    foldl foldl1
@@ -630,8 +630,10 @@
   (lambda (f ls)
     (if (null? ls)
         '()
-        (cons (f (car ls))
-              (mapright f (cdr ls))))))
+	(let ([result (f (car ls))])
+	  (cons result
+		(mapright f (cdr ls)))
+	  ))))
 
 
 (define (list-repeat! ls)

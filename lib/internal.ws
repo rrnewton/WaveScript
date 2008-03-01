@@ -40,6 +40,14 @@ fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++
 
 /*===============================================================================*/
 
+// I haven't renamed them internally yet, but we've obviously become a
+// very impure language, so there's no reason to have the effectful
+// Hashtable update segregated to a different name.
+HashTable:set_pure = HashTable:set;
+HashTable:rem_pure = HashTable:rem;
+HashTable:set      = HashTable:set_BANG;
+HashTable:rem      = HashTable:rem_BANG;
+
 // Should maybe call "blockcopy", but that's less fun.
 // Like memcpy... might want to make
 // TODO: add some defense!!  

@@ -119,7 +119,8 @@
 	     ;; If they're all equal, reduce to 
 	     [(and (all-equal? (vector->list x))
 		   (not (type-containing-mutable? elt-ty)))
-	      (printf " ** Note: Found compile-time vector with constant contents.\n")
+	      (when (>= (regiment-verbosity) 2)
+		(printf " ** Note: Found compile-time vector with constant contents.\n"))
 	      ;`(Array:make ,(vector-length x) (assert-type ,elt-ty ,(vector-ref x 1)))
 	      (values
 	       `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty)))

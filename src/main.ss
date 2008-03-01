@@ -351,7 +351,7 @@
 
 (define ws-pass-optional-stop 
   (lambda (x)
-    (if (regiment-verbose)
+    (if (>= (regiment-verbosity) 2)
 	(IFDEBUG
 	 (begin (parameterize ([pretty-line-length 160]
 			       [print-length 300]
@@ -368,9 +368,9 @@
   (syntax-rules ()
     [(_ v pass args ...)
      (parameterize ([regiment-current-pass 'pass])
-       (unless (regiment-quiet)
+       (when (>= (regiment-verbosity) 2) ;unless (<= (regiment-verbosity) 0)
 	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port))
-       (if (regiment-verbose)
+       (if (>= (regiment-verbosity) 2)
 	   (time (set! v (ws-pass-optional-stop (pass v args ...))))
 	   (set! v (ws-pass-optional-stop (pass v args ...))))
        ;; Allows multiple hooks:
@@ -468,7 +468,7 @@
     (parameterize ()
       (ws-pass-optional-stop p)
       (unless already-typed (set! p (ws-compile-until-typed p)))
-      (unless (regiment-quiet) (printf "Program verified.\n"))
+      (unless (<= (regiment-verbosity) 0) (printf "Program verified.\n"))
 
       ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
       ;; here breaks something wrt "union2" and sum types... 
@@ -555,17 +555,17 @@
 
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------  
-  (unless (regiment-quiet) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+  (unless (<= (regiment-verbosity) 1) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
   ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
-  (if (regiment-quiet) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
+  (if (<= (regiment-verbosity) 0) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
 ;  (time (ws-run-pass p static-elaborate))
-  (unless (regiment-quiet) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+  (unless (<= (regiment-verbosity) 1) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
   ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
   
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
-  (when (or (regiment-verbose) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
+  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
@@ -622,7 +622,7 @@
   (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.  
 
   (IFDEBUG 
-   (unless (regiment-quiet)
+   (unless (<= (regiment-verbosity) 0)
      (printf "Post elaboration types: \n")
      (print-var-types p +inf.0)) 
    (void))
@@ -753,7 +753,7 @@
 
 ;(assure-type-annotated p (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 
-  (unless (regiment-quiet)
+  (unless (<= (regiment-verbosity) 0)
     (printf "Total typechecker time used:\n")
     (time-accum-report)(newline))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
@@ -777,7 +777,7 @@
 			   wavescript-compiler-caml)))
   
   (run-that-compiler)
-  ;(if (regiment-quiet) (run-that-compiler) (time (run-that-compiler)))
+  ;(if (<= (regiment-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
 
 ]))
 
@@ -791,14 +791,14 @@
 (define (coerce-to-ws-prog x input-params)
   (let ((prog
          (cond  [(input-port? x)
-                 (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
                  ;; We assume this is parsed but not post-processed:
                  (wsparse-postprocess (read x))]
                 [(string? x) 
-                 (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
                  (read-wavescript-source-file x)]
                 [(list? x)   
-                 (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
+                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Evaluating WS source: \n \n"))
                  x]
                 [else (error 'wsint "bad input: ~s" x)])))
     
@@ -865,7 +865,7 @@
 
     (define (early-part x input-params . flags)
       (define prog (coerce-to-ws-prog x input-params))
-      (define _ (begin (unless (regiment-quiet)
+      (define _ (begin (unless (<= (regiment-verbosity) 0)
 			 (printf "Evaluating program: ~a\n\n"
 				 (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
 		       (DEBUGMODE 
@@ -875,10 +875,10 @@
       (define typed (ws-compile-until-typed prog))
       (define __ 
 	(begin 
-	  (unless (regiment-quiet)
+	  (unless (<= (regiment-verbosity) 0)
 	    (printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
 	    (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-	    (if (regiment-verbose)
+	    (if (>= (regiment-verbosity) 2)
 		(print-var-types typed +inf.0)
 		(print-var-types typed 1))
 	    (flush-output-port))
@@ -904,7 +904,7 @@
        (define typed (early-part x input-params))
        (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
        (define compiled (run-ws-compiler typed input-params disabled-passes #t))
-       (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
+       (unless (<= (regiment-verbosity) 0) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
        (run-wavescript-sim compiled))))
   
@@ -1001,9 +1001,9 @@
      
      ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
      
-     (unless (regiment-quiet)
+     (unless (<= (regiment-verbosity) 0)
        (printf "\nTypecheck complete, program types:\n\n")
-       (if (regiment-verbose) 
+       (if (>= (regiment-verbosity) 2) 
 	   (print-var-types typed +inf.0)
 	   (print-var-types typed 1))
        (flush-output-port))
@@ -1040,14 +1040,14 @@
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
 		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
 
-		     (time (ws-run-pass prog emit-c2 class))
+		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
 		       (for-each (lambda (file contents)
 				   (string->file (text->string contents) file))
 			 file* contents*)
-		       (unless (regiment-quiet)
+		       (unless (<= (regiment-verbosity) 0)
 			 (printf "\nGenerated output to files ~s.\n" file*))
 		       ;; And then execute the post-write thunk in the same directory:
 		       (thunk))
@@ -1200,11 +1200,11 @@
 	  (text->string 
 	   (wsquery->text prog wavescope-scheduler))
 	  outfile)   
-	 (unless (regiment-quiet)
+	 (unless (<= (regiment-verbosity) 0)
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 )))
    
-   (if (regiment-quiet) (run-wscomp) (time (run-wscomp)))
+   (if (<= (regiment-verbosity) 0) (run-wscomp) (time (run-wscomp)))
    )
  ) ; End wscomp
 
@@ -1696,11 +1696,13 @@
         (match args
           [() '()]
 
-	  [(-v ,rest ...) 
+	  [(-v ,num? ,rest ...)	   
 	   (set! opts (cons 'verbose opts))
-	   (regiment-verbose #t)
-	   (loop rest)
-	   ]
+	   (if (string->number (symbol->string num?))
+	       (begin (regiment-verbosity (string->number (symbol->string num?)))
+		      (loop rest))
+	       (begin (regiment-verbosity (add1 (regiment-verbosity)))
+		      (loop (cons num? rest))))]
 
 	  [(-n ,limit ,rest ...)
 	   (wsint-tuple-limit (ASSERT integer? (string->number (symbol->string limit))))
@@ -1722,7 +1724,7 @@
 	   (unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
 	   (unless (memq name '(rewrites fuse merge-iterates profile autosplit))
 	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
-	   (unless (regiment-quiet) (printf "  Optimization enabled: ~s\n" name))
+	   (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
 
@@ -1781,7 +1783,7 @@
 	   (loop rest)]
 
 	  [(-quiet ,rest ...)
-	   (regiment-quiet #t)
+	   (regiment-verbosity -1)
 	   (loop rest)]
 
 	  [(-dump ,file ,rest ...)
@@ -1809,7 +1811,7 @@
      ;; FIXME: add to print-help (or automate print-help)
      ;; FIXME: get rid of this; put it into input-parameters
      [(--scheduler ,sched-name ,rest ...)
-      (unless (regiment-quiet) (printf "Setting scheduler: ~s\n" sched-name))
+      (unless (<= (regiment-verbosity) 0) (printf "Setting scheduler: ~s\n" sched-name))
       (set! opts (append `(scheduler ,sched-name) opts))
       (loop rest)]
 

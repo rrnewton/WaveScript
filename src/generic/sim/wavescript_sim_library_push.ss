@@ -822,7 +822,7 @@
             (let* ([newpos (+ len pos -1)]
                    [result (make-sigseg pos newpos win nulltimebase)])
               
-              (unless (regiment-quiet)
+              (unless (<= (regiment-verbosity) 0)
                 (set! counter (fx+ counter len))
                 (when (fx>= counter print-every)
                   (set! counter (fx- counter print-every))

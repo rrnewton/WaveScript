@@ -68,7 +68,7 @@
 			(let ([entry (assq name lookup)])
 			  (cons (list (car entry)) (cdr entry))))
 		   (topological-sort ordering))])
-	(unless (regiment-quiet)
+	(unless (<= (regiment-verbosity) 0)
 	  (printf "Split and sorted union types into:\n")
 	  (pretty-print new))
 	new)))

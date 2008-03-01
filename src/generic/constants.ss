@@ -68,7 +68,7 @@
          
 	 compiler-invocation-mode 
 ;	 regiment-compile-sums-as-tuples
-	 regiment-verbose regiment-quiet
+	 regiment-verbosity 
 	 regiment-track-source-locations
 	 regiment-current-pass
 
@@ -364,14 +364,15 @@
 ;=======================================================================;;
 ;;; Compiler Controls.
 
-;; This parameter determines whether the compiler should print EXTRA (debugging related) info during compilation.
-(define-regiment-parameter regiment-verbose #f)
+;; This parameter determines how much the compiler should print.
+;;  2 - Extra debugging info.
+;;  1 - Normal.
+;;  0 - Silent except for high priority warnings.
+;; -1 - Absolutely silent.
+(define-regiment-parameter regiment-verbosity 1)
 
 ;; This determines whether the compiler tracks source locations in loaded files.
 (define-regiment-parameter regiment-track-source-locations #t)
-
-;; This is the opposite, it is used to suppress ALL banners and nonessential output for batch execution.
-(define-regiment-parameter regiment-quiet #f)
 
 ;; It's useful to have this info globally for debugging/error messages.
 (define regiment-current-pass (reg:make-parameter #f))

@@ -275,7 +275,7 @@
 	   
 	   (if (member path all-includes)
 	       (begin
-		 (unless (regiment-quiet) (eprintf "   Suppressing repeated include of file!: ~s\n" path))
+		 (unless (<= (regiment-verbosity) 0) (eprintf "   Suppressing repeated include of file!: ~s\n" path))
 		 (values '() all-includes))
 	       (begin 
 		 ;; This is usually a relative file path!
@@ -448,14 +448,14 @@
 	 (if (zero? (system "which wsparse")) 
 	     ;; Use pre-compiled executable:
 	     (begin 
-	       (unless (regiment-quiet)
+	       (unless (<= (regiment-verbosity) 0)
 		 (eprintf "  Falling back to wsparse executable to parse file: ~a\n" fn))
 	       (system-to-str 
 		(string-append "wsparse " fn  " --nopretty" extra-opts)))
 	     #f))
 
        (define (try-from-source)
-	 (unless (regiment-quiet)
+	 (unless (<= (regiment-verbosity) 0)
 	   (eprintf
 	    (** "  Falling back to wsparse.ss from source, but you probably"
 		" want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n")))
@@ -468,7 +468,7 @@
        (define (try-client/server)
 	 (if (file-exists? "/tmp/wsparse_server_tcp_running")
 	     (begin 
-	       (unless (regiment-quiet) (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn))
+	       (unless (<= (regiment-verbosity) 0) (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn))
 	       ;; Ideally, we want only the stdout not the stderr, but can't do that.
 	       ;; I don't want this command line to be bash-dependent if possible.
 	       (let ([str (system-to-str
@@ -482,13 +482,13 @@
        (define (try-command-persist)     
 	 (if outport
 	     (begin 
-	       (unless (regiment-quiet) (eprintf "  Using wsparse process on file: ~a\n" fn))
+	       (unless (<= (regiment-verbosity) 0) (eprintf "  Using wsparse process on file: ~a\n" fn))
 	       (write fn outport)(newline outport)
 	       (read inport))
 	     ;; HACK: WON'T WORK IN WINDOWS:
 	     (if (zero? (system "which wsparse > /dev/null"))		 
 		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty" extra-opts))])
-		   (unless (regiment-quiet) (eprintf "  wsparse process started.\n"))
+		   (unless (<= (regiment-verbosity) 0) (eprintf "  wsparse process started.\n"))
 		   (set! inport in)
 		   (set! outport out)
 		   (try-command-persist))

@@ -1281,7 +1281,7 @@
             (make-output-printer typ)))
 
     #;
-    (unless (regiment-quiet)
+    (unless (<= (regiment-verbosity) 0)
       (printf "WSQ connection graph:\n")
       (newline)(display (text->string wsq))(newline)(newline))
     ;(break)
@@ -2040,7 +2040,7 @@ int main(int argc, char ** argv)
 
 
 (define (boilerplate_postmain scheduler return_name return_type)   
-  (unless (regiment-quiet) (printf "Generating code for returning stream of type ~s\n" return_type))
+  (unless (<= (regiment-verbosity) 0) (printf "Generating code for returning stream of type ~s\n" return_type))
   (case scheduler
     [(default-scheduler train-scheduler depth-first)
      `("

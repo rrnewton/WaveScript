@@ -21,6 +21,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.02.29] {Benchmarks to implement}
+  *) Elizabeth should be looking at StreamSQL benchmarks.
+     I'd like to do some simple "Pig Latin" style benchmarks.
 
 [2008.02.15]
 

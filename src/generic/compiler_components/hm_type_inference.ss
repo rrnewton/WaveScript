@@ -256,13 +256,16 @@
 		      newtype)))]
 	     [,s (guard (symbol? s)) s]
 
-	     [#(,[t*] ...) (apply vector t*)] 
-	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
-	      `(,@arg* -> ,res)]
+	     [#(,t* ...) 
+	      (apply vector (mapright loop t*))]
+	     [(,arg* ... -> ,res) ; Ok to loop on ellipses.
+	      (let* ([arg* (mapright loop arg*)]
+		     [res (loop res)])
+		`(,@arg* -> ,res))]
 
-	     [(,constructor ,[args] ...)
+	     [(,constructor ,args ...)
 	      (guard (symbol? constructor))
-	      `(,constructor ,@args)]
+	      `(,constructor ,@(mapright loop args))]
 
 	     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
 	     [,other (error 'instantiate-type "bad type: ~a" other)]
@@ -1508,7 +1511,7 @@
       ;; Ok, this is recursive, but it's A=B=A, not some more complex
       ;; recursive type constraint.
       (begin 
-	(when (regiment-verbose)
+	(when (>= (regiment-verbosity) 2)
 	  (warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty))
 	(match ty
 	  [(,qt ,tvarpair)	   
@@ -1520,7 +1523,7 @@
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
-		      (when (regiment-verbose)
+		      (when (>= (regiment-verbosity) 2)
 			(printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp))
 		      ]
 		     [(,outer . (,qt ,[deeper])) (guard (memq qt '(NUM quote))) (void)]
@@ -1669,7 +1672,7 @@
 			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
 			      ;(unless (null? rhsls) (inspect rhsls))
 			      ;(inspect (included-var-bindings))
-                              (if (or (regiment-verbose)
+                              (if (or (>= (regiment-verbosity) 2)
                                       (and (not (memq id (included-var-bindings)))
                                            (not (symbol? (peel-annotations rhs)))))
                                   `([type ,id ,t ,(get-var-types rhs)])
@@ -1697,7 +1700,14 @@
                    (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
                    )
                  ;		 (print-type (realias-type aliases t) port) (newline port))
-                 (print-type t port) (fprintf port ";\n"))
+                 (print-type 
+		  ;; For prettyness we reset the tvar counts to not get such ugly tvars:
+		  (let ([old-counter (get-tvar-generator-count)])
+		    (reset-tvar-generator 0)
+		    (let ([fresh (export-type (instantiate-type t))])
+		      (reset-tvar-generator old-counter)
+		      fresh))
+		  port) (fprintf port ";\n"))
                
                (pvtloop subvars (fx+ 1 depth) (** indent "  "))]
               [,ls (guard (list? ls))

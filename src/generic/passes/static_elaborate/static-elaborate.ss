@@ -354,7 +354,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      (IFDEBUG (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
+      (IFDEBUG (when (>= (regiment-verbosity) 2) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -376,7 +376,7 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
+      (IFDEBUG (when (>= (regiment-verbosity) 2)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
@@ -513,7 +513,7 @@
 		       [(lambda ,vs ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
-			  ;(when (regiment-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
+			  ;(when (>= (regiment-verbosity) 2) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
 			  (andmap available? fv*))]
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
@@ -966,7 +966,7 @@
 		     `(unionN (annotations) ,@ls)
 		     (begin 
 		       #;
-		       (when (regiment-verbose) 
+		       (when (>= (regiment-verbosity) 2) 
 			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
 		       `(unionList (annotations) ,x))
 		     ))
@@ -1137,7 +1137,7 @@
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
 		 (inline code rands))
 	       (begin 
-		 (if (regiment-verbose)
+		 (if (>= (regiment-verbosity) 2)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
 		 `(app ,rator ,@rands)))]
 
@@ -1166,7 +1166,7 @@
 			     [iterations 1])
 		(if (equal? oldbody body)	   
 		    (begin
-		      ;(when (regiment-verbose) )
+		      ;(when (>= (regiment-verbosity) 2) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      (par-status) ;; TEMPTOGGLE
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))

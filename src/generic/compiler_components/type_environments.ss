@@ -43,6 +43,7 @@
 
            make-tvar
 	   reset-tvar-generator
+	   get-tvar-generator-count
 	   make-tcell
 	   tcell->name
            
@@ -322,7 +323,11 @@
       )))
 
 ;; Resets the unique name counter.
-(define (reset-tvar-generator) (set! tvar-generator-count 0))
+(define reset-tvar-generator
+  (case-lambda 
+    [()  (set! tvar-generator-count 0)]
+    [(n) (set! tvar-generator-count n)]))
+(define (get-tvar-generator-count) tvar-generator-count)
 
 ;; A tcell is like a tvar (quoted, representing a variable).  Except
 ;; instead of just containing a symbolic name, it is a cons cell also
