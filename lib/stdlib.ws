@@ -98,15 +98,15 @@ sort            :: ((Int, Int) -> (),
 type CtrlStrm = Stream (Bool * Int64 * Int64);
 type SegStream t = Stream (Sigseg t);
 
-type S t   = Stream t;
+//type S t   = Stream t;
 type SS t  = Stream (Sigseg t);
 type LSS t = List   (Stream (Sigseg t));
 type SLS t = Stream (List   (Sigseg t));
 
-CONST           :: t -> S t;
-COUNTUP         :: Int -> S Int;
-FINITE          :: Int -> S Int;
-ONCE            :: (() -> ()) -> S ();
+CONST           :: t   -> Stream t;
+COUNTUP         :: Int -> Stream Int;
+FINITE          :: Int -> Stream Int;
+ONCE            :: (() -> ()) -> Stream ();
 
 //easyReadFile    :: String -> Stream t;
 
@@ -124,7 +124,7 @@ repeater        :: (Int, Stream t) -> Stream t;
 // *** SYNCHRONIZATION *** //
 zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
 zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
-zip4_sametype   :: (Int, S t, S t, S t, S t) -> Stream (t * t * t * t);
+zip4_sametype   :: (Int, Stream t, Stream t, Stream t, Stream t) -> Stream (t * t * t * t);
 // Introducing an argument controlling buffer size:
 // This should REALLY, produce an array.
 zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
@@ -193,8 +193,8 @@ from64 :: Int64 -> Int;
  /// CURRIED versions of functions
 // maps, etc
 
-Curry:smap    :: (a -> b)    -> S a -> S b;
-Curry:sfilter :: (t -> Bool) -> S t -> S t;
+Curry:smap    :: (a -> b)    -> Stream a -> Stream b;
+Curry:sfilter :: (t -> Bool) -> Stream t -> Stream t;
 
 
 

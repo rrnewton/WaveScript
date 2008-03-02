@@ -227,18 +227,24 @@
 ;; This is because, when instantiating a rator for application
 ;; let-bound type variables are reinstantiated, whereas lambda-bound ones are not.
 ;; 
+;; Allowing a third argument -- a boolean that specifies whether fresh
+;; names should be used, or whether to keep the old names.
 (define instantiate-type 
   (case-lambda 
     [(t) (instantiate-type t '())]
-    [(t nongeneric)
-     (let* ((env '())
+    [(t nongeneric) (instantiate-type t '() #t)]
+    [(t nongeneric fresh-names)
+     (let* ((env '()) ;; Mutated below
 	 (result 
 	  (let loop ((t t))
 	   (match t
 	     [#f #f]
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
-	      (guard (eq-any? qt 'quote 'NUM) (pair? cell) (memq (car cell) nongeneric))
+	      (guard (eq-any? qt 'quote 'NUM) 		     
+		     (or (eq? nongeneric 'all)
+			 (memq (if (pair? cell) (car cell) cell) nongeneric)))
+	      (ASSERT pair? cell)
               `(,qt ,cell)] ;; Don't reallocate the cell (or touch its RHS)
 	     ;; Otherwise make/lookup the new cell and attach it.
 	     [(,qt ,x) 
@@ -248,8 +254,8 @@
 		     [entry (assq var env)])
 		(if entry
 		    (cdr entry)
-		    (let ((newtype `(,qt ,(cons (make-tvar) 
-						  (if (pair? x) (loop (cdr x)) #f)))))
+		    (let ((newtype `(,qt ,(cons (if fresh-names (make-tvar) var)
+						(if (pair? x) (loop (cdr x)) #f)))))
 		      ;; After that loop var should still not occur in the env!
 		      (DEBUGASSERT (not (assq var env)))
 		      (set! env (cons (cons var newtype) env))
@@ -1699,12 +1705,14 @@
                          ])
                    (fprintf port "~a~a~a :: " indent v (make-string padding #\space))
                    )
-                 ;		 (print-type (realias-type aliases t) port) (newline port))
                  (print-type 
 		  ;; For prettyness we reset the tvar counts to not get such ugly tvars:
-		  (let ([old-counter (get-tvar-generator-count)])
+		  (let ([old-counter (get-tvar-generator-count)]
+			[pretty (if (>= (regiment-verbosity) 3)  t (realias-type aliases t))])
+		    ;(printf "\nUgly  : ~s\n" t)
+		    ;(printf "Pretty: ~s\n" pretty)
 		    (reset-tvar-generator 0)
-		    (let ([fresh (export-type (instantiate-type t))])
+		    (let ([fresh (export-type (instantiate-type pretty '()))])
 		      (reset-tvar-generator old-counter)
 		      fresh))
 		  port) (fprintf port ";\n"))
@@ -1785,8 +1793,7 @@
       [,other (error 'resolve-type-aliases "bad type: ~s" other)]
 )))
 
-
-
+;; For pretty-printing we want to use the names provided by user type definitions:
 (define realias-type
   (let ()
     (define (types-equal!? t1 t2)
@@ -1801,19 +1808,31 @@
       (define (maybebind origty alias fail)
 	(let-values ([(v a* rhs)
 		      (match alias
-			[(,v ,rhs) (values v () rhs)]
+			[(,v ,rhs)           (values v () rhs)]
 			[(,v (,a* ...) ,rhs) (values v a* rhs)])])
-	  (match (instantiate-type `(Magic #(,@a*) ,rhs))
-	    ;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
-	    [(Magic #(,cells ...) ,rhs)
-	     (let ([res (types-equal!? (instantiate-type origty) rhs)])
-	       (if res 
-		   ;; We feed it back through, possibly further reduce "cells":
-		   ;(try-realias )
-		   (if (null? cells) v
-		       (export-type `(,v ,@cells)))
-		   (fail #f))
-	       )])))
+
+	  
+	  ;; We don't want to inject any ADDITIONAL constraints into the original type.
+	  ;; So first we make sure that our alias matches even if
+	  ;; the polymorphism is stripped from the original type.
+	  (if (types-equal!? (type-replace-polymorphic origty (gensym "DummyType")) (instantiate-type rhs))
+	      ;; If that succeeds we match them again without the hack:
+	      (match (instantiate-type `(Magic #(,@a*) ,rhs) '() #t)
+		;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
+		[(Magic #(,cells ...) ,rhs)
+		 ;; Because origty is really a type FRAGMENT, we don't want to rename its type vars here:
+		 ;;(ASSERT instantiated-type? origty)
+		 (let ([res (types-equal!? rhs (instantiate-type origty '() #f))])
+		   (if res 
+		       ;; We feed it back through, possibly further reduce "cells":
+		       ;;(try-realias )
+		       (begin ;(printf "\nMade types equal: ~s ~s\n" res rhs)(inspect cells)
+			      (if (null? cells) v
+				  (export-type `(,v ,@cells))))
+		       (fail #f)))
+		 ])
+	      (fail #f))
+	  ))
       (define (try-realias t)
 	(let realias-loop ([ls aliases])
 	  (cond	 

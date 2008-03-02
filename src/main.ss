@@ -580,11 +580,7 @@
   (ws-run-pass p degeneralize-arithmetic)
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
   (DEBUGMODE (do-late-typecheck)) ;; [2008.02.21] changing to debug-only
-  
-  ;; This just fills polymorphic types with unit.  These should be
-  ;; things that don't matter.  We typecheck afterwards to make sure
-  ;; things still make sense.
-  ;(ws-run-pass p kill-polymorphic-types)
+
   ;; We strip out ascriptions so we don't have any polymophic hanging around in there:
   (ws-run-pass p strip-unnecessary-ascription)
 
@@ -613,6 +609,9 @@
   ;; This is a hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
   (do-late-typecheck)
+  
+  ;; This just fills polymorphic types with unit.  These should be
+  ;; things that don't matter.  
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
   (ws-run-pass p unlift-polymorphic-constant)   

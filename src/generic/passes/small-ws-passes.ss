@@ -20,7 +20,6 @@
 	   strip-src-pos
 	   ;purify-letrec  ;; Disabled
 	   standardize-iterate
-	   kill-polymorphic-types
 	   ;ws-add-return-statements  ;; Disabled
 	   resolve-type-aliases
 	   generate-comparison-code
@@ -541,7 +540,7 @@
 ;; [2007.07.08]
 ;; Remaining polymorphism at this phase of the compiler is
 ;; "irrelevent" in the sense that it describes only uninspected values.
-;; Thus it is equivalent to insert unit in all such places.
+;; Thus it is equivalent to insert Unit in all such places.
 (define-pass strip-irrelevant-polymorphism
     (define (data-source? e)
       (let ([expr (peel-annotations e)])
@@ -633,30 +632,8 @@
     ;[Props 'incomplete-ast-coverage]
     )
 
-(define-pass kill-polymorphic-types
-    (define (Type t)
-      (match t
-	;; Here we turn any remaining type vars into unit:
-	[',n  '#()]
-	;; Any remaining numeric type vars become Int:
-	[(NUM ,v) (guard (symbol? v)) 'Int]
-
-	[,s    (guard (symbol? s))           s]
-	[(,[arg*] ... -> ,[res])           `(,arg* ... -> ,res)]
-	[(,s ,[t] ...) (guard (symbol? s)) `(,s ,t ...)]
-	[#(,[t*] ...)                       (apply vector t*)]
-	[,other (error 'kill-polymorphic-types "bad type: ~s" other)]))
-  #;
-  [Expr (lambda (x fallthru)
-	  (match x 
-	    [(assert-type ,[Type -> t] ,[e])
-	     `(assert-type ,t ,e)]
-	    [,oth (fallthru oth)]))]
-  [Bindings (lambda (var* ty* expr* reconstr Expr)
-	      (reconstr var* (map Type ty*) (map Expr expr*)))])
-
-
 ;; UNUSED
+#;
 (define-pass ws-add-return-statements
     (define (doit fallthru)
       (lambda (x)	

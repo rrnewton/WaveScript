@@ -306,7 +306,7 @@
 ;;; Representation for type variables  
   
 (define tvar-generator-count 0)
-;; Makes a unique type variable.
+;; Makes a unique type variable.  Returns a symbol.
 (define make-tvar
   (let* ([vars (list->vector (map symbol->string 
 			       '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))]
