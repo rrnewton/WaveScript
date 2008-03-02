@@ -180,7 +180,10 @@
 		  (List:reverse (deref ,acc))))))]
 	
 	;; Safety net:
-	[(,prim ,rands ...) (guard (assq prim higher-order-primitives))
+	[(,prim ,rands ...) 
+	 ;; HashTable:foreach is exempt:
+	 (guard (and (assq prim higher-order-primitives)
+		     (not (eq? prim 'HashTable:foreach))))
 	 (error 'anihilate-higher-order "missed this, possible not fully elaborated:\n  Code: ~a\n  Location: ~a\n" 
 		(get-snippet `(,prim ,@rands))
 		(get-location `(,prim ,@rands))

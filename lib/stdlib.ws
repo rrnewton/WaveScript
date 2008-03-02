@@ -289,6 +289,22 @@ fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
 
 
 
+//======================================================================
+/* HashTable operations */
+
+// This could perhaps be implemented more efficiently as a primitive:
+fun HashTable:size(tbl) {
+  cntr = Mutable:ref$ 0;
+  HashTable:foreach(fun(_,_) cntr += 1, tbl);
+  cntr
+}
+
+fun HashTable:map(fn, tbl) {
+  using HashTable;
+  new = make(size(tbl));
+  foreach(fun(key,x) set(new,key,fn(key,x)), tbl);
+  new
+}
 
 //======================================================================
 /* List operations */

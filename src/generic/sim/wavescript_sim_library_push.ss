@@ -97,6 +97,7 @@
 		 internString uninternString
 		 
 		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
+		 HashTable:foreach
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make List:is_null
 		 List:head List:tail head tail
@@ -725,7 +726,7 @@
               x)]))
         loop))
 
-    (printf "Reading stream datafile ~s\n" file)
+    (printf "  Opening stream datafile ~s\n" file)
 
     ;; __readFile body:
     (s:case repeat
@@ -1411,6 +1412,8 @@
 	 ht)
        ;(define HashTable:rem )
        ;(define HashTable:rem_BANG )
+
+       (define HashTable:foreach #%hashtab-for-each)
        )
 
      ;; EQUAL? based hash tables:
@@ -1448,6 +1451,8 @@
 	 (define new (copy-hash-table ht))
 	 (HashTable:rem_BANG new ht k)
 	 new)
+       
+       (define HashTable:foreach slib:hash-for-each)
        )
 
      (define show ws-show)

@@ -1810,8 +1810,8 @@
 		      (match alias
 			[(,v ,rhs)           (values v () rhs)]
 			[(,v (,a* ...) ,rhs) (values v a* rhs)])])
-
 	  
+	  ;(printf "Trying: ~s ~s\n" origty rhs)
 	  ;; We don't want to inject any ADDITIONAL constraints into the original type.
 	  ;; So first we make sure that our alias matches even if
 	  ;; the polymorphism is stripped from the original type.

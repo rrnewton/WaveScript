@@ -665,6 +665,25 @@
     (define aliases '())    ;; Mutated below:
     (define union-types #f) ;; Mutated below:
     (define Type (lambda (t) (export-type (dealias-type aliases union-types (instantiate-type t)))))
+
+    ;; First, to apply aliases, we must resolve any aliases on the
+    ;; right hand sides of aliases themselves!!
+    (define (normalize-aliases aliases)
+      ;; This is a bit ugly... we could topologically sort the aliases.
+      ;; Instead we do something quite inefficient (but expedient).  
+      ;; We simply repeatedly dealias all RHS's until we reach a fixed point.
+      (let ([new (map (lambda (alias)
+			(let-values ([(v a* rhs)
+			  (match alias
+			    [(,v ,rhs)           (values v () rhs)]
+			    [(,v (,a* ...) ,rhs) (values v a* rhs)])])
+			  (list v a* (dealias-type aliases union-types rhs))
+			  ))
+		   aliases)])
+	(if (equal? new aliases)
+	    aliases
+	    (normalize-aliases new))))
+
     ;(define Type (lambda (t) (dealias-type aliases t)))
     [Bindings (lambda (v* t* e* reconst Expr)
 		(reconst v* (map Type t*) (map Expr e*)))]
@@ -674,14 +693,15 @@
     [Program (lambda(prog Expr)	  
 	       (match prog
 		 [(,inputlang '(program ,bod ,meta* ... ,type))
-		  (fluid-let ([aliases (cdr (or (assq 'type-aliases meta*) 
-						'(type-aliases)))]
-			      [union-types (or (assq 'union-types meta*) '(union-types))])
+		  (fluid-let ([union-types (or (assq 'union-types meta*) '(union-types))])
+		    (fluid-let ([aliases (normalize-aliases
+					(cdr (or (assq 'type-aliases meta*) 
+						 '(type-aliases))))])
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) 
-			        ;,@(remq (assq 'type-aliases meta*) meta*)
-			        ,@meta*
-				,type)))]))]
+			        (type-aliases ,@aliases)
+			        ,@(remq (assq 'type-aliases meta*) meta*)
+				,type))))]))]
     ;; Now we're free of sugars and can use the initial grammar.
     [OutputGrammar initial_regiment_grammar])
 

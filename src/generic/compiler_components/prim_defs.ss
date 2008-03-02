@@ -189,6 +189,7 @@
     ;; It's zero-based!
     (Array:build       (Int (Int -> 'a)) (Array 'a))
 
+    (HashTable:foreach (('key 'val -> #()) (HashTable 'key 'val)) #())
     
     ))
 

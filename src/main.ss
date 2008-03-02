@@ -468,7 +468,6 @@
     (parameterize ()
       (ws-pass-optional-stop p)
       (unless already-typed (set! p (ws-compile-until-typed p)))
-      (unless (<= (regiment-verbosity) 0) (printf "Program verified.\n"))
 
       ;; FIXME FIXME FIXME [2007.09.07] It seems that a repeated typecheck
       ;; here breaks something wrt "union2" and sum types... 
@@ -555,17 +554,22 @@
 
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------  
-  (unless (<= (regiment-verbosity) 1) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
-  ;(dump-compiler-intermediate (strip-annotations p) ".__preelab.ss")
-  (if (<= (regiment-verbosity) 0) (ws-run-pass p interpret-meta) (time (ws-run-pass p interpret-meta)))
+  (when (>= (regiment-verbosity) 1)
+    (printf "Output of metaprogram evaluation:\n")
+    (printf "------------------------------------------------------------\n"))
+  (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+  (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss")
+  (if (>= (regiment-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))
 ;  (time (ws-run-pass p static-elaborate))
-  (unless (<= (regiment-verbosity) 1) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
-  ;(dump-compiler-intermediate (strip-annotations p) ".__elaborated.ss")
-  
+  (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+
+  (when (>= (regiment-verbosity) 1)
+    (printf "------------------------------------------------------------\n")
+    (printf "Metaprogram evaluation succeeded.\n"))
+  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f))
+    (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
-
-  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f)) (dump-compiler-intermediate p ".__elaborated.ss"))
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
@@ -629,6 +633,10 @@
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
   
   (do-late-typecheck)  ;; Anihilate introduced type variables.
+
+  (when (>= (regiment-verbosity) 1) (printf "Monomorphism achieved.\n"))
+  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f))
+    (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__monomorphic.ss"))
 
   ;; <-------- NOTE: Old location for merge-iterates. [2007.11.01]
 
@@ -752,7 +760,7 @@
 
 ;(assure-type-annotated p (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 
-  (unless (<= (regiment-verbosity) 0)
+  (when (>= (regiment-verbosity) 2)
     (printf "Total typechecker time used:\n")
     (time-accum-report)(newline))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
@@ -790,14 +798,14 @@
 (define (coerce-to-ws-prog x input-params)
   (let ((prog
          (cond  [(input-port? x)
-                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
                  ;; We assume this is parsed but not post-processed:
                  (wsparse-postprocess (read x))]
                 [(string? x) 
-                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
                  (read-wavescript-source-file x)]
                 [(list? x)   
-                 (unless (<= (regiment-verbosity) 0) (printf "WSCOMP: Evaluating WS source: \n \n"))
+                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Evaluating WS source: \n \n"))
                  x]
                 [else (error 'wsint "bad input: ~s" x)])))
     
@@ -846,6 +854,7 @@
     (define (cleanup-compiler-tmpfiles)
       (let ([please-delete-file 
 	     (lambda (f) (if (file-exists? f) (delete-file f)))])
+	;; Erk, should use a better system, there's no way this will be kept up to date:
 	;; Delete these files so that we don't get mixed up.		  
 	(please-delete-file ".__types.txt")
 	(please-delete-file ".__inputprog.ss")
@@ -864,19 +873,17 @@
 
     (define (early-part x input-params . flags)
       (define prog (coerce-to-ws-prog x input-params))
-      (define _ (begin (unless (<= (regiment-verbosity) 0)
-			 (printf "Evaluating program: ~a\n\n"
-				 (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
-		       (DEBUGMODE 
+      (define _ (begin (DEBUGMODE 
 			(cleanup-compiler-tmpfiles)
 			(dump-compiler-intermediate prog ".__inputprog.ss")
 			)))
       (define typed (ws-compile-until-typed prog))
       (define __ 
 	(begin 
-	  (unless (<= (regiment-verbosity) 0)
-	    (printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
-	    (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
+	  (when (>= (regiment-verbosity) 1)
+	    ;(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
+	    ;(printf "\nProgram types as follows: (also dumped to \".__types.txt\")\n\n")
+	    (printf "Program type-checked: \n")
 	    (if (>= (regiment-verbosity) 2)
 		(print-var-types typed +inf.0)
 		(print-var-types typed 1))
@@ -903,7 +910,7 @@
        (define typed (early-part x input-params))
        (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
        (define compiled (run-ws-compiler typed input-params disabled-passes #t))
-       (unless (<= (regiment-verbosity) 0) (printf "WaveScript compilation completed.\n"))
+       (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
        (run-wavescript-sim compiled))))
   
@@ -942,16 +949,26 @@
    [(and (wsint-tuple-limit) (wsint-output-file))
     ;; This could be more efficient, but for now we just take it all
     ;; into memory and then dump it all to disk.
+    (when (>= (regiment-verbosity) 1)
+      (printf "Executing stream program with output to file: ~s\n" (wsint-output-file))
+      (printf "------------------------------------------------------------\n"))
     (slist->file  (run)  (wsint-output-file) 'display)]
    [(wsint-tuple-limit)
+    (when (>= (regiment-verbosity) 1)
+      (printf "Executing stream program:\n")
+      (printf "------------------------------------------------------------\n"))
     ;; TODO, use proper WS printing:
     (for-each pretty-print (run))]
 
    [(wsint-output-file)
-    (eprintf "Dumping output to file: ~s\n" (wsint-output-file))
+    (when (>= (regiment-verbosity) 1)
+      (eprintf "Dumping output to file: ~s\n" (wsint-output-file)))    
     (stream-dump strm (wsint-output-file))]
    [else
     ;; Otherwise, browse it interactively:
+    (when (>= (regiment-verbosity) 1)
+      (printf "Interactively executing stream program:\n")
+      (printf "------------------------------------------------------------\n"))
     (parameterize ([print-vector-length #t])
       (browse-stream strm))]))
 
