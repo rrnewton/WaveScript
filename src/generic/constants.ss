@@ -365,7 +365,11 @@
 ;;; Compiler Controls.
 
 ;; This parameter determines how much the compiler should print.
-;;  2 - Extra debugging info.
+;; Here's a little summary that may not stay up-to-date.
+;; Note, at >=2, full types are dumped to .__types.txt
+;;  4 - Getting crazy.        - *all* variable types, not realiased
+;;  3 - Extra debugging info. - included def's types, not realiased
+;;  2 - Extra compiler output - included def's types, still realiased 
 ;;  1 - Normal.
 ;;  0 - Silent except for high priority warnings.
 ;; -1 - Absolutely silent.

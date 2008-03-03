@@ -44,13 +44,21 @@
 ;;; This is a generic value printer.
 ;;; It's used in multiple places.
 
-;; Eventually need to pass a type to this to distinguish tuples from arrays.
+;; Eventually need to pass a type to this ...
 (define (ws-show x) 
-  (cond
-   [(vector? x) (format "#~a" (ws-show (vector->list x)))]
-   [(list? x) (text->string (list "[" (insert-between ", " (map ws-show x)) "]"))]
-   [else (format "~a" x)]
-   ))
+  ;; HACK: strings at the top are treated differently as nested strings:
+  (if (string? x) x
+      (let loop ([x x])
+	(cond
+	 [(vector? x) (format "#~a" (loop (vector->list x)))]
+	 [(tuple? x) (string-append (apply string-append "(" (insert-between ", " (map loop (tuple-fields x)))) ")")]
+	 [(list? x) (text->string (list "[" (insert-between ", " (map loop x)) "]"))]
+	 [(uniontype? x) (format "~a(~a)" (deunique-name (uniontype-tag x)) 
+				 (loop (uniontype-val x)))]
+	 [(string? x) (string-append "\"" x "\"")]
+	 [else (format "~a" x)]
+	 ))
+      ))
 
 ;; ======================================================================
 

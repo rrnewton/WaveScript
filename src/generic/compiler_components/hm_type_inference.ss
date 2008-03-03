@@ -99,7 +99,7 @@
 ;	   raise-wrong-number-of-arguments
 
 	   grab-init-tenv
-	   sumdecls->tenv sum-instance
+	   sumdecls->tenv sum-instance!
 	   src-pos->string
 
 	   get-snippet get-location
@@ -577,10 +577,11 @@
       [(wscase ,[l -> val valty] (,TC* ,[l -> rhs* rhsty*]) ...)
 ;       (DEBUGASSERT (curry andmap type?) rhsty*)
        (values `(wscase ,val ,@(map list TC* rhs*))
-	       (let ([inst* (map (lambda (tc rhsty) 				   
+	       ;; First we collect constraints of each branch upon the val type, in the process also gathering the RHS types.
+	       (let ([inst* (map (lambda (tc rhsty) 				   				   
 				   (if (eq? tc default-case-symbol)
 				       rhsty ;; Not an app...
-				       (type-app rhsty (sum-instance tenv valty tc) exp tenv nongeneric)
+				       (type-app rhsty (sum-instance! tenv valty tc) exp tenv nongeneric)
 				       ))
 			      TC* rhsty*)])
 ;		 (DEBUGASSERT (curry andmap type?) inst*)
@@ -1236,18 +1237,21 @@
 
 ;; This takes a (Sum t) type and instantiates it for a particular variant.
 ;; .returns  The types of the data-constructor's fields.
-(define (sum-instance tenv sumty variant-name)
+
+;; Also, as a side-effect 'sumty' (which must be instantiated) is
+;; constrained to be compatible with the returned constructor arg types.
+(define (sum-instance! tenv sumty variant-name)
   (ASSERT (not (eq? variant-name default-case-symbol)))
   (let ([type (tenv-lookup tenv variant-name)])
     (unless type
-      (error 'sum-instance "This variant \"~s\" is not a member of the sum type." variant-name))
+      (error 'sum-instance! "This variant \"~s\" is not a member of the sum type." variant-name))
     (let ([arrowty (instantiate-type type)])
       (match (peel-outer-typevars arrowty)
 	[(,arg* ... -> ,ret) 
 	 (let ([cells (map (lambda (_) (make-tcell)) arg*)])
-					;	 (inspect arrowty)
-					;	 (inspect `(,@cells -> ,(instantiate-type sumty)))
-	   (types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
+	   ;(inspect `(,@cells -> ,(instantiate-type sumty)))
+	   ;(types-equal! arrowty  `(,@cells -> ,(instantiate-type sumty)) "" "<Intrnal: sum-instance>")
+	   (types-equal! arrowty  `(,@cells -> ,sumty) "" "<Intrnal: sum-instance!>")
 					;(map export-type cells)
 	   cells ;; Return instantiated type.
 					;(map instantiate-type (map export-type cells))
@@ -1517,7 +1521,7 @@
       ;; Ok, this is recursive, but it's A=B=A, not some more complex
       ;; recursive type constraint.
       (begin 
-	(when (>= (regiment-verbosity) 2)
+	(when (>= (regiment-verbosity) 3)
 	  (warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty))
 	(match ty
 	  [(,qt ,tvarpair)	   
@@ -1529,7 +1533,7 @@
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
-		      (when (>= (regiment-verbosity) 2)
+		      (when (>= (regiment-verbosity) 3)
 			(printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp))
 		      ]
 		     [(,outer . (,qt ,[deeper])) (guard (memq qt '(NUM quote))) (void)]
@@ -1708,11 +1712,12 @@
                  (print-type 
 		  ;; For prettyness we reset the tvar counts to not get such ugly tvars:
 		  (let ([old-counter (get-tvar-generator-count)]
-			[pretty (if (>= (regiment-verbosity) 3)  t (realias-type aliases t))])
+			[pretty (if (>= (regiment-verbosity) 3) t (realias-type aliases t))])
 		    ;(printf "\nUgly  : ~s\n" t)
 		    ;(printf "Pretty: ~s\n" pretty)
 		    (reset-tvar-generator 0)
-		    (let ([fresh (export-type (instantiate-type pretty '()))])
+		    (let ([fresh (if (>= (regiment-verbosity) 5) pretty
+				     (export-type (instantiate-type pretty '())))])
 		      (reset-tvar-generator old-counter)
 		      fresh))
 		  port) (fprintf port ";\n"))

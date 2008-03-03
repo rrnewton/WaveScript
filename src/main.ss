@@ -370,7 +370,7 @@
      (parameterize ([regiment-current-pass 'pass])
        (when (>= (regiment-verbosity) 2) ;unless (<= (regiment-verbosity) 0)
 	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port))
-       (if (>= (regiment-verbosity) 2)
+       (if (>= (regiment-verbosity) 3)
 	   (time (set! v (ws-pass-optional-stop (pass v args ...))))
 	   (set! v (ws-pass-optional-stop (pass v args ...))))
        ;; Allows multiple hooks:
@@ -415,7 +415,6 @@
   ;; TEMPTOGGLE:
   ;(ws-run-pass p eta-primitives)
   (ws-run-pass p pass_desugar-pattern-matching)
-
   (ws-run-pass p resolve-varrefs)
 
   ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
@@ -627,7 +626,7 @@
   (IFDEBUG 
    (unless (<= (regiment-verbosity) 0)
      (printf "Post elaboration types: \n")
-     (print-var-types p +inf.0)) 
+     (print-var-types p +inf.0))
    (void))
 
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
@@ -884,11 +883,11 @@
 	    ;(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
 	    ;(printf "\nProgram types as follows: (also dumped to \".__types.txt\")\n\n")
 	    (printf "Program type-checked: \n")
-	    (if (>= (regiment-verbosity) 2)
+	    (if (>= (regiment-verbosity) 4)
 		(print-var-types typed +inf.0)
 		(print-var-types typed 1))
 	    (flush-output-port))
-	  (DEBUGMODE
+	  (when (>= (regiment-verbosity) 2)
 	   (with-output-to-file ".__types.txt"
 	     (lambda () (print-var-types typed +inf.0)(flush-output-port))
 	     'replace))))
@@ -941,7 +940,9 @@
   (IFCHEZ (import streams) (begin))
   
   (define (run-to-tuplimit) (first-value (stream-take (wsint-tuple-limit) strm)))
-  (define (run) (if (wsint-time-query) (time (run-to-tuplimit)) (run-to-tuplimit)))
+  (define (run) 
+    (map ws-show 
+      (if (wsint-time-query) (time (run-to-tuplimit)) (run-to-tuplimit))))
 
   (cond
    [(not (stream? strm))
@@ -958,7 +959,9 @@
       (printf "Executing stream program:\n")
       (printf "------------------------------------------------------------\n"))
     ;; TODO, use proper WS printing:
-    (for-each pretty-print (run))]
+    ;(for-each pretty-print (run))
+    (for-each (lambda (x) (display x) (newline)) (run))
+    ]
 
    [(wsint-output-file)
     (when (>= (regiment-verbosity) 1)
@@ -970,7 +973,7 @@
       (printf "Interactively executing stream program:\n")
       (printf "------------------------------------------------------------\n"))
     (parameterize ([print-vector-length #t])
-      (browse-stream strm))]))
+      (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline))))]))
 
 ;; This functionality should probably be included in the wavescript language itself.
 ;; But due to limitations in the language-mechanism that I've been usng, that doesn't work presently.

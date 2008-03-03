@@ -231,8 +231,11 @@
 ;;; Stream browsing.
 
 ;; By convention this doesn't print the unit value #() in dump mode.
-(define (browse-stream stream)
-  (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
+(define browse-stream
+  (case-lambda
+    [(stream) (browse-stream stream pretty-print)]
+    [(stream printer)
+     (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
   ;; prompt and ask the user what we should do with it:
   (unless (<= (regiment-verbosity) 0)
@@ -263,14 +266,14 @@
 	  (match (port->slist (open-input-string line))
 	    [() (guard (stream-empty? stream)) 
 	     (printf "\nReached end of stream.\n")]
-	    [() (printf "  ") (pretty-print (stream-car stream))
+	    [() (printf "  ") (printer (stream-car stream))
 	     (set! stream (stream-cdr stream)) (loop (add1 pos))]
 	    [(,n) (guard (integer? n))
 	     (mvlet ([(ls strm) (stream-take n stream)])
 	       (newline)
 	       (for-each (lambda (x)
 			   (printf "     POS#~a = " pos)
-			   (pretty-print x)
+			   (printer x)
 			   (set! pos (add1 pos)))
 		 ls)
 	       (set! stream strm)
@@ -278,7 +281,7 @@
 	    [(,print) (guard (memq print '(p pr pri prin print)))
 	     (parameterize ([print-length 10000]
 			    [print-level 200])
-	       (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
+	       (printf "  ") (printer (stream-car stream)) (loop pos))]
 	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
 	     (time 
 
@@ -329,7 +332,7 @@
 			 (begin    
 			   (printf " Found element satisfying predicate ~s:\n\n" pred)
 			   (printf "     POS#~a = " pos)
-			   (pretty-print elem)
+			   (printer elem)
 			   (newline)
 			   (loop pos))
 			 (begin 
@@ -342,7 +345,7 @@
 	  [,other 
 	   (printf "Bad input.\n") (loop pos)]
 	  )))
-      )))
+      ))]))
 
 
 (define-testing these-tests

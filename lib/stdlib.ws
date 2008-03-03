@@ -1851,6 +1851,17 @@ fun union5(s1,s2,s3,s4,s5)
         stream_map(Fiveof5,  s5)))))
 
 
+fun zip2(s1,s2){
+  zipped = zip2_sametype(smap(Left,s1), smap(Right,s2));
+  smap(fun((a,b)) {
+         x = case a { Left (x): x };
+         y = case b { Right(y): y };
+	 (x,y)
+       },
+       zipped);
+}
+
+
 /*
 
 union Choose2 (a, b)          = OneOf2 a | TwoOf2 b

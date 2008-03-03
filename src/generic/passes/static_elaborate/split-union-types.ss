@@ -115,7 +115,13 @@
 	      [(wscase . ,_)         (error 'split-union-types "wscase without type assertion")]
 
 	      ;; FIXME:: WE JUST DONT TOUCH THE ASCRIPTIONS:
-	      [(assert-type ,ty ,[e])  `(assert-type ,ty ,e)]
+	      [(assert-type ,ty ,[e])  
+	       (let ([converted (Type ty)])
+		 #;
+		 (unless (equal? ty converted)
+		   (inspect (vector "Converted ascription: " converted)))
+		 `(assert-type ,converted ,e)
+		 )]
 	      [,other (fallthru other)]))]
     [Program 
      (lambda(prog Expr)	  
@@ -145,7 +151,8 @@
 					 ,@(map (match-lambda ((,vartname . ,_))
 						  (cons (symappendcntr vartname cntr)
 							(map export-type
-							  (sum-instance tenv `(Sum ,tyname ,@(map Type tyargs))
+							  (sum-instance! tenv 
+									(instantiate-type `(Sum ,tyname ,@(map Type tyargs)))
 									vartname))))
 					     (cdr (assq tyname union-lookup)))
 					 ))
