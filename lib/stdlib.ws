@@ -104,7 +104,7 @@ type LSS t = List   (Stream (Sigseg t));
 type SLS t = Stream (List   (Sigseg t));
 
 CONST           :: t   -> Stream t;
-COUNTUP         :: Int -> Stream Int;
+COUNTUP         :: #n -> Stream #n;
 FINITE          :: Int -> Stream Int;
 ONCE            :: (() -> ()) -> Stream ();
 
@@ -674,11 +674,11 @@ fun CONST(x)
   }
 
 fun COUNTUP(n)
-  iterate _ in timer(1000.0) {
+  iterate _ in timer(10) {
     // Should be Int64:
     state { counter :: Int = n }
-    emit counter;
-    counter += 1;
+    emit (counter);
+    counter := (counter) + 1;
   }
 
 // Emits 0...n-1 and then stops.

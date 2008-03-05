@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union uniontype static case
+    namespace using AS typedef uniontype static case
 ;    foreign foreign_box foreign_source 
     typecase returncase
 
@@ -96,7 +96,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "uniontype" "case" "typecase" "returncase" 
+	 "namespace" "using" "static" "uniontype" "case" "typecase" "returncase" 
 ;	 "foreign" "foreign_box" "foreign_source"
 	 )
     (string->symbol lexeme)]
@@ -380,7 +380,7 @@
            [(let VAR AS pattern = exp optionalsemi maybedecls) `((define-as ,$2 ,(vector->list $4) ,$6) . ,$8)]
            [(VAR AS pattern = exp optionalsemi maybedecls)     `((define-as ,$1 ,(vector->list $3) ,$5) . ,$7)]
 	   
-	   [(include exp SEMI maybedecls)  `((include ,(unwrap $2)) . ,$4)]
+	   [(include exp optionalsemi maybedecls)  `((include ,(unwrap $2)) . ,$4)]
 	   ;; [2007.03.19] Now including this at the decl level also:
 	   [(using VAR SEMI maybedecls)   `((using ,$2) . ,$4)]
 

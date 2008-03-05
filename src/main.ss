@@ -911,6 +911,7 @@
        (define compiled (run-ws-compiler typed input-params disabled-passes #t))
        (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
+       ;;(inspect compiled)
        (run-wavescript-sim compiled))))
   
   (define (wsint-early x input-params . flags)
@@ -973,7 +974,9 @@
       (printf "Interactively executing stream program:\n")
       (printf "------------------------------------------------------------\n"))
     (parameterize ([print-vector-length #t])
-      (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline))))]))
+      (if (>= (regiment-verbosity) 2)
+	  (browse-stream strm)
+	  (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline)))))]))
 
 ;; This functionality should probably be included in the wavescript language itself.
 ;; But due to limitations in the language-mechanism that I've been usng, that doesn't work presently.

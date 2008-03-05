@@ -342,52 +342,54 @@
     ;(define time-slice 100000)
     (define time-slice (IFDEBUG 200 700))
     
-    (prog output-sink) ;; Register data sources, connect to output sink.
-    
-    (set! global-eng 
-	  (make-engine
-	   (lambda ()
-	     (define (compose-fork f g) (lambda (x y) (f (g x) (g y))))
-	     (define cmpr-entry (compose-fork < car))
+    ;(ASSERT procedure? prog)
+    (if #t;(procedure? prog)
+	(begin  ;; Register data sources, connect to output sink.
+	  (set! global-eng 
+		(make-engine
+		 (lambda ()
+		   (define (compose-fork f g) (lambda (x y) (f (g x) (g y))))
+		   (define cmpr-entry (compose-fork < car))
 
-	     ;; Seed the event queue:
-	     (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
-	     
-	     (let global-loop ()	       
-	       ;(printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
-	       (if (null? event-queue)
-		   '();(engine-return '())
+		   ;; Seed the event queue:
+		   (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
+		   
+		   (let global-loop ()	       
+					;(printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
+		     (if (null? event-queue)
+			 '();(engine-return '())
 
-		 (let* ([next (car event-queue)]
-			[src (cdr next)])
-		   (set! event-queue (cdr event-queue))
-		   (set! current-vtime (car next))
-		   ;; Fire one more element from this data source.
-		   (src 'pop)
-		   ;; Add the next event for this source to the queue.
-		   (let ([newentry (cons (src 'peek) src)])
-		     ;; Only add new events if we're still running:
-		     (if (and (car newentry) still-running?)
-			 (set! event-queue (merge! cmpr-entry (list newentry) event-queue)))
-		     (global-loop)
-		     ))))
-	     )))
-    
-    ;; Return a stream:
-    (delay
-      (let loop ()
-	;(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
-	(if (null? output-queue)
-	    ;; Run the query some more.
-	    (if global-eng
-		(begin (turn-crank! time-slice)
-		       (loop))
-		;; Otherwise, all done:
-		'())
-	    (let-values ([(x rest) (rac&rdc! output-queue)])
-	      (set! output-queue rest)
-	      (cons x (delay (loop)))
-	      )))))
+			 (let* ([next (car event-queue)]
+				[src (cdr next)])
+			   (set! event-queue (cdr event-queue))
+			   (set! current-vtime (car next))
+			   ;; Fire one more element from this data source.
+			   (src 'pop)
+			   ;; Add the next event for this source to the queue.
+			   (let ([newentry (cons (src 'peek) src)])
+			     ;; Only add new events if we're still running:
+			     (if (and (car newentry) still-running?)
+				 (set! event-queue (merge! cmpr-entry (list newentry) event-queue)))
+			     (global-loop)
+			     ))))
+		   )))
+	  ;; Return a stream:
+	  (delay
+	    (let loop ()
+					;(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
+	      (if (null? output-queue)
+		  ;; Run the query some more.
+		  (if global-eng
+		      (begin (turn-crank! time-slice)
+			     (loop))
+		      ;; Otherwise, all done:
+		      '())
+		  (let-values ([(x rest) (rac&rdc! output-queue)])
+		    (set! output-queue rest)
+		    (cons x (delay (loop)))
+		    )))))
+	;; Otherwise, it's not a stream, just return the value!
+	prog))
 
   ;; Run the engine for a bit.
   (define (turn-crank! ticks)
@@ -415,7 +417,7 @@
 		      [(pop)
 		       ;; Release one stream element.
 		       (set! t (s:+ t timestep))
-             (fire! #() our-sinks)
+             (fire! unit-representation our-sinks)
 		       ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
@@ -439,7 +441,7 @@
              ;; Release one stream element.
              (set! t (s:+ t timestep))
              (set! n (+ n 1))
-             (profiled-fire! #() our-sinks bench-rec output-type sum-type-declarations)
+             (profiled-fire! unit-representation our-sinks bench-rec output-type sum-type-declarations)
              ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
@@ -1518,7 +1520,7 @@
 			   #;
 			   (+ (real-time) (random 100000))))
        ;; FIXME: FINISH THIS:
-       (trace-define (mungestring str)
+       (define (mungestring str)
 	 (if (memq #\~ (string->list str))
 	     (format str fn2)
 	     str))

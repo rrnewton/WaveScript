@@ -14,6 +14,7 @@
 	   "../compiler_components/c_generator.ss"	   
 	   )
   (provide ;wavescript-language
+           unit-representation
 	   ws-show)
   (chezimports )
   
@@ -53,12 +54,16 @@
 	 [(vector? x) (format "#~a" (loop (vector->list x)))]
 	 [(tuple? x) (string-append (apply string-append "(" (insert-between ", " (map loop (tuple-fields x)))) ")")]
 	 [(list? x) (text->string (list "[" (insert-between ", " (map loop x)) "]"))]
+	 [(eqv? x unit-representation) "()"]
 	 [(uniontype? x) (format "~a(~a)" (deunique-name (uniontype-tag x)) 
 				 (loop (uniontype-val x)))]
-	 [(string? x) (string-append "\"" x "\"")]
+	 [(string? x) (string-append "\"" x "\"")]	 
 	 [else (format "~a" x)]
 	 ))
       ))
+
+;  (define unit-representation #())
+(define unit-representation 'UNIT)
 
 ;; ======================================================================
 

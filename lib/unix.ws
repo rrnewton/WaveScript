@@ -81,6 +81,7 @@ namespace Unix {
 
 
 // Write a stream of strings to disk.  Returns an empty stream
+// Mode string should be valid input to fopen.
 fileSink :: (String, String, Stream String)  -> Stream nothing;
 fun fileSink (filename, mode, strm) {
   iterate str in strm {  
