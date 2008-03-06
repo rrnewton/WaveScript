@@ -2638,7 +2638,9 @@
    (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
    (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
    )
- ((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0())) ]
+ ,(make-list 4 (list unit-representation unit-representation))
+ ;((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0()))
+ ]
 
 
 ["Run multiple WS queries in a row and see if it screws up the global state."
