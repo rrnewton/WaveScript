@@ -372,6 +372,9 @@
      (set-value-type! len 'Int)
      (make-suspension 'HashTable:make (list len))]
 
+    ;; Also, no compile-time representation for *pointers*:
+    [(ptrMakeNull) (make-suspension 'ptrMakeNull '())]
+
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
     [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
@@ -415,7 +418,8 @@
      (if (foreign-closure? f)
 	 ;; Foreign app is suspended for later:
 	 (begin
-	   (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s" f)
+	   (when (>= (regiment-verbosity) 2)
+	     (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s" f))
 	   (make-suspension f e*))
 
 	 ;; Native closure:

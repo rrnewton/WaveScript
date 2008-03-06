@@ -39,17 +39,24 @@ namespace Unix {
   fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
   fclose :: FileDescr -> Int              = foreign("fclose", stdio);
 
-  // This is kind of funny, we have two entries to the same functions.
+  // This is kind of funny, we have multiple interfaces into the same functions.
+  // One set reads from an *external* pointer:
   fread :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
      foreign("fread", stdio)
   fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
      foreign("fwrite", stdio)
 
+  // The second interface reads from WS arrays:
   // Damn, strings are not mutable...
   fread_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
     foreign("fread", stdio)
   fwrite_arr :: (Array Char, Int, Int, FileDescr) -> Int = 
-    //fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+    foreign("fwrite", stdio)
+
+  // The third interface reads from WS strings:
+  fread_str :: (String, Int, Int, FileDescr) -> Int = 
+    foreign("fread", stdio)
+  fwrite_str :: (String, Int, Int, FileDescr) -> Int = 
     foreign("fwrite", stdio)
 
   malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
@@ -97,6 +104,8 @@ fun fileSink (filename, mode, strm) {
     arr = List:toArray( String:explode(str));
     len = Array:length(arr);
     cnt = Unix:fwrite_arr(arr, 1, len, fp);
+    //len = String:length(str);
+    //cnt = Unix:fwrite_str(str, 1, len, fp);
     if cnt != len 
     then wserror("fileSink: fwrite failed to write data")
   }

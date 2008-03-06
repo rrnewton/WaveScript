@@ -562,6 +562,8 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
+;  (inspect (strip-annotations p 'src-pos))
+
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))

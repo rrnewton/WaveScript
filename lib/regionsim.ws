@@ -12,9 +12,10 @@ include "stdlib.ws";
 /* We read in data as a set of files: */
 type DataSet = List String;
 
-/* We use those filenames as the node "Ids" */
-//uniontype NodeID = NodeID (String);
-type NodeID = String;
+/* We use the INDEX in that filename list to generate node IDs. 
+ * We add 1000 to distinguish node IDs easily.  
+ */
+type NodeID = Int;
 
 /* In the simulator, a Region is just a list: */
 //type Region t = List (Stream t);
@@ -175,7 +176,8 @@ fun readDataSet(files) {
   smap(fun(arr) {
     using HashTable;
     tbl = make(Array:length(arr));
-    Array:foreachi(fun(i,id) set(tbl, id, arr[i]), id_arr);
+    //Array:foreachi(fun(i,id) set(tbl, id, arr[i]), id_arr);
+    Array:foreachi(fun(i,x) set(tbl, 1000 + i, x), arr);
     tbl
     //pairs = List:map2(fun(x,y) (x,y), files, Array:toList(arr));
     //HashTable:fromList(pairs);

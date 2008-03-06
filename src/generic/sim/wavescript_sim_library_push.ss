@@ -343,8 +343,10 @@
     (define time-slice (IFDEBUG 200 700))
     
     ;(ASSERT procedure? prog)
+    
     (if #t;(procedure? prog)
 	(begin  ;; Register data sources, connect to output sink.
+	  (prog output-sink) ;; Register data sources, connect to output sink.
 	  (set! global-eng 
 		(make-engine
 		 (lambda ()
@@ -389,7 +391,8 @@
 		    (cons x (delay (loop)))
 		    )))))
 	;; Otherwise, it's not a stream, just return the value!
-	prog))
+	prog)
+    )
 
   ;; Run the engine for a bit.
   (define (turn-crank! ticks)
@@ -1776,7 +1779,7 @@
 					;	[(ExclusivePointer ,_) 'uptr]
 	  [#()     'void]
 					;[(Char) char]
-	  [,else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
+	  [,else (error '__foreign:Convert "this type is not supported by the Chez foreign interface: ~s" T)]))
 
       (define (DynamicLink out files)
 	(when (file-exists? out) (delete-file out))

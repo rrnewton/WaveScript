@@ -676,7 +676,7 @@ fun CONST(x)
 fun COUNTUP(n)
   iterate _ in timer(10) {
     // Should be Int64:
-    state { counter :: Int = n }
+    state { counter = n }
     emit (counter);
     counter := (counter) + 1;
   }
