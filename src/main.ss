@@ -1079,7 +1079,8 @@
 
 
 	    (define (process-read/until-garbage-or-pred str pred)
-	      (let-match ([(,inp ,outp ,pid) (process str)])
+	      (IFCHEZ 
+	       (let-match ([(,inp ,outp ,pid) (process str)])
 		(define (shutdown) 
 		  (close-output-port outp)
 		  (close-input-port  inp)
@@ -1100,7 +1101,8 @@
 		      (shutdown) (reverse! (cons x acc))]
 		     [else (loop (add1 n) (cons x acc))])))
 		;; TODO: handle read errors:
-		))
+		)
+	      (error 'process-read/until-garbage-or-pred "not implemented except under Chez Scheme")))
 
 	    (define (extract-time-intervals log)
 	      ;; ASSUMPTION: uint16_t counter:

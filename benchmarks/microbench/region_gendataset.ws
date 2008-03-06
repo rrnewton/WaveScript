@@ -9,7 +9,7 @@ include "unix.ws"
 using Curry;
 s1 = smap(show) $ smap(cos) $ COUNTUP(0);
 
-sunk = fileSink("dat/1.dat", "w", s1);
+sunk = fileSink("dat_waves/1.dat", "w", s1);
 
 main = {
   SHELL("rm -rf dat; mkdir dat");  

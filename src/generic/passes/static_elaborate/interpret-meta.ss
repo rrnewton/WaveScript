@@ -211,7 +211,9 @@
             (apply-env env v))]
     [',c (make-plain c #f)]
     
-    [(tuple ,[x*] ...) (make-plain (make-tuple (map unwrap-plain x*)) #f)]
+    [(tuple ,[x*] ...) 
+     (make-plain (make-tuple (map unwrap-plain x*))
+		 (list->vector (map plain-type x*)))]
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))
@@ -697,7 +699,8 @@
      [(tuple? val) 
       `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (loop x ty)))
 		   (ASSERT (tuple-fields val) )
-		   (vector->list (ASSERT ty))
+		   (match ty [#(,t* ...) t*])
+		   ;(vector->list (ASSERT ty))
 		   ))]
 
      [(uniontype? val)

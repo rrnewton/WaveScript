@@ -58,9 +58,43 @@ For example:
 
 /*============================================================================*/
 
+// Example 2: Filter out the output of just nodes with odd IDs.
 
+fun is_odd(n) { (n/2) * 2 != n }
+
+filt = rfilter(fun((id,x)) is_odd(id), rids(reg1));
+
+// Strip those extra IDs off and dump it:
+example2 = rdump(rmap(fun((_,x)) x, filt));
+
+/*============================================================================*/
+
+// Example 3: Average the readings in a region.
+
+fun avg(reg) {
+  smap(fun((sum,n)) sum/n,
+       rfold(fun((sum,n), x) (sum+x,n+1), (0,0), reg))
+}
+
+example3 = avg(reg1);
+
+
+/*============================================================================*/
+
+/*
+// This buffers until the signal reaches a peak and starts coming 
+// down again. It's very inefficient.
+
+fun delay_until_peak(strm) 
+ iterate x in strm {
+   state { buf = [] }
+   ;
+ }
+*/
+
+/*============================================================================*/
 
 
 // Here you can set the return value to the stream you would like to output:
-main = example1 
+main = example3
 
