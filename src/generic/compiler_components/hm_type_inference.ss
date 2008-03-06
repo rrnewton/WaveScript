@@ -232,7 +232,7 @@
 (define instantiate-type 
   (case-lambda 
     [(t) (instantiate-type t '())]
-    [(t nongeneric) (instantiate-type t '() #t)]
+    [(t nongeneric) (instantiate-type t nongeneric #t)]
     [(t nongeneric fresh-names)
      (let* ((env '()) ;; Mutated below
 	 (result 
@@ -241,9 +241,8 @@
 	     [#f #f]
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
-	      (guard (eq-any? qt 'quote 'NUM) 		     
-		     (or (eq? nongeneric 'all)
-			 (memq (if (pair? cell) (car cell) cell) nongeneric)))
+	      (guard (eq-any? qt 'quote 'NUM)
+		     (memq (if (pair? cell) (car cell) cell) nongeneric))
 	      (ASSERT pair? cell)
               `(,qt ,cell)] ;; Don't reallocate the cell (or touch its RHS)
 	     ;; Otherwise make/lookup the new cell and attach it.
