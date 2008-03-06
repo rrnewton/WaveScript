@@ -76,7 +76,11 @@ fun avg(reg) {
        rfold(fun((sum,n), x) (sum+x,n+1), (0,0), reg))
 }
 
-example3 = avg(reg1);
+// In this case we'll average the sum of node ID and sensor reading:
+ids = rmap(fun((id,x)) id+x, rids(reg1));
+
+// The result will depend on how many nodes we have.
+example3 = avg(ids);
 
 
 /*============================================================================*/
