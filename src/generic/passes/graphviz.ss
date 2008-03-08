@@ -61,7 +61,7 @@
 	    (define max_ticks (apply max all_ticks))
 	    (define span (- max_ticks min_ticks))
 	    (trace-lambda COLOR (ticks)
-	      (define fraction (/ (- ticks min_ticks) span))
+	      (define fraction (if (zero? span) 0 (/ (- ticks min_ticks) span)))
 	      (define (pad str) (if (= (string-length str) 1) (string-append "0" str) str))
 	      (string-append 	       
 	       "#"

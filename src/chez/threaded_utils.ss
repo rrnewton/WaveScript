@@ -782,7 +782,7 @@
 	   ;; Now we *must* acquire it (even if we block) in order to set the status to done.
 	   (mutex-acquire (shadowframe-mut frame)) ;; blocking...
 	   (set-shadowframe-status! frame 'done)	   
-	   (mutex-release (shadowframe-mut frame)) ;; Then let go to do the real work.
+	   (mutex-release (shadowframe-mut frame)) 
 	   #t)))
 
   (define (find-and-steal-once!)
@@ -854,7 +854,8 @@
   ;; Returns values in a list
   (define-syntax par
     (syntax-rules ()
-      [(_ a b) (pcall list ((lambda (_) a) #f) b)]))
+      [(_ a b) (pcall list ((lambda (_) a) #f) b)]
+      [(_ a b* ...) (pcall cons ((lambda (_) a) #f) (par b* ...))]))
 
   (define-syntax parmv
     (syntax-rules ()
@@ -908,9 +909,8 @@
     (printf "Run sequential (non-par) version:\n")
     (printf "\n~s\n\n" (time (tree test-depth)))
     (par-status))
-
-  
-)
+ 
+)  ;; End version 5
 
 
 #;

@@ -116,7 +116,6 @@
       (if ty2
 	  (types-compat? ty1 ty2)
 	  ty1))
-    (void)
     (cond
      [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
      ;; Must recursively handle the insides of the ref also:
@@ -134,6 +133,16 @@
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
      [else (error 'set-value-type! "not handled yet: ~s" val)]
      ))
+
+;; Returns the type of the wrapped object, or #f
+(define (get-value-type val)
+    (cond
+     [(plain? val)      (plain-type val)]
+     [(ref? val)        (ref-type val)]
+     [(closure? val)    (closure-type val)]
+     [(suspension? val) #f]
+     [(streamop? val)   (streamop-type val)]
+     [else (error 'get-value-type "not handled yet: ~s" val)]))
 
 
 ; ================================================================================ ;
@@ -213,7 +222,7 @@
     
     [(tuple ,[x*] ...) 
      (make-plain (make-tuple (map unwrap-plain x*))
-		 (list->vector (map plain-type x*)))]
+		 (list->vector (map (lambda (x) (or (get-value-type x) (unknown-type))) x*)))]
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))

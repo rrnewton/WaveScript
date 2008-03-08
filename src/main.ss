@@ -1164,18 +1164,28 @@
 	      (if (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
 		       (memq 'split (ws-optimizations-enabled)))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
-
+		  		 
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
 		    (printf "============================================================\n")		  
 		    (printf "       PROFILING ON TELOS: \n")
 		    (printf "============================================================\n")
+
+		  ;; Expose the parallelism here, operating on totally separate parts:
+		  (let-match ([(#(,maybe-node ,definite-node) 
+				#(,maybe-server ,definite-server))
+			       (par (refine-node-partition node-part) 
+				    (refine-server-partition server-part))])
 		    
+		    (inspect maybe-node)
+
 		    (last-few-steps node-part <tinyos-timed>)
 		    
 		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		    (unless (zero? (system "make -f Makefile.tos2 telosb install"))
 		      (error 'wstiny "error when trying to build profiling code for telosb"))
+		    (printf "============================================================\n")
+		    (printf "       Reading back profile results: \n")
 		    (printf "============================================================\n")
 		    ;; Here we perform a hack to prune a spurious line from the printfClient output.
 		    ;(system "java PrintfClient | grep -v \"^Thread\\[\"")
@@ -1199,6 +1209,9 @@
 		      )
 		    
 		    (exit)
+		    ;; Load 
+		    (set! node-part   _____)
+		    (set! server-part _____)
 		    
 		    #;
 		    (let* ([instrumented (instrument-for-timing node-part)]
@@ -1206,6 +1219,8 @@
 		      (inspect "finished instrumenting and compiling")
 		      )
 		    )
+		    
+		    ) ;; End autosplit path
 
 		  (printf "============================================================\n")
 		  (last-few-steps node-part <tinyos>)
@@ -1230,7 +1245,7 @@
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 )))
    
-   (if (<= (regiment-verbosity) 0) (run-wscomp) (time (run-wscomp)))
+   (if (>= (regiment-verbosity) 2) (time (run-wscomp)) (run-wscomp))
    )
  ) ; End wscomp
 

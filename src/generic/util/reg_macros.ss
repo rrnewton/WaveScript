@@ -49,6 +49,8 @@
       time-accum-report
       time-accum-buf
 
+      let-par
+
       \\
    )
   
@@ -104,6 +106,13 @@
       (syntax-rules ()
 	[(mvlet stuff ...) (let-values stuff ...)]))])
 
+  ;; This could surely be more efficient.
+  ;; Especially because excess allocation is extra bad in a parallel setting.
+  (define-syntax let-par
+    (syntax-rules ()
+      [(_ ([lhs* rhs*] ...) bod* ...)
+       (let-match ([(,lhs* ...) (par rhs* ...)]) bod* ...)]))
+  
 #;  
   (IFCHEZ
    (define-syntax reg-include

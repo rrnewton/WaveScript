@@ -36,6 +36,8 @@
 	   
 	   embed-strings-as-arrays
 	   partition-graph-by-namespace
+	   refine-node-partition
+	   refine-server-partition
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
@@ -995,5 +997,50 @@
 
     )
 
+
+;; The initial cut (based on namespace) provides some information --
+;; in particular, foreign calls in the node partition must happen on
+;; the node.  Next, we separate out those operators which are
+;; flexible, that can live on either side of the partition.
+(define-pass refine-node-partition 
+  (define (Operator op)
+    (inspect op)
+    #;
+    (match (assq 'code op)
+      )
+    )
+  ;; This returns true if the operator is "clean" -- if it doesn't
+  ;; contain anything that would force it to be on the embedded node.
+  [Expr (lambda (xp falth)
+	  (match xp
+	    [(,frgn . ,_)
+	     (guard (eq-any? frgn 'foreign 'foreign_source '__foreign '__foreign_source))
+	     #f]
+	    [,oth (falth oth)]))]
+  [Fuser (lambda (ls k) (andmap id ls))]
+  [Program 
+     (lambda (prog Expr)
+       (match prog
+	 [(,input-language 
+	   '(graph (const ,cnst* ...)
+		   (init  ,init* ...)
+		   (sources ,src* ...)
+		   (operators ,[Operator -> node-oper** mobile-oper**] ...)
+		   (sink ,base ,basetype)	,meta* ...))
+	  (define nodeops   (apply append node-oper**))
+	  (define mobileops (apply append mobile-oper**))
+	  (vector
+	   `(,input-language 
+	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
+		     (operators ,@nodeops)
+		     (sink #f #f) ,@meta*))
+	   `(,input-language 
+	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
+		     (operators ,@mobileops)
+		     (sink #f #f) ,@meta*)))
+	  ]))])
+
+(define refine-server-partition 
+  id)
   
 ) ;; End module

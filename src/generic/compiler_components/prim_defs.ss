@@ -601,10 +601,6 @@
     ;(marshal        ('a) (Array Byte))
     ;(unmarshal      ((Array Byte)) 'a)
     
-    ;; Not implemented yet:
-    ;(foreign_box    (String (List String)) 'any)
-    ;; This won't work in the schem backend...
-
     ;; System CPU time
     ;; This returns milleseconds, but we needa better system for cross-platform support.
     (clock () Double)

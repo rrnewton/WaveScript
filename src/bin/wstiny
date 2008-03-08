@@ -44,11 +44,16 @@ fi
 # #    echo Linking extra libraries requested by query file: $EXTRALIBS
 # # fi
 
-if [ -f "WSQuery.nc" ];
+if [ -f "WSQuery.nc" ]; 
 then chmod +x query.py;
      echo
      echo "BUILDING TINYOS COMPONENTS:" 
-     make -f Makefile.tos2 micaz sim;
+     ## HACK:
+     TELOSSPECIFIC=`grep Msp WSQueryApp.nc`
+     if [ "$TELOSSPECIFIC" == "" ]; 
+     then make -f Makefile.tos2 micaz sim; 
+     else echo "  Generated code is Telos-specific, not generating code for TOSSIM.";  
+     fi
 else echo WSQuery.nc found...
 fi
 

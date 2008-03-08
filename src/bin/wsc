@@ -35,7 +35,8 @@ while [ $# != 0 ];  do
        [ "$1" == "-t" ]
   then REGPASSTHRU="$REGPASSTHRU $1";
 
-  elif [ "$1" == "--disable-pass" ]
+  elif [ "$1" == "--disable-pass" ] || 
+       [ "$1" == "-v" ] 
   then REGPASSTHRU="$REGPASSTHRU $1"; # FIXME: this is dangerous on bad args!
        shift;
        REGPASSTHRU="$REGPASSTHRU $1";
