@@ -96,8 +96,9 @@
    list-build
    foldl foldl1
    
-  vector-map! vector-fold
+   vector-map! vector-fold
    vector-build vector-blit! vector-andmap
+   and-list or-list
 
    insert-between  compose compose/values disp pp
    extract-file-extension remove-file-extension 
@@ -509,6 +510,17 @@
     (do ([i (sub1 (vector-length v)) (sub1 i)])
         ((= -1 i) v)
         (vector-set! v i (f (vector-ref v i))))))
+
+(define (or-list ls)
+  (cond 
+   [(null? ls) #f]
+   [(car ls) #t]
+   [else (or-list (cdr ls))]))
+(define (and-list ls)
+  (cond 
+   [(null? ls) #t]
+   [(car ls) (and-list (cdr ls))]
+   [else #f]))
 
 
 ;; [2008.01.12] Phasing out for Chez 7.4 (now primitive):

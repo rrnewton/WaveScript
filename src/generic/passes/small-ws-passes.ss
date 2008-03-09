@@ -38,6 +38,7 @@
 	   partition-graph-by-namespace
 	   refine-node-partition
 	   refine-server-partition
+	   merge-partitions
            )
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
@@ -516,10 +517,10 @@
 	    [(foreign_source ,x ,y) `(foreign_source ,x ,y)]
 	   
 	    [(let ([,v1 ,t ,c]) ,v2)
-	       (guard (eq? v1 v2) (polymorphic-const-expr? c))
+	     (guard (eq? v1 v2) (polymorphic-const-expr? c))
 ;; [2007.07.08] Removing this assert because we clean up below:
 ;	       (ASSERT (lambda (t) (not (polymorphic-type? t))) t)
-	       (make-assert t c)]
+	     (make-assert t c)]
 	   
 	    [(wscase (let ([,v1 ,t ,[x]]) ,v2) (,tag* ,[fun*]) ...)
 	     (guard (eq? v1 v2))
@@ -1000,24 +1001,29 @@
 
 ;; The initial cut (based on namespace) provides some information --
 ;; in particular, foreign calls in the node partition must happen on
-;; the node.  Next, we separate out those operators which are
-;; flexible, that can live on either side of the partition.
-(define-pass refine-node-partition 
-  (define (Operator op)
-    (inspect op)
-    #;
-    (match (assq 'code op)
-      )
-    )
+;; the node.  Next, we separate out those operators which are flexible
+;; -- *mobile* -- that can live on either side of the partition.
+(define-pass refine-node-partition     
+  (define (Operator Expr)
+    (lambda (op)
+      (let ([code (assq 'code (cdr op))])
+	(if code 
+	    (if (Expr (cadr code))
+		(values '() (list op))
+		(values (list op) '()))
+	    (match op
+	      ;; Prune out cutpoints for now:
+	      [(cutpoint . ,_) (values '() '())])
+	    ))))
   ;; This returns true if the operator is "clean" -- if it doesn't
   ;; contain anything that would force it to be on the embedded node.
-  [Expr (lambda (xp falth)
+  [Expr (lambda (xp fallth)
 	  (match xp
 	    [(,frgn . ,_)
-	     (guard (eq-any? frgn 'foreign 'foreign_source '__foreign '__foreign_source))
+	     (guard (eq-any? frgn 'foreign '__foreign))
 	     #f]
-	    [,oth (falth oth)]))]
-  [Fuser (lambda (ls k) (andmap id ls))]
+	    [,oth (fallth oth)]))]
+  [Fuser (lambda (ls k) (and-list ls))]
   [Program 
      (lambda (prog Expr)
        (match prog
@@ -1025,22 +1031,46 @@
 	   '(graph (const ,cnst* ...)
 		   (init  ,init* ...)
 		   (sources ,src* ...)
-		   (operators ,[Operator -> node-oper** mobile-oper**] ...)
+		   (operators ,[(Operator Expr) -> node-oper** mobile-oper**] ...)
 		   (sink ,base ,basetype)	,meta* ...))
 	  (define nodeops   (apply append node-oper**))
 	  (define mobileops (apply append mobile-oper**))
 	  (vector
 	   `(,input-language 
-	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
-		     (operators ,@nodeops)
+	     '(graph (const ,@cnst*) (init ,@init*) (sources) ;; All sources stay on the node for now.
+		     (operators ,@mobileops)
 		     (sink #f #f) ,@meta*))
 	   `(,input-language 
 	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
-		     (operators ,@mobileops)
-		     (sink #f #f) ,@meta*)))
+		     (operators ,@nodeops)
+		     (sink #f #f) ,@meta*))
+	   )
 	  ]))])
 
-(define refine-server-partition 
-  id)
-  
+;; For the time being, the mobility criteria for the server side is
+;; the *same* as the node-side (are there foreign calls?).  In the
+;; future, this may include other distinctions, such as using floating
+;; arithmetic and so on.  Also, we ultimately need to enforce some
+;; limit on very expensive operators.  It could be a disaster to even
+;; try to benchmark really expensive operators on the motes.  We
+;; should use the benchmark results from the server side to estimate
+;; whether we should at all attempt benchmarking on the node.
+(define refine-server-partition refine-node-partition)
+
+;; Takes the "base" portion, the metadata, the init, and the constants from p1...  
+(define (merge-partitions p1 p2)
+  (match (vector p1 p2)
+    [#((,input-language 
+	'(graph (const ,cnst* ...)  (init  ,init* ...)  (sources ,src* ...)
+		(operators ,oper* ...)  (sink ,base ,basetype) ,meta* ...))
+       (,___
+	'(graph (const ,cnst2* ...) (init  ,init2* ...) (sources ,src2* ...)
+		(operators ,oper2* ...) (sink ,base2 ,2basetype) ,2meta* ...)))
+     `(,input-language 
+       '(graph (const ,@cnst*)  ; ,@cnst2*
+	       (init ,@init*) ; ,@init2*
+	       (sources ,@src* ,@src2*)
+	       (operators ,@oper* ,@oper2*)
+	       (sink ,base ,basetype) ,@meta*))]))
+
 ) ;; End module

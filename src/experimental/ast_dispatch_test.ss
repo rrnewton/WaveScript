@@ -16,7 +16,7 @@ exec regiment i --script "$0"
 (define variants #f)
 
 ;(define test-depth 5)
-(define test-depth 20)
+(define test-depth 22)
 
 (define foo #f)
 

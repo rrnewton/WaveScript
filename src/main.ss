@@ -1177,7 +1177,11 @@
 			       (par (refine-node-partition node-part) 
 				    (refine-server-partition server-part))])
 		    
+		    (define max-node (merge-partitions node-part maybe-server))
+
 		    (inspect maybe-node)
+		    (inspect (map (lambda (op) (vector (car op) (assq 'name (cdr op))))
+			       (cdr (deep-assq 'operators max-node))))
 
 		    (last-few-steps node-part <tinyos-timed>)
 		    

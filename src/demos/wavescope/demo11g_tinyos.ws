@@ -56,16 +56,15 @@ namespace Node {
   }
 }
 
-s5 = iterate _ in timer$ 0.66 { emit (0,1); }
+//s5 = iterate _ in timer$ 0.66 { emit (0,1); }
 
 //main = merge(s5, Node:s3);
 
-
-_main = smap(fun(((x,y),z)) {
+s5 = smap(fun(((x,y),z)) {
     //println("I'M ON SERVER "++y);
     //println("I'M ON NODE ");
     (x,y+1,z)
   }, Node:s4);
 
-
-main = Node:s2;
+main = s5;
+//main = Node:s2;
