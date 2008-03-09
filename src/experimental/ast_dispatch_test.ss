@@ -16,7 +16,7 @@ exec regiment i --script "$0"
 (define variants #f)
 
 ;(define test-depth 5)
-(define test-depth 21)
+(define test-depth 20)
 
 (define foo #f)
 
@@ -263,7 +263,7 @@ exec regiment i --script "$0"
 			      (loop (vector-ref x 1))
 			      (loop (vector-ref x 2)))
 		    (let ([half (quotient numv 2)])
-		      `(if (< tag ,(+ offset half))
+		      `(if (fx< tag ,(+ offset half))
 			   ,(logloop half offset)
 			   ,(logloop (+ half (remainder numv 2)) (+ offset half))
 			   ))))
@@ -327,26 +327,46 @@ exec regiment i --script "$0"
       paramspace)))
 
 
-;; First we run our tests for uniformly distributed variant-occurrences.
-(with-output-to-file  "consume_only.dat"  consume 'replace)
-(with-output-to-file  "rebuild.dat"  rebuild 'replace)
+(define (runall)
+ 
+  (define skew-factor 0.3)
 
-;; Next we test an exponentially skewed distribution of variants:
-(printf "\n  ## Testing Skewed Variant Distribution: ##\n")
-(define skew-factor 0.3)
-(set! random-variant-index
-      (lambda SKEW () (let loop ([n 0])
-		   (if (<= (random 1.0) skew-factor) 
-		       n (loop (fx+ 1 n))))))
+  ;; First we run our tests for uniformly distributed variant-occurrences.
+  (set! random-variant-index (lambda () (random numvariants)))
+  (with-output-to-file  "consume_only.dat"  consume 'replace)
+  (with-output-to-file  "rebuild.dat"  rebuild 'replace)
 
-(with-output-to-file  "skewed_consume_only.dat"  consume 'replace)
-(with-output-to-file  "skewed_rebuild.dat"  rebuild 'replace)
+  ;; Next we test an exponentially skewed distribution of variants:
+  (printf "\n  ## Testing Skewed Variant Distribution: ##\n")
+  (set! random-variant-index
+	(lambda () (let loop ([n 0])
+		     (if (>= n numvariants)
+			 (sub1 numvariants)
+			 (if (<= (random 1.0) skew-factor) 
+			     n (loop (fx+ 1 n)))))))
 
-(printf "\n  ## Testing REALLY Skewed Variant Distribution: ##\n")
-(set! skew-factor 0.51)
+  (with-output-to-file  "skewed_consume_only.dat"  consume 'replace)
+  (with-output-to-file  "skewed_rebuild.dat"  rebuild 'replace)
 
-(with-output-to-file  "moreskewed_consume_only.dat"  consume 'replace)
-(with-output-to-file  "moreskewed_rebuild.dat"  rebuild 'replace)
+  (printf "\n  ## Testing REALLY Skewed Variant Distribution: ##\n")
+  (set! skew-factor 0.51)
+
+  (with-output-to-file  "moreskewed_consume_only.dat"  consume 'replace)
+  (with-output-to-file  "moreskewed_rebuild.dat"  rebuild 'replace)
+)
+
+(system "rm -rf o2")
+(system "mkdir o2")
+(current-directory "o2")
+(optimize-level 2)
+(runall)
+
+(current-directory "..")
+(system "rm -rf o3")
+(system "mkdir o3")
+(current-directory "o3")
+(optimize-level 3)
+(runall)
 
 
 #|
