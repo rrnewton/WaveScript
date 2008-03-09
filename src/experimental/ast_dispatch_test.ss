@@ -16,7 +16,7 @@ exec regiment i --script "$0"
 (define variants #f)
 
 ;(define test-depth 5)
-(define test-depth 22)
+(define test-depth 21)
 
 (define foo #f)
 
@@ -90,16 +90,16 @@ exec regiment i --script "$0"
 (define list-cond-dispatcher
   '(define (build-dispatcher x)
     `(let loop ([x ,x])
-       (if (not x) #f ;; Need to get rid of this..
+       (if (not x) baseval ;; Need to get rid of this..
 	   (let ([tag (car x)]) ;; This makes a big difference (shaves 1/4 off time)... CSE doesn't get it.
 	     (cond
 	      ,@(map (lambda (variant)
 		       `[(eq? ',variant tag) ;  (vector-ref x 0)
 			 (let ();([tail (cdr x)])
-			   (list ',variant
-				 ;(loop (car  tail)) (loop (cadr tail))
-				 (loop (cadr x)) (loop (caddr x))
-				 ))])
+			   (combine ',variant
+				    ;(loop (car  tail)) (loop (cadr tail))
+				    (loop (cadr x)) (loop (caddr x))
+				    ))])
 		  variants)))))))
 
 (define simple-run
@@ -147,14 +147,14 @@ exec regiment i --script "$0"
 (define vector-cond-dispatcher
   '(define (build-dispatcher x)
     `(let loop ([x ,x])
-       (if (not x) #f ;; Need to get rid of this..
+       (if (not x) baseval ;; Need to get rid of this..
 	   (let ([tag (vector-ref x 0)]) ;; This makes a big difference (shaves 1/4 off time)... CSE doesn't get it.
 	     (cond
 	      ,@(map (lambda (variant)
 		       `[(eq? ',variant tag) ;  (vector-ref x 0)
-			 (vector ',variant
-				 (loop (vector-ref x 1))
-				 (loop (vector-ref x 2)))])
+			 (combine ',variant
+				  (loop (vector-ref x 1))
+				  (loop (vector-ref x 2)))])
 		  variants)))))))
 
 ;; ============================================================
@@ -328,24 +328,25 @@ exec regiment i --script "$0"
 
 
 ;; First we run our tests for uniformly distributed variant-occurrences.
-;(with-output-to-file  "consume_only.dat"  consume 'replace)
-;(with-output-to-file  "rebuild.dat"  rebuild 'replace)
+(with-output-to-file  "consume_only.dat"  consume 'replace)
+(with-output-to-file  "rebuild.dat"  rebuild 'replace)
 
 ;; Next we test an exponentially skewed distribution of variants:
 (printf "\n  ## Testing Skewed Variant Distribution: ##\n")
 (define skew-factor 0.3)
-(define skew-factor 0.51)
 (set! random-variant-index
       (lambda SKEW () (let loop ([n 0])
 		   (if (<= (random 1.0) skew-factor) 
 		       n (loop (fx+ 1 n))))))
 
 (with-output-to-file  "skewed_consume_only.dat"  consume 'replace)
-;(with-output-to-file  "skewed_rebuild.dat"  rebuild 'replace)
+(with-output-to-file  "skewed_rebuild.dat"  rebuild 'replace)
 
+(printf "\n  ## Testing REALLY Skewed Variant Distribution: ##\n")
+(set! skew-factor 0.51)
 
-
-
+(with-output-to-file  "moreskewed_consume_only.dat"  consume 'replace)
+(with-output-to-file  "moreskewed_rebuild.dat"  rebuild 'replace)
 
 
 #|
