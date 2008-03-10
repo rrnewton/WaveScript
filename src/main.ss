@@ -1179,9 +1179,17 @@
 		    
 		    (define max-node (merge-partitions node-part maybe-server))
 
-		    (inspect maybe-node)
-		    (inspect (map (lambda (op) (vector (car op) (assq 'name (cdr op))))
-			       (cdr (deep-assq 'operators max-node))))
+		    (printf "\n Node-only operators:\n\n  ")
+		    (pretty-print (partition->opnames definite-node))
+		    (printf "\n Floating operators:\n\n  ")
+		    (pretty-print (append (partition->opnames maybe-node)
+					  (partition->opnames maybe-server)))
+		    (printf "\n Server-only operators:\n\n  ")
+		    (pretty-print (partition->opnames definite-server))
+		    
+		    (inspect (deep-assq-all 'cutpoint max-node))
+		    
+		    (exit)
 
 		    (last-few-steps node-part <tinyos-timed>)
 		    
@@ -1214,8 +1222,8 @@
 		    
 		    (exit)
 		    ;; Load 
-		    (set! node-part   _____)
-		    (set! server-part _____)
+		    ;(set! node-part   _____)
+		    ;(set! server-part _____)
 		    
 		    #;
 		    (let* ([instrumented (instrument-for-timing node-part)]

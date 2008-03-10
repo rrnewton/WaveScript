@@ -297,6 +297,7 @@
 
 ;; To completely DISABLE my new prototype matcher, uncomment this:
 ;; This may be useful for debugging, the iu-matcher gives better source locations.
+;; (Note that rn-match increases compile times)
 ;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
 ;;
 ;; [2007.04.19] Currently, just having rn-match in the type-checker
@@ -528,6 +529,8 @@
 
 (todo:common:load-source "generic/util/bos_oop.ss")                            (import bos_oop)
 (todo:common:load-source "generic/passes/wavescope_bkend/emit-c2.ss")          (import emit-c2)
+
+(todo:common:load-source "generic/passes/partition-graph.ss")          (import partition-graph)
 
 (todo:common:load-source "generic/passes/analyze_data_rates/annotate-with-data-rates.ss") (import annotate-with-data-rates)
 
