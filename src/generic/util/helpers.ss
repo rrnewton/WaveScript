@@ -1353,7 +1353,7 @@
 ;; For example, if you have a set of numbers, you can convert it to a hash for
 ;; repeated membership checks:
 (define (set->hashtab s)
-  (let ((h (make-default-hash-table)))
+  (let ((h (make-default-hash-table (length s))))
     (for-each (lambda (ob)
 		(hashtab-set! h ob #t))
       s)

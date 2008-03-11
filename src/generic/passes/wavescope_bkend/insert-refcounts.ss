@@ -134,11 +134,11 @@
 	   ;; No more type checking is allowed AFTER this pass.
 	   ;; Here we treat the body of iterate as an EFFECT.
 	   ;; (Rather than an expression returning a virtual queue).
-	   [(iterate (annotations ,anot* ...) 
+	   [(iterate (annotations ,anot* ...)
 		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
 	    ;(define newfun (Effect fun))
 	    (define newfun (Value fun))
-	    `(iterate (annotations ,anot* ...)
+	    `(iterate (annotations ,@anot*)
 		      (let ,(map list lhs* ty* (map Value (map TopIncr rhs* ty*)))
 			,newfun)
 		      ,strm)]
@@ -302,7 +302,7 @@
 		  (incoming ,o_up) (outgoing ,o_down* ...))
 	 `(iterate (name ,name) (output-type ,o_ty)
 		   (code ,itercode)
-		   (incoming ,o_up) (outgoing ,o_down* ...))]
+		   (incoming ,o_up) (outgoing ,@o_down*))]
 	;; All of these have no code to speak of:
 	[(_merge . ,_) op]
 	[(__readFile . ,_) op]

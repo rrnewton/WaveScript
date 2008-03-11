@@ -1959,7 +1959,7 @@ event void PrintfControl.stopDone(error_t error) {
 (__specreplace ForeignSourceHook <tinyos> (self name callcode) callcode)
 
 (define __Source
-  (specialise! Source <tinyos>
+ (specialise! Source <tinyos>
     (lambda (next self xp)
       (match xp
 	;; TODO: streams of sensor data

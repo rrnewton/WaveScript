@@ -1049,10 +1049,12 @@
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
 	    (let ([last-few-steps
 		   (lambda (prog class)
+
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 
 		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))
 		     (ws-run-pass prog insert-refcounts)
+
 		     ;; It's painful, but we need to typecheck again.
 		     ;; HACK: Let's only retypecheck if there were any unknown result types:
 		     (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
@@ -1063,7 +1065,7 @@
 			   (time (ws-run-pass prog retypecheck)))))
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
 		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
-
+		    
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
@@ -1161,10 +1163,15 @@
 
 
 	      ;; Currently we partition the program VERY late into node and server components:
-	      (if (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
-		       (memq 'split (ws-optimizations-enabled)))
+	      (if (not (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
+			    (memq 'split (ws-optimizations-enabled))))
+		  ;; In this case we do a 'normal', non-partitioned compile:
+		  (last-few-steps prog
+				  (match (compiler-invocation-mode)
+				    [wavescript-compiler-c <emitC2>]
+				    [wavescript-compiler-nesc <tinyos>]))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
-		  		 
+		  		
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
 		    (printf "============================================================\n")		  
@@ -1186,12 +1193,8 @@
 					  (partition->opnames maybe-server)))
 		    (printf "\n Server-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-server))
-		    
-		    (inspect (deep-assq-all 'cutpoint max-node))
-		    
-		    (exit)
-
-		    (last-few-steps node-part <tinyos-timed>)
+		    		    		  		    
+		    (last-few-steps max-node <tinyos-timed>)
 		    
 		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		    (unless (zero? (system "make -f Makefile.tos2 telosb install"))
@@ -1216,9 +1219,7 @@
 		      (string->file (output-graphviz newprog)
 				    "query_profiled.dot")
 		      (delete-file "query_profiled.png")
-		      (time (system "dot -Tpng query_profiled.dot -oquery_profiled.png"))
-		      ;(inspect newprog)
-		      )
+		      (time (system "dot -Tpng query_profiled.dot -oquery_profiled.png")))
 		    
 		    (exit)
 		    ;; Load 
@@ -1240,10 +1241,7 @@
 		  (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 		    (last-few-steps server-part <emitC2>)
 		    (printf "============================================================\n")))
-		(last-few-steps prog
-		  (match (compiler-invocation-mode)
-		    [wavescript-compiler-c <emitC2>]
-		    [wavescript-compiler-nesc <tinyos>]))))
+		))
 	    )
        (begin 
 	 (ws-run-pass prog nominalize-types)
@@ -1257,7 +1255,7 @@
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 )))
    
-   (if (>= (regiment-verbosity) 2) (time (run-wscomp)) (run-wscomp))
+   (if (>= (regiment-verbosity) 2) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
    )
  ) ; End wscomp
 
