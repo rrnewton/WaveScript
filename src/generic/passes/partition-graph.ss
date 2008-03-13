@@ -27,7 +27,7 @@
     ;; TODO: Need to do this recursively (scan for downstream node-side ops)
     (define (Source node-ops)
       (define all-incoming (apply append (map (lambda (op) (cdr (assq 'incoming (cdr op)))) node-ops)))
-      (printf "ALL NODE INCOMING: ~s\n" all-incoming)
+      ;(printf "ALL NODE INCOMING: ~s\n" all-incoming)
       (lambda (xp)	
 	(match xp
 	  [((name ,nm) (output-type ,ty) (code ,code) (outgoing ,down* ...))
@@ -57,7 +57,7 @@
 	  ;; A cut point, node-side:
 	  [(and me? (not all-down?))
 	   (let ([serv-downstrm (filter id (map (lambda (x y) (and (not x) y)) down?* outgoing))])
-	     (printf "GENERATING CUT POINTS: ~s ~s ~s ~s\n" name serv-downstrm down?* outgoing)
+	     ;(printf "GENERATING CUT POINTS: ~s ~s ~s ~s\n" name serv-downstrm down?* outgoing)
 	     (values (cons op (map (lambda (down) (make-cutpoint type  name down)) ;; node cuts
 				serv-downstrm))
 		     (map (lambda (down) (make-cutpoint type name down)) ;; server cuts
@@ -83,7 +83,7 @@
 	    ;(inspect (vector 'servsrc server-src**))
 	    ;(inspect (vector 'nodeop node-oper**))
 	    ;(inspect (vector 'servop server-oper**))
-	    (printf "DONE\n")
+	    ;(printf "DONE\n")
 	    ;; TODO: Should filter the constants appropriately:
 	    (vector
 	     `(,input-language 

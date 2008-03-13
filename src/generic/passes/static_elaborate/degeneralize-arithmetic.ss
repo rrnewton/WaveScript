@@ -34,7 +34,7 @@
   (define (int16 x)   (match x [g+ '_+I16] [g- '_-I16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
   (define (int64 x)   (match x [g+ '_+I64] [g- '_-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
-  (trace-define (uint16 x)  (match x [g+ '_+U16] [g- '_-U16] [g* '*U16] [g/ '/U16] [g^ '^U16])) ; [abs 'abs16]
+  (define (uint16 x)  (match x [g+ '_+U16] [g- '_-U16] [g* '*U16] [g/ '/U16] [g^ '^U16])) ; [abs 'abs16]
 
   (define degeneralize-arithmetic-grammar
     (filter (lambda (x)

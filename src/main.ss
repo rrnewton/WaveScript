@@ -1052,7 +1052,7 @@
 
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 
-		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))
+		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 		     (ws-run-pass prog insert-refcounts)
 
 		     ;; It's painful, but we need to typecheck again.
@@ -1064,7 +1064,7 @@
 					[inferencer-let-bound-poly #f])
 			   (time (ws-run-pass prog retypecheck)))))
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
-		     (printf "  PROGSIZE: ~s\n" (count-nodes prog))	 	    
+		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 		    
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
@@ -1079,7 +1079,6 @@
 		       (thunk))
 		     )])
 
-
 	    (define (process-read/until-garbage-or-pred str pred)
 	      (IFCHEZ 
 	       (let-match ([(,inp ,outp ,pid) (process str)])
@@ -1092,11 +1091,12 @@
 		(printf "Reading serial interface through java process with ID ~s\n" pid)
 		(flush-output-port)
 		(let loop ([n 0] [acc '()])
-		  (let ([x ;(read-line inp)
-			 (read inp)
-			 ])
-		    (printf "Read: ~a\n" x)
-		    (flush-output-port)
+		  (let* (;[line (read-line inp)]
+			 ;[_ (printf "Read: ~a\n" line)]
+			 ;[x (read (open-input-string line))]
+			 [x (read inp)]
+			 )
+		    (printf "  ReadFromMote: ~a\n" x)(flush-output-port)
 		    (cond 
 		     [(eof-object? x) (shutdown) (reverse! acc)]
 		     [(pred x) ; (> n 15)
@@ -1106,7 +1106,7 @@
 		)
 	      (error 'process-read/until-garbage-or-pred "not implemented except under Chez Scheme")))
 
-	    (define (extract-time-intervals log)
+	    (trace-define (extract-time-intervals log)
 	      ;; ASSUMPTION: uint16_t counter:
 	      (define (diff st en)
 		(let ([elapsed (- en st)])
@@ -1144,7 +1144,7 @@
 		  [(iterate (name ,nm) ,ot
 			    (code (iterate (annotations ,annot* ...) ,itercode ,_))
 			    ,rest ...)
-		   (printf "LOOKING UP ~a in ~a\n" nm times)
+		   ;(printf "LOOKING UP ~a in ~a\n" nm times)
 		   (let ([entry (assq nm times)])		     
 		     (if entry
 			 `(iterate (name ,nm) ,ot 
@@ -1174,7 +1174,7 @@
 		  		
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
-		    (printf "============================================================\n")		  
+		    (newline);(printf "============================================================\n")		  
 		    (printf "       PROFILING ON TELOS: \n")
 		    (printf "============================================================\n")
 
@@ -1193,12 +1193,16 @@
 					  (partition->opnames maybe-server)))
 		    (printf "\n Server-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-server))
+		    (newline)
 		    		    		  		    
 		    (last-few-steps max-node <tinyos-timed>)
 		    
+		    ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
+		    ;; Either flushing between every operator, or a less intrusive measurement method.
 		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
-		    (unless (zero? (system "make -f Makefile.tos2 telosb install"))
-		      (error 'wstiny "error when trying to build profiling code for telosb"))
+		    ;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
+		    (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
+		      (error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt"))
 		    (printf "============================================================\n")
 		    (printf "       Reading back profile results: \n")
 		    (printf "============================================================\n")
@@ -1210,16 +1214,21 @@
 			   (extract-time-intervals
 			    (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
-			     "java PrintfClient"
-			     (lambda (exp) 
+			     "java PrintfClient"			     
+			     (lambda (exp) ;; Stop when we get to the end
 			       (match exp
 				 [(EndTraverse . ,_) #t]
 				 [,else #f]))))]
 			  [newprog (inject-times prog times)])
-		      (string->file (output-graphviz newprog)
-				    "query_profiled.dot")
+
+		      (inspect times)
+
+		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (delete-file "query_profiled.png")
-		      (time (system "dot -Tpng query_profiled.dot -oquery_profiled.png")))
+		      (when (>= (regiment-verbosity) 1)
+			(printf "Dumping profile visualization to query_profiled.png... ")(flush-output-port))
+		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
+		      (when (>= (regiment-verbosity) 1) (printf "done.\n")))
 		    
 		    (exit)
 		    ;; Load 

@@ -48,6 +48,7 @@ if [ -f "WSQuery.nc" ];
 then chmod +x query.py;
      echo
      echo "BUILDING TINYOS COMPONENTS:" 
+     echo "============================================================"
      ## HACK:
      TELOSSPECIFIC=`grep Msp WSQueryApp.nc`
      if [ "$TELOSSPECIFIC" == "" ]; 
@@ -59,6 +60,7 @@ fi
 
 if [ -f "query.c" ]; 
 then echo;echo "BUILDING PC-SIDE COMPONENTS:" 
+     echo "============================================================"
      wsc2-gcc;
 fi
 

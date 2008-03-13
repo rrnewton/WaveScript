@@ -94,6 +94,7 @@
   (define-generic Source)
   (define-generic GenWorkFunction)
   (define-generic Operator)
+  (define-generic SortOperators)
   (define-generic Cutpoint)
   (define-generic Emit)
   (define-generic type->printf-flag)
@@ -1379,6 +1380,7 @@ int main(int argc, char **argv)
 )]))
 
 
+
 ;; .returns top-level decls (lines)
 (__spec Operator <emitC2> (self op)
   (define (Simp x) (Simple self x))
@@ -1528,6 +1530,15 @@ int main(int argc, char **argv)
   ;; Return an alist of files:
   (vector (list (list "query.c" text))
 	  void))
+
+(define (cutpoint? op)  (eq? (car op) 'cutpoint))
+
+;; For now the only sorting we do is to bring Cutpoints to the front:
+(__spec SortOperators <emitC2> (self ops) 
+ (define-values (cps other) (partition cutpoint? ops))
+ ;; Hack, also reverse the others for now... 
+ ;; In the future we should topologically sort them here:
+ (append cps (reverse other)))
   
 ;; Run the pass and generate C code:
 ;; Same return type as BuildOutputFiles
@@ -1542,9 +1553,12 @@ int main(int argc, char **argv)
 		 (init  ,[(Effect self (lambda _ (error 'top-level-init "code should not 'emit'")))
 			  -> init*] ...)
 		 (sources ,[(curry Source self) -> srcname* srccode*  state1* srcrate*] ...)
-		 (operators ,[(curry Operator self) -> oper* state2** opinit**] ...)
+		 (operators ,oper* ...)
 		 (sink ,base ,basetype)
 		 ,meta* ...))
+	
+	(let-match ([(,[(curry Operator self) -> oper* state2** opinit**] ...) (SortOperators self oper*)])
+
 	;; This must be called early, for side effects to the object fields:
 	(define driver   (text->string (lines-text (BuildTimerSourceDriver self srcname* srccode* srcrate*))))
 	(define includes (text->string 			  
@@ -1565,7 +1579,7 @@ int main(int argc, char **argv)
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
 	(define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
-	(define ops      (text->string (map lines-text (reverse oper*))))
+	(define ops      (text->string (map lines-text oper*)))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			   (text->string (block "void initState()" 
@@ -1576,7 +1590,8 @@ int main(int argc, char **argv)
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  
 	  ;; This is called last:
-	  (BuildOutputFiles self includes freefundefs allstate ops init driver)]
+	  (BuildOutputFiles self includes freefundefs allstate ops init driver)
+	  )]
 
        [,other ;; Otherwise it's an invalid program.
 	(error 'emit-c2 "ERROR: bad top-level WS program: ~s" other)])))
@@ -1632,6 +1647,7 @@ int main(int argc, char **argv)
    print-included
    amsender-count
    foreign-source-hook
+   flushdone ;; A hook for code to go inside flushDone
    ))
 
 (__spec initialise <tinyos> (self prog)
@@ -1646,6 +1662,7 @@ int main(int argc, char **argv)
 
 	(slot-set! self 'print-included #f)
 	(slot-set! self 'amsender-count 0)
+	(slot-set! self 'flushdone "")
 	)
 
 (define __Type 
@@ -1719,13 +1736,27 @@ int main(int argc, char **argv)
 		 (lines-text code)
 		 (IterEndHook self name arg argty)))
     ;; And then the function for posting the task:
+    ;;
+    ;; TODO: if we want to do a *breadth* first traversal we need to
+    ;; allocate multiple WS_STRM_BUF's when we have branches.
+    ;; Alternatively, if we wish, truly, to do a depth-first
+    ;; traversal, then we need to either split up fan-out boxes and
+    ;; pass a continuation, or we need to (again) have a separate
+    ;; stack of stream_bufs on the side to get back to.  
+
+    ;; More sensibly, we can simply allocate a one-element buffer for
+    ;; each box.  That will make breadth-first easy.
+    ;;
     (block `("void ",(Var self name) "(",_argty" ",_arg")")
 	   `(;"memcpy(",_arg", WS_STRM_BUF, sizeof(",_argty"));\n"
 	     "(*(",_argty" *)WS_STRM_BUF) = ",_arg";\n"
-	     "post ",_name"_task();\n"
+	     ,(PostTask self name)
 	     ))
 	 "\n")))
 
+(define-generic PostTask)
+(__spec PostTask <tinyos> (self name)
+  (list "post "(Var self name)"_task();\n"))
 
 ;; For those allocation-forms that we can do statically:
 ;; Like SplitBinding returns two values: decl & init code.
@@ -1903,7 +1934,7 @@ enum {
   uses interface PrintfFlush;
 #endif
 ")
-	       (slot-cons! self 'impl-acc "
+	       (slot-cons! self 'impl-acc (list "
 #ifndef TOSSIM
 event void PrintfControl.startDone(error_t error) {
   printf(\";; PrintfControl started (1/3)...\\n\");
@@ -1914,15 +1945,14 @@ event void PrintfControl.startDone(error_t error) {
 }
 
 event void PrintfFlush.flushDone(error_t error) {
-  //call PrintfFlush.flush();
-  //call PrintfControl.stop();
+  "(slot-ref self 'flushdone)"
 }
 
 event void PrintfControl.stopDone(error_t error) {
   //call PrintfFlush.flush();
 }
 #endif
-")
+"))
 	       (slot-cons! self 'boot-acc "
 #ifndef TOSSIM
   call PrintfControl.start();
@@ -2070,13 +2100,13 @@ implementation {
 	 )
    ;; We also return a post-file-write thunk to execute:
    (lambda ()
-     (printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
+     ;(printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
      (for i = 0 to (sub1 (slot-ref self 'amsender-count))
-	  (printf "      CALLING MIG ~a\n" i)
+	  ;(printf "      CALLING MIG ~a\n" i)
 	  (let ([cmd (format "mig c -I~a -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" 
 			     (string-append (getenv "TOSDIR") "/lib/printf")
 			     (+ AM_OFFSET i) i)])
-	    (display cmd)(newline)
+	    ;(display cmd)(newline)
 	    (system cmd))
 	  
 	  )
@@ -2086,7 +2116,8 @@ implementation {
 
 ;;================================================================================
 
-(define-class <tinyos-timed> (<tinyos>) ())
+(define-class <tinyos-timed> (<tinyos>) 
+  (nametable))
 
 ;; Load the counter component:
 (__spec initialise <tinyos-timed> (self prog) 
@@ -2099,7 +2130,8 @@ implementation {
   (slot-cons! self 'proto-acc "  
    uint16_t overflow_count = 0;
    bool ws_currently_running = 0;\n")
-  (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n") 
+  (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n")
+  (slot-set! self 'flushdone "dispatch(flushdispatch);")
   )
 
 ;; Returns text to put in the function body that implements the foreign source.
@@ -2111,6 +2143,7 @@ implementation {
    (block "else"
 	  (list (format "printf(\"(ForeignSource ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
 		"ws_currently_running = 1;\n"
+		"call PrintfFlush.flush();\n"
 		callcode))))
 
 (__specreplace IterStartHook <tinyos-timed> (self name arg argty) 
@@ -2118,19 +2151,68 @@ implementation {
     (format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name))
 (__specreplace IterEndHook   <tinyos-timed> (self name arg argty) 
     (LoadPrintf self)
-    (format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name))
+    (list (format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+	  "call PrintfFlush.flush();\n"
+	  ))
 
 ;; Generate nothing for the cutpoints... we're just interested in the Printf output:
 ;; We use this as an opportunity to flush:
 (__specreplace Cutpoint <tinyos-timed> (self ty in out) 
    (define _ty  (match ty [(Stream ,elt) (Type self elt)]))   
-   (define fun (list "void "(Var self out)"("_ty" x) { 
+   (define fun (list "// Code generated in place of cutpoint:\n"
+		"void "(Var self out)"("_ty" x) { 
   printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
+  flushdispatch = 65535;
   call PrintfFlush.flush(); 
   // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
   ws_currently_running = 0;\n
 }"))
    (values (make-lines fun) '() '()))
+
+
+;; Here we insert a bit of extra code to build the operator name table.
+;; We use this to build a dispatcher.
+(define __SortOperators
+  (specialise! SortOperators <tinyos-timed>
+    (lambda (next self ops)
+      (define table (make-default-hash-table (length ops)))
+      ;(define filtered (filter (compose not cutpoint?) ops))
+      (define filtered
+	;; Currently _merge doesn't generate tasks:
+	(filter (lambda (op) (memq (car op) '(iterate))) ops)) ;; _merge
+      (define (getname op) (cadr (ASSERT (assq 'name (cdr op)))))
+      
+      (slot-set! self 'nametable table)
+      (for-eachi (lambda (ind op)
+		   (hashtab-set! table (getname op) ind))
+		 filtered)
+      (ASSERT (< (length ops) (^ 2 16)))
+      (slot-cons! self 'proto-acc "
+  void dispatch(int);
+  uint16_t flushdispatch = 65535;
+")
+      (slot-cons! self 'impl-acc (list 
+"
+void dispatch(int tag) {
+  switch (tag) {
+"(mapi (lambda (ind op)
+	 (format "    case ~a: post ~a_task(); break;\n" ind (getname op)))
+       filtered)"
+    case 65535: break;
+  }
+}"))
+      (next)
+      )))
+
+(__spec PostTask <tinyos-timed> (self name)
+  (define table (slot-ref self 'nametable))
+  ;; FIXME CURRENTLY DOESN'T HANDLE FANOUT AT ALL!!
+  (list "flushdispatch = "(number->string (hashtab-get table name))";\n"
+	;"call PrintfFlush.flush();\n"
+	))
+
+;; TODO: use the Flushdone event as a trampoline to bounce us into the next task.
+#;
 
 ;; Here we need to delay startup to wait for the profiler to connect.
 ;; This needs to be called LAST:
