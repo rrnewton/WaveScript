@@ -46,6 +46,7 @@
 	    (process-expr (cons prim _) fallthru)]
 	   
 	   ;; This needs the type tagged on also:
+	   ;; This is where we introduce __foreign_source and __foreign:
 	   [(assert-type ,T (,frgn ,[name] ,[files]))
 	    (guard (memq frgn '(foreign foreign_source)))
 	    `(,(symbol-append '__ frgn) ,name ,files ',T)]

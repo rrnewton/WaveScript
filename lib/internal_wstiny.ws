@@ -9,7 +9,8 @@ fun timer(rate) {
   n = source_count;
   source_count += 1;
   funname = "timer_ws_entry"++n;
-  s1 = (foreign_source(funname, []) :: Stream ());
+  // There's a hack for foreign_source in wstiny: the first "filename" stores the rate:
+  s1 = (foreign_source(funname, [show(rate)]) :: Stream ());
   top = "";  
   conf1 = "";  
   conf2 = "components new TimerMilliC() as Timer"++n++";\n"++
@@ -65,7 +66,7 @@ fun sensor_uint16(name, rate) {
   n = source_count;
   source_count += 1;
   funname = "sensor_ws_entry"++n;
-  s1 = (foreign_source(funname, []) :: Stream Uint16);
+  s1 = (foreign_source(funname, [show(rate)]) :: Stream Uint16);
   smod = "SensorStrm"++n;
   tmod = "SensorTimer"++n;
   conf2 = "components new "++name++"() as "++smod++";\n"++

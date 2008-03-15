@@ -468,7 +468,9 @@
 				     (cfl-real-part datum)
 				     (cfl-imag-part datum)))]
      [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
-     [(integer? datum) (wrap (format "(~a)~a" (Type self 'Int) datum))]
+     [(integer? datum) 
+      ;(wrap (format "(~a)~a" (Type self 'Int) datum))
+      (wrap (number->string datum))]
 
 #;
      [(vector? datum)
@@ -2006,6 +2008,9 @@ event void PrintfControl.stopDone(error_t error) {
 	   [(__foreign_source ',name ',filels '(Stream ,type))
 	    (define ty (Type self type))
 	    (define arg (unique-name "tmp"))
+	    (ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
+		    ;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
+		    (and (not (null? filels)) (string->number (car filels))))
 	    (for-each (lambda (file)
 			(let ([ext (extract-file-extension file)])
 			  (cond
@@ -2013,7 +2018,7 @@ event void PrintfControl.stopDone(error_t error) {
 			    (add-include! (list "\"" file "\""))]
 			   [else (error 'emit-c:foreign 
 					"cannot load NesC extension from this type of file: ~s" file)])))
-	      filels)
+	      (cdr filels))
 	    ;; Create a function for the entrypoint.
 	    ;; It should post a task!!
 	    (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))

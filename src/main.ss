@@ -731,8 +731,8 @@
   
   ; --mic, <OPTIMIZATION>
   (unless (memq 'propagate-copies disabled-passes)
-    (ws-run-pass p propagate-copies)
-   )
+    (ws-run-pass p propagate-copies))
+
   ;(pp (blaze-path-to/assq p 'Array:make 'Array:makeUNSAFE))
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
@@ -1065,7 +1065,7 @@
 			   (time (ws-run-pass prog retypecheck)))))
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
-		    
+
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
@@ -1078,89 +1078,6 @@
 		       ;; And then execute the post-write thunk in the same directory:
 		       (thunk))
 		     )])
-
-	    (define (process-read/until-garbage-or-pred str pred)
-	      (IFCHEZ 
-	       (let-match ([(,inp ,outp ,pid) (process str)])
-		(define (shutdown) 
-		  (close-output-port outp)
-		  (close-input-port  inp)
-		  ;; For some reason that's not enough to kill it:
-		  (printf "Killing off stray java process...\n")
-		  (system (format "kill ~a" pid)))
-		(printf "Reading serial interface through java process with ID ~s\n" pid)
-		(flush-output-port)
-		(let loop ([n 0] [acc '()])
-		  (let* (;[line (read-line inp)]
-			 ;[_ (printf "Read: ~a\n" line)]
-			 ;[x (read (open-input-string line))]
-			 [x (read inp)]
-			 )
-		    (printf "  ReadFromMote: ~a\n" x)(flush-output-port)
-		    (cond 
-		     [(eof-object? x) (shutdown) (reverse! acc)]
-		     [(pred x) ; (> n 15)
-		      (shutdown) (reverse! (cons x acc))]
-		     [else (loop (add1 n) (cons x acc))])))
-		;; TODO: handle read errors:
-		)
-	      (error 'process-read/until-garbage-or-pred "not implemented except under Chez Scheme")))
-
-	    (trace-define (extract-time-intervals log)
-	      ;; ASSUMPTION: uint16_t counter:
-	      (define (diff st en)
-		(let ([elapsed (- en st)])
-		  (ASSERT (> elapsed 0))
-		  elapsed
-		  #;
-		  (if (< elapsed 0)
-		      (inspect elapsed) ;(+ (^ 2 16) elapsed)
-		      elapsed)))
-	      (define (combine overflow n) (+ (* (^ 2 16) overflow) n))
-	      (let loop ([alist '()] [open #f] [strt #f] [log log])
-		(match log 
-		  [() alist]
-		  [((Start ,name ,overflow ,t) . ,_) (ASSERT (not (assq name alist)))
-		   ;(set! alist (cons name t))
-		   (loop alist name (combine overflow t) _)]
-		  [((End ,name ,overflow ,tme) . ,_)
-		   (ASSERT (eq? name open))
-		   (loop (cons (cons name (diff strt (combine overflow tme))) alist) #f #f _)]
-		  ;; HACK: End message ALSO serves to close off the open measurement.
-		  [((EndTraverse ,overflow ,tme) . ,_)
-		   (ASSERT null? _)
-		   (loop (if open 
-			     (cons (cons open (diff strt (combine overflow tme))) alist)
-			     alist)
-			 #f #f _)]
-		  ;; Ignoring garbage for now:
-		  [(,oth . ,[rest]) rest])))
-
-
-	    ;; Inserts a (measured-cycles <elapsed> <timer-frequency>) annotation:
-	    (define (inject-times prog times)
-	      (define (Operator op)
-		(match op
-		  [(iterate (name ,nm) ,ot
-			    (code (iterate (annotations ,annot* ...) ,itercode ,_))
-			    ,rest ...)
-		   ;(printf "LOOKING UP ~a in ~a\n" nm times)
-		   (let ([entry (assq nm times)])		     
-		     (if entry
-			 `(iterate (name ,nm) ,ot 
-				   (code (iterate (annotations (measured-cycles ,(cdr entry) 32000) ,@annot*)
-						  ,itercode ,_))
-				   ,@rest)
-			 op))]
-		  [,oth oth]))
-	      (match prog
-		[(,input-language 
-		  '(graph ,cnst ,init ,src
-			  (operators ,[Operator -> oper*] ...) ,rest ...))
-		 `(,input-language 
-		  '(graph ,cnst ,init ,src
-			  (operators ,oper* ...) ,rest ...))]))
-
 
 	      ;; Currently we partition the program VERY late into node and server components:
 	      (if (not (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
@@ -1211,8 +1128,8 @@
 
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
-			   (extract-time-intervals
-			    (process-read/until-garbage-or-pred 
+			    (extract-time-intervals
+			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
 			     (lambda (exp) ;; Stop when we get to the end
@@ -1220,26 +1137,39 @@
 				 [(EndTraverse . ,_) #t]
 				 [,else #f]))))]
 			  [newprog (inject-times prog times)])
-
-		      (inspect times)
+		      
+		      ;(inspect times)
 
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
-		      (delete-file "query_profiled.png")
-		      (when (>= (regiment-verbosity) 1)
-			(printf "Dumping profile visualization to query_profiled.png... ")(flush-output-port))
-		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
-		      (when (>= (regiment-verbosity) 1) (printf "done.\n")))
-		    
-		    (exit)
-		    ;; Load 
-		    ;(set! node-part   _____)
-		    ;(set! server-part _____)
-		    
-		    #;
-		    (let* ([instrumented (instrument-for-timing node-part)]
-			   [compiled (last-few-steps instrumented)])
-		      (inspect "finished instrumenting and compiling")
+
+		      (printf "============================================================\n")
+		      (printf "       Auto Partitioning: \n")
+		      (printf "============================================================\n")
+
+		      (let-match ([#(,new-node ,new-server)
+				   (exhaustive-partition-search max-nodepart-hueristic 
+								(inject-times max-node times))])
+			(define all-server (merge-partitions definite-server new-server))
+			
+			(printf "\n Final Partitioning, node operators:\n\n")
+			(pretty-print (partition->opnames new-node))
+			(printf "\n Server operators:\n\n")
+			(pretty-print (partition->opnames all-server))
+			(newline)
+
+			;(inspect new-node)
+			
+			(string->file (output-graphviz (merge-partitions new-node all-server)) "query_partitioned.dot")
+			(when (>= (regiment-verbosity) 1)
+			  (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port))
+			(system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
+			(when (>= (regiment-verbosity) 1) (printf "done.\n"))
+
+
+			)
 		      )
+
+		    (exit)
 		    )
 		    
 		    ) ;; End autosplit path

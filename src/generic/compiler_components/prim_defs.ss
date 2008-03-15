@@ -556,6 +556,7 @@
     ;;  (2) foreign files (.c .h .so etc) to load function from
     (foreign        (String (List String)) 'any)
     ;; Takes (export) function name, file list:
+    ;; Note: there's also a hack for wstiny that involves sticking a *rate* into the file list.
     (foreign_source (String (List String)) (Stream 'any))
 
     ;; (Internal) This is the same but has the type tagged on the end:

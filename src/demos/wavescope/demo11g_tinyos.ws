@@ -14,9 +14,10 @@ commbuf = Array:make(10, 0);
 // If events occur at the same time... that's a problem.
 // They collide in the shared buffer space used to cummunicate tuples.
 
+using Mutable;
 using TOS;
 namespace Node {
-  s1 = iterate( reading in sensor_uint16("DemoSensorC", 1.0) ) {
+  s1 = iterate( reading in sensor_uint16("DemoSensorC", 2.0) ) {
     emit reading;
   };
 
@@ -51,7 +52,7 @@ namespace Node {
 
   s4 = iterate x in s3 {
     sum = Mutable:ref$ (0::Int64);
-    //for i = 1 to 1000 { sum += 1; }
+    for i = 1 to 1000 { sum += 1; }
     emit (x,sum);
   }
 }
@@ -61,10 +62,20 @@ namespace Node {
 //main = merge(s5, Node:s3);
 
 s5 = smap(fun(((x,y),z)) {
+    
+    //ind :: Ref Int64 = ref(3333);
+    //while ind < 1 * 1000 * 1000 { ind += 1 };
+
     //println("I'M ON SERVER "++y);
     //println("I'M ON NODE ");
-    (x,y+1,z)
+    (x,y+1,ind+ind)
   }, Node:s4);
 
-main = s5;
+s6 = iterate x in s5 {
+    ind = ref(3333);
+    for i = 1 to 1000 { for j = 1 to 1000 { ind += 1 } };
+    emit x;
+}
+
+main = s6;
 //main = Node:s2;

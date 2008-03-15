@@ -10,11 +10,75 @@
 	   merge-partitions
 	   partition->opnames
 	   discard-spurious-cutpoints
+	   exhaustive-partition-search
+	   min-bandwidth-hueristic
+	   max-nodepart-hueristic
+process-read/until-garbage-or-pred
+extract-time-intervals
+inject-times
 	   )
     (chezimports)
 
+
+;; ================================================================================
+;;; Helpers and hooks:
+
+
+;; Keeping stats for data sizes, frequencies, etc.  Perhaps we should
+;; keep the whole distribution.  Short of that, for now we will keep
+;; max/min/mean/stdev.
+(reg:define-struct (stat sum count max min))
+(define (stat-mean st) (/ (stat-sum st) (stat-count st)))
+(define (stat-variance st) 0)
+(define (stat-stddev st) 0)
+
+(define (cutpoint? op)
+  (match op [(cutpoint . ,_) #t]  [,else #f]))
 (define (make-cutpoint ty src dest) 
   `(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty)))
+
+;; We should probably have shared code for handling operators:
+;; These simple accessors are just used locally within this module.
+(define (opname op) 
+  (let ([entry (assq 'name (cdr op))])
+    (if entry (cadr entry) #f)))
+(define (optype op)
+  (cadr (ASSERT (assq 'output-type (cdr op)))))
+
+(define (lookup name ops)
+  (let loop ([ops ops])
+    (if (null? ops) #f
+	(let ([entry (assq 'name (cdr (car ops)))])
+	  (if (and entry (eq? (cadr entry) name))
+	      (car ops)
+	      (loop (cdr ops)))))))
+(define (op->downstream op ops) (ASSERT op)  
+  (lookup (cadr (ASSERT (assq 'outgoing (cdr op)))) ops))
+(define (op->upstream op ops) (ASSERT op)  
+  (lookup (cadr (ASSERT (assq 'incoming (cdr op)))) ops))
+
+
+(define not-inline_TOS?
+  (lambda (src) 
+    (match (assq 'code src) [(code (inline_TOS . ,_)) #f] [,_ #t])))
+
+(define (replace-assoc assoc ls)
+  (define tag (car assoc))
+  (let loop ([ls ls])
+    (ASSERT (not (null? ls)))
+    (if (eq? tag (caar ls))
+	(cons assoc (cdr ls))
+	(cons (car ls) (loop (cdr ls))))))
+;; This tags it with a '(floating) entry in its metadata:
+(define (tagit tag op)
+  (match (assq 'code (cdr op))
+    [(code (,opname (annotations ,annot* ...) ,rest ...))
+     (cons (car op)
+	   (replace-assoc `(code (,opname (annotations ,tag ,@annot*) ,@rest))
+			  (cdr op)))]
+    [,_ op]))
+
+;; ================================================================================
 
 ;; A hack to do program partitioning based on the names of top-level streams.
 (define-pass partition-graph-by-namespace
@@ -79,11 +143,6 @@
 	  (define nodeops (apply append node-oper**))
 	  (let-match ([(,[(Source nodeops) -> node-src** server-src**] ...) src*])
 	  
-	    ;(inspect (vector 'nodesrc node-src**))
-	    ;(inspect (vector 'servsrc server-src**))
-	    ;(inspect (vector 'nodeop node-oper**))
-	    ;(inspect (vector 'servop server-oper**))
-	    ;(printf "DONE\n")
 	    ;; TODO: Should filter the constants appropriately:
 	    (vector
 	     `(,input-language 
@@ -143,17 +202,8 @@
 		   (sink ,base ,basetype)	,meta* ...))
 	  (define cutpoints
 	    (filter (lambda (op) (eq? (car op) 'cutpoint)) oper*))
-	  (define (lookup name)
-	    (let loop ([ops oper*])	      
-	      (if (null? ops) #f
-		  (let ([entry (assq 'name (cdr (car ops)))])
-		    (if (and entry (eq? (cadr entry) name))
-			(car ops)
-			(loop (cdr ops)))))))
-	  (define (get-downstream op) 
-	    (lookup (cadr (ASSERT (assq 'outgoing (cdr op))))))
-	  (define (get-upstream op)
-	    (lookup (cadr (ASSERT (assq 'incoming (cdr op))))))
+	  (define (get-downstream x) (op->downstream x oper*))
+	  (define (get-upstream x)   (op->upstream   x oper*))
 	  (define next-down (filter id (map get-downstream cutpoints)))
 	  (define next-up   (filter id (map get-upstream   cutpoints)))
 	  ;; From each cutpoint, walk until we hit something that's not mobile:
@@ -189,10 +239,11 @@
 		    (trace get-upstream   (filter get-upstream cutpoints) ;next-up
 			   (lambda (out in) (make-cutpoint (optype in) (opname in) (opname out))))))
 	  (define nodeops (difference oper* mobile))	  
+	  ;; Returns #(floating stationary):
 	  (vector
 	   `(,input-language 
 	     '(graph (const ,@cnst*) (init ,@init*) (sources) ;; All sources stay on the node for now.
-		     (operators ,@mobile)
+		     (operators ,@(map (lambda (x) (tagit '(floating) x)) mobile))
 		     (sink #f #f) ,@meta*))
 	   `(,input-language 
 	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
@@ -201,15 +252,81 @@
 	   )
 	  ]))])
 
-(define (cutpoint? op)
-  (match op [(cutpoint . ,_) #t]  [,else #f]))
 
-(define (opname op) 
-  (let ([entry (assq 'name (cdr op))])
-    (if entry (cadr entry) #f)))
+;; ==================================================
+;;; Heuristics:
 
-(define (optype op)
-  (cadr (ASSERT (assq 'output-type (cdr op)))))
+(define (min-bandwidth-hueristic epochsize time datasize datafreq) 0)
+(define (max-nodepart-hueristic  epochsize time datasize datafreq)
+  (if (>= time epochsize) 0 time)) ;; Try to fill up the epoch
+
+;; ==================================================
+
+(define (exhaustive-partition-search heuristic part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...) (init  ,init* ...)
+	      (sources ,src* ...) (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     (define cutpoints (filter cutpoint? oper*))
+
+     (define (op->time op) 
+       (let ([entry (deep-assq 'measured-cycles op)])  ;; Hackish
+	 (if entry
+	     (cadr entry)
+	     0)))
+
+     (define realsources  (filter not-inline_TOS? src*))
+
+     (define epochsize 
+       (match realsources
+	 [((,_ ,__ (code (__foreign_source ',fn '(,rate . ,rest) ',ty)) . ,___))
+	  (let ([_rate (ASSERT (string->number rate))])
+	    ;; By a 32khz clock.
+	    (/ 32000 _rate))]))
+     
+     (define ___ 
+       ;; TEMP: just handling a linear pipe right now:
+       (unless (and (= 1 (length cutpoints))
+		    (= 1 (length realsources)))
+	 (error 'exhaustive-partition-search "only works for a linear pipeline right now...")))
+
+     (define datasize #f) ;; TODO: Hook up to scheme profiling!
+     (define datafreq #f)
+     (define initscore
+       (heuristic epochsize (op->time (car realsources)) datasize datafreq))
+
+     (define ____ (begin (printf "Begining search")(flush-output-port)))
+
+     ;; Do a linear walk from source to cutpoint, scoring each potential cut.
+     (define new-cutpoint
+       (progress-dots
+	(lambda ()
+	  (let trace ([ptr (car realsources)] 
+		      [epochtime 0]
+		      [curbest initscore]
+		      [cur (car realsources)])
+	    (define datasize #f) ;; TODO: Hook up to scheme profiling!
+	    (define datafreq #f)
+	    ;; Evaluate the heuristic for this configuration:
+	    (define score (heuristic epochsize epochtime datasize datafreq))
+	    (define-values (newscore newcur)
+	      (if (> score curbest)	       
+		  (values score   ptr)
+		  (values curbest cur)))
+	    (define downstream (op->downstream ptr oper*))
+	    (if downstream
+		(trace downstream (+ epochtime (op->time downstream)) newscore newcur)
+		;; Otherwise we're all done, return the new cutpoint:
+		newcur)))))
+     (printf " done!\n")
+          
+
+     ;; Now partition according to that new cutpoint: Perhaps we
+     ;; should have built up these new partitions while we were
+     ;; searching... but this keeps things separate:
+     (partition-at (list new-cutpoint) part)]))
+
 
 ;; For the time being, the mobility criteria for the server side is
 ;; the *same* as the node-side (are there foreign calls?).  In the
@@ -237,6 +354,63 @@
 		(sources ,@src* ,@src2*)
 		(operators ,@oper* ,@oper2*)
 		(sink ,base ,basetype) ,@meta*))])))
+
+;; This takes a set of edges to cut at.  However, currently, "edges"
+;; are represented by the boxes that output to those edges.  This is
+;; not quite right, but will do for now.
+;;
+;; Right now this also caries the responsibility of tagging the
+;; operator in question (using its annotations) to mark it as 'partition-point'.
+;; 
+;; .returns A vector containaining node-partition (upstream) and
+;; server-partition (downstream)
+(define (partition-at newcuts part)
+    (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...) (init  ,init* ...)
+	      (sources ,src* ...) (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+
+     (define (set-cons x set) (if (memq x set) set (cons x set)))
+
+     (define pre-tagged '()) ;; HACK: mutated below
+
+     ;; First, do a walk from the sources, accumulating everything
+     ;; until we hit a "cutpoint" operator.
+     ;; TODO: it's probably worth making a hash for this walk.
+     (define nodeops_and_sources
+       (let trace ([ptrs (filter not-inline_TOS? src*)] [acc '()])
+	 ;(printf "TRACING ~a\n" (map opname ptrs))
+	 (if (null? ptrs) (reverse! acc)
+	     (let ([head (car ptrs)])
+	       (cond 
+		[(not head) (trace (cdr ptrs) acc)]
+		[(memq head newcuts) ;; We've reached a cut.
+		 ;; TODO: Should check that there aren't any more "cuts"
+		 ;; downstream.  That would be invalid. 
+		 (set! pre-tagged (cons (car ptrs) pre-tagged))
+		 (trace (cdr ptrs) (set-cons (tagit '(partition-point) (car ptrs)) acc))]
+		[else 
+		 (let ([down (op->downstream head oper*)])
+		   (trace (cons down (cdr ptrs)) 
+			  (set-cons (car ptrs) acc)))]
+		)))))
+     (define nodeops (difference nodeops_and_sources src*))
+     (define serverops (difference (difference oper* nodeops) pre-tagged))
+
+     (vector
+      `(,input-language 
+	'(graph (const ,cnst* ...) (init ,@init*)
+		(sources ,@src*)
+		(operators ,@nodeops)
+		(sink #f #f)
+		,@meta*))
+      `(,input-language 
+	'(graph (const ,cnst* ...) (init ,@init*) (sources)
+		(operators ,@serverops)
+		(sink ,base ,basetype) ,@meta*)))
+
+     ]))
 
 ;; Get all the operator names in a subgraph.
 (define (partition->opnames part)
@@ -276,6 +450,98 @@
 		(sources ,@src*)
 		(operators ,@(filter valid? oper*))
 		(sink ,base ,basetype) ,@meta*))])))
+
+
+;; ================================================================================
+
+
+;;; Also using this file for utilities pertaining to partitioning,
+;;; mainly having to do with timing.
+
+(define (process-read/until-garbage-or-pred str pred)
+  (IFCHEZ 
+   (let-match ([(,inp ,outp ,pid) (process str)])
+     (define (shutdown) 
+       (close-output-port outp)
+       (close-input-port  inp)
+       ;; For some reason that's not enough to kill it:
+       (printf "Killing off stray java process...\n")
+       (system (format "kill ~a" pid)))
+     (printf "Reading serial interface through java process with ID ~s\n" pid)
+     (flush-output-port)
+     (let loop ([n 0] [acc '()])
+       (let* (;[line (read-line inp)]
+					;[_ (printf "Read: ~a\n" line)]
+					;[x (read (open-input-string line))]
+	      [x (read inp)]
+	      )
+	 (printf "  ReadFromMote: ~a\n" x)(flush-output-port)
+	 (cond 
+	  [(eof-object? x) (shutdown) (reverse! acc)]
+	  [(pred x) ; (> n 15)
+	   (shutdown) (reverse! (cons x acc))]
+	  [else (loop (add1 n) (cons x acc))])))
+     ;; TODO: handle read errors:
+     )
+   (error 'process-read/until-garbage-or-pred "not implemented except under Chez Scheme")))
+
+(define (extract-time-intervals log)
+  ;; ASSUMPTION: uint16_t counter:
+  (define FUDGE-FACTOR 83) ;; The number of ticks assumed for the printf statements themselves.
+  (define (diff st en)
+    (let ([elapsed (- en st FUDGE-FACTOR)])
+					;(ASSERT (> elapsed 0))
+      (max elapsed 0)
+      #;
+      (if (< elapsed 0)
+	  (inspect elapsed) ;(+ (^ 2 16) elapsed)
+	  elapsed)))
+  (define (combine overflow n) (+ (* (^ 2 16) overflow) n))
+  (let loop ([alist '()] [open #f] [strt #f] [log log])
+    (match log 
+      [() alist]
+      [((Start ,name ,overflow ,t) . ,_) (ASSERT (not (assq name alist)))
+					;(set! alist (cons name t))
+       (loop alist name (combine overflow t) _)]
+      [((End ,name ,overflow ,tme) . ,_)
+       (ASSERT (eq? name open))
+       (loop (cons (cons name (diff strt (combine overflow tme))) alist) #f #f _)]
+      ;; HACK: End message ALSO serves to close off the open measurement.
+      [((EndTraverse ,overflow ,tme) . ,_)
+       (ASSERT null? _)
+       (loop (if open 
+		 (cons (cons open (diff strt (combine overflow tme))) alist)
+		 alist)
+	     #f #f _)]
+      ;; Ignoring garbage for now:
+      [(,oth . ,[rest]) rest])))
+
+
+;; Inserts a (measured-cycles <elapsed> <timer-frequency>) annotation:
+(define (inject-times prog times)
+  (define (Operator op)
+    (match op
+      [(iterate (name ,nm) ,ot
+		(code (iterate (annotations ,annot* ...) ,itercode ,_))
+		,rest ...)
+					;(printf "LOOKING UP ~a in ~a\n" nm times)
+       (let ([entry (assq nm times)])		     
+	 (if entry
+	     `(iterate (name ,nm) ,ot 
+		       (code (iterate (annotations (measured-cycles ,(cdr entry) 32000) ,@annot*)
+				      ,itercode ,_))
+		       ,@rest)
+	     op))]
+      [,oth oth]))
+  (match prog
+    [(,input-language 
+      '(graph ,cnst ,init ,src
+	      (operators ,[Operator -> oper*] ...) ,rest ...))
+     `(,input-language 
+       '(graph ,cnst ,init ,src
+	       (operators ,oper* ...) ,rest ...))]))
+
+
 
 
 ) ;; End module

@@ -20,10 +20,21 @@
 				  ...)
 		       (sink ,base ,basetype)
 		       ,meta* ...))
+
+	(define cutnodes
+	  (filter id
+	    (map (lambda (name code)
+		   (match code
+		     [(,_ (annotations ,annot ...) ,rest ...)
+		      (and (assq 'partition-point annot) name)]))
+	      opv* oe*)))
 	(define (denumber x) (if (symbol? x) x (begin (ASSERT (list? x)) (denumber (cadr x)))))
-	(define(blowup src dest*) 
+	(define partition-edge-style  "[style=\"setlinewidth(6)\",arrowhead=\"diamond\"]")
+	(define (blowup src dest*)
+	  
 	  ;; Could use deunique-name for the "label" of the node.
-	  (map (lambda (dest) (format "  ~a -> ~a;\n" src (denumber dest)))
+	  (map (lambda (dest) (format "  ~a -> ~a ~a;\n" src (denumber dest)
+				      (if (memq src cutnodes) partition-edge-style "")))
 	    dest*))
 	;; Don't bother generating nodes for the inline code.
 	(define edges1 (map (lambda (src down* code)
@@ -108,12 +119,18 @@
 					;; First, set the shape:
 					(match streamop
 					 [_merge ", shape=point"]
-					 [,_ (guard embedded-node?) ", shape=box"]
+					 [,_ (guard embedded-node?) 
+					     (if (assq 'floating annot)
+						 ", shape=octagon"
+						 ", shape=box")]
 					 [,else ""])
 					;; Next, set the color:
 					(if (assq 'measured-cycles annot)
-					    (format ", style=filled, fillcolor=\"~a\""
-						    (ticks->color (cadr (assq 'measured-cycles annot))))
+					    (if embedded-node?						
+						(format ", style=filled, fillcolor=\"~a\""
+							(ticks->color (cadr (assq 'measured-cycles annot))))
+						(format ", shape=box, style=\"filled,rounded\", fillcolor=\"~a\""
+							(ticks->color (cadr (assq 'measured-cycles annot)))))
 					    ""))
 				       )))]
 			[(__foreign_source ',name ,ls ,ty)

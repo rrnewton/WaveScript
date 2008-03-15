@@ -756,14 +756,24 @@
 	[,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
 	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)] ; Type constructor
 	[,other (error 'embed-strings-as-arrays "malformed type: ~a" ty)]))
+    (define (Const cn)
+      (cond
+       [(number? cn) cn]
+       [(string? cn) 
+	;; make a constant vector.
+	(list->vector (append ;(make-list 8 #\nul)
+			  (string->list cn)
+			  (list (integer->char 0))))]
+       [(list? cn)   (map Const cn)]
+       [(vector? cn) (vector-map Const cn)]
+       [(tuple? cn)  (make-tuple (map Const (tuple-fields cn)))]
+       [(symbol? cn) cn] ;; Just here for compiler-internal things.
+       [else (error 'embed-strings-as-arrays:Const "unmatched ~s" cn)]))
+    (define (quoted-constant? x)
+      (match x [(quote ,_) #t] [,else #f]))
     [Expr (lambda (xp fallthru)
 	    (match xp
-	      ;; make a constant vector.
-	      [',str (guard (string? str))
-		     ;(printf "  Converting to array: ~s \n" str)
-		     `',(list->vector (append ;(make-list 8 #\nul)
-				       (string->list str)
-				       (list (integer->char 0))))]
+	      [',c `',(Const c)]
 	      [(string-append ,[s1] ,[s2])
 	       (let ([a1 (unique-name "strarr1")]
 		     [a2 (unique-name "strarr2")]
@@ -803,9 +813,15 @@
 	       ]
 
 	      ;; Similarly:
-	      [(,totally_ignored . ,_) 
-	       (guard (memq totally_ignored '(inline_C inline_TOS)))
-	       (cons totally_ignored _)]
+	      [(,totally_ignored ,args ...)	       
+	       (guard (eq-any? totally_ignored 'inline_C 'inline_TOS
+			       ;; After metaprog eval the operands to foreign should also be quoted constants:
+			       'foreign 'foreign_source 
+			       ))
+	       (ASSERT (andmap quoted-constant? args))
+	       (cons totally_ignored args)]
+	      ;; 
+	      #;
 	      [(,ignore_first ,_ ,[second])
 	       (guard (memq ignore_first '(foreign foreign_source)))
 	       `(,ignore_first ,_ ,second)]
@@ -872,15 +888,17 @@
     [OutputProps (not single-bind-let)]
     [Expr 
      (lambda (xp fallthru)
-       (match xp
+       (match xp ;; No recursion!!
 	 ;; This is troublesome, readFile should really be a special
 	 ;; syntax at this point, not masquerading as a primitive application.
 	 [(readFile ,annot ',str1 ',str2 ,[strm])
 	  (ASSERT string? str1) (ASSERT string? str2)
 	  `(readFile ,annot ',str1 ',str2 ,strm)]
-	 [(,totally_ignored . ,_) 
-	  (guard (memq totally_ignored '(inline_C inline_TOS)))
-	  (cons totally_ignored _)]
+	 [(,totally_ignored (quote ,args) ...)
+	  (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
+	  xp;(cons totally_ignored _)
+	  ]
+	 #;
 	 [(,ignore_first ,_ ,[second])
 	  (guard (memq ignore_first '(foreign foreign_source)))
 	  `(,ignore_first ,_ ,second)]
