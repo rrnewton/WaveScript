@@ -67,7 +67,7 @@ function pc() {
 if [ -f "WSQuery.nc" ] && 
    [ -f "query.c" ]; 
 then
-  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC):"
+  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC), first Telos:"
   echo "============================================================"
   #ps aux | grep java
   ## HACK HACK HACK: I hate having to do this.

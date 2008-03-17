@@ -128,7 +128,8 @@
 					 [_merge ", shape=point"]
 					 [,_ (guard embedded-node?) 
 					     (if (assq 'floating annot)
-						 ", shape=octagon"
+						 ;", shape=octagon"
+						 ", shape=box, style=\"filled,rounded\""
 						 ", shape=box")]
 					 [,else ""])
 					;; Next, set the color:
@@ -136,6 +137,7 @@
 					    (if embedded-node?						
 						(format ", style=filled, fillcolor=\"~a\""
 							(ticks->color (cadr (assq 'measured-cycles annot))))
+						;; If it was measured it was on the node but is floating:
 						(format ", shape=box, style=\"filled,rounded\", fillcolor=\"~a\""
 							(ticks->color (cadr (assq 'measured-cycles annot)))))
 					    ""))

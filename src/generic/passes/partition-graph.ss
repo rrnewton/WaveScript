@@ -9,6 +9,7 @@
 	   refine-server-partition
 	   merge-partitions
 	   partition->opnames
+	   map-partition-ops
 	   discard-spurious-cutpoints
 	   exhaustive-partition-search
 	   min-bandwidth-hueristic
@@ -17,6 +18,7 @@
 	   process-read/until-garbage-or-pred
 	   extract-time-intervals
 	   inject-times
+	   tag-op
 	   )
     (chezimports)
 
@@ -82,8 +84,9 @@
     (if (eq? tag (caar ls))
 	(cons assoc (cdr ls))
 	(cons (car ls) (loop (cdr ls))))))
-;; This tags it with a '(floating) entry in its metadata:
-(define (tagit tag op)
+
+;; This tags it with a new entry in its metadata:
+(define (tag-op tag op)
   (match (assq 'code (cdr op))
     [(code (,opname (annotations ,annot* ...) ,rest ...))
      (cons (car op)
@@ -256,10 +259,11 @@
 			   (lambda (out in) (make-cutpoint (optype in) (opname in) (opname out))))))
 	  (define nodeops (difference oper* mobile))	  
 	  ;; Returns #(floating stationary):
+	  ;(define tagged (map (lambda (x) (tag-op '(floating) x)) mobile))
 	  (vector
 	   `(,input-language 
 	     '(graph (const ,@cnst*) (init ,@init*) (sources) ;; All sources stay on the node for now.
-		     (operators ,@(map (lambda (x) (tagit '(floating) x)) mobile))
+		     (operators ,@mobile) ;(operators ,@tagged)
 		     (sink #f #f) ,@meta*))
 	   `(,input-language 
 	     '(graph (const ,@cnst*) (init ,@init*) (sources ,@src*)
@@ -407,7 +411,7 @@
 		 ;; TODO: Should check that there aren't any more "cuts"
 		 ;; downstream.  That would be invalid. 
 		 (set! pre-tagged (cons (car ptrs) pre-tagged))
-		 (trace (cdr ptrs) (set-cons (tagit '(partition-point) (car ptrs)) acc))]
+		 (trace (cdr ptrs) (set-cons (tag-op '(partition-point) (car ptrs)) acc))]
 		[else 
 		 (let ([down (op->downstream head oper*)])
 		   (trace (cons down (cdr ptrs)) 
@@ -445,6 +449,18 @@
        (append (map opname src*)
 	       (map opname oper*)))
      ]))
+
+;; Map a function across all the operators (not including sources):
+(define (map-partition-ops fn part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)  (init  ,init* ...)
+	      (sources ,src* ...) (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     `(,input-language 
+      '(graph (const ,@cnst*)  (init  ,@init*)
+	      (sources ,@src*) (operators ,@(map fn oper*))
+	      (sink ,base ,basetype) ,@meta*))]))
 
 
 ;; Remove any cutpoints that don't make sense (because the supposedly

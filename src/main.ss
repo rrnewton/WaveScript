@@ -1107,8 +1107,13 @@
 			       (par (refine-node-partition node-part) 
 				    (refine-server-partition server-part))])
 		    
-		    (define max-node (merge-partitions node-part maybe-server))
-
+		    (define max-node 
+		      (merge-partitions 
+		       ;; Note: Can't just reuse node-part here because we want to tag on some extra metadata:
+		       (merge-partitions definite-node 
+					 (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-node))
+		       (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-server)))
+		    
 		    (printf "\n Node-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-node))
 		    (printf "\n Floating operators:\n\n  ")
