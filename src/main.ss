@@ -763,7 +763,6 @@
   
   ;; Now remove IFPROFILE constructs:
   (ws-run-pass p remove-IFPROFILE)
-;  (ws-run-pass p remove-unused-streams)
 
   ;; ========================================
   ;; End passes
@@ -1054,7 +1053,7 @@
 	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")	    
 	    (ws-run-pass prog explicit-stream-wiring)
 	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
-	    (ws-run-pass prog remove-unused-streams)
+	    ;(ws-run-pass prog remove-unused-streams)
 	    
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
 	    (let ([last-few-steps

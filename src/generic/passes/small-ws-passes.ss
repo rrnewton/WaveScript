@@ -141,6 +141,7 @@
 	    [(src-pos ,_ ,[e]) e]
 	    [,oth (fallthru oth)]))])
 
+#;
 (define-pass remove-IFPROFILE 
     [Expr (lambda (e fallthru)
 	    (match e
@@ -151,7 +152,8 @@
 ;; type Stream.  It does this without walking all the code.  Instead,
 ;; it leverages the fact that all variable references to stream-typed
 ;; variables will be *outside* of iterate bodies.
-#;
+;;
+;; Assumes: unique names, no complex opera, let only has one binding
 (define-pass remove-IFPROFILE 
     [Expr (lambda (exp fallthru)
 	    (match exp
@@ -159,18 +161,29 @@
 	      [(IFPROFILE ,prof ,real)
 	       (ASSERT symbol? prof)
 	       (ASSERT symbol? real)
-	       (vector real ())]
+	       (vector real (list real))]
 	      ;; Don't walk over the kernel function:
-	      [(iterate ,_ ,strm) (ASSERT symbol? strm) (vector exp (list strm))]
+	      [(iterate ,_ ,strm) (ASSERT symbol? strm) 
+	       (vector `(iterate ,_ ,strm) (list strm))]
+	      [(let ([,x (Stream ,elt) ,[rhs]]) ,[bod])
+	       (let-match ([#(,_rhs ,rv*) rhs]
+			   [#(,_bod ,bv*) bod])
+		 ;(printf "  Considering: ~s\n" x )
+		 (if (memq x bv*)
+		     (vector `(let ([,x (Stream ,elt) ,_rhs]) ,_bod) (append rv* bv*))
+		     (begin
+		       ;(printf "KILLING DEAD COde ~s ~s\n" x _rhs)
+		       (vector _bod bv*)))
+		 )]
+	      ;[(let . ,_) (error 'remove-IFPROFILE "missed let binding")]
 	      [,oth (fallthru oth)]))]
-    [Fuser (match-lambda ((#(,e* ,v**) ...) ,k)
-	     (define vars (apply append v**))
-	     )]
+    [Fuser (lambda (ls k)
+	     (match ls
+	       [(#(,e* ,v**) ...)
+		(vector (apply k e*) (apply append v**))]))]
     [Program (lambda (prg Expr)
-	       (define (topExpr x) (Expr x))
-	       (apply-to-program-body topExpr prg))
-	    
-	      ])
+	       (define (topExpr x) (vector-ref (Expr x) 0))
+	       (apply-to-program-body topExpr prg))])
 
 
 ;; [2007.08.02] This kind of thing should not be done in the actual
