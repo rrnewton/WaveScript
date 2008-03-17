@@ -760,6 +760,10 @@
 
        (ws-run-pass p annotate-with-data-rates)))
    (void))
+  
+  ;; Now remove IFPROFILE constructs:
+  (ws-run-pass p remove-IFPROFILE)
+;  (ws-run-pass p remove-unused-streams)
 
   ;; ========================================
   ;; End passes
@@ -1050,6 +1054,7 @@
 	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")	    
 	    (ws-run-pass prog explicit-stream-wiring)
 	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
+	    (ws-run-pass prog remove-unused-streams)
 	    
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
 	    (let ([last-few-steps
@@ -1070,7 +1075,7 @@
 			   (time (ws-run-pass prog retypecheck)))))
 		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
-
+		     
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.

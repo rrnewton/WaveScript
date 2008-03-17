@@ -18,6 +18,7 @@
 	   strip-irrelevant-polymorphism strip-polymorphic-type
 	   lift-immutable-constants
 	   strip-src-pos
+	   remove-IFPROFILE
 	   ;purify-letrec  ;; Disabled
 	   standardize-iterate
 	   ;ws-add-return-statements  ;; Disabled
@@ -139,6 +140,37 @@
 	  (match e
 	    [(src-pos ,_ ,[e]) e]
 	    [,oth (fallthru oth)]))])
+
+(define-pass remove-IFPROFILE 
+    [Expr (lambda (e fallthru)
+	    (match e
+	      [(IFPROFILE ,prof ,real) real]
+	      [,oth (fallthru oth)]))])
+
+;; This removes IFPROFILE.  It also prunes unused variable bindings of
+;; type Stream.  It does this without walking all the code.  Instead,
+;; it leverages the fact that all variable references to stream-typed
+;; variables will be *outside* of iterate bodies.
+#;
+(define-pass remove-IFPROFILE 
+    [Expr (lambda (exp fallthru)
+	    (match exp
+	      [,var (guard (symbol? var)) (vector var (list var))]
+	      [(IFPROFILE ,prof ,real)
+	       (ASSERT symbol? prof)
+	       (ASSERT symbol? real)
+	       (vector real ())]
+	      ;; Don't walk over the kernel function:
+	      [(iterate ,_ ,strm) (ASSERT symbol? strm) (vector exp (list strm))]
+	      [,oth (fallthru oth)]))]
+    [Fuser (match-lambda ((#(,e* ,v**) ...) ,k)
+	     (define vars (apply append v**))
+	     )]
+    [Program (lambda (prg Expr)
+	       (define (topExpr x) (Expr x))
+	       (apply-to-program-body topExpr prg))
+	    
+	      ])
 
 
 ;; [2007.08.02] This kind of thing should not be done in the actual

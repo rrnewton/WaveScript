@@ -18,11 +18,10 @@ using Mutable;
 using TOS;
 namespace Node {
 
-  //src0 = readFile();
+  src0 = (readFile("profile.dat", "", timer(2.0)) :: Stream Uint16);
   src1 = sensor_uint16("DemoSensorC", 2.0);
-  //src = IFPROFILE(src0,src1);
-  
-  s1 = iterate( reading in src1 ) {
+
+  s1 = iterate reading in IFPROFILE(src0, src1) { 
     emit reading;
   };
 

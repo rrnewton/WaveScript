@@ -164,3 +164,17 @@ head   = List:head;
 tail   = List:tail;
 map    = List:map;
 append = List:append;
+
+
+
+// HACK: A stub so that these variables are not unbound
+namespace TOS {
+  //fun sensor_uint16(name, rate) iterate _ in timer(1) { wserror("sensor_uint16 not implemented except in wstiny") };
+  //fun led0Toggle() wserror("led0Toggle not implemented except in wstiny");
+  //fun led1Toggle() wserror("led1Toggle not implemented except in wstiny");
+  //fun led2Toggle() wserror("led2Toggle not implemented except in wstiny");
+  fun sensor_uint16(name, rate) iterate _ in timer(0.01) { };
+  fun led0Toggle() {}
+  fun led1Toggle() {}
+  fun led2Toggle() {}
+}

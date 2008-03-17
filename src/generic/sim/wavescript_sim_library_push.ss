@@ -1943,8 +1943,9 @@
 (define (clock) (exact->inexact (cpu-time)))
 (define (realtime) (/ current-vtime 1000))
 
-(define-syntax IFPROFILE
-  (syntax-rules () [(_ a b) b]))
+;(define-syntax IFPROFILE (syntax-rules () [(_ a b) b]))
+;(define (IFPROFILE a b) b)
+(define (IFPROFILE a b) a)
 
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
 #;

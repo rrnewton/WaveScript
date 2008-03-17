@@ -29,7 +29,14 @@ export REGFLAG=wstiny
 #         esac
 # done
 
+## HACK HACK HACK: I hate having to do this.
+function killjavahack () {
+  ps aux | grep "java PrintfClient" | grep -v grep | awk '{ print $2 }' | xargs kill &> /dev/null
+}
+
 rm -f query.c query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
+killjavahack;
+
 if wsc $* -no-gcc;
 then echo ERROR, wstiny failed with code $?.; exit 1;
 else echo
@@ -43,6 +50,7 @@ fi
 # #    export WS_LINK="$WS_LINK $EXTRALIBS"
 # #    echo Linking extra libraries requested by query file: $EXTRALIBS
 # # fi
+
 
 function tossim() {
      chmod +x query.py;
@@ -70,8 +78,7 @@ then
   echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC), first Telos:"
   echo "============================================================"
   #ps aux | grep java
-  ## HACK HACK HACK: I hate having to do this.
-  ps aux | grep "java PrintfClient" | grep -v grep | awk '{ print $2 }' | xargs kill
+  killjavahack
   make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt
   pc;
 elif [ -f "WSQuery.nc" ]; 

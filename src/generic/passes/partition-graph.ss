@@ -11,6 +11,7 @@
 	   partition->opnames
 	   map-partition-ops
 	   discard-spurious-cutpoints
+	   remove-unused-streams
 	   exhaustive-partition-search
 	   min-bandwidth-hueristic
 	   max-nodepart-hueristic
@@ -488,6 +489,40 @@
 		(sources ,@src*)
 		(operators ,@(filter valid? oper*))
 		(sink ,base ,basetype) ,@meta*))])))
+
+;; Recursively removes stream operators from the graph that are not consumed:
+(define remove-unused-streams
+  (lambda (part)
+    (define nametable (set->hashtab (cons 'BASE (partition->opnames part))))
+    (define (valid? op) ;; Works for sources and ops:
+      (let* ([op (if (symbol? (car op)) (cdr op) op)]
+	     [name (cadr (assq 'name op))]
+	     [outgoing (cdr (ASSERT (assq 'outgoing op)))])
+	;(printf "CONSIDERING ~s ~s ~s\n" name outgoing (map car (hashtab->list nametable)))
+	(if (ormap (lambda (out) (hashtab-get nametable out)) outgoing)
+	    #t
+	    (begin (hashtab-remove! nametable name)
+		   ;(printf "  REMOVED ~s\n" name)
+		   #f))))
+    (match part
+      [(,input-language 
+	'(graph (const ,cnst* ...)(init  ,init* ...)
+		(sources ,src* ...)(operators ,oper* ...)
+		(sink ,base ,basetype)	,meta* ...))
+       ;; iterate until fixed point:
+       (define (iterate ops)
+	 (let loop ([ops ops])
+	   (let ([new (filter valid? ops)])
+	     (if (equal? new ops) new
+		 (loop new)))))
+       (define newops (iterate oper*))
+       (define newsrc (iterate src*))       
+      `(,input-language 
+	'(graph (const ,@cnst*)  (init ,@init*) 
+		(sources ,@newsrc)
+		(operators ,@newops)
+		(sink ,base ,basetype) ,@meta*))])))
+
 
 ;; This should obsolete some of the other operations above.  It should
 ;; be safe to just work with cutpoint-free partitions and THEN insert

@@ -715,7 +715,7 @@
     (_merge            ((List Annotation) (Stream 'a) (Stream 'a)) (Stream 'a))
 
     ;; To the compiler, this looks like a merge:
-    ;(IFPROFILE         ((List Annotation) (Stream 'a) (Stream 'a)) (Stream 'a))
+    (IFPROFILE         ((Stream 'a) (Stream 'a)) (Stream 'a))
 
     ;; Currently, because of letrec semantics, an explicit operator
     ;; must be used to create a feedback loop.
