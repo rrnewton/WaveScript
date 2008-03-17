@@ -7,6 +7,8 @@
 
   (chezimports)
 
+(define (cutpoint? op)
+  (match op [(cutpoint . ,_) #t]  [,else #f]))
 
 (define-pass output-graphviz
   [Program
@@ -15,18 +17,22 @@
        [(,lang '(graph (const ,_ ...)
 		       (init  ,__ ...)
 		       (sources ((name ,srcv*) (output-type ,st*) (code ,se*) (outgoing ,sdownstrm** ...)) ...)
-		       (operators (,op* (name ,opv*) (output-type ,ot*) (code ,oe*) 
-					(incoming ,oin* ...) (outgoing ,odownstrm** ...))
-				  ...)
+		       (operators ,oper* ...)
 		       (sink ,base ,basetype)
 		       ,meta* ...))
+	(match (filter (compose not cutpoint?) oper*)
+	  [((,op* (name ,opv*) (output-type ,ot*) (code ,oe*) 
+		  (incoming ,oin* ...) (outgoing ,odownstrm** ...))
+	    ...)
 
 	(define cutnodes
 	  (filter id
 	    (map (lambda (name code)
 		   (match code
 		     [(,_ (annotations ,annot ...) ,rest ...)
-		      (and (assq 'partition-point annot) name)]))
+		      (and (assq 'partition-point annot) name)]
+		     ;[#f #f]
+		     ))
 	      opv* oe*)))
 	(define (denumber x) (if (symbol? x) x (begin (ASSERT (list? x)) (denumber (cadr x)))))
 	(define partition-edge-style  "[style=\"setlinewidth(6)\",arrowhead=\"diamond\"]")
@@ -92,7 +98,8 @@
 				[str (symbol->string sym)]
 				[k (string-length "Node:")]
 				[namelabel 
-				 (if (equal? "Node_" (substring str 0 k))
+				 (if (and (> (string-length str) k)
+					  (equal? "Node_" (substring str 0 k)))
 				     (begin (set! embedded-node? #t)
 					    (substring str k (string-length str)))
 				     str)])			   
@@ -140,6 +147,8 @@
 			[(inline_C . ,_) ""]
 			[(inline_TOS . ,_) ""]
 
+;			[#f ""]
+
 			;[,_ (void)]
 			)
 		      )
@@ -153,7 +162,9 @@ digraph Foo {
 "  ,(append edges1 (reverse edges2))"
 "  ,srclabels"
 "  ,nodelabels"
-}"))]))])
+}"))	   
+
+	   ])]))])
 
 ;;   rankdir=LR;
 

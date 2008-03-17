@@ -44,8 +44,8 @@ fi
 # #    echo Linking extra libraries requested by query file: $EXTRALIBS
 # # fi
 
-if [ -f "WSQuery.nc" ]; 
-then chmod +x query.py;
+function tossim() {
+     chmod +x query.py;
      echo
      echo "BUILDING TINYOS COMPONENTS:" 
      echo "============================================================"
@@ -55,12 +55,30 @@ then chmod +x query.py;
      then make -f Makefile.tos2 micaz sim; 
      else echo "  Generated code is Telos-specific, not generating code for TOSSIM.";  
      fi
-else echo WSQuery.nc found...
-fi
+}
 
-if [ -f "query.c" ]; 
-then echo;echo "BUILDING PC-SIDE COMPONENTS:" 
-     echo "============================================================"
-     wsc2-gcc;
-fi
+function pc() {
+   echo;echo "BUILDING PC-SIDE COMPONENTS:" 
+   echo "============================================================"
+   wsc2-gcc;
+}
 
+# This builds both... for now this is only for telos:
+if [ -f "WSQuery.nc" ] && 
+   [ -f "query.c" ]; 
+then
+  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC):"
+  echo "============================================================"
+  #ps aux | grep java
+  ## HACK HACK HACK: I hate having to do this.
+  ps aux | grep "java PrintfClient" | grep -v grep | awk '{ print $2 }' | xargs kill
+  make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt
+  pc;
+elif [ -f "WSQuery.nc" ]; 
+then tossim;
+  
+elif [ -f "query.c" ]; 
+then pc;
+
+else echo No .c or .nc output files found...
+fi

@@ -17,7 +17,12 @@ commbuf = Array:make(10, 0);
 using Mutable;
 using TOS;
 namespace Node {
-  s1 = iterate( reading in sensor_uint16("DemoSensorC", 2.0) ) {
+
+  //src0 = readFile();
+  src1 = sensor_uint16("DemoSensorC", 2.0);
+  //src = IFPROFILE(src0,src1);
+  
+  s1 = iterate( reading in src1 ) {
     emit reading;
   };
 
@@ -61,20 +66,21 @@ namespace Node {
 
 //main = merge(s5, Node:s3);
 
-s5 = smap(fun(((x,y),z)) {
-    
-    //ind :: Ref Int64 = ref(3333);
+s5 = iterate ((x,y),z) in Node:s4 {
+
+    ind :: Ref Int64 = ref(3333);    
+    for i = 1 to 100 { ind += 1 };
     //while ind < 1 * 1000 * 1000 { ind += 1 };
 
     //println("I'M ON SERVER "++y);
     //println("I'M ON NODE ");
-    (x,y+1,ind+ind)
-  }, Node:s4);
+    emit (x,y+1,z)
+}
 
 s6 = iterate x in s5 {
-    ind = ref(3333);
+    ind = ref(0);
     for i = 1 to 1000 { for j = 1 to 1000 { ind += 1 } };
-    emit x;
+    emit (x,ind);
 }
 
 main = s6;

@@ -1189,7 +1189,6 @@
 		 "Currently can't handle multiple return streams multiplexed onto serial port"))
 	
 	;; This is SUPER hackish, just sticking all the WSQueryMsg.c files in the flags!
-	(printf "ADDING HEADING\n")
 	;(slot-cons! self 'compile-flags " -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/")
 	;; ACK: fixing the TINYOS install dir at compile time.  Can't get quoting/env-vars to work out:
 	(slot-cons! self 'compile-flags 
@@ -1376,8 +1375,8 @@ int main(int argc, char **argv)
     "_elt" "_local";
 "(indent (copycode _local "nodeobj") "    ")"
     "(Var self out)"("_local");
-  }"
-))
+  }
+"))
 '() '()
 )]))
 
@@ -1400,7 +1399,7 @@ int main(int argc, char **argv)
 	 (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))
 	 bind* init*)])]
 
-    [(cutpoint (incoming ,in) (outgoing ,out) (output-type ,type))
+    [(cutpoint (name ,_) (output-type ,type) (code ,__) (incoming ,in) (outgoing ,out))
      (Cutpoint self type in out)]
 
     [(_merge (name ,name) (output-type (Stream ,elt))
@@ -1727,6 +1726,12 @@ int main(int argc, char **argv)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (define _name (Var self name))
+
+  ;; Add a prototype for the function, this removes the need for
+  ;; careful ordering of operator definitions.
+  (define prototype `("void ",(Var self name) "(",_argty" ",_arg")"))
+  (slot-cons! self 'proto-acc (list prototype ";\n"))
+
   (make-lines 
    (list 
     ;; First the task:
@@ -1749,7 +1754,7 @@ int main(int argc, char **argv)
     ;; More sensibly, we can simply allocate a one-element buffer for
     ;; each box.  That will make breadth-first easy.
     ;;
-    (block `("void ",(Var self name) "(",_argty" ",_arg")")
+    (block prototype
 	   `(;"memcpy(",_arg", WS_STRM_BUF, sizeof(",_argty"));\n"
 	     "(*(",_argty" *)WS_STRM_BUF) = ",_arg";\n"
 	     ,(PostTask self name)
@@ -1856,7 +1861,7 @@ int main(int argc, char **argv)
   uses interface AMPacket;
 ")))
 
-   (printf "  CUTTING AT TYPE: ~s\n" ty)
+   (printf " CUTTING query at type ~s\n" ty)
 
    ;; Everything below happens FOR EACH cut point:
 (slot-cons! self 'top-acc (list "
@@ -2160,6 +2165,8 @@ implementation {
 	  "call PrintfFlush.flush();\n"
 	  ))
 
+(define nulldispatchcode "32767")
+
 ;; Generate nothing for the cutpoints... we're just interested in the Printf output:
 ;; We use this as an opportunity to flush:
 (__specreplace Cutpoint <tinyos-timed> (self ty in out) 
@@ -2167,7 +2174,7 @@ implementation {
    (define fun (list "// Code generated in place of cutpoint:\n"
 		"void "(Var self out)"("_ty" x) { 
   printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
-  flushdispatch = 65535;
+  flushdispatch = "nulldispatchcode";
   call PrintfFlush.flush(); 
   // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
   ws_currently_running = 0;\n
@@ -2192,10 +2199,10 @@ implementation {
 		   (hashtab-set! table (getname op) ind))
 		 filtered)
       (ASSERT (< (length ops) (^ 2 16)))
-      (slot-cons! self 'proto-acc "
+      (slot-cons! self 'proto-acc (list "
   void dispatch(int);
-  uint16_t flushdispatch = 65535;
-")
+  uint16_t flushdispatch = "nulldispatchcode";
+"))
       (slot-cons! self 'impl-acc (list 
 "
 void dispatch(int tag) {
@@ -2203,7 +2210,7 @@ void dispatch(int tag) {
 "(mapi (lambda (ind op)
 	 (format "    case ~a: post ~a_task(); break;\n" ind (getname op)))
        filtered)"
-    case 65535: break;
+    case "nulldispatchcode": break;
   }
 }"))
       (next)

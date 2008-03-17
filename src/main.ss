@@ -753,6 +753,11 @@
   (IFCHEZ   
    (when (memq 'profile (ws-optimizations-enabled))
      (unless  (memq 'annotate-with-data-rates disabled-passes)
+
+       (printf "============================================================\n")
+       (printf "       PROFILING IN SCHEME \n")
+       (printf "============================================================\n")
+
        (ws-run-pass p annotate-with-data-rates)))
    (void))
 
@@ -1091,7 +1096,8 @@
 		  		
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
-		    (newline);(printf "============================================================\n")		  
+		    (newline)
+		    (printf "============================================================\n")		  
 		    (printf "       PROFILING ON TELOS: \n")
 		    (printf "============================================================\n")
 
@@ -1118,6 +1124,7 @@
 		    ;; Either flushing between every operator, or a less intrusive measurement method.
 		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		    ;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
+
 		    (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
 		      (error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt"))
 		    (printf "============================================================\n")
@@ -1138,8 +1145,6 @@
 				 [,else #f]))))]
 			  [newprog (inject-times prog times)])
 		      
-		      ;(inspect times)
-
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 
 		      (printf "============================================================\n")
@@ -1149,7 +1154,7 @@
 		      (let-match ([#(,new-node ,new-server)
 				   (exhaustive-partition-search max-nodepart-hueristic 
 								(inject-times max-node times))])
-			(define all-server (merge-partitions definite-server new-server))
+			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			
 			(printf "\n Final Partitioning, node operators:\n\n")
 			(pretty-print (partition->opnames new-node))
@@ -1157,29 +1162,35 @@
 			(pretty-print (partition->opnames all-server))
 			(newline)
 
+			(let ([merged (merge-partitions new-node all-server)])
+			  (delete-file "query_partitioned.png")
+			  (string->file (output-graphviz merged) "query_partitioned.dot")
+			  (when (>= (regiment-verbosity) 1)
+			    (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port))
+			  (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
+			  (when (>= (regiment-verbosity) 1) (printf "done.\n")))
+
 			;(inspect new-node)
-			
-			(string->file (output-graphviz (merge-partitions new-node all-server)) "query_partitioned.dot")
-			(when (>= (regiment-verbosity) 1)
-			  (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port))
-			(system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
-			(when (>= (regiment-verbosity) 1) (printf "done.\n"))
+			;(inspect (deep-assq-all 'cutpoint definite-server))
+			;(inspect (deep-assq-all 'cutpoint new-server))
+			;(inspect (deep-assq-all 'cutpoint (merge-partitions definite-server new-server)))			
+			;(inspect (deep-assq-all 'cutpoint all-server))
+			(set! node-part new-node)
+			(set! server-part all-server)						
 
+			)))) ;; End autosplit path
 
-			)
-		      )
-
-		    (exit)
-		    )
-		    
-		    ) ;; End autosplit path
-
-		  (printf "============================================================\n")
+		  (printf "Performing code generation for PC and mote side:\n")
+		  ;(printf "============================================================\n")
 		  (last-few-steps node-part <tinyos>)
-		  (printf "============================================================\n")
+		  ;(printf "============================================================\n")
 		  (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 		    (last-few-steps server-part <emitC2>)
-		    (printf "============================================================\n")))
+		    (printf "============================================================\n"))
+		  (unless (file-exists? (** (or (getenv "TOSROOT") "") "/support/sdk/c/serialpacket.h"))
+		    (error 'wstiny "you need to run 'make' in ~a" 
+			   (** (or (getenv "TOSROOT") "") "/support/sdk/c/")))
+		  )
 		))
 	    )
        (begin 
@@ -1312,7 +1323,8 @@
   ;; These are prims that we don't want to publicize for whatever reason:
   (define secret-prims
     `(world anchor locdiff sense nodeid 
-      HACK_O_RAMA Secret:newTimebase
+      ;HACK_O_RAMA 
+      Secret:newTimebase
       tuple tupref
       static statref
       ,@(filter (lambda (n) (define str (symbol->string n))

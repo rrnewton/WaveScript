@@ -134,7 +134,9 @@
 		 readFile-wsearly FILE_EXISTS GETENV SHELL SETCPU SETCPUDEEP
 		 clock realtime
 
-		 HACK_O_RAMA
+		 IFPROFILE
+
+		 ;HACK_O_RAMA
 
 		 )
     (chezprovide (for for-loop-stack )
@@ -1941,7 +1943,11 @@
 (define (clock) (exact->inexact (cpu-time)))
 (define (realtime) (/ current-vtime 1000))
 
+(define-syntax IFPROFILE
+  (syntax-rules () [(_ a b) b]))
+
 ;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
+#;
 (define (HACK_O_RAMA filename)
   ;; Must be in milleseconds:
   ;; Convert from 48khz to microseconds:

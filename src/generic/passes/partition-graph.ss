@@ -13,9 +13,10 @@
 	   exhaustive-partition-search
 	   min-bandwidth-hueristic
 	   max-nodepart-hueristic
-process-read/until-garbage-or-pred
-extract-time-intervals
-inject-times
+	   reinsert-cutpoints
+	   process-read/until-garbage-or-pred
+	   extract-time-intervals
+	   inject-times
 	   )
     (chezimports)
 
@@ -35,13 +36,17 @@ inject-times
 (define (cutpoint? op)
   (match op [(cutpoint . ,_) #t]  [,else #f]))
 (define (make-cutpoint ty src dest) 
-  `(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty)))
+  ;`(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty))
+  `(cutpoint (name #f) (output-type ,ty) (code #f) (incoming ,src) (outgoing ,dest))
+  )
 
 ;; We should probably have shared code for handling operators:
 ;; These simple accessors are just used locally within this module.
 (define (opname op) 
-  (let ([entry (assq 'name (cdr op))])
-    (if entry (cadr entry) #f)))
+  (define stripped (if (symbol? (car op)) (cdr op) op))
+  (let ([entry (assq 'name stripped)])
+    (if entry (cadr entry) 
+	(error 'opname "could not get op name: ~s" op))))
 (define (optype op)
   (cadr (ASSERT (assq 'output-type (cdr op)))))
 
@@ -57,6 +62,14 @@ inject-times
 (define (op->upstream op ops) (ASSERT op)  
   (lookup (cadr (ASSERT (assq 'incoming (cdr op)))) ops))
 
+(define (op->inputtype op)   
+  (match op
+    [(cutpoint . ,rest) (cadr (ASSERT (assq 'output-type rest)))]
+    [(_merge . ,rest)   (cadr (ASSERT (assq 'output-type rest)))]
+    [(iterate . ,rest) 
+     (match (assq 'code rest)
+       [(code (iterate ,ann (let ,binds (lambda ,args (,inty ,vqty) ,bod)) ,instrm))
+	`(Stream ,inty)])]))
 
 (define not-inline_TOS?
   (lambda (src) 
@@ -81,6 +94,9 @@ inject-times
 ;; ================================================================================
 
 ;; A hack to do program partitioning based on the names of top-level streams.
+;;
+;; NOTE: There's no real need to add in cutpoints as part of this
+;; pass, we can simply do that afterwards.
 (define-pass partition-graph-by-namespace
     (define (node-name? nm)
       (define str (symbol->string nm))
@@ -256,8 +272,8 @@ inject-times
 ;; ==================================================
 ;;; Heuristics:
 
-(define (min-bandwidth-hueristic epochsize time datasize datafreq) 0)
-(define (max-nodepart-hueristic  epochsize time datasize datafreq)
+(define (min-bandwidth-hueristic name epochsize time datasize datafreq) 0)
+(define (max-nodepart-hueristic name epochsize time datasize datafreq)
   (if (>= time epochsize) 0 time)) ;; Try to fill up the epoch
 
 ;; ==================================================
@@ -294,7 +310,8 @@ inject-times
      (define datasize #f) ;; TODO: Hook up to scheme profiling!
      (define datafreq #f)
      (define initscore
-       (heuristic epochsize (op->time (car realsources)) datasize datafreq))
+       (heuristic (opname (car realsources))
+		  epochsize (op->time (car realsources)) datasize datafreq))
 
      (define ____ (begin (printf "Begining search")(flush-output-port)))
 
@@ -309,7 +326,7 @@ inject-times
 	    (define datasize #f) ;; TODO: Hook up to scheme profiling!
 	    (define datafreq #f)
 	    ;; Evaluate the heuristic for this configuration:
-	    (define score (heuristic epochsize epochtime datasize datafreq))
+	    (define score (heuristic (opname ptr) epochsize epochtime datasize datafreq))
 	    (define-values (newscore newcur)
 	      (if (> score curbest)	       
 		  (values score   ptr)
@@ -361,6 +378,7 @@ inject-times
 ;;
 ;; Right now this also caries the responsibility of tagging the
 ;; operator in question (using its annotations) to mark it as 'partition-point'.
+;; ALSO, it inserts new cutpoints.
 ;; 
 ;; .returns A vector containaining node-partition (upstream) and
 ;; server-partition (downstream)
@@ -399,20 +417,22 @@ inject-times
      (define serverops (difference (difference oper* nodeops) pre-tagged))
 
      (vector
-      `(,input-language 
+      (reinsert-cutpoints
+       `(,input-language 
 	'(graph (const ,cnst* ...) (init ,@init*)
 		(sources ,@src*)
 		(operators ,@nodeops)
 		(sink #f #f)
-		,@meta*))
-      `(,input-language 
-	'(graph (const ,cnst* ...) (init ,@init*) (sources)
-		(operators ,@serverops)
-		(sink ,base ,basetype) ,@meta*)))
-
+		,@meta*)))
+      (reinsert-cutpoints
+       `(,input-language 
+	 '(graph (const ,cnst* ...) (init ,@init*) (sources)
+		 (operators ,@serverops)
+		 (sink ,base ,basetype) ,@meta*))))
      ]))
 
 ;; Get all the operator names in a subgraph.
+;; This includes the source names!
 (define (partition->opnames part)
   (match part
     [(,input-language 
@@ -426,16 +446,18 @@ inject-times
 	       (map opname oper*)))
      ]))
 
+
 ;; Remove any cutpoints that don't make sense (because the supposedly
 ;; 'cut' operator actually is in the partition).  We use this to clean
 ;; up after the "refine" steps above.
 (define discard-spurious-cutpoints
   (lambda (part)
-    (define nametable (set->hashtab (partition->opnames part)))
+    (define nametable (set->hashtab (cons 'BASE (partition->opnames part))))
     (define (valid? op)
       (match op
-	[(cutpoint . ,rest)	
-	 (not (hashtab-get nametable (cadr (assq 'outgoing rest))))]
+	[(cutpoint . ,rest)
+	 (or (not (hashtab-get nametable (cadr (assq 'outgoing rest))))
+	     (not (hashtab-get nametable (cadr (assq 'incoming rest)))))]
 	[,_ #t]))
     (match part
       [(,input-language 
@@ -450,6 +472,49 @@ inject-times
 		(sources ,@src*)
 		(operators ,@(filter valid? oper*))
 		(sink ,base ,basetype) ,@meta*))])))
+
+;; This should obsolete some of the other operations above.  It should
+;; be safe to just work with cutpoint-free partitions and THEN insert
+;; the cutpoints at the end.  I should remove any code above that goes to pains to deal with cutpoints.
+(define reinsert-cutpoints
+  (lambda (part)
+    (define names (cons 'BASE (partition->opnames part)))
+    (define nametable (set->hashtab names))
+    (define (make-cutpoints ops)
+      (apply append
+	     (map (lambda (op)
+		    (match op
+		      [(,op* (name ,opv) (output-type ,ot) (code ,oe)
+			     (incoming ,in* ...) (outgoing ,downstrm* ...))
+		       (append 
+			(map-filter (lambda (down) 
+				      (if (hashtab-get nametable down) #f
+					  (make-cutpoint ot opv down)))
+				    downstrm*)
+			(let ([intype (op->inputtype op)])
+			  (map-filter (lambda (in) 
+					(if (hashtab-get nametable in)  #f
+					    (make-cutpoint intype in opv)))
+				      in*)))
+		       ]))
+	       ops)))
+    (match part
+      [(,input-language 
+	'(graph (const ,cnst* ...)
+		(init  ,init* ...)
+		(sources ,src* ...)
+		(operators ,oper* ...)
+		(sink ,base ,basetype)	,meta* ...))
+       (define filtered (filter (compose not cutpoint?) oper*))
+       `(,input-language 
+	 '(graph (const ,@cnst*)  
+		 (init ,@init*) 
+		 (sources ,@src*)
+		 (operators ,@(append (make-cutpoints filtered) filtered))
+		 (sink ,base ,basetype) ,@meta*))])))
+
+
+
 
 
 ;; ================================================================================
@@ -487,7 +552,7 @@ inject-times
 
 (define (extract-time-intervals log)
   ;; ASSUMPTION: uint16_t counter:
-  (define FUDGE-FACTOR 83) ;; The number of ticks assumed for the printf statements themselves.
+  (define FUDGE-FACTOR 82) ;; The number of ticks assumed for the printf statements themselves.
   (define (diff st en)
     (let ([elapsed (- en st FUDGE-FACTOR)])
 					;(ASSERT (> elapsed 0))

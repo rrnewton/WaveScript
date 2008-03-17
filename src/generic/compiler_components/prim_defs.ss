@@ -661,7 +661,7 @@
     ;; The arguments are described in the manual.
     (readFile ((List Annotation) String String (Stream 'a)) (Stream 'b))
 
-    (HACK_O_RAMA (String) (Stream #(Int (List (Sigseg Int16)))))
+    ;(HACK_O_RAMA (String) (Stream #(Int (List (Sigseg Int16)))))
 
     ;; Internal:
     ;(readFile   ((List Annotation) String (Stream 'a) String Int Int Int Int (List Symbol)) (Stream 'a))
@@ -713,6 +713,9 @@
     (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))    
     ;; Two streams of the same type:
     (_merge            ((List Annotation) (Stream 'a) (Stream 'a)) (Stream 'a))
+
+    ;; To the compiler, this looks like a merge:
+    ;(IFPROFILE         ((List Annotation) (Stream 'a) (Stream 'a)) (Stream 'a))
 
     ;; Currently, because of letrec semantics, an explicit operator
     ;; must be used to create a feedback loop.

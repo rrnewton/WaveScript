@@ -28,6 +28,24 @@
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 ;; gauche -- same wrong number of arguments
 
+;;;; The NEXT project will be to make a version of match that's a
+;;;; preprocessor for other match implementations.  It might do some
+;;;; transformations like the following:
+#|
+(match FOO [(a ,_) 1] [(b ,_)  2] [(foo) 3])
+(match FOO
+  [(,hd . ,tl)
+   (define (go-a)   (match tl [(,_) 1] [,oth (go-b)]))
+   (define (go-b)   (match tl [(,_) 2] [,oth (go-foo)]))
+   (define (go-foo) (match tl [() 3]))
+   (case hd
+     [(a)   (go-a)]
+     [(b)   (go-b)]
+     [(foo) (go-foo)]
+     [else (error?)])])
+|#
+
+
 (module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
 			 build-list bind-cata ellipses-helper delay-values 
 			 countup-vars countup-elements wrap-lambda-at-the-end 

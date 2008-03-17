@@ -101,11 +101,6 @@ fi
 #then exit 0
 #fi
 
-if [ ! -d "$WAVESCOPED" ]; 
-then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
-     exit 1;
-fi
-
 #echo
 #echo
 #(cd $WAVESCOPED; make WaveScriptQuery)
@@ -126,7 +121,12 @@ export WSCDEBUG
 
 export COPTFLAG
 if [ "$NOGCC" == "0" ] &&  $CCOMPILE $CCPASSTHRU ./query 
-then echo
-     echo "Executable output to query.$WSEXESUFFIX"
+then 
+  if [ ! -d "$WAVESCOPED" ]; 
+  then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
+       exit 1;
+  fi
+  echo
+  echo "Executable output to query.$WSEXESUFFIX"
 else exit 1;
 fi;
