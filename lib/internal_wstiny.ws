@@ -79,17 +79,49 @@ fun sensor_uint16(name, rate) {
   mod2  = "
 event void "++tmod++".fired() { call "++smod++".read(); }
 event void "++smod++".readDone(error_t result, uint16_t data) { 
-    if (result != SUCCESS)
-      {
-	data = 0xffff;
-	//wserror(\"ReadDone failure\");
-      }
-   "++funname++"(data);
+    if (result != SUCCESS) 
+      wserror(\"sensor_uint16 read failure\");    
+    else "++funname++"(data);
   }
 ";
   s2 = inline_TOS("", "", conf2, mod1, mod2, boot);
   merge(s1,s2);
 }
+
+// This uses the ReadStream instead of Read:
+fun readstream_uint16(name, bufsize, rate) {
+  n = source_count;
+  ty = "uint16_t";
+  source_count += 1;
+  adjusted = rate / bufsize.gint;
+  funname = "readstream_ws_entry"++n;
+  s1 = (foreign_source(funname, [show(adjusted)]) :: Stream Uint16);
+  smod = "SensorStrm"++n;
+  conf2 = "components new "++name++"() as "++smod++";\n"++
+          "WSQuery."++smod++" -> "++smod++";\n";
+  mod1  = "uses interface ReadStream<"++ty++"> as "++smod++";\n";
+  boot  =
+    ty++" buf1["++ bufsize+1 ++"];\n" ++
+    ty++" buf2["++ bufsize+1 ++"];\n" ++
+    "call "++smod++".postBuffer(buf1 + 1, "++bufsize++");\n" ++
+    "call "++smod++".postBuffer(buf2 + 1, "++bufsize++");\n" ++
+    "call "++smod++".read( "++(1000.0 / adjusted)++" );\n";
+  mod2  = "
+  event void "++smod++".bufferDone(error_t result, "++ty++"* buf, uint16_t cnt);
+    if (result != SUCCESS)
+       wserror(\"readstream_uint16 failure\");
+    else {
+      buf[-1] = cnt;
+      "++funname++"(buf);
+    }
+    // We need to repost the buffer at the *end* of the processing chain.
+    call "++smod++".postBuffer(buf, cnt);
+  }
+";
+  s2 = inline_TOS("", "", conf2, mod1, mod2, boot);
+  merge(s1,s2);
+}
+
 
 
 

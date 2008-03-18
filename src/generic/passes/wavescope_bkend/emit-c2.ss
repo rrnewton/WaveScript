@@ -2053,7 +2053,8 @@ implementation {
   WSQuery -> MainC.Boot;
   WSQuery.Leds -> LedsC;
 "(slot-ref self 'config-acc)"
-}"))
+}
+"))
   (define module 
     (list 
       includes 

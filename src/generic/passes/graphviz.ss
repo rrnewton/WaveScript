@@ -25,6 +25,16 @@
 		  (incoming ,oin* ...) (outgoing ,odownstrm** ...))
 	    ...)
 
+	(define annot-table
+	  (let ([tab (make-default-hash-table (length op*))])
+	    (for-each (lambda (name op)
+			(ASSERT symbol? (car op))
+			(let ([entry (assq 'annotations (cdr op))])
+			  (hashtab-set! tab name (if entry (cdr entry) '()))))
+	      (append srcv* opv*)
+	      (append se* oe*))
+	    ;(inspect (hashtab->list tab))
+	    tab))
 	(define cutnodes
 	  (filter id
 	    (map (lambda (name code)
@@ -39,8 +49,15 @@
 	(define (blowup src dest*)
 	  
 	  ;; Could use deunique-name for the "label" of the node.
-	  (map (lambda (dest) (format "  ~a -> ~a ~a;\n" src (denumber dest)
-				      (if (memq src cutnodes) partition-edge-style "")))
+	  (map (lambda (dest) (format "  ~a -> ~a ~a ~a;\n" src (denumber dest)
+				      (if (memq src cutnodes) partition-edge-style "")
+				      ;; Annotate data-rates on the edges.
+				      (match (assq 'data-rates  (ASSERT (hashtab-get annot-table src)))
+					[(data-rates ,name ,stats) (format "[label=\" ~a bytes in ~a tuples\"]" 
+									   (bench-stats-bytes stats)
+									   (bench-stats-tuples stats))]
+					[#f ""])
+				      ))
 	    dest*))
 	;; Don't bother generating nodes for the inline code.
 	(define edges1 (map (lambda (src down* code)
@@ -113,7 +130,7 @@
 					 (string-append
 					  (if cpu       (format "\\n[cpu ~a]" (cdr cpu)) "")
 					  ;; This should be improved, and should probably affect the color
-					  (if datarates (format "\\n[rates ~a]" (cdr datarates)) "")
+					  (if datarates (format "\\n~a ms Scheme" (bench-stats-cpu-time (caddr datarates))) "")
 					  (if measured-cycles 
 					      (format "\\n~a ticks/~akhz" 
 						      (cadr measured-cycles)
