@@ -261,6 +261,7 @@
       [(t) (type->width t #f)]
       [(t sumdecls) 
        (match t
+         [Uint16 2]
          [Int16 2]
          [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
          [Int64 8]

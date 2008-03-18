@@ -757,7 +757,6 @@
        (printf "============================================================\n")
        (printf "       PROFILING IN SCHEME \n")
        (printf "============================================================\n")
-
        (ws-run-pass p annotate-with-data-rates)))
    (void))
   
@@ -987,28 +986,6 @@
       (if (>= (regiment-verbosity) 2)
 	  (browse-stream strm)
 	  (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline)))))]))
-
-;; This functionality should probably be included in the wavescript language itself.
-;; But due to limitations in the language-mechanism that I've been usng, that doesn't work presently.
-(define run-wavescript-sim 
-  (lambda (p)
-    ;; New Streams:
-
-    ;; [2007.02.06] Now we wrap it with a little extra to run
-    ;; the query.  This is needed as a result of switching over
-    ;; to imperative streams.
-    
-    ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
-    ;; It SHOULD be self contained, even if that means discarding the existing "language-mechanism.ss"
-    (wavescript-language
-     (match (strip-types p)
-       [(,lang '(program ,body ,_ ...))
-        ;; If strip-types worked there shouldn't be any VQueue symbols!
-        (DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
-        `(begin (reset-wssim-state!)
-                (run-stream-query ,body))
-        ]))
-))
 
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:

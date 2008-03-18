@@ -29,7 +29,7 @@
 (define-pass annotate-with-data-rates
 
     [Program (lambda (prog Expr)
-               (define annotated (annotate-iterates-with-types prog))
+               (define annotated (annotate-iterates-with-types prog))	       
                (define stripped (strip-types annotated))
 
                ; taken near-literally from eval-and-peruse-stream
@@ -46,11 +46,18 @@
                          edge-counts-table))])))
 
                (define stream      (car stream-and-table))
-               (define rates-table (cdr stream-and-table))
+               (define rates-table (cdr stream-and-table))	       	       
 
                ; perform the actual simulation;
                ; this will fill in rates-table
-               (run-stream-to-completion stream)
+	       (when (>= (regiment-verbosity) 1)
+		 (printf "Directing profiling run output to .profile_run.out\n"))
+	       (let ([out (open-output-file ".profile_run.out" 'replace)])
+		 (parameterize (;[current-output-port out]
+				;[current-error-port out]
+				[ws-print-output-port out]
+				)
+		   (run-stream-to-completion stream)))
                
                ;(printf "the rates:~n")
                ;(hash-table-map rates-table (lambda (k v) (printf "~a: ~a~n" k v)))
@@ -71,6 +78,10 @@
 
     [Expr (lambda (x fallthru)
             (match x
+
+	      ;; rrn: Turn IFPROFILE switch ON:
+	      ;[(IFPROFILE ,[a] ,[b]) a]
+
               [(iterate ,annot
                         (let ,state
                           (lambda ,args (,input-type (VQueue ,output-type)) ,[body]))

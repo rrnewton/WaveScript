@@ -55,7 +55,6 @@
         (ASSERT symbol? v)
         (let ([entry (assq v aliases)])
           (if entry (dealias (cadr entry)) v)))
-      (unless (null? aliases) (printf "ALIASES: ~s\n" aliases))
       (match x
 	;; Operators: This includes iterate:
 	[(let ([,v ,ty ,rhs]) ,[bod])

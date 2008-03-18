@@ -328,7 +328,7 @@
     (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
   
   ;; This takes a push-based stream and wraps it in an engine to make
-  ;; a kind-of pull based stream (a la streams.ss).
+  ;; a psuedo pull-based stream (a la streams.ss).
   ;;
   ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
@@ -347,7 +347,7 @@
     ;(ASSERT procedure? prog)
     
     (if #t;(procedure? prog)
-	(begin  ;; Register data sources, connect to output sink.
+	(begin  
 	  (prog output-sink) ;; Register data sources, connect to output sink.
 	  (set! global-eng 
 		(make-engine
@@ -467,9 +467,10 @@
           (for-each (lambda (elem)
                       (fire! elem our-sinks))
             outputs))))
-    ;; Register ourselves with our source:
-    (src wsbox)
     (lambda (sink)
+      ;; Register ourselves with our source:
+      ;(printf "Registering: ~s ~s \n" annotations sink)
+      (src wsbox) ;; <- rrn: Changing this to happen lazily.
       (set! our-sinks (cons sink our-sinks))))
 
   (define (iterate-bench annotations output-type box-name edge-counts-table sum-type-declarations fun src)
@@ -497,10 +498,11 @@
           ;; fire!
           (for-each (lambda (elem) (profiled-fire! elem our-sinks bench-rec output-type sum-type-declarations))
             outputs))))
-    ;; Register ourselves with our source:
-    (src wsbox)
     (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
+      ;(printf "Registering: ~s ~s \n" annotations sink)
+      ;; Register ourselves with our source:
+      (src wsbox) ;; <- rrn: Changing this to happen lazily.
       (set! our-sinks (cons sink our-sinks))))
 
 
@@ -897,13 +899,13 @@
      (define (unionN-bench annotations output-type box-name edge-counts-table sum-type-declarations . args)
        (unionList-bench output-type box-name edge-counts-table sum-type-declarations args))
      
-
      (define (_merge annotations s1 s2)
        (define our-sinks '())
+       (define (wsbox x) (fire! x our-sinks))
        ;; Register a receiver for each source:       
-       (s1 (lambda (x) (fire! x our-sinks)))
-       (s2 (lambda (x) (fire! x our-sinks)))
-       (lambda (sink) (set! our-sinks (cons sink our-sinks))))
+       (lambda (sink) 
+	 (s1 wsbox)  (s2 wsbox) ;; rrn: doing this lazily now
+	 (set! our-sinks (cons sink our-sinks))))
 
      ; NOTE: doesn't matter for us, but not re-entrant
      (define (_merge-bench annotations output-type box-name edge-counts-table sum-type-declarations s1 s2)
@@ -913,10 +915,10 @@
        (define wsbox
          (lambda (x)
            (profiled-fire! x our-sinks bench-rec output-type sum-type-declarations)))
-       (s1 wsbox)
-       (s2 wsbox)
        (hashtab-set! edge-counts-table box-name bench-rec)
-       (lambda (sink) (set! our-sinks (cons sink our-sinks))))
+       (lambda (sink) 
+	 (s1 wsbox)  (s2 wsbox) ;; rrn: doing this lazily now
+	 (set! our-sinks (cons sink our-sinks))))
 
 
 
@@ -1734,11 +1736,16 @@
 (define already-loaded-object-files (box ())) ;; When do we reset this?
 
 (define (__foreign_source . _)
-  (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend."))
+  (printf "CALLING FOREIGN_SOURCE\n")
+  (lambda (sink) 
+    (printf "Hmm... registering foreign-source with sink: ~s\n" sink)
+    (error 'foreign_source "Foreign stream sources are not, and will not be, implemented for the scheme backend.")))
 (define (inline_C . _)
-  (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend."))
+  (lambda (sink)
+    (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend.")))
 (define (inline_TOS . _)
-  (error 'inline_C "Inline C code is not not, and will not be, implemented for the scheme backend."))
+  (lambda (sink)   
+    (error 'inline_TOS "Inline C code is not not, and will not be, implemented for the scheme backend.")))
 
 
 

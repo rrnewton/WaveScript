@@ -41,7 +41,7 @@ namespace Node {
   s3 = iterate(buf in s2) {
     state { lasttime = 0 }
 
-    led2Toggle();    
+    //led2Toggle();    
     //println(buf);
     //    print("Time is ");
     //    println(clock32khz());

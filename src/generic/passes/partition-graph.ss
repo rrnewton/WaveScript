@@ -115,7 +115,8 @@
       (lambda (xp)	
 	(match xp
 	  [((name ,nm) (output-type ,ty) (code ,code) (outgoing ,down* ...))
-	   (if (or (node-name? nm) (memq nm all-incoming))
+	   (if (or (node-name? nm) (memq nm all-incoming)
+		   (eq? (car code) 'inline_TOS))
 	       (values (list xp) '())
 	       (values '() (list xp)))])))
     (define (Operator op)
