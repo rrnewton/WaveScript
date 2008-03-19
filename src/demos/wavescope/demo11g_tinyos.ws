@@ -23,7 +23,7 @@ namespace Node {
   //src1 = readstream_uint16("DemoSensorStreamC", 5, 3.0);
 
   s1 = iterate reading in IFPROFILE(src0, src1) { 
-    print("  got reading...\n");
+    //print("  got reading...\n");
     emit reading;
   };
 
