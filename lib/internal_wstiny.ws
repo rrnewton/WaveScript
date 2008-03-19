@@ -18,7 +18,7 @@ fun timer(rate) {
   mod1  = "uses interface Timer<TMilli> as Timer"++n++";\n";
   boot  = "call Timer"++n++".startPeriodic( "++(1000.0 / rate)++" );\n";
   mod2  = "event void Timer"++n++".fired() { "++funname++"(0); }\n";
-  s2 = inline_TOS(top, conf1, conf2, mod1, mod2, boot);
+  s2 = inline_TOS(top, conf1, conf2, mod1, mod2, boot, "");
   merge(s1,s2);
 }
 
@@ -39,7 +39,7 @@ load_telos32khzCounter = {
   mod2 = "
   //uint32_t counter_overflows_32khz = 0;
   async event void Cntr.overflow() { /* counter_overflows_32khz++; */ }\n";
-  inline_TOS("", "", conf2, mod1, mod2, "");
+  inline_TOS("", "", conf2, mod1, mod2, "", "");
 }
 
 clock32khz = (foreign("call Cntr.get", []) :: () -> Uint16);
@@ -84,41 +84,62 @@ event void "++smod++".readDone(error_t result, uint16_t data) {
     else "++funname++"(data);
   }
 ";
-  s2 = inline_TOS("", "", conf2, mod1, mod2, boot);
+  s2 = inline_TOS("", "", conf2, mod1, mod2, boot, "");
   merge(s1,s2);
 }
 
 // This uses the ReadStream instead of Read:
+// The is the per-sample rate, not the per-buffer rate.
 fun readstream_uint16(name, bufsize, rate) {
+  arbitraryStupidLimit = 16; // Thanks Tinyos 2.0...
+  if rate < arbitraryStupidLimit then 
+    wserror("readstream_uint16: cannot handle rates less than "++
+            arbitraryStupidLimit++" hz: "++rate);
   n = source_count;
   ty = "uint16_t";
   source_count += 1;
   adjusted = rate / bufsize.gint;
   funname = "readstream_ws_entry"++n;
-  s1 = (foreign_source(funname, [show(adjusted)]) :: Stream Uint16);
+  s1 = (foreign_source(funname, [show(adjusted)]) :: Stream (Array Uint16));
   smod = "SensorStrm"++n;
   conf2 = "components new "++name++"() as "++smod++";\n"++
-          "WSQuery."++smod++" -> "++smod++";\n";
+          "WSQuery."++smod++" -> "++smod++".ReadStream;\n";
   mod1  = "uses interface ReadStream<"++ty++"> as "++smod++";\n";
   boot  =
-    ty++" buf1["++ bufsize+1 ++"];\n" ++
-    ty++" buf2["++ bufsize+1 ++"];\n" ++
     "call "++smod++".postBuffer(buf1 + 1, "++bufsize++");\n" ++
     "call "++smod++".postBuffer(buf2 + 1, "++bufsize++");\n" ++
-    "call "++smod++".read( "++(1000.0 / adjusted)++" );\n";
+    //"call "++smod++".read( "++(1000000.0 / adjusted)++" );\n";
+    "call "++smod++".read( "++ floatToInt(1000000.0 / rate)++" );\n";
   mod2  = "
-  event void "++smod++".bufferDone(error_t result, "++ty++"* buf, uint16_t cnt);
+    "++ty++" buf1["++ bufsize+1 ++"];
+    "++ty++" buf2["++ bufsize+1 ++"];
+    "++ty++"* curbuf = 0;
+
+  event void "++smod++".bufferDone(error_t result, "++ty++"* buf, uint16_t cnt) {
     if (result != SUCCESS)
        wserror(\"readstream_uint16 failure\");
     else {
+      uint16_t i;
       buf[-1] = cnt;
       "++funname++"(buf);
+      // This is the inefficient way of doing things:
+      // But it won't work with the current task-based methodology:
+      //for (i=0; i<"++bufsize++"; i++) "++funname++"(buf[i]);
     }
     // We need to repost the buffer at the *end* of the processing chain.
-    call "++smod++".postBuffer(buf, cnt);
+    // This reposts it IMMEDIATELY (hack) and assumes that it won't be filled 
+    // until readstream finishes filling the other buffer:
+    //call "++smod++".postBuffer(buf, cnt);
+    curbuf = buf;
   }
+
+  event void "++smod++".readDone(error_t result, uint32_t period) {
+    if (result != SUCCESS) wserror(\"ReadStream.readDone completed incorrectly\");
+  }
+
 ";
-  s2 = inline_TOS("", "", conf2, mod1, mod2, boot);
+  endtraverse = "call "++smod++".postBuffer(curbuf, "++bufsize++");\n";
+  s2 = inline_TOS("", "", conf2, mod1, mod2, boot, endtraverse);
   merge(s1,s2);
 }
 

@@ -804,6 +804,7 @@
     (define (Const cn)
       (cond
        [(number? cn) cn]
+       [(boolean? cn) cn]
        [(string? cn) 
 	;; make a constant vector.
 	(list->vector (append ;(make-list 8 #\nul)

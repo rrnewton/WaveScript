@@ -20,8 +20,10 @@ namespace Node {
 
   src0 = (readFile("profile.dat", "", timer(2.0)) :: Stream Uint16);
   src1 = sensor_uint16("DemoSensorC", 2.0);
+  //src1 = readstream_uint16("DemoSensorStreamC", 5, 3.0);
 
   s1 = iterate reading in IFPROFILE(src0, src1) { 
+    print("  got reading...\n");
     emit reading;
   };
 
@@ -72,15 +74,16 @@ s5 = iterate ((x,y),z) in Node:s4 {
     //while ind < 1 * 1000 * 1000 { ind += 1 };
 
     //println("I'M ON SERVER "++y);
-    //println("I'M ON NODE ");
+    //print("I'M ON NODE " ); println(y); 
     emit (x,y+1,z)
 }
 
 s6 = iterate x in s5 {
     ind = ref(0);
     for i = 1 to 1000 { for j = 1 to 1000 { ind += 1 } };
+    //print(" Almost done: "); println(x);
     emit (x,ind);
 }
 
-main = s6;
+main = s5;
 //main = Node:s2;

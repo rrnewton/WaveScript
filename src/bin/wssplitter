@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# This is just a shorthand for...
+wstiny $1 -split -opt autosplit -opt profile

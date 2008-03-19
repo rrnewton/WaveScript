@@ -14,7 +14,7 @@ grouped like this:
 
  demo9* : More advanced primitives and language features.
  demo10*: Tests/examples of different optimizations.
- demo11*: ENSbox-specific demos.
+ demo11*: Platform-specific demos (ENSbox or telos).
 
  ...
 

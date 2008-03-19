@@ -593,7 +593,8 @@
     ;;  (3) module block
     ;;  (4) module/implementation block
     ;;  (5) Boot-time code    
-    (inline_TOS     (String String String String String String) (Stream 'a))
+    ;;  (6) Cleanup code for when each traversal ends (at which point no tuples are in-flight)
+    (inline_TOS     (String String String String String String String) (Stream 'a))
 
     ;; Not implemented yet:
     ;(marshal        ('a) String)

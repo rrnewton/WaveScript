@@ -1643,7 +1643,7 @@ int main(int argc, char **argv)
 
 (define-class <tinyos> (<emitC2>) 
   ;; Has some new fields to store accumulated bits of text:
-  (top-acc config-acc module-acc boot-acc impl-acc proto-acc 
+  (top-acc config-acc module-acc boot-acc impl-acc proto-acc cleanup-acc
    ;;This is a flag to tell us if printf has already been included.:
    print-included
    amsender-count
@@ -1660,6 +1660,7 @@ int main(int argc, char **argv)
 	(slot-set! self 'boot-acc '())
 	(slot-set! self 'impl-acc '())
 	(slot-set! self 'proto-acc '())
+	(slot-set! self 'cleanup-acc '())
 
 	(slot-set! self 'print-included #f)
 	(slot-set! self 'amsender-count 0)
@@ -2002,13 +2003,14 @@ event void PrintfControl.stopDone(error_t error) {
 	;; TODO: streams of sensor data
 	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
 	 (match cd 
-	   [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot)
+	   [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot ',cleanup)
 	    ;; FIXME: conf1!!!
 	    (slot-cons! self 'top-acc top)
 	    (slot-cons! self 'config-acc conf2)
 	    (slot-cons! self 'module-acc mod1)
 	    (slot-cons! self 'impl-acc mod2)
 	    (slot-cons! self 'boot-acc boot)
+	    (slot-cons! self 'cleanup-acc cleanup)
 	    (values #f #f #f #f)]
 	   [(__foreign_source ',name ',filels '(Stream ,type))
 	    (define ty (Type self type))
@@ -2076,11 +2078,7 @@ implementation {
   void initState();
 "(slot-ref self 'proto-acc)"
 
-  event void Boot.booted() {
-    initState(); /* SHOULD POST A TASK */
-
-"(indent (slot-ref self 'boot-acc) "    ")"
-  }
+  void cleanup_after_traversal();
 
   void BASE(char x) {
     #ifndef TOSSIM
@@ -2088,6 +2086,11 @@ implementation {
       call PrintfFlush.flush();
     #endif
     #endif
+    // HACK FIXME:
+    // We need to call the cleanup function after a traversal finishes.
+    // A traversal won't necessarily make it all the way to BASE.
+    // Therefor, each task needs to check if it ended a chain (failed to post another task).
+    cleanup_after_traversal();
   }
 
 "(insert-between "\n"
@@ -2099,6 +2102,15 @@ implementation {
 
 "(slot-ref self 'impl-acc)"
 
+  event void Boot.booted() {
+    initState(); /* SHOULD POST A TASK */
+
+"(indent (slot-ref self 'boot-acc) "    ")"
+  }
+
+  void cleanup_after_traversal() {
+"(indent (slot-ref self 'cleanup-acc) "    ")"
+  }
 }
 "))
 
