@@ -230,6 +230,10 @@
 	  (define next-up   (filter id (map get-upstream   cutpoints)))
 	  ;; From each cutpoint, walk until we hit something that's not mobile:
 	  (define (trace get-next startpoints cutpoint)
+	    (define (insert-cp a b acc)
+	      (if (or (cutpoint? a) (cutpoint? b))
+		  acc
+		  (cons (cutpoint a b) acc)))
 	    (if (null? startpoints) '()
 		(let loop ([tracepoints (cons (get-next (car startpoints)) (cdr startpoints))]
 			   [acc '()]
@@ -244,11 +248,11 @@
 			     (cons head acc) head)]
 		      [(null? tail) 
 		       ;; Insert a cutpoint:
-		       (cons (cutpoint last head) acc)]
+		       (insert-cp last head acc)]
 		      [else		       
 		       ;; When we reach a stopping point, put in a cutpoint:
 		       (loop (cons (get-next (car tail)) (cdr tail))
-			     (cons (cutpoint last head) acc)
+			     (insert-cp last head acc)
 			     (ASSERT cutpoint? (car tail)))])]))))
 
 ;	  (define _ (print-level 3))

@@ -11,12 +11,14 @@ namespace Node {
   //bufsize = 30; // Breaks
   //rate = intToFloat(bufsize) / 2.0;
   //rate = 8000.0;
-  rate = 4000.0;
+  rate = 8000.0;
   //src1 = readstream_uint16("DemoSensorStreamC", bufsize, rate);
   src1 = read_telos_audio(bufsize, rate);
   s2 = iterate arr in src1 {
     len = Array:length(arr);
+
     emit len;
+
     //println(arr);
     if true
     then {
@@ -42,13 +44,16 @@ namespace Node {
       */
 
       sum = Array:fold(fun(acc,n) acc + (cast_num(n) :: Int32), (0::Int32), arr);
+      
+      led2Toggle();
+      
       print((sum) ++ "  avg: ");
       print((sum / (cast_num(len) :: Int32)) ++ " ");
 
       print("\n");
 
-    };
-    //emit ();
+    };    
+    //emit len;
   }
 }
 

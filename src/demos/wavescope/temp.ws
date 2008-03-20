@@ -1,37 +1,31 @@
 
-include "stdlib.ws";
+//include "stdlib.ws";
 
-//s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
-s1 = (readFile("./countup.raw", "mode: binary  window: 4096", timer(10.0)) :: Stream (Sigseg Int16));
+using TOS;
+namespace Node {
+  bufsize = 2000; 
+  rate = 8000.0;
+  src1 = read_telos_audio(bufsize, rate);
+  s2 = iterate arr in src1 {
+    len = Array:length(arr);
+    if true
+    then {
+      // Note, this hackishly does out of bounds accesses!!
+      print(arr[-1] ++ " | ");
+      print(arr[0] ++ " ");
+      print(arr[1] ++ " ");
+      print(arr[2] ++ " ");
+      print(arr[3] ++ " ... ");
+      print(arr[len-2] ++ " ");
+      print(arr[len-1] ++ " | ");
+      print(arr[len] ++ " \tsum: ");      
 
-//	       "mode: binary  rate: 44000  repeats: 0 "++
-//	       "skipbytes: 2  window: 50 offset: 2")
-
-
-//s1 = deep_smap(int16ToInt, s0);
-
-fun assert(str,b) if not(b) then wserror("Assert failed: "++ str ++"\n");
-fun assert_eq(s,a,b) if not(a==b) then wserror("Assert failed in '"++s++"' : "++ a ++" not equal "++ b);
-
-fun assert_prnt(str,a,b) {
-  assert_eq(str,a,b);
-  print("Assert passed: "++ str ++ "\n");
+      sum = Array:fold(fun(acc,n) acc + (cast_num(n)::Int32), (0::Int32), arr);
+      print((sum) ++ "  avg: ");
+      print((sum / (cast_num(len)::Int32)) ++ "\n");
+    };
+    emit len;
+  }
 }
 
-fun println(str) {
-  print("  ");
-  print(str);
-  print("\n");
-};
-
-
-main = iterate(w in s1) {  
-  arr = toArray(subseg(w, w.start, 20));
-
-  arr2 = Array:map((/ 100), arr);
-
-  print("LENGTH1: "++ arr`Array:length ++"\n");
-  print("LENGTH2: "++ arr2`Array:length ++"\n");
-
-  emit arr2;
-}
+main = Node:s2;
