@@ -53,6 +53,7 @@
 		 _+: _-: *: /: ^:
 		 _+D _-D *D /D ^D
 		 _+I16 _-I16 *I16 /I16 ^I16
+		 _+I32 _-I32 *I32 /I32 ^I32
 		 _+I64 _-I64 *I64 /I64 ^I64
 
 		 _+U16 _-U16 *U16 /U16 ^U16
@@ -1099,7 +1100,9 @@
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
   (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define _+U16 fx+)  (define _-U16 fx-)  (define *U16 fx*)  (define /U16 fx/)
-  (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  
+  (define _+I32 s:+)  (define _-I32 s:-)  (define *I32 s:*)  (define (/I32 a b) (floor (s:/ a b)))
+  (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  (define (/I64 a b) (floor (s:/ a b)))
+
   (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
   (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
   (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
@@ -1111,14 +1114,15 @@
   (define (cast_num x) x)
   (define-syntax assert-type
     ;; TODO Rewrite this with syntax-case and remove code duplication.
-    (syntax-rules (Int Int16 Int64 Uint16 
-		       Float Double Complex)
-      [(_ Int   e)  (__cast_num #f 'Int   e)]
-      [(_ Int16 e)  (__cast_num #f 'Int16 e)]
-      [(_ Int64 e)  (__cast_num #f 'Int64 e)]
-      [(_ Uint16 e) (__cast_num #f 'Uint16 e)]
-      [(_ Float e)  (__cast_num #f 'Float e)]
-      [(_ Double e) (__cast_num #f 'Double e)]
+    (syntax-rules (Int Int16 Int32 Int64 Uint16 
+		       Float Double Complex)      
+      [(_ Int   e)   (__cast_num #f 'Int   e)]
+      [(_ Int16 e)   (__cast_num #f 'Int16 e)]
+      [(_ Int32 e)   (__cast_num #f 'Int32 e)]
+      [(_ Int64 e)   (__cast_num #f 'Int64 e)]
+      [(_ Uint16 e)  (__cast_num #f 'Uint16 e)]
+      [(_ Float e)   (__cast_num #f 'Float e)]
+      [(_ Double e)  (__cast_num #f 'Double e)]
       [(_ Complex e) (__cast_num #f 'Complex e)]
       [(_ other e) e]
       ))
@@ -1134,19 +1138,20 @@
 		     [Uint16 uint16?]
 		     ;[Int   int32?]  ;; Ints are not defined as 32 bits
 		     [Int   fixnum?]
-		     [Int64 int16?])])
+		     [Int32 int32?]
+		     [Int64 int64?])])
 	 (if pred x 0))]
       [(Float Double) (exact->inexact num)]
       [(Complex) (+ num 0.0+0.0i)]
       [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
 
-  (define (/I64 a b) (floor (s:/ a b)))
 
   (define ws^ expt)
   (define g^ expt)
   (define ^_ expt)
   (define ^I16 expt)
   (define ^U16 expt)
+  (define ^I32 expt)
   (define ^I64 expt)
   (define ^D expt)
   (define ^. expt)

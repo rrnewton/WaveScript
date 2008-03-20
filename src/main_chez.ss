@@ -298,7 +298,7 @@
 ;; To completely DISABLE my new prototype matcher, uncomment this:
 ;; This may be useful for debugging, the iu-matcher gives better source locations.
 ;; (Note that rn-match increases compile times)
-;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
+(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
 ;;
 ;; [2007.04.19] Currently, just having rn-match in the type-checker
 ;; plus the static elaborator bloats the code size a noticable amount.
@@ -653,5 +653,6 @@
 (eval-when (compile load eval) 
   (current-directory (top-level-value 'pre-load-directory)))
 ;; [2008.02.18] On the way out lets set this to something sane:
-(source-directories '("."))
+;(source-directories '("."))
+(source-directories (cons "." (source-directories)))
 

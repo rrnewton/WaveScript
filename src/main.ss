@@ -1103,6 +1103,11 @@
 		    (printf "\n Server-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-server))
 		    (newline)
+
+; 		    (inspect (deep-assq-all 'cutpoint definite-node))
+; 		    (inspect (deep-assq-all 'cutpoint maybe-node))
+; 		    (inspect (deep-assq-all 'cutpoint maybe-server))
+; 		    (inspect (deep-assq-all 'cutpoint max-node))
 		    		    		  		    
 		    (last-few-steps max-node <tinyos-timed>)
 		    

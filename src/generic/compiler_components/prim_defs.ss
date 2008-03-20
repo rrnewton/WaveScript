@@ -84,7 +84,7 @@
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Double Complex 
-		    Int16 Int64
+		    Int16 Int32 Int64
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 		    Uint16
@@ -320,6 +320,12 @@
     (/I16 (Int16 Int16) Int16) 
     (^I16 (Int16 Int16) Int16) ;; exponentiation
 
+    (_+I32 (Int32 Int32) Int32)
+    (_-I32 (Int32 Int32) Int32) 
+    (*I32 (Int32 Int32) Int32) 
+    (/I32 (Int32 Int32) Int32) 
+    (^I32 (Int32 Int32) Int32) ;; exponentiation
+
     (_+I64 (Int64 Int64) Int64)
     (_-I64 (Int64 Int64) Int64) 
     (*I64 (Int64 Int64) Int64) 
@@ -502,6 +508,7 @@
     (moduloI (Int Int) Int)
     
     (absI16 (Int16) Int16)
+    ;(absI32 (Int32) Int32)
     (absI64 (Int64) Int64)
     (absI (Int) Int)
     (absF (Float) Float)
@@ -588,12 +595,13 @@
 
     ;; This is much more complicated in the TinyOS context because
     ;; there are several different places that one needs to inject code:
-    ;;  (1) configuration block 
-    ;;  (2) configuration/implementation block 
-    ;;  (3) module block
-    ;;  (4) module/implementation block
-    ;;  (5) Boot-time code    
-    ;;  (6) Cleanup code for when each traversal ends (at which point no tuples are in-flight)
+    ;;  (1) top level code
+    ;;  (2) configuration block 
+    ;;  (3) configuration/implementation block 
+    ;;  (4) module block
+    ;;  (5) module/implementation block
+    ;;  (6) Boot-time code    
+    ;;  (7) Cleanup code for when each traversal ends (at which point no tuples are in-flight)
     (inline_TOS     (String String String String String String String) (Stream 'a))
 
     ;; Not implemented yet:

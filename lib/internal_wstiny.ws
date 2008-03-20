@@ -143,7 +143,66 @@ fun readstream_uint16(name, bufsize, rate) {
   merge(s1,s2);
 }
 
+// This is for our custom audio-board:
+fun read_telos_audio(bufsize, rate) {
+  top = "
+generic configuration WSMspAdcC() {
+  provides interface Read<uint16_t>;
+  provides interface ReadStream<uint16_t>;
 
+  provides interface Resource;
+  provides interface ReadNow<uint16_t>;
+}
+implementation {
+  components new AdcReadClientC();
+  Read = AdcReadClientC;
+
+  components new AdcReadStreamClientC();
+  ReadStream = AdcReadStreamClientC;
+
+  components WSMspAdcP;
+  AdcReadClientC.AdcConfigure -> WSMspAdcP;
+  AdcReadStreamClientC.AdcConfigure -> WSMspAdcP;
+
+  components new AdcReadNowClientC();
+  Resource = AdcReadNowClientC;
+  ReadNow = AdcReadNowClientC;
+  
+  AdcReadNowClientC.AdcConfigure -> WSMspAdcP;
+}
+
+
+#include \"Msp430Adc12.h\"
+
+/* TelosB photo sensors are A4 and A5, audio board is A0 */
+
+module WSMspAdcP {
+  provides interface AdcConfigure<const msp430adc12_channel_config_t*>;
+}
+implementation {
+
+  const msp430adc12_channel_config_t config = {
+      inch: INPUT_CHANNEL_A0,
+      sref: REFERENCE_AVcc_AVss,
+      ref2_5v: REFVOLT_LEVEL_NONE,
+      adc12ssel: SHT_SOURCE_SMCLK,
+      adc12div: SHT_CLOCK_DIV_1,
+      sht: SAMPLE_HOLD_4_CYCLES,
+      sampcon_ssel: SAMPCON_SOURCE_SMCLK,
+      sampcon_id: SAMPCON_CLOCK_DIV_1
+  };
+  
+  async command const msp430adc12_channel_config_t* AdcConfigure.getConfiguration()
+  {
+    return &config;
+  }
+}
+";
+  //inline = inline_TOS(top, "", "", "", "", "", "");
+  //merge(inline, readstream_uint16("WSMspAdcP.ReadStream", bufsize, rate));
+  SHELL("cp "++GETENV("REGIMENTD")++"/src/linked_lib/WSMspAdc* .");
+  readstream_uint16("WSMspAdcC", bufsize, rate);
+}
 
 
 

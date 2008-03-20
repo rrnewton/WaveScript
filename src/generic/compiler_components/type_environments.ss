@@ -200,8 +200,9 @@
     (if (eq? c 'BOTTOM) #t
 	(match ty
 	  [Uint16 (guard (fixnum? c)) (uint16? c)]
-	  [Int16 (guard (fixnum? c))  (int16? c)]
 	  [Int   (guard (fixnum? c))  (int32? c)]
+	  [Int16 (guard (fixnum? c))  (int16? c)]
+	  [Int32 (guard (fixnum? c))  (int32? c)]
 	  [Int64 (guard (fixnum? c))  (int64? c)]
 	  [Float   (flonum? c)]
 	  [Double  (flonum? c)]
@@ -263,7 +264,8 @@
        (match t
          [Uint16 2]
          [Int16 2]
-         [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+         [Int 4] ;; INTS ARE 16 BIT ON TELOS!!! FIXME FIXME
+         [Int32 4] 
          [Int64 8]
          ;; HACK:
          ;[(Sigseg #(,[w*] ...)) (apply + w*)]

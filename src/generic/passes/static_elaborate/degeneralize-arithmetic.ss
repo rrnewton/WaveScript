@@ -32,6 +32,7 @@
   (define (complex x) (match x [g+ '_+:] [g- '_-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
   (define (int16 x)   (match x [g+ '_+I16] [g- '_-I16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
+  (define (int32 x)   (match x [g+ '_+I32] [g- '_-I32] [g* '*I32] [g/ '/I32] [g^ '^I32] [abs 'abs32]))
   (define (int64 x)   (match x [g+ '_+I64] [g- '_-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
   (define (uint16 x)  (match x [g+ '_+U16] [g- '_-U16] [g* '*U16] [g/ '/U16] [g^ '^U16])) ; [abs 'abs16]
@@ -54,22 +55,19 @@
 		   [(gint)
 		    ;; Strip annotations so they don't throw off our pattern matching:
 		    (match (list t (strip-annotations (car args)))
-		      [(Int16   (quote ,n))  
-		       (ASSERT (constant-typeable-as? n 'Int16))
-		       `(assert-type Int16 (quote ,n))]
-		      [(Uint16   (quote ,n))
-		       (ASSERT (constant-typeable-as? n 'Uint16))
-		       `(assert-type Uint16 (quote ,n))]
+		      
+		      [(,inttype (quote ,n))
+		       (guard (memq inttype '(Int16 Int32 Int64 Uint16)))
+		       (ASSERT (constant-typeable-as? n inttype))
+		       `(assert-type ,inttype (quote ,n))]
 
-		       [(Int64   (quote ,n))  
-			(ASSERT (constant-typeable-as? n 'Int64))
-			`(assert-type Int64 (quote ,n))]
 		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
+		       ;[(Int32   ,e)  `(assert-type (cast_num ,e))]
 		       [(,i16   ,e)  (guard (eq-any? i16 'Int16 'Uint16))
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type ~a, it might overflow: ~s"
@@ -100,6 +98,7 @@
 		     (case t
 		       [(Int)     `(,(int     genop) . ,args)]
 		       [(Int16)   `(,(int16   genop) . ,args)]
+		       [(Int32)   `(,(int32   genop) . ,args)]
 		       [(Int64)   `(,(int64   genop) . ,args)]
 		       [(Uint16)  `(,(uint16  genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]

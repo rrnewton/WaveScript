@@ -178,7 +178,8 @@
 ;;; Low level routines for generating syntax.
 
 ;(define (mangle-name n) (symbol->string n))
-(define sym2str  symbol->string)
+(define (sym2str x) ;(ASSERT x)
+  (symbol->string x))
 
 (define (slot-cons! obj fld x) (slot-set! obj fld (cons x (slot-ref obj fld))))
 
@@ -496,6 +497,7 @@
     [Bool    "char"]
     [Int     "int"]
     [Int16   "int16_t"]
+    [Int32   "int32_t"]
     [Int64   "int64_t"]
     [Uint16  "uint16_t"]
     [Double  "double"]
@@ -545,6 +547,7 @@
     [Bool   "%d"]
     [Int    "%d"]
     [Int16  "%hd"]
+    [Int32  "%ld"]
     [Int64  "%lld"]
     [Uint16  "%hu"]
     [Float  "%f"]	   
@@ -1005,7 +1008,6 @@
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? ,[(TyAndSimple self) -> ty left] ,[Simp -> right])
-	;(ASSERT (memq ty '(Int Int16 Int64 Float Double Complex)))
 	(ASSERT scalar-type? ty)		
 	(kont `("(",left" == ",right")"))]
 
@@ -1400,6 +1402,7 @@ int main(int argc, char **argv)
 	 bind* init*)])]
 
     [(cutpoint (name ,_) (output-type ,type) (code ,__) (incoming ,in) (outgoing ,out))
+     (ASSERT out)
      (Cutpoint self type in out)]
 
     [(_merge (name ,name) (output-type (Stream ,elt))
@@ -2102,7 +2105,7 @@ implementation {
     // We need to call the cleanup function after a traversal finishes.
     // A traversal won't necessarily make it all the way to BASE.
     // Therefor, each task needs to check if it ended a chain (failed to post another task).
-    //cleanup_after_traversal();
+    cleanup_after_traversal();
   }
 
 "(insert-between "\n"

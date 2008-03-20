@@ -39,7 +39,8 @@
 (define (cutpoint? op)
   (match op [(cutpoint . ,_) #t]  [,else #f]))
 (define (make-cutpoint ty src dest) 
-  ;`(cutpoint (incoming ,src) (outgoing ,dest) (output-type ,ty))
+  (ASSERT src)
+  (ASSERT dest)
   `(cutpoint (name #f) (output-type ,ty) (code #f) (incoming ,src) (outgoing ,dest))
   )
 
