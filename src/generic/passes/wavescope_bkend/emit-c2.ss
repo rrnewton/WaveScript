@@ -38,6 +38,7 @@
 	   <emitC2>
 	   <tinyos>
 	   <tinyos-timed>
+	   <javaME>
 	   )
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
@@ -493,7 +494,7 @@
 
 
 (__spec Type <emitC2> (self ty)
-  (match ty
+  (match ty ;; No recursion!
     [Bool    "char"]
     [Int     "int"]
     [Int16   "int16_t"]
@@ -510,7 +511,7 @@
     [(Struct ,name) (list "struct "(sym2str name))] ;; Value type.
 
     ;; An array looks like a C array, except the -1 word offset is a refcount and -2 is length.
-    [(Array ,elt) (list (Type self elt) "*")] ;[(Array ,[elt]) (list "(" elt "*)")]
+    [(Array ,elt) (list (Type self elt) "*")] 
 
     ;; A cons cell is just looks like a pointer, except the -1 offset is a refcount, and -2 is the CDR.
     [(List ,elt) (list (Type self elt) "*")]
@@ -748,10 +749,11 @@
 (__spec Value <emitC2> (self emitter)
   (debug-return-contract Value lines?
    (lambda (xp kont)
+     (define (recur x) ((Value self emitter) x kont))
      ;; This is a debug wrapper that respects the funky interface to the continuation:
      ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
      (define (Simp x) (Simple self x))
-     (match xp
+     (match xp 
 
        ;; With the strings-as-arrays system we'll still get string
        ;; constants here, technically these are complex-constants.  We
@@ -784,12 +786,12 @@
        
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,x) (kont (Simple self x))]
-       [(begin ,[e]) e]
+       [(begin ,e) (recur e)]
        [(begin ,[(Effect self emitter) -> e1] ,e* ...)
 	(define rest 
 	  (begin 
 	    ;(inspect (cons 'e1 e1))
-	    ((Value self emitter) `(begin ,@e*) kont)))
+	    (recur `(begin ,@e*))))
 	;(inspect (cons 'rest rest))
 	(ASSERT lines? e1)
 	(ASSERT lines? rest)
@@ -805,7 +807,7 @@
 	       ,(indent (lines-text ((Value self emitter) altern newk)) "  ")
 	       "}\n")))]
 
-       [(let . ,_) (Let self _ emitter (lambda (x) ((Value self emitter) x kont)))]
+       [(let . ,_) (Let self _ emitter recur)]
 
        [(make-struct ,name ,[Simp -> arg*] ...)
 	(kont `("{",(insert-between ", " arg*)"}"))]
@@ -832,7 +834,7 @@
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
 	(PrimApp self (cons prim rand*) kont ty)]
               
-       [(assert-type ,ty ,[e]) e]
+       [(assert-type ,ty ,e) (recur e)]
        ))))
 
 
@@ -1168,12 +1170,13 @@
 		      srcrates*))]
 		 [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
 	  (make-lines        
-	   (block "int main(int argc, char** argv)" 
+	   (block (list "int main(int argc, "(Type self `(Array (Array Char)))" argv)" )
 		  (list 
 		   "parseOptions(argc,argv);\n"
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
-		   (block "while(1)"		 
+		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
+		   (block "while(dummy)"
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				(map (lambda (name code mark)
 				       (block (format "if (counter_~a == ~a)" name mark)
@@ -1549,7 +1552,6 @@ int main(int argc, char **argv)
 (__spec Run <emitC2> (self)
   (let* ([prog (slot-ref self 'theprog)]
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
-     ;(assq 'c-includes meta*)
      (match prog
        [(,lang '(graph 
 		 ;; These had better be *constants* for GCC:
@@ -2154,6 +2156,7 @@ implementation {
 
 ;;================================================================================
 
+
 (define-class <tinyos-timed> (<tinyos>) 
   (nametable))
 
@@ -2286,7 +2289,120 @@ event void Timer000.fired() {
   )))
 
 
+;;================================================================================
+
+(define-class <java> (<emitC2>) ())
+
+(__spec initialise <java> (self prog)
+  ;;(slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
+  (slot-set! self 'include-files '())
+  )
+
+;; Java GC replaces our memory management.
+(define __build-free-fun-table!
+  (specialise! build-free-fun-table! <java> 
+     (lambda (next self heap-types)
+       (make-lines ""))))
+
+(define ___Type 
+  (specialise! Type <java>
+    (lambda (next self ty)
+      (match ty
+	[Bool   "boolean"]
+	[String "String"]
+	;; TEMP HACK:
+	[(Array Char) "String"]
+	[(Array ,elt) (list (Type self elt) "[]")]
+	[,else (next)]
+	))))
+
+(define ___Const
+  (specialise! Const <java>
+    (lambda (next self datum wrap)
+      (cond
+	[(boolean? datum) (wrap (if datum "true" "false"))]
+	[else (next)]))))
+
+(define ___Value
+  (specialise! Value <java>
+    (lambda (next self emitter)
+      (lambda (xp kont)
+	(match xp
+	  [',vec (guard (vector? vec))
+		 (ASSERT (vector-andmap char? vec))
+		 ;; Strip out any null characters??
+		 (let* ([ls (vector->list vec)]
+			[ls2 ;; Hack, a null terminator on the end is redundant for a string const:
+			 (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
+			     (rdc ls) 
+			     ls)]
+			[str (list->string ls2)])
+		   (kont (format "~s" str)))]
+	  [,oth ((next) xp kont)])
+	))))
+
+(define ___Effect 
+  (specialise! Effect <java>
+    (lambda (next self emitter)
+      (lambda (xp)
+	(match xp
+	  [(print ,[(TyAndSimple self) -> ty x])
+	   (make-lines `("outstrm.print(",x");\n"))]
+	  [,oth ((next) oth)])))))
+
+
+(__specreplace BuildOutputFiles <java> (self includes freefundefs state ops init driver)  
+  (define bod 
+    (text->string
+     (list includes 
+	   "import java.io.*;\n"
+	   (block "public class WSQuery"	   
+		  (list 
+		   "void parseOptions(int argc, String[] argv) {}\n"
+		   "void BASE(char x) {}\n"
+		   "private PrintStream outstrm;\n"
+		   "public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }\n"
+		   ;"void setOut(OutputStream out) { outstrm = new PrintStream(out); }\n"
+		   (insert-between "\n"
+				   (list 
+				    (map (curry StructDef self) (slot-ref self 'struct-defs))
+				    state
+				    ops 
+				    init driver)))))))
+  (ASSERT (equal? (lines-text freefundefs) ""))
+  (vector
+   ;; We return an association list of files to write.
+   (list (list "WSQuery.java"  (text->string bod)))
+
+   ;; We also return a post-file-write thunk to execute:
+   void))
+
+;;================================================================================
+
+(define-class <javaME> (<java>) ())
+
+#;
+(define ____Effect 
+  (specialise! Effect <javaME>
+    (lambda (next self emitter)
+      (lambda (xp)
+	(match xp
+	  [(print ,[(TyAndSimple self) -> ty x])
+	   (make-lines `("System.out.print(",x");\n"))]
+	  [,oth ((next) oth)])))))
+
+;; Replace just the thunk portion of the <java> config:
+(define ____BuildOutputFiles
+  (specialise! BuildOutputFiles <javaME> 
+    (lambda (next . rest)
+      (match (next)
+	[#(,alist ,thunk)
+	 (vector alist
+	    (lambda () 
+	      ;; Copy the stub to the current directory:
+	      ;; (Fixme, should use cross-platform scheme routines for this)
+	      (system "cp -fpr $REGIMENTD/src/linked_lib/javaME_stub ./")
+	      (system "mv WSQuery.java ./javaME_stub/src/")))]))))
+
 
 ) ;; End module
-
-

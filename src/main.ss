@@ -1072,9 +1072,20 @@
 		  (last-few-steps prog
 				  (match (compiler-invocation-mode)
 				    [wavescript-compiler-c <emitC2>]
-				    [wavescript-compiler-nesc <tinyos>]))
+				    [wavescript-compiler-nesc <tinyos>]
+				    ;[wavescript-compiler-c <javaME>]
+				    ;[wavescript-compiler-nesc <javaME>]
+				    ))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
-		  		
+		  		  		
+		  (printf "\n Node operators:\n\n")
+		  (pretty-print (partition->opnames node-part))
+		  (printf "\n Server operators:\n\n")
+		  (pretty-print (partition->opnames server-part))
+		  (newline)
+
+		  (inspect prog)
+
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
 		    (newline)

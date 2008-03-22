@@ -103,7 +103,7 @@
 ;; NOTE: There's no real need to add in cutpoints as part of this
 ;; pass, we can simply do that afterwards.
 (define-pass partition-graph-by-namespace
-    (define (node-name? nm)
+    (trace-define (node-name? nm)
       (define str (symbol->string nm))
       (define len (string-length "Node:"))
       (and (> (string-length str) len)

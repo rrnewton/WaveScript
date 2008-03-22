@@ -5,10 +5,10 @@ import getopt
 
 optlist, args = getopt.getopt(sys.argv[1:], 'x', ['nodes=', 'time='])
 
-if (os.getenv("TOSROOT") == None):
-  raise Exception("TOSROOT environment variable not set")
-
-sys.path.append(os.getenv("TOSROOT") + "/tos/lib/tossim/")
+# import os
+# if (os.getenv("TOSROOT") == None):
+#   raise Exception("TOSROOT environment variable not set")
+# sys.path.append(os.getenv("TOSROOT") + "/tos/lib/tossim/")
 
 from TOSSIM import *
 

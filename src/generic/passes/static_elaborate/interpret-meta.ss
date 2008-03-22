@@ -193,7 +193,7 @@
     )
 
   ;; Is name A worthier than B?
-  (define (better-name? a b)
+  (trace-define (better-name? a b)
     (or (not (eq? 'anonstreamop b))
 	(= 1 (string-length (symbol->string b)))))
   (define (prettify-names! names vals)

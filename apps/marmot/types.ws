@@ -7,7 +7,6 @@ type AML       = (Array Float * Int64 * Timebase);
 type IntAML    = (Array Int16 * Int64 * Timebase);
 type Detection = List (Sigseg Int16);
 //  Includes a timestamp
-type LikelihoodMap = (Matrix Float * Int64);
 
 type Tagged t = (NodeRecord * t);
 
