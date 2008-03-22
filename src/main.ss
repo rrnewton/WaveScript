@@ -1071,9 +1071,9 @@
 		  ;; In this case we do a 'normal', non-partitioned compile:
 		  (last-few-steps prog
 				  (match (compiler-invocation-mode)
-				    [wavescript-compiler-c <emitC2>]
+				    ;[wavescript-compiler-c <emitC2>]
 				    [wavescript-compiler-nesc <tinyos>]
-				    ;[wavescript-compiler-c <javaME>]
+				    [wavescript-compiler-c <javaME>]
 				    ;[wavescript-compiler-nesc <javaME>]
 				    ))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])

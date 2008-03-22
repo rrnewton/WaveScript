@@ -2304,6 +2304,11 @@ event void Timer000.fired() {
      (lambda (next self heap-types)
        (make-lines ""))))
 
+(define (upcase-first-letter str)
+  (define copy (string-copy str))
+  (string-set! copy 0 (char-upcase (string-ref copy 0)))
+  copy)
+
 (define ___Type 
   (specialise! Type <java>
     (lambda (next self ty)
@@ -2313,6 +2318,7 @@ event void Timer000.fired() {
 	;; TEMP HACK:
 	[(Array Char) "String"]
 	[(Array ,elt) (list (Type self elt) "[]")]
+	[(Struct ,name) (list (upcase-first-letter (sym2str name) ))] ;; Value type.
 	[,else (next)]
 	))))
 
@@ -2338,6 +2344,10 @@ event void Timer000.fired() {
 			     ls)]
 			[str (list->string ls2)])
 		   (kont (format "~s" str)))]
+
+	  [(make-struct ,name ,[(lambda (x) (Simple self x)) -> arg*] ...)
+	   (kont `("new ",(upcase-first-letter (sym2str name))"(",(insert-between ", " arg*)")"))]
+
 	  [,oth ((next) xp kont)])
 	))))
 
@@ -2376,6 +2386,25 @@ event void Timer000.fired() {
 
    ;; We also return a post-file-write thunk to execute:
    void))
+
+(__specreplace StructDef <java> (self entry)
+	       (match entry
+       [(,name (,[sym2str -> fld*] ,typ*) ...)
+	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
+	      [ctype* (map (curry Type self) typ*)]
+	      [_name (upcase-first-letter (sym2str name))]
+	      [_fld* (map (lambda (x) (string-append "_" x)) fld*)])
+	  `(,(block `("class ",_name)
+		    (list
+		     (block (list "public "_name"("(insert-between ", " 
+				  (map (lambda (ty var) (list ty" "var))
+				    ctype* _fld*))")")
+			    (map (lambda (fld)
+				   (list fld" = _"fld";\n")) fld*))
+		     (map (lambda (ctype fld) `["public " ,ctype " " ,fld ";\n"])
+		       ctype* fld*)))
+	    ";\n"
+            ))]))
 
 ;;================================================================================
 

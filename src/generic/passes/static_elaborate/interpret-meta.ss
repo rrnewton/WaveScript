@@ -193,9 +193,25 @@
     )
 
   ;; Is name A worthier than B?
-  (trace-define (better-name? a b)
-    (or (not (eq? 'anonstreamop b))
-	(= 1 (string-length (symbol->string b)))))
+  (define (better-name? a b)
+    ;; Node: namespace hack!! 
+    ;; If we're going to stick with this node, namespace hack... we have to respect that here:
+    (define (node-name? str)
+      (and (> (string-length str) 5)
+	   (eq? (string-ref str 0) #\N)
+	   (eq? (string-ref str 0) #\o)
+	   (eq? (string-ref str 0) #\d)
+	   (eq? (string-ref str 0) #\e)
+	   ;(eq? (string-ref str 0) #\_)
+	   ))
+    (define a-node (node-name? (symbol->string a)))
+    (define b-node (node-name? (symbol->string b)))
+    (cond
+     [(and a-node (not b-node)) a]
+     [(and b-node (not a-node)) b]
+     [(not (eq? 'anonstreamop b)) #t]
+     [(= 1 (string-length (symbol->string b))) #t]
+     [else #f]))
   (define (prettify-names! names vals)
     (for-each (lambda (name val)
 		       (cond
