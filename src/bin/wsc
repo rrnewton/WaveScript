@@ -87,6 +87,9 @@ if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
 
 if [ "$REGFLAG" == "" ]; then REGFLAG=wscomp; fi
 export REGIMENT_OR_WAVESCRIPT=WS
+
+echo "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
+
 if "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
 then echo
 else #rm -f $TMP; 

@@ -108,7 +108,7 @@
   (define-generic BuildTimerSourceDriver)
   (define-generic BuildOutputFiles)
   (define-generic varbindk)
-
+  (define-generic array-constructor-codegen)
    
   (__spec add-include! <emitC2> (self fn)
     (define files (slot-ref self 'include-files))
@@ -404,7 +404,7 @@
 	 (let* ([strip-refs (lambda(ty)
 			      (match ty [(Ref ,ty) ty] [,ty ty]))]
 		[newty (strip-refs ty)])
-	   ((cdr (ASSERT (assoc newty (slot-ref self 'free-fun-table)))) 
+	   ((cdr (ASSERT (assoc newty (slot-ref self 'free-fun-table))))
 	    ptr))))))
 
 
@@ -418,22 +418,6 @@
 
 ;; TODO -- not used yet
 (__spec potential-collect-point <emitC2> (self) (make-lines ""))
-
-
-
-#;
-;; This version uses deferred reference counting.
-(begin 
-  (define (incr-local-refcount ty ptr) (make-lines ""))
-  (define (decr-local-refcount ty ptr) (make-lines ""))
-
-  (define (incr-heap-refcount ty ptr) (gen-incr-code ty ptr "heap"))
-  (define (decr-heap-refcount ty ptr)
-    (gen-decr-code ty ptr default-free))
-
-  (define (potential-collect-point)
-    (make-lines ""))
-  )
 
 
 ;; TODO -- not used yet
@@ -838,7 +822,8 @@
        ))))
 
 
-(define (array-constructor-codegen self len init ty kont)
+;(define (array-constructor-codegen self len init ty kont)
+(__spec array-constructor-codegen <emitC2> (self len init ty kont)
   (match ty
     [(Array ,elt)
 					;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
@@ -1618,12 +1603,6 @@ int main(int argc, char **argv)
 
 (define (emit-c2 prog class)
   ;(define obj (make-object <zct> prog))
-#;
-  (define class
-    (if (emit-c2-generate-timed-code) <tinyos-timed>
-	(match (compiler-invocation-mode)
-	  [wavescript-compiler-c          <emitC2>]
-	  [wavescript-compiler-nesc       <tinyos>])))
   (define obj (make-object class prog))
   (Run obj))
 
@@ -2315,9 +2294,14 @@ event void Timer000.fired() {
       (match ty
 	[Bool   "boolean"]
 	[String "String"]
+	[Int16 "short"]
+	[Int32 "int"]
+	[Int64 "long"]
+
 	;; TEMP HACK:
 	[(Array Char) "String"]
-	[(Array ,elt) (list (Type self elt) "[]")]
+	[(Array ,elt) (list (Type self elt) "[]")]	
+	[(List ,elt) "Cons"]
 	[(Struct ,name) (list (upcase-first-letter (sym2str name) ))] ;; Value type.
 	[,else (next)]
 	))))
@@ -2331,8 +2315,9 @@ event void Timer000.fired() {
 
 (define ___Value
   (specialise! Value <java>
-    (lambda (next self emitter)
+    (lambda (next self emitter)      
       (lambda (xp kont)
+	(define Simp (lambda (x) (Simple self x)))
 	(match xp
 	  [',vec (guard (vector? vec))
 		 (ASSERT (vector-andmap char? vec))
@@ -2345,11 +2330,89 @@ event void Timer000.fired() {
 			[str (list->string ls2)])
 		   (kont (format "~s" str)))]
 
-	  [(make-struct ,name ,[(lambda (x) (Simple self x)) -> arg*] ...)
+	  [(make-struct ,name ,[Simp -> arg*] ...)
 	   (kont `("new ",(upcase-first-letter (sym2str name))"(",(insert-between ", " arg*)")"))]
 
-	  [,oth ((next) xp kont)])
-	))))
+	  [,oth ((next) xp kont)])))))
+
+;; These helpers box and unbox scalars into their corresponding reference types:
+(define (box-scalar ty obj)
+  (match ty
+    [Int   (list "new Integer("obj")")]
+    [Int32 (list "new Integer("obj")")]
+    [Int16 (list "new Short("obj")")]
+    [Int64 (list "new Long("obj")")]
+    [Float  (list "new Float("obj")")]
+    [Double (list "new Double("obj")")]
+    [Bool   (list "new Boolean("obj")")]
+    [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
+	       (error 'emitC2:Value "cannot handle unsigned types in java yet")]
+    [,else (ASSERT (not (scalar-type? ty)))
+	   ;; Otherwise it's already a reference type
+	   obj]))
+(define (unbox-scalar ty obj)
+  (match ty
+    [Int   (list "(((Integer)"obj").intValue())")]
+    [Int32 (list "(((Integer)"obj").intValue())")]
+    [Int16 (list "(((Short)"obj").shortValue())")]
+    [Int64 (list "(((Long)"obj").longValue())")]
+    [Float  (list "(((Float)"obj").floatValue())")]
+    [Double (list "(((Double)"obj").doubleValue())")]
+    [Bool   (list "(((Boolean)"obj").booleanValue())")]
+    [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
+	       (error 'emitC2:Value "cannot handle unsigned types in java yet")]
+    [,else (ASSERT (not (scalar-type? ty)))
+	   obj]))
+(define (cast tytxt objtxt) (list "(("tytxt")"objtxt")"))
+
+(define ___PrimApp
+  (specialise! PrimApp <java>
+    (lambda (next self app kontorig mayberetty)
+      (define (Simp x)  (Simple self x))
+      (match app
+	[(show ,[(TyAndSimple self) -> ty obj])
+	 (define wrapped 
+	   (match ty
+	     [Int   (list "new Integer("obj")")]
+	     [Int32 (list "new Integer("obj")")]
+	     [Int16 (list "new Short("obj")")]
+	     [Int64 (list "new Long("obj")")]
+	     [Float  (list "new Float("obj")")]
+	     [Double (list "new Double("obj")")]
+	     [Bool   (list "new Boolean("obj")")]
+	     [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
+			(error 'emitC2:Value "cannot handle unsigned types in java yet")]
+	     [,else (ASSERT (not (scalar-type? ty)))
+		    ;; Otherwise it's already a reference type
+		    obj]))
+	 (kontorig (list wrapped ".toString() "))]
+	
+	[(string-append ,[Simp -> left] ,[Simp -> right])
+	 (kontorig (list left " + " right))]
+
+	[(cons ,[Simp -> a] ,[Simp -> b])
+	 (match mayberetty
+	   [(List ,elt)
+	    ;(kontorig (list "new Cons<"(Type self elt)">("a", "b")"))
+	    (kontorig (list "new Cons("(box-scalar elt a)", "b")"))
+	    ])]
+
+	[(car (assert-type (List ,ty) ,[Simp -> x]))
+	 ;(kontorig (cast (Type self ty) (unbox-scalar ty (list x ".car"))))
+	 (kontorig (unbox-scalar ty (list x ".car")))
+	 ;(kontorig (list x ".car"))
+	 ]
+	[(cdr ,[Simp -> x]) (kontorig (list x ".cdr"))]
+	
+	[,else (next)]))))
+
+(define ___Simple
+  (specialise! Simple <java>
+    (lambda (next self expr)
+      (match expr
+	[(assert-type ,ty Array:null) "null"]
+	[(assert-type ,ty '())        "null"]
+	[,else (next)]))))
 
 (define ___Effect 
   (specialise! Effect <java>
@@ -2362,16 +2425,44 @@ event void Timer000.fired() {
 
 
 (__specreplace BuildOutputFiles <java> (self includes freefundefs state ops init driver)  
+  ;; We can store this in a separate file at some point:
+  (define header "
+  void parseOptions(int argc, String[] argv) {}\n
+  void BASE(char x) {}\n
+  private PrintStream outstrm;\n
+  public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }\n  
+
+  // Can't use generics because I don't think Jave ME supports java 5.
+  public class Cons {
+    public Object car;
+    public Cons cdr;
+    public Cons(Object head, Cons rest) {
+      car = head;
+      cdr = rest;
+    }
+  }
+
+/*
+  public class Cons<T> {
+    public T car;
+    public Cons<T> cdr;
+    public Cons(T head, Cons<T> rest) {
+      car = head;
+      cdr = rest;
+    }
+  }
+*/
+
+")
   (define bod 
     (text->string
      (list includes 
 	   "import java.io.*;\n"
 	   (block "public class WSQuery"	   
 		  (list 
-		   "void parseOptions(int argc, String[] argv) {}\n"
-		   "void BASE(char x) {}\n"
-		   "private PrintStream outstrm;\n"
-		   "public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }\n"
+		   header
+		   ;"private static int ARRLEN(Object[] arr) { return arr.length; }\n"
+		   
 		   ;"void setOut(OutputStream out) { outstrm = new PrintStream(out); }\n"
 		   (insert-between "\n"
 				   (list 
@@ -2405,6 +2496,29 @@ event void Timer000.fired() {
 		       ctype* fld*)))
 	    ";\n"
             ))]))
+
+(__specreplace incr-local-refcount <java> (self ty ptr) (make-lines ""))
+(__specreplace decr-local-refcount <java> (self ty ptr) (make-lines ""))
+(__specreplace incr-heap-refcount <java> (self ty ptr) (make-lines ""))
+(__specreplace decr-heap-refcount <java> (self ty ptr) (make-lines ""))
+
+
+#;
+       [(Array:length ,[Simp -> arr])
+	;; Length is -2 and refcount is -1:
+	(kont `("ARRLEN(",arr")"))
+	]
+
+(__specreplace array-constructor-codegen <emitC2> (self len init ty kont)
+  (define tmp (unique-name "tmparr"))
+  (match ty
+    [(Array ,elt)
+     (if (not init)
+	 (kont (list "new "(Type self elt)"["len"]"
+			   ))
+	 (error 'finish "me")
+	 )]))
+
 
 ;;================================================================================
 

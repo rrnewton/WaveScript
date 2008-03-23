@@ -221,7 +221,10 @@
 		  '#f))))]
 
       ;; [2008.01.07] Only for wsc2 at the moment:
-      [(List ,elt) (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
+      [(List ,elt) (guard 
+		    (and (wsc2-variant-mode? (compiler-invocation-mode))
+			 ;; For java we implement the equals method:
+			 (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
        (let ([ptr1 (unique-name "lsptr1")]
 	     [ptr2 (unique-name "lsptr2")]
 	     [el1  (unique-name "lsel1")]
@@ -346,7 +349,9 @@
 
 
       ;; TEMP FIXME: [2007.12.22] For now only for the new C backend.
-      [(Array ,elt) (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
+      [(Array ,elt) (guard 
+		     (and (wsc2-variant-mode? (compiler-invocation-mode))
+			  (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
        (let* ([arr (unique-name "arr")]
 	      [ind (unique-name "ind")])
 	 `(let ([,arr (Array ,elt) ,expr])
@@ -373,7 +378,8 @@
 	      ,(addstr! ''")"))))]
 
 
-      [Complex (guard (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc))
+      [Complex (guard (and (wsc2-variant-mode? (compiler-invocation-mode))
+			  (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
        (maybe-bind-tmp expr 'Complex
         (lambda (tmp)
 	  `(begin ,(recur 'Float `(realpart ,tmp))

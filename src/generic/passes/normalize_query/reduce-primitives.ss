@@ -57,7 +57,7 @@
 
 	;; [2008.01.07] TEMP only implementing this primitive in wsc2:
 	[(List:is_null ,ls) 
-	 (guard (not (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)))
+	 (guard (not (wsc2-variant-mode? (compiler-invocation-mode))))
          `(wsequal? ,ls '())]
 
         [,orig orig])))

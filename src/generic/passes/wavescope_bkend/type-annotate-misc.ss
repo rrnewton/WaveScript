@@ -52,6 +52,8 @@
       '(List:append List:length List:ref seg_get toArray
 		    print show __show_ARRAY 
 		    Array:ref Array:set Array:length
+		    
+		    car ;; [2008.03.22] Adding
 
 		    < <= > >= max min
 		    

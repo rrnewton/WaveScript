@@ -651,7 +651,7 @@
   (ws-run-pass p type-annotate-misc)
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
-  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)
+  (when (wsc2-variant-mode? (compiler-invocation-mode))
     (ws-run-pass p explicit-toplevel-print))
 
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
@@ -659,7 +659,10 @@
 
   (ws-run-pass p lift-immutable-constants)
 
-  (when (eq-any? (compiler-invocation-mode) 'wavescript-compiler-c 'wavescript-compiler-nesc)  ;'wavescript-simulator
+  ;; To reduce the complexity of the wsc2 backend, we get rid of strings:
+  (when (and (wsc2-variant-mode? (compiler-invocation-mode))
+	     ;; But java needs them:
+	     (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame)))
     (ws-run-pass p embed-strings-as-arrays)
 
     (DEBUGMODE 
@@ -669,15 +672,12 @@
 	 (inspect tmp))))
     ;(ws-run-pass p remove-complex-constant) ;; Should we leave those array constants?
     )
-  
-  (when (eq-any? (compiler-invocation-mode) 
-		 'wavescript-compiler-c
-		 'wavescript-compiler-nesc
-	     ;'wavescript-compiler-xstream
-	     )
+
+  ;; wsc2 and derivatives support monomorphic backends that need a little help here:
+  (when (and (wsc2-variant-mode? (compiler-invocation-mode))
+	     (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame)))   
     (ws-run-pass p type-annotate-misc)
-    (ws-run-pass p generate-comparison-code)
-    )
+    (ws-run-pass p generate-comparison-code))
 
   ;; Should also generate printing code:
   ;(ws-run-pass p generate-printing-code)
@@ -786,10 +786,6 @@
  
 
   p)) ;; End run-that-compiler
-
-  (ASSERT (memq (compiler-invocation-mode)  
-    '(wavescript-simulator wavescript-compiler-c wavescript-compiler-nesc wavescript-compiler-xstream 
-			   wavescript-compiler-caml)))
   
   (run-that-compiler)
   ;(if (<= (regiment-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
@@ -992,7 +988,8 @@
 
 (define (wscomp x input-params . flags)                                 ;; Entrypoint.  
   (define new-version? (or (not (null? (find-in-flags 'wsc2 0 flags)))
-			   (not (null? (find-in-flags 'wstiny 0 flags)))))
+			   (not (null? (find-in-flags 'wstiny 0 flags)))
+			   (not (null? (find-in-flags 'wsjavame 0 flags)))))
   (unless new-version? (compiler-invocation-mode 'wavescript-compiler-xstream))
   (parameterize ([regiment-primitives
 		 ;; Remove those regiment-only primitives.
@@ -1071,11 +1068,9 @@
 		  ;; In this case we do a 'normal', non-partitioned compile:
 		  (last-few-steps prog
 				  (match (compiler-invocation-mode)
-				    ;[wavescript-compiler-c <emitC2>]
+				    [wavescript-compiler-c <emitC2>]
 				    [wavescript-compiler-nesc <tinyos>]
-				    [wavescript-compiler-c <javaME>]
-				    ;[wavescript-compiler-nesc <javaME>]
-				    ))
+				    [wavescript-compiler-javame <javaME>]))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 		  		  		
 		  (printf "\n Node operators:\n\n")
@@ -1680,6 +1675,12 @@
 	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-nesc])
 	     (let ((port (acquire-input-prog 'wscomp)))
 	       (apply wscomp port input-parameters 'wstiny opts)))]
+
+	  ;; Java ME target:
+	  [(wsjavame)
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-javame])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wsjavame opts)))]
 
 	  [(wscaml)
 	   (let ()

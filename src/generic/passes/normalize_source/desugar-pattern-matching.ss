@@ -226,12 +226,11 @@
 
 	;; [2008.01.27] Here's a bit of extra desugaring for wsc2:
 	[(assert-type (Stream (Sigseg ,elt)) ,bod)
-	 (guard (eq-any? (compiler-invocation-mode) 
-			 'wavescript-compiler-c 'wavescript-compiler-nesc)
+	 (guard (wsc2-variant-mode? (compiler-invocation-mode))
 		(match (peel-annotations bod)
 		  [(app ,rator . ,_)
 		   (eq? (peel-annotations rator) 'readFile)]
-		  [,_ #f]))	 
+		  [,_ #f]))
 	 (define x (unique-name "x"))
 	 (define vq (unique-name "vq"))
 	 `(iterate (annotations) 

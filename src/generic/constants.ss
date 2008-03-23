@@ -67,6 +67,7 @@
 	 default-case-symbol
          
 	 compiler-invocation-mode 
+	 embedded-mode? wsc2-variant-mode?
 ;	 regiment-compile-sums-as-tuples
 	 regiment-verbosity 
 	 regiment-track-source-locations
@@ -381,14 +382,33 @@
 ;; It's useful to have this info globally for debugging/error messages.
 (define regiment-current-pass (reg:make-parameter #f))
 
-;; Is this run of the compiler a WS run?
-;; Should be set to:
-;;   'wavescript-simulator
-;;   'wavescript-compiler-xstream
-;;   'wavescript-compiler-caml
-;;   'regiment-simulator
-;; [2007.03.20] This is now deprecated!!
-(define-regiment-parameter compiler-invocation-mode #f)
+(define valid-invocation-modes 
+  '(wavescript-simulator  ;; Scheme backends: ws and ws.early
+    wavescript-compiler-caml ;; also used for mlton
+    wavescript-compiler-xstream
+    wavescript-compiler-c
+    wavescript-compiler-nesc
+    wavescript-compiler-javame
+    ;;   'regiment-simulator ;; [2007.03.20] This is now deprecated!!
+    ))
+
+(define-regiment-parameter compiler-invocation-mode 
+  'wavescript-simulator
+  (lambda (x)
+    (if (memq x valid-invocation-modes) x
+	(error 'compiler-invocation-mode "invalid mode: ~s" x))))
+
+(define (embedded-mode? mode)
+  (memq mode
+	'(wavescript-compiler-nesc
+	  wavescript-compiler-javame)))
+
+;; These are the compiler variants that are based on emit-c2.ss
+(define (wsc2-variant-mode? mode)
+  (memq mode
+	'(wavescript-compiler-c
+	  wavescript-compiler-nesc
+	  wavescript-compiler-javame)))
 
 ;; This parameter controls what optimizations the compiler applies.
 

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+export REGFLAG=wsjavame
+
+#rm -rf javaME_stub
+
+if wsc $* -no-gcc;
+then echo ERROR, wsc2 failed with code $?.; exit 1;
+else echo
+fi
