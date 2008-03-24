@@ -1,4 +1,13 @@
 #!/bin/sh
 
 #mlton -default-ann 'allowFFI true' -codegen c -cc-opt '-O3' $*
-mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen x86 $*
+
+
+MACHINE=`uname -m`
+if [ "$MACHINE" == "x86_64" ];
+then mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen amd_64 $*
+else mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen x86    $*
+fi
+
+
+

@@ -224,7 +224,7 @@
       [(List ,elt) (guard 
 		    (and (wsc2-variant-mode? (compiler-invocation-mode))
 			 ;; For java we implement the equals method:
-			 (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
+			 (not (java-mode? (compiler-invocation-mode)))))
        (let ([ptr1 (unique-name "lsptr1")]
 	     [ptr2 (unique-name "lsptr2")]
 	     [el1  (unique-name "lsel1")]
@@ -351,7 +351,7 @@
       ;; TEMP FIXME: [2007.12.22] For now only for the new C backend.
       [(Array ,elt) (guard 
 		     (and (wsc2-variant-mode? (compiler-invocation-mode))
-			  (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
+			  (not (java-mode? (compiler-invocation-mode)))))
        (let* ([arr (unique-name "arr")]
 	      [ind (unique-name "ind")])
 	 `(let ([,arr (Array ,elt) ,expr])
@@ -379,7 +379,7 @@
 
 
       [Complex (guard (and (wsc2-variant-mode? (compiler-invocation-mode))
-			  (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame))))
+			   (not (java-mode? (compiler-invocation-mode)))))
        (maybe-bind-tmp expr 'Complex
         (lambda (tmp)
 	  `(begin ,(recur 'Float `(realpart ,tmp))

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+export REGFLAG=wsjava
+
+rm -rf WSQuery.java WSQuery*.class
+
+#wsjavaME $*
+if wsc $* -no-gcc;
+then echo ERROR, wsc failed with code $?.; exit 1;
+else echo
+fi
+
+if [ -f WSQuery.java ];
+then 
+echo Invoking javac:
+javac WSQuery.java;
+fi

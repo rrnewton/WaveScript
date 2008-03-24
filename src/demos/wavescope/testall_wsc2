@@ -15,11 +15,12 @@ function go () {
     fi
     echo >> $RUN
     echo $1 : >> $RUN
-    if ! ./query.exe | head -n 20 >> $RUN; then exit 1; fi
+    #./query.exe | head -n 20 >> $RUN
+    ./query.exe -n 2 >> $RUN
+    RETVAL=$?
+    echo Query returned with val: $RETVAL
+    if [ "$RETVAL" != "0" ]; then exit 1; fi
 }
-
-
-
 
 
 

@@ -20,11 +20,16 @@
 #define FALSE 0
 
 // Handle Cons Cell memory layout:
-#define CONSCELL(ty)   ((int*)malloc(2 * sizeof(void*) + sizeof(ty)) + 2);
+// Cell consists of [cdr] [RC] [car]
+#define CONSCELL(ty)   (void*)((char*)malloc(sizeof(void*)+sizeof(int) + sizeof(ty)) + sizeof(void*)+sizeof(int));
 #define CAR(ptr)       (*ptr)
-#define CDR(ptr)       (((void**)ptr)[-2])
-#define SETCDR(ptr,tl) (((void**)ptr)[-2])=tl
+#define CDR(ptr)       (*(void**)(((char*)ptr) - (sizeof(void*) + sizeof(int))))
+#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (sizeof(void*) + sizeof(int))))[0])=tl
 #define SETCAR(ptr,hd) ptr[0]=hd
+
+// This was from when RC's where the same size as a void* pointer:
+//#define CDR(ptr)       (((void**)ptr)[-2])
+//#define SETCDR(ptr,tl) (((void**)ptr)[-2])=tl
 
 // Handle Array memory layout:
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
@@ -38,6 +43,7 @@
 
 
 // Handle RCs on Cons Cells and Arrays:
+// A RC is the size of an int currently:
 #define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
 #define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
 #define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)

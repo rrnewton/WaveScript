@@ -67,7 +67,7 @@
 	 default-case-symbol
          
 	 compiler-invocation-mode 
-	 embedded-mode? wsc2-variant-mode?
+	 embedded-mode? wsc2-variant-mode? java-mode?
 ;	 regiment-compile-sums-as-tuples
 	 regiment-verbosity 
 	 regiment-track-source-locations
@@ -388,6 +388,7 @@
     wavescript-compiler-xstream
     wavescript-compiler-c
     wavescript-compiler-nesc
+    wavescript-compiler-java
     wavescript-compiler-javame
     ;;   'regiment-simulator ;; [2007.03.20] This is now deprecated!!
     ))
@@ -403,11 +404,17 @@
 	'(wavescript-compiler-nesc
 	  wavescript-compiler-javame)))
 
+(define (java-mode? mode)
+  (memq mode
+	'(wavescript-compiler-java
+	  wavescript-compiler-javame)))
+
 ;; These are the compiler variants that are based on emit-c2.ss
 (define (wsc2-variant-mode? mode)
   (memq mode
 	'(wavescript-compiler-c
 	  wavescript-compiler-nesc
+	  wavescript-compiler-java
 	  wavescript-compiler-javame)))
 
 ;; This parameter controls what optimizations the compiler applies.

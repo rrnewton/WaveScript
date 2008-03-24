@@ -24,9 +24,15 @@
 //   WSC -O3                      :   1.0
 //   ws.opt                       :   4.3
 
-
 // To be fair Caml & Scheme aren't really using Int16s... only MLton & c++ are.
 // I should also revisit my file reading code in C++...
+
+/* [2008.03.24]
+  Just ran this again with the new wsjava backend.
+  Using sun's jvm, running ten tuples takes 2 seconds in java, 1.9 Scheme,
+  .8 mlton and .4 wsc2/gcc.
+*/
+
 
 //fun assert_eq(a,b) if not(a==b) then wserror("Assert failed: "++ a ++" not equal "++ b);
 

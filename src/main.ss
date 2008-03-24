@@ -662,7 +662,7 @@
   ;; To reduce the complexity of the wsc2 backend, we get rid of strings:
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
 	     ;; But java needs them:
-	     (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame)))
+	     (not (java-mode? (compiler-invocation-mode))))
     (ws-run-pass p embed-strings-as-arrays)
 
     (DEBUGMODE 
@@ -675,7 +675,7 @@
 
   ;; wsc2 and derivatives support monomorphic backends that need a little help here:
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
-	     (not (eq? (compiler-invocation-mode) 'wavescript-compiler-javame)))   
+	     (not (java-mode? (compiler-invocation-mode))))
     (ws-run-pass p type-annotate-misc)
     (ws-run-pass p generate-comparison-code))
 
@@ -1070,7 +1070,8 @@
 				  (match (compiler-invocation-mode)
 				    [wavescript-compiler-c <emitC2>]
 				    [wavescript-compiler-nesc <tinyos>]
-				    [wavescript-compiler-javame <javaME>]))
+				    [wavescript-compiler-java   <java>]
+				    [wavescript-compiler-javame <javame>]))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 		  		  		
 		  (printf "\n Node operators:\n\n")
@@ -1676,6 +1677,11 @@
 	     (let ((port (acquire-input-prog 'wscomp)))
 	       (apply wscomp port input-parameters 'wstiny opts)))]
 
+	  [(wsjava)
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-java])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wsjavame opts)))]
+
 	  ;; Java ME target:
 	  [(wsjavame)
 	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-javame])
@@ -1692,7 +1698,8 @@
 	   (let ()
 	     (define exp (acquire-input-prog 'wsmlton))
 	     (apply wsmlton exp input-parameters opts))]
-	  
+
+	  [else (error 'main "unhandled mode ~s" mode)]	  
 	  ))))
 
       ;; Loop goes through the arguments, processing them accordingly:

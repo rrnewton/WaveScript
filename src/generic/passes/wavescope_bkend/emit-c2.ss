@@ -38,6 +38,7 @@
 	   <emitC2>
 	   <tinyos>
 	   <tinyos-timed>
+	   <java>
 	   <javaME>
 	   )
   (chezprovide )  
@@ -679,7 +680,7 @@
       [(while ,test ,[Loop -> bod])
        (let ([flag (unique-name "grosshack")])
 	 (make-lines 
-	  (block `("while (1)") 
+	  (block `("while (",(Const self #t id)")")
 		 (list 
 		  ;(lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
 		  (let-values ([(bind* init*) ((SplitBinding self emitter)
@@ -2345,6 +2346,7 @@ event void Timer000.fired() {
     [Float  (list "new Float("obj")")]
     [Double (list "new Double("obj")")]
     [Bool   (list "new Boolean("obj")")]
+    [Complex (error 'box-scalar "Complex numbers not handled in java yet.")]
     [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
 	       (error 'emitC2:Value "cannot handle unsigned types in java yet")]
     [,else (ASSERT (not (scalar-type? ty)))
@@ -2359,6 +2361,7 @@ event void Timer000.fired() {
     [Float  (list "(((Float)"obj").floatValue())")]
     [Double (list "(((Double)"obj").doubleValue())")]
     [Bool   (list "(((Boolean)"obj").booleanValue())")]
+    [Complex (error 'unbox-scalar "Complex numbers not handled in java yet.")]
     [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
 	       (error 'emitC2:Value "cannot handle unsigned types in java yet")]
     [,else (ASSERT (not (scalar-type? ty)))
@@ -2367,44 +2370,47 @@ event void Timer000.fired() {
 
 (define ___PrimApp
   (specialise! PrimApp <java>
-    (lambda (next self app kontorig mayberetty)
+    (lambda (next self app kont mayberetty)
       (define (Simp x)  (Simple self x))
       (match app
+
 	[(show ,[(TyAndSimple self) -> ty obj])
-	 (define wrapped 
-	   (match ty
-	     [Int   (list "new Integer("obj")")]
-	     [Int32 (list "new Integer("obj")")]
-	     [Int16 (list "new Short("obj")")]
-	     [Int64 (list "new Long("obj")")]
-	     [Float  (list "new Float("obj")")]
-	     [Double (list "new Double("obj")")]
-	     [Bool   (list "new Boolean("obj")")]
-	     [,unsigned (guard (memq unsigned '(Uint16 Uint32 Uint64)))
-			(error 'emitC2:Value "cannot handle unsigned types in java yet")]
-	     [,else (ASSERT (not (scalar-type? ty)))
-		    ;; Otherwise it's already a reference type
-		    obj]))
-	 (kontorig (list wrapped ".toString() "))]
-	
+	 (define wrapped (box-scalar ty obj))
+	 (kont (list wrapped ".toString() "))]	
 	[(string-append ,[Simp -> left] ,[Simp -> right])
-	 (kontorig (list left " + " right))]
+	 (kont (list left " + " right))]
 
 	[(cons ,[Simp -> a] ,[Simp -> b])
 	 (match mayberetty
 	   [(List ,elt)
-	    ;(kontorig (list "new Cons<"(Type self elt)">("a", "b")"))
-	    (kontorig (list "new Cons("(box-scalar elt a)", "b")"))
+	    ;(kont (list "new Cons<"(Type self elt)">("a", "b")"))
+	    (kont (list "new Cons("(box-scalar elt a)", "b")"))
 	    ])]
-
+	[(List:is_null ,[Simp -> pr]) (kont `("(",pr" == null)"))]
 	[(car (assert-type (List ,ty) ,[Simp -> x]))
-	 ;(kontorig (cast (Type self ty) (unbox-scalar ty (list x ".car"))))
-	 (kontorig (unbox-scalar ty (list x ".car")))
-	 ;(kontorig (list x ".car"))
+	 ;(kont (cast (Type self ty) (unbox-scalar ty (list x ".car"))))
+	 (kont (if (scalar-type? ty)
+		   (unbox-scalar ty (list x ".car"))
+		   (cast (Type self ty) (list x ".car"))))
+	 ;(kont (list x ".car"))
 	 ]
-	[(cdr ,[Simp -> x]) (kontorig (list x ".cdr"))]
-	
-	[,else (next)]))))
+	[(cdr ,[Simp -> x]) (kont (list x ".cdr"))]
+
+       [(wsequal? ,[(TyAndSimple self) -> ty left] ,[Simp -> right])
+	(if (scalar-type? ty)	    
+	    (kont `("(",left" == ",right")"))
+	    ;; Horrible hack to get around javac's conservative nature:
+	    (if (equal? left "null")
+		(kont `("(",right" == null)"))
+		(kont `("((",left" == null && null == ",right") || (",left" != null && ",left".equals(",right")))")))	    
+	    )]
+
+       [(Array:length ,arr)
+	(define _arr (Simp arr))
+	(if (equal? (peel-annotations arr) 'Array:null) ;; Hack for Java's benefit.
+	    (kont "0 /* arr len of null */")
+	    (kont `("(",_arr" == null ? 0 : ",_arr".length)")))]
+       [,else (next)]))))
 
 (define ___Simple
   (specialise! Simple <java>
@@ -2417,20 +2423,36 @@ event void Timer000.fired() {
 (define ___Effect 
   (specialise! Effect <java>
     (lambda (next self emitter)
+      (define (Simp x)  (Simple self x))
       (lambda (xp)
 	(match xp
 	  [(print ,[(TyAndSimple self) -> ty x])
 	   (make-lines `("outstrm.print(",x");\n"))]
+	  [(wserror ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
 	  [,oth ((next) oth)])))))
 
 
 (__specreplace BuildOutputFiles <java> (self includes freefundefs state ops init driver)  
   ;; We can store this in a separate file at some point:
   (define header "
-  void parseOptions(int argc, String[] argv) {}\n
-  void BASE(char x) {}\n
-  private PrintStream outstrm;\n
-  public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }\n  
+  void parseOptions(int argc, String[] argv) {}
+
+  private int wsjava_tuplimit = 10;
+  private int outputcount = 0;
+
+  void BASE(char x) {
+    outputcount++;
+    if (outputcount == wsjava_tuplimit) System.exit(0);
+  }
+
+  void wserror(String msg) {
+    //throw new Exception(\"wserror: \"+msg);
+    System.out.println(\"wserror: \"+msg);
+    System.exit(1);
+  }
+
+  private PrintStream outstrm;
+  public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }
 
   // Can't use generics because I don't think Jave ME supports java 5.
   public class Cons {
@@ -2452,6 +2474,11 @@ event void Timer000.fired() {
     }
   }
 */
+
+  public static void main(String[] argv) {
+    WSQuery theQuery = new WSQuery(System.out);
+    theQuery.main(argv.length, argv);
+  }
 
 ")
   (define bod 
@@ -2502,22 +2529,26 @@ event void Timer000.fired() {
 (__specreplace incr-heap-refcount <java> (self ty ptr) (make-lines ""))
 (__specreplace decr-heap-refcount <java> (self ty ptr) (make-lines ""))
 
-
-#;
-       [(Array:length ,[Simp -> arr])
-	;; Length is -2 and refcount is -1:
-	(kont `("ARRLEN(",arr")"))
-	]
-
-(__specreplace array-constructor-codegen <emitC2> (self len init ty kont)
+(__specreplace array-constructor-codegen <java> (self len init ty kont)
   (define tmp (unique-name "tmparr"))
   (match ty
     [(Array ,elt)
+     (define newstmt (list "new "(Type self elt)"["len"]"))
      (if (not init)
-	 (kont (list "new "(Type self elt)"["len"]"
-			   ))
-	 (error 'finish "me")
-	 )]))
+	 (kont newstmt)
+	 (let* ([tmp (unique-name "tmp")]
+		[_tmp (Var self tmp)]
+		;; If it's not a scalar type should we cast to object?
+		[_init (if (scalar-type? elt) (Simple self init)
+			   (cast "Object" (Simple self init)))]
+		[_ty (Type self ty)])
+	   (append-lines 
+	    ;((Binding self (emit-err 'array-constructor-codegen)) 
+	    ;(list tmp ty `(assert-type ,ty (Array:makeUNSAFE ,len))))
+	    (make-lines (list 
+			  _ty" "_tmp" = "newstmt";\n"
+			  "java.util.Arrays.fill("_tmp", 0,"len" - 1, "_init");\n"))
+	    (kont _tmp))))]))
 
 
 ;;================================================================================
