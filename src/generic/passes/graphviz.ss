@@ -91,8 +91,8 @@
 	       (filter id 
 		 (map (get-annotation 'measured-cycles)
 		   (append se* oe*)))))
-	    (define min_ticks (apply min all_ticks))
-	    (define max_ticks (apply max all_ticks))
+	    (define min_ticks (apply min +inf.0 all_ticks))
+	    (define max_ticks (apply max -inf.0 all_ticks))
 	    (define span (- max_ticks min_ticks))
 	    (lambda (ticks)
 	      (define fraction (if (zero? span) 0 (/ (- ticks min_ticks) span)))

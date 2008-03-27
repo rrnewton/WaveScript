@@ -44,6 +44,7 @@ FIFO:make       ::  Int -> Queue t;
 FIFO:empty      ::  Queue t -> Bool;
 FIFO:enqueue    :: (Queue t, t) -> ();
 FIFO:dequeue    ::  Queue t -> t;
+FIFO:peek       :: (Queue t,Int) -> t;
 
 // WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
@@ -170,6 +171,8 @@ stream_iterate   :: ((a, st) -> (List b * st), st, Stream a) -> Stream b;
 
 sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
 deep_stream_map  :: (a -> b, SS a) -> SS b;
+sigseg_fold      :: ((acc,a) -> acc, acc, Sigseg a) -> acc;
+
 //deep_stream_map2 :: (a -> b, SS b) -> ()
 
 
@@ -456,12 +459,17 @@ type Queue t = Array (List t);
 namespace FIFO {
   fun make(n) Array:make(1,[]);
   fun empty(q) q[0] == [];
+  /*
   fun enqueue(q,x) q[0] := x ::: q[0];
   fun dequeue(q) {
     let (x,ls) = List:choplast(q[0]);
     q[0] := ls;
     x
   }
+  */
+  fun enqueue(q,x) q[0] := List:append(q[0], [x])
+  fun dequeue(q) { x=q[0].head; q[0] := q[0].tail; x }
+  fun peek(q,ind) List:ref(q[0], ind);
 }
 
 // [2007.07.29] This array based implementation exposed some problems
@@ -933,7 +941,7 @@ fun zipN(bufsize, slist) {
 // just substitute the growing fifos to derive the "Easy"
 // implementations.
 
-
+fun defaultZipN(slist) zipN(DEFAULT_ZIP_BUFSIZE, slist)
 
 // This is an internal helper that can be parameterized in two ways to
 // form "syncN" and "syncN_no_delete".
@@ -1421,6 +1429,14 @@ fun sigseg_map (f, ss) {
   arr = Array:build(ss.width, fun(i) f(ss[[i]]));
   toSigseg(arr, ss.start, ss.timebase)
 }
+
+fun sigseg_fold (fn, zer, ss) {
+  // We don't want to use the sigseg indexing operator [[]]:
+  Array:fold(fn,zer, toArray(ss));
+}
+
+Sigseg:fold = sigseg_fold
+Sigseg:map  = sigseg_map
 
 // This doesn't create a shared structure:
 fun deep_stream_map(f,sss)

@@ -27,6 +27,7 @@
     LeftBrace RightBrace
     LeftAngleBrk RightAngleBrk 
     LeftSqrBrk RightSqrBrk
+    HashLeftSqrBrk
 
     ::: $
     += -= *= := -> = == != >= <= < > <-
@@ -124,6 +125,8 @@
    ["{" 'LeftBrace]  ["}" 'RightBrace]
    ["[" 'LeftSqrBrk] ["]" 'RightSqrBrk]
    ["<" 'LeftAngleBrk] [">" 'RightAngleBrk]
+   ["#[" 'HashLeftSqrBrk]
+
 ;   ["sin" (token-FNCT sin)]
 
    ;; Variables:
@@ -514,8 +517,8 @@
 
     ;; Hack to enable my syntax for sigseg refs!!
     (exp-raw 
-	  ;; Lists:
-	  [(LeftSqrBrk expls RightSqrBrk) (consify $2)]
+	  ;; List constants:
+          [(LeftSqrBrk expls RightSqrBrk) (consify $2)]
 	  [(notlist) $1])
     (expls [() '()]
 	   [(expls+) $1])
@@ -538,6 +541,11 @@
          [(STRING) $1]
          [(true) ''#t] 
 	 [(false) ''#f]	 
+
+	  ;; Array constants, added [2008.03.26]
+	  ;; HACK: for now this parses as a conversion from the list form!!
+	  [(HashLeftSqrBrk expls RightSqrBrk) `(List:toArray ,(consify $2))]
+
 #;
          [(DOTVARS) 
            (let loop ([ls (cdr $1)] [acc (car $1)])

@@ -19,19 +19,26 @@
 #define TRUE  1
 #define FALSE 0
 
+#define PTRSIZE sizeof(void*)
+#define RCSIZE sizeof(int)
+#define ARRLENSIZE sizeof(int)
+
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
-#define CONSCELL(ty)   (void*)((char*)malloc(sizeof(void*)+sizeof(int) + sizeof(ty)) + sizeof(void*)+sizeof(int));
+#define CONSCELL(ty)   (void*)((char*)malloc(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
 #define CAR(ptr)       (*ptr)
-#define CDR(ptr)       (*(void**)(((char*)ptr) - (sizeof(void*) + sizeof(int))))
-#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (sizeof(void*) + sizeof(int))))[0])=tl
+#define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
+#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
 #define SETCAR(ptr,hd) ptr[0]=hd
+#define FREECONS(ptr)  free((char*)ptr - sizeof(void*) - sizeof(int))
 
 // This was from when RC's where the same size as a void* pointer:
 //#define CDR(ptr)       (((void**)ptr)[-2])
 //#define SETCDR(ptr,tl) (((void**)ptr)[-2])=tl
 
 // Handle Array memory layout:
+// An array consists of [len] [RC] [elem*]
+// Both len and RC are currently ints:
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
 //#define ARRLEN(ptr)        ((int*)ptr)[-2]
 // This should not be used on a null pointer:
@@ -40,7 +47,7 @@
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
 #define ARRPTR(ptr)        (((void**)ptr)-2),
-
+#define FREEARR(ptr)       free((int*)ptr - 2)
 
 // Handle RCs on Cons Cells and Arrays:
 // A RC is the size of an int currently:

@@ -580,6 +580,16 @@
   ;(inspect (deep-assq-all 'cast p))
 ;  (inspect (strip-annotations p 'src-pos))
 
+
+  ;; NOTE: wavescript-language won't work until we've removed complex constants.
+  ;; Quoted arrays work differently in WS than in Scheme.
+  ;; (WS has a freshness guarantee.)
+  (ws-run-pass p remove-complex-constant)
+  ;; Now fill in some types that were left blank in the above:
+  ;; Shouldn't need to redo LUB because the types are already restrictive???
+  (IFDEBUG (do-late-typecheck) (void))
+
+
   ;; This is expensive because it lifts generic ops, and retypechecks:
   ;; (Like we later do for polymorphic constants)
   (ws-run-pass p degeneralize-arithmetic)
@@ -597,21 +607,9 @@
   ;; Pull constants up to the top.
   ;(ws-run-pass p lift-complex-constant)
 
-  ;; NOTE: wavescript-language won't work until we've removed complex constants.
-  ;; Quoted arrays work differently in WS than in Scheme.
-  ;; (WS has a freshness guarantee.)
-  (ws-run-pass p remove-complex-constant)
 
-  ;; Now fill in some types that were left blank in the above:
-  ;; Shouldn't need to redo LUB because the types are already restrictive???
-  (IFDEBUG (do-late-typecheck) (void))
-
-  ;; Trying this *before* unlift.  
-  ;; The function here is to strip all but the essential type annotations.
-;  (ws-run-pass p strip-irrelevant-polymorphism)
-
-  ;; This three-step process is inefficient, but easy:
-  ;; This is a hack, but a pretty cool hack.
+  ;; This lift/typecheck/unlift process is inefficient, but easy:
+  ;; A hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
   (do-late-typecheck)
   
@@ -620,6 +618,8 @@
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
   (ws-run-pass p unlift-polymorphic-constant)   
+
+;(inspect (filter (lambda (at) (and (pair? (rac at)) (eq? (car (rac at)) 'quote))) (deep-assq-all 'assert-type p)))
 
   (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
 
@@ -1079,8 +1079,6 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
-
-		  (inspect prog)
 
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))

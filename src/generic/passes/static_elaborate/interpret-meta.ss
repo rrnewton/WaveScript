@@ -199,17 +199,17 @@
     (define (node-name? str)
       (and (> (string-length str) 5)
 	   (eq? (string-ref str 0) #\N)
-	   (eq? (string-ref str 0) #\o)
-	   (eq? (string-ref str 0) #\d)
-	   (eq? (string-ref str 0) #\e)
+	   (eq? (string-ref str 1) #\o)
+	   (eq? (string-ref str 2) #\d)
+	   (eq? (string-ref str 3) #\e)
 	   ;(eq? (string-ref str 0) #\_)
 	   ))
     (define a-node (node-name? (symbol->string a)))
     (define b-node (node-name? (symbol->string b)))
     (cond
-     [(and a-node (not b-node)) a]
-     [(and b-node (not a-node)) b]
-     [(not (eq? 'anonstreamop b)) #t]
+     [(and a-node (not b-node)) #t]
+     [(and b-node (not a-node)) #f]
+     [(eq? 'anonstreamop b) #t]
      [(= 1 (string-length (symbol->string b))) #t]
      [else #f]))
   (define (prettify-names! names vals)
@@ -223,7 +223,7 @@
 			 ;; [2007.11.12] Trying just overwriting it always... 
 			 ;; Is the *last* name a good name?
 			 (unless (and (streamop-name val)
-				      (better-name? name (deunique-name (streamop-name val))))
+				      (not (better-name? name (deunique-name (streamop-name val)))))
 ;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)			   
 			   (set-streamop-name! val (unique-name name)))]))
       names vals))

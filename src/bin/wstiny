@@ -71,16 +71,23 @@ function pc() {
    wsc2-gcc;
 }
 
+# A default:
+if [ "$THEMOTE" == "" ]; then THEMOTE=/dev/ttyUSB0; fi
+
 # This builds both... for now this is only for telos:
 if [ -f "WSQuery.nc" ] && 
    [ -f "query.c" ]; 
 then
-  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC), first Telos:"
+  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC)"
+  pc;
+  echo;echo "BUILDING TINYOS COMPONENTS:" 
   echo "============================================================"
   #ps aux | grep java
   killjavahack
-  make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt
-  pc;
+  
+  if ! make -f Makefile.tos2 telosb bsl,$THEMOTE install 2> .TOS_build_log.txt
+  then echo "Error $? while building telosb, see .TOS_build_log.txt"; exit 1;
+  fi 
 elif [ -f "WSQuery.nc" ]; 
 then tossim;
   

@@ -96,7 +96,9 @@
     (guard (eq? (peel-annotations timer) 'timer)
 	   (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
 	   ;; Only when we're NOT splitting into server/node do we do this:
-	   (not (memq 'split (ws-optimizations-enabled))))
+	   ;(not (memq 'split (ws-optimizations-enabled)))
+	   ;; NAH, doing it all the time... don't yet support server side timers in a split program.
+	   )
     `(app TOS:timer ,@args)]
 
    [(app ,timer ,[args] ...) (guard (eq? (peel-annotations timer) 'timer))

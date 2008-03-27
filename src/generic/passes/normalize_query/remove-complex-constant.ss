@@ -90,6 +90,7 @@
 	;(when (and (not origty) (not (string? orig)) (not (boolean? orig)))
 	;  (printf " INFERRING TYPE OF CONST: ~s\n" orig))
 	;; Empty tenv is ok, it's just a constant:
+	;(ASSERT origty)
 	(let loop ([x orig] 
 		   ;[type (or origty (recover-type `',orig (empty-tenv)))]
 		   ;[type (recover-type `',orig (empty-tenv))]
@@ -154,7 +155,14 @@
 	    (values 'nullseg type #f)]
 	   
 	   ;[Int (values `',x type #f)]
-	   ;[,othernum (guard (memq othernum num-types))  (values `(assert-type ,othernum ',x) type #f)]
+
+	   ;; HACK:
+	   [(NUM ,_) (values `(gint ',x) type #f)]
+	   #;
+	   [,othernum (guard (memq othernum num-types))  
+		      (printf "NUM TYPE, wrapping: ~s ~s\n" othernum x)
+		      (values `(assert-type ,othernum ',x) type #f)]
+
 	   ;; Anything else doesn't need an assert-type:
 	   [,_ (guard (simple-constant? x)) (values `',x type #f)]
 	   ;[(simple-constant? x) (values `',x type #f)]

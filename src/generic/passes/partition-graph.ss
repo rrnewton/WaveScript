@@ -61,10 +61,15 @@
 	  (if (and entry (eq? (cadr entry) name))
 	      (car ops)
 	      (loop (cdr ops)))))))
-(define (op->downstream op ops) (ASSERT op)  
-  (lookup (cadr (ASSERT (assq 'outgoing (cdr op)))) ops))
-(define (op->upstream op ops) (ASSERT op)  
-  (lookup (cadr (ASSERT (assq 'incoming (cdr op)))) ops))
+;; Returns the first of the downstream operators.
+(define (op->downstream op ops) 
+  (define ls (ASSERT (assq 'outgoing (cdr op))))
+  (ASSERT op) (ASSERT (= (length ls) 2))
+  (lookup (cadr ls) ops))
+(define (op->upstream op ops) 
+  (define ls (ASSERT (assq 'incoming (cdr op))))
+  (ASSERT op) (ASSERT (= (length ls) 2))
+  (lookup (cadr ls) ops))
 
 (define (op->inputtype op)   
   (match op
@@ -74,6 +79,10 @@
      (match (assq 'code rest)
        [(code (iterate ,ann (let ,binds (lambda ,args (,inty ,vqty) ,bod)) ,instrm))
 	`(Stream ,inty)])]))
+
+(define (op-outgoing op)
+  (ASSERT (symbol? (car op)))
+  (cdr (ASSERT (assq 'outgoing (cdr op)))))
 
 (define not-inline_TOS?
   (lambda (src) 
@@ -103,7 +112,7 @@
 ;; NOTE: There's no real need to add in cutpoints as part of this
 ;; pass, we can simply do that afterwards.
 (define-pass partition-graph-by-namespace
-    (trace-define (node-name? nm)
+    (define (node-name? nm)
       (define str (symbol->string nm))
       (define len (string-length "Node:"))
       (and (> (string-length str) len)
@@ -120,6 +129,7 @@
 		   (eq? (car code) 'inline_TOS))
 	       (values (list xp) '())
 	       (values '() (list xp)))])))
+    ;; For a given operator 
     (define (Operator op)
        (let ([name (cadr (assq 'name (cdr op)))]
 	     [type (cadr (assq 'output-type (cdr op)))]
@@ -149,7 +159,9 @@
 		     (map (lambda (down) (make-cutpoint type name down)) ;; server cuts
 		       serv-downstrm)))]
 
+	  ;; We're either node-side or feed to somebody that's node side:
 	  [(or me? (ormap id down?*))      (values (list op) '())] ;; Node.
+
 	  ;[(and (not all-up?) some-up?)   (values '() (list op))] ;; Server, e.g. merge.
 	  [else                           (values '() (list op))]) ;; Server.
 	))
@@ -163,6 +175,29 @@
 		   (operators ,[Operator -> node-oper** server-oper**] ...)
 		   (sink ,base ,basetype)	,meta* ...))
 	  (define nodeops (apply append node-oper**))
+	  (define serverops (apply append server-oper**))
+	  (define allops (append nodeops serverops))
+
+	  ;; Here we do a post-processing step.
+	  ;; For now, any supposedly "server" ops that feed into known node-ops get sucked onto the node also:
+	  (let ([nametable (set->hashtab (map-filter opname nodeops))])
+	    (let loop ([ops serverops] [acc '()])
+	      (define rejects
+		(filter (lambda (op)
+			  (ormap (trace-lambda INTABLE (name) (hashtab-get nametable name))
+				 (op-outgoing op)))
+		  ops))
+	      (if (null? rejects) 
+		  (begin 		    
+		    ;(inspect (vector 'REJECTED acc))
+		    ;; Finished, modify partitions:
+		    (set! nodeops (append acc nodeops))
+		    (set! serverops (difference serverops acc)))
+		  (begin 
+		    ;; Add the new rejects to the table:
+		    (for-each (lambda (reject) (hashtab-set! nametable reject #t)) acc)
+		    (loop (difference ops rejects) (append rejects))))))
+
 	  (let-match ([(,[(Source nodeops) -> node-src** server-src**] ...) src*])
 	  
 	    ;; TODO: Should filter the constants appropriately:
@@ -176,7 +211,7 @@
 	     `(,input-language 
 	       '(graph (const ,cnst* ...) (init ,@init*)
 		       (sources ,@(apply append server-src**))
-		       (operators ,@(apply append server-oper**))
+		       (operators ,@serverops)
 		       (sink ,base ,basetype)
 		       ,@meta*)))
 	    )]))]

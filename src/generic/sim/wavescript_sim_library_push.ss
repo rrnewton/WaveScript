@@ -1863,7 +1863,8 @@
 	(printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
 	(for-each LoadFile! files)
 	;; After it's loaded there'd better be access:
-	(ASSERT foreign-entry? name)
+	(unless (foreign-entry? name)
+	  (error 'foreign "failure to register foreign function in Scheme: ~s" name))
 	(match type
 	  [(,[Convert -> args] ... -> ,ret)
 	   (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])

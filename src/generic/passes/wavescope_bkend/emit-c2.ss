@@ -269,23 +269,21 @@
 ;; vs. relegated to separately defined functions.
 (__spec build-free-fun-table! <emitC2> (self heap-types)
   (define fun-def-acc '()) ;; mutated below  
+  (define proto-acc '()) ;; mutated below
+
+  ;; This adds to a table of names for free-functions:
   (define (add-to-freefuns! ty fun)
     ;; Inefficient: should use hash table:
     (unless (assoc ty (slot-ref self 'free-fun-table))
       (slot-set! self 'free-fun-table 
                  (cons (cons ty (debug-return-contract lines? fun))
                        (slot-ref self 'free-fun-table)))))
-  (define (add-to-defs! ty def)
-    ;; Inefficient: should use hash table:
-    (unless (assoc ty (slot-ref self 'free-fun-table))
-      (set! fun-def-acc (cons def fun-def-acc))))
   
   ;; First we add the freefuns name entries, because we might need
   ;; those to generate the defs.
   (for-each
       (lambda (ty) 
 	(define name (type->name self ty))
-	(define default-fun_name `("void free_",name"(",(Type self ty)" ptr)"))
 	(define default-specialized_fun
 	  (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
 	(let loop ([ty ty])
@@ -298,59 +296,65 @@
 	     [(List ,elt) (add-to-freefuns! ty default-specialized_fun)]
 	     [(Array ,elt)
 	      (if (not (heap-type? self elt))
-		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("free((int*)",ptr" - 2);\n"))))
+		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("FREEARR(",ptr");\n"))))
 		  (add-to-freefuns! ty default-specialized_fun))])))
     heap-types)
 
   ;; Now, for every name we've added to the table, we need to generate a definition:  
-  (apply append-lines 
-   (map (lambda (entry) 
-	  (define ty (car entry))
-	  (define name (type->name self ty))
-	  (define default-fun_name `("void free_",name"(",(Type self ty)" ptr)"))
-	  (define default-specialized_fun
-	    (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
-	  (let loop ([ty ty])
-	       (match ty ;; <- No match recursion!
-		 [(Struct ,tuptyp)
-		  (let ([flds (cdr (ASSERT (assq tuptyp (slot-ref self 'struct-defs))))])
-		    (make-lines
-		     (list
-		     "/* Freeing struct: "(sym2str tuptyp)"*/\n"
-		     (block default-fun_name
-			    (map (match-lambda ((,fldname ,ty))
-				   (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)))))
-			      flds)))))]
-		 [(List ,elt)
-		  ;; We always build an explicit function for freeing list types:
-		  ;; Here's a hack to enable us to recursively free the same type.
-		  (make-lines 
-		   (block default-fun_name
-			  (block (list "if(ptr)") ;; If not null.
-				 `(
-				   ;; Recursively decr tail:
-				   ,(Type self `(List ,elt))" ptr2 = CDR(ptr);\n"
-				   ,(lines-text (gen-decr-code self `(List ,elt) "ptr2"))
-				   ;; If heap allocated, free the CAR:
-				   ,(if (heap-type? self elt)
-					(lines-text (gen-decr-code self elt `("(*ptr)")))
-					"")
-				   "free((int*)ptr - 2);\n"))))]
-		 [(Array ,elt)
-		  (if (not (heap-type? self elt))
-		      (make-lines "")
-		      (let ([ind (Var self (unique-name "i"))])
-			(make-lines 
-			 (block default-fun_name
-				`("int ",ind";\n"
-				  ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
-					  ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
-					  (begin ;(loop elt) ;; For side effect
-						 (lines-text (gen-decr-code self elt `("ptr[",ind"]")))))
-				  "free((int*)ptr - 2);\n")))
-			))])))
-     (slot-ref self 'free-fun-table)))
-  )
+  (let ([final-defs
+	 (apply append-lines 
+		(map (lambda (entry) 
+		       (define ty (car entry))
+		       (define name (type->name self ty))
+		       (define default-fun_name `("void free_",name"(",(Type self ty)" ptr)"))
+		       (define default-specialized_fun
+			 (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
+		       (let loop ([ty ty])
+			 (match ty ;; <- No match recursion!
+			   [(Struct ,tuptyp)
+			    (set! proto-acc (cons default-fun_name proto-acc))
+			    (let ([flds (cdr (ASSERT (assq tuptyp (slot-ref self 'struct-defs))))])
+			      (make-lines
+			       (list
+				"/* Freeing struct: "(sym2str tuptyp)"*/\n"
+				(block default-fun_name
+				       (map (match-lambda ((,fldname ,ty))
+					      (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)))))
+					 flds)))))]
+			   [(List ,elt)
+			    (set! proto-acc (cons default-fun_name proto-acc))
+			    ;; We always build an explicit function for freeing list types:
+			    ;; Here's a hack to enable us to recursively free the same type.
+			    (make-lines 
+			     (block default-fun_name
+				    (block (list "if(ptr)") ;; If not null.
+					   `(
+					     ;; Recursively decr tail:
+					     ,(Type self `(List ,elt))" ptr2 = CDR(ptr);\n"
+					     ,(lines-text (gen-decr-code self `(List ,elt) "ptr2"))
+					     ;; If heap allocated, free the CAR:
+					     ,(if (heap-type? self elt)
+						  (lines-text (gen-decr-code self elt `("(*ptr)")))
+						  "")
+					     "FREECONS(ptr);\n"))))]
+			   [(Array ,elt)
+			    (if (not (heap-type? self elt))
+				(make-lines "")
+				(let ([ind (Var self (unique-name "i"))])
+				  (set! proto-acc (cons default-fun_name proto-acc))
+				  (make-lines 
+				   (block default-fun_name
+					  `("int ",ind";\n"
+					    ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
+						    ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
+						    (begin ;(loop elt) ;; For side effect
+						      (lines-text (gen-decr-code self elt `("ptr[",ind"]")))))
+					    "FREEARR(ptr);\n")))
+				  ))])))     
+		  (slot-ref self 'free-fun-table)))])
+    (append-lines 
+     (make-lines (map (lambda (x) (list x ";\n")) proto-acc))
+     final-defs)))
 
 
 
@@ -839,7 +843,7 @@
 	   (and (not init) (heap-type? self elt))))
 
      (let* ([_elt (Type self elt)]
-	    [size `("sizeof(",_elt") * ",len" + 2*sizeof(int)")]
+	    [size `("(sizeof(",_elt") * ",len") + RCSIZE + ARRLENSIZE")]
 	    [tmp (Var self (unique-name "arrtmp"))]
 	    [alloc (if zero-fill?
 		       `("calloc(",size", 1)")
@@ -850,19 +854,19 @@
 	 (list
 	  `("int* ",tmp" = (int*)0;\n")
 	  (block `("if (",len")")
-		 `(,tmp" = ((int*)",alloc" + 2);\n"
+		 `(,tmp" = (int*)((char*)",alloc" + RCSIZE + ARRLENSIZE);\n"
 		       "CLEAR_RC(",tmp");\n"           
 		       "SETARRLEN(",tmp", ",len");\n"  
 		       ;; Now fill the array, if we need to:
 		       ,(if (and init (not zero-fill?))
 			    (let ([i (unique-name "i")]
 				  [tmp2 (unique-name "arrtmpb")]
-				  [len2 (unique-name "lenmin1")])
+				  [lensub1 (unique-name "lenmin1")])
 			      (list `(,_elt"* ",(Var self tmp2) " = ",cast";\n")
-				    `("int ",(Var self len2) " = ",len" - 1;\n")
+				    `("int ",(Var self lensub1) " = ",len" - 1;\n")
 				    (lines-text
 				     ((Effect self (emit-err 'array:make-constant))
-				      `(for (,i '0 ,len2)
+				      `(for (,i '0 ,lensub1)
 					   (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
 			    "")))))
 	(kont cast)))]))
@@ -1306,7 +1310,33 @@ int main(int argc, char **argv)
 		   ((Emit self down*) ''UNIT) ;; Code
 		   (make-lines ()) ;; State 	
 		   rate)
-	   ])])]))
+	   ])]
+
+#;       
+       [(__foreign_source ',name ',filels '(Stream ,type))
+	(define ty (Type self type))
+	(define arg (unique-name "tmp"))
+	(ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
+					;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
+		(and (not (null? filels)) (string->number (car filels))))
+	(for-each (lambda (file)
+		    (let ([ext (extract-file-extension file)])
+		      (cond
+		       [(member ext '("nc" "h"))
+			(add-include! (list "\"" file "\""))]
+		       [else (error 'emit-c:foreign 
+				    "cannot load NesC extension from this type of file: ~s" file)])))
+	  (cdr filels))
+	;; Create a function for the entrypoint.
+	;; It should post a task!!
+	(slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
+	(slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
+					   (ForeignSourceHook self name
+							      (lines-text ((Emit self down*) arg)))))
+	(values #f #f #f #f)]
+       
+
+)]))
 
 (__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
   (make-lines 
@@ -1998,40 +2028,47 @@ event void PrintfControl.stopDone(error_t error) {
       (match xp
 	;; TODO: streams of sensor data
 	[((name ,nm) (output-type ,ty) (code ,cd) (outgoing ,down* ...))
-	 (match cd 
-	   [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot ',cleanup)
-	    ;; FIXME: conf1!!!
-	    (slot-cons! self 'top-acc top)
-	    (slot-cons! self 'config-acc conf2)
-	    (slot-cons! self 'module-acc mod1)
-	    (slot-cons! self 'impl-acc mod2)
-	    (slot-cons! self 'boot-acc boot)
-	    (slot-cons! self 'cleanup-acc cleanup)
-	    (values #f #f #f #f)]
-	   [(__foreign_source ',name ',filels '(Stream ,type))
-	    (define ty (Type self type))
-	    (define arg (unique-name "tmp"))
-	    (ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
-		    ;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
-		    (and (not (null? filels)) (string->number (car filels))))
-	    (for-each (lambda (file)
-			(let ([ext (extract-file-extension file)])
-			  (cond
-			   [(member ext '("nc" "h"))
-			    (add-include! (list "\"" file "\""))]
-			   [else (error 'emit-c:foreign 
-					"cannot load NesC extension from this type of file: ~s" file)])))
-	      (cdr filels))
-	    ;; Create a function for the entrypoint.
-	    ;; It should post a task!!
-	    (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
-	    (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
-					       (ForeignSourceHook self name
-								  (lines-text ((Emit self down*) arg)))))
-	    (values #f #f #f #f)]
+	 (let loop ([cd cd])
+	   (match cd 
+	     [(inline_TOS ',top ',conf1 ',conf2 ',mod1 ',mod2 ',boot ',cleanup)
+	      ;; FIXME: conf1!!!
+	      (slot-cons! self 'top-acc top)
+	      (slot-cons! self 'config-acc conf2)
+	      (slot-cons! self 'module-acc mod1)
+	      (slot-cons! self 'impl-acc mod2)
+	      (slot-cons! self 'boot-acc boot)
+	      (slot-cons! self 'cleanup-acc cleanup)
+	      (values #f #f #f #f)]
+	     
+	     ;; Allowing normal inline_C and treating it as a special case of inline_TOS:
+	     [(inline_C ',top ',initfun)	      
+	      (define boot (if (equal? initfun "") "" (string-append initfun "();\n")))
+	      (loop `(inline_TOS ',top '"" '"" '"" '"" ',boot '""))]
 
-	   #;
-	   [,_ (next)])]))))
+	     [(__foreign_source ',name ',filels '(Stream ,type))
+	      (define ty (Type self type))
+	      (define arg (unique-name "tmp"))
+	      (ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
+					;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
+		      (and (not (null? filels)) (string->number (car filels))))
+	      (for-each (lambda (file)
+			  (let ([ext (extract-file-extension file)])
+			    (cond
+			     [(member ext '("nc" "h"))
+			      (add-include! (list "\"" file "\""))]
+			     [else (error 'emit-c:foreign 
+					  "cannot load NesC extension from this type of file: ~s" file)])))
+		(cdr filels))
+	      ;; Create a function for the entrypoint.
+	      ;; It should post a task!!
+	      (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
+	      (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
+						 (ForeignSourceHook self name
+								    (lines-text ((Emit self down*) arg)))))
+	      (values #f #f #f #f)]
+
+	     #;
+	     [,_ (next)]))]))))
 
 
 (__specreplace BuildTimerSourceDriver <tinyos> (self srcname* srccode* srcrates*)
