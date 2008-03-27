@@ -1186,8 +1186,12 @@
 
   (define randomI s:random)
 
-  (define logF log)
-  (define logD log)
+  (define (logF n) ;(real-part (log n))
+    (if (< n 0) (wserror "logF: cannot accept negative numbers")
+	(log n)))
+  (define (logD n) 
+    (if (< n 0) (wserror "logD: cannot accept negative numbers")
+	(log n)))
 
   (define exptI expt)
   (define exptF expt)

@@ -572,6 +572,8 @@
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
+;(print-graph #f)(inspect (strip-annotations p 'src-pos))
+
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
 
@@ -648,7 +650,7 @@
   (ws-run-pass p reduce-primitives) ; w/g 
  
   (IFDEBUG (do-late-typecheck) (void))
-  (ws-run-pass p type-annotate-misc)
+  (ws-run-pass p type-annotate-misc) ;; This pass is really slow...
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (wsc2-variant-mode? (compiler-invocation-mode))

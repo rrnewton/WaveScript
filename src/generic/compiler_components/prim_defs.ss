@@ -518,7 +518,7 @@
     (randomI (Int) Int)
 
 ;    (logI (Int) Int)
-;    (logF (Float) Float)
+    (logF (Float) Float)
     (logD (Double) Double)
     
     (exptI (Int Int) Int)

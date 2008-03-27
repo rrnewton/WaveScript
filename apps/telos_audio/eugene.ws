@@ -8,7 +8,8 @@ include "coeffs.ws"
 // Constant parameters
 
 SAMPLING_RATE_IN_HZ = 256
-NUM_CHANNELS        = 21
+//NUM_CHANNELS        = 21
+NUM_CHANNELS        = 2
 SAMPLES_PER_WINDOW  = (2*SAMPLING_RATE_IN_HZ)
 
 
@@ -26,44 +27,103 @@ threshold    = 0.1
 consWindows = 3 // number of consecutive windows of detections;
 
 // ============================================================
-// Stream operators
+// Classifiers
 
-fun SVMOutput(a,b,c,d) ()
-fun BinaryClassify(a,b) ()
+fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
+  using Array;
 
+  //diff_norm_squared :: (Array Float, Array Float) -> Float;
+  fun diff_norm_squared(a, b) {
+    // vectors should be the same length
+    foldi(fun(i,acc,ai) {
+        x = logF(ai);
+        y = b[i];
+        acc + (x-y) * (x-y);
+      }, 
+      0, a)
+  };
+  smap(fun(arr)
+         foldi(fun(i, ySVM, vec) {
+	        norm :: Float = diff_norm_squared(arr, vec);
+   	        //norm = 0.0;
+	        denom = svmKernelPar * arr.length.gint;
+                ySVM + svmCoeffs[i] * expF((0-norm)/denom)
+              },
+	      svmBias, svmVectors), // wonder if this will work   
+       strm)
+}
 
-fun GetEven(s) s
-fun GetOdd(s) s
+fun BinaryClassify(threshold, consWins, strm) {
+  using FIFO;
+  iterate ySVM in strm {
+    state { 
+      detect = { tmp = make(consWins);
+                 for i = 1 to consWins { tmp.enqueue(false) };  
+   	         tmp }
+    }
+    detect.dequeue();
+    if ySVM > threshold then {
+      detect.enqueue(true);
+      // if both detections were true, then we trigger
+      // we can do this more intelligently, but just saving previous info
+      emit FIFO:andmap(fun(x) x, detect);
+    } else {
+      detect.enqueue(false);
+      emit false;
+    }
+  }
+}
 
+// ============================================================
+// Stream / Signal operators
 
-fun AddOddAndEven(s1,s2) s1
+fun FlattenZip(strmlst)
+  smap(Array:flatten, defaultZipN(strmlst))
+
+fun AddOddAndEven(s1,s2) 
+  iterate (first,second) in zip2_sametype(s1,s2) {
+    state { _stored_value = 0 }
+    using Array;
+    assert_eq("AddOddAndEven", first.width, second.width);
+    buf = make(first.width, 0);
+    for i = 0 to first.width - 1 {
+      buf[i] := first[[i]] + _stored_value;
+      _stored_value = second[[i]]; // we don't add the last odd guy, but store
+    };
+    emit toSigseg(buf, first.start, first.timebase);
+  }
+
+fun _Get(offset, strm)
+  iterate seg in strm {
+    arr = Array:build(seg.width / 2, fun(i) seg[[(i*2)+offset]]);
+    emit toSigseg(arr, seg.start, seg.timebase);
+  }
+
+fun GetOdd (strm) _Get(1, strm)
+fun GetEven(strm) _Get(0, strm)
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
 fun FIRFilter(filter_coeff, strm) {
     using Array;
-    len = filter_coeff.length;
+    nCoeff = filter_coeff.length;
     
     _flipped_filter_coeff =  // array of _filter_coefficients
-      build(len, fun(i) filter_coeff[len-1-i]);      
+      build(nCoeff, fun(i) filter_coeff[nCoeff-1-i]);      
 
     iterate seg in strm {
       state {
         // remembers the previous points needed for convolution
-        _memory = { fifo = FIFO:make(len+1);
-	
-		    //      _memory.push_back((T)0);????
-
-                    for i = 1 to len { FIFO:enqueue(fifo, 0) };
-                    fifo
-                  }
+        _memory = { fifo = FIFO:make(nCoeff+1);
+                    for i = 1 to nCoeff { FIFO:enqueue(fifo, 0) };
+                    fifo }
       }
       buf = seg.toArray;
-      outputBuf = make(len,0);
-      for j = 0 to len-1 {
+      outputBuf = make(seg.width,0);
+      for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
-        for i = 0 to len-1 {
+        for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
         };
 	FIFO:dequeue(_memory);
@@ -140,31 +200,32 @@ fun process_channel(stm) {
 // ============================================================
 // Wire together the application stream graph:
 
-inputs :: List (Stream Float);
+// These are the types for the top-level streams:
+inputs  :: List (Stream Float);
+flat    :: Stream (Array Float);
+svmStrm :: Stream Float;
+detect  :: Stream Bool;
+
 inputs = {
   //prefix = "patient8_files/XXXXE3I5_";
   prefix = "patient36_file16/";
   ticktock = timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
                   (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
-                   :: Stream Int16)), channelNames)
+                   :: Stream Int16)), List:prefix(channelNames, NUM_CHANNELS))
 }
-
-// get the SVM box that we're going to use
-
-svmClass = SVMOutput(SVs, SVCoeff, 30, svmKernelPar)
-detect = BinaryClassify(threshold, consWindows)
 
 filtered = map(process_channel, inputs)
 
-//flatten = BinaryClassify( svmClass( FlattenZip(filtered)))
+flat = FlattenZip(filtered);
 
-//main = inputs.head
-main = filtered.head
+// Hack: currently uses global variables: svmVectors, svmCoeffs, and svmBias
+nVectors = 30
+pruned = Array:build(nVectors, fun(i) svmVectors[i])
+svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
+
+detect = BinaryClassify(threshold, consWindows, svmStrm)
+
+main = detect
 
 // ============================================================
-
-/*
-
-
-*/

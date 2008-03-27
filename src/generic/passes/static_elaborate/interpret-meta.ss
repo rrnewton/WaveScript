@@ -967,8 +967,12 @@
 		   ;; We must continue processing the inlined function:
 		   (loop (caddr ent))
 		   v))]
-
-	 [(,lett ,binds ,bod) (guard (memq lett '(let letrec lazy-letrec)))
+	
+	 ;; [2008.03.27] We process the rhs first.  Once those
+	 ;; substitutions are finished, we see if we can carry them
+	 ;; along further through the new bindings.
+	 [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,bod) (guard (memq lett '(let letrec lazy-letrec)))
+	  (define binds (map list lhs* ty* rhs*))
 	  (define (lambind? b)  (lambda? (caddr b)))
 	  (define (constbind? b) (match (peel-annotations (caddr b))
 				   [',c (simple-constant? c)] [,_ #f]))
@@ -978,9 +982,16 @@
 	  ;; how we handle let in the same way as letrec.  The lhs*
 	  ;; simply won't occur in the rhs* for a let..
 	  (if (null? tosubst)
-	      (fallthru `(,lett ,remainder ,bod))
+	      (begin 
+		;(printf "   (not subst) ~s\n" (map deunique-name (map car remainder)))
+		;(if (memq 'pred (map deunique-name (map car remainder))) (inspect remainder))
+		;(fallthru `(,lett ,remainder ,bod))
+		`(,lett ,remainder ,(loop bod))
+		)
 	      ;; This is an inefficent hack, but we loop through again just to change the subst.
-	      (Expr `(,lett ,remainder ,bod) (append tosubst subst)))]
+	      (begin
+		;(printf " Substituting ~s ~s\n" (map car tosubst) (map car remainder))
+		(Expr `(,lett ,remainder ,bod) (append tosubst subst))))]
 
 	 ;; [2007.08.30] Adding basic eta-reduction also.
 	 ;; FIXME: Make sure this can't break an iterate's special syntactic structure.

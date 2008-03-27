@@ -45,6 +45,8 @@ FIFO:empty      ::  Queue t -> Bool;
 FIFO:enqueue    :: (Queue t, t) -> ();
 FIFO:dequeue    ::  Queue t -> t;
 FIFO:peek       :: (Queue t,Int) -> t;
+FIFO:elements   ::  Queue t -> Int;
+FIFO:andmap     :: (t -> Bool, Queue t) -> Bool;
 
 // WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
@@ -56,15 +58,18 @@ List:foreachi   :: ((Int,a) -> (), List a) -> ();
 List:fold1      :: ((t, t) -> t, List t) -> t;
 //List:foldi      :: (((Int, acc, t) -> acc), acc, List t) -> acc;
 List:choplast   :: List t -> (t * List t);
+List:andmap     :: (t -> Bool, List t) -> Bool;
+List:prefix     :: (List t, Int) -> List t;
 
 foldRange       :: (Int, Int, t, (t, Int) -> t) -> t;
 
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
-// [2007.08.12] BUG!!! THIS IS THE WRONG TYPE... BUT IT CHECKS??
+// [2007.08.12] BUG!!! THIS IS THE WRONG TYPE... BUT IT CHECKS??:
 //Array:foldi     :: ((Int, acc, t) -> acc, acc, Array t) -> t;
 Array:copy      :: Array t -> Array t;
 Array:fill      :: (Array t, t) -> ();
 Array:concat    :: (List (Array t)) -> Array t;
+Array:flatten   :: (Array (Array t)) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 
@@ -446,6 +451,27 @@ namespace List {
     (p1`head, List:reverse(acc))
   }
 
+  fun andmap(pred,ls) {
+    go = Mutable:ref(true);
+    ptr = Mutable:ref(ls);
+    while go && not(List:is_null(ptr)) {
+      go := pred(ptr.head);
+      ptr := ptr.tail;
+    };
+    go
+  }
+
+  fun prefix(ls, len) {
+    acc = Mutable:ref([]);
+    ptr = Mutable:ref(ls);
+    cnt = Mutable:ref(0);
+    while cnt < len {
+      acc := ptr.head ::: acc;
+      ptr := ptr.tail;
+      cnt += 1;
+    };
+    List:reverse(acc);
+  }
 }
 
 
@@ -470,6 +496,8 @@ namespace FIFO {
   fun enqueue(q,x) q[0] := List:append(q[0], [x])
   fun dequeue(q) { x=q[0].head; q[0] := q[0].tail; x }
   fun peek(q,ind) List:ref(q[0], ind);
+  fun elements(q) List:length(q[0]);
+  fun andmap(fn,q) List:andmap(fn,q[0]);
 }
 
 // [2007.07.29] This array based implementation exposed some problems
@@ -554,8 +582,20 @@ namespace Array {
 
   // Simple wrapper that keeps an extra piece of state to track where
   // we are in the input.  Must be used with fold left!
-  fun foldi (f, zer, arr)
-    fold(fun ((i,acc), elm) (i+1, f(i,acc,elm)), (0,zer), arr)
+  // BUG FIXME FIXME FIXME FIXME: Having type checker problems with this:
+  /*
+  fun foldi (f, zer, arr) {
+    let (_, result) = fold(fun ((i,acc), elm) (i+1, f(i,acc,elm)), (0,zer), arr);
+    result
+  }
+  */
+  fun foldi (fn, zer, arr) {
+    acc = Mutable:ref(zer);
+    for i = 0 to arr.Array:length - 1 {
+      acc := fn(i,acc, arr[i]);
+    };
+    acc
+  }
 
   fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
 
@@ -575,6 +615,20 @@ namespace Array {
       blit(newarr, cntr, ar, 0, len);
       cntr + len
     }, 0, loa);
+    newarr // final result.
+  }
+
+  // Append an array of arrays.
+  fun flatten(aoa) {
+    using Array;
+    size = fold(fun(sz,ar) sz+length(ar), 0, aoa);
+    newarr = makeUNSAFE(size);
+    // Here we call a fold for effect only.
+    fold(fun (cntr, ar) {
+      len = length(ar);
+      blit(newarr, cntr, ar, 0, len);
+      cntr + len
+    }, 0, aoa);
     newarr // final result.
   }
   
