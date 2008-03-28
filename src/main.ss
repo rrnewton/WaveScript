@@ -38,6 +38,9 @@
     ;; of the program as can be evaluated.  The residual had better follow our
     ;; restrictions on implementable Regiment programs.
     static-elaborate    
+
+    remove-complex-constant  ;; [2008.03.28] Moving this, sad to touch it at all since this backend is dead.
+
     degeneralize-arithmetic
     rename-vars ;; We run again after elaborator.
     retypecheck
@@ -47,7 +50,7 @@
     ;; (5) Now we normalize the residual in a number of ways to
     ;; produce the core query language, then we verify that core.
     reduce-primitives    
-    remove-complex-constant  
+;    remove-complex-constant  
     retypecheck
 
     uncover-free             
@@ -1073,7 +1076,7 @@
 				    [wavescript-compiler-c <emitC2>]
 				    [wavescript-compiler-nesc <tinyos>]
 				    [wavescript-compiler-java   <java>]
-				    [wavescript-compiler-javame <javame>]))
+				    [wavescript-compiler-javame <javaME>]))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 		  		  		
 		  (printf "\n Node operators:\n\n")

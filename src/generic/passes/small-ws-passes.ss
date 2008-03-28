@@ -866,10 +866,8 @@
 
 	      ;; Similarly:
 	      [(,totally_ignored ,args ...)	       
-	       (guard (eq-any? totally_ignored 'inline_C 'inline_TOS
-			       ;; After metaprog eval the operands to foreign should also be quoted constants:
-			       'foreign 'foreign_source 
-			       ))
+	       ;; After metaprog eval the operands to foreign should also be quoted constants:
+	       (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
 	       (ASSERT (andmap quoted-constant? args))
 	       (cons totally_ignored args)]
 	      ;; 
@@ -956,7 +954,7 @@
 	  `(,ignore_first ,_ ,second)]
 	 [(,safety . ,_) 
 	  (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile)))
-	  (error 'embed-strings-as-arrays "missed this: ~s" (cons safety _))]
+	  (error 'lift-immutable-constants "missed this: ~s" (cons safety _))]
 
 	 [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
 			 (not (type-containing-mutable? (export-type (type-const const))))

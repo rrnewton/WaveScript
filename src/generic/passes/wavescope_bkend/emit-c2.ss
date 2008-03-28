@@ -28,6 +28,7 @@
 
 (module emit-c2 mzscheme 
   (require  "../../../plt/common.ss"
+	    "../../../plt/hashtab.ss"
             "insert-refcounts.ss"
             ;"nominalize-types.ss"
 	    "emit-c.ss"

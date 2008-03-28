@@ -164,6 +164,23 @@ fun powInt16 n x =
     else loop (Int16.*(n, acc)) (i - 1)
   in loop (Int16.fromInt 1) x end
 
+fun powInt32 n x = 
+  let fun loop acc i =
+    if i = 0
+    then acc
+    else loop (Int32.*(n, acc)) (i - 1)
+  in loop (Int32.fromInt 1) x end
+
+
+fun powInt64 n x = 
+  let fun loop acc i =
+    if i = 0
+    then acc
+    else loop (Int64.*(n, acc)) (i - 1)
+  in loop (Int64.fromInt 1) x end
+
+
+
 (* Takes a Word64 to a complex struct. *)
 val unpack_complex = 
   let val bytes = Word8Array.array(8, Word8.fromInt 0)

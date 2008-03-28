@@ -18,7 +18,7 @@ fftw.so: fftw.c fftw.ss
 #	gcc -fPIC -shared -o fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.3/boot/$(DIR) -lfftw3
 #
 # [2007.07.06] This isn't currently working under Mac OS:
-	if [ `uname` == "Darwin" ]; \
+	if [ `uname` = "Darwin" ]; \
 	then  gcc -fPIC -dynamiclib -o fftw.o fftw.c -I$(REGIMENTD)/depends/petite_chez_scheme7.3/boot/$(DIR) -lfftw3; \
         else  gcc -fPIC -shared -o fftw.o fftw.c -I$(REGIMENTD)/depends/petite_chez_scheme7.3/boot/$(DIR) -lfftw3; \
 	fi;

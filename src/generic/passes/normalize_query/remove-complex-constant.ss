@@ -41,10 +41,22 @@
 	 [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
 
       ;; Catch the type assertion at the binding site?
-					;[(let )]
+      ;;[(let )]
 
       ;; This is not very safe now that we have more numeric types than Scheme representations:
       [(quote ,datum)   (do-datum datum #f)]
+
+      ;; Don't lift out these complex constants!
+      [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+      [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]      
+
+      [(lambda ,formals ,types ,[result])
+       (match result
+	 [#(,body ,body-b*) 
+	  ;;(vector `(lambda ,formals ,body) body-b*)
+	  ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
+	  (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
+	 )]
       
       ;; [2008.03.28] This handles things like "timer", utilize available type info:
       [(,prim ,arg* ...) (guard (regiment-primitive? prim))	     
@@ -63,17 +75,6 @@
        (define cb    (apply append (map (lambda (v) (vector-ref v 1)) tmp)))
        (vector (cons prim _args) cb)]
 
-      ;; Don't lift out these complex constants!
-      [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
-      [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
-      
-      [(lambda ,formals ,types ,[result])
-       (match result
-	 [#(,body ,body-b*) 
-	  ;;(vector `(lambda ,formals ,body) body-b*)
-	  ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
-	  (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
-	 )]
       [,other (fallthrough other)]))
     
   ;; Returns vector of two things: new expr and list of const binds

@@ -195,7 +195,7 @@
     [,else #f]))
 
 ;; Taken instantiated or uninstantiated type:
-(define constant-typeable-as? 
+(trace-define constant-typeable-as? 
   (lambda (c ty)
     (if (eq? c 'BOTTOM) #t
 	(match ty

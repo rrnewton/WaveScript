@@ -1,6 +1,7 @@
 
 (module graphviz mzscheme
   (require "../../plt/common.ss"
+	   "../../plt/hashtab.ss"
            "../compiler_components/c_generator.ss")
   (provide output-graphviz
            )

@@ -72,6 +72,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   )
 (define (fpf . args)
   (apply fprintf log args)
+  (apply printf args)
   (flush-output log))
 (define-syntax ASSERT
   (lambda (x)
@@ -153,8 +154,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (if (file-exists? webfile) (delete-file webfile))
       (fprintf orig-console "Copying log to website. ~a\n" webfile)
       (copy-file logfile webfile)
-      (ASSERT (system (format "chgrp www-data ~a" webfile)))
-      (ASSERT (system (format "chmod g+r ~a" webfile)))
+      (system (format "chgrp www-data ~a" webfile));(ASSERT )
+      (system (format "chmod g+r ~a" webfile)); (ASSERT )
       ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
@@ -175,8 +176,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Partway through refactoring all the tests below to use this helper:
 (define (run-test title cmd) 
-  (fpf (format "~a~a~a\n"
-	title
+  (fpf title)
+  (fpf (format "~a~a\n"
 	(list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
 	(code->msg! (system/timeout cmd))))
   (post-to-web (format "intermediate/rev_~a" svn-revision)))
@@ -244,8 +245,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 
-
-
 ;; Here we begin running tests:
 
 (fpf "\nRunning from directory: ~a\n\n" test-root)
@@ -263,10 +262,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Now that we're sure petite runs let's get the machine type:
 (define machine-type 
   (begin 
-    (ASSERT (eqv? 0 (system/exit-code "echo '(machine-type)' | petite -q > machine_type.txt")))
+    (ASSERT (eqv? 0 (system/exit-code (format "echo '(machine-type)' | ~a/depends/petite -q > machine_type.txt" test-root))))
     (read (open-input-file "machine_type.txt"))))
 
 (current-directory test-directory)
+
 (run-test 
  "petite: Load & run unit tests:"
  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> petite_UNIT_TESTS.log")
@@ -450,14 +450,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript C++ Backend (uses engine):\n")
 (fpf "========================================\n")
 
-#; ;; Disabling
+
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   ;; This runs faster if we load Regiment pre-compiled:
  ;(current-directory test-directory) (ASSERT (system "make chez"))
+#; ;; Disabling
   (run-test "wsc: Running WaveScript Demos with WSC:"
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
-  (run-test "wsc2: Running (select) WaveScript Demos with WSC2:"
+  (run-test "wsc2: Running (select) Demos with WSC2:"
 	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
   )
 
@@ -634,14 +635,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
               (format "ws.early pothole4.ws -n 3 -exit-error &> ~a/wsearly_pothole4.log" test-directory))))
 
 ;; TEMP FIXME DISABLED
-#|
-       (fpf "wscaml: Compiling pothole4 app:               ~a\n"
-	    (code->msg! (system/timeout 
-             (format "wscaml pothole4.ws -exit-error &> ~a/wscaml_pothole_build.log" test-directory))))
-       (fpf "wscaml: Running pothole4:                     ~a\n"
-	    (code->msg! (system/timeout 
-             (format "./query.caml.exe &> ~a/wscaml_pothole4_run.log" test-directory))))
-|#
+
+;        (fpf "wscaml: Compiling pothole4 app:               ~a\n"
+; 	    (code->msg! (system/timeout 
+;              (format "wscaml pothole4.ws -exit-error &> ~a/wscaml_pothole_build.log" test-directory))))
+;        (fpf "wscaml: Running pothole4:                     ~a\n"
+; 	    (code->msg! (system/timeout 
+;              (format "./query.caml.exe &> ~a/wscaml_pothole4_run.log" test-directory))))
+
 
        (fpf "wsmlton: Compiling pothole4 app:              ~a\n"
 	    (code->msg! (system/timeout 

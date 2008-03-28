@@ -3,7 +3,11 @@
 #include <fftw3.h>
 #include <time.h>
 
-#include <scheme.h>
+//#include <scheme.h>
+// Unfortunately this depends on version:
+//#include "../../depends/petite_chez_scheme7.4/boot/i3le/scheme.h"
+// Here's a symlink that will be permanent:
+#include "../../depends/petite_chez_scheme/boot/i3le/scheme.h"
 #include <stdio.h>
 #include <stdlib.h>
 

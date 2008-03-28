@@ -390,7 +390,7 @@
     wavescript-compiler-nesc
     wavescript-compiler-java
     wavescript-compiler-javame
-    ;;   'regiment-simulator ;; [2007.03.20] This is now deprecated!!
+    regiment-simulator ;; [2007.03.20] This is now deprecated!!
     ))
 
 (define-regiment-parameter compiler-invocation-mode 

@@ -2150,7 +2150,7 @@ int main(int argc, char ** argv)
 		   Array:map Array:fold
 
 		   ifftC2R fftC ifftC
-		   exptI logD logF
+		   exptI logD logF ^_ ^I16 ^I32 ^I64 ^U16 ^D 
 
 		   internString uninternString
 

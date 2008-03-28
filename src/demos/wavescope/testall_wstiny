@@ -6,6 +6,15 @@ RUN=.__runquery_output_wstiny.txt
 echo > $COMP
 echo > $RUN
 
+EXEC=./query.py
+TELOS=
+
+# Also support testing 
+if [ "$1" == "telosb" ];
+then EXEC=java PrintfClient
+     TELOS=true
+fi
+
 function go () {
     echo; echo; echo; echo; echo; echo; echo;  
     echo "testall_wstiny: Running $1"
@@ -13,7 +22,8 @@ function go () {
     if ! wstiny $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
-    if ! ./query.py | head -n 20 >> $RUN; then exit 1; fi
+    if [ "$TELOS" != "" ]; then make -f Makefile.tos2 telosb bsl,$THEMOTE install; fi 
+    if ! $EXEC | head -n 20 >> $RUN; then exit 1; fi
 }
 
 
@@ -84,3 +94,8 @@ go "demo3d_tuples_of_tuples.ws"
 # go "demo10a_simple_merge.ws"
 # go "demo10b_repeated_rewindow.ws"
 
+
+go "demo11g_tinyos.ws"
+if [ "$TELOS" != "" ]; then go "demo11h_readstream.ws" ; fi
+if [ "$TELOS" != "" ]; then go "demo11i_recorder.ws" ; fi  
+go "demo11j_tos_fft.ws"

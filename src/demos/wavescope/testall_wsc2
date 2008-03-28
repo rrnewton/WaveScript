@@ -1,4 +1,4 @@
-#!/bin/bash
+	#!/bin/bash
 
 COMP=.__wsc2Messages.txt
 RUN=.__runquery_output_wsc2.txt
@@ -52,9 +52,13 @@ go "demo3d_tuples_of_tuples.ws"
 # #TEMP# go "demo3e_hashtables.ws"
 go "demo3f_morelists.ws"
 go "demo3g_arrays.ws" 
-go "demo3h_advancedlists.ws"
+
+go "demo3h_advancedlists.ws"  ## [2008.03.28] Having segfaults!!
+
 go "demo3i_conversion_prims.ws"
-go "demo3j_numbers.ws"
+
+go "demo3j_numbers.ws" ## [2008.03.28] Having segfaults!!
+
 # go "demo3k_uniontype.ws"
 # go "demo3l_moreunions.ws"
 go "demo3m_sigsegs.ws"
