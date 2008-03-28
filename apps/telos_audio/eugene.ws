@@ -1,7 +1,5 @@
 
-
 include "stdlib.ws"
-
 include "coeffs.ws"
 
 // ============================================================
@@ -36,7 +34,7 @@ fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
   fun diff_norm_squared(a, b) {
     // vectors should be the same length
     foldi(fun(i,acc,ai) {
-        x = logF(ai);
+        x = logF(absF(ai));
         y = b[i];
         acc + (x-y) * (x-y);
       }, 
@@ -227,5 +225,3 @@ svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 detect = BinaryClassify(threshold, consWindows, svmStrm)
 
 main = detect
-
-// ============================================================

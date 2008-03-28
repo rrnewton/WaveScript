@@ -141,8 +141,13 @@
 				       ;; Extra node configuration fields:
 				       (string-append
 					;; First, set the shape:
+					(begin 
+					  (unless (eq? streamop 'iterate)
+					    (printf "streamop: ~s\n" streamop))
+					  "")
 					(match streamop
 					 [_merge ", shape=point"]
+					 [unionN ", shape=point"]					 
 					 [,_ (guard embedded-node?) 
 					     (if (assq 'floating annot)
 						 ;", shape=octagon"

@@ -915,6 +915,7 @@
 	    ;; These are the same as their C++ names:
 	    [(cos sin tan acos asin atan)   (sym2str var)]
 	    [(absF absD absI absI16 absI64)         "abs"]
+	    [(logF logD)                            "log"]
 	    [(roundF)                             "round"]
 	    [(sqrtI sqrtF)                         "sqrt"]
 	    ;; These are from the WS runtime library:
@@ -1028,17 +1029,20 @@
        
        [(,infix_prim ,[Simp -> left] ,[Simp -> right])	
 	(guard (assq infix_prim infix-arith-prims))
-	(define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
-	(define result
-	  (case infix_prim
-	    [(=) "=="]
-	    [(< > <= >=) (sym2str infix_prim)]
-	    [else 
-	     (match (string->list (sym2str infix_prim))	  
-	       [(#\_ ,op ,suffix ...) (list->string (list op))]
-	       [(,op ,suffix ...)     (list->string (list op))])]))
-	(ASSERT (member result valid-outputs))
-	(kont (list "(" left " " result " " right ")"))]
+	(if (equal? "^" (substring (sym2str infix_prim) 0 1))
+	    (kont (list "pow("left", "right")")) ;; Actually this doesn't work for integers
+	    (let ()
+	      (define valid-outputs '("+" "-" "/" "*" "<" ">" "==" "<=" ">=")) ; "^"
+	      (define result
+		(case infix_prim
+		  [(=) "=="]
+		  [(< > <= >=) (sym2str infix_prim)]
+		  [else 
+		   (match (string->list (sym2str infix_prim))	  
+		     [(#\_ ,op ,suffix ...) (list->string (list op))]
+		     [(,op ,suffix ...)     (list->string (list op))])]))
+	      (ASSERT (member result valid-outputs))
+	      (kont (list "(" left " " result " " right ")"))))]
 
 
        ;;========================================

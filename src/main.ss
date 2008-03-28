@@ -582,11 +582,11 @@
   ;(inspect (deep-assq-all 'cast p))
 ;  (inspect (strip-annotations p 'src-pos))
 
-
   ;; NOTE: wavescript-language won't work until we've removed complex constants.
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
+
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
   (IFDEBUG (do-late-typecheck) (void))

@@ -24,40 +24,60 @@
 (define remove-complex-constant-grammar reduce-primitives-grammar)
 
 (define-pass remove-complex-constant
-  
+
+  ;; Returns expression and constant binds (inside a vector):  
   (define (do-datum datum ty)
     (let-values ([(exp type mutable?) (datum->code datum ty)])
       (if (or mutable? (simple-expr? exp))
 	  (vector exp ())
 	  (let ([tmp (unique-name 'tmp)])
-	    (vector tmp `((,tmp ,type ,exp))))
-	  )))
+	    (vector tmp `((,tmp ,type ,exp)))))))
+
+  ;; Returns expression and constant binds (inside a vector):
+  (define (Expr x fallthrough)
+    (match x 	    
+      [(assert-type ,ty (quote ,datum))
+       (match (do-datum datum ty)
+	 [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
+
+      ;; Catch the type assertion at the binding site?
+					;[(let )]
+
+      ;; This is not very safe now that we have more numeric types than Scheme representations:
+      [(quote ,datum)   (do-datum datum #f)]
+      
+      ;; [2008.03.28] This handles things like "timer", utilize available type info:
+      [(,prim ,arg* ...) (guard (regiment-primitive? prim))	     
+       (define tmp
+	 (map-prim-w-types 
+	  (lambda (arg ty)
+	    (match arg
+	      [(quote ,datum) 
+	       ;; We want to use extra info, but we don't want to *weaken* the info we have.
+	       (do-datum datum (types-compat? ty (type-const datum)))]
+	      [(annotations . ,_) ;; Hack, the stream operators will have these fake arguments.
+	       (vector arg '())]
+	      [,oth (Expr oth fallthrough)]))
+	  prim arg*))
+       (define _args (map (lambda (v) (vector-ref v 0)) tmp))
+       (define cb    (apply append (map (lambda (v) (vector-ref v 1)) tmp)))
+       (vector (cons prim _args) cb)]
+
+      ;; Don't lift out these complex constants!
+      [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+      [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
+      
+      [(lambda ,formals ,types ,[result])
+       (match result
+	 [#(,body ,body-b*) 
+	  ;;(vector `(lambda ,formals ,body) body-b*)
+	  ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
+	  (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
+	 )]
+      [,other (fallthrough other)]))
     
   ;; Returns vector of two things: new expr and list of const binds
-  [Expr (lambda (x fallthrough)
-          (match x 	    
-            [(assert-type ,ty (quote ,datum))
-             (match (do-datum datum ty)
-               [#(,e ,cb*) (vector `(assert-type ,ty ,e) cb*)])]
-
-	    ;; Catch the type assertion at the binding site?
-	    ;[(let )]
-
-	    ;; This is not very safe now that we have more numeric types than Scheme representations:
-            [(quote ,datum)   (do-datum datum #f)]
-            
-            ;; Don't lift out these complex constants!
-            [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
-            [(foreign_source ',name ',files) (vector `(foreign_source ',name ',files) ())]
-            
-            [(lambda ,formals ,types ,[result])
-             (match result
-               [#(,body ,body-b*) 
-                ;;(vector `(lambda ,formals ,body) body-b*)
-                ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
-                (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
-               )]
-            [,other (fallthrough other)]))]
+  [Expr Expr]
 
   [Fuser (lambda (results k)
          (match results
@@ -154,21 +174,29 @@
 	    (ASSERT (fx= 0 (vector-length (sigseg-vec x))))
 	    (values 'nullseg type #f)]
 	   
-	   ;[Int (values `',x type #f)]
+	   ;[Int (inspect x) (values `',x type #f)]
 
-	   ;; HACK:
-	   [(NUM ,_) (values `(gint ',x) type #f)]
+	   ;; HACK: if we don't have the type available, we make it generic again.
+	   [(NUM ,_) 
+	    ;(unless (fixnum? x) (printf "GINT : ~s\n" x))
+	    (values `(gint ',x) type #f)]
 	   #;
 	   [,othernum (guard (memq othernum num-types))  
 		      (printf "NUM TYPE, wrapping: ~s ~s\n" othernum x)
 		      (values `(assert-type ,othernum ',x) type #f)]
 
-	   ;; Anything else doesn't need an assert-type:
-	   [,_ (guard (simple-constant? x)) (values `',x type #f)]
-	   ;[(simple-constant? x) (values `',x type #f)]
-	   
+	   ;; [2008.03.28] No type info at all, restart and use
+	   ;; type-const which will give us *something*
+	   [(quote ,_) (loop x (export-type (type-const x)))]
+
 	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
 	   [,_ (guard (symbol? x))  (values `',x type #f)]
+
+	   [String (values `',x type #f)]
+	   ;; Anything else doesn't need an assert-type:
+	   [,_ (guard (simple-constant? x)) 
+	       (ASSERT scalar-type? type)
+	       (values `',x type #f)]
 
 	   [else (error 'datum->code "unhandled quoted constant: ~s" x)]
 	   )))))

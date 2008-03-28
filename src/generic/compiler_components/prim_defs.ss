@@ -114,6 +114,7 @@
     ;; Generalized zero.
     ;;(gzero ()   'a)  ;; Not yet.
 
+
     (g+ ((NUM a) (NUM a)) (NUM a))
     (g- ((NUM a) (NUM a)) (NUM a)) 
     (g* ((NUM a) (NUM a)) (NUM a)) 
@@ -124,6 +125,9 @@
 
     ;; Considering this instead of all the separate conversions.
     (cast_num ((NUM a)) (NUM b))
+
+    ;(lshift ((NUM a) Int) (NUM a))
+    ;(rshift ((NUM a) Int) (NUM a))
     
     ; Here are some "upcasts".
     ; Throws an error if you try to downcast??
@@ -313,42 +317,54 @@
     (*_ (Int Int) Int) 
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int) ;; exponentiation
+    ;(lshift_ (Int Int) Int) ;; bitwise shift
+    ;(rshift_ (Int Int) Int) 
 
     (_+I16 (Int16 Int16) Int16)
     (_-I16 (Int16 Int16) Int16) 
     (*I16 (Int16 Int16) Int16) 
     (/I16 (Int16 Int16) Int16) 
-    (^I16 (Int16 Int16) Int16) ;; exponentiation
+    (^I16 (Int16 Int16) Int16) 
+    ;(lshiftI16 (Int16 Int) Int16)
+    ;(rshiftI16 (Int16 Int) Int16) 
 
     (_+I32 (Int32 Int32) Int32)
     (_-I32 (Int32 Int32) Int32) 
     (*I32 (Int32 Int32) Int32) 
     (/I32 (Int32 Int32) Int32) 
-    (^I32 (Int32 Int32) Int32) ;; exponentiation
+    (^I32 (Int32 Int32) Int32) 
+    ;(lshiftI32 (Int32 Int) Int32)
+    ;(rshiftI32 (Int32 Int) Int32)
 
     (_+I64 (Int64 Int64) Int64)
     (_-I64 (Int64 Int64) Int64) 
     (*I64 (Int64 Int64) Int64) 
     (/I64 (Int64 Int64) Int64) 
-    (^I64 (Int64 Int64) Int64) ;; exponentiation
+    (^I64 (Int64 Int64) Int64) 
+    ;(lshiftI64 (Int64 Int) Int64)
+    ;(rshiftI64 (Int64 Int) Int64)
 
     (_+U16 (Uint16 Uint16) Uint16)
     (_-U16 (Uint16 Uint16) Uint16) 
     (*U16 (Uint16 Uint16) Uint16) 
     (/U16 (Uint16 Uint16) Uint16) 
-    (^U16 (Uint16 Uint16) Uint16) ;; exponentiation
+    (^U16 (Uint16 Uint16) Uint16) 
+    ;(lshiftU16 (Uint16 Int) Uint16)
+    ;(rshiftU16 (Uint16 Int) Uint16)
+
+    ;; Not currently supporting bitwise ops for non-integers:
 
     (_+. (Float Float) Float)
     (_-. (Float Float) Float)
     (*. (Float Float) Float)
     (/. (Float Float) Float)
-    (^. (Float Float) Float) ;; exponentiation
+    (^. (Float Float) Float) 
 
     (_+D (Double Double) Double)
     (_-D (Double Double) Double)
     (*D (Double Double) Double)
     (/D (Double Double) Double)
-    (^D (Double Double) Double) ;; exponentiation
+    (^D (Double Double) Double) 
 
     (_+: (Complex Complex) Complex)
     (_-: (Complex Complex) Complex) 

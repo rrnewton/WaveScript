@@ -1196,6 +1196,9 @@
       [absD   Real64.abs]
       [absC   Complex.magnitude]
 
+      [logF Real32.Math.ln]
+      [logD Real64.Math.ln]
+
       ;; How to convert a word to an int?
       ;[randomI "(fn n => Random.rand() )"]
 
@@ -1364,7 +1367,7 @@
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
-		   exptI logD logF
+		   exptI ;logD logF
 
 		   gnuplot_array gnuplot_array2d
 		   

@@ -1551,7 +1551,7 @@
     ;; Yuck, duplicated code, copying this from emit-c2.ss
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])	
      (guard (assq infix_prim infix-arith-prims))
-     (define valid-outputs '("+" "-" "/" "*" "^" "<" ">" "==" "<=" ">="))
+     (define valid-outputs '("+" "-" "/" "*" "<" ">" "==" "<=" ">=")) ; "^"
      (define result
        (case infix_prim
 	 [(=) "=="]
