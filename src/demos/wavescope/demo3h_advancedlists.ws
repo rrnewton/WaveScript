@@ -12,18 +12,17 @@ s2 = iterate( w in s1 ) {
   //emit List:reverse([w.start, w.end]);
 
   nested = [[99], [999,1001]];
-  println("Printing nested list: " ++ nested); //[2008.03.24] segfaults
+  //println("Printing nested list: " ++ nested); //[2008.03.24] segfaults
 
   //println("foo" ++ "bar\n");
   //print("foo "++nested ++ "\n" ++"\n");
   //print("\n");
 
-/*
   assert_prnt("nested self equal", nested==nested);
   assert_prnt("nested not equal", nested != nested`tail);
-*/
   emit List:reverse([10, 30]);
 };
+
 
 s3 = iterate( x in s2) {
   emit List:append(x, x);
@@ -45,5 +44,4 @@ s4 = iterate( ls in s3) {
   emit ();
 }
 
-main = s2;
-
+main = s4

@@ -632,8 +632,13 @@
 
 ;; For the x86 version we currently don't statically allocate anything.
 (__spec StaticAllocate <emitC2> (self lhs ty rhs)
-  ((SplitBinding self (emit-err 'splitbind)) (list lhs ty rhs)))
-
+  (define-values (decl initcode)
+    ((SplitBinding self (emit-err 'splitbind)) (list lhs ty rhs)))
+  ;; We do need to add a refcount increment.  Something statically
+  ;; allocated will never reach zero.
+  (values decl
+	  (append-lines initcode
+	     (gen-incr-code self ty (Var self lhs) ""))))
 
 #;
 (__spec Let <emitC2> (self form emitter recur)
@@ -854,7 +859,7 @@
 	(make-lines 
 	 (list
 	  `("int* ",tmp" = (int*)0;\n")
-	  (block `("if (",len")")
+	  (block `("if (",len" > 0)")
 		 `(,tmp" = (int*)((char*)",alloc" + RCSIZE + ARRLENSIZE);\n"
 		       "CLEAR_RC(",tmp");\n"           
 		       "SETARRLEN(",tmp", ",len");\n"  

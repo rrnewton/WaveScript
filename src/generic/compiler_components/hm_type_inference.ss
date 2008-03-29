@@ -745,7 +745,6 @@
 
       ;; This is a special case for constants.
       [(assert-type ,ty (quote ,n))
-       (printf "HMMM ~s ~s\n" ty n)
        (if (constant-typeable-as? n ty)
 	   (values `(assert-type ,ty (quote ,n))  
 		   (instantiate-type ty '()))

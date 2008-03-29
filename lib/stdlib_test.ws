@@ -14,7 +14,7 @@ fun assert_prnt(str,a,b) {
   print("Assert passed: "++ str ++ ": " ++  b ++"\n");
 }
 
-// This has to be lifted to top level because of limitations in static-elaborate:
+// Deinterleave both with SS and plain version:
 s1 = window(src, 10);
 ls = deinterleaveSS(2, 10, s1);
 ch1 = dewindow$  ls`List:ref(0);
@@ -38,7 +38,10 @@ result = iterate sum in union2(degapped,zipped) {
   state { first = true }
   println("in");
   case sum {
+    // Degapped:
     Left(x) : println("woot "++x)
+
+    // Zipped:
     Right(x): {
     
   //println(x++" \n");
@@ -128,4 +131,7 @@ result = iterate sum in union2(degapped,zipped) {
 }
 
 
-BASE <- result
+//main = result
+main = zipped
+//main = zip2_sametype(ch1, ch1b)
+main = union2(degapped,zipped)

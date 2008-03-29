@@ -376,6 +376,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
 
   (putenv "REGIMENTHOST" "plt")
+
   (run-test  "plt: Running WaveScript Demos:"
 	     (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))
   (putenv "REGIMENTHOST" "")

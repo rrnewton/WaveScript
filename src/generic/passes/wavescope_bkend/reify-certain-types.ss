@@ -64,10 +64,6 @@
            [(assert-type (Stream ,t) (readFile ,annot ,[fn] ,[str] ,[src]))
             `(readFile-wsearly ,annot ,fn ,str ,src ',t)]
 
-#;
-           [(assert-type ,_ (readFile ,[fn] ,[str]))
-	    (inspect 'HMMM)]
-
 	   ;; Safety net:
 	   [(,op ,_ ...) (guard (memq op '(foreign readFile)))
 	    (error 'reify-certain-types "compiler error, missed operator: ~s" op)]

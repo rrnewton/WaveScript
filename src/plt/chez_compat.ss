@@ -193,7 +193,14 @@
       (lambda () x)))
   (define fixnum?
     (let ((x (expt 2 30)))
-      (lambda (n) (and (integer? n) (< n x)))))
+      (lambda (n) 
+	;(printf "PLT fixnum: ~s -> ~s ~s ~s ~s\n" n (integer? n) (< n x) `(< ,n ,x) (eval `(< ,n ,x)))
+	;; [2008.03.28] NASTY PLT BUG IN 372 ON UBUNTU:
+	;(and (integer? n) (< n x))
+	;; [2008.03.28] THIS HAPPENS TO WORK:
+	(and (integer? n) (<= n (sub1 x)))
+	)))
+  
   (define (flonum? x) (and (number? x) (inexact? x) (real? x)))
   (define (flonum->fixnum x) (inexact->exact (floor x)))
   (define (fixnum->flonum x) (exact->inexact x))
