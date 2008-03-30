@@ -49,12 +49,14 @@
 	     (syntax-rules ()
 	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
-	   (source-directories (#%list 
+	   (define default-source-directories
+	     (#%list 
 ;				(string-append (default-regimentd) "/src/chez")
 ;				(string-append (default-regimentd) "/src/generic")
-				(string-append (default-regimentd) "/src")
+	      (string-append (default-regimentd) "/src")
 				;"."  ;; Alas this causes some problems currently...
-				))
+	      ))
+	   (source-directories default-source-directories)
 	   
 	   ;(optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
@@ -194,7 +196,9 @@
 		  (exit 1)) ;; Should only do this if we're running as a script.
 
 		(fprintf (console-output-port)
-			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")		
+			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
+		;; [2008.03.30] Also reset the source-directories so Chez can find the code:
+		(source-directories default-source-directories)
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))))
 

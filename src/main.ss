@@ -1157,6 +1157,7 @@
 								(inject-times max-node times))])
 			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			
+
 			(printf "\n Final Partitioning, node operators:\n\n")
 			(pretty-print (partition->opnames new-node))
 			(printf "\n Server operators:\n\n")
@@ -1170,6 +1171,10 @@
 			    (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port))
 			  (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
 			  (when (>= (regiment-verbosity) 1) (printf "done.\n")))
+
+			;; Now we need to multiplex operators that have migrated to 
+			;; the server to handle many streams from different nodes.
+			(set! all-server (multiplex-migrated all-server))
 
 			;(inspect new-node)
 			;(inspect (deep-assq-all 'cutpoint definite-server))

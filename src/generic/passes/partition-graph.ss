@@ -20,6 +20,11 @@
 	   extract-time-intervals
 	   inject-times
 	   tag-op
+
+	   multiplex-operator
+	   multiplex-migrated
+
+	   test-partition-graph
 	   )
     (chezimports)
 
@@ -44,9 +49,23 @@
   `(cutpoint (name #f) (output-type ,ty) (code #f) (incoming ,src) (outgoing ,dest))
   )
 
+;; Due to our lack of static type checking, things can get messed up,
+;; this is for dynamic asserts:
+(define (operator? op)
+  (and (pair? op) (stream-primitive? (car op))))
+
+(define (source? x)
+  (match x
+    [((name ,n) (output-type ,ty) (code (,prim . ,args)) (outgoing ,out* ...))
+     (regiment-primitive? prim)]
+    [,_ #f]))
+
+(define (op-or-source? x)
+  (or (operator? x)  (source? x)))
+
 ;; We should probably have shared code for handling operators:
 ;; These simple accessors are just used locally within this module.
-(define (opname op) 
+(define (opname op)
   (define stripped (if (symbol? (car op)) (cdr op) op))
   (let ([entry (assq 'name stripped)])
     (if entry (cadr entry) 
@@ -54,22 +73,35 @@
 (define (optype op)
   (cadr (ASSERT (assq 'output-type (cdr op)))))
 
-(define (lookup name ops)
-  (let loop ([ops ops])
-    (if (null? ops) #f
+;; Returns #f if lookup fails:
+(define (lookup name origops)
+  (let loop ([ops origops])
+    (if (null? ops) 
+	#f
+	;(error 'lookup "did not find ~s in ~s" name origops)
 	(let ([entry (assq 'name (cdr (car ops)))])
 	  (if (and entry (eq? (cadr entry) name))
 	      (car ops)
 	      (loop (cdr ops)))))))
-;; Returns the first of the downstream operators.
+
+;; NOTE: These two helpers will return #f if the dowstream/upstream
+;; operator does not exist in ops.
 (define (op->downstream op ops) 
-  (define ls (ASSERT (assq 'outgoing (cdr op))))
-  (ASSERT op) (ASSERT (= (length ls) 2))
-  (lookup (cadr ls) ops))
-(define (op->upstream op ops) 
-  (define ls (ASSERT (assq 'incoming (cdr op))))
-  (ASSERT op) (ASSERT (= (length ls) 2))
-  (lookup (cadr ls) ops))
+  (ASSERT op)
+  (let ((ls (ASSERT (assq 'outgoing (cdr op)))))
+    (map (lambda (x) (lookup x ops)) (cdr ls))))
+(define (op->upstream op ops)
+  (ASSERT op)
+  (let ([ls (ASSERT (assq 'incoming (cdr op)))])
+    (map (lambda (x) (lookup x ops)) (cdr ls))
+    ))
+
+;; Takes only ops proper, not sources.
+(define (op->annotations op)
+  (match op
+    [(,_ (annotations ,annot ...) . ,__)
+     (inspect annot)
+     ]))
 
 (define (op->inputtype op)   
   (match op
@@ -225,18 +257,18 @@
 ;; -- *mobile* -- that can live on either side of the partition.  We
 ;; insert new cutpoints along the new fringe that we push to.
 (define-pass refine-node-partition     
+  ;; Return true if the operator is clean of anything that would force
+  ;; it to be embedded:
   (define (Operator Expr)
     (lambda (op)
+      (ASSERT symbol? (car op))
       (let ([code (assq 'code (cdr op))])
 	(if code 
 	    (Expr (cadr code))
-	    (match op
-	      ;; Prune out cutpoints for now:
-	      [(cutpoint . ,_) 
-	       #t
-	       ])
-	    ))))
-  ;; This returns true if the operator is "clean" -- if it doesn't
+	    (match op ;; Only cutpoints should lack code:
+	      ;; Cutpoints considered "mobile"... doesn't really mean anything.
+	      [(cutpoint . ,_) #t])))))
+  ;; This returns true if the code is "clean" -- if it doesn't
   ;; contain anything that would force it to be on the embedded node.
   [Expr (lambda (xp fallth)
 	  (match xp
@@ -259,45 +291,58 @@
 		   (sink ,base ,basetype)	,meta* ...))
 	  (define cutpoints
 	    (filter (lambda (op) (eq? (car op) 'cutpoint)) oper*))
-	  (define (get-downstream x) (op->downstream x oper*))
-	  (define (get-upstream x)   (op->upstream   x oper*))
-	  (define next-down (filter id (map get-downstream cutpoints)))
-	  (define next-up   (filter id (map get-upstream   cutpoints)))
+
+	  ;; A lot of these get-downstream/upstream calls will return
+	  ;; #f's due to those operators not being part of the partition we're looking at.
+	  ;; That's ok for this particular pass.
+	  (define (get-downstream x) (filter id (op->downstream x oper*)))
+	  (define (get-upstream x)   (filter id (op->upstream   x oper*)))
+
+	  (define next-down (filter id (apply append (map get-downstream cutpoints))))
+	  (define next-up   (filter id (apply append (map get-upstream   cutpoints))))
 	  ;; From each cutpoint, walk until we hit something that's not mobile:
 	  (define (trace get-next startpoints cutpoint)
 	    (define (insert-cp a b acc)
 	      (if (or (cutpoint? a) (cutpoint? b))
 		  acc
 		  (cons (cutpoint a b) acc)))
+	    (ASSERT (curry andmap id) startpoints) ;; No #f's should have snuck through.
 	    (if (null? startpoints) '()
-		(let loop ([tracepoints (cons (get-next (car startpoints)) (cdr startpoints))]
-			   [acc '()]
+		(begin 
+		  (when (>= (regiment-verbosity) 3) (printf " Tracing from starts ~s\n " (map opname startpoints)))
+		 (let loop ([tracepoints (append (get-next (car startpoints)) (cdr startpoints))]
+			   [acc '()] ;; Accumulates mobile operators.
 			   [last (car startpoints)])
 		  (match tracepoints
-		    [() acc]
+		    [() 
+		     (when (>= (regiment-verbosity) 3) (printf " finished.\n"))
+		     acc]
 		    [(,head . ,tail)
-					;(printf "  Considering: ~s\n" (assq 'name (cdr head)))
+		     (when (>= (regiment-verbosity) 3) (printf " ~s" (opname head)))
 		     (cond
 		      [((Operator Expr) head)
-		       (loop (let ([x (get-next head)]) (if x (cons x tail) tail))
+		       (loop (append (filter id (get-next head)) tail)
 			     (cons head acc) head)]
+		      ;; Otherwise we need a cutpoint
 		      [(null? tail) 
+		       (when (>= (regiment-verbosity) 3) (printf " | ~s  endpoint.\n" (opname head)))
 		       ;; Insert a cutpoint:
 		       (insert-cp last head acc)]
 		      [else		       
+		       (when (>= (regiment-verbosity) 3) (printf " | ~s  endpoint.\n Tracing: " (opname head)))
 		       ;; When we reach a stopping point, put in a cutpoint:
-		       (loop (cons (get-next (car tail)) (cdr tail))
+		       (loop (append (get-next (car tail)) (cdr tail))
 			     (insert-cp last head acc)
-			     (ASSERT cutpoint? (car tail)))])]))))
+			     (ASSERT cutpoint? (car tail)))])])))))
 
 ;	  (define _ (print-level 3))
 
 	  ;; Hack, making this work in both directions:
-	  ;; (Thus we can use it for the node and server.)
+	  ;; (Thus we can use it for the node and server.)	  
 	  (define mobile 
-	    (append (trace get-downstream (filter get-downstream cutpoints);next-down 
+	    (append (trace get-downstream (apply append (map get-downstream cutpoints)) ; next-down 
 			   (lambda (in out) (make-cutpoint (optype in) (opname in) (opname out))))
-		    (trace get-upstream   (filter get-upstream cutpoints) ;next-up
+		    (trace get-upstream   (apply append (map get-upstream cutpoints))   ; next-up
 			   (lambda (out in) (make-cutpoint (optype in) (opname in) (opname out))))))
 	  (define nodeops (difference oper* mobile))	  
 	  ;; Returns #(floating stationary):
@@ -351,15 +396,16 @@
        ;; TEMP: just handling a linear pipe right now:
        (unless (and (= 1 (length cutpoints))
 		    (= 1 (length realsources)))
-	 (error 'exhaustive-partition-search "only works for a linear pipeline right now...")))
-
+	 (error 'exhaustive-partition-search "only works for a linear pipeline right now: cutpoints ~s sources ~s"
+		(length cutpoints) (length realsources))))
+     
      (define datasize #f) ;; TODO: Hook up to scheme profiling!
      (define datafreq #f)
      (define initscore
        (heuristic (opname (car realsources))
 		  epochsize (op->time (car realsources)) datasize datafreq))
 
-     (define ____ (begin (printf "Begining search")(flush-output-port)))
+     (define ____ (begin (printf "Beginning search")(flush-output-port)))
 
      ;; Do a linear walk from source to cutpoint, scoring each potential cut.
      (define new-cutpoint
@@ -369,6 +415,7 @@
 		      [epochtime 0]
 		      [curbest initscore]
 		      [cur (car realsources)])
+	    (define __ (ASSERT op-or-source? ptr))
 	    (define datasize #f) ;; TODO: Hook up to scheme profiling!
 	    (define datafreq #f)
 	    ;; Evaluate the heuristic for this configuration:
@@ -377,11 +424,14 @@
 	      (if (> score curbest)	       
 		  (values score   ptr)
 		  (values curbest cur)))
-	    (define downstream (op->downstream ptr oper*))
-	    (if downstream
-		(trace downstream (+ epochtime (op->time downstream)) newscore newcur)
+	    (define downstream (filter id (op->downstream ptr oper*)))
+	    (if (null? downstream)
 		;; Otherwise we're all done, return the new cutpoint:
-		newcur)))))
+		newcur
+		(begin
+		  (ASSERT null? (cdr downstream)) ;; TEMP TEMP
+		  (trace (car downstream) (+ epochtime (op->time downstream)) newscore newcur))
+		)))))
      (printf " done!\n")
           
 
@@ -403,6 +453,7 @@
 
 ;; Takes the "base" portion, the metadata, the init, and the constants from p1...  
 (define (merge-partitions p1 p2)
+  ;; Must discard cutpoints obsoleted by the merge.
   (discard-spurious-cutpoints
    (match (vector p1 p2)
      [#((,input-language 
@@ -456,7 +507,7 @@
 		 (trace (cdr ptrs) (set-cons (tag-op '(partition-point) (car ptrs)) acc))]
 		[else 
 		 (let ([down (op->downstream head oper*)])
-		   (trace (cons down (cdr ptrs)) 
+		   (trace (append down (cdr ptrs)) 
 			  (set-cons (car ptrs) acc)))]
 		)))))
      (define nodeops (difference nodeops_and_sources src*))
@@ -514,8 +565,10 @@
     (define (valid? op)
       (match op
 	[(cutpoint . ,rest)
-	 (or (not (hashtab-get nametable (cadr (assq 'outgoing rest))))
-	     (not (hashtab-get nametable (cadr (assq 'incoming rest)))))]
+	 (define in (hashtab-get nametable (cadr (assq 'incoming rest))))
+	 (define out (hashtab-get nametable (cadr (assq 'outgoing rest))))
+	 ;; XOR: one must be in and the other out
+	 (or (and in (not out))  (and (not in) out))]
 	[,_ #t]))
     (match part
       [(,input-language 
@@ -699,6 +752,101 @@
 	       (operators ,oper* ...) ,rest ...))]))
 
 
+
+;; The current system for distributed programming replicates the
+;; "Node" partition across all nodes in the network.  These streams
+;; are implicitly multiplexed at the point where they cross into the
+;; non-Node part of the program.  However, when we adjust the
+;; partitioning, moving "Node" operators onto the server, they then
+;; must be multiplexed to simulate N such operators running on
+;; different nodes.
+;;
+;; In other words, each such operator must have its state duplicated
+;; in a table.  Input and output streams are augmented with a node ID.
+;; The nodeID is thrown away when we make it to the Server partition.
+
+(define (multiplex-operator op)
+  (define NodeIDTy 'Int)
+  (match op
+    [(iterate (annotations ,an* ...) 
+	      (let ([,lhs* ,ty* ,rhs*] ...)
+		(lambda (,x ,vq) (,xty (VQueue ,vqty)) ,bod))
+	      ,strm)
+     ;; We want to remain agnostic to the number of nodes in the
+     ;; network, so each state variable becomes a (growable) hash
+     ;; table mapping node-id to values.
+     #;
+     (define newstate
+       (map (lambda (ty rhs) `(HashTable:make '100))
+	 ty* rhs*))
+
+     ;; The code for initializing state must run anew each time we hit a new node:
+     ;(define genstate)
+     
+     ;; [2008.03.29] For now we don't have hash tables in the wsc2
+     ;; backend, so instead we just keep an array and we assume the
+     ;; node IDs are restricted to the range 0 to lengthOfArray-1.
+     (define newrhs*
+       (map (lambda (ty rhs) 
+	      `(vector ,@(make-list NNN rhs)))
+	 ty* rhs*))
+     (define newty*
+       (map (lambda (ty) `(Array #(,NodeIdTy ,ty))) ty*))
+
+     (define nid (unique-name "nodeID"))
+     ;; Also need to replace all emits so they tag the node-ID on!!!
+     (define fix-emits 
+       (core-generic-traverse
+	(lambda (xp fallthru)
+	  (match xp
+	    [(emit ,x) 
+	     (define tmp (unique-name "emtmp"))
+	     `(let ([,tmp #(,NodeIdTy ,vqty) (tuple ,nid ,x)]) (emit ,tmp))]
+	    [,oth (fallthru oth)]))))
+     
+     `(iterate (annotations ,@an*) 
+	       (let ,@(map list lhs* newty* newrhs*)
+		 (lambda (,inp ,vq) (,xty (VQueue ,vqty))
+			 (let ([,x (tupref ,inp 1 2)])
+			   (let ([,nid (tupref ,inp 0 2)])
+			     ,(fix-emits bod)))))
+	       ,strm)
+     ]))
+
+;; This goes over the whole graph and multiplexes only those operators
+;; that have migrated from node to server.
+(define-pass multiplex-migrated
+  (define (Operator op)
+    (if (assq 'NODEOP? (op->annotations op))	
+	(multiplex-operator op)
+	op))
+  [Program
+   (lambda (prog Expr)
+     (match prog
+       [(,input-language 
+	 '(graph (const ,cnst* ...) (init  ,init* ...) (sources ,src* ...)
+		 (operators ,oper* ...)
+		 (sink ,base ,basetype)	,meta* ...))
+	`(,input-language 
+	  '(graph (const ,cnst* ...) (init ,@init*) (sources ,@src*)
+		  (operators ,@(map Operator oper*))
+		  (sink ,base ,basetype)
+		  ,@meta*))
+	]))])
+
+
+;; ================================================================================
+;; Unit tests
+
+;; These use quite a bit of stuff from type_environments.ss as well:
+(define-testing these-tests
+  `(
+
+  ))
+
+(define-testing test-this (default-unit-tester "Partitioning Node/Server programs" these-tests))
+;; Unit tester.
+(define test-partition-graph test-this)
 
 
 ) ;; End module

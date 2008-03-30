@@ -68,7 +68,6 @@ namespace Node {
 //main = merge(s5, Node:s3);
 
 s5 = iterate ((x,y),z) in Node:s4 {
-
     ind :: Ref Int64 = ref(3333);    
     for i = 1 to 100 { ind += 1 };
     //while ind < 1 * 1000 * 1000 { ind += 1 };
@@ -85,5 +84,5 @@ s6 = iterate x in s5 {
     emit (x,ind);
 }
 
-main = s5;
+main = s6;
 //main = Node:s2;
