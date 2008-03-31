@@ -852,7 +852,7 @@
 	 (let ([exceptions 
 		(append 
 		 '(;; These are obsolete:
-		   eq? locdiff nodeid sense even? odd? 
+		   eq? locdiff nodeid getID sense even? odd? 
 		   ;; These weren't really primitives:    
 		   tuple tupref ref deref static statref __foreign foreign foreign_box foreign_source
 		   ;; These were desugared or reduced to other primitives:

@@ -142,6 +142,7 @@
 				       ;; Extra node configuration fields:
 				       (string-append
 					;; First, set the shape:
+					#;
 					(begin 
 					  (unless (eq? streamop 'iterate)
 					    (printf "streamop: ~s\n" streamop))

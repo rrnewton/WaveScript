@@ -859,6 +859,8 @@
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
 
+    ;; The WS version of nodeid is impure:
+    (getID         () Int)
 
     ,@wavescript-effectful-primitives
 

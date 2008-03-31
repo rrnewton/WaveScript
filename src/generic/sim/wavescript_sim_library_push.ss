@@ -133,7 +133,7 @@
 		 C-free exclusivePtr getPtr nullPtr ptrIsNull ptrMakeNull
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL SETCPU SETCPUDEEP
-		 clock realtime
+		 clock realtime getID
 
 		 IFPROFILE
 
@@ -1959,6 +1959,8 @@
 
 (define (clock) (exact->inexact (cpu-time)))
 (define (realtime) (/ current-vtime 1000))
+
+(define (getID) 0) ;; If we're running in Scheme, it's always node 0.
 
 ;(define-syntax IFPROFILE (syntax-rules () [(_ a b) b]))
 ;(define (IFPROFILE a b) b)

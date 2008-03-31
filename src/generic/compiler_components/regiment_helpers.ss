@@ -448,20 +448,16 @@
 	 [else (error 'reunique-names "bad subexpression: ~s" (car ls))]))))
 
 ;; unique-name produces a unique name derived the input name by
-;; adding a unique suffix of the form .<digit>+  creating a unique
+;; adding a unique suffix of the form _<digit>+  creating a unique
 ;; name from a unique name has the effect of replacing the old
 ;; unique suffix with a new one.
 ;;
-;; code-name takes a unique name and replaces its suffix ".nnn"
-;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
-;;
 ;; extract-suffix returns the numeric portion of the unique suffix
-;; of a unique name or code-name, or #f if passed a non unique name.
-;;(module (unique-name reset-name-count! extract-suffix
-;;                     code-name label-name #;method-name)
-        ;RRN [01.09.16] -- We need to phase out code-name...
-
+;; of a unique name, or #f if passed a non unique name.
+;; RRN [01.09.16] -- We need to phase out code-name...
+;;
 ;; <br><br> 
+;;
 ;; [2004.06.28] I am replacing this with a version that uses
 ;; a hash-table to keep a counter per seed-name.
 (begin
@@ -536,28 +532,35 @@
 
 ;; [2004.06.28]  NEW VERSION, counter per seed name:
 ;; Just overwriting definitions from above:
+;;
+;; [2008.03.30] Resurrecting this.  I've probably just forgotten why I wasn't using it.
+;; Well, seems to break something (type errors appear...)
 #;
 (begin
-        (define unique-name-count (make-default-hash-table))
-
-        (define (unique-suffix sym)
-	  (let ((entry (hashtab-get unique-name-count sym)))
-	    (number->string
-	     (if entry
-		 (begin (hashtab-set! unique-name-count sym (add1 entry))
-			entry)
-		 (begin (hashtab-set! unique-name-count sym 1)
-			0)))))
-
-        (define reset-name-count! 
-	  (lambda opt
-	    (match opt
-		   [() (set! unique-name-count (make-default-hash-table))]
-		   [(,n) 
-		    (error 'reset-name-count!
-			   "this version of reset-name-count! cannot handle argument: ~s"
-			   n)])))
-)
+  (define name-counter-table (make-default-hash-table))
+  (define ____
+    (let ([old-param unique-name-counter])
+      (set! unique-name-counter
+	    (case-lambda
+	      [() name-counter-table]
+	      [(val) 
+	       (if (eq? val 0)
+		   ;; Ok, here's a hack.  We simulate the behavior of
+		   ;; the above version when the input is zero.
+		   (set! name-counter-table (make-default-hash-table))
+		   ;; This had better be a hash table:
+		   (begin 
+		     (ASSERT (not (number? val)))
+		     (set! name-counter-table val)))]))
+      (set! unique-suffix
+	    (lambda (sym)
+	      (let ((entry (hashtab-get name-counter-table sym)))
+		(number->string
+		 (if entry
+		     (begin (hashtab-set! name-counter-table sym (add1 entry))
+			    entry)
+		     (begin (hashtab-set! name-counter-table sym 1)
+			    0)))))))))
 
 ;===============================================================================
 

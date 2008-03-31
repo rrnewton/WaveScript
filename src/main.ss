@@ -1078,6 +1078,9 @@
 				    [wavescript-compiler-java   <java>]
 				    [wavescript-compiler-javame <javaME>]))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
+
+		  ;; Tag everything that is part of the user's node partition:
+		  (set! node-part (map-partition-ops (lambda (x) (tag-op '(originally-on-node) x)) node-part))
 		  		  		
 		  (printf "\n Node operators:\n\n")
 		  (pretty-print (partition->opnames node-part))
@@ -1102,8 +1105,12 @@
 		      (merge-partitions 
 		       ;; Note: Can't just reuse node-part here because we want to tag on some extra metadata:
 		       (merge-partitions definite-node 
+					 ;; Here we tag tho floating operators:
 					 (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-node))
 		       (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-server)))
+
+		    (when (>= (regiment-verbosity) 2) 
+		      (printf "Connectivity of profiled partition:\n")(print-partition max-node))
 		    
 		    (printf "\n Node-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-node))
@@ -1114,20 +1121,16 @@
 		    (pretty-print (partition->opnames definite-server))
 		    (newline)
 
-; 		    (inspect (deep-assq-all 'cutpoint definite-node))
-; 		    (inspect (deep-assq-all 'cutpoint maybe-node))
-; 		    (inspect (deep-assq-all 'cutpoint maybe-server))
-; 		    (inspect (deep-assq-all 'cutpoint max-node))
-		    		    		  		    
-		    (last-few-steps max-node <tinyos-timed>)
-		    
+#|		    
+		    (last-few-steps max-node <tinyos-timed>)		    
 		    ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
 		    ;; Either flushing between every operator, or a less intrusive measurement method.
 		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		    ;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
-
 		    (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
 		      (error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt"))
+|#
+
 		    (printf "============================================================\n")
 		    (printf "       Reading back profile results: \n")
 		    (printf "============================================================\n")
@@ -1137,6 +1140,23 @@
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
 			    (extract-time-intervals
+
+'((ForeignSource sensor_ws_entry2 0 16896)
+   (Start Node_s1_6 0 17234)
+   (End Node_s1_6 0 17318)
+   (Start Node_s2_5 0 17640)
+   (End Node_s2_5 0 17725)
+   (Start Node_s3_4 0 18048)
+   (End Node_s3_4 0 18133)
+   (Start Node_s4_3 0 18449)
+   (End Node_s4_3 0 18605)
+   (Start s5_2 0 18924)
+   (End s5_2 0 19010)
+   (Start s6_1 0 19323)
+   (EndTraverse 1 733)
+)
+
+			     #;
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1153,15 +1173,16 @@
 		      (printf "============================================================\n")
 
 		      (let-match ([#(,new-node ,new-server)
-				   (exhaustive-partition-search max-nodepart-hueristic 
+				   (exhaustive-partition-search min-nodepart-hueristic 
 								(inject-times max-node times))])
 			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			
-
 			(printf "\n Final Partitioning, node operators:\n\n")
-			(pretty-print (partition->opnames new-node))
-			(printf "\n Server operators:\n\n")
-			(pretty-print (partition->opnames all-server))
+			;(pretty-print (partition->opnames new-node))
+			(print-partition new-node)
+			(printf "\n Server operators:\n\n")			
+			;(pretty-print (partition->opnames all-server))
+			(print-partition all-server)
 			(newline)
 
 			(let ([merged (merge-partitions new-node all-server)])
@@ -1174,15 +1195,11 @@
 
 			;; Now we need to multiplex operators that have migrated to 
 			;; the server to handle many streams from different nodes.
-			(set! all-server (multiplex-migrated all-server))
+			;(set! all-server (multiplex-migrated 'originally-on-node all-server))
+			;(inspect all-server)
 
-			;(inspect new-node)
-			;(inspect (deep-assq-all 'cutpoint definite-server))
-			;(inspect (deep-assq-all 'cutpoint new-server))
-			;(inspect (deep-assq-all 'cutpoint (merge-partitions definite-server new-server)))			
-			;(inspect (deep-assq-all 'cutpoint all-server))
 			(set! node-part new-node)
-			(set! server-part all-server)						
+			(set! server-part all-server)
 
 			)))) ;; End autosplit path
 

@@ -57,7 +57,9 @@ namespace Node {
   };
 
   s4 = iterate x in s3 {
-    sum = Mutable:ref$ (0::Int64);
+    state { sum :: Int64 = 0 }
+    //sum = Mutable:ref$ (0::Int64);
+    sum := 0;
     for i = 1 to 1000 { sum += 1; }
     emit (x,sum);
   }
