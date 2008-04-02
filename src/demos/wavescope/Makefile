@@ -11,5 +11,5 @@ scheme:
 clean:
 	rm -f query.* .*.o ._* __* *.o WSQuery*
 	make -f Makefile.tos2 clean
-	rm Makefile.tos2
+	rm Makefile.tos2 progtelos
 

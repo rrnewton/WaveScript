@@ -5,7 +5,7 @@
 ## ************************************************************ ##
 
 # Uncomment to send results back over radio rather than serial:
-#CFLAGS += -DWSRADIOMODE
+CFLAGS += -DWSRADIOMODE -I$(TOSDIR)/lib/net -I$(TOSDIR)/lib/net/le  -I$(TOSDIR)/lib/net/ctp
 
 #MYPLATFORM=telosb
 

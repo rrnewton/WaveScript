@@ -71,9 +71,6 @@ function pc() {
    wsc2-gcc;
 }
 
-# A default:
-if [ "$THEMOTE" == "" ]; then THEMOTE=/dev/ttyUSB0; fi
-
 # This builds both... for now this is only for telos:
 if [ -f "WSQuery.nc" ] && 
    [ -f "query.c" ]; 
@@ -82,12 +79,19 @@ then
   pc;
   echo;echo "BUILDING TINYOS COMPONENTS:" 
   echo "============================================================"
-  #ps aux | grep java
+
   killjavahack
-  
-  if ! make -f Makefile.tos2 telosb bsl,$THEMOTE install 2> .TOS_build_log.txt
-  then echo "Error $? while building telosb, see .TOS_build_log.txt"; exit 1;
-  fi 
+
+# A default:
+#if [ "$THEMOTE" == "" ]; then THEMOTE=/dev/ttyUSB0; fi
+  if [ "$THEMOTE" = "" ]; then 
+    echo "Environment var THEMOTE is unset."
+    echo "You may use 'progtelos' to program the mote(s) yourself."
+  else
+    echo "Programming a single mote with nodeID = 1: $THEMOTE"; echo;    
+    if ! make -f Makefile.tos2 telosb bsl,$THEMOTE install,1 2> .TOS_build_log.txt
+    then echo "Error $? while building telosb, see .TOS_build_log.txt"; exit 1; fi 
+  fi
 elif [ -f "WSQuery.nc" ]; 
 then tossim;
   

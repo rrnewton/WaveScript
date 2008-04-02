@@ -1135,6 +1135,8 @@
 	  `("struct timeval ",tmp";\n"
 	    "gettimeofday(&",tmp", NULL);\n"
 	    ,(lines-text (kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))))]
+
+	[(getID) (kont "0 /* NodeID of PC-server */")]
        
 	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
@@ -1702,12 +1704,13 @@ int main(int argc, char **argv)
 
 (define __PrimApp
   (specialise! PrimApp <tinyos>
-   (lambda (next self app kontorig mayberetty)
+   (lambda (next self app kont mayberetty)
      (match app
        [(,alloc-prim . ,_) 
 	(guard (eq-any? alloc-prim 'cons 'Array:make 'Array:makeUNSAFE))
 	(error 'emitC2:tinyos "Cannot generate code for dynamic allocation currently: ~s" 
 	       (cons alloc-prim _))]
+       [(getID) (kont "TOS_NODE_ID")]
 
 #;
        [(TOS:clock32khz)
@@ -1850,7 +1853,11 @@ int main(int argc, char **argv)
 ;; the TinyOS binary format, not one that we get to choose ourselves.
 ;; Luckily, MIG helps us.
 (__specreplace Cutpoint <tinyos> (self ty in out)
-   (define name (format "BASESender~a" (slot-ref self 'amsender-count)))
+   ;; Name of this cutpoints sender interface:
+   (define basesend (format "BASESender~a" (slot-ref self 'amsender-count)))   
+   (define ctpsend (format "CTPSender~a" (slot-ref self 'amsender-count)))
+   (define ctprecv (format "CTPReceive~a" (slot-ref self 'amsender-count)))
+
    ;(define ampkt (format "AMPacket~a" (slot-ref self 'amsender-count)))
    (define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
    (define _ty  (match ty [(Stream (Array ,elt)) (Type self elt)] 		      
@@ -1867,42 +1874,71 @@ int main(int argc, char **argv)
    (define fun (list "
   // CutPoint to server side:
   void "(Var self out)"("_ty" x) {
+#ifdef WSRADIOMODE
+    "_ty"* payload = ("_ty" *)(call Packet.getPayload(&radio_pkt, NULL));
+#else
     "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
+#endif
 
 "(indent copyit "    ")"
 
     dbg_clear(\"WSQuery\", \"Sending on serial interface\\n\");
-    if (call "name".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
+    // The collection tree protocol just gives us Send, not AMSend:
+#ifdef WSRADIOMODE
+    //call Leds.led0Toggle();
+    if (call "ctpsend".send(&radio_pkt, bytesize) == SUCCESS) {
+      //radio_busy = TRUE;
+    }
+#else
+    if (!serial_busy && call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
       serial_busy = TRUE;
     }
+#endif
   }
 "))
    (when (zero? (slot-ref self 'amsender-count))
-     (slot-cons! self 'config-acc "
+     (slot-cons! self 'config-acc (list "
 #ifdef WSRADIOMODE
-  //#define AMCOMPONENT ActiveMessageC
+  #define AMCOMPONENT ActiveMessageC
 
-  // [2008.03.31] Adding support for collection tree protocol:
-  uses interface SplitControl as RadioControl;
-  uses interface StdControl as RoutingControl;
-  uses interface RootControl;
+  //#define AMCOMPONENT Collector
 
-  #define AMCOMPONENT 
+  components CtpP as Collector;
+  components new TimerMilliC();
+
+  WSQuery.RoutingControl -> Collector;
+  WSQuery.RootControl -> Collector;
+
+  // The Collection Tree version ALSO needs a serial interface for the base:
+  components SerialActiveMessageC as Serial;
+  WSQuery.SerialControl -> Serial;
+
 #else 
   #define AMCOMPONENT SerialActiveMessageC
 #endif
+  // Here we connect to the main component for sending WS results:
   components AMCOMPONENT;
   WSQuery.AMControl -> AMCOMPONENT;
   WSQuery.Packet    -> AMCOMPONENT;
   WSQuery.AMPacket  -> AMCOMPONENT;
-")
+"))
      (slot-cons! self 'boot-acc (list "
   call AMControl.start();
-  //call RadioControl.start();
+  #ifdef WSRADIOMODE
+    call SerialControl.start();
+  #endif
 "))
      (slot-cons! self 'module-acc (list "
   uses interface Packet;
   uses interface AMPacket;
+
+#ifdef WSRADIOMODE
+  // [2008.03.31] Adding support for collection tree protocol:
+  uses interface SplitControl as SerialControl;
+  uses interface StdControl as RoutingControl;
+  uses interface RootControl;
+#endif
+
 ")))
 
    (printf " CUTTING query at type ~s\n" ty)
@@ -1924,113 +1960,108 @@ enum {
 };
 "))
    (slot-cons! self 'config-acc (list "
-  components new SerialAMSenderC("AM_NUM") as "name";
-  WSQuery."name" -> "name";
-  WSQuery.AMPacket -> "name";
+#ifdef WSRADIOMODE
+  components new CollectionSenderC("AM_NUM") as "ctpsend";
+  WSQuery."ctpsend" -> "ctpsend";
+  WSQuery."ctprecv" -> Collector.Receive["AM_NUM"];
+  // We also need the serial channel for getting the results off the base station.
+#endif
+  components new SerialAMSenderC("AM_NUM") as "basesend";
+  WSQuery."basesend" -> "basesend";
+
+  //WSQuery.AMPacket -> "basesend";
 "))
    (slot-cons! self 'module-acc (list "
-  uses interface AMSend as "name";
+#ifdef WSRADIOMODE
+  uses interface Send as "ctpsend"; 
+  // Receive at the root of the collection tree:
+  uses interface Receive as "ctprecv";
+#endif
+  uses interface AMSend as "basesend";
+
   //uses interface Packet;
   uses interface SplitControl as AMControl;
 "))
    (slot-cons! self 'proto-acc (list "
   bool serial_busy = FALSE;
+  //message_t  _initial_pkt_storage;
+  //message_t* relay_pkt = &_initial_pkt_storage;
+  message_t radio_pkt;
   message_t serial_pkt;
+  //message_t relay_pkt;
 
 "))
    (slot-cons! self 'impl-acc (list "
-  event void "name".sendDone(message_t* msg, error_t error) {
+  event void "basesend".sendDone(message_t* msg, error_t error) {
       dbg_clear(\"WSQuery\", \" Finished sending on serial interface\\n\");
     if (&serial_pkt == msg) {
       serial_busy = FALSE;
+    } else wserror(\"error in serial interface\");
+  }
+
+#ifdef WSRADIOMODE
+  event void "ctpsend".sendDone(message_t* msg, error_t error) {}
+  event void AMControl.startDone(error_t err) {
+    if (err != SUCCESS) call AMControl.start();
+    else {
+      call RoutingControl.start();
+      if (TOS_NODE_ID == 1) {
+        call Leds.led1On();
+	call RootControl.setRoot();
+      }
+      // else call Timer.startPeriodic(2000);
     }
   }
+
+  // FIXME: THIS IS UNFINISHED:
+  event message_t* 
+  "ctprecv".receive(message_t* msg, void* payload, uint8_t len) {
+    // We could swap buffers here, but that's an optimization.
+    //message_t* temp = serial_pkt;
+
+    "_ty"* dest = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
+    "_ty"* src  = ("_ty" *)(call Packet.getPayload(msg, NULL));
+
+    call Leds.led2Toggle();    
+    if (! call RootControl.isRoot()) {
+      call Leds.led0On();
+      call Leds.led1On();
+      call Leds.led2On();
+      wserror(\"I am not root.  Should not receive CTP messages.\");
+    }
+
+    memcpy(dest, src, sizeof("_ty"));
+
+    // Here we swap the buffers:
+    //serial_pkt = msg;   
+    // !serial_busy && 
+    if (call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, 2) == SUCCESS) {
+      //serial_busy = TRUE;
+    }
+    //return temp;
+    return msg;
+  }
+
+  event void SerialControl.startDone(error_t err) {
+    if (err != SUCCESS) call SerialControl.start();
+  }
+  event void SerialControl.stopDone(error_t err)  {}
+#else
   event void AMControl.startDone(error_t error) {}
+#endif
+
   event void AMControl.stopDone(error_t error) {}
+
 "))   
    ;; Need to use a serialforwarder:
    ;(values (make-lines (format " /* CUTPOINT server ~a ~a */ \n" in out)) '() '())
    (slot-set! self 'amsender-count (add1 (slot-ref self 'amsender-count)))
+
    (values (make-lines fun)
 	   '() ;; Binds
 	   '() ;; Init code
 	   )
    )
-
-
-#|
-
-
-module EasyCollectionC {
-  uses interface Boot;
-  uses interface SplitControl as RadioControl;
-  uses interface StdControl as RoutingControl;
-  uses interface Send;
-  uses interface Leds;
-  uses interface Timer<TMilli>;
-  uses interface RootControl;
-  uses interface Receive;
-}
-implementation {
-  message_t packet;
-  bool sendBusy = FALSE;
-
-  typedef nx_struct EasyCollectionMsg {
-    nx_uint16_t data;
-  } EasyCollectionMsg;
-
-
-
-  event void Boot.booted() {
-    call RadioControl.start();
-  }
-  
-  event void RadioControl.startDone(error_t err) {
-    if (err != SUCCESS)
-      call RadioControl.start();
-    else {
-      call RoutingControl.start();
-      if (TOS_NODE_ID == 1) 
-	call RootControl.setRoot();
-      else
-	call Timer.startPeriodic(2000);
-    }
-  }
-
-  event void RadioControl.stopDone(error_t err) {}
-
-  void sendMessage() {
-    EasyCollectionMsg* msg =
-      //(EasyCollectionMsg*)call Send.getPayload(&packet, sizeof(EasyCollectionMsg));
-      (EasyCollectionMsg*)call Send.getPayload(&packet);
-    msg->data = 0xAAAA;
-    
-    if (call Send.send(&packet, sizeof(EasyCollectionMsg)) != SUCCESS) 
-      call Leds.led0On();
-    else 
-      sendBusy = TRUE;
-  }
-  event void Timer.fired() {
-    call Leds.led2Toggle();
-    if (!sendBusy)
-      sendMessage();
-  }
-  
-  event void Send.sendDone(message_t* m, error_t err) {
-    if (err != SUCCESS) 
-      call Leds.led0On();
-    sendBusy = FALSE;
-  }
-  
-  event message_t* 
-  Receive.receive(message_t* msg, void* payload, uint8_t len) {
-    call Leds.led1Toggle();    
-    return msg;
-  }
-}
-
-
-|#
 
 
 
@@ -2247,19 +2278,21 @@ implementation {
 	 (list "WSQueryApp.nc" (text->string config))
 	 (list "WSQuery.nc"    (text->string module))
 	 (list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
+	 (list "progtelos"     (file->string (** (REGIMENTD) "/src/linked_lib/progtelos")))
 	 )
    ;; We also return a post-file-write thunk to execute:
    (lambda ()
      ;(printf " XXXXXXX POST COMMIT THUNK XXXXXXXXXX \n")
      (for i = 0 to (sub1 (slot-ref self 'amsender-count))
 	  ;(printf "      CALLING MIG ~a\n" i)
+	  ;; YUCK: we have to tell MIG about WSRADIOMODE too:
 	  (let ([cmd (format "mig c -I~a -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" 
 			     (string-append (getenv "TOSDIR") "/lib/printf")
 			     (+ AM_OFFSET i) i)])
-	    ;(display cmd)(newline)
-	    (system cmd))
-	  
-	  )
+	    (display cmd)(newline)
+	    (system cmd)))
+     (system "chmod +x query.py")
+     (system "chmod +x progtelos")
      (void))
    ))
 

@@ -53,7 +53,7 @@ namespace Node {
     //lasttime := cur;
 
     //for i = 1 to 500 { lasttime += 1; }
-    emit (Array:fold((+), 0, buf), 515);
+    emit (Array:fold((+), 0, buf), getID());
   };
 
   s4 = iterate x in s3 {
@@ -76,7 +76,7 @@ s5 = iterate ((x,y),z) in Node:s4 {
 
     //println("I'M ON SERVER "++y);
     //print("I'M ON NODE " ); println(y); 
-    emit (x,y+1,z)
+    emit (x,y,z+1)
 }
 
 s6 = iterate x in s5 {

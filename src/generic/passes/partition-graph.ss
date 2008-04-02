@@ -281,13 +281,25 @@
   ;; This returns true if the code is "clean" -- if it doesn't
   ;; contain anything that would force it to be on the embedded node.
   [Expr (lambda (xp fallth)
-	  (match xp
+	  (match xp ;; No match recursion!
 	    [(,frgn . ,_)
 	     (guard (eq-any? frgn 'foreign '__foreign 'foreign-app
 			     ;; For now printing is disabled too:
 			     'print
 			     ))
 	     #f]
+
+	    ;; TEMP FIXME: For now we dissallow state in mobile nodes!!
+	    ;; Eventually, we want to allow state to migrate from
+	    ;; node->server but not vice versa.
+	    [(iterate (annotations . ,annot) (let ,binds (lambda . ,_)))
+	     (if (null? binds) 
+		 (fallth xp)		 
+		 (begin
+		   (printf "Disqualifying iterate based on state!! ~s" (assq 'name annot))
+		   #f))]
+	    [(iterate . ,_) (error 'refine-node-partition "missed iterate: ~s" xp)]
+
 	    [,oth (fallth oth)]))]
   [Fuser (lambda (ls k) (and-list ls))]
   [Program 

@@ -1121,15 +1121,14 @@
 		    (pretty-print (partition->opnames definite-server))
 		    (newline)
 
-#|		    
-		    (last-few-steps max-node <tinyos-timed>)		    
-		    ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
-		    ;; Either flushing between every operator, or a less intrusive measurement method.
-		    ;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
-		    ;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
-		    (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
-		      (error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt"))
-|#
+		    (begin
+		      (last-few-steps max-node <tinyos-timed>)		    
+		      ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
+		      ;; Either flushing between every operator, or a less intrusive measurement method.
+		      ;;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
+		      ;;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
+		      (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
+			(error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt")))
 
 		    (printf "============================================================\n")
 		    (printf "       Reading back profile results: \n")
@@ -1141,6 +1140,7 @@
 		    (let* ([times 
 			    (extract-time-intervals
 
+#;
 '((ForeignSource sensor_ws_entry2 0 16896)
    (Start Node_s1_6 0 17234)
    (End Node_s1_6 0 17318)
@@ -1155,8 +1155,6 @@
    (Start s6_1 0 19323)
    (EndTraverse 1 733)
 )
-
-			     #;
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1200,7 +1198,7 @@
 
 			(set! node-part new-node)
 			(set! server-part all-server)
-
+			
 			)))) ;; End autosplit path
 
 		  (printf "Performing code generation for PC and mote side:\n")

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+## A simple script for programming several telos motes connected to one computer.
+
+# Only handling tmote sky's for now:
+MOTES=`motelist | grep tmote | awk '{ print $2 }'`
+
+function doit() {
+ id=$1
+ mote=$2
+ echo; echo Programming $mote with nodeID $id.
+ echo ============================================================; echo
+ make -f Makefile.tos2 telosb bsl,$mote install,$id
+}
+
+case "$1" in
+  "" )
+    echo "Usage: progtelos <num> or progtelos all"
+    echo "  <num> will be interpreted as referring to /dev/ttyUSB<num>."
+    echo "  'all' will program all motes indicated by 'motelist'."
+    echo "  In any case, the nodeID is equal to <num>+1."
+    exit 0
+  ;;
+  "all" )
+    echo "Programming ALL nodes."; 
+    idcntr=1
+    for mote in $MOTES; do
+      doit $idcntr $mote
+      idcntr=$(($idcntr + 1))
+    done  
+  ;;
+  * )
+  doit $(($1+1)) /dev/ttyUSB$1
+  ;;
+esac
+
