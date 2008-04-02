@@ -1822,7 +1822,7 @@ int main(int argc, char **argv)
 		  ls)]
 	     [str (list->string ls2)])
 	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-	        (make-lines (format "char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	        (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
 		(make-lines "")))]
 
     ;; This is TINYOS specific currently:
@@ -1889,6 +1889,11 @@ int main(int argc, char **argv)
     if (call "ctpsend".send(&radio_pkt, bytesize) == SUCCESS) {
       //radio_busy = TRUE;
     }
+    // Note: even if we're sending results up the CTP, we may want 
+    // to print messages to the serial port (say for running on motelab).
+    #ifdef PRINTFLOADED
+      call PrintfFlush.flush();
+    #endif 
 #else
     if (!serial_busy && call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
       serial_busy = TRUE;
@@ -2024,9 +2029,6 @@ enum {
 
     call Leds.led2Toggle();    
     if (! call RootControl.isRoot()) {
-      call Leds.led0On();
-      call Leds.led1On();
-      call Leds.led2On();
       wserror(\"I am not root.  Should not receive CTP messages.\");
     }
 
