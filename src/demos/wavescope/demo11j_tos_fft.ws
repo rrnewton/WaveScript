@@ -4,16 +4,16 @@ include "stdlib.ws"
 
 
 
-type FftInt = Int32;
-//type FftInt = Int16;
+//type FftInt = Int32;
+type FftInt = Int16;
 
 // This version doesn't have proper overflow protection:
 fftimpl = "// From TI http://focus.ti.com/lit/an/spra654/spra654.pdf
-//#define bigty int32_t
-//#define lilty int16_t
+#define bigty int32_t
+#define lilty int16_t
 
-#define bigty int64_t
-#define lilty int32_t
+//#define bigty int64_t
+//#define lilty int32_t
 
 // x : input (and output)
 // w : twiddle factors
@@ -92,12 +92,10 @@ int myradix4(int n, lilty x[], lilty w[])
 using Array;
 
 // Hmm... what is the meaning of the first argument?
-arrsize = 16;
+levels = 4;
+arrsize = 2^levels;
 nsize = arrsize/2;
 
-floats  = make(arrsize,0)
-inp     = make(arrsize,11)
-imag    = make(arrsize,0)
 twiddle = make(arrsize,0)
 snip    = make(15,0);
 
@@ -106,42 +104,75 @@ snip    = make(15,0);
 
 
 // Trying this version instead:
-theCcode = inline_C("#include \"fix_fft.c\"","");
-newfn = (foreign("fix_fft", ["fix_fft.c"]) :: (Array FftInt, Array FftInt, Int16, Int16) -> Int);
+fixlib = GETENV("REGIMENTD") ++ "/lib/fix_fft.c";
+theCcode = inline_C("#include \""++ fixlib ++"\"","");
+newfn = (foreign("fix_fft", []) :: (Array FftInt, Array FftInt, Int, Bool) -> Int);
 
+// Third, ported fix_fft directly to WS.  This is in lib/
+include "fix_fft.ws"
 
-Node:s1 = iterate _ in timer(0.2) 
-                       .merge(theCcode)
-{
+// Set up the problem in global state:
+fun setup(floats, inp, imag){
   // This gives us a constant input:
-  //for i = 0 to arrsize-1 { floats[i] := 0.0; };
+  //for i = 0 to arrsize-1 { floats[i] := 0.5; };
+
   // This gives us a simple ascending sequence::
   //for i = 0 to arrsize-1 { floats[i] := (cast_num(i) :: Float) / arrsize.gint; };
+  //for i = 0 to arrsize-1 { floats[i] := (cast_num(i) :: Float); };
+
   // This gives us a sin wave:
   for i = 0 to arrsize-1 { floats[i] := sin$ (cast_num(i) :: Float) * 2 * 3.14159 / arrsize.gint; };
+  //println("Float input: "++floats);
 
   for i = 0 to arrsize-1 { 
-    inp[i] := (cast_num(floats[i] * 32768) :: FftInt); 
+    inp[i] := (cast_num(floats[i] * 32767) :: FftInt); 
     // Clear imaginary:
     imag[i] := 0;
   };
+  //print("  Int input: "++inp++"\n");
+}
 
-  println("Int input: "++inp);
-  //println("Float input: "++floats);
-    
-  //reference = fftR2C(map(int16ToFloat, inp));
-  reference = fftR2C(floats);
-  println("Reference: "++reference);
+floats  = make(arrsize,0)
+inp     = make(arrsize,11)
+imag    = make(arrsize,0)
 
+floats2  = make(arrsize,0)
+inp2     = make(arrsize,11)
+imag2    = make(arrsize,0)
+
+table_len = (Array:length(Sinewave));
+
+// This is just an example, it builds the sine table at metoprogram eval:
+newsinetable :: Array Int16 =
+Array:build(768, fun(i) {
+  fl :: Float = (cast_num(i)::Float) * 1.0;
+  fl2 :: Float = sin(const_PIO2 * fl / 256);
+  //result :: Int16 = cast_num(fl2 * 65536.0); // Let it overflow
+  result :: Int16 = cast_num(fl2 * 32767.0); 
+  //result :: Int16 = floatToInt16(fl * 32767.0);
+  //println("Converting float: orig: "++fl++"  frac: "++fl/256++"  \tsin: "++fl2++" int: "++result);
+  result
+})
+
+namespace Node {
+ 
+cver = iterate _ in timer(0.2) 
+               .merge(theCcode)
+{
+  //print("Size of Sinewave table: "++table_len++"\n");  
+  //print("New Sinewave table: "++ (newsinetable::Array Int16) ++"\n");  
+  //print("C Version, fix_fft:\n");
+  setup(floats,inp,imag);   
+
+  // Try 1
   //iters = thefn(nsize, inp, twiddle);
   //print("iters "++iters++"\n");
 
-  newfn(inp, twiddle, nsize, 0);
+  // Try 2
+  newfn(inp, imag, levels, false);
   
-  println("Output (real): "++inp);
-
-  println("Output (imag): "++imag);
-
+  print(" C (real): "++inp++"\n");
+  //print("  C (imag): "++imag++"\n");
     
   //Array:blit(snip, 0, out, 0, Array:length(snip));
   //print("length: "++snip.length++"\n");
@@ -149,4 +180,32 @@ Node:s1 = iterate _ in timer(0.2)
   emit ();
 }
 
-main = Node:s1;
+ wsver = iterate _ in cver {
+   //println("WS Version, fix_fft:\n");
+   setup(floats2, inp2,imag2);
+ 
+   // Try 3
+   //fix_fft(inp2, imag2, levels, false);
+   newfn(inp2, imag2, levels, false);
+
+  print(" WS (real): "++inp2++"\n");
+  //print(" WS (imag): "++imag2++"\n");
+
+  emit ();
+ }
+
+} // End Node  
+
+
+
+/*
+corroborate = iterate _ in timer$1{
+  //reference = fftR2C(map(int16ToFloat, inp));
+  reference = fftR2C(floats);
+  using Array;
+  println("Reference: "++ reference);
+  println("Log Real Reference: "++ map(logF, map(realpart, reference)));
+
+}*/
+
+main = Node:wsver;

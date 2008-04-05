@@ -553,7 +553,6 @@
     )
   ;; -----------------------------------------
 
-
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------  
   (when (>= (regiment-verbosity) 1)
@@ -1058,7 +1057,7 @@
 		     (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
-		     
+
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.

@@ -888,6 +888,10 @@
 		   ensBoxAudio ensBoxAudioF ensBoxAudioAll
 		   moduloI
 
+		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
+		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 
+		 lshiftI32 rshiftI32 logorI32 logandI32 logxorI32 
+
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
 		   exptI logD logF

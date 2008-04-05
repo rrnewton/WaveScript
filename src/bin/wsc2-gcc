@@ -12,13 +12,19 @@ fi
 
 #========================================
 
-
-ALWAYSON="-O3 -funroll-loops"
-# max-unroll-times Seems to be 8 by default.
-OPTFLAGS="$ALWAYSON --param max-unroll-times=16 "
-
-## DEBUG MODE:
-OPTFLAGS="-g -O0"
+case "$COPTFLAG" in
+ -O1) ;;
+ -O2) ;;
+ -O3)
+   ALWAYSON="-O3 -funroll-loops";
+   # max-unroll-times Seems to be 8 by default.
+   OPTFLAGS="$ALWAYSON --param max-unroll-times=16 ";
+   ;;
+ *)
+   ## DEBUG MODE:
+   OPTFLAGS="-g -O0";
+   ;;
+esac
 
 ## ACK - include WS_LINK at front and end?!?
 

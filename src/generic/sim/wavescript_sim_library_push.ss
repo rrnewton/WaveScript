@@ -1103,16 +1103,16 @@
 
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
 
-
-#|
+#;
+(begin 
   ;; FIXME! It willbe annoying, but I should make Int16/32 overflow properly:
   ;; The following is only valid for overflow-free programs.
   (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define _+U16 fx+)  (define _-U16 fx-)  (define *U16 fx*)  (define /U16 fx/)
   (define _+I32 s:+)  (define _-I32 s:-)  (define *I32 s:*)  (define (/I32 a b) (floor (s:/ a b)))
-  (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  (define (/I64 a b) (floor (s:/ a b)))
-|#
+  (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  (define (/I64 a b) (floor (s:/ a b))))
 
+(begin 
   ;; The below method is expensive, but gives us consistent overflow behavior.
 
   (define (overflow-add op pow)
@@ -1154,6 +1154,7 @@
   (define _-U16 (uoverflow fx- 16))
   (define *U16  (uoverflow s:* 16))
   (define /U16  (uoverflow fx/ 16))
+  )
   
   ;;========================================
 
@@ -1165,11 +1166,12 @@
   ;; assert-type ensures conformance with our numeric representation
   ;; policy.
   ;(define (cast_num x) (error 'cast_num "should not be called at metaprogram eval"))
-  (define (cast_num x) x)
+  (define (cast_num x) x) ;; Does nothing, the assert-type fixes it.
   (define-syntax assert-type
     ;; TODO Rewrite this with syntax-case and remove code duplication.
     (syntax-rules (Int Int16 Int32 Int64 Uint16 
 		       Float Double Complex)      
+      ;[(_ ty e) (inspect (vector 'ty e))]
       [(_ Int   e)   (__cast_num #f 'Int   e)]
       [(_ Int16 e)   (__cast_num #f 'Int16 e)]
       [(_ Int32 e)   (__cast_num #f 'Int32 e)]
@@ -1177,24 +1179,49 @@
       [(_ Uint16 e)  (__cast_num #f 'Uint16 e)]
       [(_ Float e)   (__cast_num #f 'Float e)]
       [(_ Double e)  (__cast_num #f 'Double e)]
-      [(_ Complex e) (__cast_num #f 'Complex e)]
+      [(_ Complex e) (__cast_num #f 'Complex e)]      
       [(_ other e) e]
       ))
 
-  ;; Currently we "overflow" by just changing the number to zero.
-  ;; That is, overflow behavior is not well defined across platforms.
+
+  ;; [2008.04.05] Updating cast_num overflow behavior to work
+  ;; properly: (That is, to match the behavior in C... eventually,
+  ;; there should be a mode to signal errors on overflow.)
+  (define fxbits (inexact->exact (round (s:/ (log (s:- (most-positive-fixnum) (most-negative-fixnum)))
+					     (log 2)))))
+  (define base16 (expt 2 16))
+  (define basefx (expt 2 fxbits))
+  (define base32 (expt 2 32))
+  (define base64 (expt 2 64))
+  (define max16  (expt 2 15))
+  (define maxfx  (expt 2 (sub1 fxbits)))
+  (define max32  (expt 2 31))
+  (define max64  (expt 2 63))
+  (define min16  (s:- max16))
+  (define minfx  (s:- maxfx))
+  (define min32  (s:- max32))
+  (define min64  (s:- max64))
   (define (__cast_num from to num) 
+    (define (signed_int base max min num)
+      (let ([int (if (and (integer? num) (exact? num))
+		     num
+		     (inexact->exact (floor num)))])
+	(let ([result (modulo int base)])
+	  (cond
+	   [(>= result max)  (s:- result base)]
+	   [(< result min)   (s:+ result base)]
+	   [else result]))))
+    
     (case to
-      [(Int Int32 Uint16 Int16 Int64)
-       (let ([x (inexact->exact (floor num))]
-	     [pred (match to
-		     [Int16 int16?]
-		     [Uint16 uint16?]
-		     ;[Int   int32?]  ;; Ints are not defined as 32 bits
-		     [Int   fixnum?]
-		     [Int32 int32?]
-		     [Int64 int64?])])
-	 (if pred x 0))]
+      [(Int)   (signed_int basefx maxfx minfx num)]
+      [(Int16) (signed_int base16 max16 min16 num)]
+      [(Int32) (signed_int base32 max32 min32 num)]
+      [(Int64) (signed_int base64 max64 min64 num)]
+      
+      [(Uint16) 
+       (error 'finishmeeeeee "")
+       ]
+
       [(Float Double) (exact->inexact num)]
       [(Complex) (+ num 0.0+0.0i)]
       [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
@@ -1241,6 +1268,8 @@
   (define randomI s:random)
 
   (define (logF n) ;(real-part (log n))
+    (log n)
+    #;
     (if (< n 0) (wserror "logF: cannot accept negative numbers")
 	(log n)))
   (define (logD n) 

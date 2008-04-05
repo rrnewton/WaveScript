@@ -17,6 +17,7 @@ const_E    :: Float;
 
 fst         :: (a * b) -> a;
 snd         :: (a * b) -> b;
+compose     :: ((b->c), (a->b)) -> (a->c);
 
   // Some additional math functions 
 sqr        :: #n -> #n;
@@ -232,6 +233,7 @@ const_E    = 2.718281828459045;
 
 fun fst((a,_)) a
 fun snd((_,b)) b
+fun compose(f,g) fun(x) f(g(x))
 
 // Some additional math functions.
 

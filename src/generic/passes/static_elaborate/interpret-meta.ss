@@ -279,7 +279,11 @@
 	  )])]
 
     ;; FIXME: THIS SHOULD MAKE THE CASES ABOVE REDUNDANT:
-    [(assert-type ,ty ,[val]) (set-value-type! val ty) val]
+    ;; [2008.04.05] This needs to replicate the hack for assert-type/cast_num:
+    [(assert-type ,ty ,[val])      
+     (if (and (plain? val) (memq ty num-types))
+	 (make-plain (__cast_num #f ty (plain-val val)) ty)
+	 (begin (set-value-type! val ty) val))]
 
     [(,frgn . ,_) (guard (memq frgn '(foreign foreign_source)))
      (error 'interpret-meta:Eval "foreign entry without type assertion: ~s" (cons frgn _))]
@@ -528,6 +532,8 @@
 	prims vals)))
   ;(printf "BUILT DICTIONARY!\n")
   )
+
+(define __cast_num (wavescript-language '__cast_num))
 
 ;; This is used to turn scheme procedures back into closures.
 (define reflect-msg (gensym "reflect"))

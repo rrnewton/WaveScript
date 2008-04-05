@@ -2152,6 +2152,10 @@ int main(int argc, char ** argv)
 		   ifftC2R fftC ifftC
 		   exptI logD logF ^_ ^I16 ^I32 ^I64 ^U16 ^D 
 
+		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
+		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 
+		 lshiftI32 rshiftI32 logorI32 logandI32 logxorI32 
+
 		   internString uninternString
 
 		   exclusivePtr getPtr

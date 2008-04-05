@@ -9,12 +9,15 @@ RUN=.__runquery_output_wstiny.txt
 echo > $COMP
 echo > $RUN
 
-EXEC=./query.py
+EXEC="./query.py | head -n 20"
 TELOS=
 
-if [ "$1" == "telosb" ];
-then EXEC=java PrintfClient
-     TELOS=true
+echo First arg $1
+if [ "$1" = "telosb" ]; then 
+  echo Running on REAL telos.
+  echo Using super hackish method for killing java listener:
+  EXEC="(java PrintfClient &); sleep 5; killall java"
+  TELOS=true
 fi
 
 function go () {
@@ -25,7 +28,8 @@ function go () {
     echo >> $RUN
     echo $1 : >> $RUN
     if [ "$TELOS" != "" ]; then make -f Makefile.tos2 telosb bsl,$THEMOTE install; fi 
-    if ! $EXEC | head -n 20 >> $RUN; then exit 1; fi
+    echo Running with $EXEC
+    if ! bash -c "$EXEC" >> $RUN; then exit 1; fi
 }
 
 

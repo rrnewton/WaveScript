@@ -311,7 +311,7 @@ int fix_fftr(short f[], int m, int inverse)
 	return scale;
 }
 
-
+/*
 #define n 16
 int main() {
   short a[n];
@@ -338,3 +338,4 @@ int main() {
 
   return 0;
 }
+*/

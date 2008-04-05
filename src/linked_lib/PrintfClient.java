@@ -51,8 +51,14 @@ public class PrintfClient implements MessageListener {
   }
   
   private static void usage() {
-    System.err.println("usage: PrintfClient [-comm <source>]");
-    System.err.println("For example, <source> = serial@/dev/ttyUSB0:telosb");
+     System.err.println("usage: java PrintfClient ");
+      //System.err.println("usage: java PrintfClient [linelimit]");
+     System.err.println("(uses MOTECOM environment variable)");
+     
+      //    System.err.println("For example, <source> = serial@/dev/ttyUSB0:telosb");
+
+      //    System.err.println("usage: PrintfClient [-comm <source>]");
+      //    System.err.println("For example, <source> = serial@/dev/ttyUSB0:telosb");
   }
   
   public static void main(String[] args) throws Exception {
@@ -69,7 +75,15 @@ public class PrintfClient implements MessageListener {
 	       System.exit(1);
       }
       source = args[1];
-    } if (envvar != null) {
+    }
+    
+    /*
+    if (args.length == 1) {
+      limit = (new Integer(args[0])).intValue();
+    }
+    */
+
+     if (envvar != null) {
       System.out.println(String.format(";; Setting source to $MOTECOM: %s\n", envvar));
       source = envvar;
     } else {

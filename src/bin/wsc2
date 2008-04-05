@@ -16,6 +16,19 @@ fi
 #    echo Linking extra libraries requested by query file: $EXTRALIBS
 # fi
 
+## LAME that this is duplicated:
+while [ $# != 0 ];  do 
+  if [ "$1" == "-O0" ] || 
+     [ "$1" == "-O1" ] || 
+     [ "$1" == "-O2" ] || 
+     [ "$1" == "-O3" ];
+  then export COPTFLAG="$1"; 
+  ## Otherwise just SKIP them:
+  fi
+  shift;
+done;
+
+
 if [ -f "query.c" ]; 
 then exec wsc2-gcc;
 else echo query.c not found...; exit 1

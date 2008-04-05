@@ -188,6 +188,7 @@ fun FIX_MPY(a, b) {
 fix_fft :: (Array Short, Array Short, Int, Bool) -> Int;
 fun fix_fft(fr, fi, m, inverse)
 {
+  DEBUG = true;
         using Mutable;
   //	int mr, nn, i, j, l, k, istep, n, scale, shift;
   //	short qr, qi, tr, ti, wr, wi;
@@ -203,8 +204,8 @@ fun fix_fft(fr, fi, m, inverse)
 	nn = n - 1;
 	scale = ref(0);
 
-	//println("Input r: " ++ fr);
-	//println("Input i: " ++ fi);
+	if DEBUG then println("Input r: " ++ fr);
+	if DEBUG then println("Input i: " ++ fi);
 
 	/* decimation in time - re-order data */
 	for m = 1 to (cast_num(nn)::Int) {
@@ -225,11 +226,13 @@ fun fix_fft(fr, fi, m, inverse)
 		  ti      = fi[m];
 		  fi[m]  := fi[_mr];
 		  fi[_mr] := ti;
-		}
+		};
+       	  if DEBUG then println("  dec loop r: " ++ fr);
+	  if DEBUG then println("  dec loop i: " ++ fi);
 	};
 
-	//println("Decimated r: " ++ fr);
-	//println("Decimated i: " ++ fi);
+	if DEBUG then println("Decimated r: " ++ fr);
+	if DEBUG then println("Decimated i: " ++ fi);
 
 	l = ref(1);
 	k :: Ref Int = ref(LOG2_N_WAVE - 1);
@@ -301,6 +304,9 @@ fun fix_fft(fr, fi, m, inverse)
 
 		k += -1;
 		l := istep;
+
+	  //if DEBUG then println("  outer loop r: "++fr);
+	  //if DEBUG then println("  outer loop i: "++fi);
 	}
 
 //	return scale;

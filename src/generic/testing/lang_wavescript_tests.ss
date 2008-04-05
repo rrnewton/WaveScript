@@ -95,6 +95,9 @@
              ))
          55100]
 
+	["num reps 1" (,(lambda () (ws:__cast_num #f 'Int16 32.0))) 32]
+	["num reps 2" (,(lambda () (ws:__cast_num #f 'Int16 32769.0))) -32767]
+
 	,@(map
 	      (lambda (prim)
 		(list (format "Testing that wavescript implements all primitives: ~a" prim)

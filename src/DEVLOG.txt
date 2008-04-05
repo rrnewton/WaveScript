@@ -1465,6 +1465,23 @@ Trying with BaseStation... Nothing on console.
 Trying with TinyOS 1.0.  
 
 
+[2008.04.05] {Numeric types, casting, meta-eval}
 
+The generic arithmetic has become a giant headache.  This Scheme
+representation of numbers started off as a simple hack (fixnum for
+ints, flonum for floats), and it has become a huge mess.
+
+This would all be much better if:
+
+ (1) Type classes were used (properly) for overloading.
+
+ (2) WS were written in a strongly typed language, that always
+     properly abstracted the numeric representations and operations.
+
+One of the many issues that came up recently involved whether
+representation invariants (fixnum<->float) should always be maintained
+*within* container representations (arrays, lists).  For the moment
+they are not.  Only when data is unpacked from such a container is it
+forced to conform with the proper numeric representation.
 
 
