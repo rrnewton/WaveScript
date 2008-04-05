@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This will test wstiny in different modes. 
+#
+
 COMP=.__wstinyMessages.txt
 RUN=.__runquery_output_wstiny.txt
 
@@ -9,7 +12,6 @@ echo > $RUN
 EXEC=./query.py
 TELOS=
 
-# Also support testing 
 if [ "$1" == "telosb" ];
 then EXEC=java PrintfClient
      TELOS=true

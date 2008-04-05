@@ -67,7 +67,7 @@
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
-		       ;[(Int32   ,e)  `(assert-type (cast_num ,e))]
+		       [(Int32   ,e)  `(__cast_num 'Int 'Int32 ,e)]
 		       [(,i16   ,e)  (guard (eq-any? i16 'Int16 'Uint16))
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type ~a, it might overflow: ~s"
@@ -90,7 +90,9 @@
 		      [,oth 
 		       (let ([in_type (recover-type oth tenv)]
 			     [out_type t])
-			 (ASSERT symbol? in_type) (ASSERT symbol? out_type)
+			 ;(ASSERT symbol? in_type) (ASSERT symbol? out_type)
+			 (unless (and (symbol? in_type) (symbol? out_type))
+			   (error 'degeneralize-arithmetic "insufficiently constrained cast_num: ~s -> ~s" in_type out_type))
 			 `(__cast_num ',in_type ',out_type ,oth))])]
 		   [else 		    
 		    ;; NOTE: THIS WON'T WORK FOR ABS YET...

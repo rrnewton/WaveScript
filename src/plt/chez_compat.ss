@@ -137,7 +137,8 @@
   (define-syntax cfl>= (identifier-syntax >=))
   
   (define-syntax fxlogand (identifier-syntax bitwise-and))
-  (define-syntax fxlogor (identifier-syntax bitwise-or))
+  (define-syntax fxlogor  (identifier-syntax bitwise-ior))
+  (define-syntax fxlogxor (identifier-syntax bitwise-xor))
   (define-syntax fxmodulo (identifier-syntax modulo))
   (define-syntax fxquotient (identifier-syntax quotient))
   (define-syntax fxremainder (identifier-syntax remainder))
@@ -170,6 +171,7 @@
   (define-syntax lognot (identifier-syntax bitwise-not))
   (define-syntax logor  (identifier-syntax bitwise-ior))
   (define-syntax logand (identifier-syntax bitwise-and))
+  (define-syntax logxor (identifier-syntax bitwise-xor))
   (define-syntax ash (identifier-syntax arithmetic-shift))
 
   (define (logbit? ind n) (not (fxzero? (logand 1 (ash n (- ind))))))

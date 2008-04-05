@@ -100,6 +100,10 @@
 	   ;; NAH, doing it all the time... don't yet support server side timers in a split program.
 	   )
     `(app TOS:timer ,@args)]
+   ;; And this is an auxillary hack:
+   [(app ,timer ,[args] ...) 
+    (guard (eq? (peel-annotations timer) 'Server:timer))
+    `(timer (annotations) ,@args)]
 
    [(app ,timer ,[args] ...) (guard (eq? (peel-annotations timer) 'timer))
     `(timer (annotations) ,@args)]

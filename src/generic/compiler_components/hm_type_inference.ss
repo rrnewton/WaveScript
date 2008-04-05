@@ -164,8 +164,11 @@
 
 	     ;; Prune the first line:
 	     (set! lines (cons (** (make-string col1 #\space) 
-				   (substring (car lines) col1 
-					      (string-length (car lines))))
+				   (if (> col1 (string-length (car lines)))
+				       ;; This shouldn't happen, but it did.
+				       (car lines) ;; Give up on pruning.
+				       (substring (car lines) col1 
+						  (string-length (car lines)))))
 			       (cdr lines)))
 
 	     ;; Line cap: Arbitrary limit on length of expression to print:
@@ -440,7 +443,9 @@
          [(Stream ,t) `(Stream #(Int ,t))]
          )
        ]
-
+      
+      [(__cast_num ',from ',to ,_) to]
+      
       ;; Since the program is already typed, we just use the arrow type of the rator:
       ;[(,[rat] ,rand ...) (rac rat)]
       [,other 
@@ -529,11 +534,14 @@
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
+#;
       [,prim (guard (symbol? prim) (regiment-primitive? prim) (not (tenv-lookup tenv prim)))
              (values prim (prim->type prim))]
       
       ;; Here's the magic:
       [,v (guard (symbol? v))
+	  (if (and (regiment-primitive? v) (not (tenv-lookup tenv v)))
+	      (values v (prim->type v))	      
           (let ((entry (tenv-lookup tenv v)))
             (if entry 
                 (cond
@@ -566,7 +574,8 @@
                     )]
                  [else                   
                   (values v entry)])
-                (error 'annotate-expression "no binding in type environment for var: ~a" v)))]
+                (error 'annotate-expression "no binding in type environment for var: ~a" v)))
+	      )]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te "(Conditional's test expression must have boolean type.)\n") ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
@@ -632,17 +641,6 @@
                  (match (deep-assq 'Stream first)
                    [(Stream ,elt) `(Stream #(Int ,elt))])))]
 
-      ; FIXME: a bit of a hack since these need to be typechecked both as a function application, and independently,
-      ;        without and with annotations, respectively;
-      ;        also, these can probably just be generalized with a guard for the annotations
-      [(_merge ,annot ,[l -> s1 t1] ,[l -> s2 t2])
-       (values `(_merge ,annot ,s1 ,s2) (type-app (prim->type '_merge) `((List Annotation) ,t1 ,t2) exp tenv nongeneric))]
-      [(readFile ,annot ,[l -> args* ty*] ...)
-       (values `(readFile ,annot ,@args*) (type-app (prim->type 'readFile) `((List Annotation) ,@ty*) exp tenv nongeneric))]
-
-      [(timer ,annot ,[l -> args* ty*] ...)
-       (values `(timer ,annot ,@args*) (type-app (prim->type 'timer) `((List Annotation) ,@ty*) exp tenv nongeneric))]
-
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
@@ -664,6 +662,9 @@
          (let-values ([(bod ty) (annotate-expression bod tenv nongeneric)])
            (values `(for (,i ,start ,end) ,bod) ty)))]
       
+      ;; This is not just a normal primitive:
+      [(__cast_num ',from ',to ,[l -> x xty]) 
+       (values `(__cast_num ',from ',to ,x) to)]
       
       [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
                                                 (map (lambda (_) `(quote ,(make-tvar))) v*)
@@ -681,7 +682,20 @@
              [rhs* (map last tail*)])
          (DEBUGASSERT (curry andmap type?) (filter id ty*))
          (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
+
+      ; FIXME: a bit of a hack since these need to be typechecked both as a function application, and independently,
+      ;        without and with annotations, respectively;
+      ;        also, these can probably just be generalized with a guard for the annotations
+      [(_merge ,annot ,[l -> s1 t1] ,[l -> s2 t2])
+       (values `(_merge ,annot ,s1 ,s2) (type-app (prim->type '_merge) `((List Annotation) ,t1 ,t2) exp tenv nongeneric))]
+      [(readFile ,annot ,[l -> args* ty*] ...)
+       (values `(readFile ,annot ,@args*) (type-app (prim->type 'readFile) `((List Annotation) ,@ty*) exp tenv nongeneric))]
+
+      [(timer ,annot ,[l -> args* ty*] ...)
+       (values `(timer ,annot ,@args*) (type-app (prim->type 'timer) `((List Annotation) ,@ty*) exp tenv nongeneric))]
       
+
+
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
       [(src-pos ,p (_merge ,annot ,[l -> s1 s1t] ,[l -> s2 s2t]))
        (DEBUGASSERT (andmap type? `((List Annotation) ,s1t ,s2t)))

@@ -62,6 +62,8 @@
 		    ))
 
     (define (wrap ty x)
+      ;; This pass only runs in monomorphic land.
+      (ASSERT (not (polymorphic-type? ty)))
       `(assert-type ,ty ,x))
 
     (define (maybewrap x tenv)

@@ -48,6 +48,10 @@
        [(Array ,_) #t]
        [(List ,_)  #t]
        [(Ref ,_)   #t] ;; ?? 
+
+       [(Sigseg ,_) #t] ;; This shoudn't get to here with wsc2.
+       [Timebase    #t] ;; This is conservative, we can't really say how timebase is implemented.
+       
        [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
        [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
        [Symbol #f] ;; Meaningless answer.  No runtime representation... used internally.

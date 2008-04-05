@@ -126,8 +126,12 @@
     ;; Considering this instead of all the separate conversions.
     (cast_num ((NUM a)) (NUM b))
 
+    ;; Bitwise operations:
     ;(lshift ((NUM a) Int) (NUM a))
     ;(rshift ((NUM a) Int) (NUM a))
+    ;(logor  ((NUM a) (NUM a)) (NUM a))
+    ;(logand ((NUM a) (NUM a)) (NUM a))
+    ;(logxor ((NUM a) (NUM a)) (NUM a))
     
     ; Here are some "upcasts".
     ; Throws an error if you try to downcast??
@@ -449,6 +453,7 @@
     
     ;,@numeric-conversion-prims
 
+    ;; This is a hack, it's not really a primitive, and the type checker treats it specially:
     (__cast_num (Symbol Symbol (NUM a)) (NUM b))
 
 ;    (int16ToUint16  (Int16)   Uint16)
@@ -559,6 +564,25 @@
     ;; [2007.07.01] Finally removing this dated construct:
 ;    (eq? ('a 'a) Bool)  ;; This should just be '=' when it comes down to it.
     (null? ((List 'a)) Bool)
+
+    ;; Bitwise operations:
+    (lshiftI16 (Int16 Int)   Int16)
+    (rshiftI16 (Int16 Int)   Int16)
+    (logorI16  (Int16 Int16) Int16)
+    (logandI16 (Int16 Int16) Int16)
+    (logxorI16 (Int16 Int16) Int16)
+
+    (lshiftU16 (Uint16 Int)   Uint16)
+    (rshiftU16 (Uint16 Int)   Uint16)
+    (logorU16  (Uint16 Uint16) Uint16)
+    (logandU16 (Uint16 Uint16) Uint16)
+    (logxorU16 (Uint16 Uint16) Uint16)
+
+    (lshiftI32 (Int32 Int)   Int32)
+    (rshiftI32 (Int32 Int)   Int32)
+    (logorI32  (Int32 Int32) Int32)
+    (logandI32 (Int32 Int32) Int32)
+    (logxorI32 (Int32 Int32) Int32)
 
     ;; Written &&, ||, and not(b).
     (not (Bool) Bool)

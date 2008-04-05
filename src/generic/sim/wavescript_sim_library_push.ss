@@ -62,9 +62,13 @@
 		 absI absF absD absC absI16 absI64
 		 randomI
 		 logD logF ;logI 
-		 exptI exptD exptF
+		 exptI exptD exptF		
 		 ;modI modF 
 		 roundF		 
+
+		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
+		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 
+		 lshiftI32 rshiftI32 logorI32 logandI32 logxorI32 
 		 
 		 makeComplex
 		 
@@ -1098,10 +1102,60 @@
   (define _+_ s:+)    (define _-_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
 
   ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
+
+
+#|
+  ;; FIXME! It willbe annoying, but I should make Int16/32 overflow properly:
+  ;; The following is only valid for overflow-free programs.
   (define _+I16 fx+)  (define _-I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define _+U16 fx+)  (define _-U16 fx-)  (define *U16 fx*)  (define /U16 fx/)
   (define _+I32 s:+)  (define _-I32 s:-)  (define *I32 s:*)  (define (/I32 a b) (floor (s:/ a b)))
   (define _+I64 s:+)  (define _-I64 s:-)  (define *I64 s:*)  (define (/I64 a b) (floor (s:/ a b)))
+|#
+
+  ;; The below method is expensive, but gives us consistent overflow behavior.
+
+  (define (overflow-add op pow)
+    (let* ([base       (expt 2 pow)]
+	   [basesub    (expt 2 (sub1 pow))]
+	   [negbasesub (s:- basesub)])
+      (lambda (a b)
+	(let ([result (op a b)])
+	  (cond
+	   [(>= result basesub)  (s:- result base)]	   
+	   [(< result negbasesub) (s:+ result base)]
+	   [else result])))))
+  (define (overflow-mult op pow)
+    (let ([base (expt 2 pow)])      
+      (overflow-add (lambda (a b) (modulo (op a b) base)) pow)))
+
+  (define _+I16 (overflow-add fx+ 16))  
+  (define _-I16 (overflow-add fx- 16)) 
+  (define *I16  (overflow-mult s:* 16))
+  (define /I16  (overflow-add fx/ 16))
+
+  (define _+I32 (overflow-add s:+ 32))  
+  (define _-I32 (overflow-add s:- 32)) 
+  (define *I32  (overflow-mult s:* 32))
+  (define /I32  (overflow-add (lambda (a b) (floor (s:/ a b))) 32))
+
+  (define _+I64 (overflow-add s:+ 64))  
+  (define _-I64 (overflow-add s:- 64)) 
+  (define *I64  (overflow-mult s:* 64))
+  (define /I64  (overflow-add (lambda (a b) (floor (s:/ a b))) 64))
+
+  ;; Unsigned is different:
+  (define (uoverflow op pow)
+    (let* ([base       (expt 2 pow)])
+      (lambda (a b)
+	(modulo (op a b) base))))
+
+  (define _+U16 (uoverflow fx+ 16))
+  (define _-U16 (uoverflow fx- 16))
+  (define *U16  (uoverflow s:* 16))
+  (define /U16  (uoverflow fx/ 16))
+  
+  ;;========================================
 
   (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
   (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
@@ -1131,7 +1185,7 @@
   ;; That is, overflow behavior is not well defined across platforms.
   (define (__cast_num from to num) 
     (case to
-      [(Int Uint16 Int16 Int64)
+      [(Int Int32 Uint16 Int16 Int64)
        (let ([x (inexact->exact (floor num))]
 	     [pred (match to
 		     [Int16 int16?]
@@ -1271,6 +1325,45 @@
   (define charToInt char->integer)
   
   (define (roundF f) ((IFCHEZ flround round) f))
+
+
+  ;; FIXME: These 16 bit representations don't have the sign bit in
+  ;; the right place!!!!  This doesn't fully model them correctly:
+#;
+  (define (lshiftI16 fx n)
+    (ASSERT (fx>= fx 0))
+    (fxsll fx n))
+#;
+  (define (rshiftI16 fx n)
+    (ASSERT (fx>= fx 0))
+    (fxsrl fx n))
+
+  ;; It seems that C's >> *does* do an arithmetic shift for signed types.
+  (define (lshiftI16 fx n) (ash fx n))
+  (define (rshiftI16 fx n) (ash fx (fx- n)))
+  (define logorI16 fxlogor)
+  (define logandI16 fxlogand)
+  (define logxorI16 fxlogxor)
+
+  (define (lshiftU16 fx n)
+    (ASSERT (fx>= fx 0))
+    (fxsll fx n))
+  (define (rshiftU16 fx n)
+    (ASSERT (fx>= fx 0))
+    (fxsrl fx n))  
+  (define logorU16 fxlogor)
+  (define logandU16 fxlogand)
+  (define logxorU16 fxlogxor)
+
+  (define (lshiftI32 int n)
+    ;(ASSERT (>= int 0))
+    (ash int n))
+  (define (rshiftI32 int n)
+    ;(ASSERT (>= int 0))
+    (ash int (fx- n)))
+  (define logorI32 logor)
+  (define logandI32 logand)
+  (define logxorI32 logxor)
 
   ;; [2006.08.23] Lifting ffts over sigsegs: 
   ;; Would be nice to use copy-struct for a functional update.

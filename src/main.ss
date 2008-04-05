@@ -560,7 +560,8 @@
     (printf "Output of metaprogram evaluation:\n")
     (printf "------------------------------------------------------------\n"))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
-  (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss")
+  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+    (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss"))
   (if (>= (regiment-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
@@ -570,7 +571,7 @@
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))
-  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f))
+  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
@@ -636,12 +637,13 @@
      (print-var-types p +inf.0))
    (void))
 
+
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
   
   (do-late-typecheck)  ;; Anihilate introduced type variables.
 
   (when (>= (regiment-verbosity) 1) (printf "Monomorphism achieved.\n"))
-  (when (or (>= (regiment-verbosity) 2) (IFDEBUG #t #f))
+  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__monomorphic.ss"))
 
   ;; <-------- NOTE: Old location for merge-iterates. [2007.11.01]
@@ -1029,9 +1031,11 @@
 	    (ws-run-pass prog nominalize-types)
 	    (ws-run-pass prog gather-heap-types)
 
-	    (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss")	    
+	    (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+	      (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss"))
 	    (ws-run-pass prog explicit-stream-wiring)
-	    (dump-compiler-intermediate prog ".__afterexplicitwiring.ss")
+	    (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+	      (dump-compiler-intermediate prog ".__afterexplicitwiring.ss"))
 	    ;(ws-run-pass prog remove-unused-streams)
 	    
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
@@ -1051,7 +1055,8 @@
 			 (parameterize ([inferencer-enable-LUB #t]
 					[inferencer-let-bound-poly #f])
 			   (time (ws-run-pass prog retypecheck)))))
-		     (dump-compiler-intermediate prog ".__after_refcounts.ss")
+		     (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 		     
 		     (ws-run-pass prog emit-c2 class)
@@ -1120,6 +1125,13 @@
 		    (printf "\n Server-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-server))
 		    (newline)
+		    		    
+		    (pretty-print (partition->simple-graph max-node))
+		    
+		    #;
+		    (string->file (emit-lp definite-node (merge-partitions maybe-node maybe-server) definite-server)
+				  "partition.lp")
+		    ;(exit)(inspect 'yay) 
 
 		    (begin
 		      (last-few-steps max-node <tinyos-timed>)		    
@@ -1127,9 +1139,10 @@
 		      ;; Either flushing between every operator, or a less intrusive measurement method.
 		      ;;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
 		      ;;(putenv "CFLAGS" (** (or (getenv "CFLAGS") "") "-DPRINTF_BUFFER_SIZE=1000"))
-		      (unless (zero? (system "make -f Makefile.tos2 telosb install 2> .TOS_build_log.txt"))
-			(error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt")))
-
+		      (let ([themote (if (getenv "THEMOTE") (string-append "bsl," (getenv "THEMOTE")) "")])
+			(unless (zero? (system (format "make -f Makefile.tos2 telosb ~a install 2> .TOS_build_log.txt" themote)))
+			  (error 'wstiny "error when trying to build profiling code for telosb, see output in .TOS_build_log.txt"))))
+		    
 		    (printf "============================================================\n")
 		    (printf "       Reading back profile results: \n")
 		    (printf "============================================================\n")
@@ -1139,22 +1152,6 @@
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
 			    (extract-time-intervals
-
-#;
-'((ForeignSource sensor_ws_entry2 0 16896)
-   (Start Node_s1_6 0 17234)
-   (End Node_s1_6 0 17318)
-   (Start Node_s2_5 0 17640)
-   (End Node_s2_5 0 17725)
-   (Start Node_s3_4 0 18048)
-   (End Node_s3_4 0 18133)
-   (Start Node_s4_3 0 18449)
-   (End Node_s4_3 0 18605)
-   (Start s5_2 0 18924)
-   (End s5_2 0 19010)
-   (Start s6_1 0 19323)
-   (EndTraverse 1 733)
-)
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1171,7 +1168,7 @@
 		      (printf "============================================================\n")
 
 		      (let-match ([#(,new-node ,new-server)
-				   (exhaustive-partition-search min-nodepart-hueristic 
+				   (exhaustive-partition-search max-nodepart-heuristic
 								(inject-times max-node times))])
 			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			

@@ -7,7 +7,10 @@
   (require "../../../plt/common.ss")
   (provide explicit-stream-wiring 
 	   stream-wiring-ast-size
-	   program-ast-size)
+	   program-ast-size
+
+	   make-outedge outedge-index outedge-name
+	   )
   (chezimports)
 
 ;; These are the types of objects we dig up in the code as we process it.
@@ -18,15 +21,17 @@
 (reg:define-struct (sink name))
 (reg:define-struct (operator name type code src*))
 
+;; Outgoing edges may or may not have indices associated with them.
+;; Because they infrequently have indices, this is a nasty source of
+;; errors so I try to make it a bit safer with a distinct type:
+(reg:define-struct (outedge index name))
+
 ;; This pass makes the forward-links explicit in the stream graph.
 ;; 
 ;; The output of this pass is no longer an expression in the original sense.
-;; It's five things:
-;;  1) A set of constant bindings (which may, in the future, include functions).
-;;  2) A set of Sources:  [v ty (prim const ...) (downstream-links ...)]
-;;  3) A set of Iterates: [v ty fundef upstream (downstream-links ...)]
-;;  4) A set of UnionNs:   [v ty (upstream-link ...) (downstream-links ...)]
-;;  5) A designated name of a source/iterate that returns to BASE<-
+;;
+;; Note, downstream links can be either symbols or (<ind> sym) lists.
+;; The latter convention is for dealing with unionN/unionList.
 (define-pass explicit-stream-wiring 
     
     ;; Sort out which primitives are sources vs. intermediate points

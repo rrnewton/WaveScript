@@ -2,6 +2,7 @@
 (module partition-graph mzscheme
     (require "../../plt/common.ss"
 	     "../../plt/hashtab.ss"
+	     "wavescope_bkend/nominalize-types.ss"
 	     )
     (provide 
      	   partition-graph-by-namespace
@@ -15,9 +16,9 @@
 	   remove-unused-streams
 	   exhaustive-partition-search
 
-	   min-bandwidth-hueristic
-	   max-nodepart-hueristic
-	   min-nodepart-hueristic
+	   min-bandwidth-heuristic
+	   max-nodepart-heuristic
+	   min-nodepart-heuristic
 
 	   reinsert-cutpoints
 	   process-read/until-garbage-or-pred
@@ -26,6 +27,9 @@
 	   tag-op
 
 	   multiplex-migrated
+
+	   partition->simple-graph
+	   emit-lp
 
 	   test-partition-graph
 	   )
@@ -49,8 +53,7 @@
 (define (make-cutpoint ty src dest) 
   (ASSERT src)
   (ASSERT dest)
-  `(cutpoint (name #f) (output-type ,ty) (code #f) (incoming ,src) (outgoing ,dest))
-  )
+  `(cutpoint (name #f) (output-type ,ty) (code #f) (incoming ,src) (outgoing ,dest)))
 
 ;; Due to our lack of static type checking, things can get messed up,
 ;; this is for dynamic asserts:
@@ -87,12 +90,19 @@
 	      (car ops)
 	      (loop (cdr ops)))))))
 
+;; This is annoying
+(define (strip-index outgoing)
+  (match outgoing
+    [,s (guard (symbol? s)) s]
+    [(,ind ,s) (ASSERT (symbol? s)) (ASSERT (fixnum? ind)) s]))
+
 ;; NOTE: These two helpers will return #f if the dowstream/upstream
 ;; operator does not exist in ops.
 (define (op->downstream op ops) 
   (ASSERT op)
   (let ((ls (ASSERT (assq 'outgoing (cdr op)))))
-    (map (lambda (x) (lookup x ops)) (cdr ls))))
+    (map (lambda (x) (lookup x ops)) 
+      (map strip-index (cdr ls)))))
 (define (op->upstream op ops)
   (ASSERT op)
   (let ([ls (ASSERT (assq 'incoming (cdr op)))])
@@ -102,7 +112,7 @@
 ;; These just retrieve the *names*, not the actual operators
 (define (op-outgoing op)
   (ASSERT (symbol? (car op)))
-  (cdr (ASSERT (assq 'outgoing (cdr op)))))
+  (map strip-index (cdr (ASSERT (assq 'outgoing (cdr op))))))
 (define (op-incoming op)
   (ASSERT (symbol? (car op)))
   (cdr (ASSERT (assq 'incoming (cdr op)))))
@@ -179,7 +189,7 @@
        (let ([name (cadr (assq 'name (cdr op)))]
 	     [type (cadr (assq 'output-type (cdr op)))]
 	     [incoming (cdr (assq 'incoming (cdr op)))]
-	     [outgoing (cdr (assq 'outgoing (cdr op)))])
+	     [outgoing (map strip-index (cdr (assq 'outgoing (cdr op))))])
 	 (define me? (node-name? name))
 	 ;(define up?* (map node-name? incoming))
 	 ;(define all-up? (andmap id up?*))
@@ -229,7 +239,7 @@
 	    (let loop ([ops serverops] [acc '()])
 	      (define rejects
 		(filter (lambda (op)
-			  (ormap (trace-lambda INTABLE (name) (hashtab-get nametable name))
+			  (ormap (lambda (name) (hashtab-get nametable name))
 				 (op-outgoing op)))
 		  ops))
 	      (if (null? rejects) 
@@ -292,7 +302,7 @@
 	    ;; TEMP FIXME: For now we dissallow state in mobile nodes!!
 	    ;; Eventually, we want to allow state to migrate from
 	    ;; node->server but not vice versa.
-	    [(iterate (annotations . ,annot) (let ,binds (lambda . ,_)))
+	    [(iterate (annotations . ,annot) (let ,binds (lambda . ,_)) ,strm)
 	     (if (null? binds) 
 		 (fallth xp)		 
 		 (begin
@@ -365,10 +375,12 @@
 ;; ==================================================
 ;;; Heuristics:
 
-(define (min-bandwidth-hueristic name epochsize time datasize datafreq) 0)
-(define (max-nodepart-hueristic name epochsize time datasize datafreq)
+ ;; Unfinished
+(define (min-bandwidth-heuristic name epochsize time datasize datafreq) 0)
+
+(define (max-nodepart-heuristic name epochsize time datasize datafreq)
   (if (>= time epochsize) 0 time)) ;; Try to fill up the epoch
-(define (min-nodepart-hueristic name epochsize time datasize datafreq)
+(define (min-nodepart-heuristic name epochsize time datasize datafreq)
   (- epochsize time)) ;; Minimize time, put everything possible on server.
 
 ;; ==================================================
@@ -596,7 +608,7 @@
 	      (sink ,base ,basetype)	,meta* ...))     
      (for-each (lambda (src)
 		 (printf " ~a (src) -> " (pad-width 10 (Name (opname src))))
-		 (for-each (curry printf "~a ") (map Name (cdr (assq 'outgoing src))))
+		 (for-each (curry printf "~a ") (map Name (map strip-index (cdr (assq 'outgoing src)))))
 		 (newline))
        src*)
      (for-each (lambda (op)
@@ -632,7 +644,7 @@
       (match op
 	[(cutpoint . ,rest)
 	 (define in (hashtab-get nametable (cadr (assq 'incoming rest))))
-	 (define out (hashtab-get nametable (cadr (assq 'outgoing rest))))
+	 (define out (hashtab-get nametable (strip-index (cadr (assq 'outgoing rest)))))
 	 ;; XOR: one must be in and the other out
 	 (or (and in (not out))  (and (not in) out))]
 	[,_ #t]))
@@ -657,7 +669,7 @@
     (define (valid? op) ;; Works for sources and ops:
       (let* ([op (if (symbol? (car op)) (cdr op) op)]
 	     [name (cadr (assq 'name op))]
-	     [outgoing (cdr (ASSERT (assq 'outgoing op)))])
+	     [outgoing (map strip-index (cdr (ASSERT (assq 'outgoing op))))])
 	;(printf "CONSIDERING ~s ~s ~s\n" name outgoing (map car (hashtab->list nametable)))
 	(if (ormap (lambda (out) (hashtab-get nametable out)) outgoing)
 	    #t
@@ -961,6 +973,138 @@
 )
 
 
+;; It's annoying to deal with big unweildy sexpressions.  This spits
+;; out a simple graph as a list-of-lists.  Each inner list contains
+;; the edges for a single vertex: (src dest ...)
+(define (partition->simple-graph part)
+  (define table (make-default-hash-table))
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))     
+     (append 
+      (map (lambda (src) (cons (opname src) (map strip-index (cdr (assq 'outgoing src)))))
+	src*)
+      (apply append 
+	     (map (lambda (op) 
+		    (define name (opname op))
+		    (if name ;; cutpoints don't have names:			
+			(list (cons name (op-outgoing op)))
+			'()))
+	       oper*)))]))
+
+
+(define (partition->src&ops part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     (append src* oper*)]))
+
+;; Spit out a .lp file describing the pure integer linear program that will solve the partitioning problem.
+(define (emit-lp node floating server)
+  ;; Build a table of annotations
+  (define annot-table
+    (let ([tab (make-default-hash-table 1000)])
+      (for-each (lambda (op/src)
+		  (and (error 'unfinished!!! "") ;; Verify that op/src is not source.
+		       (hashtab-set! tab (opname op/src) (op->annotations op/src))))
+	(append (partition->src&ops node)
+		(partition->src&ops floating)
+		(partition->src&ops server)))
+      tab))
+  (define _ (inspect annot-table))
+
+  (define g1 (partition->simple-graph node))
+  (define g2 (partition->simple-graph floating))
+  (define g3 (partition->simple-graph server))
+  (define leftnames  (map car g1))
+  (define rightnames (map car g3))
+  ;; We introduce variables with the same names as the nodes.
+  (define vars (map car g2))
+  ;; Also add in edges from the node that go *into* the floating part:
+  (define incoming-edges (filter (lambda (row) (not (null? (intersection (cdr row) vars)))) g1))
+
+  (define (Var v) 
+    (cond 
+     [(memq v leftnames)  "1"]
+     [(memq v rightnames) "0"]
+     [else  (symbol->string v)]))
+  (apply string-append
+   (append
+    (list
+     "\n// Minimize bandwidth of cut:\n"      
+     "min: "
+     (apply string-append
+       (insert-between "\n    + "
+	    (apply append 
+		   (map (lambda (row) 
+			  (define src (car row))
+			  (define _src (Var src))
+			  (define coeff "2")
+			  (define left (memq src leftnames))
+			  (map (lambda (dst)
+				 (define right (memq dst rightnames))
+				 ;; Lamely, the file format can't handle const * const:
+				 (cond
+				  [(and left right) (format "~a " coeff)]
+				  [right  (format "~a ~a " coeff _src)] ;; zero coefficient
+				  [left   (format "~a - ~a ~a" coeff coeff (Var dst))] ;; one coefficient
+				  [else   (format "~a ~a - ~a ~a " coeff _src coeff (Var dst))]))
+			    (cdr row)))
+		     (append incoming-edges g2)))))
+     ";\n")
+
+    '("\n// Make them binary (should be able to do this with an bin x; assert):\n")
+    (map (lambda (name) (format "0 <= ~a <= 1;\n" name)) vars)
+    '("\n// Require that we only cut each path once:\n")
+    (apply append
+     (map (lambda (row) 
+	   (define src (Var (car row)))
+	   (map (lambda (dst)
+		  (if (memq dst rightnames) 
+		      ;; Optimization, don't bother with this constraint:
+		      "" ;; var - 0 >= 0   is redundant
+		      (format "~a - ~a >= 0;\n" src (Var dst))))
+	     (cdr row)))
+       (append incoming-edges g2)))
+
+    (list 
+     "\n// Require that CPU sums to less than 100:\n"
+     (apply string-append
+	    "100 >= "
+	    (insert-between "\n    +  "
+	      (map (lambda (vr)
+		     ;; Need coefficients:
+		     (format " 1 ~a " (Var vr)))
+		vars)))
+     ";\n")
+
+    (list
+     "\n// Make all vars integer (should be binary)\n"
+     (apply string-append 
+	     "int " (insert-between ", " (map Var vars)))
+     ";\n")
+
+    )))
+
+#|
+min: x1 + x2;
+x1 >= 1;
+x2 >= 1;
+myrow: x1 + x2 >= 2;
+
+int x1;
+// bin x1;
+|#
+
+
 ;; ================================================================================
 ;; Unit tests
 
@@ -970,9 +1114,9 @@
 
   ))
 
-(define-testing test-this (default-unit-tester "Partitioning Node/Server programs" these-tests))
 ;; Unit tester.
-(define test-partition-graph test-this)
+(define test-partition-graph 
+  (default-unit-tester "Partitioning Node/Server programs" these-tests))
 
 
 ) ;; End module

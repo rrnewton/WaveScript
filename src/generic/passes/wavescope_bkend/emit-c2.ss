@@ -979,6 +979,22 @@
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
 
+       [(,lshift ,[Simp -> a] ,[Simp -> b]) 
+	(guard (memq lshift '(lshiftI16 lshiftU16 lshiftI32)))
+	(kont `("(",a" << ",b")"))]
+       [(,rshift ,[Simp -> a] ,[Simp -> b]) 
+	(guard (memq rshift '(rshiftI16 rshiftU16 rshiftI32)))
+	(kont `("(",a" >> ",b")"))]
+       [(,logand ,[Simp -> a] ,[Simp -> b]) 
+	(guard (memq logand '(logandI16 logandU16 logandI32)))
+	(kont `("(",a" & ",b")"))]
+       [(,logor ,[Simp -> a] ,[Simp -> b]) 
+	(guard (memq logor '(logorI16 logorU16 logorI32)))
+	(kont `("(",a" | ",b")"))]
+       [(,logxor ,[Simp -> a] ,[Simp -> b]) 
+	(guard (memq logxor '(logxorI16 logxorU16 logxorI32)))
+	(kont `("(",a" & ",b")"))]
+
        ;; These use FFTW currently
        [(,fft ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
 	(guard (memq fft '(memoized_fftR2C fftR2C ifftC2R))) ;; TEMP: Just using memoized for the normal one too!
@@ -1182,6 +1198,7 @@
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				(map (lambda (name code mark)
 				       (block (format "if (counter_~a == ~a)" name mark)
+					      ;; Execute the code for this source.
 					      (list (lines-text code)
 						    (format "counter_~a = 0;\n" name))))
 				  srcname* srccode* counter_marks)
@@ -1307,7 +1324,7 @@ int main(int argc, char **argv)
 ")))))
 
 
-;; .returns a function def in several parts: name, code, state, rate
+;; .returns a function def in several parts: name, code, state, rate, init-code
 (__spec Source <emitC2> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
@@ -1321,8 +1338,17 @@ int main(int argc, char **argv)
 	   (values nm
 		   ((Emit self down*) ''UNIT) ;; Code
 		   (make-lines ()) ;; State 	
-		   rate)
+		   rate
+		   #f)
 	   ])]
+
+       ;; Allowing normal inline_C and treating it as a special case of inline_TOS:
+       [(inline_C ',top ',initfun) 
+	(values #f
+		#f   ;; code
+		(make-lines (list "\n" top "\n")) ;; state
+		#f
+		(make-lines (if (equal? initfun "") "" `(,initfun "();\n"))))]
 
 #;       
        [(__foreign_source ',name ',filels '(Stream ,type))
@@ -1586,10 +1612,17 @@ int main(int argc, char **argv)
 		 (const ,[(SplitBinding self (emit-err 'TopBinding)) -> cb* cbinit*] ...)
 		 (init  ,[(Effect self (lambda _ (error 'top-level-init "code should not 'emit'")))
 			  -> init*] ...)
-		 (sources ,[(curry Source self) -> srcname* srccode*  state1* srcrate*] ...)
+		 (sources ,[(curry Source self) -> srcname* srccode* state1* srcrate* srcinit*] ...)
 		 (operators ,oper* ...)
 		 (sink ,base ,basetype)
 		 ,meta* ...))
+
+	;; Ok, this is annoying, but these all need to be option types:
+	(set! srcname* (filter id srcname*))
+	(set! srccode* (filter id srccode*))
+	(set! state1*  (filter id state1*))
+	(set! srcrate* (filter id srcrate*))
+	(set! srcinit* (filter id srcinit*))
 	
 	(let-match ([(,[(curry Operator self) -> oper* state2** opinit**] ...) (SortOperators self oper*)])
 
@@ -1620,6 +1653,8 @@ int main(int argc, char **argv)
 						(list 
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
+						 ;; This will be where the inline_C initializers go:
+						 (lines-text (apply append-lines srcinit*))
 						 (lines-text (apply append-lines (apply append opinit**))))))))	
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  
@@ -1698,7 +1733,7 @@ int main(int argc, char **argv)
   (specialise! Type <tinyos> 
     (lambda (next self ty)
       (match ty
-	[Int     "int16_t"]
+	[Int     "int16_t"] ;; [2008.04.04] Hmm... could just leave it as "int".
 	[,else (next)]
 	))))
 
@@ -2164,7 +2199,7 @@ event void PrintfControl.stopDone(error_t error) {
 	      (slot-cons! self 'impl-acc mod2)
 	      (slot-cons! self 'boot-acc boot)
 	      (slot-cons! self 'cleanup-acc cleanup)
-	      (values #f #f #f #f)]
+	      (values #f #f #f #f #f)]
 	     
 	     ;; Allowing normal inline_C and treating it as a special case of inline_TOS:
 	     [(inline_C ',top ',initfun)	      
@@ -2191,7 +2226,7 @@ event void PrintfControl.stopDone(error_t error) {
 	      (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
 						 (ForeignSourceHook self name
 								    (lines-text ((Emit self down*) arg)))))
-	      (values #f #f #f #f)]
+	      (values #f #f #f #f #f)]
 
 	     #;
 	     [,_ (next)]))]))))

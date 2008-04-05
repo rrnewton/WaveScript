@@ -603,13 +603,16 @@
          [(VAR -= exp) `(set! ,$1 (- ,$1 ,$3))]
          [(VAR *= exp) `(set! ,$1 (* ,$1 ,$3))]
 
-	 ;; Operators that are simple are straightforward.
+	 ;; Normal application.  Operators that are simple are straightforward:
          [(VAR LeftParen expls RightParen) `(app ,(wrap $1-start-pos $1-end-pos $1) ,@$3)]
 	 ;; This is a keyword, but it's also a prim name:
          [(static LeftParen expls RightParen) `(app static ,@$3)]
 
 	 ;; Other operators must be wrapped in parens:
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
+
+	 ;; It would be nice to have a convenient "cast" syntax.
+	 ;[(LeftParen type RightParen exp) `(assert-type ,$2 (cast_num ,$4))]
 
 	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,(wrap $1-start-pos $1-end-pos $1) ,$3)]
