@@ -565,8 +565,6 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
-;  (inspect (strip-annotations p 'src-pos))
-
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))
@@ -575,20 +573,17 @@
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
-;(print-graph #f)(inspect (strip-annotations p 'src-pos))
+  ;(inspect (strip-annotations p 'src-pos))
 
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
-
-
-  ;(inspect (blaze-path-to/assq p 'cast))
-  ;(inspect (deep-assq-all 'cast p))
-;  (inspect (strip-annotations p 'src-pos))
 
   ;; NOTE: wavescript-language won't work until we've removed complex constants.
   ;; Quoted arrays work differently in WS than in Scheme.
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
+
+;(ASSERT (null? (deep-assq-all 'BOTTOM p))) ;; These should all be gone.
 
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
@@ -624,8 +619,6 @@
   (ws-run-pass p strip-irrelevant-polymorphism)
   (ws-run-pass p unlift-polymorphic-constant)   
 
-;(inspect (filter (lambda (at) (and (pair? (rac at)) (eq? (car (rac at)) 'quote))) (deep-assq-all 'assert-type p)))
-
   (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
 
   (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.  
@@ -638,6 +631,8 @@
 
 
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
+
+  ;(inspect (strip-annotations p 'src-pos))
   
   (do-late-typecheck)  ;; Anihilate introduced type variables.
 
@@ -759,11 +754,21 @@
   (IFCHEZ   
    (when (memq 'profile (ws-optimizations-enabled))
      (unless  (memq 'annotate-with-data-rates disabled-passes)
+       
+       ;(ws-profile-limit '(elements 4))
 
        (printf "============================================================\n")
        (printf "       PROFILING IN SCHEME \n")
        (printf "============================================================\n")
-       (ws-run-pass p annotate-with-data-rates)))
+       (ws-run-pass p annotate-with-data-rates)
+       
+       ;; TEMPTOGGLE TEMP HACK FIXME:
+       (define-top-level-value 'scheme-profiling-performed! #t)
+       
+       (let ([get-vtime (wavescript-language 'get-current-vtime)])
+	 (printf "After profiling, virtual time was ~s\n" (get-vtime)))
+       
+       ))
    (void))
   
   ;; Now remove IFPROFILE constructs:
@@ -1091,6 +1096,16 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
+	
+		  (when (top-level-bound? 'scheme-profiling-performed!)
+		    (printf "\nDumping integer linear program, using Scheme profile only.\n")
+		    (let ([merged (merge-partitions node-part server-part)])		    
+		      (string->file (emit-lp (partition-sourcesonly merged)
+					     (partition-getmiddle merged)
+					     (partition-baseonly merged))
+				    "partition_scheme.lp")
+		      )
+		    (exit))
 
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
@@ -1104,7 +1119,7 @@
 				#(,maybe-server ,definite-server))
 			       (par (refine-node-partition node-part) 
 				    (refine-server-partition server-part))])
-		    
+		   		    
 		    (define max-node 
 		      (merge-partitions 
 		       ;; Note: Can't just reuse node-part here because we want to tag on some extra metadata:
@@ -1126,12 +1141,7 @@
 		    (newline)
 		    		    
 		    (pretty-print (partition->simple-graph max-node))
-		    
-		    #;
-		    (string->file (emit-lp definite-node (merge-partitions maybe-node maybe-server) definite-server)
-				  "partition.lp")
-		    ;(exit)(inspect 'yay) 
-
+#;
 		    (begin
 		      (last-few-steps max-node <tinyos-timed>)		    
 		      ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
@@ -1150,7 +1160,19 @@
 
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
+'()
+#;
 			    (extract-time-intervals
+#;
+'((Start Node_muladd_4 0 20433)
+   (End Node_muladd_4 0 52621)
+   (Start Node_sillyforloop_3 0 53074)
+   (End Node_sillyforloop_3 0 53169)
+   (Start s5_2 0 53642)
+   (End s5_2 0 53728)
+   (Start s6_1 0 54037)
+   (EndTraverse 0 56674))
+
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1165,6 +1187,13 @@
 		      (printf "============================================================\n")
 		      (printf "       Auto Partitioning: \n")
 		      (printf "============================================================\n")
+		      
+		      (printf "\nDumping integer linear program.\n")
+		      (string->file (emit-lp (inject-times definite-node times)
+					     (inject-times (merge-partitions maybe-node maybe-server) times)
+					     definite-server)
+				    "partition.lp")
+		      (pp 'YAY)(exit)
 
 		      (let-match ([#(,new-node ,new-server)
 				   (exhaustive-partition-search max-nodepart-heuristic

@@ -296,15 +296,33 @@
     (case-lambda
       [(t d) (datum->width t d #f)]
       [(t d sumdecls)
-       (match t
-         [(Array ,t) (foldr + 8 (map (lambda (e) (datum->width t e sumdecls)) (vector->list d)))]
-         [(List ,t)  (apply +   (map (lambda (e) (+ 8 (datum->width t e sumdecls))) d))]
-         [#() 1] ; FIXME FIXME: what to really do here?
-         [#(,t* ...) (apply +   (map (lambda (e t) (datum->width t e sumdecls)) (tuple-fields d) t*))]
-         [String (string-length d)] ; FIXME: there may be some overhead?
-         [,other (type->width t sumdecls)]
-         )]))
-  
+       (if (scalar-type? t)
+	   (type->width t sumdecls)
+	   (match t ;; No match recursion
+	     [(Array ,elt)
+	      (+ (type->width 'Int sumdecls) ;; The length slot.
+		 (if #f ;(scalar-type? elt)
+		     (* (vector-length d) (type->width elt sumdecls)) ;; Optimization.
+		     (vector-fold + 0 
+				   (vector-map (lambda (e) (datum->width elt e sumdecls)) d))))]
+	     ;; FIXME: This makes the assumption that an Int is the same size as a cdr pointer:
+	     [(List ,elt)  (foldl (lambda (e acc) (+ acc (datum->width elt e sumdecls)))
+			     (type->width 'Int sumdecls) d)]
+	     [#() 1] ; FIXME FIXME: what to really do here?
+	     [#(,t* ...) (apply +   (map (lambda (e ty) (datum->width ty e sumdecls)) (tuple-fields d) t*))]
+	     [String (string-length d)] ; FIXME: there may be some overhead?
+	     [(Sigseg ,elt) 
+	      (+ 
+	       (+ (type->width 'Int64 sumdecls)  ;; The Start slot.
+		  (datum->width 'Timebase (sigseg-timebase d) sumdecls)  ;; The Timebase
+		  )
+	       (datum->width `(Array ,elt) (sigseg-vec d))
+	       ;;(vector-map (lambda (e) (datum->width elt e sumdecls)) (sigseg-vec d))
+	       )]
+	     [Timebase (type->width 'Int sumdecls)] ;; For now assume this is a scalar.
+	     ;;[,other (type->width t sumdecls)]
+	     ))]))
+
 ; ----------------------------------------
 ;;; Representation for type variables  
   

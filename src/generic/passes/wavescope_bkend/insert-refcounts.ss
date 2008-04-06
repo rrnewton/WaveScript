@@ -14,6 +14,12 @@
 
   (cond-expand [chez (import rn-match)] [else (void)])
 
+(define (make-rc which ty exp)
+  ;; [2008.04.05] We end up with BOTTOMs as a result of ws-normalize-context.
+  ;; (They are the return value that follow a wserror control path.)
+  (if (equal? exp ''BOTTOM)
+      '(tuple)
+      (list which ty exp)))
 
 ;; The default wavescript scalar-type? predicate returns #t only for
 ;; numbers and characters.  It returns #f for tuples. For this backend
@@ -118,6 +124,10 @@
 	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
 	;; Go down both control paths:
 	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
+	
+	;; If we get to a dead-end control path like this, just forget it.
+	['BOTTOM ''BOTTOM]
+
 	[,oth 
 	 (define tmp (unique-name "tmp"))
 	 (if (simple-expr? oth)	     
@@ -159,15 +169,10 @@
 		;; BUT, that leads to an infinite loop.
 		;; DriveInside introduces extra let-expressions, which then lead to extra calls to DriveInside.
 		`(let ([,lhs ,ty ,(Value
-				   (DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
-						rhs ty))])
-		   
-		   #;
-		   ,(DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) 
-				 (Value bod)  '''unknown_result_ty)
-
+				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
+						rhs ty))])		   
 		   ,(Value
-		     (DriveInside (lambda (_) `(decr-local-refcount ,ty ,lhs)) bod 
+		     (DriveInside (lambda (_) (make-rc 'decr-local-refcount ty lhs)) bod 
 				 '''unknown_result_ty))))]
 	   
 	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
@@ -177,8 +182,8 @@
 	   [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
 	    (ASSERT simple-expr? hd)
 	    (ASSERT simple-expr? tl)     
-	    `(begin ,@(if (not-heap-allocated? elt) () `((incr-heap-refcount ,elt ,hd)))
-		    (incr-heap-refcount (List ,elt) ,tl)
+	    `(begin ,@(if (not-heap-allocated? elt) () (list (make-rc 'incr-heap-refcount elt hd)))
+		    ,(make-rc 'incr-heap-refcount `(List ,elt) tl)
 		    (assert-type (List ,elt) (cons ,hd ,tl)))]
 	   ;; This could be more efficient, could bump it all at once
 	   ;; without the for-loop.  incr-heap-refcount would have to
@@ -195,7 +200,7 @@
 	       (let ([,end Int (_-_ ,len '1)])
 		 (begin (for (,ind '0 ,end)
 			    (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,tmp) ,ind)])
-			      (incr-heap-refcount ,elt ,tmp2)))
+			      ,(make-rc 'incr-heap-refcount elt tmp2)))
 			,tmp)
 		 ))]
 	   
@@ -226,12 +231,12 @@
 		`(let ([,lhs ,ty ,(Value rhs)]) ,bod)
 		;; FIXME: INCORRECT:
 		`(let ([,lhs ,ty ,(Value 
-				   (DriveInside (lambda (x) `(incr-local-refcount ,ty ,x))
+				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
 						rhs ty))])
 		   ,(make-begin
 		     `(begin
 			,bod
-			(decr-local-refcount ,ty ,lhs)
+			,(make-rc 'decr-local-refcount ty lhs)
 			;;(tuple)
 			))))]
 
@@ -239,9 +244,9 @@
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
 		`(begin 
-		   (decr-heap-refcount ,ty ,v)
+		   ,(make-rc 'decr-heap-refcount ty v)
 		   (set! ,v (assert-type ,ty ,e))
-		   (incr-heap-refcount ,ty ,v)))]
+		   ,(make-rc 'incr-heap-refcount ty v)))]
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))
@@ -251,10 +256,10 @@
 	    (if (not-heap-allocated? elt) setit
 		`(begin 
 		   (let ([,tmp1 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-		     (decr-heap-refcount ,elt ,tmp1))  ;; Out with the old.
+		     ,(make-rc 'decr-heap-refcount elt tmp1))  ;; Out with the old.
 		   ,setit
 		   (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-		     (incr-heap-refcount ,elt ,tmp2))  ;; In with the new.
+		     ,(make-rc 'incr-heap-refcount elt tmp2))  ;; In with the new.
 		   ))]
 
 	   ;; Control flow structures keep us in Effect context:
@@ -297,7 +302,7 @@
     ;; For "global" variables:
     ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).
     (define (TopIncr exp ty)  
-      (DriveInside (lambda (x) `(incr-heap-refcount ,ty ,x)) exp ty))
+      (DriveInside (lambda (x) (make-rc 'incr-heap-refcount ty x)) exp ty))
 
     (define (Operator op)
       (match op

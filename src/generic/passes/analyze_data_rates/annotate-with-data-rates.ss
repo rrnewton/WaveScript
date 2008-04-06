@@ -22,7 +22,8 @@
 
 ;;
 (define (stream-type? ty)   (and (pair? ty) (eq? (car ty) 'Stream)))
-(define (type-of-stream ty) (cadr ty))
+(define (type-of-stream ty) (match ty [(Stream ,elt) elt]))
+
 
 
 ;;

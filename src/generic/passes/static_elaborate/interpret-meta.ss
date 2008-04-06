@@ -389,9 +389,11 @@
      (set-ref-contents! v rhs)
      (make-plain (void) '#())]
     
-    [(Array:makeUNSAFE ,_) (error 'interpret-meta:Eval 
-				  "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
-				  `(Array:makeUNSAFE ,_))]
+#;
+    [(Array:makeUNSAFE ,_) 
+     (error 'interpret-meta:Eval 
+	    "Don't use Array:makeUNSAFE at meta-evaluation! ~s"
+	    `(Array:makeUNSAFE ,_))]
 
     ;; TEMP HACK
     [(floatToInt ,[x])

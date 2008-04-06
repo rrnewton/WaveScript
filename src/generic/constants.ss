@@ -429,10 +429,14 @@
 (define-regiment-parameter ws-optimization-level 2)
 
 ;; Profiling controls:
-;; Used by annotate-with-data-rates:
-;; We can limit the amount of profiling performed either by amount of
+;; Used by annotate-with-data-rates: We can limit the amount of
+;; profiling performed either by amount of real time elapsed, virtual
 ;; time elapsed, number of output elements, or not at all.
-;; Valid values: 'none, '(time <ms>), or '(elements <n>)
+;;
+;; NOTE: virttime limiting isn't implemented yet.  And currently it
+;; can only stop after each output element is produced.
+;; 
+;; Valid values: 'none, '(time <ms>), '(virttime <microsec>), or '(elements <n>)
 (define-regiment-parameter ws-profile-limit '(time 3000))
 
 ;; This parameter stores an association list binding the names of

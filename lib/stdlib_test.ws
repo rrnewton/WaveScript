@@ -22,9 +22,9 @@ ch2 = dewindow$  ls`List:ref(1);
 
 ch1b = deinterleave(2, src) ` List:ref(0);
 
-zipped = zipN_sametype(0, [ch1,ch1b]);
+zipped = zipN_sametype(10, [ch1,ch1b]);
 
-zipped2 = zip4_sametype(0, ch1,ch1b, ch1,ch1b);
+zipped2 = zip4_sametype(10, ch1,ch1b, ch1,ch1b);
 
 everyother = iterate x in s1 {
   state { flag = true }
@@ -44,10 +44,6 @@ result = iterate sum in union2(degapped,zipped) {
     // Zipped:
     Right(x): {
     
-  //println(x++" \n");
-  assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
-  emit "Right";
-
   if first then {
     println("\n");
 
@@ -58,7 +54,12 @@ result = iterate sum in union2(degapped,zipped) {
       q = make(10);
       enqueue(q,1);
       enqueue(q,2);
+      assert_prnt("fifo elements", q`elements, 2);
+      assert_prnt("fifo peek 1", q`peek(0), 1);
+      assert_prnt("fifo peek 2", q`peek(1), 2);
       enqueue(q,3);
+      assert_prnt("fifo andmap #t", andmap((> 0), q), true);
+      assert_prnt("fifo andmap #f", andmap((< 3), q), false);
       x = dequeue(q);
       y = dequeue(q);
       enqueue(q,4);
@@ -123,7 +124,12 @@ result = iterate sum in union2(degapped,zipped) {
        assert_prnt("List:build", bld, [0,1,2,3,4]);
        assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
     }
-  } // End "first" 
+  }; // End "first" 
+
+  //println(x++" \n");
+  assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
+  emit "Right";
+
  } 
 
 };
@@ -131,7 +137,7 @@ result = iterate sum in union2(degapped,zipped) {
 }
 
 
-//main = result
 main = zipped
 //main = zip2_sametype(ch1, ch1b)
 main = union2(degapped,zipped)
+main = result

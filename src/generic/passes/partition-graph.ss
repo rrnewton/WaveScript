@@ -29,6 +29,10 @@
 	   multiplex-migrated
 
 	   partition->simple-graph
+
+	   partition-sourcesonly
+	   partition-baseonly
+	   partition-getmiddle
 	   emit-lp
 
 	   test-partition-graph
@@ -118,8 +122,8 @@
   (cdr (ASSERT (assq 'incoming (cdr op)))))
 
 (define (op-code op)
-  (ASSERT (symbol? (car op)))
-  (cadr (ASSERT (assq 'code (cdr op)))))
+  (let ([alist (if (symbol? (car op)) (cdr op) op)])
+    (cadr (ASSERT (assq 'code (cdr op))))))
 
 ;; Takes only ops proper, not sources.
 (define (op->annotations op)
@@ -127,17 +131,30 @@
     [#f '()] ;; cutpoints
     [(,_ (annotations ,annot ...) . ,__)     
      ;;(inspect annot)
-     annot]))
+     annot]
+    [(inline_TOS . ,_) '()]
+    [(inline_C . ,_) '()]
+    [(__foreign_source . ,_) '()]
+    ))
 
-(define (op->inputtype op)   
+(define (op->inputtype op part)
   (match op
-    [(cutpoint . ,rest) (cadr (ASSERT (assq 'output-type rest)))]
-    [(_merge . ,rest)   (cadr (ASSERT (assq 'output-type rest)))]
     [(iterate . ,rest) 
      (match (assq 'code rest)
        [(code (iterate ,ann (let ,binds (lambda ,args (,inty ,vqty) ,bod)) ,instrm))
-	`(Stream ,inty)])]))
-
+	`(Stream ,inty)])]
+    [(cutpoint . ,rest) (cadr (ASSERT (assq 'output-type rest)))]
+    [(_merge . ,rest)   (cadr (ASSERT (assq 'output-type rest)))]
+    [(unionN . ,rest) ;; Have to do some digging for this one.
+     (match (cadr (ASSERT (assq 'output-type rest)))
+       [(Stream (Struct ,name))
+	(let* ([defs (cdr (ASSERT (project-metadata 'struct-defs part)))]
+	       [entry (ASSERT (assq name defs))])
+	  (match entry
+	    ;; Finally!  Here it is:
+	    [(,nm (,fld1 Int) (,fld2 ,intype)) intype])
+	  )])]
+    [(__readFile . ,rest) #()]))
 
 (define not-inline_TOS?
   (lambda (src) 
@@ -483,7 +500,10 @@
 ;; whether we should at all attempt benchmarking on the node.
 (define refine-server-partition refine-node-partition)
 
-;; Takes the "base" portion, the metadata, the init, and the constants from p1...  
+;; Takes the "base" portion, the metadata, the init, and the constants
+;; from p1...  Eventually we should probably break apart the constants
+;; when splitting, in which case we would then need to also put them
+;; back together here.
 (define (merge-partitions p1 p2)
   ;; Must discard cutpoints obsoleted by the merge.
   (discard-spurious-cutpoints
@@ -493,13 +513,13 @@
 		 (operators ,oper* ...)  (sink ,base ,basetype) ,meta* ...))
 	(,___
 	 '(graph (const ,cnst2* ...) (init  ,init2* ...) (sources ,src2* ...)
-		 (operators ,oper2* ...) (sink ,base2 ,2basetype) ,2meta* ...)))
+		 (operators ,oper2* ...) (sink ,base2 ,basetype2) ,2meta* ...)))
       `(,input-language 
 	'(graph (const ,@cnst*)  ; ,@cnst2*
 		(init ,@init*) ; ,@init2*
 		(sources ,@src* ,@src2*)
 		(operators ,@oper* ,@oper2*)
-		(sink ,base ,basetype) ,@meta*))])))
+		(sink ,(if base base base2) ,(if base basetype basetype2)) ,@meta*))])))
 
 ;; This takes a set of edges to cut at.  However, currently, "edges"
 ;; are represented by the boxes that output to those edges.  This is
@@ -714,7 +734,7 @@
 				      (if (hashtab-get nametable down) #f
 					  (make-cutpoint ot opv down)))
 				    downstrm*)
-			(let ([intype (op->inputtype op)])
+			(let ([intype (op->inputtype op part)])
 			  (map-filter (lambda (in) 
 					(if (hashtab-get nametable in)  #f
 					    (make-cutpoint intype in opv)))
@@ -1008,22 +1028,21 @@
      (append src* oper*)]))
 
 ;; Spit out a .lp file describing the pure integer linear program that will solve the partitioning problem.
-(define (emit-lp node floating server)
+(define (emit-lp nodepart floating serverpart)
   ;; Build a table of annotations
   (define annot-table
     (let ([tab (make-default-hash-table 1000)])
       (for-each (lambda (op/src)
-		  (and (error 'unfinished!!! "") ;; Verify that op/src is not source.
+		  (and ;(if (not (symbol? (car op/src))) (inspect op/src) #t) ;; Verify that op/src is not source.
 		       (hashtab-set! tab (opname op/src) (op->annotations op/src))))
-	(append (partition->src&ops node)
+	(append (partition->src&ops nodepart)
 		(partition->src&ops floating)
-		(partition->src&ops server)))
+		(partition->src&ops serverpart)))
       tab))
-  (define _ (inspect annot-table))
-
-  (define g1 (partition->simple-graph node))
+  
+  (define g1 (partition->simple-graph nodepart))
   (define g2 (partition->simple-graph floating))
-  (define g3 (partition->simple-graph server))
+  (define g3 (partition->simple-graph serverpart))
   (define leftnames  (map car g1))
   (define rightnames (map car g3))
   ;; We introduce variables with the same names as the nodes.
@@ -1031,14 +1050,57 @@
   ;; Also add in edges from the node that go *into* the floating part:
   (define incoming-edges (filter (lambda (row) (not (null? (intersection (cdr row) vars)))) g1))
 
+  ;; Sometimes we don't have edge-rate data!  What should we do??
+  (define default-edge-weight "9999")
+  (define default-vert-weight "1")
+  (define cpu-granularity 1000)  ;; Doing a centi-percent.
+
   (define (Var v) 
     (cond 
-     [(memq v leftnames)  "1"]
-     [(memq v rightnames) "0"]
-     [else  (symbol->string v)]))
+     [(memq v leftnames)  1]
+     [(memq v rightnames) 0]
+     [else  v]))
+
+  ;; Scheme cpu weights mode:
+  ;;------------------------------
+  (define cpu-total (number->string cpu-granularity))
+  (define (cpu-coeff vr)
+    ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
+    (+ 10 
+       (max 0			    
+	 (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
+	   (if entry
+	       (let ([elapsed-vtime 
+		      (match (ws-profile-limit)
+			;; How many ms did we run scheme for:
+			;; This is real time:
+			[(time ,ms) ms]
+			;[(elements ,n) ]
+			;[(virttime ,n) ]
+			)])
+		 (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
+		   (inexact->exact (floor (* frac cpu-granularity)))))
+	       default-vert-weight)))))
+		     
+  ;; TinyOS cpu weights:
+  ;;------------------------------
+  #;
+  (define (cpu-coeff vr) 
+    (max 0 
+	 (let  ([entry (assq 'measured-cycles (hashtab-get annot-table vr))])
+	   (if entry
+	       (let ([frac (/ (cadr entry) (caddr entry))])
+		 (inexact->exact (floor (* frac cpu-granularity))))
+	       default-vert-weight))))
+
+  (printf "~s ops in floating partition.\n" (length vars))
+  (printf "Left names: ~s\n" leftnames)
+  (printf "Floating names: ~s\n" vars)
+  (printf "Right names: ~s\n" rightnames)
   (apply string-append
    (append
     (list
+     (format "// ~s Vars Total\n" (length vars))
      "\n// Minimize bandwidth of cut:\n"      
      "min: "
      (apply string-append
@@ -1046,8 +1108,13 @@
 	    (apply append 
 		   (map (lambda (row) 
 			  (define src (car row))
-			  (define _src (Var src))
-			  (define coeff "2")
+			  (define _src (Var src))			  
+			  (define coeff 
+			    (max 0 
+			      (let ([entry (assq 'data-rates (hashtab-get annot-table (car row)))])
+				(if entry
+				    (bench-stats-bytes (caddr entry))
+				    default-edge-weight))))
 			  (define left (memq src leftnames))
 			  (map (lambda (dst)
 				 (define right (memq dst rightnames))
@@ -1076,20 +1143,23 @@
        (append incoming-edges g2)))
 
     (list 
-     "\n// Require that CPU sums to less than 100:\n"
+     "\n// Require that CPU sums to less than 100%:\n"
      (apply string-append
-	    "100 >= "
+	    cpu-total " >= "
 	    (insert-between "\n    +  "
-	      (map (lambda (vr)
-		     ;; Need coefficients:
-		     (format " 1 ~a " (Var vr)))
+	      (map (lambda (vr)		 		     
+		     ;; Need coefficients:		 
+		     (format " ~a ~a " (cpu-coeff vr) (Var vr)))
 		vars)))
      ";\n")
 
     (list
      "\n// Make all vars integer (should be binary)\n"
      (apply string-append 
-	     "int " (insert-between ", " (map Var vars)))
+	     "int " (insert-between ", " 
+				   (map (curry format "~a")
+				     (filter (lambda (x) (not (memq x '(0 1))))
+				       (map Var vars)))))
      ";\n")
 
     )))
@@ -1103,6 +1173,56 @@ myrow: x1 + x2 >= 2;
 int x1;
 // bin x1;
 |#
+
+
+;; These are helpers to emit-lp.  They prune out artifical
+;; partitions consisting of just the source or sink operators.
+(define (partition-sourcesonly part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     `(,input-language 
+       '(graph (const ,cnst* ...)
+	       (init  ,init* ...)
+	       (sources ,src* ...)
+	       (operators)
+	       (sink ,#f ,#f)	,meta* ...))]))
+(define (partition-baseonly part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     (define filtered (filter (lambda (op) (eq? (opname op) base)) oper*))
+     (ASSERT (not (null? filtered)))
+     `(,input-language 
+       '(graph (const ,cnst* ...)
+	       (init  ,init* ...)
+	       (sources ,src* ...)
+	       (operators ,@filtered)
+	       (sink ,#f ,#f)	,meta* ...))]))
+(define (partition-getmiddle part)
+  (match part
+    [(,input-language 
+      '(graph (const ,cnst* ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,oper* ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     (define filtered (filter (lambda (op) (not (eq? (opname op) base))) oper*))
+     (ASSERT (< (length filtered) (length oper*)))
+     `(,input-language 
+       '(graph (const ,cnst* ...)
+	       (init  ,init* ...)
+	       (sources)
+	       (operators ,@filtered)
+	       (sink ,#f ,#f)	,meta* ...))]))
 
 
 ;; ================================================================================

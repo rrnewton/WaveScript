@@ -137,16 +137,23 @@
 	      ;(values `(assert-type ,type Array:null) type #f)
 	      (values 'Array:null type #f)
 	      ]
-	     
+
 	     ;; If they're all equal, reduce to 
 	     [(and (all-equal? (vector->list x))
 		   (not (type-containing-mutable? elt-ty)))
 	      (when (>= (regiment-verbosity) 3)
 		(printf " ** Note: Found compile-time vector with constant contents.\n"))
 	      ;`(Array:make ,(vector-length x) (assert-type ,elt-ty ,(vector-ref x 1)))
-	      (values
-	       `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty)))
-	       type #f)]
+	      (values	       
+	       (if (eq? 'BOTTOM (vector-ref x 0))
+		   ;; HACK: Special case, an array of BOTTOM turns back into Array:makeUNSAFE
+		   (begin
+		     (when (>= (regiment-verbosity) 3)
+		       (printf "   ** Hack: turning Array of bottom symbols back into Array:makeUNSAFE.\n"))
+		     `(Array:makeUNSAFE ',(vector-length x)))
+		   `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty))))
+	       type
+	        #f)]
 
 	     [else (values
 		    (let ([tmp (unique-name 'tmparr)])
@@ -155,8 +162,11 @@
 			   ,@(list-build 
 			      (vector-length x)
 			      (lambda (i) 
-				`(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))
-			      )
+				;; Because of Array:makeUNSAFE at metatime, we might end up with BOTTOMs here:
+				(if (eq? 'BOTTOM (vector-ref x i))
+				    ;; We needn't fill anything in, generate a NOOP:
+				    '(tuple)
+				    `(Array:set ,tmp ',i ,(first-value (datum->code (vector-ref x i) elt-ty))))))
 			   ,tmp)))
 		    type #t)])]
 
@@ -185,10 +195,14 @@
 	   [,othernum (guard (memq othernum num-types))  
 		      (printf "NUM TYPE, wrapping: ~s ~s\n" othernum x)
 		      (values `(assert-type ,othernum ',x) type #f)]
+	   
 
 	   ;; [2008.03.28] No type info at all, restart and use
 	   ;; type-const which will give us *something*
-	   [(quote ,_) (loop x (export-type (type-const x)))]
+	   [(quote ,_) 	    
+	    (if (eq? x 'BOTTOM)
+		(values ''BOTTOM type #f)
+		(loop x (export-type (type-const x))))]
 
 	   ;; [2006.10.14] Umm we shouldn't be supporting symbols:
 	   [,_ (guard (symbol? x))  (values `',x type #f)]

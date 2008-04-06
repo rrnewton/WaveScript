@@ -709,6 +709,8 @@
     ;; Generic data-file reader.
     ;; The arguments are described in the manual.
     (readFile ((List Annotation) String String (Stream 'a)) (Stream 'b))
+    ;; [2008.04.06] Should really tighten this up:
+    ;(readFile ((List Annotation) String String (Stream #())) (Stream 'b))
 
     ;(HACK_O_RAMA (String) (Stream #(Int (List (Sigseg Int16)))))
 

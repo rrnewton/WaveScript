@@ -41,6 +41,7 @@ sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
 
 // Extra ADT functions augmenting the compiler builtins.
 
+/*
 FIFO:make       ::  Int -> Queue t;
 FIFO:empty      ::  Queue t -> Bool;
 FIFO:enqueue    :: (Queue t, t) -> ();
@@ -48,6 +49,7 @@ FIFO:dequeue    ::  Queue t -> t;
 FIFO:peek       :: (Queue t,Int) -> t;
 FIFO:elements   ::  Queue t -> Int;
 FIFO:andmap     :: (t -> Bool, Queue t) -> Bool;
+*/
 
 // WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
@@ -483,10 +485,10 @@ namespace List {
 
 // This is a very inefficient initial implementation.
 // Should use circular buffers.
-type Queue t = Array (List t);
+//type Queue t = Array (List t);
 namespace FIFO {
   fun make(n) Array:make(1,[]);
-  fun empty(q) q[0] == [];
+    fun empty(q) q[0] == [];
   /*
   fun enqueue(q,x) q[0] := x ::: q[0];
   fun dequeue(q) {
@@ -500,46 +502,11 @@ namespace FIFO {
   fun peek(q,ind) List:ref(q[0], ind);
   fun elements(q) List:length(q[0]);
   fun andmap(fn,q) List:andmap(fn,q[0]);
+  // [2008.04.05] I think I'd like to rename the constructor to this:
+  makefifo = FIFO:make;
 }
 
-// [2007.07.29] This array based implementation exposed some problems
-// with the meta-evaluation framework.
-
-/*
-// Contains start (inclusive) and count
-// Because Refs are not first class, we use an array to store the start/count.
-type Queue t = (Array t * Array Int);
-namespace FIFO {
-  fun make(n)   (Array:makeUNSAFE(n), Array:build(2, fun(_) 0));
-  fun empty((_,stcnt))  stcnt[1] == 0
-  fun enqueue((arr,stcnt), x) {
-    len = arr`Array:length;
-    if stcnt[1] == len
-    then wserror("FIFO:enqueue - queue full!")
-    else {
-      ind = stcnt[0] + stcnt[1];
-      if ind >= len
-      then arr[ind-len] := x
-      else arr[ind]     := x;
-      // Increase the count by one:
-      stcnt[1] := stcnt[1] + 1;
-    };
-  }
-  fun dequeue((arr,stcnt)) {
-    len = arr`Array:length;
-    if stcnt[1] == 0    
-    then wserror("FIFO:dequeue - queue empty!")
-    else {
-      st = stcnt[0];
-      if st + 1 == len 
-        then stcnt[0] := 0
-        else stcnt[0] := st + 1;
-      arr[st];
-    }
-  }
-}
-*/
-
+//include "fifostatic.ws"
 
 // This is quite inefficient.  But if it's a useful thing to have it
 // can be made efficient.  Range is inclusive.
@@ -941,6 +908,8 @@ zip3_sametype = fun (s1,s2,s3) {
 // Here's a constant that controls how much we buffer zips by default.
 // This might need to be changed for different runtimes/schedulers
 DEFAULT_ZIP_BUFSIZE = 2;
+//DEFAULT_ZIP_BUFSIZE = 20;
+// In particular, the Scheme version doesn't follow tuples through.
 
 fun zip4_sametype(bufsize, s1,s2,s3,s4) {
   iterate (ind, elem) in unionList([s1,s2,s3,s4]) {
@@ -964,14 +933,16 @@ fun zip4_sametype(bufsize, s1,s2,s3,s4) {
 // In the future it should use this bufsize argument to statically
 // allocate the buffer.
 fun zipN_sametype(bufsize, slist) {
+//println("zipN of bufsize: "++bufsize);
   using List; 
   len = slist`List:length;
   iterate (ind, elem) in unionList(slist) {
-    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
+    state { zbufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
     using FIFO;
-    enqueue(bufs[ind], elem);
-    if Array:andmap(fun(q) not(empty(q)), bufs)
-    then emit List:build(len, fun(i) dequeue(bufs[i]));
+//println("  Enqueuing in "++ind++" currently has "++zbufs[ind]`FIFO:elements);
+    enqueue(zbufs[ind], elem);        
+    if Array:andmap(fun(q) not(empty(q)), zbufs)
+    then emit List:build(len, fun(i) dequeue(zbufs[i]));
   }
 }
 
@@ -986,6 +957,7 @@ fun zipN(bufsize, slist) {
   iterate (ind, elem) in unionList(slist) {
     state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
     using FIFO;
+//println("  Enqueuing in "++ind++" currently has "++bufs[ind]`FIFO:elements);
     enqueue(bufs[ind], elem);
     if Array:andmap(fun(q) not(empty(q)), bufs)
     then emit Array:build(len, fun(i) dequeue(bufs[i]));
@@ -1946,6 +1918,8 @@ union Choose5 (a, b, c, d, e) = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | F
 
 
 //main = COUNTUP(0) . window(10) . deinterleaveSS() . interleaveSS() 
-     main = interleaveSS(2, 10, 1,
+/*
+  main = interleaveSS(2, 10, 1,
        deinterleaveSS(3, 10,
        window(COUNTUP(0), 10)))
+*/

@@ -24,7 +24,7 @@
 		 
 		 wscase construct-data 
 
-		 run-stream-query reset-wssim-state! print-wssim-state
+		 run-stream-query reset-wssim-state! get-current-vtime print-wssim-state
 
 		 __readFile 
 		 __foreign __foreign_source inline_C inline_TOS
@@ -268,6 +268,8 @@
     (set! data-sources '())
     (set! output-queue '())
     (set! still-running? #t))
+
+  (define (get-current-vtime) current-vtime)
 
   (define (print-wssim-state)
     (printf "  Event-queue: ~s\n  Vtime: ~s\n  data-sources: ~s\n  output-queue: ~s\n"
@@ -892,7 +894,7 @@
        (for-eachi (lambda (i src)
                     (src (lambda (x)
                            (let ((datum (tuple i x)))
-                             (profiled-fire! x our-sinks bench-rec output-type sum-type-declarations)))))
+                             (profiled-fire! datum our-sinks bench-rec output-type sum-type-declarations)))))
                   ls)
        (hashtab-set! edge-counts-table box-name bench-rec)
        (lambda (sink)
@@ -1514,7 +1516,7 @@
 	  [else (loop (cdr ls) (cons (car ls) acc))])))
 
      (define Array:make make-vector)
-     (define (Array:makeUNSAFE len) (make-vector len 'uninitialized!))
+     (define (Array:makeUNSAFE len) (make-vector len 'BOTTOM))
      (define Array:ref  vector-ref)
      (define Array:set vector-set!)
      (define Array:length   vector-length)

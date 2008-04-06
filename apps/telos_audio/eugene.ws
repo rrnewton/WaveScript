@@ -1,14 +1,22 @@
 
+//include "staticfifo.ws"
 include "stdlib.ws"
 include "coeffs.ws"
 
 // ============================================================
 // Constant parameters
 
-SAMPLING_RATE_IN_HZ = 256
-//NUM_CHANNELS        = 21
-NUM_CHANNELS        = 2
-SAMPLES_PER_WINDOW  = (2*SAMPLING_RATE_IN_HZ)
+SAMPLING_RATE_IN_HZ = 200
+SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
+
+//NUM_CHANNELS        = 21;
+NUM_CHANNELS        = 2;
+// MASSIVE code explosion.
+// 10 Channels -> 222 kloc .c, 2mb executable, -O0
+//  (Can't even compile -O3 for lack of memory.)
+//  (-O0 8 sec, -O1 30 sec 1mb, -O2 50s )
+// Execution time for 1000 svmKernelPar boolean outputs drops from
+// 2sec to .82 sec with -O1.  -O2 = .7 sec
 
 
 channelNames = ["FT10-T8","FT9-FT10","T7-FT9","P7-T7",
@@ -23,6 +31,8 @@ svmKernelPar = 1.00
 threshold    = 0.1
 
 consWindows = 3 // number of consecutive windows of detections;
+
+winsize = 512
 
 // ============================================================
 // Classifiers
@@ -75,12 +85,17 @@ fun BinaryClassify(threshold, consWins, strm) {
 // ============================================================
 // Stream / Signal operators
 
+//zip_bufsize = winsize * 2
+zip_bufsize = 1
+
 fun FlattenZip(strmlst)
-  smap(Array:flatten, defaultZipN(strmlst))
+  smap(Array:flatten, zipN(zip_bufsize,strmlst))
 
 fun AddOddAndEven(s1,s2) 
-  iterate (first,second) in zip2_sametype(s1,s2) {
+ iterate arr in zipN(zip_bufsize, [s1,s2]) { //zip2_sametype(s1,s2) {
     state { _stored_value = 0 }
+    first = arr[0];
+    second = arr[1];
     using Array;
     assert_eq("AddOddAndEven", first.width, second.width);
     buf = make(first.width, 0);
@@ -91,14 +106,14 @@ fun AddOddAndEven(s1,s2)
     emit toSigseg(buf, first.start, first.timebase);
   }
 
-fun _Get(offset, strm)
+fun GenericGet(offset, strm)
   iterate seg in strm {
     arr = Array:build(seg.width / 2, fun(i) seg[[(i*2)+offset]]);
     emit toSigseg(arr, seg.start, seg.timebase);
   }
 
-fun GetOdd (strm) _Get(1, strm)
-fun GetEven(strm) _Get(0, strm)
+fun GetOdd (strm) GenericGet(1, strm)
+fun GetEven(strm) GenericGet(0, strm)
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
@@ -185,11 +200,11 @@ fun GetFeatures(input) {
   // lowFreq6 = LowFreqFilter(lowFreq5); 
   level6    = MagWithScale(filterGains[5], highFreq6);
 
-  defaultZipN([level4, level5, level6])
+  zipN(zip_bufsize, [level4, level5, level6])
 }
 
 fun process_channel(stm) {
-  rw = window(stm,512);
+  rw = window(stm,winsize);
   filter_results = GetFeatures(rw);  
   filter_results
 }
@@ -207,7 +222,7 @@ detect  :: Stream Bool;
 inputs = {
   //prefix = "patient8_files/XXXXE3I5_";
   prefix = "patient36_file16/";
-  ticktock = timer(SAMPLING_RATE_IN_HZ);
+  ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
                   (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
                    :: Stream Int16)), List:prefix(channelNames, NUM_CHANNELS))
@@ -224,4 +239,6 @@ svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 
 detect = BinaryClassify(threshold, consWindows, svmStrm)
 
-main = detect
+     //main = detect
+//main = LowFreqFilter $ LowFreqFilter $ inputs.head.window(winsize)
+main = filtered.head

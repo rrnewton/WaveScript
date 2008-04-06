@@ -11,8 +11,8 @@ include "stdlib.ws";
 
 bufsize = 520;
 
-type BufTy = Float;
-//type BufTy = Uint16;
+//type BufTy = Float;
+type BufTy = Uint16;
 //type BufTy = Int32;
 
 commbuf :: Array BufTy = Array:make(bufsize, 0);

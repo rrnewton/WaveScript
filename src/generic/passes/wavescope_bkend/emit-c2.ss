@@ -438,7 +438,7 @@
 (__spec Const <emitC2> (self datum wrap)
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
-     [(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+     ;[(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
      [(eq? datum 'UNIT) (wrap (Simple self '(tuple)))]
      [(eq? datum #t) (wrap "TRUE")]
      [(eq? datum #f) (wrap "FALSE")]
@@ -776,6 +776,11 @@
 	    (format "memcpy(~a, ~s, ~s);\n" (text->string _tmp)
 		    str copylen))
 	   (kont _tmp)))]
+       
+       ;; This means we're at a end of a control path we will never reach.
+       ;; HACK: There's surely a nicer way to do this....
+       ;; [2008.04.05] But currently I just throw out the continuation.
+       ['BOTTOM (make-lines "/* BOTTOM CTRL PATH */\n")]
 
        [,simp (guard (simple-expr? simp)) (kont (Simple self simp))]
        
