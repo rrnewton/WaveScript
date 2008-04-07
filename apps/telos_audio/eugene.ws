@@ -91,6 +91,7 @@ zip_bufsize = 1
 fun FlattenZip(strmlst)
   smap(Array:flatten, zipN(zip_bufsize,strmlst))
 
+// something about this addoddandeven is not right.
 fun AddOddAndEven(s1,s2) 
  iterate arr in zipN(zip_bufsize, [s1,s2]) { //zip2_sametype(s1,s2) {
     state { _stored_value = 0 }
@@ -132,8 +133,8 @@ fun FIRFilter(filter_coeff, strm) {
     iterate seg in strm {
       state {
         // remembers the previous points needed for convolution
-        _memory = { fifo = FIFO:make(nCoeff+1);
-                    for i = 1 to nCoeff { FIFO:enqueue(fifo, 0) };
+        _memory = { fifo = FIFO:make(nCoeff-1);
+                    for i = 1 to nCoeff-1 { FIFO:enqueue(fifo, 0) };
                     fifo }
       }
       buf = seg.toArray;
@@ -147,11 +148,13 @@ fun FIRFilter(filter_coeff, strm) {
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
 	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");
 //	  print (i++": "++roundF(FIFO:peek(_memory,i))++", ");
-        };
+        }
         println("");
+	println("output: "++myRound(outputBuf[j]));
+
 	FIFO:dequeue(_memory);
       };
-
+	println("END");
 	
      emit toSigseg(outputBuf, seg.start, seg.timebase);
     }
@@ -198,6 +201,7 @@ fun LowFreqFilter(input) {
 filterGains = #[1.4142, 1.8684, 2.6412, 3.7352, 5.2818, 7.4668, 10.5596, 11.3137]
 
 fun GetFeatures(input) {
+//  snoop("firstLevel",firstLevel);	
   lowFreq3 = LowFreqFilter $ LowFreqFilter $ LowFreqFilter $ input;
 
   highFreq4 = HighFreqFilter(lowFreq3); // we want this one
@@ -233,9 +237,9 @@ detect  :: Stream Bool;
 inputs = {
   //prefix = "patient8_files/XXXXE3I5_";
   prefix = "patient36_file16/";
-  ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
+  ticktock = timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
-                  (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+                  (readFile(prefix++ch++"-wind.txt",  "mode: binary", ticktock)
                    :: Stream Int16)), List:prefix(channelNames, NUM_CHANNELS))
 }
 
