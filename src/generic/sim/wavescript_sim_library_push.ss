@@ -496,8 +496,9 @@
 	   (begin           
 	     (set! stats-pre1 (statistics))
 	     (set! stats-pre2 (statistics))
-	     (set! outputs (reverse! (unbox (fun msg (virtqueue)))))
+	     (set! outputs (fun msg (virtqueue)))
 	     (set! stats-post (statistics))
+	     (set! outputs (reverse! (unbox outputs)))
 	     (bench-stats-cpu-time-add! bench-rec (- (sstats-cpu stats-post) (sstats-cpu stats-pre2)
 						     (- (sstats-cpu stats-pre2) (sstats-cpu stats-pre1)))))
 	   (void))

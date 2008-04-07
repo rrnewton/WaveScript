@@ -541,7 +541,7 @@
     [Int32  "%ld"]
     [Int64  "%lld"]
     [Uint16  "%hu"]
-    [Float  "%f"]	   
+    [Float  "%g"]
     [Double "%lf"]
     [#() "()"]
     [(Pointer ,_) "%p"]))
