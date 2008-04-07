@@ -6,11 +6,11 @@ include "coeffs.ws"
 // ============================================================
 // Constant parameters
 
-SAMPLING_RATE_IN_HZ = 200
+SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
-
 //NUM_CHANNELS        = 21;
-NUM_CHANNELS        = 2;
+NUM_CHANNELS        = 1;
+
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
 //  (Can't even compile -O3 for lack of memory.)
@@ -44,7 +44,7 @@ fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
   fun diff_norm_squared(a, b) {
     // vectors should be the same length
     foldi(fun(i,acc,ai) {
-        x = logF(absF(ai));
+        x = logF(ai);
         y = b[i];
         acc + (x-y) * (x-y);
       }, 
@@ -115,6 +115,11 @@ fun GenericGet(offset, strm)
 fun GetOdd (strm) GenericGet(1, strm)
 fun GetEven(strm) GenericGet(0, strm)
 
+fun myRound(val)
+{
+	roundF(val*1000)/1000;
+}
+
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
 fun FIRFilter(filter_coeff, strm) {
@@ -136,18 +141,26 @@ fun FIRFilter(filter_coeff, strm) {
       for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
+	print ("memory: "); 
         for i = 0 to nCoeff-1 {
-	  outputBuf[j] := outputBuf[j] + _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
+	  outputBuf[j] := outputBuf[j] + 
+	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
+	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");
+//	  print (i++": "++roundF(FIFO:peek(_memory,i))++", ");
         };
+        println("");
 	FIFO:dequeue(_memory);
       };
-      emit toSigseg(outputBuf, seg.start, seg.timebase);
+
+	
+     emit toSigseg(outputBuf, seg.start, seg.timebase);
     }
 }
 
 
 fun MagWithScale(scale, stm) {
-  fun sum(acc,n) (n + acc/scale);
+//  fun sum(acc,n) (n + acc/scale);
+  fun sum(acc,n) (acc + absF(n)/scale);
   smap(fun(seg) Sigseg:fold(sum, 0, seg), stm)
 }
 
@@ -239,6 +252,5 @@ svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 
 detect = BinaryClassify(threshold, consWindows, svmStrm)
 
-     //main = detect
-//main = LowFreqFilter $ LowFreqFilter $ inputs.head.window(winsize)
-main = filtered.head
+//main = detect
+main = svmStrm
