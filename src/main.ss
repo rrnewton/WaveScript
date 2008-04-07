@@ -1104,8 +1104,32 @@
 					     (partition-getmiddle merged)
 					     (partition-baseonly merged))
 				    "partition_scheme.lp")
-		      )
-		    (exit))
+		      (printf "\n Running LP solver.\n")
+		      (time (system "lp_solve partition_scheme.lp > partition_assignments.txt"))
+		      (let ([results (file->string "partition_assignments.txt")])
+			(match (string->slist results)
+			  [(Value of objective function: ,objective
+				  Actual values of the variables: 
+				  ,rest ...)
+			   (define (everyother ls)
+			     (cond
+			      [(null? ls) '()]
+			      [(null? (cdr ls)) ls]
+			      [else (cons (car ls) (everyother (cddr ls)))]))
+			   (define names (everyother rest))
+			   (define vals (everyother (cdr rest)))
+			   ;(inspect (map list names vals))
+			   
+			   (define assigned (inject-assignments merged (map list names vals)))
+			   			   
+			   (string->file (output-graphviz assigned) "query_partitioned.dot")
+			   (printf "Produced new graphviz output...\n")
+			   (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
+			   (exit)
+			   ]
+			)
+			)		      
+		      ))
 
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))

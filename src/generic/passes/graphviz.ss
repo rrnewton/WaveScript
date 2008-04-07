@@ -123,7 +123,8 @@
 				     str)])			   
 			   (list (format "  ~a [label=\"~a~a\" ~a];\n"
 				       name
-				       namelabel
+				       ;; [2008.04.06] Temporarily removing the separate label:
+				       name ;namelabel
 				       (let ([cpu (assq 'cpu-pin annot)]
 					     [datarates (assq 'data-rates annot)]
 					     [measured-cycles (assq 'measured-cycles annot)]
@@ -157,14 +158,22 @@
 						 ", shape=box")]
 					 [,else ""])
 					;; Next, set the color:
-					(if (assq 'measured-cycles annot)
+					(cond
+					 [(begin 
+					    ;(inspect annot)
+					    (assq 'node/server-assignment annot)) => 
+					  (lambda (entry)
+					    (format ", style=filled, fillcolor=\"~a\""
+						    (if (zero? (cadr entry))
+							"yellow" "cyan")))]
+					 [(assq 'measured-cycles annot)
 					    (if embedded-node?						
 						(format ", style=filled, fillcolor=\"~a\""
 							(ticks->color (cadr (assq 'measured-cycles annot))))
 						;; If it was measured it was on the node but is floating:
 						(format ", shape=box, style=\"filled,rounded\", fillcolor=\"~a\""
-							(ticks->color (cadr (assq 'measured-cycles annot)))))
-					    ""))
+							(ticks->color (cadr (assq 'measured-cycles annot)))))]
+					 [else ""]))
 				       )))]
 			[(__foreign_source ',name ,ls ,ty)
 			 "";(format "  ~a [shape=invtriangle, label=\"~a\"]\n" name name)

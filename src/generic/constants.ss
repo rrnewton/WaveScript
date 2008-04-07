@@ -437,7 +437,10 @@
 ;; can only stop after each output element is produced.
 ;; 
 ;; Valid values: 'none, '(time <ms>), '(virttime <microsec>), or '(elements <n>)
-(define-regiment-parameter ws-profile-limit '(time 3000))
+(define-regiment-parameter ws-profile-limit 
+  ;'(time 3000)
+  `(time ,(* 21 3000))
+  )
 
 ;; This parameter stores an association list binding the names of
 ;; passes to hooks (functions) that should run after the specified

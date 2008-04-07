@@ -24,6 +24,7 @@
 	   process-read/until-garbage-or-pred
 	   extract-time-intervals
 	   inject-times
+	   inject-assignments
 	   tag-op
 
 	   multiplex-migrated
@@ -849,6 +850,34 @@
        '(graph ,cnst ,init ,src
 	       (operators ,oper* ...) ,rest ...))]))
 
+;; HACK: duplicating... should do something nicer.
+(define (inject-assignments prog assignments)
+  (define (Operator op)
+    (match op
+      [(iterate (name ,nm) ,ot
+		(code (iterate (annotations ,annot* ...) ,itercode ,_))
+		,rest ...)
+       ;;(printf "LOOKING UP ~a in ~a\n" nm assignments)
+       (let ([entry (assq nm assignments)])
+	 (if entry
+	     `(iterate (name ,nm) ,ot 
+		       (code (iterate (annotations (node/server-assignment ,(cadr entry)) ,@annot*)
+				      ,itercode ,_))
+		       ,@rest)
+	     (begin
+	       ;(inspect (vector op assignments))
+	       op
+	       )))]
+      [,oth oth]))
+  (match prog
+    [(,input-language 
+      '(graph ,cnst ,init ,src
+	      (operators ,[Operator -> oper*] ...) ,rest ...))
+     `(,input-language 
+       '(graph ,cnst ,init ,src
+	       (operators ,oper* ...) ,rest ...))]))
+
+
 
 
 ;; This is ugly: 
@@ -1074,7 +1103,12 @@
 		      (match (ws-profile-limit)
 			;; How many ms did we run scheme for:
 			;; This is real time:
-			[(time ,ms) ms]
+			[(time ,ms) 
+			 ;ms
+			 ;; HACK FIXME:
+			 ;3000
+			 7000
+			 ]
 			;[(elements ,n) ]
 			;[(virttime ,n) ]
 			)])
