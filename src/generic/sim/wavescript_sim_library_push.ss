@@ -474,10 +474,11 @@
           (for-each (lambda (elem)
                       (fire! elem our-sinks))
             outputs))))
+    (define registered? #f)
     (lambda (sink)
       ;; Register ourselves with our source:
       ;(printf "Registering: ~s ~s \n" annotations sink)
-      (src wsbox) ;; <- rrn: Changing this to happen lazily.
+      (unless registered? (set! registered? #t) (src wsbox)) ;; <- rrn: Changing this to happen lazily.
       (set! our-sinks (cons sink our-sinks))))
 
   (define (iterate-bench annotations output-type box-name edge-counts-table sum-type-declarations fun src)
@@ -506,11 +507,12 @@
           ;; fire!
           (for-each (lambda (elem) (profiled-fire! elem our-sinks bench-rec output-type sum-type-declarations))
             outputs))))
+    (define registered? #f)
     (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
       ;(printf "Registering: ~s ~s \n" annotations sink)
       ;; Register ourselves with our source:
-      (src wsbox) ;; <- rrn: Changing this to happen lazily.
+      (unless registered? (set! registered? #t) (src wsbox)) ;; <- rrn: Changing this to happen lazily.
       (set! our-sinks (cons sink our-sinks))))
 
 
@@ -912,7 +914,7 @@
        (define (wsbox x) (fire! x our-sinks))
        ;; Register a receiver for each source:       
        (lambda (sink) 
-	 (s1 wsbox)  (s2 wsbox) ;; rrn: doing this lazily now
+	 (unless registered? (set! registered? #t) (s1 wsbox)  (s2 wsbox)) ;; rrn: doing this lazily now
 	 (set! our-sinks (cons sink our-sinks))))
 
      ; NOTE: doesn't matter for us, but not re-entrant
@@ -923,9 +925,10 @@
        (define wsbox
          (lambda (x)
            (profiled-fire! x our-sinks bench-rec output-type sum-type-declarations)))
+       (define registered? #f)
        (hashtab-set! edge-counts-table box-name bench-rec)
        (lambda (sink) 
-	 (s1 wsbox)  (s2 wsbox) ;; rrn: doing this lazily now
+	 (unless registered? (set! registered? #t) (s1 wsbox)  (s2 wsbox)) ;; rrn: doing this lazily now
 	 (set! our-sinks (cons sink our-sinks))))
 
 

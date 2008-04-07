@@ -195,7 +195,6 @@ fun LowFreqFilter(input) {
   AddOddAndEven(lowFreqEven, lowFreqOdd)
 }
 
-
 filterGains = #[1.4142, 1.8684, 2.6412, 3.7352, 5.2818, 7.4668, 10.5596, 11.3137]
 
 fun GetFeatures(input) {
@@ -221,7 +220,6 @@ fun process_channel(stm) {
   filter_results = GetFeatures(rw);  
   filter_results
 }
-
 
 // ============================================================
 // Wire together the application stream graph:
@@ -250,7 +248,12 @@ nVectors = 30
 pruned = Array:build(nVectors, fun(i) svmVectors[i])
 svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 
-detect = BinaryClassify(threshold, consWindows, svmStrm)
+detect = BinaryClassify(threshold, consWindows, svmStrm);
 
-//main = detect
+//main = FIRFilter(hLow_Even, GetEven $ inputs.head.window(winsize));
+//main = LowFreqFilter $ inputs.head.window(winsize);
+//main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
+//main = filtered.head;
+
+//main = detect;
 main = svmStrm
