@@ -8,7 +8,7 @@ include "coeffs.ws"
 
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
-NUM_CHANNELS        = 21;
+NUM_CHANNELS        = 22;
 /* NUM_CHANNELS        = 2; */
 
 // MASSIVE code explosion.
