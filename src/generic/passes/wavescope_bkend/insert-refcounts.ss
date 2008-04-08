@@ -165,18 +165,6 @@
 	    ;(define newfun (Effect fun))
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
-#;
-	    (define newbinds
-	      (map (lambda (lhs ty rhs) 
-		     (match ty
-		       [(Ref ,_)
-			;(printf " *** mutated iterator state: ~s\n" lhs)
-			(list lhs ty (Value (TopIncr rhs ty)))]
-		       [,_ 
-			;(printf " *** GOT UNMUTATED ITERATOR STATE: ~s\n" lhs) 
-			(StaticBind lhs ty rhs)
-			]))
-		lhs* ty* rhs*))
 	    (define newfun (Value fun))
 	    `(iterate (annotations ,@anot*)
 		      (let ,newbinds
@@ -312,20 +300,7 @@
       (let* ([result (Value x)]
 	     [hits (deep-assq-all 'let-not-counted result)])	  
 	(for-each (lambda (hit) (set-car! hit 'let)) hits)
-	;(inspect hits) (inspect result)
 	result))
-#;
-    ;; A binding that gets evaluated exactly once.
-    (define (StaticBind lhs ty rhs)
-      ;(printf "Static? ~s\n" (peel-annotations rhs))
-      `(,lhs ,ty
-	     ,(match (peel-annotations rhs) ;; no recursion!
-		;; What kinds of things can we switch to static allocation?
-		;; Currently just quoted constants:
-		[',c `(static-allocate ,rhs)] 
-		;;(TopIncr `(static-allocate ',c) ty)
-		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) `(static-allocate ,rhs)]
-		[,oth (Value+ (TopIncr rhs ty))])))
 
     ;; For "global" variables:
     ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).
@@ -360,7 +335,6 @@
 		    (sink ,base ,basetype)	,meta* ...))
 	   `(,input-language 
 	     '(graph (const ,(map list cbv* cbty* (map Value+ (map TopIncr cbexp* cbty*)))
-			    ;,(map StaticBind cbv* cbty* cbexp*)
 			    ...)
 		     (init ,@init*) 
 		     (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)

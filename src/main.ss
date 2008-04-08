@@ -1051,7 +1051,8 @@
 
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
-		     (ws-run-pass prog insert-refcounts)
+		     (unless (embedded-mode? (compiler-invocation-mode))
+		       (ws-run-pass prog insert-refcounts))
 		     (ws-run-pass prog flag-static-allocate)
 
 		     ;; It's painful, but we need to typecheck again.
