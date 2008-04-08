@@ -8,8 +8,8 @@ include "coeffs.ws"
 
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
-//NUM_CHANNELS        = 21;
-NUM_CHANNELS        = 1;
+NUM_CHANNELS        = 21;
+/* NUM_CHANNELS        = 2; */
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -256,8 +256,9 @@ inputs = {
   prefix = "patient36_file16/";
   ticktock = timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
-                  (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
-                   :: Stream Int16)), List:prefix(channelNames, NUM_CHANNELS))
+	     (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+	      :: Stream Int16)), List:reverse(List:prefix(channelNames, NUM_CHANNELS))
+      )
 }
 
 filtered = map(process_channel, inputs)
@@ -276,5 +277,5 @@ detect = BinaryClassify(threshold, consWindows, svmStrm);
 //main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
 //main = filtered.head;
 
-main = detect;
-/* main = svmStrm */
+/* main = inputs.head */
+main = svmStrm
