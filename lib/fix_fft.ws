@@ -148,6 +148,13 @@ Sinewave :: Array Short = #[
 
 
 
+FIX_F2I :: (Float) -> Short;
+fun FIX_F2I(a) ( (cast_num(a * 32767.0)::Short) ) 
+
+FIX_I2F :: (Short) -> Float;
+fun FIX_I2F(a) ( (cast_num(a)::Float) / 32767.0 )
+
+
 /*
   FIX_MPY() - fixed-point multiplication & scaling.
   Substitute inline assembly for hardware-specific
@@ -315,7 +322,7 @@ fun fix_fft(fr, fi, m, inverse)
 }
 
 
-
+/*
 
 main = iterate _ in COUNTUP(0) {
   state { x = 32767 }
@@ -326,14 +333,16 @@ main = iterate _ in COUNTUP(0) {
 
   //n = 256;
   n = 16;
-  a = make(n,99);
+  a = make(n,0);
   b = make(n,0);
 
   for i = 0 to n-1 {
-    //a[i] := 9001 * intToInt16(i);
-    a[i] := (cast_num((i.gint / n.gint * 65535.0) - 32768.0) :: Short);
+    a[i] := FIX_F2I(sin((cast_num(i)::Float)*8.0*const_PI/(cast_num(n)::Float)));
     b[i] := 0;
   };
+
+  for i = 0 to 15 { print(a[i]++" "); }; print("\n");
+  for i = 0 to 15 { print(b[i]++" "); }; print("\n");
 
   print("FFT START\n");
 
@@ -357,3 +366,4 @@ main = iterate _ in COUNTUP(0) {
   emit ()
 }
 
+*/
