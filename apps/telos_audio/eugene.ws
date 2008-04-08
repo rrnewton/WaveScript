@@ -18,13 +18,11 @@ NUM_CHANNELS        = 21;
 // Execution time for 1000 svmKernelPar boolean outputs drops from
 // 2sec to .82 sec with -O1.  -O2 = .7 sec
 
-
 channelNames = ["FT10-T8","FT9-FT10","T7-FT9","P7-T7",
 		"CZ-PZ","FZ-CZ","P8-O2","T8-P8","F8-T8",
 		"FP2-F8","P4-O2","C4-P4","F4-C4","FP2-F4",
 		"P3-O1","C3-P3","F3-C3","FP1-F3","P7-O1",
 		"T7-P7","F7-T7", "FP1-F7"]
-
 
 // detector values
 svmKernelPar = 1.00
@@ -103,6 +101,7 @@ fun AddOddAndEven(s1,s2)
     for i = 0 to first.width - 1 {
       buf[i] := first[[i]] + _stored_value;
       _stored_value = second[[i]]; // we don't add the last odd guy, but store
+      //      println ("merge, " ++ i ++": " ++ buf[i]);
     };
     emit toSigseg(buf, first.start, first.timebase);
   }
@@ -142,19 +141,18 @@ fun FIRFilter(filter_coeff, strm) {
       for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
-	print ("memory: "); 
+	// 	print ("memory: ");  
         for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + 
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
-	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");
-//	  print (i++": "++roundF(FIFO:peek(_memory,i))++", ");
+	  // 	  print (i++": "++myRound(FIFO:peek(_memory,i))++", "); 
         }
-        println("");
-	println("output: "++myRound(outputBuf[j]));
+	//         println(""); 
+// 	println("output: "++myRound(outputBuf[j])); 
 
 	FIFO:dequeue(_memory);
       };
-	println("END");
+/* 	println("END"); */
 	
      emit toSigseg(outputBuf, seg.start, seg.timebase);
     }
