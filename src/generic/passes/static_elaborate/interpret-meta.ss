@@ -1025,7 +1025,7 @@
 		`(app ,rator ,@rands))
 	      )]
 
-	 ;; Let's do some DCE while we're at it:
+	 ;; Let's do some DCE (dead code elimination) while we're at it:
 	 [(if ,[test] ,a ,b)
 	  (match (peel-annotations test)
 	    ['#f (loop b)]

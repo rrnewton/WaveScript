@@ -8,6 +8,7 @@
 	    ;"../../compiler_components/c_generator.ss" 
 	    )
   (provide insert-refcounts
+	   flag-static-allocate
 	   heap-allocated?
 	   gather-heap-types)
   (chezimports (except helpers test-this these-tests))
@@ -125,7 +126,8 @@
     ;; control flow.
     (define (DriveInside injection xp retty value-needed?)
       (match xp
-	[(let ([,lhs ,ty ,rhs]) ,[bod]) `(let ([,lhs ,ty ,rhs]) ,bod)]
+	[(,lt ([,lhs ,ty ,rhs]) ,[bod]) (guard (memq lt '(let let-not-counted)))
+	 `(,lt ([,lhs ,ty ,rhs]) ,bod)]
 	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
 	;; Go down both control paths:
 	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
@@ -134,7 +136,7 @@
 	['BOTTOM ''BOTTOM]
 
 	[,oth 
-	 (define tmp (unique-name "tmp"))
+	 (define tmp (unique-name "tmprc"))
 	 (if (or (simple-expr? oth)
 		 ;; Also allowing some other expressions that we know
 		 ;; will not affect reference counting as a side effect:
@@ -161,10 +163,9 @@
 	   [(iterate (annotations ,anot* ...)
 		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
 	    ;(define newfun (Effect fun))
-
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
-#;	   
+#;
 	    (define newbinds
 	      (map (lambda (lhs ty rhs) 
 		     (match ty
@@ -364,6 +365,8 @@
 		     (operators ,@oper*)
 		     (sink ,base ,basetype)
 		     ,@meta*))])))))
+
+(define (flag-static-allocate prog) prog)
 
 
 #;

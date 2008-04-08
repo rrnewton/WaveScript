@@ -1052,6 +1052,7 @@
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
 		     (ws-run-pass prog insert-refcounts)
+		     (ws-run-pass prog flag-static-allocate)
 
 		     ;; It's painful, but we need to typecheck again.
 		     ;; HACK: Let's only retypecheck if there were any unknown result types:
@@ -1061,7 +1062,7 @@
 			 (parameterize ([inferencer-enable-LUB #t]
 					[inferencer-let-bound-poly #f])
 			   (time (ws-run-pass prog retypecheck)))))
-		     (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		     (when #t ; (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 
