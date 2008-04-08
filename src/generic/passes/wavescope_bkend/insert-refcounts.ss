@@ -125,9 +125,7 @@
     ;; control flow.
     (define (DriveInside injection xp retty value-needed?)
       (match xp
-	[(,lt ([,lhs ,ty ,rhs]) ,[bod]) (guard (memq 'lt '(let let-not-counted))) 
-	 `(,lt ([,lhs ,ty ,rhs]) ,bod)]
-
+	[(let ([,lhs ,ty ,rhs]) ,[bod]) `(let ([,lhs ,ty ,rhs]) ,bod)]
 	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
 	;; Go down both control paths:
 	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
@@ -157,34 +155,37 @@
 	 (match xp
 	   ;;[',const (ASSERT simple-constant? const) `',const]
 
-
 	   ;; No more type checking is allowed AFTER this pass.
 	   ;; Here we treat the body of iterate as an EFFECT.
 	   ;; (Rather than an expression returning a virtual queue).
 	   [(iterate (annotations ,anot* ...)
-		     (let ,binds ,fun) ,[strm])
-	    ;; [2008.04.08] Modifying this to catch non-mutated iterator state bindings.
-	    #; 
+		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
+	    ;(define newfun (Effect fun))
+#;
 	    (define newbinds
-	      (let ,(map list lhs* ty* (map Value (map TopIncr rhs* ty*)))
-		,newfun))
+	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))	   
 	    (define newbinds
-	      (map (match-lambda ((,lhs ,ty ,rhs)) 
-				   (match ty
-				     [(Ref ,_)
-				      (printf " *** mutated iterator state: ~s\n" lhs)
-				      (list lhs ty (Value (TopIncr rhs ty)))]
-				     [,_ 
-				      (printf " *** GOT UNMUTATED ITERATOR STATE: ~s\n" lhs) 
-				      (StaticBind lhs ty rhs)
-				      ]))
-		binds))	    
+	      (map (lambda (lhs ty rhs) 
+		     (match ty
+		       [(Ref ,_)
+			;(printf " *** mutated iterator state: ~s\n" lhs)
+			(list lhs ty (Value (TopIncr rhs ty)))]
+		       [,_ 
+			;(printf " *** GOT UNMUTATED ITERATOR STATE: ~s\n" lhs) 
+			(StaticBind lhs ty rhs)
+			]))
+		lhs* ty* rhs*))
 	    (define newfun (Value fun))
-	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
+	    `(iterate (annotations ,@anot*)
+		      (let ,newbinds
+			,newfun)
+		      ,strm)]
 
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
 	    (define result (unique-name "result"))
+	    
 	    ;; TODO: *IF* RHS allocates, add to ZCT UNLESS it flows to a heap incr-point.
+
 	    (if (not-heap-allocated? ty) ; (simple-expr? bod)		
 		`(let ([,lhs ,ty ,(Value rhs)]) ,(Value bod))
 		;; FIXME: INCORRECT:
@@ -193,7 +194,7 @@
 		;; DriveInside introduces extra let-expressions, which then lead to extra calls to DriveInside.
 		`(let ([,lhs ,ty ,(Value
 				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
-						rhs ty #t))])
+						rhs ty #t))])		   
 		   ,(Value
 		     (DriveInside (lambda () (make-rc 'decr-local-refcount ty lhs)) bod 
 				 ''unknown_result_ty #f))))]
