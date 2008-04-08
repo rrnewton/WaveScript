@@ -9,7 +9,7 @@ include "coeffs.ws"
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 //NUM_CHANNELS        = 21;
-NUM_CHANNELS        = 21;
+NUM_CHANNELS        = 1;
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -37,23 +37,38 @@ winsize = 512
 
 fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
   using Array;
+  using Mutable;
 
   //diff_norm_squared :: (Array Float, Array Float) -> Float;
   fun diff_norm_squared(a, b) {
     // vectors should be the same length
-    foldi(fun(i,acc,ai) {
-        x = logF(ai);
-        y = b[i];
-        acc + (x-y) * (x-y);
-      }, 
-      0, a)
+    acc = ref(0);
+    println("diff_norm_squared lengths"++a.length++" "++b.length);
+    for i = 0 to a.length-1 {
+      x = logF(a[i]);
+      y = b[i];
+      println(i ++ ": " ++ y ++ ", "++ x); 
+      acc := acc + (x-y) * (x-y);
+    };
+    acc
+
+/*     foldi(fun(i,acc,ai) { */
+/*         x = logF(ai); */
+/*         y = b[i]; */
+/* 	println(y ++ ", "++ x); */
+/*         acc + (x-y) * (x-y); */
+/*       },  */
+/*       0, a) */
   };
+
+  // there are 30 vectors, we need to diff norm squared with a different one each time
   smap(fun(arr)
          foldi(fun(i, ySVM, vec) {
 	        norm :: Float = diff_norm_squared(arr, vec);
    	        //norm = 0.0;
 	        denom = svmKernelPar * arr.length.gint;
-                ySVM + svmCoeffs[i] * expF((0-norm)/denom)
+		println("norm: " ++ norm ++ ", svm: " ++ svmCoeffs[i]);
+	        ySVM + svmCoeffs[i] * expF((0-norm)/denom)
               },
 	      svmBias, svmVectors), // wonder if this will work   
        strm)
@@ -87,7 +102,12 @@ fun BinaryClassify(threshold, consWins, strm) {
 zip_bufsize = 1
 
 fun FlattenZip(strmlst)
-  smap(Array:flatten, zipN(zip_bufsize,strmlst))
+  smap(fun(arrarr) {
+	 println("array of arrays "++arrarr);
+	 println("flattened "++ Array:flatten(arrarr));
+         Array:flatten(arrarr)
+       }
+  , zipN(zip_bufsize,strmlst))
 
 // something about this addoddandeven is not right.
 fun AddOddAndEven(s1,s2) 
@@ -100,8 +120,8 @@ fun AddOddAndEven(s1,s2)
     buf = make(first.width, 0);
     for i = 0 to first.width - 1 {
       buf[i] := first[[i]] + _stored_value;
-      _stored_value = second[[i]]; // we don't add the last odd guy, but store
-      //      println ("merge, " ++ i ++": " ++ buf[i]);
+      _stored_value := second[[i]]; // we don't add the last odd guy, but store
+/*       println ("merge, " ++ i ++": " ++ first[[i]] ++ " + " ++ _stored_value); */
     };
     emit toSigseg(buf, first.start, first.timebase);
   }
@@ -141,14 +161,14 @@ fun FIRFilter(filter_coeff, strm) {
       for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
-	// 	print ("memory: ");  
+/* 		print ("memory: ");   */
         for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + 
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
-	  // 	  print (i++": "++myRound(FIFO:peek(_memory,i))++", "); 
-        }
-	//         println(""); 
-// 	println("output: "++myRound(outputBuf[j])); 
+/* 	  	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");  */
+        };
+/* 	println("");  */
+/* 	println("output: "++myRound(outputBuf[j]));  */
 
 	FIFO:dequeue(_memory);
       };
@@ -199,8 +219,11 @@ fun LowFreqFilter(input) {
 filterGains = #[1.4142, 1.8684, 2.6412, 3.7352, 5.2818, 7.4668, 10.5596, 11.3137]
 
 fun GetFeatures(input) {
-//  snoop("firstLevel",firstLevel);	
-  lowFreq3 = LowFreqFilter $ LowFreqFilter $ LowFreqFilter $ input;
+  lowFreq1 = LowFreqFilter(input);
+  lowFreq2 = LowFreqFilter(lowFreq1);
+  lowFreq3 = LowFreqFilter(lowFreq2);
+
+/*   lowFreq3 = LowFreqFilter $ LowFreqFilter $ LowFreqFilter $ input; */
 
   highFreq4 = HighFreqFilter(lowFreq3); // we want this one
   lowFreq4  = LowFreqFilter(lowFreq3); 
@@ -213,6 +236,7 @@ fun GetFeatures(input) {
   highFreq6 = HighFreqFilter(lowFreq5); // and this one
   // lowFreq6 = LowFreqFilter(lowFreq5); 
   level6    = MagWithScale(filterGains[5], highFreq6);
+/*   println(level6); */
 
   zipN(zip_bufsize, [level4, level5, level6])
 }
