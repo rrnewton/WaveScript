@@ -1619,6 +1619,9 @@
      ;; Inefficient, show should be defined in terms of print, not vice-versa
      (define (ws-print x)
        (parameterize ([current-output-port (ws-print-output-port)])
+	 (display (ws-show x))
+	 #;
+	 ;; [2008.04.07] This is odd, what's all this?:
 	 (cond
 	  [(string? x) (display (ws-show x))]
 	  [(and (vector? x) (> (vector-length x) 0) (char? (vector-ref x 0)))
