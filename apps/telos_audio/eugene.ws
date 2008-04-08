@@ -43,11 +43,11 @@ fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
   fun diff_norm_squared(a, b) {
     // vectors should be the same length
     acc = ref(0);
-    println("diff_norm_squared lengths"++a.length++" "++b.length);
+/*     println("diff_norm_squared lengths"++a.length++" "++b.length); */
     for i = 0 to a.length-1 {
       x = logF(a[i]);
       y = b[i];
-      println(i ++ ": " ++ y ++ ", "++ x); 
+/*       println(i ++ ": " ++ y ++ ", "++ x);  */
       acc := acc + (x-y) * (x-y);
     };
     acc
@@ -67,7 +67,7 @@ fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, strm)  {
 	        norm :: Float = diff_norm_squared(arr, vec);
    	        //norm = 0.0;
 	        denom = svmKernelPar * arr.length.gint;
-		println("norm: " ++ norm ++ ", svm: " ++ svmCoeffs[i]);
+/* 		println("norm: " ++ norm ++ ", svm: " ++ svmCoeffs[i]); */
 	        ySVM + svmCoeffs[i] * expF((0-norm)/denom)
               },
 	      svmBias, svmVectors), // wonder if this will work   
@@ -103,15 +103,14 @@ zip_bufsize = 1
 
 fun FlattenZip(strmlst)
   smap(fun(arrarr) {
-	 println("array of arrays "++arrarr);
-	 println("flattened "++ Array:flatten(arrarr));
+/* 	 println("array of arrays "++arrarr); */
+/* 	 println("flattened "++ Array:flatten(arrarr)); */
          Array:flatten(arrarr)
        }
   , zipN(zip_bufsize,strmlst))
 
-// something about this addoddandeven is not right.
 fun AddOddAndEven(s1,s2) 
- iterate arr in zipN(zip_bufsize, [s1,s2]) { //zip2_sametype(s1,s2) {
+ iterate arr in zipN(zip_bufsize, [s1,s2]) { 
     state { _stored_value = 0 }
     first = arr[0];
     second = arr[1];
@@ -121,7 +120,7 @@ fun AddOddAndEven(s1,s2)
     for i = 0 to first.width - 1 {
       buf[i] := first[[i]] + _stored_value;
       _stored_value := second[[i]]; // we don't add the last odd guy, but store
-/*       println ("merge, " ++ i ++": " ++ first[[i]] ++ " + " ++ _stored_value); */
+      //       println ("merge, " ++ i ++": " ++ first[[i]] ++ " + " ++ _stored_value)
     };
     emit toSigseg(buf, first.start, first.timebase);
   }
@@ -161,18 +160,18 @@ fun FIRFilter(filter_coeff, strm) {
       for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
-/* 		print ("memory: ");   */
+	// 		print ("memory: ");   
         for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + 
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
-/* 	  	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");  */
+	  //	  	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");  
         };
-/* 	println("");  */
-/* 	println("output: "++myRound(outputBuf[j]));  */
+	// 	println("");  
+	// 	println("output: "++myRound(outputBuf[j]));  
 
 	FIFO:dequeue(_memory);
       };
-/* 	println("END"); */
+      // 	println("END"); 
 	
      emit toSigseg(outputBuf, seg.start, seg.timebase);
     }
@@ -180,7 +179,6 @@ fun FIRFilter(filter_coeff, strm) {
 
 
 fun MagWithScale(scale, stm) {
-//  fun sum(acc,n) (n + acc/scale);
   fun sum(acc,n) (acc + absF(n)/scale);
   smap(fun(seg) Sigseg:fold(sum, 0, seg), stm)
 }
@@ -223,8 +221,6 @@ fun GetFeatures(input) {
   lowFreq2 = LowFreqFilter(lowFreq1);
   lowFreq3 = LowFreqFilter(lowFreq2);
 
-/*   lowFreq3 = LowFreqFilter $ LowFreqFilter $ LowFreqFilter $ input; */
-
   highFreq4 = HighFreqFilter(lowFreq3); // we want this one
   lowFreq4  = LowFreqFilter(lowFreq3); 
   level4    = MagWithScale(filterGains[3], highFreq4);
@@ -257,11 +253,10 @@ svmStrm :: Stream Float;
 detect  :: Stream Bool;
 
 inputs = {
-  //prefix = "patient8_files/XXXXE3I5_";
   prefix = "patient36_file16/";
   ticktock = timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
-                  (readFile(prefix++ch++"-wind.txt",  "mode: binary", ticktock)
+                  (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
                    :: Stream Int16)), List:prefix(channelNames, NUM_CHANNELS))
 }
 
@@ -281,5 +276,5 @@ detect = BinaryClassify(threshold, consWindows, svmStrm);
 //main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
 //main = filtered.head;
 
-//main = detect;
-main = svmStrm
+main = detect;
+/* main = svmStrm */
