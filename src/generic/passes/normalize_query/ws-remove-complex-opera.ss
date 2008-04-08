@@ -205,11 +205,18 @@
 				TC* rhs* rhsdecl*))
 			 (apply append xdecls rhsdecl*)))])]
 	   
-	   ;; For now don't lift out an iterate's lambda!	   
-	   ;; [2008.04.08] Modifying this to not pointlessly simplify rhs's:
-	   [(iterate ,annot (let ([,v* ,ty* ,[_rhs*]] ...) ,fun) ,source)
+   ;; For now don't lift out an iterate's lambda!	   
+   ;; [2008.04.08] Modifying this to not pointlessly simplify rhs's:
+   ;;
+   ;; FIXME FIXME I tried to fix this to not simplify rhs, but I
+   ;; believe this triggered some other bug in reference counting.
+;; Works:
+;     [(iterate ,annot (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
+;; Broken:
+     [(iterate ,annot (let ([,v* ,ty* ,[_rhs*]] ...) ,fun) ,source)
 	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))]
-			[(#(,rhs* ,rdecls*) ...) _rhs*])
+			[(#(,rhs* ,rdecls*) ...) _rhs*]
+			)
 	      (ASSERT null? fdecl)
 	      (mvlet ([(src sdecl) (make-simple source tenv)])
 		;(ASSERT null? sdecl)

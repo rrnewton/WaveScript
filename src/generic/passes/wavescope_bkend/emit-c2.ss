@@ -635,10 +635,10 @@
   (define-values (decl initcode)
     ((SplitBinding self (emit-err 'splitbind)) (list lhs ty rhs)))
   ;; We do need to add a refcount increment.  Something statically
-  ;; allocated will never reach zero.
+  ;; allocated will never reach zero.  
   (values decl
 	  (append-lines initcode
-	     (gen-incr-code self ty (Var self lhs) ""))))
+	     (gen-incr-code self ty (Var self lhs) "static top-incr"))))
 
 #;
 (__spec Let <emitC2> (self form emitter recur)

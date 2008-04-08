@@ -655,7 +655,7 @@
   (when (wsc2-variant-mode? (compiler-invocation-mode))
     (ws-run-pass p explicit-toplevel-print))
 
-;  (ws-run-pass p optimize-print-and-show) ;; Should be optional.
+  (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
   (ws-run-pass p lift-immutable-constants)
@@ -1064,8 +1064,6 @@
 		     (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
-
-;		     (print-graph #f)(inspect prog)
 
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
@@ -2012,13 +2010,6 @@
     ))
   (define-testing maintest (default-unit-tester "Main compiler units + system tests." maintests))
   ))
-
-
-
-
-
-
-
 
 
 

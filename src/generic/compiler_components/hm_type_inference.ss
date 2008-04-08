@@ -690,6 +690,8 @@
        (values `(_merge ,annot ,s1 ,s2) (type-app (prim->type '_merge) `((List Annotation) ,t1 ,t2) exp tenv nongeneric))]
       [(readFile ,annot ,[l -> args* ty*] ...)
        (values `(readFile ,annot ,@args*) (type-app (prim->type 'readFile) `((List Annotation) ,@ty*) exp tenv nongeneric))]
+      [(__readFile ,annot ,[l -> args* ty*] ...)
+       (values `(__readFile ,annot ,@args*) (type-app (prim->type '__readFile) `((List Annotation) ,@ty*) exp tenv nongeneric))]
 
       [(timer ,annot ,[l -> args* ty*] ...)
        (values `(timer ,annot ,@args*) (type-app (prim->type 'timer) `((List Annotation) ,@ty*) exp tenv nongeneric))]
@@ -806,7 +808,7 @@
        (values `(,refcnt ,ty ,e) #())]
 
       ;; [2008.04.08] This is an annotation introduced much later in the compiler.
-      [(static-allocate ,[l -> x xt]) (values x xt)]
+      [(static-allocate ,[l -> x xt]) (values `(static-allocate ,x) xt)]
 
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
@@ -982,6 +984,7 @@
     [(unionN ,annot ,[args] ...) `(unionN ,annot ,@args)]
     [(_merge ,annot ,[s1] ,[s2]) `(_merge ,annot ,s1 ,s2)]
     [(readFile ,annot ,[args] ...) `(readFile ,annot ,@args)]
+    [(__readFile ,annot ,[args] ...) `(__readFile ,annot ,@args)]
     [(timer ,annot ,[args] ...) `(timer ,annot ,@args)]
 
     ;; All these simple cases just recur on all arguments:
@@ -1008,6 +1011,8 @@
      (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
   		            'decr-heap-refcount  'incr-heap-refcount))
      `(,refcnt ,ty ,e)]
+
+    [(static-allocate ,[x]) `(static-allocate ,x)]
     
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
@@ -1035,6 +1040,7 @@
     [(unionN ,annot ,[args] ...)                              (void)]
     [(_merge ,annot ,[s1] ,[s2])                              (void)]
     [(readFile ,annot ,[args] ...)                            (void)]
+    [(__readFile ,annot ,[args] ...)                            (void)]
     [(timer ,annot ,[args] ...)                               (void)]
 
     [(,simplekwd ,[args] ...)
@@ -1055,6 +1061,7 @@
      (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
 		     'decr-heap-refcount  'incr-heap-refcount))
      (void)]
+    [(static-allocate ,[x])                                   (void)]
     ))
 
 
@@ -1177,8 +1184,9 @@
       [(,lang '(program ,bod ,metadat* ... ,type))
        (ASSERT type? type)
        (let-values ([(e t) (Expr bod (sumdecls->tenv
-                                 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
+				      (cdr (or (assq 'union-types metadat*) '(union-types)))))])
          `(typechecked-lang '(program ,e ,@metadat* ,t)))]
+      
       ;; [2008.01.22] I'm adding this for the output of insert-refcounts.
       ;; Rather than reconstructing a complete program, this
       ;; typechecks the parts in isolation.  Thus, while existing type
@@ -1188,30 +1196,38 @@
       [(,lang 
 	'(graph (const (,cbv* ,cbty* ,cbexp*) ...)
 		(init  ,init* ...)
-		(sources ((name ,s_nm*) (output-type ,s_ty*) (code ,scode) (outgoing ,down* ...)) ...)
-		(operators (iterate (name ,itername*) 
-				    (output-type ,o_ty*)
-				    (code ,itercode)
-				    (incoming ,o_up)
-				    (outgoing ,o_down* ...)) ...)
-		(sink ,base ,basetype)	,meta* ...))
+		(sources ((name ,s_nm*) (output-type ,s_ty*) (code ,scode*) (outgoing ,down* ...)) ...)
+		(operators (,op* (name ,itername*) 
+				 (output-type ,o_ty*)
+				 (code ,itercode)
+				 (incoming ,o_up* ...)
+				 (outgoing ,o_down* ...)
+				 ) ...)
+		(sink ,base ,basetype)
+		,meta* ...))
        ;(define sumtenv (sumdecls->tenv (cdr (or (assq 'union-types meta*) '(union-types)))))
        (define fulltenv 
          (tenv-extend (sumdecls->tenv (cdr (or (assq 'union-types meta*) '(union-types))))
 		      (append cbv* itername* s_nm*)
 		      (append cbty* o_ty* s_ty*)))
        (define (Doit x) (first-value (Expr x fulltenv)))
+       (define _scode (map Doit scode*))
+       (define _itercode (map Doit itercode))
        `(,lang
 	 '(graph (const (,cbv* ,cbty* ,(map Doit cbexp*)) ...)
 		 (init ,@(map Doit init*))
-		 (sources ((name ,s_nm*) (output-type ,s_ty*) (code ,(map Doit scode)) (outgoing ,down* ...)) ...)
-		 (operators (iterate (name ,itername*) 
-				     (output-type ,o_ty*)
-				     (code ,(map Doit itercode))
-				     (incoming ,o_up)
-				     (outgoing ,o_down* ...)) ...)
+		 (sources ((name ,s_nm*) (output-type ,s_ty*) (code ,_scode) (outgoing ,down* ...)) ...)
+		 (operators (,op* (name ,itername*) 
+				  (output-type ,o_ty*)
+				  (code ,_itercode)
+				  (incoming ,o_up* ...)
+				  (outgoing ,o_down* ...)) ...)
 		 (sink ,base ,basetype)
 		 ,@meta*))]
+
+      [(,lang (quote (,sym . ,_))) (guard (memq sym '(graph program)))
+       (warning 'annotate-program "this looks like a bad program: ")
+       (inspect p)]
 
       [,other (Expr other (empty-tenv))])))
 
@@ -1682,6 +1698,7 @@
        [(unionN ,annot ,[args] ...) (apply append args)]
        [(_merge ,annot ,[s1] ,[s2]) (append s1 s2)]
        [(readFile ,annot ,[args] ...) (apply append args)]
+       [(__readFile ,annot ,[args] ...) (apply append args)]
        [(timer ,annot ,[args] ...) (apply append args)]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
         (apply append rat rand*)]

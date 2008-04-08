@@ -155,7 +155,8 @@
 		     `(Array:makeUNSAFE ',(vector-length x)))
 		   `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty))))
 	       type
-	        #t)]
+	        #t ;; [2008.04.08] This was incorrectly #f before!!
+		)]
 
 	     ;; For the new C backends we're going to keep array constants:
 	     [(and ;(wsc2-variant-mode? (compiler-invocation-mode))

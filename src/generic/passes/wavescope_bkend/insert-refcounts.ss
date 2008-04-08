@@ -161,9 +161,10 @@
 	   [(iterate (annotations ,anot* ...)
 		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
 	    ;(define newfun (Effect fun))
-#;
+
 	    (define newbinds
-	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))	   
+	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
+#;	   
 	    (define newbinds
 	      (map (lambda (lhs ty rhs) 
 		     (match ty
@@ -315,11 +316,13 @@
 
     ;; A binding that gets evaluated exactly once.
     (define (StaticBind lhs ty rhs)
+      ;(printf "Static? ~s\n" (peel-annotations rhs))
       `(,lhs ,ty
 	     ,(match (peel-annotations rhs) ;; no recursion!
 		;; What kinds of things can we switch to static allocation?
 		;; Currently just quoted constants:
-		[',c `(static-allocate ,rhs)] ;(TopIncr `(static-allocate ',c) ty)
+		[',c `(static-allocate ,rhs)] 
+		;;(TopIncr `(static-allocate ',c) ty)
 		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) `(static-allocate ,rhs)]
 		[,oth (Value+ (TopIncr rhs ty))])))
 
