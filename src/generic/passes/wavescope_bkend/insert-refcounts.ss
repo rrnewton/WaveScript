@@ -163,9 +163,9 @@
 	   [(iterate (annotations ,anot* ...)
 		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
 	    ;(define newfun (Effect fun))
+#;
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
-#;
 	    (define newbinds
 	      (map (lambda (lhs ty rhs) 
 		     (match ty
