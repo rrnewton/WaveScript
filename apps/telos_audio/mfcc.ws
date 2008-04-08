@@ -18,7 +18,7 @@ logFilters = 19;    // drop top filters since over sample rate
 logSpacing = 1.0711703;
 fftSize = 512;
 cepstralCoefficients = 13;
-windowSize = 200;  // 1/2 window size used for 16khz sample rate
+windowSize = 256;  // 1/2 window size used for 16khz sample rate
 samplingRate = 8192;
 totalFilters = linearFilters + logFilters;
 
@@ -55,6 +55,7 @@ let (mfccFilterWeightsEvenIdx,
 
   for j = 0 to totalFilters-1 {
 
+    // 2.0 may be too small for fixed point?  makes for small numbers..
     triangleHeight = 2.0 / (freqs[j+2]-freqs[j]);
   
     fun f(idxarr,weightarr) {
@@ -79,14 +80,16 @@ let (mfccFilterWeightsEvenIdx,
   };
 
   (mfccFilterWeightsEvenIdx,
-   Array:map(FIX_F2I, mfccFilterWeightsEven),
+   //Array:map(FIX_F2I, )
+   mfccFilterWeightsEven,
    mfccFilterWeightsOddIdx,
-   Array:map(FIX_F2I, mfccFilterWeightsOdd))
+   //Array:map(FIX_F2I, )
+   mfccFilterWeightsOdd)
 
 }
 
 hamWindow = Array:build(windowSize, fun (x) {
-  0.54 - 0.46*cos(2.0*const_PI*(intToFloat(x)/intToFloat(windowSize)))
+  FIX_F2I(0.54 - 0.46*cos(2.0*const_PI*(intToFloat(x)/intToFloat(windowSize))))
 });
 
 
@@ -114,6 +117,57 @@ s1 = (readFile("./snip.raw",
       
 fun mfcc(win) {
   
+  // real and imaginary vectors
+  bufR = Array:make(fftSize,0);
+  bufI = Array:make(fftSize,0);
+
+  start = (fftSize-windowSize) / 2;
+
+  // preemphasize FIR filter into the buffer
+  for i = start+1 to start+windowSize-1 {
+    bufR[i] := FIX_MPY(win[i-start-1],FIX_F2I(0.0-0.97)) + win[i-start];    
+  };
+
+  // hamming window
+  for i = start to start+windowSize-1 {
+    bufR[i] := FIX_MPY(bufR[i],hamWindow[i]);
+  };
+
+  // fft
+  fix_fft(bufR,bufI,9,false);
+
+  // compute earmag
+  earmag = Array:make(totalFilters,0.0);
+
+  for i = 0 to (fftSize/2)-1 {
+    mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
+    if (mfccFilterWeightsEvenIdx[i] > 0) then {
+      earmag[mfccFilterWeightsEvenIdx[i]-1] := 
+        earmag[mfccFilterWeightsEvenIdx[i]-1] +
+        mfccFilterWeightsEven[i]*mag;
+    };
+    if (mfccFilterWeightsOddIdx[i] > 0) then {
+      earmag[mfccFilterWeightsOddIdx[i]-1] := 
+        earmag[mfccFilterWeightsOddIdx[i]-1] +
+        mfccFilterWeightsOdd[i]*mag;
+    }
+  };
+
+  for i = 0 to totalFilters-1 {
+    earmag[i] := logF(earmag[i])/logF(10.0);
+  };
+
+  earmag
+}
+
+BASE <- iterate w in s1 {
+  e = mfcc(Sigseg:toArray(w));
+  for i = 0 to totalFilters-1 { 
+    println(e[i]);
+  };
+  print("\n"); 
+  cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
+  println("#cep1 "++cep1);
 }
 
 // preEmphasized = filter([1 -.97], 1, input);
