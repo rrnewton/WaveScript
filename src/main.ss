@@ -1104,7 +1104,8 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
-	
+		  
+		  ;; [2008.04.08] TEMP - this is for my experimentation:
 		  (when (top-level-bound? 'scheme-profiling-performed!)
 		    (printf "\nDumping integer linear program, using Scheme profile only.\n")
 		    (let ([merged (merge-partitions node-part server-part)])		    

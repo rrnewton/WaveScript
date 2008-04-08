@@ -1080,8 +1080,8 @@
   (define incoming-edges (filter (lambda (row) (not (null? (intersection (cdr row) vars)))) g1))
 
   ;; Sometimes we don't have edge-rate data!  What should we do??
-  (define default-edge-weight "9999")
-  (define default-vert-weight "1")
+  (define default-edge-weight 9999)
+  (define default-vert-weight 1)
   (define cpu-granularity 1000)  ;; Doing a centi-percent.
 
   (define (Var v) 

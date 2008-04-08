@@ -185,8 +185,8 @@ cver = iterate _ in timer(0.2)
    setup(floats2, inp2,imag2);
  
    // Try 3
-   //fix_fft(inp2, imag2, levels, false);
-   newfn(inp2, imag2, levels, false);
+   fix_fft(inp2, imag2, levels, false);
+   //newfn(inp2, imag2, levels, false);
 
   print(" WS (real): "++inp2++"\n");
   //print(" WS (imag): "++imag2++"\n");

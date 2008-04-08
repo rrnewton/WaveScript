@@ -144,6 +144,7 @@ fun readstream_uint16(name, bufsize, rate) {
 }
 
 // This is for our custom audio-board:
+read_telos_audio :: (Int, Float) -> Stream (Array Uint16);
 fun read_telos_audio(bufsize, rate) {
   top = "
 generic configuration WSMspAdcC() {
