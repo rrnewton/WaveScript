@@ -268,16 +268,23 @@
 ;; this if they weren't already used in the stream implementation.
 (define (run-stream-to-completion stream)
   (define timelimit #f)
+  (define virtlimit #f)
   (define elemlimit #f)
+  (define get-vtime (wavescript-language 'get-current-vtime))
+  
   (match (ws-profile-limit)
     [none (void)]
     [(time ,t)     (ASSERT integer? t) (set! timelimit t)]
-    [(elements ,n) (ASSERT integer? n) (set! elemlimit n)])    
+    ;; Here we convert milliseconds to microseconds:
+    [(virttime ,t) (ASSERT integer? t) (set! virtlimit (* 1000 t))]
+    [(elements ,n) (ASSERT integer? n) (set! elemlimit n)])
   (let ([end-time (and timelimit (+ timelimit (cpu-time)))])
     (let loop ([stream stream] [elems 0])
       (if (or (stream-empty? stream)
-	      (and end-time (> (cpu-time) end-time))
-	      (and elemlimit (>= elems elemlimit)))
+	      (and virtlimit (> (get-vtime) virtlimit))
+	      (and end-time  (> (cpu-time) end-time))
+	      (and elemlimit (>= elems elemlimit))      
+	      )
 	  (printf " Finished profiling program.\n")
 	  (loop (stream-cdr stream) (fx+ 1 elems))))))
 

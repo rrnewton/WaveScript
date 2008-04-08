@@ -30,7 +30,8 @@
     (let-values ([(exp type mutable?) (datum->code datum ty)])
       (if (or mutable? (simple-expr? exp))
 	  (vector exp ())
-	  (let ([tmp (unique-name 'tmp)])
+	  ;; Immutable things get pulled upward:
+	  (let ([tmp (unique-name "tmplft")])
 	    (vector tmp `((,tmp ,type ,exp)))))))
 
   ;; Returns expression and constant binds (inside a vector):
@@ -133,6 +134,7 @@
 	   ;; This generates awfully verbose code:
 	   [(Array ,elt-ty)
 	    (cond
+	     
 	     [(= 0 (vector-length x))
 	      ;(values `(assert-type ,type Array:null) type #f)
 	      (values 'Array:null type #f)
@@ -153,10 +155,19 @@
 		     `(Array:makeUNSAFE ',(vector-length x)))
 		   `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty))))
 	       type
-	        #f)]
+	        #t)]
 
+	     ;; For the new C backends we're going to keep array constants:
+	     [(and ;(wsc2-variant-mode? (compiler-invocation-mode))
+	       ;; Note, currently [2008.04.08] this only works for wstiny:
+	           (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
+		   (scalar-type? elt-ty)  ;; But just for arrays of scalars for now.
+		   )
+	      (values `',x type #t)]
+	     
+	     ;; Otherwise generate some verbose code to fill the array:
 	     [else (values
-		    (let ([tmp (unique-name 'tmparr)])
+		    (let ([tmp (unique-name "tmparr")])
 		      `(let ([,tmp ,type (Array:makeUNSAFE ',(vector-length x))])
 			 (begin 
 			   ,@(list-build 
@@ -208,11 +219,12 @@
 	   [,_ (guard (symbol? x))  (values `',x type #f)]
 
 	   [String (values `',x type #f)]
+	   
+	   ;; Opt: should move this case up:
 	   ;; Anything else doesn't need an assert-type:
 	   [,_ (guard (simple-constant? x)) 
 	       (ASSERT scalar-type? type)
 	       (values `',x type #f)]
-
 	   [else (error 'datum->code "unhandled quoted constant: ~s" x)]
 	   )))))
 #;

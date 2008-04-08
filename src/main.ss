@@ -655,7 +655,7 @@
   (when (wsc2-variant-mode? (compiler-invocation-mode))
     (ws-run-pass p explicit-toplevel-print))
 
-  (ws-run-pass p optimize-print-and-show) ;; Should be optional.
+;  (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
   (ws-run-pass p lift-immutable-constants)
@@ -716,9 +716,10 @@
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
-
 ;  (profile-clear)
+
   (ws-run-pass p ws-remove-complex-opera*)
+
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
   ;; couple more passses before type checking.
@@ -764,7 +765,7 @@
        
        ;; TEMPTOGGLE TEMP HACK FIXME:
        (define-top-level-value 'scheme-profiling-performed! #t)
-       
+       #;
        (let ([get-vtime (wavescript-language 'get-current-vtime)])
 	 (printf "After profiling, virtual time was ~s\n" (get-vtime)))
        
@@ -1049,19 +1050,22 @@
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
+
 		     (ws-run-pass prog insert-refcounts)
 
 		     ;; It's painful, but we need to typecheck again.
 		     ;; HACK: Let's only retypecheck if there were any unknown result types:
 		     (let ([len (length (deep-assq-all 'unknown_result_ty prog))])
 		       (unless (zero? len)
-			 (printf "*** GOT AN UNKNOWN RESULT TYPE ***\n")
+			 (printf "*** GOT AN UNKNOWN RESULT TYPE, ADDITION TYPECHECK ***\n")
 			 (parameterize ([inferencer-enable-LUB #t]
 					[inferencer-let-bound-poly #f])
 			   (time (ws-run-pass prog retypecheck)))))
 		     (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
+
+;		     (print-graph #f)(inspect prog)
 
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 

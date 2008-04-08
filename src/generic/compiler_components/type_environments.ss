@@ -70,7 +70,12 @@
 ;;; them.  Currently I believe I'm being sloppy in places.
 
 
-(define (scalar-type? ty) (or (memq ty num-types) (memq ty '(Bool Char))))
+(define (scalar-type? ty) 
+  (or (memq ty num-types)
+      (memq ty '(Bool Char))
+      ;; Whatever num type it is, we know it's a scalar:
+      (and (pair? ty) (eq? (car ty) 'NUM))
+      ))
 
 (define (valid-type-symbol? s)
   (let ([str (symbol->string s)])

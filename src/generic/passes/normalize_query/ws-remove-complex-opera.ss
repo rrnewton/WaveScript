@@ -126,7 +126,7 @@
 			 `',(unique-name "unknown-type")
 			 ;(begin  (recover-type x tenv))
 			 ]
-			[(name) (unique-name 'tmp 
+			[(name) (unique-name "tmpsmp" 
 					     #;(meaningful-name x)
 					     )])
 		  (values name
@@ -147,7 +147,7 @@
       (match expr
 	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
 	   
-	   [(quote ,comple-const) (vector `',comple-const '())]
+	   [(quote ,complex-const) (vector `',complex-const '())]
 
 	   [(lambda ,formals ,types ,body)
 	    (let-values ([(body decls) (make-simple body (tenv-extend tenv formals types))])
@@ -165,26 +165,7 @@
 		      decls))]
 
 
-
-#;#;
-	   [(let () ,body)	
-	    (let-values ([(body bdecls) (make-simple body tenv)])
-	      (vector (make-lets bdecls body) '()))]
-
-;; THIS INTRODUCES EXCESSIVE ALIASING:
-	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
-	    (let-values ([(rhs rdecls) (make-simple e tenv)])
-	    (let-match  ([#(,rst ,decls) (process-expr 
-					  `(let ,rest ,bod)
-				            (tenv-extend tenv 
-						(list v) (list ty)))])
-	      (vector rst
-		      (append rdecls 
-			      `([,v ,ty ,rhs])
-			      decls))
-	      ))]
-
-;; REDONE: this to not simplify RHS's
+;; REDONE: this will not simplify RHS's
 	   [(let () ,[body]) body]
 	   [(let ([,v ,ty ,[e]] ,rest ...) ,bod)
 	    (let-match ([#(,rhs ,rdecls) e])
@@ -225,8 +206,10 @@
 			 (apply append xdecls rhsdecl*)))])]
 	   
 	   ;; For now don't lift out an iterate's lambda!	   
-	   [(iterate ,annot (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
-	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))])
+	   ;; [2008.04.08] Modifying this to not pointlessly simplify rhs's:
+	   [(iterate ,annot (let ([,v* ,ty* ,[_rhs*]] ...) ,fun) ,source)
+	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))]
+			[(#(,rhs* ,rdecls*) ...) _rhs*])
 	      (ASSERT null? fdecl)
 	      (mvlet ([(src sdecl) (make-simple source tenv)])
 		;(ASSERT null? sdecl)

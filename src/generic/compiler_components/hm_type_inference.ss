@@ -805,6 +805,9 @@
   		              'decr-heap-refcount  'incr-heap-refcount))
        (values `(,refcnt ,ty ,e) #())]
 
+      ;; [2008.04.08] This is an annotation introduced much later in the compiler.
+      [(static-allocate ,[l -> x xt]) (values x xt)]
+
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)

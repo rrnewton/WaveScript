@@ -436,10 +436,11 @@
 ;; NOTE: virttime limiting isn't implemented yet.  And currently it
 ;; can only stop after each output element is produced.
 ;; 
-;; Valid values: 'none, '(time <ms>), '(virttime <microsec>), or '(elements <n>)
+;; Valid values: 'none, '(time <ms>), '(virttime <ms>), or '(elements <n>)
 (define-regiment-parameter ws-profile-limit 
   ;'(time 3000)
-  `(time ,(* 21 3000))
+  ;`(time ,(* 21 3000))
+  '(virttime 3000) ;; Virtual milliseconds.
   )
 
 ;; This parameter stores an association list binding the names of

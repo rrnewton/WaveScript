@@ -8,9 +8,9 @@
 
 main = iterate _ in timer$ 10 {
   state { 
-    x = (Array:make(3, (2::Int16)), (10::Int64), ([] :: List Float));
+    xx = (Array:make(3, (2::Int16)), (10::Int64), ([] :: List Float));
   }
-  let (arr, n, ls) = x;
+  let (arr, n, ls) = xx;
   n2 :: Int64 = n + 1;
   emit (arr, n2, ls);
 }

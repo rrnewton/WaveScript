@@ -1025,6 +1025,13 @@
 		`(app ,rator ,@rands))
 	      )]
 
+	 ;; Let's do some DCE while we're at it:
+	 [(if ,[test] ,a ,b)
+	  (match (peel-annotations test)
+	    ['#f (loop b)]
+	    ['#t (loop a)]
+	    [,else `(if ,test ,(loop a) ,(loop b))])]
+
 	 [,oth (fallthru oth)])))
      (lambda (ls k) (apply k ls))
      e))

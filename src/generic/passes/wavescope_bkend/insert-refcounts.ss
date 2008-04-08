@@ -118,9 +118,16 @@
     (define global-struct-defs '())    
     (define global-union-types '())
     (define (not-heap-allocated? ty) (not (heap-allocated? ty global-struct-defs global-union-types)))
-    (define (DriveInside injection xp retty)
+    ;; Adding a tricky value-needed? flag.  Basically, there are two
+    ;; different scenarios for DriveInside, it can either push in a
+    ;; refcount incr *to that value*, or it can push in a decr that
+    ;; doesn't care about the value, but wants to be at the end of the
+    ;; control flow.
+    (define (DriveInside injection xp retty value-needed?)
       (match xp
-	[(let ([,lhs ,ty ,rhs]) ,[bod]) `(let ([,lhs ,ty ,rhs]) ,bod)]
+	[(,lt ([,lhs ,ty ,rhs]) ,[bod]) (guard (memq 'lt '(let let-not-counted))) 
+	 `(,lt ([,lhs ,ty ,rhs]) ,bod)]
+
 	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
 	;; Go down both control paths:
 	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
@@ -130,10 +137,15 @@
 
 	[,oth 
 	 (define tmp (unique-name "tmp"))
-	 (if (simple-expr? oth)	     
-	     `(begin ,(injection oth) ,oth)
+	 (if (or (simple-expr? oth)
+		 ;; Also allowing some other expressions that we know
+		 ;; will not affect reference counting as a side effect:
+		 ;; This is an optimization that I'm not sure of yet:
+		 ;(and (not value-needed?) (match? oth (Mutable:ref ,_)))
+		 )
+	     `(begin ,(if value-needed? (injection oth) (injection)) ,oth)
 	     `(let-not-counted ([,tmp ,retty ,oth])
-	       (begin ,(injection tmp) ,tmp)))
+	       (begin ,(if value-needed? (injection tmp) (injection)) ,tmp)))
 	 #;
 	 (maybe-bind-tmp oth retty
 	   (lambda (tmp)
@@ -145,23 +157,34 @@
 	 (match xp
 	   ;;[',const (ASSERT simple-constant? const) `',const]
 
+
 	   ;; No more type checking is allowed AFTER this pass.
 	   ;; Here we treat the body of iterate as an EFFECT.
 	   ;; (Rather than an expression returning a virtual queue).
 	   [(iterate (annotations ,anot* ...)
-		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
-	    ;(define newfun (Effect fun))
+		     (let ,binds ,fun) ,[strm])
+	    ;; [2008.04.08] Modifying this to catch non-mutated iterator state bindings.
+	    #; 
+	    (define newbinds
+	      (let ,(map list lhs* ty* (map Value (map TopIncr rhs* ty*)))
+		,newfun))
+	    (define newbinds
+	      (map (match-lambda ((,lhs ,ty ,rhs)) 
+				   (match ty
+				     [(Ref ,_)
+				      (printf " *** mutated iterator state: ~s\n" lhs)
+				      (list lhs ty (Value (TopIncr rhs ty)))]
+				     [,_ 
+				      (printf " *** GOT UNMUTATED ITERATOR STATE: ~s\n" lhs) 
+				      (StaticBind lhs ty rhs)
+				      ]))
+		binds))	    
 	    (define newfun (Value fun))
-	    `(iterate (annotations ,@anot*)
-		      (let ,(map list lhs* ty* (map Value (map TopIncr rhs* ty*)))
-			,newfun)
-		      ,strm)]
+	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
 
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
 	    (define result (unique-name "result"))
-	    
 	    ;; TODO: *IF* RHS allocates, add to ZCT UNLESS it flows to a heap incr-point.
-
 	    (if (not-heap-allocated? ty) ; (simple-expr? bod)		
 		`(let ([,lhs ,ty ,(Value rhs)]) ,(Value bod))
 		;; FIXME: INCORRECT:
@@ -170,10 +193,10 @@
 		;; DriveInside introduces extra let-expressions, which then lead to extra calls to DriveInside.
 		`(let ([,lhs ,ty ,(Value
 				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
-						rhs ty))])		   
+						rhs ty #t))])
 		   ,(Value
-		     (DriveInside (lambda (_) (make-rc 'decr-local-refcount ty lhs)) bod 
-				 '''unknown_result_ty))))]
+		     (DriveInside (lambda () (make-rc 'decr-local-refcount ty lhs)) bod 
+				 ''unknown_result_ty #f))))]
 	   
 	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
 	    `(let-not-counted ([,lhs ,ty ,rhs]) ,bod)]
@@ -232,7 +255,7 @@
 		;; FIXME: INCORRECT:
 		`(let ([,lhs ,ty ,(Value 
 				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
-						rhs ty))])
+						rhs ty #t))])
 		   ,(make-begin
 		     `(begin
 			,bod
@@ -302,7 +325,7 @@
     ;; For "global" variables:
     ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).
     (define (TopIncr exp ty)  
-      (DriveInside (lambda (x) (make-rc 'incr-heap-refcount ty x)) exp ty))
+      (DriveInside (lambda (x) (make-rc 'incr-heap-refcount ty x)) exp ty #t))
 
     (define (Operator op)
       (match op

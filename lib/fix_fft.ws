@@ -188,7 +188,7 @@ fun FIX_MPY(a, b) {
 fix_fft :: (Array Short, Array Short, Int, Bool) -> Int;
 fun fix_fft(fr, fi, m, inverse)
 {
-  DEBUG = true;
+  DEBUG = false;
         using Mutable;
   //	int mr, nn, i, j, l, k, istep, n, scale, shift;
   //	short qr, qi, tr, ti, wr, wi;

@@ -1095,7 +1095,7 @@
   (define cpu-total (number->string cpu-granularity))
   (define (cpu-coeff vr)
     ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
-    (+ 10 
+    (+ ;; 10 
        (max 0			    
 	 (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
 	   (if entry
@@ -1103,14 +1103,15 @@
 		      (match (ws-profile-limit)
 			;; How many ms did we run scheme for:
 			;; This is real time:
+			#;
 			[(time ,ms) 
-			 ;ms
+			 ms
 			 ;; HACK FIXME:
 			 ;3000
-			 7000
+			 ;7000
 			 ]
 			;[(elements ,n) ]
-			;[(virttime ,n) ]
+			[(virttime ,vt) (* 1000 vt)]
 			)])
 		 (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
 		   (inexact->exact (floor (* frac cpu-granularity)))))

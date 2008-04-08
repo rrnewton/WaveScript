@@ -1457,7 +1457,7 @@ int main(int argc, char **argv)
 	      (outgoing ,down* ...))
      (define emitter (Emit self down*))
      (match itercode
-       [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...) 
+       [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(values 
 	 (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))
@@ -1853,17 +1853,27 @@ int main(int argc, char **argv)
 (__specreplace StaticAllocate <tinyos> (self lhs ty rhs)
   (match rhs
     [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
-      (ASSERT (vector-andmap char? vec))
-      ;; Strip out any null characters??
-      (let* ([ls (vector->list vec)]
-	     [ls2 ;; Hack, a null terminator on the end is redundant for a string const:
-	      (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
-		  (rdc ls) 
-		  ls)]
-	     [str (list->string ls2)])
-	(values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-	        (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
-		(make-lines "")))]
+      (match ty
+	[(Array Char)
+	 ;; Strip out any null characters??
+	 (let* ([ls (vector->list vec)]
+		[ls2 ;; Hack, a null terminator on the end is redundant for a string const:
+		 (if (fx= 0 (char->integer (vector-ref vec (sub1 (vector-length vec)))))
+		     (rdc ls) 
+		     ls)]
+		[str (list->string ls2)])
+	   (values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	    (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
+	    (make-lines "")))]
+	[(Array ,num) (guard (memq num num-types))
+	 (values 
+	  (make-lines 
+	   (list (format "const ~a ~a[~a] = " (Type self num) (text->string (Var self lhs)) (vector-length vec))
+		 "{ "
+		 (insert-between ", " 
+				 (map (lambda (x) (Const self x id)) (vector->list vec)))
+		 " };\n\n"))
+	  (make-lines ""))])]
 
     ;; This is TINYOS specific currently:
     ;; gen-incr-code
@@ -1882,7 +1892,9 @@ int main(int argc, char **argv)
 			     "SETARRLEN("_lhs", "n");\n"
 			     "// ACCK WHAT ABOUT FILLING IT IN\n")))
 	])]
-))
+
+    [(assert-type ,_ ,[x y]) (values x y)]
+    ))
 
 
 ;; We just memcpy the representation straight into the packet.
