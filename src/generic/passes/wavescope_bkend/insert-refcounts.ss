@@ -163,9 +163,9 @@
 	   [(iterate (annotations ,anot* ...)
 		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
 	    ;(define newfun (Effect fun))
-#;
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
+#;
 	    (define newbinds
 	      (map (lambda (lhs ty rhs) 
 		     (match ty
@@ -314,7 +314,7 @@
 	(for-each (lambda (hit) (set-car! hit 'let)) hits)
 	;(inspect hits) (inspect result)
 	result))
-
+#;
     ;; A binding that gets evaluated exactly once.
     (define (StaticBind lhs ty rhs)
       ;(printf "Static? ~s\n" (peel-annotations rhs))
@@ -359,14 +359,74 @@
 		    (operators ,[Operator -> oper*] ...)
 		    (sink ,base ,basetype)	,meta* ...))
 	   `(,input-language 
-	     '(graph (const ,(map StaticBind cbv* cbty* cbexp*) ...)
+	     '(graph (const ,(map list cbv* cbty* (map Value+ (map TopIncr cbexp* cbty*)))
+			    ;,(map StaticBind cbv* cbty* cbexp*)
+			    ...)
 		     (init ,@init*) 
 		     (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
 		     (operators ,@oper*)
 		     (sink ,base ,basetype)
 		     ,@meta*))])))))
 
-(define (flag-static-allocate prog) prog)
+
+;; This pass does not do a deep traversal of the program.  It simply
+;; checks the constant bindings and the iterator state bindings to see
+;; which can be statically allocated.
+(define (flag-static-allocate prog) 
+
+  ;; A binding that gets evaluated exactly once.
+  (define (StaticBind lhs ty rhs)
+    `(,lhs ,ty
+	   ,(match (peel-annotations rhs) ;; no recursion!
+	      ;; What kinds of things can we switch to static allocation?
+	      ;; Currently just quoted constants:
+	      [',c `(static-allocate ,rhs)] 
+	      [(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) 
+	       `(static-allocate ,rhs)]
+	      [,oth oth])))
+
+  (define (Operator op)
+    (match op
+      [(iterate (name ,name) (output-type ,o_ty)
+		(code (iterate (annotations ,anot* ...)
+			       (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,strm))
+		(incoming ,o_up) (outgoing ,o_down* ...))
+       (define newbinds
+	 (map (lambda (lhs ty rhs) 
+		(match ty
+		  [(Ref ,_)
+		   ;;(printf " *** mutated iterator state: ~s\n" lhs)
+		   (list lhs ty rhs)]
+		  [,_ 
+		   ;;(printf " *** GOT UNMUTATED ITERATOR STATE: ~s\n" lhs) 
+		   (StaticBind lhs ty rhs)]))
+	   lhs* ty* rhs*))       
+       `(iterate (name ,name) (output-type ,o_ty)
+		 (code (iterate (annotations ,@anot*)
+				(let ,newbinds ,fun)
+				,strm))
+		 (incoming ,o_up) (outgoing ,@o_down*))]
+      ;; All of these have no code to speak of:
+      [(_merge . ,_) op]
+      [(__readFile . ,_) op]
+      [(cutpoint . ,_) op]
+      [(unionN . ,_) op]))
+
+  (cond-expand [chez (import iu-match)] [else (void)])    
+  (match prog
+    [(,input-language 
+      '(graph (const (,cbv* ,cbty* ,cbexp*) ...)
+	      (init  ,init* ...)
+	      (sources ,src* ...)
+	      (operators ,[Operator -> oper*] ...)
+	      (sink ,base ,basetype)	,meta* ...))
+     `(,input-language 
+       '(graph (const ,(map StaticBind cbv* cbty* cbexp*) ...)
+	       (init ,@init*) 
+	       (sources ,@src*)
+	       (operators ,@oper*)
+	       (sink ,base ,basetype)
+	       ,@meta*))]))
 
 
 #;
