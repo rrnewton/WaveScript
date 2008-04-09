@@ -20,7 +20,7 @@ using TOS;
 
 
 AddOddAndEven :: (Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
-fun AddOddAndEven(s1,s2) {
+fun AddOddAndEven(winsize, s1,s2) {
   using Array;
   
   _stored_value = 0;
@@ -35,11 +35,12 @@ fun AddOddAndEven(s1,s2) {
     };
     emit buf;
   }
+}
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
 FIRFilter :: (Array Float, Stream (Array Float)) -> Stream (Array Float);
-fun FIRFilter(filter_coeff, strm) {
+ fun FIRFilter(filter_coeff, bufsize, strm) {
     using Array;
     nCoeff = filter_coeff.length;
     
@@ -50,7 +51,7 @@ fun FIRFilter(filter_coeff, strm) {
     _memory = FIFO:make(nCoeff);
     for i = 1 to nCoeff-1 { FIFO:enqueue(_memory, 0.0) };
 
-    outputBuf = make(winsize,0);
+    outputBuf = make(bufsize,0);
 
     iterate buf in strm {
       for j = 0 to buf.length - 1 {
@@ -96,7 +97,7 @@ namespace Node {
     emit floats;
   }
 
-  filtered = FIRFilter(hHigh_Odd, cast);
+  filtered = FIRFilter(hHigh_Odd, winsize, cast);
 }
 
 main = Node:filtered;

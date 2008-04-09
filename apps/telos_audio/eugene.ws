@@ -151,7 +151,7 @@ fun FIRFilter(filter_coeff, strm) {
     iterate seg in strm {
       state {
         // remembers the previous points needed for convolution
-        _memory = { fifo = FIFO:make(nCoeff);
+        _memory = { fifo = FIFO:make(nCoeff-1);
                     for i = 1 to nCoeff-1 { FIFO:enqueue(fifo, 0) };
                     fifo }
       }
