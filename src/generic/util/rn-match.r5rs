@@ -368,10 +368,10 @@
        #'(if (list? Obj)
 	     (let ([len (length Obj)]
 		   [remains (countup-elements P1 P* ...)])
-	       (if (< len remains)
+	       (if (fx< len remains)
 		   (NextClause)
-		   (let ([hd (list-head Obj (- len remains))]
-			 [tl (list-tail Obj (- len remains))])
+		   (let ([hd (list-head Obj (fx- len remains))]
+			 [tl (list-tail Obj (fx- len remains))])
 		     (rn-convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) 
 				  Exec Bod Guard Cata NextClause Vars CataVars))))
 	     (NextClause)))
@@ -465,6 +465,7 @@
 			 (make-list 
 			  (ellipses-helper () () (countup-vars) P0)
 			  (lambda () '()))
+			 ;; TOOPTIMIZE: Profiling pics out this expression:
 			 ;; When we pop the cata-var we pop the whole list.
 			 (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
 			   ;; Rotate:

@@ -1465,6 +1465,7 @@ fun sigseg_fold (fn, zer, ss) {
 
 Sigseg:fold = sigseg_fold
 Sigseg:map  = sigseg_map
+Sigseg:toArray  = toArray
 
 // This doesn't create a shared structure:
 fun deep_stream_map(f,sss)

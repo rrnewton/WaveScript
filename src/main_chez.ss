@@ -31,8 +31,8 @@
   ;; compilation options:
   (include "config.ss")
 
-;;; TEMP TEMP TEMP 
-;  (compile-profile #t)
+;;; TEMP TEMP TEMP  TEMPTOGGLE:
+  ;(compile-profile #t)
   ;; Note: this also bloats the code size. 
 
   (case-sensitive #t)
@@ -302,7 +302,7 @@
 ;; To completely DISABLE my new prototype matcher, uncomment this:
 ;; This may be useful for debugging, the iu-matcher gives better source locations.
 ;; (Note that rn-match increases compile times)
-(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
+;(alias rn-match-bak rn-match) (alias rn-match iu-match) ;; TEMPTOGGLE
 ;;
 ;; [2007.04.19] Currently, just having rn-match in the type-checker
 ;; plus the static elaborator bloats the code size a noticable amount.
@@ -524,7 +524,9 @@
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (todo:common:load-source "generic/passes/wavescope_bkend/reify-certain-types.ss") (import reify-certain-types)
+;(eval-when (compile eval load) (compile-profile #t))
 (todo:common:load-source "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
+;(eval-when (compile eval load) (compile-profile #f))
 (todo:common:load-source "generic/passes/wavescope_bkend/convert-sums-to-tuples.ss") (import convert-sums-to-tuples)
 
 (todo:common:load-source "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
@@ -540,11 +542,11 @@
 
 (todo:common:load-source "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
 
-(eval-when (compile eval load) (compile-profile #t))
+;(eval-when (compile eval load) (compile-profile #t))
 (todo:common:load-source "generic/passes/ocaml_bkend/shared-emit-ml.ss")      ;(import shared-emit-ml)
 (todo:common:load-source "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
 (todo:common:load-source "generic/passes/mlton_bkend/emit-mlton.ss")          (import emit-mlton)
-(eval-when (compile eval load) (compile-profile #f))
+;(eval-when (compile eval load) (compile-profile #f))
 
 
 

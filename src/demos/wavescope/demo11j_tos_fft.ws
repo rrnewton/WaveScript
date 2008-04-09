@@ -92,7 +92,7 @@ int myradix4(int n, lilty x[], lilty w[])
 using Array;
 
 // Hmm... what is the meaning of the first argument?
-levels = 4;
+levels = 8;
 arrsize = 2^levels;
 nsize = arrsize/2;
 
@@ -172,7 +172,7 @@ cver = iterate _ in timer(0.2)
   newfn(inp, imag, levels, false);
   
   print(" C (real): "++inp++"\n");
-  //print("  C (imag): "++imag++"\n");
+  ////print("  C (imag): "++imag++"\n");
     
   //Array:blit(snip, 0, out, 0, Array:length(snip));
   //print("length: "++snip.length++"\n");
@@ -188,8 +188,8 @@ cver = iterate _ in timer(0.2)
    fix_fft(inp2, imag2, levels, false);
    //newfn(inp2, imag2, levels, false);
 
-  print(" WS (real): "++inp2++"\n");
-  //print(" WS (imag): "++imag2++"\n");
+   print(" WS (real): "++inp2++"\n");
+  ////print(" WS (imag): "++imag2++"\n");
 
   emit ();
  }

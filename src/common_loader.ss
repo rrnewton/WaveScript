@@ -41,7 +41,9 @@
 (common:load-source "generic/compiler_components/regiment_helpers.ss")
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
+;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #t)))] [else (void)])
 (common:load-source "generic/compiler_components/type_environments.ss") 
+;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #f)))] [else (void)])
 
 
 ;; Michael's tools for manipulating expression annotations:
@@ -112,7 +114,9 @@
 (common:load-source "generic/compiler_components/reg_core_generic_traverse.ss") 
 
 ;; Type inference is used by verify-regiment, below.
+;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #t)))] [else (void)])
 (common:load-source "generic/compiler_components/hm_type_inference.ss") 
+;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #f)))] [else (void)])
 
 (common:load-source "generic/passes/pass-mechanism_basic.ss") 
 

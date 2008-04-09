@@ -440,7 +440,7 @@
 (define-regiment-parameter ws-profile-limit 
   ;'(time 3000)
   ;`(time ,(* 21 3000))
-  '(virttime 3000) ;; Virtual milliseconds.
+  '(virttime 1000000) ;; Virtual milliseconds.
   )
 
 ;; This parameter stores an association list binding the names of

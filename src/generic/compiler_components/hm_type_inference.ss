@@ -240,7 +240,7 @@
      (let* ((env '()) ;; Mutated below
 	 (result 
 	  (let loop ((t t))
-	   (match t
+	   (match t 
 	     [#f #f]
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
@@ -263,9 +263,10 @@
 		      (set! env (cons (cons var newtype) env))
 		      newtype)))]
 	     [,s (guard (symbol? s)) s]
-
-	     [#(,t* ...) 
-	      (apply vector (mapright loop t*))]
+	     
+	     ;; [2008.04.09] Attempted minor optimazition:
+	     [,vec (guard (vector? vec)) (vector-map loop vec)]
+	     ;[#(,t* ...) (apply vector (mapright loop t*))]
 	     [(,arg* ... -> ,res) ; Ok to loop on ellipses.
 	      (let* ([arg* (mapright loop arg*)]
 		     [res (loop res)])

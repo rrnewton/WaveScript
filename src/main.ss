@@ -646,10 +646,15 @@
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
+
   (ws-run-pass p reduce-primitives) ; w/g 
  
   (IFDEBUG (do-late-typecheck) (void))
+  ;(profile-clear)
   (ws-run-pass p type-annotate-misc) ;; This pass is really slow...
+  ;(parameterize ([current-directory "html"]) (profile-dump-html))
+  ;(printf "<<<<<<<< PROFILE DUMPED >>>>>>>>\n")
+
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (wsc2-variant-mode? (compiler-invocation-mode))
@@ -847,9 +852,12 @@
 		     [print-level #f]
 		     [print-length #f]
 		     [print-graph #f])
-	(parameterize-IFCHEZ ([pretty-one-line-limit 100])
-			     (pretty-print ;(strip-annotations prog)
-			      prog)))
+	(parameterize-IFCHEZ ([pretty-one-line-limit 120])
+	 (if (>= (regiment-verbosity) 4)
+	     ;; It's very expensive to actually pretty-print very large sexps:
+	     (pretty-print ;(strip-annotations prog)
+	      prog)
+	     (write prog))))
       (flush-output-port))
     'replace))
 
@@ -1106,6 +1114,7 @@
 		  (newline)
 		  
 		  ;; [2008.04.08] TEMP - this is for my experimentation:
+		   ;; TEMPTOGGLE
 		  (when (top-level-bound? 'scheme-profiling-performed!)
 		    (printf "\nDumping integer linear program, using Scheme profile only.\n")
 		    (let ([merged (merge-partitions node-part server-part)])		    
@@ -1114,8 +1123,8 @@
 					     (partition-baseonly merged))
 				    "partition_scheme.lp")
 		      (printf "\n Running LP solver.\n")
-		      (time (system "lp_solve partition_scheme.lp > partition_assignments.txt"))
-		      (let ([results (file->string "partition_assignments.txt")])
+		      (time (system "lp_solve partition_scheme.lp > partition_assignments_sche.txt"))
+		      (let ([results (file->string "partition_assignments_scheme.txt")])
 			(match (string->slist results)
 			  [(Value of objective function: ,objective
 				  Actual values of the variables: 
@@ -1174,7 +1183,7 @@
 		    (newline)
 		    		    
 		    (pretty-print (partition->simple-graph max-node))
-#;
+
 		    (begin
 		      (last-few-steps max-node <tinyos-timed>)		    
 		      ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
@@ -1193,8 +1202,8 @@
 
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
-'()
-#;
+;'()
+
 			    (extract-time-intervals
 #;
 '((Start Node_muladd_4 0 20433)
@@ -1216,21 +1225,43 @@
 			  [newprog (inject-times prog times)])
 		      
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
+		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
 
 		      (printf "============================================================\n")
 		      (printf "       Auto Partitioning: \n")
 		      (printf "============================================================\n")
-		      
-		      (printf "\nDumping integer linear program.\n")
-		      (string->file (emit-lp (inject-times definite-node times)
-					     (inject-times (merge-partitions maybe-node maybe-server) times)
-					     definite-server)
-				    "partition.lp")
-		      (pp 'YAY)(exit)
-
+		      		      
 		      (let-match ([#(,new-node ,new-server)
+
+				   ;; Old method, my limited exhaustive search:
+				   #;
 				   (exhaustive-partition-search max-nodepart-heuristic
-								(inject-times max-node times))])
+								(inject-times max-node times))
+				   ;; New method, run a linear program solver:
+				   (let ([merged (merge-partitions maybe-node maybe-server)])
+				     (printf "\nDumping integer linear program.\n")
+				     (string->file (emit-lp (inject-times definite-node times)
+							    (inject-times merged times)
+							    definite-server)
+						   "partition.lp")
+				     (printf "\n Running LP solver.\n")
+				     (time (system "lp_solve partition.lp > partition_assignments.txt"))
+				     (let-values ([(objective assignments) (read-back-lp-results "partition_assignments.txt")])
+				       (define assigned (inject-assignments merged assignments))
+				       (printf "Value of objective function was: ~s\n" objective)
+				       (printf "Number of boxes on node/server: ~s / ~s\n"
+					       (length (filter (lambda (ls) (eq? 1 (cadr ls))) assignments))
+					       (length (filter (lambda (ls) (eq? 0 (cadr ls))) assignments)))
+				       (string->file (output-graphviz assigned) "query_lp.dot")
+				       (printf "Produced new graphviz output...\n")
+				       (system "dot -Tpng query_lp.dot -oquery_lp.png")
+				       (printf "  ... done.\n")
+
+				       (exit)			  
+				       (partition-based-on-lp assigned)
+				       )
+				     )				   
+				   ])
 			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			
 			(printf "\n Final Partitioning, node operators:\n\n")

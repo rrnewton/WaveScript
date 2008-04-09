@@ -34,7 +34,7 @@
 	   partition-sourcesonly
 	   partition-baseonly
 	   partition-getmiddle
-	   emit-lp
+	   emit-lp read-back-lp-results
 
 	   test-partition-graph
 	   )
@@ -300,12 +300,14 @@
 (define-pass refine-node-partition     
   ;; Return true if the operator is clean of anything that would force
   ;; it to be embedded:
+  (define thisname "")
   (define (Operator Expr)
     (lambda (op)
       (ASSERT symbol? (car op))
       (let ([code (assq 'code (cdr op))])
 	(ASSERT code)
-	(Expr (cadr code)))))
+	(fluid-let ([thisname (opname op)])
+	  (Expr (cadr code))))))
   ;; This returns true if the code is "clean" -- if it doesn't
   ;; contain anything that would force it to be on the embedded node.
   [Expr (lambda (xp fallth)
@@ -315,18 +317,23 @@
 			     ;; For now printing is disabled too:
 			     'print
 			     ))
+	     (printf " ~a Disqualified based on: ~s\n" thisname frgn)
 	     #f]
 
 	    ;; TEMP FIXME: For now we dissallow state in mobile nodes!!
 	    ;; Eventually, we want to allow state to migrate from
 	    ;; node->server but not vice versa.
+
+	    ;; [2008.04.08] Hacking this to allow it so we can at least look at the partitionings.
+#|
 	    [(iterate (annotations . ,annot) (let ,binds (lambda . ,_)) ,strm)
 	     (if (null? binds) 
 		 (fallth xp)		 
 		 (begin
-		   (printf "Disqualifying iterate based on state!! ~s" (assq 'name annot))
+		   (printf "Disqualifying iterate based on state!! ~s \n" (assq 'name annot))
 		   #f))]
 	    [(iterate . ,_) (error 'refine-node-partition "missed iterate: ~s" xp)]
+|#
 
 	    [,oth (fallth oth)]))]
   [Fuser (lambda (ls k) (and-list ls))]
@@ -1069,6 +1076,24 @@
 		(partition->src&ops serverpart)))
       tab))
   
+  ;; Retrieve the input frequencies so we can translate execution *times* into percent cpu.
+#;
+  (define input-frequency
+    (match part
+      [(,input-language 
+	'(graph (const ,cnst* ...)
+		(init  ,init* ...)
+		(sources ,src* ...)
+		(operators ,oper* ...)
+		(sink ,base ,basetype)	,meta* ...))
+       (define ls 
+	 (map (match-lambda (src)
+		)
+	   src*))
+       (unless (= 1 (length ls))
+	 (error 'emit-lp ""))
+       (append src* oper*)]))
+
   (define g1 (partition->simple-graph nodepart))
   (define g2 (partition->simple-graph floating))
   (define g3 (partition->simple-graph serverpart))
@@ -1080,7 +1105,7 @@
   (define incoming-edges (filter (lambda (row) (not (null? (intersection (cdr row) vars)))) g1))
 
   ;; Sometimes we don't have edge-rate data!  What should we do??
-  (define default-edge-weight 9999)
+  (define default-edge-weight (* 10 1000 1000)) ;; 9999
   (define default-vert-weight 1)
   (define cpu-granularity 1000)  ;; Doing a centi-percent.
 
@@ -1090,43 +1115,48 @@
      [(memq v rightnames) 0]
      [else  v]))
 
-  ;; Scheme cpu weights mode:
   ;;------------------------------
   (define cpu-total (number->string cpu-granularity))
   (define (cpu-coeff vr)
-    ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
-    (+ ;; 10 
-       (max 0			    
-	 (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
+    (+ 1     ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
+       (max 0		 
+	 ;; If the TinyOS numbers are there, use them.
+	 (let  ([entry (assq 'measured-cycles (hashtab-get annot-table vr))])
 	   (if entry
-	       (let ([elapsed-vtime 
-		      (match (ws-profile-limit)
-			;; How many ms did we run scheme for:
-			;; This is real time:
-			#;
-			[(time ,ms) 
-			 ms
-			 ;; HACK FIXME:
-			 ;3000
-			 ;7000
-			 ]
-			;[(elements ,n) ]
-			[(virttime ,vt) (* 1000 vt)]
-			)])
-		 (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
-		   (inexact->exact (floor (* frac cpu-granularity)))))
-	       default-vert-weight)))))
+	       ;; FIXME INCORRECT: CURRENTLY ASSUMING 1 SECOND EPOCH:
+	       (let ([frac (/ (cadr entry) (caddr entry))])
+		 (inexact->exact (floor (* frac cpu-granularity))))
+	       
+	       ;; Scheme cpu weights mode:
+	       (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
+		 ;(printf "Using Scheme execution times to formulate LP.\n")
+		 (if entry
+		     (let ([elapsed-vtime 
+			    (match (ws-profile-limit)
+			      ;; How many ms did we run scheme for:
+			      ;; This is real time:
+			      #;
+			      [(time ,ms)    ??  ]
+			      ;;[(elements ,n) ]
+			      [(virttime ,vt) 
+			       vt
+			       ;; HACK FIXME:
+			       ;;3000
+			       1000
+			       ] ;; (* 1000 vt)
+			      )])
+		       (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
+			 ;(printf "TIME ~s ELAPSED ~s\n"(bench-stats-cpu-time (caddr entry)) elapsed-vtime)
+			 (inexact->exact (floor (* frac cpu-granularity)))))
+		     default-vert-weight))
+	       )))))
 		     
   ;; TinyOS cpu weights:
   ;;------------------------------
   #;
   (define (cpu-coeff vr) 
     (max 0 
-	 (let  ([entry (assq 'measured-cycles (hashtab-get annot-table vr))])
-	   (if entry
-	       (let ([frac (/ (cadr entry) (caddr entry))])
-		 (inexact->exact (floor (* frac cpu-granularity))))
-	       default-vert-weight))))
+	))
 
   (printf "~s ops in floating partition.\n" (length vars))
   (printf "Left names: ~s\n" leftnames)
@@ -1144,21 +1174,26 @@
 		   (map (lambda (row) 
 			  (define src (car row))
 			  (define _src (Var src))			  
-			  (define coeff 
+			  (define edgecoeff 
 			    (max 0 
 			      (let ([entry (assq 'data-rates (hashtab-get annot-table (car row)))])
 				(if entry
 				    (bench-stats-bytes (caddr entry))
 				    default-edge-weight))))
 			  (define left (memq src leftnames))
+			  
+			  ;; HACK: scheme profiling misses the first edge:
+			  ;; Set it to something big:
+			  (if (zero? edgecoeff) (set! edgecoeff default-edge-weight))
+			  
 			  (map (lambda (dst)
 				 (define right (memq dst rightnames))
 				 ;; Lamely, the file format can't handle const * const:
 				 (cond
-				  [(and left right) (format "~a " coeff)]
-				  [right  (format "~a ~a " coeff _src)] ;; zero coefficient
-				  [left   (format "~a - ~a ~a" coeff coeff (Var dst))] ;; one coefficient
-				  [else   (format "~a ~a - ~a ~a " coeff _src coeff (Var dst))]))
+				  [(and left right) (format "~a " edgecoeff)]
+				  [right  (format "~a ~a " edgecoeff _src)] ;; zero coefficient
+				  [left   (format "~a - ~a ~a" edgecoeff edgecoeff (Var dst))] ;; one coefficient
+				  [else   (format "~a ~a - ~a ~a " edgecoeff _src edgecoeff (Var dst))]))
 			    (cdr row)))
 		     (append incoming-edges g2)))))
      ";\n")
@@ -1208,6 +1243,24 @@ myrow: x1 + x2 >= 2;
 int x1;
 // bin x1;
 |#
+
+			  
+;; Returns two values: the value of the objective function, and a
+;; [<var> <value>] association list.
+(define (read-back-lp-results file)
+  (define results (file->string "partition_assignments.txt"))
+  (match (string->slist results)
+    [(Value of objective function: ,objective
+	    Actual values of the variables: 
+	    ,rest ...)
+     (define (everyother ls)
+       (cond
+	[(null? ls) '()]
+	[(null? (cdr ls)) ls]
+	[else (cons (car ls) (everyother (cddr ls)))]))
+     (define names (everyother rest))
+     (define vals (everyother (cdr rest)))
+     (values objective (map list names vals))]))
 
 
 ;; These are helpers to emit-lp.  They prune out artifical
