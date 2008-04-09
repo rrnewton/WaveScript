@@ -5,11 +5,14 @@ include "fifostatic.ws"
 using TOS;
 using Mutable;
 
+zip_bufsize = 1
+
 /*
  This is the beginnings of a statically-allocated version of eugene.ws
 */
 
-
+// ============================================================
+// Stream / Signal operators
 
 // zipN is redefined here so as to be in scope of fifostatic.ws:
 fun zipN(bufsize, slist) {
@@ -21,29 +24,34 @@ fun zipN(bufsize, slist) {
 //println("  Enqueuing in "++ind++" currently has "++bufs[ind]`FIFO:elements);
     enqueue(bufs[ind], elem);
     if Array:andmap(fun(q) not(empty(q)), bufs)
-    then emit Array:build(len, fun(i) dequeue(bufs[i]));
+      then {
+      outputBuf = Array:make(len,0);
+      for i = 0 to len-1 {
+	outputBuf[i] := dequeue(bufs[i]);
+      }
+      emit outputBuf;
+    }
   }
 }
 
-
-
-/* fun GenericGet(offset, strm) { */
+/* fun FlattenZip(winsize, strmlst) { */
 /*   using Array; */
 /*   buf = make(winsize, 0); */
-/*   for j = 0 to buf.length - 1 { */
-    
+/*   iterate arr in zipN(zip_bufsize, strmlst) { */
+/*     for k = 0 to winsize / arr[0].length - 1 { */
+/*       temp = arr[k]; */
+/*       for i = 0 to temp.length - 1 { */
+/* 	buf[k*temp.length+i] := temp[i]; */
+/*       } */
+/*     } */
+/*     emit buf; */
 /*   } */
-/*   emit buf; */
-
 /* } */
-
-zip_bufsize = 1
 
 AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
 fun AddOddAndEven(winsize, s1,s2) {
-  using Array;
-  
   //    assert_eq("AddOddAndEven", first.width, second.width);
+  using Array;
   buf = make(winsize, 0);
   iterate arr in zipN(zip_bufsize, [s1,s2]) {   
     state { _stored_value = 0; }
@@ -56,6 +64,20 @@ fun AddOddAndEven(winsize, s1,s2) {
     emit buf;
   }
 }
+
+fun GenericGet(offset, winsize, strm) {
+  arr = Array:make(winsize, 0);
+  iterate seg in strm {
+    for i = 0 to winsize - 1 {
+      arr[i] := seg[[(i*2)+offset]];
+    };
+    emit arr;
+  }
+}
+
+fun GetOdd (winsize, strm) GenericGet(1, winsize, strm);
+fun GetEven(winsize, strm) GenericGet(0, winsize, strm);
+
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
@@ -90,6 +112,10 @@ FIRFilter :: (Array Float, Int, Stream (Array Float)) -> Stream (Array Float);
     }
 }
 
+fun MagWithScale(scale, stm) {
+  fun sum(acc,n) (acc + absF(n)/scale);
+  smap(fun(seg) Sigseg:fold(sum, 0, seg), stm)
+}
 
 hHigh_Odd  = #[0.7148, -0.0280, 0.0308, -0.0106 ]
 
