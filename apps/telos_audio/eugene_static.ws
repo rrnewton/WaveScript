@@ -188,8 +188,8 @@ fun castToFloat(winsize, stm) {
 
 fun process_channel(winsize, stm) {
   casted = castToFloat(winsize, stm);
-  filter_results = GetFeatures(winsize, casted);  
-  filter_results
+/*   filter_results = GetFeatures(winsize, casted);   */
+/*   filter_results */
 }
     
 namespace Node {
@@ -200,16 +200,17 @@ namespace Node {
   NUM_FEATURES = 3;
   // For running on the PC:
   prefix = "patient36_file16/";
-  sensor = smap(toArray, (readFile(prefix++"FP1-F7.txt", "mode: binary", Server:timer(2.0)) :: Stream Int16).window(winsize));
+  sensor = smap(toArray, (readFile(prefix++"FP1-F7.txt", "mode: binary", 
+				   Server:timer(2.0)) :: Stream Int16).window(winsize));
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
 
   // This is statically allocated, do a big for loop?
-  filtered = map(process_channel, (winsize, sensor));
+  filtered = map(fun(s) process_channel(winsize, s), [sensor]);
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
   flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
-
-/*   main = flat; */
+  main = List:fold1(merge,filtered)
 }
+
