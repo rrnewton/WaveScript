@@ -1,16 +1,10 @@
-
-
-
-
 include "stdlib.ws"
 include "fifostatic.ws"
 
 using TOS;
 
 /*
-
  This is the beginnings of a statically-allocated version of eugene.ws
-
 */
 
 
@@ -18,7 +12,6 @@ winsize = 512
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
-
 FIRFilter :: (Array Float, Stream (Array Float)) -> Stream (Array Float);
 fun FIRFilter(filter_coeff, strm) {
     using Array;
