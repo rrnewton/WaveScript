@@ -15,9 +15,11 @@ zip_bufsize = 1
 // Stream / Signal operators
 
 // zipN is redefined here so as to be in scope of fifostatic.ws:
-fun zipN(bufsize, slist) {
-  using List; 
+myZipN :: (Int, List (Stream a)) -> Stream (Array a);
+fun myZipN(bufsize, slist) {
+  using List;
   len = slist`List:length;
+  outputBuf = Array:make(len,0);
   iterate (ind, elem) in unionList(slist) {
     state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
     using FIFO;
@@ -25,10 +27,9 @@ fun zipN(bufsize, slist) {
     enqueue(bufs[ind], elem);
     if Array:andmap(fun(q) not(empty(q)), bufs)
       then {
-      outputBuf = Array:make(len,0);
       for i = 0 to len-1 {
 	outputBuf[i] := dequeue(bufs[i]);
-      }
+      };
       emit outputBuf;
     }
   }
@@ -48,20 +49,20 @@ fun zipN(bufsize, slist) {
 /*   } */
 /* } */
 
-AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
+//AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
 fun AddOddAndEven(winsize, s1,s2) {
   //    assert_eq("AddOddAndEven", first.width, second.width);
   using Array;
   buf = make(winsize, 0);
-  iterate arr in zipN(zip_bufsize, [s1,s2]) {   
+  iterate arr in myZipN(zip_bufsize, [s1,s2]) {   
     state { _stored_value = 0; }
     first = arr[0];
     second = arr[1];
-    for i = 0 to first.length - 1 {
-      buf[i] := first[i] + _stored_value;
-      _stored_value := second[i]; // we don't add the last odd guy, but store
-    };
-    emit buf;
+/*     for i = 0 to first.length - 1 { */
+/*       buf[i] := first[i] + _stored_value; */
+/*       _stored_value := second[i]; // we don't add the last odd guy, but store */
+/*     }; */
+    //    emit buf;
   }
 }
 
