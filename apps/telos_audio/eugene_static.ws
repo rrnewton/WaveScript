@@ -71,7 +71,7 @@ fun GenericGet(offset, winsize, strm) {
   arr = Array:make(winsize, 0);
   iterate seg in strm {
     for i = 0 to winsize - 1 {
-      arr[i] := seg[[(i*2)+offset]];
+      arr[i] := seg[(i*2)+offset];
     };
     emit arr;
   }
@@ -116,7 +116,7 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
 
 fun MagWithScale(scale, stm) {
   fun sum(acc,n) (acc + absF(n)/scale);
-  smap(fun(seg) Sigseg:fold(sum, 0, seg), stm)
+  smap(fun(seg) Array:fold(sum, 0, seg), stm)
 }
 
 hHigh_Even = #[-0.2304, -0.6309, 0.1870, -0.0329];            
@@ -175,35 +175,41 @@ fun GetFeatures(winsize, input) {
   zipN(zip_bufsize, [level4, level5, level6]);
 }
 
-namespace Node {
-  
-  // input winsoze
-  winsize = 512;
 
-  // For running on the PC:
-  prefix = "patient36_file16/";
-  sensor = smap(toArray, (readFile(prefix++"FP1-F7.txt", "mode: binary", Server:timer(2.0)) :: Stream Int16).window(winsize))
-
-  // For running on Telos:
-  //sensor = read_telos_audio(winsize, 1000) // 1 khz  
-
-  // Working in floating point atm:
-  // This is statically allocated:
-
+fun castToFloat(winsize, stm) {
   floats = Array:make(winsize, 0.0);
-
-  cast = iterate arr in sensor {
+  iterate arr in stm {
     for i = 0 to arr.Array:length - 1 {
       floats[i] := (cast_num(arr[i]) :: Float);
     };
     emit floats;
   }
+}
 
-  filtered = GetFeatures(winsize, hHigh_Odd, cast);
-  flat = FlattenZip(filtered);
+fun process_channel(winsize, stm) {
+  casted = castToFloat(winsize, stm);
+  filter_results = GetFeatures(winsize, casted);  
+  filter_results
+}
+    
+namespace Node {
+  
+  // input winsoze
+  winsize = 512;
+  NUM_CHANNELS = 1;
+  NUM_FEATURES = 3;
+  // For running on the PC:
+  prefix = "patient36_file16/";
+  sensor = smap(toArray, (readFile(prefix++"FP1-F7.txt", "mode: binary", Server:timer(2.0)) :: Stream Int16).window(winsize));
+
+  // For running on Telos:
+  //sensor = read_telos_audio(winsize, 1000) // 1 khz  
+
+  // This is statically allocated, do a big for loop?
+  filtered = map(process_channel, (winsize, sensor));
+
+/*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
+  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
 
 /*   main = flat; */
 }
-
-
-

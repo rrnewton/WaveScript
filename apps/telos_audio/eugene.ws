@@ -234,7 +234,7 @@ fun GetFeatures(input) {
   level6    = MagWithScale(filterGains[5], highFreq6);
 /*   println(level6); */
 
-  zipN(zip_bufsize, [level4, level5, level6])
+  zipN(zip_bufsize, [level4, level5, level6]);
 }
 
 fun process_channel(stm) {
