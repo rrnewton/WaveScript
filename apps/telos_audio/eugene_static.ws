@@ -35,21 +35,21 @@ fun myZipN(bufsize, slist) {
   }
 }
 
-/* fun FlattenZip(winsize, strmlst) { */
-/*   using Array; */
-/*   buf = make(winsize, 0); */
-/*   iterate arr in zipN(zip_bufsize, strmlst) { */
-/*     for k = 0 to winsize / arr[0].length - 1 { */
-/*       temp = arr[k]; */
-/*       for i = 0 to temp.length - 1 { */
-/* 	buf[k*temp.length+i] := temp[i]; */
-/*       } */
-/*     } */
-/*     emit buf; */
-/*   } */
-/* } */
+fun FlattenZip(winsize, strmlst) {
+  using Array;
+  buf = make(winsize, 0);
+  iterate arr in zipN(zip_bufsize, strmlst) {
+    for k = 0 to winsize / arr[0].length - 1 {
+      temp = arr[k];
+      for i = 0 to temp.length - 1 {
+	buf[k*temp.length+i] := temp[i];
+      }
+    }
+    emit buf;
+  }
+}
 
-//AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
+AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
 fun AddOddAndEven(winsize, s1,s2) {
   //    assert_eq("AddOddAndEven", first.width, second.width);
   using Array;
@@ -58,7 +58,7 @@ fun AddOddAndEven(winsize, s1,s2) {
     state { _stored_value = 0; }
     first = arr[0];
     second = arr[1];
-    print(first.length);
+/*     print(first.length); */
     for i = 0 to first.length - 1 {
       buf[i] := first[i] + _stored_value;
       _stored_value := second[i]; // we don't add the last odd guy, but store
@@ -83,8 +83,8 @@ fun GetEven(winsize, strm) GenericGet(0, winsize, strm);
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
-FIRFilter :: (Array Float, Int, Stream (Array Float)) -> Stream (Array Float);
- fun FIRFilter(filter_coeff, bufsize, strm) {
+FIRFilter :: (Int, Array Float, Stream (Array Float)) -> Stream (Array Float);
+fun FIRFilter(bufsize, filter_coeff, strm) {
     using Array;
     nCoeff = filter_coeff.length;
     
@@ -119,7 +119,61 @@ fun MagWithScale(scale, stm) {
   smap(fun(seg) Sigseg:fold(sum, 0, seg), stm)
 }
 
-hHigh_Odd  = #[0.7148, -0.0280, 0.0308, -0.0106 ]
+hHigh_Even = #[-0.2304, -0.6309, 0.1870, -0.0329];            
+hHigh_Odd  = #[0.7148, -0.0280, 0.0308, -0.0106];
+
+HighFreqFilter :: (Int, Stream (Array Float)) -> Stream (Array Float);
+fun HighFreqFilter(winsize, input) {
+  evenSignal = GetEven(winsize, input);
+  oddSignal  = GetOdd(winsize, input);
+
+  // now filter
+  highFreqEven = FIRFilter(winsize, hHigh_Even, evenSignal);
+  highFreqOdd  = FIRFilter(winsize, hHigh_Odd, oddSignal);
+
+  // now recombine
+  AddOddAndEven(winsize / 2, highFreqEven, highFreqOdd);
+}
+
+// Filter coefficients
+hLow_Even = #[-0.0106, 0.0308, -0.0280, 0.7148];
+hLow_Odd  = #[0.0329, -0.1870, 0.6309, 0.2304];
+
+LowFreqFilter :: (Int, Stream (Array Float)) -> Stream (Array Float);
+fun LowFreqFilter(winsize, input) {
+  evenSignal = GetEven(winsize, input);
+  oddSignal  = GetOdd (winsize, input);
+
+  // now filter
+  lowFreqEven = FIRFilter(winsize, hLow_Even, evenSignal);
+  lowFreqOdd  = FIRFilter(winsize, hLow_Odd,  oddSignal);
+
+  // now recombine them
+  AddOddAndEven(winsize / 2, lowFreqEven, lowFreqOdd);
+}
+
+filterGains = #[1.4142, 1.8684, 2.6412, 3.7352, 5.2818, 7.4668, 10.5596, 11.3137];
+
+fun GetFeatures(winsize, input) {
+  lowFreq1 = LowFreqFilter(winsize, input);
+  lowFreq2 = LowFreqFilter(winsize / 2, lowFreq1);
+  lowFreq3 = LowFreqFilter(winsize / 4, lowFreq2);
+
+  highFreq4 = HighFreqFilter(winsize / 8, lowFreq3); // we want this one
+  lowFreq4  = LowFreqFilter(winsize / 8, lowFreq3); 
+  level4    = MagWithScale(filterGains[3], highFreq4);
+
+  highFreq5 = HighFreqFilter(winsize / 16, lowFreq4); // and this one 
+  lowFreq5  = LowFreqFilter(winsize / 16, lowFreq4); 
+  level5    = MagWithScale(filterGains[4], highFreq5); 
+
+  highFreq6 = HighFreqFilter(winsize / 32, lowFreq5); // and this one
+  // lowFreq6 = LowFreqFilter(lowFreq5); 
+  level6    = MagWithScale(filterGains[5], highFreq6);
+/*   println(level6); */
+
+  zipN(zip_bufsize, [level4, level5, level6]);
+}
 
 namespace Node {
   
@@ -145,8 +199,11 @@ namespace Node {
     emit floats;
   }
 
-  filtered = FIRFilter(hHigh_Odd, winsize, cast);
+  filtered = GetFeatures(winsize, hHigh_Odd, cast);
+  flat = FlattenZip(filtered);
+
+/*   main = flat; */
 }
 
-main = Node:filtered;
+
 
