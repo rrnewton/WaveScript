@@ -130,7 +130,7 @@ fun mfcc(win) {
 
   // hamming window
   for i = start to start+windowSize-1 {
-    bufR[i] := FIX_MPY(bufR[i],hamWindow[i]);
+    bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
   };
 
   // fft
@@ -161,7 +161,7 @@ fun mfcc(win) {
 }
 
 BASE <- iterate w in s1 {
-  e = mfcc(Sigseg:toArray(w));
+  e = mfcc(toArray(w));
   for i = 0 to totalFilters-1 { 
     println(e[i]);
   };
