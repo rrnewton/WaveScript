@@ -19,7 +19,7 @@ myZipN :: (Int, List (Stream a)) -> Stream (Array a);
 fun myZipN(bufsize, slist) {
   using List;
   len = slist`List:length;
-  outputBuf = Array:make(len,0);
+  outputBuf = Array:makeUNSAFE(len);
   iterate (ind, elem) in unionList(slist) {
     state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
     using FIFO;
@@ -58,11 +58,12 @@ fun AddOddAndEven(winsize, s1,s2) {
     state { _stored_value = 0; }
     first = arr[0];
     second = arr[1];
-/*     for i = 0 to first.length - 1 { */
-/*       buf[i] := first[i] + _stored_value; */
-/*       _stored_value := second[i]; // we don't add the last odd guy, but store */
-/*     }; */
-    //    emit buf;
+    print(first.length);
+    for i = 0 to first.length - 1 {
+      buf[i] := first[i] + _stored_value;
+      _stored_value := second[i]; // we don't add the last odd guy, but store
+    };
+    emit buf;
   }
 }
 
