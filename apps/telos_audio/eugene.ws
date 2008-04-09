@@ -9,7 +9,7 @@ include "coeffs.ws"
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 NUM_CHANNELS        = 22;
-/* NUM_CHANNELS        = 2; */
+//NUM_CHANNELS        = 1;
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -254,7 +254,7 @@ detect  :: Stream Bool;
 
 inputs = {
   prefix = "patient36_file16/";
-  ticktock = timer(SAMPLING_RATE_IN_HZ);
+  ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
 	     (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
 	      :: Stream Int16)), List:reverse(List:prefix(channelNames, NUM_CHANNELS))

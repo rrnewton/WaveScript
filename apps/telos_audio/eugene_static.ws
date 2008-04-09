@@ -3,10 +3,29 @@ include "fifostatic.ws"
 //include "coeffs.ws" 
 
 using TOS;
+using Mutable;
 
 /*
  This is the beginnings of a statically-allocated version of eugene.ws
 */
+
+
+
+// zipN is redefined here so as to be in scope of fifostatic.ws:
+fun zipN(bufsize, slist) {
+  using List; 
+  len = slist`List:length;
+  iterate (ind, elem) in unionList(slist) {
+    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
+    using FIFO;
+//println("  Enqueuing in "++ind++" currently has "++bufs[ind]`FIFO:elements);
+    enqueue(bufs[ind], elem);
+    if Array:andmap(fun(q) not(empty(q)), bufs)
+    then emit Array:build(len, fun(i) dequeue(bufs[i]));
+  }
+}
+
+
 
 /* fun GenericGet(offset, strm) { */
 /*   using Array; */
@@ -18,20 +37,21 @@ using TOS;
 
 /* } */
 
+zip_bufsize = 1
 
-AddOddAndEven :: (Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
+AddOddAndEven :: (Int, Stream (Array Float), Stream (Array Float)) -> Stream (Array Float);
 fun AddOddAndEven(winsize, s1,s2) {
   using Array;
   
-  _stored_value = 0;
   //    assert_eq("AddOddAndEven", first.width, second.width);
   buf = make(winsize, 0);
-  iterate arr in zipN(zip_bufsize, [s1,s2]) {    
+  iterate arr in zipN(zip_bufsize, [s1,s2]) {   
+    state { _stored_value = 0; }
     first = arr[0];
     second = arr[1];
-    for i = 0 to first.width - 1 {
-      buf[i] := first[[i]] + _stored_value;
-      _stored_value := second[[i]]; // we don't add the last odd guy, but store
+    for i = 0 to first.length - 1 {
+      buf[i] := first[i] + _stored_value;
+      _stored_value := second[i]; // we don't add the last odd guy, but store
     };
     emit buf;
   }
@@ -39,7 +59,7 @@ fun AddOddAndEven(winsize, s1,s2) {
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
-FIRFilter :: (Array Float, Stream (Array Float)) -> Stream (Array Float);
+FIRFilter :: (Array Float, Int, Stream (Array Float)) -> Stream (Array Float);
  fun FIRFilter(filter_coeff, bufsize, strm) {
     using Array;
     nCoeff = filter_coeff.length;

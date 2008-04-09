@@ -1,4 +1,6 @@
 
+// Having some odd problems with fft_bench.ws
+// Hacking things a bit to get *something* going.
 
 include "stdlib.ws"
 include "fix_fft.ws"
@@ -22,26 +24,16 @@ cfft = (foreign("fix_fft", []) :: (Array FftInt, Array FftInt, Int, Bool) -> Int
 
 
 
-// The INLINE C CODE CAUSES A VERY STRANGE OPERATOR DUPLICATION:
-fun sfft(stm) {
-  iterate (arr,img) in stm //.merge(theCcode)
-  {
-    //cfft(arr, img, levels, false);  
-    fix_fft(arr, img, levels, false);    
-    emit (arr,img);
-  }
-}
-
 //==============================================================================
 
 
 namespace Node {
   file = { 
-    raw = (readFile("profile.dat", "mode: binary", Server:timer(2.0)) :: Stream Int16);
+    raw = (readFile("profile.dat", "mode: binary", Server:timer(1000.0)) :: Stream Int16);
     smap(toArray, raw.window(arrsize)); 
   };
 
-  sensor = iterate arr in read_telos_audio(arrsize, arrsize.gint) // 512 hz
+  sensor = iterate arr in read_telos_audio(arrsize, 1000) // 512 hz
   {
     // Make it signed int16s:
     for i = 0 to arrsize - 1 {
@@ -53,20 +45,38 @@ namespace Node {
   src = IFPROFILE(file, sensor);
   
   prep = smap(fun(arr) {
-    for i = 0 to arrsize-1 { imag[i] := 0 };
-    (arr, imag)
+    //for i = 0 to arrsize-1 { imag[i] := 0 };
+    (arr,1,2,3)
   } ,src);
 
-
-  fft1 = iterate (arr,img) in prep {
-    //fix_fft(arr, img, levels, false);    
-    emit (arr,img);
+  fft1 = iterate (arr,x,y,z) in prep {
+    fix_fft(arr, imag, levels, false);  
+    emit (arr,x,y);
   };
 
-  fft2 = iterate (arr,img) in prep {
-    //fix_fft(arr, img, levels, true);
-    emit (arr,img);
+  fft2 = iterate (arr,x,y) in fft1 {
+    //fix_fft(arr, imag, levels, true);
+    sum = Mutable:ref(0);
+    for i = 1 to 1000 { 
+      for j = 1 to 300 {
+        sum += 1;
+      }
+    }
+    emit (arr,x);
   };
+
+
+  fft3 = iterate (arr,x) in fft2 {
+    //fix_fft(arr, imag, levels, true);
+    sum = Mutable:ref(0);
+    for i = 1 to 1000 { 
+      for j = 1 to 600 {
+        sum += 1;
+      }
+    }
+    emit arr;
+  };
+
 
   /*
   ffts = 
@@ -82,4 +92,4 @@ namespace Node {
 } // End node
 
 
-main = iterate _ in Node:fft2  { emit 1; } 
+main = iterate _ in Node:fft3  { emit 1; } 
