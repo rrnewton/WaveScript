@@ -210,7 +210,7 @@ namespace Node {
   filtered = map(fun(s) process_channel(winsize, s), [sensor]);
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
-  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
+/*  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);*/
   main = List:fold1(merge,filtered)
 }
 
