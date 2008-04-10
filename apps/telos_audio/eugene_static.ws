@@ -71,6 +71,7 @@ fun GenericGet(offset, winsize, strm) {
   arr = Array:make(winsize, 0);
   iterate seg in strm {
     for i = 0 to winsize - 1 {
+	println("generic get "++i++" which maps to "++(i*2)+offset++" of "++winsize);
       arr[i] := seg[(i*2)+offset];
     };
     emit arr;
@@ -188,8 +189,8 @@ fun castToFloat(winsize, stm) {
 
 fun process_channel(winsize, stm) {
   casted = castToFloat(winsize, stm);
-/*   filter_results = GetFeatures(winsize, casted);   */
-/*   filter_results */
+  filter_results = GetFeatures(winsize, casted);
+  filter_results
 }
     
 namespace Node {
@@ -211,6 +212,9 @@ namespace Node {
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
 /*  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);*/
-  main = List:fold1(merge,filtered)
+  //main = List:fold1(merge,filtered)
+
 }
 
+
+main = unionList(Node:filtered)

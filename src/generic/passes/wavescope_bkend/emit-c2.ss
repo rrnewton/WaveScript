@@ -1885,13 +1885,23 @@ int main(int argc, char **argv)
 	(define _lhs (Var self lhs))
 	(values ;(make-lines `(,(Type self elt)" ",(Var self lhs)"[",n"];\n"))
 	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + sizeof(uint16_t)];\n"
-				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"			      
+				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"				  
 			      ))
 		(make-lines (list 
 			     ;"((uint16_t*)"tmp")[0] = "n";\n"
 			     "SETARRLEN("_lhs", "n");\n"
-			     "// ACCK WHAT ABOUT FILLING IT IN\n")))
+			     (if x 
+				 (match (peel-annotations x)
+				   [',c (list "// Init static array: \n"
+					      "{ int i; for(i=0; i<"n"; i++) "_lhs"[i] = "(Const self c id)"; }\n")]
+				   )
+				 "")
+			     )))
 	])]
+
+    ;; Redirect:
+    [(assert-type (Array ,elt) (Array:makeUNSAFE ,e))
+     (StaticAllocate self lhs ty `(assert-type (Array ,elt) (Array:make ,e #f)))]    
 
     [(assert-type ,_ ,[x y]) (values x y)]
     ))

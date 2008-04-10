@@ -27,6 +27,9 @@ totalFilters = linearFilters + logFilters;
 // all the interesting frequencies.  Lower, center, and upper band
 // edges are all consequtive interesting frequencies. 
 
+mylog = logF; mysqrt = sqrtF
+//fun mylog(x) x; fun mysqrt(x) x
+
 lowLogFreq = lowestFrequency + ((linearFilters-1) * linearSpacing);
 freqs = Array:build(totalFilters+2,
 	  fun (x) {
@@ -108,19 +111,25 @@ for i = 0 to (fftSize/2)-1{
 };
 
 
+fun arrwindow(S, len) {
+    arrbuf = Array:makeUNSAFE(len);
+    iterate x in S {
+      state{ ind = 0; }
+      arrbuf[ind] := x;
+      ind += 1;
+      if ind == len then {
+        emit arrbuf;
+        ind := 0;
+      }
+   }
+}
 
-s1 = (readFile("./snip.raw", 
-	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 2  window: 256 offset: 0", 
-	       timer(819.20 / 255.0))
-      :: Stream (Sigseg (Int16)));
-
-fun mfcc(win) {
+fun complexNorm(r,i) {
+  mysqrt(r*r + i*i)
+}
+      
+fun mfcc(bufR, bufI, earmag, win) {
   
-  // real and imaginary vectors
-  bufR = Array:make(fftSize,0);
-  bufI = Array:make(fftSize,0);
-
   start = (fftSize-windowSize) / 2;
 
   // preemphasize FIR filter into the buffer
@@ -137,10 +146,11 @@ fun mfcc(win) {
   fix_fft(bufR,bufI,9,false);
 
   // compute earmag
-  earmag = Array:make(totalFilters,0.0);
 
   for i = 0 to (fftSize/2)-1 {
-    mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
+    //mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
+    mag = complexNorm((cast_num(bufR[i])::Float),
+                      (cast_num(bufI[i])::Float));
     if (mfccFilterWeightsEvenIdx[i] > 0) then {
       earmag[mfccFilterWeightsEvenIdx[i]-1] := 
         earmag[mfccFilterWeightsEvenIdx[i]-1] +
@@ -154,21 +164,56 @@ fun mfcc(win) {
   };
 
   for i = 0 to totalFilters-1 {
-    earmag[i] := logF(earmag[i])/logF(10.0);
+    earmag[i] := mylog(earmag[i]) / mylog(10.0);
   };
 
   earmag
 }
 
-BASE <- iterate w in s1 {
-  e = mfcc(toArray(w));
+//============================================================
+
+using TOS;
+
+
+Node:s1 :: Stream (Array Int16);
+Node:s1 = (readFile("./snip.raw", "mode: binary skipbytes: 2",
+		    timer(819.20 / 255.0))
+      :: Stream Int16)
+    .arrwindow(windowSize);
+
+// This reads from the audio board:
+signedones = Array:make(windowSize, 0);
+Node:s1 = smap(fun(arr) {
+    for i = 0 to windowSize-1 {
+      signedones[i] := (cast_num(arr[i]) :: Int16);
+    };
+    signedones
+  }, read_telos_audio(windowSize, 1000));
+
+// Statically allocate the storage:
+// real and imaginary vectors
+
+bufR = Array:make(fftSize,0);
+bufI = Array:make(fftSize,0);
+earmag = Array:make(totalFilters,0.0);
+
+main = iterate arr in Node:s1 {
+
+  Array:fill(bufR, 0);
+  Array:fill(bufI, 0);
+  Array:fill(earmag, 0.0);
+
+  // Writes earmag:
+  e = mfcc(bufR, bufI, earmag, arr);
+
   for i = 0 to totalFilters-1 { 
     println(e[i]);
   };
   print("\n"); 
   cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
-  println("#cep1 "++cep1);
+  print("#cep1 "++cep1++"\n");
 }
+
 
 // preEmphasized = filter([1 -.97], 1, input);
 //    x(n) - x(n-1)*.97
