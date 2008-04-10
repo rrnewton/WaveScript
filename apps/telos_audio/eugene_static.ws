@@ -30,6 +30,7 @@ fun myZipN(bufsize, slist) {
       for i = 0 to len-1 {
 	outputBuf[i] := dequeue(bufs[i]);
       };
+
       emit outputBuf;
     }
   }
@@ -71,7 +72,7 @@ fun GenericGet(offset, winsize, strm) {
   arr = Array:make(winsize, 0);
   iterate seg in strm {
     for i = 0 to winsize - 1 {
-	println("generic get "++i++" which maps to "++(i*2)+offset++" of "++winsize);
+      //	println("generic get "++i++" which maps to "++(i*2)+offset++" of "++winsize);
       arr[i] := seg[(i*2)+offset];
     };
     emit arr;
@@ -125,12 +126,12 @@ hHigh_Odd  = #[0.7148, -0.0280, 0.0308, -0.0106];
 
 HighFreqFilter :: (Int, Stream (Array Float)) -> Stream (Array Float);
 fun HighFreqFilter(winsize, input) {
-  evenSignal = GetEven(winsize, input);
-  oddSignal  = GetOdd(winsize, input);
+  evenSignal = GetEven(winsize / 2, input);
+  oddSignal  = GetOdd(winsize / 2, input);
 
   // now filter
-  highFreqEven = FIRFilter(winsize, hHigh_Even, evenSignal);
-  highFreqOdd  = FIRFilter(winsize, hHigh_Odd, oddSignal);
+  highFreqEven = FIRFilter(winsize / 2 , hHigh_Even, evenSignal);
+  highFreqOdd  = FIRFilter(winsize / 2, hHigh_Odd, oddSignal);
 
   // now recombine
   AddOddAndEven(winsize / 2, highFreqEven, highFreqOdd);
@@ -142,12 +143,12 @@ hLow_Odd  = #[0.0329, -0.1870, 0.6309, 0.2304];
 
 LowFreqFilter :: (Int, Stream (Array Float)) -> Stream (Array Float);
 fun LowFreqFilter(winsize, input) {
-  evenSignal = GetEven(winsize, input);
-  oddSignal  = GetOdd (winsize, input);
+  evenSignal = GetEven(winsize / 2, input);
+  oddSignal  = GetOdd (winsize / 2, input);
 
   // now filter
-  lowFreqEven = FIRFilter(winsize, hLow_Even, evenSignal);
-  lowFreqOdd  = FIRFilter(winsize, hLow_Odd,  oddSignal);
+  lowFreqEven = FIRFilter(winsize / 2, hLow_Even, evenSignal);
+  lowFreqOdd  = FIRFilter(winsize / 2, hLow_Odd,  oddSignal);
 
   // now recombine them
   AddOddAndEven(winsize / 2, lowFreqEven, lowFreqOdd);
@@ -201,8 +202,7 @@ namespace Node {
   NUM_FEATURES = 3;
   // For running on the PC:
   prefix = "patient36_file16/";
-  sensor = smap(toArray, (readFile(prefix++"FP1-F7.txt", "mode: binary", 
-				   Server:timer(2.0)) :: Stream Int16).window(winsize));
+  sensor = smap(toArray, (readFile(prefix++"FT10-T8.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
@@ -211,10 +211,10 @@ namespace Node {
   filtered = map(fun(s) process_channel(winsize, s), [sensor]);
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
-/*  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);*/
+  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
   //main = List:fold1(merge,filtered)
 
 }
 
+main = Node:flat
 
-main = unionList(Node:filtered)

@@ -8,8 +8,8 @@ include "coeffs.ws"
 
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
-NUM_CHANNELS        = 22;
-//NUM_CHANNELS        = 1;
+//NUM_CHANNELS        = 22;
+NUM_CHANNELS        = 1;
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -275,7 +275,8 @@ detect = BinaryClassify(threshold, consWindows, svmStrm);
 //main = FIRFilter(hLow_Even, GetEven $ inputs.head.window(winsize));
 //main = LowFreqFilter $ inputs.head.window(winsize);
 //main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
-//main = filtered.head;
+// main = filtered.head;
 
 /* main = inputs.head */
-main = svmStrm
+//main = svmStrm
+main = flat
