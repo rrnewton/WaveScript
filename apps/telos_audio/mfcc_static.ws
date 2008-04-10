@@ -127,7 +127,9 @@ fun arrwindow(S, len) {
 fun complexNorm(r,i) {
   mysqrt(r*r + i*i)
 }
-      
+
+
+mfcc :: (Array Int16, Array Int16, Array Float, Array Int16) -> Array Float;
 fun mfcc(bufR, bufI, earmag, win) {
   
   start = (fftSize-windowSize) / 2;
@@ -150,7 +152,7 @@ fun mfcc(bufR, bufI, earmag, win) {
   for i = 0 to (fftSize/2)-1 {
     //mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
     mag = complexNorm((cast_num(bufR[i])::Float),
-                      (cast_num(bufI[i])::Float));
+                      (cast_num((bufI[i]::Int16))::Float));
     if (mfccFilterWeightsEvenIdx[i] > 0) then {
       earmag[mfccFilterWeightsEvenIdx[i]-1] := 
         earmag[mfccFilterWeightsEvenIdx[i]-1] +
@@ -175,43 +177,67 @@ fun mfcc(bufR, bufI, earmag, win) {
 using TOS;
 
 
-Node:s1 :: Stream (Array Int16);
-Node:s1 = (readFile("./snip.raw", "mode: binary skipbytes: 2",
+file :: Stream (Array Int16);
+file = (readFile("./snip.raw", "mode: binary skipbytes: 2",
 		    timer(819.20 / 255.0))
       :: Stream Int16)
     .arrwindow(windowSize);
 
+
 // This reads from the audio board:
 signedones = Array:make(windowSize, 0);
-Node:s1 = smap(fun(arr) {
+sensor = smap(fun(arr) {
+    led1Toggle();
     for i = 0 to windowSize-1 {
       signedones[i] := (cast_num(arr[i]) :: Int16);
     };
     signedones
-  }, read_telos_audio(windowSize, 1000));
+  }, read_telos_audio(windowSize, 256 / 4));
+
+// Pick which one you want:
+Node:src = sensor;
+//Node:src = file;
 
 // Statically allocate the storage:
 // real and imaginary vectors
 
-bufR = Array:make(fftSize,0);
-bufI = Array:make(fftSize,0);
+bufR :: Array Int16 = Array:make(fftSize,0);
+bufI :: Array Int16 = Array:make(fftSize,0);
 earmag = Array:make(totalFilters,0.0);
 
-main = iterate arr in Node:s1 {
+PRINTDBG = false
+
+main = iterate arr in Node:src {
+
+  strt = realtime();
+  print("Running..."++strt++"\n");
 
   Array:fill(bufR, 0);
   Array:fill(bufI, 0);
   Array:fill(earmag, 0.0);
 
   // Writes earmag:
-  e = mfcc(bufR, bufI, earmag, arr);
 
-  for i = 0 to totalFilters-1 { 
-    println(e[i]);
-  };
-  print("\n"); 
+  e = mfcc(bufR, bufI, earmag, arr);
+  led2Toggle();
+
+  print("... fin "++ realtime()-strt ++"mfcc\n");
+
+  //wserror("ERRR\n");
+
+  /*
   cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
-  print("#cep1 "++cep1++"\n");
+
+  if PRINTDBG then {
+    for i = 0 to totalFilters-1 { 
+      println(e[i]);
+    };
+    print("\n"); 
+    print("#cep1 "++cep1++"\n");
+  };
+  emit cep1;
+  */
+  emit 99;
 }
 
 

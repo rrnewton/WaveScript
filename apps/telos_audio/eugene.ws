@@ -238,8 +238,7 @@ fun GetFeatures(input) {
 }
 
 fun process_channel(stm) {
-  rw = window(stm,winsize);
-  filter_results = GetFeatures(rw);  
+  filter_results = GetFeatures(stm);  
   filter_results
 }
 
@@ -247,7 +246,7 @@ fun process_channel(stm) {
 // Wire together the application stream graph:
 
 // These are the types for the top-level streams:
-inputs  :: List (Stream Float);
+inputs  :: List (Stream (Sigseg Float));
 flat    :: Stream (Array Float);
 svmStrm :: Stream Float;
 detect  :: Stream Bool;
@@ -256,10 +255,11 @@ inputs = {
   prefix = "patient36_file16/";
   ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
-	     (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
-	      :: Stream Int16)), List:reverse(List:prefix(channelNames, NUM_CHANNELS))
-      )
+	           (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+	            :: Stream Int16)) .window(winsize), 
+      List:reverse(List:prefix(channelNames, NUM_CHANNELS)))
 }
+
 
 filtered = map(process_channel, inputs)
 
@@ -279,4 +279,5 @@ detect = BinaryClassify(threshold, consWindows, svmStrm);
 
 /* main = inputs.head */
 //main = svmStrm
+//main = inputs.head
 main = flat

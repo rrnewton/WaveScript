@@ -12,16 +12,16 @@
 
 # Here are the bounds for varying CPU:
 # Units are in tenths of a percent:
-START=6000
-INCREMENT=100
-STOP=20000
+START=100
+INCREMENT=25
+STOP=22000
 
 FILE="$1"
 RESULTS=results.dat
 
 THREADS=`cat /proc/cpuinfo | grep processor | wc -l`
 #THREADS=$(($THREADS*2))
-THREADS=$(($THREADS+1))
+#THREADS=$(($THREADS+1))
 
 echo Running with $THREADS threads...
 
@@ -58,7 +58,8 @@ for i in `seq $START $INCREMENT $STOP`; do
 
   block_n_children $THREADS
 
-  time lp_solve $NEWFILE > $SOLUTION &
+  nice /usr/bin/time -f "realtime %e user %U" lp_solve $NEWFILE > $SOLUTION &
+  #time lp_solve $NEWFILE > $SOLUTION &
 
   #find /home/ > /dev/null &
   #echo "                   children: " `ps axo ppid | grep $$ | wc -l` 
