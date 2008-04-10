@@ -1,6 +1,6 @@
 include "stdlib.ws"
 include "fifostatic.ws"
-//include "coeffs.ws" 
+include "coeffs.ws" 
 
 using TOS;
 using Mutable;
@@ -10,6 +10,59 @@ zip_bufsize = 1
 /*
  This is the beginnings of a statically-allocated version of eugene.ws
 */
+svmKernelPar = 1.00
+threshold    = 0.1
+consWindows = 3 // number of consecutive windows of detections;
+
+// detector values
+fun SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, arr)  {
+  using Array;
+  using Mutable;
+
+  //  diff_norm_squared :: (Array Float, Array Float) -> Float;
+  fun diff_norm_squared(a, b) {
+    acc = ref(0);
+    //    println("diff_norm_squared lengths"++a.length++" "++b.length);
+    for i = 0 to a.length-1 {
+      x = logF(a[i]);
+      y = b[i];
+/*       println(i ++ ": " ++ y ++ ", "++ x); */
+      acc := acc + (x-y) * (x-y);
+    };
+    acc
+  };
+
+  // there are 30 vectors, we need to diff norm squared with a different one each time
+  ySVM = ref(svmBias);
+  for i = 0 to svmVectors.length - 1 {
+    norm :: Float = diff_norm_squared(arr, svmVectors[i]);
+    denom = svmKernelPar * arr.length.gint;
+    ySVM := ySVM + svmCoeffs[i] * expF((0-norm)/denom);
+  };
+  ySVM
+}
+
+fun BinaryClassify(threshold, consWins, strm) {
+  using FIFO;
+  iterate ySVM in strm {
+    state { 
+      detect = { tmp = make(consWins);
+                 for i = 1 to consWins { tmp.enqueue(false) };  
+   	         tmp }
+    }
+    detect.dequeue();
+    if ySVM > threshold then {
+      detect.enqueue(true);
+      // if both detections were true, then we trigger
+      // we can do this more intelligently, but just saving previous info
+      emit FIFO:andmap(fun(x) x, detect);
+    } else {
+      detect.enqueue(false);
+      emit false;
+    }
+  }
+}
+
 
 // ============================================================
 // Stream / Signal operators
@@ -214,7 +267,10 @@ namespace Node {
   flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
   //main = List:fold1(merge,filtered)
 
+ svmStrm = smap(fun(arr) SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, arr), flat)
+
 }
 
-main = Node:flat
+/* main = Node:flat */
+main = Node:svmStrm
 //main = Node:sensor

@@ -278,6 +278,6 @@ detect = BinaryClassify(threshold, consWindows, svmStrm);
 // main = filtered.head;
 
 /* main = inputs.head */
-//main = svmStrm
+main = svmStrm
 //main = inputs.head
-main = flat
+//main = flat
