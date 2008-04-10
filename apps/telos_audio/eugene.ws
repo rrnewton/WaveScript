@@ -9,7 +9,7 @@ include "coeffs.ws"
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 //NUM_CHANNELS        = 22;
-NUM_CHANNELS        = 1;
+NUM_CHANNELS        = 2;
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -148,6 +148,8 @@ fun FIRFilter(filter_coeff, strm) {
     _flipped_filter_coeff =  // array of _filter_coefficients
       build(nCoeff, fun(i) filter_coeff[nCoeff-1-i]);      
 
+    //println("Calling firfilter with coeffs: "++filter_coeff++"\n");
+
     iterate seg in strm {
       state {
         // remembers the previous points needed for convolution
@@ -156,18 +158,19 @@ fun FIRFilter(filter_coeff, strm) {
                     fifo }
       }
       buf = seg.toArray;
+      //println("input: "++ buf);
       outputBuf = make(seg.width,0);
       for j = 0 to seg.width - 1 {
         // add the first element of the input buffer into the array
         FIFO:enqueue(_memory, buf[j]);
-	// 		print ("memory: ");   
+
+	//print ("memory: ");   
         for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + 
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
-	  //	  	  print (i++": "++myRound(FIFO:peek(_memory,i))++", ");  
+	  //print (" "++myRound(FIFO:peek(_memory,i))++", ");  
         };
-	// 	println("");  
-	// 	println("output: "++myRound(outputBuf[j]));  
+	//println("  output: "++myRound(outputBuf[j]));  
 
 	FIFO:dequeue(_memory);
       };
@@ -209,6 +212,9 @@ fun LowFreqFilter(input) {
   // now filter
   lowFreqEven = FIRFilter(hLow_Even, evenSignal);
   lowFreqOdd  = FIRFilter(hLow_Odd,  oddSignal);
+
+  //lowFreqEven = evenSignal;
+  //lowFreqOdd = oddSignal;
 
   // now recombine them
   AddOddAndEven(lowFreqEven, lowFreqOdd)
@@ -273,11 +279,12 @@ svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 detect = BinaryClassify(threshold, consWindows, svmStrm);
 
 //main = FIRFilter(hLow_Even, GetEven $ inputs.head.window(winsize));
-//main = LowFreqFilter $ inputs.head.window(winsize);
+//main = FIRFilter(hLow_Even, inputs.head);
+//main = LowFreqFilter $ inputs.head;
+//main = AddOddAndEven(GetEven$inputs.head, GetOdd$inputs.head);
 //main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
-// main = filtered.head;
 
-/* main = inputs.head */
-main = svmStrm
+//main = filtered.head;
 //main = inputs.head
 //main = flat
+main = svmStrm

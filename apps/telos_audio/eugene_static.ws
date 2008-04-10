@@ -5,6 +5,26 @@ include "coeffs.ws"
 using TOS;
 using Mutable;
 
+SAMPLING_RATE_IN_HZ = 256
+SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
+//NUM_CHANNELS        = 22;
+NUM_CHANNELS        = 2;
+NUM_FEATURES = 3;
+
+channelNames = ["FT10-T8","FT9-FT10","T7-FT9","P7-T7",
+		"CZ-PZ","FZ-CZ","P8-O2","T8-P8","F8-T8",
+		"FP2-F8","P4-O2","C4-P4","F4-C4","FP2-F4",
+		"P3-O1","C3-P3","F3-C3","FP1-F3","P7-O1",
+		"T7-P7","F7-T7", "FP1-F7"]
+
+// detector values
+svmKernelPar = 1.00
+threshold    = 0.1
+
+consWindows = 3 // number of consecutive windows of detections;
+
+winsize = 512
+
 zip_bufsize = 1
 
 /*
@@ -92,7 +112,7 @@ fun myZipN(bufsize, slist) {
 fun FlattenZip(winsize, strmlst) {
   using Array;
   buf = make(winsize, 0);
-  iterate arr in zipN(zip_bufsize, strmlst) {
+  iterate arr in myZipN(zip_bufsize, strmlst) {
     for k = 0 to winsize / arr[0].length - 1 {
       temp = arr[k];
       for i = 0 to temp.length - 1 {
@@ -108,11 +128,12 @@ fun AddOddAndEven(winsize, s1,s2) {
   //    assert_eq("AddOddAndEven", first.width, second.width);
   using Array;
   buf = make(winsize, 0);
-  iterate arr in myZipN(zip_bufsize, [s1,s2]) {   
+  //iterate arr in myZipN(zip_bufsize, [s1,s2]) {   
+  iterate arr in zipN(zip_bufsize, [s1,s2]) {   
     state { _stored_value = 0; }
     first = arr[0];
     second = arr[1];
-/*     print(first.length); */
+    //print("    first len "++first.length++" whereas winsize= "++winsize++" "); 
     for i = 0 to first.length - 1 {
       buf[i] := first[i] + _stored_value;
       _stored_value := second[i]; // we don't add the last odd guy, but store
@@ -135,6 +156,10 @@ fun GenericGet(offset, winsize, strm) {
 fun GetOdd (winsize, strm) GenericGet(1, winsize, strm);
 fun GetEven(winsize, strm) GenericGet(0, winsize, strm);
 
+fun myRound(val)
+{
+	roundF(val*1000)/1000;
+}
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
@@ -150,22 +175,34 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
     _memory = FIFO:make(nCoeff);
     for i = 1 to nCoeff-1 { FIFO:enqueue(_memory, 0.0) };
 
+    //println("Calling firfilter with coeffs: "++filter_coeff++"\n");
+
     outputBuf = make(bufsize,0);
 
     iterate buf in strm {
+      Array:fill(outputBuf,0);
+
+      //println("input: "++ buf);
       for j = 0 to buf.length - 1 {
         //inspect$ _memory;
 
         // add the first element of the input buffer into the array
+	//print ("memory: ");   
         FIFO:enqueue(_memory, buf[j]);
         for i = 0 to nCoeff-1 {
 	  outputBuf[j] := outputBuf[j] + 
 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i);
+	  //print (" "++myRound(FIFO:peek(_memory,i))++", ");  
         };
+	//println("  output: "++myRound(outputBuf[j]));  
 
 	FIFO:dequeue(_memory);
       };
+
+      //print(" sending out: "++ outputBuf++"\n");
+
       emit outputBuf;
+      //print(" after emit: "++ outputBuf++"\n");
     }
 }
 
@@ -203,7 +240,11 @@ fun LowFreqFilter(winsize, input) {
   lowFreqEven = FIRFilter(winsize / 2, hLow_Even, evenSignal);
   lowFreqOdd  = FIRFilter(winsize / 2, hLow_Odd,  oddSignal);
 
+  //lowFreqEven = evenSignal;
+  //lowFreqOdd = oddSignal;
+
   // now recombine them
+  //AddOddAndEven(winsize / 2, snoop("REAL FLTRED: ", lowFreqEven), lowFreqOdd);
   AddOddAndEven(winsize / 2, lowFreqEven, lowFreqOdd);
 }
 
@@ -246,22 +287,41 @@ fun process_channel(winsize, stm) {
   filter_results = GetFeatures(winsize, casted);
   filter_results
 }
+
+fun arrwindow(S, len) {
+    arrbuf = Array:makeUNSAFE(len);
+    iterate x in S {
+      state{ ind = 0; }
+      arrbuf[ind] := x;
+      ind += 1;
+      if ind == len then {
+        emit arrbuf;
+        ind := 0;
+      }
+   }
+}
+
     
 namespace Node {
   
-  // input winsoze
-  winsize = 512;
-  NUM_CHANNELS = 1;
-  NUM_FEATURES = 3;
   // For running on the PC:
   prefix = "patient36_file16/";
-  sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
+  //sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
+
+  inputs = {
+    prefix = "patient36_file16/";
+    ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
+    map(fun(ch) smap(int16ToFloat, 
+	             (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+	              :: Stream Int16)) .arrwindow(winsize),
+        List:reverse(List:prefix(channelNames, NUM_CHANNELS)))
+  }
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
 
   // This is statically allocated, do a big for loop?
-  filtered = map(fun(s) process_channel(winsize, s), [sensor]);
+  filtered = map(fun(s) process_channel(winsize, s), inputs);
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
   flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
@@ -271,6 +331,20 @@ namespace Node {
 
 }
 
-/* main = Node:flat */
+
+//main = castToFloat(winsize, Node:inputs.head);
+
+//main = LowFreqFilter(winsize, castToFloat(winsize, Node:inputs.head))
+
+//main = AddOddAndEven(winsize/2,
+//                     GetEven(winsize/2, castToFloat(winsize, Node:inputs.head)),
+//                     GetOdd(winsize/2, castToFloat(winsize, Node:inputs.head)))
+
+//main = FIRFilter(winsize, hLow_Even, GetEven $ Node:inputs.head);
+//main = FIRFilter(winsize, hLow_Even, Node:inputs.head);
+
+
+//main = Node:inputs.head
+//main = Node:filtered.head
+//main = Node:flat
 main = Node:svmStrm
-//main = Node:sensor
