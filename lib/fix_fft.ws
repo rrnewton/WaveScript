@@ -186,6 +186,25 @@ fun FIX_MPY(a, b) {
 }
 
 
+fun FIX_SQRT(f) {
+  FIX_F2I(sqrtF(FIX_I2F(f)))
+}
+
+
+FIX_NORM :: (Short, Short) -> Short;
+fun FIX_NORM(re, im) {
+  FIX_SQRT(FIX_MPY(re,re)+FIX_MPY(im,im))
+}
+
+
+ln10 = logF(10.0);
+
+FIX_LOG10 :: (Short) -> Short;
+fun FIX_LOG10(f) {
+  FIX_F2I(logF(FIX_I2F(f))/ln10)
+}
+
+
 /*
   fix_fft() - perform forward/inverse fast Fourier transform.
   fr[n],fi[n] are real and imaginary arrays, both INPUT AND

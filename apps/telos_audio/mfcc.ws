@@ -18,7 +18,7 @@ logFilters = 19;    // drop top filters since over sample rate
 logSpacing = 1.0711703;
 fftSize = 512;
 cepstralCoefficients = 13;
-windowSize = 256;  // 1/2 window size used for 16khz sample rate
+windowSize = 200;  // 1/2 window size used for 16khz sample rate
 samplingRate = 8192;
 totalFilters = linearFilters + logFilters;
 
@@ -111,7 +111,7 @@ for i = 0 to (fftSize/2)-1{
 
 s1 = (readFile("./snip.raw", 
 	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 2  window: 256 offset: 0", 
+	       "skipbytes: 2  window: 200 offset: 0", 
 	       timer(819.20 / 255.0))
       :: Stream (Sigseg (Int16)));
 
