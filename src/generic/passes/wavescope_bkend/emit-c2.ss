@@ -1987,6 +1987,11 @@ int main(int argc, char **argv)
       serial_busy = TRUE;
     }
 #endif
+
+
+    // HACK: assuming ONE cutpoint for now.  And if we're in -split
+    // mode, we need to do this here, because printF is assumed to be deactivated.
+    ws_currently_running = 0;\n
   }
 "))
    (when (zero? (slot-ref self 'amsender-count))
@@ -2353,7 +2358,10 @@ implementation {
   void cleanup_after_traversal();
 
   void BASE(char x) {
-    #ifndef TOSSIM
+    #ifdef TOSSIM
+      // For tossim we don't do a printf-flush; need to call this here:
+      ws_currently_running = 0;
+    #else
     #ifdef PRINTFLOADED
       call PrintfFlush.flush();
     #endif
@@ -2466,7 +2474,7 @@ implementation {
 ;; Generate nothing for the cutpoints... we're just interested in the Printf output:
 ;; We use this as an opportunity to flush:
 (__specreplace Cutpoint <tinyos-timed> (self ty in out) 
-   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))   
+   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))
    (define fun (list "// Code generated in place of cutpoint:\n"
 		"void "(Var self out)"("_ty" x) { 
   printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 

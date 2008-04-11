@@ -23,12 +23,14 @@ using TOS;
 
 //Node:strm = iterate arr in read_telos_audio(200, 100) {
 
-Node:strm = iterate arr in timer$ 1.0  {
+Node:strm = iterate arr in TOS:timer$ 1.0  {
   //state { cnt = 0 }
 
+  /*
   led0Toggle();
   led1Toggle();
   led2Toggle();
+  */
 
 /*
   cnt += 1;
