@@ -111,7 +111,7 @@ for i = 0 to (fftSize/2)-1{
 
 s1 = (readFile("./snip.raw", 
 	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 2  window: 200 offset: 0", 
+	       "skipbytes: 2  window: "++windowSize ++" offset: 0", 
 	       timer(819.20 / 255.0))
       :: Stream (Sigseg (Int16)));
 

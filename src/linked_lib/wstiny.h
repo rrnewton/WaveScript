@@ -10,6 +10,7 @@
 
 //#define wserror(str) {call Leds.led0On();call Leds.led1On();call Leds.led2On(); while(1) {}}
 
+#define getDroppedInputCount() input_items_lost
 
 // This seems insane to me, but the memcpy implementation on Telos
 // doesn't work for unaligned addresses!  Here's a hack:

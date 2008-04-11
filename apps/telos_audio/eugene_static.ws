@@ -11,6 +11,12 @@ SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 NUM_CHANNELS        = 1;
 NUM_FEATURES = 3;
 
+// This one takes 100ms for one chan as opposed to 700ms for eugene.ws
+// It takes 8.6 seconds for 22 chans though.  The code bloat is
+// probably hurting (that's a 3mb executable).  Oh wait, no it's just
+// the O2/O3 difference.  Because in O2 only 1chan takes 388ms --
+// almost 4 times as long.
+
 channelNames = ["FT10-T8","FT9-FT10","T7-FT9","P7-T7",
 		"CZ-PZ","FZ-CZ","P8-O2","T8-P8","F8-T8",
 		"FP2-F8","P4-O2","C4-P4","F4-C4","FP2-F4",
@@ -309,18 +315,19 @@ namespace Node {
   //sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
 
   inputs :: List (Stream (Array Float));
-
-  _inputs = {
+  inputs = {
     prefix = "patient36_file16/";
+    //postfix = "-short.txt";
+    postfix = ".txt";
     ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
     map(fun(ch) smap(int16ToFloat, 
-	             (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+	             (readFile(prefix++ch++postfix,  "mode: binary", ticktock)
 	              :: Stream Int16)) .arrwindow(winsize),
         List:reverse(List:prefix(channelNames, NUM_CHANNELS)))
   }
 
   // This is just a dummy datasource for java:
-  inputs = [COUNTUP(0).arrwindow(winsize)];
+  //inputs = [COUNTUP(0).arrwindow(winsize)];
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  

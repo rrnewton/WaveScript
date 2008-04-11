@@ -18,7 +18,7 @@ logFilters = 19;    // drop top filters since over sample rate
 logSpacing = 1.0711703;
 fftSize = 512;
 cepstralCoefficients = 13;
-windowSize = 256;  // 1/2 window size used for 16khz sample rate
+windowSize = 200;  // 1/2 window size used for 16khz sample rate
 samplingRate = 8192;
 totalFilters = linearFilters + logFilters;
 

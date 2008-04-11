@@ -545,7 +545,10 @@
     [Float  "%g"]
     [Double "%lf"]
     [#() "()"]
-    [(Pointer ,_) "%p"]))
+    [(Pointer ,_) "%p"]
+    [(,args ... -> ,ret)     
+     (error 'type->printf-flag 
+	    "Cannot print a function type! ~s" ty)]))
 
 
 ;(define Var mangle-name)
@@ -1949,7 +1952,9 @@ int main(int argc, char **argv)
        [(Stream (Array ,elt)) 
 	(list "uint16_t bytesize = sizeof(uint16_t) + (sizeof("(Type self elt)") * ARRLEN(x));\n"
 	      (block "if (bytesize > call Packet.maxPayloadLength()) "
-		     "wserror(\"message exceeds max message payload\")")
+		     ;"wserror(\"message exceeds max message payload\")"
+		     "call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"
+		     )
 	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
        [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
 			   "my_memcpy(payload, &x, sizeof(x));")]))
@@ -2101,7 +2106,7 @@ enum {
     else {
       call RoutingControl.start();
       if (TOS_NODE_ID == 1) {
-        call Leds.led1On();
+        //call Leds.led1On();
 	call RootControl.setRoot();
       }
       // else call Timer.startPeriodic(2000);
@@ -2242,7 +2247,7 @@ event void PrintfControl.stopDone(error_t error) {
    ;; TODO FIXME: INSERT BUFFERING HERE:
    (block "if (ws_currently_running)"
 	  (list "input_items_lost++;\n"
-		(format "wserror(\"attempted reentry\")\n")
+		;(format "wserror(\"attempted reentry\")\n")
 		))
    (block "else"
 	  (list "ws_currently_running = 1;\n"

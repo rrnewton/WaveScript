@@ -9,7 +9,10 @@ include "coeffs.ws"
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 //NUM_CHANNELS        = 22;
-NUM_CHANNELS        = 2;
+NUM_CHANNELS        = 1;
+
+// Takes 1.4 sec to process the (nonshort) file for one channel on honor.
+
 
 // MASSIVE code explosion.
 // 10 Channels -> 222 kloc .c, 2mb executable, -O0
@@ -208,14 +211,9 @@ hLow_Odd  = #[0.0329, -0.1870, 0.6309, 0.2304]
 fun LowFreqFilter(input) {
   evenSignal = GetEven(input);
   oddSignal  = GetOdd (input);
-
   // now filter
   lowFreqEven = FIRFilter(hLow_Even, evenSignal);
   lowFreqOdd  = FIRFilter(hLow_Odd,  oddSignal);
-
-  //lowFreqEven = evenSignal;
-  //lowFreqOdd = oddSignal;
-
   // now recombine them
   AddOddAndEven(lowFreqEven, lowFreqOdd)
 }
@@ -238,8 +236,6 @@ fun GetFeatures(input) {
   highFreq6 = HighFreqFilter(lowFreq5); // and this one
   // lowFreq6 = LowFreqFilter(lowFreq5); 
   level6    = MagWithScale(filterGains[5], highFreq6);
-/*   println(level6); */
-
   zipN(zip_bufsize, [level4, level5, level6]);
 }
 
@@ -259,9 +255,11 @@ detect  :: Stream Bool;
 
 inputs = {
   prefix = "patient36_file16/";
+  //postfix = "-short.txt";
+  postfix = ".txt";
   ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
   map(fun(ch) smap(int16ToFloat, 
-	           (readFile(prefix++ch++"-short.txt",  "mode: binary", ticktock)
+	           (readFile(prefix++ch++postfix,  "mode: binary", ticktock)
 	            :: Stream Int16)) .window(winsize), 
       List:reverse(List:prefix(channelNames, NUM_CHANNELS)))
 }
@@ -278,13 +276,4 @@ svmStrm = SVMOutput(pruned, svmCoeffs, svmBias, svmKernelPar, flat)
 
 detect = BinaryClassify(threshold, consWindows, svmStrm);
 
-//main = FIRFilter(hLow_Even, GetEven $ inputs.head.window(winsize));
-//main = FIRFilter(hLow_Even, inputs.head);
-//main = LowFreqFilter $ inputs.head;
-//main = AddOddAndEven(GetEven$inputs.head, GetOdd$inputs.head);
-//main = head $ map(fun(s) LowFreqFilter(s.window(winsize)), inputs);
-
-//main = filtered.head;
-//main = inputs.head
-//main = flat
 main = svmStrm

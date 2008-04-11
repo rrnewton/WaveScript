@@ -27,6 +27,10 @@ led0Toggle = (foreign("call Leds.led0Toggle", []) :: () -> ());
 led1Toggle = (foreign("call Leds.led1Toggle", []) :: () -> ());
 led2Toggle = (foreign("call Leds.led2Toggle", []) :: () -> ());
 
+maxPayloadLength :: (() -> Int16) = foreign("call Packet.maxPayloadLength",[]);
+getDroppedInputCount :: (() -> Int32) = foreign("getDroppedInputCount",[]);
+
+
 // This includes a Telos-Specific Counter component.
 // This is an unpleasant programming style:
 load_telos32khzCounter = {
