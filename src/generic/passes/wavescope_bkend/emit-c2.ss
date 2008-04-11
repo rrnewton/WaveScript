@@ -103,6 +103,7 @@
   (define-generic type->printf-flag)
   (define-generic Binding)
   (define-generic SplitBinding)
+  (define-generic DummyInit)
   (define-generic StaticAllocate)
   (define-generic PrimApp)
 ;  (define-generic Program)
@@ -609,6 +610,10 @@
        ((Value self emitter) rhs (varbindk self vr ty))]
       [,oth (error 'Binding "Bad Binding, got ~s" oth)]))))
 
+;; This is there for the benefit of the java backend.  It needs to
+;; have an initialized value of some kind, even if its null.
+(__spec DummyInit <emitC2> (self ty) "")
+
 ;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
 ;; This version also DOES inject a refcount incr.
@@ -624,7 +629,7 @@
        (StaticAllocate self vr ty rhs)]
       [(,vr ,ty ,rhs)
        ;; We derive a setter continuation by "splitting" the varbind continuation:       
-       (values (make-lines `(,(Type self ty)" ",(Var self vr)";\n"))
+       (values (make-lines `(,(Type self ty)" ",(Var self vr)" ",(DummyInit self ty)";\n"))
 	       ;((Value self emitter) rhs set-and-incr-k)
 	       ((Value self emitter) rhs (setterk self vr ty)))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
@@ -735,7 +740,7 @@
       [(let . ,_) (Let self _ emitter (lambda (x) ((Effect self emitter) x)))]
       ;; ========================================
 
-      [(__wserror_ARRAY ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
+      [(__wserror_ARRAY ,[Simp -> str]) (make-lines (list "wserror("str")\n"))]
 
       ))))
 
@@ -1478,6 +1483,8 @@ int main(int argc, char **argv)
 		    "\n"))
 	     '() '())]
 
+    [(unionN . ,_) (error 'emitC2 "doesn't support unionN/unionList right now")]
+
     ;; This doesn't work for sigsegs, only arrays:
     [(__readFile (name ,name) (output-type (Stream ,elt))
 		 (code (__readFile (annotations .  ,annot)
@@ -1745,12 +1752,19 @@ int main(int argc, char **argv)
 (define __PrimApp
   (specialise! PrimApp <tinyos>
    (lambda (next self app kont mayberetty)
+     (define (Simp x) (Simple self x))
      (match app
        [(,alloc-prim . ,_) 
 	(guard (eq-any? alloc-prim 'cons 'Array:make 'Array:makeUNSAFE))
 	(error 'emitC2:tinyos "Cannot generate code for dynamic allocation currently: ~s" 
 	       (cons alloc-prim _))]
+
+       [(sqrtF ,[Simp -> x]) (kont (list "sqrtf("x")"))]
+       [(logF ,[Simp -> x]) (kont (list "logf("x")"))]
+       [(logD ,[Simp -> x]) (error 'emit-c2:tinyos "no logD (double) on msp430 currently")]
+
        [(getID) (kont "TOS_NODE_ID")]
+       [(realtime) (kont "TopTimer.getNow()")]
 
 #;
        [(TOS:clock32khz)
@@ -1956,6 +1970,7 @@ int main(int argc, char **argv)
     #ifdef PRINTFLOADED
       call PrintfFlush.flush();
     #endif 
+
 #else
     if (!serial_busy && call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
       serial_busy = TRUE;
@@ -1965,13 +1980,19 @@ int main(int argc, char **argv)
 "))
    (when (zero? (slot-ref self 'amsender-count))
      (slot-cons! self 'config-acc (list "
+
+  // This is for WS code that tries to get realtime() or clock()
+  // Is there overhead to creating an additional instantiation here?
+//  components new TimerMilliC() as TopTimer; 
+//  WSQuery.TopTimer -> TopTimer;
+
 #ifdef WSRADIOMODE
   #define AMCOMPONENT ActiveMessageC
 
   //#define AMCOMPONENT Collector
 
   components CtpP as Collector;
-  components new TimerMilliC();
+  components new TimerMilliC(); // Wait.. is this used? [2008.04.10]
 
   WSQuery.RoutingControl -> Collector;
   WSQuery.RootControl -> Collector;
@@ -2050,6 +2071,7 @@ enum {
   uses interface SplitControl as AMControl;
 "))
    (slot-cons! self 'proto-acc (list "
+
   bool serial_busy = FALSE;
   //message_t  _initial_pkt_storage;
   //message_t* relay_pkt = &_initial_pkt_storage;
@@ -2063,7 +2085,7 @@ enum {
       dbg_clear(\"WSQuery\", \" Finished sending on serial interface\\n\");
     if (&serial_pkt == msg) {
       serial_busy = FALSE;
-    } else wserror(\"error in serial interface\");
+    } else wserror(\"error in serial interface\")
   }
 
 #ifdef WSRADIOMODE
@@ -2091,7 +2113,7 @@ enum {
 
     call Leds.led2Toggle();    
     if (! call RootControl.isRoot()) {
-      wserror(\"I am not root.  Should not receive CTP messages.\");
+      wserror(\"I am not root.  Should not receive CTP messages.\")
     }
 
     memcpy(dest, src, sizeof("_ty"));
@@ -2168,6 +2190,8 @@ event void PrintfControl.startDone(error_t error) {
 
 event void PrintfFlush.flushDone(error_t error) {
   "(slot-ref self 'flushdone)"
+  // HACK: ASSUMING That flush only happens AFTER a traversal:
+  ws_currently_running = 0;\n
 }
 
 event void PrintfControl.stopDone(error_t error) {
@@ -2208,7 +2232,17 @@ event void PrintfControl.stopDone(error_t error) {
 
 (define-generic ForeignSourceHook)
 
-(__specreplace ForeignSourceHook <tinyos> (self name callcode) callcode)
+(__specreplace ForeignSourceHook <tinyos> (self name callcode) 
+  ;; Default behavior is to signal error:
+  (list
+   ;; TODO FIXME: INSERT BUFFERING HERE:
+   (block "if (ws_currently_running)"
+	  (list "input_items_lost++;\n"
+		(format "wserror(\"attempted reentry\")\n")
+		))
+   (block "else"
+	  (list "ws_currently_running = 1;\n"
+		callcode))))
 
 (define __Source
  (specialise! Source <tinyos>
@@ -2289,12 +2323,19 @@ implementation {
 module WSQuery {
   uses interface Leds;
   uses interface Boot;
+
+  // Adding a Timer that's always there:
+//  uses interface Timer<TMilli> as TopTimer;
+
 "(slot-ref self 'module-acc)"
 }
 implementation {
 
   char WS_STRM_BUF[128];
   bool did_i_emit = FALSE;
+  // This lets us know if its safe to put a tuple in play:
+  bool ws_currently_running = 0;
+  int32_t input_items_lost = 0;
 
   /* Prototypes */
   void initState();
@@ -2323,6 +2364,8 @@ implementation {
                  init driver))"
 
 "(slot-ref self 'impl-acc)"
+
+//  event void TopTimer.fired() { }
 
   event void Boot.booted() {
     initState(); /* SHOULD POST A TASK */
@@ -2376,8 +2419,7 @@ implementation {
   WSQuery.Cntr -> Cntr.Counter;\n")
   (slot-cons! self 'module-acc "uses interface Counter<TMilli,uint16_t> as Cntr;\n")
   (slot-cons! self 'proto-acc "  
-   uint16_t overflow_count = 0;
-   bool ws_currently_running = 0;\n")
+   uint16_t overflow_count = 0;\n")
   (slot-cons! self 'impl-acc "async event void Cntr.overflow() { overflow_count++; }\n")
   (slot-set! self 'flushdone "dispatch(flushdispatch);")
   )
@@ -2637,6 +2679,24 @@ event void Timer000.fired() {
 	(if (equal? (peel-annotations arr) 'Array:null) ;; Hack for Java's benefit.
 	    (kont "0 /* arr len of null */")
 	    (kont `("(",_arr" == null ? 0 : ",_arr".length)")))]
+
+    
+    [(,abs ,[Simp -> a]) (guard (memq abs '(absI16 absI64 absI absF absD absC)))
+     (kont `("Math.abs(",a")"))]
+    
+    [(^. ,[Simp -> a] ,[Simp -> b]) (kont `("(float)Math.pow(",a", ",b")"))]
+    [(^D ,[Simp -> a] ,[Simp -> b]) (kont `("Math.pow(",a", ",b")"))]
+
+    [(logF ,[Simp -> a]) (kont `("(float)Math.log(",a")"))]
+    
+       #;
+       ;; Handle exponents:
+       [(,infix_prim ,[Simp -> left] ,[Simp -> right])	
+	(guard (assq infix_prim infix-arith-prims)
+	       (equal? "^" (substring (sym2str infix_prim) 0 1)))
+	
+	]
+
        [,else (next)]))))
 
 (define ___Simple
@@ -2657,6 +2717,17 @@ event void Timer000.fired() {
 	   (make-lines `("outstrm.print(",x");\n"))]
 	  [(wserror ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
 	  [,oth ((next) oth)])))))
+
+
+;; Silly javac:
+(__specreplace DummyInit <java> (self ty)
+   ;;(printf " scalar? ~s ~s\n" ty (if (or (scalar-type? ty) (equal? ty #())) 'TRUE '#f))
+   (match ty
+     [#() ""]
+     [(Ref ,[t]) t]
+     [,ty (guard (scalar-type? ty)) ""]
+     [,ty " = null";(list (format " = null /* ~a " ty) (Type self ty) " */")       
+      ]))
 
 
 (__specreplace BuildOutputFiles <java> (self includes freefundefs state ops init driver)  
@@ -2751,16 +2822,22 @@ event void Timer000.fired() {
 	    ";\n"
             ))]))
 
-(__specreplace incr-local-refcount <java> (self ty ptr) (make-lines ""))
-(__specreplace decr-local-refcount <java> (self ty ptr) (make-lines ""))
-(__specreplace incr-heap-refcount <java> (self ty ptr) (make-lines ""))
-(__specreplace decr-heap-refcount <java> (self ty ptr) (make-lines ""))
+;(__specreplace incr-local-refcount <java> (self ty ptr) (make-lines ""))
+;(__specreplace decr-local-refcount <java> (self ty ptr) (make-lines ""))
+;(__specreplace incr-heap-refcount <java> (self ty ptr) (make-lines ""))
+;(__specreplace decr-heap-refcount <java> (self ty ptr) (make-lines ""))
+(__spec gen-incr-code <java> (self ty ptr msg) (make-lines ""))
+(__spec gen-decr-code <java> (self ty ptr)     (make-lines ""))
+(__spec gen-free-code <java> (self ty ptr)     (make-lines ""))
 
 (__specreplace array-constructor-codegen <java> (self len init ty kont)
   (define tmp (unique-name "tmparr"))
   (match ty
     [(Array ,elt)
-     (define newstmt (list "new "(Type self elt)"["len"]"))
+     ;; Handle nested arrays:
+     (define nesting 0) ;; Hack, mutated on next line:
+     (define basetype (match elt [(Array ,[x]) (set! nesting (add1 nesting) )x] [,y y]))
+     (define newstmt (list "new "(Type self basetype)"["len"]" (make-list nesting "[]")))
      (if (not init)
 	 (kont newstmt)
 	 (let* ([tmp (unique-name "tmp")]
@@ -2804,6 +2881,18 @@ event void Timer000.fired() {
 	      ;; (Fixme, should use cross-platform scheme routines for this)
 	      (system "cp -fpr $REGIMENTD/src/linked_lib/javaME_stub ./")
 	      (system "mv WSQuery.java ./javaME_stub/src/")))]))))
+
+(define ____PrimApp
+  (specialise! PrimApp <javaME>
+    (lambda (next self app kont mayberetty)
+      (define (Simp x)  (Simple self x))
+      (match app
+	;; JavaME is missing some math ops:
+	[(^. ,[Simp -> a] ,[Simp -> b]) (kont `("(float)Float11.pow(",a", ",b")"))]
+	[(^D ,[Simp -> a] ,[Simp -> b]) (kont `("Float11.pow(",a", ",b")"))]
+	[(logF ,[Simp -> a]) (kont `("(float)Float11.log(",a")"))]
+	
+	[,else (next)]))))
 
 
 ) ;; End module

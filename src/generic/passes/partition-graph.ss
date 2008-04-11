@@ -1162,6 +1162,8 @@
   (printf "Left names: ~s\n" leftnames)
   (printf "Floating names: ~s\n" vars)
   (printf "Right names: ~s\n" rightnames)
+  (if (null? vars) ;; We can't make an LP for this.
+      (error 'emit-lp "Cannot generate LP formulation with ZERO mobile operators!")
   (apply string-append
    (append
     (list
@@ -1232,7 +1234,7 @@
 				       (map Var vars)))))
      ";\n")
 
-    )))
+    ))))
 
 #|
 min: x1 + x2;

@@ -81,12 +81,12 @@ void parseOptions(int argc, char** argv) {
   }
 }
 
-void wserror(char* msg) {
+void wserror_fun(char* msg) {
   //error(msg);
   printf("Failed with error: %s\n", msg);
   exit(-1);
 }
-
+#define wserror(str) wserror_fun(str);
 
 /*
 // TODO:

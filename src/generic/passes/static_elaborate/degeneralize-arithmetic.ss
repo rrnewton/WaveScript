@@ -92,7 +92,8 @@
 			     [out_type t])
 			 ;(ASSERT symbol? in_type) (ASSERT symbol? out_type)
 			 (unless (and (symbol? in_type) (symbol? out_type))
-			   (error 'degeneralize-arithmetic "insufficiently constrained cast_num: ~s -> ~s" in_type out_type))
+			   (error 'degeneralize-arithmetic "insufficiently constrained cast_num: ~s -> ~s\nExpr ~s" in_type out_type
+				  oth))
 			 `(__cast_num ',in_type ',out_type ,oth))])]
 		   [else 		    
 		    ;; NOTE: THIS WON'T WORK FOR ABS YET...

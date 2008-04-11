@@ -1169,6 +1169,9 @@
 					 ;; Here we tag tho floating operators:
 					 (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-node))
 		       (map-partition-ops (lambda (x) (tag-op '(floating) x)) maybe-server)))
+		    (define floating-opnames
+		      (append (partition->opnames maybe-node)
+			      (partition->opnames maybe-server)))
 
 		    (when (>= (regiment-verbosity) 2) 
 		      (printf "Connectivity of profiled partition:\n")(print-partition max-node))
@@ -1176,8 +1179,7 @@
 		    (printf "\n Node-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-node))
 		    (printf "\n Floating operators:\n\n  ")
-		    (pretty-print (append (partition->opnames maybe-node)
-					  (partition->opnames maybe-server)))
+		    (pretty-print floating-opnames)
 		    (printf "\n Server-only operators:\n\n  ")
 		    (pretty-print (partition->opnames definite-server))
 		    (newline)
@@ -1238,13 +1240,16 @@
 				   (exhaustive-partition-search max-nodepart-heuristic
 								(inject-times max-node times))
 				   ;; New method, run a linear program solver:
+				   (if (null? floating-opnames)
+				       (begin (printf "SKIPPING LP because there were no floating ops...")
+					      (exit 0))
 				   (let ([merged (merge-partitions maybe-node maybe-server)])
 				     (printf "\nDumping integer linear program.\n")
 				     (string->file (emit-lp (inject-times definite-node times)
 							    (inject-times merged times)
 							    definite-server)
 						   "partition.lp")
-				     (printf "\n Running LP solver.\n")
+				     (printf "\n Running LP solver.\n")				     
 				     (time (system "lp_solve partition.lp > partition_assignments.txt"))
 				     (let-values ([(objective assignments) (read-back-lp-results "partition_assignments.txt")])
 				       (define assigned (inject-assignments merged assignments))
@@ -1260,7 +1265,7 @@
 				       (exit)			  
 				       (partition-based-on-lp assigned)
 				       )
-				     )				   
+				     ))				   
 				   ])
 			(define all-server (reinsert-cutpoints (merge-partitions definite-server new-server)))
 			

@@ -198,6 +198,3 @@
 
 
 
-#;
-(check-grammar "" '(unionN (annotations) s_1 s_2) anihilate-higher-order-grammar 'Expr)
-

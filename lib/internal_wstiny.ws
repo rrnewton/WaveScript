@@ -80,7 +80,7 @@ fun sensor_uint16(name, rate) {
 event void "++tmod++".fired() { call "++smod++".read(); }
 event void "++smod++".readDone(error_t result, uint16_t data) { 
     if (result != SUCCESS) 
-      wserror(\"sensor_uint16 read failure\");    
+      wserror(\"sensor_uint16 read failure\")    
     else "++funname++"(data);
   }
 ";
@@ -117,7 +117,7 @@ fun readstream_uint16(name, bufsize, rate) {
 
   event void "++smod++".bufferDone(error_t result, "++ty++"* buf, uint16_t cnt) {
     if (result != SUCCESS)
-       wserror(\"readstream_uint16 failure\");
+       wserror(\"readstream_uint16 failure\")
     else {
       uint16_t i;
       buf[-1] = cnt;
@@ -134,7 +134,7 @@ fun readstream_uint16(name, bufsize, rate) {
   }
 
   event void "++smod++".readDone(error_t result, uint32_t period) {
-    if (result != SUCCESS) wserror(\"ReadStream.readDone completed incorrectly\");
+    if (result != SUCCESS) wserror(\"ReadStream.readDone completed incorrectly\")
   }
 
 ";

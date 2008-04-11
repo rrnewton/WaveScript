@@ -8,7 +8,7 @@ using Mutable;
 SAMPLING_RATE_IN_HZ = 256
 SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 //NUM_CHANNELS        = 22;
-NUM_CHANNELS        = 2;
+NUM_CHANNELS        = 1;
 NUM_FEATURES = 3;
 
 channelNames = ["FT10-T8","FT9-FT10","T7-FT9","P7-T7",
@@ -308,7 +308,9 @@ namespace Node {
   prefix = "patient36_file16/";
   //sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
 
-  inputs = {
+  inputs :: List (Stream (Array Float));
+
+  _inputs = {
     prefix = "patient36_file16/";
     ticktock = Server:timer(SAMPLING_RATE_IN_HZ);
     map(fun(ch) smap(int16ToFloat, 
@@ -316,6 +318,9 @@ namespace Node {
 	              :: Stream Int16)) .arrwindow(winsize),
         List:reverse(List:prefix(channelNames, NUM_CHANNELS)))
   }
+
+  // This is just a dummy datasource for java:
+  inputs = [COUNTUP(0).arrwindow(winsize)];
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  

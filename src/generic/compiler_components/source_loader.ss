@@ -338,8 +338,11 @@
 	       (process* 
 		(append '((include "internal.ws"))
 			(case (compiler-invocation-mode)
-			  [(wavescript-compiler-c)    '((include "internal_wsc2.ws"))]
-			  [(wavescript-compiler-nesc) '((include "internal_wstiny.ws"))]
+			  ;; Java backends share with wsc2 for now:
+			  [(wavescript-compiler-c)      '((include "internal_wsc2.ws"))]			  
+			  [(wavescript-compiler-java)   '((include "internal_wsc2.ws"))]
+			  [(wavescript-compiler-javame) '((include "internal_wsc2.ws"))]
+			  [(wavescript-compiler-nesc)   '((include "internal_wstiny.ws"))]
 			  [else '()])
 			origws)
 		'() #f)))
