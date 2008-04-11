@@ -152,6 +152,7 @@ iterate seg in s {
   env = max-min;
   count := count + 1;
   println("&max= "++count++" "++env);  
+  if (ewma == 0) then ewma := (cast_num(env)::Float);
   ewma := 0.95*ewma + 0.05*(cast_num(env)::Float);
   if ((cast_num(env)::Float) > ewma * 1.5) then {
 
