@@ -27,6 +27,9 @@ totalFilters = linearFilters + logFilters;
 // all the interesting frequencies.  Lower, center, and upper band
 // edges are all consequtive interesting frequencies. 
 
+mylog = logF; mysqrt = sqrtF
+//fun mylog(x) x; fun mysqrt(x) x
+
 lowLogFreq = lowestFrequency + ((linearFilters-1) * linearSpacing);
 freqs = Array:build(totalFilters+2,
 	  fun (x) {
@@ -108,41 +111,44 @@ for i = 0 to (fftSize/2)-1{
 };
 
 
+fun arrwindow(S, len) {
+    arrbuf = Array:makeUNSAFE(len);
+    iterate x in S {
+      state{ ind = 0; }
+      arrbuf[ind] := x;
+      ind += 1;
+      if ind == len then {
+        emit arrbuf;
+        ind := 0;
+      }
+   }
+}
 
-s1 = (readFile("./snip.raw", 
-	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 2  window: 256 offset: 0", 
-	       timer(819.20 / 255.0))
-      :: Stream (Sigseg (Int16)));
+fun complexNorm(r,i) {
+  mysqrt(r*r + i*i)
+}
 
-fun mfcc(win) {
-  
-  // real and imaginary vectors
-  bufR = Array:make(fftSize,0);
-  bufI = Array:make(fftSize,0);
 
-  start = (fftSize-windowSize) / 2;
-
+fun preemphasize(start, bufR, win) {
   // preemphasize FIR filter into the buffer
   for i = start+1 to start+windowSize-1 {
     bufR[i] := FIX_MPY(win[i-start-1],FIX_F2I(0.0-0.97)) + win[i-start];    
   };
+}
 
+fun hamming(start, bufR, win) {
   // hamming window
   for i = start to start+windowSize-1 {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
   };
+}
 
-  //println("Post hamming: "++bufR);
-
-  // fft
-  fix_fft(bufR,bufI,9,false);
-
-  // compute earmag
-  earmag = Array:make(totalFilters,0.0);
-
+earmagfn :: (Array Int16, Array Int16, Array Float) -> ();
+fun earmagfn(bufR, bufI, earmag) {
   for i = 0 to (fftSize/2)-1 {
-    mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
+    //mag = absC(makeComplex((cast_num(bufR[i])::Float),(cast_num(bufI[i])::Float)));
+    mag = complexNorm((cast_num(bufR[i])::Float),
+                      (cast_num((bufI[i]::Int16))::Float));
     if (mfccFilterWeightsEvenIdx[i] > 0) then {
       earmag[mfccFilterWeightsEvenIdx[i]-1] := 
         earmag[mfccFilterWeightsEvenIdx[i]-1] +
@@ -156,23 +162,118 @@ fun mfcc(win) {
   };
 
   for i = 0 to totalFilters-1 {
-    earmag[i] := logF(earmag[i])/logF(10.0);
-  };
+    earmag[i] := mylog(earmag[i]) / mylog(10.0);
+  };  
+}
+
+mfcc :: (Array Int16, Array Int16, Array Float, Array Int16) -> Array Float;
+fun mfcc(bufR, bufI, earmag, win) {
+  
+  start = (fftSize-windowSize) / 2;
+
+  preemphasize(start, bufR, win);
+  hamming(start, bufR, win);
+
+  // fft
+  fix_fft(bufR,bufI,9,false);
+
+  // compute earmag
+  earmagfn(bufR, bufI, earmag);
 
   earmag
 }
 
-BASE <- iterate w in s1 {
-  e = mfcc(toArray(w));
-  for i = 0 to totalFilters-1 { 
-    println(e[i]);
-  };
-  print("\n"); 
-  cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
-  println("#cep1 "++cep1);
+//============================================================
 
-  emit cep1;
+using TOS;
+
+
+file :: Stream (Array Int16);
+file = (readFile("./snip.raw", "mode: binary skipbytes: 2",
+		    timer(819.20 / 255.0))
+      :: Stream Int16)
+    .arrwindow(windowSize);
+
+
+// This reads from the audio board:
+/*
+signedones = Array:make(windowSize, 0);
+sensor = smap(fun(arr) {
+    led1Toggle();
+    for i = 0 to windowSize-1 {
+      signedones[i] := (cast_num(arr[i]) :: Int16);
+    };
+    signedones
+  }, read_telos_audio(windowSize, 256 / 4));
+*/
+// Pick which one you want:
+//Node:src = sensor;
+Node:src = file;
+
+// Statically allocate the storage:
+// real and imaginary vectors
+
+bufR :: Array Int16 = Array:make(fftSize,0);
+bufI :: Array Int16 = Array:make(fftSize,0);
+emag = Array:make(totalFilters,0.0);
+
+PRINTDBG = false
+
+
+cleared = iterate arr in Node:src {
+
+  //strt = realtime();
+  //print("Running..."++strt++"\n");
+
+  Array:fill(bufR, 0);
+  Array:fill(bufI, 0);
+  Array:fill(emag, 0.0);
+
+  emit(bufR,bufI,emag,arr);
 }
+
+preemph = iterate (bufR,bufI,emag,win) in cleared {
+  start = (fftSize-windowSize) / 2;
+  preemphasize(start, bufR, win);
+
+  emit(start,bufR,bufI,emag,win);
+}
+
+hamm = iterate (start,bufR,bufI,emag,win) in preemph {
+  hamming(start, bufR, win);
+  emit(start,bufR,bufI,emag,win);
+}
+
+freq = iterate (start,bufR,bufI,emag,win) in hamm {
+  // fft
+  fix_fft(bufR,bufI,9,false);
+  emit(start,bufR,bufI,emag,win);
+}
+
+  //led2Toggle();
+  //wserror("ERRR\n");
+
+emg = iterate (start,bufR,bufI,emag,win) in freq {
+  // compute earmag
+  earmagfn(bufR, bufI, emag);
+  emit(start,bufR,bufI,emag,win);
+}
+
+ceps = iterate (start,bufR,bufI,emag,win) in emg {
+  cep1 = Array:fold(fun(x,y)(x+y),0.0,emag);
+
+  if PRINTDBG then {
+    for i = 0 to totalFilters-1 { 
+      println(emag[i]);
+    };
+    print("\n"); 
+    print("#cep1 "++cep1++"\n");
+  };
+  emit cep1;
+  //emit 99;
+}
+
+main = ceps
 
 // preEmphasized = filter([1 -.97], 1, input);
 //    x(n) - x(n-1)*.97

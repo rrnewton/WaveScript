@@ -144,7 +144,7 @@ fun mfcc(bufR, bufI, earmag, win) {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
   };
 
-  println("Post hamming: "++bufR);
+  //println("Post hamming: "++bufR);
 
   // fft
   fix_fft(bufR,bufI,9,false);
