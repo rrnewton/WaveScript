@@ -182,15 +182,25 @@ iterate seg in s {
     earmag[i] := logF(earmag[i])/logF(10.0);
   };
 
-  cep1 = Array:fold(fun(x,y)(x+y),0.0,earmag);
-  println("#cep1 "++count++" "++cep1);
+  // compute DCT
+  dct = Array:make(cepstralCoefficients,0.0);
+  for k = 0 to cepstralCoefficients - 1 {
+    for n = 0 to totalFilters - 1 {
+      ang = const_PI / (cast_num(totalFilters)::Float) *
+            ((cast_num(n)::Float) + 0.5) * 
+             (cast_num(k)::Float);
+      dct[k] := dct[k] + earmag[n] * cos(ang);
+    }
+  }    
 
-  emit(earmag);
+  println("#cep1 "++count++" "++dct[0]);
+
+  emit(dct);
 }
 }}
 
 BASE <- iterate w in mfcc(s1) {
-  for i = 0 to totalFilters-1 { 
+  for i = 0 to cepstralCoefficients-1 { 
     println(w[i]);
   };
   print("\n"); 
