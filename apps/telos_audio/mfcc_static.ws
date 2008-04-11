@@ -144,6 +144,8 @@ fun mfcc(bufR, bufI, earmag, win) {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
   };
 
+  println("Post hamming: "++bufR);
+
   // fft
   fix_fft(bufR,bufI,9,false);
 
@@ -176,15 +178,23 @@ fun mfcc(bufR, bufI, earmag, win) {
 
 using TOS;
 
-
 file :: Stream (Array Int16);
 file = (readFile("./snip.raw", "mode: binary skipbytes: 2",
 		    timer(819.20 / 255.0))
       :: Stream Int16)
     .arrwindow(windowSize);
 
+/*
+// This reads with sigsegs:
+file = smap(toArray, (readFile("./snip.raw", 
+	       "mode: binary  repeats: 0 "++
+	       "skipbytes: 2  window: 256 offset: 0", 
+	       timer(819.20 / 255.0))
+      :: Stream (Sigseg (Int16))));
+*/
 
 // This reads from the audio board:
+/*
 signedones = Array:make(windowSize, 0);
 sensor = smap(fun(arr) {
     led1Toggle();
@@ -193,10 +203,11 @@ sensor = smap(fun(arr) {
     };
     signedones
   }, read_telos_audio(windowSize, 256 / 4));
+*/
 
 // Pick which one you want:
-Node:src = sensor;
-//Node:src = file;
+//Node:src = sensor;
+Node:src = file;
 
 // Statically allocate the storage:
 // real and imaginary vectors
@@ -205,12 +216,12 @@ bufR :: Array Int16 = Array:make(fftSize,0);
 bufI :: Array Int16 = Array:make(fftSize,0);
 earmag = Array:make(totalFilters,0.0);
 
-PRINTDBG = false
+PRINTDBG = true
 
 main = iterate arr in Node:src {
 
-  strt = realtime();
-  print("Running..."++strt++"\n");
+  //strt = realtime();
+  //print("Running..."++strt++"\n");
 
   Array:fill(bufR, 0);
   Array:fill(bufI, 0);
@@ -219,13 +230,12 @@ main = iterate arr in Node:src {
   // Writes earmag:
 
   e = mfcc(bufR, bufI, earmag, arr);
-  led2Toggle();
+  //led2Toggle();
 
-  print("... fin "++ realtime()-strt ++"mfcc\n");
+  //print("... fin "++ realtime()-strt ++"mfcc\n");
 
   //wserror("ERRR\n");
 
-  /*
   cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
 
   if PRINTDBG then {
@@ -235,9 +245,10 @@ main = iterate arr in Node:src {
     print("\n"); 
     print("#cep1 "++cep1++"\n");
   };
+
   emit cep1;
-  */
-  emit 99;
+
+  //emit 99;
 }
 
 

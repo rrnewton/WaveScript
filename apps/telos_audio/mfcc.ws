@@ -133,6 +133,8 @@ fun mfcc(win) {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
   };
 
+  println("Post hamming: "++bufR);
+
   // fft
   fix_fft(bufR,bufI,9,false);
 
@@ -168,6 +170,8 @@ BASE <- iterate w in s1 {
   print("\n"); 
   cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
   println("#cep1 "++cep1);
+
+  emit cep1;
 }
 
 // preEmphasized = filter([1 -.97], 1, input);

@@ -1525,6 +1525,9 @@ int main(int argc, char **argv)
 		"}\n"
 		"fseek(",handle", ",offset", SEEK_SET);\n"
 		))]
+
+	    [skipcmd (list "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n")]
+	    
 	    [state (make-lines `("FILE* ",handle";\n"))]
 	    [_buf (Var self 'buf)]
 	    [maintext ;; Code for the funcion that drives the file reading.
@@ -1555,10 +1558,12 @@ int main(int argc, char **argv)
 				  ;; Have to interleave reading and skipping forward:
 				  (block `("for (i=0; i<",(number->string winsize)"; i++)")
 					 (list (readcmd 1 `("(",_buf"+i)"))
-					       "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n"))
+					       skipcmd))
 				  ;; Otherwise can do one read:
 				  (readcmd winsize "buf"))
-			      (readcmd 1 (** "&" _buf)))))
+			      (list (readcmd 1 (** "&" _buf))
+				    (if (> skipbytes 0) skipcmd ""))
+			      )))
 		     
 		     ;; Now with that nasty scanf finished we still
 		     ;; have to put the strings into the right fields:
@@ -2826,9 +2831,9 @@ event void Timer000.fired() {
 ;(__specreplace decr-local-refcount <java> (self ty ptr) (make-lines ""))
 ;(__specreplace incr-heap-refcount <java> (self ty ptr) (make-lines ""))
 ;(__specreplace decr-heap-refcount <java> (self ty ptr) (make-lines ""))
-(__spec gen-incr-code <java> (self ty ptr msg) (make-lines ""))
-(__spec gen-decr-code <java> (self ty ptr)     (make-lines ""))
-(__spec gen-free-code <java> (self ty ptr)     (make-lines ""))
+(__specreplace gen-incr-code <java> (self ty ptr msg) (make-lines ""))
+(__specreplace gen-decr-code <java> (self ty ptr)     (make-lines ""))
+(__specreplace gen-free-code <java> (self ty ptr)     (make-lines ""))
 
 (__specreplace array-constructor-codegen <java> (self len init ty kont)
   (define tmp (unique-name "tmparr"))
