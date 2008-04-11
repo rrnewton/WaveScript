@@ -115,8 +115,19 @@ s1 = (readFile("./snip.raw",
 	       timer(819.20 / 255.0))
       :: Stream (Sigseg (Int16)));
 
-fun mfcc(win) {
-  
+fun abs(s) {if (s < 0) then 0-s else s};
+
+fun mfcc(s) {
+
+iterate seg in s {
+
+  state {
+    ewma = 0.0;
+    count = 0;
+  }
+   
+  win = toArray(seg);
+
   // real and imaginary vectors
   bufR = Array:make(fftSize,0);
   bufI = Array:make(fftSize,0);
@@ -128,10 +139,21 @@ fun mfcc(win) {
     bufR[i] := FIX_MPY(win[i-start-1],FIX_F2I(0.0-0.97)) + win[i-start];    
   };
 
+  max = Mutable:ref(0);
+  min = Mutable:ref(0);
+
   // hamming window
   for i = start to start+windowSize-1 {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
+    if (bufR[i] > max) then max := bufR[i];
+    if (bufR[i] < min) then min := bufR[i];
   };
+
+  env = max-min;
+  count := count + 1;
+  println("&max= "++count++" "++env);  
+  ewma := 0.95*ewma + 0.05*(cast_num(env)::Float);
+  if ((cast_num(env)::Float) > ewma * 1.5) then {
 
   //println("Post hamming: "++bufR);
 
@@ -159,19 +181,18 @@ fun mfcc(win) {
     earmag[i] := logF(earmag[i])/logF(10.0);
   };
 
-  earmag
-}
+  cep1 = Array:fold(fun(x,y)(x+y),0.0,earmag);
+  println("#cep1 "++count++" "++cep1);
 
-BASE <- iterate w in s1 {
-  e = mfcc(toArray(w));
+  emit(earmag);
+}
+}}
+
+BASE <- iterate w in mfcc(s1) {
   for i = 0 to totalFilters-1 { 
-    println(e[i]);
+    println(w[i]);
   };
   print("\n"); 
-  cep1 = Array:fold(fun(x,y)(x+y),0.0,e);
-  println("#cep1 "++cep1);
-
-  emit cep1;
 }
 
 // preEmphasized = filter([1 -.97], 1, input);
