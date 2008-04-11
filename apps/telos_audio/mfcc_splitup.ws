@@ -27,7 +27,8 @@ totalFilters = linearFilters + logFilters;
 // all the interesting frequencies.  Lower, center, and upper band
 // edges are all consequtive interesting frequencies. 
 
-mylog = logF; mysqrt = sqrtF
+mylog = logF; 
+mysqrt = sqrtF
 //fun mylog(x) x; fun mysqrt(x) x
 
 lowLogFreq = lowestFrequency + ((linearFilters-1) * linearSpacing);
@@ -129,10 +130,12 @@ fun complexNorm(r,i) {
 }
 
 
+negpoint97 = FIX_F2I(0.0-0.97);
+
 fun preemphasize(start, bufR, win) {
   // preemphasize FIR filter into the buffer
   for i = start+1 to start+windowSize-1 {
-    bufR[i] := FIX_MPY(win[i-start-1],FIX_F2I(0.0-0.97)) + win[i-start];    
+    bufR[i] := FIX_MPY(win[i-start-1], negpoint97) + win[i-start];    
   };
 }
 
@@ -166,23 +169,6 @@ fun earmagfn(bufR, bufI, earmag) {
   };  
 }
 
-mfcc :: (Array Int16, Array Int16, Array Float, Array Int16) -> Array Float;
-fun mfcc(bufR, bufI, earmag, win) {
-  
-  start = (fftSize-windowSize) / 2;
-
-  preemphasize(start, bufR, win);
-  hamming(start, bufR, win);
-
-  // fft
-  fix_fft(bufR,bufI,9,false);
-
-  // compute earmag
-  earmagfn(bufR, bufI, earmag);
-
-  earmag
-}
-
 //============================================================
 
 using TOS;
@@ -195,20 +181,21 @@ file = (readFile("./snip.raw", "mode: binary skipbytes: 2",
     .arrwindow(windowSize);
 
 
+namespace Node {
+
 // This reads from the audio board:
-/*
 signedones = Array:make(windowSize, 0);
 sensor = smap(fun(arr) {
-    led1Toggle();
+    //led1Toggle();
     for i = 0 to windowSize-1 {
       signedones[i] := (cast_num(arr[i]) :: Int16);
     };
     signedones
-  }, read_telos_audio(windowSize, 256 / 4));
-*/
+}, read_telos_audio(windowSize, 256 / 4)); // READ VERY SLOW FOR NOW
+
 // Pick which one you want:
-//Node:src = sensor;
-Node:src = file;
+src = sensor;
+//Node:src = file;
 
 // Statically allocate the storage:
 // real and imaginary vectors
@@ -219,9 +206,7 @@ emag = Array:make(totalFilters,0.0);
 
 PRINTDBG = false
 
-
 cleared = iterate arr in Node:src {
-
   //strt = realtime();
   //print("Running..."++strt++"\n");
 
@@ -241,21 +226,27 @@ preemph = iterate (bufR,bufI,emag,win) in cleared {
 
 hamm = iterate (start,bufR,bufI,emag,win) in preemph {
   hamming(start, bufR, win);
+
+  led2Toggle();
   emit(start,bufR,bufI,emag,win);
 }
 
 freq = iterate (start,bufR,bufI,emag,win) in hamm {
   // fft
   fix_fft(bufR,bufI,9,false);
+
+  led1Toggle();
+
   emit(start,bufR,bufI,emag,win);
 }
 
-  //led2Toggle();
-  //wserror("ERRR\n");
 
 emg = iterate (start,bufR,bufI,emag,win) in freq {
   // compute earmag
   earmagfn(bufR, bufI, emag);
+
+  led0Toggle();
+
   emit(start,bufR,bufI,emag,win);
 }
 
@@ -273,7 +264,9 @@ ceps = iterate (start,bufR,bufI,emag,win) in emg {
   //emit 99;
 }
 
-main = ceps
+} // End namespace
+
+main = iterate _ in Node:emg { emit 8889 }
 
 // preEmphasized = filter([1 -.97], 1, input);
 //    x(n) - x(n-1)*.97

@@ -5,8 +5,11 @@
 // Get a pointer to the *start* of the thing (the pointer to free)
 #define ARRPTR(ptr)        (((uint16_t*)ptr)-1)
 
-//#define wserror(str)  call Leds.led0On()
-#define wserror(str)  { int i; for(i=0; ; i++) call Leds.led0Toggle(); }
+#define wserror(str)  { int j; while (1) { call Leds.led0Toggle(); call Leds.led1Toggle(); \
+                               for(j=0;j<1000;j++) { call Leds.led2Toggle(); }} }
+
+//#define wserror(str) {call Leds.led0On();call Leds.led1On();call Leds.led2On(); while(1) {}}
+
 
 // This seems insane to me, but the memcpy implementation on Telos
 // doesn't work for unaligned addresses!  Here's a hack:

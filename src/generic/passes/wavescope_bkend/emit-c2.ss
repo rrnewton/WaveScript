@@ -740,7 +740,8 @@
       [(let . ,_) (Let self _ emitter (lambda (x) ((Effect self emitter) x)))]
       ;; ========================================
 
-      [(__wserror_ARRAY ,[Simp -> str]) (make-lines (list "wserror("str")\n"))]
+      [(__wserror_ARRAY ,[Simp -> str]) 
+       (make-lines (list "wserror("str")\n"))]
 
       ))))
 
@@ -1948,7 +1949,7 @@ int main(int argc, char **argv)
        [(Stream (Array ,elt)) 
 	(list "uint16_t bytesize = sizeof(uint16_t) + (sizeof("(Type self elt)") * ARRLEN(x));\n"
 	      (block "if (bytesize > call Packet.maxPayloadLength()) "
-		     TOS-signal-error)
+		     "wserror(\"message exceeds max message payload\")")
 	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
        [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
 			   "my_memcpy(payload, &x, sizeof(x));")]))
@@ -2210,8 +2211,6 @@ event void PrintfControl.stopDone(error_t error) {
 #endif
 ")))
 
-(define TOS-signal-error "call Leds.led0On();\n")
-
 (define __Effect
   (specialise! Effect <tinyos>
     (lambda (next self emitter)
@@ -2229,7 +2228,7 @@ event void PrintfControl.stopDone(error_t error) {
 			   ;"call Leds.led0Toggle();\n"
 			   )))]
 	  ;; Signal an error condition, currently just turns on a red light.
-	  [(__wserror_ARRAY ,_) (make-lines TOS-signal-error)]
+	  ;[(__wserror_ARRAY ,_) (make-lines TOS-signal-error)]
 	  [,oth 
 	   (let ([oper (next)])
 	     (ASSERT procedure? oper)
