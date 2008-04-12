@@ -796,15 +796,15 @@
        ;; This doesn't change the runtime rep at all.
        [(Mutable:ref ,x) (kont (Simple self x))]
        [(begin ,e) (recur e)]
-       [(begin ,[(Effect self emitter) -> e1] ,e* ...)
+       [(begin ,e1 ,e* ...)
+	(define first ((Effect self emitter) e1))
 	(define rest 
 	  (begin 
-	    ;(inspect (cons 'e1 e1))
 	    (recur `(begin ,@e*))))
 	;(inspect (cons 'rest rest))
-	(ASSERT lines? e1)
+	(ASSERT lines? first)
 	(ASSERT lines? rest)
-	(append-lines e1 rest)]
+	(append-lines first rest)]
        ;; This splits the continuation, using it twice.
        [(if ,[Simp -> test] ,conseq ,altern)
 	(let-values ([(lines newk) (kont split-msg)])
@@ -1464,7 +1464,7 @@ int main(int argc, char **argv)
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define emitter (Emit self down*))
+     (define (emitter x) ((Emit self down*) x))
      (match itercode
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
@@ -1479,7 +1479,7 @@ int main(int argc, char **argv)
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
 	     (incoming ,a ,b) (outgoing ,down* ...))
-     (define emitter (Emit self down*))
+     (define (emitter x) ((Emit self down*) x))
      (define arg (unique-name "arg"))
      (values (make-lines 
 	      (list (block `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")")
@@ -1878,6 +1878,7 @@ int main(int argc, char **argv)
     [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
       (match ty
 	[(Array Char)
+	 ;; FIXME: Shouldn't neglect length slot just because it's a char array:
 	 ;; Strip out any null characters??
 	 (let* ([ls (vector->list vec)]
 		[ls2 ;; Hack, a null terminator on the end is redundant for a string const:
@@ -1888,15 +1889,27 @@ int main(int argc, char **argv)
 	   (values ;(make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
 	    (make-lines (format "const char* ~a = ~s;\n" (text->string (Var self lhs)) str))
 	    (make-lines "")))]
+
+	;; Here we need to include the length slot:
 	[(Array ,num) (guard (memq num num-types))
+	 (define eltsize (datum->width num '()))
+	 (define tmp (Var self (unique-name "tmptoparr")))
+	 (define ARRLENSIZE 2)
+	 (define padelts (inexact->exact (ceiling (/ ARRLENSIZE eltsize)))) ;; how many do we need to pad?
+	 (define vr (text->string (Var self lhs)))
+	 (define _num (Type self num))
 	 (values 
 	  (make-lines 
-	   (list (format "const ~a ~a[~a] = " (Type self num) (text->string (Var self lhs)) (vector-length vec))
+	   (list (format " ~a* ~a;\n" _num vr)
+		 (format " ~a ~a[~a] = " _num tmp (+ padelts (vector-length vec)))
 		 "{ "
 		 (insert-between ", " 
-				 (map (lambda (x) (Const self x id)) (vector->list vec)))
+				 (append 
+				  (make-list padelts "0")
+				  (map (lambda (x) (Const self x id)) (vector->list vec))))
 		 " };\n\n"))
-	  (make-lines ""))])]
+	  (make-lines (list (format "~a = ~a + ~a;\n" vr tmp padelts)
+			    "SETARRLEN("vr", "(number->string (vector-length vec))");\n")))])]
 
     ;; This is TINYOS specific currently:
     ;; gen-incr-code
@@ -1907,8 +1920,8 @@ int main(int argc, char **argv)
 	(define _elt (Type self elt))
 	(define _lhs (Var self lhs))
 	(values ;(make-lines `(,(Type self elt)" ",(Var self lhs)"[",n"];\n"))
-	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + sizeof(uint16_t)];\n"
-				  _elt"* "_lhs" = ("_elt" *)("tmp" + sizeof(uint16_t));\n"				  
+	        (make-lines (list "char "tmp"[sizeof("_elt") * "n" + ARRLENSIZE];\n"
+				  _elt"* "_lhs" = ("_elt" *)("tmp" + ARRLENSIZE);\n"
 			      ))
 		(make-lines (list 
 			     ;"((uint16_t*)"tmp")[0] = "n";\n"
@@ -1916,7 +1929,8 @@ int main(int argc, char **argv)
 			     (if x 
 				 (match (peel-annotations x)
 				   [',c (list "// Init static array: \n"
-					      "{ int i; for(i=0; i<"n"; i++) "_lhs"[i] = "(Const self c id)"; }\n")]
+					      "{ int i; for(i=0; i<"n"; i++) "_lhs"[i] = "(Const self c id)"; }\n"
+					      )]
 				   )
 				 "")
 			     )))
@@ -1945,7 +1959,8 @@ int main(int argc, char **argv)
 
    ;(define ampkt (format "AMPacket~a" (slot-ref self 'amsender-count)))
    (define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
-   (define _ty  (match ty [(Stream (Array ,elt)) (Type self elt)] 		      
+   (define is-array? #f)
+   (define _ty  (match ty [(Stream (Array ,elt)) (set! is-array? #t) (Type self elt)]
 		          [(Stream ,elt)         (Type self elt)]))
    ;; Binds bytesize and does memcpy to "payload".
    (define copyit
@@ -1961,13 +1976,13 @@ int main(int argc, char **argv)
 		 "#else\n"
 		 (block "if (bytesize > call Packet.maxPayloadLength()) "
 			err)
-		 "#endif"))
+		 "#endif\n"))
 	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
        [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
 			   "my_memcpy(payload, &x, sizeof(x));")]))
    (define fun (list "
   // CutPoint to server side:
-  void "(Var self out)"("_ty" x) {
+  void "(Var self out)"("_ty(if is-array? "*" "")" x) {
 #ifdef WSRADIOMODE
     "_ty"* payload = ("_ty" *)(call CPacket.getPayload(&radio_pkt, NULL));
 #else
