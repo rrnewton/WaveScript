@@ -28,7 +28,7 @@ using Mutable;
 
 // The CTP knocks out 8 bytes...
 //toparr :: Array Int16 = Array:build((20 / 2) - 1, fun(i) i.gint)
-toparr :: Array Int16 = Array:build(9, fun(i) i.gint)  
+toparr :: Array Int16 = Array:build(9, fun(i) i.gint + 300)
 
 zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
@@ -73,7 +73,8 @@ Node:strm = iterate arr in Node:src  {
   //if id != 1 && foo then emit toparr;
   //if id != 1 then emit toparr else emit zeroarr;
   //if id != 1 then emit toparr;
-  emit zeroarr;
+  //emit zeroarr;
+  if foo then emit toparr;
 
   if nextlvl == epoch then {
     nextlvl := 0;

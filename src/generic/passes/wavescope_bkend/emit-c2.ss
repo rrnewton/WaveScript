@@ -2015,7 +2015,7 @@ int main(int argc, char **argv)
 
     // HACK: assuming ONE cutpoint for now.  And if we're in -split
     // mode, we need to do this here, because printF is assumed to be deactivated.
-    ws_currently_running = 0;\n
+    cleanup_after_traversal();
   }
 "))
    (when (zero? (slot-ref self 'amsender-count))
@@ -2235,7 +2235,7 @@ event void PrintfControl.startDone(error_t error) {
 event void PrintfFlush.flushDone(error_t error) {
   "(slot-ref self 'flushdone)"
   // HACK: ASSUMING That flush only happens AFTER a traversal:
-  ws_currently_running = 0;\n
+  cleanup_after_traversal();
 }
 
 event void PrintfControl.stopDone(error_t error) {
@@ -2388,7 +2388,7 @@ implementation {
   void BASE(char x) {
     #ifdef TOSSIM
       // For tossim we don't do a printf-flush; need to call this here:
-      ws_currently_running = 0;
+      cleanup_after_traversal();
     #else
     #ifdef PRINTFLOADED
       call PrintfFlush.flush();
@@ -2420,6 +2420,7 @@ implementation {
 
   void cleanup_after_traversal() {
 "(indent (slot-ref self 'cleanup-acc) "    ")"
+    ws_currently_running = 0;\n
   }
 }
 "))
@@ -2509,7 +2510,7 @@ implementation {
   flushdispatch = "nulldispatchcode";
   call PrintfFlush.flush(); 
   // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
-  ws_currently_running = 0;\n
+  cleanup_after_traversal();
 }"))
    (values (make-lines fun) '() '()))
 
