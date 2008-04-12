@@ -1947,14 +1947,21 @@ int main(int argc, char **argv)
    (define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
    (define _ty  (match ty [(Stream (Array ,elt)) (Type self elt)] 		      
 		          [(Stream ,elt)         (Type self elt)]))
+   ;; Binds bytesize and does memcpy to "payload".
    (define copyit
      (match ty
        [(Stream (Array ,elt)) 
 	(list "uint16_t bytesize = sizeof(uint16_t) + (sizeof("(Type self elt)") * ARRLEN(x));\n"
-	      (block "if (bytesize > call Packet.maxPayloadLength()) "
-		     ;"wserror(\"message exceeds max message payload\")"
-		     "call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"
-		     )
+	      (let ([err ;"wserror(\"message exceeds max message payload\")"
+		     "call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"])
+		(list 
+		 "#ifdef WSRADIOMODE\n"
+		 (block "if (bytesize > call CPacket.maxPayloadLength()) "
+			err)
+		 "#else\n"
+		 (block "if (bytesize > call Packet.maxPayloadLength()) "
+			err)
+		 "#endif"))
 	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
        [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
 			   "my_memcpy(payload, &x, sizeof(x));")]))
@@ -1962,7 +1969,7 @@ int main(int argc, char **argv)
   // CutPoint to server side:
   void "(Var self out)"("_ty" x) {
 #ifdef WSRADIOMODE
-    "_ty"* payload = ("_ty" *)(call Packet.getPayload(&radio_pkt, NULL));
+    "_ty"* payload = ("_ty" *)(call CPacket.getPayload(&radio_pkt, NULL));
 #else
     "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
 #endif
@@ -1973,8 +1980,8 @@ int main(int argc, char **argv)
     // The collection tree protocol just gives us Send, not AMSend:
 #ifdef WSRADIOMODE
     //call Leds.led0Toggle();
-    if (call "ctpsend".send(&radio_pkt, bytesize) == SUCCESS) {
-      //radio_busy = TRUE;
+    if (!radio_busy && call "ctpsend".send(&radio_pkt, bytesize) == SUCCESS) {
+      radio_busy = TRUE;
     }
     // Note: even if we're sending results up the CTP, we may want 
     // to print messages to the serial port (say for running on motelab).
@@ -2012,6 +2019,7 @@ int main(int argc, char **argv)
 
   WSQuery.RoutingControl -> Collector;
   WSQuery.RootControl -> Collector;
+  WSQuery.CPacket     -> Collector;
 
   // The Collection Tree version ALSO needs a serial interface for the base:
   components SerialActiveMessageC as Serial;
@@ -2041,6 +2049,7 @@ int main(int argc, char **argv)
   uses interface SplitControl as SerialControl;
   uses interface StdControl as RoutingControl;
   uses interface RootControl;
+  uses interface Packet as CPacket;
 #endif
 
 ")))
@@ -2089,6 +2098,7 @@ enum {
    (slot-cons! self 'proto-acc (list "
 
   bool serial_busy = FALSE;
+  bool radio_busy = FALSE;
   //message_t  _initial_pkt_storage;
   //message_t* relay_pkt = &_initial_pkt_storage;
   message_t radio_pkt;
@@ -2105,7 +2115,11 @@ enum {
   }
 
 #ifdef WSRADIOMODE
-  event void "ctpsend".sendDone(message_t* msg, error_t error) {}
+  event void "ctpsend".sendDone(message_t* msg, error_t error) {
+    if (&radio_pkt == msg) {
+      radio_busy = FALSE;
+    } else wserror(\"error in radio interface\")
+  }
   event void AMControl.startDone(error_t err) {
     if (err != SUCCESS) call AMControl.start();
     else {
@@ -2120,25 +2134,22 @@ enum {
 
   // FIXME: THIS IS UNFINISHED:
   event message_t* 
-  "ctprecv".receive(message_t* msg, void* payload, uint8_t len) {
+  "ctprecv".receive(message_t* msg, void* srcpayload, uint8_t len) {
     // We could swap buffers here, but that's an optimization.
     //message_t* temp = serial_pkt;
 
-    "_ty"* dest = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
-    "_ty"* src  = ("_ty" *)(call Packet.getPayload(msg, NULL));
+    "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
+    //"_ty"* src  = ("_ty" *)(call CPacket.getPayload(msg, NULL));
 
     call Leds.led2Toggle();    
     if (! call RootControl.isRoot()) {
       wserror(\"I am not root.  Should not receive CTP messages.\")
     }
 
-    memcpy(dest, src, sizeof("_ty"));
+    my_memcpy(payload, srcpayload, len);
 
-    // Here we swap the buffers:
-    //serial_pkt = msg;   
-    // !serial_busy && 
-    if (call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, 2) == SUCCESS) {
-      //serial_busy = TRUE;
+    if (!serial_busy && call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, len) == SUCCESS) {
+      serial_busy = TRUE;
     }
     //return temp;
     return msg;

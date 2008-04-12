@@ -24,31 +24,33 @@ using TOS;
 //Node:strm = iterate arr in read_telos_audio(200, 100) {
 
 Node:strm = iterate arr in TOS:timer$ 1.0  {
-  //state { cnt = 0 }
+  state { cnt = 0 }
 
-  /*
   led0Toggle();
   led1Toggle();
   led2Toggle();
-  */
 
-/*
   cnt += 1;
   id = getID();
 
   //print("max payload "++ maxPayloadLength() ++"\n");
-  //payload = maxPayloadLength();
+  payload = maxPayloadLength(); // 28 by default.
 
+  dropped = getDroppedInputCount();
 
+  if id != 1 then print("Running on "++id++" cnt "++cnt++"\n");
 
-  //if id != 1 then print("Running on "++id++" cnt "++cnt++"\n");
-  //emit (234, id, cnt, payload);
+  emit (payload, 234, id, cnt, dropped);
+
+  //emit (id, 897+id);
+
   //emit cnt;
   //emit payload;
   //emit id;
-*/
+  //emit 234;
 
-  emit 234;
+  //emit (dropped, payload);
+  //emit (2, 8, 9, 11);
 
 }
 
