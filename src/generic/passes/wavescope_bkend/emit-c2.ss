@@ -2593,7 +2593,7 @@ event void Timer000.fired() {
   (slot-set! self 'include-files '()) ;; Alas, can't reuse this right now.
   (slot-set! self 'import-acc '())
   (slot-set! self 'wserror-acc " 
- void wserror(String msg) {
+ static void wserror(String msg) {
     //throw new Exception(\"wserror: \"+msg);
     System.out.println(\"wserror: \"+msg);
     System.exit(1);

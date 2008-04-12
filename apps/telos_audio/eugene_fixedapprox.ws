@@ -239,6 +239,7 @@ fun GetFeatures(winsize, input) {
   zipN(zip_bufsize, [level4, level5, level6]);
 }
 
+/*
 fun castToFloat(winsize, stm) {
   floats = Array:make(winsize, 0.0);
   iterate arr in stm {
@@ -248,6 +249,7 @@ fun castToFloat(winsize, stm) {
     emit floats;
   }
 }
+*/
 
 fun process_channel(winsize, stm) {
 /*   casted = castToFloat(winsize, stm); */
@@ -263,7 +265,11 @@ namespace Node {
   NUM_FEATURES = 3;
   // For running on the PC:
   prefix = "patient36_file16/";
-  sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
+  //sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
+
+  // A dummy datasource for java:
+  //sensor = [COUNTUP(0).arrwindow(winsize)];
+  sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  

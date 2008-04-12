@@ -327,7 +327,8 @@ namespace Node {
   }
 
   // This is just a dummy datasource for java:
-  inputs = [COUNTUP(0).arrwindow(winsize)];
+  //inputs = [COUNTUP(0).arrwindow(winsize)];
+  inputs = [smap(fun(_) Array:build(winsize, fun(i) Float!i), timer$1)];
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
