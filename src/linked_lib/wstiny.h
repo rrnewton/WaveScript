@@ -1,4 +1,8 @@
 
+
+#define ARRLENTYPE int
+#define ARRLENSIZE sizeof(ARRLENTYPE)
+
 #define ARRLEN(ptr)        (ptr ? ((uint16_t*)ptr)[-1] : 0)
 #define SETARRLEN(ptr,len) ((uint16_t*)ptr)[-1]=len 
 

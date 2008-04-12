@@ -267,8 +267,8 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
-          (left NEG APP DOT MAGICAPPLYSEP COMMA)
-          (right ^ g^ ^_ ^. ^:)
+          (left NEG APP DOT MAGICAPPLYSEP COMMA       )
+          (right ^ g^ ^_ ^. ^:     BANG)
 
     	  (nonassoc in)
 	  )
@@ -612,7 +612,11 @@
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 
 	 ;; It would be nice to have a convenient "cast" syntax.
-	 ;[(LeftParen type RightParen exp) `(assert-type ,$2 (cast_num ,$4))]
+	 ;;[(LeftParen type RightParen exp) `(assert-type ,$2 (cast_num ,$4))]
+	 ;[(type BANG exp) `(assert-type ,$1 (cast_num ,$3))]
+	 ;[(LeftParen type RightParen BANG exp) `(assert-type ,$2 (cast_num ,$5))]
+	 ;[(type BANG exp) `(assert-type ,$1 (cast_num ,$3))]
+	 [(VAR BANG exp) `(assert-type ,$1 (cast_num ,$3))]
 
 	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,(wrap $1-start-pos $1-end-pos $1) ,$3)]

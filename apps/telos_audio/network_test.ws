@@ -52,7 +52,8 @@ Node:strm = iterate arr in Node:src  {
   id = getID();
   
   //arr[0] := cnt;
-  toparr[0] := cast_num(id);
+  //toparr[0] := (cast_num(id) :: Int16);
+  toparr[0] := Int16! id;
   toparr[1] := cur;
   toparr[2] := cap;
   toparr[3] := nextlvl;
@@ -67,8 +68,12 @@ Node:strm = iterate arr in Node:src  {
     foo := true;
   };
 
+  toparr[5] := if foo then 2222 else 1111;
+
   //if id != 1 && foo then emit toparr;
-  if id != 1 then emit toparr else emit zeroarr;
+  //if id != 1 then emit toparr else emit zeroarr;
+  //if id != 1 then emit toparr;
+  emit zeroarr;
 
   if nextlvl == epoch then {
     nextlvl := 0;

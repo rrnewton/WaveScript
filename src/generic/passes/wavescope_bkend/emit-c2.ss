@@ -873,6 +873,7 @@
 	(make-lines 
 	 (list
 	  `("int* ",tmp" = (int*)0;\n")
+	  ;; This will handle Array:null:
 	  (block `("if (",len" > 0)")
 		 `(,tmp" = (int*)((char*)",alloc" + RCSIZE + ARRLENSIZE);\n"
 		       "CLEAR_RC(",tmp");\n"           
@@ -1966,7 +1967,7 @@ int main(int argc, char **argv)
    (define copyit
      (match ty
        [(Stream (Array ,elt)) 
-	(list "uint16_t bytesize = sizeof(uint16_t) + (sizeof("(Type self elt)") * ARRLEN(x));\n"
+	(list "uint16_t bytesize = ARRLENSIZE + (sizeof("(Type self elt)") * ARRLEN(x));\n"
 	      (let ([err ;"wserror(\"message exceeds max message payload\")"
 		     "call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"])
 		(list 
@@ -1977,6 +1978,7 @@ int main(int argc, char **argv)
 		 (block "if (bytesize > call Packet.maxPayloadLength()) "
 			err)
 		 "#endif\n"))
+	      "else if (!x) ((ARRLENTYPE *)payload)[0] = 0;\n"
 	      "else my_memcpy(payload, ARRPTR(x), bytesize);")]
        [(Stream ,_)  (list "uint16_t bytesize = sizeof("_ty");\n"
 			   "my_memcpy(payload, &x, sizeof(x));")]))
