@@ -64,6 +64,7 @@ int wsc2_tuplimit = 10;
 void BASE(char x) { 
   outputcount++;
   if (outputcount == wsc2_tuplimit) exit(0);
+  fflush(stdout);
 }
 
 void parseOptions(int argc, char** argv) {

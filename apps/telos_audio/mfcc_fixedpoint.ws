@@ -240,20 +240,28 @@ using TOS;
 
 // Cheesy, cast and cast back:
 file :: Stream (Array Uint16);
+/*
 file = smap(fun(x) (cast_num(x) :: Uint16),
             (readFile("./snip.raw", "mode: binary skipbytes: 2",
  	  	    timer(819.20 / 255.0))
              :: Stream Int16))
     .arrwindow(windowSize);
+*/
+
+// For java just using a timer:
+file = iterate _ in timer$1 {
+  //state { offset = 0 }
+  emit Array:build(windowSize, fun(i) Uint16!i )
+}
 
 namespace Node {
 
-sensor = read_telos_audio(windowSize, windowSize / 4);
+//sensor = read_telos_audio(windowSize, windowSize / 4);
 
 // Pick which one you want:
 //src = IFPROFILE(file, sensor);
-src = sensor
-//src = file;
+//src = sensor
+src = file;
 
 // This reads from the audio board:
 signedones = Array:make(windowSize, 0);
@@ -336,6 +344,9 @@ ceps = iterate (start,bufR,bufI,emag,win) in emg {
 
 } // End namespace
 
+//main = Node:signed
+//main = Node:freq
+//main = Node:emg
 //main = iterate _ in Node:emg { emit 8889 }
 main = Node:ceps
 

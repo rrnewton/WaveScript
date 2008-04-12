@@ -58,8 +58,15 @@
 		      
 		      [(,inttype (quote ,n))
 		       (guard (memq inttype '(Int16 Int32 Int64 Uint16)))
-		       (ASSERT (constant-typeable-as? n inttype))
-		       `(assert-type ,inttype (quote ,n))]
+		       ;(ASSERT (constant-typeable-as? n inttype))
+		       (let ([squeeze 
+			      (if (constant-typeable-as? n inttype) n
+				  (let ([trunc (truncate-integer inttype n)])
+				    (warning 'degeneralize-arithmetic 
+					     "Constant that doesn't actually fit: ~s type ~s.  Truncating to ~s"
+					     n inttype trunc)
+				    trunc))])
+			 `(assert-type ,inttype (quote ,squeeze)))]
 
 		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]

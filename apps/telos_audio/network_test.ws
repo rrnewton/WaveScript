@@ -33,23 +33,35 @@ toparr :: Array Int16 = Array:build(9, fun(i) i.gint + 300)
 zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
 
-Node:src = TOS:timer$ 10.0;
+// Hardware timer rate:
+maxrate = 200
+step = 5 // Step period down by
+// Epoch in seconds 
+epoch = 60 * maxrate // One minute
+
+//steps = (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 25 30 35 40 45 50 75 100 200)
+
+Node:src = TOS:timer$ maxrate;
 //Node:src = read_telos_audio(14, 100)
 //Node:src = read_telos_audio(100, 200)
-
-epoch = 200
 
 Node:strm = iterate arr in Node:src  {
   state { nextlvl :: Int16 = 0;
           cur :: Int16 = 0;
-          cap :: Int16 = 10;
+          cap :: Int16 = maxrate; // Start off w/ one msg/sec
 	  epochnum :: Int16 = 0;
+	  msgcounter :: Int16 = 0;
 	  }
 
-  led0Toggle();
+  // Just die at the end:
+  if cap < 1 then wserror("alldone");
+
+  //led0Toggle();
   led1Toggle();
-  led2Toggle();
+  //led2Toggle();
   id = getID();
+  //payload = maxPayloadLength(); // 28 by default.
+  dropped = getDroppedInputCount();
   
   //arr[0] := cnt;
   //toparr[0] := (cast_num(id) :: Int16);
@@ -58,38 +70,45 @@ Node:strm = iterate arr in Node:src  {
   toparr[2] := cap;
   toparr[3] := nextlvl;
   toparr[4] := epochnum;
+  toparr[5] := msgcounter;
 
   foo = ref(false);
 
   if cur == cap then {
     cur := 0;
-    if id != 1 then print(".");
+    //if id != 1 then print(".");
     //if id != 1 then emit toparr;
+    msgcounter += 1;
     foo := true;
   };
 
-  toparr[5] := if foo then 2222 else 1111;
+  toparr[6] := maxrate;
+  toparr[7] := Int16! dropped;
+  toparr[8] := if foo then 2222 else 1111;
 
-  //if id != 1 && foo then emit toparr;
+  if id != 1 && foo then emit toparr;
   //if id != 1 then emit toparr else emit zeroarr;
   //if id != 1 then emit toparr;
   //emit zeroarr;
-  if foo then emit toparr;
+  //if foo then emit toparr;
 
   if nextlvl == epoch then {
     nextlvl := 0;
-    cap := cap - 1;
+    msgcounter := 0;
+
+    // HACK: two different steps:
+    if cap < 20 
+    then cap := cap - 1
+    else cap := cap - step;
+
     epochnum += 1;
-    if id != 1 then print("New epoch "++epochnum++" cap is "++cap++"\n");
+    //if id != 1 then print("New epoch "++epochnum++" cap is "++cap++"\n");
   };
 
   nextlvl += 1;
   cur += 1;
   
   //if id > 1 then emit toparr;
-
-  //payload = maxPayloadLength(); // 28 by default.
-  //dropped = getDroppedInputCount();
 
   //if id != 1 then print("Running on "++id++" cnt "++cnt++"\n");
   //if id != 1 then print("arr "++toparr++"\n");

@@ -6,11 +6,12 @@
 MOTES=`motelist | grep tmote | awk '{ print $2 }'`
 
 function doit() {
- id=$1
- mote=$2
+ bsl=$1
+ id=$2
+ mote=$3
  echo; echo Programming $mote with nodeID $id.
  echo ============================================================; echo
- make -f Makefile.tos2 telosb bsl,$mote install,$id
+ make -f Makefile.tos2 telosb $bsl,$mote install,$id
 }
 
 case "$1" in
@@ -25,12 +26,47 @@ case "$1" in
     echo "Programming ALL nodes."; 
     idcntr=1
     for mote in $MOTES; do
-      doit $idcntr $mote
+      doit bsl $idcntr $mote
       idcntr=$(($idcntr + 1))
     done  
   ;;
+
+  "net" )
+    id=1;
+    for num in 1 2 3 4 5 6 7 8 9 10 11 12 ; do # 14
+      id = $(($id+1));
+      doit netbsl $id tmote-"$num".csail.mit.edu:10001
+      id = $(($id+1));
+      doit netbsl $id tmote-"$num".csail.mit.edu:10002
+    done
+  ;;
   * )
-  doit $(($1+1)) /dev/ttyUSB$1
+  doit bsl $(($1+1)) /dev/ttyUSB$1
   ;;
 esac
 
+# 2	G914	tmote-1		10001
+# 3	G914	tmote-1		10002
+# 4	G916	tmote-2		10001
+# 1	G916	tmote-2		10002
+# 8	G918	tmote-3		10001
+# 5	G918	tmote-3		10002
+# 6	G920	tmote-4		10001
+# 7	G920	tmote-4		10002
+# 11	G938	tmote-5		10001
+# 12	G938	tmote-5		10002
+# 19	G936	tmote-6		10001
+# 20	G936	tmote-6		10002
+# 21	G934	tmote-7		10001
+# 22	G934	tmote-7		10002
+# 9	G932	tmote-8		10001
+# 10	G932	tmote-8		10002
+# 17	G924	tmote-9		10001
+# 18	G924	tmote-9		10002
+# 15	G942	tmote-10	10001
+# 16	G942	tmote-10	10002
+# 13	G940	tmote-11	10001
+# 14	G940	tmote-11	10002
+# 23	G922	tmote-12	10001
+# 24	G922	tmote-12	10002
+# 25	G918	tmote-14	10001

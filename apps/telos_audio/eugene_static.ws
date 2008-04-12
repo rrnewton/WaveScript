@@ -315,7 +315,7 @@ namespace Node {
   //sensor = smap(toArray, (readFile(prefix++"FT10-T8-short.txt", "mode: binary", timer(2.0)) :: Stream Int16).window(winsize));
 
   inputs :: List (Stream (Array Float));
-  inputs = {
+  __inputs = {
     prefix = "patient36_file16/";
     //postfix = "-short.txt";
     postfix = ".txt";
@@ -327,7 +327,7 @@ namespace Node {
   }
 
   // This is just a dummy datasource for java:
-  //inputs = [COUNTUP(0).arrwindow(winsize)];
+  inputs = [COUNTUP(0).arrwindow(winsize)];
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  

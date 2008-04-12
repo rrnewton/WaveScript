@@ -1120,7 +1120,6 @@
 
 (begin 
   ;; The below method is expensive, but gives us consistent overflow behavior.
-
   (define (overflow-add op pow)
     (let* ([base       (expt 2 pow)]
 	   [basesub    (expt 2 (sub1 pow))]

@@ -143,6 +143,11 @@ public class WSPhoneSetup
       //rc.setRecordSizeLimit(100000);
 
       networkStream = new TCPStream();
+      
+    } catch (Exception e) {
+    	mMainForm.append(new StringItem(null, "!4!"+e.toString()));
+    } try {
+
 
       // Check on that TCP connection:
       mMainForm.append(new StringItem(null, "tcps="+networkStream.getTcpState()+"."));
@@ -150,10 +155,17 @@ public class WSPhoneSetup
 
       // RRN: Plug the output stream into the WS Query:
       theQuery = new WSQuery(networkStream);
-      //theQuery.setOut(networkStream);
+      //theQuery.setOut(networkStream);      
+      
+      // Give the query access to the form for on-the-phone printing:
+      theQuery.setForm(mMainForm);
 
       // RRN: Run the query.
       theQuery.main(0,null);
+
+    } catch (Exception e) {
+    	mMainForm.append(new StringItem(null, "!3!"+e.toString()));
+    } try {
 
       /*
       mMainForm.append(new StringItem(null, "RRN: MANUALLY HACKING SOME OUTPUT\n"));
@@ -176,7 +188,7 @@ public class WSPhoneSetup
       mMainForm.append(new StringItem(null, "tcps="+networkStream.getTcpState()+".\n"));
 
     } catch (Exception e) {
-    	mMainForm.append(new StringItem(null, "!4!"+e.toString()));
+    	mMainForm.append(new StringItem(null, "!2!"+e.toString()));
     }
     
     

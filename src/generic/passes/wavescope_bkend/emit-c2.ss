@@ -1662,7 +1662,7 @@ int main(int argc, char **argv)
 							       
 				#;
 				(map (lambda (definc) (list "#include \""definc"\"\n"))
-				  (slot-ref self 'default-includes))				
+				  (slot-ref self 'default-includes))		
 				
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
@@ -2586,12 +2586,18 @@ event void Timer000.fired() {
 
 ;;================================================================================
 
-(define-class <java> (<emitC2>) ())
+(define-class <java> (<emitC2>) (wserror-acc import-acc))
 
 (__spec initialise <java> (self prog)
   ;;(slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
-  (slot-set! self 'include-files '())
-  )
+  (slot-set! self 'include-files '()) ;; Alas, can't reuse this right now.
+  (slot-set! self 'import-acc '())
+  (slot-set! self 'wserror-acc " 
+ void wserror(String msg) {
+    //throw new Exception(\"wserror: \"+msg);
+    System.out.println(\"wserror: \"+msg);
+    System.exit(1);
+ }\n"))
 
 ;; Java GC replaces our memory management.
 (define __build-free-fun-table!
@@ -2778,7 +2784,7 @@ event void Timer000.fired() {
 
 (__specreplace BuildOutputFiles <java> (self includes freefundefs state ops init driver)  
   ;; We can store this in a separate file at some point:
-  (define header "
+  (define header (list "
   void parseOptions(int argc, String[] argv) {}
 
   private int wsjava_tuplimit = 10;
@@ -2789,13 +2795,10 @@ event void Timer000.fired() {
     if (outputcount == wsjava_tuplimit) System.exit(0);
   }
 
-  void wserror(String msg) {
-    //throw new Exception(\"wserror: \"+msg);
-    System.out.println(\"wserror: \"+msg);
-    System.exit(1);
-  }
+"(slot-ref self 'wserror-acc)"
 
-  private PrintStream outstrm;
+  // Assuming there will only be one query, thus this is static:
+  static private PrintStream outstrm;
   public WSQuery(OutputStream out) { outstrm = new PrintStream(out); }
 
   // Can't use generics because I don't think Jave ME supports java 5.
@@ -2821,14 +2824,20 @@ event void Timer000.fired() {
 
   public static void main(String[] argv) {
     WSQuery theQuery = new WSQuery(System.out);
-    theQuery.main(argv.length, argv);
+    try {
+      theQuery.main(argv.length, argv);
+    } catch (Exception e) {
+  	wserror(\"!mainfail!\"+e.toString());
+    }
   }
 
-")
+"))
   (define bod 
     (text->string
      (list includes 
 	   "import java.io.*;\n"
+	   (slot-ref self 'import-acc)
+	   "\n\n"
 	   (block "public class WSQuery"	   
 		  (list 
 		   header
@@ -2905,14 +2914,36 @@ event void Timer000.fired() {
 
 (define-class <javaME> (<java>) ())
 
-#;
+
+;; Changing wserror to print to the phone:
+(__spec initialise <javaME> (self prog)
+ (slot-set! self 'include-files '())
+ (slot-set! self 'import-acc
+	    (list "// For the 'Form' class:\n"
+		  "import javax.microedition.lcdui.*;\n"))
+ (slot-set! self 'wserror-acc " 
+ static void wserror(String msg) {
+    form.append(new StringItem(null, \"!wserror!\" + msg));
+    outstrm.print(\"!wserror!\" + msg);
+ }
+
+ static private Form form;
+ public void setForm(Form f) { form = f; }
+
+"))
+
 (define ____Effect 
   (specialise! Effect <javaME>
     (lambda (next self emitter)
+      (define (Simp x)  (Simple self x))
       (lambda (xp)
 	(match xp
 	  [(print ,[(TyAndSimple self) -> ty x])
-	   (make-lines `("System.out.print(",x");\n"))]
+	   (make-lines `("outstrm.print(",x");\n"
+			 "// For now let's print to the phone also:\n"
+			 "form.append(new StringItem(null, \"\" + ",x"));\n"
+			 ))]
+	  [(wserror ,[Simp -> str]) (make-lines (list "wserror("str");\n"))]
 	  [,oth ((next) oth)])))))
 
 ;; Replace just the thunk portion of the <java> config:

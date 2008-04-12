@@ -104,6 +104,11 @@
 		      ;; We also need to make sure that we reset the REGIMENTD parameter:
 		      ;; It might not be the same on the system loading the heap as the one compiling it!
 		      (REGIMENTD (default-regimentd))
+
+		      ;; Let's be nice and restore the command-line-arguments:
+		      ;(inspect (vector args (command-line-arguments)))
+		      ;(command-line-arguments (cdr args))
+
 		      (apply main args)))
 
 ;; If we're running from the heap and we're running in script mode,

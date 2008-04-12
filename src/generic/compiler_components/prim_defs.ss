@@ -32,6 +32,7 @@
            )
   (provide 
            num-types ;; List of the numeric types
+	   truncate-integer
 
            regiment-type-aliases
 	   regiment-basic-primitives
@@ -91,6 +92,16 @@
 		    ;; Following haskell's example and having "words" rather than uints:
 		    ;Word16
 		    ))
+
+;; Force a number into a smaller integer size:
+(define (truncate-integer ty n)
+  (match ty
+    [Int16 (- (modulo (+ n (expt 2 15)) (expt 2 16)) (expt 2 15))]
+    [Int32 (- (modulo (+ n (expt 2 31)) (expt 2 32)) (expt 2 31))]
+    [Int64 (- (modulo (+ n (expt 2 63)) (expt 2 64)) (expt 2 63))]
+    [Uint16 (modulo n (expt 2 16))]
+    [Int (error 'truncate-integer "can't truncate to type Int -- platform dependent!")]
+    ))
 
 ;=============================================================
 
