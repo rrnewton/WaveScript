@@ -1208,9 +1208,12 @@
   (define min64  (s:- max64))
   (define (__cast_num from to num) 
     (define (signed_int base max min num)
-      (let ([int (if (and (integer? num) (exact? num))
-		     num
-		     (inexact->exact (floor num)))])
+      (let ([int (cond
+		  [(and (integer? num) (exact? num)) num]
+		  [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
+		  [else 
+		   ;(printf "Missed: ~s\n" num)
+		   (inexact->exact (floor num))])])
 	(let ([result (modulo int base)])
 	  (cond
 	   [(>= result max)  (s:- result base)]

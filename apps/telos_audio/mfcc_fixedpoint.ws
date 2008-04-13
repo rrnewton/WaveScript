@@ -264,7 +264,9 @@ namespace Node {
 //src = file;
 
 // Dummy source for java:
-src = smap(fun(_) Array:build(windowSize, fun(i) Int16!i), timer$1);
+//src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
+outbuf = Array:build(windowsize, fun(i) (99:Int16));
+src = iterate _ in timer$ 40 { emit outbuf };
 
 // This reads from the audio board:
 signedones = Array:make(windowSize, 0);

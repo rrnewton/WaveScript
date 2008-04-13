@@ -1224,16 +1224,14 @@
 (define (emit-lp nodepart floating serverpart)
   ;; Build a table of annotations
   (define annot-table
-  
-    (inspect/continue 
-  (let ([tab (make-default-hash-table 1000)])
+    (let ([tab (make-default-hash-table 1000)])
       (for-each (lambda (op/src)
 		  (and ;(if (not (symbol? (car op/src))) (inspect op/src) #t) ;; Verify that op/src is not source.
 		       (hashtab-set! tab (opname op/src) (op->annotations op/src))))
 	(append (partition->src&ops nodepart)
 		(partition->src&ops floating)
 		(partition->src&ops serverpart)))
-      tab)))
+      tab))
   
   ;; Retrieve the input frequencies so we can translate execution *times* into percent cpu.
   (define input-frequency (partition->frequency nodepart))
@@ -1271,7 +1269,7 @@
 	       ;; FIXME INCORRECT: CURRENTLY ASSUMING 1 SECOND EPOCH:
 	       ;; Percent cpu is measured / alloted, where alloted is clock rate / freq
 	       (let ([frac (/ (cadr entry) (/ (caddr entry) input-frequency))])
-		 (printf "FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
+		 (printf "  FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
 		 (inexact->exact (floor (* frac cpu-granularity))))
 	       
 	       ;; Scheme cpu weights mode:

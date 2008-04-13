@@ -217,3 +217,21 @@ implementation {
 // Alias the default timer primitive:
 //timer = tos_timer;
 Node:timer = TOS:timer;
+
+
+// DUPLICATE CODE:
+// Also, for now we just define unionList using merge:
+fun unionList(ls) {
+  using List; using Mutable; 
+  ptr = ref$ ls;
+  cnt = ref$ 0;
+  acc = ref$ [];
+  while not(is_null(ptr)) {
+    ind = cnt;
+    acc := iterate x in ptr`head { emit(ind, x) } ::: acc;
+    ptr := ptr`tail;
+    cnt += 1;    
+  };
+  fold(merge, acc`head, acc`tail)
+}
+

@@ -236,7 +236,10 @@ fun GetFeatures(winsize, input) {
   level6    = MagWithScale(filterGains[5], highFreq6);
 /*   println(level6); */
 
-  zipN(zip_bufsize, [level4, level5, level6]);
+  //zipN(zip_bufsize, [level4, level5, level6]);
+  //myZipN(zip_bufsize, [level4, level5, level6]);
+  // TEMP TEMP FIXME:  HACKING AROUND:
+  level6
 }
 
 /*
@@ -269,7 +272,9 @@ namespace Node {
 
   // A dummy datasource for java:
   //sensor = [COUNTUP(0).arrwindow(winsize)];
-  sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
+  //sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
+  outbuf = Array:build(winsize, fun(i) Int16!i);
+  sensor = iterate _ in timer$ 256.0 / 400.0 { emit outbuf };
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
@@ -278,13 +283,16 @@ namespace Node {
   filtered = map(fun(s) process_channel(winsize, s), [sensor]);
 
 /*   filtered = GetFeatures(winsize, hHigh_Odd, cast); */
-  flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
+  // flat = FlattenZip(NUM_CHANNELS*NUM_FEATURES, filtered);
   //main = List:fold1(merge,filtered)
 
 /*  svmStrm = smap(fun(arr) SVMOutput(svmVectors, svmCoeffs, svmBias, svmKernelPar, arr), flat) */
 
 }
 
-main = Node:flat
+
+main = Node:filtered.head
+//main = Node:flat
+//main = Node:sensor
 
 

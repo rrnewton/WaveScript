@@ -442,7 +442,17 @@
 (__spec Const <emitC2> (self datum wrap)
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
-     ;[(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; [2008.04.13] TEMP HACK: PUTTING BACK IN TEMPORARILY
+     [(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+     ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+
      [(eq? datum 'UNIT) (wrap (Simple self '(tuple)))]
      [(eq? datum #t) (wrap "TRUE")]
      [(eq? datum #f) (wrap "FALSE")]
@@ -599,6 +609,7 @@
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
+			 ;(if (list? down) (set! down (ASSERT symbol? (cadr down)))) ;; HACK
 			 (cap 
 			  (list (make-app (Var self down) (list element))
 				" /* emit */")))
@@ -626,19 +637,36 @@
 (__spec SplitBinding <emitC2> (self emitter)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
-    (match cb
-      ;; Currently [2008.02.14] we don't allow the static-allocate
-      ;; annotation to float around in arbitrary code.  We catch it right here.
-      ;; Further, we only allow constants right now, this needs to be
-      ;; changed to handle allocating primitives like Array:make...
-      [(,vr ,ty (static-allocate ,rhs))
-       (StaticAllocate self vr ty rhs)]
+    (match cb      
       [(,vr ,ty ,rhs)
-       ;; We derive a setter continuation by "splitting" the varbind continuation:       
-       (values (make-lines `(,(Type self ty)" ",(Var self vr)" ",(DummyInit self ty)";\n"))
-	       ;((Value self emitter) rhs set-and-incr-k)
-	       ((Value self emitter) rhs (setterk self vr ty)))]
-      [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)])))
+       (let loop ([rhs rhs])
+	 (match rhs
+	   ;; Currently [2008.02.14] we don't allow the static-allocate
+	   ;; annotation to float around in arbitrary code.  We catch it right here.
+	   [(static-allocate ,rhs) (StaticAllocate self vr ty rhs)]
+
+#;	   
+	   ;; Here we flatten out lets:
+	   [(let (,bind) ,[bodbnds bodinit])	  
+	    ;;(define-values (bnds init) (SplitBinding self (list vr )))
+	    (define-values (bnds init) ((SplitBinding self emitter) bind))
+	    (values (append-lines bnds bodbnds)
+		    (append-lines init bodinit))]
+#;
+	   ;; Flip
+	   [(assert-type ,ty (static-allocate ,rhs)) 
+	    (loop `(static-allocate (assert-type ,ty ,rhs)))]
+#;
+	   [(assert-type ,ty ,[b i]) (values b i)]
+	   
+
+	   [,rhs
+	    ;; We derive a setter continuation by "splitting" the varbind continuation:       
+	    (values (make-lines `(,(Type self ty)" ",(Var self vr)" ",(DummyInit self ty)";\n"))
+					;((Value self emitter) rhs set-and-incr-k)
+		    ((Value self emitter) rhs (setterk self vr ty)))]))]
+      [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)]
+      )))
 
 
 ;; For the x86 version we currently don't statically allocate anything.

@@ -351,13 +351,25 @@
   ;; A binding that gets evaluated exactly once.
   (define (StaticBind lhs ty rhs)
     `(,lhs ,ty
-	   ,(match (peel-annotations rhs) ;; no recursion!
-	      ;; What kinds of things can we switch to static allocation?
-	      ;; Currently just quoted constants:
-	      [',c `(static-allocate ,rhs)] 
-	      [(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) 
-	       `(static-allocate ,rhs)]
-	      [,oth oth])))
+	   ,(let loop ([rhs rhs])
+	      (match (peel-annotations rhs) ;; no recursion!
+		;; What kinds of things can we switch to static allocation?
+		;; Currently just quoted constants:
+		[',c `(static-allocate ,rhs)] 
+		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) 
+		 `(static-allocate ,rhs)]
+
+#;
+		;; [2008.04.13] Extending this to dig a little deeper.
+		;; In particular, as long as there's no conditional
+		;; control flow, it's still static...
+		[(let ([,lhs ,ty ,[loop -> rhs]]) ,[loop -> bod])
+		 ;(pp `(static-let `(let ([,lhs ,ty ,rhs]) ,bod)))
+		 `(let ([,lhs ,ty ,rhs]) ,bod)]
+		
+;		[(assert-type ,ty ,[loop -> e]) `(assert-type ,ty ,e)]
+
+		[,oth oth]))))
 
   (define (Operator op)
     (match op

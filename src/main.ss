@@ -1112,24 +1112,26 @@
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
 		  		  
+		  ;; [2008.04.08] TEMP - this is for my experimentation:
+		  ;; TEMPTOGGLE
+		  (when #t ;(top-level-bound? 'scheme-profiling-performed!)
+		    ;(printf "\nDumping integer linear program, using Scheme profile only.\n")
+		    (let ([merged (merge-partitions node-part server-part)])		    
+
+
 		  ;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
 		  (let ([experdir "~/wavescript/apps/telos_audio/"])
 		    (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
 		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
 		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
-		    (set! prog (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
-		    (string->file (output-graphviz prog) "query_hacked.dot")
+		    (set! merged (inject-times merged (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
+		    (string->file (output-graphviz merged) "query_hacked.dot")
 		    (printf "Produced HACK/injection graphviz output...\n")
 		    (system "dot -Tpng query_hacked.dot -oquery_hacked.png")
 		    )
 
-		  ;; [2008.04.08] TEMP - this is for my experimentation:
-		  ;; TEMPTOGGLE
-		  (when #t ;(top-level-bound? 'scheme-profiling-performed!)
-		    (printf "\nDumping integer linear program.\n")
-		    ;(printf "\nDumping integer linear program, using Scheme profile only.\n")
-		    (let ([merged (merge-partitions node-part server-part)])		    
-		      (string->file (emit-lp (partition-sourcesonly merged)
+		  (printf "\nDumping integer linear program.\n")
+		  (string->file (emit-lp (partition-sourcesonly merged)
 					     (partition-getmiddle merged)
 					     (partition-baseonly merged))
 				    "partition_scheme.lp")
