@@ -261,19 +261,8 @@ fun dologs(earmag) {
 
 using TOS;
 
-/* ==== JAVA?
-// Cheesy, cast and cast back:
-file :: Stream (Array Uint16);
-*/
 
-/*
-file = smap(fun(x) (cast_num(x) :: Uint16),
-            (readFile("./snip.raw", "mode: binary skipbytes: 0",
- 	  	    timer(819.20 / 255.0))
-             :: Stream Int16))
-    .arrwindow(windowSize);
-*/
-
+/* 
 /* FOR REGULAR PC */
 segs = (readFile("./snip.raw", 
 	       "mode: binary  repeats: 0 "++
@@ -283,48 +272,31 @@ segs = (readFile("./snip.raw",
 file = iterate seg in segs {
   emit toArray(seg);
 };
-
-/*
-// For java just using a timer:
-file = iterate _ in timer$1 {
-  //state { offset = 0 }
-  emit Array:build(windowSize, fun(i) Uint16!i )
-}
 */
+
+
 
 namespace Node {
 
 
-signed = file;
-
-/*  ===== COMMENTING OUT
-
+// This reads from the audio board:
 //sensor = read_telos_audio(windowSize, windowSize / 4);
-
-// Pick which one you want:
-//src = IFPROFILE(file, sensor);
-//src = sensor
-//src = file;
 
 // Dummy source for java:
 //src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
 //RATE = 8000 / windowSize;  // realtime
 RATE = 0.5;  // slow, for profiling
 outbuf = Array:build(windowSize, fun(i) (99::Int16));
-src = iterate _ in IFPROFILE(Server:timer$RATE,timer$RATE) { emit outbuf };
-
-// This reads from the audio board:
-signedones = Array:make(windowSize, 0);
-signed = smap(fun(arr) {
-    //led1Toggle();
-    for i = 0 to windowSize-1 {
-      signedones[i] := (cast_num(arr[i]) :: Int16);
-    };
-    signedones
-}, src); // READ VERY SLOW FOR NOW
+ dummy = iterate _ in IFPROFILE(Server:timer$RATE,timer$RATE) { emit outbuf };
 
 
- COMMENTING OUT ======= */
+
+// Pick which one you want:
+//src = sensor
+//src = file;
+src = dummy;
+
+
 
 // Statically allocate the storage:
 // real and imaginary vectors
@@ -333,6 +305,20 @@ bufR :: Array Int16 = Array:make(fftSize,0);
 bufI :: Array Int16 = Array:make(fftSize,0);
 emag =  Array:make(totalFilters,MAYBEFIX_0);
 ceps =  Array:make(cepstralCoefficients,0.0);
+signedones = Array:make(windowSize, 0);
+
+
+
+/* convert data to signed from unsigned */
+signed = iterate arr in src {
+  //led1Toggle();
+  for i = 0 to windowSize-1 {
+    signedones[i] := (cast_num(arr[i]) :: Int16);
+  };
+  emit signedones;
+};
+
+
 
 
 PRINTDBG = false
