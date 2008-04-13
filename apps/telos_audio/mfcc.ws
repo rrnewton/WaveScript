@@ -21,6 +21,7 @@ cepstralCoefficients = 13;
 windowSize = 200;  // 1/2 window size used for 16khz sample rate
 samplingRate = 8192;
 totalFilters = linearFilters + logFilters;
+threshFactor = 1.25;
 
 // Now figure the band edges.  Interesting frequencies are spaced
 // by linearSpacing for a while, then go logarithmic.  First figure
@@ -111,7 +112,7 @@ for i = 0 to (fftSize/2)-1{
 
 s1 = (readFile("./snip.raw", 
 	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 2  window: "++windowSize ++" offset: 0", 
+	       "skipbytes: 0  window: "++windowSize ++" offset: 0", 
 	       timer(819.20 / 255.0))
       :: Stream (Sigseg (Int16)));
 
@@ -154,7 +155,10 @@ iterate seg in s {
   println("&max= "++count++" "++env);  
   if (ewma == 0) then ewma := (cast_num(env)::Float);
   ewma := 0.95*ewma + 0.05*(cast_num(env)::Float);
-  if ((cast_num(env)::Float) > ewma * 1.5) then {
+  println("ewma= "++count++" "++ewma*threshFactor);  
+  if ((cast_num(env)::Float) > ewma * threshFactor) then {
+  println("tick= "++count++" "++env);  
+};
 
   //println("Post hamming: "++bufR);
 
@@ -196,7 +200,6 @@ iterate seg in s {
   println("#cep1 "++count++" "++dct[0]);
 
   emit(dct);
-}
 }}
 
 BASE <- iterate w in mfcc(s1) {
