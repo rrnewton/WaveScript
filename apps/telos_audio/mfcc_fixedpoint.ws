@@ -144,7 +144,7 @@ fun preemphasize(start, bufR, win) {
   };
 }
 
-fun hamming(start, bufR, win) {
+fun hamming(start, bufR) {
   // hamming window
   for i = start to start+windowSize-1 {
     bufR[i] := FIX_MPY(bufR[i],hamWindow[i-start]);
@@ -226,11 +226,15 @@ fun earmagfn(bufR, bufI, earmag) {
         FIX_MPY(mfccFilterWeightsOdd[i], mag);
     }
   };
+}
 
+
+fun dologs(earmag) {
   for i = 0 to totalFilters-1 {
     earmag[i] := FIX_LOG10(earmag[i]);
   };
 }
+
 
 
 //============================================================
@@ -266,7 +270,7 @@ namespace Node {
 // Dummy source for java:
 //src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
 //RATE = 8000 / windowSize;  // realtime
-RATE = 0.5;  // realtime
+RATE = 0.5;  // slow, for profiling
 outbuf = Array:build(windowSize, fun(i) (99::Int16));
 src = iterate _ in IFPROFILE(Server:timer$RATE,timer$RATE) { emit outbuf };
 
@@ -289,51 +293,50 @@ emag =  Array:make(totalFilters,0);
 
 PRINTDBG = false
 
-cleared = iterate arr in signed {
-  //strt = realtime();
-  //print("Running..."++strt++"\n");
-
+preemph = iterate win in signed {
   Array:fill(bufR, 0);
-  Array:fill(bufI, 0);
-  Array:fill(emag, 0);
 
-  emit(bufR,bufI,emag,arr);
-}
-
-preemph = iterate (bufR,bufI,emag,win) in cleared {
   start = (fftSize-windowSize) / 2;
   preemphasize(start, bufR, win);
 
-  emit(start,bufR,bufI,emag,win);
+  emit(start,bufR);
 }
 
-hamm = iterate (start,bufR,bufI,emag,win) in preemph {
-  hamming(start, bufR, win);
+hamm = iterate (start,bufR) in preemph {
+  hamming(start, bufR);
 
-//led2Toggle();
-  emit(start,bufR,bufI,emag,win);
+  emit(start,bufR);
 }
 
-freq = iterate (start,bufR,bufI,emag,win) in hamm {
+freq = iterate (start,bufR) in hamm {
+
+  Array:fill(bufI, 0);
+
   // fft
   fix_fft(bufR,bufI,9,false);
 
 //led1Toggle();
 
-  emit(start,bufR,bufI,emag,win);
+  emit(start,bufR,bufI);
 }
 
 
-emg = iterate (start,bufR,bufI,emag,win) in freq {
+emg = iterate (start,bufR,bufI) in freq {
+  // Clear 
+  Array:fill(emag, 0);
+
   // compute earmag
   earmagfn(bufR, bufI, emag);
-
-  //led0Toggle();
-
-  emit(start,bufR,bufI,emag,win);
+  emit emag;
 }
 
-ceps = iterate (start,bufR,bufI,emag,win) in emg {
+logs = iterate emag in emg {
+  dologs(emag);
+  //led0Toggle();
+  emit emag;
+}
+
+ceps = iterate emag in logs {
   cep1 = Array:fold(fun(x,y)(x+y),0,emag);
 
 /*

@@ -1105,12 +1105,12 @@
 				      [wavescript-compiler-javame <javaME>])))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 
-		  (define (DUMP-THE-LINEAR-PROGRAM)
+		  (define (DUMP-THE-LINEAR-PROGRAM merged)
 		    ;; [2008.04.08] TEMP - this is for my experimentation:
 		    ;; TEMPTOGGLE
 		    (when #t ;(top-level-bound? 'scheme-profiling-performed!)
 					;(printf "\nDumping integer linear program, using Scheme profile only.\n")
-		      (let ([merged (merge-partitions node-part server-part)])		    
+		      (let ()		    
 
 			;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
 
@@ -1165,8 +1165,8 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
-
-		  ;(DUMP-THE-LINEAR-PROGRAM)
+		  
+		  ;(DUMP-THE-LINEAR-PROGRAM (merge-partitions node-part server-part))
 		  		  
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
@@ -1253,7 +1253,9 @@
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
 
-		      (DUMP-THE-LINEAR-PROGRAM) 
+		      (inspect newprog)
+
+		      (DUMP-THE-LINEAR-PROGRAM newprog) 
 
 		      (printf "============================================================\n")
 		      (printf "       Auto Partitioning: \n")
@@ -1284,7 +1286,7 @@
 					       (length (filter (lambda (ls) (eq? 1 (cadr ls))) assignments))
 					       (length (filter (lambda (ls) (eq? 0 (cadr ls))) assignments)))
 				       (string->file (output-graphviz assigned) "query_lp.dot")
-				       (printf "Produced new graphviz output...\n")
+				       (printf "Produced new graphviz output... query_lp.png\n")
 				       (system "dot -Tpng query_lp.dot -oquery_lp.png")
 				       (printf "  ... done.\n")
 
@@ -1305,6 +1307,7 @@
 
 			(let ([merged (merge-partitions new-node all-server)])
 			  (delete-file "query_partitioned.png")
+			  (printf "Dumping query_partitioned.png..")
 			  (string->file (output-graphviz merged) "query_partitioned.dot")
 			  (when (>= (regiment-verbosity) 1)
 			    (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port))

@@ -969,7 +969,7 @@
       [(iterate (name ,nm) ,ot
 		(code (iterate (annotations ,annot* ...) ,itercode ,_))
 		,rest ...)
-					;(printf "LOOKING UP ~a in ~a\n" nm times)
+       (printf "LOOKING UP ~a in ~a result ~a\n" nm times (assq nm times))
        (let ([entry (assq nm times)])		     
 	 (if entry
 	     `(iterate (name ,nm) ,ot 
@@ -1267,14 +1267,21 @@
 	   (if entry
 	       ;; TinyOS/Java Case:
 	       ;; FIXME INCORRECT: CURRENTLY ASSUMING 1 SECOND EPOCH:
+	       
 	       ;; Percent cpu is measured / alloted, where alloted is clock rate / freq
-	       (let ([frac (/ (cadr entry) (/ (caddr entry) input-frequency))])
+	       (let ([frac (/ (cadr entry) (/ (caddr entry) 
+
+					      ;input-frequency
+					      ;; HACKING THIS, we don't profile at the real frequency!!
+					      (/ 8000 200)
+					      
+					      ))])
 		 (printf "  FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
 		 (inexact->exact (floor (* frac cpu-granularity))))
 	       
 	       ;; Scheme cpu weights mode:
 	       (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
-		 ;(printf "Using Scheme execution times to formulate LP.\n")
+		 (printf "Using Scheme execution times to formulate LP.\n")
 		 (if entry
 		     (let ([elapsed-vtime 
 			    (match (ws-profile-limit)

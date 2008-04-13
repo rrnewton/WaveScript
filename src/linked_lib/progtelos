@@ -15,7 +15,8 @@ function doit() {
 }
 
 case "$1" in
-  "" )
+  "xb
+" )
     echo "Usage: progtelos <num> or progtelos all"
     echo "  <num> will be interpreted as referring to /dev/ttyUSB<num>."
     echo "  'all' will program all motes indicated by 'motelist'."
@@ -34,40 +35,50 @@ case "$1" in
   "net" )
     # Starting at two so we can do the base station separately:
     id=2;
-    for num in 1 2 3 4 5 6 7 8 9 10 11 12 ; do # 14
+    for num in 1 2 4 5 6 7 8 9 10 11 12 14; do 
       id = $(($id+1));
       doit netbsl $id tmote-"$num".csail.mit.edu:10001
       id = $(($id+1));
       doit netbsl $id tmote-"$num".csail.mit.edu:10002
     done
   ;;
+
+  "netone" )
+    doit netbsl 2 tmote-1.csail.mit.edu:10001
+  ;;
+
   * )
-  doit bsl $(($1+1)) /dev/ttyUSB$1
+    doit bsl $(($1+1)) /dev/ttyUSB$1
   ;;
 esac
 
-# 2	G914	tmote-1		10001
-# 3	G914	tmote-1		10002
-# 4	G916	tmote-2		10001
+# Kyle's list of 9th floor motes:
+
+# 2	G914	tmote-1		10001 
+# 3	G914	tmote-1		10002 - good
+# 4	G916	tmote-2		10001 
 # 1	G916	tmote-2		10002
 # 8	G918	tmote-3		10001
 # 5	G918	tmote-3		10002
-# 6	G920	tmote-4		10001
-# 7	G920	tmote-4		10002
-# 11	G938	tmote-5		10001
-# 12	G938	tmote-5		10002
-# 19	G936	tmote-6		10001
+# 6	G920	tmote-4		10001 - good
+# 7	G920	tmote-4		10002 - good
+# 11	G938	tmote-5		10001 - good
+# 12	G938	tmote-5		10002 - good
+# 19	G936	tmote-6		10001 - good
 # 20	G936	tmote-6		10002
 # 21	G934	tmote-7		10001
 # 22	G934	tmote-7		10002
-# 9	G932	tmote-8		10001
-# 10	G932	tmote-8		10002
-# 17	G924	tmote-9		10001
-# 18	G924	tmote-9		10002
-# 15	G942	tmote-10	10001
-# 16	G942	tmote-10	10002
-# 13	G940	tmote-11	10001
+# 9	G932	tmote-8		10001 - good
+# 10	G932	tmote-8		10002 - good
+# 17	G924	tmote-9		10001 - good
+# 18	G924	tmote-9		10002 - good
+# 15	G942	tmote-10	10001 - good
+# 16	G942	tmote-10	10002 - good
+# 13	G940	tmote-11	10001 - good
 # 14	G940	tmote-11	10002
-# 23	G922	tmote-12	10001
-# 24	G922	tmote-12	10002
-# 25	G918	tmote-14	10001
+# 23	G922	tmote-12	10001 - good
+# 24	G922	tmote-12	10002 - good
+
+# 25	G918	tmote-14	10001 - good
+# 25	G918	tmote-14	10002 - good
+

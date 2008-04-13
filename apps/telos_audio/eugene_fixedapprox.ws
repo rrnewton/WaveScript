@@ -272,7 +272,7 @@ namespace Node {
   // DANGER TOGGLING THIS FOR EXPERIMENTS:
   //THERATE = 256.0 / 400.0;  // Accurante "realtime" rate.
   THERATE = 1.0 / 15.0; // Every 10 seconds...
-  winsize = 16;
+  winsize = 8;
   //winsize = 32;
   //winsize = 256;
 
