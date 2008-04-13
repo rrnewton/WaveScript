@@ -322,7 +322,7 @@ signed = iterate arr in src {
 
 
 PRINTDBG = false
-PRINTOUTPUT = true
+PRINTOUTPUT = false
 
 preemph = iterate win in signed {
   Array:fill(bufR, 0);
