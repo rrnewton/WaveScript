@@ -56,8 +56,8 @@ let (mfccFilterWeightsEvenIdx,
      mfccFilterWeightsEven,
      mfccFilterWeightsEvenFix,
      mfccFilterWeightsOddIdx,
-     mfccFilterWeightsOddFix,
-     mfccFilterWeightsOdd) = {
+     mfccFilterWeightsOdd,
+     mfccFilterWeightsOddFix) = {
 
   mfccFilterWeightsEvenIdx = Array:make(fftSize/2,0);
   mfccFilterWeightsEven = Array:make(fftSize/2,0.0);
@@ -111,9 +111,7 @@ fun complexNorm(x,y) {
 
 FILTER_WEIGHT_E = mfccFilterWeightsEven;
 FILTER_WEIGHT_O = mfccFilterWeightsOdd;
-fun MAYBEFIX_MPY(x,y) { 
-  (cast_num(x)::Float)*(cast_num(y)::Float)
-}
+fun MAYBEFIX_MPY(x,y) { x*y }
 MAYBEFIX_NORM :: (Int16, Int16) -> Float;
 fun MAYBEFIX_NORM(r,i) {
    complexNorm((cast_num(r)::Float),
@@ -122,7 +120,7 @@ fun MAYBEFIX_NORM(r,i) {
 log10 = mylog(10.0);
 fun MAYBEFIX_LOG10(x) { mylog(x)/log10 }
 MAYBEFIX_0 = 0.0; 
-MAYBEFIX_TYPE :: Float; 
+type MAYBEFIX_TYPE = Float; 
 
 /* USE FIXED POINT */
 
@@ -135,7 +133,7 @@ MAYBEFIX_NORM :: (Int16, Int16) -> Int16;
 fun MAYBEFIX_NORM(r,i) { FIX_NORM(r,i) }
 fun MAYBEFIX_LOG10(x) { FIX_LOG10(x) }
 MAYBEFIX_0 = 0; 
-MAYBEFIX_TYPE :: Int16;
+type MAYBEFIX_TYPE = Int16;
 
 */
 
@@ -261,9 +259,11 @@ fun dologs(earmag) {
 
 using TOS;
 
-
+/* ==== JAVA?
 // Cheesy, cast and cast back:
 file :: Stream (Array Uint16);
+*/
+
 /*
 file = smap(fun(x) (cast_num(x) :: Uint16),
             (readFile("./snip.raw", "mode: binary skipbytes: 0",
@@ -272,13 +272,30 @@ file = smap(fun(x) (cast_num(x) :: Uint16),
     .arrwindow(windowSize);
 */
 
+/* FOR REGULAR PC */
+segs = (readFile("./snip.raw", 
+	       "mode: binary  repeats: 0 "++
+	       "skipbytes: 0  window: "++windowSize ++" offset: 0", 
+	       timer(819.20 / 255.0))
+      :: Stream (Sigseg (Int16)));
+file = iterate seg in segs {
+  emit toArray(seg);
+};
+
+/*
 // For java just using a timer:
 file = iterate _ in timer$1 {
   //state { offset = 0 }
   emit Array:build(windowSize, fun(i) Uint16!i )
 }
+*/
 
 namespace Node {
+
+
+signed = file;
+
+/*  ===== COMMENTING OUT
 
 //sensor = read_telos_audio(windowSize, windowSize / 4);
 
@@ -304,6 +321,8 @@ signed = smap(fun(arr) {
     signedones
 }, src); // READ VERY SLOW FOR NOW
 
+
+ COMMENTING OUT ======= */
 
 // Statically allocate the storage:
 // real and imaginary vectors
