@@ -969,7 +969,7 @@
       [(iterate (name ,nm) ,ot
 		(code (iterate (annotations ,annot* ...) ,itercode ,_))
 		,rest ...)
-       (printf "LOOKING UP ~a in ~a result ~a\n" nm times (assq nm times))
+       ;(printf "LOOKING UP ~a in ~a result ~a\n" nm times (assq nm times))
        (let ([entry (assq nm times)])		     
 	 (if entry
 	     `(iterate (name ,nm) ,ot 

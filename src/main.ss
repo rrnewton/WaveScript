@@ -1253,8 +1253,6 @@
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
 
-		      (inspect newprog)
-
 		      (DUMP-THE-LINEAR-PROGRAM newprog) 
 
 		      (printf "============================================================\n")
