@@ -152,12 +152,12 @@ iterate seg in s {
 
   env = max-min;
   count := count + 1;
-  println("&max= "++count++" "++env);  
+  println("#max= "++count++" "++env);  
   if (ewma == 0) then ewma := (cast_num(env)::Float);
   ewma := 0.95*ewma + 0.05*(cast_num(env)::Float);
-  println("ewma= "++count++" "++ewma*threshFactor);  
+  println("#ewm= "++count++" "++ewma*threshFactor);  
   if ((cast_num(env)::Float) > ewma * threshFactor) then {
-  println("tick= "++count++" "++env);  
+  println("#tck= "++count++" "++env);  
 };
 
   //println("Post hamming: "++bufR);

@@ -17,13 +17,15 @@ linearSpacing = 66.66666666;
 logFilters = 19;    // drop top filters since over sample rate 
 logSpacing = 1.0711703;
 fftSize = 256;      // half size fft for half sample rate
+fftSizeLog2 = 8;      // half size fft for half sample rate
 //fftSize = 512;
+//fftSizeLog2 = 9;      // half size fft for half sample rate
 cepstralCoefficients = 13;
 windowSize = 200;  // 1/2 window size used for 16khz sample rate
 //windowSize = 400;
 samplingRate = 8192;
 totalFilters = linearFilters + logFilters;
-threshFactor = 1.25;
+threshFactor = 0.25;
 floatAlpha = 0.95;
 
 
@@ -334,6 +336,7 @@ ceps =  Array:make(cepstralCoefficients,0.0);
 
 
 PRINTDBG = false
+PRINTOUTPUT = true
 
 preemph = iterate win in signed {
   Array:fill(bufR, 0);
@@ -362,12 +365,18 @@ prefilt = iterate (start,bufR) in hamm {
     dets = 0;
   }
 
+  count := count + 1;
   env = computeEnvelope(start,bufR);
   if (ewma == 0) then ewma := env;
-  count := count + 1;
+  thold = ewma + FIX_MPY(ewma,fixedThreshFactor);
+  if (PRINTOUTPUT) then {
+    println("#max= "++count++" "++env);  
+    println("#ewm= "++count++" "++thold);  
+  };
   ewma := FIX_MPY(fixedAlpha,ewma) + 
           FIX_MPY(fixedOneMinusAlpha,env);
-  if (env > FIX_MPY(ewma,fixedThreshFactor)) then {
+  if (env > thold) then {
+    if (PRINTOUTPUT) then println("#tck= "++count++" "++env);  
     dets := dets + 1;
     // DETECTED!
   };
@@ -382,7 +391,7 @@ freq = iterate (start,bufR) in prefilt {
   Array:fill(bufI, 0);
 
   // fft
-  fix_fft(bufR,bufI,9,false);
+  fix_fft(bufR,bufI,fftSizeLog2,false);
 
 //led1Toggle();
 
@@ -405,7 +414,10 @@ logs = iterate emag in emg {
   emit emag;
 }
 
-ceps = iterate emag in logs {
+ceps_stream = iterate emag in logs {
+
+  // Clear 
+  Array:fill(ceps, 0);
 
   // compute DCT
   for k = 0 to cepstralCoefficients - 1 {
@@ -416,6 +428,8 @@ ceps = iterate emag in logs {
       ceps[k] := ceps[k] + (cast_num(emag[n])::Float) * cos(ang);
     }
   };
+
+  if PRINTOUTPUT then println("#cep= "++ceps[0]);
 
 /*
   if PRINTDBG then {
@@ -437,7 +451,7 @@ ceps = iterate emag in logs {
 //main = Node:freq
 //main = Node:emg
 //main = iterate _ in Node:emg { emit 8889 }
-main = Node:ceps
+main = Node:ceps_stream
 
 // preEmphasized = filter([1 -.97], 1, input);
 //    x(n) - x(n-1)*.97
