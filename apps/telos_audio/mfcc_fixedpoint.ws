@@ -261,7 +261,10 @@ namespace Node {
 // Pick which one you want:
 //src = IFPROFILE(file, sensor);
 //src = sensor
-src = file;
+//src = file;
+
+// Dummy source for java:
+src = smap(fun(_) Array:build(windowSize, fun(i) Int16!i), timer$1);
 
 // This reads from the audio board:
 signedones = Array:make(windowSize, 0);

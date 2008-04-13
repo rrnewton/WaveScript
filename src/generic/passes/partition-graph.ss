@@ -834,93 +834,6 @@
       ;[(,oth . ,[rest]) rest]
       [(,oth . ,rest) (loop alist open strt rest)])))
 
-#;
-(define (extract-java-time-intervals log)
-  (define FUDGE-FACTOR 0) ;; The number of ticks assumed for the printf statements themselves.
-  (define (diff st en)
-    (let ([elapsed (- en st FUDGE-FACTOR)])
-      (max elapsed 0)))
-  (when (string? log) (set! log (file->slist log)))  
-   
-  (let loop ([stack '()] [mark #f] [log log])
-    (match log 
-      [() 
-       (values 0 '())
-       ;(inspect (vector stack mark))
-       ;(values 0 (cons (list name time) table))
-       ]
-      
-      ;; Open a new call:
-      [((Start ,name ,tme) . ,_) ;(ASSERT (not (assq name alist)))
-       (define-values (tme table tail) (loop (cons name stack) tme _))
-
-       (if (null? tail)
-	   (values 0 (cons (list name tme) table) '())
-	   (loop stack mark tail)
-	   )
-       ]
-      
-      [((End ,name ,tme) . ,tail) (ASSERT (eq? name (car stack)))       
-       (values (diff mark tme) '() tail)
-       ]
-            
-      ;; Ignoring garbage for now:
-      [(,oth . ,rest) (loop stack mark rest)]))
-)
-
-;; This has bad complexity, but is simple:
-#;
-(define (extract-java-time-intervals log)
-  (define FUDGE-FACTOR 0) ;; The number of ticks assumed for the printf statements themselves.
-  (define (diff st en)
-    (let ([elapsed (- en st FUDGE-FACTOR)])
-      (max elapsed 0)))
-
-  ;; First lift a nested structure out of the flat list:
-  ;; Could return an Emit if that's the end:
-  (define (scroll-to-end name log)
-    (define-values (front back) 
-      (split-before (lambda (entry) (match entry [(End ,nm . ,_) (eq? nm name)] [,_ #f]))
-		  log))
-    (if (null? back)
-	;(values (rdc front) (rac front) '())
-	;; The end had better be an emit:
-	(match front 
-	  [(,x* ... (Emit ,tme))  (values x* `(Emit ,tme) '())])
-	(values front (car back) (cdr back))))
-  (define (nested log)
-    (match log 
-      [() ]
-      [((Start ,name ,tme) ,rest ...)
-       (define-values (middle endentry tail) (scroll-to-end name rest))
-       (define-values (mid tail2) (nested middle))
-       (ASSERT null? tail2)
-       (values 
-	(match endentry
-	  [(End ,name2 ,endtme) (ASSERT (eq? name name2))
-	   `(start/end ,name ,tme ,mid ,endtme)]
-	  [(Emit ,tme2) (inspect `(terminating emit ))])
-	tail)]
-      
-      ;; If we hit an emit at the end, that serves as a closer.
-      ;[((Emit ,tme))]
-      [((Emit ,tme) ,rest ...)
-       (define-values (sub tail) (nested rest))
-       (match tail
-	 [((Ret ,tme2) . ,tail2)
-	  
-	  ])
-       ]
-      
-      [((End ,name ,tme) . ,tail) (error 'extract-java-time-intervals "implementation error")]      
-      ;; Ignoring garbage for now:
-      ;[(,oth . ,rest) (loop stack mark rest)])
-    ))
-
-
-    (when (string? log) (set! log (file->slist log)))   
-)
-
 
 (define (extract-java-time-intervals log)
   (define _ (when (string? log) (set! log (file->slist log))))
@@ -1021,10 +934,13 @@
   
   ;; Full report:
   #;
-  (sort 
+  (inspect   
+   (sort 
    (lambda (sexp1 sexp2)
-     (< (cadr (assq 'median (cdr sexp1)))
-	(cadr (assq 'median (cdr sexp2)))))
+     (define selected 'median)
+     ;(define selected 'mean)
+     (< (cadr (assq selected (cdr sexp1)))
+	(cadr (assq selected (cdr sexp2)))))
    (map (lambda (entry)
 	  (define nums (cdr entry))
 	 `(,(car entry) 
@@ -1032,19 +948,22 @@
 	   (median ,(median nums))
 	   (stddev ,(stddev nums))
 	   (raw ,(sort < nums))))
-     (hashtab->list table)))
+     (hashtab->list table))))
   
   ;; Just medians:
   (sort (lambda (e1 e2) (> (cdr e1) (cdr e2)))
 	(map (lambda (entry)
-	       (cons (car entry) (median (cdr entry))))
+	       (cons (car entry) 
+		     ;(median (cdr entry))
+		     (exact->inexact (average (cdr entry)))
+		     ))
 	  (hashtab->list table)))
   )
 
 
-
 ;; Inserts a (measured-cycles <elapsed> <timer-frequency>) annotation:
-(define (inject-times prog times)
+;; [2008.04.12] Takes either a program or a graph.
+(define (inject-times prog times timerfreq)
   (define (Operator op)
     (match op
       [(iterate (name ,nm) ,ot
@@ -1054,18 +973,32 @@
        (let ([entry (assq nm times)])		     
 	 (if entry
 	     `(iterate (name ,nm) ,ot 
-		       (code (iterate (annotations (measured-cycles ,(cdr entry) 32000) ,@annot*)
+		       (code (iterate (annotations (measured-cycles ,(cdr entry) ,timerfreq) ,@annot*)
 				      ,itercode ,_))
 		       ,@rest)
 	     op))]
       [,oth oth]))
+  (define-pass regularprog
+      [Expr (lambda (xp fallthru)
+	      (match xp
+		[(iterate (annotations ,annot* ...) ,[fun] ,[strm])
+		 `(iterate (annotations 
+			    ,@(let* ([name (cadr (ASSERT (assq 'name annot*)))]
+				     [entry (assq name times)])
+				(if entry
+				    `((measured-cycles ,(cdr entry) ,timerfreq))
+				    '()))
+			    ,@annot*)
+			   ,fun ,strm)]
+		[,oth (fallthru oth)]))])
   (match prog
     [(,input-language 
       '(graph ,cnst ,init ,src
 	      (operators ,[Operator -> oper*] ...) ,rest ...))
      `(,input-language 
        '(graph ,cnst ,init ,src
-	       (operators ,oper* ...) ,rest ...))]))
+	       (operators ,oper* ...) ,rest ...))]
+    [,else (regularprog prog)]))
 
 ;; HACK: duplicating... should do something nicer.
 (define (inject-assignments prog assignments)
@@ -1273,36 +1206,37 @@
 	      (sink ,base ,basetype)	,meta* ...))
      (append src* oper*)]))
 
+
+
+
+(define (partition->frequency part)
+  (let* ([opsrcs (partition->src&ops part)]
+	 [src* (filter (lambda (x) (not (symbol? (car x)))) opsrcs)]
+	 [rlsrc* (filter not-inline_TOS? src*)])
+    
+    (match rlsrc*
+      [((,_ ,__ (code (__foreign_source ',fn '(,rate . ,rest) ',ty)) . ,___))  rate]
+
+      [((,_ ,__ (code (timer ,ann  ',rate)) . ,___))  rate]
+      )))
+
 ;; Spit out a .lp file describing the pure integer linear program that will solve the partitioning problem.
 (define (emit-lp nodepart floating serverpart)
   ;; Build a table of annotations
   (define annot-table
-    (let ([tab (make-default-hash-table 1000)])
+  
+    (inspect/continue 
+  (let ([tab (make-default-hash-table 1000)])
       (for-each (lambda (op/src)
 		  (and ;(if (not (symbol? (car op/src))) (inspect op/src) #t) ;; Verify that op/src is not source.
 		       (hashtab-set! tab (opname op/src) (op->annotations op/src))))
 	(append (partition->src&ops nodepart)
 		(partition->src&ops floating)
 		(partition->src&ops serverpart)))
-      tab))
+      tab)))
   
   ;; Retrieve the input frequencies so we can translate execution *times* into percent cpu.
-#;
-  (define input-frequency
-    (match part
-      [(,input-language 
-	'(graph (const ,cnst* ...)
-		(init  ,init* ...)
-		(sources ,src* ...)
-		(operators ,oper* ...)
-		(sink ,base ,basetype)	,meta* ...))
-       (define ls 
-	 (map (match-lambda (src)
-		)
-	   src*))
-       (unless (= 1 (length ls))
-	 (error 'emit-lp ""))
-       (append src* oper*)]))
+  (define input-frequency (partition->frequency nodepart))
 
   (define g1 (partition->simple-graph nodepart))
   (define g2 (partition->simple-graph floating))
@@ -1328,13 +1262,16 @@
   ;;------------------------------
   (define cpu-total (number->string cpu-granularity))
   (define (cpu-coeff vr)
-    (+ 1     ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
+    (+ 0     ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
        (max 0		 
 	 ;; If the TinyOS numbers are there, use them.
 	 (let  ([entry (assq 'measured-cycles (hashtab-get annot-table vr))])
 	   (if entry
+	       ;; TinyOS/Java Case:
 	       ;; FIXME INCORRECT: CURRENTLY ASSUMING 1 SECOND EPOCH:
-	       (let ([frac (/ (cadr entry) (caddr entry))])
+	       ;; Percent cpu is measured / alloted, where alloted is clock rate / freq
+	       (let ([frac (/ (cadr entry) (/ (caddr entry) input-frequency))])
+		 (printf "FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
 		 (inexact->exact (floor (* frac cpu-granularity))))
 	       
 	       ;; Scheme cpu weights mode:
@@ -1352,7 +1289,7 @@
 			       vt
 			       ;; HACK FIXME:
 			       ;;3000
-			       1000
+			       ;1000
 			       ] ;; (* 1000 vt)
 			      )])
 		       (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])

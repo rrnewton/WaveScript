@@ -573,8 +573,6 @@
 
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
-  ;(inspect (strip-annotations p 'src-pos))
-
   ;; We want to immediately get our uniqueness property back.
   (ws-run-pass p rename-vars)
 
@@ -1093,15 +1091,16 @@
 		     )])
 
 	      ;; Currently we partition the program VERY late into node and server components:
-	      (if (not (and (eq? (compiler-invocation-mode) 'wavescript-compiler-nesc)
-			    (memq 'split (ws-optimizations-enabled))))
-		  ;; In this case we do a 'normal', non-partitioned compile:
-		  (last-few-steps prog
-				  (match (compiler-invocation-mode)
-				    [wavescript-compiler-c <emitC2>]
-				    [wavescript-compiler-nesc <tinyos>]
-				    [wavescript-compiler-java   <java>]
-				    [wavescript-compiler-javame <javaME>]))
+	      (if (or (not (memq (compiler-invocation-mode) '(wavescript-compiler-nesc wavescript-compiler-javame)))
+		      (not (memq 'split (ws-optimizations-enabled))))
+		  (begin 
+		    ;; In this case we do a 'normal', non-partitioned compile:
+		    (last-few-steps prog
+				    (match (compiler-invocation-mode)
+				      [wavescript-compiler-c <emitC2>]
+				      [wavescript-compiler-nesc <tinyos>]
+				      [wavescript-compiler-java   <java>]
+				      [wavescript-compiler-javame <javaME>])))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 
 		  ;; Tag everything that is part of the user's node partition:
@@ -1112,11 +1111,23 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
-		  
+		  		  
+		  ;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
+		  (let ([experdir "~/wavescript/apps/telos_audio/"])
+		    (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
+		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
+		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
+		    (set! prog (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
+		    (string->file (output-graphviz prog) "query_hacked.dot")
+		    (printf "Produced HACK/injection graphviz output...\n")
+		    (system "dot -Tpng query_hacked.dot -oquery_hacked.png")
+		    )
+
 		  ;; [2008.04.08] TEMP - this is for my experimentation:
-		   ;; TEMPTOGGLE
-		  (when (top-level-bound? 'scheme-profiling-performed!)
-		    (printf "\nDumping integer linear program, using Scheme profile only.\n")
+		  ;; TEMPTOGGLE
+		  (when #t ;(top-level-bound? 'scheme-profiling-performed!)
+		    (printf "\nDumping integer linear program.\n")
+		    ;(printf "\nDumping integer linear program, using Scheme profile only.\n")
 		    (let ([merged (merge-partitions node-part server-part)])		    
 		      (string->file (emit-lp (partition-sourcesonly merged)
 					     (partition-getmiddle merged)
@@ -1226,7 +1237,7 @@
 			       (match exp
 				 [(EndTraverse . ,_) #t]
 				 [,else #f]))))]
-			  [newprog (inject-times prog times)])
+			  [newprog (inject-times prog times 32000)])
 
 		      
 		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)))
@@ -1243,15 +1254,15 @@
 				   ;; Old method, my limited exhaustive search:
 				   #;
 				   (exhaustive-partition-search max-nodepart-heuristic
-								(inject-times max-node times))
+								(inject-times max-node times 32000))
 				   ;; New method, run a linear program solver:
 				   (if (null? floating-opnames)
 				       (begin (printf "SKIPPING LP because there were no floating ops...")
 					      (exit 0))
 				   (let ([merged (merge-partitions maybe-node maybe-server)])
 				     (printf "\nDumping integer linear program.\n")
-				     (string->file (emit-lp (inject-times definite-node times)
-							    (inject-times merged times)
+				     (string->file (emit-lp (inject-times definite-node times 32000)
+							    (inject-times merged times 32000)
 							    definite-server)
 						   "partition.lp")
 				     (printf "\n Running LP solver.\n")				     

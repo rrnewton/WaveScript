@@ -997,21 +997,41 @@
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
 
+
+
+       [(lshiftI16 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" << ",b")"))]
+       [(lshiftI32 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" << ",b")"))]
+       [(lshiftI64 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int64)")(",a" << ",b")"))]
+       [(rshiftI16 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" >> ",b")"))]
+       [(rshiftI32 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" >> ",b")"))]
+       [(rshiftI64 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int64)")(",a" >> ",b")"))]
+       [(logandI16 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" & ",b")"))]
+       [(logandI32 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" & ",b")"))]
+       [(logandI64 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int64)")(",a" & ",b")"))]
+       [(logorI16  ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" | ",b")"))]
+       [(logorI32  ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" | ",b")"))]
+       [(logorI64  ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int64)")(",a" | ",b")"))]
+       [(logxorI16 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" & ",b")"))]
+       [(logxorI32 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" & ",b")"))]
+       [(logxorI64 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int64)")(",a" & ",b")"))]
+
+#|
        [(,lshift ,[Simp -> a] ,[Simp -> b]) 
-	(guard (memq lshift '(lshiftI16 lshiftU16 lshiftI32)))
-	(kont `("(",a" << ",b")"))]
+	(guard (memq lshift '(lshiftI16 lshiftU16 lshiftI32))) (ASSERT mayberetty)
+	(kont `("(",(Type self mayberetty)")(",a" << ",b")"))]
        [(,rshift ,[Simp -> a] ,[Simp -> b]) 
-	(guard (memq rshift '(rshiftI16 rshiftU16 rshiftI32)))
-	(kont `("(",a" >> ",b")"))]
+ 	(guard (memq rshift '(rshiftI16 rshiftU16 rshiftI32))) (ASSERT mayberetty)
+	(kont `("(",(Type self mayberetty)")(",a" >> ",b")"))]
        [(,logand ,[Simp -> a] ,[Simp -> b]) 
-	(guard (memq logand '(logandI16 logandU16 logandI32)))
-	(kont `("(",a" & ",b")"))]
+	(guard (memq logand '(logandI16 logandU16 logandI32))) (ASSERT mayberetty)
+	(kont `("("(",(Type self mayberetty)"),a" & ",b")"))]
        [(,logor ,[Simp -> a] ,[Simp -> b]) 
-	(guard (memq logor '(logorI16 logorU16 logorI32)))
-	(kont `("(",a" | ",b")"))]
+	(guard (memq logor '(logorI16 logorU16 logorI32)))     (ASSERT mayberetty)
+	(kont `("(",(Type self mayberetty)")(",a" | ",b")"))]
        [(,logxor ,[Simp -> a] ,[Simp -> b]) 
-	(guard (memq logxor '(logxorI16 logxorU16 logxorI32)))
-	(kont `("(",a" & ",b")"))]
+	(guard (memq logxor '(logxorI16 logxorU16 logxorI32))) (ASSERT mayberetty)
+	(kont `("(",(Type self mayberetty)")(",a" & ",b")"))]
+|#
 
        ;; These use FFTW currently
        [(,fft ,arr) ;(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
@@ -2635,6 +2655,12 @@ event void Timer000.fired() {
 	[Int64 "long"]
 
 	;; TEMP HACK:
+	;[Uint16 "short"]
+	;[Uint16 "int/*fakeuint*/"]
+	[Uint16 (error 'Type "<java> can't emulate unsigned ints yet")]
+	[Int    "int"]
+
+	;; TEMP HACK:
 	[(Array Char) "String"]
 	[(Array ,elt) (list (Type self elt) "[]")]	
 	[(List ,elt) "Cons"]
@@ -2746,15 +2772,24 @@ event void Timer000.fired() {
 	    (kont "0 /* arr len of null */")
 	    (kont `("(",_arr" == null ? 0 : ",_arr".length)")))]
 
-    
+#;    
     [(,abs ,[Simp -> a]) (guard (memq abs '(absI16 absI64 absI absF absD absC)))
      (kont `("Math.abs(",a")"))]
-    
+    [(absI16 ,[Simp -> a]) (kont `("(",(Type self 'Int16)")Math.abs(",a")"))]
+    [(absI32 ,[Simp -> a]) (kont `("(",(Type self 'Int32)")Math.abs(",a")"))]
+    [(absI   ,[Simp -> a]) (kont `("(",(Type self 'Int  )")Math.abs(",a")"))]
+    [(absF   ,[Simp -> a]) (kont `("(",(Type self 'Float)")Math.abs(",a")"))]
+    [(absD   ,[Simp -> a]) (kont `("(",(Type self 'Double)")Math.abs(",a")"))]
+
     [(^. ,[Simp -> a] ,[Simp -> b]) (kont `("(float)Math.pow(",a", ",b")"))]
     [(^D ,[Simp -> a] ,[Simp -> b]) (kont `("Math.pow(",a", ",b")"))]
 
+    [(sqrtF ,[Simp -> a]) (kont `("(float)Math.sqrt(",a")"))]
+    [(sqrtD ,[Simp -> a]) (kont `("Math.sqrt(",a")"))]
+
     [(logF ,[Simp -> a]) (kont `("(float)Math.log(",a")"))]
     
+
        #;
        ;; Handle exponents:
        [(,infix_prim ,[Simp -> left] ,[Simp -> right])	
@@ -2762,6 +2797,24 @@ event void Timer000.fired() {
 	       (equal? "^" (substring (sym2str infix_prim) 0 1)))
 	
 	]
+
+       ;; FIXME DUPLICATED CODE:
+       [(,infix_prim ,[Simp -> left] ,[Simp -> right])	
+	(guard (assq infix_prim infix-arith-prims))
+	(if (equal? "^" (substring (sym2str infix_prim) 0 1))
+	    (kont (list "pow("left", "right")")) ;; Actually this doesn't work for integers
+	    (let ()
+	      (define valid-outputs '("+" "-" "/" "*" "<" ">" "==" "<=" ">=")) ; "^"
+	      (define result
+		(case infix_prim
+		  [(=) "=="]
+		  [(< > <= >=) (sym2str infix_prim)]
+		  [else 
+		   (match (string->list (sym2str infix_prim))	  
+		     [(#\_ ,op ,suffix ...) (list->string (list op))]
+		     [(,op ,suffix ...)     (list->string (list op))])]))
+	      (ASSERT (member result valid-outputs))	     
+	      (kont (list "("(Type self (get-primitive-return-type infix_prim))")(" left " " result " " right ")"))))]
 
        [,else (next)]))))
 
@@ -3006,8 +3059,8 @@ event void Timer000.fired() {
     (lambda (next self name arg argty)
     ;(LoadPrintf self)
     (list (next)	  
-	  ;(format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
-	  ;"outstrm.print(\"(Start "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"
+	  ;;(format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+	  ;;"outstrm.print(\"(Start "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"
 	  (print-w-time (list "Start "(sym2str name)" "))
 	  ))))
 (define ___IterEndHook
@@ -3015,8 +3068,8 @@ event void Timer000.fired() {
     (lambda (next self name arg argty) 
     ;(LoadPrintf self)
     (list (next)
-	  ;(format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
-	  ;"outstrm.print(\"(End "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"	 
+	  ;;(format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+	  ;;"outstrm.print(\"(End "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"	 
 	  (print-w-time (list "End "(sym2str name)" "))
 	  ))))
 
@@ -3046,22 +3099,6 @@ event void Timer000.fired() {
 			  code
 			  (make-lines (print-w-time "EndTraverse ")))
 	    state rate init))))
-
-#;
-;; Generate nothing for the cutpoints... we're just interested in the Printf output:
-;; We use this as an opportunity to flush:
-(__specreplace Cutpoint <tinyos-timed> (self ty in out) 
-   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))
-   (define fun (list "// Code generated in place of cutpoint:\n"
-		"void "(Var self out)"("_ty" x) { 
-  printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
-  flushdispatch = "nulldispatchcode";
-  call PrintfFlush.flush(); 
-  // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
-  cleanup_after_traversal();
-}"))
-   (values (make-lines fun) '() '()))
-
 
 
 
