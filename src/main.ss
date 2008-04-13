@@ -1187,7 +1187,7 @@
 		    (pretty-print (partition->simple-graph max-node))
 
 		    (begin
-		      (last-few-steps max-node <tinyos-timed>)		    
+		      (last-few-steps max-node <tinyos-timed>)		      
 		      ;; Need a big printf buffer... this MUST be replaced with a smarter system at some point.
 		      ;; Either flushing between every operator, or a less intrusive measurement method.
 		      ;;(system "export CFLAGS += -DPRINTF_BUFFER_SIZE=1000")
@@ -1206,7 +1206,9 @@
 		    (let* ([times 
 ;'()
 
-			    (extract-time-intervals
+			    (extract-time-intervals 
+			     ;; FUDGE factor for tinyos:
+			     ;82
 #;
 '((Start Node_muladd_4 0 20433)
    (End Node_muladd_4 0 52621)
@@ -1225,7 +1227,10 @@
 				 [(EndTraverse . ,_) #t]
 				 [,else #f]))))]
 			  [newprog (inject-times prog times)])
+
 		      
+		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)))
+
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
 

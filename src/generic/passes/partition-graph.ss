@@ -23,6 +23,7 @@
 	   reinsert-cutpoints
 	   process-read/until-garbage-or-pred
 	   extract-time-intervals
+	   extract-java-time-intervals
 	   inject-times
 	   inject-assignments
 	   tag-op
@@ -803,7 +804,7 @@
 
 (define (extract-time-intervals log)
   ;; ASSUMPTION: uint16_t counter:
-  (define FUDGE-FACTOR 82) ;; The number of ticks assumed for the printf statements themselves.
+  (define FUDGE-FACTOR  82) ;; The number of ticks assumed for the printf statements themselves.
   (define (diff st en)
     (let ([elapsed (- en st FUDGE-FACTOR)])
 					;(ASSERT (> elapsed 0))
@@ -830,7 +831,216 @@
 		 alist)
 	     #f #f _)]
       ;; Ignoring garbage for now:
-      [(,oth . ,[rest]) rest])))
+      ;[(,oth . ,[rest]) rest]
+      [(,oth . ,rest) (loop alist open strt rest)])))
+
+#;
+(define (extract-java-time-intervals log)
+  (define FUDGE-FACTOR 0) ;; The number of ticks assumed for the printf statements themselves.
+  (define (diff st en)
+    (let ([elapsed (- en st FUDGE-FACTOR)])
+      (max elapsed 0)))
+  (when (string? log) (set! log (file->slist log)))  
+   
+  (let loop ([stack '()] [mark #f] [log log])
+    (match log 
+      [() 
+       (values 0 '())
+       ;(inspect (vector stack mark))
+       ;(values 0 (cons (list name time) table))
+       ]
+      
+      ;; Open a new call:
+      [((Start ,name ,tme) . ,_) ;(ASSERT (not (assq name alist)))
+       (define-values (tme table tail) (loop (cons name stack) tme _))
+
+       (if (null? tail)
+	   (values 0 (cons (list name tme) table) '())
+	   (loop stack mark tail)
+	   )
+       ]
+      
+      [((End ,name ,tme) . ,tail) (ASSERT (eq? name (car stack)))       
+       (values (diff mark tme) '() tail)
+       ]
+            
+      ;; Ignoring garbage for now:
+      [(,oth . ,rest) (loop stack mark rest)]))
+)
+
+;; This has bad complexity, but is simple:
+#;
+(define (extract-java-time-intervals log)
+  (define FUDGE-FACTOR 0) ;; The number of ticks assumed for the printf statements themselves.
+  (define (diff st en)
+    (let ([elapsed (- en st FUDGE-FACTOR)])
+      (max elapsed 0)))
+
+  ;; First lift a nested structure out of the flat list:
+  ;; Could return an Emit if that's the end:
+  (define (scroll-to-end name log)
+    (define-values (front back) 
+      (split-before (lambda (entry) (match entry [(End ,nm . ,_) (eq? nm name)] [,_ #f]))
+		  log))
+    (if (null? back)
+	;(values (rdc front) (rac front) '())
+	;; The end had better be an emit:
+	(match front 
+	  [(,x* ... (Emit ,tme))  (values x* `(Emit ,tme) '())])
+	(values front (car back) (cdr back))))
+  (define (nested log)
+    (match log 
+      [() ]
+      [((Start ,name ,tme) ,rest ...)
+       (define-values (middle endentry tail) (scroll-to-end name rest))
+       (define-values (mid tail2) (nested middle))
+       (ASSERT null? tail2)
+       (values 
+	(match endentry
+	  [(End ,name2 ,endtme) (ASSERT (eq? name name2))
+	   `(start/end ,name ,tme ,mid ,endtme)]
+	  [(Emit ,tme2) (inspect `(terminating emit ))])
+	tail)]
+      
+      ;; If we hit an emit at the end, that serves as a closer.
+      ;[((Emit ,tme))]
+      [((Emit ,tme) ,rest ...)
+       (define-values (sub tail) (nested rest))
+       (match tail
+	 [((Ret ,tme2) . ,tail2)
+	  
+	  ])
+       ]
+      
+      [((End ,name ,tme) . ,tail) (error 'extract-java-time-intervals "implementation error")]      
+      ;; Ignoring garbage for now:
+      ;[(,oth . ,rest) (loop stack mark rest)])
+    ))
+
+
+    (when (string? log) (set! log (file->slist log)))   
+)
+
+
+(define (extract-java-time-intervals log)
+  (define _ (when (string? log) (set! log (file->slist log))))
+
+  (define FUDGE-FACTOR 0) ;; The number of ticks assumed for the printf statements themselves.
+  (define (diff st en)
+    (let ([elapsed (- en st FUDGE-FACTOR)])
+      (max elapsed 0)))
+  (reg:define-struct (rec name start total))
+
+  (define (split sym ls)
+    (split-before (lambda (x) (and (pair? x) (eq? (car x) sym))) ls))
+   
+  (define (extract-segment segment)
+    (let loop ([stack '()] [acc '()] [log segment])
+    (match log 
+      [() (map (lambda (x) (list (rec-name x) (rec-total x))) acc)]
+      ;; Open a new call:
+      [((Start ,name ,tme) . ,rest)
+       (define x (make-rec name tme 0))
+       
+       ;; End a segment for the enclosing operator
+       (unless (null? stack) ;; null means the outer-emit. 
+	 (let ([x (car stack)])
+	   ;(printf "Adding segment to ~a : ~a ms start ~s total ~s ms\n" (rec-name x) (- tme (rec-start x)) (rec-start x) (rec-total x))
+	   (set-rec-total! x (+ (rec-total x) (- tme (rec-start x))))
+	   (set-rec-start! x #f)))
+       
+       (loop (cons x stack) (cons x acc) rest)]
+
+      #;
+      ;; End a segment, add to elapsed:
+      ;; TODO: Need a FUDGE factor in here.
+      [((Emit ,tme) ,rest ...)
+       (unless (null? stack) ;; null means the outer-emit. 
+	 (let ([x (car stack)])
+	   ;(printf "Adding segment to ~a : ~a ms total ~s ms\n" (rec-name x) (- tme (rec-start x)) (rec-total x))
+	   (set-rec-total! x (+ (rec-total x) (- tme (rec-start x))))
+	   (set-rec-start! x #f)))
+       (loop stack acc rest)]
+
+      ;; Start the clock again on the top operator:
+      #;
+      [((Ret ,tme) ,rest ...)
+       (unless (null? stack) (set-rec-start! (car stack) tme))
+       (loop stack acc rest)]
+
+      ;; Again, close the frame.
+      ;; Pop the stack frame:
+      [((End ,name ,tme) ,rest ...) 
+       (define x (car stack))
+       ;(printf " Adding segment to ~a : ~a ms start ~s total ~s ms\n" (rec-name x) (- tme (rec-start x)) (rec-start x) (rec-total x))
+       (ASSERT (eq? name (rec-name (car stack))))
+       (set-rec-total! x (+ (rec-total x) (- tme (rec-start x))))
+       (set-rec-start! x #f)
+       ;; As we pop the stack, we reset the timer:
+       (unless (null? (cdr stack)) (set-rec-start! (cadr stack) tme))
+       (loop (cdr stack) acc rest)]
+            
+      ;; Ignoring garbage for now:
+      [(,oth . ,rest) (loop stack acc rest)]
+      )))
+
+    ;; Split out the first start/end traverse pair:
+#;
+  (define first-seg 
+    (let-values ([(_ tail) (split 'StartTraverse log)])
+      (let-values ([(mid end) (split 'EndTraverse tail)])
+	;(append mid (list (car end)))
+	(cdr mid) ;; Throw out the start and end markers.
+	)))
+
+  (define segments
+    (let loop ([ls log])
+      ;(printf "looping... ~s\n" (length ls))
+      (if (null? ls) '()
+	  (let-values ([(_ tail) (split 'StartTraverse ls)])
+	    ;(printf "  remprefix ~a ~a ~a\n" (car tail) (length _) (length tail))
+	    (let-values ([(mid end) (split 'EndTraverse tail)])
+	      ;(printf "  mid ~a ~a ~a\n" (car end) (length mid) (length end))
+	      (cons (cdr mid) (loop end)))
+	    ))))
+  
+  ;; Collect all results:
+  (define table (make-default-hash-table))
+  
+  (for-each 
+      (lambda (seg)
+	(for-each (lambda (entry)
+		    (let ([rec (hashtab-get table (car entry))])
+		      (if rec
+			  ;; Extend the entry:
+			  (set-cdr! rec (cons (cadr entry) (cdr rec)))
+			  (let ([rec (list-copy (cdr entry))])			    
+			    (hashtab-set! table (car entry) rec)))))
+	  (extract-segment seg)))
+    segments)
+  
+  ;; Full report:
+  #;
+  (sort 
+   (lambda (sexp1 sexp2)
+     (< (cadr (assq 'median (cdr sexp1)))
+	(cadr (assq 'median (cdr sexp2)))))
+   (map (lambda (entry)
+	  (define nums (cdr entry))
+	 `(,(car entry) 
+	   (mean ,(exact->inexact (average nums)))
+	   (median ,(median nums))
+	   (stddev ,(stddev nums))
+	   (raw ,(sort < nums))))
+     (hashtab->list table)))
+  
+  ;; Just medians:
+  (sort (lambda (e1 e2) (> (cdr e1) (cdr e2)))
+	(map (lambda (entry)
+	       (cons (car entry) (median (cdr entry))))
+	  (hashtab->list table)))
+  )
+
 
 
 ;; Inserts a (measured-cycles <elapsed> <timer-frequency>) annotation:

@@ -112,6 +112,9 @@
   (define-generic BuildOutputFiles)
   (define-generic varbindk)
   (define-generic array-constructor-codegen)
+
+  (define-generic IterStartHook)
+  (define-generic IterEndHook)
    
   (__spec add-include! <emitC2> (self fn)
     (define files (slot-ref self 'include-files))
@@ -1391,14 +1394,21 @@ int main(int argc, char **argv)
 
 )]))
 
+
+
+(__spec IterStartHook <emitC2> (self name arg argty) "")
+(__spec IterEndHook   <emitC2> (self name arg argty) "")
+
 (__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
   (make-lines 
    (list (block `("void ",(Var self name) "(",(Type self argty)" ",(Var self arg)")")
 		(list
 		 "char "(Var self vqarg)";\n"
-		 (lines-text code)))
+		 (IterStartHook self name arg argty)
+		 (lines-text code)
+		 (IterEndHook self name arg argty)
+		 ))
 	 "\n")))
-
 
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
@@ -1807,9 +1817,6 @@ int main(int argc, char **argv)
 ;; Increments and decrements do nothing.  Everything is statically allocated currently:
 (__specreplace gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
 (__specreplace gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
-
-(define-generic IterStartHook)
-(define-generic IterEndHook)
 
 (__specreplace IterStartHook <tinyos> (self name arg argty) 
    "did_i_emit = FALSE;\n")
@@ -2597,7 +2604,14 @@ event void Timer000.fired() {
     //throw new Exception(\"wserror: \"+msg);
     System.out.println(\"wserror: \"+msg);
     System.exit(1);
- }\n"))
+ }
+
+  void BASE(char x) {
+    outputcount++;
+    if (outputcount == wsjava_tuplimit) System.exit(0);
+  }
+
+"))
 
 ;; Java GC replaces our memory management.
 (define __build-free-fun-table!
@@ -2790,11 +2804,6 @@ event void Timer000.fired() {
   private int wsjava_tuplimit = 10;
   private int outputcount = 0;
 
-  void BASE(char x) {
-    outputcount++;
-    if (outputcount == wsjava_tuplimit) System.exit(0);
-  }
-
 "(slot-ref self 'wserror-acc)"
 
   // Assuming there will only be one query, thus this is static:
@@ -2900,13 +2909,19 @@ event void Timer000.fired() {
 		;; If it's not a scalar type should we cast to object?
 		[_init (if (scalar-type? elt) (Simple self init)
 			   (cast "Object" (Simple self init)))]
-		[_ty (Type self ty)])
+		[_ty (Type self ty)]
+		[_elt (Type self elt)])
 	   (append-lines 
 	    ;((Binding self (emit-err 'array-constructor-codegen)) 
 	    ;(list tmp ty `(assert-type ,ty (Array:makeUNSAFE ,len))))
 	    (make-lines (list 
 			  _ty" "_tmp" = "newstmt";\n"
-			  "java.util.Arrays.fill("_tmp", 0,"len" - 1, "_init");\n"))
+			  "// This doesn't work in older JVMs \n"
+			  "// java.util.Arrays.fill("_tmp", 0,"len" - 1, "_init");\n"
+			  ;"java.util.Arrays.fill("_tmp", "_init");\n"
+			  "for(int i=0; i<"len"; i++) "_tmp"[i] = ("_elt")"_init";\n"
+			  
+			  ))
 	    (kont _tmp))))]))
 
 
@@ -2921,7 +2936,7 @@ event void Timer000.fired() {
  (slot-set! self 'import-acc
 	    (list "// For the 'Form' class:\n"
 		  "import javax.microedition.lcdui.*;\n"))
- (slot-set! self 'wserror-acc " 
+ (slot-set! self 'wserror-acc (list " 
  static void wserror(String msg) {
     form.append(new StringItem(null, \"!wserror!\" + msg));
     outstrm.print(\"!wserror!\" + msg);
@@ -2930,7 +2945,13 @@ event void Timer000.fired() {
  static private Form form;
  public void setForm(Form f) { form = f; }
 
-"))
+  void BASE(char x) {
+    "(print-w-time "BASE ")"
+    outputcount++;
+    if (outputcount == wsjava_tuplimit) System.exit(0);
+  }
+
+")))
 
 (define ____Effect 
   (specialise! Effect <javaME>
@@ -2970,6 +2991,78 @@ event void Timer000.fired() {
 	[(logF ,[Simp -> a]) (kont `("(float)Float11.log(",a")"))]
 	
 	[,else (next)]))))
+
+;; ================================================================================
+;; [2008.04.12] When I'm not in a hurry these should go in their own class, <javaME-timed> 
+
+(define (print-w-time prefix)
+  (list 
+   "outstrm.print(\"("prefix"\"); "
+   "outstrm.print(System.currentTimeMillis()); "
+   "outstrm.print(\")\\n\");\n"))
+
+(define ___IterStartHook
+  (specialise! IterStartHook <javaME>  
+    (lambda (next self name arg argty)
+    ;(LoadPrintf self)
+    (list (next)	  
+	  ;(format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+	  ;"outstrm.print(\"(Start "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"
+	  (print-w-time (list "Start "(sym2str name)" "))
+	  ))))
+(define ___IterEndHook
+  (specialise! IterEndHook <javaME>
+    (lambda (next self name arg argty) 
+    ;(LoadPrintf self)
+    (list (next)
+	  ;(format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
+	  ;"outstrm.print(\"(End "(sym2str name)" 0 \"+ System.currentTimeMillis() + \")\\n\");\n"	 
+	  (print-w-time (list "End "(sym2str name)" "))
+	  ))))
+
+;; Because we follow tuples on emits, we need to time differently.
+;; [2008.04.12] Scratching this... just using the next "Start" instead of "Emit".
+;; That means blaming the function call on the parent operator...
+#;
+(define __Emit 
+  (specialise! Emit <javaME> 
+    (lambda (next self down*)
+      (lambda (expr)
+	(append-lines ;(make-lines "outstrm.print(\"(Emit \"+ System.currentTimeMillis() + \")\\n\");\n")	 
+	 (make-lines (print-w-time "Emit "))
+	 ((next) expr)
+	 (make-lines (print-w-time "Ret "))
+	 ;(make-lines "outstrm.print(\"(Ret  \"+ System.currentTimeMillis() + \")\\n\");\n")
+	 )))))
+
+;; Wrap timers around the whole Source call:
+(define ___Source
+  (specialise! Source <javaME>
+  (lambda (next self xp)
+    (define-values (nm code state rate init) (next))
+
+    (values nm 
+	    (append-lines (make-lines (print-w-time "StartTraverse "))
+			  code
+			  (make-lines (print-w-time "EndTraverse ")))
+	    state rate init))))
+
+#;
+;; Generate nothing for the cutpoints... we're just interested in the Printf output:
+;; We use this as an opportunity to flush:
+(__specreplace Cutpoint <tinyos-timed> (self ty in out) 
+   (define _ty  (match ty [(Stream ,elt) (Type self elt)]))
+   (define fun (list "// Code generated in place of cutpoint:\n"
+		"void "(Var self out)"("_ty" x) { 
+  printf(\"(EndTraverse %u %u)\\n\\n\", overflow_count, call Cntr.get()); 
+  flushdispatch = "nulldispatchcode";
+  call PrintfFlush.flush(); 
+  // HACK: ASSUMING ONLY ONE CUTPOINT CURRENTLY!!!!
+  cleanup_after_traversal();
+}"))
+   (values (make-lines fun) '() '()))
+
+
 
 
 ) ;; End module

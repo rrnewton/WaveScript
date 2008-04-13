@@ -134,11 +134,11 @@ public class WSPhoneSetup
 
     byte samples[] = null;
     try {
-        
+
+// [2008.04.12] Disabling actual audio recording for now!!
       //  Player player = Manager.createPlayer("capture://audio?encoding=pcm&channels=1&rate=8000");
       player = Manager.createPlayer("capture://audio?encoding=amr");
       player.realize();
-
       rc = (RecordControl) player.getControl("RecordControl");
       //rc.setRecordSizeLimit(100000);
 
@@ -182,6 +182,8 @@ public class WSPhoneSetup
       // Close down and report some stats:
       player.stop();      
       player.close();
+
+
       mMainForm.append(new StringItem(null, "count="+networkStream.getCount() +"\n"));
       mMainForm.append(new StringItem(null, "tcps="+networkStream.getTcpState()+".\n"));
       networkStream.close();
