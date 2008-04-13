@@ -74,8 +74,10 @@ fun myZipN(bufsize, slist) {
   using List;
   len = slist`List:length;
   outputBuf = Array:makeUNSAFE(len);
+  // Trying this out here:
+  bufs = Array:build(len, fun(_) FIFO:make(bufsize));
   iterate (ind, elem) in unionList(slist) {
-    state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
+    //state { bufs = Array:build(len, fun(_) FIFO:make(bufsize)) }
     using FIFO;
 //println("  Enqueuing in "++ind++" currently has "++bufs[ind]`FIFO:elements);
     enqueue(bufs[ind], elem);
@@ -159,7 +161,9 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
         //inspect$ _memory;
 
         // add the first element of the input buffer into the array
-        FIFO:enqueue(_memory, buf[j]);
+/*         FIFO:enqueue(_memory, buf[j]); */
+
+
         for i = 0 to nCoeff-1 {
 /* 	  outputBuf[j] := outputBuf[j] +  */
 /* 	   _flipped_filter_coeff[i] * FIFO:peek(_memory, i); */
@@ -167,7 +171,9 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
 	  FIX_MPY(_flipped_filter_coeff[i], FIFO:peek(_memory, i));
         };
 
-	FIFO:dequeue(_memory);
+ 
+
+/* 	FIFO:dequeue(_memory); */
       };
       emit outputBuf;
     }
@@ -237,9 +243,10 @@ fun GetFeatures(winsize, input) {
 /*   println(level6); */
 
   //zipN(zip_bufsize, [level4, level5, level6]);
-  //myZipN(zip_bufsize, [level4, level5, level6]);
+  myZipN(zip_bufsize, [level4, level5, level6]);
   // TEMP TEMP FIXME:  HACKING AROUND:
-  level6
+  //level6
+  //lowFreq1
 }
 
 /*
@@ -261,9 +268,17 @@ fun process_channel(winsize, stm) {
 }
     
 namespace Node {
-  
-  // input winsoze
-  winsize = 512;
+
+  // DANGER TOGGLING THIS FOR EXPERIMENTS:
+  //THERATE = 256.0 / 400.0;  // Accurante "realtime" rate.
+  THERATE = 1.0 / 15.0; // Every 10 seconds...
+  winsize = 16;
+  //winsize = 32;
+  //winsize = 256;
+
+  // input winsize
+  //winsize = 512;
+
   NUM_CHANNELS = 1;
   NUM_FEATURES = 3;
   // For running on the PC:
@@ -274,7 +289,7 @@ namespace Node {
   //sensor = [COUNTUP(0).arrwindow(winsize)];
   //sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
   outbuf = Array:build(winsize, fun(i) Int16!i);
-  sensor = iterate _ in timer$ 256.0 / 400.0 { emit outbuf };
+  sensor = iterate _ in timer$ THERATE { led1Toggle(); emit outbuf };
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
@@ -291,8 +306,26 @@ namespace Node {
 }
 
 
-main = Node:filtered.head
+//main = castToFloat(winsize, Node:inputs.head);
+
+
+
+//main = AddOddAndEven(winsize/2,
+//                     GetEven(winsize/2, castToFloat(winsize, Node:inputs.head)),
+//                     GetOdd(winsize/2, castToFloat(winsize, Node:inputs.head)))
+
+
+
+
+//ret = FIRFilter(Node:winsize, hLow_Even, Node:sensor);
+//ret = LowFreqFilter(Node:winsize, Node:sensor);
+
+ret = MagWithScale(filterGains[3],
+        FIRFilter(Node:winsize, hLow_Even, GetEven(Node:winsize, Node:sensor)));
+
+//main = iterate _ in Node:filtered.head { emit 389 }
 //main = Node:flat
 //main = Node:sensor
 
+main = iterate _ in ret { emit 389 }
 

@@ -625,6 +625,16 @@
     (match cb
       [(,vr ,ty ,rhs) ;(,[Var -> v] ,[Type -> t] ,rhs) 
        ((Value self emitter) rhs (varbindk self vr ty))]
+
+      ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+      ;; [2008.04.13] Trying to catch static-allocate even elsewhere in the code:
+#;
+      [(,vr ,ty ,static) (guard (match? (peel-annotations static) (static-allocate ,rhs)))
+       (define-values (binds init) (StaticAllocate self vr ty static))
+       ;; De-split the binding right here:
+       (inspect/continue
+	(append-lines binds init))]
+
       [,oth (error 'Binding "Bad Binding, got ~s" oth)]))))
 
 ;; This is there for the benefit of the java backend.  It needs to
@@ -645,14 +655,44 @@
 	   ;; annotation to float around in arbitrary code.  We catch it right here.
 	   [(static-allocate ,rhs) (StaticAllocate self vr ty rhs)]
 
-#;	   
 	   ;; Here we flatten out lets:
+	   ;; [2008.04.13] This runs into a problem right now because of struct constants;
+#;
 	   [(let (,bind) ,[bodbnds bodinit])	  
 	    ;;(define-values (bnds init) (SplitBinding self (list vr )))
-	    (define-values (bnds init) ((SplitBinding self emitter) bind))
-	    (values (append-lines bnds bodbnds)
-		    (append-lines init bodinit))]
-#;
+	    (match bind
+	      ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	      ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	      ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	      [(,lhs ,ty (make-struct . ,_)) 
+	       (Binding bind)]
+	      #;
+	      [,else
+	       (define-values (bnds init) ((SplitBinding self emitter) bind))
+	       (values (append-lines bnds bodbnds)
+		       (append-lines init bodinit))
+	       ]
+	      [,else 
+	       (values (append-lines ((Binding self emitter) bind) bodbnds)
+		       bodinit)
+	       ]
+	      )]
+
+	   	   ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	   ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+	   [(make-struct . ,rest)
+	    (inspect (cons 'make-struct rest))
+	    ;; Here we just do the binding immediately, and return nothing for the initialization:
+	    (values ((Binding self emitter) (list vr ty rhs))
+		    (make-lines "")
+		    )]
+	   [(assert-type ,ty (make-struct . ,rest))
+	    (inspect (cons 'ASSERTmake-struct rest))
+	    ;; Here we just do the binding immediately, and return nothing for the initialization:
+	    (values ((Binding self emitter) (list vr ty rhs))
+		    (make-lines "")
+		    )]
+
 	   ;; Flip
 	   [(assert-type ,ty (static-allocate ,rhs)) 
 	    (loop `(static-allocate (assert-type ,ty ,rhs)))]
@@ -688,9 +728,34 @@
 
 
 (__spec Let <emitC2> (self form emitter recur)
-  (match form     
-    [(([,lhs ,ty ,rhs]) ,[recur -> bod])
+  (match form         
+    [(([,lhs ,ty ,rhs]) ,_bod)
+
+     ;; ANOTHER HACK: HANDLE make-struct DIFFERENTLY IN THE BODY:
+     (define bod 
+       (match (peel-annotations _bod)
+	 [(make-struct ,sname ,args ...)
+	  (define tmp (unique-name 'hackage))
+	  ;; Here we introduce another temporary at the last second.
+	  ;; To get around C's limited {a,b,c} syntax for structs...
+	  (make-lines 
+	   (block "" 
+		 (list (lines-text ((Binding self emitter) (list tmp `(Struct ,sname) _bod)))
+		       (lines-text (recur tmp)))))
+	  ]
+	 [,oth (recur oth)]))
+
      ;; A hack on a hack, make-struct must be handled differently:
+
+;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME      
+;; [2008.04.13] MIGRATING THIS HACK TO SPLITBINDING
+     #;	
+     (let-values ([(bind* init*) ((SplitBinding self emitter)
+				     (list lhs ty rhs))])
+	  (let ([result (append-lines bind* init* bod)])
+	    (make-lines (block "" (lines-text result)))))
+;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME      
+
      (match (peel-annotations rhs)
        [(make-struct . ,_)
 	(let ([result (append-lines ((Binding self emitter) (list lhs ty rhs))
@@ -849,6 +914,8 @@
 
        [(let . ,_) (Let self _ emitter recur)]
 
+       ;; Should only occur as the rvalue in a binding, which is ok.
+       ;; But this is not a general expression in C:
        [(make-struct ,name ,[Simp -> arg*] ...)
 	(kont `("{",(insert-between ", " arg*)"}"))]
        [(struct-ref ,type ,fld ,[Simp -> x])
@@ -2457,7 +2524,9 @@ implementation {
   }
 
 "(insert-between "\n"
-           (list (text->string (lines-text freefundefs))
+           (list 
+	    ;; Don't need the freefundefs in TinyOS:
+	    ;; (text->string (lines-text freefundefs))
                  state
                  ;toplevelsink
                  ops ;srcfuns 

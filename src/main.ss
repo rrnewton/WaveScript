@@ -1077,6 +1077,8 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 
+;		     (inspect prog)
+
 		     (ws-run-pass prog emit-c2 class)
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
@@ -1103,6 +1105,58 @@
 				      [wavescript-compiler-javame <javaME>])))
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 
+		  (define (DUMP-THE-LINEAR-PROGRAM)
+		    ;; [2008.04.08] TEMP - this is for my experimentation:
+		    ;; TEMPTOGGLE
+		    (when #t ;(top-level-bound? 'scheme-profiling-performed!)
+					;(printf "\nDumping integer linear program, using Scheme profile only.\n")
+		      (let ([merged (merge-partitions node-part server-part)])		    
+
+			;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
+
+			#;
+			(let ([experdir "~/wavescript/apps/telos_audio/"])
+			  (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
+			  ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
+			  ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
+					;(set! merged (inject-times merged (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
+			  (string->file (output-graphviz merged) "query_hacked.dot")
+			  (printf "Produced HACK/injection graphviz output...\n")
+			  (system "dot -Tpng query_hacked.dot -oquery_hacked.png")
+			  )
+
+			(printf "\nDumping integer linear program.\n")
+			(string->file (emit-lp (partition-sourcesonly merged)
+					       (partition-getmiddle merged)
+					       (partition-baseonly merged))
+				      "partition_scheme.lp")
+			(printf "\n Running LP solver.\n")
+			(time (system "lp_solve partition_scheme.lp > partition_assignments_sche.txt"))
+			(let ([results (file->string "partition_assignments_scheme.txt")])
+			  (match (string->slist results)
+			    [(Value of objective function: ,objective
+				    Actual values of the variables: 
+				    ,rest ...)
+			     (define (everyother ls)
+			       (cond
+				[(null? ls) '()]
+				[(null? (cdr ls)) ls]
+				[else (cons (car ls) (everyother (cddr ls)))]))
+			     (define names (everyother rest))
+			     (define vals (everyother (cdr rest)))
+					;(inspect (map list names vals))
+			     
+			     (define assigned (inject-assignments merged (map list names vals)))
+			     
+			     (string->file (output-graphviz assigned) "query_partitioned.dot")
+			     (printf "Produced new graphviz output...\n")
+			     (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
+			     (exit)
+			     ]
+			    )
+			  )		      
+			)))
+
 		  ;; Tag everything that is part of the user's node partition:
 		  (set! node-part (map-partition-ops (lambda (x) (tag-op '(originally-on-node) x)) node-part))
 		  		  		
@@ -1111,57 +1165,9 @@
 		  (printf "\n Server operators:\n\n")
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
+
+		  ;(DUMP-THE-LINEAR-PROGRAM)
 		  		  
-		  ;; [2008.04.08] TEMP - this is for my experimentation:
-		  ;; TEMPTOGGLE
-		  (when #t ;(top-level-bound? 'scheme-profiling-performed!)
-		    ;(printf "\nDumping integer linear program, using Scheme profile only.\n")
-		    (let ([merged (merge-partitions node-part server-part)])		    
-
-
-		  ;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
-		  (let ([experdir "~/wavescript/apps/telos_audio/"])
-		    (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
-		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
-		    ;;(set! prog (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
-		    (set! merged (inject-times merged (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
-		    (string->file (output-graphviz merged) "query_hacked.dot")
-		    (printf "Produced HACK/injection graphviz output...\n")
-		    (system "dot -Tpng query_hacked.dot -oquery_hacked.png")
-		    )
-
-		  (printf "\nDumping integer linear program.\n")
-		  (string->file (emit-lp (partition-sourcesonly merged)
-					     (partition-getmiddle merged)
-					     (partition-baseonly merged))
-				    "partition_scheme.lp")
-		      (printf "\n Running LP solver.\n")
-		      (time (system "lp_solve partition_scheme.lp > partition_assignments_sche.txt"))
-		      (let ([results (file->string "partition_assignments_scheme.txt")])
-			(match (string->slist results)
-			  [(Value of objective function: ,objective
-				  Actual values of the variables: 
-				  ,rest ...)
-			   (define (everyother ls)
-			     (cond
-			      [(null? ls) '()]
-			      [(null? (cdr ls)) ls]
-			      [else (cons (car ls) (everyother (cddr ls)))]))
-			   (define names (everyother rest))
-			   (define vals (everyother (cdr rest)))
-			   ;(inspect (map list names vals))
-			   
-			   (define assigned (inject-assignments merged (map list names vals)))
-			   			   
-			   (string->file (output-graphviz assigned) "query_partitioned.dot")
-			   (printf "Produced new graphviz output...\n")
-			   (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
-			   (exit)
-			   ]
-			)
-			)		      
-		      ))
-
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
 		    (newline)
@@ -1242,10 +1248,12 @@
 			  [newprog (inject-times prog times 32000)])
 
 		      
-		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)))
+		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)) 'replace)
 
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")
+
+		      (DUMP-THE-LINEAR-PROGRAM) 
 
 		      (printf "============================================================\n")
 		      (printf "       Auto Partitioning: \n")

@@ -350,22 +350,27 @@
 
   ;; A binding that gets evaluated exactly once.
   (define (StaticBind lhs ty rhs)
+    ;(printf "Making static ~s\n" lhs)
     `(,lhs ,ty
 	   ,(let loop ([rhs rhs])
 	      (match (peel-annotations rhs) ;; no recursion!
 		;; What kinds of things can we switch to static allocation?
 		;; Currently just quoted constants:
-		[',c `(static-allocate ,rhs)] 
+		[',c `(static-allocate ,rhs)]
 		[(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) 
 		 `(static-allocate ,rhs)]
 
-#;
 		;; [2008.04.13] Extending this to dig a little deeper.
 		;; In particular, as long as there's no conditional
 		;; control flow, it's still static...
 		[(let ([,lhs ,ty ,[loop -> rhs]]) ,[loop -> bod])
-		 ;(pp `(static-let `(let ([,lhs ,ty ,rhs]) ,bod)))
-		 `(let ([,lhs ,ty ,rhs]) ,bod)]
+		 ;(pp `(static-let `(let ([,lhs ,ty (assert-type ,ty ,rhs)]) ,bod)))
+		 ;; Throw an extra type assert in there:
+		 `(let ([,lhs ,ty (assert-type ,ty ,rhs)]) ,bod)]
+
+		[(begin ,[loop -> e*] ...)
+		 ;(pp `(static-begin (begin ,@e*)))
+		 `(begin ,@e*)]
 		
 ;		[(assert-type ,ty ,[loop -> e]) `(assert-type ,ty ,e)]
 
