@@ -85,25 +85,33 @@
 	       (assq sym annot)]
 	      [,else #f])))
 	
+	;; Changing this to log instead of linear:
+	;(define (preprocess-ticks x) x)
+	(define (preprocess-ticks x) (log x))
 	(define ticks->color
 	  (let ()
 	    (define all_ticks
-	      (map cadr
-	       (filter id 
-		 (map (get-annotation 'measured-cycles)
-		   (append se* oe*)))))
+	      (map preprocess-ticks
+		(map cadr
+		  (filter id 
+		    (map (get-annotation 'measured-cycles)
+		      (append se* oe*))))))
 	    (define min_ticks (apply min +inf.0 all_ticks))
 	    (define max_ticks (apply max -inf.0 all_ticks))
 	    (define span (- max_ticks min_ticks))
-	    (lambda (ticks)
+	    (lambda (_ticks)	      
+	      (define ticks (preprocess-ticks _ticks))
 	      (define fraction (if (zero? span) 0 (/ (- ticks min_ticks) span)))
 	      (define (pad str) (if (= (string-length str) 1) (string-append "0" str) str))
-	      (string-append 	       
-	       "#"
-	       ;; Red/Green:
+	      ;; RGB:
+	      (string-append "#"
 	       (pad (number->string (inexact->exact (floor (* 255. fraction))) 16))
 	       (pad (number->string (inexact->exact (floor (* 255. (- 1 fraction)))) 16))
 	       "00")
+	      #;
+	      ;; HSV:
+	      (string-append (number->string (exact->inexact (+ .65 (* .35 fraction))))
+			     " 0.7 0.8")
 	      )))
 
 	(define nodelabels 

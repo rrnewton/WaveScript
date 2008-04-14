@@ -987,7 +987,8 @@
 				     [entry (assq name times)])
 				(if entry
 				    `((measured-cycles ,(cdr entry) ,timerfreq))
-				    '()))
+				    '()
+				    ))
 			    ,@annot*)
 			   ,fun ,strm)]
 		[,oth (fallthru oth)]))])
@@ -1281,14 +1282,13 @@
 	       
 	       ;; Scheme cpu weights mode:
 	       (let ([entry (assq 'data-rates (hashtab-get annot-table vr))])
-		 (printf "Using Scheme execution times to formulate LP.\n")
+		 ;(printf "Using Scheme execution times to formulate LP.\n")
 		 (if entry
 		     (let ([elapsed-vtime 
 			    (match (ws-profile-limit)
 			      ;; How many ms did we run scheme for:
 			      ;; This is real time:
-			      #;
-			      [(time ,ms)    ??  ]
+			      ;[(time ,ms)  ms]
 			      ;;[(elements ,n) ]
 			      [(virttime ,vt) 
 			       vt
@@ -1298,7 +1298,8 @@
 			       ] ;; (* 1000 vt)
 			      )])
 		       (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
-			 ;(printf "TIME ~s ELAPSED ~s\n"(bench-stats-cpu-time (caddr entry)) elapsed-vtime)
+			 (printf "  TIME ~s ELAPSED ~s RATIO ~s\n"
+				 (bench-stats-cpu-time (caddr entry)) elapsed-vtime (exact->inexact frac))
 			 (inexact->exact (floor (* frac cpu-granularity)))))
 		     default-vert-weight))
 	       )))))

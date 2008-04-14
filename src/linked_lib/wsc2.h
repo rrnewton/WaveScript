@@ -6,11 +6,16 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<complex.h>
 #include<math.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+
+//#define LOAD_COMPLEX
+
+#ifdef LOAD_COMPLEX
+#include<complex.h>
+#endif
 
 #include<getopt.h>
 
@@ -125,9 +130,11 @@ int Listref(void* list, int n) {
 */
 
 
+#ifdef LOAD_COMPLEX
 inline static float cNorm(complex c) {
    float re =  __real__ (c);
    float im =  __imag__ (c);
    return sqrt ((re*re) + (im*im));
 }
+#endif
 

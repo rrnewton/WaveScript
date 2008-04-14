@@ -289,7 +289,7 @@ namespace Node {
   //sensor = [COUNTUP(0).arrwindow(winsize)];
   //sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
   outbuf = Array:build(winsize, fun(i) Int16!i);
-  sensor = iterate _ in timer$ THERATE { led1Toggle(); emit outbuf };
+  sensor = iterate _ in timer$ THERATE { emit outbuf };
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
@@ -327,5 +327,7 @@ ret = MagWithScale(filterGains[3],
 //main = Node:flat
 //main = Node:sensor
 
-main = iterate _ in ret { emit 389 }
+//main = iterate _ in ret { emit 389 }
 
+// IMPORTANT: This is the one for the java results:
+main = iterate _ in Node:filtered.head { emit 389 }
