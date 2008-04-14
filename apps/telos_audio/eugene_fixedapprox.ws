@@ -289,7 +289,7 @@ namespace Node {
   //sensor = [COUNTUP(0).arrwindow(winsize)];
   //sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
   outbuf = Array:build(winsize, fun(i) Int16!i);
-  sensor = iterate _ in timer$ THERATE { emit outbuf };
+  sensor = iterate _ in IFPROFILE(Server:timer$THERATE, timer$ THERATE) { emit outbuf };
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  
