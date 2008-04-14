@@ -186,16 +186,20 @@ fun FIX_MPY(a, b) {
 }
 
 
+FIX_DIV_16_16 :: (Int32, Int32) -> Int32;
+fun FIX_DIV_16_16(_x,_y) {
+  c :: Int32 = _x * gint(32767) / _y;
+
+println("_x "++_x++" _y "++_y++" div "++c);
+
+  c
+}
+
+
 FIX_DIV :: (Short, Short) -> Short;
 fun FIX_DIV(x,y) {
-  _x :: Int32 = cast_num$ (x::Short);
-  _y :: Int32 = cast_num$ (y::Short);
-  c :: Int32 = _x * 32767 / _y;
-
-println("x "++x++" _x "++_x++" y "++y++" _y "++_y++
-	   " shifted _x "++lshiftI32(_x, 16)++" div "++c);
-
-  (cast_num$ (c)::Short)
+  (cast_num$ (FIX_DIV_16_16((cast_num$ (x::Short)::Int32),
+                            (cast_num$ (y::Short)::Int32)))::Short)
 }
 
 /* doesnt work.?
@@ -210,15 +214,19 @@ fun FIX_SQRT(x) {
 }
 */
 
+quarter = FIX_F2I(0.25);
+start = FIX_F2I(0.9999);
+
 FIX_SQRT :: (Short) -> Short;
 fun FIX_SQRT(x) {
-  s = Mutable:ref(x);
-  next = Mutable:ref(rshiftI16(x,1));  
+  _x :: Int32 = cast_num$ (x::Short);
+  s = Mutable:ref(_x);
+  next = Mutable:ref(rshiftI32((_x+32767),1));
   while (s != next) {
     s := next;
-    next := rshiftI16(s + FIX_DIV(x, s),1);
+    next := rshiftI32(s + FIX_DIV_16_16(_x, s),1);
   };	 
-  s
+  (cast_num$ (s)::Short)
 }
 
 
@@ -373,7 +381,6 @@ fun fix_fft(fr, fi, m, inverse)
 
 
 
-/*
 main = iterate _ in COUNTUP(0) {
   state { x = 32767 }
   x := FIX_MPY(x,32400); 
@@ -415,15 +422,16 @@ main = iterate _ in COUNTUP(0) {
 
 
   quart = FIX_F2I(0.25);
-  sq = FIX_SQRT(quart);
+  quart3 = FIX_F2I(0.75);
+
+  println("sqrt of "++FIX_I2F(quart)++" is "++FIX_I2F(FIX_SQRT(quart)));
+  println("sqrt of "++FIX_I2F(quart3)++" is "++FIX_I2F(FIX_SQRT(quart3)));
 
   quart2 = FIX_DIV(FIX_F2I(0.1),FIX_F2I(0.4));
 
-  println("sqrt of "++FIX_I2F(quart)++" is "++FIX_I2F(sq));
   println(".1/.4 is "++FIX_I2F(quart2));
 
 
   emit ()
 }
 
-*/
