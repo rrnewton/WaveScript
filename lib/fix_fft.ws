@@ -186,8 +186,39 @@ fun FIX_MPY(a, b) {
 }
 
 
-fun FIX_SQRT(f) {
-  FIX_F2I(sqrtF(FIX_I2F(f)))
+FIX_DIV :: (Short, Short) -> Short;
+fun FIX_DIV(x,y) {
+  _x :: Int32 = cast_num$ (x::Short);
+  _y :: Int32 = cast_num$ (y::Short);
+  c :: Int32 = _x * 32767 / _y;
+
+println("x "++x++" _x "++_x++" y "++y++" _y "++_y++
+	   " shifted _x "++lshiftI32(_x, 16)++" div "++c);
+
+  (cast_num$ (c)::Short)
+}
+
+/* doesnt work.?
+FIX_SQRT :: (Short) -> Short;
+fun FIX_SQRT(x) {
+  fun newton(s) {
+    next = rshiftI16(s + FIX_DIV(x, s),1);
+    if (next == s) then s
+    else newton(next)
+  };	 
+  newton(rshiftI16(x,1))
+}
+*/
+
+FIX_SQRT :: (Short) -> Short;
+fun FIX_SQRT(x) {
+  s = Mutable:ref(x);
+  next = Mutable:ref(rshiftI16(x,1));  
+  while (s != next) {
+    s := next;
+    next := rshiftI16(s + FIX_DIV(x, s),1);
+  };	 
+  s
 }
 
 
@@ -341,8 +372,8 @@ fun fix_fft(fr, fi, m, inverse)
 }
 
 
-/*
 
+/*
 main = iterate _ in COUNTUP(0) {
   state { x = 32767 }
   x := FIX_MPY(x,32400); 
@@ -381,6 +412,16 @@ main = iterate _ in COUNTUP(0) {
   for i = 0 to 15 { print(b[i]++" "); }; print("\n");
   //println(Array:prefix(a,16));
   //println(b);
+
+
+  quart = FIX_F2I(0.25);
+  sq = FIX_SQRT(quart);
+
+  quart2 = FIX_DIV(FIX_F2I(0.1),FIX_F2I(0.4));
+
+  println("sqrt of "++FIX_I2F(quart)++" is "++FIX_I2F(sq));
+  println(".1/.4 is "++FIX_I2F(quart2));
+
 
   emit ()
 }
