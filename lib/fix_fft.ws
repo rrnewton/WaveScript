@@ -186,54 +186,13 @@ fun FIX_MPY(a, b) {
 }
 
 
-FIX_DIV_16_16 :: (Int32, Int32) -> Int32;
-fun FIX_DIV_16_16(_x,_y) {
-  c :: Int32 = _x * gint(32767) / _y;
-
-println("_x "++_x++" _y "++_y++" div "++c);
-
-  c
-}
-
-
 FIX_DIV :: (Short, Short) -> Short;
 fun FIX_DIV(x,y) {
-  (cast_num$ (FIX_DIV_16_16((cast_num$ (x::Short)::Int32),
-                            (cast_num$ (y::Short)::Int32)))::Short)
+  fun div_aux(_x,_y) { c :: Int32 = _x * gint(32767) / _y; c };
+  (cast_num$ (div_aux((cast_num$ (x::Short)::Int32),
+                      (cast_num$ (y::Short)::Int32)))::Short)
 }
 
-/* doesnt work.?
-FIX_SQRT :: (Short) -> Short;
-fun FIX_SQRT(x) {
-  fun newton(s) {
-    next = rshiftI16(s + FIX_DIV(x, s),1);
-    if (next == s) then s
-    else newton(next)
-  };	 
-  newton(rshiftI16(x,1))
-}
-*/
-
-quarter = FIX_F2I(0.25);
-start = FIX_F2I(0.9999);
-
-FIX_SQRT :: (Short) -> Short;
-fun FIX_SQRT(x) {
-  _x :: Int32 = cast_num$ (x::Short);
-  s = Mutable:ref(_x);
-  next = Mutable:ref(rshiftI32((_x+32767),1));
-  while (s != next) {
-    s := next;
-    next := rshiftI32(s + FIX_DIV_16_16(_x, s),1);
-  };	 
-  (cast_num$ (s)::Short)
-}
-
-
-FIX_NORM :: (Short, Short) -> Short;
-fun FIX_NORM(re, im) {
-  FIX_SQRT(FIX_MPY(re,re)+FIX_MPY(im,im))
-}
 
 
 ln10 = logF(10.0);
@@ -243,6 +202,53 @@ fun FIX_LOG10(f) {
   FIX_F2I(logF(FIX_I2F(f))/ln10)
 }
 
+
+
+
+FIX_F2I_16_16 :: (Float) -> Int32;
+fun FIX_F2I_16_16(a) ( (cast_num(a * 65536.0)::Int32) ) 
+
+FIX_I2F_16_16 :: (Int32) -> Float;
+fun FIX_I2F_16_16(a) ( (cast_num(a)::Float) / 65536.0 )
+
+
+FIX_MPY_16_16 :: (Int32, Int32) -> Int32;
+fun FIX_MPY_16_16(_a, _b) {
+  rshiftI32(_a * _b, 16);
+}
+
+
+FIX_DIV_16_16 :: (Int32, Int32) -> Int32;
+fun FIX_DIV_16_16(_x,_y) {
+  c :: Int32 = lshiftI32(_x,16) / _y;
+  //println("_x "++_x++" _y "++_y++" div "++c);
+  c
+}
+
+FIX_SQRT_16_16 :: (Int32) -> Int32;
+fun FIX_SQRT_16_16(_x) {
+  if _x == 0 then 0
+  else if _x == 32767 then 32767
+  else {
+    c = Mutable:ref(0);
+    s = Mutable:ref(_x);
+    next = Mutable:ref(rshiftI32((_x+65536),1));
+    while (s != next && c < 32) {
+      c := c + 1;
+      s := next;
+      next := rshiftI32(s + FIX_DIV_16_16(_x, s),1);
+    };
+    //if c == 32 then println("WHOOPS.."++_x);   // overflow sometimes occurs...
+    s
+  }
+}
+
+
+FIX_NORM_16_16 :: (Int32, Int32) -> Int32;
+fun FIX_NORM_16_16(re, im) {
+//println("re2 "++FIX_MPY_16_16(re,re)++" im2 "++FIX_MPY_16_16(im,im));
+  FIX_SQRT_16_16(FIX_MPY_16_16(re,re)+FIX_MPY_16_16(im,im))
+}
 
 /*
   fix_fft() - perform forward/inverse fast Fourier transform.
@@ -380,7 +386,7 @@ fun fix_fft(fr, fi, m, inverse)
 }
 
 
-
+/*
 main = iterate _ in COUNTUP(0) {
   state { x = 32767 }
   x := FIX_MPY(x,32400); 
@@ -421,11 +427,11 @@ main = iterate _ in COUNTUP(0) {
   //println(b);
 
 
-  quart = FIX_F2I(0.25);
-  quart3 = FIX_F2I(0.75);
+  quart = FIX_F2I_16_16(0.25);
+  quart3 = FIX_F2I_16_16(0.75);
 
-  println("sqrt of "++FIX_I2F(quart)++" is "++FIX_I2F(FIX_SQRT(quart)));
-  println("sqrt of "++FIX_I2F(quart3)++" is "++FIX_I2F(FIX_SQRT(quart3)));
+  println("sqrt of "++FIX_I2F_16_16(quart)++" is "++FIX_I2F_16_16(FIX_SQRT_16_16(quart)));
+  println("sqrt of "++FIX_I2F_16_16(quart3)++" is "++FIX_I2F_16_16(FIX_SQRT_16_16(quart3)));
 
   quart2 = FIX_DIV(FIX_F2I(0.1),FIX_F2I(0.4));
 
@@ -435,3 +441,4 @@ main = iterate _ in COUNTUP(0) {
   emit ()
 }
 
+*/
