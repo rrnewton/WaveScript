@@ -38,7 +38,7 @@ zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
 
 // Hardware timer rate:
-maxrate = 200 //512
+maxrate = 512
 step = 5 // Step period down by
 // Epoch in seconds 
 epoch = 60 * maxrate // One minute
