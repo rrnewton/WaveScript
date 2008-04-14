@@ -1103,8 +1103,10 @@
 				      [wavescript-compiler-nesc <tinyos>]
 				      [wavescript-compiler-java   <java>]
 				      [wavescript-compiler-javame <javaME>])))
-		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 
+		;; HERE'S THE SPLIT SERVER/EMBEDDED PATH:
+		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
+		  
 		  (define (DUMP-THE-LINEAR-PROGRAM merged)
 		    ;; [2008.04.08] TEMP - this is for my experimentation:
 		    ;; TEMPTOGGLE
@@ -1164,6 +1166,7 @@
 
 		  ;; Tag everything that is part of the user's node partition:
 		  (set! node-part (map-partition-ops (lambda (x) (tag-op '(originally-on-node) x)) node-part))
+
 		  		  		
 		  (printf "\n Node operators:\n\n")
 		  (pretty-print (partition->opnames node-part))

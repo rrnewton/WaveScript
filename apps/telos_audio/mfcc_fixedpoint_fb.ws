@@ -288,15 +288,15 @@ signedones = Array:make(windowSize, 0);
 
 // Dummy source for java:
 //src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
-//RATE = 8000 / windowSize;  // realtime
-RATE = 0.5;  // slow, for profiling
+REALRATE = 8000 / windowSize;  // realtime
+SLOWRATE = 0.5;  // slow, for profiling on telos
 outbuf = Array:build(windowSize, fun(i) (99::Int16));
- dummy = iterate _ in IFPROFILE(Server:timer$RATE,timer$RATE) { emit outbuf };
+ raw = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
 
 // Pick which one you want:
 //src = sensor
 //src = file;
-src = dummy;
+src = raw;
 
 
 /* convert data to signed from unsigned */
@@ -349,13 +349,13 @@ prefilt = iterate (start,bufR) in hamm {
   if (ewma == 0) then ewma := env;
   thold = ewma + FIX_MPY(ewma,fixedThreshFactor);
   if (PRINTOUTPUT) then {
-    println("#max= "++count++" "++env);  
-    println("#ewm= "++count++" "++thold);  
+    //println("#max= "++count++" "++env);  
+    //println("#ewm= "++count++" "++thold);  
   };
   ewma := FIX_MPY(fixedAlpha,ewma) + 
           FIX_MPY(fixedOneMinusAlpha,env);
   if (env > thold) then {
-    if (PRINTOUTPUT) then println("#tck= "++count++" "++env);  
+    //if (PRINTOUTPUT) then println("#tck= "++count++" "++env);  
     dets := dets + 1;
     // DETECTED!
   };
@@ -413,7 +413,7 @@ ceps_stream = iterate emag in logs {
     }
   };
 
-  if PRINTOUTPUT then println("#cep= "++ceps[0]);
+  //if PRINTOUTPUT then println("#cep= "++ceps[0]);
 
 /*
   if PRINTDBG then {

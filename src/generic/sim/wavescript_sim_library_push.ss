@@ -34,7 +34,7 @@
 
 		 ;dump-binfile 
 		 ;audio 
-		 timer timer-bench
+		 timer timer-bench bench-source-frequencies 
 		 show __show_ARRAY __backtoSTR
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
@@ -437,6 +437,8 @@
       ;; Register the sink to receive this output:
       (set! our-sinks (cons sink our-sinks))))
 
+  
+  (define bench-source-frequencies (make-parameter '()))
   (define (timer-bench annot output-type box-name edge-counts-table sum-type-declarations freq num-tuples)
     ;; milliseconds:
     (define timestep (rate->timestep freq))
@@ -455,6 +457,11 @@
              (set! n (+ n 1))
              (profiled-fire! unit-representation our-sinks bench-rec output-type sum-type-declarations)
              ]))))
+
+    ;; [2008.04.13] Make a note that this was a driving frequency for the profiling step:
+    ;(register-profiling-source-frequency! freq)
+    (bench-source-frequencies (cons freq (bench-source-frequencies)))
+
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
     (hashtab-set! edge-counts-table box-name bench-rec)

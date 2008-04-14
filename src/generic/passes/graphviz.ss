@@ -36,6 +36,17 @@
 	      (append se* oe*))
 	    ;(inspect (hashtab->list tab))
 	    tab))
+	
+        (define input-frequency 
+	  (let ([tmp (project-metadata 'profiled-input-frequencies prog)])
+	    (ASSERT (= 2 (length tmp)))
+	    (ASSERT number? (cadr tmp))))
+	(define (profiling-duration)
+	  (match (ws-profile-limit)
+	    [(virttime ,vt) vt]
+	    [,oth (error 'graphviz "could not determine the Scheme profile duration from this setting of ws-profile-limit: ~s" 
+			 (ws-profile-limit:))]))
+
 	(define cutnodes
 	  (filter id
 	    (map (lambda (name code)
@@ -54,9 +65,27 @@
 				      (if (memq src cutnodes) partition-edge-style "")
 				      ;; Annotate data-rates on the edges.
 				      (match (assq 'data-rates  (ASSERT (hashtab-get annot-table src)))
-					[(data-rates ,name ,stats) (format "[label=\" ~a bytes in ~a tuples\"]" 
-									   (bench-stats-bytes stats)
-									   (bench-stats-tuples stats))]
+					[(data-rates ,name ,stats) 
+					 #;
+					 (format "[label=\" ~a bytes in ~a tuples\"]" 
+						 (bench-stats-bytes stats)
+						 (bench-stats-tuples stats))
+					;(inspect (vector (profiling-duration) input-frequency))
+					 ;(inspect stats)
+					 (format "[label=\" ~:d bytes/sec\\n \"]" 
+						 (if (zero? (bench-stats-bytes stats))
+						     "?"
+						     ;; Compute bytes/sec
+						     (inexact->exact
+						      (round
+						       (* (/ (bench-stats-bytes stats) 
+							     (bench-stats-tuples stats))
+							  input-frequency)))
+						     #;
+						     (round-to 
+						      1 (/ (bench-stats-bytes stats)
+							   (/ (profiling-duration) input-frequency))))
+						 )]
 					[#f ""])
 				      ))
 	    dest*))
@@ -140,11 +169,29 @@
 					 (string-append
 					  (if cpu       (format "\\n[cpu ~a]" (cdr cpu)) "")
 					  ;; This should be improved, and should probably affect the color
-					  (if datarates (format "\\n~a ms Scheme" (bench-stats-cpu-time (caddr datarates))) "")
+					  (if datarates (format "\\n~a ms Server" 
+								(max 0
+								 (round-to 4
+								 (/ (bench-stats-cpu-time (caddr datarates))
+								    ;; How many epochs did we simulate?
+								    (/ (profiling-duration) input-frequency)
+								    ))))
+					      "")
 					  (if measured-cycles 
-					      (format "\\n~a ticks/~akhz" 
-						      (cadr measured-cycles)
-						      (/ (caddr measured-cycles) 1000))
+					      (let ([num (cadr measured-cycles)]
+						    [denom (caddr measured-cycles)])
+						;;(format "\\n~a ticks/~akhz")
+						(format "\\n~a ms ~a"
+							(round-to 2 (* (/ num denom) 1000))
+							;; HACK: FIXME: need a better way to tell if we're in java mode:
+							(case (compiler-invocation-mode)
+							  ;[(wavescript-compiler-nesc) "TinyOS"]
+							  ;[(wavescript-compiler-javaME) "javaME"]
+							  [(wavescript-compiler-nesc) "Tmote"]
+							  [(wavescript-compiler-javaME) "N80"]
+							  [else "Mote"]))
+						)
+
 					      "")
 					  ))
 

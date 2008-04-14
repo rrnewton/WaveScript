@@ -28,8 +28,9 @@
 
 ;;
 (define-pass annotate-with-data-rates
-
     [Program (lambda (prog Expr)
+	       (parameterize ([source-frequencies '()])
+
                (define annotated (annotate-iterates-with-types prog))	       
                (define stripped (strip-types annotated))
 
@@ -59,16 +60,23 @@
 				[ws-print-output-port out]
 				)
 		   (run-stream-to-completion stream)))
-               
-               ;(printf "the rates:~n")
+
+	       ;(printf "the rates:~n")
                ;(hash-table-map rates-table (lambda (k v) (printf "~a: ~a~n" k v)))
 
                ; convert back to regular program, with data-rate annotations
-	       (let ([result (annotate-iterates-with-rates annotated rates-table)])
+	       (match (annotate-iterates-with-rates annotated rates-table)
+		 [(,lang '(program ,bod ,meta* ...))
+		  `(,lang '(program ,bod (profiled-input-frequencies ,@(source-frequencies)) ,meta* ...))]
 		 ;(inspect (deep-assq-all 'data-rates result))
 		 ;(inspect result)
-		 result))])
+		 )))])
 
+(define source-frequencies (wavescript-language 'bench-source-frequencies))
+
+;(define source-frequencies '())
+;(trace-define (register-profiling-source-frequency! freq)
+;  (set! source-frequencies (cons freq source-frequencies)))
 
 ;; it makes me unhappy that i have to add a new expression to strip-types,
 ;; but i don't see a way around it.
@@ -168,7 +176,7 @@
                (match p
                  [(,lang '(program ,bod ,meta* ... (input-parameters ,params) ,type))
                   (set! num-tuples (cdr (or (assoc 'num-tuples params) '(_ . -1))))
-                  `(,lang '(program ,(Expr bod) ,@meta* (input-parameters ,params) ,type))]))])
+		  `(,lang '(program ,(Expr bod) ,@meta* (input-parameters ,params) ,type))]))])
 
 
 ;;

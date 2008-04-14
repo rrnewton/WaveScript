@@ -31,7 +31,7 @@
 	   multiplex-migrated
 
 	   partition->simple-graph
-
+	   partition->frequency
 	   partition-sourcesonly
 	   partition-baseonly
 	   partition-getmiddle
@@ -1208,15 +1208,14 @@
      (append src* oper*)]))
 
 
-
-
 (define (partition->frequency part)
   (let* ([opsrcs (partition->src&ops part)]
 	 [src* (filter (lambda (x) (not (symbol? (car x)))) opsrcs)]
 	 [rlsrc* (filter not-inline_TOS? src*)])
     
     (match rlsrc*
-      [((,_ ,__ (code (__foreign_source ',fn '(,rate . ,rest) ',ty)) . ,___))  rate]
+      [((,_ ,__ (code (__foreign_source ',fn '(,rate . ,rest) ',ty)) . ,___))  
+       (string->number rate)]
 
       [((,_ ,__ (code (timer ,ann  ',rate)) . ,___))  rate]
       )))
@@ -1235,7 +1234,18 @@
       tab))
   
   ;; Retrieve the input frequencies so we can translate execution *times* into percent cpu.
-  (define input-frequency (partition->frequency nodepart))
+  ;(define input-frequency (ASSERT number? (partition->frequency nodepart)))
+  ;; HACK FIXME!  We assume that the frequency that the PROFILED version was driven at is the correct one.
+  (define input-frequency 
+	  (let ([tmp (project-metadata 'profiled-input-frequencies nodepart)])
+	    (ASSERT (= 2 (length tmp)))
+	    (ASSERT number? (cadr tmp))))
+  ;; DUPLICATED CODE: DIG OUT THE RELEVANT EPOCH INFO:
+  (define (profiling-duration)
+    (match (ws-profile-limit)
+      [(virttime ,vt) vt]
+      [,oth (error 'graphviz "could not determine the Scheme profile duration from this setting of ws-profile-limit: ~s" 
+		   (ws-profile-limit:))]))
 
   (define g1 (partition->simple-graph nodepart))
   (define g2 (partition->simple-graph floating))
@@ -1271,11 +1281,9 @@
 	       
 	       ;; Percent cpu is measured / alloted, where alloted is clock rate / freq
 	       (let ([frac (/ (cadr entry) (/ (caddr entry) 
-
 					      ;input-frequency
 					      ;; HACKING THIS, we don't profile at the real frequency!!
-					      (/ 8000 200)
-					      
+					      ;(/ 8000 200)
 					      ))])
 		 (printf "  FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
 		 (inexact->exact (floor (* frac cpu-granularity))))
@@ -1303,7 +1311,7 @@
 			 (inexact->exact (floor (* frac cpu-granularity)))))
 		     default-vert-weight))
 	       )))))
-		     
+		      
   ;; TinyOS cpu weights:
   ;;------------------------------
   #;
@@ -1333,7 +1341,13 @@
 			    (max 0 
 			      (let ([entry (assq 'data-rates (hashtab-get annot-table (car row)))])
 				(if entry
-				    (bench-stats-bytes (caddr entry))
+				    ;; Integral bytes/sec:
+				    (inexact->exact
+				     (round
+				      (* (/ (bench-stats-bytes stats) 
+					    (bench-stats-tuples stats))
+					 input-frequency)))
+				    
 				    default-edge-weight))))
 			  (define left (memq src leftnames))
 			  
