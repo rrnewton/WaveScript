@@ -11,7 +11,7 @@ function doit() {
  mote=$3
  echo; echo Programming $mote with nodeID $id.
  echo ============================================================; echo
- make -f Makefile.tos2 telosb $bsl,$mote install,$id
+ make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id
 }
 
 case "$1" in

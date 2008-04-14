@@ -17,6 +17,10 @@
  * RADIOMODE ver is getting hosed by stray packets from other nodes
  * programmed some time ago.
  *
+
+Run this with wstiny -split 
+
+
  */
 
 using TOS;
@@ -34,7 +38,7 @@ zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
 
 // Hardware timer rate:
-maxrate = 200
+maxrate = 200 //512
 step = 5 // Step period down by
 // Epoch in seconds 
 epoch = 60 * maxrate // One minute
@@ -51,6 +55,10 @@ Node:strm = iterate arr in Node:src  {
           cap :: Int16 = maxrate; // Start off w/ one msg/sec
 	  epochnum :: Int16 = 0;
 	  msgcounter :: Int16 = 0;
+
+	  // NEW SYSTEM:
+	  // Increment the rate (in msgs per second), and then map that onto period:
+	  rate = 1
 	  }
 
   // Just die at the end:
@@ -97,9 +105,11 @@ Node:strm = iterate arr in Node:src  {
     msgcounter := 0;
 
     // HACK: two different steps:
-    if cap < 20 
-    then cap := cap - 1
-    else cap := cap - step;
+/*     if cap < 20  */
+/*     then cap := cap - 1 */
+/*     else cap := cap - step; */
+    rate := rate + 1;
+    cap := maxrate / rate;
 
     epochnum += 1;
     //if id != 1 then print("New epoch "++epochnum++" cap is "++cap++"\n");
