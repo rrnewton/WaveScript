@@ -39,8 +39,11 @@
 	
         (define input-frequency 
 	  (let ([tmp (project-metadata 'profiled-input-frequencies prog)])
-	    (ASSERT (= 2 (length tmp)))
-	    (ASSERT number? (cadr tmp))))
+	    (unless tmp (error 'graphviz "right now you MUST have scheme profile data so we can get the input-frequency"))
+	    ;(ASSERT (curry = 2) (length tmp))
+	    ;; HACK: FIXME!   FIXME!  FIXME!   FIXME!   FIXME!  
+	    ;; For now we're just taking the MAX!
+	    (apply max (cdr tmp))))
 	(define (profiling-duration)
 	  (match (ws-profile-limit)
 	    [(virttime ,vt) vt]
@@ -116,7 +119,7 @@
 	
 	;; Changing this to log instead of linear:
 	;(define (preprocess-ticks x) x)
-	(define (preprocess-ticks x) (log x))
+	(define (preprocess-ticks x) (log (add1 (abs x))))
 	(define ticks->color
 	  (let ()
 	    (define all_ticks

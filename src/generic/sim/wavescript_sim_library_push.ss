@@ -458,14 +458,23 @@
              (profiled-fire! unit-representation our-sinks bench-rec output-type sum-type-declarations)
              ]))))
 
-    ;; [2008.04.13] Make a note that this was a driving frequency for the profiling step:
-    ;(register-profiling-source-frequency! freq)
+
     (bench-source-frequencies (cons freq (bench-source-frequencies)))
 
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
     (hashtab-set! edge-counts-table box-name bench-rec)
     (lambda (sink)
+
+      ;; [2008.04.13] Make a note that this was a driving frequency for the profiling step:
+      ;(register-profiling-source-frequency! freq)
+      #;
+      (bench-source-frequencies 
+       ;; HACK FIXME  FIXME  FIXME  FIXME  FIXME 
+       (if (memq freq (bench-source-frequencies))
+	   (cons freq (bench-source-frequencies))
+	   (bench-source-frequencies)))
+
       ;; Register the sink to receive this output:
       (set! our-sinks (cons sink our-sinks))))
 

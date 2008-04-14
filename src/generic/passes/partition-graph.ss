@@ -1238,8 +1238,11 @@
   ;; HACK FIXME!  We assume that the frequency that the PROFILED version was driven at is the correct one.
   (define input-frequency 
 	  (let ([tmp (project-metadata 'profiled-input-frequencies nodepart)])
-	    (ASSERT (= 2 (length tmp)))
-	    (ASSERT number? (cadr tmp))))
+	    ;; FIXME FIXME FIXME 
+	    ;(ASSERT (= 2 (length tmp)))
+	    ;(ASSERT number? (cadr tmp))
+	    (apply max (cdr tmp))
+	    ))
   ;; DUPLICATED CODE: DIG OUT THE RELEVANT EPOCH INFO:
   (define (profiling-duration)
     (match (ws-profile-limit)
@@ -1270,22 +1273,24 @@
 
   ;;------------------------------
   (define cpu-total (number->string cpu-granularity))
+  ;; FIXME  FIXME  FIXME  FIXME  FIXME  WE SHOULD NOT MIX AND MATCH SCHEME/MOTE PROFILING RESULTS!!!
   (define (cpu-coeff vr)
     (+ 0     ;; HACK FIXME!!! ADDING to it temporarily to artificially stress the LP solver:
        (max 0		 
 	 ;; If the TinyOS numbers are there, use them.
 	 (let  ([entry (assq 'measured-cycles (hashtab-get annot-table vr))])
+	   
 	   (if entry
 	       ;; TinyOS/Java Case:
 	       ;; FIXME INCORRECT: CURRENTLY ASSUMING 1 SECOND EPOCH:
 	       
 	       ;; Percent cpu is measured / alloted, where alloted is clock rate / freq
 	       (let ([frac (/ (cadr entry) (/ (caddr entry) 
-					      ;input-frequency
+					      input-frequency
 					      ;; HACKING THIS, we don't profile at the real frequency!!
 					      ;(/ 8000 200)
 					      ))])
-		 (printf "  FRAC: ~a ~a ~a  -> ~a\n" (cadr entry) (caddr entry) input-frequency frac)
+		 (printf "  FRAC: ~a ~a ~a ~a  -> ~a\n" vr (cadr entry) (caddr entry) input-frequency frac)
 		 (inexact->exact (floor (* frac cpu-granularity))))
 	       
 	       ;; Scheme cpu weights mode:
@@ -1306,18 +1311,13 @@
 			       ] ;; (* 1000 vt)
 			      )])
 		       (let ([frac (/ (bench-stats-cpu-time (caddr entry)) elapsed-vtime)])
-			 (printf "  TIME ~s ELAPSED ~s RATIO ~s\n"
+			 (printf "  TIME ~s ~s ELAPSED ~s RATIO ~s\n" vr
 				 (bench-stats-cpu-time (caddr entry)) elapsed-vtime (exact->inexact frac))
 			 (inexact->exact (floor (* frac cpu-granularity)))))
 		     default-vert-weight))
 	       )))))
-		      
-  ;; TinyOS cpu weights:
   ;;------------------------------
-  #;
-  (define (cpu-coeff vr) 
-    (max 0 
-	))
+
 
   (printf "~s ops in floating partition.\n" (length vars))
   (printf "Left names: ~s\n" leftnames)

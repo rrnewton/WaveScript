@@ -161,7 +161,7 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
         //inspect$ _memory;
 
         // add the first element of the input buffer into the array
-/*         FIFO:enqueue(_memory, buf[j]); */
+        FIFO:enqueue(_memory, buf[j]);
 
 
         for i = 0 to nCoeff-1 {
@@ -170,10 +170,8 @@ fun FIRFilter(bufsize, filter_coeff, strm) {
 	  outputBuf[j] := outputBuf[j] +
 	  FIX_MPY(_flipped_filter_coeff[i], FIFO:peek(_memory, i));
         };
-
  
-
-/* 	FIFO:dequeue(_memory); */
+	FIFO:dequeue(_memory);
       };
       emit outputBuf;
     }
@@ -270,14 +268,14 @@ fun process_channel(winsize, stm) {
 namespace Node {
 
   // DANGER TOGGLING THIS FOR EXPERIMENTS:
-  //THERATE = 256.0 / 400.0;  // Accurante "realtime" rate.
-  THERATE = 1.0 / 15.0; // Every 10 seconds...
-  winsize = 8;
+  REALRATE = 256.0 / 400.0;  // Accurate "realtime" rate.
+  SLOWRATE = 1.0 / 15.0; // Every 10 seconds...
+  //winsize = 8;
   //winsize = 32;
   //winsize = 256;
 
   // input winsize
-  //winsize = 512;
+  winsize = 512;
 
   NUM_CHANNELS = 1;
   NUM_FEATURES = 3;
@@ -289,7 +287,7 @@ namespace Node {
   //sensor = [COUNTUP(0).arrwindow(winsize)];
   //sensor = smap(fun(_) Array:build(winsize, fun(i) Int16!i), timer$1);
   outbuf = Array:build(winsize, fun(i) Int16!i);
-  sensor = iterate _ in IFPROFILE(Server:timer$THERATE, timer$ THERATE) { emit outbuf };
+  sensor = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$ SLOWRATE) { emit outbuf };
 
   // For running on Telos:
   //sensor = read_telos_audio(winsize, 1000) // 1 khz  

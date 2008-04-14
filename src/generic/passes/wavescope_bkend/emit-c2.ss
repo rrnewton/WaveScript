@@ -37,6 +37,7 @@
   (provide emit-c2
 	   ;emit-c2-generate-timed-code
 	   <emitC2>
+	   <emitC2-timed>
 	   <tinyos>
 	   <tinyos-timed>
 	   <java>
@@ -2884,6 +2885,8 @@ event void Timer000.fired() {
     [(sqrtF ,[Simp -> a]) (kont `("(float)Math.sqrt(",a")"))]
     [(sqrtD ,[Simp -> a]) (kont `("Math.sqrt(",a")"))]
 
+    [(cos ,[Simp -> a]) (kont `("(float)Math.cos(",a")"))]
+    
     [(logF ,[Simp -> a]) (kont `("(float)Math.log(",a")"))]
     
 
@@ -3196,6 +3199,51 @@ event void Timer000.fired() {
 			  code
 			  (make-lines (print-w-time "EndTraverse ")))
 	    state rate init))))
+
+
+
+;; ================================================================================
+
+(define-class <emitC2-timed> (<emitC2>) ())
+
+(define (print-w-time2 prefix)
+  ;;(list "printf(\"("prefix" %f)\\n\", (double)clock());\n")
+#;
+  (list "printf(\"("prefix" %lld)\\n\", clock());\n")
+  (let ([tmp (sym2str (unique-name "tmp"))])
+    `("struct timeval ",tmp";\n"
+      "gettimeofday(&",tmp", NULL);\n"
+      "printf(\"(",prefix" %ld)\\n\", ",tmp".tv_usec);\n"))
+  #;
+  (list 
+   "print(\"("prefix"\"); "
+   "print(clock()); "
+   "print(\")\\n\");\n"))
+
+(define ____IterStartHook
+  (specialise! IterStartHook <emitC2-timed>
+    (lambda (next self name arg argty)
+      (list (next)	  	    
+	    (print-w-time2 (list "Start "(sym2str name)" "))))))
+
+(define ____IterEndHook
+  (specialise! IterEndHook <emitC2-timed>
+    (lambda (next self name arg argty) 
+    (list (next)
+	  (print-w-time2 (list "End "(sym2str name)" "))
+	  ))))
+
+;; Wrap timers around the whole Source call:
+(define ____Source
+  (specialise! Source <emitC2-timed>
+  (lambda (next self xp)
+    (define-values (nm code state rate init) (next))
+    (values nm 
+	    (append-lines (make-lines (print-w-time2 "StartTraverse "))
+			  code
+			  (make-lines (print-w-time2 "EndTraverse ")))
+	    state rate init))))
+
 
 
 

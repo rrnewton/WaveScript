@@ -1100,9 +1100,11 @@
 		    (last-few-steps prog
 				    (match (compiler-invocation-mode)
 				      [wavescript-compiler-c <emitC2>]
+				      ;[wavescript-compiler-c <emitC2-timed>]
 				      [wavescript-compiler-nesc <tinyos>]
 				      [wavescript-compiler-java   <java>]
-				      [wavescript-compiler-javame <javaME>])))
+				      [wavescript-compiler-javame <javaME>]				      
+				      )))
 
 		;; HERE'S THE SPLIT SERVER/EMBEDDED PATH:
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
@@ -1121,9 +1123,16 @@
 		  (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
 
 		  ;;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
-		  (set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
+		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
 		  ;;(set! merged (inject-times merged (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
-		  
+
+		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_java.profdump")) 1000))
+		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
+
+
+		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_iphone.profdump")) 1000000)) 
+		  (set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_ensbox.profdump")) 1000000))
+
 		  ;(inspect (map car (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump"))))
 		  ;(inspect (partition->opnames merged))
 
@@ -1174,8 +1183,8 @@
 		  (pretty-print (partition->opnames server-part))
 		  (newline)
 		  
-		  ;; TEMPTOGGLE:
-;		  (DUMP-THE-LINEAR-PROGRAM (merge-partitions node-part server-part))
+		  ;; TEMPTOGGLE: ;; EARLY DUMP HERE, WITH ONLY SCHEME PROFINFO:
+		  ;(DUMP-THE-LINEAR-PROGRAM (merge-partitions node-part server-part))
 		  		  
 		  ;; PROFILING:
 		  (when (memq 'autosplit (ws-optimizations-enabled))
@@ -1233,8 +1242,46 @@
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
 ;'()
+#;
+   (map (lambda (pr) (cons (car pr) (cadr pr)))
+     (filter (compose not null?)
+       (map string->slist (file->lines "~/wavescript/apps/telos_audio/eeg/HACK4"))))
 
-			    (extract-time-intervals 
+
+;; TEMP HACK:
+#;
+'((unionList_71 . 0) (unionList_7 . 0) (myZipN_68 . 1)
+ (GenericGet_83 . 68) (myZipN_41 . 1) (zipN_4 . 1)
+ (GenericGet_84 . 68) (GenericGet_63 . 19)
+ (FIRFilter_30 . 70) (myZipN_17 . 1) (myZipN_16 . 1)
+ (stream_map_11 . 32) (AddOddAndEven_15 . 6) (myZipN_50 . 1)
+ (FIRFilter_32 . 135) (FIRFilter_31 . 70) (myZipN_59 . 1)
+ (myZipN_18 . 1) (FIRFilter_33 . 135) (FIRFilter_45 . 135)
+ (AddOddAndEven_14 . 4) (Node_sensor_85 . 0)
+ (stream_map_10 . 116) (AddOddAndEven_13 . 9)
+ (Node_flat_1 . 1) (unionList_54 . 0) (stream_map_12 . 60)
+ (FIRFilter_46 . 135) (unionList_23 . 0) (unionList_8 . 0)
+ (FIRFilter_62 . 535) (zipN_2 . 1) (FIRFilter_28 . 268)
+ (AddOddAndEven_76 . 54) (FIRFilter_55 . 268)
+ (GenericGet_47 . 7) (FIRFilter_72 . 1061)
+ (AddOddAndEven_67 . 29) (unionList_64 . 0)
+ (unionList_43 . 0) (unionList_27 . 0) (GenericGet_74 . 36)
+ (FIRFilter_81 . 2118) (AddOddAndEven_49 . 11)
+ (unionList_25 . 0) (AddOddAndEven_40 . 8)
+ (FIRFilter_29 . 268) (AddOddAndEven_58 . 17) (myZipN_77 . 1)
+ (unionList_44 . 0) (GenericGet_56 . 11) (GenericGet_57 . 11)
+ (GenericGet_38 . 7) (FIRFilter_53 . 268) (GenericGet_39 . 7)
+ (GenericGet_36 . 5) (unionList_61 . 0) (GenericGet_4 . 11)
+ (unionList_3 . 0) (GenericGet_37 . 5) (unionList_52 . 0)
+ (GenericGet_48 . 7) (GenericGet_35 . 11) (unionList_70 . 0)
+ (unionList_26 . 0) (FIRFilter_65 . 535) (GenericGet_75 . 36)
+ (unionList_24 . 0) (GenericGet_66 . 19) (unionList_22 . 0)
+ (FIRFilter_73 . 1061) (unionList_9 . 0) (unionList_80 . 0)
+ (tmpsmp_9190 . 999999) (FIRFilter_82 . 2118)
+ (unionList_79 . 0))
+
+
+(extract-time-intervals 
 			     ;; FUDGE factor for tinyos:
 			     ;82
 #;
@@ -1247,6 +1294,7 @@
    (Start s6_1 0 54037)
    (EndTraverse 0 56674))
 
+
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1254,9 +1302,8 @@
 			       (match exp
 				 [(EndTraverse . ,_) #t]
 				 [,else #f]))))]
-			  [newprog (inject-times prog times 32000)])
+			   [newprog (inject-times prog times 32000)])
 
-		      
 		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)) 'replace)
 
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
