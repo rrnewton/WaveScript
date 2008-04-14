@@ -1341,11 +1341,12 @@
 			    (max 0 
 			      (let ([entry (assq 'data-rates (hashtab-get annot-table (car row)))])
 				(if entry
-				    (inexact->exact
-				     (round
-				      (* (/ (bench-stats-bytes (caddr entry)) 
-					    (bench-stats-tuples (caddr entry)))
-					 input-frequency)))
+				    (if (zero? (bench-stats-tuples (caddr entry))) 0
+					(inexact->exact
+					 (round
+					  (* (/ (bench-stats-bytes (caddr entry)) 
+						(bench-stats-tuples (caddr entry)))
+					     input-frequency))))
 				    default-edge-weight))))
 			  (define left (memq src leftnames))
 			  
