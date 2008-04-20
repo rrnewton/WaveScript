@@ -642,8 +642,10 @@
       (define len (List:length types))
       (define inp (open-input-file file))
       (define tyvec (list->vector types))
+      (define linecount 0)
       (define (parse-line str)
         (define p (open-input-string str))
+	(set! linecount (add1 linecount))
         (let ([ls (list-build len 
                               (lambda (i)
                                 ;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
@@ -651,11 +653,16 @@
                                         [(String) (symbol->string (read p))]
                                         [(Int Int16) (let ([v (read p)])
                                                        (unless (ws-int? v)
-                                                         (error 'readFile "cannot read ~s as integer type" v))
+							 (if (eof-object? v)
+							     (error 'readFile "on line ~s not enough entries on line" linecount)
+							     (error 'readFile "on line ~s, cannot read ~s as integer type" linecount v)))
                                                        v)]
                                         [(Float)    (let ([v (read p)])
                                                       (unless (ws-float? v)
-                                                        (error 'readFile "cannot read ~s as float type" v))
+							(if (eof-object? v)
+							    (error 'readFile "on line ~s not enough entries on line" linecount)
+							    (error 'readFile "on line ~s, cannot read ~s as float type" linecount v))
+                                                        )
                                                       v)]
                                         [else (read p)])
                                 ))])
@@ -2115,68 +2122,7 @@
 ;(define (IFPROFILE a b) b)
 (define (IFPROFILE a b) a)
 
-;; [2007.08.16] TEMP: reads a stream of data as we wrote it out of our marmot appilication.
-#;
-(define (HACK_O_RAMA filename)
-  ;; Must be in milleseconds:
-  ;; Convert from 48khz to microseconds:
-  (define (sample->time n) (s:* n 1000000. 1/48000))
-  (define our-sinks '())
-  (define port (open-input-file filename))
 
-  (define firsttime #f)
-  (define nextid #f)
-  (define nexttime #f)
-  (define nextdat #f)
-  (define (read-one!)
-    (define nodeid (read port))
-    (define metadat (read port))
-    (define payload (read port))
-    (if (or (eof-object? nodeid) (eof-object? metadat) (eof-object? payload))
-	(stop-WS-sim! "readFile: hit eof")
-	(begin 
-	  (ASSERT integer? nodeid)
-	  (set! nextid nodeid)
-	  
-	  (match metadat
-	    [((,st ,end) ,_ ,__ ,___)       
-	     (define ms (sample->time st))
-	     (ASSERT integer? st) (ASSERT integer? end)
-	     (unless firsttime (set! firsttime ms))
-	     (set! nexttime (s:- ms firsttime))
-	     (ASSERT (>= nexttime 0))
-	     (match payload
-	       [(,v1 ,v2 ,v3 ,v4)
-		(ASSERT (and (vector? v1) (vector? v2) (vector? v3) (vector? v4)))
-		(ASSERT (vector-andmap int16? v1))
-		(ASSERT (vector-andmap int16? v2))
-		(ASSERT (vector-andmap int16? v3))
-		(ASSERT (vector-andmap int16? v4))
-		(set! nextdat 
-		      (make-tuple
-		       (list nextid
-			     (list
-			      (make-sigseg nexttime (sub1 end) v1 3)
-			      (make-sigseg nexttime (sub1 end) v2 3)
-			      (make-sigseg nexttime (sub1 end) v3 3)
-			      (make-sigseg nexttime (sub1 end) v4 3)
-			      ))))])]))
-	))
-  (define src (begin
-		(read-one!)
-		(lambda (msg)
-		  (s:case msg
-		    ;; Returns the next time we run.
-		    [(peek) nexttime]
-		    [(pop) 
-		     (fire! nextdat our-sinks)		     
-		     ;; Release one stream element.
-		     (read-one!)]))))
-  ;; Register ourselves globally as a leaf node:
-  (set! data-sources (cons src data-sources))
-  (lambda (sink)
-    ;; Register the sink to receive this output:
-    (set! our-sinks (cons sink our-sinks))))
 
 
 ) ; End module.

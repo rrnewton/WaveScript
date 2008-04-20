@@ -86,7 +86,7 @@ fun seggaps_helper(strm) {
     state { counter = 0 }
     counter += 1;
     emit (counter, w`start);
-    emit (counter, w`start + w`width);
+    emit (counter, w`start + w`width`gint);
   }
 }
 
@@ -108,7 +108,7 @@ fun sqrwave_helper(strm) {
     flag := not(flag);
     y = if flag then 1 else 0;
     emit (w`start,           y);
-    emit (w`start + w`width, y);
+    emit (w`start + w`width`gint, y);
   };
 }
 

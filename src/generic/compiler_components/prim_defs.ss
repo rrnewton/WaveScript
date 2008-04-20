@@ -851,6 +851,9 @@
     (show             ('a) String)
     (__show_ARRAY     ('a) (Array Char)) ;; Internal
 
+    ;; These keep a gnuplot window open and repeatedly update it.
+    ;; Shouldn't need both of these, one should be defined in wavescript:
+    (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
     (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM t)))) (Stream (Sigseg (NUM t))))
 
     ;; These take (X,Y) pairs.

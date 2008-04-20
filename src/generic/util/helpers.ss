@@ -1685,6 +1685,7 @@
 	(void)	
     (begin
     ;; Write script file:
+    (fprintf scrip "set terminal x11;\n")
     (fprintf scrip "set autoscale;\n")
     (for-each (lambda (setline)
 		(fprintf scrip setline))
@@ -1744,7 +1745,7 @@
   (let ([scrip (open-output-string)]
 	[dat   #f]
 	[first-time #t]
-	[setstmnts '()]
+	[setstmnts '("set terminal x11;\n")]
 	[opts ""]
 	[withclause "with linespoints"])
     
