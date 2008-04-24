@@ -38,10 +38,11 @@ zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
 
 // Hardware timer rate:
-maxrate = 512
+maxrate = 200//512
 step = 5 // Step period down by
 // Epoch in seconds 
-epoch = 60 * maxrate // One minute
+//epoch = 60 * maxrate // One minute
+epoch = 120 * maxrate // One minute
 
 //steps = (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 25 30 35 40 45 50 75 100 200)
 
@@ -105,11 +106,11 @@ Node:strm = iterate arr in Node:src  {
     msgcounter := 0;
 
     // HACK: two different steps:
-/*     if cap < 20  */
-/*     then cap := cap - 1 */
-/*     else cap := cap - step; */
-    rate := rate + 1;
-    cap := maxrate / rate;
+    if cap < 20
+    then cap := cap - 1
+    else cap := cap - step;
+/*     rate := rate + 1; */
+/*     cap := maxrate / rate; */
 
     epochnum += 1;
     //if id != 1 then print("New epoch "++epochnum++" cap is "++cap++"\n");

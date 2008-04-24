@@ -38,6 +38,8 @@
 	   emit-lp read-back-lp-results
 
 	   test-partition-graph
+
+	   ;max-tinyos-nodes ;; This should be temporary.
 	   )
     (chezimports)
 
@@ -954,8 +956,8 @@
   (sort (lambda (e1 e2) (> (cdr e1) (cdr e2)))
 	(map (lambda (entry)
 	       (cons (car entry) 
-		     ;(median (cdr entry))
-		     (exact->inexact (average (cdr entry)))
+		     (median (cdr entry))
+		     ;(exact->inexact (average (cdr entry)))
 		     ))
 	  (hashtab->list table)))
   )
@@ -1032,7 +1034,8 @@
 
 
 ;; This is ugly: 
-(define-regiment-parameter max-tinyos-nodes 10)
+;(define-regiment-parameter max-tinyos-nodes 10)
+(define max-tinyos-nodes (make-parameter 10))
 
 ;; This goes over the whole graph and multiplexes only those operators
 ;; that have migrated from node to server.
@@ -1084,7 +1087,7 @@
   
   ;; Adding another argument that indicates whether we should pass the
   ;; node-id on through to the next operator down the line.
-  (trace-define (multiplex-operator op output-multiplexed?)
+  (define (multiplex-operator op output-multiplexed?)
       (define NodeIDTy 'Int)  
     (match op
       [(iterate (name ,name) 
