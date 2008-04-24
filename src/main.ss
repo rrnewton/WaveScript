@@ -1345,7 +1345,7 @@
 				       (printf "  ... done.\n")
 
 				       (exit)			  
-				       (partition-based-on-lp assigned)
+				       ;(partition-based-on-lp assigned)
 				       )
 				     ))				   
 				   ])

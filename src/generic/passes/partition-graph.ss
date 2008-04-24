@@ -1251,7 +1251,7 @@
     (match (ws-profile-limit)
       [(virttime ,vt) vt]
       [,oth (error 'graphviz "could not determine the Scheme profile duration from this setting of ws-profile-limit: ~s" 
-		   (ws-profile-limit:))]))
+		   (ws-profile-limit))]))
 
   (define g1 (partition->simple-graph nodepart))
   (define g2 (partition->simple-graph floating))

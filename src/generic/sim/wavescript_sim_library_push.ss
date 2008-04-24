@@ -936,6 +936,7 @@
        (define our-sinks '())
        (define (wsbox x) (fire! x our-sinks))
        ;; Register a receiver for each source:       
+       (define registered? #f)
        (lambda (sink) 
 	 (unless registered? (set! registered? #t) (s1 wsbox)  (s2 wsbox)) ;; rrn: doing this lazily now
 	 (set! our-sinks (cons sink our-sinks))))
@@ -1215,8 +1216,10 @@
   ;; [2008.04.05] Updating cast_num overflow behavior to work
   ;; properly: (That is, to match the behavior in C... eventually,
   ;; there should be a mode to signal errors on overflow.)
-  (define fxbits (inexact->exact (round (s:/ (log (s:- (most-positive-fixnum) (most-negative-fixnum)))
-					     (log 2)))))
+  ;; How many bits are in a fixnum?  That is, after you remove bits for the tag.
+  (define fxbits 
+    (inexact->exact (round (s:/ (log (s:- (most-positive-fixnum) (most-negative-fixnum)))
+				(log 2)))))
   (define base16 (expt 2 16))
   (define basefx (expt 2 fxbits))
   (define base32 (expt 2 32))

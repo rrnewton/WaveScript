@@ -122,6 +122,8 @@
 
    testhelpers testshelpers
 
+   median stddev 
+
    ; --mic
    find-in-flags
    )
@@ -134,7 +136,7 @@
      add-parameter-hook chomp shell-expand-string
      seconds-since-1970 ignore grep-oblist comma-number runN
      gobj?  crit-printf 
-     read-line median stddev 
+     read-line 
      test-this these-tests
 
 ;      foldr let/ec call/ec define-values make-n-list

@@ -190,8 +190,12 @@
   ;; [2005.11.03] This is lame but apparently PLT doesn't have any such thing.
   ;; Further, this might be dangerous.  Chez promises that fixnum's are eq?
   ;; but I haven't found a place in the PLT documentation where they guarantee that.
+  (define plt-fixnum-bits 30) ;; Not sure of this.  Might be 31 including sign.
   (define most-positive-fixnum
-    (let ((x (- (expt 2 30) 1)))  ;; HACK.
+    (let ((x (- (expt 2 (- plt-fixnum-bits 2)) 1)))
+      (lambda () x)))
+  (define most-negative-fixnum
+    (let ((x (- (expt 2 (- plt-fixnum-bits 2)))))
       (lambda () x)))
   (define fixnum?
     (let ((x (expt 2 30)))
