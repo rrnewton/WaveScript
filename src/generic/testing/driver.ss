@@ -159,7 +159,7 @@
                  (begin
                    (when (= m mod) (newline))
                    (write-char #\.)
-                   (flush-output-port)
+                   (flush-output-port (current-output-port))
                    (f (cdr tests) (+ n 1) (+ passed 1) (+ (modulo m mod) 1)))
                  (f (cdr tests) (+ n 1) passed mod)))))]))
 

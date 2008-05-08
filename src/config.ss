@@ -25,7 +25,7 @@
 (define-syntax IFWAVESCOPE
   (let ()
     ;===============================;
-    (define DEFAULT_WAVESCOPE-REGIMENT_MODE "BOTH") ;; <-- CHANGE DEFAULT HERE
+    (define DEFAULT_WAVESCOPE-REGIMENT_MODE "WAVESCRIPT") ;; <-- CHANGE DEFAULT HERE
     ;===============================;
     (define (ws x)  (syntax-case x () [(_ ws reg) #'ws]   [(_ ws) #'ws]))
     (define (reg x) (syntax-case x () [(_ ws reg) #'reg]  [(_ ws) #'(begin)]))
@@ -61,7 +61,7 @@
 ;;   3 -- unsafe optimizations, used for long running simulations.
 (define (REGOPTLVL)
   (cond
-   [(getenv "REGOPTLVL") => (lambda (str) (read (open-input-string str)))]
+   [(getenv "REGOPTLVL") => (lambda (str) (read (open-string-input-port str)))]
    [else 2]  ;; <-- CHANGE DEFAULT HERE
    ))
 ;; Note that this is separate from IFDEBUG above.

@@ -119,7 +119,7 @@
   `(let ((s (open-output-string)))
      (parameterize ([current-output-port s])
 					;	(printf "running test~n")
-					;	(flush-output-port)
+					;	(flush-output-port (current-output-port))
 		   ,(runfun
 		     '(let loop ((n 0) (acc '()))
 			(if (= n 10)
@@ -168,13 +168,13 @@
     (let loop ([eng
                 (run-flat-threads-engine
                   (let loop ([n 0] [acc '()])
-		    (disp "outer" n acc)(flush-output-port)
+		    (disp "outer" n acc)(flush-output-port (current-output-port))
                     (if (= n 10)
                         (reverse acc)
                         (loop (add1 n)
                               (cons (lambda ()
                                       (let loop ([acc (* 1000 n)])
-					(disp "inner" n)(flush-output-port)
+					(disp "inner" n)(flush-output-port (current-output-port))
                                         (if (zero? acc)
                                             (display n)
                                             (loop (sub1 acc)))))

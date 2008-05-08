@@ -522,6 +522,8 @@
 			(case (classify-list obj)
 			  ((improper) (fail))
 			  ((infinite)
+			   (error 'iu-match "not handling infinite lists at the moment...")
+			   #;
 			   (let ((each-vals (f pat (ilist-copy-flat obj) '())))
 			     (for-each (lambda (x) (set-cdr! (last-pair x) x))
 				       each-vals)

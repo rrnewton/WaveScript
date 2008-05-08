@@ -219,7 +219,7 @@
 			
 		(if (eq? flag ',KINIT_FLAG)
 		    (begin
-		      ;[2005.09.24];(printf "~a: Init continuation: ~a~n" (my-id) ',kname) (flush-output-port)
+		      ;[2005.09.24];(printf "~a: Init continuation: ~a~n" (my-id) ',kname) (flush-output-port (current-output-port))
 			      
 		      (if (= subtok_ind '0)
 			;; No freevars if we're just initializing the counter-object.

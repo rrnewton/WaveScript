@@ -6,7 +6,7 @@
 	   (lib "pretty.ss"))
   
   (require "../generic/constants.ss"
-           (all-except "helpers.ss" id flush-output-port)
+           (all-except "helpers.ss" id flush-output-port (current-output-port))
            (all-except "flat_threads.ss" test-this these-tests)
            (all-except "tsort.ss" test-this these-tests)            
            "basic_graphics.ss"

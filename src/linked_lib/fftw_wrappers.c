@@ -16,8 +16,12 @@ int        last_ifft_size = 0;
 int        initialized_ifft = 0;
 fftwf_plan cached_ifft_plan;
 
+//#define COMPLEXTY float complex
+//#define COMPLEXTY __complex float
+typedef __complex float wscomplex_t;
+
 //================================================================================
-  static void memoized_fftR2C(float* in_buf, float complex* out_buf) {
+static void memoized_fftR2C(float* in_buf, wscomplex_t * out_buf) {
       int len = ARRLEN(in_buf);
       // thread safe initialization
       if (initialized == 0 || last_plan_size != len) {
@@ -48,7 +52,7 @@ fftwf_plan cached_ifft_plan;
 
 
 //================================================================================
-  static void memoized_ifftC2R(float complex* in_buf, float* out_buf) {
+  static void memoized_ifftC2R(wscomplex_t * in_buf, float* out_buf) {
       int len = ARRLEN(in_buf);
       //int len_out = (len - 1) * 2;
       // thread safe initialization

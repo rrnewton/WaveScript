@@ -166,7 +166,7 @@
 (define sugared_regiment_grammar
   `(
        ,@ (filter (lambda (x) 
-		    (cond-expand [chez (import rn-match)] [else])
+		    ;(cond-expand [chez (import rn-match)] [else])
 		    (match x
 		      [(Type ,_) #f]
 		      [(,_ ('wscase . ,__)) #f]

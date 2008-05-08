@@ -13,14 +13,22 @@ exec mzscheme -mqt "$0" ${1+"$@"}
 (define allargs (vector->list (current-command-line-arguments)))
 
 (print-graph #t)
+(print-vector-length #f)
+
 (when (member "--nopos" allargs) (source-position-tracking #f))
+
+;; Don't print-graph in the output:
+(when (member "--nograph" allargs) (print-graph #f))
 
 (define pretty? (not (member "--nopretty" allargs)))
 
 (define (main filename)
   (if pretty?      
       (pretty-print (ws-parse-file filename))
-      (write (ws-parse-file filename))))
+      (begin (write (ws-parse-file filename))
+	     (newline)
+	     ))
+  (flush-output (current-output-port)))
 
 
 ;; When run in --persist mode we run in a loop.

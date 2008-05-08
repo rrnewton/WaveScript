@@ -120,11 +120,11 @@
 	     [(or (eq? 'Object infered-type)
 		  (eq? 'Object expected-type))
 	      (warning 'type-check-arg
-		       "infered type ~s doesn't *quite* match expected type ~s for expression: ~n~s"
+		       "infered type ~s doesn't *quite* match expected type ~s for expression: \n~s"
 		       infered-type expected-type expr)]	     
 
 	     [else (error 'type-check-arg
-			    "infered type ~s doesn't match expected type ~s for expression: ~n~s"
+			    "infered type ~s doesn't match expected type ~s for expression: \n~s"
 			    infered-type expected-type expr)])))))
 
     (define type-union
@@ -165,7 +165,7 @@
           [,var (guard (symbol? var))
             (if (and (not (memq var env))
 		     (not (regiment-primitive? var)))
-                (error 'verify-regiment (format "unbound variable: ~a~n" var))
+                (error 'verify-regiment (format "unbound variable: ~a\n" var))
                 var)]
           
 	  ;; In our super simple type inference we don't do arrow

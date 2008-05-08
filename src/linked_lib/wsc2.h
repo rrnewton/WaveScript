@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-//#define LOAD_COMPLEX
+#define LOAD_COMPLEX
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>

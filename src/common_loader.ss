@@ -42,7 +42,7 @@
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
 ;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #t)))] [else (void)])
-(common:load-source "generic/compiler_components/type_environments.ss") 
+(common:load-source "generic/compiler_components/type_environments.ss")
 ;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #f)))] [else (void)])
 
 
@@ -179,6 +179,7 @@
 (common:load-source "generic/passes/normalize_source/desugar-pattern-matching.ss") 
 
 
+;; We dump the heap in larceny to grab tho load at an intermediate point:
 ;;================================================================================;;
 ;(call/cc (lambda (topk) (dump-heap "larc.heap" (lambda args (topk))) (repl) (exit)))
 (cond-expand [larceny (dump-heap "larc.heap" (lambda args (load "newloads.ss") 

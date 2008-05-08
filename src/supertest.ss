@@ -26,18 +26,38 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Let's clean up some:
-(if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe"))
-(if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response"))
+(if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
+(if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response") (void))
 
 ;; Should we killall the wsparse_server processes also?
  
 ; ----------------------------------------
 
-;(define ryan-email "rrnewton@gmail.com")
 (define ryan-email "ryan.newton@alum.mit.edu")
 (define start-time (current-inexact-milliseconds))
 (define last-test-timer start-time)
 (define failed #f)
+
+;; This should be run from this directory, but to make sure...
+;(define test-directory (current-directory))
+;(define test-root (format "~a/WS_test_copy" (getenv "HOME")))
+;
+;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
+(current-directory "..")
+(define test-root (path->string (current-directory)))
+(define test-directory (format "~a/src" test-root))
+(current-directory test-directory)
+
+(define date 
+  (let ((d (seconds->date (current-seconds))))
+    (format "~a-~a-~a_~a:~a:~a" 
+	    (date-year d) (date-month d) (date-day d)
+	    (date-hour d) (date-minute d) (date-second d))))
+;(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
+(define logfile (format "~a/supertest_~a.log" test-directory date))
+(define log (open-output-file logfile #:exists 'replace))
+(define scriptoutput (open-output-file "SUPERTEST_SCRIPT_OUTPUT.log" #:exists 'replace))
+(define orig-console (current-output-port))
 
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
@@ -58,7 +78,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
                    (list->string (reverse acc)))
             (loop (read-char p) (cons c acc))))))
 (define (string->file str fn)
-    (let ([p (open-output-file fn 'replace)])
+    (let ([p (open-output-file fn #:exists 'replace)])
       (display str p)
       (close-output-port p)))
 
@@ -151,7 +171,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (post-to-web webfilename) 
   (define publish 
     (lambda (logfile webfile)
-      (if (file-exists? webfile) (delete-file webfile))
+      (when (file-exists? webfile) (delete-file webfile))
       (fprintf orig-console "Copying log to website. ~a\n" webfile)
       (copy-file logfile webfile)
       (system (format "chgrp www-data ~a" webfile));(ASSERT )
@@ -166,10 +186,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	  (publish logfile webfile))
 	;; Now do the performance report:
 	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
-	  (if (file-exists? perfreport)
-	      (let* ([webfile (format "~a/rev~a_eng~a_perfreport.pdf" webdir
-				      svn-revision engine-svn-revision)])
-		(publish perfreport webfile)))))
+	  (when (file-exists? perfreport)
+	    (let* ([webfile (format "~a/rev~a_eng~a_perfreport.pdf" webdir
+				    svn-revision engine-svn-revision)])
+	      (publish perfreport webfile)))))
       ;; Otherwise we could try to scp it...
       (void)
       ))
@@ -184,16 +204,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ; ----------------------------------------
 ;;; Main Script:
-
-;; This should be run from this directory, but to make sure...
-;(define test-directory (current-directory))
-;(define test-root (format "~a/WS_test_copy" (getenv "HOME")))
-;
-;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
-(current-directory "..")
-(define test-root (path->string (current-directory)))
-(define test-directory (format "~a/src" test-root))
-(current-directory test-directory)
 
 (ASSERT (putenv "REGIMENTD" test-root))
 
@@ -219,16 +229,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
    (post-to-web (format "rev~a_ERROR" svn-revision))
    (exit 1)))
 
-(define date 
-  (let ((d (seconds->date (current-seconds))))
-    (format "~a-~a-~a_~a:~a:~a" 
-	    (date-year d) (date-month d) (date-day d)
-	    (date-hour d) (date-minute d) (date-second d))))
-;(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
-(define logfile (format "~a/supertest_~a.log" test-directory date))
-(define log (open-output-file logfile 'replace))
-(define scriptoutput (open-output-file "SUPERTEST_SCRIPT_OUTPUT.log" 'replace))
-(define orig-console (current-output-port))
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
@@ -256,20 +256,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (reset-timer!)
 (run-test "Build directory cleaned:" "make clean > make_clean.log")
-(run-test "petite: Repository's Petite Chez runs:" 
-	  (format "echo | ~a/depends/petite" test-root))
 
-;; Now that we're sure petite runs let's get the machine type:
-(define machine-type 
-  (begin 
-    (ASSERT (eqv? 0 (system/exit-code (format "echo '(machine-type)' | ~a/depends/petite -q > machine_type.txt" test-root))))
-    (read (open-input-file "machine_type.txt"))))
+(run-test "ikarus: Ikarus runs:"  (format "echo | ikarus "))
+(run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
 
 (current-directory test-directory)
 
-(run-test 
- "petite: Load & run unit tests:"
- "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> petite_UNIT_TESTS.log")
+(run-test "Build aggregate libraries:" "make aggregated &> make_aggregated.log")
+(run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log")
+(run-test "ikarus: Load & run unit tests: "
+	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
+
+
+
+
+
+#|
 
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: WScript loads from source (via script):" "./regiment_script.ss &> chez_SCRIPT_LOAD.log")
@@ -288,33 +290,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (ASSERT (system "./regiment_script.ss 2> chez_LOAD_FROM_SO.log"))
        (run-test "chez: System loads from .so file:" "grep 'compiled .so' chez_LOAD_FROM_SO.log")
 
-#|
-       (fpf "chez: Build .boot file:                       ~a\n"
-	    (code->msg! (system/timeout "make boot &> chez_BUILD_BOOT.log")))
-       (ASSERT (system "./bin/regiment 2> chez_LOAD_FROM_BOOT.log"))
-       (fpf "chez: System loads from .boot file:           ~a\n" 
-	    (code->msg! (system/timeout "grep 'compiled .so' chez_LOAD_FROM_BOOT.log")))
 
-
-|#
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
 
-
-       ;; Now copy that .so file to our stored binaries directory.
-       ;; But we only do this on faith, so first test if the dir is there:
-
-;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
-#;
-       (when (directory-exists? "/var/www/regiment_binaries")
-	 (fprintf orig-console "Copying prebuilt binary to website.\n")
-	 (let* ([webfile (format "/var/www/regiment_binaries/~a/~a_~a_main_chez.so" 
-				 machine-type svn-revision machine-type)]
-		[localfile (format "build/~a/main_chez.so" machine-type)])
-	   (if (file-exists? webfile) (delete-file webfile))
-	   (copy-file localfile webfile)
-	   (ASSERT (system (format "chgrp www-data ~a" webfile)))
-	   (ASSERT (system (format "chmod g+r ~a" webfile)))
-	   ))
 
        ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
        ;; FIXME:
@@ -333,18 +311,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (run-test "plt: Building wsparse executable:" "make wsparse &> plt_BUILD_WSPARSE.log")
 
-;; [2007.03.13] Might take this out because we have a seperate, more thorough script that does it:
-#;
-       ;; Now copy that executable file to our stored binaries directory.
-       (when (directory-exists? "/var/www/regiment_binaries")
-	 (fprintf orig-console "Copying prebuilt wsparse to website.\n")
-	 (let* ([webfile (format "/var/www/regiment_binaries/~a/~a_~a_wsparse" 
-				 machine-type svn-revision machine-type)])
-	   (if (file-exists? webfile) (delete-file webfile))
-	   (copy-file "bin/wsparse" webfile)
-	   (ASSERT (system (format "chgrp www-data ~a" webfile)))
-	   (ASSERT (system (format "chmod g+r ~a" webfile)))
-	   ))
        )
 
 (run-test "plt: Building WScript as bytecode in PLT:" "make pltbc &> plt_BUILD_PLT_BYTECODE.log")
@@ -510,8 +476,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; APPLICATIONS
 
+|#
+
 (fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")
+
+#|
 
 (parameterize ((current-directory (format "~a/apps/pipeline-web" test-root)))
   (run-test "ws: Running pipeline-web app:   " 
@@ -657,6 +627,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory))
 
 ;;================================================================================
+
+|#
 
 (fpf "\n\n\nTotal time spent testing: ~a minutes\n" 
      (milli->minute (- (current-inexact-milliseconds) start-time)))

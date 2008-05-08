@@ -55,7 +55,7 @@
 		   (fprintf (current-error-port) "Command: ~s\n" command)
 		   (fprintf (current-error-port) 
 			    ";=======================================================================\n")
-		   (flush-output-port)
+		   (flush-output-port (current-output-port))
 		   (let ((result
 			  (let-match ((  (,in ,out ,id)  
 					 ;(list (open-input-string "TMPRNT: foo\n") (open-output-string) 0)))
@@ -66,12 +66,12 @@
 				  (let ((outline (mask line)))
 				    ;(inspect (list line outline))
 				    (display outline) (newline)
-				    (flush-output-port)4
+				    (flush-output-port (current-output-port))4
 				    (loop (read-line in) (cons outline acc))))))))
 					;(system "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
 		     (fprintf (current-error-port)
 			      ";=======================================================================\n")
-		     (flush-output-port)
+		     (flush-output-port (current-output-port))
 		     result))
 		 (error 'run-via-nesc "error on NesC build."))]
 	    [,other (error 'run-via-nesc "did not assemble to emit-enesc-language program: \n~s" other)]

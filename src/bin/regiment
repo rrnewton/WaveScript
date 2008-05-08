@@ -5,11 +5,34 @@
 
 #source `dirname $0`/assert_regimentd
 
-if [ "$REGIMENTHOST" == "chez" ]; 
-then exec regiment.chez $*;
+
+# if [ "$REGIMENTHOST" == "chez" ]; 
+# then exec regiment.chez $*;
+# elif [ "$REGIMENTHOST" == "petite" ]; 
+# then exec regiment.petite $*;
+# elif [ "$REGIMENTHOST" == "plt" ]; 
+# then exec regiment.plt  $*;
+# else exec regiment.chez $*;
+# fi
+
+if [ "$REGIMENTHOST" == "ikarus" ]; 
+then exec regiment.ikarus $*;
+
 elif [ "$REGIMENTHOST" == "petite" ]; 
 then exec regiment.petite $*;
+
+elif [ "$REGIMENTHOST" == "chez" ]; 
+then exec regiment.chez $*;
+
 elif [ "$REGIMENTHOST" == "plt" ]; 
 then exec regiment.plt  $*;
-else exec regiment.chez $*;
+
+# Otherwise choose a default, in a particular preference order:
+
+# elif [ `which ikarus > /dev/null` ]
+#else exec regiment.ikarus $PWD $*;
+
+else exec regiment.ikarus  $*;
+#else exec regiment.plt $*;
+
 fi

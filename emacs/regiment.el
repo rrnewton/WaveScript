@@ -56,6 +56,7 @@
 			       (not (string= (substring filename (- len 1) len) "~"))
 			       )
 			  (if (or (string= ext "ss")
+				  (string= ext "sls")
 				  (string= ext "rs") ;; Regiment source (sexp)
 				  (string= ext "tm")
 				  (string= ext "ws") ;; Wavescript source

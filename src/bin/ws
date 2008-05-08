@@ -33,5 +33,6 @@ B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 shift
 
-(export REGIMENT_OR_WAVESCRIPT=WS;
- "$REGIMENTEXEC" wsint $abspath ${1+"$@"};)
+#echo WS CALLING "$REGIMENTEXEC" wsint $abspath ${1+"$@"}
+
+(export REGIMENT_OR_WAVESCRIPT=WS; "$REGIMENTEXEC" wsint $abspath ${1+"$@"};)

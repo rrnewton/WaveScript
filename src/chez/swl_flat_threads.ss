@@ -14,7 +14,7 @@
 
 (define (run-flat-threads thks . time)   
   (let ((timeout (if (null? time) #f (* 1000 (car time)))))
-;    (disp "starting flatthreads")(flush-output-port)
+;    (disp "starting flatthreads")(flush-output-port (current-output-port))
 
     (let* ([channel (thread-make-msg-queue 'flat-threads-wait-queue)]
 	   [return-thread #f]
@@ -22,7 +22,7 @@
 	    (map (lambda (thk) 
 		   (thread-fork 
 		    (lambda () 
-;		      (disp "running thread")(flush-output-port)
+;		      (disp "running thread")(flush-output-port (current-output-port))
 		      (thk) 
 		      (thread-send-msg channel 'Thread_Done))
 		    flat-threads-granularity))
@@ -32,17 +32,17 @@
 	    (if timeout
 		(thread-fork 
 		 (lambda ()
-;		   (disp "timer starting")(flush-output-port)
+;		   (disp "timer starting")(flush-output-port (current-output-port))
 		   (thread-sleep (inexact->exact (round timeout)))
-;a		   (disp "timer went off")(flush-output-port)
+;a		   (disp "timer went off")(flush-output-port (current-output-port))
 		   (thread-send-msg channel 'Threads_Timed_Out))		      
 		 flat-threads-granularity)
 		#f)])
       
- ;     (disp "SETTING UP THREADS") (flush-output-port)
+ ;     (disp "SETTING UP THREADS") (flush-output-port (current-output-port))
       
       (let loop ((counter (length threads)))
-;	(disp "loop " counter) (flush-output-port)
+;	(disp "loop " counter) (flush-output-port (current-output-port))
 	(if (zero? counter)
 	    (begin (if timeout-thread
 		       (thread-kill timeout-thread))

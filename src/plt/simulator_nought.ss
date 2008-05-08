@@ -10,7 +10,7 @@
            )
   (require 
    "../generic/constants.ss"
-   (all-except "helpers.ss" id flush-output-port)
+   (all-except "helpers.ss" id flush-output-port (current-output-port))
    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
    ;           (lib "9.ss" "srfi")
    ;          "engine.ss"

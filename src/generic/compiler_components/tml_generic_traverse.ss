@@ -98,7 +98,7 @@
 		[,e (error 'foo "~a" e)])))
 	
 	(match  expression
-	  ;[,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+	  ;[,x (guard (begin (printf "\nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (simple-constant? const)) (fuse () (lambda () const))]
 
@@ -315,7 +315,7 @@
 		prim args)))
 	   
 	   (match x
-;		  [,x (guard (begin (printf "~ntoks-escaped looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+;		  [,x (guard (begin (printf "\ntoks-escaped looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	          ;; Refs and sets are not escapes, because the user can't store the token itself.
 		  [(ext-ref ,[allowed -> t] ,v) t]

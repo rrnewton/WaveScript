@@ -352,7 +352,7 @@
   (IF_GRAPHICS
    (thread-sleep t) ;; This uses the SWL thread library.  (Not real OS threads.)
    (begin
-    ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
+    ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port (current-output-port))
      (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))
        (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
 	   ;; This even resorts to calling make to build the sleep object!!
@@ -619,44 +619,6 @@
 ;;====================================================================================================;;
 ;;====================================================================================================;;
 ;;====================================================================================================;;
-
-
-
-;; DISABLED TEMPORARILY:
-#;
-(if (top-level-bound? 'SWL-ACTIVE)
-    (begin
-      (eval '(import basic_graphics))
-      (eval '(import graphics_stub))
-      (load "chez/simulator_nought_graphics.ss")
-
-      (let ([grepl-init (lambda () 
-			  (init-world)
-			  (init-graphics))]
-	    [grepl-cleanse 
-		      ;; Inbetween evaluations, reset colors.
-		      (lambda ()
-			(for-each
-			 (lambda (simob)
-			   (if (simobject-gobj simob)
-			       (set-fill-color! (simobject-gobj simob) 
-						Starting-Node-Color)))
-			 all-objs)
-			(cleanse-world))])
-	(define-top-level-value 'graphical-repl
-	  (repl-builder grepl-init 
-			grepl-cleanse
-			run-compiler
-			graphical-simulation))
-	(define-top-level-value 'precomp-graphical-repl
-	  (repl-builder grepl-init 
-			grepl-cleanse
-			(lambda (x) x)
-			graphical-simulation)))
-
-      (define-top-level-value 'grepl graphical-repl)
-      ))
-
 
 ;; Open this up so we can read the global counters:
 (IFWAVESCOPE (begin) (import simulator_alpha_datatypes))

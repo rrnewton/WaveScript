@@ -264,7 +264,7 @@
 					())))]
          )
 ;    (disp (node-id (simobject-node ob))
-;	  "sim-leds " what which (hashtab->list state-table)) (flush-output-port)
+;	  "sim-leds " what which (hashtab->list state-table)) (flush-output-port (current-output-port))
     (let ([extra (case what
                             [(on) 
                              (set! led-toggle-state (list-rem-dups (cons which led-toggle-state)))
@@ -360,7 +360,7 @@
   (soc-return-buffer (cons x (soc-return-buffer)))]
 
 [define (simulator-soc-finished)
-  (printf "~nSOC-FINISHED!~n")(flush-output-port)
+  (printf "~nSOC-FINISHED!~n")(flush-output-port (current-output-port))
   ((escape-alpha-sim))]
 
 ;; Just for debugging:
@@ -436,7 +436,7 @@
 
 ;; Uses global "node-code" binding.
 #;(define (alpha-repl)
-  (printf "sim> ") (flush-output-port)
+  (printf "sim> ") (flush-output-port (current-output-port))
   (let ((input (read)))
     (unless (eq? 'exit input)
 	    (disp "Got prgoram" input)

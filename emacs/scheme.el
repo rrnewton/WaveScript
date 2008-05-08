@@ -50,7 +50,6 @@
 ;; ]+\)/\1/' "$@"
 
 ;;; Code:
-
 (require 'lisp-mode)
 
 (defvar scheme-mode-syntax-table nil)
@@ -335,7 +334,7 @@ See `run-hooks'."
 	       "foldl" "filter" "for-eachi" "mapi"
 	       "case-lambda"
 	       "let/cc" "let/ec"
-	       "module"	"chez:module"
+	       "module"	"chez:module" "library" "export" "import"
 	       "reg:define-struct"  "define-record" "define-struct" "define-structure"
 
 	       ;; Some regiment syntax extensions:
@@ -541,6 +540,7 @@ that variable's value is a string."
 (put 'for 'scheme-indent-function 2)
 (put 'module 'scheme-indent-function 2)
 (put 'chez:module 'scheme-indent-function 2)
+(put 'library 'scheme-indent-function 2)
 (put 'trace-define-syntax 'scheme-indent-function 2)
 (put 'define-pass 'scheme-indent-function 2)
 (put 'trace-define 'scheme-indent-function 2)

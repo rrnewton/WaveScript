@@ -40,14 +40,16 @@ CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; 
 SWL = swl
 DEST = a.out
 
-# This builds the .so.  Run "make heap/fullheap" separately.
-basic:
+basic: 
 	@echo; echo BUILDING PARSER
 	@echo "======================================================================"
 	$(MAKE) wsparse
-	@echo; echo; echo Compiling Regiment Scheme Source
+	@echo; echo GENERATING AGGREGATE LIBRARIES
 	@echo "======================================================================"
-	@if [ `which chez` ]; then $(MAKE) ws; else echo "Full Chez compiler not found, skipping build."; fi
+	$(MAKE) aggregated
+	@echo; echo BUILDING COMPILER UNDER IKARUS
+	@echo "======================================================================"
+	$(MAKE) ik
 
 # 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 # 	@echo "======================================================================"
@@ -65,10 +67,6 @@ basic:
 all: basic ws.debug
 
 allheap: fullheap fullheap.opt
-
-old_all: reg
-	(cd plt; $(MAKE) nc)
-	(cd haskell; $(MAKE))
 
 MT=`echo '(display (machine-type))' | ../depends/petite -q`
 SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
@@ -89,6 +87,9 @@ ocaml:
 
 # PLT: 
 #----------------------------------------
+
+DEFAULTPLTLIB=`mzscheme -e '(for-each (lambda (p) (display p) (display ":")) (current-library-collection-paths))'`
+
 bc:pltbc
 pltbc:
 	find -name "._*.ss" | xargs -i rm {}  ## So they don't break our compilation.
@@ -96,7 +97,8 @@ pltbc:
         # Updating this to only build bytecode for WAVESCRIPT:
 	$(MAKE) pltquick
 pltquick:
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
+	(export PLTCOLLECTS=$(DEFAULTPLTLIB)`pwd`; plt-r6rs --compile regiment.ss)
+#	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
 
 # This version DOES NOT build regiment sources.  Leaner and meaner.
 wsbc:
@@ -139,115 +141,259 @@ wsparse_full:
 #----------------------------------------
 
 larc:
-	echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs -stopcopy
+	larceny -r6rs -program test_run.ss -path .
+#	echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs -stopcopy
 
-# This compiles the source into loadable object files
-chez: chez_native
-chez_native:
-	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-	if [ "$(REGDEBUGMODE)" == "ON" ]; \
-        then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
-        else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
+cs:
+	larceny -r6rs -path . -program compile-stale.ss
+
+# Disable ALL larc opts
+# (include-procedure-names #f) (include-variable-names #f) 
+# (inline-assignment #f) (optimize-c-code #f)
+NOOPTS='(control-optimization #f) (parallel-assignment-optimization #f) (lambda-optimization #f) (benchmark-mode #f) (local-optimization) (global-optimization #f) (peephole-optimization #f) (inline-allocation #f)'
+
+# Trying to speed this up with global-optimization #f
+%.slfasl : %.sls
+	echo '(import (larceny compiler) (primitives global-optimization)) (global-optimization #f) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
+#	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
+#	echo '(import (larceny compiler)) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src/
+
+
+
+
+
+
+#ws/constants.sls: ws/util/compat.sls
+ws/globals.slfasl: ws/compat/compat.slfasl
+ws/util/iu-match.slfasl: ws/compat/compat.slfasl
+ws/util/reg_macros.slfasl: ws/globals.slfasl ws/util/iu-match.slfasl
+ws/util/helpers.slfasl: ws/util/reg_macros.slfasl ws/util/hashtab.slfasl 
+
+# Making these dependencies artificially linear:
+# This over-sequentializes and ruins make -j
+ws/util/streams.slfasl: ws/util/helpers.slfasl
+ws/compiler_components/prim_defs.slfasl: ws/util/streams.slfasl
+ws/compiler_components/regiment_helpers.slfasl: ws/compiler_components/prim_defs.slfasl
+ws/compiler_components/type_environments.slfasl: ws/compiler_components/regiment_helpers.slfasl
+ws/compiler_components/reg_core_generic_traverse.slfasl: ws/compiler_components/type_environments.slfasl
+ws/compiler_components/hm_type_inference.slfasl: ws/compiler_components/reg_core_generic_traverse.slfasl
+ws/grammars/grammar_checker.slfasl: ws/compiler_components/hm_type_inference.slfasl
+ws/passes/pass-mechanism_basic.slfasl: ws/grammars/grammar_checker.slfasl
+ws/passes/pass-mechanism.slfasl: ws/passes/pass-mechanism_basic.slfasl
+
+## This builds all the larceny files:
+## compile-stale-libraries isn't working.
+#larceny: ws/util/helpers.slfasl 
+larceny: ws/passes/pass-mechanism.slfasl \
+   ws/common.slfasl \
+   ws/util/scheme_fft.slfasl  \
+   ws/util/slib_fft.slfasl  \
+   ws/util/fft.slfasl  \
+   ws/util/tsort.slfasl  \
+   ws/util/hash.slfasl   \
+   ws/util/slib_hashtab.slfasl  \
+   ws/util/bos_oop.slfasl  \
+   ws/util/imperative_streams.slfasl  \
+  ws/compiler_components/annotations.slfasl \
+  ws/compiler_components/c_generator.slfasl \
+  ws/compiler_components/source_loader.slfasl \
+  ws/passes/partition-graph.slfasl \
+  ws/passes/graphviz.slfasl \
+  depends/matpak.slfasl \
+  ws/langs/lang_wavescript.slfasl \
+  ws/sim/wavescript_sim_library_push.slfasl \
+  ws/passes/normalize_source/verify-regiment.slfasl \
+  ws/passes/normalize_source/typecheck.slfasl \
+  ws/passes/normalize_source/desugar-pattern-matching.slfasl \
+  ws/passes/normalize_source/resolve-varrefs.slfasl \
+  ws/passes/normalize_source/ws-label-mutable.slfasl \
+  ws/passes/normalize_source/desugar-misc.slfasl \
+  ws/passes/normalize_source/eta-primitives.slfasl \
+  ws/passes/normalize_source/rename-vars.slfasl \
+
+#   ws/passes/small-ws-passes.slfasl \
+#   ws/passes/normalize_source/remove-unquoted-constant.slfasl \
+#   ws/passes/normalize_query/reduce-primitives.slfasl \
+#   ws/passes/normalize_query/ws-lift-let.slfasl \
+#   ws/passes/normalize_query/ws-remove-letrec.slfasl \
+#   ws/passes/normalize_query/remove-complex-constant.slfasl \
+#   ws/passes/normalize_query/uncover-free.slfasl \
+#   ws/passes/normalize_query/lift-letrec.slfasl \
+#   ws/passes/normalize_query/lift-letrec-body.slfasl \
+#   ws/passes/normalize_query/remove-lazy-letrec.slfasl \
+#   ws/passes/normalize_query/verify-core.slfasl \
+#   ws/passes/normalize_query/ws-remove-complex-opera.slfasl \
+#   ws/passes/normalize_query/ws-normalize-context.slfasl \
+#   ws/passes/static_elaborate/static-elaborate.slfasl \
+#   ws/passes/static_elaborate/interpret-meta.slfasl \
+#   ws/passes/static_elaborate/degeneralize-arithmetic.slfasl \
+#   ws/passes/static_elaborate/verify-elaborated.slfasl \
+#   ws/passes/static_elaborate/split-union-types.slfasl \
+#   ws/passes/optimizations/smoosh-together.slfasl \
+#   ws/passes/optimizations/rewrite_opts.slfasl \
+#   ws/passes/optimizations/merge-iterates.slfasl \
+#   ws/passes/optimizations/simple-merge-iterates.slfasl \
+#   ws/passes/wavescope_bkend/nominalize-types.slfasl \
+#   ws/passes/wavescope_bkend/convert-sums-to-tuples.slfasl \
+#   ws/passes/wavescope_bkend/reify-certain-types.slfasl \
+#   ws/passes/wavescope_bkend/type-annotate-misc.slfasl \
+#   ws/passes/wavescope_bkend/flatten-iterate-spine.slfasl \
+#   ws/passes/wavescope_bkend/anihilate-higher-order.slfasl \
+#   ws/passes/wavescope_bkend/explicit-stream-wiring.slfasl \
+#   ws/passes/wavescope_bkend/emit-c.slfasl \
+#   ws/passes/wavescope_bkend/insert-refcounts.slfasl \
+#   ws/passes/wavescope_bkend/emit-c2.slfasl \
+#   ws/passes/ocaml_bkend/emit-caml.slfasl \
+#   ws/passes/ocaml_bkend/shared-emit-ml.slfasl \
+#   ws/passes/mlton_bkend/emit-mlton.slfasl \
+#   ws/passes/analyze_data_rates/annotate-with-data-rates.slfasl
+
+
+
+
+## Combine 
+aggregated:
+	rm -f ws/common.sls main_r6rs.sls
+	$(MAKE) ws/common.sls main_r6rs.sls
+
+ws/common.sls:
+	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+
+main_r6rs.sls:
+	@./generate_main_r6rs.ss 
+
+ikarus: ik
+ik: ws/common.sls main_r6rs.sls
+	ikarus --compile-dependencies regiment.ss
+
+# ikrun:
+# 	ikarus --r6rs-script test_run.ss
+
+
+#ws/util/compat.slfasl
+#	(cd ws/util/; echo '(import (larceny compiler)) (compile-library "compat.sls")' | larceny -r6rs -path $(REGIMENTD)/src/)
+
+
+
+
+
+
+
+
+
+
+
+
+# # This compiles the source into loadable object files
+# chez: chez_native
+# chez_native:
+# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
+# 	if [ "$(REGDEBUGMODE)" == "ON" ]; \
+#         then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
+#              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
+#         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+#              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
 # [2007.04.22] Switching the default to .boot files:
 
-ws:       boot
-ws.opt:   boot.opt
-opt:      boot.opt
-ws.debug: so.debug
-debug:    so.debug
-dbg:      so.debug
+# ws:       boot
+# ws.opt:   boot.opt
+# opt:      boot.opt
+# ws.debug: so.debug
+# debug:    so.debug
+# dbg:      so.debug
 
-# This makes a Chez Scheme .boot file instead of a shared object file.
-boot: _temp_temp.so shared
-	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
-	rm _temp_temp.ss _temp_temp.so
+# # This makes a Chez Scheme .boot file instead of a shared object file.
+# boot: _temp_temp.so shared
+# 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+# 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+# 	rm _temp_temp.ss _temp_temp.so
 
-boot.opt: _temp_temp.so shared.opt 
-	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
-	rm _temp_temp.ss _temp_temp.so
+# boot.opt: _temp_temp.so shared.opt 
+# 	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+# 	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
+# 	rm _temp_temp.ss _temp_temp.so
 
-_temp_temp.so:
-	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
-	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
+# _temp_temp.so:
+# 	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
+# 	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
+
+# so: shared
+# shared: 
+# 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
+# 	export REGIMENT_OR_WAVESCRIPT=WS; 
+# 	echo '(generate-inspector-information #f) (compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+#          (export REGOPTLVL=2; \
+#           export REGDEBUGMODE=OFF; \
+#           export REGIMENT_OR_WAVESCRIPT=WS; \
+#           $(CHEZ))
+
+# so.debug: shared.debug
+# shared.debug:
+# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
+# 	export REGIMENT_OR_WAVESCRIPT=WS; 
+# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
+#          (export REGOPTLVL=2; \
+#           export REGDEBUGMODE=ON; \
+#           export REGIMENT_OR_WAVESCRIPT=WS; \
+#           $(CHEZ))
+
+# so.opt: shared.opt
+# shared.opt:
+# 	MT=`echo '(machine-type)' | ../depends/petite`
+# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
+# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
+#           (export REGOPTLVL=3; \
+#            export REGDEBUGMODE=OFF; \
+#            export REGIMENT_OR_WAVESCRIPT=WS; \
+#            $(CHEZ))
 
 
-so: shared
-shared: 
-	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(generate-inspector-information #f) (compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=OFF; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          $(CHEZ))
+# ws.threaded: threaded
+# threaded:
+# #	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
+# 	export REGIMENT_OR_WAVESCRIPT=WS; 
+# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+#          (export REGOPTLVL=2; \
+#           export REGDEBUGMODE=OFF; \
+#           export REGIMENT_OR_WAVESCRIPT=WS; \
+#           chez_threaded)
 
-so.debug: shared.debug
-shared.debug:
-	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=ON; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          $(CHEZ))
+# # Saved heap images start up very fast, but don't work right on all platforms.
+# # (doesn't work right on Mac OS or fedora core)
 
-so.opt: shared.opt
-shared.opt:
-	MT=`echo '(machine-type)' | ../depends/petite`
-	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
-          (export REGOPTLVL=3; \
-           export REGDEBUGMODE=OFF; \
-           export REGIMENT_OR_WAVESCRIPT=WS; \
-           $(CHEZ))
+# # Run "make chez" before this to compile the code before grabbing a Petite heap:
+# heap: builddir 
+# 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
+# #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+# #	$(RM) -f build/regiment.0.heap 
+# #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+
+# # A fullheap includes the Chez compiler as well as the petite heap.
+# fullheap: builddir
+# 	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
+# #	@if [ `which chez` ]; \
+# #	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
+# #	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
+# #	     $(RM) -f build/regiment.0.heap; \
+# #	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
+# #	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
+# #	fi
+
+# ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+
+# fullheap.opt:
+# 	(export REGOPTLVL=3; \
+#          export REGDEBUGMODE=OFF; \
+# 	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
+
+# builddir:
+# 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
 
 
-ws.threaded: threaded
-threaded:
-#	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=OFF; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          chez_threaded)
-
-# Saved heap images start up very fast, but don't work right on all platforms.
-# (doesn't work right on Mac OS or fedora core)
-
-# Run "make chez" before this to compile the code before grabbing a Petite heap:
-heap: builddir 
-	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
-#	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-#	$(RM) -f build/regiment.0.heap 
-#	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
-
-# A fullheap includes the Chez compiler as well as the petite heap.
-fullheap: builddir
-	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
-#	@if [ `which chez` ]; \
-#	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
-#	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
-#	     $(RM) -f build/regiment.0.heap; \
-#	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
-#	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
-#	fi
-
-##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-
-fullheap.opt:
-	(export REGOPTLVL=3; \
-         export REGDEBUGMODE=OFF; \
-	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
-
-builddir:
-	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
-
+#/*--------------------------------------------------------------------*/
+#                              TESTING                                 #
+#/*--------------------------------------------------------------------*/
 
 # This is basic, for someone who just downloaded WScript:
 t: test
@@ -424,7 +570,15 @@ cleanplt:
 	rm -rf ./generic/util/compiled
 	find -name *.zo | xargs -i rm {}  ## <- Just to be sure
 
-clean: cleanchez cleanplt
+cleanik:
+	find ../depends -name "*.ikarus-fasl" | xargs $(RM)
+	find . -name "*.ikarus-fasl" | xargs $(RM)
+
+cleanlarc:
+	find -name "*.slfasl" | xargs $(RM)
+
+
+clean: cleanchez cleanplt cleanik cleanlarc
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
@@ -433,10 +587,11 @@ clean: cleanchez cleanplt
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
+	$(RM) ws/common.sls main_r6rs.sls
 	find -name ".__*" | xargs -i $(RM) {}  ## Remove these temp files
 	find -name "__lang_running.tmp.ss" | xargs -i $(RM) {}  ## Remove these temp files
 
-distclean:
+distclean: clean
 	$(RM) -f *.log
 
 
@@ -462,14 +617,14 @@ upload:
 #*---------------------------------------------------------------------*/
 #*    Suffixes                                                         */
 #*---------------------------------------------------------------------*/
-.SUFFIXES:
-.SUFFIXES: .ss .so 
+# .SUFFIXES:
+# .SUFFIXES: .ss .so 
 
 #*---------------------------------------------------------------------*/
 #*    .ss.so                                                             */
 #*---------------------------------------------------------------------*/
-.ss.so:
-	mzc $(MZCFLAGS) --extension --destination compiled/native/ppc-darwin  $*.ss
+# .ss.so:
+# 	mzc $(MZCFLAGS) --extension --destination compiled/native/ppc-darwin  $*.ss
 
 #	$(MZC) $*.ss
 
@@ -480,7 +635,6 @@ upload:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
 
 
-#AWKIT="awk '{ print $1 }'"
 
 wc:        wordcount
 count:     wordcount
@@ -499,14 +653,6 @@ wordcount:
 	@echo;echo;
 	@cat .wc_tmp.txt | grep total
 	@echo;echo TOTAL total:
-#	echo "DAMN QUOTATION '\\$1'"
-#	cat .wc_tmp.txt | grep total | grep -v code | $(AWKIT)
-#	cat .wc_tmp.txt | grep total | grep -v code | awk '{ print 1 }'
-
-
-
-#	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs demos/token_machs/*.tm demos/regiment/*.rs| grep -v "^_" | xargs wc
-
 
 wcnb:
 	sh -c "ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"
@@ -517,8 +663,4 @@ sortcount:
 go:
 	(cd plt/compiled; make; cd ~/cur; make;) #cd plt;  mred -Z -f temp.ss)
 #	(cd plt/compiled; make; cd ~/cur; make; cd plt; mred -z -f temp.ss)
-
-exec:
-	 (cd plt; mred -z -f temp.ss)
-
 

@@ -42,7 +42,7 @@ exec regiment i --script "$0"
 	       (pad-width 6 (sstats-gc-cpu diff))
 	       (pad-width 6 (sstats-gc-real diff))
 	       (pad-width 10 (sstats-gc-bytes diff)))
-       (flush-output-port)
+       (flush-output-port (current-output-port))
        result)]))
 
 

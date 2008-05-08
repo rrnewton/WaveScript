@@ -212,7 +212,8 @@
   (define (fixnum->flonum x) (exact->inexact x))
     
   (define (list-copy l) (reverse! (reverse l))) ;; Reverse had better be tail-recursive!
-   #;(define (remq x ls)
+   #;
+  (define (remq x ls)
     (cond 
       [(null? ls) ls]
       [(eq? x (car ls)) (remq x (cdr ls))]
@@ -363,13 +364,8 @@
   (define (block-write outp str count)
     (write-string str outp 0 count))
   (define collect collect-garbage)
-              
-           
-
+                        
 ;; HERE: Include base helpers file...
 
-  
 ) ;; End module.
 
-
-;(require chez_compat) (apply fxzero? '(1)) (fxzero? 0)

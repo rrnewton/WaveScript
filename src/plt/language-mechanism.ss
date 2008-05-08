@@ -2,7 +2,7 @@
 (module language-mechanism mzscheme  
   (require (lib "include.ss")           
 	   (lib "pretty.ss")
-  ;         (all-except (lib "compat.ss") flush-output-port)
+  ;         (all-except (lib "compat.ss") flush-output-port (current-output-port))
 	   "chez_compat.ss"
            "iu-match.ss"
            "helpers.ss"

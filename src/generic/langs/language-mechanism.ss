@@ -171,7 +171,7 @@
 '(define-language
   'base-language
   '(begin
-;     (define ignored (begin (disp "Loading base language!") (flush-output-port)))
+;     (define ignored (begin (disp "Loading base language!") (flush-output-port (current-output-port))))
      
      (define world (map cons the-test-field the-test-field))
      (define radius 10.0)

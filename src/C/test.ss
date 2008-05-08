@@ -78,7 +78,7 @@
 ;        (let f ()
 ; 	 (let ((x (malloc-guardian)))
 ; 	   (when x
-; 	     ;(printf "Killing fftw plan! ~a\n" x)(flush-output-port)
+; 	     ;(printf "Killing fftw plan! ~a\n" x)(flush-output-port (current-output-port))
 ; 	     (do-free (unbox x))
 ; 	     (f))))))
 ;     (collect-request-handler

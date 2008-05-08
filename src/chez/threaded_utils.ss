@@ -152,7 +152,7 @@
   ;; DEBUGGING:
   ; (define WAITING '())
   ;;  Pick a print:
-  ;   (define (print . args) (with-mutex mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
      (define (print . args) (void)) ;; fizzle
 
@@ -286,7 +286,7 @@
 
   ;; DEBUGGING:
   ;;  Pick a print:
-  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
      (define (print . args) (void)) ;; fizzle
 
@@ -521,7 +521,7 @@
 
   ;; DEBUGGING:
   ;;  Pick a print:
-  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+  ;   (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
      (define (print . args) (void)) ;; fizzle
 
@@ -734,7 +734,7 @@
 
     ;; DEBUGGING:
   ;;  Pick a print:
-     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port)))
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
   ;   (define (print . args) (void)) ;; fizzle
 

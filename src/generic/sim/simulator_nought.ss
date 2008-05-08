@@ -985,7 +985,7 @@
     ;; DEPENDS: Also uses "handler", and "this".
     [define handle-returns 
 	    (lambda (returns)
-	      ;(display #\H)(flush-output-port)
+	      ;(display #\H)(flush-output-port (current-output-port))
 	      (define (split-ret r) (list (node-id (simobject-node (return-obj-parent r)))
 					  (return-obj-timestamps r)))
 	      (with-logger
@@ -1132,7 +1132,7 @@
 				   
 				 ;; Otherwise we must pass this return onto the next:
 				   (begin 
-				     (display #\^)(flush-output-port)
+				     (display #\^)(flush-output-port (current-output-port))
 				     (sendmsg  
 				      (make-return-obj
 				       (cons (cpu-time) timestamps) ;; Timestamps
@@ -1244,7 +1244,7 @@
 		       (if (> (length returns) 1)
 			   (display #\!) 
 			   (display #\.))
-		       (flush-output-port)
+		       (flush-output-port (current-output-port))
 ; 		       (if (not (null? returns))
 ; 			   (with-logger
 ; 			    (display (list "Handling rets from" (node-id (simobject-node this)) 

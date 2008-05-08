@@ -1812,11 +1812,11 @@
 		 (let-stored ([cur-leader (my-id)])
 		   (if (> id cur-leader)
 		       (begin 
-			 (printf "~a " id) (flush-output-port)
+			 (printf "~a " id) (flush-output-port (current-output-port))
 			 (set! cur-leader id)
 			 (grelay))
 		       (begin 
-			 (printf "_ ") (flush-output-port)
+			 (printf "_ ") (flush-output-port (current-output-port))
 			 (gemit (tok lead cur-leader)))))]
 	   )
 	'[sim-num-nodes 3]
@@ -1842,13 +1842,13 @@
 	   [lead id () 		 
 		 (if (< id (ext-ref node-start cur-leader))
 		     (begin 
-		       (printf "(~a ~a) " id (ext-ref node-start cur-leader)) (flush-output-port)
+		       (printf "(~a ~a) " id (ext-ref node-start cur-leader)) (flush-output-port (current-output-port))
 		       (ext-set! node-start cur-leader id)
 		       (grelay))
 		     (begin 
 		       (printf "~a " ;(my-id) 
 			       (ext-ref node-start cur-leader)) 
-		       (flush-output-port)
+		       (flush-output-port (current-output-port))
 		       ;(gemit (tok lead (ext-ref node-start cur-leader)))
 		       ))]
 	   [final-report () (printf "~n   ~a " (ext-ref node-start cur-leader))]
