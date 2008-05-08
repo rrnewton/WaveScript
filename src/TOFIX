@@ -1,8 +1,0 @@
-
-Severe problems that need to be fixed::
-
-FIXME:
-  The type checker bug regarding petite chez.
-  Look at tests in system_tests and hm_type_inference.ss, they explain
-  the problem.
-

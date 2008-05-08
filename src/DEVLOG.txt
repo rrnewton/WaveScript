@@ -3,6 +3,7 @@ AMORIDEAS.emacs.txt file.  But I realized that my day-to-day
 development issues should go in a separate file; so here we
 are. [2004.04.29]
 
+
 [2004.04.29]
   Hmm, without "identifier-syntax" I can't get things working fully
 under PLT.  Until I can write a "lazy-letrec" macro for PLT I'm not
@@ -120,6 +121,18 @@ Sigh, right now I'm throwing a bunch of hackery into deglobalize that
 should probably properly belong in other passes.  This is bad form.
 But some of these things are so experimental and temporary, that
 setting up extra passes for them seems not worth it...
+
+[2004.08.03] {About the cost model that I'd like to have}
+Thinking about metrics used in that Bill Theis "Linear Analysis" paper...
+
+Wait, wait, first a bit of meta-reasoning, the cost model must be
+either: 
+  *) Context free, parts of the program are assigned a cost w/out
+     regard to their context
+  *) Context sensitive - a much trickier computation, probably using
+     existing program analysis techniques.
+
+Well let's first think about reasoning over all connection topologies.
 
 [2004.08.06]
   Reading about TinyOS.  I like how you can wire outwires to multiple

@@ -21,9 +21,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; [2007.11.03] FIXME!!! BADLY NEED A TIMEOUT ON ALL SUBPROCESSES!
 
-
 (require (lib "process.ss") (lib "date.ss"))
 
+(define publish? (not (member "-nopost" (vector->list (current-command-line-arguments)))))
 
 ;; Let's clean up some:
 (if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
@@ -179,7 +179,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
-  (if (directory-exists? webdir)
+  (if (and publish? (directory-exists? webdir))
       (begin 
 	(printf "Going to try publishing to website.\n")
 	(let* ([webfile (format "~a/~a" webdir webfilename)])
@@ -671,11 +671,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
-(fprintf orig-console "Copying all logs to website...\n")
+(fprintf orig-console "~a all logs to website...\n" (if publish? "Copying" "NOT copying"))
 (system (format "rm -f ~a/most_recent_logs/*" webdir))
 (system (format "cp ~a/*.log ~a/most_recent_logs/" webdir
 		test-directory))
-(fprintf orig-console "Copied all logs to website.\n")
+(fprintf orig-console "Finished (not) copying.")
 
 (current-directory webroot)
 (system "./setperms")

@@ -1,8 +1,0 @@
-fftw2.cmo: fftw2.cmi 
-fftw2.cmx: fftw2.cmi 
-fftw64.cmo: fftw64.cmi 
-fftw64.cmx: fftw64.cmi 
-test_fft.cmo: fftw2.cmi 
-test_fft.cmx: fftw2.cmx 
-test.cmo: fftw2.cmi 
-test.cmx: fftw2.cmx 

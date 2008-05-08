@@ -210,6 +210,16 @@ These are the order that optimizations need to be implemented:
  *) uniform value printing
  *) remove dependence on $WAVESCOPED/Makefile in wsc process.
 
+[2007.02]
+
+Severe problems that need to be fixed::
+
+FIXME:
+  The type checker bug regarding petite chez.
+  Look at tests in system_tests and hm_type_inference.ss, they explain
+  the problem.
+
+
 [2007.02.11]
  *) Initialize class-typed iterator state properly (not from within
     the {} of the constructor)

@@ -81,7 +81,7 @@ c:
 
 caml: ocaml
 ocaml:
-	(cd generic/passes/ocaml_bkend/; $(MAKE))
+	(cd ws/passes/ocaml_bkend/; $(MAKE))
 
 # Two scheme back-ends, PLT or Chez.
 
@@ -555,19 +555,19 @@ cleancomp:
 cleanplt:
 	rm -rf ./compiled
 	rm -rf ./plt/compiled
-	rm -rf ./generic/compiled
-	rm -rf ./generic/compiler_components/compiled
-	rm -rf ./generic/grammars/compiled
-	rm -rf ./generic/passes/compiled
-	rm -rf ./generic/passes/deglobalize/compiled
-	rm -rf ./generic/passes/nesc_bkend/compiled
-	rm -rf ./generic/passes/normalize_query/compiled
-	rm -rf ./generic/passes/normalize_source/compiled
-	rm -rf ./generic/passes/static_elaborate/compiled
-	rm -rf ./generic/passes/tokmac_bkend/compiled
-	rm -rf ./generic/passes/wavescope_bkend/compiled
-	rm -rf ./generic/sim/compiled
-	rm -rf ./generic/util/compiled
+	rm -rf ./ws/compiled
+	rm -rf ./ws/compiler_components/compiled
+	rm -rf ./ws/grammars/compiled
+	rm -rf ./ws/passes/compiled
+	rm -rf ./ws/passes/deglobalize/compiled
+	rm -rf ./ws/passes/nesc_bkend/compiled
+	rm -rf ./ws/passes/normalize_query/compiled
+	rm -rf ./ws/passes/normalize_source/compiled
+	rm -rf ./ws/passes/static_elaborate/compiled
+	rm -rf ./ws/passes/tokmac_bkend/compiled
+	rm -rf ./ws/passes/wavescope_bkend/compiled
+	rm -rf ./ws/sim/compiled
+	rm -rf ./ws/util/compiled
 	find -name *.zo | xargs -i rm {}  ## <- Just to be sure
 
 cleanik:
@@ -582,9 +582,9 @@ clean: cleanchez cleanplt cleanik cleanlarc
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
-	(cd generic/passes/ocaml_bkend/; $(MAKE) clean)
+	(cd ws/passes/ocaml_bkend/; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~ 
-	$(RM) __temp.log _genned_node_code.ss
+	$(RM) __temp.log _genned_node_code.ss svn_rev.txt *.log
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
 	$(RM) ws/common.sls main_r6rs.sls
@@ -655,10 +655,10 @@ wordcount:
 	@echo;echo TOTAL total:
 
 wcnb:
-	sh -c "ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"
+	sh -c "ls *.ss ws/*.ss chez/*.ss plt/*.ss ws/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"
 
 sortcount:
-	ls -rS *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | xargs wc
+	ls -rS *.ss ws/*.ss chez/*.ss plt/*.ss ws/*.tests haskell/*.hs | xargs wc
 
 go:
 	(cd plt/compiled; make; cd ~/cur; make;) #cd plt;  mred -Z -f temp.ss)
