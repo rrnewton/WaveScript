@@ -46,6 +46,7 @@
 	  test-static-elaborate
 	  )
   (import (rnrs) ;(except (rnrs (6)) cons*)
+	  (ws compat compat)
 	  (ws common)
 ;; WEIRD: rn-match is SLOWER for plt on this pass:	   
 ;	   (all-except "../../../plt/rn-match.ss" )

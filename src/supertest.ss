@@ -266,8 +266,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log")
 (run-test "ikarus: Load & run unit tests: "
 	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
-
-
+;(run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
 
 

@@ -184,7 +184,8 @@ ws/passes/pass-mechanism.slfasl: ws/passes/pass-mechanism_basic.slfasl
 ## This builds all the larceny files:
 ## compile-stale-libraries isn't working.
 #larceny: ws/util/helpers.slfasl 
-larceny: ws/passes/pass-mechanism.slfasl \
+larceny: ws/common.sls main_r6rs.sls \
+   ws/passes/pass-mechanism.slfasl \
    ws/common.slfasl \
    ws/util/scheme_fft.slfasl  \
    ws/util/slib_fft.slfasl  \
@@ -209,9 +210,9 @@ larceny: ws/passes/pass-mechanism.slfasl \
   ws/passes/normalize_source/ws-label-mutable.slfasl \
   ws/passes/normalize_source/desugar-misc.slfasl \
   ws/passes/normalize_source/eta-primitives.slfasl \
-  ws/passes/normalize_source/rename-vars.slfasl \
+\
+  ws/passes/small-ws-passes.slfasl \
 
-#   ws/passes/small-ws-passes.slfasl \
 #   ws/passes/normalize_source/remove-unquoted-constant.slfasl \
 #   ws/passes/normalize_query/reduce-primitives.slfasl \
 #   ws/passes/normalize_query/ws-lift-let.slfasl \
@@ -248,6 +249,9 @@ larceny: ws/passes/pass-mechanism.slfasl \
 #   ws/passes/mlton_bkend/emit-mlton.slfasl \
 #   ws/passes/analyze_data_rates/annotate-with-data-rates.slfasl
 
+
+
+#  ws/passes/normalize_source/rename-vars.slfasl \
 
 
 

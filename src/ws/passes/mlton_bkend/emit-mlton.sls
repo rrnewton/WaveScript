@@ -6,6 +6,7 @@
 (library (ws passes mlton_bkend emit-mlton)
   (export emit-mlton-wsquery test-emit-mlton)
   (import (rnrs) (rnrs mutable-strings)
+	  (ws compat compat)
 	  (ws common)
 	  (ws compiler_components c_generator)
 	  (ws passes ocaml_bkend shared-emit-ml))
@@ -370,15 +371,15 @@
 (define emit-mlton-wsquery
   (lambda (prog)
     ;; Lame, requires REGIMENTD:
-    (define header1 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/scheduler.sml")))
-    (define header2 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/prims.sml")));
-    (define header3a (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sig")))
-    (define header3b (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/sigseg.sml")))
-    (define header4 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/data_reader.sml")))
-    (define header5 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/foreign.sml")))
+    (define header1 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/scheduler.sml")))
+    (define header2 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/prims.sml")));
+    (define header3a (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/sigseg.sig")))
+    (define header3b (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/sigseg.sml")))
+    (define header4 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/data_reader.sml")))
+    (define header5 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/foreign.sml")))
 
-    (define complex1 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sig")))
-    (define complex2 (file->string (** (REGIMENTD) "/src/generic/passes/mlton_bkend/Complex.sml")))
+    (define complex1 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/Complex.sig")))
+    (define complex2 (file->string (** (REGIMENTD) "/src/ws/passes/mlton_bkend/Complex.sml")))
 
     (fluid-let ([driven-by-foreign #f]
 		[extraCdecls      '()]

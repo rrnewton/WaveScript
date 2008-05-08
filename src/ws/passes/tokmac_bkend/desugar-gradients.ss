@@ -104,9 +104,9 @@
 ;; Include the other variants of desugar-gradients:
 (IFCHEZ
  (begin 
-   (include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
-   (include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
-   (include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
+   (include "ws/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+   (include "ws/passes/tokmac_bkend/desugar-gradients_simple.ss")
+   (include "ws/passes/tokmac_bkend/desugar-gradients_ETX.ss")
    )
  (begin 
    (include "desugar-gradients_verbose.ss")

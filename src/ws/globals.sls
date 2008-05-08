@@ -6,13 +6,6 @@
 ;;;; A collection of global constants, flags, and datatype defs.<br><br>
 
 
-;;;; NOTE: [2006.03.13] Most modules are structured such that the
-;;;; chez/ and plt/ versions include the generic version.  This module
-;;;; is the reverse.  The generic/ version is the parent, and it
-;;;; depends on chunks of functionality which are defined in the chez/
-;;;; and plt/ versions respectively.
-
-
 ;;;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest. <br>
 ;;;; [2005.03.29] MOVING DEBUGMODE to this file. <br><br>
 

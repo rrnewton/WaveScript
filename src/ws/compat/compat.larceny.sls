@@ -25,20 +25,23 @@
 	  with-output-to-string  repl
 	  process get-string-available
 
-	  box unbox set-box! box? promise?
+	  box unbox set-box! box? 
 
-	  cons* ;; HACK: larceny is missing cons*
+	  promise? delay force
+
+	  ;cons* ;; HACK: larceny is missing cons*
 
 	  which-scheme
 	  )
-  (import (rnrs (6))
-	  (rnrs eval (6))
+  (import (rnrs)
+	  (rnrs r5rs)
+	  (rnrs eval)
 	  (for (primitives with-output-to-string random current-directory gensym
 			   repl make-list getenv pretty-print reverse! append! sort! time
 			   ;let-values define-values
 			   ) run expand) ;; Larceny specific!!
-	  ;(for (core define-values) run expand)
-	  (prefix (primitives format ) builtin:) ; make-parameter open-output-string get-output-string
+	  ;(for (core define-values) run expand)	  
+	  (prefix (primitives format system) builtin:) ; make-parameter open-output-string get-output-string
 	  )
 
   (define which-scheme 'larceny)
@@ -69,6 +72,8 @@
       [(kwd form msg) (syntax-violation #f msg form)]
       [(kwd msg)      (syntax-violation #f msg #f)]))
 
+  (include "ws/compat/common.ss")
+
   (reg:define-struct (boxrec contents))
   (define-syntax box      (identifier-syntax make-boxrec))
   (define-syntax set-box! (identifier-syntax set-boxrec-contents!))
@@ -84,8 +89,6 @@
 
   (define call/ec call/cc)
  
-  (include "ws/compat/common.ss")
-
   (define-syntax parameterize
     (lambda (x)
       (syntax-case x ()
@@ -142,7 +145,10 @@
   (define print-graph (make-parameter #f))  
   (define print-vector-length  (make-parameter #f))
 
-  (define (system x) "shell calls not implemented")
+  ;(define (system x) "shell calls not implemented")
+  (define (system cmd)
+    (let ([ret (builtin:system cmd)])
+      (if (zero? ret) #t #f)))
   (define (process x) "shell calls not implemented")
 
   (define (real-time) 0)
@@ -151,7 +157,7 @@
   (define (get-string-available inp)
     (error 'get-string-available "non-blocking IO not implemented..."))
 
-  ;; Larceny has some odd problem:
+#;
   (define-syntax cons*
     (syntax-rules ()
       [(_ x) x]

@@ -38,6 +38,7 @@
 	   )
   (import (rnrs) (except (rnrs r5rs) force delay)
 	  (rnrs mutable-strings)
+	  (ws compat compat)
 	  (ws common)
 	  (ws passes wavescope_bkend insert-refcounts)
 	  (ws passes wavescope_bkend emit-c)

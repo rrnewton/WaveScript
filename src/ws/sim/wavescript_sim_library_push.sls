@@ -896,7 +896,7 @@
             ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
             (unless (= i len)
               (vector-set! win i (sample-extractor string pos))
-              (readloop (fx+ i 1) (fx+ pos wordsize skipbytes))
+              (readloop (fx+ i 1) (s:+ pos wordsize skipbytes))
               ))  
           win))
       (error 'read-binary-file-stream "TODO: port block-read calls")
@@ -917,7 +917,7 @@
                                 "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
                                 count1 winsize) 
                        #f)
-                (let ([total (+ count newcount)]
+                (let ([total (s:+ count newcount)]
                       [newacc (cons (substring buffer1 0 newcount) acc)])
                   (if (fx= total winsize)
                       (return-it (apply string-append (reverse! newacc)))
@@ -1349,7 +1349,7 @@
 	 (modulo int base16))]
 
       [(Float Double) (exact->inexact num)]
-      ;[(Complex) (+ num 0.0+0.0i)]
+      ;[(Complex) (s:+ num 0.0+0.0i)]
       [(Complex) (s:+ num (make-rectangular 0 0))]
       [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
 
@@ -1392,7 +1392,7 @@
 	    (lambda (c) 
 	      (let ([x (cfl-real-part c)] 
 		    [y (cfl-imag-part c)])					   
-		(sqrt (+ (* x x) (* y y)))))))
+		(sqrt (s:+ (* x x) (* y y)))))))
 
   (define randomI random)
 
@@ -1781,11 +1781,11 @@
 	 (format "/tmp/_gnuplot_process_~s.out"
 		 (filtnewline (system-to-str "date +%s"))
 		 #;
-		 (+ (real-time) (random 100000))))
+		 (s:+ (real-time) (random 100000))))
        (define fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" 
 			   (filtnewline (system-to-str "date +%s"))
 			   #;
-			   (+ (real-time) (random 100000))))
+			   (s:+ (real-time) (random 100000))))
        ;; FIXME: FINISH THIS:
        (define (mungestring str)
 	 (if (memq #\~ (string->list str))

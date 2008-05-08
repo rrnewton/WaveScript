@@ -2176,7 +2176,7 @@
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:
-     (include "generic/testing/system_tests.ss")  
+     (include "ws/testing/system_tests.ss")  
     ))
   (define-testing maintest (default-unit-tester "Main compiler units + system tests." maintests))
   ))
