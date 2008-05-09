@@ -130,12 +130,12 @@ nc2:
 
 # only works in PLT right now:
 wsparse: 
-	mzc --exe bin/wsparse plt/wsparse.ss
+	mzc --exe bin/wsparse wsparse/wsparse.ss
 # I tried embedding mzscheme to build a stand-alone... but I don't
 # think it was really standalone.
 
 wsparse_full:
-	mzc $(MZCFLAGS) --exe bin/wsparse plt/wsparse.ss
+	mzc $(MZCFLAGS) --exe bin/wsparse wsparse/wsparse.ss
 	mzc $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
 
 #----------------------------------------
@@ -202,16 +202,19 @@ larceny: ws/common.sls main_r6rs.sls \
   ws/passes/graphviz.slfasl \
   depends/matpak.slfasl \
   ws/langs/lang_wavescript.slfasl \
-  ws/sim/wavescript_sim_library_push.slfasl \
-  ws/passes/normalize_source/verify-regiment.slfasl \
-  ws/passes/normalize_source/typecheck.slfasl \
-  ws/passes/normalize_source/desugar-pattern-matching.slfasl \
-  ws/passes/normalize_source/resolve-varrefs.slfasl \
-  ws/passes/normalize_source/ws-label-mutable.slfasl \
-  ws/passes/normalize_source/desugar-misc.slfasl \
-  ws/passes/normalize_source/eta-primitives.slfasl \
-\
-  ws/passes/small-ws-passes.slfasl \
+
+# Gets an error related to multiple expand of common.sls ...
+
+#   ws/sim/wavescript_sim_library_push.slfasl \
+#   ws/passes/normalize_source/verify-regiment.slfasl \
+#   ws/passes/normalize_source/typecheck.slfasl \
+#   ws/passes/normalize_source/desugar-pattern-matching.slfasl \
+#   ws/passes/normalize_source/resolve-varrefs.slfasl \
+#   ws/passes/normalize_source/ws-label-mutable.slfasl \
+#   ws/passes/normalize_source/desugar-misc.slfasl \
+#   ws/passes/normalize_source/eta-primitives.slfasl \
+
+#  ws/passes/small-ws-passes.slfasl \
 
 #   ws/passes/normalize_source/remove-unquoted-constant.slfasl \
 #   ws/passes/normalize_query/reduce-primitives.slfasl \
@@ -588,7 +591,7 @@ clean: cleanchez cleanplt cleanik cleanlarc
 	(cd demos/regiment; $(MAKE) clean)
 	(cd ws/passes/ocaml_bkend/; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~ 
-	$(RM) __temp.log _genned_node_code.ss svn_rev.txt *.log
+	$(RM) __temp.log _genned_node_code.ss svn_rev.txt 
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
 	$(RM) ws/common.sls main_r6rs.sls

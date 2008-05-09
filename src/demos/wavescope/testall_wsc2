@@ -1,4 +1,4 @@
-	#!/bin/bash
+#!/bin/bash
 
 COMP=.__wsc2Messages.txt
 RUN=.__runquery_output_wsc2.txt

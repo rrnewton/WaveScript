@@ -48,6 +48,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define test-directory (format "~a/src" test-root))
 (current-directory test-directory)
 
+(printf "Test directory: ~s\n" test-directory)
+
 (define date 
   (let ((d (seconds->date (current-seconds))))
     (format "~a-~a-~a_~a:~a:~a" 
@@ -232,7 +234,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
-(fprintf orig-console "Opened logfile: ~s\n" logfile)
+(fprintf orig-console "Opened logfile: ~s \n" logfile)
 ;(flush-output log)
 ;(close-output-port log)
 ;(set! log (open-output-file logfile 'append))
@@ -243,7 +245,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
-
+(fprintf orig-console "SVN revision: ~a\n" svn-revision)
 
 ;; Here we begin running tests:
 
@@ -257,8 +259,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (reset-timer!)
 (run-test "Build directory cleaned:" "make clean > make_clean.log")
 
-(run-test "ikarus: Ikarus runs:"  (format "echo | ikarus "))
+(run-test "ikarus:   Ikarus runs:"  (format "echo | ikarus "))
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
+(run-test "larceny:  Larceny runs:"  (format "echo | larceny"))
 
 (current-directory test-directory)
 
@@ -266,9 +269,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log")
 (run-test "ikarus: Load & run unit tests: "
 	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
-;(run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
+(run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
-
+(run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 
 #|
 

@@ -24,7 +24,7 @@
   (define-top-level-value 'regiment-origin "unknown")) ;; This tracks how the system was loaded.
 
 ;;================================================================================
-(ws "/home/newton/demos/demo1c_timer.ws")
+;(ws "/home/newton/demos/demo1c_timer.ws")
 ;;================================================================================
 
 (if (< (length (command-line)) 2)
