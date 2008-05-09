@@ -130,12 +130,12 @@ nc2:
 
 # only works in PLT right now:
 wsparse: 
-	mzc --exe bin/wsparse wsparse/wsparse.ss
+	mzc --exe bin/wsparse parser/wsparse.ss
 # I tried embedding mzscheme to build a stand-alone... but I don't
 # think it was really standalone.
 
 wsparse_full:
-	mzc $(MZCFLAGS) --exe bin/wsparse wsparse/wsparse.ss
+	mzc $(MZCFLAGS) --exe bin/wsparse parser/wsparse.ss
 	mzc $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
 
 #----------------------------------------
