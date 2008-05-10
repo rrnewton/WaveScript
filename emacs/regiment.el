@@ -75,7 +75,13 @@
   (interactive)
   (let ((regd (cap-dir (getenv "REGIMENTD"))))
     (print "LOAD\n")
-    (load-all-files-of-interest-from (concat regd "src"))
+    (load-all-files-of-interest-from (concat regd "src/ws"))
+    (find-file-noselect (concat "regd" "src/main.sls"))
+    (find-file-noselect (concat "regd" "src/main_r6rs_import_list.sexp"))
+    (find-file-noselect (concat "regd" "src/common_import_list.sexp"))
+    (find-file-noselect (concat "regd" "src/regiment.ss"))
+    (find-file-noselect (concat "regd" "src/config.ss"))
+
 ;    (load-all-files-of-interest-from (concat regd "lib"))
 ;    (load-all-files-of-interest-from (concat regd "apps"))
 					;'("~/cur/generic/"))
@@ -113,7 +119,7 @@
 			       ))))
 		   (directory-files-and-attributes dir))))
 
-(all-contained-files "~/wavescript/src/generic/passes")
+;(all-contained-files "~/wavescript/src/ws/passes")
 
 
 ;;  0. t for directory, string (name linked to) for symbolic link, or nil.

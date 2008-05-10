@@ -6,18 +6,17 @@ export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
 |#
 
+;(import (rnrs)  (ws common))
 
-(IFCHEZ (import streams) (void))
+;(IFCHEZ (import streams) (void))
 
 
 ;; This runs all the demo files and (for some tests) checks their
 ;; output for correctness.
 
-(IFCHEZ 
- (begin (print-length 10)
-	(print-level 3)
-	(print-graph #t))
- (void))
+(print-length 10)
+(print-level 3)
+(print-graph #t)
 
 ;; Produce bar.o for demo9c
 (system "gcc -c bar.c")
@@ -28,8 +27,7 @@ exec regiment i --script "$0" ${1+"$@"};
      (printf "\n\nDemo: ~a \n"  fn)
      (printf "======================================================================\n")     
      (let ([absolute (if (ws-relative-path? fn)
-			 (string-append (IFCHEZ (current-directory)
-						(path->string (current-directory))) 
+			 (string-append (current-directory) 
 					"/" fn)
 			 fn)])
        (let ([strm ((if (getenv "WSTESTALLEARLY") wsint-early wsint) absolute ())]
@@ -47,8 +45,7 @@ exec regiment i --script "$0" ${1+"$@"};
 
 	 ;; Don't use the ORACLES in PLT for now..
 	 ;; Besides.. .we want to move over to having asserts INSIDE the WS code.
-	 (IFCHEZ (ASSERT (oracle first second))
-		 (void))
+	 (oracle first second)
 	 ))
      ]))
 

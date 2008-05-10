@@ -28,9 +28,13 @@
       ;; UNLESS we do a little hack.
       ;; We manage a virtual top-level environment ourselves:
       (cond
-       [(and (list? x) (= (length x) 3) (eq? (car x) 'define) (symbol? (cadr x)))
+       [(and (list? x) (eq? (car x) 'define) ) ; (= (length x) 3)
+	(printf "GOT DEFINE: ~s\n" x)
 	(if (pair? (cadr x))
-	    `(define-top-level-value ,(caadr x) (lambda ,(cdadr x) ,(caddr x)))
+	    (begin 
+	      (printf "GOT FUNCTION DEF: ~s\n" 
+		      `(define-top-level-value ,(caadr x) (lambda ,(cdadr x) ,(caddr x))))
+	      `(define-top-level-value ,(caadr x) (lambda ,(cdadr x) ,@(cddr x))))
 	    `(define-top-level-value ,(cadr x) ,(caddr x))
 	    )]
        [else x]))
