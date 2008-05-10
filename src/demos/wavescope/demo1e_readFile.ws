@@ -6,6 +6,16 @@
 //   255 succeeded, 256 failed
 // (It could make it up to 500 on demo3k with the same inputfile... but no skipbytes)
 
+// [2008.05.10]
+// Under chez in the pre-r6rs implementation the first five output tuples were:
+/*
+(512, 1024, 1536)
+(2, 514, 1026)
+(-509, 4, 516)
+(-1019, -507, 6)
+(-1529, -1017, -505)
+*/
+
 
 s1 = (readFile("./countup.raw", 
 	       "mode: binary  repeats: 0 "++

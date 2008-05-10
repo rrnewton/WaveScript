@@ -204,13 +204,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	(code->msg! (system/timeout cmd))))
   (post-to-web (format "intermediate/rev_~a" svn-revision)))
 
+
+
+
 ; ----------------------------------------
 ;;; Main Script:
+; ----------------------------------------
+
 
 (ASSERT (putenv "REGIMENTD" test-root))
 
 ;; We use debugmode for all the tests below:
-(ASSERT (putenv "REGDEBUGMODE" "ON"))
+
+;; [2008.05.10] NOT DOING DEBUG MODE YET... (R6RS port)
+;(ASSERT (putenv "REGDEBUGMODE" "ON"))
 
 ;(ASSERT (putenv "PATH" (format "~a/bin:~a" test-root (getenv "PATH"))))
 ;(ASSERT (putenv "PATH" (format "~a/depends:~a" test-root (getenv "PATH"))))
@@ -273,6 +280,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 
+
+
 #|
 
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
@@ -306,52 +315,39 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (run-test "chez: Build C extensions:" "make c &> gcc_BUILD_C_EXTENSIONS.log")
 
 ;; Now clean again:
-(ASSERT (system "make clean > make_clean2.log"))
+;(ASSERT (system "make clean > make_clean2.log"))
 
-(begin (newline) (fpf "\n")
-       (printf "Third: building bytecode in PLT\n")
-       (printf "============================================================\n")
-       (run-test "plt: Building wsparse executable:" "make wsparse &> plt_BUILD_WSPARSE.log")
+|#
 
-       )
+(fpf "\n")
+(run-test "wsparse: Building executable (plt):" "make wsparse &> plt_WSPARSE.log")
 
-(run-test "plt: Building WScript as bytecode in PLT:" "make pltbc &> plt_BUILD_PLT_BYTECODE.log")
-(run-test "plt: Run system from command line with PLT:" "regiment.plt &> plt_RUN_PLT_BYTECODE.log")
-
-;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
-(begin (newline)
-       (printf "Fourth: Running tests in PLT\n")
-       (printf "============================================================\n")
-       (run-test "plt: Running tests in PLT:" "regiment.plt test &> plt_UNIT_TESTS.log"))
-
+;(run-test "plt: Building WScript as bytecode in PLT:" "make pltbc &> plt_BUILD_PLT_BYTECODE.log")
+;(run-test "plt: Run system from command line with PLT:" "regiment.plt &> plt_RUN_PLT_BYTECODE.log")
 
 ;; Now let's see if we can load in larceny:
 ;; Disabling for now because it's explodiing faith's HD:!!!
 ;(run-test "larceny: Testing compile in Larceny Scheme:"  "make larc &> larceny.log")
 
-
 (fpf "\n\nWaveScript demos & libraries (Scheme backend):\n")
 (fpf "========================================\n")
 
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
-  (newline)
-  (printf "Fifth: Running WaveScript Demos\n")
-  (printf "============================================================\n")
-
   (run-test "ws: Downloading sample marmot data:" "./download_sample_marmot_data")
-  
-  (run-test "ws: Running WaveScript Demos:"
+  (run-test "ws: Running WaveScript Demos (ikarus):"
 	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
 
-  (putenv "REGIMENTHOST" "plt")
+;   (putenv "REGIMENTHOST" "plt")
+;   (run-test  "plt: Running WaveScript Demos:"
+; 	     (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))
+;   (putenv "REGIMENTHOST" "")
 
-  (run-test  "plt: Running WaveScript Demos:"
-	     (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))
-  (putenv "REGIMENTHOST" "")
+;   (run-test "ws.early: Running Demos (no static elab):" 
+; 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
 
-  (run-test "ws.early: Running Demos (no static elab):" 
-	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
   )
+
+#|
 
 ;; Test STANDARD LIBRARIES:
 (parameterize ([current-directory (format "~a/lib/" test-root)])
@@ -413,12 +409,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ) ;; End engine
 
+|#
 ;;================================================================================
 ;; Now test WSC:
 
-(fpf "\n\nWaveScript C++ Backend (uses engine):\n")
-(fpf "========================================\n")
-
+(fpf "\n\nWaveScript C/C++ Backends (former uses XStream):\n")
+(fpf "===================================================\n")
 
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   ;; This runs faster if we load Regiment pre-compiled:
@@ -438,6 +434,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;   (run-test "wsc: Running stdlib_test:"
 ; 	    (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory)))
 
+#|
 
 #| ;; DISABLING
 ;;================================================================================
@@ -657,6 +654,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "repository's Petite Chez Scheme version:  ")
 (system (format "~a/depends/petite --version &> temp.log" test-root))
 (fpf (file->string "temp.log"))
+
+(fpf "repository's Larceny Scheme version:  \n")
+(system "echo | larceny | head -n 1 &> temp.log")
+(fpf (file->string "temp.log"))
+
+(fpf "repository's Ikarus Scheme version:  \n")
+(system "echo | ikarus | head -n 1 &> temp.log")
+(fpf (file->string "temp.log"))
+
 
 (close-output-port log)
 (define thesubj 

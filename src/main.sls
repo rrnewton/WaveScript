@@ -873,6 +873,7 @@
 ;; Dump output of intermediate stages in copmiler.
 ;; (This sets a variety of parameters controlling printing)
 (define (dump-compiler-intermediate prog fn)
+  (when (file-exists? fn) (delete-file fn))
   (with-output-to-file fn
     (lambda () 
       (parameterize ([pretty-line-length 200]
@@ -886,8 +887,7 @@
 	     (pretty-print ;(strip-annotations prog)
 	      prog)
 	     (write prog))))
-      (flush-output-port (current-output-port)))
-    'replace))
+      (flush-output-port (current-output-port)))))
 
 (define ws-disabled-by-default '(merge-iterates ))
 
@@ -1340,7 +1340,8 @@
 				 [,else #f]))))]
 			   [newprog (inject-times prog times 32000)])
 
-		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)) 'replace)
+                      (when (file-exists? "profiled_times.txt") (delete-file "profiled_times.txt"))
+		      (with-output-to-file "profiled_times.txt" (lambda () (pp times)))
 
 		      (string->file (output-graphviz newprog) "query_profiled.dot")
 		      (system "dot -Tpng query_profiled.dot -oquery_profiled.png")

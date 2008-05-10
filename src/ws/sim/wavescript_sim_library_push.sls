@@ -864,11 +864,9 @@
                                    bench? output-type box-name edge-counts-table sum-type-declarations)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
-    (define buffer1 (make-string chunksize #\_))
-    (define count1 0)
-    (define ind1 0)
-    (define winsize (s:* len (s:+ wordsize skipbytes)))
-    (define remainder #f) ;; The unprocessed left-over from a batch.
+    ;(define buffer1 (make-string chunksize #\_))
+    ;(define count1 0)
+    (define winsize (s:* len (s:+ wordsize skipbytes)))    
 
     (define counter 0)
     (define total 0)
@@ -899,12 +897,12 @@
               (readloop (fx+ i 1) (s:+ pos wordsize skipbytes))
               ))  
           win))
-      (error 'read-binary-file-stream "TODO: port block-read calls")
-      #;  #;
+
+      (return-it (get-string-n infile winsize))
+#|
       (set! count1 (block-read infile buffer1 winsize))
       (cond
        [(eof-object? count1)  #f]
-                                        ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
        [(fx< count1  winsize)
         ;; If we got an incomplete window we just keep reading:
         ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
@@ -922,7 +920,9 @@
                   (if (fx= total winsize)
                       (return-it (apply string-append (reverse! newacc)))
                       (loop total newacc))))))] 
-       [else (return-it buffer1)]))
+       [else (return-it buffer1)])
+|#
+)
 
     (define _ 
       ;; This returns the stream representing the audio channel (read in from disk):
@@ -960,15 +960,8 @@
               (stop-WS-sim! "readFile: hit eof")
               (void)))))
     
-    (error 'read-binary-file-stream "block-read not implemented yet in r6rs\n")
-    #;
-    ;; Scan ahead in the file to the offset:
-       (let scan ([offset offset])
-	 ;; Would be nice if we had a seek command instead of having
-	 ;; to read this out by blocks:
-	 (unless (zero? offset)
-	   ;; Don't read more than we have room for.
-	   (scan (fx- offset (block-read infile buffer1 (min offset chunksize))))))
+      ;; Scan ahead in the file to the offset:
+      (get-string-n infile offset) ;; Discard result.
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
@@ -1739,17 +1732,8 @@
 
      ;; Inefficient, show should be defined in terms of print, not vice-versa
      (define (ws-print x)
-       (parameterize ([current-output-port (ws-print-output-port)])
-	 (display (ws-show x))
-	 #;
-	 ;; [2008.04.07] This is odd, what's all this?:
-	 (cond
-	  [(string? x) (display (ws-show x))]
-	  [(and (vector? x) (> (vector-length x) 0) (char? (vector-ref x 0)))
-	   (vector-for-each display x)]
-	  [else (display-constrained (list (ws-show x) 300))])
-	 (IFDEBUG (flush-output-port (current-output-port)) (void))
-	 ))
+       (display (ws-show x) (ws-print-output-port)))
+       ;;(IFDEBUG (flush-output-port (current-output-port)) (void)))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
      (define (gnuplot_array2d arr) (gnuplot (map vector->list (vector->list arr))))

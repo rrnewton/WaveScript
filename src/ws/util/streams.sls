@@ -256,6 +256,7 @@
       (DEBUGASSERT (stream? stream))
       
       (printf "pos#~a: " pos)
+      (flush-output-port (current-output-port))
       (let ((line (read-line (current-input-port))))
 	(when line 
 	  (match (port->slist (open-string-input-port line))

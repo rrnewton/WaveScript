@@ -1016,6 +1016,7 @@
   
 (define __
   (specialise! PrimApp <emitC2> 
+   ;; [2008.05.10] FIXME: This failed the return contract for the __real__ case.
    (debug-return-contract PrimApp lines?
      (lambda (next self app kontorig mayberetty)
        (define ___ (next))
