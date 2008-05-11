@@ -278,9 +278,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
-(run-test "larceny: Load from source: "
-	  "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log")
-(run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
+; (run-test "larceny: Load from source: "
+; 	  "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log")
+; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 
 
 #|
@@ -338,8 +338,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   (run-test "ws: Downloading sample marmot data:" "./download_sample_marmot_data")
+
+  (ASSERT (putenv "REGIMENTHOST" "ikarus"))
   (run-test "ws: Running WaveScript Demos (ikarus):"
 	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
+  (ASSERT (putenv "REGIMENTHOST" ""))
 
 ;   (putenv "REGIMENTHOST" "plt")
 ;   (run-test  "plt: Running WaveScript Demos:"
@@ -427,11 +430,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc: Running WaveScript Demos with WSC:"
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
+  (ASSERT (putenv "REGIMENTHOST" "ikarus"))
   (run-test "wsc2: Running select demos (ikarus):"
 	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
   (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Running select demos (plt):"
-	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
+	    (format "./testall_wsc2 &> ~a/wsc2_plt_demos.log" test-directory))
   (ASSERT (putenv "REGIMENTHOST" ""))
   )
 
@@ -494,12 +498,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
     
   (run-test "    Run Makefile   " "make")
 
-  (run-test "wsc2: Compiling marmot app (first phase):  "
+  (begin
+    (ASSERT (putenv "REGIMENTHOST" "ikarus"))
+    (run-test "wsc2: Compiling marmot app (first phase):  "
 	    (format "wsc2 run_first_phase.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
 		    test-directory))
-  (run-test "wsc2: Running marmot app (first phase):  "
-	    (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
-
+    (run-test "wsc2: Running marmot app (first phase):  "
+	      (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
+    (ASSERT (putenv "REGIMENTHOST" "plt"))
+    (run-test "wsc2: Compiling marmot app (second phase):  "
+	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
+    (run-test "wsc2: Running marmot app (second phase): "
+	      (format "./query.exe -n 1 &> ~a/wsc2_marmot12_run.log" test-directory))
+    (ASSERT (putenv "REGIMENTHOST" "")))
+  
 #|
   (run-test "ws: Running marmot app (first phase):  "
 	    (format "ws.debug run_first_phase.ws -n 1 -exit-error &> ~a/ws_marmot.log" test-directory))
@@ -675,11 +687,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system (format "~a/depends/petite --version &> temp.log" test-root))
 (fpf (file->string "temp.log"))
 
-(fpf "repository's Larceny Scheme version:  \n")
+(fpf "Larceny Scheme version:  \n   ")
 (system "echo | larceny | head -n 1 &> temp.log")
 (fpf (file->string "temp.log"))
 
-(fpf "repository's Ikarus Scheme version:  \n")
+(fpf "Ikarus Scheme version:  \n   ")
 (system "echo | ikarus | head -n 1 &> temp.log")
 (fpf (file->string "temp.log"))
 
@@ -700,9 +712,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Finally, copy all logs 
 (fprintf orig-console "~a all logs to website...\n" (if publish? "Copying" "NOT copying"))
-(system (format "rm -f ~a/most_recent_logs/*" webdir))
-(system (format "cp ~a/*.log ~a/most_recent_logs/" webdir
-		test-directory))
+(when publish? (system (format "rm -f ~a/most_recent_logs/*" webdir)))
+(when publish? (system (format "cp ~a/*.log ~a/most_recent_logs/" webdir test-directory)))
 (fprintf orig-console "Finished (not) copying.")
 
 (current-directory webroot)

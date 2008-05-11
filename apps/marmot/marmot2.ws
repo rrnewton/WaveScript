@@ -164,7 +164,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     data_f = create(sens_num, total_bins); // with no set values, yet. 4 channels x total bin size
 
     // Allocate some extra buffers that are used below.
-    D = Array:make(sens_num, 0.0+0.0i);
+    D = Array:make(sens_num, (0::Complex));
 
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
@@ -173,7 +173,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       };
       // set those first values - think this is supposed to be the last value in each array? - i is channel num
       //function takes the 0th element from the fft's imaginary and divides it by window size (setting it to the real), and sets the imag to 0 
-      set(data_f, i, (total_bins-1), (1.0+0.0i * floatToComplex(imagpart( get(fft_temp,i,0))/intToFloat(window_size))) );
+      set(data_f, i, (total_bins-1), (1 * 
+                                      floatToComplex(imagpart( get(fft_temp,i,0))/intToFloat(window_size))) );
       // set (channel, element in array)
     };
   
@@ -242,7 +243,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 
         _order = i2f(order[j]);
 	
-	temp_c = ref(0.0+0.0i);
+	temp_c = ref(0);
 
 	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
 	for n = 0 to (sens_num - 1) {

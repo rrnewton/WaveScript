@@ -203,7 +203,7 @@ namespace Matrix {
 
  // Except this bit:
  fun Double:create(i,j) Matrix:create(i,j, floatToDouble(0.0));
- fun Complex:create(i,j) Matrix:create(i,j, 0.0+0.0i);
+ fun Complex:create(i,j) Matrix:create(i,j, (0::Complex));
   
 };
 
