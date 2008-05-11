@@ -3,7 +3,7 @@
 # This takes the .sml file down to a binary.
 
 #  RRN: Not using this ensbox source method any more:
-# export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/generic/passes/mlton_bkend/ensbox_new.c"
+# export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/ws/passes/mlton_bkend/ensbox_new.c"
 GLIB_PATH=`pkg-config glib-2.0 --libs`
 
 if [ "$EMLIB" == "" ]; then export EMLIB='/scratch/girod/emstar'; fi
@@ -44,7 +44,7 @@ if [ "$WSMLGCC" == "" ]; then
           -I/usr/lib/mlton/include -O3 -fno-strict-aliasing \
 	  -I$EMLIBH \
           -fomit-frame-pointer -w \
-	  -I$REGIMENTD/src/generic/passes/mlton_bkend"
+	  -I$REGIMENTD/src/ws/passes/mlton_bkend"
 fi 
 
 ## Now call the vanilla version:

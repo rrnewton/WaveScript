@@ -17,7 +17,7 @@ if   [ "$WSMLOUTPUT" == "" ]; then WSMLOUTPUT=query.mlton.exe; fi
 rm -f "$WSMLOUTPUT"
 
 export MLTONARGS="$MLTONARGS -verbose 1 -link-opt -lfftw3f  "
-export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/generic/passes/mlton_bkend/fftw.c"
+export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/ws/passes/mlton_bkend/fftw.c"
 
 # I'm having a lot of trouble getting enough quotes around 
 # 'allowFFI true' for it to be treated as one token. 

@@ -53,7 +53,7 @@ else #rm -f $TMP;
 fi
 
 
-INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
+INCLUDES="-I $REGIMENTD/src/ws/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 

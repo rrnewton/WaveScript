@@ -611,7 +611,7 @@
       (ASSERT (not (zero? (vector-length datum))))
       (list "(Array.fromList "(Const (vector->list datum))")")]
 
-     [else (error 'emit-mlton:Const "not an Mlton-compatible literal (currently): ~s" datum)])))
+     [else (error 'emit-mlton:Const "not a Mlton-compatible literal (currently): ~s" datum)])))
 
 
 ;; This handles one of the statements that are part of query initialization.

@@ -323,6 +323,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n")
 (run-test "wsparse: Building executable (plt):" "make wsparse &> plt_WSPARSE.log")
 
+(run-test "wsparse: wsparse is in path:" "which wsparse &> which_wsparse.log")
+
+
 ;(run-test "plt: Building WScript as bytecode in PLT:" "make pltbc &> plt_BUILD_PLT_BYTECODE.log")
 ;(run-test "plt: Run system from command line with PLT:" "regiment.plt &> plt_RUN_PLT_BYTECODE.log")
 
@@ -424,8 +427,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc: Running WaveScript Demos with WSC:"
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
-  (run-test "wsc2: Running (select) Demos with WSC2:"
+  (run-test "wsc2: Running select demos (ikarus):"
 	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
+  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  (run-test "wsc2: Running select demos (plt):"
+	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
+  (ASSERT (putenv "REGIMENTHOST" ""))
   )
 
 ; (parameterize ((current-directory (format "~a/lib/" test-root)))
@@ -481,30 +488,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")
 
-#|
-
-(parameterize ((current-directory (format "~a/apps/pipeline-web" test-root)))
-  (run-test "ws: Running pipeline-web app:   " 
-	    (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
-
-(parameterize ((current-directory (format "~a/apps/stockticks" test-root)))
-  (run-test "ws: Running stockticks app:   "
-	    (format "make test &> ~a/ws_stockticks.log" test-directory)))
-
-(parameterize ((current-directory (format "~a/apps/pipeline" test-root)))
-  (run-test "    Decompressing pipeline data   "  "bunzip2 pipeline1.data.bz2")
-  (run-test "ws: Running pipeline app:    "
-	    (format "ws.debug pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory))
-  (run-test "ws.early: Running pipeline app: "
-	    (format "ws.early pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory)))
-
 ;; MARMOT
 (parameterize ((current-directory (format "~a/apps/marmot" test-root)))
   (newline)
     
   (run-test "    Run Makefile   " "make")
+
+  (run-test "wsc2: Compiling marmot app (first phase):  "
+	    (format "wsc2 run_first_phase.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
+		    test-directory))
+  (run-test "wsc2: Running marmot app (first phase):  "
+	    (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
+
+#|
   (run-test "ws: Running marmot app (first phase):  "
 	    (format "ws.debug run_first_phase.ws -n 1 -exit-error &> ~a/ws_marmot.log" test-directory))
+  
   (run-test "ws.early: Running marmot app:   "
 	    (format "ws.early run_first_phase.ws -n 1 -exit-error &> ~a/wsearly_marmot.log" test-directory))
 
@@ -541,8 +540,28 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
     (run-test "wsc: Running marmot app (second phase): "
 	      (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory)))
+|#
   
   ) ;; End MARMOT
+
+#|
+
+(parameterize ((current-directory (format "~a/apps/pipeline-web" test-root)))
+  (run-test "ws: Running pipeline-web app:   " 
+	    (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
+
+(parameterize ((current-directory (format "~a/apps/stockticks" test-root)))
+  (run-test "ws: Running stockticks app:   "
+	    (format "make test &> ~a/ws_stockticks.log" test-directory)))
+
+(parameterize ((current-directory (format "~a/apps/pipeline" test-root)))
+  (run-test "    Decompressing pipeline data   "  "bunzip2 pipeline1.data.bz2")
+  (run-test "ws: Running pipeline app:    "
+	    (format "ws.debug pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory))
+  (run-test "ws.early: Running pipeline app: "
+	    (format "ws.early pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory)))
+
+
 
 
 ;;================================================================================

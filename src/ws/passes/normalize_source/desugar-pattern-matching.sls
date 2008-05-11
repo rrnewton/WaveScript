@@ -27,8 +27,8 @@
 	[,s (guard (symbol? s)) 
 	    (values s '() #f)]
 	[#(,[pv* binds* type-assertion*] ...)
-	 ;; Not currently allowed to make assertions on sub-parts of the pattern.
-	 (ASSERT (not (ormap id type-assertion*)))
+	 (ASSERT "Not currently allowed to make assertions on sub-parts of the pattern."
+		 (lambda (ls) (for-all not ls)) type-assertion*)
 	 (let ([v (unique-name 'pattmp)]
 	       [len (length pv*)])
 	   (let ([newbinds 
@@ -125,7 +125,8 @@
 	[(,let ((,[break-pattern -> lhs* binds* type-assertion*] ,type* ,[rhs*]) ...) ,[bod])
 	 (guard (memq let '(let letrec)))
 	 ;; Shouldn't have assertions on the variable names here:
-	 (ASSERT (not (ormap id type-assertion*)))
+	 (ASSERT "Shouldn't have assertions on the variable names here:"
+		 (lambda (ls) (for-all not ls)) type-assertion*)
 	 `(,let ([,lhs* ,type* ,rhs*] ...  )
 	    ,(make-let* (apply append binds*) bod))]
 

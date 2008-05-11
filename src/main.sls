@@ -1480,6 +1480,9 @@
     
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog input-params disabled-passes #f))
+
+    (inspect prog)
+
     (ws-run-pass prog explicit-stream-wiring)
     
     ;(IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))

@@ -272,7 +272,9 @@
 
 ;; PLT needs some help printing out the line numbers.
 (define (format-syntax x)
-  x
+  ;x
+  (format "Syntax ~a, expr ~a" x (syntax->datum x))
+
 #;
   (cond-expand 
    [plt (format "Syntax ~a, line ~a in ~a" 
@@ -301,7 +303,7 @@
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" (format-syntax #'expr)))]
+      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(ASSERT "" fun val)]
       [(_ str fun val) 
