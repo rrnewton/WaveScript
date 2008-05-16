@@ -176,8 +176,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (when (file-exists? webfile) (delete-file webfile))
       (fprintf orig-console "Copying log to website. ~a\n" webfile)
       (copy-file logfile webfile)
-      (system (format "chgrp www-data ~a" webfile));(ASSERT )
       (system (format "chmod g+r ~a" webfile)); (ASSERT )
+      (system (format "chgrp www-data ~a" webfile));(ASSERT )
       ))
   ;; As icing on the cake let's post this on the web too:
   ;; This should run on faith:
@@ -437,6 +437,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc2: Running select demos (plt):"
 	    (format "./testall_wsc2 &> ~a/wsc2_plt_demos.log" test-directory))
   (ASSERT (putenv "REGIMENTHOST" ""))
+
+  (run-test "wstiny: Running demos w/ TOSSIM:"
+	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
+
   )
 
 ; (parameterize ((current-directory (format "~a/lib/" test-root)))
@@ -508,7 +512,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (delete-file "query.exe")
 
     (ASSERT (putenv "REGIMENTHOST" "plt"))
-    (run-test "wsc2: Compiling marmot app (second phase) (plt):  "
+    (run-test "wsc2: Compiling marmot phase 1&2 (plt): "
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
     (run-test "wsc2: Running marmot app (second phase): "
 	      (format "./query.exe -n 1 &> ~a/wsc2_marmot12_run.log" test-directory))

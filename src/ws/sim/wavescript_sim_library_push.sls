@@ -1341,7 +1341,7 @@
 		   [else (exact (floor num))])])
 	 (modulo int base16))]
 
-      [(Float Double) (exact->inexact num)]
+      [(Float Double) (inexact num)]
       ;[(Complex) (s:+ num 0.0+0.0i)]
       [(Complex) (s:+ num (make-rectangular 0 0))]
       [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
@@ -1413,8 +1413,8 @@
 
   (define int64ToInt16  (lambda (x) (ASSERT int16? x) x))
   (define int64ToInt    (lambda (x) (ASSERT int32? x) x))
-  (define int64ToFloat    exact->inexact)
-  (define int64ToDouble   exact->inexact)
+  (define int64ToFloat    inexact)
+  (define int64ToDouble   inexact)
   (define (int64ToComplex n) (s:+ n (make-rectangular 0 0)))
 
   (define intToInt16 (lambda (x) (ASSERT int16? x) x))
@@ -1425,7 +1425,7 @@
 
   ;; Should do a range check here:
   (define floatToInt16 flonum->fixnum)
-  (define floatToInt64 (lambda (x) (exact->inexact (floor x))))
+  (define floatToInt64 (lambda (x) (inexact (floor x))))
   (define floatToInt   flonum->fixnum)
   (define (floatToDouble x) x)
   (define (floatToComplex f) (make-rectangular f 0.0))
@@ -1438,7 +1438,7 @@
 
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToInt16 complexToInt)
-  (define complexToInt64 (lambda (x) (exact->inexact (floor (realpart x)))))
+  (define complexToInt64 (lambda (x) (inexact (floor (realpart x)))))
   (define complexToDouble realpart)
   (define complexToFloat realpart)
 
@@ -2176,7 +2176,7 @@
 (define (SETCPU i s) s)
 (define (SETCPUDEEP i s) s)
 
-(define (clock) (exact->inexact (cpu-time)))
+(define (clock) (inexact (cpu-time)))
 (define (realtime) (s:/ current-vtime 1000))
 
 (define (getID) 0) ;; If we're running in Scheme, it's always node 0.
