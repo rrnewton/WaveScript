@@ -18,6 +18,9 @@
 	 [(equal? line "p") 
 	  (newline) (pretty-print x) (newline)
 	  (loop x)]
+	 [(equal? line "w") 
+	  (newline) (write x) (newline)(newline)
+	  (loop x)]
 	 [(equal? line "") (loop x)]
 	 [else (printf "Invalid command or argument: ~s.  Type ? for options.\n" line)]
 	 )))

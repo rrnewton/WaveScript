@@ -21,9 +21,14 @@
   (export pass_desugar-pattern-matching test_desugar-patterns break-pattern)
   (import (rnrs) (ws common))
 
+  ;; This generates projection code in place of patterns as formal arguments.
   (define (break-pattern pat)
       (match pat
 	[(assert-type ,typ ,[form binds _]) (values form binds typ)]
+
+	;; The special _ formal argument should never be referenced.  We rename them here.
+	[_ (values (unique-name "_") '() #f)]
+
 	[,s (guard (symbol? s)) 
 	    (values s '() #f)]
 	[#(,[pv* binds* type-assertion*] ...)

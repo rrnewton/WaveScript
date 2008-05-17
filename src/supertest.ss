@@ -343,6 +343,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
   (run-test "ws: Running WaveScript Demos (ikarus):"
 	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
+  (run-test "ws.early: WaveScript Demos (ikarus):"
+	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
   (ASSERT (putenv "REGIMENTHOST" ""))
 
 ;   (putenv "REGIMENTHOST" "plt")
@@ -350,8 +352,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; 	     (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))
 ;   (putenv "REGIMENTHOST" "")
 
-;   (run-test "ws.early: Running Demos (no static elab):" 
-; 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
 
   )
 
