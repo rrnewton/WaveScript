@@ -278,9 +278,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
-; (run-test "larceny: Load from source: "
-; 	  "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log")
+;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
+(run-test "larceny: Load from source: " "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log")
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
+;; 
 
 
 #|
@@ -699,6 +700,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf "Ikarus Scheme version:  \n   ")
 (system "echo | ikarus | head -n 1 &> temp.log")
+(fpf (file->string "temp.log"))
+
+(fpf "MLton version:  \n   ")
+(system "echo | mlton | head -n 1 &> temp.log")
 (fpf (file->string "temp.log"))
 
 

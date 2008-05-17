@@ -140,9 +140,29 @@ wsparse_full:
 
 #----------------------------------------
 
+
+# (main_r6rs) (main)
+# Ack this takes 43 minutes... I remember it taking 5 minutes before to load from source.
 larc:
-	larceny -r6rs -program test_run.ss -path .
+	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main))  (dump-interactive-heap "larc.heap")' | larceny -err5rs -stopcopy -path .
+
+# This also takes 43 minutes.
+larc2:
+	larceny -r6rs -stopcopy -path . -program build_larceny.ss
+
+# How about without -stopcopy: Well that only takes 4 minutes!!
+larc3:
+	larceny -r6rs -path . -program build_larceny.ss
+
+
+#	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches (string->symbol "slow")) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main) ) (dump-interactive-heap "larc.heap")' | larceny -err5rs -stopcopy -path .
+
+#	larceny -r6rs -program test_run.ss -path .
 #	echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs -stopcopy
+
+#	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
+
+
 
 cs:
 	larceny -r6rs -path . -program compile-stale.ss

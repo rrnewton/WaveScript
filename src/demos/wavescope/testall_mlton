@@ -40,14 +40,14 @@ go "demo3f_morelists.ws"
 go "demo3g_arrays.ws"
 go "demo3h_advancedlists.ws"   
 go "demo3i_conversion_prims.ws" 
-go "demo3j_numbers.ws"
+# go "demo3j_numbers.ws" ## TEMP - ikarus doesn't handle complex numbers
 go "demo3k_uniontype.ws"
 go "demo3l_moreunions.ws"
 go "demo3m_sigsegs.ws"
 go "demo3n_static_vals.ws"
 
 go "demo4a_fft.ws"
-go "demo4b_morefft.ws"
+# go "demo4b_morefft.ws" ## TEMP - ikarus doesn't handle complex numbers
 go "demo4d_quoted_constants.ws"
 go "demo4e_fifo_adt.ws"
 
@@ -63,7 +63,7 @@ go "demo6f_merge.ws"
 go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"
 
-go "demo8a_generic_arith.ws" 
+#go "demo8a_generic_arith.ws"  ## TEMP - ikarus doesn't handle complex numbers
 go "demo8b_sugars.ws"
 go "demo8c_moresugar.ws"
 

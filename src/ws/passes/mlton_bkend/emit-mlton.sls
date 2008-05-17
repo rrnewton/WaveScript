@@ -180,6 +180,8 @@
     [Int16   "Int16.int"] ;; Not standard SML.
     [Int64   "Int64.int"] 
 
+    [Uint16   "Word16.word"]
+
     [Complex  "Complex.complex"]
     [String   "string"]
     [Char     "char"]
@@ -257,6 +259,8 @@
     [Int16 (intprint 'Int16)]
     [Int64 (intprint 'Int64)] 
     [Int   (intprint int-module)]
+
+    [Uint16 (intprint 'Word16)]
 
     ;; ERROR: FIXME:
     [(quote ,_) (make-fun '(_) "(\"POLYMORPHIC_OBJECT\")")]
@@ -965,6 +969,25 @@
      ;; Should declare a special WSException or something:
      `("(wserror ",s")")]
 
+    ;; This is the new style for converting between numeric types.
+    [(__cast_num ',frm ',to ,[myExpr -> e])
+     ;; HACK: don't have string-downcase in ikarus yet.
+     ;(string-downcase (symbol->string frm))
+     (define (my-downcase sym)
+       (match sym
+	 [Int    "int"]
+	 [Int16 "int16"]
+	 [Int32 "int32"]
+	 [Int64 "int64"]
+	 [Uint16 "uint16"]
+	 [Float "float"]
+	 [Double "double"]
+	 [Complex "Complex"]))
+     ;; HACK: this only works if there is a legacy conversion at these types:          
+     (make-prim-app 
+      (ASSERT (PrimName (string->symbol (** (my-downcase frm) "To" (symbol->string to)))))
+      (list e))]
+
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
      (guard (memq tc '(Array Sigseg)) (sigseg-prim? prim))
@@ -1176,6 +1199,12 @@
       [/_ ,(format "(~s.quot)" int-module)]
       [^_ powInt] ;; Defined in prims.sml
 
+      [_+U16 "( Word16.+)"]
+      [_-U16 "( Word16.-)"] 
+      [*U16 "( Word16.* )"] 
+      [/U16 "( Word.quot )"]
+      ;[^U16 "powWord16"]
+
       [_+. "( Real32.+ )"]
       [_-. "( Real32.- )"] 
       [*. "( Real32.* )"] 
@@ -1215,8 +1244,6 @@
       [List:toArray  Array.fromList]
 
 ;; TODO ==========================
-
-
 
 
       [_+: "Complex.+"]
@@ -1274,6 +1301,8 @@
       [intToFloat     "Real32.fromInt"]
       [intToDouble    "Real64.fromInt"]
       [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n, imag= Real32.fromInt 0})")]
+
+      [intToUint16     "Word16.fromInt" ]
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt     "Real32.toInt IEEEReal.TO_ZERO"]

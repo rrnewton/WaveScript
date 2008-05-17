@@ -7,3 +7,19 @@ CURDIR=`pwd`
 (cd $REGIMENTD/src; larceny -r6rs -path . -program $REGIMENTD/src/regiment.ss -- DUMMY $CURDIR $*;)
 
 #(cd $REGIMENTD/src; larceny -r6rs -path . -program $REGIMENTD/src/test.ss -- DUMMY $CURDIR $*;)
+
+
+#(dump-heap "larc.heap" (lambda args (printf "Woot, loaded from heap.") (exit)))
+#(dump-interactive-heap "larc.heap")
+
+
+
+
+#(import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main) (primitives dump-interactive-heap current-require-path)) (dump-interactive-heap "larc.heap")
+
+#(dump-heap "larc.heap" (lambda args (printf "Woot, loaded from heap.") (apply main (cddr (command-line)))))
+#(dump-interactive-heap "larc.heap")
+
+
+#(import (rnrs) (primitives dump-interactive-heap current-require-path)) 
+
