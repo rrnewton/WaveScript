@@ -573,7 +573,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "wsc2 mfcc1.ws -n 1 &> ~a/wsc2_build_mfcc1.log" test-directory))
   (run-test "wsc2: Running first speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc1.log" test-directory))
-  (if (file-exists? "query.exe") (delete-file "query.exe"))
+  (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed point ver: "
 	    (format "wsc2 mfcc6_fixedpoint_fb.ws -n 1 &> ~a/wsc2_build_mfcc6.log" test-directory))
   (run-test "wsc2: Running fixed point ver: "
