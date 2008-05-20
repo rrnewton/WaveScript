@@ -33,6 +33,8 @@
 		  (ik:include include)
 
 		  (ik:delay delay) (ik:force force)
+		  (ik:trace-define trace-define)
+		  (ik:trace-lambda trace-lambda)
 		  )
 	  ;current-directory
 	  )

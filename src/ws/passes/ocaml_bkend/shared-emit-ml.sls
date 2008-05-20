@@ -31,7 +31,9 @@
   (make-letrec `([,name ,(make-fun formals funbody)]) body))
 
 ;; Should be used everywhere below rather than "regiment-primitive?"
-(define (real-primitive? x) (and (regiment-primitive? x) (not (eq? x 'tuple))))
+(define (real-primitive? x) (and (regiment-primitive? x) 
+				 (not (eq? x 'tuple))
+				 (not (eq? x 'tupref))))
 
 ; ======================================================================
 ;;; Handling different AST variants:

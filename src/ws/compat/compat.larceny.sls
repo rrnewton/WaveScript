@@ -29,6 +29,8 @@
 
 	  promise? delay force
 
+	  trace-define trace-lambda
+
 	  ;cons* ;; HACK: larceny is missing cons*
 
 	  which-scheme
@@ -157,6 +159,14 @@
   (define (get-string-available inp)
     (error 'get-string-available "non-blocking IO not implemented..."))
 
+  ;; Not implementing these yet.
+  (define-syntax trace-define 
+    (syntax-rules ()
+      [(_ pat rhs) (define pat rhs)]))
+  (define-syntax trace-lambda 
+    (syntax-rules ()
+      [(_ name pat rhs ...) (lambda pat rhs ...)]))
+  
 #;
   (define-syntax cons*
     (syntax-rules ()

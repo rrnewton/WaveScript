@@ -604,6 +604,11 @@
 			    (format "(~a~s)" #\~ (* -1 datum))
 			    (format "(~s)" datum))]
 
+     [(eq? datum 'nullseg) 
+      ;(error 'emit-mlton:Const "Got 'nullseg in Const...")
+      "(nullseg())"]
+     ;[(sigseg? datum) ]
+
      [(char? datum) (list "#" (print-mlton-string (list->string (list datum))))]
 
      [(eq? datum 'nulltimebase) "(nullTimebase())"]
