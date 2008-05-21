@@ -160,13 +160,15 @@
     (error 'get-string-available "non-blocking IO not implemented..."))
 
   ;; Not implementing these yet.
-  (define-syntax trace-define 
-    (syntax-rules ()
-      [(_ pat rhs) (define pat rhs)]))
-  (define-syntax trace-lambda 
-    (syntax-rules ()
-      [(_ name pat rhs ...) (lambda pat rhs ...)]))
+;   (define-syntax trace-define 
+;     (syntax-rules ()
+;       [(_ pat rhs) (define pat rhs)]))
+;   (define-syntax trace-lambda 
+;     (syntax-rules ()
+;       [(_ name pat rhs ...) (lambda pat rhs ...)]))
   
+  (include "ws/compat/tracer.ss")
+
 #;
   (define-syntax cons*
     (syntax-rules ()
