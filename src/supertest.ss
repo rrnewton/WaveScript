@@ -569,15 +569,26 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "ws: Running first speaker detection: "
 	    (format "ws mfcc1.ws -n 1 &> ~a/ws_mfcc1.log" test-directory))
 
+  (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling first speaker detect: "
 	    (format "wsc2 mfcc1.ws -n 1 &> ~a/wsc2_build_mfcc1.log" test-directory))
   (run-test "wsc2: Running first speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc1.log" test-directory))
+
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed pt speaker detect: "
+	    (format "wsc2 mfcc5_fixedpoint_full.ws -n 1 &> ~a/wsc2_build_mfcc5.log" test-directory))
+  (run-test "wsc2: Running fixed pt speaker detect: "
+	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc5.log" test-directory))
+
+  (when (file-exists? "query.exe") (delete-file "query.exe"))
+  (run-test "wsc2: Compiling fixed fb speaker detect: "
 	    (format "wsc2 mfcc6_fixedpoint_fb.ws -n 1 &> ~a/wsc2_build_mfcc6.log" test-directory))
-  (run-test "wsc2: Running fixed pw speaker detect: "
+  (run-test "wsc2: Running fixed fb speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc6.log" test-directory))
+
+  
+
   )
 
 
