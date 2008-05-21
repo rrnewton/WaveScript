@@ -32,8 +32,7 @@ function go () {
     if ! bash -c "$EXEC" >> $RUN; then exit 1; fi
 }
 
-
-go "demo1c_timer.ws"
+# go "demo1c_timer.ws"
 
 
 # # go "demo1d_readFile_text.ws"
@@ -102,6 +101,12 @@ go "demo3d_tuples_of_tuples.ws"
 
 
 go "demo11g_tinyos.ws"
+# Let's also build this demo in split mode:
+export THEMOTE=
+if ! wstiny demo11g_tinyos.ws -split -exit-error; then exit 1; fi
+
 if [ "$TELOS" != "" ]; then go "demo11h_readstream.ws" ; fi
 if [ "$TELOS" != "" ]; then go "demo11i_recorder.ws" ; fi  
 go "demo11j_tos_fft.ws"
+
+

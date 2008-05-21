@@ -587,8 +587,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc2: Running fixed fb speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc6.log" test-directory))
 
+  (run-test "wstiny: Compiling speaker detect, Telos: "
+	    (format "wstiny mfcc6_fixedpoint_fb.ws  &> ~a/wstiny_build_mfcc6.log" test-directory))
   
-
   )
 
 
