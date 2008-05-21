@@ -1,3 +1,4 @@
+#!r6rs
 
 ;;;; [2008.05.21] Factoring out sublclasses of the emitC2 class into
 ;;;; their own files.  This file implements the TinyOS backend.

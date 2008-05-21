@@ -355,19 +355,34 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   )
 
-#|
+
 
 ;; Test STANDARD LIBRARIES:
 (parameterize ([current-directory (format "~a/lib/" test-root)])
   (run-test "ws: Loading stdlib_test.ws:" (format "ws stdlib_test.ws -n 10 -exit-error &> ~a/stdlib.log" test-directory))
 
   ;; This is the OLD one:
-  (run-test "ws: Loading old matrix_test.ws:" 
-	    (format "ws matrix_test.ws -exit-error -n 10 &> ~a/matrix_old.log" test-directory))
+  ;; NO COMPLEX IN IKARUS YET:
+  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  ;(when (file-exists? "query.exe") (delete-file "query.exe"))
+  (run-test "wsc2: Old matrix_test.ws (plt):" 
+	    (format "wsc2 matrix_test.ws -exit-error &> ~a/matrix_old_build.log" test-directory))
+  (run-test "wsc2: Run old matrix_test.ws:" 
+	    (format "./query.exe -n 10 &> ~a/matrix_old_run.log" test-directory))
 
+  ;(when (file-exists? "query.exe") (delete-file "query.exe"))
+#;  
   (run-test "ws: Running native WS test_matrix.ws:" 
 	    (format "ws test_matrix.ws -exit-error -n 10 &> ~a/matrix_ws.log" test-directory))
+  (run-test "wsc2: Native WS test_matrix.ws (plt):"
+	    (format "wsc2 test_matrix.ws -exit-error &> ~a/matrix_build.log" test-directory))
+  (run-test "wsc2: Run output exe:" 
+	    (format "./query.exe -n 10 &> ~a/matrix_run.log" test-directory))
+  (ASSERT (putenv "REGIMENTHOST" ""))
   )
+
+#|
+
 
 ;; Now for GSL interface.
 (parameterize ([current-directory (format "~a/lib/" test-root)])
@@ -380,6 +395,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   #;
   (run-test "ws: Running test of GSL matrix library.ws:"
 	    (format "ws run_matrix_gsl_test.ws -n 2-exit-error  &> ~a/matrix_gsl.log" test-directory))
+
   )
 
 ;;================================================================================
