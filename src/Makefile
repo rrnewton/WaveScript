@@ -101,7 +101,7 @@ pltquick:
 #	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
 
 # This version DOES NOT build regiment sources.  Leaner and meaner.
-wsbc:
+wsbc: ws/common.sls main_r6rs.sls 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
