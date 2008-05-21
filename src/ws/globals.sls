@@ -38,7 +38,7 @@
 	 
          ;; Syntax:
 	  VERBOSE-LOAD
-         DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT format-syntax
+         DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT 
          REGIMENT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
 	 REGOPTLVL
 
@@ -256,31 +256,6 @@
 ;; For now it's enabled at the same time that DEBUGMODE is.
 (define-syntax UBERDEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) '())]))
 
-;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
-#;
-(define-syntax DEBUGASSERT
-  (syntax-rules () 
-    [(_ expr) 
-     (DEBUGMODE
-      (if expr #t 
-	  (error 'DEBUGASSERT "failed: ~s" (quote expr))))]
-    [(_ obj expr)
-     (DEBUGMODE
-      (if expr #t 
-	  (error obj "DEBUGASSERT failed: ~s" (quote expr))))]
-    ))
-
-;; PLT needs some help printing out the line numbers.
-(define (format-syntax x)
-  ;x
-  (format "Syntax ~a, expr ~a" x (syntax->datum x))
-
-#;
-  (cond-expand 
-   [plt (format "Syntax ~a, line ~a in ~a" 
-		(syntax-object->datum x) (syntax-line x) (syntax-source x))]
-   [else x]))
-
 (define-syntax DEBUGASSERT
   (lambda (x)
     (syntax-case x ()
@@ -288,32 +263,32 @@
        #'(DEBUGMODE
 	  (if expr #t 
 	      (error 'DEBUGASSERT "failed: ~s" 
-		     (format-syntax #'expr))))]
+		     (format-syntax-nicely #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       ;; NOTE!!! It still evaluates and returns the VALUE in nondebugmode, it just skips the predictae.
       [(_ fun val) #'(IFDEBUG 
 		      (let ([v val])
 		       (if (fun v) v			   
 			   (error 'DEBUGASSERT 
-				  "failed: ~s\n Value which did not satisfy above predicate: ~s" 
-				  (format-syntax #'fun)
-				  v)))
+				  (format "failed: ~s\n Value which did not satisfy above predicate: ~s" 
+					  (format-syntax-nicely #'fun)
+					  v))))
 		      val)])))
 
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax #'expr))))]
+      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax-nicely #'expr))))]
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(ASSERT "" fun val)]
       [(_ str fun val) 
        #'(let ([v val])
 	   (if (fun v) v			   
-	       (error 'ASSERT "failed, ~s:\n ~s\n Value which did not satisfy above predicate: ~s" 
-		      str
-		      (format-syntax #'fun)
-		      v)))]
-      )))
+	       (error 'ASSERT 
+		      (format "failed, ~s:\n ~s\n Value which did not satisfy above predicate: ~s" 
+			      str
+			      (format-syntax-nicely #'fun)
+			      v))))])))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))

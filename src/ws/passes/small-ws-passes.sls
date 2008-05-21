@@ -567,7 +567,8 @@
 	   
 	    [(wscase (let ([,v1 ,t ,[x]]) ,v2) (,tag* ,[fun*]) ...)
 	     (guard (eq? v1 v2))
-	     (ASSERT (compose not polymorphic-type?) t)
+	     (ASSERT "unlift-polymorphic-constant: no polyorphism in case dispatch"
+		     (compose not polymorphic-type?) t)
 	     `(wscase (assert-type ,t ,x) ,@(map list tag* fun*))]
 
 	    [',c (guard (polymorphic-const? c))

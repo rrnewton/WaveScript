@@ -1527,16 +1527,23 @@ int main(int argc, char **argv)
 (__spec IterStartHook <emitC2> (self name arg argty) "")
 (__spec IterEndHook   <emitC2> (self name arg argty) "")
 
+;; Returns two values both of type 'lines'
+;;  (1) A function prototype
+;;  (2) A function definition
 (__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
-  (make-lines 
-   (list (block `("void ",(Var self name) "(",(Type self argty)" ",(Var self arg)")")
-		(list
-		 "char "(Var self vqarg)";\n"
+  (define _arg (Var self arg))
+  (define _argty (Type self argty))
+  (values
+   (make-lines `("void ",(Var self name) "(",_argty" ",_arg"); // Iter prototype\n"))
+   (make-lines 
+    (list (block `("void ",(Var self name) "(",_argty" ",_arg")")
+		 (list
+		  "char "(Var self vqarg)";\n"
 		 (IterStartHook self name arg argty)
 		 (lines-text code)
 		 (IterEndHook self name arg argty)
 		 ))
-	 "\n")))
+	  "\n"))))
 
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
@@ -1607,9 +1614,9 @@ int main(int argc, char **argv)
      (match itercode
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
-	(values 
-	 (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))
-	 bind* init*)])]
+	(let-values ([(proto def)
+		      (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))])	  
+	  (values def (cons proto bind*) init*))])]
 
     [(cutpoint (name ,_) (output-type ,type) (code ,__) (incoming ,in) (outgoing ,out))
      (ASSERT out)

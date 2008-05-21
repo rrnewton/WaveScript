@@ -6,7 +6,7 @@
 	  merge merge! sort! append! reverse! call/ec inspect define-values
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
-	  printf format
+	  printf format format-syntax-nicely
 	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 	  reg:top-level-eval simple-eval
 	  warning warning-handler real-time cpu-time
@@ -44,6 +44,8 @@
 	  )
 
   (define which-scheme 'ikarus)
+
+  (define (format-syntax-nicely syn) syn)
 
   (define-syntax make-parameter (identifier-syntax ik:make-parameter))
   (define-syntax parameterize (identifier-syntax ik:parameterize))

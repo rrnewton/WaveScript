@@ -16,6 +16,7 @@
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
 	  format printf fprintf pretty-print
+	  format-syntax-nicely
 	  gensym current-directory 
 	  syntax-error
 	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
@@ -47,6 +48,7 @@
 	  )
 
   (define which-scheme 'larceny)
+  (define (format-syntax-nicely syn) syn)
 
   ;; From Chez user's guide:
   (define-syntax include

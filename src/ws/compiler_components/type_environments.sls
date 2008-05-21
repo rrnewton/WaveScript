@@ -578,7 +578,8 @@
       [(type? '(NUM a)) #t]
       [(type? '(Int -> (NUM a))) #t]      
       
-      [(',polymorphic-type? '#()) #f]
+      [(polymorphic-type? '#()) #f]
+      [(polymorphic-type? '(-> Int)) #f]
   )))
 
 

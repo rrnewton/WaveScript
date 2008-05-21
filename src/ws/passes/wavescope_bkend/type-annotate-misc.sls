@@ -60,10 +60,11 @@
 		    = wsequal?
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    ))
+    
 
+    (define (not-poly? ty) (not (polymorphic-type? ty)))
     (define (wrap ty x)
-      ;; This pass only runs in monomorphic land.
-      (ASSERT (not (polymorphic-type? ty)))
+      (ASSERT "shouldnt find polymorohism at this point"  not-poly? ty)
       `(assert-type ,ty ,x))
 
     (define (maybewrap x tenv)

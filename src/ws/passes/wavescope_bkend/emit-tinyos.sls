@@ -137,12 +137,18 @@
   (define _argty (Type self argty))
   (define _name (Var self name))
 
+
+;; TODO TODO TODO  TODO  TODO  TODO TODO 
+;; FACTOR THIS PROTOTYPE GENERATION UP TO THE SUPER CLASS:
+
   ;; Add a prototype for the function, this removes the need for
   ;; careful ordering of operator definitions.
   (define prototype `("void ",(Var self name) "(",_argty" ",_arg")"))
   (slot-cons! self 'proto-acc (list prototype ";\n"))
 
-  (make-lines 
+  (values
+   (make-lines "") ;; DUMMY PROTOTYPE, FIXME
+   (make-lines 
    (list 
     ;; First the task:
     (block `("task void ",_name"_task()")
@@ -169,7 +175,7 @@
 	     "(*(",_argty" *)WS_STRM_BUF) = ",_arg";\n"
 	     ,(PostTask self name)
 	     ))
-	 "\n")))
+	 "\n"))))
 
 (define-generic PostTask)
 (__spec PostTask <tinyos> (self name)
@@ -592,6 +598,13 @@ event void PrintfControl.stopDone(error_t error) {
    (block "else"
 	  (list "ws_currently_running = 1;\n"
 		callcode))))
+
+(define __Operator
+  (specialise! Operator <tinyos> 
+    (lambda (next self op)
+      (match op
+	[(__readFile . ,_) (error 'emit-tinyos:Operator "Cannot support readFile on tinyos")]
+	[,oth (next)]))))
 
 (define __Source
  (specialise! Source <tinyos>

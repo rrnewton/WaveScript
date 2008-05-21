@@ -8,6 +8,7 @@
  	  fluid-let parameterize reg:define-struct reg:struct?
  	  void make-parameter
  	  format printf fprintf pretty-print
+	  format-syntax-nicely
  	  gensym current-directory 
 	  syntax-error
  	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
@@ -72,6 +73,11 @@
 	 closure)]))
 
   (define which-scheme 'mzscheme)
+
+  ;; PLT needs some help printing out the line numbers of a syntax object.
+  (define (format-syntax-nicely x)
+    (format "Syntax ~a, line ~a in ~a" 
+	    (syntax->datum x) (plt:syntax-line x) (plt:syntax-source x)))
 
   ;(define-syntax system   (identifier-syntax sys:system))
 

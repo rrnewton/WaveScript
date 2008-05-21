@@ -388,7 +388,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ([current-directory (format "~a/lib/" test-root)])
   (run-test "ws: Generating gsl matrix library wrappers:" 
 	    (format "make &> ~a/gsl_wrappers.log" test-directory))
-  
+
+
+;; PLT has a bug with "exists" right now:  [2008.05.21]
+#|
+  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  (run-test "wsc2: GSL test_matrix_gsl.ws (plt):" 
+	    (format "wsc2 test_matrix_gsl.ws  -exit-error &> ~a/matrix_gsl_build.log" test-directory))
+  (run-test "wsc2: Run output executable:" 
+	    (format "./query.exe -n 10 &> ~a/matrix_gsl_run.log" test-directory))
+|#  
+
+  ;; Not working in ikarus, no foreign interface [2008.05.21]
+#;
   (run-test "ws: Running GSL test_matrix_gsl.ws:" 
 	    (format 
 	     "ws test_matrix_gsl.ws -n 1 -exit-error &> ~a/matrix_gsl.log" test-directory))
@@ -524,14 +536,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsc2: Compiling marmot app (first phase):  "
 	    (format "wsc2 run_first_phase.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
 		    test-directory))
-    (run-test "wsc2: Running marmot app (first phase):  "
+    (run-test "wsc2:  Running marmot app (first phase):  "
 	      (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
     (delete-file "query.exe")
 
     (ASSERT (putenv "REGIMENTHOST" "plt"))
     (run-test "wsc2: Compiling marmot phase 1&2 (plt): "
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
-    (run-test "wsc2: Running marmot app (second phase): "
+    (run-test "wsc2:  Running marmot app (second phase): "
 	      (format "./query.exe -n 1 &> ~a/wsc2_marmot12_run.log" test-directory))
     (ASSERT (putenv "REGIMENTHOST" "")))
   
@@ -588,19 +600,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling first speaker detect: "
 	    (format "wsc2 mfcc1.ws  &> ~a/wsc2_build_mfcc1.log" test-directory))
-  (run-test "wsc2: Running first speaker detect: "
+  (run-test "wsc2:  Running first speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc1.log" test-directory))
 
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed pt speaker detect: "
 	    (format "wsc2 mfcc5_fixedpoint_full.ws  &> ~a/wsc2_build_mfcc5.log" test-directory))
-  (run-test "wsc2: Running fixed pt speaker detect: "
+  (run-test "wsc2:  Running fixed pt speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc5.log" test-directory))
 
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed fb speaker detect: "
 	    (format "wsc2 mfcc6_fixedpoint_fb.ws  &> ~a/wsc2_build_mfcc6.log" test-directory))
-  (run-test "wsc2: Running fixed fb speaker detect: "
+  (run-test "wsc2:  Running fixed fb speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc6.log" test-directory))
 
   (run-test "wstiny: Compiling speaker detect, Telos: "
