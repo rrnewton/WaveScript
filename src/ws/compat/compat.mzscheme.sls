@@ -21,6 +21,7 @@
 	  promise? delay force
 
 	  which-scheme
+	  trace-define trace-lambda
 
 	  (rename (sys:system system))
 ; 	  make-rectangular
@@ -41,7 +42,9 @@
 	  (only (lazy promise) promise? delay force)
 	  
 	  (prefix (scheme base) plt:)
-	  (prefix (only (scheme include) include) plt:)
+	  (prefix (only (scheme include) include)
+		  
+		  plt:)
 	  (only (scheme mpair) list->mlist)
 	  (scheme pretty )
 	  ;(scheme process)
@@ -55,6 +58,18 @@
 	  ;(scheme lists)
 	  ;(mzscheme)
 	  )
+
+#;
+  (define-syntax trace-lambda
+    (syntax-rules ()
+      [(_ name args bod ...)
+       (let ([closure (lambda args bod ...)]
+	     [sym (plt:gensym)])
+	 ;; Need to define a real top-level value.  Not sure if we can
+	 ;; do that hack in R6RS mode.
+	 (define-top-level-value sym closure)
+	 (trace sym)
+	 closure)]))
 
   (define which-scheme 'mzscheme)
 
@@ -172,6 +187,8 @@
   (plt:include "common.ss")
   (plt:include "inspector.ss")
   (plt:include "top-level-values.ss")
+  (plt:include "tracer.ss")
+
 
   ;(display "MZSCHHHHHHHHHHHHHHHEEEEEEEEEEEEMMMEEEEEEEE ")
   ;(display (random 300))
