@@ -284,11 +284,14 @@ aggregated:
 	$(MAKE) ws/common.sls main_r6rs.sls
 
 ws/common.sls:
-	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+	ikarus --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+#	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+#	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
 
 main_r6rs.sls:
-	@./generate_main_r6rs.ss 
+	ikarus --r6rs-script ./generate_main_r6rs.ss 
+#	@./generate_main_r6rs.ss 
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
 
 

@@ -538,7 +538,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		    test-directory))
     (run-test "wsc2:  Running marmot app (first phase):  "
 	      (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
-    (delete-file "query.exe")
+    (when (file-exists? "query.exe") (delete-file "query.exe"))
 
     (ASSERT (putenv "REGIMENTHOST" "plt"))
     (run-test "wsc2: Compiling marmot phase 1&2 (plt): "
