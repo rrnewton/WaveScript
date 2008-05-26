@@ -87,9 +87,9 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3g_arrays.ws"             ,(lambda (a b) #t)]
     ["demo3h_advancedlists.ws"      ,(lambda (a b) #t)]
 
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:
-;    ["demo3i_conversion_prims.ws"   ,(lambda (a b) #t)]
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:
+    ["demo3i_conversion_prims.ws"   ,(lambda (a b) #t)]
+;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET: 
+;; [2008.05.26] STILL NO COMPLEX NUMBERS FOR SQRT:
 ;    ["demo3j_numbers.ws"            ,(lambda (a b) #t)]
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
@@ -144,8 +144,7 @@ exec regiment i --script "$0" ${1+"$@"};
 ;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
 ;    ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
 
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
-;    ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
+    ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
     ["demo8b_sugars.ws"           ,(lambda (a b) 
 				     (equal? (tuple-fields a) '(1 1 2 1 1 2))
 				     (equal? (tuple-fields b) '(1 1 2 1 1 2)))]

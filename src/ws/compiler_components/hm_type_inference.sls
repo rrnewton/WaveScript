@@ -117,7 +117,9 @@
 (define (safe-export-type t)
   (if (type? t) (export-type t) `(NOT-A-TYPE ,t)))
 
-(define type-error error)
+(define (type-error sym str . args)
+  (warning sym (apply format str args))
+  (exit 1))
 
 ;; TODO: Move to another file:
 (define src-pos->string

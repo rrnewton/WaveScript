@@ -1,5 +1,5 @@
 
-fun assert(b) if not(b) then wserror("Assert failed.");
+//fun assert(b) if not(b) then wserror("Assert failed.");
 
 foo1 :: Int -> Int = foreign("foo", ["./foo.c"])
 foo2 :: Int -> Int = foreign("foo", ["./foo.c"])
@@ -22,7 +22,7 @@ main = iterate _ in timer(30.0) {
     _ = SHELL("gcc -c bar.c")
   }
   x = bar $ foo2 $ foo1 $ 3;
-  assert(x == 109);
+  assert("", x == 109);
   emit x;
 }
 

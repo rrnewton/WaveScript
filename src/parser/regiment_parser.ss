@@ -534,7 +534,13 @@
 ;    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
 
     (notlist
-         [(NUM) `',$1]
+       ;; TEMPTOGGLE: Do we wish to treat complex numbers as constants, or calls to makeComplex?
+       [(NUM) `',$1]
+     #;
+       [(NUM) (if (real? $1) `',$1 `(app makeComplex
+					 ',(exact->inexact (real-part $1)) 
+					 ',(exact->inexact (imag-part $1))))]
+
 ;         [(VarExp)  $1]
 	 [(VAR) $1]
          [(CHAR) $1]
