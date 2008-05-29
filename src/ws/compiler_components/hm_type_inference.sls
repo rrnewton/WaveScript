@@ -119,7 +119,9 @@
 
 (define (type-error sym str . args)
   (warning sym (apply format str args))
-  (exit 1))
+  ;(exit 1)
+  (error sym "")
+  )
 
 ;; TODO: Move to another file:
 (define src-pos->string
@@ -1927,7 +1929,7 @@
     [(export-type (',type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List ,int-constant-type-as)] 
     [(export-type (',type-expression '(cons 1 '(2 3 4)) (empty-tenv)))     (List ,int-constant-type-as)]
     [(export-type (',type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) #|error|# (List Float)]
-    [(export-type (',type-expression '(cons (assert-type Int '1) '(2 3 4.)) (empty-tenv))) error]
+    [(export-type (type-expression '(cons (assert-type Int '1) '(2 3 4.)) (empty-tenv))) error]
 
     [(export-type (let-values ([(_ t) (',annotate-lambda '(v) '(_+_ v v) '(Int) (empty-tenv) '())]) t))
      (Int -> Int)]

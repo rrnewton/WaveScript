@@ -1410,7 +1410,7 @@ use the ERR5RS mode.
 [2008.01.08] {Lots of outstanding implementation}
 
 There are many things that need to be implemented: 
- *) Marshaling
+ *) Marshaling (+ java reader + visualization)
  *) Monomorphic function defs in backends.
  *) Shared representation of repeated stream kernels.
  *) Recursive stream graphs in backends.
@@ -1418,6 +1418,7 @@ There are many things that need to be implemented:
  *) Wrapping up PLDI optimizations.
  *) Memory management (GC + static alloc analysis)
  *) Finish filling out the new C backend
+ *) Libraries for gapped streams, spill-to-disk
 
 But the question is what will make research hay right now?  I imagine
 most of the scutwork will get put off until the next application makes
@@ -1496,5 +1497,4 @@ representation invariants (fixnum<->float) should always be maintained
 *within* container representations (arrays, lists).  For the moment
 they are not.  Only when data is unpacked from such a container is it
 forced to conform with the proper numeric representation.
-
 
