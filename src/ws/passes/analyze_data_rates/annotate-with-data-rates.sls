@@ -15,7 +15,7 @@
 
 (library (ws passes analyze_data_rates annotate-with-data-rates)  
   (export annotate-with-data-rates)
-  (import (rnrs) (ws common)
+  (import (rnrs) (ws common) (ws util helpers)
 	  (ws langs lang_wavescript))
 
 ;;
@@ -52,7 +52,7 @@
                ; this will fill in rates-table
 	       (when (>= (regiment-verbosity) 1)
 		 (printf "Directing profiling run output to .profile_run.out\n"))
-	       (let ([out (open-output-file ".profile_run.out" 'replace)])
+	       (let ([out (force-open-output-file ".profile_run.out")])
 		 (parameterize (;[current-output-port out]
 				;[current-error-port out]
 				[ws-print-output-port out]

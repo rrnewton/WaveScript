@@ -324,7 +324,7 @@
 
 (define pretty-C-print
   (lambda (output-expr)
-    (let ((op (open-output-file "tmp.c" 'replace)))
+    (let ((op (force-open-output-file "tmp.c")))
       (display output-expr op)
       (close-output-port op)
       (system "/l/SUNWspro/bin/cb tmp.c | expand -2 | sed -e '2,$s/^\\([a-z]\\)/\\

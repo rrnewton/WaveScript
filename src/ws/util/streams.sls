@@ -139,7 +139,7 @@
 (define stream-dump
   (lambda (stream file)
     (define count 0)
-        (let ([port (open-output-file (format "~a" file) 'replace)])
+        (let ([port (open-output-file (format "~a" file))])
 	       (parameterize ([print-length #f]
 			      [print-level #f]
 			      [print-graph #f]

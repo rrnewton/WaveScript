@@ -1010,7 +1010,7 @@
 		     [(,tm ,rest ...) (guard (list? tm))
 		      (define (run-compiled)
 			(if (simulator-write-sims-to-disk)
-			    (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
+			    (let ((out (force-open-output-file "_genned_node_code.ss")))
 			      (parameterize ([print-level #f]
 					     [pretty-maximum-lines #f]
 					     [pretty-line-length 150]
@@ -1036,7 +1036,7 @@
 			 (let ((cleaned tm )) ; (cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
 			     (if (simulator-write-sims-to-disk)
-				 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
+				 (let ((out (force-open-output-file "_genned_node_code.ss")))
 					;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
 				   (parameterize ([print-level #f]
 						  [pretty-maximum-lines #f]

@@ -1799,7 +1799,9 @@
 		       (display (mungestring str) outp) (flush-output-port outp)))
 	   (datastrm (lambda (str) 
 ;		       (try-output)
-		       (unless datapipe (set! datapipe (open-output-file fn2 'append)))
+		       (unless datapipe
+			 (error 'gnuplot_process "Cannot append to text file yet under R6RS...")
+			 (set! datapipe (open-output-file fn2 'append)))
 		       (printf "Got data strm message: ~s\n" str)
 		       (display str datapipe) (flush-output-port outp)))))
        (lambda (sink) (void))))

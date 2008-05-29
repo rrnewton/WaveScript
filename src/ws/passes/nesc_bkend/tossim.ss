@@ -85,9 +85,9 @@
       [#(,mstr ,cstr ,hstr)
        (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell")))
        (printf "~nDumping token machine into directory: ~s~n" (current-directory))
-       (let ([modF    (open-output-file (string-append emit-nesc-modname "M.nc") 'replace)]
-	     [confF   (open-output-file (string-append emit-nesc-modname ".nc") 'replace)]
-	     [headerF (open-output-file (string-append emit-nesc-modname ".h") 'replace)])
+       (let ([modF    (force-open-output-file (string-append emit-nesc-modname "M.nc"))]
+	     [confF   (force-open-output-file (string-append emit-nesc-modname ".nc"))]
+	     [headerF (force-open-output-file (string-append emit-nesc-modname ".h"))])
 	 (display mstr modF)
 	 (display cstr confF)
 	 (display hstr headerF)	

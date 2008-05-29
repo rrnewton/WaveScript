@@ -105,6 +105,8 @@
      
 ;with-evaled-params crit-preintf  gobj?  grep-oblist make-n-list define-values 
 
+     force-open-output-file
+
    )
 
 (import (rnrs (6))
@@ -843,7 +845,7 @@
   (case-lambda 
    [(slist fn) (slist->file slist fn 'write)]
    [(slist fn method)
-    (let ([p (open-output-file fn 'replace)])
+    (let ([p (force-open-output-file fn)])
       (parameterize ([print-level #f]
 		     [print-length #f]
 		     [pretty-maximum-lines #f])
@@ -882,7 +884,7 @@
 (define string->file
   (lambda (str fn)
     (if (file-exists? fn) (delete-file fn))
-    (let ([p (open-output-file fn)]) ;'replace
+    (let ([p (force-open-output-file fn)]) 
       ;(fprintf p str)
       (display str p)
       (close-output-port p))))
@@ -1744,8 +1746,8 @@
 (define (gnuplot data . flags)
   (let ([fn1 "_temp_gnuplot.script"]
 	[fn2 "_temp_gnuplot.dat"])
-  (let ([scrip (open-output-file fn1 'replace)]
-	[dat   (open-output-file fn2 'replace)]
+  (let ([scrip (force-open-output-file fn1)]
+	[dat   (force-open-output-file fn2)]
 	[setstmnts '()]
 	[opts ""]
 	[withclause "with linespoints"])
@@ -1957,6 +1959,7 @@
 	  ;;(printf "Writing new dataset to pipe ~s\n" fn2)
 
 	  ;; Open a session on the pipe
+	  (error 'gnuplot_pipe "Cannot append to output file yet.")
 	  (set! dat (open-output-file fn2 'append))
 	  
 	  ;;(printf "Opened pipe.\n")
@@ -2391,6 +2394,10 @@
     (if (< i n)
         (loop (+ i 1) (cons (apply p args) results))
         results)))
+
+;; This is just a shorthand:
+(define (force-open-output-file file)
+  (open-file-output-port file (buffer-mode block) (file-options no-fail) (native-transcoder)))
 
 
 ) ;; End library

@@ -21,6 +21,11 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.05.28] {wsc2 additions for running on phones}
+  *) I need to get the foreign interface going if I'm going to
+     integrate with sensor hardware on phones.
+
+
 [2008.02.29] {Benchmarks to implement}
   *) Elizabeth should be looking at StreamSQL benchmarks.
      I'd like to do some simple "Pig Latin" style benchmarks.

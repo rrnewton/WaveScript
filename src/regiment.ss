@@ -1,4 +1,4 @@
-#!r6rs
+;#!r6rs
 
 ;;#! /usr/bin/env scheme-script
 

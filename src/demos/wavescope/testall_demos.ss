@@ -88,22 +88,21 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3h_advancedlists.ws"      ,(lambda (a b) #t)]
 
     ["demo3i_conversion_prims.ws"   ,(lambda (a b) #t)]
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET: 
-;; [2008.05.26] STILL NO COMPLEX NUMBERS FOR SQRT:
-;    ["demo3j_numbers.ws"            ,(lambda (a b) #t)]
+    ["demo3j_numbers.ws"            ,(lambda (a b) #t)]
     ["demo3k_uniontype.ws"          ,(lambda (a b) #t)]
     ["demo3l_moreunions.ws"         ,(lambda (a b) #t)]
     ["demo3m_sigsegs.ws"         ,(lambda (a b) #t)]
     ["demo3n_static_vals.ws"     ,(lambda (a b) #t)]
 
 ;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
+;; [2008.05.29] Now it runs, but I get some very odd output, garbage binary to stdout under ikarus.
+;; But it's not even producing complex numbers as output...
 ;    ["demo4a_fft.ws"               ,(lambda (a b) (void) )]
 				     ;(ASSERT (= 0.0 a))
 				     ;(ASSERT (= 840.0 (round b))) ;839.8869476698192
 ;; ALERT!  DEMO4 STARTED RETURNING SOMETHING DIFFERENT.... CHECK THIS OUT!
 
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
-;    ["demo4b_morefft.ws"           ,(lambda (a b) (void))]
+    ["demo4b_morefft.ws"           ,(lambda (a b) (void))]
     ["demo4d_quoted_constants.ws"  ,(lambda (a b) (void))]
     ["demo4e_fifo_adt.ws"  ,(lambda (a b) (void))]
 
@@ -139,17 +138,15 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
     ["demo6f_merge.ws"            ,(lambda (a b) (void))]
 
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
-;    ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
-;    ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
+    ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
+    ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
 
     ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
     ["demo8b_sugars.ws"           ,(lambda (a b) 
 				     (equal? (tuple-fields a) '(1 1 2 1 1 2))
 				     (equal? (tuple-fields b) '(1 1 2 1 1 2)))]
 
-;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
+;; TEMP: Still don't have stringToComplex:
 ;    ["demo9_misc_prim_tests.ws"      ,(lambda (a b) #t)]
     
     ;; WEIRD... applied a fix so that static-elaborate's hack for Array:build will work.

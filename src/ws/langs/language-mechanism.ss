@@ -10,7 +10,7 @@
     (define (runprog p)
       (if (simulator-write-sims-to-disk)
        (let* ([tmpfile "__lang_running.tmp.ss"]
-	      [out (open-output-file tmpfile 'replace)])
+	      [out (force-open-output-file tmpfile)])
 	 (parameterize ([print-length #f]
 			[print-level #f]
 			[print-graph #t])

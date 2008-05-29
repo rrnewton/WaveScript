@@ -5,7 +5,7 @@
   (lambda (str) 
     
     (printf "~nDumping token machine into directory: ~s~n" (current-directory))
-    (let ([out (open-output-file "test_tokmac_comp.tm" 'replace)])
+    (let ([out (force-open-output-file "test_tokmac_comp.tm")])
       (display str out)
       (close-output-port out))
     (printf "~nBinding top-level function (run_tm) to compile&assemble this token machine.~n")
