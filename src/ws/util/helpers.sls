@@ -2397,7 +2397,8 @@
 
 ;; This is just a shorthand:
 (define (force-open-output-file file)
-  (open-file-output-port file (buffer-mode block) (file-options no-fail) (native-transcoder)))
+  (open-file-output-port file  (file-options no-fail) (buffer-mode block) (native-transcoder))
+  )
 
 
 ) ;; End library
