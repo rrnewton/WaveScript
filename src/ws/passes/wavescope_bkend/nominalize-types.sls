@@ -233,6 +233,12 @@
 	      [(assert-type ,t ,[e])    `(assert-type   ,(convert-type t tupdefs) ,e)]
 	      [(struct-ref ,t ,fld ,[e]) `(struct-ref ,(convert-type t tupdefs) ,fld ,e)]
 	      [(cast-variant-to-parent ,tc ,t ,[e])  `(cast-variant-to-parent ,tc ,(convert-type t tupdefs) ,e)]
+
+	      [(__foreign_source ,[name] ,[includes] ',type)
+	       `(__foreign_source ,name ,includes ',(convert-type type tupdefs))]
+	      [(__foreign_source . ,_) 
+	       (error 'nominalize-types "unmatched __foreign_source: ~s" '(__foreign_source . ,_))]
+
 	      [,oth (fallthr oth)]))]
     [Bindings 
      (lambda (vars types exprs reconstr exprfun) 

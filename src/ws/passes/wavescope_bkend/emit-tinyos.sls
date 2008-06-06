@@ -585,19 +585,8 @@ event void PrintfControl.stopDone(error_t error) {
 	     (ASSERT procedure? oper)
 	     (oper xp))])))))
 
-(define-generic ForeignSourceHook)
-
 (__specreplace ForeignSourceHook <tinyos> (self name callcode) 
-  ;; Default behavior is to signal error:
-  (list
-   ;; TODO FIXME: INSERT BUFFERING HERE:
-   (block "if (ws_currently_running)"
-	  (list "input_items_lost++;\n"
-		;(format "wserror(\"attempted reentry\")\n")
-		))
-   (block "else"
-	  (list "ws_currently_running = 1;\n"
-		callcode))))
+	       callcode)
 
 (define __Operator
   (specialise! Operator <tinyos> 
@@ -633,7 +622,6 @@ event void PrintfControl.stopDone(error_t error) {
 	      (define ty (Type self type))
 	      (define arg (unique-name "tmp"))
 	      (ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
-					;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
 		      (and (not (null? filels)) (string->number (car filels))))
 	      (for-each (lambda (file)
 			  (let ([ext (extract-file-extension file)])
@@ -650,8 +638,7 @@ event void PrintfControl.stopDone(error_t error) {
 						 (ForeignSourceHook self name
 								    (lines-text ((Emit self down*) arg)))))
 	      (values #f #f #f #f #f)]
-
-	     #;
+#;
 	     [,_ (next)]))]))))
 
 

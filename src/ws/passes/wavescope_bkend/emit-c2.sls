@@ -42,7 +42,7 @@
 	   Binding SplitBinding DummyInit StaticAllocate PrimApp Run
 	   BuildTimerSourceDriver BuildOutputFiles varbindk
 	   array-constructor-codegen
-	   IterStartHook IterEndHook
+	   IterStartHook IterEndHook ForeignSourceHook
 
 	   make-lines lines-text append-lines slot-cons! 
 
@@ -57,7 +57,7 @@
 	  (ws util bos_oop) 
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )
-  
+
   ;; An object of this class is a compiler pass.  It is not reentrant,
   ;; because it maintains state for the program it is compiling.
   (define-class <emitC2> (<class>) 
@@ -125,7 +125,8 @@
 
   (define-generic IterStartHook)
   (define-generic IterEndHook)
-   
+  (define-generic ForeignSourceHook)
+
   (__spec add-include! <emitC2> (self fn)
     (define files (slot-ref self 'include-files))
     (unless (member fn files)
@@ -225,8 +226,8 @@
     [#() "Unit"]
     ))
 
-;(define (make-fundef type name rand bod) 0)
-
+(__spec ForeignSourceHook <emitC2> (self name callcode)
+	callcode)
 
 ;; This is the simplest way to package a source.
 (define (wrap-source-as-plain-thunk name code)
@@ -1308,11 +1309,19 @@
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
 (__spec BuildTimerSourceDriver <emitC2> (self srcname* srccode* srcrates*)
-   ;; There are two options here.
+
+   (ASSERT "BuildTimerSourceDriver: must have same number of names, code, and rates"
+	   all-equal?
+	   (list (length srcname*) (length srccode*) (length srcrates*)))
+  
+   ;; There are three options here.
    ;;  (1) We run a system of virtual timers.
    ;;  (2) We are driven by a serial port connected to a mote.
-   (if (= (length (slot-ref self 'server-cutpoints)) 0)
-      ;; Option (1):
+   ;;  (3) We are driven by "foreign_source".
+   (cond 
+    ;; Option (1):
+    [(not (null? srcname*)) ;; TODO: IN THE FUTURE SHOULD BE ABLE TO COMBINE MOTE SOURCES OR FOREIGN SOURCES WITH TIMERS. FIXME  FIXME FIXME  FIXME  
+     (ASSERT (null? (slot-ref self 'server-cutpoints)))
       ;; If the rate is #f we don't build in that entry:
       (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
 		   (filter id
@@ -1351,10 +1360,11 @@
 				)
 					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
 			  )
-		   "return 0;\n")))))
-      ;; Option (2):
-      (begin
-	(unless (= (length (slot-ref self 'server-cutpoints)) 1)
+		   "return 0;\n")))))]
+
+      ;; Option (2): serial port connected to mote:
+      [(not (null? (slot-ref self 'server-cutpoints)))
+       (unless (= (length (slot-ref self 'server-cutpoints)) 1)
 	  (error 'BuildTimerSourceDriver 
 		 "Currently can't handle multiple return streams multiplexed onto serial port"))
 	
@@ -1466,11 +1476,34 @@ int main(int argc, char **argv)
       //free((void *)incoming_msg);
     }
 }
+"))];"
 
-")))))
+  ;; Option 3: driven by foreign_source
+  [else
+   (make-lines "
+  int main(int argc, char** argv) {
+    wsmain(argc, argv);
+    return 0;
+  }
+")
+   ]
 
+)) 
+
+;; These types define different pieces of code.  The type indicates
+;; the context where the code should end up.  The code generator
+;; weaves these together, putting each piece in the appropriate place.
+(reg:define-struct (c-timer name code state rate ))
+(reg:define-struct (c-toplvl lines))
+(reg:define-struct (c-init   lines))
+(reg:define-struct (c-state  lines))
+(reg:define-struct (c-proto  lines))
 
 ;; .returns a function def in several parts: name, code, state, rate, init-code
+;; code, state, init-code are all "lines" structures
+;; If "rate" is non-false, then the result represents a timer entry.
+
+;; Returns a list of code pieces, which can be any of the "c-" datatypes.
 (__spec Source <emitC2> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
@@ -1481,46 +1514,38 @@ int main(int argc, char **argv)
 	   ;;(ASSERT integer? rate)
 	   ;; For the basic backend, we simply call the downstream
 	   ;; operator when we ourselves are asked for data (invoked).
-	   (values nm
+	   (list 
+	    (make-c-timer nm
 		   ((Emit self down*) ''UNIT) ;; Code
 		   (make-lines '()) ;; State 	
-		   rate
-		   #f)
-	   ])]
+		   rate))])]
 
        ;; Allowing normal inline_C and treating it as a special case of inline_TOS:
        [(inline_C ',top ',initfun) 
-	(values #f
-		#f   ;; code
-		(make-lines (list "\n" top "\n")) ;; state
-		#f
-		(make-lines (if (equal? initfun "") "" `(,initfun "();\n"))))]
+	(list (make-c-state (make-lines (list "\n" top "\n")))
+	      (make-c-init  (make-lines (if (equal? initfun "") "" `(,initfun "();\n")))))]
 
-#;       
        [(__foreign_source ',name ',filels '(Stream ,type))
 	(define ty (Type self type))
 	(define arg (unique-name "tmp"))
-	(ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
-					;(and (not (null? filels)) (string->number (list->string (vector->list (car filels)))))
-		(and (not (null? filels)) (string->number (car filels))))
 	(for-each (lambda (file)
 		    (let ([ext (extract-file-extension file)])
 		      (cond
-		       [(member ext '("nc" "h"))
+		       [(member ext '("c" "cpp" "h" "so" "a" "o"))
 			(add-include! (list "\"" file "\""))]
-		       [else (error 'emit-c:foreign 
-				    "cannot load NesC extension from this type of file: ~s" file)])))
+		       [else (error 'emit-c:foreign
+				    "cannot foreign source from this type of file: ~s" file)])))
 	  (cdr filels))
 	;; Create a function for the entrypoint.
-	;; It should post a task!!
-	(slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
-	(slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
-					   (ForeignSourceHook self name
-							      (lines-text ((Emit self down*) arg)))))
-	(values #f #f #f #f)]
-       
-
-)]))
+	(let* ([proto `("void ",name"(",ty");\n")]
+	       [bod (ForeignSourceHook self name
+				       (lines-text ((Emit self down*) arg)))]
+	       [impl (make-lines 
+		      (block `("void ",name"(",ty" ",(Var self arg)")")
+			    bod))])
+	  (list (make-c-toplvl impl)
+		(make-c-proto  proto)))]
+       )]))
 
 
 
@@ -1779,22 +1804,30 @@ int main(int argc, char **argv)
 		 (const ,[(SplitBinding self (emit-err 'TopBinding)) -> cb* cbinit*] ...)
 		 (init  ,[(Effect self (lambda _ (error 'top-level-init "code should not 'emit'")))
 			  -> init*] ...)
-		 (sources ,[(curry Source self) -> srcname* srccode* state1* srcrate* srcinit*] ...)
+		 ;(sources ,[(curry Source self) -> srcname* srccode* state1* srcrate* srcinit*] ...)
+		 (sources ,[(curry Source self) -> pieces**] ...)
 		 (operators ,oper* ...)
 		 (sink ,base ,basetype)
 		 ,meta* ...))
 
-	;; Ok, this is annoying, but these all need to be option types:
-	(set! srcname* (filter id srcname*))
-	(set! srccode* (filter id srccode*))
-	(set! state1*  (filter id state1*))
-	(set! srcrate* (filter id srcrate*))
-	(set! srcinit* (filter id srcinit*))
-	
+	(define pieces* (apply append pieces**))
+	;; Break out the different pieces:
+	(define timers        (filter c-timer? pieces*))
+	(define toplvl-pieces (map c-toplvl-lines (filter c-toplvl? pieces*)))
+	(define init-pieces   (map c-init-lines (filter c-init? pieces*)))
+	(define state-pieces  (map c-state-lines (filter c-state? pieces*)))
+	(define proto-pieces  (map c-proto-lines (filter c-proto? pieces*)))
+
 	(let-match ([(,[(curry Operator self) -> oper* state2** opinit**] ...) (SortOperators self oper*)])
 
-	;; This must be called early, for side effects to the object fields:
-	(define driver   (text->string (lines-text (BuildTimerSourceDriver self srcname* srccode* srcrate*))))
+	;; This must be called early, for side effects to the object's fields:
+	(define driver   (text->string (lines-text 
+					;(BuildTimerSourceDriver self srcname* srccode* srcrate*)
+					(BuildTimerSourceDriver self 
+								(map c-timer-name timers)
+								(map c-timer-code timers)
+								(map c-timer-rate timers))
+					)))
 	(define includes (text->string 			  
 			  (list "//WSLIBDEPS: "
 				;; This is a bit hackish, throw the flags in there also:
@@ -1812,7 +1845,7 @@ int main(int argc, char **argv)
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
-	(define allstate (text->string (map lines-text (apply append cb* (filter id state1*) state2**))))
+	(define allstate (text->string (map lines-text (apply append cb* state-pieces state2**))))
 	(define ops      (text->string (map lines-text oper*)))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
@@ -1821,7 +1854,8 @@ int main(int argc, char **argv)
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
 						 ;; This will be where the inline_C initializers go:
-						 (lines-text (apply append-lines srcinit*))
+						 ;(lines-text (apply append-lines srcinit*))
+						 (map lines-text init-pieces)
 						 (lines-text (apply append-lines (apply append opinit**))))))))	
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	  

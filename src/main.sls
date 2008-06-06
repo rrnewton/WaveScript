@@ -1076,6 +1076,7 @@
      
      (if new-version?
 	  (begin 
+
 	    (ws-run-pass prog nominalize-types)
 	    (ws-run-pass prog gather-heap-types)
 
@@ -1116,6 +1117,9 @@
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 
 		     (ws-run-pass prog emit-c2 class)
+
+		     (inspect prog)
+
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
