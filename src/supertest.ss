@@ -345,6 +345,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
   (run-test "ws.early: WaveScript Demos (ikarus):"
 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
+
+  ;; Do the demos in PLT also.
+  (ASSERT (putenv "REGIMENTHOST" "plt"))  
+  (run-test "ws: Running WaveScript Demos (plt):"
+	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
   (ASSERT (putenv "REGIMENTHOST" ""))
 
 ;   (putenv "REGIMENTHOST" "plt")

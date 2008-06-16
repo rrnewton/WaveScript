@@ -1499,9 +1499,6 @@ int main(int argc, char **argv)
 (reg:define-struct (c-state  lines))
 (reg:define-struct (c-proto  lines))
 
-;; .returns a function def in several parts: name, code, state, rate, init-code
-;; code, state, init-code are all "lines" structures
-;; If "rate" is non-false, then the result represents a timer entry.
 
 ;; Returns a list of code pieces, which can be any of the "c-" datatypes.
 (__spec Source <emitC2> (self xp)
