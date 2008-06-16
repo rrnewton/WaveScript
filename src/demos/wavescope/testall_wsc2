@@ -97,8 +97,10 @@ go "demo8c_moresugar.ws"
 
 go "demo9_misc_prim_tests.ws"
 go "demo9b_higher_order_prims.ws" 
-go "demo9c_foreign.ws"
-go "demo9d_foreign_pointer.ws"
+#go "demo9c_foreign.ws"
+#go "demo9d_foreign_pointer.ws"
+
+go "demo9f_foreign_source.ws"
 
 go "demo10a_simple_merge.ws"
 go "demo10b_repeated_rewindow.ws"

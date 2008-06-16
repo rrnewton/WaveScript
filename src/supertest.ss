@@ -504,7 +504,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 |#
 
-#; ;; Disabling
 (begin 
   (fpf "\n\nWaveScript MLTON Backend:\n" )
   (fpf "========================================\n")
@@ -514,6 +513,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsmlton: Running Demos through MLton:" 
 	      (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory)))
 
+;; TEMP DISABLE:
+#;
   (parameterize ((current-directory (format "~a/lib/" test-root)))  
     (run-test "wsmlton: Compiling stdlib_test:"
 	      (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))

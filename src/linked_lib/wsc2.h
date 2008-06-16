@@ -87,12 +87,13 @@ void parseOptions(int argc, char** argv) {
   }
 }
 
+// FIXME: When driven by foreign source we don't use this:
 void wserror_fun(char* msg) {
   //error(msg);
   printf("Failed with error: %s\n", msg);
   exit(-1);
 }
-#define wserror(str) wserror_fun(str);
+#define wserror_wsc2(str) wserror_fun(str);
 
 /*
 // TODO:

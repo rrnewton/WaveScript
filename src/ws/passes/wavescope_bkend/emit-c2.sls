@@ -138,10 +138,9 @@
       (slot-set! self 'link-files (cons fn files))))
 
   (define (add-file! self)
-    (lambda (file)
+    (trace-lambda ADFILE (file)
       ;; Add to global list of includes if it's not already there.
       (let ([ext (extract-file-extension file)])
-	(printf "  Adding file with extension ~s\n" ext)
 	(cond
 	 [(member ext '("c" "cpp" "h" "hpp"))
 	  (add-include! self (list "\"" file "\""))]
@@ -870,7 +869,7 @@
       ;; ========================================
 
       [(__wserror_ARRAY ,[Simp -> str]) 
-       (make-lines (list "wserror("str")\n"))]
+       (make-lines (list "wserror_wsc2("str")\n"))]
 
       ))))
 
@@ -1505,6 +1504,8 @@ int main(int argc, char **argv)
   [else
    (make-lines "
   int main(int argc, char** argv) {
+    wsinit(argc, argv);
+    initState();
     wsmain(argc, argv);
     return 0;
   }
@@ -1548,16 +1549,18 @@ int main(int argc, char **argv)
        [(__foreign_source ',name ',filels '(Stream ,type))
 	(define ty (Type self type))
 	(define arg (unique-name "tmp"))
-	(for-each (add-file! self) (cdr filels))
+	(for-each (add-file! self) filels)
+
 	;; Create a function for the entrypoint.
-	(let* ([proto `("void ",name"(",ty");\n")]
+	(let* ([proto `("extern void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
 				       (lines-text ((Emit self down*) arg)))]
 	       [impl (make-lines 
 		      (block `("void ",name"(",ty" ",(Var self arg)")")
 			    bod))])
 	  (list (make-c-toplvl impl)
-		(make-c-proto  proto)))]
+		(make-c-proto  (make-lines proto))
+		))]
        )]))
 
 
@@ -1779,6 +1782,7 @@ int main(int argc, char **argv)
 ;================================================================================
 
 ;; This has a quirky return type.  Ugly abstraction boundaries.
+;; Inputs STRINGS.
 ;; Returns a vector of two elements:
 ;;   (1) Association list of file-name, file-contents to write.
 ;;   (2) Thunk to execute after files are written.
@@ -1871,9 +1875,12 @@ int main(int argc, char **argv)
 						 (map lines-text init-pieces)
 						 (lines-text (apply append-lines (apply append opinit**))))))))	
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
-	  
-	  ;; This is called last:
-	  (BuildOutputFiles self includes freefundefs allstate ops init driver)
+	
+	;; This is called last:
+	  (BuildOutputFiles self includes freefundefs
+			    (** (text->string (map lines-text proto-pieces)) allstate) ;; Put the prototypes early.
+			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
+			    init driver)
 	  )]
 
        [,other ;; Otherwise it's an invalid program.

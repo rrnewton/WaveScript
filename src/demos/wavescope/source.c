@@ -2,18 +2,18 @@
 #include <stdio.h>
 
 void wsentry1(int);
-void wsentry2(int, float);
-
+//void wsentry2(int, float);
+void wsentry2(float);
 
 void wserror(const char* p) {
   printf("GOT WSERROR: %s\n", p);
 }
 
 void wsmain(int argc, char* argv[]) {
-  int counter = 5;
+  int i, counter = 5;
 
   printf("Inside wsmain, %d command line args, argv pointer: %p\n", argc, argv);
-  for (int i = 0; i<argc; i++) {   printf("  Arg %d: %s\n", i, argv[i]);  }
+  for (i = 0; i<argc; i++) {   printf("  Arg %d: %s\n", i, argv[i]);  }
 
   while (counter > 0) {
     usleep(1000 * 1000);
@@ -21,7 +21,8 @@ void wsmain(int argc, char* argv[]) {
      wsentry1(counter);
     usleep(500 * 1000);
     printf("Calling entry point 2.\n");
-     wsentry2(99, (float)counter + 0.5);
+    //     wsentry2(99, (float)counter + 0.5);
+     wsentry2((float)counter + 0.5);
     counter--;
   }
   printf("Done calling into WS, exiting\n");
@@ -38,8 +39,9 @@ void wsinit(int argc, char* argv[]) {
 */
 
 void wsinit(int argc, char* argv[]) {
+  int i;
   printf("Inside wsinit, %d command line args, argv pointer: %p\n", argc, argv);
-  for (int i = 0; i<argc; i++) {
+  for (i = 0; i<argc; i++) {
     printf("  Arg %d: %s\n", i, argv[i]);
   }
 }

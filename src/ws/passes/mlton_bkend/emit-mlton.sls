@@ -833,7 +833,11 @@
     [Float  "read_real32"]
     ))
 
-(define (homogenous-sizes? types) (apply = (map type->width types)))
+(define (homogenous-sizes? types) 
+  (cond
+   [(null? types) (error 'homogenous-sizes? "expects at least one type")]
+   [(null? (cdr types)) #t]
+   [else (apply = (map type->width types))]))
 
 (define (build-binary-reader types homogenous?)
   (define widths (map type->width types))
