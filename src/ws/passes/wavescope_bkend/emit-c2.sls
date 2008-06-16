@@ -128,6 +128,7 @@
   (define-generic ForeignSourceHook)
 
   (__spec add-include! <emitC2> (self fn)
+    (define __ (printf "adding include ~s \n" fn))
     (define files (slot-ref self 'include-files))
     (unless (member fn files)
       (slot-set! self 'include-files (cons fn files))))
@@ -135,6 +136,21 @@
     (define files (slot-ref self 'link-files))
     (unless (member fn files)
       (slot-set! self 'link-files (cons fn files))))
+
+  (define (add-file! self)
+    (lambda (file)
+      ;; Add to global list of includes if it's not already there.
+      (let ([ext (extract-file-extension file)])
+	(printf "  Adding file with extension ~s\n" ext)
+	(cond
+	 [(member ext '("c" "cpp" "h" "hpp"))
+	  (add-include! self (list "\"" file "\""))]
+	 [(or (member ext '("so" "a" "o"))
+	      ;; A hack:
+	      (substring? ".so." file))
+	  ;; Note: If you try to load a pre-compiled object, you must also provide a header!
+	  (add-link! self file)]
+	 [else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))))
   
 ;;========================================
 
@@ -933,7 +949,12 @@
        [(struct-ref ,type ,fld ,[Simp -> x])
 	(kont `("(",x "." ,(sym2str fld)")"))]
        
-       [(__foreign ,_ ...) (kont "0")] ;; Does nothing atm.
+       [(__foreign ',cname ',files ',ty)
+	(for-each (add-file! self) files)
+	;; The "value" returned is ignored:
+	(kont "0")]
+       [(__foreign . ,_)
+	(error 'emit-c2 "unhandled foreign form: ~s" `(__foreign ,@_))]
        
        ;; [2008.02.26] Had a problem with substituting this pattern for 'ty': (,argty* ... -> ,retty)
        [(foreign-app ',name (assert-type ,ty ,ignored) ,[Simp -> rand*] ...)
@@ -1525,14 +1546,7 @@ int main(int argc, char **argv)
        [(__foreign_source ',name ',filels '(Stream ,type))
 	(define ty (Type self type))
 	(define arg (unique-name "tmp"))
-	(for-each (lambda (file)
-		    (let ([ext (extract-file-extension file)])
-		      (cond
-		       [(member ext '("c" "cpp" "h" "so" "a" "o"))
-			(add-include! (list "\"" file "\""))]
-		       [else (error 'emit-c:foreign
-				    "cannot foreign source from this type of file: ~s" file)])))
-	  (cdr filels))
+	(for-each (add-file! self) (cdr filels))
 	;; Create a function for the entrypoint.
 	(let* ([proto `("void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
