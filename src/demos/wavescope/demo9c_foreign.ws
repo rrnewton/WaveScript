@@ -9,8 +9,8 @@ foo2 :: Int -> Int = foreign("foo", ["./foo.c"])
 
 // I thought I could get away without the header for .o files.  
 // And you can in C, but not in C++...
-//bar :: Int -> Int = foreign("bar", ["bar.h", "./bar.o"])
-bar :: Int -> Int = foreign("bar", ["bar.h", "bar.a"])
+bar :: Int -> Int = foreign("bar", ["bar.h", "./bar.o"])
+//bar :: Int -> Int = foreign("bar", ["bar.h", "bar.a"])
 
 //box = (foreign_box    "bar_box" in "foo.c" :: Stream Int -> Stream Int);
 //src = (foreign_source "bar_src" in "foo.c" :: Stream Int);
@@ -20,7 +20,7 @@ main = iterate _ in timer(30.0) {
   state {
     // Do this at compile time:
     _ = { SHELL("gcc -c bar.c"); 
-	  SHELL("ar rcs bar.a bar.o"); 
+	  //SHELL("ar rcs bar.a bar.o"); 
           print("compiled bar.c, and made static archive (.a)\n"); }
   }
   x = bar $ foo2 $ foo1 $ 3;

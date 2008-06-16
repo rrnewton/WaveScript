@@ -8,8 +8,10 @@ libc = if plat == "Linux\n"
        then "libc.dylib" 
        else wserror("Don't know how to find libc on platform: "++ plat)
 
-malloc :: Int -> Pointer "void*" = foreign("malloc", [libc])
-free   :: Pointer "void*" -> ()  = foreign("free",   [libc])
+_ = print("Loading libc on platform "++ plat ++" from: "++ libc ++"\n");
+
+malloc :: Int -> Pointer "void*" = foreign("malloc", [])
+free   :: Pointer "void*" -> ()  = foreign("free",   [])
 
 main = iterate _ in timer(30.0) { 
   print("Compiled on platform: "++plat++"\n");

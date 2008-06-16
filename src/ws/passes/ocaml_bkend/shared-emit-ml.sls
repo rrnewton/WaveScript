@@ -140,7 +140,7 @@
 		(let* ([emitter (Emit down*)])
 		  (values
 		   ;; The first return value is binding-text for the function:
-		   `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+		   `(" (* WS type: input:",(format "~s" ty1)" vq:",(format "~s" ty2)" -> ",(format "~s" ty)" *)\n"
 		     ,(obj 'make-fun-binding name 
 			   (list (list "("(Var x)
 				       (maybe-ascribe ty1)
