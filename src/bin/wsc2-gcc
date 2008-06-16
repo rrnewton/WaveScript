@@ -26,9 +26,11 @@ case "$COPTFLAG" in
    ;;
 esac
 
-## ACK - include WS_LINK at front and end?!?
+# Only the libraries should be included again at the end:
+#WS_LINK_POST= FILTER_OUT($WS_LINK)
 
-CMD="gcc $WS_LINK -lm $OPTFLAGS -o query.exe query.c $WS_LINK"
+## ACK - include WS_LINK at front and end?!?
+CMD="gcc $WS_LINK -lm $OPTFLAGS -o query.exe query.c $WS_LINK_POST"
 echo "$CMD"
 #if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
 

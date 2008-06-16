@@ -20,7 +20,7 @@ main = iterate _ in timer(30.0) {
   state {
     // Do this at compile time:
     _ = { SHELL("gcc -c bar.c"); 
-          SHELL("ar rcs bar.a bar.o"); 
+	  SHELL("ar rcs bar.a bar.o"); 
           print("compiled bar.c, and made static archive (.a)\n"); }
   }
   x = bar $ foo2 $ foo1 $ 3;
@@ -38,3 +38,4 @@ fun network_sink (strm) {
   }
 }
 */
+
