@@ -1,5 +1,4 @@
 
-fun assert(b) if not(b) then wserror("Assert failed.");
 
 //plat = GETENV("OSTYPE")
 plat = SHELL("uname")
@@ -13,7 +12,7 @@ malloc :: Int -> Pointer "void*" = foreign("malloc", [libc])
 free   :: Pointer "void*" -> ()  = foreign("free",   [libc])
 
 main = iterate _ in timer(30.0) { 
-  print("Running on platform: "++plat++"\n");
+  print("Compiled on platform: "++plat++"\n");
  
   p1 = malloc(300);
   print("  malloc'd pointer: "++ p1 ++"\n");

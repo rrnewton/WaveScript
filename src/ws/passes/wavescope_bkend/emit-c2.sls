@@ -288,7 +288,7 @@
 
   
 (__spec heap-type? <emitC2> (self ty) 
-        (heap-allocated? ty (slot-ref self 'struct-defs) (slot-ref self 'union-types)))
+        (c-heap-allocated? ty (slot-ref self 'struct-defs) (slot-ref self 'union-types)))
 
 ;; This builds a set of top level function definitions that free all
 ;; the heap-allocated types present in the system.  It also builds a
@@ -552,6 +552,8 @@
 
     ;; Values of this type aren't really used.
     [(,_ ... -> ,__) "char"]
+
+    [(Pointer ,cname) cname]
 
     ;; This is an unused value.
     [(VQueue ,_) "char"]

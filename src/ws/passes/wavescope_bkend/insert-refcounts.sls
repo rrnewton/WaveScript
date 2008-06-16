@@ -3,7 +3,7 @@
 (library (ws passes wavescope_bkend insert-refcounts)
   (export insert-refcounts
 	  flag-static-allocate
-	  heap-allocated?
+	  c-heap-allocated?
 	  gather-heap-types)
   (import (rnrs) (rnrs mutable-pairs)
 	  (ws common)	  
@@ -18,15 +18,15 @@
       (list which ty exp)))
 
 ;; The default wavescript scalar-type? predicate returns #t only for
-;; numbers and characters.  It returns #f for tuples. For this backend
-;; we have a somewhat tricker predicate heap-allocated?.
+;; numbers and characters.  It returns #f for tuples. For the C
+;; backends we have a somewhat tricker predicate c-heap-allocated?.
 ;; Currently, it reflects the decision that tuples are value types,
 ;; but they may contain pointers...
-(define heap-allocated? 
+(define c-heap-allocated? 
   (case-lambda 
-    ;[(ty) (heap-allocated? ty global-struct-defs)]
+    ;[(ty) (c-heap-allocated? ty global-struct-defs)]
     [(ty struct-defs union-types)
-     (define (recur x) (heap-allocated? x struct-defs union-types))
+     (define (recur x) (c-heap-allocated? x struct-defs union-types))
      (match ty
        [,scl (guard (scalar-type? scl)) #f]
        ;; The tuples are not themselves currently heap allocated, but they may contain pointers:
@@ -36,7 +36,7 @@
        [(Struct ,tuptyp) 
 	(let ([entry (assq tuptyp struct-defs)])
 	  (unless entry
-	    (error 'heap-allocated? "no struct-def entry for type: ~s" tuptyp))
+	    (error 'c-heap-allocated? "no struct-def entry for type: ~s" tuptyp))
 	  (ormap recur (map cadr (cdr entry))))]
 
        ;; Currently tagged unions are just like tuples:
@@ -57,6 +57,12 @@
        [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
        [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
        [Symbol #f] ;; Meaningless answer.  No runtime representation... used internally.
+
+       ;; This is a trick question.  C pointers are allocated on the
+       ;; C heap, but are not managed by WS, so are basically just an
+       ;; integer from our perspective.
+       [(Pointer ,str) #f]
+
        )]))
 
 ;; Helper pass.
@@ -66,7 +72,7 @@
     (define struct-defs '())
     (define union-types '())
     (define (excluded? ty)
-      (or (not (heap-allocated? ty struct-defs union-types))
+      (or (not (c-heap-allocated? ty struct-defs union-types))
 	  ;; HACKISH: 
 	  (deep-assq 'Stream ty)
 	  (deep-assq 'VQueue ty)))
@@ -113,7 +119,7 @@
     ;; This is mutated below.
     (define global-struct-defs '())    
     (define global-union-types '())
-    (define (not-heap-allocated? ty) (not (heap-allocated? ty global-struct-defs global-union-types)))
+    (define (not-heap-allocated? ty) (not (c-heap-allocated? ty global-struct-defs global-union-types)))
     ;; Adding a tricky value-needed? flag.  Basically, there are two
     ;; different scenarios for DriveInside, it can either push in a
     ;; refcount incr *to that value*, or it can push in a decr that
