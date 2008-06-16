@@ -1118,8 +1118,6 @@
 
 		     (ws-run-pass prog emit-c2 class)
 
-		     (inspect prog)
-
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])

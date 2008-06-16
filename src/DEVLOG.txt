@@ -1498,3 +1498,9 @@ representation invariants (fixnum<->float) should always be maintained
 they are not.  Only when data is unpacked from such a container is it
 forced to conform with the proper numeric representation.
 
+[2008.06.16]
+
+It looks like the myserious infinite loops in R6RS eval (for using ws)
+under PLT 3.99 are gone under 4.0.  I can now run the demos.  (There's
+still a unit test that fails... probably for a different reason.) 
+
