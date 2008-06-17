@@ -284,7 +284,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; 
 
 
-#|
+#| ;; Comment chez
 
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: WScript loads from source (via script):" "./regiment_script.ss &> chez_SCRIPT_LOAD.log")
@@ -319,7 +319,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Now clean again:
 ;(ASSERT (system "make clean > make_clean2.log"))
 
-|#
+|# ;; End comment chez
 
 (fpf "\n")
 (run-test "wsparse: Building executable (plt):" "make wsparse &> plt_WSPARSE.log")
@@ -386,8 +386,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (putenv "REGIMENTHOST" ""))
   )
 
-#|
 
+#; ;; Disabling
 
 ;; Now for GSL interface.
 (parameterize ([current-directory (format "~a/lib/" test-root)])
@@ -396,13 +396,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; PLT has a bug with "exists" right now:  [2008.05.21]
-#|
-  (ASSERT (putenv "REGIMENTHOST" "plt"))
-  (run-test "wsc2: GSL test_matrix_gsl.ws (plt):" 
-	    (format "wsc2 test_matrix_gsl.ws  -exit-error &> ~a/matrix_gsl_build.log" test-directory))
-  (run-test "wsc2: Run output executable:" 
-	    (format "./query.exe -n 10 &> ~a/matrix_gsl_run.log" test-directory))
-|#  
+;   (ASSERT (putenv "REGIMENTHOST" "plt"))a
+;   (run-test "wsc2: GSL test_matrix_gsl.ws (plt):" 
+; 	    (format "wsc2 test_matrix_gsl.ws  -exit-error &> ~a/matrix_gsl_build.log" test-directory))
+;   (run-test "wsc2: Run output executable:" 
+; 	    (format "./query.exe -n 10 &> ~a/matrix_gsl_run.log" test-directory))
+
 
   ;; Not working in ikarus, no foreign interface [2008.05.21]
 #;
@@ -414,6 +413,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "ws run_matrix_gsl_test.ws -n 2-exit-error  &> ~a/matrix_gsl.log" test-directory))
 
   )
+
+
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
@@ -450,7 +451,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ) ;; End engine
 
-|#
+
+
+
 ;;================================================================================
 ;; Now test WSC:
 
@@ -484,25 +487,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;   (run-test "wsc: Running stdlib_test:"
 ; 	    (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory)))
 
-#|
 
-#| ;; DISABLING
+
+
 ;;================================================================================
 ;; Now test WSCAML:
 
-(fpf "\n\nWaveScript CAML Backend: \n")
-(fpf "========================================\n")
+;; DISABLING
+; (fpf "\n\nWaveScript CAML Backend: \n")
+; (fpf "========================================\n")
+; (parameterize ((current-directory test-directory))
+;   (newline)       
+;   (run-test "wscaml: Building ocaml libraries (fftw, etc):" 
+; 	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
+;   (current-directory (format "~a/demos/wavescope" test-directory))
+;   (run-test "wscaml: Running Demos through OCaml:" 
+; 	    (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))
+;   )
 
-(parameterize ((current-directory test-directory))
-  (newline)       
-  (run-test "wscaml: Building ocaml libraries (fftw, etc):" 
-	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
-  (current-directory (format "~a/demos/wavescope" test-directory))
-  (run-test "wscaml: Running Demos through OCaml:" 
-	    (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))
-  )
-
-|#
 
 (begin 
   (fpf "\n\nWaveScript MLTON Backend:\n" )
@@ -523,10 +525,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 )
 
 
+
+
 ;;================================================================================
 ;; APPLICATIONS
-
-|#
 
 (fpf "\n\nWaveScript Applications:\n")
 (fpf "========================================\n")

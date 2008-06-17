@@ -138,7 +138,7 @@
       (slot-set! self 'link-files (cons fn files))))
 
   (define (add-file! self)
-    (trace-lambda ADFILE (file)
+    (lambda (file)
       ;; Add to global list of includes if it's not already there.
       (let ([ext (extract-file-extension file)])
 	(cond
