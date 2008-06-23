@@ -62,7 +62,11 @@
        ;; C heap, but are not managed by WS, so are basically just an
        ;; integer from our perspective.
        [(Pointer ,str) #f]
-
+       ;; This is an even trickier question.  These are allocated
+       ;; externally, but they are deallocated by WS when it is
+       ;; finished with them.
+       [(ExclusivePointer ,str) #t]
+       
        )]))
 
 ;; Helper pass.

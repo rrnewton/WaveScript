@@ -23,4 +23,6 @@ if [ "$UTIME" == "" ]; then echo "Couldn't extract time!"; exit -1; fi
 
 # convert to milliseconds
 #echo "(* (+ 0 $UTIME) 1000)" | petite -q
-echo "(* (+ 0 (* 60 $MIN) $SEC) 1000)" | petite -q
+#echo "(* (+ 0 (* 60 $MIN) $SEC) 1000)" |  petite -q
+
+echo "68 $MIN * $SEC + 1000 * p" |  dc

@@ -2,37 +2,47 @@
 
 export REGFLAG=wsc2
 
+# Get out only the relevant options:
+RELEVANT=`getopt -a -l "gcc:,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+#echo wsc2 getopt result: $RELEVANT
+
+# I would like to pass only the relevant options on to "wsc", but I
+# can't currently get getopt to do everything I want it to, i.e. pass
+# through everything not handled in after the "--".
+
 rm -f query.c query.exe
 if wsc $* -no-gcc;
 then echo ERROR, wsc2 failed with code $?.; exit 1;
 else echo
 fi
 
-# MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
-# if [ "$MATCH" != "" ];
-# then 
-#    export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
-#    export WS_LINK="$WS_LINK $EXTRALIBS"
-#    echo Linking extra libraries requested by query file: $EXTRALIBS
-# fi
+eval set -- "$RELEVANT"
 
-## LAME that this is duplicated:
+NOGCC=
 while [ $# != 0 ];  do 
-  if [ "$1" == "-O0" ] || 
-     [ "$1" == "-O1" ] || 
-     [ "$1" == "-O2" ] || 
-     [ "$1" == "-O3" ];
-  then export COPTFLAG="$1"; 
-  ## Otherwise just SKIP them:
-  fi
-  shift;
-done;
+#for flag in $RELEVANT; do 
+ #echo Handling flag: $flag
+ case $1 in 
+   # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
+   --O0 ) COPTFLAG="$flag";;
+   --O1 ) COPTFLAG="$flag";;
+   --O2 ) COPTFLAG="$flag";;
+   --O3 ) COPTFLAG="$flag";;
+   "--nogcc" | "--no-gcc" ) NOGCC=true;;
+   "--gcc" ) export CC="$2"; shift;;
+   "--" ) break;;
+#   *) echo "  Uh, unhandled...";;
+ esac;
+ shift;
+done
 
-
-if [ -f "query.c" ]; 
-then exec wsc2-gcc;
-else echo query.c not found...; exit 1
+if ! [ -f "query.c" ]
+then echo "query.c not found..."
+elif [ $NOGCC ]
+then echo "Not calling C compiler."; exit 0
+else exec wsc2-gcc
 fi
+
 
 ## Run again to profile branches:
 # ./query.exe
@@ -44,7 +54,7 @@ fi
 # GCC flags not enabled by -O3:
 #       -fforce-addr
 #       -funroll-loops / unroll-all-loops
-#       -finline-limit=n
+#       -finline-limit=
 #       -fno-keep-static-consts
 #       -fmerge-all-constants (non conforming behavior)
 

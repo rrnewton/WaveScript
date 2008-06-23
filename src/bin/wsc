@@ -17,7 +17,8 @@ WSCDEBUG=0
 
 # This is lame, but have to pass through a bunch of stuff from the script to the scheme process.
 while [ $# != 0 ];  do 
-  if [ "$1" == "-no-gcc" ]
+  if [ "$1" == "-no-gcc" ] || 
+     [ "$1" == "-nogcc" ]
   then NOGCC=1;
   elif [ "$1" == "-dbg" ]
   then WSCDEBUG=1;

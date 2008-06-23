@@ -3,7 +3,7 @@
 /*
 
  The sigseg based version (streamit.ws) could handle input windows of
- arbitrarily granularity, and would produce output windows based no
+ arbitrarily granularity, and would produce output windows based on
  the size of inputs.
 
  This version does more work at metaprogram eval and uses data rates
@@ -78,9 +78,9 @@ fun compute_schedule(rates) {
   final;
 }
 
-fun roundup_schedule(schedule, rates) {
+fun scaleup_schedule(schedule, rates) {
   using List;
-  println(" Rounding up "++ schedule++" " ++ rates);
+  println(" Scaling up "++ schedule++" " ++ rates);
 
   maxs = map2(fun((pk,pp,psh), k) k * max(pp,psh), rates, schedule);
   mins = map2(fun((pk,pp,psh), k) k * min(pp,psh), rates, schedule);
@@ -95,14 +95,14 @@ fun roundup_schedule(schedule, rates) {
   maxscale  = MAX_ELEMENTS / mx;  
   finalscale = min(morescale,maxscale);
   newsched = map((* finalscale), schedule);
-  println("Rounding up scaling from "++ schedule ++" to: "++ newsched);
+  println("Scaling from "++ schedule ++" to: "++ newsched);
   newsched
 }
 
 // This computes a schedule and instantiates the stream graph.
 fun run((rates, tform), source) {
   schedule = compute_schedule(rates);
-  sched2   = roundup_schedule(schedule, rates);
+  sched2   = scaleup_schedule(schedule, rates);
   let (_,pop,_) = rates.head;
   inputrate = sched2.head * pop;
   let (_,strm) = tform(sched2, source.window(inputrate));
@@ -243,7 +243,7 @@ main = pipeline([add1, add1, add1, times10]) $ s0;
 //main = ident $ s0;
 */
 
-
+namespace Testing { 
 
 s0 = COUNTUP(1);
 add1 = filter(1, 1, 1, fun(peek,pop,push) {
@@ -263,7 +263,10 @@ let pipe = pipeline([add1, sum, add1]);
 test_schedule :: List Rates;
 test_schedule = [(1,1,7), (3,3,2), (1,1,1), (5,5,7)];
 
+}
+
 main = { 
+  using Testing;
   //println("Test Schedule: "++ compute_schedule(test_schedule));
   run(pipe,s0);
 }

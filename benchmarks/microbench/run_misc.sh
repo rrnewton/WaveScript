@@ -16,7 +16,7 @@ mkdir $TEMP
 # ./download_small_sample_data
 # cp 6sec_marmot_sample.raw "$START"/
 # cd $START
-ln -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
+ln -f -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
 
 ## This is ugly, but for supporting the new C++ backend, this needs to
 ## know how to limit the work via input tuples or output tuples.

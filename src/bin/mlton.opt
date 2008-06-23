@@ -5,8 +5,8 @@
 
 MACHINE=`uname -m`
 if [ "$MACHINE" == "x86_64" ];
-then mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen amd_64 $*
-else mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen x86    $*
+then mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen amd64 -cc-opt '-O3' $*
+else mlton -default-ann 'allowFFI true' -const 'MLton.safe false' -const 'MLton.detectOverflow false' -codegen x86   -cc-opt '-O3' $*
 fi
 
 

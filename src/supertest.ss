@@ -387,13 +387,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
   )
 
 
-#; ;; Disabling
-
 ;; Now for GSL interface.
 (parameterize ([current-directory (format "~a/lib/" test-root)])
   (run-test "ws: Generating gsl matrix library wrappers:" 
 	    (format "make &> ~a/gsl_wrappers.log" test-directory))
-
 
 ;; PLT has a bug with "exists" right now:  [2008.05.21]
 ;   (ASSERT (putenv "REGIMENTHOST" "plt"))a
@@ -600,6 +597,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ) ;; End MARMOT
 
 
+
 (parameterize ((current-directory (format "~a/apps/telos_audio" test-root)))
   #;
   (run-test "ws: Running first speaker detection: "
@@ -659,8 +657,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
-#; ;; Disabling
+
 (parameterize ((current-directory (format "~a/benchmarks" test-root)))
+  
+  
+#|
   ;; [2007.10.30] building incrementally, so we see what fails:
   (run-test "    Setup Engines:             " 
 	    (format "make engine &> ~a/bench_setup.log" test-directory))
@@ -688,7 +689,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (system "make topafter"))
   (run-test "    Compile results, build full report: " 
 	    (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
+|#
   )
+
 
 ;; POTHOLE 
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.

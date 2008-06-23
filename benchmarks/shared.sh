@@ -1,10 +1,19 @@
 
+## This is the list of backends to test, valid symbols are:
+#  scheme, schemeO3
+#  mlton, mltonO3 
+#  cpp, cpp_df, cpp_corefit, cpp_corefit_nothreads -- The old XStream/C++ backend
+#  c2 -- the new C backend
+BACKENDS="scheme mlton mltonO3"
+
+
 
 OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
 
 function print_results_header() {
-  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> RESULTS.txt
+   echo Benchmark $BACKENDS >> RESULTS.txt
+#  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> RESULTS.txt
 }
 
 
@@ -112,7 +121,7 @@ function runmltonO3() {
 }
 
 
-
+## This is where you disable/enable backends.
 function runallbackends() {
   NAME=$1
   FILE=$1.ws
@@ -124,48 +133,30 @@ function runallbackends() {
   # Clean up:
   rm -f query.*  
 
-  ## FIRST THE OLD SCHEDULER:  
-  if [ "$OMITOLD" == "" ]; then 
-   echo
-    runcpp
-    runcpp_df
-  fi
+  for backend in $BACKENDS; do
+    case $backend in
+      scheme)   runscheme;   SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
+      schemeO3) runschemeO3; SCHEMEO3=`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`;;
+      mlton)    runmlton;    ML=`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`;;
+      mltonO3)  runmltonO3;  MLO3=`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`;;
+      cpp)      runcpp;      CPP=`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`;;
+      cpp_df)   runcpp_df;   CPPDF=`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`;;
+      cpp_corefit) runcpp_corefit; 
+                             CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`;;
+      cpp_corefit_nothreads) runcpp_corefit_nothreads; 
+                             CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`;;
 
-  ## NOW THE NEW SCHEDULER:
-  runcpp_corefit_nothreads
-  runcpp_corefit
-
-  runscheme
-  runschemeO3
-  
-  if [ "$OMITMLTON" == "" ]; then 
-    runmlton; 
-    runmltonO3;
-  fi
-
-  SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`
-  SCHEMEO3=`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`
-  ML=`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`
-  MLO3=`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`
-  CPP=`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`
-  CPPDF=`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`
-  CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`
-  CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`
-
-## Temporarilly disabling some backends:
-#  SCHEME="-1"
-#  CPPNEW="-1"
-#  CPPNOTHREADS=-1
-#  MLO3="-1"
-
-  ## This automatically catches it if one of the backends above was disabled. 
-  CPP_BROKE=`echo $CPP | grep File`
-  CPPDF_BROKE=`echo $CPPDF | grep File`
-  CPPNEW_BROKE=`echo $CPPNEW | grep File`
-
-  if [ ! "$CPP_BROKE" == "" ];   then CPP="-1"; fi
-  if [ ! "$CPPDF_BROKE" == "" ]; then CPPDF="-1"; fi
-  if [ ! "$CPPNEW_BROKE" == "" ]; then CPPNEW="-1"; fi
+      *) echo Unhandled backend: $backend; exit -1;;
+    esac
+  done
+   
+#   ## This automatically catches it if one of the backends above was disabled. 
+#   CPP_BROKE=`echo $CPP | grep File`
+#   CPPDF_BROKE=`echo $CPPDF | grep File`
+#   CPPNEW_BROKE=`echo $CPPNEW | grep File`
+#   if [ ! "$CPP_BROKE" == "" ];   then CPP="-1"; fi
+#   if [ ! "$CPPDF_BROKE" == "" ]; then CPPDF="-1"; fi
+#   if [ ! "$CPPNEW_BROKE" == "" ]; then CPPNEW="-1"; fi
 
   # ================================================================================
   echo "RESULTS: (1) $NAME (2) $SCHEME (3) $SCHEMEO3 (4) $CPP (5) $CPPDF (6) $CPPNEW (7) $CPPNOTHREADS (8) $ML (9) $MLO3"

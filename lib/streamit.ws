@@ -1,7 +1,7 @@
 
 
-
-// What would it actually take to expose a push/pop/peek interface to (Stream (Sigseg T))??
+// This aims to emulate a streamit push/pop/peek interface to streams.
+// (Implemented on top of streams of sigsegs.)
 
 // The limitation is that if you want to have state... you have to
 // accept and return it explicitly.  However, with interpret-meta that's not true!!
@@ -121,6 +121,7 @@ fun filter_keepscale(peekN,popN,pushN, fn)
   }
 }
 
+// Lets use the better one.
 filter = filter_keepscale;
 
 
@@ -172,8 +173,13 @@ fun splitjoin(head, filters, tail)
 } // End namespace
 
 
-/*
+
+// Example program:
+
+
 using Streamit;
+
+namespace Testing {
 
 f1_state = Mutable:ref(0);
 f1 = filter(2, 1, 3, fun(peek,pop,push) {
@@ -198,10 +204,14 @@ times10 = filter(1, 1, 1, fun(peek,pop,push) {
 
 s0 = COUNTUP(1).window(10);
 //s0 = COUNTUP(1).window(1);
+};
 
 //main = s0;
 //main = f1 $ s0;
 //main = pipeline([f1,f1]) $ s0;
-main = pipeline([add1, add1, add1, times10]) $ s0;
+main = { 
+  //  using Streamit;
+  using Testing;
+  pipeline([add1, add1, add1, times10]) $ s0;
+}
 //main = ident $ s0;
-*/
