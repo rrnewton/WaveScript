@@ -525,12 +525,13 @@
 
 (__spec Type <emitC2> (self ty)
   (match ty ;; No recursion!
-    [Bool    "char"]
+    [Bool    "ws_bool_t"]
     [Int     "int"]
     [Int16   "int16_t"]
     [Int32   "int32_t"]
     [Int64   "int64_t"]
     [Uint16  "uint16_t"]
+    [Uint8   "uint8_t"]
     [Double  "double"]
     [Float   "float"]
     [Complex "float complex"]
@@ -584,7 +585,8 @@
     [Int16  "%hd"]
     [Int32  "%ld"]
     [Int64  "%lld"]
-    [Uint16  "%hu"]
+    [Uint16 "%hu"]
+    [Uint8  "%hu"]
     [Float  "%g"]
     [Double "%lf"]
     [#() "()"]
@@ -1249,7 +1251,7 @@
 
 	[(absC ,[Simp -> c]) (kont `("cNorm(",c")"))]
 
-	[(intToChar ,[Simp -> e]) (kont `("(wschar_t)",e))]
+	[(intToChar ,[Simp -> e]) (kont `("(ws_char_t)",e))]
        
 	[(__cast_num ',from ',to ,[Simp -> e])
 	 ;(inspect (vector from to))

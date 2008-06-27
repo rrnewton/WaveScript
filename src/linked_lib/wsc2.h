@@ -25,7 +25,8 @@
 #define FALSE 0
 
 #define ws_unit_t char
-#define wschar_t char
+#define ws_char_t char
+#define ws_bool_t char
 
 #define PTRSIZE sizeof(void*)
 #define RCSIZE sizeof(int)

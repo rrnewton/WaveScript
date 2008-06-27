@@ -34,6 +34,7 @@
   (define (int64 x)   (match x [g+ '_+I64] [g- '_-I64] [g* '*I64] [g/ '/I64] [g^ '^I64] [abs 'abs64]))
   
   (define (uint16 x)  (match x [g+ '_+U16] [g- '_-U16] [g* '*U16] [g/ '/U16] [g^ '^U16])) ; [abs 'abs16]
+  (define (uint8 x)   (match x [g+ '_+U8]  [g- '_-U8]  [g* '*U8]  [g/ '/U8]  [g^ '^U8]) ) ; [abs 'abs8]
 
   (define degeneralize-arithmetic-grammar
     (filter (lambda (x)
@@ -55,7 +56,7 @@
 		    (match (list t (strip-annotations (car args)))
 		      
 		      [(,inttype (quote ,n))
-		       (guard (memq inttype '(Int16 Int32 Int64 Uint16)))
+		       (guard (memq inttype '(Int16 Int32 Int64 Uint16 Uint8)))
 		       ;(ASSERT (constant-typeable-as? n inttype))
 		       (let ([squeeze 
 			      (if (constant-typeable-as? n inttype) n
@@ -73,7 +74,7 @@
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
 		       [(Int32   ,e)  `(__cast_num 'Int 'Int32 ,e)]
-		       [(,i16   ,e)  (guard (eq-any? i16 'Int16 'Uint16))
+		       [(,i16   ,e)  (guard (eq-any? i16 'Int16 'Uint16 'Uint8))
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type ~a, it might overflow: ~s"
 			       i16 `(gint ,e))]
@@ -108,6 +109,7 @@
 		       [(Int16)   `(,(int16   genop) . ,args)]
 		       [(Int32)   `(,(int32   genop) . ,args)]
 		       [(Int64)   `(,(int64   genop) . ,args)]
+		       [(Uint8)   `(,(uint8   genop) . ,args)]
 		       [(Uint16)  `(,(uint16  genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]
 		       [(Double)  `(,(double  genop) . ,args)]

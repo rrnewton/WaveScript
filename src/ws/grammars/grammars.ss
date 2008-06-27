@@ -18,12 +18,8 @@
 	(and (> (string-length str) 0)
 	     (char-lower-case? (string-ref str 0)))))
     `(
-      [Type 'Int]
-      [Type 'Int16]
-      [Type 'Int64]
-      [Type 'Float]
-      [Type 'Double]
-      [Type 'Complex]
+      ,@(map (lambda (sym) `[Type ',sym]) num-types)
+
       [Type 'Bool]
       [Type 'String]
 

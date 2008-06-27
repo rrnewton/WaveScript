@@ -89,7 +89,7 @@
 		    Int16 Int32 Int64
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
-		    Uint16
+		    Uint8 Uint16
 		    ))
 
 ;; Force a number into a smaller integer size:
