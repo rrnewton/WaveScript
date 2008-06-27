@@ -577,6 +577,7 @@
   (match ty
     [#()    "()"]
     [String "%s"]
+    [Char   "%c"]
     [(Array Char) "%s"] ;; HACK: These are strings in disguise.
     [Bool   "%d"]
     [Int    "%d"]
@@ -1367,7 +1368,7 @@
 	  (make-lines        
 	   (block (list "int main(int argc, "(Type self `(Array (Array Char)))" argv)" )
 		  (list 
-		   "parseOptions(argc,argv);\n"
+		   "ws_parse_options(argc,argv);\n"
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
@@ -1446,7 +1447,7 @@ int main(int argc, char **argv)
       fprintf(stderr, \"Usage: %s <device> <rate> - get packets from a serial port\\nExample: device=/dev/ttyUSB0, rate=telosb\\n\", argv[0]);
       exit(2);
   }
-  parseOptions(argc-2,argv+2);
+  ws_parse_options(argc-2,argv+2);
 
   src = open_serial_source(argv[1], platform_baud_rate(argv[2]), 0, stderr_msg);
   if (!src)  {
@@ -1506,6 +1507,7 @@ int main(int argc, char **argv)
   int main(int argc, char** argv) {
     wsinit(argc, argv);
     initState();
+    ws_parse_options(argc, argv);
     wsmain(argc, argv);
     return 0;
   }

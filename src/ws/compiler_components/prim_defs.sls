@@ -90,8 +90,6 @@
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 		    Uint16
-		    ;; Following haskell's example and having "words" rather than uints:
-		    ;Word16
 		    ))
 
 ;; Force a number into a smaller integer size:

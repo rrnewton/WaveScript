@@ -1,4 +1,6 @@
 
+// Test for hooking up to Ptolemy.
+
 include "stdlib.ws";
 include "ptolemy.ws";
 

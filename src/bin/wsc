@@ -62,6 +62,10 @@ while [ $# != 0 ];  do
   shift;
 done;
 
+# ,O0,O1,O2,O3
+#REGPASSTHRU=`getopt -l "disable-pass:,scheduler:,param-file:,opt:,exit-error,split,dot" -o ":v:t" -- "$@"`
+#CCPASSTHRU=`getopt -l "" -o ":" -- "$@"`
+
 if [ ! -f "$FILE" ];
 then echo Usage: "wsc <file> <options ...>";
 #     echo   (Options: -b  Build cpp file.)
@@ -124,7 +128,9 @@ fi
 export WSCDEBUG
 
 export COPTFLAG
-if [ "$NOGCC" == "0" ] &&  $CCOMPILE $CCPASSTHRU ./query 
+if ! [ "$NOGCC" == "0" ]
+then exit 0
+elif $CCOMPILE $CCPASSTHRU ./query 
 then 
   if [ ! -d "$WAVESCOPED" ]; 
   then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
@@ -132,5 +138,5 @@ then
   fi
   echo
   echo "Executable output to query.$WSEXESUFFIX"
-else exit 1;
+else echo "C compilation failed"; exit -1;
 fi;

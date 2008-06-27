@@ -1,4 +1,6 @@
 
+// ensbox platform testing
+
 include "stdlib.ws";
 include "vxpsource.ws";
 

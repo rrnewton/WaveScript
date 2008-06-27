@@ -1,4 +1,5 @@
 
+// ensbox platform testing
 // test for log
 
 include "timersource.ws";

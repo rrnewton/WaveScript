@@ -24,6 +24,9 @@
 #define TRUE  1
 #define FALSE 0
 
+#define ws_unit_t char
+#define wschar_t char
+
 #define PTRSIZE sizeof(void*)
 #define RCSIZE sizeof(int)
 #define ARRLENSIZE sizeof(int)
@@ -63,6 +66,8 @@
 //typedef unsigned int16_t uint16_t;
 typedef unsigned short int uint16_t;
 
+#define moduloI(a,b) (a % b)
+
 int outputcount = 0;
 int wsc2_tuplimit = 10;
 
@@ -72,13 +77,15 @@ void BASE(char x) {
   fflush(stdout);
 }
 
-void parseOptions(int argc, char** argv) {
+void ws_parse_options(int argc, char** argv) {
   int i, c;
   while ((c = getopt(argc, argv, "n:")) != -1) {
+        printf("Parsing option character: %c\n", c);
 	switch (c) {
 	case 'n':
 	        wsc2_tuplimit = atoi(optarg);
 		break;
+	// case 's': // Do not print main stream output tuples.
 	default:
 	  //		usage();
 	  //		return 1;

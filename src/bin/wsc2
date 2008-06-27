@@ -11,9 +11,9 @@ RELEVANT=`getopt -a -l "gcc:,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
 # through everything not handled in after the "--".
 
 rm -f query.c query.exe
-if wsc $* -no-gcc;
-then echo ERROR, wsc2 failed with code $?.; exit 1;
-else echo
+if wsc $* -exit-error -no-gcc
+then echo
+else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi
 
 eval set -- "$RELEVANT"
@@ -44,11 +44,15 @@ else exec wsc2-gcc
 fi
 
 
+
+
+
+
+
 ## Run again to profile branches:
 # ./query.exe
 # CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c -fbranch-probabilities"
 # echo $CMD; $CMD
-
 
 
 # GCC flags not enabled by -O3:

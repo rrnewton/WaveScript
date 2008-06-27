@@ -75,6 +75,8 @@ Array:concat    :: (List (Array t)) -> Array t;
 Array:flatten   :: (Array (Array t)) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
+Array:mapi       :: ((Int, a) -> b, Array a) -> Array b;
+//Array:sub        :: (Array a, Int, Int) -> Array a;
 
 //Array:sort       :: ()
 
@@ -573,6 +575,13 @@ namespace Array {
       arr[i] := v;
     }
   }
+
+  // Takes a start and a number of elements to copy.
+  /*
+  fun  sub(arr, st, len) {
+    Array:build(len, fun(i) arr[st+i]);
+  }
+  */
 
   // Append a list of arrays.
   fun concat(loa) {
@@ -1837,6 +1846,8 @@ from64 = int64ToInt;
 
 fun merge3(a,b,c) merge(merge(a,b), c)
 
+Curry:amap    = fun(f) fun(x) Array:map(f,x);
+Curry:amapi   = fun(f) fun(x) Array:mapi(f,x);
 Curry:smap    = fun(f) fun(x) stream_map(f,x);
 Curry:sfilter = fun(f) fun(x) stream_filter(f,x);  
 Curry:deep_stream_map = fun(f) fun(x) deep_stream_map(f,x);  
