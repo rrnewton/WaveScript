@@ -110,8 +110,15 @@ fun untuple_pixels(arr) {
 tweak_pixel :: RGB -> RGB;
 fun tweak_pixel((r,g,b)) 
 //   (r,g,b)
-   (r + 20, g, b)
-//  (r, min(g * 2, 255), b)
+//   (r,255,b)
+//   (r + 20, g, b)
+//   (r, g * 2, b)
+//   (r, min(g * 2, 250), b)
+//   (r, if 2*g > 250 then 250 else 2*g, b)
+//   (r, if 2*g > 250 then g else 2*g, b)
+//   (r, if g > 100 then 0 else g, b)
+   if g > 120 then (r,g,b) else (r,2*g,b)
+
 // (b,g,r)
 //   (g,g,g)
 //   (intToChar$ 0, intToChar$ 64, intToChar$ 0)

@@ -30,6 +30,10 @@ conjC      :: Complex -> Complex;
 gaussian   :: (Float, Int) -> Array Float;
 modF       :: (Float, Float) -> Float;
 
+floorF     :: Float -> Float;
+ceilF      :: Float -> Float;
+
+
 /// Lifted FFT operators:
 
 stream_fftR2C  :: Stream (Array Float) -> Stream (Array Complex);
@@ -273,6 +277,9 @@ fun modF(f, base) {
   };
   tmp
 }
+
+fun floorF(f)  intToFloat(floatToInt(f))
+fun ceilF(f)   roundF(f + 0.5);
 
 // This *should* work by caching one or more fftw plans.
 // [2007.10.30] SHOULD be using memoized_fftR2C here.

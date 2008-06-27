@@ -533,6 +533,42 @@
 		)
 ;    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
 
+    ;; Helper for array navigation.
+    (arrayNav ;[() (lambda (x) x)]
+	      [(LeftSqrBrk notlist RightSqrBrk)  (lambda (x) `(Array:ref ,x ,$2))]
+	      ;[(LeftSqrBrk notlist RightSqrBrk arrayNav)  (lambda (x) ($4 `(Array:ref ,x ,$2)))]
+	      [(arrayNav LeftSqrBrk notlist RightSqrBrk)  (lambda (x) `(Array:ref ,($1 x) ,$3))]
+	      )
+    
+    (assignment
+                  
+         [(VAR := exp) `(set! ,$1 ,$3)]
+
+	 ;; This is a verbose way to specify it, but I run into trouble if I try with just one production:
+         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,(wrap $1-start-pos $1-end-pos $1) ,$3 ,$6)]         
+         [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk := exp)  
+	  `(Array:set ,($2 (wrap $1-start-pos $1-end-pos $1)) ,$4 ,$7)]
+
+	 ;; Shorthands:
+         [(VAR += exp) `(set! ,$1 (+ ,$1 ,$3))]
+         [(VAR *= exp) `(set! ,$1 (* ,$1 ,$3))]
+         [(VAR -= exp) `(set! ,$1 (- ,$1 ,$3))]
+
+	 ;; Now this is REALLY verbose.  And these add one shift/reduce conflict each.
+         [(VAR LeftSqrBrk notlist RightSqrBrk += exp)  
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,var ,$3 (+ (Array:ref ,var ,$3) ,$6)))]
+         [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk += exp)
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,($2 var) ,$4 (+ (Array:ref ,($2 var) ,$4) ,$7)))]
+         [(VAR LeftSqrBrk notlist RightSqrBrk *= exp)  
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,var ,$3 (* (Array:ref ,var ,$3) ,$6)))]
+         [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk *= exp)
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,($2 var) ,$4 (* (Array:ref ,($2 var) ,$4) ,$7)))]
+     )
+
     (notlist
        ;; TEMPTOGGLE: Do we wish to treat complex numbers as constants, or calls to makeComplex? (for ikarus)
      ;[(NUM) `',$1]
@@ -601,13 +637,8 @@
 	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
 	 ;; For now unwrap the src-pos info on these:
 	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,(map unwrap $3) ,(unwrap $1))]
-                  
-         [(VAR := exp) `(set! ,$1 ,$3)]
-         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,(wrap $1-start-pos $1-end-pos $1) ,$3 ,$6)]
-	 ;; Shorthands:
-         [(VAR += exp) `(set! ,$1 (+ ,$1 ,$3))]
-         [(VAR -= exp) `(set! ,$1 (- ,$1 ,$3))]
-         [(VAR *= exp) `(set! ,$1 (* ,$1 ,$3))]
+
+	 [(assignment) $1]
 
 	 ;; Normal application.  Operators that are simple are straightforward:
          [(VAR LeftParen expls RightParen) `(app ,(wrap $1-start-pos $1-end-pos $1) ,@$3)]
@@ -626,6 +657,10 @@
 
 	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,(wrap $1-start-pos $1-end-pos $1) ,$3)]
+
+         [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk) (prec APP) 
+	  `(Array:ref ,($2 (wrap $1-start-pos $1-end-pos $1)) ,$4)]
+
          [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(Array:ref ,$2 ,$5)]
          
          ;; Expression with user type annotation:
