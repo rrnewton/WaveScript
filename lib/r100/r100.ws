@@ -2,6 +2,9 @@
 
 include "stdlib.ws"
 
+type Color = Uint8;
+type RGB = (Color * Color * Color);
+
 // This is a stream of frames from the front camera.
 // Frames are arrays of uint16s.
 //
@@ -12,10 +15,10 @@ front_camera = {
   getwidth  :: () -> Int = foreign("cam_width",  file);
   getheight :: () -> Int = foreign("cam_height", file);
   //set_cam_scratch :: Array Uint16 -> () = foreign("set_cam_scratch", file);
-  set_cam_scratch :: Array Char -> () = foreign("set_cam_scratch", file);
+  set_cam_scratch :: Array Color -> () = foreign("set_cam_scratch", file);
   camera_ticks = (foreign_source("ws_camera_hookup", file)
                   :: Stream ());
-                  //:: Stream (Array (Array Char)));
+                  //:: Stream (Array (Array Color)));
 
   // The C side sends ticks.  We use a hack to allocate a single
   // static frame buffer on the WS heap and pass it to C.
@@ -27,8 +30,8 @@ front_camera = {
       height = getheight();
       // On our very first tick we allocate the buffer, that is it.
       print$ "Allocating camera buffer "++ wid ++" by "++ height ++"\n";
-      //cambuf := Array:make(wid * height * 3, (0 :: Char));
-      cambuf := Array:make(wid * height * 3, intToChar(0));
+      //cambuf := Array:make(wid * height * 3, (0 :: Color));
+      cambuf := Array:make(wid * height * 3, (0::Uint8));
       // Register the buffer once and for all with C.
       set_cam_scratch(cambuf);
       print$ "Registered camera buffer with C.\n";
@@ -47,7 +50,7 @@ front_camera = {
 // tuples that signify the completion of screen updates.
 display_to_screen = {
   //c_fun :: (Array Uint16) -> () = foreign("display_to_screen", ["front_camera.c"]);
-  c_fun :: (Array Char) -> () = foreign("display_to_screen", ["front_camera.c"]);
+  c_fun :: (Array Color) -> () = foreign("display_to_screen", ["front_camera.c"]);
   fun (frames) 
     iterate frame in frames {
       c_fun(frame);
@@ -78,6 +81,7 @@ fun deinterleave_frame(arr) {
 // Pack the color values into structs.  Really, given C
 // representations this is an identity function on the bits.
 // Inefficient.
+tuple_pixels :: Array Color -> Array (Color * Color * Color);
 fun tuple_pixels(arr) {
  len = Array:length(arr) / 3;
  Array:build(len, fun (i) {
@@ -89,7 +93,8 @@ fun tuple_pixels(arr) {
  })
 }
 
-fun untuple_pixels(arr) { 
+untuple_pixels :: Array (Color * Color * Color) -> Array Color;
+fun untuple_pixels(arr) {
  using Mutable; using Array;
  newarr = makeUNSAFE(3 * length(arr));
  for i = 0 to length(arr) - 1 {
@@ -102,20 +107,11 @@ fun untuple_pixels(arr) {
  newarr
 }
 
-fun invert_color(ind, c) {  
-  //if ind > 240 * 320 
-  if (moduloI(ind, 3) == 2) // 0 red, 1 green, 2 blue
-  then {
-    c //intToChar(0)
-  } 
-  else //c
-    intToChar(0)
-}
-
+tweak_pixel :: RGB -> RGB;
 fun tweak_pixel((r,g,b)) 
-   (r,g,b)
-// (intToChar$ charToInt(r) + 20, g, b)
-//  (r, intToChar$  min(charToInt(g) * 2, 255), b)
+//   (r,g,b)
+   (r + 20, g, b)
+//  (r, min(g * 2, 255), b)
 // (b,g,r)
 //   (g,g,g)
 //   (intToChar$ 0, intToChar$ 64, intToChar$ 0)
@@ -139,13 +135,12 @@ main =
      // $ smap(amapi(invert_color)) 
 
      $ smap(fun(arr) {
-         print $ Array:map(fun((x,y,z)) (charToInt(x), charToInt(y), charToInt(z)),
-			   Array:sub(arr, 100, 15));
+         print $ Array:sub(arr, 100, 15);
+			   
 	 print("\n");
          new = Array:map(tweak_pixel, arr);
 
-         print $ Array:map(fun((x,y,z)) (charToInt(x), charToInt(y), charToInt(z)),
-			   Array:sub(new, 100, 15));
+         print $ Array:sub(new, 100, 15);
 	 print("\n");
 	 new
        })

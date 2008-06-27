@@ -43,6 +43,7 @@
 		 _+I32 _-I32 *I32 /I32 ^I32
 		 _+I64 _-I64 *I64 /I64 ^I64
 
+		 _+U8  _-U8  *U8  /U8  ^U8 
 		 _+U16 _-U16 *U16 /U16 ^U16
 
 		 sqrtF sqrtC sqrtI moduloI
@@ -1265,6 +1266,12 @@
   (define _-U16 (uoverflow fx- 16))
   (define *U16  (uoverflow s:* 16))
   (define /U16  (uoverflow fx/ 16))
+
+  (define _+U8  (uoverflow fx+ 8 ))
+  (define _-U8  (uoverflow fx- 8 ))
+  (define *U8   (uoverflow s:* 8 ))
+  (define /U8   (uoverflow fx/ 8 ))
+
   )
   
   ;;========================================
@@ -1287,6 +1294,7 @@
       [(_ Int16 e)   (__cast_num #f 'Int16 e)]
       [(_ Int32 e)   (__cast_num #f 'Int32 e)]
       [(_ Int64 e)   (__cast_num #f 'Int64 e)]
+      [(_ Uint8 e)   (__cast_num #f 'Uint8 e)]
       [(_ Uint16 e)  (__cast_num #f 'Uint16 e)]
       [(_ Float e)   (__cast_num #f 'Float e)]
       [(_ Double e)  (__cast_num #f 'Double e)]
@@ -1302,6 +1310,7 @@
   (define fxbits 
     (inexact->exact (round (s:/ (log (s:- (greatest-fixnum) (least-fixnum)))
 				(log 2)))))
+  (define base8  (expt 2 8))
   (define base16 (expt 2 16))
   (define basefx (expt 2 fxbits))
   (define base32 (expt 2 32))
@@ -1334,12 +1343,20 @@
       [(Int32) (signed_int base32 max32 min32 num)]
       [(Int64) (signed_int base64 max64 min64 num)]
       
+      [(Uint8) 
+       (let ([int (cond
+		   [(and (integer? num) (exact? num)) num]
+		   [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
+		   [else (exact (floor num))])])
+	 (modulo int base8))]
+
       [(Uint16) 
        (let ([int (cond
 		   [(and (integer? num) (exact? num)) num]
 		   [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
 		   [else (exact (floor num))])])
 	 (modulo int base16))]
+
 
       [(Float Double) (inexact num)]
       ;[(Complex) (s:+ num 0.0+0.0i)]
@@ -1351,7 +1368,8 @@
   (define g^ expt)
   (define ^_ expt)
   (define ^I16 expt)
-  (define ^U16 expt)
+  (define ^U8  (uoverflow expt 8))  ;; Overflow!!  FIXME
+  (define ^U16 (uoverflow expt 16)) ;; Overflow!! FIXME
   (define ^I32 expt)
   (define ^I64 expt)
   (define ^D expt)

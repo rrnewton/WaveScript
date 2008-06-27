@@ -95,9 +95,11 @@
 ;; Force a number into a smaller integer size:
 (define (truncate-integer ty n)
   (match ty
+    ;[Int8  (- (modulo (+ n (expt 2 7))  (expt 2 8))  (expt 2 7))]
     [Int16 (- (modulo (+ n (expt 2 15)) (expt 2 16)) (expt 2 15))]
     [Int32 (- (modulo (+ n (expt 2 31)) (expt 2 32)) (expt 2 31))]
     [Int64 (- (modulo (+ n (expt 2 63)) (expt 2 64)) (expt 2 63))]
+    [Uint8  (modulo n (expt 2 8))]
     [Uint16 (modulo n (expt 2 16))]
     [Int (error 'truncate-integer "can't truncate to type Int -- platform dependent!")]
     ))
@@ -366,6 +368,16 @@
     ;(lshiftU16 (Uint16 Int) Uint16)
     ;(rshiftU16 (Uint16 Int) Uint16)
 
+    (_+U8 (Uint8 Uint8) Uint8)
+    (_-U8 (Uint8 Uint8) Uint8) 
+    (*U8 (Uint8 Uint8) Uint8) 
+    (/U8 (Uint8 Uint8) Uint8) 
+    (^U8 (Uint8 Uint8) Uint8) 
+    ;(lshiftU8 (Uint8 Int) Uint8)
+    ;(rshiftU8 (Uint8 Int) Uint8)
+
+
+
     ;; Not currently supporting bitwise ops for non-integers:
 
     (_+. (Float Float) Float)
@@ -537,7 +549,9 @@
     (sqrtC (Complex) Complex)    
 
     (moduloI (Int Int) Int)
-    
+
+    ;(absU8  (Uint8)  Uint8)
+    ;(absU16 (Uint16) Unt16)    
     (absI16 (Int16) Int16)
     ;(absI32 (Int32) Int32)
     (absI64 (Int64) Int64)

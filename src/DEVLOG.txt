@@ -389,6 +389,9 @@ xgraph
 Adding Int16... these are the things that had to change:
  *) Add conversion procedures to prim_defs.ss, wavescript_sim_library, static-elaborate
  *) Added to list of num types in type_environments (now in prim_defs)
+    Also, in type_environments, update constant-typeable-as? and type->width.
+    After adding arith primitives, you'll need to implement them in
+    wavescript_sim_library_push.sls
  *) Changed the type checker to allow constants of special int types,
     the convention is that they be always wrapped in (assert-type ...)
     forms. This change has been made and shouldn't be needed again.

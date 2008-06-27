@@ -194,6 +194,7 @@
   (lambda (c ty)
     (if (eq? c 'BOTTOM) #t
 	(match ty
+	  [Uint8  (guard (fixnum? c)) (uint8? c)]
 	  [Uint16 (guard (fixnum? c)) (uint16? c)]
 	  [Int   (guard (fixnum? c))  (int32? c)]
 	  [Int16 (guard (fixnum? c))  (int16? c)]
@@ -257,6 +258,7 @@
       [(t) (type->width t #f)]
       [(t sumdecls) 
        (match t
+         [Uint8  1]
          [Uint16 2]
          [Int16 2]
          [Int 4] ;; INTS ARE 16 BIT ON TELOS!!! FIXME FIXME

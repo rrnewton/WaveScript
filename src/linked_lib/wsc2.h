@@ -27,6 +27,7 @@
 #define ws_unit_t char
 #define ws_char_t char
 #define ws_bool_t char
+#define uint8_t unsigned char
 
 #define PTRSIZE sizeof(void*)
 #define RCSIZE sizeof(int)
