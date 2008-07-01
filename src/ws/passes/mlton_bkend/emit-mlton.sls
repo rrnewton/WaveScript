@@ -180,6 +180,7 @@
     [Int16   "Int16.int"] ;; Not standard SML.
     [Int64   "Int64.int"] 
 
+    [Uint8    "Word8.word"]
     [Uint16   "Word16.word"]
 
     [Complex  "Complex.complex"]
@@ -260,6 +261,7 @@
     [Int64 (intprint 'Int64)] 
     [Int   (intprint int-module)]
 
+    [Uint8  (intprint 'Word8)]
     [Uint16 (intprint 'Word16)]
 
     ;; ERROR: FIXME:
@@ -988,6 +990,7 @@
 	 [Int16 "int16"]
 	 [Int32 "int32"]
 	 [Int64 "int64"]
+	 [Uint8 "uint8"]
 	 [Uint16 "uint16"]
 	 [Float "float"]
 	 [Double "double"]
@@ -1312,6 +1315,7 @@
       [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n, imag= Real32.fromInt 0})")]
 
       [intToUint16     "Word16.fromInt" ]
+      ;[intToUint8      "Word8.fromInt" ]
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt     "Real32.toInt IEEEReal.TO_ZERO"]

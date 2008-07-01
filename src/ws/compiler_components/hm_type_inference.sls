@@ -665,7 +665,10 @@
        (types-equal! ty2 'Int exp "(Ending point for range of for-loop must be an integer.)\n")
        (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
          (let-values ([(bod ty) (annotate-expression bod tenv nongeneric)])
-           (values `(for (,i ,start ,end) ,bod) ty)))]
+           (values `(for (,i ,start ,end) ,bod) 
+		   ;; ty ;; -- This was an ERROR:
+		   '#()
+		   )))]
       
       ;; This is not just a normal primitive:
       [(__cast_num ',from ',to ,[l -> x xty]) 

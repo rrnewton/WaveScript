@@ -21,6 +21,13 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.07.01] {Expand backend intermediate language}
+  *) Eventually I would like to expand the IL just towards the end of
+   the compiler to handle things like multiple input paths and output
+   paths so that we have the language to express the result of
+   union-iterate-route optimzations.  This will complicate code
+   generation but hopefully happen right at the end.
+
 [2008.05.28] {wsc2 additions for running on phones}
   *) I need to get the foreign interface going if I'm going to
      integrate with sensor hardware on phones.
