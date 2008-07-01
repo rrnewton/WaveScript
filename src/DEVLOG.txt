@@ -1508,3 +1508,9 @@ It looks like the myserious infinite loops in R6RS eval (for using ws)
 under PLT 3.99 are gone under 4.0.  I can now run the demos.  (There's
 still a unit test that fails... probably for a different reason.) 
 
+[2008.06.30] {Reverse aliasing types for printing}
+.
+I notice that it will still print a less general type than the real
+type... that's a serious bug.  For example if I define type Image =
+Array Int, it will print an "Array #t" as "Image".
+

@@ -923,8 +923,8 @@
 
 (define (closure-free-vars cl) 
   ;(ASSERT (not (foreign-closure? cl)))
-  (if (foreign-closure? cl) '()
-     (list-rem-dups 
+  (if (foreign-closure? cl) '()     
+      (list-rem-dups 
 	(difference (core-free-vars (closure-code cl)) 
 		    (closure-formals cl)))))
 

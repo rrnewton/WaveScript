@@ -249,6 +249,7 @@
     
           (left emit) ; return
 
+	  ;; These have weak precedence:
           (right = := += -= *= -> )
 	  (right AND OR )
 
@@ -261,6 +262,8 @@
 
 	  (right ++ ::: $)
           (left < > <= >= == !=)
+
+	  ;; Multiplication takes precedence over addition:
           (left - + g- g+ -_ +_ +. -.  +: -:)
           (left * / g* g/ *_ /_ *. /.  *: /:)
 

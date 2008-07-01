@@ -2656,6 +2656,45 @@
 
 
 
+;; 
+#;
+[""
+ (wsparse-postprocess '((define main
+   (using Array
+    (iterate (annotations)
+      (letrec ((bghist null))
+        (lambda (frame ___VIRTQUEUE___)
+          (begin
+            (set! bghist
+              (app build
+               (app * '30 '40)
+               (lambda (_)
+                 (app build '1
+		      (lambda (_) (app build '2 (lambda (_) (app make '3 '0))))))))
+	    (emit  ___VIRTQUEUE___ '3)
+            ___VIRTQUEUE___)))
+      (app timer '3))))))
+ ????]
+
+#;
+(first-value (stream-take 2 (wsint (wsparse-postprocess '((define main
+   (using Array
+    (iterate (annotations)
+      (letrec ((bghist null))
+        (lambda (frame ___VIRTQUEUE___)
+          (begin
+            (set! bghist
+              (app build
+               (app * '30 '40)
+               (lambda (_)
+                 (app build '1
+		      (lambda (_) (app build '2 (lambda (_) (app make '3 '0))))))))
+	    (emit  ___VIRTQUEUE___ '3)
+            ___VIRTQUEUE___)))
+      (app timer '3)))))) '())))
+
+
+
 
 
 

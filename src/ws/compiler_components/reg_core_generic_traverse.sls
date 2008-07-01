@@ -418,6 +418,7 @@
 	   (if (regiment-primitive? v)
 	       '()
 	       (list v))]
+
        [,form (guard (binding-form? form))
 
 	      (let ([scoped (binding-form->scoped-exprs form)]
@@ -433,6 +434,9 @@
 	       )
 
 		)]
+
+       [(set! ,v ,[e]) (set-cons:list v e)]
+
        [,x (fallthru x)]))
    (lambda (ls k) (apply union ls))
    exp

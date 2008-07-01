@@ -46,7 +46,7 @@
 
    iota list-repeat! list-head make-repeats
    mapi map-filter for-eachi diff
-   list-is-set? list-subset? set-equal? list->set set->list union intersection difference ;set-cons
+   list-is-set? list-subset? set-equal? list->set set->list union intersection difference set-cons:list
    list-rem-dups ;define-values 
    list-is-setq? list-subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
