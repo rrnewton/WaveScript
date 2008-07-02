@@ -64,9 +64,15 @@ namespace Unix {
 } // End namespace
 
 
+
+
 /******************************************************************************/
 /* The rest of this file contains functionality built on top of the
    basic unix calls. */
+
+
+
+
 
 
 /* // Write a stream of strings to disk.  Returns an empty stream */
@@ -110,6 +116,40 @@ fun fileSink (filename, mode, strm) {
     then wserror("fileSink: fwrite failed to write data")
   }
 }
+
+
+
+// Scan a directory for image files and stream the file names.
+//scandir ::
+fun scandir_stream(dir, ticks) {
+  c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
+  scandir_sorted :: (String, Pointer "struct dirent ***") -> Int = foreign("scandir_sorted", c_exts);
+  ws_namelist_ptr :: () -> Pointer "struct dirent ***" = foreign("ws_namelist_ptr", c_exts);
+  getname :: (Pointer "struct dirent ***", Int) -> String = foreign("getname", c_exts);
+  freenamelist :: (Pointer "struct dirent ***", Int) -> () = foreign("freenamelist", c_exts);
+  iterate _ in ticks {
+    state { count = -1; 
+            index = 0;
+            files = ptrMakeNull(); 
+          }
+    // Initialize:
+    if count == -1 then {
+      files := ws_namelist_ptr();
+      count := scandir_sorted(dir, files);
+    };
+    if index == count then {
+      freenamelist(files, count);
+    };
+    if index < count then {
+      name = getname(files, index);
+      index += 1;
+      // We prune out "." and "..".
+      if not(name == "." || name == "..")
+      then emit name;
+    }
+  }
+}
+
 
 
 // A simple test:
