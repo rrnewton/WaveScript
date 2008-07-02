@@ -13,9 +13,11 @@ fi
 #========================================
 
 case "$COPTFLAG" in
- -O1) ;;
- -O2) ;;
- -O3)
+ --O1 ) ;;
+ --O2 ) 
+   ALWAYSON="-O2 ";
+   ;;
+ --O3 )
    ALWAYSON="-O3 -funroll-loops";
    # max-unroll-times Seems to be 8 by default.
    OPTFLAGS="$ALWAYSON --param max-unroll-times=16 ";

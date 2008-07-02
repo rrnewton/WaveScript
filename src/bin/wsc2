@@ -21,13 +21,14 @@ eval set -- "$RELEVANT"
 NOGCC=
 while [ $# != 0 ];  do 
 #for flag in $RELEVANT; do 
+ flag=$1
  #echo Handling flag: $flag
- case $1 in 
+ case $flag in 
    # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
-   --O0 ) COPTFLAG="$flag";;
-   --O1 ) COPTFLAG="$flag";;
-   --O2 ) COPTFLAG="$flag";;
-   --O3 ) COPTFLAG="$flag";;
+   "--O0" ) COPTFLAG="$flag";;
+   "--O1" ) COPTFLAG="$flag";;
+   "--O2" ) COPTFLAG="$flag";;
+   "--O3" ) COPTFLAG="$flag";;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
    "--gcc" ) export CC="$2"; shift;;
    "--" ) break;;
@@ -35,6 +36,8 @@ while [ $# != 0 ];  do
  esac;
  shift;
 done
+export COPTFLAG
+
 
 if ! [ -f "query.c" ]
 then echo "query.c not found..."

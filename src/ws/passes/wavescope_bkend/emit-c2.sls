@@ -238,6 +238,9 @@
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
     [(Array ,[ty]) (string-append "Array_" ty)]
     [(List  ,[ty]) (string-append "List_"  ty)]
+
+    [(Pointer ,name) (string-append "Pointer_" )]
+
     [#() "Unit"]
     ))
 
@@ -419,7 +422,10 @@
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
       (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
-	     (lines-text (gen-free-code self ty ptr))))]
+	     (let ([freecode (lines-text (gen-free-code self ty ptr))])	      
+	       (if #f ;; DEBUGGING TOGGLE.
+		   (list "printf(\"  WS Freeing, type: "(Type self ty)", Pointer %p\\n\"," ptr");\n" freecode)
+		   freecode))))]
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 
@@ -553,7 +559,10 @@
     ;; Values of this type aren't really used.
     [(,_ ... -> ,__) "char"]
 
-    [(Pointer ,cname) cname]
+    [(Pointer ,cname) 
+     (if (string=? cname "")
+	 (error 'emitC2:Type "Pointer type cannot have \"\" as its C name")
+	   cname)]
 
     ;; This is an unused value.
     [(VQueue ,_) "char"]
@@ -969,7 +978,7 @@
 	       ;; The problem is that you can't do anything with a "void" value in C:
 	       (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
 			     (kont (Const self 'UNIT (lambda (x) x))))	    
-	       (kont `(,name"(",(insert-between ", " rand*)")")))])]
+	       (kont `(,name"(",(insert-between ", " rand*)") /* foreign app */ ")))])]
        [(foreign-app . ,_) (error 'emitC2 "foreign-app without type annotation: ~s" (cons 'foreign-app _))]
 
        
@@ -1086,7 +1095,7 @@
 	    [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
 	    ))))
      
-         
+     ;; Handle primitives:
      (match app
        ;; Refs and sets are pure simplicity:
        [(Array:ref ,[Simp -> arr] ,[Simp -> ind])
@@ -1324,6 +1333,9 @@
 	    ,(lines-text (kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))))]
 
 	[(getID) (kont "0 /* NodeID of PC-server */")]
+
+	[(ptrMakeNull) (kont "0 /* ptrMakeNull */")]
+	[(ptrIsNull ,[Simp -> p]) (kont `("(",p " == 0)" ))]
        
 	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]

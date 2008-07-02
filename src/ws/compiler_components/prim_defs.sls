@@ -645,7 +645,7 @@
     (ptrToArray     ((Pointer 'name) Int) (Array 'a))
     (ptrIsNull      ((Pointer 'name)) Bool)
     ;; YUCK: adding this also for initialization.
-    (ptrMakeNull    () (Pointer ""))
+    (ptrMakeNull    () (Pointer "void*"))
 
     ;; This is down-and-dirty.  Inline C code.
     ;;

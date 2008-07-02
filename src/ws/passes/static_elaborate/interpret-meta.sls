@@ -628,6 +628,8 @@
      [(foreign-closure? (suspension-operator val))
       (match (closure-code (suspension-operator val))
         [(assert-type ,ty (foreign ',name ',includes))
+	 (when (string=? name "")
+	   (error 'interpret-meta "cannot have application of foreign function with no name! ~s" val))	 
          `(foreign-app ',name
                        ,(Marshal-Foreign-Closure (suspension-operator val))
                        ,@(map Marshal (ASSERT (suspension-argvals val))))
@@ -882,6 +884,8 @@
 	       (match ty
 		 [(,argty* ... -> ,res)
 		  (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
+		    (when (string=? name "")
+		      (error 'interpret-meta "cannot have foreign declaration with no name! ~s" val))
 		    ;; This just turns into the '(foreign name includes)' expression.
 		    (marshloop code (cdr fv) state
 			  ;; The foreign binding just turns into the '(foreign name includes)' expression:

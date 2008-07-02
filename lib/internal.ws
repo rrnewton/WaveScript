@@ -17,6 +17,11 @@ Array:blit      :: (Array t, Int, Array t, Int, Int) -> ();
 Array:append    :: (Array t, Array t) -> Array t;
 Array:sub       :: (Array t, Int, Int) -> Array t;
 
+List:length     :: List t -> Int;
+List:ref        :: (List t,Int) -> t;
+List:build      :: (Int, Int -> t) -> List t;
+
+
 // Rewindow:
 
 // Due to polymorphism/metaprogramming problems I may need to move towards this:
@@ -88,7 +93,7 @@ namespace List {
   }
   fun length(ls) {
     using List; using Mutable;
-    count = ref$ 0;
+    count :: Ref Int = ref$ 0;
     ptr   = ref$ ls;
     while ptr != [] {
       ptr := ptr.tail;

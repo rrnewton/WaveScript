@@ -63,7 +63,7 @@ List:mapi       :: ((Int,a) -> b, List a) -> List b;
 List:foreach    :: (      a -> (), List a) -> ();
 List:foreachi   :: ((Int,a) -> (), List a) -> ();
 List:fold1      :: ((t, t) -> t, List t) -> t;
-//List:foldi      :: (((Int, acc, t) -> acc), acc, List t) -> acc;
+List:foldi      :: ((Int, st, elem) -> st, st, List elem) -> st;
 List:choplast   :: List t -> (t * List t);
 List:andmap     :: (t -> Bool, List t) -> Bool;
 List:prefix     :: (List t, Int) -> List t;

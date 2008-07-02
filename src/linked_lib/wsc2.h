@@ -29,9 +29,19 @@
 #define ws_bool_t char
 #define uint8_t unsigned char
 
+#define ws_string_t char*
+
 #define PTRSIZE sizeof(void*)
 #define RCSIZE sizeof(int)
 #define ARRLENSIZE sizeof(int)
+
+
+// Handle RCs on BOTH Cons Cells and Arrays:
+// A RC is the size of an int currently:
+#define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
+#define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
+#define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
+#define GET_RC(ptr)                  ((int*)ptr)[-1]
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
@@ -56,14 +66,19 @@
 
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
-#define ARRPTR(ptr)        (((void**)ptr)-2),
-#define FREEARR(ptr)       free((int*)ptr - 2)
+#define ARRPTR(ptr)        (((void**)ptr)-2)
+#define FREEARR(ptr)       free(ARRPTR(ptr))
 
-// Handle RCs on Cons Cells and Arrays:
-// A RC is the size of an int currently:
-#define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
-#define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
-#define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
+// This is not currently used by the code generator [2008.07.02], but can be used by C code.
+//#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
+#define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
+inline void* ws_array_alloc(int len, int eltsize) {
+  char* ptr = ((char*)malloc(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
+  SETARRLEN(ptr, len);
+  CLEAR_RC(ptr);
+  return ptr;
+}
+
 
 //typedef unsigned int16_t uint16_t;
 typedef unsigned short int uint16_t;

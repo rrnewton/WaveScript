@@ -1510,6 +1510,7 @@
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
       ))
 
+  ;; Handle Primitives:
   (match expr
     ;; First we handle "open coded" primitives and special cases:
     
@@ -1818,12 +1819,15 @@
 	
 	[(__foreign . ,_) (ForeignEntry name (cons '__foreign _))]
 
-	[(randomI ,[Simple -> n]) `("(rand() % ",n")")]
+	[(randomI ,[Simple -> n]) (wrap `("(rand() % ",n")"))]
 
 	;; Generate equality comparison:
 	[(wsequal? (assert-type ,ty ,e1) ,[Simple -> b])	
 	 (let* ([a (Simple `(assert-type ,ty ,e1))])
 	   (generate-wsequal-code ty a b wrap))]
+
+	[(ptrIsNull ,[Simple -> p]) (wrap `("(",p " == 0)" ))]
+	[(ptrMakeNull) (wrap "0")]
 
 	;; If we have an extra assert-type... just ignore it.
 	[(assert-type ,ty ,[e]) e]
@@ -2137,7 +2141,7 @@ int main(int argc, char ** argv)
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ensBoxAudioAll
-		   List:is_null List:toArray ptrToArray ptrIsNull ptrMakeNull
+		   List:is_null List:toArray ptrToArray 
 		   gnuplot_array gnuplot_array2d
 		   String:length String:explode String:implode
 		   intToChar charToInt Secret:newTimebase
