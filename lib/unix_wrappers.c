@@ -10,11 +10,11 @@ int scandir_sorted(const char* dirstr, struct dirent *** namelst) {
   return scandir(dirstr, namelst, 0, alphasort);
 }
 
-// This returns a WS string that 
+// This returns a WS string that is deallocated by the WS GC.
 ws_string_t getname(struct dirent *** namelist, int ind) {
   char* c_str = (*namelist)[ind]->d_name;
   int len = strlen(c_str);
-  ws_char_t* ws_str = WSARRAYALLOC(len+1, ws_char_t);
+  ws_char_t* ws_str = WSSTRINGALLOC(len+1);
   // This assumes that WS chars are the same as C chars:
   memcpy(ws_str, c_str, len+1); // Copy the null terminator.
   return ws_str; // Give it over to the WS heap.

@@ -11,13 +11,21 @@ Flip blue and RED in the image pixel ordering.
 
 include "stdlib.ws"
 
+include "opencv.ws"
+
+fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
+//fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
+fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
+
+LIVE = false;
 
 //====================================================================================================
 /// Types and Constants:
 
 
 type Color = Uint8;
-type Image = Array Color;
+type RawImage = Array Color; // Without the width/height metadata.
+type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
@@ -38,8 +46,6 @@ type Settings = (
 	Int * // FgStep;	
 	Double * // Threshold;		
 
-	Int * // rows;
-	Int * // cols;
 	Int * // nChannels;
 	Bool  // useHSV;
      );	
@@ -47,18 +53,18 @@ type Settings = (
 settings :: Settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/", // Filename
 		"../processed/FeederStation_2007-06-26_14-00-03.000/bhatta_default/", // OutLoc
-		0,//396, // BgStartFrame
+		396, // BgStartFrame
 		0,	 // StartFrame
-		5,//20, // NumBgFrames
-		5,//100, // NumFgFrames
+		20, // NumBgFrames
+		20,//100, // NumFgFrames
 
 		1, //BgStep
 		1, //FgStep
 		128, // Threshold
 										
-		240,	// rows
-		320,	// cols
-		1,	// nChannels // NOT USED YET????
+		//240,	// rows
+		//320,	// cols
+		3,	// nChannels // NOT USED YET????
 		
 		true    // useBgModel		
 	      );
@@ -76,9 +82,10 @@ bhattasettings = (
 // TEMP:
 // Unpack the settings, ugly because we don't have records yet --rrn	
 let (NumBins1, NumBins2, NumBins3, SizePatch, Alpha, useBgUpdateMask) = bhattasettings;
-let (Filename, OutLoc, BgStartFrame, StartFrame, 
-     NumBgFrames, NumFg, BgStep, FgStep, Threshold,
-     rows, cols, nChannels, useBgModel) = settings;
+let (Filename, OutLoc, BgStartFrame, FgStartFrame, 
+     NumBgFrames, NumFgFrames, BgStep, FgStep, Threshold,
+     //rows, cols, 
+     nChannels, useBgModel) = settings;
 
 //====================================================================================================
 /// General helpers:
@@ -150,7 +157,7 @@ fun bounds(x,range) {
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
 populateBg :: (Array4D Float, Image) -> ();
-fun populateBg(bgHist, image) {
+fun populateBg(bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
 
@@ -280,12 +287,12 @@ fun populateBg(bgHist, image) {
 // "mask" is an image where white pixels represent the foreground and black pixels represents the background
 // according to settings->Threshold
 
-estimateFg :: (Array3D Inexact, Array4D Inexact, Image, Image, Image) -> a;
-fun estimateFg(pixelHist, bgHist, image, diffImage, mask) {
+estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
+fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
   println$"IMAGE LENGTH: "++ Array:length(image);
 
-  (image :: Image); // [2008.07.01] Having a typechecking difficulty right now.
+   (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
 
    // Patches are centered around the pixel.  [p.x p.y]-[offset offset] gives the upperleft corner of the patch.				
    offset :: Int = SizePatch / 2;
@@ -400,8 +407,8 @@ fun estimateFg(pixelHist, bgHist, image, diffImage, mask) {
 // 
 // degrade the background model by scaling each bin by 1-bSettings->Alpha
 // add new pixel values scaled so that the resulting background model will sum to 1.
-updateBg :: (Array4D Inexact, Image, Image) -> ();
-fun updateBg(bgHist, image, mask) 
+updateBg :: (Array4D Inexact, Image, RawImage) -> ();
+fun updateBg(bgHist, (image,cols,rows), mask) 
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
@@ -537,40 +544,78 @@ fun updateBg(bgHist, image, mask)
 
 //====================================================================================================
 
-// Main stream script:
+// This is an ugly separation right now.  The frame index stream
+// drives the reading of files, but the Bhatta kernel below must stay
+// synchronized with this input stream (in terms of switching between
+// background frames and foreground frames).
+//
+// TODO: this index stream should simply emit a union type tagging elements as Bg or Fg.
+index_stream :: Stream Int;
+index_stream = iterate _ in timer(10) {
+  state { bgcnt = 0;
+          bgind = BgStartFrame;
+          fgcnt = 0;
+          fgind = FgStartFrame;
+        }
+  assert_eq("only works for bgstep 1 at the moment", BgStep, 1);
+  assert_eq("only works for fgstep 1 at the moment", FgStep, 1);
 
-fakeFrames = iterate _ in timer$3 {
-  using Array;
-
-  //arr :: Array Uint8 = build(rows, build(cols, 0));
-  //arr = build(rows, make(cols, 0));
-  arr = make(rows * cols * 3, 0);
-  emit arr;
+  if bgcnt < NumBgFrames then {    
+    emit bgind;
+    bgcnt += 1;
+    bgind += 1;
+  } else {
+    emit fgind;
+    fgcnt += 1;
+    fgind += 1;
+  }
 }
 
+filenames :: Stream String;
+filenames = iterate ind in index_stream {
+  state { nametable = Array:null }
+  if nametable == Array:null then {
+    nametable := scandir(fullpath_in);
+  };
+  emit fullpath_in ++ "/" ++ nametable[ind];
+}
 
-main = {
+// Main Bhatta function:
+
+bhatta :: Stream Image -> Stream ();
+fun bhatta(video) {
   println("Bhattacharyya Differencing.");
     
   //SHELL("mkdir ");
 
-  stopFrame = BgStartFrame + NumBgFrames;
-
   using Array;
   //bghist = Mutable:ref$ null; // Same error.
 
-  iterate frame in fakeFrames {
-    state { FrameIndex = 0;
-            bgCount = 0;
-            //p = Bhatta(settings);
+  iterate (frame,cols,rows) in video {
+    state { 
+            bgEstimateMode = true; 
+            FrameIndex = BgStartFrame;
+            bgStaleCounter = 0;
+            stopFrame = BgStartFrame + NumBgFrames * BgStep;
+	    
+	    // Here is the main storage:
             bghist    = null; 
 	    pixelhist = null;
 	    mask      = null;
 	    diffImage = null;
-	    ImageBuffer = null;
           }
-    println("Frame # "++ FrameIndex);
-    if (FrameIndex == 0) then { 
+    /*
+    println("    Frame # "++ FrameIndex++" width/height "++cols++ " "++ rows++ " sum "++
+            Array:fold(fun(acc,x) acc + Double! x, (0::Double), frame)
+	    ++ " across total elements "++ Array:length(frame));
+    offset = 0; //50000;
+    println("snippet "++ Array:sub(frame,offset,20));
+    println("Max elem "++ Array:fold(max,0,frame));
+    */
+
+    //ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++".jpg", frame, cols, rows, 3);
+
+    if bghist == null then {
       println$ "Output location: "++OutLoc;
       println$ "Settings: ";
       println$ " # of bins:             "++ NumBins1 ++","++ NumBins2 ++","++ NumBins3;
@@ -585,51 +630,94 @@ main = {
       pixelhist := make3D(NumBins1, NumBins2, NumBins3, 0);
       mask := make(rows * cols, 0);
       diffImage   := make(rows * cols * nChannels, 0);
-      ImageBuffer := make(rows * cols * nChannels, 0);
+      //ImageBuffer := make(rows * cols * nChannels, 0);
 
-      println("Building background model...");
-      
-      // initializes storage for current image's histograms
-      
+      println("Building background model...");      
     };
-    if (FrameIndex < stopFrame) then {
+
+    if bgEstimateMode then {
 	  // Get input frame
 	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
 	  // add frame to the background
   	  //print(".");
           st = clock();
-	  populateBg(bghist, frame);
+	  populateBg(bghist, (frame,cols,rows));
 	  en = clock();
 	  println$ "Computation time for populateBg(): " ++ (en - st);
 
 	  FrameIndex += 1;
 
-	  emit bghist[0][0][0];
-    } else {
-      if (FrameIndex == stopFrame)
-      then println("\nFinished background model, extracting foreground.\n");      
+          if FrameIndex == stopFrame then {
+            bgEstimateMode := false;
+            FrameIndex := FgStartFrame;
+	    println("\nFinished background model, extracting foreground.\n");
+            stopFrame := FgStartFrame + NumFgFrames * FgStep;
+	  };
+	  emit ();
+    } else { 
+
+      if (FrameIndex == FgStartFrame)
+      then 
       print(".");
 
-      println$ "Calling estimate... ImageBuffer size "++ Array:length(ImageBuffer);
+      //println$ "Calling estimate... ImageBuffer size "++ Array:length(ImageBuffer);
+      println$ "Calling estimate... frame size "++ Array:length(frame);
 
       st = clock();
-      estimateFg(pixelhist, bghist, ImageBuffer, diffImage, mask);
+      estimateFg(pixelhist, bghist, (frame,cols,rows), diffImage, mask);
       en = clock();
       println$ "Computation time for estimateFg(): "++ en-st;    
-      bgCount+=1;
 
+      // Not yet:
+      /*
+      bgStaleCounter += 1;
       if bgCount == BgStep then {
 	println$ "Updating bg";
-	if useBgUpdateMask 
-	then updateBg(bghist, ImageBuffer, mask)
-	else updateBg(bghist, ImageBuffer, null);
+	if useBgUpdateMask	then updateBg(bghist, (ImageBuffer,cols,rows), mask)
+	else updateBg(bghist, (ImageBuffer,cols,rows), null);
 	bgCount := 0;
       };
+      */
+
+      ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++".jpg", frame, cols, rows, 3);
+      //ws_writeImage("Fg_",   diffImage, cols, rows);
+
+      ws_writeImage(fullpath_out++"/Diff_"++FrameIndex++".jpg", diffImage, cols, rows, 1);
+      ws_writeImage(fullpath_out++"/Mask_"++FrameIndex++".jpg", mask, cols, rows, 1);
 
       FrameIndex += FgStep;
 
-      emit bghist[0][0][0];
+      emit ();
     };
   }
 }
+
+
+//====================================================================================================
+
+// Main stream script:
+
+
+fakeFrames = iterate _ in timer$3 {
+  using Array;
+  arr = make(240 * 320 * 3, 0);
+  emit arr;
+}
+
+//acquire_imgs = if LIVE then front_camera      else stream_image_files(fullpath_in, timer(10));
+//output_imgs  = if LIVE then display_to_screen else fun(strm) image_files_sink(fullpath_out, "out", strm);
+
+input_imgs :: Stream Image;
+//input_imgs = stream_image_files(fullpath_in, BgStartFrame, timer(15));
+input_imgs = smap(ws_readImage, filenames)
+
+//rawframes = smap(fun((arr,_,_)) arr, input_imgs);
+
+//main = bhatta(fakeFrames);
+main = bhatta(input_imgs);
+//main = smap(fun((arr,w,h)) (w,h), input_imgs)
+
+//main = scandir_stream(fullpath_in, timer$3)
+//main = input_imgs
+//main  = image_files_sink(fullpath_out, "out", input_imgs);
 

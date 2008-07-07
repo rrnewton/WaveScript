@@ -5,10 +5,15 @@ include "stdlib.ws"
 type Color = Uint8;
 type RGB = (Color * Color * Color);
 
+// These have the 3 RGB channels interleaved, together with width/height:
+type FlatImage = ((Array Color) * Int * Int);
+type Image     = ((Array RGB)   * Int * Int);
+
 // This is a stream of frames from the front camera.
 // Frames are arrays of uint16s.
 //
 // Only one of these streams exists.  The user cannot instantiate multiple camera streams.
+front_camera :: Stream FlatImage;
 front_camera = {
   file = ["front_camera.c"];
   // This is a bit of a wacky interface.
@@ -24,10 +29,11 @@ front_camera = {
   // static frame buffer on the WS heap and pass it to C.
   // The C side will send us an extra initial tick to let us initialize.
   iterate tick in camera_ticks {
-    state { cambuf = Array:null } // Start as a null array.
+    state { cambuf = Array:null;  // Start as a null array.
+            wid = 0; height = 0; } 
     if cambuf == Array:null then {
-      wid    = getwidth();
-      height = getheight();
+      wid    := getwidth();
+      height := getheight();
       // On our very first tick we allocate the buffer, that is it.
       print$ "Allocating camera buffer "++ wid ++" by "++ height ++"\n";
       //cambuf := Array:make(wid * height * 3, (0 :: Color));
@@ -40,7 +46,7 @@ front_camera = {
       //emit Array:sub(cambuf, 1000, 10);
       //emit Array:fold((+), 0, cambuf);
       print$ "Size of cambuf : "++Array:length(cambuf) ++"\n";
-      emit cambuf;
+      emit (cambuf, wid, height);
     };
   }
 }
@@ -51,8 +57,8 @@ front_camera = {
 display_to_screen = {
   //c_fun :: (Array Uint16) -> () = foreign("display_to_screen", ["front_camera.c"]);
   c_fun :: (Array Color) -> () = foreign("display_to_screen", ["front_camera.c"]);
-  fun (frames) 
-    iterate frame in frames {
+  fun (imgs) 
+  iterate (frame,wid,height) in imgs {
       c_fun(frame);
       emit ();
     }
@@ -81,20 +87,24 @@ fun deinterleave_frame(arr) {
 // Pack the color values into structs.  Really, given C
 // representations this is an identity function on the bits.
 // Inefficient.
-tuple_pixels :: Array Color -> Array (Color * Color * Color);
-fun tuple_pixels(arr) {
+//tuple_pixels :: Array Color -> Array (Color * Color * Color);
+tuple_pixels :: FlatImage -> Image;
+fun tuple_pixels((arr,w,h)) {
  len = Array:length(arr) / 3;
- Array:build(len, fun (i) {
+ newarr = 
+  Array:build(len, fun (i) {
     i3 = i * 3;
     R = arr[i3];
     G = arr[i3 + 1];
     B = arr[i3 + 2];
     (R,G,B)
- })
+ });
+ (newarr,w,h)
 }
 
-untuple_pixels :: Array (Color * Color * Color) -> Array Color;
-fun untuple_pixels(arr) {
+//untuple_pixels :: Array (Color * Color * Color) -> Array Color;
+untuple_pixels :: Image -> FlatImage;
+fun untuple_pixels((arr,w,h)) {
  using Mutable; using Array;
  newarr = makeUNSAFE(3 * length(arr));
  for i = 0 to length(arr) - 1 {
@@ -104,7 +114,7 @@ fun untuple_pixels(arr) {
    newarr[i3+1] := g;
    newarr[i3+2] := b;
  };
- newarr
+ (newarr,w,h)
 }
 
 tweak_pixel :: RGB -> RGB;
@@ -132,16 +142,28 @@ fun tweak_pixel((r,g,b))
 //   (intToChar$ 256, intToChar$ 256, intToChar$ 256)
 
 
+include "opencv.ws"
 
-using Curry;
+main = {
 
-main = 
+  fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
+  fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
+
+  using Curry;
+
+  LIVE = false;
+
+  acquire_imgs = if LIVE then front_camera      else stream_image_files(fullpath_in, timer(10));
+  output_imgs  = if LIVE then display_to_screen else fun(strm) image_files_sink(fullpath_out, "out", strm);
+
+  mainstrm = 
      //smap(fun(arr) Array:map(charToInt, Array:sub(arr, 10000, 10)))
-     display_to_screen 
-       $ smap(untuple_pixels)
+     output_imgs
+
      // $ smap(amapi(invert_color)) 
 
-     $ smap(fun(arr) {
+       $ smap(untuple_pixels)
+       $ smap(fun((arr,w,h)) {
          print $ Array:sub(arr, 100, 15);
 			   
 	 print("\n");
@@ -149,8 +171,11 @@ main =
 
          print $ Array:sub(new, 100, 15);
 	 print("\n");
-	 new
+	 (new,w,h)
        })
-
      $ smap(tuple_pixels)
-     $ front_camera;
+
+     $ acquire_imgs;
+
+  mainstrm
+}

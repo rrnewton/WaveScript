@@ -72,6 +72,8 @@
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
 //#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
+#define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))
+
 inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)malloc(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
@@ -97,7 +99,7 @@ void BASE(char x) {
 void ws_parse_options(int argc, char** argv) {
   int i, c;
   while ((c = getopt(argc, argv, "n:")) != -1) {
-        printf("Parsing option character: %c\n", c);
+    //printf("Parsing option character: %c\n", c);
 	switch (c) {
 	case 'n':
 	        wsc2_tuplimit = atoi(optarg);

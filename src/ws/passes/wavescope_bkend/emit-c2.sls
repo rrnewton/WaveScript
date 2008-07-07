@@ -600,7 +600,7 @@
     [Double "%lf"]
     [#() "()"]
     [(Pointer ,_) "%p"]
-    [(,args ... -> ,ret)     
+    [(,args ... -> ,ret) ;"%p"
      (error 'type->printf-flag 
 	    "Cannot print a function type! ~s" ty)]))
 
@@ -968,20 +968,37 @@
 	(kont "0")]
        [(__foreign . ,_)
 	(error 'emit-c2 "unhandled foreign form: ~s" `(__foreign ,@_))]
-       
+
        ;; [2008.02.26] Had a problem with substituting this pattern for 'ty': (,argty* ... -> ,retty)
+       ;;
+       ;; For the time being there is no conversion of the arguments.
+       ;; All WS values are passed directly to C, which had better be
+       ;; able to deal with their representations.
        [(foreign-app ',name (assert-type ,ty ,ignored) ,[Simp -> rand*] ...)
 	(match ty 
 	  [(,argty* ... -> ,retty)
+
 	   ;; Here's a hack for when the return type is unit/void.  This will let us slip "call" forms through.
-	   (if (equal? retty '#())
-	       ;; The problem is that you can't do anything with a "void" value in C:
-	       (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
-			     (kont (Const self 'UNIT (lambda (x) x))))	    
-	       (kont `(,name"(",(insert-between ", " rand*)") /* foreign app */ ")))])]
+	   (match retty 
+	     [#() ;; The problem is that you can't do anything with a "void" value in C:
+	      (append-lines (make-lines `(,name"(",(insert-between ", " rand*)");\n"))
+			    (kont (Const self 'UNIT (lambda (x) x))))]
+	     ;; [2008.07.03] Tuples are handled in a special way.
+	     ;; This is not an official, supported feature of the FFI,
+	     ;; but I'm allowing C functions to return "tuples" to WS.
+	     ;; Basically, they must return a void* to some kind of
+	     ;; struct with the same memory layout as the WS tuple.
+	     ;; The WS code then frees that memory.  This introtudes a
+	     ;; portability problem, however.  This won't be fun to
+	     ;; mimic in Scheme or ML.
+	     [(Struct ,str)
+	      (let ([tmp (Var self (unique-name "tmptup"))])
+		(append-lines (make-lines `(,(Type self retty)"* ",tmp" = ",name"(",(insert-between ", " rand*)"); /* foreign app, return tuple */ \n"))
+			      (kont `("(*",tmp")"))
+			      (make-lines `("free(",tmp");\n"))))]
+	     [,else (kont `(,name"(",(insert-between ", " rand*)") /* foreign app */ "))])])]
        [(foreign-app . ,_) (error 'emitC2 "foreign-app without type annotation: ~s" (cons 'foreign-app _))]
 
-       
        [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	(PrimApp self (cons prim rand*) kont #f )]
        [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))

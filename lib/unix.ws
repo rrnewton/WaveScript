@@ -119,14 +119,33 @@ fun fileSink (filename, mode, strm) {
 
 
 
-// Scan a directory for image files and stream the file names.
-//scandir ::
-fun scandir_stream(dir, ticks) {
   c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
   scandir_sorted :: (String, Pointer "struct dirent ***") -> Int = foreign("scandir_sorted", c_exts);
   ws_namelist_ptr :: () -> Pointer "struct dirent ***" = foreign("ws_namelist_ptr", c_exts);
   getname :: (Pointer "struct dirent ***", Int) -> String = foreign("getname", c_exts);
   freenamelist :: (Pointer "struct dirent ***", Int) -> () = foreign("freenamelist", c_exts);
+
+
+
+// The WaveScript version of scandir reads all the names into a WS array of WS strings.
+// It will throw a wserror if it cannot read the directory.  It sorts alphabetically.
+scandir :: String -> Array String;
+fun scandir(dir) {
+  files = ws_namelist_ptr();
+  count = scandir_sorted(dir, files);
+  // This ASSUMES that . and .. will be in the list, and will be sorted first.
+  names = Array:build(count-2, fun(ind) {
+     getname(files, ind+2);
+   });
+  freenamelist(files, count);
+  // This is inefficient, we filter the array to remove "." and ".."
+  //Array:filter(fun(s) { s != "." && s != ".." }, names)
+  names
+}
+
+// Scan a directory for files and stream the file names.
+// This version sorts alphabetically:
+fun scandir_stream(dir, ticks) {
   iterate _ in ticks {
     state { count = -1; 
             index = 0;
@@ -149,6 +168,35 @@ fun scandir_stream(dir, ticks) {
     }
   }
 }
+
+
+// Scan a directory but give random access to the filenames based on index (alphabetically)
+// When an index is out of bounds do nothing.
+// UNFINISHED:
+//fun scandir_random_access_stream(dir, indices) {
+/*
+fun scandir_stream(dir, indices) {
+  iterate ind in ticks {
+    state { total = -1; 
+            index = 0;
+            files = ptrMakeNull(); 
+          }
+    // Initialize:
+    if total == -1 then {
+      files := ws_namelist_ptr(); // namelist is never freed
+      total := scandir_sorted(dir, files);
+    };
+
+    if index < total then {
+      name = getname(files, index);
+      index += 1;
+      // We prune out "." and "..".
+      if not(name == "." || name == "..")
+      then emit name;
+    }
+  }
+}
+*/
 
 
 
