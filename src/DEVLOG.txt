@@ -1514,3 +1514,5 @@ I notice that it will still print a less general type than the real
 type... that's a serious bug.  For example if I define type Image =
 Array Int, it will print an "Array #t" as "Image".
 
+[2008.07.07] {Updating from ikarus rev 1522 -> 1533, trying new optimizer}
+

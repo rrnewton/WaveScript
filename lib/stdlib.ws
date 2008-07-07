@@ -281,11 +281,19 @@ fun modF(f, base) {
   tmp
 }
 
+// May be a better way to do Ceilings... but I do not want to add everything as primitive:
 fun floorF(f)  intToFloat(floatToInt(f))
-fun ceilF(f)   roundF(f + 0.5);
-
+//fun ceilF(f)   roundF(f + 0.499999);
+fun ceilF(f) {
+  flr = floorF(f);
+  if f == flr then f else flr + 1;
+}
 fun floorD(d)  intToDouble(doubleToInt(d))
-fun ceilD(d)   roundD(d + floatToDouble(0.5)); // Ack, no double constants atm.
+//fun ceilD(d)   roundD(d + floatToDouble(0.499999)); // Ack, no double constants atm.
+fun ceilD(d) {
+  flr = floorD(d);
+  if d == flr then d else flr + 1;
+}
 
 // This *should* work by caching one or more fftw plans.
 // [2007.10.30] SHOULD be using memoized_fftR2C here.

@@ -17,6 +17,8 @@ fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007
 //fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
 fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
 
+outfmt = "bmp"
+
 LIVE = false;
 
 //====================================================================================================
@@ -171,12 +173,17 @@ fun populateBg(bgHist, (image,cols,rows)) {
   EHH = NumBins3.gint;
 
   offset = SizePatch / 2;
+
   // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
   inv_sizeBins1 = 1 / ceil(256 / NumBins1.gint); 
   inv_sizeBins2 = 1 / ceil(256 / NumBins2.gint);
   inv_sizeBins3 = 1 / ceil(256 / NumBins3.gint);
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
+
+  //println$ "Div result "++(256 / NumBins1.gint);
+  //println$ "Ceil result "++ceil(256 / NumBins1.gint);
+  //println(" inv_sizeBins* "++inv_sizeBins1++" "++inv_sizeBins2++" "++ inv_sizeBins3 ++" sampleweight "++sampleWeight);
   	
   // Histograms are for each pixel by creating create a histogram of the left most pixel in a row.
   // Then the next pixel's histogram in the row is calculated by:
@@ -191,6 +198,7 @@ fun populateBg(bgHist, (image,cols,rows)) {
   tempHist = build(NumBins1, fun(r)
               build(NumBins2, fun(b)
 	       make(NumBins3, (0 :: Inexact))));
+
   for r = 0 to rows-1 { 
     // clear temp patch
     fill3D(tempHist, 0);  
@@ -213,7 +221,7 @@ fun populateBg(bgHist, (image,cols,rows)) {
         binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
         binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-        // add to temporary histogram
+        // add to temporary histogram	
         tempHist[binB][binG][binR] += sampleWeight;
       }
     };
@@ -234,7 +242,8 @@ fun populateBg(bgHist, (image,cols,rows)) {
 	co = c - offset - 1;
 	coi = if co < 0 then 0 - co - 1 else 
     	      if co >= cols then 2 * cols - 1 - co else co;
-	for ro = r - offset to offset + SizePatch - 1 {
+
+	for ro = r - offset to r-offset + SizePatch - 1 {
 	  roi = if ro < 0 then 0-ro-1 else 
  	        if ro >= rows then 2 * rows - 1 - ro else ro;
 	  i = (roi * cols + coi) * 3;	  
@@ -247,9 +256,10 @@ fun populateBg(bgHist, (image,cols,rows)) {
 	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight;
           //tempHist[binB][binG][binR] += 0.0 - sampleWeight;
 	  if (tempHist[binB][binG][binR] < 0) then {
-	    tempHist[binB][binG][binR] := 0;
+	    //print("\n underflow "++ tempHist[binB][binG][binR] ++"\n");
+	    tempHist[binB][binG][binR] := 0;	    
 	    //wserror $ "error: underflow";
-	  };
+	  };	  
 	};
 			
 	// add right col
@@ -346,7 +356,13 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        
        // renormalize diff so that 255 = very diff, 0 = same
        // create result images
-       diffImage[pIndex] := Uint8! (255 - (diff * 255));
+       diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
+       //println$ "Diff "++ diff ++" Computation "++ (255 - Int! (diff * 255)) ++ " casted "++ Uint8! (255 - Int! (diff * 255)) ++
+       //         "diffImage[] "++ diffImage[pIndex];
+       //print$ diff++" ";
+       //print$ pIndex++"/"++diffImage[pIndex]++" ";
+
+       // Inefficient:
        mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;
                        
        // iterate through the rest of the row
@@ -392,7 +408,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
                            fun(px,bg) diff += sqrt(px * bg));	 
 
 	 // create result images		
-	 diffImage[pIndex] := Uint8! (255 - (diff * 255));
+	 diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
 	 mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;	 
        }
    }
@@ -617,8 +633,6 @@ fun bhatta(video) {
     println("Max elem "++ Array:fold(max,0,frame));
     */
 
-    //ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++".jpg", frame, cols, rows, 3);
-
     if bghist == null then {
       println$ "Output location: "++OutLoc;
       println$ "Settings: ";
@@ -683,11 +697,14 @@ fun bhatta(video) {
       };
       */
 
-      ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++".jpg", frame, cols, rows, 3);
+      ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++"."++outfmt, frame, cols, rows, 3);
       //ws_writeImage("Fg_",   diffImage, cols, rows);
 
-      ws_writeImage(fullpath_out++"/Diff_"++FrameIndex++".jpg", diffImage, cols, rows, 1);
-      ws_writeImage(fullpath_out++"/Mask_"++FrameIndex++".jpg", mask, cols, rows, 1);
+      println("Snip of diff: "++Array:sub(diffImage, 20000, 20));
+      println("Sum of diff: "++Array:fold(fun(acc,x) acc + Int64! x, 0, diffImage));
+
+      ws_writeImage(fullpath_out++"/Diff_"++FrameIndex++"."++outfmt, diffImage, cols, rows, 1);
+      ws_writeImage(fullpath_out++"/Mask_"++FrameIndex++"."++outfmt, mask, cols, rows, 1);
 
       FrameIndex += FgStep;
 

@@ -1272,6 +1272,7 @@
 
       [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO (Real32.Math.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
       [sqrtF Real32.Math.sqrt]
+      [sqrtD Real64.Math.sqrt]
       [sqrtC Complex.sqrt]
 
       [realpart "(fn {real, imag} => real)"]
@@ -1355,6 +1356,7 @@
       [Secret:newTimebase newTimebase]    ;; ADT breakage!
 
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
+      [roundD  ,(make-fun '("x") "Real64.fromInt (Real64.floor (x + 0.5))")]
 
       [start   ss_start]
       [end     ss_end]

@@ -48,6 +48,13 @@ result = iterate sum in union2(degapped,zipped) {
     println("\n");
 
     {
+      println("  Basic Functions");
+      println("=====================");
+      assert_prnt("ceilF ", ceilF(3.01), 4.0);
+      assert_prnt("ceilF ", ceilF(3.0),  3.0);
+    };
+
+    {
       println("  FIFO ADT ");
       println("=====================");
       using FIFO;

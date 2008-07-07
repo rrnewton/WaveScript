@@ -597,7 +597,7 @@
     [Uint16 "%hu"]
     [Uint8  "%hu"]
     [Float  "%g"]
-    [Double "%lf"]
+    [Double "%lg"]
     [#() "()"]
     [(Pointer ,_) "%p"]
     [(,args ... -> ,ret) ;"%p"
