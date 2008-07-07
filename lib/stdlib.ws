@@ -33,6 +33,9 @@ modF       :: (Float, Float) -> Float;
 floorF     :: Float -> Float;
 ceilF      :: Float -> Float;
 
+floorD     :: Double -> Double;
+ceilD      :: Double -> Double;
+
 
 /// Lifted FFT operators:
 
@@ -280,6 +283,9 @@ fun modF(f, base) {
 
 fun floorF(f)  intToFloat(floatToInt(f))
 fun ceilF(f)   roundF(f + 0.5);
+
+fun floorD(d)  intToDouble(doubleToInt(d))
+fun ceilD(d)   roundD(d + floatToDouble(0.5)); // Ack, no double constants atm.
 
 // This *should* work by caching one or more fftw plans.
 // [2007.10.30] SHOULD be using memoized_fftR2C here.

@@ -29,8 +29,12 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
-type Inexact = Float; // Or Double
-abs = absF
+type Inexact = Double; // Float or Double
+abs  = absD
+ceil = ceilD 
+sqrt = sqrtD
+// Need type classes!
+
 
 DEBUG = true;
 
@@ -46,8 +50,8 @@ type Settings = (
 	Int * // FgStep;	
 	Double * // Threshold;		
 
-	Int * // nChannels;
-	Bool  // useHSV;
+	Int  // nChannels;
+	//Bool  // useHSV;
      );	
 
 settings :: Settings = (
@@ -66,7 +70,7 @@ settings :: Settings = (
 		//320,	// cols
 		3,	// nChannels // NOT USED YET????
 		
-		true    // useBgModel		
+		//false    // useHSV
 	      );
 	
 bhattasettings = (
@@ -85,7 +89,7 @@ let (NumBins1, NumBins2, NumBins3, SizePatch, Alpha, useBgUpdateMask) = bhattase
 let (Filename, OutLoc, BgStartFrame, FgStartFrame, 
      NumBgFrames, NumFgFrames, BgStep, FgStep, Threshold,
      //rows, cols, 
-     nChannels, useBgModel) = settings;
+     nChannels) = settings;
 
 //====================================================================================================
 /// General helpers:
@@ -156,7 +160,7 @@ fun bounds(x,range) {
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
-populateBg :: (Array4D Float, Image) -> ();
+populateBg :: (Array4D Inexact, Image) -> ();
 fun populateBg(bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
@@ -168,9 +172,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
   offset = SizePatch / 2;
   // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
-  inv_sizeBins1 = 1 / ceilF(256 / NumBins1.gint); 
-  inv_sizeBins2 = 1 / ceilF(256 / NumBins2.gint);
-  inv_sizeBins3 = 1 / ceilF(256 / NumBins3.gint);
+  inv_sizeBins1 = 1 / ceil(256 / NumBins1.gint); 
+  inv_sizeBins2 = 1 / ceil(256 / NumBins2.gint);
+  inv_sizeBins3 = 1 / ceil(256 / NumBins3.gint);
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
   	
@@ -186,7 +190,7 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
   tempHist = build(NumBins1, fun(r)
               build(NumBins2, fun(b)
-		make(NumBins3, 0.0)));	
+	       make(NumBins3, (0 :: Inexact))));
   for r = 0 to rows-1 { 
     // clear temp patch
     fill3D(tempHist, 0);  
@@ -206,9 +210,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
         i = (roi * cols + coi) * 3;  
 	
         // figure out which bin
-        binB = f2i$ Float! image[i  ] * inv_sizeBins1;
-        binG = f2i$ Float! image[i+1] * inv_sizeBins2;
-        binR = f2i$ Float! image[i+2] * inv_sizeBins3;
+        binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
+        binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
+	binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
         // add to temporary histogram
         tempHist[binB][binG][binR] += sampleWeight;
       }
@@ -235,15 +239,15 @@ fun populateBg(bgHist, (image,cols,rows)) {
  	        if ro >= rows then 2 * rows - 1 - ro else ro;
 	  i = (roi * cols + coi) * 3;	  
 
-	  binB = floatToInt(Float! image[i+0] * inv_sizeBins1);
-	  binG = floatToInt(Float! image[i+1] * inv_sizeBins2);
-	  binR = floatToInt(Float! image[i+2] * inv_sizeBins3);	  
+	  binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
+	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
+	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
 	  
 	  //varbar = (binB, binG, binR, 0.0 - sampleWeight);
-	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0.0 - sampleWeight;
+	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight;
           //tempHist[binB][binG][binR] += 0.0 - sampleWeight;
-	  if (tempHist[binB][binG][binR] < 0.0) then {
-	    tempHist[binB][binG][binR] := 0.0;
+	  if (tempHist[binB][binG][binR] < 0) then {
+	    tempHist[binB][binG][binR] := 0;
 	    //wserror $ "error: underflow";
 	  };
 	};
@@ -258,9 +262,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
 	  i = (roi * cols + coi) * 3;
 
-	  binB = f2i (Float! image[i  ] * inv_sizeBins1);
-	  binG = f2i (Float! image[i+1] * inv_sizeBins2);
-	  binR = f2i (Float! image[i+2] * inv_sizeBins3);
+	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
+	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
+	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
 	  tempHist[binB][binG][binR] += sampleWeight;
 	};
 
@@ -297,12 +301,12 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
    // Patches are centered around the pixel.  [p.x p.y]-[offset offset] gives the upperleft corner of the patch.				
    offset :: Int = SizePatch / 2;
    // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
-   inv_sizeBins1 :: Inexact = 1 / ceilF(256 / NumBins1.gint);
-   inv_sizeBins2 :: Inexact = 1 / ceilF(256 / NumBins2.gint);
-   inv_sizeBins3 :: Inexact = 1 / ceilF(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
+   inv_sizeBins1 :: Inexact = 1 / ceil(256 / NumBins1.gint);
+   inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint);
+   inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
 
    // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
-   sampleWeight = 1.0 / (SizePatch * SizePatch).gint;	
+   sampleWeight = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
    nPixels =  rows * cols; 
 		
    // clear mask image
@@ -338,7 +342,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        // compare histograms
        diff :: Ref Inexact = ref$ 0;
        Array:foreach2_3D(pixelHist, bgHist[pIndex],
-	                 fun(pix,bg) diff += sqrtF(pix * bg));
+	                 fun(pix,bg) diff += sqrt(pix * bg));
        
        // renormalize diff so that 255 = very diff, 0 = same
        // create result images
@@ -385,7 +389,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 	 // compare histograms
 	 diff = ref$ 0;
 	 Array:foreach2_3D(pixelHist, bgHist[pIndex], 
-                           fun(px,bg) diff += sqrtF(px * bg));	 
+                           fun(px,bg) diff += sqrt(px * bg));	 
 
 	 // create result images		
 	 diffImage[pIndex] := Uint8! (255 - (diff * 255));
@@ -441,9 +445,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
     incAmount :: Inexact = 1 / (SizePatch * SizePatch).gint;
     nPixels =  rows * cols; 
     offset = SizePatch / 2; 
-    inv_sizeBins1 = 1 / ceilF(256 / Inexact! NumBins1);
-    inv_sizeBins2 = 1 / ceilF(256 / Inexact! NumBins2);
-    inv_sizeBins3 = 1 / ceilF(256 / Inexact! NumBins3);
+    inv_sizeBins1 = 1 / ceil(256 / Inexact! NumBins1);
+    inv_sizeBins2 = 1 / ceil(256 / Inexact! NumBins2);
+    inv_sizeBins3 = 1 / ceil(256 / Inexact! NumBins3);
     
     tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
 

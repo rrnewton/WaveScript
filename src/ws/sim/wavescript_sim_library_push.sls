@@ -46,13 +46,13 @@
 		 _+U8  _-U8  *U8  /U8  ^U8 
 		 _+U16 _-U16 *U16 /U16 ^U16
 
-		 sqrtF sqrtC sqrtI moduloI
+		 sqrtF sqrtD sqrtC sqrtI moduloI
 		 absI absF absD absC absI16 absI64
 		 randomI
 		 logD logF ;logI 
 		 exptI exptD exptF		
 		 ;modI modF 
-		 roundF		 
+		 roundF	roundD
 
 		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
 		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 
@@ -1377,7 +1377,8 @@
   (define ^: expt)
 
   (define (sqrtI n) (flonum->fixnum (sqrt n)))
-  (define sqrtF sqrt)
+  (define sqrtD sqrt)
+  (define sqrtF sqrtD)
   (define sqrtC sqrt)
   (define moduloI fxmod)
      
@@ -1494,6 +1495,7 @@
   (define charToInt char->integer)
   
   (define (roundF f) (flround  f))
+  (define (roundD f) (flround  f))
 
 
   ;; FIXME: These 16 bit representations don't have the sign bit in

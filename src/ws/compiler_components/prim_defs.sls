@@ -538,6 +538,7 @@
     
     ;; Rounding instead of truncation:    
     (roundF         (Float)   Float)
+    (roundD         (Double)  Double)
 
     ,@infix-arith-prims
 
@@ -546,6 +547,7 @@
 
     (sqrtI (Int)     Int)
     (sqrtF (Float)   Float)
+    (sqrtD (Double)  Double)
     (sqrtC (Complex) Complex)    
 
     (moduloI (Int Int) Int)

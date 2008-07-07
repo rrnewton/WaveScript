@@ -1099,8 +1099,8 @@
 	    [(cos sin tan acos asin atan)   (sym2str var)]
 	    [(absF absD absI absI16 absI64)         "abs"]
 	    [(logF logD)                            "log"]
-	    [(roundF)                             "round"]
-	    [(sqrtI sqrtF)                         "sqrt"]
+	    [(roundF roundD)                      "round"]
+	    [(sqrtI sqrtF sqrtD)                   "sqrt"]
 	    ;; These are from the WS runtime library:
 	    [(moduloI)                          "moduloI"]
 	    [(sqrtC)                              "csqrt"]
