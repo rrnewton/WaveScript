@@ -594,15 +594,14 @@ fun bhatta(video) {
       println$ "Computation time for estimateFg(): "++ en-st;    
 
       // Not yet:
-      /*
       bgStaleCounter += 1;
-      if bgCount == BgStep then {
+      if bgStaleCounter == BgStep then {
 	println$ "Updating bg";
-	if useBgUpdateMask	then updateBg(bghist, (ImageBuffer,cols,rows), mask)
-	else updateBg(bghist, (ImageBuffer,cols,rows), null);
-	bgCount := 0;
+	if useBgUpdateMask	then updateBg(bghist, (frame,cols,rows), mask)
+	else updateBg(bghist, (frame,cols,rows), null);
+	bgStaleCounter := 0;
       };
-      */
+
       FrameIndex += FgStep;
       
       // This is a tad naughty... We destructively update frame by the mask:

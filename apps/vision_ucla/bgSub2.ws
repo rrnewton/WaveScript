@@ -572,15 +572,14 @@ fun bhatta(video) {
       println$ "Computation time for estimateFg(): "++ en-st;    
 
       // Not yet:
-      /*
       bgStaleCounter += 1;
-      if bgCount == BgStep then {
+      if bgStaleCounter == BgStep then {
 	println$ "Updating bg";
-	if useBgUpdateMask	then updateBg(bghist, (ImageBuffer,cols,rows), mask)
-	else updateBg(bghist, (ImageBuffer,cols,rows), null);
-	bgCount := 0;
+	if useBgUpdateMask	then updateBg(bghist, (frame,cols,rows), mask)
+	else updateBg(bghist, (frame,cols,rows), null);
+	bgStaleCounter := 0;
       };
-      */
+
       FrameIndex += FgStep;
       
       // This is a tad naughty... We destructively update frame by the mask:
@@ -608,21 +607,17 @@ fun dump_files(strm)
       // Hack, we assume the aspect ratio is the same as the frame, but the size may not be.
       orig = Double! (cols*rows);
       aspect = Double! cols / Double! rows;
-      //scale_factor = Double! (diffImage.length * chans) / (orig * 3);
-      //println("  Scale factor "++scale_factor++" aspect "++aspect);
       c = sqrtD(Double! (len / chans) * aspect);
       r = c / aspect;
       (Int! c, Int! r)
     };
     if diffImage.length > 0 then { 
       let (c,r) = get_dims(diffImage.length, 3);
-      ws_writeImage(fullpath_out++"/Diff_"++ind++"."++outfmt, diffImage, c, r, 1); 
-      () 
-    };
+      ws_writeImage(fullpath_out++"/Diff_"++ind++"."++outfmt, diffImage, c, r, 1); ()
+     };
     if mask.length > 0 then {
       let (c,r) = get_dims(mask.length, 1);
-      ws_writeImage(fullpath_out++"/Mask_"++ind++"."++outfmt, mask, c, r, 1); 
-      () 
+      ws_writeImage(fullpath_out++"/Mask_"++ind++"."++outfmt, mask, c, r, 1); () 
     };
     emit ();
   }
