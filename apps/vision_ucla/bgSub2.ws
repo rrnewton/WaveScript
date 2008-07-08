@@ -23,7 +23,6 @@ LIVE = false;
 //====================================================================================================
 /// Types and Constants:
 
-
 type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
@@ -73,7 +72,6 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
      NumBgFrames, NumFgFrames, BgStep, FgStep, Threshold,
      //rows, cols, 
      nChannels) = settings;
-
 
 //====================================================================================================
 // Factoring pieces of the below functions into these helpers:
@@ -131,11 +129,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
     coEnd = c - offset + SizePatch;  // end of patch
 
     for ro = r-offset to roEnd-1 { // cover the row
-      roi = if ro < 0 then 0-ro-1 else 
-            if ro >= rows then 2 * rows-1-ro else ro;
+      roi = bounds(ro,rows);
       for co = c-offset to coEnd-1 { // cover the col
-        coi = if co < 0 then 0-co-1 else
-              if co >= cols then 2 * cols-1-co else co;
+	coi = bounds(co,cols);
         // get the pixel location
         i = (roi * cols + coi) * 3;  
 	
@@ -162,12 +158,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
     for c = 1 to cols-1 {
 	// subtract left col
 	co = c - offset - 1;
-	coi = if co < 0 then 0 - co - 1 else 
-    	      if co >= cols then 2 * cols - 1 - co else co;
-
+	coi = bounds(co,cols);
 	for ro = r - offset to r-offset + SizePatch - 1 {
-	  roi = if ro < 0 then 0-ro-1 else 
- 	        if ro >= rows then 2 * rows - 1 - ro else ro;
+	  roi = bounds(ro, rows);
 	  i = (roi * cols + coi) * 3;	  
 
 	  binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -185,12 +178,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
 			
 	// add right col
 	co = c - offset + SizePatch - 1;
-	coi = if co < 0 then 0-co-1 else
-              if co >= cols then 2 * cols-1-co else co;
+	coi = bounds(co,cols);
 	for ro = r-offset to r-offset + SizePatch - 1 {
-	  roi = if ro < 0 then 0-ro-1 else
-                if ro >= rows then 2 * rows-1-ro else ro;
-
+	  roi = bounds(ro,rows);
 	  i = (roi * cols + coi) * 3;
 
 	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
@@ -255,11 +245,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        roEnd = r - offset + SizePatch;
        coEnd = c - offset + SizePatch;
        for ro = r - offset to roEnd-1 {
-	 roi = if ro < 0 then 0-ro-1 else
-               if ro >= rows then 2*rows-1-ro else ro;
+	 roi = bounds(ro,rows);
 	 for co = c-offset to coEnd -1 {
-	   coi = if co < 0 then 0-co-1 else
-                 if co >= cols then 2*cols-1-co else co;
+	   coi = bounds(co,cols);
 	   i = (roi * cols + coi) * 3;
 	   binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	   binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -278,7 +266,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
 
        // Inefficient:
-       mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;
+       mask[pIndex] := if Double! diffImage[pIndex] > Double! Threshold then 255 else 0;
                        
        // iterate through the rest of the row
        for c = 1 to cols-1 {
@@ -286,11 +274,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 			
 	 //remove left col
 	 co = c-offset-1;
-	 coi = if co < 0 then 0-co-1 else 
-               if co >= cols then 2*cols-1-co else co;
+	 coi = bounds(co,cols);
 	 for ro = r-offset to r - offset + SizePatch-1 {
-	     roi = if ro < 0 then 0-ro-1 else 
-                   if ro >= rows then 2*rows-1-ro else ro;
+	     roi = bounds(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -305,11 +291,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 			
 	 // add right col
 	 co = c-offset + SizePatch-1;
-	 coi = if co < 0 then 0-co-1 else 
-               if co >= cols then 2*cols-1-co else co;
+	 coi = bounds(co,cols);
 	 for ro = r-offset to r-offset+SizePatch-1 {
-	     roi = if ro < 0 then 0-ro-1 else
-                   if ro >= rows then 2*rows-1-ro  else ro;
+	     roi = bounds(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -391,11 +375,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	roEnd = r - offset + SizePatch;
 	coEnd = c - offset + SizePatch;
 	for ro = r-offset to roEnd-1 {
-	  roi = if ro < 0 then 0-ro-1 else
-                if ro >= rows then 2*rows-1-ro else ro;
+	  roi = bounds(ro,rows);
 	  for co = c-offset to coEnd-1 {
-	    coi = if co < 0 then 0-co-1 else 
-                  if co >= cols then 2*cols-1-co else co; //(co+settings->cols)%settings->cols;
+            coi = bounds(co,cols);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -426,14 +408,11 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	// pixels.
 	for c = 1 to cols-1 {
 
-
 	  // subtract left col
 	  co = c-offset-1;
-	  coi = if co < 0 then 0-co-1 else 
-                if co >= cols then 2 * cols-1-co else co;
+	  coi = bounds(co,cols);
 	  for ro = r-offset to r - offset + SizePatch - 1 {
-	    roi = if ro < 0 then 0-ro-1 else
-		  if ro >= rows then 2*rows-1-ro else ro;
+	    roi = bounds(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -445,11 +424,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
 	  // add right col
 	  co = c-offset + SizePatch-1;
-	  coi = if co < 0 then 0-co-1 else 
-                if co >= cols then 2*cols-1-co else co;
+	  coi = bounds(co,cols);
 	  for ro = r-offset to r-offset + SizePatch-1 {
-	    roi = if ro < 0 then 0-ro-1 else
-	          if ro >= rows then 2*rows-1-ro else ro;
+  	    roi = bounds(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -564,6 +541,7 @@ fun bhatta(video) {
 
     if bgEstimateMode then {
 	  // Get input frame
+	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
 	  // add frame to the background
           st = clock();
 	  populateBg(bghist, (frame,cols,rows));
@@ -638,13 +616,11 @@ fun dump_files(strm)
     };
     if diffImage.length > 0 then { 
       let (c,r) = get_dims(diffImage.length, 3);
-      println("Writing diff scaled to "++(c,r)++" from "++(cols,rows));
       ws_writeImage(fullpath_out++"/Diff_"++ind++"."++outfmt, diffImage, c, r, 1); 
       () 
     };
     if mask.length > 0 then {
       let (c,r) = get_dims(mask.length, 1);
-      println("Writing mask scaled to "++(c,r)++" from "++(cols,rows));
       ws_writeImage(fullpath_out++"/Mask_"++ind++"."++outfmt, mask, c, r, 1); 
       () 
     };
