@@ -23,7 +23,10 @@ void*
   //printf("Read image %d\n", im);
   	
   //if (!im) wserror_fun(sprintf("opencv_wrapper ws_readImage failed to load file: %s", filename));
-  if (!im) wserror_fun("opencv_wrapper ws_readImage failed to load file: %s");
+  if (!im) { 
+    printf("Tried to load %s\n", filename);
+    wserror_fun("opencv_wrapper ws_readImage failed to load file: ");
+  }
 
   int rows = im->height;
   int cols = im->width;
@@ -51,15 +54,24 @@ ws_bool_t ws_writeImage(const char* filename, uint8_t* img, int width, int heigh
   IplImage* fgImage;
 
   //int nChannels = 3; // RGB by default.
-		
+
   fgImage = cvCreateImage(cvSize(width,height), IPL_DEPTH_8U, nChannels);
   memcpy(fgImage->imageData, img, width * height * nChannels);
   //if (pControls->useHSV) cvCvtColor(fgImage, fgImage, CV_HSV2BGR);
 
-  cvSaveImage(filename, fgImage);
+  // The documentation does not even say if this is an error code!
+
+  int err = cvSaveImage(filename, fgImage);
+  /*
+  if (err) {
+    printf("cvSaveImage Failed with error code %d, when saving to filename %s\n", err, filename);
+    wserror_fun("cvSaveImage returned non-zero error code");
+  }
+*/
+
   cvReleaseImage(&fgImage);   
 
-  //printf("Wrote file %s\n", filename);
+  printf("Wrote file %s\n", filename);
 
   return 0;
 }

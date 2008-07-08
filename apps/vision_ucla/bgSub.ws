@@ -4,14 +4,14 @@
   [2008.06.27]
 
 TODO:
-
 Flip blue and RED in the image pixel ordering.
 
  */
 
 include "stdlib.ws"
-
 include "opencv.ws"
+include "r100/r100.ws"
+
 
 fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
 //fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
@@ -31,10 +31,10 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
-type Inexact = Double; // Float or Double
-abs  = absD
-ceil = ceilD 
-sqrt = sqrtD
+type Inexact = Float; // Float or Double
+abs  =  absF
+ceil = ceilF 
+sqrt = sqrtF
 // Need type classes!
 
 
@@ -62,21 +62,19 @@ settings :: Settings = (
 		396, // BgStartFrame
 		0,	 // StartFrame
 		20, // NumBgFrames
-		20,//100, // NumFgFrames
+		100, // NumFgFrames
 
 		1, //BgStep
 		1, //FgStep
 		128, // Threshold
 										
-		//240,	// rows
-		//320,	// cols
-		3,	// nChannels // NOT USED YET????
+		3,   // nChannels - RGB image
 		
 		//false    // useHSV
 	      );
 	
 bhattasettings = (
-	        (16 :: Int),   // NumBins1
+		(16 :: Int),   // NumBins1
 		(2  :: Int),   // NumBins2
 		(2  :: Int),   // NumBins3
 		(30 :: Int),   // SizePatch
@@ -180,10 +178,6 @@ fun populateBg(bgHist, (image,cols,rows)) {
   inv_sizeBins3 = 1 / ceil(256 / NumBins3.gint);
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
-
-  //println$ "Div result "++(256 / NumBins1.gint);
-  //println$ "Ceil result "++ceil(256 / NumBins1.gint);
-  //println(" inv_sizeBins* "++inv_sizeBins1++" "++inv_sizeBins2++" "++ inv_sizeBins3 ++" sampleweight "++sampleWeight);
   	
   // Histograms are for each pixel by creating create a histogram of the left most pixel in a row.
   // Then the next pixel's histogram in the row is calculated by:
@@ -256,7 +250,6 @@ fun populateBg(bgHist, (image,cols,rows)) {
 	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight;
           //tempHist[binB][binG][binR] += 0.0 - sampleWeight;
 	  if (tempHist[binB][binG][binR] < 0) then {
-	    //print("\n underflow "++ tempHist[binB][binG][binR] ++"\n");
 	    tempHist[binB][binG][binR] := 0;	    
 	    //wserror $ "error: underflow";
 	  };	  
@@ -303,8 +296,6 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
 estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
-
-  println$"IMAGE LENGTH: "++ Array:length(image);
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
 
@@ -357,10 +348,6 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        // renormalize diff so that 255 = very diff, 0 = same
        // create result images
        diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
-       //println$ "Diff "++ diff ++" Computation "++ (255 - Int! (diff * 255)) ++ " casted "++ Uint8! (255 - Int! (diff * 255)) ++
-       //         "diffImage[] "++ diffImage[pIndex];
-       //print$ diff++" ";
-       //print$ pIndex++"/"++diffImage[pIndex]++" ";
 
        // Inefficient:
        mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;
@@ -602,7 +589,9 @@ filenames = iterate ind in index_stream {
 
 // Main Bhatta function:
 
-bhatta :: Stream Image -> Stream ();
+type OutputBundle = (Int * Image * RawImage * RawImage);
+
+bhatta :: Stream Image -> Stream OutputBundle;
 fun bhatta(video) {
   println("Bhattacharyya Differencing.");
     
@@ -621,17 +610,9 @@ fun bhatta(video) {
 	    // Here is the main storage:
             bghist    = null; 
 	    pixelhist = null;
-	    mask      = null;
-	    diffImage = null;
+	    mask      = null;  // Just one channel.
+	    diffImage = null;  // All three channels.
           }
-    /*
-    println("    Frame # "++ FrameIndex++" width/height "++cols++ " "++ rows++ " sum "++
-            Array:fold(fun(acc,x) acc + Double! x, (0::Double), frame)
-	    ++ " across total elements "++ Array:length(frame));
-    offset = 0; //50000;
-    println("snippet "++ Array:sub(frame,offset,20));
-    println("Max elem "++ Array:fold(max,0,frame));
-    */
 
     if bghist == null then {
       println$ "Output location: "++OutLoc;
@@ -657,7 +638,6 @@ fun bhatta(video) {
 	  // Get input frame
 	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
 	  // add frame to the background
-  	  //print(".");
           st = clock();
 	  populateBg(bghist, (frame,cols,rows));
 	  en = clock();
@@ -671,12 +651,12 @@ fun bhatta(video) {
 	    println("\nFinished background model, extracting foreground.\n");
             stopFrame := FgStartFrame + NumFgFrames * FgStep;
 	  };
-	  emit ();
+
+	  //emit (0, (frame,cols,rows), Array:null, Array:null);
     } else { 
 
       if (FrameIndex == FgStartFrame)
       then 
-      print(".");
 
       //println$ "Calling estimate... ImageBuffer size "++ Array:length(ImageBuffer);
       println$ "Calling estimate... frame size "++ Array:length(frame);
@@ -696,20 +676,126 @@ fun bhatta(video) {
 	bgCount := 0;
       };
       */
-
-      ws_writeImage(fullpath_out++"/Orig_"++FrameIndex++"."++outfmt, frame, cols, rows, 3);
-      //ws_writeImage("Fg_",   diffImage, cols, rows);
-
-      println("Snip of diff: "++Array:sub(diffImage, 20000, 20));
-      println("Sum of diff: "++Array:fold(fun(acc,x) acc + Int64! x, 0, diffImage));
-
-      ws_writeImage(fullpath_out++"/Diff_"++FrameIndex++"."++outfmt, diffImage, cols, rows, 1);
-      ws_writeImage(fullpath_out++"/Mask_"++FrameIndex++"."++outfmt, mask, cols, rows, 1);
-
       FrameIndex += FgStep;
+      
+      // This is a tad naughty... We destructively update frame by the mask:
+      for i = 0 to mask.length - 1 {         
+	  if mask[i] == 0 then {
+	    i3 = i*3;
+	    // Inefficient to do divisions! Hopefully gcc makes it a right shift.
+            frame[i3+0] := frame[i3+0] / 2;
+            frame[i3+1] := frame[i3+1] / 2;
+            frame[i3+2] := frame[i3+2] / 2;
+	  }
+      };
 
-      emit ();
+      emit (FrameIndex - FgStep, (frame,cols,rows), diffImage, mask);
     };
+  }
+}
+
+fun dump_files(strm) 
+  iterate (ind, (frame,cols,rows), diffImage, mask) in strm {
+    using Array;
+    ws_writeImage(fullpath_out++"/Fg_"++ind++"."++outfmt, frame, cols, rows, 3);    
+    
+    fun get_dims(len,chans) {
+      // Hack, we assume the aspect ratio is the same as the frame, but the size may not be.
+      orig = Double! (cols*rows);
+      aspect = Double! cols / Double! rows;
+      //scale_factor = Double! (diffImage.length * chans) / (orig * 3);
+      //println("  Scale factor "++scale_factor++" aspect "++aspect);
+      c = sqrtD(Double! (len / chans) * aspect);
+      r = c / aspect;
+      (Int! c, Int! r)
+    };
+    if diffImage.length > 0 then { 
+      let (c,r) = get_dims(diffImage.length, 3);
+      println("Writing diff scaled to "++(c,r)++" from "++(cols,rows));
+      ws_writeImage(fullpath_out++"/Diff_"++ind++"."++outfmt, diffImage, c, r, 1); 
+      () 
+    };
+    if mask.length > 0 then {
+      let (c,r) = get_dims(mask.length, 1);
+      println("Writing mask scaled to "++(c,r)++" from "++(cols,rows));
+      ws_writeImage(fullpath_out++"/Mask_"++ind++"."++outfmt, mask, c, r, 1); 
+      () 
+    };
+    emit ();
+  }
+
+// Select out the FG image and display that:
+fun my_display(strm) 
+     display_to_screen(smap(fun((_, (fg,c,r), diff, mask)) (fg,c,r), strm))
+
+fun nilbhatta(strm)
+ iterate frame in strm {
+  state { cnt = 0 }
+  emit (cnt, frame, Array:null, Array:null);
+  cnt += 1;
+ }
+
+// Half both dimensions:
+// Throw out 3 pixels out of each square of 4.
+fun squisher(strm) 
+  iterate (arr,cols,rows) in strm {
+    using Array;
+    halfrow = rows/2;
+    halfcol = cols/2;
+    new = makeUNSAFE(halfrow * halfcol * 3);
+    for c = 0 to halfcol-1 {
+    for r = 0 to halfrow-1 {
+       ind0 = (r*cols*2 + c*2) * 3;
+       ind1 = (r*halfcol + c) * 3;
+       new[ind1+0] := arr[ind0+0];
+       new[ind1+1] := arr[ind0+1];
+       new[ind1+2] := arr[ind0+2];
+     }
+    };
+    emit (new, halfcol, halfrow);
+  }
+
+// Double both dimensions:
+unsquisher :: Stream OutputBundle -> Stream OutputBundle;
+fun unsquisher(strm) {
+  fun blowup(arr,cols,rows) {
+
+    println("Blowing up from size "++cols++" by "++rows);
+
+    using Array;
+    dubcol = cols*2;
+    //new :: Array Color = makeUNSAFE(dubcol * rows * 6); 
+    new = make(dubcol * rows * 6, 0); 
+    for c = 0 to cols-1 {
+    for r = 0 to rows-1 {
+       i0 = (r*cols + c) * 3;
+       blue  = arr[i0+0];
+       green = arr[i0+1];
+       red   = arr[i0+2];
+
+       i1 = (r*dubcol*2 + c*2) * 3;
+       new[i1+0] := blue;
+       new[i1+1] := green;
+       new[i1+2] := red;
+       new[i1+3] := blue;
+       new[i1+4] := green;
+       new[i1+5] := red;
+
+       i2 = i1 + (dubcol*3);
+       new[i2+0] := blue;
+       new[i2+1] := green;
+       new[i2+2] := red;
+       new[i2+3] := blue;
+       new[i2+4] := green;
+       new[i2+5] := red;
+     }
+    };
+    new
+  };
+  iterate (ind, (arr,cols,rows), diffImage, mask) in strm {
+    emit (ind, (blowup(arr,cols,rows), cols*2, rows*2), 
+          blowup(diffImage,cols,rows), 
+	  mask);
   }
 }
 
@@ -718,27 +804,18 @@ fun bhatta(video) {
 
 // Main stream script:
 
-
-fakeFrames = iterate _ in timer$3 {
-  using Array;
-  arr = make(240 * 320 * 3, 0);
-  emit arr;
-}
-
-//acquire_imgs = if LIVE then front_camera      else stream_image_files(fullpath_in, timer(10));
-//output_imgs  = if LIVE then display_to_screen else fun(strm) image_files_sink(fullpath_out, "out", strm);
-
 input_imgs :: Stream Image;
-//input_imgs = stream_image_files(fullpath_in, BgStartFrame, timer(15));
-input_imgs = smap(ws_readImage, filenames)
+output_imgs :: Stream OutputBundle -> Stream ();
 
-//rawframes = smap(fun((arr,_,_)) arr, input_imgs);
+input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames)
+output_imgs = if LIVE then my_display else dump_files;
 
-//main = bhatta(fakeFrames);
-main = bhatta(input_imgs);
-//main = smap(fun((arr,w,h)) (w,h), input_imgs)
-
-//main = scandir_stream(fullpath_in, timer$3)
-//main = input_imgs
-//main  = image_files_sink(fullpath_out, "out", input_imgs);
-
+main = 
+       output_imgs
+/*      $ unsquisher */
+/*      $ unsquisher */
+     //$ nilbhatta
+     $ bhatta
+/*      $ squisher */
+/*      $ squisher */
+     $ input_imgs;

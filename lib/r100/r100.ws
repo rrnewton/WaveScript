@@ -2,28 +2,26 @@
 
 include "stdlib.ws"
 
-type Color = Uint8;
-type RGB = (Color * Color * Color);
 
 // These have the 3 RGB channels interleaved, together with width/height:
-type FlatImage = ((Array Color) * Int * Int);
-type Image     = ((Array RGB)   * Int * Int);
+type R100FlatImage = ((Array Uint8) * Int * Int);
+type R100Image     = ((Array (Uint8 * Uint8 * Uint8))   * Int * Int);
 
 // This is a stream of frames from the front camera.
 // Frames are arrays of uint16s.
 //
 // Only one of these streams exists.  The user cannot instantiate multiple camera streams.
-front_camera :: Stream FlatImage;
+front_camera :: Stream R100FlatImage;
 front_camera = {
-  file = ["front_camera.c"];
+  file = ["r100/front_camera.c"];
   // This is a bit of a wacky interface.
   getwidth  :: () -> Int = foreign("cam_width",  file);
   getheight :: () -> Int = foreign("cam_height", file);
   //set_cam_scratch :: Array Uint16 -> () = foreign("set_cam_scratch", file);
-  set_cam_scratch :: Array Color -> () = foreign("set_cam_scratch", file);
+  set_cam_scratch :: Array Uint8 -> () = foreign("set_cam_scratch", file);
   camera_ticks = (foreign_source("ws_camera_hookup", file)
                   :: Stream ());
-                  //:: Stream (Array (Array Color)));
+                  //:: Stream (Array (Array Uint8)));
 
   // The C side sends ticks.  We use a hack to allocate a single
   // static frame buffer on the WS heap and pass it to C.
@@ -36,7 +34,7 @@ front_camera = {
       height := getheight();
       // On our very first tick we allocate the buffer, that is it.
       print$ "Allocating camera buffer "++ wid ++" by "++ height ++"\n";
-      //cambuf := Array:make(wid * height * 3, (0 :: Color));
+      //cambuf := Array:make(wid * height * 3, (0 :: Uint8));
       cambuf := Array:make(wid * height * 3, (0::Uint8));
       // Register the buffer once and for all with C.
       set_cam_scratch(cambuf);
@@ -45,7 +43,7 @@ front_camera = {
       // It definitely gets filled up on the first frame.
       //emit Array:sub(cambuf, 1000, 10);
       //emit Array:fold((+), 0, cambuf);
-      print$ "Size of cambuf : "++Array:length(cambuf) ++"\n";
+      //print$ "Size of cambuf : "++Array:length(cambuf) ++"\n";
       emit (cambuf, wid, height);
     };
   }
@@ -54,9 +52,10 @@ front_camera = {
 // This simple screen interface takes a stream of frames as input, and
 // displays them to the phone's lcd.  It produces a stream of empty
 // tuples that signify the completion of screen updates.
+display_to_screen   :: Stream R100FlatImage -> Stream ();
 display_to_screen = {
   //c_fun :: (Array Uint16) -> () = foreign("display_to_screen", ["front_camera.c"]);
-  c_fun :: (Array Color) -> () = foreign("display_to_screen", ["front_camera.c"]);
+  c_fun :: (Array Uint8) -> () = foreign("display_to_screen", ["r100/front_camera.c"]);
   fun (imgs) 
   iterate (frame,wid,height) in imgs {
       c_fun(frame);
@@ -87,8 +86,8 @@ fun deinterleave_frame(arr) {
 // Pack the color values into structs.  Really, given C
 // representations this is an identity function on the bits.
 // Inefficient.
-//tuple_pixels :: Array Color -> Array (Color * Color * Color);
-tuple_pixels :: FlatImage -> Image;
+//tuple_pixels :: Array Uint8 -> Array (Uint8 * Uint8 * Uint8);
+tuple_pixels :: R100FlatImage -> R100Image;
 fun tuple_pixels((arr,w,h)) {
  len = Array:length(arr) / 3;
  newarr = 
@@ -102,8 +101,8 @@ fun tuple_pixels((arr,w,h)) {
  (newarr,w,h)
 }
 
-//untuple_pixels :: Array (Color * Color * Color) -> Array Color;
-untuple_pixels :: Image -> FlatImage;
+//untuple_pixels :: Array (Uint8 * Uint8 * Uint8) -> Array Uint8;
+untuple_pixels :: R100Image -> R100FlatImage;
 fun untuple_pixels((arr,w,h)) {
  using Mutable; using Array;
  newarr = makeUNSAFE(3 * length(arr));
@@ -117,7 +116,7 @@ fun untuple_pixels((arr,w,h)) {
  (newarr,w,h)
 }
 
-tweak_pixel :: RGB -> RGB;
+tweak_pixel :: (Uint8 * Uint8 * Uint8) -> (Uint8 * Uint8 * Uint8);
 fun tweak_pixel((r,g,b)) 
 //   (r,g,b)
 //   (r,255,b)
@@ -153,7 +152,7 @@ main = {
 
   LIVE = false;
 
-  acquire_imgs = if LIVE then front_camera      else stream_image_files(fullpath_in, timer(10));
+  acquire_imgs = if LIVE then front_camera      else stream_image_dir(fullpath_in);
   output_imgs  = if LIVE then display_to_screen else fun(strm) image_files_sink(fullpath_out, "out", strm);
 
   mainstrm = 

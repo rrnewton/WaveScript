@@ -741,9 +741,12 @@
 	       (match prog
 		 [(,inputlang '(program ,bod ,meta* ... ,type))
 		  (fluid-let ([union-types (or (assq 'union-types meta*) '(union-types))])
-		    (fluid-let ([aliases (normalize-aliases
-					(cdr (or (assq 'type-aliases meta*) 
-						 '(type-aliases))))])
+		    (fluid-let ([aliases 
+				 ;; [2008.07.07] Reverse these so that more later-defined aliases take precedence:
+				 (reverse
+				  (normalize-aliases
+				   (cdr (or (assq 'type-aliases meta*) 
+					    '(type-aliases)))))])
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) 
 			        (type-aliases ,@aliases)

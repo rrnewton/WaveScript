@@ -1039,6 +1039,7 @@ int wsinit( int argc, char *argv[] )  {
   fflush(stdout);
 }
 
+// This is the entrypoint into WS:
 //extern void ws_camera_hookup( unsigned short* );
 extern void ws_camera_hookup( ws_unit_t );
 
@@ -1069,30 +1070,7 @@ int wsmain( int argc, char *argv[] )  {
     (cam->postprocess)( cam, tmp );
 
     // This is inefficient, now we unpack one more step and make an array of chars.
-    unpacked = (unsigned char*)ws_camera->scratch;
-    
-    printf("Touching first block... pix %d\n", pix);
-    fflush(stdout);
-
-    unpacked[0] = 0;
-
-    printf("Touching second block...\n");
-    fflush(stdout);
-
-    unpacked[240 * 320 + 1] = 0;
-
-    printf("Touching third block...\n");
-    fflush(stdout);
-
-    unpacked[240 * 320 * 2 + 1] = 0;
-
-    printf("Touching last pixel...\n");
-    fflush(stdout);
-
-    unpacked[240 * 320 * 3 - 1] = 0;
-
-    printf("... finished unpacked pointer is %p\n", unpacked);
-    fflush(stdout);
+    unpacked = (unsigned char*)ws_camera->scratch;    
 
     // If in place, need to do this from the back end so as not to overwrite data.    
     // Not in place currently:

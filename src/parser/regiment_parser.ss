@@ -270,8 +270,9 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
+	  ;(right BANG) ;; This should be pretty strong but weaker than DOT.
           (left NEG APP DOT MAGICAPPLYSEP COMMA       )
-          (right ^ g^ ^_ ^. ^:     BANG)
+          (right ^ g^ ^_ ^. ^:  BANG)
 
     	  (nonassoc in)
 	  )
