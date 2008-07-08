@@ -31,10 +31,10 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
-type Inexact = Float; // Float or Double
-abs  =  absF
-ceil = ceilF 
-sqrt = sqrtF
+type Inexact = Double; // Float or Double
+abs  =  absD
+ceil = ceilD 
+sqrt = sqrtD
 // Need type classes!
 
 
