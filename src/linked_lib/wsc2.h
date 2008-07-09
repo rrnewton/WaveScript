@@ -35,6 +35,23 @@
 #define RCSIZE sizeof(int)
 #define ARRLENSIZE sizeof(int)
 
+// These macros allow us to monitor allocation rates if we wish:
+//#define WSMALLOC malloc
+//#define WSCALLOC calloc
+
+//#ifdef ALLOC_STATS
+long long alloc_counter = 0;
+inline void* malloc_measured(size_t size) {
+  alloc_counter += size;
+  return malloc(size);
+}
+inline void* calloc_measured(size_t count, size_t size) {
+  alloc_counter += size * count;
+  return calloc(count,size);
+}
+#define WSMALLOC malloc_measured
+#define WSCALLOC calloc_measured
+
 
 // Handle RCs on BOTH Cons Cells and Arrays:
 // A RC is the size of an int currently:
@@ -45,7 +62,7 @@
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
-#define CONSCELL(ty)   (void*)((char*)malloc(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
+#define CONSCELL(ty)   (void*)((char*)WSMALLOC(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
 #define CAR(ptr)       (*ptr)
 #define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
 #define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
@@ -75,7 +92,7 @@
 #define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))
 
 inline void* ws_array_alloc(int len, int eltsize) {
-  char* ptr = ((char*)malloc(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
+  char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
   CLEAR_RC(ptr);
   return ptr;
@@ -90,9 +107,22 @@ typedef unsigned short int uint16_t;
 int outputcount = 0;
 int wsc2_tuplimit = 10;
 
+long long last_alloc_printed = 0;
+void ws_alloc_stats() {
+  printf("  Total allocation: %e\n", (double) alloc_counter);
+  printf("  Alloctaion since last stats: %e\n", (double) alloc_counter-last_alloc_printed);
+  last_alloc_printed = alloc_counter;
+}
+void wsShutdown() {
+//#ifdef ???
+  ws_alloc_stats();
+}
+
 void BASE(char x) { 
   outputcount++;
-  if (outputcount == wsc2_tuplimit) exit(0);
+  if (outputcount == wsc2_tuplimit) { wsShutdown(); exit(0); }
+//#ifdef ???
+  ws_alloc_stats();
   fflush(stdout);
 }
 
@@ -155,6 +185,7 @@ int Listref(void* list, int n) {
   return 0; 
 }
 */
+
 
 
 #ifdef LOAD_COMPLEX

@@ -34,7 +34,7 @@ void*
   	
   //printf("   Height/width/channels: %d %d %d\n", rows, cols, nChannels);
 
-  char* wsimg = WSARRAYALLOC(im->imageSize, uint8_t);
+  unsigned char* wsimg = WSARRAYALLOC(im->imageSize, uint8_t);
   memcpy(wsimg, im->imageData, im->imageSize);
   cvReleaseImage(&im);
 

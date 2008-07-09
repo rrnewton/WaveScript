@@ -765,10 +765,13 @@
 	  `(assert-type ,ty (gint ',val)))
       `(gint ',val)
       ]
-     ;; No double's in meta program currently!!!
+
      ;; ANNOYING, FIXME: We don't have a direct syntax for double
      ;; constants, as a stopgap we could cast them from float
      ;; constants (unless they're too big).
+     ;[(eq? ty 'Double) `(assert-type Double ',val)]
+     [(eq? ty 'Double) `(assert-type Double (cast_num ',val))]
+     ;[(eq? ty 'Double) `(__cast_num Float Double ',val)]
 
      [(list? val)
       ;; This value is thrown away:

@@ -1027,8 +1027,8 @@
 	    [size `("(sizeof(",_elt") * ",len") + RCSIZE + ARRLENSIZE")]
 	    [tmp (Var self (unique-name "arrtmp"))]
 	    [alloc (if zero-fill?
-		       `("calloc(",size", 1)")
-		       `("malloc(",size")"))]
+		       `("WSCALLOC(",size", 1)")
+		       `("WSMALLOC(",size")"))]
 	    [cast `("(",_elt"*)",tmp)])
        (append-lines 
 	(make-lines 
@@ -1341,7 +1341,9 @@
 
 	;;========================================
 
-	[(clock) (kont "(clock() * 1000 / CLOCKS_PER_SEC)")]
+	;; Causes overflow problems if clock_t is integral:
+	;[(clock) (kont "(clock() * 1000 / CLOCKS_PER_SEC)")]
+	[(clock) (kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")]
 	[(realtime) 
 	 (define tmp (symbol->string (unique-name "tmp")))
 	 (make-lines
@@ -1414,6 +1416,7 @@
 				)
 					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
 			  )
+		   "wsShutdown();\n"
 		   "return 0;\n")))))]
 
       ;; Option (2): serial port connected to mote:
@@ -1540,6 +1543,7 @@ int main(int argc, char **argv)
     initState();
     ws_parse_options(argc, argv);
     wsmain(argc, argv);
+    wsShutdown();
     return 0;
   }
 ")
