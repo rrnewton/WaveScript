@@ -84,7 +84,7 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
 
  halfPatch :: Int = SizePatch / 2;
 
- // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
+// To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
 sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
 // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
 sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
@@ -137,6 +137,10 @@ populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
 fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
+
+  // FIXME: Temporarily computing at runtime... precision problems...
+  sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
+  println$ "Sampleweight1 at runtime: "++ sampleWeight1;
 
   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
 
@@ -228,6 +232,9 @@ estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> (
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
+
+   // FIXME: Temporarily computing at runtime... precision problems...
+   sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
 
    nPixels =  rows * cols; 
 		
@@ -321,6 +328,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
+
+    // FIXME: Temporarily computing at runtime... precision problems...
+    sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
 
     k = ref$ 0;
 	
