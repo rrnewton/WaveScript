@@ -4,6 +4,9 @@ include "stdlib.ws"
 //====================================================================================================
 /// General helpers:
 
+/// Nested arrays
+// Note, these functions should be replaced with a proper multi-dimensional matrix library.
+
 fun fill3D(arr, val) {
   for i = 0 to Array:length(arr)-1 {
    for j = 0 to Array:length(arr[i])-1 {
@@ -48,6 +51,23 @@ fun Array:make3D(i,j,k, val) {
    make(k, val)));
 }
 
+/*
+fun Array:copy3D(src, dst) {
+  using Array;
+  build(src.length, fun(i)
+  build(src[i].length, fun(j)
+   copy(src[i][j])));
+}
+*/
+
+fun Array:map3D_inplace2(arr, arr2, fn) {
+  for i = 0 to Array:length(arr)       - 1 {
+  for j = 0 to Array:length(arr[i])    - 1 {
+  for k = 0 to Array:length(arr[i][j]) - 1 {
+    arr[i][j][k] := fn(arr[i][j][k], arr2[i][j][k]);
+  }}}
+}
+
 fun Array:make4D(i,j,k,l, val) {
   using Array;
   build(i, fun(_) 
@@ -55,3 +75,4 @@ fun Array:make4D(i,j,k,l, val) {
   build(k, fun(_)
    make(l, val))));
 }
+

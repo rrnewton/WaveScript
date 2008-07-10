@@ -128,6 +128,8 @@ fun firstPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
     }
 };
 
+fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
+
 //====================================================================================================
 
 // Builds background model histograms for each pixel.  
@@ -137,10 +139,6 @@ populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
 fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
-
-  // FIXME: Temporarily computing at runtime... precision problems...
-  //sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
-  //println$ "Sampleweight1 at runtime: "++ sampleWeight1;
 
   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
 
@@ -161,11 +159,7 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
     firstPatch(r,0, rows,cols, tempHist, image, sampleWeight1);
 
     // copy temp histogram to left most patch
-    for cb = 0 to NumBins1-1 {
-     for cg = 0 to NumBins2-1 {
-       for cr = 0 to NumBins3-1 {
-         bgHist[k][cb][cg][cr] += tempHist[cb][cg][cr];
-    }}};
+    add_into3D(bgHist[k], tempHist);
 		
     // increment pixel index
     k += 1;
@@ -232,9 +226,6 @@ estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> (
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
-
-   // FIXME: Temporarily computing at runtime... precision problems...
-   //sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
 
    nPixels =  rows * cols; 
 		
@@ -328,9 +319,6 @@ fun updateBg(bgHist, (image,cols,rows), mask)
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
-
-    // FIXME: Temporarily computing at runtime... precision problems...
-    //sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
 
     k = ref$ 0;
 	
