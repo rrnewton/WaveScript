@@ -19,6 +19,7 @@
 
 #include<getopt.h>
 
+
 //int* arrayMake(size_t size, int len, ) { }
 
 #define TRUE  1
@@ -40,6 +41,11 @@
 //#define WSCALLOC calloc
 
 //#ifdef ALLOC_STATS
+
+#include <locale.h>
+
+char* commaprint(unsigned long long n);
+
 unsigned long long alloc_total = 0;
 unsigned long long alloc_counter = 0;
 inline void* malloc_measured(size_t size) {
@@ -112,9 +118,9 @@ int wsc2_tuplimit = 10;
 
 unsigned long long last_alloc_printed = 0;
 void ws_alloc_stats() {
-  printf("  Malloc calls: %lu\n", alloc_counter);
-  printf("  Total bytes allocated: %e\n", (double) alloc_total);
-  printf("  Bytes since last stats: %e\n", (double) (alloc_total - last_alloc_printed));
+  printf("  Malloc calls: %s\n", commaprint(alloc_counter));
+  printf("  Total bytes allocated: %s\n",  commaprint(alloc_total));
+  printf("  Bytes since last stats: %s\n", commaprint(alloc_total - last_alloc_printed));
   last_alloc_printed = alloc_total;
 }
 void wsShutdown() {
@@ -190,6 +196,36 @@ int Listref(void* list, int n) {
 }
 */
 
+
+char *commaprint(unsigned long long n)
+{
+	static int comma = '\0';
+	static char retbuf[30];
+	char *p = &retbuf[sizeof(retbuf)-1];
+	int i = 0;
+
+	if(comma == '\0') {
+		struct lconv *lcp = localeconv();
+		if(lcp != NULL) {
+			if(lcp->thousands_sep != NULL &&
+				*lcp->thousands_sep != '\0')
+				comma = *lcp->thousands_sep;
+			else	comma = ',';
+		}
+	}
+
+	*p = '\0';
+
+	do {
+		if(i%3 == 0 && i != 0)
+			*--p = comma;
+		*--p = '0' + n % 10;
+		n /= 10;
+		i++;
+	} while(n != 0);
+
+	return p;
+}
 
 
 #ifdef LOAD_COMPLEX
