@@ -164,7 +164,7 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
     // increment pixel index
     k += 1;
 
-    // compute the top row of histograms
+    // compute the rest of the top row 
     for c = 1 to cols-1 {
 	// subtract left col
 	co = c - halfPatch - 1;
@@ -200,11 +200,7 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 	};
 
 	// copy over			
-	for cb = 0 to NumBins1-1 {
-	for cg = 0 to NumBins2-1 {
-        for cr = 0 to NumBins3-1 {	  
-	  bgHist[k][cb][cg][cr] += tempHist[cb][cg][cr];
-	}}};
+	add_into3D(bgHist[k], tempHist);
 
 	// increment pixel index
 	k += 1;
