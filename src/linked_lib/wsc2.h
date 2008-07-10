@@ -13,7 +13,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-//#define ALLOC_STATS
+#define ALLOC_STATS
 
 
 #ifdef LOAD_COMPLEX

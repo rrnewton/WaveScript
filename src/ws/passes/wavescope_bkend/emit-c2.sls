@@ -500,8 +500,8 @@
 
      ;; Hacked this to handle NAN (not in a pretty way).
      [(flonum? datum) 
-            ;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
-      (wrap (format "(~a)~a" (Type self 'Float)
+      ;;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
+      (wrap (format "~a" ;; (Type self 'Float) ;; [2008.07.10] Removing this cast to handle doubles
 		    (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
 			"(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
 			datum)					 
@@ -1990,7 +1990,6 @@ int main(int argc, char **argv)
 (define-class <emitC2-timed> (<emitC2>) ())
 
 (define (print-w-time2 prefix)
-  ;;(list "printf(\"("prefix" %f)\\n\", (double)clock());\n")
 #;
   (list "printf(\"("prefix" %lld)\\n\", clock());\n")
   (let ([tmp (sym2str (unique-name "tmp"))])

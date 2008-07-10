@@ -292,9 +292,7 @@ fun floorD(d)  intToDouble(doubleToInt(d))
 //fun ceilD(d)   roundD(d + floatToDouble(0.499999)); // Ack, no double constants atm.
 fun ceilD(d) {
   flr = floorD(d);
-  println$ "floored "++flr;
-  if d == flr then println$ "  equal to own floor...\n";
-  if d == flr then d else flr + 1;
+  if d == flr then flr else flr + 1;
 }
 
 // This *should* work by caching one or more fftw plans.

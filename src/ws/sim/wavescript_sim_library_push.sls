@@ -1199,10 +1199,7 @@
   (define g+ s:+) (define g- s:-) (define g* s:*) 
   ;; Special behavior for division.
   ;; This should only be invoked with ws.early.
-  (define (g/ a b)
-
-    (printf "Generic division ~s ~s\n" a b)
-    
+  (define (g/ a b)    
     ;; We use the physical representation of the number to determine what its type is.
     (cond
 ;     [(exact? a) (quotient a b)]
