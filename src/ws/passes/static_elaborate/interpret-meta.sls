@@ -998,7 +998,9 @@
 	  (define binds (map list lhs* ty* rhs*))
 	  (define (lambind? b)  (lambda? (caddr b)))
 	  (define (constbind? b) (match (peel-annotations (caddr b))
-				   [',c (simple-constant? c)] [,_ #f]))
+				   [',c (simple-constant? c)] 
+				   [(cast_num ,[e]) e] ;; [2008.07.10] Allowing this to inline doubles also
+				   [,_ #f]))
 	  (define (either? b) (or (lambind? b) (constbind? b)))
 	  (define-values (tosubst remainder) (partition either? binds))
 	  ;; This is a hack that depends on unique naming.  That's
