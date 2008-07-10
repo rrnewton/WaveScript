@@ -82,7 +82,6 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
  inv_sizeBins2 :: Inexact = 1 / ceil(256 / Inexact! NumBins2);
  inv_sizeBins3 :: Inexact = 1 / ceil(256 / Inexact! NumBins3); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
 
- // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
  halfPatch :: Int = SizePatch / 2;
 
 //====================================================================================================
@@ -99,19 +98,16 @@ fun bounds(x,range) {
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
 populateBg :: (Array4D Inexact, Array3D Inexact, Image) -> ();
-fun populateBg(bgHist, __tempHist, (image,cols,rows)) {
+fun populateBg(bgHist, tempHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
 
-  // Patches are centered around the pixel.  [p.x p.y]-[offset offset] gives the upperleft corner of the patch.				
-
-  ERG = NumBins3;
-  EHH = NumBins3.gint;
-
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
-  	
-  // Histograms are for each pixel by creating create a histogram of the left most pixel in a row.
+
+  // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
+
+  // Histograms are for each pixel (patch).  First create a histogram of the left most pixel in a row.
   // Then the next pixel's histogram in the row is calculated by:
   //   1. removing pixels in the left most col of the previous patch from the histogram and 
   //   2. adding pixels in the right most col of the current pixel's patch to the histogram
@@ -120,10 +116,6 @@ fun populateBg(bgHist, __tempHist, (image,cols,rows)) {
   using Array; using Mutable;
 
   k = ref$ 0; // current pixel index
-
-  tempHist = build(NumBins1, fun(r)
-              build(NumBins2, fun(b)
-	       make(NumBins3, (0 :: Inexact))));
 
   for r = 0 to rows-1 { 
     // clear temp patch
