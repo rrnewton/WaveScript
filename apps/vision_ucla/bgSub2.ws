@@ -116,8 +116,7 @@ fun firstPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
       for co = c-halfPatch to coEnd-1 { // cover the col
 	  coi = boundit(co,cols);
 	  // get the pixel location
-	  i = (roi * cols + coi) * 3;  
-	
+	  i = (roi * cols + coi) * 3;  	
 	  // figure out which bin
 	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
 	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
@@ -166,7 +165,11 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
     // compute the rest of the top row 
     for c = 1 to cols-1 {
-	// subtract left col
+
+        //fun zipDown()
+
+	// subtract left col       
+
 	co = c - halfPatch - 1;
 	coi = boundit(co,cols);
 	for ro = r - halfPatch to r-halfPatch + SizePatch - 1 {
@@ -177,13 +180,8 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
 	  
-	  //varbar = (binB, binG, binR, 0.0 - sampleWeight1);
-	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight1;
-          //tempHist[binB][binG][binR] += 0.0 - sampleWeight1;
-	  if (tempHist[binB][binG][binR] < 0) then {
-	    tempHist[binB][binG][binR] := 0;	    
-	    //wserror $ "error: underflow";
-	  };	  
+	  tempHist[binB][binG][binR] += 0 - sampleWeight1;
+	  if tempHist[binB][binG][binR] < 0 then tempHist[binB][binG][binR] := 0;	  
 	};
 			
 	// add right col
