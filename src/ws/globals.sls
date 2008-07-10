@@ -51,6 +51,7 @@
 	 default-case-symbol
          
 	 compiler-invocation-mode 
+	 wsc2-gc-mode
 	 embedded-mode? wsc2-variant-mode? java-mode?
 ;	 regiment-compile-sums-as-tuples
 	 regiment-verbosity 
@@ -352,6 +353,12 @@
 	  wavescript-compiler-nesc
 	  wavescript-compiler-java
 	  wavescript-compiler-javame)))
+
+;; Options are:
+;;  refcount - normal
+;;  deferred - deferred refcount, unfinished
+;;  boehm    - conservative collector
+(define-regiment-parameter wsc2-gc-mode 'refcount)
 
 ;; This parameter controls what optimizations the compiler applies.
 

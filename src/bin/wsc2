@@ -3,7 +3,7 @@
 export REGFLAG=wsc2
 
 # Get out only the relevant options:
-RELEVANT=`getopt -a -l "gcc:,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+RELEVANT=`getopt -a -l "gc,gcc:,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
 #echo wsc2 getopt result: $RELEVANT
 
 # I would like to pass only the relevant options on to "wsc", but I

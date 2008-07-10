@@ -1,0 +1,28 @@
+
+
+
+[2008.07.08] 
+
+Out of curiousity, I tried dropping in llvmgcc instead of gcc:
+
+I ran into this assert failure:
+
+  cc1: ../../gcc/llvm-expand.c:3778: llvm_expand_constructor_element: Assertion `((enum tree_code) (value)->common.code) == CONSTRUCTOR || ((enum tree_code) (value)->common.code) == STRING_CST' failed.
+
+[2008.07.10] {Dropping refcounting}
+
+I'm going to experiment with the Boehm collector.  As an intermediate
+step I'm testing without collecting at all.
+
+Compiling without refcounts dropped the binary size a little bit to
+(66/ vs. 84/137 under -O2/-O3).  Still a factor of two worse than the
+CPP version.  However, the running time improved dramatically.
+
+On O3, it went from 1270/1400 (populateBG/estimateFG) to 600/610 on my
+Core2 at Nokia.  This is virtually identical to the C++ version
+(600/700).  So refcounting is the problem.
+
+(Note, adding ALLOC_STATS tracking brought the above (RC version) to
+~1300/1350... it also bumped the binary size up to 153.  Hmm, odd
+numbers, also, O2 RC NoStats 1180/1440..)
+

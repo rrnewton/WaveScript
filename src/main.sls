@@ -1116,13 +1116,13 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 
-		     (ws-run-pass prog emit-c2 class)
+		     (time (ws-run-pass prog emit-c2 class))
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
 		       (for-each (lambda (file contents)
-				   (string->file (text->string contents) file))
+				   (string->file (time (text->string contents)) file))
 			 file* contents*)
 		       (unless (<= (regiment-verbosity) 0)
 			 (printf "\nGenerated output to files ~s.\n" file*))
@@ -1137,8 +1137,13 @@
 		    ;; In this case we do a 'normal', non-partitioned compile:
 		    (last-few-steps prog
 				    (match (compiler-invocation-mode)
-				      [wavescript-compiler-c <emitC2>]
+				      [wavescript-compiler-c 
+				       (match (wsc2-gc-mode)
+					 [refcount <emitC2>]
+					 [boehm    <emitC2-nogc>]
+					 [deferred (error 'wsc2-gc-mode "deferred reference counting not implemented yet")])]
 				      ;[wavescript-compiler-c <emitC2-timed>]
+				      [wavescript-compiler-c <emitC2-nogc>]
 				      [wavescript-compiler-nesc <tinyos>]
 				      [wavescript-compiler-java   <java>]
 				      [wavescript-compiler-javame <javaME>]				      
@@ -1442,7 +1447,7 @@
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 )))
    
-   (if (>= (regiment-verbosity) 2) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
+   (if (>= (regiment-verbosity) 1) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
    )
  ) ; End wscomp
 
@@ -1989,6 +1994,12 @@
 	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
 	   (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
+	   (loop rest)]
+
+	  [("-gc" ,name ,rest ...)
+	   (set! name (string->symbol name))
+	   (printf "Setting GC mode to ~s\n" name)
+	   (wsc2-gc-mode name)
 	   (loop rest)]
 	  
 	  ;; This tells wstiny to split the program into node and server components:

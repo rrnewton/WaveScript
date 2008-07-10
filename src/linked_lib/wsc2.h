@@ -36,31 +36,55 @@
 #define RCSIZE sizeof(int)
 #define ARRLENSIZE sizeof(int)
 
-// These macros allow us to monitor allocation rates if we wish:
-//#define WSMALLOC malloc
-//#define WSCALLOC calloc
-
-//#ifdef ALLOC_STATS
-
 #include <locale.h>
-
 char* commaprint(unsigned long long n);
 
+#define ALLOC_STATS
+
+#ifdef USE_BOEHM
+  #include <gc/gc.h>
+  #define BASEMALLOC GC_MALLOC
+  inline void* gc_calloc(size_t count, size_t size) {
+    size_t bytes = count*size;
+    void* ptr = GC_MALLOC(bytes);
+    bzero(ptr, bytes);
+    return ptr;
+  }
+  #define BASECALLOC gc_calloc
+  #define BASEFREE   free
+#else
+  #define BASEMALLOC malloc
+  #define BASECALLOC calloc
+  #define BASEFREE   free
+#endif
+
+// These macros allow us to monitor allocation rates if we wish:
+#ifdef ALLOC_STATS
 unsigned long long alloc_total = 0;
 unsigned long long alloc_counter = 0;
+unsigned long long free_counter = 0;
 inline void* malloc_measured(size_t size) {
   alloc_total   += size;
   alloc_counter += 1;
-  return malloc(size);
+  return BASEMALLOC(size);
 }
 inline void* calloc_measured(size_t count, size_t size) {
   alloc_total += size * count;
   alloc_counter += 1;
-  return calloc(count,size);
+  return BASECALLOC(count,size);
+}
+inline void free_measured(void* object) {
+  free_counter += 1;
+  BASEFREE(object);
 }
 #define WSMALLOC malloc_measured
 #define WSCALLOC calloc_measured
-
+#define WSFREE   free_measured
+#else
+#define WSMALLOC BASEMALLOC
+#define WSCALLOC BASECALLOC
+#define WSFREE   BASEFREE
+#endif
 
 // Handle RCs on BOTH Cons Cells and Arrays:
 // A RC is the size of an int currently:
@@ -76,7 +100,7 @@ inline void* calloc_measured(size_t count, size_t size) {
 #define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
 #define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
 #define SETCAR(ptr,hd) ptr[0]=hd
-#define FREECONS(ptr)  free((char*)ptr - sizeof(void*) - sizeof(int))
+#define FREECONS(ptr)  WSFREE((char*)ptr - sizeof(void*) - sizeof(int))
 
 // This was from when RC's where the same size as a void* pointer:
 //#define CDR(ptr)       (((void**)ptr)[-2])
@@ -93,7 +117,7 @@ inline void* calloc_measured(size_t count, size_t size) {
 #define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
 #define ARRPTR(ptr)        (((void**)ptr)-2)
-#define FREEARR(ptr)       free(ARRPTR(ptr))
+#define FREEARR(ptr)       WSFREE(ARRPTR(ptr))
 
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
 //#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
@@ -116,23 +140,30 @@ typedef unsigned short int uint16_t;
 int outputcount = 0;
 int wsc2_tuplimit = 10;
 
+#ifdef ALLOC_STATS
 unsigned long long last_alloc_printed = 0;
 void ws_alloc_stats() {
   printf("  Malloc calls: %s\n", commaprint(alloc_counter));
+  printf("  Free   calls: %s", commaprint(free_counter));
+  printf("\t\t Unfreed objs: %s\n", commaprint(alloc_counter-free_counter));
   printf("  Total bytes allocated: %s\n",  commaprint(alloc_total));
   printf("  Bytes since last stats: %s\n", commaprint(alloc_total - last_alloc_printed));
   last_alloc_printed = alloc_total;
 }
+#endif
+
 void wsShutdown() {
-//#ifdef ???
-  ws_alloc_stats();
+  #ifdef ALLOC_STATS
+    ws_alloc_stats();
+  #endif
 }
 
 void BASE(char x) { 
   outputcount++;
   if (outputcount == wsc2_tuplimit) { wsShutdown(); exit(0); }
-//#ifdef ???
+#ifdef ALLOC_STATS
   ws_alloc_stats();
+#endif
   fflush(stdout);
 }
 

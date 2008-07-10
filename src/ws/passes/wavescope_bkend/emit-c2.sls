@@ -1,4 +1,4 @@
-#!r6rs
+ #!r6rs
 
 ;;;; .title WaveScript EmitC Version TWO
 ;;;; .author Ryan Newton
@@ -27,9 +27,10 @@
 ;; makes the probability of length collections higher.
 
 (library (ws passes wavescope_bkend emit-c2)
-  (export emit-c2
+  (export emit-c2 ;; The main entrypoint.
 	   ;emit-c2-generate-timed-code
 	   <emitC2>
+	   <emitC2-nogc>
 	   <emitC2-timed>
 	   
 	   ;; Have to export all the generic methods so that they can be subclassed:
@@ -68,6 +69,7 @@
      ;;   text representing the pointer to free).
      include-files link-files ;; <- accumulate a list of files to include/link
      compile-flags ;; Accumulate a list of flags to send to gcc, datatype "text"
+     hash-defs     ;; Accumulate flags to put at the top of the output file, before includes, datatype "text"
      server-cutpoints ;; <- names of cutpoints
      ))
 
@@ -298,6 +300,7 @@
 ;; appropriate free-ing code.
 ;; 
 ;; Currently this routine mutates the table "free-fun-table" on the fly.
+;; It also returns a lines datatype containing the prototypes and definitions.
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
@@ -353,7 +356,7 @@
 				"/* Freeing struct: "(sym2str tuptyp)"*/\n"
 				(block default-fun_name
 				       (map (match-lambda ((,fldname ,ty))
-					      (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)))))
+					      (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)) "")))
 					 flds)))))]
 			   [(List ,elt)
 			    (set! proto-acc (cons default-fun_name proto-acc))
@@ -365,10 +368,10 @@
 					   `(
 					     ;; Recursively decr tail:
 					     ,(Type self `(List ,elt))" ptr2 = CDR(ptr);\n"
-					     ,(lines-text (gen-decr-code self `(List ,elt) "ptr2"))
+					     ,(lines-text (gen-decr-code self `(List ,elt) "ptr2" ""))
 					     ;; If heap allocated, free the CAR:
 					     ,(if (heap-type? self elt)
-						  (lines-text (gen-decr-code self elt `("(*ptr)")))
+						  (lines-text (gen-decr-code self elt `("(*ptr)") ""))
 						  "")
 					     "FREECONS(ptr);\n"))))]
 			   [(Array ,elt)
@@ -382,7 +385,7 @@
 					    ,(block `("for (",ind" = 0; ",ind" < ARRLEN(ptr); ",ind"++)")
 						    ;;(lines-text ((cdr (loop elt)) `("ptr[",ind"]")))
 						    (begin ;(loop elt) ;; For side effect
-						      (lines-text (gen-decr-code self elt `("ptr[",ind"]")))))
+						      (lines-text (gen-decr-code self elt `("ptr[",ind"]") ""))))
 					    "FREEARR(ptr);\n")))
 				  ))])))     
 		  (slot-ref self 'free-fun-table)))])
@@ -398,11 +401,12 @@
 
 ;; These underlying methods do the actual code generation:
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
+;; Returns lines representing a block of code to do refcount incr.
 (__spec gen-incr-code <emitC2> (self ty ptr msg)
   (match ty
     ;; Both of these types just decr the -1 offset:
     [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("INCR_RC(",ptr"); /* ",msg" type: ",(format "~a" ty)" */\n"))]
+     (make-lines `("INCR_RC(",ptr"); /* ",msg", type: ",(format "~a" ty)" */\n"))]
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 
@@ -417,11 +421,11 @@
 
 ;; "ptr" should be text representing a C lvalue
 ;; returns "lines"
-(__spec gen-decr-code <emitC2> (self ty ptr)
+(__spec gen-decr-code <emitC2> (self ty ptr msg)
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (make-lines 
-      (block `("if (DECR_RC_PRED(",ptr")) /* type: ",(format "~a" ty)" */ ")
+      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
 	     (let ([freecode (lines-text (gen-free-code self ty ptr))])	      
 	       (if #f ;; DEBUGGING TOGGLE.
 		   (list "printf(\"  WS Freeing, type: "(Type self ty)", Pointer %p\\n\"," ptr");\n" freecode)
@@ -430,9 +434,9 @@
     ;; Could make this a separate function:
     [(Struct ,name) 
      (apply append-lines
-	    (make-lines (format "/* Decr tuple refcount, Struct ~a */\n" name))
+	    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
 	    (map (match-lambda ((,fldname ,ty))
-		   (gen-decr-code self ty (list ptr "." (sym2str fldname))))
+		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
     [,ty (guard (not (heap-type? self ty))) (make-lines "")]))
 
@@ -453,10 +457,10 @@
 ;; These methods represent the actions to take when encountering local or heap refs.
 ;; The default version represents plain old reference counting.
 (__spec incr-local-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "local"))
-(__spec decr-local-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr))
+(__spec decr-local-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "local"))
 
 (__spec incr-heap-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "heap"))
-(__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr))
+(__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "heap"))
 
 ;; TODO -- not used yet
 (__spec potential-collect-point <emitC2> (self) (make-lines ""))
@@ -995,7 +999,7 @@
 	      (let ([tmp (Var self (unique-name "tmptup"))])
 		(append-lines (make-lines `(,(Type self retty)"* ",tmp" = ",name"(",(insert-between ", " rand*)"); /* foreign app, return tuple */ \n"))
 			      (kont `("(*",tmp")"))
-			      (make-lines `("free(",tmp");\n"))))]
+			      (make-lines `("free(",tmp");\n"))))] ;; Does NOT use WSFREE, this is external.
 	     [,else (kont `(,name"(",(insert-between ", " rand*)") /* foreign app */ "))])])]
        [(foreign-app . ,_) (error 'emitC2 "foreign-app without type annotation: ~s" (cons 'foreign-app _))]
 
@@ -1429,8 +1433,9 @@
 	;(slot-cons! self 'compile-flags " -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/")
 	;; ACK: fixing the TINYOS install dir at compile time.  Can't get quoting/env-vars to work out:
 	(slot-cons! self 'compile-flags 
-		    (format " -I~a/support/sdk/c  -L~a/support/sdk/c -lmote "
-			    (getenv "TOSROOT") (getenv "TOSROOT")))
+		    (list (format " -I~a/support/sdk/c  -L~a/support/sdk/c -lmote "
+			    (getenv "TOSROOT") (getenv "TOSROOT"))
+			  (slot-ref self 'compile-flags)))
 	(for i = 0 to (sub1 (length (slot-ref self 'server-cutpoints)))
 	     (add-include! self (format "\"WSQueryMsg~a.c\"" i)))
 	
@@ -1512,7 +1517,7 @@ int main(int argc, char **argv)
 		   tmsg_length(msg) - spacket_data_offset(0));
 
 	  printf(\"\\n\");
-	  free(msg);
+	  free(msg); // Does not use WSFREE
 */
 	  // We shouldn't HAVE to do this:
 	  // The MIG generated code uses offset 0, so we hack this:
@@ -1520,7 +1525,7 @@ int main(int argc, char **argv)
           tmsg_t *msg2 = new_tmsg((void*)packet + 1 + spacket_data_offset(0), len - 1);
 
           "(Var self (car (slot-ref self 'server-cutpoints)))"(msg2);
-	  free(msg2);
+	  free(msg2); // Does not use WSFREE
 	}
       else
 	{
@@ -1529,7 +1534,7 @@ int main(int argc, char **argv)
 	}
      
       //tmsg_t* incoming_msg = new_tmsg((void*)packet,len);
-      free((void *)packet);
+      free((void *)packet); // Does not use WSFREE
       //free((void *)incoming_msg);
     }
 }
@@ -1619,8 +1624,7 @@ int main(int argc, char **argv)
 		  "char "(Var self vqarg)";\n"
 		 (IterStartHook self name arg argty)
 		 (lines-text code)
-		 (IterEndHook self name arg argty)
-		 ))
+		 (IterEndHook self name arg argty)))
 	  "\n"))))
 
 ;; A cut point on the server, currently only coming FROM the network.
@@ -1821,7 +1825,7 @@ int main(int argc, char **argv)
 ;; This has a quirky return type.  Ugly abstraction boundaries.
 ;; Inputs STRINGS.
 ;; Returns a vector of two elements:
-;;   (1) Association list of file-name, file-contents to write.
+;;   (1) Association list of file-name, file-contents to write, datatype "text"
 ;;   (2) Thunk to execute after files are written.
 (__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
   (define text
@@ -1886,15 +1890,13 @@ int main(int argc, char **argv)
 			  (list "//WSLIBDEPS: "
 				;; This is a bit hackish, throw the flags in there also:
 				(slot-ref self 'compile-flags)
-				(map (lambda (fn) 
+				(insert-between " "
+				 (map (lambda (fn) 
 				       (let ([lib (extract-lib-name fn)])
-					 (if lib (list " -l" lib) fn)))
-				  (slot-ref self 'link-files))
-				"\n"
-							       
-				#;
-				(map (lambda (definc) (list "#include \""definc"\"\n"))
-				  (slot-ref self 'default-includes))		
+					 (if lib (list "-l" lib) fn)))
+				   (slot-ref self 'link-files)))
+				"\n"			      	
+				(slot-ref self 'hash-defs)
 				
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
@@ -1932,20 +1934,43 @@ int main(int argc, char **argv)
   (slot-set! self 'theprog prog)
   (slot-set! self 'link-files '())
   (slot-set! self 'compile-flags '())
+  (slot-set! self 'hash-defs '())
   ;; Our default includes
   (slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
   (slot-set! self 'server-cutpoints '())
   )
 
+;; Takes a class as argument, makes an object, calls the "Run" method.
 (define (emit-c2 prog class)
-  ;(define obj (make-object <zct> prog))
   (define obj (make-object class prog))
   (Run obj))
 
 ;;================================================================================
 
-(define-class <zct> (<emitC2>) ())
+;; This is for use with a conservative collector.  No reference counting.
+(define-class <emitC2-nogc> (<emitC2>) ())
+;; Very simple, just don't insert any refcounting code:
+(__specreplace incr-local-refcount <emitC2-nogc> (self ty ptr) (make-lines ""))
+(__specreplace decr-local-refcount <emitC2-nogc> (self ty ptr) (make-lines ""))
+(__specreplace incr-heap-refcount  <emitC2-nogc> (self ty ptr) (make-lines ""))
+(__specreplace decr-heap-refcount  <emitC2-nogc> (self ty ptr) (make-lines ""))
 
+(__specreplace gen-incr-code <emitC2-nogc> (self ty ptr msg) (make-lines ""))
+(__specreplace gen-decr-code <emitC2-nogc> (self ty ptr msg) (make-lines ""))
+
+(__specreplace build-free-fun-table! <emitC2-nogc> (self heap-types) (make-lines ""))
+
+(__spec initialise <emitC2-nogc> (self prog)
+  ;; Add this to the include list:
+  ;;(slot-set! self 'include-files (cons (** "\"gc/gc.h\"") (slot-ref self 'include-files)))
+  ;;(slot-set! self 'compile-flags (list " -lgc " (slot-ref self 'compile-flags)))
+  ;(slot-set! self 'link-files (cons "libgc.so" (slot-ref self 'link-files)))
+  ((add-file! self) "libgc.so")
+  (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))
+  )
+
+;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
+(define-class <emitC2-zct> (<emitC2>) ())
 #;
 (specialise! Var <zct> 
  (lambda (next self v)
@@ -1961,6 +1986,7 @@ int main(int argc, char **argv)
 
 ;; ================================================================================
 
+;; This variant enables profiling.
 (define-class <emitC2-timed> (<emitC2>) ())
 
 (define (print-w-time2 prefix)

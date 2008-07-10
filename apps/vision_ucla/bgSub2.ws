@@ -77,6 +77,8 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
  inv_sizeBins1 :: Inexact = 1 / ceil(256 / NumBins1.gint);
  inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint);
  inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
+ // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
+ halfPatch :: Int = SizePatch / 2;
 
 //====================================================================================================
 // Factoring pieces of the below functions into these helpers:
@@ -100,8 +102,6 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
   ERG = NumBins3;
   EHH = NumBins3.gint;
-
-  halfPatch = SizePatch / 2;
 
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
@@ -217,9 +217,6 @@ estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> (
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
-
-   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
-   halfPatch :: Int = SizePatch / 2;
 
    // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
    sampleWeight = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
@@ -356,7 +353,6 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
     incAmount :: Inexact = 1 / (SizePatch * SizePatch).gint;
     nPixels =  rows * cols; 
-    halfPatch = SizePatch / 2; 
     
     tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
 
