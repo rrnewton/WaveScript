@@ -84,12 +84,48 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
 
  halfPatch :: Int = SizePatch / 2;
 
+ // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
+sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
+// To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
+sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
+
+_ = {
+  println$ "Some metaprogram-time values: \n";
+  println$ "  inv_sizeBins: "++(inv_sizeBins1, inv_sizeBins2, inv_sizeBins3);
+  println$ "  sampleWeight1,2: "++ (sampleWeight1, sampleWeight2);
+  println$ "";
+  }
+
 //====================================================================================================
 // Factoring pieces of the below functions into these helpers:
 
-fun bounds(x,range) {
+// When we are near the edge of the image, patches may go off the
+// edge, we reflect them back on themselves.
+fun boundit(x,range) {
   if x < 0 then 0-x-1 else
   if x >= range then 2*range-1-x else x;
+};
+
+
+fun firstPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
+  roEnd = r - halfPatch + SizePatch;  // end of patch
+  coEnd = c - halfPatch + SizePatch;  // end of patch
+
+  for ro = r-halfPatch to roEnd-1 { // cover the row
+      roi = boundit(ro,rows);
+      for co = c-halfPatch to coEnd-1 { // cover the col
+	  coi = boundit(co,cols);
+	  // get the pixel location
+	  i = (roi * cols + coi) * 3;  
+	
+	  // figure out which bin
+	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
+	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
+	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
+	  // add to temporary histogram	
+	  patchbuf[binB][binG][binR] += sampleWeight;
+	}
+    }
 };
 
 //====================================================================================================
@@ -97,13 +133,10 @@ fun bounds(x,range) {
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
-populateBg :: (Array4D Inexact, Array3D Inexact, Image) -> ();
-fun populateBg(bgHist, tempHist, (image,cols,rows)) {
+populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
+fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
-
-  // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
-  sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
 
   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
 
@@ -112,7 +145,6 @@ fun populateBg(bgHist, tempHist, (image,cols,rows)) {
   //   1. removing pixels in the left most col of the previous patch from the histogram and 
   //   2. adding pixels in the right most col of the current pixel's patch to the histogram
 	
-  // create temp hist to store working histogram
   using Array; using Mutable;
 
   k = ref$ 0; // current pixel index
@@ -122,25 +154,7 @@ fun populateBg(bgHist, tempHist, (image,cols,rows)) {
     fill3D(tempHist, 0);  
 				
     // create the left most pixel's histogram from scratch
-    c :: Int = 0;
-    roEnd = r - halfPatch + SizePatch;  // end of patch
-    coEnd = c - halfPatch + SizePatch;  // end of patch
-
-    for ro = r-halfPatch to roEnd-1 { // cover the row
-      roi = bounds(ro,rows);
-      for co = c-halfPatch to coEnd-1 { // cover the col
-	coi = bounds(co,cols);
-        // get the pixel location
-        i = (roi * cols + coi) * 3;  
-	
-        // figure out which bin
-        binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
-        binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-        // add to temporary histogram	
-        tempHist[binB][binG][binR] += sampleWeight;
-      }
-    };
+    firstPatch(r,0, rows,cols, tempHist, image, sampleWeight1);
 
     // copy temp histogram to left most patch
     for cb = 0 to NumBins1-1 {
@@ -156,18 +170,18 @@ fun populateBg(bgHist, tempHist, (image,cols,rows)) {
     for c = 1 to cols-1 {
 	// subtract left col
 	co = c - halfPatch - 1;
-	coi = bounds(co,cols);
+	coi = boundit(co,cols);
 	for ro = r - halfPatch to r-halfPatch + SizePatch - 1 {
-	  roi = bounds(ro, rows);
+	  roi = boundit(ro, rows);
 	  i = (roi * cols + coi) * 3;	  
 
 	  binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
 	  
-	  //varbar = (binB, binG, binR, 0.0 - sampleWeight);
-	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight;
-          //tempHist[binB][binG][binR] += 0.0 - sampleWeight;
+	  //varbar = (binB, binG, binR, 0.0 - sampleWeight1);
+	  tempHist[binB][binG][binR] := tempHist[binB][binG][binR] + 0 - sampleWeight1;
+          //tempHist[binB][binG][binR] += 0.0 - sampleWeight1;
 	  if (tempHist[binB][binG][binR] < 0) then {
 	    tempHist[binB][binG][binR] := 0;	    
 	    //wserror $ "error: underflow";
@@ -176,15 +190,15 @@ fun populateBg(bgHist, tempHist, (image,cols,rows)) {
 			
 	// add right col
 	co = c - halfPatch + SizePatch - 1;
-	coi = bounds(co,cols);
+	coi = boundit(co,cols);
 	for ro = r-halfPatch to r-halfPatch + SizePatch - 1 {
-	  roi = bounds(ro,rows);
+	  roi = boundit(ro,rows);
 	  i = (roi * cols + coi) * 3;
 
 	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
 	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	  tempHist[binB][binG][binR] += sampleWeight;
+	  tempHist[binB][binG][binR] += sampleWeight1;
 	};
 
 	// copy over			
@@ -215,8 +229,6 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
 
-   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
-   sampleWeight = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
    nPixels =  rows * cols; 
 		
    // clear mask image
@@ -225,27 +237,14 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    for r = 0 to rows-1 {
-       c :: Int = 0;
-       pIndex = r * cols + c;
+
+       pIndex = r * cols ;
 		
        // for the first pixel
        // clear patch histogram
        fill3D(pixelHist, 0);
-
-       // compute patch
-       roEnd = r - halfPatch + SizePatch;
-       coEnd = c - halfPatch + SizePatch;
-       for ro = r - halfPatch to roEnd-1 {
-	 roi = bounds(ro,rows);
-	 for co = c-halfPatch to coEnd -1 {
-	   coi = bounds(co,cols);
-	   i = (roi * cols + coi) * 3;
-	   binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	   binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	   binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	   pixelHist[binB][binG][binR] += sampleWeight;	   				
-	 }
-       };
+       
+       firstPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
 
        // compare histograms
        diff :: Ref Inexact = ref$ 0;
@@ -265,15 +264,15 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 			
 	 //remove left col
 	 co = c-halfPatch-1;
-	 coi = bounds(co,cols);
+	 coi = boundit(co,cols);
 	 for ro = r-halfPatch to r - halfPatch + SizePatch-1 {
-	     roi = bounds(ro,rows);
+	     roi = boundit(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	     binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
 				
-	     pixelHist[binB][binG][binR] += 0-sampleWeight;
+	     pixelHist[binB][binG][binR] += 0-sampleWeight2;
 	     if (pixelHist[binB][binG][binR] < 0) then {
 		 pixelHist[binB][binG][binR] := 0;
 		 //cout << "error: underflow "  << sampleWeight << " " <<  pixelHist[binB][binG][binR] << endl;
@@ -282,14 +281,14 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 			
 	 // add right col
 	 co = c-halfPatch + SizePatch-1;
-	 coi = bounds(co,cols);
+	 coi = boundit(co,cols);
 	 for ro = r-halfPatch to r-halfPatch+SizePatch-1 {
-	     roi = bounds(ro,rows);
+	     roi = boundit(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	     binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	     pixelHist[binB][binG][binR] += sampleWeight;
+	     pixelHist[binB][binG][binR] += sampleWeight2;
 	 };
 
 	 // compare histograms
@@ -348,7 +347,6 @@ fun updateBg(bgHist, (image,cols,rows), mask)
       }
     };
 
-    incAmount :: Inexact = 1 / (SizePatch * SizePatch).gint;
     nPixels =  rows * cols; 
     
     tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
@@ -356,22 +354,8 @@ fun updateBg(bgHist, (image,cols,rows), mask)
     for r = 0 to rows-1 { 
 	// clear temp patch
 	fill3D(tempHist, 0);  
-					
-	// first create a patch
-	c :: Int = 0;
-	roEnd = r - halfPatch + SizePatch;
-	coEnd = c - halfPatch + SizePatch;
-	for ro = r-halfPatch to roEnd-1 {
-	  roi = bounds(ro,rows);
-	  for co = c-halfPatch to coEnd-1 {
-            coi = bounds(co,cols);
-	    i = (roi * cols + coi) * 3;
-	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	    binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	    tempHist[binB][binG][binR] += incAmount;
-	  }
-	};
+
+	firstPatch(r,0, rows,cols, tempHist, image, sampleWeight2);
 		
 	// update bg hist if indicated to do so
 	if mask == null || mask[k] == 0 then {
@@ -397,28 +381,28 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
 	  // subtract left col
 	  co = c-halfPatch-1;
-	  coi = bounds(co,cols);
+	  coi = boundit(co,cols);
 	  for ro = r-halfPatch to r - halfPatch + SizePatch - 1 {
-	    roi = bounds(ro,rows);
+	    roi = boundit(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	    binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
 	    if (tempHist[binB][binG][binR] < 0) then wserror$ "underflow";
 				
-	    tempHist[binB][binG][binR] += 0-incAmount;
+	    tempHist[binB][binG][binR] += 0 - sampleWeight2;
 	  };
 
 	  // add right col
 	  co = c-halfPatch + SizePatch-1;
-	  coi = bounds(co,cols);
+	  coi = boundit(co,cols);
 	  for ro = r-halfPatch to r-halfPatch + SizePatch-1 {
-  	    roi = bounds(ro,rows);
+  	    roi = boundit(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
 	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
 	    binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	    tempHist[binB][binG][binR] += incAmount;
+	    tempHist[binB][binG][binR] += sampleWeight2;
 	  };
 						
 	  // only update background if indicated to do so
@@ -500,9 +484,10 @@ fun bhatta(video) {
             stopFrame = BgStartFrame + NumBgFrames * BgStep;
 	    
 	    // Here is the main storage:
-            bghist    = null; 
-	    pixelhist = null;
-	    temphist  = null;
+            bghist    = null;
+
+	    // create temporary patch to store working histogram 
+	    temppatch = null;
 	    mask      = null;  // Just one channel.
 	    diffImage = null;  // All three channels.
           }
@@ -519,8 +504,7 @@ fun bhatta(video) {
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
       bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
-      pixelhist := make3D(NumBins1, NumBins2, NumBins3, 0);
-      temphist  := make3D(NumBins1, NumBins2, NumBins3, 0);
+      temppatch := make3D(NumBins1, NumBins2, NumBins3, 0);
 
       mask := make(rows * cols, 0);
       diffImage   := make(rows * cols * nChannels, 0);
@@ -534,7 +518,7 @@ fun bhatta(video) {
 	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
 	  // add frame to the background
           st = clock();
-	  populateBg(bghist, temphist, (frame,cols,rows));
+	  populateBg(temppatch, bghist, (frame,cols,rows));
 	  en = clock();
 	  println$ "Computation time for populateBg(): " ++ (en - st);
 
@@ -557,7 +541,7 @@ fun bhatta(video) {
       println$ "Calling estimate... frame size "++ Array:length(frame);
 
       st = clock();
-      estimateFg(pixelhist, bghist, (frame,cols,rows), diffImage, mask);
+      estimateFg(temppatch, bghist, (frame,cols,rows), diffImage, mask);
       en = clock();
       println$ "Computation time for estimateFg(): "++ en-st;    
 
