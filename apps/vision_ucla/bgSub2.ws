@@ -93,8 +93,8 @@ fun bounds(x,range) {
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
-populateBg :: (Array4D Inexact, Image) -> ();
-fun populateBg(bgHist, (image,cols,rows)) {
+populateBg :: (Array4D Inexact, Array3D Inexact, Image) -> ();
+fun populateBg(bgHist, __tempHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
 
@@ -505,6 +505,7 @@ fun bhatta(video) {
 	    // Here is the main storage:
             bghist    = null; 
 	    pixelhist = null;
+	    temphist  = null;
 	    mask      = null;  // Just one channel.
 	    diffImage = null;  // All three channels.
           }
@@ -522,6 +523,8 @@ fun bhatta(video) {
       println$ "  Allocating global arrays...";
       bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
       pixelhist := make3D(NumBins1, NumBins2, NumBins3, 0);
+      temphist  := make3D(NumBins1, NumBins2, NumBins3, 0);
+
       mask := make(rows * cols, 0);
       diffImage   := make(rows * cols * nChannels, 0);
       //ImageBuffer := make(rows * cols * nChannels, 0);
@@ -534,7 +537,7 @@ fun bhatta(video) {
 	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
 	  // add frame to the background
           st = clock();
-	  populateBg(bghist, (frame,cols,rows));
+	  populateBg(bghist, temphist, (frame,cols,rows));
 	  en = clock();
 	  println$ "Computation time for populateBg(): " ++ (en - st);
 
