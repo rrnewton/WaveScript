@@ -78,9 +78,6 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
  inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint);
  inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
 
- halfPatch = SizePatch / 2;
-
-
 //====================================================================================================
 // Factoring pieces of the below functions into these helpers:
 
@@ -99,8 +96,12 @@ fun populateBg(bgHist, (image,cols,rows)) {
 
   assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
 
-  // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
-  halfPatch = SizePatch / 2;
+  // Patches are centered around the pixel.  [p.x p.y]-[offset offset] gives the upperleft corner of the patch.				
+
+  ERG = NumBins3;
+  EHH = NumBins3.gint;
+
+  offset = SizePatch / 2;
 
   // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
   sampleWeight = 1 / gint(SizePatch * SizePatch * NumBgFrames);
@@ -125,12 +126,12 @@ fun populateBg(bgHist, (image,cols,rows)) {
 				
     // create the left most pixel's histogram from scratch
     c :: Int = 0;
-    roEnd = r - halfPatch + SizePatch;  // end of patch
-    coEnd = c - halfPatch + SizePatch;  // end of patch
+    roEnd = r - offset + SizePatch;  // end of patch
+    coEnd = c - offset + SizePatch;  // end of patch
 
-    for ro = r-halfPatch to roEnd-1 { // cover the row
+    for ro = r-offset to roEnd-1 { // cover the row
       roi = bounds(ro,rows);
-      for co = c-halfPatch to coEnd-1 { // cover the col
+      for co = c-offset to coEnd-1 { // cover the col
 	coi = bounds(co,cols);
         // get the pixel location
         i = (roi * cols + coi) * 3;  
@@ -157,9 +158,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
     // compute the top row of histograms
     for c = 1 to cols-1 {
 	// subtract left col
-	co = c - halfPatch - 1;
+	co = c - offset - 1;
 	coi = bounds(co,cols);
-	for ro = r - halfPatch to r-halfPatch + SizePatch - 1 {
+	for ro = r - offset to r-offset + SizePatch - 1 {
 	  roi = bounds(ro, rows);
 	  i = (roi * cols + coi) * 3;	  
 
@@ -177,9 +178,9 @@ fun populateBg(bgHist, (image,cols,rows)) {
 	};
 			
 	// add right col
-	co = c - halfPatch + SizePatch - 1;
+	co = c - offset + SizePatch - 1;
 	coi = bounds(co,cols);
-	for ro = r-halfPatch to r-halfPatch + SizePatch - 1 {
+	for ro = r-offset to r-offset + SizePatch - 1 {
 	  roi = bounds(ro,rows);
 	  i = (roi * cols + coi) * 3;
 
@@ -217,7 +218,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
 
-   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
+   // Patches are centered around the pixel.  [p.x p.y]-[offset offset] gives the upperleft corner of the patch.				
+   offset :: Int = SizePatch / 2;
+
    // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
    sampleWeight = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
    nPixels =  rows * cols; 
@@ -236,11 +239,11 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        fill3D(pixelHist, 0);
 
        // compute patch
-       roEnd = r - halfPatch + SizePatch;
-       coEnd = c - halfPatch + SizePatch;
-       for ro = r - halfPatch to roEnd-1 {
+       roEnd = r - offset + SizePatch;
+       coEnd = c - offset + SizePatch;
+       for ro = r - offset to roEnd-1 {
 	 roi = bounds(ro,rows);
-	 for co = c-halfPatch to coEnd -1 {
+	 for co = c-offset to coEnd -1 {
 	   coi = bounds(co,cols);
 	   i = (roi * cols + coi) * 3;
 	   binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -267,9 +270,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
          pIndex = r * cols + c;
 			
 	 //remove left col
-	 co = c-halfPatch-1;
+	 co = c-offset-1;
 	 coi = bounds(co,cols);
-	 for ro = r-halfPatch to r - halfPatch + SizePatch-1 {
+	 for ro = r-offset to r - offset + SizePatch-1 {
 	     roi = bounds(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -284,9 +287,9 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 	 };		
 			
 	 // add right col
-	 co = c-halfPatch + SizePatch-1;
+	 co = c-offset + SizePatch-1;
 	 coi = bounds(co,cols);
-	 for ro = r-halfPatch to r-halfPatch+SizePatch-1 {
+	 for ro = r-offset to r-offset+SizePatch-1 {
 	     roi = bounds(ro,rows);
 	     i = (roi * cols + coi) * 3;
 	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -353,6 +356,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
     incAmount :: Inexact = 1 / (SizePatch * SizePatch).gint;
     nPixels =  rows * cols; 
+    offset = SizePatch / 2; 
     
     tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
 
@@ -362,11 +366,11 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 					
 	// first create a patch
 	c :: Int = 0;
-	roEnd = r - halfPatch + SizePatch;
-	coEnd = c - halfPatch + SizePatch;
-	for ro = r-halfPatch to roEnd-1 {
+	roEnd = r - offset + SizePatch;
+	coEnd = c - offset + SizePatch;
+	for ro = r-offset to roEnd-1 {
 	  roi = bounds(ro,rows);
-	  for co = c-halfPatch to coEnd-1 {
+	  for co = c-offset to coEnd-1 {
             coi = bounds(co,cols);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -399,9 +403,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	for c = 1 to cols-1 {
 
 	  // subtract left col
-	  co = c-halfPatch-1;
+	  co = c-offset-1;
 	  coi = bounds(co,cols);
-	  for ro = r-halfPatch to r - halfPatch + SizePatch - 1 {
+	  for ro = r-offset to r - offset + SizePatch - 1 {
 	    roi = bounds(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
@@ -413,9 +417,9 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	  };
 
 	  // add right col
-	  co = c-halfPatch + SizePatch-1;
+	  co = c-offset + SizePatch-1;
 	  coi = bounds(co,cols);
-	  for ro = r-halfPatch to r-halfPatch + SizePatch-1 {
+	  for ro = r-offset to r-offset + SizePatch-1 {
   	    roi = bounds(ro,rows);
 	    i = (roi * cols + coi) * 3;
 	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);

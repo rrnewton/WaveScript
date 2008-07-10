@@ -40,13 +40,16 @@
 //#define WSCALLOC calloc
 
 //#ifdef ALLOC_STATS
-long long alloc_counter = 0;
+unsigned long long alloc_total = 0;
+unsigned long long alloc_counter = 0;
 inline void* malloc_measured(size_t size) {
-  alloc_counter += size;
+  alloc_total   += size;
+  alloc_counter += 1;
   return malloc(size);
 }
 inline void* calloc_measured(size_t count, size_t size) {
-  alloc_counter += size * count;
+  alloc_total += size * count;
+  alloc_counter += 1;
   return calloc(count,size);
 }
 #define WSMALLOC malloc_measured
@@ -107,11 +110,12 @@ typedef unsigned short int uint16_t;
 int outputcount = 0;
 int wsc2_tuplimit = 10;
 
-long long last_alloc_printed = 0;
+unsigned long long last_alloc_printed = 0;
 void ws_alloc_stats() {
-  printf("  Total allocation: %e\n", (double) alloc_counter);
-  printf("  Alloctaion since last stats: %e\n", (double) alloc_counter-last_alloc_printed);
-  last_alloc_printed = alloc_counter;
+  printf("  Malloc calls: %lu\n", alloc_counter);
+  printf("  Total bytes allocated: %e\n", (double) alloc_total);
+  printf("  Bytes since last stats: %e\n", (double) (alloc_total - last_alloc_printed));
+  last_alloc_printed = alloc_total;
 }
 void wsShutdown() {
 //#ifdef ???
