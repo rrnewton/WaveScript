@@ -10,17 +10,15 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include<getopt.h>
 
 #define LOAD_COMPLEX
+//#define ALLOC_STATS
+
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>
 #endif
-
-#include<getopt.h>
-
-
-//int* arrayMake(size_t size, int len, ) { }
 
 #define TRUE  1
 #define FALSE 0
@@ -38,8 +36,6 @@
 
 #include <locale.h>
 char* commaprint(unsigned long long n);
-
-#define ALLOC_STATS
 
 #ifdef USE_BOEHM
   #include <gc/gc.h>

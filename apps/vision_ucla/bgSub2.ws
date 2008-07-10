@@ -74,9 +74,14 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
      nChannels) = settings;
 
  // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
- inv_sizeBins1 :: Inexact = 1 / ceil(256 / NumBins1.gint);
- inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint);
- inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
+/*  inv_sizeBins1 :: Inexact = 1 / ceil(256 / NumBins1.gint); */
+/*  inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint); */
+/*  inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem. */
+ // Having problems with those gints at metaprog time:
+ inv_sizeBins1 :: Inexact = 1 / ceil(256 / Inexact! NumBins1);
+ inv_sizeBins2 :: Inexact = 1 / ceil(256 / Inexact! NumBins2);
+ inv_sizeBins3 :: Inexact = 1 / ceil(256 / Inexact! NumBins3); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
+
  // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
  halfPatch :: Int = SizePatch / 2;
 

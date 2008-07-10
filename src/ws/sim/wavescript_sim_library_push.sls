@@ -1200,10 +1200,13 @@
   ;; Special behavior for division.
   ;; This should only be invoked with ws.early.
   (define (g/ a b)
+
+    (printf "Generic division ~s ~s\n" a b)
+    
     ;; We use the physical representation of the number to determine what its type is.
     (cond
 ;     [(exact? a) (quotient a b)]
-     [(fixnum? a) (fx/ a b)]
+     [(and (fixnum? a) (fixnum? b)) (fx/ a b)]
 ;     [(flonum)]
      ;; Floats and complex just fall through to the normal scheme division.
      [else (s:/ a b)]
@@ -1438,7 +1441,7 @@
 
   (define intToInt16 (lambda (x) (ASSERT int16? x) x))
   (define intToInt64 (lambda (x) x))
-  (define intToFloat fixnum->flonum)
+  (define intToFloat  fixnum->flonum)
   (define intToDouble fixnum->flonum)
   (define intToComplex int16ToComplex)
 
