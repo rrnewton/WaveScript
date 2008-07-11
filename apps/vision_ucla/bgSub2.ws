@@ -53,7 +53,7 @@ settings = (
 
 		(1   :: Int),    //BgStep
 		(1   :: Int),    //FgStep
-		(128 :: Double), // Threshold
+		(128 :: Color), // Threshold
 										
 		(3 :: Int),   // nChannels - RGB image
 		
@@ -165,7 +165,7 @@ fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
 // This just walks over a matrix and gives you both the row/column
 // index, and the flat array index.
-fun iterate2D(rows,cols, fn) {
+fun loop2D(rows,cols, fn) {
   index = Mutable:ref(0);
   for r = 0 to rows-1 {
     for c = 0 to cols-1 {
@@ -175,7 +175,7 @@ fun iterate2D(rows,cols, fn) {
 
 // TODO: Replace this with a call into our actual matrix library:
 fun matrix_foreachi(mat, rows,cols, fn) 
-  iterate2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
+  loop2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
 //====================================================================================================
 
@@ -204,13 +204,11 @@ fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
 
 //====================================================================================================
 
-
-
 // Estimate foregound pixel from "image" and the background model. 
 // "diffImage" visualizes the difference as measured by the bhattacharyya distance between the current image's
 // pixel and the background model pixel.
 // "mask" is an image where white pixels represent the foreground and black pixels represents the background
-// according to settings->Threshold
+// according to Threshold
 
 estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
@@ -223,11 +221,11 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
      // renormalize diff so that 255 = very diff, 0 = same
      diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
      // Inefficient:
-     mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;         
+     mask[pIndex] := if diffImage[pIndex] > Threshold then 255 else 0;         
    };
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
-   iterate2D(rows,cols,   fun(r,c, index) {
+   loop2D(rows,cols,      fun(r,c, index) {
       if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2)
       else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
       update_mask_and_diffimage(index);
@@ -243,7 +241,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 // Two types happen:
 // If a mask is not given, all pixels are updated.
 // If a mask is given, only pixels in the diffImage that have a lower value than 
-//    settings->Threshold (are background) are updated.
+//    Threshold (are background) are updated.
 // 
 // degrade the background model by scaling each bin by 1-bSettings->Alpha
 // add new pixel values scaled so that the resulting background model will sum to 1.
