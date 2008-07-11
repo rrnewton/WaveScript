@@ -163,6 +163,15 @@ fun shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight) {
 
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
+// TODO: Replace this with a call into our actual matrix library:
+fun matrix_foreachi(mat, rows,cols, fn) {
+  index = Mutable:ref(0);
+  for r = 0 to rows-1 {
+    for c = 0 to cols-1 {
+      fn(r,c, mat[index]);
+      index += 1;
+  }}}
+
 //====================================================================================================
 
 // Builds background model histograms for each pixel.  
@@ -180,21 +189,13 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
   //   1. removing pixels in the left most col of the previous patch from the histogram and 
   //   2. adding pixels in the right most col of the current pixel's patch to the histogram	
 
-  k = ref$ 0; // current pixel index
-
-  for r = 0 to rows-1 { 				
-    // create the left most pixel's histogram from scratch
-    initPatch(r,0, rows,cols, tempHist, image, sampleWeight1);    
-    add_into3D(bgHist[k], tempHist);   // copy temp histogram to left most patch
-    k += 1;                            // increment pixel index
-
-    // compute the rest of the top row 
-    for c = 1 to cols-1 {
-        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);	
-	add_into3D(bgHist[k], tempHist);  // copy over			
-	k += 1;                           // increment pixel index
-    }
-  }
+  matrix_foreachi(bgHist, rows,cols, 
+    fun(r,c, bgHist_rc) {
+      // rrn: This pushes a conditional inside, but branch prediction should smooth it out:
+      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight1)
+      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
+      add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
+    })
 }
 
 //====================================================================================================
