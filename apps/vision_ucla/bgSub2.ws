@@ -191,7 +191,6 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   matrix_foreachi(bgHist, rows,cols, 
     fun(r,c, bgHist_rc) {
-      // rrn: This pushes a conditional inside, but branch prediction should smooth it out:
       if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight1)
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
       add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
@@ -215,18 +214,29 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 		
    fill(mask, 0); // clear mask image
 
+   fun update_mask_and_diffimage(pIndex) {
+     // compare histograms
+     diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+     // renormalize diff so that 255 = very diff, 0 = same
+     diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
+     // Inefficient:
+     mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;         
+   };
+
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
+
+  matrix_foreachi(bgHist, rows,cols, 
+    fun(r,c, _) {
+      if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2)
+      else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
+
+      update_mask_and_diffimage(r*cols + c);
+    })
+
+
+   /*
    for r = 0 to rows-1 {
        initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
-
-       fun update_mask_and_diffimage(pIndex) {
-         // compare histograms
-         diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
-         // renormalize diff so that 255 = very diff, 0 = same
-         diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
-         // Inefficient:
-         mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;         
-       };
 
        pIndex = r * cols ;		       
        update_mask_and_diffimage(pIndex);
@@ -237,6 +247,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 	 update_mask_and_diffimage(pIndex + c);
        }
    }
+   */
 }
 
 
