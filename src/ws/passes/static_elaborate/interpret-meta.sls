@@ -995,14 +995,41 @@
 	 ;; substitutions are finished, we see if we can carry them
 	 ;; along further through the new bindings.
 	 [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,bod) (guard (memq lett '(let letrec lazy-letrec)))
+
 	  (define binds (map list lhs* ty* rhs*))
-	  (define (lambind? b)  (lambda? (caddr b)))
-	  (define (constbind? b) (match (peel-annotations (caddr b))
-				   [',c (simple-constant? c)] 
-				   [(cast_num ,[e]) e] ;; [2008.07.10] Allowing this to inline doubles also
-				   [,_ #f]))
-	  (define (either? b) (or (lambind? b) (constbind? b)))
-	  (define-values (tosubst remainder) (partition either? binds))
+
+	  (define __ (if (memq 'zippy (map deunique-name lhs*))
+			 (printf "ZIPPY ~s\n" (assq 'zippy (map (lambda (b) (cons (deunique-name (car b)) (cdr b))) binds)))))
+
+	  (define (side-effect-free? x)
+	    (match x
+	      [,var (guard (symbol? var)) #t]
+	      [,const (guard (simple-constant? const)) #t] ;; for tupref etc
+	      [(lambda . ,_) #t]
+	      [(quote ,datum) #t]
+	      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
+	       (if (assq prim wavescript-effectful-primitives)
+		   #f
+		   (andmap (lambda (x) x) args))]
+	      [(,annot ,a ,[e]) (guard (annotation? annot)) e]
+	      [(set! . ,_) #f]
+	      [,oth (error 'side-effect-free? "we forgot to handle this: ~s" oth)]))
+	  
+	  ;(define (lambind? b)  (lambda? (caddr b)))
+	  ;; [2008.07.10] Expanding this to allow non-side effecting let's:
+	  
+	  (define (inlinable-rhs? rhs)
+	    (match (peel-annotations rhs)
+	      [',c (simple-constant? c)] 
+	      [(cast_num ,[e]) e] ;; [2008.07.10] Allowing this to inline doubles also
+	      [(lambda . ,_) #t] 
+	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (andmap side-effect-free? rhs*)) 
+	       (if bod (printf "YAY inlining let: ~s\n" bod))
+	       bod]
+	      [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
+	      [,_ #f]))
+	  (define (inlinable-bind? b) (inlinable-rhs? (caddr b)))
+	  (define-values (tosubst remainder) (partition inlinable-bind? binds))
 	  ;; This is a hack that depends on unique naming.  That's
 	  ;; how we handle let in the same way as letrec.  The lhs*
 	  ;; simply won't occur in the rhs* for a let..
@@ -1025,22 +1052,26 @@
 	  (guard (equal? args args2))
 	  rator]
 
-
 	 ;; "Left left lambda"
 	 ;; Evaluate the rator first so it has the chance to turn into a lambda.
-	 [(app ,[rator] ,[rands] ...)
-	  (if (lambda?  rator)
-	      (match (peel-annotations rator)
-		[(lambda ,formals ,types ,bod) ;[do-basic-inlining -> bod]
-		 ;; Convert to a let:
-		 ;; Then we must put it back through the inliner.
-		 ;; Those let RHS's might have some more inlining to do.
-		 (do-basic-inlining		  
-		  `(let ,(map list formals types rands) ,bod))])
-	      (begin
-;		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
-		`(app ,rator ,@rands))
-	      )]
+	 [(app ,[rator] ,[rands] ...)	  
+	  (let loop ([rator (peel-annotations rator)])
+	    (match rator
+	      [(lambda ,formals ,types ,bod) ;[do-basic-inlining -> bod]
+	     ;; Convert to a let:
+	     ;; Then we must put it back through the inliner.
+	     ;; Those let RHS's might have some more inlining to do.
+	     (do-basic-inlining		  
+	      `(let ,(map list formals types rands) ,bod))]
+	    ;; [2008.07.10] Considering:
+	      [(let ,binds ,lamapp)  ; ([,lhs* ,ty* ,rhs*] ...)
+	     ;(guard (andmap side-effect-free? rhs*))
+	       (printf "PULLING LET OUT IN APP, binds ~s\n" binds)
+	       `(let ,binds ,(loop (peel-annotations lamapp)))]
+	      [,_ 
+	     ;		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
+	       `(app ,rator ,@rands)]
+	      ))]
 
 	 ;; Let's do some DCE (dead code elimination) while we're at it:
 	 [(if ,[test] ,a ,b)

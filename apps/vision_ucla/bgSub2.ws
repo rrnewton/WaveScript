@@ -127,6 +127,19 @@ fun firstPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
     }
 };
 
+fun zipDownward(rowIndex, rows,cols, tempHist, image)
+  fun(columnIndex, fn) {
+    coi = boundit(columnIndex,cols);
+    for ro = rowIndex - halfPatch to rowIndex-halfPatch + SizePatch - 1 {
+	roi = boundit(ro, rows);
+	i = (roi * cols + coi) * 3;	  
+	binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
+	binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
+	binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
+	tempHist[binB][binG][binR] := fn(tempHist[binB][binG][binR]);
+      };	  
+  };
+
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
 //====================================================================================================
@@ -166,36 +179,17 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
     // compute the rest of the top row 
     for c = 1 to cols-1 {
 
-        //fun zipDown()
+        zippy = zipDownward(r, rows,cols, tempHist, image);
 
 	// subtract left col       
-
 	co = c - halfPatch - 1;
-	coi = boundit(co,cols);
-	for ro = r - halfPatch to r-halfPatch + SizePatch - 1 {
-	  roi = boundit(ro, rows);
-	  i = (roi * cols + coi) * 3;	  
-
-	  binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
-	  
-	  tempHist[binB][binG][binR] += 0 - sampleWeight1;
-	  if tempHist[binB][binG][binR] < 0 then tempHist[binB][binG][binR] := 0;	  
-	};
+	zippy(co, fun(x) max(x - sampleWeight1, 0));
+	//(zipDownward(r, rows,cols, tempHist, image)) (co, fun(x) max(x - sampleWeight1, 0));
 			
 	// add right col
 	co = c - halfPatch + SizePatch - 1;
-	coi = boundit(co,cols);
-	for ro = r-halfPatch to r-halfPatch + SizePatch - 1 {
-	  roi = boundit(ro,rows);
-	  i = (roi * cols + coi) * 3;
-
-	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
-	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	  tempHist[binB][binG][binR] += sampleWeight1;
-	};
+	zippy(co, fun(x) x + sampleWeight1);
+	//(zipDownward(r, rows,cols, tempHist, image)) (co, fun(x) x + sampleWeight1);
 
 	// copy over			
 	add_into3D(bgHist[k], tempHist);

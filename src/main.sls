@@ -584,7 +584,7 @@
     (printf "Output of metaprogram evaluation:\n")
     (printf "------------------------------------------------------------\n"))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
-  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+  (when (or (>= (regiment-verbosity) 5) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss"))
 
   (if (>= (regiment-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))

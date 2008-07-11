@@ -615,7 +615,7 @@
 		      [,const (guard (simple-constant? const)) #t] ;; for tupref etc
 		      [(lambda . ,_) #t]
 		      [(quote ,datum) #t]
-		      [(,prim ,[args] ...)
+		      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
 		       (if (assq prim wavescript-effectful-primitives)
 			   #f
 			   (andmap (lambda (x) x) args))]
