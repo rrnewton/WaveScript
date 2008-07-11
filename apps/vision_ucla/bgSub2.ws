@@ -151,8 +151,8 @@ fun zipDownward(rowIndex, rows,cols, tempHist, image)
   }
 
 // Shift a patch one pixel right, update the histogram incrementally.
-fun shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight) {
-  zippy = zipDownward(r, rows,cols, pixelHist, image);
+fun shift_patch(r,c, rows,cols, hist, image, sampleWeight) {
+  zippy = zipDownward(r, rows,cols, hist, image);
   // subtract left col       
   co = c - halfPatch - 1;
   zippy(co, fun(x) max(x - sampleWeight, 0));			
@@ -184,7 +184,7 @@ fun matrix_foreachi(mat, rows,cols, fn)
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
 populateBg :: (PixelHist, Array PixelHist, Image) -> ();
-fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
+fun populateBg(tempHist, bgHist, (image,cols,rows)) {
   using Array; using Mutable;
   assert_eq("Image must be the right size:",length(image), rows * cols * 3);
 
@@ -197,9 +197,9 @@ fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
 
   matrix_foreachi(bgHist, rows,cols, 
     fun(r,c, bgHist_rc) {
-      if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight1)
-      else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight1);
-      add_into3D(bgHist_rc, pixelHist);   // copy temp histogram to left most patch
+      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight1)
+      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
+      add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
     })
 }
 
@@ -212,23 +212,25 @@ fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
 // according to Threshold
 
 estimateFg :: (PixelHist, Array PixelHist, Image, RawImage, RawImage) -> ();
-fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
+fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
    using Array; using Mutable;
    fill(mask, 0); // clear mask image
 
    fun update_mask_and_diffimage(pIndex) {
      // compare histograms
-     diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+     diff = fold2_3D(tempHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
      // renormalize diff so that 255 = very diff, 0 = same
      diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
      // Inefficient:
      mask[pIndex] := if diffImage[pIndex] > Threshold then 255 else 0;         
    };
 
+   println$ "What does this do?? "++(1 / 100000);
+
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    loop2D(rows,cols,      fun(r,c, index) {
-      if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2)
-      else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
+      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight2)
+      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
       update_mask_and_diffimage(index);
     })
 }
@@ -256,7 +258,6 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
     // iterate through all pixel's histograms
     // rescale the histogram only if there is a mask given
     for i = 0 to rows * cols - 1 {
-
       // if no mask provided, update all pixels
       // if mask is provided and the pixel in the mask indicates background, update
       if mask == null || mask[i] == 0 then {
@@ -267,8 +268,6 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 	    //sum += bh;
 	    bh //bh * (1 - Alpha);
           });
-
-	println$ "What does this do?? "++(1 / 100000);
 	
 	// make sure histogram still sums up correctly.
 	if sum - (1-Alpha) > (1 / 100000) // 10e-5
@@ -281,6 +280,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
     fill3D(tempHist, 0);
 
     for r = 0 to rows-1 { 
+
 	initPatch(r,0, rows,cols, tempHist, image, sampleWeight2);
 		
 	// update bg hist if indicated to do so
@@ -304,33 +304,8 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 	// it seemed easier to do this than a hybrid histogram computation that skipped
 	// pixels.
 	for c = 1 to cols-1 {
+	  shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
 
-	  // subtract left col
-	  co = c-halfPatch-1;
-	  coi = boundit(co,cols);
-	  for ro = r-halfPatch to r - halfPatch + SizePatch - 1 {
-	    roi = boundit(ro,rows);
-	    i = (roi * cols + coi) * 3;
-	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	    binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	    if (tempHist[binB][binG][binR] < 0) then wserror$ "underflow";
-				
-	    tempHist[binB][binG][binR] += 0 - sampleWeight2;
-	  };
-
-	  // add right col
-	  co = c-halfPatch + SizePatch-1;
-	  coi = boundit(co,cols);
-	  for ro = r-halfPatch to r-halfPatch + SizePatch-1 {
-  	    roi = boundit(ro,rows);
-	    i = (roi * cols + coi) * 3;
-	    binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	    binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	    binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	    tempHist[binB][binG][binR] += sampleWeight2;
-	  };
-						
 	  // only update background if indicated to do so
 	  if mask == null || mask[k] == 0 then {
 	    sum = ref$ 0;
