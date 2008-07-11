@@ -28,6 +28,13 @@ fun Array:foreach2_3D(arr1, arr2, fn) {
   }}};
 }
 
+// A fold over two 3D arrays:
+fun Array:fold2_3D(arr1, arr2, zer, fn) {
+  acc = ref$ zer;
+  Array:foreach2_3D(arr1, arr2, fun(a,b) acc := fn(acc, a, b));	 
+  acc
+}
+
 fun Array:map3D_inplace(arr, fn) {
   for i = 0 to Array:length(arr)       - 1 {
   for j = 0 to Array:length(arr[i])    - 1 {

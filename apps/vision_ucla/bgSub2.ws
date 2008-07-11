@@ -138,6 +138,7 @@ fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
     }
 };
 
+// This runs down a column of a patch, applying a transform.
 fun zipDownward(rowIndex, rows,cols, tempHist, image)
   fun(columnIndex, fn) {
     coi = boundit(columnIndex,cols);
@@ -185,16 +186,12 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
     for c = 1 to cols-1 {
 
         zippy = zipDownward(r, rows,cols, tempHist, image);
-
 	// subtract left col       
 	co = c - halfPatch - 1;
-	zippy(co, fun(x) max(x - sampleWeight1, 0));
-	//(zipDownward(r, rows,cols, tempHist, image)) (co, fun(x) max(x - sampleWeight1, 0));
-			
+	zippy(co, fun(x) max(x - sampleWeight1, 0));			
 	// add right col
 	co = c - halfPatch + SizePatch - 1;
 	zippy(co, fun(x) x + sampleWeight1);
-	//(zipDownward(r, rows,cols, tempHist, image)) (co, fun(x) x + sampleWeight1);
 
 	// copy over			
 	add_into3D(bgHist[k], tempHist);
@@ -241,40 +238,25 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
 
        // Inefficient:
-       mask[pIndex] := if Double! diffImage[pIndex] > Double! Threshold then 255 else 0;
+       mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;
                        
        // iterate through the rest of the row
        for c = 1 to cols-1 {
          pIndex = r * cols + c;
 			
-	 //remove left col
-	 co = c-halfPatch-1;
-	 coi = boundit(co,cols);
-	 for ro = r-halfPatch to r - halfPatch + SizePatch-1 {
-	     roi = boundit(ro,rows);
-	     i = (roi * cols + coi) * 3;
-	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	     binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-				
-	     pixelHist[binB][binG][binR] += 0-sampleWeight2;
-	     if (pixelHist[binB][binG][binR] < 0) then {
-		 pixelHist[binB][binG][binR] := 0;
-		 //cout << "error: underflow "  << sampleWeight << " " <<  pixelHist[binB][binG][binR] << endl;
-	     }
-	 };		
-			
+         zippy = zipDownward(r, rows,cols, pixelHist, image);
+	 // subtract left col       
+ 	 co = c - halfPatch - 1;
+	 zippy(co, fun(x) max(x - sampleWeight2, 0));			
 	 // add right col
-	 co = c-halfPatch + SizePatch-1;
-	 coi = boundit(co,cols);
-	 for ro = r-halfPatch to r-halfPatch+SizePatch-1 {
-	     roi = boundit(ro,rows);
-	     i = (roi * cols + coi) * 3;
-	     binB = Int! (Inexact! image[i+0] * inv_sizeBins1);
-	     binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	     binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	     pixelHist[binB][binG][binR] += sampleWeight2;
-	 };
+	 co = c - halfPatch + SizePatch - 1;
+	 zippy(co, fun(x) x + sampleWeight2);
+
+	 // compare histograms
+	 /*
+	 Array:fold2_3D(pixelHist, bgHist[pIndex], 0,
+ 	                fun(acc,px,bg) acc + sqrt(px * bg));
+	 */
 
 	 // compare histograms
 	 diff = ref$ 0;
@@ -283,7 +265,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
 	 // create result images		
 	 diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
-	 mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;	 
+	 mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0; 
        }
    }
 }
@@ -390,7 +372,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	  // only update background if indicated to do so
 	  if mask == null || mask[k] == 0 then {
 	    sum = ref$ 0;
-
+	    
             Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
 	      bgHist[k][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
               sum += bgHist[k][cb][cg][cr];

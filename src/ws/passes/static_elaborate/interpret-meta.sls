@@ -1019,7 +1019,6 @@
 	      [(cast_num ,[e]) e] ;; [2008.07.10] Allowing this to inline doubles also
 	      [(lambda . ,_) #t] 
 	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (andmap side-effect-free? rhs*)) 
-	       (if bod (printf "YAY inlining let: ~s\n" bod))
 	       bod]
 	      [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
 	      [,_ #f]))
@@ -1061,7 +1060,6 @@
 	    ;; [2008.07.10] Considering:
 	      [(let ,binds ,lamapp)  ; ([,lhs* ,ty* ,rhs*] ...)
 	     ;(guard (andmap side-effect-free? rhs*))
-	       (printf "PULLING LET OUT IN APP, binds ~s\n" binds)
 	       `(let ,binds ,(loop (peel-annotations lamapp)))]
 	      [,_ 
 	     ;		(printf "FAILED TO EVAL RATOR TO LAMBDA: ~s\n" `(app ,rator ,@rands))
