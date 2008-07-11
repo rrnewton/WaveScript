@@ -229,9 +229,12 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
        initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
 
        // compare histograms
+       /*
        diff :: Ref Inexact = ref$ 0;
        Array:foreach2_3D(pixelHist, bgHist[pIndex],
 	                 fun(pix,bg) diff += sqrt(pix * bg));
+       */
+       diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
        
        // renormalize diff so that 255 = very diff, 0 = same
        // create result images
@@ -253,15 +256,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 	 zippy(co, fun(x) x + sampleWeight2);
 
 	 // compare histograms
-	 /*
-	 Array:fold2_3D(pixelHist, bgHist[pIndex], 0,
- 	                fun(acc,px,bg) acc + sqrt(px * bg));
-	 */
-
-	 // compare histograms
-	 diff = ref$ 0;
-	 Array:foreach2_3D(pixelHist, bgHist[pIndex], 
-                           fun(px,bg) diff += sqrt(px * bg));	 
+	 diff = fold2_3D(pixelHist, bgHist[pIndex], 0,   fun(acc,px,bg) acc + sqrt(px * bg));
 
 	 // create result images		
 	 diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
