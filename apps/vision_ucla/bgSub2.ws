@@ -163,14 +163,19 @@ fun shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight) {
 
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
-// TODO: Replace this with a call into our actual matrix library:
-fun matrix_foreachi(mat, rows,cols, fn) {
+// This just walks over a matrix and gives you both the row/column
+// index, and the flat array index.
+fun iterate2D(rows,cols, fn) {
   index = Mutable:ref(0);
   for r = 0 to rows-1 {
     for c = 0 to cols-1 {
-      fn(r,c, mat[index]);
+      fn(r,c, index);
       index += 1;
   }}}
+
+// TODO: Replace this with a call into our actual matrix library:
+fun matrix_foreachi(mat, rows,cols, fn) 
+  iterate2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
 //====================================================================================================
 
@@ -178,7 +183,7 @@ fun matrix_foreachi(mat, rows,cols, fn) {
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
 populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
-fun populateBg(tempHist, bgHist, (image,cols,rows)) {
+fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
   using Array; using Mutable;
   assert_eq("Image must be the right size:",length(image), rows * cols * 3);
 
@@ -191,9 +196,9 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   matrix_foreachi(bgHist, rows,cols, 
     fun(r,c, bgHist_rc) {
-      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight1)
-      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
-      add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
+      if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight1)
+      else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight1);
+      add_into3D(bgHist_rc, pixelHist);   // copy temp histogram to left most patch
     })
 }
 
@@ -210,8 +215,6 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
    using Array; using Mutable;
-   //(image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
-		
    fill(mask, 0); // clear mask image
 
    fun update_mask_and_diffimage(pIndex) {
@@ -224,30 +227,11 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
    };
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
-
-  matrix_foreachi(bgHist, rows,cols, 
-    fun(r,c, _) {
+   iterate2D(rows,cols,   fun(r,c, index) {
       if c==0 then  initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2)
       else        shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
-
-      update_mask_and_diffimage(r*cols + c);
+      update_mask_and_diffimage(index);
     })
-
-
-   /*
-   for r = 0 to rows-1 {
-       initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
-
-       pIndex = r * cols ;		       
-       update_mask_and_diffimage(pIndex);
-                       
-       // iterate through the rest of the row
-       for c = 1 to cols-1 {
-         shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
-	 update_mask_and_diffimage(pIndex + c);
-       }
-   }
-   */
 }
 
 
