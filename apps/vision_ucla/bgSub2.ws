@@ -4,7 +4,8 @@
   [2008.06.27]
 
 TODO:
-Flip blue and RED in the image pixel ordering.
+
+ Use a real 3D matrix for the histograms for greater efficiency.
 
  */
 
@@ -176,6 +177,7 @@ fun loop2D(rows,cols, fn) {
 fun matrix_foreachi(mat, rows,cols, fn) 
   loop2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
+
 //====================================================================================================
 
 // Builds background model histograms for each pixel.  
@@ -235,7 +237,6 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 //====================================================================================================
 
 
-
 // update background
 // Two types happen:
 // If a mask is not given, all pixels are updated.
@@ -244,8 +245,8 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 // 
 // degrade the background model by scaling each bin by 1-bSettings->Alpha
 // add new pixel values scaled so that the resulting background model will sum to 1.
-updateBg :: (Array PixelHist, Image, RawImage) -> ();
-fun updateBg(bgHist, (image,cols,rows), mask) 
+updateBg :: (PixelHist, Array PixelHist, Image, RawImage) -> ();
+fun updateBg(tempHist, bgHist, (image,cols,rows), mask) 
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
@@ -277,7 +278,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
     nPixels =  rows * cols; 
     
-    tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
+    fill3D(tempHist, 0);
 
     for r = 0 to rows-1 { 
 	initPatch(r,0, rows,cols, tempHist, image, sampleWeight2);
@@ -351,44 +352,8 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
 
 //====================================================================================================
-
-// This is an ugly separation right now.  The frame index stream
-// drives the reading of files, but the Bhatta kernel below must stay
-// synchronized with this input stream (in terms of switching between
-// background frames and foreground frames).
-//
-// TODO: this index stream should simply emit a union type tagging elements as Bg or Fg.
-index_stream :: Stream Int;
-index_stream = iterate _ in timer(10) {
-  state { bgcnt = 0;
-          bgind = BgStartFrame;
-          fgcnt = 0;
-          fgind = FgStartFrame;
-        }
-  assert_eq("only works for bgstep 1 at the moment", BgStep, 1);
-  assert_eq("only works for fgstep 1 at the moment", FgStep, 1);
-
-  if bgcnt < NumBgFrames then {    
-    emit bgind;
-    bgcnt += 1;
-    bgind += 1;
-  } else {
-    emit fgind;
-    fgcnt += 1;
-    fgind += 1;
-  }
-}
-
-filenames :: Stream String;
-filenames = iterate ind in index_stream {
-  state { nametable = Array:null }
-  if nametable == Array:null then {
-    nametable := scandir(fullpath_in);
-  };
-  emit fullpath_in ++ "/" ++ nametable[ind];
-}
-
-// Main Bhatta function:
+//   Complete Bhatta function
+//====================================================================================================
 
 type OutputBundle = (Int * Image * RawImage * RawImage);
 
@@ -474,8 +439,8 @@ fun bhatta(video) {
       bgStaleCounter += 1;
       if bgStaleCounter == BgStep then {
 	println$ "Updating bg";
-	if useBgUpdateMask	then updateBg(bghist, (frame,cols,rows), mask)
-	else updateBg(bghist, (frame,cols,rows), null);
+	updateBg(temppatch, bghist, (frame,cols,rows), 
+	         if useBgUpdateMask then mask else null);
 	bgStaleCounter := 0;
       };
 
@@ -495,6 +460,48 @@ fun bhatta(video) {
       emit (FrameIndex - FgStep, (frame,cols,rows), diffImage, mask);
     };
   }
+}
+
+//====================================================================================================
+//   Main Stream Program
+//====================================================================================================
+
+// This is all the nonsense about loading files and scaling images.
+
+// This is an ugly separation right now.  The frame index stream
+// drives the reading of files, but the Bhatta kernel below must stay
+// synchronized with this input stream (in terms of switching between
+// background frames and foreground frames).
+//
+// TODO: this index stream should simply emit a union type tagging elements as Bg or Fg.
+index_stream :: Stream Int;
+index_stream = iterate _ in timer(10) {
+  state { bgcnt = 0;
+          bgind = BgStartFrame;
+          fgcnt = 0;
+          fgind = FgStartFrame;
+        }
+  assert_eq("only works for bgstep 1 at the moment", BgStep, 1);
+  assert_eq("only works for fgstep 1 at the moment", FgStep, 1);
+
+  if bgcnt < NumBgFrames then {    
+    emit bgind;
+    bgcnt += 1;
+    bgind += 1;
+  } else {
+    emit fgind;
+    fgcnt += 1;
+    fgind += 1;
+  }
+}
+
+filenames :: Stream String;
+filenames = iterate ind in index_stream {
+  state { nametable = Array:null }
+  if nametable == Array:null then {
+    nametable := scandir(fullpath_in);
+  };
+  emit fullpath_in ++ "/" ++ nametable[ind];
 }
 
 fun dump_files(strm) 
