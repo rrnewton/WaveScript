@@ -122,6 +122,7 @@ fun hist_update(r,g,b, hist, fn) {
   hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
 }
 
+// Do the first patch in an image, fill in the histogram using all the color values.
 fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
   // clear patch histogram:
   fill3D(patchbuf, 0);
@@ -130,15 +131,15 @@ fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
   for ro = r-halfPatch to roEnd-1 { // cover the row
       roi = boundit(ro,rows);
       for co = c-halfPatch to coEnd-1 { // cover the col
-	  coi = boundit(co,cols);
-	  // get the pixel location
-	  i = (roi * cols + coi) * 3;  	
+	  coi = boundit(co,cols);	  
+	  i = (roi * cols + coi) * 3;   // get the pixel location
 	  hist_update(image[i+2], image[i+1], image[i], patchbuf, (+ sampleWeight));
 	}
     }
-};
+}
 
-// This runs down a column of a patch, reading color values and applying a transform to the *histogram*.
+// This runs down a column of a patch, reading color values and
+// applying a transform to the histogram (not the image).
 fun zipDownward(rowIndex, rows,cols, tempHist, image)
   fun(columnIndex, fn) {
     coi = boundit(columnIndex,cols);
@@ -149,6 +150,16 @@ fun zipDownward(rowIndex, rows,cols, tempHist, image)
     }
   }
 
+// Shift a patch one pixel right, update the histogram incrementally.
+fun shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight) {
+  zippy = zipDownward(r, rows,cols, pixelHist, image);
+  // subtract left col       
+  co = c - halfPatch - 1;
+  zippy(co, fun(x) max(x - sampleWeight, 0));			
+  // add right col
+  co = c - halfPatch + SizePatch - 1;
+  zippy(co, fun(x) x + sampleWeight);
+}
 
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
@@ -159,47 +170,31 @@ fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 // it will receive settings->NumBgFrames # of images.
 populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
 fun populateBg(tempHist, bgHist, (image,cols,rows)) {
-
-  assert_eq("Image must be the right size:",Array:length(image), rows * cols * 3);
+  using Array; using Mutable;
+  assert_eq("Image must be the right size:",length(image), rows * cols * 3);
 
   // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
 
   // Histograms are for each pixel (patch).  First create a histogram of the left most pixel in a row.
   // Then the next pixel's histogram in the row is calculated by:
   //   1. removing pixels in the left most col of the previous patch from the histogram and 
-  //   2. adding pixels in the right most col of the current pixel's patch to the histogram
-	
-  using Array; using Mutable;
+  //   2. adding pixels in the right most col of the current pixel's patch to the histogram	
 
   k = ref$ 0; // current pixel index
 
   for r = 0 to rows-1 { 				
     // create the left most pixel's histogram from scratch
-    initPatch(r,0, rows,cols, tempHist, image, sampleWeight1);
-
-    // copy temp histogram to left most patch
-    add_into3D(bgHist[k], tempHist);
-		
-    // increment pixel index
-    k += 1;
+    initPatch(r,0, rows,cols, tempHist, image, sampleWeight1);    
+    add_into3D(bgHist[k], tempHist);   // copy temp histogram to left most patch
+    k += 1;                            // increment pixel index
 
     // compute the rest of the top row 
     for c = 1 to cols-1 {
-        zippy = zipDownward(r, rows,cols, tempHist, image);
-	// subtract left col       
-	co = c - halfPatch - 1;
-	zippy(co, fun(x) max(x - sampleWeight1, 0));			
-	// add right col
-	co = c - halfPatch + SizePatch - 1;
-	zippy(co, fun(x) x + sampleWeight1);
-
-	// copy over			
-	add_into3D(bgHist[k], tempHist);
-
-	// increment pixel index
-	k += 1;
-    };
-  } // End mega for-loop
+        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);	
+	add_into3D(bgHist[k], tempHist);  // copy over			
+	k += 1;                           // increment pixel index
+    }
+  }
 }
 
 //====================================================================================================
@@ -214,14 +209,10 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
 estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
-
-   (image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
-
-   nPixels =  rows * cols; 
-		
-   // clear mask image
    using Array; using Mutable;
-   fill(mask, 0);
+   //(image :: RawImage); // [2008.07.01] Having a typechecking difficulty right now.
+		
+   fill(mask, 0); // clear mask image
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    for r = 0 to rows-1 {
@@ -231,8 +222,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
          // compare histograms
          diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
          // renormalize diff so that 255 = very diff, 0 = same
-         // create result images
-         diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
+         diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
          // Inefficient:
          mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;         
        };
@@ -242,14 +232,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
                        
        // iterate through the rest of the row
        for c = 1 to cols-1 {
-         zippy = zipDownward(r, rows,cols, pixelHist, image);
-	 // subtract left col       
- 	 co = c - halfPatch - 1;
-	 zippy(co, fun(x) max(x - sampleWeight2, 0));			
-	 // add right col
-	 co = c - halfPatch + SizePatch - 1;
-	 zippy(co, fun(x) x + sampleWeight2);
-
+         shift_patch(r,c, rows,cols, pixelHist, image, sampleWeight2);
 	 update_mask_and_diffimage(pIndex + c);
        }
    }
