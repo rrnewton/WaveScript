@@ -138,7 +138,7 @@ fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
     }
 };
 
-// This runs down a column of a patch, applying a transform.
+// This runs down a column of a patch, reading color values and applying a transform to the *histogram*.
 fun zipDownward(rowIndex, rows,cols, tempHist, image)
   fun(columnIndex, fn) {
     coi = boundit(columnIndex,cols);
@@ -148,6 +148,7 @@ fun zipDownward(rowIndex, rows,cols, tempHist, image)
 	hist_update(image[i+2], image[i+1], image[i], tempHist, fn);
     }
   }
+
 
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
@@ -184,7 +185,6 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
     // compute the rest of the top row 
     for c = 1 to cols-1 {
-
         zippy = zipDownward(r, rows,cols, tempHist, image);
 	// subtract left col       
 	co = c - halfPatch - 1;
@@ -225,28 +225,23 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    for r = 0 to rows-1 {
-       pIndex = r * cols ;		       
        initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
 
-       // compare histograms
-       /*
-       diff :: Ref Inexact = ref$ 0;
-       Array:foreach2_3D(pixelHist, bgHist[pIndex],
-	                 fun(pix,bg) diff += sqrt(pix * bg));
-       */
-       diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
-       
-       // renormalize diff so that 255 = very diff, 0 = same
-       // create result images
-       diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
+       fun update_mask_and_diffimage(pIndex) {
+         // compare histograms
+         diff = fold2_3D(pixelHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+         // renormalize diff so that 255 = very diff, 0 = same
+         // create result images
+         diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
+         // Inefficient:
+         mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;         
+       };
 
-       // Inefficient:
-       mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0;
+       pIndex = r * cols ;		       
+       update_mask_and_diffimage(pIndex);
                        
        // iterate through the rest of the row
        for c = 1 to cols-1 {
-         pIndex = r * cols + c;
-			
          zippy = zipDownward(r, rows,cols, pixelHist, image);
 	 // subtract left col       
  	 co = c - halfPatch - 1;
@@ -255,12 +250,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 	 co = c - halfPatch + SizePatch - 1;
 	 zippy(co, fun(x) x + sampleWeight2);
 
-	 // compare histograms
-	 diff = fold2_3D(pixelHist, bgHist[pIndex], 0,   fun(acc,px,bg) acc + sqrt(px * bg));
-
-	 // create result images		
-	 diffImage[pIndex] := Uint8! (255 - Int! (diff * 255));
-	 mask[pIndex] := if Double! diffImage[pIndex] > Threshold then 255 else 0; 
+	 update_mask_and_diffimage(pIndex + c);
        }
    }
 }
