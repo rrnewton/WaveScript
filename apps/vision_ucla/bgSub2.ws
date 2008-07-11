@@ -29,7 +29,12 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
+// Application type defs:
 type Inexact = Double; // Float or Double
+
+// A histogram for the viscinity around a pixel:
+type PixelHist = Array3D Inexact;
+
 abs  =  absD
 ceil = ceilD 
 sqrt = sqrtD // Need type classes!
@@ -106,23 +111,29 @@ fun boundit(x,range) {
   if x >= range then 2*range-1-x else x;
 };
 
+// Update the correct bin within a pixel's histogram, indexed by R/G/B.
+hist_update :: (Color, Color, Color, PixelHist, Inexact -> Inexact) -> ();
+fun hist_update(r,g,b, hist, fn) {
+  // figure out which bin
+  binB = Int! (Inexact! b * inv_sizeBins1);
+  binG = Int! (Inexact! g * inv_sizeBins2);
+  binR = Int! (Inexact! r * inv_sizeBins3);
+  // apply transform to histogram
+  hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
+}
 
-fun firstPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
+fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
+  // clear patch histogram:
+  fill3D(patchbuf, 0);
   roEnd = r - halfPatch + SizePatch;  // end of patch
   coEnd = c - halfPatch + SizePatch;  // end of patch
-
   for ro = r-halfPatch to roEnd-1 { // cover the row
       roi = boundit(ro,rows);
       for co = c-halfPatch to coEnd-1 { // cover the col
 	  coi = boundit(co,cols);
 	  // get the pixel location
 	  i = (roi * cols + coi) * 3;  	
-	  // figure out which bin
-	  binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
-	  binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	  binR = Int! (Inexact! image[i+2] * inv_sizeBins3);
-	  // add to temporary histogram	
-	  patchbuf[binB][binG][binR] += sampleWeight;
+	  hist_update(image[i+2], image[i+1], image[i], patchbuf, (+ sampleWeight));
 	}
     }
 };
@@ -133,12 +144,9 @@ fun zipDownward(rowIndex, rows,cols, tempHist, image)
     for ro = rowIndex - halfPatch to rowIndex-halfPatch + SizePatch - 1 {
 	roi = boundit(ro, rows);
 	i = (roi * cols + coi) * 3;	  
-	binB = Int! (Inexact! image[i  ] * inv_sizeBins1);
-	binG = Int! (Inexact! image[i+1] * inv_sizeBins2);
-	binR = Int! (Inexact! image[i+2] * inv_sizeBins3);	  
-	tempHist[binB][binG][binR] := fn(tempHist[binB][binG][binR]);
-      };	  
-  };
+	hist_update(image[i+2], image[i+1], image[i], tempHist, fn);
+    }
+  }
 
 fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
@@ -163,12 +171,9 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
 
   k = ref$ 0; // current pixel index
 
-  for r = 0 to rows-1 { 
-    // clear temp patch
-    fill3D(tempHist, 0);  
-				
+  for r = 0 to rows-1 { 				
     // create the left most pixel's histogram from scratch
-    firstPatch(r,0, rows,cols, tempHist, image, sampleWeight1);
+    initPatch(r,0, rows,cols, tempHist, image, sampleWeight1);
 
     // copy temp histogram to left most patch
     add_into3D(bgHist[k], tempHist);
@@ -223,14 +228,8 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    for r = 0 to rows-1 {
-
-       pIndex = r * cols ;
-		
-       // for the first pixel
-       // clear patch histogram
-       fill3D(pixelHist, 0);
-       
-       firstPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
+       pIndex = r * cols ;		       
+       initPatch(r,0, rows,cols, pixelHist, image, sampleWeight2);
 
        // compare histograms
        diff :: Ref Inexact = ref$ 0;
@@ -338,10 +337,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
     tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
 
     for r = 0 to rows-1 { 
-	// clear temp patch
-	fill3D(tempHist, 0);  
-
-	firstPatch(r,0, rows,cols, tempHist, image, sampleWeight2);
+	initPatch(r,0, rows,cols, tempHist, image, sampleWeight2);
 		
 	// update bg hist if indicated to do so
 	if mask == null || mask[k] == 0 then {

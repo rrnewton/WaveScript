@@ -995,12 +995,7 @@
 	 ;; substitutions are finished, we see if we can carry them
 	 ;; along further through the new bindings.
 	 [(,lett ([,lhs* ,ty* ,[rhs*]] ...) ,bod) (guard (memq lett '(let letrec lazy-letrec)))
-
 	  (define binds (map list lhs* ty* rhs*))
-
-	  (define __ (if (memq 'zippy (map deunique-name lhs*))
-			 (printf "ZIPPY ~s\n" (assq 'zippy (map (lambda (b) (cons (deunique-name (car b)) (cdr b))) binds)))))
-
 	  (define (side-effect-free? x)
 	    (match x
 	      [,var (guard (symbol? var)) #t]
