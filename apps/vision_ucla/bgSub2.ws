@@ -79,10 +79,6 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
      nChannels) = settings;
 
  // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
-/*  inv_sizeBins1 :: Inexact = 1 / ceil(256 / NumBins1.gint); */
-/*  inv_sizeBins2 :: Inexact = 1 / ceil(256 / NumBins2.gint); */
-/*  inv_sizeBins3 :: Inexact = 1 / ceil(256 / NumBins3.gint); // NOTE, if I replace gint with Inexact! I get a typechecking problem. */
- // Having problems with those gints at metaprog time:
  inv_sizeBins1 :: Inexact = 1 / ceil(256 / Inexact! NumBins1);
  inv_sizeBins2 :: Inexact = 1 / ceil(256 / Inexact! NumBins2);
  inv_sizeBins3 :: Inexact = 1 / ceil(256 / Inexact! NumBins3); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
@@ -93,8 +89,6 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
 sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
 // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
 sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
- 
-//tenneg5 = 0.00001 ((1 :: Inexact) / 100000)
 
 _ = {
   println$ "Some metaprogram-time values: \n";
@@ -179,12 +173,52 @@ fun loop2D(rows,cols, fn) {
 fun matrix_foreachi(mat, rows,cols, fn) 
   loop2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
+// I tried this to make the sliding patch cheaper... but I did not get
+// it right (output was not the same).  Also, it wasn't faster.  The
+// bottleneck must be from accessing the histograms, not the images.
+// Actually, it was slower.
+/*
+// This runs down a column of a patch, reading color values and
+// applying a transform to the histogram (not the image).
+fun zipAcross(columnIndex, rows,cols, tempHist, image)
+  fun(rowIndex, fn) {
+    roi = boundit(rowIndex,cols);
+    // Run across in-grain:
+    for co = columnIndex - halfPatch to columnIndex-halfPatch + SizePatch - 1 {
+	coi = boundit(co, rows);
+	i = (roi * cols + coi) * 3;
+	hist_update(image[i+2], image[i+1], image[i], tempHist, fn);
+    }
+  }
+
+// Shift a patch one pixel right, update the histogram incrementally.
+fun downshift_patch(r,c, rows,cols, hist, image, sampleWeight) {
+  zippy = zipAcross(c, rows,cols, hist, image);
+  // subtract upper row
+  ro = r - halfPatch - 1;
+  zippy(ro, fun(x) max(x - sampleWeight, 0));			
+  // add lower row
+  ro = r - halfPatch + SizePatch - 1;
+  zippy(ro, fun(x) x + sampleWeight);
+}
+
+fun loop2D_unnatural_order(rows,cols, fn) {
+  for c = 0 to cols-1 {
+   index = Mutable:ref(c);
+   for r = 0 to rows-1 {
+      fn(r,c, index);
+      index += cols;
+  }}}
+
+fun matrix_foreachi_unnatural_order(mat, rows,cols, fn) 
+  loop2D_unnatural_order(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
+*/
 
 //====================================================================================================
 
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
-// it will receive settings->NumBgFrames # of images.
+// it will receive NumBgFrames # of images.
 populateBg :: (PixelHist, Array PixelHist, Image) -> ();
 fun populateBg(tempHist, bgHist, (image,cols,rows)) {
   using Array; using Mutable;
@@ -197,9 +231,11 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
   //   1. removing pixels in the left most col of the previous patch from the histogram and 
   //   2. adding pixels in the right most col of the current pixel's patch to the histogram	
 
+  // This makes a strong assumption about the order the matrix is traversed.
+  // It's not representation-independent in that sense.
   matrix_foreachi(bgHist, rows,cols, 
     fun(r,c, bgHist_rc) {
-      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight1)
+      if c==0 then  initPatch(r,c, rows,cols, tempHist, image, sampleWeight1)
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
       add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
     })
