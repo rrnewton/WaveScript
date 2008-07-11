@@ -218,19 +218,17 @@ fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
    using Array; using Mutable;
    fill(mask, 0); // clear mask image
 
-   fun update_mask_and_diffimage(pIndex) {
-     // compare histograms
-     diff = fold2_3D(tempHist, bgHist[pIndex], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
-     // renormalize diff so that 255 = very diff, 0 = same
-     diffImage[pIndex] := Uint8! (255 - Int! (diff * 255)); // create result image
-     // Inefficient:
-     mask[pIndex] := if diffImage[pIndex] > Threshold then 255 else 0;         
-   };
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    loop2D(rows,cols,      fun(r,c, index) {
       if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight2)
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
-      update_mask_and_diffimage(index);
+
+      // compare histograms
+      diff = fold2_3D(tempHist, bgHist[index], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+      // renormalize diff so that 255 = very diff, 0 = same
+      diffImage[index] := Uint8! (255 - Int! (diff * 255)); // create result image
+      // Inefficient:
+      mask[index] := if diffImage[index] > Threshold then 255 else 0;         
     })
 }
 
@@ -255,6 +253,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 	
     // iterate through all pixel's histograms
     // rescale the histogram only if there is a mask given
+    // Modifies bgHist:
     for i = 0 to rows * cols - 1 {
       // if no mask provided, update all pixels
       // if mask is provided and the pixel in the mask indicates background, update
@@ -272,19 +271,6 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       }
     };
 
-    fun update_bghist(k) { // update if indicated to do so
-      // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
-      if mask == null || mask[k] == 0 then {
-	 sum = ref$ 0;
-	 Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
-	    bgHist[k][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
-	    sum += bgHist[k][cb][cg][cr];
-	 });
-	 if abs(sum - 1) > (Inexact! 0.00001)
-	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
-      }
-    };
-
     loop2D(rows,cols,      fun(r,c, index) {
       if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight2)
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
@@ -292,7 +278,18 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 	// under the assumption that the foreground is smaller than the background
 	// it seemed easier to do this than a hybrid histogram computation that skipped
 	// pixels.
-      update_bghist(index);
+
+      // update if indicated to do so
+      // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
+      if mask == null || mask[index] == 0 then {
+	 sum = ref$ 0;
+	 Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
+	    bgHist[index][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
+	    sum += bgHist[index][cb][cg][cr];
+	 });
+	 if abs(sum - 1) > (Inexact! 0.00001)
+	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
+      }
     })
   }
 
