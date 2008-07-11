@@ -1965,9 +1965,10 @@ int main(int argc, char **argv)
   ;;(slot-set! self 'include-files (cons (** "\"gc/gc.h\"") (slot-ref self 'include-files)))
   ;;(slot-set! self 'compile-flags (list " -lgc " (slot-ref self 'compile-flags)))
   ;(slot-set! self 'link-files (cons "libgc.so" (slot-ref self 'link-files)))
-  ((add-file! self) "libgc.so")
-  (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))
-  )
+  (match (wsc2-gc-mode)
+    [boehm ((add-file! self) "libgc.so")
+	   (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))]
+    [none (void)]))
 
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
 (define-class <emitC2-zct> (<emitC2>) ())

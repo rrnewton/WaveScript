@@ -1141,6 +1141,7 @@
 				       (match (wsc2-gc-mode)
 					 [refcount <emitC2>]
 					 [boehm    <emitC2-nogc>]
+					 [none     <emitC2-nogc>]
 					 [deferred (error 'wsc2-gc-mode "deferred reference counting not implemented yet")])]
 				      ;[wavescript-compiler-c <emitC2-timed>]
 				      [wavescript-compiler-c <emitC2-nogc>]

@@ -35,6 +35,9 @@ type Inexact = Double; // Float or Double
 // A histogram for the viscinity around a pixel:
 type PixelHist = Array3D Inexact;
 
+// A slice of a matrix: Buffer, index, rows.
+type Patch = (RawImage * Int * Int);
+
 abs  =  absD
 ceil = ceilD 
 sqrt = sqrtD // Need type classes!
@@ -121,7 +124,7 @@ fun hist_update(r,g,b, hist, fn) {
 // Do the first patch in an image, fill in the histogram using all the color values.
 fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
   // clear patch histogram:
-  Array3D:fill(patchbuf, 0);
+  fill3D(patchbuf, 0);
   roEnd = r - halfPatch + SizePatch;  // end of patch
   coEnd = c - halfPatch + SizePatch;  // end of patch
   for ro = r-halfPatch to roEnd-1 { // cover the row
@@ -157,7 +160,7 @@ fun shift_patch(r,c, rows,cols, hist, image, sampleWeight) {
   zippy(co, fun(x) x + sampleWeight);
 }
 
-fun add_into3D(dst,src) Array3D:map_inplace2(dst, src, (+));
+fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
 
 // This just walks over a matrix and gives you both the row/column
 // index, and the flat array index.
@@ -260,7 +263,7 @@ fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
 
       // compare histograms
-      diff = Array3D:fold2(tempHist, bgHist[index], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+      diff = fold2_3D(tempHist, bgHist[index], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
       // renormalize diff so that 255 = very diff, 0 = same
       diffImage[index] := Uint8! (255 - Int! (diff * 255)); // create result image
       // Inefficient:
@@ -285,7 +288,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
-    Array3D:fill(tempHist, 0);
+    fill3D(tempHist, 0);
 	
     // iterate through all pixel's histograms
     // rescale the histogram only if there is a mask given
@@ -296,7 +299,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[i] == 0 then {
 	sum :: Ref Inexact = ref$ 0;
-	Array3D:map_inplace(bgHist[i],
+	Array:map3D_inplace(bgHist[i],
           fun(bh) {
 	    sum += bh;
 	    bh * (1 - Alpha);
@@ -319,7 +322,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[index] == 0 then {
 	 sum = ref$ 0;
-	 Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
+	 Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
 	    bgHist[index][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
 	    sum += bgHist[index][cb][cg][cr];
 	 });
@@ -373,9 +376,9 @@ fun bhatta(video) {
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
       bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
-      temppatch := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
+      temppatch := make3D(NumBins1, NumBins2, NumBins3, 0);
 
-      mask        := make(rows * cols, 0);
+      mask := make(rows * cols, 0);
       diffImage   := make(rows * cols * nChannels, 0);
       //ImageBuffer := make(rows * cols * nChannels, 0);
 

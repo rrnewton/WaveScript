@@ -113,17 +113,15 @@ fun populateBg(bgHist, (image,cols,rows)) {
   //   2. adding pixels in the right most col of the current pixel's patch to the histogram
 	
   // create temp hist to store working histogram
-  using Array; using Mutable;
+  using Array; using Mutable;  using Array3D;
 
   k = ref$ 0; // current pixel index
 
-  tempHist = build(NumBins1, fun(r)
-              build(NumBins2, fun(b)
-	       make(NumBins3, (0 :: Inexact))));
+  tempHist = make(NumBins1, NumBins1, NumBins1, 0);
 
   for r = 0 to rows-1 { 
     // clear temp patch
-    fill3D(tempHist, 0);  
+    fill(tempHist, 0);  
 				
     // create the left most pixel's histogram from scratch
     c :: Int = 0;
@@ -239,8 +237,8 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
    nPixels =  rows * cols; 
 		
    // clear mask image
-   using Array; using Mutable;
-   fill(mask, 0);
+   using Array; using Mutable; using Array3D;
+   Array:fill(mask, 0);
 
    // as in the populateBg(), we compute the histogram by subtracting/adding cols	
    for r = 0 to rows-1 {
@@ -249,7 +247,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 		
        // for the first pixel
        // clear patch histogram
-       fill3D(pixelHist, 0);
+       fill(pixelHist, 0);
 
        // compute patch
        roEnd = r - offset + SizePatch;
@@ -270,7 +268,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
        // compare histograms
        diff :: Ref Inexact = ref$ 0;
-       Array:foreach2_3D(pixelHist, bgHist[pIndex],
+       Array3D:foreach2(pixelHist, bgHist[pIndex],
 	                 fun(pix,bg) diff += sqrt(pix * bg));
        
        // renormalize diff so that 255 = very diff, 0 = same
@@ -319,7 +317,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 
 	 // compare histograms
 	 diff = ref$ 0;
-	 Array:foreach2_3D(pixelHist, bgHist[pIndex], 
+	 Array3D:foreach2(pixelHist, bgHist[pIndex], 
                            fun(px,bg) diff += sqrt(px * bg));	 
 
 	 // create result images		
@@ -345,7 +343,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 updateBg :: (Array4D Inexact, Image, RawImage) -> ();
 fun updateBg(bgHist, (image,cols,rows), mask) 
   if Alpha == 0 then () else {
-    using Array; using Mutable;
+    using Array; using Mutable; using Array3D;
     if mask == null then println$ "Mask not given: updating everything";
 
     k = ref$ 0;
@@ -359,7 +357,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
       if mask == null || mask[i] == 0 then {
 	sum :: Ref Inexact = ref$ 0;
 
-	Array:map3D_inplace(bgHist[i],
+	Array3D:map_inplace(bgHist[i],
           fun(bh) {
 	    //sum += bh;
 	    bh //bh * (1 - Alpha);
@@ -380,11 +378,11 @@ fun updateBg(bgHist, (image,cols,rows), mask)
     inv_sizeBins2 = 1 / ceil(256 / Inexact! NumBins2);
     inv_sizeBins3 = 1 / ceil(256 / Inexact! NumBins3);
     
-    tempHist :: Array3D Inexact = make3D(NumBins1, NumBins2, NumBins3, 0);		
+    tempHist :: Array3D Inexact = make(NumBins1, NumBins2, NumBins3, 0);  
 
     for r = 0 to rows-1 { 
 	// clear temp patch
-	fill3D(tempHist, 0);  
+	fill(tempHist, 0);  
 					
 	// first create a patch
 	c :: Int = 0;
@@ -407,7 +405,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	// update bg hist if indicated to do so
 	if mask == null || mask[k] == 0 then {
 	  sum = ref$ 0;
-          Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
+          Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
 	    bgHist[k][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
             sum += bgHist[k][cb][cg][cr];
 	  });
@@ -461,7 +459,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	  if mask == null || mask[k] == 0 then {
 	    sum = ref$ 0;
 
-            Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
+            Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
 	      bgHist[k][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
               sum += bgHist[k][cb][cg][cr];
 	    });
@@ -525,7 +523,7 @@ fun bhatta(video) {
     
   //SHELL("mkdir ");
 
-  using Array;
+  using Array; using Array3D;
   //bghist = Mutable:ref$ null; // Same error.
 
   iterate (frame,cols,rows) in video {
@@ -554,9 +552,9 @@ fun bhatta(video) {
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
       bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
-      pixelhist := make3D(NumBins1, NumBins2, NumBins3, 0);
-      mask := make(rows * cols, 0);
-      diffImage   := make(rows * cols * nChannels, 0);
+      pixelhist   := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
+      mask        :=   Array:make(rows * cols, 0);
+      diffImage   :=   Array:make(rows * cols * nChannels, 0);
       //ImageBuffer := make(rows * cols * nChannels, 0);
 
       println("Building background model...");      

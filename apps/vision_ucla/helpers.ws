@@ -7,7 +7,10 @@ include "stdlib.ws"
 /// Nested arrays
 // Note, these functions should be replaced with a proper multi-dimensional matrix library.
 
-fun fill3D(arr, val) {
+//====================================================================================================
+// 3D arrays, nested implementation:
+
+fun Array3D:fill(arr, val) {
   for i = 0 to Array:length(arr)-1 {
    for j = 0 to Array:length(arr[i])-1 {
        Array:fill(arr[i][j], val);
@@ -16,7 +19,7 @@ fun fill3D(arr, val) {
 
 // Assumes they're of the same dimension.  If not, you'll get an
 // unhelpful out of bounds error.
-fun Array:foreach2_3D(arr1, arr2, fn) {
+fun Array3D:foreach2(arr1, arr2, fn) {
   using Array;
    if DEBUG then assert_eq("foreach2_3D: length mismatch", arr1.length, arr2.length);
   for i = 0 to length(arr1)-1 {
@@ -29,13 +32,13 @@ fun Array:foreach2_3D(arr1, arr2, fn) {
 }
 
 // A fold over two 3D arrays:
-fun Array:fold2_3D(arr1, arr2, zer, fn) {
+fun Array3D:fold2(arr1, arr2, zer, fn) {
   acc = ref$ zer;
-  Array:foreach2_3D(arr1, arr2, fun(a,b) acc := fn(acc, a, b));	 
+  Array3D:foreach2(arr1, arr2, fun(a,b) acc := fn(acc, a, b));	 
   acc
 }
 
-fun Array:map3D_inplace(arr, fn) {
+fun Array3D:map_inplace(arr, fn) {
   for i = 0 to Array:length(arr)       - 1 {
   for j = 0 to Array:length(arr[i])    - 1 {
   for k = 0 to Array:length(arr[i][j]) - 1 {
@@ -43,7 +46,7 @@ fun Array:map3D_inplace(arr, fn) {
   }}}
 }
 
-fun Array:iter3D(arr, fn) {
+fun Array3D:iter(arr, fn) {
   for i = 0 to Array:length(arr)       - 1 {
   for j = 0 to Array:length(arr[i])    - 1 {
   for k = 0 to Array:length(arr[i][j]) - 1 {
@@ -51,29 +54,28 @@ fun Array:iter3D(arr, fn) {
   }}}  
 }
 
-fun Array:make3D(i,j,k, val) {
+fun Array3D:make(i,j,k, val) {
   using Array;
   build(i, fun(_)
   build(j, fun(_)
    make(k, val)));
 }
 
-/*
-fun Array:copy3D(src, dst) {
-  using Array;
-  build(src.length, fun(i)
-  build(src[i].length, fun(j)
-   copy(src[i][j])));
-}
-*/
-
-fun Array:map3D_inplace2(arr, arr2, fn) {
+fun Array3D:map_inplace2(arr, arr2, fn) {
   for i = 0 to Array:length(arr)       - 1 {
   for j = 0 to Array:length(arr[i])    - 1 {
   for k = 0 to Array:length(arr[i][j]) - 1 {
     arr[i][j][k] := fn(arr[i][j][k], arr2[i][j][k]);
   }}}
 }
+
+//====================================================================================================
+// 3D arrays, flat implementation
+
+
+
+
+//====================================================================================================
 
 fun Array:make4D(i,j,k,l, val) {
   using Array;
@@ -82,4 +84,5 @@ fun Array:make4D(i,j,k,l, val) {
   build(k, fun(_)
    make(l, val))));
 }
+
 
