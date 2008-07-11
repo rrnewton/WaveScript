@@ -26,7 +26,6 @@ LIVE = false;
 type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
-type Array4D t = Array (Array (Array (Array t))); 
 type Array3D t = Array (Array (Array t)); 
 
 // Application type defs:
@@ -182,7 +181,7 @@ fun matrix_foreachi(mat, rows,cols, fn)
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
 // it will receive settings->NumBgFrames # of images.
-populateBg :: (Array3D Inexact, Array4D Inexact, Image) -> ();
+populateBg :: (PixelHist, Array PixelHist, Image) -> ();
 fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
   using Array; using Mutable;
   assert_eq("Image must be the right size:",length(image), rows * cols * 3);
@@ -210,7 +209,7 @@ fun populateBg(pixelHist, bgHist, (image,cols,rows)) {
 // "mask" is an image where white pixels represent the foreground and black pixels represents the background
 // according to Threshold
 
-estimateFg :: (Array3D Inexact, Array4D Inexact, Image, RawImage, RawImage) -> ();
+estimateFg :: (PixelHist, Array PixelHist, Image, RawImage, RawImage) -> ();
 fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
    using Array; using Mutable;
    fill(mask, 0); // clear mask image
@@ -245,7 +244,7 @@ fun estimateFg(pixelHist, bgHist, (image,cols,rows), diffImage, mask) {
 // 
 // degrade the background model by scaling each bin by 1-bSettings->Alpha
 // add new pixel values scaled so that the resulting background model will sum to 1.
-updateBg :: (Array4D Inexact, Image, RawImage) -> ();
+updateBg :: (Array PixelHist, Image, RawImage) -> ();
 fun updateBg(bgHist, (image,cols,rows), mask) 
   if Alpha == 0 then () else {
     using Array; using Mutable;
