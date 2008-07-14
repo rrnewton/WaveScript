@@ -13,6 +13,8 @@ include "stdlib.ws"
 /*
 type Array3D t = Array (Array (Array t)); 
 
+Array3D:null = Array:null
+
 fun Array3D:fill(arr, val) {
   for i = 0 to Array:length(arr)-1 {
    for j = 0 to Array:length(arr[i])-1 {
@@ -82,10 +84,9 @@ fun Array3D:iter(arr, fn) {
 //====================================================================================================
 // 3D arrays, flat implementation
 
+
 include "matrix3D.ws"
-
 type Array3D t = Matrix3D t; 
-
 Array3D:get          = Matrix3D:get
 Array3D:set          = Matrix3D:set
 Array3D:null         = Matrix3D:null
@@ -95,7 +96,6 @@ Array3D:foreach2     = Matrix3D:foreach2
 Array3D:fold2        = Matrix3D:fold2
 Array3D:map_inplace  = Matrix3D:map_inplace
 Array3D:map_inplace2 = Matrix3D:map2_inplace
-
 fun Array3D:iter(mat, fn) {
   let (r,c,h) = Matrix3D:dims(mat);
   for i = 0 to r-1 {
@@ -103,6 +103,7 @@ fun Array3D:iter(mat, fn) {
   for k = 0 to h-1 {
     fn(i,j,k)
   }}}}
+
 
 //====================================================================================================
 

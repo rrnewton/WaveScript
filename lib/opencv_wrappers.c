@@ -24,7 +24,7 @@ void*
   	
   //if (!im) wserror_fun(sprintf("opencv_wrapper ws_readImage failed to load file: %s", filename));
   if (!im) { 
-    printf("Tried to load %s\n", filename);
+    printf("Tried to load <%s>\n", filename);
     wserror_fun("opencv_wrapper ws_readImage failed to load file: ");
   }
 

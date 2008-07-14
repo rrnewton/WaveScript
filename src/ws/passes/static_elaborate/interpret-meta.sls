@@ -1003,6 +1003,8 @@
 	      [(lambda . ,_) #t]
 	      [(,lett ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (eq-any? lett 'let 'letrec))
 	       (and bod (andmap side-effect-free? rhs*))]
+	      [(begin . ,e*) (andmap side-effect-free? e*)]
+	      
 	      [(quote ,datum) #t]
 	      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
 	       (if (assq prim wavescript-effectful-primitives)
@@ -1010,6 +1012,11 @@
 		   (andmap (lambda (x) x) args))]
 	      [(,annot ,a ,[e]) (guard (annotation? annot)) e]
 	      [(set! . ,_) #f]
+	      ;; This is assumed to side-effect:
+	      [(foreign-app . ,_) #f]
+	      ;; These had better not be side efffect free!!:
+	      [(while ,test ,[bod]) (and (side-effect-free? bod) test)]
+	      [(for (,_ ,[st] ,[en]) ,[bod]) (and st en bod)]
 	      [,oth (error 'side-effect-free? "we forgot to handle this: ~s" oth)]))
 	  
 	  ;(define (lambind? b)  (lambda? (caddr b)))

@@ -3,6 +3,8 @@
 COMP=.__wsc2Messages.txt
 RUN=.__runquery_output_wsc2.txt
 
+OPTIONS="-gc boehm"
+
 echo > $COMP
 echo > $RUN
 
@@ -10,7 +12,8 @@ function go () {
     echo; echo; echo; echo; echo; echo; echo;  
     echo "testall_wsc2: Running $1"
     echo "============================================================"
-    if ! wsc2 $1 -exit-error; 
+    echo wsc2 $OPTIONS $1 -exit-error; 
+    if ! wsc2 $OPTIONS $1 -exit-error; 
     then echo wsc2 Returned error code!; exit 1; 
     fi
     echo >> $RUN

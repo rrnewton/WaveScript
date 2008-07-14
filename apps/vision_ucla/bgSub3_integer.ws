@@ -31,12 +31,6 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 // Application type defs:
 type Inexact = Double; // Float or Double
 
-//type HistogramSlot = Inexact;
-type HistElt = Int;
-
-// A histogram for the viscinity around a pixel:
-type PixelHist = Array3D HistElt;
-
 abs  =  absD
 ceil = ceilD 
 sqrt = sqrtD // Need type classes!
@@ -83,9 +77,22 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
 //====================================================================================================
 // These hooks allow us to go back and forth between the floating point version and the integer.
 
+type HistElt = Int;
 sampleWeight1 :: HistElt = 1
 sampleWeight2 :: HistElt = 1
 
+/*
+type HistElt = Inexact;
+// To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
+sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
+sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
+*/
+
+
+//====================================================================================================
+
+// A histogram for the viscinity around a pixel:
+type PixelHist = Array3D HistElt;
 
  // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
  inv_sizeBins1 :: Inexact = 1 / ceil(256 / Inexact! NumBins1);
@@ -97,11 +104,6 @@ sampleWeight2 :: HistElt = 1
  inv_nPixels = 1 / Inexact! (SizePatch * SizePatch * SizePatch * SizePatch * NumBgFrames);
 
  halfPatch :: Int = SizePatch / 2;
-
-// To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
-//sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
-// To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
-//sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
 
 
 
@@ -172,7 +174,9 @@ fun shift_patch(r,c, rows,cols, hist, image, sampleWeight) {
   zippy = zipDownward(r, rows,cols, hist, image);
   // subtract left col       
   co = c - halfPatch - 1;
-  zippy(co, fun(x) max(x - sampleWeight, 0));			
+  if true
+  then zippy(co, fun(x)     x - sampleWeight)
+  else zippy(co, fun(x) max(x - sampleWeight, 0));
   // add right col
   co = c - halfPatch + SizePatch - 1;
   zippy(co, fun(x) x + sampleWeight);
@@ -630,4 +634,5 @@ main =
 /*      $ squisher */
 /*      $ squisher */
      $ input_imgs;
+
 

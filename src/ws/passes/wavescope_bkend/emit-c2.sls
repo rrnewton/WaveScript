@@ -1148,10 +1148,7 @@
 	      #|(incr-heap-refcount mayberetty tl) |#
 	      (kont tmp)))])]
        
-       [(Array:length ,[Simp -> arr])
-	;; Length is -2 and refcount is -1:
-	(kont `("ARRLEN(",arr")"))
-	]
+       [(Array:length ,[Simp -> arr]) (kont `("ARRLEN(",arr")"))]
        ;; This is the more complex part:
 
        [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]
@@ -1658,15 +1655,9 @@ int main(int argc, char **argv)
 	      ;; Could use nx_ types here and then we could unpack this ourselves (without MIG):
 	      "int i;\n"
 	      "int arrsize = "root"_len_get(" src ");\n"
-	      ;;"char* ptr = ((char*)tmsg_data(" src ")) + sizeof(uint16_t);\n"
-	      ;;;;"int arrsize = ((uint16_t*)ptr)[-1];\n"
-	      ;;;;"char* ptr = ((char*)"src") + " srcpos "_offset(0);\n"
 	      (lines-text (array-constructor-codegen self "arrsize" #f ty (setterk self local ty)))
-	      ;;"printf(\"arrsize %d %x tmsg addr %p Offset addr %p\\n\", arrsize, arrsize, "src", tmsg_data("src"));\n"
-	      ;;"memcpy("_local", ((uint16_t*)ptr)+1, sizeof("_elt") * ARRLEN("_local"));\n"
 	      (block "for (i=0; i<arrsize; i++)"
-		     (list _local"[i] = " srcpos "_get("src", i);\n"))
-	      )]
+		     (list _local"[i] = " srcpos "_get("src", i);\n")))]
 	    )))
       (values (make-lines
 	       (list 

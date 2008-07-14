@@ -31,7 +31,6 @@
 #define ws_string_t char*
 
 #define PTRSIZE sizeof(void*)
-#define RCSIZE sizeof(int)
 #define ARRLENSIZE sizeof(int)
 
 #include <locale.h>
@@ -48,11 +47,17 @@ char* commaprint(unsigned long long n);
   }
   #define BASECALLOC gc_calloc
   #define BASEFREE   free
+  // If we are using BOEHM we do not need refcounts:
+  #define RCSIZE 0
+  #define ARRLENOFFSET -1
 #else
   #define BASEMALLOC malloc
   #define BASECALLOC calloc
   #define BASEFREE   free
+  #define RCSIZE sizeof(int)
+  #define ARRLENOFFSET -2
 #endif
+
 
 // These macros allow us to monitor allocation rates if we wish:
 #ifdef ALLOC_STATS
@@ -105,14 +110,14 @@ inline void free_measured(void* object) {
 // Handle Array memory layout:
 // An array consists of [len] [RC] [elem*]
 // Both len and RC are currently ints:
-#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
+#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[ARRLENOFFSET] : 0)
 //#define ARRLEN(ptr)        ((int*)ptr)[-2]
 // This should not be used on a null pointer:
-#define SETARRLEN(ptr,len) ((int*)ptr)[-2]=len
+#define SETARRLEN(ptr,len) ((int*)ptr)[ARRLENOFFSET]=len
 
-#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[-2] : 0)
+#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[ARRLENOFFSET] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
-#define ARRPTR(ptr)        (((void**)ptr)-2)
+#define ARRPTR(ptr)        (((void**)ptr) + ARRLENOFFSET)
 #define FREEARR(ptr)       WSFREE(ARRPTR(ptr))
 
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
@@ -123,7 +128,9 @@ inline void free_measured(void* object) {
 inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
+#ifndef USE_BOEHM
   CLEAR_RC(ptr);
+#endif
   return ptr;
 }
 
