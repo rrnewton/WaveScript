@@ -7,18 +7,12 @@ include "stdlib.ws"
 /// Nested arrays
 // Note, these functions should be replaced with a proper multi-dimensional matrix library.
 
-fun Array3D:iter(arr, fn) {
-  for i = 0 to Array:length(arr)       - 1 {
-  for j = 0 to Array:length(arr[i])    - 1 {
-  for k = 0 to Array:length(arr[i][j]) - 1 {
-    fn(i,j,k)
-  }}}  
-}
-
 //====================================================================================================
 // 3D arrays, nested implementation:
 
 /*
+type Array3D t = Array (Array (Array t)); 
+
 fun Array3D:fill(arr, val) {
   for i = 0 to Array:length(arr)-1 {
    for j = 0 to Array:length(arr[i])-1 {
@@ -70,6 +64,19 @@ fun Array3D:map_inplace2(arr, arr2, fn) {
     arr[i][j][k] := fn(arr[i][j][k], arr2[i][j][k]);
   }}}
 }
+
+fun Array3D:get(arr,i,j,k)   arr[i][j][k]
+fun Array3D:set(arr,i,j,k,x) arr[i][j][k] := x
+
+
+fun Array3D:iter(arr, fn) {
+  for i = 0 to Array:length(arr)       - 1 {
+  for j = 0 to Array:length(arr[i])    - 1 {
+  for k = 0 to Array:length(arr[i][j]) - 1 {
+    fn(i,j,k)
+  }}}  
+}
+
 */
 
 //====================================================================================================
@@ -77,12 +84,25 @@ fun Array3D:map_inplace2(arr, arr2, fn) {
 
 include "matrix3D.ws"
 
+type Array3D t = Matrix3D t; 
+
+Array3D:get          = Matrix3D:get
+Array3D:set          = Matrix3D:set
+Array3D:null         = Matrix3D:null
 Array3D:fill         = Matrix3D:fill
 Array3D:make         = Matrix3D:create
 Array3D:foreach2     = Matrix3D:foreach2
 Array3D:fold2        = Matrix3D:fold2
 Array3D:map_inplace  = Matrix3D:map_inplace
 Array3D:map_inplace2 = Matrix3D:map2_inplace
+
+fun Array3D:iter(mat, fn) {
+  let (r,c,h) = Matrix3D:dims(mat);
+  for i = 0 to r-1 {
+  for j = 0 to c-1 {
+  for k = 0 to h-1 {
+    fn(i,j,k)
+  }}}}
 
 //====================================================================================================
 

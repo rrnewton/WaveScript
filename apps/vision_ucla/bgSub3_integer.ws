@@ -27,7 +27,6 @@ LIVE = false;
 type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
-type Array3D t = Array (Array (Array t)); 
 
 // Application type defs:
 type Inexact = Double; // Float or Double
@@ -133,8 +132,9 @@ fun hist_update(r,g,b, hist, fn) {
   binB = Int! (Inexact! b * inv_sizeBins1);
   binG = Int! (Inexact! g * inv_sizeBins2);
   binR = Int! (Inexact! r * inv_sizeBins3);
-  // apply transform to histogram
-  hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
+  // apply transform to histogram  
+  using Array3D;
+  set(hist, binB, binG, binR, fn(get(hist, binB, binG, binR)));
 }
 
 // Do the first patch in an image, fill in the histogram using all the color values.
@@ -324,10 +324,11 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
           fun(bh) {
 	    sum += Inexact! bh;
 	    bh * (1 - Alpha);
-          });	
+          });
 	// make sure histogram still sums up correctly.
 	//if sum - (1-Alpha) > (Inexact! 0.00001) // 10e-5
 	//then wserror$ "ERROR1: bgHist is not normalized properly: sum = " ++ sum;
+	()
       }
     };
 
@@ -343,10 +344,12 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[index] == 0 then {
 	 sum = ref$ 0;
-	 Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
-	    bgHist[index][cb][cg][cr] += (Alpha * tempHist[cb][cg][cr]);
+	 using Array3D;
+	 iter( bgHist[index], fun(cb,cg,cr) {  // or map2_inplace3D
+	     set(bgHist[index], cb,cg,cr, (Alpha * get(tempHist,      cb,cg,cr)) +
+	     	                                   get(bgHist[index], cb,cg,cr));
 	    // Naughty!  This needn't use inexact.
-	    sum += Inexact! bgHist[index][cb][cg][cr];
+	    sum += Inexact! get(bgHist[index], cb,cg,cr);
 	 });
 	 if abs(sum - 1) > (Inexact! 0.00001)
 	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
@@ -381,7 +384,7 @@ fun bhatta(video) {
             bghist    = null;
 
 	    // create temporary patch to store working histogram 
-	    temppatch = null;
+	    temppatch = Array3D:null;
 	    mask      = null;  // Just one channel.
 	    diffImage = null;  // All three channels.
           }

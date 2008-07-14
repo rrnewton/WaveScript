@@ -78,5 +78,7 @@ dims   ::  Matrix3D t                    -> (Int * Int * Int);
    acc
  }
 
+ null = (0,0,0,Array:null);
+
 } // End namespace
 
