@@ -32,11 +32,11 @@ type Array3D t = Array (Array (Array t));
 // Application type defs:
 type Inexact = Double; // Float or Double
 
-// A histogram for the viscinity around a pixel:
-type PixelHist = Array3D Inexact;
+//type HistogramSlot = Inexact;
+type HistElt = Int;
 
-// A slice of a matrix: Buffer, index, rows.
-type Patch = (RawImage * Int * Int);
+// A histogram for the viscinity around a pixel:
+type PixelHist = Array3D HistElt;
 
 abs  =  absD
 ceil = ceilD 
@@ -68,7 +68,7 @@ bhattasettings = (
 		(2  :: Int),   // NumBins2
 		(2  :: Int),   // NumBins3
 		(30 :: Int),   // SizePatch
-		(0  :: Inexact), // Alpha (bg update)
+		(0  :: HistElt), // Alpha (bg update)
 		false // useBgUpdateMask 
 	);
 
@@ -81,23 +81,39 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
      //rows, cols, 
      nChannels) = settings;
 
+//====================================================================================================
+// These hooks allow us to go back and forth between the floating point version and the integer.
+
+sampleWeight1 :: HistElt = 1
+sampleWeight2 :: HistElt = 1
+
+
  // To reduce divisions.  Used to take a pixel value and calculate the histogram bin it falls in.
  inv_sizeBins1 :: Inexact = 1 / ceil(256 / Inexact! NumBins1);
  inv_sizeBins2 :: Inexact = 1 / ceil(256 / Inexact! NumBins2);
  inv_sizeBins3 :: Inexact = 1 / ceil(256 / Inexact! NumBins3); // NOTE, if I replace gint with Inexact! I get a typechecking problem.
 
+//	double inv_nPixels = 1.f/((double) (bSettings->SizePatch*bSettings->SizePatch*bSettings->SizePatch*bSettings->SizePatch*settings->NumBgFrames));
+
+ inv_nPixels = 1 / Inexact! (SizePatch * SizePatch * SizePatch * SizePatch * NumBgFrames);
+
  halfPatch :: Int = SizePatch / 2;
 
 // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized after all frames are received.
-sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
+//sampleWeight1 = 1 / Inexact! (SizePatch * SizePatch * NumBgFrames);
 // To reduce divisions.  Adjust weight so that a pixel's histogram will be normalized.
-sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
+//sampleWeight2 = (Inexact! 1.0) / (SizePatch * SizePatch).gint;	
+
+
+
 
 _ = {
   println$ "Some metaprogram-time values: \n";
   println$ "  inv_sizeBins: "++(inv_sizeBins1, inv_sizeBins2, inv_sizeBins3);
   println$ "  sampleWeight1,2: "++ (sampleWeight1, sampleWeight2);
   println$ "";
+
+  println$ "  inv_nPixels: "++ (inv_nPixels);
   }
 
 //====================================================================================================
@@ -111,7 +127,7 @@ fun boundit(x,range) {
 };
 
 // Update the correct bin within a pixel's histogram, indexed by R/G/B.
-hist_update :: (Color, Color, Color, PixelHist, Inexact -> Inexact) -> ();
+hist_update :: (Color, Color, Color, PixelHist, HistElt -> HistElt) -> ();
 fun hist_update(r,g,b, hist, fn) {
   // figure out which bin
   binB = Int! (Inexact! b * inv_sizeBins1);
@@ -124,7 +140,7 @@ fun hist_update(r,g,b, hist, fn) {
 // Do the first patch in an image, fill in the histogram using all the color values.
 fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
   // clear patch histogram:
-  fill3D(patchbuf, 0);
+  Array3D:fill(patchbuf, 0);
   roEnd = r - halfPatch + SizePatch;  // end of patch
   coEnd = c - halfPatch + SizePatch;  // end of patch
   for ro = r-halfPatch to roEnd-1 { // cover the row
@@ -132,7 +148,8 @@ fun initPatch(r,c, rows, cols, patchbuf, image, sampleWeight) {
       for co = c-halfPatch to coEnd-1 { // cover the col
 	  coi = boundit(co,cols);	  
 	  i = (roi * cols + coi) * 3;   // get the pixel location
-	  hist_update(image[i+2], image[i+1], image[i], patchbuf, (+ sampleWeight));
+	  hist_update(image[i+2], image[i+1], image[i], patchbuf, 
+	              (+ sampleWeight));
 	}
     }
 }
@@ -150,6 +167,7 @@ fun zipDownward(rowIndex, rows,cols, tempHist, image)
   }
 
 // Shift a patch one pixel right, update the histogram incrementally.
+shift_patch :: (Int, Int, Int, Int, PixelHist, RawImage, HistElt) -> ();
 fun shift_patch(r,c, rows,cols, hist, image, sampleWeight) {
   zippy = zipDownward(r, rows,cols, hist, image);
   // subtract left col       
@@ -160,7 +178,7 @@ fun shift_patch(r,c, rows,cols, hist, image, sampleWeight) {
   zippy(co, fun(x) x + sampleWeight);
 }
 
-fun add_into3D(dst,src) Array:map3D_inplace2(dst, src, (+));
+fun add_into3D(dst,src) Array3D:map_inplace2(dst, src, (+));
 
 // This just walks over a matrix and gives you both the row/column
 // index, and the flat array index.
@@ -244,6 +262,7 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
     })
 }
 
+
 //====================================================================================================
 
 // Estimate foregound pixel from "image" and the background model. 
@@ -263,14 +282,16 @@ fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
       else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
 
       // compare histograms
-      diff = fold2_3D(tempHist, bgHist[index], 0,  fun(acc,px,bg) acc + sqrt(px * bg));
+      diff = Array3D:fold2(tempHist, bgHist[index], 0,  
+                           //fun(acc,px,bg) acc + sqrt(Inexact! px * Inexact! bg)
+			   fun(acc,px,bg) acc + sqrt(Inexact! px * Inexact! bg * inv_nPixels)
+			   );
       // renormalize diff so that 255 = very diff, 0 = same
       diffImage[index] := Uint8! (255 - Int! (diff * 255)); // create result image
       // Inefficient:
       mask[index] := if diffImage[index] > Threshold then 255 else 0;         
     })
 }
-
 
 //====================================================================================================
 
@@ -288,7 +309,7 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
   if Alpha == 0 then () else {
     using Array; using Mutable;
     if mask == null then println$ "Mask not given: updating everything";
-    fill3D(tempHist, 0);
+    Array3D:fill(tempHist, 0);
 	
     // iterate through all pixel's histograms
     // rescale the histogram only if there is a mask given
@@ -299,14 +320,14 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[i] == 0 then {
 	sum :: Ref Inexact = ref$ 0;
-	Array:map3D_inplace(bgHist[i],
+	Array3D:map_inplace(bgHist[i],
           fun(bh) {
-	    sum += bh;
+	    sum += Inexact! bh;
 	    bh * (1 - Alpha);
           });	
 	// make sure histogram still sums up correctly.
-	if sum - (1-Alpha) > (Inexact! 0.00001) // 10e-5
-	then wserror$ "ERROR1: bgHist is not normalized properly: sum = " ++ sum;
+	//if sum - (1-Alpha) > (Inexact! 0.00001) // 10e-5
+	//then wserror$ "ERROR1: bgHist is not normalized properly: sum = " ++ sum;
       }
     };
 
@@ -322,9 +343,10 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[index] == 0 then {
 	 sum = ref$ 0;
-	 Array:iter3D( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
-	    bgHist[index][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
-	    sum += bgHist[index][cb][cg][cr];
+	 Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
+	    bgHist[index][cb][cg][cr] += (Alpha * tempHist[cb][cg][cr]);
+	    // Naughty!  This needn't use inexact.
+	    sum += Inexact! bgHist[index][cb][cg][cr];
 	 });
 	 if abs(sum - 1) > (Inexact! 0.00001)
 	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
@@ -364,6 +386,8 @@ fun bhatta(video) {
 	    diffImage = null;  // All three channels.
           }
 
+  println$ "  inv_nPixels: "++ (inv_nPixels);
+
     if bghist == null then {
       println$ "Output location: "++OutLoc;
       println$ "Settings: ";
@@ -375,10 +399,10 @@ fun bhatta(video) {
 
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
-      bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
-      temppatch := make3D(NumBins1, NumBins2, NumBins3, 0);
+      bghist := build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));
+      temppatch := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
 
-      mask := make(rows * cols, 0);
+      mask        := make(rows * cols, 0);
       diffImage   := make(rows * cols * nChannels, 0);
       //ImageBuffer := make(rows * cols * nChannels, 0);
 
@@ -605,3 +629,4 @@ main =
 /*      $ squisher */
 /*      $ squisher */
      $ input_imgs;
+

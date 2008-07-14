@@ -372,7 +372,7 @@ fun bhatta(video) {
 
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
-      bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
+      bghist := build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));
       temppatch := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
 
       mask        := make(rows * cols, 0);

@@ -1001,6 +1001,8 @@
 	      [,var (guard (symbol? var)) #t]
 	      [,const (guard (simple-constant? const)) #t] ;; for tupref etc
 	      [(lambda . ,_) #t]
+	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) ;(guard (eq-any? lett 'let))
+	       (and bod (andmap side-effect-free? rhs*))]
 	      [(quote ,datum) #t]
 	      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
 	       (if (assq prim wavescript-effectful-primitives)
