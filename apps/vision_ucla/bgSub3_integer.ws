@@ -386,8 +386,6 @@ fun bhatta(video) {
 	    diffImage = null;  // All three channels.
           }
 
-  println$ "  inv_nPixels: "++ (inv_nPixels);
-
     if bghist == null then {
       println$ "Output location: "++OutLoc;
       println$ "Settings: ";

@@ -601,7 +601,7 @@
     [Uint16 "%hu"]
     [Uint8  "%hu"]
     [Float  "%g"]
-    [Double "%lg"]
+    [Double "%.15g"]
     [#() "()"]
     [(Pointer ,_) "%p"]
     [(,args ... -> ,ret) ;"%p"

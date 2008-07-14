@@ -81,6 +81,7 @@ Array:fill      :: (Array t, t) -> ();
 Array:concat    :: (List (Array t)) -> Array t;
 Array:flatten   :: (Array (Array t)) -> Array t;
 Array:foreach    :: (     a -> (), Array a) -> ();
+Array:foreach2   :: ((a,b) -> (), Array a, Array b) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 Array:mapi       :: ((Int, a) -> b, Array a) -> Array b;
 //Array:sub        :: (Array a, Int, Int) -> Array a;
@@ -631,17 +632,9 @@ namespace Array {
     newarr // final result.
   }
   
-  fun foreach(f,arr) {
-    for i = 0 to arr.length-1 {
-      f(arr[i])
-    }
-  }
-
-  fun foreachi(f,arr) {
-    for i = 0 to arr.length-1 {
-      f(i, arr[i])
-    }
-  }
+  fun foreach(f,arr)       {for i = 0 to arr.length-1 {  f(arr[i])           }}
+  fun foreach2(f,arr,arr2) {for i = 0 to arr.length-1 {  f(arr[i], arr2[i])  }}
+  fun foreachi(f,arr)      {for i = 0 to arr.length-1 {  f(i, arr[i])        }}
 
   fun mapi(f,arr) {
     new = makeUNSAFE(arr.length);

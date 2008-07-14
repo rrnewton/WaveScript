@@ -26,3 +26,68 @@ Core2 at Nokia.  This is virtually identical to the C++ version
 ~1300/1350... it also bumped the binary size up to 153.  Hmm, odd
 numbers, also, O2 RC NoStats 1180/1440..)
 
+
+[2008.07.14]
+
+By the way, running with cachegrind indicated 0.3% and 0.1% L1 and L2
+miss rates respectively.
+
+Running with valgrind --tool=lackey doing basic counts (-O2)... each
+populateBg takes 36 seconds.  (I think I saw 78 seconds with cache
+grind.)  After running 20 frames bg and 20 frames fg:
+
+==9532== 
+==9532== Counted 204 calls to _dl_runtime_resolve()
+==9532== 
+==9532== Jccs:
+==9532==   total:         9,473,786,328
+==9532==   taken:         4,318,804,327 ( 45%)
+==9532== 
+==9532== Executed:
+==9532==   SBs entered:   7,646,717,688
+==9532==   SBs completed: 3,979,468,489
+==9532==   guest instrs:  57,566,368,676
+==9532==   IRStmts:       360,734,815,899
+==9532== 
+==9532== Ratios:
+==9532==   guest instrs : SB entered  =  75 : 10
+==9532==        IRStmts : SB entered  = 471 : 10
+==9532==        IRStmts : guest instr =  62 : 10
+==9532== 
+==9532== Exit code:       0
+
+Doing --detailed-counts=yes instead makes it take 47 secs per populateBg. (65 for estimate).
+
+==10572== 
+==10572== Counted 204 calls to _dl_runtime_resolve()
+==10572== 
+==10572== Jccs:
+==10572==   total:         9,473,786,303
+==10572==   taken:         4,318,804,380 ( 45%)
+==10572== 
+==10572== Executed:
+==10572==   SBs entered:   7,646,717,659
+==10572==   SBs completed: 3,979,468,420
+==10572==   guest instrs:  57,566,368,224
+==10572==   IRStmts:       360,734,813,710
+==10572== 
+==10572== Ratios:
+==10572==   guest instrs : SB entered  =  75 : 10
+==10572==        IRStmts : SB entered  = 471 : 10
+==10572==        IRStmts : guest instr =  62 : 10
+==10572== 
+==10572== IR-level counts by type:
+==10572==    Type        Loads       Stores       AluOps
+==10572==    -------------------------------------------
+==10572==    I1              0            0        14,382,576,456
+==10572==    I8    2,018,235,835     121,977,030       95,226,435
+==10572==    I16   5,634,506,137      51,732,827      264,126,723
+==10572==    I32  20,967,108,198   8,154,186,980   74,731,611,646
+==10572==    I64             0            0                37,493
+==10572==    I128            0            0             0
+==10572==    F32   1,244,083,201          0             0
+==10572==    F64     435,917,113     219,648,303   10,756,378,228
+==10572==    V128            0            0             0
+==10572== 
+==10572== Exit code:       0
+

@@ -7,9 +7,18 @@ include "stdlib.ws"
 /// Nested arrays
 // Note, these functions should be replaced with a proper multi-dimensional matrix library.
 
+fun Array3D:iter(arr, fn) {
+  for i = 0 to Array:length(arr)       - 1 {
+  for j = 0 to Array:length(arr[i])    - 1 {
+  for k = 0 to Array:length(arr[i][j]) - 1 {
+    fn(i,j,k)
+  }}}  
+}
+
 //====================================================================================================
 // 3D arrays, nested implementation:
 
+/*
 fun Array3D:fill(arr, val) {
   for i = 0 to Array:length(arr)-1 {
    for j = 0 to Array:length(arr[i])-1 {
@@ -46,13 +55,6 @@ fun Array3D:map_inplace(arr, fn) {
   }}}
 }
 
-fun Array3D:iter(arr, fn) {
-  for i = 0 to Array:length(arr)       - 1 {
-  for j = 0 to Array:length(arr[i])    - 1 {
-  for k = 0 to Array:length(arr[i][j]) - 1 {
-    fn(i,j,k)
-  }}}  
-}
 
 fun Array3D:make(i,j,k, val) {
   using Array;
@@ -68,12 +70,19 @@ fun Array3D:map_inplace2(arr, arr2, fn) {
     arr[i][j][k] := fn(arr[i][j][k], arr2[i][j][k]);
   }}}
 }
+*/
 
 //====================================================================================================
 // 3D arrays, flat implementation
 
+include "matrix3D.ws"
 
-
+Array3D:fill         = Matrix3D:fill
+Array3D:make         = Matrix3D:create
+Array3D:foreach2     = Matrix3D:foreach2
+Array3D:fold2        = Matrix3D:fold2
+Array3D:map_inplace  = Matrix3D:map_inplace
+Array3D:map_inplace2 = Matrix3D:map2_inplace
 
 //====================================================================================================
 
