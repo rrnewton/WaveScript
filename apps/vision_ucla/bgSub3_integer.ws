@@ -77,6 +77,8 @@ let (Filename, OutLoc, BgStartFrame, FgStartFrame,
 //====================================================================================================
 // These hooks allow us to go back and forth between the floating point version and the integer.
 
+// rrn: note, it seems like the histograms could keep growing during the updateBg phase...
+//type HistElt = Uint16;
 type HistElt = Int;
 sampleWeight1 :: HistElt = 1
 sampleWeight2 :: HistElt = 1
@@ -101,11 +103,11 @@ type PixelHist = Array3D HistElt;
 
 //	double inv_nPixels = 1.f/((double) (bSettings->SizePatch*bSettings->SizePatch*bSettings->SizePatch*bSettings->SizePatch*settings->NumBgFrames));
 
- inv_nPixels = 1 / Inexact! (SizePatch * SizePatch * SizePatch * SizePatch * NumBgFrames);
+ // nPixels = the number of pixels in two patches in all the background frames.
+ nPixels = (SizePatch * SizePatch * SizePatch * SizePatch * NumBgFrames);
+ inv_nPixels = 1 / Inexact! nPixels;
 
  halfPatch :: Int = SizePatch / 2;
-
-
 
 
 _ = {
@@ -114,6 +116,7 @@ _ = {
   println$ "  sampleWeight1,2: "++ (sampleWeight1, sampleWeight2);
   println$ "";
 
+  println$ "  nPixels: "++ (nPixels);
   println$ "  inv_nPixels: "++ (inv_nPixels);
   }
 
@@ -288,7 +291,7 @@ fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
       // compare histograms
       diff = Array3D:fold2(tempHist, bgHist[index], 0,  
                            //fun(acc,px,bg) acc + sqrt(Inexact! px * Inexact! bg)
-			   fun(acc,px,bg) acc + sqrt(Inexact! px * Inexact! bg * inv_nPixels)
+			   fun(acc,px,bg) acc + sqrt(Inexact! (px * bg) * inv_nPixels)
 			   );
       // renormalize diff so that 255 = very diff, 0 = same
       diffImage[index] := Uint8! (255 - Int! (diff * 255)); // create result image
@@ -420,6 +423,9 @@ fun bhatta(video) {
 	  // add frame to the background
           st = clock();
 	  populateBg(temppatch, bghist, (frame,cols,rows));
+
+	  //println$ "MAX hist "++      Array:fold(fun(best, hist) Array3D:fold(hist, best, max), 0, bghist);
+
 	  en = clock();
 	  println$ "Computation time for populateBg(): " ++ (en - st);
 

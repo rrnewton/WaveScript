@@ -3,8 +3,8 @@
 
 include "stdlib.ws";
 
-// rather than store the i,j,k dimensions, this representation
-// stores (i, j, j*k) for quicker lookups.
+// rather than store the r,c,h dimensions, this representation
+// stores (r, c*h, h) for quicker lookups.
 type Matrix3D t = (int * int * int * Array t);
 
 //DEBUGMATRIX = true
@@ -23,13 +23,24 @@ dims   ::  Matrix3D t                    -> (Int * Int * Int);
 
  fun create(rows, cols, height, init) 
    // This should be nested build OR build/make
-   (rows, cols, cols*height, Array:make(rows*cols*height, init))
+   (rows, cols*height, height, Array:make(rows*cols*height, init))
 
- fun get((r,c,ch, arr), i, j, k)        arr[i*ch + j*c + k]
- fun set((r,c,ch, arr), i, j, k, val)   arr[i*ch + j*c + k] := val
+   fun get((r,ch,h, arr), i, j, k)        arr[i*ch + j*h + k]
+   fun set((r,ch,h, arr), i, j, k, val)   arr[i*ch + j*h + k] := val
+   /*
+ fun get((r,c,ch, arr), i, j, k)        {
+   println("Getting ind "++(i,j,k)++" bounds "++(r,c,ch)++" array ind "++i*ch + j*c + k);
+   arr[i*ch + j*h + k]
+ }
+ fun set((r,c,ch, arr), i, j, k, val)   {
+   println("Setting to "++val++", ind "++(i,j,k)++" bounds "++(r,c,ch)++" array ind "++i*ch + j*c + k);
+   arr[i*ch + j*h + k] := val
+ }
+   */
 
  // Dims has to do a division.
- fun dims((r,c,ch, arr))  (r,c,ch/c)
+ fun dims((r,ch,h, arr))
+   if r == 0 then (0,0,0) else (r,ch/h,h)
 
  // In general build is efficient because it doesn't need to zero the storage.
  fun build(r,c,h, fn) {
@@ -39,9 +50,9 @@ dims   ::  Matrix3D t                    -> (Int * Int * Int);
    for i = 0 to r-1 {
    for j = 0 to c-1 {
    for k = 0 to h-1 {
-       arr[i*ch + j*c + k] := fn(i,j,k);
+       arr[i*ch + j*h + k] := fn(i,j,k);
    }}};
-   (r,c,ch,arr)
+   (r,ch,h,arr)
  }
 
  fun fill((_,_,_,arr), x) {
@@ -78,7 +89,12 @@ dims   ::  Matrix3D t                    -> (Int * Int * Int);
    acc
  }
 
+ fun fold((_,_,_, arr), zer, fn) {
+  acc = ref$ zer;
+  Array:foreach(fun(x) acc := fn(acc, x), arr);
+  acc
+ }
+
  null = (0,0,0,Array:null);
 
 } // End namespace
-
