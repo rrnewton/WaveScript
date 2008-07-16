@@ -185,30 +185,31 @@ void ws_alloc_stats() {
 #include "midishare_fifo/lffifo.c"
 void (**worker_table) (void);
 fifo** queue_table;
-pthread_cond_t* cond_table;
+pthread_cond_t** cond_table;
+pthread_mutex_t** mut_table;
 int total_workers;
 
-#define DECLARE_WORKER(ind, fp)  fifo fp##_queue;
-
-//   pthread_cond_t fp##_cond; 
+#define DECLARE_WORKER(ind, fp)  fifo fp##_queue;  \
+  pthread_cond_t fp##_cond; \
+  pthread_mutex_t fp##_mut;
 
 #define TOTAL_WORKERS(count) { \
-   worker_table = malloc(sizeof(void*) * count);  \
-   queue_table  = malloc(sizeof(fifo) * count);  \
+   worker_table  = malloc(sizeof(void*) * count);  \
+   queue_table   = malloc(sizeof(fifo*) * count);  \
    total_workers = count; \
+   cond_table    = malloc(sizeof(pthread_cond_t*) * count);  \
+   mut_table     = malloc(sizeof(pthread_mutex_t*) * count);  \
 }
-
-//   cond_table   = malloc(sizeof(pthread_cond_t) * count);  \
 
 #define REGISTER_WORKER(ind, fp) { \
    fifoinit(& fp##_queue);   \
    worker_table[ind] = & fp;  \
    queue_table[ind]  = & fp##_queue; \
+   cond_table[ind]   = & fp##_cond; \
+   mut_table [ind]   = & fp##_mut; \
+   pthread_cond_init(& fp##_cond, NULL); \
+   pthread_mutex_init(& fp##_mut, NULL); \
 }
-
-//   cond_table[ind] = fp##_cond; \
-//   pthread_cond_init(& fp##_cond, NULL); \
-//   fp##_cond = PTHREAD_COND_INITIALIZER; \
 
 #define START_WORKERS() {                    \
   int i;  \
@@ -222,11 +223,17 @@ int total_workers;
   void** cell = malloc(sizeof(ty) + sizeof(void*)); \
   cell[0] = (void*)0; /* don't know if this is required */ \
   *(ty*)(cell+1) = val; /* copy it over */ \
+  int size = fifosize(& fn##_queue); \
   fifoput(& fn##_queue, cell);  \
+  if (size==0) { \
+     pthread_mutex_lock(&fn##_mut); \
+     printf("*WAKEUP %p*", &fn##_mut); \ 
+     pthread_cond_signal(&fn##_cond); \
+     printf(".\n"); \ 
+     pthread_mutex_unlock(&fn##_mut); \
+  } \
   printf("    put to fifo %p (%p, %d)\n", & fn##_queue, cell, val); \
 }
-
-//   int size = fifosize(& fn##_queue); \
 
 void* worker_thread(int index) {
   printf("Spawning worker thread %d\n", index);
@@ -234,9 +241,12 @@ void* worker_thread(int index) {
   {
     void* ptr = fifoget(queue_table[index]);
     while (! ptr) {     
-      printf(".");
-      sleep(1);
-      //      pthread_cond_wait(cond_table+index, 0);
+      //sleep(1); printf(".");
+      pthread_mutex_lock(mut_table[index]);
+      printf("<WAITING %p>\n", mut_table[index]);
+      pthread_cond_wait(cond_table[index], mut_table[index]);
+      printf(" =========== WOKE UP ============ %d\n", index);
+      pthread_mutex_unlock(mut_table[index]);
       ptr = fifoget(queue_table[index]);
     }
     printf("  got val off queue #%d, %p : %p %d\n", index, queue_table[index], ptr, ((int*)((void*)ptr+1))[0]);

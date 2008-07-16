@@ -36,7 +36,7 @@ fi
 #WS_LINK_POST= FILTER_OUT($WS_LINK)
 
 ## ACK - include WS_LINK at front and end?!?
-CMD="$CC $WS_LINK -lm $OPTFLAGS -I $REGIMENTD/lib -o query.exe query.c $WS_LINK_POST"
+CMD="$CC $WS_LINK -lpthread -lm $OPTFLAGS -I $REGIMENTD/lib -o query.exe query.c $WS_LINK_POST"
 echo "$CMD"
 #if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
 
