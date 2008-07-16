@@ -492,7 +492,7 @@
 #;
 (define __Emit 
   (specialise! Emit <javaME> 
-    (lambda (next self down*)
+    (lambda (next self down* ty)
       (lambda (expr)
 	(append-lines ;(make-lines "outstrm.print(\"(Emit \"+ System.currentTimeMillis() + \")\\n\");\n")	 
 	 (make-lines (print-w-time "Emit "))

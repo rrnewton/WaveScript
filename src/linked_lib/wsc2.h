@@ -38,6 +38,10 @@ typedef unsigned short int uint16_t;
 
 #define ws_string_t char*
 
+//################################################################################//
+//                 Matters of memory layout and GC                                //
+//################################################################################//
+
 #define PTRSIZE sizeof(void*)
 #define ARRLENSIZE sizeof(int)
 
@@ -159,6 +163,94 @@ void ws_alloc_stats() {
 }
 #endif
 
+//################################################################################//
+//                           Scheduler and data passing
+//################################################################################//
+
+// Single threaded version:
+/*
+//#define REGISTER_WORKERS(table, len) {}
+#define EMIT(val, fn) fn(val)
+#define TOTAL_WORKERS(count) {}
+#define REGISTER_WORKER(ind, fp) {}
+#define START_WORKERS() {}
+*/
+
+// Thread-per-operator version, midishare FIFO implementation:
+
+// For now I'm hacking this to be blocking, which involves adding
+// locks to a lock-free fifo implementation!
+
+#include <pthread.h>
+#include "midishare_fifo/lffifo.c"
+void (**worker_table) (void);
+fifo** queue_table;
+pthread_cond_t* cond_table;
+int total_workers;
+
+#define DECLARE_WORKER(ind, fp)  fifo fp##_queue;
+
+//   pthread_cond_t fp##_cond; 
+
+#define TOTAL_WORKERS(count) { \
+   worker_table = malloc(sizeof(void*) * count);  \
+   queue_table  = malloc(sizeof(fifo) * count);  \
+   total_workers = count; \
+}
+
+//   cond_table   = malloc(sizeof(pthread_cond_t) * count);  \
+
+#define REGISTER_WORKER(ind, fp) { \
+   fifoinit(& fp##_queue);   \
+   worker_table[ind] = & fp;  \
+   queue_table[ind]  = & fp##_queue; \
+}
+
+//   cond_table[ind] = fp##_cond; \
+//   pthread_cond_init(& fp##_cond, NULL); \
+//   fp##_cond = PTHREAD_COND_INITIALIZER; \
+
+#define START_WORKERS() {                    \
+  int i;  \
+  for (i=0; i<total_workers; i++)  { \
+    pthread_t threadID; \
+    pthread_create(&threadID, NULL, &worker_thread, i); \
+    printf("  Created thread with ID %p\n", threadID); \
+  }}
+
+#define EMIT(val, ty, fn) {       \
+  void** cell = malloc(sizeof(ty) + sizeof(void*)); \
+  cell[0] = (void*)0; /* don't know if this is required */ \
+  *(ty*)(cell+1) = val; /* copy it over */ \
+  fifoput(& fn##_queue, cell);  \
+  printf("    put to fifo %p (%p, %d)\n", & fn##_queue, cell, val); \
+}
+
+//   int size = fifosize(& fn##_queue); \
+
+void* worker_thread(int index) {
+  printf("Spawning worker thread %d\n", index);
+  while (1) 
+  {
+    void* ptr = fifoget(queue_table[index]);
+    while (! ptr) {     
+      printf(".");
+      sleep(1);
+      //      pthread_cond_wait(cond_table+index, 0);
+      ptr = fifoget(queue_table[index]);
+    }
+    printf("  got val off queue #%d, %p : %p %d\n", index, queue_table[index], ptr, ((int*)((void*)ptr+1))[0]);
+  }
+  return 0;
+}
+
+
+
+
+//################################################################################//
+//                   
+//################################################################################//
+
 void wsShutdown() {
   #ifdef ALLOC_STATS
     ws_alloc_stats();
@@ -273,4 +365,5 @@ inline static float cNorm(complex c) {
    return sqrt ((re*re) + (im*im));
 }
 #endif
+
 

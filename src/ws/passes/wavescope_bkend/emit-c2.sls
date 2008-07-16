@@ -648,14 +648,17 @@
 ;; .param down*   A list of sinks (names of functions) to emit to.
 ;;                These can also be (NUM NAME) pairs for indexed ports.
 ;; .returns lines representing command-code
-(__spec Emit <emitC2> (self down*)
+(__spec Emit <emitC2> (self down* ty)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
+    (printf "EMITTING AT TYPE: ~s\n" ty)
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
 			 ;(if (list? down) (set! down (ASSERT symbol? (cadr down)))) ;; HACK
 			 (cap 
+			  (make-app "EMIT" (list element (Type self ty) (Var self down))) ; (list "sizeof("element")")
+			  #;
 			  (list (make-app (Var self down) (list element))
 				" /* emit */")))
 		    down*)))
@@ -1578,7 +1581,7 @@ int main(int argc, char **argv)
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (list 
 	    (make-c-timer nm
-		   ((Emit self down*) ''UNIT) ;; Code
+		   ((Emit self down* '#()) ''UNIT) ;; Code
 		   (make-lines '()) ;; State 	
 		   rate))])]
 
@@ -1595,7 +1598,7 @@ int main(int argc, char **argv)
 	;; Create a function for the entrypoint.
 	(let* ([proto `("extern void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
-				       (lines-text ((Emit self down*) arg)))]
+				       (lines-text ((Emit self down* type) arg)))]
 	       [impl (make-lines 
 		      (block `("void ",name"(",ty" ",(Var self arg)")")
 			    bod))])
@@ -1681,11 +1684,11 @@ int main(int argc, char **argv)
   (define (Simp x) (Simple self x))
   (match op
     [(iterate (name ,name) 
-	      (output-type ,ty)
+	      (output-type (Stream ,elt))
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down*) x))
+     (define (emitter x) ((Emit self down* elt) x))
      (match itercode
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
@@ -1700,7 +1703,7 @@ int main(int argc, char **argv)
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
 	     (incoming ,a ,b) (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down*) x))
+     (define (emitter x) ((Emit self down* elt) x))
      (define arg (unique-name "arg"))
      (values (make-lines 
 	      (list (block `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")")
@@ -1804,7 +1807,7 @@ int main(int argc, char **argv)
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "exit(0);\n"))
-		     ,(lines-text ((Emit self down*) 'buf))))])
+		     ,(lines-text ((Emit self down* elt) 'buf))))])
 
        (values 
 	(make-lines (block (list "void "(sym2str name)"("(Type self '#())" ignored)") maintext))
@@ -1869,6 +1872,9 @@ int main(int argc, char **argv)
 	(define state-pieces  (map c-state-lines (filter c-state? pieces*)))
 	(define proto-pieces  (map c-proto-lines (filter c-proto? pieces*)))
 
+	;; Extract the names of all the iterates, these are our workers.
+	(define iterates  (filter id (map (lambda (x) (match x [(iterate (name ,n) . ,_) n] [,_ #f])) oper*)))
+
 	(let-match ([(,[(curry Operator self) -> oper* state2** opinit**] ...) (SortOperators self oper*)])
 
 	;; This must be called early, for side effects to the object's fields:
@@ -1905,12 +1911,25 @@ int main(int argc, char **argv)
 						 ;; This will be where the inline_C initializers go:
 						 ;(lines-text (apply append-lines srcinit*))
 						 (map lines-text init-pieces)
-						 (lines-text (apply append-lines (apply append opinit**))))))))	
+						 (lines-text (apply append-lines (apply append opinit**)))
+						 ;; Finally, register all the work functions.
+						 (make-app "TOTAL_WORKERS" (list (number->string (add1 (length iterates)))))"\n"
+						 "REGISTER_WORKER(0, BASE)\n"
+						 (mapi (lambda (i name) (format "REGISTER_WORKER(~a, ~a)\n" (add1 i) name))  iterates)
+						 "START_WORKERS()\n"
+
+						 ;"void (**workers) (void) = malloc(sizeof(void*) * "(number->string (length iterates))");\n" 
+					         ;(mapi (lambda (i name) (format "workers[~a] = & ~a;\n" i name))  iterates)
+						 ;(make-app "REGISTER_WORKERS" (list "workers" (number->string (length iterates))))";\n"
+						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	
 	;; This is called last:
-	  (BuildOutputFiles self includes freefundefs
-			    (** (text->string (map lines-text proto-pieces)) allstate) ;; Put the prototypes early.
+	(BuildOutputFiles self includes freefundefs
+			    (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
+				allstate
+				"DECLARE_WORKER(0, BASE)\n"
+				(text->string (mapi (lambda (i name) (format "DECLARE_WORKER(~a, ~a)\n" (add1 i) name))  iterates)))
 			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
 			    init driver)
 	  )]
