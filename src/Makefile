@@ -297,7 +297,7 @@ main_r6rs.sls:
 
 ikarus: ik
 ik: ws/common.sls main_r6rs.sls
-	ikarus --compile-dependencies regiment.ss
+	ikarus -O2 --compile-dependencies regiment.ss
 
 # ikrun:
 # 	ikarus --r6rs-script test_run.ss

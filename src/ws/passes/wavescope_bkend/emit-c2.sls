@@ -1041,7 +1041,8 @@
 	  ;; This will handle Array:null:
 	  (block `("if (",len" > 0)")
 		 `(,tmp" = (int*)((char*)",alloc" + RCSIZE + ARRLENSIZE);\n"
-		       "CLEAR_RC(",tmp");\n"           
+		       ,(if (eq-any? (wsc2-gc-mode) 'none 'boehm)  ""
+			    (list "CLEAR_RC("tmp");\n"))
 		       "SETARRLEN(",tmp", ",len");\n"  
 		       ;; Now fill the array, if we need to:
 		       ,(if (and init (not zero-fill?))
@@ -1136,7 +1137,8 @@
 		 [ty (Type self mayberetty)])
 	     (append-lines 
 	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",(Type self elt)");\n"
-			       "CLEAR_RC(",tmp");\n"           
+			       ,(if (eq-any? (wsc2-gc-mode) 'none 'boehm)  ""
+				    (list "CLEAR_RC("tmp");\n"))
 			       "SETCDR(",tmp", ",tl");\n"  
 			       "SETCAR(",tmp", ",hd");\n"  
 			       ;,tmp"[0] = ",hd";\n"

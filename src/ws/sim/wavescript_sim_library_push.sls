@@ -581,9 +581,9 @@
               [stats-pre2 '()]
               [stats-post '()])
 
-	  (error 'iterate-bench "need timing routines for this... not implemented yet in r6rs")
           #;
           ;; run the box and update CPU time	  
+	  ;; CHEZ version	 
 	  (begin           
 	    (set! stats-pre1 (statistics))
 	    (set! stats-pre2 (statistics))
@@ -592,6 +592,11 @@
 	    (set! outputs (reverse! (unbox outputs)))
 	    (bench-stats-cpu-time-add! bench-rec (- (sstats-cpu stats-post) (sstats-cpu stats-pre2)
 						    (- (sstats-cpu stats-pre2) (sstats-cpu stats-pre1)))))
+	  (let ([time-pre (cpu-time)])
+	      (set! outputs (fun msg (virtqueue)))
+	      (let ([time-post (cpu-time)])
+		(set! outputs (reverse! (unbox outputs)))
+		(bench-stats-cpu-time-add! bench-rec (s:- time-post time-pre))))
 
           ;; fire!
           (for-each (lambda (elem) (profiled-fire! elem our-sinks bench-rec output-type sum-type-declarations))
@@ -1681,7 +1686,9 @@
 	   newtab))
        (define HashTable:make (hash-percent make-hash-table))
        (define (HashTable:contains ht k) ((hash-percent get-hash-table) ht k #f))
-       (define (HashTable:get ht k) ((hash-percent get-hash-table) ht k #f))
+       (define (HashTable:get ht k) 
+	 (or ((hash-percent get-hash-table) ht k #f)
+	     (wserror "HashTable:get element not found")))
        ;; Pretty useless nondestructive version:
        (define (HashTable:set ht k v)
 	 (define new (copy-hash-table ht))
@@ -1993,7 +2000,7 @@
 
 
 ;; This provides access to C-functions:
-(define __foreign (lambda _ (error 'foreign "C procedures not accessible from R6RS")))
+(define __foreign (lambda args (error 'foreign "C procedures not accessible from R6RS " args)))
 #;
 (IFCHEZ
 

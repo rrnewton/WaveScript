@@ -22,7 +22,8 @@
 (define (stream-type? ty)   (and (pair? ty) (eq? (car ty) 'Stream)))
 (define (type-of-stream ty) (match ty [(Stream ,elt) elt]))
 
-
+;; Use whatever hashtable rep
+(define HashTable:get (wavescript-language 'HashTable:get))
 
 ;;
 (define-pass annotate-with-data-rates
@@ -37,9 +38,12 @@
                  (wavescript-language
                   (match stripped
                     [(,lang '(program ,body ,meta* ... ,type))
-                     `(let ((edge-counts-table (make-hash-table))
+		     ;; rrn: Note, this program is designed to run only once.
+		     ;; The hash table is allocated here.
+                     `(let ((edge-counts-table ',(make-default-hash-table 1000))  ;; (HashTable:make 1000)
                             (sum-type-declarations (cdr ',(assq 'union-types meta*))))
-                        ,(make-uniontype-defs (assq 'union-types meta*))
+			;(display  "RUNNING PROFILE PROGRAM...\n")
+			,(make-uniontype-defs (assq 'union-types meta*))
                         (reset-wssim-state!)
                         (cons
                          (run-stream-query ,body)
@@ -197,7 +201,7 @@
                                   (lambda ,args (,input-type ,output-type-redundant) ,[body]))
                                 ,stream)
 
-                 `(iterate ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name #f)))
+                 `(iterate ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name)))
                            (let ,state
                              (lambda ,args (,input-type (VQueue ,output-type)) ,body))
                            ,stream)]
@@ -215,7 +219,7 @@
                  
                  `(let ((,stream-name
                          ,output-stream-type
-                         (_merge ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name #f)))
+                         (_merge ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name)))
                                  ,s1 ,s2)))
                     ,body)]
 
@@ -235,19 +239,19 @@
                          ,output-stream-type
                          (assert-type ,output-stream-type-assert
                                       (unionN ,(add-annotation annot
-                                                               `(data-rates ,box-name ,(hashtab-get rates box-name #f)))
+                                                               `(data-rates ,box-name ,(hashtab-get rates box-name)))
                                               ,@in-strs))))
                     ,body)]
 
 
                 [(__readFile ,annot ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types
                              ',output-type ',box-name edge-counts-table sum-type-declarations)
-                 `(__readFile ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name #f)))
+                 `(__readFile ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name)))
                               ,file ,srcstrm ,mode ,repeat ,skipbytes ,offset ,winsize ,types)]
 
 
                 [(timer-bench ,annot ',output-type ',box-name edge-counts-table sum-type-declarations ,freq ,num-tuples)
-                 `(timer ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name #f))) ,freq)]
+                 `(timer ,(add-annotation annot `(data-rates ,box-name ,(hashtab-get rates box-name))) ,freq)]
 
 
                 [,oth (fallthru oth)]))])

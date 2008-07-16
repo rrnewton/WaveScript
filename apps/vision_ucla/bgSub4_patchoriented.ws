@@ -44,7 +44,7 @@ settings = (
 		"../processed/FeederStation_2007-06-26_14-00-03.000/bhatta_default/", // OutLoc
 		(396 :: Int), // BgStartFrame
 		(0  :: Int),  // StartFrame
-		(20 :: Int),  // NumBgFrames
+		2,//(20 :: Int),  // NumBgFrames
 		(100 :: Int), // NumFgFrames
 
 		(1   :: Int),    //BgStep
@@ -364,6 +364,44 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
     })
   }
 
+//====================================================================================================
+//   Functions for decomposing images into streams of patches.
+//====================================================================================================
+
+//type Patch = ;
+
+//stream_patches :: Stream Image -> Stream Patch;
+
+//regroup_images :: Stream Patch -> Stream Image;
+
+/* 
+ *  This function creates X*Y workers, each of which handles a region
+ *  of the input image.  The patch_transform is applied to each patch,
+ *  and also may maintain state between invocation.
+ */
+fun make_patch_kernel(xworkers, yworkers, patchsize, overlap, patch_transform, init_state, images)
+{
+  total = xworkers * yworkers;
+  patches = iterate (arr,cols,rows) in images {
+
+    //build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));    
+    for x = 0 to xworkers-1 {
+    for y = 0 to yworkers-1 {
+      cntdown = total - (x + y*xworkers);
+      emit cut_patch(arr, ??);
+
+    }}
+  };
+  
+  // round robin patchstream to the workers
+  worker = iterate p in patches {
+    state { s = init_state() }
+    emit patch_transform(s,p);
+  };
+  
+  assemble = iterate p in worker {};
+}
+
 
 //====================================================================================================
 //   Complete Bhatta function
@@ -633,7 +671,7 @@ output_imgs :: Stream OutputBundle -> Stream ();
 input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames)
 output_imgs = if LIVE then my_display else dump_files;
 
-main = 
+real = 
        output_imgs
 /*      $ unsquisher */
 /*      $ unsquisher */
@@ -643,4 +681,24 @@ main =
 /*      $ squisher */
      $ input_imgs;
 
+main = real
+
+
+// Sadly, without Chez we can't currently call C functions and read the image files in at profile time.
+fakeFrames = iterate _ in timer$3 {
+  using Array;
+  let (cols,rows) = (320, 240);
+  //arr :: Array Uint8 = build(rows, build(cols, 0));
+  //arr = build(rows, make(cols, 0));
+  arr = make(rows * cols * 3, 0);
+  emit (arr, cols, rows);
+}
+
+fake = iterate (_, (fg,c,r), diff, mask) in  bhatta(fakeFrames) {
+  println$ "yay ";
+  emit ();
+}
+
+//main = IFPROFILE(fake, real)
+//main = fake
 

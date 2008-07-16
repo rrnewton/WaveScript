@@ -960,7 +960,7 @@
      (lambda ()    
        (define typed (early-part x input-params))
        (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
-       (define compiled (run-ws-compiler typed input-params disabled-passes #t))
+       (define compiled (time (run-ws-compiler typed input-params disabled-passes #t)))
        
        (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
@@ -1157,31 +1157,6 @@
 		    (when #t ;(top-level-bound? 'scheme-profiling-performed!)
 					;(printf "\nDumping integer linear program, using Scheme profile only.\n")
 		      (let ()		    
-
-			
-		;; [2008.04.12] TEMPTOGGLE HACK TEMP EXPERIMENTING FIXMEFIXME FIXMEFIXME FIXME FIXME
-#;
-		(let ([experdir "~/wavescript/apps/telos_audio/"])
-		  (eprintf "HACK: INJECTING TIMES FROM FILE:\n")		  
-
-		  ;;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/1_floating_noemit.profdump")) 1000))
-		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
-		  ;;(set! merged (inject-times merged (extract-java-time-intervals (** experdir "/mfcc/0_java.profdump")) 1000))
-
-		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_java.profdump")) 1000))
-		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump")) 1000))
-
-
-		  ;(set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_iphone.profdump")) 1000000)) 
-		  (set! merged (inject-times prog (extract-java-time-intervals (** experdir "/mfcc/4_ensbox.profdump")) 1000000))
-
-		  ;(inspect (map car (extract-java-time-intervals (** experdir "/eeg/2_java_fixed.profdump"))))
-		  ;(inspect (partition->opnames merged))
-
-		  (string->file (output-graphviz merged) "query_hacked.dot")
-		  (printf "Produced HACK/injection graphviz output...\n")
-		  (system "dot -Tpng query_hacked.dot -oquery_hacked.png")
-		  )
 
 			(printf "\nDumping integer linear program.\n")
 			(string->file (emit-lp (partition-sourcesonly merged)

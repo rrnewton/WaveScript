@@ -36,11 +36,11 @@
 	
         (define input-frequency 
 	  (let ([tmp (project-metadata 'profiled-input-frequencies prog)])
-	    (unless tmp (error 'graphviz "right now you MUST have scheme profile data so we can get the input-frequency"))
+	    ;(unless tmp (error 'graphviz "right now you MUST have scheme profile data so we can get the input-frequency"))
 	    ;(ASSERT (curry = 2) (length tmp))
 	    ;; HACK: FIXME!   FIXME!  FIXME!   FIXME!   FIXME!  
 	    ;; For now we're just taking the MAX!
-	    (apply max (cdr tmp))))
+	    (if tmp (apply max (cdr tmp)) 1)))
 	(define (profiling-duration)
 	  (match (ws-profile-limit)
 	    [(virttime ,vt) vt]
@@ -72,8 +72,10 @@
 						 (bench-stats-tuples stats))
 					;(inspect (vector (profiling-duration) input-frequency))
 					 ;(inspect stats)
-					 (format "[label=\" ~:d bytes/sec\\n \"]" 
-						 (if (zero? (bench-stats-bytes stats))
+					 (format ;"[label=\" ~:d bytes/sec\\n \"]" 
+					         "[label=\" ~a bytes/sec\\n \"]"
+						 (comma-number
+						  (if (zero? (bench-stats-bytes stats))
 						     "?"
 						     ;; Compute bytes/sec
 						     (exact
@@ -84,7 +86,7 @@
 						     #;
 						     (round-to 
 						      1 (/ (bench-stats-bytes stats)
-							   (/ (profiling-duration) input-frequency))))
+							   (/ (profiling-duration) input-frequency)))))
 						 )]
 					[#f ""])
 				      ))

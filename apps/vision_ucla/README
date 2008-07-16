@@ -91,3 +91,39 @@ Doing --detailed-counts=yes instead makes it take 47 secs per populateBg. (65 fo
 ==10572== 
 ==10572== Exit code:       0
 
+
+
+[2008.07.15] {Note on compile times with ikarus}
+
+Testing on bgSub4, with rev 1522: 
+
+  compile: 
+    112 collections
+    1116 ms elapsed cpu time, including 104 ms collecting
+    1115 ms elapsed real time, including 105 ms collecting
+    468,879,048 bytes allocated
+
+  compile + run 2 bg 1 fg frame:     
+    real	0m38.640s
+    user	0m37.990s
+
+And with rev 1539, default optimize level (1)
+
+    111 collections
+    1104 ms elapsed cpu time, including 96 ms collecting
+    1106 ms elapsed real time, including 105 ms collecting
+    467,133,856 bytes allocated
+
+    real	0m32.769s
+    user	0m32.018s
+
+Then, enabling -O2 for both compile and run:
+
+    111 collections
+    1152 ms elapsed cpu time, including 92 ms collecting
+    1152 ms elapsed real time, including 102 ms collecting
+    467,129,408 bytes allocated
+
+    real	0m32.406s
+    user	0m31.742s
+

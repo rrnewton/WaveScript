@@ -13,7 +13,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-#define ALLOC_STATS
+//#define ALLOC_STATS
 
 
 #ifdef LOAD_COMPLEX
@@ -23,10 +23,18 @@
 #define TRUE  1
 #define FALSE 0
 
-#define ws_unit_t char
-#define ws_char_t char
-#define ws_bool_t char
-#define uint8_t unsigned char
+//#define ws_unit_t char
+//#define ws_char_t char
+//#define ws_bool_t char
+//#define uint8_t unsigned char
+
+typedef char ws_char_t;
+typedef char ws_bool_t;
+typedef char ws_unit_t;
+
+typedef unsigned char      uint8_t;
+typedef unsigned short int uint16_t;
+//typedef unsigned int16_t uint16_t;
 
 #define ws_string_t char*
 
@@ -133,10 +141,6 @@ inline void* ws_array_alloc(int len, int eltsize) {
 #endif
   return ptr;
 }
-
-
-//typedef unsigned int16_t uint16_t;
-typedef unsigned short int uint16_t;
 
 #define moduloI(a,b) (a % b)
 

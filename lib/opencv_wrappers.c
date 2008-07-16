@@ -71,7 +71,7 @@ ws_bool_t ws_writeImage(const char* filename, uint8_t* img, int width, int heigh
 
   cvReleaseImage(&fgImage);   
 
-  printf("Wrote file %s\n", filename);
+  //printf("Wrote file %s\n", filename);
 
   return 0;
 }

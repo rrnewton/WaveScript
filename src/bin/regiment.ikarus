@@ -14,4 +14,5 @@ source `dirname $0`/assert_regimentd
 CURDIR=`pwd`
 
 # This method doesn't set the library path, instead it just switches to that directory:
-(cd $REGIMENTD/src; ikarus --r6rs-script $REGIMENTD/src/regiment.ss $CURDIR $*;)
+(cd $REGIMENTD/src; ikarus -O2 --r6rs-script $REGIMENTD/src/regiment.ss $CURDIR $*;)
+

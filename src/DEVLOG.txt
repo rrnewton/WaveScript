@@ -1514,5 +1514,13 @@ I notice that it will still print a less general type than the real
 type... that's a serious bug.  For example if I define type Image =
 Array Int, it will print an "Array #t" as "Image".
 
-[2008.07.07] {Updating from ikarus rev 1522 -> 1533, trying new optimizer}
+[2008.07.16] {Path to operator migration}
+
+What would we need to work on operator migration?  Or on profile
+driven selection of 
+
+Well, we need to get back to a place where we can run multithreaded
+code first of all!  This means either resurecting wsc, or outfitting
+wsc2 with threading capabilities.  Because XStream is no longer
+actively developed, I lean towards the latter.
 
