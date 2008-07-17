@@ -182,21 +182,20 @@ void ws_alloc_stats() {
 // locks to a lock-free fifo implementation!
 
 #include <pthread.h>
-#include "midishare_fifo/lffifo.c"
-//#include "midishare_fifo/wsfifo.c"
+//#include "midishare_fifo/lffifo.c"
+#include "midishare_fifo/wsfifo.c"
+
 
 void (**worker_table) (void*);
-fifo** queue_table;
+wsfifo** queue_table;
 pthread_cond_t** cond_table;
 pthread_mutex_t** mut_table;
 int total_workers;
 
-#define FIFOMALLOC BASEMALLOC
-#define FIFOFREE   BASEFREE
+#define FIFO_CONST_SIZE 100
 
-#define DECLARE_WORKER(ind, ty, fp)  fifo fp##_queue;  \
-  pthread_cond_t fp##_cond; \
-  pthread_mutex_t fp##_mut; \
+#define DECLARE_WORKER(ind, ty, fp) \
+  wsfifo fp##_queue;  \
   void fp##_wrapper(void* x) { \
     fp(*(ty*)x); \
   }
@@ -206,20 +205,14 @@ int total_workers;
 // This uses plain old malloc... they're allocated once.
 #define TOTAL_WORKERS(count) { \
    worker_table  = malloc(sizeof(void*) * count);  \
-   queue_table   = malloc(sizeof(fifo*) * count);  \
+   queue_table   = malloc(sizeof(wsfifo*) * count);  \
    total_workers = count; \
-   cond_table    = malloc(sizeof(pthread_cond_t*) * count);  \
-   mut_table     = malloc(sizeof(pthread_mutex_t*) * count);  \
 }
 
 #define REGISTER_WORKER(ind, fp) { \
-   fifoinit(& fp##_queue);   \
+   wsfifoinit(& fp##_queue, FIFO_CONST_SIZE);   \
    worker_table[ind] = & fp##_wrapper;  \
    queue_table[ind]  = & fp##_queue; \
-   cond_table[ind]   = & fp##_cond; \
-   mut_table [ind]   = & fp##_mut; \
-   pthread_cond_init(& fp##_cond, NULL); \
-   pthread_mutex_init(& fp##_mut, NULL); \
 }
 
 // HACK: currently we sleep to make sure that the receivers are
@@ -228,49 +221,26 @@ int total_workers;
   int i;  \
   for (i=0; i<total_workers; i++)  { \
     pthread_t threadID; \
-    pthread_create(&threadID, NULL, &worker_thread, i); \
+    pthread_create(&threadID, NULL, &worker_thread, (void*)i); \
   } \
 }
 //  sleep(1); \
 //  printf("  Created thread with ID %p\n", threadID);	\
 
-#define EMIT(val, ty, fn) {       \
-  void** cell = FIFOMALLOC(sizeof(ty) + sizeof(void*)); \
-  cell[0] = (void*)0; /* don't know if this is required */ \
-  *(ty*)(cell+1) = val; /* copy it over */ \
-  int size = fifosize(& fn##_queue); \
-  if (size==0) { \
-     pthread_mutex_lock(&fn##_mut); \
-     fifoput(& fn##_queue, cell);  \
-     printf("*WAKEUP %p*\n", &fn##_mut); \ 
-     pthread_cond_signal(&fn##_cond); \
-     pthread_mutex_unlock(&fn##_mut); \
-  } else fifoput(& fn##_queue, cell);  \
-}
+#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
 //  printf("    put to fifo %p (%p, %d | %d)\n", & fn##_queue, cell, val, *(ty*)(cell+1));	\
 
-void* worker_thread(int index) {
+void* worker_thread(void* i) {
+  int index = (int)i;
   printf("Spawning worker thread %d\n", index);
   while (1) 
   {
-    void* ptr = fifoget(queue_table[index]);
-    while (! ptr) {     
-      //sleep(1); printf(".");
-      pthread_mutex_lock(mut_table[index]);
-      printf("<WAITING %p>\n", mut_table[index]);
-      pthread_cond_wait(cond_table[index], mut_table[index]);
-      printf(" =========== WOKE UP ============ %d\n", index);
-      pthread_mutex_unlock(mut_table[index]);
-      ptr = fifoget(queue_table[index]);
-    }
-    //printf("  got val off queue #%d, %p : %p %p %d %d\n", 
-    //       index, queue_table[index], ptr, (void**)ptr+1, *((int*)((void**)ptr+1)), *((char*)((void**)ptr+1)));
-    (*worker_table[index])(((void**)ptr)+1);
-    FIFOFREE(ptr);
+    void* ptr = wsfifoget(queue_table[index]);
+    (*worker_table[index])(ptr);
+    wsfifoget_cleanup(queue_table[index]);
   }
   return 0;
 }
-
 
 
 
