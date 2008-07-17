@@ -1,3 +1,3 @@
 
 
-main = timer(30.0);
+main = timer(3);

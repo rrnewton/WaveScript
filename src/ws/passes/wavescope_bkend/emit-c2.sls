@@ -46,7 +46,7 @@
 	   IterStartHook IterEndHook ForeignSourceHook
 
 	   make-lines lines-text append-lines slot-cons! 
-
+	   
 	   )
   (import (rnrs) (except (rnrs r5rs) force delay)
 	  (rnrs mutable-strings)
@@ -54,8 +54,10 @@
 	  (ws common)
 	  (ws passes wavescope_bkend insert-refcounts)
 	  (ws passes wavescope_bkend emit-c)
+	  (ws passes partition-graph)
 	  (ws compiler_components c_generator)
 	  (ws util bos_oop) 
+
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )
 
@@ -1381,7 +1383,7 @@
    ;;  (2) We are driven by a serial port connected to a mote.
    ;;  (3) We are driven by "foreign_source".
    (cond 
-    ;; Option (1):
+    ;; Option (1): Virtual timers.
     [(not (null? srcname*)) ;; TODO: IN THE FUTURE SHOULD BE ABLE TO COMBINE MOTE SOURCES OR FOREIGN SOURCES WITH TIMERS. FIXME  FIXME FIXME  FIXME  
      (ASSERT (null? (slot-ref self 'server-cutpoints)))
       ;; If the rate is #f we don't build in that entry:
@@ -1394,16 +1396,19 @@
 	;; This is a hack: rather than maintain a sorted list of
 	;; upcoming events, we simply compute a common tick frequency
 	;; and go tick by tick:
-	(let  ([counter_marks
-		(cond
-		 [(= 1 (length srcrates*)) '(1)]
-		 [(andmap integer? srcrates*)
-		  (let ([srcrates* (map exact srcrates*)])
-		    (let ([common-rate (apply lcm srcrates*)])
-		      (map (lambda (rate)
-			     (exact (quotient common-rate rate)))
-			srcrates*)))]
-		 [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
+	(let-values  
+	    ([(counter_marks timestep_ms)
+	      (cond
+	       [(= 1 (length srcrates*)) (values '(1) (inexact (/ 1000 (car srcrates*))))] ;; Simple case.
+	       [(andmap integer? srcrates*)
+		(let ([srcrates* (map exact srcrates*)])
+		  (let ([common-rate (apply lcm srcrates*)])
+		    ;(printf "Common rate is ~s inverse is ~s\n" common-rate (inexact (/ 1000 common-rate)))
+		    (values (map (lambda (rate)
+				   (exact (quotient common-rate rate)))
+			      srcrates*)
+			    (inexact (/ 1000 common-rate)))))]
+	       [else (error 'timer "non integer rates not handled yet: ~s" srcrates*)])])
 	  (make-lines        
 	   (block (list "int main(int argc, "(Type self `(Array (Array Char)))" argv)" )
 		  (list 
@@ -1413,11 +1418,14 @@
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
 		   (block "while(dummy)"
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
+				"VIRTTICK();\n"
 				(map (lambda (name code mark)
 				       (block (format "if (counter_~a == ~a)" name mark)
 					      ;; Execute the code for this source.
 					      (list (lines-text code)
-						    (format "counter_~a = 0;\n" name))))
+						    (format "counter_~a = 0;\n" name)
+						    (format "WAIT_TICKS(~a);\n" timestep_ms)
+						    )))
 				  srcname* srccode* counter_marks)
 				;"sleep(1);\n"
 				)
@@ -1680,7 +1688,7 @@ int main(int argc, char **argv)
 
 
 
-;; .returns top-level decls (lines)
+;; .returns three top-level code blocks: definition (lines), prototypes (list of lines), init-code
 (__spec Operator <emitC2> (self op)
   (define (Simp x) (Simple self x))
   (match op
@@ -1706,11 +1714,11 @@ int main(int argc, char **argv)
 	     (incoming ,a ,b) (outgoing ,down* ...))
      (define (emitter x) ((Emit self down* elt) x))
      (define arg (unique-name "arg"))
+     (define header `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
-	      (list (block `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")")
-			   (lines-text (emitter arg)))
-		    "\n"))
-	     '() '())]
+	      (list (block header (lines-text (emitter arg))) "\n"))
+	     (list (make-lines (list header ";\n")))
+	     '())]
 
     [(unionN . ,_) (error 'emitC2 "doesn't support unionN/unionList right now")]
 
@@ -1874,8 +1882,11 @@ int main(int argc, char **argv)
 	(define proto-pieces  (map c-proto-lines (filter c-proto? pieces*)))
 
 	;; Extract the names of all the iterates, these are our workers.
+	(define opnames (map op->name oper*))
+	(define opinputs (map (lambda (x) (match (op->inputtype x #f) [(Stream ,elt) elt])) oper*))
+	#;
 	(define iterates (filter id (map (lambda (x) (match x [(iterate (name ,n) . ,_) n] [,_ #f])) oper*)))
-	(define iterates-input-types
+	#;(define iterates-input-types
 	  (filter id (map (lambda (x) (match x [(iterate . ,rest) 
 						(match (cadr (ASSERT (assq 'code rest)))
 						  [(iterate ,annot ,[f] ,_) f]
@@ -1921,9 +1932,14 @@ int main(int argc, char **argv)
 						 (map lines-text init-pieces)
 						 (lines-text (apply append-lines (apply append opinit**)))
 						 ;; Finally, register all the work functions.
-						 (make-app "TOTAL_WORKERS" (list (number->string (add1 (length iterates)))))"\n"
-						 "REGISTER_WORKER(0, BASE)\n"
-						 (mapi (lambda (i name) (format "REGISTER_WORKER(~a, ~a)\n" (add1 i) name))  iterates)
+						 (make-app "TOTAL_WORKERS" (list (number->string (add1 (length opnames)))))"\n"
+						 "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
+						 (map (lambda (i name ty) (format "REGISTER_WORKER(~a, ~a, ~a)\n"
+										  (add1 i) (text->string (Type self ty)) name))
+						   (iota (length opnames)) opnames opinputs
+					;(iota (length iterates))
+						   ;iterates iterates-input-types
+						   )
 						 "START_WORKERS()\n"
 
 						 ;"void (**workers) (void) = malloc(sizeof(void*) * "(number->string (length iterates))");\n" 
@@ -1941,9 +1957,9 @@ int main(int argc, char **argv)
 						     (list "DECLARE_WORKER("(number->string (add1 i))
 							   ", "(Type self ty)", "(symbol->string name)")\n" 
 							   ))
-						(iota (length iterates))
-						iterates
-						iterates-input-types)))
+						;(iota (length iterates)) iterates iterates-input-types
+						(iota (length opnames)) opnames opinputs
+						)))
 			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
 			    init driver)
 	  )]

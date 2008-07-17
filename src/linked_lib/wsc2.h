@@ -181,10 +181,29 @@ void ws_alloc_stats() {
 // For now I'm hacking this to be blocking, which involves adding
 // locks to a lock-free fifo implementation!
 
+//#include <time.h>
+#include <unistd.h>
+unsigned long tick_counter;
+#define VIRTTICK() tick_counter++
+#define WAIT_TICKS(delta) { \
+  usleep(1000 * delta * tick_counter); \
+  tick_counter = 0; \
+}
+//  printf("usleeping .. %g", 1000 * delta * tick_counter); \
+//   printf("usleeping .. clock before %d", 1000 * clock() / CLOCKS_PER_SEC); \
+//   printf(", after %d, \n", clock()); \
+
+/*   struct timespec a = {0, 1000 * 1000 * 1000}; \ */
+/*   struct timespec b;  \ */
+/*   printf("nanosleepping %d.. clock before %d", a.tv_nsec, 1000 * clock() / CLOCKS_PER_SEC); \ */
+/*   int x = nanosleep(&a, &b); \ */
+/*   printf(", after %d, returned %d\n", clock(), x); \ */
+
+//  struct timespec a = {0, 1000 * delta * tick_counter}; \
+
 #include <pthread.h>
 //#include "midishare_fifo/lffifo.c"
 #include "midishare_fifo/wsfifo.c"
-
 
 void (**worker_table) (void*);
 wsfifo** queue_table;
@@ -194,8 +213,7 @@ int total_workers;
 
 #define FIFO_CONST_SIZE 100
 
-#define DECLARE_WORKER(ind, ty, fp) \
-  wsfifo fp##_queue;  \
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
   void fp##_wrapper(void* x) { \
     fp(*(ty*)x); \
   }
@@ -209,8 +227,8 @@ int total_workers;
    total_workers = count; \
 }
 
-#define REGISTER_WORKER(ind, fp) { \
-   wsfifoinit(& fp##_queue, FIFO_CONST_SIZE);   \
+#define REGISTER_WORKER(ind, ty, fp) { \
+   wsfifoinit(& fp##_queue, FIFO_CONST_SIZE, sizeof(ty));   \
    worker_table[ind] = & fp##_wrapper;  \
    queue_table[ind]  = & fp##_queue; \
 }

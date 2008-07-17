@@ -15,7 +15,7 @@ typedef struct wsfifo {
 #define FIFOMALLOC BASEMALLOC
 #define FIFOFREE   BASEFREE
 
-void wsfifoinit(wsfifo* ff, int optional_size_limit) {
+void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
   fifoinit(& ff->ff);
   pthread_cond_init (& ff->cond, NULL); 
   pthread_mutex_init(& ff->mut, NULL); 
@@ -29,25 +29,31 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit) {
   if (size==0) { \
      pthread_mutex_lock(& (ff)->mut); \
      fifoput((fifo*)(ff), (fifocell*)cell);  \
-     printf("*WAKEUP %p*\n", (ff)->mut); \
+     printf("*WAKEUP %p*\n", & (ff)->mut); \
      pthread_cond_signal(& (ff)->cond); \
      pthread_mutex_unlock(& (ff)->mut); \
-  } else fifoput((fifo*)(ff), (fifocell*)cell);  \
+  } else { \
+    printf("."); \
+    fifoput((fifo*)(ff), (fifocell*)cell);  \
+  } \
 }
 
 // We dequeue in two stages.  First we get the element, and then we
 // "cleanup" to free the element we got.
 void* wsfifoget(wsfifo* ff) {
     void* ptr = fifoget(& ff->ff);
-    while (! ptr) {     
+    if (! ptr) { // Doesn't need to be while.
       //sleep(1); printf(".");
       pthread_mutex_lock(& ff->mut);
-      printf("<WAITING %p>\n", & ff->mut);
-      pthread_cond_wait(& ff->cond, & ff->mut);
-      printf(" =========== WOKE UP ============ %d\n", index);
-
-      // Do this before we unlock?
       ptr = fifoget(& ff->ff);
+      // If there is STILL nothing while we have the lock then we need to block.
+      if (!ptr) {
+        printf("<WAITING %p>\n", & ff->mut);
+        pthread_cond_wait(& ff->cond, & ff->mut);
+        printf(" =========== WOKE UP ============ %p\n", & ff->mut);
+        ptr = fifoget(& ff->ff); // Now we better get something.
+      }
+      // Do this before we unlock?
       pthread_mutex_unlock(& ff->mut);
     }
     //printf("  got val off queue #%d, %p : %p %p %d %d\n", 

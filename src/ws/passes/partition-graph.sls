@@ -34,6 +34,9 @@
 	   partition-getmiddle
 	   emit-lp read-back-lp-results
 
+	   op->inputtype
+	   op->name
+
 	   ;test-partition-graph
 
 	   ;max-tinyos-nodes ;; This should be temporary.
@@ -140,6 +143,10 @@
     [(inline_C . ,_) '()]
     [(__foreign_source . ,_) '()]
     ))
+
+(define (op->name op)
+  (cadr (or (assq 'name (cdr op))
+	    (error 'op->name "couldn't project name field from: ~s" op))))
 
 (define (op->inputtype op part)
   (match op
