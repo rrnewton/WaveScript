@@ -60,3 +60,16 @@ static inline char CAS2 (volatile void * addr, volatile void * v1, volatile long
 }
 
 #endif
+
+
+/*
+    __asm__
+    (
+        "lock\n\t"
+        "incl %0":
+        "=m"( *pw ): // output (%0)
+        "m"( *pw ): // input (%1)
+        "cc" // clobbers
+    );
+
+ */

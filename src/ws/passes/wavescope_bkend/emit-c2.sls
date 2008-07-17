@@ -1419,6 +1419,7 @@
 					      (list (lines-text code)
 						    (format "counter_~a = 0;\n" name))))
 				  srcname* srccode* counter_marks)
+				;"sleep(1);\n"
 				)
 					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
 			  )
@@ -1873,7 +1874,14 @@ int main(int argc, char **argv)
 	(define proto-pieces  (map c-proto-lines (filter c-proto? pieces*)))
 
 	;; Extract the names of all the iterates, these are our workers.
-	(define iterates  (filter id (map (lambda (x) (match x [(iterate (name ,n) . ,_) n] [,_ #f])) oper*)))
+	(define iterates (filter id (map (lambda (x) (match x [(iterate (name ,n) . ,_) n] [,_ #f])) oper*)))
+	(define iterates-input-types
+	  (filter id (map (lambda (x) (match x [(iterate . ,rest) 
+						(match (cadr (ASSERT (assq 'code rest)))
+						  [(iterate ,annot ,[f] ,_) f]
+						  [(let ,_ ,[b]) b]
+						  [(lambda (,x ,vq) (,xty ,vqty) ,_) xty])]
+					       [,_ #f])) oper*)))
 
 	(let-match ([(,[(curry Operator self) -> oper* state2** opinit**] ...) (SortOperators self oper*)])
 
@@ -1928,8 +1936,14 @@ int main(int argc, char **argv)
 	(BuildOutputFiles self includes freefundefs
 			    (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
 				allstate
-				"DECLARE_WORKER(0, BASE)\n"
-				(text->string (mapi (lambda (i name) (format "DECLARE_WORKER(~a, ~a)\n" (add1 i) name))  iterates)))
+				"DECLARE_WORKER(0, "(Type self '#())", BASE)\n"
+				(text->string (map (lambda (i name ty) 
+						     (list "DECLARE_WORKER("(number->string (add1 i))
+							   ", "(Type self ty)", "(symbol->string name)")\n" 
+							   ))
+						(iota (length iterates))
+						iterates
+						iterates-input-types)))
 			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
 			    init driver)
 	  )]
