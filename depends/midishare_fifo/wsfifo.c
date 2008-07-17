@@ -21,12 +21,15 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
   pthread_mutex_init(& ff->mut, NULL); 
 }
 
+// TEMP replacing predicate (size==0) with (1).
+// This will send a signal on every enqueue.
+// Inefficient... but having problems with deadlocks.
 #define WSFIFOPUT(ff, val, ty) {  \
   void** cell = FIFOMALLOC(sizeof(void*) + sizeof(ty)); \
   cell[0] = (void*)0; /* don't know if this is required */ \
   *(ty*)(cell+1) = val; /* copy it over */ \
   int size = fifosize((fifo*)(ff)); \
-  if (size==0) { \
+  if (1) { \
      pthread_mutex_lock(& (ff)->mut); \
      fifoput((fifo*)(ff), (fifocell*)cell);  \
      printf("*WAKEUP %p*\n", & (ff)->mut); \
