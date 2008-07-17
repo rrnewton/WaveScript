@@ -185,10 +185,12 @@ void ws_alloc_stats() {
 #include <unistd.h>
 unsigned long tick_counter;
 #define VIRTTICK() tick_counter++
-#define WAIT_TICKS(delta) { \
-  usleep(1000 * delta * tick_counter); \
-  tick_counter = 0; \
-}
+/* #define WAIT_TICKS(delta) { \ */
+/*   usleep(1000 * delta * tick_counter); \ */
+/*   tick_counter = 0; } */
+
+#define WAIT_TICKS(delta) {}
+
 //  printf("usleeping .. %g", 1000 * delta * tick_counter); \
 //   printf("usleeping .. clock before %d", 1000 * clock() / CLOCKS_PER_SEC); \
 //   printf(", after %d, \n", clock()); \
@@ -272,7 +274,7 @@ void wsShutdown() {
   #endif
 }
 
-void BASE(char x) { 
+void BASE(char x) {
   outputcount++;
   if (outputcount == wsc2_tuplimit) { wsShutdown(); exit(0); }
 #ifdef ALLOC_STATS

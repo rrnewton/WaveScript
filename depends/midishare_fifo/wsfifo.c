@@ -28,18 +28,23 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
   void** cell = FIFOMALLOC(sizeof(void*) + sizeof(ty)); \
   cell[0] = (void*)0; /* don't know if this is required */ \
   *(ty*)(cell+1) = val; /* copy it over */ \
-  int size = fifosize((fifo*)(ff)); \
-  if (1) { \
+  if (0 == fifosize((fifo*)(ff))) { \
      pthread_mutex_lock(& (ff)->mut); \
      fifoput((fifo*)(ff), (fifocell*)cell);  \
-     printf("*WAKEUP %p*\n", & (ff)->mut); \
      pthread_cond_signal(& (ff)->cond); \
      pthread_mutex_unlock(& (ff)->mut); \
-  } else { \
-    printf("."); \
+  } else { /* a "normal" enqueue */ \
     fifoput((fifo*)(ff), (fifocell*)cell);  \
+    if (1 == fifosize((fifo*)(ff))) { \
+      /* This means a dequeue slipped in, we retroractively are now first. */ \
+      pthread_mutex_lock(& (ff)->mut); \
+      pthread_cond_signal(& (ff)->cond); \
+      pthread_mutex_unlock(& (ff)->mut); \
+    } \
   } \
 }
+//     printf("*WAKEUP1 %p*\n", & (ff)->mut); \
+//      printf("*WAKEUP2 %p*\n", & (ff)->mut); \
 
 // We dequeue in two stages.  First we get the element, and then we
 // "cleanup" to free the element we got.
@@ -51,9 +56,7 @@ void* wsfifoget(wsfifo* ff) {
       ptr = fifoget(& ff->ff);
       // If there is STILL nothing while we have the lock then we need to block.
       if (!ptr) {
-        printf("<WAITING %p>\n", & ff->mut);
         pthread_cond_wait(& ff->cond, & ff->mut);
-        printf(" =========== WOKE UP ============ %p\n", & ff->mut);
         ptr = fifoget(& ff->ff); // Now we better get something.
       }
       // Do this before we unlock?
@@ -64,6 +67,9 @@ void* wsfifoget(wsfifo* ff) {
     ff->last_cell = ptr;
     return ((void**)ptr)+1;
 }
+
+//        printf("<WAITING %p>\n", & ff->mut);
+//        printf(" =========== WOKE UP ============ %p\n", & ff->mut);
 
 // This doesn't check to make sure that last_cell is set!  It should!
 void wsfifoget_cleanup(wsfifo* ff) {
