@@ -1466,9 +1466,9 @@
       [(cos sin tan acos asin atan max min) 
        (sym2str var)]
       [(absF absD absI absI16 absI64) "abs"]
-      [(roundF)                 "round"]
+      [(roundF roundD)                    "round"]
       [(moduloI)                (fromlib "moduloI")]
-      [(sqrtI sqrtF)            "sqrt"]
+      [(sqrtI sqrtF sqrtD)            "sqrt"]
       [(sqrtC)                  (fromlib "csqrt")]
       
       [(toArray)                (fromlib "toArray")]
@@ -2151,7 +2151,7 @@ int main(int argc, char ** argv)
 		   Array:map Array:fold
 
 		   ifftC2R fftC ifftC
-		   exptI logD logF ^_ ^I16 ^I32 ^I64 ^U16 ^D 
+		   exptI logD logF ^_ ^I16 ^I32 ^I64 ^U16 ^U8 ^D 
 
 		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
 		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 

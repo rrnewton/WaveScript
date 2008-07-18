@@ -1211,6 +1211,12 @@
       [/_ ,(format "(~s.quot)" int-module)]
       [^_ powInt] ;; Defined in prims.sml
 
+      [_+U8 "( Word8.+)"]
+      [_-U8 "( Word8.-)"] 
+      [*U8 "( Word8.* )"] 
+      [/U8 "( Word.quot )"]
+      ;[^U8 "powWord8"]
+
       [_+U16 "( Word16.+)"]
       [_-U16 "( Word16.-)"] 
       [*U16 "( Word16.* )"] 
@@ -1414,7 +1420,7 @@
 		   wsequal? print show seg_get toArray __show_ARRAY __wserror_ARRAY __backtoSTR
 		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 
-		   __cast_num  _+U16 *U16 _-U16 /U16 ^U16
+		   __cast_num  ^U8 ^U16
 		   stringToComplex moduloI
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:

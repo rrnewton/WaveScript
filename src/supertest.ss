@@ -4,7 +4,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
 ;; This really puts the system through the paces.
-;; It's a PLT-ONLY script.  (Chez's system call doesn't return the error code.)
+;; It's a PLT-Scheme-ONLY script (mzscheme).  
+;; (Chez's system call doesn't return an error code.)
 
 ;; [2007.03.19] This system is unfortunately quite fragile.  I've had
 ;; several problems over the last two months.  Often it's difficult to
@@ -17,7 +18,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; still a mystery as to why it only popped up during supertest.  
 ;;
 ;; OH RIGHT.  DEBUGMODE.  Gotta be careful about that.
-
 
 ;; [2007.11.03] FIXME!!! BADLY NEED A TIMEOUT ON ALL SUBPROCESSES!
 
@@ -266,9 +266,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (reset-timer!)
 (run-test "Build directory cleaned:" "make clean > make_clean.log")
 
-(run-test "ikarus:   Ikarus runs:"  (format "echo | ikarus "))
+(run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
-(run-test "larceny:  Larceny runs:"  (format "echo | larceny"))
+(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
 
 (current-directory test-directory)
 

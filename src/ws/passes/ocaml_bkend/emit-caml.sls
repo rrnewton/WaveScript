@@ -688,6 +688,7 @@
 
       [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
       [sqrtF sqrt]
+      [sqrtD sqrt]
       [sqrtC Complex.sqrt]
 
       [realpart "(fun x -> x.Complex.re)"]
@@ -734,6 +735,7 @@
       [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
       [roundF "(fun x -> floor (x +. 0.5))"]
+      [roundD "(fun x -> floor (x +. 0.5))"]
 
       [start   ss_start]
       [end     ss_end]
@@ -870,6 +872,7 @@
 		   List:ref List:append List:reverse List:length List:make 
 
 		   __cast_num  
+		   _+U8  *U8  _-U8  /U8  ^U8 
 		   _+U16 *U16 _-U16 /U16 ^U16
 		   _+I32 *I32 _-I32 /I32 ^I32
 	   

@@ -3,8 +3,8 @@
 COMP=.__wsc2Messages.txt
 RUN=.__runquery_output_wsc2.txt
 
-#OPTIONS="-gc boehm"
-OPTIONS="-gc none"
+OPTIONS="-gc boehm"
+#OPTIONS="-gc none -threads"
 
 echo > $COMP
 echo > $RUN

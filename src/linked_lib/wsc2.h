@@ -13,7 +13,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-#define WS_THREADED
+//#define WS_THREADED
 //#define ALLOC_STATS
 
 #ifdef LOAD_COMPLEX
@@ -254,7 +254,7 @@ int total_workers;
 
 void* worker_thread(void* i) {
   int index = (int)i;
-  printf("** Spawning worker thread %d\n", index);
+  fprintf(stderr, "** Spawning worker thread %d\n", index);
   while (1) 
   {
     void* ptr = wsfifoget(queue_table[index]);
