@@ -653,7 +653,6 @@
 (__spec Emit <emitC2> (self down* ty)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
-    (printf "EMITTING AT TYPE: ~s\n" ty)
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)

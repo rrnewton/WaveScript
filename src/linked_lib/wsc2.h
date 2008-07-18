@@ -13,7 +13,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-//#define WS_THREADED
+#define WS_THREADED
 //#define ALLOC_STATS
 
 #ifdef LOAD_COMPLEX
