@@ -359,7 +359,7 @@
 ;;  deferred - deferred refcount, unfinished
 ;;  boehm    - conservative collector
 ;;  none     - simply don't collect
-(define-regiment-parameter wsc2-gc-mode 'none)
+(define-regiment-parameter wsc2-gc-mode 'boehm)
 
 ;; This parameter controls what optimizations the compiler applies.
 
