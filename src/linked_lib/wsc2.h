@@ -1,6 +1,20 @@
 
+/*
 
-// [2007.12.06] This is the header that goes with my new C backend. -Ryan
+ [2007.12.06]
+
+    This is the header that goes with my new C backend.  It contains
+    various macros that keep bloat from the emit-c2 pass itself.
+ 
+   -Ryan
+
+ Important preprocessor variables:
+   LOAD_COMPLEX
+   USE_BOEHM
+   ALLOC_STATS 
+   WS_THREADED
+
+ */
 
 // Headers that we need for the generated code:
 #include<stdio.h>
@@ -13,7 +27,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-//#define WS_THREADED
+#define WS_THREADED
 //#define ALLOC_STATS
 
 #ifdef LOAD_COMPLEX
@@ -167,47 +181,40 @@ void ws_alloc_stats() {
 //                           Scheduler and data passing
 //################################################################################//
 
-#ifndef WS_THREADED
 // Single threaded version:
-#define VIRTTICK() {}
-#define WAIT_TICKS(delta) {}
-
-//#define REGISTER_WORKERS(table, len) {}
+// ============================================================
+// For one thread, these macros do nothing.  We don't use realtime for timers.
+#ifndef WS_THREADED
+#define VIRTTICK()                   {}
+#define WAIT_TICKS(delta)            {}
 #define EMIT(val, ty, fn) fn(val)
-#define TOTAL_WORKERS(count) {}
+#define TOTAL_WORKERS(count)         {}
 #define REGISTER_WORKER(ind, ty, fp) {}
 #define DECLARE_WORKER(ind, ty, fp) 
-#define START_WORKERS() {}
-
+#define START_WORKERS()              {}
 #else
+
 // Thread-per-operator version, midishare FIFO implementation:
+// ============================================================
 
 // For now I'm hacking this to be blocking, which involves adding
 // locks to a lock-free fifo implementation!
 
-//#include <time.h>
 #include <unistd.h>
 unsigned long tick_counter;
 #define VIRTTICK() tick_counter++
+// Should use nanosleep:
 #define WAIT_TICKS(delta) { \
   usleep(1000 * delta * tick_counter); \
   tick_counter = 0; }
 
-//  printf("usleeping .. %g", 1000 * delta * tick_counter); \
-//   printf("usleeping .. clock before %d", 1000 * clock() / CLOCKS_PER_SEC); \
-//   printf(", after %d, \n", clock()); \
-
-/*   struct timespec a = {0, 1000 * 1000 * 1000}; \ */
-/*   struct timespec b;  \ */
-/*   printf("nanosleepping %d.. clock before %d", a.tv_nsec, 1000 * clock() / CLOCKS_PER_SEC); \ */
-/*   int x = nanosleep(&a, &b); \ */
-/*   printf(", after %d, returned %d\n", clock(), x); \ */
-
-//  struct timespec a = {0, 1000 * delta * tick_counter}; \
-
+#ifdef USE_BOEHM
+#include <gc_pthread_redirects.h>
+#else
 #include <pthread.h>
-//#include "midishare_fifo/lffifo.c"
+#endif
 #include "midishare_fifo/wsfifo.c"
+#define FIFO_CONST_SIZE 100
 
 void (**worker_table) (void*);
 wsfifo** queue_table;
@@ -215,30 +222,25 @@ pthread_cond_t** cond_table;
 pthread_mutex_t** mut_table;
 int total_workers;
 
-#define FIFO_CONST_SIZE 100
-
+// Declare the existence of each operator.
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
   void fp##_wrapper(void* x) { \
     fp(*(ty*)x); \
   }
-//    printf("wrapper called %p : %d\n", x, *(ty*)x);	\
-//    printf("Wrapper call, input %p as int %d char %d, native %d \n", x, *(int*)x, *(char*)x, *(ty*)x); \
-
-// This uses plain old malloc... they're allocated once.
+// Declare number of worker threads.
+// This uses plain old malloc... tables are allocated once.
 #define TOTAL_WORKERS(count) { \
    worker_table  = malloc(sizeof(void*) * count);  \
    queue_table   = malloc(sizeof(wsfifo*) * count);  \
    total_workers = count; \
 }
-
+// Register a function pointer for each worker.
 #define REGISTER_WORKER(ind, ty, fp) { \
    wsfifoinit(& fp##_queue, FIFO_CONST_SIZE, sizeof(ty));   \
    worker_table[ind] = & fp##_wrapper;  \
    queue_table[ind]  = & fp##_queue; \
 }
-
-// HACK: currently we sleep to make sure that the receivers are
-// listening when we send a wakeup condition.
+// Start the scheduler.
 #define START_WORKERS() {                    \
   int i;  \
   for (i=0; i<total_workers; i++)  { \
@@ -246,12 +248,8 @@ int total_workers;
     pthread_create(&threadID, NULL, &worker_thread, (void*)i); \
   } \
 }
-//  sleep(1); \
-//  printf("  Created thread with ID %p\n", threadID);	\
-
+// Enqueue a datum in another thread's queue.
 #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
-//  printf("    put to fifo %p (%p, %d | %d)\n", & fn##_queue, cell, val, *(ty*)(cell+1));	\
-
 void* worker_thread(void* i) {
   int index = (int)i;
   fprintf(stderr, "** Spawning worker thread %d\n", index);
@@ -263,12 +261,11 @@ void* worker_thread(void* i) {
   }
   return 0;
 }
-
 #endif
 
 
 //################################################################################//
-//                   
+//               Startup, Shutdown, Errors, Final output values                   //
 //################################################################################//
 
 void wsShutdown() {
@@ -310,6 +307,11 @@ void wserror_fun(char* msg) {
   exit(-1);
 }
 #define wserror_wsc2(str) wserror_fun(str);
+
+//################################################################################//
+//                                    Misc                                        //
+//################################################################################//
+
 
 /*
 // TODO:
@@ -385,5 +387,4 @@ inline static float cNorm(complex c) {
    return sqrt ((re*re) + (im*im));
 }
 #endif
-
 

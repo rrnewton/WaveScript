@@ -1939,7 +1939,11 @@ int main(int argc, char **argv)
 					;(iota (length iterates))
 						   ;iterates iterates-input-types
 						   )
-						 "START_WORKERS()\n"
+						 "/* We may need to start up the Boehm GC */ \n"
+						 "#ifdef USE_BOEHM\n"
+						 "GC_INIT();\n"
+						 "#endif\n"
+						 "START_WORKERS()\n"						 
 
 						 ;"void (**workers) (void) = malloc(sizeof(void*) * "(number->string (length iterates))");\n" 
 					         ;(mapi (lambda (i name) (format "workers[~a] = & ~a;\n" i name))  iterates)
