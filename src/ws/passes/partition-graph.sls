@@ -165,7 +165,7 @@
 	    ;; Finally!  Here it is:
 	    [(,nm (,fld1 Int) (,fld2 ,intype)) intype])
 	  )])]
-    [(__readFile . ,rest) '#()]))
+    [(__readFile . ,rest) '(Stream #())]))
 
 (define not-inline_TOS?
   (lambda (src) 

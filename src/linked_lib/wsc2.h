@@ -13,8 +13,8 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
+#define WS_THREADED
 //#define ALLOC_STATS
-
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>
@@ -167,15 +167,19 @@ void ws_alloc_stats() {
 //                           Scheduler and data passing
 //################################################################################//
 
+#ifndef WS_THREADED
 // Single threaded version:
-/*
-//#define REGISTER_WORKERS(table, len) {}
-#define EMIT(val, fn) fn(val)
-#define TOTAL_WORKERS(count) {}
-#define REGISTER_WORKER(ind, fp) {}
-#define START_WORKERS() {}
-*/
+#define VIRTTICK() {}
+#define WAIT_TICKS(delta) {}
 
+//#define REGISTER_WORKERS(table, len) {}
+#define EMIT(val, ty, fn) fn(val)
+#define TOTAL_WORKERS(count) {}
+#define REGISTER_WORKER(ind, ty, fp) {}
+#define DECLARE_WORKER(ind, ty, fp) 
+#define START_WORKERS() {}
+
+#else
 // Thread-per-operator version, midishare FIFO implementation:
 
 // For now I'm hacking this to be blocking, which involves adding
@@ -185,11 +189,9 @@ void ws_alloc_stats() {
 #include <unistd.h>
 unsigned long tick_counter;
 #define VIRTTICK() tick_counter++
-/* #define WAIT_TICKS(delta) { \ */
-/*   usleep(1000 * delta * tick_counter); \ */
-/*   tick_counter = 0; } */
-
-#define WAIT_TICKS(delta) {}
+#define WAIT_TICKS(delta) { \
+  usleep(1000 * delta * tick_counter); \
+  tick_counter = 0; }
 
 //  printf("usleeping .. %g", 1000 * delta * tick_counter); \
 //   printf("usleeping .. clock before %d", 1000 * clock() / CLOCKS_PER_SEC); \
@@ -252,7 +254,7 @@ int total_workers;
 
 void* worker_thread(void* i) {
   int index = (int)i;
-  printf("Spawning worker thread %d\n", index);
+  printf("** Spawning worker thread %d\n", index);
   while (1) 
   {
     void* ptr = wsfifoget(queue_table[index]);
@@ -262,6 +264,7 @@ void* worker_thread(void* i) {
   return 0;
 }
 
+#endif
 
 
 //################################################################################//
