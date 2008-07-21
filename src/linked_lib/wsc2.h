@@ -209,10 +209,12 @@ unsigned long tick_counter;
   tick_counter = 0; }
 
 #ifdef USE_BOEHM
-#include <gc_pthread_redirects.h>
+//#include <gc/gc_pthread_redirects.h>
+#include <pthread.h>
 #else
 #include <pthread.h>
 #endif
+
 #include "midishare_fifo/wsfifo.c"
 #define FIFO_CONST_SIZE 100
 

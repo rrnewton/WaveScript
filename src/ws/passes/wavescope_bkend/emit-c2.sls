@@ -1924,6 +1924,11 @@ int main(int argc, char **argv)
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			   (text->string (block "void initState()" 
 						(list 
+						 "/* We may need to start up the Boehm GC */ \n"
+						 "#ifdef USE_BOEHM\n"
+						 "GC_INIT();\n"
+						 "printf(\"GC INIT COMPLETE.\\n\");\n"
+						 "#endif\n"
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
 						 ;; This will be where the inline_C initializers go:
@@ -1939,10 +1944,6 @@ int main(int argc, char **argv)
 					;(iota (length iterates))
 						   ;iterates iterates-input-types
 						   )
-						 "/* We may need to start up the Boehm GC */ \n"
-						 "#ifdef USE_BOEHM\n"
-						 "GC_INIT();\n"
-						 "#endif\n"
 						 "START_WORKERS()\n"						 
 
 						 ;"void (**workers) (void) = malloc(sizeof(void*) * "(number->string (length iterates))");\n" 
@@ -2011,8 +2012,10 @@ int main(int argc, char **argv)
   ;;(slot-set! self 'compile-flags (list " -lgc " (slot-ref self 'compile-flags)))
   ;(slot-set! self 'link-files (cons "libgc.so" (slot-ref self 'link-files)))
   (match (wsc2-gc-mode)
-    [boehm ((add-file! self) "libgc.so")
-	   (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))]
+    [boehm 
+     ((add-file! self) "libgc.so")
+     ; ((add-file! self) "libgc.a") ;; Had better statically link the collector.
+     (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))]
     [none (void)]))
 
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)

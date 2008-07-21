@@ -166,15 +166,29 @@
 	   ;; Here we treat the body of iterate as an EFFECT.
 	   ;; (Rather than an expression returning a virtual queue).
 	   [(iterate (annotations ,anot* ...)
-		     (let ([,lhs* ,ty* ,rhs*] ...) ,fun) ,[strm])
+		     (let ([,lhs* ,ty* ,rhs*] ...) (lambda (,x ,vq) (,xty ,vqty) ,bod)) ,[strm])
 	    ;(define newfun (Effect fun))
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
-	    (define newfun (Value fun))
+	    (define newfun 
+	      ;; 
+	      `(lambda (,x ,vq) (,xty ,vqty) ,(Value bod))
+	      #;
+	      `(lambda (,x ,vq) (,xty ,vqty) 
+		       ,(Value (DriveInside 
+				(lambda (x) (make-rc 'decr-queue-refcount ty x))
+				bod ty??? ??))))
 	    `(iterate (annotations ,@anot*)
-		      (let ,newbinds
+		      (let ,newbinds			
 			,newfun)
 		      ,strm)]
+
+#;
+	   [(emit ,vq ,xp)
+	    `(emit ,vq
+		   (Value (DriveInside 
+			   (lambda (x) (make-rc 'incr-queue-refcount ty p))
+			   xp ty??? ??)))]
 
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
 	    (define result (unique-name "result"))

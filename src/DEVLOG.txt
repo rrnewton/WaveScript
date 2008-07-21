@@ -1524,3 +1524,29 @@ code first of all!  This means either resurecting wsc, or outfitting
 wsc2 with threading capabilities.  Because XStream is no longer
 actively developed, I lean towards the latter.
 
+[2008.07.18] {Working through crashes in trying to get Boehm + threads}
+
+This is odd, I've built the 7.0 version enabling GC_LINUX_THREADS,
+THREAD_LOCAL_ALLOC, and PARALLEL_MARK, but I still get a crash from
+GC_INIT!  Even if I *just* enable GC_LINUX_THREADS it crashes.
+
+==31526== Invalid read of size 4
+==31526==    at 0x40533DB: GC_mark_from (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4053B96: GC_do_local_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4053F03: GC_mark_local (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4054017: GC_do_parallel_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4052C88: GC_mark_some (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x404AE09: GC_stopped_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x404AA86: GC_try_to_collect_inner (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4056679: GC_init_inner (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4056157: GC_init (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x8049303: initState (query.c:30)
+==31526==    by 0x804950A: main (query.c:78)
+==31526==  Address 0xbfd59cc4 is not stack'd, malloc'd or (recently) free'd
+
+It gets pretty much the same crash if I try the libgc-dev ubuntu
+package (version 6.8).
+
+If I try the refcount GC under the new wsc2 -threads configuration, it
+currently passes some demos but crashes on demo3f.
+
