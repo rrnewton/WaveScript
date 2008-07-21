@@ -1415,7 +1415,7 @@
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
-		   (block "while(dummy)"
+		   (block "while(dummy && !stopalltimers)"
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				"VIRTTICK();\n"
 				(map (lambda (name code mark)
@@ -1429,8 +1429,12 @@
 				;"sleep(1);\n"
 				)
 					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
-			  )
-		   "wsShutdown();\n"
+			  )		   
+		   ;"wsShutdown();\n"
+		   "// We keep the main function going for other tuples to come through.\n"
+		   "printf(\"Out of main loop.\\n\");\n"
+		   ;"print_queue_status();\n"
+		   "while (print_queue_status()) { sleep(1); }\n"
 		   "return 0;\n")))))]
 
       ;; Option (2): serial port connected to mote:
@@ -1814,7 +1818,7 @@ int main(int argc, char **argv)
 		     ,(block `("if (status != ",(number->string (max 1 winsize))
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
-			       "exit(0);\n"))
+			       "wsShutdown(0);\n"))
 		     ,(lines-text ((Emit self down* elt) 'buf))))])
 
        (values 
@@ -1918,7 +1922,8 @@ int main(int argc, char **argv)
 				;; After the types are declared we can bring in the user includes:
 				"\n\n" (map (lambda (fn) `("#include ",fn "\n"))
 					 (reverse (slot-ref self 'include-files))) "\n\n")))
-	(define allstate (text->string (map lines-text (apply append cb* state-pieces state2**))))
+	(define allstate (text->string (list "int stopalltimers = 0;\n"
+					     (map lines-text (apply append cb* state-pieces state2**)))))
 	(define ops      (text->string (map lines-text oper*)))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))

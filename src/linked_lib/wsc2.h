@@ -52,6 +52,8 @@ typedef unsigned short int uint16_t;
 
 #define ws_string_t char*
 
+extern int stopalltimers;
+
 //################################################################################//
 //                 Matters of memory layout and GC                                //
 //################################################################################//
@@ -215,14 +217,17 @@ unsigned long tick_counter;
 #include <pthread.h>
 #endif
 
-#include "midishare_fifo/wsfifo.c"
+//#include "midishare_fifo/wsfifo.c"
+#include "simple_wsfifo.c"
 #define FIFO_CONST_SIZE 100
 
-void (**worker_table) (void*);
-wsfifo** queue_table;
+void (**worker_table) (void*);   // Should we pad this to prevent false sharing?
+wsfifo** queue_table;            // Should we pad this to prevent false sharing?
 pthread_cond_t** cond_table;
 pthread_mutex_t** mut_table;
 int total_workers;
+
+pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Declare the existence of each operator.
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
@@ -252,11 +257,15 @@ int total_workers;
 }
 // Enqueue a datum in another thread's queue.
 #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
+
 void* worker_thread(void* i) {
   int index = (int)i;
+  pthread_mutex_lock(&print_lock);
   fprintf(stderr, "** Spawning worker thread %d\n", index);
+  pthread_mutex_unlock(&print_lock);
   while (1) 
   {
+    // Accesses to these two tables are read-only:
     void* ptr = wsfifoget(queue_table[index]);
     (*worker_table[index])(ptr);
     wsfifoget_cleanup(queue_table[index]);
@@ -265,6 +274,22 @@ void* worker_thread(void* i) {
 }
 #endif
 
+// Returns the sum of the sizes of all queues.
+unsigned long print_queue_status() {
+  int i;
+  unsigned long total = 0;
+  printf("Status of %d queues:", total_workers);
+  fflush(stdout);
+  for(i=0; i<total_workers; i++) {
+    //printf("Queue #%d: \t%d\n", i, wsfifosize(queue_table[i]));
+    int size = wsfifosize(queue_table[i]);
+    total += size;
+    printf(" %d", size);
+    fflush(stdout);
+  }
+  printf(" total %d\n", total);
+  return total;
+}
 
 //################################################################################//
 //               Startup, Shutdown, Errors, Final output values                   //
@@ -274,11 +299,18 @@ void wsShutdown() {
   #ifdef ALLOC_STATS
     ws_alloc_stats();
   #endif
+    stopalltimers = 1;
+    printf("Stopped all timers.\n");
+    print_queue_status();
 }
 
 void BASE(char x) {
   outputcount++;
-  if (outputcount == wsc2_tuplimit) { wsShutdown(); exit(0); }
+  if (outputcount == wsc2_tuplimit) { 
+    printf("Enough tuples.  Shutting down.\n");
+    wsShutdown(); 
+    exit(0);     
+  }
 #ifdef ALLOC_STATS
   ws_alloc_stats();
 #endif

@@ -75,3 +75,7 @@ void* wsfifoget(wsfifo* ff) {
 void wsfifoget_cleanup(wsfifo* ff) {
     FIFOFREE(ff->last_cell);  
 }
+
+unsigned long wsfifosize (wsfifo * ff) {
+  return fifosize(& ff->ff);
+}
