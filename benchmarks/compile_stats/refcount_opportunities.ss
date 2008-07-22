@@ -64,11 +64,6 @@ exec regiment i --script "$0"
 		    (stream-wiring-ast-size prog)
 		    )
 	    )
-
-
-	  #;
-	  (pp (blaze-path-to/assq x 'incr-local-refcount 'decr-local-refcount
-				  'incr-heap-refcount 'decr-heap-refcount))
 	  (jumpout #f)))
       (printf "  Processing: ~s\n" path)      
       (current-directory (dirname path))

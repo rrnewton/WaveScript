@@ -126,6 +126,10 @@
     (define global-struct-defs '())    
     (define global-union-types '())
     (define (not-heap-allocated? ty) (not (c-heap-allocated? ty global-struct-defs global-union-types)))
+    
+    ;; HOOK: Here's a place to cancel out reference counts forms as we reassembly begins.
+    (define rc-make-begin make-begin)
+
     ;; Adding a tricky value-needed? flag.  Basically, there are two
     ;; different scenarios for DriveInside, it can either push in a
     ;; refcount incr *to that value*, or it can push in a decr that
@@ -135,7 +139,7 @@
       (match xp
 	[(,lt ([,lhs ,ty ,rhs]) ,[bod]) (guard (memq lt '(let let-not-counted)))
 	 `(,lt ([,lhs ,ty ,rhs]) ,bod)]
-	[(begin ,e* ... ,[last]) (make-begin `(begin ,@e* ,last))]
+	[(begin ,e* ... ,[last]) (rc-make-begin `(begin ,@e* ,last))]
 	;; Go down both control paths:
 	[(if ,test ,[left] ,[right]) `(if ,test ,left ,right)]
 	
@@ -150,14 +154,10 @@
 		 ;; This is an optimization that I'm not sure of yet:
 		 ;(and (not value-needed?) (match? oth (Mutable:ref ,_)))
 		 )
-	     `(begin ,(if value-needed? (injection oth) (injection)) ,oth)
+	     (rc-make-begin (list (if value-needed? (injection oth) (injection)) oth))
 	     `(let-not-counted ([,tmp ,retty ,oth])
-	       (begin ,(if value-needed? (injection tmp) (injection)) ,tmp)))
-	 #;
-	 (maybe-bind-tmp oth retty
-	   (lambda (tmp)
-	     `(begin ,(injection tmp) ,tmp)))]))
-
+	       ,(rc-make-begin (list (if value-needed? (injection tmp) (injection)) tmp))))]))
+    
     ;; We need the types at each emit statement.
     ;; This is a hack, but one which keeps the 
     ;(define )
@@ -166,9 +166,6 @@
       (core-generic-traverse
        (lambda (xp fallthru)
 	 (match xp
-
-	   ;[,x (guard (printf "Val ~s\n" x) #f) #f]
-
 	   ;;[',const (ASSERT simple-constant? const) `',const]
 
 	   ;; No more type checking is allowed AFTER this pass.
@@ -187,8 +184,8 @@
 	      `(lambda (,x ,vq) (,xty ,vqty)
 		       ,(Value 
 			 (if (not-heap-allocated? xty) bod
-				   (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
-						bod vqty #f)))))
+			     (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
+					  bod vqty #f)))))
 	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
 	   
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
@@ -209,14 +206,17 @@
 	   
 	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
 	    `(let-not-counted ([,lhs ,ty ,rhs]) ,bod)]
-	  
+
 	   ;; Allocation routines -- add to ZCT?
+	   ;; In simple reference counting, they must flow to a let, and will get their RC bumped there.
+	   ;;============================================================;;
 	   [(assert-type (List ,elt) (cons ,[hd] ,[tl]))
 	    (ASSERT simple-expr? hd)
 	    (ASSERT simple-expr? tl)     
-	    `(begin ,@(if (not-heap-allocated? elt) '() (list (make-rc 'incr-heap-refcount elt hd)))
-		    ,(make-rc 'incr-heap-refcount `(List ,elt) tl)
-		    (assert-type (List ,elt) (cons ,hd ,tl)))]
+	    (rc-make-begin 
+	     (append (if (not-heap-allocated? elt) '() (list (make-rc 'incr-heap-refcount elt hd)))
+		     `(,(make-rc 'incr-heap-refcount `(List ,elt) tl)
+		       (assert-type (List ,elt) (cons ,hd ,tl)))))]
 	   ;; This could be more efficient, could bump it all at once
 	   ;; without the for-loop.  incr-heap-refcount would have to
 	   ;; take a numeric argument.  In the common case, the
@@ -235,13 +235,15 @@
 			      ,(make-rc 'incr-heap-refcount elt tmp2)))
 			,tmp)
 		 ))]
+	   ;; Array:makeUNSAFE is not included because it has no initialization.
+	   ;;============================================================;;
 	   
 	   ;; Safety net:
-	   [(,form . ,rest) (guard (memq form '(let cons iterate)))
+	   [(,form . ,rest) (guard (memq form '(let cons iterate Array:make)))
 	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
 	   ;; These jump us to effect context.
-	   [(begin ,[Effect -> e*] ... ,[last])  (make-begin `(,@e* ,last))]
+	   [(begin ,[Effect -> e*] ... ,[last]) (rc-make-begin `(,@e* ,last))]
 
 	   [(for (,i ,[st] ,[en]) ,bod)
 	    `(for (,i ,st ,en) ,(Effect bod))]
@@ -257,21 +259,15 @@
       (core-generic-traverse
        (lambda (xp fallthru)
 	 (match xp
-	   ;[,x (guard (printf "Effect ~s\n" x) #f) #f]
-	   
+	   ;; Here we don't need the return value.  A little easier:
 	   [(let ([,lhs ,ty ,rhs]) ,[bod])
-	    (if (not-heap-allocated? ty) ;; No reason to pollute things
+	    (if (not-heap-allocated? ty) ;; No reason to pollute things.
 		`(let ([,lhs ,ty ,(Value rhs)]) ,bod)
 		;; FIXME: INCORRECT:
 		`(let ([,lhs ,ty ,(Value 
 				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
 						rhs ty #t))])
-		   ,(make-begin
-		     `(begin
-			,bod
-			,(make-rc 'decr-local-refcount ty lhs)
-			;;(tuple)
-			))))]
+		   ,(rc-make-begin (list bod (make-rc 'decr-local-refcount ty lhs)))))]
 	 
 	   ;; TEMP FIXME : FOR NOW THE QUEUE INCR/DECR IS SPLIT UP.
 	   ;; The INCR IS HANDLED IN EMIT-C2 TEMPORARILY!!
@@ -291,10 +287,9 @@
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
-		`(begin 
-		   ,(make-rc 'decr-heap-refcount ty v)
-		   (set! ,v (assert-type ,ty ,e))
-		   ,(make-rc 'incr-heap-refcount ty v)))]
+		(rc-make-begin (list (make-rc 'decr-heap-refcount ty v)
+				     `(set! ,v (assert-type ,ty ,e))
+				     (make-rc 'incr-heap-refcount ty v))))]
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))
@@ -302,16 +297,16 @@
 	    (ASSERT simple-expr? ind)
 	    (ASSERT simple-expr? arr)	 
 	    (if (not-heap-allocated? elt) setit
-		`(begin 
-		   (let ([,tmp1 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-		     ,(make-rc 'decr-heap-refcount elt tmp1))  ;; Out with the old.
-		   ,setit
-		   (let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-		     ,(make-rc 'incr-heap-refcount elt tmp2))  ;; In with the new.
-		   ))]
+		(rc-make-begin 
+		 (list `(let ([,tmp1 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
+			  ,(make-rc 'decr-heap-refcount elt tmp1))  ;; Out with the old.
+		       setit
+		       `(let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
+			  ,(make-rc 'incr-heap-refcount elt tmp2)))  ;; In with the new.
+		 ))]
 
 	   ;; Control flow structures keep us in Effect context:
-	   [(begin ,[e*] ...) (make-begin e*)]
+	   [(begin ,[e*] ...) (rc-make-begin e*)]
 	   [(for (,i ,[Value -> st] ,[Value -> en]) ,[bod]) `(for (,i ,st ,en) ,bod)]
 	   [(while ,[Value -> test] ,[bod]) `(while ,test ,bod)]
 	   [(if ,[Value -> test] ,[left] ,[right]) `(if ,test ,left ,right)]

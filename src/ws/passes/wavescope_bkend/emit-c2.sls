@@ -134,6 +134,7 @@
   (define-generic IterStartHook)
   (define-generic IterEndHook)
   (define-generic ForeignSourceHook)
+  (define-generic AllocHook)
 
   (__spec add-include! <emitC2> (self fn)
     (define __ (printf "adding include ~s \n" fn))
@@ -222,6 +223,8 @@
 (define (sym2str x) ;(ASSERT x)
   (symbol->string x))
 
+(define null-lines (make-lines ""))
+
 (define (slot-cons! obj fld x) (slot-set! obj fld (cons x (slot-ref obj fld))))
 
 (define (cap x) (list x ";\n"))
@@ -255,6 +258,14 @@
 (__spec ForeignSourceHook <emitC2> (self name callcode)
 	callcode)
 
+;; This will be where we will add fresh allocations to the ZCT.
+;; Takes a type and a 'text' object representing a simple expression.
+;; Returns a 'lines' object.
+(__spec AllocHook <emitC2> (self ty simple-xp) 
+	;null-lines
+	(make-lines (format "/* Alloc spot ~a ~a */\n" ty (text->string simple-xp)))
+	)
+
 ;; This is the simplest way to package a source.
 (define (wrap-source-as-plain-thunk name code)
   (make-lines (block `("void ",(Var name) "()") (lines-text code))))
@@ -265,13 +276,13 @@
 
 (define split-msg (gensym "split"))
 
-(define (idk x)   (if (eq? x split-msg) (values (make-lines "") idk) (make-lines x)))
-(define (nullk x) (if (eq? x split-msg) (values (make-lines "") idk) (make-lines "")))
+(define (idk x)   (if (eq? x split-msg) (values null-lines idk) (make-lines x)))
+(define (nullk x) (if (eq? x split-msg) (values null-lines idk) null-lines))
 (__spec varbindk <emitC2> (self name typ)
   (define (split-k x)
     (if (eq? x 'split-msg) 
 	;; Further splits have no effect:
-	(values (make-lines "") split-k)
+	(values null-lines split-k)
 	;; After a split we mutate the variable rater than binding it.
 	(make-lines `(,(Var self name)" = ",x";\n"))))
   (lambda (x)      
@@ -290,7 +301,7 @@
   (define thekont
     (lambda (x)      
       (if (eq? x split-msg)
-	  (values (make-lines "")	thekont)
+	  (values null-lines	thekont)
 	  (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))))))
   thekont)
 
@@ -306,7 +317,7 @@
 ;; appropriate free-ing code.
 ;; 
 ;; Currently this routine mutates the table "free-fun-table" on the fly.
-;; It also returns a lines datatype containing the prototypes and definitions.
+;; It also returns a 'lines' datatype containing the prototypes and definitions.
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
@@ -382,7 +393,7 @@
 					     "FREECONS(ptr);\n"))))]
 			   [(Array ,elt)
 			    (if (not (heap-type? self elt))
-				(make-lines "")
+				null-lines
 				(let ([ind (Var self (unique-name "i"))])
 				  (set! proto-acc (cons default-fun_name proto-acc))
 				  (make-lines 
@@ -422,7 +433,7 @@
 		   (gen-incr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
     ;; Other types are not heap allocated:
-    [,ty (guard (not (heap-type? self ty)))(make-lines "")]
+    [,ty (guard (not (heap-type? self ty)))null-lines]
     ))
 
 ;; "ptr" should be text representing a C lvalue
@@ -444,7 +455,7 @@
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
-    [,ty (guard (not (heap-type? self ty))) (make-lines "")]))
+    [,ty (guard (not (heap-type? self ty))) null-lines]))
 
 ;; This generates free code for a type (using free-fun-table).
 ;; Should only be called for types that are actually heap allocated.
@@ -479,13 +490,13 @@
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
 
 ;; TODO -- not used yet
-(__spec potential-collect-point <emitC2> (self) (make-lines ""))
+(__spec potential-collect-point <emitC2> (self) null-lines)
 
 
 ;; TODO -- not used yet
 ;; Do anything special that's required as a value is sent off through an emit.
 ;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
-(__spec say-goodbye <emitC2> (self ty ptr) (make-lines ""))
+(__spec say-goodbye <emitC2> (self ty ptr) null-lines)
 
 
 ;================================================================================
@@ -742,22 +753,18 @@
 	    (inspect (cons 'make-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
 	    (values ((Binding self emitter) (list vr ty rhs))
-		    (make-lines "")
+		    null-lines
 		    )]
 	   [(assert-type ,ty (make-struct . ,rest))
 	    (inspect (cons 'ASSERTmake-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
 	    (values ((Binding self emitter) (list vr ty rhs))
-		    (make-lines "")
+		    null-lines
 		    )]
-
 	   ;; Flip
 	   [(assert-type ,ty (static-allocate ,rhs)) 
 	    (loop `(static-allocate (assert-type ,ty ,rhs)))]
-#;
-	   [(assert-type ,ty ,[b i]) (values b i)]
-	   
-
+	  
 	   [,rhs
 	    ;; We derive a setter continuation by "splitting" the varbind continuation:       
 	    (values (make-lines `(,(Type self ty)" ",(Var self vr)" ",(DummyInit self ty)";\n"))
@@ -783,8 +790,6 @@
     [(([,lhs ,ty ,rhs]) ,[recur -> bod])
      (append-lines ((Binding self emitter) (list lhs ty rhs))
 		   (ASSERT lines? bod))]))
-
-
 (__spec Let <emitC2> (self form emitter recur)
   (match form         
     [(([,lhs ,ty ,rhs]) ,_bod)
@@ -832,10 +837,10 @@
     (define (Simp x) (Simple self x))
     (define (Vr x)   (Var self x))
     (match xp ;; no recursion
-      ['UNIT   (make-lines "")]
-      [(tuple) (make-lines "")] ;; This should be an error.
+      ['UNIT   null-lines]
+      [(tuple) null-lines] ;; This should be an error.
       ;; Thanks to insert-refcounts this can get in here:
-      [,v (guard (symbol? v)) (make-lines "")]
+      [,v (guard (symbol? v)) null-lines]
 
       ;; Call the eponymous method:
       [(incr-heap-refcount  ,ty ,[Simp -> val]) (incr-heap-refcount  self ty val)]
@@ -874,21 +879,11 @@
        (make-lines `("printf(\"",(type->printf-flag self ty)"\", ",x");\n"))]
       
       [(set! ,[Vr -> v] ,[(TyAndSimple self) -> ty x])
-       (append-lines 	
-	;; Set! changes Ref objects, which are on the heap:
-	#|(decr-heap-refcount ty v)  ;; Out with the old.|#
-	(make-lines `(,v" = ",x";\n"))
-	#|(incr-heap-refcount ty v)  ;; In with the new.|#
-	)]
+       ;; Set! changes Ref objects, which are on the heap:
+       (make-lines `(,v" = ",x";\n"))]
 
       [(Array:set ,[(TyAndSimple self) -> ty arr] ,[Simp -> ind] ,[Simp -> val])
-       (let-match ([(Array ,elt) ty])
-	 (append-lines 	
-	  ;;(make-lines "/* I AM ARRAY:SET DECR/INCR */\n")
-	  #|(decr-heap-refcount elt `(,arr"[",ind"]"))  ;; Out with the old.|#
-	  (make-lines `(,arr"[",ind"] = ",val";\n"))
-	  #|(incr-heap-refcount elt `(,arr"[",ind"]"))  ;; In with the new.|#
-	  ))]
+       (let-match ([(Array ,elt) ty]) (make-lines `(,arr"[",ind"] = ",val";\n")))]
 
       [(emit ,vq ,x) (emitter x)]
       [(begin ,[Loop -> e*] ...) 
@@ -1074,6 +1069,7 @@
 				      `(for (,i '0 ,lensub1)
 					   (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
 			    "")))))
+	(AllocHook self ty cast)
 	(kont cast)))]))
   
 (define (wszero? ty obj)
@@ -1158,21 +1154,14 @@
 			       ,(if (eq-any? (wsc2-gc-mode) 'none 'boehm)  ""
 				    (list "CLEAR_RC("tmp");\n"))
 			       "SETCDR(",tmp", ",tl");\n"  
-			       "SETCAR(",tmp", ",hd");\n"  
-			       ;,tmp"[0] = ",hd";\n"
+			       "SETCAR(",tmp", ",hd");\n"  			       
 			       ))
-	      ;; Increment cdr and car refcounts:
-	      ;(make-lines " /* incr car: */ ")
-	      #|(incr-heap-refcount elt hd) |#
-	      ;(make-lines " /* incr cdr: */ ")
-	      #|(incr-heap-refcount mayberetty tl) |#
+	      (AllocHook self mayberetty tmp)
 	      (kont tmp)))])]
-       
-       [(Array:length ,[Simp -> arr]) (kont `("ARRLEN(",arr")"))]
-       ;; This is the more complex part:
-
        [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]
        [(Array:makeUNSAFE ,[Simp -> len]) (array-constructor-codegen self len #f   mayberetty kont)]
+
+       [(Array:length ,[Simp -> arr]) (kont `("ARRLEN(",arr")"))]
 
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
@@ -2015,15 +2004,17 @@ int main(int argc, char **argv)
 ;; This is for use with a conservative collector.  No reference counting.
 (define-class <emitC2-nogc> (<emitC2>) ())
 ;; Very simple, just don't insert any refcounting code:
-(__specreplace incr-local-refcount <emitC2-nogc> (self ty ptr) (make-lines ""))
-(__specreplace decr-local-refcount <emitC2-nogc> (self ty ptr) (make-lines ""))
-(__specreplace incr-heap-refcount  <emitC2-nogc> (self ty ptr) (make-lines ""))
-(__specreplace decr-heap-refcount  <emitC2-nogc> (self ty ptr) (make-lines ""))
+(__specreplace incr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
+(__specreplace decr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
+(__specreplace incr-heap-refcount  <emitC2-nogc> (self ty ptr) null-lines)
+(__specreplace decr-heap-refcount  <emitC2-nogc> (self ty ptr) null-lines)
+(__specreplace incr-queue-refcount  <emitC2-nogc> (self ty ptr) null-lines)
+(__specreplace decr-queue-refcount  <emitC2-nogc> (self ty ptr) null-lines)
 
-(__specreplace gen-incr-code <emitC2-nogc> (self ty ptr msg) (make-lines ""))
-(__specreplace gen-decr-code <emitC2-nogc> (self ty ptr msg) (make-lines ""))
+(__specreplace gen-incr-code <emitC2-nogc> (self ty ptr msg) null-lines)
+(__specreplace gen-decr-code <emitC2-nogc> (self ty ptr msg) null-lines)
 
-(__specreplace build-free-fun-table! <emitC2-nogc> (self heap-types) (make-lines ""))
+(__specreplace build-free-fun-table! <emitC2-nogc> (self heap-types) null-lines)
 
 (__spec initialise <emitC2-nogc> (self prog)
   ;; Add this to the include list:
@@ -2039,6 +2030,15 @@ int main(int argc, char **argv)
 
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
 (define-class <emitC2-zct> (<emitC2>) ())
+
+(__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
+(__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
+
+(define __build-free-fun-table!
+  (specialise! build-free-fun-table! <emitC2-zct> 
+    (lambda (next self heap-types)  
+      (append-lines (next)		
+		    ))))
 #;
 (specialise! Var <zct> 
  (lambda (next self v)
