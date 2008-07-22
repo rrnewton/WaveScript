@@ -256,7 +256,7 @@
 	  
 	  ; WAVESCRIPT
 	  ; ========================================
-	  ; Because of WaveScript we have effects and other stuff:
+	  ; Because of WaveScript we have effects:
 	  ; (Well, at least we have effects in the object language.)
 	  ; Should enforce a barrier.  (For the time being, syntactic.)
 
