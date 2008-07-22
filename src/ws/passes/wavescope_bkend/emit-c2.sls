@@ -461,6 +461,7 @@
 
 
 ;; These methods represent the actions to take when encountering local or heap refs.
+;; All return a block of code in a "lines" datatype.
 ;; The default version represents plain old reference counting.
 (__spec incr-local-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "local"))
 (__spec decr-local-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "local"))
@@ -468,9 +469,12 @@
 (__spec incr-heap-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "heap"))
 (__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "heap"))
 
-(__spec incr-queue-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "queue"))
-(__spec decr-queue-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "queue"))
 
+(define (ifthreads block)
+  (append-lines (make-lines "#ifdef WS_THREADED\n") block
+		(make-lines "#endif\n")))
+(__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
+(__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
 
 ;; TODO -- not used yet
 (__spec potential-collect-point <emitC2> (self) (make-lines ""))
@@ -838,10 +842,10 @@
 
       ;; Call the eponymous method:
       [(incr-heap-refcount  ,ty ,[Simp -> val]) (incr-heap-refcount  self ty val)]
-      [(incr-local-refcount ,ty ,[Simp -> val]) (incr-local-refcount self ty val)]
-      [(incr-queue-refcount ,ty ,[Simp -> val]) (incr-queue-refcount self ty val)]
       [(decr-heap-refcount  ,ty ,[Simp -> val]) (decr-heap-refcount  self ty val)]
+      [(incr-local-refcount ,ty ,[Simp -> val]) (incr-local-refcount self ty val)]
       [(decr-local-refcount ,ty ,[Simp -> val]) (decr-local-refcount self ty val)]
+      [(incr-queue-refcount ,ty ,[Simp -> val]) (incr-queue-refcount self ty val)]
       [(decr-queue-refcount ,ty ,[Simp -> val]) (decr-queue-refcount self ty val)]
 
       [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[Loop -> bod])
