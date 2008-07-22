@@ -805,14 +805,12 @@
       ;; [2008.01.22] Sigh, adding to support output of insert-refcounts:
       ;; We probably shouldn't even need to typecheck the subexpression--it should be simple.
       [(,refcnt ,ty ,e)
-       (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
-  		              'decr-heap-refcount  'incr-heap-refcount))
+       (guard (refcount-form? refcnt))
        (ASSERT simple-expr? e)
        (values `(,refcnt ,ty ,e) '#())]
       #;
       [(,refcnt ,ty ,[l -> e et]) 
-       (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
-  		              'decr-heap-refcount  'incr-heap-refcount))
+       (guard (refcount-form? refcnt))
        (values `(,refcnt ,ty ,e) '#())]
 
       ;; [2008.04.08] This is an annotation introduced much later in the compiler.
@@ -1015,9 +1013,7 @@
 
     [(struct-ref ,nm ,fld ,[e])   `(struct-ref ,nm ,fld ,e)]
     [(make-struct ,nm ,[e*] ...)  `(make-struct ,nm ,@e*)]
-    [(,refcnt ,ty ,[e])
-     (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
-  		            'decr-heap-refcount  'incr-heap-refcount))
+    [(,refcnt ,ty ,[e]) (guard (refcount-form? refcnt))
      `(,refcnt ,ty ,e)]
 
     [(static-allocate ,[x]) `(static-allocate ,x)]
@@ -1065,10 +1061,7 @@
 
     [(struct-ref ,nm ,fld ,[e])                               (void)]
     [(make-struct ,nm ,[e*] ...)                              (void)]
-    [(,refcnt ,ty ,[e])
-     (guard (eq-any? refcnt 'decr-local-refcount 'incr-local-refcount 
-		     'decr-heap-refcount  'incr-heap-refcount))
-     (void)]
+    [(,refcnt ,ty ,[e])  (guard (refcount-form? refcnt)) (void)]
     [(static-allocate ,[x])                                   (void)]
     ))
 

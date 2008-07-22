@@ -318,9 +318,7 @@
   (core-generic-traverse
    (lambda (xp fallthr)
      (match xp
-       [(,rc ,_ ,__) 
-	(guard (eq-any? rc 'incr-local-refcount 'decr-local-refcount
-			'incr-heap-refcount 'decr-heap-refcount)) 1]
+       [(,rc ,_ ,__) (guard (refcount-form? rc)) 1]
        [(cast-variant-to-parent ,_ ,__ ,[x]) x]
        [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
        [,oth (fallthr oth)]))

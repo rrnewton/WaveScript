@@ -36,8 +36,10 @@
 	   ;; Have to export all the generic methods so that they can be subclassed:
 	   build-free-fun-table!  heap-type?  add-include!
 	   add-link!  gen-incr-code gen-decr-code gen-free-code
-	   incr-local-refcount decr-local-refcount incr-heap-refcount
-	   decr-heap-refcount potential-collect-point say-goodbye type->name
+
+	   incr-local-refcount decr-local-refcount incr-heap-refcount  decr-heap-refcount  incr-queue-refcount  decr-queue-refcount 
+
+	   potential-collect-point say-goodbye type->name
 	   Const Var Simple TyAndSimple Type Let Value Effect StructDef Source
 	   GenWorkFunction Operator SortOperators Cutpoint Emit type->printf-flag
 	   Binding SplitBinding DummyInit StaticAllocate PrimApp Run
@@ -91,6 +93,8 @@
   (define-generic decr-local-refcount)
   (define-generic incr-heap-refcount)
   (define-generic decr-heap-refcount)
+  (define-generic incr-queue-refcount)
+  (define-generic decr-queue-refcount)
 
 
   (define-generic potential-collect-point)
@@ -464,6 +468,10 @@
 (__spec incr-heap-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "heap"))
 (__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "heap"))
 
+(__spec incr-queue-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "queue"))
+(__spec decr-queue-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "queue"))
+
+
 ;; TODO -- not used yet
 (__spec potential-collect-point <emitC2> (self) (make-lines ""))
 
@@ -828,10 +836,13 @@
       ;; Thanks to insert-refcounts this can get in here:
       [,v (guard (symbol? v)) (make-lines "")]
 
+      ;; Call the eponymous method:
       [(incr-heap-refcount  ,ty ,[Simp -> val]) (incr-heap-refcount  self ty val)]
       [(incr-local-refcount ,ty ,[Simp -> val]) (incr-local-refcount self ty val)]
+      [(incr-queue-refcount ,ty ,[Simp -> val]) (incr-queue-refcount self ty val)]
       [(decr-heap-refcount  ,ty ,[Simp -> val]) (decr-heap-refcount  self ty val)]
       [(decr-local-refcount ,ty ,[Simp -> val]) (decr-local-refcount self ty val)]
+      [(decr-queue-refcount ,ty ,[Simp -> val]) (decr-queue-refcount self ty val)]
 
       [(for (,[Vr -> ind] ,[Simp -> st] ,[Simp -> en]) ,[Loop -> bod])
        (make-lines

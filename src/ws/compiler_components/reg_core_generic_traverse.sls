@@ -302,12 +302,7 @@
 	   (fuse (list expr) (lambda (expr) `(struct-ref ,type ,fldname ,expr)))]
 
 	  ;; [2008.01.22] Yet more accomodation of special internal syntax:
-	  [(,refcnt ,ty ,[e])
-	   (guard (eq-any? refcnt
-			   'decr-local-refcount 'incr-local-refcount 
-			   'decr-heap-refcount  'incr-heap-refcount
-			   'decr-queue-refcount 'incr-queue-refcount
-			   ))
+	  [(,refcnt ,ty ,[e]) (guard (refcount-form? refcnt))
 	   `(,refcnt ,ty ,e)]
 
 	  ;; ========================================

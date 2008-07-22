@@ -60,7 +60,7 @@
 		    = wsequal?
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    
-		    ;emit ;; [2008.07.22] adding
+		    emit ;; [2008.07.22] adding
 		    ))
     
 
@@ -119,11 +119,6 @@
 	 (let ([exp `(,annprim . ,e*)])
 	   ,(maybewrap exp tenv))]
 	
-	;; For idempotency:
-	[(emit (assert-type ,ty ,vq) ,[x]) `(emit (assert-type ,ty ,vq) ,x)]
-	[(emit ,vq ,[x]) (ASSERT symbol? vq)
-	 `(emit (assert-type ,(recover-type vq tenv) ,vq) ,x)]
-
 	;; Tag the applications too:	
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 ;	 (ASSERT symbol? rator) ;; [2007.10.26] Not sure why this would need to be the case...

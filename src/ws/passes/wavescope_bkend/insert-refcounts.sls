@@ -15,8 +15,8 @@
   ;; (They are the return value that follow a wserror control path.)
   (cond
    [(equal? exp ''BOTTOM)       '(tuple)]
-   [(eq? which 'decr-queue-refcount) '(tuple)]
-   [(eq? which 'incr-queue-refcount) '(tuple)]
+   ;[(eq? which 'decr-queue-refcount) '(tuple)]
+   ;[(eq? which 'incr-queue-refcount) '(tuple)]
    [else (list which ty exp)]))
 
 ;; The default wavescript scalar-type? predicate returns #t only for

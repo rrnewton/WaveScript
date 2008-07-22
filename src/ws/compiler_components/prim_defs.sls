@@ -29,6 +29,7 @@
   (export 
            num-types ;; List of the numeric types
 	   truncate-integer
+	   refcount-form?
 
            regiment-type-aliases
 	   regiment-basic-primitives
@@ -91,6 +92,12 @@
 		    ;; Int8 Int16 Int64 Double Complex64
 		    Uint8 Uint16
 		    ))
+
+(define-syntax refcount-form? 
+  (syntax-rules ()
+    [(_ x) (memq x '(incr-local-refcount decr-local-refcount 
+		     incr-heap-refcount decr-heap-refcount 
+		     incr-queue-refcount decr-queue-refcount))]))
 
 ;; Force a number into a smaller integer size:
 (define (truncate-integer ty n)
