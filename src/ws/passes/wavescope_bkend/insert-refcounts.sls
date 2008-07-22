@@ -237,9 +237,16 @@
 		 ))]
 	   ;; Array:makeUNSAFE is not included because it has no initialization.
 	   ;;============================================================;;
-	   
+
+	   ;; FIXME: Same here as for set!
+	   ;; This should only apply to iterator state.
+	   [(Mutable:ref (assert-type ,elt ,[x]))
+	    (ASSERT simple-expr? x)
+	    (rc-make-begin (append (if (not-heap-allocated? elt) '() 
+				       (list (make-rc 'incr-heap-refcount elt `(assert-type ,elt ,x))))
+				   `((Mutable:ref (assert-type ,elt ,x)))))]
 	   ;; Safety net:
-	   [(,form . ,rest) (guard (memq form '(let cons iterate Array:make)))
+	   [(,form . ,rest) (guard (memq form '(let cons iterate )))
 	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
 	   ;; These jump us to effect context.
@@ -284,12 +291,24 @@
 		      ;;,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
 		      ))])]
 
+	   ;; TEMPORARY: FIXME Treating mutable references as FIRST CLASS.
+
+	   ;; Mutable references are second class, not first class.
+	   ;; Therefore rather than treating them as heap-allocated
+	   ;; (one element arrays) we are free to treat them as stack-allocated.
+
+	   ;; **BUT**, we need to handle the mutable refs that
+	   ;; represent iterator state differently.  It's a hack, but
+	   ;; we should keep track of those variable names... and recognize references to them.
+
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
 		(rc-make-begin (list (make-rc 'decr-heap-refcount ty v)
 				     `(set! ,v (assert-type ,ty ,e))
 				     (make-rc 'incr-heap-refcount ty v))))]
+	   
+	  
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))

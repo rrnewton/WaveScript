@@ -1144,6 +1144,7 @@
 				      [wavescript-compiler-c 
 				       (match (wsc2-gc-mode)
 					 [refcount <emitC2>]
+					 [deferred <emitC2-zct>]
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
 					 [deferred (error 'wsc2-gc-mode "deferred reference counting not implemented yet")])]

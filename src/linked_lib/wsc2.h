@@ -130,12 +130,13 @@ inline void free_measured(void* object) {
 #define WSFREE   BASEFREE
 #endif
 
+// ============================================================
 // Handle RCs on BOTH Cons Cells and Arrays:
 // A RC is the size of an int currently:
 // CLEAR_RC is only called when the ptr is non-nil.
 #define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
 #define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
-#define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
+#define DECR_RC_PRED(ptr) (ptr ? (--(((int*)ptr)[-1]) == 0) : 0)
 #define GET_RC(ptr)       (ptr ? ((int*)ptr)[-1] : 0)
 
 // Handle Cons Cell memory layout:
@@ -178,11 +179,6 @@ inline void* ws_array_alloc(int len, int eltsize) {
   return ptr;
 }
 
-#define moduloI(a,b) (a % b)
-
-int outputcount = 0;
-int wsc2_tuplimit = 10;
-
 #ifdef ALLOC_STATS
 unsigned long long last_alloc_printed = 0;
 void ws_alloc_stats() {
@@ -194,6 +190,59 @@ void ws_alloc_stats() {
   last_alloc_printed = alloc_total;
 }
 #endif
+
+// ZCT handling for deferred reference counting:
+// ============================================================
+
+typedef unsigned char typetag_t;
+
+// 80 (64+16) KB for now:
+#define ZCT_SIZE (1024*16)
+
+//extern typetag_t* zct_tags;
+extern typetag_t zct_tags[];
+extern void*     zct_ptrs[];
+extern int       zct_count;
+extern int       iterate_depth;
+
+void free_by_numbers(typetag_t, void*);
+
+static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
+  if (ptr == NULL) return;
+  //printf("Pushing %p, tag %d onto ZCT in pos %d.\n", ptr, tag, zct_count);
+  zct_tags[zct_count] = tag;
+  zct_ptrs[zct_count] = ptr;
+  zct_count++;
+}
+
+static inline void BLAST_ZCT() {
+  int i;
+  if (iterate_depth) {
+    //printf("Not blasting, depth %d\n", iterate_depth);
+    return;
+  }
+  printf("BLASTING %d:", zct_count, iterate_depth);
+  fflush(stdout);
+  for(i=zct_count-1; i>=0; i--) {
+    if (0 == GET_RC(zct_ptrs[i])) {
+      printf(" (%d)", i);
+      free_by_numbers(zct_tags[i], zct_ptrs[i]);
+    } else {
+      printf(" %d", i);
+    }
+    fflush(stdout);
+  }
+  printf("\n");
+  fflush(stdout);
+  zct_count = 0;
+}
+
+
+// ============================================================
+int outputcount = 0;
+int wsc2_tuplimit = 10;
+
+#define moduloI(a,b) (a % b)
 
 //################################################################################//
 //                           Scheduler and data passing

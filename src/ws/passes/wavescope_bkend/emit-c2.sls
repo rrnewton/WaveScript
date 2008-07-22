@@ -30,6 +30,7 @@
   (export emit-c2 ;; The main entrypoint.
 	   ;emit-c2-generate-timed-code
 	   <emitC2>
+	   <emitC2-zct>
 	   <emitC2-nogc>
 	   <emitC2-timed>
 	   
@@ -261,10 +262,7 @@
 ;; This will be where we will add fresh allocations to the ZCT.
 ;; Takes a type and a 'text' object representing a simple expression.
 ;; Returns a 'lines' object.
-(__spec AllocHook <emitC2> (self ty simple-xp) 
-	;null-lines
-	(make-lines (format "/* Alloc spot ~a ~a */\n" ty (text->string simple-xp)))
-	)
+(__spec AllocHook <emitC2> (self ty simple-xp) null-lines)
 
 ;; This is the simplest way to package a source.
 (define (wrap-source-as-plain-thunk name code)
@@ -316,8 +314,10 @@
 ;; table mapping types onto syntax-generating functions that call the
 ;; appropriate free-ing code.
 ;; 
-;; Currently this routine mutates the table "free-fun-table" on the fly.
-;; It also returns a 'lines' datatype containing the prototypes and definitions.
+;; Currently this routine mutates the field "free-fun-table" on the
+;; fly, which stores the table of syntax-generating functions.  It
+;; also returns a 'lines' datatype containing the prototypes and
+;; definitions.
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
@@ -354,7 +354,6 @@
 		  (add-to-freefuns! ty default-specialized_fun))])))
     heap-types)
 
-  ;; Now, for every name we've added to the table, we need to generate a definition:  
   (let ([final-defs
 	 (apply append-lines 
 		(map (lambda (entry) 
@@ -1623,10 +1622,11 @@ int main(int argc, char **argv)
        )]))
 
 
-
+;; Two hooks that return 'text':
 (__spec IterStartHook <emitC2> (self name arg argty) "")
 (__spec IterEndHook   <emitC2> (self name arg argty) "")
 
+;; A work function for each iterate.
 ;; Returns two values both of type 'lines'
 ;;  (1) A function prototype
 ;;  (2) A function definition
@@ -1866,6 +1866,7 @@ int main(int argc, char **argv)
 ;; Same return type as BuildOutputFiles
 (__spec Run <emitC2> (self)
   (let* ([prog (slot-ref self 'theprog)]
+	 ;; Run build-free-fun-table! before doing other codegen:
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
      (match prog
        [(,lang '(graph 
@@ -2028,22 +2029,92 @@ int main(int argc, char **argv)
      (slot-set! self 'hash-defs (list "#define USE_BOEHM\n" (slot-ref self 'hash-defs)))]
     [none (void)]))
 
+
+;;================================================================================
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
-(define-class <emitC2-zct> (<emitC2>) ())
+(define-class <emitC2-zct> (<emitC2>) (zct-types))
 
 (__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 
+;; We use the index in the free-fun-table as the numeric tag for that type.
+(__specreplace AllocHook <emitC2-zct> (self ty smpl) 
+  ;;(make-lines (format "/* Alloc spot ~a ~a */\n" ty (text->string simple-xp)))   
+  (define tag (number->string (ASSERT (list-index (lambda (x) (equal? ty (car x)))
+						  (slot-ref self 'zct-types)))))
+  (make-lines `("PUSH_ZCT(",tag", ",smpl");\n")))
+
+;; Clear the ZCT at the end of an operator execution.
+(define ___IterEndHook
+  (specialise! IterEndHook <emitC2-zct>
+    (lambda (next self name arg argty) 
+    (list (next)
+	  "iterate_depth--;\n"
+	  "BLAST_ZCT();\n"
+	  ))))
+;; For testing purposes allowing multiple iterate work functions to be
+;; active (depth first calls).  iterate_depth lets us know when it's
+;; safe to blast the ZCT.
+(define ___IterStartHook
+  (specialise! IterStartHook <emitC2-zct>
+    (lambda (next self name arg argty)
+    (list "iterate_depth++;\n"
+	  (next)))))
+
+
+;; This must also build a dispatcher for freeing based on numeric type tag.
 (define __build-free-fun-table!
   (specialise! build-free-fun-table! <emitC2-zct> 
-    (lambda (next self heap-types)  
-      (append-lines (next)		
-		    ))))
-#;
-(specialise! Var <zct> 
- (lambda (next self v)
-   (string-append (next) "____")
-   ))
+    (lambda (next self heap-types)
+      (let ([table (next)])
+	(slot-set! self 'zct-types
+		   (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
+		     (slot-ref self 'free-fun-table)))
+	(append-lines table
+	 (make-lines 
+	  (block "void free_by_numbers(typetag_t tag, void* ptr)"
+		 (block "switch (tag)"
+			(mapi (match-lambda (,i (,ty . ,syngen))
+			       (list (format "case ~a: " i)
+				     (lines-text (syngen "ptr"))
+				     " break;\n"))
+			      (slot-ref self 'zct-types)
+			  )))))))))
+
+;; DUPLICATED CODE:
+(__spec gen-decr-code <emitC2> (self ty ptr msg)
+  (match ty
+    [(,Container ,elt) (guard (memq Container '(Array List)))
+     (make-lines `("DECR_RC_PRED(",ptr"); /* ",msg", type: ",(format "~a" ty)" */ \n"))]
+    [(Ref ,[ty]) ty]
+    ;; Could make this a separate function:
+    [(Struct ,name) 
+     (apply append-lines
+	    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
+	    (map (match-lambda ((,fldname ,ty))
+		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
+	      (cdr (assq name (slot-ref self 'struct-defs)))))]
+    [,ty (guard (not (heap-type? self ty))) null-lines]))
+
+;; DUPLICATED CODE:
+;; This is here just to so we can slip in the global state bindings for the ZCT.
+(__specreplace BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+  (define text
+    (apply string-append 
+         (insert-between "\n"
+           (list includes 
+                 (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
+                 (text->string (lines-text freefundefs))
+                 state
+		 "typetag_t zct_tags[ZCT_SIZE];"
+		 "void*     zct_ptrs[ZCT_SIZE];"
+		 "int       zct_count;"
+		 "int       iterate_depth = 0;\n"
+                 ops 
+                 init driver))))
+  ;; Return an alist of files:
+  (vector (list (list "query.c" text))
+	  void))
 
 
 ;;================================================================================
