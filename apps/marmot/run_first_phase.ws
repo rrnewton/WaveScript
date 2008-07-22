@@ -119,6 +119,32 @@ In this way, it can process 73.6 mb in a second.
 // core2 duo 2.4ghz), and that's using naive reference counting and a
 // copy-always sigseg implementation.
 
+/*================================================================================
+
+[2008.07.21] {Some more timing with wsc2, now with threads}
+
+Threads won't help on this (yet), but I'd like to see how much it will slow down.
+I'm running on my machine at nokia (E8400 core2 duo, 3ghz), using a
+replicated version of 6sec_marmot_sample.raw and running 30 tuples.
+
+Rev 3339
+
+Mlton O3:           1.65     1.60
+
+wsc2 refcount O3:   1.76     1.68
+wsc2 refcount O2:   2.141    2.136
+wsc2 boehm    O3:   4.06     4.04
+
+Hmm, that's terrible.  Applying the fix where we use GC_MALLOC_ATOMIC, it improves somewhat: 
+
+wsc2 boehm    O3:   2.59     2.56
+
+
+
+
+
+ */
+
 
 
 include "sources_from_file.ws";

@@ -59,6 +59,8 @@
 		    
 		    = wsequal?
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
+		    
+		    ;emit ;; [2008.07.22] adding
 		    ))
     
 
@@ -105,7 +107,7 @@
 		 types rhs*)
 	       other))
 	  tenv)]
-		
+			
 	[(,annfirst ,[x] ,[y*] ...) (guard (memq annfirst annotate-first-arg))
 	 `(,annfirst ,(maybewrap x tenv)  . ,y*)]
 
@@ -116,6 +118,11 @@
 	[(,annprim ,[e*] ...) (guard (memq annprim annotate-outside-prims))
 	 (let ([exp `(,annprim . ,e*)])
 	   ,(maybewrap exp tenv))]
+	
+	;; For idempotency:
+	[(emit (assert-type ,ty ,vq) ,[x]) `(emit (assert-type ,ty ,vq) ,x)]
+	[(emit ,vq ,[x]) (ASSERT symbol? vq)
+	 `(emit (assert-type ,(recover-type vq tenv) ,vq) ,x)]
 
 	;; Tag the applications too:	
 	[(foreign-app ',realname ,rator ,[arg*] ...)

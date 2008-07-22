@@ -468,9 +468,11 @@
   p)
 
 
+;; ================================================================================ ;;
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
+;; ================================================================================ ;;
 (define run-ws-compiler             ;; Entrypoint.
   ; FIXME: this case-lambda is probably a temporary construction
   (case-lambda
@@ -827,6 +829,9 @@
   ;(if (<= (regiment-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
 
 ]))
+;; ================================================================================ ;;
+;; ================================================================================ ;;
+
 
   
   ;; [2008.01.10] This is a need that pops up frequently.
@@ -1095,6 +1100,7 @@
 
 		     (unless (embedded-mode? (compiler-invocation-mode))
 		       (ws-run-pass prog insert-refcounts))
+
 		     (ws-run-pass prog flag-static-allocate)
 		     ;;(assure-type-annotated prog (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 

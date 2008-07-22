@@ -13,9 +13,11 @@
 (define (make-rc which ty exp)
   ;; [2008.04.05] We end up with BOTTOMs as a result of ws-normalize-context.
   ;; (They are the return value that follow a wserror control path.)
-  (if (equal? exp ''BOTTOM)
-      '(tuple)
-      (list which ty exp)))
+  (cond
+   [(equal? exp ''BOTTOM)       '(tuple)]
+   [(eq? which 'decr-queue-refcount) '(tuple)]
+   [(eq? which 'incr-queue-refcount) '(tuple)]
+   [else (list which ty exp)]))
 
 ;; The default wavescript scalar-type? predicate returns #t only for
 ;; numbers and characters.  It returns #f for tuples. For the C
@@ -155,11 +157,18 @@
 	 (maybe-bind-tmp oth retty
 	   (lambda (tmp)
 	     `(begin ,(injection tmp) ,tmp)))]))
+
+    ;; We need the types at each emit statement.
+    ;; This is a hack, but one which keeps the 
+    ;(define )
    
     (define Value 
       (core-generic-traverse
        (lambda (xp fallthru)
 	 (match xp
+
+	   ;[,x (guard (printf "Val ~s\n" x) #f) #f]
+
 	   ;;[',const (ASSERT simple-constant? const) `',const]
 
 	   ;; No more type checking is allowed AFTER this pass.
@@ -170,31 +179,21 @@
 	    ;(define newfun (Effect fun))
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
+	    ;; Here's a trick.  Really we should decr the queue refcount as soon as we pop it off.
+	    ;; And then we should immediately incr the local refcount (because of the lambda argument).
+	    ;; This is a linear transfer, so instead we just let the queue refcount serve as a proxy
+	    ;; for the local refcount.  Thus we decr the queue refcount when we would have decr'd the local.
 	    (define newfun 
-	      ;; 
-	      `(lambda (,x ,vq) (,xty ,vqty) ,(Value bod))
-	      #;
-	      `(lambda (,x ,vq) (,xty ,vqty) 
-		       ,(Value (DriveInside 
-				(lambda (x) (make-rc 'decr-queue-refcount ty x))
-				bod ty??? ??))))
-	    `(iterate (annotations ,@anot*)
-		      (let ,newbinds			
-			,newfun)
-		      ,strm)]
-
-#;
-	   [(emit ,vq ,xp)
-	    `(emit ,vq
-		   (Value (DriveInside 
-			   (lambda (x) (make-rc 'incr-queue-refcount ty p))
-			   xp ty??? ??)))]
-
+	      `(lambda (,x ,vq) (,xty ,vqty)
+		       ,(Value 
+			 (if (not-heap-allocated? xty) bod
+				   (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
+						bod vqty #f)))))
+	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
+	   
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
 	    (define result (unique-name "result"))
-	    
 	    ;; TODO: *IF* RHS allocates, add to ZCT UNLESS it flows to a heap incr-point.
-
 	    (if (not-heap-allocated? ty) ; (simple-expr? bod)		
 		`(let ([,lhs ,ty ,(Value rhs)]) ,(Value bod))
 		;; FIXME: INCORRECT:
@@ -203,10 +202,10 @@
 		;; DriveInside introduces extra let-expressions, which then lead to extra calls to DriveInside.
 		`(let ([,lhs ,ty ,(Value
 				   (DriveInside (lambda (x) (make-rc 'incr-local-refcount ty x))
-						rhs ty #t))])		   
+						rhs ty #t))])
 		   ,(Value
 		     (DriveInside (lambda () (make-rc 'decr-local-refcount ty lhs)) bod 
-				 ''unknown_result_ty #f))))]
+				  ''unknown_result_ty #f))))]
 	   
 	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
 	    `(let-not-counted ([,lhs ,ty ,rhs]) ,bod)]
@@ -242,7 +241,7 @@
 	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
 	   ;; These jump us to effect context.
-	   [(begin ,[Effect -> e*] ... ,[last])  `(begin ,@e* ,last)]
+	   [(begin ,[Effect -> e*] ... ,[last])  (make-begin `(,@e* ,last))]
 
 	   [(for (,i ,[st] ,[en]) ,bod)
 	    `(for (,i ,st ,en) ,(Effect bod))]
@@ -258,6 +257,7 @@
       (core-generic-traverse
        (lambda (xp fallthru)
 	 (match xp
+	   ;[,x (guard (printf "Effect ~s\n" x) #f) #f]
 	   
 	   [(let ([,lhs ,ty ,rhs]) ,[bod])
 	    (if (not-heap-allocated? ty) ;; No reason to pollute things
@@ -272,6 +272,17 @@
 			,(make-rc 'decr-local-refcount ty lhs)
 			;;(tuple)
 			))))]
+	   
+	   [(emit ,vq ,[Value -> xp])
+	    (match vq
+	      [(assert-type (VQueue ,elt) ,var)
+	       (if (not-heap-allocated? elt)
+		   `(emit ,vq ,xp)
+		   `(begin
+		      ;; (make-rc 'incr-queue-refcount ty xp)
+		      (emit ,vq ,xp)
+		      ,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
+		      ))])]
 
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
@@ -296,7 +307,7 @@
 		   ))]
 
 	   ;; Control flow structures keep us in Effect context:
-	   [(begin ,[e*] ...) `(begin ,@e*)]
+	   [(begin ,[e*] ...) (make-begin e*)]
 	   [(for (,i ,[Value -> st] ,[Value -> en]) ,[bod]) `(for (,i ,st ,en) ,bod)]
 	   [(while ,[Value -> test] ,[bod]) `(while ,test ,bod)]
 	   [(if ,[Value -> test] ,[left] ,[right]) `(if ,test ,left ,right)]

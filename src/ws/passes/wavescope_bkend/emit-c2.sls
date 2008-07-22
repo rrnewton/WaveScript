@@ -1027,6 +1027,7 @@
      
      ;; We fill with zeros if we've got Array:make with a zero scalar.
      ;; OR if we've got a makeUNSAFE with pointers (have to put in null pointers).
+     (define scalar? (not (heap-type? self elt)))
      (define zero-fill?
        (or (and init (wszero? elt init))
 	   (and (not init) (heap-type? self elt))))
@@ -1034,9 +1035,10 @@
      (let* ([_elt (Type self elt)]
 	    [size `("(sizeof(",_elt") * ",len") + RCSIZE + ARRLENSIZE")]
 	    [tmp (Var self (unique-name "arrtmp"))]
+	    [postfix (if scalar? "_SCALAR" "")]
 	    [alloc (if zero-fill?
-		       `("WSCALLOC(",size", 1)")
-		       `("WSMALLOC(",size")"))]
+		       `("WSCALLOC",postfix"(",size", 1)")
+		       `("WSMALLOC",postfix"(",size")"))]
 	    [cast `("(",_elt"*)",tmp)])
        (append-lines 
 	(make-lines 

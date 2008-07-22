@@ -27,7 +27,7 @@
 #include<getopt.h>
 
 #define LOAD_COMPLEX
-#define WS_THREADED
+//#define WS_THREADED
 //#define ALLOC_STATS
 
 #ifdef LOAD_COMPLEX
@@ -64,29 +64,40 @@ extern int stopalltimers;
 #include <locale.h>
 char* commaprint(unsigned long long n);
 
+// ============================================================
+// Names like BASEMALLOC abstract the allocater API.
 #ifdef USE_BOEHM
   #include <gc/gc.h>
   #define BASEMALLOC GC_MALLOC
-  inline void* gc_calloc(size_t count, size_t size) {
+  #define BASEFREE   free
+  #define BASEMALLOC_ATOMIC GC_MALLOC_ATOMIC
+  inline void* BASECALLOC(size_t count, size_t size) {
     size_t bytes = count*size;
     void* ptr = GC_MALLOC(bytes);
     bzero(ptr, bytes);
     return ptr;
   }
-  #define BASECALLOC gc_calloc
-  #define BASEFREE   free
+  inline void* BASECALLOC_ATOMIC(size_t count, size_t size) {
+    size_t bytes = count*size;
+    void* ptr = GC_MALLOC_ATOMIC(bytes);
+    bzero(ptr, bytes);
+    return ptr;
+  }
   // If we are using BOEHM we do not need refcounts:
   #define RCSIZE 0
   #define ARRLENOFFSET -1
 #else
-  #define BASEMALLOC malloc
-  #define BASECALLOC calloc
+  #define BASEMALLOC        malloc
+  #define BASECALLOC        calloc
+  #define BASEMALLOC_ATOMIC malloc
+  #define BASECALLOC_ATOMIC calloc
   #define BASEFREE   free
   #define RCSIZE sizeof(int)
   #define ARRLENOFFSET -2
 #endif
 
-
+// ============================================================
+// Then on top of that "BASE" layer we define the "WS" variants.
 // These macros allow us to monitor allocation rates if we wish:
 #ifdef ALLOC_STATS
 unsigned long long alloc_total = 0;
@@ -106,12 +117,16 @@ inline void free_measured(void* object) {
   free_counter += 1;
   BASEFREE(object);
 }
-#define WSMALLOC malloc_measured
-#define WSCALLOC calloc_measured
+#define WSMALLOC        malloc_measured
+#define WSMALLOC_SCALAR malloc_measured
+#define WSCALLOC        calloc_measured
+#define WSCALLOC_SCALAR calloc_measured
 #define WSFREE   free_measured
 #else
-#define WSMALLOC BASEMALLOC
-#define WSCALLOC BASECALLOC
+#define WSMALLOC        BASEMALLOC
+#define WSCALLOC        BASECALLOC
+#define WSMALLOC_SCALAR BASEMALLOC_ATOMIC
+#define WSCALLOC_SCALAR BASECALLOC_ATOMIC
 #define WSFREE   BASEFREE
 #endif
 
@@ -194,6 +209,8 @@ void ws_alloc_stats() {
 #define REGISTER_WORKER(ind, ty, fp) {}
 #define DECLARE_WORKER(ind, ty, fp) 
 #define START_WORKERS()              {}
+unsigned long print_queue_status() { return 0; }
+
 #else
 
 // Thread-per-operator version, midishare FIFO implementation:
@@ -272,7 +289,6 @@ void* worker_thread(void* i) {
   }
   return 0;
 }
-#endif
 
 // Returns the sum of the sizes of all queues.
 unsigned long print_queue_status() {
@@ -290,6 +306,7 @@ unsigned long print_queue_status() {
   printf(" total %d\n", total);
   return total;
 }
+#endif
 
 //################################################################################//
 //               Startup, Shutdown, Errors, Final output values                   //
@@ -301,7 +318,9 @@ void wsShutdown() {
   #endif
     stopalltimers = 1;
     printf("Stopped all timers.\n");
+  #ifdef WS_THREADED
     print_queue_status();
+  #endif
 }
 
 void BASE(char x) {
