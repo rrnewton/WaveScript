@@ -130,6 +130,8 @@
     ;; HOOK: Here's a place to cancel out reference counts forms as we reassembly begins.
     (define rc-make-begin make-begin)
 
+    ;; Drive a computation down towards the TAIL of an expression.
+    ;;
     ;; Adding a tricky value-needed? flag.  Basically, there are two
     ;; different scenarios for DriveInside, it can either push in a
     ;; refcount incr *to that value*, or it can push in a decr that
@@ -182,10 +184,9 @@
 	    ;; for the local refcount.  Thus we decr the queue refcount when we would have decr'd the local.
 	    (define newfun 
 	      `(lambda (,x ,vq) (,xty ,vqty)
-		       ,(Value 
-			 (if (not-heap-allocated? xty) bod
-			     (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
-					  bod vqty #f)))))
+		       ,(if (not-heap-allocated? xty) (Value bod)
+			    (Value (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
+						bod vqty #f)))))
 	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
 	   
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
@@ -304,25 +305,28 @@
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
-		(rc-make-begin (list (make-rc 'decr-heap-refcount ty v)
-				     `(set! ,v (assert-type ,ty ,e))
-				     (make-rc 'incr-heap-refcount ty v))))]
+		(let ([tmp (unique-name "settmp")])
+		  `(let ([,tmp ,ty ,v])
+		     ,(rc-make-begin (list `(set! ,v (assert-type ,ty ,e))
+					   (make-rc 'incr-heap-refcount ty v)
+					   (make-rc 'decr-heap-refcount ty tmp))))))]
 	   
 	  
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
 	    (define tmp2 (unique-name "tmp"))
+	    (define newarr `(assert-type (Array ,elt) ,arr))
 	    (define setit `(Array:set (assert-type (Array ,elt) ,arr) ,ind ,val))
 	    (ASSERT simple-expr? ind)
 	    (ASSERT simple-expr? arr)	 
 	    (if (not-heap-allocated? elt) setit
 		(rc-make-begin 
-		 (list `(let ([,tmp1 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-			  ,(make-rc 'decr-heap-refcount elt tmp1))  ;; Out with the old.
-		       setit
-		       `(let ([,tmp2 ,elt (Array:ref (assert-type (Array ,elt) ,arr) ,ind)])
-			  ,(make-rc 'incr-heap-refcount elt tmp2)))  ;; In with the new.
-		 ))]
+		 (list `(let ([,tmp1 ,elt (Array:ref ,newarr ,ind)])
+			  (let ([,tmp2 ,elt ,val])
+			    ,(rc-make-begin 
+			      (list `(Array:set ,newarr ,ind ,tmp2)
+				    (make-rc 'incr-heap-refcount elt tmp2)
+				    (make-rc 'decr-heap-refcount elt tmp1))))))))]
 
 	   ;; Control flow structures keep us in Effect context:
 	   [(begin ,[e*] ...) (rc-make-begin e*)]
