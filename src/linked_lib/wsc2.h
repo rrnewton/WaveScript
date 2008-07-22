@@ -132,10 +132,11 @@ inline void free_measured(void* object) {
 
 // Handle RCs on BOTH Cons Cells and Arrays:
 // A RC is the size of an int currently:
+// CLEAR_RC is only called when the ptr is non-nil.
 #define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
 #define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
 #define DECR_RC_PRED(ptr) (ptr && --(((int*)ptr)[-1]) == 0)
-#define GET_RC(ptr)                  ((int*)ptr)[-1]
+#define GET_RC(ptr)       (ptr ? ((int*)ptr)[-1] : 0)
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]

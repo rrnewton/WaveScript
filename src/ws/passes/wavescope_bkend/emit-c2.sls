@@ -471,8 +471,10 @@
 
 
 (define (ifthreads block)
-  (append-lines (make-lines "#ifdef WS_THREADED\n") block
-		(make-lines "#endif\n")))
+  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
+		block
+		;(make-lines "#endif\n")
+		))
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
 
@@ -668,15 +670,10 @@
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
-			 ;(if (list? down) (set! down (ASSERT symbol? (cadr down)))) ;; HACK
-			 (cap 
-			  (make-app "EMIT" (list element (Type self ty) (Var self down))) ; (list "sizeof("element")")
-			  #;
-			  (list (make-app (Var self down) (list element))
-				" /* emit */")))
-		    down*)))
-    ;(make-lines `("emit ",(Simple expr)";"))
-    ))
+			 ;; TEMP FIXME  FIXME  THIS INCR-REFCOUNT SHOULD BE HANDLED BY INSERT-REFCOUNTS!
+			 (list (lines-text (incr-queue-refcount self ty element))
+			       (cap (make-app "EMIT" (list element (Type self ty) (Var self down))))))
+		    down*)))))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
 (__spec Binding <emitC2> (self emitter)

@@ -272,16 +272,20 @@
 			,(make-rc 'decr-local-refcount ty lhs)
 			;;(tuple)
 			))))]
-	   
+	 
+	   ;; TEMP FIXME : FOR NOW THE QUEUE INCR/DECR IS SPLIT UP.
+	   ;; The INCR IS HANDLED IN EMIT-C2 TEMPORARILY!!
+	   #;
 	   [(emit ,vq ,[Value -> xp])
 	    (match vq
 	      [(assert-type (VQueue ,elt) ,var)
 	       (if (not-heap-allocated? elt)
 		   `(emit ,vq ,xp)
 		   `(begin
-		      ;; (make-rc 'incr-queue-refcount ty xp)
+		      ,(make-rc 'incr-queue-refcount elt xp)
 		      (emit ,vq ,xp)
-		      ,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
+		      ;; The following trick DOESN'T work if we're doing a depth first traversal.
+		      ;;,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
 		      ))])]
 
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
