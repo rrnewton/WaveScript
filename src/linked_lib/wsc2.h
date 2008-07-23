@@ -140,7 +140,8 @@ inline void free_measured(void* object) {
 #define SET_RC(ptr,val)              ((refcount_t*)ptr)[-1] = val
 #define CLEAR_RC(ptr)                SET_RC(ptr,0)
 #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
-#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+//#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
@@ -238,8 +239,13 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   zct_count++;
 }
 
+
+//#define BLAST_PRINT
+
+#ifdef BLAST_PRINT
 #define histo_len 20
 unsigned long tag_histo[histo_len];
+#endif
 
 static inline void BLAST_ZCT() {
   int i;
@@ -250,27 +256,26 @@ static inline void BLAST_ZCT() {
     return;
   }
 
-  if (zct_count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
-
-  for(i=0; i<histo_len; i++) tag_histo[i]=0;
+    #ifdef BLAST_PRINT
+      if (zct_count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
+      for(i=0; i<histo_len; i++) tag_histo[i]=0;
+    #endif
   for(i=zct_count-1; i>=0; i--) {  
     // Wipe off the mask bit before checking:
     if (0 == (GET_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
-      //printf(" %p", zct_ptrs[i]); fflush(stdout);
+        #ifdef BLASTING 
+          if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
+          max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
+        #endif
       free_by_numbers(zct_tags[i], zct_ptrs[i]);
-      if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
-      max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
       freed++;
-    } else {
-      UNMARK_AS_PUSHED(zct_ptrs[i]);
-      //printf(" %d", i);
-    }
-    //fflush(stdout);
+    } else UNMARK_AS_PUSHED(zct_ptrs[i]);
   }  
-  printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
-  for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
-  //for(i=0; i<histo_len; i++) printf("%d ", tag_histo[i]);
-  printf("]\n");fflush(stdout);
+    #ifdef BLAST_PRINT
+      printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
+      for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
+      printf("]\n");fflush(stdout);
+    #endif
   zct_count = 0;
 }
 

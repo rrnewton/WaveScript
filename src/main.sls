@@ -1147,7 +1147,7 @@
 					 [deferred <emitC2-zct>]
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
-					 [deferred (error 'wsc2-gc-mode "deferred reference counting not implemented yet")])]
+					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
 				      ;[wavescript-compiler-c <emitC2-timed>]
 				      [wavescript-compiler-c <emitC2-nogc>]
 				      [wavescript-compiler-nesc <tinyos>]

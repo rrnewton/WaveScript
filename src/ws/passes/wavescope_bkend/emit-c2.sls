@@ -468,6 +468,7 @@
 	 (let* ([strip-refs (lambda(ty)
 			      (match ty [(Ref ,ty) ty] [,ty ty]))]
 		[newty (strip-refs ty)])
+	   ;; Look up and apply the function for generating free code syntax:
 	   ((cdr (ASSERT (assoc newty (slot-ref self 'free-fun-table))))
 	    ptr))))))
 
@@ -2080,44 +2081,87 @@ int main(int argc, char **argv)
     (list "iterate_depth++;\n"
 	  (next)))))
 
+(define gen-decr-called-from-free #f) ;; modified with fluid-let
   
 ;; This must also build a dispatcher for freeing based on numeric type tag.
 (define __build-free-fun-table!
   (specialise! build-free-fun-table! <emitC2-zct> 
     (lambda (next self heap-types)
-      (let* ([table (next)])	
+      (fluid-let ([gen-decr-called-from-free #t])
+       (let* ([table (next)])	
 	(append-lines table
 	 (make-lines 
 	  (block "void free_by_numbers(typetag_t tag, void* ptr)"
 		 (block "switch (tag)"
-			(mapi (match-lambda (,i (,ty . ,syngen))
-			       (list (format "case ~a: " i)
-				     (lines-text (syngen "ptr"))
-				     " break;\n"))
-			      (slot-ref self 'zct-types))))))))))
+			(list (mapi (match-lambda (,i (,ty . ,syngen))
+				      (list (format "case ~a: " i)
+					    (lines-text (syngen "ptr"))
+					    " break;\n"))
+				    (slot-ref self 'zct-types))
+			      "default: wserror_fun(\"invalid tag for ZCT entry\");\n"
+			 ))))))
+       ))))
 
-;; DUPLICATED CODE:
-(__spec gen-decr-code <emitC2> (self ty ptr msg)
-  (match ty
-    [(,Container ,elt) (guard (memq Container '(Array List)))
-     (define tag (number->string (get-zct-type-tag self ty)))
-     (make-lines 
-      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
-	     `("PUSH_ZCT(",tag", ",ptr");\n")))]
-    ; "MARK_AS_PUSHED(",ptr");"
-    [(Ref ,[ty]) ty]
-    ;; Could make this a separate function:
-    [(Struct ,name) 
-     (apply append-lines
-	    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
-	    (map (match-lambda ((,fldname ,ty))
-		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
-	      (cdr (assq name (slot-ref self 'struct-defs)))))]
-    [,ty (guard (not (heap-type? self ty))) null-lines]))
+
+;; A normal decrement will PUSH to the ZCT if the RC hits zero.
+;; HOWEVER, a decrement that happens FROM the freeing process, should
+;; just free immediately.  Thus the behavior of this depends on where
+;; we call it from.  We achieve this with a hack: a fluid-let bound flag.
+
+(define __gen-free-code 
+  (specialise! gen-free-code <emitC2-zct>
+    (lambda (next self ty ptr)
+      ;; Yuck, so imperative.  We call get-zct-type-tag just to
+      ;; generate the zct-types table even if we don't need the result!
+      (let  ([tag (get-zct-type-tag self ty)])
+	(if gen-decr-called-from-free	  
+	    (next)
+	    (make-lines `("PUSH_ZCT(",(number->string tag)", ",ptr");\n"))
+	    )))))
+
+#;
+(define __gen-decr-code 
+  (specialise! gen-decr-code  <emitC2-zct>
+    (lambda (next self ty ptr msg)
+      (if #f;gen-decr-called-from-free ;; Here's the hack!!
+	  ;; Note, this depends on the particulars of the OOP system.
+	  ;; I.e. the parent call will loop back through us (the
+	  ;; child) when it executes recursively, but then we'll just
+	  ;; keep passing it back to the parent.
+	  (next) ;; Make a normal free, don't push to ZCT.  
+	  (match ty
+	    [(,Container ,elt) (guard (memq Container '(Array List)))
+	     (define tag (number->string (get-zct-type-tag self ty)))
+	     (make-lines 
+	      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
+
+		     (if gen-decr-called-from-free 
+			 (lines-text (gen-free-code self ty ptr))
+			 `("PUSH_ZCT(",tag", ",ptr");\n"))
+
+		     ))]
+	    
+;	    [,else (next)] ;; Saving the duplicated code.
+
+
+	    ;; DUPLICATED CODE:
+	    ;; DUPLICATED CODE:
+	    [(Ref ,[ty]) ty]
+	    ;; Could make this a separate function:
+	    [(Struct ,name) 
+	     (apply append-lines
+		    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
+		    (map (match-lambda ((,fldname ,ty))
+			   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
+		      (cdr (assq name (slot-ref self 'struct-defs)))))]
+	    [,ty (guard (not (heap-type? self ty))) null-lines]
+
+)		 
+	  ))))
 
 ;; DUPLICATED CODE:
 ;; This is here just to so we can slip in the global state bindings for the ZCT.
-(__specreplace BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+(__specreplace BuildOutputFiles <emitC2-zct> (self includes freefundefs state ops init driver)
   (define text
     (apply string-append 
          (insert-between "\n"
