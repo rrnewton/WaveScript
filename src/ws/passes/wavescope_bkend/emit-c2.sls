@@ -484,9 +484,9 @@
 
 
 (define (ifthreads block)
-  (append-lines (make-lines "#ifdef WS_THREADED\n") 
+  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
 		block
-		(make-lines "#endif\n")
+		;(make-lines "#endif\n")
 		))
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
