@@ -945,7 +945,7 @@
        [,simp (guard (simple-expr? simp)) (kont (Simple self simp))]
        
        ;; This doesn't change the runtime rep at all.
-       [(Mutable:ref ,x) (kont (Simple self x))]
+       [(assert-type ,_ (Mutable:ref ,x)) (kont (Simple self x))]
        [(begin ,e) (recur e)]
        [(begin ,e1 ,e* ...)
 	(define first ((Effect self emitter) e1))

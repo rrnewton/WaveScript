@@ -46,6 +46,7 @@
 		  foreign_source
 
 		  ; readFile
+		  Mutable:ref
 		  ))
 
     (define annotate-first-arg 
@@ -61,12 +62,13 @@
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    
 		    emit ;; [2008.07.22] adding
+		    ;Mutable:ref ;; [2008.07.22]
 		    ))
     
 
     (define (not-poly? ty) (not (polymorphic-type? ty)))
     (define (wrap ty x)
-      (ASSERT "shouldnt find polymorohism at this point"  not-poly? ty)
+      (ASSERT "shouldnt find polymorphism at this point"  not-poly? ty)
       `(assert-type ,ty ,x))
 
     (define (maybewrap x tenv)

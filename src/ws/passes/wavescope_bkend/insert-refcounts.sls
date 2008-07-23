@@ -241,13 +241,14 @@
 
 	   ;; FIXME: Same here as for set!
 	   ;; This should only apply to iterator state.
-	   [(Mutable:ref (assert-type ,elt ,[x]))
+	   [;(Mutable:ref (assert-type ,elt ,[x]))
+	    (assert-type (Ref ,elt) (Mutable:ref ,[x]))
 	    (ASSERT simple-expr? x)
-	    (rc-make-begin (append (if (not-heap-allocated? elt) '() 
+	    (rc-make-begin (append (if (not-heap-allocated? elt) '()
 				       (list (make-rc 'incr-heap-refcount elt `(assert-type ,elt ,x))))
-				   `((Mutable:ref (assert-type ,elt ,x)))))]
+				   `((assert-type (Ref ,elt) (Mutable:ref ,x)))))]
 	   ;; Safety net:
-	   [(,form . ,rest) (guard (memq form '(let cons iterate )))
+	   [(,form . ,rest) (guard (memq form '(let cons iterate Mutable:ref)))
 	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
 	   ;; These jump us to effect context.
@@ -305,11 +306,13 @@
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
-		(let ([tmp (unique-name "settmp")])
-		  `(let ([,tmp ,ty ,v])
+		(let ([old (unique-name "settmp")])
+		  `(let ([,old ,ty ,v])
 		     ,(rc-make-begin (list `(set! ,v (assert-type ,ty ,e))
 					   (make-rc 'incr-heap-refcount ty v)
-					   (make-rc 'decr-heap-refcount ty tmp))))))]
+					   ;; [2008.07.22] This is causing me some problem:
+					   (make-rc 'decr-heap-refcount ty old)
+					   )))))]
 	   
 	  
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
@@ -326,7 +329,8 @@
 			    ,(rc-make-begin 
 			      (list `(Array:set ,newarr ,ind ,tmp2)
 				    (make-rc 'incr-heap-refcount elt tmp2)
-				    (make-rc 'decr-heap-refcount elt tmp1))))))))]
+				    (make-rc 'decr-heap-refcount elt tmp1)
+				    )))))))]
 
 	   ;; Control flow structures keep us in Effect context:
 	   [(begin ,[e*] ...) (rc-make-begin e*)]

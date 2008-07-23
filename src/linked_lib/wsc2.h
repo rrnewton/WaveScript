@@ -28,7 +28,7 @@
 
 #define LOAD_COMPLEX
 //#define WS_THREADED
-//#define ALLOC_STATS
+#define ALLOC_STATS
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>
@@ -197,7 +197,9 @@ void ws_alloc_stats() {
 typedef unsigned char typetag_t;
 
 // 80 (64+16) KB for now:
-#define ZCT_SIZE (1024*16)
+//#define ZCT_SIZE (1024*16)
+// Testing: 16mb
+#define ZCT_SIZE (1024 * 1048 * 4)
 
 //extern typetag_t* zct_tags;
 extern typetag_t zct_tags[];
@@ -210,6 +212,7 @@ void free_by_numbers(typetag_t, void*);
 static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
   if (ptr == NULL) return;
   //printf("Pushing %p, tag %d onto ZCT in pos %d.\n", ptr, tag, zct_count);
+  //printf(".");
   zct_tags[zct_count] = tag;
   zct_ptrs[zct_count] = ptr;
   zct_count++;
@@ -217,23 +220,23 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
 
 static inline void BLAST_ZCT() {
   int i;
+  int freed = 0;
   if (iterate_depth) {
     //printf("Not blasting, depth %d\n", iterate_depth);
     return;
   }
-  printf("BLASTING %d:", zct_count, iterate_depth);
-  fflush(stdout);
+  printf(" ** BLASTING:" ); fflush(stdout);
   for(i=zct_count-1; i>=0; i--) {
     if (0 == GET_RC(zct_ptrs[i])) {
-      printf(" (%d)", i);
+      //printf(" (%d)", i);
       free_by_numbers(zct_tags[i], zct_ptrs[i]);
+      freed++;
     } else {
-      printf(" %d", i);
+      //printf(" %d", i);
     }
-    fflush(stdout);
+    //fflush(stdout);
   }
-  printf("\n");
-  fflush(stdout);
+  printf(" killed %d/%d\n", freed, zct_count); fflush(stdout);
   zct_count = 0;
 }
 
