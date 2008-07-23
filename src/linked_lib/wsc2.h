@@ -58,6 +58,8 @@ extern int stopalltimers;
 //                 Matters of memory layout and GC                                //
 //################################################################################//
 
+typedef unsigned int refcount_t;
+
 #define PTRSIZE sizeof(void*)
 #define ARRLENSIZE sizeof(int)
 
@@ -92,7 +94,7 @@ char* commaprint(unsigned long long n);
   #define BASEMALLOC_ATOMIC malloc
   #define BASECALLOC_ATOMIC calloc
   #define BASEFREE   free
-  #define RCSIZE sizeof(int)
+  #define RCSIZE sizeof(refcount_t)
   #define ARRLENOFFSET -2
 #endif
 
@@ -134,10 +136,11 @@ inline void free_measured(void* object) {
 // Handle RCs on BOTH Cons Cells and Arrays:
 // A RC is the size of an int currently:
 // CLEAR_RC is only called when the ptr is non-nil.
-#define CLEAR_RC(ptr)                ((int*)ptr)[-1] = 0
-#define INCR_RC(ptr)        if (ptr) ((int*)ptr)[-1]++
-#define DECR_RC_PRED(ptr) (ptr ? (--(((int*)ptr)[-1]) == 0) : 0)
-#define GET_RC(ptr)       (ptr ? ((int*)ptr)[-1] : 0)
+#define GET_RC(ptr)           (ptr ? ((refcount_t*)ptr)[-1] : 0)
+#define SET_RC(ptr,val)              ((refcount_t*)ptr)[-1] = val
+#define CLEAR_RC(ptr)                SET_RC(ptr,0)
+#define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
+#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
@@ -146,7 +149,7 @@ inline void free_measured(void* object) {
 #define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
 #define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
 #define SETCAR(ptr,hd) ptr[0]=hd
-#define FREECONS(ptr)  WSFREE((char*)ptr - sizeof(void*) - sizeof(int))
+#define FREECONS(ptr)  WSFREE((char*)ptr - sizeof(void*) - RCSIZE)
 
 // This was from when RC's where the same size as a void* pointer:
 //#define CDR(ptr)       (((void**)ptr)[-2])
@@ -201,7 +204,7 @@ typedef unsigned char typetag_t;
 // Testing: 16mb
 #define ZCT_SIZE (1024 * 1048 * 4)
 
-//extern typetag_t* zct_tags;
+// These will need to be per-thread in the future:
 extern typetag_t zct_tags[];
 extern void*     zct_ptrs[];
 extern int       zct_count;
@@ -209,10 +212,27 @@ extern int       iterate_depth;
 
 void free_by_numbers(typetag_t, void*);
 
+// This needs to be the high-bit in a refcount_t
+#define PUSHED_MASK (1 << (sizeof(refcount_t) * 8 - 1))
+
+static inline void MARK_AS_PUSHED(void* ptr) {
+  //SET_RC(ptr, GET_RC(ptr) | PUSHED_MASK);
+  ((refcount_t*)ptr)[-1] |= PUSHED_MASK;
+}
+static inline void UNMARK_AS_PUSHED(void* ptr) {
+  //SET_RC(ptr, GET_RC(ptr) | PUSHED_MASK);
+  ((refcount_t*)ptr)[-1] &= ~PUSHED_MASK;
+}
+
+
 static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
+  //printf("pushing %p tag %d, rc %u, (mask %u)\n", ptr, tag, GET_RC(ptr), PUSHED_MASK);
   if (ptr == NULL) return;
-  //printf("Pushing %p, tag %d onto ZCT in pos %d.\n", ptr, tag, zct_count);
-  //printf(".");
+  if (GET_RC(ptr) & PUSHED_MASK) { 
+    //printf("ALREADY PUSHED %p, tag %d\n", ptr, tag);
+    return; // Already pushed.
+  }
+  MARK_AS_PUSHED(ptr);
   zct_tags[zct_count] = tag;
   zct_ptrs[zct_count] = ptr;
   zct_count++;
@@ -229,16 +249,20 @@ static inline void BLAST_ZCT() {
     //printf("Not blasting, depth %d\n", iterate_depth);
     return;
   }
-  printf(" ** BLASTING:" ); fflush(stdout);
+
+  if (zct_count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
+
   for(i=0; i<histo_len; i++) tag_histo[i]=0;
-  for(i=zct_count-1; i>=0; i--) {
-    if (0 == GET_RC(zct_ptrs[i])) {
-      //printf(" (%d)", i);
+  for(i=zct_count-1; i>=0; i--) {  
+    // Wipe off the mask bit before checking:
+    if (0 == (GET_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
+      printf(" %p", zct_ptrs[i]); fflush(stdout);
       free_by_numbers(zct_tags[i], zct_ptrs[i]);
       if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
       max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
       freed++;
     } else {
+      UNMARK_AS_PUSHED(zct_ptrs[i]);
       //printf(" %d", i);
     }
     //fflush(stdout);

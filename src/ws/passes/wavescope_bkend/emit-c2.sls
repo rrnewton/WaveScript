@@ -2103,9 +2103,8 @@ int main(int argc, char **argv)
      (define tag (number->string (get-zct-type-tag self ty)))
      (make-lines 
       (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
-	     ;"{}" 
-	     `("PUSH_ZCT(",tag", ",ptr");\n")
-	     ))]
+	     `("PUSH_ZCT(",tag", ",ptr");\n")))]
+    ; "MARK_AS_PUSHED(",ptr");"
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 
