@@ -2034,10 +2034,11 @@ int main(int argc, char **argv)
 
 ;;================================================================================
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
-(define-class <emitC2-zct> (<emitC2>) (zct-types))
+(define-class <emitC2-zct> (<emitC2>) (zct-types zct-init?))
 
 (__spec initialise <emitC2-zct> (self prog)
-  (slot-set! self 'zct-types #f))
+  (slot-set! self 'zct-types '())
+  (slot-set! self 'zct-init? #f))
 
 (__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
@@ -2045,12 +2046,16 @@ int main(int argc, char **argv)
 (define (get-zct-type-tag self ty)
   ;; This is hackish, but free-fun-table must be populated by the time
   ;; we get here.  The first time through we populate zct-types.
-  (unless (slot-ref self 'zct-types)
+  (unless (slot-ref self 'zct-init?)
+    (slot-set! self 'zct-init? #t)
     (slot-set! self 'zct-types
 	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
 		 (slot-ref self 'free-fun-table))))
-  (ASSERT (list-index (lambda (pr) (equal? (car pr) ty))
-		      (slot-ref self 'zct-types))))
+  (let ([ind (list-index (lambda (pr) (equal? (car pr) ty))
+			 (slot-ref self 'zct-types))])
+    (or ind
+	(error 'get-zct-type-tag 
+	       "could not lookup type ~s in: \n~s" ty (slot-ref self 'zct-types)))))
 
 ;; We use the index in the free-fun-table as the numeric tag for that type.
 (__specreplace AllocHook <emitC2-zct> (self ty smpl) 
@@ -2098,7 +2103,8 @@ int main(int argc, char **argv)
      (define tag (number->string (get-zct-type-tag self ty)))
      (make-lines 
       (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
-	     "{}" ;`("PUSH_ZCT(",tag", ",ptr");\n")
+	     ;"{}" 
+	     `("PUSH_ZCT(",tag", ",ptr");\n")
 	     ))]
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
