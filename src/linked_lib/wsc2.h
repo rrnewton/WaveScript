@@ -28,7 +28,10 @@
 
 #define LOAD_COMPLEX
 //#define WS_THREADED
-#define ALLOC_STATS
+//#define ALLOC_STATS
+//#define BLAST_PRINT
+
+
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>
@@ -140,8 +143,8 @@ inline void free_measured(void* object) {
 #define SET_RC(ptr,val)              ((refcount_t*)ptr)[-1] = val
 #define CLEAR_RC(ptr)                SET_RC(ptr,0)
 #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
-//#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
-#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
+#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+//#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
 
 // Handle Cons Cell memory layout:
 // Cell consists of [cdr] [RC] [car]
@@ -239,9 +242,6 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   zct_count++;
 }
 
-
-//#define BLAST_PRINT
-
 #ifdef BLAST_PRINT
 #define histo_len 20
 unsigned long tag_histo[histo_len];
@@ -275,6 +275,9 @@ static inline void BLAST_ZCT() {
       printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
       for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
       printf("]\n");fflush(stdout);
+      #ifdef ALLOC_STATS
+      ws_alloc_stats();
+      #endif
     #endif
   zct_count = 0;
 }

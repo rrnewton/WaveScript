@@ -129,17 +129,21 @@ replicated version of 6sec_marmot_sample.raw and running 30 tuples.
 
 Rev 3339
 
-Mlton O3:           1.65     1.60
+Mlton O3:             1.65     1.60
 
-wsc2 refcount O3:   1.76     1.68
-wsc2 refcount O2:   2.141    2.136
-wsc2 boehm    O3:   4.06     4.04
+wsc2 refcount O3:     1.76     1.68
+wsc2 refcount O2:     2.141    2.136
+wsc2 boehm    O3:     4.06     4.04
 
 Hmm, that's terrible.  Applying the fix where we use GC_MALLOC_ATOMIC, it improves somewhat: 
 
-wsc2 boehm    O3:   2.59     2.56
+wsc2 boehm    O3:     2.59     2.56
 
+By the way, the above isn't really apples-to-apples, if we force mlton to use copy-always
+sigsegs, it does quite a bit worse:
 
+Mlton O3 wsharing     1.84     1.78
+Mlton O3 copyalways   5.42     5.27  (but it only uses 3.7 mb memory as opposed to 5.6)
 
 
 

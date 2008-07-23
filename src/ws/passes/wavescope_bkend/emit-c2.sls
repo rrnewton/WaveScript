@@ -484,9 +484,9 @@
 
 
 (define (ifthreads block)
-  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
+  (append-lines (make-lines "#ifdef WS_THREADED\n") 
 		block
-		;(make-lines "#endif\n")
+		(make-lines "#endif\n")
 		))
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
@@ -2044,14 +2044,21 @@ int main(int argc, char **argv)
 (__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 
-(define (get-zct-type-tag self ty)
-  ;; This is hackish, but free-fun-table must be populated by the time
-  ;; we get here.  The first time through we populate zct-types.
+(define (ensure-zct-types-computed self)
   (unless (slot-ref self 'zct-init?)
     (slot-set! self 'zct-init? #t)
     (slot-set! self 'zct-types
 	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
-		 (slot-ref self 'free-fun-table))))
+		 (slot-ref self 'free-fun-table)))
+    (printf "ZCT COMPUTED\n")
+    ))
+
+(define (get-zct-type-tag self ty)
+  ;; This is hackish, but free-fun-table must be populated by the time
+  ;; we get here.  The first time through we populate zct-types.
+  ;(printf "GET ZCT TYPE TAG ~a\n" ty)
+  (ensure-zct-types-computed self)
+
   (let ([ind (list-index (lambda (pr) (equal? (car pr) ty))
 			 (slot-ref self 'zct-types))])
     (or ind
@@ -2089,7 +2096,8 @@ int main(int argc, char **argv)
     (lambda (next self heap-types)
       (fluid-let ([gen-decr-called-from-free #t])
        (let* ([table (next)])	
-	(append-lines table
+	 (ensure-zct-types-computed self)
+	 (append-lines table
 	 (make-lines 
 	  (block "void free_by_numbers(typetag_t tag, void* ptr)"
 		 (block "switch (tag)"
@@ -2098,7 +2106,7 @@ int main(int argc, char **argv)
 					    (lines-text (syngen "ptr"))
 					    " break;\n"))
 				    (slot-ref self 'zct-types))
-			      "default: wserror_fun(\"invalid tag for ZCT entry\");\n"
+			      "default: printf(\"tag %d, \", tag); wserror_fun(\"invalid tag for ZCT entry\");\n"
 			 ))))))
        ))))
 

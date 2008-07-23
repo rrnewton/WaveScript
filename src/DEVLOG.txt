@@ -1550,3 +1550,52 @@ package (version 6.8).
 If I try the refcount GC under the new wsc2 -threads configuration, it
 currently passes some demos but crashes on demo3f.
 
+[2008.07.23] {Working on leaks, testing marmot}
+
+Well, now I have implemented deferred reference counting.  
+But it is looking like both my refcounting versions are leaking.
+
+Testing on my nokia machine on a ~450mb replicated
+6sec_marmot_sample. (All O3)
+
+mlton:     23.9   23.4
+mlton:     71.5   69.3  (copy always sigsegs)
+
+boehm:     62.7   61.9
+
+refcount:  27.0   26.3 (leaky)
+deferred:  35.7   34.4 (leaky)
+
+refcount:  25.45  25.1 (rev 3342, not leaky)
+
+
+The mlton version cruises along using exactly 5.6 mb of memory.  Boehm
+is even better using 1.2-1.6 mb of memory (probably can speed it up by
+increasing heap size).
+
+Both normal and deferred reference counting seem to leak about the
+same rate and the same total amount.  Over this run the simple version
+leaves 55K unfreed objects (out of 85M allocated - 51 gigs).
+
+Ok, good, this was a recently introduced leak.  Going back to rev
+3342, that version does not leak and only uses half a meg of memory!!
+Somehow the new changes have introduced a leak into the old
+simple refcounting scheme!
+
+Ah, the problem was that the queue-reference counting was enabled in
+this revision (even without threads).  There must be a leak with the
+queue reference counting.
+
+After the fix the deferred version uses between 3.8 and 5.6 mb of
+memory.  Bouncing around somewhat in its memory usage.  Still not bad
+since it's executing an entire traversal of the graph between every
+GC.
+
+deferred:  25.1   24.08  (no longer leaky)
+
+With queue refcount ops turned off, Valgrind's leak-check=full mode
+doesn't report anything "definitely lost" for either the normal
+refcounting or the deferred.
+
+
+
