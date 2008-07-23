@@ -1980,7 +1980,13 @@
 	  [("-gc" ,name ,rest ...)
 	   (set! name (string->symbol name))
 	   (printf "Setting GC mode to ~s\n" name)
-	   (wsc2-gc-mode name)
+	   ;; Allow some shorthands:
+	   (case name
+	     [(no none)          (wsc2-gc-mode 'none)]
+	     [(rc ref refcount)  (wsc2-gc-mode 'refcount)]
+	     [(de def deferred)  (wsc2-gc-mode 'deferred)]
+	     [(bo boehm)         (wsc2-gc-mode 'boehm)]
+	     [else               (error "unsupported garbage collection mode: ~s" name)])	   
 	   (loop rest)]
 	  
 	  ;; This tells wstiny to split the program into node and server components:

@@ -130,6 +130,9 @@
     ;; HOOK: Here's a place to cancel out reference counts forms as we reassembly begins.
     (define rc-make-begin make-begin)
 
+    ;; This is fluid-let below to track the names of iterator state vars.
+    (define iter-state-vars #f)
+
     ;; Drive a computation down towards the TAIL of an expression.
     ;;
     ;; Adding a tricky value-needed? flag.  Basically, there are two
@@ -159,11 +162,7 @@
 	     (rc-make-begin (list (if value-needed? (injection oth) (injection)) oth))
 	     `(let-not-counted ([,tmp ,retty ,oth])
 	       ,(rc-make-begin (list (if value-needed? (injection tmp) (injection)) tmp))))]))
-    
-    ;; We need the types at each emit statement.
-    ;; This is a hack, but one which keeps the 
-    ;(define )
-   
+       
     (define Value 
       (core-generic-traverse
        (lambda (xp fallthru)
@@ -183,10 +182,11 @@
 	    ;; This is a linear transfer, so instead we just let the queue refcount serve as a proxy
 	    ;; for the local refcount.  Thus we decr the queue refcount when we would have decr'd the local.
 	    (define newfun 
-	      `(lambda (,x ,vq) (,xty ,vqty)
+	      (fluid-let ([iter-state-vars lhs*])
+		`(lambda (,x ,vq) (,xty ,vqty)
 		       ,(if (not-heap-allocated? xty) (Value bod)
 			    (Value (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
-						bod vqty #f)))))
+						bod vqty #f))))))
 	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
 	   
 	   [(let ([,lhs ,ty ,rhs]) ,bod)
@@ -239,16 +239,17 @@
 	   ;; Array:makeUNSAFE is not included because it has no initialization.
 	   ;;============================================================;;
 
-	   ;; FIXME: Same here as for set!
 	   ;; This should only apply to iterator state.
-	   [;(Mutable:ref (assert-type ,elt ,[x]))
-	    (assert-type (Ref ,elt) (Mutable:ref ,[x]))
+#;
+	   ;; Right now the state vars are given an initial bump by TopIncr
+	   [(assert-type (Ref ,elt) (Mutable:ref ,[x])) 
+	    (guard (not iter-state-vars)) ;; Otherwise we let the fallthru handle it.
 	    (ASSERT simple-expr? x)
 	    (rc-make-begin (append (if (not-heap-allocated? elt) '()
 				       (list (make-rc 'incr-heap-refcount elt `(assert-type ,elt ,x))))
 				   `((assert-type (Ref ,elt) (Mutable:ref ,x)))))]
 	   ;; Safety net:
-	   [(,form . ,rest) (guard (memq form '(let cons iterate Mutable:ref)))
+	   [(,form . ,rest) (guard (memq form '(let cons iterate ))) ;; Mutable:ref
 	    (error 'insert-refcounts "missed form: ~s" (cons form rest))]
 
 	   ;; These jump us to effect context.
@@ -293,27 +294,26 @@
 		      ;;,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
 		      ))])]
 
-	   ;; TEMPORARY: FIXME Treating mutable references as FIRST CLASS.
-
 	   ;; Mutable references are second class, not first class.
 	   ;; Therefore rather than treating them as heap-allocated
 	   ;; (one element arrays) we are free to treat them as stack-allocated.
-
+	   ;;
 	   ;; **BUT**, we need to handle the mutable refs that
-	   ;; represent iterator state differently.  It's a hack, but
+	   ;; represent iterator state differently (heap allocated).  It's a hack, but
 	   ;; we should keep track of those variable names... and recognize references to them.
-
 	   [(set! ,v (assert-type ,ty ,[Value -> e]))
 	    (if (not-heap-allocated? ty)
 		`(set! ,v (assert-type ,ty ,e))
 		(let ([old (unique-name "settmp")])
-		  `(let ([,old ,ty ,v])
-		     ,(rc-make-begin (list `(set! ,v (assert-type ,ty ,e))
-					   (make-rc 'incr-heap-refcount ty v)
-					   ;; [2008.07.22] This is causing me some problem:
-					   (make-rc 'decr-heap-refcount ty old)
-					   )))))]
-	   
+		  (let-values ([(incr decr) 
+				(begin (ASSERT iter-state-vars) ;; Should not be called 
+				       (if (memq v iter-state-vars) 
+					   (values 'incr-heap-refcount  'decr-heap-refcount)
+					   (values 'incr-local-refcount 'decr-local-refcount)))])
+		    `(let ([,old ,ty ,v])
+		       ,(rc-make-begin (list `(set! ,v (assert-type ,ty ,e))
+					     (make-rc incr ty v)
+					     (make-rc decr ty old)))))))]	   
 	  
 	   [(Array:set (assert-type (Array ,elt) ,[Value -> arr]) ,[Value -> ind] ,[Value -> val])
 	    (define tmp1 (unique-name "tmp"))
