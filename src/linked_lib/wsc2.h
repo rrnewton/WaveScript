@@ -218,25 +218,35 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   zct_count++;
 }
 
+#define histo_len 20
+unsigned long tag_histo[histo_len];
+
 static inline void BLAST_ZCT() {
   int i;
   int freed = 0;
+  int max_tag = 0;
   if (iterate_depth) {
     //printf("Not blasting, depth %d\n", iterate_depth);
     return;
   }
   printf(" ** BLASTING:" ); fflush(stdout);
+  for(i=0; i<histo_len; i++) tag_histo[i]=0;
   for(i=zct_count-1; i>=0; i--) {
     if (0 == GET_RC(zct_ptrs[i])) {
       //printf(" (%d)", i);
       free_by_numbers(zct_tags[i], zct_ptrs[i]);
+      if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
+      max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
       freed++;
     } else {
       //printf(" %d", i);
     }
     //fflush(stdout);
-  }
-  printf(" killed %d/%d\n", freed, zct_count); fflush(stdout);
+  }  
+  printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
+  for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
+  //for(i=0; i<histo_len; i++) printf("%d ", tag_histo[i]);
+  printf("]\n");fflush(stdout);
   zct_count = 0;
 }
 

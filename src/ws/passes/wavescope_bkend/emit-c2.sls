@@ -354,6 +354,8 @@
 		  (add-to-freefuns! ty default-specialized_fun))])))
     heap-types)
 
+  ;; free-fun-table is fully populated as of here.
+  ;; Note, this is before we first call gen-decr-code.
   (let ([final-defs
 	 (apply append-lines 
 		(map (lambda (entry) 
@@ -2034,14 +2036,26 @@ int main(int argc, char **argv)
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
 (define-class <emitC2-zct> (<emitC2>) (zct-types))
 
+(__spec initialise <emitC2-zct> (self prog)
+  (slot-set! self 'zct-types #f))
+
 (__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
+
+(define (get-zct-type-tag self ty)
+  ;; This is hackish, but free-fun-table must be populated by the time
+  ;; we get here.  The first time through we populate zct-types.
+  (unless (slot-ref self 'zct-types)
+    (slot-set! self 'zct-types
+	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
+		 (slot-ref self 'free-fun-table))))
+  (ASSERT (list-index (lambda (pr) (equal? (car pr) ty))
+		      (slot-ref self 'zct-types))))
 
 ;; We use the index in the free-fun-table as the numeric tag for that type.
 (__specreplace AllocHook <emitC2-zct> (self ty smpl) 
   ;;(make-lines (format "/* Alloc spot ~a ~a */\n" ty (text->string simple-xp)))   
-  (define tag (number->string (ASSERT (list-index (lambda (x) (equal? ty (car x)))
-						  (slot-ref self 'zct-types)))))
+  (define tag (number->string (get-zct-type-tag self ty)))
   (make-lines `("PUSH_ZCT(",tag", ",smpl");\n")))
 
 ;; Clear the ZCT at the end of an operator execution.
@@ -2061,15 +2075,12 @@ int main(int argc, char **argv)
     (list "iterate_depth++;\n"
 	  (next)))))
 
-
+  
 ;; This must also build a dispatcher for freeing based on numeric type tag.
 (define __build-free-fun-table!
   (specialise! build-free-fun-table! <emitC2-zct> 
     (lambda (next self heap-types)
-      (let ([table (next)])
-	(slot-set! self 'zct-types
-		   (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
-		     (slot-ref self 'free-fun-table)))
+      (let* ([table (next)])	
 	(append-lines table
 	 (make-lines 
 	  (block "void free_by_numbers(typetag_t tag, void* ptr)"
@@ -2078,14 +2089,17 @@ int main(int argc, char **argv)
 			       (list (format "case ~a: " i)
 				     (lines-text (syngen "ptr"))
 				     " break;\n"))
-			      (slot-ref self 'zct-types)
-			  )))))))))
+			      (slot-ref self 'zct-types))))))))))
 
 ;; DUPLICATED CODE:
 (__spec gen-decr-code <emitC2> (self ty ptr msg)
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("DECR_RC_PRED(",ptr"); /* ",msg", type: ",(format "~a" ty)" */ \n"))]
+     (define tag (number->string (get-zct-type-tag self ty)))
+     (make-lines 
+      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
+	     "{}" ;`("PUSH_ZCT(",tag", ",ptr");\n")
+	     ))]
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 

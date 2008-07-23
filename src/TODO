@@ -21,6 +21,10 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.07.22] 
+  *) Consolidate array-freeing cases in emit-c2.  All arrays of
+     scalars can be handled uniformly.
+
 [2008.07.01] {Expand backend intermediate language}
   *) Eventually I would like to expand the IL just towards the end of
    the compiler to handle things like multiple input paths and output
