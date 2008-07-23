@@ -256,7 +256,7 @@ static inline void BLAST_ZCT() {
   for(i=zct_count-1; i>=0; i--) {  
     // Wipe off the mask bit before checking:
     if (0 == (GET_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
-      printf(" %p", zct_ptrs[i]); fflush(stdout);
+      //printf(" %p", zct_ptrs[i]); fflush(stdout);
       free_by_numbers(zct_tags[i], zct_ptrs[i]);
       if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
       max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
