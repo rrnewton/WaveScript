@@ -1193,7 +1193,7 @@
 ;      (define nulltimebase (gensym "nulltimebase"))
   ;(define nullseg 'nullseg)
   (define Array:null '#())
-  (define nulltimebase (make-timebase 12345654321))
+  (define nulltimebase (make-timebase 123456))
   (define nullseg (make-sigseg 0 -1 '#() nulltimebase))
   ;(define nullseg special-nullseg-object)
   ;(define (nullseg? x) (eq? x nullseg))

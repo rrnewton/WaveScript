@@ -248,10 +248,10 @@
     [(Ref ,[ty]) ty] ;; Doesn't affect the name currently...
     [(Array ,[ty]) (string-append "Array_" ty)]
     [(List  ,[ty]) (string-append "List_"  ty)]
-
-    [(Pointer ,name) (string-append "Pointer_" )]
-
     [#() "Unit"]
+    
+    [(Pointer ,name) (string-append "Pointer_" )]    
+    [Timebase "Timebase"]
     ))
 
 (__spec ForeignSourceHook <emitC2> (self name callcode)
@@ -349,7 +349,9 @@
 	     [(Array ,elt)
 	      (if (not (heap-type? self elt))
 		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("FREEARR(",ptr");\n"))))
-		  (add-to-freefuns! ty default-specialized_fun))])))
+		  (add-to-freefuns! ty default-specialized_fun))]
+	     ;[Timebase #f]
+	     )))
     heap-types)
 
   ;; free-fun-table is fully populated as of here.
@@ -482,9 +484,9 @@
 
 
 (define (ifthreads block)
-  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
+  (append-lines (make-lines "#ifdef WS_THREADED\n") 
 		block
-		;(make-lines "#endif\n")
+		(make-lines "#endif\n")
 		))
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
@@ -596,7 +598,7 @@
 
     ;; This is an unused value.
     [(VQueue ,_) "char"]
-
+    [Timebase    "ws_timebase_t"]
     ))
 
 
@@ -629,6 +631,7 @@
     [Float  "%g"]
     [Double "%.15g"]
     [#() "()"]
+    [Timebase "<timebase>"]
     [(Pointer ,_) "%p"]
     [(,args ... -> ,ret) ;"%p"
      (error 'type->printf-flag 
@@ -642,6 +645,7 @@
 ;;   .returns A string.  Could return an "expression".
 (__spec Simple <emitC2> (self expr)
   (match expr
+    [nulltimebase (Const self 'nulltimebase id)]
     [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var self v)]
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
@@ -657,7 +661,6 @@
     [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var self var)]
     ;[(assert-type ,t '())  (wrap (PolyConst '() t))]
     ;['() (error 'Simple "null list without type annotation")]
-    ;[nulltimebase (Const #f #f 'nulltimebase)]    
        
     [(assert-type ,_ ,[x]) x]
     [,else (error 'Simple "<emitC2> not simple expression: ~s" else)]
@@ -936,11 +939,13 @@
 	    (format "memcpy(~a, ~s, ~s);\n" (text->string _tmp)
 		    str copylen))
 	   (kont _tmp)))]
-       
+
        ;; This means we're at a end of a control path we will never reach.
        ;; HACK: There's surely a nicer way to do this....
        ;; [2008.04.05] But currently I just throw out the continuation.
        ['BOTTOM (make-lines "/* BOTTOM CTRL PATH */\n")]
+       [',tb (guard (timebase? tb)) 	     
+	     (kont (format "TIMEBASE(~a)" (timebase-num tb)))]
 
        [,simp (guard (simple-expr? simp)) (kont (Simple self simp))]
        
@@ -1123,6 +1128,8 @@
 	    [(moduloI)                          "moduloI"]
 	    [(sqrtC)                              "csqrt"]
 
+	    [(Secret:newTimebase)              "TIMEBASE"]
+
 	    #;
 	    [(List:length List:ref List:append List:reverse) ;; List:make 
 	     (list->string (remq-all #\: (string->list (sym2str var))))]
@@ -1229,7 +1236,7 @@
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? ,[(TyAndSimple self) -> ty left] ,[Simp -> right])
-	(ASSERT scalar-type? ty)		
+	(ASSERT (or (scalar-type? ty) (eq? ty 'Timebase)))
 	(kont `("(",left" == ",right")"))]
 
        [(__show_ARRAY ,[(TyAndSimple self) -> ty obj])

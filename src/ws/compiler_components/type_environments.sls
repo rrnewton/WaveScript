@@ -209,15 +209,17 @@
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
 	  [(Array ,t) (and (vector? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) c))]
 	  [#()   (eq? c 'UNIT)]
-
-	  [(Sigseg ,t) (and (sigseg? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) (sigseg-vec c)))]
+	
 	  [#(,t* ...)
 	   (and (tuple? c) (andmap (lambda (x t) (constant-typeable-as? x t))
 				   (tuple-fields c) t*))]
-	  
-	  ;; Type variable, matches anything:
-	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]
 
+	  ;; Type variable, matches anything:
+	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]	  
+
+	  [(Sigseg ,t) (and (sigseg? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) (sigseg-vec c)))]
+	  [Timebase    (timebase? c)]
+	   	 
 	  ;[else #f]
 	  ))
     ))

@@ -195,6 +195,7 @@
 	   [(Sigseg ,elt-t)
 	    (ASSERT (fx= 0 (vector-length (sigseg-vec x))))
 	    (values 'nullseg type #f)]
+	   [Timebase (values `',x 'Timebase #f)]
 	   
 	   ;[Int (inspect x) (values `',x type #f)]
 

@@ -54,7 +54,7 @@
        [(Ref ,_)   #t] ;; ?? 
 
        [(Sigseg ,_) #t] ;; This shoudn't get to here with wsc2.
-       [Timebase    #t] ;; This is conservative, we can't really say how timebase is implemented.
+       [Timebase    #f] ;; For now timebases aren't implemented.  When they are they'll probably be scalar.
        
        [(Stream ,_) #t] ;; Meaningless answer.  No runtime representation...
        [(VQueue ,_) #t] ;; Meaningless answer.  No runtime representation...
@@ -75,7 +75,7 @@
   (case-lambda 
     [(fn ty)              (traverse-nested-types fn ty '())]
     [(fn ty struct-defs)  (traverse-nested-types fn ty '() '())]
-    [(fn ty struct-defs union-types)
+    [(fn  ty struct-defs union-types)
      (let loop ([ty ty])
        (fn ty)
        (match ty
@@ -95,7 +95,8 @@
 	 [(ExclusivePointer ,name)      (void)]
 	 [(Pointer ,name)               (void)]
 	 [String                        (void)]
-	 [Symbol                        (void)]	 
+	 [Symbol                        (void)]
+	 [Timebase                      (void)]
 	 ))]))
 
 ;; Helper pass.

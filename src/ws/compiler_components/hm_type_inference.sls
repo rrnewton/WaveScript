@@ -494,6 +494,7 @@
     (if (zero? (vector-length (sigseg-vec c)))
 	`(Sigseg ,(make-tcell))
 	`(Sigseg (type-const (vector-ref (sigseg-vec c)))))]
+   [(timebase? c) 'Timebase]
    
    [else (error 'type-const "could not type: ~a" c)]))
 

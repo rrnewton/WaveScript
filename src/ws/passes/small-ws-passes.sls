@@ -806,7 +806,7 @@
 	[,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
 	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)] ; Type constructor
 	[,other (error 'embed-strings-as-arrays "malformed type: ~a" ty)]))
-    (define (Const cn)
+    (define (Const cn) ;; Convert string constants.
       (cond
        [(number? cn) cn]
        [(boolean? cn) cn]
@@ -818,7 +818,9 @@
        [(list? cn)   (map Const cn)]
        [(vector? cn) (vector-map Const cn)]
        [(tuple? cn)  (make-tuple (map Const (tuple-fields cn)))]
-       [(symbol? cn) cn] ;; Just here for compiler-internal things.
+       [(symbol? cn)   cn] ;; Just here for compiler-internal purposes.
+       [(timebase? cn) cn]
+       [(sigseg? cn)   cn]
        [else (error 'embed-strings-as-arrays:Const "unmatched ~s" cn)]))
     (define (quoted-constant? x)
       (match x [(quote ,_) #t] [,else #f]))

@@ -8,7 +8,8 @@
  * have the same physical representation.
  */ 
 
-type Timebase = Int;
+//type Timebase = Int;
+type TB = ();
 type SampleNum = Int64;
 
 // Sigseg consists of : data segments, start, size, offset, timebase
@@ -17,8 +18,8 @@ type Sigseg t = (List (Array t) * SampleNum * Int * Int * Timebase);
 namespace Sigseg {
   using Array; using Mutable;
 
-  nulltimebase :: Timebase;
-  nulltimebase = 0;
+  //nulltimebase :: Timebase;
+  //nulltimebase = 0;
 
   nullseg  :: Sigseg t;
   nullseg = ([], 0, 0, 0, nulltimebase)
@@ -33,6 +34,7 @@ namespace Sigseg {
   end      :: Sigseg t -> Int64;
 
   fun timebase ((l,st,sz,off,tb))  tb;
+  //fun timebase ((l,st,sz,off,tb))  nulltimebase;
   fun width    ((l,st,sz,off,tb))  sz;
   fun start    ((l,st,sz,off,tb))  st;
   fun end      ((l,st,sz,off,tb))  st + intToInt64(sz - 1);
@@ -133,7 +135,8 @@ namespace Sigseg {
   }
 
   toSigseg :: (Array t, Int64, Timebase) -> Sigseg t;
-  fun toSigseg(arr, st, tb) ([arr], st, arr.length, 0, tb)
+  //fun toSigseg(arr, st, tb) ([arr], st, arr.length, 0, tb)
+  fun toSigseg(arr, st, tb) ([arr], st, arr.length, 0, nulltimebase)
 
   // Does not cache results yet...
   toArray  :: Sigseg t -> Array t;

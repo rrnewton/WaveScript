@@ -48,6 +48,7 @@
 typedef char ws_char_t;
 typedef char ws_bool_t;
 typedef char ws_unit_t;
+typedef char ws_timebase_t;
 
 typedef unsigned char      uint8_t;
 typedef unsigned short int uint16_t;
@@ -460,6 +461,8 @@ void wserror_fun(char* msg) {
 //                                    Misc                                        //
 //################################################################################//
 
+#define WSNULLTIMEBASE ((char)0)
+#define TIMEBASE(n)    ((char)n)
 
 /*
 // TODO:

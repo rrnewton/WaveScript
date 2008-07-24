@@ -20,6 +20,7 @@ eval set -- "$RELEVANT"
 
 ## TEMP: UNCONDITIONAL PTHREADS
 #export WS_LINK="$WS_LINK -lpthread "
+export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
 
 NOGCC=
 while [ $# != 0 ];  do 

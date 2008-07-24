@@ -146,6 +146,30 @@ Mlton O3 wsharing     1.84     1.78
 Mlton O3 copyalways   5.42     5.27  (but it only uses 3.7 mb memory as opposed to 5.6)
 
 
+[2008.07.24] {Now with new sigseg implementation}
+
+Using list-of-segments sigsegs under wsc2:
+
+wsc2 refcount O3:     1.43     1.38
+wsc2 deferred O3:     1.06     1.02
+
+It looks like this is disk bound now.  It's not using full CPU.
+
+For 600 tuples:
+wsc2 refcount O3:     21.9     17.9
+wsc2 deferred O3:     18.0     14.7
+
+Well then again, doing wc on this 450 mb file takes only 6sec.
+The problem also might be that the process jumped back and forth between cores.
+
+Uh oh... it looks like I'm back to leaking... the deferred version goes up to 800 mb heap usage before finishing.
+Oh, that's just because I had turned the queue reference counting back on.  Turning it off now.
+
+Now the deferred version only uses 1mb of memory.  The normal refcount version uses only half a meg.
+
+wsc2 refcount O3:     18.0     17.8
+wsc2 deferred O3:     12.8     12.2
+
 
  */
 

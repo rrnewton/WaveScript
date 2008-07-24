@@ -1597,5 +1597,8 @@ With queue refcount ops turned off, Valgrind's leak-check=full mode
 doesn't report anything "definitely lost" for either the normal
 refcounting or the deferred.
 
-[2008.07.24]
+[2008.07.24] {In good shape with deferred RC, now to RC + threads}
+
+It looks like rev 3341 failed just because of the activation of the
+queue refcounts, but we need to test this now.
 
