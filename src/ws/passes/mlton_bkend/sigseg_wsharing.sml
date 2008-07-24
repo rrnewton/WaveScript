@@ -114,6 +114,14 @@ fun reallocFirstChunk {dat, st, sz, off, tb} =
     else slice (hd dat) off (length (hd dat) - off) :: tl dat
   end
 
+(* 
+
+[2008.07.24]
+FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+
+This joinseg implementation doesn't deal properly with garbage at the end of the first sigseg.
+
+*)
 (* Here's where we may need to reallocate the first segment of B if it's offset is not zero *)
 fun joinsegs (a, b) =  
   let

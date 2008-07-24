@@ -2,6 +2,16 @@
 // Several demos up till now have read in a stream of Sigsegs.
 // But this demo stresses the various sigseg operators.
 
+/*
+
+[2008.07.24] Using this to test my new wsc2 sigseg implementation
+(replacing the copy always version).
+
+
+
+ */
+
+
 
 include "common.ws";
 
@@ -18,7 +28,7 @@ main = iterate _ in s1 {
 
    using Sigseg;
 
-   w = toSigseg(Array:make(100, intToInt16(90)), pos, nulltimebase);
+   w = toSigseg(Array:build(100, fun(i) intToInt16(i+1000)), pos, nulltimebase);
 
    //========================================
    // Test nullsegs
@@ -44,15 +54,15 @@ main = iterate _ in s1 {
    //========================================
    // Split into two pieces
 
-   fst = subseg(w, w`start, 50`gint);
-   snd = subseg(w,w`start + 50`gint,50`gint);
+   fst = subseg(w, w`start,      50);
+   snd = subseg(w, w`start + 50, 50);
 
    assert_eq_prnt("fst width",  fst`width, 50);
    assert_eq_prnt("snd width",  snd`width, 50);
 
    assert_prnt("fst snd inequal", not(fst==snd));
-   assert_prnt("fst w inequal", not(fst==w));
-   assert_prnt("snd w inequal", not(snd==w));
+   assert_prnt("fst w inequal",   not(fst==w));
+   assert_prnt("snd w inequal",   not(snd==w));
 
    assert_eq_prnt("fst start",  fst`start, w`start);
    assert_eq_prnt("snd start",  snd`start, w`start + 50`gint);
@@ -66,9 +76,11 @@ main = iterate _ in s1 {
    assert_eq_prnt("joined end",    joined`end, w`end);
 
    for i = 0 to 99 {
-     assert_eq_prnt("joined same "++i, joined[[i]], w[[i]])
+     assert_eq_prnt("   joined same "++i++" ="++joined[[i]], joined[[i]], w[[i]])
    };
-   assert_eq_prnt("joined same total", w, joined);   
+   println("Orig: ");   println(w);
+   println("Joined: "); println(joined);
+   assert_eq_prnt("joined result equal to orig using sigseg comparison", w, joined);
 
    //========================================
    // Take a chunk in the middle 
@@ -84,7 +96,7 @@ main = iterate _ in s1 {
    back = toSigseg(arr, w`start, w`timebase);
 
    for i = 0 to 99 {
-     assert_eq_prnt("toarray",  w[[i]], arr[i]);
+     assert_eq_prnt("  toarray",  w[[i]], arr[i]);
    }
    
    assert_eq_prnt("roundtrip",  back, w);
@@ -104,9 +116,9 @@ main = iterate _ in s1 {
    chunks[9] := subseg(w, w`start + 90`gint, 10`gint);
    //   inspect$ chunks;
    for i = 0 to 8 {
-     assert_eq_prnt("chunks width", chunks[i]`width, 11);
+     assert_eq_prnt("  chunks width", chunks[i]`width, 11);
      //println("chunks[i].start "++chunks[i]`start++" w.start "++w`start++ " GTE "++chunks[i]`start >= w`start);
-     assert_prnt("chunks start", chunks[i]`start >= w`start);     
+     assert_prnt("   chunks start", chunks[i]`start >= w`start);     
      ch = chunks[i];
      ch2 = chunks[i+1];
      assert_eq_prnt("chunks overlap", ch[[10]], ch2[[0]]);

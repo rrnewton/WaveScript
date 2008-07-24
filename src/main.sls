@@ -1095,11 +1095,12 @@
 		   (lambda (prog class)
 
 		     ;;(ws-run-pass heuristic-parallel-schedule)
-
+		     
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
-
+		     
 		     (unless (embedded-mode? (compiler-invocation-mode))
-		       (ws-run-pass prog insert-refcounts))
+		       (ws-run-pass prog insert-refcounts)
+		       (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog))))
 
 		     (ws-run-pass prog flag-static-allocate)
 		     ;;(assure-type-annotated prog (lambda (x) (and (pair? x) (eq? 'cons (car x)))))

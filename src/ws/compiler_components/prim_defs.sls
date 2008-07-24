@@ -55,6 +55,7 @@
 	   regiment-keyword?
  	   token-machine-keyword?
  	   get-primitive-entry
+	   get-primitive-type
 	   get-primitive-return-type
  	   map-prim-w-types
  	   regiment-primitive?
@@ -236,6 +237,7 @@
 ;; table.
 (define library-primitives
   '(
+    ;; Takes (dst, dstpos, src, srcpos, len), like memcpy
     [Array:blit   ((Array 't) Int (Array 't) Int Int) (Array 't)]
     [List:make    (Int 't) (List 't)]
     [List:length ((List 'a)) Int]
@@ -1297,6 +1299,11 @@
      (assq prim token-machine-primitives)
      (error 'get-primitive-entry
 	    "no entry for this primitive: ~a" prim))))
+
+(define (get-primitive-type prim) 
+  (match (regiment-primitive? prim)
+    [(,args ,ret) `(,@args -> ,ret)]
+    [(,ret) ret]))
 
 ;; Gotta remember to update this if I change the format of prim entries..
 (define (get-primitive-return-type prim)

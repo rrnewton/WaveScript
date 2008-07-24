@@ -53,11 +53,11 @@ HashTable:rem_pure = HashTable:rem;
 HashTable:set      = HashTable:set_BANG;
 HashTable:rem      = HashTable:rem_BANG;
 
-// Should maybe call "blockcopy", but that's less fun.
-// Like memcpy... might want to make
-// TODO: add some defense!!  
-// [2007.12.10] TODO: unroll this loop manually!
 namespace Array {
+  // Should maybe call "blockcopy", but that's less fun.
+  // Like memcpy... might want to make this primitive so it can call memcpy.
+  // TODO: add some defense!!  
+  // [2007.12.10] TODO: unroll this loop manually!?
   fun blit(dst, dstpos, src, srcpos, len) {
     for i = 0 to len - 1 {
       dst[i+dstpos] := src[srcpos+i];      

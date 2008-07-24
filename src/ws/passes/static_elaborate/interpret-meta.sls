@@ -106,8 +106,10 @@
   (cond 
    [(wrapped? x) x]
    [(procedure? x) (x reflect-msg)]
-   [else  (make-plain x #f)]
-   ))
+   [else  
+    (ASSERT (not (tuple? x))) ;; Can't allow these to not have a type!
+    (printf "Maybe wrap ~s\n" x)
+    (make-plain x #f)]))
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
@@ -124,11 +126,12 @@
 ;; This tags a value with a type.
 ;; This is necessary for not losing type information for constants.
 (define (set-value-type! val type)
-    ;;
-    (define (fold-in ty1 ty2) 
-      (if ty2
+    ;; Overwrite #f, or merge with existing type:
+    (define (fold-in ty1 ty2)  
+      (if ty2 
 	  (types-compat? ty1 ty2)
 	  ty1))
+    (ASSERT type) ;; No point in setting to #f
     (cond
      [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
      ;; Must recursively handle the insides of the ref also:
@@ -234,16 +237,12 @@
 	     (unwrap-plain
 	      (Eval (closure-code c) 
 		    (extend-env (closure-formals c) 
-				;;args 
-				;;(map (lambda (x) (if (wrapped? x) x (make-plain x))) args)
 				(map (lambda (arg argty)
 				       ;; Let's say you map(streamtransformer, list)...
 				       ;; That requires passing closures that handle streams.
 				       #;
 				       (when (streamop? x)
 					 (error 'reify-closure "shouldn't try to reify this stream-operator: ~s" c))
-					;(ASSERT (compose not wrapped?) x)
-					;(make-plain x)
 				       (let ([wrapped (maybe-wrap arg)])
 					 (set-value-type! wrapped argty)
 					 wrapped))
@@ -305,11 +304,14 @@
   (match x
     [,v (guard (symbol? v)) 
         (if (regiment-primitive? v)
-            (make-plain (hashtab-get dictionary v) #f)
+            (make-plain (hashtab-get dictionary v) (get-primitive-type v))
             (apply-env env v))]
-    [',c (make-plain c #f)]
+    [',c (ASSERT (not (tuple? c)))
+	 (printf "quoted plain ~s\n" c)
+	 (make-plain c #f)]
     
     [(tuple ,[x*] ...) 
+     (printf "MAKING TUPLE: ~s\n  ~s\n" x* (list->vector (map (lambda (x) (or (get-value-type x) (unknown-type))) x*)))
      (make-plain (make-tuple (map unwrap-plain x*))
 		 (list->vector (map (lambda (x) (or (get-value-type x) (unknown-type))) x*)))]
     [(tupref ,ind ,len ,[tup])
@@ -354,6 +356,7 @@
     ;; FIXME: THIS SHOULD MAKE THE CASES ABOVE REDUNDANT:
     ;; [2008.04.05] This needs to replicate the hack for assert-type/cast_num:
     [(assert-type ,ty ,[val])      
+     (printf "Casting it ~s\n" val)
      (if (and (plain? val) (memq ty num-types))
 	 (make-plain (__cast_num #f ty (plain-val val)) ty)
 	 (begin (set-value-type! val ty) val))]
@@ -471,7 +474,7 @@
     ;; TEMP HACK
     [(floatToInt ,[x])
      (ASSERT (plain? x))
-     (make-plain (exact (floor (plain-val x))) #f)]
+     (make-plain (exact (floor (plain-val x))) 'Int)]
 
     ;; HACK: need to finish treating hash tables:
     [(HashTable:make ,[len]) 
@@ -514,6 +517,7 @@
 	  ;(ASSERT (not (eq? raw (void))))
 	  ;(ASSERT (not (procedure? raw)))
 	  (let ([final (maybe-wrap raw)])
+	    (printf "  Got back raw result! ~s,  retty  ~s\n" raw retty)
 	    (set-value-type! final retty) ;; Necessary?
 	    final))])]
     ;; [2007.09.14] Supporting sums:
@@ -552,8 +556,8 @@
      (ASSERT (plain? en))
      (let ([end (plain-val en)])       
        (do ([i (plain-val st) (fx+ i 1)])
-	   ((> i end) (make-plain '#() #f))
-	 (Eval bod (extend-env (list indvar) (list (make-plain i #f)) env) pretty-name)))]
+	   ((> i end) (make-plain '#() '#()))
+	 (Eval bod (extend-env (list indvar) (list (make-plain i 'Int)) env) pretty-name)))]
     [(while ,tst ,bod)     
      (let loop ()
        (let ([test (Eval tst env pretty-name)])
@@ -561,7 +565,7 @@
 	 (when (plain-val test)
 	   (Eval bod env pretty-name)
 	   (loop))))
-     (make-plain '#() #f)]
+     (make-plain '#() '#())]
     [(begin ,x* ... ,last) 
      ;; Side effects are modeled by... actual side effects!
      (begin (for-each (lambda (x) (Eval x env pretty-name)) x*)
@@ -583,21 +587,6 @@
     [(src-pos ,p ,e) (fluid-let ([current-src-pos p]) (Eval e env pretty-name))]
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
   ))
-
-
-#;
-;; This adds code around a closure that wraps/unwraps the arguments
-;; and result values, thus allowing the closure to be passed to
-;; wavescript-language to operate on unwrapped values.
-(define (wrap/unwrap-closure clos)
-  (lambda args
-    ;; Anything that gets passed to one of these wavescript
-    ;; primitives should return only plain data.
-    (plain-val (apply clos (map (lambda (x) (if (wrapped? x) x (make-plain x #f))) args)))
-    ))
-
-
-
 
 
 
@@ -739,11 +728,13 @@
 ;     [(int64? val)  (int64-num val)]
 ;     [(double? val) (double-num val)]
 
-     [(tuple? val) 
+     [(tuple? val)
+      (printf "TUPLE ~s\n" p)
       `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (loop x ty)))
-		   (ASSERT (tuple-fields val) )
-		   (match ty [#(,t* ...) t*])
-		   ;(vector->list (ASSERT ty))
+		   (ASSERT (tuple-fields val))
+		   ;; FIXME FIXME FIXME HMM: NOT SURE HOW THIS GETS TO #F:
+		   ;(match ty [#(,t* ...) t*])
+		   (vector->list (ASSERT ty))
 		   ))]
 
      [(uniontype? val)
@@ -1004,7 +995,7 @@
 	      [(,lett ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (eq-any? lett 'let 'letrec))
 	       (and bod (andmap side-effect-free? rhs*))]
 	      [(begin . ,e*) (andmap side-effect-free? e*)]
-	      
+	      [(if ,a ,b ,c) (and (side-effect-free? b) (side-effect-free? c) (side-effect-free? a))]
 	      [(quote ,datum) #t]
 	      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
 	       (if (assq prim wavescript-effectful-primitives)
@@ -1112,6 +1103,7 @@
 		 ]))
 	    (define (main-work) 
 	      (parameterize ([marshal-cache (make-default-hash-table 1000)])
+		(print-graph #t)
 		(let* (
 		       [evaled    (maybtime (Eval x '() #f))]
 		       [marshaled (maybtime (Marshal evaled))]

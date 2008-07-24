@@ -296,27 +296,34 @@
       [(namespace ,Space . ,rest)
        (let-values ([(defs new-includes) (process* rest all-includes current-file)])
 	 (values
-	  (map (lambda (def)
-		 (define (mangle v) (string->symbol (format "~a:~a" Space v)))
-		 
-		 ;; We also inject a bunch of 'using' constructs so that
-		 ;; we can use the namespace's bindings from *within* the namespace:
-		 (define (wrap-rhs e) `(using ,Space ,e))
-		 ;; SCRATCH THAT!
-		 ;; Because of certain limitations in the current implementation
-		 ;; of letrec (value restriction), for the moment definitions
-		 ;; within the namespace still have to use the FULL NAMES of
-		 ;; their peers.
-		 ;(define (wrap-rhs e) e)
-		 ;; FIXME: This doesn't handle "using" within a namespace.
-		 (match def
-		   [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
-		   [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
-		   [(:: ,v ,t)             `(:: ,(mangle v) ,t)]
-		   [(<- ,sink ,e)          `(<- ,sink ,(wrap-rhs e))]))
-	    defs)
-	  new-includes)
-	 )]
+	  (let loop ([defs defs] [imports '()] [acc '()])
+	    (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+	    
+	    ;; We also inject a bunch of 'using' constructs so that
+	    ;; we can use the namespace's bindings from *within* the namespace:
+	    (define (wrap-rhs e) 
+	      `(using ,Space ,(match (reverse imports) [() e] [(,M . ,[rest]) `(using ,M ,rest)])))
+
+	       ;; SCRATCH THAT!
+   	       ;; Because of certain limitations in the current implementation
+	       ;; of letrec (value restriction), for the moment definitions
+	       ;; within the namespace still have to use the FULL NAMES of
+	       ;; their peers.
+	       ;;(define (wrap-rhs e) e)
+
+	    ;; FIXME: This doesn't handle "using" within a namespace.
+	    (if (null? defs) (reverse acc)
+		(match (car defs)
+		  [(using ,M)              (loop (cdr defs) (cons M imports) acc)]
+		  [,oth 
+		   (loop (cdr defs) imports
+			 (cons (match oth
+				 [(define ,v ,e)         `(define ,(mangle v) ,(wrap-rhs e))]
+				 [(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat ,(wrap-rhs e))]
+				 [(:: ,v ,t)             `(:: ,(mangle v) ,t)]		   
+				 [(<- ,sink ,e)          `(<- ,sink ,(wrap-rhs e))])
+			       acc))])))
+	  new-includes))]
 
       [(uniondef ,ty ,def) (values `((uniondef ,ty ,def)) all-includes)]
 

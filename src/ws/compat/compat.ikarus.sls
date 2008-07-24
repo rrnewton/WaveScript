@@ -35,6 +35,7 @@
 		  (ik:delay delay) (ik:force force)
 		  (ik:trace-define trace-define)
 		  (ik:trace-lambda trace-lambda)
+
 		  )
 	  ;current-directory
 	  )
@@ -71,11 +72,13 @@
       ))
 
   (ik:include "ws/compat/common.ss")
-
   (ik:include "ws/compat/inspector.ss")
   (ik:include "ws/compat/top-level-values.ss")
-
   (ik:include "ws/compat/multiple-values.ss")
+
+  (define (inspect x)    
+    (parameterize ((print-graph #t))
+      (generic-inspect x)))
  
   (reg:define-struct (boxrec contents))
   (define-syntax box      (identifier-syntax make-boxrec))

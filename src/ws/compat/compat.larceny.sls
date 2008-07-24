@@ -130,7 +130,7 @@
     (apply builtin:format (current-output-port) str args))
   (define fprintf builtin:format)
 
-  (include "ws/compat/inspector.ss")
+  (include "ws/compat/inspector.ss") (define inspect generic-inspect)
   (include "ws/compat/top-level-values.ss")
   (include "ws/compat/multiple-values.ss")
 

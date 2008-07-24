@@ -191,7 +191,7 @@
 
   ;; This necessitates building in-place:
   (plt:include "common.ss")
-  (plt:include "inspector.ss")
+  (plt:include "inspector.ss") (define inspect generic-inspect)
   (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")
 

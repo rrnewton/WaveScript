@@ -71,22 +71,63 @@
        
        )]))
 
+(define traverse-nested-types
+  (case-lambda 
+    [(fn ty)              (traverse-nested-types fn ty '())]
+    [(fn ty struct-defs)  (traverse-nested-types fn ty '() '())]
+    [(fn ty struct-defs union-types)
+     (let loop ([ty ty])
+       (fn ty)
+       (match ty
+	 [,ty (guard (scalar-type? ty)) (void)]
+	 [#()                           (void)]
+	 [(,container ,[loop -> _]) 
+	  (guard (eq-any? container 'List 'Array 'Stream 'VQueue 'Ref ))
+	  (void)]
+	 [(Struct ,name) 
+	  (match (assq name struct-defs)
+	    [(,name (,fld* ,ty*) ...) (for-each loop ty*)])]
+	 ;; Currently tagged unions are just like tuples:
+	 [(Union ,name)
+	  (define entry (ASSERT (assoc (list name) union-types)))
+	  (for-each loop (map cadr (cdr entry)))]
+	 [(ExclusivePointer ,name)      (void)]
+	 [(Pointer ,name)               (void)]
+	 [String                        (void)]
+	 [Symbol                        (void)]	 
+	 ))]))
+
 ;; Helper pass.
+;; INEFFICIENT: uses "member" to build a set of types.
+
+;; This gathers variables types (and recursively, their nested types)
+;; to form a list of all heap-allocated types.
+
+;; This does NOT recursively add the subtypes of each type to the list.
 (define-pass gather-heap-types
+    ;; INEFFICIENT:
+    ;; Could experiment with using a hash table here:
+    (define (add-to-set x set)  (if (member x set) set (cons x set)))
+    (define (set-to-list set) set)
+    (define the-empty-set '())
     ;; This is a mutated accumulator:
-    (define acc '())
+    (define acc the-empty-set)
     (define struct-defs '())
     (define union-types '())
     (define (excluded? ty)
       (or (not (c-heap-allocated? ty struct-defs union-types))
-	  ;; HACKISH: 
+	  (and (pair? ty) (eq? (car ty) 'Ref)) ;; Don't bother with refs, get the type inside.
+	  ;; HACKISH: (also inefficient)
 	  (deep-assq 'Stream ty)
 	  (deep-assq 'VQueue ty)))
     [Bindings 
      (lambda (vars types exprs reconstr exprfun)
        (for-each (lambda (ty)
-		   (unless (or (excluded? ty) (member ty acc))
-		     (set! acc (cons ty acc))))
+		   (traverse-nested-types 
+		    (lambda (subty)
+		      (unless (excluded? subty)
+			(set! acc (add-to-set subty acc))))
+		    ty struct-defs union-types))
 	 types)
        (for-each exprfun exprs))]
     [Expr 
@@ -97,7 +138,7 @@
 	 [,oth (fallthru oth)]))]
     [Program 
      (lambda (pr Expr!)
-      (fluid-let ([acc '()])
+      (fluid-let ([acc the-empty-set])
 	(match pr
 	  [(,lang '(program ,bod . ,meta*))
 	   (fluid-let ([struct-defs (cdr (ASSERT (assq 'struct-defs meta*)))]
@@ -416,7 +457,7 @@
 		   ;; What kinds of things can we switch to static allocation?
 		   ;; Currently just quoted constants:
 		   [',c `(static-allocate ,rhs)]
-		   [(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE)) 
+		   [(,make . ,_) (guard (eq-any? make 'Array:make 'Array:makeUNSAFE))
 		    `(static-allocate ,rhs)]
 
 		   ;; [2008.04.13] Extending this to dig a little deeper.
@@ -477,27 +518,5 @@
 	       (operators ,@oper*)
 	       (sink ,base ,basetype)
 	       ,@meta*))]))
-
-
-#;
-(define insert-zct
-  (let ()
-    
-    (lambda (xp fall)
-      (match xp
-	[(begin ,effect ... ,truetail ,var) (guard (symbol? var))
-	 
-	 ]
-
-	;; (add-to-zct ,v)
-
-	;; (clear-zct)
-	;; (emit-clear-zct ,vq ,x)
-	
-	)
-      )
-    
-
-    0))
 
 ) ;; End module

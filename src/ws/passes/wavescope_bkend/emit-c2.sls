@@ -434,7 +434,7 @@
 		   (gen-incr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
     ;; Other types are not heap allocated:
-    [,ty (guard (not (heap-type? self ty)))null-lines]
+    [,ty (guard (not (heap-type? self ty))) null-lines]
     ))
 
 ;; "ptr" should be text representing a C lvalue
@@ -2048,9 +2048,14 @@ int main(int argc, char **argv)
   (unless (slot-ref self 'zct-init?)
     (slot-set! self 'zct-init? #t)
     (slot-set! self 'zct-types
+	       
 	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
-		 (slot-ref self 'free-fun-table)))
-    (printf "ZCT COMPUTED\n")
+		 (slot-ref self 'free-fun-table))
+	       )
+    (printf "  Populating zct-types from table:\n")
+    (pretty-print (map car (slot-ref self 'free-fun-table)))
+    (printf "  Struct types: \n")
+    (pretty-print (slot-ref self 'struct-defs))
     ))
 
 (define (get-zct-type-tag self ty)
@@ -2094,6 +2099,8 @@ int main(int argc, char **argv)
 (define __build-free-fun-table!
   (specialise! build-free-fun-table! <emitC2-zct> 
     (lambda (next self heap-types)
+      (printf "  HEAP TYPES \n")
+      (pretty-print heap-types)
       (fluid-let ([gen-decr-called-from-free #t])
        (let* ([table (next)])	
 	 (ensure-zct-types-computed self)

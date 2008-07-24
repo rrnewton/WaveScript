@@ -2,7 +2,10 @@
 ;; Here I will implement a very rudimentary interactive inspector.
 ;; Chez is the only implementation I know of that exposes a nice
 ;; inspector.  Larceny has one, but just for error continuations?
-(define (inspect x)
+
+;; DOESN'T WORK FOR CYCLIC STRUCTURES!
+
+(define (generic-inspect x)
 ;   (printf "\nInteractive inspector (This is not implemented yet): \n")
 ;   (pretty-print x)(newline)
 ;   (printf "\nPress enter to continue.\n")
