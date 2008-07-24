@@ -84,6 +84,7 @@
 	 [(,container ,[loop -> _]) 
 	  (guard (eq-any? container 'List 'Array 'Stream 'VQueue 'Ref ))
 	  (void)]
+	 [(,[argty*] ... -> ,[retty]) (void)]
 	 [(Struct ,name) 
 	  (match (assq name struct-defs)
 	    [(,name (,fld* ,ty*) ...) (for-each loop ty*)])]

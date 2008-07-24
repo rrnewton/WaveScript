@@ -178,9 +178,7 @@
     [(_ pred fun) (debug-return-contract "<unknownFun>" pred fun)]
     [(_ name pred fun) 
      (IFDEBUG (lambda args 
-		(if (eq? 'name 'PrimAppK) (printf "IN PRIMAPPK"))
 		(let ([result (apply fun args)])
-			     ;(printf "Got debug contract result: ~s\n" 'name)
 		  (if (pred result) result
 		      (begin 
 			(warning 'debug-return-contract "failed contract on return value, function: ~s\nvalue: ~s\nContinuation:\n"
@@ -529,7 +527,6 @@
 
      ;; Hacked this to handle NAN (not in a pretty way).
      [(flonum? datum) 
-      ;;(printf "GOT FLOAT: ~a ~a \n" datum (or (eq? datum +nan.0) (eq? datum -nan.0)))
       (wrap (format "~a" ;; (Type self 'Float) ;; [2008.07.10] Removing this cast to handle doubles
 		    (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
 			"(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
@@ -1407,7 +1404,6 @@
 	       [(andmap integer? srcrates*)
 		(let ([srcrates* (map exact srcrates*)])
 		  (let ([common-rate (apply lcm srcrates*)])
-		    ;(printf "Common rate is ~s inverse is ~s\n" common-rate (inexact (/ 1000 common-rate)))
 		    (values (map (lambda (rate)
 				   (exact (quotient common-rate rate)))
 			      srcrates*)
@@ -2048,22 +2044,13 @@ int main(int argc, char **argv)
   (unless (slot-ref self 'zct-init?)
     (slot-set! self 'zct-init? #t)
     (slot-set! self 'zct-types
-	       
 	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
-		 (slot-ref self 'free-fun-table))
-	       )
-    (printf "  Populating zct-types from table:\n")
-    (pretty-print (map car (slot-ref self 'free-fun-table)))
-    (printf "  Struct types: \n")
-    (pretty-print (slot-ref self 'struct-defs))
-    ))
+		 (slot-ref self 'free-fun-table)))))
 
 (define (get-zct-type-tag self ty)
   ;; This is hackish, but free-fun-table must be populated by the time
   ;; we get here.  The first time through we populate zct-types.
-  ;(printf "GET ZCT TYPE TAG ~a\n" ty)
   (ensure-zct-types-computed self)
-
   (let ([ind (list-index (lambda (pr) (equal? (car pr) ty))
 			 (slot-ref self 'zct-types))])
     (or ind
@@ -2099,8 +2086,6 @@ int main(int argc, char **argv)
 (define __build-free-fun-table!
   (specialise! build-free-fun-table! <emitC2-zct> 
     (lambda (next self heap-types)
-      (printf "  HEAP TYPES \n")
-      (pretty-print heap-types)
       (fluid-let ([gen-decr-called-from-free #t])
        (let* ([table (next)])	
 	 (ensure-zct-types-computed self)
@@ -2207,8 +2192,6 @@ int main(int argc, char **argv)
 (define-class <emitC2-timed> (<emitC2>) ())
 
 (define (print-w-time2 prefix)
-#;
-  (list "printf(\"("prefix" %lld)\\n\", clock());\n")
   (let ([tmp (sym2str (unique-name "tmp"))])
     `("struct timeval ",tmp";\n"
       "gettimeofday(&",tmp", NULL);\n"
