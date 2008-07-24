@@ -108,8 +108,9 @@
    [(procedure? x) (x reflect-msg)]
    [else  
     (ASSERT (not (tuple? x))) ;; Can't allow these to not have a type!
-    (printf "Maybe wrap ~s\n" x)
-    (make-plain x #f)]))
+    (make-plain x #f)
+    ;(make-plain x (unknown-type))
+    ]))
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
@@ -129,9 +130,13 @@
     ;; Overwrite #f, or merge with existing type:
     (define (fold-in ty1 ty2)  
       (if ty2 
-	  (types-compat? ty1 ty2)
+	  (or (types-compat? ty1 ty2) 
+	      (error 'set-value-type! "types were not compatible! ~s ~s" ty1 ty2))
 	  ty1))
     (ASSERT type) ;; No point in setting to #f
+    ;; Either us, or the caller of this function, must freshen the type variables.
+    ;; Currently we handle this right here.
+    (set! type (export-type (instantiate-type type)))
     (cond
      [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
      ;; Must recursively handle the insides of the ref also:
@@ -307,11 +312,9 @@
             (make-plain (hashtab-get dictionary v) (get-primitive-type v))
             (apply-env env v))]
     [',c (ASSERT (not (tuple? c)))
-	 (printf "quoted plain ~s\n" c)
 	 (make-plain c #f)]
     
     [(tuple ,[x*] ...) 
-     (printf "MAKING TUPLE: ~s\n  ~s\n" x* (list->vector (map (lambda (x) (or (get-value-type x) (unknown-type))) x*)))
      (make-plain (make-tuple (map unwrap-plain x*))
 		 (list->vector (map (lambda (x) (or (get-value-type x) (unknown-type))) x*)))]
     [(tupref ,ind ,len ,[tup])
@@ -356,7 +359,6 @@
     ;; FIXME: THIS SHOULD MAKE THE CASES ABOVE REDUNDANT:
     ;; [2008.04.05] This needs to replicate the hack for assert-type/cast_num:
     [(assert-type ,ty ,[val])      
-     (printf "Casting it ~s\n" val)
      (if (and (plain? val) (memq ty num-types))
 	 (make-plain (__cast_num #f ty (plain-val val)) ty)
 	 (begin (set-value-type! val ty) val))]
@@ -495,7 +497,6 @@
 	(let ([raw 
 	       ;; Can't write/read because it will contain procedures and streamops.
 	       (parameterize ([simulator-write-sims-to-disk #f])
-
 		 ;; First, I applied wavescript-language to just the prim
 		 ;; name, rather than the whole app.  That actually made
 		 ;; performance a bit worse.
@@ -514,10 +515,10 @@
 				[(streamop? x) x] ;; This shouldn't be touched.
 				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
 			  x*)))])
+	  
 	  ;(ASSERT (not (eq? raw (void))))
 	  ;(ASSERT (not (procedure? raw)))
 	  (let ([final (maybe-wrap raw)])
-	    (printf "  Got back raw result! ~s,  retty  ~s\n" raw retty)
 	    (set-value-type! final retty) ;; Necessary?
 	    final))])]
     ;; [2007.09.14] Supporting sums:
@@ -729,7 +730,6 @@
 ;     [(double? val) (double-num val)]
 
      [(tuple? val)
-      (printf "TUPLE ~s\n" p)
       `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (loop x ty)))
 		   (ASSERT (tuple-fields val))
 		   ;; FIXME FIXME FIXME HMM: NOT SURE HOW THIS GETS TO #F:

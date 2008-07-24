@@ -21,12 +21,11 @@ namespace Sigseg {
   nulltimebase = 0;
 
   nullseg  :: Sigseg t;
-  //nullseg = ([], 0, 0, 0, nulltimebase)
-  nullseg = (([], 0, 0, 0, nulltimebase) :: Sigseg t);
+  nullseg = ([], 0, 0, 0, nulltimebase)
+  //nullseg = (([], 0, 0, 0, nulltimebase) :: Sigseg t);
 
   make_nullseg :: () -> Sigseg t;
   fun make_nullseg() nullseg
-  //fun make_nullseg() ([], 0, 0, 0, nulltimebase)
 
   timebase :: Sigseg t -> Timebase;
   width    :: Sigseg t -> Int;
