@@ -26,9 +26,6 @@
 	  (ws testing lang_wavescript_tests)
 	  )
 
-(define footest 999999999999)
-
-
 ; ================================================================================ ;
 ;;; Type defs and helpers
 
