@@ -143,8 +143,18 @@ inline void free_measured(void* object) {
 #define GET_RC(ptr)           (ptr ? ((refcount_t*)ptr)[-1] : 0)
 #define SET_RC(ptr,val)              ((refcount_t*)ptr)[-1] = val
 #define CLEAR_RC(ptr)                SET_RC(ptr,0)
-#define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
-#define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+
+// TEMPORARY: For the moment we make all incr/decrs thread safe!!
+// Instead we should be proactively copying on fan-out.
+#ifdef WS_THREADED
+  #include "atomic_incr_intel.h"
+  #define INCR_RC(ptr)        if (ptr) atomic_increment(((refcount_t*)ptr)-1)
+  #define DECR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add(((refcount_t*)ptr)-1, -1) == 1 : 0)
+#else
+  #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
+  #define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+#endif
+
 //#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
 
 // Handle Cons Cell memory layout:

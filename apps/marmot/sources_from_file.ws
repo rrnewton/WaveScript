@@ -23,7 +23,8 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 // How many samples a second do we want to process on each input audio channel?
-samp_rate = 48000.0; // HACK - we should get this from the stream/timebase/sigseg
+accelerator = 4;                   // For testing purposes.
+samp_rate = 48000.0 * accelerator; // HACK - we should get this from the stream/timebase/sigseg
 
 winsize = 16384;
 

@@ -1,7 +1,7 @@
 
 // A library of matrix routines implemented directly in WaveScript.
 
-// NOTE! matrices are indixed (row,column)
+// NOTE! matrices are indexed (row,column)
 // Remember to iterate over the matrix by incrementing row on the
 // outside and column in the inner loop.
 

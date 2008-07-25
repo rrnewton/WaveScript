@@ -16,11 +16,14 @@ then echo
 else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi
 
-eval set -- "$RELEVANT"
 
 ## TEMP: UNCONDITIONAL PTHREADS
 #export WS_LINK="$WS_LINK -lpthread "
-export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
+#export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
+RELEVANT="--threads $RELEVANT"
+
+eval set -- "$RELEVANT"
+
 
 NOGCC=
 while [ $# != 0 ];  do 
@@ -33,7 +36,7 @@ while [ $# != 0 ];  do
    "--O1" ) COPTFLAG="$flag";;
    "--O2" ) COPTFLAG="$flag";;
    "--O3" ) COPTFLAG="$flag";;
-   "--threads" ) export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"; shift;;
+   "--threads" ) export WS_LINK="$WS_LINK -DWS_THREADED -lpthread "; shift;;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
    "--gcc" ) export CC="$2"; shift;;
    "--" ) break;;

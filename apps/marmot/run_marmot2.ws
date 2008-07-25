@@ -1,4 +1,8 @@
 
+/* This runs both the first and second stages of the marmot application.
+   That is, it detects marmot calls and computes direction of arrival.
+ */ 
+
 //========================================
 // Main query:
 
