@@ -70,7 +70,13 @@
 		       ;; [2007.07.12] Looks like these three cases aren't strictly *necessary*
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
-		       [(Complex (quote ,n))  `(quote ,(+ n (make-rectangular 0.0 0.0)))]
+		       ;; Alas, Scheme doesn't make any promises about whether a complex number with 0 imaginary component
+		       ;[(Complex (quote ,n))  `(quote ,(+ n (make-rectangular 0.0 0.0)))]
+		       ;[(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
+		       ;; [2008.07.25] TEMP FIXME FIXME!! DUE TO IKARUS COMPLEX NUM BUGS HACKING THIS:
+		       [(Complex (quote ,n))  `(quote ,(+ n (make-rectangular 0.0 1e-323)))]
+		       ;[(Complex (quote ,n))  `(quote ,(+ n (make-rectangular 0.0 0.1)))]
+      
 		       [(Int     ,e)  e]
 		       [(Int64   ,e)  `(intToInt64 ,e)]
 		       [(Int32   ,e)  `(__cast_num 'Int 'Int32 ,e)]

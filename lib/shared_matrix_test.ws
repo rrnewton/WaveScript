@@ -78,7 +78,6 @@ result1 = iterate _ in timer(30.0)
   product = Matrix:Double:mul(dub,dub);
   print("a mult      :: "++ product `toArray ++"\n");  
 
-
   print("\n----------------------------------------\n");
   print("Complex Matrices..\n\n");  
 
@@ -91,8 +90,8 @@ result1 = iterate _ in timer(30.0)
     Matrix:Complex:scale_inplace(m, 2.0+0.0i); 
     println("add const and scale: "++ Matrix:Complex:toArray(m));
   };
+
   emit dub;
-  //  emit Matrix:Complex:create(3,3);
 }
 
 //BASE <- result

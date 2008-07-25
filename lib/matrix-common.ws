@@ -90,7 +90,7 @@ namespace Matrix {
 
  // [2007.07.12] These ape the structure of the matrix_gsl.ws for interoperability.
  namespace Float {
-   fun create(i,j) Matrix:create(i,j, 0.0);
+   fun create(i,j) Matrix:create(i,j, (0::Float));
    eq        :: (Matrix Float, Matrix Float) -> Bool  = Matrix:eq;
    get       :: (Matrix Float, Int, Int) -> Float     = Matrix:get;
    set       :: (Matrix Float, Int, Int, Float) -> () = Matrix:set;
@@ -128,6 +128,7 @@ namespace Matrix {
 
  // The below namespaces are cut/paste from "Float" above.
  namespace Double {
+   fun create(i,j) Matrix:create(i,j, (0::Double));
    eq        :: (Matrix Double, Matrix Double) -> Bool  = Matrix:eq;
    get       :: (Matrix Double, Int, Int) -> Double     = Matrix:get;
    set       :: (Matrix Double, Int, Int, Double) -> () = Matrix:set;
@@ -165,6 +166,7 @@ namespace Matrix {
 
 
  namespace Complex {
+   fun create(i,j) Matrix:create(i,j, (0::Complex));
    eq        :: (Matrix Complex, Matrix Complex) -> Bool  = Matrix:eq;
    get       :: (Matrix Complex, Int, Int) -> Complex     = Matrix:get;
    set       :: (Matrix Complex, Int, Int, Complex) -> () = Matrix:set;
@@ -200,10 +202,9 @@ namespace Matrix {
    map2_inplace :: ((Complex,Complex) -> Complex, Matrix Complex, Matrix Complex) -> ()   = Matrix:map2_inplace;
  }
 
-
- // Except this bit:
- fun Double:create(i,j) Matrix:create(i,j, floatToDouble(0.0));
- fun Complex:create(i,j) Matrix:create(i,j, (0::Complex));
+ // Except this bit, it is not cut-n-paste:
+ //fun  Double:create(i,j) Matrix:create(i,j, (0::Double));
+ //fun Complex:create(i,j) Matrix:create(i,j, (0::Complex));
   
 };
 

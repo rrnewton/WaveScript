@@ -615,7 +615,6 @@
   ;; Shouldn't need to redo LUB because the types are already restrictive???
   (IFDEBUG (do-late-typecheck) (void))
 
-
   ;; This is expensive because it lifts generic ops, and retypechecks:
   ;; (Like we later do for polymorphic constants)
   (ws-run-pass p degeneralize-arithmetic)

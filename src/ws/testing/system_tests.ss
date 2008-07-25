@@ -6,6 +6,11 @@
 
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+
+    ["Verify that the host scheme systems complex numbers behave"
+     (cflonum? (make-rectangular 0 0)) #f]
+    ["Verify that the host scheme systems complex numbers behave"
+     (cflonum? (make-rectangular 1.0 0.0)) #t]
     
     ["Verify that the trivial program produces no token bindings but the defaults"
      (filter (lambda (tokbind)
