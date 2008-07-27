@@ -1,4 +1,3 @@
-
 /*
 
  [2007.12.06]
@@ -16,6 +15,10 @@
 
  */
 
+// For some godawful reason sched.h won't work out of the box and I need to do this:
+#define _GNU_SOURCE 
+// And it has to be done *before* stdio.h is included...
+
 // Headers that we need for the generated code:
 #include<stdio.h>
 #include<stdlib.h>
@@ -31,6 +34,10 @@
 //#define ALLOC_STATS
 //#define BLAST_PRINT
 
+// For now, only use real-time timers in threaded mode:
+//#ifdef WS_THREADED
+#define WS_REAL_TIMERS
+//#endif
 
 
 #ifdef LOAD_COMPLEX
@@ -304,12 +311,24 @@ int wsc2_tuplimit = 10;
 //                           Scheduler and data passing
 //################################################################################//
 
+#ifdef WS_REAL_TIMERS
+#include <unistd.h>
+unsigned long tick_counter;
+#define VIRTTICK() tick_counter++
+// Should use nanosleep:
+#define WAIT_TICKS(delta) { \
+  usleep(1000 * delta * tick_counter); \
+  tick_counter = 0; }
+#else
+#define VIRTTICK()                   {}
+#define WAIT_TICKS(delta)            {}
+#endif
+
+
 // Single threaded version:
 // ============================================================
 // For one thread, these macros do nothing.  We don't use realtime for timers.
 #ifndef WS_THREADED
-#define VIRTTICK()                   {}
-#define WAIT_TICKS(delta)            {}
 #define EMIT(val, ty, fn) fn(val)
 #define TOTAL_WORKERS(count)         {}
 #define REGISTER_WORKER(ind, ty, fp) {}
@@ -325,14 +344,6 @@ unsigned long print_queue_status() { return 0; }
 // For now I'm hacking this to be blocking, which involves adding
 // locks to a lock-free fifo implementation!
 
-#include <unistd.h>
-unsigned long tick_counter;
-#define VIRTTICK() tick_counter++
-// Should use nanosleep:
-#define WAIT_TICKS(delta) { \
-  usleep(1000 * delta * tick_counter); \
-  tick_counter = 0; }
-
 #ifdef USE_BOEHM
 //#include <gc/gc_pthread_redirects.h>
 #include <pthread.h>
@@ -343,12 +354,36 @@ unsigned long tick_counter;
 //#include "midishare_fifo/wsfifo.c"
 #include "simple_wsfifo.c"
 #define FIFO_CONST_SIZE 100
+#define ANY_CPU -1
 
 void (**worker_table) (void*);   // Should we pad this to prevent false sharing?
 wsfifo** queue_table;            // Should we pad this to prevent false sharing?
-pthread_cond_t** cond_table;
-pthread_mutex_t** mut_table;
+int* cpu_affinity_table;
 int total_workers;
+
+//#include <sys/types.h>
+#include <sched.h>
+void pin2cpu(int cpuId) {
+      // Get the number of CPUs
+   if (cpuId != ANY_CPU) {
+      cpu_set_t mask;
+      unsigned int len = sizeof(mask);
+      CPU_ZERO(&mask);
+      CPU_SET(cpuId, &mask);
+
+      //printf("Process id %u, thread id %u\n", getpid(), pthread_self());
+      //printf("The ID of this of this thread is: %ld\n", (long int)syscall(224));
+      //printf("The ID of this of this thread is: %ld\n", (long int)syscall(__NR_gettid));
+      long int tid = syscall(224); // No idea how portable this is...
+
+      //int retval = sched_setaffinity(gettid(), len, &mask);
+      int retval = sched_setaffinity(tid, len, &mask);
+      if (retval != 0) {
+	perror("sched_setaffinity");
+	exit(-1);
+      }
+   }
+}
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -362,6 +397,7 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 #define TOTAL_WORKERS(count) { \
    worker_table  = malloc(sizeof(void*) * count);  \
    queue_table   = malloc(sizeof(wsfifo*) * count);  \
+   cpu_affinity_table = malloc(sizeof(int) * count);  \
    total_workers = count; \
 }
 // Register a function pointer for each worker.
@@ -369,6 +405,7 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
    wsfifoinit(& fp##_queue, FIFO_CONST_SIZE, sizeof(ty));   \
    worker_table[ind] = & fp##_wrapper;  \
    queue_table[ind]  = & fp##_queue; \
+   cpu_affinity_table[ind]  = ANY_CPU; \
 }
 // Start the scheduler.
 #define START_WORKERS() {                    \
@@ -384,8 +421,13 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 void* worker_thread(void* i) {
   int index = (int)i;
   pthread_mutex_lock(&print_lock);
-  fprintf(stderr, "** Spawning worker thread %d\n", index);
-  pthread_mutex_unlock(&print_lock);
+  if (cpu_affinity_table[index] == ANY_CPU)
+    fprintf(stderr, "** Spawning worker thread %d\n", index);
+  else fprintf(stderr, "** Spawning worker thread %d, cpu %d\n", index, cpu_affinity_table[index]);
+
+  //pin2cpu(1) pin2cpu(0);  
+  pin2cpu(cpu_affinity_table[index]);
+  pthread_mutex_unlock(&print_lock);  
   while (1) 
   {
     // Accesses to these two tables are read-only:

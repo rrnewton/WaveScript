@@ -1381,7 +1381,7 @@
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
 (__spec BuildTimerSourceDriver <emitC2> (self srcname* srccode* srcrates*)
-
+   (define (normal-rate? r) (and r (not (zero? r))))
    (ASSERT "BuildTimerSourceDriver: must have same number of names, code, and rates"
 	   all-equal?
 	   (list (length srcname*) (length srccode*) (length srcrates*)))
@@ -1392,15 +1392,24 @@
    ;;  (3) We are driven by "foreign_source".
    (cond 
     ;; Option (1): Virtual timers.
-    [(not (null? srcname*)) ;; TODO: IN THE FUTURE SHOULD BE ABLE TO COMBINE MOTE SOURCES OR FOREIGN SOURCES WITH TIMERS. FIXME  FIXME FIXME  FIXME  
+    [(not (null? srcname*))
+     ;; TODO: IN THE FUTURE SHOULD BE ABLE TO COMBINE MOTE SOURCES OR FOREIGN SOURCES WITH TIMERS. FIXME  FIXME FIXME  FIXME  
      (ASSERT (null? (slot-ref self 'server-cutpoints)))
       ;; If the rate is #f we don't build in that entry:
-      (let-match ([([,srcname* ,srccode* ,srcrates*] ...)
-		   (filter id
-		     (map (lambda (nm code rate)
-			    (if rate (list nm code rate) #f))
-		       srcname* srccode* srcrates*))])   
+     (let-match (;; As a special convention, we treat timers with zero rates differently:
+		 [([,zerosrc* ,zerosrccode*] ...)
+		  (filter id 
+		    (map (lambda (nm code rate)
+			   (if (zero? rate) (list nm code) #f))
+		      srcname* srccode* srcrates*))]
+		 [([,srcname* ,srccode* ,srcrates*] ...)
+		  (filter id
+		    (map (lambda (nm code rate)
+			   (if (normal-rate? rate) (list nm code rate) #f))
+		      srcname* srccode* srcrates*))]
+		 )
 	(printf "   TIMER RATES: ~s\n" srcrates*)
+	(printf "   ZERO TIMERS ~s\n" zerosrc*)
 	;; This is a hack: rather than maintain a sorted list of
 	;; upcoming events, we simply compute a common tick frequency
 	;; and go tick by tick:
@@ -1423,6 +1432,11 @@
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
+		   
+		   "// Insert calls to those timers executing only once (with zero rates)\n"
+		   (map lines-text zerosrccode*)
+
+		   "// Next, run in a timer loop indefinitely\n"
 		   (block "while(dummy && !stopalltimers)"
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				"VIRTTICK();\n"

@@ -472,7 +472,9 @@
            )
    (optionalsemi [() 'OPTIONALSEMI] [(SEMI) 'OPTIONALSEMI])
    (morestmts [() '()] [(SEMI stmts) $2])
+
    ;; These have a syntax that allows us to know where they terminate and optionally omit SEMI:
+   ;; This is a hack....
    (selfterminated-raw 
     [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
     [(while exp LeftBrace stmts RightBrace) `(while ,$2 ,(make-begin $4))]
@@ -520,6 +522,7 @@
 
 
     ;; Hack to enable my syntax for sigseg refs!!
+    ;; We separate out lists from other sy
     (exp-raw 
 	  ;; List constants:
           [(LeftSqrBrk expls RightSqrBrk) (consify $2)]
@@ -705,6 +708,7 @@
 
 	 ;; SUPERHACK: I've INLINED the "stmt" grammar here:
 
+	 ;; Hmm.. this does constrain the types too much:
 	 [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
 	 [(if exp then selfterminated)  `(if ,$2 ,$4 (tuple))]
 

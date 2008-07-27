@@ -3,7 +3,7 @@
 //   UNFINISHED!!!!!!!!!!
 
 //################################################################################//
-//                     Simple bounded fifo using mutexes.
+//        Simple bounded fifo using mutexes, multi-reader multi-writer
 //################################################################################//
 
 #include <pthread.h>

@@ -20,7 +20,7 @@ fi
 ## TEMP: UNCONDITIONAL PTHREADS
 #export WS_LINK="$WS_LINK -lpthread "
 #export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
-RELEVANT="--threads $RELEVANT"
+#RELEVANT="--threads $RELEVANT"
 
 eval set -- "$RELEVANT"
 

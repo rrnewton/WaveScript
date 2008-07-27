@@ -35,3 +35,7 @@ Here is an index of the subdirectories:
 
  microbench/
    Small benchmarks testing one particular language feature.
+
+ parallel/
+   Microbenchmarks tailored to look at different aspects of scheduling
+   and parallelization.

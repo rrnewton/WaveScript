@@ -745,6 +745,34 @@ fun FINITE(n)
     }
   }
 
+/*
+// Modification: it emits a burst of n elements at the beginning of time.
+fun FINITE_BURST(n) {
+  minfloat = 0.00000000000000000000001; 
+  // This depends on a certain convention in the phase of timers,
+  // wherein all timers fire one element at the beginning of time.
+  //iterate _ in timer(minfloat) {
+  iterate _ in timer(0) {
+    state { fst = true }
+    if fst 
+    // FIXME: This had a parse error with out the braces:
+    // But onli if there is an else clause.
+    //then for i = 1 to n { emit (); }
+    then { fst := false; for i = 1 to n { emit () } }
+    else print("Can't fire again.. finite over\n");
+  }
+}
+*/
+
+// Modification: it emits a burst of n elements at the beginning of time.
+fun FINITE_BURST(n) 
+  // This depends on a certain convention in timer() wherein a zero
+  // period causes the time to fire only once at the beginning of time.
+  iterate _ in timer(0) {
+    for i = 1 to n { emit () }
+  }
+
+
 // Useful for benchmarks and tests.  Runs a "normal" (non-streaming)
 // program.  That is, execute a thunk a single time, then produce an
 // infinite stream of unit values.
