@@ -157,9 +157,13 @@ inline void free_measured(void* object) {
   #include "atomic_incr_intel.h"
   #define INCR_RC(ptr)        if (ptr) atomic_increment(((refcount_t*)ptr)-1)
   #define DECR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add(((refcount_t*)ptr)-1, -1) == 1 : 0)
+  #define INCR_ITERATE_DEPTH()  atomic_increment(&iterate_depth)
+  #define DECR_ITERATE_DEPTH()  atomic_exchange_and_add(&iterate_depth, -1)
 #else
   #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
   #define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+  #define INCR_ITERATE_DEPTH()  iterate_depth++
+  #define DECR_ITERATE_DEPTH()  iterate_depth--
 #endif
 
 //#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
@@ -232,6 +236,10 @@ extern void*     zct_ptrs[];
 extern int       zct_count;
 extern int       iterate_depth;
 
+#ifdef WS_THREADED
+extern pthread_mutex_t zct_lock;
+#endif
+
 void free_by_numbers(typetag_t, void*);
 
 // This needs to be the high-bit in a refcount_t
@@ -246,9 +254,12 @@ static inline void UNMARK_AS_PUSHED(void* ptr) {
   ((refcount_t*)ptr)[-1] &= ~PUSHED_MASK;
 }
 
-
 static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
   //printf("pushing %p tag %d, rc %u, (mask %u)\n", ptr, tag, GET_RC(ptr), PUSHED_MASK);
+  // TEMPORARILY LOCKING FOR ACCESS TO CENTRALIZED ZCT:
+#ifdef WS_THREADED
+    pthread_mutex_lock(&zct_lock);
+#endif 
   if (ptr == NULL) return;
   if (GET_RC(ptr) & PUSHED_MASK) { 
     //printf("ALREADY PUSHED %p, tag %d\n", ptr, tag);
@@ -258,6 +269,9 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   zct_tags[zct_count] = tag;
   zct_ptrs[zct_count] = ptr;
   zct_count++;
+#ifdef WS_THREADED
+    pthread_mutex_unlock(&zct_lock);
+#endif
 }
 
 #ifdef BLAST_PRINT
@@ -265,20 +279,25 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
 unsigned long tag_histo[histo_len];
 #endif
 
-static inline void BLAST_ZCT() {
+// The depth argument to BLAST_ZCT is PRIOR to decrement (iterate_depth--). 
+// So we're looking for depth==1 not depth==0.
+static inline void BLAST_ZCT(int depth) {
   int i;
   int freed = 0;
   int max_tag = 0;
-  if (iterate_depth) {
+  if (depth > 1) {
     //printf("Not blasting, depth %d\n", iterate_depth);
     return;
   }
 
-    #ifdef BLAST_PRINT
+#ifdef WS_THREADED
+    pthread_mutex_lock(&zct_lock);
+#endif
+#ifdef BLAST_PRINT
       if (zct_count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
       for(i=0; i<histo_len; i++) tag_histo[i]=0;
-    #endif
-  for(i=zct_count-1; i>=0; i--) {  
+#endif
+  for(i=zct_count-1; i>=0; i--) {
     // Wipe off the mask bit before checking:
     if (0 == (GET_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
         #ifdef BLASTING 
@@ -289,15 +308,18 @@ static inline void BLAST_ZCT() {
       freed++;
     } else UNMARK_AS_PUSHED(zct_ptrs[i]);
   }  
-    #ifdef BLAST_PRINT
+#ifdef BLAST_PRINT
       printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
       for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
       printf("]\n");fflush(stdout);
       #ifdef ALLOC_STATS
-      ws_alloc_stats();
+        ws_alloc_stats();
       #endif
-    #endif
+#endif
   zct_count = 0;
+#ifdef WS_THREADED
+    pthread_mutex_unlock(&zct_lock);
+#endif
 }
 
 

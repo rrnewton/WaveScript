@@ -2094,8 +2094,7 @@ int main(int argc, char **argv)
   (specialise! IterEndHook <emitC2-zct>
     (lambda (next self name arg argty) 
     (list (next)
-	  "iterate_depth--;\n"
-	  "BLAST_ZCT();\n"
+	  "BLAST_ZCT(DECR_ITERATE_DEPTH());\n"
 	  ))))
 ;; For testing purposes allowing multiple iterate work functions to be
 ;; active (depth first calls).  iterate_depth lets us know when it's
@@ -2103,7 +2102,7 @@ int main(int argc, char **argv)
 (define ___IterStartHook
   (specialise! IterStartHook <emitC2-zct>
     (lambda (next self name arg argty)
-    (list "iterate_depth++;\n"
+    (list "INCR_ITERATE_DEPTH();\n"
 	  (next)))))
 
 (define gen-decr-called-from-free #f) ;; modified with fluid-let
@@ -2199,6 +2198,9 @@ int main(int argc, char **argv)
 		 "void*     zct_ptrs[ZCT_SIZE];"
 		 "int       zct_count;"
 		 "int       iterate_depth = 0;\n"
+		 "#ifdef WS_THREADED"
+		 "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;"
+		 "#endif"
                  ops 
                  init driver))))
   ;; Return an alist of files:
