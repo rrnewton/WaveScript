@@ -35,6 +35,7 @@ static void memoized_fftR2C(float* in_buf, wscomplex_t * out_buf) {
           initialized = 1;
           fprintf(stderr, "  (re)Allocating fft plan, size %d\n", len); 
         } else {
+	  printf("   ** Destroying plan! %p\n", cached_plan);
 	  fftwf_destroy_plan(cached_plan);
           fprintf(stderr, "  Reallocating fft plan, size %d (was %d)\n", len, last_plan_size);
 	}

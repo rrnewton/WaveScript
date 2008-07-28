@@ -202,11 +202,12 @@ iterate seg in s {
   emit(dct);
 }}
 
-BASE <- iterate w in mfcc(s1) {
+main = iterate w in mfcc(s1) {
   for i = 0 to cepstralCoefficients-1 { 
     println(w[i]);
   };
   print("\n"); 
+  emit ();
 }
 
 // preEmphasized = filter([1 -.97], 1, input);
