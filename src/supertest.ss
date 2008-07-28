@@ -768,7 +768,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (system "grep \"ERROR SUMMARY\" .__runquery_output_wsc2_nondef.txt | grep -v \"ERROR SUMMARY: 0\" | wc -l >> errors.txt"))
     (let ([errors (read (open-input-string (file->string "errors.txt")))])
       ;; This should be 2... demo4b currently has conditional jump errors.
-      (fprintf outp "Wsc2_DemosErrors ~a\n" lost_blocks)
+      (fprintf outp "Wsc2_DemosErrors ~a\n" errors)
       (ASSERT (<= errors 2))
       )
     ) ;; End demos
