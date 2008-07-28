@@ -237,6 +237,7 @@ extern int       zct_count;
 extern int       iterate_depth;
 
 #ifdef WS_THREADED
+// This locks all the zct_state above:
 extern pthread_mutex_t zct_lock;
 #endif
 
