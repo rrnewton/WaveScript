@@ -35,9 +35,9 @@
 //#define BLAST_PRINT
 
 // For now, only use real-time timers in threaded mode:
-//#ifdef WS_THREADED
+#ifdef WS_THREADED
 #define WS_REAL_TIMERS
-//#endif
+#endif
 
 
 #ifdef LOAD_COMPLEX

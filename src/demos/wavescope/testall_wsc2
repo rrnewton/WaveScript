@@ -22,7 +22,10 @@ function go () {
     echo >> $RUN
     echo $1 : >> $RUN
     #./query.exe | head -n 20 >> $RUN
-    ./query.exe -n 2 >> $RUN
+    #(valgrind --leak-check=full ./query.exe -n 2 &> /dev/stdout) >> $RUN
+    #./query.exe -n 2 &> /dev/stdout >> $RUN
+    (valgrind --leak-check=full ./query.exe -n 2 &> /dev/stdout) >> /tmp/foobar_$1
+    cat /tmp/foobar_$1 >> $RUN
     RETVAL=$?
     echo Query returned with val: $RETVAL
     if [ "$RETVAL" != "0" ]; then exit 1; fi

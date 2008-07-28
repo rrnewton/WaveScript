@@ -484,9 +484,9 @@
 
 
 (define (ifthreads block)
-  (append-lines (make-lines "#ifdef WS_THREADED\n") 
+  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
 		block
-		(make-lines "#endif\n")
+		;(make-lines "#endif\n")
 		))
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
@@ -676,15 +676,17 @@
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
 ;;                These can also be (NUM NAME) pairs for indexed ports.
+;; .param ty      Type of outgoing values.
+;; .param incr?   Should the refcount be incremented on the way out?
 ;; .returns lines representing command-code
-(__spec Emit <emitC2> (self down* ty)
+(__spec Emit <emitC2> (self down* ty incr?)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
 			 ;; TEMP FIXME  FIXME  THIS INCR-REFCOUNT SHOULD BE HANDLED BY INSERT-REFCOUNTS!
-			 (list (lines-text (incr-queue-refcount self ty element))
+			 (list (if incr? (lines-text (incr-queue-refcount self ty element)) "")
 			       (cap (make-app "EMIT" (list element (Type self ty) (Var self down))))))
 		    down*)))))
 
@@ -1615,7 +1617,7 @@ int main(int argc, char **argv)
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (list 
 	    (make-c-timer nm
-		   ((Emit self down* '#()) ''UNIT) ;; Code
+		   ((Emit self down* '#() #f) ''UNIT) ;; Code
 		   (make-lines '()) ;; State 	
 		   rate))])]
 
@@ -1632,7 +1634,7 @@ int main(int argc, char **argv)
 	;; Create a function for the entrypoint.
 	(let* ([proto `("extern void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
-				       (lines-text ((Emit self down* type) arg)))]
+				       (lines-text ((Emit self down* type #t) arg)))]
 	       [impl (make-lines 
 		      (block `("void ",name"(",ty" ",(Var self arg)")")
 			    bod))])
@@ -1723,7 +1725,7 @@ int main(int argc, char **argv)
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down* elt) x))
+     (define (emitter x) ((Emit self down* elt #t) x))
      (match itercode
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
@@ -1738,7 +1740,9 @@ int main(int argc, char **argv)
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
 	     (incoming ,a ,b) (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down* elt) x))
+     ;; This emit should not increment reference counts:
+     ;; We are just redirecting something already in flight.
+     (define (emitter x) ((Emit self down* elt #f) x))
      (define arg (unique-name "arg"))
      (define header `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
@@ -1811,7 +1815,7 @@ int main(int argc, char **argv)
 ; 			(cdr (iota (add1 numstrings))))
 
 		     "int i, status = 0;\n"
-		     ("// The binary format of tuples matches that in the file:\n"
+		     ("// readFile: The binary format of tuples matches that in the file:\n"
 		       ,(let ([readcmd 
 			       (lambda (n dest)
 				 `("status += fread((void*)",dest
@@ -1842,7 +1846,8 @@ int main(int argc, char **argv)
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "wsShutdown(0);\n"))
-		     ,(lines-text ((Emit self down* elt) 'buf))))])
+		     
+		     ,(lines-text ((Emit self down* elt #t) 'buf))))])
 
        (values 
 	(make-lines (block (list "void "(sym2str name)"("(Type self '#())" ignored)") maintext))
