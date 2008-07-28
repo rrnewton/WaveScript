@@ -2,9 +2,12 @@
 
 
 all: nodelocs.ws
-	bunzip2 -f -k testdata.txt.bz2
-	@echo
 	@if [ -f "6sec_marmot_sample.raw" ]; then echo "Sample Marmot data in place."; else ./download_small_sample_data; fi
+	cp 6sec_marmot_sample.raw temp.raw
+	@echo "Duplicate the sample data 10 times"
+	for i in 1 2 3 4 5 6 7 8 9; do cat temp.raw >> 6sec_marmot_sample.raw; done
+	@echo
+	bunzip2 -f -k testdata.txt.bz2
 	@echo
 	@echo "Need to run script update_locs_script.ss to generate nodelocs.ws!"
 	@echo "Alternatively, link it to example_nodelocs.ws."

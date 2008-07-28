@@ -545,7 +545,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "wsc2 run_first_phase.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
 		    test-directory))
     (run-test "wsc2:  Running marmot app (first phase):  "
-	      (format "./query.exe -n 2 &> ~a/wsc2_marmot1_run.log" test-directory))
+	      (format "memprof ./query.exe -n 10 > ~a/wsc2_marmot1_run.log 2> marmot1_memprof.txt" test-directory))
     (when (file-exists? "query.exe") (delete-file "query.exe"))
 
     (ASSERT (putenv "REGIMENTHOST" "plt"))
@@ -749,21 +749,32 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (let* ([vitals (format "~a/vital_stats.txt" test-directory)]
        [outp   (open-output-file vitals)])
   (parameterize ((current-directory (format "~a/demos/wavescope" test-root)))
+    
+    ;; --- First we check for memory leaks in any of the demos ----
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_nondef.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
-      (fprintf outp "Wsc2RC_DemosLostBlocks ~a" lost_blocks)
+      (fprintf outp "Wsc2RC_DemosLostBlocks ~a\n" lost_blocks)
       ;; [2008.07.28] There should only be a lost_block from demo4b currently (mysterious fftw plan leak)
       ;(ASSERT (<= lost_blocks 1))
       )   
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
-      (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a" lost_blocks)
+      (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a\n" lost_blocks)
       ;(ASSERT (<= lost_blocks 1))
+      ))
+
+  ;; --- We check the total memory footprint of the marmot app. ----  
+  (parameterize ((current-directory (format "~a/apps/marmot" test-root)))
+    (system "tail -n 1 marmot1_memprof.txt > .__last_line.txt")
+    ;; Get the peak memory usage
+    (let ([peak_vm (read (open-input-file ".__last_line.txt"))])
+      (fprintf outp "Marmot1_PeakVM ~a\n" peak_vm)
       )
+    )
     
-    (close-output-port outp)
-    (fpf "~a" (file->string vitals))
-    ))
+  (close-output-port outp)
+  (fpf "~a" (file->string vitals))
+  )
 
 ;;================================================================================
 ;;; Wrap it up
