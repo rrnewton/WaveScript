@@ -17,6 +17,13 @@ synced = stream_map(fun (ls)
 	    synced_ints);
 */
 
+fun clockit(str, s) {
+  //s
+/* to enable: this outputs a clock value:
+*/
+  iterate x in s { println(str++": "++clock()); emit(x); }
+}
+
 include "marmot2-maps.ws";
 
 // 'synced' is defined in marmot_first_phase.ws

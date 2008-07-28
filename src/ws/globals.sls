@@ -51,7 +51,7 @@
 	 default-case-symbol
          
 	 compiler-invocation-mode 
-	 wsc2-gc-mode
+	 wsc2-gc-mode wsc2-sigseg-mode
 	 embedded-mode? wsc2-variant-mode? java-mode?
 ;	 regiment-compile-sums-as-tuples
 	 regiment-verbosity 
@@ -360,6 +360,11 @@
 ;;  boehm    - conservative collector
 ;;  none     - simply don't collect
 (define-regiment-parameter wsc2-gc-mode 'refcount)
+
+;; Options are:
+;;  copyalways - sigsegs are contiguous arrays
+;;  seglist    - lists of segments with sharing
+(define-regiment-parameter wsc2-sigseg-mode 'copyalways)
 
 ;; This parameter controls what optimizations the compiler applies.
 

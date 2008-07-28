@@ -1409,6 +1409,7 @@
           [nulltimebase (Const #f #f 'nulltimebase)]
 
           [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
+          [nullseg "WSNULLSEG"] ;; [2008.07.28] hack
           [,v (guard (symbol? v)) (ASSERT (compose not regiment-primitive?) v) (Var v)]
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))

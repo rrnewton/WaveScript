@@ -795,6 +795,7 @@
 
 ;; This is so the new C backend (emit-c2) can avoid handling strings.
 ;; A string is mapped onto an array of characters, augmented with a null terminator character.
+;; ASSUMPTIONS: assumes it happens before remove-complex-opera*, because it generates complex opera*.
 (define-pass embed-strings-as-arrays
     (define (Type ty) 
       (match ty
@@ -809,6 +810,7 @@
     (define (Const cn) ;; Convert string constants.
       (cond
        [(number? cn) cn]
+       [(char?   cn) cn]
        [(boolean? cn) cn]
        [(string? cn) 
 	;; make a constant vector.
@@ -891,13 +893,62 @@
 	      ;[(readFile ...) ????]
 	      ;[(__readFile ...) ????]
 
+	      ;; FIXME!!! THIS SHOULD OMIT THE NULL CHARACTER:
+	      ;[(String:explode ,[x]) `(Array:toList ,x)]
+	      ;[(String:implode ,[x]) `(List:toArray ,x)]
+
+	      ;; Annoyingly, this also generates code to do a
+	      ;; list-reverse, because List:reverse is a library prim
+	      ;; and its gone already.
+	      [(String:explode ,[x]) 
+	       (let ([tmp (unique-name "tmplft")]
+		     [acc  (unique-name "explodeacc")]
+		     [acc2 (unique-name "explodeout")]
+		     [len (unique-name "strlen")]
+		     [arr (unique-name "explodearr")]
+		     [accinit '((Ref (List Char)) (Mutable:ref (assert-type (List Char) '())))]
+		     [i (unique-name "i")])
+		 `(let ([,arr (Array Char) ,x])
+		    (let ([,len Int (_-_ (Array:length ,arr) (assert-type Int '1))])
+		      (let ([,acc ,@accinit])
+			(begin 
+			  ;; First, fill up the accumulator in reverse:
+			  (for (,i (assert-type Int '0) (_-_ ,len (assert-type Int '1)))
+			    (set! ,acc (cons (Array:ref ,arr ,i) (deref ,acc))))
+			  ;; Next reverse it:
+			  (let ([,acc2 ,@accinit])
+			    (begin (while (not (List:is_null (deref ,acc)))
+					  (begin 
+					    (set! ,acc2 (cons (car (deref ,acc)) (deref ,acc2)))
+					    (set! ,acc (cdr (deref ,acc)))))
+				   (deref ,acc2))))))))]
+	      [(String:implode ,[x]) 
+	       (let ([tmp (unique-name "tmplft")]
+		     [ptr (unique-name "implodeptr")]
+		     [len (unique-name "strlen")]
+		     [arr (unique-name "implodearr")]
+		     [i (unique-name "i")])
+		 `(let ([,len (Ref Int) (Mutable:ref (assert-type Int '0))])
+		    (let ([,tmp (List Char) ,x]) ;; This will get copy-propagated 
+		      (let ([,ptr (Ref (List Char)) (Mutable:ref ,tmp)])
+			(begin 
+			  ;; Get the length:
+			  (while (not (List:is_null (deref ,ptr))) 
+				 (begin 
+				   (set! ,len (_+_ (deref ,len) (assert-type Int '1)))
+				   (set! ,ptr (cdr (deref ,ptr)))))
+			  (let ([,arr (Array Char) (Array:makeUNSAFE (_+_ (deref ,len) (assert-type Int '1)))])
+			    (begin 
+			      (set! ,ptr ,tmp) ;; start back at the beginning
+			      (Array:set ,arr (deref ,len) '#\nul)
+			      (for (,i (assert-type Int '0) (_-_ (deref ,len) (assert-type Int '1)))
+				  (begin (Array:set ,arr ,i (car (deref ,ptr)))
+					 (set! ,ptr (cdr (deref ,ptr)))))
+			      ,arr)))))))]
+
 	      [(assert-type ,[Type -> ty] ,[e])  `(assert-type ,ty ,e)]
 
 	      [,oth (fallthru oth)]
-
-	      ;; Not implemented at runtime yet:
-	      ;[(String:explode   (String) (List Char))]
-	      ;[(String:implode   ((List Char)) String)]
 	      )
 	    )]  
     [Bindings

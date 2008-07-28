@@ -339,9 +339,13 @@
 		(append '((include "internal.ws"))
 			(case (compiler-invocation-mode)
 			  ;; Java backends share with wsc2 for now:
-			  [(wavescript-compiler-c)      '((include "internal_wsc2.ws"))]			  
-			  [(wavescript-compiler-java)   '((include "internal_wsc2.ws"))]
-			  [(wavescript-compiler-javame) '((include "internal_wsc2.ws"))]
+			  [(wavescript-compiler-c 
+			    wavescript-compiler-java
+			    wavescript-compiler-javame)
+			   `((include ,(match (wsc2-sigseg-mode)
+					 [copyalways "sigseg_copyalways.ws"]
+					 [seglist    "sigseg_wsharing.ws"]))
+			     (include "internal_wsc2.ws"))]
 			  [(wavescript-compiler-nesc)   '((include "internal_wstiny.ws"))]
 			  [else '()])
 			origws)

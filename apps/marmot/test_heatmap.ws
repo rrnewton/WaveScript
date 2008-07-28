@@ -63,12 +63,13 @@ BASE <- iterate _ in timer(3.0) {
   //doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
   let (mat,st) = doa_fuse(axes,grid_scale, nodesAndData);
 
- /*  if false then { */
-/*     pic = colorize_likelihoods((mat,st)); */
-/*     file = "temp.ppm"; */
-/*     write_ppm_file(file,pic); */
-/*     emit ("Wrote image to file: " ++ file ++ " "++ Matrix:get(mat,0,0)); */
-/*   } else  */
+  if true 
+  then {
+    pic = colorize_likelihoods((mat,st));
+    file = "temp.ppm";
+    write_ppm_file(file,pic);
+    emit ("Wrote image to file: " ++ file ++ " "++ Matrix:get(mat,0,0));
+  } else
     emit ("Not writing to file: "++ Matrix:get(mat,0,0));
 }
 

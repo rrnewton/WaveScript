@@ -1618,7 +1618,7 @@
     (define outfile #f)
     (define plot #f)
     (define simrepl #f)
-;    (disp "Main called w ARGS: " args)
+    ;(disp "Main called w ARGS: " args)
     (when (null? args) (print-help) (regiment-exit 0))
 
     (IF_THREADS
@@ -1977,7 +1977,7 @@
 	   (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
-
+	  
 	  [("-gc" ,name ,rest ...)
 	   (set! name (string->symbol name))
 	   (printf "Setting GC mode to ~s\n" name)
@@ -1988,6 +1988,15 @@
 	     [(de def deferred)  (wsc2-gc-mode 'deferred)]
 	     [(bo boehm)         (wsc2-gc-mode 'boehm)]
 	     [else               (error "unsupported garbage collection mode: ~s" name)])	   
+	   (loop rest)]
+	  
+	  [(,ss ,name ,rest ...) (guard (or (string=? ss "-sigseg") (string=? ss "-ss")))
+	   (set! name (string->symbol name))
+	   (printf "Setting Sigseg mode to ~s\n" name)
+	   (case name
+	     [(copy copyalways)         (wsc2-sigseg-mode 'copyalways)]
+	     [(list seglist wsharing)   (wsc2-sigseg-mode 'seglist)]
+	     [else               (error "unsupported sigseg implementation: ~s" name)])
 	   (loop rest)]
 	  
 	  ;; This tells wstiny to split the program into node and server components:

@@ -2,9 +2,13 @@
 // These are externally defined primitives that are currently only
 // applied to the new wsc2 backend.
 
-include "sigseg_copyalways.ws"
+
+// [2008.07.28] New system.  There's now a scheme parameter
+// (wsc2-sigseg-mode) that controls which sigseg implementation is included:
+//include "sigseg_copyalways.ws"
 //include "sigseg_wsharing.ws"
 //include "sigseg.ws"
+
 
 using Sigseg;
 

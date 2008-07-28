@@ -3,8 +3,8 @@
 export REGFLAG=wsc2
 
 # Get out only the relevant options:
-RELEVANT=`getopt -a -l "gc,gcc:,threads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
-#echo wsc2 getopt result: $RELEVANT
+RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+echo wsc2 getopt result: $RELEVANT
 
 # I would like to pass only the relevant options on to "wsc", but I
 # can't currently get getopt to do everything I want it to, i.e. pass
@@ -21,6 +21,7 @@ fi
 #export WS_LINK="$WS_LINK -lpthread "
 #export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
 #RELEVANT="--threads $RELEVANT"
+THREADS=true
 
 eval set -- "$RELEVANT"
 
@@ -36,7 +37,8 @@ while [ $# != 0 ];  do
    "--O1" ) COPTFLAG="$flag";;
    "--O2" ) COPTFLAG="$flag";;
    "--O3" ) COPTFLAG="$flag";;
-   "--threads" ) export WS_LINK="$WS_LINK -DWS_THREADED -lpthread "; shift;;
+   "--threads" )   THREADS=true; shift;;
+   "--nothreads")  THREADS=;     shift;;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
    "--gcc" ) export CC="$2"; shift;;
    "--" ) break;;
@@ -45,6 +47,10 @@ while [ $# != 0 ];  do
  shift;
 done
 export COPTFLAG
+
+if ! [ "$THREADS" = "" ]; 
+then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";
+fi
 
 
 if ! [ -f "query.c" ]

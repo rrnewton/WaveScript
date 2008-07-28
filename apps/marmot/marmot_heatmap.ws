@@ -3,6 +3,7 @@ include "types.ws";
 include "matrix.ws";
 include "matrix_extras.ws";
 
+type LikelihoodMap = (Matrix Float * Int64);
 
 angle_num = 360.0
 

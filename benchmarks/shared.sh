@@ -4,9 +4,10 @@
 #  mlton, mltonO3 
 #  cpp, cpp_df, cpp_corefit, cpp_corefit_nothreads -- The old XStream/C++ backend
 #  c2 -- the new C backend
-BACKENDS="scheme mlton mltonO3"
-
-
+#BACKENDS="scheme mlton mltonO3"
+if [ "$BACKENDS" = "" ]; 
+then BACKENDS="c2 mltonO3"
+fi
 
 OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
@@ -120,19 +121,31 @@ function runmltonO3() {
   then echo "failed!"; exit -1; fi
 }
 
+function runc2() {
+  echo "  wsc2 -O3 -gc refcount -sigseg copyalways -nothreads: compiling..."
+  if wsc2 $FILE -O3 -gc refcount -sigseg copyalways -nothreads -exit-error &> $DEST/c2.compile.$NAME.out; then echo>/dev/null;
+  else echo "wsc2 failed!"; exit -1; fi
+  echo "   wsc2: running output... -n "$TUPS
+  if ! (time ./query.exe -n $TUPS) &> $DEST/c2.$NAME.out; 
+  then echo "failed!"; exit -1; fi
+}
+
+
 
 ## This is where you disable/enable backends.
+## Arguments: filename sans extension, output file, in tuple limit, out tuple limit
+## Currently in tuple limit is unimplemented.
 function runallbackends() {
   NAME=$1
   FILE=$1.ws
   DEST=$2
   INTUPS=$3
   TUPS=$4
-  echo;echo "Running $FILE, INTUPS: $INTUPS  OUTTUPS: $TUPS";
+  echo;echo "Running all backends: $FILE, INTUPS: $INTUPS  OUTTUPS: $TUPS";
 
   # Clean up:
-  rm -f query.*  
-
+  rm -rf query.*  
+  echo "Invoking the following backends: $BACKENDS"
   for backend in $BACKENDS; do
     case $backend in
       scheme)   runscheme;   SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
@@ -145,6 +158,8 @@ function runallbackends() {
                              CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`;;
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
                              CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`;;
+
+      c2)       runc2;       CPP=`extract_mlton_usertimes.sh $DEST/c2.$NAME.out`;;
 
       *) echo Unhandled backend: $backend; exit -1;;
     esac

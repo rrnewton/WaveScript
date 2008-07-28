@@ -20,15 +20,9 @@ mkdir $TEMP
 function getfile() {
   echo "  Making a big enough audio file."; echo
   cd "$REGIMENTD/apps/marmot";
- (rm -f 6sec_marmot_sample.raw)
-  (./download_small_sample_data)
-  (cp 6sec_marmot_sample.raw temp.raw;)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
-  (cat temp.raw >> 6sec_marmot_sample.raw)
+  #(rm -f 6sec_marmot_sample.raw)
+  # ensure that we have sample data:
+  make 
 }
 
 getfile
@@ -47,7 +41,7 @@ getfile
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running orig marmot phase 1  " > RESULTS.txt
-runallbackends run_first_phase $TEMP 0 4
+runallbackends run_first_phase $TEMP 0 15
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
 

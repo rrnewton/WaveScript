@@ -471,7 +471,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
   (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Running select demos, deferred RC (plt):"
-	    (format "./testall_wsc2 -gc deferred &> ~a/wsc2_plt_demos.log" test-directory))
+	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
   (ASSERT (putenv "REGIMENTHOST" ""))
 
@@ -553,7 +553,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
     (run-test "wsc2:  Running marmot app (second phase): "
 	      (format "./query.exe -n 1 &> ~a/wsc2_marmot12_run.log" test-directory))
-    (ASSERT (putenv "REGIMENTHOST" "")))
+    (ASSERT (putenv "REGIMENTHOST" ""))
+
+    (run-test "wsc2: Compiling marmot app (third phase):  "
+      (format "wsc2 test_heatmap.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
+	      test-directory))
+    
+    
+    )
   
 #|
   (run-test "ws: Running marmot app (first phase):  "

@@ -17,7 +17,6 @@ type Settings   = (AxesBounds * (Float * Float));
 //type CoordSystem = (Int * Int * Converter * Converter);
 //type CoordSystem = (Int * Int * Float * Float * Float * Float);
 
-
 LOG_TIMING = 255;
 // from elog.h in emstar
 LOG_EMERG = 0;       /**< system is unusable */
