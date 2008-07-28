@@ -752,13 +752,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
     
     ;; --- First we check for memory leaks in any of the demos ----
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_nondef.txt | wc -l > lost_blocks.txt"))
-    (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
+    (let ([lost_blocks (file->string "lost_blocks.txt")]) ; (string->number )
       (fprintf outp "Wsc2RC_DemosLostBlocks ~a\n" lost_blocks)
       ;; [2008.07.28] There should only be a lost_block from demo4b currently (mysterious fftw plan leak)
       ;(ASSERT (<= lost_blocks 1))
       )   
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
-    (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
+    (let ([lost_blocks (file->string "lost_blocks.txt")])
       (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a\n" lost_blocks)
       ;(ASSERT (<= lost_blocks 1))
       ))
@@ -773,6 +773,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     )
     
   (close-output-port outp)
+  (fpf "\n\n  Vital Stats:\n")
   (fpf "~a" (file->string vitals))
   )
 
