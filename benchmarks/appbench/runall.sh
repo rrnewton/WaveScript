@@ -39,23 +39,23 @@ getfile
 # echo '\end{verbatim}'  >> marmot.tex
 
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running orig marmot phase 1  " > RESULTS.txt
-runallbackends run_first_phase $TEMP 0 15
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running orig marmot phase 1  " > RESULTS.txt
+# runallbackends run_first_phase $TEMP 0 15
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot2  " > RESULTS.txt
-runallbackends test_marmot2 $TEMP 0 30
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot2  " > RESULTS.txt
+# runallbackends test_marmot2 $TEMP 0 30
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot3  " > RESULTS.txt
-runallbackends test_heatmap $TEMP 0 7
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot3  " > RESULTS.txt
+# runallbackends test_heatmap $TEMP 0 7
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
 
 # cd "$REGIMENTD/apps/marmot/";
 # echo "## Running marmot multinode offline  " > RESULTS.txt
@@ -123,13 +123,41 @@ unset OMITMLTON
 ## APPEND RESULTS:
 ## ================================================================================ ##
 
-rm -f RESULTS.txt
-print_results_header 
-#cat aml_datapar.txt >> RESULTS.txt
-#cat aml_nosplit.txt >> RESULTS.txt
-cat marmot1.dat >> RESULTS.txt
-cat marmot2.dat >> RESULTS.txt
-cat marmot3.dat >> RESULTS.txt
-#cat marmot_multi.dat >> RESULTS.txt
-#cat pipeline.dat >> RESULTS.txt
-#cat pothole.dat >> RESULTS.txt
+# rm -f RESULTS.txt
+# print_results_header 
+# #cat aml_datapar.txt >> RESULTS.txt
+# #cat aml_nosplit.txt >> RESULTS.txt
+# cat marmot1.dat >> RESULTS.txt
+# cat marmot2.dat >> RESULTS.txt
+# cat marmot3.dat >> RESULTS.txt
+# #cat marmot_multi.dat >> RESULTS.txt
+# #cat pipeline.dat >> RESULTS.txt
+# #cat pothole.dat >> RESULTS.txt
+
+
+
+
+# Terrible way to get the length:
+#len=`echo $BACKENDS | xargs -i echo | wc -l`
+len=0
+for bk in $BACKENDS; do len=$((len+1)); done
+echo;echo Generating plot script for $len backends: $BACKENDS
+
+cd $START
+cat > plot.gp <<EOF
+# set title "Hand-optimized marmot application"
+load "../shared.gp"
+EOF
+
+PLOTLINE="plot 'RESULTS.txt' using 2:xtic(1) title col"
+
+i=3
+#for bk in $BACKENDS; do
+while [ $i -lt $((len+2)) ]; do
+echo Backend: $i
+PLOTLINE+=", '' using $i title col"
+i=$((i+1))
+done
+
+echo $PLOTLINE >> plot.gp
+echo ... finished

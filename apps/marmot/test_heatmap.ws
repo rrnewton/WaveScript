@@ -63,7 +63,7 @@ BASE <- iterate _ in timer(3.0) {
   //doa_fuse :: (AxesBounds, Float, List TaggedAML) -> (Matrix Float * Int64);
   let (mat,st) = doa_fuse(axes,grid_scale, nodesAndData);
 
-  if true 
+  if false 
   then {
     pic = colorize_likelihoods((mat,st));
     file = "temp.ppm";

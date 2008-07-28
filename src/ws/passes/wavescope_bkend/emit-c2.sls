@@ -1132,10 +1132,6 @@
 
 	    [(Secret:newTimebase)              "TIMEBASE"]
 
-	    #;
-	    [(List:length List:ref List:append List:reverse) ;; List:make 
-	     (list->string (remq-all #\: (string->list (sym2str var))))]
-
 	    [else (error 'emitC2:PrimApp:SimplePrim "primitive not specifically handled: ~s" var)]
 	    ))))
      

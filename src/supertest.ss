@@ -25,6 +25,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (define publish? (not (member "-nopost" (vector->list (current-command-line-arguments)))))
 
+;; Should we do the benchmarks in addition to regression testing?
+(define benchmarks? (member "-bench" (vector->list (current-command-line-arguments))))
+
 ;; Let's clean up some:
 (if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
 (if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response") (void))
@@ -657,7 +660,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "ws.early: Running pipeline app: "
 	    (format "ws.early pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory)))
 
-
+|#
 
 
 ;;================================================================================
@@ -667,16 +670,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "\n\nPerformance benchmarks (all backends)\n")
 (fpf "========================================\n")
 
-
 (parameterize ((current-directory (format "~a/benchmarks" test-root)))
-  
-  
-#|
+    
+
   ;; [2007.10.30] building incrementally, so we see what fails:
   (run-test "    Setup Engines:             " 
 	    (format "make engine &> ~a/bench_setup.log" test-directory))
   (ASSERT (system "make topbefore"))
- 
+#| 
   (current-directory (format "~a/benchmarks/microbench" test-root))
   (run-test "    Run microbenchmarks:              " 
 	    (format "make &> ~a/bench_micro.log" test-directory))
@@ -685,9 +686,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "    Run language_shootout:       " 
 	    (format "make &> ~a/bench_shootout.log" test-directory))
 
+|#
   (current-directory (format "~a/benchmarks/appbench" test-root))
   (run-test "    Run application benchmarks: " 
 	    (format "make &> ~a/bench_apps.log" test-directory))
+#|
   
 ;  (current-directory (format "~a/benchmarks/datareps" test-root))
 ;  (run-test "    Run datarep benchmarks:" 
@@ -701,6 +704,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
 |#
   )
+
+#|
 
 
 ;; POTHOLE 

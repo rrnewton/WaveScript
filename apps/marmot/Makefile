@@ -2,10 +2,9 @@
 
 
 all: nodelocs.ws
-	@if [ -f "6sec_marmot_sample.raw" ]; then echo "Sample Marmot data in place."; else ./download_small_sample_data; fi
-	cp 6sec_marmot_sample.raw temp.raw
-	@echo "Duplicate the sample data 10 times"
-	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do cat temp.raw >> 6sec_marmot_sample.raw; done
+	@if [ -f "6sec_marmot_sample.raw" ]; then echo "Sample Marmot data in place."; \
+  else ./download_small_sample_data; cp 6sec_marmot_sample.raw temp.raw; \
+       for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do cat temp.raw >> 6sec_marmot_sample.raw; done fi
 	@echo
 	bunzip2 -f -k testdata.txt.bz2
 	@echo

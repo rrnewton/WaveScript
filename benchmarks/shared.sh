@@ -6,7 +6,7 @@
 #  c2 -- the new C backend
 #BACKENDS="scheme mlton mltonO3"
 if [ "$BACKENDS" = "" ]; 
-then BACKENDS="c2 mltonO3"
+then BACKENDS="mltonO3 c2 c2def c2seglist c2defseglist"
 fi
 
 OLDWSCARGS="-j 1 --at_once"
@@ -100,33 +100,23 @@ function runcpp_corefit_nothreads() {
 }
 
 
+MLTONOPTIONS=
 function runmlton() {
-  echo "  mlton: compiling..."
-  if wsmlton $FILE -exit-error &> $DEST/mlton.compile.$NAME.out; then echo>/dev/null;
+  echo "  mlton $MLTONOPTIONS: compiling..."
+  if wsmlton $FILE $MLTONOPTIONS -exit-error &> $DEST/mlton$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
-#  (/usr/bin/time -f "usertime %U\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
-  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out; 
+  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton$1.$NAME.out; 
   then echo "failed!"; exit -1; fi
 }
 
-
-function runmltonO3() {
-  echo "  mlton -O3: compiling..."
-  if wsmlton $FILE -O3 -exit-error &> $DEST/mltonO3.compile.$NAME.out; then echo>/dev/null;
-  else echo "wsmlton -O3 failed!"; exit -1; fi
-  echo "   mlton -O3: running... -n "$TUPS
-#  (/usr/bin/time -f "usertime %U\nrealtime %e\n" ./query.mlton.exe -n $TUPS) &> $DEST/mlton.$NAME.out
-  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mltonO3.$NAME.out; 
-  then echo "failed!"; exit -1; fi
-}
-
+C2OPTIONS=
 function runc2() {
-  echo "  wsc2 -O3 -gc refcount -sigseg copyalways -nothreads: compiling..."
-  if wsc2 $FILE -O3 -gc refcount -sigseg copyalways -nothreads -exit-error &> $DEST/c2.compile.$NAME.out; then echo>/dev/null;
+  echo "  wsc2 $C2OPTIONS : compiling..."
+  if wsc2 $FILE $C2OPTIONS -exit-error &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc2 failed!"; exit -1; fi
   echo "   wsc2: running output... -n "$TUPS
-  if ! (time ./query.exe -n $TUPS) &> $DEST/c2.$NAME.out; 
+  if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
   then echo "failed!"; exit -1; fi
 }
 
@@ -146,37 +136,43 @@ function runallbackends() {
   # Clean up:
   rm -rf query.*  
   echo "Invoking the following backends: $BACKENDS"
+
+  TIMES=
   for backend in $BACKENDS; do
     case $backend in
-      scheme)   runscheme;   SCHEME=`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
-      schemeO3) runschemeO3; SCHEMEO3=`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`;;
-      mlton)    runmlton;    ML=`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`;;
-      mltonO3)  runmltonO3;  MLO3=`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`;;
-      cpp)      runcpp;      CPP=`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`;;
-      cpp_df)   runcpp_df;   CPPDF=`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`;;
+      scheme)   runscheme;   TIMES+=" "`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
+      schemeO3) runschemeO3; TIMES+=" "`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`;;
+      mlton)    runmlton;    TIMES+=" "`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`;;
+      mltonO3)  MLTONOPTIONS="-O3"; 
+                runmlton O3; TIMES+=" "`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`;;
+      cpp)      runcpp;      TIMES+=" "`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`;;
+      cpp_df)   runcpp_df;   TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`;;
       cpp_corefit) runcpp_corefit; 
-                             CPPNEW=`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`;;
+                             TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`;;
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
-                             CPPNOTHREADS=`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`;;
+                             TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`;; 
 
-      c2)       runc2;       CPP=`extract_mlton_usertimes.sh $DEST/c2.$NAME.out`;;
+      c2)        C2OPTIONS="-O3 -gc refcount -sigseg copyalways -nothreads";
+                 runc2; 
+                 TIMES="$TIMES `extract_mlton_usertimes.sh $DEST/c2.$NAME.out`";;
+
+      c2def)     C2OPTIONS="-O3 -gc deferred -sigseg copyalways -nothreads";
+                 runc2 def;       
+                 TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2def.$NAME.out`;;
+
+      c2seglist) C2OPTIONS="-O3 -gc refcount -sigseg seglist -nothreads";
+                 runc2 seglist;      
+                 TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2seglist.$NAME.out`;; 
+
+      c2defseglist) C2OPTIONS="-O3 -gc deferred -sigseg seglist -nothreads";
+                    runc2 defseglist;      
+                    TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2defseglist.$NAME.out`;; 
+
 
       *) echo Unhandled backend: $backend; exit -1;;
     esac
   done
-   
-#   ## This automatically catches it if one of the backends above was disabled. 
-#   CPP_BROKE=`echo $CPP | grep File`
-#   CPPDF_BROKE=`echo $CPPDF | grep File`
-#   CPPNEW_BROKE=`echo $CPPNEW | grep File`
-#   if [ ! "$CPP_BROKE" == "" ];   then CPP="-1"; fi
-#   if [ ! "$CPPDF_BROKE" == "" ]; then CPPDF="-1"; fi
-#   if [ ! "$CPPNEW_BROKE" == "" ]; then CPPNEW="-1"; fi
 
-  # ================================================================================
-  echo "RESULTS: (1) $NAME (2) $SCHEME (3) $SCHEMEO3 (4) $CPP (5) $CPPDF (6) $CPPNEW (7) $CPPNOTHREADS (8) $ML (9) $MLO3"
-  echo $NAME $SCHEME $SCHEMEO3 $CPP $CPPDF $CPPNEW $CPPNOTHREADS  $ML $MLO3 >> RESULTS.txt
-
-  #echo RESULTS: $NAME $SCHEMEO3 $CPPNOTHREADS $ML 
-  #echo $NAME $SCHEMEO3 $CPPNOTHREADS $ML >> RESULTS.txt
+  echo ALLDONE, times were: $TIMES
+  echo $NAME $TIMES >> RESULTS.txt
 }
