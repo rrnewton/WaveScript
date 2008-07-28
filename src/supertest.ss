@@ -92,6 +92,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (printf "Mail Sent, to:~a subj: ~a\n" to subj)
   (printf "Body:\n~a\n" msg)
   )
+;; Print to the log and to the screen:
 (define (fpf . args)
   (apply fprintf log args)
   (apply printf args)
@@ -465,11 +466,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
-  (run-test "wsc2: Running select demos (ikarus):"
-	    (format "./testall_wsc2 &> ~a/wsc2_demos.log" test-directory))
+  (run-test "wsc2: Running select demos, simple RC (ikarus):"
+	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos.log" test-directory))
+  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
   (ASSERT (putenv "REGIMENTHOST" "plt"))
-  (run-test "wsc2: Running select demos (plt):"
-	    (format "./testall_wsc2 &> ~a/wsc2_plt_demos.log" test-directory))
+  (run-test "wsc2: Running select demos, deferred RC (plt):"
+	    (format "./testall_wsc2 -gc deferred &> ~a/wsc2_plt_demos.log" test-directory))
+  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
   (ASSERT (putenv "REGIMENTHOST" ""))
 
   (run-test "wstiny: Running demos w/ TOSSIM:"
@@ -739,6 +742,32 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 
 |#
+
+;;================================================================================
+;; Extract vital stats from above runs:
+
+(let* ([vitals (format "~a/vital_stats.txt" test-directory)]
+       [outp   (open-output-file vitals)])
+  (parameterize ((current-directory (format "~a/demos/wavescope" test-root)))
+    (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_nondef.txt | wc -l > lost_blocks.txt"))
+    (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
+      (fprintf outp "Wsc2RC_DemosLostBlocks ~a" lost_blocks)
+      ;; [2008.07.28] There should only be a lost_block from demo4b currently (mysterious fftw plan leak)
+      ;(ASSERT (<= lost_blocks 1))
+      )   
+    (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
+    (let ([lost_blocks (string->number (file->string "lost_blocks.txt"))])
+      (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a" lost_blocks)
+      ;(ASSERT (<= lost_blocks 1))
+      )
+    
+    (close-output-port outp)
+    (fpf "~a" (file->string vitals))
+    ))
+
+;;================================================================================
+;;; Wrap it up
+;;================================================================================
 
 (fpf "\n\n\nTotal time spent testing: ~a minutes\n" 
      (milli->minute (- (current-inexact-milliseconds) start-time)))

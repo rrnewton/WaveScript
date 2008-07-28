@@ -1139,6 +1139,7 @@
 		      (not (memq 'split (ws-optimizations-enabled))))
 		  (begin 
 		    ;; In this case we do a 'normal', non-partitioned compile:
+		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
 		    (last-few-steps prog
 				    (match (compiler-invocation-mode)
 				      [wavescript-compiler-c 
