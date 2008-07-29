@@ -28,15 +28,16 @@ case "$COPTFLAG" in
 esac
 
 # Default to gcc:
-if [ "$CC" = "" ]; then CC=gcc; 
+if [ "$CC" = "" ]; then CC="gcc $OPTFLAGS"; 
 #else echo "Using alternate C compiler $CC."; 
 fi 
 
 # Only the libraries should be included again at the end:
 #WS_LINK_POST= FILTER_OUT($WS_LINK)
+#WS_LINK_POST= $WS_LINK
 
 ## ACK - include WS_LINK at front and end?!?
-CMD="$CC $WS_LINK -lm $OPTFLAGS -I $REGIMENTD/lib -o query.exe query.c $WS_LINK_POST"
+CMD="$CC $WS_LINK -lm -I $REGIMENTD/lib -o query.exe query.c $WS_LINK_POST"
 echo "$CMD"
 #if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
 

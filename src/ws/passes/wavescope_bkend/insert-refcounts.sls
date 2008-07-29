@@ -4,7 +4,9 @@
   (export insert-refcounts
 	  flag-static-allocate
 	  c-heap-allocated?
-	  gather-heap-types)
+	  gather-heap-types
+	  classify-emits
+	  )
   (import (rnrs) (rnrs mutable-pairs)
 	  (ws common)	  
 	  ;(ws util rn-match) ;; TEMPTOGGLE
@@ -14,7 +16,7 @@
 ;; TODO AVOID INCREMENTS AND DECREMENTS ON NULL POINTERS:
 (define (make-rc which ty exp)
   
-  (printf "Making refcount op: ~s\n" exp)
+  ;(if (deep-member? 'quote exp) (printf "Making refcount op: ~s\n" exp))
 
   ;; [2008.04.05] We end up with BOTTOMs as a result of ws-normalize-context.
   ;; (They are the return value that follow a wserror control path.)
@@ -155,6 +157,21 @@
 	     )])))])
 
 
+;; [2008.07.29] This classifies different emit variants.
+;; It also splits out emits that go to multiple downstream operators.
+;; The language after this point allows multiple outputs from a "box".
+;;
+;; TODO: move this to its own file.
+(define-pass classify-emits
+    [Expr 
+     (lambda (xp fallthru)
+       (match xp 
+	 [(emit ,vq ,x) 
+	  (inspect (list 'EMIT x))]
+	 [,oth (fallthru oth)]))]
+    )
+
+;; ====================================================================================================
 ;; [2008.01.18] Experimenting with moving the refcounting into another
 ;; pass so we can start to think about optimizing away refcounts.
 ;;

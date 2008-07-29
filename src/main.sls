@@ -1096,7 +1096,8 @@
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 		     
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
-		     
+
+		     ;(ws-run-pass prog classify-emits)	     
 		     (unless (embedded-mode? (compiler-invocation-mode))
 		       (ws-run-pass prog insert-refcounts)
 		       (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog))))
