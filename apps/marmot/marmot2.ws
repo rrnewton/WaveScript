@@ -251,11 +251,10 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	for n = 0 to (sens_num - 1) {
 	  _D       = expC2(2.0 * const_PI * _order * td[n] / _window_size);
 	  temp_c  += conjC(_D) * get(data_f, n, order[j]);
+	  Jvec[i] += norm_sqrC( _D * sdivC(temp_c, _sens_num) );
 
 	  //fun sdivC(c,d) makeComplex(realpart(c)/d, imagpart(c)/d);
 	  //fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
-
-	  Jvec[i] += norm_sqrC( _D * sdivC(temp_c, _sens_num) );
 
 	  //foo = _D * temp_c;
 	  //Jvec[i] += realpart(foo) + imagpart(foo);

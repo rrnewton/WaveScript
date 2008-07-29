@@ -49,6 +49,10 @@ if ! [ "$THREADS" = "" ];
 then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";
 fi
 
+if [ "`which icc`" != "" ]
+# Could do -static also:
+then export CC='icc -O3 -ipo -no-prec-div'
+fi
 
 if ! [ -f "query.c" ]
 then echo "query.c not found..."

@@ -10,7 +10,12 @@
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )
 
+
+;; TODO AVOID INCREMENTS AND DECREMENTS ON NULL POINTERS:
 (define (make-rc which ty exp)
+  
+  (printf "Making refcount op: ~s\n" exp)
+
   ;; [2008.04.05] We end up with BOTTOMs as a result of ws-normalize-context.
   ;; (They are the return value that follow a wserror control path.)
   (cond

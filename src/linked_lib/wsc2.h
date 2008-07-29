@@ -11,7 +11,7 @@
    LOAD_COMPLEX
    USE_BOEHM
    ALLOC_STATS 
-   WS_THREADED
+   WS_THRADED
 
  */
 
@@ -23,6 +23,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include <unistd.h>
 #include<math.h>
 #include <time.h>
 #include <sys/time.h>
@@ -237,7 +238,7 @@ extern int       zct_count;
 extern int       iterate_depth;
 
 #ifdef WS_THREADED
-// This locks all the zct_state above:
+// This locks all the zct_* above:
 extern pthread_mutex_t zct_lock;
 #endif
 
@@ -335,7 +336,6 @@ int wsc2_tuplimit = 10;
 //################################################################################//
 
 #ifdef WS_REAL_TIMERS
-#include <unistd.h>
 unsigned long tick_counter;
 #define VIRTTICK() tick_counter++
 // Should use nanosleep:
@@ -607,7 +607,7 @@ char *commaprint(unsigned long long n)
 
 
 #ifdef LOAD_COMPLEX
-inline static float cNorm(complex c) {
+inline static float cNorm(complex float c) {
    float re =  __real__ (c);
    float im =  __imag__ (c);
    return sqrt ((re*re) + (im*im));

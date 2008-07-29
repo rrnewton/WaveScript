@@ -1666,7 +1666,7 @@ Ok, this seems to be a problem unique to my core2 duo.  I've got it
 down to one line of the following function.   Changing a single
 floating point add to a divide wrecks it under gcc but not under mlton:
 
-for (n_437 = 0; n_437 <= tmpsmp_2677; n_437++) {
+wsfor (n_437 = 0; n_437 <= tmpsmp_2677; n_437++) {
 
   float tmpsmp_2679 = (2.0 * 3.141592653589793);
   float tmpsmp_2681  = (tmpsmp_2679 * _order_434);                                                                                                  
@@ -1777,4 +1777,14 @@ Basically just switching fadd for fmul.  But this tiny change in the
 assembly code creates a gigantic change in the excution speed of the
 entire application.  Some microcode weirdness?  How does mlton
 sidestep this?
+
+WOW, tried icc 10.1 on this file.  Not only does it not have a problem
+with the fmul version, but it runs between 2 and 3X faster in absolute
+terms!!  Must be the vectorization.  However, while -O3 does well,
+-fast is bad.  Must be doing the wrong processor... These are all
+fine: "-O3 -ipo -no-prec-div -static".  But -xP -xS are bad.  -x0 is
+good (on honor).  You'd think sse4 (-xS) would be the best, since I believe
+honor has sse4.  With -ipo -x0 -no-prec-div it does slightly better
+than -O3 alone.  -xT is also bad.  -xW is good.
+
 

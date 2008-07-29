@@ -1841,7 +1841,7 @@ int main(int argc, char **argv)
 		     ,(block `("if (status != ",(number->string (max 1 winsize))
 			       " * ",(if binarymode "1" (number->string (length types)))")")
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
-			       "wsShutdown(0);\n"))
+			       "wsShutdown();\n"))
 		     
 		     ,(lines-text ((Emit self down* elt #t) 'buf))))])
 

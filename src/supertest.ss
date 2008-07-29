@@ -3,6 +3,8 @@
 exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
+;; TODO: generate intermediate/ and most_recent_logs/ dirs if they're not there...
+
 ;; This really puts the system through the paces.
 ;; It's a PLT-Scheme-ONLY script (mzscheme).  
 ;; (Chez's system call doesn't return an error code.)
@@ -689,6 +691,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 |#
 #;
   (current-directory (format "~a/benchmarks/appbench" test-root))
+#;
   (run-test "    Run application benchmarks: " 
 	    (format "make &> ~a/bench_apps.log" test-directory))
 #|
