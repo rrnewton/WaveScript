@@ -222,9 +222,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 
     //    gnuplot_array(order);
 
-
-
-
+    strt = clock();
     /* <<<<<<<<<<<<<<<<<<<< ANGLE SEARCH >>>>>>>>>>>>>>>>>>>> */
     // now do the actual AML calculation, searching thru each angle
     for i = 0 to (grid_size - 1) {
@@ -263,12 +261,9 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	  // c version is : Cnormsqr(Cmul(temp_c,D[k])), where temp_c is divided by AML_NUM_CHANNELS
 	}
       }
-
-    }
-
-
-
-;
+    };
+    /* <<<<<<<<<<<<<<<<<<<< END ANGLE SEARCH >>>>>>>>>>>>>>>>>>>> */
+    print("AML time "++ clock()-strt ++"\n");
 
     // gnuplot_array(Jvec);
     //    emit(Jvec); // and, we're done!

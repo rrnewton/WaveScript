@@ -17,11 +17,8 @@ else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi
 
 
-## TEMP: UNCONDITIONAL PTHREADS
-#export WS_LINK="$WS_LINK -lpthread "
-#export WS_LINK="$WS_LINK -DWS_THREADED -lpthread"
-#RELEVANT="--threads $RELEVANT"
-THREADS=true
+## TEMP: PTHREADS BY DEFAULT  :
+#THREADS=true
 
 eval set -- "$RELEVANT"
 

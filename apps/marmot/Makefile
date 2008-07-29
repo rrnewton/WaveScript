@@ -1,15 +1,19 @@
 
 
 
-all: nodelocs.ws
+all: nodelocs.ws testdata.txt 6sec_marmot_sample.raw
+	@echo
+	@echo "Need to run script update_locs_script.ss to generate nodelocs.ws!"
+	@echo "Alternatively, link it to example_nodelocs.ws."
+
+testdata.txt:
+	bunzip2 -f -k testdata.txt.bz2
+
+6sec_marmot_sample:
 	@if [ -f "6sec_marmot_sample.raw" ]; then echo "Sample Marmot data in place."; \
   else ./download_small_sample_data; cp 6sec_marmot_sample.raw temp.raw; \
        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19; do cat temp.raw >> 6sec_marmot_sample.raw; done fi
 	@echo
-	bunzip2 -f -k testdata.txt.bz2
-	@echo
-	@echo "Need to run script update_locs_script.ss to generate nodelocs.ws!"
-	@echo "Alternatively, link it to example_nodelocs.ws."
 
 nodelocs.ws:
 	cp example_nodelocs.ws nodelocs.ws

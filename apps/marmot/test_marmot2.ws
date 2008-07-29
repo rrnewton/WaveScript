@@ -82,6 +82,18 @@ For test_marmot2.ws by itself:
 421K - wsmlton -O3  (ODD...)
 */
 
+/* 
+
+[2008.07.28] {wsc2 losing to mlton on this test}
+
+wsc2 seems to be having trouble with this test.  However, wsc2 beats
+the pants off mlton on run_marmot2 (combined phases 1 & 2), in spite
+of the fact that wsc2 seems to be reallocating the fft plan between 32
+and 4096.  Ah, ok, as expected there is trouble reading the file.
+Hmm, but that doesn't seem to correct the problem.
+
+*/
+
 
 
 
@@ -112,10 +124,15 @@ samp_rate = 24000.0;
 chans = 
   if true
   then { file = "testdata.txt";
-         mytimer = repeater(2400, timer(20.0));
+         mytimer = timer(20.0);
+         //mytimer = repeater(2400, timer(20.0));
+	 //mytimer = FINITE_BURST(8192 * );
          _chans = (readFile(file, "mode: text ", mytimer) :: Stream (Float));
          __chans = window(_chans, 8192);
-         repeater(21, __chans); }
+	 repeater(20000, __chans);
+	 // repeater(21, repeater(21, __chans));
+	 //holdAndRepeat(8192, 10000, fun() (), _chans)
+	 }
   else { file = "6sec_marmot_sample.raw";
          mytimer = repeater(600,timer(80.0));
 	 deep_stream_map(int16ToFloat,
@@ -169,7 +186,11 @@ doas
 
 //doas = oneSourceAMLTD(synced0, 4096);
 
-//BASE <- chans;
+main = clockit("AMLdone",   
+   smap(fun(_)(), timeTransformer(100, chans, run_it))
+   )
+
+//main = iterate w in chans { emit w.width };
 //BASE <- ch2;
 //BASE <- ch1;
 //BASE <- dewindow(ch1)
@@ -184,8 +205,3 @@ doas
 
 
 //BASE <- run_it(chans)
-
-
-BASE <- clockit("AMLdone",   
-   smap(fun(_)(), timeTransformer(100, chans, run_it))
-   )

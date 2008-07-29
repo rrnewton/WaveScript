@@ -469,11 +469,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
-  (run-test "wsc2: Running select demos, simple RC (ikarus):"
+  (run-test "wsc2: Demos, simple RC (ikarus):"
 	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
   (ASSERT (putenv "REGIMENTHOST" "plt"))
-  (run-test "wsc2: Running select demos, deferred RC (plt):"
+  (run-test "wsc2: Demos, deferred RC (plt):"
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
   (ASSERT (putenv "REGIMENTHOST" ""))
