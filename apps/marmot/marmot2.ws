@@ -164,7 +164,7 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
     data_f = create(sens_num, total_bins); // with no set values, yet. 4 channels x total bin size
 
     // Allocate some extra buffers that are used below.
-    D = Array:make(sens_num, (0::Complex));
+    //D = Array:make(sens_num, (0::Complex));
 
     // set each element
     for i = 0 to (sens_num - 1) { // AML_NUM_CHANNELS
@@ -222,6 +222,9 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 
     //    gnuplot_array(order);
 
+    // [2008.07.29] Allocate once outside the loop:
+    td = Array:makeUNSAFE(sens_num);
+
     strt = clock();
     /* <<<<<<<<<<<<<<<<<<<< ANGLE SEARCH >>>>>>>>>>>>>>>>>>>> */
     // now do the actual AML calculation, searching thru each angle
@@ -234,7 +237,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
       // function to calculate time delay relative to centre of array
       fun delay(c) (0.00 - radius[c] * cos(try_angle - theta[c]) * samp_rate / sound_spd); 
 
-      td = Array:build(sens_num, delay);
+      //td = Array:build(sens_num, delay);
+      for k = 0 to sens_num-1 { td[k] := delay(k) };
 
       //      print("td = "++show(td[0])++" "++show(td[1])++" "++show(td[2])++" "++show(td[3])++"\n");
       for j = 0 to (sel_bin_size-1) {
@@ -243,6 +247,25 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	
 	temp_c = ref(0);
 
+	// [2008.07.29] This is the crux of the performance difference between gcc and MLton:
+	for n = 0 to (sens_num - 1) {
+	  _D       = expC2(2.0 * const_PI * _order * td[n] / _window_size);
+	  temp_c  += conjC(_D) * get(data_f, n, order[j]);
+
+	  //fun sdivC(c,d) makeComplex(realpart(c)/d, imagpart(c)/d);
+	  //fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
+
+	  Jvec[i] += norm_sqrC( _D * sdivC(temp_c, _sens_num) );
+
+	  //foo = _D * temp_c;
+	  //Jvec[i] += realpart(foo) + imagpart(foo);
+	  //Jvec[i] += realpart$ sdivC(temp_c, _sens_num);
+	  //Jvec[i] += realpart( _D * sdivC(temp_c, _sens_num));
+
+	  //Jvec[i] := realpart(temp_c);
+	};
+
+	/*
 	// compute steering vector D (steering vector lines up channels, a la delay and sum beamforming)
 	for n = 0 to (sens_num - 1) {
            // took out the order[j]+1 (seems to make it equal)
@@ -260,6 +283,8 @@ fun actualAML(data_in, radius, theta, grid_size, sens_num)
 	  Jvec[i] := Jvec[i] + norm_sqrC( (D[n] * sdivC(temp_c, _sens_num)) );
 	  // c version is : Cnormsqr(Cmul(temp_c,D[k])), where temp_c is divided by AML_NUM_CHANNELS
 	}
+	*/
+
       }
     };
     /* <<<<<<<<<<<<<<<<<<<< END ANGLE SEARCH >>>>>>>>>>>>>>>>>>>> */

@@ -15,7 +15,9 @@ marmfft = memoized_fftR2C
 //marmfft = foreign(,["","$EMLIB/libnl/libnl/fix_fft.c"])
 //marmfft = foreign("wsfixfft",["fix_fft.c"])
 
-fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
+// C was doing OK here:
+//fun sdivC(c,d) (1.0+0.0i * floatToComplex(realpart(c)/d)) + (0.0+1.0i * floatToComplex(imagpart(c)/d));
+fun sdivC(c,d) makeComplex(realpart(c)/d, imagpart(c)/d);
 
 fun norm_sqrC(c) (realpart(c) * realpart(c)) + (imagpart(c) * imagpart(c));
 

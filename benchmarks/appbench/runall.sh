@@ -22,7 +22,7 @@ function getfile() {
   cd "$REGIMENTD/apps/marmot";
   #(rm -f 6sec_marmot_sample.raw)
   # ensure that we have sample data:
-  make 
+  make 6sec_marmot_sample.raw
 }
 
 getfile
@@ -39,23 +39,23 @@ getfile
 # echo '\end{verbatim}'  >> marmot.tex
 
 
-# cd "$REGIMENTD/apps/marmot/";
-# echo "## Running orig marmot phase 1  " > RESULTS.txt
-# runallbackends run_first_phase $TEMP 0 15
-# cd "$START"
-# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
+cd "$REGIMENTD/apps/marmot/";
+echo "## Running orig marmot phase 1  " > RESULTS.txt
+runallbackends run_first_phase $TEMP 0 15
+cd "$START"
+mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
 
-# cd "$REGIMENTD/apps/marmot/";
-# echo "## Running marmot2  " > RESULTS.txt
-# runallbackends test_marmot2 $TEMP 0 30
-# cd "$START"
-# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+cd "$REGIMENTD/apps/marmot/";
+echo "## Running marmot2  " > RESULTS.txt
+runallbackends test_marmot2 $TEMP 0 30
+cd "$START"
+mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
 
-# cd "$REGIMENTD/apps/marmot/";
-# echo "## Running marmot3  " > RESULTS.txt
-# runallbackends test_heatmap $TEMP 0 7
-# cd "$START"
-# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
+cd "$REGIMENTD/apps/marmot/";
+echo "## Running marmot3  " > RESULTS.txt
+runallbackends test_heatmap $TEMP 0 7
+cd "$START"
+mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
 
 # cd "$REGIMENTD/apps/marmot/";
 # echo "## Running marmot multinode offline  " > RESULTS.txt

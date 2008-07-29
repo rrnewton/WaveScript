@@ -1983,11 +1983,15 @@
 	   (printf "Setting GC mode to ~s\n" name)
 	   ;; Allow some shorthands:
 	   (case name
-	     [(no none)          (wsc2-gc-mode 'none)]
-	     [(rc ref refcount)  (wsc2-gc-mode 'refcount)]
-	     [(de def deferred)  (wsc2-gc-mode 'deferred)]
-	     [(bo boehm)         (wsc2-gc-mode 'boehm)]
-	     [else               (error "unsupported garbage collection mode: ~s" name)])	   
+	     [(no none)                    (wsc2-gc-mode 'none)]
+	     [(rc ref refcount)            (wsc2-gc-mode 'refcount)]
+	     [(de def deferred)            (wsc2-gc-mode 'deferred)]
+	     ;[(deferred-disjoint)          (wsc2-gc-mode )]
+	     ;[(refcount-disjoint)          (wsc2-gc-mode )]
+	     ;[(refcount-noshared)          (wsc2-gc-mode )]
+	     ;[(rcmult refcount-multiheap)         (wsc2-gc-mode )]
+	     [(bo boehm)                   (wsc2-gc-mode 'boehm)]
+	     [else               (error "unsupported garbage collection mode: ~s" name)])
 	   (loop rest)]
 	  
 	  [(,ss ,name ,rest ...) (guard (or (string=? ss "-sigseg") (string=? ss "-ss")))

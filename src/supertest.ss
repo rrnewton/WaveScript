@@ -687,6 +687,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "make &> ~a/bench_shootout.log" test-directory))
 
 |#
+#;
   (current-directory (format "~a/benchmarks/appbench" test-root))
   (run-test "    Run application benchmarks: " 
 	    (format "make &> ~a/bench_apps.log" test-directory))

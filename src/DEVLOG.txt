@@ -1602,3 +1602,179 @@ refcounting or the deferred.
 It looks like rev 3341 failed just because of the activation of the
 queue refcounts, but we need to test this now.
 
+[2008.07.29] {performance discrepancy in test_marmot2}
+
+It seems that mlton is beating GCC in compiling the inner loops of the
+AML algorithm.  I had nirav look at this a bit.  It's just a handful
+of floating point ops.  
+
+First, I was afraid that C wasn't generating and storing the complex
+number properly, so I did the stores manually (prettending we're
+writing into a float array).  That didn't make a difference.  Then I
+knocked out the division and the cos/sin ops.  That made a big
+difference in the runtime.
+
+ for (n_447 = 0; n_447 < 4; n_447++) 
+  {
+    float tmpsmp_2763 = (6.283185307179586 * _order_435) * td_430[n_447];
+    float f_448 = tmpsmp_2763 / _window_size_397;
+    D_423[n_447] = cos(f_448) + (sin(f_448) * 1.0fi);
+  }
+
+   while !var_n_241 <= var_tmpsmp_1708 do
+   (let val var_n_241 = !var_n_241 in
+    (let val var_tmpsmp_1710 : Real32.real = (( Real32.* ) (2.0, 3.141592653589793)) in 
+     (let val var_tmpsmp_1712 : Real32.real = (( Real32.* ) (var_tmpsmp_1710, var__order_229)) in 
+      (let val var_tmpsmp_1714 : Real32.real = (Array.sub (var_outls_750, var_n_241)) in 
+        (let val var_tmpsmp_1716 : Real32.real = (( Real32.* ) (var_tmpsmp_1712, var_tmpsmp_1714)) in 
+          (let val var_f_242 : Real32.real = (( Real32./ ) (var_tmpsmp_1716, var__window_size_190)) in 
+            (let val var_tmpsmp_1718 : Real32.real = (Real32.Math.cos (var_f_242)) in 
+              (let val var_tmpsmp_1720 : Real32.real = (Real32.Math.sin (var_f_242)) in 
+                (let val var_tmpsmp_1722 : Complex.complex = 
+                    (((fn  (( (r ,  i) ))  =>  ({real= r, imag= i}) )) (var_tmpsmp_1718, var_tmpsmp_1720)) in 
+                    ((Array.update (var_D_216, var_n_241, var_tmpsmp_1722));
+                    ())
+                 end)
+               end)
+             end)
+           end)
+         end)
+       end)
+     end)
+   end)
+   end; 
+   var_n_241 := !var_n_241 + 1)
+
+Ok wait, wait... I was off base.  As I and nirav dug deeper, we found
+out that it actually wasn't this loop that was causing the
+difference.  Omitting this loop simply crushed the cost of downstream
+computations.  In the following WS code:
+
+	for n = 0 to (sens_num - 1) {
+	  _D       = expC2(2.0 * const_PI * _order * td[n] / _window_size);
+	  temp_c  += conjC(_D) * get(data_f, n, order[j]);
+	  Jvec[i] += norm_sqrC( _D * sdivC(temp_c, _sens_num) );
+        }
+
+... wsmlton and wsc2 are similar in performance up to the inclusion of
+the very last norm_sqrC operation.  Throwing in operation crushes the
+performance of gcc (by a factor of 2).  It must be breaking some
+delicate optimization, resulting in the whole thing falling apart
+(whereas MLton is more aggressive or persistent).
+
+Ok, this seems to be a problem unique to my core2 duo.  I've got it
+down to one line of the following function.   Changing a single
+floating point add to a divide wrecks it under gcc but not under mlton:
+
+for (n_437 = 0; n_437 <= tmpsmp_2677; n_437++) {
+
+  float tmpsmp_2679 = (2.0 * 3.141592653589793);
+  float tmpsmp_2681  = (tmpsmp_2679 * _order_434);                                                                                                  
+  float tmpsmp_2683  = td_429[n_437];
+  float tmpsmp_2685  = (tmpsmp_2681 * tmpsmp_2683);
+  float f_439  = (tmpsmp_2685 / _window_size_397);
+  float tmpsmp_2687  = cos(f_439);
+  float tmpsmp_2689  = sin(f_439);
+  float complex _D_438  = (tmpsmp_2687 + (tmpsmp_2689 * 1.0fi));
+  float tmpsmp_2719  = __real__ (_D_438);
+  float tmpsmp_2721  = __imag__ (_D_438);
+  float tmpsmp_2723  = (0.0 - tmpsmp_2721);
+  float complex tmpsmp_2725  = (tmpsmp_2719 + (tmpsmp_2723 * 1.0fi));
+  int col_445  = order_428[j_433];
+  float complex* tmpsmp_2727 ;
+  float complex* tmprc_3258  = arr_421[n_437];
+  tmpsmp_2727 = tmprc_3258;
+  float complex tmpsmp_2729  = tmpsmp_2727[col_445];
+  float complex tmpsmp_2731  = (tmpsmp_2725 * tmpsmp_2729);
+  float complex tmpsmp_2733  = (temp_c_436 + tmpsmp_2731);
+  temp_c_436 = tmpsmp_2733;
+  float complex c_440  = temp_c_436;
+  float tmpsmp_2693  = __real__ (c_440);
+  float tmpsmp_2695  = (tmpsmp_2693 / _sens_num_399);
+  float tmpsmp_2697  = __imag__ (c_440);
+  float tmpsmp_2699  = (tmpsmp_2697 / _sens_num_399);
+  float complex tmpsmp_2701  = (tmpsmp_2695 + (tmpsmp_2699 * 1.0fi));
+  float complex c_442  = (_D_438 * tmpsmp_2701);
+  float tmpsmp_2703  = __real__ (c_442);
+  float tmpsmp_2705  = __real__ (c_442);
+  float tmpsmp_2709  = __imag__ (c_442);
+  float tmpsmp_2711  = __imag__ (c_442);
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 + tmpsmp_2709)); // fast
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 + tmpsmp_2705) + (tmpsmp_2709 + tmpsmp_2711))); // fast
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 + tmpsmp_2703));   // fast
+  Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 * tmpsmp_2703));   // slow
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 * tmpsmp_2703) + (tmpsmp_2709 * tmpsmp_2709)));   // slow
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 * tmpsmp_2705) + (tmpsmp_2709 * tmpsmp_2711))); // slow
+}
+
+Yet it has no problem on honor.  Well, that's not entirely true.
+Compiling from scratch on honor and generating a 64-bit executable has
+no problem... however, if I run the 32 bit executable on honor, it has
+the same behavior (only very slightly faster).
+
+Diffing the assembly code .s files for the above add/mul one character
+change gives the following:
+
+7807c7807
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7825c7825
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7835c7835,7836
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+7870c7871
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7888c7889
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7896c7897,7898
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+7931c7933
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7948c7950
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7958c7960,7961
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+8001c8004
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+8003a8007
+> 	.loc 2 1332 0
+8004a8009
+> 	.loc 2 1322 0
+8024c8029,8030
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+
+
+Basically just switching fadd for fmul.  But this tiny change in the
+assembly code creates a gigantic change in the excution speed of the
+entire application.  Some microcode weirdness?  How does mlton
+sidestep this?
+
