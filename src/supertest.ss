@@ -788,7 +788,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   ;; --- We check the total memory footprint of the marmot app. ----  
   (parameterize ((current-directory (format "~a/apps/marmot" test-root)))
-    (system "tail -n 1 marmot1_memprof.txt > .__last_line.txt")
+    (system "cat marmot1_memprof.txt | grep -v '#' | tail -n 1  > .__last_line.txt")
     ;; Get the peak memory usage
     (let ([peak_vm (read (open-input-file ".__last_line.txt"))])
       (fprintf outp "Marmot1_PeakVM ~a\n" peak_vm)
