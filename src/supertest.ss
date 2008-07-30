@@ -870,8 +870,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
-(post-to-web (format "rev~a_eng~a_~a"
+(post-to-web (format "rev~a_eng~a_~a~a"
 		     svn-revision engine-svn-revision
+		     (if (getenv "CC") (format "_~a_" (getenv "CC")) "")
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
