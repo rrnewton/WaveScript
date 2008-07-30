@@ -135,9 +135,6 @@
 			    (map simevt-vtime (map car
 				 (merge lessthan pairedevnts (get-queue)))))))
 
-
-		;(printf "Woot: ~s\n" (map simevt-vtime (map car (get-queue))))
-
 		(logger 3 vtime (node-id (simobject-node ob))
 			'Scheduling
 			;`[num ,(length newevnts)]

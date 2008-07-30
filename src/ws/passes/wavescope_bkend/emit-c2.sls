@@ -691,13 +691,13 @@
 		    down*)))))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
-(__spec Binding <emitC2> (self emitter)
+(__spec Binding <emitC2> (self)
   (debug-return-contract Binding lines?
    (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb
       [(,vr ,ty ,rhs) ;(,[Var -> v] ,[Type -> t] ,rhs) 
-       ((Value self emitter) rhs (varbindk self vr ty))]
+       ((Value self) rhs (varbindk self vr ty))]
 
       ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
       ;; [2008.04.13] Trying to catch static-allocate even elsewhere in the code:
@@ -717,7 +717,7 @@
 ;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
 ;; This version also DOES inject a refcount incr.
-(__spec SplitBinding <emitC2> (self emitter)
+(__spec SplitBinding <emitC2> (self)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb      
@@ -741,12 +741,12 @@
 	       (Binding bind)]
 	      #;
 	      [,else
-	       (define-values (bnds init) ((SplitBinding self emitter) bind))
+	       (define-values (bnds init) ((SplitBinding self) bind))
 	       (values (append-lines bnds bodbnds)
 		       (append-lines init bodinit))
 	       ]
 	      [,else 
-	       (values (append-lines ((Binding self emitter) bind) bodbnds)
+	       (values (append-lines ((Binding self) bind) bodbnds)
 		       bodinit)
 	       ]
 	      )]
@@ -756,13 +756,13 @@
 	   [(make-struct . ,rest)
 	    (inspect (cons 'make-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
-	    (values ((Binding self emitter) (list vr ty rhs))
+	    (values ((Binding self) (list vr ty rhs))
 		    null-lines
 		    )]
 	   [(assert-type ,ty (make-struct . ,rest))
 	    (inspect (cons 'ASSERTmake-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
-	    (values ((Binding self emitter) (list vr ty rhs))
+	    (values ((Binding self) (list vr ty rhs))
 		    null-lines
 		    )]
 	   ;; Flip
@@ -772,8 +772,7 @@
 	   [,rhs
 	    ;; We derive a setter continuation by "splitting" the varbind continuation:       
 	    (values (make-lines `(,(Type self ty)" ",(Var self vr)" ",(DummyInit self ty)";\n"))
-					;((Value self emitter) rhs set-and-incr-k)
-		    ((Value self emitter) rhs (setterk self vr ty)))]))]
+		    ((Value self) rhs (setterk self vr ty)))]))]
       [,oth (error 'SplitBinding "Bad Binding, got ~s" oth)]
       )))
 
@@ -781,7 +780,7 @@
 ;; For the x86 version we currently don't statically allocate anything.
 (__spec StaticAllocate <emitC2> (self lhs ty rhs)
   (define-values (decl initcode)
-    ((SplitBinding self (emit-err 'splitbind)) (list lhs ty rhs)))
+    ((SplitBinding self) (list lhs ty rhs)))
   ;; We do need to add a refcount increment.  Something statically
   ;; allocated will never reach zero.  
   (values decl
@@ -789,12 +788,12 @@
 	     (gen-incr-code self ty (Var self lhs) "static top-incr"))))
 
 #;
-(__spec Let <emitC2> (self form emitter recur)
+(__spec Let <emitC2> (self form recur)
   (match form     
     [(([,lhs ,ty ,rhs]) ,[recur -> bod])
-     (append-lines ((Binding self emitter) (list lhs ty rhs))
+     (append-lines ((Binding self) (list lhs ty rhs))
 		   (ASSERT lines? bod))]))
-(__spec Let <emitC2> (self form emitter recur)
+(__spec Let <emitC2> (self form recur)
   (match form         
     [(([,lhs ,ty ,rhs]) ,_bod)
 
@@ -807,7 +806,7 @@
 	  ;; To get around C's limited {a,b,c} syntax for structs...
 	  (make-lines 
 	   (block "" 
-		 (list (lines-text ((Binding self emitter) (list tmp `(Struct ,sname) _bod)))
+		 (list (lines-text ((Binding self) (list tmp `(Struct ,sname) _bod)))
 		       (lines-text (recur tmp)))))
 	  ]
 	 [,oth (recur oth)]))
@@ -817,7 +816,7 @@
 ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME      
 ;; [2008.04.13] MIGRATING THIS HACK TO SPLITBINDING
      #;	
-     (let-values ([(bind* init*) ((SplitBinding self emitter)
+     (let-values ([(bind* init*) ((SplitBinding self)
 				     (list lhs ty rhs))])
 	  (let ([result (append-lines bind* init* bod)])
 	    (make-lines (block "" (lines-text result)))))
@@ -825,19 +824,19 @@
 
      (match (peel-annotations rhs)
        [(make-struct . ,_)
-	(let ([result (append-lines ((Binding self emitter) (list lhs ty rhs))
+	(let ([result (append-lines ((Binding self) (list lhs ty rhs))
 				    bod)])
 	  (make-lines (block "" (lines-text result))))]
        [,_ 
-	(let-values ([(bind* init*) ((SplitBinding self emitter)
+	(let-values ([(bind* init*) ((SplitBinding self)
 				     (list lhs ty rhs))])
 	  (let ([result (append-lines bind* init* bod)])
 	    (make-lines (block "" (lines-text result)))))])]))
 
-(__spec Effect <emitC2> (self emitter)
+(__spec Effect <emitC2> (self)
   (debug-return-contract Effect lines?
   (lambda (xp)
-    (define (Loop x) ((Effect self emitter) x)) ;; Eta reducing this BREAKS things.
+    (define (Loop x) ((Effect self) x)) ;; Eta reducing this BREAKS things.
     (define (Simp x) (Simple self x))
     (define (Vr x)   (Var self x))
     (match xp ;; no recursion
@@ -866,8 +865,7 @@
 	 (make-lines 
 	  (block `("while (",(Const self #t id)")")
 		 (list 
-		  ;(lines-text ((Value self emitter) test (varbindk self flag 'Bool)))
-		  (let-values ([(bind* init*) ((SplitBinding self emitter)
+		  (let-values ([(bind* init*) ((SplitBinding self)
 					       (list flag 'Bool test))])
 		    (list (lines-text bind*)
 			  (lines-text init*)))
@@ -889,14 +887,11 @@
       [(Array:set ,[(TyAndSimple self) -> ty arr] ,[Simp -> ind] ,[Simp -> val])
        (let-match ([(Array ,elt) ty]) (make-lines `(,arr"[",ind"] = ",val";\n")))]
 
-      ;[(emit ,vq ,x) (emitter x)]
       [(_emit_to ,to ,props ,vq ,x) 
        (pretty-print (list 'EMITTO to x))
        (match vq
 	 [(assert-type (VQueue ,elt) ,_)
-	  ((Emit self (list to) elt) x)])
-       ;(emitter x)
-       ]
+	  ((Emit self (list to) elt) x)])]
 
       [(begin ,[Loop -> e*] ...) 
        (DEBUGASSERT (andmap lines? e*))
@@ -904,7 +899,7 @@
 
       ;; DUPLICATED CASES WITH Value:
       ;; ========================================
-      [(let . ,_) (Let self _ emitter (lambda (x) ((Effect self emitter) x)))]
+      [(let . ,_) (Let self _ (lambda (x) ((Effect self) x)))]
       ;; ========================================
 
       [(__wserror_ARRAY ,[Simp -> str]) 
@@ -914,10 +909,10 @@
 
 ;; The continuation k is invoked on a piece of text representing the return expression.
 ;; k is expected to return text of the form "lines" that stores away this result.
-(__spec Value <emitC2> (self emitter)
+(__spec Value <emitC2> (self)
   (debug-return-contract Value lines?
    (lambda (xp kont)
-     (define (recur x) ((Value self emitter) x kont))
+     (define (recur x) ((Value self) x kont))
      ;; This is a debug wrapper that respects the funky interface to the continuation:
      ;(DEBUGMODE (set! k (debug-return-contract ValueK lines? k)))
      (define (Simp x) (Simple self x))
@@ -944,7 +939,7 @@
 			]
 	       [_tmp (Var self tmp)])
 	  (append-lines 
-	   ((Value self emitter) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
+	   ((Value self) `(assert-type (Array Char) (Array:makeUNSAFE ',(vector-length vec))) newk)
 	   (make-lines
 	    (format "memcpy(~a, ~s, ~s);\n" (text->string _tmp)
 		    str copylen))
@@ -963,7 +958,7 @@
        [(assert-type ,_ (Mutable:ref ,x)) (kont (Simple self x))]
        [(begin ,e) (recur e)]
        [(begin ,e1 ,e* ...)
-	(define first ((Effect self emitter) e1))
+	(define first ((Effect self) e1))
 	(define rest 
 	  (begin 
 	    (recur `(begin ,@e*))))
@@ -977,12 +972,12 @@
 	  (make-lines
 	     `(,(lines-text lines)
 	       "if (" ,test ") {\n"
-	       ,(indent (lines-text ((Value self emitter) conseq newk)) "  ")
+	       ,(indent (lines-text ((Value self) conseq newk)) "  ")
 	       "} else {\n"
-	       ,(indent (lines-text ((Value self emitter) altern newk)) "  ")
+	       ,(indent (lines-text ((Value self) altern newk)) "  ")
 	       "}\n")))]
 
-       [(let . ,_) (Let self _ emitter recur)]
+       [(let . ,_) (Let self _ recur)]
 
        ;; Should only occur as the rvalue in a binding, which is ok.
        ;; But this is not a general expression in C:
@@ -1079,7 +1074,7 @@
 			      (list `(,_elt"* ",(Var self tmp2) " = ",cast";\n")
 				    `("int ",(Var self lensub1) " = ",len" - 1;\n")
 				    (lines-text
-				     ((Effect self (emit-err 'array:make-constant))
+				     ((Effect self)
 				      `(for (,i '0 ,lensub1)
 					   (Array:set (assert-type (Array ,elt) ,tmp2) ,i ,init))))))
 			    "")))))
@@ -1227,10 +1222,10 @@
 	(add-include! self "<fftw3.h>")
 	(add-include! self (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
 	(add-link! self "libfftw3f.so")		
-	(append-lines ((Binding self (emit-err 'fft)) (list len0 'Int `(Array:length ,arr)))
-		      ((Binding self (emit-err 'fft)) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
-		      ((Binding self (emit-err 'fft)) (list len2 'Int (if inverse? `(*_ ,len1 '2) `(_+_ ,len1 '1) )))
-		      ((Binding self (emit-err 'fft))
+	(append-lines ((Binding self) (list len0 'Int `(Array:length ,arr)))
+		      ((Binding self) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
+		      ((Binding self) (list len2 'Int (if inverse? `(*_ ,len1 '2) `(_+_ ,len1 '1) )))
+		      ((Binding self)
 				   (list tmp 
 					 (if inverse? '(Array Float) '(Array Complex))
 					;`(assert-type (Array Complex) (Array:makeUNSAFE ,len))
@@ -1256,7 +1251,7 @@
 		  [_realsize (Var self (unique-name "realsize"))]
 		  [_max (number->string max-show-size)])
 	     (append-lines 
-	      ((Binding self (emit-err '__show_ARRAY)) 
+	      ((Binding self) 
 	       (list str '(Array Char) `(assert-type (Array Char) (Array:makeUNSAFE ',max-show-size))))
 	      (make-lines (list 			   
 			   "int "_realsize" = snprintf("_str", "
@@ -1729,12 +1724,11 @@ int main(int argc, char **argv)
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down* elt) x))
      (match itercode
-       [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
+       [(let (,[(SplitBinding self) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(let-values ([(proto def)
-		      (GenWorkFunction self name v vq vty ((Value self emitter) bod nullk))])	  
+		      (GenWorkFunction self name v vq vty ((Value self) bod nullk))])
 	  (values def (cons proto bind*) init*))])]
 
     [(cutpoint (name ,_) (output-type ,type) (code ,__) (incoming ,in) (outgoing ,out))
@@ -1746,11 +1740,10 @@ int main(int argc, char **argv)
 	     (incoming ,a ,b) (outgoing ,down* ...))
      ;; This emit should not increment reference counts:
      ;; We are just redirecting something already in flight.
-     (define (emitter x) ((Emit self down* elt) x))
      (define arg (unique-name "arg"))
      (define header `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
-	      (list (block header (lines-text (emitter arg))) "\n"))
+	      (list (block header (lines-text ((Emit self down* elt) arg))) "\n"))
 	     (list (make-lines (list header ";\n")))
 	     '())]
 
@@ -1804,10 +1797,9 @@ int main(int argc, char **argv)
 	    [maintext ;; Code for the funcion that drives the file reading.
 	     (list `(
 		     ,(if (> winsize 0)
-			  (lines-text ((Value self (emit-err 'readFile)) 
+			  (lines-text ((Value self) 
 				       `(assert-type ,elt (Array:makeUNSAFE ',winsize)) 
 				       (varbindk self 'buf elt)))
-			  ;(Binding (list 'buf elt (make-zero-for-type elt)))
 			  ;; A binding with no init:
 			  (list (Type self elt) " " _buf ";\n"))
 		     
@@ -1900,8 +1892,8 @@ int main(int argc, char **argv)
      (match prog
        [(,lang '(graph 
 		 ;; These had better be *constants* for GCC:
-		 (const ,[(SplitBinding self (emit-err 'TopBinding)) -> cb* cbinit*] ...)
-		 (init  ,[(Effect self (lambda _ (error 'top-level-init "code should not 'emit'")))
+		 (const ,[(SplitBinding self) -> cb* cbinit*] ...)
+		 (init  ,[(Effect self)
 			  -> init*] ...)
 		 ;(sources ,[(curry Source self) -> srcname* srccode* state1* srcrate* srcinit*] ...)
 		 (sources ,[(curry Source self) -> pieces**] ...)

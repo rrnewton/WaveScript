@@ -197,10 +197,6 @@
 					;	      (printf "Bang : ~s \n" (map node-id row))
 		  (printf "  ~s: ~s\n" (car row)
 			  (map (lambda (nbr) 			     
-					;			     (printf "Woot ~s ~s ~s ~s \n" 
-					;				     (node? (car row)) (node? nbr)
-					;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
-					;				     )
 				 (let ((connectivity ((simworld-connectivity-function world)
 						      (node-pos (car row))
 						      (node-pos nbr))))

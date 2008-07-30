@@ -185,7 +185,6 @@
   (lambda (x)
     (syntax-case x (unquote)
       [(_ (Pat ...) Expr ...)
-       ;(printf "Woot: ~a\n" #'(Pat ...))
        #'(match-lambda-helper (Pat ...) () Expr ...)
        ])))
 ;(expand '((match-lambda (x y) #t) 'x 'y))
@@ -268,7 +267,6 @@
     (syntax-case x ()
       [(_ f x ...)
        (begin 
-	 (disp "Woot:" (map identifier? #'(x ...)))
 	 (let apply-ordered-loop ([args (reverse #'(x ...))] [newargs '()] [binds '()])
 	   (if (null? (args)
 	       (with-syntax ((b binds) (na newargs))

@@ -1739,7 +1739,7 @@
 	     (IF_GRAPHICS 
 	      ;; This starts swl then evals the expression.
 	      (bounce-to-swl '(go-sim))	      
-	      (begin (printf "WOOT\n")
+	      (begin 
 		     ((top-level-value 'go-sim))
 		     ))
 	     )))]

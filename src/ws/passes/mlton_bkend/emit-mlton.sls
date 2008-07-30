@@ -303,7 +303,6 @@
 									    (string-append 
 									     ;',(format "~s" (VariantName varname))
 									     ',(** (VariantName varname) "(")
-									     ;'"WOOT("
 									     (string-append
 									      (show (assert-type ,argty x))
 									      '")"))))
