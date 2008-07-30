@@ -173,33 +173,6 @@
 	       ,@(map (lambda (down) `(_emit_to ,down () ,vq ,x))
 		   downstream-targets))]
 	   [,oth (fallthru oth)]))))
-
-#;    
-    (_merge (name fn_7)
-          (output-type (stream (struct tuptyp_98)))
-          (code
-            (_merge
-              (annotations (name fn_272))
-              unionlist_6
-              unionlist_5))
-          (incoming unionlist_6 unionlist_5) (outgoing tmpsmp_82))
-
-#;
-    (define (Operator op)
-      (match op
-	[(iterate (name ,name) (output-type ,o_ty)
-		  (code ,[Value+ -> itercode])
-		  (incoming ,o_up) (outgoing ,o_down* ...))
-	 `(iterate (name ,name) (output-type ,o_ty)
-		   (code ,itercode)
-		   (incoming ,o_up) (outgoing ,@o_down*))]
-	;; All of these have no code to speak of:
-	[(_merge . ,_) op]
-	[(__readFile . ,_) op]
-	[(cutpoint . ,_) op]
-	[(unionN . ,_) op]))
-    
-
     (lambda (prog)
       (match prog
 	[(,input-language 

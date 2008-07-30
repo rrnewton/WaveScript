@@ -887,8 +887,7 @@
       [(Array:set ,[(TyAndSimple self) -> ty arr] ,[Simp -> ind] ,[Simp -> val])
        (let-match ([(Array ,elt) ty]) (make-lines `(,arr"[",ind"] = ",val";\n")))]
 
-      [(_emit_to ,to ,props ,vq ,x) 
-       (pretty-print (list 'EMITTO to x))
+      [(_emit_to ,to ,props ,vq ,x)
        (match vq
 	 [(assert-type (VQueue ,elt) ,_)
 	  ((Emit self (list to) elt) x)])]

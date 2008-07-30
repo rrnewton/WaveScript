@@ -123,17 +123,16 @@ unset OMITMLTON
 ## APPEND RESULTS:
 ## ================================================================================ ##
 
-# rm -f RESULTS.txt
-# print_results_header 
+rm -f RESULTS.txt
+print_results_header 
 # #cat aml_datapar.txt >> RESULTS.txt
 # #cat aml_nosplit.txt >> RESULTS.txt
-# cat marmot1.dat >> RESULTS.txt
-# cat marmot2.dat >> RESULTS.txt
-# cat marmot3.dat >> RESULTS.txt
+cat marmot1.dat >> RESULTS.txt
+cat marmot2.dat >> RESULTS.txt
+cat marmot3.dat >> RESULTS.txt
 # #cat marmot_multi.dat >> RESULTS.txt
 # #cat pipeline.dat >> RESULTS.txt
 # #cat pothole.dat >> RESULTS.txt
-
 
 
 
