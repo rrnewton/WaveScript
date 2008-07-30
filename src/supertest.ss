@@ -28,7 +28,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define publish? (not (member "-nopost" (vector->list (current-command-line-arguments)))))
 
 ;; Should we do the benchmarks in addition to regression testing?
-(define benchmarks? (member "-bench" (vector->list (current-command-line-arguments))))
+(define benchmarks? (not (member "-nobench" (vector->list (current-command-line-arguments)))))
 
 ;; Let's clean up some:
 (if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
@@ -668,46 +668,48 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Performance benchmarks.
 
-(post-to-web (format "intermediate/rev_~a" svn-revision))
-(fpf "\n\nPerformance benchmarks (all backends)\n")
-(fpf "========================================\n")
+(when benchmarks?
 
-(parameterize ((current-directory (format "~a/benchmarks" test-root)))
+  (post-to-web (format "intermediate/rev_~a" svn-revision))
+  (fpf "\n\nPerformance benchmarks (all backends)\n")
+  (fpf "========================================\n")
+
+  (parameterize ((current-directory (format "~a/benchmarks" test-root)))
     
 
-  ;; [2007.10.30] building incrementally, so we see what fails:
-  (run-test "    Setup Engines:             " 
-	    (format "make engine &> ~a/bench_setup.log" test-directory))
-  (ASSERT (system "make topbefore"))
-#| 
-  (current-directory (format "~a/benchmarks/microbench" test-root))
-  (run-test "    Run microbenchmarks:              " 
-	    (format "make &> ~a/bench_micro.log" test-directory))
-  
-  (current-directory (format "~a/benchmarks/language_shootout" test-root))
-  (run-test "    Run language_shootout:       " 
-	    (format "make &> ~a/bench_shootout.log" test-directory))
+    ;; [2007.10.30] building incrementally, so we see what fails:
+    (run-test "    Setup Engines:             " 
+	      (format "make engine &> ~a/bench_setup.log" test-directory))
+    (ASSERT (system "make topbefore"))
+    #| 
+    (current-directory (format "~a/benchmarks/microbench" test-root))
+    (run-test "    Run microbenchmarks:              " 
+	      (format "make &> ~a/bench_micro.log" test-directory))
+    
+    (current-directory (format "~a/benchmarks/language_shootout" test-root))
+    (run-test "    Run language_shootout:       " 
+	      (format "make &> ~a/bench_shootout.log" test-directory))
 
-|#
+    |#
 
-  (current-directory (format "~a/benchmarks/appbench" test-root))
-  (run-test "    Run application benchmarks: " 
-	    (format "make &> ~a/bench_apps.log" test-directory))
+    (current-directory (format "~a/benchmarks/appbench" test-root))
+    (run-test "    Run application benchmarks: " 
+	      (format "make &> ~a/bench_apps.log" test-directory))
 
-#|
-  
-;  (current-directory (format "~a/benchmarks/datareps" test-root))
-;  (run-test "    Run datarep benchmarks:" 
-;	    (format "make &> ~a/bench_datareps.log" test-directory))
+    #|
+    
+					;  (current-directory (format "~a/benchmarks/datareps" test-root))
+					;  (run-test "    Run datarep benchmarks:" 
+					;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
-  (current-directory (format "~a/benchmarks" test-root))
-  (run-test "    Verify dependencies, do conversions:" 
-	    (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
-  (ASSERT (system "make topafter"))
-  (run-test "    Compile results, build full report: " 
-	    (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
-|#
-  )
+    (current-directory (format "~a/benchmarks" test-root))
+    (run-test "    Verify dependencies, do conversions:" 
+	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
+    (ASSERT (system "make topafter"))
+    (run-test "    Compile results, build full report: " 
+	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
+    |#
+    ))
 
 #|
 
@@ -872,7 +874,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (post-to-web (format "rev~a_eng~a_~a~a"
 		     svn-revision engine-svn-revision
-		     (if (getenv "CC") (format "_~a_" (getenv "CC")) "")
+		     (if (getenv "CC") (format "~a_" (getenv "CC")) "")
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 

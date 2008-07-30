@@ -1,5 +1,7 @@
 
+// This simply passes a lot of small tuples from a timer through a single iterate.
 
+// [2007.10]
 // On faith: scheme = <1s / 50K * 50, (-n 50)
 //   mlton = 3s ?? And that's whether or not we use 32 or 64 bit virttime stamps.
 //   wsc -O2 = 15.5s 9.3s (user) with no usleeping at all, 

@@ -312,7 +312,7 @@ extern pthread_mutex_t zct_lock;
 void free_by_numbers(typetag_t, void*);
 
 // This needs to be the high-bit in a refcount_t
-#define PUSHED_MASK (1 << (sizeof(refcount_t) * 8 - 1))
+#define PUSHED_MASK (((refcount_t)1) << (sizeof(refcount_t) * 8 - 1))
 
 // NOTE: THIS ASSUMES IDENTICAL RC METHOD FOR ARRAYS AND CONS CELLS!!
 static inline void MARK_AS_PUSHED(void* ptr) {
