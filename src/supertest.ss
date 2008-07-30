@@ -69,7 +69,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
 (define (code->msg! m) 
-  (let ([val (if (or (zero? m) (eq? m #t))
+  (let ([val (if (or (equal? m 0) (equal? m #t))
 		 (format "passed (~a min)" 
 			 (milli->minute (- (current-inexact-milliseconds) last-test-timer)))
 		 (begin (set! failed #t) 
