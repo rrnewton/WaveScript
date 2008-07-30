@@ -54,7 +54,8 @@
 		    print show __show_ARRAY 
 		    Array:ref Array:set Array:length
 		    
-		    car ;; [2008.03.22] Adding
+		    car ;; [2008.03.22] Adding 
+		    cdr ;; [2008.07.30] Adding
 
 		    < <= > >= max min
 		    

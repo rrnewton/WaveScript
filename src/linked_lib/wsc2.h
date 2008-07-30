@@ -70,7 +70,9 @@ extern int stopalltimers;
 //                 Matters of memory layout and GC                                //
 //################################################################################//
 
-typedef unsigned int refcount_t;
+//typedef unsigned int refcount_t;
+// 64 bit is giving me annoying alignment problems.  Let's make this a whole word:
+typedef unsigned long refcount_t;
 
 #define PTRSIZE sizeof(void*)
 #define ARRLENSIZE sizeof(int)
@@ -145,24 +147,24 @@ inline void free_measured(void* object) {
 #endif
 
 // ============================================================
-// Handle RCs on BOTH Cons Cells and Arrays:
-// A RC is the size of an int currently:
-// CLEAR_RC is only called when the ptr is non-nil.
-#define GET_RC(ptr)           (ptr ? ((refcount_t*)ptr)[-1] : 0)
-#define SET_RC(ptr,val)              ((refcount_t*)ptr)[-1] = val
-#define CLEAR_RC(ptr)                SET_RC(ptr,0)
+// Handle RCs on Arrays (and maybe the same for cons cells):
+// CLEAR_ARR_RC is only called when the ptr is non-nil.
+#define ARR_RC_DEREF(ptr)         (((refcount_t*)ptr)[-1])
+#define GET_ARR_RC(ptr)           (ptr ? ARR_RC_DEREF(ptr) : 0)
+#define SET_ARR_RC(ptr,val)       (ARR_RC_DEREF(ptr) = val)
+#define CLEAR_ARR_RC(ptr)         SET_ARR_RC(ptr,0)
 
 // TEMPORARY: For the moment we make all incr/decrs thread safe!!
 // Instead we should be proactively copying on fan-out.
 #ifdef WS_THREADED
   #include "atomic_incr_intel.h"
-  #define INCR_RC(ptr)        if (ptr) atomic_increment(((refcount_t*)ptr)-1)
-  #define DECR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add(((refcount_t*)ptr)-1, -1) == 1 : 0)
-  #define INCR_ITERATE_DEPTH()  atomic_increment(&iterate_depth)
-  #define DECR_ITERATE_DEPTH()  atomic_exchange_and_add(&iterate_depth, -1)
+  #define INCR_ARR_RC(ptr)        if (ptr) atomic_increment( &ARR_RC_DEREF(ptr))
+  #define DECR_ARR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add( &ARR_RC_DEREF(ptr), -1) == 1 : 0)
+  #define INCR_ITERATE_DEPTH()    atomic_increment(&iterate_depth)
+  #define DECR_ITERATE_DEPTH()    atomic_exchange_and_add(&iterate_depth, -1)
 #else
-  #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
-  #define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+  #define INCR_ARR_RC(ptr)        if (ptr) ARR_RC_DEREF(ptr)++
+  #define DECR_ARR_RC_PRED(ptr)   (ptr ? (-- ARR_RC_DEREF(ptr) == 0) : 0)
 
 //int foo2(int a, int b) {   return b; }
 // #define DECR_RC_PRED(ptr) foo2(ptr ? printf("   Decr %p rc %d\n", ptr, GET_RC(ptr)) : 99, (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0))
@@ -174,20 +176,76 @@ inline void free_measured(void* object) {
 //#define DECR_RC_PRED(ptr) (ptr ? (GET_RC(ptr) <=0 ? printf("ERROR: DECR BELOW ZERO\n") : (--(((refcount_t*)ptr)[-1]) == 0)) : 0)
 
 // Handle Cons Cell memory layout:
-// Cell consists of [cdr] [RC] [car]
-#define CONSCELL(ty)   (void*)((char*)WSMALLOC(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
-#define CAR(ptr)       (*ptr)
-#define SETCAR(ptr,hd) ptr[0]=hd
-//#define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
-//#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
-//#define FREECONS(ptr)  WSFREE((char*)ptr - (PTRSIZE+RCSIZE))
+// ------------------------------------------------------------
+// Normally, the refcount routines are the same:
+#define CLEAR_CONS_RC(ptr)    SET_CONS_RC(ptr,0)
 
-#define CONSPTR(ptr)   ((void**)((char*)ptr - (PTRSIZE+RCSIZE)))
-#define CDR(ptr)       (*CONSPTR(ptr))
-#define SETCDR(ptr,tl)  *CONSPTR(ptr)=tl
-#define FREECONS(ptr)  WSFREE(CONSPTR(ptr))
+#define GET_CONS_RC        GET_ARR_RC
+#define SET_CONS_RC        SET_ARR_RC
+#define INCR_CONS_RC       INCR_ARR_RC
+#define DECR_CONS_RC_PRED  DECR_ARR_RC_PRED
+
+// Here I'm testing different layouts:
+// ------------------------------------------------------------
+// Cell consists of [cdr] [RC] ->[car]
+#define CONSCELL(ty)       (void*)((char*)WSMALLOC(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
+#define CAR(ptr,ty)        (*ptr)
+#define SETCAR(ptr,hd,ty)  (CAR(ptr,ty) = hd)
+#define CONSPTR(ptr)       ((void**)((char*)ptr - (PTRSIZE+RCSIZE)))
+#define CDR(ptr,ty)        (*CONSPTR(ptr))
+#define SETCDR(ptr,tl,ty)  (*CONSPTR(ptr)=tl)
+#define FREECONS(ptr,ty)   WSFREE(CONSPTR(ptr))
+
+// New layout to ameliorate alignment problems for the CDR field on 64 bit,  [RC], ->[CDR], [CAR]
+// ------------------------------------------------------------
+// (NOTE: Relative to the start of the malloc its still unaligned, but should make valgrind happy.)
+// NOPE: it doesn't make valgrind happy.
+/* #define CONSCELL(ty)      (void*)((char*)WSMALLOC(RCSIZE + PTRSIZE + sizeof(ty)) + RCSIZE); */
+/* #define CAR(ptr,ty)       (*((ty*)(((void**)ptr)+1))) */
+/* #define SETCAR(ptr,hd,ty) (CAR(ptr,ty) = hd) */
+/* #define CDR(ptr,ty)       (*(void**)ptr) */
+/* #define SETCDR(ptr,tl,ty) (CDR(ptr) = tl) */
+/* #define FREECONS(ptr,ty)  WSFREE(((char*)ptr) - RCSIZE) */
+
+// Now we'll try this: [CDR], [CAR], [RC] ->
+// ------------------------------------------------------------
+// WEIRD: still a valgrind problem, even though both cdr and car should be aligned relative to the malloc.
+// But they are NOT aligned relative to the pointer.  Apparently valgrind needs both.
+/* #define CONSCELL(ty)      (void*)((char*)WSMALLOC(RCSIZE + PTRSIZE + sizeof(ty)) + RCSIZE+PTRSIZE + sizeof(ty)); */
+/* #define CAR(ptr,ty)       (*((ty*)(((char*)ptr) - RCSIZE - sizeof(ty)))) */
+/* #define SETCAR(ptr,hd,ty) (CAR(ptr,ty) = hd) */
+/* #define CDR(ptr,ty)       (*((void**)(((char*)ptr) - RCSIZE - PTRSIZE - sizeof(ty)))) */
+/* #define SETCDR(ptr,tl,ty) (CDR(ptr,ty) = tl) */
+/* #define FREECONS(ptr,ty)  WSFREE(((char*)ptr) - RCSIZE - PTRSIZE - sizeof(ty)) */
+
+// Finally [CDR], [CAR], -> [RC]
+// ------------------------------------------------------------
+
+
+// How bout with a struct?
+// ------------------------------------------------------------
+// This makes valgrind happy.  Won't work with the ZCT though, unless we do the same trick for arrays.
+/* struct cons_cell { */
+/*   refcount_t rc; */
+/*   void* cdr; */
+/*   int car; // This is a lie. */
+/* }; */
+/* #define CONSCELL(ty)      ((struct cons_cell*)(WSMALLOC(sizeof(struct cons_cell) + sizeof(ty) - sizeof(int)))) */
+/* #define CAR(ptr,ty)       (*(ty*)(&(((struct cons_cell*)ptr)->car))) */
+/* #define SETCAR(ptr,hd,ty) (CAR(ptr,ty) = hd) */
+/* #define CDR(ptr,ty)       (((struct cons_cell*)ptr)->cdr) */
+/* #define SETCDR(ptr,tl,ty) (CDR(ptr) = tl) */
+/* #define FREECONS(ptr,ty)  WSFREE(((char*)ptr) - RCSIZE - PTRSIZE - sizeof(ty)) */
+
+/* #define CONS_RC(ptr)            (((struct cons_cell*)ptr)->rc) */
+/* #define GET_CONS_RC(ptr)        (ptr ? CONS_RC(ptr) : 0) */
+/* #define SET_CONS_RC(ptr,val)    (CONS_RC(ptr) = val) */
+/* #define INCR_CONS_RC(ptr)       if (ptr) CONS_RC(ptr)++ */
+/* #define DECR_CONS_RC_PRED(ptr)  (ptr ? ( -- CONS_RC(ptr) == 0) : 0) */
+
 
 // Handle Array memory layout:
+// ------------------------------------------------------------
 // An array consists of [len] [RC] [elem*]
 // Both len and RC are currently the same type (refcount_t)
 // this makes the access uniform.
@@ -210,7 +268,7 @@ inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
 #ifndef USE_BOEHM
-  CLEAR_RC(ptr);
+  CLEAR_ARR_RC(ptr);
 #endif
   return ptr;
 }
@@ -229,6 +287,8 @@ void ws_alloc_stats() {
 
 // ZCT handling for deferred reference counting:
 // ============================================================
+
+#ifdef USE_ZCT
 
 typedef unsigned char typetag_t;
 
@@ -253,15 +313,17 @@ void free_by_numbers(typetag_t, void*);
 // This needs to be the high-bit in a refcount_t
 #define PUSHED_MASK (1 << (sizeof(refcount_t) * 8 - 1))
 
+// NOTE: THIS ASSUMES IDENTICAL RC METHOD FOR ARRAYS AND CONS CELLS!!
 static inline void MARK_AS_PUSHED(void* ptr) {
   //SET_RC(ptr, GET_RC(ptr) | PUSHED_MASK);
-  ((refcount_t*)ptr)[-1] |= PUSHED_MASK;
+  ARR_RC_DEREF(ptr) |= PUSHED_MASK;
 }
+// NOTE: THIS ASSUMES IDENTICAL RC METHOD FOR ARRAYS AND CONS CELLS!!
 static inline void UNMARK_AS_PUSHED(void* ptr) {
   //SET_RC(ptr, GET_RC(ptr) | PUSHED_MASK);
-  ((refcount_t*)ptr)[-1] &= ~PUSHED_MASK;
+  ARR_RC_DEREF(ptr) &= ~PUSHED_MASK;
 }
-
+// NOTE: THIS ASSUMES IDENTICAL RC METHOD FOR ARRAYS AND CONS CELLS!!
 static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
   //printf("pushing %p tag %d, rc %u, (mask %u)\n", ptr, tag, GET_RC(ptr), PUSHED_MASK);
   // TEMPORARILY LOCKING FOR ACCESS TO CENTRALIZED ZCT:
@@ -269,7 +331,7 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
     pthread_mutex_lock(&zct_lock);
 #endif 
   if (ptr == NULL) return;
-  if (GET_RC(ptr) & PUSHED_MASK) { 
+  if (GET_ARR_RC(ptr) & PUSHED_MASK) { 
     //printf("ALREADY PUSHED %p, tag %d\n", ptr, tag);
     return; // Already pushed.
   }
@@ -307,7 +369,7 @@ static inline void BLAST_ZCT(int depth) {
 #endif
   for(i=zct_count-1; i>=0; i--) {
     // Wipe off the mask bit before checking:
-    if (0 == (GET_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
+    if (0 == (GET_ARR_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
         #ifdef BLASTING 
           if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
           max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
@@ -330,6 +392,7 @@ static inline void BLAST_ZCT(int depth) {
 #endif
 }
 
+#endif // USE_ZCT
 
 // ============================================================
 int outputcount = 0;

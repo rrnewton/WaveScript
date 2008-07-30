@@ -830,8 +830,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (system (format "~a --version | head -1 &> temp.log" (getenv "CC")))
     ;; Hmm, just report both ICC and GCC versions, if possible:
     (begin (system "gcc --version | head -1 &> temp.log")
-	   (if (system "which icc")
-	       (system "icc --version | head -1 >> temp.log"))))
+	   (when (system "which icc")
+	     (system "icc --version | head -1 >> temp.log"))))
 (fpf (file->string "temp.log"))
 
 

@@ -377,6 +377,7 @@
 					      (lines-text (gen-decr-code self ty (list "ptr."(sym2str fldname)) "")))
 					 flds)))))]
 			   [(List ,elt)
+			    (define _elt (Type self elt))
 			    (set! proto-acc (cons default-fun_name proto-acc))
 			    ;; We always build an explicit function for freeing list types:
 			    ;; Here's a hack to enable us to recursively free the same type.
@@ -385,13 +386,13 @@
 				    (block (list "if(ptr)") ;; If not null.
 					   `(
 					     ;; Recursively decr tail:
-					     ,(Type self `(List ,elt))" ptr2 = CDR(ptr);\n"
+					     ,(Type self `(List ,elt))" ptr2 = CDR(ptr, ",_elt");\n"
 					     ,(lines-text (gen-decr-code self `(List ,elt) "ptr2" ""))
 					     ;; If heap allocated, free the CAR:
 					     ,(if (heap-type? self elt)
 						  (lines-text (gen-decr-code self elt `("(*ptr)") ""))
 						  "")
-					     "FREECONS(ptr);\n"))))]
+					     "FREECONS(ptr,",_elt ");\n"))))]
 			   [(Array ,elt)
 			    (if (not (heap-type? self elt))
 				null-lines
@@ -423,8 +424,9 @@
 (__spec gen-incr-code <emitC2> (self ty ptr msg)
   (match ty
     ;; Both of these types just decr the -1 offset:
-    [(,Container ,elt) (guard (memq Container '(Array List)))
-     (make-lines `("INCR_RC(",ptr"); /* ",msg", type: ",(format "~a" ty)" */\n"))]
+    [(Array ,elt) (make-lines `("INCR_ARR_RC(" ,ptr"); /* ",msg", type: ",(format "~a" ty)" */\n"))]
+    [(List ,elt)  (make-lines `("INCR_CONS_RC(",ptr"); /* ",msg", type: ",(format "~a" ty)" */\n"))]
+
     [(Ref ,[ty]) ty]
     ;; Could make this a separate function:
     [(Struct ,name) 
@@ -442,8 +444,9 @@
 (__spec gen-decr-code <emitC2> (self ty ptr msg)
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
+     (define decr (if (eq? Container 'Array) "DECR_ARR_RC_PRED" "DECR_CONS_RC_PRED"))
      (make-lines 
-      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
+      (block `("if (",decr"(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
 	     (let ([freecode (lines-text (gen-free-code self ty ptr))])	      
 	       (if #f ;; DEBUGGING TOGGLE.
 		   (list "printf(\"  WS Freeing, type: "(Type self ty)", Pointer %p\\n\"," ptr");\n" freecode)
@@ -1066,7 +1069,7 @@
 	  (block `("if (",len" > 0)")
 		 `(,tmp" = (int*)((char*)",alloc" + RCSIZE + ARRLENSIZE);\n"
 		       ,(if (eq-any? (wsc2-gc-mode) 'none 'boehm)  ""
-			    (list "CLEAR_RC("tmp");\n"))
+			    (list "CLEAR_ARR_RC("tmp");\n"))
 		       "SETARRLEN(",tmp", ",len");\n"  
 		       ;; Now fill the array, if we need to:
 		       ,(if (and init (not zero-fill?))
@@ -1147,8 +1150,8 @@
 	(kont `(,arr"[",ind"]"))]
 
        ;; Using some simple C macros here:
-       [(car ,[Simp -> pr]) (kont `("CAR(",pr")"))]
-       [(cdr ,[Simp -> pr]) (kont `("CDR(",pr")"))]
+       [(car (assert-type (List ,elt) ,[Simp -> pr])) (kont `("CAR(",pr", ",(Type self elt)")"))]
+       [(cdr (assert-type (List ,elt) ,[Simp -> pr])) (kont `("CDR(",pr", ",(Type self elt)")"))]
 
        [(List:is_null ,[Simp -> pr]) (kont `("(",pr" == 0)"))]
 
@@ -1156,14 +1159,15 @@
 	(ASSERT mayberetty)
 	(match mayberetty
 	  [(List ,elt)
-	   (let ([tmp (Var self (unique-name "tmpcell"))]
+	   (let ([_elt (Type self elt)]
+		 [tmp (Var self (unique-name "tmpcell"))]
 		 [ty (Type self mayberetty)])
 	     (append-lines 
-	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",(Type self elt)");\n"
+	      (make-lines `(,ty" ",tmp" = (",ty")CONSCELL(",_elt");\n"
 			       ,(if (eq-any? (wsc2-gc-mode) 'none 'boehm)  ""
-				    (list "CLEAR_RC("tmp");\n"))
-			       "SETCDR(",tmp", ",tl");\n"  
-			       "SETCAR(",tmp", ",hd");\n"  			       
+				    (list "CLEAR_CONS_RC("tmp");\n"))
+			       "SETCDR(",tmp", ",tl", ",_elt");\n"  
+			       "SETCAR(",tmp", ",hd", ",_elt");\n"
 			       ))
 	      (AllocHook self mayberetty tmp)
 	      (kont tmp)))])]
@@ -2141,46 +2145,6 @@ int main(int argc, char **argv)
 	    (next)
 	    (make-lines `("PUSH_ZCT(",(number->string tag)", ",ptr");\n"))
 	    )))))
-
-#;
-(define __gen-decr-code 
-  (specialise! gen-decr-code  <emitC2-zct>
-    (lambda (next self ty ptr msg)
-      (if #f;gen-decr-called-from-free ;; Here's the hack!!
-	  ;; Note, this depends on the particulars of the OOP system.
-	  ;; I.e. the parent call will loop back through us (the
-	  ;; child) when it executes recursively, but then we'll just
-	  ;; keep passing it back to the parent.
-	  (next) ;; Make a normal free, don't push to ZCT.  
-	  (match ty
-	    [(,Container ,elt) (guard (memq Container '(Array List)))
-	     (define tag (number->string (get-zct-type-tag self ty)))
-	     (make-lines 
-	      (block `("if (DECR_RC_PRED(",ptr")) /* ",msg", type: ",(format "~a" ty)" */ ")
-
-		     (if gen-decr-called-from-free 
-			 (lines-text (gen-free-code self ty ptr))
-			 `("PUSH_ZCT(",tag", ",ptr");\n"))
-
-		     ))]
-	    
-;	    [,else (next)] ;; Saving the duplicated code.
-
-
-	    ;; DUPLICATED CODE:
-	    ;; DUPLICATED CODE:
-	    [(Ref ,[ty]) ty]
-	    ;; Could make this a separate function:
-	    [(Struct ,name) 
-	     (apply append-lines
-		    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
-		    (map (match-lambda ((,fldname ,ty))
-			   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
-		      (cdr (assq name (slot-ref self 'struct-defs)))))]
-	    [,ty (guard (not (heap-type? self ty))) null-lines]
-
-)		 
-	  ))))
 
 ;; DUPLICATED CODE:
 ;; This is here just to so we can slip in the global state bindings for the ZCT.
