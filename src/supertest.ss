@@ -69,7 +69,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
 (define (code->msg! m) 
-  (let ([val (if (zero? m) 
+  (let ([val (if (or (zero? m) (eq? m #t))
 		 (format "passed (~a min)" 
 			 (milli->minute (- (current-inexact-milliseconds) last-test-timer)))
 		 (begin (set! failed #t) 
@@ -771,21 +771,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (let ([lost_blocks (read (open-input-string (file->string "lost_blocks.txt")))])
       (fprintf outp "Wsc2RC_DemosLostBlocks ~a\n" lost_blocks)
       ;; [2008.07.28] There should only be a lost_block from demo4b currently (mysterious fftw plan leak)
-      (ASSERT (<= lost_blocks 1))
+      (fpf "Verify no leaks in demos (refcount):            ~a\n" (code->msg! (<= lost_blocks 1)))
       )   
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (read (open-input-string (file->string "lost_blocks.txt")))])
       (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a\n" lost_blocks)
-      (ASSERT (<= lost_blocks 1))
-      )
-    
+      (fpf "Verify no leaks in demos (deferred):            ~a\n" (code->msg! (<= lost_blocks 1)))
+      )    
+
     ;; --- We also check the valgrind traces for errors ----
     (ASSERT (system "grep \"ERROR SUMMARY\" .__runquery_output_wsc2_def.txt    | grep -v \"ERROR SUMMARY: 0\" | wc -l >  errors.txt"))
     (ASSERT (system "grep \"ERROR SUMMARY\" .__runquery_output_wsc2_nondef.txt | grep -v \"ERROR SUMMARY: 0\" | wc -l >> errors.txt"))
     (let ([errors (read (open-input-string (file->string "errors.txt")))])
       ;; This should be 2... demo4b currently has conditional jump errors.
       (fprintf outp "Wsc2_DemosErrors ~a\n" errors)
-      (ASSERT (<= errors 2))
+      (fpf "Verify no errors in demos:                      ~a\n" (code->msg! (<= errors 2)))
       )
     ) ;; End demos
 
