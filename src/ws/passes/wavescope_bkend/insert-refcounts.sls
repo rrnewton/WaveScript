@@ -162,14 +162,68 @@
 ;; The language after this point allows multiple outputs from a "box".
 ;;
 ;; TODO: move this to its own file.
-(define-pass classify-emits
-    [Expr 
-     (lambda (xp fallthru)
-       (match xp 
-	 [(emit ,vq ,x) 
-	  (inspect (list 'EMIT x))]
-	 [,oth (fallthru oth)]))]
-    )
+(define classify-emits
+  (let ([downstream-targets 'dt-uninit]) ;; Mutated below.
+    (define Expr     
+      (core-generic-traverse
+       (lambda (xp fallthru)
+	 (match xp 
+	   [(emit ,vq ,x) (ASSERT simple-expr? x)
+	    `(begin 
+	       ,@(map (lambda (down) `(_emit_to ,down () ,vq ,x))
+		   downstream-targets))]
+	   [,oth (fallthru oth)]))))
+
+#;    
+    (_merge (name fn_7)
+          (output-type (stream (struct tuptyp_98)))
+          (code
+            (_merge
+              (annotations (name fn_272))
+              unionlist_6
+              unionlist_5))
+          (incoming unionlist_6 unionlist_5) (outgoing tmpsmp_82))
+
+#;
+    (define (Operator op)
+      (match op
+	[(iterate (name ,name) (output-type ,o_ty)
+		  (code ,[Value+ -> itercode])
+		  (incoming ,o_up) (outgoing ,o_down* ...))
+	 `(iterate (name ,name) (output-type ,o_ty)
+		   (code ,itercode)
+		   (incoming ,o_up) (outgoing ,@o_down*))]
+	;; All of these have no code to speak of:
+	[(_merge . ,_) op]
+	[(__readFile . ,_) op]
+	[(cutpoint . ,_) op]
+	[(unionN . ,_) op]))
+    
+
+    (lambda (prog)
+      (match prog
+	[(,input-language 
+	  '(graph (const (,cbv* ,cbty* ,cbexp*) ...) ;; no emits here
+		  (init  ,init* ...)                 ;; no emits here
+		  (sources ((name ,nm) (output-type ,s_ty) (code ,[Expr -> scode]) (outgoing ,down* ...)) ...)
+		  (operators (,op* (name ,n*) (output-type ,oty*)
+				   (code ,opcode*)
+				   (incoming ,oin** ...) (outgoing ,oout** ...)) ...)
+		  (sink ,base ,basetype)	,meta* ...))	 
+	 (define newcode*
+	   (map (lambda (code downstrm)
+		(fluid-let ([downstream-targets downstrm])
+		  (Expr code)))
+	     opcode* oout**))
+	 `(,input-language 
+	   '(graph (const (,cbv* ,cbty* ,cbexp*) ...)
+		   (init ,@init*) 
+		   (sources ((name ,nm) (output-type ,s_ty) (code ,scode) (outgoing ,down* ...)) ...)
+		   (operators (,op* (name ,n*) (output-type ,oty*)
+				    (code ,newcode*)
+				    (incoming ,@oin**) (outgoing ,@oout**)) ...)
+		   (sink ,base ,basetype)
+		   ,@meta*))]))))
 
 ;; ====================================================================================================
 ;; [2008.01.18] Experimenting with moving the refcounting into another
@@ -344,21 +398,6 @@
 						rhs ty #t))])
 		   ,(rc-make-begin (list bod (make-rc 'decr-local-refcount ty lhs)))))]
 	 
-	   ;; TEMP FIXME : FOR NOW THE QUEUE INCR/DECR IS SPLIT UP.
-	   ;; The INCR IS HANDLED IN EMIT-C2 TEMPORARILY!!
-	   #;
-	   [(emit ,vq ,[Value -> xp])
-	    (match vq
-	      [(assert-type (VQueue ,elt) ,var)
-	       (if (not-heap-allocated? elt)
-		   `(emit ,vq ,xp)
-		   `(begin
-		      ,(make-rc 'incr-queue-refcount elt xp)
-		      (emit ,vq ,xp)
-		      ;; The following trick DOESN'T work if we're doing a depth first traversal.
-		      ;;,(make-rc 'incr-queue-refcount elt xp) ;; If in tail position this will cancel with the local decrement
-		      ))])]
-
 	   ;; Mutable references are second class, not first class.
 	   ;; Therefore rather than treating them as heap-allocated
 	   ;; (one element arrays) we are free to treat them as stack-allocated.
@@ -405,8 +444,17 @@
 	   ;; TODO WSCASE!
 	   [(wscase . ,rest) (error 'insert-refcounts "wscase not implemented yet")]
 
+	   ;; When an element is put on a queue, that increments its reference count.
+	   [(_emit_to ,to ,props ,vq ,x)
+	    (match vq
+	      [(assert-type (VQueue ,elt) ,_)
+	       ;; NEED INCR TO TAKE A NUMERIC ARGUMENT!!!
+	       (rc-make-begin 
+		`(,@(if (not-heap-allocated? elt) '()
+			(list (make-rc 'incr-queue-refcount elt x)))
+		  (_emit_to ,to ,props ,vq ,x)))])]
 	   
-	   [(,form . ,rest) (guard (memq form '(Array:set set!)))
+	   [(,form . ,rest) (guard (memq form '(Array:set set! emit)))
 	    (error 'insert-refcounts "missed effect form: ~s" (cons form rest))]
 	   [(,form . ,rest) (guard (memq form '(make-struct struct-ref)))
 	    (error 'insert-refcounts "shouldn't be in effect position: ~s" (cons form rest))]

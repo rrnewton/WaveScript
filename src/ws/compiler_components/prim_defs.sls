@@ -293,6 +293,8 @@
 
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
      (emit           ((VQueue 'a) 'a)                #())
+     ;; This is an internal version that emits to a single downstream op.
+     (_emit_to     (Symbol (List Symbol) (VQueue 'a) 'a)   #())
 
      ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
      (break            ()                      'a)

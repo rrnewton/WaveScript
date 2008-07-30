@@ -37,6 +37,7 @@
 		
 		;; This is no longer supported:
 		break		
+		_emit_to
 		)
 	  generic-arith-primitives
 	  meta-only-primitives))

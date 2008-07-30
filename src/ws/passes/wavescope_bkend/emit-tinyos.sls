@@ -126,7 +126,7 @@
 ;; Now emit needs to set the flag saying that the processing chain continues.
 (define _Emit 
   (specialise! Emit <tinyos> 
-    (lambda (next self down* ty incr-refcounts?)
+    (lambda (next self down* ty)
       (lambda (expr)
 	(append-lines (make-lines "did_i_emit = TRUE;\n")
 		      ((next) expr))))))
@@ -636,7 +636,7 @@ event void PrintfControl.stopDone(error_t error) {
 	      (slot-cons! self 'proto-acc `("void ",name"(",ty");\n"))
 	      (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
 						 (ForeignSourceHook self name
-								    (lines-text ((Emit self down* type #t) arg)))))
+								    (lines-text ((Emit self down* type) arg)))))
 	      (values #f #f #f #f #f)]
 #;
 	     [,_ (next)]))]))))

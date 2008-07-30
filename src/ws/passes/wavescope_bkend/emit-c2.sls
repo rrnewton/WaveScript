@@ -484,10 +484,11 @@
 
 
 (define (ifthreads block)
-  (append-lines ;(make-lines "#ifdef WS_THREADED\n") 
+  (append-lines (make-lines "#ifdef WS_THREADED\n") 
 		block
-		;(make-lines "#endif\n")
+		(make-lines "#endif\n")
 		))
+;; We don't need to worry about queue refcounts in the queue-free depth-first single thread context.
 (__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
 (__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
 
@@ -679,15 +680,14 @@
 ;; .param ty      Type of outgoing values.
 ;; .param incr?   Should the refcount be incremented on the way out?
 ;; .returns lines representing command-code
-(__spec Emit <emitC2> (self down* ty incr?)
+(__spec Emit <emitC2> (self down* ty)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
 			 ;; TEMP FIXME  FIXME  THIS INCR-REFCOUNT SHOULD BE HANDLED BY INSERT-REFCOUNTS!
-			 (list (if incr? (lines-text (incr-queue-refcount self ty element)) "")
-			       (cap (make-app "EMIT" (list element (Type self ty) (Var self down))))))
+			 (cap (make-app "EMIT" (list element (Type self ty) (Var self down)))))
 		    down*)))))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
@@ -889,7 +889,15 @@
       [(Array:set ,[(TyAndSimple self) -> ty arr] ,[Simp -> ind] ,[Simp -> val])
        (let-match ([(Array ,elt) ty]) (make-lines `(,arr"[",ind"] = ",val";\n")))]
 
-      [(emit ,vq ,x) (emitter x)]
+      ;[(emit ,vq ,x) (emitter x)]
+      [(_emit_to ,to ,props ,vq ,x) 
+       (pretty-print (list 'EMITTO to x))
+       (match vq
+	 [(assert-type (VQueue ,elt) ,_)
+	  ((Emit self (list to) elt) x)])
+       ;(emitter x)
+       ]
+
       [(begin ,[Loop -> e*] ...) 
        (DEBUGASSERT (andmap lines? e*))
        (apply append-lines e*)]
@@ -1613,7 +1621,7 @@ int main(int argc, char **argv)
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (list 
 	    (make-c-timer nm
-		   ((Emit self down* '#() #f) ''UNIT) ;; Code
+		   ((Emit self down* '#()) ''UNIT) ;; Code
 		   (make-lines '()) ;; State 	
 		   rate))])]
 
@@ -1630,7 +1638,7 @@ int main(int argc, char **argv)
 	;; Create a function for the entrypoint.
 	(let* ([proto `("extern void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
-				       (lines-text ((Emit self down* type #t) arg)))]
+				       (lines-text ((Emit self down* type) arg)))]
 	       [impl (make-lines 
 		      (block `("void ",name"(",ty" ",(Var self arg)")")
 			    bod))])
@@ -1721,7 +1729,7 @@ int main(int argc, char **argv)
 	      (code (iterate ,annot ,itercode ,_))
 	      (incoming ,up)
 	      (outgoing ,down* ...))
-     (define (emitter x) ((Emit self down* elt #t) x))
+     (define (emitter x) ((Emit self down* elt) x))
      (match itercode
        [(let (,[(SplitBinding self (emit-err 'OperatorBinding)) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
@@ -1738,7 +1746,7 @@ int main(int argc, char **argv)
 	     (incoming ,a ,b) (outgoing ,down* ...))
      ;; This emit should not increment reference counts:
      ;; We are just redirecting something already in flight.
-     (define (emitter x) ((Emit self down* elt #f) x))
+     (define (emitter x) ((Emit self down* elt) x))
      (define arg (unique-name "arg"))
      (define header `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
@@ -1843,7 +1851,7 @@ int main(int argc, char **argv)
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "wsShutdown();\n"))
 		     
-		     ,(lines-text ((Emit self down* elt #t) 'buf))))])
+		     ,(lines-text ((Emit self down* elt) 'buf))))])
 
        (values 
 	(make-lines (block (list "void "(sym2str name)"("(Type self '#())" ignored)") maintext))
