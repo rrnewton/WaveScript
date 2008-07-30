@@ -104,9 +104,9 @@
    [(wrapped? x) x]
    [(procedure? x) (x reflect-msg)]
    [else  
-    (ASSERT (not (tuple? x))) ;; Can't allow these to not have a type!
-    (make-plain x #f)
-    ;(make-plain x (unknown-type))
+    ;(ASSERT (not (tuple? x))) ;; Can't allow these to not have a type!
+    ;(make-plain x #f)
+    (make-plain x (unknown-type))
     ]))
 
 (define (unknown-type . _) `',(unique-name 'ty))

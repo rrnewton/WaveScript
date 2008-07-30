@@ -163,6 +163,10 @@ inline void free_measured(void* object) {
 #else
   #define INCR_RC(ptr)        if (ptr) ((refcount_t*)ptr)[-1]++
   #define DECR_RC_PRED(ptr) (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0)
+
+//int foo2(int a, int b) {   return b; }
+// #define DECR_RC_PRED(ptr) foo2(ptr ? printf("   Decr %p rc %d\n", ptr, GET_RC(ptr)) : 99, (ptr ? (--(((refcount_t*)ptr)[-1]) == 0) : 0))
+
   #define INCR_ITERATE_DEPTH()  iterate_depth++
   #define DECR_ITERATE_DEPTH()  iterate_depth--
 #endif
@@ -173,14 +177,15 @@ inline void free_measured(void* object) {
 // Cell consists of [cdr] [RC] [car]
 #define CONSCELL(ty)   (void*)((char*)WSMALLOC(PTRSIZE+RCSIZE + sizeof(ty)) + PTRSIZE+RCSIZE);
 #define CAR(ptr)       (*ptr)
-#define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
-#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
 #define SETCAR(ptr,hd) ptr[0]=hd
-#define FREECONS(ptr)  WSFREE((char*)ptr - sizeof(void*) - RCSIZE)
+//#define CDR(ptr)       (*(void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))
+//#define SETCDR(ptr,tl) (((void**)(((char*)ptr) - (PTRSIZE+RCSIZE)))[0])=tl
+//#define FREECONS(ptr)  WSFREE((char*)ptr - (PTRSIZE+RCSIZE))
 
-// This was from when RC's where the same size as a void* pointer:
-//#define CDR(ptr)       (((void**)ptr)[-2])
-//#define SETCDR(ptr,tl) (((void**)ptr)[-2])=tl
+#define CONSPTR(ptr)   ((void**)((char*)ptr - (PTRSIZE+RCSIZE)))
+#define CDR(ptr)       (*CONSPTR(ptr))
+#define SETCDR(ptr,tl)  *CONSPTR(ptr)=tl
+#define FREECONS(ptr)  WSFREE(CONSPTR(ptr))
 
 // Handle Array memory layout:
 // An array consists of [len] [RC] [elem*]

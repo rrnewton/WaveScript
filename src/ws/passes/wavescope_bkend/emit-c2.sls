@@ -784,8 +784,11 @@
   ;; We do need to add a refcount increment.  Something statically
   ;; allocated will never reach zero.  
   (values decl
+	  ;; [2008.07.30] Trying without this increment:
+	  ;initcode
 	  (append-lines initcode
-	     (gen-incr-code self ty (Var self lhs) "static top-incr"))))
+	     (gen-incr-code self ty (Var self lhs) "static top-incr"))
+	  ))
 
 #;
 (__spec Let <emitC2> (self form recur)

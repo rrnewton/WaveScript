@@ -609,6 +609,8 @@
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
 
+  (pretty-print p)
+
 ;(ASSERT (null? (deep-assq-all 'BOTTOM p))) ;; These should all be gone.
 
   ;; Now fill in some types that were left blank in the above:
@@ -1121,6 +1123,7 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
 
+		     ;(pretty-print prog)
 		     (time (ws-run-pass prog emit-c2 class))
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 

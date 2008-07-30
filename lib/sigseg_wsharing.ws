@@ -76,8 +76,8 @@ namespace Sigseg {
     if z1 == 0 then b else 
     if z2 == 0 then a else {
       //end1 = s1 + SampleNum! z1;
-      assert_eq("", s2, s1 + SampleNum! z1);
-      assert_eq("", tb1, tb2);
+      assert_eq("joinsegs: starts line up", s2, s1 + SampleNum! z1);
+      assert_eq("joinsegs: timebases equal", tb1, tb2);
 
       /*
       println("JOINING: l1: ");

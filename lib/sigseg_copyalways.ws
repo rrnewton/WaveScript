@@ -41,7 +41,7 @@ namespace Sigseg {
     (sub,pos)
   }
   fun joinsegs((ar1,st1), (ar2,st2)) {
-    assert_eq("joinsegs", st2, st1 + intToInt64(Array:length(ar1)));
+    assert_eq("joinsegs_copyalways", st2, st1 + intToInt64(Array:length(ar1)));
     (Array:append(ar1,ar2), st1)
   }
 
