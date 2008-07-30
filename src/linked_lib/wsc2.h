@@ -74,8 +74,9 @@ extern int stopalltimers;
 // 64 bit is giving me annoying alignment problems.  Let's make this a whole word:
 typedef unsigned long refcount_t;
 
+// Arrays are the same size as RCs for now (see below):
+#define ARRLENSIZE sizeof(refcount_t) 
 #define PTRSIZE sizeof(void*)
-#define ARRLENSIZE sizeof(int)
 
 #include <locale.h>
 char* commaprint(unsigned long long n);
@@ -252,7 +253,7 @@ inline void free_measured(void* object) {
 #define ARRLEN(ptr)        (ptr ? ((refcount_t*)ptr)[ARRLENOFFSET] : 0)
 //#define ARRLEN(ptr)        ((int*)ptr)[-2]
 // This should not be used on a null pointer:
-#define SETARRLEN(ptr,len) ((refcount_t*)ptr)[ARRLENOFFSET]=len
+#define SETARRLEN(ptr,len) (((refcount_t*)ptr)[ARRLENOFFSET]=len)
 
 #define ARRLEN(ptr)        (ptr ? ((refcount_t*)ptr)[ARRLENOFFSET] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
