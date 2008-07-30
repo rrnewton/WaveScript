@@ -288,7 +288,7 @@ void ws_alloc_stats() {
 // ZCT handling for deferred reference counting:
 // ============================================================
 
-#ifdef USE_ZCT
+//#ifdef USE_ZCT
 
 typedef unsigned char typetag_t;
 
@@ -392,7 +392,7 @@ static inline void BLAST_ZCT(int depth) {
 #endif
 }
 
-#endif // USE_ZCT
+//#endif // USE_ZCT
 
 // ============================================================
 int outputcount = 0;

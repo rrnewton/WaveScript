@@ -609,8 +609,6 @@
   ;; (WS has a freshness guarantee.)
   (ws-run-pass p remove-complex-constant)
 
-  (pretty-print p)
-
 ;(ASSERT (null? (deep-assq-all 'BOTTOM p))) ;; These should all be gone.
 
   ;; Now fill in some types that were left blank in the above:

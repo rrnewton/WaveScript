@@ -9,7 +9,6 @@ RUN=.__runquery_output_wsc2.txt
 #OPTIONS=" -gc refcount -threads "
 
 OPTIONS=$*
-echo WOOT $OPTIONS
 
 echo > $COMP
 echo > $RUN
