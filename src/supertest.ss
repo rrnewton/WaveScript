@@ -817,8 +817,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system (format "uname -a &> temp.log"))
 (fpf (file->string "temp.log"))
 
-(fpf "G++ version:\n   ")
-(system (format "g++ --version | head -1 &> temp.log"))
+(fpf "System $CC var = ~s\n" (or (getenv "CC") ""))
+(fpf "C compiler version:\n   ")
+(system (format "~a --version | head -1 &> temp.log" (or (getenv "CC") "gcc")))
 (fpf (file->string "temp.log"))
 
 (fpf "mzscheme version:\n   ")

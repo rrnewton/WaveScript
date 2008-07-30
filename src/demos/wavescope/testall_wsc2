@@ -27,7 +27,10 @@ function go () {
     #./query.exe | head -n 20 >> $RUN
     #(valgrind --leak-check=full ./query.exe -n 2 &> /dev/stdout) >> $RUN
     #./query.exe -n 2 &> /dev/stdout >> $RUN
+
+    # Would like to add --error-exitcode=99 except that currently demo4b generates errors.
     (valgrind --leak-check=full ./query.exe -n 2 &> /dev/stdout) >> /tmp/foobar_$1
+
     cat /tmp/foobar_$1 >> $RUN
     RETVAL=$?
     echo Query returned with val: $RETVAL

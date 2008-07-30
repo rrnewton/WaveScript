@@ -28,7 +28,10 @@ case "$COPTFLAG" in
 esac
 
 # Default to gcc:
-if [ "$CC" = "" ]; then CC="gcc $OPTFLAGS"; 
+if [ "$CC" = "" ]; 
+then CC="gcc $OPTFLAGS"; 
+elif [ "$CC" = "gcc" ]; 
+then CC="gcc $OPTFLAGS";
 #else echo "Using alternate C compiler $CC."; 
 fi 
 
