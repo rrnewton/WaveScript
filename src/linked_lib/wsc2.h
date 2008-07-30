@@ -184,15 +184,16 @@ inline void free_measured(void* object) {
 
 // Handle Array memory layout:
 // An array consists of [len] [RC] [elem*]
-// Both len and RC are currently ints:
-#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[ARRLENOFFSET] : 0)
+// Both len and RC are currently the same type (refcount_t)
+// this makes the access uniform.
+#define ARRLEN(ptr)        (ptr ? ((refcount_t*)ptr)[ARRLENOFFSET] : 0)
 //#define ARRLEN(ptr)        ((int*)ptr)[-2]
 // This should not be used on a null pointer:
-#define SETARRLEN(ptr,len) ((int*)ptr)[ARRLENOFFSET]=len
+#define SETARRLEN(ptr,len) ((refcount_t*)ptr)[ARRLENOFFSET]=len
 
-#define ARRLEN(ptr)        (ptr ? ((int*)ptr)[ARRLENOFFSET] : 0)
+#define ARRLEN(ptr)        (ptr ? ((refcount_t*)ptr)[ARRLENOFFSET] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
-#define ARRPTR(ptr)        (((void**)ptr) + ARRLENOFFSET)
+#define ARRPTR(ptr)        (((refcount_t*)ptr) + ARRLENOFFSET)
 #define FREEARR(ptr)       WSFREE(ARRPTR(ptr))
 
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
