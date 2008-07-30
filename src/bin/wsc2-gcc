@@ -34,7 +34,7 @@ fi
 
 # Only the libraries should be included again at the end:
 #WS_LINK_POST= FILTER_OUT($WS_LINK)
-WS_LINK_POST=$WS_LINK
+#WS_LINK_POST=$WS_LINK
 
 ## ACK - include WS_LINK at front and end?!?
 CMD="$CC $WS_LINK -lm -I $REGIMENTD/lib -o query.exe query.c $WS_LINK_POST -lm"
