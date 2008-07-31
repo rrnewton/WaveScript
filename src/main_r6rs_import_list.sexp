@@ -67,6 +67,7 @@
 (ws passes optimizations smoosh-together)
 (ws passes optimizations rewrite_opts)
 (ws passes optimizations merge-iterates)
+(ws passes optimizations merge-iterates2)
 (ws passes optimizations simple-merge-iterates)
 
 (ws passes wavescope_bkend nominalize-types)

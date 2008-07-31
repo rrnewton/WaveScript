@@ -806,6 +806,7 @@
   ;; ========================================
   ;; End passes
 
+
 ;(assure-type-annotated p (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 
   (when (>= (regiment-verbosity) 2)
@@ -1098,6 +1099,17 @@
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
 		     (ws-run-pass prog classify-emits)
+
+                     ;;
+                     ;; multi-in-multi-out
+                     ;;
+                     ;(pretty-print prog)
+                     ;(pretty-print  (rewrite-merges-as-iterates (convert-to-multi-in-multi-out prog)))
+
+                     ;(pretty-print (make-output-streams-unique
+                     ;               (rewrite-merges-as-iterates (convert-to-multi-in-multi-out prog))))
+
+
 		     (unless (embedded-mode? (compiler-invocation-mode))
 		       (ws-run-pass prog insert-refcounts)
 		       (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog))))
@@ -1119,7 +1131,7 @@
 			     (eq? 'wavescript-compiler-nesc (compiler-invocation-mode))
 			     )
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
-		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))	 	    
+		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
 		     ;(pretty-print prog)
 		     (time (ws-run-pass prog emit-c2 class))
@@ -2084,8 +2096,10 @@
      ;; --mic
      ;; FIXME: add to print-help (or automate print-help)
      ;; FIXME: get rid of this; put it into input-parameters
+     ;; [2008.07.23] wrapped string->symbol around sched-name, because
+     ;;              ikarus passes in command line args. as strings
      [("--scheduler" ,sched-name ,rest ...)
-      (set! sched-name sched-name)
+      (set! sched-name (string->symbol sched-name))
       (unless (<= (regiment-verbosity) 0) (printf "Setting scheduler: ~s\n" sched-name))
       (set! opts (append `(scheduler ,sched-name) opts))
       (loop rest)]

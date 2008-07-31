@@ -305,6 +305,14 @@
 	  [(,refcnt ,ty ,[e]) (guard (refcount-form? refcnt))
 	   `(,refcnt ,ty ,e)]
 
+          ;; [2008.07.31] for multi-in-multi-out boxes --mic
+          [(case ,[loop -> index-var]
+             ((,[loop -> index*]) ,[loop -> body**] ...) ...)
+           (fuse (list index-var index* body**)
+                 (lambda (iv i* b**) `(case ,iv
+                                        ,@(map (lambda (i b*) `((,i) ,@b*)) i* b**))))]
+
+
 	  ;; ========================================
 	  ;; Specific error catching:
 	  [(letrec ,other ...)

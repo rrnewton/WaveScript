@@ -26,8 +26,8 @@
   (case-lambda
     [(annot-name annot-list) (annotq annot-name annot-list #f)]
     [(annot-name annot-list default)
-     (ASSERT (and (pair? annot-list) (eq? 'annotations (car annot-list))))
-     (let ((annot-pair (assoc annot-name (cdr annot-list))))
+     ;(ASSERT (and (pair? annot-list) (eq? 'annotations (car annot-list))))
+     (let ((annot-pair (assoc annot-name annot-list)))
        (if annot-pair
            (cdr annot-pair)
            default))]))
@@ -66,9 +66,8 @@
   (case-lambda
     [(al-left al-right) (merge-annotations al-left al-right '())]
     [(al-left al-right merge-hints)
-     ;(DEBUGASSERT annotation-list? al-left)
-     ;(DEBUGASSERT annotation-list? al-right)
-     
+     (ASSERT annotation-list? `(annotations . ,al-left))
+     (ASSERT annotation-list? `(annotations . ,al-right))
      (let* ([keys-left  (annot-keys al-left)]
 	    [keys-right (annot-keys al-right)]
 	    ;; Could make this venn diagram in one call:

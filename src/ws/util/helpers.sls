@@ -85,6 +85,7 @@
 
    ; --mic
    find-in-flags
+   n-times
 
    read-line andmap ormap
    

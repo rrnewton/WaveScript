@@ -189,6 +189,16 @@
   (define (gather-refs v decls . unionedges)
     (let ([unionedges (if (null? unionedges) '() (car unionedges))])
       (filter id
+        #;
+        (foldr append '()
+               (map (lambda (d)
+                      (let ([upstrm (decl->upstream d)])
+                        (if (not upstrm)
+                            '()
+                            (map (lambda (u) (if (eq? v u) (decl->name d) #f)) upstrm))))
+                 decls))
+                            
+        
 	(map (lambda (d) 
 	       (let ([upstrm (decl->upstream d)])
 		 (if (and upstrm (memq v upstrm))

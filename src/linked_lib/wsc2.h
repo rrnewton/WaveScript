@@ -446,6 +446,7 @@ unsigned long print_queue_status() { return 0; }
 
 //#include "midishare_fifo/wsfifo.c"
 #include "simple_wsfifo.c"
+//#include "simple_bounded_wsfifo2.c"
 #define FIFO_CONST_SIZE 100
 #define ANY_CPU -1
 

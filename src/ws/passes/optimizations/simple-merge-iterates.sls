@@ -120,7 +120,7 @@
         [(iterate (annotations . ,annot-up) ,f-up
                   (iterate (annotations . ,annot-down) ,f-down ,in-str))
 
-         `(iterate (annotations . ,(merge-annotations '(annotations (merge-with-downstream))
+         `(iterate (annotations . ,(merge-annotations '((merge-with-downstream))
                                                       annot-up))
                    ,f-up
                    ,(do-expr
