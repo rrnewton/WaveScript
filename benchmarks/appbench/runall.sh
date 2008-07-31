@@ -12,6 +12,8 @@ echo;echo;echo " *** Running all application benchs.  Takes approx ?? minutes. *
 rm -rf $TEMP
 mkdir $TEMP
 
+rm -f RESULTS.txt
+print_results_header 
 
 ## ================================================================================ ##
 ##   MARMOT BENCH
@@ -32,12 +34,6 @@ getfile
 # #runallbackends run_first_phase $TEMP 1 5
 # cd "$START"
 # mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./
-
-# cp RESULTS.txt marmot.txt
-# echo '\begin{verbatim}' > marmot.tex
-# cat marmot.txt         >> marmot.tex
-# echo '\end{verbatim}'  >> marmot.tex
-
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running orig marmot phase 1  " > RESULTS.txt
@@ -63,6 +59,14 @@ echo "## Running marmot multinode offline  " > RESULTS.txt
 runallbackends run_3phases $TEMP __ 7
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
+
+
+cat marmot1.dat cat marmot2.dat cat marmot3.dat cat marmot_multi.dat >> RESULTS.txt
+
+# cp RESULTS.txt marmot.txt
+# echo '\begin{verbatim}' > marmot.tex
+# cat marmot.txt         >> marmot.tex
+# echo '\end{verbatim}'  >> marmot.tex
 
 
 
@@ -124,18 +128,15 @@ unset OMITMLTON
 ## APPEND RESULTS:
 ## ================================================================================ ##
 
-rm -f RESULTS.txt
-print_results_header 
 # #cat aml_datapar.txt >> RESULTS.txt
 # #cat aml_nosplit.txt >> RESULTS.txt
-cat marmot1.dat >> RESULTS.txt
-cat marmot2.dat >> RESULTS.txt
-cat marmot3.dat >> RESULTS.txt
-cat marmot_multi.dat >> RESULTS.txt
+
 # #cat pipeline.dat >> RESULTS.txt
 # #cat pothole.dat >> RESULTS.txt
 
-
+echo '\begin{verbatim}' > RESULTS.tex
+cat RESULTS.txt         >> RESULTS.tex
+echo '\end{verbatim}'  >> RESULTS.tex
 
 dump_plot_script ./plot.gp RESULTS.txt
 

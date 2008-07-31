@@ -37,6 +37,7 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-exit-error" ] ||
        [ "$1" == "-split" ] ||
        [ "$1" == "-dot" ] ||
+       [ "$1" == "-noprint" ] ||
        [ "$1" == "-t" ]
   then REGPASSTHRU="$REGPASSTHRU $1";
 

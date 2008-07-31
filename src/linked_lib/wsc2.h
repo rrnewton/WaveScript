@@ -579,7 +579,7 @@ void BASE(char x) {
 #ifdef ALLOC_STATS
   ws_alloc_stats();
 #endif
-  fflush(stdout);
+  //fflush(stdout); // [2008.07.31] No more flushing at BASE for now.
 }
 
 void ws_parse_options(int argc, char** argv) {

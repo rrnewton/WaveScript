@@ -49,7 +49,7 @@ if ! [ "$THREADS" = "" ];
 then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";
 fi
 
-if [ "$CC" = "" ] && [ "`which icc`" != "" ]
+if [ "$CC" = "icc" ] || ([ "$CC" = "" ] && [ "`which icc`" != "" ])
 # Could do -static also:
 then export CC='icc -O3 -ipo -no-prec-div'
 fi

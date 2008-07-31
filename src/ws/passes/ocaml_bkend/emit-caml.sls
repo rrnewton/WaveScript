@@ -480,11 +480,12 @@
       `(" baseSink x = begin \n"
 	"  if !output_counter == element_limit then exit 0; \n"
 	"  output_counter := !output_counter + 1; \n" 
-	"  print_endline (",(build-show type)" x); \n"
-	"  flush stdout;\n"
+	,(if (suppress-main-stream-printing) ""
+	  `("  print_endline (",(build-show type)" x); \n"))
+	;; [2008.07.31] No more flushing at the base for now:
+	;"  flush stdout;\n"
 	"end \n")
   ))
-
 
 (define (type->reader t) 
   (match t
@@ -756,6 +757,8 @@
       [start   ss_start]
       [end     ss_end]
       [seg_get ss_get]
+
+      [clock "(fun _ -> let x = Unix.times() in x.Unix.tms_utime)"]
       ))
   (cond 
    [(memq sym sametable) (Var sym)]
@@ -920,7 +923,7 @@
 		   internString uninternString
 
 		   exclusivePtr getPtr
-		   clock realtime
+		   realtime
 		   
 		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 
 		   HashTable:make HashTable:rem HashTable:set ;; pure versions

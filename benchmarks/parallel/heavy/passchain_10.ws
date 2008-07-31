@@ -1,4 +1,6 @@
 
+// This creates some heavyweight worker boxes that do a million sqrts.
+
 // On my nokia Core2 duo 3ghz:
 // 1000 tuples with ops = 1 million takes 61.3s real on 2 threads
 // In single threaded mode it takes 100.6 seconds

@@ -14,10 +14,8 @@ all: /tmp/dummyfile.bin
 
 graph:
 	gnuplot plot_misc.gp > microbench1.eps
-	ps2pdf microbench1.eps
-	gnuplot plot_datapass.gp > microbench2.eps
-	ps2pdf microbench2.eps
-
+	for i in 1 10 100; do gnuplot plot_datapass$i.gp > datapass$i.eps
+	ls *.eps | xargs -i ps2pdf {}
 
 # 
 # I'm sure there's a better way to make a file full of nonsense.

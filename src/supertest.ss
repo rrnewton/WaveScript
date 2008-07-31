@@ -681,11 +681,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "    Setup Engines:             " 
 	      (format "make engine &> ~a/bench_setup.log" test-directory))
     (ASSERT (system "make topbefore"))
-    #| 
+
     (current-directory (format "~a/benchmarks/microbench" test-root))
     (run-test "    Run microbenchmarks:              " 
 	      (format "make &> ~a/bench_micro.log" test-directory))
-    
+
+   #|     
     (current-directory (format "~a/benchmarks/language_shootout" test-root))
     (run-test "    Run language_shootout:       " 
 	      (format "make &> ~a/bench_shootout.log" test-directory))
@@ -696,19 +697,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))
 
-    #|
     
 					;  (current-directory (format "~a/benchmarks/datareps" test-root))
 					;  (run-test "    Run datarep benchmarks:" 
 					;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
     (current-directory (format "~a/benchmarks" test-root))
+#;
     (run-test "    Verify dependencies, do conversions:" 
-	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
+	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))    
     (ASSERT (system "make topafter"))
+    (ASSERT (system "make machineinfo.tex"))
+    (ASSERT (system "make wssvn.tex"))
+    (ASSERT (system "make enginesvn.tex"))
     (run-test "    Compile results, build full report: " 
 	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
-    |#
     ))
 
 #|

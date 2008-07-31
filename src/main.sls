@@ -683,7 +683,8 @@
 ;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (wsc2-variant-mode? (compiler-invocation-mode))
-    (ws-run-pass p explicit-toplevel-print))
+    (unless (suppress-main-stream-printing)	
+      (ws-run-pass p explicit-toplevel-print)))
 
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
@@ -2031,6 +2032,9 @@
 	  
 	  [("-plot" ,rest ...) (set! plot #t) (loop rest)]
 	  [("-repl" ,rest ...) (set! simrepl #t) (loop rest)]
+
+	  ;; Do not print output elements on the "main" stream automatically.
+	  [("-noprint" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
 
 	  ;; How far should the regiment compiler go:
 	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (loop rest)]	 

@@ -445,28 +445,6 @@
 					(emit ,vq (tuple))
 					,vq)))
 			     ,bod)
-		     ,@meta* (Stream #()))))]
-
-#;
-       [(,lang '(program (letrec ,binds ,bod) ,meta* ... (Stream ,topty)))
-	(ASSERT symbol? bod)
-	(let ([finalstrm (unique-name "finalstrm")]
-	      [x  (unique-name "x")]
-	      [vq (unique-name "___VIRTQUEUE___")])
-	  `(,lang '(program 
-		       (letrec (,@binds 
-				 [,finalstrm (Stream #())
-				      (iterate 
-				       (annotations (name printerbox))
-				       (let ()
-					 (lambda (,x ,vq)
-					   (,topty (VQueue #()))
-					   (begin (print (assert-type ,topty ,x))
-						  (print (assert-type String '"\n"))
-						  (emit ,vq (tuple))
-						  ,vq)))
-					      ,bod)])
-			  ,finalstrm)
 		     ,@meta* (Stream #()))))]))])
 
 ;(generate-printing-code '(lang '(program (print (assert-type (List Int) '[2])) #())))

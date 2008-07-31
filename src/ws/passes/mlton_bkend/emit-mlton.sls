@@ -232,8 +232,12 @@
 
 (define (build-BASE type) 
   (define printer 
-    (if (equal? type '#()) flush 
-	`("(print_endline (",(build-show type)" x); ",flush")")))
+    (if (suppress-main-stream-printing) "()"
+	(if #f ;(equal? type '#()) 
+	    flush 
+	    `("(print_endline (",(build-show type)" x) "
+	      ;; "; " ,flush
+	      ")"))))
   `(" baseSink = "
      ,(make-let `(["counter" "ref 0"])
        (make-fun '("x") 
@@ -394,13 +398,13 @@
       (match prog
 	[(,lang '(graph (const ,[ConstBind -> cb*] ...)
 			(init  ,[Effect -> init*] ...)
-			(sources ,[Source -> src* state1** init1*] ...)
+			(sources . ,[Sources -> src* state1** init1*])
 			(operators ,[Operator -> oper* state2**] ...)
 					;		      (unions ,[Union -> union*] ...)
 			(sink ,base ,basetype)			
 			,meta* 		 ...
 			))
-	 
+	 		 
 	 ;; If there was any inlined C-code we need to dump it to a file here and include it in the link.
 	 (let ([tmpfile "__temp__inlinedC.c"])
 	 (unless (null? CinitCalls)
@@ -640,35 +644,47 @@
   (flonum->fixnum (* 1000000 (/ 1.0 freq))))
 
 ;; Returns: a binding, top state (also bindings), and initialization code.
-(define (Source src)
+(define (Source src only-one-source?)
     (define (E x) (Expr x 'noemits!))
   (match src
     [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
        [(timer ,annot ,[peel-annotations -> arg])
-	(match arg
-	  [',rate 
-	   (let ([r ;(Expr rate 'noemitsallowed!)
-		  (number->string (rate->timestep rate))]
-		 [vtime (Var (unique-name 'virttime))])
-	     (values 	
-	      ;; First, a function binding that drives the source.
-	      (list "val " v " = let fun "v" () = " 
-		    (indent  
-		     (make-seq
-		      `(,vtime " := Int64.+ (!",vtime", ",r")")
-		      ((Emit downstrm) "()")
-		      `("SE (!",vtime",",v")\n"))
-		     "    ")
-		    "\n in "v" end"
-		    "\n\n")
+	(if only-one-source?
+	    ;; With only one timer, things are simple:
+	    (values 
+	     (list "fun " v "() = " 
+		   (make-seq
+		    (make-while "true" ((Emit downstrm) "()"))
+		    "SE(0, fn _ => wserror(\"should never happen\"))\n"))
+	     '() 
+	     ;; We put ourselves in the scheduling queue only once.  We run forever when called:
+	     `("(* Seed the schedule with timer datasource: *)\n"
+	       "schedule := SE(0,",v") :: !schedule\n")
+	     )
+	    (match arg
+	      [',rate 
+	       (let ([r ;(Expr rate 'noemitsallowed!)
+		      (number->string (rate->timestep rate))]
+		     [vtime (Var (unique-name 'virttime))])
+		 (values 	
+		  ;; First, a function binding that drives the source.
+		  (list "val " v " = let fun "v" () = " 
+			(indent  
+			 (make-seq
+			  `(,vtime " := Int64.+ (!",vtime", ",r")")
+			  ((Emit downstrm) "()")
+			  `("SE (!",vtime",",v")\n"))
+			 "    ")
+			"\n in "v" end"
+			"\n\n")
 
-	      ;; Second, top level state bindings.
-	      (list (make-bind `(,vtime (Ref Int64) "ref 0")))
-	      
-	      ;; Third, initialization statement:
-	      `("(* Seed the schedule with timer datasource: *)\n"
-		"schedule := SE(0,",v") :: !schedule\n")))])]
+		  ;; Second, top level state bindings.
+		  (list (make-bind `(,vtime (Ref Int64) "ref 0")))
+		  
+		  ;; Third, initialization statement:
+		  `("(* Seed the schedule with timer datasource: *)\n"
+		    "schedule := SE(0,",v") :: !schedule\n")))]))]
 
        [(inline_C ',decls ',init)
 	;; This returns nothing... it adds the C code to a top-level accumulator.
@@ -733,6 +749,13 @@
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
        )]))
+
+(define (Sources src*)
+  ;; Should not count inline-C:
+  (define only1? (= 1 (length src*)))
+  (match src*
+    [(,[(lambda (x) (Source x only1?)) -> src* state1** init1*] ...)
+     (values src* state1** init1*)]))
 
 (define (ReadFile name code upstream downstrm)
     (set! name (Var name))

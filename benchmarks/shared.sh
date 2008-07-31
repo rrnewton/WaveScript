@@ -9,6 +9,8 @@ if [ "$BACKENDS" = "" ];
 then BACKENDS="mltonO3 c2boehm c2boehmseglist c2 c2seglist c2def c2defseglist"
 fi
 
+WSOPTIONS+=" -exit-error"
+
 OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
 
@@ -21,13 +23,13 @@ function print_results_header() {
 
 function runscheme() {
   echo "  scheme: running... -n $TUPS"
-  if ! (ws $FILE -exit-error -n $TUPS -t &> $DEST/scheme.$NAME.out); 
+  if ! (ws $FILE $WSOPTIONS -n $TUPS -t &> $DEST/scheme.$NAME.out); 
   then echo "ws failed!"; exit -1; fi
 }
 
 function runschemeO3() {
   echo "  scheme -O3: running... -n $TUPS"
-  if ws.opt $FILE -O3 -exit-error -n $TUPS -t &> $DEST/schemeO3.$NAME.out; then echo>/dev/null;
+  if ws.opt $FILE -O3 $WSOPTIONS -n $TUPS -t &> $DEST/schemeO3.$NAME.out; then echo>/dev/null;
   else echo "ws.opt failed!"; exit -1; fi
 }
 
@@ -37,7 +39,7 @@ function runcpp() {
   echo "  cpp: compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.default.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if wsc $FILE -t -exit-error   &> $DEST/cpp.compile.$NAME.out; then echo>/dev/null;
+  if wsc $FILE -t $WSOPTIONS   &> $DEST/cpp.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
   if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out; 
@@ -50,7 +52,7 @@ function runcpp_df() {
   echo "  cpp: -DDEPTH_FIRST compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.df.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if  wsc $FILE -t -exit-error --scheduler depth-first &> $DEST/cppdf.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t $WSOPTIONS --scheduler depth-first &> $DEST/cppdf.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
   if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME.out;
@@ -73,7 +75,7 @@ function runcpp_corefit() {
   # This didn't work:
   #ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.traindf.a" "$WAVESCOPED/libws-SMSegList.a" 
   #echo "  cpp: -DTRAIN_SCHEDULER -DDEPTH_FIRST compiling..."
-  if  wsc $FILE -t --scheduler corefit-scheduler-df -exit-error  &> $DEST/cppnew.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnew.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $WSCARGS"
   if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME.out;
@@ -90,7 +92,7 @@ function runcpp_corefit_nothreads() {
   # MUST PASS THIS TO G++:
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.newest.O2.coredf.nothreads.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if  wsc $FILE -t -nothreads --scheduler corefit-scheduler-df -exit-error  &> $DEST/cppnothreads.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t -nothreads --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnothreads.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cppnothreads: running... -n $TUPS $WSCARGS"
   if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnothreads.$NAME.out;
@@ -99,11 +101,21 @@ function runcpp_corefit_nothreads() {
   unset COREFITBENCH
 }
 
+# Mlton and caml are run almost identically:
+CAMLOPTIONS=
+function runcaml() {
+  echo "  caml $MLTONOPTIONS: compiling..."
+  if wscaml $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/caml$1.compile.$NAME.out; then echo>/dev/null;
+  else echo "wscaml failed!"; exit -1; fi
+  echo "   caml: running... -n "$TUPS
+  if ! (time ./query.caml.exe -n $TUPS) &> $DEST/caml$1.$NAME.out; 
+  then echo "failed!"; exit -1; fi
+}
 
 MLTONOPTIONS=
 function runmlton() {
   echo "  mlton $MLTONOPTIONS: compiling..."
-  if wsmlton $FILE $MLTONOPTIONS -exit-error &> $DEST/mlton$1.compile.$NAME.out; then echo>/dev/null;
+  if wsmlton $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/mlton$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
   if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton$1.$NAME.out; 
@@ -113,7 +125,7 @@ function runmlton() {
 C2OPTIONS=
 function runc2() {
   echo "  wsc2 $C2OPTIONS : compiling..."
-  if wsc2 $FILE $C2OPTIONS -exit-error &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
+  if wsc2 $FILE $C2OPTIONS $WSOPTIONS &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc2 failed!"; exit -1; fi
   echo "   wsc2: running output... -n "$TUPS
   if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
@@ -142,6 +154,11 @@ function runallbackends() {
     case $backend in
       scheme)   runscheme;   TIMES+=" "`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
       schemeO3) runschemeO3; TIMES+=" "`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`;;
+
+      camlO3)   MLTONOPTIONS="-O3"; 
+                runcaml O3;
+                TIMES+=" "`extract_mlton_usertimes.sh $DEST/camlO3.$NAME.out`;;
+
       mlton)    runmlton;    TIMES+=" "`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`;;
       mltonO3)  MLTONOPTIONS="-O3"; 
                 runmlton O3; TIMES+=" "`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`;;

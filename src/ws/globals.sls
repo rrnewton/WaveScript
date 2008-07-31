@@ -127,6 +127,7 @@
 	 simalpha-label-sensorvals 
 	 simalpha-pause-hook
 
+	 suppress-main-stream-printing
          ws-print-output-port ;; For the WS simulator.
 	 ws-optimizations-enabled
 	 ws-optimization-level
@@ -407,6 +408,10 @@
 
 ;; When we use the 'print' command within a WS program, this is where that output goes.
 (define-regiment-parameter ws-print-output-port (current-output-port))
+
+;; Suppress the default behavior wherein the "main" stream is echo'd to stdout.
+;; Should work across backends.
+(define-regiment-parameter suppress-main-stream-printing #f)
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.
