@@ -7,7 +7,10 @@
   
   (export simple-merge-iterates
            simple-merge-policy:always
-	   test-simple-merge-iterates)
+	   test-simple-merge-iterates
+
+           new-simple-merge-policy:always)
+
   (import (rnrs) (ws common)
 	  (ws compiler_components annotations))
 
@@ -105,6 +108,71 @@
 
     [Expr do-expr])
 
+
+;; perform the simple merge whenever possible;
+;; this should be run after explicit-stream-wiring
+;;
+;; expects incoming/outgoing lists to have port-numbers attached to names
+(define new-simple-merge-policy:always
+  (let ()
+
+    ;;
+    ;;
+    (lambda (prog)
+      (match prog
+        [(,input-language
+          '(graph ,consts
+                  ,inits
+                  ,sources
+                  (operators (,op* (name ,n*)
+                                   (output-type ,oty*)
+                                   (code ,opcode*)
+                                   (incoming ,oin** ...)
+                                   (outgoing ,oout** ...))
+                             ...)
+                  ,sink
+                  ,meta* ...))
+
+         (let ([n->oin*  (map cons n* oin**)]
+               [n->oout* (map cons n* oout**)])
+
+           (define _ (pretty-print n->oin*))
+           (define __ (pretty-print n->oout*))
+           (define (simple-pipe-down? n op)
+             (and (eq? op 'iterate)
+                  (= 1 (length (cdr (or (assoc n n->oin*) `(,n)))))
+                  (let ([downs (cdr (or (assoc n n->oout*) `(,n)))])
+                    (and (= 1 (length downs))
+                         (= 1 (length (cdr (or (assoc (caar downs) n->oin*) `(,n)))))))))
+
+           (define (annotate-to-merge-down opcode)
+             (match opcode
+               [(iterate (annotations . ,annot) ,rest* ...)
+                `(iterate (annotations . ,(merge-annotations '((merge-with-downstream)) annot))
+                          ,@rest*)]))
+
+           (let ([newopcode* (map (lambda (n op opcode)
+                                    (if (simple-pipe-down? n op)
+                                        (annotate-to-merge-down opcode)
+                                        opcode))
+                               n* op* opcode*)])
+
+             `(,input-language
+               '(graph ,consts
+                       ,inits
+                       ,sources
+                       (oeprators (,op* (name ,n*)
+                                        (output-type ,oty*)
+                                        (code ,newopcode*)
+                                        (incoming ,@oin**)
+                                        (outgoing ,@oout**))
+                                  ...)
+                       ,sink
+                       ,@meta*))))]))))
+
+             
+                 
+    
 
 ;; perform the simple merge whenever possible
 (define-pass simple-merge-policy:always
