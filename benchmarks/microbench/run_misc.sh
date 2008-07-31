@@ -24,16 +24,19 @@ ln -f -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
 
 echo "## User time for each benchmark/backend " > RESULTS.txt
 print_results_header
-runallbackends readfile_bigwins   $TEMP $((63 * 30))             30 
+
+runallbackends just_timer         $TEMP __  1000
+
+#runallbackends readfile_bigwins   $TEMP $((63 * 30))             30
+# Read about 500 mb:
+runallbackends readfile_bigwins   $TEMP __  500
 
 ## [2007.11.04] Strange problems with readfile_smallwins!!!  Disabling for now:
 #runallbackends readfile_smallwins $TEMP $((63 * 128 * 4 * 30))   30 
 
-
-#runallbackends just_timer         $TEMP 1  35 
-runallbackends printing_lists     $TEMP 1  8000
-runallbackends conv_SigsegArr     $TEMP 1  5
-runallbackends fft                $TEMP 1  100
+runallbackends printing_lists     $TEMP __ 16000
+runallbackends conv_SigsegArr     $TEMP 1  8000
+runallbackends fft                $TEMP 1  300
 
 # Time has to be measured differently for this we need to mark the start time.
 # This is lame, cancel out the affect by removing the line it adds:
@@ -44,3 +47,5 @@ runallbackends fft                $TEMP 1  100
 # And then add it back in our own way:
 
 mv RESULTS.txt RESULTS_misc.txt
+
+dump_plot_script ./plot_misc.gp RESULTS_misc.txt

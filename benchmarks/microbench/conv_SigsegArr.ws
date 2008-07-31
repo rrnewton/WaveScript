@@ -34,15 +34,15 @@ file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ",
 //printevery = 100;
 printevery = 2;
 
-BASE <- iterate w in file {
+main = iterate w in file {
    state { counter = 0;  }
    counter += 1;
    for i = 1 to 5000 {
      tmp1 = toArray(w);
      tmp2 = toSigseg(tmp1, w.start, w.timebase);
      if counter == printevery then {
-      counter := 0;
-      emit tmp2[[0]];
+       counter := 0;
+       emit tmp2[[0]];
      }
    };
 }

@@ -138,10 +138,12 @@
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
 		      (init  ,[Effect -> init*] ...)
-		      (sources ,[Source -> src* init*] ...)
-		      (iterates ,[Iterate -> iter* state**] ...)
-		      (unions ,[Union -> union*] ...)
-		      (sink ,base ,basetype)))
+		      (sources ,[Source -> src* sinit*] ...)
+		      ;(iterates ,[Iterate -> iter* state**] ...)
+		      ;(unions ,[Union -> union*] ...)
+		      (operators ,[Operator -> oper* state2**] ...)
+		      (sink ,base ,basetype)
+		      ,meta* ...))
        
        ;; Just append this text together.
        (let ([result (list header1 header2 header3 header4 "\n" 
@@ -157,18 +159,26 @@
 			   "\n(* Next the state for all iterates. *)\n\n"
 			   (map (lambda (iterstatebind)
 				  (list "let " iterstatebind " ;; \n"))
-			     (apply append state**))
+			     (apply append state2**))
 
-			   "\n(* Third, function bindings for iterates, sources, unions. *)\n\n"
-			   "let rec ignored = () \n" ;; Start off the let block.
+			   ;"let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
-			   (map (lambda (x) (list "\nand\n" x)) (append  src*  iter* union*))
-			   " and "(build-BASE basetype)
+			   ;(map (lambda (x) (list "\nand\n" x)) (append  src*  oper*))
+			   
+			   "let output_counter = ref 0;;\n"
+			   "let "(build-BASE basetype)
 			   ";; \n\n"
+
+			   "\n (* Function bindings for operators: *)"
+			   (map (lambda (x) (list "\nlet \n" x "\n;;\n")) (reverse oper*))
+
+			   "\n (* Function bindings for Sources *)"
+			   (map (lambda (x) (list "\nlet rec \n" x "\n;;\n")) src*)
+
 			   
 			   " \n\n"
-			   "\n(*  Initialize the scheduler. *)\n"
-			   "begin " (map (lambda (init) (list init ";\n")) init*) "\n"
+			   "\n(*  Initialize the scheduler. *)\n"			   
+			   "begin " (map (lambda (init) (list init ";\n")) sinit*) "\n"
 
 			   "\n(*  Then run it *)\n"
 			   "try runScheduler()\n"
@@ -277,9 +287,9 @@
 
 (define Const
   (lambda (datum)
-    (if (eq? datum 'BOTTOM) (inspect 'HUH???))
+    ;(if (eq? datum 'BOTTOM) (inspect 'HUH???))
     (cond
-     [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
+     [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate a compile error.
      [(eq? datum 'UNIT) "()"]
      [(null? datum) "[]"]
      [(eq? datum #t) "true"]
@@ -348,11 +358,11 @@
 
 ;; Returns: a binding snippet (incomplete), and initialization code.
 (define (Source src)
-    (define (E x) (Expr x 'noemits!))
+  (define (E x) (Expr x 'noemits!))
   (match src
     [((name ,[Var -> v]) (output-type ,ty) (code ,app) (outgoing ,downstrm ...))
      (match app
-       [(timer ',rate)
+       [(timer ,annot ',rate)
 	(let ([r ;(Expr rate 'noemitsallowed!)
 	       (number->string (rate->timestep rate))
 	       ])
@@ -365,15 +375,22 @@
 	   `("(* Seed the schedule with timer datasource: *)\n"
 	     "schedule := SE(0,",v") :: !schedule"))
 	  )]
+       
+       ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
+       
+       )]))
 
-       [(audioFile ,fn ,win ,rate)
-	000000000000]
 
-;(__readFile file mode repeat rate skipbytes offset winsize types)
-
-       [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
-	(cond
-	 [(equal? mode "text") 
+(define (ReadFile name code upstream downstrm)
+  (define (E x) (Expr x 'noemits!))
+  (set! name (Var name))
+  (match code
+    [;(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
+     (__readFile ,annot ,[E -> file] ,[Var -> source] ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
+     
+     (cond
+#;
+      [(equal? mode "text") 
 	  (if (not (zero? repeats))
 	      (error 'emit-caml "Caml text mode reader doesn't support replaying the datafile yet."))
 	  (values
@@ -414,59 +431,58 @@
 	   ;; Initialization: schedule this datasource:
 	   `("schedule := ",v"() :: !schedule"))]
 	 
-
-
-	 [(equal? mode "binary")
-	  (values (list 
-		   ;; Builds a function from unit to an initial scheduler entry "SE" 
-		   " "v" = fun () -> \n"
-		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
-		   "  and textreader = 33333 in \n"
-		   "    "
-		   (if (> winsize 0) "dataFileWindowed" "dataFile")
-		   (make-tuple-code file 
-			       (list "\"" mode "\"")
-			       (number->string repeats)
-			       (number->string (rate->timestep rate)))
-		   " \n"
-		   (make-tuple-code "textreader" "binreader"
-			       (number->string (apply + (map type->width types)))
-			       (number->string skipbytes)
-			       (number->string offset))
-		   " \n"
-		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
-		   ;; Also an additional arguments for
-		   ;; dataFileWindowed.  One that has the window size.
-		   ;; And one that bundles up array create/set and
-		   ;; toSigseg.
-		   (if (> winsize 0)
-		       (begin 
-			 ;; This is necessary for now:
-			 (ASSERT (= (length types) 1))
-			 (list " "(number->string winsize)" "			       
-			       (let ([tuptyp (if (= 1 (length types))
-						 (car types)
-						 (list->vector types ))])
-				 (make-tuple-code 
-				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
-				  (DispatchOnArrayType 'Array:set        tuptyp)
-				  (DispatchOnArrayType 'toSigseg         tuptyp)))
-			       ))
-		       "")
-		   "\n")
-		  `("schedule := ",v"() :: !schedule"))]
+      [(equal? mode "binary")
+       (list 
+	" "name" = " ; fun ignored -> \n"
+	"  let binreader = "(indent (build-binary-reader types) "    ")" \n"
+	"  and textreader = 33333 in \n"
+	"    "
+	(if (> winsize 0) "dataFileWindowed" "dataFile")
+	(make-tuple-code file 
+			 (list "\"" mode "\"")
+			 (number->string repeats)
+			 )
+	" \n"
+	(make-tuple-code "textreader" "binreader"
+			 (number->string (apply + (map type->width types)))
+			 (number->string skipbytes)
+			 (number->string offset))
+	" \n"
+	(indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+	;; Also an additional arguments for
+	;; dataFileWindowed.  One that has the window size.
+	;; And one that bundles up array create/set and
+	;; toSigseg.
+	(if (> winsize 0)
+	    (begin 
+	      ;; This is necessary for now:
+	      (ASSERT (= (length types) 1))
+	      (list " "(number->string winsize)" "			       
+		    (let ([tuptyp (if (= 1 (length types))
+				      (car types)
+				      (list->vector types ))])
+		      (make-tuple-code 
+		       (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
+		       (DispatchOnArrayType 'Array:set        tuptyp)
+		       (DispatchOnArrayType 'toSigseg         tuptyp)))
+		    ))
+	    "")
+	"\n")]
 	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
 	  )]
-       
-       ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
-       
-       )]))
+    ))
+
 
 (define (build-BASE type)  
-  (if (equal? type '#())      
+  (if #f ;; (equal? type '#())   ;; [2008.07.31] Disabling this behavior.
       ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
       `(" baseSink x = flush stdout \n")
-      `(" baseSink x = print_endline (",(build-show type)" x); flush stdout \n")
+      `(" baseSink x = begin \n"
+	"  if !output_counter == element_limit then exit 0; \n"
+	"  output_counter := !output_counter + 1; \n" 
+	"  print_endline (",(build-show type)" x); \n"
+	"  flush stdout;\n"
+	"end \n")
   ))
 
 
@@ -752,6 +768,7 @@
 
     ;; Print is required to be pre-annotated with a type.
     ;; (We can no longer do recover-type.)
+    ;; Inefficient to implement print with show:
     [(print (assert-type ,t ,e))    
      `("(print_string ",(Prim `(show (assert-type ,t ,e)) emitter)")")]
     [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
@@ -774,15 +791,18 @@
     [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
      (guard (memq prim '(Array:make Array:makeUNSAFE)))
      (make-app (DispatchOnArrayType prim elt) arg*)]
-    [(,prim (assert-type (Array ,elt) ,[myExpr -> first]) ,[myExpr -> rest] ...)
+    [(,prim ,first ,[myExpr -> rest] ...)     
      (guard (memq prim '(Array:ref Array:set Array:length)))
-     (make-app (DispatchOnArrayType prim elt)
-	       (cons first rest))]
+     (match first
+       [(assert-type (Array ,elt) ,_)
+	(make-app (DispatchOnArrayType prim elt)
+		  (cons (myExpr first) rest))])]
+
     ;; Safety net:
     [(,prim ,_ ...)     
-     (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
+     (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))
      (error 'emit-caml:Prim "missed this array prim: ~s" prim)]
-
+    ;[Array:null (inspect 'spurious-arr-null)]
 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (real-primitive? prim))
@@ -817,15 +837,13 @@
 	DispatchOnArrayType
 	Type
 
+	ReadFile
 	)
      (cdr args))))
       
 
-(define-values (Expr Iterate Emit make-bind)
+(define-values (Expr Operator Emit make-bind)
   (sharedEmitCases CamlSpecific))
-
-
-
 
 
 

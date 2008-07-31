@@ -79,3 +79,16 @@ let powInt n x =
     then acc
     else loop (n * acc) (i - 1)
   in loop 1 x
+
+let element_limit = 
+  let args = List.tl (Array.to_list Sys.argv )
+  in begin 
+(*      Printf.printf "Argv head %s\n" (List.hd args); *)
+     if not (args == []) && (List.hd args = "-n")
+     then begin 
+(*           Printf.printf "Setting element limit %d\n" (int_of_string (List.hd (List.tl args))); *)
+          int_of_string (List.hd (List.tl args))
+	  end
+     else -1
+     end
+

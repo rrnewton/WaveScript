@@ -6,7 +6,7 @@
 #  c2 -- the new C backend
 #BACKENDS="scheme mlton mltonO3"
 if [ "$BACKENDS" = "" ]; 
-then BACKENDS="mltonO3 c2 c2def c2seglist c2defseglist"
+then BACKENDS="mltonO3 c2boehm c2boehmseglist c2 c2seglist c2def c2defseglist"
 fi
 
 OLDWSCARGS="-j 1 --at_once"
@@ -131,7 +131,7 @@ function runallbackends() {
   DEST=$2
   INTUPS=$3
   TUPS=$4
-  echo;echo "Running all backends: $FILE, INTUPS: $INTUPS  OUTTUPS: $TUPS";
+  echo;echo "  $FILE -- Running all backends: INTUPS: $INTUPS  OUTTUPS: $TUPS";
 
   # Clean up:
   rm -rf query.*  
@@ -168,6 +168,14 @@ function runallbackends() {
                     runc2 defseglist;      
                     TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2defseglist.$NAME.out`;; 
 
+      c2boehm)      C2OPTIONS="-O3 -gc boehm -sigseg copyalways -nothreads";
+                    runc2 boehm;
+                    TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2boehm.$NAME.out`;;
+
+      c2boehmseglist) C2OPTIONS="-O3 -gc boehm -sigseg seglist -nothreads";
+                      runc2 boehmseglist;       
+                      TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2boehmseglist.$NAME.out`;;
+
 
       *) echo Unhandled backend: $backend; exit -1;;
     esac
@@ -175,4 +183,35 @@ function runallbackends() {
 
   echo ALLDONE, times were: $TIMES
   echo $NAME $TIMES >> RESULTS.txt
+}
+
+
+function dump_plot_script() {
+    FILE=$1
+    RESULTS=$2
+
+    # Terrible way to get the length:
+    #len=`echo $BACKENDS | xargs -i echo | wc -l`
+    len=0
+    for bk in $BACKENDS; do len=$((len+1)); done
+    echo;echo Generating plot script for $len backends: $BACKENDS
+
+    cd $START
+    cat > $FILE <<EOF
+# set title "Hand-optimized marmot application"
+load "../shared.gp"
+EOF
+
+    PLOTLINE="plot '"$RESULTS"' using 2:xtic(1) title col"
+
+    i=3
+    #for bk in $BACKENDS; do
+    while [ $i -lt $((len+2)) ]; do
+    #echo Backend: $i
+	PLOTLINE+=", '' using $i title col"
+	i=$((i+1))
+    done
+
+    echo $PLOTLINE >> $FILE
+    echo ... finished
 }

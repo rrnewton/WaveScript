@@ -27,7 +27,8 @@ file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ",
      :: Stream (Sigseg (Int16)))
 
 // Print something approx every megabyte read.
-printevery = 63;
+//printevery = 63; // 2mb
+printevery = 31;   // 1mb
 
 BASE <- iterate w in file {
    state { counter = 0 } 

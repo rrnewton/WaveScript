@@ -129,6 +129,7 @@ replicated version of 6sec_marmot_sample.raw and running 30 tuples.
 
 Rev 3339
 
+                      real     cpu
 Mlton O3:             1.65     1.60
 
 wsc2 refcount O3:     1.76     1.68
@@ -169,6 +170,48 @@ Now the deferred version only uses 1mb of memory.  The normal refcount version u
 
 wsc2 refcount O3:     18.0     17.8
 wsc2 deferred O3:     12.8     12.2
+
+================================================================================
+[2008.07.31] {Running appbench, comparing against boehm}
+
+Deferred reference counting is doing well, but boehm is also doing
+quite well.  Boehm does particularly well on marmot phase 1 with icc.
+
+I'm going to take a closer look at what the boehm version is doing.
+First of all, if we can improve boehm performance it will be really
+trouncing (rather than tying) the deferred RC scheme.  It's already
+got the MALLOC_SCALAR optimization.  However, I still need to try the
+off_page business.
+
+Playing around with incremental collection isn't helping at all.
+Increasing the initial heap size to something large vastly reduces the
+number of collections (e.g. from 2900 to 320).  But for longer runs it
+makes almost no difference in performance.
+
+Ok, running for 200 tuples.  Hmm.. I don't think I understand what
+VmHWM and VmRSS mean.  Those numbers are higher for boehm.  But VmData
+is much higher for deferred (38 mb).
+
+defer:                4.88     4.7
+
+boehm:                4.5      4.3
+boehm:                4.5      4.3    with initial heap 5mb
+boehm:                5.3      4.5    incremental/999999 pause target
+
+Using incremental increases the *number* of collections by 4x with a
+5mb initial heap.  Smaller difference (2900 vs 2000) with the default
+heap size.
+
+Dropping in GC_MALLOC_ATOMIC_IGNORE_OFF_PAGE for all array allocs
+doesn't make any difference at all if it was done just for the ATOMIC
+allocations, and if it was done for all allocations... then it
+decresed performance to 4.8 seconds.
+
+There's a lot of improvement left for deferred.  In particular, not
+putting every allocated object into the ZCT initially, and blasting
+the zct more frequently than every input tuple.
+
+
 
 
  */

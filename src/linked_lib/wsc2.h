@@ -86,8 +86,10 @@ char* commaprint(unsigned long long n);
 #ifdef USE_BOEHM
   #include <gc/gc.h>
   #define BASEMALLOC GC_MALLOC
+//  #define BASEMALLOC GC_MALLOC_IGNORE_OFF_PAGE
   #define BASEFREE   free
   #define BASEMALLOC_ATOMIC GC_MALLOC_ATOMIC
+//  #define BASEMALLOC_ATOMIC GC_MALLOC_ATOMIC_IGNORE_OFF_PAGE
   inline void* BASECALLOC(size_t count, size_t size) {
     size_t bytes = count*size;
     void* ptr = GC_MALLOC(bytes);
@@ -96,7 +98,7 @@ char* commaprint(unsigned long long n);
   }
   inline void* BASECALLOC_ATOMIC(size_t count, size_t size) {
     size_t bytes = count*size;
-    void* ptr = GC_MALLOC_ATOMIC(bytes);
+    void* ptr = BASEMALLOC_ATOMIC(bytes);
     bzero(ptr, bytes);
     return ptr;
   }
@@ -261,6 +263,8 @@ inline void free_measured(void* object) {
 #define FREEARR(ptr)       WSFREE(ARRPTR(ptr))
 
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
+// HOWEVER: It does not employ the _ATOMIC allocation routines.
+//
 //#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
 #define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))

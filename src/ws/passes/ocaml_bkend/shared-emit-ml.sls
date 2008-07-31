@@ -1,5 +1,10 @@
 #!r6rs
 
+;; This is a simple way to share functionality between the two,
+;; similar ML backends (caml and mlton).
+
+;; It predates the OOP system that I ended up using for emit-c2
+
 (library (ws passes ocaml_bkend shared-emit-ml)
   (export sharedEmitCases
 	   make-dispatcher
@@ -50,7 +55,9 @@
     (define Expr ;(Expr tenv)
       (lambda (exp emitter)
 	(match exp
-	  [,v (guard (symbol? v) (regiment-constant? v)) (obj 'Const v)]
+	  [,v (guard (symbol? v) (regiment-constant? v))
+	      (ASSERT (not (eq? v 'Array:null)))
+	      (obj 'Const v)]
 	  [,v (guard (symbol? v)) (obj 'Var v)]
 	  [',c (obj 'Const c)]
 

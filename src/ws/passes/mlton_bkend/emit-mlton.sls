@@ -777,7 +777,6 @@
 	     [tuptyp (if (= 1 (length types))
 			 (car types)
 			 (list->vector types ))])
-;; Builds a function from unit to an initial scheduler entry "SE" 
 	  (list name " = "
 		(make-let `(["binreader"
 			       ,(format "BinIO.vector -> int -> ~a" (Type tuptyp))

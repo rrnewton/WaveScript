@@ -16,19 +16,17 @@ let read_int16 str i =
 
 let wserror str = raise (Failure str)
 
-(* Binary reading, produces a scheduler entry, "SE" *)
+(* Binary reading, produces a function that reads a tuple and processes it *)
 (* mode & Textreader parameter are unused  and should be removed *)
-let dataFile (file, mode, repeats, period) 
+let dataFile (file, mode, repeats) 
              (textreader,binreader, bytesize, skipbytes, offset)
 	     outchan 
   =
-	  (* Produce a scheduler function *)
 	  (* Feel free to change this constant: *)
 	  let buffer_min_size = 32768 in
 	  let chunk = max buffer_min_size (bytesize + skipbytes) in
 	  let buf = String.make chunk '_' 
 	  and hndl = open_in_bin file 
-	  and timestamp = ref 0
 	  and st = ref 0    (* Inclusive *) 
 	  and en = ref 0 in (* Exclusive *)
 	  let rec scan offset =
@@ -52,9 +50,7 @@ let dataFile (file, mode, repeats, period)
 		en := !en - !st;
 		st := 0;
 	      end;
-	      timestamp := !timestamp + period;
-	      SE (!timestamp, f)
-	  in SE (0, f)
+	  in f
 
 
 (* This simply constructs a reader function that reads a whole window. 

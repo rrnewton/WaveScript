@@ -274,7 +274,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
-(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
+;(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
 
 (current-directory test-directory)
 
