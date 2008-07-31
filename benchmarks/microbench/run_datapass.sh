@@ -18,12 +18,16 @@ mkdir $TEMP
 ln -f -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
 
 function do_each() {
+#  echo RUNNING FOR $((300000000 /$BUFSIZE)) tuples
+
   echo "## User time for each benchmark/backend " > RESULTS.txt
   print_results_header
-  runallbackends pass_raw           $TEMP __  3000000
-  runallbackends pass_static_array  $TEMP __  3000000
-  runallbackends pass_arrays        $TEMP __  3000000
-  runallbackends pass_lists         $TEMP __  300000
+  echo "## NOTE THAT THE LIST VERSION RUNS 10X FEWER TUPLES" >> RESULTS.txt
+
+  runallbackends pass_raw           $TEMP __  $((300000000 /$BUFSIZE))
+  runallbackends pass_static_array  $TEMP __  $((300000000 /$BUFSIZE))
+  runallbackends pass_arrays        $TEMP __  $((300000000 /$BUFSIZE))
+  runallbackends pass_lists         $TEMP __  $((30000000  /$BUFSIZE))
 }
 
 export BUFSIZE=100
