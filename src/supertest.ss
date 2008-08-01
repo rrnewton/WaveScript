@@ -564,7 +564,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (putenv "REGIMENTHOST" ""))
 
     (run-test "wsc2: Compiling marmot app (third phase):  "
-      (format "wsc2 test_heatmap.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
+      (format "wsc2 test_heatmap.ws -exit-error &> ~a/wsc2_marmot3_build.log" 
 	      test-directory))
     
     
@@ -808,6 +808,27 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (fprintf outp "Marmot1_PeakVM ~a\n" peak_vm)
       ))
   
+  ;; --- Check compile times for the marmot app. ---
+  (parameterize ((current-directory test-directory))
+    ;; This is fragile because it depends on a particular output from the WS compiler.
+    ;; AND on a particular output format for the Scheme (time _) command.
+    (define (getcpu file)
+      (let* ([line (system-to-str (format "grep -A 2 'Total compile time' ~a | grep 'cpu time'" file))]
+	     [port (open-string-input-port line)])
+	;; This is really hacky:
+	;; Ikarus looks like this:
+	;;     9404 ms elapsed cpu time, including 1796 ms collecting
+	;; Mzscheme looks like this:
+	;;     cpu time: 24 real time: 24 gc time: 0
+	(let* ([one   (read port)]
+	       [two   (read port)]
+	       [three (read port)])
+	  (or (string->number one)
+	      (string->number three)))))    
+    ;; This is the time spent in the Scheme WS compiler.  Does not include time spent in the C/ML compiler.
+    (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
+    (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log")))
+
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" test-root)))
@@ -815,6 +836,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (display (file->string "results_table.txt") outp)
       ))
   (close-output-port outp)) ;; Done writing vital_stats.txt
+
 (begin 
   (fpf "\n\n  Vital Stats:\n")
   (fpf "========================================\n")
