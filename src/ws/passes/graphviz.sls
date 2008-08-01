@@ -1,5 +1,7 @@
 #!r6rs
 
+;; Visualize a dataflow graph in graphviz.
+
 (library (ws passes graphviz)
   (export output-graphviz)
   (import (rnrs) (ws common) 
@@ -58,10 +60,10 @@
 	      opv* oe*)))
 	(define (denumber x) (if (symbol? x) x (begin (ASSERT (list? x)) (denumber (cadr x)))))
 	(define partition-edge-style  "[style=\"setlinewidth(6)\",arrowhead=\"diamond\"]")
-	(define (blowup src dest*)
-	  
+	;; Generate edge entries for each subscriber of a stream.
+	(define (blowup src dest*)	  
 	  ;; Could use deunique-name for the "label" of the node.
-	  (map (lambda (dest) (format "  ~a -> ~a ~a ~a;\n" src (denumber dest)
+	  (map (lambda (dest) (format "  ~a -> ~a ~a ~a;\n" src (denumber dest)			      
 				      (if (memq src cutnodes) partition-edge-style "")
 				      ;; Annotate data-rates on the edges.
 				      (match (assq 'data-rates  (ASSERT (hashtab-get annot-table src)))
@@ -120,13 +122,7 @@
 	;(define (preprocess-ticks x) x)
 	(define (preprocess-ticks x) (log (add1 (abs x))))
 	(define ticks->color
-	  (let ()
-	    (define all_ticks
-	      (map preprocess-ticks
-		(map cadr
-		  (filter id 
-		    (map (get-annotation 'measured-cycles)
-		      (append se* oe*))))))
+	  (lambda (all_ticks)
 	    (define min_ticks (apply min +inf.0 all_ticks))
 	    (define max_ticks (apply max -inf.0 all_ticks))
 	    (define span (- max_ticks min_ticks))
@@ -144,6 +140,20 @@
 	      (string-append (number->string (inexact (+ .65 (* .35 fraction))))
 			     " 0.7 0.8")
 	      )))
+	
+	(define measured-ticks->color
+	  (ticks->color (map preprocess-ticks
+			  (map cadr
+			    (filter id 
+			      (map (get-annotation 'measured-cycles)
+				(append se* oe*)))))))
+	(define scheme-ticks->color 
+	  (ticks->color (map preprocess-ticks
+			  (map bench-stats-cpu-time
+			    (map caddr
+			      (filter id 
+				(map (get-annotation 'data-rates)
+				  (append se* oe*))))))))
 
 	(define nodelabels 
 	  (map (lambda (name opcode)
@@ -216,20 +226,26 @@
 					 [,else ""])
 					;; Next, set the color:
 					(cond
-					 [(begin 
-					    ;(inspect annot)
-					    (assq 'node/server-assignment annot)) => 
+					 ;; In this first case we just use color to visualize the partitioning:
+					 [(assq 'node/server-assignment annot) => 
 					  (lambda (entry)
 					    (format ", style=filled, fillcolor=\"~a\""
 						    (if (zero? (cadr entry))
 							"yellow" "cyan")))]
+					 ;; In this case we use color to represent profiling results on the real hardware
 					 [(assq 'measured-cycles annot)
 					    (if embedded-node?						
 						(format ", style=filled, fillcolor=\"~a\""
-							(ticks->color (cadr (assq 'measured-cycles annot))))
+							(measured-ticks->color (cadr (assq 'measured-cycles annot))))
 						;; If it was measured it was on the node but is floating:
 						(format ", shape=box, style=\"filled,rounded\", fillcolor=\"~a\""
-							(ticks->color (cadr (assq 'measured-cycles annot)))))]
+							(measured-ticks->color (cadr (assq 'measured-cycles annot)))))]
+					 ;; If we don't have data from the embedded node, we use the Scheme-generated profiling data:
+					 [(assq 'data-rates annot) => 
+					  (lambda (datarates)
+					    (let ([cpu (bench-stats-cpu-time (caddr datarates))])
+					      (format ", style=filled, fillcolor=\"~a\"" (scheme-ticks->color cpu))))]
+
 					 [else ""]))
 				       )))]
 			[(__foreign_source ',name ,ls ,ty)

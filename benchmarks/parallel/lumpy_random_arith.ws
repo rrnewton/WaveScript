@@ -11,17 +11,23 @@ using Mutable;
 
 type Result = Float;
 
-num_boxes = 10;
-num_transforms = 15;
+num_boxes = 100;
+num_transforms = 17;
 
 //transforms :: Array TransformAddOn(#a,#a);
 //transforms :: Array (#a ->#a);
 transforms = 
 #[
-/*    (+ 1),  */
-/*    (+ -2),  */
-/*    (* 3),  */
-/*    (/ 5) */
+
+  fun(f) fun(x) f(x)+1,
+  fun(f) fun(x) f(x)-2,
+  fun(f) fun(x) f(x) * 0.66666,
+  fun(f) fun(x) f(x) * 3 / 2,
+
+  fun(f) fun(x) f(x)+1,
+  fun(f) fun(x) f(x)-2,
+  fun(f) fun(x) f(x) * 0.66666,
+  fun(f) fun(x) f(x) * 3 / 2,
 
   fun(f) fun(x) f(x)+1,
   fun(f) fun(x) f(x)-2,
@@ -31,6 +37,10 @@ transforms =
   //fun(f) fun(x) sin(f(x)),
   //fun(f) fun(x) (f(x) + 1) * 10,
   //fun(f) fun(x) sqrtF(f(x)) * 100,
+
+  // This duplicates the code:
+  fun(f) fun(x) f(x)+f(x),
+  fun(f) fun(x) f(x) / 2,
 
   // This puts the existing transform in a loop.
   fun(f) fun(x) {

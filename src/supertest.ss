@@ -692,6 +692,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "    Run language_shootout:       " 
 	      (format "make &> ~a/bench_shootout.log" test-directory))
 
+    ;; [2008.08.01] Right now I'm having some occasional ikarus segfaults:
+    (ASSERT (putenv "REGIMENTHOST" "plt"))
+
     (current-directory (format "~a/benchmarks/appbench" test-root))
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))
@@ -709,8 +712,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (system "make machineinfo.tex"))
     (ASSERT (system "make wssvn.tex"))
     (ASSERT (system "make enginesvn.tex"))
+#;
     (run-test "    Compile results, build full report: " 
 	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
+
+    (ASSERT (putenv "REGIMENTHOST" ""))
     ))
 
 #|
@@ -834,7 +840,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" test-root)))
-      (code->msg! (system "gather_results.ss > results_table.txt"))
+      (fpf "Various results gathered into a table:    ~a\n"
+	   (code->msg! (system "gather_results.ss > results_table.txt")))
       (display (file->string "results_table.txt") outp)
       ))
   (close-output-port outp)) ;; Done writing vital_stats.txt
