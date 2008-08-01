@@ -1797,9 +1797,10 @@
 	     ;; --script implies --exit-error: add that setting:
 	     (loop '("-exit-error"))
 	     (let* ([file (caddr args)]
-		    [exp (file->slist file)])
+		    [exps (file->slist file)])
 	       ;; Under R6RS a script is essentially a sequence of expressions sent to "eval".
-	       (reg:top-level-eval (cons 'begin exp)))]
+	       (for-each (lambda (x) (printf "EVALUATING: ~a\n" x) (reg:top-level-eval x))
+		 exps))]
 
 	    [else 
 	     ;(inspect (list->vector args))

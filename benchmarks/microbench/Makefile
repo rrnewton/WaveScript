@@ -14,7 +14,9 @@ all: /tmp/dummyfile.bin
 
 graph:
 	gnuplot plot_misc.gp > microbench1.eps
-	for i in 1 10 100; do gnuplot plot_datapass$i.gp > datapass$i.eps
+	plot_datapass10.gp   > datapass10.eps
+	plot_datapass100.gp  > datapass100.eps
+	plot_datapass1000.gp > datapass1000.eps
 	ls *.eps | xargs -i ps2pdf {}
 
 # 

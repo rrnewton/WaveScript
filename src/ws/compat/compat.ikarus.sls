@@ -32,6 +32,8 @@
 		  (ik:current-directory current-directory)
 		  (ik:include include)
 
+		  (ik:with-output-to-port with-output-to-port)
+
 		  (ik:delay delay) (ik:force force)
 		  (ik:trace-define trace-define)
 		  (ik:trace-lambda trace-lambda)

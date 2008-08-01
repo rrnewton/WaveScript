@@ -1,10 +1,11 @@
 #! /bin/sh
 #|
-exec regiment i "$0" ${1+"$@"} -exit-error;
+exec regiment i --script "$0" ${1+"$@"} -exit-error;
 |#
 
-(optimize-level 2)
+;exec regiment i "$0" ${1+"$@"} -exit-error;
 
+;(optimize-level 2)
 
 
 ;exec regiment i "$0" `pwd` ${1+"$@"};
@@ -54,7 +55,7 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 
 ;; This table contains [name ma-size builder accessor fold]
 (define data-methods
-  `([array ,(most-positive-fixnum) ,build-array ,access-array ,fold-array]
+  `([array ,(greatest-fixnum) ,build-array ,access-array ,fold-array]
     ;; Don't make tuples bigger than 500!
     [tuple 500 ,build-tuple ,access-tuple ,fold-tuple]
     ))
@@ -129,7 +130,7 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 				     (intToInt64
 				      (app ,(fold1 xd)
 					   (lambda (acc innerdat)
-					     (+_ acc (app ,(fold2 yd) +_ 0 innerdat)))
+					     (_+_ acc (app ,(fold2 yd) _+_ 0 innerdat)))
 					   0 data))))
 			     (print (string-append (string-append "sum: " (show result)) " "))
 			     )))
@@ -149,14 +150,14 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
     ;; The program exits via a wserror call, so we set this up:
     (parameterize ([wserror-handler
 		    (lambda (str) (printf "wserror: ~a\n" str))])
-      (pretty-print (stream-car (wsint prog ()))))))
+      (pretty-print (stream-car (wsint prog '()))))))
 
 (define (run-w/mlton prog)
 ;  [implementation 'wsmlton]
   (parameterize ()
     (printf "\nRUNNING WITH MLTON\n")
     (printf "================================================================================\n")
-    (wsmlton prog ())
+    (wsmlton prog '())
     (printf "Compiling with mlton... ")
     (flush-output-port (current-output-port))
     (printf "finished (~a).\n" (system "wsmlton-secondphase query.sml &> /dev/null"))
@@ -166,13 +167,14 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
     (display (file->string "tmp_file.txt")))
   )
 
+#;
 (define (run-w/cpp prog)
 ;  [implementation 'wsc]
   (parameterize ()    
     ;; [2007.11.06] Getting segfaults with the new scheduler.
     ;(printf "\nRUNNING WITH C++/XSTREAM COREFIT_DF\n")
     ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
-    ;(wscomp prog () '(scheduler corefit-scheduler-df))
+    ;(wscomp prog '() '(scheduler corefit-scheduler-df))
     (printf "\nRUNNING WITH C++/XSTREAM 1495 DF\n")
     (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
     (wscomp prog '(scheduler depth-first))
@@ -191,7 +193,8 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 (define (run-all prog t1 t2)
   ;(define prog (execonce-boilerplate (full-2d-test-suite t1 t2)))
   (define filename (format "results/~a_~a.out" t1 t2))
-  (define file1 (open-output-file filename 'replace))
+  (define file1 (begin (when (file-exists? filename) (delete-file filename))
+		       (open-output-file filename)))
   ;(define file1 (current-output-port))  
   (printf "\n\n *** Running all tests, data type: ~a of ~as *** \n\n" t1 t2)
 
@@ -201,14 +204,16 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
   (display (file->string "tmp_file.txt") file1)
 
   ;(inspect prog)
-  (parameterize ([current-output-file filename]
-		 [current-output-port file1]
-		 [ws-print-output-port file1])
-    (run-w/scheme prog) (flush-output-port)
-    (run-w/cpp prog)    (flush-output-port)
-    (run-w/mlton prog) (flush-output-port)
-    )  
-    (close-output-port file1)
+  (with-output-to-port file1
+    (lambda ()
+      (parameterize ([current-output-file filename]
+		     ;;[current-output-port file1]
+		     [ws-print-output-port file1])
+	(run-w/scheme prog) (flush-output-port)
+	;;(run-w/cpp prog)    (flush-output-port)
+	(run-w/mlton prog) (flush-output-port)
+	)))
+  (close-output-port file1)
   )
 
 ;; ================================================================================
@@ -217,8 +222,7 @@ exec regiment i "$0" ${1+"$@"} -exit-error;
 (printf "Running script to test data representations.\n")
 
 (print-graph #f)
-(regiment-quiet #t)
-
+(regiment-verbosity 0)
 
 (begin ;; TEST ALLOCATION:
   (printf "\n<<<< FIRST TESTING ALLOCATION >>>>\n\n")

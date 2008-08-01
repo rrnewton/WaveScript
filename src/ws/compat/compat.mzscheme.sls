@@ -15,7 +15,8 @@
  	  reg:top-level-eval simple-eval
  	  warning warning-handler real-time cpu-time time	   
  	  print-level print-graph print-length pretty-maximum-lines pretty-line-length print-vector-length
- 	  with-output-to-string  repl
+ 	  with-output-to-string with-output-to-port
+	  repl
  	  process get-string-available
 
 	  box unbox set-box! box? 
@@ -131,6 +132,9 @@
       (parameterize ([current-output-port p])
 	(th)
 	(extract))))
+  (define (with-output-to-port p)
+    (parameterize ([current-output-port p])
+      (th)))
 
   (define current-directory
     (case-lambda 

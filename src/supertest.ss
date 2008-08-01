@@ -555,7 +555,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsc2:  Running marmot app (first phase):  "
 	      (format "memprof ./query.exe -n 10 > ~a/wsc2_marmot1_run.log 2> marmot1_memprof.txt" test-directory))
     (when (file-exists? "query.exe") (delete-file "query.exe"))
-
+    
     (ASSERT (putenv "REGIMENTHOST" "plt"))
     (run-test "wsc2: Compiling marmot phase 1&2 (plt): "
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
@@ -679,8 +679,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (parameterize ((current-directory (format "~a/benchmarks" test-root)))
     
-
-    ;; [2007.10.30] building incrementally, so we see what fails:
+    ;; [2007.10.30] running stepts incrementally, so we see what fails:
     (run-test "    Setup Engines:             " 
 	      (format "make engine &> ~a/bench_setup.log" test-directory))
     (ASSERT (system "make topbefore"))
@@ -689,17 +688,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "    Run microbenchmarks:              " 
 	      (format "make &> ~a/bench_micro.log" test-directory))
 
-   #|     
     (current-directory (format "~a/benchmarks/language_shootout" test-root))
     (run-test "    Run language_shootout:       " 
 	      (format "make &> ~a/bench_shootout.log" test-directory))
 
-    |#
-
     (current-directory (format "~a/benchmarks/appbench" test-root))
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))
-
     
 					;  (current-directory (format "~a/benchmarks/datareps" test-root))
 					;  (run-test "    Run datarep benchmarks:" 
@@ -708,7 +703,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (current-directory (format "~a/benchmarks" test-root))
 #;
     (run-test "    Verify dependencies, do conversions:" 
-	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))    
+	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
+    
     (ASSERT (system "make topafter"))
     (ASSERT (system "make machineinfo.tex"))
     (ASSERT (system "make wssvn.tex"))
@@ -887,9 +883,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
-(post-to-web (format "rev~a_eng~a_~a~a"
+(post-to-web (format "rev~a_eng~a_~a~a~a"
 		     svn-revision engine-svn-revision
 		     (if (getenv "CC") (format "~a_" (getenv "CC")) "")
+		     (if benchmarks? "wbench_" "")
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
