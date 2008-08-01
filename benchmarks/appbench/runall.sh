@@ -25,15 +25,10 @@ function getfile() {
   #(rm -f 6sec_marmot_sample.raw)
   # ensure that we have sample data:
   make 6sec_marmot_sample.raw
+  make testdata.txt
 }
 
 getfile
-
-# echo "## Running original marmot app. " > RESULTS.txt
-# #print_results_header
-# #runallbackends run_first_phase $TEMP 1 5
-# cd "$START"
-# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running orig marmot phase 1  " > RESULTS.txt
@@ -56,12 +51,11 @@ mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running marmot multinode offline  " > RESULTS.txt
 #runallbackends run_3phases_MULTINODE $TEMP 0 3
-runallbackends run_3phases $TEMP __ 7
+runallbackends run_3phases $TEMP __ 20
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
 
-
-cat marmot1.dat cat marmot2.dat cat marmot3.dat cat marmot_multi.dat >> RESULTS.txt
+cat marmot1.dat marmot2.dat marmot3.dat cat marmot_multi.dat >> RESULTS.txt
 
 # cp RESULTS.txt marmot.txt
 # echo '\begin{verbatim}' > marmot.tex

@@ -214,7 +214,7 @@ function dump_plot_script() {
     echo;echo Generating plot script for $len backends: $BACKENDS
 
     cd $START
-    cat > $FILE <<EOF
+    cat >> $FILE <<EOF
 # set title "Hand-optimized marmot application"
 load "../shared.gp"
 EOF

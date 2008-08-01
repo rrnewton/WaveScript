@@ -40,6 +40,20 @@ C++/XStream engine has a high per-tuple (that is, per-element) on the communicat
 relative to the ML backend.  The {\tt just\_timer} test stresses this,
 doing nothing but passing a large number of unit tuples.
 
+Focusing on scheduling overheads a bit more, we turn to the following
+data passing microbenchmarks.  These do nothing but generate a stream
+of numbers, and then add up windows of those numbers.  We vary the
+window size in the following graphs.  The numbers are passed either
+one at a time (``raw''), or in bulk using arrays or lists.
+
+\begin{center}
+\hbox{
+\includegraphics[width=0.33\hsize]{microbench/datapass10.pdf}
+\includegraphics[width=0.33\hsize]{microbench/datapass100.pdf}
+\includegraphics[width=0.33\hsize]{microbench/datapass1000.pdf}
+}
+\end{center}
+
 Notes:
 \begin{itemize}
 \item FFT results for Scheme above depend on whether or not it is

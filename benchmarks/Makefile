@@ -32,7 +32,9 @@ alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/micro
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
-	pdflatex -halt-on-error perfreport.tex
+	pdflatex perfreport.tex
+#	pdflatex -halt-on-error perfreport.tex
+
 
 machineinfo.tex:
 	echo '\begin{verbatim}' > machineinfo.tex

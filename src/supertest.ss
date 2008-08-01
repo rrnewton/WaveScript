@@ -770,7 +770,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (let* ([vitals (format "~a/vital_stats.txt" test-directory)]
        [outp   (open-output-file vitals)])
   (parameterize ((current-directory (format "~a/demos/wavescope" test-root)))
-    
+
+    (fpf "\n\n  Sanity Checks:\n")
+    (fpf "========================================\n")    
     ;; --- First we check for memory leaks in any of the demos ----
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_nondef.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (read (open-input-string (file->string "lost_blocks.txt")))])
