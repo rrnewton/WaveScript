@@ -30,6 +30,8 @@ function getfile() {
 
 getfile
 
+#export REGIMENTHOST=ikarus
+
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running orig marmot phase 1  " > RESULTS.txt
 runallbackends run_first_phase $TEMP __ 40
@@ -41,6 +43,8 @@ echo "## Running marmot2  " > RESULTS.txt
 runallbackends test_marmot2 $TEMP __ 150
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+
+#export REGIMENTHOST=plt
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running marmot3  " > RESULTS.txt
