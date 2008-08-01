@@ -1,12 +1,15 @@
 #! /bin/sh
 #|
-exec regiment i "$0" ${1+"$@"};
+exec regiment i --script "$0" ${1+"$@"};
 |#
+
+;; This script gathers data from the results/ directory and writes it to .results files in the current directory.
 
 (define startdir (current-directory))
 
 (define (dump-lines file lines)  
-  (let ([p (open-output-file file 'replace)])
+  (when (file-exists? file) (delete-file file))
+  (let ([p (open-output-file file)])
     (parameterize ([print-level #f]
 		   [print-length #f]
 		   [pretty-maximum-lines #f])
@@ -18,11 +21,14 @@ exec regiment i "$0" ${1+"$@"};
 
 (define (grab-results name)
   (system "cat array_array.out | grep TimeElapsed: | sed 's/~/-/g' | awk '{ print $NF }'  > .tmp.out")
-  (let ([aa_results (file->slist ".tmp.out")])
-    (ASSERT (= 9 (length aa_results)))
+  ;; Assumes lines of the form "RUNNING WITH X"
+  (system "grep RUNNING array_array.out | awk '{ print $3 }'  > .tmp2.out")
+  (let ([aa_results (file->slist ".tmp.out")]
+	[backends (file->slist ".tmp2.out")])
+    (ASSERT (= (* 3 (length backends)) (length aa_results)))
     (dump-lines (format "~a/~a_arrarr.result" startdir name)
 		(cons '("Implementation 1000x1000  100000x3  3x100000")
-		      (map cons '(Scheme C++ MLton) (group 3 aa_results))))))
+		      (map cons backends (group 3 aa_results))))))
 
 (printf "First Array/Array...\n")
 (begin (printf "  Grabbing alloc results...\n")
@@ -39,7 +45,9 @@ exec regiment i "$0" ${1+"$@"};
   (parameterize ([current-directory (format "~a/results/~a" startdir name)])
     (system (format "cat ~a_~a.out | grep TimeElapsed: | sed 's/,//g' | sed 's/~a/-/g' | awk '{ print $5\" \"$7\" \"$8\" \"$NF }'  > .tmp.out"
 		    outer inner #\~))
-    (let ([results (group 2 (group 4 (file->slist ".tmp.out")))])
+    (system "grep RUNNING array_array.out | awk '{ print $3 }'  > .tmp2.out")
+    (let ([results (group 2 (group 4 (file->slist ".tmp.out")))]
+	  [backends (file->slist ".tmp2.out")])
       (match results
 	[([(,xd* ,yd* ,reps* ,time*) ...] ...)
 	 (ASSERT (all-equal? xd*))
@@ -51,7 +59,7 @@ exec regiment i "$0" ${1+"$@"};
 				 (map (lambda (dims)
 					(format "~a_x_~a_x_~areps" (car dims) (cadr dims) (caddr dims)))
 				   (map list (car xd*) (car yd*) (car reps*))))
-			   (map cons '(Scheme C++ MLton) time*)
+			   (map cons backends time*)
 			   ))
 	 #;#;       
 	 (gnuplot (map car time*)

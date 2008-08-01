@@ -1805,7 +1805,7 @@
 
 	    [else 
 	     ;(inspect (list->vector args))
-	     (error 'main:script  "script invocation not supported in this r6rs port yet.")
+	     (error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
 	     #;
 	     (IFCHEZ (apply orig-scheme-start (cdr args))
 		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")

@@ -28,23 +28,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
       str))
 
 (define (gather dir file)
-  (define str (system-to-str (format "cat ~a/~a | grep -v '^[ ]*#'" dir file)))
-  (define prt (open-input-string str))
-  (define header (cdr (string->tokens (read-line prt))))
-  (define results 
-    (let loop ()
-      (let ([line (read-line prt)])
-	(if (eof-object? line)
-	    '()
-	    (cons (string->tokens line) (loop))	  
-	    ))))
-  (for-each
-    (lambda (line)
-      (let ([name (car line)])
-	(for-each (lambda (variant num)
-		    (printf "~a ~a\n" (pad-width 50 (format "~a_~a_~a" dir name variant)) num))
-	  header (cdr line))))
-    results))
+  (when (file-exists? (format "~a/~a" dir file))
+    (let* ([str (system-to-str (format "cat ~a/~a | grep -v '^[ ]*#'" dir file))]
+	   [prt (open-input-string str)]
+	   [header (cdr (string->tokens (read-line prt)))]
+	   [results 
+	    (let loop ()
+	      (let ([line (read-line prt)])
+		(if (eof-object? line)
+		    '()
+		    (cons (string->tokens line) (loop))	  
+		    )))])
+      (for-each
+	  (lambda (line)
+	    (let ([name (car line)])
+	      (for-each (lambda (variant num)
+			  (printf "~a ~a\n" (pad-width 50 (format "~a_~a_~a" dir name variant)) num))
+		header (cdr line))))
+	results))))
 
 
 (gather "appbench" "RESULTS.txt")

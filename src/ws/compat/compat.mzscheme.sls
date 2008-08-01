@@ -137,9 +137,16 @@
       (th)))
 
   (define current-directory
-    (case-lambda 
-      [() (plt:path->string (plt:current-directory))]
-      [(x) (plt:current-directory x)]))
+    ;; Under PLT parameters are actually a different type than procedures.
+    ;; This must be a real parameter if it is to be used with parameterize.
+    (make-parameter (plt:path->string (plt:current-directory))
+		    (lambda (x)
+		      (plt:current-directory x)
+		      (plt:path->string (plt:current-directory))))
+;     (case-lambda 
+;       [() (plt:path->string (plt:current-directory))]
+;       [(x) (plt:current-directory x)])
+    )
 
   (define (process str)
     (let ([ls (list->mlist (sys:process str))])

@@ -1,7 +1,9 @@
 #! /bin/sh
 #|
-exec regiment i --script "$0" ${1+"$@"} -exit-error;
+exec regiment.plt i --script "$0" ${1+"$@"} -exit-error;
+# USING PLT FOR NOW BECAUSE WE CANT GET TIMING INFO IN IKARUS
 |#
+
 
 ;exec regiment i "$0" ${1+"$@"} -exit-error;
 
@@ -227,13 +229,12 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
 (print-graph #f)
 (regiment-verbosity 0)
 
-;(begin ;; TEST ALLOCATION:
+(begin ;; TEST ALLOCATION:
   (printf "\n<<<< FIRST TESTING ALLOCATION >>>>\n\n")
   (run-all (execonce-boilerplate `(begin ,(alloc-test 'array 'array 1000 1000)
 					   ,(alloc-test 'array 'array 100000 3)
 					   ,(alloc-test 'array 'array 3 100000)
 					   ))           'array 'array)
-(exit 0)
 
   ;; Don't do really big tuples
   ;(run-all (execonce-boilerplate `(begin ,(bigbig 'array 'tuple) ,(bigsmall 'array 'tuple))) 'array 'tuple)
@@ -250,7 +251,7 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
 					 ,(alloc-test 'tuple 'array 3 83333)))
 	                                              'tuple 'array)
   (system "mv results/*.out results/alloc/")
-;) ;; End alloc test
+) ;; End alloc test
 
 
 (begin ;; TEST SEQUENTIAL READ ACCESS (FOLD):

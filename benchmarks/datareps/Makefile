@@ -19,4 +19,5 @@ clean:
 	rm -f query.* query
 
 distclean: clean
+	rm -f *.result *.eps *.pdf
 	(cd results; make clean)

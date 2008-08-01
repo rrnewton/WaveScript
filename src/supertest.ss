@@ -806,15 +806,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; Get the peak memory usage
     (let ([peak_vm (read (open-input-file ".__last_line.txt"))])
       (fprintf outp "Marmot1_PeakVM ~a\n" peak_vm)
-      )
-    )
+      ))
   
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" test-root)))
       (code->msg! (system "gather_results.ss > results_table.txt"))
       (display (file->string "results_table.txt") outp)
-      ))        
+      ))
   (close-output-port outp)) ;; Done writing vital_stats.txt
 (begin 
   (fpf "\n\n  Vital Stats:\n")
