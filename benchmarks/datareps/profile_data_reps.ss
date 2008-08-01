@@ -66,14 +66,15 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
 
 ;; This generates the basic boilerplate:
 (define (execonce-boilerplate code)
-  `(iterate () ;; [2007.11.02] Now with annotations.
+  `(iterate (annotations) ;; [2007.11.02] Now with annotations.
 	    (letrec ([first Bool '#t])
 	      (lambda (,(unique-name 'x) vq) 
-		;(#() (VQueue #()))
 		(#() 'b)
 		(if first
 		    (begin ,code (set! first '#f) 
 			   (emit vq (tuple))
+			   ;; Uses error to exit immediately, not the best form:
+			   ;; This also assumes depth first traversal, that's not good:
 			   (wserror '"Exiting benchmark.")
 			   vq)
 		    vq)
@@ -150,7 +151,9 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
     ;; The program exits via a wserror call, so we set this up:
     (parameterize ([wserror-handler
 		    (lambda (str) (printf "wserror: ~a\n" str))])
-      (pretty-print (stream-car (wsint prog '()))))))
+      (let ([strm (wsint prog '())])
+	(pretty-print (stream-car strm))
+	))))
 
 (define (run-w/mlton prog)
 ;  [implementation 'wsmlton]
@@ -209,9 +212,9 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
       (parameterize ([current-output-file filename]
 		     ;;[current-output-port file1]
 		     [ws-print-output-port file1])
-	(run-w/scheme prog) (flush-output-port)
+	(run-w/scheme prog) (flush-output-port (current-output-port))
 	;;(run-w/cpp prog)    (flush-output-port)
-	(run-w/mlton prog) (flush-output-port)
+	(run-w/mlton prog) (flush-output-port (current-output-port))
 	)))
   (close-output-port file1)
   )
@@ -224,12 +227,14 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
 (print-graph #f)
 (regiment-verbosity 0)
 
-(begin ;; TEST ALLOCATION:
+;(begin ;; TEST ALLOCATION:
   (printf "\n<<<< FIRST TESTING ALLOCATION >>>>\n\n")
   (run-all (execonce-boilerplate `(begin ,(alloc-test 'array 'array 1000 1000)
 					   ,(alloc-test 'array 'array 100000 3)
 					   ,(alloc-test 'array 'array 3 100000)
 					   ))           'array 'array)
+(exit 0)
+
   ;; Don't do really big tuples
   ;(run-all (execonce-boilerplate `(begin ,(bigbig 'array 'tuple) ,(bigsmall 'array 'tuple))) 'array 'tuple)
   (run-all (execonce-boilerplate `(begin ,(alloc-test 'array 'tuple 500 500)
@@ -244,7 +249,8 @@ exec regiment i --script "$0" ${1+"$@"} -exit-error;
   (run-all (execonce-boilerplate `(begin ,(alloc-test 'tuple 'array 70 70)
 					 ,(alloc-test 'tuple 'array 3 83333)))
 	                                              'tuple 'array)
-  (system "mv results/*.out results/alloc/"))
+  (system "mv results/*.out results/alloc/")
+;) ;; End alloc test
 
 
 (begin ;; TEST SEQUENTIAL READ ACCESS (FOLD):

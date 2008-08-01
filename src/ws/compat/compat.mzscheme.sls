@@ -132,7 +132,7 @@
       (parameterize ([current-output-port p])
 	(th)
 	(extract))))
-  (define (with-output-to-port p)
+  (define (with-output-to-port p th)
     (parameterize ([current-output-port p])
       (th)))
 

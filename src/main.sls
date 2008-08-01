@@ -1799,7 +1799,8 @@
 	     (let* ([file (caddr args)]
 		    [exps (file->slist file)])
 	       ;; Under R6RS a script is essentially a sequence of expressions sent to "eval".
-	       (for-each (lambda (x) (printf "EVALUATING: ~a\n" x) (reg:top-level-eval x))
+	       (for-each reg:top-level-eval
+		 ;;(lambda (x) (printf "EVALUATING: ~a\n" x) (reg:top-level-eval x))
 		 exps))]
 
 	    [else 
