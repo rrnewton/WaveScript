@@ -732,6 +732,7 @@
   ;; -----------------------------------------
   ;; mic: for now, simple-merge-iterates does manual inlining
   ;; (interpret-meta doesn't work this far down in the compiler, yet)
+  ;(ws-optimizations-enabled (cons 'fuse (ws-optimizations-enabled)))
   (when (or (memq 'fuse (cdr (or (assoc 'optimizations params) '(_ . ()))))
             (memq 'fuse (ws-optimizations-enabled))
             (memq 'merge-iterates (ws-optimizations-enabled)))
@@ -783,6 +784,7 @@
 
   ;; for analysis of data rates between boxes
   ;; uncomment to enable
+  ;(ws-optimizations-enabled (cons 'profile ws-optimizations-enabled))
   (when (memq 'profile (ws-optimizations-enabled))
      (unless  (memq 'annotate-with-data-rates disabled-passes)
        
@@ -1107,8 +1109,11 @@
                      ;(pretty-print prog)
                      ;(pretty-print  (rewrite-merges-as-iterates (convert-to-multi-in-multi-out prog)))
 
-                     ;(pretty-print (make-output-streams-unique
-                     ;               (rewrite-merges-as-iterates (convert-to-multi-in-multi-out prog))))
+                     ;(pretty-print
+                     ; (new-simple-merge-iterates
+                     ;  (new-simple-merge-policy:always
+                     ;   (make-output-streams-unique
+                     ;    (rewrite-merges-as-iterates (convert-to-multi-in-multi-out prog))))))
 
 
 		     (unless (embedded-mode? (compiler-invocation-mode))

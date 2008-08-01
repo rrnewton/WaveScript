@@ -265,6 +265,11 @@
 	  ;; Always run make-begin, hope this is safe:
 	  [(begin ,[loop -> xs] ...)     
 	   (fuse xs       (lambda ls (make-begin `(begin ,@ls))))]
+
+          ; [2008.08.01] mic: for multi-in-multi-out
+          [(begin-reorderable ,[loop -> xs] ...)
+           (fuse xs (lambda ls `(begin-reorderable ,@ls)))]
+
 	  [(for (,i ,[loop -> start] ,[loop -> end]) ,[loop -> body])
 	   (fuse (list start end body)
 		 (lambda (st en bod) `(for (,i ,st ,en) ,bod)))]

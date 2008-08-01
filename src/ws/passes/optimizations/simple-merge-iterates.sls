@@ -9,6 +9,7 @@
            simple-merge-policy:always
 	   test-simple-merge-iterates
 
+           new-simple-merge-iterates
            new-simple-merge-policy:always)
 
   (import (rnrs) (ws common)
@@ -110,9 +111,9 @@
 
 
 ;; perform the simple merge whenever possible;
-;; this should be run after explicit-stream-wiring
-;;
-;; expects incoming/outgoing lists to have port-numbers attached to names
+;; this should be run after explicit-stream-wiring,
+;; and after convert-to-multi-in-multi-out
+;; (expects incoming/outgoing lists to have port-numbers attached to names)
 (define new-simple-merge-policy:always
   (let ()
 
@@ -161,7 +162,7 @@
                '(graph ,consts
                        ,inits
                        ,sources
-                       (oeprators (,op* (name ,n*)
+                       (operators (,op* (name ,n*)
                                         (output-type ,oty*)
                                         (code ,newopcode*)
                                         (incoming ,@oin**)
@@ -169,6 +170,194 @@
                                   ...)
                        ,sink
                        ,@meta*))))]))))
+
+
+;;
+;; this should be run after explicit-stream-wiring,
+;; and after convert-to-multi-in-multi-out
+;; (expects incoming/outgoing lists to have port-numbers attached to names)
+(define new-simple-merge-iterates
+  ;; -> [X] -> [Y] ->
+  ;; -> [X(Y)] ->
+
+  (let ()
+
+    ;;
+    (define (inline-subst-emits body fun fun-var fun-var-type old-idx-arg new-idx-arg)
+      (core-generic-traverse
+       (lambda (expr fallthru)
+         (match expr
+           [(_emit_to ,to ,props ,vq ,[x])
+            `(let ((,fun-var ,fun-var-type ,x)) ,fun)]
+           [,idx
+            (guard (eq? idx old-idx-arg))
+            new-idx-arg]
+           [,oth (fallthru oth)]))
+       (lambda (ls k) (apply k ls))
+       body))
+
+    ;; stats for a merged box, ->[left]->[right]-> => ->[left->right]->
+    (define (merge-data-rates left-stats right-stats)
+      (make-bench-stats (bench-stats-bytes right-stats)
+                        (bench-stats-tuples right-stats)
+                        (+ (bench-stats-cpu-time left-stats) (bench-stats-cpu-time right-stats))))
+
+    ;;
+    ;;
+    (lambda (prog)
+
+      ; FIXME: is this defined somewhere?
+      (define (true-q pred ls)
+        (cond [(null? ls) #f]
+              [(pred (car ls)) ls]
+              [else (true-q pred (cdr ls))]))
+
+      (match prog
+        [(,input-language
+          '(graph ,consts
+                  ,inits
+                  ,sources
+                  (operators ,oper* ...)
+                  ,sink
+                  ,meta* ...))
+
+         (let ([get-oper-values
+                (lambda (oper)
+                  (match oper
+                    [(,op (name ,n)
+                          (output-type ,oty)
+                          (code ,opcode)
+                          (incoming ,oin* ...)
+                          (outgoing ,oout* ...))
+                     `(,op ,n ,oty ,opcode ,oin* ,oout*)]))])
+
+         ; FIXME: there must be a better way to do this...
+
+         (let ([get-op     (lambda (oper) (list-ref (get-oper-values oper) 0))]
+               [get-n      (lambda (oper) (list-ref (get-oper-values oper) 1))]
+               [get-oty    (lambda (oper) (list-ref (get-oper-values oper) 2))]
+               [get-opcode (lambda (oper) (list-ref (get-oper-values oper) 3))]
+               [get-oin*   (lambda (oper) (list-ref (get-oper-values oper) 4))]
+               [get-oout*  (lambda (oper) (list-ref (get-oper-values oper) 5))])
+
+           (define n->oper (make-eq-hashtable))
+
+           (define (merge-down? oper)
+             (match (get-opcode oper)
+               [(iterate (annotations . ,annot) ,rest* ...)
+                (annotq 'merge-with-downstream annot)]
+               [,oth #f]))
+
+           ; FIXME: subst the real code
+           ; FIXME: do a name change *AND* fix up names in neighbors
+           ; only handles one-arg/one-arg, along with the index args
+           (define (merge-pipelined-boxes up-oper down-oper)
+
+             ; match on both iterates at once
+             (match `(,(get-opcode up-oper) ,(get-opcode down-oper))
+               [((iterate
+                  (annotations . ,up-annot)
+                  (let ,up-state
+                    (lambda (,up-idx-arg ,up-arg ,up-vq) (Int ,up-ty ,up-vqty)
+                            (case ,up-idx-arg-dup
+                              ((0) ,up-body))))
+                  ,in-str)
+                 
+                 (iterate
+                  (annotations . ,down-annot)
+                  (let ,down-state
+                    (lambda (,down-idx-arg ,down-arg ,down-vq) (Int ,down-ty ,down-vqty)
+                            (case ,down-idx-arg-dup
+                              ((0) ,down-body))))
+                  ,mid-str))
+
+                (let ([new-opcode
+                       `(iterate
+                         (annotations . ,(merge-annotations up-annot
+                                                            down-annot
+                                                            `([merge-with-downstream . right-only]
+                                                              [data-rates manual ,merge-data-rates])))
+                         (let ,(append up-state down-state)
+                           (lambda (,down-idx-arg ,down-arg ,up-vq) (Int ,down-ty ,up-vqty)
+                                   (case ,down-idx-arg
+                                     ((0) ,(inline-subst-emits
+                                            `(let ((,down-vq ,up-vqty ,up-vq)) ,down-body)
+                                            `(begin ,up-body (tuple))
+                                            up-arg up-ty up-idx-arg down-idx-arg)))))
+                         ,in-str)])
+
+                  `(iterate (name ,(get-n up-oper))
+                            (output-type ,(get-oty down-oper))
+                            (code ,new-opcode)
+                            (incoming ,@(get-oin* up-oper))
+                            (outgoing ,@(get-oout* down-oper))))]))
+
+           ;; assuming upst-box can be merged with its downstream neighbor,
+           ;; get that single downstream box
+           (define (get-downstream-box upst-box)
+             (hashtable-ref n->oper (caar (get-oout* upst-box)) #f))
+
+           ;; fill in the hashtable
+           (for-each (lambda (n oper) (hashtable-set! n->oper n oper))
+             (map get-n oper*) oper*)
+           
+           ;; loop until done
+           ;; not the fastest - but it hardly matters for now
+           (let loop ()
+             (let-values ([(n* oper*) (hashtable-entries n->oper)])
+               (let ([upstr-boxes-to-merge
+                      (filter merge-down? (vector->list oper*))])
+                 
+                 (void)
+                 (if (null? upstr-boxes-to-merge)
+                     (void)
+                     (let* ([upstr-box (car upstr-boxes-to-merge)]
+                            [downstr-box (get-downstream-box upstr-box)]
+                            [new-box (merge-pipelined-boxes upstr-box downstr-box)])
+                       
+                       (hashtable-delete! n->oper (get-n downstr-box))
+                       (hashtable-delete! n->oper (get-n upstr-box))
+                       (hashtable-set! n->oper (get-n new-box) new-box)
+
+                       ; update the incoming lists for any boxes that previous took input
+                       ; from downstr-box
+                       (for-each
+                           (lambda (n)
+                             (hashtable-update! n->oper n
+                                                (lambda (oper)
+                                                  (match oper
+                                                    [(,op (name ,n)
+                                                          (output-type ,oty)
+                                                          (code ,opcode)
+                                                          (incoming ,oin* ...)
+                                                          (outgoing ,oout* ...))
+                                                     (let ([new-incomings
+                                                            (map (lambda (np)
+                                                                   (if (eq? (car np) (get-n downstr-box))
+                                                                       `(,(get-n new-box) . ,(cdr np))
+                                                                       np))
+                                                              oin*)])
+                                                       
+                                                       `(,op (name ,n)
+                                                             (output-type ,oty)
+                                                             (code ,opcode)
+                                                             (incoming ,@new-incomings)
+                                                             (outgoing ,@oout*)))]))
+                                                #f))
+                         (vector->list (hashtable-keys n->oper)))
+                       
+                       (loop)
+                       ; FIXME: also need to update incoming/outgoing of neighbors
+                       )))))
+
+           (let-values ([(n* oper*) (hashtable-entries n->oper)])
+             oper*)
+
+           ))]))))
+           
+
+                                                   
+
 
              
                  
