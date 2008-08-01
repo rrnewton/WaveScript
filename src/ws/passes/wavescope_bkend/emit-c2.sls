@@ -227,7 +227,6 @@
 (define (slot-cons! obj fld x) (slot-set! obj fld (cons x (slot-ref obj fld))))
 
 (define (cap x) (list x ";\n"))
-
 (define (make-app rator rands)
   (list rator "("(insert-between ", " rands)")"))
 
@@ -689,7 +688,6 @@
     (ASSERT simple-expr? expr)
     (let ([element (Simple self expr)])
       (make-lines (map (lambda (down)
-			 ;; TEMP FIXME  FIXME  THIS INCR-REFCOUNT SHOULD BE HANDLED BY INSERT-REFCOUNTS!
 			 (cap (make-app "EMIT" (list element (Type self ty) (Var self down)))))
 		    down*)))))
 
@@ -1179,7 +1177,7 @@
        [(max ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" > ",b" ? ",a" :",b")"))]
        [(min ,[Simp -> a] ,[Simp -> b]) (kont `("(",a" < ",b" ? ",a" :",b")"))]
 
-
+       [(randomI ,[Simp -> bound]) (kont `("(rand() % ",bound")"))]
 
        [(lshiftI16 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int16)")(",a" << ",b")"))]
        [(lshiftI32 ,[Simp -> a] ,[Simp -> b]) (kont `("(",(Type self 'Int32)")(",a" << ",b")"))]
@@ -1461,7 +1459,7 @@
 			  )		   
 		   ;"wsShutdown();\n"
 		   "// We keep the main function going for other tuples to come through.\n"
-		   "printf(\"Out of main loop.\\n\");\n"
+		   ;"printf(\"Out of main loop.\\n\");\n"
 		   ;"print_queue_status();\n"
 		   "while (print_queue_status()) { sleep(1); }\n"
 		   "return 0;\n")))))]
@@ -1960,11 +1958,8 @@ int main(int argc, char **argv)
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
 			   (text->string (block "void initState()" 
 						(list 
-						 "/* We may need to start up the Boehm GC */ \n"
-						 "#ifdef USE_BOEHM\n"
-						 "GC_INIT();\n"
-						 "printf(\"GC INIT COMPLETE.\\n\");\n"
-						 "#endif\n"
+						 "/* We may need to start up the Boehm GC or do other standard WS init: */ \n"
+						 "wsInit();\n"
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
 						 ;; This will be where the inline_C initializers go:
@@ -1972,19 +1967,16 @@ int main(int argc, char **argv)
 						 (map lines-text init-pieces)
 						 (lines-text (apply append-lines (apply append opinit**)))
 						 ;; Finally, register all the work functions.
-						 (make-app "TOTAL_WORKERS" (list (number->string (add1 (length opnames)))))"\n"
-						 "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
-						 (map (lambda (i name ty) (format "REGISTER_WORKER(~a, ~a, ~a)\n"
-										  (add1 i) (text->string (Type self ty)) name))
-						   (iota (length opnames)) opnames opinputs
-					;(iota (length iterates))
-						   ;iterates iterates-input-types
-						   )
-						 "START_WORKERS()\n"						 
-
-						 ;"void (**workers) (void) = malloc(sizeof(void*) * "(number->string (length iterates))");\n" 
-					         ;(mapi (lambda (i name) (format "workers[~a] = & ~a;\n" i name))  iterates)
-						 ;(make-app "REGISTER_WORKERS" (list "workers" (number->string (length iterates))))";\n"
+												 
+						 (if #f '()						     
+						     (list
+						      (make-app "TOTAL_WORKERS" (list (number->string (add1 (length opnames)))))"\n"
+						      "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
+						      (map (lambda (i name ty) (format "REGISTER_WORKER(~a, ~a, ~a)\n"
+										       (add1 i) (text->string (Type self ty)) name))
+							(iota (length opnames)) opnames opinputs)
+						      "START_WORKERS()\n"))
+						
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	
@@ -1992,14 +1984,17 @@ int main(int argc, char **argv)
 	(BuildOutputFiles self includes freefundefs
 			    (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
 				allstate
-				"DECLARE_WORKER(0, "(Type self '#())", BASE)\n"
-				(text->string (map (lambda (i name ty) 
-						     (list "DECLARE_WORKER("(number->string (add1 i))
-							   ", "(Type self ty)", "(symbol->string name)")\n" 
-							   ))
+				
+				(if #f ""
+				    (** "DECLARE_WORKER(0, "(Type self '#())", BASE)\n"
+					(text->string (map (lambda (i name ty) 
+							     (list "DECLARE_WORKER("(number->string (add1 i))
+								   ", "(Type self ty)", "(symbol->string name)")\n" 
+								   ))
 						;(iota (length iterates)) iterates iterates-input-types
 						(iota (length opnames)) opnames opinputs
-						)))
+						))))
+				)
 			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
 			    init driver)
 	  )]

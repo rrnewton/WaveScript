@@ -79,6 +79,13 @@
 	[,else (next)]
 	))))
 
+(__specreplace Emit <java> (self down* ty)
+  (lambda (expr)
+    (ASSERT simple-expr? expr)
+    (let ([element (Simple self expr)])
+      (make-lines (map (lambda (down) (list (Var self down) "(" (list element) ");\n"))
+		    down*)))))
+
 (define ___Const
   (specialise! Const <java>
     (lambda (next self datum wrap)
@@ -88,7 +95,7 @@
 
 (define ___Value
   (specialise! Value <java>
-    (lambda (next self emitter)      
+    (lambda (next self)      
       (lambda (xp kont)
 	(define Simp (lambda (x) (Simple self x)))
 	(match xp
@@ -241,7 +248,7 @@
 
 (define ___Effect 
   (specialise! Effect <java>
-    (lambda (next self emitter)
+    (lambda (next self)
       (define (Simp x)  (Simple self x))
       (lambda (xp)
 	(match xp
@@ -378,7 +385,6 @@
 		[_ty (Type self ty)]
 		[_elt (Type self elt)])
 	   (append-lines 
-	    ;((Binding self (emit-err 'array-constructor-codegen)) 
 	    ;(list tmp ty `(assert-type ,ty (Array:makeUNSAFE ,len))))
 	    (make-lines (list 
 			  _ty" "_tmp" = "newstmt";\n"
@@ -421,7 +427,7 @@
 
 (define ____Effect 
   (specialise! Effect <javaME>
-    (lambda (next self emitter)
+    (lambda (next self)
       (define (Simp x)  (Simple self x))
       (lambda (xp)
 	(match xp

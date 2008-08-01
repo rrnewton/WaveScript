@@ -569,6 +569,13 @@ void wsShutdown() {
   #endif
 }
 
+void wsInit() {
+#ifdef USE_BOEHM
+  GC_INIT();
+  printf("GC INIT COMPLETE.\n");
+#endif
+}
+
 void BASE(char x) {
   outputcount++;
   if (outputcount == wsc2_tuplimit) { 

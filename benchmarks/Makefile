@@ -32,8 +32,8 @@ alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/micro
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
-	pdflatex perfreport.tex
-#	pdflatex -halt-on-error perfreport.tex
+	pdflatex -halt-on-error perfreport.tex
+#	pdflatex perfreport.tex
 
 
 machineinfo.tex:
@@ -77,7 +77,7 @@ language_shootout/shootout.eps:
 #microbench/RESULTS.txt
 microbench/RESULTS.tex: microbench/microbench1.pdf 
 	echo '\begin{verbatim}'            > microbench/RESULTS.tex
-	cat microbench/RESULTS.txt        >> microbench/RESULTS.tex
+	cat microbench/RESULTS_misc.txt   >> microbench/RESULTS.tex
 	echo '\end{verbatim}'             >> microbench/RESULTS.tex
 language_shootout/RESULTS.tex: language_shootout/RESULTS.txt
 	echo '\begin{verbatim}'            > language_shootout/RESULTS.tex

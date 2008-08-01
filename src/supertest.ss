@@ -809,6 +809,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
   
   ;; --- Check compile times for the marmot app. ---
+#;
   (parameterize ((current-directory test-directory))
     ;; This is fragile because it depends on a particular output from the WS compiler.
     ;; AND on a particular output format for the Scheme (time _) command.
@@ -823,8 +824,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	(let* ([one   (read port)]
 	       [two   (read port)]
 	       [three (read port)])
-	  (or (string->number one)
-	      (string->number three)))))    
+	  (if (number? one) one 
+	      (begin (ASSERT (number? three))
+		     three)))))
     ;; This is the time spent in the Scheme WS compiler.  Does not include time spent in the C/ML compiler.
     (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
     (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log")))

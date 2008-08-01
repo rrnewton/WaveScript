@@ -593,6 +593,8 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
+  ;(pretty-print (strip-annotations p 'src-pos))
+
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))
@@ -1139,7 +1141,6 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
-		     ;(pretty-print prog)
 		     (time (ws-run-pass prog emit-c2 class))
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
@@ -1287,59 +1288,9 @@
 		    ;; We read past TWO end markers to make sure we got a whole cycle:
 		    (let* ([times 
 ;'()
-#;
-   (map (lambda (pr) (cons (car pr) (cadr pr)))
-     (filter (compose not null?)
-       (map string->slist (file->lines "~/wavescript/apps/telos_audio/eeg/HACK4"))))
-
-
-;; TEMP HACK:
-#;
-'((unionList_71 . 0) (unionList_7 . 0) (myZipN_68 . 1)
- (GenericGet_83 . 68) (myZipN_41 . 1) (zipN_4 . 1)
- (GenericGet_84 . 68) (GenericGet_63 . 19)
- (FIRFilter_30 . 70) (myZipN_17 . 1) (myZipN_16 . 1)
- (stream_map_11 . 32) (AddOddAndEven_15 . 6) (myZipN_50 . 1)
- (FIRFilter_32 . 135) (FIRFilter_31 . 70) (myZipN_59 . 1)
- (myZipN_18 . 1) (FIRFilter_33 . 135) (FIRFilter_45 . 135)
- (AddOddAndEven_14 . 4) (Node_sensor_85 . 0)
- (stream_map_10 . 116) (AddOddAndEven_13 . 9)
- (Node_flat_1 . 1) (unionList_54 . 0) (stream_map_12 . 60)
- (FIRFilter_46 . 135) (unionList_23 . 0) (unionList_8 . 0)
- (FIRFilter_62 . 535) (zipN_2 . 1) (FIRFilter_28 . 268)
- (AddOddAndEven_76 . 54) (FIRFilter_55 . 268)
- (GenericGet_47 . 7) (FIRFilter_72 . 1061)
- (AddOddAndEven_67 . 29) (unionList_64 . 0)
- (unionList_43 . 0) (unionList_27 . 0) (GenericGet_74 . 36)
- (FIRFilter_81 . 2118) (AddOddAndEven_49 . 11)
- (unionList_25 . 0) (AddOddAndEven_40 . 8)
- (FIRFilter_29 . 268) (AddOddAndEven_58 . 17) (myZipN_77 . 1)
- (unionList_44 . 0) (GenericGet_56 . 11) (GenericGet_57 . 11)
- (GenericGet_38 . 7) (FIRFilter_53 . 268) (GenericGet_39 . 7)
- (GenericGet_36 . 5) (unionList_61 . 0) (GenericGet_4 . 11)
- (unionList_3 . 0) (GenericGet_37 . 5) (unionList_52 . 0)
- (GenericGet_48 . 7) (GenericGet_35 . 11) (unionList_70 . 0)
- (unionList_26 . 0) (FIRFilter_65 . 535) (GenericGet_75 . 36)
- (unionList_24 . 0) (GenericGet_66 . 19) (unionList_22 . 0)
- (FIRFilter_73 . 1061) (unionList_9 . 0) (unionList_80 . 0)
- (tmpsmp_9190 . 999999) (FIRFilter_82 . 2118)
- (unionList_79 . 0))
-
-
-(extract-time-intervals 
+			    (extract-time-intervals 
 			     ;; FUDGE factor for tinyos:
 			     ;82
-#;
-'((Start Node_muladd_4 0 20433)
-   (End Node_muladd_4 0 52621)
-   (Start Node_sillyforloop_3 0 53074)
-   (End Node_sillyforloop_3 0 53169)
-   (Start s5_2 0 53642)
-   (End s5_2 0 53728)
-   (Start s6_1 0 54037)
-   (EndTraverse 0 56674))
-
-
 			     (process-read/until-garbage-or-pred 
 			     ;;"exec java PrintfClient 2> /dev/null | grep -v \"^Thread\\[\""
 			     "java PrintfClient"			     
@@ -1434,7 +1385,7 @@
 		  (unless (file-exists? (** (or (getenv "TOSROOT") "") "/support/sdk/c/serialpacket.h"))
 		    (error 'wstiny "you need to run 'make' in ~a" 
 			   (** (or (getenv "TOSROOT") "") "/support/sdk/c/")))
-		  )
+		  ) ;; End split-program path.
 		))
 	    )
        (begin 
@@ -1999,6 +1950,11 @@
 	   (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
 	   (loop rest)]
+
+	  ;[("-profelements") ]
+	  ;[("-profvtime")  ]
+	  ;[("-profrealtime") ]
+
 	  
 	  [("-gc" ,name ,rest ...)
 	   (set! name (string->symbol name))
