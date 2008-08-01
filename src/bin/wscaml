@@ -14,6 +14,9 @@ OUTPUT=query.caml.exe
 if [ "$1" == "-O3" ];
 ## HUH? On some computers ocaml doesn't recognize "-ffast-math"
 then FLAGS="$FLAGS -unsafe  -inline 100 -noassert"; shift; 
+
+# NOTE, from the shootout:
+# ocamlopt -noassert -unsafe -ccopt -O3 -ccopt -fomit-frame-pointer q.ml -o q.exe
 fi
 
 if [ "$1" == "-O0" ];
@@ -66,5 +69,3 @@ then end=`date +%s`;
 else echo "OCaml returned error!!"; exit -1
 fi
 
-# NOTE, from the shootout:
-# ocamlopt -noassert -unsafe -ccopt -O3 -ccopt -fomit-frame-pointer q.ml -o q.exe

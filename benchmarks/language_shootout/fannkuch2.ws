@@ -44,8 +44,8 @@ using Mutable;
 
 
 //arg = 7;
-//arg = 11; // The input used on the language shootout website.
-arg = 10; // Bringing it down for our benchmarks.
+arg = 11; // The input used on the language shootout website.
+//arg = 10; // Bringing it down for our benchmarks.
 
 //r        = ref(0);didpr    = ref(0);flipsMax = ref(0);
 

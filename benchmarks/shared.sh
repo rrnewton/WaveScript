@@ -213,9 +213,8 @@ function dump_plot_script() {
     for bk in $BACKENDS; do len=$((len+1)); done
     echo;echo Generating plot script for $len backends: $BACKENDS
 
-    cd $START
+#    cd $START
     cat >> $FILE <<EOF
-# set title "Hand-optimized marmot application"
 load "../shared.gp"
 EOF
 

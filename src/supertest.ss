@@ -88,6 +88,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (let ([p (open-output-file fn #:exists 'replace)])
       (display str p)
       (close-output-port p)))
+(define (system-to-str cmd)
+  (define fn (format "/tmp/___supertest_tmp_~a.txt" (random 100000000)))
+  (and (system (format "~a &> ~a" cmd fn))
+       (file->string fn)))
 
 (define (mail to subj msg)
   (define tmpfile (format "/tmp/temp~a.msg" (current-milliseconds)))
@@ -499,17 +503,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Now test WSCAML:
 
 ;; DISABLING
-; (fpf "\n\nWaveScript CAML Backend: \n")
-; (fpf "========================================\n")
-; (parameterize ((current-directory test-directory))
-;   (newline)       
-;   (run-test "wscaml: Building ocaml libraries (fftw, etc):" 
-; 	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
-;   (current-directory (format "~a/demos/wavescope" test-directory))
-;   (run-test "wscaml: Running Demos through OCaml:" 
-; 	    (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))
-;   )
-
+(fpf "\n\nWaveScript CAML Backend: \n")
+(fpf "========================================\n")
+(parameterize ((current-directory test-directory))
+  (newline)       
+  (run-test "wscaml: Building ocaml libraries (fftw, etc):" 
+	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
+  (current-directory (format "~a/demos/wavescope" test-directory))
+  (run-test "wscaml: Running LIMITED Demos through OCaml:" 
+	    (format "./testall_caml &> ~a/wscaml_demos.log" test-directory))
+  )
 
 (begin 
   (fpf "\n\nWaveScript MLTON Backend:\n" )
@@ -767,8 +770,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Extract vital stats from above runs:
 
-(let* ([vitals (format "~a/vital_stats.txt" test-directory)]
-       [outp   (open-output-file vitals)])
+(define vitals (format "~a/vital_stats.txt" test-directory))
+(let* ([outp   (open-output-file vitals)])
   (parameterize ((current-directory (format "~a/demos/wavescope" test-root)))
 
     (fpf "\n\n  Sanity Checks:\n")
@@ -809,12 +812,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (fprintf outp "Marmot1_PeakVM ~a\n" peak_vm)
       )
     )
-    
-  (close-output-port outp)
+  
+  ;; --- Gather a table of numbers from the benchmarks directory. ----  
+  (when benchmarks? 
+    (parameterize ((current-directory (format "~a/benchmarks" test-root)))
+      (code->msg! (system "gather_results.ss > results_table.txt"))
+      (display (file->string "results_table.txt") outp)
+      ))        
+  (close-output-port outp)) ;; Done writing vital_stats.txt
+(begin 
   (fpf "\n\n  Vital Stats:\n")
   (fpf "========================================\n")
-  (fpf "~a" (file->string vitals))
-  )
+  (fpf "~a" (file->string vitals)))
 
 ;;================================================================================
 ;;; Wrap it up
@@ -863,9 +872,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf (file->string "temp.log"))
 
 (fpf "MLton version:  \n   ")
-(system "echo | mlton | head -n 1 &> temp.log")
-(fpf (file->string "temp.log"))
+(fpf (system-to-str "echo | mlton | head -n 1"))
 
+(fpf "OCaml version:  \n   ")
+(fpf (system-to-str "ocaml -version"))
 
 (close-output-port log)
 (define thesubj 
