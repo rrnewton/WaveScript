@@ -814,7 +814,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; AND on a particular output format for the Scheme (time _) command.
     (define (getcpu file)
       (let* ([line (system-to-str (format "grep -A 2 'Total compile time' ~a | grep 'cpu time'" file))]
-	     [port (open-string-input-port line)])
+	     [port (open-input-string line)])
 	;; This is really hacky:
 	;; Ikarus looks like this:
 	;;     9404 ms elapsed cpu time, including 1796 ms collecting

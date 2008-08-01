@@ -4,7 +4,13 @@
 source ../shared.sh
 
 function go3() {
-  
+  REP=$1
+  RANGE=$2
+  PLOT=plot_"$REP".gp
+  echo set title \"Data Representation: $1\"           > $PLOT
+  set "yrange [ 0.00000 : $2 ] noreverse nowriteback" >> $PLOT
+  dump_plot_script $PLOT $REP.result
+  gnuplot $PLOT > $1.eps
 }
 
 # function go3() {
