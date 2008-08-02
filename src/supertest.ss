@@ -711,10 +711,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (system "make machineinfo.tex"))
     (ASSERT (system "make wssvn.tex"))
     (ASSERT (system "make enginesvn.tex"))
-#;
     (run-test "    Compile results, build full report: " 
 	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
-
     (ASSERT (putenv "REGIMENTHOST" ""))
     ))
 
