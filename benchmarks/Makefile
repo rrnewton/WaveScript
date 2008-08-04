@@ -28,7 +28,8 @@ topafter:
 engine: 
 	./setup_engines.sh
 
-alldeps: machineinfo.tex wssvn.tex enginesvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
+#  enginesvn.tex 
+alldeps: machineinfo.tex wssvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
