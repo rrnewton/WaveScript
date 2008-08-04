@@ -706,7 +706,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "    Verify dependencies, do conversions:" 
 	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
     
-;     (ASSERT (system "make topafter"))
+    (ASSERT (system "make topafter"))
+
 ;     (ASSERT (system "make machineinfo.tex"))
 ;     (ASSERT (system "make wssvn.tex"))
 ;     (ASSERT (system "make enginesvn.tex"))
