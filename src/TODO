@@ -21,6 +21,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.08.04]
+  *) Working on marshal/unmarshel, eventually, readFile codegen should leverage unmarshal.
+
 [2008.07.22] 
   *) Consolidate array-freeing cases in emit-c2.  All arrays of
      scalars can be handled uniformly.

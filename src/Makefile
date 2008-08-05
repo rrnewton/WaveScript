@@ -279,7 +279,7 @@ larceny: ws/common.sls main_r6rs.sls \
 
 
 ## Combine 
-ag:
+ag: aggregated
 aggregated:
 	rm -f ws/common.sls main_r6rs.sls
 	$(MAKE) ws/common.sls main_r6rs.sls

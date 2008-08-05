@@ -47,6 +47,8 @@
 
 		  ; readFile
 		  Mutable:ref
+		  unmarshal
+		  __type_unsafe_read ;; [2008.08.05]
 		  ))
 
     (define annotate-first-arg 
@@ -64,8 +66,9 @@
 		    
 		    emit ;; [2008.07.22] adding
 		    ;Mutable:ref ;; [2008.07.22]
+		    marshal ;; [2008.08.04]
+		    __type_unsafe_write
 		    ))
-    
 
     (define (not-poly? ty) (not (polymorphic-type? ty)))
     (define (wrap ty x)

@@ -109,6 +109,7 @@ go "demo7b_marmot_phase1.ws"
 go "demo8a_generic_arith.ws"
 go "demo8b_sugars.ws"
 go "demo8c_moresugar.ws"
+go "demo8g_marshal.ws"
 
 go "demo9_misc_prim_tests.ws"
 go "demo9b_higher_order_prims.ws" 

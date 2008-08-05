@@ -38,6 +38,9 @@
 		;; This is no longer supported:
 		break		
 		_emit_to
+
+		;; Not supported in scheme backend or metaprogram eval:
+		marshal unmarshal __type_unsafe_write __type_unsafe_read
 		)
 	  generic-arith-primitives
 	  meta-only-primitives))

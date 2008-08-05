@@ -263,7 +263,9 @@
          [Uint8  1]
          [Uint16 2]
          [Int16 2]
-         [Int 4] ;; INTS ARE 16 BIT ON TELOS!!! FIXME FIXME
+
+         [Int   4] ;; INTS ARE 16 BIT ON TELOS!!! FIXME FIXME
+
          [Int32 4] 
          [Int64 8]
          ;; HACK:

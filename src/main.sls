@@ -698,7 +698,6 @@
 	     ;; But java needs them:
 	     (not (java-mode? (compiler-invocation-mode))))
     (ws-run-pass p embed-strings-as-arrays)
-
     (DEBUGMODE 
      (let ([tmp (deep-assq-all 'String p)])
        (unless (null? tmp) 
@@ -706,6 +705,9 @@
 	 (inspect tmp))))
     ;(ws-run-pass p remove-complex-constant) ;; Should we leave those array constants?
     )
+  
+  ;; We do this after string embedding so we don't worry about marshaling strings.
+  (ws-run-pass p generate-marshal-code)
 
   ;; wsc2 and derivatives support monomorphic backends that need a little help here:
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
@@ -713,8 +715,7 @@
     (ws-run-pass p type-annotate-misc)
     (ws-run-pass p generate-comparison-code))
 
-  ;; Should also generate printing code:
-  ;(ws-run-pass p generate-printing-code)
+  ;(DEBUGMODE (do-late-typecheck)) ;; [2008.08.05] check all that generated printing/marshaling/comparison code.
 
 ;  (ws-run-pass p uncover-free)
 

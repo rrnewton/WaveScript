@@ -29,7 +29,9 @@
 		 prim_window
 
 		 ;; Unmarshall from strings:
-		 to-uint16 to-int16 uint16->string
+		 to-uint16 to-int16 uint16->string 
+		 ;marshal __type_unsafe_read
+		 ;__type_unsafe_write
 
 		 wsequal?
 
@@ -2130,13 +2132,8 @@
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
 ;; This tries to match the binary format used in the C backend.
-#;
-(define (__marshal val ty)
-  (let ([port (open-string-port)])
-    (match ty
-      [(Int) ]
-      [#()])
-    ))
+;(define (marshal val) (error 'marshal "not implemented under scheme"))
+;(define (__type_unsafe_write ))
 
 ;; A foreign procedure for freeing foreign storage.
 ;; We do late-binding here:

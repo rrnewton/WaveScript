@@ -19,6 +19,7 @@
 	   resolve-type-aliases
 	   generate-comparison-code
 	   generate-printing-code
+	   generate-marshal-code
 	   optimize-print-and-show
 	   explicit-toplevel-print
 	   strip-unnecessary-ascription
@@ -335,7 +336,7 @@
 	      ,(addstr! ''"[")	      
 	      (while (not (wsequal? (deref ,ptr) (assert-type (List ,elt) '())))
 		     (begin
-		       ,(recur elt `(car (deref ,ptr)))
+		       ,(recur elt `(car (deref ,ptr))) ;; we allow this car code to get duplicated.
 		       (if (wsequal? (cdr (deref ,ptr))  (assert-type (List ,elt) '()))
 			   (tuple)
 			   ,(addstr! ''", "))
@@ -399,8 +400,6 @@
   [Expr 
    (lambda (x fallthru)
      (match x
-       ;; TODO: optimize print(show(...)) and print(string-append(...))
-
        [(print (assert-type ,ty ,[exp]))
 	(or (build-print 'print ty exp (lambda (x) `(print ,x)))
 	    `(print (assert-type ,ty ,exp)))]
@@ -426,6 +425,155 @@
        ))])
 
 
+;; The marshal code generated must walk a data structure twice.  First
+;; to determine its size, and second to copy its values.
+(define-pass generate-marshal-code
+  ;; This generates code to walk over a data structure.  It is
+  ;; parameterized by a function that handles the leaf cases --
+  ;; scalars.
+  (define (traverse-value ty expr doit)
+    (match ty ;; <- No match recursion
+      [,ty (guard (scalar-type? ty))
+	   (doit expr ty)]
+      ;; Lists are written in a very simple format for now.  Each car
+      ;; is followed by a one-byte CDR, which is either 1, indicating
+      ;; that another cell follows, or 0 indicating null.
+      ;; Alternatively, could encode it like an array, and put the length at the front.
+      [(List ,elt)
+       (let* ([ptr (unique-name 'ptr)]
+	      [hd (unique-name 'hd)])
+	 `(let ([,ptr (Ref (List ,elt)) (Mutable:ref ,expr)])
+	    (begin 
+		  (while (not (wsequal? (deref ,ptr) (assert-type (List ,elt) '())))
+			 (begin
+			   ,(doit '(assert-type Uint8 '1) 'Uint8)
+			   (let ([,hd ,elt (car (deref ,ptr))])
+			     ,(traverse-value elt hd doit))		     		     
+			   (set! ,ptr (cdr (deref ,ptr)))))
+		  ,(doit '(assert-type Uint8 '0) 'Uint8))
+	    ))]
+      ;; Arrays have an 'Int' length, followed by the elements in order.
+      [(Array ,elt)
+       (let* ([arr (unique-name "arr")]
+	      [ind (unique-name "ind")])
+	 `(let ([,arr (Array ,elt) ,expr])
+	    ,(make-begin
+	      (list (doit `(assert-type Int (Array:length ,arr)) 'Int)
+		    `(for (,ind '0 (_-_ (Array:length ,arr) '1))
+			 ,(traverse-value elt `(Array:ref ,arr ,ind) doit))))))]
+      ;; Tuples are written simply as the concatenation of their fields.
+      [#(,fld* ...)
+       (let ([tup (unique-name "tup")]
+	     [len (length fld*)])
+	 `(let ([,tup ,ty ,expr])
+	    ,(make-begin
+	      (mapi (lambda (i fldty)
+		      (traverse-value fldty `(tupref ,i ,len ,tup) doit)) ;; I allow code duplication for tuprefs.
+		    fld*))))]
+      ;; :String, Sum
+      [,oth (error 'generate-marshal-code "Unhandled type: ~s" oth)]))
+
+  ;(define (SIZEOF ty) `(assert-type Int ',(type->width ty)))
+  (define (SIZEOF ty) `',(type->width ty))
+  (define (determine-size ty expr)
+    (define sum (unique-name 'sum))
+    `(let ([,sum (Ref Int) (Mutable:ref (assert-type Int '0))])
+       ,(make-begin
+	 (list 
+	  (traverse-value ty expr
+			  (lambda (xp elt)
+			    `(set! ,sum (_+_ ,(SIZEOF elt) (deref ,sum)))))
+	  `(deref ,sum)))))
+  (define (build-marshal ty expr)
+    (define buf    (unique-name "buf"))
+    (define len    (unique-name "len"))
+    (define offset (unique-name "offset"))
+    (make-nested-lets 
+     `([,len    Int           ,(determine-size ty expr)]
+       [,buf    (Array Uint8) (assert-type (Array Uint8) (Array:makeUNSAFE ,len))]
+       [,offset (Ref Int)     (Mutable:ref (assert-type Int '0))])
+     (make-begin
+      (list 
+       (traverse-value ty expr
+		       (lambda (xp elt)
+			 (define size (SIZEOF elt))
+			 `(begin
+			    (__type_unsafe_write (assert-type ,elt ,xp) ,buf (deref ,offset))
+			    (set! ,offset (_+_ (deref ,offset) ,size)))))
+       buf))))
+
+  (define (reconstruct-value ty expr initoffset)   
+    (define buf    (unique-name "buf"))
+    (define off    (unique-name "offset"))
+    (define (read-and-bump ty)
+      (let ([size (SIZEOF ty)])
+	`(begin (set! ,off (_+_ (deref ,off) (assert-type Int ,size)))
+		(assert-type ,ty (__type_unsafe_read ,buf (_-_ (deref ,off) (assert-type Int ,size)))))))
+    ;; This loops over the type and returns code that returns the unpacked value.
+    (define (unpack-loop ty)
+      (match ty
+	[,ty (guard (scalar-type? ty)) (read-and-bump ty)]
+
+	;; Arrays have an 'Int' length, followed by the elements in order.
+	[(Array ,elt)
+	 (let* ([len (unique-name "len")]
+		[arr (unique-name "arr")]
+		[ind (unique-name "ind")])
+	   `(let ([,len Int ,(read-and-bump 'Int)])
+	      (let ([,arr (Array ,elt) (assert-type (Array ,elt) (Array:makeUNSAFE ,len))])
+		(begin 
+		  (for (,ind '0 (_-_ ,len '1))
+		      (Array:set ,arr ,ind ,(unpack-loop elt)))
+		  ,arr))))]
+
+	;; Annoying - here we need to do a list reversal.  Again would be nice to have this as a primitive.
+	;; Especially a destructive list reversal as a primitive.  I should do some timings of list reversal...
+	[(List ,elt)
+	 (let* ([acc      (unique-name "acc")]
+		[flipped  (unique-name "flipped")]
+		[nextbyte (unique-name "nextbyte")])
+	   `(let ([,acc (Ref (List ,elt)) (Mutable:ref (assert-type (List ,elt) '()))])
+	      (begin
+		;; Until the CDR byte is a zero.
+		(while (not (wsequal? ,(read-and-bump 'Uint8) (assert-type Uint8 '0)))
+		       (set! ,acc (cons ,(unpack-loop elt) (deref ,acc)))) ;; Unpack the CAR
+		;; Now reverse it.
+		(let ([,flipped (Ref (List ,elt)) (Mutable:ref (assert-type (List ,elt) '()))])		  
+		  (begin
+		    (while (not (wsequal? (deref ,acc) (assert-type (List ,elt) '())))
+			 (begin 
+			   (set! ,flipped (cons (car (deref ,acc)) (deref ,flipped)))
+			   (set! ,acc (cdr (deref ,acc)))))
+		    (deref ,flipped))))))]
+	
+	;; This introduces a bunch of temporaries because it needs nested lets to order the evaluation.	
+	[#(,fld* ...)
+	 (let ([tmps (map (lambda (_) (unique-name "tupfld")) fld*)])
+	   (make-nested-lets
+	    (map (lambda (name ty) `[,name ,ty ,(unpack-loop ty)])
+	      tmps fld*)
+	    `(tuple ,@tmps)))]
+		
+	;; :String, Sum
+	[,oth (error 'generate-marshal-code "Unhandled type: ~s" oth)]))
+    (make-nested-lets 
+     `([,buf (Array Uint8) ,expr] ;; should maybe-let
+       [,off (Ref Int)     (Mutable:ref ,initoffset)])
+     (unpack-loop ty)))
+
+    [Expr 
+     (lambda (x fallthru)
+       (match x
+	 [(marshal (assert-type ,ty ,[exp])) (build-marshal ty exp)]	 
+	 [(assert-type ,ty (unmarshal ,[exp] ,[ind])) (reconstruct-value ty exp ind)]
+	 [(,marshal . ,_) (guard (eq-any? marshal 'marshal 'unmarshal))
+	  (error 'generate-marshal-code "missing type annotation: ~s" (cons marshal _) )]
+	 [,oth (fallthru oth)]
+	 ))]
+    )
+
+
+
 ;; Make the toplevel print exlplicit.  Return only unit.
 (define-pass explicit-toplevel-print
   [Program 
@@ -442,7 +590,7 @@
 				 (,topty (VQueue #()))
 				 (begin (print (assert-type ,topty ,x))
 					(print (assert-type String '"\n"))
-					(emit ,vq (tuple))
+					(emit (assert-type (VQueue #()) ,vq) (tuple))
 					,vq)))
 			     ,bod)
 		     ,@meta* (Stream #()))))]))])

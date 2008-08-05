@@ -908,6 +908,12 @@
       [(__wserror_ARRAY ,[Simp -> str]) 
        (make-lines (list "wserror_wsc2("str")\n"))]
 
+      ;; Note: ASSUMES __BYTE_ORDER == __LITTLE_ENDIAN
+      [(__type_unsafe_write (assert-type ,ty ,[Simp -> xp]) ,[Simp -> buf] ,[Simp -> offset])
+       ;; Simply cast and assign:
+       (make-lines `("*((",(Type self ty)" *)(",buf" + ",offset")) = ",xp"; /* type unsafe write */ \n"))]
+      [(__type_unsafe_write . ,_) (error 'emitC2:Prim "invalid form: ~s" (cons '__type_unsafe_write _))]
+
       ))))
 
 ;; The continuation k is invoked on a piece of text representing the return expression.
@@ -1284,7 +1290,6 @@
 	      (ASSERT (member result valid-outputs))
 	      (kont (list "(" left " " result " " right ")"))))]
 
-
        ;;========================================
 ; 	[(realpart ,[v]) `("(" ,v ".real)")]
 ; 	[(imagpart ,[v]) `("(" ,v ".imag)")]
@@ -1371,6 +1376,9 @@
 	  `("struct timeval ",tmp";\n"
 	    "gettimeofday(&",tmp", NULL);\n"
 	    ,(lines-text (kont `("(",tmp".tv_sec * 1000 + ",tmp".tv_usec / 1000)")))))]
+
+	[(__type_unsafe_read ,[Simp -> buf] ,[Simp -> offset]) (ASSERT mayberetty)
+	 (kont `("(*((",(Type self mayberetty)" *)(",buf" + ",offset"))) /* type_unsafe_read */"))]
 
 	[(getID) (kont "0 /* NodeID of PC-server */")]
 

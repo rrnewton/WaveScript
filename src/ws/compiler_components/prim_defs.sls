@@ -307,6 +307,10 @@
 
      ;;(string-append!    (String String) String) ;; Internal -- destructive version.
 
+     ;; This writes a scalar value into a byte array using a little endian convention.
+     ;; It can't accept just a NUM type because it must also handle Chars and Bools.
+     (__type_unsafe_write ('a (Array Uint8) Int) #())
+
      )))
 
 ;=============================================================
@@ -681,12 +685,14 @@
     ;;  (7) Cleanup code for when each traversal ends (at which point no tuples are in-flight)
     (inline_TOS     (String String String String String String String) (Stream 'a))
 
-    ;; Not implemented yet:
-    ;(marshal        ('a) String)
-    ;(unmarshal        (String) 'a)
-    ;; Null characters make things difficult, this should probably use Arrays:
-    ;(marshal        ('a) (Array Byte))
-    ;(unmarshal      ((Array Byte)) 'a)
+    ;; Null characters make things difficult, thus this uses Arrays:
+    ;; Of course, these must have appropriate user type annotations.
+    (marshal        ('a) (Array Uint8))
+    (unmarshal      ((Array Uint8) Int) 'a) ;; Takes an offset also.
+    ;; This will append a header with metadata to the start of the stream.
+    ;(marshal_stream ((Stream 'a)) (Stream (Array Uint8)))
+    
+    (__type_unsafe_read ((Array Uint8) Int)     'a)
     
     ;; System CPU time
     ;; This returns milleseconds, but we needa better system for cross-platform support.
