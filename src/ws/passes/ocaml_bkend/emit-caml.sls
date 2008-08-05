@@ -923,6 +923,8 @@
 		   internString uninternString
 
 		   exclusivePtr getPtr
+		   marshal unmarshal
+		   __type_unsafe_write __type_unsafe_read ;; It would be nice to implement these.
 		   realtime
 		   
 		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 

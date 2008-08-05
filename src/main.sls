@@ -491,10 +491,7 @@
   ;; The object language is the reverse:
   (define (do-late-typecheck)  (do-typecheck #t #f))
 
-  ; already-typed is now its own param. --mic
-  ;(set! already-typed (if (null? already-typed) #f (car already-typed)))
-
-  (define (run-that-compiler)
+  (define (run-that-compiler) ;; Main compilation routine.
     (parameterize ()
       (ws-pass-optional-stop p)
       (unless already-typed (set! p (ws-compile-until-typed p)))
@@ -508,7 +505,7 @@
 
   ;; [2007.07.06] Moving this back where it belongs... after typechecking
   ;; The only reason it was moved earlier was to accomodate using a hash table for type environments
-  ;; ... which didn't work anyway.
+  ;; ... which didn't work well anyway.
 
   (ws-run-pass p rename-vars)
 
@@ -601,6 +598,7 @@
   (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
+  ;------------------------------------------------------------------
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
   ;; We want to immediately get our uniqueness property back.
@@ -656,7 +654,7 @@
      (print-var-types p +inf.0))
    (void))
 
-
+  ;-------------------------------------------------------------
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
 
   ;(inspect (strip-annotations p 'src-pos))
@@ -674,15 +672,14 @@
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
 
-  (ws-run-pass p reduce-primitives) ; w/g 
+  (ws-run-pass p reduce-primitives)
  
   (IFDEBUG (do-late-typecheck) (void))
   ;(profile-clear)
   (ws-run-pass p type-annotate-misc) ;; This pass is really slow...
   ;(parameterize ([current-directory "html"]) (profile-dump-html))
   ;(printf "<<<<<<<< PROFILE DUMPED >>>>>>>>\n")
-
-;(assure-type-annotated p (lambda (x) (equal? x ''())))
+  ;;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (wsc2-variant-mode? (compiler-invocation-mode))
     (unless (suppress-main-stream-printing)	
@@ -985,7 +982,7 @@
        (time (begin 
 	       (set! p (early-part p input-params))
 	       (ws-run-pass p eta-primitives)
-	       ;;       (ws-run-pass p desugar-misc)
+	       ;; (ws-run-pass p desugar-misc)
 
 	       ;; Need to convert readFile to __readFile
 	       ;(ws-run-pass p type-annotate-misc)
@@ -1085,7 +1082,6 @@
      
      (if new-version?
 	  (begin 
-
 	    (ws-run-pass prog nominalize-types)
 	    (ws-run-pass prog gather-heap-types)
 
@@ -1099,7 +1095,6 @@
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
 	    (let ([last-few-steps
 		   (lambda (prog class)
-
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 		     
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
@@ -1153,17 +1148,22 @@
 		       (unless (<= (regiment-verbosity) 0)
 			 (printf "\nGenerated output to files ~s.\n" file*))
 		       ;; And then execute the post-write thunk in the same directory:
-		       (thunk))
-		     )])
+		       (thunk)))])
 
 	      ;; Currently we partition the program VERY late into node and server components:
+	      ;; This happens after we've converted to the "explicit-stream-wiring" representation.
 	      (if (or (not (memq (compiler-invocation-mode) '(wavescript-compiler-nesc wavescript-compiler-javame)))
 		      (not (memq 'split (ws-optimizations-enabled))))
 		  (begin 
 		    ;; In this case we do a 'normal', non-partitioned compile:
 		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
+		    
+		    (if (memq 'split (ws-optimizations-enabled))
+			(error wscomp "can't currently do a split (partitioned) compile for non-embedded backend"))
+		    
 		    (last-few-steps prog
 				    (match (compiler-invocation-mode)
+				      ;[wavescript-compiler-c      <emitC2-timed>]
 				      [wavescript-compiler-c 
 				       (match (wsc2-gc-mode)
 					 [refcount <emitC2>]
@@ -1171,23 +1171,22 @@
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
 					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
-				      ;[wavescript-compiler-c <emitC2-timed>]
-				      [wavescript-compiler-c <emitC2-nogc>]
-				      [wavescript-compiler-nesc <tinyos>]
+				      [wavescript-compiler-c      <emitC2-nogc>]
+				      [wavescript-compiler-nesc   <tinyos>]
 				      [wavescript-compiler-java   <java>]
 				      [wavescript-compiler-javame <javaME>]				      
 				      )))
 
 		;; HERE'S THE SPLIT SERVER/EMBEDDED PATH:
 		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
-		  
+
+		  ;; This exports the partitioning problem as a linear-programming problem.
 		  (define (DUMP-THE-LINEAR-PROGRAM merged)
 		    ;; [2008.04.08] TEMP - this is for my experimentation:
 		    ;; TEMPTOGGLE
-		    (when #t ;(top-level-bound? 'scheme-profiling-performed!)
-					;(printf "\nDumping integer linear program, using Scheme profile only.\n")
+		    (when #t ;;(top-level-bound? 'scheme-profiling-performed!)
+		      ;;(printf "\nDumping integer linear program, using Scheme profile only.\n")
 		      (let ()		    
-
 			(printf "\nDumping integer linear program.\n")
 			(string->file (emit-lp (partition-sourcesonly merged)
 					       (partition-getmiddle merged)
@@ -1214,15 +1213,11 @@
 			     (string->file (output-graphviz assigned) "query_partitioned.dot")
 			     (printf "Produced new graphviz output...\n")
 			     (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
-			     (exit)
-			     ]
-			    )
-			  )		      
-			)))
+			     (exit)]
+			    [,else (error 'lp_solve "could not parse lp_solve output")])))))
 
 		  ;; Tag everything that is part of the user's node partition:
 		  (set! node-part (map-partition-ops (lambda (x) (tag-op '(originally-on-node) x)) node-part))
-
 		  		  		
 		  (printf "\n Node operators:\n\n")
 		  (pretty-print (partition->opnames node-part))
@@ -1387,8 +1382,8 @@
 		    (error 'wstiny "you need to run 'make' in ~a" 
 			   (** (or (getenv "TOSROOT") "") "/support/sdk/c/")))
 		  ) ;; End split-program path.
-		))
-	    )
+		))) ;; End wsc2 path
+       ;; Old C++ / XStream version:
        (begin 
 	 (ws-run-pass prog nominalize-types)
 

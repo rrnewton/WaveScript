@@ -1460,6 +1460,8 @@
 		   internString uninternString
 
 		   exclusivePtr getPtr
+		   marshal unmarshal
+		   __type_unsafe_write __type_unsafe_read ;; It would be nice to implement these.
 		   
 		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 
 		   HashTable:make HashTable:rem HashTable:set ;; pure versions
