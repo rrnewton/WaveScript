@@ -939,6 +939,10 @@
       [(let . ,_) (Let self _ (lambda (x) ((Effect self) x)))]
       ;; ========================================
 
+       [(app ,[Simp -> rator] ,[Simp -> rands] ...)
+	;(ASSERT symbol? rator)
+	(make-lines (list (make-app rator rands) ";\n"))]
+
       [(__wserror_ARRAY ,[Simp -> str]) 
        (make-lines (list "wserror_wsc2("str")\n"))]
 
