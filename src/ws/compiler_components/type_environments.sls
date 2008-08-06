@@ -12,7 +12,7 @@
 	   type? 
 	   instantiated-type?
 	   distributed-type?
-	   arrow-type?
+	   arrow-type? type-containing-arrow?
 	   polymorphic-type?  type-replace-polymorphic 
 	   type-containing-mutable?
 	   constant-typeable-as? 
@@ -124,7 +124,7 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
-    [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
+    [(LUB ,a ,b) (error 'distributed-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [,else #f]))
 
@@ -177,7 +177,8 @@
     [(,[arg] ... -> ,[ret]) #f]
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
-    [,else #f]))
+    ;[,else #f] ;; [2008.08.06]
+    ))
 
 ;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
@@ -189,6 +190,17 @@
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [,else #f]))
+
+(define (type-containing-arrow? t)
+  (match t
+    [(quote (,v . #f)) #f]
+    [(quote (,v . ,[rhs])) rhs]
+    [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
+    [(,t1 ... -> ,t2) #t]
+    [(LUB ,a ,b) (error 'type-containing-arrow? "don't know how to answer this for LUB yet.")]
+    [#(,[t] ...) (ormap id t)]
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.
+    ))
 
 ;; Taken instantiated or uninstantiated type:
 (define constant-typeable-as? 

@@ -6,7 +6,8 @@
 
 
 
-
+foo :: a -> a;
+fun foo(x) x
 
 
 // Audio channel 1 with no overlap.
@@ -26,7 +27,7 @@ s2 = iterate w in s1 {
   
   //  wserror("testing...");  
   print(" ");
-  emit 39;
+  emit foo(39);
 };
 
 

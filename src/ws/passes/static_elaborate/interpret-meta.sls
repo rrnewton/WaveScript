@@ -965,7 +965,7 @@
 ;; Currently, we'd like to get rid of applications.  This function exhaustively inlines.
 ;;
 ;; [2008.01.22] Currently, expanding this to inline *simple* constants also.
-(define (do-basic-inlining e)
+(define (do-inlining e)
   (define (Expr e subst)
     (core-generic-traverse
      (lambda (x fallthru)
@@ -1010,16 +1010,32 @@
 	  ;(define (lambind? b)  (lambda? (caddr b)))
 	  ;; [2008.07.10] Expanding this to allow non-side effecting let's:
 	  
-	  (define (inlinable-rhs? rhs)
+	  (define (inlinable-rhs? ty rhs)
 	    (match (peel-annotations rhs)
 	      [',c (simple-constant? c)] 
 	      [(cast_num ,[e]) e] ;; [2008.07.10] Allowing this to inline doubles also
-	      [(lambda . ,_) #t] 
+	      [(lambda . ,_)
+	       ;; [2008.08.06] Let's back away and try to NOT inline
+	       ;; monomorphic closed, functions.	      	       
+	       #t
+	       ;; The next step would be to split polymorphic
+	       ;; functions into monomorphic ones without complete
+	       ;; inlining.
+#;
+	       (printf "Considering lambda: poly ~a higher ~a freevars ~a\n"
+		       (polymorphic-type? ty)
+		       (type-containing-arrow? ty)
+		       (not (null? (core-free-vars (cons 'lambda _)))))
+#;
+	       (or (polymorphic-type? ty)
+		   (type-containing-arrow? ty)
+		   (not (null? (core-free-vars (cons 'lambda _)))))]
+
 	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (andmap side-effect-free? rhs*)) 
 	       bod]
 	      [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
 	      [,_ #f]))
-	  (define (inlinable-bind? b) (inlinable-rhs? (caddr b)))
+	  (define (inlinable-bind? b) (inlinable-rhs? (cadr b) (caddr b)))
 	  (define-values (tosubst remainder) (partition inlinable-bind? binds))
 	  ;; This is a hack that depends on unique naming.  That's
 	  ;; how we handle let in the same way as letrec.  The lhs*
@@ -1048,11 +1064,11 @@
 	 [(app ,[rator] ,[rands] ...)	  
 	  (let loop ([rator (peel-annotations rator)])
 	    (match rator
-	      [(lambda ,formals ,types ,bod) ;[do-basic-inlining -> bod]
+	      [(lambda ,formals ,types ,bod) ;[do-inlining -> bod]
 	     ;; Convert to a let:
 	     ;; Then we must put it back through the inliner.
 	     ;; Those let RHS's might have some more inlining to do.
-	     (do-basic-inlining		  
+	     (do-inlining		  
 	      `(let ,(map list formals types rands) ,bod))]
 	    ;; [2008.07.10] Considering:
 	      [(let ,binds ,lamapp)  ; ([,lhs* ,ty* ,rhs*] ...)
@@ -1105,7 +1121,8 @@
 		       [evaled    (maybtime (Eval x '() #f))]
 		       [marshaled (maybtime (Marshal evaled))]
 		       )
-		  (do-basic-inlining 
+		  ;(pretty-print (strip-annotations marshaled 'src-pos))
+		  (do-inlining 
 		   (id;inspect/continue
 		    marshaled))
 		  )
