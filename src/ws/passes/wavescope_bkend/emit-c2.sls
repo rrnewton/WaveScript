@@ -1028,6 +1028,10 @@
 	(kont `("{",(insert-between ", " arg*)"}"))]
        [(struct-ref ,type ,fld ,[Simp -> x])
 	(kont `("(",x "." ,(sym2str fld)")"))]
+
+       [(app ,[Simp -> rator] ,[Simp -> rands] ...)
+	;(ASSERT symbol? rator)
+	(kont (make-app rator rands))]
        
        [(__foreign ',cname ',files ',ty)
 	(for-each (add-file! self) files)
