@@ -353,16 +353,22 @@
 (define core-generic-traverse/types
   (let ()
     (define (traverser drive fuse initial-tenv)
-      (let loop ([tenv initial-tenv])
+      (let loop ([old_tenv initial-tenv])
 	;; We wrap the user's driver:
 	(define (newdriver x autoloop)
 	   ;; We dispatch to the user first, if they touch
 	   ;; letrec/lambda/etc they'd better handle the tenv themselves.
-	  (drive x tenv
+	  (drive x old_tenv
 		 ;; Here we wrap the autoloop function to be type-aware
 		 (case-lambda 
 		   [(x tenv)
 		    (DEBUGASSERT tenv? tenv)
+		    ;; If it has not been extended, we are fine to proceed
+		    (if (not (tenv-eq? tenv old_tenv))
+			
+			;;(inspect 'USER_EXTENDED_TENV)
+			((loop tenv) x) ;; WARNING: this feeds it back through the driver a second time!
+			
 		    (match x 
 		      ;; We overload the cases that require modifying the tenv.
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
@@ -387,28 +393,20 @@
 			       (lambda (bod . rhs*) `(let ,(map list lhs* ty* rhs*) ,bod))))
 		       ]
 	
-		      ;; We don't have to handle case, because it doesn't directly bind:
-#;
-		      [(wscase ,test (,pat* ,rhs*) ...)
-		       (let* ([type (recover-type test tenv)]     ;; TEMP!! INEFFICIENT!!
-			      [val  ((loop tenv) -> val)]
-			      [newrhs (map (lambda (pat rhs)
-					    (let ([newtenv (tenv-extend-pattern tenv pat TYPE?)])
-					      ((loop newtenv) rhs)))
-				       pat* rhs*)])
-			 (fuse (cons val rhs*)
-			       (lambda (v . r*) `(wscase ,v . ,(map list pat* r*))))
-			 )]
+		      ;; ERROR: This case throws away the users new TENV:
 
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
 		      [,other 
 		       (ASSERT (not (binding-form? other)) )
-		       (autoloop other)])]
+		       (autoloop other)])
+
+			)]
 		   [other (error 'core-generic-traverse/types
 			       "user driver function called fallthrough function (autolooper) with wrong number of args, expected expr & tenv:\n~s"
 			       other)])))
-	;; Now we call the original generic-traverse
+	
+	;; Now we call the original generic-traverse, this is good until the environment changes.
 	(core-generic-traverse newdriver fuse)))
     (case-lambda
       [(d)     (lambda (e) ((traverser d (lambda (ls k) (apply k ls)) (empty-tenv)) e))]

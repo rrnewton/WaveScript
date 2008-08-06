@@ -34,6 +34,7 @@
 	   tenv-extend-pattern
 	   tenv-append
 	   tenv-map
+	   tenv-eq? 
 
 	   TEMP:tenv-sizes
 	   test-type_environments
@@ -406,6 +407,9 @@
   
 ;; List based tenvs:
 (begin 
+
+  ;; This is simply meant to document the fact that we're depending on eq? for tenvs.
+  (define tenv-eq? eq?)
 
   ;; Constructs an empty type environment.
   (define empty-tenv 

@@ -583,7 +583,6 @@
   (define marshal-and-comm 
     (core-generic-traverse/types
      (lambda  (xp tenv fallthru)
-	 (printf "EXPR: ~s ~s\n" (if (pair? xp) (car xp) xp) (map car (cdr tenv)))
 	 (let loop ([xp xp] [tenv tenv])	   
 	 (match xp
 	   ;; FIXME: This will perform unmarshaling SEPARATELY for each subscriber to a stream.
@@ -591,13 +590,10 @@
 	   ;; A variable reference to one of the cut streams:
 	   [,var (guard (symbol? var))
 		 (cond
-		  [(assq var cutstreams) =>		  
+		  [(assq var cutstreams) =>  
 		   (lambda (entry)
 		     (unless (zero? readers) (error 'insert-marshal-and-comm:readers "This hack only supports one cut stream presently."))
-		     (set! readers (add1 readers))
-		     (printf "LOOKING UP ~s\n IN: \n" var)
-		     (pretty-print tenv)
-		     
+		     (set! readers (add1 readers))		     
 		     (match (tenv-lookup tenv var) ;(cdr entry)
 		       [(Stream ,elt)
 			(define Server_bytes (unique-name "Server_bytes"))
@@ -657,8 +653,6 @@
 
 	   [(letrec ([,lhs* ,ty* ,_rhs*] ...) ,_bod)	    
 	    (define newenv (tenv-extend tenv lhs* ty*))
-	    (define __ (printf "ADDING ~s\n" lhs*))
-	    (define ___ (inspect newenv))
 	    (define rhs* (map (lambda (x) (loop x newenv)) _rhs*))
 	    (define bod  (loop _bod newenv))
 	    ;; Danger, making ASSUMPTIONS about the naming conventions here:
@@ -728,7 +722,7 @@
 			     (list lhs ty rhs)))
 		    lhs* ty* rhs*)
 	       ,bod)]
-	   
+	  
 	   [,oth (fallthru oth tenv)])))))
   (apply-to-program-body marshal-and-comm prog))
 

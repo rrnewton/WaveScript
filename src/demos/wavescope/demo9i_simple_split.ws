@@ -7,10 +7,9 @@ namespace Node {
   
   echosrc = iterate reading in src { 
     //print(" client: got timer tick: "++reading++"\n");
-    emit //(reading, 
-         //List:build(10, fun(i) reading)
-         //, Array:build(10, fun(i) reading));
-    (9,10,11)
+    emit (reading, 
+	  List:build(10, fun(i) reading),
+          Array:build(10, fun(i) reading));
   };
 }
 
