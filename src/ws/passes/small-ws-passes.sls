@@ -580,9 +580,9 @@
 (define (insert-marshal-and-comm prog cutstreams)
   (define readers 0)
   (define writers 0)
-  (define-pass marshal-and-comm 
-      [Expr/Types
-       (lambda  (xp tenv fallthru)
+  (define marshal-and-comm 
+    (core-generic-traverse/types
+     (lambda  (xp tenv fallthru)
 	 (printf "EXPR: ~s ~s\n" (if (pair? xp) (car xp) xp) (map car (cdr tenv)))
 	 (let loop ([xp xp] [tenv tenv])	   
 	 (match xp
@@ -655,7 +655,6 @@
 			]))]
 		  [else var])]
 
-#;
 	   [(letrec ([,lhs* ,ty* ,_rhs*] ...) ,_bod)	    
 	    (define newenv (tenv-extend tenv lhs* ty*))
 	    (define __ (printf "ADDING ~s\n" lhs*))
@@ -730,8 +729,8 @@
 		    lhs* ty* rhs*)
 	       ,bod)]
 	   
-	   [,oth (fallthru oth tenv)])))])
-  (marshal-and-comm prog))
+	   [,oth (fallthru oth tenv)])))))
+  (apply-to-program-body marshal-and-comm prog))
 
 
 ;; Make the toplevel print exlplicit.  Return only unit.
