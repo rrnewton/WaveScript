@@ -626,7 +626,7 @@
      [else (error 'interpret-meta:Marshal "unhandled suspended op: ~s" (suspension-operator val))]
      )]
 
-   [(plain? val) (Marshal-Plain val)]
+   [(plain? val)   (Marshal-Plain val)]
    [(closure? val) (Marshal-Closure val)]
    [(streamop? val)
     (let (;[covered (make-default-hash-table 100)]
@@ -848,7 +848,6 @@
 	  ;`(letrec ,binds ,newbod))
 	(let ([val (apply-env env (car fv))])
 	  (cond
-
 #;
 	   [(hashtab-get (marshal-cache) val)
 	    => (match-lambda ((,name . ,code))
@@ -890,9 +889,8 @@
 
 	   ;; FIXME:
 	   ;; Free variables bound to closures need to be turned back into code and inlined.
-	   ;; This is a little ugly... we stick the lambda in but inline later.  We could proably 
-	   ;; also not treat it specially at all, and leave it outside.  But we do want to rip
-	   ;; the environment out of these closures, regardless of where we stick the lambda code.
+	   ;; We can either stick them in the code now, or leave them up top as globals.
+	   ;; We used to do the former, but now [2008.08.06] do the latter.
 	   [(closure? val)
 	    ;; First, a freshness consideration:
 	    ;; FIXME: We could be better here about catching duplicated bindings.
@@ -902,11 +900,20 @@
 	      (marshloop code 		 
 		    ;; We also merge the relevent parts of the closure's environment with our environment:
 		    (union newfree (cdr fv))
-		    state globals
+		    state 
+		    ;globals
+		    ;; [2008.08.06] Now putting the lambdas in the globals:
+		    (cons (list (car fv) (unknown-type)
+			   `(lambda ,(closure-formals val) 
+			      ,(map unknown-type (closure-formals val))
+			      ,newcode))
+			  globals)
 		    (append env-slice env)
+		    substitution
+#;
 		    (cons 		 
 		     ;; For now, don't do any inlining.  Do that later:
-		     ;; Here we simply stick those lambdas into the code. (by adding them to the subst)
+		     ;; Here we simply stick those lambdas into the code. (by adding them to the subst)		     
 		     (list (car fv) 
 			   `(lambda ,(closure-formals val) 
 			      ,(map unknown-type (closure-formals val))
