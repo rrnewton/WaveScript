@@ -20,6 +20,7 @@
 	   generate-comparison-code
 	   generate-printing-code
 	   generate-marshal-code
+	   insert-marshal-and-comm
 	   optimize-print-and-show
 	   explicit-toplevel-print
 	   strip-unnecessary-ascription
@@ -471,7 +472,7 @@
 		      (traverse-value fldty `(tupref ,i ,len ,tup) doit)) ;; I allow code duplication for tuprefs.
 		    fld*))))]
       ;; :String, Sum
-      [,oth (error 'generate-marshal-code "Unhandled type: ~s" oth)]))
+      [,oth (error 'generate-marshal-code:traverse-value "Unhandled type: ~s" oth)]))
 
   ;(define (SIZEOF ty) `(assert-type Int ',(type->width ty)))
   (define (SIZEOF ty) `',(type->width ty))
@@ -555,7 +556,7 @@
 	    `(tuple ,@tmps)))]
 		
 	;; :String, Sum
-	[,oth (error 'generate-marshal-code "Unhandled type: ~s" oth)]))
+	[,oth (error 'generate-marshal-code:reconstruct-value "Unhandled type: ~s" oth)]))
     (make-nested-lets 
      `([,buf (Array Uint8) ,expr] ;; should maybe-let
        [,off (Ref Int)     (Mutable:ref ,initoffset)])
@@ -572,6 +573,153 @@
 	 ))]
     )
 
+
+;; Note: this mixes up the marshal insertion with the comm insertion.  Should separate these.
+;; Currently this straps on a hackish communication system that will be used with ssh to communicate to a client using stdin and stdout.
+;; It sends the binary data on stderr so that text output may still come across stdout.
+(define (insert-marshal-and-comm prog cutstreams)
+  (define readers 0)
+  (define writers 0)
+  (define-pass marshal-and-comm 
+      [Expr 
+       (lambda (xp fallthru)
+	 (match xp
+	   ;; FIXME: This will perform unmarshaling SEPARATELY for each subscriber to a stream.
+	   ;; This should only be done ONCE. FIXME  FIXME FIXME FIXME 
+	   ;; A variable reference to one of the cut streams:
+	   [,var (guard (symbol? var))
+		 (cond
+		  [(assq var cutstreams) =>		  
+		   (lambda (entry)
+		     (unless (zero? readers) (error 'insert-marshal-and-comm:readers "This hack only supports one cut stream presently."))
+		     (set! readers (add1 readers))
+		     (match (cdr entry)
+		       [(Stream ,elt)
+			(define Server_bytes (unique-name "Server_bytes"))
+			(define Server_vals  (unique-name "Server_vals"))
+			`(letrec ([,Server_bytes 
+				   (Stream (Array Uint8))
+				   ;,var
+				   (iterate (annotations (name ,Server_bytes))
+					    (letrec (#;
+						     [stdin (Pointer "FILE*")
+							 (foreign-app '"fopen"
+								      (assert-type
+								       (String String -> (Pointer "FILE*"))
+								       (foreign '"fopen" '("stdio.h")))
+								      '"/dev/stdin" '"r")]
+						     [myin (Pointer "FILE*")
+							    (foreign-app '"ws_get_stdin"
+									 (assert-type ( -> (Pointer "FILE*"))
+										      (foreign '"ws_get_stdin" '())))]
+						     [myfread ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
+							    (assert-type
+							     ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
+							     (foreign '"fread" '("stdio.h")))])
+					      (lambda (x vq) 
+						(#() (VQueue (Array Uint8)))
+						(let ([count_buf (Array Uint8) (Array:make '4 (assert-type Uint8 '0))])
+						  (begin 
+						    ;; WARNING: this doesn't check the error condition:
+						    ;; First read the length field:
+						    (foreign-app '"fread" myfread	count_buf '4 '1 myin)
+						    (let ([count Int (assert-type Int (unmarshal count_buf '0))])
+						      (let ([buf (Array Uint8) (Array:makeUNSAFE count)])
+							(begin
+							  (print '"Got length ")
+							  (print count)
+							  (print '"\n")
+							  (foreign-app '"fread" myfread buf '1 count myin)
+							  (emit (assert-type (VQueue (Array Uint8)) vq)
+								buf))))
+						    vq))))
+					    ;; This is arbitrary, should be infinity I suppose:
+					    ;,var
+					    (letrec ([mytimer (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
+					      (_merge (annotations) ,var mytimer))
+					    )]
+				  [,Server_vals (Stream ,elt)
+						(iterate (annotations (name ,Server_vals))
+							 (let ()
+							   (lambda (x vq) ((Array Uint8) (VQueue ,elt))
+								   (begin (emit (assert-type (VQueue ,elt) vq)
+										(assert-type ,elt (unmarshal x '0)))
+									  vq)))
+							 ,Server_bytes)])
+			   ,Server_vals)
+			]))]
+		  [else var])]
+
+	   [(letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+	    ;; Danger, making ASSUMPTIONS about the naming conventions here:
+	    (define Node_bytes   (unique-name "Node_bytes")) 
+	    (define Node_writer  (unique-name "Node_writer"))
+	    `(letrec 
+		 ,(map (lambda (lhs ty rhs)
+			 (if (assq lhs cutstreams)
+			     (begin 
+			      (unless (zero? writers) (error 'insert-marshal-and-comm:writers
+							     "This hack only supports one cut stream presently."))
+			      (set! writers (add1 writers))
+			      (list lhs 
+			       '(Stream #())
+			       ;'(Stream (Array Uint8))
+			       ;; Insert marshal operator:
+			       (match ty
+				 [(Stream ,elt)
+				   ;; We'll want to replace this with different communication code down the road:
+				   ;; For now, we write to stdout, but we can't just use 'print', because of null characters.
+				  `(letrec ([,Node_bytes 
+					     (Stream (Array Uint8))
+					     (iterate (annotations ) ; (name ,lhs)
+						      (let () 
+							(lambda (x vq) (,elt (VQueue (Array Uint8)))
+								(let ([arr (Array Uint8) (marshal (assert-type ,elt x))])
+								  ;; A marshaled stream contains a length header for each object:
+								  (begin (emit (assert-type (VQueue (Array Uint8)) vq)
+									       (marshal (assert-type Int (Array:length arr))))
+									 (emit (assert-type (VQueue (Array Uint8)) vq)
+									       arr)
+									 vq)
+								  )))
+						      ,rhs)]
+					    [,Node_writer
+					     (Stream #())
+					     (iterate (annotations)
+						      (letrec (
+							       ;; HACK: redirect normal output to stderr by overwriting 'stdout'
+							       #;
+							       [stdout (Pointer "FILE*")
+								    (foreign-app '"fopen"
+										 (assert-type
+										  (String String -> (Pointer "FILE*"))
+										  (foreign '"fopen" '("stdio.h")))
+										 '"/dev/stderr" '"a")]
+							       [myout (Pointer "FILE*")
+								      (foreign-app '"ws_get_stderr"
+										   (assert-type ( -> (Pointer "FILE*"))
+												(foreign '"ws_get_stderr" '())))])
+							(lambda (x vq) ((Array Uint8) (VQueue #()))
+								(begin 	  
+								  (foreign-app '"fwrite" 
+									       (assert-type
+										((Array Uint8) Int Int (Pointer "FILE*") -> Int)
+										(foreign '"fwrite" '("stdio.h")))
+									       x '1 (Array:length x) myout)
+								  (foreign-app '"fflush" 
+									       (assert-type ((Pointer "FILE*") -> #()) 
+											    (foreign '"fflush" '("stdio.h")))
+									       myout)
+								  vq)))
+						      ,Node_bytes)])
+				     ,Node_writer
+				     ;,Node_bytes
+				     )])))
+			     (list lhs ty rhs)))
+		    lhs* ty* rhs*)
+	       ,bod)]
+	   [,oth (fallthru oth)]))])
+  (marshal-and-comm prog))
 
 
 ;; Make the toplevel print exlplicit.  Return only unit.
@@ -777,6 +925,7 @@
 		 [,other other]) ]))])
 
 ;; This little pass handles only iterate cases.
+;; It makes sure that iterate always has a (let () ...) surrounding the work function.
 (define-pass standardize-iterate
     (define process-expr
       (lambda (x fallthru)

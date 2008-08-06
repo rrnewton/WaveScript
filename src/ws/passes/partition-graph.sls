@@ -8,7 +8,7 @@
 	   merge-partitions
 	   partition->opnames
 	   print-partition
-	   map-partition-ops
+	   map-partition-ops  apply-to-partition-ops
 	   discard-spurious-cutpoints
 	   remove-unused-streams
 	   exhaustive-partition-search
@@ -659,8 +659,12 @@
        oper*)]))
 
 
+
 ;; Map a function across all the operators (not including sources):
 (define (map-partition-ops fn part)
+  (apply-to-partition-ops (lambda (ls) (map fn ls)) part))
+
+(define (apply-to-partition-ops fn part)
   (match part
     [(,input-language 
       '(graph (const ,cnst* ...)  (init  ,init* ...)
@@ -668,7 +672,7 @@
 	      (sink ,base ,basetype)	,meta* ...))
      `(,input-language 
       '(graph (const ,@cnst*)  (init  ,@init*)
-	      (sources ,@src*) (operators ,@(map fn oper*))
+	      (sources ,@src*) (operators ,@(fn oper*))
 	      (sink ,base ,basetype) ,@meta*))]))
 
 

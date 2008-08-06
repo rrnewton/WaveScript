@@ -33,6 +33,8 @@
 	   <emitC2-zct>
 	   <emitC2-nogc>
 	   <emitC2-timed>
+
+	   emitC2-output-target
 	   
 	   ;; Have to export all the generic methods so that they can be subclassed:
 	   build-free-fun-table!  heap-type?  add-include!
@@ -1406,8 +1408,7 @@
    (cond 
     ;; Option (1): Virtual timers.
     [(not (null? srcname*))
-     ;; TODO: IN THE FUTURE SHOULD BE ABLE TO COMBINE MOTE SOURCES OR FOREIGN SOURCES WITH TIMERS. FIXME  FIXME FIXME  FIXME  
-     (ASSERT (null? (slot-ref self 'server-cutpoints)))
+
       ;; If the rate is #f we don't build in that entry:
      (let-match (;; As a special convention, we treat timers with zero rates differently:
 		 [([,zerosrc* ,zerosrccode*] ...)
@@ -1680,41 +1681,42 @@ int main(int argc, char **argv)
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
 (__spec Cutpoint <emitC2> (self type in out)
-   (define local (unique-name "local"))
-   (define _local (Var self local))
-   ;(define AM_NUM (number->string (+ AM_OFFSET (slot-ref self 'amsender-count))))
-   (slot-cons! self 'server-cutpoints in)   
-   (match type
-     [(Stream ,elt)
-      (define _elt (Type self elt))
-      (define root (format "cuttype~a" 10)) ;; TEMP HACK FIXME
-      ;; This is extremly annoying.  MIG won't build us a struct, it will
-      ;; just give us accessor methods.  Therefore we need to build our
-      ;; own bit of code that will build up the struct using these accessors.
-      (define (copycode dest src)
-	(let loop ([elt elt] [destpos dest] [srcpos (format "~a_theitem" root)])
-	  (match elt
-	    [,scl (guard (scalar-type? scl))
-		  (list destpos " = " srcpos "_get(" src ");\n")]
-	    [(Struct ,name)
-	     (map (match-lambda ((,fldname ,fldty))
-		    (loop fldty (list destpos "." (sym2str fldname)) (list srcpos "_" (sym2str fldname))))
-	       (cdr (assq name (slot-ref self 'struct-defs))))]
-	    ;; For a single array we can handle this (but not yet packed inside a tuple)
-	    [(Array ,elt)
-	     (define ty `(Array ,elt))
-	     (define _elt (Type self elt))
-	     (list
-	      ;; Could use nx_ types here and then we could unpack this ourselves (without MIG):
-	      "int i;\n"
-	      "int arrsize = "root"_len_get(" src ");\n"
-	      (lines-text (array-constructor-codegen self "arrsize" #f ty (setterk self local ty)))
-	      (block "for (i=0; i<arrsize; i++)"
-		     (list _local"[i] = " srcpos "_get("src", i);\n")))]
-	    )))
-      (values (make-lines
-	       (list 
-		"
+   ;; Cutpoint from tinyOS node:
+   (let ()     
+     (define local (unique-name "local"))
+     (define _local (Var self local))
+     (slot-cons! self 'server-cutpoints in)   
+     (match type
+       [(Stream ,elt)
+	(define _elt (Type self elt))
+	(define root (format "cuttype~a" 10)) ;; TEMP HACK FIXME
+	;; This is extremly annoying.  MIG won't build us a struct, it will
+	;; just give us accessor methods.  Therefore we need to build our
+	;; own bit of code that will build up the struct using these accessors.
+	(define (copycode dest src)
+	  (let loop ([elt elt] [destpos dest] [srcpos (format "~a_theitem" root)])
+	    (match elt
+	      [,scl (guard (scalar-type? scl))
+		    (list destpos " = " srcpos "_get(" src ");\n")]
+	      [(Struct ,name)
+	       (map (match-lambda ((,fldname ,fldty))
+		      (loop fldty (list destpos "." (sym2str fldname)) (list srcpos "_" (sym2str fldname))))
+		 (cdr (assq name (slot-ref self 'struct-defs))))]
+	      ;; For a single array we can handle this (but not yet packed inside a tuple)
+	      [(Array ,elt)
+	       (define ty `(Array ,elt))
+	       (define _elt (Type self elt))
+	       (list
+		;; Could use nx_ types here and then we could unpack this ourselves (without MIG):
+		"int i;\n"
+		"int arrsize = "root"_len_get(" src ");\n"
+		(lines-text (array-constructor-codegen self "arrsize" #f ty (setterk self local ty)))
+		(block "for (i=0; i<arrsize; i++)"
+		       (list _local"[i] = " srcpos "_get("src", i);\n")))]
+	      )))
+	(values (make-lines
+		 (list 
+		  "
   // CutPoint from node side:
   void "(Var self in)"(tmsg_t* nodeobj) {
     "_elt" "_local";
@@ -1722,8 +1724,8 @@ int main(int argc, char **argv)
     "(Var self out)"("_local");
   }
 "))
-'() '()
-)]))
+		'() '()
+		)])))
 
 
 
@@ -1883,8 +1885,10 @@ int main(int argc, char **argv)
                  ops ;srcfuns 
                  init driver))))
   ;; Return an alist of files:
-  (vector (list (list "query.c" text))
+  (vector (list (list (emitC2-output-target) text))
 	  void))
+
+(define emitC2-output-target (make-parameter "query.c"))
 
 (define (cutpoint? op)  (eq? (car op) 'cutpoint))
 
@@ -1967,7 +1971,7 @@ int main(int argc, char **argv)
 			   (text->string (block "void initState()" 
 						(list 
 						 "/* We may need to start up the Boehm GC or do other standard WS init: */ \n"
-						 "wsInit();\n"
+						 "wsInternalInit();\n"
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
 						 ;; This will be where the inline_C initializers go:

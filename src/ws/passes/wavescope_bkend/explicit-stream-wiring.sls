@@ -102,7 +102,7 @@
                         (map (lambda (rand argty)
                                (match argty
                                  [(Stream ,_)
-                                  (ASSERT (symbol? rand))
+                                  (ASSERT symbol? rand)
                                   (list (dealias rand))]
                                  [,oth (DEBUGASSERT (not (deep-assq 'Stream oth))) '()]))
                           rand* (cdr argty*)))])

@@ -6,7 +6,7 @@ namespace Node {
   src = iterate _ in timer(3) { state { cnt = 0 } emit cnt; cnt += 1 }
 
   echosrc = iterate reading in src { 
-    print(" client: got timer tick: "++reading++"\n");
+    //print(" client: got timer tick: "++reading++"\n");
     emit reading ;
   };
 }

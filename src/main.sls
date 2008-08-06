@@ -339,7 +339,7 @@
 ;; This is the second version of the compiler, uses deglobalize2
 (define (run-compiler2 p . args)                              ;; Entrypoint.
   (parameterize ([pass-list (snoc deglobalize2 
-				  (rdc(list-remove-after deglobalize (pass-list))))])
+				  (rdc (list-remove-after deglobalize (pass-list))))])
     (apply run-compiler p args)
     ))
 
@@ -467,18 +467,28 @@
     (ws-run-pass p retypecheck))
   p)
 
+;; This will store a continuation that hops into the compiler write before generate-marshal-code.
+(define before-marshal-hook     (make-parameter 'bmh-uninit))
+;; We also store the program at the point before the marshal-hook:
+(define before-marshal-snapshot (make-parameter 'bms-uninit))
 
 ;; ================================================================================ ;;
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
 ;; ================================================================================ ;;
+;; .param p               -- a program to compiler
+;; .param params          -- flags to the ws compiler
+;; .param disabled-passes -- passes to omit (mic)
+;; .param already-typed   -- skip initial typecheck
+;; .param kont            -- continuation to invoke at end of compilation
 (define run-ws-compiler             ;; Entrypoint.
   ; FIXME: this case-lambda is probably a temporary construction
   (case-lambda
-    [(p params)                               (run-ws-compiler p params '() #f)]
+    [(p params)                               (run-ws-compiler p params '())]
     [(p params disabled-passes)               (run-ws-compiler p params disabled-passes #f)]
-    [(p params disabled-passes already-typed)
+    [(p params disabled-passes already-typed) (run-ws-compiler p params disabled-passes already-typed (lambda (x) x))]
+    [(p params disabled-passes already-typed kont)
 
   (define (do-typecheck lub poly)
     (parameterize ([inferencer-enable-LUB      lub]
@@ -703,6 +713,10 @@
     ;(ws-run-pass p remove-complex-constant) ;; Should we leave those array constants?
     )
   
+  ;; HACKISH, TEMP: Grab the continuation at this point:
+  (set! p (call/cc (lambda (k) (before-marshal-hook k) 
+			       (before-marshal-snapshot p) p)))
+
   ;; We do this after string embedding so we don't worry about marshaling strings.
   (ws-run-pass p generate-marshal-code)
 
@@ -828,9 +842,8 @@
  
   p)) ;; End run-that-compiler
  
- (run-that-compiler)
+ (kont (run-that-compiler))
   ;(if (<= (regiment-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
-
 ]))
 ;; ================================================================================ ;;
 ;; ================================================================================ ;;
@@ -1075,8 +1088,9 @@
 	   (print-var-types typed 1))
        (flush-output-port (current-output-port)))
      
-     ;; Run the main body of the compiler.
-     (set! prog (run-ws-compiler typed input-params disabled-passes #t))
+     ;; Run the main body of the compiler.  Call it in continuation passing style.
+     (set! prog (call/cc (lambda (k) 
+			   (run-ws-compiler typed input-params disabled-passes #t k))))
          
      (ws-run-pass prog convert-sums-to-tuples)
      
@@ -1152,34 +1166,88 @@
 
 	      ;; Currently we partition the program VERY late into node and server components:
 	      ;; This happens after we've converted to the "explicit-stream-wiring" representation.
-	      (if (or (not (memq (compiler-invocation-mode) '(wavescript-compiler-nesc wavescript-compiler-javame)))
-		      (not (memq 'split (ws-optimizations-enabled))))
-		  (begin 
-		    ;; In this case we do a 'normal', non-partitioned compile:
-		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
-		    
-		    (if (memq 'split (ws-optimizations-enabled))
-			(error wscomp "can't currently do a split (partitioned) compile for non-embedded backend"))
-		    
-		    (last-few-steps prog
-				    (match (compiler-invocation-mode)
+	      (if (not (embedded-mode? (compiler-invocation-mode)))		  
+
+		  ;; In this case we're not in embedded mode, but we might still want to split.
+		  (let ([class (match (compiler-invocation-mode)
 				      ;[wavescript-compiler-c      <emitC2-timed>]
-				      [wavescript-compiler-c 
+				 [wavescript-compiler-c 
 				       (match (wsc2-gc-mode)
 					 [refcount <emitC2>]
 					 [deferred <emitC2-zct>]
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
 					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
-				      [wavescript-compiler-c      <emitC2-nogc>]
+				 [wavescript-compiler-c      <emitC2-nogc>]
+				 [wavescript-compiler-java   <java>])])
+		    ;; In this case we do a 'normal', non-partitioned compile:
+		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
+		    
+		    (if (memq 'split (ws-optimizations-enabled))
+
+			;; Here we find the cutpoints, insert marshals and TCP communication, and 
+			;; jump back into an earlier point in the compilation.
+			(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
+			  (define cutstreams '()) ;; an association list of (name . type)
+			  (define (strip-cutpoints part)
+			    (apply-to-partition-ops
+			     (lambda (ops)
+			       (filter (lambda (op) (not (eq? (car op) 'cutpoint))) ops))
+			     part))
+
+		  (printf "\n Node operators:\n\n")
+		  (pretty-print (partition->opnames node-part))
+		  (printf "\n Server operators:\n\n")
+		  (pretty-print (partition->opnames server-part))
+
+			  ;; Any cutpoints that are passing types other than raw bytes need marshaling.
+			  (map-partition-ops
+			   (lambda (op)
+			     (define type (cadr (ASSERT (assq 'output-type (cdr op)))))			     
+			     (when (eq? (car op) 'cutpoint)
+			       (printf "   Cutpoint type: ~s\n" (cadr (ASSERT (assq 'output-type (cdr op))))))
+			     (and (eq? (car op) 'cutpoint)			  
+				  (not (equal? type '(Stream (Array Uint8))))
+				  (not (equal? type '(Stream #()))) ;; TEMP: This has a different meaning.
+				  (set! cutstreams (set-cons:list 
+						    (cons (cadr (ASSERT (assq 'incoming (cdr op))))
+							  (cadr (ASSERT (assq 'output-type (cdr op)))))
+						    cutstreams))))
+
+			   server-part)
+			  	
+			  ;; If we need to, we do the marshal conversions and jump way back in the compiler.
+			  (unless (null? cutstreams)
+			    ;; It would be better to use an explicit list-of-passes instead
+			    ;; of using continuations to jump in and out of the compiler.
+			    (printf "  <---------|\n")
+			    (printf "  <REWINDING| earlier in the compiler to insert marshaling code.\n")
+			    (printf "  <---------|\n")
+			    ;(pretty-print (before-marshal-snapshot))
+			    (let ([x (insert-marshal-and-comm (before-marshal-snapshot) cutstreams)])
+			      (printf "INSERTED MARSHALING FOR CUTSTREAMS: ~s\n" cutstreams)			      
+			      ;(inspect x)
+			      ((before-marshal-hook) x)))
+			  
+			  ;; Otherwise, any cutpoints are of the right type Stream (Array Uint8).  We proceed.			  
+			  ;(error wscomp "can't currently do a split (partitioned) compile for non-embedded backend")
+			  (parameterize ([emitC2-output-target "query_client.c"])
+			    (last-few-steps (strip-cutpoints node-part)   class))
+			  (parameterize ([emitC2-output-target "query_server.c"])
+			    (last-few-steps (strip-cutpoints server-part) class))
+			  ;(last-few-steps node-part  class)
+			  )
+			(last-few-steps prog class)))
+
+		;; EMBEDDED MODE -- might still not want split execution:
+		(if (not (memq 'split (ws-optimizations-enabled)))
+		    (last-few-steps prog
+				    (match (compiler-invocation-mode)
 				      [wavescript-compiler-nesc   <tinyos>]
-				      [wavescript-compiler-java   <java>]
-				      [wavescript-compiler-javame <javaME>]				      
-				      )))
+				      [wavescript-compiler-javame <javaME>]))
 
-		;; HERE'S THE SPLIT SERVER/EMBEDDED PATH:
-		(let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
-
+		 ;; HERE'S THE SPLIT SERVER/EMBEDDED PATH:
+		 (let-match ([#(,node-part ,server-part) (partition-graph-by-namespace prog)])
 		  ;; This exports the partitioning problem as a linear-programming problem.
 		  (define (DUMP-THE-LINEAR-PROGRAM merged)
 		    ;; [2008.04.08] TEMP - this is for my experimentation:
@@ -1381,8 +1449,9 @@
 		  (unless (file-exists? (** (or (getenv "TOSROOT") "") "/support/sdk/c/serialpacket.h"))
 		    (error 'wstiny "you need to run 'make' in ~a" 
 			   (** (or (getenv "TOSROOT") "") "/support/sdk/c/")))
-		  ) ;; End split-program path.
-		))) ;; End wsc2 path
+		  )  ;; End split-program path.
+		) ;; End embedded path
+	    ))) ;; End wsc2 path
        ;; Old C++ / XStream version:
        (begin 
 	 (ws-run-pass prog nominalize-types)

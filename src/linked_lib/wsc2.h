@@ -569,7 +569,7 @@ void wsShutdown() {
   #endif
 }
 
-void wsInit() {
+void wsInternalInit() {
 #ifdef USE_BOEHM
   GC_INIT();
   printf("GC INIT COMPLETE.\n");
@@ -620,6 +620,11 @@ void wserror_fun(char* msg) {
 
 #define WSNULLTIMEBASE ((char)0)
 #define TIMEBASE(n)    ((char)n)
+
+// I don't have foreign *variables* yet, only foreign functions.  So we use these wrappers:
+FILE* ws_get_stdout() { return stdout; }
+FILE* ws_get_stderr() { return stderr; }
+FILE* ws_get_stdin () { return stdin ; }
 
 /*
 // TODO:

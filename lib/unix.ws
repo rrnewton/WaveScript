@@ -39,6 +39,13 @@ namespace Unix {
   fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
   fclose :: FileDescr -> Int              = foreign("fclose", stdio);
 
+  fflush :: FileDescr -> () = foreign("fflush",  stdio);
+
+  // Only supporting foreign *functions* right now.
+  //stdout :: FileDescr = foreign("stdout",  stdio);
+
+  puts :: String -> () = foreign("puts", stdio);
+
   // This is kind of funny, we have multiple interfaces into the same functions.
   // One set reads from an *external* pointer:
   fread :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
@@ -93,7 +100,7 @@ namespace Unix {
 
 
 
-// Write a stream of strings to disk.  Returns an empty stream
+// Write a stream of strings to disk.  Returns a stream of ACKS (units)
 // Mode string should be valid input to fopen.
 fileSink :: (String, String, Stream String)  -> Stream nothing;
 fun fileSink (filename, mode, strm) {
@@ -107,11 +114,18 @@ fun fileSink (filename, mode, strm) {
       fst = false;
     };
     // This is very inefficient, it should be fixed:
-    arr = List:toArray( String:explode(str));
-    len = Array:length(arr);
-    cnt = Unix:fwrite_arr(arr, 1, len, fp);
-    //len = String:length(str);
-    //cnt = Unix:fwrite_str(str, 1, len, fp);
+    //arr = List:toArray( String:explode(str));
+    //len = Array:length(arr);
+    ////arr2 = Array:map(fun(c) Uint8! charToInt(c), arr);
+    //cnt = Unix:fwrite_arr(arr, 1, len, fp);
+    
+    len = String:length(str);
+    cnt = Unix:fwrite_str(str, 1, len, fp);
+
+    // This is inefficient, but we flush on every write.
+    Unix:fflush(fp);
+    emit ();
+
     if cnt != len 
     then wserror("fileSink: fwrite failed to write data")
   }
@@ -203,11 +217,18 @@ fun scandir_stream(dir, indices) {
 // A simple test:
 main = { 
   strings = iterate _ in timer(3.0) {
-    state { cnt = 0 }
+    state { cnt = 0; 
+            stdout = Unix:fopen("/dev/stdout", "a");
+          }
+    using Unix;
+    s = "Emitting "++cnt++"\n";
+    //print("Trying to print through stdout... string length "++String:length(s)++"\n");
+    fwrite_str(s, 1, String:length(s), stdout);
+    fflush(stdout);
     if cnt < 15 then emit cnt++"\n";
     cnt += 1;  
   };
-  fileSink("stream.out", "w", strings);
+  fileSink("stream.out", "a", strings);
   //strings
 }
 

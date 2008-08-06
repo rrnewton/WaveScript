@@ -10,7 +10,7 @@ echo wsc2 getopt result: $RELEVANT
 # can't currently get getopt to do everything I want it to, i.e. pass
 # through everything not handled in after the "--".
 
-rm -f query.c query.exe
+rm -f query.c query_*.c query.exe query_*.exe
 if wsc $* -exit-error -no-gcc
 then echo
 else echo ERROR, wsc2 failed with code $?.; exit 1;
@@ -54,12 +54,18 @@ if [ "$CC" = "icc" ] || ([ "$CC" = "" ] && [ "`which icc`" != "" ])
 then export CC='icc -O3 -ipo -no-prec-div'
 fi
 
-if ! [ -f "query.c" ]
-then echo "query.c not found..."
-elif [ $NOGCC ]
-then echo "Not calling C compiler."; exit 0
-else exec wsc2-gcc
-fi
+
+for file in `ls query*.c`; do
+export CFILE=$file
+wsc2-gcc
+done
+
+# if ! [ -f "query.c" ]
+# then echo "query.c not found..."
+# elif [ $NOGCC ]
+# then echo "Not calling C compiler."; exit 0
+# else exec wsc2-gcc
+# fi
 
 
 
