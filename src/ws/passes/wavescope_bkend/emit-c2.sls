@@ -232,6 +232,11 @@
 (define (make-app rator rands)
   (list rator "("(insert-between ", " rands)")"))
 
+(define (make-fun-header name args argty* return)
+  (list return " " name "(" 
+	(insert-between ", " (map (lambda (arg argty) (list argty " " arg)) args argty*))
+	")"))
+
 (define (emit-err where)
   (lambda (_) (error where "should not run into an emit!")))
 
@@ -299,8 +304,17 @@
     (lambda (x)      
       (if (eq? x split-msg)
 	  (values null-lines	thekont)
-	  (append-lines (make-lines `(" ",(Var self vr)" = ",x";\n"))))))
+	  (make-lines `(" ",(Var self vr)" = ",x";\n")))))
   thekont)
+
+(define returnk
+  (let ()
+    (define thekont
+      (lambda (x)      
+	(if (eq? x split-msg)
+	    (values null-lines	thekont)
+	    (make-lines `("return ",x";\n")))))
+    thekont))
 
 ;================================================================================
 
@@ -768,9 +782,27 @@
 	    (values ((Binding self) (list vr ty rhs))
 		    null-lines
 		    )]
+
 	   ;; Flip
 	   [(assert-type ,ty (static-allocate ,rhs)) 
 	    (loop `(static-allocate (assert-type ,ty ,rhs)))]
+
+	   ;; [2008.08.06] Here we begin to support monomorphic closed functions:
+	   [(lambda (,arg* ...) ,_ ,bod)
+	    (match ty 
+	      [(,argty* ... -> ,retty)
+	       (printf "EMITTING LAMBDA\n")
+	       (values 
+		(make-lines 
+		 (block (make-fun-header (Var self vr) (map (curry Var self) arg*)
+					 (map (curry Type self) argty*) (Type self retty)
+			 ;self vr argty* retty 
+			 )
+			(lines-text ((Value self) bod returnk))))
+		;; Don't need any initialization code:
+		null-lines)])
+	    ;(error 'emitC2:SplitBinding "got a function, not supported yet.")
+	    ]
 	  
 	   [,rhs
 	    ;; We derive a setter continuation by "splitting" the varbind continuation:       
