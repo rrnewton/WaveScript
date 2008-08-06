@@ -1223,10 +1223,9 @@
 			    (printf "  <---------|\n")
 			    (printf "  <REWINDING| earlier in the compiler to insert marshaling code.\n")
 			    (printf "  <---------|\n")
-			    ;(pretty-print (before-marshal-snapshot))
+			    (pretty-print (before-marshal-snapshot))
 			    (let ([x (insert-marshal-and-comm (before-marshal-snapshot) cutstreams)])
 			      (printf "INSERTED MARSHALING FOR CUTSTREAMS: ~s\n" cutstreams)			      
-			      ;(inspect x)
 			      ((before-marshal-hook) x)))
 			  
 			  ;; Otherwise, any cutpoints are of the right type Stream (Array Uint8).  We proceed.			  

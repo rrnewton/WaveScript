@@ -4,14 +4,21 @@
 namespace Node {
 
   src = iterate _ in timer(3) { state { cnt = 0 } emit cnt; cnt += 1 }
-
+  
   echosrc = iterate reading in src { 
     //print(" client: got timer tick: "++reading++"\n");
-    emit reading ;
+    emit //(reading, 
+         //List:build(10, fun(i) reading)
+         //, Array:build(10, fun(i) reading));
+    (9,10,11)
   };
 }
 
-main = iterate x in Node:echosrc {
+serv = iterate x in Node:echosrc {
     print(" server: got msg: "++x++"\n");
-    emit ();
+    //print("Tuple : "++(1,2)++"\n");
+    emit () //emit (1,2,3);
 }
+
+main = serv
+//main = iterate _ in serv { emit () }

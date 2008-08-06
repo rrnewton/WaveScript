@@ -471,6 +471,7 @@
 	      (mapi (lambda (i fldty)
 		      (traverse-value fldty `(tupref ,i ,len ,tup) doit)) ;; I allow code duplication for tuprefs.
 		    fld*))))]
+
       ;; :String, Sum
       [,oth (error 'generate-marshal-code:traverse-value "Unhandled type: ~s" oth)]))
 
@@ -570,8 +571,7 @@
 	 [(,marshal . ,_) (guard (eq-any? marshal 'marshal 'unmarshal))
 	  (error 'generate-marshal-code "missing type annotation: ~s" (cons marshal _) )]
 	 [,oth (fallthru oth)]
-	 ))]
-    )
+	 ))])
 
 
 ;; Note: this mixes up the marshal insertion with the comm insertion.  Should separate these.
@@ -581,8 +581,10 @@
   (define readers 0)
   (define writers 0)
   (define-pass marshal-and-comm 
-      [Expr 
-       (lambda (xp fallthru)
+      [Expr/Types
+       (lambda  (xp tenv fallthru)
+	 (printf "EXPR: ~s ~s\n" (if (pair? xp) (car xp) xp) (map car (cdr tenv)))
+	 (let loop ([xp xp] [tenv tenv])	   
 	 (match xp
 	   ;; FIXME: This will perform unmarshaling SEPARATELY for each subscriber to a stream.
 	   ;; This should only be done ONCE. FIXME  FIXME FIXME FIXME 
@@ -593,7 +595,10 @@
 		   (lambda (entry)
 		     (unless (zero? readers) (error 'insert-marshal-and-comm:readers "This hack only supports one cut stream presently."))
 		     (set! readers (add1 readers))
-		     (match (cdr entry)
+		     (printf "LOOKING UP ~s\n IN: \n" var)
+		     (pretty-print tenv)
+		     
+		     (match (tenv-lookup tenv var) ;(cdr entry)
 		       [(Stream ,elt)
 			(define Server_bytes (unique-name "Server_bytes"))
 			(define Server_vals  (unique-name "Server_vals"))
@@ -650,7 +655,13 @@
 			]))]
 		  [else var])]
 
-	   [(letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[bod])
+#;
+	   [(letrec ([,lhs* ,ty* ,_rhs*] ...) ,_bod)	    
+	    (define newenv (tenv-extend tenv lhs* ty*))
+	    (define __ (printf "ADDING ~s\n" lhs*))
+	    (define ___ (inspect newenv))
+	    (define rhs* (map (lambda (x) (loop x newenv)) _rhs*))
+	    (define bod  (loop _bod newenv))
 	    ;; Danger, making ASSUMPTIONS about the naming conventions here:
 	    (define Node_bytes   (unique-name "Node_bytes")) 
 	    (define Node_writer  (unique-name "Node_writer"))
@@ -718,7 +729,8 @@
 			     (list lhs ty rhs)))
 		    lhs* ty* rhs*)
 	       ,bod)]
-	   [,oth (fallthru oth)]))])
+	   
+	   [,oth (fallthru oth tenv)])))])
   (marshal-and-comm prog))
 
 
