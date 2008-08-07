@@ -85,6 +85,7 @@
 
 	   get-snippet get-location
 	   peel-outer-typevars
+	   value-expression?
 	   )
   (import  (rnrs (6))
 	   (rnrs mutable-pairs (6))

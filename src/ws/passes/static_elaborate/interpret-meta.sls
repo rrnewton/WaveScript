@@ -126,7 +126,7 @@
 (define set-value-type! 
   (case-lambda 
     [(val type) (set-value-type! val type #f)]
-    [(val type binding-site?)
+    [(val type poly-binding?)
      ;; Overwrite #f, or merge with existing type:
     (define (fold-in ty1 ty2)  
       (if ty2 
@@ -144,16 +144,19 @@
       (match type
 	[(Ref ,elt) (set-value-type! (ref-contents val) elt)])]
      [(closure? val)
-      ;; This doesn't work, a single (polymorphic) closure value may
-      ;; appear in multiple contexts with different concrete types.
-      ;; Those contexts may not *change* the type of the closure.
-      ;; In fact, this whole practice of set-value-type! may be defunct.
+      ;; Here we must make the typing behavior of the interpreter
+      ;; follow the static type checker.
       
-      ;; Trying out an odd convention.  Closure types get set *once*.
-      (if ;#t ;binding-site?
-          (not (arrow-type? (closure-type val)))
-	  (set-closure-type! val (fold-in type (closure-type val)))
-	  (void))]
+      ;; If a closure value has a "polymorphic binding" (i.e. letrec
+      ;; binding to a value expression), then it's type is set once at
+      ;; the binding site and "sealed" against further unions.
+
+      ;; [2008.08.07] FIXME: WHAT ARE WE DOING WITH LEFT LEFT LAMBDA?            
+      
+      (if (and poly-binding? (arrow-type? (closure-type val)))
+	  (printf "Rejecting closure type! args ~s ~s\n" (closure-formals val) type)	  
+	  (set-closure-type! val (fold-in type (closure-type val))))
+      ]
      [(suspension? val)  (void)]
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
      [else (error 'set-value-type! "not handled yet: ~s" val)]
@@ -240,10 +243,10 @@
 	c ;(begin (printf "REFLECTING ~a ~a\n" (closure-name c) (closure-type c)) c)
 	(begin 
 	  (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-	  (match (closure-type c)
-	    ;; We need to tag the types onto values that we store in the environment.
-	    [(,argty* ... -> ,retty)
-	     (unwrap-plain
+	  (printf "  REIFYING CLOSURE:\n") (pretty-print c)
+
+	  ;; We need to tag the types onto values that we store in the environment.
+	  (unwrap-plain
 	      (Eval (closure-code c) 
 		    (extend-env (closure-formals c) 
 				(map (lambda (arg argty)
@@ -255,9 +258,9 @@
 				       (let ([wrapped (maybe-wrap arg)])
 					 (set-value-type! wrapped argty)
 					 wrapped))
-				  args argty*)
+				  args (closure-argty* c))
 				(closure-env c))
-		    #f))]))
+		    #f)))
 	))
 )
 
@@ -458,7 +461,7 @@
 		   (set-box! cell (Eval rhs newenv pretty-name))
 		   (when (closure? (unbox cell)) 
 		     (prettify-names! (list lhs) (list (unbox cell))))
-		   (set-value-type! (unbox cell) ty 'let-binding)
+		   (set-value-type! (unbox cell) ty (value-expression? rhs))
 		   )
 	 cells lhs* ty* rhs*)
        (Eval bod newenv pretty-name))]
@@ -1140,7 +1143,7 @@
 		       [evaled    (maybtime (Eval x '() #f))]
 		       [marshaled (maybtime (Marshal evaled))]
 		       )
-		  (pretty-print (strip-annotations marshaled 'src-pos))
+		  ;(pretty-print (strip-annotations marshaled 'src-pos))
 		  (do-inlining 
 		   (id;inspect/continue
 		    marshaled))
