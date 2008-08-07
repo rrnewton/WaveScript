@@ -6,8 +6,9 @@
 
 
 
-foo :: a -> a;
-fun foo(x) x
+//foo :: a -> a;
+foo :: Int -> Int;
+fun foo(x) x+(1::Int)
 
 
 // Audio channel 1 with no overlap.

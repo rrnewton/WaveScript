@@ -78,11 +78,14 @@
 	  (let ([type (recover-type rator tenv)])
 	    (if ;(or (deep-assq 'Stream type) (deep-assq 'Region type))
 	     ;(distributed-type? type)	
-	     #t ;; <-- Harshest version: no functions at all.
+	     (or (not (symbol? rator)) (polymorphic-type? type) 
+		 ;(type-higher-order? type)
+		 )
+	     ;#t ;; <-- Harshest version: no functions at all.
 	     (error 'verify-elaborated
 		    ;"post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
 		    "~a~a  Type: ~s\n\n  Rator: ~a\n  Location: ~a\n"
-		    "post-elaboration expression should (currently) not contain function applications at all.\n"
+		    "post-elaboration expression should polymorphic or higher order functions, or applications with non-symbol operators\n"
 		    "This should have inlined...\n"
 		    ;"This probably means that you have a "
 		    type 

@@ -38,7 +38,7 @@
 ;; There are two kinds of closures.  Native and foreign.
 ;; Foreign closures have #f in place of formals and env.
 ;;   "name" is optional -- a symbol or #f
-(reg:define-struct (closure name formals code env type))
+(reg:define-struct (closure name formals argty* code env type))
 
 ;; A stream operator can be a leaf or an intermediate node.
 ;; The "parents" field contains a list of streamops, params are
@@ -92,7 +92,7 @@
 (define (make-foreign-closure name includes ty)
   (DEBUGASSERT string? name) 
   (DEBUGASSERT (andmap string? includes))
-  (make-closure #f #f `(assert-type ,ty (foreign ',name ',includes)) #f ty))
+  (make-closure #f #f #f `(assert-type ,ty (foreign ',name ',includes)) #f ty))
 
 ;; Unwraps plain only:
 (define (unwrap-plain x) 
@@ -123,8 +123,11 @@
 
 ;; This tags a value with a type.
 ;; This is necessary for not losing type information for constants.
-(define (set-value-type! val type)
-    ;; Overwrite #f, or merge with existing type:
+(define set-value-type! 
+  (case-lambda 
+    [(val type) (set-value-type! val type #f)]
+    [(val type binding-site?)
+     ;; Overwrite #f, or merge with existing type:
     (define (fold-in ty1 ty2)  
       (if ty2 
 	  (or (types-compat? ty1 ty2) 
@@ -145,12 +148,16 @@
       ;; appear in multiple contexts with different concrete types.
       ;; Those contexts may not *change* the type of the closure.
       ;; In fact, this whole practice of set-value-type! may be defunct.
-      ;(set-closure-type! val (fold-in type (closure-type val)))
-      (void)]
+      
+      ;; Trying out an odd convention.  Closure types get set *once*.
+      (if ;#t ;binding-site?
+          (not (arrow-type? (closure-type val)))
+	  (set-closure-type! val (fold-in type (closure-type val)))
+	  (void))]
      [(suspension? val)  (void)]
      [(streamop? val) (set-streamop-type! val (fold-in type (streamop-type val)))]
      [else (error 'set-value-type! "not handled yet: ~s" val)]
-     ))
+     )]))
 
 ;; Returns the type of the wrapped object, or #f
 (define (get-value-type val)
@@ -444,19 +451,24 @@
 
     ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+     (printf "Letrec bind ~s ~s\n" lhs* ty*)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
        (for-each (lambda (cell lhs ty rhs)
 		   (set-box! cell (Eval rhs newenv pretty-name))
 		   (when (closure? (unbox cell)) 
 		     (prettify-names! (list lhs) (list (unbox cell))))
-		   (set-value-type! (unbox cell) ty)
+		   (set-value-type! (unbox cell) ty 'let-binding)
 		   )
 	 cells lhs* ty* rhs*)
        (Eval bod newenv pretty-name))]
 
     [(lambda ,formal* ,ty* ,bod)      
-     (make-closure #f formal* bod env `(,@ty* -> ',(unique-name "anytype")))]
+     ;; FIXME: WE SHOULD NOT BE THIS SHORT ON TYPE INFO FOR OUR CLOSURES!!!
+     ;(make-closure #f formal* bod env `(,@ty* -> ',(unique-name "anytype")))
+     (make-closure #f formal* ty* bod env (unknown-type))
+     
+     ]
  
     [(Mutable:ref ,[x]) (make-ref x #f)]
     [(deref ,[x])       (ref-contents x)]
@@ -534,20 +546,16 @@
 	 (begin 
 	   ;; Do PRETTY naming:
 	   (prettify-names! (closure-formals f) e*)
-	   ;; Assert that the args have the right type:
-
-	   (match (closure-type f)
-	     [(,argty* ... -> ,retty)
-	      ;; Nothing to do with return type yet!
-	      (for-each set-value-type! e* argty*)
-	      (let ([result		     
+	   ;; Assert that the args have the right type:	   
+	   (for-each set-value-type! e* (closure-argty* f))
+	   (let ([result		     
 		     (Eval (closure-code f)
 			   (extend-env (closure-formals f) e*
 				       (closure-env f))
 			   (or (closure-name f) pretty-name))])
-		(set-value-type! result retty)
+		;;;; [2008.08.06] ;(set-value-type! result retty) 
 		result
-		)])))]
+		)))]
     
     [(for (,indvar ,[st] ,[en]) ,bod)
      (ASSERT (plain? st))
@@ -903,9 +911,10 @@
 		    state 
 		    ;globals
 		    ;; [2008.08.06] Now putting the lambdas in the globals:
-		    (cons (list (car fv) (unknown-type)
-			   `(lambda ,(closure-formals val) 
-			      ,(map unknown-type (closure-formals val))
+		    (cons (list (car fv) 
+			    (closure-type val)
+			   `(lambda ,(closure-formals val)
+			      ,(match (closure-type val) [(,argty* ... -> ,_) argty*])
 			      ,newcode))
 			  globals)
 		    (append env-slice env)
@@ -1028,21 +1037,24 @@
 	       ;; The next step would be to split polymorphic
 	       ;; functions into monomorphic ones without complete
 	       ;; inlining.
-#;
-	       (printf "Considering lambda: poly ~a higher ~a freevars ~a\n"
-		       (polymorphic-type? ty)
-		       (type-containing-arrow? ty)
-		       (not (null? (core-free-vars (cons 'lambda _)))))
-#;
-	       (or (polymorphic-type? ty)
-		   (type-containing-arrow? ty)
-		   (not (null? (core-free-vars (cons 'lambda _)))))]
+	       (match ty
+		 [(,argty* ... -> ,retty)		  
+		  (printf "Considering lambda: ty ~a poly ~a higher ~a freevars ~a\n"
+			  ty
+			  (polymorphic-type? ty)
+			  (or (type-containing-arrow? retty)
+			      (ormap type-containing-arrow? argty*))
+			  (not (null? (core-free-vars (cons 'lambda _)))))
+		  (or (polymorphic-type? ty)
+		      (type-containing-arrow? retty)
+		      (ormap type-containing-arrow? argty*)
+		      (not (null? (core-free-vars (cons 'lambda _)))))])]
 
 	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (andmap side-effect-free? rhs*)) 
 	       bod]
 	      [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
 	      [,_ #f]))
-	  (define (inlinable-bind? b) (inlinable-rhs? (cadr b) (caddr b)))
+	  (define (inlinable-bind? b)  (inlinable-rhs? (cadr b) (caddr b)))
 	  (define-values (tosubst remainder) (partition inlinable-bind? binds))
 	  ;; This is a hack that depends on unique naming.  That's
 	  ;; how we handle let in the same way as letrec.  The lhs*
@@ -1128,7 +1140,7 @@
 		       [evaled    (maybtime (Eval x '() #f))]
 		       [marshaled (maybtime (Marshal evaled))]
 		       )
-		  ;(pretty-print (strip-annotations marshaled 'src-pos))
+		  (pretty-print (strip-annotations marshaled 'src-pos))
 		  (do-inlining 
 		   (id;inspect/continue
 		    marshaled))

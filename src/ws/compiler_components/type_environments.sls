@@ -194,12 +194,14 @@
 (define (type-containing-arrow? t)
   (match t
     [(quote (,v . #f)) #f]
+    [(quote ,v) #f]    
     [(quote (,v . ,[rhs])) rhs]
     [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'type-containing-arrow? "don't know how to answer this for LUB yet.")]
     [#(,[t] ...) (ormap id t)]
-    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.    
+    [,s (guard (symbol? s)) #f]
     ))
 
 ;; Taken instantiated or uninstantiated type:

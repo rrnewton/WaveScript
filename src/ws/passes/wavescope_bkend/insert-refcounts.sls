@@ -1,5 +1,6 @@
 #!r6rs
 
+
 (library (ws passes wavescope_bkend insert-refcounts)
   (export insert-refcounts
 	  flag-static-allocate
@@ -53,7 +54,7 @@
 	(define entry (ASSERT (assoc (list name) union-types)))
 	(ormap recur (map cadr (cdr entry)))]
 
-       ;; This is a function point, no closures at this point:
+       ;; This is a function pointer, no closures at this point:
        [(,_ ... -> ,__) #f]
 
        [(Array ,_) #t]
@@ -446,8 +447,9 @@
 
     ;; For "global" variables:
     ;; Must happen *BEFORE* the local decrements are inserted (before recurring, before Value).
-    (define (TopIncr exp ty)  
-      (DriveInside (lambda (x) (make-rc 'incr-heap-refcount ty x)) exp ty #t))
+    (define (TopIncr exp ty)
+      (if (not-heap-allocated? ty) exp	  
+	  (DriveInside (lambda (x) (make-rc 'incr-heap-refcount ty x)) exp ty #t)))
 
     (define (Operator op)
       (match op

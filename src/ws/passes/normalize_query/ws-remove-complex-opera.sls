@@ -305,10 +305,16 @@
 	    (mvlet ([(args binds) (make-simples args tenv)])
 	      (vector `(tuple ,@args) binds))]
 
+	   ;; [2008.08.06] Allowing limited functions.
+	   [(app ,rator ,rand* ...)
+	    (ASSERT symbol? rator)
+	    (mvlet ([(args binds) (make-simples rand* tenv)])
+	      (vector `(app ,rator ,@args) binds))]
+
 	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	    (mvlet ([(args binds) (make-simples rand* tenv)])
 	      (vector `(,prim ,@args) binds))]
-
+	   
 	   ;; Constants:
 	   [,prim (guard (regiment-primitive? prim))
 		  (vector prim '())]
