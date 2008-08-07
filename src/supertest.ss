@@ -351,8 +351,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "ws: Downloading sample marmot data:" "./download_sample_marmot_data")
 
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
-  (run-test "ws: Running WaveScript Demos (ikarus):"
-	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
+
+  ;; [2008.08.07] Doing at least testall_demos in debug mode.
+  (ASSERT (putenv "REGDEBUGMODE" "ON"))
+  (current-directory test-directory)
+  (run-test "ikarus: Build in debug mode: " "make cleanik ik &> ikarus_BUILD_DEBUG.log")
+  (current-directory (format "~a/demos/wavescope" test-directory))
+  (run-test "ws: Running Demos (ikarus, debug)  :"
+	    (format "./testall_demos.ss &> ~a/ws_demos_debug.log" test-directory))
+  (ASSERT (putenv "REGDEBUGMODE" "OFF"))
+  (current-directory test-directory)
+  (run-test "ikarus: Build object files: " "make cleanik ik &> ikarus_BUILD2.log")
+
   (run-test "ws.early: WaveScript Demos (ikarus):"
 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
 
