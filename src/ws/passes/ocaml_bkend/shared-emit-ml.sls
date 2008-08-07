@@ -47,6 +47,12 @@
 ;; Caml and MLton backends.
 (define sharedEmitCases
   (lambda (obj)
+
+    ;; Multiple arguments with tuples instead of curried.
+    (define (make-tuple-app f x*)
+      (obj 'make-app f (list (apply make-tuple-code x*))))
+    (define (make-tuple-fun formals body)
+      (obj 'make-fun (list (apply make-tuple-code formals)) body))
     
     (define Var (curry obj 'Var))
     
@@ -103,8 +109,8 @@
 	   (error 'sharedEmitCases "missed a construct we should have caught: ~s" 
 		  (cons form _))]
 
-	  [(app ,[rator] ,[rands] ...) (obj 'make-app rator rands)]
-	  [(lambda (,[args] ...) ,argty* ,[bod]) (obj 'make-fun args bod)]
+	  [(app ,[rator] ,[rands] ...)           (make-tuple-app rator rands)]
+	  [(lambda (,[args] ...) ,argty* ,[bod]) (make-tuple-fun args bod)]
 	  
 	  ;; strip out annotations
 	  [(,prim ,annot ,rand* ...)

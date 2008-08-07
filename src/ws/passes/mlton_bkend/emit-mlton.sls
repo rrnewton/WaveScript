@@ -48,7 +48,11 @@
 	(if (null? formals)
 	    body
 	    (list "(fn "(car formals)" => "(loop (cdr formals)) ")")))))
+;; Curried version:
 (define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+
+(define (make-prim-app f x*) (make-app f (list (apply make-tuple-code x*))))
+
 
 ;; This is LAME, but having problems with "let val rec" syntax in MLton.
 ;; This produces the "f x = bod" snippet .
@@ -136,8 +140,6 @@
 	(indent body "  ")
 	"\n end)"))
 
-
-(define (make-prim-app f x*) (make-app f (list (apply make-tuple-code x*))))
 
 
 
