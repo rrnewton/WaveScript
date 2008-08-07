@@ -771,13 +771,13 @@
 	   	   ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
 	   ;; HACK FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
 	   [(make-struct . ,rest)
-	    (inspect (cons 'make-struct rest))
+	    ;(inspect (cons 'make-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
 	    (values ((Binding self) (list vr ty rhs))
 		    null-lines
 		    )]
 	   [(assert-type ,ty (make-struct . ,rest))
-	    (inspect (cons 'ASSERTmake-struct rest))
+	    ;(inspect (cons 'ASSERTmake-struct rest))
 	    ;; Here we just do the binding immediately, and return nothing for the initialization:
 	    (values ((Binding self) (list vr ty rhs))
 		    null-lines
