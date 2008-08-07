@@ -813,15 +813,6 @@
 ;; single substitution, then apply it, rather than repeatedly
 ;; traversing the closure's code.
 (define (Marshal-Closure cl)
-  ;; Below we accumulate a cumulative substitution list.
-  ;; We must apply the substitions to the expressions being substituted.
-  ;; This requires picking an order.
-  (define (subst-the-substs subst)
-    (match subst
-      [() '()]
-      [((,v ,expr) . ,[rest])
-       (cons (list v (core-substitute rest expr))
-	     rest)]))
 
 ;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
   (ASSERT (not (foreign-closure? cl)))
@@ -839,16 +830,13 @@
 		  [state '()]                    ;; mutable state for this closure
 		  [globals '()]                  ;; immutable global bindings
 		  [env (closure-env cl)]         ;; environment from which to marshal
-		  [substitution '()]             ;; lambda's to inline
 		  )
     (DEBUGASSERT list-is-set? fv)
     (if (null? fv)
 	;; We're done processing the environment, produce some code:
 	(let* ([bod `(lambda ,(closure-formals cl) 
 		       ,(map unknown-type (ASSERT (closure-formals cl))) ,code)]
-	       [newbod (let ([subst (subst-the-substs (reverse substitution))])
-			 (core-substitute (map car subst) (map cadr subst)
-					  bod))]
+	       [newbod bod]
 	       [binds (append globals state)])
 	  (DEBUGASSERT list-is-set? (map car binds))
 
@@ -864,7 +852,7 @@
 	   [(plain? val) 
 	    (marshloop code (cdr fv) state
 		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
-		  env substitution )]
+		  env )]
 	   ;; This is definitely part of the state:
 	   [(ref? val)
 	    ;; FIXME: Need to scan for shared mutable values.
@@ -872,7 +860,7 @@
 		  (cons (list (car fv) (unknown-type) 
 			      `(Mutable:ref ,(Marshal (ref-contents val))))
 			state)
-		  globals env substitution)]
+		  globals env)]
 
 	   [(foreign-closure? val)
   	    ;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
@@ -881,18 +869,20 @@
 	       (match ty
 		 [(,argty* ... -> ,res)
 		  (let ([formals (list-build (length argty*) (lambda (_) (unique-name 'arg)) )])
+		    (define newname (unique-name (car fv)))
 		    (when (string=? name "")
 		      (error 'interpret-meta "cannot have foreign declaration with no name! ~s" val))
 		    ;; This just turns into the '(foreign name includes)' expression.
 		    (marshloop code (cdr fv) state
 			  ;; The foreign binding just turns into the '(foreign name includes)' expression:
-			  (cons `(,(car fv) ,(unknown-type) ,(closure-code val)) globals)
-			  env
-			  ;; Change any references to be foreign-apps...
-			  (cons (list (car fv)
-				      `(lambda ,formals ,argty*
-					       (foreign-app ',name ,(car fv) ,@formals)))
-				substitution)))])])]
+			       (cons* `(,newname ,(unknown-type) ,(closure-code val)) 
+				      `(,(car fv) ,(closure-type val)
+					;; Change any references to be foreign-apps...
+					(lambda ,formals ,argty*
+						(foreign-app ',name ,newname ,@formals)))
+				      globals)
+			       env
+			       ))])])]
 
 	   ;; FIXME:
 	   ;; Free variables bound to closures need to be turned back into code and inlined.
@@ -916,17 +906,7 @@
 			      ,(match (closure-type val) [(,argty* ... -> ,_) argty*])
 			      ,newcode))
 			  globals)
-		    (append env-slice env)
-		    substitution
-#;
-		    (cons 		 
-		     ;; For now, don't do any inlining.  Do that later:
-		     ;; Here we simply stick those lambdas into the code. (by adding them to the subst)		     
-		     (list (car fv) 
-			   `(lambda ,(closure-formals val) 
-			      ,(map unknown-type (closure-formals val))
-			      ,newcode))
-		     substitution)))]
+		    (append env-slice env)))]
 	   
 	   [(streamop? val) 
 	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))

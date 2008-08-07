@@ -116,6 +116,13 @@
 	   `("(",(Type t)") array")))]
 
     [(List ,[t]) `("(",t") list")]
+
+    [(,[args] ... -> ,[ret])
+     (list "(" (if (null? args)
+		   "unit"
+		   (insert-between " * " args))
+	   " -> " ret ")")]
+
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-caml:Type "Not handled yet.. ~s" other)]))
 
@@ -831,7 +838,7 @@
 		      
         make-let 
 	make-tuple-code 
-	make-fun
+	make-fun make-app
 	make-for
 	make-while
 	make-fun-binding

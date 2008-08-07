@@ -103,6 +103,9 @@
 	   (error 'sharedEmitCases "missed a construct we should have caught: ~s" 
 		  (cons form _))]
 
+	  [(app ,[rator] ,[rands] ...) (obj 'make-app rator rands)]
+	  [(lambda (,[args] ...) ,argty* ,[bod]) (obj 'make-fun args bod)]
+	  
 	  ;; strip out annotations
 	  [(,prim ,annot ,rand* ...)
 	   (guard (and (real-primitive? prim) (pair? annot) (eq? 'annotations (car annot))))
@@ -123,6 +126,7 @@
 	  [(assert-type ,t ,[x])
            ;;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
 	   x]
+	  
 	  [,unmatched (error 'emit-mlton:Expr "unhandled form ~s" unmatched)]
 
 	  )))
