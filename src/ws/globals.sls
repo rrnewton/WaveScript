@@ -399,7 +399,7 @@
 
 ;; Controls whether we inline *everything*, or reserve the right to
 ;; hold back on monomorphic, first-order functions.
-(define-regiment-parameter ws-full-inline #t)
+(define-regiment-parameter ws-full-inline #f)
 
 ;; This parameter stores an association list binding the names of
 ;; passes to hooks (functions) that should run after the specified
