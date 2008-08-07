@@ -1219,9 +1219,10 @@
 				(timer (annotations) '3.0))) '() #f))))))
      #f]
     ["inline a function successfully"
+     ;; [2008.08.07] Making this polymorphic so that it inlines:
      (deep-assq 'f
      (interpret-meta '(lang '(program 
-       (letrec ([f 'b (lambda (x) (Int) (_+_ x x))])
+       (letrec ([f ('a -> 'a) (lambda (x) ('a) x)])
 	 (iterate (annotations) (lambda (_ vq) ('a 'vq) (app f '9)) (timer (annotations) '3.0))) Int))))
      #f]
 
