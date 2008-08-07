@@ -176,6 +176,8 @@
     ;; An arrow type is not itself mutable.
     [(,[arg] ... -> ,[ret]) #f]
     ;; Including Ref:
+
+    [(Pointer ,name) #t] ;; This could contain mutable... 
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     ;[,else #f] ;; [2008.08.06]
     ))
@@ -200,6 +202,7 @@
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'type-containing-arrow? "don't know how to answer this for LUB yet.")]
     [#(,[t] ...) (ormap id t)]
+    [(Pointer ,name) #f]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.    
     [,s (guard (symbol? s)) #f]
     ))
