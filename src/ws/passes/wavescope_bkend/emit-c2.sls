@@ -791,14 +791,15 @@
 	   [(lambda (,arg* ...) ,_ ,bod)
 	    (match ty 
 	      [(,argty* ... -> ,retty)
-	       (printf "EMITTING LAMBDA\n")
+	       (printf "EMITTING LAMBDA, args ~s\n" arg*)
 	       (values 
 		(make-lines 
-		 (block (make-fun-header (Var self vr) (map (curry Var self) arg*)
-					 (map (curry Type self) argty*) (Type self retty)
+		 (list "/* WS function definition */\n"
+		  (block (make-fun-header (Var self vr) (map (curry Var self) arg*)
+					  (map (curry Type self) argty*) (Type self retty)
 			 ;self vr argty* retty 
-			 )
-			(lines-text ((Value self) bod returnk))))
+					  )
+			 (lines-text ((Value self) bod returnk)))))
 		;; Don't need any initialization code:
 		null-lines)])
 	    ;(error 'emitC2:SplitBinding "got a function, not supported yet.")

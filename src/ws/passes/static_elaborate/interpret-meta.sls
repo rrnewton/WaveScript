@@ -153,8 +153,10 @@
 
       ;; [2008.08.07] FIXME: WHAT ARE WE DOING WITH LEFT LEFT LAMBDA?            
       
-      (if (and poly-binding? (arrow-type? (closure-type val)))
-	  (printf "Rejecting closure type! args ~s ~s\n" (closure-formals val) type)	  
+      ;; Switching back to a "set-once" behavior for all closures:
+      (if (arrow-type? (closure-type val))
+          ;(and poly-binding? (arrow-type? (closure-type val)))
+	  (void);(printf "Rejecting closure type! args ~s ~s\n" (closure-formals val) type)	  
 	  (set-closure-type! val (fold-in type (closure-type val))))
       ]
      [(suspension? val)  (void)]
@@ -243,8 +245,6 @@
 	c ;(begin (printf "REFLECTING ~a ~a\n" (closure-name c) (closure-type c)) c)
 	(begin 
 	  (DEBUGASSERT (curry andmap (compose not procedure?)) args)
-	  (printf "  REIFYING CLOSURE:\n") (pretty-print c)
-
 	  ;; We need to tag the types onto values that we store in the environment.
 	  (unwrap-plain
 	      (Eval (closure-code c) 
@@ -454,7 +454,7 @@
 
     ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
-     (printf "Letrec bind ~s ~s\n" lhs* ty*)
+     ;(printf "Letrec bind ~s ~s\n" lhs* ty*)
      (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
        (for-each (lambda (cell lhs ty rhs)
@@ -852,11 +852,7 @@
 	       [binds (append globals state)])
 	  (DEBUGASSERT list-is-set? (map car binds))
 
-					;(if (null? state) bod `(letrec ,state ,bod))
-					;	    (unless (null? globals) (inspect globals))
-;	  (printf "FINALLY DOING SUBSTITUTION: ~s\n" (map car (reverse substitution)))
 	  (if (null? binds) newbod `(letrec ,binds ,newbod)))
-	  ;`(letrec ,binds ,newbod))
 	(let ([val (apply-env env (car fv))])
 	  (cond
 #;
@@ -1024,6 +1020,11 @@
 	      ;; These had better not be side efffect free!!:
 	      [(while ,test ,[bod]) (and (side-effect-free? bod) test)]
 	      [(for (,_ ,[st] ,[en]) ,[bod]) (and st en bod)]
+
+	      ;; TODO: if we have the code for the function, we could perhaps answer this question.
+	      ;; But for now we conservatively say no:
+	      [(app ,rator ,rands ...) #f]	      
+
 	      [,oth (error 'side-effect-free? "we forgot to handle this: ~s" oth)]))
 	  
 	  ;(define (lambind? b)  (lambda? (caddr b)))
@@ -1036,22 +1037,23 @@
 	      [(lambda . ,_)
 	       ;; [2008.08.06] Let's back away and try to NOT inline
 	       ;; monomorphic closed, functions.	      	       
-	       #t
+
 	       ;; The next step would be to split polymorphic
 	       ;; functions into monomorphic ones without complete
 	       ;; inlining.
-	       (match ty
-		 [(,argty* ... -> ,retty)		  
-		  (printf "Considering lambda: ty ~a poly ~a higher ~a freevars ~a\n"
-			  ty
-			  (polymorphic-type? ty)
-			  (or (type-containing-arrow? retty)
-			      (ormap type-containing-arrow? argty*))
-			  (not (null? (core-free-vars (cons 'lambda _)))))
-		  (or (polymorphic-type? ty)
-		      (type-containing-arrow? retty)
-		      (ormap type-containing-arrow? argty*)
-		      (not (null? (core-free-vars (cons 'lambda _)))))])]
+	       (or (ws-full-inline)
+		   (match ty
+		     [(,argty* ... -> ,retty)		  
+		      (printf "Considering lambda: poly ~a higher ~a freevars ~a    ~a \n"			      
+			      (polymorphic-type? ty)
+			      (or (type-containing-arrow? retty)
+				  (ormap type-containing-arrow? argty*))
+			      (not (null? (core-free-vars (cons 'lambda _))))
+			      ty)
+		      (or (polymorphic-type? ty)
+			  (type-containing-arrow? retty)
+			  (ormap type-containing-arrow? argty*)
+			  (not (null? (core-free-vars (cons 'lambda _)))))]))]
 
 	      [(let ([,lhs* ,ty* ,rhs*] ...) ,[bod]) (guard (andmap side-effect-free? rhs*)) 
 	       bod]
