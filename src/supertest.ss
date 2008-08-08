@@ -847,16 +847,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
-      #;
       (fpf "Various results gathered into a table:    ~a\n"
-	   (code->msg! (system "gather_results.ss > results_table.txt")))
-      (system "gather_results.ss > results_table.txt")
+	   (code->msg! (system "./gather_results.ss > results_table.txt")))
+      ;(system "gather_results.ss > results_table.txt")
       (display (file->string "results_table.txt") outp)
       ))
   (close-output-port outp)) ;; Done writing vital_stats.txt
 
 (begin 
-  (fpf "\n\n  Vital Stats:\n")
+  (fpf "\n\n  Vital Stats: (for now printing all of them)\n")
   (fpf "========================================\n")
   (fpf "~a" (file->string vitals)))
 
