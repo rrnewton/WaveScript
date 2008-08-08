@@ -822,7 +822,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
   
   ;; --- Check compile times for the marmot app. ---
-#;
   (parameterize ((current-directory test-directory))
     ;; This is fragile because it depends on a particular output from the WS compiler.
     ;; AND on a particular output format for the Scheme (time _) command.
@@ -844,6 +843,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
     (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log")))
 
+  ;; --- Check the size of generate .c files ---
+; grep "Running demo" wsc2_demos.log  | awk '{ print $3 }' | sed 's/\.ws//'
+; grep -A 1 "Compiled .c output" wsc2_demos.log  | grep query | awk '{ print $1 }'
+
+; grep -A 1 "Compiled .c output" *build*.log | grep query | awk '{ print $1 $2 }' | sed 's/.log./ /'
+
+ 
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
@@ -858,6 +864,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (fpf "\n\n  Vital Stats: (for now printing all of them)\n")
   (fpf "========================================\n")
   (fpf "~a" (file->string vitals)))
+
+;; --- Compare against previous revision vitals ---
+;(system "./compare_to_previous_rev_stats.ss")
 
 ;;================================================================================
 ;;; Wrap it up

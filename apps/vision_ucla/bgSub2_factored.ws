@@ -103,7 +103,7 @@ _ = {
 // When we are near the edge of the image, patches may go off the
 // edge, we reflect them back on themselves.
 fun boundit(x,range) {
-  if x < 0 then 0-x-1 else
+  if x < 0      then 0-x-1 else
   if x >= range then 2*range-1-x else x;
 };
 
