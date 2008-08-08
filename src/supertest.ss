@@ -841,7 +841,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     three)))))
     ;; This is the time spent in the Scheme WS compiler.  Does not include time spent in the C/ML compiler.
     (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
-    (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log")))
+    (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log"))
+    ;; TODO: extend with other apps.
+    )
 
   ;; --- Check the size of generate .c files ---
 ; grep "Running demo" wsc2_demos.log  | awk '{ print $3 }' | sed 's/\.ws//'
@@ -853,7 +855,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
-      (fpf "Various results gathered into a table:    ~a\n"
+      (fpf "Various results gathered into a table:        ~a\n"
 	   (code->msg! (system "./gather_results.ss > results_table.txt")))
       ;(system "gather_results.ss > results_table.txt")
       (display (file->string "results_table.txt") outp)
@@ -862,11 +864,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin 
   (fpf "\n\n  Vital Stats: (for now printing all of them)\n")
-  (fpf "========================================\n")
+  (fpf "=================================================\n")
   (fpf "~a" (file->string vitals)))
 
 ;; --- Compare against previous revision vitals ---
-;(system "./compare_to_previous_rev_stats.ss")
+;; This will write "perf_diffs.txt"
+(fpf "Performance differencing with previous revision...\n")
+(fpf "==================================================\n")
+(system "./compare_to_previous_rev_stats.ss")
+(if (file-exists? "perf_diffs_thresholded.txt")
+    (begin      
+      (fpf "Metrics differing over five percent: ")
+      (fpf "~a" (file->string "perf_diffs_thresholded.txt")))
+    (fpf "  Failed!\n"))
 
 ;;================================================================================
 ;;; Wrap it up
@@ -922,7 +932,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (parameterize ([current-directory ws-root-dir])
   (fpf "\nSVN log message:  \n   ")
-  (fpf (system-to-str "svn log -v -r PREV")))
+  (fpf (system-to-str "svn log -v -r HEAD:PREV")))
 
 (close-output-port log)
 (define thesubj 

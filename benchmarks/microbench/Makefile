@@ -3,7 +3,9 @@
 
 ENCHS=" just_timer.ws read_filedata_bigwins.ws read_filedata_smallwins.ws"
 
-all: /tmp/dummyfile.bin
+all: 
+	rm -f /tmp/dummyfile.bin
+	$(MAKE) /tmp/dummyfile.bin
 	@echo "   Running all MICRObenchmarks, building pdf summary."
 	./run_misc.sh
 	./run_datapass.sh
