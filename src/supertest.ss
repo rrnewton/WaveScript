@@ -49,8 +49,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;
 ;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
 (current-directory "..")
-(define test-root (path->string (current-directory)))
-(define test-directory (format "~a/src" test-root))
+(define ws-root-dir (path->string (current-directory)))
+(define test-directory (format "~a/src" ws-root-dir))
 (current-directory test-directory)
 
 (printf "Test directory: ~s\n" test-directory)
@@ -197,7 +197,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	(let* ([webfile (format "~a/~a" webdir webfilename)])
 	  (publish logfile webfile))
 	;; Now do the performance report:
-	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" test-root)])
+	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" ws-root-dir)])
 	  (when (file-exists? perfreport)
 	    (let* ([webfile (format "~a/rev~a_eng~a_perfreport.pdf" webdir
 				    svn-revision engine-svn-revision)])
@@ -222,15 +222,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; ----------------------------------------
 
 
-(ASSERT (putenv "REGIMENTD" test-root))
+(ASSERT (putenv "REGIMENTD" ws-root-dir))
 
 ;; We use debugmode for all the tests below:
 
 ;; [2008.05.10] NOT DOING DEBUG MODE YET... (R6RS port)
 ;(ASSERT (putenv "REGDEBUGMODE" "ON"))
 
-;(ASSERT (putenv "PATH" (format "~a/bin:~a" test-root (getenv "PATH"))))
-;(ASSERT (putenv "PATH" (format "~a/depends:~a" test-root (getenv "PATH"))))
+;(ASSERT (putenv "PATH" (format "~a/bin:~a" ws-root-dir (getenv "PATH"))))
+;(ASSERT (putenv "PATH" (format "~a/depends:~a" ws-root-dir (getenv "PATH"))))
 
 (ASSERT (system "echo Environment established: REGIMENTD:$REGIMENTD"))
 
@@ -266,7 +266,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Here we begin running tests:
 
-(fpf "\nRunning from directory: ~a\n\n" test-root)
+(fpf "\nRunning from directory: ~a\n\n" ws-root-dir)
 
 (fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")
@@ -353,15 +353,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
 
   ;; [2008.08.07] Doing at least testall_demos in debug mode.
-  (ASSERT (putenv "REGDEBUGMODE" "ON"))
-  (current-directory test-directory)
-  (run-test "ikarus: Build in debug mode: " "make cleanik ik &> ikarus_BUILD_DEBUG.log")
-  (current-directory (format "~a/demos/wavescope" test-directory))
+  ; (ASSERT (putenv "REGDEBUGMODE" "ON"))
+;   (current-directory test-directory)
+;   (run-test "ikarus: Build in debug mode: " "make cleanik ik &> ikarus_BUILD_DEBUG.log")
+;   (current-directory (format "~a/demos/wavescope" test-directory))t
   (run-test "ws: Running Demos (ikarus, debug)  :"
 	    (format "./testall_demos.ss &> ~a/ws_demos_debug.log" test-directory))
-  (ASSERT (putenv "REGDEBUGMODE" "OFF"))
-  (current-directory test-directory)
-  (run-test "ikarus: Build object files: " "make cleanik ik &> ikarus_BUILD2.log")
+;   (ASSERT (putenv "REGDEBUGMODE" "OFF"))
+;   (current-directory test-directory)
+;   (run-test "ikarus: Build object files: " "make cleanik ik &> ikarus_BUILD2.log")
 
   (run-test "ws.early: WaveScript Demos (ikarus):"
 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
@@ -383,7 +383,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Test STANDARD LIBRARIES:
-(parameterize ([current-directory (format "~a/lib/" test-root)])
+(parameterize ([current-directory (format "~a/lib/" ws-root-dir)])
   (run-test "ws: Loading stdlib_test.ws:" (format "ws stdlib_test.ws -n 10 -exit-error &> ~a/stdlib.log" test-directory))
 
   ;; This is the OLD one:
@@ -408,7 +408,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; Now for GSL interface.
-(parameterize ([current-directory (format "~a/lib/" test-root)])
+(parameterize ([current-directory (format "~a/lib/" ws-root-dir)])
   (run-test "ws: Generating gsl matrix library wrappers:" 
 	    (format "make &> ~a/gsl_wrappers.log" test-directory))
 
@@ -499,7 +499,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   )
 
-; (parameterize ((current-directory (format "~a/lib/" test-root)))
+; (parameterize ((current-directory (format "~a/lib/" ws-root-dir)))
 ;   (run-test "wsc: Compiling stdlib_test:"
 ; 	    (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))
 ;   #;
@@ -535,7 +535,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TEMP DISABLE:
 #;
-  (parameterize ((current-directory (format "~a/lib/" test-root)))  
+  (parameterize ((current-directory (format "~a/lib/" ws-root-dir)))  
     (run-test "wsmlton: Compiling stdlib_test:"
 	      (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))
     (run-test "wsmlton: Running stdlib_test:    "
@@ -552,7 +552,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 
 ;; MARMOT
-(parameterize ((current-directory (format "~a/apps/marmot" test-root)))
+(parameterize ((current-directory (format "~a/apps/marmot" ws-root-dir)))
   (newline)
     
   (run-test "    Run Makefile   " "make")
@@ -626,7 +626,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 
-(parameterize ((current-directory (format "~a/apps/telos_audio" test-root)))
+(parameterize ((current-directory (format "~a/apps/telos_audio" ws-root-dir)))
   #;
   (run-test "ws: Running first speaker detection: "
 	    (format "ws mfcc1.ws -n 1 &> ~a/ws_mfcc1.log" test-directory))
@@ -660,15 +660,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 #|
 
-(parameterize ((current-directory (format "~a/apps/pipeline-web" test-root)))
+(parameterize ((current-directory (format "~a/apps/pipeline-web" ws-root-dir)))
   (run-test "ws: Running pipeline-web app:   " 
 	    (format "make test &> ~a/ws_pipeline-web.log" test-directory)))
 
-(parameterize ((current-directory (format "~a/apps/stockticks" test-root)))
+(parameterize ((current-directory (format "~a/apps/stockticks" ws-root-dir)))
   (run-test "ws: Running stockticks app:   "
 	    (format "make test &> ~a/ws_stockticks.log" test-directory)))
 
-(parameterize ((current-directory (format "~a/apps/pipeline" test-root)))
+(parameterize ((current-directory (format "~a/apps/pipeline" ws-root-dir)))
   (run-test "    Decompressing pipeline data   "  "bunzip2 pipeline1.data.bz2")
   (run-test "ws: Running pipeline app:    "
 	    (format "ws.debug pipeline.ws -n 10 -exit-error &> ~a/ws_pipeline.log" test-directory))
@@ -687,32 +687,32 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (fpf "\n\nPerformance benchmarks (all backends)\n")
   (fpf "========================================\n")
 
-  (parameterize ((current-directory (format "~a/benchmarks" test-root)))
+  (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
     
     ;; [2007.10.30] running stepts incrementally, so we see what fails:
     (run-test "    Setup Engines:             " 
 	      (format "make engine &> ~a/bench_setup.log" test-directory))
     (ASSERT (system "make topbefore"))
 
-    (current-directory (format "~a/benchmarks/microbench" test-root))
+    (current-directory (format "~a/benchmarks/microbench" ws-root-dir))
     (run-test "    Run microbenchmarks:              " 
 	      (format "make &> ~a/bench_micro.log" test-directory))
 
-    (current-directory (format "~a/benchmarks/language_shootout" test-root))
+    (current-directory (format "~a/benchmarks/language_shootout" ws-root-dir))
     (run-test "    Run language_shootout:       " 
 	      (format "make &> ~a/bench_shootout.log" test-directory))
 
     ;; [2008.08.01] Right now I'm having some occasional ikarus segfaults:
     ;(ASSERT (putenv "REGIMENTHOST" "plt"))
-    (current-directory (format "~a/benchmarks/appbench" test-root))
+    (current-directory (format "~a/benchmarks/appbench" ws-root-dir))
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))
     
-					;  (current-directory (format "~a/benchmarks/datareps" test-root))
+					;  (current-directory (format "~a/benchmarks/datareps" ws-root-dir))
 					;  (run-test "    Run datarep benchmarks:" 
 					;	    (format "make &> ~a/bench_datareps.log" test-directory))
 
-    (current-directory (format "~a/benchmarks" test-root))
+    (current-directory (format "~a/benchmarks" ws-root-dir))
     (run-test "    Verify dependencies, do conversions:" 
 	      (format "make alldeps &> ~a/bench_alldepscleanup.log" test-directory))
     
@@ -733,7 +733,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; TODO: Do other pothole variants.  pothole4 is just the one I know works.
 #;
 (begin (newline)
-       (current-directory (format "~a/apps/potholes" test-root))
+       (current-directory (format "~a/apps/potholes" ws-root-dir))
        (fpf "    Fetching pothole data                     ~a\n" 
 	    (code->msg! (system/timeout 
 	       (format "./download_small_sample_data  &> ~a/download_pothole_data.log" 
@@ -781,7 +781,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (define vitals (format "~a/vital_stats.txt" test-directory))
 (let* ([outp   (open-output-file vitals)])
-  (parameterize ((current-directory (format "~a/demos/wavescope" test-root)))
+  (parameterize ((current-directory (format "~a/demos/wavescope" ws-root-dir)))
 
     (fpf "\n\n  Sanity Checks:\n")
     (fpf "========================================\n")    
@@ -814,7 +814,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ) ;; End demos
 
   ;; --- We check the total memory footprint of the marmot app. ----  
-  (parameterize ((current-directory (format "~a/apps/marmot" test-root)))
+  (parameterize ((current-directory (format "~a/apps/marmot" ws-root-dir)))
     (system "cat marmot1_memprof.txt | grep -v '#' | tail -n 1  > .__last_line.txt")
     ;; Get the peak memory usage
     (let ([peak_vm (read (open-input-file ".__last_line.txt"))])
@@ -846,7 +846,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
-    (parameterize ((current-directory (format "~a/benchmarks" test-root)))
+    (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
       #;
       (fpf "Various results gathered into a table:    ~a\n"
 	   (code->msg! (system "gather_results.ss > results_table.txt")))
@@ -895,7 +895,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf (file->string "temp.log"))
 
 (fpf "repository's Petite Chez Scheme version:  ")
-(system (format "~a/depends/petite --version &> temp.log" test-root))
+(system (format "~a/depends/petite --version &> temp.log" ws-root-dir))
 (fpf (file->string "temp.log"))
 
 (fpf "Larceny Scheme version:  \n   ")
@@ -911,6 +911,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf "OCaml version:  \n   ")
 (fpf (system-to-str "ocaml -version"))
+
+(parameterize ([current-directory ws-root-dir])
+  (fpf "\nSVN log message:  \n   ")
+  (fpf (system-to-str "svn log -v -r PREV")))
 
 (close-output-port log)
 (define thesubj 

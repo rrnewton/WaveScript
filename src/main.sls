@@ -2010,10 +2010,13 @@
 	  [("-opt" ,name ,rest ...)
 	   ;(unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
 	   (set! name (string->symbol name))
-	   (unless (memq name '(rewrites fuse merge-iterates profile autosplit))
-	     (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
-	   (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
-	   (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))
+	   (if (eq? name 'maxinline)
+	       (ws-full-inline #t)
+	       (begin
+		 (unless (memq name '(rewrites fuse merge-iterates profile autosplit))
+		   (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
+		 (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
+		 (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))))	   
 	   (loop rest)]
 
 	  ;[("-profelements") ]

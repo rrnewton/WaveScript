@@ -297,6 +297,20 @@
 		   ,(Value
 		     (DriveInside (lambda () (make-rc 'decr-local-refcount ty lhs)) bod 
 				  ''unknown_result_ty #f))))]
+
+	   ;; [2008.08.08] Lambdas also introduce variable bindings, which need to be reference counted.	 
+	   [(lambda ,var* ,ty* ,bod)
+	    (if (andmap not-heap-allocated? ty*)
+		`(lambda ,var* ,ty* ,bod)
+		`(lambda ,var* ,ty* 
+			 (begin 
+			   ,@(map (lambda (var ty) (make-rc 'incr-local-refcount ty var )) var* ty*)
+			   ,(DriveInside (lambda ()
+					   `(begin 
+					      ,@(map (lambda (var ty)
+						       (make-rc 'decr-local-refcount ty var))
+						  var* ty*)))
+					 bod ''unknown_result_ty #f))))]
 	   
 	   [(let-not-counted ([,lhs ,ty ,[rhs]]) ,[bod])
 	    `(let-not-counted ([,lhs ,ty ,rhs]) ,bod)]
