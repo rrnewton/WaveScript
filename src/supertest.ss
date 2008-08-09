@@ -846,12 +846,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
     )
 
   ;; --- Check the size of generate .c files ---
+#|
   (let ([names (system-to-str "grep \"Running demo\" wsc2_demos.log  | awk '{ print $3 }' | sed 's/\.ws//'")]
 	[nums  (system-to-str "grep -A 1 \"Compiled .c output\" wsc2_demos.log  | grep query | awk '{ print $1 }'")])
     (fprintf (string->list))
     )
 
   "grep -A 1 \"Compiled .c output\" *build*.log | grep query | awk '{ print $1 $2 }' | sed 's/.log./ /'"
+|#
 
  
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
@@ -870,13 +872,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (fpf "~a" (file->string vitals)))
 
 ;; --- Compare against previous revision vitals ---
-;; This will write "perf_diffs.txt"
-(fpf "Performance differencing with previous revision...\n")
-(fpf "==================================================\n")
+;; This will write "perf_diffs.txt"a
+(fpf "\n\n  Performance differencing with previous revision...\n")
+(fpf     "====================================================\n")
 (system "./compare_to_previous_rev_stats.ss")
 (if (file-exists? "perf_diffs_thresholded.txt")
     (begin      
-      (fpf "Metrics differing over ten percent: ")
+      (fpf "Metrics differing over ten percent: \n")
       (fpf "~a" (file->string "perf_diffs_thresholded.txt")))
     (fpf "  Failed!\n"))
 
