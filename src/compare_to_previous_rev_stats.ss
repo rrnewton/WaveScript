@@ -119,7 +119,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (for-each print-entry diffs)))
 
 ;; Report perf diffs over a threshold (e.g. five percent)
-(define threshold-diff 0.05)
+;(define threshold-diff 0.05)
+(define threshold-diff 0.1)
 
 (with-output-to-file "perf_diffs_thresholded.txt"  
   (lambda ()

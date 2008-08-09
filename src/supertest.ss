@@ -846,10 +846,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
     )
 
   ;; --- Check the size of generate .c files ---
-; grep "Running demo" wsc2_demos.log  | awk '{ print $3 }' | sed 's/\.ws//'
-; grep -A 1 "Compiled .c output" wsc2_demos.log  | grep query | awk '{ print $1 }'
+  (let ([names (system-to-str "grep \"Running demo\" wsc2_demos.log  | awk '{ print $3 }' | sed 's/\.ws//'")]
+	[nums  (system-to-str "grep -A 1 \"Compiled .c output\" wsc2_demos.log  | grep query | awk '{ print $1 }'")])
+    (fprintf (string->list))
+    )
 
-; grep -A 1 "Compiled .c output" *build*.log | grep query | awk '{ print $1 $2 }' | sed 's/.log./ /'
+  "grep -A 1 \"Compiled .c output\" *build*.log | grep query | awk '{ print $1 $2 }' | sed 's/.log./ /'"
 
  
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
@@ -874,7 +876,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system "./compare_to_previous_rev_stats.ss")
 (if (file-exists? "perf_diffs_thresholded.txt")
     (begin      
-      (fpf "Metrics differing over five percent: ")
+      (fpf "Metrics differing over ten percent: ")
       (fpf "~a" (file->string "perf_diffs_thresholded.txt")))
     (fpf "  Failed!\n"))
 
