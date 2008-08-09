@@ -64,6 +64,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; We check up to 20 revisions in the past.
 (define startdir (current-directory))
+(define prev_file #f)
 (current-directory (getenv "HOME"))
 (define oldstats
   (call/cc 
@@ -76,9 +77,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	   (for-each (lambda (sym) 
 		       (let ([fn (format "~a/~a/src/vital_stats.txt" (getenv "HOME") sym)])
 			 (when (file-exists? fn)
-			   (printf "Found stats from most recent previous results: ~a\n" fn)			   
-			   (jumpout (file->linelists fn))
-			   )))
+			   (printf "Found stats from most recent previous results: ~a\n" fn)
+			   (set! prev_file #t)
+			   (jumpout (file->linelists fn)))))
 	     files))
 	 (loop (add1 i))
 	 ))
@@ -107,8 +108,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		    (pad-width 7 (caddr entry))
 		    (cadddr entry)))
 
-
-
 (when (file-exists? "perf_diffs.txt")             (delete-file "perf_diffs.txt"))
 (when (file-exists? "perf_diffs_thresholded.txt") (delete-file "perf_diffs_thresholded.txt"))
 
@@ -124,6 +123,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (with-output-to-file "perf_diffs_thresholded.txt"  
   (lambda ()
+    (printf "; Compared against ~a\n" prev_file)
     (for-each print-entry 
       (filter (lambda (entry) (or (< (car entry) (- 1.0 threshold-diff)) 
 				  (> (car entry) (+ 1.0 threshold-diff))))
