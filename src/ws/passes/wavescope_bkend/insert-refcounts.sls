@@ -486,7 +486,7 @@
 		  [global-union-types (cdr (project-metadata 'union-types prog))])
 	(match prog
 	  [(,input-language 
-	    '(graph (const (,cbv* ,cbty* ,cbexp*) ...)
+	    '(graph (const (,cbv* ,cbty* ,[Value+ -> cbexp*]) ...)
 		    (init  ,[Value+ -> init*] ...)
 		    (sources ((name ,nm) (output-type ,s_ty) (code ,[Value+ -> scode]) (outgoing ,down* ...)) ...)
 		    (operators ,[Operator -> oper*] ...)
