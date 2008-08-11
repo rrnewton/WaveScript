@@ -599,25 +599,18 @@
 		       [(Stream ,elt)
 			(define Server_bytes (unique-name "Server_bytes"))
 			(define Server_vals  (unique-name "Server_vals"))
-			`(letrec ([,Server_bytes 
+			`(let ([,Server_bytes 
 				   (Stream (Array Uint8))
 				   ;,var
 				   (iterate (annotations (name ,Server_bytes))
-					    (letrec (#;
-						     [stdin (Pointer "FILE*")
-							 (foreign-app '"fopen"
-								      (assert-type
-								       (String String -> (Pointer "FILE*"))
-								       (foreign '"fopen" '("stdio.h")))
-								      '"/dev/stdin" '"r")]
-						     [myin (Pointer "FILE*")
-							    (foreign-app '"ws_get_stdin"
-									 (assert-type ( -> (Pointer "FILE*"))
-										      (foreign '"ws_get_stdin" '())))]
-						     [myfread ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
-							    (assert-type
-							     ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
-							     (foreign '"fread" '("stdio.h")))])
+					    (let ([myin (Pointer "FILE*")
+							(foreign-app '"ws_get_stdin"
+								     (assert-type ( -> (Pointer "FILE*"))
+										  (foreign '"ws_get_stdin" '())))]
+						  [myfread ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
+							   (assert-type
+							    ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
+							    (foreign '"fread" '("stdio.h")))])
 					      (lambda (x vq) 
 						(#() (VQueue (Array Uint8)))
 						(let ([count_buf (Array Uint8) (Array:make '4 (assert-type Uint8 '0))])
@@ -637,29 +630,32 @@
 						    vq))))
 					    ;; This is arbitrary, should be infinity I suppose:
 					    ;,var
-					    (letrec ([mytimer (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
+					    (let ([mytimer (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
 					      (_merge (annotations) ,var mytimer))
-					    )]
-				  [,Server_vals (Stream ,elt)
-						(iterate (annotations (name ,Server_vals))
-							 (let ()
-							   (lambda (x vq) ((Array Uint8) (VQueue ,elt))
-								   (begin (emit (assert-type (VQueue ,elt) vq)
-										(assert-type ,elt (unmarshal x '0)))
-									  vq)))
-							 ,Server_bytes)])
-			   ,Server_vals)
-			]))]
+					    )])
+			   (let ([,Server_vals (Stream ,elt)
+					       (iterate (annotations (name ,Server_vals))
+							(let ()
+							  (lambda (x vq) ((Array Uint8) (VQueue ,elt))
+								  (begin (emit (assert-type (VQueue ,elt) vq)
+									       (assert-type ,elt (unmarshal x '0)))
+									 vq)))
+							,Server_bytes)])
+			     ,Server_vals
+			    ))]))]
 		  [else var])]
 
-	   [(letrec ([,lhs* ,ty* ,_rhs*] ...) ,_bod)	    
+	   ;; TODO: this is overly general: since we now sit after remove-letrec we don't need to handle letrec:
+	   [(,lett ([,lhs* ,ty* ,_rhs*] ...) ,_bod) (guard (memq lett '(letrec let)))
+	    ;; Note, this use of newenv is technically INCORRECT:
+	    ;; But if this is a let rather than a letrec, it shouldn't matter because of unique naming.
 	    (define newenv (tenv-extend tenv lhs* ty*))
 	    (define rhs* (map (lambda (x) (loop x newenv)) _rhs*))
 	    (define bod  (loop _bod newenv))
 	    ;; Danger, making ASSUMPTIONS about the naming conventions here:
 	    (define Node_bytes   (unique-name "Node_bytes")) 
 	    (define Node_writer  (unique-name "Node_writer"))
-	    `(letrec 
+	    `(,lett 
 		 ,(map (lambda (lhs ty rhs)
 			 (if (assq lhs cutstreams)
 			     (begin 
@@ -674,7 +670,7 @@
 				 [(Stream ,elt)
 				   ;; We'll want to replace this with different communication code down the road:
 				   ;; For now, we write to stdout, but we can't just use 'print', because of null characters.
-				  `(letrec ([,Node_bytes 
+				  `(let ([,Node_bytes 
 					     (Stream (Array Uint8))
 					     (iterate (annotations ) ; (name ,lhs)
 						      (let () 
@@ -687,23 +683,14 @@
 									       arr)
 									 vq)
 								  )))
-						      ,rhs)]
-					    [,Node_writer
+						      ,rhs)])
+				     (let ([,Node_writer
 					     (Stream #())
 					     (iterate (annotations)
-						      (letrec (
-							       ;; HACK: redirect normal output to stderr by overwriting 'stdout'
-							       #;
-							       [stdout (Pointer "FILE*")
-								    (foreign-app '"fopen"
-										 (assert-type
-										  (String String -> (Pointer "FILE*"))
-										  (foreign '"fopen" '("stdio.h")))
-										 '"/dev/stderr" '"a")]
-							       [myout (Pointer "FILE*")
-								      (foreign-app '"ws_get_stderr"
-										   (assert-type ( -> (Pointer "FILE*"))
-												(foreign '"ws_get_stderr" '())))])
+						      (let ([myout (Pointer "FILE*")
+								   (foreign-app '"ws_get_stderr"
+										(assert-type ( -> (Pointer "FILE*"))
+											     (foreign '"ws_get_stderr" '())))])
 							(lambda (x vq) ((Array Uint8) (VQueue #()))
 								(begin 	  
 								  (foreign-app '"fwrite" 
@@ -717,9 +704,9 @@
 									       myout)
 								  vq)))
 						      ,Node_bytes)])
-				     ,Node_writer
+				       ,Node_writer
 				     ;,Node_bytes
-				     )])))
+				       ))])))
 			     (list lhs ty rhs)))
 		    lhs* ty* rhs*)
 	       ,bod)]
@@ -1325,7 +1312,6 @@
 			   (not (type-containing-mutable? (export-type (type-const const))))
 			   (not (symbol? const))
 			   )
-		    (printf "LIFTING NAME-LESS CONSTANT: ~s\n" const)
 		    (let ([tmp (unique-name "tmpconstlift")])
 		      (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
 		      tmp)]

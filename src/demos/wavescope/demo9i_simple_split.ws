@@ -1,6 +1,9 @@
 
 // This tests wsc2's ability to do a split execution over two similar linux environments.
 
+// [2008.08.11] Currently you can run it with:
+//   ./query_client.exe 2>> /dev/stdout | ./query_server.exe 
+
 namespace Node {
 
   src = iterate _ in timer(3) { state { cnt = 0 } emit cnt; cnt += 1 }

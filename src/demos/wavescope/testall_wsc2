@@ -10,6 +10,9 @@ RUN=.__runquery_output_wsc2.txt
 
 OPTIONS=$*
 
+#LAUNCHIT=""
+LAUNCHIT="valgrind --leak-check=full"
+
 echo > $COMP
 echo > $RUN
 
@@ -28,7 +31,7 @@ function go () {
     #./query.exe -n 2 &> /dev/stdout >> $RUN
 
     # Would like to add --error-exitcode=99 except that currently demo4b generates errors.
-    (valgrind --leak-check=full ./query.exe -n 2 &> /dev/stdout) >> /tmp/foobar_$1
+    ($LAUNCHIT ./query.exe -n 2 &> /dev/stdout) >> /tmp/foobar_$1
 
     cat /tmp/foobar_$1 >> $RUN
     RETVAL=$?
@@ -119,7 +122,16 @@ go "demo9d_foreign_pointer.ws"
 go "demo9f_foreign_source.ws"
 
 # Complex, because it produces two executables:
-#go "demo9i_marshal.ws"
+# First we run it in normal, non-split mode:
+# go "demo9i_marshal.ws"
+go "demo9i_simple_split.ws" 
+# Then we split it:
+if ! wsc2 demo9i_simple_split.ws -split -exit-error
+then echo wsc2 Returned error code!; exit 1;  fi
+./query_client.exe 2>> /dev/stdout | ($LAUNCHIT ./query_server.exe -n 2  2>> /dev/stdout) >> $RUN
+RETVAL=$?
+echo Query returned with val: $RETVAL
+if [ "$RETVAL" != "0" ]; then exit 1; fi
 
 go "demo10a_simple_merge.ws"
 go "demo10b_repeated_rewindow.ws"

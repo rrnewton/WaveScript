@@ -51,6 +51,7 @@
 
 (define-regiment-parameter regiment-version "0.9?")
 
+;; Regiment compiler:
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
 (IFWAVESCOPE (begin)
@@ -166,9 +167,7 @@
     )))
 
 ; ==================================================================
-;; Functions for input/output to filesystem and for invoking compiler.
-
-
+;; Functions for input/output to filesystem and for invoking Regiment compiler.
 
 (IFWAVESCOPE
   (begin )
@@ -381,7 +380,6 @@
 	(loop (stream-cdr s))))))
 
     ))
-
 
 
 ;; ====================================================================================================
@@ -1354,7 +1352,7 @@
 			    ;(pretty-print (before-marshal-snapshot))
 			    (let ([x (insert-marshal-and-comm (before-marshal-snapshot) cutstreams)])
 			      (printf "INSERTED MARSHALING FOR CUTSTREAMS: ~s\n" cutstreams)	      
-			      (pretty-print x)
+			      ;(pretty-print x)
 			      ((before-marshal-hook) x)))
 			  
 			  ;; Otherwise, any cutpoints are of the right type Stream (Array Uint8).  We proceed.			  
