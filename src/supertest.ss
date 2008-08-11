@@ -262,6 +262,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
+(define svn-log-message (system-to-str "svn log -v -r HEAD:PREV"))
+
 (fprintf orig-console "SVN revision: ~a\n" svn-revision)
 
 ;; Here we begin running tests:
@@ -936,7 +938,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (parameterize ([current-directory ws-root-dir])
   (fpf "\nSVN log message:  \n   ")
-  (fpf (system-to-str "svn log -v -r HEAD:PREV")))
+  (fpf svn-log-message))
 
 (close-output-port log)
 (define thesubj 

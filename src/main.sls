@@ -850,8 +850,6 @@
 ]))
 ;; ================================================================================ ;;
 ;; ================================================================================ ;;
-
-
   
   ;; [2008.01.10] This is a need that pops up frequently.
   ;; When there's a stray datum that should be type annotated, this helps find it.
@@ -863,6 +861,129 @@
 			       asserts)
 		  (warning 'assure-type-annotated "object was not type annotated: ~s" hit)))
       hits))
+
+;; ================================================================================
+;; [2008.08.11] I would like to move to a system (again) that uses a
+;; first-class representation of the pass list.  This time I'm doing
+;; it with a more involved representation of the pass list.  The
+;; pass-list itself is a mini-language that allows me to:
+;;   (1) specify dependencies in terms of passes and additional "property" symbols
+;;   (2) print messages
+;;   (3) store and load values, as well as having them flow between consecutive passes
+;; ================================================================================
+
+;; Here's the grammar for an entry in the pass list:
+;;  [<num> string-to-print]  -- print message if over a given verbosity level.
+;;  [pass-name (input-deps ...) (output-deps ...) output-props ...]
+
+;;    -- Execute a given pass.  The pass-name must evaluate to a
+;;    procedure implementing that pass (a single-input single output
+;;    function).  This symbol name is evaluated using 'eval in the
+;;    environment provided by main.sls as well as common.sls.
+;;    Input-deps are passes (or property symbols) that must have
+;;    occured before this pass executes.  Output-deps are passes that
+;;    must occur at some point after this pass executes.  Output-props
+
+;;    All the
+;;    fields after the pass-name are optional.
+
+;; Compile-until-typed
+#;
+(define just-until-typed-passes
+  '([verify-regiment]
+    [pass_desugar-pattern-matching]
+    [resolve-varrefs]
+    [resolve-type-aliases]
+    [ws-label-mutable]
+    [early-typecheck]
+    ))
+
+#;
+(define main-ws-passes 
+ '(
+  [rename-vars () ()]
+  [desugar-misc () ()]
+  [remove-unquoted-constant () ()]
+  [optional-rewrite-rule-block () ()]
+  ;[optional-merge-iterates () ()]
+  [metaprog-eval-block () ()]
+  [rename-vars () ()]
+  [remove-complex-constant () ()]
+                                                (DEBUG late-typecheck)
+  [degeneralize-arithmetic () ()]
+                                                (DEBUG late-typecheck)
+  [strip-unnecessary-ascription () ()]
+  [anihilate-higher-order () ()]
+  [lift-polymorphic-constant () ()]
+   [late-typecheck]
+  [strip-irrelevant-polymorphism () ()]
+  [unlift-polymorphic-constant () ()]
+  [split-union-types () ()]
+  [verify-elaborated () () monomorphic]
+                                                (DEBUG optional-print-var-types)
+
+   [late-typecheck]
+  ;; dump .__monomorphic
+  [1 "Monomorphism achieved.\n"]
+  [reduce-primitives () ()]
+                                                (DEBUG late-typecheck)
+  [type-annotate-misc () ()]
+  [optional-explicit-toplevel-print () ()]
+  [optimize-print-and-show () ()]
+  [generate-printing-code () ()]
+
+  [optional-embed-strings-as-arrays () ()]
+  ;; Hack, grab continuation into before-marshal-hook
+  
+  [generate-marshal-code () ()]
+  [optional-generate-comparison-code () ()]
+  [remove-letrec () () single-bind-let]
+                                                (DEBUG late-typecheck)
+  [standardize-iterate]
+  ;[optional-simple-merge-block]
+  [ws-remove-complex-opera*]
+  [lift-immutable-constants]
+                                                (DEBUG late-typecheck)  
+  [ws-normalize-context]
+  [ws-lift-let]
+  [propagate-copies] ;; optimization
+   [late-typecheck]
+  ;; dump .__nocomplexopera
+  [type-annotate-misc]
+  [reify-certain-types]
+  [optional-scheme-profile]
+  [remove-IFPROFILE]  ))
+
+#; 
+(define wsc2-marshal-split-passes
+  '(
+    [partition-graph-by-namespace]
+    [get-server-cut-points] ;; And store where? in metadata?
+    [SAVE cut-points]
+    [LOAD before-marshal] ;; Zoom way back to an earlier state of the compilation.
+    [(insert-marshal-and-comm (LOAD cut-points))]
+    ;; REWIND ... but only IF there were cut streams of the wrong types.
+    ))
+#;
+(define wsc2-last-passes
+  '([classify-emits]
+    [optional-insert-refcounts]
+    [flag-static-allocate]
+    [optional-postRC-cleanup-typecheck-hack]
+    ;; 3 .__after_refcounts.ss[]
+    [choose-emit-c2-variant]
+    ))
+
+;(run-ws-)
+#|
+
+(member '(SAVE before-marshal))
+(append just-until-typed-passes main-ws-passes
+	wsc2-marshal-split-passes
+	(assq 'generate-marshal-code main-ws-passes)
+	wsc2-last-passes)
+
+|#
 
 ;; ================================================================================
 ;; For usability, the below ws* procedures (wsint wscomp wscaml wsmlton...) can 

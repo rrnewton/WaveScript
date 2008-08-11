@@ -1242,6 +1242,7 @@
 
 ;; Any complex (immutable) constants are lifted to the top of the program.
 ;; Assumes unique variable names (a la rename-vars).
+#;
 (define-pass lift-immutable-constants
     (define acc '()) ;; Accumulates constant bindings.
   ;;[OutputProps (not single-bind-let)] ;; [2008.08.11] Made them nested
@@ -1279,43 +1280,57 @@
 		 (match prog 
 		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
 		   `(,lang '(program ,(make-nested-lets acc bod) ,@meta*))])))])
-#;
+
+;; [2008.08.11] Extending this to lift out lambdas also.  Modifying it
+;; to catch immutable constants (including first-order functions) at
+;; let-binding sites.  This pass assumes that the lambdas will have no
+;; freevars, but does not verify it.  Note, this will lift all lambdas
+;; up to the top, even those that are already there, or in the
+;; state-fields of an iterate.
 (define lift-immutable-constants
   (let ()
     (define acc '()) ;; Accumulates constant bindings.
     (define (Expr inside-iter?)
-      (core-generic-traverse/types
+      (core-generic-traverse
        (lambda (xp fallthru)
 	 (match xp ;; No recursion!!
 	   ;; This is troublesome, readFile should really be a special
 	   ;; syntax at this point, not masquerading as a primitive application.
 	   [(readFile ,annot ',str1 ',str2 ,[strm])
 	    (ASSERT string? str1) (ASSERT string? str2)
-	    `(readFile ,annot ',str1 ',str2 ,strm)]
+	    `(readFile ,annot ',str1 ',str2 ,strm)]	   
 	   [(,totally_ignored (quote ,args) ...)
 	    (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
-	    xp;(cons totally_ignored _)
-	    ]
-	   #;
-	   [(,ignore_first ,_ ,[second])
-	    (guard (memq ignore_first '(foreign foreign_source)))
-	    `(,ignore_first ,_ ,second)]
-	   [(,safety . ,_) 
-	    (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile)))
-	    (error 'lift-immutable-constants "missed this: ~s" (cons safety _))]
+	    xp]	 
+	   [(iterate ,annot (let ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
+	    `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,((Expr #t) bod)) ,strm)]
+	   
+	   [(let ([,lhs ,ty ,[rhs]]) ,[bod])
+	    (match rhs
+	      [(lambda . ,_)
+	       (set! acc (cons (list lhs ty rhs) acc))
+	       bod]
+	      [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
+			      ;(not (type-containing-mutable? (export-type (type-const const))))
+			      (not (type-containing-mutable? ty))
+			      (not (symbol? const)))
+	       (set! acc (cons (list lhs ty rhs) acc))
+	       bod]
+	      [,oth `(let ([,lhs ,ty ,rhs]) ,bod)])]
 
-	   [(iterate ,annot ,letorlam ,[strm])
-	    (match letorlam )
-	    ]
 
-	   [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
+	   ;; Strings might be found outside of the let-RHS position:
+	   [',const (guard (string? const))
+		    (let ([tmp (unique-name "tmpconstlift")])
+		      (set! acc (cons `(,tmp String ',const) acc))
+		      tmp)]
+	   [',const (guard (not (simple-constant? const))
 			   (not (type-containing-mutable? (export-type (type-const const))))
-			   (not (symbol? const))
-			   )
-	  ;(printf "  LIFTING CONSTANT: ~s\n" const)
-	  (let ([tmp (unique-name "tmpconstlift")])
-	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
-	    tmp)]
+			   (not (symbol? const)))
+		    (error 'lift-immutable-constants "came across non-simple constant in non let-rhs position: '~s" const)]
+	   [(,safety . ,_) 
+	    (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile let)))
+	    (error 'lift-immutable-constants "missed this: ~s" (cons safety _))]	   
 	   [,oth (fallthru oth)]))))
    (lambda (prog)
      (fluid-let ([acc '()])       
