@@ -698,14 +698,14 @@
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
+
   ;; Now that we're done with elaboration we should take the stream
   ;; processing spine, convert it to let.
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
   (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
-
-  ;; Should happen before embed-strings-as-arrays
-  (ws-run-pass p lift-immutable-constants)
+  
+  (ws-run-pass p lift-immutable-constants) ;; Should happen before embed-strings-as-arrays
 
   ;; To reduce the complexity of the wsc2 backend, we get rid of strings:
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
@@ -740,7 +740,7 @@
   ;(ws-run-pass p purify-letrec)
   ;; This is what we need to do.
 
-  ;(ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
+  ;; remove-letrec was here
   
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
@@ -769,9 +769,7 @@
 
   (ws-run-pass p ws-remove-complex-opera*)
 
-  ;(ws-run-pass p lift-immutable-constants) ;; Should happen before embed-strings-as-arrays
-
-  ;(ws-run-pass p lift-out-lambdas)
+  (ws-run-pass p lift-closed-monolambdas)
 
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
@@ -946,7 +944,9 @@
                                                 (DEBUG late-typecheck)
   [standardize-iterate]
   ;[optional-simple-merge-block]
-  [ws-remove-complex-opera*]
+  [ws-remove-complex-opera* () () simple-opera*]
+  [lift-closed-monolambdas (simple-opera*)]
+
   [lift-immutable-constants ((not optional-embed-strings-as-arrays)) () ]
                                                 (DEBUG late-typecheck)  
   [ws-normalize-context]

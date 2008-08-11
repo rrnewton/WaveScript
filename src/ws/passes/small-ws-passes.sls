@@ -11,6 +11,7 @@
 	   unlift-polymorphic-constant
 	   strip-irrelevant-polymorphism strip-polymorphic-type
 	   lift-immutable-constants
+	   lift-closed-monolambdas
 	   strip-src-pos
 	   remove-IFPROFILE
 	   ;purify-letrec  ;; Disabled
@@ -1242,6 +1243,7 @@
 
 ;; Any complex (immutable) constants are lifted to the top of the program.
 ;; Assumes unique variable names (a la rename-vars).
+#;
 (define-pass lift-immutable-constants
     (define acc '()) ;; Accumulates constant bindings.
   ;;[OutputProps (not single-bind-let)] ;; [2008.08.11] Made them nested
@@ -1287,7 +1289,6 @@
 ;; freevars, but does not verify it.  Note, this will lift all lambdas
 ;; up to the top, even those that are already there, or in the
 ;; state-fields of an iterate.
-#;
 (define lift-immutable-constants
   (let ()
     (define acc '()) ;; Accumulates constant bindings.
@@ -1302,16 +1303,15 @@
 	    `(readFile ,annot ',str1 ',str2 ,strm)]	   
 	   [(,totally_ignored (quote ,args) ...)
 	    (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
-	    xp]	 
+	    xp]
 	   [(iterate ,annot (let ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
 	    `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,((Expr #t) bod)) ,strm)]
 	   
-	   ;; Catch them at their binding sites:
+	   ;; Catch them at their binding sites if we can:
 	   [(let ([,lhs ,ty ,[rhs]]) ,[bod])
 	    (match rhs
-	      [(lambda . ,_)
-	       (set! acc (cons (list lhs ty rhs) acc))
-	       bod]
+	      #;
+	      [(lambda . ,_)   (set! acc (cons (list lhs ty rhs) acc))     bod]
 	      [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
 			      ;(not (type-containing-mutable? (export-type (type-const const))))
 			      (not (type-containing-mutable? ty))
@@ -1320,7 +1320,16 @@
 	       bod]
 	      [,oth `(let ([,lhs ,ty ,rhs]) ,bod)])]
 
-	   ;; OPTION 2: we don't catch them at the binding sites.  We just catch them wherever.
+	   ;; If we don't catch them at the binding sites, we introduce a temporary:
+	   [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
+			   (not (type-containing-mutable? (export-type (type-const const))))
+			   (not (symbol? const))
+			   )
+		    (printf "LIFTING NAME-LESS CONSTANT: ~s\n" const)
+		    (let ([tmp (unique-name "tmpconstlift")])
+		      (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
+		      tmp)]
+
 	   #;
 	   [(lambda ,args ,argty* ,[bod]) (guard inside-iter?)
 	    (let ([tmp (unique-name "tmpfunlift")])
@@ -1328,6 +1337,7 @@
 	      tmp)]
 
 	   ;; Strings might be found outside of the let-RHS position:
+#|
 	   [',const (guard (string? const))
 		    (let ([tmp (unique-name "tmpconstlift")])
 		      (set! acc (cons `(,tmp String ',const) acc))
@@ -1336,6 +1346,8 @@
 			   (not (type-containing-mutable? (export-type (type-const const))))
 			   (not (symbol? const)))
 		    (error 'lift-immutable-constants "came across non-simple constant in non let-rhs position: '~s" const)]
+|#	   
+
 	   [(,safety . ,_) 
 	    (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile let)))
 	    (error 'lift-immutable-constants "missed this: ~s" (cons safety _))]	   
@@ -1346,6 +1358,30 @@
 				(let ([newbod ((Expr #f) bod)])
 				  (make-nested-lets acc newbod))) 
 			      prog)))))
+
+(define lift-closed-monolambdas
+  (let ()
+    (define acc '()) ;; Accumulates lambda bindings.
+    (define (Expr inside-iter?)
+      (core-generic-traverse
+       (lambda (xp fallthru)
+	 (match xp ;; No recursion!!	 
+	   [(iterate ,annot (let ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
+	    `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,((Expr #t) bod)) ,strm)]	   
+	   [(let ([,lhs ,ty ,[rhs]]) ,[bod]) ;; Catch them at their binding sites
+	    (match rhs
+	      [(lambda . ,_)
+	       (set! acc (cons (list lhs ty rhs) acc))
+	       bod]
+	      [,oth `(let ([,lhs ,ty ,rhs]) ,bod)])]
+	   [,oth (fallthru oth)]))))
+   (lambda (prog)
+     (fluid-let ([acc '()])       
+       (apply-to-program-body (lambda (bod)
+				(let ([newbod ((Expr #f) bod)])
+				  (make-nested-lets acc newbod))) 
+			      prog)))))
+
 
 
 ;(define (is-in-Node-namespace? name))
