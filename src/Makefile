@@ -669,24 +669,33 @@ upload:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
 
 
+#awkit=awk '{ print \\$1" +"}'
 
 wc:        wordcount
 count:     wordcount
 linecount: wordcount
 wordcount:
 	echo;echo "total for Scheme code:" > .wc_tmp.txt
-	find -name "*.ss" | grep -v "/parser/" | grep -v "wavescript_temp" | xargs wc >> .wc_tmp.txt
+	find -name "*.ss" | grep -v "/parser/" | grep -v "old" | grep -v "scrap" | grep -v "\.__" | grep -v "\.#" | xargs wc >> .wc_tmp.txt
+	echo;echo "total for r6rs Scheme code:" >> .wc_tmp.txt
+	find -type f -name "*.sls" | grep -v "/parser/" | xargs wc >> .wc_tmp.txt
 	echo;echo "total for .rs code:" >> .wc_tmp.txt
 	find -name "*.rs" | xargs wc >> .wc_tmp.txt
 	echo;echo "total for token machine code:" >> .wc_tmp.txt
 	find -name "*.tm" | xargs wc >> .wc_tmp.txt
 	echo;echo "total for wavescript code:" >> .wc_tmp.txt
-	find ../ -name "*.ws" | xargs wc >> .wc_tmp.txt
+	find ../ -type f -name "*.ws" | grep -v "\.#" | xargs wc >> .wc_tmp.txt
 	echo;echo "total for c/c++ code:" >> .wc_tmp.txt
-	(find ../ -name "*.h";  find ../ -name "*.hpp"; find ../ -name "*.cpp"; find ../ -name "*.c";) | xargs wc >> .wc_tmp.txt
+	(find ../ -name "*.h";  find ../ -name "*.hpp"; find ../ -name "*.cpp"; find ../ -name "*.c";) | grep -v "\.#" | grep -v "query" | xargs wc >> .wc_tmp.txt
 	@echo;echo;
 	@cat .wc_tmp.txt | grep total
 	@echo;echo TOTAL total:
+	@cat .wc_tmp.txt | ./depends/add_first_column.sh
+# Can't figure out the quoting for $1!!
+#	cat .wc_tmp.txt | grep total | grep -v code | awk '{ print $1" +"}' > .add_totals.txt
+#	(echo 0; cat .add_totals; echo p)  | dc
+
+#	cat .wc_tmp.txt | grep total | grep -v code | awk '{ print $1" +"}' > .add_totals.txt
 
 wcnb:
 	sh -c "ls *.ss ws/*.ss chez/*.ss plt/*.ss ws/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"

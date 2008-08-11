@@ -22,7 +22,10 @@ fun amplify(n,s)
 // We put an amplifier on it, so we don't have to run the actual timer source at a high rate.
 mytimer = amplify(1000, timer(10.0))
 
-file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ", 
+// [2008.08.11] This file should be symlinked to some large file on the local disk:
+file = (readFile(//"/tmp/dummyfile.bin", 
+                 "6sec_marmot_sample.raw", 
+                 "mode: binary window: 16384 ", 
 	         mytimer)
      :: Stream (Sigseg (Int16)))
 
