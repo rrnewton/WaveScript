@@ -26,7 +26,8 @@
 // the generated WS code, short-circuiting the copy should only happen
 // in "-O3" where unsafe optimizations are permitted.
 
-file = (readFile("/tmp/dummyfile.bin", "mode: binary window: 16384 ", 
+file = (readFile("6sec_marmot_sample.raw", 
+                 "mode: binary window: 16384 ", 
 	         timer(10.0))
      :: Stream (Sigseg (Int16)))
 
