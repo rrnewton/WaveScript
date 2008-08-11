@@ -78,7 +78,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		       (let ([fn (format "~a/~a/src/vital_stats.txt" (getenv "HOME") sym)])
 			 (when (file-exists? fn)
 			   (printf "Found stats from most recent previous results: ~a\n" fn)
-			   (set! prev_file #t)
+			   (set! prev_file fn)
 			   (jumpout (file->linelists fn)))))
 	     files))
 	 (loop (add1 i))
