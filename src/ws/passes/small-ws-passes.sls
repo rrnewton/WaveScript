@@ -1236,38 +1236,15 @@
        (reconstr vars (map Type types) (map exprfun exprs)))])
 
 
-
+;; [2008.08.11]
+;; This is similar to lift-immutable-constants, but happens later.
+;(define-pass lift-out-lambdas )
 
 ;; Any complex (immutable) constants are lifted to the top of the program.
 ;; Assumes unique variable names (a la rename-vars).
-#;
-(define-pass lift-immutable-constants ;lift-complex-constants
-  [InputProps unique-names]
-  [Expr (lambda (xp fallthr)
-	  (match xp
-	    [',c 
-	     (guard (or (string? c) (not (simple-constant? c))) ;; Allowing strings!
-		    (not (type-containing-mutable? (export-type (type-const c)))))
-	     (printf "  LIFTING CONSTANT: ~s\n" c)
-	     (let ([tmp (unique-names "cnstlift")])
-	       (vector tmp `([,tmp ,(export-type (type-const '(1 2 3))) ',c])))
-	     ]))]
-  [Fuser (lambda (ls k)
-	   (match ls
-	     [(#(,expr* ,bind*) ...)
-	      (vector (apply k expr*)
-		      (apply append bind*))]))]
-  [Program
-   (lambda (pr Expr)
-     (match pr
-       [(,lang '(program ,[Expr -> bod cbinds] ,meta* ... ,topty))
-	`(,lang '(program (let ,cbinds ,bod) ;,(make-nested-lets cbinds bod)
-		   ,meta* ... ,topty))
-	]))])
-
 (define-pass lift-immutable-constants
     (define acc '()) ;; Accumulates constant bindings.
-    [OutputProps (not single-bind-let)]
+  ;;[OutputProps (not single-bind-let)] ;; [2008.08.11] Made them nested
     [Expr 
      (lambda (xp fallthru)
        (match xp ;; No recursion!!
@@ -1301,7 +1278,52 @@
 	       (fluid-let ([acc '()])
 		 (match prog 
 		   [(,lang '(program ,[Expr -> bod] ,meta* ...))
-		   `(,lang '(program (let ,acc ,bod) ,@meta*))])))])
+		   `(,lang '(program ,(make-nested-lets acc bod) ,@meta*))])))])
+#;
+(define lift-immutable-constants
+  (let ()
+    (define acc '()) ;; Accumulates constant bindings.
+    (define (Expr inside-iter?)
+      (core-generic-traverse/types
+       (lambda (xp fallthru)
+	 (match xp ;; No recursion!!
+	   ;; This is troublesome, readFile should really be a special
+	   ;; syntax at this point, not masquerading as a primitive application.
+	   [(readFile ,annot ',str1 ',str2 ,[strm])
+	    (ASSERT string? str1) (ASSERT string? str2)
+	    `(readFile ,annot ',str1 ',str2 ,strm)]
+	   [(,totally_ignored (quote ,args) ...)
+	    (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
+	    xp;(cons totally_ignored _)
+	    ]
+	   #;
+	   [(,ignore_first ,_ ,[second])
+	    (guard (memq ignore_first '(foreign foreign_source)))
+	    `(,ignore_first ,_ ,second)]
+	   [(,safety . ,_) 
+	    (guard (memq safety '(inline_C inline_TOS foreign foreign_source readFile)))
+	    (error 'lift-immutable-constants "missed this: ~s" (cons safety _))]
+
+	   [(iterate ,annot ,letorlam ,[strm])
+	    (match letorlam )
+	    ]
+
+	   [',const (guard (or (string? const) (not (simple-constant? const))) ;; Allowing strings!
+			   (not (type-containing-mutable? (export-type (type-const const))))
+			   (not (symbol? const))
+			   )
+	  ;(printf "  LIFTING CONSTANT: ~s\n" const)
+	  (let ([tmp (unique-name "tmpconstlift")])
+	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
+	    tmp)]
+	   [,oth (fallthru oth)]))))
+   (lambda (prog)
+     (fluid-let ([acc '()])       
+       (apply-to-program-body (lambda (bod)
+				(let ([newbod ((Expr #f) bod)])
+				  (make-nested-lets acc newbod))) 
+			      prog)))))
+
 
 ;(define (is-in-Node-namespace? name))
 

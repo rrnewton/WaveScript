@@ -698,11 +698,7 @@
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
 
-
-  (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
-  (ws-run-pass p lift-immutable-constants)
-
-  ;(pretty-print p)
+  ;(ws-run-pass p lift-immutable-constants) ;; Moving below...
 
   ;; To reduce the complexity of the wsc2 backend, we get rid of strings:
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
@@ -741,7 +737,7 @@
   ;; processing spine, convert it to let.
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
-  ;(ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
+  (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
   (ws-run-pass p standardize-iterate) ;; no fuse
@@ -768,6 +764,9 @@
 ;  (profile-clear)
 
   (ws-run-pass p ws-remove-complex-opera*)
+
+  (ws-run-pass p lift-immutable-constants)
+  ;(ws-run-pass p lift-out-lambdas)
 
   ;; Don't do this yet!!  (At least make it debug only.)
   ;; Remove-complex-opera* added new type variables, but delay a
