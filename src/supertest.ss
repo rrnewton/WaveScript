@@ -797,12 +797,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ;; I can't make sense of it.   Almost seems like valgrind is wrong.
       (system "uname -m > machine_type.txt")
       (unless (equal? "x86_64" (file->string "machine_type.txt"))
-	(fpf "Verify no leaks in demos (refcount):          ~a\n" (code->msg! (<= lost_blocks 1))))
+	(fpf "Verify no leaks in demos (refcount):          ~a\n" (code->msg! (if (<= lost_blocks 1) 0 lost_blocks))))
       )
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (read (open-input-string (file->string "lost_blocks.txt")))])
       (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a\n" lost_blocks)
-      (fpf "Verify no leaks in demos (deferred):          ~a\n" (code->msg! (<= lost_blocks 1)))
+      (fpf "Verify no leaks in demos (deferred):          ~a\n" (code->msg! (if (<= lost_blocks 1) 0 lost_blocks)))
       )    
 
     ;; --- We also check the valgrind traces for errors ----

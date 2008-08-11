@@ -1788,3 +1788,31 @@ honor has sse4.  With -ipo -x0 -no-prec-div it does slightly better
 than -O3 alone.  -xT is also bad.  -xW is good.
 
 
+[2008.08.11] {I'd prefer to measure tuples/second rather than seconds/tuple}
+
+The benchmarking framework measures time elapsed.  This has a problem.
+We don't want any time measurement that's too small, but if I scale up
+execution so that the fastest always takes over, say, a second.  Then
+the slowest may take an enormous amount of time.
+
+It would be nicer to measure how much work can be accomplished in a
+fixed time.  Killing the process from the outside would probably not
+be very accurate.  It would also mean that there would be no way to
+count partially completed work (e.g. 1.5 tuples in a second), and I
+would need to ensure that all benchmarks are fine-grained (i.e. many
+tuples output per second).
+
+The alternative would be to have the process limit itself, but only
+quit after an integral number of output tuples.  This could be done by
+modifying all backends to take a time limit as well as a tuple limit.
+Or perhaps this could be accomplished as a compiler pass, much like
+explicit-toplevel-print, by simply checking the clock() on every
+output tuple, and optionally exiting.  In this scenario, the actual
+time consumed by the process would be greater than or equal to the
+time cutoff.  Then we would do a division to normalize this number to
+tuples-per-second.  The nice part would be that we'd get at least one
+output-tuple for every run, so we wouldn't get spurious "0" rates.
+
+Finally, there will be a presentation problem with graphing
+tuples/second.  Each benchmark will need to be normalized separately,
+because different benchmarks will have wildly varying tuples/second.

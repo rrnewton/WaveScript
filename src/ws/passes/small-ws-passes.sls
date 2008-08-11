@@ -1242,7 +1242,6 @@
 
 ;; Any complex (immutable) constants are lifted to the top of the program.
 ;; Assumes unique variable names (a la rename-vars).
-#;
 (define-pass lift-immutable-constants
     (define acc '()) ;; Accumulates constant bindings.
   ;;[OutputProps (not single-bind-let)] ;; [2008.08.11] Made them nested
@@ -1274,6 +1273,7 @@
 	  (let ([tmp (unique-name "tmpconstlift")])
 	    (set! acc (cons `(,tmp ,(type-const const) ',const) acc))
 	    tmp)]
+	 
 	 [,oth (fallthru oth)]))]
     [Program (lambda (prog Expr)
 	       (fluid-let ([acc '()])
@@ -1287,6 +1287,7 @@
 ;; freevars, but does not verify it.  Note, this will lift all lambdas
 ;; up to the top, even those that are already there, or in the
 ;; state-fields of an iterate.
+#;
 (define lift-immutable-constants
   (let ()
     (define acc '()) ;; Accumulates constant bindings.
@@ -1305,6 +1306,7 @@
 	   [(iterate ,annot (let ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
 	    `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,((Expr #t) bod)) ,strm)]
 	   
+	   ;; Catch them at their binding sites:
 	   [(let ([,lhs ,ty ,[rhs]]) ,[bod])
 	    (match rhs
 	      [(lambda . ,_)
@@ -1318,6 +1320,12 @@
 	       bod]
 	      [,oth `(let ([,lhs ,ty ,rhs]) ,bod)])]
 
+	   ;; OPTION 2: we don't catch them at the binding sites.  We just catch them wherever.
+	   #;
+	   [(lambda ,args ,argty* ,[bod]) (guard inside-iter?)
+	    (let ([tmp (unique-name "tmpfunlift")])
+	      (set! acc (cons `(,tmp ,??? (lambda ,args ,argty* ,bod)) acc))
+	      tmp)]
 
 	   ;; Strings might be found outside of the let-RHS position:
 	   [',const (guard (string? const))

@@ -5,6 +5,21 @@ START=`pwd`
 
 source ../shared.sh
 
+ONE=/tmp/one_`date +%s`
+TWO=/tmp/two_`date +%s`
+DUMMYFILE=/tmp/dummy_`date +%s`_.bin
+
+echo " Building a big binary file in /tmp/ to use as input..."
+# This makes a 500MB file.
+rm -f $ONE $TWO
+echo "nonsenseseednonsenseseednonsenseseednonsenseseednonsenseseed" > $ONE
+for ((i = 1; i <= 17; i++)); do 
+  cat $ONE >> $TWO
+  cat $TWO >> $ONE
+done
+mv $ONE $DUMMYFILE
+rm -f $TWO
+
 ## ================================================================================ ##
 echo;echo;echo " *** Running misc microbenchmarks  Takes approx ?? minutes. ***"; echo; 
 
@@ -16,7 +31,7 @@ mkdir $TEMP
 # ./download_small_sample_data
 # cp 6sec_marmot_sample.raw "$START"/
 # cd $START
-ln -f -s /tmp/dummyfile.bin 6sec_marmot_sample.raw
+ln -f -s $DUMMYFILE 6sec_marmot_sample.raw
 
 ## This is ugly, but for supporting the new C++ backend, this needs to
 ## know how to limit the work via input tuples or output tuples.
@@ -49,3 +64,6 @@ runallbackends fft                $TEMP 1  300
 mv RESULTS.txt RESULTS_misc.txt
 
 dump_plot_script ./plot_misc.gp RESULTS_misc.txt
+
+# Cleanup by killing that big old file:
+rm -f $DUMMYFILE
