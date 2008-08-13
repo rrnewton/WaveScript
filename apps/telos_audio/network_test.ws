@@ -52,13 +52,15 @@ Node:src = timer$ maxrate;
 //Node:src = read_telos_audio(100, 200)
 
 Node:strm = iterate arr in Node:src {
-  state { nextlvl :: Int16 = 0;  
+  state { 
           cur :: Int16 = 0;       // our counter
+	  nextlvl :: Int16 = 0;  // A separate counter for advancing the epoch.
+
 	  // The size of the wait between firings (which decreases):
           cap :: Int16 = maxrate; // Start off w/ one msg/sec
 	  // Every epoch we change rate:
-	  epochnum :: Int16 = 0;
-	  msgcounter :: Int16 = 0;
+	  epochnum :: Int16 = 0;   // Count elapsed epochs
+	  msgcounter :: Int16 = 0; // Count sent messages
 
 	  // NEW SYSTEM:
 	  // Increment the rate (in msgs per second), and then map that onto period:
@@ -74,7 +76,9 @@ Node:strm = iterate arr in Node:src {
   id = getID();
   //payload = maxPayloadLength(); // 28 by default.
   dropped = getDroppedInputCount();
-  
+
+  // Due to very limited marshaling interface from tinyOS, we pass back only an array of numbers.
+
   //arr[0] := cnt;
   //toparr[0] := (cast_num(id) :: Int16);
   toparr[0] := Int16! id;
@@ -104,6 +108,7 @@ Node:strm = iterate arr in Node:src {
   //emit zeroarr;
   //if foo then emit toparr;
 
+  // If we get to the next round we change the timing.
   if nextlvl == epoch then {
     nextlvl := 0;
     msgcounter := 0;

@@ -295,7 +295,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
-#|
 (fpf      "Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: extract chez-compatible source from R6RS code:" "./temporary_smoosh_to_one_chez_file.ss")
@@ -324,7 +323,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 (run-test "chez: Build C extensions:" "make c &> gcc_BUILD_C_EXTENSIONS.log")
-|#
 
 ;; Now clean again:
 ;(ASSERT (system "make clean > make_clean2.log"))
@@ -493,10 +491,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
-;   (ASSERT (putenv "REGIMENTHOST" "chez"))
-;   (run-test "wsc2: Demos, boehm RC (chez):"
-; 	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
-;   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
+  (ASSERT (putenv "REGIMENTHOST" "chez"))
+  (run-test "wsc2: Demos, boehm RC (chez):"
+	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
+  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
 
   (ASSERT (putenv "REGIMENTHOST" ""))
 
@@ -637,11 +635,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "ws: Running first speaker detection: "
 	    (format "ws mfcc1.ws -n 1 &> ~a/ws_mfcc1.log" test-directory))
 
+  ;; [2008.08.13] Mysterious ikarus crashes here, use PLT instead:
+  ;(ASSERT (putenv "REGIMENTHOST" "plt"))
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling first speaker detect: "
 	    (format "wsc2 mfcc1.ws  &> ~a/wsc2_build_mfcc1.log" test-directory))
   (run-test "wsc2:  Running first speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc1.log" test-directory))
+  ;(ASSERT (putenv "REGIMENTHOST" ""))
 
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed pt speaker detect: "
