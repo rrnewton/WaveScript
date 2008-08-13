@@ -684,6 +684,7 @@ implementation {
   bool did_i_emit = FALSE;
   // This lets us know if its safe to put a tuple in play:
   bool ws_currently_running = 0;
+  // This tracks (or will track) the number of missed ticks/samples on the INPUT side:
   int32_t input_items_lost = 0;
 
   /* Prototypes */

@@ -4,15 +4,24 @@
 // [2008.08.11] Currently you can run it with:
 //   ./query_client.exe 2>> /dev/stdout | ./query_server.exe 
 
+gethostname :: (Array Char, Int) -> Int = foreign("gethostname", ["unistd.h"]);
+
 namespace Node {
 
   src = iterate _ in timer(3) { state { cnt = 0 } emit cnt; cnt += 1 }
   
   echosrc = iterate reading in src { 
-    //print(" client: got timer tick: "++reading++"\n");
+
+    host = Array:make(100,'_');
+    result = gethostname(host, Array:length(host));
+    host_str = String:implode $ Array:toList $ host;
+
     emit (reading, 
 	  List:build(10, fun(i) reading),
-          Array:build(10, fun(i) reading));
+          Array:build(10, fun(i) reading),
+	  result,
+	  host_str
+	  );
   };
 }
 

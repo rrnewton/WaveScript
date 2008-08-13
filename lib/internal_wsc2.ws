@@ -52,3 +52,15 @@ main = iterate _ in timer(3.0) {
 }
 
 */
+
+// Cannot currently keep track of missed input tuples for a node running wsc2:
+fun getDroppedInputCount() (0::Int)
+fun led0Toggle() {}
+fun led1Toggle() {}
+fun led2Toggle() {}
+fun led0On() {}
+fun led1On() {}
+fun led2On() {}
+fun led0Off() {}
+fun led1Off() {}
+fun led2Off() {}

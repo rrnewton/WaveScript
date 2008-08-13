@@ -3,8 +3,9 @@
 
 
 /* 
- * This simply reports the node IDs of every node.
+ * This runs a network test by gradually increasing the message rate.
  *
+ * 
  * .author Ryan Newton
  *
  */
@@ -27,10 +28,8 @@ using TOS;
 using Array;
 using Mutable;
 
-//Node:strm = iterate arr in read_telos_audio(200, 100) {
 
-
-// The CTP knocks out 8 bytes...
+// The CTP (collection tree protocol) knocks out 8 bytes...
 //toparr :: Array Int16 = Array:build((20 / 2) - 1, fun(i) i.gint)
 toparr :: Array Int16 = Array:build(9, fun(i) i.gint + 300)
 
@@ -40,20 +39,24 @@ zeroarr :: Array Int16 = Array:make(0, 0)
 // Hardware timer rate:
 maxrate = 200//512
 step = 5 // Step period down by
+
 // Epoch in seconds 
 //epoch = 60 * maxrate // One minute
-epoch = 120 * maxrate // One minute
+epoch = 120 * maxrate // Two minutes
 
-//steps = (1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 25 30 35 40 45 50 75 100 200)
+//mytimer = TOS:timer;
+//mytimer = timer;
 
-Node:src = TOS:timer$ maxrate;
+Node:src = timer$ maxrate;
 //Node:src = read_telos_audio(14, 100)
 //Node:src = read_telos_audio(100, 200)
 
-Node:strm = iterate arr in Node:src  {
-  state { nextlvl :: Int16 = 0;
-          cur :: Int16 = 0;
+Node:strm = iterate arr in Node:src {
+  state { nextlvl :: Int16 = 0;  
+          cur :: Int16 = 0;       // our counter
+	  // The size of the wait between firings (which decreases):
           cap :: Int16 = maxrate; // Start off w/ one msg/sec
+	  // Every epoch we change rate:
 	  epochnum :: Int16 = 0;
 	  msgcounter :: Int16 = 0;
 
@@ -132,8 +135,7 @@ Node:strm = iterate arr in Node:src  {
   //emit ((cast_num(id)::Int32), cnt, x,x,x,x,x);
   //emit(x,x,x,x,x)
   //emit 8587;
-  //emit (id, toparr.length);  
-  
+  //emit (id, toparr.length);    
 }
 
 main = Node:strm;

@@ -128,6 +128,7 @@ go "demo9i_simple_split.ws"
 # Then we split it:
 if ! wsc2 demo9i_simple_split.ws -split -exit-error
 then echo wsc2 Returned error code!; exit 1;  fi
+#$LAUNCHIT ./query_both.sh -n 2
 ./query_client.exe 2>> /dev/stdout | ($LAUNCHIT ./query_server.exe -n 2  2>> /dev/stdout) >> $RUN
 RETVAL=$?
 echo Query returned with val: $RETVAL
