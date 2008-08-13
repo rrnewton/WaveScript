@@ -187,11 +187,15 @@ stream_map       :: (a -> b,    Stream a) -> Stream b;
 stream_filter    :: (t -> Bool, Stream t) -> Stream t;
 stream_iterate   :: ((a, st) -> (List b * st), st, Stream a) -> Stream b;
 
-sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
 deep_stream_map  :: (a -> b, SS a) -> SS b;
-sigseg_fold      :: ((acc,a) -> acc, acc, Sigseg a) -> acc;
-
 //deep_stream_map2 :: (a -> b, SS b) -> ()
+
+
+// TEMP FIXME :
+// Basic higher order sigseg combinators should have primitive support:
+Sigseg:map       :: (a -> b, Sigseg a) -> Sigseg b;
+Sigseg:foreach   :: (a -> (), Sigseg a) -> ();
+Sigseg:fold      :: ((acc,a) -> acc, acc, Sigseg a) -> acc;
 
 
 
@@ -1504,19 +1508,25 @@ fun stream_iterate(f,z,s) {
   }
 }
 
+// Legacy names:
 fun sigseg_map (f, ss) {
-  arr = Array:build(ss.width, fun(i) f(ss[[i]]));
-  toSigseg(arr, ss.start, ss.timebase)
+  arr = Array:build(ss`width, fun(i) f(ss[[i]]));
+  toSigseg(arr, ss`start, ss`timebase)
 }
-
 fun sigseg_fold (fn, zer, ss) {
   // We don't want to use the sigseg indexing operator [[]]:
   Array:fold(fn,zer, toArray(ss));
 }
-
+// Should have primitive support!!
+fun Sigseg:foreach(fn, ss) {
+  for i = 0 to ss`width - 1 {
+    fn(ss[[i]])
+  }
+}
 Sigseg:fold = sigseg_fold
 Sigseg:map  = sigseg_map
 Sigseg:toArray  = toArray
+
 
 // This doesn't create a shared structure:
 fun deep_stream_map(f,sss)

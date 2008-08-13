@@ -295,7 +295,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
-(fpf      "Testing legacy support for Chez Scheme:\n")
+(fpf      "  Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: extract chez src from R6RS:" "./temporary_smoosh_to_one_chez_file.ss")
 (run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")

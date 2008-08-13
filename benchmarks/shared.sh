@@ -148,50 +148,52 @@ function runallbackends() {
   # Clean up:
   rm -rf query.*  
   echo "Invoking the following backends: $BACKENDS"
+  
+  WHICHTIME=usertimes
 
   TIMES=
   for backend in $BACKENDS; do
     case $backend in
-      scheme)   runscheme;   TIMES+=" "`extract_scheme_usertimes.sh $DEST/scheme.$NAME.out`;;
-      schemeO3) runschemeO3; TIMES+=" "`extract_scheme_usertimes.sh $DEST/schemeO3.$NAME.out`;;
+      scheme)   runscheme;   TIMES+=" "`extract_scheme_$WHICHTIME.sh $DEST/scheme.$NAME.out`;;
+      schemeO3) runschemeO3; TIMES+=" "`extract_scheme_$WHICHTIME.sh $DEST/schemeO3.$NAME.out`;;
 
       camlO3)   MLTONOPTIONS="-O3"; 
                 runcaml O3;
-                TIMES+=" "`extract_mlton_usertimes.sh $DEST/camlO3.$NAME.out`;;
+                TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/camlO3.$NAME.out`;;
 
-      mlton)    runmlton;    TIMES+=" "`extract_mlton_usertimes.sh $DEST/mlton.$NAME.out`;;
+      mlton)    runmlton;    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/mlton.$NAME.out`;;
       mltonO3)  MLTONOPTIONS="-O3"; 
-                runmlton O3; TIMES+=" "`extract_mlton_usertimes.sh $DEST/mltonO3.$NAME.out`;;
-      cpp)      runcpp;      TIMES+=" "`extract_mlton_usertimes.sh $DEST/cpp.$NAME.out`;;
-      cpp_df)   runcpp_df;   TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppdf.$NAME.out`;;
+                runmlton O3; TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/mltonO3.$NAME.out`;;
+      cpp)      runcpp;      TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cpp.$NAME.out`;;
+      cpp_df)   runcpp_df;   TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppdf.$NAME.out`;;
       cpp_corefit) runcpp_corefit; 
-                             TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppnew.$NAME.out`;;
+                             TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppnew.$NAME.out`;;
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
-                             TIMES+=" "`extract_mlton_usertimes.sh $DEST/cppnothreads.$NAME.out`;; 
+                             TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppnothreads.$NAME.out`;; 
 
       c2)        C2OPTIONS="-O3 -gc refcount -sigseg copyalways -nothreads";
                  runc2; 
-                 TIMES="$TIMES `extract_mlton_usertimes.sh $DEST/c2.$NAME.out`";;
+                 TIMES="$TIMES `extract_mlton_$WHICHTIME.sh $DEST/c2.$NAME.out`";;
 
       c2def)     C2OPTIONS="-O3 -gc deferred -sigseg copyalways -nothreads";
                  runc2 def;       
-                 TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2def.$NAME.out`;;
+                 TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2def.$NAME.out`;;
 
       c2seglist) C2OPTIONS="-O3 -gc refcount -sigseg seglist -nothreads";
                  runc2 seglist;      
-                 TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2seglist.$NAME.out`;; 
+                 TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2seglist.$NAME.out`;; 
 
       c2defseglist) C2OPTIONS="-O3 -gc deferred -sigseg seglist -nothreads";
                     runc2 defseglist;      
-                    TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2defseglist.$NAME.out`;; 
+                    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2defseglist.$NAME.out`;; 
 
       c2boehm)      C2OPTIONS="-O3 -gc boehm -sigseg copyalways -nothreads";
                     runc2 boehm;
-                    TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2boehm.$NAME.out`;;
+                    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2boehm.$NAME.out`;;
 
       c2boehmseglist) C2OPTIONS="-O3 -gc boehm -sigseg seglist -nothreads";
                       runc2 boehmseglist;       
-                      TIMES+=" "`extract_mlton_usertimes.sh $DEST/c2boehmseglist.$NAME.out`;;
+                      TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2boehmseglist.$NAME.out`;;
 
 
       *) echo Unhandled backend: $backend; exit -1;;

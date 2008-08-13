@@ -10,7 +10,7 @@
 //  52ms in wsc -O2 (with no usleep at all)
 //   45/10ms real/user when setBatchSize is used.
 
-
+include "stdlib.ws"
 
 fun amplify(n,s)
   iterate x in s {
@@ -34,10 +34,17 @@ file = (readFile(//"/tmp/dummyfile.bin",
 printevery = 31;   // 1mb
 
 BASE <- iterate w in file {
-   state { counter = 0 } 
+  state { counter = 0;
+          checksum :: Int64 = 0;
+         }
    counter += 1;
+   
+   //checksum += Int64! w[[100]];
+   Sigseg:foreach(fun(x) checksum += Int64! x, w);
+
    if counter == printevery then {
     counter := 0;
-    emit w[[100]];
+    //emit w[[100]];
+    emit checksum;
   }
 }

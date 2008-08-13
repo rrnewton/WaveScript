@@ -49,5 +49,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 (gather "appbench" "RESULTS.txt")
+;; [2008.08.13] Disabling, some of these results are awful unstable currently.
+;; Depends on things like reading files from disk: 
 (gather "microbench" "RESULTS_misc.txt")
 (gather "microbench" "RESULTS_datapass.txt")
