@@ -1369,10 +1369,10 @@
 	 (kont `("(double)",e))]
 
  	[(complexToFloat ,e)   (PrimApp self `(realpart ,e) kont mayberetty)]
- 	[(complexToInt16 ,e)   (kont `("(int16_t)" ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
- 	[(complexToInt64 ,e)   (kont `("(int64_t)" ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
- 	[(complexToInt ,e)     (kont `("(int)"     ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
- 	[(complexToDouble ,e)  (kont `("(double)"  ,(PrimApp self `(complexToFloat ,e) id 'Float)))]
+ 	[(complexToInt16 ,e)   (kont `("(int16_t)" ,(lines-text (PrimApp self `(complexToFloat ,e) make-lines 'Float))))]
+ 	[(complexToInt64 ,e)   (kont `("(int64_t)" ,(lines-text (PrimApp self `(complexToFloat ,e) make-lines 'Float))))]
+ 	[(complexToInt ,e)     (kont `("(int)"     ,(lines-text (PrimApp self `(complexToFloat ,e) make-lines 'Float))))]
+ 	[(complexToDouble ,e)  (kont `("(double)"  ,(lines-text (PrimApp self `(complexToFloat ,e) make-lines 'Float))))]
  	[(,ToComplex ,[Simp -> e])
  	 (guard (memq ToComplex 
  		      '(int16ToComplex int64ToComplex intToComplex floatToComplex doubleToComplex)))

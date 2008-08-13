@@ -297,7 +297,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf      "Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
-(run-test "chez: extract chez-compatible source from R6RS code:" "./temporary_smoosh_to_one_chez_file.ss")
+(run-test "chez: extract chez src from R6RS:" "./temporary_smoosh_to_one_chez_file.ss")
 (run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
 (run-test "chez: WScript has access to the compiler:"
 	  "echo '(compile 3)' | ../bin/regiment.chez i --exit-error")
@@ -483,17 +483,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (ASSERT (putenv "REGIMENTHOST" "ikarus"))
   (run-test "wsc2: Demos, simple RC (ikarus):"
-	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos.log" test-directory))
+	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
 
   (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Demos, deferred RC (plt):"
-	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
+	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
   (ASSERT (putenv "REGIMENTHOST" "chez"))
   (run-test "wsc2: Demos, boehm RC (chez):"
-	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
+	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
 
   (ASSERT (putenv "REGIMENTHOST" ""))
@@ -575,11 +575,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
     (run-test "wsc2:  Running marmot app (second phase): "
 	      (format "./query.exe -n 1 &> ~a/wsc2_marmot12_run.log" test-directory))
-    (ASSERT (putenv "REGIMENTHOST" ""))
 
+
+    ;; [2008.08.13] This is segfaulting under ikarus also, let's try Chez:
+    (ASSERT (putenv "REGIMENTHOST" "chez"))
     (run-test "wsc2: Compiling marmot app (third phase):  "
       (format "wsc2 test_heatmap.ws -exit-error &> ~a/wsc2_marmot3_build.log" 
 	      test-directory))
+
+    (ASSERT (putenv "REGIMENTHOST" ""))
     
     
     )

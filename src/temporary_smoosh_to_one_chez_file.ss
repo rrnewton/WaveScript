@@ -128,4 +128,5 @@ exec regiment i --script $0 ${1+"$@"}
 	   )))
 
 ;(convert-specs (list-head all-imports 72))
+(print-graph #f)
 (convert-specs all-imports )
