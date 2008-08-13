@@ -808,6 +808,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (unless (equal? "x86_64" (file->string "machine_type.txt"))
 	(fpf "Verify no leaks in demos (refcount):          ~a\n" (code->msg! (if (<= lost_blocks 1) 0 lost_blocks))))
       )
+    
     (ASSERT (system "grep \"definitely lost in\" .__runquery_output_wsc2_def.txt | wc -l > lost_blocks.txt"))
     (let ([lost_blocks (read (open-input-string (file->string "lost_blocks.txt")))])
       (fprintf outp "Wsc2DefRC_DemosLostBlocks ~a\n" lost_blocks)
@@ -817,7 +818,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; --- We also check the valgrind traces for errors ----
     (ASSERT (system "grep \"ERROR SUMMARY\" .__runquery_output_wsc2_def.txt    | grep -v \"ERROR SUMMARY: 0\" | wc -l >  errors.txt"))
     (ASSERT (system "grep \"ERROR SUMMARY\" .__runquery_output_wsc2_nondef.txt | grep -v \"ERROR SUMMARY: 0\" | wc -l >> errors.txt"))
-    (let ([errors (read (open-input-string (file->string "errors.txt")))])
+    (let ([errors (read (open-input-file (file->string "errors.txt")))])
       ;; This should be 2... demo4b currently has conditional jump errors.
       (fprintf outp "Wsc2_DemosErrors ~a\n" errors)
       (fpf "Verify no errors in demos:                    ~a\n" (code->msg! (<= errors 2)))
@@ -870,8 +871,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
-      (fpf "Various results gathered into a table:        ~a\n"
-	   (code->msg! (system "./gather_results.ss > results_table.txt")))
+      (run-test "Various results gathered into a table:        ~a\n"
+		"./gather_results.ss > results_table.txt")
       ;(system "gather_results.ss > results_table.txt")
       (display (file->string "results_table.txt") outp)
       ))
@@ -886,12 +887,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; This will write "perf_diffs.txt"a
 (fpf "\n\n  Performance differencing with previous revision...\n")
 (fpf     "====================================================\n")
-(system "./compare_to_previous_rev_stats.ss")
+(run-test "Finding previous results and comparing:" 
+	  "./compare_to_previous_rev_stats.ss")
 (if (file-exists? "perf_diffs_thresholded.txt")
     (begin      
       (fpf "Metrics differing over ten percent: \n")
       (fpf "~a" (file->string "perf_diffs_thresholded.txt")))
-    (fpf "  Failed!\n"))
+    (fpf "  Failed to find anything!\n"))
 
 ;;================================================================================
 ;;; Wrap it up
