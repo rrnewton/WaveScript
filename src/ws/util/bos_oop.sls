@@ -20,6 +20,10 @@
 
 	    ;; These need to be sealed off to prevent breaking the abstraction:
 	    class-of slot-ref slot-set!
+
+	    ;; TEMP: For chez
+	    i-make-class
+	    
             )
   (import (rnrs) (rnrs mutable-pairs) 
 	  (ws common))

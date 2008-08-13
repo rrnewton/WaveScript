@@ -94,20 +94,6 @@
 ))
 
 
-
-
-;; R6RS Version:
-;; This is also insanely slow.
-(define (wavescript-language expr)
-  ;(printf "  Evaling in wavescript-language: ~s\n" expr)
-  ;; if (simulator-write-sims-to-disk) 
-  (let ([result (eval expr (environment '(except (rnrs) + - * / or and)  
-					'(ws sim wavescript_sim_library_push)))])
-   ; (printf "    Returning result: ~s\n" result)
-    result))
-
-
-#;
 (IFCHEZ 
  ;; For CHEZ this becomes a top-level binding:
  (define-language
@@ -121,7 +107,7 @@
 	       )
 	   ;; For some reason we have to handle this differently when working from compiled .so.
 	   '(begin
-	     (import wavescript_sim_library_push)
+	     (import ws_sim_wavescript_sim_library_push)
 	     ;;(import (except scheme break length + - * / ^ inspect letrec import let))
 	     ;;(import constants) 
    	     ;;(import helpers)
@@ -134,13 +120,16 @@
 			"Regiment loaded from unknown origin.  Might have problems will delicate module issues."))
 	     '(begin 
 		;; We only import these basic bindings to keep us honest.
-		(import-only wavescript_sim_library_push)
+		;(import-only ws_sim_wavescript_sim_library_push)
+		;; [2008.08.12] Resurecting this, but import-only won't work
+		(import ws_sim_wavescript_sim_library_push)
 		
 		;; Then we import some "sub-modules" exported by the language-module.
 		;; This is everything but the overriden bindings from default scheme language:
-		(import (except mod_scheme break length + - * / ^ inspect import let)) ; letrec 
-		(import mod_constants)
-		(import mod_helpers))))
+		;(import (except scheme break length + - * / ^ inspect import let)) ; letrec 
+		;(import mod_constants)
+		;(import mod_helpers)
+		)))
  
      ;(eval-when (compile eval load) (printf "TRYING..\n"))
 ;     (printf "TRYING..\n")
@@ -187,52 +176,19 @@
       ;; [2007.05.07] DONT KNOW HOW I SHOULD DO THIS!
       ;; THE PROGRAM RETURNS A *STREAM*.
       ;; THE EVALUATION OF THE STREAM IS NOT WITHIN THIS DYNAMIC SCOPE...
-      )
-   )
-;; TODO: IMPROVE THIS:
-;; PLT Version:
+      ))
+
+;; R6RS Version:
 ;; This is also insanely slow.
- ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
- ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
 (define (wavescript-language expr)
-  (printf "WAVESCRIPT LANGUAGE EXECUTING: ~s\n" expr)
-  (let* (;[name (gensym)]
-	 [tmpfile (string-append (current-directory) "/__lang_running.tmp.ss")]
-	 [PROG
-	 `(begin;module ,name mzscheme
-	     (current-load-relative-directory (string-append ,(REGIMENTD) "/src/"))
-					;	   (current-directory (string-append ,(REGIMENTD) "/src/"))
-	     (printf "SWITCHED TO LOAD DIR ~s\n" (current-load-relative-directory))
-	     
-	     ;; Trying to fix a problem I'm having with 'collection not found: "mzlib"'
-					;(require mzscheme)
-					;(find-library-collection-paths (cons ... (find-library-collection-paths)))	    )
+  ;(printf "  Evaling in wavescript-language: ~s\n" expr)
+  ;; if (simulator-write-sims-to-disk) 
+  (let ([result (eval expr (environment '(except (rnrs) + - * / or and)  
+					'(ws sim wavescript_sim_library_push)))])
+   ; (printf "    Returning result: ~s\n" result)
+    result))
 
-;	     (printf "CURRENT DIR ~s\n" (current-directory))
-	     (require "./plt/chez_compat.ss") ;; [2007.07.10]
-;	     (require "./ws/util/streams.ss")
-	     (require "./ws/sim/wavescript_sim_library_push.ss")
-;	     (printf "GOT LIBRARY LOADED\n")
-;	     (printf "Here's binding: ~s\n" __readFile)
-  ;	     (printf "Here's binding from stream: ~s\n" stream-car)
-	     (if (top-level-bound? 'start-dir) (current-directory (eval 'start-dir)))
-	     (define THISWSVAL ,expr)
-	     (require mzscheme)
-;	     (provide THISWSVAL)
-	     THISWSVAL
-	     )])
-    (if (simulator-write-sims-to-disk) 
-	(begin 
-	  (printf "WRITING SIM TO TMPFILE: ~s\n" tmpfile)
-	  (slist->file (list PROG) tmpfile (IFDEBUG 'pretty 'write))
-	  (load tmpfile))
-	(eval PROG))
-;    (eval `(require ,name))
-;    (eval 'THISWSVAL)
-    ))
 ) ; End IFCHEZ
-
-
 
 ) ; End module.
 

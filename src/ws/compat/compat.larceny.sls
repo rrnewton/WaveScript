@@ -34,7 +34,7 @@
 
 	  ;cons* ;; HACK: larceny is missing cons*
 
-	  which-scheme
+	  which-scheme IFCHEZ
 	  )
   (import (rnrs)
 	  (rnrs r5rs)

@@ -17,8 +17,8 @@
 (ws compiler_components prim_defs)
 (ws compiler_components regiment_helpers)
 (ws compiler_components type_environments)
-(ws compiler_components hm_type_inference)
 (ws compiler_components reg_core_generic_traverse)
+(ws compiler_components hm_type_inference)
 
 (ws grammars grammar_checker)
 (ws passes pass-mechanism_basic)

@@ -18,7 +18,7 @@
 	  promise? 
 	  
 	  system repl make-list with-output-to-string
-	  which-scheme
+	  which-scheme IFCHEZ	  
 	  
 	  (rename 
 	          (ik:gensym gensym) 

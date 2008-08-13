@@ -531,7 +531,7 @@
 		 (operators ,oper* ...)  (sink ,base ,basetype) ,meta* ...))
 	(,___
 	 '(graph (const ,cnst2* ...) (init  ,init2* ...) (sources ,src2* ...)
-		 (operators ,oper2* ...) (sink ,base2 ,basetype2) ,meta* ...)))
+		 (operators ,oper2* ...) (sink ,base2 ,basetype2) ,meta2* ...)))
       `(,input-language 
 	'(graph (const ,@cnst*)  ; ,@cnst2*
 		(init ,@init*) ; ,@init2*

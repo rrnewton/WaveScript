@@ -863,8 +863,8 @@
       (close-output-port p))]))
 
 ;; [2006.02.20] Rewrote to have an efficient version:
-#;
-(define file->string
+(IFCHEZ
+ (define file->string
   (lambda (filename)
     (let-values ([(outp extract) (open-string-output-port)])
       (let* ([inp (open-input-file filename)]
@@ -881,7 +881,7 @@
   (let* ([p (open-input-file filename)]
 	 [res (get-string-all p)])
     (close-input-port p)
-    res))
+    res)))
 (define string->file
   (lambda (str fn)
     (if (file-exists? fn) (delete-file fn))
@@ -890,36 +890,6 @@
       (display str p)
       (close-output-port p))))
 
-
-;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
-;; Man, they need a standardized set of libraries.
-;; .parameter port (optional) Port to read from.
-;;
-;This read-line will handle line delimination either by #\newline
-;or by a consecutive #\return #\newline
-;JEEZ, this has some problems right now [01.06.08], Chez for windows
-;seems to be totally screwy regarding char-ready?.
-#;
-(define read-line ;returns false if the port is empty
-  (lambda args
-    (let ([port (if (null? args)
-                    (current-input-port)
-                    (car args))])
-      (letrec ([loop
-                 (lambda (c)
-                   (cond
-		    [(or (eof-object? c)     (eq? c #\newline))     '()]
-		    [(or (eq? c #\linefeed)  (eq? c #\return))
-		     (when (and ;;(char-ready? port) ;; [2008.04.27] This had to do with some ancient windows problems.  Nixing.
-				(eq? (peek-char port) #\newline))
-		       (read-char port))
-		     '()]
-		    [else (cons c (loop (read-char port)))]))])
-        (let ([c (read-char port)])
-          (if (eof-object? c) #f
-              ;(let ([x (loop c)])(inspect x)(list->string x))
-	      (list->string (loop c))
-              ))))))
 
 (define read-line get-line)
 
@@ -2397,9 +2367,13 @@
         results)))
 
 ;; This is just a shorthand:
-(define (force-open-output-file file)
-  (open-file-output-port file  (file-options no-fail) (buffer-mode block) (native-transcoder))
-  )
+(IFCHEZ
+ (define (force-open-output-file file)
+   (open-output-file file 'replace))
+ (define (force-open-output-file file)
+   (open-file-output-port file  (file-options no-fail) (buffer-mode block) (native-transcoder))
+  ))
+
 
 
 ) ;; End library

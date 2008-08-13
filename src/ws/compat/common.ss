@@ -72,3 +72,8 @@
 
 
   (define (simple-eval xp) (eval xp '(rnrs (6))))
+
+
+ (define-syntax IFCHEZ
+    (syntax-rules ()
+      [(_ a b) b]))

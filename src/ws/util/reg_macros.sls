@@ -23,7 +23,7 @@
       cheap-fluid-let
       let-match match?
       mvlet
-      match-lambda
+      match-lambda match-lambda-helper
       ** ^ ;; Exponentiation
       define-id-syntax
       rec 

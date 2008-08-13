@@ -5,7 +5,8 @@
   (export
 ;                 make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app foreign-app let Mutable:ref deref static statref
+		 app foreign-app ;let
+		 Mutable:ref deref static statref
 
 		 annotations
 		 
@@ -135,7 +136,9 @@
 
 		 ;; Export these, they override the default scheme bindings.
 		 (rename (ws+ +) (ws- -) (ws* *) (ws/ /) (ws-print print)
-			 (ws:and and) (ws:or or))
+			 ;(ws:and and) (ws:or or)
+			 )
+		 ;ws-print print ;; [2008.08.13] hack
 		 ;(ws^ ^)
 		 for 
 		 )
@@ -200,25 +203,23 @@
 		 (only lang_wavescript ws-show
 		       ))
 
-#;    
     (IFCHEZ
      (begin 
-       (alias mod_helpers helpers)
-       (alias mod_scheme scheme)
-       (alias mod_constants constants)  
-       ;  (alias quasiquote quasiquote)  
+       ;(alias mod_helpers helpers)
+       ;(alias mod_scheme scheme)
+       ;(alias mod_constants constants)  
+       ;;  (alias quasiquote quasiquote)  
        ;;  (alias unquote unquote) 
        ;; (alias lambda lambda)  
        (alias let let) ;; We assume type info has been stripped.      
        
-       (import (add-prefix scheme s:))
+       ;(import (add-prefix scheme s:))
+       ;(import (add-prefix ws_util_slib_hashtab slib:))
        ;(alias begin s:begin)       
        )
-     (begin 
-	    (require (prefix s: mzscheme))
-	    (require (prefix s: "../../plt/chez_compat.ss"))
-;	    (provide (all-from "../util/imperative_streams.ss"))
-	    ))
+     (begin
+       ;(define mod_scheme )
+       ))
 
     ;; Used to bind wavescript primitives to equivalent identifiers in Scheme.
     (define-syntax define-alias 
@@ -872,7 +873,8 @@
                                    bench? output-type box-name edge-counts-table sum-type-declarations)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
-    ;(define buffer1 (make-string chunksize #\_))
+    (IFCHEZ (define buffer1 (make-string chunksize #\_))
+	    (begin))
     ;(define count1 0)
     (define winsize (s:* len (s:+ wordsize skipbytes)))    
 
@@ -906,16 +908,16 @@
               ))  
           win))
 
-      (return-it (get-string-n infile winsize))
-#|
-      (set! count1 (block-read infile buffer1 winsize))
-      (cond
-       [(eof-object? count1)  #f]
-       [(fx< count1  winsize)
-        ;; If we got an incomplete window we just keep reading:
-        ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
-        (let loop ([count count1]
-                   [acc (list (substring buffer1 0 count1))])
+      (IFCHEZ
+       (begin
+	(set! count1 (block-read infile buffer1 winsize))
+	(cond
+	 [(eof-object? count1)  #f]
+	 [(fx< count1  winsize)
+	  ;; If we got an incomplete window we just keep reading:
+	  ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
+	  (let loop ([count count1]
+		     [acc (list (substring buffer1 0 count1))])
                                         ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
           (let ([newcount (block-read infile buffer1 (fx- winsize count))])
             (if (eof-object? newcount) 
@@ -928,8 +930,8 @@
                   (if (fx= total winsize)
                       (return-it (apply string-append (reverse! newacc)))
                       (loop total newacc))))))] 
-       [else (return-it buffer1)])
-|#
+	 [else (return-it buffer1)]))       
+       (return-it (get-string-n infile winsize)))
 )
 
     (define _ 
@@ -969,7 +971,15 @@
               (void)))))
     
       ;; Scan ahead in the file to the offset:
-      (get-string-n infile offset) ;; Discard result.
+    (IFCHEZ 
+     (let scan ([offset offset])
+       ;; Would be nice if we had a seek command instead of having
+       ;; to read this out by blocks:
+       (unless (zero? offset)
+	 ;; Don't read more than we have room for.
+	 (scan (fx- offset (block-read infile buffer1 (min offset chunksize))))))
+     (get-string-n infile offset) ;; Discard result.
+     )
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
@@ -2002,10 +2012,7 @@
 
 
 ;; This provides access to C-functions:
-(define __foreign (lambda args (error 'foreign "C procedures not accessible from R6RS " args)))
-#;
 (IFCHEZ
-
  (begin 
 
    ;; [2007.08.30] Feature change for the WS foreign interface.  Now
@@ -2129,7 +2136,7 @@
 		     ))
 		 foreignfun))
 	   ])))))
- (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
+ (define __foreign (lambda args (error 'foreign "C procedures not accessible from R6RS ~a" args))))
 
 ;; This tries to match the binary format used in the C backend.
 ;(define (marshal val) (error 'marshal "not implemented under scheme"))
@@ -2174,6 +2181,7 @@
 
 (define (ws:or  a b) (s:or  a b))
 (define (ws:and a b) (s:and a b))
+
 
 ;    (getPtr         (ExclusivePointer) Pointer)
 

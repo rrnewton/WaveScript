@@ -22,11 +22,11 @@
 	   (let ((result LANG_LOADED_OUTPUT_VALUE))
 	     (set-top-level-value! 'LANG_LOADED_OUTPUT_VALUE (void))
 	     result)))
-       (eval p)))
+       (primeval p)))
     (define-top-level-value
       name
       (case-lambda
-        [() (eval def)]
+        [() (primeval def)]
         [(exp)
          (match exp
            [print (pretty-print def)]
@@ -54,8 +54,8 @@
 ;; Define this once for the simulation so that our answers are deterministic.
 ;; This is a list of <sensereading, xpos, ypos> 
 (define the-test-field 
-  (make-n-list 100
-	       (lambda (ign) 
+  (list-build 100
+	      (lambda (ign) 
 		 (make-baselang-simnode (reg:random-int 10000) 
                           (reg:random-real 1.0) ;(prim_random 1.0) 
                           (list (reg:random-int 100) (reg:random-int 100))))))

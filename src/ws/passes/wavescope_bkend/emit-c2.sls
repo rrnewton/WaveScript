@@ -1,4 +1,4 @@
- #!r6rs
+#!r6rs
 
 ;;;; .title WaveScript EmitC Version TWO
 ;;;; .author Ryan Newton

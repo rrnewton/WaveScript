@@ -295,29 +295,25 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
-
-#| ;; Comment chez
-
+(fpf      "Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
-(run-test "chez: WScript loads from source (via script):" "./regiment_script.ss &> chez_SCRIPT_LOAD.log")
+(run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
 (run-test "chez: WScript has access to the compiler:"
-	  "echo '(compile 3)' | ./regiment_script.ss i --exit-error")
-(run-test "chez: Unit tests, loaded from source:" "./regiment_script.ss test &> chez_UNIT_TESTS.log")
+	  "echo '(compile 3)' | ../bin/regiment.chez i --exit-error")
+;(run-test "chez: Unit tests, loaded from source:" "./regiment_script.ss test &> chez_UNIT_TESTS.log")
 
 (begin (newline)
-       (printf "Second: building Chez shared object\n")
-       (printf "============================================================\n")
+       ;(printf "Second: building Chez shared object\n")
+       ;(printf "============================================================\n")
        (ASSERT (putenv "REGDEBUGMODE" "OFF"))
 
        (run-test "chez: Build .so file:" "make chez &> chez_BUILD_SO.log")
        (run-test "chez: Also build debugmode .so file:" "make dbg &> chez_BUILD_DBG.log")
 	     
-       (ASSERT (system "./regiment_script.ss 2> chez_LOAD_FROM_SO.log"))
+       (ASSERT (system "../bin/regiment.chez 2> chez_LOAD_FROM_SO.log"))
        (run-test "chez: System loads from .so file:" "grep 'compiled .so' chez_LOAD_FROM_SO.log")
 
-
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
-
 
        ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
        ;; FIXME:
@@ -325,13 +321,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (define runso (system/timeout "./regiment_script.ss test"))
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
-
 (run-test "chez: Build C extensions:" "make c &> gcc_BUILD_C_EXTENSIONS.log")
 
 ;; Now clean again:
 ;(ASSERT (system "make clean > make_clean2.log"))
 
-|# ;; End comment chez
 
 (fpf "\n")
 (run-test "wsparse: Building executable (plt):" "make wsparse &> plt_WSPARSE.log")
@@ -490,10 +484,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc2: Demos, simple RC (ikarus):"
 	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
+
   (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Demos, deferred RC (plt):"
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
+
+  (ASSERT (putenv "REGIMENTHOST" "chez"))
+  (run-test "wsc2: Demos, boehm RC (chez):"
+	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
+  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
+
   (ASSERT (putenv "REGIMENTHOST" ""))
 
   (run-test "wstiny: Running demos w/ TOSSIM:"

@@ -98,7 +98,13 @@
   (export match trace-match 
           match/lexical-context trace-match/lexical-context
           match-equality-test
-          guard ... quasiquote unquote unquote-splicing)
+          ;guard ... 
+	  ;quasiquote unquote unquote-splicing
+	  ;; TEMP: For chez:
+	  match-help match-help1 clause-body let-values**
+          guard-body convert-pat mapper my-backquote extend-backquote
+          sexp-dispatch myrec
+	  )
   (import (for (rnrs (6)) (meta 0) (meta 1) (meta 2))
 	  (rnrs mutable-pairs (6))
 	  (for (ws compat compat) run expand))
@@ -111,16 +117,23 @@
                        (if (pair? h)
                            (if (not (eq? h t))
                                (race (cdr h) (cdr t) ls h)
-                               (error 'last-pair "circular list" ls))
+                               (error 'last-pair "circular list ~a" ls))
                            last))
                     last))])
        (lambda (x)
          (if (pair? x)
              (let ([d (cdr x)])
                (race d d x x))
-             (error 'last-pair "not a pair" x)))))
+             (error 'last-pair "not a pair ~s" x)))))
 
-(define-syntax rec
+;; HACK:
+#;
+(IFCHEZ 
+ (begin (define ... '...)
+	(define guard 'guard))
+ (begin))
+
+(define-syntax myrec
   (syntax-rules ()
     [(_ name val) 
      (letrec ([name val]) name)]))
@@ -130,7 +143,7 @@
     equal?
     (lambda (x)
       (unless (procedure? x)
-        (error 'match-equality-test "not a procedure" x))
+        (error 'match-equality-test "not a procedure ~s" x))
       x)))
 
 (define-syntax match+
@@ -414,7 +427,7 @@
                      ((ts ...) (generate-temporaries #'(RetId ...)))
                      ((null ...) (map (lambda (x) #''()) #'(RetId ...))))
          #'(let ((fun F))
-             (rec g
+             (myrec g
                (lambda (ThreadId ... ls)
                  (if (null? ls)
                      (values ThreadId ... null ...)
@@ -540,7 +553,7 @@
                                          (if (and (null? ExpVar) ...)
                                              TailExp
                                              (error 'unquote
-                                               "Mismatched lists"
+                                               "Mismatched lists ~a"
                                                Orig))))
                                  (append #'(ExpVar ...) #'RestVars)
                                  (append #'(ExpExp ...) #'RestExps)))))))))

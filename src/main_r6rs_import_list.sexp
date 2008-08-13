@@ -26,6 +26,7 @@
 
 ;"generic/langs/language-mechanism.ss"
 (ws langs lang_wavescript)
+(ws testing lang_wavescript_tests)
 (prefix (ws sim wavescript_sim_library_push) wssim:)
 
 ;; Need complex numbers!!
@@ -40,25 +41,32 @@
 (ws passes normalize_source desugar-pattern-matching)
 (ws passes normalize_source resolve-varrefs)
 (ws passes normalize_source ws-label-mutable)
-(ws passes normalize_source desugar-misc)
-(ws passes normalize_source eta-primitives)
+
 (ws passes normalize_source rename-vars)
+(ws passes normalize_source eta-primitives)
+(ws passes normalize_source desugar-misc)
+
+
 (ws passes normalize_source remove-unquoted-constant)
+
+(ws passes static_elaborate static-elaborate)
 
 ;(ws passes normalize_query remove-complex-opera)
 (ws passes normalize_query reduce-primitives)
-(ws passes normalize_query ws-lift-let)
+
 (ws passes normalize_query ws-remove-letrec)
+(ws passes normalize_query ws-remove-complex-opera)
+(ws passes normalize_query ws-lift-let)
 (ws passes normalize_query remove-complex-constant)
 (ws passes normalize_query uncover-free)
 (ws passes normalize_query lift-letrec)
 (ws passes normalize_query lift-letrec-body)
 (ws passes normalize_query remove-lazy-letrec)
 (ws passes normalize_query verify-core)
-(ws passes normalize_query ws-remove-complex-opera)
+
 (ws passes normalize_query ws-normalize-context)
 
-(ws passes static_elaborate static-elaborate)
+
 (ws passes static_elaborate interpret-meta)
 (ws passes static_elaborate degeneralize-arithmetic)
 (ws passes static_elaborate verify-elaborated)
@@ -83,8 +91,8 @@
 (ws passes wavescope_bkend emit-tinyos)
 (ws passes wavescope_bkend emit-java)
 
-(ws passes ocaml_bkend emit-caml)
 (ws passes ocaml_bkend shared-emit-ml)
+(ws passes ocaml_bkend emit-caml)
 (ws passes mlton_bkend emit-mlton)
 
 (ws passes analyze_data_rates annotate-with-data-rates)

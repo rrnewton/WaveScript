@@ -122,14 +122,17 @@
 ;============================================================
 ;;; Stream browsing.
 
-(define (browse-stream stream)
-  (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
-  ;; Now that we've got a stream we provide a little command
-  ;; prompt and ask the user what we should do with it:
-  (unless (<= (regiment-verbosity) 0)
-    (printf "\nYou can now control the output stream, commands are:\n")
-    (printf "     <n>          print n stream element, advance position\n")
-    (printf "     <enter>      same as '1'\n")
+(define browse-stream 
+  (case-lambda
+    [(stream) (browse-stream stream pretty-print)]
+    [(stream printer)     
+     (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
+     ;; Now that we've got a stream we provide a little command
+     ;; prompt and ask the user what we should do with it:
+     (unless (<= (regiment-verbosity) 0)
+       (printf "\nYou can now control the output stream, commands are:\n")
+       (printf "     <n>          print n stream element, advance position\n")
+       (printf "     <enter>      same as '1'\n")
 ;    (printf "     print        print current stream element (in full), don't advance\n")
     (printf "     skip <n>     advance the stream, but don't print\n")
 					;  (printf "     code         print the query that is executing\n")
@@ -155,22 +158,17 @@
 	    [() (guard (eq? stream stream-empty-token))
 	     (printf "\nReached end of stream.\n")]
 	    [() (printf "  ") 
-	     (pretty-print (stream))	     
+	     (printer (stream))	     
 	     ;(inspect (stream))
 	     (loop (add1 pos))]
 	    [(,n) (guard (integer? n))
 	     (let ([ls (stream-take! n stream)])
 	       (for-each (lambda (x)
 			   (printf "     POS#~a = " pos)
-			   (pretty-print x)
+			   (printer x)
 			   (set! pos (add1 pos)))
 		 ls)	       
 	       (loop pos))]
-#;
-	    [(,print) (guard (memq print '(p pr pri prin print)))
-	     (parameterize ([print-length 10000]
-			    [print-level 200])
-	       (printf "  ") (pretty-print (stream)) (loop pos))]
 
 	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
 	     (time (stream-take! n stream))
@@ -178,59 +176,6 @@
 
 	    [(,dump ,file ,limit) 
 	     (error 'browse-stream "limited dump not implemented")]
-#;
-	    [(,dump ,file) (guard (memq dump '(d du dum dump)))
-	     (let ([port (open-output-file (format "~a" file) 'append)])
-	       (parameterize ([print-length #f]
-			      [print-level #f]
-			      [print-graph #f]
-			      [ws-print-output-port port]
-			      )
-		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
-		 (let ([go
-			(lambda ()
-			  (progress-dots
-			   (lambda ()
-			     (let loop ()
-			       (if (stream-empty? stream)
-				   (unless (<= (regiment-verbosity) 0)
-				     (printf "Finished, dumped ~a stream elements.\n" pos))
-				   (let ([elem (stream-car stream)])
-				     (unless (equal? elem #())
-				       (write elem port)(newline port))
-				     (set! pos (add1 pos))
-				     (set! stream (stream-cdr stream))
-				     (loop)
-				     ))))
-			   50000000 
-			   (lambda ()
-			     (unless (<= (regiment-verbosity) 0)
-			       (printf "  POS# ~a dumped...\n" pos))
-			     )))])
-		   (if (<= (regiment-verbosity) 0)		       
-		       (go)
-		       (time (go))
-		       ))))]
-#;
-	  [(profile)  
-	   (IFCHEZ
-	    (with-output-to-file "/tmp/pdump"
-	      (lambda () 
-		(parameterize ([print-level #f]
-			       [print-length #f]
-			       [print-graph #t])
-		  (write (profile-dump))))
-	      'replace)
-	    (error 'browse-stream "can't dump profile in PLT."))]
-
-#;
-	  ;; Wavescope-specific.	  
-	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))
-	   (IFCHEZ 
-	    (let ([failename (format "~a" file)])
-	      (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
-	    (error 'bindump "unimplemented in plt"))
-	   ]
 
 	  [(,until ,predtext) (guard (memq until '(u un unt unti until)))
 	   (let ([pred (eval predtext)])
@@ -248,7 +193,7 @@
 			 (begin    
 			   (printf " Found element satisfying predicate ~s:\n\n" pred)
 			   (printf "     POS#~a = " pos)
-			   (pretty-print elem)
+			   (printer elem)
 			   (newline)
 			   (loop pos))
 			 (begin 
@@ -260,7 +205,8 @@
 	  [,other 
 	   (printf "Bad input.\n") (loop pos)]
 	  )))
-      )))
+      ))
+     ]))
 
 
 

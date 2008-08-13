@@ -22,7 +22,7 @@
 	  box unbox set-box! box? 
 	  promise? delay force
 
-	  which-scheme
+	  which-scheme IFCHEZ
 	  trace-define trace-lambda
 
 	  (rename (sys:system system))

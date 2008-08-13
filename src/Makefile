@@ -310,67 +310,66 @@ ik: ws/common.sls main_r6rs.sls
 
 
 
-
-
-
-
-
-
-
-
-# # This compiles the source into loadable object files
-# chez: chez_native
-# chez_native:
-# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-# 	if [ "$(REGDEBUGMODE)" == "ON" ]; \
-#         then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
-#              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
-#         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-#              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
+# This compiles the source into loadable object files
+chez: chez_native
+chez_native: aggregated_chez
+	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
+	if [ "$(REGDEBUGMODE)" == "ON" ]; \
+        then echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
+        else echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
 # [2007.04.22] Switching the default to .boot files:
 
-# ws:       boot
-# ws.opt:   boot.opt
-# opt:      boot.opt
-# ws.debug: so.debug
-# debug:    so.debug
-# dbg:      so.debug
+ws:       boot
+ws.opt:   boot.opt
+opt:      boot.opt
+ws.debug: so.debug
+debug:    so.debug
+dbg:      so.debug
 
-# # This makes a Chez Scheme .boot file instead of a shared object file.
-# boot: _temp_temp.so shared
-# 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-# 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
-# 	rm _temp_temp.ss _temp_temp.so
+# This makes a Chez Scheme .boot file instead of a shared object file.
+boot: aggregated_chez _temp_temp.so shared 
+	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
+	rm _temp_temp.ss _temp_temp.so
 
-# boot.opt: _temp_temp.so shared.opt 
-# 	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-# 	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
-# 	rm _temp_temp.ss _temp_temp.so
+boot.opt: aggregated_chez _temp_temp.so shared.opt 
+	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez_OPT.so" > "build/$(MT)/legacy_main_chez_OPT.boot" 
+	rm _temp_temp.ss _temp_temp.so
 
-# _temp_temp.so:
-# 	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
-# 	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
+# This converts the R6RS codebase to a Chez-palatable form.
+ag_chez: aggregated_chez
+aggregated_chez:
+	./temporary_smoosh_to_one_chez_file.ss
 
-# so: shared
-# shared: 
-# 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
-# 	export REGIMENT_OR_WAVESCRIPT=WS; 
-# 	echo '(generate-inspector-information #f) (compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-#          (export REGOPTLVL=2; \
-#           export REGDEBUGMODE=OFF; \
-#           export REGIMENT_OR_WAVESCRIPT=WS; \
-#           $(CHEZ))
+_temp_temp.so:
+	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
+	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
 
-# so.debug: shared.debug
-# shared.debug:
-# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-# 	export REGIMENT_OR_WAVESCRIPT=WS; 
-# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
-#          (export REGOPTLVL=2; \
-#           export REGDEBUGMODE=ON; \
-#           export REGIMENT_OR_WAVESCRIPT=WS; \
-#           $(CHEZ))
+## These targets just make the shared objects as necessary for the boot file.
+## In this case we only worry include the WS target, not regiment.
+so: shared
+shared: 
+	if ! [ -d "build/$(MT)" ]; then mkdir -p build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(generate-inspector-information #f) (compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=OFF; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(CHEZ))
+
+so.debug: shared.debug
+shared.debug:
+	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=ON; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(CHEZ))
 
 # so.opt: shared.opt
 # shared.opt:

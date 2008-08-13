@@ -33,7 +33,7 @@
 	  formalexp? cast-formals fit-formals-to-args
 	  constant-expr? simple-expr? maybe-bind-tmp
 
-	  token-machine? token-machine->program token-machine-keyword?
+	  token-machine? token-machine->program ;token-machine-keyword?
 
 	  ;; Token names:
 	  token-name? new-token-name token-names get-names get-formation-name get-membership-name

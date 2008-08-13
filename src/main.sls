@@ -55,7 +55,8 @@
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
 (IFWAVESCOPE (begin)
-(pass-list
+(define __
+  (pass-list
   (list
     ;; (1) Type checking comes first, but that happens before these passes
     ;; are run.  Maybe should make it one of the "passes".
@@ -164,7 +165,7 @@
 ;    flatten-tokmac
 ;    emit-nesc
 
-    )))
+    ))))
 
 ; ==================================================================
 ;; Functions for input/output to filesystem and for invoking Regiment compiler.
@@ -1782,7 +1783,7 @@
     (define simrepl #f)
     ;(disp "Main called w ARGS: " args)
     (when (null? args) (print-help) (regiment-exit 0))
-
+    
     (IF_THREADS
      (begin       
        ;; No matter which arguments we're called with, let's go ahead and
@@ -1812,7 +1813,7 @@
 	 [(string? x) x]
 	 [else (format "~a" x)]))
       ;; This determines what mode we're in then calls "loop" to process the flags.
-      (define (main)		
+      (define (main)
         ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("loop")
 	(let ([mode (coerce-symbol (car args))] 
 	      [filenames (loop (map coerce-string (cdr args)))])
@@ -2105,7 +2106,7 @@
 
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
-      (define (loop args)
+      (define (loop args)	
         (match args
 
           [() '()]
@@ -2280,6 +2281,7 @@
 
      [,_ (error "Bad command line arguments to regimentc: ~a\n" args)]
      ))
+
       
       (main) ;; Call the entrypoint above.      
       )))
@@ -2328,6 +2330,7 @@
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
 ;;
 ;; NOTE: in WaveScript only mode these are mostly invalid, disabling them:
+#;
 (IFWAVESCOPE 
 (begin)
 (begin 
