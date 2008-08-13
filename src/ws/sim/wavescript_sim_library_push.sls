@@ -138,6 +138,7 @@
 		 (rename (ws+ +) (ws- -) (ws* *) (ws/ /) (ws-print print)
 			 ;(ws:and and) (ws:or or)
 			 )
+		 ws:and ws:or
 		 ;ws-print print ;; [2008.08.13] hack
 		 ;(ws^ ^)
 		 for 

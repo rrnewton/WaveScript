@@ -748,8 +748,8 @@
 	 ;; Negative numbers.
 	 [(- NUM) (prec NEG) (- $2)]
 
-         [(exp AND exp) `(and ,$1 ,$3)]
-         [(exp OR exp) `(or ,$1 ,$3)]
+         [(exp AND exp) `(ws:and ,$1 ,$3)]
+         [(exp OR exp)  `(ws:or  ,$1 ,$3)]
 
          [(exp ++ exp) `(string-append (show ,$1) (show ,$3))]
          [(exp ::: exp) `(cons ,$1 ,$3)]

@@ -295,6 +295,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
+#|
 (fpf      "Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
@@ -322,6 +323,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 (run-test "chez: Build C extensions:" "make c &> gcc_BUILD_C_EXTENSIONS.log")
+|#
 
 ;; Now clean again:
 ;(ASSERT (system "make clean > make_clean2.log"))
@@ -490,10 +492,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_plt_demos.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
-  (ASSERT (putenv "REGIMENTHOST" "chez"))
-  (run-test "wsc2: Demos, boehm RC (chez):"
-	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
-  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
+;   (ASSERT (putenv "REGIMENTHOST" "chez"))
+;   (run-test "wsc2: Demos, boehm RC (chez):"
+; 	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos.log" test-directory))
+;   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
 
   (ASSERT (putenv "REGIMENTHOST" ""))
 

@@ -23,8 +23,8 @@
 
   (define desugar-misc-grammar 
     ;(myremove '(Prim 'dataFile)
-    (myremove '(Prim 'and) 
-    (myremove '(Prim 'or) 
+    (myremove '(Prim 'ws:and) 
+    (myremove '(Prim 'ws:or) 
 
     ;; Aliases:
     (myremove '(Prim 'head) 
@@ -56,13 +56,13 @@
 	  
 	  ;; More sugar.
 	  ;; Don't really have a syntax for this in WaveScript:
-	  [(or ,[rands] ...)
+	  [(ws:or ,[rands] ...)
 	   (processExpr (match rands
 			   [() ''#f]
 			   [(,a . ,[b]) `(if ,a '#t ,b)])
 			tenv
 			 fallthrough)]
-	  [(and ,[rands] ...)
+	  [(ws:and ,[rands] ...)
 	   (processExpr (match rands
 			   [() ''#t]
 			   [(,a . ,[b]) `(if ,a ,b '#f)])

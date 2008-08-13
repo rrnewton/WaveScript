@@ -627,8 +627,8 @@
 
     ;; Written &&, ||, and not(b).
     (not (Bool) Bool)
-    (or  (Bool Bool) Bool)
-    (and (Bool Bool) Bool)
+    (ws:or  (Bool Bool) Bool)
+    (ws:and (Bool Bool) Bool)
     
     ;; These are in here so that various passes can treat them as
     ;; primitives rather than special forms.  (Just for the purpose of
