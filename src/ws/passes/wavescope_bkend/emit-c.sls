@@ -2123,7 +2123,7 @@ int main(int argc, char ** argv)
 		   ;; These weren't really primitives:    
 		   tuple tupref ref deref static statref __foreign foreign foreign_box foreign_source
 		   ;; These were desugared or reduced to other primitives:
-		   or and dataFile Array:toList
+		   ws:or ws:and dataFile Array:toList
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
 		   List:head List:tail 

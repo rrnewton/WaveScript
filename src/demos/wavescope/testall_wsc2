@@ -31,7 +31,7 @@ function go () {
     #./query.exe -n 2 &> /dev/stdout >> $RUN
 
     # Would like to add --error-exitcode=99 except that currently demo4b generates errors.
-    ($LAUNCHIT ./query.exe -n 2 &> /dev/stdout) >> /tmp/foobar_$1
+    ($LAUNCHIT ./query.exe -n 2 &> /dev/stdout) > /tmp/foobar_$1
 
     cat /tmp/foobar_$1 >> $RUN
     RETVAL=$?

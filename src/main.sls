@@ -54,6 +54,7 @@
 ;; Regiment compiler:
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
+#;
 (IFWAVESCOPE (begin)
 (define __
   (pass-list

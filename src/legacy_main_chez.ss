@@ -74,9 +74,11 @@
 	       (eval x)))
 	   
 	   (define-syntax eval 
-	     (syntax-rules ()
-	       [(_ x)   (#%eval x)]
-	       [(_ x e) (#%eval x)]))
+	     (lambda (x)
+	       (syntax-case x ()
+		 [id (identifier? #'id) #'#%eval]
+		 [(_ x)   #'(#%eval x)]
+		 [(_ x e) #'(#%eval x)])))
 
 	   (define reg:set_opt_lvl!
 	     (lambda ()

@@ -298,6 +298,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 #|
 (fpf      "Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
+(run-test "chez: extract chez-compatible source from R6RS code:" "./temporary_smoosh_to_one_chez_file.ss")
 (run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
 (run-test "chez: WScript has access to the compiler:"
 	  "echo '(compile 3)' | ../bin/regiment.chez i --exit-error")
