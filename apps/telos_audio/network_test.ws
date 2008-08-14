@@ -37,7 +37,7 @@ zeroarr :: Array Int16 = Array:make(0, 0)
 //zeroarr :: Array Int16 = Array:null
 
 // Hardware timer rate:
-maxrate = 200//512
+maxrate = 20000// 200 //512
 step = 5 // Step period down by
 
 // Epoch in seconds 
@@ -47,7 +47,7 @@ epoch = 120 * maxrate // Two minutes
 //mytimer = TOS:timer;
 //mytimer = timer;
 
-Node:src = timer$ maxrate;
+Node:src = timer$ maxrate
 //Node:src = read_telos_audio(14, 100)
 //Node:src = read_telos_audio(100, 200)
 
@@ -143,4 +143,32 @@ Node:strm = iterate arr in Node:src {
   //emit (id, toparr.length);    
 }
 
-main = Node:strm;
+main = iterate arr in Node:strm {
+
+  id = arr[0];
+  /*
+   := cap;
+  toparr[3] := nextlvl;
+  toparr[4] := epochnum;
+  toparr[5] := msgcounter;
+
+  foo = ref(false);
+
+  if cur == cap then {
+    cur := 0;
+    //if id != 1 then print(".");
+    //if id != 1 then emit toparr;
+    msgcounter += 1;
+    foo := true;
+  };
+
+  toparr[6] := maxrate;
+  toparr[7] := Int16! dropped;
+  toparr[8] := if foo then 2222 else 1111;
+
+  emit ();
+  */  
+
+  print(".");
+  emit ();  
+};

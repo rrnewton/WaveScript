@@ -871,6 +871,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
  
   ;; --- Gather a table of numbers from the benchmarks directory. ----  
+#;
   (when benchmarks? 
     (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
       (run-test "Various results gathered into a table:        ~a\n"

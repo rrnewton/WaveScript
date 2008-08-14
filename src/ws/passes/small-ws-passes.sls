@@ -621,9 +621,9 @@
 						    (let ([count Int (assert-type Int (unmarshal count_buf '0))])
 						      (let ([buf (Array Uint8) (Array:makeUNSAFE count)])
 							(begin
-							  (print '"Got length ")
-							  (print count)
-							  (print '"\n")
+							  ;(print '"Got msg w/ length ")
+							  ;(print count)
+							  ;(print '"\n")
 							  (foreign-app '"fread" myfread buf '1 count myin)
 							  (emit (assert-type (VQueue (Array Uint8)) vq)
 								buf))))

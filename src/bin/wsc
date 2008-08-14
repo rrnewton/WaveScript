@@ -46,6 +46,7 @@ while [ $# != 0 ];  do
   then REGPASSTHRU="$REGPASSTHRU $1"; # FIXME: this is dangerous on bad args!
        shift;
        REGPASSTHRU="$REGPASSTHRU $1";
+
   elif [ "$1" == "--scheduler" ]
   then REGPASSTHRU="$REGPASSTHRU $1";
        shift;
@@ -62,6 +63,12 @@ while [ $# != 0 ];  do
   then COPTFLAG="$1"; 
 #  elif [ `echo $1 | sed` == "-" ]
 #  then echo "Unknown flag: $1"
+
+  ## Ignored:
+  elif [ "$1" == "-D" ]; then shift;
+  elif [ "$1" == "-realtime" ]; 
+  then echo
+
   else FILE="$1"; 
   fi
   shift;

@@ -3,7 +3,7 @@
 export REGFLAG=wsc2
 
 # Get out only the relevant options:
-RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
 echo wsc2 getopt result: $RELEVANT
 
 # I would like to pass only the relevant options on to "wsc", but I
@@ -30,20 +30,26 @@ while [ $# != 0 ];  do
  #echo Handling flag: $flag
  case $flag in 
    # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
-   "--O0" ) COPTFLAG="$flag";;
-   "--O1" ) COPTFLAG="$flag";;
-   "--O2" ) COPTFLAG="$flag";;
-   "--O3" ) COPTFLAG="$flag";;
-   "--threads" )   THREADS=true; shift;;
-   "--nothreads")  THREADS=;     shift;;
+   "--O0" )        COPTFLAG="$flag";;
+   "--O1" )        COPTFLAG="$flag";;
+   "--O2" )        COPTFLAG="$flag";;
+   "--O3" )        COPTFLAG="$flag";;
+   "--threads" )   THREADS=true;;
+   "--nothreads")  THREADS=;;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
-   "--gcc" ) export CC="$2"; shift;;
+   "--gcc" ) export CC="$2";             shift;;
+   "--D" )   export WS_LINK="$WS_LINK -D$2";   shift;;
+
+   "--realtime" )  export WS_LINK="$WS_LINK -DWS_REAL_TIMERS ";;
+
    "--" ) break;;
 #   *) echo "  Uh, unhandled...";;
  esac;
  shift;
 done
 export COPTFLAG
+
+echo After parsing args, WS_LINK is $WS_LINK
 
 if ! [ "$THREADS" = "" ]; 
 then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";
