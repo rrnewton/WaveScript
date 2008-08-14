@@ -61,7 +61,8 @@ WaveScript is a functional language for writing highly abstract
 programs that generate efficient dataflow graphs through a two-stage
 evaluation model.  These graphs are
 executable in several backends (Scheme, ML, C++) that offer different
-tradeoffs in features, performance, and compile times.  The compiler
+tradeoffs in features, performance, and compile times, as well as
+parallel and distributed execution.  The compiler
 has several command line entrypoints for the different backends.
 
 %Calling {\bf ws}
@@ -805,12 +806,18 @@ for different container types (lists, arrays, matrices, etc).
 
 Arrays, unlike lists, are mutable. 
 Use a hash symbol to build a constant array rather than a list, for
-example {\tt \#[1,2,3]}.
+example {{\tt \#[1,2,3]}}.
 Use
-{\em Array:make} to allocate new arrays, {\tt arr[i]} to access arrays, and
-{\tt arr[i] := x;} to modify them.  Many array operations are analogous
-to the list operations (map, fold, etc).  See the documentation for
-additional primitives below.
+{\em Array:make} to allocate new arrays.  The {\em Array:ref} and {\em Array:set}
+primitive access arrays elements, but it's shorter to use the syntactic
+sugar, {\tt arr[i]} to access arrays, and {\tt arr[i] := x;} to modify them.  Nested array references work as
+expected, as do the {\tt +=} style shorthands, e.g. {\tt arr[i][j] += 3}.  
+However, to use these shorthands with an arbitrary, non-variable
+expression extra parentheses are required: {\tt (f(x))[i]}.
+
+Many array operations are analogous to the list operations (map,
+fold, etc).  See the documentation for additional primitives below.
+
 
 %Refer to {\tt prim_defs.ss} for more array operations.
 

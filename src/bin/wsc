@@ -79,10 +79,10 @@ done;
 #CCPASSTHRU=`getopt -l "" -o ":" -- "$@"`
 
 if [ ! -f "$FILE" ];
-then echo Usage: "wsc <file> <options ...>";
-#     echo   (Options: -b  Build cpp file.)
-     echo 
-     echo   File \"$FILE\" does not exist.
+then echo Usage: "wsc[2] <file> <options ...>";
+     if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
+     else cat $REGIMENTD/bin/ws_opts.txt
+     fi
      exit 1;
 fi
 

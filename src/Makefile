@@ -567,7 +567,27 @@ fullpkg:
 	ln -s $(PKGDIR)/wsparse_full/bin/wsparse $(PKGDIR)/bin/wsparse
 
 
+## UNFINISHED:  ## UNFINISHED:  ## UNFINISHED: 
 
+#DEBDIR=$(REGIMENTD)/deb_pkg
+# [2008.08.14] New: going to try to produce a .deb package.
+#deb: clean ikarus wsparse boot
+deb: 
+	./package_deb.sh
+# 	@echo
+# 	@echo PACKAGING REGIMENT/WAVESCRIPT AS A .DEB 
+# 	@echo =================================================================
+# 	rm -rf $(DEBDIR)
+# 	mkdir -p $(DEBDIR)/depends
+# 	cp -pr $(REGIMENTD)/install_environment_vars $(DEBDIR)/
+# 	cp -pr $(REGIMENTD)/src/bin        $(DEBDIR)/
+# 	cp -pr $(REGIMENTD)/src/build      $(DEBDIR)/
+# 	cp -pr $(REGIMENTD)/depends/petite_chez_scheme*  $(DEBDIR)/depends/
+# 	echo "0.9" > $(DEBDIR)/debian-binary
+# 	find $(DEBDIR) -name "*.svn" | xargs rm -rf 
+# 	find $(DEBDIR) -name "*~" | xargs rm -rf 
+# 	find $(DEBDIR) -name "#*" | xargs rm -rf 
+# 	find $(DEBDIR) -name "_*" | xargs rm -rf 
 
 
 #/*--------------------------------------------------------------------*/

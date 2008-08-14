@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#TMP=/tmp/`whoami`/wavescript_parsed.tmp
-
 source `dirname $0`/assert_regimentd
 
 if [ ! -f "$1" ];
@@ -12,21 +10,7 @@ then echo Usage: "ws <file> <option> ...";
      exit 1;
 fi
 
-# if [ ! -d /tmp/`whoami` ]; 
-# then mkdir /tmp/`whoami`;
-# fi
-
-
-# if [ ! `which wsparse` ]
-# then echo \"wsparse\" command not found.  Compile it!
-#      exit 1;
-# fi
-
-#wsparse $1 --nopretty > $TMP
-#regiment wsint $TMP ${1+"$@"}; 
-#rm -f $TMP
-
-if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
+if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=$REGIMENTD/bin/regiment; fi
 
 D=`dirname "$1"`
 B=`basename "$1"`
