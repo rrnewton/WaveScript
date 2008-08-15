@@ -872,7 +872,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	  (begin (code->msg! #f)
 		 (fpf "Failed to extract compile time from wsc2_marmot12_build.log!\n" ))))    
     (let ([cpu (getcpu "wsc2_marmot3_build.log")])
-      (if cpu (fprintf outp "Marmot3_compile_time_ikarus ~a\n" cpu)
+      (if cpu (fprintf outp "Marmot3_compile_time_chez ~a\n" cpu)
 	  (begin (code->msg! #f)
 		 (fpf "Failed to extract compile time from wsc2_marmot3_build.log\n"))))
     ;; TODO: extend with other apps.

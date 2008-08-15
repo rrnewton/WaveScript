@@ -1024,6 +1024,7 @@
 	       (or (ws-full-inline)
 		   (match ty
 		     [(,argty* ... -> ,retty)		  
+		      #;
 		      (printf "Considering lambda: poly ~a higher ~a freevars ~a    ~a \n"			      
 			      (polymorphic-type? ty)
 			      (or (type-containing-arrow? retty)
