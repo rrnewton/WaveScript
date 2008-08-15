@@ -92,7 +92,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (define fn (format "/tmp/___supertest_tmp_~a.txt" (random 100000000)))
   (and ;(system (format "~a &> ~a" cmd fn))
        ;; Not redirecting error because &> isn't very portable:
-       (system (format "~a > ~a" cmd fn))
+       (system (format "~a &> ~a" cmd fn))
        (let ([str (file->string fn)])
 	 (delete-file fn)
 	 str)))
@@ -301,7 +301,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (fpf      "  Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
-(run-test "chez: extract chez src from R6RS:" "./temporary_smoosh_to_one_chez_file.ss")
+(run-test "chez: extract chez src from R6RS:" "./temporary_smoosh_to_one_chez_file.ss > chez_smoosh.log")
 (run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
 (run-test "chez: WScript has access to the compiler:"
 	  "echo '(compile 3)' | ../bin/regiment.chez i --exit-error")
