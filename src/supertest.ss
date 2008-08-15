@@ -491,7 +491,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
-  (ASSERT (putenv "REGIMENTHOST" "chez"))
+  (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Demos, boehm RC (chez):"
 	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
@@ -840,19 +840,26 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; This is fragile because it depends on a particular output from the WS compiler.
     ;; AND on a particular output format for the Scheme (time _) command.
     (define (getcpu file)
-      (let* ([line (system-to-str (format "grep -A 3 'Total compile time' ~a | grep 'cpu time'" file))]
-	     [port (open-input-string (ASSERT line))])	
+      (let ([line (system-to-str (format "grep -A 3 'Total compile time' ~a | grep 'cpu time'" file))])
+	(printf "Extracting compile time from ~a, resulting line ~s\n" file line)
+	(let ([port (open-input-string (ASSERT line))])
 	;; This is really hacky:
 	;; Ikarus looks like this:
+	;;     9404 ms elapsed cpu time, including 1796 ms collecting
+	;; Chez looks like this:
+	;;     (time ...expression...)
+	;;     1007 collections   
 	;;     9404 ms elapsed cpu time, including 1796 ms collecting
 	;; Mzscheme looks like this:
 	;;     cpu time: 24 real time: 24 gc time: 0
 	(let* ([one   (read port)]
+	       ;; Hack for Chez:
+	       ;[_     (when (list? one) (read port) (read port) (set! one (read port)))]
 	       [two   (read port)]
 	       [three (read port)])
 	  (if (number? one) one 
 	      (begin (ASSERT (number? three))
-		     three)))))
+		     three))))))
     ;; This is the time spent in the Scheme WS compiler.  Does not include time spent in the C/ML compiler.
     (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
     (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log"))

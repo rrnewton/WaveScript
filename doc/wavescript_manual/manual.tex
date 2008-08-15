@@ -59,11 +59,11 @@ $\tt #1 $&$ \arr $&$ #2 $
 % [2007.12.01] nixing metaprogramming ...
 WaveScript is a functional language for writing highly abstract
 programs that generate efficient dataflow graphs through a two-stage
-evaluation model.  These graphs are
-executable in several backends (Scheme, ML, C++) that offer different
-tradeoffs in features, performance, and compile times, as well as
-parallel and distributed execution.  The compiler
-has several command line entrypoints for the different backends.
+evaluation model.  These graphs are executable in several backends
+(Scheme, ML, C, Java, TinyOS) that offer different tradeoffs in
+features, performance, and compile times, as well as parallel and
+distributed execution.  The compiler has several command line
+entrypoints for the different backends.
 
 %Calling {\bf ws}
 % linking them to the {\em XStream} engine.
@@ -818,6 +818,37 @@ expression extra parentheses are required: {\tt (f(x))[i]}.
 Many array operations are analogous to the list operations (map,
 fold, etc).  See the documentation for additional primitives below.
 
+\subsection{Mutable Variables}
+
+When transitioning from C to WaveScript one touchy point is mutable
+(modifiable) variables.  WaveScript, like ML and Scheme, allows
+mutation, but programmers in these languages tend to deemphasize it.
+
+As a reminder, a normal variable binding such as {\tt v = expression;}
+introduces a new variable and must occur at top-level or inside a
+{\{...\}} block.  The variable will be in scope after its
+introduction.
+Such a variable is not mutable by default.  To construct a mutable
+variable, one must create a ``Ref'', and modify its value with the
+{\tt :=} operator, as in the following example:
+\begin{verbatim}
+{
+   myvar :: Ref Int = ref(3);
+   myvar := 4;
+   myvar * 2;
+}
+\end{verbatim}
+Notice that myvar has a different type---it is not an Int, but a Ref
+Int.  You could think of a Ref like a one-element array.  Except
+wherever the myvar variable occurs, it is dereferenced automatically.
+(You don't have to {\tt deref}.)
+
+One additional complication in this scheme is that the {\tt state
+  \{\}} block of an iterate implicitly makes all of the bound state
+  variables ``ref''s.
+
+In the future, implicit uses of ``ref'' may be allowed, but the {\tt
+  :=} operator will remain distinct from the {\tt =} operator.
 
 %Refer to {\tt prim_defs.ss} for more array operations.
 
