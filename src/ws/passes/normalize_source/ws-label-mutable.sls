@@ -31,7 +31,7 @@
 		 (if (memq v mutable) `(deref ,v) v)]
 	     [(set! ,v ,[e]) 
 	      (unless (memq v mutable)
-		(error 'ws-label-mutable "Assignment to variable that is not iterator state!: \nSource Location:\n  ~a\n Expression:\n ~a\n~a~s" 
+		(error 'ws-label-mutable "Assignment to variable that is not mutable!: \nSource Location:\n  ~a\n Expression:\n ~a\n~a~s" 
 		       (get-location `(set! ,v ,e))
 		       (get-snippet `(set! ,v ,e))
 		       "\nMutable vars in scope: " mutable))

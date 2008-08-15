@@ -280,6 +280,7 @@
 ;======================================================================
 ;;; Begin loading files.  
 
+;; Source directories need to include wavescript/src/ 
 (include "chez_aggregated.ss")
 
 ;======================================================================

@@ -333,12 +333,12 @@ dbg:      so.debug
 boot: aggregated_chez _temp_temp.so shared 
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
-	rm _temp_temp.ss _temp_temp.so
+	rm -f _temp_temp.ss _temp_temp.so
 
 boot.opt: aggregated_chez _temp_temp.so shared.opt 
 	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez_OPT.so" > "build/$(MT)/legacy_main_chez_OPT.boot" 
-	rm _temp_temp.ss _temp_temp.so
+	rm -f _temp_temp.ss _temp_temp.so
 
 # This converts the R6RS codebase to a Chez-palatable form.
 ag_chez: aggregated_chez

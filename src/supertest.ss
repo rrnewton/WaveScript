@@ -846,7 +846,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (define (getcpu file)
       (let ([line (system-to-str (format "grep -A 3 'Total compile time' ~a | grep 'cpu time'" file))])
 	(printf "Extracting compile time from ~a, resulting line ~s\n" file line)
-	(let ([port (open-input-string (ASSERT line))])
+	(and line
+	     (let ([port (open-input-string line)])
 	;; This is really hacky:
 	;; Ikarus looks like this:
 	;;     9404 ms elapsed cpu time, including 1796 ms collecting
@@ -863,10 +864,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	       [three (read port)])
 	  (if (number? one) one 
 	      (begin (ASSERT (number? three))
-		     three))))))
+		     three)))))))
+
     ;; This is the time spent in the Scheme WS compiler.  Does not include time spent in the C/ML compiler.
-    (fprintf outp "Marmot12_compile_time_plt ~a\n"   (getcpu "wsc2_marmot12_build.log"))
-    (fprintf outp "Marmot3_compile_time_ikarus ~a\n" (getcpu "wsc2_marmot3_build.log"))
+    (let ([cpu (getcpu "wsc2_marmot12_build.log")])
+      (if cpu (fprintf outp "Marmot12_compile_time_plt ~a\n" cpu)
+	  (begin (code->msg! #f)
+		 (fpf "Failed to extract compile time from wsc2_marmot12_build.log!\n" ))))    
+    (let ([cpu (getcpu "wsc2_marmot3_build.log")])
+      (if cpu (fprintf outp "Marmot3_compile_time_ikarus ~a\n" cpu)
+	  (begin (code->msg! #f)
+		 (fpf "Failed to extract compile time from wsc2_marmot3_build.log\n"))))
     ;; TODO: extend with other apps.
     )
 
