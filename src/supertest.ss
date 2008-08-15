@@ -90,8 +90,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (close-output-port p)))
 (define (system-to-str cmd)
   (define fn (format "/tmp/___supertest_tmp_~a.txt" (random 100000000)))
-  (and (system (format "~a &> ~a" cmd fn))
-       (file->string fn)))
+  (and ;(system (format "~a &> ~a" cmd fn))
+       ;; Not redirecting error because &> isn't very portable:
+       (system (format "~a > ~a" cmd fn))
+       (let ([str (file->string fn)])
+	 (delete-file fn)
+	 str)))
 
 (define (mail to subj msg)
   (define tmpfile (format "/tmp/temp~a.msg" (current-milliseconds)))
@@ -491,7 +495,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
-  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  (ASSERT (putenv "REGIMENTHOST" "chez"))
   (run-test "wsc2: Demos, boehm RC (chez):"
 	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
