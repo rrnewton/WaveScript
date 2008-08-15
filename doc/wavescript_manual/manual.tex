@@ -23,7 +23,7 @@
 % page size commands
 
 %% Need to automatically grab the revision number.
-\title{WaveScript Rev 3042 User Manual}
+\title{WaveScript Rev 3493 User Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -131,7 +131,10 @@ counting up from zero.
 Notice that the assignment operator for mutating mutable variables
 ({\cde :=}) is different than the operator used for declaring new
 variables ({\cde =}).  ({\ws} also has {\cde +=}, {\cde -=} etc for use
-on mutable variables.)
+in mutating variables.)  It is also possible for mutable state to be
+declared {\em outside} the scope of the {\cde iterate}, but that introduces
+the possibility of referring to the state from the bodies of two
+different {\cd iterates}, which is not allowed.
 
 As a final example, we'll merge two streams operating at different
 frequencies.
@@ -145,6 +148,26 @@ frequencies.
 This will output a sequence of zeros and ones, with four ones for
 every three zeroes.  The {\cde merge} operator combines two streams of
 the same type, interleaving their elements in real time.
+
+Before we get into the nitty gritty, 
+I will leave you with two high-level points regarding how you should
+think of WaveScript.
+
+\begin{center}
+\begin{enumerate}
+   \item {\bf Everything is a value.}  Streams and functions are just
+   values (or objects if your prefer).  The purpose of a WaveScript
+   program is to return a Stream.
+
+   \item {\bf But you need to understand multi-stage evaluation.}
+   There are some restrictions on the code that executes inside {\tt
+   iterate}s, having to do with what features are supported at runtime
+   vs. compile time.  This detracts from the simplicity of (1),
+   because, for example, function values may not be stored at run time.
+   We'll return to this issue in Chapter \ref{s:evalmodel}.
+\end{enumerate}
+\end{center}
+
 
 \section{Pragmatics: Using WaveScript}
 
@@ -283,6 +306,7 @@ reasonable to use {\tt ws.early}.
 %conformance to explicit grammars.  Further it inserts extra
 %type-checks to make sure that the intermediate programs are well-formed.
 
+\section{Premier Compiler Backends}
 
 \subsection{The WaveScript MLton Backend}
 
@@ -300,96 +324,6 @@ single-threaded solution that exhibits surprisingly good performance
 \cite{mlton}, while also ensuring type- and memory-safe
 execution.  
 
-\subsection{The WaveScript CaML Backend}
-
-\rednote{This backend is no longer supported and will receive no new
-  features!  But if you need to use it, let me know.}
-
-\subsection{The C++/XStream Backend}
-The C++ backend\footnote{It uses a C++ compiler not because it
-  generates object-oriented code, but because the XStream runtime engine it
-  links with has been engineered in C++.} generates code that uses the
-XStream runtime/scheduling engine.  It is invoked with the {\bf wsc}
-command.  
-In practice, as WaveScript undergoes development, the {\bf wsc}
-compiler often lags behind {\bf ws} in terms of features and
-functionality.  Again, develop incrementally, refer to {\tt
-  demos/wavescope} for programs that should work with {\bf
-  wsc}.
-
-Refer to the XStream documentation\footnote{\rednote{[2007.03.09] Currently nonexistent}} 
-for information on how to configure the XStream engine
-(number of threads, scheduling policy, etc)).
-
-\rednote{[2007.03.09] Ideally the output from the XStream-executed
-query would be the same as the ws's output.  Currently, however, there are
-some basic disparities in how objects are printed to text form.  Hopefully, these
-are straightforward to work around, and should go away shortly.}
-
-Originally, we had intended for our C++ backend to be the
-best-performing of our backends, as it includes a low-level
-runtime specifically tailored for our streaming domain.
-%, as C and C++ are generally regarded as the languages of choice for performance-oriented systems programming. 
-However, in our current implementation the MLton backend actually
-outperforms our C++ backend, due to three primary factors:  
-%
-\vspace{-1.5mm}
-\begin{enumerate}
-
-\item The C++ backend leverages the flexible XStream scheduling engine for
-executing stream graphs.  The cost of this flexibility is that
-transferring control between operators is at least a virtual method
-invocation, and may involve a queue. The MLton and Scheme backends
-support only single-threaded depth-first traversal, where control
-transfers between operators are direct function calls.
-
-%% that attempts to
-%% distribute operators across a collection of processors which introduces
-%% some overhead; though our compiler optimizations try to limit this
-%% overhead by reducing operators where possible, it is still slower than
-
-\item MLton incorporates years of work on high-level program
-optimizations that GCC cannot reproduce (the abstractions are lost by
-the time it gets to C code), and which we do not have time to reproduce
-within the {\ws} compiler.
-
-\item Our prototype uses a naive reference counting scheme that is less
-efficient than MLton's tracing collector.  (Although it does reduce
-pauses relative to MLton's collector; the C++ backend uses the type
-system to enforce that cycles cannot occur, and thus pure reference
-counting is sufficient.) 
-%
-In the future we believe that we can implement a substantially more
-efficient collector by combining deferred reference counting with the
-fact that our stream operators do not share mutable state.
-
-%% In particular, our collector can take advantage
-%% of the fact that {\ws} code must be first-order and monomorphic, and
-%% there can be no mutable pointers to recursive datatypes.  The former we
-%% ensure by defunctionalization and specialization and the latter we
-%% simply do not allow the programmer to express. Thee restrictions ensure
-%% there are no cyclic data structures and therefore avoid the necessity of
-%% a backup tracing collector and the pauses it entails.  Unfortunately,
-%% our current system XXX \srm{ryan,fill in something here about why what
-%% we have is slow -- Boost pointers???}.
-
-\end{enumerate}
-%
-%We are exploring methods to reflect this restriction in the type
-%system of the source language without undue burden on the programmer.
-%However, even the with the current method, a violation of these
-%restrictions gives a compile-time error with a source location.  The
-%status quo is not bad.
-
-%% There is another substantial advantage to our C++ backend, which
-%% motivates us to continue to further develop it: it is the only backend
-%% which currently supports intra-machine parallelism -- that is,
-%% scheduling of stream graphs on multiple processors in a single
-%% machine, which 
-
-However, in spite of its limitations, our current prototype C++
-runtime is the best choice when parallelism is available.  The MLton
-runtime and garbage collector do not support concurrent threads.
 
 
 
@@ -406,7 +340,13 @@ generates code with minimal dependencies (not requiring a runtime
 scheduler).  This last point was critical in adapting the backend to
 target TinyOS (described in the next section).
 
-
+Currently [2008.08.15], {\bf wsc2} includes several garbage collection
+modes (simple reference counting, specialized deferred reference
+counting, boehm), has some support for multithreaded execution, some
+support for client/server execution over a LAN using ssh, and some
+support for client/server execution over a network of sensor nodes
+running JavaME or TinyOS and a base station.  (See the following
+section.)
 
 \subsection{The NesC/TinyOS 2.0 Backend}
 
@@ -564,6 +504,44 @@ support for new features:
 \end{itemize}
 
 
+
+
+\section{Deprecated Compiler Backends}
+
+\subsection{The WaveScript CaML Backend}
+
+\rednote{This backend is no longer supported and will receive no new
+  features!  But if you need to use it, let me know.}
+
+\subsection{The C++/XStream Backend}
+
+\rednote{This backend is no longer supported and will receive no new
+  features!  But if you need to use it, let me know.}
+
+The C++ backend\footnote{It uses a C++ compiler not because it
+  generates object-oriented code, but because the XStream runtime engine it
+  links with has been engineered in C++.} generates code that uses the
+XStream runtime/scheduling engine.  It is invoked with the {\bf wsc}
+command.  
+In practice, as WaveScript undergoes development, the {\bf wsc}
+compiler often lags behind {\bf ws} in terms of features and
+functionality.  Again, develop incrementally, refer to {\tt
+  demos/wavescope} for programs that should work with {\bf
+  wsc}.
+
+Refer to the XStream documentation\footnote{\rednote{[2007.03.09] Currently nonexistent}} 
+for information on how to configure the XStream engine
+(number of threads, scheduling policy, etc)).
+
+\rednote{[2007.03.09] Ideally the output from the XStream-executed
+query would be the same as the ws's output.  Currently, however, there are
+some basic disparities in how objects are printed to text form.  Hopefully, these
+are straightforward to work around, and should go away.}
+
+Note that the C++/XStream backend does not have competitive performance with
+either the MLton backend or the newer ANSI C backend ({\bf wsc2}).
+
+
 %================================================================================
 \chapter{Language Basics}\label{s:lang}
 
@@ -636,6 +614,7 @@ a function body consists of curly braces, it needn't be followed by a semi-colon
 \rednote{[2007.03.09] Be wary that with the current parser, a
   semi-colon error may appear as a strange parse error in the next
   or previous line.}
+
 
 %================================================================================
 \subsection{Streams}
@@ -718,6 +697,96 @@ entrypoint for the program.
 Note also that {\em only} the returned stream is instantiated at runtime.
 Other streams declared in the program will simply be ignored.  They
 become dead code.
+
+
+%================================================================================
+
+\subsection{Tips for C/Java Programmers}
+
+As a quick cheat sheet, refer to Figure \ref{f:cprogrammertips}.  This
+addresses some minor syntactic differences between WS and C/C++ that
+commonly trip people up.
+
+One important piece of advice is to be careful with mutation ({\tt
+  :=}).  Don't use it when it's unnecessary!  And if you need to use
+  it, keep the scope of the variables in question as small as
+  possible.  If, for example, you introduce mutable top-level (global)
+  variables it may have major deleterious effects.  First of all, it
+  opens up the possibility that you will refer to the state from
+  multiple {\tt iterate} bodies, which will make the compiler yell at
+  you.  More subtly, it can disable optimizations that act on {\tt
+  iterate}s without persistent state---for example, replicating them
+  in parallel.
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline {\em C/C++ code} & {\em WS Equivalent} \\
+\hline
+{\tt int x = 3;} & {\tt x = 3;     \ \ {\bf \em OR}}   \\
+{\tt } & {\tt x = (3::Int);}  \\
+{\tt } & {\tt x::Int = 3;}    \\
+\hline
+{\tt x = 4;}            & {\tt x := 4;} \\ 
+\hline
+{\tt if (a) b; else c;} & {\tt if a then b else c;} \\  \hline
+{\tt typedef char myty;} & {\tt type myty = Char; } \\  \hline
+
+{\tt List< Array<int> >}          & {\tt List (Array Int) } \\  \hline
+\end{tabular}
+\end{center}
+\caption{Some highlighted syntactic differences between WaveScript and
+  C/C++/Java.}
+\label{f:cprogrammertips}
+\end{figure}
+
+
+%% \subsection{Variables, Mutation, Shared State}
+
+%% When transitioning from C to WaveScript one touchy point is the
+%% distinction between 
+
+%% mutable
+%% (modifiable) variables.  WaveScript, like ML and Scheme, allows
+%% mutation, but programmers in these languages tend to deemphasize it.
+
+%% As a reminder, a normal variable binding such as {\tt v = expression;}
+%% introduces a new variable and must occur at top-level or inside a
+%% {\{...\}} block.  The variable will be in scope after its
+%% introduction.  
+
+%% Such a variable may be mutated by the {\tt :=} operator.
+
+%% Such a variable is not mutable by default.  To construct a mutable
+%% variable, one must create a ``Ref'', and modify its value with the
+%% {\tt :=} operator, as in the following example:
+%% \begin{verbatim}
+%% {
+%%    myvar :: Ref Int = ref(3);
+%%    myvar := 4;
+%%    myvar * 2;
+%% }
+%% \end{verbatim}
+%% Notice that myvar has a different type---it is not an Int, but a Ref
+%% Int.  You could think of a Ref like a one-element array.  Except
+%% wherever the myvar variable occurs, it is dereferenced automatically.
+%% (You don't have to {\tt deref}.)
+
+%% One additional complication in this scheme is that the {\tt state
+%%   \{\}} block of an iterate implicitly makes all of the bound state
+%%   variables ``ref''s.
+
+%% In the future, implicit uses of ``ref'' may be allowed, but the {\tt
+%%   :=} operator will remain distinct from the {\tt =} operator.
+
+%Refer to {\tt prim_defs.ss} for more array operations.
+
+
+
+
+
+
+
 
 
 %================================================================================
@@ -817,40 +886,6 @@ expression extra parentheses are required: {\tt (f(x))[i]}.
 
 Many array operations are analogous to the list operations (map,
 fold, etc).  See the documentation for additional primitives below.
-
-\subsection{Mutable Variables}
-
-When transitioning from C to WaveScript one touchy point is mutable
-(modifiable) variables.  WaveScript, like ML and Scheme, allows
-mutation, but programmers in these languages tend to deemphasize it.
-
-As a reminder, a normal variable binding such as {\tt v = expression;}
-introduces a new variable and must occur at top-level or inside a
-{\{...\}} block.  The variable will be in scope after its
-introduction.
-Such a variable is not mutable by default.  To construct a mutable
-variable, one must create a ``Ref'', and modify its value with the
-{\tt :=} operator, as in the following example:
-\begin{verbatim}
-{
-   myvar :: Ref Int = ref(3);
-   myvar := 4;
-   myvar * 2;
-}
-\end{verbatim}
-Notice that myvar has a different type---it is not an Int, but a Ref
-Int.  You could think of a Ref like a one-element array.  Except
-wherever the myvar variable occurs, it is dereferenced automatically.
-(You don't have to {\tt deref}.)
-
-One additional complication in this scheme is that the {\tt state
-  \{\}} block of an iterate implicitly makes all of the bound state
-  variables ``ref''s.
-
-In the future, implicit uses of ``ref'' may be allowed, but the {\tt
-  :=} operator will remain distinct from the {\tt =} operator.
-
-%Refer to {\tt prim_defs.ss} for more array operations.
 
 \subsection{Additional primitive functions}
 
@@ -1221,7 +1256,10 @@ S as (a,b) :: Stream(Int * Float) = someStream;
 
 %================================================================================
 
+
+
 \chapter{WaveScript Evaluation Model}
+\label{s:evalmodel}
 
 WaveScript is a {\em metaprogramming} language.  For further
 explanation, I'll refer you to a quote from the {\em Matrix Reloaded}
@@ -1237,24 +1275,49 @@ The {\em reason} in WaveScript, is that we want to write programs of a
 different character than we want to {\em run}.  We call this {\em asymmetric metaprogramming}.
 We want to {\em write}
 abstract, reusable, polymorphic, higher-order programs, but we want to
-{\em run} fast, monomorphic, first-order, C-programs representing
-parallelizable dataflow graphs.
+{\em run} parallelizable dataflow graphs where individual nodes are
+fast, monomorphic, first-order, C-programs that don't require
+a heavyweight runtime.
 In WaveScript your program essentially {\em
 generates} the specialized, high-performance stream-processing
 program that is subsequently compiled and run.  
 
 
-How does this work?  Currently {\em all} user defined functions (as
-described in section \ref{udfs}) {\bf will be inlined at metaprogram
-evaluation}.  What results is a dataflow graph of {\tt iterate} blocks.
-Thus, only bounded-recursions are permitted in user defined functions,
-and excessive code bloat becomes a real possibility.  In the future, we will
-allow a ``noinline'' or ``library function'' annotation that specifies
-that a function is to be compiled as a C-function, rather than
-inlined.  Of course, such a function will not be allowed to take or
-return {\tt Stream} values.
+How does this work?  
+WaveScript runs your program through an interpreter at compile time.
+Your program returns a stream value.  WaveScript must then make sure
+that it can convert that stream-value back to code, and reduce that
+code to fit the restrictions of the backend.  There are restrictions
+on the backend because we omit heavyweight language features to target
+tiny embedded devices (e.g. no functions as values / no closures).
+Hence {\em asymmetric} metaprogramming.
 
-\rednote{\em \bf Keep the metaprogram pure for now! (free of side-effects)}
+Your is therefore really two programs: a {\em meta-}program and an {\em
+  object}-program.  The meta-program runs at compile-time and
+  generates the object-program.  Other metaprogramming systems
+  typically have heavyweight quotation mechanisms for explicitly
+  constructing object code, so you know exactly what object-code you
+  get out.  However, these mechanisms are also very onerous, and place
+  a burden on the programmer.  
+
+WaveScript intentionally blurs the distinction between the
+stages---uses the same language, the same syntax, semantics, and
+libraries for both stages---and most of the time you don't need to
+think about it.  But sometimes you do.  In particular, you have to be
+careful not to try to store function values in data structures within
+object code (inside {\cde iterates}).  Recursive functions are also
+currently disallowed in object code.
+
+
+%% What results is a dataflow graph of {\tt iterate} blocks.
+%% Thus, only bounded-recursions are permitted in user defined functions,
+%% and excessive code bloat becomes a real possibility.  In the future, we will
+%% allow a ``noinline'' or ``library function'' annotation that specifies
+%% that a function is to be compiled as a C-function, rather than
+%% inlined.  Of course, such a function will not be allowed to take or
+%% return {\tt Stream} values.
+
+%% \rednote{\em \bf Keep the metaprogram pure for now! (free of side-effects)}
 
 %\chapter{WaveScript Execution Model}
 \section{Execution Model}
@@ -1273,25 +1336,29 @@ loose fairness constraints.  Any kernel with input data available is
 execute an infinite number of times without all other ready kernels
 executing.
 
-\rednote{Other guarantees?  There was supposed to be one more...}
+%\rednote{Other guarantees?  There was supposed to be one more...}
 
-Of course, in practice we have slightly stronger expectations of the
-scheduler.  We expect that it is reasonably well engineered, and does not
-follow perverse practices regarding fairness.  For example,
-depth-first traversals
+%% Of course, in practice we have slightly stronger expectations of the
+%% scheduler.  We expect that it is reasonably well engineered, and does not
+%% follow perverse practices regarding fairness.  For example,
+%% depth-first traversals
 
-However, ultimately, computations must be robust to the timing of the
+Therefore computations must be robust to the timing of the
 communication channels between kernels.  After all, the program may be
 distributed, with some channels going over slow wireless links, and
 other channels intra-node.  How do we accomplish this?  Well, we rely
 on well-engineered libraries to insulate programmers from as much of
-the pain of asynchronicity as possible.
+the pain of asynchronicity as possible.  In particular, be careful
+whenever multiple streams are being merged.  If there is a one-to-one
+correspondence between stream elements, use {\cde zip} library
+functions if possible.
 
-\rednote{TODO: go over and expand this}
+%% \rednote{TODO: go over and expand this}
 
-\section{Debugging}
+%% \section{Debugging}
 
-\rednote{TODO}
+%% \rednote{TODO}
+
 
 \appendix
 \chapter{Primitive table}\label{s:primtable}
