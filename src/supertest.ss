@@ -840,7 +840,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; This is fragile because it depends on a particular output from the WS compiler.
     ;; AND on a particular output format for the Scheme (time _) command.
     (define (getcpu file)
-      (let* ([line (system-to-str (format "grep -3 2 'Total compile time' ~a | grep 'cpu time'" file))]
+      (let* ([line (system-to-str (format "grep -A 3 'Total compile time' ~a | grep 'cpu time'" file))]
 	     [port (open-input-string (ASSERT line))])	
 	;; This is really hacky:
 	;; Ikarus looks like this:
