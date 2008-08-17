@@ -273,6 +273,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Here we begin running tests:
 
 (fpf "\nRunning from directory: ~a\n\n" ws-root-dir)
+(fpf "Date: ~a\n" (system-to-str "date"))
 
 (fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
 (fpf "========================================\n")

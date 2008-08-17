@@ -1,0 +1,31 @@
+Source: wavescript
+Section: devel
+Priority: optional
+Maintainer: Ryan Newton <ryan.newton@alum.mit.edu>
+Uploaders: Ryan Newton <ryan.newton@alum.mit.edu>
+Build-Depends: debhelper (>> 5.0.0), libc6 (>= 2.6-1), libgmp3c2, libc6-dev, libgmp3-dev (>= 4.0.1), gcc, mzscheme (>= 1:360)
+Standards-Version: 3.7.2
+Version: 0.0.1
+XS-Vcs-Svn: https://svn.csail.mit.edu/wavescript/branches/wavescope
+XS-Vcs-Browser: https://svn.csail.mit.edu/wavescript/branches/wavescope
+
+Package: wavescript
+Section: devel
+Priority: optional
+Architecture: i386
+Essential: no
+Depends: libc6 (>= 2.6-1), libgmp3c2, libc6-dev, libgmp3-dev (>= 4.0.1), gcc, mzscheme (>= 1:360)
+Conflicts: 
+Replaces: 
+Provides: wavescript
+Description: High performance distributed/parallel stream-processing language & compiler
+  WaveScript (wavescope.csail.mit.edu) is a functional language for
+  writing highly abstract programs that generate efficient dataflow
+  graphs through a two-stage evaluation model.  This graph intermediate
+  language is executable in several backends (Scheme, ML, Java[ME],
+  C/C++, TinyOS) that enable support for various embedded platforms and
+  offer different tradeoffs in features, performance, portability,
+  compile times, and parallel/distributed execution.  WaveScript is
+  primarily used for programming sensor networks, or for parallel
+  computation on multicores or clusters.  Includes a C FFI and various
+  libraries.

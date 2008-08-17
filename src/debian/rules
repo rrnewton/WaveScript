@@ -1,0 +1,117 @@
+#!/usr/bin/make -f
+
+# clean, binary, binary-arch, binary-indep, and build
+
+PACKAGE = wavescript
+WSMAJOR = 0.0
+WSMINOR = 1
+
+NATIVE_ARCHS = $(shell cat debian/native-archs)
+DISTDIR = $(PACKAGE)-$(WSMAJOR).$(WSMINOR)
+SRCTARBALL = $(PACKAGE)-source-$(WSMAJOR).$(WSMINOR).tar.bz2
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_BUILD_ARCH      ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
+
+# ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+# 	CFLAGS += -O0
+# else
+# 	CFLAGS += -O2
+# endif
+# ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+# 	INSTALL_PROGRAM += -s
+# endif
+
+# Generate ocaml-native-compilers' Architecture field.
+# Should never be called automatically.
+# debian/control:
+# 	sed -e 's/#OcamlNativeArchs#/$(NATIVE_ARCHS)/g' debian/control.in > $@
+
+# build: 
+# 	(cd ..; $(MAKE) clean wsparse ikarus boot)
+
+# binary-indep:
+# binary-arch:
+
+# binary: binary-arch binary-indep 
+
+# clean:
+
+
+# pre-config: debian/$(SRCTARBALL)
+# 	touch $@
+# debian/$(SRCTARBALL):
+# 	ln -fs . $(DISTDIR)	# beware of the symlink recursion!
+# 	tar --anchored -chjf $@ \
+# 		--exclude=$(DISTDIR)/$(DISTDIR)	\
+# 		--exclude-from=debian/ocaml-source.exclude \
+# 		$(DISTDIR)/
+
+
+
+
+# CC = gcc
+# CFLAGS = -g -Wall
+
+# ifeq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+#   CFLAGS += -O2
+# endif
+
+# 	dh_clean
+#	rm -f build
+clean:
+	-$(MAKE) -i distclean
+
+# install: build
+# 	dh_clean
+# 	dh_installdirs
+# #	$(MAKE) prefix=$(CURDIR)/debian/$(PACKAGE)/usr install
+
+#	./configure --prefix=/usr
+#	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)"
+build:
+	$(MAKE) 
+	touch build
+
+#binary-indep: install
+binary-indep: 
+
+#binary-arch: install
+
+## TODO: use install to set perms:
+
+# 	install -d debian/tmp/DEBIAN $(docdir)
+# 	$(MAKE) INSTALL_PROGRAM="$(INSTALL_PROGRAM)" \
+# 		prefix=$$(pwd)/debian/tmp/usr install
+# 	gzip -r9 debian/tmp/usr/share/man
+#	dpkg-shlibdeps debian/tmp/usr/bin/hello
+
+binary-arch: 
+	dpkg-gencontrol -isp
+	chown -R root:root debian/tmp
+	chmod -R u+w,go=rX debian/tmp
+	dpkg --build debian/tmp ..
+
+# 	dh_installchangelogs -a ChangeLog
+# 	dh_strip      -a
+# 	dh_compress   -a
+# 	dh_fixperms   -a
+# 	dh_installdeb -a
+# 	dh_shlibdeps  -a
+# 	dh_gencontrol -a
+# 	dh_md5sums    -a
+# 	dh_builddeb   -a
+
+
+
+#	dh_installdocs -a NEWS
+
+binary: binary-indep binary-arch
+
+.PHONY: binary binary-arch binary-indep clean

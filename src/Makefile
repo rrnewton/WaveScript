@@ -514,38 +514,6 @@ runplt:
 #*    Installation Packages                                            */
 #*---------------------------------------------------------------------*/
 
-# This makes three separate tarfile packages that must be unzipped in the same dir.
-OLDPKGDIR=~/build/regiment
-old_package: clean
-	@echo
-	@echo PACKAGING REGIMENT/WAVESCRIPT
-	@echo =================================================================
-	rm -rf $(OLDPKGDIR)
-	mkdir $(OLDPKGDIR)
-	mkdir $(OLDPKGDIR)/base
-	cp -pr $(REGIMENTD)/* $(OLDPKGDIR)/base/
-	$(MAKE) heap
-	$(MAKE) chez
-# Now clean that out a little:
-	rm -f $(OLDPKGDIR)/base/depends
-	rm -rf $(OLDPKGDIR)/base/old_passes
-	rm -rf $(OLDPKGDIR)/base/plots
-	rm -rf $(OLDPKGDIR)/base/haskell/assembler
-	find $(OLDPKGDIR)/base -name "*.svn" | xargs rm -rf 
-	find $(OLDPKGDIR)/base -name "*~" | xargs rm -rf 
-	find $(OLDPKGDIR)/base -name "_*" | xargs rm -rf 
-	@echo
-	@echo BUILDING TARFILES
-	@echo =================================================================
-	(cd $(OLDPKGDIR)/base; tar cjf ../regiment_src.tbz *)
-#	rm $(OLDPKGDIR)/base
-	(cd $(REGIMENTD); tar cvjf $(OLDPKGDIR)/regiment_heap.tbz build/regiment.0.heap)
-	mkdir $(OLDPKGDIR)/depends
-	(cd $(REGIMENTD)/; cp -pr depends/* $(OLDPKGDIR)/depends/)
-	(cd $(OLDPKGDIR); tar cjf regiment_depends.tbz depends)
-	(cd $(REGIMENTD)/; tar cvjf $(OLDPKGDIR)/regiment_object.tbz main_chez.so)
-
-
 # [2007.04.09] Updating this, it was very old:
 PKGDIR=$(REGIMENTD)/binary_pkg
 #clean ws ws.opt wsparse.full
@@ -569,26 +537,14 @@ fullpkg:
 
 ## UNFINISHED:  ## UNFINISHED:  ## UNFINISHED: 
 
-#DEBDIR=$(REGIMENTD)/deb_pkg
-# [2008.08.14] New: going to try to produce a .deb package.
-#deb: clean ikarus wsparse boot
+## TODO - set the version automatically!
+DEBPKG=$(REGIMENTD)/wavescript_0.0.1
 deb: 
-	./package_deb.sh
-# 	@echo
-# 	@echo PACKAGING REGIMENT/WAVESCRIPT AS A .DEB 
-# 	@echo =================================================================
-# 	rm -rf $(DEBDIR)
-# 	mkdir -p $(DEBDIR)/depends
-# 	cp -pr $(REGIMENTD)/install_environment_vars $(DEBDIR)/
-# 	cp -pr $(REGIMENTD)/src/bin        $(DEBDIR)/
-# 	cp -pr $(REGIMENTD)/src/build      $(DEBDIR)/
-# 	cp -pr $(REGIMENTD)/depends/petite_chez_scheme*  $(DEBDIR)/depends/
-# 	echo "0.9" > $(DEBDIR)/debian-binary
-# 	find $(DEBDIR) -name "*.svn" | xargs rm -rf 
-# 	find $(DEBDIR) -name "*~" | xargs rm -rf 
-# 	find $(DEBDIR) -name "#*" | xargs rm -rf 
-# 	find $(DEBDIR) -name "_*" | xargs rm -rf 
-
+	rm -rf $(DEBPKG)
+	mkdir $(DEBPKG)
+	cp -a debian $(DEBPKG)
+	mv $(DEBPKG)/debian/package_deb.sh $(DEBPKG)/
+	(cd $(DEBPKG); ./package_deb.sh)
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

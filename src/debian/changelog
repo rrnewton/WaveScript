@@ -1,0 +1,6 @@
+wavescript (0.0.1-1) contrib; urgency=low
+
+  * Initial release
+  * Added Debian GNU/Linux Linux package maintenance system files
+
+ -- Ryan Newton <ryan.newton@alum.mit.edu>  Fri, 15 Aug 2008 17:01:17 -0400
