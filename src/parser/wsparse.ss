@@ -1,12 +1,14 @@
 #! /bin/bash
 #|
-exec mzscheme -mqt "$0" ${1+"$@"}
+exec mzscheme -qt "$0" ${1+"$@"}
 |#
+;;exec mzscheme -mqt "$0" ${1+"$@"}
 
 ;; Just a little PLT script to parse the input file and write result to stdout.
 
 (module wsparse mzscheme 
 
+;(provide main)
 (require "regiment_parser.ss")
 (require (lib "pretty.ss"))
 
@@ -30,6 +32,7 @@ exec mzscheme -mqt "$0" ${1+"$@"}
 	     ))
   (flush-output (current-output-port)))
 
+;; Here's our script invocation:
 
 ;; When run in --persist mode we run in a loop.
 (if (member "--persist" allargs)
@@ -39,7 +42,9 @@ exec mzscheme -mqt "$0" ${1+"$@"}
 	(main filename) 
 	(loop)))
     ;; Otherwise the (single) file to parse is the first argument.
-    (main (car allargs)))
+    (if (null? allargs)
+	(error 'wsparse "No filename provided...")
+	(main (car allargs))))
 (exit 0)
 
 )

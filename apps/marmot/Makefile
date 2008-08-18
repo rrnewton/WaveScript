@@ -9,6 +9,7 @@ all: nodelocs.ws testdata.txt 6sec_marmot_sample.raw
 testdata.txt:
 	bunzip2 -f -k testdata.txt.bz2
 
+# By default this makes a replicated file.
 6sec_marmot_sample.raw:
 	@if [ -f "6sec_marmot_sample.raw" ]; then echo "Sample Marmot data in place."; \
   else ./download_small_sample_data; cp 6sec_marmot_sample.raw temp.raw; \

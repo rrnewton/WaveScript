@@ -19,49 +19,6 @@ DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_BUILD_ARCH      ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
-# ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-# 	CFLAGS += -O0
-# else
-# 	CFLAGS += -O2
-# endif
-# ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-# 	INSTALL_PROGRAM += -s
-# endif
-
-# Generate ocaml-native-compilers' Architecture field.
-# Should never be called automatically.
-# debian/control:
-# 	sed -e 's/#OcamlNativeArchs#/$(NATIVE_ARCHS)/g' debian/control.in > $@
-
-# build: 
-# 	(cd ..; $(MAKE) clean wsparse ikarus boot)
-
-# binary-indep:
-# binary-arch:
-
-# binary: binary-arch binary-indep 
-
-# clean:
-
-
-# pre-config: debian/$(SRCTARBALL)
-# 	touch $@
-# debian/$(SRCTARBALL):
-# 	ln -fs . $(DISTDIR)	# beware of the symlink recursion!
-# 	tar --anchored -chjf $@ \
-# 		--exclude=$(DISTDIR)/$(DISTDIR)	\
-# 		--exclude-from=debian/ocaml-source.exclude \
-# 		$(DISTDIR)/
-
-
-
-
-# CC = gcc
-# CFLAGS = -g -Wall
-
-# ifeq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-#   CFLAGS += -O2
-# endif
 
 # 	dh_clean
 #	rm -f build
@@ -75,9 +32,11 @@ clean:
 
 #	./configure --prefix=/usr
 #	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)"
-build:
-	$(MAKE) 
-	touch build
+build: chez
+
+chez:
+	(  $(MAKE) chez)
+#	touch build
 
 #binary-indep: install
 binary-indep: 
@@ -96,10 +55,10 @@ binary-arch:
 	dpkg-gencontrol -isp
 	chown -R root:root debian/tmp
 	chmod -R u+w,go=rX debian/tmp
+	dh_strip      -a
 	dpkg --build debian/tmp ..
 
 # 	dh_installchangelogs -a ChangeLog
-# 	dh_strip      -a
 # 	dh_compress   -a
 # 	dh_fixperms   -a
 # 	dh_installdeb -a

@@ -19,13 +19,22 @@ print_results_header
 ##   MARMOT BENCH
 ## ================================================================================ ##
 
+TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
+
+# Make a large temporary file.
 function getfile() {
   echo "  Making a big enough audio file."; echo
   cd "$REGIMENTD/apps/marmot";
-  #(rm -f 6sec_marmot_sample.raw)
-  # ensure that we have sample data:
-  make 6sec_marmot_sample.raw
   make testdata.txt
+  (rm -f 6sec_marmot_sample.raw)
+  # ensure that we have sample data:
+  #make 6sec_marmot_sample.raw
+  ./download_small_sample_data
+  for ((i=0; i<100; i++)) do
+    cat 6sec_marmot_sample.raw >> $TMPDAT
+  done;
+  rm -f 6sec_marmot_sample.raw
+  ln -s $TMPDAT 6sec_marmot_sample.raw
 }
 
 getfile
@@ -34,7 +43,7 @@ getfile
 
 cd "$REGIMENTD/apps/marmot/";
 echo "## Running orig marmot phase 1  " > RESULTS.txt
-runallbackends run_first_phase $TEMP __ 40
+runallbackends run_first_phase $TEMP __ 100
 cd "$START"
 mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
 p
@@ -137,4 +146,6 @@ cat RESULTS.txt         >> RESULTS.tex
 echo '\end{verbatim}'  >> RESULTS.tex
 
 dump_plot_script ./plot.gp RESULTS.txt
+
+rm -f $TMPDAT
 

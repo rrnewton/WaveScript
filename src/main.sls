@@ -49,7 +49,7 @@
 ;; STUB
 (define par list)
 
-(define-regiment-parameter regiment-version "0.9?")
+(define-regiment-parameter wavescript-version "0.0.1")
 
 ;; Regiment compiler:
 ;; This is the global parameter that determines which transformations
@@ -1660,8 +1660,8 @@
 ;;; These functions are used for command-line invocation of the whole system:
 
 (define (print-help)
-  (printf "Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
-	  (regiment-version) 
+  (printf "WaveScript/Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
+	  (wavescript-version)
 	  (top-level-value 'svn-revision)
 	  (top-level-value 'regiment-origin))
   (printf "Usage: regiment command [options] \n")

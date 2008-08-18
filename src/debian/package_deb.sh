@@ -1,8 +1,12 @@
 #!/bin/bash
 
-# This packages it using Petit Chez.
+# This packages WaveScript using Petit Chez as the host Scheme implementation.
 
 # Next I need to make it work with ikarus.
+
+# This script runs to build a clean source .deb.  Subsequently, when
+# the source package is built, it will need to package everything as a
+# BINARY .deb.
 
 #make clean wsparse ikarus boot
 
@@ -10,95 +14,134 @@
 
 ## TODO: Set the version automatically!!
 VER=0.0.1
-DEBDIR=$REGIMENTD/wavescript_$VER/
+PACKAGENAME=wavescript
 
-echo
-echo PACKAGING REGIMENT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
-echo =================================================================
-echo Output directed to $DEBDIR
+DEBDIR=$REGIMENTD/$PACKAGENAME"_"$VER/
 
 #rm -rf $DEBDIR
-mkdir -p $DEBDIR/debian/tmp/
 
-WSDIR=$DEBDIR/debian/tmp/usr/lib/wavescript/$VER
+#WSDIR=$DEBDIR/debian/tmp/usr/lib/wavescript/$VER
+WSDIR=$DEBDIR/
 
-mkdir -p $WSDIR/depends
-mkdir -p $WSDIR/src/
-mkdir -p $DEBDIR/debian/tmp/usr/bin
-mkdir -p $DEBDIR/debian/tmp/DEBIAN
+# [2008.08.17] This is fragile, but we want to be minimalist.  It
+# copies only the important parts out of the source tree.
 
-cp -pr $REGIMENTD/install_environment_vars $WSDIR/
-cp -pr $REGIMENTD/src/bin                  $WSDIR/
-cp -pr $REGIMENTD/src/build                $WSDIR/
-cp -pr $REGIMENTD/lib                      $WSDIR/
-cp -pr $REGIMENTD/src/linked_lib           $WSDIR/src/
-cp -pr $REGIMENTD/depends/petite_chez_scheme*  $WSDIR/depends/
+function copy_common() {
+  mkdir -p $WSDIR/depends
+  mkdir -p $WSDIR/src/
+  cp -pr $REGIMENTD/install_environment_vars $WSDIR/
+  cp -pr $REGIMENTD/lib                      $WSDIR/
 
-for cmd in ws wsc2 wsmlton; do
- ln -s /usr/lib/wavescript/$VER/bin/$cmd $DEBDIR/debian/tmp/usr/bin/
-done
+  mkdir -p $WSDIR/doc/
+  cp -pr $REGIMENTD/doc/wavescript_manual    $WSDIR/doc/
+  cp -pr $REGIMENTD/doc/wavescript_manpages  $WSDIR/doc/
 
-# echo "2.0" > $DEBDIR/debian-binary
+#   cp -pr $REGIMENTD/src/bin                  $WSDIR/
+   cp -pr $REGIMENTD/src/linked_lib           $WSDIR/src/
+   cp -pr $REGIMENTD/src/bin                  $WSDIR/src/
+   cp -pr $REGIMENTD/src/parser               $WSDIR/src/
+   cp -pr $REGIMENTD/src/regiment*.ss         $WSDIR/src/
 
-# cd $DEBDIR/
+   ## Todo, should instead download the right version of petite from the web.
+   ## We should download the version for this architecture.
+   cp -pr $REGIMENTD/depends/petite*              $WSDIR/depends/
+   cp -pr $REGIMENTD/depends/get_machine_type     $WSDIR/depends/
 
-# cat > postinst <<EOF
-# #!/bin/sh
-# EOF
+  (cd $WSDIR     && ln -s src/bin   ./)
+  (cd $WSDIR     && ln -s src/build ./)
+  (cd $WSDIR/src && ln -s ../depends  ./)
+}
 
-# cat > prerm <<EOF
-# #!/bin/sh
-# EOF
+function copy_cleanup() {
+  find $WSDIR -name "*.svn" | xargs rm -rf 
+  find $WSDIR -name "*~" | xargs rm -rf 
+  find $WSDIR -name "#*" | xargs rm -rf 
+  find $WSDIR -name "_*" | xargs rm -rf 
+}
 
-# chmod +x postinst prerm
+# This copies all the files necessary to a source package.
+function copy_necessary_source() {
+   copy_common
 
-# ARCH=`uname -m`
+   cp -pr $REGIMENTD/src/main*                $WSDIR/src/
+   cp -pr $REGIMENTD/src/config.ss            $WSDIR/src/
+   cp -pr $REGIMENTD/src/legacy_main_chez.ss  $WSDIR/src/
+   cp -pr $REGIMENTD/src/temporary*chez*.ss   $WSDIR/src/
+   cp -pr $REGIMENTD/src/generate_main*       $WSDIR/src/
+   cp -pr $REGIMENTD/src/*.sexp               $WSDIR/src/
+   cp -pr $REGIMENTD/src/ws                   $WSDIR/src/
+   cp -pr $REGIMENTD/src/Makefile             $WSDIR/src/
+  cp -pr $REGIMENTD/depends/matpak*              $WSDIR/depends/
+  cp -pr $REGIMENTD/depends/bos                  $WSDIR/depends/
 
-# ## HMM, not sure what the right way to do this is:
-# if [ "$ARCH" = "i686" ]; 
-# then ARCH=i386
-# fi
+  copy_cleanup
+}
 
-# cat > conffiles <<EOF
-# Package: wavescript
-# Version: 0.9
-# Section: devel
-# Priority: optional
-# Architecture: $ARCH
-# Essential: no
-# Depends: libc6 (>= 2.6-1), libgmp3c2, libc6-dev, libgmp3-dev (>= 4.0.1), gcc, mzscheme (>= 1:370)
-# Installed-Size: 8192
-# Maintainer: Ryan Newton [ryan.newton@alum.mit.edu]
-# Conflicts: 
-# Replaces: 
-# Provides: wavescript
-# Description: High performance distributed/parallel stream-processing language & compiler
-# WaveScript (wavescope.csail.mit.edu) is a functional language for
-# writing highly abstract programs that generate efficient dataflow
-# graphs through a two-stage evaluation model.  This graph intermediate
-# language is executable in several backends (Scheme, ML, Java[ME],
-# C/C++, TinyOS) that enable support for various embedded platforms and
-# offer different tradeoffs in features, performance, portability,
-# compile times, and parallel/distributed execution.  WaveScript is
-# primarily used for programming sensor networks, or for parallel
-# computation on multicores or clusters.  Includes a C FFI and various
-# libraries.
-# EOF
 
-cat > $DEBDIR/Makefile <<EOF
+function build_src_pkg() {
+  echo
+  echo PACKAGING REGIMENT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
+  echo =================================================================
+  echo Output directed to $DEBDIR
+  copy_necessary_source
+  cat > $DEBDIR/Makefile <<EOF
+chez:
+	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )
+	./package_deb.sh binary
+
 distclean:
-
-
+	(source install_environment_vars && cd src && make clean )
 EOF
+}
 
-find $DEBDIR -name "*.svn" | xargs rm -rf 
-find $DEBDIR -name "*~" | xargs rm -rf 
-find $DEBDIR -name "#*" | xargs rm -rf 
-find $DEBDIR -name "_*" | xargs rm -rf 
+# We don't want to rely on REGIMENTD pointing to the host system here.
+# This must be called from the source package directory (called DEBDIR above)
+function build_binary_pkg_chez() {
+  echo
+  echo Packaging WaveScript as a Debian Binary Package on arch `uname -m`
+  echo =================================================================
+  REGIMENTD=`pwd`
+  rm -rf ./debian/tmp
+  mkdir -p ./debian/tmp/usr/bin
+  mkdir -p ./debian/tmp/DEBIAN
+  mkdir -p ./debian/tmp/usr/lib/$PACKAGENAME/$VER
 
-# cd $DEBDIR/data
-# find -type f | xargs md5sum > ../md5sums
-# tar czf data.tar.gz *
+  mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME/
+  cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME/
+  cp ./debian/changelog ./debian/tmp/usr/share/doc/$PACKAGENAME/changelog.Debian
+  gzip -9               ./debian/tmp/usr/share/doc/$PACKAGENAME/changelog.Debian
+#  (cd ./debian/tmp/usr/share/doc/$PACKAGENAME/ && gzip changelog && mv changelog.gz changelog.Debian.gz)
+
+  mkdir -p ./debian/tmp/usr/share/man/man1/  
+  cp ./doc/wavescript_manpages/*.1 ./debian/tmp/usr/share/man/man1/
+  (cd ./debian/tmp/usr/share/man/man1/ && gzip -9 *)
+
+  for cmd in ws wsc2 wsmlton; do 
+    ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 
+  done
+  
+  WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER
+  copy_common
+  cp -pr $REGIMENTD/src/build                $WSDIR/src/
+  copy_cleanup
+
+  # Symlink directly to regiment.chez
+  rm -f $WSDIR/bin/regiment
+  ln -s regiment.chez $WSDIR/bin/regiment
+
+  cd debian/tmp/
+  find -type f | xargs md5sum > ../md5sums
+  cd ../../
+}
+
+case $1 in
+   "" )              build_src_pkg;;
+   "source" )        build_src_pkg;;
+   "binary" )        build_binary_pkg_chez;;
+esac
+
+
+#  tar czf data.tar.gz *
 
 # cd $DEBDIR
 # mv $DEBDIR/data/data.tar.gz $DEBDIR/
@@ -106,4 +149,3 @@ find $DEBDIR -name "_*" | xargs rm -rf
 
 # tar czf control.tar.gz conffiles postinst prerm md5sums
 # rm -f conffiles postinst prerm md5sums
-

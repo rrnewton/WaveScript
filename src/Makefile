@@ -31,8 +31,10 @@ MZC = mzc
 #   
 MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
 
+#export REGIMENTD=`pwd`/../
 
 CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
+#CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
 
 #CHEZ = petite
 #CHEZ = fullpetite
@@ -137,6 +139,28 @@ wsparse:
 wsparse_full:
 	mzc $(MZCFLAGS) --exe bin/wsparse parser/wsparse.ss
 	mzc $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
+
+# Hack, this script tries the absolute and the relative path.
+# Err... there's a problem with symlinks and resolution of ../
+# Seems like PLT and bash do it differently... not very portable besides.
+# Just giving in and using REGIMENTD.
+wsparse_zo: 
+	mzc parser/wsparse.ss
+	echo '#!/bin/sh' > bin/wsparse
+	echo 'DIR=`pwd`' >> bin/wsparse
+	chmod +x bin/wsparse
+	echo 'mzscheme -qt "$$REGIMENTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
+# 	echo 'LOC1=`dirname $$0`/../parser/wsparse.ss' >> bin/wsparse
+# 	echo 'LOC2=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
+# 	echo 'echo Checking absolute location $$LOC1' >> bin/wsparse
+# 	echo 'if [ -f $$LOC1 ]; then echo ok absolute is there; else echo erk; fi' >> bin/wsparse
+# 	echo 'if [ -f $$LOC1 ]; then echo absolute; mzscheme -qt "$$LOC1" $$*; ' >> bin/wsparse
+# 	echo '                    else mzscheme -qt "$$LOC2" $$*; fi' >> bin/wsparse
+
+
+#	echo 'echo runnig wsparse, dir $$0 `pwd` args $$*' >> bin/wsparse
+#	echo 'LOC=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
+
 
 #----------------------------------------
 
@@ -330,10 +354,11 @@ debug:    so.debug
 dbg:      so.debug
 
 # This makes a Chez Scheme .boot file instead of a shared object file.
+# After the boot file is made we can kill the shared object file.
 boot: aggregated_chez _temp_temp.so shared 
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
-	rm -f _temp_temp.ss _temp_temp.so
+	rm -f _temp_temp.ss _temp_temp.so "build/$(MT)/legacy_main_chez.so"
 
 boot.opt: aggregated_chez _temp_temp.so shared.opt 
 	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
@@ -535,16 +560,15 @@ fullpkg:
 	ln -s $(PKGDIR)/wsparse_full/bin/wsparse $(PKGDIR)/bin/wsparse
 
 
-## UNFINISHED:  ## UNFINISHED:  ## UNFINISHED: 
-
 ## TODO - set the version automatically!
 DEBPKG=$(REGIMENTD)/wavescript_0.0.1
+# This will build a source package.
 deb: 
 	rm -rf $(DEBPKG)
 	mkdir $(DEBPKG)
 	cp -a debian $(DEBPKG)
 	mv $(DEBPKG)/debian/package_deb.sh $(DEBPKG)/
-	(cd $(DEBPKG); ./package_deb.sh)
+	(cd $(DEBPKG) && ./package_deb.sh source) 
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */
@@ -588,10 +612,10 @@ cleanlarc:
 
 
 clean: cleanchez cleanplt cleanik cleanlarc
-	(cd C; $(MAKE) clean)
-	(cd demos/token_machs; $(MAKE) clean)
-	(cd demos/regiment; $(MAKE) clean)
-	(cd ws/passes/ocaml_bkend/; $(MAKE) clean)
+	if [ -d C ]; then (cd C && $(MAKE) clean); fi
+	if [ -d demos/token_machs ]; then  (cd demos/token_machs && $(MAKE) clean); fi
+	if [ -d demos/regiment ];    then (cd demos/regiment && $(MAKE) clean); fi
+	(cd ws/passes/ocaml_bkend/ && $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~ 
 	$(RM) __temp.log _genned_node_code.ss svn_rev.txt 
 	find -name _genned_node_code.ss | xargs $(RM)
