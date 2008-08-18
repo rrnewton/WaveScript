@@ -1280,13 +1280,13 @@
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 		     
 		     ;(pp prog)
-		     (time (ws-run-pass prog emit-c2 class))
+		     (id #|time|# (ws-run-pass prog emit-c2 class))
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
 		     (let-match ([#(((,file* ,contents*) ...) ,thunk) prog])
 		       (for-each (lambda (file contents)
-				   (string->file (time (text->string contents)) file))
+				   (string->file (id #|time|# (text->string contents)) file))
 			 file* contents*)
 		       (unless (<= (regiment-verbosity) 0)
 			 (printf "\nGenerated output to files ~s.\n" file*))

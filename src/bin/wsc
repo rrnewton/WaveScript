@@ -8,6 +8,12 @@ TMP=`dirname $0`
 if [ -f "$TMP/assert_regimentd" ]; 
 then source "$TMP/assert_regimentd"; fi
 
+# Make sure to call the script in this directory:
+if [ "$REGIMENTEXEC" == "" ]; 
+#then REGIMENTEXEC=regiment; fi
+then REGIMENTEXEC=`dirname $0`/regiment; 
+fi
+
 CCPASSTHRU=""
 REGPASSTHRU=""
 FILE=""
@@ -97,8 +103,6 @@ abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
 # Clean first:
 rm -f "$OUTFILE"
-
-if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
 
 #echo PASSING THROUGH ARGS: $REGPASSTHRU
 

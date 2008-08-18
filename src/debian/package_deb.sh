@@ -116,17 +116,21 @@ function build_binary_pkg_chez() {
   cp ./doc/wavescript_manpages/*.1 ./debian/tmp/usr/share/man/man1/
   (cd ./debian/tmp/usr/share/man/man1/ && gzip -9 *)
 
-  for cmd in ws wsc2 wsmlton; do 
+  for cmd in wsparse ws wsc wsc2 wsmlton regiment; do 
     ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 
   done
-  
+  # assert_regimentd in this case forces it to use the globally installed ver:
+  echo "export REGIMENTD=/usr/lib/$PACKAGENAME/$VER/" > ./debian/tmp/usr/bin/assert_regimentd
+   
   WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER
   copy_common
   cp -pr $REGIMENTD/src/build                $WSDIR/src/
   copy_cleanup
 
+  cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
+
   # Symlink directly to regiment.chez
-  rm -f $WSDIR/bin/regiment
+  rm -f $WSDIR/bin/regiment 
   ln -s regiment.chez $WSDIR/bin/regiment
 
   cd debian/tmp/

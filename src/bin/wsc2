@@ -2,6 +2,8 @@
 
 export REGFLAG=wsc2
 
+#source `dirname $0`/assert_regimentd
+
 # Get out only the relevant options:
 RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
 #echo wsc2 getopt result: $RELEVANT
@@ -10,8 +12,13 @@ RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc
 # can't currently get getopt to do everything I want it to, i.e. pass
 # through everything not handled in after the "--".
 
+# [2008.08.18] Make sure to use the one stored in the same directory.
+WSC=`dirname $0`/wsc
+
+#echo CALLING WSC $WSC
+
 rm -f query.c query_*.c query.exe query_*.exe
-if wsc $* -exit-error -no-gcc
+if $WSC $* -exit-error -no-gcc
 then echo
 else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi
@@ -49,7 +56,7 @@ while [ $# != 0 ];  do
 done
 export COPTFLAG
 
-echo After parsing args, WS_LINK is $WS_LINK
+#echo After parsing args, WS_LINK is $WS_LINK
 
 if ! [ "$THREADS" = "" ]; 
 then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";

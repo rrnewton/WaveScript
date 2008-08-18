@@ -459,7 +459,7 @@
 	       (system-to-str 
 		;; HACK: TEMP FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
 		;; ADDING --nograph because currently the PLT R6RS reader is conservative
-		(string-append "wsparse " fn  " --nopretty --nograph" extra-opts)))
+		(string-append "wsparse " fn  " --nopretty --nograph 2> /dev/null" extra-opts)))
 	     #f))
 
        (define (try-from-source)
@@ -495,7 +495,8 @@
 	       (read inport))
 	     ;; HACK: WON'T WORK IN WINDOWS:
 	     (if (system "which wsparse > /dev/null")
-		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty --nograph" extra-opts))])
+		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty --nograph 2> /dev/null" 
+								     extra-opts))])
 		   (unless (<= (regiment-verbosity) 0) (eprintf "  wsparse process started.\n"))
 		   (set! inport in)
 		   (set! outport out)
@@ -509,7 +510,7 @@
        (let* ([result 
 	       (or ;(try-client/server)
 		   (try-command-persist)
-		   (try-command)       
+		   ;(try-command)       
 		   (try-from-source))]
 	      [decls (if (string? result) (read (open-string-input-port result)) result)])
 

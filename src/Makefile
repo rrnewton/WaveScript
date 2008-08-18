@@ -108,48 +108,50 @@ wsbc: ws/common.sls main_r6rs.sls
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
 	(export REGIMENT_OR_WAVESCRIPT=WS; \
-         export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
+         export PLTCOLLECTS=`pwd`:$(PLTLIB); $(MZC) $(MZCFLAGS) --collection-zos .)
 
 
 # Disabling this by default because I'm getting a 'collection not found: "mzlib"' error.
 #	$(MAKE) pltexe
 
 pltexe:
-	mzc --exe regiment_pltscript.exe regiment_pltscript.ss
-	mzc --exe-dir regiment_pltscript regiment_pltscript.exe 
+	$(MZC) --exe regiment_pltscript.exe regiment_pltscript.ss
+	$(MZC) --exe-dir regiment_pltscript regiment_pltscript.exe 
 
 nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-extension .)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); $(MZC) $(MZCFLAGS) --collection-extension .)
 
 # building to native code with a collection isn't working:
 nc2:
 	export PLTCOLLECTS=`pwd`:$(PLTLIB)
-	cat .temp_plt-source-files  | xargs -n1 mzc $(MZCFLAGS) --auto-dir
+	cat .temp_plt-source-files  | xargs -n1 $(MZC) $(MZCFLAGS) --auto-dir
 
 # only works in PLT right now:
 wsparse: 
-	mzc --exe bin/wsparse parser/wsparse.ss
+	$(MZC) --exe bin/wsparse parser/wsparse.ss
 # I tried embedding mzscheme to build a stand-alone... but I don't
 # think it was really standalone.
 
 wsparse_full:
-	mzc $(MZCFLAGS) --exe bin/wsparse parser/wsparse.ss
-	mzc $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
+	$(MZC) $(MZCFLAGS) --exe bin/wsparse parser/wsparse.ss
+	$(MZC) $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
 
 # Hack, this script tries the absolute and the relative path.
 # Err... there's a problem with symlinks and resolution of ../
 # Seems like PLT and bash do it differently... not very portable besides.
 # Just giving in and using REGIMENTD.
 wsparse_zo: 
-	mzc parser/wsparse.ss
+	$(MZC) -z --auto-dir parser/*.ss
 	echo '#!/bin/sh' > bin/wsparse
-	echo 'DIR=`pwd`' >> bin/wsparse
 	chmod +x bin/wsparse
-	echo 'mzscheme -qt "$$REGIMENTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
+	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
+	echo 'mzscheme -mqt "$$REGIMENTD/src/parser/wsparse.ss" -- $$* 2> /dev/null ' >> bin/wsparse
+
+#	echo 'DIR=`pwd`' >> bin/wsparse
 # 	echo 'LOC1=`dirname $$0`/../parser/wsparse.ss' >> bin/wsparse
 # 	echo 'LOC2=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
 # 	echo 'echo Checking absolute location $$LOC1' >> bin/wsparse
