@@ -15,6 +15,7 @@
    main
    ws wsint wsint-early
    wscaml wsmlton wscomp wsc2
+   wavescript-version
    )
   ;; We use the generated, aggregated package to supply all the bindings we need:
   (import (rnrs) 
@@ -48,8 +49,6 @@
 
 ;; STUB
 (define par list)
-
-(define-regiment-parameter wavescript-version "0.0.1")
 
 ;; Regiment compiler:
 ;; This is the global parameter that determines which transformations
@@ -1658,6 +1657,10 @@
 
 ;===============================================================================
 ;;; These functions are used for command-line invocation of the whole system:
+
+(define-regiment-parameter wavescript-version 
+  (read-line (open-string-input-port 
+	      (file->string (string-append (REGIMENTD) "/src/version")))))
 
 (define (print-help)
   (printf "WaveScript/Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 

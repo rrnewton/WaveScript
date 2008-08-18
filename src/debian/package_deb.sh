@@ -13,7 +13,7 @@
 #SCRIPTSTART=`pwd`
 
 ## TODO: Set the version automatically!!
-VER=0.0.1
+VER=$WSVER
 PACKAGENAME=wavescript
 
 DEBDIR=$REGIMENTD/$PACKAGENAME"_"$VER/
@@ -84,6 +84,16 @@ function build_src_pkg() {
   echo =================================================================
   echo Output directed to $DEBDIR
   copy_necessary_source
+  
+  cat $DEBDIR/debian/control.in | sed 's/WSVERSIONGOESHERE/$VER/' > $DEBDIR/debian/control
+  echo Built debian/control: $DEBDIR/debian/control
+
+  cat > $DEBDIR/debian/changelog <<EOF
+wavescript ($VER) unstable; urgency=low
+	* Automatically generated package from head revision
+EOF
+  cat $DEBDIR/debian/changelog.in >> $DEBDIR/debian/changelog
+
   cat > $DEBDIR/Makefile <<EOF
 chez:
 	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )
@@ -114,7 +124,7 @@ function build_binary_pkg_chez() {
 
   mkdir -p ./debian/tmp/usr/share/man/man1/  
   cp ./doc/wavescript_manpages/*.1 ./debian/tmp/usr/share/man/man1/
-  (cd ./debian/tmp/usr/share/man/man1/ && gzip -9 *)
+  (gzip -v -9 ./debian/tmp/usr/share/man/man1/*.1)
 
   for cmd in wsparse ws wsc wsc2 wsmlton regiment; do 
     ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 

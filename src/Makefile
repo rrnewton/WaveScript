@@ -563,14 +563,20 @@ fullpkg:
 
 
 ## TODO - set the version automatically!
-DEBPKG=$(REGIMENTD)/wavescript_0.0.1
+
+#SVNREV=$(shell svn info https://svn.csail.mit.edu/wavescript/branches/wavescope | grep Revision | awk '{ print $2 }')
+SVNREV=$(shell svn info | grep Revision | awk '{ print $$2 }' )
+
+WSVER=$(shell cat version).$(SVNREV)
+DEBPKG=$(REGIMENTD)/wavescript_$(WSVER)
 # This will build a source package.
 deb: 
+	@echo Building deb for working directory, revision "$(SVNREV)"
 	rm -rf $(DEBPKG)
 	mkdir $(DEBPKG)
 	cp -a debian $(DEBPKG)
 	mv $(DEBPKG)/debian/package_deb.sh $(DEBPKG)/
-	(cd $(DEBPKG) && ./package_deb.sh source) 
+	(cd $(DEBPKG) && export WSVER=$(WSVER); ./package_deb.sh source) 
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

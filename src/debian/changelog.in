@@ -1,4 +1,5 @@
-wavescript (0.0.1-1) unstable; urgency=low
+	
+wavescript (0.0) unstable; urgency=low
 
   * Initial release 
   * Added Debian GNU/Linux Linux package maintenance system files
