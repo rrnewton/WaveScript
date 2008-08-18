@@ -124,7 +124,9 @@ function build_binary_pkg_chez() {
    
   WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER
   copy_common
-  cp -pr $REGIMENTD/src/build                $WSDIR/src/
+  mkdir -p $WSDIR/src/ws/passes/mlton_bkend/
+  cp -pr $REGIMENTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
+  cp -pr $REGIMENTD/src/build                     $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
