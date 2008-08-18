@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # NOTE, to get GC stats pass the compiled executable this flag:
 # ./query.mlton.exe @MLton gc-summary 

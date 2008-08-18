@@ -146,7 +146,7 @@ wsparse_full:
 # Just giving in and using REGIMENTD.
 wsparse_zo: 
 	$(MZC) -z --auto-dir parser/*.ss
-	echo '#!/bin/sh' > bin/wsparse
+	echo '#!/bin/bash' > bin/wsparse
 	chmod +x bin/wsparse
 	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
 	echo 'mzscheme -qu "$$REGIMENTD/src/parser/wsparse.ss" $$*' >> bin/wsparse

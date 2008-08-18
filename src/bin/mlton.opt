@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #mlton -default-ann 'allowFFI true' -codegen c -cc-opt '-O3' $*
 
