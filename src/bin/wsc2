@@ -2,7 +2,7 @@
 
 export REGFLAG=wsc2
 
-#source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_regimentd
 
 # Get out only the relevant options:
 RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
@@ -70,7 +70,7 @@ fi
 
 for file in `ls query*.c`; do
 export CFILE=$file
-wsc2-gcc
+$REGIMENTD/bin/wsc2-gcc
 done
 
 # if ! [ -f "query.c" ]

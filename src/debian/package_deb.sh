@@ -40,6 +40,7 @@ function copy_common() {
    cp -pr $REGIMENTD/src/linked_lib           $WSDIR/src/
    cp -pr $REGIMENTD/src/bin                  $WSDIR/src/
    cp -pr $REGIMENTD/src/parser               $WSDIR/src/
+   cp -pr $REGIMENTD/src/version              $WSDIR/src/
    cp -pr $REGIMENTD/src/regiment*.ss         $WSDIR/src/
 
    ## Todo, should instead download the right version of petite from the web.
