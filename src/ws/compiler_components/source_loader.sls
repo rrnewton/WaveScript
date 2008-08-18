@@ -495,7 +495,8 @@
 	       (read inport))
 	     ;; HACK: WON'T WORK IN WINDOWS:
 	     (if (system "which wsparse > /dev/null")
-		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty --nograph" 
+		 ;; This isn't very portable either!
+		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty --nograph 2> /dev/null" 
 								     extra-opts))])
 		   (unless (<= (regiment-verbosity) 0) (eprintf "  wsparse process started.\n"))
 		   (set! inport in)

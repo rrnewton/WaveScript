@@ -1,6 +1,6 @@
 #! /bin/bash
 #|
-exec mzscheme -mqt "$0" -- ${1+"$@"}
+exec mzscheme -qu "$0" -- ${1+"$@"}
 |#
 ;;exec mzscheme -mqt "$0" ${1+"$@"}
 

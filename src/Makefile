@@ -149,7 +149,7 @@ wsparse_zo:
 	echo '#!/bin/sh' > bin/wsparse
 	chmod +x bin/wsparse
 	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
-	echo 'mzscheme -mqt "$$REGIMENTD/src/parser/wsparse.ss" -- $$* ' >> bin/wsparse
+	echo 'mzscheme -qu "$$REGIMENTD/src/parser/wsparse.ss" -- $$' >> bin/wsparse
 
 #	echo 'DIR=`pwd`' >> bin/wsparse
 # 	echo 'LOC1=`dirname $$0`/../parser/wsparse.ss' >> bin/wsparse
