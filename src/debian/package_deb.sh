@@ -158,6 +158,8 @@ function build_binary_pkg_chez() {
   cd debian/tmp/
   find -type f | xargs md5sum > ../md5sums
   cd ../../
+
+  mv debian/tmp debian/tmp_chez
 }
 
 function build_binary_pkg_ikarus() {

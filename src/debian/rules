@@ -32,11 +32,15 @@ clean:
 
 #	./configure --prefix=/usr
 #	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)"
-build: chez
+build: chez 
 
+# Currently chez actually builds ikarus also:
 chez:
 	(  $(MAKE) chez)
 #	touch build
+
+ikarus:
+	(  $(MAKE) ikarus)
 
 #binary-indep: install
 binary-indep: 
@@ -53,10 +57,18 @@ binary-indep:
 
 binary-arch: 
 	dpkg-gencontrol -pwavescript-chez
-	chown -R root:root debian/tmp
-	chmod -R u+w,go=rX debian/tmp
+	chown -R root:root debian/tmp_chez
+	chmod -R u+w,go=rX debian/tmp_chez
 	dh_strip      -a
-	dpkg --build debian/tmp ..
+	dpkg --build debian/tmp_chez ..
+
+# 	echo Now packaging ikarus.
+# 	dpkg-gencontrol -pwavescript
+# 	chown -R root:root debian/tmp_ikarus
+# 	chmod -R u+w,go=rX debian/tmp_ikarus
+# 	dpkg --build debian/tmp_ikarus ..
+
+
 
 # 	dh_installchangelogs -a ChangeLog
 # 	dh_compress   -a
