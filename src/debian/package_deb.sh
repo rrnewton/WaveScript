@@ -41,12 +41,14 @@ function copy_common() {
    cp -pr $REGIMENTD/src/bin                  $WSDIR/src/
    cp -pr $REGIMENTD/src/parser               $WSDIR/src/
    cp -pr $REGIMENTD/src/version              $WSDIR/src/
-   cp -pr $REGIMENTD/src/regiment*.ss         $WSDIR/src/
+   cp -a  $REGIMENTD/src/regiment*.ss         $WSDIR/src/
 
    ## Todo, should instead download the right version of petite from the web.
    ## We should download the version for this architecture.
    cp -pr $REGIMENTD/depends/petite*              $WSDIR/depends/
    cp -pr $REGIMENTD/depends/get_machine_type     $WSDIR/depends/
+
+   cp -a  $REGIMENTD/depends/bos                  $WSDIR/depends/
 
   (cd $WSDIR     && ln -s src/bin   ./)
   (cd $WSDIR     && ln -s src/build ./)
@@ -73,7 +75,6 @@ function copy_necessary_source() {
    cp -pr $REGIMENTD/src/ws                   $WSDIR/src/
    cp -pr $REGIMENTD/src/Makefile             $WSDIR/src/
   cp -pr $REGIMENTD/depends/matpak*              $WSDIR/depends/
-  cp -pr $REGIMENTD/depends/bos                  $WSDIR/depends/
 
   copy_cleanup
 }
@@ -178,14 +179,14 @@ function build_binary_pkg_chez() {
 function build_binary_pkg_ikarus() {
   SUFFIX=""
   common_setup
-  rm -rf $WSDIR/depends/petite
+  rm -rf $WSDIR/depends/petite*
   cp -r /usr/local/lib/ikarus $WSDIR/depends/ikarus_lib
   cp -r /usr/local/bin/ikarus $WSDIR/depends/ikarus
 
   mkdir -p $WSDIR/src/ws/
-  cp -pr $REGIMENTD/src/ws/*      $WSDIR/src/ws/
-  cp -pr $REGIMENTD/src/main*     $WSDIR/src/
-  cp -pr $REGIMENTD/src/config.ss $WSDIR/src/
+  cp -a $REGIMENTD/src/ws/*      $WSDIR/src/ws/
+  cp -a $REGIMENTD/src/main*     $WSDIR/src/
+  cp -a $REGIMENTD/src/config.ss $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
