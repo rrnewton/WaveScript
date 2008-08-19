@@ -197,7 +197,7 @@
 (define (raise-type-mismatch msg t1 t2 exp)
   (type-error 'type-checker
 	 (** "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-	     "Type mismatch: ~a doesn't match ~a \n~a"
+	     "Type mismatch: \"~a\" doesn't match \"~a\" \n~a"
 	     "\nLocation:\n   ~a\n" ;; Location
 	     "\nExpression:\n~a\n")
 	 (show-type (safe-export-type t1))

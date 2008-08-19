@@ -36,6 +36,13 @@ namespace Unix {
   usleep :: Int -> () = 
      foreign("usleep","unistd.h":::Internal:libc)
 
+  free   :: Pointer "void*" -> ()         = foreign("free",  stdio);
+  malloc :: Int        -> Pointer "void*" = foreign("malloc",stdio);
+  calloc :: (Int, Int) -> Pointer "void*" = foreign("malloc",stdio);
+
+  stat  :: (String,    Pointer "struct stat*") -> Int = foreign("stat", stdio);
+  fstat :: (FileDescr, Pointer "struct stat*") -> Int = foreign("fstat", stdio);
+
   fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
   fclose :: FileDescr -> Int              = foreign("fclose", stdio);
   
@@ -136,11 +143,28 @@ fun fileSink (filename, mode, strm) {
 
 
   c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
-  scandir_sorted :: (String, Pointer "struct dirent ***") -> Int = foreign("scandir_sorted", c_exts);
-  ws_namelist_ptr :: () -> Pointer "struct dirent ***" = foreign("ws_namelist_ptr", c_exts);
-  getname :: (Pointer "struct dirent ***", Int) -> String = foreign("getname", c_exts);
-  freenamelist :: (Pointer "struct dirent ***", Int) -> () = foreign("freenamelist", c_exts);
+  scandir_sorted :: (String, (Pointer "struct dirent ***")) -> Int = foreign("scandir_sorted", c_exts);
+  ws_namelist_ptr :: () -> Pointer "struct dirent ***"           = foreign("ws_namelist_ptr", c_exts);
+  getname :: (Pointer "struct dirent ***", Int) -> String        = foreign("getname", c_exts);
+  freenamelist :: (Pointer "struct dirent ***", Int) -> ()       = foreign("freenamelist", c_exts);
 
+  // [2008.08.19] These conversions are basically the identity function, but we're doing casts through the FFI:
+  // First of all, this is dangerous because WS strings are not mutable using WS primitives.
+  stringToPointer :: String  -> (Pointer "char*") = foreign("stringToPointer", c_exts);
+  arrayToPointer  :: Array t -> (Pointer "void*") = foreign("arrayToPointer", c_exts);
+//pointerToString ::  Pointer "char*" -> String = foreign("stringToPointer", c_exts);
+
+namespace Unix {
+  make_stat :: () -> Pointer "struct stat*" = foreign("ws_make_stat", c_exts);
+  /*
+  make_stat :: () -> ExclusivePointer "struct stat*" = {
+    frgn :: () -> Pointer "struct stat*" = foreign("ws_make_stat", stdio);
+    fun() exclusivePtr(frgn())
+  }
+  */
+  // Defining projection functions for stat struct.  There are many, therefore doing this on demand:
+  st_size :: Pointer "struct stat*" -> Int = foreign("ws_st_size", c_exts);
+}
 
 
 // The WaveScript version of scandir reads all the names into a WS array of WS strings.
@@ -213,6 +237,36 @@ fun scandir_stream(dir, indices) {
   }
 }
 */
+
+
+// Read an entire file:
+//fileToString :: String -> String;
+fun fileToString(filename) {
+  using Unix;
+  st = make_stat();
+  if stat(filename, st) != 0 then wserror("fileToString: stat failed");
+  size = st.st_size;
+  free(st);
+
+  handle = fopen(filename, "r");
+  if handle.ptrIsNull then wserror("fileToString: failed to read file");
+
+  //fstat(handle, stat.getPtr);
+  //size = stat.getPtr.st_size;
+  //if fstat(handle, stat) != 0 then wserror("fileToString: fstat failed");
+  
+  buf :: String = String:make(size, '_');
+  if fread_str(buf, 1, size, handle) != size then wserror("fileToString: fread failed");
+  //if fread(buf.stringToPointer, 1, size, handle) != size then wserror("fileToString: fread failed");  
+  buf
+}
+
+
+
+
+
+
+
 
 
 

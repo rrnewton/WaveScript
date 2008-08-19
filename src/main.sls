@@ -460,6 +460,8 @@
   (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
+;  (write p)
+
   ;; This is the initial typecheck. 
   (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])

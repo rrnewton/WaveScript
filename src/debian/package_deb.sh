@@ -49,6 +49,7 @@ function copy_common() {
    cp -pr $REGIMENTD/depends/get_machine_type     $WSDIR/depends/
 
    cp -a  $REGIMENTD/depends/bos                  $WSDIR/depends/
+   cp -pr $REGIMENTD/depends/matpak*              $WSDIR/depends/
 
   (cd $WSDIR     && ln -s src/bin   ./)
   (cd $WSDIR     && ln -s src/build ./)
@@ -74,7 +75,6 @@ function copy_necessary_source() {
    cp -pr $REGIMENTD/src/*.sexp               $WSDIR/src/
    cp -pr $REGIMENTD/src/ws                   $WSDIR/src/
    cp -pr $REGIMENTD/src/Makefile             $WSDIR/src/
-  cp -pr $REGIMENTD/depends/matpak*              $WSDIR/depends/
 
   copy_cleanup
 }
@@ -130,6 +130,8 @@ function common_setup() {
   mkdir -p ./debian/tmp/usr/bin
   mkdir -p ./debian/tmp/DEBIAN
   mkdir -p ./debian/tmp/usr/lib/$PACKAGENAME/$VER
+
+  cp ./debian/postinst ./debian/tmp/DEBIAN/
 
   mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/
   cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/
@@ -196,9 +198,13 @@ function build_binary_pkg_ikarus() {
   ln -s regiment.ikarus $WSDIR/bin/regiment
 
   cd debian/tmp/
+  ## Hack, let's freshen all the ikarus files to make sure they're newer than source:
+  find -name "*.sls" | xargs touch 
+  sleep 1
+  find -name "*.sls.ikarus-fasl" | xargs touch
   find -type f | xargs md5sum > ../md5sums
   cd ../../
-
+ 
   mv debian/tmp debian/tmp_ikarus
   echo =================================================================
 }

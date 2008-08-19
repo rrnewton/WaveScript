@@ -23,9 +23,11 @@
 include "stdlib.ws"
 include "unix.ws"
 
-type ConfTable = Array (String * String);
+type ConfTable = List (String * String);
 
 namespace ConfFile {
+
+  using List;
 
   // Is it a newline or tab/space?
   fun is_whitespace(c) {
@@ -37,10 +39,41 @@ namespace ConfFile {
 
   fun tokenize(ls) List:splitBy(ls, is_whitespace);
 
+  fun is_comment_or_blank(line) {
+    let (_, rest) = scan(line, is_whitespace);
+    if rest.is_null
+    then true
+    else rest.head == '#'
+  }
+
+  // Trim whitespace from both sides of a token:
+  fun rempadding(ls) {
+    let (_,rest) = scan(ls, is_whitespace);
+    let (_,rev) = scan(rest.reverse, is_whitespace);
+    rev.reverse;
+  }
+
+  fun extract_keyvalue(line) {
+    tokens1 = split(line, '=');
+    if tokens1.length == 2
+    then (tokens1.head.rempadding`String:implode, 
+          tokens1.tail.head.rempadding`String:implode)
+    else {
+      tokens2 = filter((!= []), split(line, ' '));
+      if tokens2.length == 2
+      then (tokens2.head.rempadding . String:implode, 
+            tokens2.tail.head.rempadding . String:implode)
+      else wserror("extract_keyvalue: couldn't parse line: " ++ String:implode(line));
+    }
+  }
+
   fun read_conffile(file) {
-    str = ""; //fileToString(file);
-    //    lines = spl
-    #[]
+    str = fileToString(file);
+    ls  = String:explode(str);
+    //lines = split(ls, '\n'); // This syntax doesn't work yet.
+    lines   = split(ls, intToChar(10)); // Newline.
+    entries = filter(compose(not, is_comment_or_blank), lines);
+    map(extract_keyvalue, entries)
   }
 
   fun conf_get(table, key) {
@@ -51,3 +84,6 @@ namespace ConfFile {
 read_conffile :: String -> ConfTable;
 read_conffile = ConfFile:read_conffile;
 
+main = iterate _ in timer(3) {
+  List:foreach(fun(x) emit x, read_conffile("camera.conf"))
+}

@@ -1,6 +1,8 @@
 
 //#include <wsc2.h>
 #include <dirent.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 struct dirent *** ws_namelist_ptr() {
   return malloc(sizeof(struct dirent **));
@@ -27,3 +29,13 @@ void freenamelist(struct dirent *** namelist, int len) {
   free((*namelist));
   free(namelist);
 }
+
+void* arrayToPointer (void* arr) { return arr; }
+char* stringToPointer(char* str) { return str; }
+
+struct stat* ws_make_stat() {
+  return malloc(sizeof(struct stat));
+}
+
+int ws_st_size(struct stat* ptr) {  return ptr->st_size; }
+

@@ -178,6 +178,7 @@
     ;; Including Ref:
 
     [(Pointer ,name) #t] ;; This could contain mutable... 
+    [(ExclusivePointer ,name) #t]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     ;[,else #f] ;; [2008.08.06]
     ))
@@ -203,6 +204,7 @@
     [(LUB ,a ,b) (error 'type-containing-arrow? "don't know how to answer this for LUB yet.")]
     [#(,[t] ...) (ormap id t)]
     [(Pointer ,name) #f]
+    [(ExclusivePointer ,name) #f]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.    
     [,s (guard (symbol? s)) #f]
     ))

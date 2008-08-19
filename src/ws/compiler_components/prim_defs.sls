@@ -895,7 +895,7 @@
     (string-append    (String String) String) ;; Rename String:append!!
 
     (String:length    (String) Int)
-    (String:make      (Int Char) (String))
+    (String:make      (Int Char) String)
     (String:explode   (String) (List Char))
     (String:implode   ((List Char)) String)
 

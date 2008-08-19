@@ -72,6 +72,7 @@ List:andmap     :: (t -> Bool, List t) -> Bool;
 List:prefix     :: (List t, Int) -> List t;
 List:split      :: (List t, t)           -> List (List t);
 List:splitBy    :: (List t, (t -> Bool)) -> List (List t);
+List:scan       :: (List t, (t -> Bool)) -> (List t * List t);
 
 foldRange       :: (Int, Int, t, (t, Int) -> t) -> t;
 
@@ -533,6 +534,19 @@ namespace List {
   fun split(ls, delim) {
     splitBy(ls, (== delim));
   }
+  
+  // Named after haskell's scan function.
+  fun scan(ls, pred) {
+    using List;
+    ptr = ls;  
+    acc = [];
+    while not (is_null(ptr)) && pred(ptr.head) {
+      acc := ptr.head ::: acc;
+      ptr := ptr.tail;
+    };
+    (acc.reverse, ptr)
+  }
+
 }
 
 
