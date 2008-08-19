@@ -1445,6 +1445,7 @@
 
 		   __cast_num  ^U8 ^U16
 		   stringToComplex moduloI
+		   String:make		   
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R

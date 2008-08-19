@@ -183,8 +183,9 @@ function build_binary_pkg_ikarus() {
   cp -r /usr/local/bin/ikarus $WSDIR/depends/ikarus
 
   mkdir -p $WSDIR/src/ws/
-  cp -pr $REGIMENTD/src/ws/*   $WSDIR/src/ws/
-  cp -pr $REGIMENTD/src/main*  $WSDIR/src/
+  cp -pr $REGIMENTD/src/ws/*      $WSDIR/src/ws/
+  cp -pr $REGIMENTD/src/main*     $WSDIR/src/
+  cp -pr $REGIMENTD/src/config.ss $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd

@@ -940,7 +940,7 @@
 
 		   ;; [2007.08.30] NO FURTHER DEVELOPMENT ON CAML BACKEND, THEREFORE NOT ADDING PRIMS!
 		   List:toArray ptrMakeNull gnuplot_array gnuplot_array2d 
-		   String:length String:explode String:implode charToInt intToChar 
+		   String:length String:explode String:implode String:make charToInt intToChar 
 		   Secret:newTimebase
 
 		   )
