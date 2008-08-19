@@ -105,20 +105,19 @@ chez:
 	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )
 	(export WSVER=$VER; ./package_deb.sh binary-chez)
 
+# Hack: Chez already built ikarus, just package it:
 ikarus:
-	(source install_environment_vars && cd src && make wsparse_zo ikarus )
 	(export WSVER=$VER; ./package_deb.sh binary-ikarus)
+#	(source install_environment_vars && cd src && make wsparse_zo ikarus )
 
 distclean:
 	(source install_environment_vars && cd src && make clean )
 EOF
 }
 
-# We don't want to rely on REGIMENTD pointing to the host system here.
-# This must be called from the source package directory (called DEBDIR above)
-function build_binary_pkg_chez() {
+function common_setup() {
   echo
-  echo Packaging WaveScript as a Debian Binary Package on arch `uname -m`
+  echo Packaging with "$SUFFIX" as a Debian Binary Package on arch `uname -m`
   echo =================================================================
   REGIMENTD=`pwd`
   rm -rf ./debian/tmp
@@ -126,10 +125,10 @@ function build_binary_pkg_chez() {
   mkdir -p ./debian/tmp/DEBIAN
   mkdir -p ./debian/tmp/usr/lib/$PACKAGENAME/$VER
 
-  mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/
-  cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/
-  cp ./debian/changelog ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/changelog.Debian
-  gzip -9               ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/changelog.Debian
+  mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/
+  cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/
+  cp ./debian/changelog ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/changelog.Debian
+  gzip -9               ./debian/tmp/usr/share/doc/$PACKAGENAME"$SUFFIX"/changelog.Debian
 #  (cd ./debian/tmp/usr/share/doc/$PACKAGENAME/ && gzip changelog && mv changelog.gz changelog.Debian.gz)
 
   mkdir -p ./debian/tmp/usr/share/man/man1/  
@@ -140,10 +139,18 @@ function build_binary_pkg_chez() {
     ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 
   done
   # assert_regimentd in this case forces it to use the globally installed ver:
-  echo "export REGIMENTD=/usr/lib/$PACKAGENAME/$VER/" > ./debian/tmp/usr/bin/assert_regimentd
-   
-  WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER
+  echo "export REGIMENTD=/usr/lib/$PACKAGENAME/$VER/" >  ./debian/tmp/usr/bin/assert_regimentd
+  echo 'export IKARUSEXEC="$REGIMENTD/depends/ikarus -b $REGIMENTD/depends/ikarus_lib/ikarus.boot"' >> ./debian/tmp/usr/bin/assert_regimentd
+  WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER  
   copy_common
+}
+
+# We don't want to rely on REGIMENTD pointing to the host system here.
+# This must be called from the source package directory (called DEBDIR above)
+function build_binary_pkg_chez() {
+  SUFFIX="-chez"
+  common_setup
+
   mkdir -p $WSDIR/src/ws/passes/mlton_bkend/
   cp -pr $REGIMENTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
   cp -pr $REGIMENTD/src/build                     $WSDIR/src/
@@ -160,11 +167,32 @@ function build_binary_pkg_chez() {
   cd ../../
 
   mv debian/tmp debian/tmp_chez
+  echo =================================================================
 }
 
 function build_binary_pkg_ikarus() {
-  echo NOT IMPLEMENTED YET
-  exit 1 
+  SUFFIX=""
+  common_setup
+  rm -rf $WSDIR/depends/petite
+  cp -r /usr/local/lib/ikarus $WSDIR/depends/ikarus_lib
+  cp -r /usr/local/bin/ikarus $WSDIR/depends/ikarus
+
+  mkdir -p $WSDIR/src/ws/
+  cp -pr $REGIMENTD/src/ws/*   $WSDIR/src/ws/
+  copy_cleanup
+
+  cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
+
+  # Symlink directly to regiment.ikarus
+  rm -f $WSDIR/bin/regiment 
+  ln -s regiment.ikarus $WSDIR/bin/regiment
+
+  cd debian/tmp/
+  find -type f | xargs md5sum > ../md5sums
+  cd ../../
+
+  mv debian/tmp debian/tmp_ikarus
+  echo =================================================================
 }
 
 case $1 in

@@ -2205,6 +2205,7 @@
 
 	  ;; Do not print output elements on the "main" stream automatically.
 	  [("-noprint" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
+	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
 
 	  ;; How far should the regiment compiler go:
 	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (loop rest)]	 

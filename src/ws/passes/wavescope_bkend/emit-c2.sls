@@ -1161,11 +1161,9 @@
   (specialise! PrimApp <emitC2> 
    ;; [2008.05.10] FIXME: This failed the return contract for the __real__ case.
    (debug-return-contract PrimApp lines?
-     (lambda (next self app kontorig mayberetty)
+     (lambda (next self app kont mayberetty)
        (define ___ (next))
      
-     (define (kont x) (kontorig x)) ;; A place to throw in traces.
-
      (define (Simp x) (Simple self x))
 
      ;; If we fall through to the "SimplePrim" case that means it's a
@@ -1193,7 +1191,10 @@
      ;; Handle primitives:
      (match app
        ;; Refs and sets are pure simplicity:
-       [(Array:ref ,[Simp -> arr] ,[Simp -> ind])
+       [(Array:ref ,arr ,ind)
+	;; TODO: Insert bounds checks!!
+	(PrimApp self `(Array:refUNSAFE ,arr ,ind) kont mayberetty)]
+       [(Array:refUNSAFE ,[Simp -> arr] ,[Simp -> ind])
 	(kont `(,arr"[",ind"]"))]
 
        ;; Using some simple C macros here:
@@ -1427,7 +1428,26 @@
 
 	[(ptrMakeNull) (kont "0 /* ptrMakeNull */")]
 	[(ptrIsNull ,[Simp -> p]) (kont `("(",p " == 0)" ))]
-       
+
+	;; This is kind of silly, but we need to reallocate it just so that it has the metadata!
+	[(ptrToArray ,[Simp -> ptr] ,[Simp -> len])	 
+	 (match mayberetty
+	   [(Array ,elt)	    
+	    (define tmp (unique-name "newarrtmp"))
+	    (define _tmp (Var self tmp))
+	    (unless (scalar-type? elt)
+	      (error 'emitC2:PrimApp "ptrToArray is only implemented for arrays of scalar types"))
+	    (make-lines 
+	     (block ""
+	     (list 
+	      (lines-text (array-constructor-codegen self len #f `(Array ,elt) (varbindk self tmp `(Array ,elt))))
+	      (list "memcpy("_tmp", "ptr", "len" * sizeof("(Type self elt)"));\n")
+	      (lines-text (kont _tmp)))))])]
+	
+       [(Array:makeUNSAFE ,[Simp -> len]) (array-constructor-codegen self len #f   mayberetty kont)]       
+       [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]       
+
+
 	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
        )  

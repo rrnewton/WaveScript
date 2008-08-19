@@ -38,6 +38,8 @@ namespace Unix {
 
   fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
   fclose :: FileDescr -> Int              = foreign("fclose", stdio);
+  
+  fgets  :: (String, Int, FileDescr) -> Pointer "char*" = foreign("fgets",  stdio);
 
   fflush :: FileDescr -> () = foreign("fflush",  stdio);
 

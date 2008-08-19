@@ -25,6 +25,8 @@ PLT_MAIN_FILE = main_plt.ss
 #*---------------------------------------------------------------------*/
 #*    Commands                                                         */
 #*---------------------------------------------------------------------*/
+
+IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
 MZSCHEME = mzscheme
 MZC = mzc
 # Trying to do some optimization: 
@@ -130,8 +132,10 @@ nc2:
 	export PLTCOLLECTS=`pwd`:$(PLTLIB)
 	cat .temp_plt-source-files  | xargs -n1 $(MZC) $(MZCFLAGS) --auto-dir
 
+wsparse: wsparse_zo
+
 # only works in PLT right now:
-wsparse: 
+wsparse_native: 
 	$(MZC) --exe bin/wsparse parser/wsparse.ss
 # I tried embedding mzscheme to build a stand-alone... but I don't
 # think it was really standalone.
@@ -311,20 +315,20 @@ aggregated:
 	$(MAKE) ws/common.sls main_r6rs.sls
 
 ws/common.sls:
-	ikarus --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
 #	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
 #	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
 
 main_r6rs.sls:
-	ikarus --r6rs-script ./generate_main_r6rs.ss 
+	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss 
 #	@./generate_main_r6rs.ss 
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
 
 
 ikarus: ik
 ik: ws/common.sls main_r6rs.sls
-	ikarus -O2 --compile-dependencies regiment.ss
+	$(IKARUS) -O2 --compile-dependencies regiment.ss
 
 # ikrun:
 # 	ikarus --r6rs-script test_run.ss
