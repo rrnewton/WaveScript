@@ -101,6 +101,10 @@ EOF
   cat $DEBDIR/debian/changelog.in >> $DEBDIR/debian/changelog
 
   cat > $DEBDIR/Makefile <<EOF
+default:
+	Note that ikarus must be manually installed on the host system to build this package!
+	debuild -b -uc -us
+
 chez:
 	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )
 	(export WSVER=$VER; ./package_deb.sh binary-chez)
@@ -112,6 +116,7 @@ ikarus:
 
 distclean:
 	(source install_environment_vars && cd src && make clean )
+	rm -rf debian/tmp*
 EOF
 }
 
@@ -179,6 +184,7 @@ function build_binary_pkg_ikarus() {
 
   mkdir -p $WSDIR/src/ws/
   cp -pr $REGIMENTD/src/ws/*   $WSDIR/src/ws/
+  cp -pr $REGIMENTD/src/main*  $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd

@@ -68,6 +68,7 @@ binary-arch:
 	dpkg-gencontrol -pwavescript
 	chown -R root:root debian/tmp
 	chmod -R u+w,go=rX debian/tmp
+	dh_strip      -a
 	dpkg --build debian/tmp ..
 
 # 	dh_installchangelogs -a ChangeLog

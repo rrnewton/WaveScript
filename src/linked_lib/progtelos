@@ -32,10 +32,13 @@ case "$1" in
     done  
   ;;
 
+  # RRN: This is specific to me, program our CSAIL motes:
   "net" )
     # Starting at two so we can do the base station separately:
     id=2;
-    for num in 1 2 4 5 6 7 8 9 10 11 12 14; do 
+
+    for num in 1 5 6 9 10 11 12; do 
+#    for num in 1 2 4 5 6 7 8 9 10 11 12 14; do 
       id=$(($id+1));
       doit netbsl $id tmote-"$num".csail.mit.edu:10001
       id=$(($id+1));

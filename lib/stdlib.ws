@@ -70,6 +70,8 @@ List:foldi      :: ((Int, st, elem) -> st, st, List elem) -> st;
 List:choplast   :: List t -> (t * List t);
 List:andmap     :: (t -> Bool, List t) -> Bool;
 List:prefix     :: (List t, Int) -> List t;
+List:split      :: (List t, t)           -> List (List t);
+List:splitBy    :: (List t, (t -> Bool)) -> List (List t);
 
 foldRange       :: (Int, Int, t, (t, Int) -> t) -> t;
 
@@ -503,6 +505,33 @@ namespace List {
       cnt += 1;
     };
     List:reverse(acc);
+  }
+
+  // This splits (partitions) a list at certain delimeter elements
+  // which are designated by the input predicate.  The delimeters
+  // themselves are not included in the output.
+  fun splitBy(ls, pred) {
+    using List;
+    ptr = ls;
+    acc1 = [];
+    acc2 = [];
+    while not (is_null(ptr)) {
+      if pred(ptr.head) then {
+        acc2 := acc1.reverse ::: acc2;
+	acc1 := [];
+      } else {
+        acc1 := ptr.head ::: acc1;
+      };
+      ptr := ptr.tail;	
+    };
+    //rev = acc2.reverse;
+    //if is_null(acc1) then acc2.reverse else 
+    reverse(acc1.reverse ::: acc2)
+  }
+
+  // This splits a list at certain delimiter elements.
+  fun split(ls, delim) {
+    splitBy(ls, (== delim));
   }
 }
 

@@ -78,7 +78,7 @@
 		 stringToInt stringToFloat stringToDouble stringToComplex
 		 __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 		 intToChar charToInt
-		 String:length String:explode String:implode
+		 String:length String:make String:explode String:implode
 		 
 		 ;toComplex toFloat  ;; Generic versions
 		 ;toInt ;; Truncate
@@ -1507,6 +1507,7 @@
   (define __stringToComplex_ARRAY (ArrayStringWrapper stringToComplex))
 
   (define String:length string-length)
+  (define String:make   make-string)
   (define String:explode string->list)
   (define String:implode list->string)
   (define intToChar integer->char)

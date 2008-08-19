@@ -1121,8 +1121,20 @@
 			,result)
 			))))]
 
-	      ;; Should not include null character:
+	      ;; Should not include null character: FIXME: Actually,
+	      ;; this should scan the string until it hits a null
+	      ;; character, not assume that the first null is at the
+	      ;; end!
 	      [(String:length ,[str]) `(_-_ (Array:length ,str) '1)]
+
+	      [(String:make ,[len] ,[init])
+	       (define tmp    (unique-name "tmpmakestr"))
+	       (define lentmp (unique-name "lentmp"))
+	       `(let ([,lentmp Int ,len])
+		  (let ([,tmp (Array Char) (Array:make (_+_ ,lentmp '1) ,init)])
+		    (begin
+		      (Array:set ,tmp ,lentmp (intToChar '0))
+		      ,tmp)))]
 	      
 	      [(show ,[x]) `(__show_ARRAY ,x)]
 	      [(wserror ,[x]) `(__wserror_ARRAY ,x)]
