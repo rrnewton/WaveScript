@@ -52,7 +52,7 @@ binary-indep:
 #	dpkg-shlibdeps debian/tmp/usr/bin/hello
 
 binary-arch: 
-	dpkg-gencontrol -isp
+	dpkg-gencontrol -pwavescript-chez
 	chown -R root:root debian/tmp
 	chmod -R u+w,go=rX debian/tmp
 	dh_strip      -a

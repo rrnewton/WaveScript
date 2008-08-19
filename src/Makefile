@@ -565,7 +565,8 @@ fullpkg:
 ## TODO - set the version automatically!
 
 #SVNREV=$(shell svn info https://svn.csail.mit.edu/wavescript/branches/wavescope | grep Revision | awk '{ print $2 }')
-SVNREV=$(shell svn info | grep Revision | awk '{ print $$2 }' )
+#SVNREV=$(shell svn info | grep Revision | awk '{ print $$2 }' )
+SVNREV=$(shell if [ "`svn info`" == "" ]; then svn info https://svn.csail.mit.edu/wavescript/branches/wavescope; else svn info; fi | grep Revision | awk '{ print $$2 }' )
 
 WSVER=$(shell cat version).$(SVNREV)
 DEBPKG=$(REGIMENTD)/wavescript_$(WSVER)

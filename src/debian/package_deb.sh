@@ -86,19 +86,28 @@ function build_src_pkg() {
   echo Output directed to $DEBDIR
   copy_necessary_source
   
-  cat $DEBDIR/debian/control.in | sed 's/WSVERSIONGOESHERE/$VER/' > $DEBDIR/debian/control
+  cat $DEBDIR/debian/control.in | sed "s/WSVERSIONGOESHERE/$VER/" > $DEBDIR/debian/control
   echo Built debian/control: $DEBDIR/debian/control
 
   cat > $DEBDIR/debian/changelog <<EOF
 wavescript ($VER) unstable; urgency=low
-	* Automatically generated package from head revision
+
+  * Automatically generated package from head revision
+
+ -- Ryan Newton <ryan.newton@alum.mit.edu>  Fri, 15 Aug 2008 17:01:17 -0400
+
 EOF
+
   cat $DEBDIR/debian/changelog.in >> $DEBDIR/debian/changelog
 
   cat > $DEBDIR/Makefile <<EOF
 chez:
 	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )
-	./package_deb.sh binary
+	(export WSVER=$VER; ./package_deb.sh binary-chez)
+
+ikarus:
+	(source install_environment_vars && cd src && make wsparse_zo ikarus )
+	(export WSVER=$VER; ./package_deb.sh binary-ikarus)
 
 distclean:
 	(source install_environment_vars && cd src && make clean )
@@ -117,10 +126,10 @@ function build_binary_pkg_chez() {
   mkdir -p ./debian/tmp/DEBIAN
   mkdir -p ./debian/tmp/usr/lib/$PACKAGENAME/$VER
 
-  mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME/
-  cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME/
-  cp ./debian/changelog ./debian/tmp/usr/share/doc/$PACKAGENAME/changelog.Debian
-  gzip -9               ./debian/tmp/usr/share/doc/$PACKAGENAME/changelog.Debian
+  mkdir -p ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/
+  cp ./debian/copyright ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/
+  cp ./debian/changelog ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/changelog.Debian
+  gzip -9               ./debian/tmp/usr/share/doc/$PACKAGENAME"-chez"/changelog.Debian
 #  (cd ./debian/tmp/usr/share/doc/$PACKAGENAME/ && gzip changelog && mv changelog.gz changelog.Debian.gz)
 
   mkdir -p ./debian/tmp/usr/share/man/man1/  
@@ -151,10 +160,16 @@ function build_binary_pkg_chez() {
   cd ../../
 }
 
+function build_binary_pkg_ikarus() {
+  echo NOT IMPLEMENTED YET
+  exit 1 
+}
+
 case $1 in
    "" )              build_src_pkg;;
    "source" )        build_src_pkg;;
-   "binary" )        build_binary_pkg_chez;;
+   "binary-chez" )   build_binary_pkg_chez;;
+   "binary-ikarus" ) build_binary_pkg_ikarus;;
 esac
 
 

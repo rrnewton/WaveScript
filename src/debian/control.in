@@ -9,12 +9,33 @@ Version: WSVERSIONGOESHERE
 XS-Vcs-Svn: https://svn.csail.mit.edu/wavescript/branches/wavescope
 XS-Vcs-Browser: https://svn.csail.mit.edu/wavescript/branches/wavescope
 
+Package: wavescript-chez
+Section: devel
+Priority: optional
+Architecture: i386
+Depends: libc6 (>= 2.6-1), libc6-dev, gcc, mzscheme (>= 1:370), python (>= 2.5)
+Conflicts: wavescript
+Replaces: 
+Description:Distributed/parallel stream-processing language & compiler, Chez Scheme hosted
+  WaveScript (wavescope.csail.mit.edu) is a functional language for
+  writing highly abstract programs that generate efficient dataflow
+  graphs through a two-stage evaluation model.  This graph intermediate
+  language is executable in several backends (Scheme, ML, Java[ME],
+  C/C++, TinyOS) that enable support for various embedded platforms and
+  offer different tradeoffs in features, performance, portability,
+  compile times, and parallel/distributed execution.  WaveScript is
+  primarily used for programming sensor networks, or for parallel
+  computation on multicores or clusters.  Includes a C FFI and various
+  libraries.
+
+
+
 Package: wavescript
 Section: devel
 Priority: optional
 Architecture: i386
 Depends: libc6 (>= 2.6-1), libgmp3c2, libc6-dev, libgmp3-dev (>= 4.0.1), gcc, mzscheme (>= 1:370), python (>= 2.5)
-Conflicts: 
+Conflicts: wavescript-chez
 Replaces: 
 Description:High performance distributed/parallel stream-processing language & compiler
   WaveScript (wavescope.csail.mit.edu) is a functional language for

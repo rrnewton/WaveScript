@@ -1659,10 +1659,12 @@
 ;;; These functions are used for command-line invocation of the whole system:
 
 (define-regiment-parameter wavescript-version 
-  (let ([version-file (string-append (REGIMENTD) "/src/version")])
+  (format "~a.~a"
+   (let ([version-file (string-append (REGIMENTD) "/src/version")])
     (if (file-exists? version-file)
 	(read-line (open-string-input-port (file->string version-file)))
-	"???")))
+	"???"))
+   (top-level-value 'svn-revision)))
 
 (define (print-help)
   (printf "WaveScript/Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 

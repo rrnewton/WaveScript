@@ -118,6 +118,7 @@
 
 
 ;; Trying to set the svn rev when the code is *compiled*:
+;; Set to #f if we can't get it.
 (define-syntax bind-svn-revision
   (lambda (x)
     (syntax-case x ()
@@ -137,16 +138,18 @@
 		       (get-output-string p))
 		     (begin (display c p)
 			    (loop (read-char in))))))))
-	 (if (eq? (machine-type) 'i3nt)
-	     -9999
-	     (and (zero? (system "which svn &> /dev/null"))
+	 (and (not (eq? (machine-type) 'i3nt))
+		  (zero? (system "which svn &> /dev/null"))
 		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
 		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
 		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
+		      (if (eof-object? rev)
+			  (set! rev (read (open-input-string (system-to-str 
+		           "svn info https://svn.csail.mit.edu/wavescript/branches/wavescope | grep Revision | sed s/Revision://")))))
 		      (with-syntax ([revis (datum->syntax-object #'_ rev)])
 			#'(define-top-level-value 'svn-revision (let ([x 'revis]) (if (number? x) x #f))))
 		      )
-		    ))))])))
+		    )))])))
 
 (bind-svn-revision)
 
