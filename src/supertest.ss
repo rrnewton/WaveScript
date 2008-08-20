@@ -242,8 +242,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (ASSERT (system "echo Environment established: REGIMENTD:$REGIMENTD"))
 
+;; This is a lame hack for compatibility across a wide range of versions:
+(define excep-hndlr
+  (with-handlers ([(lambda (x) #t) (lambda _ current-exception-handler)]) uncaught-exception-handler))
+
 ;; Catch any errors encountered below and send an email:
-(uncaught-exception-handler
+(excep-hndlr
  (lambda (exn)
    (define msg
      (format "ERROR during script execution:\n   ~a\n\nException: ~s\n" 

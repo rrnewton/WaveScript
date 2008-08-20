@@ -7,5 +7,7 @@ source /usr/bin/assert_regimentd
 find $REGIMENTD/ -name "*.sls.ikarus-fasl"  | xargs touch 
 
 # Build the parser on the client side.
+echo "=============================================="
 echo "Building parser using this machine's mzscheme."
+echo "=============================================="
 (cd "$REGIMENTD/src/parser/" && mzc --auto-dir -z *.ss)

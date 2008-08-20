@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Ryan Newton <ryan.newton@alum.mit.edu>
 Uploaders: Ryan Newton <ryan.newton@alum.mit.edu>
-Build-Depends: debhelper (>> 5.0.0), libc6 (>= 2.3.6), libgmp3c2, libgmp3-dev (>= 4.0.1), bzr (>= 0.11), wget (>= 1.10.2), bash (>= 3.1)
+Build-Depends: debhelper (>> 5.0.0), libc6 (>= 2.6-1), libgmp3c2, libgmp3-dev (>= 4.0.1), bzr (>= 0.11), wget (>= 1.10.2), bash (>= 3.1)
 Standards-Version: 3.7.2
 Version: WSVERSIONGOESHERE
 XS-Vcs-Svn: https://svn.csail.mit.edu/wavescript/branches/wavescope
@@ -13,7 +13,7 @@ Package: wavescript
 Section: devel
 Priority: optional
 Architecture: i386
-Depends: libc6 (>= 2.3.6), libgmp3c2, libc6-dev (>= 2.3.6), libgmp3-dev (>= 4.0.1), gcc (>= 4), mzscheme (>= 1:352), python (>= 2.4), time (>= 1.7), bash (>= 3.1)
+Depends: libc6 (>= 2.6-1), libgmp3c2, libc6-dev (>= 2.6-1), libgmp3-dev (>= 4.0.1), gcc (>= 4), mzscheme (>= 1:352), python (>= 2.4), time (>= 1.7), bash (>= 3.1)
 Conflicts: wavescript-chez
 Replaces: 
 Description:High performance distributed/parallel stream-processing language & compiler
