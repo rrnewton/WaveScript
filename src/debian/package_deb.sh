@@ -64,7 +64,12 @@ function copy_cleanup() {
 }
 
 # This copies all the files necessary to a source package.
-function copy_necessary_source() {
+function build_src_pkg() {
+  echo
+  echo PACKAGING REGIMENT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
+  echo =================================================================
+  echo Output directed to $DEBDIR
+
    copy_common
 
    cp -pr $REGIMENTD/src/main*                $WSDIR/src/
@@ -77,15 +82,7 @@ function copy_necessary_source() {
    cp -pr $REGIMENTD/src/Makefile             $WSDIR/src/
 
   copy_cleanup
-}
 
-
-function build_src_pkg() {
-  echo
-  echo PACKAGING REGIMENT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
-  echo =================================================================
-  echo Output directed to $DEBDIR
-  copy_necessary_source
   
   cat $DEBDIR/debian/control.in | sed "s/WSVERSIONGOESHERE/$VER/" > $DEBDIR/debian/control
   echo Built debian/control: $DEBDIR/debian/control
@@ -169,6 +166,9 @@ function build_binary_pkg_chez() {
   # Symlink directly to regiment.chez
   rm -f $WSDIR/bin/regiment 
   ln -s regiment.chez $WSDIR/bin/regiment
+  
+  # Delete the .zo files, build again client side.
+  rm -rf $WSDIR/src/parser/compiled
 
   cd debian/tmp/
   find -type f | xargs md5sum > ../md5sums
@@ -196,6 +196,9 @@ function build_binary_pkg_ikarus() {
   # Symlink directly to regiment.ikarus
   rm -f $WSDIR/bin/regiment 
   ln -s regiment.ikarus $WSDIR/bin/regiment
+
+  # Delete the .zo files, build again client side.
+  rm -rf $WSDIR/src/parser/compiled
 
   cd debian/tmp/
   ## Hack, let's freshen all the ikarus files to make sure they're newer than source:
