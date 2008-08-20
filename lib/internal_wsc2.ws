@@ -64,3 +64,14 @@ fun led2On() {}
 fun led0Off() {}
 fun led1Off() {}
 fun led2Off() {}
+
+fun List:toArray(ls) {
+  len = List:length(ls);
+  arr = Array:makeUNSAFE(len);
+  ptr = ls;
+  for i = 0 to len-1 {
+    arr[i] := ptr.head;
+    ptr := ptr.tail;
+  };
+  arr
+}

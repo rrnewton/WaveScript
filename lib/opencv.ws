@@ -34,11 +34,18 @@ fun stream_images(files) {
 }
 */
 
+/*
+ * Input a directory of images as a stream.
+ */
 fun stream_image_dir(dir) {
   files = scandir_stream(dir, timer(10));
   smap(fun(s) ws_readImage(dir ++ "/" ++ s), files)
 }
 
+/* 
+ * Output a stream of images as files in a directory.
+ * example: 
+ */
 fun image_files_sink(dir, name, strm) {
   iterate (img,wid,height) in strm {
     state { index = 0 }
@@ -52,6 +59,6 @@ fun image_files_sink(dir, name, strm) {
     if ws_writeImage(outname, img, wid, height, nChannels)
     then wserror("image_files_sink (opencv) failed to load image " ++ outname);
     index += 1;    
-    emit (); // As an ACK emit empty tuples.
+    emit (); // As an ACK, emit empty tuples.
   }
 }

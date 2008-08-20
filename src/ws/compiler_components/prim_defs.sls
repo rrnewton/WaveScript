@@ -235,7 +235,10 @@
 ;; names that are treated as special.  In the future, we may require
 ;; that special-rewrite-libfuns symbols are a subset of those in this
 ;; table.
+;;
+;; [2008.08.20] Upgrading to a parameter:
 (define library-primitives
+ (reg:make-parameter 
   '(
     ;; Takes (dst, dstpos, src, srcpos, len), like memcpy
     [Array:blit   ((Array 't) Int (Array 't) Int Int) (Array 't)]
@@ -247,7 +250,9 @@
     (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     (List:build        (Int (Int -> 'a)) (List 'a))
-    ))
+
+    )))
+
 
 ;; Only for the meta-language, shouldn't exist after static-elaborate.
 ;; TODO: FIXME: Don't think I enforce this right now!!
@@ -468,7 +473,7 @@
 
     (List:is_null  ((List 'a)) Bool)
   
-    ;; TODO, add these:
+    ;; [2008.08.20] This is ambiguous.  It's primitive in wsmlton, and library in wsc2:
     (List:toArray ((List 'a)) (Array 'a))
     
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.

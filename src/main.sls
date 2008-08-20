@@ -460,8 +460,6 @@
   (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
-;  (write p)
-
   ;; This is the initial typecheck. 
   (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])
@@ -1195,10 +1193,17 @@
 			   (not (null? (find-in-flags 'wstiny 0 flags)))
 			   (not (null? (find-in-flags 'wsjavame 0 flags)))))
   (unless new-version? (compiler-invocation-mode 'wavescript-compiler-xstream))
-  (parameterize ([regiment-primitives
-		 ;; Remove those regiment-only primitives.
-		 (difference (regiment-primitives) regiment-distributed-primitives)])
-   (define prog (coerce-to-ws-prog x input-params))
+  ;; Some primitives are instead library defined for wsc2:
+  (parameterize ([library-primitives (cons (get-primitive-entry 'List:toArray) (library-primitives))]
+		 [regiment-primitives
+		  ;; Remove those regiment-only primitives.
+		  (filter (lambda (entry)
+			    (and (not (eq? (car entry) 'List:toArray))
+				 (not (assq (car entry) regiment-distributed-primitives)))
+			    )
+		    (regiment-primitives))])
+    
+   (define prog (coerce-to-ws-prog x input-params))  
    (define typed (ws-compile-until-typed prog))
    (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
    (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
@@ -2208,6 +2213,8 @@
 	  ;; Do not print output elements on the "main" stream automatically.
 	  [("-noprint" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
 	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
+
+	  [("-nopos" ,rest ...) (regiment-track-source-locations #f) (loop rest)]
 
 	  ;; How far should the regiment compiler go:
 	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (loop rest)]	 

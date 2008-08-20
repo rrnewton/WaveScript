@@ -593,7 +593,8 @@
 
 	  ;; Array constants, added [2008.03.26]
 	  ;; HACK: for now this parses as a conversion from the list form!!
-	  [(HashLeftSqrBrk expls RightSqrBrk) `(List:toArray ,(consify $2))]
+	  ;; Metaprogram evaluation should make it more efficient:
+	  [(HashLeftSqrBrk expls RightSqrBrk) `(app List:toArray ,(consify $2))]
 
 #;
          [(DOTVARS) 

@@ -19,11 +19,6 @@
   (import (rnrs) (rnrs lists) (ws common)
 	  (ws passes normalize_source ws-label-mutable))
 
-  ;; These are names that we don't mangle.  They're faux-primitive.
-  (define special-names    
-    (union '()  ;;special-rewrite-libfuns ;; TEMPTOGGLE
-	   (map car library-primitives)))
-
   ;; This is a bit of a hack... really should split rename-var into
   ;; two separate passes for the two places it's used.
   (define rename-vars-grammar
@@ -43,10 +38,13 @@
 
      ;; TODO: Rewrite to use define-pass with the Bindings clause.
      (let ()
+       ;; These are names that we don't mangle.  They're faux-primitive.
+       (define special-names 'snuninit) ;; Mutated below.
        (define (make-new-name sym)
 	 ;; [2007.10.21] We don't touch special names.  It's currently
 	 ;; up to the user to insure that they are only defined once.
-	 (if (memq sym special-names)  sym
+	 (if (memq sym special-names)  
+	     (begin (printf "NAME IS SPECIAL: ~a\n" sym) sym)
 	     (unique-name sym)))
        
        (define (process-expr expr var-table)
@@ -97,10 +95,14 @@
 
 	     [,other (fallthrough other)]))
 	 (core-generic-traverse driver (lambda (ls k) (apply k ls)) expr))
+
        ;; Main pass body:
-       (lambda (expr)
+       (lambda (expr)	 
 	 (unique-name-counter 0)
-	 (match expr
+	 (fluid-let ([special-names    
+		      (union '()  ;;special-rewrite-libfuns ;; TEMPTOGGLE
+			     (map car (library-primitives)))])
+	  (match expr
 	   [(,input-language (quote (program ,body ,meta* ... ,type)))
 	    (match (or (assq 'union-types meta*) '(union-types))
 	      [(union-types [,name* (,tycon** . ,_) ...] ...)
@@ -108,7 +110,7 @@
 					 (map (lambda (x) (cons x x)) 
 					   (apply append tycon**)))])
 		 `(rename-var-language '(program ,body ,meta* ... ,type)))
-	       ])])))))
+	       ])]))))))
 
 	
 ;==============================================================================
