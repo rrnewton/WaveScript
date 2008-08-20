@@ -25,7 +25,7 @@ include "unix.ws"
 
 type ConfTable = List (String * String);
 
-namespace ConfFile {
+namespace ConfFilePrivate {
 
   using List;
 
@@ -76,14 +76,34 @@ namespace ConfFile {
     map(extract_keyvalue, entries)
   }
 
-  fun conf_get(table, key) {
-    
-  }
+  fun conf_get(table, lkupkey) {
+    ptr = table;
+    result = "";
+    while not (is_null(ptr)) && result == "" {
+      let (key,val) = ptr.head;
+      if key == lkupkey then result := val;            
+      ptr := ptr.tail;
+    };
+    result
+  }  
+  
 }
 
 read_conffile :: String -> ConfTable;
-read_conffile = ConfFile:read_conffile;
+read_conffile = ConfFilePrivate:read_conffile;
+
+// Returns "" if there is no binding:
+conf_get :: (ConfTable, String) -> String;
+conf_get = ConfFilePrivate:conf_get;
+
+
 
 main = iterate _ in timer(3) {
-  List:foreach(fun(x) emit x, read_conffile("camera.conf"))
+  conf = read_conffile("camera.conf");
+  println("Full table read: " ++ conf);
+  println("\nLooking up 'gain' field: \""++ conf_get(conf,"gain") ++ "\"");  
+  println("\nLooking up 'nonexistent' field: \""++ conf_get(conf,"nonexistent") ++ "\"");  
+  emit ();
+  wserror("Only run it for one tuple!");
+  //List:foreach(fun(x) emit x, read_conffile("camera.conf"))
 }
