@@ -55,6 +55,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (printf "Test directory: ~s\n" test-directory)
 
+(define (force-open-output-file file)
+  (when (file-exists? file) (delete-file file))
+  (open-output-file file))
+
 (define date 
   (let ((d (seconds->date (current-seconds))))
     (format "~a-~a-~a_~a:~a:~a" 
@@ -62,8 +66,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (date-hour d) (date-minute d) (date-second d))))
 ;(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
 (define logfile (format "~a/supertest_~a.log" test-directory date))
-(define log (open-output-file logfile #:exists 'replace))
-(define scriptoutput (open-output-file "SUPERTEST_SCRIPT_OUTPUT.log" #:exists 'replace))
+(define log (force-open-output-file logfile))
+(define scriptoutput (force-open-output-file "SUPERTEST_SCRIPT_OUTPUT.log"))
 (define orig-console (current-output-port))
 
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
@@ -85,7 +89,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
                    (list->string (reverse acc)))
             (loop (read-char p) (cons c acc))))))
 (define (string->file str fn)
-    (let ([p (open-output-file fn #:exists 'replace)])
+    (let ([p (force-open-output-file fn)])
       (display str p)
       (close-output-port p)))
 (define (system-to-str cmd)
