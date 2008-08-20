@@ -69,7 +69,9 @@ exec mzscheme -qt "$0" ${1+"$@"}
       (with-handlers ([(lambda (x) #t) second])
         (when conn (tcp-close conn) (set! conn #f))
         (when outpipe
-          (printf "Writing error message to outpipe (open? ~s).\n" (not (port-closed? outpipe)))
+          ;(printf "Writing error message to outpipe (open? ~s).\n" (not (port-closed? outpipe)))
+	  ;; [2008.08.20] That print message isn't worth mzscheme 360 incompatibility:
+	  (printf "Writing error message to outpipe.\n" )
           (display "ERROR\n\n" outpipe) ;; Erk, what if this produces a broken pipe exception?
           (flush-output outpipe)
           (tcp-abandon-port outpipe) 

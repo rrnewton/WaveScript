@@ -3,7 +3,8 @@
 exec mzscheme -qt "$0" ${1+"$@"}
 |#
 
-;; This is the poor-man's server.
+;; This is the poor-man's server.  It uses file system pipes to communicate.
+;; (Also, it didn't prove to be very robust.)
 
 ;; Would be straightforward to do this with TCP/IP too:
 
