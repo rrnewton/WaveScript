@@ -1279,7 +1279,6 @@
       ;; How to convert a word to an int?
       ;[randomI "(fn n => Random.rand() )"]
 
-      [string-append "(String.^)"] 
       [List:append List.@]
       [List:zip ListPair.zip]
       [List:toArray  Array.fromList]
@@ -1373,9 +1372,14 @@
       [stringToDouble "(fn s => case Real64.fromString s of SOME x => x)"]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
+      [string-append "(String.^)"] 
       [String:length "String.size"]
-      [String:explode "String.explode"]
-      [String:implode "String.implode"]
+      [String:ref    "String.sub"]
+      [String:toList   "String.explode"]
+      [String:fromList "String.implode"]
+      [String:fromArray "string_fromArray"]
+      [String:toArray   "string_toArray"]
+
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
 
@@ -1445,7 +1449,6 @@
 
 		   __cast_num  ^U8 ^U16
 		   stringToComplex moduloI
-		   String:make		   
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R

@@ -900,10 +900,12 @@
     (string-append    (String String) String) ;; Rename String:append!!
 
     (String:length    (String) Int)
-    (String:make      (Int Char) String)
-    (String:explode   (String) (List Char))
-    (String:implode   ((List Char)) String)
-
+    (String:ref       (String Int) Char)
+    (String:toList    (String) (List Char))
+    (String:fromList  ((List Char)) String)
+    (String:toArray   (String) (Array Char))
+    (String:fromArray ((Array Char)) String)
+    
     (intToChar (Int) Char)
     (charToInt (Char) Int)
 

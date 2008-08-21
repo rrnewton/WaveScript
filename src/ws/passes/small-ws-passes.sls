@@ -1125,8 +1125,14 @@
 	      ;; this should scan the string until it hits a null
 	      ;; character, not assume that the first null is at the
 	      ;; end!
-	      [(String:length ,[str]) `(_-_ (Array:length ,str) '1)]
+	      [(String:length ,[str])   `(_-_ (Array:length ,str) '1)]
+	      [(String:ref ,[str] ,[i]) `(Array:ref ,str ,i)]
 
+	      ;; Here we are inconsistent with the MLton backend wrt
+	      ;; to whether the null terminator is included:
+	      [(String:toArray ,[str]) str]
+	      [(String:fromArray ,[str]) str]
+#;
 	      [(String:make ,[len] ,[init])
 	       (define tmp    (unique-name "tmpmakestr"))
 	       (define lentmp (unique-name "lentmp"))

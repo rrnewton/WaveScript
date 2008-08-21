@@ -255,10 +255,10 @@ fun fileToString(filename) {
   //size = stat.getPtr.st_size;
   //if fstat(handle, stat) != 0 then wserror("fileToString: fstat failed");
   
-  buf :: String = String:make(size, '_');
-  if fread_str(buf, 1, size, handle) != size then wserror("fileToString: fread failed");
+  buf = Array:make(size, '_');
+  if fread_arr(buf, 1, size, handle) != size then wserror("fileToString: fread failed");
   //if fread(buf.stringToPointer, 1, size, handle) != size then wserror("fileToString: fread failed");  
-  buf
+  String:fromArray(buf)
 }
 
 

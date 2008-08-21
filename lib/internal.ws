@@ -53,6 +53,20 @@ HashTable:rem_pure = HashTable:rem;
 HashTable:set      = HashTable:set_BANG;
 HashTable:rem      = HashTable:rem_BANG;
 
+// This fills out the String namespace for consistency:
+fun String:append(a,b) a++b
+
+// Similarly, flesh out the conversion functions:
+// Array:fromList   = List:toArray
+List:fromArray   = Array:toList
+Array:toString   = String:fromArray
+Array:fromString = String:toArray
+List:toString    = String:fromList
+List:fromString  = String:toList
+
+String:explode = String:toList
+String:implode = String:fromList
+
 namespace Array {
   // Should maybe call "blockcopy", but that's less fun.
   // Like memcpy... might want to make this primitive so it can call memcpy.

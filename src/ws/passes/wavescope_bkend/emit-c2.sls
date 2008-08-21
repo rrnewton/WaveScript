@@ -175,19 +175,6 @@
 ;(define (idk x) (ASSERT expression? x) x)
 ;(define (idk x) x)
 
-(define-syntax debug-return-contract
-  (syntax-rules ()
-    [(_ pred fun) (debug-return-contract "<unknownFun>" pred fun)]
-    [(_ name pred fun) 
-     (IFDEBUG (lambda args 
-		(let ([result (apply fun args)])
-		  (if (pred result) result
-		      (begin 
-			(warning 'debug-return-contract "failed contract on return value, function: ~s\nvalue: ~s\nContinuation:\n"
-				 'name result)
-			(call/cc inspect)))))
-	      fun)]))
-
 (define (insert-c-string-escapes str)
   (list "\""
     (list->string

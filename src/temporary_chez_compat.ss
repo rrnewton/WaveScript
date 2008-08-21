@@ -118,3 +118,15 @@
 (define reg:top-level-eval #%eval)
 
 (define promise? procedure?)
+
+(define native-inspect #%inspect)
+
+(include "ws/compat/inspector.ss")
+
+(alias inspect generic-inspect)
+#;
+(define-syntax inspect
+  (identifier-syntax 
+   generic-inspect
+   ;(top-level-value 'generic-inspect)
+   ))

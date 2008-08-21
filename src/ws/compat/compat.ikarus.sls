@@ -3,7 +3,7 @@
 
 (library (ws compat compat)
   (export syntax->list getenv
-	  merge merge! sort! append! reverse! call/ec inspect define-values
+	  merge merge! sort! append! reverse! call/ec inspect native-inspect define-values
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
 	  printf format format-syntax-nicely
@@ -72,6 +72,9 @@
     (syntax-case ()
       (eval '(REGIMENTD) (environment '(ws globals)))
       ))
+
+  (define (native-inspect x)
+    (error 'ikarus "doesn't have a built-in object inspector"))
 
   (ik:include "ws/compat/common.ss")
   (ik:include "ws/compat/inspector.ss")

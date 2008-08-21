@@ -4,7 +4,7 @@
   (export 
           include getenv syntax->list 
  	  random make-list
- 	  merge merge! sort! append! reverse! call/ec inspect define-values
+ 	  merge merge! sort! append! reverse! call/ec inspect native-inspect define-values
  	  fluid-let parameterize reg:define-struct reg:struct?
  	  void make-parameter
  	  format printf fprintf pretty-print
@@ -202,6 +202,8 @@
 
   ;; This necessitates building in-place:
   (plt:include "common.ss")
+  (define (native-inspect x)
+    (error 'mzscheme "doesn't have a built-in object inspector"))
   (plt:include "inspector.ss") (define inspect generic-inspect)
   (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")

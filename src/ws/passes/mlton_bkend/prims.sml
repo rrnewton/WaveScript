@@ -108,6 +108,17 @@ fun concat_wsep sep ls =
   then hd ls
   else hd ls ^ sep ^ concat_wsep sep (tl ls)
 
+(********************************************************************************)
+(* Strings *)
+
+(* Doesn't contain the null terminator character: *)
+fun string_toArray str = 
+  Array.tabulate(String.size str + 1, fn i => String.sub(str,i))
+
+fun string_fromArray arr =
+  (* Could perhaps use a CharVector and tabulate... or copyVec into an array *)
+  String.implode (List.tabulate(Array.length arr, fn i => Array.sub(arr,i)))
+  
 
 (********************************************************************************)
     

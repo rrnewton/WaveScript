@@ -12,7 +12,7 @@
 	  ;fx= fx< fx> fx<= fx>= add1 sub1  
 	  random
 	  make-list
-	  merge merge! sort! append! reverse! call/ec inspect define-values
+	  merge merge! sort! append! reverse! call/ec inspect native-inspect define-values
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
 	  format printf fprintf pretty-print
@@ -130,6 +130,8 @@
     (apply builtin:format (current-output-port) str args))
   (define fprintf builtin:format)
 
+  (define (native-inspect x)
+    (error 'larceny "doesn't have a built-in object inspector"))
   (include "ws/compat/inspector.ss") (define inspect generic-inspect)
   (include "ws/compat/top-level-values.ss")
   (include "ws/compat/multiple-values.ss")

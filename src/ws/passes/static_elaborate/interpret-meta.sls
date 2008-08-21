@@ -47,13 +47,13 @@
 (reg:define-struct (streamop name op params parents type))
 
 ;; This is not a pretty aspect of the system, but there are some
-;; things that we should just "freeze" as code during metaprogram eval.
+;; things that we should just "freeze" as code (apps) during metaprogram eval.
 ;; In particular, we should not evaluate foreign functions at metaprog time.
 ;;
 ;; [2007.09.06] Hash tables are another sticky part, we can't expect
 ;; the hash for an object to remain the same during compile
 ;; vs. runtime.  We might be able to make this work, as long as we
-;; don't give the user direct access to the hash, but or the moment
+;; don't give the user direct access to the hash, but at the moment
 ;; we're going to just not evaluate hash tables at meta-eval time.
 (reg:define-struct (suspension operator argvals))
 
@@ -309,7 +309,11 @@
 			 (unless (and (streamop-name val)
 				      (not (better-name? name (deunique-name (streamop-name val)))))
 ;			   (printf "                         NAMING STREAMOP!!!!!! ~s \n"name)			   
-			   (set-streamop-name! val (unique-name name)))]))
+			   (set-streamop-name! val (unique-name name)))]
+
+			[else (void)] ;; We don't do anything with other objects.
+			;[else (error 'prettify-names! "unhandled case: ~s" val)]
+			))
       names vals))
 
   (unless dictionary (build-dictionary!))
@@ -664,7 +668,7 @@
     (DEBUGASSERT list-is-set? (map streamop-name allops))
     (ASSERT allops)
 
-    ;; Have to topo-sort the letrec bindings to assure it runs in a call-by-value evaluation:
+    ;; Have to topo-sort the letrec bindings to assure it runs in a call-by-value evaluation:       
     (let ([binds (topo-sort-bindings (map streamop-name allops) 
 				     (map unknown-type allops)
 				     (map Marshal-Streamop allops))])      
@@ -809,14 +813,16 @@
   )
 
 
-;; FIXME: TODO: to make this more efficient, we should build up a
-;; single substitution, then apply it, rather than repeatedly
-;; traversing the closure's code.
-(define (Marshal-Closure cl)
+(define (print-return fun)
+  (lambda args
+    (let ([result (apply fun args)])
+      (printf "Result: ~s\n" result)
+      result)))
 
-;  (display-constrained "    MARSHALLING CLOSURE: " `[,cl 100] "\n")
-  (ASSERT (not (foreign-closure? cl)))
 
+(define Marshal-Closure
+  (lambda (cl)    
+    (ASSERT (not (foreign-closure? cl)))
 
   ;; This loop accumulates a bunch of bindings that cover all the
   ;; free variables of the closure (and, transitively, any
@@ -837,6 +843,7 @@
 	(let* ([bod `(lambda ,(closure-formals cl) 
 		       ,(map unknown-type (ASSERT (closure-formals cl))) ,code)]
 	       [newbod bod]
+	       ;; TODO: we don't discover sharing yet...
 	       [binds (append globals state)])
 	  (DEBUGASSERT list-is-set? (map car binds))
 
@@ -853,6 +860,13 @@
 	    (marshloop code (cdr fv) state
 		  (cons (list (car fv) (unknown-type) (Marshal-Plain val)) globals)
 		  env )]
+
+	   ;; We redirect these to 'Marshal' which will give us some kind of app syntax.
+	   [(suspension? val)
+	    (marshloop code (cdr fv) state
+		       (cons (list (car fv) (unknown-type) (Marshal val)) globals)
+		       env)]
+
 	   ;; This is definitely part of the state:
 	   [(ref? val)
 	    ;; FIXME: Need to scan for shared mutable values.
@@ -863,7 +877,6 @@
 		  globals env)]
 
 	   [(foreign-closure? val)
-  	    ;	      (printf " ....  FREE VAR IS FOREIGN CLOSURE ~s...\n" (car fv))
 	    (match (closure-code val)
 	      [(assert-type ,ty (foreign ',name ',includes))
 	       (match ty
@@ -875,7 +888,9 @@
 		    ;; This just turns into the '(foreign name includes)' expression.
 		    (marshloop code (cdr fv) state
 			  ;; The foreign binding just turns into the '(foreign name includes)' expression:
-			       (cons* `(,newname ,(unknown-type) ,(closure-code val)) 
+			       (cons* `(,newname ,(unknown-type) ,(closure-code val))
+				      ;; [2008.08.21] Actually, we don't really need the "foreign" entries
+					;; so much anymore, except that they store the includes?
 				      `(,(car fv) ,(closure-type val)
 					;; Change any references to be foreign-apps...
 					(lambda ,formals ,argty*
@@ -909,7 +924,10 @@
 		    (append env-slice env)))]
 	   
 	   [(streamop? val) 
-	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)])))))
+	    (error 'Marshal-Closure "cannot have stream value occuring free in a marshaled closure: ~s" val)]
+
+	   [else (error 'Marshal-Closure "unhandled-case, could not process: ~s" val)]
+	   ))))))
 
 (define (closure-free-vars cl) 
   ;(ASSERT (not (foreign-closure? cl)))
@@ -1123,7 +1141,7 @@
 	      (parameterize ([marshal-cache (make-default-hash-table 1000)])
 		(print-graph #t)
 		(let* (
-		       [evaled    (maybtime (Eval x '() #f))]
+		       [evaled    (maybtime (Eval x '() #f))]		       		       		       
 		       [marshaled (maybtime (Marshal evaled))]
 		       )
 		  ;(pretty-print (strip-annotations marshaled 'src-pos))

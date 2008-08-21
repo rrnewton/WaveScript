@@ -44,7 +44,7 @@
 	 ;; [2007.10.21] We don't touch special names.  It's currently
 	 ;; up to the user to insure that they are only defined once.
 	 (if (memq sym special-names)  
-	     (begin (printf "NAME IS SPECIAL: ~a\n" sym) sym)
+	     sym
 	     (unique-name sym)))
        
        (define (process-expr expr var-table)

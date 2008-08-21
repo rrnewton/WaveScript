@@ -13,19 +13,53 @@
 ;   (read-char)
 
   ;; Very rudimentary inspector:
-  (let loop ([x x])
-    (define (dispatch x)
+  (call/cc 
+   (lambda (cont)
+    (let loop ([x x])
+     (define (dispatch x)
       (let ([line (get-line (current-input-port))])
 	(cond
 	 [(eof-object? line) (newline)] ;; Exit
-	 [(equal? line "p") 
+	 [(member line '("p" "print"))
 	  (newline) (pretty-print x) (newline)
 	  (loop x)]
-	 [(equal? line "w") 
+	 [(member line '("w" "write"))
 	  (newline) (write x) (newline)(newline)
 	  (loop x)]
+
+	 [(member line '("c" "cont" "continuation"))
+	  (loop cont)]
+
+	 [(member line '("n" "native"))
+	  (printf "\nSwitching to ~a's native inspector...\n" which-scheme)
+	  (native-inspect x)]
+ 	 
+	 [(equal? line "?")
+	  (printf "\nWS Homegrown Scheme object inspector, commands:\n\n")
+	  (printf "  print(p) ............ pretty-print object\n")
+	  (printf "  write(w) ............ write object\n")
+	  (printf "  cont(c)  ............ continuation of 'inspect' call\n")
+	  (printf "  native(n) ........... drop to native inspector (Chez)\n")
+	  
+; Chez Scheme options:    
+;  
+;    up(u) ............... return to [nth] previous level
+;    top(t) .............. return to initial object
+;    forward(f) .......... move to [nth] next expression
+;    back(b) ............. move to [nth] previous expression
+;    => .................. send object to procedure
+;    file ................ switch to named source file
+;    list ................ list the current source file [line [count]]
+;    files ............... show open files
+;    mark(m) ............. mark location [with symbolic mark]
+;    goto(g) ............. go to marked location [mark]
+;    new-cafe(n) ......... enter a new cafe
+;    quit(q) ............. exit inspector
+;    help(h) ............. help
+	  (newline)(loop x)]
+	 
 	 [(equal? line "") (loop x)]
-	 [else (printf "Invalid command or argument: ~s.  Type ? for options.\n" line)]
+	 [else (printf "Invalid command or argument: ~s.  Type ? for options.\n" line) (loop x)]
 	 )))
     (define (prompt)
       (display " : ")(flush-output-port (current-output-port)))
@@ -52,5 +86,4 @@
 	)
       )
     
-    )
-  )
+    ))))

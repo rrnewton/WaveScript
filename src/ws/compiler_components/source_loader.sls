@@ -336,18 +336,22 @@
   ;; We automatially inject an include of "internal.ws"
   (define  ws (first-value 
 	       (process* 
-		(append '((include "internal.ws"))
+		(append ;'((include "internal.ws"))
 			(case (compiler-invocation-mode)
 			  ;; Java backends share with wsc2 for now:
 			  [(wavescript-compiler-c 
 			    wavescript-compiler-java
 			    wavescript-compiler-javame)
-			   `((include ,(match (wsc2-sigseg-mode)
+			   `((include "internal.ws")
+			     (include ,(match (wsc2-sigseg-mode)
 					 [copyalways "sigseg_copyalways.ws"]
-					 [seglist    "sigseg_wsharing.ws"]))
-			     (include "internal_wsc2.ws"))]
-			  [(wavescript-compiler-nesc)   '((include "internal_wstiny.ws"))]
-			  [else '()])
+					 [seglist    "sigseg_wsharing.ws"]))			      
+			     (include "internal_wsc2.ws")
+			     )]
+			  [(wavescript-compiler-nesc)   
+			   '((include "internal.ws")
+			     (include "internal_wstiny.ws"))]
+			  [else '((include "internal.ws"))])
 			origws)
 		'() #f)))
   (define (f1 x) (eq? (car x) '::))

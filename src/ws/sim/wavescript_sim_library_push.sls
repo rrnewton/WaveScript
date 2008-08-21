@@ -78,7 +78,7 @@
 		 stringToInt stringToFloat stringToDouble stringToComplex
 		 __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 		 intToChar charToInt
-		 String:length String:make String:explode String:implode
+		 String:length  String:toList String:fromList String:ref String:toArray String:fromArray
 		 
 		 ;toComplex toFloat  ;; Generic versions
 		 ;toInt ;; Truncate
@@ -1506,10 +1506,21 @@
   (define __stringToDouble_ARRAY  (ArrayStringWrapper stringToDouble))
   (define __stringToComplex_ARRAY (ArrayStringWrapper stringToComplex))
 
-  (define String:length string-length)
-  (define String:make   make-string)
-  (define String:explode string->list)
-  (define String:implode list->string)
+  (define String:length   string-length)
+  (define String:toList   string->list)
+  (define String:fromList list->string)
+  (define String:ref      string-ref)
+  (define (String:toArray str)
+    (vector-build (string-length str) (lambda (i) (string-ref str i))))
+  (define (String:fromArray arr)
+    #;
+    (let* ([len (vector-length arr)]
+	   [s (make-string len)])
+      (for (i 0 (fx- len 1))
+	  (string-set! s i (vector-ref arr i)))
+      s)
+    (list->string (vector->list arr)))
+
   (define intToChar integer->char)
   (define charToInt char->integer)
   

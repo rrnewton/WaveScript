@@ -2,6 +2,8 @@
 // These are externally defined primitives that are currently only
 // applied to the new wsc2 backend.
 
+// [2008.08.20] Currently loading this BEFORE internal.ws
+
 
 // [2008.07.28] New system.  There's now a scheme parameter
 // (wsc2-sigseg-mode) that controls which sigseg implementation is included:
@@ -66,6 +68,19 @@ fun led1Off() {}
 fun led2Off() {}
 
 fun List:toArray(ls) {
+  /*
+  fun List:length(ls) {
+    using List; using Mutable;
+    count :: Ref Int = ref$ 0;
+    ptr   = ref$ ls;
+    while ptr != [] {
+      ptr := ptr.tail;
+      count += 1;
+    };
+    count
+  };
+  */
+
   len = List:length(ls);
   arr = Array:makeUNSAFE(len);
   ptr = ls;
