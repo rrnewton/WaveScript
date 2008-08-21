@@ -41,7 +41,7 @@
 
 	   ;max-tinyos-nodes ;; This should be temporary.
 	   )
-  (import (rnrs) 
+  (import (except (rnrs (6)) error) 
 	  (rnrs mutable-pairs)
 	  (ws common)
 	  (ws passes wavescope_bkend nominalize-types)

@@ -53,7 +53,7 @@
 	  let-spine
 	  )
   
-  (import  (rnrs (6))
+  (import  (except (rnrs (6)) error)
 	   (rnrs mutable-pairs (6))
 	   (ws compat compat)
 	   (ws globals)

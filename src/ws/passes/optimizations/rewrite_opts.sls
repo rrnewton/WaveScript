@@ -39,7 +39,7 @@
 	  rewrite-rules	   
 	  test-rewrite
 	  )
-  (import (rnrs) (ws common) 	   
+  (import (except (rnrs (6)) error) (ws common) 	   
 	   ;"normalize_query/ws-remove-complex-opera.ss"
 	   ;"../compiler_components/type_environments.ss"
 	   )

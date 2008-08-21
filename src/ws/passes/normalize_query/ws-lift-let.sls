@@ -11,7 +11,7 @@
   (export ws-lift-let
 	  ws-lift-let-grammar
 	  )
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_query ws-remove-complex-opera))
 
 ;; This is a bit complex because it programmatically splits out the stream-primitives.

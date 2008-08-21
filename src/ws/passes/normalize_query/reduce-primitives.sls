@@ -7,7 +7,7 @@
 
 (library (ws passes normalize_query reduce-primitives)
   (export reduce-primitives reduce-primitives-grammar)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes static_elaborate static-elaborate)
 	  )
 

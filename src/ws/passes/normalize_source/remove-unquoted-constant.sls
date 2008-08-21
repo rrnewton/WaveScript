@@ -12,7 +12,7 @@
 (library (ws passes normalize_source remove-unquoted-constant)
   (export remove-unquoted-constant
            remove-unquoted-constant-grammar)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes  normalize_source eta-primitives))
 
 ;; OUTPUT LANG:

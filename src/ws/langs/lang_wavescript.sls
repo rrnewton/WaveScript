@@ -18,7 +18,7 @@
 	   run-wavescript-sim
 	   wavescript-language
 	   )
-  (import (rnrs) 
+  (import (except (rnrs (6)) error) 
 	  (rnrs eval)
 	  (ws common)
 	  (ws compiler_components c_generator))
@@ -183,7 +183,7 @@
 (define (wavescript-language expr)
   ;(printf "  Evaling in wavescript-language: ~s\n" expr)
   ;; if (simulator-write-sims-to-disk) 
-  (let ([result (eval expr (environment '(except (rnrs) + - * / or and)  
+  (let ([result (eval expr (environment '(except (rnrs (6)) error + - * / or and)  
 					'(ws sim wavescript_sim_library_push)))])
    ; (printf "    Returning result: ~s\n" result)
     result))

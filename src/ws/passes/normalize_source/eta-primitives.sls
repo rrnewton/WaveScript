@@ -9,7 +9,7 @@
 
 (library (ws passes normalize_source eta-primitives)
   (export eta-primitives eta-primitives-grammar test-eta-primitives)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_source rename-vars))
 
   ;; In the output grammar varrefs are no longer allowed to refer to primitives.

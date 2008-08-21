@@ -4,7 +4,7 @@
   (export test-ws test-lang_wavescript
 	  lang_wavescript_prim-exceptions
 	  )
-  (import  (rnrs)
+  (import  (except (rnrs (6)) error)
 	   (ws common)
            (prefix (ws globals) ws:)
            (prefix (ws sim wavescript_sim_library_push) ws:))

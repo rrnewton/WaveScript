@@ -143,9 +143,9 @@
 		 ;(ws^ ^)
 		 for 
 		 )
-     (import (except (rnrs) + - * / ) ;; [2008.04.30] HACK... Don't want to import ALL of this.
+     (import (except (rnrs) error + - * / ) ;; [2008.04.30] HACK... Don't want to import ALL of this.
 	     (except (rnrs r5rs) force delay)
-	     (prefix (rnrs) s:)
+	     (prefix (rnrs (6)) s:)
 
 ; 	     (ws compat compat)
 ; 	     (ws globals)

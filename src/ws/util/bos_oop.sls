@@ -25,7 +25,7 @@
 	    i-make-class
 	    
             )
-  (import (rnrs) (rnrs mutable-pairs) 
+  (import (except (rnrs (6)) error) (rnrs mutable-pairs) 
 	  (ws common))
 #;
   (chezprovide (define-class i-make-class )

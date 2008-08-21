@@ -9,7 +9,7 @@
 
 (library (ws passes static_elaborate split-union-types)
   (export split-union-types)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws util tsort)
 	  (ws passes normalize_source typecheck)
 	  (ws passes static_elaborate static-elaborate)

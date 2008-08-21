@@ -15,7 +15,7 @@
 
 (library (ws passes normalize_query lift-letrec-body)
   (export lift-letrec-body)
-  (import (rnrs) (ws common) )
+  (import (except (rnrs (6)) error) (ws common) )
   
 (define lift-letrec-body
   (let ()

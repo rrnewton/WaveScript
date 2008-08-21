@@ -20,7 +20,7 @@
 
 (library (ws passes ocaml_bkend emit-caml)
   (export emit-caml-wsquery test-emit-caml)
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	  (ws compiler_components c_generator)
 	  (ws passes ocaml_bkend shared-emit-ml))
 

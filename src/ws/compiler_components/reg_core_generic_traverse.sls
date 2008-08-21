@@ -36,7 +36,7 @@
 	  core-substitute
 	  core-refcount
 	  )
-  (import (rnrs (6))
+  (import (except (rnrs (6)) error)
 	  (ws compat compat)
 	  (ws globals)	   
 	  (ws util iu-match)

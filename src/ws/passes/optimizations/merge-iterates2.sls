@@ -13,7 +13,7 @@
           ;merge-two-boxes               ; FIXME: temporarily exported
           rewrite-merges-as-iterates    ; FIXME: temporarily exported
           )
-  (import (rnrs) (rnrs mutable-pairs)
+  (import (except (rnrs (6)) error) (rnrs mutable-pairs)
           (ws common)
           (ws util helpers))
 

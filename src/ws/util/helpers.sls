@@ -110,7 +110,7 @@
 
    )
 
-(import (rnrs (6))
+(import (except (rnrs (6)) error)
 	(rnrs mutable-strings (6))
 	(rnrs mutable-pairs (6))
 	(rnrs exceptions (6))

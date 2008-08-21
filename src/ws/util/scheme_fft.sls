@@ -6,7 +6,7 @@
 (library (ws util scheme_fft)   
   ; dft-vector
   (export dft-list testfft-bigger testfft-more)
-  (import (rnrs (6)) 
+  (import (except (rnrs (6)) error) 
 	  (ws compat compat)
 	  (ws globals)
 	  (ws util helpers)

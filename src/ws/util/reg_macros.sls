@@ -45,7 +45,7 @@
       debug-return-contract
       )
   (import 
-   (rnrs (6))
+   (except (rnrs (6)) error)
    (for (ws compat compat) expand run)
    (for (ws globals) expand run)
    (ws util iu-match)

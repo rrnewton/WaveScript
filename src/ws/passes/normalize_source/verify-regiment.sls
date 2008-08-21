@@ -15,7 +15,7 @@
 
 (library (ws passes normalize_source verify-regiment)   
   (export verify-regiment test-verify-regiment test00)
-  (import (rnrs) (ws common))  
+  (import (except (rnrs (6)) error) (ws common))  
 
 ; ----------------------------------------
 

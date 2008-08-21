@@ -11,7 +11,7 @@
 	   resolve-varrefs-grammar
            test-resolve-varrefs
 	   )
-  (import (rnrs)(ws common))
+  (import (except (rnrs (6)) error)(ws common))
 
   ;; This is a bit of a hack... really should split resolve-varrefs into
   ;; two separate passes for the two places it's used.

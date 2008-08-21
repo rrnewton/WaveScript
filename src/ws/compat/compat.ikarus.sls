@@ -6,7 +6,7 @@
 	  merge merge! sort! append! reverse! call/ec inspect native-inspect define-values
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
-	  printf format format-syntax-nicely
+	  printf error format format-syntax-nicely
 	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 	  reg:top-level-eval simple-eval
 	  warning warning-handler real-time cpu-time
@@ -41,14 +41,21 @@
 		  )
 	  ;current-directory
 	  )
-  (import (rnrs (6))
+  (import (except (rnrs (6)) error)
 	  (rnrs eval (6))
 	  (prefix (ikarus) ik:)
+	  (rnrs programs)
 	  )
 
   (define which-scheme 'ikarus)
 
   (define (format-syntax-nicely syn) syn)
+
+  ;; The default uncaught exception handler prints ugly messages.
+  (define (error who msg . args)
+    (printf "Error in ~a: " who)
+    (apply printf msg args)(newline)
+    (exit -1))
 
   (define-syntax make-parameter (identifier-syntax ik:make-parameter))
   (define-syntax parameterize (identifier-syntax ik:parameterize))
@@ -140,12 +147,12 @@
 		       (loop (read-char in)))))))))
 
   (define (repl)
-    (define env (environment '(rnrs) '(main_r6rs) '(main) '(prefix (ikarus) ik:) '(ws shortcuts)))
+    (define env (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) '(prefix (ikarus) ik:) '(ws shortcuts)))
     ;; Ack, here if we pass an explicit evaluator then we can't "define".
     (ik:new-cafe 
      (lambda (x)
        (reg:top-level-eval x env)
-       ;(eval x (environment '(rnrs) '(main_r6rs) '(main) '(prefix (ikarus) ik:)))
+       ;(eval x (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) '(prefix (ikarus) ik:)))
        )))
 
   ;; Ikarus has this now:

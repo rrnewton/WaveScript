@@ -7,7 +7,7 @@
 (library (ws shortcuts)
   (export t   
 	  )
-  (import (rnrs) (main_r6rs) (main))
+  (import (except (rnrs (6)) error) (main_r6rs) (main))
 
 ; =============================================================
 ;;; Shorthands.  

@@ -8,7 +8,7 @@
 	  gather-heap-types
 	  classify-emits
 	  )
-  (import (rnrs) (rnrs mutable-pairs)
+  (import (except (rnrs (6)) error) (rnrs mutable-pairs)
 	  (ws common)	  
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )

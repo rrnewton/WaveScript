@@ -10,7 +10,7 @@
 
 	   make-outedge outedge-index outedge-name
 	   )
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 ;; These are the types of objects we dig up in the code as we process it.
 

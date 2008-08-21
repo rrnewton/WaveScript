@@ -87,7 +87,7 @@
 	   peel-outer-typevars
 	   value-expression?
 	   )
-  (import  (rnrs (6))
+  (import  (except (rnrs (6)) error)
 	   (rnrs mutable-pairs (6))
 	   (ws compat compat)
 	   (ws globals)

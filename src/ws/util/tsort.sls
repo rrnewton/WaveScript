@@ -4,7 +4,7 @@
 
 (library (ws util tsort) 
   (export topological-sort cyclic? test-tsort)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 ;; DAG = ([VertSource VertAdjacent ...] ...)
 (define (topological-sort dag )

@@ -35,7 +35,7 @@
 	   embed-strings-as-arrays
 
            )
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_query ws-remove-complex-opera)
 	  (ws passes optimizations rewrite_opts)
 	   )

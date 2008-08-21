@@ -24,7 +24,7 @@
 
 (library (ws passes optimizations smoosh-together)
   (export smoosh-together)
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	   ;"reduce-primitives.ss"
 	   )
 

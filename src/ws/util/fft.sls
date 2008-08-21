@@ -16,7 +16,8 @@
      ;(rename (basic-dft dft))
      dft
      inverse-dft)
-  (import (rnrs)
+  (import (except (rnrs (6)) error)
+	  (ws common)
 	  (ws globals)
 	  (ws util helpers)
 	  (ws util slib_fft)

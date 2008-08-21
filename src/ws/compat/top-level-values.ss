@@ -12,11 +12,6 @@
 (define (top-level-bound? var) (hashtable-ref top-table var #f))
 (define (top-level-value var)  (hashtable-ref top-table var #f))
 
-#;
-(define default-environment
-  (environment '(rnrs (6)) '(rnrs r5rs (6)) '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
-	       '(main_r6rs)))
-
 ;; (Inefficient) This evaluates something inside the virtual top-level
 ;; environment.  This is unfinished, it also needs to import the
 ;; top-level WS/Regiment module.
@@ -41,7 +36,7 @@
       [(exp) (reg:top-level-eval 
 	      exp 
 	      ;;default-environment
-	      (environment '(rnrs (6)) '(rnrs r5rs (6)) 
+	      (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
 			   '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
 			   '(main_r6rs) '(main))
 	      )]

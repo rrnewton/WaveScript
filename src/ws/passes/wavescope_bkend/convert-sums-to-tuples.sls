@@ -14,7 +14,7 @@
 
 (library (ws passes wavescope_bkend convert-sums-to-tuples)
   (export convert-sums-to-tuples tag-type)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
   (define tag-type 'Int)  
   (define sum-decls    'uninitialized-sum-decls)

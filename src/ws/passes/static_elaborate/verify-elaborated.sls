@@ -6,7 +6,7 @@
 
 (library (ws passes static_elaborate verify-elaborated)
   (export verify-elaborated verify-elaborated-grammar)
-  (import (rnrs) (ws common)	  
+  (import (except (rnrs (6)) error) (ws common)	  
 	  (ws passes normalize_source remove-unquoted-constant)
 	  (ws passes static_elaborate degeneralize-arithmetic)
 	   )

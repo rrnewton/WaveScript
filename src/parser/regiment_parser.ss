@@ -140,10 +140,20 @@
    ["." 'DOT]
    ["`" 'MAGICAPPLYSEP] 
 
+   ;; Parsing Numbers:
    [(:seq ;(:or "-" "")
 	  (:+ digit)) (token-NUM (string->number lexeme))]
+   ;; Floating point:
    [(:seq ;(:or "-" "") 
-	  (:: (:+ digit) #\. (:* digit))) (token-NUM (string->number lexeme))]   
+	  (:: (:+ digit) #\. (:* digit)))
+    (token-NUM (string->number lexeme))]
+   ;; Floating point exponential (scientific) notation:
+   [(:seq ;(:or "-" "") 
+	  (:: (:+ digit) #\. (:* digit))
+	  "e" (:or "-" "+" "") (:+ digit))
+    (token-NUM (string->number lexeme))]
+
+   ;; FIXME: Doesn't support exponential notation:
    ;; Complex:
    [(:seq ;(:or "-" "") 
 	  (:or (:+ digit) (:: (:+ digit) #\. (:* digit))) "+"
@@ -567,6 +577,15 @@
          [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk += exp)
 	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
 	    `(Array:set ,($2 var) ,$4 (+ (Array:ref ,($2 var) ,$4) ,$7)))]
+
+	 ;; This case bumped us from 65->67 shift/reduce conflicts.
+         [(VAR LeftSqrBrk notlist RightSqrBrk -= exp)  
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,var ,$3 (- (Array:ref ,var ,$3) ,$6)))]
+         [(VAR arrayNav LeftSqrBrk notlist RightSqrBrk -= exp)
+	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
+	    `(Array:set ,($2 var) ,$4 (- (Array:ref ,($2 var) ,$4) ,$7)))]
+
          [(VAR LeftSqrBrk notlist RightSqrBrk *= exp)  
 	  (let ([var (wrap $1-start-pos $1-end-pos $1)])
 	    `(Array:set ,var ,$3 (* (Array:ref ,var ,$3) ,$6)))]

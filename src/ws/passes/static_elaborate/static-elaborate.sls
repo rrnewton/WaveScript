@@ -45,7 +45,7 @@
 	  static-elaborate-grammar
 	  test-static-elaborate
 	  )
-  (import (rnrs) ;(except (rnrs (6)) cons*)
+  (import (except (rnrs (6)) error) ;(except (rnrs (6)) cons* error)
 	  (ws compat compat)
 	  (ws common)
 ;; WEIRD: rn-match is SLOWER for plt on this pass:	   

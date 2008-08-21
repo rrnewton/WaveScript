@@ -11,7 +11,7 @@
 
 (library (ws passes optimizations merge-iterates)
   (export merge-iterates)
-  (import (rnrs) (rnrs mutable-pairs)(ws common))
+  (import (except (rnrs (6)) error) (rnrs mutable-pairs)(ws common))
 
    ;; -> [X] -> [Y] ->
    ;; -> [X(Y)] -> 

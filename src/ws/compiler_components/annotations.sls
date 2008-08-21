@@ -9,7 +9,7 @@
 	  annot-keys
 	  annotation-list?
 	  merge-annotations)
-  (import (rnrs (6)) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 ;;
 ;; An individual annotation is defined as an association -- an element in a Scheme association

@@ -9,7 +9,7 @@
   (export <java>
 	  <javaME>
 	  )
-  (import (rnrs) (except (rnrs r5rs) force delay)
+  (import (except (rnrs (6)) error) (except (rnrs r5rs) force delay)
 	  (rnrs mutable-strings)
 	  (ws compat compat)
 	  (ws common)

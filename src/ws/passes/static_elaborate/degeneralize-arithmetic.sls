@@ -8,7 +8,7 @@
 	  degeneralize-arithmetic-grammar
 	  degeneralize
 	  lift-generics)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_source typecheck)
 	  (ws passes static_elaborate static-elaborate)
 	   )

@@ -18,7 +18,7 @@
    wavescript-version
    )
   ;; We use the generated, aggregated package to supply all the bindings we need:
-  (import (rnrs) 
+  (import (except (rnrs (6)) error) 
 	  (except (rnrs r5rs) force delay)
 	  (main_r6rs);(except (main_r6rs) +)
 	  )

@@ -3,7 +3,7 @@
 ;; This is lifted from SLIB: 
 (library (ws util slib_fft)     
   (export slib:fft slib:fft-1)
-  (import (rnrs) 
+  (import (except (rnrs (6)) error)
 	  (except (rnrs r5rs (6)) delay force) 
 	  (ws compat compat)
 	  (ws util helpers) (ws globals))

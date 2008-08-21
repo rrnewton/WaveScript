@@ -4,7 +4,7 @@
 
 (library (ws passes normalize_source typecheck)
   (export retypecheck)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 ; ----------------------------------------
 

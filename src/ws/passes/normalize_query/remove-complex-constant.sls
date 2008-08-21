@@ -16,7 +16,7 @@
 
 (library (ws passes normalize_query remove-complex-constant)
   (export remove-complex-constant remove-complex-constant-grammar)
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	  (ws passes normalize_query reduce-primitives))
   
 ;; TODO: FILL THIS IN:

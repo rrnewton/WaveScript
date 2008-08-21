@@ -15,7 +15,7 @@
 
 (library (ws passes normalize_query remove-lazy-letrec)
   (export remove-lazy-letrec)
-  (import (rnrs) (ws common) (ws util tsort))
+  (import (except (rnrs (6)) error) (ws common) (ws util tsort))
 
 (define-pass remove-lazy-letrec
     [Expr (lambda (x fallthru)

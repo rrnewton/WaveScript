@@ -12,7 +12,7 @@
            new-simple-merge-iterates
            new-simple-merge-policy:always)
 
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws compiler_components annotations))
 
 

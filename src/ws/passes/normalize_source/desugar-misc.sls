@@ -10,7 +10,7 @@
   (export desugar-misc desugar-misc-grammar 
 	  ;test-desugar-misc
 	  )
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_source eta-primitives))
 
   ;; Like remove primitive but throws an error if not found.

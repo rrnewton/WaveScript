@@ -105,7 +105,8 @@
           guard-body convert-pat mapper my-backquote extend-backquote
           sexp-dispatch myrec
 	  )
-  (import (for (rnrs (6)) (meta 0) (meta 1) (meta 2))
+  (import (for (except (rnrs (6)) error)
+	      (meta 0) (meta 1) (meta 2))
 	  (rnrs mutable-pairs (6))
 	  (for (ws compat compat) run expand))
 

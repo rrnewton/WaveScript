@@ -4,7 +4,7 @@
 
 (library (ws util hash)  
   (export hash hashq hashv)
-  (import (rnrs) (rnrs r5rs)
+  (import (except (rnrs (6)) error) (rnrs r5rs)
 	  (ws globals))
 
 ;(IFCHEZ (import-only scheme) (void))	

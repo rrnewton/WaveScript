@@ -20,7 +20,7 @@
 	   wsquery->text
 	   extract-lib-name
 	   test-wavescript_emit-c)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes wavescope_bkend nominalize-types)
 	  (ws passes wavescope_bkend convert-sums-to-tuples)
 	  (ws compiler_components c_generator) )

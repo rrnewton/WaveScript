@@ -32,7 +32,7 @@
 	  test-nominalize-types
 	  standard-struct-field-names
 	   convert-types collect-tupdefs)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws util tsort))
 #;
   (chezimports (except helpers                   test-this these-tests)

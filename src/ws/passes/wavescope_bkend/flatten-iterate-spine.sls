@@ -6,7 +6,7 @@
 
 (library (ws passes wavescope_bkend flatten-iterate-spine)
   (export flatten-iterate-spine)
-  (import (rnrs) (ws common))  
+  (import (except (rnrs (6)) error) (ws common))  
 
 (define-pass flatten-iterate-spine
     (define (make-simple-shallow x tenv)

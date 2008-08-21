@@ -5,7 +5,7 @@
 
 (library (ws passes mlton_bkend emit-mlton)
   (export emit-mlton-wsquery test-emit-mlton)
-  (import (rnrs) (rnrs mutable-strings)
+  (import (except (rnrs (6)) error) (rnrs mutable-strings)
 	  (ws compat compat)
 	  (ws common)
 	  (ws compiler_components c_generator)

@@ -8,7 +8,7 @@
 	     hash-map hash-for-each hash-rehasher
 	     make-hash-table
 	     )
-    (import (rnrs) (rnrs mutable-pairs)
+    (import (except (rnrs (6)) error) (rnrs mutable-pairs)
 	    (ws compat compat)
 	    (ws globals)
 	    (ws util hash)

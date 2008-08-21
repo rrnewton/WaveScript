@@ -16,7 +16,7 @@
   (export rename-vars rename-vars-grammar
 	  ;test01 tests01
 	  test-rename-vars)
-  (import (rnrs) (rnrs lists) (ws common)
+  (import (except (rnrs (6)) error) (rnrs lists) (ws common)
 	  (ws passes normalize_source ws-label-mutable))
 
   ;; This is a bit of a hack... really should split rename-var into

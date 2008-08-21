@@ -21,7 +21,7 @@
 	  text? text->lines text->string	   
 	  mangle-name ;; Mangle a name so it's a C-name.  Could cause collisions.
 	  )
-  (import  (rnrs) (rnrs mutable-pairs)
+  (import  (except (rnrs (6)) error) (rnrs mutable-pairs)
 	   (ws common))
 
 ;;======================================================================

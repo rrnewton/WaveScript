@@ -10,7 +10,7 @@
 	 hashtab-get  
 	 hashtab-set! 
 	 hashtab-for-each hashtab-remove!)
- (import (rnrs)) 
+ (import (except (rnrs (6)) error)) 
 
    (define (void) (if #f #t))
 

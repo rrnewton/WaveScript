@@ -20,7 +20,7 @@
 
 (library (ws passes wavescope_bkend anihilate-higher-order)
   (export anihilate-higher-order anihilate-higher-order-grammar )
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes static_elaborate verify-elaborated))
   
   (define anihilate-higher-order-grammar

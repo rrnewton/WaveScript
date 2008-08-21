@@ -23,7 +23,7 @@
 (library (ws passes normalize_query remove-complex-opera)
   (export remove-complex-opera*
            test-remove-complex-opera)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 (define remove-complex-opera*
   (let ()

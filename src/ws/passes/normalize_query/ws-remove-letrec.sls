@@ -13,7 +13,7 @@
 	  remove-letrec-grammar
 	  topo-sort-bindings
 	  )
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  (ws passes normalize_query reduce-primitives)
 	  (ws util tsort))
 

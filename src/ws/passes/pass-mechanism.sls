@@ -14,7 +14,7 @@
 	   test-pass-mechanism
 	   ;P1 P2 F G
 	   )
-  (import  (rnrs (6))
+  (import  (except (rnrs (6)) error)
 	   (for (ws compat compat) run expand)
 	   (only (ws globals) ASSERT DEBUGASSERT)
 	   (ws util iu-match)

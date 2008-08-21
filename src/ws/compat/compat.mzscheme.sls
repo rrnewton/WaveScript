@@ -28,7 +28,7 @@
 	  (rename (sys:system system))
 ; 	  make-rectangular
 	  )
-  (import (except (rnrs (6)) current-output-port)
+  (import (except (rnrs (6)) current-output-port error)
 	  (for (rnrs eval (6)) run expand)
 	  (for (only (scheme base) random getenv ;syntax->list 
 		sort call/ec define-values parameterize
@@ -190,11 +190,9 @@
       (syntax-case x ()
         [(_ fn)
 	 (let ([regd 
-		(getenv "REGIMENTD")
-		#;(eval '(getenv "REGIMENTD") 
-			   (environment '(scheme base) '(rnrs)))])
+		(getenv "REGIMENTD"))])
 	   (unless regd
-	     (error 'include "REGIMENTD must be set for include macro to work under PLT"))
+			   (environment '(scheme base) '(except (rnrs (6)) error)))])
 	   ;(display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src")) (newline)
 	   #`(plt:include (file #,(datum->syntax #'_ (string-append regd "/src/" (syntax->datum #'fn)))))
 	   )]

@@ -181,7 +181,7 @@
 
          ) ;; End export
 
-	(import (rnrs (6))
+	(import (except (rnrs (6)) error)
 		(for (ws compat compat) run expand)
 
 	 ;(lib "include.ss")

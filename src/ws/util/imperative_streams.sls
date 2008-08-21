@@ -13,7 +13,7 @@
 
    test-imperative_streams
    )
-  (import (rnrs) (rnrs eval) 
+  (import (except (rnrs (6)) error) (rnrs eval) 
 	  ;(ws common)
 	  (ws compat compat)
 	  (ws globals)

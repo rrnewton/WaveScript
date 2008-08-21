@@ -17,7 +17,7 @@
 	  test-interpret-meta
 ;;	   marshal-cache
    )
-  (import (rnrs) ;(except (rnrs) +)
+  (import (except (rnrs (6)) error) ;(except (except (rnrs (6)) error) +)
 	  (ws common)
 	  (ws passes static_elaborate static-elaborate)
 	  (ws passes wavescope_bkend nominalize-types)

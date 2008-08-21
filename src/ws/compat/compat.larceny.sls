@@ -36,7 +36,7 @@
 
 	  which-scheme IFCHEZ
 	  )
-  (import (rnrs)
+  (import (except (rnrs (6)) error)
 	  (rnrs r5rs)
 	  (rnrs eval)
 	  (for (primitives with-output-to-string random current-directory gensym

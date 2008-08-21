@@ -25,7 +25,7 @@
 
    ;test_sourceloader
    )
-  (import (rnrs)
+  (import (except (rnrs (6)) error)
 	  (ws common)	  
 	  ;(all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)   
 	  ;"../sim/simulator_alpha_datatypes.ss"

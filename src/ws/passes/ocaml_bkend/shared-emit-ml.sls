@@ -10,7 +10,7 @@
 	   make-dispatcher
 	   make-seq make-tuple-code
 	   real-primitive?)
-  (import (rnrs) (ws common)  
+  (import (except (rnrs (6)) error) (ws common)  
 	  (ws compiler_components c_generator) )
 
 ;; This is used to bundle up the methods we want the parent to use.

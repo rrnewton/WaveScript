@@ -7,7 +7,7 @@
   (export type-annotate-misc
 	  type-annotate-misc-grammar
 	  )
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	  (ws passes normalize_query ws-lift-let))
 
 ;; UNFINISHED, should reflect constraints on annotated prims:

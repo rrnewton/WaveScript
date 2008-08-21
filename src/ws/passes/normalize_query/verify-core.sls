@@ -26,7 +26,7 @@
 
 (library (ws passes normalize_query verify-core)
   (export verify-core test-verify-core)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
   
 (define verify-core 
   (let ()

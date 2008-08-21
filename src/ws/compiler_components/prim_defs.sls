@@ -66,7 +66,7 @@
 
 	   ;special-rewrite-libfuns
 	   )
-  (import (rnrs (6)) 
+  (import (except (rnrs (6)) error) 
 	  (except (rnrs r5rs (6)) delay force) 
 	  (ws compat compat)
 	  (ws globals)
@@ -745,6 +745,9 @@
 
     ;; This doesn't carry a time value, it just "fires" every so often.
     ;; Takes as input a frequency in hertz.
+    ;; [2008.08.21] As a new convention, timers with zero rate fire exactly once.
+    ;; Timers with positive rate start counting at time zero, but don't fire at time zero.
+    ;; Thus it may make sense to merge() a zero-timer with a positive-timer.
     (timer            ((List Annotation) Float) (Stream #()))
 
     (prim_window           ((Stream 'a) Int) (Stream (Sigseg 'a)))

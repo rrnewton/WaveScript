@@ -2,7 +2,8 @@
 
 (library (depends matpak)   
   (export ws-invert-matrix)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) 
+	  (ws common))
 
 ;; This matrix code is lifted from the web.
 ;  Found at: http://www.cap-lore.com/MathPhys/Field/

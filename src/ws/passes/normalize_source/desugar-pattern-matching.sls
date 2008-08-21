@@ -19,7 +19,7 @@
 
 (library (ws passes normalize_source desugar-pattern-matching)
   (export pass_desugar-pattern-matching test_desugar-patterns break-pattern)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
   ;; This generates projection code in place of patterns as formal arguments.
   (define (break-pattern pat)

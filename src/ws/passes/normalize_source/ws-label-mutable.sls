@@ -15,7 +15,7 @@
 
 (library (ws passes normalize_source ws-label-mutable)
   (export ws-label-mutable   ws-label-mutable-grammar )
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
   
   (define ws-label-mutable-grammar
     ;; Add Ref type:

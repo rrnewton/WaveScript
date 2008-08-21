@@ -5,7 +5,7 @@
 ;; This is an R6RS "top level program" that invokes the WS compiler.
 
 ;; First the import section.  Load everything:
-(import (rnrs) 	
+(import (except (rnrs (6)) error) 	
 	(main_r6rs)
 	(main)
 	;; Some shorthands for the interactive REPL:

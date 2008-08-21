@@ -30,7 +30,7 @@
   (export ws-remove-complex-opera*
 	   ws-remove-complex-opera*-grammar
            test-ws-remove-complex-opera)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  (ws passes normalize_query ws-remove-letrec))
 

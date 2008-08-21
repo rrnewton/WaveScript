@@ -13,7 +13,7 @@
 
 (library (ws passes normalize_query ws-normalize-context)
   (export ws-normalize-context)
-  (import (rnrs) (ws common))
+  (import (except (rnrs (6)) error) (ws common))
 
 ;; [2007.12.04] Hmm, this version looks like it naively lifts up
 ;; effectful constructs even if they are *already* in effect position.

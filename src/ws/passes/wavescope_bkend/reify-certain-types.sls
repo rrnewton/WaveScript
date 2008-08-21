@@ -14,7 +14,7 @@
   (export reify-certain-types
 ;	   reify-certain-types-grammar
 	   )
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	    ;"../normalize_query/ws-lift-let.ss"
             )
 

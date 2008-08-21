@@ -15,7 +15,7 @@
 
 (library (ws passes analyze_data_rates annotate-with-data-rates)  
   (export annotate-with-data-rates)
-  (import (rnrs) (ws common) (ws util helpers)
+  (import (except (rnrs (6)) error) (ws common) (ws util helpers)
 	  (ws langs lang_wavescript))
 
 ;;

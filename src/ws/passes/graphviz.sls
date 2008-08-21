@@ -4,7 +4,7 @@
 
 (library (ws passes graphviz)
   (export output-graphviz)
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	  (ws compiler_components c_generator))
 
 (define (cutpoint? op)

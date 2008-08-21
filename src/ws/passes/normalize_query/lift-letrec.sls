@@ -35,7 +35,7 @@
 
 (library (ws passes normalize_query lift-letrec)
   (export lift-letrec)
-  (import (rnrs) (ws common)
+  (import (except (rnrs (6)) error) (ws common)
 	  )
   
 ;(define lift-letrec-grammar ...)

@@ -14,7 +14,7 @@
    stream-append-list stream-dump
    test-streams
    ) 
-  (import (rnrs (6))
+  (import (except (rnrs (6)) error)
 	  ;(rnrs r5rs (6))
 	  (ws compat compat)
 	  (ws globals)

@@ -10,7 +10,7 @@
 
 (library (ws passes normalize_query uncover-free)
   (export uncover-free uncover-free-grammar1)
-  (import (rnrs) (ws common) 
+  (import (except (rnrs (6)) error) (ws common) 
 	  (ws passes normalize_query remove-complex-constant))  
 
 ;; There may be multiple versions of uncover-free with different
