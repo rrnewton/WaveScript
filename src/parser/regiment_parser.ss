@@ -40,7 +40,7 @@
     AND OR NEG HASH 
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
-    fun for while to emit include deep_iterate iterate state in if then else true false break let 
+    fun for while to emit return include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef uniontype static case
 ;    foreign foreign_box foreign_source 
     typecase returncase
@@ -95,7 +95,7 @@
 	 )
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
+   [(:or "fun" "for" "while" "break" "to" "emit" "return" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
 	 "namespace" "using" "static" "uniontype" "case" "typecase" "returncase" 
 ;	 "foreign" "foreign_box" "foreign_source"
@@ -247,7 +247,7 @@
    ;; Precedence:
    (precs 
     
-          (left emit) ; return
+          (left emit return)
 
 	  ;; These have weak precedence:
           (right = := += -= *= -> )
@@ -432,8 +432,7 @@
 	 ;[(break) '(break)]
 	 ;[(emit exp )   `(emit ,VIRTQUEUE ,$2)]
 
-
-	 ;;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]	   
+	 ;; [(return exp SEMI stmts) (cons `(return ,$2) $4)]
 
 	 ;; One-armed statement conditional:
 	 ;; Return unit:
@@ -719,8 +718,9 @@
 	 ;[(if exp then selfterminated SEMI else selfterminated) (prec EXPIF) `(if ,$2 ,$4 ,$7)]
 
 	 [(break) '(break)]
-	 [(emit exp) `(emit ,VIRTQUEUE ,$2)]
-
+	 [(emit exp) `(emit ,VIRTQUEUE ,$2)] ;; 1 shift reduce conflict
+         ;; Causes 5 shift-reduce conflicts:
+         [(return exp) $2] ;; No, only 1 now...
 
 	 ;; HACK: This allows STMTs!!!
 	 ;[(if exp then stmt else stmt) (prec EXPIF) `(if ,$2 ,$4 ,$6)]
@@ -799,8 +799,6 @@
          [(LeftParen exp :: type RightParen)
 	  `(assert-type ,$4 ,$2)]
 
-         ;; Causes 5 shift-reduce conflicts:
-;         [(return exp) $2]
          )
     
     (binop [(+) '+]

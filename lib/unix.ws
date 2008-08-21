@@ -52,6 +52,10 @@ namespace Unix {
 
   // Only supporting foreign *functions* right now.
   //stdout :: FileDescr = foreign("stdout",  stdio);
+  // This is defined in wsc2.h:
+  stdout :: FileDescr = ((foreign("ws_get_stdout",  stdio) :: () -> FileDescr))();
+  stderr :: FileDescr = ((foreign("ws_get_stderr",  stdio) :: () -> FileDescr))();
+  stdin  :: FileDescr = ((foreign("ws_get_stdin" ,  stdio) :: () -> FileDescr))();
 
   puts :: String -> () = foreign("puts", stdio);
 

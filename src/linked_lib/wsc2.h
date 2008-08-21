@@ -563,7 +563,7 @@ void wsShutdown() {
     ws_alloc_stats();
   #endif
     stopalltimers = 1;
-    printf("Stopped all timers.\n");
+    fprintf(stderr,"Stopped all timers.\n");
   #ifdef WS_THREADED
     print_queue_status();
   #endif
@@ -579,7 +579,7 @@ void wsInternalInit() {
 void BASE(char x) {
   outputcount++;
   if (outputcount == wsc2_tuplimit) { 
-    printf("Enough tuples.  Shutting down.\n");
+    fprintf(stderr, "Enough tuples.  Shutting down.\n");
     wsShutdown(); 
     exit(0);     
   }

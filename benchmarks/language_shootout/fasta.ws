@@ -18,7 +18,7 @@ type Aminoacid = (Float * Char);
 p = fst;
 c = snd;
 
-stdout = fopen("/dev/stdout", "a");
+//stdout = fopen("/dev/stdout", "a");
 
 WIDTH = 60
 newline = intToChar(10) // \n
@@ -82,8 +82,6 @@ fun __repeat_fasta(s, count) {
   s2  = makeUNSAFE(len + WIDTH);
   blit(s2, 0,   s, 0, len);
   blit(s2, len, s, 0, WIDTH);
-    //memcpy (s2, s, len);
-    //memcpy (s2 + len, s, WIDTH);
   cnt = count;
   while cnt > 0 {
     line = min(WIDTH, cnt);
@@ -93,15 +91,15 @@ fun __repeat_fasta(s, count) {
     if (pos >= len) then pos -= len;
     cnt -= line;    
   };
-  // free s2 
 }
 
-//fun String:toArray(s)   List:toArray   $ String:explode $ s
-//fun String:fromArray(a) String:implode $ Array:toList   $ a
-
-//String:ref :: (String, Int) -> Char;
-//fun String:ref(s,i) List:ref(String:explode(s), i)
-fun String:sub(s,i,l)  String:fromArray$ Array:sub(String:toArray(s),i,l)
+//fun String:sub(s,i,l)  String:fromArray$ Array:sub(String:toArray(s),i,l)
+fun String:sub(s,i,l)  { 
+  // Make room for the null terminator:
+  subarr = Array:sub(String:toArray(s),i, l+1);
+  subarr[l] := intToChar(0);
+  return String:fromArray(subarr);
+}
 
 break_counter = 0; // Mutated:
 // TODO, block write:
@@ -135,7 +133,8 @@ fun repeat_fasta(s, count) {
 fun random_fasta(genelist, count) {
   using Array;
   buf :: Array Char = makeUNSAFE(WIDTH + 1);
-  //buf :: Array Char = make(WIDTH + 1, '_');
+  //buf :: Array Char = make(WIDTH + 1, 0`intToChar);
+  //buf :: Array Char = make(WIDTH + 2, 0`intToChar);
   cnt = count;
   while cnt > 0 {
     line = min(WIDTH, cnt);
@@ -144,19 +143,23 @@ fun random_fasta(genelist, count) {
       r = myrandom(1.0);
       i = 0;
       while genelist[i].p < r { i+=1 }; // Linear search
-      pos += 1;
       buf[pos] := genelist[i].c;
+      pos += 1;
     }
-    buf[line] := newline;
-    fwrite_arr (buf, 1, line + 1, stdout);
+    buf[line] := newline;    
+    //print(Array:map(charToInt, buf));//print(String:fromArray $ buf);
+    //print(String:sub(String:fromArray(buf), 0, line+1));
+    //print("\n");
+    fwrite_arr (buf, 1, line + 1, stdout); // print newline also
     cnt -= line;
   }
 }
 
 OutBuf = makeUNSAFE(128 * 1024);
 
+//n = 50;
 //n = 1000;
-n = 25000000;
+n = 25 * 1000 * 1000;
 //n = 25000;
 
 main = iterate _ in timer(1) {
@@ -164,6 +167,8 @@ main = iterate _ in timer(1) {
     accumulate_probabilities (iub);
     accumulate_probabilities (homosapiens);
   }}
+
+//  setvbuf(stdout, OutBuf, _IOFBF, sizeof OutBuf); /\* buffer output *\/ 
 
   print(">ONE Homo sapiens alu\n");
   repeat_fasta (alu, 2 * n);
@@ -174,17 +179,6 @@ main = iterate _ in timer(1) {
   print(">THREE Homo sapiens frequency\n");
   random_fasta (homosapiens, 5 * n);
 
-/*     ; */
-
-/*     setvbuf(stdout, OutBuf, _IOFBF, sizeof OutBuf); /\* buffer output *\/ */
-/*     fputs_unlocked (">ONE Homo sapiens alu\n", stdout); */
-/*     repeat_fasta (alu, 2 * n); */
-/*     fputs_unlocked (">TWO IUB ambiguity codes\n", stdout); */
-/*     random_fasta (iub, 3 * n); */
-/*     fputs_unlocked (">THREE Homo sapiens frequency\n", stdout); */
-/*     random_fasta (homosapiens, 5 * n); */
-
   emit ();
   wserror("run for only one tuple!");
-  //emit iub
 }
