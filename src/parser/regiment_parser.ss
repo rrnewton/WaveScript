@@ -37,7 +37,7 @@
     +. -. *. /. ^. 
     +: -: *: /: ^: 
     :: ++  COLON
-    AND OR NEG HASH 
+    AND OR NEG HASH andbinding
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit return include deep_iterate iterate state in if then else true false break let 
@@ -49,7 +49,7 @@
     EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
     EOF ))
-(define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR NUMVAR CHAR STRING))
+(define-tokens value-tokens (NUM DOUBLE VAR DOTVARS TYPEVAR NUMVAR CHAR STRING))
 
 (define-lex-abbrevs (lower-letter (:/ "a" "z"))
                     (upper-letter (:/ #\A #\Z))
@@ -117,6 +117,8 @@
    [(:seq "#" (:+ lower-letter)) (token-NUMVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    ["&&" 'AND] ["||" 'OR]
    
+   ["and" 'andbinding]
+
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
    ["|" 'BAR] ["!" 'BANG]
@@ -144,14 +146,32 @@
    [(:seq ;(:or "-" "")
 	  (:+ digit)) (token-NUM (string->number lexeme))]
    ;; Floating point:
+#;
    [(:seq ;(:or "-" "") 
 	  (:: (:+ digit) #\. (:* digit)))
     (token-NUM (string->number lexeme))]
    ;; Floating point exponential (scientific) notation:
    [(:seq ;(:or "-" "") 
-	  (:: (:+ digit) #\. (:* digit))
-	  "e" (:or "-" "+" "") (:+ digit))
-    (token-NUM (string->number lexeme))]
+          (:: (:+ digit) #\. (:* digit))
+	  (:or "" (:seq "e" (:or "-" "+" "") (:+ digit)))
+	  (:or "" "l" "L" "f" "F"))
+    (let ([lastchar (string-ref lexeme (sub1 (string-length lexeme)))])
+      (cond
+	 ;; By default floating point numbers are currently considered floats.
+	 ;; Should change this...
+	 [(or (eq? lastchar #\f) (eq? lastchar #\F))
+	  (token-NUM 
+	   (string->number 
+	    (substring lexeme 0 (sub1 (string-length lexeme)))))]
+	 [(or (eq? lastchar #\l) (eq? lastchar #\L))
+	  (token-DOUBLE 
+	   (string->number	    
+	    (substring lexeme 0 (sub1 (string-length lexeme)))))]
+	 [else (token-NUM (string->number lexeme))]
+	 )
+      )
+    
+    ]
 
    ;; FIXME: Doesn't support exponential notation:
    ;; Complex:
@@ -236,6 +256,11 @@
   (if (file-exists? "_parser.log")
       (delete-file "_parser.log"))
   (let ()
+
+    (define (tag-double num)
+      `(assert-type Double ',num) ; (cast_num ',val)
+      )
+
    ;; Returns a function that takes a lexer thunk producing a token on each invocation:a
     (define theparser
       (parser
@@ -261,7 +286,7 @@
 
 	  ;; These have weak precedence:
           (right = := += -= *= -> )
-	  (right AND OR )
+	  (right AND OR ) ; andbinding
 
 	  ;(right)
 	  (right then else )
@@ -469,11 +494,29 @@
            [(let pattern :: type = exp SEMI stmts) `((letrec ([,$2 (assert-type ,$4 ,$6)]) ,(make-begin $8)))]
 
 	   [(using VAR SEMI stmts) `((using ,$2 ,(make-begin $4)))]
+
+	   [(fundef morestmts)
+	    (let ([bind1 (match $1 [(define ,bind ...) bind])])
+	      (match $2
+		[((letrec ,morebinds ,bod) . ,rest)
+		 (unless (null? rest)
+		   (error 'parser "implementation error in fundef case"))
+		 `((letrec ,(cons bind1 morebinds) ,bod) . ,rest)]
+		[,oth `((letrec (,bind1) ,(make-begin $2)))]))]
 	   
+#|	   
+	   [(fundef optionalsemi andbinding stmts)
+	    (let ([bind1 (match $1 [(define ,bind ...) bind])])
+	      (match $4
+		[((letrec ,morebinds ,bod) . ,rest)
+		 `((letrec ,(cons bind1 morebinds) ,bod) . ,rest)]
+		[,oth ;`(letrec (,bind) ,oth)
+		 (error 'parser "'and' must be followed by another variable/function binding:\n  File ~a line ~a col ~a"
+			thefile (position-line $3-start-pos) (position-col $3-start-pos))]))]
            [(fundef morestmts)
-            (match $1
-              [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $2)))]
-              [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $2)))])]
+            (match $1 [(define ,bind ...) `((letrec (,bind) ,(make-begin $2)))])]
+
+	   |#
 
 	   ;; This avoids conflicts:
 	   [(selfterminated stmt morestmts) (cons $1 (cons $2 $3))]
@@ -598,9 +641,11 @@
        ;; TEMPTOGGLE: Do we wish to treat complex numbers as constants, or calls to makeComplex? (for ikarus)
      ;[(NUM) `',$1]
      ;; [2008.05.29] Activating for now:
-       [(NUM) (if (real? $1) `',$1 `(app makeComplex
-					 ',(exact->inexact (real-part $1)) 
-					 ',(exact->inexact (imag-part $1))))]
+     [(NUM) (if (real? $1) `',$1 `(app makeComplex
+				       ',(exact->inexact (real-part $1)) 
+				       ',(exact->inexact (imag-part $1))))]
+     ;; FIXME: Need a better direct syntax for double constants.
+     [(DOUBLE) (tag-double $1)]
 
 ;         [(VarExp)  $1]
 	 [(VAR) $1]
@@ -766,7 +811,8 @@
          [(LeftParen exp binop RightParen) `(lambda (x) (app ,$3 ,$2 x))]
 
 	 ;; Negative numbers.
-	 [(- NUM) (prec NEG) (- $2)]
+	 [(- NUM)    (prec NEG) (- $2)]
+	 [(- DOUBLE) (prec NEG) (tag-double (- $2))]
 
          [(exp AND exp) `(ws:and ,$1 ,$3)]
          [(exp OR exp)  `(ws:or  ,$1 ,$3)]

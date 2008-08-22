@@ -68,7 +68,7 @@
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
    graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple
-   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter blaze-path-to blaze-path-to/assq
+   deep-memq deep-assq deep-assq-all deep-member? deep-all-matches deep-filter blaze-path-to blaze-path-to/assq
    unfold-list average clump
    partition-equal split-before group
    myequal?
@@ -1246,7 +1246,7 @@
      [else (list x)])))
           
 ;[01.10.23] - I'm surprised this wasn't added a million years ago:
-(define (deep-memq? ob struct)
+(define (deep-memq ob struct)
   (let outer ([struct struct])
     (or (eqv? ob struct)
 	(and (vector? struct)

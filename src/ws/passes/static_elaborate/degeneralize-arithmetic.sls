@@ -95,7 +95,6 @@
 			       "unhandled output type demanded of gint, ~s, expression: ~s"
 			       t (cons 'gint args))])]
 		   [(cast_num) 
-		    ;(inspect (vector 'got-cast t))
 		    ;; Ouch, might be expensive:
 		    (match (car args)
 		      ;[',c ]

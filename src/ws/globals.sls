@@ -174,6 +174,7 @@
 	 make-tuple tuple-fields tuple?
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
+	 ;make-double double-val
 	 
 	 bench-stats? make-bench-stats  ;bench-stats 
 	 bench-stats-bytes bench-stats-tuples bench-stats-cpu-time
@@ -959,6 +960,9 @@
 (reg:define-struct (uniontype tag val)) ;; Sum types
 
 (reg:define-struct (timebase num))
+
+;; Adding this to distinguish float and double values [2008.08.22]
+(reg:define-struct (double val))
 
 ;; Used for profiling and annotating data rates.
 (reg:define-struct (bench-stats bytes tuples cpu-time))

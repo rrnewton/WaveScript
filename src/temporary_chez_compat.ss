@@ -121,6 +121,7 @@
 
 (define native-inspect #%inspect)
 
+;(define generic-inspect #%inspect)
 (include "ws/compat/inspector.ss")
 
 (alias inspect generic-inspect)

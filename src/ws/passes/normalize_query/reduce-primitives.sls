@@ -23,16 +23,6 @@
       static-elaborate-grammar))
 
 (define-pass reduce-primitives
-  [OutputGrammar reduce-primitives-grammar]
-  [Expr (lambda (x fallthrough)	 
-	  (match x
-       [(,prim ,annot ,[rand*] ...)
-        (guard (and (pair? annot) (eq? (car annot) 'annotations)))
-        (process-primapp prim `(,annot ,@rand*))]
-	    [(,prim ,[rand*] ...)
-	     (guard (regiment-primitive? prim))
-	     (process-primapp prim rand*)]
-	    [,other (fallthrough other)]))]
   (define process-primapp
     (lambda (prim args)
       (match (cons prim args)
@@ -62,6 +52,17 @@
          `(wsequal? ,ls '())]
 
         [,orig orig])))
+
+  [OutputGrammar reduce-primitives-grammar]
+  [Expr (lambda (x fallthrough)	 
+	  (match x
+       [(,prim ,annot ,[rand*] ...)
+        (guard (and (pair? annot) (eq? (car annot) 'annotations)))
+        (process-primapp prim `(,annot ,@rand*))]
+	    [(,prim ,[rand*] ...)
+	     (guard (regiment-primitive? prim))
+	     (process-primapp prim rand*)]
+	    [,other (fallthrough other)]))]
   )
 
 ) ; End Module

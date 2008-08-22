@@ -783,11 +783,15 @@
        (match (or ty (type-const val))
 	 ;; Going through just to make sure there are no errors:
 	 [(List ,elt) (for-each (lambda (x) (loop x elt)) val)]))
+      (when (deep-memq 'Double ty)
+	(error 'interpret-meta "can't currently handle values that include Doubles inside data structures: ~s" val))
       ;`(assert-type ,ty ',val)
       `',val
       ]
 
-     [(vector? val)
+     [(vector? val) 
+      (when (deep-memq 'Double ty)
+	(error 'interpret-meta "can't currently handle values that include Doubles inside data structures: ~s" val))
       ;; FIXME, should COMPRESS here if possible.
       ;`(assert-type ,ty ',val)
       `',val

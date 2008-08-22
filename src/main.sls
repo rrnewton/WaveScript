@@ -599,6 +599,7 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
+  (print-graph #f)(pretty-print p)
  ; (pretty-print (strip-annotations p 'src-pos))
 
   (when (>= (regiment-verbosity) 1)
@@ -623,10 +624,10 @@
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
   (IFDEBUG (do-late-typecheck) (void))
-
   ;; This is expensive because it lifts generic ops, and retypechecks:
   ;; (Like we later do for polymorphic constants)
   (ws-run-pass p degeneralize-arithmetic)
+
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
   (DEBUGMODE (do-late-typecheck)) ;; [2008.02.21] changing to debug-only
 

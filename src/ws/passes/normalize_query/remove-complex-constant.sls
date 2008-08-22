@@ -76,28 +76,6 @@
        (vector (cons prim _args) cb)]
 
       [,other (fallthrough other)]))
-    
-  ;; Returns vector of two things: new expr and list of const binds
-  [Expr Expr]
-
-  [Fuser (lambda (results k)
-         (match results
-           [(#(,exps ,binds) ...) (vector (apply k exps) (apply append binds))]
-           [,other (error 'remove-complex-constant:process-expr 
-                          "bad intermediate result: ~s" other)]))]
-
-  [Program 
-   (lambda (prog process-expr)
-     (match prog
-       [(,input-language (quote (program ,body ,meta* ... ,type)))
-        (let-match ([#(,body ,body-b*) (process-expr body)])
-          (if (null? body-b*)
-              `(remove-complex-constant-language
-                '(program ,body ,meta* ... ,type))
-              `(remove-complex-constant-language
-                '(program 
-                     (letrec ,body-b* ,body)
-                   ,meta* ...  ,type))))]))]
 
   ;; Returns (1) Expr (2) Type (3) Mutable?
   (define datum->code
@@ -235,6 +213,30 @@
 	 [(number? datum) (process-expr `(quote ,(- datum)))]
 	 [else (error 'remove-complex-constant.negate-datum
 		      "cannot negate non-numeric datum: ~s" datum)])))
+    
+  ;; Returns vector of two things: new expr and list of const binds
+  [Expr Expr]
+
+  [Fuser (lambda (results k)
+         (match results
+           [(#(,exps ,binds) ...) (vector (apply k exps) (apply append binds))]
+           [,other (error 'remove-complex-constant:process-expr 
+                          "bad intermediate result: ~s" other)]))]
+
+  [Program 
+   (lambda (prog process-expr)
+     (match prog
+       [(,input-language (quote (program ,body ,meta* ... ,type)))
+        (let-match ([#(,body ,body-b*) (process-expr body)])
+          (if (null? body-b*)
+              `(remove-complex-constant-language
+                '(program ,body ,meta* ... ,type))
+              `(remove-complex-constant-language
+                '(program 
+                     (letrec ,body-b* ,body)
+                   ,meta* ...  ,type))))]))]
+
+
   )
 
 

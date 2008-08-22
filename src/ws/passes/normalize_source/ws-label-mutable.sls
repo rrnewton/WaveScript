@@ -82,7 +82,22 @@
 		       ;; Pass upwards set-banged free variables:
 		       (difference (union allrhs_banged bod_setbanged)
 				   lhs*))])])]
-	      [,oth (fallthru oth)]))]
+
+	      ;; Handle other binding forms:
+	      [(lambda ,vars ,tys ,[_bod]) 
+	       (match _bod
+		 [#(,bod ,banged)
+		  (vector `(lambda ,vars ,tys ,bod)
+			  (difference banged vars))])]
+	      [(for (,i ,[_st] ,[_en]) ,[_bod])
+	       (match (vector _st _en _bod)
+		 [#(#(,st ,stb) #(,en ,enb) #(,bod ,bodb))
+		  (vector `(for (,i ,st ,en) ,bod)
+			  (difference (union stb enb bodb) (list i)))])]
+	      
+	      [,oth 
+	       (ASSERT (compose not binding-form?) oth)
+	       (fallthru oth)]))]
     [Fuser (lambda (vecs k)
 	     (match vecs
 	       [(#(,exp* ,mutable*) ...)
@@ -114,7 +129,15 @@
 			      lhs* ty* rhs*)
 			   ,(Expr bod new-mutable))]
 	       [(deref ,v) (error 'ws-label-mutable "The input program should not already have any derefs: ~a" `(deref ,v))]
-	       [,oth (fallthru oth)]))
+
+	       ;; For and lambda bindings are not allowed to be mutable for now:
+	       [(for (,i ,[st] ,[en]) ,bod)		
+		`(for (,i ,st ,en) ,(Expr bod (difference mutable-at-bind (list i))))]
+	       [(lambda ,vars ,tys ,bod)
+		`(lambda ,vars ,tys ,(Expr bod (difference mutable-at-bind vars)))]
+
+	       [,oth (ASSERT (compose not binding-form?) oth)
+		     (fallthru oth)]))
 	   (lambda (ls k) (apply k ls)) ;; generic fuser
 	   exp)))
     [OutputGrammar ws-label-mutable-grammar]

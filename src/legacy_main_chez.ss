@@ -14,9 +14,8 @@
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
 ;; This is *only* relevant if repeatedly loading regiment into a single REPL.
 (when (top-level-bound? 'REGIMENTD) 
-  (printf "WIPING previous bindings before reloading Regiment system.\n")
+  (printf "RESTORING scheme bindings before reloading Regiment system.\n")
   (eval '(import scheme)))
-
 
 ;;; Compile-time configuration.
 ;;;

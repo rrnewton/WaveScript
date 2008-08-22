@@ -1730,9 +1730,8 @@ int main(int argc, char **argv)
 ;; Returns decls, top lvl binds, init code
 (__spec Cutpoint <emitC2> (self type in out)
    ;; Cutpoint from tinyOS node:
-   (let ()     
-     (define local (unique-name "local"))
-     (define _local (Var self local))
+   (let* ([local (unique-name "local")]
+	  [_local (Var self local)])
      (slot-cons! self 'server-cutpoints in)   
      (match type
        [(Stream ,elt)

@@ -12,6 +12,8 @@
 const_PI   :: Float;
 const_PIO2 :: Float;
 const_E    :: Float;
+piF        :: Float;
+piD        :: Double;
 
 ///  Library POD (plain old data) functions: 
 
@@ -246,6 +248,9 @@ Internal:syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
 const_PI   = 3.141592653589793;
 const_PIO2 = const_PI/2.0;
 const_E    = 2.718281828459045;
+
+piF   = 3.141592653589793F;
+piD   = 3.141592653589793L;
 
 //======================================================================
 // Library POD (plain old data) functions:
