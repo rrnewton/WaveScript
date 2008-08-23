@@ -614,6 +614,11 @@ void wserror_fun(char* msg) {
 }
 #define wserror_wsc2(str) wserror_fun(str);
 
+int wsexit_fun(int code) {
+  exit(code);
+  return 0;
+}
+
 //################################################################################//
 //                                    Misc                                        //
 //################################################################################//
@@ -625,6 +630,9 @@ void wserror_fun(char* msg) {
 FILE* ws_get_stdout() { return stdout; }
 FILE* ws_get_stderr() { return stderr; }
 FILE* ws_get_stdin () { return stdin ; }
+
+static inline char ws_lshiftC(char c, int n) { return c << n; }
+static inline char ws_lorC  (char c, char d) { return c | d; }
 
 /*
 // TODO:

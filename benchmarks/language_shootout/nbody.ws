@@ -4,6 +4,41 @@
  *   (Based on SML/NJ version.)
  *
  * Author: Ryan Newton (ryan.newton@alum.mit.edu)
+
+
+
+Desired:
+-0.169075164
+-0.169087605
+
+ocaml:
+-0.169075164
+-0.169087605
+
+C: 
+-0.169075164
+-0.169087605
+
+SML output: 
+-0.169075164
+-0.169031665
+
+scheme
+-0.169075163 82852447
+-0.169087605 23460595
+
+Hmm, non recursive:
+-0.169073079865132
+
+busted:
+-0.169289903377906
+-0.169289903377906
+
+fixing... still broken
+-0.169075164
+-0.169051237
+
+
  */
 
 include "stdlib.ws"
@@ -60,7 +95,7 @@ fun advance(dt) { // one step
 	   pl (i+1) }
   };
   fun vl(i,j) {
-
+    println("vl "++i++" "++j);
     if i>=N then pl(0)
     else if j>=N then vl(i+1,i+2)
     else {
@@ -117,11 +152,16 @@ fun addloop(i) {
   loop(i)
 }
 
+//printf :: (String, Double) -> () = foreign("printf", ["stdio.h"]);
+  
 fun run(n) {
   offmoment (); 
-  println(Float! energy()); 
-  addloop(n);
-  println(Float! energy());
+  println(energy());
+  //printf("%.9f\n", energy());
+  //addloop(n);
+  advance(0.1L);
+  println(energy());
+  //printf("%.9f\n", energy());
 }
 
 main = {

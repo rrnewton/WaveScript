@@ -535,11 +535,13 @@
 
      ;; Hacked this to handle NAN (not in a pretty way).
      [(flonum? datum) 
-      (wrap (format "~a" ;; (Type self 'Float) ;; [2008.07.10] Removing this cast to handle doubles
-		    (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
-			"(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
-			datum)					 
-		    ))]
+      (wrap 
+       (if (not (= datum datum)) ;(or (eq? datum +nan.0) (eq? datum -nan.0))
+	   "(0.0/0.0)" ;(inspect/continue datum);"(0.0/0.0)"
+	   (format "~aF" datum)))]
+     [(double? datum)      
+      (let ([datum (double-val datum)])
+	(if (not (= datum datum)) "(0.0L/0.0L)" (format "~aL" datum)))]
      [(cflonum? datum) (wrap (format "(~a)(~a + ~afi)" (Type self 'Complex)
 				     (real-part datum)
 				     (imag-part datum)))]

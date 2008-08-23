@@ -121,6 +121,9 @@
 	     (guard (not (polymorphic-type? ty)))
 	     `(assert-type ,ty ',x)]
 
+	    [(assert-type Double ',val)
+	     `',(if (number? val) (make-double val) val)]
+
 	    [(assert-type ,t (,op ,annot ,[x*] ...))
 	     (guard (and (memq op required-ops)
 			 (pair? annot)
@@ -1091,6 +1094,7 @@
        [(symbol? cn)   cn] ;; Just here for compiler-internal purposes.
        [(timebase? cn) cn]
        [(sigseg? cn)   cn]
+       [(double? cn) cn]
        [else (error 'embed-strings-as-arrays:Const "unmatched ~s" cn)]))
     (define (quoted-constant? x)
       (match x [(quote ,_) #t] [,else #f]))

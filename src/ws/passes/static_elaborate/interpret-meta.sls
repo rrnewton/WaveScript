@@ -727,6 +727,16 @@
 ;; We should maybe maintain types...
 (define (Marshal-Plain p) 
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
+
+  (define (box-doubles val ty) 
+    (match ty
+      [Double (make-double val)]
+      [(List ,elt) (map (lambda (x) (box-doubles x elt)) val)]
+      [(Array ,elt) (vector-map (lambda (x) (box-doubles x elt)) val)]
+      [#(,fld* ...) (make-tuple (map (lambda (x ty) (box-doubles x ty)) (tuple-fields val) (vector->list fld*)))]
+      [(HashTable . ,_) (error 'Marshal-Plain:box-doubles "Can't handle hash tables yet")]
+      [,else val]))
+
   (ASSERT (plain? p))
   
   (let loop ([val (plain-val p)]
@@ -773,7 +783,8 @@
      ;; constants, as a stopgap we could cast them from float
      ;; constants (unless they're too big).
      ;[(eq? ty 'Double) `(assert-type Double ',val)]
-     [(eq? ty 'Double) `(assert-type Double (cast_num ',val))]
+     ;[(eq? ty 'Double) `(assert-type Double (cast_num ',val))]
+     [(eq? ty 'Double) `',(box-doubles val 'Double)]
      ;[(eq? ty 'Double) `(__cast_num Float Double ',val)]
 
      [(list? val)
@@ -783,18 +794,14 @@
        (match (or ty (type-const val))
 	 ;; Going through just to make sure there are no errors:
 	 [(List ,elt) (for-each (lambda (x) (loop x elt)) val)]))
-      (when (deep-memq 'Double ty)
-	(error 'interpret-meta "can't currently handle values that include Doubles inside data structures: ~s" val))
       ;`(assert-type ,ty ',val)
-      `',val
+      `',(box-doubles val ty)
       ]
 
-     [(vector? val) 
-      (when (deep-memq 'Double ty)
-	(error 'interpret-meta "can't currently handle values that include Doubles inside data structures: ~s" val))
+     [(vector? val)
       ;; FIXME, should COMPRESS here if possible.
       ;`(assert-type ,ty ',val)
-      `',val
+      `',(box-doubles val ty)
       ]
 
      ;; FIXME: GET RID OF THIS FALLTHROUGH!

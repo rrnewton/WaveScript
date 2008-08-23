@@ -28,7 +28,7 @@
 	  (rename (sys:system system))
 ; 	  make-rectangular
 	  )
-  (import (except (rnrs (6)) current-output-port error)
+  (import (except (rnrs (6)) current-output-port )
 	  (for (rnrs eval (6)) run expand)
 	  (for (only (scheme base) random getenv ;syntax->list 
 		sort call/ec define-values parameterize
@@ -189,10 +189,9 @@
     (lambda (x)
       (syntax-case x ()
         [(_ fn)
-	 (let ([regd 
-		(getenv "REGIMENTD"))])
+	 (let ([regd (getenv "REGIMENTD")])
 	   (unless regd
-			   (environment '(scheme base) '(except (rnrs (6)) error)))])
+			   (environment '(scheme base) '(except (rnrs (6)) error)))
 	   ;(display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src")) (newline)
 	   #`(plt:include (file #,(datum->syntax #'_ (string-append regd "/src/" (syntax->datum #'fn)))))
 	   )]

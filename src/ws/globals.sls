@@ -174,7 +174,7 @@
 	 make-tuple tuple-fields tuple?
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
-	 ;make-double double-val
+	 make-double double-val double?
 	 
 	 bench-stats? make-bench-stats  ;bench-stats 
 	 bench-stats-bytes bench-stats-tuples bench-stats-cpu-time

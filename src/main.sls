@@ -599,8 +599,7 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
-  (print-graph #f)(pretty-print p)
- ; (pretty-print (strip-annotations p 'src-pos))
+ ;(print-graph #f)(pretty-print (strip-annotations p 'src-pos))
 
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")

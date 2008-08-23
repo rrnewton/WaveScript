@@ -460,6 +460,7 @@
 ;; [2007.10.02] TODO: AUDIT THIS.  For integer constants perhaps it should infer a generic type...
 (define (type-const c)
   (cond
+   [(double? c) 'Double]
    [(flonum? c) 'Float]
    [(cflonum? c) 'Complex]
    ;[(integer? c) 'Int]

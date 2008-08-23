@@ -282,6 +282,7 @@
         ;(bg-integer? x)
 					;(ratnum? x)
         (number? x)  ;; replacing chez specific...
+        (double? x)  ;; a new, boxed, number type [2008.08.22]
         (null? x) ;; This means you can type () without a quote.
         (boolean? x)
         (char? x)

@@ -37,7 +37,7 @@
     +. -. *. /. ^. 
     +: -: *: /: ^: 
     :: ++  COLON
-    AND OR NEG HASH andbinding
+    AND OR NEG HASH 
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit return include deep_iterate iterate state in if then else true false break let 
@@ -117,8 +117,6 @@
    [(:seq "#" (:+ lower-letter)) (token-NUMVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    ["&&" 'AND] ["||" 'OR]
    
-   ["and" 'andbinding]
-
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
    ["|" 'BAR] ["!" 'BANG]
@@ -286,7 +284,7 @@
 
 	  ;; These have weak precedence:
           (right = := += -= *= -> )
-	  (right AND OR ) ; andbinding
+	  (right AND OR ) 
 
 	  ;(right)
 	  (right then else )
@@ -504,20 +502,6 @@
 		 `((letrec ,(cons bind1 morebinds) ,bod) . ,rest)]
 		[,oth `((letrec (,bind1) ,(make-begin $2)))]))]
 	   
-#|	   
-	   [(fundef optionalsemi andbinding stmts)
-	    (let ([bind1 (match $1 [(define ,bind ...) bind])])
-	      (match $4
-		[((letrec ,morebinds ,bod) . ,rest)
-		 `((letrec ,(cons bind1 morebinds) ,bod) . ,rest)]
-		[,oth ;`(letrec (,bind) ,oth)
-		 (error 'parser "'and' must be followed by another variable/function binding:\n  File ~a line ~a col ~a"
-			thefile (position-line $3-start-pos) (position-col $3-start-pos))]))]
-           [(fundef morestmts)
-            (match $1 [(define ,bind ...) `((letrec (,bind) ,(make-begin $2)))])]
-
-	   |#
-
 	   ;; This avoids conflicts:
 	   [(selfterminated stmt morestmts) (cons $1 (cons $2 $3))]
            [(stmt morestmts) (cons $1 $2)]

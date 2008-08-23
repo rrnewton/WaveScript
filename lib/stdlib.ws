@@ -828,13 +828,12 @@ fun FINITE_BURST(n)
 // Useful for benchmarks and tests.  Runs a "normal" (non-streaming)
 // program.  That is, execute a thunk a single time, then produce an
 // infinite stream of unit values.
+//
+// [2008.08.22] Updating this to utilize the new convention for timer(0)
 fun ONCE(thnk) {
-  iterate _ in timer(100.0) {
-    state { first = true }
-    if first then {
+  iterate _ in timer(0) {
       thnk();
-      first := false;
-    } else emit ();
+      wsexit(0);
   }
 }
 
