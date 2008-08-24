@@ -126,21 +126,22 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		    (exit 1)))])))
 
 ;; Run a command with a timeout.
-(define (system/timeout cmd)
+;; Asynchronously separates spawning of the process, and waiting for it to complete.
+(define (system/async/timeout cmd)  
   (let* ([proc (process cmd)]
 	 [stdout (car proc)]
 	 [stdin  (cadr proc)]
 	 [stderr (cadddr proc)]
 	 [statusfn (car (reverse proc))])
-    ;; Let something run for 30 min
-    (define timeout (* 30 60 1000 ))
-    (define pollinterval (* 250 )) ;; 4 hz
-    (define (closeup) 
-      (close-input-port stdout)
-      (close-input-port stderr)
-      (close-output-port stdin))
-    (define start-time (current-inexact-milliseconds))
-    (let waitloop ([time 0])
+    (lambda (secs) ;; takes timeout in seconds
+      (define timeout (* secs 1000 ))
+      (define pollinterval (* 250 )) ;; 4 hz
+      (define (closeup) 
+	(close-input-port stdout)
+	(close-input-port stderr)
+	(close-output-port stdin))
+      (define start-time (current-inexact-milliseconds))
+      (let waitloop ([time 0])
       ;; discard any input:
       ;(printf "Reading ports\n")
       ;(let loop () (when (char-ready? stdout) (read-char stdout) (loop)))
@@ -162,7 +163,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	       ;; Wait a bit and check again:
 	       (sync (alarm-evt (+ (current-inexact-milliseconds) pollinterval)))
 	       (waitloop (+ time pollinterval))))]
-	[else (error 'system/timeout "")]))))
+	[else (error 'system/timeout "")])))))
+
+(define (system/timeout cmd)
+  ;; Give it 30 min by default:
+  ((system/async/timeout cmd) (* 30 60)))
 
 (define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
 (define engine-svn-revision 'unknown)
