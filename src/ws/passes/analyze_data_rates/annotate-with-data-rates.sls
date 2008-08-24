@@ -31,7 +31,7 @@
 	       (parameterize ([source-frequencies '()])
 
                (define annotated (annotate-iterates-with-types prog))	       
-               (define stripped (strip-types annotated))
+               (define stripped (strip-binding-types annotated))
 
                ; taken near-literally from eval-and-peruse-stream
                (define stream-and-table
@@ -80,7 +80,7 @@
 ;(trace-define (register-profiling-source-frequency! freq)
 ;  (set! source-frequencies (cons freq source-frequencies)))
 
-;; it makes me unhappy that i have to add a new expression to strip-types,
+;; it makes me unhappy that i have to add a new expression to strip-binding-types,
 ;; but i don't see a way around it.
 (define-pass annotate-iterates-with-types
 

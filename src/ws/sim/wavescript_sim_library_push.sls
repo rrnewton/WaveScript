@@ -1305,12 +1305,11 @@
   ;; [2008.02.22] New strategy: cast_num does nothing, whereas
   ;; assert-type ensures conformance with our numeric representation
   ;; policy.
-  ;(define (cast_num x) (error 'cast_num "should not be called at metaprogram eval"))
   (define (cast_num x) x) ;; Does nothing, the assert-type fixes it.
   (define-syntax assert-type
-    ;; TODO Rewrite this with syntax-case and remove code duplication.
-    (syntax-rules (Int Int16 Int32 Int64 Uint16 
-		       Float Double Complex)      
+    ;; TODO Rewrite this with syntax-case and remove code duplication.    
+    (syntax-rules (Int Int16 Int32 Int64 Uint8 Uint16 ;; Be very careful to update this list!
+		       Float Double Complex)
       ;[(_ ty e) (inspect (vector 'ty e))]
       [(_ Int   e)   (__cast_num #f 'Int   e)]
       [(_ Int16 e)   (__cast_num #f 'Int16 e)]
@@ -1360,20 +1359,20 @@
 	   [(< result min)   (s:+ result base)]
 	   [else result]))))
     
-    (case to
-      [(Int)   (signed_int basefx maxfx minfx num)]
-      [(Int16) (signed_int base16 max16 min16 num)]
-      [(Int32) (signed_int base32 max32 min32 num)]
-      [(Int64) (signed_int base64 max64 min64 num)]
+    (match to
+      [Int   (signed_int basefx maxfx minfx num)]
+      [Int16 (signed_int base16 max16 min16 num)]
+      [Int32 (signed_int base32 max32 min32 num)]
+      [Int64 (signed_int base64 max64 min64 num)]
       
-      [(Uint8) 
+      [Uint8 
        (let ([int (cond
 		   [(and (integer? num) (exact? num)) num]
 		   [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
 		   [else (exact (floor num))])])
 	 (modulo int base8))]
 
-      [(Uint16) 
+      [Uint16 
        (let ([int (cond
 		   [(and (integer? num) (exact? num)) num]
 		   [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
@@ -1381,11 +1380,12 @@
 	 (modulo int base16))]
 
 
-      [(Float) (inexact num)]
-      [(Double) (make-double (inexact num))]
+      [Float (inexact num)]
+      [Double (make-double (inexact num))]
       ;[(Complex) (s:+ num 0.0+0.0i)]
-      [(Complex) (s:+ num (make-rectangular 0 0))]
-      [else (error '__cast_num "cast to unhandled numeric type: ~s" to)])))
+      [Complex (s:+ num (make-rectangular 0 0))]
+            
+      [,else (error '__cast_num "cast to unhandled numeric type: ~s" to)])))
 
 
   (define ws^ expt)
@@ -2032,133 +2032,10 @@
     (error 'inline_TOS "Inline C code is not not, and will not be, implemented for the scheme backend.")))
 
 
-
-;; This provides access to C-functions:
-(IFCHEZ
- (begin 
-
-   ;; [2007.08.30] Feature change for the WS foreign interface.  Now
-   ;; the user may assume access to all of libc by default.
-  (define ensure-libc-loaded!
-    (let ([ranyet? #f])
-      (lambda ()
-	(unless ranyet?
-	  (load-shared-object
-	   (case (machine-type)
-	     [(ti3osx i3osx ppcosx) "libc.dylib"]
-	     [(ti3le i3le) "libc.so.6"]
-	     [else (error 'ensure-libc-loaded! 
-			  "WaveScript foreign interface not supported on platform: ~s"
-			  (machine-type))]
-	     ))
-	  ;; FIXME: there are other places in the code where we might want to know about this:
-	  ;; Let's just put it in an environment variable.
-	  (putenv "REGLIBCLOADED" "TRUE")
-	  (set! ranyet? #t)))))
-  ;; NOTE: This isn't working on 64-bit justice.
-  (define __foreign
-    (let ()
-
-      (define (Convert T)
-	(match T
-	  [Int     'fixnum]
-	  [Float   'single-float]
-	  ;[Double  'double-float] ;; TODO: [2008.08.22] Need to update to unwrap!
-	  [Boolean 'boolean]
-	  [Char    'char]
-	  [String  'string]
-	  [(Pointer ,_) 'uptr]
-					;	[(ExclusivePointer ,_) 'uptr]
-	  [#()     'void]
-					;[(Char) char]
-	  [,else (error '__foreign:Convert "this type is not supported by the Chez foreign interface: ~s" T)]))
-
-      (define (DynamicLink out files)
-	(when (file-exists? out) (delete-file out))
-	(let* ([files (apply string-append (map (curry format " ~s") files))]
-	       [code (s:case (machine-type)
-			     [(i3le ti3le)  		      
-					;(printf "EXEC: ~a\n" (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))
-			      (system (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))]
-			     [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o \"~a.so\" ~a" out files))]
-			     [else (error 'foreign "don't know how to compile files ~s on machine type ~s: ~s\n" files (machine-type))]
-			     )])
-	  ;; This is actually not guaranteed to work by the chez spec:
-	  (unless (zero? code)
-	    (error 'foreign "C compiler returned error code ~s." code))
-	  ;; Returns the name of the output file:
-	  ;; Should use a dylib extension for mac os X:
-	  (string-append out ".so")
-	  ))
-      
-      (define (LoadFile! file)
-	(let ([ext (extract-file-extension file)]
-	      [sharedobject file])
-	  (cond
-	   [(or (string=? ext "so") 
-		(string=? ext "dylib")
-		(substring? ".so." file) ;; This is a hack to handle files like libc.so.6
-		) (void)]
-	   ;; This is a bit sketchy... because of course the user *COULD* put function definitions in headers.
-	   ;; The assumption for now is that headers can be ignored.
-	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
-	   
-	   [(s:equal? ext "o")
-	    (printf "  Attempting to convert object (.o) to shared object (.so:) ~s\n" file)
-	    (let ([target (remove-file-extension file)])	      
-	      (set! sharedobject (DynamicLink target (list file))))]
-
-	   [(s:equal? ext "a")
-	    (printf "  Attempting to convert static library (.a) to shared .so: ~s\n" file)
-	    (let ([target  (remove-file-extension file)]
-		  [tempfile (format ".__tempfile_~a.txt" (random 1000000))])
-	      ;; This assumes bash!!
-	      (system-to-str (format "ar xv \"~a\" | awk '{ print $3 }' > ~a " file tempfile))
-	      (let ([objfiles (filter (lambda (s) (not (s:equal? s "")))
-				(file->lines tempfile))])
-		;; Now relink the .o files into a shared object:
-		(set! sharedobject (DynamicLink target objfiles))
-		))]
-
-	   [(member ext '("c" "cpp"))
-	    ;; This is really stretching it.  Attempt to compile the file.
-	    (let ([target  (remove-file-extension file)])	      
-	      (printf "  Attempting to compile ~s to ~s.so\n" file target)
-	      (set! sharedobject (DynamicLink target (list file))))]
-	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
-
-	  ;; Load the file containing the C code.
-	  (when (and sharedobject (not (member sharedobject (unbox already-loaded-object-files))))
-	    (load-shared-object sharedobject)
-	    (set-box! already-loaded-object-files (cons sharedobject (unbox already-loaded-object-files)))
-	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
-	  ))
-      (lambda (name files type)
-
-	;; First make sure that the C standard library is loaded.
-	(ensure-libc-loaded!)
-
-	(printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
-	(for-each LoadFile! files)
-	;; After it's loaded there'd better be access:
-	(unless (foreign-entry? name)
-	  (error 'foreign "failure to register foreign function in Scheme: ~s" name))
-	(match type
-	  [(,[Convert -> args] ... -> ,ret)
-	   (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
-	     foreignfun
-	     #;	   
-	     (if (match? ret (ExclusivePointer ,_))
-		 (lambda args
-		   (let ([ret (apply foreignfun args)])
-		     ;; Now we add the pointer we get back to our guardian:
-		     (fprintf (current-error-port) " !!ADDING TO GUARDIAN!! ~s\n" ret)
-		     ((foreign-guardian) (box ret))
-		     ret
-		     ))
-		 foreignfun))
-	   ])))))
- (define __foreign (lambda args (error 'foreign "C procedures not accessible from R6RS ~a" args))))
+;; [2008.08.24] I may have toggled this back and forth before, but
+;; currently switching to the policy where foreign closures only throw
+;; an error when *called*, not when created.
+(define (__foreign name deps type) (lambda args (error 'foreign "C procedures not accessible from R6RS ~a" args)))
 
 ;; This tries to match the binary format used in the C backend.
 ;(define (marshal val) (error 'marshal "not implemented under scheme"))
@@ -2167,7 +2044,6 @@
 ;; A foreign procedure for freeing foreign storage.
 ;; We do late-binding here:
 (define C-free 
-
    (lambda _ (error 'C-free "not implemented in r6rs"))
 #;
   (IFCHEZ 

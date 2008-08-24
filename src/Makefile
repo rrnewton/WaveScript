@@ -184,6 +184,9 @@ larc2:
 larc3:
 	larceny -r6rs -path . -program build_larceny.ss
 
+runlarc:
+	larceny -r6rs -path . -program regiment.ss
+
 
 #	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches (string->symbol "slow")) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main) ) (dump-interactive-heap "larc.heap")' | larceny -err5rs -stopcopy -path .
 

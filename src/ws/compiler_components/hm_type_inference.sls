@@ -58,7 +58,7 @@
            
 	   annotate-expression export-expression
 	   annotate-program
-	   strip-types do-all-late-unifies!
+	   strip-binding-types do-all-late-unifies!
 	   strip-annotations
 	
 	   print-var-types print-type show-type
@@ -1073,7 +1073,7 @@
 
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
-(define (strip-types p)
+(define (strip-binding-types p)  
   (define (process-expression e)
     (match e
     [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
@@ -1097,21 +1097,10 @@
     ;; [2007.11.05] rrn: Generalizing:
     [(,streamop ,annot ,[arg*] ...) (guard (temp-hack-stream-primitive? streamop))
      `(,streamop ,annot ,@arg*)]
-#| 
-    [(iterate ,a ,[f] ,[s]) `(iterate ,a ,f ,s)]
-    [(unionN ,a ,[s*] ...) `(unionN ,a ,@s*)]
-    [(_merge ,a ,[s1] ,[s2]) `(_merge ,a ,s1 ,s2)]
-    [(__readFile ,a ,[f] ,[s] ,[m] ,[r] ,[sk] ,[ws] ,[ty] ,bench-args ...)
-     `(__readFile ,a ,f ,s ,m ,r ,sk ,ws ,ty ,@bench-args)]
-    [(timer ,a ,[t]) `(timer ,a ,t)]
-|#
-
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
-    ; FIXME: should these three be rolled into one, as in core-generic-traverse?
-    [(assert-type ,t ,[e]) e]
-    [(src-pos     ,p ,[e]) e]
-    [(data-rate   ,r ,[e]) e]
+    ;; [2008.08.24] No longer stripping annotations here, that's a separate matter.
+    [(,annot ,p ,[e]) (guard (annotation? annot)) `(,annot ,p ,e)]
 
     ;; This accomodates ws.early:
     [(readFile-wsearly ,[fn] ,[str] ,ty) `(readFile-wsearly ,fn ,str ,ty)]
@@ -1125,13 +1114,13 @@
 
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c)) c]
-    [,other (error 'strip-types "bad expression: ~a" other)]
+    [,other (error 'strip-binding-types "bad expression: ~a" other)]
     ))
   (match p 
     [(,lang '(program ,expr ,_ ...)) 
      `(,lang '(program ,(process-expression expr) . ,_))]
     [,expr (process-expression expr)]
-    ;[,other (error 'strip-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
+    ;[,other (error 'strip-binding-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
     ))
 
 

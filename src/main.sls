@@ -1113,7 +1113,7 @@
        
        (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
-       ;;(inspect compiled)
+       ;(inspect compiled)     
        (run-wavescript-sim compiled))))
   
   (define (wsint-early x input-params . flags)
@@ -1129,7 +1129,8 @@
 	       ;(ws-run-pass p type-annotate-misc)
 	       (ws-run-pass p strip-src-pos)
 	       (ws-run-pass p reify-certain-types)
-	       (ws-run-pass p strip-annotations)
+	       
+	       ;(ws-run-pass p strip-annotations) ;; [2008.08.24] Why do we do this?
 	       ))
        (printf "Running program EARLY:\n")
        (run-wavescript-sim p))))

@@ -281,7 +281,7 @@
     `(["Run a basic test of the pattern match expander."
      (cadr (cadadr
 	    (reunique-names 
-	     (strip-types 
+	     (strip-binding-types 
 	      (',pass_desugar-pattern-matching 
 	       '(foo '(program (lambda (#(foo #(bar baz)) x) ('t1 't2) foo) UncheckedType)))))))
      (lambda (pattmp x)

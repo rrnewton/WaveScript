@@ -134,7 +134,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	 [statusfn (car (reverse proc))])
     ;; Let something run for 30 min
     (define timeout (* 30 60 1000 ))
-    (define pollinterval (* 250 ))
+    (define pollinterval (* 250 )) ;; 4 hz
     (define (closeup) 
       (close-input-port stdout)
       (close-input-port stderr)

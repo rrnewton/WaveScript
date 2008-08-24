@@ -11,7 +11,7 @@
 
 ;; This has become *terribly* non-portable.
 
-(library (ws langs lang_wavescript) 
+(library (ws langs lang_wavescript)
   (export ;wavescript-language
            unit-representation
 	   ws-show
@@ -84,9 +84,10 @@
     ;; [2007.07.05] TODO: This means that the "wavescript-language" isn't really complete.
     ;; It SHOULD be self contained, even if that means discarding the existing "language-mechanism.ss"
     (wavescript-language
-     (match (strip-types p)
+     ;; We strip binding types because we not all the scheme syntax has been overloaded to expect them (e.g. lambda).
+     (match (strip-binding-types p)
        [(,lang '(program ,body ,_ ...))
-        ;; If strip-types worked there shouldn't be any VQueue symbols!
+        ;; If strip-binding-types worked there shouldn't be any VQueue symbols!
         (DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
         `(begin (reset-wssim-state!)
                 (run-stream-query ,body))
@@ -181,7 +182,7 @@
 ;; R6RS Version:
 ;; This is also insanely slow.
 (define (wavescript-language expr)
-  ;(printf "  Evaling in wavescript-language: ~s\n" expr)
+  ;(printf "  Evaling in wavescript-language: \n")(pretty-print expr)
   ;; if (simulator-write-sims-to-disk) 
   (let ([result (eval expr (environment '(except (rnrs (6)) error + - * / or and)  
 					'(ws sim wavescript_sim_library_push)))])

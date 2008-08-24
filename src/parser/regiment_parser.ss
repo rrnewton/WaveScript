@@ -256,7 +256,8 @@
   (let ()
 
     (define (tag-double num)
-      `(assert-type Double ',num) ; (cast_num ',val)
+      ;`(assert-type Double ',num) 
+      `(assert-type Double (cast_num ',num))
       )
 
    ;; Returns a function that takes a lexer thunk producing a token on each invocation:a

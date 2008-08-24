@@ -251,7 +251,7 @@
 				      (ASSERT (not (code? val)))
 				      (list fv `',val)))
 			       fv*)
-			 ,(strip-types (code-expr f))))
+			 ,(strip-binding-types (code-expr f))))
 #;
 		    `(let ,(map (lambda (fv) 
 				  (let ([val ((outer-getval env) fv)])
@@ -259,7 +259,7 @@
 				    (list fv `',val)))
 			     fv*)
 		       (import wavescript_sim_library_push)
-		       ,(strip-types (code-expr f)))
+		       ,(strip-binding-types (code-expr f)))
 		    ])
 
 	      (let ([real-closure (reg:top-level-eval real-code)]) 

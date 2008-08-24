@@ -23,7 +23,7 @@
 	  reg:top-level-eval simple-eval
 	  warning warning-handler system  real-time cpu-time time
 	  print-level print-graph print-length pretty-maximum-lines pretty-line-length print-vector-length
-	  with-output-to-string  repl
+	  with-output-to-port with-output-to-string  repl
 	  process get-string-available
 
 	  box unbox set-box! box? 
@@ -35,12 +35,14 @@
 	  ;cons* ;; HACK: larceny is missing cons*
 
 	  which-scheme IFCHEZ
+	  ;__foreign
 	  )
   (import (except (rnrs (6)) error)
 	  (rnrs r5rs)
 	  (rnrs eval)
 	  (for (primitives with-output-to-string random current-directory gensym
 			   repl make-list getenv pretty-print reverse! append! sort! time
+			   with-output-to-port
 			   ;let-values define-values
 			   ) run expand) ;; Larceny specific!!
 	  ;(for (core define-values) run expand)	  
