@@ -302,6 +302,8 @@
 	   [(lambda ,var* ,ty* ,bod)
 	    (if (andmap not-heap-allocated? ty*)
 		`(lambda ,var* ,ty* ,bod)
+		;; This is a bit imprecise, we will make "incr" and "decr" even for the hap-allocated ones.
+		;; But those are guaranteed to fizzle.  We just don't want to run DriveInside if we don't have to.
 		`(lambda ,var* ,ty* 
 			 (begin 
 			   ,@(map (lambda (var ty) (make-rc 'incr-local-refcount ty var )) var* ty*)

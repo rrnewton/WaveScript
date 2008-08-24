@@ -23,7 +23,7 @@ DEB_BUILD_ARCH      ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 # 	dh_clean
 #	rm -f build
 clean:
-	-$(MAKE) -i distclean
+	$(MAKE) distclean
 
 # install: build
 # 	dh_clean

@@ -541,6 +541,7 @@
 	   (format "~aF" datum)))]
      [(double? datum)      
       (let ([datum (double-val datum)])
+	(DEBUGASSERT number? datum)
 	(if (not (= datum datum)) "(0.0L/0.0L)" (format "~aL" datum)))]
      [(cflonum? datum) (wrap (format "(~a)(~a + ~afi)" (Type self 'Complex)
 				     (real-part datum)

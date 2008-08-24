@@ -80,6 +80,7 @@
 
   ;; The default uncaught exception handler prints ugly messages.
   (define (error who msg . args)
+    (printf "************\n")
     (printf "Error in ~a: " who)
     (apply printf msg args)(newline)
     (raise (make-error))

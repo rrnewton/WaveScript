@@ -730,7 +730,7 @@
 
   (define (box-doubles val ty) 
     (match ty
-      [Double (make-double val)]
+      [Double (if (double? val) val (make-double val))]
       [(List ,elt) (map (lambda (x) (box-doubles x elt)) val)]
       [(Array ,elt) (vector-map (lambda (x) (box-doubles x elt)) val)]
       [#(,fld* ...) (make-tuple (map (lambda (x ty) (box-doubles x ty)) (tuple-fields val) fld*))]
@@ -786,6 +786,8 @@
      ;[(eq? ty 'Double) `(assert-type Double (cast_num ',val))]
      [(eq? ty 'Double) `',(box-doubles val 'Double)]
      ;[(eq? ty 'Double) `(__cast_num Float Double ',val)]
+
+     [(double? val) (error 'Marshal-Plain "Inconsistent value and type: ~s with type ~a" val ty)]
 
      [(list? val)
       ;; This value is thrown away:

@@ -1212,27 +1212,46 @@
   ;(define (nullseg? x) (eq? x nullseg))
   (define (nullseg? x) (fx= 0 (vector-length (sigseg-vec x))))
 
-  (define (gint x) x)
-
-  (define g+ s:+) (define g- s:-) (define g* s:*) 
-  ;; Special behavior for division.
-  ;; This should only be invoked with ws.early.
-  (define (g/ a b)    
-    ;; We use the physical representation of the number to determine what its type is.
-    (cond
-;     [(exact? a) (quotient a b)]
-     [(and (fixnum? a) (fixnum? b)) (fx/ a b)]
-;     [(flonum)]
-     ;; Floats and complex just fall through to the normal scheme division.
-     [else (s:/ a b)]
-     ))
-
   (define ws+ fx+)   (define ws- fx-)   (define ws* fx*)   (define ws/ fx/)
 
-  ;; Ok, ints are 32 bit so fx+ can't be used from now on:
-  (define _+_ s:+)    (define _-_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
+  ;; Oh my this is unpleasant.
+  (define (double-wrap binop)
+    (lambda (a b)
+      (if (or (double? a) (double? b))	  
+	  (let ([a (if (double? a) (double-val a) a)]
+		[b (if (double? b) (double-val b) b)])
+	    (make-double (binop a b)))
+	  (binop a b))))
 
-  ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
+  (define (gint x) x) ;; Should explicitely box these generic ints.
+  (define g+ (double-wrap s:+))
+  (define g- (double-wrap s:-))
+  (define g* (double-wrap s:*) )
+  ;; Special behavior for division.
+  ;; This should only be invoked with ws.early.
+  ;;
+  ;; [2008.08.24] Unfortunately, it can also be invoked during metaprogram evalutaion.
+  ;; At this point in time we haven't resolved all arithmetic and may have "generic" ints around.
+  (trace-define (g/ a b)    
+    ;; We use the physical representation of the number to determine what its type is.
+    (cond
+
+     [(or (double? a) (double? b))       
+      (let ([a (if (double? a) (double-val a) a)]
+	    [b (if (double? b) (double-val b) b)])
+	(make-double (s:/ a b)))]
+
+     [(and (fixnum? a) (fixnum? b)) (fx/ a b)]
+     [(and (exact? a) (exact? b))   (quotient a b)] ;; Some other kind of integer > 29 bits
+     ;[(and (exact? a) (exact? b))   (floor (s:/ a b))]
+          
+;     [(flonum)]
+     ;; Floats and complex just fall through to the normal scheme division.
+     [else 
+      (ASSERT inexact? a)
+      (ASSERT inexact? b)
+      (s:/ a b)]
+     ))
 
 #;
 (begin 
@@ -1267,6 +1286,7 @@
   (define _+I32 (overflow-add s:+ 32))  
   (define _-I32 (overflow-add s:- 32)) 
   (define *I32  (overflow-mult s:* 32))
+  ;; Should be able to use fixnum division here if they're both fixnums:
   (define /I32  (overflow-add (lambda (a b) (floor (s:/ a b))) 32))
 
   (define _+I64 (overflow-add s:+ 64))  
@@ -1289,8 +1309,13 @@
   (define _-U8  (uoverflow fx- 8 ))
   (define *U8   (uoverflow s:* 8 ))
   (define /U8   (uoverflow fx/ 8 ))
-
   )
+
+  ;; Ok, ints are 32 bit so fx+ can't be used from now on:
+  (define _+_ _+I32)   (define _-_ _-I32)    (define *_ *I32)  (define /_ /I32)
+  ;(define _+_ s:+)    (define _-_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
+  ;(define _+_ fx+)    (define _-_  fx-)    (define *_ fx*)    (define /_ fx/)
+
   
   ;;========================================
 
@@ -2166,7 +2191,9 @@
   ;; [2008.08.24] I may have toggled this back and forth before, but
   ;; currently switching to the policy where foreign closures only throw
   ;; an error when *called*, not when created.
-  (define (__foreign name deps type) (lambda args (error 'foreign "C procedures not accessible from R6RS ~a" args)))
+  (define (__foreign name deps type) 
+    (lambda args (error 'foreign "C procedures not accessible from R6RS.\n  Name ~s type ~s\n  Called with args: ~s" 
+			name type args)))
 
  ) ;; End IFCHEZ
 
