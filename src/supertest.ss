@@ -220,12 +220,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
       ))
 
 ;; Partway through refactoring all the tests below to use this helper:
-(define (run-test title cmd) 
-  (fpf title)
-  (fpf (format "~a~a\n"
-	(list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
-	(code->msg! (system/timeout cmd))))
-  (post-to-web (format "intermediate/rev_~a" svn-revision)))
+(define (run-async-test title cmd) 
+  (let ([wait-for-it (system/async/timeout cmd)])
+    (lambda (secs-to-wait)
+      (fpf title)
+      (fpf (format "~a~a\n"
+		   (list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
+		   (code->msg! (wait-for-it secs-to-wait))))
+      (post-to-web (format "intermediate/rev_~a" svn-revision)))))
+
+(define (run-test title cmd)
+  ((run-async-test title cmd) (* 30 60))) ;; 30 minutes default.
 
 
 
@@ -298,7 +303,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
-;(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
+(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
 
 (current-directory test-directory)
 
@@ -309,7 +314,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
 ;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
-;(run-test "larceny: Load from source: " "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log")
+#;
+(define wait-on-larc-load
+  (run-async-test "larceny: Load from source: " "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log"))
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
@@ -708,6 +715,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 |#
 
+;;================================================================================
+;; Wait on outstanding async tests before we go into the perf benchmarks:
+
+;(wait-on-larc-load 1) ;; Should be done by now, don't give it any extra time.
 
 ;;================================================================================
 ;; Performance benchmarks.
