@@ -505,8 +505,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
 
   (ASSERT (putenv "REGIMENTHOST" "chez"))
+  (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
   (run-test "wsc2: Demos, boehm RC (chez):"
 	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
+  (ASSERT (putenv "LAUNCHIT" ""))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
 
   (ASSERT (putenv "REGIMENTHOST" ""))

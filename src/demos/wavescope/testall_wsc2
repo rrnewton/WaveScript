@@ -11,7 +11,9 @@ RUN=.__runquery_output_wsc2.txt
 OPTIONS=$*
 
 #LAUNCHIT=""
-LAUNCHIT="valgrind --leak-check=full"
+if [ "$LAUNCHIT" = "" ];
+then LAUNCHIT="valgrind --leak-check=full"
+fi
 
 echo > $COMP
 echo > $RUN
