@@ -1295,8 +1295,12 @@
   ;;========================================
 
   (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
-  (define _+D fl+)    (define _-D fl-)    (define *D fl*)    (define /D fl/)
   (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
+
+  (define (_+D x y) (make-double (fl+ (double-val x) (double-val y)))) 
+  (define (_-D x y) (make-double (fl- (double-val x) (double-val y)))) 
+  (define (*D x y)  (make-double (fl* (double-val x) (double-val y)))) 
+  (define (/D x y)  (make-double (fl/ (double-val x) (double-val y))))
 
   ;; [2008.02.22] New strategy: cast_num does nothing, whereas
   ;; assert-type ensures conformance with our numeric representation
@@ -1342,7 +1346,8 @@
   (define min32  (s:- max32))
   (define min64  (s:- max64))
   (define (__cast_num from to num) 
-    (define (signed_int base max min num)
+    (let ([num (if (double? num) (double-val num) num)])
+      (define (signed_int base max min num)
       (let ([int (cond
 		  [(and (integer? num) (exact? num)) num]
 		  [(memv num '(-nan.0 +nan.0 -inf.0 +inf.0)) 0] ;; HACK -- FIXME: find out when this is happening [2008.04.13]
@@ -1376,10 +1381,11 @@
 	 (modulo int base16))]
 
 
-      [(Float Double) (inexact num)]
+      [(Float) (inexact num)]
+      [(Double) (make-double (inexact num))]
       ;[(Complex) (s:+ num 0.0+0.0i)]
       [(Complex) (s:+ num (make-rectangular 0 0))]
-      [else (error '__cast_num "cast to unhandled numeric type: ~s" to)]))
+      [else (error '__cast_num "cast to unhandled numeric type: ~s" to)])))
 
 
   (define ws^ expt)
@@ -1390,13 +1396,13 @@
   (define ^U16 (uoverflow expt 16)) ;; Overflow!! FIXME
   (define ^I32 expt)
   (define ^I64 expt)
-  (define ^D expt)
+  (define (^D x y) (make-double (expt (double-val x) (double-val y))))
   (define ^. expt)
   (define ^: expt)
 
   (define (sqrtI n) (flonum->fixnum (sqrt n)))
-  (define sqrtD sqrt)
-  (define sqrtF sqrtD)
+  (define (sqrtD x) (make-double (sqrt (double-val x))))
+  (define sqrtF sqrt)
   (define sqrtC sqrt)
   (define moduloI fxmod)
      
@@ -1415,7 +1421,7 @@
   (define absI64 s:abs)
   (define absI s:abs)
   (define absF flabs)
-  (define absD flabs)
+  (define (absD x) (make-double (flabs (double-val x))))
   (define absC magnitude
     #;
     (IFCHEZ s:abs 
@@ -1432,12 +1438,13 @@
     (if (< n 0) (wserror "logF: cannot accept negative numbers")
 	(log n)))
   (define (logD n) 
-    (if (< n 0) (wserror "logD: cannot accept negative numbers")
-	(log n)))
+    (let ([n (double-val n)])
+      (if (< n 0) (wserror "logD: cannot accept negative numbers")
+	  (make-double (log n)))))
 
-  (define exptI expt)
-  (define exptF expt)
-  (define exptD expt)
+  (define exptI ^_)
+  (define exptF ^.)
+  (define exptD ^D)
 
   ;(define (makeComplex re im) (s:fl-make-rectangular re im))
   (define (makeComplex re im) (make-rectangular re im))
@@ -1445,38 +1452,38 @@
   (define int16ToInt    (lambda (x) x))
   (define int16ToInt64  (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)
-  (define int16ToDouble   fixnum->flonum)
+  (define (int16ToDouble i)   (make-double (fixnum->flonum i)))
   (define (int16ToComplex n) (s:+ n (make-rectangular 0 0)))
 
   (define int64ToInt16  (lambda (x) (ASSERT int16? x) x))
   (define int64ToInt    (lambda (x) (ASSERT int32? x) x))
   (define int64ToFloat    inexact)
-  (define int64ToDouble   inexact)
+  (define (int64ToDouble i)  (make-double (inexact i)))
   (define (int64ToComplex n) (s:+ n (make-rectangular 0 0)))
 
   (define intToInt16 (lambda (x) (ASSERT int16? x) x))
   (define intToInt64 (lambda (x) x))
   (define intToFloat  fixnum->flonum)
-  (define intToDouble fixnum->flonum)
+  (define (intToDouble i) (make-double (fixnum->flonum i)))
   (define intToComplex int16ToComplex)
 
   ;; Should do a range check here:
   (define floatToInt16 flonum->fixnum)
   (define floatToInt64 (lambda (x) (inexact (floor x))))
   (define floatToInt   flonum->fixnum)
-  (define (floatToDouble x) x)
+  (define (floatToDouble x) (make-double x))
   (define (floatToComplex f) (make-rectangular f 0.0))
 
-  (define doubleToInt16 floatToInt16)
-  (define doubleToInt64 floatToInt64)
-  (define doubleToInt    floatToInt)
-  (define (doubleToFloat x) x)
-  (define doubleToComplex floatToComplex)
+  (define (doubleToInt16 d) (floatToInt16 (double-val d)))
+  (define (doubleToInt64 d) (floatToInt64 (double-val d)))
+  (define (doubleToInt   d) (floatToInt   (double-val d)))
+  (define (doubleToFloat x) (double-val x))
+  (define (doubleToComplex d) (floatToComplex (double-val d)))
 
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToInt16 complexToInt)
   (define complexToInt64 (lambda (x) (inexact (floor (realpart x)))))
-  (define complexToDouble realpart)
+  (define (complexToDouble c) (make-double (realpart c)))
   (define complexToFloat realpart)
 
   ;; TODO: MERGE THIS WITH DUPLICATED CODE IN STATIC-ELABORATE!!
@@ -1491,7 +1498,7 @@
 		     (if x 
 			 (ASSERT ws-float? x)
 			 (error 'stringToFloat "couldn't convert string: ~s" v)))))
-  (define stringToDouble stringToFloat)
+  (define (stringToDouble s) (make-double (stringToFloat s)))
   (define stringToComplex (lambda (v) 
 		   (ASSERT string? v)
 		   (let ([x (string->number v)])
@@ -1503,7 +1510,9 @@
   (define (ArrayStringWrapper fn) (lambda (x) (fn (list->string (vector->list x)))))
   (define __stringToInt_ARRAY     (ArrayStringWrapper stringToInt))
   (define __stringToFloat_ARRAY   (ArrayStringWrapper stringToFloat))
-  (define __stringToDouble_ARRAY  (ArrayStringWrapper stringToDouble))
+  (define __stringToDouble_ARRAY  
+    (let ([wrap (ArrayStringWrapper stringToDouble)])
+      (lambda (s) (make-double (wrap s)))))
   (define __stringToComplex_ARRAY (ArrayStringWrapper stringToComplex))
 
   (define String:length   string-length)
@@ -2054,7 +2063,7 @@
 	(match T
 	  [Int     'fixnum]
 	  [Float   'single-float]
-	  [Double  'double-float]
+	  ;[Double  'double-float] ;; TODO: [2008.08.22] Need to update to unwrap!
 	  [Boolean 'boolean]
 	  [Char    'char]
 	  [String  'string]

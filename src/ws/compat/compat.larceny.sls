@@ -18,7 +18,7 @@
 	  format printf fprintf pretty-print
 	  format-syntax-nicely
 	  gensym current-directory 
-	  syntax-error
+	  syntax-error error
 	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 	  reg:top-level-eval simple-eval
 	  warning warning-handler system  real-time cpu-time time

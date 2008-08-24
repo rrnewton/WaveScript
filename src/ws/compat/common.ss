@@ -77,3 +77,11 @@
  (define-syntax IFCHEZ
     (syntax-rules ()
       [(_ a b) b]))
+
+  ;; The default uncaught exception handler prints ugly messages.
+  (define (error who msg . args)
+    (printf "Error in ~a: " who)
+    (apply printf msg args)(newline)
+    (raise (make-error))
+    ;(exit -1)
+    )

@@ -403,6 +403,7 @@
 					   (values 'incr-heap-refcount  'decr-heap-refcount)
 					   (values 'incr-local-refcount 'decr-local-refcount)))])
 		    `(let ([,old ,ty ,v])
+		       ;; Careful with ordering, Consider (set! x x)
 		       ,(rc-make-begin (list `(set! ,v (assert-type ,ty ,e))
 					     (make-rc incr ty v)
 					     (make-rc decr ty old)))))))]	   

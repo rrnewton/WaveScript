@@ -733,7 +733,7 @@
       [Double (make-double val)]
       [(List ,elt) (map (lambda (x) (box-doubles x elt)) val)]
       [(Array ,elt) (vector-map (lambda (x) (box-doubles x elt)) val)]
-      [#(,fld* ...) (make-tuple (map (lambda (x ty) (box-doubles x ty)) (tuple-fields val) (vector->list fld*)))]
+      [#(,fld* ...) (make-tuple (map (lambda (x ty) (box-doubles x ty)) (tuple-fields val) fld*))]
       [(HashTable . ,_) (error 'Marshal-Plain:box-doubles "Can't handle hash tables yet")]
       [,else val]))
 

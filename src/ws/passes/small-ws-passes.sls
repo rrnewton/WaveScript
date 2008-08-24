@@ -1190,7 +1190,7 @@
 	      ;; Annoyingly, this also generates code to do a
 	      ;; list-reverse, because List:reverse is a library prim
 	      ;; and its gone already.
-	      [(String:explode ,[x]) 
+	      [(String:toList ,[x])
 	       (let ([tmp (unique-name "tmplft")]
 		     [acc  (unique-name "explodeacc")]
 		     [acc2 (unique-name "explodeout")]
@@ -1212,7 +1212,7 @@
 					    (set! ,acc2 (cons (car (deref ,acc)) (deref ,acc2)))
 					    (set! ,acc (cdr (deref ,acc)))))
 				   (deref ,acc2))))))))]
-	      [(String:implode ,[x]) 
+	      [(String:fromList ,[x])
 	       (let ([tmp (unique-name "tmplft")]
 		     [ptr (unique-name "implodeptr")]
 		     [len (unique-name "strlen")]

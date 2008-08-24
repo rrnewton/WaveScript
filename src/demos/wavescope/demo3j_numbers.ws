@@ -34,6 +34,8 @@ main = iterate(w in s0) {
 
   println("sqrt complex: "++ sqrtC(3.0+4.0i) );  
 
+  println("sqrt double: "++ sqrtD(3.0l) ); 
+
   assert_eq("complex equality", 2.0+1.0i, 2.0+1.0i);
   assert("complex inequality", not(2.0+1.0i == 2.0+9.0i));
 

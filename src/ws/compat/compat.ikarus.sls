@@ -51,12 +51,6 @@
 
   (define (format-syntax-nicely syn) syn)
 
-  ;; The default uncaught exception handler prints ugly messages.
-  (define (error who msg . args)
-    (printf "Error in ~a: " who)
-    (apply printf msg args)(newline)
-    (exit -1))
-
   (define-syntax make-parameter (identifier-syntax ik:make-parameter))
   (define-syntax parameterize (identifier-syntax ik:parameterize))
   (define-syntax printf (identifier-syntax ik:printf))

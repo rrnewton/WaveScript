@@ -2144,7 +2144,7 @@ int main(int argc, char ** argv)
 		   ensBoxAudioAll
 		   List:is_null List:toArray ptrToArray 
 		   gnuplot_array gnuplot_array2d
-		   String:length String:explode String:implode String:toArray String:fromArray String:ref
+		   String:length String:toList String:fromList String:toArray String:fromArray String:ref
 		   intToChar charToInt Secret:newTimebase
 
 		   List:assoc List:assoc_update

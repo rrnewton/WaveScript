@@ -10,7 +10,7 @@
  	  format printf fprintf pretty-print
 	  format-syntax-nicely
  	  gensym current-directory 
-	  syntax-error
+	  syntax-error error
  	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
  	  reg:top-level-eval simple-eval
  	  warning warning-handler real-time cpu-time time	   
@@ -28,7 +28,7 @@
 	  (rename (sys:system system))
 ; 	  make-rectangular
 	  )
-  (import (except (rnrs (6)) current-output-port )
+  (import (except (rnrs (6)) current-output-port error)
 	  (for (rnrs eval (6)) run expand)
 	  (for (only (scheme base) random getenv ;syntax->list 
 		sort call/ec define-values parameterize
@@ -118,6 +118,7 @@
     (syntax-rules ()
       [(kwd form msg) (syntax-violation #f msg form)]
       [(kwd msg)      (syntax-violation #f msg #f)]))
+
 
   ;; Chez's system for warnings -- same as error.
   (define (warning who str . args)
