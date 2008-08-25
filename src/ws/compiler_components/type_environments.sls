@@ -221,7 +221,7 @@
 	  [Int32 (guard (fixnum? c))  (int32? c)]
 	  [Int64 (guard (fixnum? c))  (int64? c)]
 	  [Float   (flonum? c)]
-	  [Double  (flonum? c)]
+	  [Double  (double? c)]
 	  [Complex (cflonum? c)]
 	  [Bool  (boolean? c)]
 	  [Char (char? c)]

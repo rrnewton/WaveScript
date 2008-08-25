@@ -376,8 +376,8 @@
       (error 'wsparse-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
     (unless (list-is-set? (map car typealiases))
       (error 'wsparse-postprocess 
-	     "Got two type aliases with the same name!\nAll aliases: ~s"
-	     typealiases))
+	     "Got two (or more) type aliases with the same name!\nAll aliases: \n~a"
+	     (insert-between "\n" (list-sort string<? (map (lambda (x) (format "~a" (car x))) typealiases)))))
 
     ;; Now let's build that expression:
     (let ()

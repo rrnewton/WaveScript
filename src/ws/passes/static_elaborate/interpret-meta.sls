@@ -131,14 +131,20 @@
     (define (fold-in ty1 ty2)  
       (if ty2 
 	  (or (types-compat? ty1 ty2) 
-	      (error 'set-value-type! "types were not compatible! ~s ~s" ty1 ty2))
+	      (error 'set-value-type! "types were not compatible! ~s ~s\n Value:\n ~a\n" ty1 ty2 val))
 	  ty1))
     (ASSERT type) ;; No point in setting to #f
     ;; Either us, or the caller of this function, must freshen the type variables.
     ;; Currently we handle this right here.
     (set! type (export-type (instantiate-type type)))
     (cond
-     [(plain? val) (set-plain-type! val (fold-in type (plain-type val)))]
+     [(plain? val) 
+      ;; This doesn't respect polymorphic constants:
+      (set-plain-type! val (fold-in type (plain-type val)))
+      ;; Set once behavior:      
+      ;(unless (plain-type val) (set-plain-type! val type))
+      ]
+
      ;; Must recursively handle the insides of the ref also:
      [(ref? val) (set-ref-type! val (fold-in type (ref-type val)))
       (match type
@@ -322,8 +328,14 @@
         (if (regiment-primitive? v)
             (make-plain (hashtab-get dictionary v) (get-primitive-type v))
             (apply-env env v))]
-    [',c (ASSERT (not (tuple? c)))
-	 (make-plain c #f)]
+
+    ;; FIXME: This is incomplete, data structures may also contain poly constants!
+    ;; Polymorphic constants: nullseg Array:null '()
+    ;['()        (make-plain '() '(List 'a))]
+    ;['#()       (make-plain (make-vector) '(Array 'a))]
+    ;[Array:null (make-plain (make-vector) '(Array 'a))]
+    ;[nullseg (make-plain )]
+    [',c (ASSERT (not (tuple? c))) (make-plain c #f)]
     
     [(tuple ,[x*] ...) 
      (make-plain (make-tuple (map unwrap-plain x*))
@@ -465,6 +477,7 @@
 		   (set-box! cell (Eval rhs newenv pretty-name))
 		   (when (closure? (unbox cell)) 
 		     (prettify-names! (list lhs) (list (unbox cell))))
+		   ;; This is only a polymorphic binding if it meets the value restriction:
 		   (set-value-type! (unbox cell) ty (value-expression? rhs))
 		   )
 	 cells lhs* ty* rhs*)

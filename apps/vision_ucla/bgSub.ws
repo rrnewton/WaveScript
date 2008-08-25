@@ -28,7 +28,6 @@ type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 type Array4D t = Array (Array (Array (Array t))); 
-type Array3D t = Array (Array (Array t)); 
 
 type Inexact = Double; // Float or Double
 abs  =  absD
@@ -37,7 +36,20 @@ sqrt = sqrtD // Need type classes!
 
 DEBUG = true;
 
-include "helpers.ws"
+//include "helpers.ws"
+include "array3d_nested.ws"
+/*
+fun Array:make4D(i,j,k,l, val) {
+  using Array;
+  build(i, fun(_) 
+  build(j, fun(_)
+  build(k, fun(_)
+   make(l, val))));
+}
+*/
+
+fun mknull() Array:null
+
 
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
@@ -344,7 +356,7 @@ updateBg :: (Array4D Inexact, Image, RawImage) -> ();
 fun updateBg(bgHist, (image,cols,rows), mask) 
   if Alpha == 0 then () else {
     using Array; using Mutable; using Array3D;
-    if mask == null then println$ "Mask not given: updating everything";
+    if mask == mknull() then println$ "Mask not given: updating everything";
 
     k = ref$ 0;
 	
@@ -354,7 +366,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 
       // if no mask provided, update all pixels
       // if mask is provided and the pixel in the mask indicates background, update
-      if mask == null || mask[i] == 0 then {
+      if mask == mknull() || mask[i] == 0 then {
 	sum :: Ref Inexact = ref$ 0;
 
 	Array3D:map_inplace(bgHist[i],
@@ -403,7 +415,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	};
 		
 	// update bg hist if indicated to do so
-	if mask == null || mask[k] == 0 then {
+	if mask == mknull() || mask[k] == 0 then {
 	  sum = ref$ 0;
           Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
 	    bgHist[k][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
@@ -456,7 +468,7 @@ fun updateBg(bgHist, (image,cols,rows), mask)
 	  };
 						
 	  // only update background if indicated to do so
-	  if mask == null || mask[k] == 0 then {
+	  if mask == mknull() || mask[k] == 0 then {
 	    sum = ref$ 0;
 
             Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
@@ -534,13 +546,13 @@ fun bhatta(video) {
             stopFrame = BgStartFrame + NumBgFrames * BgStep;
 	    
 	    // Here is the main storage:
-            bghist    = null; 
-	    pixelhist = null;
-	    mask      = null;  // Just one channel.
-	    diffImage = null;  // All three channels.
+            bghist    = mknull(); 
+	    pixelhist = mknull();
+	    mask      = mknull();  // Just one channel.
+	    diffImage = mknull();  // All three channels.
           }
 
-    if bghist == null then {
+    if bghist == mknull() then {
       println$ "Output location: "++OutLoc;
       println$ "Settings: ";
       println$ " # of bins:             "++ NumBins1 ++","++ NumBins2 ++","++ NumBins3;
@@ -551,7 +563,8 @@ fun bhatta(video) {
 
       println$ "Image rows/cols: "++ rows ++", "++ cols;
       println$ "  Allocating global arrays...";
-      bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
+      //bghist := make4D(rows*cols, NumBins1, NumBins2, NumBins3, 0);
+      bghist := Array:build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));
       pixelhist   := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
       mask        :=   Array:make(rows * cols, 0);
       diffImage   :=   Array:make(rows * cols * nChannels, 0);
@@ -596,7 +609,7 @@ fun bhatta(video) {
       if bgStaleCounter == BgStep then {
 	println$ "Updating bg";
 	if useBgUpdateMask	then updateBg(bghist, (frame,cols,rows), mask)
-	else updateBg(bghist, (frame,cols,rows), null);
+	else updateBg(bghist, (frame,cols,rows), mknull());
 	bgStaleCounter := 0;
       };
 

@@ -3,6 +3,9 @@
   Teresa Ko's background subtraction code, ported from C++ to WS by Ryan Newton.
   [2008.06.27]
 
+Version2:
+  This greatly simplifies the code in bgsub.ws by factoring out repetitive portions.
+
 TODO:
 
  Use a real 3D matrix for the histograms for greater efficiency.
@@ -27,7 +30,7 @@ LIVE = false;
 type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
-type Array3D t = Array (Array (Array t)); 
+//type Array3D t = Array (Array (Array t)); 
 
 // Application type defs:
 type Inexact = Double; // Float or Double
@@ -41,7 +44,8 @@ sqrt = sqrtD // Need type classes!
 
 DEBUG = true;
 
-include "helpers.ws"
+//include "helpers.ws"
+include "array3d_nested.ws"
 
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
@@ -115,6 +119,8 @@ fun hist_update(r,g,b, hist, fn) {
   binG = Int! (Inexact! g * inv_sizeBins2);
   binR = Int! (Inexact! r * inv_sizeBins3);
   // apply transform to histogram
+  //using Array3D;
+  //set(hist, binB, binG, binR, fn(get(hist, binB, binG, binR)));
   hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
 }
 

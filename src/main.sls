@@ -595,6 +595,7 @@
   (when (or (>= (regiment-verbosity) 5) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss"))
 
+;  (inspect (strip-annotations p 'src-pos))
   (if (>= (regiment-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))

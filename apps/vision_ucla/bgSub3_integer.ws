@@ -3,6 +3,16 @@
   Teresa Ko's background subtraction code, ported from C++ to WS by Ryan Newton.
   [2008.06.27]
 
+Version2:
+  This greatly simplifies the code in bgsub.ws by factoring out repetitive portions.
+
+Version3:
+  This version represents the factored code in bgsub2, additionally
+  modified to use integers rather than floating point numbers for
+  histogram tallies.
+    ALSO, Version3 abstracts the 3D array/matrix interface so that we
+    can swap in multiple implementations.
+
 TODO:
 
 

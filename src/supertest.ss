@@ -667,6 +667,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/apps/vision_ucla" ws-root-dir)))
   (newline)
 
+    (run-test "wsc2: Compiling bgsub.ws -O3 -gc def:"
+	      (format "wsc2 bgsub.ws -O3 -gc def -exit-error &> ~a/wsc2_bgsub1_build.log" test-directory))
+    (run-test "wsc2:  Running bgsub.ws:  "
+	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgsub1_run.log 2> bgsub1_memprof.txt" test-directory))
+
     (run-test "wsc2: Compiling bgsub3_integer -O3 -gc ref:"
 	      (format "wsc2 bgsub3_integer.ws -O3 -gc ref -exit-error &> ~a/wsc2_bgsub3_build.log" test-directory))
     (run-test "wsc2:  Running bgsub3_integer:  "
