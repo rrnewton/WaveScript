@@ -10,6 +10,7 @@ include "stdlib.ws"
 //====================================================================================================
 // 3D arrays, nested vs. implementation:
 
+// We can toggle here which 3D array library to use:
 //include "array3d_nested.ws"
 include "array3d_flat.ws"
 

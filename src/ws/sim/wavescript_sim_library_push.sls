@@ -1232,7 +1232,7 @@
   ;;
   ;; [2008.08.24] Unfortunately, it can also be invoked during metaprogram evalutaion.
   ;; At this point in time we haven't resolved all arithmetic and may have "generic" ints around.
-  (trace-define (g/ a b)    
+  (define (g/ a b)    
     ;; We use the physical representation of the number to determine what its type is.
     (cond
 

@@ -663,6 +663,25 @@ exec mzscheme -qr "$0" ${1+"$@"}
   ) ;; End MARMOT
 
 
+;; bgSub application:
+(parameterize ((current-directory (format "~a/apps/vision_ucla" ws-root-dir)))
+  (newline)
+
+    (run-test "wsc2: Compiling bgsub3_integer -O3 -gc ref:"
+	      (format "wsc2 bgsub3_integer.ws -O3 -gc ref -exit-error &> ~a/wsc2_bgsub3_build.log" test-directory))
+    (run-test "wsc2:  Running bgsub3_integer:  "
+	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgsub3_run.log 2> bgsub3_memprof.txt" test-directory))
+
+;     (run-test "wsc2: Compiling bgsub4_patchoriented -gc boehm:  "
+; 	      (format "wsc2 bgsub4_patchoriented.ws -gc boehm -exit-error &> ~a/wsc2_bgsub4_build.log" test-directory))
+;     (run-test "wsc2:  Running bgsub4_patchoriented  "
+; 	      (format "memprof ./query.exe -n 1 > ~a/wsc2_bgsub4_run.log 2> bgsub4_memprof.txt" test-directory))
+
+    
+    ;(when (file-exists? "query.exe") (delete-file "query.exe"))
+
+  ) ;; End bgSub application
+
 
 (parameterize ((current-directory (format "~a/apps/telos_audio" ws-root-dir)))
   #;

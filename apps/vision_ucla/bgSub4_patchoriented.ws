@@ -5,7 +5,6 @@
 
 TODO:
 
- Use a real 3D matrix for the histograms for greater efficiency.
 
  */
 
