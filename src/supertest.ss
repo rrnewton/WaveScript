@@ -230,7 +230,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (fpf (format "~a~a\n"
 		   (list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
 		   (let ([result (wait-for-it secs-to-wait)])
-		     (code->msg! result (- (current-inexact-milliseconds) test-start)))))
+		     ;; Can't report accurate time currently.  If the subprocess 
+		     ;; is already finished we don't know how long it took.		    
+		     (code->msg! result 0 ;(- (current-inexact-milliseconds) test-start)
+				 ))))
       (post-to-web (format "intermediate/rev_~a" svn-revision)))))
 
 (define (run-test title cmd)
@@ -667,20 +670,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/apps/vision_ucla" ws-root-dir)))
   (newline)
 
-    (run-test "wsc2: Compiling bgsub.ws -O3 -gc def:"
-	      (format "wsc2 bgsub.ws -O3 -gc def -exit-error &> ~a/wsc2_bgsub1_build.log" test-directory))
-    (run-test "wsc2:  Running bgsub.ws:  "
-	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgsub1_run.log 2> bgsub1_memprof.txt" test-directory))
+     (run-test "wsc2: Compiling bgSub.ws -O3 -gc def:"
+ 	      (format "wsc2 bgSub.ws -O3 -gc def -exit-error &> ~a/wsc2_bgSub1_build.log" test-directory))
+     (run-test "wsc2:  Running bgSub.ws:  "
+ 	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub1_run.log 2> bgSub1_memprof.txt" test-directory))
 
-    (run-test "wsc2: Compiling bgsub3_integer -O3 -gc ref:"
-	      (format "wsc2 bgsub3_integer.ws -O3 -gc ref -exit-error &> ~a/wsc2_bgsub3_build.log" test-directory))
-    (run-test "wsc2:  Running bgsub3_integer:  "
-	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgsub3_run.log 2> bgsub3_memprof.txt" test-directory))
+    (run-test "wsc2: Compiling bgSub3_integer -O3 -gc ref:"
+	      (format "wsc2 bgSub3_integer.ws -O3 -gc ref -exit-error &> ~a/wsc2_bgSub3_build.log" test-directory))
+    (run-test "wsc2:  Running bgSub3_integer:  "
+	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub3_run.log 2> bgSub3_memprof.txt" test-directory))
 
-;     (run-test "wsc2: Compiling bgsub4_patchoriented -gc boehm:  "
-; 	      (format "wsc2 bgsub4_patchoriented.ws -gc boehm -exit-error &> ~a/wsc2_bgsub4_build.log" test-directory))
-;     (run-test "wsc2:  Running bgsub4_patchoriented  "
-; 	      (format "memprof ./query.exe -n 1 > ~a/wsc2_bgsub4_run.log 2> bgsub4_memprof.txt" test-directory))
+;     (run-test "wsc2: Compiling bgSub4_patchoriented -gc boehm:  "
+; 	      (format "wsc2 bgSub4_patchoriented.ws -gc boehm -exit-error &> ~a/wsc2_bgSub4_build.log" test-directory))
+;     (run-test "wsc2:  Running bgSub4_patchoriented  "
+; 	      (format "memprof ./query.exe -n 1 > ~a/wsc2_bgSub4_run.log 2> bgSub4_memprof.txt" test-directory))
 
     
     ;(when (file-exists? "query.exe") (delete-file "query.exe"))
