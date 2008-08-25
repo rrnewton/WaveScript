@@ -72,14 +72,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
-(define (code->msg! m) 
-  (let ([val (if (or (equal? m 0) (equal? m #t))
-		 (format "passed (~a min)" 
-			 (milli->minute (- (current-inexact-milliseconds) last-test-timer)))
-		 (begin (set! failed #t) 
-			(format "-FAILED- (code ~a)" m)))])
-    (reset-timer!)
-    val))
+(define code->msg!
+  [(m) (code->msg! m (- (current-inexact-milliseconds) last-test-timer))]
+  [(m time-elapsed)
+   (let ([val (if (or (equal? m 0) (equal? m #t))
+		  (format "passed (~a min)" (milli->minute time-elapsed))
+		  (begin (set! failed #t) 
+			 (format "-FAILED- (code ~a)" m)))])
+     (reset-timer!)
+     val)])
+
 (define (file->string filename)
     (let ([p (open-input-file filename)])
       (let loop ([c (read-char p)]
@@ -140,7 +142,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	(close-input-port stdout)
 	(close-input-port stderr)
 	(close-output-port stdin))
-      (define start-time (current-inexact-milliseconds))
       (let waitloop ([time 0])
       ;; discard any input:
       ;(printf "Reading ports\n")
@@ -221,12 +222,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Partway through refactoring all the tests below to use this helper:
 (define (run-async-test title cmd) 
-  (let ([wait-for-it (system/async/timeout cmd)])
+  (let* ([test-start (current-inexact-milliseconds)]
+	 [wait-for-it (system/async/timeout cmd)])
     (lambda (secs-to-wait)
       (fpf title)
       (fpf (format "~a~a\n"
 		   (list->string (vector->list (make-vector (max 0 (- 46 (string-length title))) #\space)))
-		   (code->msg! (wait-for-it secs-to-wait))))
+		   (let ([result (wait-for-it secs-to-wait)])
+		     (code->msg! result (- (current-inexact-milliseconds) test-start)))))
       (post-to-web (format "intermediate/rev_~a" svn-revision)))))
 
 (define (run-test title cmd)
@@ -716,6 +719,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;;================================================================================
 ;; Wait on outstanding async tests before we go into the perf benchmarks:
+
+(fpf "\n\nWaiting on tests run in backgroud:\n")
+(fpf "========================================\n")
 
 (wait-on-larc-load 1) ;; Should be done by now, don't give it any extra time.
 

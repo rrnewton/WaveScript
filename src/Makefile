@@ -636,7 +636,7 @@ clean: cleanchez cleanplt cleanik cleanlarc
 	$(RM) __temp.log _genned_node_code.ss svn_rev.txt 
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
-	$(RM) ws/common.sls main_r6rs.sls
+	$(RM) ws/common.sls main_r6rs.sls chez_aggregated.ss
 	find -name ".__*" | xargs -i $(RM) {}  ## Remove these temp files
 	find -name "__lang_running.tmp.ss" | xargs -i $(RM) {}  ## Remove these temp files
 
