@@ -73,14 +73,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
 (define code->msg!
-  [(m) (code->msg! m (- (current-inexact-milliseconds) last-test-timer))]
-  [(m time-elapsed)
-   (let ([val (if (or (equal? m 0) (equal? m #t))
-		  (format "passed (~a min)" (milli->minute time-elapsed))
-		  (begin (set! failed #t) 
-			 (format "-FAILED- (code ~a)" m)))])
-     (reset-timer!)
-     val)])
+  (case-lambda
+    [(m) (code->msg! m (- (current-inexact-milliseconds) last-test-timer))]
+    [(m time-elapsed)
+     (let ([val (if (or (equal? m 0) (equal? m #t))
+		    (format "passed (~a min)" (milli->minute time-elapsed))
+		    (begin (set! failed #t) 
+			   (format "-FAILED- (code ~a)" m)))])
+       (reset-timer!)
+       val)]))
 
 (define (file->string filename)
     (let ([p (open-input-file filename)])
