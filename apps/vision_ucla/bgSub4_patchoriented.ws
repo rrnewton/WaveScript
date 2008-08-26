@@ -398,7 +398,27 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
     for j = 0 to jworkers-1 {
       //cntdown = total - (x + y*iworkers);
       println("  Cutting out patch "++i++" "++j);
-      emit (i,j , cut_patch(mat, i*iwid, j*jwid, iwid, jwid));
+
+      desiredi = i*iwid - overlap;
+      desiredj = j*jwid - overlap;           
+
+      desiredsz1 = iwid + 2*overlap;
+      desiredsz2 = jwid + 2*overlap;
+                        
+      println("Desired "++ [desiredi, desiredj, desiredsz1, desiredsz2]);
+
+      origi = if desiredi < 0 then { desiredsz1 -= 1; 0 } else desiredi; 
+      origj = if desiredj < 0 then { desiredsz2 -= 1; 0 } else desiredj;
+
+      println("Desired sizes, modified "++ [desiredsz1, desiredsz2]);
+
+      //println(" size 1 terms "++ [rows, origi, iwid, 2*overlap] );
+      size1 = min(rows - origi, desiredsz1); 
+      size2 = min(cols - origj, desiredsz2);
+      
+      println("    size1: "++ size1++ " size2: "++ size2);
+
+      emit (i,j , cut_patch(mat, origi, origj, size1, size2));
     }}
   };
   
@@ -413,7 +433,7 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
     worker = iterate pat in filtered {
       state { s = init_state(i,j) }
       let (mat, (_i,_j), origdims) = pat;
-      println("  Worker "++ (i,j) ++" processing patch...");
+      println("  Worker "++ (i,j) ++" processing patch... dims "++ mat.dims  ++" size "++ Array:length(Matrix:toArray(mat)));
       emit patch_transform(s, pat);
     };
     workerstreams := worker ::: workerstreams;
@@ -445,7 +465,6 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
       Matrix:fill(assembly, 0);
     }
   };
-  
   assembled
  }
 
@@ -759,7 +778,7 @@ main = real
 fakeFrames = iterate _ in timer$3 {
   using Array;
   //let (cols,rows) = (320, 240);
-  let (cols,rows) = (8, 4);
+  let (cols,rows) = (8, 6);
 
   //arr :: Array Uint8 = build(rows, build(cols, 0));
   //arr = build(rows, make(cols, 0));
@@ -775,7 +794,7 @@ fake = iterate (_, (fg,c,r), diff, mask) in  bhatta(fakeFrames) {
 //main = fake
 
 //kern :: Stream (Matrix a) -> Stream (Matrix b);
-kern = make_patch_kernel(2,2, 0, fun(st, pat) pat, fun(x,y) ())
+kern = make_patch_kernel(2,2, 1, fun(st, pat) pat, fun(x,y) ())
 
 fun printmat(msg) fun(mat) {
              println(msg ++ " " ++ Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray));
@@ -789,8 +808,7 @@ mats =
        fakeFrames
 
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
-  main = //dump_matrix $ 
-
+  main = dump_matrix $ 
       Curry:smap(printmat$"\n\n ** Restitched ") $
       kern $
       mats
