@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+#include "ws.h"
+
 struct dirent *** ws_namelist_ptr() {
   return malloc(sizeof(struct dirent **));
 }

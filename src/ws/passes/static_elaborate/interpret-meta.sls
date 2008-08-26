@@ -270,6 +270,8 @@
 	))
 )
 
+(define uninitialized-variable 'uninitialized-recursively-bound-variable)
+
 
 ;; This evaluates the meta program.  The result is a *value*
 ;;
@@ -323,7 +325,8 @@
       names vals))
 
   (unless dictionary (build-dictionary!))
-  (match x
+  (let EvalLoop ([x x])
+   (match x
     [,v (guard (symbol? v)) 
         (if (regiment-primitive? v)
             (make-plain (hashtab-get dictionary v) (get-primitive-type v))
@@ -471,7 +474,7 @@
     ;; This is a letrec* w/ let-'n-set semantics 
     [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
      ;(printf "Letrec bind ~s ~s\n" lhs* ty*)
-     (let* ([cells (map (lambda (_) (box 'letrec-var-not-bound-yet)) rhs*)]
+     (let* ([cells (map (lambda (_) (box uninitialized-variable)) rhs*)]
 	    [newenv (extend-env lhs* cells env)])
        (for-each (lambda (cell lhs ty rhs)
 		   (set-box! cell (Eval rhs newenv pretty-name))
@@ -517,8 +520,16 @@
 
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
-    [(,prim ,[x*] ...) (guard (regiment-primitive? prim))
+    [(,prim ,arg* ...) (guard (regiment-primitive? prim))
+     (define x* (map EvalLoop arg*))
      (DEBUGASSERT (not (assq prim wavescript-stream-primitives)))     
+
+
+     ;; It's very unclear how far we want to take this "suspension"
+     ;; business, and we need to figure out the semantics.  If we want
+     ;; to allow frozen foreign apps at metaprogram time then what do
+     ;; we do when the metaprogram tries to use the value?  Add to that suspension?
+     ;(if (ormap suspension? x*) (make-suspension ))
      (match (regiment-primitive? prim)
        [((,argty* ...) ,retty)
 	;(for-each set-value-type! x* argty*) ;; Necessary?
@@ -536,14 +547,18 @@
 			;; We're willing to give it "plain" vals.
 			;; Refs should not be passed first class.
 			;; And closures/streams remain opaque:					
-			(map (lambda (x)				   
+			(map (lambda (x arg)
 			       (ASSERT (not (ref? x)))				   
+			       (ASSERT (not (suspension? x)))
 			       (cond 
 				[(plain? x)   (plain-val x)]
 				[(closure? x) (reify-closure x)]
 				[(streamop? x) x] ;; This shouldn't be touched.
-				[else (error 'Eval "unexpected argument to primiitive: ~s" x)]))
-			  x*)))])
+				[(eq? x uninitialized-variable)
+				 (error 'Eval "attempt to pass unitialized recursively bound variable to primitive ~a: ~a" prim 
+					arg)]
+				[else (error 'Eval "unexpected argument to primiitive ~a: ~s" prim x)]))			  
+			  x* arg*)))])
 	  
 	  ;(ASSERT (not (eq? raw (void))))
 	  ;(ASSERT (not (procedure? raw)))
@@ -612,7 +627,7 @@
     ;; FIXME: Should attach source info to closures:
     [(src-pos ,p ,e) (fluid-let ([current-src-pos p]) (Eval e env pretty-name))]
     [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
-  ))
+  )))
 
 
 

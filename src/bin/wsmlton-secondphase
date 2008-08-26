@@ -16,8 +16,8 @@ if   [ "$WSMLOUTPUT" == "" ]; then WSMLOUTPUT=query.mlton.exe; fi
 # Clean up first:
 rm -f "$WSMLOUTPUT"
 
-export MLTONARGS="$MLTONARGS -verbose 1 -link-opt -lfftw3f  "
-export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/ws/passes/mlton_bkend/fftw.c"
+export MLTONARGS="$MLTONARGS -verbose 1 -link-opt -lfftw3f -cc-opt -I$REGIMENTD/src/linked_lib "
+export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/ws/passes/mlton_bkend/fftw.c "
 
 # I'm having a lot of trouble getting enough quotes around 
 # 'allowFFI true' for it to be treated as one token. 
@@ -44,7 +44,17 @@ then
    EXTRALIBS=`echo $FIRST | sed "s/.*WSLIBDEPS://"`
    echo Linking extra libraries requested by query file: $EXTRALIBS
    echo 
-   export WSMLCINCLUDES="$WSMLCINCLUDES $EXTRALIBS"
+   #export WSMLCINCLUDES="$WSMLCINCLUDES $EXTRALIBS"
+   for inc in $EXTRALIBS; do 
+     if [ -f "$inc" ];
+     then WSMLCINCLUDES+=" $inc "
+     elif [ -f "$REGIMENTD/lib/$inc" ];
+     then WSMLCINCLUDES+=" $REGIMENTD/lib/$inc "; 
+     else echo "Couldn't locate include $inc"; 
+          exit 1
+     fi
+   done
+   export WSMLCINCLUDES
 fi
 ############################################################
 

@@ -45,7 +45,24 @@ namespace Matrix {
    };
    str ++ "]\n"
  }
+
+ fun fill(mat,val) {
+   map_inplace(fun(_) val, mat);
+   ()   
+ }
       
+ //========================================
+
+ // This extracts a submatrix.  May or may not allocate new storage.
+ // In this case it does allocate new storage.
+ // 
+ // TODO: block copy this, or don't copy at all.
+ submatrix :: (Matrix t, Int, Int, Int, Int) -> Matrix t;
+ fun submatrix(mat, i,j, wid, hght) {
+   using Matrix;
+   build(wid, hght, fun(i2,j2) { get(mat, i+i2, j+j2) })
+ }
+
 
  //========================================
 
@@ -124,6 +141,8 @@ namespace Matrix {
    map_inplace  ::  (Float -> Float, Matrix Float) -> ()           = Matrix:map_inplace;
    map2         :: ((Float,Float) -> Float, Matrix Float, Matrix Float) -> Matrix Float = Matrix:map2;
    map2_inplace :: ((Float,Float) -> Float, Matrix Float, Matrix Float) -> ()   = Matrix:map2_inplace;
+
+   submatrix :: (Matrix Float, Int, Int, Int, Int) -> Matrix Float = Matrix:submatrix;
  }
 
  // The below namespaces are cut/paste from "Float" above.
@@ -162,6 +181,8 @@ namespace Matrix {
    map_inplace  ::  (Double -> Double, Matrix Double) -> ()           = Matrix:map_inplace;
    map2         :: ((Double,Double) -> Double, Matrix Double, Matrix Double) -> Matrix Double = Matrix:map2;
    map2_inplace :: ((Double,Double) -> Double, Matrix Double, Matrix Double) -> ()   = Matrix:map2_inplace;
+
+   submatrix :: (Matrix Double, Int, Int, Int, Int) -> Matrix Double = Matrix:submatrix;
  }
 
 
@@ -200,6 +221,8 @@ namespace Matrix {
    map_inplace  ::  (Complex -> Complex, Matrix Complex) -> ()           = Matrix:map_inplace;
    map2         :: ((Complex,Complex) -> Complex, Matrix Complex, Matrix Complex) -> Matrix Complex = Matrix:map2;
    map2_inplace :: ((Complex,Complex) -> Complex, Matrix Complex, Matrix Complex) -> ()   = Matrix:map2_inplace;
+
+   submatrix :: (Matrix Complex, Int, Int, Int, Int) -> Matrix Complex = Matrix:submatrix;
  }
 
  // Except this bit, it is not cut-n-paste:

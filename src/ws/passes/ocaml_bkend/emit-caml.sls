@@ -293,7 +293,9 @@
     [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]))
 
 (define Const
-  (lambda (datum)
+  (case-lambda
+    [(datum) (Const datum #f)]
+    [(datum ty)
     ;(if (eq? datum 'BOTTOM) (inspect 'HUH???))
     (cond
      [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate a compile error.
@@ -306,7 +308,7 @@
      [(cflonum? datum) (format "{Complex.re=~a; Complex.im=~a }" 
 			       (real-part datum)
 			       (imag-part datum))]
-     [(integer? datum)  (format "(~s)" datum)]
+     [(integer? datum) (format "(~s)" datum)]
 
      [(eq? datum 'nulltimebase) "99999999"]
 
@@ -338,7 +340,7 @@
 	    ;; Otherwise this is all we need:
 	    constArr))]
 
-     [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
+     [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])]))
 
 ;; This handles one of the statements that are part of query initialization.
 ;; (Initializing global state.)

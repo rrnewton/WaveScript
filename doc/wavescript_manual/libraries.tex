@@ -81,7 +81,7 @@ Here are the functions contained within the namespace {\tt
 \begin{array}{lcl}
 \bullet$ $ $create$(dim1,dim2)     & :: &  $(Int, Int)                \ra   M$   \\
 \bullet$ $ $eq$(m1, m2)            & :: &  $(M, M)          \ra   Bool$   \\
-\bullet$ $ $get$(m, dim1, dim2)    & :: &  $(M, Int, Int)        \ra   Float$   \\
+\bullet$ $ $get$(m, i, j)    & :: &  $(M, Int, Int)        \ra   Float$   \\
 \bullet$ $ $set$(m, i, j, val)     & :: &  $(M, Int, Int, Float) \ra   ()$ \\
 \bullet$ $ $dims$(m)               & :: &  $ M                   \ra   (Float * Float)$ \\
 \bullet$ $ $row$(m,i)              & :: &  $ (M, Int)            \ra   Array Float$ \\
@@ -90,6 +90,8 @@ Here are the functions contained within the namespace {\tt
 \bullet$ $ $fromArray$(arr,dim1)   & :: &  $ (Array Float, Int)       \ra   M $ \\
 \bullet$ $ $fromArray2d$(arr,dim1) & :: &  $ (Array (Array Float))    \ra   M $ \\
 \bullet$ $ $fromList2d$(arr,dim1)  & :: &  $ (List (List Float))    \ra   M $ \\
+
+\bullet$ $ $submatrix$(m, i, j, dim1, dim2) & :: &  $(M, Int, Int, Int, Int) \ra Matrix Float$   \\
 \end{array}
 \]
 

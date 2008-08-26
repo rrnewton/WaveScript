@@ -65,7 +65,9 @@
 	      (ASSERT (not (eq? v 'Array:null)))
 	      (obj 'Const v)]
 	  [,v (guard (symbol? v)) (obj 'Var v)]
+
 	  [',c (obj 'Const c)]
+	  [(assert-type ,ty ',c) (obj 'Const c ty)]
 
 	  [(assert-type (Sigseg ,elt) nullseg)    (obj 'DispatchOnArrayType 'nullseg elt)]
 	  [(assert-type (Array ,elt) Array:null)  (obj 'DispatchOnArrayType 'Array:null elt)]

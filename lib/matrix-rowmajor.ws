@@ -49,50 +49,34 @@ dims   ::  Matrix t               -> (Int * Int);
    (rows,cols)
  }
  
-
- // Here we pack the Array of Arrays into a one-dimensional array for
- // consistency with the GSl interface.
- fun toArray(mat) {
-  // need this to convert to columnmajor
-  // Could use Array:build but, we'd have to do division.
-   let (r,c) = Matrix:dims(mat);
-   arr = Array:makeUNSAFE(r*c);
-   for j = 0 to c - 1 {
-     for i = 0 to r - 1 {
-       Array:set(arr, i + (j*r), Matrix:get(mat,i,j));
-     }
-   };
-   arr
- }
+ // The matrix IS just a one dimensional array.  We don't guarantee
+ // fresh storage here, so we just return it.
+ fun toArray((r,c,arr)) arr 
  fun fromArray(arr, r) {
    using Array;
    c = arr`length / r;
    assert("fromArray: rows divide array length evenly", arr`length == r*c);
-   m = Matrix:create(r,c,gint(0));
-   for j = 0 to c - 1 {
-     for i = 0 to r - 1 {
-       Matrix:set(m,i,j,arr[i + (j*r)]);
-     }
-   };
-   m
+   (r,c,arr)
  }
 
  // In general build is efficient because it doesn't need to zero the storage.
  fun build(r,c,f) {
    using Array;
    arr = Array:makeUNSAFE(r*c);
+   for i = 0 to r - 1 {
    for j = 0 to c - 1 {
-     for i = 0 to r - 1 {
-       arr[i*c+j] := f(i,j);
+       arr[i*c + j] := f(i,j);
      }
    };
    (r,c,arr)
  }
 
- // No guarantee to copy storage!!
+ // If the array is not "rectangular" this could do an out-of-bounds access.
+ // Could check explicitely...
  fun fromArray2d(arr) {
    r = arr`Array:length;
    c = arr[0]`Array:length;
+   // TODO: Should use Array:blit...
    Matrix:build(r,c,fun (i,j) (arr[i])[j])
  }
 
@@ -104,7 +88,6 @@ dims   ::  Matrix t               -> (Int * Int);
    Matrix:build(r,c,fun (i,j) 
        List:ref(List:ref(list,i), j) )
  }
-
 
  // Note, these provide no guarantees as to allocating fresh storage:
  fun row(m,i) {

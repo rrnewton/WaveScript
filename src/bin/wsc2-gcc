@@ -45,7 +45,7 @@ fi
 EXEFILE=`echo $CFILE | sed 's/\.c$/.exe/'`
 
 ## ACK - include WS_LINK at front and end?!?
-CMD="$CC $WS_LINK -lm -I $REGIMENTD/lib -o $EXEFILE $CFILE $WS_LINK_POST -lm"
+CMD="$CC $WS_LINK -lm -I $REGIMENTD/lib -I $REGIMENTD/src/linked_lib -o $EXEFILE $CFILE $WS_LINK_POST -lm"
 echo "$CMD"
 #if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
 

@@ -592,7 +592,9 @@
     "\""))
 
 (define Const
-  (lambda (datum)
+  (case-lambda
+    [(datum) (Const datum #f)]
+   [(datum ty)
     (cond
      ;; This indicates that we have a forall a.a value...
      [(eq? datum 'BOTTOM) 
@@ -607,9 +609,15 @@
      [(cflonum? datum) (format "{real=~a, imag=~a }" 
 			       (real-part datum)
 			       (imag-part datum))]
-     [(integer? datum)  (if (< datum 0)
-			    (format "(~a~s)" #\~ (* -1 datum))
-			    (format "(~s)" datum))]
+     [(integer? datum)  
+      (let ([txt (if (< datum 0)
+		      (format "(~a~s)" #\~ (* -1 datum))
+		      (format "(~s)" datum))])
+	(case ty	
+	  [(Int Int16 Int32 Int64) txt]
+	  [(Uint8)  (format "(Word8.fromInt ~a)" txt)]
+	  [(Uint16) (format "(Word16.fromInt ~a)" txt)]
+	  [else (error 'emit-mlton:Const "unhandled type annotation ~s on integer constant: ~s" ty datum)]))]
 
      [(eq? datum 'nullseg) 
       ;(error 'emit-mlton:Const "Got 'nullseg in Const...")
@@ -627,7 +635,7 @@
       (ASSERT (not (zero? (vector-length datum))))
       (list "(Array.fromList "(Const (vector->list datum))")")]
 
-     [else (error 'emit-mlton:Const "not a Mlton-compatible literal (currently): ~s" datum)])))
+     [else (error 'emit-mlton:Const "not a Mlton-compatible literal (currently): ~s" datum)])]))
 
 
 ;; This handles one of the statements that are part of query initialization.
@@ -928,7 +936,12 @@
 	     [Int   ''0]
 	     [Bool  "false"]
 	     [String "\"\""]
+
+	     [Uint8  "(Word8.fromInt 0)"]
+	     [Uint16 "(Word16.fromInt 0)"]
+
 	     [Int16 "(Int16.fromInt 0)"]
+	     [Int32 "(Int32.fromInt 0)"]
 	     [Int64 "(Int64.fromInt 0)"]
 	     [Float ''0.0]
 	     [Double ''0.0]
@@ -1019,9 +1032,11 @@
 	 [Double "double"]
 	 [Complex "Complex"]))
      ;; HACK: this only works if there is a legacy conversion at these types:          
-     (make-prim-app 
-      (ASSERT (PrimName (string->symbol (** (my-downcase frm) "To" (symbol->string to)))))
-      (list e))]
+     ;; I haven't implemented the general method yet.
+     (let* ([convert (string->symbol (** (my-downcase frm) "To" (symbol->string to)))]
+	    [prim (PrimName convert)])
+       (unless prim (error 'emit-mlton:Prim "no conversion implementation for ~a" convert))
+       (make-prim-app prim (list e)))]
 
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
@@ -1044,8 +1059,8 @@
 		       (cons (myExpr first) rest))])]
 
     [(ptrIsNull ,[myExpr -> ptr]) 
-     "(EQUAL == MLton.Pointer.compare (Mlton.Pointer.null, "ptr"))"]
-    [(ptrMakeNull) "(Mlton.Pointer.null)"]
+     (list "(EQUAL = MLton.Pointer.compare (MLton.Pointer.null, "ptr"))")]
+    [(ptrMakeNull) "(MLton.Pointer.null)"]
 
     ;; This unpacks a foreign array into a WS array:
     [(assert-type (Array ,elt) (ptrToArray ,[myExpr -> ptr] ,[myExpr -> len]))
@@ -1344,7 +1359,7 @@
       [intToComplex  ,(make-fun '("n") "({real= Real32.fromInt n, imag= Real32.fromInt 0})")]
 
       [intToUint16     "Word16.fromInt" ]
-      ;[intToUint8      "Word8.fromInt" ]
+      [intToUint8      "Word8.fromInt" ]
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt     "Real32.toInt IEEEReal.TO_ZERO"]

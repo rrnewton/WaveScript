@@ -39,8 +39,13 @@ LIVE = false;
 /// Types and Constants:
 
 type Color = Uint8;
-type RawImage = Array Color; // Without the width/height metadata.
+type RawImage = Array Color; // Without the width/height metadata.  RGB interleaved.
+
+// These images look just like rowmajor matrices.
+include "matrix-rowmajor.ws"
+
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
+//type Image = Matrix Color; // With width/height (cols/rows)
 
 // Application type defs:
 type Inexact = Double; // Float or Double
@@ -215,46 +220,6 @@ fun loop2D(rows,cols, fn) {
 fun matrix_foreachi(mat, rows,cols, fn) 
   loop2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
-// I tried this to make the sliding patch cheaper... but I did not get
-// it right (output was not the same).  Also, it wasn't faster.  The
-// bottleneck must be from accessing the histograms, not the images.
-// Actually, it was slower.
-/*
-// This runs down a column of a patch, reading color values and
-// applying a transform to the histogram (not the image).
-fun zipAcross(columnIndex, rows,cols, tempHist, image)
-  fun(rowIndex, fn) {
-    roi = boundit(rowIndex,cols);
-    // Run across in-grain:
-    for co = columnIndex - halfPatch to columnIndex-halfPatch + SizePatch - 1 {
-	coi = boundit(co, rows);
-	i = (roi * cols + coi) * 3;
-	hist_update(image[i+2], image[i+1], image[i], tempHist, fn);
-    }
-  }
-
-// Shift a patch one pixel right, update the histogram incrementally.
-fun downshift_patch(r,c, rows,cols, hist, image, sampleWeight) {
-  zippy = zipAcross(c, rows,cols, hist, image);
-  // subtract upper row
-  ro = r - halfPatch - 1;
-  zippy(ro, fun(x) max(x - sampleWeight, 0));			
-  // add lower row
-  ro = r - halfPatch + SizePatch - 1;
-  zippy(ro, fun(x) x + sampleWeight);
-}
-
-fun loop2D_unnatural_order(rows,cols, fn) {
-  for c = 0 to cols-1 {
-   index = Mutable:ref(c);
-   for r = 0 to rows-1 {
-      fn(r,c, index);
-      index += cols;
-  }}}
-
-fun matrix_foreachi_unnatural_order(mat, rows,cols, fn) 
-  loop2D_unnatural_order(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
-*/
 
 //====================================================================================================
 
@@ -277,8 +242,8 @@ fun populateBg(tempHist, bgHist, (image,cols,rows)) {
   // It's not representation-independent in that sense.
   matrix_foreachi(bgHist, rows,cols, 
     fun(r,c, bgHist_rc) {
-      if c==0 then  initPatch(r,c, rows,cols, tempHist, image, sampleWeight1)
-      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
+      if c==0 then   initPatch(r,c, rows,cols, tempHist, image, sampleWeight1)
+      else         shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
       add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
     })
 }
@@ -382,45 +347,115 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 //   Functions for decomposing images into streams of patches.
 //====================================================================================================
 
-//type Patch = ;
+// A patch is a piece of a matrix together with metadata to tell us where it came from.
+// A patch includes:
+//  (1) a matrix slice
+//  (2) patch origin on original matrix
+//  (3) original image dimensions
+type Patch t = (Matrix t * (Int * Int) * (Int * Int));
 
 //stream_patches :: Stream Image -> Stream Patch;
 
 //regroup_images :: Stream Patch -> Stream Image;
 
+// Cut out a piece of an image.
+cut_patch :: (Matrix t, Int, Int, Int, Int) -> Patch t;
+fun cut_patch(mat, x,y, wid, hght) {
+  (Matrix:submatrix(mat,x,y,wid,hght), (x,y), Matrix:dims(mat));
+}
+
+// Would be nice to block-copy:
+fun Matrix:blit_patch(dst, (mat, (x,y), _)) {
+  Matrix:foreachi(fun(i,j,val) {
+    Matrix:set(dst, i+x, j+y, val);
+  }, mat);
+}
+
 /* 
  *  This function creates X*Y workers, each of which handles a region
  *  of the input image.  The patch_transform is applied to each patch,
- *  and also may maintain state between invocation.
+ *  and also may maintain state between invocation, so long as that
+ *  state is encapsulated in one mutable value and passed as an
+ *  argument to the transform.
+ *
+ *  This assumes the 'overlap' is the same in both dimensions, it
+ *  could be different in x and y.
  */
-fun make_patch_kernel(xworkers, yworkers, patchsize, overlap, patch_transform, init_state, images)
-{
-  total = xworkers * yworkers;
-  patches = iterate (arr,cols,rows) in images {
+fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
+ fun (images)
+ {
+  total = iworkers * jworkers;
+  using Matrix;
+  patches = iterate mat in images {
+    let (rows,cols) = mat.dims;
+    println("  Processing new image with dimensions: " ++ mat.dims);
+    iwid = rows / iworkers;
+    jwid = cols / jworkers;
+    assert_eq("make_patch_kernel: evenly divides rows", rows, iwid * iworkers);
+    assert_eq("make_patch_kernel: evenly divides cols", cols, jwid * jworkers);
 
-    //build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));    
-    for x = 0 to xworkers-1 {
-    for y = 0 to yworkers-1 {
-      cntdown = total - (x + y*xworkers);
-      emit cut_patch(arr, ??);
-
+    for i = 0 to iworkers-1 {
+    for j = 0 to jworkers-1 {
+      //cntdown = total - (x + y*iworkers);
+      println("  Cutting out patch "++i++" "++j);
+      emit (i,j , cut_patch(mat, i*iwid, j*jwid, iwid, jwid));
     }}
   };
   
   // round robin patchstream to the workers
-  worker = iterate p in patches {
-    state { s = init_state() }
-    emit patch_transform(s,p);
+  workerstreams = [];
+  for i = 0 to iworkers-1 {
+  for j = 0 to jworkers-1 {  
+    filtered = iterate (_i,_j,pat) in patches {
+      if i == _i && j == _j
+      then emit pat;
+    };
+    worker = iterate pat in filtered {
+      state { s = init_state(i,j) }
+      let (mat, (_i,_j), origdims) = pat;
+      println("  Worker "++ (i,j) ++" processing patch...");
+      emit patch_transform(s, pat);
+    };
+    workerstreams := worker ::: workerstreams;
+  }};
+    
+  allworkers = List:fold1(merge, workerstreams);
+
+  // Now, this must take a stream of patches and stitch them together.
+  // We assume that each worker produces exactly one output patch.
+  // These output patches should not overlap.
+  assembled = iterate pat in allworkers {
+    state { assembly = create(0,0,0);
+            pieces   = 0	    
+          }
+    let (mat, (i,j), (sz1, sz2)) = pat;
+    if assembly.dims != (sz1,sz2)
+    then assembly := create(sz1,sz2, 0);
+    
+    let (psz1, psz2) = mat.dims;
+    println("  Assembling: piece # "++ pieces ++" blitting patch at "++i++" "++j);
+    Matrix:blit_patch(assembly, pat);
+    pieces += 1;
+    if pieces == total then {
+      emit assembly; 
+      pieces := 0;
+      // ASSUMPTION: we don't bother clearing or reallocating assembly
+      // itself unless we have to. (Unless the img changes size).
+      // TEMP:
+      Matrix:fill(assembly, 0);
+    }
   };
   
-  assemble = iterate p in worker {};
-}
+  assembled
+ }
 
 
 //====================================================================================================
 //   Complete Bhatta function
 //====================================================================================================
 
+// The output package from the Bhattacharyya algorithm.  Contains a
+// frame index, a masked image, and separetly the diff image and the mask.
 type OutputBundle = (Int * Image * RawImage * RawImage);
 
 bhatta :: Stream Image -> Stream OutputBundle;
@@ -599,6 +634,28 @@ fun dump_files(strm)
     emit ();
   }
 
+simple_dump :: Stream Image -> Stream ();
+fun simple_dump(strm) 
+  iterate (frame,cols,rows) in strm {
+    state { ind = 0 }    
+    ws_writeImage("./"++ind++".jpg", frame, cols, rows, 3);
+    ind += 1;
+    emit ();
+  }
+
+dump_matrix :: Stream (Matrix Color) -> Stream ();
+fun dump_matrix(strm) 
+  iterate mat in strm {
+    state { ind = 0 }    
+    using Matrix;
+    let (rows,cols) = mat.dims;
+    frame = mat.toArray;
+    ws_writeImage("./"++ind++".jpg", frame, cols, rows, 3);
+    ind += 1;
+    emit ();
+  }
+
+
 // Select out the FG image and display that:
 fun my_display(strm) 
      display_to_screen(smap(fun((_, (fg,c,r), diff, mask)) (fg,c,r), strm))
@@ -701,18 +758,43 @@ main = real
 // Sadly, without Chez we can't currently call C functions and read the image files in at profile time.
 fakeFrames = iterate _ in timer$3 {
   using Array;
-  let (cols,rows) = (320, 240);
+  //let (cols,rows) = (320, 240);
+  let (cols,rows) = (8, 4);
+
   //arr :: Array Uint8 = build(rows, build(cols, 0));
   //arr = build(rows, make(cols, 0));
-  arr = make(rows * cols * 3, 0);
+  arr = build(rows * cols * 3, fun(i) Color! i);
   emit (arr, cols, rows);
 }
 
 fake = iterate (_, (fg,c,r), diff, mask) in  bhatta(fakeFrames) {
-  println$ "yay ";
   emit ();
 }
 
 //main = IFPROFILE(fake, real)
 //main = fake
 
+//kern :: Stream (Matrix a) -> Stream (Matrix b);
+kern = make_patch_kernel(2,2, 0, fun(st, pat) pat, fun(x,y) ())
+
+fun printmat(msg) fun(mat) {
+             println(msg ++ " " ++ Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray));
+	     println("Mat "++mat);
+	     mat
+	   }
+
+mats = 
+       Curry:smap(printmat("Orig sum")) $
+       Curry:smap(fun((arr,c,r)) Matrix:fromArray(arr,r)) $
+       fakeFrames
+
+//main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
+  main = //dump_matrix $ 
+
+      Curry:smap(printmat$"\n\n ** Restitched ") $
+      kern $
+      mats
+
+/*   Curry:smap(fun(mat) { */
+/*                Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray);  */
+/*              }) $  */
