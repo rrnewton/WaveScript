@@ -1144,6 +1144,8 @@
 	    [(List ,_)  (eq? obj '())]
 
 	    [(Struct ,_) #f]
+
+	    [#() #t]
 	    
 	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))  
   
@@ -1493,9 +1495,9 @@
 	  (make-lines        
 	   (block (list "int main(int argc, "(Type self `(Array (Array Char)))" argv)" )
 		  (list 
-		   "ws_parse_options(argc,argv);\n"
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
 		   "initState();\n"
+		   "ws_parse_options(argc,argv); /* [2008.08.27] Moving to after initState */ \n" 
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
 		   
 		   "// Insert calls to those timers executing only once (with zero rates)\n"

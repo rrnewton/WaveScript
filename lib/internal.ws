@@ -63,6 +63,11 @@ Array:fromString = String:toArray
 List:toString    = String:fromList
 List:fromString  = String:toList
 
+// This is a name change for consistent casing:
+List:isNull = List:is_null
+//foreignSource = foreign_source
+// inline_C gnuplot_array etc...
+
 String:explode = String:toList
 String:implode = String:fromList
 

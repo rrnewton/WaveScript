@@ -25,8 +25,8 @@ typedef unsigned short int uint16_t;
 
 // A WS string is a null terminated char*:
 // It may or may not have a length field and/or reference count
-// metadata to the left of the pointer.
-#define ws_string_t char*
+// metadata to the left of the pointer depending on GC config.
+#define ws_string_t ws_char_t*
 
 
 
@@ -246,6 +246,9 @@ void ws_alloc_stats() {
 //#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
 #define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))
+
+#define WSARRAYSET(arr,i,v)  arr[i] = v
+#define WSARRAYGET(arr,i)    arr[i]
 
 inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;

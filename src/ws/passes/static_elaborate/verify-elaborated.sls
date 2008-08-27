@@ -68,12 +68,35 @@
       ;[,else #f]
       ))
 
+  (define (verify-type! t)
+    (unless (verify-type t)
+      (error 'verify-elaborated 
+	     (format "type is not valid post-elaboration: ~s" t))))
+
   ;; Mutable state:
   (define inside-iterate #f)
+
+  #;
+  (define (possible-lambda expr tenv fallthrough)
+    (match expr
+      ;; A user's lambda, for now must be CLOSED!
+      [(lambda ,args ,ty* ,bod)
+       (for-each verify-type! ty*)
+       ;; We empty the tenv:
+       (fallthrough `(lambda ,args (,ty (VQueue ,elt)) ,bod) (empty-tenv))]
+
+      )
+    )
 
   (define process-expr 
     (lambda (expr tenv fallthrough)
        (match expr
+
+	 #;
+	 [,sym (guard (symbol? sym))
+	  (unless (tenv-lookup tenv sym)
+	    (error "Variable unbound in type environment: ~a.  Likely a violation of requirement that \n"))]
+
 	 [(app ,[rator] ,[rand*] ...)		     
 	  (let ([type (recover-type rator tenv)])
 	    (if ;(or (deep-assq 'Stream type) (deep-assq 'Region type))
@@ -100,7 +123,20 @@
 	 ;; bindings.
 	 [(iterate ,annot ,letorlamb ,[src])
 	  (fluid-let ([inside-iterate #t])
-	    `(iterate ,annot ,(process-expr letorlamb tenv fallthrough) ,src))]
+	    `(iterate ,annot ,(process-expr letorlamb tenv fallthrough) ,src))]	 
+
+#|	 
+	 ;; An iterate's lambda:
+	 [(lambda ,args (,ty (VQueue ,elt)) ,bod) 
+	  (verify-type! ty) (verify-type! elt)
+	  (fallthrough `(lambda ,args (,ty (VQueue ,elt)) ,bod) tenv)]	 
+	 ;; A user's lambda, for now must be CLOSED!
+	 [(lambda ,args ,ty* ,bod)
+	  (for-each verify-type! ty*)
+	  ;; We empty the tenv:
+	  (fallthrough `(lambda ,args (,ty (VQueue ,elt)) ,bod) (empty-tenv))]
+|#
+
 	 
 	 ;; TODO: disallow lambdas except as arguments to iterate and select higher order prims.
 	 
@@ -127,12 +163,8 @@
 
 	 ;; Run verification on the types:
 	 [,form (guard (binding-form? form))
-		(for-each (lambda (t)
-			    (unless (verify-type t)
-			      (error 'verify-elaborated 
-				     (format "type is not valid post-elaboration: ~s" t))))
-		  (binding-form->types form))
-		(fallthrough form tenv)]	 
+		(for-each verify-type! (binding-form->types form))
+		(fallthrough form tenv)]
 	 
 	 [(,genop ,args ...)
 	  (guard (assq genop generic-arith-primitives))

@@ -623,7 +623,7 @@
 
   ;; Now fill in some types that were left blank in the above:
   ;; Shouldn't need to redo LUB because the types are already restrictive???
-  (IFDEBUG (do-late-typecheck) (void))
+  (DEBUGMODE (do-late-typecheck))
   ;; This is expensive because it lifts generic ops, and retypechecks:
   ;; (Like we later do for polymorphic constants)
   (ws-run-pass p degeneralize-arithmetic)
@@ -634,7 +634,7 @@
   ;; We strip out ascriptions so we don't have any polymophic hanging around in there:
   (ws-run-pass p strip-unnecessary-ascription)
 
-  (IFDEBUG (do-late-typecheck) (void))
+  (DEBUGMODE (do-late-typecheck))
 
   ;; [2007.10.27] For MLton we might should remove at least part of this pass:
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
@@ -668,7 +668,7 @@
   ;<<<<<<<<<<<<<<<<<<<< MONOMORPHIC PROGRAM >>>>>>>>>>>>>>>>>>>>
 
   ;(inspect (strip-annotations p 'src-pos))
-  
+
   (do-late-typecheck)  ;; Anihilate introduced type variables.
 
   (when (>= (regiment-verbosity) 1) (printf "Monomorphism achieved.\n"))
@@ -704,7 +704,7 @@
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
   (ws-run-pass p remove-letrec) ;; This is a bit redundant with interpret-meta, which already sorts the bindings.
-  
+    
   (ws-run-pass p lift-immutable-constants) ;; Should happen before embed-strings-as-arrays
 
   ;; To reduce the complexity of the wsc2 backend, we get rid of strings:
@@ -766,6 +766,7 @@
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 ;  (profile-clear)
+
 
   (ws-run-pass p ws-remove-complex-opera*)
 

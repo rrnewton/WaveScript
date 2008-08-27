@@ -13,6 +13,7 @@
 
 /******************************************************************************/
 /*    This namespace contains things that are direct wrappers to Unix calls   */
+/******************************************************************************/
 
 type FileDescr = Pointer "FILE*";
 
@@ -89,33 +90,18 @@ namespace Unix {
 /******************************************************************************/
 /* The rest of this file contains functionality built on top of the
    basic unix calls. */
+/******************************************************************************/
 
+// Note, the above raw unix functions are generally all lower cased
+// and may contain underscores.  The higher level functions in this
+// section follow the WS camel casing convention, with the exception
+// of type specifiers, such as _stream.
 
-
-
-
-
-/* // Write a stream of strings to disk.  Returns an empty stream */
-/* fileSink :: (String, String, Stream String)  -> Stream nothing; */
-/* fun fileSink (filename, mode, strm) { */
-/*   iterate str in strm {   */
-/*     state { */
-/*       fp = Unix:fopen(filename, mode) */
-/*     } */
-/*     // This is very inefficient, it should be fixed: */
-/*     arr = List:toArray( String:explode(str)); */
-/*     len = Array:length(arr); */
-/*     cnt = Unix:fwrite_arr(arr, 1, len, fp); */
-/*     if cnt != len  */
-/*     then wserror("fileSink: fwrite failed to write data") */
-/*   } */
-/* } */
-
-
+fileSink :: (String, String, Stream String)  -> Stream nothing;
+//fileToString :: String -> String;
 
 // Write a stream of strings to disk.  Returns a stream of ACKS (units)
 // Mode string should be valid input to fopen.
-fileSink :: (String, String, Stream String)  -> Stream nothing;
 fun fileSink (filename, mode, strm) {
   iterate str in strm {  
     state { 
@@ -143,7 +129,6 @@ fun fileSink (filename, mode, strm) {
     then wserror("fileSink: fwrite failed to write data")
   }
 }
-
 
 
   c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
@@ -242,9 +227,7 @@ fun scandir_stream(dir, indices) {
 }
 */
 
-
 // Read an entire file:
-//fileToString :: String -> String;
 fun fileToString(filename) {
   using Unix;
   st = make_stat();
@@ -265,14 +248,8 @@ fun fileToString(filename) {
   String:fromArray(buf)
 }
 
-
-
-
-
-
-
-
-
+/******************************************************************************/
+/******************************************************************************/
 
 // A simple test:
 main = { 

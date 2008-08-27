@@ -90,3 +90,12 @@ fun List:toArray(ls) {
   };
   arr
 }
+
+// FIXME : I can't currently define this locally (inside an iterate)... having problems. [2008.08.27]
+__getcmdln :: () -> Array String = foreign("ws_get_command_line", []);
+
+commandLine :: () -> Array String;
+fun commandLine() {
+  __getcmdln();
+}
+//argv = commandLine(); // An alias.

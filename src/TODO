@@ -21,6 +21,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.08.26]
+  *) verify-elaborated looks very rotted, it needs to be overhauled.
+
 [2008.08.04]
   *) Working on marshal/unmarshel, eventually, readFile codegen should leverage unmarshal.
 

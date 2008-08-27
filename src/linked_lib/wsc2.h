@@ -352,6 +352,16 @@ void BASE(char x) {
   //fflush(stdout); // [2008.07.31] No more flushing at BASE for now.
 }
 
+// This is a WS array of strings containing all the command line
+// arguments to the program at runtime.  We will need to be very
+// careful what we do with this in distributed settings.  Either it
+// only makes sense on the machine where the program was spawned, or
+// we need to transmit the data to other machines.
+ws_string_t* ws_command_line_arguments = (ws_string_t*)0;
+ws_string_t* ws_get_command_line() {
+  return ws_command_line_arguments;
+}
+
 void ws_parse_options(int argc, char** argv) {
   int i, c;
   while ((c = getopt(argc, argv, "n:")) != -1) {
@@ -366,6 +376,17 @@ void ws_parse_options(int argc, char** argv) {
 	  //		return 1;
 		break;
 	}
+  };
+  if (optind < argc) {
+    int i;
+    // Here we allocate a WS ARRAY and copy the strings over to WS strings
+    ws_command_line_arguments = WSARRAYALLOC(argc-optind, ws_string_t);
+    for(i=0; i< argc-optind; i++) {
+      ws_string_t wsstr = WSSTRINGALLOC(strlen(argv[i+optind]) + 1);
+      // Here we depend on the fact that WS strings look like C strings to the right of the ptr:
+      strcpy(wsstr, argv[i+optind]);
+      WSARRAYSET(ws_command_line_arguments, i, wsstr);
+    }
   }
 }
 

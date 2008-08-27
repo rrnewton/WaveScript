@@ -381,6 +381,8 @@ fun Matrix:blit_patch(dst, (mat, (x,y), _)) {
  *  This assumes the 'overlap' is the same in both dimensions, it
  *  could be different in x and y.
  */
+make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Int, Int) -> st) -> 
+                      Stream (Matrix #a) -> Stream (Matrix #b);
 fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
  fun (images)
  {
@@ -396,23 +398,16 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
 
     for i = 0 to iworkers-1 {
     for j = 0 to jworkers-1 {
-      //cntdown = total - (x + y*iworkers);
       println("  Cutting out patch "++i++" "++j);
 
       desiredi = i*iwid - overlap;
       desiredj = j*jwid - overlap;           
-
       desiredsz1 = iwid + 2*overlap;
       desiredsz2 = jwid + 2*overlap;
                         
-      println("Desired "++ [desiredi, desiredj, desiredsz1, desiredsz2]);
-
       origi = if desiredi < 0 then { desiredsz1 -= 1; 0 } else desiredi; 
       origj = if desiredj < 0 then { desiredsz2 -= 1; 0 } else desiredj;
 
-      println("Desired sizes, modified "++ [desiredsz1, desiredsz2]);
-
-      //println(" size 1 terms "++ [rows, origi, iwid, 2*overlap] );
       size1 = min(rows - origi, desiredsz1); 
       size2 = min(cols - origj, desiredsz2);
       
@@ -431,10 +426,14 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
       then emit pat;
     };
     worker = iterate pat in filtered {
-      state { s = init_state(i,j) }
+      //state { s = init_state(i,j) }
+      state { s = Array:null }
+      // Moving the state initialization to runtime:
+      if s == Array:null then s := Array:make(1, init_state(i,j));
+
       let (mat, (_i,_j), origdims) = pat;
       println("  Worker "++ (i,j) ++" processing patch... dims "++ mat.dims  ++" size "++ Array:length(Matrix:toArray(mat)));
-      emit patch_transform(s, pat);
+      emit patch_transform(s[0], pat);
     };
     workerstreams := worker ::: workerstreams;
   }};
@@ -468,6 +467,112 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
   assembled
  }
 
+/* This function builds on top of the make_patch_kernel interface,
+ * allowing us to focus on the per-pixel tranfsorm, with the
+ * additional privilege of being able to query the neighborhood around
+ * the pixel.
+ * 
+ * Currently this uses the REFLECT policy for all out-of-bounds
+ * accesses.  It could however, use different policies, such as a
+ * TORUS, or filling in a CONSTANT for the out-of-bounds regions.
+ */
+//make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Int, Int) -> st) -> Stream (Matrix #a) -> Stream (Matrix #b);
+// (Int, Int, a,  (b, c, (Int, Int) -> d) -> e,  (#f, #g) -> h) -> ();
+fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
+ using Matrix;
+ 
+ fun patch_init_state(i,j) {
+   PIXINPATCH = 10; // ???????
+   Array:build(PIXINPATCH, fun(n) init_state(0,0))
+ };
+
+ fun patch_transform(st, (mat, (i,j), (sz1, sz2))) {
+     // The size expected if we don't have some cropped off (because of borders):
+     base_size1 = sz1 / iworkers;
+     base_size2 = sz2 / jworkers;
+
+     expected_size1 = base_size1 + 2*overlap;
+     expected_size2 = base_size2 + 2*overlap;
+
+     println(" --- Processing patch with base size "++(base_size1, base_size2)++
+             " expected total size "++ (expected_size1, expected_size2)++ " and received "++mat.dims);
+    
+     fun neighborhood_access(i,j) fun (di, dj) get(mat, i+di, j+dj);
+     
+     fun neighborhood_access_reflected(centeri, centerj, boundi, boundj)
+     fun (di,dj) {
+       i = centeri + di;
+       j = centerj + dj;
+
+       println("   Reflected access to pos "++(i,j));
+       if i < 0       then wserror("i off top "++i);
+       if i >= boundi then wserror("i off bottom "++i);
+       if j < 0       then wserror("j off left " ++j);
+       if j >= boundj then wserror("j off right "++j);
+       get(mat, i, j);
+     };
+     
+     let (r,c) = mat.dims;
+     mat2 = 
+       build(base_size1, base_size2, fun(i,j) {
+         ind = i * base_size2 + j;
+
+	 if expected_size1 == r && expected_size2 == c 
+	 then {
+	   _i = i+overlap; _j = j+overlap;
+	   px  = get(mat, _i, _j);
+	   pixel_transform(st[ind], px, neighborhood_access(_i,_j,));
+	 } else {
+	   _i = i+overlap; _j = j+overlap;
+	   px  = get(mat, _i, _j);
+	   // Index calculation depends on overlap with left & top borders:
+	   //pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2))
+	   wserror("Not finished")
+	 }
+
+	 /*
+	 // This (rightly) isn't allowed by metaprogrram eval:
+	 // But I need to improve the compiler to provide a proper error.
+	 nbrhd = if base_size1 != r || base_size2 != c 
+	         then neighborhood_access_reflected(_i,_j, sz1,sz2) 
+  	         else neighborhood_access(_i,_j));
+         pixel_transform(st[ind], px, nbrhd);
+	 */
+       });
+
+     /*
+     mat2 = 
+      if base_size1 != r || base_size2 != c then {
+      
+        if base_size1 != r then {};
+
+        // Are we against the top?  Otherwise bottom.
+        if i == 0 then {} else {}; 
+	
+	// Are we against the left? Otherwise right.
+	if j == 0 then {} else {};       	
+	
+        //wserror("todo: implement the cropped cases")	
+      }
+      else {
+       // Otherwise, we have clearance to blast over it without danger of going out-of-bounds:
+       build(base_size1, base_size2, fun(i,j) {
+         ind = i * base_size2 + j;
+	 _i = i+overlap; _j = j+overlap;
+	 px  = get(mat, _i, _j);
+         pixel_transform(st[ind], px, neighborhood_access(_i,_j));
+       })
+       //for i = overlap to overlap + base_size1 - 1 {            }
+      };
+      */
+
+     (mat2, (i+overlap, j+overlap), (sz1,sz2))
+     //pixel_transform(st, px, neighborhood_access);
+ };
+
+ overlap = nbrhood_size;
+ make_patch_kernel(iworkers, jworkers, overlap, patch_transform, patch_init_state);
+}
 
 //====================================================================================================
 //   Complete Bhatta function
@@ -778,7 +883,7 @@ main = real
 fakeFrames = iterate _ in timer$3 {
   using Array;
   //let (cols,rows) = (320, 240);
-  let (cols,rows) = (8, 6);
+  let (cols,rows) = (2, 6);
 
   //arr :: Array Uint8 = build(rows, build(cols, 0));
   //arr = build(rows, make(cols, 0));
@@ -802,6 +907,9 @@ fun printmat(msg) fun(mat) {
 	     mat
 	   }
 
+//fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
+pxkern = pixel_transform_with_neighborhood(2,2, 1, fun(st,px,nbrhood) px+100, fun(i,j) ());
+
 mats = 
        Curry:smap(printmat("Orig sum")) $
        Curry:smap(fun((arr,c,r)) Matrix:fromArray(arr,r)) $
@@ -810,8 +918,11 @@ mats =
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
   main = dump_matrix $ 
       Curry:smap(printmat$"\n\n ** Restitched ") $
-      kern $
+      pxkern $ 
+      //kern $
       mats
+
+
 
 /*   Curry:smap(fun(mat) { */
 /*                Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray);  */
