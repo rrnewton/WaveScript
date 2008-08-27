@@ -41,7 +41,9 @@
 		box unbox set-box! box? 
 		current-output-port
 		) run expand)
-	  (only (lazy promise) promise? delay force)
+
+	  ;(only (lazy promise) promise? delay force)
+	  (only (scheme promise) promise? delay force)
 	  
 	  (prefix (scheme base) plt:)
 	  (prefix (only (scheme include) include)

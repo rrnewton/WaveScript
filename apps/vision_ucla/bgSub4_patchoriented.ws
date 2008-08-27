@@ -497,23 +497,22 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
 
      println(" --- Processing patch rooted at "++(g_i,g_j)++" with base size "++(base_size1, base_size2)++
              " expected total size "++ (expected_size1, expected_size2)++ " and received "++mat.dims);
+
+     let (r,c) = mat.dims;
     
-     fun neighborhood_access(i,j) fun (di, dj) get(mat, i+di, j+dj);
-     
-     fun neighborhood_access_reflected(centeri, centerj, boundi, boundj)
+     fun neighborhood_access(i,j) fun (di, dj) get(mat, i+di, j+dj);    
+     fun neighborhood_access_reflected(centeri, centerj)
      fun (di,dj) {
        i = centeri + di;
        j = centerj + dj;
-
-       println("   Reflected access to pos "++(i,j));
-       if i < 0       then wserror("i off top "++i);
-       if i >= boundi then wserror("i off bottom "++i);
-       if j < 0       then wserror("j off left " ++j);
-       if j >= boundj then wserror("j off right "++j);
-       get(mat, i, j);
+       i2 = if i < 0  then -1 - i else 
+            if i >= r then 2*r - i - 1 else i;
+       j2 = if j < 0  then -1 - j else 
+            if j >= c then 2*c - j - 1 else j;
+       //println("   Reflected access to pos "++(i,j) ++" bounds "++(r,c)++" reflected "++(i2,j2));
+       get(mat, i2, j2);
      };
      
-     let (r,c) = mat.dims;
      offseti = overlap;
      offsetj = overlap;
 
@@ -538,34 +537,8 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
 	 //if r == expected_size1 && c == expected_size2
 	 //then pixel_transform(st[ind], px, neighborhood_access(_i,_j,))
 	 //else 
-	 pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2));
+	 pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j));
        });
-
-     /*
-     mat2 = 
-      if base_size1 != r || base_size2 != c then {
-      
-        if base_size1 != r then {};
-
-        // Are we against the top?  Otherwise bottom.
-        if i == 0 then {} else {}; 
-	
-	// Are we against the left? Otherwise right.
-	if j == 0 then {} else {};       	
-	
-        //wserror("todo: implement the cropped cases")	
-      }
-      else {
-       // Otherwise, we have clearance to blast over it without danger of going out-of-bounds:
-       build(base_size1, base_size2, fun(i,j) {
-         ind = i * base_size2 + j;
-	 _i = i+overlap; _j = j+overlap;
-	 px  = get(mat, _i, _j);
-         pixel_transform(st[ind], px, neighborhood_access(_i,_j));
-       })
-       //for i = overlap to overlap + base_size1 - 1 {            }
-      };
-      */
 
      (mat2, (g_i + offseti, g_j + offsetj), (sz1,sz2))
      //pixel_transform(st, px, neighborhood_access);
@@ -891,9 +864,7 @@ fakeFrames = iterate _ in timer$3 {
   //let (cols,rows) = (320, 240);
   let (cols,rows) = (2, 6);
 
-  //arr :: Array Uint8 = build(rows, build(cols, 0));
-  //arr = build(rows, make(cols, 0));
-  arr = build(rows * cols * 3, fun(i) Color! i);
+  arr = build(rows * cols * 3, fun(i) Color! 1);
   emit (arr, cols, rows);
 }
 
@@ -914,7 +885,25 @@ fun printmat(msg) fun(mat) {
 	   }
 
 //fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
-pxkern = pixel_transform_with_neighborhood(2,2, 1, fun(st,px,nbrhood) px+100, fun(i,j) ());
+pxkern = pixel_transform_with_neighborhood(2,2, 1, 
+   fun(st,px,nbrhood) {
+     val = 
+     nbrhood(-1,-1) +
+     nbrhood(0,-1) +
+     nbrhood(-1,0) + 
+     nbrhood(-1,1) +
+     nbrhood(1,-1) +
+     nbrhood(0,0) +
+     nbrhood(0,1) +
+     nbrhood(1,0) + 
+     nbrhood(1,1) + 
+     10 * st[0];
+     st[0] += 1;
+     val
+   },
+   fun(i,j) {
+     Array:make(1,0);
+   });
 
 mats = 
        Curry:smap(printmat("Orig sum")) $

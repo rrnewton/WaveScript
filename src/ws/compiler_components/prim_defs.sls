@@ -251,6 +251,7 @@
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     (List:build        (Int (Int -> 'a)) (List 'a))
 
+    ;[wsexit (Int) a]
     )))
 
 

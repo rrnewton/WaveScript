@@ -91,9 +91,17 @@ fun List:toArray(ls) {
   arr
 }
 
+
+// No reason to add a primitive for this.  It is defined in wsc2.h
+lshiftC :: (Char,Int)  -> Char = foreign("ws_lshiftC", []);
+lorC    :: (Char,Char) -> Char = foreign("ws_lorC", []);
+
+wsexit :: (Int) -> a = foreign("wsexit_fun", []);
+exit = wsexit;
+
+
 // FIXME : I can't currently define this locally (inside an iterate)... having problems. [2008.08.27]
 __getcmdln :: () -> Array String = foreign("ws_get_command_line", []);
-
 commandLine :: () -> Array String;
 fun commandLine() {
   __getcmdln();

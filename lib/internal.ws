@@ -188,14 +188,9 @@ tail   = List:tail;
 map    = List:map;
 append = List:append;
 
-// No reason to add a primitive for this.  It is defined in wsc2.h
-lshiftC :: (Char,Int)  -> Char = foreign("ws_lshiftC", []);
-lorC    :: (Char,Char) -> Char = foreign("ws_lorC", []);
-
-wsexit :: (Int) -> a = foreign("wsexit_fun", []);
-
 error = wserror;
-exit = wsexit;
+
+fun wsexit(code) wserror("exit with code "++code)
 
 // HACK: A stub so that these variables are not unbound
 

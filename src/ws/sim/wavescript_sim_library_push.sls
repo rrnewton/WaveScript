@@ -2164,13 +2164,12 @@
 
       (lambda (name files type)
 	;; First make sure that the C standard library is loaded.
-	(ensure-libc-loaded!)
-
+	(ensure-libc-loaded!)	      	
 	(printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
 	(for-each LoadFile! files)
 	;; After it's loaded there'd better be access:
 	(unless (foreign-entry? name)
-	  (error 'foreign "failure to register foreign function in Scheme: ~s" name))
+	  (error 'foreign "failure to register foreign function in Scheme: ~s" name))	
 	(match type
 	  [(,[Convert -> args] ... -> ,ret)
 	   (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
