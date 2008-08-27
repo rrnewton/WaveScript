@@ -523,11 +523,16 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
 	   px  = get(mat, _i, _j);
 	   pixel_transform(st[ind], px, neighborhood_access(_i,_j,));
 	 } else {
-	   _i = i+overlap; _j = j+overlap;
+	   // ASSUMPTION! A tile cannot be off the left & right or top & bottom borders simultaneously!
+	   // If we're against the top, account for the deficit:
+	   _i = if i == 0 
+	        then overlap - (expected_size1 - r)
+	        else i + overlap;
+	   _j = if j == 0  // likewise for the left border
+	        then overlap - (expected_size2 - c)
+	        else j + overlap;	   	   
 	   px  = get(mat, _i, _j);
-	   // Index calculation depends on overlap with left & top borders:
-	   //pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2))
-	   wserror("Not finished")
+	   pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2))
 	 }
 
 	 /*

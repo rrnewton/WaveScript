@@ -1,0 +1,4 @@
+#!/bin/sh
+
+wget www.regiment.us/datasets/small_feederstation_dataset.tar
+(cd input && tar xvf ../small_feederstation_dataset.tar)

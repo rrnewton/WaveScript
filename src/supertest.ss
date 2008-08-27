@@ -668,9 +668,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; bgSub application:
 (parameterize ((current-directory (format "~a/apps/vision_ucla" ws-root-dir)))
-  (newline)
-
-     (run-test "wsc2: Compiling bgSub.ws -O3 -gc def:"
+  (newline)  
+    (run-test "bgSub App: Downloading sample dataset" "./download_small_dataset")
+    (run-test "wsc2: Compiling bgSub.ws -O3 -gc def:"
  	      (format "wsc2 bgSub.ws -O3 -gc def -exit-error &> ~a/wsc2_bgSub1_build.log" test-directory))
      (run-test "wsc2:  Running bgSub.ws:  "
  	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub1_run.log 2> bgSub1_memprof.txt" test-directory))

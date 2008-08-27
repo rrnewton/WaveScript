@@ -617,6 +617,9 @@
 	  [(Int Int16 Int32 Int64) txt]
 	  [(Uint8)  (format "(Word8.fromInt ~a)" txt)]
 	  [(Uint16) (format "(Word16.fromInt ~a)" txt)]
+	  ;; [2008.08.27] This may need to change in the future, but
+	  ;; for now unannotated ints are allowed, and they are "Int"s.
+	  [(#f) txt]
 	  [else (error 'emit-mlton:Const "unhandled type annotation ~s on integer constant: ~s" ty datum)]))]
 
      [(eq? datum 'nullseg) 
