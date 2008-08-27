@@ -24,8 +24,8 @@ TODO:
  */
 
 include "stdlib.ws"
-include "opencv.ws"
-include "r100/r100.ws"
+//include "opencv.ws"
+//include "r100/r100.ws"
 
 fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
 //fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
@@ -448,8 +448,7 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
             pieces   = 0	    
           }
     let (mat, (i,j), (sz1, sz2)) = pat;
-    if assembly.dims != (sz1,sz2)
-    then assembly := create(sz1,sz2, 0);
+    if assembly.dims != (sz1,sz2) then assembly := create(sz1,sz2, 0);
     
     let (psz1, psz2) = mat.dims;
     println("  Assembling: piece # "++ pieces ++" blitting patch at "++i++" "++j);
@@ -461,7 +460,9 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
       // ASSUMPTION: we don't bother clearing or reallocating assembly
       // itself unless we have to. (Unless the img changes size).
       // TEMP:
-      Matrix:fill(assembly, 0);
+      //Matrix:fill(assembly, 0);
+      // CURRENTLY REALLOCATING THIS EVERY TIME BECAUSE EMIT DOESN'T SAFELY COPY YET (e.g. under Scheme backend)
+      assembly := create(0,0,0); // assembly := create(sz1,sz2,0);
     }
   };
   assembled
@@ -486,7 +487,7 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
    Array:build(PIXINPATCH, fun(n) init_state(0,0))
  };
 
- fun patch_transform(st, (mat, (i,j), (sz1, sz2))) {
+ fun patch_transform(st, (mat, (g_i,g_j), (sz1, sz2))) {
      // The size expected if we don't have some cropped off (because of borders):
      base_size1 = sz1 / iworkers;
      base_size2 = sz2 / jworkers;
@@ -494,7 +495,7 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
      expected_size1 = base_size1 + 2*overlap;
      expected_size2 = base_size2 + 2*overlap;
 
-     println(" --- Processing patch with base size "++(base_size1, base_size2)++
+     println(" --- Processing patch rooted at "++(g_i,g_j)++" with base size "++(base_size1, base_size2)++
              " expected total size "++ (expected_size1, expected_size2)++ " and received "++mat.dims);
     
      fun neighborhood_access(i,j) fun (di, dj) get(mat, i+di, j+dj);
@@ -513,36 +514,31 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
      };
      
      let (r,c) = mat.dims;
+     offseti = overlap;
+     offsetj = overlap;
+
+     // Adjust our offset if the overlap goes out of bounds on the left/top
+     // ASSUMPTION! A tile cannot be off the left & right or top & bottom borders simultaneously!
+     if expected_size1 != r && g_i == 0  then offseti -= expected_size1 - r; 
+     if expected_size2 != c && g_j == 0  then offsetj -= expected_size2 - c; 	 
+
      mat2 = 
        build(base_size1, base_size2, fun(i,j) {
          ind = i * base_size2 + j;
 
-	 if expected_size1 == r && expected_size2 == c 
-	 then {
-	   _i = i+overlap; _j = j+overlap;
-	   px  = get(mat, _i, _j);
-	   pixel_transform(st[ind], px, neighborhood_access(_i,_j,));
-	 } else {
-	   // ASSUMPTION! A tile cannot be off the left & right or top & bottom borders simultaneously!
-	   // If we're against the top, account for the deficit:
-	   _i = if i == 0 
-	        then overlap - (expected_size1 - r)
-	        else i + overlap;
-	   _j = if j == 0  // likewise for the left border
-	        then overlap - (expected_size2 - c)
-	        else j + overlap;	   	   
-	   px  = get(mat, _i, _j);
-	   pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2))
-	 }
+	 _i = i + offseti; 
+	 _j = j + offsetj;
+	 px  = get(mat, _i, _j);
 
-	 /*
-	 // This (rightly) isn't allowed by metaprogrram eval:
-	 // But I need to improve the compiler to provide a proper error.
-	 nbrhd = if base_size1 != r || base_size2 != c 
-	         then neighborhood_access_reflected(_i,_j, sz1,sz2) 
-  	         else neighborhood_access(_i,_j));
-         pixel_transform(st[ind], px, nbrhd);
-	 */
+         //println("* Adjusted position, from "++(i+overlap,j+overlap)++" to "++ (_i,_j));
+
+	 // If this patch doesn't borders then we can blast away without bounds checks.
+	 // BUT, we should verify that this has a performance benefit.. no preemature optimization.
+
+	 //if r == expected_size1 && c == expected_size2
+	 //then pixel_transform(st[ind], px, neighborhood_access(_i,_j,))
+	 //else 
+	 pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j, sz1,sz2));
        });
 
      /*
@@ -571,7 +567,7 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
       };
       */
 
-     (mat2, (i+overlap, j+overlap), (sz1,sz2))
+     (mat2, (g_i + offseti, g_j + offsetj), (sz1,sz2))
      //pixel_transform(st, px, neighborhood_access);
  };
 
@@ -703,6 +699,8 @@ fun bhatta(video) {
 
 // This is all the nonsense about loading files and scaling images.
 
+/* // OMIT DATA READING FOR NOW
+
 // This is an ugly separation right now.  The frame index stream
 // drives the reading of files, but the Bhatta kernel below must stay
 // synchronized with this input stream (in terms of switching between
@@ -784,10 +782,10 @@ fun dump_matrix(strm)
     emit ();
   }
 
-
 // Select out the FG image and display that:
 fun my_display(strm) 
      display_to_screen(smap(fun((_, (fg,c,r), diff, mask)) (fg,c,r), strm))
+
 
 fun nilbhatta(strm)
  iterate frame in strm {
@@ -860,28 +858,31 @@ fun unsquisher(strm) {
   }
 }
 
+*/ // END // OMIT DATA READING FOR NOW
+
 
 //====================================================================================================
 
-// Main stream script:
+/* // Main stream script: */
 
-input_imgs :: Stream Image;
-output_imgs :: Stream OutputBundle -> Stream ();
+/* /\* */
+/* input_imgs :: Stream Image; */
+/* output_imgs :: Stream OutputBundle -> Stream (); */
 
-input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames)
-output_imgs = if LIVE then my_display else dump_files;
+/* input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames) */
+/* output_imgs = if LIVE then my_display else dump_files; */
 
-real = 
-       output_imgs
-/*      $ unsquisher */
-/*      $ unsquisher */
-     //$ nilbhatta
-     $ bhatta
-/*      $ squisher */
-/*      $ squisher */
-     $ input_imgs;
+/* real =  */
+/*        output_imgs */
+/* /\*      $ unsquisher *\/ */
+/* /\*      $ unsquisher *\/ */
+/*      //$ nilbhatta */
+/*      $ bhatta */
+/* /\*      $ squisher *\/ */
+/* /\*      $ squisher *\/ */
+/*      $ input_imgs; */
 
-main = real
+/* main = real */
 
 
 // Sadly, without Chez we can't currently call C functions and read the image files in at profile time.
@@ -921,8 +922,12 @@ mats =
        fakeFrames
 
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
-  main = dump_matrix $ 
+main = 
+      Curry:smap(fun(_) ()) $ 
+      //dump_matrix $ 
       Curry:smap(printmat$"\n\n ** Restitched ") $
+      
+      //Curry:smap(inspect) $       
       pxkern $ 
       //kern $
       mats
