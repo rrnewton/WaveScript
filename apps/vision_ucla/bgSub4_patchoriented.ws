@@ -42,6 +42,7 @@ type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.  RGB interleaved.
 
 // These images look just like rowmajor matrices.
+//include "matrix-nested.ws"
 include "matrix-rowmajor.ws"
 
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
@@ -381,7 +382,7 @@ fun Matrix:blit_patch(dst, (mat, (x,y), _)) {
  *  This assumes the 'overlap' is the same in both dimensions, it
  *  could be different in x and y.
  */
-make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Int, Int) -> st) -> 
+make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Patch #a) -> st) -> 
                       Stream (Matrix #a) -> Stream (Matrix #b);
 fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
  fun (images)
@@ -390,7 +391,7 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
   using Matrix;
   patches = iterate mat in images {
     let (rows,cols) = mat.dims;
-    println("  Processing new image with dimensions: " ++ mat.dims);
+    //println("  Processing new image with dimensions: " ++ mat.dims);
     iwid = rows / iworkers;
     jwid = cols / jworkers;
     assert_eq("make_patch_kernel: evenly divides rows", rows, iwid * iworkers);
@@ -398,21 +399,15 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
 
     for i = 0 to iworkers-1 {
     for j = 0 to jworkers-1 {
-      println("  Cutting out patch "++i++" "++j);
-
+      //println("  Cutting out patch "++i++" "++j);
       desiredi = i*iwid - overlap;
       desiredj = j*jwid - overlap;           
       desiredsz1 = iwid + 2*overlap;
       desiredsz2 = jwid + 2*overlap;
-                        
       origi = if desiredi < 0 then { desiredsz1 -= 1; 0 } else desiredi; 
       origj = if desiredj < 0 then { desiredsz2 -= 1; 0 } else desiredj;
-
       size1 = min(rows - origi, desiredsz1); 
       size2 = min(cols - origj, desiredsz2);
-      
-      println("    size1: "++ size1++ " size2: "++ size2);
-
       emit (i,j , cut_patch(mat, origi, origj, size1, size2));
     }}
   };
@@ -428,10 +423,13 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
     worker = iterate pat in filtered {
       //state { s = init_state(i,j) }
       state { s = Array:null }
-      // Moving the state initialization to runtime:
-      if s == Array:null then s := Array:make(1, init_state(i,j));
-
       let (mat, (_i,_j), origdims) = pat;
+      let (r,c) = mat.dims;
+      // Moving the state initialization to runtime:
+      // init_state is only passed the coordinates of the patch proper, NOT the extra halo around it.
+      if s == Array:null then s := Array:make(1, init_state(pat));
+      //if s == Array:null then s := Array:make(1, init_state());
+
       println("  Worker "++ (i,j) ++" processing patch... dims "++ mat.dims  ++" size "++ Array:length(Matrix:toArray(mat)));
       emit patch_transform(s[0], pat);
     };
@@ -481,10 +479,25 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
 // (Int, Int, a,  (b, c, (Int, Int) -> d) -> e,  (#f, #g) -> h) -> ();
 fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
  using Matrix;
- 
- fun patch_init_state(i,j) {
-   PIXINPATCH = 10; // ???????
-   Array:build(PIXINPATCH, fun(n) init_state(0,0))
+
+ // Takes the global coordinates of the patch.
+ fun patch_init_state(pat) {  // g_i, g_j, r,c
+   let (mat, (g_i,g_j), (sz1, sz2)) = pat;
+   println(" -=- Initializing patch, global coords "++(g_i,g_j));
+   //Array:build(r*c, fun(n) init_state(g_i,0, ))
+   // Build a matrix of state, one state entry per pixel:
+
+   base_size1 = sz1 / iworkers;
+   base_size2 = sz2 / jworkers;
+   expected_size1 = base_size1 + 2*overlap;
+   expected_size2 = base_size2 + 2*overlap;
+   offseti = overlap;
+   offsetj = overlap;
+   let (r,c) = mat.dims;
+   if expected_size1 != r && g_i == 0  then offseti -= expected_size1 - r; 
+   if expected_size2 != c && g_j == 0  then offsetj -= expected_size2 - c; 	 
+
+   Matrix:build(base_size1,base_size2, fun(i,j) init_state(g_i+i+offseti, g_j+j+offsetj));
  };
 
  fun patch_transform(st, (mat, (g_i,g_j), (sz1, sz2))) {
@@ -523,7 +536,7 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
 
      mat2 = 
        build(base_size1, base_size2, fun(i,j) {
-         ind = i * base_size2 + j;
+         //ind = i * base_size2 + j;
 
 	 _i = i + offseti; 
 	 _j = j + offsetj;
@@ -537,7 +550,7 @@ fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_tr
 	 //if r == expected_size1 && c == expected_size2
 	 //then pixel_transform(st[ind], px, neighborhood_access(_i,_j,))
 	 //else 
-	 pixel_transform(st[ind], px, neighborhood_access_reflected(_i,_j));
+	 pixel_transform(Matrix:get(st,i,j), px, neighborhood_access_reflected(_i,_j));
        });
 
      (mat2, (g_i + offseti, g_j + offsetj), (sz1,sz2))
@@ -876,7 +889,7 @@ fake = iterate (_, (fg,c,r), diff, mask) in  bhatta(fakeFrames) {
 //main = fake
 
 //kern :: Stream (Matrix a) -> Stream (Matrix b);
-kern = make_patch_kernel(2,2, 1, fun(st, pat) pat, fun(x,y) ())
+//kern = make_patch_kernel(2,2, 1, fun(st, pat) pat, fun(x,y,_,_) ())
 
 fun printmat(msg) fun(mat) {
              println(msg ++ " " ++ Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray));
@@ -902,7 +915,8 @@ pxkern = pixel_transform_with_neighborhood(2,2, 1,
      val
    },
    fun(i,j) {
-     Array:make(1,0);
+     println(" FORMING STATE "++ (i,j));
+     Array:make(1, i+j);
    });
 
 mats = 
