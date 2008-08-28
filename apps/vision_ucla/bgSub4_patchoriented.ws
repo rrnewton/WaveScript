@@ -24,8 +24,8 @@ TODO:
  */
 
 include "stdlib.ws"
-//include "opencv.ws"
-//include "r100/r100.ws"
+include "opencv.ws"
+include "r100/r100.ws"
 
 fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
 //fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
@@ -48,6 +48,8 @@ include "matrix-rowmajor.ws"
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 //type Image = Matrix Color; // With width/height (cols/rows)
 
+type RGB = (Color * Color * Color);
+
 // Application type defs:
 type Inexact = Double; // Float or Double
 
@@ -58,13 +60,14 @@ sqrt = sqrtD // Need type classes!
 DEBUG = true;
 
 include "helpers.ws"
+include "patches.ws"
 
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
 		"../processed/FeederStation_2007-06-26_14-00-03.000/bhatta_default/", // OutLoc
 		(396 :: Int), // BgStartFrame
 		(0  :: Int),  // StartFrame
-		2,//(20 :: Int),  // NumBgFrames
+		(20 :: Int),  // NumBgFrames
 		(100 :: Int), // NumFgFrames
 
 		(1   :: Int),    //BgStep
@@ -221,8 +224,133 @@ fun loop2D(rows,cols, fn) {
 fun matrix_foreachi(mat, rows,cols, fn) 
   loop2D(rows,cols, fun(r,c,i) fn(r,c,mat[i]))
 
+// This converts interleaved rgb values into tuples.
+// Under WSC2 it should be a noop, could take advantage of that as a performance hack.
+image_to_matrix :: Image -> Matrix RGB; 
+fun image_to_matrix((arr,wid,hgt)) {
+  using Matrix;
+  mat = create(hgt,wid, (0,0,0));
+  wid3 = wid*3;
+  // We are keeping it in "row-major" form, so x--j & y--i
+  
+  Matrix:build(hgt,wid, fun(i,j) {
+          ind = i*wid3 + 3*j;
+	  (arr[ind+2], arr[ind+1], arr[ind])
+        });
+ /*for i = 0 to hgt-1 {
+    offset = i*wid3;
+    j = 0;
+    while j < wid {      
+      ind = offset + 3*j;
+      set(mat,i,j, (arr[ind+2], arr[ind+1], arr[ind]));
+      j += 3;
+    };    
+    };
+  mat  
+*/
+}
+
+matrix_to_image :: Matrix RGB -> Image;
+fun matrix_to_image(mat) {
+  using Matrix;
+  let (r,c) = mat.dims;
+  //arr = Array:makeUNSAFE(3*r*c);
+  arr = Array:make(3*r*c, 0);
+  ind = 0;
+  Matrix:foreachi(fun(i,j,(r,g,b)) {
+    ind = (i*c + j) * 3;
+    //if (r,g,b) == (0,0,0)  then print("?");
+    arr[ind+2] := r;
+    arr[ind+1] := g;
+    arr[ind]   := b;
+  }, mat);
+  (arr,c,r)
+}
+
 
 //====================================================================================================
+// Here's the new, pixel-level data parallel version.
+
+// In its first incarnation it will not be able to take advantage of incremental computation of histograms.
+
+
+populatePixHist :: (PixelHist, Int, (Int, Int) -> RGB) -> ();
+fun populatePixHist(hist, sampleWeight, nbrhood) {
+  //Array3D:fill(hist, 0);
+  for i = 0-halfPatch to halfPatch-1 {
+    for j = 0-halfPatch to halfPatch-1 {
+      let (r,g,b) = nbrhood(i,j);
+      hist_update(r,g,b, hist, (+ sampleWeight));
+    }
+  }
+}
+
+// Compare a pixels surrounds to its historical surroundings and compute a diff and a mask.
+
+estimateFgPix :: (PixelHist, PixelHist, (Int, Int) -> RGB) -> (Uint8 * Uint8);
+fun estimateFgPix(tempHist, bgHist, nbrhood) {
+  // Compute a histogram for the current frame.
+  populatePixHist(tempHist, sampleWeight2, nbrhood);
+  // compare histograms
+  diff = Array3D:fold2(tempHist, bgHist, 0,
+  	               fun(acc,px,bg) acc + sqrt(Inexact! (px * bg) * inv_nPixels));
+  // renormalize diff so that 255 = very diff, 0 = same
+  diffImage = Uint8! (255 - Int! (diff * 255)); // create result image
+  mask = if diffImage > Threshold then 255 else 0; // Inefficient...
+  (diffImage, mask)
+}
+
+// Actually, workers is this squared:
+bhattaWorkers = 1;
+
+// This will create a stream of mask images.
+bhattaPixKern :: Stream (Matrix RGB) -> Stream (Matrix (Color * Color));
+bhattaPixKern = {
+ fun box(v) Array:make(1,v);
+ fun unbox(b) b[0];
+ fun set(b,x) b[0] := x;
+ pixel_transform_with_neighborhood_and_patch_hooks(bhattaWorkers,bhattaWorkers, halfPatch,
+   // This is the work function at each pixel.
+   fun(patch_state, bghist,px,nbrhood) {
+     let (bgEstimateMode, _, _, _, tempHist) = patch_state;
+     if bgEstimateMode.unbox
+     then {
+       populatePixHist(bghist, sampleWeight1, nbrhood);
+       (128,0) // This is not nice.
+     } else {
+       estimateFgPix(tempHist, bghist, nbrhood); // (diff,mask)
+     }
+   },
+   // This initializes the per-pixel state:
+   fun(i,j) Array3D:make(NumBins1, NumBins2, NumBins3, 0),
+   // This is a hook that fires at the per-worker rather than pixel granularity:
+   fun((bgEstimateMode, FrameIndex, bgStaleCounter, stopFrame, tempHist),_) {     
+     println("Got patch, here's params "++(bgEstimateMode, FrameIndex, bgStaleCounter, stopFrame) ++ " " ++realtime());
+     if bgEstimateMode.unbox then {
+       FrameIndex.set(FrameIndex.unbox + 1);
+       if FrameIndex.unbox == stopFrame.unbox then {
+	 bgEstimateMode.set(false);
+	 FrameIndex.set(FgStartFrame);
+	 println("\nFinished background model, extracting foreground.\n");
+	 stopFrame.set(FgStartFrame + NumFgFrames * FgStep);
+       }; 
+     } else {
+       FrameIndex.set(FrameIndex.unbox + FgStep);
+     }
+   },
+   // Initialize state stored at the per-worker rather than per-pixel level:
+   fun(_) {
+     bgEstimateMode = true; 
+     FrameIndex = BgStartFrame;
+     bgStaleCounter = 0;
+     stopFrame = BgStartFrame + NumBgFrames * BgStep;
+     tempHist = Array3D:make(NumBins1, NumBins2, NumBins3, 0);
+     (bgEstimateMode.box, FrameIndex.box, bgStaleCounter.box, stopFrame.box, tempHist)
+   })
+}
+
+//====================================================================================================
+
 
 // Builds background model histograms for each pixel.  
 // Additions to the histograms are scaled according the assumption that 
@@ -345,347 +473,10 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
   }
 
 //====================================================================================================
-//   Functions for decomposing images into streams of patches.
-//====================================================================================================
-
-// A patch is a piece of a matrix together with metadata to tell us where it came from.
-// A patch includes:
-//  (1) a matrix slice
-//  (2) patch origin on original matrix
-//  (3) original image dimensions
-type Patch t = (Matrix t * (Int * Int) * (Int * Int));
-
-//stream_patches :: Stream Image -> Stream Patch;
-
-//regroup_images :: Stream Patch -> Stream Image;
-
-// Cut out a piece of an image.
-cut_patch :: (Matrix t, Int, Int, Int, Int) -> Patch t;
-fun cut_patch(mat, x,y, wid, hght) {
-  (Matrix:submatrix(mat,x,y,wid,hght), (x,y), Matrix:dims(mat));
-}
-
-// Would be nice to block-copy:
-fun Matrix:blit_patch(dst, (mat, (x,y), _)) {
-  Matrix:foreachi(fun(i,j,val) {
-    Matrix:set(dst, i+x, j+y, val);
-  }, mat);
-}
-
-/* 
- *  This function creates X*Y workers, each of which handles a region
- *  of the input image.  The patch_transform is applied to each patch,
- *  and also may maintain state between invocation, so long as that
- *  state is encapsulated in one mutable value and passed as an
- *  argument to the transform.
- *
- *  This assumes the 'overlap' is the same in both dimensions, it
- *  could be different in x and y.
- */
-make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Patch #a) -> st) -> 
-                      Stream (Matrix #a) -> Stream (Matrix #b);
-fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
- fun (images)
- {
-  total = iworkers * jworkers;
-  using Matrix;
-  patches = iterate mat in images {
-    let (rows,cols) = mat.dims;
-    //println("  Processing new image with dimensions: " ++ mat.dims);
-    iwid = rows / iworkers;
-    jwid = cols / jworkers;
-    assert_eq("make_patch_kernel: evenly divides rows", rows, iwid * iworkers);
-    assert_eq("make_patch_kernel: evenly divides cols", cols, jwid * jworkers);
-
-    for i = 0 to iworkers-1 {
-    for j = 0 to jworkers-1 {
-      //println("  Cutting out patch "++i++" "++j);
-      desiredi = i*iwid - overlap;
-      desiredj = j*jwid - overlap;           
-      desiredsz1 = iwid + 2*overlap;
-      desiredsz2 = jwid + 2*overlap;
-      origi = if desiredi < 0 then { desiredsz1 -= 1; 0 } else desiredi; 
-      origj = if desiredj < 0 then { desiredsz2 -= 1; 0 } else desiredj;
-      size1 = min(rows - origi, desiredsz1); 
-      size2 = min(cols - origj, desiredsz2);
-      emit (i,j , cut_patch(mat, origi, origj, size1, size2));
-    }}
-  };
-  
-  // round robin patchstream to the workers
-  workerstreams = [];
-  for i = 0 to iworkers-1 {
-  for j = 0 to jworkers-1 {  
-    filtered = iterate (_i,_j,pat) in patches {
-      if i == _i && j == _j
-      then emit pat;
-    };
-    worker = iterate pat in filtered {
-      //state { s = init_state(i,j) }
-      state { s = Array:null }
-      let (mat, (_i,_j), origdims) = pat;
-      let (r,c) = mat.dims;
-      // Moving the state initialization to runtime:
-      // init_state is only passed the coordinates of the patch proper, NOT the extra halo around it.
-      if s == Array:null then s := Array:make(1, init_state(pat));
-      //if s == Array:null then s := Array:make(1, init_state());
-
-      println("  Worker "++ (i,j) ++" processing patch... dims "++ mat.dims  ++" size "++ Array:length(Matrix:toArray(mat)));
-      emit patch_transform(s[0], pat);
-    };
-    workerstreams := worker ::: workerstreams;
-  }};
-    
-  allworkers = List:fold1(merge, workerstreams);
-
-  // Now, this must take a stream of patches and stitch them together.
-  // We assume that each worker produces exactly one output patch.
-  // These output patches should not overlap.
-  assembled = iterate pat in allworkers {
-    state { assembly = create(0,0,0);
-            pieces   = 0	    
-          }
-    let (mat, (i,j), (sz1, sz2)) = pat;
-    if assembly.dims != (sz1,sz2) then assembly := create(sz1,sz2, 0);
-    
-    let (psz1, psz2) = mat.dims;
-    println("  Assembling: piece # "++ pieces ++" blitting patch at "++i++" "++j);
-    Matrix:blit_patch(assembly, pat);
-    pieces += 1;
-    if pieces == total then {
-      emit assembly; 
-      pieces := 0;
-      // ASSUMPTION: we don't bother clearing or reallocating assembly
-      // itself unless we have to. (Unless the img changes size).
-      // TEMP:
-      //Matrix:fill(assembly, 0);
-      // CURRENTLY REALLOCATING THIS EVERY TIME BECAUSE EMIT DOESN'T SAFELY COPY YET (e.g. under Scheme backend)
-      assembly := create(0,0,0); // assembly := create(sz1,sz2,0);
-    }
-  };
-  assembled
- }
-
-/* This function builds on top of the make_patch_kernel interface,
- * allowing us to focus on the per-pixel tranfsorm, with the
- * additional privilege of being able to query the neighborhood around
- * the pixel.
- * 
- * Currently this uses the REFLECT policy for all out-of-bounds
- * accesses.  It could however, use different policies, such as a
- * TORUS, or filling in a CONSTANT for the out-of-bounds regions.
- */
-//make_patch_kernel :: (Int, Int, Int, ((st, Patch #a) -> Patch #b), (Int, Int) -> st) -> Stream (Matrix #a) -> Stream (Matrix #b);
-// (Int, Int, a,  (b, c, (Int, Int) -> d) -> e,  (#f, #g) -> h) -> ();
-fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
- using Matrix;
-
- // Takes the global coordinates of the patch.
- fun patch_init_state(pat) {  // g_i, g_j, r,c
-   let (mat, (g_i,g_j), (sz1, sz2)) = pat;
-   println(" -=- Initializing patch, global coords "++(g_i,g_j));
-   //Array:build(r*c, fun(n) init_state(g_i,0, ))
-   // Build a matrix of state, one state entry per pixel:
-
-   base_size1 = sz1 / iworkers;
-   base_size2 = sz2 / jworkers;
-   expected_size1 = base_size1 + 2*overlap;
-   expected_size2 = base_size2 + 2*overlap;
-   offseti = overlap;
-   offsetj = overlap;
-   let (r,c) = mat.dims;
-   if expected_size1 != r && g_i == 0  then offseti -= expected_size1 - r; 
-   if expected_size2 != c && g_j == 0  then offsetj -= expected_size2 - c; 	 
-
-   Matrix:build(base_size1,base_size2, fun(i,j) init_state(g_i+i+offseti, g_j+j+offsetj));
- };
-
- fun patch_transform(st, (mat, (g_i,g_j), (sz1, sz2))) {
-     // The size expected if we don't have some cropped off (because of borders):
-     base_size1 = sz1 / iworkers;
-     base_size2 = sz2 / jworkers;
-
-     expected_size1 = base_size1 + 2*overlap;
-     expected_size2 = base_size2 + 2*overlap;
-
-     println(" --- Processing patch rooted at "++(g_i,g_j)++" with base size "++(base_size1, base_size2)++
-             " expected total size "++ (expected_size1, expected_size2)++ " and received "++mat.dims);
-
-     let (r,c) = mat.dims;
-    
-     fun neighborhood_access(i,j) fun (di, dj) get(mat, i+di, j+dj);    
-     fun neighborhood_access_reflected(centeri, centerj)
-     fun (di,dj) {
-       i = centeri + di;
-       j = centerj + dj;
-       i2 = if i < 0  then -1 - i else 
-            if i >= r then 2*r - i - 1 else i;
-       j2 = if j < 0  then -1 - j else 
-            if j >= c then 2*c - j - 1 else j;
-       //println("   Reflected access to pos "++(i,j) ++" bounds "++(r,c)++" reflected "++(i2,j2));
-       get(mat, i2, j2);
-     };
-     
-     offseti = overlap;
-     offsetj = overlap;
-
-     // Adjust our offset if the overlap goes out of bounds on the left/top
-     // ASSUMPTION! A tile cannot be off the left & right or top & bottom borders simultaneously!
-     if expected_size1 != r && g_i == 0  then offseti -= expected_size1 - r; 
-     if expected_size2 != c && g_j == 0  then offsetj -= expected_size2 - c; 	 
-
-     mat2 = 
-       build(base_size1, base_size2, fun(i,j) {
-         //ind = i * base_size2 + j;
-
-	 _i = i + offseti; 
-	 _j = j + offsetj;
-	 px  = get(mat, _i, _j);
-
-         //println("* Adjusted position, from "++(i+overlap,j+overlap)++" to "++ (_i,_j));
-
-	 // If this patch doesn't borders then we can blast away without bounds checks.
-	 // BUT, we should verify that this has a performance benefit.. no preemature optimization.
-
-	 //if r == expected_size1 && c == expected_size2
-	 //then pixel_transform(st[ind], px, neighborhood_access(_i,_j,))
-	 //else 
-	 pixel_transform(Matrix:get(st,i,j), px, neighborhood_access_reflected(_i,_j));
-       });
-
-     (mat2, (g_i + offseti, g_j + offsetj), (sz1,sz2))
-     //pixel_transform(st, px, neighborhood_access);
- };
-
- overlap = nbrhood_size;
- make_patch_kernel(iworkers, jworkers, overlap, patch_transform, patch_init_state);
-}
-
-//====================================================================================================
-//   Complete Bhatta function
-//====================================================================================================
-
-// The output package from the Bhattacharyya algorithm.  Contains a
-// frame index, a masked image, and separetly the diff image and the mask.
-type OutputBundle = (Int * Image * RawImage * RawImage);
-
-bhatta :: Stream Image -> Stream OutputBundle;
-fun bhatta(video) {
-  println("Bhattacharyya Differencing.");
-    
-  //SHELL("mkdir ");
-
-  using Array;
-  //bghist = Mutable:ref$ null; // Same error.
-
-  iterate (frame,cols,rows) in video {
-    state { 
-            bgEstimateMode = true; 
-            FrameIndex = BgStartFrame;
-            bgStaleCounter = 0;
-            stopFrame = BgStartFrame + NumBgFrames * BgStep;
-	    
-	    // Here is the main storage:
-            bghist    = null;
-
-	    // create temporary patch to store working histogram 
-	    temppatch = Array3D:null;
-	    mask      = null;  // Just one channel.
-	    diffImage = null;  // All three channels.
-          }
-
-    if bghist == null then {
-      println$ "Output location: "++OutLoc;
-      println$ "Settings: ";
-      println$ " # of bins:             "++ NumBins1 ++","++ NumBins2 ++","++ NumBins3;
-      println$ " Size of patch:         "++ SizePatch;
-      println$ " # of Bg Frames:        "++ NumBgFrames;
-      println$ " Threshold:             "++ Threshold;
-      println$ " Alpha:                 "++ Alpha;
-
-      println$ "Image rows/cols: "++ rows ++", "++ cols;
-      println$ "  Allocating global arrays...";
-      bghist := build(rows*cols, fun (_) Array3D:make(NumBins1, NumBins2, NumBins3, 0));
-      temppatch := Array3D:make(NumBins1, NumBins2, NumBins3, 0);
-
-      mask        := make(rows * cols, 0);
-      diffImage   := make(rows * cols * nChannels, 0);
-      //ImageBuffer := make(rows * cols * nChannels, 0);
-
-      println("Building background model...");      
-    };
-
-    if bgEstimateMode then {
-	  // Get input frame
-	  //InputStream->GetFrame(FrameIndex,ImageBuffer);
-	  // add frame to the background
-          st = clock();
-	  populateBg(temppatch, bghist, (frame,cols,rows));
-
-	  //println$ "MAX hist "++      Array:fold(fun(best, hist) Array3D:fold(hist, best, max), 0, bghist);
-
-	  en = clock();
-	  println$ "Computation time for populateBg(): " ++ (en - st);
-
-	  FrameIndex += 1;
-
-          if FrameIndex == stopFrame then {
-            bgEstimateMode := false;
-            FrameIndex := FgStartFrame;
-	    println("\nFinished background model, extracting foreground.\n");
-            stopFrame := FgStartFrame + NumFgFrames * FgStep;
-
-	    //println$ "SUM hist "++ Array:fold(fun(sum, hist) Array3D:fold(hist, sum, (+)), 0, bghist);
-	  };
-
-	  //emit (0, (frame,cols,rows), Array:null, Array:null);
-    } else { 
-
-      if (FrameIndex == FgStartFrame)  then 
-      //println$ "Calling estimate... ImageBuffer size "++ Array:length(ImageBuffer);
-        println$ "Calling estimate... frame size "++ Array:length(frame);
-
-      st = clock();
-      estimateFg(temppatch, bghist, (frame,cols,rows), diffImage, mask);
-      en = clock();
-      println$ "Computation time for estimateFg(): "++ en-st;    
-
-      println$ "SUM diffimage "++ Array:fold((+),0,diffImage);
-
-      // Not yet:
-      bgStaleCounter += 1;
-      if bgStaleCounter == BgStep then {
-	println$ "Updating bg";
-	updateBg(temppatch, bghist, (frame,cols,rows), 
-	         if useBgUpdateMask then mask else null);
-	bgStaleCounter := 0;
-      };
-
-      FrameIndex += FgStep;
-      
-      // This is a tad naughty... We destructively update frame by the mask:
-      for i = 0 to mask.length - 1 {         
-	  if mask[i] == 0 then {
-	    i3 = i*3;
-	    // Inefficient to do divisions! Hopefully gcc makes it a right shift.
-            frame[i3+0] := frame[i3+0] / 2;
-            frame[i3+1] := frame[i3+1] / 2;
-            frame[i3+2] := frame[i3+2] / 2;
-	  }
-      };
-
-      emit (FrameIndex - FgStep, (frame,cols,rows), diffImage, mask);
-    };
-  }
-}
-
-//====================================================================================================
 //   Main Stream Program
 //====================================================================================================
 
 // This is all the nonsense about loading files and scaling images.
-
-/* // OMIT DATA READING FOR NOW
 
 // This is an ugly separation right now.  The frame index stream
 // drives the reading of files, but the Bhatta kernel below must stay
@@ -773,13 +564,6 @@ fun my_display(strm)
      display_to_screen(smap(fun((_, (fg,c,r), diff, mask)) (fg,c,r), strm))
 
 
-fun nilbhatta(strm)
- iterate frame in strm {
-  state { cnt = 0 }
-  emit (cnt, frame, Array:null, Array:null);
-  cnt += 1;
- }
-
 // Half both dimensions:
 // Throw out 3 pixels out of each square of 4.
 fun squisher(strm) 
@@ -844,52 +628,33 @@ fun unsquisher(strm) {
   }
 }
 
-*/ // END // OMIT DATA READING FOR NOW
 
 
 //====================================================================================================
 
-/* // Main stream script: */
+type OutputBundle = (Int * Image * RawImage * RawImage);
 
-/* /\* */
-/* input_imgs :: Stream Image; */
-/* output_imgs :: Stream OutputBundle -> Stream (); */
+// Main stream script:
 
-/* input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames) */
-/* output_imgs = if LIVE then my_display else dump_files; */
+input_imgs :: Stream Image;
+output_imgs :: Stream OutputBundle -> Stream ();
 
-/* real =  */
-/*        output_imgs */
-/* /\*      $ unsquisher *\/ */
-/* /\*      $ unsquisher *\/ */
-/*      //$ nilbhatta */
-/*      $ bhatta */
-/* /\*      $ squisher *\/ */
-/* /\*      $ squisher *\/ */
-/*      $ input_imgs; */
-
-/* main = real */
+input_imgs  = if LIVE then front_camera else smap(ws_readImage, filenames)
+output_imgs = if LIVE then my_display else dump_files;
 
 
 // Sadly, without Chez we can't currently call C functions and read the image files in at profile time.
 fakeFrames = iterate _ in timer$3 {
   using Array;
   //let (cols,rows) = (320, 240);
-  let (cols,rows) = (2, 6);
+  let (cols,rows) = (32, 24);
+  //let (cols,rows) = (2, 6);
 
-  arr = build(rows * cols * 3, fun(i) Color! 1);
+  arr = build(rows * cols * 3, fun(i) (1::Color));
   emit (arr, cols, rows);
 }
 
-fake = iterate (_, (fg,c,r), diff, mask) in  bhatta(fakeFrames) {
-  emit ();
-}
-
-//main = IFPROFILE(fake, real)
-//main = fake
-
-//kern :: Stream (Matrix a) -> Stream (Matrix b);
-//kern = make_patch_kernel(2,2, 1, fun(st, pat) pat, fun(x,y,_,_) ())
+/*
 
 fun printmat(msg) fun(mat) {
              println(msg ++ " " ++ Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray));
@@ -924,19 +689,33 @@ mats =
        Curry:smap(fun((arr,c,r)) Matrix:fromArray(arr,r)) $
        fakeFrames
 
+*/
+
+
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
+diffsAndMasks = 
+   bhattaPixKern $
+   Curry:smap(image_to_matrix) $
+   input_imgs
+
+
+
 main = 
-      Curry:smap(fun(_) ()) $ 
+      simple_dump $ 
+      Curry:smap(matrix_to_image) $
+      Curry:smap(fun(m) Matrix:map(fun((x,y)) (x,y,0), m)) $
+      diffsAndMasks
+
+      //Curry:smap(fun(_) ()) $ 
       //dump_matrix $ 
-      Curry:smap(printmat$"\n\n ** Restitched ") $
+      //Curry:smap(printmat$"\n\n ** Restitched ") $
+      
+
+
       
       //Curry:smap(inspect) $       
-      pxkern $ 
+      //pxkern $ 
       //kern $
-      mats
+      //mats
 
-
-
-/*   Curry:smap(fun(mat) { */
-/*                Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray);  */
-/*              }) $  */
+      //fakeFrames

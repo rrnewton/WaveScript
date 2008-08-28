@@ -17,13 +17,14 @@ type Matrix t = (int * int * Array t);
 // [2007.03.19] rrn: I'm going to clean things up gradually and move them into this namespace:
 namespace Matrix {
 
-
 // Interface:
 create :: (Int, Int, t) -> Matrix t;
 get    :: (Matrix t, Int, Int) -> t;
 set    :: (Matrix t, Int, Int, t) -> ();
 dims   ::  Matrix t               -> (Int * Int);
 //copy   ::  Matrix t -> Matrix t;
+
+ null = (0,0,Array:null);
 
  // For the native WS implementation, comparison is just builtin equality.
  eq = (==);

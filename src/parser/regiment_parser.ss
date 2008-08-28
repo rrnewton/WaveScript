@@ -181,19 +181,28 @@
    
    ))
 
+;; For reading nested comments:
 (define (read-balanced startstr endstr port balance)
   (define start (string->list startstr))
   (define end (string->list endstr))
   (define len (length start))
+  (define (get-char)
+    (let ([c (read-char port)])
+      (if (eof-object? c)
+	  (error 'read-balanced "hit end of file while searching for closing: ~s" endstr)
+	  c)))
   (unless (= len (length end))
     (error read-balanced "start and end must be the same length"))
   (unless (zero? balance)
+    ;; This is inefficient, all string processing done on lists.  We
+    ;; scan across maintaining a window of characters in which we
+    ;; search for the start or end strings.
     (let loop ([peek (let ([ls '()])
                        (do ([i 0 (add1 i)])
                          ((= i len) (reverse ls))
-                         (set! ls (cons (read-char port) ls))))]
+                         (set! ls (cons (get-char) ls))))]
                [balance balance])
-      (define (scroll) (reverse (cons (read-char port)
+      (define (scroll) (reverse (cons (get-char)
                                       (reverse (cdr peek)))))
       ;(printf "PEEK: ~s  start/end ~s ~s\n" peek startstr endstr)
       (cond

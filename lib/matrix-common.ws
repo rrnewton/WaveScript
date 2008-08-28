@@ -50,6 +50,12 @@ namespace Matrix {
    map_inplace(fun(_) val, mat);
    ()   
  }
+
+ fun fold(fn, zer, mat) {
+   acc = zer;
+   Matrix:foreachi(fun(_,_,x) acc := fn(acc,x), mat);
+   acc
+ }
       
  //========================================
 

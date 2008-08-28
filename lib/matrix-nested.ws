@@ -28,6 +28,8 @@ set    :: (Matrix t, Int, Int, t) -> ();
 dims   ::  Matrix t               -> (Int * Int);
 //copy   ::  Matrix t -> Matrix t;
 
+ null = Array:null;
+
  // For the native WS implementation, comparison is just builtin equality.
  eq = (==);
 
