@@ -948,9 +948,10 @@
 (define (valid-foreign-type! ty)
   (unless
       (match ty
-	[(Array ,[ty]) ty]	
+	[(Array ,[ty]) ty]
 	[,num (guard (scalar-type? num)) #t]
 	[#() #t]
+	[(Pointer ,ty) #t]
 	[,_ #f])
     (error 'emitC2:foreign "type not currently supported for foreign functions: ~s" ty)))
 
