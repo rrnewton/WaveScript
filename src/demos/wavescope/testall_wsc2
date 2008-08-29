@@ -127,6 +127,9 @@ go "demo9f_foreign_source.ws"
 # First we run it in normal, non-split mode:
 # go "demo9i_marshal.ws"
 go "demo9i_simple_split.ws" 
+
+echo "testall_wsc2: Running SPLIT test on demo9i"
+echo "============================================================"
 # Then we split it:
 if ! wsc2 $OPTIONS demo9i_simple_split.ws -split -exit-error
 then echo wsc2 Returned error code!; exit 1;  fi

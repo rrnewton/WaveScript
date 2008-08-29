@@ -1920,12 +1920,13 @@ int main(int argc, char **argv)
 
 ;================================================================================
 
+;; Assemble the pieces into output files:
 ;; This has a quirky return type.  Ugly abstraction boundaries.
 ;; Inputs STRINGS.
 ;; Returns a vector of two elements:
 ;;   (1) Association list of file-name, file-contents to write, datatype "text"
 ;;   (2) Thunk to execute after files are written.
-(__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+(define (BuildOutputFiles_helper self includes freefundefs state ops init driver)
   (define text
     (apply string-append 
          (insert-between "\n"
@@ -1939,6 +1940,8 @@ int main(int argc, char **argv)
   ;; Return an alist of files:
   (vector (list (list (emitC2-output-target) text))
 	  void))
+(__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+	(BuildOutputFiles_helper self includes freefundefs state ops init driver))
 
 (define emitC2-output-target (make-parameter "query.c"))
 
@@ -2184,7 +2187,7 @@ int main(int argc, char **argv)
 					    (lines-text (syngen "ptr"))
 					    " break;\n"))
 				    (slot-ref self 'zct-types))
-			      "default: printf(\"tag %d, \", tag); wserror_fun(\"invalid tag for ZCT entry\");\n"
+			      "default: printf(\"tag %d, \", tag); wserror_wsc2(\"invalid tag for ZCT entry\");\n"
 			 ))))))
        ))))
 
@@ -2207,26 +2210,43 @@ int main(int argc, char **argv)
 
 ;; DUPLICATED CODE:
 ;; This is here just to so we can slip in the global state bindings for the ZCT.
-(__specreplace BuildOutputFiles <emitC2-zct> (self includes freefundefs state ops init driver)
-  (define text
-    (apply string-append 
-         (insert-between "\n"
-           (list includes 
-                 (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
-                 (text->string (lines-text freefundefs))
-                 state
-		 "typetag_t zct_tags[ZCT_SIZE];"
-		 "void*     zct_ptrs[ZCT_SIZE];"
-		 "int       zct_count;"
-		 "int       iterate_depth = 0;\n"
-		 "#ifdef WS_THREADED"
-		 "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;"
-		 "#endif"
-                 ops 
-                 init driver))))
-  ;; Return an alist of files:
-  (vector (list (list "query.c" text))
-	  void))
+
+;; FIXME: Change the interface to BuildOutputFiles so that this can be done away with:
+(define __BuildOutputFiles
+  (specialise! BuildOutputFiles <emitC2-zct>
+    (lambda (next self includes freefundefs state ops init driver)
+      (BuildOutputFiles_helper self includes freefundefs 
+			       (text->string 
+				(list state
+				     "typetag_t zct_tags[ZCT_SIZE];\n"
+				     "void*     zct_ptrs[ZCT_SIZE];\n"
+				     "int       zct_count;\n"
+				     "int       iterate_depth = 0;\n\n"
+				     "#ifdef WS_THREADED\n"
+				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"
+				     "#endif\n"))
+			       ops init driver)
+#;
+      (define text
+	(apply string-append 
+	       (insert-between "\n"
+			       (list includes 
+				     (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
+				     (text->string (lines-text freefundefs))
+				     state
+				     "typetag_t zct_tags[ZCT_SIZE];"
+				     "void*     zct_ptrs[ZCT_SIZE];"
+				     "int       zct_count;"
+				     "int       iterate_depth = 0;\n"
+				     "#ifdef WS_THREADED"
+				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;"
+				     "#endif"
+				     ops 
+				     init driver))))
+#;
+      ;; Return an alist of files:
+      (vector (list (list (emitC2-output-target) text))
+	      void))))
 
 
 ;;================================================================================
