@@ -15,7 +15,26 @@ include "unix.ws"
 cv_files = ["opencv_wrappers.c", "libcv.so", "libcvaux.so", "libcxcore.so", "libhighgui.so"];
 
 //ws_readImage :: String -> Array Uint8 = foreign("ws_readImage", cv_files);
+// Experimented with the unkosher practice of returning tuples (structs by value) from C:
+// It works, but it breaks portability.
+//ws_readImage :: String -> (Array Uint8 * Int * Int) = foreign("ws_readImage", cv_files);
+
 ws_readImage :: String -> (Array Uint8 * Int * Int) = foreign("ws_readImage", cv_files);
+ws_readImage = {
+  part1 :: (String, Array Int) -> Pointer "IplImage*" = foreign("ws_readImage_load", cv_files);
+  part2 :: (Pointer "IplImage*", Array Uint8) -> ()    = foreign("ws_readImage_fill", cv_files);
+  fun (str) {
+    // Dimensions consist of rows, cols, channels
+    dims = Array:make(3,0);
+    ptr = part1(str, dims);
+    size = dims[0] * dims[1] * dims[2];
+    img :: Array Uint8 = Array:makeUNSAFE(size);
+    // Now we copy the image into WS-managed storage and free the openCV allocated storage.
+    part2(ptr, img);
+    (img, dims[1], dims[0])
+  }
+}
+
 
 ws_writeImage :: (String, Array Uint8, Int, Int, Int) -> Bool = foreign("ws_writeImage", cv_files);
 

@@ -437,7 +437,8 @@
 			   "val oPTLVL = "(number->string (ws-optimization-level))"\n\n"
 			   
                            complex1 complex2 
-		           header1 header5 header2  header3a header3b header4  "\n" 
+			   ;; [2008.08.29] Moving foreign to after prims.
+		           header1 header2 header5   header3a header3b header4  "\n" 
 			   
 			   "datatype Ignored = Ignored of int\n"
 			   ;(map TypeDecl user-type-decls*)
@@ -605,6 +606,7 @@
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
      [(string? datum) (print-mlton-string datum)]
+     [(double? datum)  (format-float (double-val datum))]
      [(flonum? datum)  (format-float datum)]
      [(cflonum? datum) (format "{real=~a, imag=~a }" 
 			       (real-part datum)
@@ -1136,6 +1138,8 @@
 		 [(Int)    (format "~a.~s" int-module op)]
 		 [(Int16)  (format "Int16.~s" op)]
 		 [(Int64)  (format "Int64.~s" op)]
+		 [(Uint16) (format "Word16.~s" op)]
+		 [(Uint8)  (format "Word8.~s" op)]
 		 [(Float)  (format "Real32.~s" op)]
 		 [(Double) (format "Real64.~s" op)]
 		 [else (error 'emit-mlton "unhandled type for comparison operator ~s: ~s" op ty)]
@@ -1363,6 +1367,10 @@
 
       [intToUint16     "Word16.fromInt" ]
       [intToUint8      "Word8.fromInt" ]
+
+      [uint16ToDouble ,(compose "Real64.fromInt" "Word16.toInt")]
+
+      [uint8ToDouble ,(compose "Real64.fromInt" "Word8.toInt")]
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt     "Real32.toInt IEEEReal.TO_ZERO"]

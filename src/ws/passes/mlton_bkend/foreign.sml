@@ -23,3 +23,17 @@ val init_ensbox = _import "init_ensbox" : unit -> unit;
 (* This is the entrypoint for binary data from the ensbox hardware. *)
 val ensbox_entry = _export "wsmlton_entry" : (MLton.Pointer.t * int -> unit) -> unit;
 (*val _ = entry (fn (p,n) => ())*)
+
+
+(********************************************************************************)
+(* These are functions exposed to C *)
+
+val _ = (_export "WSARRAYALLOC_CHAR"   : (int -> char   array) -> unit;) (fn len => Array.array(len,#"_"))
+val _ = (_export "WSARRAYALLOC_INT"    : (int -> int    array) -> unit;) (fn len => Array.array(len,0))
+val _ = (_export "WSARRAYALLOC_FLOAT"  : (int -> Real32.real array) -> unit;) (fn len => Array.array(len,Real32.fromInt 0))
+val _ = (_export "WSARRAYALLOC_DOUBLE" : (int -> Real64.real array) -> unit;) (fn len => Array.array(len,Real64.fromInt 0))
+
+(* Export this under the name "wserror_fun"... this should just be
+   plain "wserror".  Or at least something more descriptive like
+   wserror_builtin. *)
+val _ = (_export "wserror_fun" : (string -> unit) -> unit;) wserror

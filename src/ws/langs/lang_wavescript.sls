@@ -59,7 +59,8 @@
 	 [(eqv? x unit-representation) "()"]
 	 [(uniontype? x) (format "~a(~a)" (deunique-name (uniontype-tag x)) 
 				 (loop (uniontype-val x)))]
-	 [(string? x) (string-append "\"" x "\"")]	 
+	 [(string? x) (string-append "\"" x "\"")]
+	 [(double? x) (number->string (double-val x))]
 	 [else (format "~a" x)]
 	 ))
       ))

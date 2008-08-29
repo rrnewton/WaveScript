@@ -6,6 +6,8 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 
+#include "ws.h"
+
 // Return type aping the structure of a WS tuple.
 struct ws_readImage_return {
   uint8_t* fld1;
@@ -15,39 +17,27 @@ struct ws_readImage_return {
 
 // returns a WS object -- an array of color values.
 //uint8_t* 
-void*
- ws_readImage(const char* filename) {
+IplImage* ws_readImage_load(const char* filename, int* dims) {
   IplImage* im;
-  //printf("Executing readimage %s\n", filename);
   im = cvvLoadImage(filename);
-  //printf("Read image %d\n", im);
-  	
-  //if (!im) wserror_fun(sprintf("opencv_wrapper ws_readImage failed to load file: %s", filename));
   if (!im) { 
     printf("Tried to load <%s>\n", filename);
     wserror_fun("opencv_wrapper ws_readImage failed to load file: ");
   }
+  dims[0] = im->height;
+  dims[1] = im->width;
+  dims[2] = im->nChannels;
+  return im; 	
+}
 
-  int rows = im->height;
-  int cols = im->width;
-  int nChannels = im->nChannels;
-  	
-  //printf("   Height/width/channels: %d %d %d\n", rows, cols, nChannels);
-
-  unsigned char* wsimg = WSARRAYALLOC(im->imageSize, uint8_t);
+void ws_readImage_fill(IplImage* im, char* wsimg)
+{
   memcpy(wsimg, im->imageData, im->imageSize);
   cvReleaseImage(&im);
-
-  //printf("   Copied to WS and released...\n");
-  
-  //return wsimg;
-  //struct ws_readImage_return tuple = {wsimg, cols, rows};
-  struct ws_readImage_return* tuple = malloc(sizeof(struct ws_readImage_return));
-  tuple->fld1 = wsimg;
-  tuple->fld2 = cols;
-  tuple->fld3 = rows;
-  return tuple;
 }
+
+//  part1 :: (String, Array Int) -> Pointer "IplImage*" = foreign("ws_readImage_load", cv_files);
+//  part2 :: (Pointer "IplImage*", Array Char) -> ()    = foreign("ws_readImage_fill", cv_files);
 
 
 ws_bool_t ws_writeImage(const char* filename, uint8_t* img, int width, int height, int nChannels) {

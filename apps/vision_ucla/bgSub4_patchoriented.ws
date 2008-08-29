@@ -35,6 +35,9 @@ outfmt = "bmp"
 
 LIVE = false;
 
+// Maybe I should make this builtin?
+WSDEBUG = true
+
 //====================================================================================================
 /// Types and Constants:
 
@@ -301,176 +304,71 @@ fun estimateFgPix(tempHist, bgHist, nbrhood) {
 }
 
 // Actually, workers is this squared:
-bhattaWorkers = 1;
+bhattaWorkers = 2;
 
 // This will create a stream of mask images.
-bhattaPixKern :: Stream (Matrix RGB) -> Stream (Matrix (Color * Color));
+bhattaPixKern :: Stream (Bool * Matrix RGB) -> Stream (Matrix (Color * Color));
 bhattaPixKern = {
  fun box(v) Array:make(1,v);
  fun unbox(b) b[0];
  fun set(b,x) b[0] := x;
- pixel_transform_with_neighborhood_and_patch_hooks(bhattaWorkers,bhattaWorkers, halfPatch,
+ tagged_pixel_kernel_with_neighborhood(bhattaWorkers,bhattaWorkers, halfPatch,
    // This is the work function at each pixel.
-   fun(patch_state, bghist,px,nbrhood) {
-     let (bgEstimateMode, _, _, _, tempHist) = patch_state;
-     if bgEstimateMode.unbox
-     then {
+   fun(bgEstimateMode, bghist,px,nbrhood) {
+     // This alloc could be lifted:
+     tempHist = Array3D:make(NumBins1, NumBins2, NumBins3, 0);
+     if bgEstimateMode  then {
        populatePixHist(bghist, sampleWeight1, nbrhood);
-       (128,0) // This is not nice.
+       (128,0) // This is not nice, but we must output something.
      } else {
        estimateFgPix(tempHist, bghist, nbrhood); // (diff,mask)
      }
    },
    // This initializes the per-pixel state:
-   fun(i,j) Array3D:make(NumBins1, NumBins2, NumBins3, 0),
-   // This is a hook that fires at the per-worker rather than pixel granularity:
-   fun((bgEstimateMode, FrameIndex, bgStaleCounter, stopFrame, tempHist),_) {     
-     println("Got patch, here's params "++(bgEstimateMode, FrameIndex, bgStaleCounter, stopFrame) ++ " " ++realtime());
-     if bgEstimateMode.unbox then {
-       FrameIndex.set(FrameIndex.unbox + 1);
-       if FrameIndex.unbox == stopFrame.unbox then {
-	 bgEstimateMode.set(false);
-	 FrameIndex.set(FgStartFrame);
-	 println("\nFinished background model, extracting foreground.\n");
-	 stopFrame.set(FgStartFrame + NumFgFrames * FgStep);
-       }; 
-     } else {
-       FrameIndex.set(FrameIndex.unbox + FgStep);
-     }
-   },
-   // Initialize state stored at the per-worker rather than per-pixel level:
-   fun(_) {
-     bgEstimateMode = true; 
-     FrameIndex = BgStartFrame;
-     bgStaleCounter = 0;
-     stopFrame = BgStartFrame + NumBgFrames * BgStep;
-     tempHist = Array3D:make(NumBins1, NumBins2, NumBins3, 0);
-     (bgEstimateMode.box, FrameIndex.box, bgStaleCounter.box, stopFrame.box, tempHist)
-   })
+   fun(i,j) Array3D:make(NumBins1, NumBins2, NumBins3, 0))
 }
 
-//====================================================================================================
-
-
-// Builds background model histograms for each pixel.  
-// Additions to the histograms are scaled according the assumption that 
-// it will receive NumBgFrames # of images.
-populateBg :: (PixelHist, Array PixelHist, Image) -> ();
-fun populateBg(tempHist, bgHist, (image,cols,rows)) {
-  using Array; using Mutable;
-  assert_eq("Image must be the right size:",length(image), rows * cols * 3);
-
-  // Patches are centered around the pixel.  [p.x p.y]-[halfPatch halfPatch] gives the upperleft corner of the patch.				
-
-  // Histograms are for each pixel (patch).  First create a histogram of the left most pixel in a row.
-  // Then the next pixel's histogram in the row is calculated by:
-  //   1. removing pixels in the left most col of the previous patch from the histogram and 
-  //   2. adding pixels in the right most col of the current pixel's patch to the histogram	
-
-  // This makes a strong assumption about the order the matrix is traversed.
-  // It's not representation-independent in that sense.
-  matrix_foreachi(bgHist, rows,cols, 
-    fun(r,c, bgHist_rc) {
-      if c==0 then   initPatch(r,c, rows,cols, tempHist, image, sampleWeight1)
-      else         shift_patch(r,c, rows,cols, tempHist, image, sampleWeight1);
-      add_into3D(bgHist_rc, tempHist);   // copy temp histogram to left most patch
-    })
-}
-
-
-//====================================================================================================
-
-// Estimate foregound pixel from "image" and the background model. 
-// "diffImage" visualizes the difference as measured by the bhattacharyya distance between the current image's
-// pixel and the background model pixel.
-// "mask" is an image where white pixels represent the foreground and black pixels represents the background
-// according to Threshold
-
-estimateFg :: (PixelHist, Array PixelHist, Image, RawImage, RawImage) -> ();
-fun estimateFg(tempHist, bgHist, (image,cols,rows), diffImage, mask) {
-   using Array; using Mutable;
-   fill(mask, 0); // clear mask image
-
-   // as in the populateBg(), we compute the histogram by subtracting/adding cols	
-   loop2D(rows,cols,      fun(r,c, index) {
-      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight2)
-      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
-
-      // compare histograms
-      diff = Array3D:fold2(tempHist, bgHist[index], 0,  
-                           //fun(acc,px,bg) acc + sqrt(Inexact! px * Inexact! bg)
-			   fun(acc,px,bg) acc + sqrt(Inexact! (px * bg) * inv_nPixels)
-			   );
-      // renormalize diff so that 255 = very diff, 0 = same
-      diffImage[index] := Uint8! (255 - Int! (diff * 255)); // create result image
-      // Inefficient:
-      mask[index] := if diffImage[index] > Threshold then 255 else 0;         
-    })
-}
-
-//====================================================================================================
-
-
-// update background
-// Two types happen:
-// If a mask is not given, all pixels are updated.
-// If a mask is given, only pixels in the diffImage that have a lower value than 
-//    Threshold (are background) are updated.
-// 
-// degrade the background model by scaling each bin by 1-bSettings->Alpha
-// add new pixel values scaled so that the resulting background model will sum to 1.
-updateBg :: (PixelHist, Array PixelHist, Image, RawImage) -> ();
-fun updateBg(tempHist, bgHist, (image,cols,rows), mask) 
-  if Alpha == 0 then () else {
-    using Array; using Mutable;
-    if mask == null then println$ "Mask not given: updating everything";
-    Array3D:fill(tempHist, 0);
-	
-    // iterate through all pixel's histograms
-    // rescale the histogram only if there is a mask given
-    // Modifies bgHist:
-    for i = 0 to rows * cols - 1 {
-      // if no mask provided, update all pixels
-      // if mask is provided and the pixel in the mask indicates background, update
-      // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
-      if mask == null || mask[i] == 0 then {
-	sum :: Ref Inexact = ref$ 0;
-	Array3D:map_inplace(bgHist[i],
-          fun(bh) {
-	    sum += Inexact! bh;
-	    bh * (1 - Alpha);
-          });
-	// make sure histogram still sums up correctly.
-	//if sum - (1-Alpha) > (Inexact! 0.00001) // 10e-5
-	//then wserror$ "ERROR1: bgHist is not normalized properly: sum = " ++ sum;
-	()
-      }
+// This controls when we are in background profiling vs. background
+// subtraction mode.  It sends a flag downstream to the components
+// that do the actual work.
+fun tagWithMode(strm) {
+  iterate mat in strm {
+    state {
+            bgEstimateMode = true; 
+            FrameIndex = BgStartFrame;
+            bgStaleCounter = 0;
+            stopFrame = BgStartFrame + NumBgFrames * BgStep;
+          }
+    if FrameIndex == BgStartFrame then {
+      println$ "Output location: "++OutLoc;
+      println$ "Settings: ";
+      println$ " # of bins:             "++ NumBins1 ++","++ NumBins2 ++","++ NumBins3;
+      println$ " Size of patch:         "++ SizePatch;
+      println$ " # of Bg Frames:        "++ NumBgFrames;
+      println$ " Threshold:             "++ Threshold;
+      println$ " Alpha:                 "++ Alpha;
+      println$ "Image rows/cols: "++ Matrix:dims(mat);
+      println$ "  Allocating global arrays...";
+      println("Building background model...");      
     };
-
-    loop2D(rows,cols,      fun(r,c, index) {
-      if c==0 then  initPatch(r,0, rows,cols, tempHist, image, sampleWeight2)
-      else        shift_patch(r,c, rows,cols, tempHist, image, sampleWeight2);
-	// we compute each histogram regardless of the mask 
-	// under the assumption that the foreground is smaller than the background
-	// it seemed easier to do this than a hybrid histogram computation that skipped
-	// pixels.
-
-      // update if indicated to do so
-      // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
-      if mask == null || mask[index] == 0 then {
-	 sum = ref$ 0;
-	 using Array3D;
-	 iter( bgHist[index], fun(cb,cg,cr) {  // or map2_inplace3D
-	     set(bgHist[index], cb,cg,cr, (Alpha * get(tempHist,      cb,cg,cr)) +
-	     	                                   get(bgHist[index], cb,cg,cr));
-	    // Naughty!  This needn't use inexact.
-	    sum += Inexact! get(bgHist[index], cb,cg,cr);
-	 });
-	 if abs(sum - 1) > (Inexact! 0.00001)
-	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
-      }
-    })
+    if bgEstimateMode then {
+	  FrameIndex += 1;
+          if FrameIndex == stopFrame then {
+            bgEstimateMode := false;
+            FrameIndex := FgStartFrame;
+	    println("\nFinished background model, extracting foreground.\n");
+            stopFrame := FgStartFrame + NumFgFrames * FgStep;
+	  };
+    } else { 
+      if (FrameIndex == FgStartFrame)  then 
+        println$ "Calling estimate... frame size "++ Matrix:dims(mat);
+      FrameIndex += FgStep;
+    };
+     emit (bgEstimateMode, mat)
   }
+}
+
+
 
 //====================================================================================================
 //   Main Stream Program
@@ -654,51 +552,13 @@ fakeFrames = iterate _ in timer$3 {
   emit (arr, cols, rows);
 }
 
-/*
-
-fun printmat(msg) fun(mat) {
-             println(msg ++ " " ++ Array:fold(fun(acc,x) acc + Int64!x , (0::Int64), mat.Matrix:toArray));
-	     println("Mat "++mat);
-	     mat
-	   }
-
-//fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
-pxkern = pixel_transform_with_neighborhood(2,2, 1, 
-   fun(st,px,nbrhood) {
-     val = 
-     nbrhood(-1,-1) +
-     nbrhood(0,-1) +
-     nbrhood(-1,0) + 
-     nbrhood(-1,1) +
-     nbrhood(1,-1) +
-     nbrhood(0,0) +
-     nbrhood(0,1) +
-     nbrhood(1,0) + 
-     nbrhood(1,1) + 
-     10 * st[0];
-     st[0] += 1;
-     val
-   },
-   fun(i,j) {
-     println(" FORMING STATE "++ (i,j));
-     Array:make(1, i+j);
-   });
-
-mats = 
-       Curry:smap(printmat("Orig sum")) $
-       Curry:smap(fun((arr,c,r)) Matrix:fromArray(arr,r)) $
-       fakeFrames
-
-*/
-
 
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
 diffsAndMasks = 
    bhattaPixKern $
+   tagWithMode $ 
    Curry:smap(image_to_matrix) $
    input_imgs
-
-
 
 main = 
       simple_dump $ 
@@ -709,13 +569,11 @@ main =
       //Curry:smap(fun(_) ()) $ 
       //dump_matrix $ 
       //Curry:smap(printmat$"\n\n ** Restitched ") $
-      
-
-
-      
+           
       //Curry:smap(inspect) $       
       //pxkern $ 
       //kern $
       //mats
 
       //fakeFrames
+

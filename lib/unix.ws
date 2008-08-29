@@ -131,10 +131,11 @@ fun fileSink (filename, mode, strm) {
 }
 
 
+  // Unpacking name lists for directories:
   c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
   scandir_sorted :: (String, (Pointer "struct dirent ***")) -> Int = foreign("scandir_sorted", c_exts);
   ws_namelist_ptr :: () -> Pointer "struct dirent ***"           = foreign("ws_namelist_ptr", c_exts);
-  getname :: (Pointer "struct dirent ***", Int) -> String        = foreign("getname", c_exts);
+  getname :: (Pointer "struct dirent ***", Int) -> Array Char    = foreign("getname", c_exts);
   freenamelist :: (Pointer "struct dirent ***", Int) -> ()       = foreign("freenamelist", c_exts);
 
   // [2008.08.19] These conversions are basically the identity function, but we're doing casts through the FFI:
@@ -164,7 +165,7 @@ fun scandir(dir) {
   count = scandir_sorted(dir, files);
   // This ASSUMES that . and .. will be in the list, and will be sorted first.
   names = Array:build(count-2, fun(ind) {
-     getname(files, ind+2);
+     String:fromArray$ getname(files, ind+2);
    });
   freenamelist(files, count);
   // This is inefficient, we filter the array to remove "." and ".."
@@ -189,7 +190,7 @@ fun scandir_stream(dir, ticks) {
       freenamelist(files, count);
     };
     if index < count then {
-      name = getname(files, index);
+      name = String:fromArray$ getname(files, index);
       index += 1;
       // We prune out "." and "..".
       if not(name == "." || name == "..")

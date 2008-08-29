@@ -9,6 +9,10 @@
 #ifndef WSHEADER
 #define WSHEADER
 
+//################################################################################//
+//                 Common Type Defs to wsc2 and wsmlton                           //
+//################################################################################//
+
 //#define ws_unit_t char
 //#define ws_char_t char
 //#define ws_bool_t char
@@ -29,10 +33,11 @@ typedef unsigned short int uint16_t;
 #define ws_string_t ws_char_t*
 
 
+//################################################################################//
+//                 Matters of memory layout and GC (wsc2)                         //
+//################################################################################//
 
-//################################################################################//
-//                 Matters of memory layout and GC                                //
-//################################################################################//
+#ifdef WSC2
 
 //typedef unsigned int refcount_t;
 // 64 bit is giving me annoying alignment problems.  Let's make this a whole word:
@@ -247,9 +252,6 @@ void ws_alloc_stats() {
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
 #define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))
 
-#define WSARRAYSET(arr,i,v)  arr[i] = v
-#define WSARRAYGET(arr,i)    arr[i]
-
 inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
@@ -258,5 +260,29 @@ inline void* ws_array_alloc(int len, int eltsize) {
 #endif
   return ptr;
 }
+
+// I can't see any portable way but to expose macros for each scalar type.
+// TODO: FINISH THIS LIST:
+#define WSARRAYALLOC_CHAR(len)   WSARRAYALLOC(len, ws_char_t)
+#define WSARRAYALLOC_INT(len)    WSARRAYALLOC(len, int)
+#define WSARRAYALLOC_FLOAT(len)  WSARRAYALLOC(len, float)
+#define WSARRAYALLOC_DOUBLE(len) WSARRAYALLOC(len, double)
+
+
+#define WSARRAYSET(arr,i,v)  arr[i] = v
+#define WSARRAYGET(arr,i)    arr[i]
+
+
+#endif // End WSC2 
+
+//################################################################################//
+
+#ifdef WSMLTON
+
+// Note, MLton's foreign.sml defines all of the WSARRAYALLOC_* entrypoints above.
+
+#endif // End WSMLTON 
+
+//################################################################################//
 
 #endif

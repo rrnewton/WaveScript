@@ -174,7 +174,7 @@ wsparse_zo:
 # (main_r6rs) (main)
 # Ack this takes 43 minutes... I remember it taking 5 minutes before to load from source.
 larc:
-	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main))  (dump-interactive-heap "larc.heap")' | larceny -err5rs -stopcopy -path .
+	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main))  (dump-interactive-heap "./build/'$(MT)'/larc.heap")' | larceny -err5rs -stopcopy -path .
 
 # This also takes 43 minutes.
 larc2:
@@ -198,7 +198,7 @@ runlarc:
 
 
 cs:
-	larceny -r6rs -path . -program compile-stale.ss
+	larceny -r6rs -path . -program scrap/compile-stale.ss
 
 # Disable ALL larc opts
 # (include-procedure-names #f) (include-variable-names #f) 

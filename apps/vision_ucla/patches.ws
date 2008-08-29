@@ -39,20 +39,23 @@ fun Matrix:blit_patch(dst, (mat, (x,y), _)) {
  *  This assumes the 'overlap' is the same in both dimensions, it
  *  could be different in x and y.
  */
-make_patch_kernel :: (Int, Int, Int, ((st, Patch a) -> Patch b), (Patch a) -> st) -> 
-                      Stream (Matrix a) -> Stream (Matrix b);
-fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
+tagged_patch_kernel :: (Int, Int, Int, ((tag, st, Patch a) -> Patch b),
+                                            (Patch a) -> st) -> 
+                            Stream (tag * Matrix a) -> Stream (Matrix b);
+fun tagged_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state) {
+ if iworkers < 2 || jworkers < 2 
+ then wserror("tagged_patch_kernel: cannot currently handle <2 worker in either dimension");
  fun (images)
  {
   total = iworkers * jworkers;
   using Matrix;
-  patches = iterate mat in images {
+  patches = iterate (tag,mat) in images {
     let (rows,cols) = mat.dims;
     //println("  Processing new image with dimensions: " ++ mat.dims);
     iwid = rows / iworkers;
     jwid = cols / jworkers;
-    assert_eq("make_patch_kernel: evenly divides rows", rows, iwid * iworkers);
-    assert_eq("make_patch_kernel: evenly divides cols", cols, jwid * jworkers);
+    assert_eq("tagged_patch_kernel: evenly divides rows", rows, iwid * iworkers);
+    assert_eq("tagged_patch_kernel: evenly divides cols", cols, jwid * jworkers);
 
     for i = 0 to iworkers-1 {
     for j = 0 to jworkers-1 {
@@ -65,7 +68,7 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
       origj = if desiredj < 0 then { desiredsz2 -= 1; 0 } else desiredj;
       size1 = min(rows - origi, desiredsz1); 
       size2 = min(cols - origj, desiredsz2);
-      emit (i,j , cut_patch(mat, origi, origj, size1, size2));
+      emit (tag, i,j , cut_patch(mat, origi, origj, size1, size2));
     }}
   };
   
@@ -73,11 +76,11 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
   workerstreams = [];
   for i = 0 to iworkers-1 {
   for j = 0 to jworkers-1 {  
-    filtered = iterate (_i,_j,pat) in patches {
+    filtered = iterate (tag,_i,_j,pat) in patches {
       if i == _i && j == _j
-      then emit pat;
+      then emit (tag,pat);
     };
-    worker = iterate pat in filtered {
+    worker = iterate (tag,pat) in filtered {
       //state { s = init_state(i,j) }
       state { s = Array:null }
       let (mat, (_i,_j), origdims) = pat;
@@ -88,7 +91,7 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
       //if s == Array:null then s := Array:make(1, init_state());
 
       //println("  Worker "++ (i,j) ++" processing patch... dims "++ mat.dims  ++" size "++ Array:length(Matrix:toArray(mat)));
-      emit patch_transform(s[0], pat);
+      emit patch_transform(tag, s[0], pat);
     };
     workerstreams := worker ::: workerstreams;
   }};
@@ -122,12 +125,23 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
   };
   assembled
  }
+}
+
+// A simplified interface omitting the tags on input streamed matrices:
+patch_kernel :: (Int, Int, Int, ((st, Patch a) -> Patch b), (Patch a) -> st) -> 
+                      Stream (Matrix a) -> Stream (Matrix b);
+fun patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state) 
+fun (strm) {
+  tagged_patch_kernel(iworkers, jworkers, overlap, fun(_,st,pat) patch_transform(st,pat), init_state) $ 
+   iterate x in strm { emit ((),x) }
+}
+
 
 //====================================================================================================
 //   Peforming transforms on each element of a matrix (but with a peek at the neighborhood).
 //====================================================================================================
 
-/* This function builds on top of the make_patch_kernel interface,
+/* This function builds on top of the patch_kernel interface,
  * allowing us to focus on the per-pixel tranfsorm, with the
  * additional privilege of being able to query the neighborhood around
  * the pixel.
@@ -135,15 +149,22 @@ fun make_patch_kernel(iworkers, jworkers, overlap, patch_transform, init_state)
  * Currently this uses the REFLECT policy for all out-of-bounds
  * accesses.  It could however, use different policies, such as a
  * TORUS, or filling in a CONSTANT for the out-of-bounds regions.
+ *
+ * Below we expose and explain several different interfaces to this
+ * functionality, ranging from complex to simple.
+ *
  */
 
 //pixel_transform_with_neighborhood  :: (Int, Int, Int, (st, a, (Int, Int) -> a) -> b, (Int, Int) -> st) -> 
 //                                      Stream (Matrix a) -> Stream (Matrix b);
 
+
 // This variant of the function has a complex interface.  One of the
 // reasons its complex is that it has additional hook to store
-// per-worker state as well as per-pixel state.
-fun pixel_transform_with_neighborhood_and_patch_hooks
+// per-worker state as well as per-pixel state.  Another detail is
+// that it allows all the input matrices in the stream to have a "tag"
+// -- an extra value that is passed to all pixel transforms.
+fun tagged_pixel_kernel_with_neighborhood_and_patch_hooks
     (iworkers, jworkers, nbrhood_size, pixel_transform, init_state, patch_hook, patch_state) {
  using Matrix;
 
@@ -169,7 +190,7 @@ fun pixel_transform_with_neighborhood_and_patch_hooks
     Matrix:build(base_size1,base_size2, fun(i,j) init_state(g_i+i+offseti, g_j+j+offsetj)))
  };
 
- fun patch_transform((patch_st,pix_st), pat) {    
+ fun patch_transform(tag, (patch_st,pix_st), pat) {
      patch_hook(patch_st, pat);
      let (mat, (g_i,g_j), (sz1, sz2)) = pat;
 
@@ -211,7 +232,13 @@ fun pixel_transform_with_neighborhood_and_patch_hooks
          //ind = i * base_size2 + j;
 
 	 _i = i + offseti; 
-	 _j = j + offsetj;
+	 _j = j + offsetj;	 
+	 //println$ "... accessing center pixel at coords "++(_i,_j)++" orig "++ (i,j) ++" overlap "++ overlap ++" dimensions "++(r,c);
+	 /*if WSDEBUG then {
+	   let (r,c) = mat.dims;
+	   if _i >= r  || _j >= c
+	   then wserror("error accessing center pixel at coords "++(_i,_j)++" dimensions "++(r,c));
+	 };*/
 	 px  = get(mat, _i, _j);
 
          //println("* Adjusted position, from "++(i+overlap,j+overlap)++" to "++ (_i,_j));
@@ -222,25 +249,42 @@ fun pixel_transform_with_neighborhood_and_patch_hooks
 	 //if r == expected_size1 && c == expected_size2
 	 //then pixel_transform(st[ind], px, neighborhood_access(_i,_j,))
 	 //else 
-	 pixel_transform(patch_st, Matrix:get(pix_st,i,j), px, neighborhood_access_reflected(_i,_j));
+	 pixel_transform(tag, patch_st, Matrix:get(pix_st,i,j), px, neighborhood_access_reflected(_i,_j));
        });
 
      (mat2, (g_i + offseti, g_j + offsetj), (sz1,sz2))
-     //pixel_transform(st, px, neighborhood_access);
  };
 
  overlap = nbrhood_size;
- make_patch_kernel(iworkers, jworkers, overlap, patch_transform, patch_init_state);
+ tagged_patch_kernel(iworkers, jworkers, overlap, patch_transform, patch_init_state);
 }
 
 // This simplified interface doesn't bother with the patch-level hooks:
-fun pixel_transform_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
-  pixel_transform_with_neighborhood_and_patch_hooks
+fun tagged_pixel_kernel_with_neighborhood
+    (iworkers, jworkers, nbrhood_size, pixel_transform, init_state)
+  tagged_pixel_kernel_with_neighborhood_and_patch_hooks
+    (iworkers, jworkers, nbrhood_size, fun(tag,_,st,px,nbr) pixel_transform(tag,st,px,nbr), init_state, fun(_,_) {}, fun(_) ())
+
+// This interface omits the tags on streamed matrices.
+fun pixel_kernel_with_neighborhood_and_patch_hooks
+    (iworkers, jworkers, nbrhood_size, pixel_transform, init_state, patch_hook, patch_state) 
+ fun (strm)
+ {    
+    tagged_pixel_kernel_with_neighborhood_and_patch_hooks
+      (iworkers, jworkers, nbrhood_size, fun(_,pst,st,px,nbr) pixel_transform(pst,st,px,nbr), init_state, patch_hook, patch_state) $ 
+     // Put a dummy tag on each matrix:
+     iterate m in strm { emit ((),m) }
+ }
+
+// This one doesn't have tags or patch level hooks.
+fun pixel_kernel_with_neighborhood(iworkers, jworkers, nbrhood_size, pixel_transform, init_state) {
+  pixel_kernel_with_neighborhood_and_patch_hooks
     (iworkers, jworkers, nbrhood_size, fun(_,st,px,nbr) pixel_transform(st,px,nbr), init_state, fun(_,_) {}, fun(_) ());
-}
+ }
 
 // This even more simplified interface doesn't allow access to the neighborhood aroudn a pixel.
-fun pixel_transform(iworkers, jworkers, pixel_transform, init_state) {
-  pixel_transform_with_neighborhood_and_patch_hooks
+fun pixel_kernel(iworkers, jworkers, pixel_transform, init_state) {
+  pixel_kernel_with_neighborhood_and_patch_hooks
     (iworkers, jworkers, 0, fun(_,st,px,_) pixel_transform(st,px), init_state, fun(_,_) {}, fun(_) ());
-}
+ }
+
