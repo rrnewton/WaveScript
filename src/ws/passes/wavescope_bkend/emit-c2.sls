@@ -945,6 +945,15 @@
 
       ))))
 
+(define (valid-foreign-type! ty)
+  (unless
+      (match ty
+	[(Array ,[ty]) ty]	
+	[,num (guard (scalar-type? num)) #t]
+	[#() #t]
+	[,_ #f])
+    (error 'emitC2:foreign "type not currently supported for foreign functions: ~s" ty)))
+
 ;; The continuation k is invoked on a piece of text representing the return expression.
 ;; k is expected to return text of the form "lines" that stores away this result.
 (__spec Value <emitC2> (self)
@@ -1043,7 +1052,9 @@
        [(foreign-app ',name (assert-type ,ty ,ignored) ,[Simp -> rand*] ...)
 	(match ty 
 	  [(,argty* ... -> ,retty)
-
+	   (for-each valid-foreign-type! argty*)
+	   (valid-foreign-type! retty)
+	   
 	   ;; Here's a hack for when the return type is unit/void.  This will let us slip "call" forms through.
 	   (match retty 
 	     [#() ;; The problem is that you can't do anything with a "void" value in C:
@@ -1695,6 +1706,7 @@ int main(int argc, char **argv)
 	(define ty (Type self type))
 	(define arg (unique-name "tmp"))
 	(for-each (add-file! self) filels)
+	(valid-foreign-type! type)
 
 	;; Create a function for the entrypoint.
 	(let* ([proto `("extern void ",name"(",ty");\n")]
@@ -2225,29 +2237,7 @@ int main(int argc, char **argv)
 				     "#ifdef WS_THREADED\n"
 				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"
 				     "#endif\n"))
-			       ops init driver)
-#;
-      (define text
-	(apply string-append 
-	       (insert-between "\n"
-			       (list includes 
-				     (text->string (map (curry StructDef self) (slot-ref self 'struct-defs)))
-				     (text->string (lines-text freefundefs))
-				     state
-				     "typetag_t zct_tags[ZCT_SIZE];"
-				     "void*     zct_ptrs[ZCT_SIZE];"
-				     "int       zct_count;"
-				     "int       iterate_depth = 0;\n"
-				     "#ifdef WS_THREADED"
-				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;"
-				     "#endif"
-				     ops 
-				     init driver))))
-#;
-      ;; Return an alist of files:
-      (vector (list (list (emitC2-output-target) text))
-	      void))))
-
+			       ops init driver))))
 
 ;;================================================================================
 

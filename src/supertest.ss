@@ -674,12 +674,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsc2: Compiling bgSub.ws -O3 -gc def:"
  	      (format "wsc2 bgSub.ws -O3 -gc def -exit-error &> ~a/wsc2_bgSub1_build.log" test-directory))
      (run-test "wsc2:  Running bgSub.ws:  "
- 	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub1_run.log 2> bgSub1_memprof.txt" test-directory))
+ 	      ;(format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub1_run.log 2> ~a/bgSub1_memprof.txt" test-directory test-directory)
+	       (format "./query.exe -n 3 &> ~a/wsc2_bgSub1_run.log" test-directory)
+	      )
 
     (run-test "wsc2: Compiling bgSub3_integer -O3 -gc ref:"
 	      (format "wsc2 bgSub3_integer.ws -O3 -gc ref -exit-error &> ~a/wsc2_bgSub3_build.log" test-directory))
     (run-test "wsc2:  Running bgSub3_integer:  "
-	      (format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub3_run.log 2> bgSub3_memprof.txt" test-directory))
+	      ;(format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub3_run.log 2> bgSub3_memprof.txt" test-directory)
+	      (format "./query.exe -n 3 &> ~a/wsc2_bgSub3_run.log" test-directory)
+	      )
 
 ;     (run-test "wsc2: Compiling bgSub4_patchoriented -gc boehm:  "
 ; 	      (format "wsc2 bgSub4_patchoriented.ws -gc boehm -exit-error &> ~a/wsc2_bgSub4_build.log" test-directory))
