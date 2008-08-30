@@ -702,13 +702,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "ws mfcc1.ws -n 1 &> ~a/ws_mfcc1.log" test-directory))
 
   ;; [2008.08.13] Mysterious ikarus crashes here, use PLT instead:
-  ;(ASSERT (putenv "REGIMENTHOST" "plt"))
+  (ASSERT (putenv "REGIMENTHOST" "plt"))
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling first speaker detect: "
 	    (format "wsc2 mfcc1.ws  &> ~a/wsc2_build_mfcc1.log" test-directory))
   (run-test "wsc2:  Running first speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc1.log" test-directory))
-  ;(ASSERT (putenv "REGIMENTHOST" ""))
 
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling fixed pt speaker detect: "
@@ -717,10 +716,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc5.log" test-directory))
 
   (when (file-exists? "query.exe") (delete-file "query.exe"))
+  ;; [2008.08.29] Got ikarus segfault on this with rev 1559.
   (run-test "wsc2: Compiling fixed fb speaker detect: "
 	    (format "wsc2 mfcc6_fixedpoint_fb.ws  &> ~a/wsc2_build_mfcc6.log" test-directory))
   (run-test "wsc2:  Running fixed fb speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc6.log" test-directory))
+
+  (ASSERT (putenv "REGIMENTHOST" ""))
 
   (run-test "wstiny: Compiling speaker detect, Telos: "
 	    (format "wstiny mfcc6_fixedpoint_fb.ws  &> ~a/wstiny_build_mfcc6.log" test-directory))

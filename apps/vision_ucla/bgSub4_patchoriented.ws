@@ -356,12 +356,11 @@ fun tagWithMode(strm) {
           if FrameIndex == stopFrame then {
             bgEstimateMode := false;
             FrameIndex := FgStartFrame;
-	    println("\nFinished background model, extracting foreground.\n");
+	    //println("\nFinished background model, extracting foreground.\n");
             stopFrame := FgStartFrame + NumFgFrames * FgStep;
 	  };
     } else { 
-      if (FrameIndex == FgStartFrame)  then 
-        println$ "Calling estimate... frame size "++ Matrix:dims(mat);
+      //if (FrameIndex == FgStartFrame)  then  println$ "Calling estimate... frame size "++ Matrix:dims(mat);
       FrameIndex += FgStep;
     };
      emit (bgEstimateMode, mat)
@@ -383,7 +382,7 @@ fun tagWithMode(strm) {
 //
 // TODO: this index stream should simply emit a union type tagging elements as Bg or Fg.
 index_stream :: Stream Int;
-index_stream = iterate _ in timer(10) {
+index_stream = iterate _ in timer(2) {
   state { bgcnt = 0;
           bgind = BgStartFrame;
           fgcnt = 0;
@@ -553,6 +552,8 @@ fakeFrames = iterate _ in timer$3 {
 }
 
 
+last_time = 0;
+
 //main = simple_dump $ Curry:smap(fun(mat) ) $ kern $ mats
 diffsAndMasks = 
    bhattaPixKern $
@@ -562,6 +563,7 @@ diffsAndMasks =
 
 main = 
       simple_dump $ 
+      Curry:smap(fun(x) { t = realtime(); println("Time elapsed: "++t-last_time); last_time := t; x}) $
       Curry:smap(matrix_to_image) $
       Curry:smap(fun(m) Matrix:map(fun((x,y)) (x,y,0), m)) $
       diffsAndMasks
@@ -576,4 +578,3 @@ main =
       //mats
 
       //fakeFrames
-
