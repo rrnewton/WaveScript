@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ## Used by benchmarking utilities.
 ## Pulls the user time out of log output from a run of "wsmlton"
@@ -11,7 +11,6 @@
 
 if ! [ -f "$1" ]; then echo "File does not exist!"; exit -1; fi
 
-#UTIME=`tail -n 10 $1  | grep "usertime" | awk '{ print $2 }'`
 UTIME=`tail -n 25 $1  | grep "user" | tail -n 1 | awk '{ print $2 }' | sed -e 's/m/ /' -e 's/s//'`
 
 MIN=`echo $UTIME | awk '{ print $1 }'`
@@ -19,7 +18,7 @@ SEC=`echo $UTIME | awk '{ print $2 }'`
 
 #echo "GOT MIN AND SEC: $MIN and $SEC"
 
-if [ "$UTIME" == "" ]; then echo "Couldn't extract time!"; exit -1; fi
+if [ "$UTIME" = "" ]; then echo "Couldn't extract time!"; exit -1; fi
 
 # convert to milliseconds
 #echo "(* (+ 0 $UTIME) 1000)" | petite -q

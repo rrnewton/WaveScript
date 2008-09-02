@@ -63,7 +63,8 @@ sqrt = sqrtD // Need type classes!
 DEBUG = true;
 
 include "helpers.ws"
-include "patches.ws"
+//include "patches.ws"
+include "parmatrix.ws"
 
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename

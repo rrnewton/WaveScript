@@ -29,6 +29,8 @@ while [ $# != 0 ];  do
   then NOGCC=1;
   elif [ "$1" == "-dbg" ]
   then WSCDEBUG=1;
+  elif [ "$1" == "-threads" ]; 
+  then IGNORED=; # How do you do NOOP in bash?
   elif [ "$1" == "-nothreads" ]
 #  then CCPASSTHRU="$CCPASSTHRU -DBOOST_SP_DISABLE_THREADS"
   then CCPASSTHRU="$CCPASSTHRU -nothreads"

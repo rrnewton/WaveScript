@@ -30,6 +30,10 @@
 #include <sys/resource.h>
 #include<getopt.h>
 
+// For gettid()
+//#include <sys/types.h>
+#include<syscall.h>
+
 #define LOAD_COMPLEX
 //#define WS_THREADED
 //#define ALLOC_STATS
@@ -219,10 +223,11 @@ unsigned long print_queue_status() { return 0; }
 
 void (**worker_table) (void*);   // Should we pad this to prevent false sharing?
 wsfifo** queue_table;            // Should we pad this to prevent false sharing?
-int* cpu_affinity_table;
+int* cpu_affinity_table;         // This should be set based on AST annotations... currently set to ANY_CPU
 int total_workers;
 
 //#include <sys/types.h>
+// Not used yet, but this will set the thread/cpu affinity.
 #include <sched.h>
 void pin2cpu(int cpuId) {
       // Get the number of CPUs
@@ -235,9 +240,13 @@ void pin2cpu(int cpuId) {
       //printf("Process id %u, thread id %u\n", getpid(), pthread_self());
       //printf("The ID of this of this thread is: %ld\n", (long int)syscall(224));
       //printf("The ID of this of this thread is: %ld\n", (long int)syscall(__NR_gettid));
-      long int tid = syscall(224); // No idea how portable this is...
+      //long int tid = syscall(224); // No idea how portable this is...
+
+      long int tid = syscall(__NR_gettid);
 
       //int retval = sched_setaffinity(gettid(), len, &mask);
+      //#define gettid() syscall(__NR_gettid)
+
       int retval = sched_setaffinity(tid, len, &mask);
       if (retval != 0) {
 	perror("sched_setaffinity");
@@ -245,6 +254,25 @@ void pin2cpu(int cpuId) {
       }
    }
 }
+// This restricts the thread to N CPUS 
+void pin2cpuRange(int numcpus) {
+      cpu_set_t mask;
+      int i;
+      unsigned int len = sizeof(mask);
+      CPU_ZERO(&mask);
+      for (i=0; i<numcpus; i++)  CPU_SET(i, &mask);
+      //long int tid = syscall(224); // No idea how portable this is...
+      //long int tid = gettid(); 
+      long int tid = syscall(SYS_gettid);
+
+      printf("PINNING TO CPUS 0 ... %d, TID %d\n", numcpus-1, tid);
+      int retval = sched_setaffinity(tid, len, &mask);
+      if (retval != 0) {
+	perror("sched_setaffinity");
+	exit(-1);
+      }
+}
+
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -273,21 +301,30 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
   int i;  \
   for (i=0; i<total_workers; i++)  { \
     pthread_t threadID; \
-    pthread_create(&threadID, NULL, &worker_thread, (void*)i); \
+    pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	\
   } \
 }
 // Enqueue a datum in another thread's queue.
 #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
 
 void* worker_thread(void* i) {
-  int index = (int)i;
+  int index = (int)(size_t)i;
   pthread_mutex_lock(&print_lock);
   if (cpu_affinity_table[index] == ANY_CPU)
     fprintf(stderr, "** Spawning worker thread %d\n", index);
   else fprintf(stderr, "** Spawning worker thread %d, cpu %d\n", index, cpu_affinity_table[index]);
 
-  //pin2cpu(1) pin2cpu(0);  
+  // In this mode we restrict the subset of CPUs that we use.
+#ifdef LIMITCPUS
+  // For now this mode cannot restrict which cpu *within* the subset each thread uses.
+  char* str = getenv("LIMITCPUS");
+  if (str == 0) str =  "1";
+  int cpus = atoi(str);
+  //printf("  LIMITING TO %d CPUS (from %s)\n", cpus, str);  fflush(stdout);
+  pin2cpuRange(cpus);
+#else
   pin2cpu(cpu_affinity_table[index]);
+#endif
   pthread_mutex_unlock(&print_lock);  
   while (1) 
   {

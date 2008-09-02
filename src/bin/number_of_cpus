@@ -1,0 +1,7 @@
+#!/bin/bash
+
+case `uname -s` in 
+  "Linux")  grep MHz /proc/cpuinfo | wc -l;;
+  "Darwin") /usr/sbin/system_profiler SPHardwareDataType | grep "Number Of Cores" | sed 's/.*://';;
+  * )  echo "ERROR: Unknown platform: `uname -s`"; exit 1;;
+esac

@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# This is a defunct strategy.  There's no way it will really work.
+
+# We can try to come up with some nice value at which to run the main
+# multi-threaded process, but we run into various problems.  Scheduler
+# priorities are not guarantees of anything.
+
+# Tried 5 7 10 19
+
+#NICE=7
+NICE=8
+
+# First argument is number of cpus.
+N=$1
+shift
+
+#SCHEME=scheme
+SCHEME=chez
+
+# Linux specific:
+
+# case `uname -s` in 
+#   "Linux") TOTAL=`grep MHz /proc/cpuinfo | wc -l`;;
+#   "Darwin") TOTAL=`/usr/sbin/system_profiler SPHardwareDataType | grep "Number Of Cores" | sed 's/.*://'`;;
+#   * )  echo "ERROR: Unknown platform: `uname -s`"; exit 1;;
+# esac
+TOTAL=`number_of_cpus`
+
+TMP=`mktemp`
+echo '(let loop () (loop))' > $TMP
+
+CHILDPIDS=""
+
+DUMMIES=$((TOTAL - N))
+#DUMMIES=`expr $TOTAL + $N`
+
+echo "Total CPUS/Cores found: $TOTAL, running $DUMMIES dummy processes"
+
+for ((i=0; i < $DUMMIES; i++)) do
+  $SCHEME $TMP &
+  CHILDPIDS+=" $! "
+done
+
+
+echo "Running command with nice $NICE:"
+time nice -"$NICE" $*
+
+kill -9 $CHILDPIDS
+echo Killed dummy processes.

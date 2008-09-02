@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #|
 exec regiment i --script "$0" ${1+"$@"};
 |#

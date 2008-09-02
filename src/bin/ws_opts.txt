@@ -10,6 +10,7 @@ WS compiler, C backend, version 2 (wsc2) options:
   -gcc <name>   select C compiler, same as setting $CC
   -D <sym>      pass -D<sym> to the C compiler
   -realtime     run timers in realtime, rather than as fast as possible
+  -cpus <num>   Limit the number of physical CPUs used.
   -split        
 
 WS compiler, MLton backend (wsmlton) options: 

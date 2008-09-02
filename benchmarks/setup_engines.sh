@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 # Need to tweak this to work for x86 64 too.

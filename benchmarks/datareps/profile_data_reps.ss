@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #|
 exec regiment.plt i --script "$0" ${1+"$@"} -exit-error;
 # USING PLT FOR NOW BECAUSE WE CANT GET TIMING INFO IN IKARUS

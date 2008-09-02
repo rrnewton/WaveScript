@@ -1,6 +1,8 @@
 
 
 
+// [2008.09.01] Would this work for 64 bits?
+
 inline int atomic_exchange_and_add( int * pw, int dv )
 {
     // int r = *pw;

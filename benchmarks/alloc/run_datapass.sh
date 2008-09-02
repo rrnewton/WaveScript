@@ -1,5 +1,4 @@
-
-#!/bin/sh
+#!/bin/bash
 
 TEMP="./logs/"
 START=`pwd`

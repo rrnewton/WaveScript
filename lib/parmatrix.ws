@@ -1,9 +1,11 @@
 
 //include "matrix-rowmajor.ws"
 
-//====================================================================================================
-//   Functions for decomposing images into streams of patches.
-//====================================================================================================
+/*====================================================================================================
+  Functions for decomposing images into streams of patches, and
+  therefore allowing for data parallelism.  Assumes that one of the WS
+  matrix libraries has been included before this one.
+  ==================================================================================================== */
 
 // A patch is a piece of a matrix together with metadata to tell us where it came from.
 // A patch includes:

@@ -5,8 +5,9 @@ export REGFLAG=wsc2
 source `dirname $0`/assert_regimentd
 
 # Get out only the relevant options:
-RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
-#echo wsc2 getopt result: $RELEVANT
+RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,limitcpus,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+#RELEVANT=`getopt -a "ss:,sigseg:,gc:,gcc:,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+echo wsc2 getopt result: $RELEVANT
 
 # I would like to pass only the relevant options on to "wsc", but I
 # can't currently get getopt to do everything I want it to, i.e. pass
@@ -15,7 +16,7 @@ RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,D:,realtime,threads,nothreads,nogcc
 # [2008.08.18] Make sure to use the one stored in the same directory.
 WSC=`dirname $0`/wsc
 
-#echo CALLING WSC $WSC
+echo CALLING WSC $WSC $* -exit-error -no-gcc
 
 rm -f query.c query_*.c query.exe query_*.exe
 if $WSC $* -exit-error -no-gcc
@@ -36,7 +37,7 @@ NOGCC=
 while [ $# != 0 ];  do 
 #for flag in $RELEVANT; do 
  flag=$1
- #echo Handling flag: $flag
+# echo Handling flag: $flag
  case $flag in 
    # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
    "--O0" )        COPTFLAG="$flag";;
@@ -44,10 +45,15 @@ while [ $# != 0 ];  do
    "--O2" )        COPTFLAG="$flag";;
    "--O3" )        COPTFLAG="$flag";;
    "--threads" )   THREADS=true;;
-   "--nothreads")  THREADS=;;
+   "--nothreads")  THREADS="";;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
-   "--gcc" ) export CC="$2";             shift;;
-   "--D" )   export WS_LINK="$WS_LINK -D$2";   shift;;
+   "--gcc" )  export CC="$2";             shift;;
+   "--limitcpus") export WS_LINK+=" -DLIMITCPUS "; shift;;
+#    "--cpus") export WS_LINK+=" -DLIMITCPUS "; 
+#               TEMP=$2;
+#               export LIMITCPUS="$((TEMP-1))";  
+# 	      shift;;
+   "--D" )    export WS_LINK="$WS_LINK -D$2";   shift;;
 
    "--realtime" )  export WS_LINK="$WS_LINK -DWS_REAL_TIMERS ";;
 

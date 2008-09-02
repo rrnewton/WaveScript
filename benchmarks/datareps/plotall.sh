@@ -1,5 +1,4 @@
-#!/bin/sh
-
+#!/bin/bash
 
 source ../shared.sh
 

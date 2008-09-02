@@ -122,14 +122,21 @@ function runmlton() {
   then echo "failed!"; exit -1; fi
 }
 
-C2OPTIONS=
+#C2OPTIONS=
 function runc2() {
   echo "  wsc2 $C2OPTIONS : compiling..."
+  echo wsc2 $FILE $C2OPTIONS $WSOPTIONS
   if wsc2 $FILE $C2OPTIONS $WSOPTIONS &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc2 failed!"; exit -1; fi
   echo "   wsc2: running output... -n "$TUPS
-  if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
-  then echo "failed!"; exit -1; fi
+
+  if [ "$LIMITCPUS" = "" ]; then
+    if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
+    then echo "failed!"; exit -1; fi
+  else
+    if ! (run_with_n_cpus $LIMITCPUS ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
+    then echo "failed!"; exit -1; fi
+  fi
 }
 
 
@@ -149,7 +156,9 @@ function runallbackends() {
   rm -rf query.*  
   echo "Invoking the following backends: $BACKENDS"
   
-  WHICHTIME=usertimes
+  if [ "$WHICHTIME" = "" ];     then WHICHTIME=usertimes; fi
+  if [ "$WHICHTIME" = "user" ]; then WHICHTIME=usertimes; fi
+  if [ "$WHICHTIME" = "real" ]; then WHICHTIME=realtimes; fi  
 
   TIMES=
   for backend in $BACKENDS; do
@@ -171,29 +180,29 @@ function runallbackends() {
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
                              TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppnothreads.$NAME.out`;; 
 
-      c2)        C2OPTIONS="-O3 -gc refcount -sigseg copyalways -nothreads";
+      c2)        C2OPTIONS+="-O3 -gc refcount -sigseg copyalways ";
                  runc2; 
-                 TIMES="$TIMES `extract_mlton_$WHICHTIME.sh $DEST/c2.$NAME.out`";;
+                 TIMES="$TIMES `extract_shell_$WHICHTIME.sh $DEST/c2.$NAME.out`";;
 
-      c2def)     C2OPTIONS="-O3 -gc deferred -sigseg copyalways -nothreads";
+      c2def)     C2OPTIONS+="-O3 -gc deferred -sigseg copyalways ";
                  runc2 def;       
-                 TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2def.$NAME.out`;;
+                 TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2def.$NAME.out`;;
 
-      c2seglist) C2OPTIONS="-O3 -gc refcount -sigseg seglist -nothreads";
+      c2seglist) C2OPTIONS+="-O3 -gc refcount -sigseg seglist ";
                  runc2 seglist;      
-                 TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2seglist.$NAME.out`;; 
+                 TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2seglist.$NAME.out`;; 
 
-      c2defseglist) C2OPTIONS="-O3 -gc deferred -sigseg seglist -nothreads";
+      c2defseglist) C2OPTIONS+="-O3 -gc deferred -sigseg seglist ";
                     runc2 defseglist;      
-                    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2defseglist.$NAME.out`;; 
+                    TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2defseglist.$NAME.out`;; 
 
-      c2boehm)      C2OPTIONS="-O3 -gc boehm -sigseg copyalways -nothreads";
+      c2boehm)      C2OPTIONS+="-O3 -gc boehm -sigseg copyalways ";
                     runc2 boehm;
-                    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2boehm.$NAME.out`;;
+                    TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2boehm.$NAME.out`;;
 
-      c2boehmseglist) C2OPTIONS="-O3 -gc boehm -sigseg seglist -nothreads";
+      c2boehmseglist) C2OPTIONS+="-O3 -gc boehm -sigseg seglist ";
                       runc2 boehmseglist;       
-                      TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/c2boehmseglist.$NAME.out`;;
+                      TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2boehmseglist.$NAME.out`;;
 
 
       *) echo Unhandled backend: $backend; exit -1;;
@@ -201,7 +210,7 @@ function runallbackends() {
   done
 
   echo ALLDONE, times were: $TIMES
-  echo $NAME $TIMES >> RESULTS.txt
+  echo $NAME $LIMITCPUS $TIMES >> RESULTS.txt
 }
 
 

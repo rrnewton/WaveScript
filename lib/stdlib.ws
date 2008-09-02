@@ -1084,7 +1084,7 @@ fun (ctrl, strms, del) {
 
   _ctrl = iterate((b,s,e) in ctrl) { emit ((b,s,e, nullseg) :: (Bool * Int64 * Int64 * Sigseg any)); };
   f = fun(s) { iterate(win in s) { emit (false,0`gint,0`gint, win); }; };
-  _strms = map(f, strms);  
+  _strms = List:map(f, strms);  
   slist = _ctrl ::: _strms;  
 
    //  if DEBUGSYNC then print("Syncing N streams (including ctrl stream): " ++ show(slist`List:length) ++ "\n");
@@ -1138,7 +1138,7 @@ fun (ctrl, strms, del) {
     // ========================================
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
-    then requests := append(requests, [(flag,strt,en)])
+    then requests := List:append(requests, [(flag,strt,en)])
     else accs[ind-1] := joinsegs(accs[ind-1], seg);        
 
     // ========================================
@@ -1618,6 +1618,7 @@ fun deinterleave(n, strm) {
      iterate x in strm {
        state { counter :: Int = 0 }
        if counter == offset  then emit x; 
+       // Check if modulo works better:
        counter += 1;
        if counter == n       then counter := 0;              
      }
@@ -1893,30 +1894,13 @@ fun parmap(n, fn, src) {
   };
 
 
-/*
-fun roundRobinSplit(n, strm) {
-    split = iterate x in strm {
-      state { cnt = 0 }
-      old = cnt;
-      cnt += 1;
-      // NEED MODULO:
-      if cnt == n then cnt := 0;
-      emit (old, x);
-    };
-    routed = List:build(n, 
-      fun(i) iterate (ind,x) in split {
-        if ind == i then emit x;
-      });
-    routed
-}
-*/
-
+// This does the same thing as parmap, but it doesn't manually SETCPU:
 roundRobinSplit = deinterleave;
 roundRobinJoin = interleave;
 
 fun roundRobinMap(n, fn, strm) {
   split = roundRobinSplit(n, strm);
-  roundRobinJoin(n, map(fn,split));
+  roundRobinJoin(n, List:map(fn,split));
 }
 
 
