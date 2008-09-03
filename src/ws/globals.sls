@@ -376,6 +376,7 @@
 ;; It can be set by passing a -O2 style flag, or by specifically
 ;; enabling optimizations with -opt <NAME>.
 ;(define-regiment-parameter ws-optimizations-enabled '(rewrites))
+;; TEMPTOGGLE - turning maxinline on by default:
 (define-regiment-parameter ws-optimizations-enabled '())
 
 ;; This parameter is read by various parts of the compiler.
@@ -402,7 +403,7 @@
 
 ;; Controls whether we inline *everything*, or reserve the right to
 ;; hold back on monomorphic, first-order functions.
-(define-regiment-parameter ws-full-inline #f)
+(define-regiment-parameter ws-full-inline #t)
 
 ;; This parameter stores an association list binding the names of
 ;; passes to hooks (functions) that should run after the specified

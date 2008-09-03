@@ -1056,11 +1056,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
-(fprintf orig-console "~a all logs to website...\n" (if publish? "Copying" "NOT copying"))
+(fprintf orig-console "~a all logs to website ~a...\n" (if publish? "Copying" "NOT copying") webdir)
 (when publish? (system (format "rm -f ~a/most_recent_logs/*" webdir)))
-(when publish? (system (format "cp ~a/*.log ~a/most_recent_logs/" webdir test-directory)))
+(when publish? (system (format "cp ~a/*.log ~a/most_recent_logs/" test-directory webdir)))
 (fprintf orig-console "Finished (not) copying.")
 
 (current-directory webroot)
+(system "pwd")
 (system "./setperms")
 

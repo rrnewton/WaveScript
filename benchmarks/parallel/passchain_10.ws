@@ -73,8 +73,15 @@ I need to do some pinning, or more precisely, anti-pinning.
 
  */
 
+fun trylookup(str,def) {
+  if GETENV(str) == "" 
+  then def
+  else stringToInt(GETENV(str));
+}
+
+
 ops = 1 * 1000 * 1000
-threads = 12
+workers = trylookup("WORKERS", 16)
 rate = 9
 amplify = 10
 
@@ -95,5 +102,5 @@ main = {
   fun f(n,s) 
     if n == 0 then s else
     iterate x in f(n-1,s) { emit work(x) };
-  f(threads, src)
+  f(workers, src)
 }

@@ -125,12 +125,12 @@ function runmlton() {
 #C2OPTIONS=
 function runc2() {
   echo "  wsc2 $C2OPTIONS : compiling..."
-  echo wsc2 $FILE $C2OPTIONS $WSOPTIONS
+  echo RUNNING COMMAND: wsc2 $FILE $C2OPTIONS $WSOPTIONS
   if wsc2 $FILE $C2OPTIONS $WSOPTIONS &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
   else echo "wsc2 failed!"; exit -1; fi
   echo "   wsc2: running output... -n "$TUPS
 
-  if [ "$LIMITCPUS" = "" ]; then
+  if [ "$LIMITCPUS" = "" ] || [ "$LIMITCPUS" = "0" ]; then
     if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
     then echo "failed!"; exit -1; fi
   else
@@ -141,10 +141,15 @@ function runc2() {
 
 
 
+function add_time() {
+  TIMES+=" "`extract_$1_$WHICHTIME.sh $2`;
+}
+
 ## This is where you disable/enable backends.
 ## Arguments: filename sans extension, output file, in tuple limit, out tuple limit
 ## Currently in tuple limit is unimplemented.
 function runallbackends() {
+  C2OPTIONSBAK=$C2OPTIONS
   NAME=$1
   FILE=$1.ws
   DEST=$2
@@ -160,49 +165,51 @@ function runallbackends() {
   if [ "$WHICHTIME" = "user" ]; then WHICHTIME=usertimes; fi
   if [ "$WHICHTIME" = "real" ]; then WHICHTIME=realtimes; fi  
 
+  if [ "$C2OPTLVL" = "" ];      then C2OPTLVL="-O3"; fi
+
   TIMES=
   for backend in $BACKENDS; do
     case $backend in
-      scheme)   runscheme;   TIMES+=" "`extract_scheme_$WHICHTIME.sh $DEST/scheme.$NAME.out`;;
-      schemeO3) runschemeO3; TIMES+=" "`extract_scheme_$WHICHTIME.sh $DEST/schemeO3.$NAME.out`;;
+      scheme)   runscheme;   add_time scheme $DEST/scheme.$NAME.out;;
+      schemeO3) runschemeO3; add_time scheme $DEST/schemeO3.$NAME.out;;
 
       camlO3)   MLTONOPTIONS="-O3"; 
                 runcaml O3;
-                TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/camlO3.$NAME.out`;;
+                add_time mlton $DEST/camlO3.$NAME.out;;
 
-      mlton)    runmlton;    TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/mlton.$NAME.out`;;
+      mlton)    runmlton;    add_time mlton $DEST/mlton.$NAME.out;;
       mltonO3)  MLTONOPTIONS="-O3"; 
-                runmlton O3; TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/mltonO3.$NAME.out`;;
-      cpp)      runcpp;      TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cpp.$NAME.out`;;
-      cpp_df)   runcpp_df;   TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppdf.$NAME.out`;;
+                runmlton O3; add_time mlton $DEST/mltonO3.$NAME.out;;
+      cpp)      runcpp;      add_time mlton $DEST/cpp.$NAME.out;;
+      cpp_df)   runcpp_df;   add_time mlton $DEST/cppdf.$NAME.out;;
       cpp_corefit) runcpp_corefit; 
-                             TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppnew.$NAME.out`;;
+                             add_time mlton $DEST/cppnew.$NAME.out;;
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
-                             TIMES+=" "`extract_mlton_$WHICHTIME.sh $DEST/cppnothreads.$NAME.out`;; 
+                             add_time mlton $DEST/cppnothreads.$NAME.out;;
 
-      c2)        C2OPTIONS+="-O3 -gc refcount -sigseg copyalways ";
+      c2)        C2OPTIONS+="$C2OPTLVL -gc refcount -sigseg copyalways ";
                  runc2; 
-                 TIMES="$TIMES `extract_shell_$WHICHTIME.sh $DEST/c2.$NAME.out`";;
+                 add_time shell $DEST/c2.$NAME.out;;
 
-      c2def)     C2OPTIONS+="-O3 -gc deferred -sigseg copyalways ";
+      c2def)     C2OPTIONS+="$C2OPTLVL -gc deferred -sigseg copyalways ";
                  runc2 def;       
-                 TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2def.$NAME.out`;;
+                 add_time shell $DEST/c2def.$NAME.out;;
 
-      c2seglist) C2OPTIONS+="-O3 -gc refcount -sigseg seglist ";
+      c2seglist) C2OPTIONS+="$C2OPTLVL -gc refcount -sigseg seglist ";
                  runc2 seglist;      
-                 TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2seglist.$NAME.out`;; 
+                 add_time shell $DEST/c2seglist.$NAME.out;; 
 
-      c2defseglist) C2OPTIONS+="-O3 -gc deferred -sigseg seglist ";
+      c2defseglist) C2OPTIONS+="$C2OPTLVL -gc deferred -sigseg seglist ";
                     runc2 defseglist;      
-                    TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2defseglist.$NAME.out`;; 
+                    add_time shell $DEST/c2defseglist.$NAME.out;; 
 
-      c2boehm)      C2OPTIONS+="-O3 -gc boehm -sigseg copyalways ";
+      c2boehm)      C2OPTIONS+="$C2OPTLVL -gc boehm -sigseg copyalways ";
                     runc2 boehm;
-                    TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2boehm.$NAME.out`;;
+                    add_time shell $DEST/c2boehm.$NAME.out;;
 
-      c2boehmseglist) C2OPTIONS+="-O3 -gc boehm -sigseg seglist ";
+      c2boehmseglist) C2OPTIONS+="$C2OPTLVL -gc boehm -sigseg seglist ";
                       runc2 boehmseglist;       
-                      TIMES+=" "`extract_shell_$WHICHTIME.sh $DEST/c2boehmseglist.$NAME.out`;;
+                      add_time shell $DEST/c2boehmseglist.$NAME.out;;
 
 
       *) echo Unhandled backend: $backend; exit -1;;
@@ -211,6 +218,7 @@ function runallbackends() {
 
   echo ALLDONE, times were: $TIMES
   echo $NAME $LIMITCPUS $TIMES >> RESULTS.txt
+  C2OPTIONS=$C2OPTIONSBAK
 }
 
 
@@ -241,4 +249,26 @@ EOF
 
     echo $PLOTLINE >> $FILE
     echo ... finished
+}
+
+
+
+function run_multithreaded() {
+  NAME=$1
+  TEMPDIR=$2
+  TUPS=$3
+
+  # Running with LIMITCPUS=0 is a shorthand for no threads:
+  export LIMITCPUS=0;
+  #runallbackends array_splitjoin  $TEMPDIR __ $TUPS
+
+  for ((lim = 2; lim <= $NUMCPUS; lim++)) do
+    export C2OPTIONS=" -threads "
+    export LIMITCPUS=$lim;
+    # For this benchmark, we only split it as many ways as we have CPUs:
+    export WORKERS=$lim;
+    echo;echo "RUNNING WITH $LIMITCPUS CPU(S)."
+    runallbackends array_splitjoin  $TEMPDIR __ $TUPS
+  done
+  unset C2OPTLVL
 }

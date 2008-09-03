@@ -6,45 +6,64 @@
 # multi-threaded process, but we run into various problems.  Scheduler
 # priorities are not guarantees of anything.
 
-# Tried 5 7 10 19
+# When the nice is too low, the main threads sneak onto the other
+# processors in spite of the dummy processes.  When the nice is too
+# high, the threads fail to migrate to other processers even though
+# they are available.  
 
-#NICE=7
-NICE=8
+# (Wait, I need to confirm that second part... I thought I'd seen it
+# take only 100% in two-cpu mode, but now I'm having trouble
+# reproducing.)  Ok, yes, I'm seeing it hover at 130% when in should
+# use 3 cpus (at nice 19).  And it's only using 200% at 4 cpus.
+
+
+
+# Tried 5 7 8 10 19
+
+if [ "$NICE" = "" ]; then 
+  NICE=8; 
+  echo Setting nice to $NICE.
+fi 
 
 # First argument is number of cpus.
 N=$1
 shift
 
-#SCHEME=scheme
-SCHEME=chez
-
-# Linux specific:
-
-# case `uname -s` in 
-#   "Linux") TOTAL=`grep MHz /proc/cpuinfo | wc -l`;;
-#   "Darwin") TOTAL=`/usr/sbin/system_profiler SPHardwareDataType | grep "Number Of Cores" | sed 's/.*://'`;;
-#   * )  echo "ERROR: Unknown platform: `uname -s`"; exit 1;;
-# esac
 TOTAL=`number_of_cpus`
-
-TMP=`mktemp`
-echo '(let loop () (loop))' > $TMP
-
-CHILDPIDS=""
-
 DUMMIES=$((TOTAL - N))
-#DUMMIES=`expr $TOTAL + $N`
-
-echo "Total CPUS/Cores found: $TOTAL, running $DUMMIES dummy processes"
-
-for ((i=0; i < $DUMMIES; i++)) do
-  $SCHEME $TMP &
-  CHILDPIDS+=" $! "
-done
+echo "Total CPUS/Cores found: $TOTAL, disabling $DUMMIES processors"
 
 
-echo "Running command with nice $NICE:"
-time nice -"$NICE" $*
+if [ "$NOSUDO" = "" ]; 
+then
+  # First we make sure all these CPUs are on, in case somebody else left it in a bad state.
+  for ((i=1; i < $N; i++)) do
+    sudo sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
+  done
+  for ((i=$N; i < $TOTAL; i++)) do
+    echo Disabling $i
+    sudo sh -c "echo 0 > /sys/devices/system/cpu/cpu$i/online"
+  done
 
-kill -9 $CHILDPIDS
-echo Killed dummy processes.
+  time $* 
+  for ((i=$N; i < $TOTAL; i++)) do
+    echo Enabling $i
+    sudo sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
+  done
+  echo Reenabled extra processors.
+else 
+  echo SUDO unavailable so we attempt to run dummy processes to disable cpus.
+  SCHEME=chez
+  TMP=`mktemp`
+  echo '(let loop () (loop))' > $TMP
+  CHILDPIDS=""
+  for ((i=1; i <= $DUMMIES; i++)) do
+    $SCHEME $TMP &
+    CHILDPIDS+=" $! "
+  done
+  echo "Running command with nice $NICE:"
+  echo time nice -n $NICE $*
+  time nice -n $NICE $*
+  kill -9 $CHILDPIDS
+  echo Killed dummy processes.
+fi
