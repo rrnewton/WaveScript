@@ -45,7 +45,7 @@ strm_process2 = iterate data in wsentry2 {
 strm_send_data = iterate value in strm_process1 {
 	value = open_();
 	rcvr(value);
-	emit() 
+	emit () 
 }
 
 strm_write = iterate data in strm_process2 {
@@ -53,5 +53,4 @@ strm_write = iterate data in strm_process2 {
 	emit ();
 }
 
-
-main = strm_send_data;
+main = merge(strm_send_data, strm_write);
