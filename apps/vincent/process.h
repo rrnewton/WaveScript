@@ -79,7 +79,7 @@ void wssink(int*);
 //Entry point th send the return value
 void wsentry1(int*);
 //Entry point to send the data
-void wsentry2(void*);
+void wsentry2(char*);
 
 
 #endif

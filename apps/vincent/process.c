@@ -43,6 +43,7 @@ void wssink(int *value){
 //Main function
 void wsmain(int argc, char *argv[]){
 	int* value = (int *)calloc(3,sizeof(int));
+	int i = 0;
 	signal(SIGINT, stop_capturing);
 	printf("%d, %d, %d\n", fd, width, height);
 	value[0]=fd;
@@ -56,8 +57,8 @@ void wsmain(int argc, char *argv[]){
 	wsentry1(value);
 	//init the device
 	init();
-	if(argc>1)
-        if(strcasecmp(argv[1],"-wc")==0)
+	for(i=0; i<argc; i++)
+        if(strcasecmp(argv[i],"-wc")==0)
             change_control();       
 	printf("Start Capturing\n");
 	start_capturing();

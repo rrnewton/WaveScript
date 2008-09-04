@@ -46,22 +46,31 @@ int read_frame(int file_number){
  
     //write the header 
     if(palette==1) {
-	void *data=(void *)malloc(sizeof(void)*size_data_rgb24);
-        memcpy(data,buffers[buf.index].start,size_data_rgb24);
-	sprintf(data+size_data_rgb24+1,"%d", file_number);
-	sprintf(data+size_data_rgb24+2,"%d", sec);
+	unsigned char *data=(unsigned char *)malloc(sizeof(unsigned char)*size_data_rgb24);
+	sprintf(data,"%d", file_number);
+	sprintf(data+1,"%d", sec);
+	sprintf(data+2,"%d", palette);
+	sprintf(data+3,"%d", width);
+	sprintf(data+4,"%d", height);
+	memcpy(data+5,buffers[buf.index].start,size_data_rgb24);
 	wsentry2(data);
     } else if(palette==2){
-	void *data=(void *)malloc(sizeof(void)*size_data_yuv420);
-        memcpy(data,buffers[buf.index].start,size_data_yuv420);
-	sprintf(data+size_data_yuv420+1,"%d", file_number);
-	sprintf(data+size_data_yuv420+2,"%d", sec);
+	unsigned char *data=(unsigned char *)malloc(sizeof(unsigned char)*size_data_yuv420);
+    sprintf(data,"%d", file_number);
+	sprintf(data+1,"%d", sec);
+	sprintf(data+2,"%d", palette);
+	sprintf(data+3,"%d", width);
+	sprintf(data+4,"%d", height);
+	memcpy(data+5,buffers[buf.index].start,size_data_yuv420);
 	wsentry2(data);
     } else if(palette==3){
- 	void *data=(void *)malloc(sizeof(void)*size_data_yuyv);
-        memcpy(data,buffers[buf.index].start,size_data_yuyv);
-	sprintf(data+size_data_yuyv+1,"%d", file_number);
-	sprintf(data+size_data_yuyv+2,"%d", sec);
+ 	unsigned char *data=(unsigned char *)malloc(sizeof(unsigned char)*size_data_yuyv);
+    sprintf(data,"%d", file_number);
+	sprintf(data+1,"%d", sec);
+	sprintf(data+2,"%d", palette);
+	sprintf(data+3,"%d", width);
+	sprintf(data+4,"%d", height);
+	memcpy(data+5,buffers[buf.index].start,size_data_yuyv);
 	wsentry2(data);
    }
       

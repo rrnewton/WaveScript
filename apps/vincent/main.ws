@@ -1,4 +1,5 @@
 include "load_option.ws"
+include "write.ws"
 include "unix.ws"
 include "stdlib.ws"
 
@@ -8,7 +9,7 @@ close :: (Int) -> () = foreign("close",["fcntl.h"])
 
 //Call foreign source
 wsentry1 :: Stream Array Int = foreign_source("wsentry1", ["process.h"])
-wsentry2 :: Stream Pointer "void*" = foreign_source("wsentry2", ["process.h"])
+wsentry2 :: Stream String = foreign_source("wsentry2", ["process.h"])
 
 //Function to send data to the C program
 rcvr :: Array Int -> () = foreign("wssink", ["process.c"])
@@ -49,7 +50,8 @@ strm_send_data = iterate value in strm_process1 {
 }
 
 strm_write = iterate data in strm_process2 {
-	print("et la on ecrit le fichier");
+	//print("et la on ecrit le fichier");
+	write_file(data);
 	emit ();
 }
 
