@@ -1,0 +1,50 @@
+
+
+[2008.05.21] {Instructions for building app}
+
+There are several ways to build this application.  Different
+configurations might have the code running entirely on the PC,
+entirely on the embedded device (Telos or phone) or split between
+them.
+
+A basic compile runs it on the server.  The current prototype just
+runs on empty data pushed by a timer, so it doesn't need sensor data
+or a trace file.
+
+  wsc2 mfcc6_fixedpoint_fb.ws
+  ./query.exe
+
+Also, it runs on the node:
+
+  wstiny mfcc6_fixedpoint_fb.ws
+  ./query.py
+OR
+  make -f Makefile.tos2 install telosb
+  
+The next step is to compile the application split across the two platforms.
+
+  wstiny -split mfcc6_fixedpoint_fb.ws
+
+
+[2008.05.19]
+
+Sorting out all these redundant mfcc_*.ws files.
+
+ mfcc.ws:
+   Initial version.  One big iterate, dynamic memory alloc.
+   
+ mfcc_splitup.ws:
+   First, I split up the iterate into multiple operators.
+   
+ mfcc_static.ws:
+   Next, I used statically allocated comm buffers instead of sigsegs.
+
+ mfcc_fixedpoint.ws:
+   Moved the FFT over to fixedpoint.
+
+ mfcc_fixedpoint_full.ws:
+   Added cepstrel coefficient.
+
+ mfcc_fixedpoint_fb.ws:
+   Changed filterbank from floating to fixed.
+
