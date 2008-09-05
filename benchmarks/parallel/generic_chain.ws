@@ -9,7 +9,8 @@ fun trylookup(str,def) {
 
 bufsize = trylookup("BUFSIZE", 1000)
 reps    = trylookup("REPS", 4000)
-workers = trylookup("WORKERS", 12)
+workers = trylookup("WORKERS", 16)
+numcpus = trylookup("NUMCPUS", 16)
 rate    = Float! trylookup("TIMERRATE", 1000)
 
 _ = println("Total ops per tick: "++ bufsize * reps)

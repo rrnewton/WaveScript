@@ -81,7 +81,8 @@ fun trylookup(str,def) {
 
 
 ops = 1 * 1000 * 1000
-workers = trylookup("WORKERS", 16)
+//workers = trylookup("WORKERS", 16)
+workers = 16 // Stay constant.
 rate = 9
 amplify = 10
 

@@ -28,7 +28,7 @@ fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
 
 outfmt = "bmp"
 
-LIVE = false;
+LIVE = true;
 
 //====================================================================================================
 /// Types and Constants:
@@ -645,11 +645,11 @@ output_imgs = if LIVE then my_display else dump_files;
 main = 
        output_imgs
 /*      $ unsquisher */
-/*      $ unsquisher */
+     $ unsquisher
      //$ nilbhatta
      $ bhatta
 /*      $ squisher */
-/*      $ squisher */
+     $ squisher
      $ input_imgs;
 
 

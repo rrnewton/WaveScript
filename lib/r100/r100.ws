@@ -150,7 +150,7 @@ main = {
 
   using Curry;
 
-  LIVE = false;
+  LIVE = true;
 
   acquire_imgs = if LIVE then front_camera      else stream_image_dir(fullpath_in);
   output_imgs  = if LIVE then display_to_screen else fun(strm) image_files_sink(fullpath_out, "out", strm);

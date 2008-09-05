@@ -15,6 +15,10 @@ OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
 
 function print_results_header() {
+echo "## Real or User time for each benchmark/backend " > RESULTS.txt
+echo "## LD_PRELOAD: $LD_PRELOAD" >> RESULTS.txt
+echo "## NOSUDO: $NOSUDO" >> RESULTS.txt
+echo "## NICE: $NICE" >> RESULTS.txt
    echo Benchmark $BACKENDS >> RESULTS.txt
 #  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> RESULTS.txt
 }
@@ -23,13 +27,13 @@ function print_results_header() {
 
 function runscheme() {
   echo "  scheme: running... -n $TUPS"
-  if ! (ws $FILE $WSOPTIONS -n $TUPS -t &> $DEST/scheme.$NAME.out); 
+  if ! (ws $FILE $WSOPTIONS -n $TUPS -t &> $DEST/scheme.$NAME"_"$LIMITCPUS.out); 
   then echo "ws failed!"; exit -1; fi
 }
 
 function runschemeO3() {
   echo "  scheme -O3: running... -n $TUPS"
-  if ws.opt $FILE -O3 $WSOPTIONS -n $TUPS -t &> $DEST/schemeO3.$NAME.out; then echo>/dev/null;
+  if ws.opt $FILE -O3 $WSOPTIONS -n $TUPS -t &> $DEST/schemeO3.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "ws.opt failed!"; exit -1; fi
 }
 
@@ -39,10 +43,10 @@ function runcpp() {
   echo "  cpp: compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.default.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if wsc $FILE -t $WSOPTIONS   &> $DEST/cpp.compile.$NAME.out; then echo>/dev/null;
+  if wsc $FILE -t $WSOPTIONS   &> $DEST/cpp.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
-  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cpp.$NAME.out; 
+  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cpp.$NAME"_"$LIMITCPUS.out; 
   then echo "failed!"; exit -1; fi
   rm -f query.*  
 }
@@ -52,10 +56,10 @@ function runcpp_df() {
   echo "  cpp: -DDEPTH_FIRST compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.df.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if  wsc $FILE -t $WSOPTIONS --scheduler depth-first &> $DEST/cppdf.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t $WSOPTIONS --scheduler depth-first &> $DEST/cppdf.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
-  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME.out;
+  if ! (time ./query.exe $OLDWSCARGS -n $TUPS) &> $DEST/cppdf.$NAME"_"$LIMITCPUS.out;
   then echo "failed!"; exit -1; fi
   rm -f query.*  
 }
@@ -75,10 +79,10 @@ function runcpp_corefit() {
   # This didn't work:
   #ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.traindf.a" "$WAVESCOPED/libws-SMSegList.a" 
   #echo "  cpp: -DTRAIN_SCHEDULER -DDEPTH_FIRST compiling..."
-  if  wsc $FILE -t --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnew.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnew.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $WSCARGS"
-  if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME.out;
+  if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnew.$NAME"_"$LIMITCPUS.out;
   then echo "failed!"; exit -1; fi
   rm -f query.*  
   unset COREFITBENCH
@@ -92,10 +96,10 @@ function runcpp_corefit_nothreads() {
   # MUST PASS THIS TO G++:
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
   ln -s "$REGIMENTD/benchmarks/libws-SMSegList.newest.O2.coredf.nothreads.a" "$WAVESCOPED/libws-SMSegList.a" 
-  if  wsc $FILE -t -nothreads --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnothreads.compile.$NAME.out; then echo>/dev/null;
+  if  wsc $FILE -t -nothreads --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnothreads.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cppnothreads: running... -n $TUPS $WSCARGS"
-  if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnothreads.$NAME.out;
+  if ! (time ./query.exe $WSCARGS -n $TUPS) &> $DEST/cppnothreads.$NAME"_"$LIMITCPUS.out;
   then echo "failed!"; exit -1; fi
   rm -f query.*  
   unset COREFITBENCH
@@ -105,20 +109,20 @@ function runcpp_corefit_nothreads() {
 CAMLOPTIONS=
 function runcaml() {
   echo "  caml $MLTONOPTIONS: compiling..."
-  if wscaml $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/caml$1.compile.$NAME.out; then echo>/dev/null;
+  if wscaml $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/caml$1.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wscaml failed!"; exit -1; fi
   echo "   caml: running... -n "$TUPS
-  if ! (time ./query.caml.exe -n $TUPS) &> $DEST/caml$1.$NAME.out; 
+  if ! (time ./query.caml.exe -n $TUPS) &> $DEST/caml$1.$NAME"_"$LIMITCPUS.out; 
   then echo "failed!"; exit -1; fi
 }
 
 MLTONOPTIONS=
 function runmlton() {
   echo "  mlton $MLTONOPTIONS: compiling..."
-  if wsmlton $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/mlton$1.compile.$NAME.out; then echo>/dev/null;
+  if wsmlton $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/mlton$1.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
-  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton$1.$NAME.out; 
+  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton$1.$NAME"_"$LIMITCPUS.out; 
   then echo "failed!"; exit -1; fi
 }
 
@@ -126,15 +130,15 @@ function runmlton() {
 function runc2() {
   echo "  wsc2 $C2OPTIONS : compiling..."
   echo RUNNING COMMAND: wsc2 $FILE $C2OPTIONS $WSOPTIONS
-  if wsc2 $FILE $C2OPTIONS $WSOPTIONS &> $DEST/c2$1.compile.$NAME.out; then echo>/dev/null;
+  if wsc2 $FILE $C2OPTIONS $WSOPTIONS &> $DEST/c2$1.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc2 failed!"; exit -1; fi
   echo "   wsc2: running output... -n "$TUPS
 
   if [ "$LIMITCPUS" = "" ] || [ "$LIMITCPUS" = "0" ]; then
-    if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
+    if ! (time ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME"_"$LIMITCPUS.out; 
     then echo "failed!"; exit -1; fi
   else
-    if ! (run_with_n_cpus $LIMITCPUS ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME.out; 
+    if ! (run_with_n_cpus $LIMITCPUS ./query.exe -n $TUPS) &> $DEST/c2$1.$NAME"_"$LIMITCPUS.out; 
     then echo "failed!"; exit -1; fi
   fi
 }
@@ -170,46 +174,46 @@ function runallbackends() {
   TIMES=
   for backend in $BACKENDS; do
     case $backend in
-      scheme)   runscheme;   add_time scheme $DEST/scheme.$NAME.out;;
-      schemeO3) runschemeO3; add_time scheme $DEST/schemeO3.$NAME.out;;
+      scheme)   runscheme;   add_time scheme $DEST/scheme.$NAME"_"$LIMITCPUS.out;;
+      schemeO3) runschemeO3; add_time scheme $DEST/schemeO3.$NAME"_"$LIMITCPUS.out;;
 
       camlO3)   MLTONOPTIONS="-O3"; 
                 runcaml O3;
-                add_time mlton $DEST/camlO3.$NAME.out;;
+                add_time mlton $DEST/camlO3.$NAME"_"$LIMITCPUS.out;;
 
-      mlton)    runmlton;    add_time mlton $DEST/mlton.$NAME.out;;
+      mlton)    runmlton;    add_time mlton $DEST/mlton.$NAME"_"$LIMITCPUS.out;;
       mltonO3)  MLTONOPTIONS="-O3"; 
-                runmlton O3; add_time mlton $DEST/mltonO3.$NAME.out;;
-      cpp)      runcpp;      add_time mlton $DEST/cpp.$NAME.out;;
-      cpp_df)   runcpp_df;   add_time mlton $DEST/cppdf.$NAME.out;;
+                runmlton O3; add_time mlton $DEST/mltonO3.$NAME"_"$LIMITCPUS.out;;
+      cpp)      runcpp;      add_time mlton $DEST/cpp.$NAME"_"$LIMITCPUS.out;;
+      cpp_df)   runcpp_df;   add_time mlton $DEST/cppdf.$NAME"_"$LIMITCPUS.out;;
       cpp_corefit) runcpp_corefit; 
-                             add_time mlton $DEST/cppnew.$NAME.out;;
+                             add_time mlton $DEST/cppnew.$NAME"_"$LIMITCPUS.out;;
       cpp_corefit_nothreads) runcpp_corefit_nothreads; 
-                             add_time mlton $DEST/cppnothreads.$NAME.out;;
+                             add_time mlton $DEST/cppnothreads.$NAME"_"$LIMITCPUS.out;;
 
       c2)        C2OPTIONS+="$C2OPTLVL -gc refcount -sigseg copyalways ";
                  runc2; 
-                 add_time shell $DEST/c2.$NAME.out;;
+                 add_time shell $DEST/c2.$NAME"_"$LIMITCPUS.out;;
 
       c2def)     C2OPTIONS+="$C2OPTLVL -gc deferred -sigseg copyalways ";
                  runc2 def;       
-                 add_time shell $DEST/c2def.$NAME.out;;
+                 add_time shell $DEST/c2def.$NAME"_"$LIMITCPUS.out;;
 
       c2seglist) C2OPTIONS+="$C2OPTLVL -gc refcount -sigseg seglist ";
                  runc2 seglist;      
-                 add_time shell $DEST/c2seglist.$NAME.out;; 
+                 add_time shell $DEST/c2seglist.$NAME"_"$LIMITCPUS.out;; 
 
       c2defseglist) C2OPTIONS+="$C2OPTLVL -gc deferred -sigseg seglist ";
                     runc2 defseglist;      
-                    add_time shell $DEST/c2defseglist.$NAME.out;; 
+                    add_time shell $DEST/c2defseglist.$NAME"_"$LIMITCPUS.out;; 
 
       c2boehm)      C2OPTIONS+="$C2OPTLVL -gc boehm -sigseg copyalways ";
                     runc2 boehm;
-                    add_time shell $DEST/c2boehm.$NAME.out;;
+                    add_time shell $DEST/c2boehm.$NAME"_"$LIMITCPUS.out;;
 
       c2boehmseglist) C2OPTIONS+="$C2OPTLVL -gc boehm -sigseg seglist ";
                       runc2 boehmseglist;       
-                      add_time shell $DEST/c2boehmseglist.$NAME.out;;
+                      add_time shell $DEST/c2boehmseglist.$NAME"_"$LIMITCPUS.out;;
 
 
       *) echo Unhandled backend: $backend; exit -1;;
@@ -259,16 +263,18 @@ function run_multithreaded() {
   TUPS=$3
 
   # Running with LIMITCPUS=0 is a shorthand for no threads:
+  echo;echo "RUNNING $NAME WITH THREADS DISABLED."
   export LIMITCPUS=0;
-  #runallbackends array_splitjoin  $TEMPDIR __ $TUPS
+  export C2OPTIONS=" "
+  runallbackends $NAME  $TEMPDIR __ $TUPS
 
-  for ((lim = 2; lim <= $NUMCPUS; lim++)) do
+  for ((lim = 1; lim <= $NUMCPUS; lim++)) do
     export C2OPTIONS=" -threads "
     export LIMITCPUS=$lim;
     # For this benchmark, we only split it as many ways as we have CPUs:
     export WORKERS=$lim;
-    echo;echo "RUNNING WITH $LIMITCPUS CPU(S)."
-    runallbackends array_splitjoin  $TEMPDIR __ $TUPS
+    echo;echo "RUNNING $NAME WITH $LIMITCPUS CPU(S)."
+    runallbackends $NAME  $TEMPDIR __ $TUPS
   done
   unset C2OPTLVL
 }

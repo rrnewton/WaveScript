@@ -17,14 +17,6 @@
 # use 3 cpus (at nice 19).  And it's only using 200% at 4 cpus.
 
 
-
-# Tried 5 7 8 10 19
-
-if [ "$NICE" = "" ]; then 
-  NICE=8; 
-  echo Setting nice to $NICE.
-fi 
-
 # First argument is number of cpus.
 N=$1
 shift
@@ -36,22 +28,31 @@ echo "Total CPUS/Cores found: $TOTAL, disabling $DUMMIES processors"
 
 if [ "$NOSUDO" = "" ]; 
 then
+  
+  if [ "$SUDO" = "" ]; then SUDO=sudo; fi
+
   # First we make sure all these CPUs are on, in case somebody else left it in a bad state.
   for ((i=1; i < $N; i++)) do
-    sudo sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
+    $SUDO sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
   done
   for ((i=$N; i < $TOTAL; i++)) do
-    echo Disabling $i
-    sudo sh -c "echo 0 > /sys/devices/system/cpu/cpu$i/online"
+    #echo Disabling $i
+    $SUDO sh -c "echo 0 > /sys/devices/system/cpu/cpu$i/online"
   done
 
   time $* 
   for ((i=$N; i < $TOTAL; i++)) do
-    echo Enabling $i
-    sudo sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
+    #echo Enabling $i
+    $SUDO sh -c "echo 1 > /sys/devices/system/cpu/cpu$i/online"
   done
   echo Reenabled extra processors.
 else 
+  # Tried 5 7 8 10 19
+  if [ "$NICE" = "" ]; then 
+    NICE=8; 
+    echo Setting nice to $NICE.
+  fi 
+
   echo SUDO unavailable so we attempt to run dummy processes to disable cpus.
   SCHEME=chez
   TMP=`mktemp`

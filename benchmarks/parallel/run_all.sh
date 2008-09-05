@@ -25,14 +25,15 @@ print_results_header
 # [2008.09.02] I'm having segfaults with O2 or O3 on this right now:
 #export C2OPTLVL="-O1"
 export C2OPTLVL=" -O0 "
-run_multithreaded array_splitjoin $TEMP 100
+run_multithreaded array_splitjoin $TEMP 500
 unset C2OPTLVL
 
-#run_multithreaded passchain_10 $TEMP 300
+run_multithreaded passchain_10 $TEMP 300
 
-mv RESULTS.txt RESULTS_"$HOSTNAME"_passchain_"$CC".txt
+RESULTS=RESULTS_"$HOSTNAME"_passchain_"$CC".txt
+mv RESULTS.txt $RESULTS
 
 #dump_plot_script ./plot_misc.gp RESULTS_misc.txt
-
-# Cleanup by killing that big old file:
-rm -f $DUMMYFILE
+cat > plot.gp <<EOF
+plot '$RESULTS' using 2:3 w lp
+EOF

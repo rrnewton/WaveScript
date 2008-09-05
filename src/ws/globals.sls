@@ -362,7 +362,7 @@
 ;;  deferred - deferred refcount, unfinished
 ;;  boehm    - conservative collector
 ;;  none     - simply don't collect
-(define-regiment-parameter wsc2-gc-mode 'boehm)
+(define-regiment-parameter wsc2-gc-mode 'refcount)
 ;; [2008.08.27] Making this boehm for now because of a known bug with
 ;; simple 'refcount and closed mono-functions not inlined.
 

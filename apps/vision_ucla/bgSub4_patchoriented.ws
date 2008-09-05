@@ -136,9 +136,18 @@ type PixelHist = Array3D HistElt;
 
  halfPatch :: Int = SizePatch / 2;
 
+// Actually, workers is this squared:
+bhattaWorkers = {
+  n = if GETENV("NUMCPUS") == ""
+      then 4
+      else stringToInt(GETENV("NUMCPUS"));
+  Int! sqrtF(Float! n);
+}
 
 _ = {
   println$ "Some metaprogram-time values: \n";
+  println$ "Number of Workers = "++ bhattaWorkers * bhattaWorkers ++"\n";
+
   println$ "  inv_sizeBins: "++(inv_sizeBins1, inv_sizeBins2, inv_sizeBins3);
   println$ "  sampleWeight1,2: "++ (sampleWeight1, sampleWeight2);
   println$ "";
@@ -303,9 +312,6 @@ fun estimateFgPix(tempHist, bgHist, nbrhood) {
   mask = if diffImage > Threshold then 255 else 0; // Inefficient...
   (diffImage, mask)
 }
-
-// Actually, workers is this squared:
-bhattaWorkers = 2;
 
 // This will create a stream of mask images.
 bhattaPixKern :: Stream (Bool * Matrix RGB) -> Stream (Matrix (Color * Color));

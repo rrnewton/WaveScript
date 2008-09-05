@@ -1,8 +1,28 @@
 
 
-
 // [2008.09.01] Would this work for 64 bits?
 
+
+//#ifdef __GNUC__
+#ifndef __INTEL_COMPILER
+#warning USING GCC INTRINSICS FOR ATOMIC FETCH AND ADDS
+
+// Switching to GCC intrinsics for now:
+// These work for GCC (32 or 64 bit) but not for ICC.
+inline void atomic_increment(refcount_t * pw) {
+  __sync_fetch_and_add(pw, 1);
+}
+inline refcount_t atomic_exchange_and_add(refcount_t * pw, int dv) {
+  return __sync_fetch_and_add(pw, dv);
+}
+
+#else
+
+#ifdef __x86_64__ 
+#error 64 bit fetch and add unimplemented for this compiler.
+#endif
+
+// These are derived from boost:
 inline int atomic_exchange_and_add( int * pw, int dv )
 {
     // int r = *pw;
@@ -36,6 +56,35 @@ inline void atomic_increment( int * pw )
         "cc" // clobbers
     );
 }
+
+#endif
+
+//================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
 
@@ -83,6 +132,7 @@ static inline char CAS2 (volatile void * addr, volatile void * v1, volatile long
 /*
 MORE: scraped from the web:
 
+http://www.memoryhole.net/kyle/2007/05/atomic_incrementing.html
 
 
 void atomic_add(int * operand, int incr)
@@ -185,3 +235,7 @@ Ugly much? Just a bit.
 
 
 */
+
+
+// This could be promising:
+// http://www.exit.com/blog/archives/000361.html

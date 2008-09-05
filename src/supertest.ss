@@ -310,7 +310,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
-(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
+;(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
 
 (current-directory test-directory)
 
@@ -321,6 +321,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
 ;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
+#;
 (define wait-on-larc-load
   (run-async-test "larceny: Load from source: " "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log"))
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
@@ -755,10 +756,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Wait on outstanding async tests before we go into the perf benchmarks:
 
-(fpf "\n\nWaiting on tests run in backgroud:\n")
-(fpf "========================================\n")
-
-(wait-on-larc-load 1) ;; Should be done by now, don't give it any extra time.
+;(fpf "\n\nWaiting on tests run in backgroud:\n")
+;(fpf "========================================\n")
+;(wait-on-larc-load 1) ;; Should be done by now, don't give it any extra time.
 
 ;;================================================================================
 ;; Performance benchmarks.

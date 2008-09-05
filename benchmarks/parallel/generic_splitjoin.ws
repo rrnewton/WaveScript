@@ -6,4 +6,4 @@ include "stdlib.ws"
 
 // Override main:
 //main = parmap(workers, work, src)
-main = smap(fun(_) (), parmap(workers, work, src))
+main = smap(fun(_) (), parmap(numcpus, work, src))

@@ -131,6 +131,7 @@ inline void free_measured(void* object) {
 #ifdef WS_THREADED
   #include "atomic_incr_intel.h"
   #define INCR_ARR_RC(ptr)        if (ptr) atomic_increment( &ARR_RC_DEREF(ptr))
+  // Assumes that atomic_exchange_and_add returns the OLD value.
   #define DECR_ARR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add( &ARR_RC_DEREF(ptr), -1) == 1 : 0)
   #define INCR_ITERATE_DEPTH()    atomic_increment(&iterate_depth)
   #define DECR_ITERATE_DEPTH()    atomic_exchange_and_add(&iterate_depth, -1)

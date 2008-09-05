@@ -32,7 +32,7 @@
 
 // For gettid()
 //#include <sys/types.h>
-#include<syscall.h>
+//#include<syscall.h>
 
 #define LOAD_COMPLEX
 //#define WS_THREADED
@@ -228,6 +228,7 @@ int total_workers;
 
 //#include <sys/types.h>
 // Not used yet, but this will set the thread/cpu affinity.
+/*
 #include <sched.h>
 void pin2cpu(int cpuId) {
       // Get the number of CPUs
@@ -261,8 +262,6 @@ void pin2cpuRange(int numcpus) {
       unsigned int len = sizeof(mask);
       CPU_ZERO(&mask);
       for (i=0; i<numcpus; i++)  CPU_SET(i, &mask);
-      //long int tid = syscall(224); // No idea how portable this is...
-      //long int tid = gettid(); 
       long int tid = syscall(SYS_gettid);
 
       printf("PINNING TO CPUS 0 ... %d, TID %d\n", numcpus-1, tid);
@@ -272,6 +271,7 @@ void pin2cpuRange(int numcpus) {
 	exit(-1);
       }
 }
+*/
 
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
