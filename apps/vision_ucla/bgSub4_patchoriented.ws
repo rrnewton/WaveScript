@@ -33,7 +33,7 @@ fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
 
 outfmt = "bmp"
 
-LIVE = false;
+LIVE = getenv("LIVE") != ""
 
 // Maybe I should make this builtin?
 WSDEBUG = true

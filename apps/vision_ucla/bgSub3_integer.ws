@@ -28,7 +28,7 @@ fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
 
 outfmt = "bmp"
 
-LIVE = true;
+LIVE = GETENV("LIVE") != ""
 
 //====================================================================================================
 /// Types and Constants:

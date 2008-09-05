@@ -5,7 +5,7 @@ export REGFLAG=wsc2
 source `dirname $0`/assert_regimentd
 
 # Get out only the relevant options:
-RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,limitcpus,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+RELEVANT=`getopt -a -l "ss:,sigseg:,gc:,gcc:,limitcpus,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3,dbg" -o ":" -- "$@"`
 #RELEVANT=`getopt -a "ss:,sigseg:,gc:,gcc:,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
 echo wsc2 getopt result: $RELEVANT
 
@@ -44,6 +44,7 @@ while [ $# != 0 ];  do
    "--O1" )        COPTFLAG="$flag";;
    "--O2" )        COPTFLAG="$flag";;
    "--O3" )        COPTFLAG="$flag";;
+   "--dbg" )       COPTFLAG="$flag";;
    "--threads" )   THREADS=true;;
    "--nothreads")  THREADS="";;
    "--nogcc" | "--no-gcc" ) NOGCC=true;;
