@@ -578,6 +578,8 @@ SVNREV=$(shell if [ "`svn info`" == "" ]; then svn info https://svn.csail.mit.ed
 WSVER=$(shell cat version).$(SVNREV)
 DEBPKG=$(REGIMENTD)/wavescript_$(WSVER)
 # This will build a source package.
+ubuntu: deb
+debian: deb
 deb: 
 	@echo Building deb for working directory, revision "$(SVNREV)"
 	rm -rf $(DEBPKG)

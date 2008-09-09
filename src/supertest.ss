@@ -232,8 +232,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		   (let ([result (wait-for-it secs-to-wait)])
 		     ;; Can't report accurate time currently.  If the subprocess 
 		     ;; is already finished we don't know how long it took.		    
-		     (code->msg! result 0 ;(- (current-inexact-milliseconds) test-start)
-				 ))))
+		     (code->msg! result (- (current-inexact-milliseconds) test-start)))))
       (post-to-web (format "intermediate/rev_~a" svn-revision)))))
 
 (define (run-test title cmd)
@@ -680,8 +679,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsc2: Compiling bgSub.ws -O3 -gc boehm:"
  	      (format "wsc2 bgSub.ws -O3 -gc boehm -exit-error &> ~a/wsc2_bgSub1_build.log" test-directory))
 
-
-     (run-test "wsc2:  Running bgSub.ws:  "
+    (run-test "wsc2:  Running bgSub.ws:  "
  	      ;(format "memprof ./query.exe -n 3 > ~a/wsc2_bgSub1_run.log 2> ~a/bgSub1_memprof.txt" test-directory test-directory)
 	       (format "./query.exe -n 3 &> ~a/wsc2_bgSub1_run.log" test-directory)
 	      )

@@ -56,6 +56,7 @@
 
 extern int stopalltimers;
 
+void wserror_fun(char*);
 
 // ZCT handling for deferred reference counting:
 // ============================================================

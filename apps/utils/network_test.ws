@@ -1,7 +1,6 @@
 
 
 
-
 /* 
  * This runs a network test by gradually increasing the message rate.
  *
@@ -13,13 +12,14 @@
 /* 
  * [2008.04.11]
  * Jeez, it seems like every time I turn around everything stops working on TinyOS. *
-
+ *
  * It's not working well in non-WSRADIOMODE atm.  And perhaps the
  * RADIOMODE ver is getting hosed by stray packets from other nodes
  * programmed some time ago.
  *
 
-Run this with wstiny -split 
+Run this with:
+   wstiny -split 
 
 
  */
