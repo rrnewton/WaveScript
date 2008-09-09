@@ -22,7 +22,9 @@ IplImage* ws_readImage_load(const char* filename, int* dims) {
   im = cvvLoadImage(filename);
   if (!im) { 
     printf("Tried to load <%s>\n", filename);
-    wserror_fun("opencv_wrapper ws_readImage failed to load file: ");
+    fflush(stdout);
+    wserror_fun("opencv_wrapper ws_readImage failed to load file.");
+    exit(1);
   }
   dims[0] = im->height;
   dims[1] = im->width;

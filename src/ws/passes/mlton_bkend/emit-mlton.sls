@@ -1259,13 +1259,13 @@
       [_+U8 "( Word8.+)"]
       [_-U8 "( Word8.-)"] 
       [*U8 "( Word8.* )"] 
-      [/U8 "( Word.quot )"]
+      [/U8 "( Word8.div )"]
       ;[^U8 "powWord8"]
 
       [_+U16 "( Word16.+)"]
       [_-U16 "( Word16.-)"] 
       [*U16 "( Word16.* )"] 
-      [/U16 "( Word.quot )"]
+      [/U16 "( Word16.div )"]
       ;[^U16 "powWord16"]
 
       [_+. "( Real32.+ )"]

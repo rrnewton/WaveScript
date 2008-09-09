@@ -226,9 +226,11 @@ wsfifo** queue_table;            // Should we pad this to prevent false sharing?
 int* cpu_affinity_table;         // This should be set based on AST annotations... currently set to ANY_CPU
 int total_workers;
 
+#ifdef __linux__
+
 //#include <sys/types.h>
 // Not used yet, but this will set the thread/cpu affinity.
-/*
+#include <syscall.h>
 #include <sched.h>
 void pin2cpu(int cpuId) {
       // Get the number of CPUs
@@ -271,7 +273,11 @@ void pin2cpuRange(int numcpus) {
 	exit(-1);
       }
 }
-*/
+
+#else
+  #error "pin2cpu: Cpu Pinning only works under linux presently."
+#endif
+
 
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -315,6 +321,7 @@ void* worker_thread(void* i) {
   else fprintf(stderr, "** Spawning worker thread %d, cpu %d\n", index, cpu_affinity_table[index]);
 
   // In this mode we restrict the subset of CPUs that we use.
+#ifdef __linux__
 #ifdef LIMITCPUS
   // For now this mode cannot restrict which cpu *within* the subset each thread uses.
   char* str = getenv("LIMITCPUS");
@@ -325,6 +332,10 @@ void* worker_thread(void* i) {
 #else
   pin2cpu(cpu_affinity_table[index]);
 #endif
+#else
+  #error "worker_thread: Cpu Pinning only works under linux presently."
+#endif
+
   pthread_mutex_unlock(&print_lock);  
   while (1) 
   {

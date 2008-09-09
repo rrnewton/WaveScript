@@ -54,7 +54,7 @@ fun mknull() Array:null
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
 		"../processed/FeederStation_2007-06-26_14-00-03.000/bhatta_default/", // OutLoc
-		(396 :: Int), // BgStartFrame
+		0, //(396 :: Int), // BgStartFrame
 		(0  :: Int),  // StartFrame
 		(20 :: Int),  // NumBgFrames
 		(100 :: Int), // NumFgFrames
@@ -522,6 +522,8 @@ filenames = iterate ind in index_stream {
   if nametable == Array:null then {
     nametable := scandir(fullpath_in);
   };
+  if ind >= Array:length(nametable) 
+  then wserror(" Tried to index file "++ind++" within directory -- doesn't exist!");
   emit fullpath_in ++ "/" ++ nametable[ind];
 }
 

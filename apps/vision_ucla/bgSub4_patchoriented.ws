@@ -33,7 +33,7 @@ fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
 
 outfmt = "bmp"
 
-LIVE = getenv("LIVE") != ""
+LIVE = GETENV("LIVE") != ""
 
 // Maybe I should make this builtin?
 WSDEBUG = true
@@ -136,7 +136,7 @@ type PixelHist = Array3D HistElt;
 
  halfPatch :: Int = SizePatch / 2;
 
-// Actually, workers is this squared:
+// Actually, workers is this bhattaWorkers squared:
 bhattaWorkers = {
   n = if GETENV("NUMCPUS") == ""
       then 4
@@ -415,6 +415,8 @@ filenames = iterate ind in index_stream {
   if nametable == Array:null then {
     nametable := scandir(fullpath_in);
   };
+  if ind >= Array:length(nametable) 
+  then wserror(" Tried to index file "++ind++" within directory -- doesn't exist!");
   emit fullpath_in ++ "/" ++ nametable[ind];
 }
 

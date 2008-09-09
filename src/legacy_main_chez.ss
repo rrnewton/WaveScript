@@ -86,6 +86,7 @@
 		;; Disable source optimization altogether.
 		(optimize-level 0)
 		(run-cp0 (lambda (cp0 x) x))]
+	       [(1) (optimize-level 1)]
 	       [(2) (optimize-level 2)]
 	       [(3)
 		(printf "Configuring compiler for full optimize mode. (UNSAFE)\n")

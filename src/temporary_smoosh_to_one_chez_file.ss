@@ -58,6 +58,41 @@ exec regiment.ikarus i --script $0 ${1+"$@"}
   ;(unless (null? acc) (inspect acc))
   (values acc newexp))
 
+;; If I get rid of modules, I get these warnings.
+;; I could deploy more IFCHEZ's to get rid of these.
+
+;; [2008.09.09] Currently removing modules and setting REGOPTLVL=1
+;; results in an infinite loop.
+#|
+
+Regiment: Loading ws compiler in chezscheme (LOADED VIA UNKNOWN METHOD!?)...
+
+Warning: assigning primitive name void at optimize-level 2.
+
+Warning: assigning primitive name last-pair at optimize-level 2.
+
+Warning: assigning primitive name cflonum? at optimize-level 2.
+
+Warning: assigning primitive name add1 at optimize-level 2.
+
+Warning: assigning primitive name sub1 at optimize-level 2.
+
+Warning: assigning primitive name atom? at optimize-level 2.
+
+Warning: assigning primitive name vector-copy at optimize-level 2.
+
+Warning: assigning primitive name flonum->fixnum at optimize-level 2.
+
+Warning: assigning primitive name subst at optimize-level 2.
+
+Warning: assigning primitive name andmap at optimize-level 2.
+
+Warning: assigning primitive name ormap at optimize-level 2.
+
+Warning: assigning primitive name iota at optimize-level 2.
+
+|#
+
 
 (define (convert-specs specs)
   (printf "Converting Import specs:\n")
@@ -67,7 +102,8 @@ exec regiment.ikarus i --script $0 ${1+"$@"}
     ;; This is REALLY weird, but ifchez is becoming unbound AFTER it's bound at top-level.
     (pretty-print '(define-syntax IFCHEZ
 		     (syntax-rules ()
-		       [(_ a b) a])) prt) (newline prt) (newline prt)
+		       [(_ a b) a])) prt) 
+    (newline prt) (newline prt)
     (for-each (lambda (fn)
 		(printf "  Converting ~a \n" fn)
 		(if (eq? fn 'language-mechanism)
@@ -94,14 +130,18 @@ exec regiment.ikarus i --script $0 ${1+"$@"}
 		      (printf " ** Ignoring iu-match, substituting match.ss\n")
 		      (pretty-print '(include "old/chez/match.ss") prt) (newline prt)
 		      (pretty-print '(import iu-match) prt)(newline prt)(newline prt)]
+
 		     [(equal? name '(ws common)) 
 		      (printf " ** Ignoring ws common\n")
 		      (void)]		     		     
 		     [else  
-		      ;; A compromise, we don't waste time pretaty printing, but we do print each def on its own line.
-		      
-		      (if pretty
+		      (if #f ;(null? imports)
+			  ;; [2008.09.08] Test: Trying a variant WITHOUT modules, except for ws_sim_wavescript_sim_library_push
+			  (pretty-print `(begin ,@bod* ,@aliases) prt)
+		      (begin 
+			(if pretty
 			  (pretty-print `(module ,symname ,newexp* ,@imports ,@bod* ,@aliases) prt)
+			  ;; A compromise, we don't waste time pretty printing, but we do print each def on its own line:
 			  (begin (fprintf prt "(module ~a ~s\n" symname newexp*)
 				 (for-each (lambda (x) (pp x prt)) imports)				 
 				 (for-each (lambda (x) (display "  " prt)(write x prt) (newline prt)) bod*)
@@ -109,7 +149,8 @@ exec regiment.ikarus i --script $0 ${1+"$@"}
 				 (fprintf prt ") ;; end module\n" ))
 			  )		      
 		       (unless (equal? name '(ws sim wavescript_sim_library_push))
-			 (write `(import ,symname) prt)(newline prt)(newline prt))
+			 (write `(import ,symname) prt)(newline prt)(newline prt))))
+		       
 		       ])
 		     ])
 		    ))
