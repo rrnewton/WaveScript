@@ -2,34 +2,6 @@ include "unix.ws"
 include "stdlib.ws"
 
 
-//----------------------------------------------------------
-//-- Function to load default value when there is no file --
-//----------------------------------------------------------
-fun default_value() {
-	
-	out=["width","640"];
-	toadd=["height","480"];
-	out := List:append(out,toadd);
-	toadd:=["framerate","30"];
-	out := List:append(out,toadd);
-	toadd:=["brightness","80"];
-	out := List:append(out,toadd);
-	toadd:=["contrast","100"];
-	out := List:append(out,toadd);
-	toadd:=["saturation","0"];
-	out := List:append(out,toadd);
-	toadd:=["hue","0"];
-	out := List:append(out,toadd);
-	toadd:=["exposure","255"];
-	out := List:append(out,toadd);
-	toadd:=["white_balance","0"];
-	out := List:append(out,toadd);
-	toadd:=["gain","130"];
-	out := List:append(out,toadd);
-	toadd:=["gamma","0"];
-	out := List:append(out,toadd);
-	out;
-}
 //----------------------------------------------------
 //-- Function to load informations from config file --
 //----------------------------------------------------
@@ -43,7 +15,7 @@ fun load_option() {
 	out = [];
 	if ptrIsNull(conf) then {
 		//there is no file
-		out := default_value();
+		out := [640,480,30,0,100,127,0,0];
 		print("No file, load default value\n"++out);
 		wserror("No File");
 	} else {
@@ -63,7 +35,7 @@ fun load_option() {
 					i += 1;
 				};
 				//print("Length: " ++ i ++ "\n"); 
-				word = String:implode(Array:toList(ptrToArray(result, i)));
+				//word = String:implode(Array:toList(ptrToArray(result, i)));
 				//print("Option: " ++ word ++ "\n");
 				j = 0;
 				//jump to the value in case there is several ' '
@@ -81,8 +53,9 @@ fun load_option() {
 				//Create the string value
 				value:=List:reverse(value);
 				valstr=String:implode(value);
+				value_=stringToInt(valstr);
 				//Save it in the out list
-				toadd = [word,valstr];
+				toadd = [value_];
 				out := List:append(out,toadd);
 			};
 			//get new line
