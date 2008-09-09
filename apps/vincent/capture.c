@@ -76,7 +76,9 @@ int read_frame(int file_number){
       
     if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
        errno_exit ("VIDIOC_QBUF");
-   
+  
+
+
    
     return 1;
 } 
