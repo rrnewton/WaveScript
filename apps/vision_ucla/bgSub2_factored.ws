@@ -486,6 +486,8 @@ filenames = iterate ind in index_stream {
   if nametable == Array:null then {
     nametable := scandir(fullpath_in);
   };
+  if ind >= Array:length(nametable) 
+  then wserror(" Tried to index file "++ind++" within directory -- doesn't exist!");
   emit fullpath_in ++ "/" ++ nametable[ind];
 }
 

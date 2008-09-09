@@ -67,7 +67,8 @@ typedef unsigned char typetag_t;
 // 80 (64+16) KB for now:
 //#define ZCT_SIZE (1024*16)
 // Testing: 16mb
-#define ZCT_SIZE (1024 * 1048 * 4)
+//#define ZCT_SIZE (1024 * 1048 * 4)
+#define ZCT_SIZE (1024 * 1048 * 16)
 
 // These will need to be per-thread in the future:
 extern typetag_t zct_tags[];
@@ -107,6 +108,13 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
     //printf("ALREADY PUSHED %p, tag %d\n", ptr, tag);
     return; // Already pushed.
   }
+
+  //#ifdef WSDEBUG
+  if (zct_count == ZCT_SIZE) {
+    wserror_fun("ZCT overflow");
+  }
+  //#endif
+
   MARK_AS_PUSHED(ptr);
   zct_tags[zct_count] = tag;
   zct_ptrs[zct_count] = ptr;
