@@ -184,12 +184,12 @@ file = smap(fun(x) (cast_num(x) :: Uint16),
 
 namespace Node {
 
-sensor = read_telos_audio(windowSize, 256 / 4);
+//sensor = read_telos_audio(windowSize, 256 / 4);
 
 // Pick which one you want:
 //src = IFPROFILE(file, sensor);
-src = sensor
-//Node:src = file;
+//src = read_telos_audio(windowSize, 256 / 4);
+src = file;
 
 // This reads from the audio board:
 signedones = Array:make(windowSize, 0);

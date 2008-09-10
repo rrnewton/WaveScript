@@ -16,17 +16,19 @@ WaveScript simply by typing one of the following (as root):
 (GPL) or Chez Scheme (non-free)
 
 But first, you need to add a new source to /etc/apt/sources.list
-Choose on of the following based on whether you are using Debian or
+Choose one of the following based on whether you are using Debian or
 Ubuntu.  (Replace hardy with your Ubuntu release name -- though right
 now only hardy is supported [2008.08.20].)
 
+Debian:
  deb http://regiment.us/debian unstable main
  deb http://regiment.us/debian unstable non-free
 
+Ubuntu:
  deb http://regiment.us/ubuntu hardy main
  deb http://regiment.us/ubuntu hardy multiverse
 
-The non-free/multiverse packages are for the wavescript-chez package,
+The non-free/multiverse sources are for the wavescript-chez package,
 because it includes the non-free Petite Chez Scheme.
 
 Also, if you want apt not to bug you about the package being
@@ -36,6 +38,7 @@ trust all future WaveScript packages.
   wget http://regiment.us/wspackager.key
   apt-key add wspackager.key 
 
+(The apt-key command will have to be run as root of course.)
 
 ======================================================================
 

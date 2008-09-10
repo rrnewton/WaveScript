@@ -83,7 +83,8 @@
     (syntax-rules ()
       [(_ x) (and (identifier? x) (literal-identifier=? x #'(... ...)))]))
 
-  (include "generic/util/rn-match.r5rs")
+  ;(include "generic/util/rn-match.r5rs")
+  (include "ws/util/rn-match.r5rs")
 
 
 

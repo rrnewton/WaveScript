@@ -1355,6 +1355,14 @@
       [int64ToDouble  ,(compose "Real64.fromLargeInt" "Int64.toLarge")]
       [int64ToComplex  ,(make-fun '("n") "({real= Real32.fromLargeInt (Int64.toLarge n), imag= Real32.fromInt 0})")]
 
+
+      [int32ToInt     "Int32.toInt"] ;; ASSUMING Int = Int32, MLTON SPECIFIC
+      [int32ToInt16   ,(compose "Int16.fromLarge" "Int16.toLarge")]
+      [int32ToFloat   ,(compose "Real32.fromLargeInt" "Int32.toLarge")]
+      [int32ToDouble  ,(compose "Real32.fromLargeInt" "Int32.toLarge")]
+      [int32ToComplex  ,(make-fun '("n") "({real= Real32.fromLargeInt (Int32.toLarge n), imag= Real32.fromInt 0})")]
+
+
       ;[intToInt16     ,(compose "Int16.fromLarge"     (format "~a.toLarge" int-module))]
 ;      [intToInt64     ,(compose "Int64.fromLarge"     (format "~a.toLarge" int-module))]
 ;      [intToFloat     ,(compose "Real32.fromLargeInt" (format "~a.toLarge" int-module))]

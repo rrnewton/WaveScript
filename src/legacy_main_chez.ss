@@ -283,6 +283,11 @@
 ;======================================================================
 ;;; Begin loading files.  
 
+
+(include "old/chez/rn-match.ss") ;; [2008.09.10] not making much of a difference anymore
+;(include "old/chez/match.ss") (alias rn-match iu-match) ;; Disable RN-MATCH completely.
+
+
 ;; Source directories need to include wavescript/src/ 
 (include "chez_aggregated.ss")
 

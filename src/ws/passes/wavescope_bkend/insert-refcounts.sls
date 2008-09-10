@@ -214,7 +214,7 @@
 ;; that it happens *inside* any scopes introduced by the RHS.
 (define insert-refcounts
   (let ()
-    ;(cond-expand [chez (import rn-match)] [else (begin)])
+    ;(IFCHEZ (import rn-match) (begin))
     ;; This is mutated below.
     (define global-struct-defs '())    
     (define global-union-types '())

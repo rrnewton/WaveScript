@@ -30,21 +30,21 @@ The next step is to compile the application split across the two platforms.
 
 Sorting out all these redundant mfcc_*.ws files.
 
- mfcc.ws:
+ mfcc1.ws:
    Initial version.  One big iterate, dynamic memory alloc.
-   
- mfcc_splitup.ws:
-   First, I split up the iterate into multiple operators.
-   
- mfcc_static.ws:
-   Next, I used statically allocated comm buffers instead of sigsegs.
+     
+ mfcc2_static.ws:
+   First, I used statically allocated comm buffers instead of sigsegs.
 
- mfcc_fixedpoint.ws:
+ mfcc3_splitup.ws:
+   Next, I split up the iterate into multiple operators.
+
+ mfcc4_fixedpoint.ws:
    Moved the FFT over to fixedpoint.
 
- mfcc_fixedpoint_full.ws:
+ mfcc5_fixedpoint_full.ws:
    Added cepstrel coefficient.
 
- mfcc_fixedpoint_fb.ws:
+ mfcc6_fixedpoint_fb.ws:
    Changed filterbank from floating to fixed.
 

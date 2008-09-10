@@ -351,6 +351,11 @@
 			  [(wavescript-compiler-nesc)   
 			   '((include "internal.ws")
 			     (include "internal_wstiny.ws"))]
+			  
+			  [(wavescript-compiler-caml) ;; also mlton
+			   '((include "internal.ws")
+			     (include "internal_ml.ws"))]
+			  
 			  [else '((include "internal.ws"))])
 			origws)
 		'() #f)))

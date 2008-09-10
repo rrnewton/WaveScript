@@ -48,6 +48,8 @@
 	  (ws compiler_components type_environments)
 	  )
 
+(IFCHEZ (import rn-match) (begin))
+
 ;;============================================================
 ;;; Procedural Interface 
 

@@ -99,9 +99,13 @@ EOF
   cat $DEBDIR/debian/changelog.in >> $DEBDIR/debian/changelog
 
   cat > $DEBDIR/Makefile <<EOF
+#	Note that ikarus must be manually installed on the host system to build this package!
 default:
-	Note that ikarus must be manually installed on the host system to build this package!
-	debuild -b -uc -us
+	debuild -S -kWaveScript
+	debuild -b -kWaveScript
+#	debuild -S -uc -us
+#	debuild -b -uc -us
+
 
 chez:
 	(source install_environment_vars && cd src && make wsparse_zo ikarus boot )

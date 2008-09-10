@@ -186,12 +186,35 @@ int wsc2_tuplimit = 10;
 //################################################################################//
 
 #ifdef WS_REAL_TIMERS
+
 unsigned long tick_counter;
+double last_time; // In milliseconds.
+// In the same units as clock()
+
+/* [2008.09.09] If we try to usleep for too small an interval, it
+ * won't work.  Thus we instead try to maintain an average timer rate.
+ * If we are behind where we should be, we don't wait at all.  
+ */
+inline void wait_ticks(double delta) {
+  double now = clock() * (1000.0l / CLOCKS_PER_SEC);
+  double increment = 1000 * delta * tick_counter;
+
+  double target = last_time + increment;
+  if (target >= now) {
+    // Should use nanosleep:
+    usleep(target - now);
+    tick_counter = 0;
+    last_time = target;
+  }
+  // Otherwise, we are behind schedule and shouldn't wait at all.
+
+(kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")
+
+}
+
 #define VIRTTICK() tick_counter++
-// Should use nanosleep:
-#define WAIT_TICKS(delta) { \
-  usleep(1000 * delta * tick_counter); \
-  tick_counter = 0; }
+#define WAIT_TICKS(delta) wait_ticks(delta)
+
 #else
 #define VIRTTICK()                   {}
 #define WAIT_TICKS(delta)            {}

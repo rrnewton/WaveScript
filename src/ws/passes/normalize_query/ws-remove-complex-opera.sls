@@ -115,7 +115,7 @@
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
 	(let ()
-	  ;(IFCHEZ (import rn-match) (begin))
+	  (IFCHEZ (import rn-match) (begin))
 	  (if (ws-rem-complex:simple? x)
 	      (values x '())
 	      (let-match ([#(,res ,binds) (process-expr x tenv)])
@@ -142,7 +142,7 @@
     ;; .returns A vector containing an expression and a list of new decls.
     ;; The returned expression should be simple.
     (define (process-expr expr tenv)
-      ;(IFCHEZ (import rn-match) (begin))
+      (IFCHEZ (import rn-match) (begin))
       (match expr
 	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
 	   
@@ -327,7 +327,7 @@
     [OutputGrammar ws-remove-complex-opera*-grammar]
     [Program
      (lambda (prog _)
-       ;(IFCHEZ (import rn-match) (begin))
+      (IFCHEZ (import rn-match) (begin))
       (match prog
              [(,input-lang '(program ,exp ,meta* ... ,type))
 	      (let-values ([(newbod bnds) (make-simple exp 

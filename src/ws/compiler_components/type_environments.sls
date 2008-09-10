@@ -79,7 +79,7 @@
 ;; Our types aren't a very safe datatype, but this predicate tries to give some assurance.
 (define (instantiated-type? t . extra-pred)
   (define (id x) x)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
     ;[(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
@@ -98,7 +98,7 @@
     [,oth (if (null? extra-pred) #f 
 	      ((car extra-pred) oth))]))
 (define (type? t)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (instantiated-type? t 
     (lambda (x) 
       (match x 
@@ -108,7 +108,7 @@
 ;; Does it contain the monad?
 (define (distributed-type? t)
   (define (id x) x)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [Region #t]
@@ -131,7 +131,7 @@
 ;; Does it contain any type-vars?
 (define (polymorphic-type? t)
   (define (id x) x)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [,s (guard (symbol? s)) #f]
@@ -164,7 +164,7 @@
 
 ;; Does a value of this type have mutable subcomponents?
 (define (type-containing-mutable? t)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match t
     [(Array ,_) #t]
     [(HashTable ,_ ,__) #t]
@@ -185,7 +185,7 @@
 
 ;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match t
     [(quote (,v . #f)) #f]
     [(quote (,v . ,[rhs])) rhs]
@@ -381,7 +381,7 @@
     [(x)`(quote (,(make-tvar) . ,x))]))
 
 (define (tcell->name x)
-  ;(IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
@@ -438,7 +438,7 @@
 
   ;; Predicate testing for type environments.
   (define (tenv? x)
-    ;(IFCHEZ (import rn-match) (void))
+    (IFCHEZ (import rn-match) (void))
     (match x
       ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
       [(,tenvsym [,v* ,t* ,flag*] ...)
@@ -469,7 +469,7 @@
   ;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
   ;; .returns A new type environment.
   (define (tenv-extend tenv syms types . flag)
-    ;(IFCHEZ (import rn-match) (void))
+    (IFCHEZ (import rn-match) (void))
     (DEBUGASSERT (tenv? tenv))
     (DEBUGASSERT (andmap type? types))
     ;(DEBUGASSERT (andmap instantiated-type? types))
@@ -500,7 +500,7 @@
 
   ;; Applies a function to all types in a type enviroment.
   (define (tenv-map f tenv)
-    ;(IFCHEZ (import rn-match) (void))
+    (IFCHEZ (import rn-match) (void))
     (DEBUGASSERT (tenv? tenv))
     (cons (car tenv)
 	  (map 
