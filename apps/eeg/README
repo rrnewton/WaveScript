@@ -1,8 +1,10 @@
+Please reference the following paper
+
 @inproceedings{shoeb-seizure-2005,
   author = {A. Shoeb and S. Schachter and D. Schomer and B. Bourgeois 
 and S. Tr$
   title = "{Detecting Seizure Onset in the Ambulatory Setting: 
-Demonstrating Fe$
+Demonstrating Fe$ibility}", 
   booktitle = {IEEE EMBS 2005},
   month = {September},
   year = 2005,
