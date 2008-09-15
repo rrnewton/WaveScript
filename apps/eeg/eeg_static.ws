@@ -11,7 +11,7 @@ SAMPLES_PER_WINDOW  = 512 //(2*SAMPLING_RATE_IN_HZ)
 NUM_CHANNELS        = 1;
 NUM_FEATURES = 3;
 
-// This one takes 100ms for one chan as opposed to 700ms for eugene.ws
+// This one takes 100ms for one chan as opposed to 700ms for eeg.ws
 // It takes 8.6 seconds for 22 chans though.  The code bloat is
 // probably hurting (that's a 3mb executable).  Oh wait, no it's just
 // the O2/O3 difference.  Because in O2 only 1chan takes 388ms --
