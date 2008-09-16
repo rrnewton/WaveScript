@@ -236,3 +236,15 @@ fun unionList(ls) {
   fold(merge, acc`head, acc`tail)
 }
 
+//fun List:toArray(ls) wserror("List:toArray - unimplemented under tinyos")
+// This won't work at runtime, but need it for meta:
+fun List:toArray(ls) {
+  len = List:length(ls);
+  arr = Array:makeUNSAFE(len);
+  ptr = ls;
+  for i = 0 to len-1 {
+    arr[i] := ptr.head;
+    ptr := ptr.tail;
+  };
+  arr
+}

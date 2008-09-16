@@ -52,6 +52,9 @@
 #define TRUE  1
 #define FALSE 0
 
+typedef unsigned char      uint8_t;
+typedef unsigned short int uint16_t;
+
 #include "ws.h"
 
 extern int stopalltimers;

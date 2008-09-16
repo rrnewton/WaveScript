@@ -30,9 +30,6 @@ fi
 
 eval set -- "$RELEVANT"
 
-# [2008.08.29] Seed it with this option.
-export WS_LINK=" -DWSC2 "
-
 NOGCC=
 while [ $# != 0 ];  do 
 #for flag in $RELEVANT; do 

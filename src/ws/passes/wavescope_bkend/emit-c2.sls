@@ -2001,7 +2001,7 @@ int main(int argc, char **argv)
 	(define proto-pieces  (map c-proto-lines (filter c-proto? pieces*)))
 
 	;; Extract the names of all the iterates, these are our workers.
-	(define opnames (map op->name oper*))
+	(define opnames (map op->name oper*)) ;; May be #f for cutpoints.
 	(define opinputs (map (lambda (x) (match (op->inputtype x #f) [(Stream ,elt) elt])) oper*))
 	#;
 	(define iterates (filter id (map (lambda (x) (match x [(iterate (name ,n) . ,_) n] [,_ #f])) oper*)))
@@ -2057,10 +2057,15 @@ int main(int argc, char **argv)
 												 
 						 (if #f '()						     
 						     (list
-						      (make-app "TOTAL_WORKERS" (list (number->string (add1 (length opnames)))))"\n"
+						      (make-app "TOTAL_WORKERS" (list (number->string 
+										       (add1 (length opnames)))))"\n"
+						      ;; FIXME: NUMBERS WILL NOT BE CONSECUTIVE:
 						      "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
-						      (map (lambda (i name ty) (format "REGISTER_WORKER(~a, ~a, ~a)\n"
-										       (add1 i) (text->string (Type self ty)) name))
+						      (map (lambda (i name ty) 
+							     (if name
+								 (format "REGISTER_WORKER(~a, ~a, ~a)\n"
+								     (add1 i) (text->string (Type self ty)) name)
+								 ""))
 							(iota (length opnames)) opnames opinputs)
 						      "START_WORKERS()\n"))
 						
@@ -2075,9 +2080,11 @@ int main(int argc, char **argv)
 				(if #f ""
 				    (** "DECLARE_WORKER(0, "(Type self '#())", BASE)\n"
 					(text->string (map (lambda (i name ty) 
-							     (list "DECLARE_WORKER("(number->string (add1 i))
+							     (if name
+								 (list "DECLARE_WORKER("(number->string (add1 i))
 								   ", "(Type self ty)", "(symbol->string name)")\n" 
-								   ))
+								   )
+								 '()))
 						;(iota (length iterates)) iterates iterates-input-types
 						(iota (length opnames)) opnames opinputs
 						))))

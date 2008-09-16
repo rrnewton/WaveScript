@@ -71,7 +71,9 @@ function tossim() {
 function pc() {
    echo;echo "BUILDING PC-SIDE COMPONENTS:" 
    echo "============================================================"
-   wsc2-gcc;
+   if ! wsc2-gcc;
+   then exit 1;
+   fi 
 }
 
 # This builds both... for now this is only for telos:

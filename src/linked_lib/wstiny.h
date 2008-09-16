@@ -1,5 +1,8 @@
 
 
+// This will add just a few typedefs:
+#include "ws.h"
+
 
 // These macros mostly do nothing for tinyos, just like single threaded wsc2:
 #define EMIT(val, ty, fn) fn(val)

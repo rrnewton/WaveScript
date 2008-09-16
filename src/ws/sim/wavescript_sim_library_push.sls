@@ -1248,8 +1248,8 @@
 ;     [(flonum)]
      ;; Floats and complex just fall through to the normal scheme division.
      [else 
-      (ASSERT inexact? a)
-      (ASSERT inexact? b)
+      ;(ASSERT "g/" inexact? a) (ASSERT "g/" inexact? b)
+      (ASSERT (or (inexact? a) (inexact? b)))
       (s:/ a b)]
      ))
 

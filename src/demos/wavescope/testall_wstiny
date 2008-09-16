@@ -103,6 +103,10 @@ go "demo3d_tuples_of_tuples.ws"
 go "demo11g_tinyos.ws"
 # Let's also build this demo in split mode:
 export THEMOTE=
+echo
+echo "Now running in split phase mode:"
+echo ================================================================================
+
 if ! wstiny demo11g_tinyos.ws -split -exit-error; then exit 1; fi
 
 if [ "$TELOS" != "" ]; then go "demo11h_readstream.ws" ; fi

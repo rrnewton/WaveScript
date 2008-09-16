@@ -4,6 +4,9 @@ if [ "$CFILE" = "" ];
 then CFILE=query.c
 fi
 
+# Currently, this script is only called for wsc2, so we insist that -DWSC2 be included in the flags.
+WS_LINK+=" -DWSC2 "
+
 FIRST=`head -n1 "$CFILE"`
 MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
 if [ "$MATCH" != "" ];
@@ -39,9 +42,13 @@ then CC="gcc $OPTFLAGS";
 #else echo "Using alternate C compiler $CC."; 
 fi 
 
+WS_LINK_POST=""
 # Only the libraries should be included again at the end:
-#WS_LINK_POST= FILTER_OUT($WS_LINK)
-#WS_LINK_POST=$WS_LINK
+for lnk in $WS_LINK; do
+  if [ "${lnk:0:2}" = "-l" ]
+  then WS_LINK_POST+=" $lnk "
+  fi
+done
 
 EXEFILE=`echo $CFILE | sed 's/\.c$/.exe/'`
 
