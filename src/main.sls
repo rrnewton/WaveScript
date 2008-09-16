@@ -600,7 +600,7 @@
 ;  (time (ws-run-pass p static-elaborate))
   (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
- ;(print-graph #f)(pretty-print (strip-annotations p 'src-pos))
+;  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
 
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
@@ -1647,13 +1647,10 @@
     (ASSERT (andmap symbol? flags))
     (set! prog (run-ws-compiler prog input-params disabled-passes #f))
 
-;    (inspect prog)
-
     (ws-run-pass prog explicit-stream-wiring)
     
     ;(IFCHEZ (string->file (output-graphviz prog) "query.dot") (void))
 
-;    (inspect prog)
     (printf "SIZE BEFORE MLTON CODEGEN: ~s\n" (count-nodes prog))
 
     (time (ws-run-pass prog emit-mlton-wsquery))

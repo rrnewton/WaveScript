@@ -511,13 +511,17 @@
 (define ___Source
   (specialise! Source <javaME>
   (lambda (next self xp)
-    (define-values (nm code state rate init) (next))
-
-    (values nm 
-	    (append-lines (make-lines (print-w-time "StartTraverse "))
-			  code
-			  (make-lines (print-w-time "EndTraverse ")))
-	    state rate init))))
+    (map (lambda (piece)
+	   (if ( piece)
+	       (make-c-timer 
+		(c-timer-name piece)
+		(append-lines (make-lines (print-w-time "StartTraverse "))
+			      (c-timer-code piece)
+			      (make-lines (print-w-time "EndTraverse ")))
+		(c-timer-state piece)
+		(c-timer-rate  piece))
+	       piece))
+      (next)))))
 
 
 ) ;; End module

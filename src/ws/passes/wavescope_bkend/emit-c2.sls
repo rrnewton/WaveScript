@@ -51,6 +51,13 @@
 	   IterStartHook IterEndHook ForeignSourceHook
 
 	   make-lines lines-text append-lines slot-cons! 
+
+	   ;; More datatypes:
+	   make-c-timer c-timer-name c-timer-code c-timer-state c-timer-rate c-timer?
+	   make-c-toplvl c-toplvl-lines c-toplvl?
+	   make-c-init c-init-lines c-init?
+	   make-c-state c-state-lines c-state?
+	   make-c-proto c-proto-lines c-proto?
 	   
 	   )
   (import (except (rnrs (6)) error) (except (rnrs r5rs) force delay)
@@ -1681,7 +1688,7 @@ int main(int argc, char **argv)
 (reg:define-struct (c-proto  lines))
 
 
-;; Returns a list of code pieces, which can be any of the "c-" datatypes.
+;; Returns a list of code pieces, which can be any of the "c-" datatypes above.
 (__spec Source <emitC2> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
@@ -2278,13 +2285,18 @@ int main(int argc, char **argv)
 ;; Wrap timers around the whole Source call:
 (define ____Source
   (specialise! Source <emitC2-timed>
-  (lambda (next self xp)
-    (define-values (nm code state rate init) (next))
-    (values nm 
-	    (append-lines (make-lines (print-w-time2 "StartTraverse "))
-			  code
-			  (make-lines (print-w-time2 "EndTraverse ")))
-	    state rate init))))
+  (lambda (next self xp)    
+    (map (lambda (piece)
+	   (if ( piece)
+	       (make-c-timer 
+		(c-timer-name piece)
+		(append-lines (make-lines (print-w-time2 "StartTraverse "))
+			      (c-timer-code piece)
+			      (make-lines (print-w-time2 "EndTraverse ")))
+		(c-timer-state piece)
+		(c-timer-rate  piece))
+	       piece))
+      (next)))))
 
 
 ) ;; End module

@@ -1304,7 +1304,7 @@
     (define (Expr inside-iter?)
       (core-generic-traverse
        (lambda (xp fallthru)
-	 (match xp ;; No recursion!!
+	 (match xp 
 	   ;; This is troublesome, readFile should really be a special
 	   ;; syntax at this point, not masquerading as a primitive application.
 	   [(readFile ,annot ',str1 ',str2 ,[strm])
@@ -1312,7 +1312,8 @@
 	    `(readFile ,annot ',str1 ',str2 ,strm)]	   
 	   [(,totally_ignored (quote ,args) ...)
 	    (guard (memq totally_ignored '(inline_C inline_TOS foreign foreign_source)))
-	    xp]
+	    ;xp ;; would be more efficient, but .... Match-recursion
+	    `(,totally_ignored ,@(map (lambda (x) `',x) args))]
 	   [(iterate ,annot (let ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
 	    `(iterate ,annot (let ,(map list lhs* ty* rhs*) ,((Expr #t) bod)) ,strm)]
 	   

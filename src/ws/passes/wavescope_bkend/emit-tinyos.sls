@@ -103,7 +103,7 @@
 ;; [2008.02.19] This is currently just to catch an error condition:
 (define __Value 
   (specialise! Value <tinyos> 
-    (lambda (next self emitter)
+    (lambda (next self)
       (lambda (xp kont)
 	(match xp
 	  ;; [2008.02.14] Disabling for tinyOS because now 
@@ -564,7 +564,7 @@ event void PrintfControl.stopDone(error_t error) {
 
 (define __Effect
   (specialise! Effect <tinyos>
-    (lambda (next self emitter)
+    (lambda (next self)
       (lambda (xp)
 	(match xp
 	  [(print ,[(TyAndSimple self) -> ty x])	   
@@ -595,6 +595,9 @@ event void PrintfControl.stopDone(error_t error) {
 	[(__readFile . ,_) (error 'emit-tinyos:Operator "Cannot support readFile on tinyos")]
 	[,oth (next)]))))
 
+;; [2008.09.16] Modifying to return a list of c-* datatypes.
+;; This method is still unpleasant because it does most of its work by
+;; side-effecting fields.
 (define __Source
  (specialise! Source <tinyos>
     (lambda (next self xp)
@@ -611,7 +614,7 @@ event void PrintfControl.stopDone(error_t error) {
 	      (slot-cons! self 'impl-acc mod2)
 	      (slot-cons! self 'boot-acc boot)
 	      (slot-cons! self 'cleanup-acc cleanup)
-	      (values #f #f #f #f #f)]
+	      '()]
 	     
 	     ;; Allowing normal inline_C and treating it as a special case of inline_TOS:
 	     [(inline_C ',top ',initfun)	      
@@ -637,7 +640,7 @@ event void PrintfControl.stopDone(error_t error) {
 	      (slot-cons! self 'impl-acc  (block `("void ",name"(",ty" ",(Var self arg)")")
 						 (ForeignSourceHook self name
 								    (lines-text ((Emit self down* type) arg)))))
-	      (values #f #f #f #f #f)]
+	      '()]
 #;
 	     [,_ (next)]))]))))
 

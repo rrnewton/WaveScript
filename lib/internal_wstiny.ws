@@ -10,7 +10,7 @@ fun timer(rate) {
   source_count += 1;
   funname = "timer_ws_entry"++n;
   // There's a hack for foreign_source in wstiny: the first "filename" stores the rate:
-  s1 = (foreign_source(funname, [show(rate)]) :: Stream ());
+  tostimer_s1 = (foreign_source(funname, [show(rate)]) :: Stream ());
   top = "";  
   conf1 = "";  
   conf2 = "components new TimerMilliC() as Timer"++n++";\n"++
@@ -18,8 +18,8 @@ fun timer(rate) {
   mod1  = "uses interface Timer<TMilli> as Timer"++n++";\n";
   boot  = "call Timer"++n++".startPeriodic( "++(1000.0 / rate)++" );\n";
   mod2  = "event void Timer"++n++".fired() { "++funname++"(0); }\n";
-  s2 = inline_TOS(top, conf1, conf2, mod1, mod2, boot, "");
-  merge(s1,s2);
+  tostimer_s2 = inline_TOS(top, conf1, conf2, mod1, mod2, boot, "");
+  merge(tostimer_s1,tostimer_s2);
 }
 
 

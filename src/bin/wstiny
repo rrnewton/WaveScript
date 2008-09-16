@@ -37,9 +37,9 @@ function killjavahack () {
 rm -f query.c query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
 killjavahack;
 
-if wsc $* -no-gcc;
-then echo ERROR, wstiny failed with code $?.; exit 1;
-else echo
+if wsc $* -exit-error -no-gcc
+then echo
+else CODE=$?; echo ERROR, wstiny failed with code $CODE.; exit $CODE;
 fi
 
 echo "Copying WSMsp files to local directory."

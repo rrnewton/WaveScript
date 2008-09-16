@@ -1,5 +1,15 @@
 
 
+
+// These macros mostly do nothing for tinyos, just like single threaded wsc2:
+#define EMIT(val, ty, fn) fn(val)
+#define TOTAL_WORKERS(count)         {}
+#define REGISTER_WORKER(ind, ty, fp) {}
+#define DECLARE_WORKER(ind, ty, fp) 
+#define START_WORKERS()              {}
+//unsigned long print_queue_status() { return 0; }
+
+
 #define ARRLENTYPE int
 #define ARRLENSIZE sizeof(ARRLENTYPE)
 
@@ -15,6 +25,9 @@
 //#define wserror(str) {call Leds.led0On();call Leds.led1On();call Leds.led2On(); while(1) {}}
 
 #define getDroppedInputCount() input_items_lost
+
+void wsInternalInit() {
+}
 
 // This seems insane to me, but the memcpy implementation on Telos
 // doesn't work for unaligned addresses!  Here's a hack:
