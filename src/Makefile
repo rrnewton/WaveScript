@@ -364,7 +364,8 @@ dbg:      so.debug
 
 # This makes a Chez Scheme .boot file instead of a shared object file.
 # After the boot file is made we can kill the shared object file.
-boot: aggregated_chez _temp_temp.so shared 
+boot: aggregated_chez boot_only
+boot_only: _temp_temp.so shared 
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
 	rm -f _temp_temp.ss _temp_temp.so "build/$(MT)/legacy_main_chez.so"

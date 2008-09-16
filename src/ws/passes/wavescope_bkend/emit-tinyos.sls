@@ -116,7 +116,7 @@
 
 ;; Increments and decrements do nothing.  Everything is statically allocated currently:
 (__specreplace gen-incr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt incr stub ~s */\n" ty)))
-(__specreplace gen-decr-code <tinyos> (self ty ptr)     (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
+(__specreplace gen-decr-code <tinyos> (self ty ptr msg) (make-lines (format "/* refcnt decr stub ~s */\n" ty)))
 
 (__specreplace IterStartHook <tinyos> (self name arg argty) 
    "did_i_emit = FALSE;\n")
