@@ -1928,7 +1928,6 @@
 	  ;; Interactive mode.  A Scheme REPL.
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
 	  [(i interact)
-	   (eprintf "Exposing Regiment through interactive read-eval-print loop:\n")
 	   ;; [2006.02.28] We want to reset global bindings before loading any more source:
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
@@ -1936,7 +1935,7 @@
 
 	   (cond
 	    [(null? filenames) 
-
+	     (eprintf "Exposing Regiment through interactive read-eval-print loop:\n")
 ;	     (printf "GOING INTO REPL ~s\n" main)
 	     ;(eval '(require main_plt))
 	     ;(eval '(require regiment_pltscript))
@@ -2238,7 +2237,7 @@
 	   (loop rest)]
 
 	  [("-exit-error" ,rest ...)
-	   (eprintf "SETTING BATCH MODE\n")
+	   (when (>= (regiment-verbosity) 1) (eprintf "SETTING BATCH MODE\n"))	   
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (loop rest)]
 

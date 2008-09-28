@@ -10,9 +10,13 @@
 # Modified this script to spawn multiple threads.  Trying 1 per core
 # or 2 per core...
 
+TEMP=~/DATA/lp_solve_timings
+
 # Here are the bounds for varying CPU:
 # Units are in tenths of a percent:
-START=100
+
+# I could push this between 1300 and 1324 to cover everything.
+START=1300
 INCREMENT=25
 STOP=22000
 
@@ -52,13 +56,17 @@ function block_n_children() {
 
 for i in `seq $START $INCREMENT $STOP`; do
   echo Solving for: $i 
-  NEWFILE="$FILE".$i
-  SOLUTION="$FILE".solve.$i
+  NEWFILE=$TEMP/"$FILE".$i
+  SOLUTION=$TEMP/"$FILE".solve.$i
   cat $FILE | sed "s/MAGIC/$i/" > $NEWFILE
 
   block_n_children $THREADS
 
-  nice /usr/bin/time -f "realtime %e user %U" lp_solve $NEWFILE > $SOLUTION &
+#  nice /usr/bin/time -f "Elapsed realtime %e user %U" lp_solve -timeout 3 -v6 $NEWFILE &> $SOLUTION &
+#  nice /usr/bin/time -f "Elapsed realtime %e user %U" lp_solve -b 7000000 -v5 $NEWFILE &> $SOLUTION &
+
+  nice /usr/bin/time -f "Elapsed realtime %e user %U" lp_solve -v5 $NEWFILE &> $SOLUTION &
+
   #time lp_solve $NEWFILE > $SOLUTION &
 
   #find /home/ > /dev/null &
@@ -70,8 +78,9 @@ echo Blocking until all children are finished.
 block_n_children 1
 
 for i in `seq $START $INCREMENT $STOP`; do
-  SOLUTION="$FILE".solve.$i
-  BW=`grep "Value of objective" $SOLUTION | awk '{ print $5 }'`
-  NODE=`cat $SOLUTION | awk '{ print $2 }' | grep "^1$" | wc -l`
-  echo $i $BW $NODE >> $RESULTS
+   SOLUTION=$TEMP/"$FILE".solve.$i
+   BW=`grep "Value of objective" $SOLUTION | awk '{ print $5 }'`
+   NODE=`cat $SOLUTION | awk '{ print $2 }' | grep "^1$" | wc -l`
+   echo $i $BW $NODE >> $RESULTS
+   rm -f $TEMP/"$FILE".$i
 done

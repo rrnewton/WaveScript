@@ -45,8 +45,55 @@ load_telos32khzCounter = {
   async event void Cntr.overflow() { /* counter_overflows_32khz++; */ }\n";
   inline_TOS("", "", conf2, mod1, mod2, "", "");
 }
-
 clock32khz = (foreign("call Cntr.get", []) :: () -> Uint16);
+
+
+
+
+
+
+// This is equally unpleasant, but this loads the raw byte interface to the Serial port:
+
+  //WSQuery.SerialByteComm -> UartC;
+  //mod1 = "  uses interface SerialByteComm;\n";
+  //async event void SerialByteComm.get(uint8_t c) { /* byte from serial */ }
+  //async event void SerialByteComm.putDone() { /* byte written */ }
+load_SerialByteComm = {
+  conf2 = " 
+  // Is there a platform independent way to refer to this module?
+  components new Msp430Uart0C() as UartC0;
+  components new Msp430Uart1C() as UartC1;
+  WSQuery.UartByte0 -> UartC0;
+  WSQuery.UartByte1 -> UartC1;
+
+  WSQuery.UartStream0 -> UartC0;
+  WSQuery.UartStream1 -> UartC1;
+  \n"; 
+  mod1 = "  
+   uses interface UartByte as UartByte0;
+   uses interface UartByte as UartByte1;
+
+   uses interface UartStream as UartStream0;   
+   uses interface UartStream as UartStream1;
+";
+  mod2 = "
+
+  // These are unused, but as far as I can see they are needed to get at the byte interface. -rrn
+  async event void UartStream0.sendDone( uint8_t* buf, uint16_t len, error_t error ) {}
+  async event void UartStream0.receivedByte( uint8_t byte ) {}
+  async event void UartStream0.receiveDone( uint8_t* buf, uint16_t len, error_t error ) {}
+  async event void UartStream1.sendDone( uint8_t* buf, uint16_t len, error_t error ) {}
+  async event void UartStream1.receivedByte( uint8_t byte ) {}
+  async event void UartStream1.receiveDone( uint8_t* buf, uint16_t len, error_t error ) {}
+
+";
+  inline_TOS("", "", conf2, mod1, mod2, "", "");
+}
+//serial1_putByte :: Uint8 -> () = foreign("call SerialByteComm.put", [])
+serial0_put :: Uint8 -> Bool = foreign("call UartByte0.send", [])
+serial1_put :: Uint8 -> Bool = foreign("call UartByte1.send", [])
+
+
 
 // Shoud use a union type for this "enum":
 /* led_toggle = { */

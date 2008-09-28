@@ -11,12 +11,17 @@ function doit() {
  mote=$3
  echo; echo Programming $mote with nodeID $id.
  echo ============================================================; echo
- make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id
+
+ if [ -f build/telosb/main.exe ];
+ then echo "Reinstalling...";
+      make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id || exit
+ else echo "Building and installing for the first time.";
+      make -f Makefile.tos2 telosb $bsl,$mote   install,$id || exit
+ fi
 }
 
 case "$1" in
-  "xb
-" )
+  "" )
     echo "Usage: progtelos <num> or progtelos all"
     echo "  <num> will be interpreted as referring to /dev/ttyUSB<num>."
     echo "  'all' will program all motes indicated by 'motelist'."
@@ -47,11 +52,24 @@ case "$1" in
   ;;
 
   "netone" )
-    doit netbsl 2 tmote-1.csail.mit.edu:10001
+    if [ "$2" = "" ];
+    then NUM=1
+    else NUM=$2
+    fi 
+    # Port should just be 1 or 2:
+    if [ "$3" = "" ];
+    then PORT=1
+    else PORT=$3
+    fi 
+    ID=$((NUM+1))
+    doit netbsl $ID tmote-"$NUM".csail.mit.edu:1000"$PORT"
+    #doit netbsl 2 tmote-1.csail.mit.edu:10001
   ;;
 
   * )
     doit bsl $(($1+1)) /dev/ttyUSB$1
+    echo
+    echo "Now run 'java PrintfClient' to listen to the output."
   ;;
 esac
 

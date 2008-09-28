@@ -27,8 +27,8 @@ s2 = iterate w in s1 {
   //gnuplot_array(toArray(w));
   
   //  wserror("testing...");  
-  print(" ");
-  emit foo(39);
+  print(". ");
+  emit foo(38);
 };
 
 

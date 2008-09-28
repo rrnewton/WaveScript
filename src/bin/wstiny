@@ -35,6 +35,10 @@ function killjavahack () {
 }
 
 rm -f query.c query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
+if [ -d build/telosb ];
+then rm -f build/telosb/*;
+fi
+
 killjavahack;
 
 if wsc $* -exit-error -no-gcc

@@ -262,6 +262,8 @@ fun dologs(earmag) {
 using TOS;
 
 
+
+
 /* 
 /* FOR REGULAR PC */
 segs = (readFile("./snip.raw", 
@@ -278,7 +280,6 @@ file = iterate seg in segs {
 
 namespace Node {
 
-
 // This reads from the audio board:
 //sensor = read_telos_audio(windowSize, windowSize / 4);
 
@@ -286,7 +287,7 @@ namespace Node {
 //src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
 //RATE = 8000 / windowSize;  // realtime
 RATE = 0.5;  // slow, for profiling
-outbuf = Array:build(windowSize, fun(i) (99::Int16));
+outbuf = Array:build(windowSize, fun(i) (100::Int16) + Int16! i);
  dummy = iterate _ in IFPROFILE(Server:timer$RATE,timer$RATE) { emit outbuf };
 
 
@@ -315,28 +316,31 @@ signed = iterate arr in src {
   for i = 0 to windowSize-1 {
     signedones[i] := (cast_num(arr[i]) :: Int16);
   };
-  emit signedones;
+
+  // Pass along 
+  // state { cnt = 0 }
+  // cnt += 1;
+  dropped = getDroppedInputCount();
+  emit (dropped, signedones);
 };
-
-
 
 
 PRINTDBG = false
 PRINTOUTPUT = false
 
-preemph = iterate win in signed {
+preemph = iterate (dropped, win) in signed {
   Array:fill(bufR, 0);
 
   start = (fftSize-windowSize) / 2;
   preemphasize(start, bufR, win);
 
-  emit(start,bufR);
+  emit (dropped, start,bufR);
 }
 
-hamm = iterate (start,bufR) in preemph {
+hamm = iterate (dropped, start,bufR) in preemph {
   hamming(start, bufR);
 
-  emit(start,bufR);
+  emit(dropped,  start,bufR);
 }
 
 
@@ -433,16 +437,54 @@ ceps_stream = iterate emag in logs {
 
 } // End namespace
 
-//main = Node:signed
-//main = Node:freq
+
+
+using Node;
+
+//_main = Curry:smap(Array:length) $ signed
+main = signed
+//main = freq
 //main = Node:emg
 //main = iterate _ in Node:emg { emit 8889 }
-main = Node:ceps_stream
+//main = ceps_stream
 
 // preEmphasized = filter([1 -.97], 1, input);
 //    x(n) - x(n-1)*.97
 
+// Cut it up into bits:
+/*
+chunk = 7
+__main = iterate arr in main {
+  state { arrs = Array:build(29, fun(i) Array:make(chunk, 0)) }
+  j = 0;
+  k = 0; 
+  Array:foreachi(fun(i,x) {
+    arrs[j][k] := arr[i];
+    k += 1;
+    if k == chunk then {
+      emit arrs[j];
+      k := 0;
+      j += 1;
+    };
+  }, arr);
+}
+*/
 
+/*
+len = 3
+little = Array:makeUNSAFE(len)
+_main = iterate arr in main {
+  for i = 0 to len {
+    little[i] := arr[i]
+  };
+  emit little;  
+}
+*/
+
+foo as (dr,arr) = main
+main = foo
+//main = iterate (dr,_) in main { emit dr }
+//main = iterate _ in timer$ 3 { emit (88 :: Int16) }
 
 //    fftData(1:windowSize) = preEmphasized(first:last).*hamWindow;
 //    fftMag = abs(fft(fftData));

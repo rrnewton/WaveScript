@@ -500,6 +500,8 @@ our meta-programming approach.
 
 ( x | a=3 )     
 ( ( a=3, b=4) | c=5 )
+(| a = 3)
+(|)
 
 < x | c=3 >
 <a=3, b=4>
@@ -1816,3 +1818,48 @@ output-tuple for every run, so we wouldn't get spurious "0" rates.
 Finally, there will be a presentation problem with graphing
 tuples/second.  Each benchmark will need to be normalized separately,
 because different benchmarks will have wildly varying tuples/second.
+
+[2008.09.19] {Re-learning the t-mote connect}
+
+Whatever I learned about these devices I forgot. For the most part, I
+just interact with them through netbsl style mote programming.
+
+But you can also manually send commands to them like this:
+
+  echo <command> | nc tmote-1.csail.mit.edu 10001
+
+Here are some commands you can send.
+
+  status, quit, msp430-bsl, unfriendly_system_reboot.
+
+I got the documentation here:
+  http://www.bandwavetech.com/download/tmote-connect-datasheet.pdf
+
+Port 900X is the Serial Forwarder.  But I assume the Serial Forwarder
+only works for tinyos messages (rather than just forwarding raw
+bytes).  Let's play with netcat and find out.
+
+  java net.tinyos.tools.Listen
+Should hopefully be equivalent to: 
+  /opt/tinyos-2.x/support/sdk/c/seriallisten
+
+Neither one of these would work for reading individual bytes... it
+must expect at minimum some framing protocol.
+
+AH, now it's coming back to me.  I had a fundamental problem with the
+serialforwarders on the tmote connects.  Let me look back at my emails
+with Kyle.  It's possible that they simply didn't work with tinyos
+2.0.  Ah, the tmote connect version is 1.0.6.  Very old.  Needs to be
+at least 1.2 it sounds like to handle the "protocol" command.
+ The underlying linksys software version says... V2.3R29.
+
+To reduce interference with 802.11 Kyle recommended something like:
+   export CC2420_CHANNEL=26
+
+
+MOVE THIS SOMEWHERE ELSE:
+[2008.09.25] {Error conditions for wstiny}
+
+I've thrown in some misc error conditions and LED patterns.  These are
+mostly temporary, but I need to try to keep track of them.
+

@@ -1,4 +1,30 @@
 
+  
+
+[2008.05.19]
+
+Sorting out all these redundant mfcc_*.ws files.
+
+ mfcc1.ws:
+   Initial version.  One big iterate, dynamic memory alloc.
+     
+ mfcc2_static.ws:
+   First, I used statically allocated comm buffers instead of sigsegs.
+
+ mfcc3_splitup.ws:
+   Next, I split up the iterate into multiple operators.
+
+ mfcc4_fixedpoint.ws:
+   Moved the FFT over to fixedpoint.
+
+ mfcc5_fixedpoint_full.ws:
+   Added cepstrel coefficient.
+
+ mfcc6_fixedpoint_fb.ws:
+   Changed filterbank from floating to fixed.
+
+
+
 
 [2008.05.21] {Instructions for building app}
 
@@ -26,25 +52,10 @@ The next step is to compile the application split across the two platforms.
   wstiny -split mfcc6_fixedpoint_fb.ws
 
 
-[2008.05.19]
 
-Sorting out all these redundant mfcc_*.ws files.
 
- mfcc1.ws:
-   Initial version.  One big iterate, dynamic memory alloc.
-     
- mfcc2_static.ws:
-   First, I used statically allocated comm buffers instead of sigsegs.
+[2008.09.18]
 
- mfcc3_splitup.ws:
-   Next, I split up the iterate into multiple operators.
-
- mfcc4_fixedpoint.ws:
-   Moved the FFT over to fixedpoint.
-
- mfcc5_fixedpoint_full.ws:
-   Added cepstrel coefficient.
-
- mfcc6_fixedpoint_fb.ws:
-   Changed filterbank from floating to fixed.
+Well, it looks like mfcc6 is producing -inf's right now.  Mfcc5 is
+producing something at least.
 

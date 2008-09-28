@@ -372,13 +372,19 @@
 	  [(LeftParen RightParen) (vector)]
           ;; No one-tuples!!
 	  [(LeftParen type RightParen) $2]
-
           [(LeftParen type * typetuple RightParen) (apply vector (cons $2 $4))]
 	  
 	  ;[(type * typetuple) (list->vector $1)]
 	  ;[(type * type * type) (vector $1 $3 $5)]
 	  ;[(type * type) (vector $1 $3)]
 	  ;[(typetuple) (list->vector $1)]
+	  
+	  ;; Record types:
+	  [(LeftParen BAR RightParen) `(record-type #f)]
+	  ;[(LeftParen BAR recordtypebinds+ RightParen)       `(record-type #f ,@$3)]
+	  [(LeftParen recordtypebinds+ RightParen)       `(record-type #f ,@$2)]
+	  [(LeftParen type BAR recordtypebinds+ RightParen) `(record-type ,$2 ,@$4)]
+	  
           )
 
     (typevar 
@@ -394,6 +400,9 @@
     (typeargs [(type) (list $1)]
               [(type COMMA typeargs) (prec COMMA) (cons $1 $3)]
               )
+    (recordtypebinds+ [(VAR COLON type) (list (list $1 $3))]
+		      [(VAR COLON type COMMA recordtypebinds+) (cons (list $1 $3) $5)])
+
 ;     (typevar [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
 ; 	     [(TYPEVAR) `(quote ,$1)]
 ; 	     [(NUMVAR) `(NUM ,$1)])
@@ -405,6 +414,7 @@
     (unioncases [(VAR type*)                `((,$1 ,@$2))]
 		[(VAR type* BAR unioncases) `((,$1 ,@$2) . ,$4)])
     
+
     (decls ;; Top level variable binding
            ;; It's unfortunate that this duplicates much within the "stmt" production.
 
@@ -554,9 +564,13 @@
      ;; Records:
      ;; These are not implemented yet, but just wanted to put them in
      ;; the parser so I know they don't cause future conflicts:
+     ;[(LeftParen recordbinds+ RightParen) `(record ,@$2)]
+     [(LeftParen BAR RightParen) `(record)]
+     [(LeftParen BAR recordbinds+ RightParen) `(record ,@$3)]
      [(LeftParen recordbinds+ RightParen) `(record ,@$2)]
      [(LeftParen exp BAR recordbinds+ RightParen) `(record-update ,$2 ,@$4)]
      ;; Alternatively, I kind of like this syntax:
+     [(LeftBrace BAR RightBrace) `(record)]
      [(LeftBrace BAR recordbinds+ RightBrace) `(record ,@$3)]
      [(LeftBrace exp BAR recordbinds+ RightBrace) `(record-update ,$2 ,@$4)]
 

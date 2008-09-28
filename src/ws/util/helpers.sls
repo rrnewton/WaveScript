@@ -1207,7 +1207,7 @@
 ; against every interemediate node in the tree.  Returns a list of
 ; *every* match.  Returns them in the order it hits them as it does a
 ; depth-first traversal.
-;;   This is heavy-weight, expensive function, but darn useful!!
+;;   This is a heavy-weight, expensive function, but darn useful!!
 (define (deep-all-matches f struct)
   (letrec ([against 
 	    (lambda (struct)
