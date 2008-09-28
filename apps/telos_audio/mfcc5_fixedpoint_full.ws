@@ -348,7 +348,7 @@ fixedAlpha = FIX_F2I(floatAlpha);
 fixedOneMinusAlpha = FIX_F2I(1.0-floatAlpha);
 fixedThreshFactor = FIX_F2I(threshFactor);
 
-prefilt = iterate (start,bufR) in hamm {
+prefilt = iterate (dropped, start,bufR) in hamm {
   state {
     ewma = 0;
     count = 0;
@@ -372,11 +372,11 @@ prefilt = iterate (start,bufR) in hamm {
   };
 
   // hack -- always emit!
-  emit(start,bufR);
+  emit(dropped, start,bufR);
 }
 
 
-freq = iterate (start,bufR) in prefilt {
+freq = iterate (dropped, start,bufR) in prefilt {
 
   Array:fill(bufI, 0);
 
@@ -385,26 +385,26 @@ freq = iterate (start,bufR) in prefilt {
 
 //led1Toggle();
 
-  emit(start,bufR,bufI);
+  emit(dropped, start,bufR,bufI);
 }
 
 
-emg = iterate (start,bufR,bufI) in freq {
+emg = iterate (dropped, start,bufR,bufI) in freq {
   // Clear 
   Array:fill(emag, 0);
 
   // compute earmag
   earmagfn(bufR, bufI, emag);
-  emit emag;
+  emit (dropped, emag);
 }
 
-logs = iterate emag in emg {
+logs = iterate (dropped,emag) in emg {
   dologs(emag);
   //led0Toggle();
-  emit emag;
+  emit (dropped, emag);
 }
-
-ceps_stream = iterate emag in logs {
+ 
+ ceps_stream = iterate (dropped,emag) in logs {
 
   // Clear 
   Array:fill(ceps, 0);
