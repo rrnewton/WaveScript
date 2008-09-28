@@ -312,43 +312,51 @@ signedones = Array:make(windowSize, 0);
 
 /* convert data to signed from unsigned */
 signed = iterate arr in src {
+  state { cnt :: Uint16 = 0 }
   //led1Toggle();
   for i = 0 to windowSize-1 {
     signedones[i] := (cast_num(arr[i]) :: Int16);
   };
 
-  // Pass along 
-  // state { cnt = 0 }
-  // cnt += 1;
-  dropped = getDroppedInputCount();
-  emit (dropped, signedones);
+  cnt += 1;
+  dropped = getDroppedInputCount();    
+  emit (cnt, dropped, signedones);
 };
 
 
 PRINTDBG = false
 PRINTOUTPUT = false
 
-preemph = iterate (dropped, win) in signed {
+preemph = iterate (cnt, dropped, win) in signed {
   Array:fill(bufR, 0);
 
   start = (fftSize-windowSize) / 2;
   preemphasize(start, bufR, win);
 
-  emit (dropped, start,bufR);
+  emit (cnt, dropped, start,bufR);
 }
 
-hamm = iterate (dropped, start,bufR) in preemph {
+hamm = iterate (cnt, dropped, start,bufR) in preemph {
   hamming(start, bufR);
 
-  emit(dropped,  start,bufR);
+  emit(cnt, dropped,  start,bufR);
 }
 
+/*
+Should use a do-style syntax here:
+  chain: 
+  do x <- preemph 
+     y <- hamming(_,_)
+    
+But... we could get the some effect if the compiler could fission operators effectively.... Extract a pure spine.
+Yet that's not something that one can count on...
+*/
 
 fixedAlpha = FIX_F2I(floatAlpha);
 fixedOneMinusAlpha = FIX_F2I(1.0-floatAlpha);
 fixedThreshFactor = FIX_F2I(threshFactor);
 
-prefilt = iterate (dropped, start,bufR) in hamm {
+prefilt = iterate (cnt, dropped, start,bufR) in hamm {
   state {
     ewma = 0;
     count = 0;
@@ -372,11 +380,11 @@ prefilt = iterate (dropped, start,bufR) in hamm {
   };
 
   // hack -- always emit!
-  emit(dropped, start,bufR);
+  emit(cnt, dropped, start,bufR);
 }
 
 
-freq = iterate (dropped, start,bufR) in prefilt {
+freq = iterate (cnt, dropped, start,bufR) in prefilt {
 
   Array:fill(bufI, 0);
 
@@ -385,26 +393,26 @@ freq = iterate (dropped, start,bufR) in prefilt {
 
 //led1Toggle();
 
-  emit(dropped, start,bufR,bufI);
+  emit(cnt, dropped, start,bufR,bufI);
 }
 
 
-emg = iterate (dropped, start,bufR,bufI) in freq {
+emg = iterate (cnt, dropped, start,bufR,bufI) in freq {
   // Clear 
   Array:fill(emag, 0);
 
   // compute earmag
   earmagfn(bufR, bufI, emag);
-  emit (dropped, emag);
+  emit (cnt, dropped, emag);
 }
 
-logs = iterate (dropped,emag) in emg {
+ logs = iterate (cnt,  dropped,emag) in emg {
   dologs(emag);
   //led0Toggle();
-  emit (dropped, emag);
+  emit (cnt, dropped, emag);
 }
  
- ceps_stream = iterate (dropped,emag) in logs {
+ ceps_stream = iterate (cnt, dropped,emag) in logs {
 
   // Clear 
   Array:fill(ceps, 0);
@@ -432,7 +440,7 @@ logs = iterate (dropped,emag) in emg {
 */
   //led0Toggle();led1Toggle();led2Toggle();
 
-  emit ceps;
+  emit (cnt, dropped, ceps);
 }
 
 } // End namespace
