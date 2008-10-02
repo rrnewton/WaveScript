@@ -1,4 +1,5 @@
 include "load_option.ws"
+include "write.ws"
 include "unix.ws"
 include "stdlib.ws"
 
@@ -48,7 +49,7 @@ strm_send_data = iterate value in strm_process1 {
 
 
 strm_write = iterate data in strm_process2 {
-	print("et la on ecrit le fichier");
+	save_data(data);
 	emit ();
 }
 

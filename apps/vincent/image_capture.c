@@ -82,7 +82,11 @@ void image_capture() {
          				camera.image.frame++;        
 
 				//Save the data
-				wsentry2(camera.buffers[buf.index].start);
+				camera.image.data=(unsigned char*)malloc(sizeof(unsigned char)*camera.data_size);
+				sprintf(camera.image.data, "%d#%d#%d#", camera.image.number, camera.image.sec, camera.palette);
+				memcpy(camera.image.data, camera.buffers[buf.index].start, camera.data_size);
+
+				wsentry2(camera.image.data);
 				
 				if (-1 == xioctl (camera.fd, VIDIOC_QBUF, &buf))
          				errno_exit ("VIDIOC_QBUF");
