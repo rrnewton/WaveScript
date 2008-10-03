@@ -75,6 +75,7 @@ List:prefix     :: (List t, Int) -> List t;
 List:split      :: (List t, t)           -> List (List t);
 List:splitBy    :: (List t, (t -> Bool)) -> List (List t);
 List:scan       :: (List t, (t -> Bool)) -> (List t * List t);
+List:member     :: (t, List t) -> Bool;
 
 foldRange       :: (Int, Int, t, (t, Int) -> t) -> t;
 
@@ -495,8 +496,8 @@ namespace List {
     go = Mutable:ref(true);
     ptr = Mutable:ref(ls);
     while go && not(List:is_null(ptr)) {
-      go := pred(ptr.head);
-      ptr := ptr.tail;
+      go := pred(ptr`head);
+      ptr := ptr`tail;
     };
     go
   }
@@ -506,8 +507,8 @@ namespace List {
     ptr = Mutable:ref(ls);
     cnt = Mutable:ref(0);
     while cnt < len {
-      acc := ptr.head ::: acc;
-      ptr := ptr.tail;
+      acc := ptr`head ::: acc;
+      ptr := ptr`tail;
       cnt += 1;
     };
     List:reverse(acc);
@@ -522,13 +523,13 @@ namespace List {
     acc1 = [];
     acc2 = [];
     while not (is_null(ptr)) {
-      if pred(ptr.head) then {
+      if pred(ptr`head) then {
         acc2 := acc1.reverse ::: acc2;
 	acc1 := [];
       } else {
-        acc1 := ptr.head ::: acc1;
+        acc1 := ptr`head ::: acc1;
       };
-      ptr := ptr.tail;	
+      ptr := ptr`tail;	
     };
     //rev = acc2.reverse;
     //if is_null(acc1) then acc2.reverse else 
@@ -545,11 +546,22 @@ namespace List {
     using List;
     ptr = ls;  
     acc = [];
-    while not (is_null(ptr)) && pred(ptr.head) {
-      acc := ptr.head ::: acc;
-      ptr := ptr.tail;
+    while not (is_null(ptr)) && pred(ptr`head) {
+      acc := ptr`head ::: acc;
+      ptr := ptr`tail;
     };
     (acc.reverse, ptr)
+  }
+
+  fun member(x,ls) {
+    using List;
+    found = false;
+    ptr = ls;
+    while not (found) && not (ptr`is_null()) { 
+      if x == ptr`head then found := true;
+      ptr := ptr`tail;
+    };
+    found
   }
 
 }
@@ -574,7 +586,7 @@ namespace FIFO {
   }
   */
   fun enqueue(q,x) q[0] := List:append(q[0], [x])
-  fun dequeue(q) { x=q[0].head; q[0] := q[0].tail; x }
+  fun dequeue(q) { x=q[0]`head; q[0] := q[0]`tail; x }
   fun peek(q,ind) List:ref(q[0], ind);
   fun elements(q) List:length(q[0]);
   fun andmap(fn,q) List:andmap(fn,q[0]);

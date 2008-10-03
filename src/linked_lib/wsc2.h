@@ -211,8 +211,7 @@ inline void wait_ticks(double delta) {
   }
   // Otherwise, we are behind schedule and shouldn't wait at all.
 
-(kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")
-
+  //(kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")
 }
 
 #define VIRTTICK() tick_counter++

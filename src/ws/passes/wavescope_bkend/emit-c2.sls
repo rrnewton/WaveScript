@@ -1663,6 +1663,7 @@ int main(int argc, char **argv)
 "))];"
 
   ;; Option 3: driven by foreign_source
+  ;; TODO: Catch the case where there are no timers or foreign sources (an error).
   [else
    (make-lines "
   int main(int argc, char** argv) {

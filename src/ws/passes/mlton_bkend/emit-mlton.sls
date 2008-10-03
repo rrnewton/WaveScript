@@ -180,6 +180,7 @@
     [Bool    "bool"]
     [Int     (format "~a.int" int-module)]
     [Int16   "Int16.int"] ;; Not standard SML.
+    [Int32   "Int32.int"]
     [Int64   "Int64.int"] 
 
     [Uint8    "Word8.word"]
@@ -1137,6 +1138,7 @@
      (make-app (case ty
 		 [(Int)    (format "~a.~s" int-module op)]
 		 [(Int16)  (format "Int16.~s" op)]
+		 [(Int32)  (format "Int32.~s" op)]
 		 [(Int64)  (format "Int64.~s" op)]
 		 [(Uint16) (format "Word16.~s" op)]
 		 [(Uint8)  (format "Word8.~s" op)]
@@ -1343,6 +1345,7 @@
 
       ;[int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
       [int16ToInt     "Int16.toInt"]
+      [int16ToInt32   ,(compose "Int32.fromLarge" "Int32.toLarge")]
       [int16ToInt64   ,(compose "Int64.fromLarge" "Int16.toLarge")]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
@@ -1350,7 +1353,8 @@
 
       ;[int64ToInt     ,(compose (format "~a.fromLarge" int-module) "Int64.toLarge")]
       [int64ToInt     "Int64.toInt"] ;; ASSUMING Int = Int32, MLTON SPECIFIC
-      [int64ToInt16   ,(compose "Int16.fromLarge" "Int16.toLarge")]
+      [int64ToInt32   ,(compose "Int32.fromLarge" "Int64.toLarge")]
+      [int64ToInt16   ,(compose "Int16.fromLarge" "Int64.toLarge")]
       [int64ToFloat   ,(compose "Real32.fromLargeInt" "Int64.toLarge")]
       [int64ToDouble  ,(compose "Real64.fromLargeInt" "Int64.toLarge")]
       [int64ToComplex  ,(make-fun '("n") "({real= Real32.fromLargeInt (Int64.toLarge n), imag= Real32.fromInt 0})")]
@@ -1368,6 +1372,7 @@
 ;      [intToFloat     ,(compose "Real32.fromLargeInt" (format "~a.toLarge" int-module))]
       ;[intToDouble    ,(compose "Real64.fromLargeInt" (format "~a.toLarge" int-module))]
       [intToInt16     "Int16.fromInt" ]
+      [intToInt32     "Int32.fromInt" ]
       [intToInt64     "Int64.fromInt"]
       [intToFloat     "Real32.fromInt"]
       [intToDouble    "Real64.fromInt"]
@@ -1382,19 +1387,22 @@
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt     "Real32.toInt IEEEReal.TO_ZERO"]
-      [floatToInt64   ,(make-fun '("x") "Int64.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToInt16   ,(make-fun '("x") "Int16.fromInt   (Real32.toInt IEEEReal.TO_ZERO x)")]
+      [floatToInt32   ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
+      [floatToInt64   ,(make-fun '("x") "Int64.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
       [floatToDouble  ,(make-fun '("x") "Real64.fromLarge IEEEReal.TO_NEAREST (Real32.toLarge x)")]
       [floatToComplex ,(make-fun '("n") "({real= n, imag= Real32.fromInt 0})")]
 
       ;[doubleToInt    ,(compose (format "~a.fromLarge" int-module) "(Real64.toLargeInt IEEEReal.TO_ZERO)")]
       [doubleToInt     "Real64.toInt IEEEReal.TO_ZERO"]
       [doubleToInt16  ,(make-fun '("x") "Int16.fromInt   (Real64.toInt IEEEReal.TO_ZERO x)")]
+      [doubleToInt32  ,(make-fun '("x") "Int32.fromLarge (Real64.toLargeInt IEEEReal.TO_ZERO x)")]
       [doubleToInt64  ,(make-fun '("x") "Int64.fromLarge (Real64.toLargeInt IEEEReal.TO_ZERO x)")]
       [doubleToFloat  ,doubleToFloat]
       [doubleToComplex ,(make-fun '("n") (list "({real= "doubleToFloat" n, imag= Real32.fromInt 0})"))]
 
       [complexToInt16 "(fn {real,imag} => Int16.fromInt (Real32.toInt IEEEReal.TO_ZERO real))"]
+      [complexToInt32 "(fn {real,imag} => Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO real))"]
       [complexToInt64 "(fn {real,imag} => Int64.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO real))"]
       [complexToInt   "(fn {real,imag} => (Real32.toInt IEEEReal.TO_ZERO real))"]
       [complexToFloat "(fn {real,imag} => real)"]
@@ -1406,6 +1414,16 @@
       [stringToDouble "(fn s => case Real64.fromString s of SOME x => x)"]
 ;      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
+
+      ;; This is a hack to support the uses of the '!' operator:
+      [intToInt "(fn x => x)"]
+      [int16ToInt16 "(fn x => x)"]
+      [int32ToInt32 "(fn x => x)"]
+      [int64ToInt64 "(fn x => x)"]
+      [floatToFloat "(fn x => x)"]
+      [uint16ToUInt16 "(fn x => x)"]
+      [uint32ToUInt32 "(fn x => x)"]
+
       [string-append "(String.^)"] 
       [String:length "String.size"]
       [String:ref    "String.sub"]
@@ -1416,7 +1434,25 @@
 
       [intToChar "Char.chr"]
       [charToInt "Char.ord"]
+      
+      ;; FIXME: These need to be tested:
+      ;; Also, should abstract away these conversions:
+      [rshiftI32 ,(make-fun (list (make-tuple-code "i" "n"))
+			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.>> (Word32.fromLargeInt (Int32.toLargeInt i), n)))")]
+      [lshiftI32 ,(make-fun (list (make-tuple-code "i" "n"))
+			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.<< (Word32.fromLargeInt (Int32.toLargeInt i), n)))")]      
 
+      [logandI32 ,(make-fun (list (make-tuple-code "a" "b"))
+			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.andb (Word32.fromLargeInt (Int32.toLargeInt a), Word32.fromLargeInt (Int32.toLargeInt b))))")]
+
+
+      [rshiftI16 ,(make-fun (list (make-tuple-code "i" "n"))
+			   "Int16.fromInt (Word32.toInt (Word32.>> (Word32.fromInt (Int16.toInt i), n)))")]
+      [lshiftI16 ,(make-fun (list (make-tuple-code "i" "n"))
+			   "Int16.fromInt (Word32.toInt (Word32.<< (Word32.fromInt (Int16.toInt i), n)))")]
+
+
+      
       [clock    "(fn () => (Time.toReal (#usr (Timer.checkCPUTimer (Timer.totalCPUTimer())))) * 1000.0)"]
       [realtime "(fn () => (Int64.fromLarge (Time.toMilliseconds (Timer.checkRealTimer (Timer.totalRealTimer())))))"]
 

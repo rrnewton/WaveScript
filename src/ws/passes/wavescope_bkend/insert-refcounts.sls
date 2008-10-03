@@ -90,7 +90,7 @@
 	 [,ty (guard (scalar-type? ty)) (void)]
 	 [#()                           (void)]
 	 [(,container ,[loop -> _]) 
-	  (guard (eq-any? container 'List 'Array 'Stream 'VQueue 'Ref ))
+	  (guard (eq-any? container 'List 'Array 'Stream 'VQueue 'Ref 'Sigseg)) ;; Allow sigseg here?
 	  (void)]
 	 [(,[argty*] ... -> ,[retty]) (void)]
 	 [(Struct ,name) 

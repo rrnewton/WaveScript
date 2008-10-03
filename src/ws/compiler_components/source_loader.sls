@@ -356,7 +356,7 @@
 			   '((include "internal.ws")
 			     (include "internal_ml.ws"))]
 			  
-			  [else '((include "internal.ws"))])
+			  [else (inspect (compiler-invocation-mode)) '((include "internal.ws"))])
 			origws)
 		'() #f)))
   (define (f1 x) (eq? (car x) '::))

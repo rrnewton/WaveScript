@@ -201,7 +201,7 @@
       (and (> (string-length str) len)
 	   (or ;(equal? "Node:" (substring str 0 len))
 	       (equal? "Node_" (substring str 0 len)))))
-    ;; TODO: Need to do this recursively (scan for downstream node-side ops)
+    ;; FIXME TODO: Need to do this recursively (scan for downstream node-side ops)
     (define (Source node-ops)
       (define all-incoming (apply append (map (lambda (op) (cdr (assq 'incoming (cdr op)))) node-ops)))
       ;(printf "ALL NODE INCOMING: ~s\n" all-incoming)

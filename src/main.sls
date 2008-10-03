@@ -686,6 +686,7 @@
  
   (IFDEBUG (do-late-typecheck) (void))
   ;(profile-clear)
+
   (ws-run-pass p type-annotate-misc) ;; This pass is really slow...
   ;(parameterize ([current-directory "html"]) (profile-dump-html))
   ;(printf "<<<<<<<< PROFILE DUMPED >>>>>>>>\n")
@@ -1333,10 +1334,13 @@
 			       (filter (lambda (op) (not (eq? (car op) 'cutpoint))) ops))
 			     part))
 
-		  (printf "\n Node operators:\n\n")
-		  (pretty-print (partition->opnames node-part))
-		  (printf "\n Server operators:\n\n")
-		  (pretty-print (partition->opnames server-part))
+			  (printf "\n Node operators:\n\n")
+			  (pretty-print (partition->opnames node-part))
+			  (printf "\n Server operators:\n\n")
+			  (pretty-print (partition->opnames server-part))
+			  
+			  ;;(inspect node-part)
+			  ;;(inspect server-part)
 
 			  ;; Any cutpoints that are passing types other than raw bytes need marshaling.
 			  (map-partition-ops
@@ -1637,6 +1641,7 @@
 ;; WaveScript MLTON Compiler Entrypoint:
 
 (define (wsmlton x input-params . flags)                                 ;; Entrypoint.  
+
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -2109,13 +2114,13 @@
 	       (apply wscomp port input-parameters 'wsjavame opts)))]
 
 	  [(wscaml)
-	   (let ()
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml])
 	     (define exp (acquire-input-prog 'wscaml))
 	     (apply wscaml exp input-parameters opts))]
 
 	  ;; Copy/pasted from above:
 	  [(wsml wsmlton)
-	   (let ()
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml])
 	     (define exp (acquire-input-prog 'wsmlton))
 	     (apply wsmlton exp input-parameters opts))]
 

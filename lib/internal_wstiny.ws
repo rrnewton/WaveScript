@@ -259,8 +259,9 @@ implementation {
 }
 
 
-
 }  // End namespace
+
+read_default_audio = TOS:read_telos_audio
 
 // Alias the default timer primitive:
 //timer = tos_timer;

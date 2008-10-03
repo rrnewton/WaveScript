@@ -21,6 +21,9 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.10.02]
+  *) partition-graph-by-namespace still only does a shallow scan.  It needs to do the transitive closure.
+
 [2008.08.26]
   *) verify-elaborated looks very rotted, it needs to be overhauled.
 

@@ -247,7 +247,7 @@ void ws_alloc_stats() {
 
 
 // This is not currently used by the code generator [2008.07.02], but can be used by C code.
-// HOWEVER: It does not employ the _ATOMIC allocation routines.
+// HOWEVER: It does not employ the _SCALAR allocation routines.
 //
 //#define WSARRAYALLOC(len,ty) ((void*)((char*)calloc(ARRLENSIZE+RCSIZE + (len * sizeof(ty)), 1) + ARRLENSIZE+RCSIZE))
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
@@ -261,6 +261,17 @@ inline void* ws_array_alloc(int len, int eltsize) {
 #endif
   return ptr;
 }
+
+// Nasty duplication:
+inline void* ws_array_alloc_scalar(int len, int eltsize) {
+  char* ptr = ((char*)WSMALLOC_SCALAR(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
+  SETARRLEN(ptr, len);
+#ifndef USE_BOEHM
+  CLEAR_ARR_RC(ptr);
+#endif
+  return ptr;
+}
+
 
 // I can't see any portable way but to expose macros for each scalar type.
 // TODO: FINISH THIS LIST:

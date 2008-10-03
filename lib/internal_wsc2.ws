@@ -67,6 +67,9 @@ fun led0Off() {}
 fun led1Off() {}
 fun led2Off() {}
 
+fun read_default_audio(bufsize,rate) wserror("read_default_audio: no generic audio support in wsc2 backend")
+
+
 // This is here instead of internal.ws because it's still primitive in
 // some other backends (namely, MLton).
 fun List:toArray(ls) {

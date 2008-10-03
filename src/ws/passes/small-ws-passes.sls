@@ -596,6 +596,8 @@
 		 (cond
 		  [(assq var cutstreams) =>  
 		   (lambda (entry)
+		     (define tmp (unique-name "tmpstrm"))
+		     (define tmp2 (unique-name "tmpstrm"))
 		     (unless (zero? readers) (error 'insert-marshal-and-comm:readers "This hack only supports one cut stream presently."))
 		     (set! readers (add1 readers))		     
 		     (match (tenv-lookup tenv var) ;(cdr entry)
@@ -603,9 +605,24 @@
 			(define Server_bytes (unique-name "Server_bytes"))
 			(define Server_vals  (unique-name "Server_vals"))
 			`(let ([,Server_bytes 
-				   (Stream (Array Uint8))
-				   ;,var
-				   (iterate (annotations (name ,Server_bytes))
+				(Stream (Array Uint8))
+				   ;; Here we generate code that will read from stdin:
+
+				   ;; [2008.10.02] I am trying to use a foreign source for this and delegate it to the C code.
+				;; This may make it annoying to deal with multiple cutpoints however.
+				;; I'm keeping around the input stream also:
+				
+				(let ([,tmp (Stream (Array Uint8))
+					    (iterate (annotations)
+						     ;; Rather than 'elt', we just get units from the dummy 'var' stream.
+						     (let () (lambda (x vq) (#() (VQueue (Array Uint8))) vq))
+						     ,var)])
+				  (let ([,tmp2 (Stream (Array Uint8))
+					       (assert-type (Stream (Array Uint8))
+							    (foreign_source '"READ_CUTPOINT_0" '("cutpoint_main.c")))])
+				    (_merge (annotations) ,tmp ,tmp2)))
+				#;
+				(iterate (annotations (name ,Server_bytes))
 					    (let ([myin (Pointer "FILE*")
 							(foreign-app '"ws_get_stdin"
 								     (assert-type ( -> (Pointer "FILE*"))
@@ -633,8 +650,13 @@
 						    vq))))
 					    ;; This is arbitrary, should be infinity I suppose:
 					    ;,var
-					    (let ([mytimer (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
-					      (_merge (annotations) ,var mytimer))
+					    ;; [2008.10.01] Why do I need to keep the original varref alive?
+					    ;; Was it to keep the cutpoint alive?
+					    #;
+					    (timer (annotations) (assert-type Float '1000.0))
+					     
+					    (let ([,tmp (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
+					      (_merge (annotations) ,var ,tmp))
 					    )])
 			   (let ([,Server_vals (Stream ,elt)
 					       (iterate (annotations (name ,Server_vals))
@@ -690,17 +712,29 @@
 				     (let ([,Node_writer
 					     (Stream #())
 					     (iterate (annotations)
-						      (let ([myout (Pointer "FILE*")
+						      (let (#;
+							    [myout (Pointer "FILE*")
 								   (foreign-app '"ws_get_stderr"
 										(assert-type ( -> (Pointer "FILE*"))
 											     (foreign '"ws_get_stderr" '())))])
 							(lambda (x vq) ((Array Uint8) (VQueue #()))
 								(begin 	  
+								  
+								  (foreign-app '"WRITE_CUTPOINT_0"
+									       (assert-type
+										((Array Uint8) Int -> #())
+										(foreign '"WRITE_CUTPOINT_0" '("cutpoint_write.c")))
+									       x (Array:length x))
+								  ;(print '"Array Length: ")
+								  ;(print (Array:length x))
+								  ;(print '"\n")
+								  #;
 								  (foreign-app '"fwrite" 
 									       (assert-type
 										((Array Uint8) Int Int (Pointer "FILE*") -> Int)
 										(foreign '"fwrite" '("stdio.h")))
 									       x '1 (Array:length x) myout)
+								  #;
 								  (foreign-app '"fflush" 
 									       (assert-type ((Pointer "FILE*") -> #()) 
 											    (foreign '"fflush" '("stdio.h")))

@@ -251,22 +251,6 @@ fun dologs(fb,earmag) {
 using TOS;
 
 
-
-/*================ FOR REGULAR PC 
-segs = (readFile("./snip.raw", 
-	       "mode: binary  repeats: 0 "++
-	       "skipbytes: 0  window: "++windowSize ++" offset: 0", 
-	       timer(819.20 / 255.0))
-      :: Stream (Sigseg (Int16)));
-signed = iterate seg in segs {
-  emit toArray(seg);
-};
-
-PRINTOUTPUT = true
-
-=================*/
-
-
 namespace Node {
 
 
@@ -275,61 +259,96 @@ namespace Node {
 
 bufR :: Array Int16 = Array:make(fftSize,0);
 bufI :: Array Int16 = Array:make(fftSize,0);
-fbank =  Array:make(totalFilters,0); 
-emag =  Array:make(totalFilters,MAYBEFIX_0);
+fbank =  Array:make(totalFilters, 0); 
+emag =  Array:make(totalFilters, MAYBEFIX_0);
 ceps =  Array:make(cepstralCoefficients,0.0);
 signedones = Array:make(windowSize, 0);
 
 
-/*=========== FOR JAVA AND TELOS */
 
-// This reads from the audio board:
-//sensor = read_telos_audio(windowSize, windowSize / 4);
+/*==================== This uses the env var PLATFORM to switch back and forth. ====================*/
 
-// Dummy source for java:
-//src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
-REALRATE = 8000 / windowSize;  // realtime
-SLOWRATE = 0.5;  // slow, for profiling on telos
-outbuf = Array:build(windowSize, fun(i) (99::Int16));
- raw = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
+platform = GETENV("PLATFORM")
 
-// Pick which one you want:
-//src = sensor
-//src = file;
-src = raw;
-
-
-/* convert data to signed from unsigned */
-signed = iterate arr in src {
-  //led1Toggle();
-  for i = 0 to windowSize-1 {
-    signedones[i] := (cast_num(arr[i]) :: Int16);
-  };
-  emit signedones;
-};
-
+//PRINTOUTPUT = true
 PRINTOUTPUT = false
 
-/* ============*/
+signed = 
+ if List:member(platform, ["", "PC", "pc"]) then {
+  // If we're running on the PC side, we just read the data from a file:
 
+  ticks = timer(819.20 / 255.0);
+  //ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);
+  segs = (readFile("./snip.raw", 
+   	       "mode: binary  repeats: 0 "++
+	         "skipbytes: 0  window: "++windowSize ++" offset: 0", 
+  	         ticks)
+        :: Stream (Sigseg (Int16)));
+  // Return value:
+  iterate seg in segs {
+    emit toArray(seg);
+   }
+ } 
 
+else if List:member(platform, ["JAVA", "TELOS", "java", "telos"]) then
 
+/* ==================== FOR JAVA AND TELOS ==================== */
+  {
+    // This reads from the audio board:
+    // Unfortunately, this will only compile with wstiny:
+
+    sensor = read_default_audio(windowSize, windowSize / 4);
+
+    // Dummy source for java:
+    //src = smap(fun(_) Array:build(windowSize, fun(i) (99::Int16)), timer$40);
+    REALRATE = 8000 / windowSize;  // realtime
+    SLOWRATE = 0.5;  // slow, for profiling on telos
+    outbuf = Array:build(windowSize, fun(i) (99::Uint16));
+    dummy = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
+
+    // Pick which one you want:
+    //src = sensor;
+    //src = dummy;
+    src = if GETENV("LIVE") == "" 
+          then { print$"Configuring with DUMMY data stream.\n";     dummy } 
+          else { print$"Configuring for LIVE audio data stream.\n"; sensor};
+
+    /* convert data to signed from unsigned */
+    signed = iterate arr in src {
+      //led1Toggle();
+      for i = 0 to windowSize-1 {
+	signedones[i] := (cast_num(arr[i]) :: Int16);
+      };
+      emit signedones;
+    };
+    signed
+  }
+
+ else wserror("Unknown value for environment variable PLATFORM: "++platform)
+/* ============================================================= */
+
+marked = iterate x in signed {
+    state { cnt = 0 }
+    cnt += 1;
+    dropped = getDroppedInputCount();    
+    emit (cnt, dropped, x);
+}
 
 PRINTDBG = false
 
-preemph = iterate win in signed {
+preemph = iterate (cnt, dropped, win) in marked {
   Array:fill(bufR, 0);
 
   start = (fftSize-windowSize) / 2;
   preemphasize(start, bufR, win);
 
-  emit(start,bufR);
+  emit(cnt,dropped, start,bufR);
 }
 
-hamm = iterate (start,bufR) in preemph {
+hamm = iterate (cnt,dropped, start,bufR) in preemph {
   hamming(start, bufR);
 
-  emit(start,bufR);
+  emit(cnt,dropped, start,bufR);
 }
 
 
@@ -337,7 +356,7 @@ fixedAlpha = FIX_F2I(floatAlpha);
 fixedOneMinusAlpha = FIX_F2I(1.0-floatAlpha);
 fixedThreshFactor = FIX_F2I(threshFactor);
 
-prefilt = iterate (start,bufR) in hamm {
+prefilt = iterate (cnt,dropped, start,bufR) in hamm {
   state {
     ewma = 0;
     count = 0;
@@ -361,11 +380,11 @@ prefilt = iterate (start,bufR) in hamm {
   };
 
   // hack -- always emit!
-  emit(start,bufR);
+  emit(cnt,dropped,  start,bufR);
 }
 
 
-freq = iterate (start,bufR) in prefilt {
+freq = iterate (cnt,dropped, start,bufR) in prefilt {
 
   Array:fill(bufI, 0);
 
@@ -374,20 +393,20 @@ freq = iterate (start,bufR) in prefilt {
 
 //led1Toggle();
 
-  emit(start,bufR,bufI);
+  emit(cnt,dropped, start,bufR,bufI);
 }
 
 
-emg = iterate (start,bufR,bufI) in freq {
+emg = iterate (cnt,dropped, start,bufR,bufI) in freq {
   // Clear 
   Array:fill(fbank, 0);
 
   // compute earmag
   earmagfn(bufR, bufI, fbank);
-  emit fbank;
+  emit (cnt,dropped, fbank);
 }
 
-logs = iterate fbank in emg {
+logs = iterate (cnt,dropped, fbank) in emg {
 
   // clear
   Array:fill(emag, 0);
@@ -395,10 +414,10 @@ logs = iterate fbank in emg {
   // compute logs
   dologs(fbank,emag);
   //led0Toggle();
-  emit emag;
+  emit (cnt,dropped, emag);
 }
 
-ceps_stream = iterate emag in logs {
+ceps_stream = iterate (cnt,dropped, emag) in logs {
 
   // Clear 
   Array:fill(ceps, 0);
@@ -426,10 +445,10 @@ ceps_stream = iterate emag in logs {
 */
   //led0Toggle();led1Toggle();led2Toggle();
 
-  emit ceps;
+  emit (cnt,dropped, ceps);
 }
 
-} // End namespace
+} // End Node namespace
 
 //main = Node:signed
 //main = Node:freq
