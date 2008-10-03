@@ -531,6 +531,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (ASSERT (putenv "REGIMENTHOST" ""))
 
+  ;; Make things safe for tinyos:
+  (ASSERT (putenv "TOSDIR" "/opt/tinyos-2.x/tos/"))
+  (ASSERT (putenv "TOSROOT" "/opt/tinyos-2.x/"))
+  (ASSERT (putenv "MAKERULES" "/opt/tinyos-2.x/support/make/Makerules"))
+  (ASSERT (putenv "CLASSPATH" (string-append "/opt/tinyos-2.x/support/sdk/java/tinyos.jar:"
+					     (getenv "CLASSPATH"))))
   (run-test "wstiny: Running demos w/ TOSSIM:"
 	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
 
@@ -730,7 +736,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (ASSERT (putenv "REGIMENTHOST" ""))
 
-  (run-test "wstiny: Compiling speaker detect, Telos: "
+  (run-test "wstiny: Compiling speaker detect, Telos: "	    
 	    (format "wstiny mfcc6_fixedpoint_fb.ws  &> ~a/wstiny_build_mfcc6.log" test-directory))
   
   )
