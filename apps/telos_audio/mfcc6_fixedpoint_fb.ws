@@ -259,10 +259,13 @@ namespace Node {
 
 bufR :: Array Int16 = Array:make(fftSize,0);
 bufI :: Array Int16 = Array:make(fftSize,0);
-fbank =  Array:make(totalFilters, 0); 
-emag =  Array:make(totalFilters, MAYBEFIX_0);
-ceps =  Array:make(cepstralCoefficients,0.0);
 signedones = Array:make(windowSize, 0);
+
+// HACK: Padding this out to slip in some extra data:
+// Obviously, this requires that the code below not be sensitive to the length of these arrays:
+fbank :: Array Int32 =  Array:make(totalFilters + 2, 0); 
+emag =  Array:make(totalFilters + 2, MAYBEFIX_0);
+ceps =  Array:make(cepstralCoefficients + 2, 0.0);
 
 
 
@@ -284,6 +287,9 @@ signed =
 	         "skipbytes: 0  window: "++windowSize ++" offset: 0", 
   	         ticks)
         :: Stream (Sigseg (Int16)));
+	
+  print$"Configuring to read audio stream from file 'snip.raw'.\n"; 
+
   // Return value:
   iterate seg in segs {
     emit toArray(seg);
@@ -328,7 +334,7 @@ else if List:member(platform, ["JAVA", "TELOS", "java", "telos"]) then
 /* ============================================================= */
 
 marked = iterate x in signed {
-    state { cnt = 0 }
+    state { cnt :: Int = 0 }
     cnt += 1;
     dropped = getDroppedInputCount();    
     emit (cnt, dropped, x);
@@ -403,10 +409,18 @@ emg = iterate (cnt,dropped, start,bufR,bufI) in freq {
 
   // compute earmag
   earmagfn(bufR, bufI, fbank);
-  emit (cnt,dropped, fbank);
+
+  // Hack: stick the metadata into the array so that we can send it
+  // back in spite of the WEAK marshaling support under tinyos
+  // presently.
+    
+  //emit (cnt,dropped, fbank);
+  fbank[totalFilters]   := Int32! cnt;
+  fbank[totalFilters+1] := Int32! dropped;
+  emit fbank;  
 }
 
-logs = iterate (cnt,dropped, fbank) in emg {
+logs = iterate fbank in emg {
 
   // clear
   Array:fill(emag, 0);
@@ -414,10 +428,16 @@ logs = iterate (cnt,dropped, fbank) in emg {
   // compute logs
   dologs(fbank,emag);
   //led0Toggle();
-  emit (cnt,dropped, emag);
+
+  // HACK: Copy over cnt, dropped:
+  emag[totalFilters]   := Float! fbank[totalFilters];
+  emag[totalFilters+1] := Float! fbank[totalFilters+1];
+  emit emag;
 }
 
-ceps_stream = iterate (cnt,dropped, emag) in logs {
+//final_results = #[0,0];
+
+ceps_stream = iterate emag in logs {
 
   // Clear 
   Array:fill(ceps, 0);
@@ -432,6 +452,7 @@ ceps_stream = iterate (cnt,dropped, emag) in logs {
     }
   };
 
+
   //if PRINTOUTPUT then println("#cep= "++ceps[0]);
 
 /*
@@ -445,14 +466,25 @@ ceps_stream = iterate (cnt,dropped, emag) in logs {
 */
   //led0Toggle();led1Toggle();led2Toggle();
 
-  emit (cnt,dropped, ceps);
+
+  //emit (cnt,dropped, ceps);
+  //emit cnt;
+
+  // HACK: Copy over cnt, dropped:  
+  ceps[cepstralCoefficients]   := emag[totalFilters];
+  ceps[cepstralCoefficients+1] := emag[totalFilters+1];
+  emit ceps;
+
 }
 
+
 } // End Node namespace
+using Node;
 
-//main = Node:signed
-//main = Node:freq
-//main = Node:emg
-//main = iterate _ in Node:emg { emit 8889 }
-main = Node:ceps_stream
+//main = signed
+//main = freq
+//main = emg
+main = ceps_stream
 
+//main = smap(fun((x,y,z)) x, emg)
+//main = smap(fun((x,y,z)) z, ceps_stream)

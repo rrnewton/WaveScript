@@ -521,7 +521,7 @@ enum {
 	       ;/opt/tinyos-2.x/tos/lib/printf/printf.h	       
 	       ;; Making this an absolute link:
 	       ;(add-include! self "\"printf.h\"")
-	       (add-include! self (format "\"~a/lib/printf/printf.h\"" (getenv "TOSDIR")))
+	       (add-include! self (format "\"~a/lib/printf/printf.h\"" (ASSERT (getenv "TOSDIR"))))
 
 	       (slot-cons! self 'top-acc "
 #define PRINTFLOADED
@@ -760,7 +760,7 @@ implementation {
 	  ;(printf "      CALLING MIG ~a\n" i)
 	  ;; YUCK: we have to tell MIG about WSRADIOMODE too:
 	  (let ([cmd (format "mig c -I~a -target=telosb WSQuery.nc cuttype~a -o WSQueryMsg~a.h" 
-			     (string-append (getenv "TOSDIR") "/lib/printf")
+			     (string-append (ASSERT (getenv "TOSDIR")) "/lib/printf")
 			     (+ AM_OFFSET i) i)])
 	    (display cmd)(newline)
 	    (system cmd)
