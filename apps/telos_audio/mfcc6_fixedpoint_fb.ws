@@ -271,13 +271,13 @@ ceps =  Array:make(cepstralCoefficients + 2, 0.0);
 
 /*==================== This uses the env var PLATFORM to switch back and forth. ====================*/
 
-platform = GETENV("PLATFORM")
+platform = GETENV("WSVARIANT")
 
 //PRINTOUTPUT = true
 PRINTOUTPUT = false
 
 signed = 
- if List:member(platform, ["", "PC", "pc"]) then {
+ if List:member(platform, ["wsc2"]) then {
   // If we're running on the PC side, we just read the data from a file:
 
   ticks = timer(819.20 / 255.0);
@@ -296,7 +296,7 @@ signed =
    }
  } 
 
-else if List:member(platform, ["JAVA", "TELOS", "java", "telos"]) then
+else if List:member(platform, ["wstiny", "wsjavaME"]) then
 
 /* ==================== FOR JAVA AND TELOS ==================== */
   {
@@ -321,7 +321,7 @@ else if List:member(platform, ["JAVA", "TELOS", "java", "telos"]) then
 
     /* convert data to signed from unsigned */
     signed = iterate arr in src {
-      //led1Toggle();
+      led0Toggle();
       for i = 0 to windowSize-1 {
 	signedones[i] := (cast_num(arr[i]) :: Int16);
       };
@@ -369,6 +369,8 @@ prefilt = iterate (cnt,dropped, start,bufR) in hamm {
     dets = 0;
   }
 
+  wserror("test");
+
   count := count + 1;
   env = computeEnvelope(start,bufR);
   if (ewma == 0) then ewma := env;
@@ -397,7 +399,7 @@ freq = iterate (cnt,dropped, start,bufR) in prefilt {
   // fft
   fix_fft(bufR,bufI,fftSizeLog2,false);
 
-//led1Toggle();
+  led1Toggle();
 
   emit(cnt,dropped, start,bufR,bufI);
 }
@@ -417,6 +419,8 @@ emg = iterate (cnt,dropped, start,bufR,bufI) in freq {
   //emit (cnt,dropped, fbank);
   fbank[totalFilters]   := Int32! cnt;
   fbank[totalFilters+1] := Int32! dropped;
+
+  led2Toggle();
   emit fbank;  
 }
 
@@ -482,9 +486,10 @@ ceps_stream = iterate emag in logs {
 using Node;
 
 //main = signed
+main = smap(fun((c,_,_,_)) c, prefilt)
 //main = freq
 //main = emg
-main = ceps_stream
+//main = ceps_stream
 
 //main = smap(fun((x,y,z)) x, emg)
 //main = smap(fun((x,y,z)) z, ceps_stream)

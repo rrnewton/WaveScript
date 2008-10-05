@@ -2,6 +2,8 @@
 
 export REGFLAG=wsjava
 
+export WSVARIANT=wsjava
+
 rm -rf WSQuery.java WSQuery*.class
 
 #wsjavaME $*

@@ -2,6 +2,8 @@
 
 export REGFLAG=wsc2
 
+export WSVARIANT=wsc2
+
 source `dirname $0`/assert_regimentd
 
 # Get out only the relevant options:

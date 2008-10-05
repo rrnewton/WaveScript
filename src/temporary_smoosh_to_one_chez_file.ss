@@ -98,9 +98,9 @@ Warning: assigning primitive name iota at optimize-level 2.
   (printf "Converting Import specs:\n")
   (when (file-exists? "chez_aggregated.ss") (delete-file "chez_aggregated.ss"))
   (let ([prt (open-output-file "chez_aggregated.ss")])
-    (pretty-print '(include "temporary_chez_compat.ss") prt) (newline prt)
+    (write '(include "temporary_chez_compat.ss") prt) (newline prt)
     ;; This is REALLY weird, but ifchez is becoming unbound AFTER it's bound at top-level.
-    (pretty-print '(define-syntax IFCHEZ
+    (write '(define-syntax IFCHEZ
 		     (syntax-rules ()
 		       [(_ a b) a])) prt) 
     (newline prt) (newline prt)
@@ -142,10 +142,12 @@ Warning: assigning primitive name iota at optimize-level 2.
 			(if pretty
 			  (pretty-print `(module ,symname ,newexp* ,@imports ,@bod* ,@aliases) prt)
 			  ;; A compromise, we don't waste time pretty printing, but we do print each def on its own line:
-			  (begin (fprintf prt "(module ~a ~s\n" symname newexp*)
-				 (for-each (lambda (x) (pp x prt)) imports)				 
+			  (begin ;(fprintf prt "(module ~s ~s\n" symname newexp*) ;; Odd... does this use 'display' when it shouldn't?
+			         (fprintf prt "(module ~s " symname )
+				 (write newexp* prt) (newline prt)
+				 (for-each (lambda (x) (write x prt)(newline prt)) imports)
 				 (for-each (lambda (x) (display "  " prt)(write x prt) (newline prt)) bod*)
-				 (for-each (lambda (x) (pp x prt)) aliases)
+				 (for-each (lambda (x) (write x prt)(newline prt)) aliases)
 				 (fprintf prt ") ;; end module\n" ))
 			  )		      
 		       (unless (equal? name '(ws sim wavescript_sim_library_push))

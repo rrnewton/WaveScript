@@ -3,6 +3,8 @@
 
 export REGFLAG=wstiny
 
+export WSVARIANT=wstiny
+
 
 # TEMP=`getopt -o ab:c:: --long a-long,b-long:,c-long:: \
 #      -n 'example.bash' -- "$@"`

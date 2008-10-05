@@ -22,8 +22,22 @@
 // Get a pointer to the *start* of the thing (the pointer to free)
 #define ARRPTR(ptr)        (((uint16_t*)ptr)-1)
 
-#define wserror(str)  { int j; while (1) { call Leds.led0Toggle(); call Leds.led1Toggle(); \
-                               for(j=0;j<1000;j++) { call Leds.led2Toggle(); }} }
+
+// This is a macro because we can't use "call" outside of a module/component.
+#define wserror_fun(str) { int j; float t = 1; print_err(str); while (1) { call Leds.led0Toggle(); call Leds.led1Toggle(); call Leds.led2Toggle(); \
+                               for(j=0;j<100;j++) { t = cos(t); }} }
+void print_err(const char* str) {
+ int j; 
+#ifdef TOSSIM
+     dbg_clear("wserror", "%s", str);
+#else
+#ifdef PRINTFLOADED
+     printf("wserror: ");
+     printf("%s", str);
+     call PrintfFlush.flush();
+#endif
+#endif       
+}
 
 //#define wserror(str) {call Leds.led0On();call Leds.led1On();call Leds.led2On(); while(1) {}}
 
