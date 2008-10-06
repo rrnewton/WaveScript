@@ -5,6 +5,8 @@
 # Only handling tmote sky's for now:
 MOTES=`motelist | grep tmote | awk '{ print $2 }'`
 
+WSDATALEN=99
+
 function doit() {
  bsl=$1
  id=$2
@@ -12,11 +14,12 @@ function doit() {
  echo; echo Programming $mote with nodeID $id.
  echo ============================================================; echo
 
+ export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
  if [ -f build/telosb/main.exe ];
  then echo "Reinstalling...";
-      make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id || exit
+      make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id # || exit
  else echo "Building and installing for the first time.";
-      make -f Makefile.tos2 telosb $bsl,$mote   install,$id || exit
+      make -f Makefile.tos2 telosb $bsl,$mote   install,$id # || exit
  fi
 }
 
@@ -103,3 +106,4 @@ esac
 # 25	G918	tmote-14	10001 - good
 # 25	G918	tmote-14	10002 - good
 
+# That was circa last april, 2008

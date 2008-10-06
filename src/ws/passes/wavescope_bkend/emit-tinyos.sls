@@ -282,8 +282,10 @@
        [(Stream (Array ,elt)) 
 	(ASSERT scalar-type? elt)
 	(list "uint16_t bytesize = ARRLENSIZE + (sizeof("(Type self elt)") * ARRLEN(x));\n"
-	      (let ([err ;"wserror(\"message exceeds max message payload\")"
-		     "call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"])
+	      (let ([err 
+		     "wserror(\"message exceeds max message payload\")"
+		     ;"call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"
+		     ])
 		(list 
 		 "#ifdef WSRADIOMODE\n"
 		 (block "if (bytesize > call CPacket.maxPayloadLength()) "
@@ -319,9 +321,10 @@
     }
     // Note: even if we're sending results up the CTP, we may want 
     // to print messages to the serial port (say for running on motelab).
-    #ifdef PRINTFLOADED
-      call PrintfFlush.flush();
-    #endif 
+    // [2008.10.05] printf flushing is now handled entirely by cleanup_after_traversal
+    //#ifdef PRINTFLOADED
+    //  call PrintfFlush.flush();
+    //#endif 
 
 #else
     if (!serial_busy && call "basesend".send(AM_BROADCAST_ADDR, &serial_pkt, bytesize) == SUCCESS) {
@@ -475,7 +478,7 @@ enum {
     "_ty"* payload = ("_ty" *)(call Packet.getPayload(&serial_pkt, NULL));
     //"_ty"* src  = ("_ty" *)(call CPacket.getPayload(msg, NULL));
 
-    call Leds.led2Toggle();    
+    call Leds.led2Toggle();  // LED: message received
     if (! call RootControl.isRoot()) {
       wserror(\"I am not root.  Should not receive CTP messages.\")
     }
@@ -552,7 +555,9 @@ event void PrintfControl.startDone(error_t error) {
 event void PrintfFlush.flushDone(error_t error) {
   "(slot-ref self 'flushdone)"
   // HACK: ASSUMING That flush only happens AFTER a traversal:
-  cleanup_after_traversal();
+  //cleanup_after_traversal();
+  // Alas, this doesn't work, because sometimes flush doesn't call flushdone:
+  //ws_currently_running = 0;\n
 }
 
 event void PrintfControl.stopDone(error_t error) {
@@ -565,6 +570,8 @@ event void PrintfControl.stopDone(error_t error) {
   call PrintfControl.start();
 #endif
 ")))
+
+;; TODO: type->printf-flag needs to be fixed to print floats.  TinyOS's printf cannot print floats.
 
 (define __Effect
   (specialise! Effect <tinyos>
@@ -591,7 +598,7 @@ event void PrintfControl.stopDone(error_t error) {
 
 (__specreplace ForeignSourceHook <tinyos> (self name callcode) 
   (list
-   "if (ws_currently_running) input_items_lost++;\n"
+   "if (ws_currently_running) { input_items_lost++; }\n" ;; call Leds.led0Toggle();
    (block "else"
 	  (list "ws_currently_running = 1;\n" callcode))))
 
@@ -706,10 +713,10 @@ implementation {
   void BASE(char x) {
     #ifdef TOSSIM
       // For tossim we don't do a printf-flush; need to call this here:
-      cleanup_after_traversal();
+      //cleanup_after_traversal();
     #else
     #ifdef PRINTFLOADED
-      call PrintfFlush.flush();
+      //call PrintfFlush.flush();
     #endif
     #endif
     // HACK FIXME:
@@ -718,6 +725,17 @@ implementation {
     // Therefor, each task needs to check if it ended a chain (failed to post another task).
     cleanup_after_traversal();
   }
+
+/* // Unusued because this approach had problems.  I still couldn't print successfully.
+  task void wserror_task() {
+    int j; float t = 1;
+    call Leds.led0Toggle(); 
+    call Leds.led1Toggle(); 
+    call Leds.led2Toggle();
+    for(j=0;j<100;j++) { t = cos(t); }
+    post wserror_task();
+  }
+*/
 
 "(insert-between "\n"
            (list 
@@ -740,7 +758,16 @@ implementation {
 
   void cleanup_after_traversal() {
 "(indent (slot-ref self 'cleanup-acc) "    ")"
-    ws_currently_running = 0;\n
+#ifdef PRINTFLOADED
+#ifndef TOSSIM
+      // If printf is loaded, the flush becomes part of the traversal.
+      call PrintfFlush.flush();
+#else
+#endif
+#else 
+#endif 
+     // Ack, doing this no matter what because flush is not guaranteed to call flushDone!!
+     ws_currently_running = 0;
   }
 }
 "))

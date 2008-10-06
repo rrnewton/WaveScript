@@ -1,4 +1,5 @@
 
+
 include "stdlib.ws";
 include "fix_fft.ws";
 
@@ -277,11 +278,12 @@ platform = GETENV("WSVARIANT")
 PRINTOUTPUT = false
 
 signed = 
- if List:member(platform, ["wsc2"]) then {
+ if List:member(platform, ["wsc2"]) && GETENV("DUMMY")==""
+ then {
   // If we're running on the PC side, we just read the data from a file:
 
-  ticks = timer(819.20 / 255.0);
-  //ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);
+  //ticks = timer(819.20 / 255.0);
+  ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);
   segs = (readFile("./snip.raw", 
    	       "mode: binary  repeats: 0 "++
 	         "skipbytes: 0  window: "++windowSize ++" offset: 0", 
@@ -296,7 +298,8 @@ signed =
    }
  } 
 
-else if List:member(platform, ["wstiny", "wsjavaME"]) then
+ else if true //if List:member(platform, ["wstiny", "wsjavaME"]) 
+ then
 
 /* ==================== FOR JAVA AND TELOS ==================== */
   {
@@ -310,7 +313,8 @@ else if List:member(platform, ["wstiny", "wsjavaME"]) then
     REALRATE = 8000 / windowSize;  // realtime
     SLOWRATE = 0.5;  // slow, for profiling on telos
     outbuf = Array:build(windowSize, fun(i) (99::Uint16));
-    dummy = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
+    //dummy = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
+    dummy = iterate _ in timer(REALRATE) { emit outbuf };
 
     // Pick which one you want:
     //src = sensor;
@@ -322,10 +326,15 @@ else if List:member(platform, ["wstiny", "wsjavaME"]) then
     /* convert data to signed from unsigned */
     signed = iterate arr in src {
       led0Toggle();
-      for i = 0 to windowSize-1 {
-	signedones[i] := (cast_num(arr[i]) :: Int16);
-      };
-      emit signedones;
+      // [2008.10.05] For network testing only proceed if we're a non-root node.
+      // The root node just forwards data.
+      //if getID() != 1 then 
+      {
+        for i = 0 to windowSize-1 {
+	  signedones[i] := (cast_num(arr[i]) :: Int16);
+        };
+        emit signedones;
+      }
     };
     signed
   }
@@ -336,7 +345,8 @@ else if List:member(platform, ["wstiny", "wsjavaME"]) then
 marked = iterate x in signed {
     state { cnt :: Int = 0 }
     cnt += 1;
-    dropped = getDroppedInputCount();    
+    dropped = getDroppedInputCount();
+
     emit (cnt, dropped, x);
 }
 
@@ -369,8 +379,6 @@ prefilt = iterate (cnt,dropped, start,bufR) in hamm {
     dets = 0;
   }
 
-  wserror("test");
-
   count := count + 1;
   env = computeEnvelope(start,bufR);
   if (ewma == 0) then ewma := env;
@@ -385,21 +393,26 @@ prefilt = iterate (cnt,dropped, start,bufR) in hamm {
     //if (PRINTOUTPUT) then println("#tck= "++count++" "++env);  
     dets := dets + 1;
     // DETECTED!
+    // emit(cnt,dropped,  start,bufR);
   };
 
-  // hack -- always emit!
+  led1Toggle();
+
+  // hack -- always emit! IGNORES PREFILT RESULTS!!!!
   emit(cnt,dropped,  start,bufR);
 }
 
+USEPREFILT = GETENV("PREFILTER") != ""
+maybe_prefilt = if USEPREFILT then prefilt else hamm
 
-freq = iterate (cnt,dropped, start,bufR) in prefilt {
+freq = iterate (cnt,dropped, start,bufR) in maybe_prefilt {
 
   Array:fill(bufI, 0);
 
   // fft
   fix_fft(bufR,bufI,fftSizeLog2,false);
 
-  led1Toggle();
+  //led1Toggle();
 
   emit(cnt,dropped, start,bufR,bufI);
 }
@@ -420,7 +433,7 @@ emg = iterate (cnt,dropped, start,bufR,bufI) in freq {
   fbank[totalFilters]   := Int32! cnt;
   fbank[totalFilters+1] := Int32! dropped;
 
-  led2Toggle();
+  //led2Toggle();
   emit fbank;  
 }
 
@@ -481,15 +494,61 @@ ceps_stream = iterate emag in logs {
 
 }
 
+using List;
+cutpoints = 
+[
+ smap(fun((c,d,_))     (c,d), marked),  // Doesn't drop data, w/printing
+ smap(fun((c,d,_,_))   (c,d), prefilt), // Does exactly 50% of input windows, printing
+ smap(fun((c,d,_,_,_)) (c, d), freq),    // Does 12% percent, with printing&leds (got 12.5% without printing)
+ smap(fun(fbank) (Int! fbank[totalFilters],fbank[totalFilters+1]), emg),       // Does 11.2% 
+ smap(fun(emag) (Int! emag[totalFilters], Int32! emag[totalFilters+1]), logs), // Does 10%
+ smap(fun(ceps) (Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1]), ceps_stream) // Does ??
+]
+// Hmm, these numbers stopped making visual sense when I cut at
+// ceps_stream.  I'm getting the packets *very* slowly -- every 4.5
+// seconds -- and yet the numbers of droped elements only go up around
+// 20/second rather than the 40/second that they should.  Why are the
+// dropped counts lagging?  Hmm... looking at the code.  The timer is
+// set at 40hz properly.  
+
+// Ah, does the problem have to do with casting to floats?  Are we
+// starving the system so badly that the timer interrupts aren't
+// happening?  But we're doing all our compute in task context, so I
+// can't see how that would be.
+
+// Note: filterbank and logs send back ~32 4-byte numbers.
+//       These *might* fit in a single large message.
+//       cepstral coefficients involve only 13 4-byte numbers.
+
+
+CUT=GETENV("CUT")
+index = if CUT!="" then stringToInt(CUT)
+        else cutpoints.length - 1 
+        //else wserror("Set the CUT environment variable between 1 and 6 to run this version")
+
+stripped = cutpoints.ref(index-1)
+wid = smap(fun((x,y)) (getID(),x,y), stripped)
+
+
+// Real cutpoints that carry the actual data, not just dropped/counts:
+// These need to set TOSH_DATA_LENGTH:
+
+// smap(fun(fbank) (Int! fbank[totalFilters],fbank[totalFilters+1]), emg),       // Does 11.2% 
+// smap(fun(emag) (Int! emag[totalFilters], Int32! emag[totalFilters+1]), logs), // Does 10%
+// smap(fun(ceps) (Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1]), ceps_stream) // Does ??
+
 
 } // End Node namespace
 using Node;
 
-//main = signed
-main = smap(fun((c,_,_,_)) c, prefilt)
+//main = stripped
+//main = wid
+
 //main = freq
 //main = emg
-//main = ceps_stream
+main = ceps_stream
 
 //main = smap(fun((x,y,z)) x, emg)
 //main = smap(fun((x,y,z)) z, ceps_stream)
+
+
