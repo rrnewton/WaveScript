@@ -214,8 +214,6 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
   struct timeval tmp;
   gettimeofday(&tmp, NULL);
   double now = tmp.tv_sec * 1000000 + tmp.tv_usec;
-  //double now = tmp.tv_usec;
-
   //printf("  now %g  ", now);
 
   // TODO: Set this at the beginning of time from the init function:
@@ -223,13 +221,8 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 
   logical_time += 1000 * delta * tick_counter; // milliseconds, no microseconds
   tick_counter = 0;
-
-  //double actual_time = (now - start_of_time) * (1000.0l / CLOCKS_PER_SEC);
-  // microseconds:
-  double actual_time = now - start_of_time;
-
-  // Convert to clock_t
-  //double expected_time = total_events * (CLOCKS_PER_SEC / 1000.0l)    
+  
+  double actual_time = now - start_of_time; // microseconds:
 
   // HACK: Only bother waiting if we owe more than 5ms:
   if (logical_time > actual_time )//+ 5000)
@@ -244,39 +237,6 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
   } else {
     //printf(".");
   }
-
-    /*
-  double ms = tick_counter * delta;
-  double ticks = ms * (CLOCKS_PER_SEC / 1000.0l);
-  double now = clock();
-
-  // TODO: Set this at the beginning of time from the init function:
-  if (start_of_time == 0.0) start_of_time = now;
-  
-  // How many events should we have produced by now?
-  double elapsed = now - start_of_time;
-  target = rate * elapsed;
-
-  if (total_events >= target) {
-    usleep(ms)
-  }
-    */
-  
-  /*
-  //double now = clock() * (1000.0l / CLOCKS_PER_SEC);
-  //double increment = 1000 * delta * tick_counter;      
-  //double target = last_time + increment;
-  if (target >= now) {
-    // Should use nanosleep:
-    usleep(target - now);
-    tick_counter = 0;
-    last_time = target;
-  }
-  */
-
-  // Otherwise, we are behind schedule and shouldn't wait at all.
-
-  //(kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")
 }
 
 #define VIRTTICK() tick_counter++
@@ -543,7 +503,11 @@ void wserror_fun(char* msg) {
   printf("Failed with error: %s\n", msg);
   exit(-1);
 }
-#define wserror_wsc2(str) wserror_fun(str);
+#define wserror_wsc2(str) wserror_fun(str)
+// FIXME: TODO DISABLE THIS #def WHEN WE'RE DRIVEN BY A FOREIGN SOURCE:
+// Or, remove the ability of foreign sources to define their own wserror
+// Actually... that needs to be part of how foreign sources compose.
+#define wserror(str) wserror_fun(str)
 
 int wsexit_fun(int code) {
   exit(code);

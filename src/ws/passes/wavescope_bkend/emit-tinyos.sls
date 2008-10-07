@@ -283,7 +283,7 @@
 	(ASSERT scalar-type? elt)
 	(list "uint16_t bytesize = ARRLENSIZE + (sizeof("(Type self elt)") * ARRLEN(x));\n"
 	      (let ([err 
-		     "wserror(\"message exceeds max message payload\")"
+		     "wserror(\"message exceeds max message payload\");"
 		     ;"call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"
 		     ])
 		(list 
@@ -448,14 +448,14 @@ enum {
       dbg_clear(\"WSQuery\", \" Finished sending on serial interface\\n\");
     if (&serial_pkt == msg) {
       serial_busy = FALSE;
-    } else wserror(\"error in serial interface\")
+    } else wserror(\"error in serial interface\");
   }
 
 #ifdef WSRADIOMODE
   event void "ctpsend".sendDone(message_t* msg, error_t error) {
     if (&radio_pkt == msg) {
       radio_busy = FALSE;
-    } else wserror(\"error in radio interface\")
+    } else wserror(\"error in radio interface\");
   }
   event void AMControl.startDone(error_t err) {
     if (err != SUCCESS) call AMControl.start();
@@ -480,7 +480,7 @@ enum {
 
     call Leds.led2Toggle();  // LED: message received
     if (! call RootControl.isRoot()) {
-      wserror(\"I am not root.  Should not receive CTP messages.\")
+      wserror(\"I am not root.  Should not receive CTP messages.\");
     }
 
     my_memcpy(payload, srcpayload, len);

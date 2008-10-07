@@ -5,7 +5,8 @@ then CFILE=query.c
 fi
 
 # Currently, this script is only called for wsc2, so we insist that -DWSC2 be included in the flags.
-WS_LINK+=" -DWSC2 "
+#WS_LINK+=" -DWSC2 "
+WS_LINK="$WS_LINK -DWSC2 "
 
 FIRST=`head -n1 "$CFILE"`
 MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
