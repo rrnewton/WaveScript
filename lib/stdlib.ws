@@ -155,7 +155,8 @@ zip4_sametype   :: (Int, Stream t, Stream t, Stream t, Stream t) -> Stream (t * 
 zipN_sametype   :: (Int, List (Stream t)) -> Stream (List t);
 zipN            :: (Int, List (Stream t)) -> Stream (Array t);
 
-//union2          :: (Stream a, Stream b) -> Stream (Union2 a b);
+//union2       :: (Stream a, Stream b) -> Stream (Union2 a b);
+//zip2         :: (Stream a, Stream b) -> Stream (a * b);
 
 syncN           :: (CtrlStrm, LSS t)       -> SLS t;
 syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;

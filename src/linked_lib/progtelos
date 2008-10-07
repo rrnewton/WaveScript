@@ -70,7 +70,11 @@ case "$1" in
   ;;
 
   * )
-    doit bsl $(($1+1)) /dev/ttyUSB$1
+    # [2008.10.06] If there's a second argument, treat that as the nodeid.
+    if [ "$2" = "" ];
+    then doit bsl $(($1+1)) /dev/ttyUSB$1
+    else doit bsl $2 /dev/ttyUSB$1
+    fi
     echo
     echo "Now run 'java PrintfClient' to listen to the output."
   ;;

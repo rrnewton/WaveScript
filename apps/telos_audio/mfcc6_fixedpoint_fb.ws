@@ -10,6 +10,21 @@ include "fix_fft.ws";
  *         (c) 1998 Interval Research Corporation 
  */
 
+/* 
+
+ The behavior of this program is determined by several environment variables:
+
+   CUT -- set to 1-6 to manually choose cutpoint (default 6)
+
+   PREFILTER -- set to non-null to turn on the prefilter stage
+   DUMMY -- read from generated data rather than trace file or real sensors
+   
+   WSVARIANT -- set internally, determines which backend we're running under   
+ */
+
+//================================================================================
+//                      DSP routines & constants
+//================================================================================
 
 lowestFrequency = 133.3333;
 linearFilters = 13;
@@ -247,7 +262,10 @@ fun dologs(fb,earmag) {
 
 
 
-//============================================================
+
+//================================================================================
+//                    MAIN Stream Program:
+//================================================================================
 
 using TOS;
 
@@ -282,8 +300,9 @@ signed =
  then {
   // If we're running on the PC side, we just read the data from a file:
 
-  //ticks = timer(819.20 / 255.0);
-  ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);
+  //ticks = smap(fun(_) 0, timer(819.20 / 255.0));
+  ticks = timer(819.20 / 255.0);
+  //ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);  
   segs = (readFile("./snip.raw", 
    	       "mode: binary  repeats: 0 "++
 	         "skipbytes: 0  window: "++windowSize ++" offset: 0", 
@@ -319,7 +338,7 @@ signed =
     // Pick which one you want:
     //src = sensor;
     //src = dummy;
-    src = if GETENV("LIVE") == "" 
+    src = if GETENV("DUMMY") != "" 
           then { print$"Configuring with DUMMY data stream.\n";     dummy } 
           else { print$"Configuring for LIVE audio data stream.\n"; sensor};
 
@@ -402,6 +421,7 @@ prefilt = iterate (cnt,dropped, start,bufR) in hamm {
   emit(cnt,dropped,  start,bufR);
 }
 
+// Prefilter off by default:
 USEPREFILT = GETENV("PREFILTER") != ""
 maybe_prefilt = if USEPREFILT then prefilt else hamm
 
@@ -521,34 +541,66 @@ cutpoints =
 //       cepstral coefficients involve only 13 4-byte numbers.
 
 
+// Next: these cutpoints pass along a data buffer that contains
+// garbage, but is the right size to model passing the real data back.
+// This isn't as good as passing back the real data, but to
+// automatically switch it the streams need to be the same type:
+fun padit(c,d,arr) {
+  arr[0] := Uint16! getID();
+  arr[1] := Uint16! c;
+  arr[2] := Uint16! d;
+  arr
+}
+
+bytes1 = 4 * totalFilters + 6
+bytes2 = 4 * cepstralCoefficients + 6
+padding0 :: Array Uint16 = Array:make(         3, 0);
+padding1 :: Array Uint16 = Array:make(bytes1 / 2, 0);
+padding2 :: Array Uint16 = Array:make(bytes2 / 2, 0);
+
+cutpoints2 = 
+[
+ smap(fun((c,d,_))     padit(c,d,padding0), marked),  // Doesn't drop data, w/printing
+ smap(fun((c,d,_,_))   padit(c,d,padding0), prefilt), // Does exactly 50% of input windows, printing
+ smap(fun((c,d,_,_,_)) padit(c,d,padding0), freq),    // Does 12% percent, with printing&leds (got 12.5% without printing)
+ smap(fun(fbank) padit(Int! fbank[totalFilters],fbank[totalFilters+1], padding1), emg),       // Does 11.2% 
+ smap(fun(emag) padit(Int! emag[totalFilters], Int32! emag[totalFilters+1], padding1), logs), // Does 10%
+ smap(fun(ceps) padit(Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1], padding2), ceps_stream) // Does ??
+]
+
+// These lists correspond to the cutpoints:
+// We need this information on hand for configuring TOSH_DATA_LENGTH:
+message_sizes = [2 * cepstralCoefficients + 3]
+
+//cp = cutpoints2
+// rrn: TODO - with this for some reason I ran into a situation where
+// marshal-rewinding went in an infinite loop.  Must have to do with the delicate namespace partitioning...
+//cp = map(fun(s) smap(fun((x,y)) (getID(),x,y), s), cutpoints)
+cp = cutpoints
 CUT=GETENV("CUT")
 index = if CUT!="" then stringToInt(CUT)
-        else cutpoints.length - 1 
+        else cp.length - 1 
         //else wserror("Set the CUT environment variable between 1 and 6 to run this version")
 
-stripped = cutpoints.ref(index-1)
+stripped = cp.ref(index-1)
 wid = smap(fun((x,y)) (getID(),x,y), stripped)
-
-
-// Real cutpoints that carry the actual data, not just dropped/counts:
-// These need to set TOSH_DATA_LENGTH:
-
-// smap(fun(fbank) (Int! fbank[totalFilters],fbank[totalFilters+1]), emg),       // Does 11.2% 
-// smap(fun(emag) (Int! emag[totalFilters], Int32! emag[totalFilters+1]), logs), // Does 10%
-// smap(fun(ceps) (Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1]), ceps_stream) // Does ??
-
 
 } // End Node namespace
 using Node;
 
+main = wid
 //main = stripped
-//main = wid
 
-//main = freq
-//main = emg
-main = ceps_stream
-
-//main = smap(fun((x,y,z)) x, emg)
-//main = smap(fun((x,y,z)) z, ceps_stream)
+// Here you can manually select a return stream without 
 
 
+// Real cutpoints that carry the actual data, not just dropped/counts:
+// These need to set TOSH_DATA_LENGTH:
+c1 = marked
+c2 = maybe_prefilt
+c3 = freq
+c4 = emg
+c5 = logs
+c6 = ceps_stream
+// Another method for selecting the return stream automatically,
+// concatenate "main = cn" to the end of this file.

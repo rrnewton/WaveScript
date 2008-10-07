@@ -191,24 +191,89 @@ int wsc2_tuplimit = 10;
 #ifdef WS_REAL_TIMERS
 
 unsigned long tick_counter;
-double last_time; // In milliseconds.
+//double last_time; // In milliseconds.
+double start_of_time = 0;
+double logical_time = 0;
+
+unsigned long long total_events = 0;
 // In the same units as clock()
 
 /* [2008.09.09] If we try to usleep for too small an interval, it
  * won't work.  Thus we instead try to maintain an average timer rate.
  * If we are behind where we should be, we don't wait at all.  
+ *
+ * [2008.10.06] There's a question as to how long of a time horizon we
+ * should have in doing this.  If we look at the average rate since
+ * the start of time, then a particularly bad lag will skew our rate
+ * for a long time.  Perhaps we want a shorter time horizon, or an
+ * EWMA or something.
  */
-inline void wait_ticks(double delta) {
-  double now = clock() * (1000.0l / CLOCKS_PER_SEC);
-  double increment = 1000 * delta * tick_counter;
+inline void wait_ticks(double delta) { // Delta in milliseconds
 
-  double target = last_time + increment;
+  //double now = clock() * (1000000 / CLOCKS_PER_SEC); // microseconds
+  struct timeval tmp;
+  gettimeofday(&tmp, NULL);
+  double now = tmp.tv_sec * 1000000 + tmp.tv_usec;
+  //double now = tmp.tv_usec;
+
+  //printf("  now %g  ", now);
+
+  // TODO: Set this at the beginning of time from the init function:
+  if (start_of_time == 0.0) start_of_time = now;
+
+  logical_time += 1000 * delta * tick_counter; // milliseconds, no microseconds
+  tick_counter = 0;
+
+  //double actual_time = (now - start_of_time) * (1000.0l / CLOCKS_PER_SEC);
+  // microseconds:
+  double actual_time = now - start_of_time;
+
+  // Convert to clock_t
+  //double expected_time = total_events * (CLOCKS_PER_SEC / 1000.0l)    
+
+  // HACK: Only bother waiting if we owe more than 5ms:
+  if (logical_time > actual_time )//+ 5000)
+  {
+    double diff = logical_time - actual_time;
+    //printf("sleep %g, logical %g, actual %g\n", diff, logical_time, actual_time);
+    usleep(diff);
+    //nanosleep(diff);
+    // HACK: because clock() only measures process time, not sleeping time, we need
+    // to manually update the "actual_time" interval here!
+        //start_of_time -= diff;    
+  } else {
+    //printf(".");
+  }
+
+    /*
+  double ms = tick_counter * delta;
+  double ticks = ms * (CLOCKS_PER_SEC / 1000.0l);
+  double now = clock();
+
+  // TODO: Set this at the beginning of time from the init function:
+  if (start_of_time == 0.0) start_of_time = now;
+  
+  // How many events should we have produced by now?
+  double elapsed = now - start_of_time;
+  target = rate * elapsed;
+
+  if (total_events >= target) {
+    usleep(ms)
+  }
+    */
+  
+  /*
+  //double now = clock() * (1000.0l / CLOCKS_PER_SEC);
+  //double increment = 1000 * delta * tick_counter;      
+  //double target = last_time + increment;
   if (target >= now) {
     // Should use nanosleep:
     usleep(target - now);
     tick_counter = 0;
     last_time = target;
   }
+  */
+
   // Otherwise, we are behind schedule and shouldn't wait at all.
 
   //(kont "(clock() * ((double)1000 / CLOCKS_PER_SEC))")
