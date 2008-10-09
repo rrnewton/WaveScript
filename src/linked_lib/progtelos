@@ -19,7 +19,7 @@ if [ -f TOSH_DATA_LENGTH ]; then
 else
   WSDATALEN=99
 fi
-export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
+export PFLAGS="$PFLAGS -DTOSH_DATA_LENGTH=$WSDATALEN"
 
 function doit() {
  bsl=$1

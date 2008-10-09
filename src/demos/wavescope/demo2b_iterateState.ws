@@ -9,12 +9,12 @@
 
 // Audio channel 1 with no overlap.
 //s1 = (readFile("./countup.raw", "mode: binary  window: 40", timer(1000.0 / 40.0)) :: Stream (Sigseg Int16));
-s1 = timer(50);
+Node:s1 = timer(1);
 
 //counter = 99;
 
 // Identity iterate.
-s2 = iterate( w in s1 ) {
+Node:s2 = iterate( w in Node:s1 ) {
   //  state{ static counter = 0 }
   //  counter := static(statref(counter) + 1);
   state{ counter :: Int = 0 }
@@ -33,4 +33,4 @@ s2 = iterate( w in s1 ) {
   emit counter;
 };
 
-main = s2;
+main = Node:s2;

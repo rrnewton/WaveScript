@@ -1863,3 +1863,6 @@ MOVE THIS SOMEWHERE ELSE:
 I've thrown in some misc error conditions and LED patterns.  These are
 mostly temporary, but I need to try to keep track of them.
 
+[2008.10.09] 
+
+

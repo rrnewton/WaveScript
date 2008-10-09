@@ -452,6 +452,10 @@ enum {
 
   bool serial_busy = FALSE;
   bool radio_busy = FALSE;
+// NASTY AND TEMPORARY HACK:
+#ifdef MESSAGE_DUP_FACTOR
+  int DUP_COUNTER = MESSAGE_DUP_FACTOR;
+#endif
   //message_t  _initial_pkt_storage;
   //message_t* relay_pkt = &_initial_pkt_storage;
   message_t radio_pkt;
@@ -470,7 +474,38 @@ enum {
 #ifdef WSRADIOMODE
   event void "ctpsend".sendDone(message_t* msg, error_t error) {
     if (&radio_pkt == msg) {
+
+/* This is having problems getting stuck if I don't turn radio_busy off.
+   It blinks once and stops... Hmm.. I think duplicate suppression is killing this.
+   Maybe you just can't do a send from here... maybe you need to set a little timer and wait a bit.
+ */
+#ifdef MESSAGE_DUP_FACTOR
+      uint8_t len;
+      int* payload = call Packet.getPayload(msg, &len);
+      if (DUP_COUNTER > 0) {      
+	//if (!radio_busy && call CTPSender0.send(&radio_pkt, bytesize) == SUCCESS) {
+	// Have to assume it's full size:
+        call Leds.led0Toggle();
+        call Leds.led1Toggle();
+        // If this fails to post we just give up on the duplicates.
+        DUP_COUNTER--;
+
+        payload[1] *= 2;
+
+        if (call "ctpsend".send(msg, call Packet.payloadLength(msg)) == FAIL) {
+           radio_busy = FALSE;
+           DUP_COUNTER = MESSAGE_DUP_FACTOR;
+        } else call Leds.led0Toggle();
+// HMM WHATS THE PROBLEM
+//        radio_busy = FALSE;
+      } else {
+        radio_busy = FALSE;
+	DUP_COUNTER = MESSAGE_DUP_FACTOR;
+      }
+#else
       radio_busy = FALSE;
+#endif
+
     } else wserror_builtin(\"error in radio interface\");
   }
   event void AMControl.startDone(error_t err) {
