@@ -1,0 +1,24 @@
+
+
+
+Done:
+   fannkuch
+   fasta 
+
+
+Partial:
+   mandelbrot
+   n-body  -- what's the status of nbody2_nonrec? 
+
+
+   binary-trees
+   k-nucleotide -- hashtable 
+   meteor-contest -- pretty complex
+   pidigits
+   reverse-complement
+   regex-dna
+   spectral-norm -- should be easy
+
+   thread-ring -- this is an interesting one.  A thread is a stream
+                  operator.  Requires recursive stream graphs.
+   chameneos-redux

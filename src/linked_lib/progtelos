@@ -5,23 +5,87 @@
 # Only handling tmote sky's for now:
 MOTES=`motelist | grep tmote | awk '{ print $2 }'`
 
-WSDATALEN=99
+# [2008.10.08] This is ugly, we check for a cookie in the current
+# directory.  We should replace this with a more robust system.  But
+# currently we are way in the hole wrt to requiring only one compile
+# within a given directory at a time.
+if [ -f .__use_multinode_radio_tree ];
+then export CFLAGS="$CFLAGS -DWSRADIOMODE -I$TOSDIR/lib/net -I$TOSDIR/lib/net/le  -I$TOSDIR/lib/net/ctp"
+fi
+
+if [ -f TOSH_DATA_LENGTH ]; then 
+  WSDATALEN=`cat TOSH_DATA_LENGTH`
+  echo Setting TOSH_DATA_LENGTH = $WSDATALEN from eponymous file.
+else
+  WSDATALEN=99
+fi
 
 function doit() {
  bsl=$1
  id=$2
  mote=$3
- echo; echo Programming $mote with nodeID $id.
+ echo; echo Programming $mote with nodeID $id, $bsl.
  echo ============================================================; echo
 
- export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
- if [ -f build/telosb/main.exe ];
- then echo "Reinstalling...";
-      make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id # || exit
- else echo "Building and installing for the first time.";
-      make -f Makefile.tos2 telosb $bsl,$mote   install,$id # || exit
- fi
+ VICTORY=0
+ # Retry two times:
+ #for i in 1 2 3; do 
+   export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
+   if [ -f build/telosb/main.exe ];
+   then echo "Reinstalling...";
+      # This apparently does not return a meaningful error code:
+      # netbsl fails silently.
+      make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id  #&& VICTORY=1 && break
+      #echo "Output code $?"
+   else echo "Building and installing for the first time.";
+      make -f Makefile.tos2 telosb $bsl,$mote   install,$id  #&& VICTORY=1 && break
+      #echo "Output code $?"
+   fi
+   #echo "RETRY -- failed programming on try $i."
+ #done
+ #if [ $VICTORY = "0" ]; then echo "*FAILED* after 3 tries."; exit -1; fi
 }
+
+
+# This is horrible.  We have to read back from the log to figure out if the build failed.
+function retryloop() {
+     LOG=$1
+     num=$2
+     port=$3
+     id=$4
+     echo Starting retry loop $LOG $num $port $id
+     for try in 1 2 3 4 5 6; do 
+       if [ -f $LOG ]; then 
+         ERRS=`tail $LOG | grep Error`
+         if [ "$ERRS" != "" ]; then	
+	   echo "RETRYING -- failed to program $LOG with id $id" 
+	   echo "RETRYING -- failed to program $LOG with id $id" >> $LOG
+           doit netbsl $id tmote-"$num".csail.mit.edu:$port >> $LOG 
+	 fi
+       else 
+         # First time:
+         doit netbsl $id tmote-"$num".csail.mit.edu:$port > $LOG 
+       fi
+     done
+}
+
+
+# Block until there are less than N chidlen of the current shell process.
+function block_n_children() {
+  N=$1  
+  CHILDREN=`ps axo ppid | grep $$ | wc -l`
+
+  ## For some reason we ALWAYS have at least one child process.
+  #if ! test $CHILDREN -lt $N ;
+  if test $CHILDREN -gt $N ;
+  then #echo "$CHILDREN" more than "$N" boo;
+    sleep 2;
+    block_n_children $N
+  #else echo woot is "$CHILDREN" less than "$N" ;
+  fi
+}
+# Linux specific: don't know a general way:
+#THREADS=`cat /proc/cpuinfo | grep processor | wc -l`
 
 case "$1" in
   "" )
@@ -45,18 +109,62 @@ case "$1" in
     # Starting at two so we can do the base station separately:
     id=2;
 
-    for num in 1 5 6 9 10 11 12; do 
+    for num in 1; do 
+#    for num in 1 5 6 9 10 12; do 
+#    for num in 1 5 6 9 10 11 12; do 
 #    for num in 1 2 4 5 6 7 8 9 10 11 12 14; do 
-      id=$(($id+1));
+    # Try all:
+#    for num in 1 2 3 4 5 6 7 8 9 10 11 12 14; do 
       doit netbsl $id tmote-"$num".csail.mit.edu:10001
       id=$(($id+1));
       doit netbsl $id tmote-"$num".csail.mit.edu:10002
+      id=$(($id+1));
     done
   ;;
 
+  # Trying the same thing, but doing multiple nodes in parallel.
+  "netpar" )
+    id=2;
+    # Build it explicitely first:
+    make -f Makefile.tos2 telosb || exit 1
+    rm -f prog_*.log
+    # New approach, manually go through and check for errors.  GROAN.
+#     for try in 1 2 3; do
+#     echo Try pass: $try
+#     for num in 1 5 6 9 10 12; do 
+#      for port in 10001 10002; do
+#        LOG=prog_"$num"_"$port".log
+#        if [ -f $LOG ]; then 
+#          ERRS=`tail $LOG | grep Error`
+#          if [ $ERRS != "" ]; then	
+# 	   echo "RETRYING -- failed to program" >> $LOG
+#            doit netbsl $id tmote-"$num".csail.mit.edu:$port >> $LOG &
+# 	 fi
+#        else 
+#          # First time:
+#          doit netbsl $id tmote-"$num".csail.mit.edu:$port &> $LOG &
+#        fi
+#        id=$(($id+1));
+#       done
+#     done
+#     done
+    for num in 1 5 6 9 10 12; do 
+     for port in 10001 10002; do
+       LOG=prog_"$num"_"$port".log
+       retryloop $LOG $num $port $id &
+       id=$(($id+1));
+    done
+    done
+    echo "Blocking until children complete."
+    block_n_children 1
+  ;;
+
+
+
   "netone" )
     if [ "$2" = "" ];
-    then NUM=1
+    # Use the ones in Lew's office: 3 or 14
+    then NUM=3 
     else NUM=$2
     fi 
     # Port should just be 1 or 2:
@@ -64,7 +172,7 @@ case "$1" in
     then PORT=1
     else PORT=$3
     fi 
-    ID=$((NUM+1))
+    ID=$((NUM + PORT))
     doit netbsl $ID tmote-"$NUM".csail.mit.edu:1000"$PORT"
     #doit netbsl 2 tmote-1.csail.mit.edu:10001
   ;;
@@ -111,3 +219,35 @@ esac
 # 25	G918	tmote-14	10002 - good
 
 # That was circa last april, 2008
+
+# [2008.10.08] Updating now, p for ping
+
+# 2	G914	tmote-1		10001   p
+# 3	G914	tmote-1		10002 - p
+# 4	G916	tmote-2		10001 
+# 1	G916	tmote-2		10002
+# 8	G918	tmote-3		10001
+# 5	G918	tmote-3		10002   
+# 25	G918	tmote-14	10001 - 
+# 25	G918	tmote-14	10002 - 
+
+# 6	G920	tmote-4		10001 - 
+# 7	G920	tmote-4		10002 - 
+# 23	G922	tmote-12	10001 - p
+# 24	G922	tmote-12	10002 - p
+# 17	G924	tmote-9		10001 - p
+# 18	G924	tmote-9		10002 - p
+
+# 9	G932	tmote-8		10001 - 
+# 10	G932	tmote-8		10002 - 
+# 21	G934	tmote-7		10001
+# 22	G934	tmote-7		10002
+# 19	G936	tmote-6		10001 - p
+# 20	G936	tmote-6		10002   p
+# 11	G938	tmote-5		10001 - p
+# 12	G938	tmote-5		10002 - p
+# 13	G940	tmote-11	10001 - 
+# 14	G940	tmote-11	10002
+# 15	G942	tmote-10	10001 - p
+# 16	G942	tmote-10	10002 - p
+

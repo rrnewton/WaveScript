@@ -82,7 +82,7 @@ function pc() {
    fi 
 }
 
-# This builds both... for now this is only for telos:
+# Option (1) This builds both... for now this is only for telos:
 if [ -f "WSQuery.nc" ] && 
    [ -f "query.c" ]; 
 then
@@ -103,9 +103,11 @@ then
     if ! make -f Makefile.tos2 telosb bsl,$THEMOTE install,1 2> .TOS_build_log.txt
     then echo "Error $? while building telosb, see .TOS_build_log.txt"; exit 1; fi 
   fi
+# Option (2)  Build only tossim
 elif [ -f "WSQuery.nc" ]; 
 then tossim;
-  
+
+# Option (3)  Build only the pc side -- hmm, why would that be?
 elif [ -f "query.c" ]; 
 then pc;
 

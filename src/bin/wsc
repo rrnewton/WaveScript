@@ -21,6 +21,11 @@ OUTFILE=query.cpp
 NOGCC=0
 WSCDEBUG=0
 
+
+# A lame "cookie".
+COOKIE=.__use_multinode_radio_tree
+rm -f $COOKIE
+
 ## USE GETOPT!!
 # This is lame, but have to pass through a bunch of stuff from the script to the scheme process.
 while [ $# != 0 ];  do 
@@ -77,6 +82,10 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-D" ]; then shift;
   elif [ "$1" == "-realtime" ]; 
   then echo
+
+  # [2008.10.08] This uses multiple nodes in a tree.  Currently it lamely leaves a "cookie" in the current dir.
+  #"--tree")  touch $COOKIE
+  elif [ "$1" == "-tree" ]; then touch $COOKIE
 
   else FILE="$1"; 
   fi

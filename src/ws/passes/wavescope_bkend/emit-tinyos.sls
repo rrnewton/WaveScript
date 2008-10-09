@@ -283,7 +283,7 @@
 	(ASSERT scalar-type? elt)
 	(list "uint16_t bytesize = ARRLENSIZE + (sizeof("(Type self elt)") * ARRLEN(x));\n"
 	      (let ([err 
-		     "wserror(\"message exceeds max message payload\");"
+		     "wserror_builtin(\"message exceeds max message payload\");"
 		     ;"call Leds.led0Off();call Leds.led1On();call Leds.led2On();while(1){};"
 		     ])
 		(list 
@@ -357,6 +357,7 @@
   WSQuery.RoutingControl -> Collector;
   WSQuery.RootControl -> Collector;
   WSQuery.CPacket     -> Collector;
+  WSQuery.CtpInfo     -> Collector;
 
   // The Collection Tree version ALSO needs a serial interface for the base:
   components SerialActiveMessageC as Serial;
@@ -370,6 +371,20 @@
   WSQuery.AMControl -> AMCOMPONENT;
   WSQuery.Packet    -> AMCOMPONENT;
   WSQuery.AMPacket  -> AMCOMPONENT;
+"))
+     (slot-cons! self 'proto-acc '("
+#ifdef WSRADIOMODE
+  // This is a hack to let us call getTreeParent() without adding a primitive
+  uint16_t getTreeParent() {
+   am_addr_t parent = 0;
+   if (call CtpInfo.getParent(&parent) == FAIL)
+     // FAIL SILENTLY:
+     {} //wserror_builtin(\"getTreeParent Failed\");
+   return (uint16_t)parent; 
+  }
+#else
+  uint16_t getTreeParent() { return 0; }
+#endif
 "))
      (slot-cons! self 'boot-acc (list "
   call AMControl.start();
@@ -387,6 +402,7 @@
   uses interface StdControl as RoutingControl;
   uses interface RootControl;
   uses interface Packet as CPacket;
+  uses interface CtpInfo;
 #endif
 
 ")))
@@ -448,14 +464,14 @@ enum {
       dbg_clear(\"WSQuery\", \" Finished sending on serial interface\\n\");
     if (&serial_pkt == msg) {
       serial_busy = FALSE;
-    } else wserror(\"error in serial interface\");
+    } else wserror_builtin(\"error in serial interface\");
   }
 
 #ifdef WSRADIOMODE
   event void "ctpsend".sendDone(message_t* msg, error_t error) {
     if (&radio_pkt == msg) {
       radio_busy = FALSE;
-    } else wserror(\"error in radio interface\");
+    } else wserror_builtin(\"error in radio interface\");
   }
   event void AMControl.startDone(error_t err) {
     if (err != SUCCESS) call AMControl.start();
@@ -480,7 +496,7 @@ enum {
 
     call Leds.led2Toggle();  // LED: message received
     if (! call RootControl.isRoot()) {
-      wserror(\"I am not root.  Should not receive CTP messages.\");
+      wserror_builtin(\"I am not root.  Should not receive CTP messages.\");
     }
 
     my_memcpy(payload, srcpayload, len);
@@ -638,6 +654,10 @@ event void PrintfControl.stopDone(error_t error) {
 	     [(__foreign_source ',name ',filels '(Stream ,type))
 	      (define ty (Type self type))
 	      (define arg (unique-name "tmp"))
+	      
+	      (printf "Handling filelist for foreign sourec: ~s\n" filels)
+
+	      ;; A strange convention here, only for tinyos:
 	      (ASSERT "foreign source hack requires first 'filename' actually supply data rate in Hz, or -1 if unavailable" id
 		      (and (not (null? filels)) (string->number (car filels))))
 	      (for-each (lambda (file)
@@ -697,6 +717,7 @@ module WSQuery {
 }
 implementation {
 
+  // Global variables:
   char WS_STRM_BUF[128];
   bool did_i_emit = FALSE;
   // This lets us know if its safe to put a tuple in play:

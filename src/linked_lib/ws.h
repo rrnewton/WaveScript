@@ -229,6 +229,7 @@ inline void free_measured(void* object) {
 
 #define ARRLEN(ptr)        (ptr ? ((refcount_t*)ptr)[ARRLENOFFSET] : 0)
 // Get a pointer to the *start* of the thing (the pointer to free)
+// The length field is assumed to be the leftmost field:
 #define ARRPTR(ptr)        (((refcount_t*)ptr) + ARRLENOFFSET)
 #define FREEARR(ptr)       WSFREE(ARRPTR(ptr))
 
@@ -253,6 +254,8 @@ void ws_alloc_stats() {
 #define WSARRAYALLOC(len,ty) (ws_array_alloc(len, sizeof(ty)))
 #define WSSTRINGALLOC(len)   (ws_array_alloc(len, sizeof(ws_char_t)))
 
+// NOTE: This currently should work with boehm, but will waste memory
+// by allocating space for a refcount even though it isn't used.
 inline void* ws_array_alloc(int len, int eltsize) {
   char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
@@ -297,4 +300,8 @@ inline void* ws_array_alloc_scalar(int len, int eltsize) {
 
 //################################################################################//
 
-#endif
+// Shared bits used in multiple backends:
+
+#define moduloI(a,b) (a % b)
+
+#endif // End header

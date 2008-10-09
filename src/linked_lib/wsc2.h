@@ -115,7 +115,7 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
 
   //#ifdef WSDEBUG
   if (zct_count == ZCT_SIZE) {
-    wserror_fun("ZCT overflow");
+    wserror_builtin("ZCT overflow");
   }
   //#endif
 
@@ -503,11 +503,11 @@ void wserror_fun(char* msg) {
   printf("Failed with error: %s\n", msg);
   exit(-1);
 }
-#define wserror_wsc2(str) wserror_fun(str)
+#define wserror_builtin(str) wserror_fun(str)
 // FIXME: TODO DISABLE THIS #def WHEN WE'RE DRIVEN BY A FOREIGN SOURCE:
 // Or, remove the ability of foreign sources to define their own wserror
 // Actually... that needs to be part of how foreign sources compose.
-#define wserror(str) wserror_fun(str)
+//#define wserror(str) wserror_fun(str)
 
 int wsexit_fun(int code) {
   exit(code);

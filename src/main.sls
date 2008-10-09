@@ -1951,18 +1951,19 @@
 		     (read-eval-print-loop))]
 	    ;; To run a script through "regiment"
 	    ;; --script must be the first argument after "regiment i"
-	    ;;
+	    ;; [2008.10.08] Nope -- loosened that up so that we can stick some other arguments between them.
+	    ;; 
 	    ;; This won't occur, chez grabs the --script parameter
 	    ;; directly.  Code should go in the scheme-script parameter.
 	    ;;
 	    ;; Note, if we're doing it this way we pass the raw
 	    ;; arguments, not those processed by "loop" above.
-	    [(equal? (cadr args) "--script")
+	    [(and (equal? (car filenames) "--script")) ;;Loosening: ;;(equal? (cadr args) "--script")
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
 	     ;; --script implies --exit-error: add that setting:
 	     (loop '("-exit-error"))
-	     (let* ([file (caddr args)]
+	     (let* ([file (cadr filenames)] ;; (caddr args)
 		    [exps (file->slist file)])
 	       ;; Under R6RS a script is essentially a sequence of expressions sent to "eval".
 	       (for-each reg:top-level-eval
@@ -2242,7 +2243,7 @@
 	   (loop rest)]
 
 	  [("-exit-error" ,rest ...)
-	   (when (>= (regiment-verbosity) 1) (eprintf "SETTING BATCH MODE\n"))	   
+	   (when (>= (regiment-verbosity) 1) (eprintf "SETTING BATCH MODE\n"))
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (loop rest)]
 

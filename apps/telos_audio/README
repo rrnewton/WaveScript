@@ -59,3 +59,68 @@ The next step is to compile the application split across the two platforms.
 Well, it looks like mfcc6 is producing -inf's right now.  Mfcc5 is
 producing something at least.
 
+
+[2008.10.08]
+Well, I've had enormous difficulty getting repeatible consistent
+behavior out of tinyos nodes.  I'm padding my array messages more than
+I should have to.  And I could only get 106 byte message payloads
+through the *serial* port.  (Perhaps it's 128 hard limit including all
+the AM/CTP overheads?)  If the message size gets too big I also get
+compile errors like the following:
+
+
+`___VIRTQUEUE____181'
+WSQuery.nc: In function `WSQuery$Node_stripped_12_task$runTask':
+WSQuery.nc:280: warning: unused variable `___VIRTQUEUE____193'
+WSQuery.nc: In function `WSQuery$Node_wid_13_task$runTask':
+WSQuery.nc:252: warning: unused variable `___VIRTQUEUE____196'
+/opt/tinyos-2.x/tos/chips/msp430/usart/HplMsp430UsartInterrupts.nc: In function `WSQuery$Node_emg_10_task$runTask':
+WSQuery.nc:550: warning: `tmpsmp_1251' might be used uninitialized in this function
+msp430-ld: address 0x3afa of build/telosb/main.exe section .bss is not within region data
+make: *** [exe0] Error 1
+RUNNING pc-side listener... 6
+
+Currently, even without padding, just returning count,dropped, I can't
+get anything back with a normal wstiny past cut 4.  If I try -split
+then I still don't get anything back.  Darn, when did these cutpoints
+work?  
+
+Actually... as is usually the case with me & tinyos.. things seem to
+fluctuate between various degrees of broken-ness.  
+
+Ah, wait, my most recent runs were broken because of silentroot not
+being set right.  Things are a bit more sane now.
+
+In printf mode I can run cutpoint 6 and it behaves correctly.  I'm
+having problems with -split even without using a two-node network.  It
+works at cutpoint 3.  It works at 4.  It even works at 5.  Hmm, even
+6!?!  Hmm... but those lights are looking different than when I
+manually return the ceps_stream...  Hmm... without -tree turned on I
+don't think there should be any LED pollution by the subsystems...
+
+HMM.. it looks like it's not cutting in the right place!!  CUT=6 is
+still just doing logs, not ceps.  Ok, having fixed that off-by-one
+error, they look the same.  Now with two nodes... ok... this might be
+working.  8116 RAM currently for cut 6.
+
+Ack... my problem right now is that cutpoint 5 isn't working!!  Looks
+like it ran into a wserror from the blink-code.  Wish I could figure
+out which one ;).  So odd, because cutpoint works for the single node.
+Yep, it works on one node now without -tree.  What about on a single
+node *with* -tree?  That works too.  Then with two nodes...  It goes
+to wserror immediately.  That is, the worker node goes to wserror as
+soon as its programmed.
+
+Could be that it gets CTP messages incorrectly... or it could be that
+the getparent fails because the tree hasn't formed yet.  Let's make
+that silently fail.  Ok, it was the getParent problem.  Now it's working.
+
+Man, in addition to time-out errors, it just apparently hung while
+trying to do bsl.  Flaky flaky.
+
+Presently... There's no wserror... but I'm getting nothing over the
+radio from cut 4 or cut 5.
+
+For some crazy reason piping the results of the query to a file causes
+me to lose them (not flushing? and then I kill the process before it
+ever flushes?).  I'm actually cut and pasting the results for now.

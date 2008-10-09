@@ -942,7 +942,7 @@
 	(make-lines (list (make-app rator rands) ";\n"))]
 
       [(__wserror_ARRAY ,[Simp -> str]) 
-       (make-lines (list "wserror("str");\n"))]
+       (make-lines (list "wserror_builtin("str");\n"))]
 
       ;; Note: ASSUMES __BYTE_ORDER == __LITTLE_ENDIAN
       [(__type_unsafe_write (assert-type ,ty ,[Simp -> xp]) ,[Simp -> buf] ,[Simp -> offset])
@@ -1109,6 +1109,9 @@
        (or (and init (wszero? elt init))
 	   (and (not init) (heap-type? self elt))))
 
+     ;; TODO: There's duplication between this and the allocation
+     ;; routines in ws.h This should use those allocation routines,
+     ;; which in turn will mean generalizing them a bit more (malloc/calloc).
      (let* ([_elt (Type self elt)]
 	    [size `("(sizeof(",_elt") * ",len") + RCSIZE + ARRLENSIZE")]
 	    [tmp (Var self (unique-name "arrtmp"))]
@@ -2220,7 +2223,7 @@ int main(int argc, char **argv)
 					    (lines-text (syngen "ptr"))
 					    " break;\n"))
 				    (slot-ref self 'zct-types))
-			      "default: printf(\"tag %d, \", tag); wserror(\"invalid tag for ZCT entry\");\n"
+			      "default: printf(\"tag %d, \", tag); wserror_builtin(\"invalid tag for ZCT entry\");\n"
 			 ))))))
        ))))
 

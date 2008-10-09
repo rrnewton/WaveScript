@@ -5,13 +5,33 @@
 
 if ! [ -d logs ]; then mkdir logs; fi
 
-export THEMOTE=/dev/ttyUSB0
+rm -f logs/cut*
+
+#export THEMOTE=/dev/ttyUSB0
 
 for ((CUT=1; CUT<=6; CUT++)); do 
-  export CUT  
   echo Running cut $CUT
-  wstiny mfcc6_fixedpoint_fb.ws -split || exit 1
-  
+  export CUT  
+  rm -rf build/telos*
+
+  unset THEMOTE
+
+  # Prefilter off currently.
+  (SILENTROOT=t DUMMY=t wstiny mfcc6_fixedpoint_fb.ws -split -tree &> logs/compile_$CUT) || exit 1
+
+  # Program both motes.  
+  # Retry a couple times.
+  VICTORY=0
+  for try in 1 2; do
+    ./progtelos all && VICTORY=1 && break
+    # Otherwise retry:
+    echo "RETRYING"
+    rm -rf build/telos*
+  done
+  if [ $VICTORY = "0" ];
+  then echo "Could not program motes successfully!"; exit 1;
+  fi
+
   echo "RUNNING pc-side listener... $CUT"
   (time ./query.exe /dev/ttyUSB0 telosb -n -1 &) &> logs/cut_$CUT
   #(time ./query.exe /dev/ttyUSB0 telosb -n 10 ) &> logs/cut_$CUT

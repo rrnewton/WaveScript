@@ -18,9 +18,13 @@ include "fix_fft.ws";
 
    PREFILTER -- set to non-null to turn on the prefilter stage
    DUMMY -- read from generated data rather than trace file or real sensors
+
+   SILENTROOT -- 
    
    WSVARIANT -- set internally, determines which backend we're running under   
  */
+
+blinkleds = true
 
 //================================================================================
 //                      DSP routines & constants
@@ -269,9 +273,7 @@ fun dologs(fb,earmag) {
 
 using TOS;
 
-
 namespace Node {
-
 
 // Statically allocate the storage:
 // real and imaginary vectors
@@ -291,6 +293,7 @@ ceps =  Array:make(cepstralCoefficients + 2, 0.0);
 /*==================== This uses the env var PLATFORM to switch back and forth. ====================*/
 
 platform = GETENV("WSVARIANT")
+silentroot = GETENV("SILENTROOT") != ""
 
 //PRINTOUTPUT = true
 PRINTOUTPUT = false
@@ -344,11 +347,11 @@ signed =
 
     /* convert data to signed from unsigned */
     signed = iterate arr in src {
-      led0Toggle();
       // [2008.10.05] For network testing only proceed if we're a non-root node.
       // The root node just forwards data.
-      //if getID() != 1 then 
+      if not(silentroot && getID() == 1) then 
       {
+        if blinkleds then led0Toggle();
         for i = 0 to windowSize-1 {
 	  signedones[i] := (cast_num(arr[i]) :: Int16);
         };
@@ -365,7 +368,8 @@ marked = iterate x in signed {
     state { cnt :: Int = 0 }
     cnt += 1;
     dropped = getDroppedInputCount();
-
+    //parent = getTreeParent();
+    //emit (cnt, dropped, parent, x);
     emit (cnt, dropped, x);
 }
 
@@ -413,11 +417,10 @@ prefilt = iterate (cnt,dropped, start,bufR) in hamm {
     dets := dets + 1;
     // DETECTED!
     // emit(cnt,dropped,  start,bufR);
+    //led1Toggle();
   };
-
-  led1Toggle();
-
-  // hack -- always emit! IGNORES PREFILT RESULTS!!!!
+  
+  // hack -- always emit! IGNORES PREFILT RESULTS!!!!   
   emit(cnt,dropped,  start,bufR);
 }
 
@@ -429,10 +432,12 @@ freq = iterate (cnt,dropped, start,bufR) in maybe_prefilt {
 
   Array:fill(bufI, 0);
 
+  if blinkleds then led1Toggle();
+
   // fft
   fix_fft(bufR,bufI,fftSizeLog2,false);
 
-  //led1Toggle();
+  if blinkleds then led2Toggle();
 
   emit(cnt,dropped, start,bufR,bufI);
 }
@@ -453,7 +458,7 @@ emg = iterate (cnt,dropped, start,bufR,bufI) in freq {
   fbank[totalFilters]   := Int32! cnt;
   fbank[totalFilters+1] := Int32! dropped;
 
-  //led2Toggle();
+  if blinkleds then led2Toggle();
   emit fbank;  
 }
 
@@ -464,11 +469,11 @@ logs = iterate fbank in emg {
 
   // compute logs
   dologs(fbank,emag);
-  //led0Toggle();
 
   // HACK: Copy over cnt, dropped:
   emag[totalFilters]   := Float! fbank[totalFilters];
   emag[totalFilters+1] := Float! fbank[totalFilters+1];
+  if blinkleds then led1Toggle();
   emit emag;
 }
 
@@ -503,22 +508,26 @@ ceps_stream = iterate emag in logs {
 */
   //led0Toggle();led1Toggle();led2Toggle();
 
-
   //emit (cnt,dropped, ceps);
   //emit cnt;
 
   // HACK: Copy over cnt, dropped:  
   ceps[cepstralCoefficients]   := emag[totalFilters];
   ceps[cepstralCoefficients+1] := emag[totalFilters+1];
+  if blinkleds then led0Toggle();
   emit ceps;
 
 }
+
+//================================================================================
+// Next we implement a simple mechanism to switch cutpoint manually.
+// This starts to embody the SCRIPT part of WaveScript: 
 
 using List;
 cutpoints = 
 [
  smap(fun((c,d,_))     (c,d), marked),  // Doesn't drop data, w/printing
- smap(fun((c,d,_,_))   (c,d), prefilt), // Does exactly 50% of input windows, printing
+ smap(fun((c,d,_,_))   (c,d), maybe_prefilt), // Does exactly 50% of input windows, printing
  smap(fun((c,d,_,_,_)) (c, d), freq),    // Does 12% percent, with printing&leds (got 12.5% without printing)
  smap(fun(fbank) (Int! fbank[totalFilters],fbank[totalFilters+1]), emg),       // Does 11.2% 
  smap(fun(emag) (Int! emag[totalFilters], Int32! emag[totalFilters+1]), logs), // Does 10%
@@ -541,6 +550,19 @@ cutpoints =
 //       cepstral coefficients involve only 13 4-byte numbers.
 
 
+
+
+
+
+bytes0a = 2+4   + 2* windowSize
+bytes0b = 2+4+2 + 2* windowSize
+bytes0c = 2+4+2 + 4* fftSize
+bytes1  = 4 * totalFilters         + 2+4
+bytes2  = 4 * cepstralCoefficients + 2+4
+
+
+// Padding out into arrays, first attempt:
+/*
 // Next: these cutpoints pass along a data buffer that contains
 // garbage, but is the right size to model passing the real data back.
 // This isn't as good as passing back the real data, but to
@@ -551,39 +573,81 @@ fun padit(c,d,arr) {
   arr[2] := Uint16! d;
   arr
 }
-
-bytes1 = 4 * totalFilters + 6
-bytes2 = 4 * cepstralCoefficients + 6
+// These won't work because we can't marshal tuples of arrays:
 padding0 :: Array Uint16 = Array:make(         3, 0);
 padding1 :: Array Uint16 = Array:make(bytes1 / 2, 0);
 padding2 :: Array Uint16 = Array:make(bytes2 / 2, 0);
-
 cutpoints2 = 
 [
  smap(fun((c,d,_))     padit(c,d,padding0), marked),  // Doesn't drop data, w/printing
- smap(fun((c,d,_,_))   padit(c,d,padding0), prefilt), // Does exactly 50% of input windows, printing
+ // preemph
+ // hamm
+ smap(fun((c,d,_,_))   padit(c,d,padding0), maybe_prefilt), // Does exactly 50% of input windows, printing
  smap(fun((c,d,_,_,_)) padit(c,d,padding0), freq),    // Does 12% percent, with printing&leds (got 12.5% without printing)
+
  smap(fun(fbank) padit(Int! fbank[totalFilters],fbank[totalFilters+1], padding1), emg),       // Does 11.2% 
  smap(fun(emag) padit(Int! emag[totalFilters], Int32! emag[totalFilters+1], padding1), logs), // Does 10%
  smap(fun(ceps) padit(Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1], padding2), ceps_stream) // Does ??
 ]
+*/
+
 
 // These lists correspond to the cutpoints:
 // We need this information on hand for configuring TOSH_DATA_LENGTH:
-message_sizes = [2 * cepstralCoefficients + 3]
+//max_msg_size = 106 // What is it for telos?  might be 128 -- empirically I couldn't go past 106
+// Some extra room:
+max_msg_size = 100 
+
+raw_sizes = [bytes0a, bytes0b, bytes0c, bytes1, bytes1, bytes2]
+message_sizes = map(fun(b) min(b, max_msg_size), raw_sizes)
+// Can't actually use this right now because we can't send multiple messages per epoch:
+number_messages = [/* marked  */ Int! ceilD(Double!bytes0a / Double!max_msg_size),
+                   /* prefilt */ Int! ceilD(Double!bytes0b / Double!max_msg_size),
+                   /* freq    */ Int! ceilD(Double!bytes0c / Double!max_msg_size),
+                   /* last 3 */ 1,1,1]
 
 //cp = cutpoints2
 // rrn: TODO - with this for some reason I ran into a situation where
 // marshal-rewinding went in an infinite loop.  Must have to do with the delicate namespace partitioning...
 //cp = map(fun(s) smap(fun((x,y)) (getID(),x,y), s), cutpoints)
 cp = cutpoints
-CUT=GETENV("CUT")
-index = if CUT!="" then stringToInt(CUT)
+CUT=GETENV("CUT") // one-based
+index = if CUT!="" then stringToInt(CUT) - 1
         else cp.length - 1 
         //else wserror("Set the CUT environment variable between 1 and 6 to run this version")
 
-stripped = cp.ref(index-1)
-wid = smap(fun((x,y)) (getID(),x,y), stripped)
+// Padding out into arrays, second attempt:
+
+fun pad_cutpoints(sizes)
+  mapi(fun(ind,strm) { 
+    //buf = buffers.ref(ind);
+    buf = Array:build(sizes.ref(ind) / 2,fun(i) Uint16! (i+1));
+    smap(fun((c,d)) {
+      buf[0] := Uint16! getID();
+      buf[1] := Uint16! getTreeParent();
+      buf[2] := Uint16! c;
+      buf[3] := Uint16! d;
+    }, strm)
+  }, cp)
+
+// This is for non-tinyos:
+//full_buffers = map(fun(n) Array:build(n/2,fun(i) Uint16! (i+1)), raw_sizes)
+
+padded_cutpoints      = pad_cutpoints(message_sizes)
+full_padded_cutpoints = pad_cutpoints(raw_sizes)
+
+_ = {
+  println("Selecting cutpoint number "++ index+1);
+  println("Raw stream sizes: "     ++ raw_sizes);
+  println("Cropped Message sizes: "++ message_sizes);
+  println("Number of messages: "   ++ number_messages);
+  println("Root is silent: "   ++ silentroot);
+  println("Writing TOSH_DATA_LENGTH to a file by the same name.");
+  SHELL("echo "++ message_sizes.ref(index) ++" > TOSH_DATA_LENGTH");
+}
+
+stripped = cp.ref(index)
+wid = smap(fun((x,y)) (getID(),x,y, getTreeParent()), stripped)
 
 } // End Node namespace
 using Node;
@@ -604,3 +668,5 @@ c5 = logs
 c6 = ceps_stream
 // Another method for selecting the return stream automatically,
 // concatenate "main = cn" to the end of this file.
+
+//Node:temp = smap(fun(_) 99, ceps_stream); main = Node:temp

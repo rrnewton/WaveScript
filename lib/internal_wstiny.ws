@@ -29,6 +29,7 @@ led2Toggle = (foreign("call Leds.led2Toggle", []) :: () -> ());
 
 maxPayloadLength :: (() -> Int16) = foreign("call Packet.maxPayloadLength",[]);
 getDroppedInputCount :: (() -> Int32) = foreign("getDroppedInputCount",[]);
+getTreeParent :: (() -> Uint16) = foreign("getTreeParent",[]);
 
 
 // This includes a Telos-Specific Counter component.
@@ -131,7 +132,7 @@ fun sensor_uint16(name, rate) {
 event void "++tmod++".fired() { call "++smod++".read(); }
 event void "++smod++".readDone(error_t result, uint16_t data) { 
     if (result != SUCCESS) 
-      wserror(\"sensor_uint16 read failure\")    
+      wserror_builtin(\"sensor_uint16 read failure\")    
     else "++funname++"(data);
   }
 ";
@@ -168,7 +169,7 @@ fun readstream_uint16(name, bufsize, rate) {
 
   event void "++smod++".bufferDone(error_t result, "++ty++"* buf, uint16_t cnt) {
     if (result != SUCCESS)
-       wserror(\"readstream_uint16 failure\")
+       wserror_builtin(\"readstream_uint16 failure\")
     else {
       uint16_t i;
       buf[-1] = cnt;
@@ -185,7 +186,7 @@ fun readstream_uint16(name, bufsize, rate) {
   }
 
   event void "++smod++".readDone(error_t result, uint32_t period) {
-    if (result != SUCCESS) wserror(\"ReadStream.readDone completed incorrectly\")
+    if (result != SUCCESS) wserror_builtin(\"ReadStream.readDone completed incorrectly\")
   }
 
 ";

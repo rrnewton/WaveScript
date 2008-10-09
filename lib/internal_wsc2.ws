@@ -57,6 +57,9 @@ main = iterate _ in timer(3.0) {
 
 // Cannot currently keep track of missed input tuples for a node running wsc2:
 fun getDroppedInputCount() (0::Int32)
+
+fun getTreeParent() (0::Uint16)
+
 fun led0Toggle() {}
 fun led1Toggle() {}
 fun led2Toggle() {}

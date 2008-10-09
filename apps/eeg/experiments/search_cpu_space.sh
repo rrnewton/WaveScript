@@ -16,8 +16,9 @@ TEMP=~/DATA/lp_solve_timings
 # Units are in tenths of a percent:
 
 # I could push this between 1300 and 1324 to cover everything.
-START=1300
-INCREMENT=25
+#START=1300
+START=7700
+INCREMENT=10
 STOP=22000
 
 FILE="$1"
@@ -26,6 +27,9 @@ RESULTS=results.dat
 THREADS=`cat /proc/cpuinfo | grep processor | wc -l`
 #THREADS=$(($THREADS*2))
 #THREADS=$(($THREADS+1))
+
+## TEMP!!!
+THREADS=$(($THREADS-1))
 
 echo Running with $THREADS threads...
 
