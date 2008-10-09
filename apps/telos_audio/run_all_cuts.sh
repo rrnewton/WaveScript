@@ -5,11 +5,15 @@
 
 if ! [ -d logs ]; then mkdir logs; fi
 
-rm -f logs/cut*
+#rm -f logs/cut*
 
 #export THEMOTE=/dev/ttyUSB0
 
-for ((CUT=1; CUT<=6; CUT++)); do 
+STRT=1
+STOP=6
+
+for ((CUT=$STRT; CUT<=$STOP; CUT++)); do 
+#for CUT in 1 2 3  6; do 
   echo Running cut $CUT
   export CUT  
   rm -rf build/telos*

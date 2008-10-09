@@ -552,8 +552,6 @@ cutpoints =
 
 
 
-
-
 bytes0a = 2+4   + 2* windowSize
 bytes0b = 2+4+2 + 2* windowSize
 bytes0c = 2+4+2 + 4* fftSize
@@ -561,50 +559,28 @@ bytes1  = 4 * totalFilters         + 2+4
 bytes2  = 4 * cepstralCoefficients + 2+4
 
 
-// Padding out into arrays, first attempt:
-/*
-// Next: these cutpoints pass along a data buffer that contains
-// garbage, but is the right size to model passing the real data back.
-// This isn't as good as passing back the real data, but to
-// automatically switch it the streams need to be the same type:
-fun padit(c,d,arr) {
-  arr[0] := Uint16! getID();
-  arr[1] := Uint16! c;
-  arr[2] := Uint16! d;
-  arr
-}
-// These won't work because we can't marshal tuples of arrays:
-padding0 :: Array Uint16 = Array:make(         3, 0);
-padding1 :: Array Uint16 = Array:make(bytes1 / 2, 0);
-padding2 :: Array Uint16 = Array:make(bytes2 / 2, 0);
-cutpoints2 = 
-[
- smap(fun((c,d,_))     padit(c,d,padding0), marked),  // Doesn't drop data, w/printing
- // preemph
- // hamm
- smap(fun((c,d,_,_))   padit(c,d,padding0), maybe_prefilt), // Does exactly 50% of input windows, printing
- smap(fun((c,d,_,_,_)) padit(c,d,padding0), freq),    // Does 12% percent, with printing&leds (got 12.5% without printing)
-
- smap(fun(fbank) padit(Int! fbank[totalFilters],fbank[totalFilters+1], padding1), emg),       // Does 11.2% 
- smap(fun(emag) padit(Int! emag[totalFilters], Int32! emag[totalFilters+1], padding1), logs), // Does 10%
- smap(fun(ceps) padit(Int! ceps[cepstralCoefficients], Int32! ceps[cepstralCoefficients+1], padding2), ceps_stream) // Does ??
-]
-*/
-
 
 // These lists correspond to the cutpoints:
 // We need this information on hand for configuring TOSH_DATA_LENGTH:
 //max_msg_size = 106 // What is it for telos?  might be 128 -- empirically I couldn't go past 106
 // Some extra room:
-max_msg_size = 100 
+//max_msg_size = 106 // works
+//max_msg_size = 28
+max_msg_size = 106
+extra_headroom = 10
+max_payload = max_msg_size - extra_headroom
 
 raw_sizes = [bytes0a, bytes0b, bytes0c, bytes1, bytes1, bytes2]
-message_sizes = map(fun(b) min(b, max_msg_size), raw_sizes)
+message_sizes = map(fun(b) min(b, max_payload), raw_sizes)
 // Can't actually use this right now because we can't send multiple messages per epoch:
 number_messages = [/* marked  */ Int! ceilD(Double!bytes0a / Double!max_msg_size),
                    /* prefilt */ Int! ceilD(Double!bytes0b / Double!max_msg_size),
                    /* freq    */ Int! ceilD(Double!bytes0c / Double!max_msg_size),
-                   /* last 3 */ 1,1,1]
+                   /* last 3 */  //1,1,1
+		                 Int! ceilD(Double!bytes1  / Double!max_msg_size),
+		                 Int! ceilD(Double!bytes1  / Double!max_msg_size),
+		                 Int! ceilD(Double!bytes2  / Double!max_msg_size),		   
+		   ]
 
 //cp = cutpoints2
 // rrn: TODO - with this for some reason I ran into a situation where
@@ -624,9 +600,10 @@ fun pad_cutpoints(sizes)
     buf = Array:build(sizes.ref(ind) / 2,fun(i) Uint16! (i+1));
     smap(fun((c,d)) {
       buf[0] := Uint16! getID();
-      buf[1] := Uint16! getTreeParent();
-      buf[2] := Uint16! c;
-      buf[3] := Uint16! d;
+      buf[1] := Uint16! c;
+      buf[2] := Uint16! d;
+      buf[3] := Uint16! getTreeParent();
+      buf
     }, strm)
   }, cp)
 
@@ -636,6 +613,8 @@ fun pad_cutpoints(sizes)
 padded_cutpoints      = pad_cutpoints(message_sizes)
 full_padded_cutpoints = pad_cutpoints(raw_sizes)
 
+
+
 _ = {
   println("Selecting cutpoint number "++ index+1);
   println("Raw stream sizes: "     ++ raw_sizes);
@@ -643,17 +622,23 @@ _ = {
   println("Number of messages: "   ++ number_messages);
   println("Root is silent: "   ++ silentroot);
   println("Writing TOSH_DATA_LENGTH to a file by the same name.");
-  SHELL("echo "++ message_sizes.ref(index) ++" > TOSH_DATA_LENGTH");
+
+  // INCLUDING EXTRA PADDING!
+  SHELL("echo "++ message_sizes.ref(index) + extra_headroom ++" > TOSH_DATA_LENGTH");
 }
 
 stripped = cp.ref(index)
 wid = smap(fun((x,y)) (getID(),x,y, getTreeParent()), stripped)
 
+padded = padded_cutpoints.ref(index)
+//padded = full_padded_cutpoints.ref(index)
+
 } // End Node namespace
 using Node;
 
-main = wid
+//main = wid
 //main = stripped
+main = padded
 
 // Here you can manually select a return stream without 
 

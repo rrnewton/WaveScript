@@ -19,6 +19,7 @@ if [ -f TOSH_DATA_LENGTH ]; then
 else
   WSDATALEN=99
 fi
+export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
 
 function doit() {
  bsl=$1
@@ -30,16 +31,13 @@ function doit() {
  VICTORY=0
  # Retry two times:
  #for i in 1 2 3; do 
-   export PFLAGS="-DTOSH_DATA_LENGTH=$WSDATALEN"
    if [ -f build/telosb/main.exe ];
    then echo "Reinstalling...";
       # This apparently does not return a meaningful error code:
       # netbsl fails silently.
       make -f Makefile.tos2 telosb $bsl,$mote reinstall,$id  #&& VICTORY=1 && break
-      #echo "Output code $?"
    else echo "Building and installing for the first time.";
       make -f Makefile.tos2 telosb $bsl,$mote   install,$id  #&& VICTORY=1 && break
-      #echo "Output code $?"
    fi
    #echo "RETRY -- failed programming on try $i."
  #done
@@ -48,25 +46,31 @@ function doit() {
 
 
 # This is horrible.  We have to read back from the log to figure out if the build failed.
-function retryloop() {
+function retryloop() { 
      LOG=$1
-     num=$2
-     port=$3
-     id=$4
-     echo Starting retry loop $LOG $num $port $id
+     bsl=$2
+     id=$3
+     mote=$4
+     echo Starting retry loop $LOG  $id
+     rm -f $LOG
      for try in 1 2 3 4 5 6; do 
        if [ -f $LOG ]; then 
          ERRS=`tail $LOG | grep Error`
          if [ "$ERRS" != "" ]; then	
-	   echo "RETRYING -- failed to program $LOG with id $id" 
-	   echo "RETRYING -- failed to program $LOG with id $id" >> $LOG
-           doit netbsl $id tmote-"$num".csail.mit.edu:$port >> $LOG 
+	   echo "RETRYING $try -- failed to program $LOG with id $id" 
+	   echo "RETRYING $try -- failed to program $LOG with id $id" >> $LOG
+#           doit $bsl $id $mote >> $LOG 
+           doit $bsl $id $mote &> temp_$LOG 
+	   cat temp_$LOG >> $LOG
+	   rm -f temp_$LOG
+	   # 2>>  $LOG 
 	 fi
        else 
          # First time:
-         doit netbsl $id tmote-"$num".csail.mit.edu:$port > $LOG 
+         doit $bsl $id $mote > $LOG 
        fi
      done
+    echo "  Successfully programmed $LOG with id $id"
 }
 
 
@@ -96,12 +100,18 @@ case "$1" in
     exit 0
   ;;
   "all" )
-    echo "Programming ALL nodes."; 
+    echo "Programming ALL nodes: "; 
+    echo "$MOTES"
     idcntr=1
+    make -f Makefile.tos2 telosb || exit 1    
     for mote in $MOTES; do
-      doit bsl $idcntr $mote
+      #doit bsl $idcntr $mote
+      LOG=prog_local_mote_"$idcntr".log
+      retryloop $LOG bsl $idcntr $mote &
       idcntr=$(($idcntr + 1))
     done  
+    echo "Blocking until children complete."
+    block_n_children 1
   ;;
 
   # RRN: This is specific to me, program our CSAIL motes:
@@ -129,29 +139,10 @@ case "$1" in
     make -f Makefile.tos2 telosb || exit 1
     rm -f prog_*.log
     # New approach, manually go through and check for errors.  GROAN.
-#     for try in 1 2 3; do
-#     echo Try pass: $try
-#     for num in 1 5 6 9 10 12; do 
-#      for port in 10001 10002; do
-#        LOG=prog_"$num"_"$port".log
-#        if [ -f $LOG ]; then 
-#          ERRS=`tail $LOG | grep Error`
-#          if [ $ERRS != "" ]; then	
-# 	   echo "RETRYING -- failed to program" >> $LOG
-#            doit netbsl $id tmote-"$num".csail.mit.edu:$port >> $LOG &
-# 	 fi
-#        else 
-#          # First time:
-#          doit netbsl $id tmote-"$num".csail.mit.edu:$port &> $LOG &
-#        fi
-#        id=$(($id+1));
-#       done
-#     done
-#     done
     for num in 1 5 6 9 10 12; do 
      for port in 10001 10002; do
        LOG=prog_"$num"_"$port".log
-       retryloop $LOG $num $port $id &
+       retryloop $LOG netbsl $id tmote-"$num".csail.mit.edu:$port &
        id=$(($id+1));
     done
     done
@@ -221,6 +212,7 @@ esac
 # That was circa last april, 2008
 
 # [2008.10.08] Updating now, p for ping
+# Sorted by room:
 
 # 2	G914	tmote-1		10001   p
 # 3	G914	tmote-1		10002 - p

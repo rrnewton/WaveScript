@@ -182,8 +182,6 @@ static inline void BLAST_ZCT(int depth) {
 int outputcount = 0;
 int wsc2_tuplimit = 10;
 
-#define moduloI(a,b) (a % b)
-
 //################################################################################//
 //                           Scheduler and data passing
 //################################################################################//
@@ -456,7 +454,8 @@ void BASE(char x) {
 #ifdef ALLOC_STATS
   ws_alloc_stats();
 #endif
-  //fflush(stdout); // [2008.07.31] No more flushing at BASE for now.
+  // [2008.10.08] Temporarily reenabling:
+  fflush(stdout); // [2008.07.31] No more flushing at BASE for now.
 }
 
 // This is a WS array of strings containing all the command line

@@ -979,7 +979,7 @@
        ;; we get much less bloated, much more readable code if we do
        ;; the following:       
        [',vec (guard (vector? vec));(assert-type (Array Char) ',vec)
-        (ASSERT (vector-andmap char? vec))
+        (ASSERT (curry vector-andmap char?) vec)
 	;; Strip out any null characters??
 	(let* ([tmp (unique-name "tmpchararr")]
 	       [ls (vector->list vec)]

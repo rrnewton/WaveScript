@@ -60,7 +60,8 @@ Well, it looks like mfcc6 is producing -inf's right now.  Mfcc5 is
 producing something at least.
 
 
-[2008.10.08]
+[2008.10.08] {Hacking log}
+
 Well, I've had enormous difficulty getting repeatible consistent
 behavior out of tinyos nodes.  I'm padding my array messages more than
 I should have to.  And I could only get 106 byte message payloads
@@ -124,3 +125,47 @@ radio from cut 4 or cut 5.
 For some crazy reason piping the results of the query to a file causes
 me to lose them (not flushing? and then I kill the process before it
 ever flushes?).  I'm actually cut and pasting the results for now.
+
+Continuing... just got a wserror on cut 4 on the worker node (rather
+than the root).  Oh, ok that's probably because of a non-updated chez
+build of the compiler.  I removed the getTreeParent error.  Now I've
+got cut 4 working split, with a silent root.  What did I do
+differently?  Nothing.  I just programmed them one at a time manually.
+Now I'll try with 'progtelos all'.  Works fine.  Ok, are they just
+getting "hot" or something?
+
+Hmm... also, just tried again with cut 4.  It took a strangely long
+time for the root to kick in and start receiving.  Just the vagaries
+of CTP I guess.  Now it even worked with 'progtelos all' programming
+them simultaneously.
+
+Ok, just did a full run of the run_all_cuts.sh script.  Note that the
+dropped counts are still broken.  At lter cutpoints they're way
+undercounted.
+
+--
+
+Now on to the padded version.  First with one-node w/ -tree.  Trying
+cut 5.  Gets a wserror.  Ok, backing off.  Trying wsc2.  The output of
+that looks fine at various cutpoints.  Going to a small max message
+size, and adding a bunch of extra headroom in the message payload.
+Ok, that works.
+
+If I keep the "headroom" (stupid extra space) at 10, then bumping the
+message size to 100 is ok (this is at cut 1 currently), still just one
+node.  Ok, 106 works too.
+
+Trying with two nodes, silentroot or not.  No luck.  I get wserror on
+the worker currently.  Tuning message size down (28).  That works.
+Message size limit for the radio must be even smaller.  Trying 60.
+Wserror on the worker.  50?  wserror.  40?  No!  30?!?  NO!  Is the
+radio message size not getting set properly?  May be a problem with
+progtelos...
+
+Now, with the non-padded version I used larger message sizes... but I
+wasn't really writing anything into them.  
+
+Yep, progtelos was the problem.  Fixed it.  Still no luck with size
+30!!  28 still works.  Reducing the overhead to 6 gives me wserrors on
+the worker.  8 doesn't work either.
+

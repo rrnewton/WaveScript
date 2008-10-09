@@ -40,11 +40,10 @@ toparr :: Array Int16 = Array:build(8, fun(i) i.gint + 300)
 
 // Hardware timer rate:
 maxrate = 5000 // 200 //512
-step = 5 // Step period down by
+// Could use a variable-period timer, but that's not standardized in WS yet.
 
 // Epoch in seconds, this may not fit in 16 bits:
-//epoch = 60 * maxrate // One minute
-epoch :: Int32 = 120 * maxrate // Two minutes
+epoch :: Int32 = 5 * 60 * maxrate // a few minutes
 
 //mytimer = TOS:timer;
 //mytimer = timer;
@@ -61,7 +60,9 @@ Node:strm = iterate arr in Node:src {
 	  // The size of the wait between firings (which decreases):
           cap :: Int16 = maxrate; // Start off w/ one msg/sec
 	  // Every epoch we change rate:
-	  epochnum :: Int16 = 0;   // Count elapsed epochs
+
+	  // Negative epochs are "warm ups".
+	  epochnum :: Int16 = -2;   // Count elapsed epochs
 	  msgcounter :: Int16 = 0; // Count sent messages
 
 	  // NEW SYSTEM:
@@ -105,26 +106,27 @@ Node:strm = iterate arr in Node:src {
     nextlvl := 0;
     msgcounter := 0;
 
-    // This is painfully slow, but we do a floating point multiply to
-    // increase the *rate* by 5% (which means dividing the period by 1.05)
-    //
-    // This will explore from 1hz to 150hz in ~100 epochs, with a
-    // 20Khz timer.  (The integer truncation makes cap reduce faster.)
-    // With a 5Khz timer, it get's closer to ~200hz.
-    newcap = Int16! (Float! cap * 0.9523809523809523);
-    // Cheaper would be cap - (cap >> 4)
-    // But that wouldn't work at small numbers...
-    // Could make the rounding behavior better by doing ((int32_t)cap * 15) >> 4
-    // But it stillwon't work at real small numbers.
+    // Only if we're past the warm-up epochs do we actually advance.
+    if epochnum >= 0 then {
+      // This is painfully slow, but we do a floating point multiply to
+      // increase the *rate* by 5% (which means dividing the period by 1.05)
+      //
+      // This will explore from 1hz to 150hz in ~100 epochs, with a
+      // 20Khz timer.  (The integer truncation makes cap reduce faster.)
+      // With a 5Khz timer, it get's closer to ~200hz.
+      newcap = Int16! (Float! cap * 0.9523809523809523);
+      // Cheaper would be cap - (cap >> 4)
+      // But that wouldn't work at small numbers...
+      // Could make the rounding behavior better by doing ((int32_t)cap * 15) >> 4
+      // But it stillwon't work at real small numbers.
 
-    // We had better reduce the cap by at least one!
-    if newcap == cap  
-    then cap := cap - 1
-    else cap := newcap;
-
-    if cur > cap then cur := 0;
-    //println$ "Changed cap "++cap;
-
+      // We had better reduce the cap by at least one!
+      if newcap == cap  
+      then cap := cap - 1
+      else cap := newcap;
+      if cur > cap then cur := 0;
+      //println$ "Changed cap "++cap;
+    };
     epochnum += 1;
     //if id != 1 then print("New epoch "++epochnum++" cap is "++cap++"\n");
   };
