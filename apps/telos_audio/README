@@ -169,3 +169,15 @@ Yep, progtelos was the problem.  Fixed it.  Still no luck with size
 30!!  28 still works.  Reducing the overhead to 6 gives me wserrors on
 the worker.  8 doesn't work either.
 
+Oh jeez... ok I just ran with message size 106 by ACCIDENT when
+calling my run_all_cuts script.  And at least for the first three
+cuts... it WORKS!  That's insane.  And the lights don't lie.. it's
+running on two nodes, silent root.  And this is using progtelos all.
+Should be the same... but were there further subtle progtelos
+problems?  Or is this raw unadulterated nondeterminism?
+
+Ok... now it's all the way to cut_6... looking good. Cut 6 has shorter
+messages (68 rather than 106).
+
+
+

@@ -8,6 +8,7 @@ if ! [ -d logs ]; then mkdir logs; fi
 #rm -f logs/cut*
 
 #export THEMOTE=/dev/ttyUSB0
+MINUTES=4
 
 STRT=1
 STOP=6
@@ -39,6 +40,6 @@ for ((CUT=$STRT; CUT<=$STOP; CUT++)); do
   echo "RUNNING pc-side listener... $CUT"
   (time ./query.exe /dev/ttyUSB0 telosb -n -1 &) &> logs/cut_$CUT
   #(time ./query.exe /dev/ttyUSB0 telosb -n 10 ) &> logs/cut_$CUT
-  sleep 120
+  sleep $((MINUTES * 60))
   killall query.exe
 done 
