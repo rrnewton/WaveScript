@@ -19,7 +19,8 @@ include "fix_fft.ws";
    PREFILTER -- set to non-null to turn on the prefilter stage
    DUMMY -- read from generated data rather than trace file or real sensors
 
-   SILENTROOT -- 
+   SILENTROOT -- set to ignore packets from nodeid=1 (tinyos)
+   FOREIGNTIMER -- set to use custom_timer.c rather than builtin timers.   
    
    WSVARIANT -- set internally, determines which backend we're running under   
  */
@@ -304,8 +305,9 @@ signed =
   // If we're running on the PC side, we just read the data from a file:
 
   //ticks = smap(fun(_) 0, timer(819.20 / 255.0));
-  ticks = timer(819.20 / 255.0);
-  //ticks :: Stream () = foreign_source("NODE_ENTRY", ["custom_timer.c"]);  
+  ticks = if GETENV("FOREIGNTIMER") == "" 
+          then timer(819.20 / 255.0)
+          else (foreign_source("NODE_ENTRY", ["custom_timer.c"]) :: Stream ());
   segs = (readFile("./snip.raw", 
    	       "mode: binary  repeats: 0 "++
 	         "skipbytes: 0  window: "++windowSize ++" offset: 0", 
@@ -336,7 +338,11 @@ signed =
     SLOWRATE = 0.5;  // slow, for profiling on telos
     outbuf = Array:build(windowSize, fun(i) (99::Uint16));
     //dummy = iterate _ in IFPROFILE(Server:timer$REALRATE, timer$SLOWRATE) { emit outbuf };
-    dummy = iterate _ in timer(REALRATE) { emit outbuf };
+    dummy = iterate _ in 
+                 if GETENV("FOREIGNTIMER") == "" 
+                 then timer(REALRATE)
+		 else (foreign_source("NODE_ENTRY", ["custom_timer.c"]) :: Stream ())
+    { emit outbuf };
 
     // Pick which one you want:
     //src = sensor;
@@ -607,9 +613,6 @@ fun pad_cutpoints(sizes)
     }, strm)
   }, cp)
 
-// This is for non-tinyos:
-//full_buffers = map(fun(n) Array:build(n/2,fun(i) Uint16! (i+1)), raw_sizes)
-
 padded_cutpoints      = pad_cutpoints(message_sizes)
 full_padded_cutpoints = pad_cutpoints(raw_sizes)
 
@@ -631,14 +634,15 @@ stripped = cp.ref(index)
 wid = smap(fun((x,y)) (getID(),x,y, getTreeParent()), stripped)
 
 padded = padded_cutpoints.ref(index)
-//padded = full_padded_cutpoints.ref(index)
+full_padded = full_padded_cutpoints.ref(index)
 
 } // End Node namespace
 using Node;
 
 //main = wid
 //main = stripped
-main = padded
+//main = padded
+main = full_padded
 
 // Here you can manually select a return stream without 
 

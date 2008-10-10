@@ -508,12 +508,16 @@
 			    (set! ,offset (_+_ (deref ,offset) ,size)))))
        buf))))
 
+  ;; FIXME: Check that we don't go off the end of the array.
   (define (reconstruct-value ty expr initoffset)   
     (define buf    (unique-name "buf"))
     (define off    (unique-name "offset"))
     (define (read-and-bump ty)
       (let ([size (SIZEOF ty)])
 	`(begin (set! ,off (_+_ (deref ,off) (assert-type Int ,size)))
+		;; CHECK LENGTH HERE.
+		;; Unless O3:
+		;(if (> (_+_ (deref ,off) ,size) ,len) (wserror ...))
 		(assert-type ,ty (__type_unsafe_read ,buf (_-_ (deref ,off) (assert-type Int ,size)))))))
     ;; This loops over the type and returns code that returns the unpacked value.
     (define (unpack-loop ty)
@@ -602,6 +606,7 @@
 		     (set! readers (add1 readers))		     
 		     (match (tenv-lookup tenv var) ;(cdr entry)
 		       [(Stream ,elt)
+			;; This reflects the CONVENTION that : gets turned to _ in names:
 			(define Server_bytes (unique-name "Server_bytes"))
 			(define Server_vals  (unique-name "Server_vals"))
 			`(let ([,Server_bytes 

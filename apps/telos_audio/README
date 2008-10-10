@@ -180,4 +180,38 @@ Ok... now it's all the way to cut_6... looking good. Cut 6 has shorter
 messages (68 rather than 106).
 
 
+[2008.10.10] {ensbox}
+
+Ok, looks like we can run -split in the simple way across ensbox:
+
+[newton@zetta ~/wavescript/apps/telos_audio]  $ ssh root@192.168.10.109 ./query_client.exe 2>> /dev/stdout | hexdump | head
+0000000 003e 0000 001d 0000 0000 0001 0000 0000
+0000010 0005 0006 0007 0008 0009 000a 000b 000c
+0000020 000d 000e 000f 0010 0011 0012 0013 0014
+0000030 0015 0016 0017 0018 0019 001a 001b 001c
+0000040 001d 003e 0000 001d 0000 0000 0002 0000
+0000050 0000 0005 0006 0007 0008 0009 000a 000b
+0000060 000c 000d 000e 000f 0010 0011 0012 0013
+0000070 0014 0015 0016 0017 0018 0019 001a 001b
+0000080 001c 001d 003e 0000 001d 0000 0000 0003
+0000090 0000 0000 0005 0006 0007 0008 0009 000a
+[newton@zetta ~/wavescript/apps/telos_audio]  $ 
+[newton@zetta ~/wavescript/apps/telos_audio]  $ 
+[newton@zetta ~/wavescript/apps/telos_audio]  $ gcc -g -O0  -DWSC2   -lm -I /home/newton/wavescript/lib -I /home/newton/wavescript/src/linked_lib -o query_client.exe query_client.c  -lm
+[newton@zetta ~/wavescript/apps/telos_audio]  $ ./query_client.exe 2>> /dev/stdout | hexdump  |head
+0000000 003e 0000 001d 0000 0000 0001 0000 0000
+0000010 0005 0006 0007 0008 0009 000a 000b 000c
+0000020 000d 000e 000f 0010 0011 0012 0013 0014
+0000030 0015 0016 0017 0018 0019 001a 001b 001c
+0000040 001d 003e 0000 001d 0000 0000 0002 0000
+0000050 0000 0005 0006 0007 0008 0009 000a 000b
+0000060 000c 000d 000e 000f 0010 0011 0012 0013
+0000070 0014 0015 0016 0017 0018 0019 001a 001b
+0000080 001c 001d 003e 0000 001d 0000 0000 0003
+0000090 0000 0000 0005 0006 0007 0008 0009 000a
+
+
+query_client takes 16 % of cpu on ensbox... and vxpcd is running becuase I couldn't turn it off with kill (it restarts).
+
+Also, this is lossless -- passing the data right through ssh.  AND that has the overhead of encryption.
 

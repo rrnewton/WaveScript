@@ -257,7 +257,8 @@ void ws_alloc_stats() {
 // NOTE: This currently should work with boehm, but will waste memory
 // by allocating space for a refcount even though it isn't used.
 inline void* ws_array_alloc(int len, int eltsize) {
-  char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
+  char* ptr = ((char*)WSCALLOC(ARRLENSIZE + RCSIZE + len*eltsize, 1)) + ARRLENSIZE+RCSIZE;
+  //char* ptr = ((char*)WSMALLOC(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
 #ifndef USE_BOEHM
   CLEAR_ARR_RC(ptr);
@@ -267,7 +268,8 @@ inline void* ws_array_alloc(int len, int eltsize) {
 
 // Nasty duplication:
 inline void* ws_array_alloc_scalar(int len, int eltsize) {
-  char* ptr = ((char*)WSMALLOC_SCALAR(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
+  char* ptr = ((char*)WSCALLOC_SCALAR(ARRLENSIZE + RCSIZE + len*eltsize, 1)) + ARRLENSIZE+RCSIZE;
+  //char* ptr = ((char*)WSMALLOC_SCALAR(ARRLENSIZE + RCSIZE + len*eltsize)) + ARRLENSIZE+RCSIZE;
   SETARRLEN(ptr, len);
 #ifndef USE_BOEHM
   CLEAR_ARR_RC(ptr);
