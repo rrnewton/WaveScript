@@ -536,7 +536,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (putenv "TOSROOT" "/opt/tinyos-2.x/"))
   (ASSERT (putenv "MAKERULES" "/opt/tinyos-2.x/support/make/Makerules"))
   (ASSERT (putenv "CLASSPATH" (string-append "/opt/tinyos-2.x/support/sdk/java/tinyos.jar:"
-					     (getenv "CLASSPATH"))))
+					     (or (getenv "CLASSPATH") ""))))
   (run-test "wstiny: Running demos w/ TOSSIM:"
 	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
 
