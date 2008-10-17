@@ -56,7 +56,7 @@ char* commaprint(unsigned long long n);
   #include <gc/gc.h>
   #define BASEMALLOC GC_MALLOC
 //  #define BASEMALLOC GC_MALLOC_IGNORE_OFF_PAGE
-  #define BASEFREE   free
+  #define BASEFREE   GC_FREE
   #define BASEMALLOC_ATOMIC GC_MALLOC_ATOMIC
 //  #define BASEMALLOC_ATOMIC GC_MALLOC_ATOMIC_IGNORE_OFF_PAGE
   inline void* BASECALLOC(size_t count, size_t size) {

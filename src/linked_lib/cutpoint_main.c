@@ -28,11 +28,16 @@ void wsmain(int argc, char** argv) {
     if (1 != fread((void*)&count, 4, 1, stdin)) 
       wserror("Error reading message length word.");
     uint8_t* buf = WSARRAYALLOC_CHAR(count); // With refcount=0 initially.
+
+    printf("Allocated at: %p\n", buf);
+
     SET_ARR_RC(buf, 1);
     if (count != fread(buf, 1, count, stdin))
       wserror("Error reading message from stdin.");
     READ_CUTPOINT_0(buf);
     // We free it ourselves:
+
+    printf("Freeing at: %p\n", buf);
     FREEARR(buf);
   }
 }
