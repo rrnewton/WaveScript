@@ -479,7 +479,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (code->msg! (system/timeout (format "make all &> ~a/enigne_MAKE_ALL.log" test-directory))))  
 
   ;; TODO: This doesn't return ERROR code:
-  (let ([testSignal (system/timeout (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" test-directory))])
+  (let ([testSignal (system/timeout (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" 
+					    test-directory))])
     (code->msg! testSignal)
     (fpf "Engine: testSignal-SMSegList                  ~a\n"
 	 (if (zero? testSignal) "?maybe passed?" "-FAILED-")))
@@ -519,9 +520,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (ASSERT (putenv "REGIMENTHOST" "plt"))
   (run-test "wsc2: Demos, deferred RC (plt):"
-	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log" test-directory))
+	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log"
+		    test-directory))
   (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
-
   (ASSERT (putenv "REGIMENTHOST" "chez"))
   (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
   (run-test "wsc2: Demos, boehm RC (chez):"

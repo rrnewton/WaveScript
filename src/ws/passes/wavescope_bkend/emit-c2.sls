@@ -5,7 +5,6 @@
 
 ;;;; This uses the generic C-generation libary (c_generator.ss).
 ;;;; Unlike the first version (emit-c.ss) this version does not rely on:
-
 ;;;;  (1) C++ features (templates etc)
 ;;;;  (2) XStream classes (Sigseg, etc)
 ;;;;  (3) Boost smart pointers
@@ -13,15 +12,17 @@
 ;;;; It produces "lower level" C code than the first version, meant to
 ;;;; be used with a custom garbage collector.
 
-;;;; TODO: The pass that INSERTS refcount incr's and decr's can be
-;;;; extracted from this pass.
-
+;; This pass is using a substantial amount of runtime.  It could be
+;; because of the inefficient OOP system.  This pass returns a "text"
+;; structure, so the string append cost shouldn't be paid until afterwards.
+;; (Except for the cost of indentation -- could test that.)
+;;
 ;; Note on efficiency: 
 ;;   On demo3m for example, 
-;;     Non-OOP:  chez: 266(15)   plt: 564(68)                                   47.4 mb alloced
+;;     Non-OOP:  chez: 266(15)        plt: 564(68 collecting)                   47.4 mb alloced
 ;;     BOS version: chez: 293(15ms)   plt: 660(92)  (chastity chez from .boot)  52.7 mb alloced
 ;;     BOS version: chez: 385(105, 13 collections)   plt: 660(96)  (chastity chez from src)
-;;     BOS version: 315(21) chez 950(180) plt (laptop core2duo)
+;;     BOS version: chez: 315(21)                    plt: 950(180) (laptop core2duo)
 ;; Wow - are collections worse when running from source? (because more code is loaded?)
 ;; It's also probably fair to say that the extra allocation from BOS
 ;; makes the probability of length collections higher.

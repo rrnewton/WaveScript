@@ -60,6 +60,7 @@ typedef unsigned short int uint16_t;
 extern int stopalltimers;
 
 void wserror_fun(char*);
+void wserror_builtin(char*);
 
 // ZCT handling for deferred reference counting:
 // ============================================================
@@ -502,7 +503,9 @@ void wserror_fun(char* msg) {
   printf("Failed with error: %s\n", msg);
   exit(-1);
 }
-#define wserror_builtin(str) wserror_fun(str)
+void wserror_builtin(char* str) { wserror_fun(str); }
+
+//#define wserror_builtin(str) wserror_fun(str)
 // FIXME: TODO DISABLE THIS #def WHEN WE'RE DRIVEN BY A FOREIGN SOURCE:
 // Or, remove the ability of foreign sources to define their own wserror
 // Actually... that needs to be part of how foreign sources compose.
