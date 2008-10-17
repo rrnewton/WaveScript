@@ -20,8 +20,8 @@ echo > $RUN
 
 function go () {
     echo; echo; echo; echo; echo; echo; echo;  
-    echo "testall_wsc2: Running $1"
-    echo "============================================================"
+    echo "testall_wsc2: Running $1" 
+    echo "============================================================" 
     echo wsc2 $OPTIONS $1 -exit-error; 
     if ! wsc2 $OPTIONS $1 -exit-error; 
     then echo wsc2 Returned error code!; exit 1; 
@@ -130,6 +130,8 @@ go "demo9i_simple_split.ws"
 
 echo "testall_wsc2: Running SPLIT test on demo9i"
 echo "============================================================"
+echo "testall_wsc2: Running SPLIT test on demo9i" >> $RUN
+echo "============================================================" >> $RUN
 # Then we split it:
 if ! wsc2 $OPTIONS demo9i_simple_split.ws -split -exit-error
 then echo wsc2 Returned error code!; exit 1;  fi

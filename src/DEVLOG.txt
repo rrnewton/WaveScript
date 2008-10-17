@@ -1871,3 +1871,10 @@ The first order of business may be to make the deferred refcount
 approach clear the ZCT on each operator rather than each traversal
 (where possible).
 
+[2008.10.17] {Fixing regression tests}
+
+I'm getting memory leaks in the demos again.  I have a known leak of
+an fftw plan in demo4b.  But it looks like demo9i has also started
+leaking.  This is happening under both simple and deferred
+refcounting.  It's a problem with the -split run on the server side.
+
