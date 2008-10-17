@@ -218,11 +218,12 @@ function runallbackends() {
 
       *) echo Unhandled backend: $backend; exit -1;;
     esac
+    # Restore the options each time.
+    C2OPTIONS=$C2OPTIONSBAK
   done
 
   echo ALLDONE, times were: $TIMES
   echo $NAME $LIMITCPUS $TIMES >> RESULTS.txt
-  C2OPTIONS=$C2OPTIONSBAK
 }
 
 
