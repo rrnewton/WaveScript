@@ -588,6 +588,7 @@ deb:
 	cp -a debian $(DEBPKG)
 	mv $(DEBPKG)/debian/package_deb.sh $(DEBPKG)/
 	(cd $(DEBPKG) && export WSVER=$(WSVER); ./package_deb.sh source) 
+	@echo Now run 'make' from $(DEBPKG).
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

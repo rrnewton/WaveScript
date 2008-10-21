@@ -160,6 +160,9 @@ function build_binary_pkg_chez() {
   SUFFIX="-chez"
   common_setup
 
+  mkdir -p $WSDIR/src/old/chez
+  cp -pr $REGIMENTD/src/old/chez/rn-match.ss $WSDIR/src/old/chez
+
   mkdir -p $WSDIR/src/ws/passes/mlton_bkend/
   cp -pr $REGIMENTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
   cp -pr $REGIMENTD/src/build                     $WSDIR/src/
