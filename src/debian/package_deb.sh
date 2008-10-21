@@ -32,6 +32,9 @@ function copy_common() {
   cp -pr $REGIMENTD/install_environment_vars $WSDIR/
   cp -pr $REGIMENTD/lib                      $WSDIR/
 
+  mkdir -p $WSDIR/src/old/chez
+  cp -pr $REGIMENTD/src/old/chez/rn-match.ss $WSDIR/src/old/chez/
+
   mkdir -p $WSDIR/doc/
   cp -pr $REGIMENTD/doc/wavescript_manual    $WSDIR/doc/
   cp -pr $REGIMENTD/doc/wavescript_manpages  $WSDIR/doc/
@@ -159,9 +162,6 @@ function common_setup() {
 function build_binary_pkg_chez() {
   SUFFIX="-chez"
   common_setup
-
-  mkdir -p $WSDIR/src/old/chez
-  cp -pr $REGIMENTD/src/old/chez/rn-match.ss $WSDIR/src/old/chez
 
   mkdir -p $WSDIR/src/ws/passes/mlton_bkend/
   cp -pr $REGIMENTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
