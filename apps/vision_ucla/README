@@ -127,3 +127,18 @@ Then, enabling -O2 for both compile and run:
     real	0m32.406s
     user	0m31.742s
 
+
+[2008.10.22] {Type checking error}
+
+Hmm... why does it seem like I'm inconsistently running into this
+error some of the time.  (i.e. when I make a fresh checkout on
+chastity.)
+
+************
+Error in export-type: bad type: ((a quote (b . #f)))
+Unhandled exception:
+ Condition components:
+   1. &error
+
+It seems to happen on chastity (under plt or ikarus) but not on honor.
+

@@ -3,6 +3,13 @@
 # This will test wstiny in different modes. 
 #
 
+# This is system dependent, but we try to find msp430 if it's not in
+# the path already.
+if [ "`which msp430-gcc`" = "" ] && 
+   [ -d /opt/msp430 ] ;
+then export PATH="$PATH:/opt/msp430/bin/"
+fi
+
 COMP=.__wstinyMessages.txt
 RUN=.__runquery_output_wstiny.txt
 
