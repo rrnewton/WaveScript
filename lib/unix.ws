@@ -41,6 +41,9 @@ namespace Unix {
   malloc :: Int        -> Pointer "void*" = foreign("malloc",stdio);
   calloc :: (Int, Int) -> Pointer "void*" = foreign("malloc",stdio);
 
+  memcpy :: (Pointer "void*", Pointer "void*", Int) -> () = foreign("memcpy",["string.h"]);
+  strlen :: (Pointer "char*") -> Int                      = foreign("strlen",["string.h"]);
+
   stat  :: (String,    Pointer "struct stat*") -> Int = foreign("stat", stdio);
   fstat :: (FileDescr, Pointer "struct stat*") -> Int = foreign("fstat", stdio);
 
@@ -79,8 +82,6 @@ namespace Unix {
     foreign("fread", stdio)
   fwrite_str :: (String, Int, Int, FileDescr) -> Int = 
     foreign("fwrite", stdio)
-
-  malloc :: Int -> Pointer "void*" = foreign("malloc",[]);
 
 } // End namespace
 
@@ -135,7 +136,8 @@ fun fileSink (filename, mode, strm) {
   c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
   scandir_sorted :: (String, (Pointer "struct dirent ***")) -> Int = foreign("scandir_sorted", c_exts);
   ws_namelist_ptr :: () -> Pointer "struct dirent ***"           = foreign("ws_namelist_ptr", c_exts);
-  getname :: (Pointer "struct dirent ***", Int) -> Array Char    = foreign("getname", c_exts);
+//getname :: (Pointer "struct dirent ***", Int) -> Array Char    = foreign("getname", c_exts);
+  dirent_getname :: (Pointer "struct dirent ***", Int) -> Pointer "char*" = foreign("dirent_getname", c_exts);
   freenamelist :: (Pointer "struct dirent ***", Int) -> ()       = foreign("freenamelist", c_exts);
 
   // [2008.08.19] These conversions are basically the identity function, but we're doing casts through the FFI:
@@ -161,12 +163,19 @@ namespace Unix {
 // It will throw a wserror if it cannot read the directory.  It sorts alphabetically.
 scandir :: String -> Array String;
 fun scandir(dir) {
+
   files = ws_namelist_ptr();
   count = scandir_sorted(dir, files);
   // This ASSUMES that . and .. will be in the list, and will be sorted first.
   names = Array:build(count-2, fun(ind) {
-     String:fromArray$ getname(files, ind+2);
+    //arr = getname(files, ind+2);
+     ptr = dirent_getname(files, ind+2);
+     
+     //println("Got name, strlen: "++Unix:strlen(ptr));     
+     arr :: Array Char = ptrToArray(ptr, Unix:strlen(ptr));
+     String:fromArray$ arr;
    });
+
   freenamelist(files, count);
   // This is inefficient, we filter the array to remove "." and ".."
   //Array:filter(fun(s) { s != "." && s != ".." }, names)
@@ -190,7 +199,10 @@ fun scandir_stream(dir, ticks) {
       freenamelist(files, count);
     };
     if index < count then {
-      name = String:fromArray$ getname(files, index);
+      //getname(files, index);
+      ptr = dirent_getname(files, index);
+      arr :: Array Char = ptrToArray(ptr, Unix:strlen(ptr));
+      name = String:fromArray$ arr;
       index += 1;
       // We prune out "." and "..".
       if not(name == "." || name == "..")

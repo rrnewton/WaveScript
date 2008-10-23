@@ -14,13 +14,15 @@ WSOPTIONS+=" -exit-error"
 OLDWSCARGS="-j 1 --at_once"
 WSCARGS="-j 1"
 
+OUTPUTFILE=RESULTS.txt
+
 function print_results_header() {
-echo "## Real or User time for each benchmark/backend " > RESULTS.txt
-echo "## LD_PRELOAD: $LD_PRELOAD" >> RESULTS.txt
-echo "## NOSUDO: $NOSUDO" >> RESULTS.txt
-echo "## NICE: $NICE" >> RESULTS.txt
-   echo Benchmark $BACKENDS >> RESULTS.txt
-#  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> RESULTS.txt
+echo "## Real or User time for each benchmark/backend " > $OUTPUTFILE
+echo "## LD_PRELOAD: $LD_PRELOAD" >> $OUTPUTFILE
+echo "## NOSUDO: $NOSUDO" >> $OUTPUTFILE
+echo "## NICE: $NICE" >> $OUTPUTFILE
+   echo Benchmark $BACKENDS >> $OUTPUTFILE
+#  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> $OUTPUTFILE
 }
 
 
@@ -223,7 +225,7 @@ function runallbackends() {
   done
 
   echo ALLDONE, times were: $TIMES
-  echo $NAME $LIMITCPUS $TIMES >> RESULTS.txt
+  echo $NAME $LIMITCPUS $TIMES >> $OUTPUTFILE
 }
 
 

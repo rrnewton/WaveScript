@@ -23,6 +23,9 @@ typedef char ws_bool_t;
 typedef char ws_unit_t;
 typedef char ws_timebase_t;
 
+typedef unsigned char      ws_uint8_t;
+typedef unsigned short int ws_uint16_t;
+
 //typedef unsigned char      uint8_t;
 //typedef unsigned short int uint16_t;
 //typedef unsigned int16_t uint16_t;

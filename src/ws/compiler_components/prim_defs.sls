@@ -663,7 +663,7 @@
     (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
 
     ;; This allows us to unpack a foreign pointer into an array,
-    ;; copying the storage.  Second argument is size of element.
+    ;; copying the storage.  Second argument is size of array.
     ;; Must be wrapped in an assert-type of course:
     (ptrToArray     ((Pointer 'name) Int) (Array 'a))
     (ptrIsNull      ((Pointer 'name)) Bool)

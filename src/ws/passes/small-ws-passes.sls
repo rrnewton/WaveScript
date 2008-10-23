@@ -1171,10 +1171,32 @@
 	      [(String:length ,[str])   `(_-_ (Array:length ,str) '1)]
 	      [(String:ref ,[str] ,[i]) `(Array:ref ,str ,i)]
 
-	      ;; Here we are inconsistent with the MLton backend wrt
-	      ;; to whether the null terminator is included:
-	      [(String:toArray ,[str]) str]
-	      [(String:fromArray ,[str]) str]
+	      ;; When we expose it to the user as an array, we need to
+	      ;; cut off the null terminator.
+	      ;[(String:toArray ,[str]) str]
+	      ;[(String:fromArray ,[str]) str]
+	      [(String:toArray ,[str])
+	       (define old (unique-name "old"))
+	       (define new (unique-name "new"))
+	       (define ind (unique-name "ind"))
+	       `(let ([,old (Array Char) ,str])
+		  (let ([,new (Array Char) (Array:makeUNSAFE (_-_ (Array:length ,old) '1))])
+		    (begin 
+		      (for (,ind '0 (_-_ (Array:length ,old) '2))
+			  (Array:set ,new ,ind (Array:ref ,old ,ind)))
+		      ,new)))]
+	      [(String:fromArray ,[arr])	       
+	       (define old (unique-name "old"))
+	       (define new (unique-name "new"))
+	       (define ind (unique-name "ind"))
+	       `(let ([,old (Array Char) ,arr])
+		  (let ([,new (Array Char) (Array:makeUNSAFE (_+_ (Array:length ,old) '1))])
+		    (begin 
+		      (for (,ind '0 (Array:length ,old))
+			  (Array:set ,new ,ind (Array:ref ,old ,ind)))
+		      (Array:set ,new (Array:length ,old) '#\nul)
+		      ,new)))]
+
 #;
 	      [(String:make ,[len] ,[init])
 	       (define tmp    (unique-name "tmpmakestr"))

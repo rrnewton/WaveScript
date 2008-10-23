@@ -10,7 +10,7 @@
 
 // Return type aping the structure of a WS tuple.
 struct ws_readImage_return {
-  uint8_t* fld1;
+  unsigned char* fld1;
   int fld2;
   int fld3;
 };
@@ -23,7 +23,8 @@ IplImage* ws_readImage_load(const char* filename, int* dims) {
   if (!im) { 
     printf("Tried to load <%s>\n", filename);
     fflush(stdout);
-    wserror_fun("opencv_wrapper ws_readImage failed to load file.");
+    // FIXME: This should jsut be "wserror":
+    wserror_builtin("opencv_wrapper ws_readImage failed to load file.");
     exit(1);
   }
   dims[0] = im->height;
@@ -42,7 +43,7 @@ void ws_readImage_fill(IplImage* im, char* wsimg)
 //  part2 :: (Pointer "IplImage*", Array Char) -> ()    = foreign("ws_readImage_fill", cv_files);
 
 
-ws_bool_t ws_writeImage(const char* filename, uint8_t* img, int width, int height, int nChannels) {
+ws_bool_t ws_writeImage(const char* filename, unsigned char* img, int width, int height, int nChannels) {
   IplImage* fgImage;
 
   //int nChannels = 3; // RGB by default.

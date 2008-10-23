@@ -32,7 +32,6 @@ fi
 
 eval set -- "$RELEVANT"
 
-
 NOGCC=
 while [ $# != 0 ];  do 
 #for flag in $RELEVANT; do 

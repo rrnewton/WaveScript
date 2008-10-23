@@ -28,12 +28,11 @@ val ensbox_entry = _export "wsmlton_entry" : (MLton.Pointer.t * int -> unit) -> 
 (********************************************************************************)
 (* These are functions exposed to C *)
 
+(*val _ = (_export "WSSTRINGALLOC"   : (int -> char   array) -> unit;) (fn len => Array.array(len,#"_"))*)
+
 val _ = (_export "WSARRAYALLOC_CHAR"   : (int -> char   array) -> unit;) (fn len => Array.array(len,#"_"))
 val _ = (_export "WSARRAYALLOC_INT"    : (int -> int    array) -> unit;) (fn len => Array.array(len,0))
 val _ = (_export "WSARRAYALLOC_FLOAT"  : (int -> Real32.real array) -> unit;) (fn len => Array.array(len,Real32.fromInt 0))
 val _ = (_export "WSARRAYALLOC_DOUBLE" : (int -> Real64.real array) -> unit;) (fn len => Array.array(len,Real64.fromInt 0))
 
-(* Export this under the name "wserror_fun"... this should just be
-   plain "wserror".  Or at least something more descriptive like
-   wserror_builtin. *)
-val _ = (_export "wserror_fun" : (string -> unit) -> unit;) wserror
+val _ = (_export "wserror_builtin" : (string -> unit) -> unit;) wserror

@@ -15,6 +15,11 @@ Version3:
 
 TODO:
 
+[2008.10.23] Got it working under MLton.  It's surprisingly slow. ~4X
+Trying to get numbers for time spent in GC.  Ok, as one would expect.
+This algorithm is not very allocation intensive at all.  Statically
+allocates a bunch of storage, and then does extensive traversal.  GC
+under mlton is less than a 10th of 1%.
 
  */
 
@@ -526,12 +531,16 @@ index_stream = iterate _ in timer(10) {
 filenames :: Stream String;
 filenames = iterate ind in index_stream {
   state { nametable = Array:null }
+
   if nametable == Array:null then {
     nametable := scandir(fullpath_in);
   };
+
   if ind >= Array:length(nametable) 
   then wserror(" Tried to index file "++ind++" within directory -- doesn't exist!");
-  emit fullpath_in ++ "/" ++ nametable[ind];
+  frgnstr = nametable[ind];
+  
+  emit fullpath_in ++ "/" ++ frgnstr;
 }
 
 fun dump_files(strm) 
@@ -655,3 +664,5 @@ main =
      $ input_imgs;
 
 
+//main = input_imgs
+//main = filenames

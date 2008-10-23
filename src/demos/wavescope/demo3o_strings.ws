@@ -10,7 +10,7 @@ main = iterate _ in timer(30) {
 
   //ls = explode(str);
   ls = toList(str);
-  print(ls);
+  println(ls);
   //println$ "Exploded: "++ls;
   assert_eq_prnt("exploded length", 6, str.length);
 
@@ -20,5 +20,13 @@ main = iterate _ in timer(30) {
   println$ "Imploded: "++str2;
   
   assert_eq_prnt("implode round trip", str, str2);
+
+  arr = toArray(str);
+  println(arr);
+  assert_eq_prnt("toArray length", 6, arr.Array:length);
+
+  str3 = fromArray(arr);
+  assert_eq_prnt("fromArray round trip", str, str3);
+
   emit ()  
 }
