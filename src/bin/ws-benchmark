@@ -38,9 +38,8 @@ FLAGS=`getopt -a -l "o:" -o ":" -- "$@"`
 eval set -- "$FLAGS"
 
 # Set a default:
-BASEOUTPUT=RESULTS
+BASEOUTPUT=BENCHRESULTS
 while true;  do 
- echo looping $*
  case $1 in 
    # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
    "--o" ) shift; BASEOUTPUT=$1; shift;;
@@ -49,7 +48,7 @@ while true;  do
  esac;
 done
 
-echo BENCHES $BENCHES BASE $BASEOUTPUT
+#echo BENCHES $BENCHES BASE $BASEOUTPUT
 
 
 START=`pwd`
@@ -72,6 +71,8 @@ mkdir -p $LOGS
 
 if [ "$BENCHES" = "" ];
 then echo "Usage: ws-benchmarks file.bench ..."; exit 1; fi
+
+print_results_header $OUT
 
 for BENCH in $BENCHES; do
   # Clear the variables that might get set by the .bench file:
@@ -107,7 +108,6 @@ done
 
 dump_plot_script $PLOT $OUT
 
-# cp RESULTS.txt marmot.txt
-# echo '\begin{verbatim}' > marmot.tex
-# cat marmot.txt         >> marmot.tex
-# echo '\end{verbatim}'  >> marmot.tex
+echo '\begin{verbatim}'  > $TEX
+cat $OUT                >> $TEX
+echo '\end{verbatim}'   >> $TEX

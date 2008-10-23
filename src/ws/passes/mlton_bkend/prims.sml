@@ -111,9 +111,10 @@ fun concat_wsep sep ls =
 (********************************************************************************)
 (* Strings *)
 
-(* Doesn't contain the null terminator character: *)
+(* MLton strings don't contain the null terminator character: *)
 fun string_toArray str = 
-  Array.tabulate(String.size str + 1, fn i => String.sub(str,i))
+(*   Array.tabulate(String.size str + 1, fn i => String.sub(str,i)) *)
+  Array.tabulate(String.size str, fn i => String.sub(str,i))
 
 fun string_fromArray arr =
   (* Could perhaps use a CharVector and tabulate... or copyVec into an array *)
