@@ -12,5 +12,5 @@ graph:
 	ls *.eps | xargs -n1 ps2pdf
 
 clean:
-	rm -f *~ __* .__* query.* marmot.eps marmot.pdf
+	rm -f *~ __* .__* query.* marmot.eps marmot.pdf 
 

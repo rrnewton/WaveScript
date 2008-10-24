@@ -1,74 +1,58 @@
 #!/bin/bash
 
 
-START=`pwd`
-TEMP="$START/logs/"
+#START=`pwd`
+#TEMP="$START/logs/"
 
-source ../shared.sh
+#source ../shared.sh
 
 ## ================================================================================ ##
 echo;echo;echo " *** Running all application benchs.  Takes approx ?? minutes. ***"; echo; 
 
-rm -rf $TEMP
-mkdir $TEMP
+#rm -rf $TEMP
+#mkdir $TEMP
 
-rm -f RESULTS.txt
-print_results_header 
+#rm -f RESULTS.txt
+#print_results_header 
 
 ## ================================================================================ ##
 ##   MARMOT BENCH
 ## ================================================================================ ##
 
-TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
+ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench -o RESULTS
 
-# Make a large temporary file.
-function getfile() {
-  echo "  Making a big enough audio file."; echo
-  cd "$REGIMENTD/apps/marmot";
-  make testdata.txt
-  (rm -f 6sec_marmot_sample.raw)
-  # ensure that we have sample data:
-  #make 6sec_marmot_sample.raw
-  ./download_small_sample_data
-  for ((i=0; i<100; i++)) do
-    cat 6sec_marmot_sample.raw >> $TMPDAT
-  done;
-  rm -f 6sec_marmot_sample.raw
-  ln -s $TMPDAT 6sec_marmot_sample.raw
-}
-
-getfile
+mv RESULTS.gp plot.gp
 
 #export REGIMENTHOST=ikarus
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running orig marmot phase 1  " > RESULTS.txt
-runallbackends run_first_phase $TEMP __ 100
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
-p
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot2  " > RESULTS.txt
-runallbackends test_marmot2 $TEMP __ 150
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running orig marmot phase 1  " > RESULTS.txt
+# runallbackends run_first_phase $TEMP __ 100
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot1.dat
+# p
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot2  " > RESULTS.txt
+# runallbackends test_marmot2 $TEMP __ 150
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
 
-#export REGIMENTHOST=plt
+# #export REGIMENTHOST=plt
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot3  " > RESULTS.txt
-runallbackends test_heatmap $TEMP __ 14
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot3  " > RESULTS.txt
+# runallbackends test_heatmap $TEMP __ 14
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot3.dat
 
-cd "$REGIMENTD/apps/marmot/";
-echo "## Running marmot multinode offline  " > RESULTS.txt
-#runallbackends run_3phases_MULTINODE $TEMP 0 3
-runallbackends run_3phases $TEMP __ 20
-cd "$START"
-mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
+# cd "$REGIMENTD/apps/marmot/";
+# echo "## Running marmot multinode offline  " > RESULTS.txt
+# #runallbackends run_3phases_MULTINODE $TEMP 0 3
+# runallbackends run_3phases $TEMP __ 20
+# cd "$START"
+# mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot_multi.dat
 
-cat marmot1.dat marmot2.dat marmot3.dat cat marmot_multi.dat >> RESULTS.txt
+# cat marmot1.dat marmot2.dat marmot3.dat cat marmot_multi.dat >> RESULTS.txt
 
 # cp RESULTS.txt marmot.txt
 # echo '\begin{verbatim}' > marmot.tex
@@ -162,11 +146,12 @@ unset OMITMLTON
 # #cat pipeline.dat >> RESULTS.txt
 # #cat pothole.dat >> RESULTS.txt
 
-echo '\begin{verbatim}' > RESULTS.tex
-cat RESULTS.txt         >> RESULTS.tex
-echo '\end{verbatim}'  >> RESULTS.tex
 
-dump_plot_script ./plot.gp RESULTS.txt
 
-rm -f $TMPDAT
+# echo '\begin{verbatim}' > RESULTS.tex
+# cat RESULTS.txt         >> RESULTS.tex
+# echo '\end{verbatim}'  >> RESULTS.tex
 
+# dump_plot_script ./plot.gp RESULTS.txt
+
+# rm -f $TMPDAT

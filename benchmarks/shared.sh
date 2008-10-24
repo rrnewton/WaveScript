@@ -17,15 +17,16 @@ WSCARGS="-j 1"
 OUTPUTFILE=RESULTS.txt
 
 function print_results_header() {
-echo "## Real or User time for each benchmark/backend " > $OUTPUTFILE
-echo "## LD_PRELOAD: $LD_PRELOAD" >> $OUTPUTFILE
-echo "## NOSUDO: $NOSUDO" >> $OUTPUTFILE
-echo "## NICE: $NICE" >> $OUTPUTFILE
-   echo Benchmark $BACKENDS >> $OUTPUTFILE
-#  echo "Benchmark \"Scheme -O2\" \"Scheme -O3\" \"XStream $OLDWSCARGS\" \"XStream DepthFirst $OLDWSCARGS\" \"CoreFit DF $WSCARGS\" \"CoreFitDF 1Thread $WSCARGS\" \"MLton -O2\" \"MLton -O3\"" >> $OUTPUTFILE
+  if [ "$1" = "" ];
+  then local OUT=$OUTPUTFILE
+  else local OUT=$1
+  fi 
+  echo "## Real or User time for each benchmark/backend " > $OUT
+  echo "## LD_PRELOAD: $LD_PRELOAD" >> $OUT
+  echo "## NOSUDO: $NOSUDO" >> $OUT
+  echo "## NICE: $NICE" >> $OUT
+  echo Benchmark $BACKENDS >> $OUT
 }
-
-
 
 function runscheme() {
   echo "  scheme: running... -n $TUPS"
