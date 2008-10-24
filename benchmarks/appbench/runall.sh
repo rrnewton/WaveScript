@@ -15,9 +15,12 @@ echo;echo;echo " *** Running all application benchs.  Takes approx ?? minutes. *
 ##   MARMOT BENCH
 ## ================================================================================ ##
 
-ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench bgsub3.bench -o RESULTS
+ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench -o MARMOT
 
-mv RESULTS.gp plot.gp
+gnuplot MARMOT.gp > MARMOT.eps
+ps2pdf MARMOT.eps
+
+#mv RESULTS.gp plot.gp
 
 
 
@@ -88,13 +91,10 @@ unset OMITMLTON
 ##   UCLA Computer Vision
 ## ================================================================================ ##
 
-#cd "$REGIMENTD/apps/vision_ucla/";
-#./download_small_sample_data
-#runallbackends bgSub $TEMP __ 10
-#runallbackends bgSub3_integer $TEMP __ 10
-#runallbackends bgSub4_patchoriented $TEMP __ 10
-#cd "$START"
-#mv "$REGIMENTD/apps/marmot/RESULTS.txt" ./marmot2.dat
+ws-benchmark bgsub3.bench -o BGSUB
+
+gnuplot BGSUB.gp > BGSUB.eps
+ps2pdf BGSUB.eps
 
 ## ================================================================================ ##
 ## APPEND RESULTS:

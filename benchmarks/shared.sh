@@ -231,8 +231,16 @@ function runallbackends() {
 
 
 function dump_plot_script() {
-    FILE=$1
-    RESULTS=$2
+    local FILE=$1
+    local RESULTS=$2
+    local NORM=$RESULTS".normalized"
+
+    # I started to need a real program here.  Call the scheme script.
+    export BACKENDS
+    #$REGIMENTD/backends/dump_plot_script.ss $FILE $RESULTS 
+
+    echo "Normalizing timings, sending output to new file: $NORM"
+    $REGIMENTD/benchmarks/normalize_timings.ss $RESULTS $NORM
 
     # Terrible way to get the length:
     #len=`echo $BACKENDS | xargs -i echo | wc -l`
@@ -242,10 +250,10 @@ function dump_plot_script() {
 
 #    cd $START
     cat >> $FILE <<EOF
-load "../shared.gp"
+# load "../shared.gp"
 EOF
 
-    PLOTLINE="plot '"$RESULTS"' using 2:xtic(1) title col"
+    PLOTLINE="plot '"$NORM"' using 2:xtic(1) title col"
 
     i=3
     #for bk in $BACKENDS; do

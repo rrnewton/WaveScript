@@ -88,17 +88,26 @@ language shootout.  Here are some per-benchmark comments:
 %% ================================================================================ %%
 
 This section includes performance results on larger programs, namely, our
-current applications.  Presently (2007.10) the largest of these by far
-is the marmot application.
+current applications.  
 
 \subsection{Marmot Application}
 
 We start off by looking at the original, hand-optimized marmot
-application that we deployed.
+application that we deployed.  We break it down by phase: the first
+three phases of the computation, followed by all three together.
 
 \begin{center}
-\includegraphics[width=0.6\hsize]{appbench/marmot.pdf}
+\includegraphics[width=0.6\hsize]{appbench/MARMOT.pdf}
 \end{center}
+
+\subsection{Computer Vision: Background Subtraction}
+
+
+\begin{center}
+\includegraphics[width=0.6\hsize]{appbench/BGSUB.pdf}
+\end{center}
+
+
 
 %% ================================================================================ %%
 \section{Data Representation Profiling}
