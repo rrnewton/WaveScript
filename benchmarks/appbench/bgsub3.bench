@@ -1,0 +1,5 @@
+
+DIRECTORY="$REGIMENTD/apps/vision_ucla/"
+(cd $DIRECTORY; ./download_small_sample_data)
+FILE="bgSub3_integer"
+TUPLES=10
