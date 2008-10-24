@@ -72,19 +72,36 @@ mkdir -p $LOGS
 if [ "$BENCHES" = "" ];
 then echo "Usage: ws-benchmarks file.bench ..."; exit 1; fi
 
-print_results_header $OUT
+# Grab the BACKENDS variable from the first benchmark.
+#eval set -- "$BENCHES"
+#source $1
+#FIRSTBACKENDS=$BACKENDS
 
+first_time=""
 for BENCH in $BENCHES; do
   # Clear the variables that might get set by the .bench file:
   unset DIRECTORY
   unset FILE
   unset TUPLES
-  BENCHMARKS=$DEFAULTBACKENDS
+  
+  #BENCHMARKS=$DEFAULTBACKENDS
 
   echo;echo;echo " *** Running benchmark: $BENCH ***"; echo; 
 
   # Load the .bench file:
   source $BENCH
+
+  if [ "$first_time" = "" ]; 
+  then first_time="no"; 
+       FIRSTBACKENDS=$BACKENDS; 
+       print_results_header $OUT
+  fi 
+  if [ "$FIRSTBACKENDS" != "$BACKENDS" ];
+  then echo "Mismatching BACKENDS lists between two .bench files: ";
+       echo "  $FIRSTBACKENDS";
+       echo "  $BACKENDS";
+       exit 1;
+  fi
 
   if [ "$TUPLES" = "" ];
   then echo "Error: $BENCH file must set TUPLES variable."; exit 1; fi

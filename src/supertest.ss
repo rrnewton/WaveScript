@@ -290,7 +290,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
-(define svn-log-message (system-to-str "svn log -v -r HEAD:PREV"))
+(define svn-log-message 
+  (parameterize ([current-directory ws-root-dir])
+    (system-to-str "svn log -v -r HEAD:PREV")))
 
 (fprintf orig-console "SVN revision: ~a\n" svn-revision)
 
@@ -780,6 +782,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (post-to-web (format "intermediate/rev_~a" svn-revision))
   (fpf "\n\nPerformance benchmarks (all backends)\n")
   (fpf "========================================\n")
+  
+  ;; [2008.10.24] This is so time consuming.  Just switch to 
+  ;(ASSERT (putenv "REGIMENTHOST" "chez"))
 
   (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
     
