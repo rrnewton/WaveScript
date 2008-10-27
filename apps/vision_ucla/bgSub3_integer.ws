@@ -192,16 +192,18 @@ fun hist_update(r,g,b, hist, fn) {
   binG = Int! (Inexact! g * inv_sizeBins2);
   binR = Int! (Inexact! r * inv_sizeBins3);
 
-  binB2 = (Int! b) * NumBins1 / 256;
-  binG2 = (Int! g) * NumBins2 / 256;
-  binR2 = (Int! r) * NumBins3 / 256;
+  //binB2 = (Int! b) * NumBins1 / 256;
+  //binG2 = (Int! g) * NumBins2 / 256;
+  //binR2 = (Int! r) * NumBins3 / 256;
 
+  /*
   if (binR,binG,binB) == (binR2,binG2,binB2)
   then print(".")
   else {
     //println("inv_sizeBins1: "++inv_sizeBins1);
     print("bins1 "++binR++" "++binG++" "++binB++"  bins2 "++binR2++" "++binG2++" "++binB2++"\n");
   };
+  */
 
   // apply transform to histogram  
   using Array3D;
