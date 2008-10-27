@@ -66,12 +66,20 @@ include "helpers.ws"
 //include "patches.ws"
 include "parmatrix.ws"
 
+fun tryenv(var,default) {
+  str = GETENV(var);
+  if str == ""
+  then default
+  else stringToInt(str);
+}
+
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
 		"../processed/FeederStation_2007-06-26_14-00-03.000/bhatta_default/", // OutLoc
 		(396 :: Int), // BgStartFrame
 		(0  :: Int),  // StartFrame
 		(20 :: Int),  // NumBgFrames
+		//tryenv("NUMBGFRAMES", 20),  // NumBgFrames
 		(100 :: Int), // NumFgFrames
 
 		(1   :: Int),    //BgStep

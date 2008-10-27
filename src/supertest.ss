@@ -414,7 +414,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Test STANDARD LIBRARIES:
 (parameterize ([current-directory (format "~a/lib/" ws-root-dir)])
-  (run-test "ws: Loading stdlib_test.ws:" (format "ws stdlib_test.ws -n 10 -exit-error &> ~a/stdlib.log" test-directory))
+  (run-test "ws: Loading stdlib_test.ws:" 
+	    (format "ws stdlib_test.ws -n 10 -exit-error &> ~a/stdlib.log" test-directory))
+
+  (run-test "wsc2: Compiling stdlib_test:"
+	    (format "wsc2 stdlib_test.ws -exit-error &> ~a/wsc2_stdlib_build.log" test-directory))
+  (run-test "wsc2: Running stdlib_test:    "
+	    (format "./query.exe -n 10 -exit-error &> ~a/wc2_stdlib_run.log" test-directory))
 
   ;; This is the OLD one:
   ;; NO COMPLEX IN IKARUS YET:
@@ -563,7 +569,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 (parameterize ((current-directory test-directory))
   (newline)       
-  (run-test "wscaml: Building ocaml libraries (fftw, etc):" 
+  (run-test "wscaml: Building ocaml libraries (fftwr, etc):"
 	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
   (current-directory (format "~a/demos/wavescope" test-directory))
   (run-test "wscaml: Running LIMITED Demos through OCaml:" 
@@ -579,8 +585,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (run-test "wsmlton: Running Demos through MLton:" 
 	      (format "./testall_mlton &> ~a/wsmlton_demos.log" test-directory)))
 
-;; TEMP DISABLE:
-#;
   (parameterize ((current-directory (format "~a/lib/" ws-root-dir)))  
     (run-test "wsmlton: Compiling stdlib_test:"
 	      (format "wsmlton stdlib_test.ws -exit-error &> ~a/wsmlton_stdlib_build.log" test-directory))
@@ -1055,7 +1059,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (parameterize ([current-directory ws-root-dir])
   (fpf "\nSVN log message:  \n   ")
-  (fpf svn-log-message))
+  (fpf (or svn-log-message "NO-LOG-MESSAGE")))
 
 (close-output-port log)
 (define thesubj 

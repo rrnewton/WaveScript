@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
+#TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
+TMPDAT=/tmp/duplicated_6sec_marmot_data.raw
 
   echo "  Making a big enough audio file."; echo
   cd "$REGIMENTD/apps/marmot";
@@ -14,5 +15,4 @@ TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
   done;
   rm -f 6sec_marmot_sample.raw
   ln -s $TMPDAT 6sec_marmot_sample.raw
-
 

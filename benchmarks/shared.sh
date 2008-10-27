@@ -1,9 +1,11 @@
 
 ## This is the list of backends to test, valid symbols are:
-#  scheme, schemeO3
-#  mlton, mltonO3 
-#  cpp, cpp_df, cpp_corefit, cpp_corefit_nothreads -- The old XStream/C++ backend
-#  c2 -- the new C backend
+
+#    scheme, schemeO3
+#    mlton, mltonO3 
+#    cpp, cpp_df, cpp_corefit, cpp_corefit_nothreads -- The old XStream/C++ backend
+#    c2 -- the new C backend
+
 #BACKENDS="scheme mlton mltonO3"
 if [ "$BACKENDS" = "" ]; 
 then BACKENDS="mltonO3 c2boehm c2boehmseglist c2 c2seglist c2def c2defseglist"

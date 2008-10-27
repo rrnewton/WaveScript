@@ -1322,7 +1322,7 @@
       [Mutable:ref   "ref"]
       [deref         "!"]
 
-      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO (Real32.Math.sqrt (Real32.fromLargeInt (Int32.toLarge x))))))"]
+      [sqrtI "(fn x => (Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO (Real32.Math.sqrt (Real32.fromLarge (Int32.toLarge x))))))"]
       [sqrtF Real32.Math.sqrt]
       [sqrtD Real64.Math.sqrt]
       [sqrtC Complex.sqrt]
@@ -1345,7 +1345,7 @@
 
       ;[int16ToInt     ,(compose (format "~a.fromLarge" int-module) "Int16.toLarge")]
       [int16ToInt     "Int16.toInt"]
-      [int16ToInt32   ,(compose "Int32.fromLarge" "Int32.toLarge")]
+      [int16ToInt32   ,(compose "Int32.fromLarge" "Int16.toLarge")]
       [int16ToInt64   ,(compose "Int64.fromLarge" "Int16.toLarge")]
       [int16ToFloat   ,(compose "Real32.fromInt" "Int16.toInt")]
       [int16ToDouble  ,(compose "Real64.fromInt" "Int16.toInt")]
@@ -1438,12 +1438,12 @@
       ;; FIXME: These need to be tested:
       ;; Also, should abstract away these conversions:
       [rshiftI32 ,(make-fun (list (make-tuple-code "i" "n"))
-			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.>> (Word32.fromLargeInt (Int32.toLargeInt i), n)))")]
+			   "Int32.fromLarge (Word32.toLargeInt (Word32.>> (Word32.fromLargeInt (Int32.toLarge i), n)))")]
       [lshiftI32 ,(make-fun (list (make-tuple-code "i" "n"))
-			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.<< (Word32.fromLargeInt (Int32.toLargeInt i), n)))")]      
+			   "Int32.fromLarge (Word32.toLargeInt (Word32.<< (Word32.fromLargeInt (Int32.toLarge i), n)))")]      
 
       [logandI32 ,(make-fun (list (make-tuple-code "a" "b"))
-			   "Int32.fromLargeInt (Word32.toLargeInt (Word32.andb (Word32.fromLargeInt (Int32.toLargeInt a), Word32.fromLargeInt (Int32.toLargeInt b))))")]
+			   "Int32.fromLarge (Word32.toLargeInt (Word32.andb (Word32.fromLargeInt (Int32.toLarge a), Word32.fromLargeInt (Int32.toLarge b))))")]
 
 
       [rshiftI16 ,(make-fun (list (make-tuple-code "i" "n"))

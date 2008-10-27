@@ -296,19 +296,30 @@ fun modF(f, base) {
   tmp
 }
 
-// May be a better way to do Ceilings... but I do not want to add everything as primitive:
+// FIXME!! Should just use the LIBC versions.
+// This definition of floor is WRONG (might overflow).
+
+/*
+// This didn't work under mlton on the first try:
+floorF :: Float -> Float   = foreign("floor", ["math.h"]);
+ceilF  :: Float -> Float   = foreign("ceil",  ["math.h"]);
+floorD :: Double -> Double = foreign("floor", ["math.h"]);
+ceilD  :: Double -> Double = foreign("ceil",  ["math.h"]);
+*/
 fun floorF(f)  intToFloat(floatToInt(f))
 //fun ceilF(f)   roundF(f + 0.499999);
+// May be a better way to do Ceilings... but I do not want to add everything as primitive:
 fun ceilF(f) {
   flr = floorF(f);
   if f == flr then f else flr + 1;
 }
-fun floorD(d)  intToDouble(doubleToInt(d))
+fun floorD(d)  Double! (Int64! (d))
 //fun ceilD(d)   roundD(d + floatToDouble(0.499999)); // Ack, no double constants atm.
 fun ceilD(d) {
   flr = floorD(d);
   if d == flr then flr else flr + 1;
 }
+
 
 // This *should* work by caching one or more fftw plans.
 // [2007.10.30] SHOULD be using memoized_fftR2C here.

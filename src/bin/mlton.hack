@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NOTE, to get GC stats pass the compiled executable this flag:
-# ./query.mlton.exe @MLton gc-summary 
+# ./query.mlton.exe @MLton gc-summary --
 
 #UNSAFE="-const 'MLton.safe false' -const 'MLton.detectOverflow false'"
 
@@ -15,8 +15,8 @@
 MACHINE=`uname -m`
 #if [ "$MACHINE" == "x86_64" ];
 if test "$MACHINE" = "x86_64" ;
-then mlton -default-ann 'allowFFI true' -codegen amd64  $*;
-else mlton -default-ann 'allowFFI true' -codegen x86    $*;
+then mlton $EXTRAMLTONFLAGS -default-ann 'allowFFI true' -codegen amd64  $*;
+else mlton $EXTRAMLTONFLAGS -default-ann 'allowFFI true' -codegen x86    $*;
 fi
 
 #mlton -default-ann 'allowFFI true' -codegen c -cc-opt '-O3' $*

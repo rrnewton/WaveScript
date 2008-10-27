@@ -268,6 +268,7 @@
 		      (wsequal? (tuple-fields a) (tuple-fields b)))]
      ;; Even more inefficiency:
      [(number? a) (= a b)] ;; Matters for 0.0 == -0.0
+     [(double? a) (= (double-val a) (double-val b))]
      [else (s:equal? a b)]))
   ;(define equal? wsequal?)
   

@@ -34,17 +34,45 @@ everyother = iterate x in s1 {
 
 degapped = degap(everyother, gint(0), 1000);
 
-result = iterate sum in union2(degapped,zipped) {
-  state { first = true }
-  println("in");
+
+test_unions = iterate sum in union2(degapped,zipped) {
+    {
+    print("Type Unions: ");
+      x = Left(3);
+      case x {
+        Left(x): println("Got left! ")
+        Right(y): println("Got right! ")
+      }
+    };
+
   case sum {
     // Degapped:
     Left(x) : println("woot "++x)
 
     // Zipped:
     Right(x): {
-    
+      assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
+      //emit "Right";
+      emit x;
+    }
+  }
+}
+
+
+unionsSupported = 
+  if GETENV("WSVARIANT") == "wsc2"
+  then false else true
+
+_ = println("unionsSupported: "++ unionsSupported)
+
+middle = if unionsSupported
+         then test_unions
+         else zipped
+
+result = iterate _ in middle {
+  state { first = true }
   if first then {
+    first := false;
     println("\n");
 
     {
@@ -52,6 +80,13 @@ result = iterate sum in union2(degapped,zipped) {
       println("=====================");
       assert_prnt("ceilF ", ceilF(3.01), 4.0);
       assert_prnt("ceilF ", ceilF(3.0),  3.0);
+      assert_prnt("floorF ", floorF(3.0),  3.0);
+      assert_prnt("floorF ", floorF(3.01),  3.0);
+
+      assert_prnt("ceilD ", ceilD(Double! 16.01), 17);
+      assert_prnt("ceilD ", ceilD(Double! 16.0),  16);
+      assert_prnt("floorD ", floorD(Double! 16.0),  16);
+      assert_prnt("floorD ", floorD(Double! 16.01), 16);
     };
 
     {
@@ -102,18 +137,7 @@ result = iterate sum in union2(degapped,zipped) {
       //      println("FoldRange: " ++ Array:foldRange(3, 7, [], fun(x,y)(y:::x)));
     };
 
-    first := false;
     println("");
-
-    {
-    print("Type Unions: ");
-      x = Left(3);
-      case x {
-        Left(x): println("Got left! ")
-        Right(y): println("Got right! ")
-      }
-    };
-
     {
        using List;
        println("  List primitives: ");
@@ -130,21 +154,14 @@ result = iterate sum in union2(degapped,zipped) {
        bld = List:build(5, fun(i)i);
        assert_prnt("List:build", bld, [0,1,2,3,4]);
        assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
-    }
-  }; // End "first" 
-
-  //println(x++" \n");
-  assert_prnt("deinterlaces the same", List:ref(x,0), List:ref(x,1));
-  emit "Right";
-
- } 
-
-};
-  
+    };
+  };
+  emit ();
 }
 
 
-main = zipped
+
+//main = zipped
 //main = zip2_sametype(ch1, ch1b)
-main = union2(degapped,zipped)
+//main = union2(degapped,zipped)
 main = result

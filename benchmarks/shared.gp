@@ -3,7 +3,7 @@
 # directory.
 
 #set terminal pdf
-#set terminal postscript color
+set terminal postscript color
 
 set boxwidth 0.9 absolute
 set style fill  solid 1.00 border -1

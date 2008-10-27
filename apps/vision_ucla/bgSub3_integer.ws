@@ -15,11 +15,37 @@ Version3:
 
 TODO:
 
-[2008.10.23] Got it working under MLton.  It's surprisingly slow. ~4X
-Trying to get numbers for time spent in GC.  Ok, as one would expect.
-This algorithm is not very allocation intensive at all.  Statically
-allocates a bunch of storage, and then does extensive traversal.  GC
-under mlton is less than a 10th of 1%.
+[2008.10.23] Got it working under MLton.  It's surprisingly slow. ~4X 
+Trying to get numbers for time spent in GC.
+Ok, as one would expect.  This algorithm is not very allocation
+intensive at all.  Statically allocates a bunch of storage, and then
+does extensive traversal.  GC under mlton is less than a 10th of 1%.
+
+[2008.10.24] Trying to profile the mlton runs.  It's difficult because 
+of the unweildy generated code, especially the inlining reducing each 
+kernel to one big function.
+
+Profiling val's also gives this:
+
+17.74 seconds of CPU time (0.00 seconds GC)
+                                function                                  cur 
+------------------------------------------------------------------------ -----
+Real.make.fn.fn  $(SML_LIB)/basis/real/real.sml: 657                     82.9%
+var_bhatta_3.<val (var_binR_  ...>  query.sml: 2135                       1.7%
+var_bhatta_3.<val (var_binR_  ...>  query.sml: 2285                       1.6%
+var_bhatta_3.<val (var_binB_  ...>  query.sml: 2279                       1.1%
+var_bhatta_3.<val (var_binG_  ...>  query.sml: 2132                       1.0%
+var_bhatta_3.<val (var_binB_  ...>  query.sml: 2129                       0.9%
+var_bhatta_3.<val (var_binG_  ...>  query.sml: 2282                       0.7%
+var_bhatta_3.<case false>  query.sml: 2067                                0.7%
+
+Ah, this helps!  It seems to be because of bad conversion functions!
+(When going from floats or doubles to ints.)  I was generating code
+like this: 
+
+  Int16.fromInt  (Real32.toInt IEEEReal.TO_ZERO x)
+
+
 
  */
 
@@ -132,6 +158,7 @@ _ = {
 
   println$ "  nPixels: "++ (nPixels);
   println$ "  inv_nPixels: "++ (inv_nPixels);
+
   }
 
 //====================================================================================================
@@ -144,13 +171,38 @@ fun boundit(x,range) {
   if x >= range then 2*range-1-x else x;
 };
 
+// This should establish that we don't overflow the multiplication in hist_update:
+// (Well, only if we use Int32 instead of Int.)
+//_ = ASSERT(NumBins1 < (2 ^ 23))
+//_ = ASSERT(NumBins2 < (2 ^ 23))
+//_ = ASSERT(NumBins3 < (2 ^ 23))
+
 // Update the correct bin within a pixel's histogram, indexed by R/G/B.
 hist_update :: (Color, Color, Color, PixelHist, HistElt -> HistElt) -> ();
 fun hist_update(r,g,b, hist, fn) {
-  // figure out which bin
+  // figure out which bin:
+  // This is a very hot spot.
+  // It's slow under mlton because the float->int conversion is bounds-checked.
+
+  // It is perhaps possible to do this as an integer computation.  But
+  // we need to know that 255 * NumBinsN doesn't overflow an Int.
+  // Which should absolutely be true.
+
   binB = Int! (Inexact! b * inv_sizeBins1);
   binG = Int! (Inexact! g * inv_sizeBins2);
   binR = Int! (Inexact! r * inv_sizeBins3);
+
+  binB2 = (Int! b) * NumBins1 / 256;
+  binG2 = (Int! g) * NumBins2 / 256;
+  binR2 = (Int! r) * NumBins3 / 256;
+
+  if (binR,binG,binB) == (binR2,binG2,binB2)
+  then print(".")
+  else {
+    //println("inv_sizeBins1: "++inv_sizeBins1);
+    print("bins1 "++binR++" "++binG++" "++binB++"  bins2 "++binR2++" "++binG2++" "++binB2++"\n");
+  };
+
   // apply transform to histogram  
   using Array3D;
   set(hist, binB, binG, binR, fn(get(hist, binB, binG, binR)));
