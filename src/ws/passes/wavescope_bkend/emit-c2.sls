@@ -2258,12 +2258,32 @@ int main(int argc, char **argv)
 ; 				     "typetag_t zct_tags[ZCT_SIZE];\n"
 ; 				     "void*     zct_ptrs[ZCT_SIZE];\n"
 ; 				     "int       zct_count;\n"
-				     "zct_t zct;\n"
+
+				     "zct_t the_zct;\n"
+				     "zct_t* zct = &the_zct;\n"
+
 				     "int       iterate_depth = 0;\n\n"
 				     "#ifdef WS_THREADED\n"
 				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"
 				     "#endif\n"))
 			       ops init driver))))
+
+
+;; This is unnecessary duplicated code:
+;; It's annoying that I can't change the arguments when calling the parent method (next).
+(__specreplace GenWorkFunction <emitC2-zct> (self name arg vqarg argty code)
+  (define _arg (Var self arg))
+  (define _argty (Type self argty))
+  (values
+   (make-lines `("void ",(Var self name) "(zct_t* zct, ",_argty" ",_arg"); // Iter prototype\n"))
+   (make-lines 
+    (list (block `("void ",(Var self name) "(zct_t* zct, ",_argty" ",_arg")")
+		 (list
+		  "char "(Var self vqarg)";\n"
+		 (IterStartHook self name arg argty)
+		 (lines-text code)
+		 (IterEndHook self name arg argty)))
+	  "\n"))))
 
 ;;================================================================================
 

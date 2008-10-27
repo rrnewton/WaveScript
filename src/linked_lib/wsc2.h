@@ -82,7 +82,7 @@ typedef struct {
   void* ptrs[ZCT_SIZE];
 } zct_t;
 
-extern zct_t zct;
+extern zct_t* zct;
 /* extern typetag_t zct_tags[]; */
 /* extern void*     zct_ptrs[]; */
 /* extern int       zct_count; */
@@ -126,15 +126,15 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   }
 
   //#ifdef WSDEBUG
-  if (zct.count == ZCT_SIZE) {
+  if (zct->count == ZCT_SIZE) {
     wserror_builtin("ZCT overflow");
   }
   //#endif
 
   MARK_AS_PUSHED(ptr);
-  zct.tags[zct.count] = tag;
-  zct.ptrs[zct.count] = ptr;
-  zct.count++;
+  zct->tags[zct->count] = tag;
+  zct->ptrs[zct->count] = ptr;
+  zct->count++;
 #ifdef WS_THREADED
     pthread_mutex_unlock(&zct_lock);
 #endif
@@ -160,29 +160,29 @@ static inline void BLAST_ZCT(int depth) {
     pthread_mutex_lock(&zct_lock);
 #endif
 #ifdef BLAST_PRINT
-      if (zct.count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
+      if (zct->count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
       for(i=0; i<histo_len; i++) tag_histo[i]=0;
 #endif
-  for(i=zct.count-1; i>=0; i--) {
+  for(i=zct->count-1; i>=0; i--) {
     // Wipe off the mask bit before checking:
-    if (0 == (GET_ARR_RC(zct.ptrs[i]) & ~PUSHED_MASK)) {
+    if (0 == (GET_ARR_RC(zct->ptrs[i]) & ~PUSHED_MASK)) {
         #ifdef BLASTING 
-          if (zct.tags[i] < histo_len) tag_histo[zct.tags[i]]++;
-          max_tag = (max_tag > zct.tags[i]) ? max_tag : zct.tags[i];
+          if (zct->tags[i] < histo_len) tag_histo[zct->tags[i]]++;
+          max_tag = (max_tag > zct->tags[i]) ? max_tag : zct->tags[i];
         #endif
-      free_by_numbers(zct.tags[i], zct.ptrs[i]);
+      free_by_numbers(zct->tags[i], zct->ptrs[i]);
       freed++;
-    } else UNMARK_AS_PUSHED(zct.ptrs[i]);
+    } else UNMARK_AS_PUSHED(zct->ptrs[i]);
   }  
 #ifdef BLAST_PRINT
-      printf(" killed %d/%d, tag histo: [ ", freed, zct.count); 
+      printf(" killed %d/%d, tag histo: [ ", freed, zct->count); 
       for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
       printf("]\n");fflush(stdout);
       #ifdef ALLOC_STATS
         ws_alloc_stats();
       #endif
 #endif
-  zct.count = 0;
+  zct->count = 0;
 #ifdef WS_THREADED
     pthread_mutex_unlock(&zct_lock);
 #endif
@@ -262,7 +262,7 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 // ============================================================
 // For one thread, these macros do nothing.  We don't use realtime for timers.
 #ifndef WS_THREADED
-#define EMIT(val, ty, fn) fn(val)
+#define EMIT(val, ty, fn) fn(zct, val)
 #define TOTAL_WORKERS(count)         {}
 #define REGISTER_WORKER(ind, ty, fp) {}
 #define DECLARE_WORKER(ind, ty, fp) 
@@ -354,7 +354,7 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 // Declare the existence of each operator.
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
   void fp##_wrapper(void* x) { \
-    fp(*(ty*)x); \
+    fp(zct, *(ty*)x); \
   }
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
@@ -406,6 +406,9 @@ void* worker_thread(void* i) {
 #endif
 
   pthread_mutex_unlock(&print_lock);  
+
+  // This loop is very simple because there's only one input queue for the thread:
+  // We don't need a "select":
   while (1) 
   {
     // Accesses to these two tables are read-only:
@@ -456,7 +459,7 @@ void wsInternalInit() {
 #endif
 }
 
-void BASE(char x) {
+void BASE(zct_t* zct, char x) {
   outputcount++;
   if (outputcount == wsc2_tuplimit) { 
     fprintf(stderr, "Enough tuples.  Shutting down.\n");
