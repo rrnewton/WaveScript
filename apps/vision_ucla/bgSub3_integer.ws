@@ -20,7 +20,9 @@ Trying to get numbers for time spent in GC.
 Ok, as one would expect.  This algorithm is not very allocation
 intensive at all.  Statically allocates a bunch of storage, and then
 does extensive traversal.  GC under mlton is less than a 10th of 1%.
+*/
 
+/*
 [2008.10.24] Trying to profile the mlton runs.  It's difficult because 
 of the unweildy generated code, especially the inlining reducing each 
 kernel to one big function.
@@ -44,10 +46,12 @@ Ah, this helps!  It seems to be because of bad conversion functions!
 like this: 
 
   Int16.fromInt  (Real32.toInt IEEEReal.TO_ZERO x)
+*/
 
-
-
- */
+// [2008.10.27] This sped up quite a bit when I removed the floating
+// point ops and casts from the hist_update routine.  Under gcc, it
+// went from 230/320 to 170/260 (for bg/fg).  Oddly, this is an unusual
+// case where icc does worse, at 230/300.  Mlton gets 290/370.
 
 include "stdlib.ws"
 include "opencv.ws"
@@ -176,6 +180,11 @@ fun boundit(x,range) {
 //_ = ASSERT(NumBins1 < (2 ^ 23))
 //_ = ASSERT(NumBins2 < (2 ^ 23))
 //_ = ASSERT(NumBins3 < (2 ^ 23))
+// TODO: Also need to make sure that NumBins* divide 256.
+//fun isInt(x) { flr = floor(x); x == flr }
+//_ = assert("NumBins1 in range", isInt, 256 / Inexact! NumBins1)
+//_ = assert("NumBins2 in range", isInt, 256 / Inexact! NumBins2)
+//_ = assert("NumBins3 in range", isInt, 256 / Inexact! NumBins3)
 
 // Update the correct bin within a pixel's histogram, indexed by R/G/B.
 hist_update :: (Color, Color, Color, PixelHist, HistElt -> HistElt) -> ();
@@ -188,13 +197,12 @@ fun hist_update(r,g,b, hist, fn) {
   // we need to know that 255 * NumBinsN doesn't overflow an Int.
   // Which should absolutely be true.
 
-  binB = Int! (Inexact! b * inv_sizeBins1);
-  binG = Int! (Inexact! g * inv_sizeBins2);
-  binR = Int! (Inexact! r * inv_sizeBins3);
-
-  //binB2 = (Int! b) * NumBins1 / 256;
-  //binG2 = (Int! g) * NumBins2 / 256;
-  //binR2 = (Int! r) * NumBins3 / 256;
+  //binB = Int! (Inexact! b * inv_sizeBins1);
+  //binG = Int! (Inexact! g * inv_sizeBins2);
+  //binR = Int! (Inexact! r * inv_sizeBins3);
+  binB = (Int! b) * NumBins1 / 256;
+  binG = (Int! g) * NumBins2 / 256;
+  binR = (Int! r) * NumBins3 / 256;
 
   /*
   if (binR,binG,binB) == (binR2,binG2,binB2)
@@ -710,11 +718,11 @@ output_imgs = if LIVE then my_display else dump_files;
 main = 
        output_imgs
 /*      $ unsquisher */
-     $ unsquisher
+//     $ unsquisher
      //$ nilbhatta
      $ bhatta
 /*      $ squisher */
-     $ squisher
+//     $ squisher
      $ input_imgs;
 
 

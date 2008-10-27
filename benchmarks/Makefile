@@ -29,7 +29,7 @@ engine:
 	./setup_engines.sh
 
 #  enginesvn.tex 
-alldeps: machineinfo.tex wssvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/RESULTS.tex appbench/marmot.pdf 
+alldeps: machineinfo.tex wssvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/MARMOT.pdf
 # datareps/alloc_arrarr.pdf ## DISABLING
 
 perfreport.pdf:
@@ -52,7 +52,7 @@ enginesvn.tex:
 	(cd $(WAVESCOPED); svn info | grep Revision) >> enginesvn.tex
 	echo '\end{verbatim}' >> enginesvn.tex
 
-appbench/marmot.pdf:
+appbench/MARMOT.pdf:
 	(cd appbench; $(MAKE))
 #	(cd appbench; $(MAKE) marmot.pdf)
 
@@ -84,10 +84,11 @@ language_shootout/RESULTS.tex: language_shootout/RESULTS.txt
 	echo '\begin{verbatim}'            > language_shootout/RESULTS.tex
 	cat language_shootout/RESULTS.txt >> language_shootout/RESULTS.tex
 	echo '\end{verbatim}'             >> language_shootout/RESULTS.tex
-appbench/RESULTS.tex: appbench/RESULTS.txt
-	echo '\begin{verbatim}'            > appbench/RESULTS.tex
-	cat appbench/RESULTS.txt          >> appbench/RESULTS.tex
-	echo '\end{verbatim}'             >> appbench/RESULTS.tex
+
+# appbench/RESULTS.tex: appbench/RESULTS.txt
+# 	echo '\begin{verbatim}'            > appbench/RESULTS.tex
+# 	cat appbench/RESULTS.txt          >> appbench/RESULTS.tex
+# 	echo '\end{verbatim}'             >> appbench/RESULTS.tex
 
 
 clean:

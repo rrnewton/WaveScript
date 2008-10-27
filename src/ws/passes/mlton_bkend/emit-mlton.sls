@@ -1383,6 +1383,7 @@
 
       [uint16ToDouble ,(compose "Real64.fromInt" "Word16.toInt")]
 
+      [uint8ToInt    "Word8.toInt"]
       [uint8ToDouble ,(compose "Real64.fromInt" "Word8.toInt")]
 
       ;[floatToInt     ,(make-fun '("x") "Int32.fromLarge (Real32.toLargeInt IEEEReal.TO_ZERO x)")]
