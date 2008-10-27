@@ -136,8 +136,14 @@ inline void free_measured(void* object) {
   #define INCR_ARR_RC(ptr)        if (ptr) atomic_increment( &ARR_RC_DEREF(ptr))
   // Assumes that atomic_exchange_and_add returns the OLD value.
   #define DECR_ARR_RC_PRED(ptr)   (ptr ? atomic_exchange_and_add( &ARR_RC_DEREF(ptr), -1) == 1 : 0)
-  #define INCR_ITERATE_DEPTH()    atomic_increment(&iterate_depth)
-  #define DECR_ITERATE_DEPTH()    atomic_exchange_and_add(&iterate_depth, -1)
+
+// [2008.10.27] Presently, only one iterate can be active within a
+// thread at a time.  We don't need to track the iterate_depth.
+//#define INCR_ITERATE_DEPTH()    {}
+//#define DECR_ITERATE_DEPTH()    0
+#define INCR_ITERATE_DEPTH()    atomic_increment(&iterate_depth)
+#define DECR_ITERATE_DEPTH()    atomic_exchange_and_add(&iterate_depth, -1)
+
 #else
   #define INCR_ARR_RC(ptr)        if (ptr) ARR_RC_DEREF(ptr)++
   #define DECR_ARR_RC_PRED(ptr)   (ptr ? (-- ARR_RC_DEREF(ptr) == 0) : 0)

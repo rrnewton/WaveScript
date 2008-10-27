@@ -37,7 +37,7 @@
 #define LOAD_COMPLEX
 //#define WS_THREADED
 //#define ALLOC_STATS
-//#define BLAST_PRINT
+#define BLAST_PRINT
 
 // For now, only use real-time timers in threaded mode:
 #ifdef WS_THREADED
@@ -76,9 +76,16 @@ typedef unsigned char typetag_t;
 #define ZCT_SIZE (1024 * 1048 * 16)
 
 // These will need to be per-thread in the future:
-extern typetag_t zct_tags[];
-extern void*     zct_ptrs[];
-extern int       zct_count;
+typedef struct {
+  int count;
+  typetag_t tags[ZCT_SIZE];
+  void* ptrs[ZCT_SIZE];
+} zct_t;
+
+extern zct_t zct;
+/* extern typetag_t zct_tags[]; */
+/* extern void*     zct_ptrs[]; */
+/* extern int       zct_count; */
 extern int       iterate_depth;
 
 #ifdef WS_THREADED
@@ -87,6 +94,10 @@ extern pthread_mutex_t zct_lock;
 #endif
 
 void free_by_numbers(typetag_t, void*);
+
+//============================================================
+// We mark everything that's added to the ZCT so that we don't
+// double-add objects resulting in double-frees.
 
 // This needs to be the high-bit in a refcount_t
 #define PUSHED_MASK (((refcount_t)1) << (sizeof(refcount_t) * 8 - 1))
@@ -115,15 +126,15 @@ static inline void PUSH_ZCT(typetag_t tag, void* ptr) {
   }
 
   //#ifdef WSDEBUG
-  if (zct_count == ZCT_SIZE) {
+  if (zct.count == ZCT_SIZE) {
     wserror_builtin("ZCT overflow");
   }
   //#endif
 
   MARK_AS_PUSHED(ptr);
-  zct_tags[zct_count] = tag;
-  zct_ptrs[zct_count] = ptr;
-  zct_count++;
+  zct.tags[zct.count] = tag;
+  zct.ptrs[zct.count] = ptr;
+  zct.count++;
 #ifdef WS_THREADED
     pthread_mutex_unlock(&zct_lock);
 #endif
@@ -149,29 +160,29 @@ static inline void BLAST_ZCT(int depth) {
     pthread_mutex_lock(&zct_lock);
 #endif
 #ifdef BLAST_PRINT
-      if (zct_count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
+      if (zct.count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
       for(i=0; i<histo_len; i++) tag_histo[i]=0;
 #endif
-  for(i=zct_count-1; i>=0; i--) {
+  for(i=zct.count-1; i>=0; i--) {
     // Wipe off the mask bit before checking:
-    if (0 == (GET_ARR_RC(zct_ptrs[i]) & ~PUSHED_MASK)) {
+    if (0 == (GET_ARR_RC(zct.ptrs[i]) & ~PUSHED_MASK)) {
         #ifdef BLASTING 
-          if (zct_tags[i] < histo_len) tag_histo[zct_tags[i]]++;
-          max_tag = (max_tag > zct_tags[i]) ? max_tag : zct_tags[i];
+          if (zct.tags[i] < histo_len) tag_histo[zct.tags[i]]++;
+          max_tag = (max_tag > zct.tags[i]) ? max_tag : zct.tags[i];
         #endif
-      free_by_numbers(zct_tags[i], zct_ptrs[i]);
+      free_by_numbers(zct.tags[i], zct.ptrs[i]);
       freed++;
-    } else UNMARK_AS_PUSHED(zct_ptrs[i]);
+    } else UNMARK_AS_PUSHED(zct.ptrs[i]);
   }  
 #ifdef BLAST_PRINT
-      printf(" killed %d/%d, tag histo: [ ", freed, zct_count); 
+      printf(" killed %d/%d, tag histo: [ ", freed, zct.count); 
       for(i=0; (i<max_tag+1) && (i<histo_len); i++) printf("%d ", tag_histo[i]);
       printf("]\n");fflush(stdout);
       #ifdef ALLOC_STATS
         ws_alloc_stats();
       #endif
 #endif
-  zct_count = 0;
+  zct.count = 0;
 #ifdef WS_THREADED
     pthread_mutex_unlock(&zct_lock);
 #endif

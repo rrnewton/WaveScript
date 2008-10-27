@@ -2255,9 +2255,10 @@ int main(int argc, char **argv)
       (BuildOutputFiles_helper self includes freefundefs 
 			       (text->string 
 				(list state
-				     "typetag_t zct_tags[ZCT_SIZE];\n"
-				     "void*     zct_ptrs[ZCT_SIZE];\n"
-				     "int       zct_count;\n"
+; 				     "typetag_t zct_tags[ZCT_SIZE];\n"
+; 				     "void*     zct_ptrs[ZCT_SIZE];\n"
+; 				     "int       zct_count;\n"
+				     "zct_t zct;\n"
 				     "int       iterate_depth = 0;\n\n"
 				     "#ifdef WS_THREADED\n"
 				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"

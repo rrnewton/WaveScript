@@ -75,9 +75,10 @@ type Image = (RawImage * Int * Int); // With width/height (cols/rows)
 // Application type defs:
 type Inexact = Double; // Float or Double
 
-abs  =  absD
-ceil = ceilD 
-sqrt = sqrtD // Need type classes!
+abs   =  absD
+ceil  = ceilD 
+floor = floorD 
+sqrt  = sqrtD // Need type classes!
 
 DEBUG = true;
 
@@ -181,10 +182,10 @@ fun boundit(x,range) {
 //_ = ASSERT(NumBins2 < (2 ^ 23))
 //_ = ASSERT(NumBins3 < (2 ^ 23))
 // TODO: Also need to make sure that NumBins* divide 256.
-//fun isInt(x) { flr = floor(x); x == flr }
-//_ = assert("NumBins1 in range", isInt, 256 / Inexact! NumBins1)
-//_ = assert("NumBins2 in range", isInt, 256 / Inexact! NumBins2)
-//_ = assert("NumBins3 in range", isInt, 256 / Inexact! NumBins3)
+fun isInt(x) x == floor(x) 
+_ = assert("NumBins1 divides 256", isInt(256 / Inexact! NumBins1))
+_ = assert("NumBins2 divides 256", isInt(256 / Inexact! NumBins2))
+_ = assert("NumBins3 divides 256", isInt(256 / Inexact! NumBins3))
 
 // Update the correct bin within a pixel's histogram, indexed by R/G/B.
 hist_update :: (Color, Color, Color, PixelHist, HistElt -> HistElt) -> ();
