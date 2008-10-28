@@ -846,7 +846,7 @@ implementation {
 			     (string-append (ASSERT (getenv "TOSDIR")) "/lib/printf")
 			     (+ AM_OFFSET i) i)])
 	    (display cmd)(newline)
-	    (unless (system cmd)  (error "mig failed!!"))
+	    (unless (system cmd)  (error 'emit-tinyos "mig failed!!"))
 	    (printf " *** Lame hack, patching broken mig code:")
 	    (system (format (string-append "cat WSQueryMsg~a.c "
 					   " | sed 's/\\(.*tmsg_read_float_.*\\), 32/\\1/'"

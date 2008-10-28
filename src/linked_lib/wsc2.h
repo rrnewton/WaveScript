@@ -37,7 +37,7 @@
 #define LOAD_COMPLEX
 //#define WS_THREADED
 //#define ALLOC_STATS
-#define BLAST_PRINT
+//#define BLAST_PRINT
 
 // For now, only use real-time timers in threaded mode:
 #ifdef WS_THREADED
@@ -65,7 +65,7 @@ void wserror_builtin(char*);
 // ZCT handling for deferred reference counting:
 // ============================================================
 
-//#ifdef USE_ZCT
+#ifdef WS_USE_ZCT
 
 typedef unsigned char typetag_t;
 
@@ -82,15 +82,17 @@ typedef struct {
   void* ptrs[ZCT_SIZE];
 } zct_t;
 
-extern zct_t* zct;
 /* extern typetag_t zct_tags[]; */
 /* extern void*     zct_ptrs[]; */
 /* extern int       zct_count; */
 extern int       iterate_depth;
 
 #ifdef WS_THREADED
-// This locks all the zct_* above:
-extern pthread_mutex_t zct_lock;
+ // This locks all the zct_* above:
+  extern pthread_mutex_t zct_lock;
+  extern zct_t** all_zcts;
+#else 
+  extern zct_t* zct;
 #endif
 
 void free_by_numbers(typetag_t, void*);
@@ -188,7 +190,7 @@ static inline void BLAST_ZCT(int depth) {
 #endif
 }
 
-//#endif // USE_ZCT
+#endif // WS_USE_ZCT
 
 // ============================================================
 int outputcount = 0;
@@ -262,7 +264,11 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 // ============================================================
 // For one thread, these macros do nothing.  We don't use realtime for timers.
 #ifndef WS_THREADED
+#ifdef WS_USE_ZCT
 #define EMIT(val, ty, fn) fn(zct, val)
+#else
+#define EMIT(val, ty, fn) fn(val)
+#endif
 #define TOTAL_WORKERS(count)         {}
 #define REGISTER_WORKER(ind, ty, fp) {}
 #define DECLARE_WORKER(ind, ty, fp) 
@@ -354,15 +360,18 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 // Declare the existence of each operator.
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
   void fp##_wrapper(void* x) { \
-    fp(zct, *(ty*)x); \
+    fp(all_zcts[ind], *(ty*)x); \
   }
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
 #define TOTAL_WORKERS(count) { \
+   int i; \
    worker_table  = malloc(sizeof(void*) * count);  \
    queue_table   = malloc(sizeof(wsfifo*) * count);  \
    cpu_affinity_table = malloc(sizeof(int) * count);  \
    total_workers = count; \
+   all_zcts = malloc(count * sizeof(void*)); \
+   for(i=0; i<count; i++) all_zcts[i] = malloc(sizeof(zct_t)); \
 }
 // Register a function pointer for each worker.
 #define REGISTER_WORKER(ind, ty, fp) { \
@@ -459,7 +468,11 @@ void wsInternalInit() {
 #endif
 }
 
+#ifdef WS_USE_ZCT
 void BASE(zct_t* zct, char x) {
+#else
+void BASE(char x) {
+#endif
   outputcount++;
   if (outputcount == wsc2_tuplimit) { 
     fprintf(stderr, "Enough tuples.  Shutting down.\n");

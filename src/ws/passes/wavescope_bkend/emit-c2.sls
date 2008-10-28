@@ -50,6 +50,7 @@
 	   BuildTimerSourceDriver BuildOutputFiles varbindk
 	   array-constructor-codegen
 	   IterStartHook IterEndHook ForeignSourceHook
+	   ExtraKernelArgsHook
 
 	   make-lines lines-text append-lines slot-cons! 
 
@@ -146,6 +147,7 @@
   (define-generic IterEndHook)
   (define-generic ForeignSourceHook)
   (define-generic AllocHook)
+  (define-generic ExtraKernelArgsHook)
 
   (__spec add-include! <emitC2> (self fn)
     (define __ (printf "adding include ~s \n" fn))
@@ -1519,7 +1521,7 @@
 	   (block (list "int main(int argc, "(Type self `(Array (Array Char)))" argv)" )
 		  (list 
 		   (map (lambda (name) (format "int counter_~a = 0;\n" name)) srcname*)
-		   "initState();\n"
+		   "  initState();\n"
 		   "ws_parse_options(argc,argv); /* [2008.08.27] Moving to after initState */ \n" 
 		   (Type self 'Bool)" dummy ="(Const self #t id)";\n" ;; Hack for java.
 		   
@@ -1558,10 +1560,10 @@
 	;; This is SUPER hackish, just sticking all the WSQueryMsg.c files in the flags!
 	;(slot-cons! self 'compile-flags " -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/")
 	;; ACK: fixing the TINYOS install dir at compile time.  Can't get quoting/env-vars to work out:
-	(slot-cons! self 'compile-flags 
-		    (list (format " -I~a/support/sdk/c  -L~a/support/sdk/c -lmote "
-			    (getenv "TOSROOT") (getenv "TOSROOT"))
-			  (slot-ref self 'compile-flags)))
+       (slot-set! self 'compile-flags 
+		  (list (format " -I~a/support/sdk/c  -L~a/support/sdk/c -lmote "
+				(getenv "TOSROOT") (getenv "TOSROOT"))
+			(slot-ref self 'compile-flags)))
 	(for i = 0 to (sub1 (length (slot-ref self 'server-cutpoints)))
 	     (add-include! self (format "\"WSQueryMsg~a.c\"" i)))
 	
@@ -1743,6 +1745,8 @@ int main(int argc, char **argv)
 (__spec IterStartHook <emitC2> (self name arg argty) "")
 (__spec IterEndHook   <emitC2> (self name arg argty) "")
 
+(__spec ExtraKernelArgsHook <emitC2> (self) '())
+
 ;; A work function for each iterate.
 ;; Returns two values both of type 'lines'
 ;;  (1) A function prototype
@@ -1750,10 +1754,11 @@ int main(int argc, char **argv)
 (__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
+  (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
   (values
-   (make-lines `("void ",(Var self name) "(",_argty" ",_arg"); // Iter prototype\n"))
+   (make-lines `("void ",(Var self name) "(",extra ,_argty" ",_arg"); // Iter prototype\n"))
    (make-lines 
-    (list (block `("void ",(Var self name) "(",_argty" ",_arg")")
+    (list (block `("void ",(Var self name) "(",extra ,_argty" ",_arg")")
 		 (list
 		  "char "(Var self vqarg)";\n"
 		 (IterStartHook self name arg argty)
@@ -1837,7 +1842,8 @@ int main(int argc, char **argv)
      ;; This emit should not increment reference counts:
      ;; We are just redirecting something already in flight.
      (define arg (unique-name "arg"))
-     (define header `("void ",(Var self name) "(",(Type self elt)" ",(Var self arg)")"))
+     (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
+     (define header `("void ",(Var self name) "(",extra ,(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
 	      (list (block header (lines-text ((Emit self down* elt) arg))) "\n"))
 	     (list (make-lines (list header ";\n")))
@@ -1939,10 +1945,11 @@ int main(int argc, char **argv)
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "wsShutdown();\n"))
 		     
-		     ,(lines-text ((Emit self down* elt) 'buf))))])
+		     ,(lines-text ((Emit self down* elt) 'buf))))]
+	    [extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self))])
 
        (values 
-	(make-lines (block (list "void "(sym2str name)"("(Type self '#())" ignored)") maintext))
+	(make-lines (block (list "void "(sym2str name)"("extra (Type self '#())" ignored)") maintext))
          ;(wrap-iterate-as-simple-fun name 'ignored 'ignoredVQ (Type self '#()) maintext)
 	(list state) (list init)))] ;; End readFile
     ))
@@ -2053,7 +2060,8 @@ int main(int argc, char **argv)
 	(define ops      (text->string (map lines-text oper*)))
 	  ;(define srcfuns  (text->string (map lines-text (map wrap-source-as-plain-thunk srcname* srccode*))))
 	(define init     (begin ;(ASSERT (andmap lines? (apply append opinit**)))
-			   (text->string (block "void initState()" 
+			   (text->string (block "void initState()"
+					        ;(list "void initState("(insert-between ", " (ExtraKernelArgsHook self))")")
 						(list 
 						 "/* We may need to start up the Boehm GC or do other standard WS init: */ \n"
 						 "wsInternalInit();\n"
@@ -2162,7 +2170,9 @@ int main(int argc, char **argv)
 
 (__spec initialise <emitC2-zct> (self prog)
   (slot-set! self 'zct-types '())
-  (slot-set! self 'zct-init? #f))
+  (slot-set! self 'zct-init? #f)  
+  (slot-cons! self 'compile-flags " -DWS_USE_ZCT ")
+  )
 
 (__specreplace incr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-zct> (self ty ptr) null-lines)
@@ -2258,19 +2268,22 @@ int main(int argc, char **argv)
 ; 				     "typetag_t zct_tags[ZCT_SIZE];\n"
 ; 				     "void*     zct_ptrs[ZCT_SIZE];\n"
 ; 				     "int       zct_count;\n"
-
-				     "zct_t the_zct;\n"
-				     "zct_t* zct = &the_zct;\n"
-
+				     
 				     "int       iterate_depth = 0;\n\n"
 				     "#ifdef WS_THREADED\n"
-				     "pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"
+				     "  zct_t** all_zcts;\n"
+				     "  pthread_mutex_t zct_lock = PTHREAD_MUTEX_INITIALIZER;\n"
+				     "#else\n"
+				     "  zct_t the_zct;\n"
+				     "  zct_t* zct = &the_zct;\n"
 				     "#endif\n"))
 			       ops init driver))))
 
 
+(__specreplace ExtraKernelArgsHook <emitC2-zct> (self) (list "zct_t* zct"))
 ;; This is unnecessary duplicated code:
 ;; It's annoying that I can't change the arguments when calling the parent method (next).
+#;
 (__specreplace GenWorkFunction <emitC2-zct> (self name arg vqarg argty code)
   (define _arg (Var self arg))
   (define _argty (Type self argty))

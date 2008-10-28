@@ -106,8 +106,10 @@ EOF
 default:
 	debuild -S -kWaveScript
 	debuild -b -kWaveScript
-#	debuild -S -uc -us
-#	debuild -b -uc -us
+
+unsigned:
+	debuild -S -uc -us
+	debuild -b -uc -us
 
 
 chez:
