@@ -1878,7 +1878,7 @@ int main(int argc, char **argv)
 			 ;[(Sigseg ,t) (list t)]
 			 [(Array ,t) (list t)]
 			 [,oth       (list oth)]))]
-	    ;[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
+	    ;[numstrings (length (filter (lambda (sA) (eq? s 'String)) types))]
 
 	    [binarymode (equal? mode "binary")]
 	    [handle (Var self (unique-name "_f"))]
@@ -2065,6 +2065,19 @@ int main(int argc, char **argv)
 						(list 
 						 "/* We may need to start up the Boehm GC or do other standard WS init: */ \n"
 						 "wsInternalInit();\n"
+						 "// [2008.10.28] HACK:\n"
+						 (make-app "TOTAL_WORKERS" (list (number->string 
+										  (add1 (length opnames)))))
+						 "\n zct_t* zct = all_zcts[0];\n"
+						 ;; FIXME: NUMBERS WILL NOT BE CONSECUTIVE:
+						 "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
+						 (map (lambda (i name ty) 
+							(if name
+							    (format "REGISTER_WORKER(~a, ~a, ~a)\n"
+								    (add1 i) (text->string (Type self ty)) name)
+							    ""))
+						   (iota (length opnames)) opnames opinputs)
+						 
 						 (lines-text (apply append-lines init*))
 						 (lines-text (apply append-lines cbinit*))
 						 ;; This will be where the inline_C initializers go:
@@ -2073,20 +2086,7 @@ int main(int argc, char **argv)
 						 (lines-text (apply append-lines (apply append opinit**)))
 						 ;; Finally, register all the work functions.
 												 
-						 (if #f '()						     
-						     (list
-						      (make-app "TOTAL_WORKERS" (list (number->string 
-										       (add1 (length opnames)))))"\n"
-						      ;; FIXME: NUMBERS WILL NOT BE CONSECUTIVE:
-						      "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
-						      (map (lambda (i name ty) 
-							     (if name
-								 (format "REGISTER_WORKER(~a, ~a, ~a)\n"
-								     (add1 i) (text->string (Type self ty)) name)
-								 ""))
-							(iota (length opnames)) opnames opinputs)
-						      "START_WORKERS()\n"))
-						
+						 "START_WORKERS()\n"
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	
@@ -2198,14 +2198,14 @@ int main(int argc, char **argv)
 (__specreplace AllocHook <emitC2-zct> (self ty smpl) 
   ;;(make-lines (format "/* Alloc spot ~a ~a */\n" ty (text->string simple-xp)))   
   (define tag (number->string (get-zct-type-tag self ty)))
-  (make-lines `("PUSH_ZCT(",tag", ",smpl");\n")))
+  (make-lines `("PUSH_ZCT(zct, ",tag", ",smpl");\n")))
 
 ;; Clear the ZCT at the end of an operator execution.
 (define ___IterEndHook
   (specialise! IterEndHook <emitC2-zct>
     (lambda (next self name arg argty) 
     (list (next)
-	  "BLAST_ZCT(DECR_ITERATE_DEPTH());\n"
+	  "BLAST_ZCT(zct, DECR_ITERATE_DEPTH());\n"
 	  ))))
 ;; For testing purposes allowing multiple iterate work functions to be
 ;; active (depth first calls).  iterate_depth lets us know when it's
@@ -2252,7 +2252,7 @@ int main(int argc, char **argv)
       (let  ([tag (get-zct-type-tag self ty)])
 	(if gen-decr-called-from-free	  
 	    (next)
-	    (make-lines `("PUSH_ZCT(",(number->string tag)", ",ptr");\n"))
+	    (make-lines `("PUSH_ZCT(zct, ",(number->string tag)", ",ptr");\n"))
 	    )))))
 
 ;; DUPLICATED CODE:

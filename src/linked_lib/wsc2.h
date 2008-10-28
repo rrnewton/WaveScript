@@ -115,7 +115,7 @@ static inline void UNMARK_AS_PUSHED(void* ptr) {
   ARR_RC_DEREF(ptr) &= ~PUSHED_MASK;
 }
 // NOTE: THIS ASSUMES IDENTICAL RC METHOD FOR ARRAYS AND CONS CELLS!!
-static inline void PUSH_ZCT(typetag_t tag, void* ptr) {  
+static inline void PUSH_ZCT(zct_t* zct, typetag_t tag, void* ptr) {
   //printf("pushing %p tag %d, rc %u, (mask %u)\n", ptr, tag, GET_RC(ptr), PUSHED_MASK);
   // TEMPORARILY LOCKING FOR ACCESS TO CENTRALIZED ZCT:
 #ifdef WS_THREADED
@@ -149,7 +149,7 @@ unsigned long tag_histo[histo_len];
 
 // The depth argument to BLAST_ZCT is PRIOR to decrement (iterate_depth--). 
 // So we're looking for depth==1 not depth==0.
-static inline void BLAST_ZCT(int depth) {
+static inline void BLAST_ZCT(zct_t* zct, int depth) {
   int i;
   int freed = 0;
   int max_tag = 0;
@@ -358,10 +358,16 @@ void pin2cpuRange(int numcpus) {
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Declare the existence of each operator.
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  \
-  void fp##_wrapper(void* x) { \
-    fp(all_zcts[ind], *(ty*)x); \
-  }
+
+#ifdef WS_USE_ZCT
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(all_zcts[ind], *(ty*)x);  }
+#define ALLOC_ZCT(cnt) { all_zcts = malloc(cnt * sizeof(void*)); \
+                         for(i=0; i<cnt; i++) { all_zcts[i] = malloc(sizeof(zct_t)); (all_zcts[i])->count = 0; } }
+#else
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(*(ty*)x);  }
+#define ALLOC_ZCT() {}
+#endif
+
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
 #define TOTAL_WORKERS(count) { \
@@ -370,8 +376,7 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
    queue_table   = malloc(sizeof(wsfifo*) * count);  \
    cpu_affinity_table = malloc(sizeof(int) * count);  \
    total_workers = count; \
-   all_zcts = malloc(count * sizeof(void*)); \
-   for(i=0; i<count; i++) all_zcts[i] = malloc(sizeof(zct_t)); \
+   ALLOC_ZCT(count); \
 }
 // Register a function pointer for each worker.
 #define REGISTER_WORKER(ind, ty, fp) { \
@@ -394,8 +399,7 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 void* worker_thread(void* i) {
   int index = (int)(size_t)i;
   pthread_mutex_lock(&print_lock);
-  if (cpu_affinity_table[index] == ANY_CPU)
-    fprintf(stderr, "** Spawning worker thread %d\n", index);
+  if (cpu_affinity_table[index] == ANY_CPU) fprintf(stderr, "** Spawning worker thread %d\n", index);
   else fprintf(stderr, "** Spawning worker thread %d, cpu %d\n", index, cpu_affinity_table[index]);
 
   // In this mode we restrict the subset of CPUs that we use.

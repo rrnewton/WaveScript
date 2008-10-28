@@ -3,12 +3,12 @@
 COMP=.__wsc2Messages.txt
 RUN=.__runquery_output_wsc2.txt
 
+OPTIONS=$*
+
 #OPTIONS=" -gc boehm "
 #OPTIONS=" -gc none -threads "
 #OPTIONS=" -gc none -threads "
 #OPTIONS=" -gc refcount -threads "
-
-OPTIONS=$*
 
 #LAUNCHIT=""
 if [ "$LAUNCHIT" = "" ];
@@ -133,6 +133,8 @@ echo "============================================================"
 echo "testall_wsc2: Running SPLIT test on demo9i" >> $RUN
 echo "============================================================" >> $RUN
 # Then we split it:
+# [2008.10.28] This doesn't presently work with threads because of the "spawning worker thread" messages.
+# Even without that it still gets a double free error on the server side.
 if ! wsc2 $OPTIONS demo9i_simple_split.ws -split -exit-error
 then echo wsc2 Returned error code!; exit 1;  fi
 #$LAUNCHIT ./query_both.sh -n 2
