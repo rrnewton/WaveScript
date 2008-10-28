@@ -2065,15 +2065,21 @@ int main(int argc, char **argv)
 						(list 
 						 "/* We may need to start up the Boehm GC or do other standard WS init: */ \n"
 						 "wsInternalInit();\n"
-						 "// [2008.10.28] HACK:\n"
 						 (make-app "TOTAL_WORKERS" (list (number->string 
 										  (add1 (length opnames)))))
-						 "\n zct_t* zct = all_zcts[0];\n"
+						 ";\n"
+
+						 "// [2008.10.28] HACK, FIXME The static data needs to be allocated on each heap!!\n"
+						 "#ifdef WS_THREADED \n"
+						 "#ifdef WS_USE_ZCT \n"
+						 " zct_t* zct = all_zcts[0];\n"
+						 "#endif\n"
+						 "#endif\n"
 						 ;; FIXME: NUMBERS WILL NOT BE CONSECUTIVE:
-						 "REGISTER_WORKER(0, "(Type self '#())", BASE)\n"
+						 "REGISTER_WORKER(0, "(Type self '#())", BASE);\n"
 						 (map (lambda (i name ty) 
 							(if name
-							    (format "REGISTER_WORKER(~a, ~a, ~a)\n"
+							    (format "REGISTER_WORKER(~a, ~a, ~a);\n"
 								    (add1 i) (text->string (Type self ty)) name)
 							    ""))
 						   (iota (length opnames)) opnames opinputs)
@@ -2086,7 +2092,7 @@ int main(int argc, char **argv)
 						 (lines-text (apply append-lines (apply append opinit**)))
 						 ;; Finally, register all the work functions.
 												 
-						 "START_WORKERS()\n"
+						 "START_WORKERS();\n"
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 	

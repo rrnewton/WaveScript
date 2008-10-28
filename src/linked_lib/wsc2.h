@@ -261,7 +261,7 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 
 
 // Single threaded version:
-// ============================================================
+// ================================================================================
 // For one thread, these macros do nothing.  We don't use realtime for timers.
 #ifndef WS_THREADED
 #ifdef WS_USE_ZCT
@@ -278,7 +278,7 @@ unsigned long print_queue_status() { return 0; }
 #else
 
 // Thread-per-operator version, midishare FIFO implementation:
-// ============================================================
+// ================================================================================
 
 // For now I'm hacking this to be blocking, which involves adding
 // locks to a lock-free fifo implementation!
@@ -361,23 +361,37 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef WS_USE_ZCT
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(all_zcts[ind], *(ty*)x);  }
-#define ALLOC_ZCT(cnt) { all_zcts = malloc(cnt * sizeof(void*)); \
-                         for(i=0; i<cnt; i++) { all_zcts[i] = malloc(sizeof(zct_t)); (all_zcts[i])->count = 0; } }
 #else
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(*(ty*)x);  }
-#define ALLOC_ZCT() {}
 #endif
 
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
-#define TOTAL_WORKERS(count) { \
-   int i; \
-   worker_table  = malloc(sizeof(void*) * count);  \
-   queue_table   = malloc(sizeof(wsfifo*) * count);  \
-   cpu_affinity_table = malloc(sizeof(int) * count);  \
-   total_workers = count; \
-   ALLOC_ZCT(count); \
+
+/* #define TOTAL_WORKERS(count) { \ */
+/*    int i; \ */
+/*    worker_table  = malloc(sizeof(void*) * count);  \ */
+/*    queue_table   = malloc(sizeof(wsfifo*) * count);  \ */
+/*    cpu_affinity_table = malloc(sizeof(int) * count);  \ */
+/*    total_workers = count; \ */
+/*    ALLOC_ZCT(count); \ */
+/* } */
+
+void TOTAL_WORKERS(int count) { 
+   int i; 
+   worker_table  = malloc(sizeof(void*) * count);  
+   queue_table   = malloc(sizeof(wsfifo*) * count);  
+   cpu_affinity_table = malloc(sizeof(int) * count);  
+   total_workers = count; 
+#ifdef WS_USE_ZCT
+   all_zcts = malloc(count * sizeof(void*)); 
+   for(i=0; i<count; i++) { 
+     all_zcts[i] = malloc(sizeof(zct_t)); 
+     all_zcts[i]->count = 0; 
+  }
+#endif
 }
+
 // Register a function pointer for each worker.
 #define REGISTER_WORKER(ind, ty, fp) { \
    wsfifoinit(& fp##_queue, FIFO_CONST_SIZE, sizeof(ty));   \
@@ -385,16 +399,15 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
    queue_table[ind]  = & fp##_queue; \
    cpu_affinity_table[ind]  = ANY_CPU; \
 }
-// Start the scheduler.
-#define START_WORKERS() {                    \
-  int i;  \
-  for (i=0; i<total_workers; i++)  { \
-    pthread_t threadID; \
-    pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	\
-  } \
-}
+
 // Enqueue a datum in another thread's queue.
+#ifdef WS_USE_ZCT
+//#define EMIT(val, ty, fn) WS_INTERNAL_QUEUE(& fn##_queue, val, ty);
+//#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_internal_queue, val, ty);
 #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
+#else
+#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
+#endif
 
 void* worker_thread(void* i) {
   int index = (int)(size_t)i;
@@ -430,6 +443,15 @@ void* worker_thread(void* i) {
     wsfifoget_cleanup(queue_table[index]);
   }
   return 0;
+}
+
+// Start the scheduler.
+void START_WORKERS() {
+  int i;  
+  for (i=0; i<total_workers; i++)  { 
+    pthread_t threadID; 
+    pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
+  } 
 }
 
 // Returns the sum of the sizes of all queues.
