@@ -19,8 +19,7 @@ ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench -o MARMO
 
 gnuplot MARMOT.gp > MARMOT.eps
 ps2pdf MARMOT.eps
-
-#mv RESULTS.gp plot.gp
+mv benchlogs benchlogs_marmot
 
 
 
@@ -95,6 +94,7 @@ ws-benchmark bgsub3.bench -o BGSUB
 
 gnuplot BGSUB.gp > BGSUB.eps
 ps2pdf BGSUB.eps
+mv benchlogs benchlogs_bgsub
 
 ## ================================================================================ ##
 ## APPEND RESULTS:
