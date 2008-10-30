@@ -241,9 +241,13 @@ function dump_plot_script() {
     export BACKENDS
     #$REGIMENTD/backends/dump_plot_script.ss $FILE $RESULTS 
 
-    echo "Normalizing timings, sending output to new file: $NORM"
-    if ! $REGIMENTD/benchmarks/normalize_timings.ss $RESULTS $NORM;
-    then exit 1; fi
+    if [ "$NORMALIZE" != "" ];
+    then 
+      echo "Normalizing timings, sending output to new file: $NORM"
+      if ! $REGIMENTD/benchmarks/normalize_timings.ss $RESULTS $NORM; then exit 1; fi
+    else 
+      NORM=$RESULTS
+    fi
 
     # Terrible way to get the length:
     #len=`echo $BACKENDS | xargs -i echo | wc -l`
@@ -251,21 +255,15 @@ function dump_plot_script() {
     for bk in $BACKENDS; do len=$((len+1)); done
     echo;echo Generating plot script for $len backends: $BACKENDS
 
-#    cd $START
     cat >> $FILE <<EOF
 load "../shared.gp"
 EOF
-
     PLOTLINE="plot '"$NORM"' using 2:xtic(1) title col"
-
     i=3
-    #for bk in $BACKENDS; do
     while [ $i -lt $((len+2)) ]; do
-    #echo Backend: $i
 	PLOTLINE+=", '' using $i title col"
 	i=$((i+1))
     done
-
     echo $PLOTLINE >> $FILE
     echo ... finished
 }

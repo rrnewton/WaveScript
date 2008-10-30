@@ -9,7 +9,8 @@
 ## ================================================================================ ##
 echo;echo;echo " *** Running all application benchs.  Takes approx ?? minutes. ***"; echo; 
 
-
+# Graph normalized performance, not actual time:
+export NORMALIZE=true
 
 ## ================================================================================ ##
 ##   MARMOT BENCH

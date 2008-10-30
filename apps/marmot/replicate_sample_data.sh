@@ -3,6 +3,8 @@
 #TMPDAT=/tmp/duplicated_6sec_marmot_data_`date +%s`.raw
 TMPDAT=/tmp/duplicated_6sec_marmot_data.raw
 
+rm -rf $TMPDAT
+
   echo "  Making a big enough audio file."; echo
   cd "$REGIMENTD/apps/marmot";
   make testdata.txt

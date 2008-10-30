@@ -16,7 +16,7 @@ set xtics border in scale 1,0.5 nomirror
 # plot 'RESULTS.txt' using 2:xtic(1) title col, '' using 3 title col, '' using 4 title col
 
 # I don't know how to do autoscale but then make sure there's a little bit of a margin.
-#set yrange [*:*]
+set yrange [0:*]
 #set autoscale y
 #set borders 3
 set offsets 0, 0, 0.1, 0
