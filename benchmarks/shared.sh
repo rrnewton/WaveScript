@@ -129,7 +129,7 @@ function runmlton() {
   if wsmlton $FILE $MLTONOPTIONS $WSOPTIONS &> $DEST/mlton$1.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsmlton failed!"; exit -1; fi
   echo "   mlton: running... -n "$TUPS
-  if ! (time ./query.mlton.exe -n $TUPS) &> $DEST/mlton$1.$NAME"_"$LIMITCPUS.out; 
+  if ! (time ./query.mlton.exe @MLton gc-summary -- -n $TUPS) &> $DEST/mlton$1.$NAME"_"$LIMITCPUS.out; 
   then echo "failed!"; exit -1; fi
 }
 

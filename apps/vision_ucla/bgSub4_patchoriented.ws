@@ -20,6 +20,8 @@ Version4:
 
 TODO:
 
+Note:
+[2008.10.31] takes ~60ms collection time out of 2.4s under boehm.
 
  */
 

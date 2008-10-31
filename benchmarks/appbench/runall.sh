@@ -12,6 +12,8 @@ echo;echo;echo " *** Running all application benchs.  Takes approx ?? minutes. *
 # Graph normalized performance, not actual time:
 export NORMALIZE=true
 
+rm -rf benchlogs_marmot benchlogs_bgsub
+
 ## ================================================================================ ##
 ##   MARMOT BENCH
 ## ================================================================================ ##

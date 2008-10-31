@@ -89,7 +89,11 @@ for BENCH in $BENCHES; do
   echo;echo;echo " *** Running benchmark: $BENCH ***"; echo; 
 
   # Load the .bench file:
+  #============================================================#
   source $BENCH
+  ## TEMP ##
+  #BACKENDS=" mltonO3 "
+  #============================================================#
 
   if [ "$first_time" = "" ]; 
   then first_time="no"; 

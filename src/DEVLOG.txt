@@ -1878,3 +1878,25 @@ an fftw plan in demo4b.  But it looks like demo9i has also started
 leaking.  This is happening under both simple and deferred
 refcounting.  It's a problem with the -split run on the server side.
 
+[2008.10.31] {Where are the high GC costs?}
+
+Unfortunately, I had based my impression of them on some miscellaneous
+numbers I saw at some point in the past while running things by hand.
+Now that I'm systematically benchmarking, I'm seeing very low GC
+costs (under MLton)!  
+
+  marmot - negligable
+  bgsub  - negligable
+  pipeline - 7.5%
+  eeg - ~9.3% 10ms
+  pothole - 1.1% 
+  mfcc - 
+
+Marmot's run_3phases takes only 1.25 seconds under wsc2/boehm whereas
+it takes 5.5 seconds under mlton.  Yet it seems to do 240ms of
+collection under boehm (2400 collections), and only 30ms under mlton
+(118 collections).  I can't get as good measurements as I'd like from
+boehm, because it verbosely prints every collection rather than
+printing a summary.  (I looked the source... it doesn't seem to tally
+up a summary.  I'd have to hack the boehm source, which is pretty easy.)
+
