@@ -40,6 +40,7 @@ perfreport.pdf:
 machineinfo.tex:
 	echo '\begin{verbatim}' > machineinfo.tex
 	uname -a >> machineinfo.tex
+	echo "LD_PRELOAD: $LD_PRELOAD  CC: $CC" >> machineinfo.tex
 	echo '\end{verbatim}' >> machineinfo.tex
 
 wssvn.tex:

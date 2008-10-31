@@ -27,6 +27,8 @@ function print_results_header() {
   echo "## LD_PRELOAD: $LD_PRELOAD" >> $OUT
   echo "## NOSUDO: $NOSUDO" >> $OUT
   echo "## NICE: $NICE" >> $OUT
+  echo "## CC: $CC " >> $OUT
+  echo "## \`which icc\` = `which icc`" >> $OUT
   echo Benchmark $BACKENDS >> $OUT
 }
 
