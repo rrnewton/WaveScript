@@ -8,7 +8,7 @@
 (library (ws passes wavescope_bkend emit-tinyos)
   (export 
 	   ;emit-c2-generate-timed-code
-	   ;<emitC2>
+	   ;<emitC2-base>
 	   ;<emitC2-timed>
 	   <tinyos>
 	   <tinyos-timed>
@@ -35,7 +35,7 @@
 
 ;; Note: wstiny uses different memory layouts for things like arrays!
 
-(define-class <tinyos> (<emitC2>) 
+(define-class <tinyos> (<emitC2-base>) 
   ;; Has some new fields to store accumulated bits of text:
   (top-acc config-acc module-acc boot-acc impl-acc proto-acc cleanup-acc
    ;;This is a flag to tell us if printf has already been included.:

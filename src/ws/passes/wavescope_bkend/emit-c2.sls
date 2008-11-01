@@ -30,7 +30,7 @@
 (library (ws passes wavescope_bkend emit-c2)
   (export emit-c2 ;; The main entrypoint.
 	   ;emit-c2-generate-timed-code
-	   <emitC2>
+	   <emitC2-base>
 	   <emitC2-zct>
 	   <emitC2-nogc>
 	   <emitC2-timed>
@@ -77,7 +77,7 @@
 
   ;; An object of this class is a compiler pass.  It is not reentrant,
   ;; because it maintains state for the program it is compiling.
-  (define-class <emitC2> (<class>) 
+  (define-class <emitC2-base> (<class>) 
     (theprog ;; <- holds on to the program we're compiling
      struct-defs union-types ;; <- cache these two pieces of metadata from theprog
      free-fun-table ;; <- This contains a table mapping
@@ -90,7 +90,7 @@
      ))
 
   ;; We define a single top-level instance of our pass-class:
-  ;(define-object obj <emitC2>)
+  ;(define-object obj <emitC2-base>)
 
   ;; These are the methods:
   (define-generic build-free-fun-table!)
@@ -149,12 +149,12 @@
   (define-generic AllocHook)
   (define-generic ExtraKernelArgsHook)
 
-  (__spec add-include! <emitC2> (self fn)
+  (__spec add-include! <emitC2-base> (self fn)
     (define __ (printf "adding include ~s \n" fn))
     (define files (slot-ref self 'include-files))
     (unless (member fn files)
       (slot-set! self 'include-files (cons fn files))))
-  (__spec add-link! <emitC2> (self fn)
+  (__spec add-link! <emitC2-base> (self fn)
     (define files (slot-ref self 'link-files))
     (unless (member fn files)
       (slot-set! self 'link-files (cons fn files))))
@@ -237,7 +237,7 @@
 (define (emit-err where)
   (lambda (_) (error where "should not run into an emit!")))
 
-(__spec type->name <emitC2> (self ty)
+(__spec type->name <emitC2-base> (self ty)
   (match ty
     ;[#(,[flds] ...) (apply string-append "TupleOf_" flds)]
     [(Struct ,tuptyp) 
@@ -257,13 +257,13 @@
     [Timebase "Timebase"]
     ))
 
-(__spec ForeignSourceHook <emitC2> (self name callcode)
+(__spec ForeignSourceHook <emitC2-base> (self name callcode)
 	callcode)
 
 ;; This will be where we will add fresh allocations to the ZCT.
 ;; Takes a type and a 'text' object representing a simple expression.
 ;; Returns a 'lines' object.
-(__spec AllocHook <emitC2> (self ty simple-xp) null-lines)
+(__spec AllocHook <emitC2-base> (self ty simple-xp) null-lines)
 
 ;; This is the simplest way to package a source.
 (define (wrap-source-as-plain-thunk name code)
@@ -277,7 +277,7 @@
 
 (define (idk x)   (if (eq? x split-msg) (values null-lines idk) (make-lines x)))
 (define (nullk x) (if (eq? x split-msg) (values null-lines idk) null-lines))
-(__spec varbindk <emitC2> (self name typ)
+(__spec varbindk <emitC2-base> (self name typ)
   (define (split-k x)
     (if (eq? x 'split-msg) 
 	;; Further splits have no effect:
@@ -316,7 +316,7 @@
 ;================================================================================
 
   
-(__spec heap-type? <emitC2> (self ty) 
+(__spec heap-type? <emitC2-base> (self ty) 
         (c-heap-allocated? ty (slot-ref self 'struct-defs) (slot-ref self 'union-types)))
 
 ;; This builds a set of top level function definitions that free all
@@ -331,7 +331,7 @@
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
-(__spec build-free-fun-table! <emitC2> (self heap-types)
+(__spec build-free-fun-table! <emitC2-base> (self heap-types)
   (define fun-def-acc '()) ;; mutated below  
   (define proto-acc '()) ;; mutated below
 
@@ -433,7 +433,7 @@
 ;; These underlying methods do the actual code generation:
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 ;; Returns lines representing a block of code to do refcount incr.
-(__spec gen-incr-code <emitC2> (self ty ptr msg)
+(__spec gen-incr-code <emitC2-base> (self ty ptr msg)
   (match ty
     ;; Both of these types just decr the -1 offset:
     [(Array ,elt) (make-lines `("INCR_ARR_RC(" ,ptr"); /* ",msg", type: ",(format "~a" ty)" */\n"))]
@@ -453,7 +453,7 @@
 
 ;; "ptr" should be text representing a C lvalue
 ;; returns "lines"
-(__spec gen-decr-code <emitC2> (self ty ptr msg)
+(__spec gen-decr-code <emitC2-base> (self ty ptr msg)
   (match ty
     [(,Container ,elt) (guard (memq Container '(Array List)))
      (define decr (if (eq? Container 'Array) "DECR_ARR_RC_PRED" "DECR_CONS_RC_PRED"))
@@ -476,7 +476,7 @@
 ;; This generates free code for a type (using free-fun-table).
 ;; Should only be called for types that are actually heap allocated.
 (define _ig 
-  (specialise! gen-free-code <emitC2>
+  (specialise! gen-free-code <emitC2-base>
      (debug-return-contract lines?
        (lambda (next self ty ptr)
 	 (next)
@@ -491,11 +491,11 @@
 ;; These methods represent the actions to take when encountering local or heap refs.
 ;; All return a block of code in a "lines" datatype.
 ;; The default version represents plain old reference counting.
-(__spec incr-local-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "local"))
-(__spec decr-local-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "local"))
+(__spec incr-local-refcount <emitC2-base> (self ty ptr) (gen-incr-code self ty ptr "local"))
+(__spec decr-local-refcount <emitC2-base> (self ty ptr) (gen-decr-code self ty ptr "local"))
 
-(__spec incr-heap-refcount <emitC2> (self ty ptr) (gen-incr-code self ty ptr "heap"))
-(__spec decr-heap-refcount <emitC2> (self ty ptr) (gen-decr-code self ty ptr "heap"))
+(__spec incr-heap-refcount <emitC2-base> (self ty ptr) (gen-incr-code self ty ptr "heap"))
+(__spec decr-heap-refcount <emitC2-base> (self ty ptr) (gen-decr-code self ty ptr "heap"))
 
 
 (define (ifthreads block)
@@ -504,23 +504,23 @@
 		(make-lines "#endif\n")
 		))
 ;; We don't need to worry about queue refcounts in the queue-free depth-first single thread context.
-(__spec incr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
-(__spec decr-queue-refcount <emitC2> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
+(__spec incr-queue-refcount <emitC2-base> (self ty ptr) (ifthreads (gen-incr-code self ty ptr "queue")))
+(__spec decr-queue-refcount <emitC2-base> (self ty ptr) (ifthreads (gen-decr-code self ty ptr "queue")))
 
 ;; TODO -- not used yet
-(__spec potential-collect-point <emitC2> (self) null-lines)
+(__spec potential-collect-point <emitC2-base> (self) null-lines)
 
 
 ;; TODO -- not used yet
 ;; Do anything special that's required as a value is sent off through an emit.
 ;; Currently, with a pure depth-first strategy, reference count does not need to be affected by "emit".
-(__spec say-goodbye <emitC2> (self ty ptr) null-lines)
+(__spec say-goodbye <emitC2-base> (self ty ptr) null-lines)
 
 
 ;================================================================================
 
 ;; [2007.12.04] TEMP!!!!! SHOULD NOT DUPLICATE CODE
-(__spec Const <emitC2> (self datum wrap)
+(__spec Const <emitC2-base> (self datum wrap)
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
 
@@ -580,7 +580,7 @@
 
 
 
-(__spec Type <emitC2> (self ty)
+(__spec Type <emitC2-base> (self ty)
   (match ty ;; No recursion!
     [Bool    "ws_bool_t"]
     [Int     "int"]
@@ -622,7 +622,7 @@
 
 
 ;; Generate a struct definition.
-(__spec StructDef <emitC2> (self entry)
+(__spec StructDef <emitC2-base> (self entry)
      (match entry
        [(,(sym2str -> name) (,[sym2str -> fld*] ,typ*) ...)
 	(let ([tmpargs (map (lambda (_) (sym2str (unique-name 'tmp))) fld*)]
@@ -634,7 +634,7 @@
             ))]))
 
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
-(__spec type->printf-flag <emitC2> (self ty)
+(__spec type->printf-flag <emitC2-base> (self ty)
   (match ty
     [#()    "()"]
     [String "%s"]
@@ -658,11 +658,11 @@
 
 
 ;(define Var mangle-name)
-(__spec Var <emitC2> (self x) (sym2str x))
+(__spec Var <emitC2-base> (self x) (sym2str x))
 
 ;; These are the expressions that make valid operands (post flattening)
 ;;   .returns A string.  Could return an "expression".
-(__spec Simple <emitC2> (self expr)
+(__spec Simple <emitC2-base> (self expr)
   (match expr
     [nulltimebase (Const self 'nulltimebase id)]
     [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var self v)]
@@ -682,10 +682,10 @@
     ;['() (error 'Simple "null list without type annotation")]
        
     [(assert-type ,_ ,[x]) x]
-    [,else (error 'Simple "<emitC2> not simple expression: ~s" else)]
+    [,else (error 'Simple "<emitC2-base> not simple expression: ~s" else)]
     ))
 
-(__spec TyAndSimple <emitC2> (self)
+(__spec TyAndSimple <emitC2-base> (self)
   (lambda (expr)
     (match expr
       [(assert-type ,ty ,_)  (values ty (Simple self expr))])))
@@ -698,7 +698,7 @@
 ;; .param ty      Type of outgoing values.
 ;; .param incr?   Should the refcount be incremented on the way out?
 ;; .returns lines representing command-code
-(__spec Emit <emitC2> (self down* ty)
+(__spec Emit <emitC2-base> (self down* ty)
   ;;(ASSERT (not (null? down*)))
   (lambda (expr)
     (ASSERT simple-expr? expr)
@@ -708,7 +708,7 @@
 		    down*)))))
 
 ;; This is used for local bindings.  But it does not increment the reference count itself.
-(__spec Binding <emitC2> (self)
+(__spec Binding <emitC2-base> (self)
   (debug-return-contract Binding lines?
    (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
@@ -729,12 +729,12 @@
 
 ;; This is there for the benefit of the java backend.  It needs to
 ;; have an initialized value of some kind, even if its null.
-(__spec DummyInit <emitC2> (self ty) "")
+(__spec DummyInit <emitC2-base> (self ty) "")
 
 ;; This is used for global and static bindings.
 ;; This separately returns the type decl and the initialization code.
 ;; This version also DOES inject a refcount incr.
-(__spec SplitBinding <emitC2> (self)
+(__spec SplitBinding <emitC2-base> (self)
   (lambda (cb)
     ;(define val (Value (lambda (_) (error 'Binding "should not run into an emit!"))))
     (match cb      
@@ -814,7 +814,7 @@
 
 
 ;; For the x86 version we currently don't statically allocate anything.
-(__spec StaticAllocate <emitC2> (self lhs ty rhs)
+(__spec StaticAllocate <emitC2-base> (self lhs ty rhs)
   (define-values (decl initcode)
     ((SplitBinding self) (list lhs ty rhs)))
   ;; We do need to add a refcount increment.  Something statically
@@ -827,12 +827,12 @@
 	  ))
 
 #;
-(__spec Let <emitC2> (self form recur)
+(__spec Let <emitC2-base> (self form recur)
   (match form     
     [(([,lhs ,ty ,rhs]) ,[recur -> bod])
      (append-lines ((Binding self) (list lhs ty rhs))
 		   (ASSERT lines? bod))]))
-(__spec Let <emitC2> (self form recur)
+(__spec Let <emitC2-base> (self form recur)
   (match form         
     [(([,lhs ,ty ,rhs]) ,_bod)
 
@@ -872,7 +872,7 @@
 	  (let ([result (append-lines bind* init* bod)])
 	    (make-lines (block "" (lines-text result)))))])]))
 
-(__spec Effect <emitC2> (self)
+(__spec Effect <emitC2-base> (self)
   (debug-return-contract Effect lines?
   (lambda (xp)
     (define (Loop x) ((Effect self) x)) ;; Eta reducing this BREAKS things.
@@ -967,7 +967,7 @@
 
 ;; The continuation k is invoked on a piece of text representing the return expression.
 ;; k is expected to return text of the form "lines" that stores away this result.
-(__spec Value <emitC2> (self)
+(__spec Value <emitC2-base> (self)
   (debug-return-contract Value lines?
    (lambda (xp kont)
      (define (recur x) ((Value self) x kont))
@@ -1097,7 +1097,7 @@
 
 
 ;(define (array-constructor-codegen self len init ty kont)
-(__spec array-constructor-codegen <emitC2> (self len init ty kont)
+(__spec array-constructor-codegen <emitC2-base> (self len init ty kont)
   (match ty
     [(Array ,elt)
 					;(k `("arrayMake(sizeof(",elt"), "len", "init")"))
@@ -1175,7 +1175,7 @@
 	    [,ty (error 'wszero? "Not yet handling zeros for this type: ~s, obj ~s" ty obj)])]))  
   
 (define __
-  (specialise! PrimApp <emitC2> 
+  (specialise! PrimApp <emitC2-base> 
    ;; [2008.05.10] FIXME: This failed the return contract for the __real__ case.
    (debug-return-contract PrimApp lines?
      (lambda (next self app kont mayberetty)
@@ -1473,7 +1473,7 @@
 
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
-(__spec BuildTimerSourceDriver <emitC2> (self srcname* srccode* srcrates*)
+(__spec BuildTimerSourceDriver <emitC2-base> (self srcname* srccode* srcrates*)
    (define (normal-rate? r) (and r (not (zero? r))))
    (ASSERT "BuildTimerSourceDriver: must have same number of names, code, and rates"
 	   all-equal?
@@ -1701,7 +1701,7 @@ int main(int argc, char **argv)
 
 
 ;; Returns a list of code pieces, which can be any of the "c-" datatypes above.
-(__spec Source <emitC2> (self xp)
+(__spec Source <emitC2-base> (self xp)
    (match xp
     [((name ,nm) (output-type ,ty) (code ,cd)  (outgoing ,down* ...))
      (match cd 
@@ -1742,16 +1742,16 @@ int main(int argc, char **argv)
 
 
 ;; Two hooks that return 'text':
-(__spec IterStartHook <emitC2> (self name arg argty) "")
-(__spec IterEndHook   <emitC2> (self name arg argty) "")
+(__spec IterStartHook <emitC2-base> (self name arg argty) "")
+(__spec IterEndHook   <emitC2-base> (self name arg argty) "")
 
-(__spec ExtraKernelArgsHook <emitC2> (self) '())
+(__spec ExtraKernelArgsHook <emitC2-base> (self) '())
 
 ;; A work function for each iterate.
 ;; Returns two values both of type 'lines'
 ;;  (1) A function prototype
 ;;  (2) A function definition
-(__spec GenWorkFunction <emitC2> (self name arg vqarg argty code)
+(__spec GenWorkFunction <emitC2-base> (self name arg vqarg argty code)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
@@ -1768,7 +1768,7 @@ int main(int argc, char **argv)
 
 ;; A cut point on the server, currently only coming FROM the network.
 ;; Returns decls, top lvl binds, init code
-(__spec Cutpoint <emitC2> (self type in out)
+(__spec Cutpoint <emitC2-base> (self type in out)
    ;; Cutpoint from tinyOS node:
    (let* ([local (unique-name "local")]
 	  [_local (Var self local)])
@@ -1817,7 +1817,7 @@ int main(int argc, char **argv)
 
 
 ;; .returns three top-level code blocks: definition (lines), prototypes (list of lines), init-code
-(__spec Operator <emitC2> (self op)
+(__spec Operator <emitC2-base> (self op)
   (define (Simp x) (Simple self x))
   (match op
     [(iterate (name ,name) 
@@ -1977,7 +1977,7 @@ int main(int argc, char **argv)
   ;; Return an alist of files:
   (vector (list (list (emitC2-output-target) text))
 	  void))
-(__spec BuildOutputFiles <emitC2> (self includes freefundefs state ops init driver)
+(__spec BuildOutputFiles <emitC2-base> (self includes freefundefs state ops init driver)
 	(BuildOutputFiles_helper self includes freefundefs state ops init driver))
 
 (define emitC2-output-target (make-parameter "query.c"))
@@ -1985,7 +1985,7 @@ int main(int argc, char **argv)
 (define (cutpoint? op)  (eq? (car op) 'cutpoint))
 
 ;; For now the only sorting we do is to bring Cutpoints to the front:
-(__spec SortOperators <emitC2> (self ops) 
+(__spec SortOperators <emitC2-base> (self ops) 
  (define-values (cps other) (partition cutpoint? ops))
  ;; Hack, also reverse the others for now... 
  ;; In the future we should topologically sort them here:
@@ -1993,7 +1993,7 @@ int main(int argc, char **argv)
   
 ;; Run the pass and generate C code:
 ;; Same return type as BuildOutputFiles
-(__spec Run <emitC2> (self)
+(__spec Run <emitC2-base> (self)
   (let* ([prog (slot-ref self 'theprog)]
 	 ;; Run build-free-fun-table! before doing other codegen:
 	 [freefundefs (build-free-fun-table! self (cdr (ASSERT (project-metadata 'heap-types prog))))])
@@ -2122,7 +2122,7 @@ int main(int argc, char **argv)
 
 
 ;; Constructor, parse out the pieces of the program.
-(__spec initialise <emitC2> (self prog)
+(__spec initialise <emitC2-base> (self prog)
   (slot-set! self 'free-fun-table '())
   (slot-set! self 'struct-defs (cdr (project-metadata 'struct-defs prog)))
   (slot-set! self 'union-types (cdr (project-metadata 'union-types prog)))
@@ -2143,7 +2143,7 @@ int main(int argc, char **argv)
 ;;================================================================================
 
 ;; This is for use with a conservative collector.  No reference counting.
-(define-class <emitC2-nogc> (<emitC2>) ())
+(define-class <emitC2-nogc> (<emitC2-base>) ())
 ;; Very simple, just don't insert any refcounting code:
 (__specreplace incr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
@@ -2172,7 +2172,7 @@ int main(int argc, char **argv)
 
 ;;================================================================================
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
-(define-class <emitC2-zct> (<emitC2>) (zct-types zct-init?))
+(define-class <emitC2-zct> (<emitC2-base>) (zct-types zct-init?))
 
 (__spec initialise <emitC2-zct> (self prog)
   (slot-set! self 'zct-types '())
@@ -2313,7 +2313,7 @@ int main(int argc, char **argv)
 ;; ================================================================================
 
 ;; This variant enables profiling.
-(define-class <emitC2-timed> (<emitC2>) ())
+(define-class <emitC2-timed> (<emitC2-base>) ())
 
 (define (print-w-time2 prefix)
   (let ([tmp (sym2str (unique-name "tmp"))])

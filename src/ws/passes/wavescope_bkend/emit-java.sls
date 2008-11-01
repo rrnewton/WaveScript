@@ -22,7 +22,7 @@
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )
   
-(define-class <java> (<emitC2>) (wserror-acc import-acc))
+(define-class <java> (<emitC2-base>) (wserror-acc import-acc))
 
 (define sym2str symbol->string)
 

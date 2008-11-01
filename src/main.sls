@@ -1312,7 +1312,7 @@
 				      ;[wavescript-compiler-c      <emitC2-timed>]
 				 [wavescript-compiler-c 
 				       (match (wsc2-gc-mode)
-					 [refcount <emitC2>]
+					 [refcount <emitC2-base>]
 					 [deferred <emitC2-zct>]
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
@@ -1589,7 +1589,7 @@
 		  (last-few-steps node-part <tinyos>)
 		  ;(printf "============================================================\n")
 		  (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
-		    (last-few-steps server-part <emitC2>)
+		    (last-few-steps server-part <emitC2-base>)
 		    (printf "============================================================\n"))
 		  (unless (file-exists? (** (or (getenv "TOSROOT") "") "/support/sdk/c/serialpacket.h"))
 		    (error 'wstiny "you need to run 'make' in ~a" 
