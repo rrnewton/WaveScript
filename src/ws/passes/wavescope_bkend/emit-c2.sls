@@ -30,6 +30,7 @@
 (library (ws passes wavescope_bkend emit-c2)
   (export emit-c2 ;; The main entrypoint.
 	   ;emit-c2-generate-timed-code
+	   <emitC2>
 	   <emitC2-base>
 	   <emitC2-zct>
 	   <emitC2-nogc>
@@ -1742,8 +1743,8 @@ int main(int argc, char **argv)
 
 
 ;; Two hooks that return 'text':
-(__spec IterStartHook <emitC2-base> (self name arg argty) "")
-(__spec IterEndHook   <emitC2-base> (self name arg argty) "")
+(__spec IterStartHook <emitC2-base> (self name arg argty down*) "")
+(__spec IterEndHook   <emitC2-base> (self name arg argty down*) "")
 
 (__spec ExtraKernelArgsHook <emitC2-base> (self) '())
 
@@ -1751,7 +1752,7 @@ int main(int argc, char **argv)
 ;; Returns two values both of type 'lines'
 ;;  (1) A function prototype
 ;;  (2) A function definition
-(__spec GenWorkFunction <emitC2-base> (self name arg vqarg argty code)
+(__spec GenWorkFunction <emitC2-base> (self name arg vqarg argty code down*)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
@@ -1761,9 +1762,9 @@ int main(int argc, char **argv)
     (list (block `("void ",(Var self name) "(",extra ,_argty" ",_arg")")
 		 (list
 		  "char "(Var self vqarg)";\n"
-		 (IterStartHook self name arg argty)
+		 (IterStartHook self name arg argty down*)
 		 (lines-text code)
-		 (IterEndHook self name arg argty)))
+		 (IterEndHook self name arg argty down*)))
 	  "\n"))))
 
 ;; A cut point on the server, currently only coming FROM the network.
@@ -1829,7 +1830,7 @@ int main(int argc, char **argv)
        [(let (,[(SplitBinding self) -> bind* init*] ...)
 	  (lambda (,v ,vq) (,vty (VQueue ,outty)) ,bod))
 	(let-values ([(proto def)
-		      (GenWorkFunction self name v vq vty ((Value self) bod nullk))])
+		      (GenWorkFunction self name v vq vty ((Value self) bod nullk) down*)])
 	  (values def (cons proto bind*) init*))])]
 
     [(cutpoint (name ,_) (output-type ,type) (code ,__) (incoming ,in) (outgoing ,out))
@@ -2140,10 +2141,16 @@ int main(int argc, char **argv)
   (define obj (make-object class prog))
   (Run obj))
 
+
 ;;================================================================================
 
+(define-class <emitC2> (<emitC2-base>) ())
+
+;;================================================================================
+
+
 ;; This is for use with a conservative collector.  No reference counting.
-(define-class <emitC2-nogc> (<emitC2-base>) ())
+(define-class <emitC2-nogc> (<emitC2>) ())
 ;; Very simple, just don't insert any refcounting code:
 (__specreplace incr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
 (__specreplace decr-local-refcount <emitC2-nogc> (self ty ptr) null-lines)
@@ -2172,7 +2179,7 @@ int main(int argc, char **argv)
 
 ;;================================================================================
 ;;; UNFINISHED: this will enable deferred refcounting using a ZCT (zero-count-table)
-(define-class <emitC2-zct> (<emitC2-base>) (zct-types zct-init?))
+(define-class <emitC2-zct> (<emitC2>) (zct-types zct-init?))
 
 (__spec initialise <emitC2-zct> (self prog)
   (slot-set! self 'zct-types '())
@@ -2209,16 +2216,17 @@ int main(int argc, char **argv)
 ;; Clear the ZCT at the end of an operator execution.
 (define ___IterEndHook
   (specialise! IterEndHook <emitC2-zct>
-    (lambda (next self name arg argty) 
+    (lambda (next self name arg argty down*) 
     (list (next)
 	  "BLAST_ZCT(zct, DECR_ITERATE_DEPTH());\n"
+	  ;"RELEASE_FIFO();\n"
 	  ))))
 ;; For testing purposes allowing multiple iterate work functions to be
 ;; active (depth first calls).  iterate_depth lets us know when it's
 ;; safe to blast the ZCT.
 (define ___IterStartHook
   (specialise! IterStartHook <emitC2-zct>
-    (lambda (next self name arg argty)
+    (lambda (next self name arg argty down*)
     (list "INCR_ITERATE_DEPTH();\n"
 	  (next)))))
 
@@ -2290,7 +2298,7 @@ int main(int argc, char **argv)
 ;; This is unnecessary duplicated code:
 ;; It's annoying that I can't change the arguments when calling the parent method (next).
 #;
-(__specreplace GenWorkFunction <emitC2-zct> (self name arg vqarg argty code)
+(__specreplace GenWorkFunction <emitC2-zct> (self name arg vqarg argty code down*)
   (define _arg (Var self arg))
   (define _argty (Type self argty))
   (values
@@ -2299,9 +2307,9 @@ int main(int argc, char **argv)
     (list (block `("void ",(Var self name) "(zct_t* zct, ",_argty" ",_arg")")
 		 (list
 		  "char "(Var self vqarg)";\n"
-		 (IterStartHook self name arg argty)
+		 (IterStartHook self name arg argty down*)
 		 (lines-text code)
-		 (IterEndHook self name arg argty)))
+		 (IterEndHook self name arg argty down*)))
 	  "\n"))))
 
 ;;================================================================================
@@ -2313,7 +2321,7 @@ int main(int argc, char **argv)
 ;; ================================================================================
 
 ;; This variant enables profiling.
-(define-class <emitC2-timed> (<emitC2-base>) ())
+(define-class <emitC2-timed> (<emitC2>) ())
 
 (define (print-w-time2 prefix)
   (let ([tmp (sym2str (unique-name "tmp"))])
@@ -2328,13 +2336,13 @@ int main(int argc, char **argv)
 
 (define ____IterStartHook
   (specialise! IterStartHook <emitC2-timed>
-    (lambda (next self name arg argty)
+    (lambda (next self name arg argty down*)
       (list (next)	  	    
 	    (print-w-time2 (list "Start "(sym2str name)" "))))))
 
 (define ____IterEndHook
   (specialise! IterEndHook <emitC2-timed>
-    (lambda (next self name arg argty) 
+    (lambda (next self name arg argty down*) 
     (list (next)
 	  (print-w-time2 (list "End "(sym2str name)" "))
 	  ))))

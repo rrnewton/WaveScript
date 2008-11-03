@@ -475,7 +475,7 @@
 
 (define ___IterStartHook
   (specialise! IterStartHook <javaME>  
-    (lambda (next self name arg argty)
+    (lambda (next self name arg argty down*)
     ;(LoadPrintf self)
     (list (next)	  
 	  ;;(format "printf(\"(Start ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)
@@ -484,7 +484,7 @@
 	  ))))
 (define ___IterEndHook
   (specialise! IterEndHook <javaME>
-    (lambda (next self name arg argty) 
+    (lambda (next self name arg argty down*) 
     ;(LoadPrintf self)
     (list (next)
 	  ;;(format "printf(\"(End   ~a %u %u)\\n\", overflow_count, call Cntr.get());\n" name)

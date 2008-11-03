@@ -1,4 +1,5 @@
 
+// Include the lock free fifo:
 #include "lffifo.c"
 
 //################################################################################//
@@ -20,6 +21,9 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
   pthread_cond_init (& ff->cond, NULL); 
   pthread_mutex_init(& ff->mut, NULL); 
 }
+
+// This was an attempt to only lock when we enqueue the first element
+// (that needs to send a wake-up signal).  
 
 // TEMP replacing predicate (size==0) with (1).
 // This will send a signal on every enqueue.

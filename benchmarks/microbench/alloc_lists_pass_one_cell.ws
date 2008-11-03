@@ -17,6 +17,13 @@ First run, 500K tuples, bufsize 100.  1GB of allocation, icc.
   (scheme ikarus, ~88s)
   (scheme chez O2, 225ms?? using skip... no 40s using -t)
 
+Hmm... just throwing in random number generation adds .5 s to wsc2 but brings caml up to 2.8s?
+Only brings mlton up to 4.3s.
+
+As long as the set of live data is small, copying collection will be
+very fast.
+
+
 
 
  */
@@ -39,7 +46,7 @@ fun last_cell(ls) {
 
 fun worker(s) 
   iterate _ in s {
-    ls = List:build(bufsize, fun(i) i);
+    ls = List:build(bufsize, fun(i) randomI(1000));
     emit last_cell(ls);
   }
 

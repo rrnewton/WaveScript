@@ -290,9 +290,14 @@ unsigned long print_queue_status() { return 0; }
 #include <pthread.h>
 #endif
 
+// Pick a FIFO implementation:
+//============================================================
 //#include "midishare_fifo/wsfifo.c"
 #include "simple_wsfifo.c"
+//#include "twostage_wsfifo.c"
 //#include "simple_bounded_wsfifo2.c"
+//============================================================
+
 #define FIFO_CONST_SIZE 100
 #define ANY_CPU -1
 
@@ -360,9 +365,10 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 // Declare the existence of each operator.
 
 #ifdef WS_USE_ZCT
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(all_zcts[ind], *(ty*)x);  }
+// Here we need to pass a ZCT also, we grab it from the global table.
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  void fp##_wrapper(void* x) { fp(all_zcts[ind], *(ty*)x);  }
 #else
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) {  fp(*(ty*)x);  }
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
 #endif
 
 // Declare number of worker threads.

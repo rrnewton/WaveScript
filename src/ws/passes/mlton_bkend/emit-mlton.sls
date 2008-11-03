@@ -1300,8 +1300,7 @@
       [logF Real32.Math.ln]
       [logD Real64.Math.ln]
 
-      ;; How to convert a word to an int?
-      ;[randomI "(fn n => Random.rand() )"]
+      [randomI "(fn n => Int.mod (Word.toInt (MLton.Random.rand ()),  n))"]
 
       [List:append List.@]
       [List:zip ListPair.zip]
