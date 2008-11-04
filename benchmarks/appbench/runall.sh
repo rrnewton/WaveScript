@@ -18,7 +18,7 @@ rm -rf benchlogs_marmot benchlogs_bgsub
 ##   MARMOT BENCH
 ## ================================================================================ ##
 
-ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench -o MARMOT
+ws-benchmark marmot1.bench marmot2.bench marmot3.bench marmot_all.bench -o MARMOT || exit 1
 
 gnuplot MARMOT.gp > MARMOT.eps
 ps2pdf MARMOT.eps
@@ -93,7 +93,7 @@ unset OMITMLTON
 ##   UCLA Computer Vision
 ## ================================================================================ ##
 
-ws-benchmark bgsub3.bench -o BGSUB
+ws-benchmark bgsub3.bench -o BGSUB || exit 1
 
 gnuplot BGSUB.gp > BGSUB.eps
 ps2pdf BGSUB.eps
