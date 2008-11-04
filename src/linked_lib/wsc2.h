@@ -276,6 +276,10 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 #define START_WORKERS()              {}
 unsigned long print_queue_status() { return 0; }
 
+// There are (currently) no communication queues in the single threaded version.
+#define GRAB_WRITEFIFO(name)    {}
+#define RELEASE_WRITEFIFO(name) {}
+
 #else
 
 // Thread-per-operator version, midishare FIFO implementation:
@@ -364,21 +368,21 @@ void pin2cpuRange(int numcpus) {
 
 pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
-// Declare the existence of each operator.
-
-#ifdef WS_USE_ZCT
-// Here we need to pass a ZCT also, we grab it from the global table.
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  void fp##_wrapper(void* x) { fp(all_zcts[ind], *(ty*)x);  }
-#else
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
-#endif
-
 // These are hooks that we can use to lock the fifo for the entire run of an operator... if we like.
 // These pass through the name of the queue.
 #define GRAB_WRITEFIFO(name)    grab_wsfifo((& name##_queue))
 #define RELEASE_WRITEFIFO(name) release_wsfifo((& name##_queue))
 //#define GRAB_READFIFO(name)    {}
 //#define RELEASE_READFIFO(name) {}
+
+
+// Declare the existence of each operator.
+#ifdef WS_USE_ZCT
+// Here we need to pass a ZCT also, we grab it from the global table.
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  void fp##_wrapper(void* x) { fp(all_zcts[ind], *(ty*)x);  }
+#else
+#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
+#endif
 
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
