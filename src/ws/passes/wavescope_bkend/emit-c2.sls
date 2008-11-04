@@ -1743,8 +1743,14 @@ int main(int argc, char **argv)
 
 
 ;; Two hooks that return 'text':
-(__spec IterStartHook <emitC2-base> (self name arg argty down*) "")
-(__spec IterEndHook   <emitC2-base> (self name arg argty down*) "")
+(__spec IterStartHook <emitC2-base> (self name arg argty down*) 
+	(map (lambda (down)
+		 (list "GRAB_WRITEFIFO("(symbol->string down)");\n"))
+	    down*))
+(__spec IterEndHook   <emitC2-base> (self name arg argty down*) 
+	(map (lambda (down)
+		 (list "RELEASE_WRITEFIFO("(symbol->string down)");\n"))
+	    down*))
 
 (__spec ExtraKernelArgsHook <emitC2-base> (self) '())
 
@@ -2218,16 +2224,17 @@ int main(int argc, char **argv)
   (specialise! IterEndHook <emitC2-zct>
     (lambda (next self name arg argty down*) 
     (list (next)
+	  ;; "FIFO_COPY_OUTGOING();\n"
 	  "BLAST_ZCT(zct, DECR_ITERATE_DEPTH());\n"
-	  ;"RELEASE_FIFO();\n"
 	  ))))
+
 ;; For testing purposes allowing multiple iterate work functions to be
 ;; active (depth first calls).  iterate_depth lets us know when it's
 ;; safe to blast the ZCT.
 (define ___IterStartHook
   (specialise! IterStartHook <emitC2-zct>
     (lambda (next self name arg argty down*)
-    (list "INCR_ITERATE_DEPTH();\n"
+    (list "INCR_ITERATE_DEPTH();\n"	  
 	  (next)))))
 
 (define gen-decr-called-from-free #f) ;; modified with fluid-let

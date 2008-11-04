@@ -269,6 +269,7 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 #else
 #define EMIT(val, ty, fn) fn(val)
 #endif
+
 #define TOTAL_WORKERS(count)         {}
 #define REGISTER_WORKER(ind, ty, fp) {}
 #define DECLARE_WORKER(ind, ty, fp) 
@@ -293,9 +294,10 @@ unsigned long print_queue_status() { return 0; }
 // Pick a FIFO implementation:
 //============================================================
 //#include "midishare_fifo/wsfifo.c"
-#include "simple_wsfifo.c"
+//#include "simple_wsfifo.c"
 //#include "twostage_wsfifo.c"
 //#include "simple_bounded_wsfifo2.c"
+#include "c_fifos/bits/list_fifo.c"
 //============================================================
 
 #define FIFO_CONST_SIZE 100
@@ -371,6 +373,13 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
 #endif
 
+// These are hooks that we can use to lock the fifo for the entire run of an operator... if we like.
+// These pass through the name of the queue.
+#define GRAB_WRITEFIFO(name)    grab_wsfifo((& name##_queue))
+#define RELEASE_WRITEFIFO(name) release_wsfifo((& name##_queue))
+//#define GRAB_READFIFO(name)    {}
+//#define RELEASE_READFIFO(name) {}
+
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
 
@@ -443,10 +452,16 @@ void* worker_thread(void* i) {
   // We don't need a "select":
   while (1) 
   {
+    // [2008.11.04] We need to grab/release for reading also..
+    // But, once we grab, we should dequeue until its empty before releasing...
+    //grab_wsfifo(queue_table[index]);
+
     // Accesses to these two tables are read-only:
     void* ptr = wsfifoget(queue_table[index]);
     (*worker_table[index])(ptr);
     wsfifoget_cleanup(queue_table[index]);
+
+    //release_wsfifo(queue_table[index]);
   }
   return 0;
 }

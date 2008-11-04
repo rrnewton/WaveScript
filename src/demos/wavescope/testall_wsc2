@@ -135,13 +135,17 @@ echo "============================================================" >> $RUN
 # Then we split it:
 # [2008.10.28] This doesn't presently work with threads because of the "spawning worker thread" messages.
 # Even without that it still gets a double free error on the server side.
-if ! wsc2 $OPTIONS demo9i_simple_split.ws -split -exit-error
-then echo wsc2 Returned error code!; exit 1;  fi
-#$LAUNCHIT ./query_both.sh -n 2
-./query_client.exe 2>> /dev/stdout | ($LAUNCHIT ./query_server.exe -n 2  2>> /dev/stdout) >> $RUN
-RETVAL=$?
-echo Query returned with val: $RETVAL
-if [ "$RETVAL" != "0" ]; then exit 1; fi
+# 
+# [2008.11.04] Right now we conservatively skip this if OPTIONS != ""
+if [ "$OPTIONS" = "" ]; then
+  if ! wsc2 $OPTIONS demo9i_simple_split.ws -split -exit-error
+  then echo wsc2 Returned error code!; exit 1;  fi
+       #$LAUNCHIT ./query_both.sh -n 2
+       ./query_client.exe 2>> /dev/stdout | ($LAUNCHIT ./query_server.exe -n 2  2>> /dev/stdout) >> $RUN
+       RETVAL=$?
+       echo Query returned with val: $RETVAL
+       if [ "$RETVAL" != "0" ]; then exit 1; fi
+fi
 
 go "demo10a_simple_merge.ws"
 go "demo10b_repeated_rewindow.ws"
