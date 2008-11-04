@@ -428,6 +428,7 @@ void TOTAL_WORKERS(int count) {
 #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
 #endif
 
+// This defines the main loop for each WS thread.  Grab messages and process them.
 void* worker_thread(void* i) {
   int index = (int)(size_t)i;
   pthread_mutex_lock(&print_lock);
@@ -452,20 +453,30 @@ void* worker_thread(void* i) {
 
   pthread_mutex_unlock(&print_lock);  
 
-  // This loop is very simple because there's only one input queue for the thread:
+  // This loop is very simple because there's CURRENTLY only one input queue for the thread:
   // We don't need a "select":
   while (1) 
   {
+#ifndef FIFO_LOCK_EVERY
     // [2008.11.04] We need to grab/release for reading also..
     // But, once we grab, we should dequeue until its empty before releasing...
-    //grab_wsfifo(queue_table[index]);
+    int i;
+    grab_wsfifo(queue_table[index]);
+    int size = wsfifosize(queue_table[index]);
+    //if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size);
+    for(i=0; i<size; i++) {
+      //printf("\nReading out element %d\n", i);
+#endif
 
     // Accesses to these two tables are read-only:
     void* ptr = wsfifoget(queue_table[index]);
     (*worker_table[index])(ptr);
     wsfifoget_cleanup(queue_table[index]);
 
-    //release_wsfifo(queue_table[index]);
+#ifndef FIFO_LOCK_EVERY
+    } 
+    release_wsfifo(queue_table[index]);
+#endif
   }
   return 0;
 }
