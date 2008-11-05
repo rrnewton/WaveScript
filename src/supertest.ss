@@ -522,24 +522,32 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc: Running WaveScript Demos with WSC:"
 	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
-  (ASSERT (putenv "REGIMENTHOST" "ikarus"))
-  (run-test "wsc2: Demos, simple RC (ikarus):"
-	    (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
-  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt")
+  (begin
+    (ASSERT (putenv "REGIMENTHOST" "ikarus"))
+    (run-test "wsc2: Demos, simple RC (ikarus):"
+	      (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt"))
+  (begin
+    (ASSERT (putenv "REGIMENTHOST" "plt"))
+    (run-test "wsc2: Demos, deferred RC (plt):"
+	      (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log"
+		      test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt"))
+  (begin
+    (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
+    (run-test "wsc2: Demos, boehm RC (chez):"
+	      (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
+    (ASSERT (putenv "LAUNCHIT" ""))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
+    (ASSERT (putenv "REGIMENTHOST" "")))
 
-  (ASSERT (putenv "REGIMENTHOST" "plt"))
-  (run-test "wsc2: Demos, deferred RC (plt):"
-	    (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log"
-		    test-directory))
-  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt")
-  (ASSERT (putenv "REGIMENTHOST" "chez"))
-  (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
-  (run-test "wsc2: Demos, boehm RC (chez):"
-	    (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
-  (ASSERT (putenv "LAUNCHIT" ""))
-  (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
-
-  (ASSERT (putenv "REGIMENTHOST" ""))
+  (begin 
+    (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
+    (run-test "wsc2: Demos, THREADS ENABLED:"
+	      (format "./testall_wsc2 -threads &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (ASSERT (putenv "LAUNCHIT" ""))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_threads.txt"))
 
   ;; Make things safe for tinyos:
   (ASSERT (putenv "TOSDIR" "/opt/tinyos-2.x/tos/"))

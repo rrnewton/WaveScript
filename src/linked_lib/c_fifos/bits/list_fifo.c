@@ -30,11 +30,11 @@
 #define FIFOFREE   BASEFREE
 
 // This file can be used either for a "onestage" or "twostage" fifo. 
-#define FIFO_TWOSTAGE
+//#define FIFO_TWOSTAGE
 
 /* Locking can happen on every put/get, or it can be done seperately
    for batch get/put. */
-//#define FIFO_LOCK_EVERY
+#define FIFO_LOCK_EVERY
 
 
 #ifdef WS_THRADED
@@ -214,6 +214,8 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
 //#define WSFIFOPUT(ff, val, ty) {  }
 
 void* wsfifoget(wsfifo* ff) { 
+  printf(" Twostage get :  %p stage 1 hd %p tl %p, stage 2: %p %p\n", ff,
+        ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
   return onestage_wsfifoget(& ff->outgoing); 
 }
 
@@ -279,20 +281,20 @@ void grab_wsfifo(wsfifo* ff) {
 void release_wsfifo(wsfifo* ff) {
   int i;
   int pending = ff->pending;
-/*   if (ff->pending > 0) { */
-/*    printf("** Releasing all %d pending in fifo %p\n", ff->pending, ff); */
-/*     printf("  before:  stage 1 hd %p tl %p, stage 2: %p %p\n",  */
-/*            ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail); */
-/*   } */
+  if (ff->pending > 0) {
+   printf("** Releasing all %d pending in fifo %p\n", ff->pending, ff);
+    printf("  before:  stage 1 hd %p tl %p, stage 2: %p %p\n",
+           ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
+  }
   for(i=0; i < pending ; i++) {
     // COPY duplicates.
     void* ptr = wsfifo_recheck(ff);
     //printf("Rechecking %p...\n", ptr);
     wsfifo_release_one(ff);
   }
-/*   if (pending > 0) */
-/*     printf("  after:  stage 1 hd %p tl %p, stage 2: %p %p\n",  */
-/*            ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail); */
+  if (pending > 0)
+    printf("  after:  stage 1 hd %p tl %p, stage 2: %p %p\n",
+           ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
 
   pthread_mutex_unlock(& ff->buffer.mut);
 }

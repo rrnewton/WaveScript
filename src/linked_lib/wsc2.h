@@ -463,9 +463,9 @@ void* worker_thread(void* i) {
     int i;
     grab_wsfifo(queue_table[index]);
     int size = wsfifosize(queue_table[index]);
-    //if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size);
+    if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size);
     for(i=0; i<size; i++) {
-      //printf("\nReading out element %d\n", i);
+      printf("\nReading out element %d\n", i);
 #endif
 
     // Accesses to these two tables are read-only:
