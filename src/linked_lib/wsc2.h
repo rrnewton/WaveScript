@@ -37,7 +37,7 @@
 #define LOAD_COMPLEX
 //#define WS_THREADED
 //#define ALLOC_STATS
-//#define BLAST_PRINT
+#define BLAST_PRINT
 
 // For now, only use real-time timers in threaded mode:
 #ifdef WS_THREADED
@@ -62,6 +62,7 @@ extern int stopalltimers;
 void wserror_fun(char*);
 void wserror_builtin(char*);
 
+// ============================================================
 // ZCT handling for deferred reference counting:
 // ============================================================
 
@@ -190,6 +191,15 @@ static inline void BLAST_ZCT(zct_t* zct, int depth) {
 #endif
 }
 
+// Temporary: Currently we only enforce separate heaps in THREADED mode.
+#ifdef WS_THREADED
+#define FIFO_COPY_OUTGOING(name) fifo_copy_outgoing(& (name##_queue))
+#else
+#define FIFO_COPY_OUTGOING(name) {}
+#endif
+
+
+
 #endif // WS_USE_ZCT
 
 // ============================================================
@@ -306,6 +316,18 @@ unsigned long print_queue_status() { return 0; }
 
 #define FIFO_CONST_SIZE 100
 #define ANY_CPU -1
+
+#ifdef WS_USE_ZCT
+void fifo_copy_outgoing(wsfifo* ff) {
+  int i;
+  int pending = wsfifo_pending(ff); 
+  for(i=0; i < pending ; i++) { 
+    void* ptr = wsfifo_recheck(ff);
+    //printf("  Considering %p ... refcount \n", ptr);
+    wsfifo_release_one(ff);
+  }
+}
+#endif
 
 void (**worker_table) (void*);   // Should we pad this to prevent false sharing?
 wsfifo** queue_table;            // Should we pad this to prevent false sharing?

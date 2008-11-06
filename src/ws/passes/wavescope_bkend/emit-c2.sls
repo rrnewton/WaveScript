@@ -150,6 +150,8 @@
   (define-generic AllocHook)
   (define-generic ExtraKernelArgsHook)
 
+  (define-generic InvokePerOpCollector)
+
   (__spec add-include! <emitC2-base> (self fn)
     (define __ (printf "adding include ~s \n" fn))
     (define files (slot-ref self 'include-files))
@@ -1757,6 +1759,7 @@ int main(int argc, char **argv)
 ;; Two hooks that return 'text':
 (__spec IterStartHook <emitC2-base> (self name arg argty down*) 
 	(grab_fifos down*))
+;; Takes symbols and types (not text) as arguments.
 (__spec IterEndHook   <emitC2-base> (self name arg argty down*) 
 	(release_fifos down*))
 
@@ -1829,7 +1832,8 @@ int main(int argc, char **argv)
 		'() '()
 		)])))
 
-
+;; Returns "lines":
+(__spec InvokePerOpCollector <emitC2-base> (self) null-lines)
 
 ;; .returns three top-level code blocks: definition (lines), prototypes (list of lines), init-code
 (__spec Operator <emitC2-base> (self op)
@@ -1854,7 +1858,7 @@ int main(int argc, char **argv)
     [(_merge (name ,name) (output-type (Stream ,elt))
 	     (code ,__)
 	     (incoming ,a ,b) (outgoing ,down* ...))
-     ;; This emit should not increment reference counts:
+     ;; This emit should not increment/decrement reference counts:
      ;; We are just redirecting something already in flight.
      (define arg (unique-name "arg"))
      (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
@@ -1900,6 +1904,7 @@ int main(int argc, char **argv)
 
 	    [binarymode (equal? mode "binary")]
 	    [handle (Var self (unique-name "_f"))]
+	    [eofhit (Var self (unique-name "_eofhit"))]
 
 	    [init (make-lines `(
 		,handle" = fopen(\"",file"\", ",(if binarymode "\"rb\"" "\"r\"")");\n"
@@ -1910,19 +1915,26 @@ int main(int argc, char **argv)
 		"fseek(",handle", ",offset", SEEK_SET);\n"
 		))]
 
-	    [skipcmd (list "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n")]
-	    
-	    [state (make-lines `("FILE* ",handle";\n"))]
+	    [skipcmd (list "fseek("handle", "(number->string skipbytes)", SEEK_CUR);\n")]	    
+	    [state (make-lines `("FILE* ",handle";\n"
+				 "int ",eofhit" = 0;\n"))]
 	    [_buf (Var self 'buf)]
+	    [_elt (Type self elt)]
 	    [maintext ;; Code for the funcion that drives the file reading.
 	     (list `(
+		     "if (",eofhit") return;\n"
+
+		     ,(IterStartHook self name 'ignored '#() down*)
+
 		     ,(if (> winsize 0)
 			  (lines-text ((Value self) 
 				       `(assert-type ,elt (Array:makeUNSAFE ',winsize)) 
 				       (varbindk self 'buf elt)))
 			  ;; A binding with no init:
-			  (list (Type self elt) " " _buf ";\n"))
-		     
+			  (list _elt " " _buf ";\n"))
+
+		     ;,(IterStartHook self name 'ignored '#() down*)
+		    
 		     ;; TODO: HANDLE STRINGS:
 ; 		     ,(map (lambda (i) 
 ; 			     (list 
@@ -1960,12 +1972,23 @@ int main(int argc, char **argv)
 		     
 		     ,(block `("if (status != ",(number->string (max 1 winsize))
 			       " * ",(if binarymode "1" (number->string (length types)))")")
-			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
-			       "wsShutdown();\n"))
+			     `("fprintf(stderr, \"dataFile EOF encountered (%d).\", status);\n"
+			       ;; [2008.11.06] Removing the shutdown on EOF behavior:
+			       ;"wsShutdown();\n"
+			       "fflush(stderr);\n"
+			       ,eofhit" = 1;\n"
+			       ,(IterEndHook self name 'ignored '#() down*)
+			       ;(InvokePerOpCollector self)
+			       "return;\n"
+			       ))
 		     
-		     ,(list (grab_fifos down*)
+		     ,(list ;(grab_fifos down*)
+		             (lines-text (incr-queue-refcount self elt _buf))
 			     (lines-text ((Emit self down* elt) 'buf))
-			     (release_fifos down*))))]
+			     ;(release_fifos down*)
+			     ;(lines-text (InvokePerOpCollector self))
+			     (IterEndHook self name 'ignored '#() down*)
+			     )))]
 	    [extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self))])
 
        (values 
@@ -2232,14 +2255,19 @@ int main(int argc, char **argv)
   (define tag (number->string (get-zct-type-tag self ty)))
   (make-lines `("PUSH_ZCT(zct, ",tag", ",smpl");\n")))
 
+(__spec InvokePerOpCollector <emitC2-zct> (self) 
+	(make-lines "BLAST_ZCT(zct, DECR_ITERATE_DEPTH());\n"))
+
 ;; Clear the ZCT at the end of an operator execution.
 (define ___IterEndHook
   (specialise! IterEndHook <emitC2-zct>
     (lambda (next self name arg argty down*) 
-    (list (next)
-	  ;; "FIFO_COPY_OUTGOING();\n"
-	  "BLAST_ZCT(zct, DECR_ITERATE_DEPTH());\n"
-	  ))))
+      (list (map (lambda (down)
+		   (list 	  "FIFO_COPY_OUTGOING("(symbol->string down)");\n"))
+	      down*)
+	    (next)	  
+	    (lines-text (InvokePerOpCollector self))
+	    ))))
 
 ;; For testing purposes allowing multiple iterate work functions to be
 ;; active (depth first calls).  iterate_depth lets us know when it's

@@ -36,7 +36,7 @@
 #define FIFOFREE   BASEFREE
 
 // This file can be used either for a "onestage" or "twostage" fifo. 
-#define FIFO_TWOSTAGE
+//#define FIFO_TWOSTAGE
 
 /* Locking can happen on every put/get, or it can be done seperately
    for batch get/put. */
@@ -220,6 +220,8 @@ void* wsfifo_recheck(wsfifo* ff) {
 void wsfifo_release_one(wsfifo* ff) {
   wserror_builtin("wsfifo_release_one called, but fifo not configured for twostage operation");
 }
+
+inline int wsfifo_pending(wsfifo* ff) { return 0; }
 
 #else 
 // =============================================================
