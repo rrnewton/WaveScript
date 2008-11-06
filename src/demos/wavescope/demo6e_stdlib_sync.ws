@@ -6,8 +6,8 @@ include "stdlib.ws";
 
 // This should output every other 100 samples from both channels.
 
-//ticks = timer(44000.0)
-ticks = timer(10.0)
+ticks = timer(44000.0)
+//ticks = timer(10.0)
 
 chans = (readFile("6sec_marmot_sample.raw", "mode: binary", ticks)
          :: Stream (Int16 * Int16 * Int16 * Int16));

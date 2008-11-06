@@ -1700,6 +1700,14 @@ int main(int argc, char **argv)
 (reg:define-struct (c-state  lines))
 (reg:define-struct (c-proto  lines))
 
+(define (grab_fifos down*)
+  (map (lambda (down)
+	 (list "GRAB_WRITEFIFO("(symbol->string down)");\n"))
+    down*))
+(define (release_fifos down*)
+  (map (lambda (down)
+	 (list "RELEASE_WRITEFIFO("(symbol->string down)");\n"))
+    down*))
 
 ;; Returns a list of code pieces, which can be any of the "c-" datatypes above.
 (__spec Source <emitC2-base> (self xp)
@@ -1714,7 +1722,9 @@ int main(int argc, char **argv)
 	   ;; operator when we ourselves are asked for data (invoked).
 	   (list 
 	    (make-c-timer nm
-		   ((Emit self down* '#()) ''UNIT) ;; Code
+		   (append-lines (make-lines (grab_fifos down*))
+				 ((Emit self down* '#()) ''UNIT) ;; Code
+				 (make-lines (release_fifos down*)))
 		   (make-lines '()) ;; State 	
 		   rate))])]
 
@@ -1732,7 +1742,9 @@ int main(int argc, char **argv)
 	;; Create a function for the entrypoint.
 	(let* ([proto `("extern void ",name"(",ty");\n")]
 	       [bod (ForeignSourceHook self name
-				       (lines-text ((Emit self down* type) arg)))]
+				       (list (grab_fifos down*)
+					     (lines-text ((Emit self down* type) arg))
+					     (release_fifos down*)))]
 	       [impl (make-lines 
 		      (block `("void ",name"(",ty" ",(Var self arg)")")
 			    bod))])
@@ -1744,13 +1756,9 @@ int main(int argc, char **argv)
 
 ;; Two hooks that return 'text':
 (__spec IterStartHook <emitC2-base> (self name arg argty down*) 
-	(map (lambda (down)
-		 (list "GRAB_WRITEFIFO("(symbol->string down)");\n"))
-	    down*))
+	(grab_fifos down*))
 (__spec IterEndHook   <emitC2-base> (self name arg argty down*) 
-	(map (lambda (down)
-		 (list "RELEASE_WRITEFIFO("(symbol->string down)");\n"))
-	    down*))
+	(release_fifos down*))
 
 (__spec ExtraKernelArgsHook <emitC2-base> (self) '())
 
@@ -1852,7 +1860,10 @@ int main(int argc, char **argv)
      (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
      (define header `("void ",(Var self name) "(",extra ,(Type self elt)" ",(Var self arg)")"))
      (values (make-lines 
-	      (list (block header (lines-text ((Emit self down* elt) arg))) "\n"))
+	      (list (block header 
+			   (list (grab_fifos down*)
+				 (lines-text ((Emit self down* elt) arg))
+				 (release_fifos down*))) "\n"))
 	     (list (make-lines (list header ";\n")))
 	     '())]
 
@@ -1952,7 +1963,9 @@ int main(int argc, char **argv)
 			     '("printf(\"dataFile EOF encountered (%d).\", status);\n"
 			       "wsShutdown();\n"))
 		     
-		     ,(lines-text ((Emit self down* elt) 'buf))))]
+		     ,(list (grab_fifos down*)
+			     (lines-text ((Emit self down* elt) 'buf))
+			     (release_fifos down*))))]
 	    [extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self))])
 
        (values 

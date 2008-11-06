@@ -41,7 +41,7 @@
 
 // For now, only use real-time timers in threaded mode:
 #ifdef WS_THREADED
-#define WS_REAL_TIMERS
+//#define WS_REAL_TIMERS
 #endif
 
 
@@ -463,9 +463,13 @@ void* worker_thread(void* i) {
     int i;
     grab_wsfifo(queue_table[index]);
     int size = wsfifosize(queue_table[index]);
-    if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size);
+
+/* if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size); */
+/*     if (queue_table[index]->buffer.head != NULL || queue_table[index]->buffer.tail != NULL)  */
+/*       { fflush(stdout); fflush(stderr); */
+/*         wserror_builtin("Grabbed for reading: THE FIRST STAGE BUFFER SHOULD BE NULL"); } */
     for(i=0; i<size; i++) {
-      printf("\nReading out element %d\n", i);
+      //printf("Reading out element %d\n", i);
 #endif
 
     // Accesses to these two tables are read-only:
@@ -474,7 +478,7 @@ void* worker_thread(void* i) {
     wsfifoget_cleanup(queue_table[index]);
 
 #ifndef FIFO_LOCK_EVERY
-    } 
+    }
     release_wsfifo(queue_table[index]);
 #endif
   }
@@ -530,6 +534,9 @@ void wsInternalInit() {
 #endif
 }
 
+// Note, in a threaded scenario, this is driven by a DECLARE_WORKER
+// same as any other operator.  That's too bad.  It doesn't really
+// deserve its own thread.
 #ifdef WS_USE_ZCT
 void BASE(zct_t* zct, char x) {
 #else
@@ -544,8 +551,15 @@ void BASE(char x) {
 #ifdef ALLOC_STATS
   ws_alloc_stats();
 #endif
-  // [2008.10.08] Temporarily reenabling:
-  fflush(stdout); // [2008.07.31] No more flushing at BASE for now.
+  // To flush or not to flush?
+  // This is an annoying issue.  In certain circumstances (like when I
+  // was trying to hook up client/server partitions via stderr/stdin),
+  // it very much helps to flush on output.  But on the other hand,
+  // several benchmarks produce huge quantities of output tuples, and
+  // it's slow to flush on each one.
+#ifdef WS_FLUSH_ON_EMIT
+  fflush(stdout); 
+#endif
 }
 
 // This is a WS array of strings containing all the command line

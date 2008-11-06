@@ -1900,3 +1900,21 @@ boehm, because it verbosely prints every collection rather than
 printing a summary.  (I looked the source... it doesn't seem to tally
 up a summary.  I'd have to hack the boehm source, which is pretty easy.)
 
+[2008.11.06] {Hacking on fifos}
+
+Most of the problems I thought I had with my twostage fifo
+implementation were in fact unfinished changes to the code generator
+instead.  For large numbers of messages, the courser grained locking
+(locking output queues for entire operator executions) seem to perform
+very poorly compared to finer grained locking.  This doesn't bode well
+for the ZCT method that depends on courser locking.  It could be made
+somewhat better if the GRAB_WRITEFIFO call was pushed further into the
+main codepath of an operator (it just has to be called before the
+first emit).  
+
+Also, when I'm running unbridled timers (constantly enqueueing), the
+courser grained locks seem to result in occasional build-ups of large
+numbers of elements in the queues -- something I don't see with fine
+grained locks.  (Although maybe this just happens because it runs for
+longer.)
+

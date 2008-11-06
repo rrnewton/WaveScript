@@ -271,7 +271,7 @@ EOF
 }
 
 
-
+# This runs a benchmark while varying the number of CPUs.
 function run_multithreaded() {
   NAME=$1
   TEMPDIR=$2

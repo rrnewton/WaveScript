@@ -545,7 +545,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (begin 
     (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
     (run-test "wsc2: Demos, THREADS ENABLED:"
-	      (format "./testall_wsc2 -threads &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+	      (format "./testall_wsc2 -threads -realtime &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
     (ASSERT (putenv "LAUNCHIT" ""))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_threads.txt"))
 

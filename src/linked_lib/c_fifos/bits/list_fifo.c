@@ -4,12 +4,18 @@
  List based FIFO:
  ================
 
- MULTI-READER MULTI-WRITER
+ SINGLE-READER MULTI-WRITER
 
  This linked-list based FIFO allocates a cell for each enqueue, and it is unbounded.
 
  It also supports a "two-stage" mode where each "enqueue" is followed
  by an "inspect & release" phase.  The simplest way to do this is as two fifos.
+
+ This API cannot support multi-reader because each "get" must be
+ followed by a "cleanup".  It's not valid for any other readers to
+ come in between those two operations.  It could be used for
+ multi-reader if FIFO_LOCK_EVERY is disabled and we do the locking at
+ a larger granularity.
 
  Author: Ryan Newton [2008.10.30]
 
@@ -30,20 +36,13 @@
 #define FIFOFREE   BASEFREE
 
 // This file can be used either for a "onestage" or "twostage" fifo. 
-//#define FIFO_TWOSTAGE
+#define FIFO_TWOSTAGE
 
 /* Locking can happen on every put/get, or it can be done seperately
    for batch get/put. */
-#define FIFO_LOCK_EVERY
+//#define FIFO_LOCK_EVERY
 
-
-#ifdef WS_THRADED
-#ifdef FIFO_LOCK_EVERY
-#elif FIFO_TWOSTAGE
-#else 
-#error "list_fifo.c: If WS_THREADED is turned on then either FIFO_LOCK_EVERY or FIFO_TWOSTAGE should be."
-#endif
-#endif
+//#define FIFO_DEBUG_TWOSTAGE
 
 /* ==================================================================
    Single Stage Implementation
@@ -82,11 +81,11 @@ inline void onestage_wsfifoput_cell(onestage_wsfifo* ff, wsfifocell* cell) {
 #ifdef FIFO_LOCK_EVERY
   pthread_mutex_lock  (& (ff)->mut); 
 #endif
-  if ((ff)->tail == NULL)  
-    (ff)->head = (wsfifocell*)cell;	
-  else  
-    (ff)->tail->link = (wsfifocell*)cell;   
-  (ff)->tail = (wsfifocell*)cell;	  
+  cell->link = NULL;
+  if  ((ff)->tail == NULL)
+       (ff)->head       = cell;	
+  else (ff)->tail->link = cell;   
+  (ff)->tail = cell;	  
 #ifdef FIFO_LOCK_EVERY
   pthread_cond_signal(&(ff)->has_data); 
   pthread_mutex_unlock(& (ff)->mut); 
@@ -96,10 +95,10 @@ inline void onestage_wsfifoput_cell(onestage_wsfifo* ff, wsfifocell* cell) {
 // We copy val into a new cell for transport.
 #define onestage_WSFIFOPUT(ff, val, ty) {  \
   void** cell = FIFOMALLOC(sizeof(wsfifocell*) + sizeof(ty)); \
-  cell[0] = (void*)NULL; /* not necessarily required */ \
   *(ty*)(cell+1) = val;  /* copy it over */ \
   onestage_wsfifoput_cell(ff, (wsfifocell*)cell); \
 }
+//cell[0] = (void*)NULL; /* not necessarily required */ \
 
 // We dequeue in two stages.  First we get the element, and then we
 // "cleanup" to free the element we got.
@@ -116,6 +115,9 @@ void* onestage_wsfifoget(onestage_wsfifo* ff) {
 #endif
   }
 
+  if (ff->last_popped != NULL)
+    wserror_builtin("onestage_wsfifoget: Must 'cleanup' the previous get before issuing another");
+
   // Assumes only one consumer, no one else to beat us to the punch:
   wsfifocell* cell = ff->head;
   //printf("Fifo %p got... %p, containing %d\n", ff, cell, ((int**)cell)[1]);
@@ -123,7 +125,8 @@ void* onestage_wsfifoget(onestage_wsfifo* ff) {
   // If we take the last element, null both.
   if ((ff)->head == (ff)->tail) (ff)->tail = NULL; 
 
-  ff->head         = ff->head->link;
+  //ff->head         = ff->head->link;
+  ff->head         = cell->link;
   ff->last_popped  = cell;
 
 #ifdef FIFO_LOCK_EVERY
@@ -133,9 +136,17 @@ void* onestage_wsfifoget(onestage_wsfifo* ff) {
   return (void**)cell+1;
 }
 
-// This doesn't check to make sure that last_cell is set!  It should!
+// This doesn't check to make sure that last_popped is set!  It should!
 void onestage_wsfifoget_cleanup(onestage_wsfifo* ff) {
+#ifdef FIFO_LOCK_EVERY
+  pthread_mutex_lock(& (ff)->mut);
+#endif
+  // Could CAS here:
   FIFOFREE(ff->last_popped);
+  ff->last_popped = NULL;
+#ifdef FIFO_LOCK_EVERY
+  pthread_mutex_unlock(& (ff)->mut);
+#endif
 }
 
 unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
@@ -143,7 +154,7 @@ unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
   pthread_mutex_lock  (& (ff)->mut);
 #endif
   int count = 0;
-  wsfifocell* ptr = ff->head;
+  wsfifocell* ptr = ff->head;  
   while (ptr != NULL) {
     ptr = ptr->link;
     count++;
@@ -152,6 +163,16 @@ unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
   pthread_mutex_unlock(& (ff)->mut);
 #endif
   return count;
+}
+
+void onestage_print(onestage_wsfifo* ff) {
+  wsfifocell* ptr = ff->head;
+  printf("[ ");
+  while (ptr != NULL) {
+    printf("%p ", ptr);
+    ptr = ptr->link;
+  }
+  printf("]");
 }
 
 /* ==================================================================
@@ -169,9 +190,21 @@ unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
 
 typedef onestage_wsfifo wsfifo;
 
+// If we do NOT lock every time, then we need to batch lock:
+// Of course, we only lock at all if we're in a threaded mode.
 inline void grab_wsfifo(wsfifo* ff)    {
+#ifdef WS_THREADED
+#ifndef FIFO_LOCK_EVERY
+  pthread_mutex_lock(& ff->mut);
+#endif
+#endif
 }
 inline void release_wsfifo(wsfifo* ff) {
+#ifdef WS_THREADED
+#ifndef FIFO_LOCK_EVERY
+  pthread_mutex_unlock(& ff->mut);
+#endif
+#endif
 }
 
 #define wsfifoinit        onestage_wsfifoinit
@@ -191,6 +224,7 @@ void wsfifo_release_one(wsfifo* ff) {
 #else 
 // =============================================================
 // FIFO_TWOSTAGE: The two stage version builds on the one-stage:
+// =============================================================
 
 typedef struct wsfifo {
   onestage_wsfifo buffer;
@@ -206,16 +240,19 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
   ff->pending = 0;
 }
 
-// This needs to be audited.  Is there any potential problem with the
-// pending count being outside the mutex?   
+// This should only happen while the mutex is held by the writer (via GRAB RELEASE).
 #define WSFIFOPUT(ff, val, ty) { \
   onestage_WSFIFOPUT(& ((ff)->buffer), val, ty);  \
   ((ff)->pending)++; }
 //#define WSFIFOPUT(ff, val, ty) {  }
 
 void* wsfifoget(wsfifo* ff) { 
+#ifdef FIFO_DEBUG_TWOSTAGE
   printf(" Twostage get :  %p stage 1 hd %p tl %p, stage 2: %p %p\n", ff,
         ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
+  if (ff->buffer.head != NULL || ff->buffer.tail != NULL)
+    wserror_builtin("THE FIRST STAGE BUFFER SHOULD BE NULL AT THE TIME OF A TWOSTAGE GET");
+#endif
   return onestage_wsfifoget(& ff->outgoing); 
 }
 
@@ -224,7 +261,7 @@ void wsfifoget_cleanup(wsfifo* ff) {
 }
 
 // Returns true if there are pending elements waiting to be released.
-int wsfifo_pending(wsfifo* ff) {
+inline int wsfifo_pending(wsfifo* ff) {
   return ff->pending;
 }
 
@@ -259,11 +296,12 @@ void wsfifo_release_one(wsfifo* ff) {
     wsfifo_recheck(ff);
   // We don't clean up, instead we pass the cell along.
   //onestage_wsfifoget_cleanup(& ff->buffer);
+  // But we do clear the last_popped field:
+  ff->buffer.last_popped = NULL;
   onestage_wsfifoput_cell(& ff->outgoing, ff->in_limbo);
   ff->in_limbo = NULL;
   ff->pending--;
 }
-
 
 /* We must lock for an entire operator run to be able to accurately
    connect 'enqueues' to subsequent 'releases'.  The FIFO_LOCK_EVERY
@@ -276,26 +314,40 @@ void wsfifo_release_one(wsfifo* ff) {
 void grab_wsfifo(wsfifo* ff) {
   //long int tid = syscall(224);
   pthread_mutex_lock(& ff->buffer.mut);
-  //printf("   Locked by %u\n" , tid);
 }
+
+/* Currently this is called both by the WRITER and the READER.
+   However, pending should equal zero on the reading side.
+ */
 void release_wsfifo(wsfifo* ff) {
   int i;
   int pending = ff->pending;
+#ifdef FIFO_DEBUG_TWOSTAGE
   if (ff->pending > 0) {
-   printf("** Releasing all %d pending in fifo %p\n", ff->pending, ff);
+    printf("** Releasing all %d | %d pending in fifo %p, size1 %d size2 %d - ", 
+           pending, ff->pending, ff, onestage_wsfifosize(&(ff->buffer)), onestage_wsfifosize(&ff->outgoing));
+    onestage_print(&ff->buffer); printf("  ");
+    onestage_print(&ff->outgoing); printf("\n");
     printf("  before:  stage 1 hd %p tl %p, stage 2: %p %p\n",
            ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
-  }
+  } //else printf(".");
+#endif
   for(i=0; i < pending ; i++) {
     // COPY duplicates.
     void* ptr = wsfifo_recheck(ff);
-    //printf("Rechecking %p...\n", ptr);
+    //printf("     %d %d: Rechecking %p...\n", i, pending, ptr);
     wsfifo_release_one(ff);
   }
-  if (pending > 0)
-    printf("  after:  stage 1 hd %p tl %p, stage 2: %p %p\n",
+#ifdef FIFO_DEBUG_TWOSTAGE
+  if (pending > 0) {
+    printf("  after:  stage 1 hd %p tl %p, stage 2: %p %p  -- ",
            ff->buffer.head, ff->buffer.tail, ff->outgoing.head, ff->outgoing.tail);
-
+    onestage_print(&ff->buffer); printf("  ");
+    onestage_print(&ff->outgoing); printf("\n");
+    if (ff->buffer.head != NULL || ff->buffer.tail != NULL) { fflush(stdout); fflush(stderr);
+    wserror_builtin("THE FIRST STAGE BUFFER SHOULD BE NULL AFTER A RELEASE"); }
+  }
+#endif
   pthread_mutex_unlock(& ff->buffer.mut);
 }
 

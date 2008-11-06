@@ -19,6 +19,7 @@ void* wsfifoget(wsfifo* ff);
 
  */
 
+int wsfifo_pending(wsfifo* ff);
 void* wsfifo_recheck(wsfifo* ff);
 void wsfifo_release_one(wsfifo* ff);
 
