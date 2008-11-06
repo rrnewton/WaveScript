@@ -2,6 +2,9 @@
 // Include the lock free fifo:
 #include "lffifo.c"
 
+// TODO: Replace locking-for-blocknig with monitor/mwait...
+// TODO: Replace MALLOC with fixed pool of reusable cells.
+
 //################################################################################//
 //         Extend the lffifo with a mutex for blocking dequeues.
 //################################################################################//
@@ -83,3 +86,18 @@ void wsfifoget_cleanup(wsfifo* ff) {
 unsigned long wsfifosize (wsfifo * ff) {
   return fifosize(& ff->ff);
 }
+
+
+// This FIFO doesn't currently support multi-stage operation.  This is a dummy interface.
+
+#ifdef FIFO_TWOSTAGE
+#error "the lock free list fifo doesn't currently support FIFO_TWOSTAGE"
+#else 
+//int wsfifo_pending(wsfifo* ff) { return 0; }
+//void* wsfifo_recheck(wsfifo* ff) { return 0; }
+//void wsfifo_release_one(wsfifo* ff) {}
+
+inline void grab_wsfifo(wsfifo* ff)    {}
+inline void release_wsfifo(wsfifo* ff) {}
+
+#endif

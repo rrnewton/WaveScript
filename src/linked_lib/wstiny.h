@@ -12,6 +12,8 @@
 #define START_WORKERS()              {}
 //unsigned long print_queue_status() { return 0; }
 
+#define GRAB_WRITEFIFO(name)    {}
+#define RELEASE_WRITEFIFO(name) {}
 
 #define ARRLENTYPE int
 #define ARRLENSIZE sizeof(ARRLENTYPE)
