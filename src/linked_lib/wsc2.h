@@ -37,7 +37,7 @@
 #define LOAD_COMPLEX
 //#define WS_THREADED
 //#define ALLOC_STATS
-#define BLAST_PRINT
+//#define BLAST_PRINT
 
 // For now, only use real-time timers in threaded mode:
 #ifdef WS_THREADED
@@ -89,8 +89,8 @@ typedef struct {
 extern int       iterate_depth;
 
 #ifdef WS_THREADED
- // This locks all the zct_* above:
-  extern pthread_mutex_t zct_lock;
+  // We no longer share a ZCT, so it needn't  be locked.
+  //extern pthread_mutex_t zct_lock;
   extern zct_t** all_zcts;
 #else 
   extern zct_t* zct;
@@ -120,7 +120,7 @@ static inline void PUSH_ZCT(zct_t* zct, typetag_t tag, void* ptr) {
   //printf("pushing %p tag %d, rc %u, (mask %u)\n", ptr, tag, GET_RC(ptr), PUSHED_MASK);
   // TEMPORARILY LOCKING FOR ACCESS TO CENTRALIZED ZCT:
 #ifdef WS_THREADED
-    pthread_mutex_lock(&zct_lock);
+  //    pthread_mutex_lock(&zct_lock);
 #endif 
   if (ptr == NULL) return;
   if (GET_ARR_RC(ptr) & PUSHED_MASK) { 
@@ -139,7 +139,7 @@ static inline void PUSH_ZCT(zct_t* zct, typetag_t tag, void* ptr) {
   zct->ptrs[zct->count] = ptr;
   zct->count++;
 #ifdef WS_THREADED
-    pthread_mutex_unlock(&zct_lock);
+  //    pthread_mutex_unlock(&zct_lock);
 #endif
 }
 
@@ -154,13 +154,21 @@ static inline void BLAST_ZCT(zct_t* zct, int depth) {
   int i;
   int freed = 0;
   int max_tag = 0;
+ 
+// [2008.11.07] TEMP: in the process of working on a true disjoint-heaps implementation.
+// In the mean time we let EVERYTHING leak from the ZCT version when threads are on.
+#ifdef WS_THREADED
+  zct->count = 0;
+  return;
+#endif
+
   if (depth > 1) {
     //printf("Not blasting, depth %d\n", iterate_depth);
     return;
   }
 
 #ifdef WS_THREADED
-    pthread_mutex_lock(&zct_lock);
+  //    pthread_mutex_lock(&zct_lock);
 #endif
 #ifdef BLAST_PRINT
       if (zct->count==0) return; printf(" ** BLASTING:" ); fflush(stdout);
@@ -187,7 +195,7 @@ static inline void BLAST_ZCT(zct_t* zct, int depth) {
 #endif
   zct->count = 0;
 #ifdef WS_THREADED
-    pthread_mutex_unlock(&zct_lock);
+  //    pthread_mutex_unlock(&zct_lock);
 #endif
 }
 
@@ -307,11 +315,29 @@ unsigned long print_queue_status() { return 0; }
 
 // Pick a FIFO implementation:
 //============================================================
-//#include "midishare_fifo/wsfifo.c"
 //#include "simple_wsfifo.c"
 //#include "twostage_wsfifo.c"
+//#include "c_fifos/bits/old.c"
+
+#ifdef  WS_LOCK_FREE_FIFO
+// Linked list fifos that are lock-free.
+// TODO: Env Vars: FIFO_REUSE_NODES
+#include "midishare_fifo/wsfifo.c"
+
+#elif WS_ARRAY_FIFO
+// This one is a bounded fifo.
 //#include "simple_bounded_wsfifo2.c"
+#error "Bounded array based FIFOs are not finished yet."
+
+//#elif WS_LIST_FIFO
+#else 
+// List based locking fifos.  Supports fine and course grained
+// locking, single or two stage enqueuing.
+// Env Vars: FIFO_TWOSTAGE  FIFO_COARSE_LOCKING
 #include "c_fifos/bits/list_fifo.c"
+
+#endif
+
 //============================================================
 
 #define FIFO_CONST_SIZE 100
@@ -479,11 +505,12 @@ void* worker_thread(void* i) {
   // We don't need a "select":
   while (1) 
   {
-#ifndef FIFO_LOCK_EVERY
+#ifdef FIFO_COARSE_LOCKING
     // [2008.11.04] We need to grab/release for reading also..
     // But, once we grab, we should dequeue until its empty before releasing...
     int i;
     grab_wsfifo(queue_table[index]);
+    wsfifo_wait(queue_table[index]);
     int size = wsfifosize(queue_table[index]);
 
 /* if (size>0) printf("Grabbing fifo %p to empty it... elements %d\n" , queue_table[index], size); */
@@ -499,7 +526,7 @@ void* worker_thread(void* i) {
     (*worker_table[index])(ptr);
     wsfifoget_cleanup(queue_table[index]);
 
-#ifndef FIFO_LOCK_EVERY
+#ifdef FIFO_COARSE_LOCKING
     }
     release_wsfifo(queue_table[index]);
 #endif

@@ -1863,8 +1863,9 @@ int main(int argc, char **argv)
      (define arg (unique-name "arg"))
      (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
      (define header `("void ",(Var self name) "(",extra ,(Type self elt)" ",(Var self arg)")"))
-     (values (make-lines 
-	      (list (block header 
+     (values (make-lines 	      
+	      (list "// merge operator: \n"
+		    (block header 
 			   (list (grab_fifos down*)
 				 (lines-text ((Emit self down* elt) arg))
 				 (release_fifos down*))) "\n"))
@@ -1992,7 +1993,8 @@ int main(int argc, char **argv)
 	    [extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self))])
 
        (values 
-	(make-lines (block (list "void "(sym2str name)"("extra (Type self '#())" ignored)") maintext))
+	(make-lines (list "// readFile operator: \n"
+			  (block (list "void "(sym2str name)"("extra (Type self '#())" ignored)") maintext)))
          ;(wrap-iterate-as-simple-fun name 'ignored 'ignoredVQ (Type self '#()) maintext)
 	(list state) (list init)))] ;; End readFile
     ))
@@ -2112,10 +2114,10 @@ int main(int argc, char **argv)
 										  (add1 (length opnames)))))
 						 ";\n"
 
-						 "// [2008.10.28] HACK, FIXME The static data needs to be allocated on each heap!!\n"
+						 "// [2008.11.07] The static data gets allocated against a never-cleared ZCT: \n"
 						 "#ifdef WS_THREADED \n"
 						 "#ifdef WS_USE_ZCT \n"
-						 " zct_t* zct = all_zcts[0];\n"
+						 " zct_t* zct = WSCALLOC(sizeof(zct_t), 1);\n"
 						 "#endif\n"
 						 "#endif\n"
 						 ;; FIXME: NUMBERS WILL NOT BE CONSECUTIVE:
@@ -2133,8 +2135,13 @@ int main(int argc, char **argv)
 						 ;(lines-text (apply append-lines srcinit*))
 						 (map lines-text init-pieces)
 						 (lines-text (apply append-lines (apply append opinit**)))
-						 ;; Finally, register all the work functions.
-												 
+						 "// We will never need to clear this ZCT, so we can throw it out:\n"
+						 "#ifdef WS_THREADED \n"
+						 "#ifdef WS_USE_ZCT \n"
+						 "WSFREE(zct);\n"
+						 "#endif\n"
+						 "#endif\n"
+						 ;; Finally, register all the work functions.							
 						 "START_WORKERS();\n"
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  

@@ -6,7 +6,9 @@ include "stdlib.ws";
 
 // This should output every other 100 samples from both channels.
 
-ticks = timer(44000.0)
+ticks = timer(100.0)
+//ticks = iterate _ in timer(100.0) { print("."); emit () }
+//ticks = timer(44000.0)
 //ticks = timer(10.0)
 
 chans = (readFile("6sec_marmot_sample.raw", "mode: binary", ticks)
@@ -22,6 +24,7 @@ ctrl = iterate(w in ch1) {
     pos = 0`gint;
     flag = false;
   }
+
   emit(flag, pos, pos + outwidth - 1`gint);
   pos := pos + outwidth;
   flag := if flag then false else true;

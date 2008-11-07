@@ -40,9 +40,14 @@
 
 /* Locking can happen on every put/get, or it can be done seperately
    for batch get/put. */
-//#define FIFO_LOCK_EVERY
+//#define FIFO_COARSE_LOCKING
 
 //#define FIFO_DEBUG_TWOSTAGE
+
+// Currently we let FIFO_TWOSTAGE imply FIFO_COARSE_LOCKING:
+#ifdef FIFO_TWOSTAGE
+#define FIFO_COARSE_LOCKING
+#endif
 
 /* ==================================================================
    Single Stage Implementation
@@ -68,7 +73,7 @@ typedef struct onestage_wsfifo {
 } onestage_wsfifo;
 
 void onestage_wsfifoinit(onestage_wsfifo* ff, int optional_size_limit, int elemsize) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_init(& ff->mut,   NULL); 
   pthread_cond_init (& ff->has_data, NULL); 
 #endif
@@ -77,8 +82,9 @@ void onestage_wsfifoinit(onestage_wsfifo* ff, int optional_size_limit, int elems
   ff->last_popped = NULL;
 }
 
+// This presently signals on every put, not just a put on an empty queue.
 inline void onestage_wsfifoput_cell(onestage_wsfifo* ff, wsfifocell* cell) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_lock  (& (ff)->mut); 
 #endif
   cell->link = NULL;
@@ -86,8 +92,13 @@ inline void onestage_wsfifoput_cell(onestage_wsfifo* ff, wsfifocell* cell) {
        (ff)->head       = cell;	
   else (ff)->tail->link = cell;   
   (ff)->tail = cell;	  
-#ifdef FIFO_LOCK_EVERY
+// [2008.11.06] Changing to a blocking mode for FIFO_COARSE_LOCKING
+#ifndef FIFO_TWOSTAGE
+#ifdef WS_THREADED
   pthread_cond_signal(&(ff)->has_data); 
+#endif
+#endif
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_unlock(& (ff)->mut); 
 #endif
 }
@@ -103,11 +114,11 @@ inline void onestage_wsfifoput_cell(onestage_wsfifo* ff, wsfifocell* cell) {
 // We dequeue in two stages.  First we get the element, and then we
 // "cleanup" to free the element we got.
 void* onestage_wsfifoget(onestage_wsfifo* ff) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_lock(& (ff)->mut);
 #endif
   while ((ff)->head == NULL) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
     pthread_cond_wait(&(ff)->has_data, &(ff)->mut);
 #else 
     wserror_builtin("wsfifoget should not be called on an empty fifo when FIFO_LOCK_EVERY is not set");
@@ -129,7 +140,7 @@ void* onestage_wsfifoget(onestage_wsfifo* ff) {
   ff->head         = cell->link;
   ff->last_popped  = cell;
 
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_unlock(& (ff)->mut);  
 #endif
   // Hack, return the address of the data payload itself:
@@ -138,19 +149,19 @@ void* onestage_wsfifoget(onestage_wsfifo* ff) {
 
 // This doesn't check to make sure that last_popped is set!  It should!
 void onestage_wsfifoget_cleanup(onestage_wsfifo* ff) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_lock(& (ff)->mut);
 #endif
   // Could CAS here:
   FIFOFREE(ff->last_popped);
   ff->last_popped = NULL;
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_unlock(& (ff)->mut);
 #endif
 }
 
 unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_lock  (& (ff)->mut);
 #endif
   int count = 0;
@@ -159,7 +170,7 @@ unsigned long onestage_wsfifosize(onestage_wsfifo* ff) {
     ptr = ptr->link;
     count++;
   }
-#ifdef FIFO_LOCK_EVERY
+#ifndef FIFO_COARSE_LOCKING
   pthread_mutex_unlock(& (ff)->mut);
 #endif
   return count;
@@ -194,14 +205,14 @@ typedef onestage_wsfifo wsfifo;
 // Of course, we only lock at all if we're in a threaded mode.
 inline void grab_wsfifo(wsfifo* ff)    {
 #ifdef WS_THREADED
-#ifndef FIFO_LOCK_EVERY
+#ifdef FIFO_COARSE_LOCKING
   pthread_mutex_lock(& ff->mut);
 #endif
 #endif
 }
 inline void release_wsfifo(wsfifo* ff) {
 #ifdef WS_THREADED
-#ifndef FIFO_LOCK_EVERY
+#ifdef FIFO_COARSE_LOCKING
   pthread_mutex_unlock(& ff->mut);
 #endif
 #endif
@@ -223,6 +234,10 @@ void wsfifo_release_one(wsfifo* ff) {
 
 inline int wsfifo_pending(wsfifo* ff) { return 0; }
 
+void wsfifo_wait(wsfifo* ff) {
+  pthread_cond_wait(& ff->has_data, & (ff->mut));
+}
+
 #else 
 // =============================================================
 // FIFO_TWOSTAGE: The two stage version builds on the one-stage:
@@ -243,9 +258,11 @@ void wsfifoinit(wsfifo* ff, int optional_size_limit, int elemsize) {
 }
 
 // This should only happen while the mutex is held by the writer (via GRAB RELEASE).
-#define WSFIFOPUT(ff, val, ty) { \
+#define WSFIFOPUT(ff, val, ty) {                  \
   onestage_WSFIFOPUT(& ((ff)->buffer), val, ty);  \
-  ((ff)->pending)++; }
+  pthread_cond_signal(&((ff)->buffer.has_data));    \
+  ((ff)->pending)++;                              \
+}
 //#define WSFIFOPUT(ff, val, ty) {  }
 
 void* wsfifoget(wsfifo* ff) { 
@@ -310,8 +327,8 @@ void wsfifo_release_one(wsfifo* ff) {
    variable should be turned OFF.  Not only would the locking be
    redundant, but currently this implementation uses the same locks
    (it would be deadlock to try to lock again). */
-#ifdef FIFO_LOCK_EVERY
-#error "FIFO_LOCK_EVERY must be turned off if FIFO_TWOSTAGE is turned on."
+#ifndef FIFO_COARSE_LOCKING
+#error "FIFO_COARSE_LOCKINGY must be turned ON if FIFO_TWOSTAGE is turned on."
 #endif
 void grab_wsfifo(wsfifo* ff) {
   //long int tid = syscall(224);
@@ -353,5 +370,10 @@ void release_wsfifo(wsfifo* ff) {
   pthread_mutex_unlock(& ff->buffer.mut);
 }
 
+// This blocks until elements are available.  
+// Assumes grab_wsfifo has already happened.
+void wsfifo_wait(wsfifo* ff) {
+  pthread_cond_wait(& (ff)->buffer.has_data, &(ff)->buffer.mut);
+}
 
 #endif

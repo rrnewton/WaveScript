@@ -543,11 +543,35 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (putenv "REGIMENTHOST" "")))
 
   (begin 
+    (ASSERT (putenv "REGIMENTHOST" "chez"))
     (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
-    (run-test "wsc2: Demos, THREADS ENABLED:"
-	      (format "./testall_wsc2 -threads -realtime &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+
+    ;; First test with simple refcount GC
+    (run-test "wsc2: Demos, THREADS, list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO &> ~a/wsc2_demos_rc_ikarus.log" test-directory))    
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo.txt")
+    (run-test "wsc2: Demos, THREADS, coarse locking list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_coarse.txt")
+    (run-test "wsc2: Demos, THREADS, coarse twostage list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_twostage.txt")
+
+    ;; Next test with deferred refcount GC
+    (run-test "wsc2: Demos, THREADS, deferred RC, list:"
+	      (format "./testall_wsc2 -threads -realtime -gc def -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_deferred_threads_listfifo_coarse.txt")
+    (run-test "wsc2: Demos, THREADS, coarse twostage list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_twostage.txt")
+
+    ;; Finally, test with Boehm GC:
+    ;; [2008.11.07] It doesn't work with -threads yet!
+    
+
+
     (ASSERT (putenv "LAUNCHIT" ""))
-    (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_threads.txt"))
+    (ASSERT (putenv "REGIMENTHOST" "")))
 
   ;; Make things safe for tinyos:
   (ASSERT (putenv "TOSDIR" "/opt/tinyos-2.x/tos/"))
@@ -559,6 +583,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
 
   )
+
+
 
 ; (parameterize ((current-directory (format "~a/lib/" ws-root-dir)))
 ;   (run-test "wsc: Compiling stdlib_test:"

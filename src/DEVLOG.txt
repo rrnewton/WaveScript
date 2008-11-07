@@ -1918,3 +1918,28 @@ numbers of elements in the queues -- something I don't see with fine
 grained locks.  (Although maybe this just happens because it runs for
 longer.)
 
+[2008.11.06] {Leaking FIFOs}
+
+On even a simple example like demo1c, the list_fifo.c implementation
+currently leaks if FIFO_COARSE_LOCKING is turned off.  It doesn't leak
+otherwise, even if FIFO_TWOSTAGE is enabled.  Hmm.  Rewinding to even
+revision 3631 (currently 3634) seems to fix this problem.  And then in
+3632 the problem starts.  Wait... odd, the leak doesn't seem to occur
+if -realtime is turned on.  Ah, I suppose it could not be a leak, but
+just the producer running asymptotically ahead of the consumer.  The
+course grained locking version doesn't exhibit the problem because it
+simply slows down the producer?
+
+Hmm.. I still have the problem that with deferred reference counting
+demo1e only produces one output tuple and then stalls.  Ah, I've seen
+this before.  That's a problem with BLAST_PRINT.
+
+[2008.11.07] {Coming back to Multithreaded Boehm}
+
+This requires intercepting pthread calls.  Also, it will be
+interesting to test out their support for parallel marking.
+I remember I had experimented with their incremental GC (doesn't help
+throughput, but could help pause times), but I don't know if I tried
+their concurrent marking support.  If I remember correctly, I don't
+think they support concurrent & parallel GC simultaneously, right?
+
