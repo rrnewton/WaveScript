@@ -1943,3 +1943,29 @@ throughput, but could help pause times), but I don't know if I tried
 their concurrent marking support.  If I remember correctly, I don't
 think they support concurrent & parallel GC simultaneously, right?
 
+I need to build it with:
+
+  --enable-threads=posix --enable-thread-local-alloc --enable-parallel-mark
+
+I don't know where the best documentation of the API is... I'm just
+reading the header file gc.h, which says:
+
+   * All threads must be created using GC_CreateThread or GC_beginthreadex,
+   * or must explicitly call GC_register_my_thread,
+
+However, it looks like their headers conveniently redefine the
+pthread_* functions.  But do I still need to set -DGC_PTHREADS?  I
+think so.  And what about the build process for the GC?  Hmm. My
+current ubuntu system has libgc-dev 6.8.  Is it compiled with pthread
+support?
+
+In versions before 7.0 it says this is necessary:
+  #define GC_REDIRECT_TO_LOCAL
+  #include "gc_local_alloc.h"
+
+The ubuntu package description says the following:
+
+ This version of the collector is thread safe, has C++ support, and uses the
+ defaults for everything else.  Particularly, it does not work as a malloc()
+ replacement.
+

@@ -34,9 +34,8 @@ function go () {
 
     # Would like to add --error-exitcode=99 except that currently demo4b generates errors.
     ($LAUNCHIT ./query.exe -n 2 &> /dev/stdout) > /tmp/foobar_$1
-
+    RETVAL=$?    
     cat /tmp/foobar_$1 >> $RUN
-    RETVAL=$?
     echo Query returned with val: $RETVAL
     if [ "$RETVAL" != "0" ]; then exit 1; fi
 }

@@ -58,6 +58,10 @@ char* commaprint(unsigned long long n);
 // ============================================================
 // Names like BASEMALLOC abstract the allocater API.
 #ifdef USE_BOEHM
+ #ifdef WS_THREADED
+  // Let Boehm know that we are using threads.
+  #define GC_THREADS
+ #endif
   #include <gc/gc.h>
   #define BASEMALLOC GC_MALLOC
 //  #define BASEMALLOC GC_MALLOC_IGNORE_OFF_PAGE

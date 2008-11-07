@@ -39,18 +39,18 @@
 //#define ALLOC_STATS
 //#define BLAST_PRINT
 
-// For now, only use real-time timers in threaded mode:
-#ifdef WS_THREADED
-//#define WS_REAL_TIMERS
-#endif
+#define TRUE  1
+#define FALSE 0
 
+#ifdef WS_THREADED
+// For now, only use real-time timers in threaded mode:
+//#define WS_REAL_TIMERS
+#include <pthread.h>
+#endif
 
 #ifdef LOAD_COMPLEX
 #include<complex.h>
 #endif
-
-#define TRUE  1
-#define FALSE 0
 
 typedef unsigned char      uint8_t;
 typedef unsigned short int uint16_t;
@@ -300,18 +300,10 @@ unsigned long print_queue_status() { return 0; }
 
 #else
 
-// Thread-per-operator version, midishare FIFO implementation:
+// Thread-per-operator version, various FIFO implementations:
 // ================================================================================
 
-// For now I'm hacking this to be blocking, which involves adding
-// locks to a lock-free fifo implementation!
-
-#ifdef USE_BOEHM
-//#include <gc/gc_pthread_redirects.h>
-#include <pthread.h>
-#else
-#include <pthread.h>
-#endif
+//#include <pthread.h>
 
 // Pick a FIFO implementation:
 //============================================================
@@ -322,6 +314,9 @@ unsigned long print_queue_status() { return 0; }
 #ifdef  WS_LOCK_FREE_FIFO
 // Linked list fifos that are lock-free.
 // TODO: Env Vars: FIFO_REUSE_NODES
+
+// For now I'm hacking this to be blocking, which involves adding
+// locks to a lock-free fifo implementation!
 #include "midishare_fifo/wsfifo.c"
 
 #elif WS_ARRAY_FIFO

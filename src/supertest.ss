@@ -548,21 +548,21 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
     ;; First test with simple refcount GC
     (run-test "wsc2: Demos, THREADS, list fifo:"
-	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO &> ~a/wsc2_demos_rc_ikarus.log" test-directory))    
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO &> ~a/wsc2_demos_threads_rc.log" test-directory))    
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo.txt")
-    (run-test "wsc2: Demos, THREADS, coarse locking list fifo:"
-	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (run-test "wsc2: Demos, THREADS, coarse lock list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_threads_rc_coarse.log" test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_coarse.txt")
-    (run-test "wsc2: Demos, THREADS, coarse twostage list fifo:"
-	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (run-test "wsc2: Demos, THREADS, twostage list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_threads_rc_twostage.log" test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_twostage.txt")
 
     ;; Next test with deferred refcount GC
     (run-test "wsc2: Demos, THREADS, deferred RC, list:"
-	      (format "./testall_wsc2 -threads -realtime -gc def -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+	      (format "./testall_wsc2 -threads -realtime -gc def -D FIFO_COARSE_LOCKING &> ~a/wsc2_demos_threads_deferred_coarse.log" test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_deferred_threads_listfifo_coarse.txt")
-    (run-test "wsc2: Demos, THREADS, coarse twostage list fifo:"
-	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
+    (run-test "wsc2: Demos, THREADS, twostage list fifo:"
+	      (format "./testall_wsc2 -threads -realtime -gc ref -D WS_LIST_FIFO -D FIFO_TWOSTAGE &> ~a/wsc2_demos_threads_deferred_twostage.log" test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_refcount_threads_listfifo_twostage.txt")
 
     ;; Finally, test with Boehm GC:
@@ -841,7 +841,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	      (format "make &> ~a/bench_shootout.log" test-directory))
 
     ;; [2008.08.01] Right now I'm having some occasional ikarus segfaults:
-    ;(ASSERT (putenv "REGIMENTHOST" "plt"))
+    ;; [2008.11.07] More ikarus segfaults on chastity, switching to chez:
+    (ASSERT (putenv "REGIMENTHOST" "chez"))
     (current-directory (format "~a/benchmarks/appbench" ws-root-dir))
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))
