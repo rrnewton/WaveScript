@@ -132,3 +132,10 @@
    ;(top-level-value 'generic-inspect)
    ))
 
+;; This is a hack to emulate Chez's #%prim syntax without breaking
+;; other readers that can't handle it.
+(define-syntax (hash-percent syn)
+  (syntax-case syn ()
+	       [(_ prim) (datum->syntax-object #'_ `(let () (import scheme) ,(datum prim)))]))
+
+

@@ -604,7 +604,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "========================================\n")
 (parameterize ((current-directory test-directory))
   (newline)       
-  (run-test "wscaml: Building ocaml libraries (fftwr, etc):"
+  (run-test "wscaml: Building ocaml libraries (fftw, etc):"
 	    (format "make ocaml &> ~a/wscaml_build_stuff.log" test-directory))
   (current-directory (format "~a/demos/wavescope" test-directory))
   (run-test "wscaml: Running LIMITED Demos through OCaml:" 

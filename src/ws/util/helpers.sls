@@ -131,8 +131,10 @@
 ;; here removes the complexity of duplicating them in the different
 ;; compat.*.sls files.
 ;; ================================================================================
-    
-  (define (cflonum? x) (and (complex? x) (not (real? x)))) ;; Adding this for r6rs.
+
+  (IFCHEZ (define cflonum? (hash-percent cflonum?))
+	  ;; Adding this for r6rs.
+	  (define (cflonum? x) (and (complex? x) (not (real? x)))))
 
   (define (add1 x) (+ x 1))
   (define (sub1 x) (- x 1))
