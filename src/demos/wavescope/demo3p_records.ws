@@ -13,7 +13,7 @@ fun testit() {
   rec2 = (rec | A="yay", C=99.9 );
   print(rec2 ++ "\n");
 
-  print("And a little projection: " ++ rec2.A ++" "++ rec2@B ++"\n");
+  print("And a little projection: " ++ rec2@A ++" "++ rec2@B ++"\n");
 
   rec3 = ( rec2  | ~A, B := () );
   print(rec3 ++ "\n");
