@@ -255,7 +255,11 @@
 	     (rc-make-begin (list (if value-needed? (injection oth) (injection)) oth))
 	     `(let-not-counted ([,tmp ,retty ,oth])
 	       ,(rc-make-begin (list (if value-needed? (injection tmp) (injection)) tmp))))]))
-       
+
+    ;; This is mutated below with fluid-let.  It's simply too annoying
+    ;; to thread through the arguments.  Luckily it is very clear that
+    ;; iterate's are not nested, so this is easy to get right.
+    (define iterate-outgoing 'itout-uninit)
     (define Value 
       (core-generic-traverse
        (lambda (xp fallthru)
@@ -270,6 +274,8 @@
 	    ;(define newfun (Effect fun))
 	    (define newbinds
 	      (map list lhs* ty* (map Value (map TopIncr rhs* ty*))))
+	    (define elt  (match vqty [(VQueue ,elt) elt]))
+
 	    ;; Here's a trick.  Really we should decr the queue refcount as soon as we pop it off.
 	    ;; And then we should immediately incr the local refcount (because of the lambda argument).
 	    ;; This is a linear transfer, so instead we just let the queue refcount serve as a proxy
@@ -278,7 +284,11 @@
 	      (fluid-let ([iter-state-vars lhs*])
 		`(lambda (,x ,vq) (,xty ,vqty)
 		       ,(if (not-heap-allocated? xty) (Value bod)
-			    (Value (DriveInside (lambda () (make-rc 'decr-queue-refcount xty x))
+			    (Value (DriveInside (lambda () 						  
+						  `(begin ,(make-rc 'decr-queue-refcount xty x)
+							  ,@(map (lambda (down)
+								   `(fifo-copy-outgoing ,elt ,down))
+							      iterate-outgoing)))
 						bod vqty #f))))))
 	    `(iterate (annotations ,@anot*) (let ,newbinds ,newfun) ,strm)]
 	   
@@ -471,11 +481,12 @@
     (define (Operator op)
       (match op
 	[(iterate (name ,name) (output-type ,o_ty)
-		  (code ,[Value+ -> itercode])
+		  (code ,itercode)
 		  (incoming ,o_up) (outgoing ,o_down* ...))
-	 `(iterate (name ,name) (output-type ,o_ty)
-		   (code ,itercode)
-		   (incoming ,o_up) (outgoing ,@o_down*))]
+	 (fluid-let ([iterate-outgoing o_down*])
+	   `(iterate (name ,name) (output-type ,o_ty)
+		     (code ,(Value+ itercode))
+		     (incoming ,o_up) (outgoing ,@o_down*)))]
 	;; All of these have no code to speak of:
 	[(_merge . ,_) op]
 	[(__readFile . ,_) op]

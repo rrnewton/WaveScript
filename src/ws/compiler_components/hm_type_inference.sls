@@ -93,6 +93,7 @@
 	   (ws globals)
 	   (ws util helpers)
 	   (ws util reg_macros)
+	   (ws util hashtab)
 	   (ws compiler_components prim_defs)
 	   (ws compiler_components reg_core_generic_traverse)
            (ws compiler_components type_environments)
@@ -229,6 +230,7 @@
 ; ----------------------------------------
 
 ;; This associates new mutable cells with all tvars.
+;; It is used either to freshen an instantiated type, or instantiate an uninstantiated one.
 ;; It also renames all the tvars to assure uniqueness.
 ;; The "nongeneric" vars are ones that do not receive new mutable cells.
 ;; 
@@ -245,17 +247,17 @@
      (let* ((env '()) ;; Mutated below
 	 (result 
 	  (let loop ((t t))
-	   (match t 
+	   (match t ;; No recursion 
 	     [#f #f]
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
-	      (guard (eq-any? qt 'quote 'NUM)
+	      (guard (tvar-quotation? qt); (eq-any? qt 'quote 'NUM)
 		     (memq (if (pair? cell) (car cell) cell) nongeneric))
 	      (ASSERT pair? cell)
               `(,qt ,cell)] ;; Don't reallocate the cell (or touch its RHS)
 	     ;; Otherwise make/lookup the new cell and attach it.
 	     [(,qt ,x) 
-	      (guard (eq-any? qt 'quote 'NUM)
+	      (guard (tvar-quotation? qt);(eq-any? qt 'quote 'NUM)
 		     (or (symbol? x) (pair? x)))
 	      (let* ([var (if (symbol? x) x (car x))]
 		     [entry (assq var env)])
@@ -277,6 +279,16 @@
 		     [res (loop res)])
 		`(,@arg* -> ,res))]
 
+	     ;; [2008.11.09] NOTE: instantiated Record types must have
+	     ;; a tcell separating them from their row.
+	     [(Record ,row) 
+	      `(Record ,(match row
+			  ;; It's already got a tvar:
+			  [',_ (loop row)]
+			  [,oth (define tc (make-tcell))
+				(tcell-set! tc (loop oth))
+				tc]))]
+
 	     [(,constructor ,args ...)
 	      (guard (symbol? constructor))
 	      `(,constructor ,@(mapright loop args))]
@@ -292,18 +304,22 @@
 ;; It also takes away LUB types.
 (define (export-type t)
   (match t
-    ['(,n . ,v) (if v (export-type v) `(quote ,n))]
-    [',n `(quote ,n)]
-    [,s (guard (symbol? s)) s]
-    [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
-    [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
+    [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) (list qt v)]
+    [(,qt (,v . ,t)) (guard (tvar-quotation? qt))
+     (if t (export-type t) (list qt v))]
+    ;['(,n . ,v) (if v (export-type v) `(quote ,n))]
+    ;[',n        `(quote ,n)]
+    ;[(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
+    ;[(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
+
+    [,s (guard (symbol? s)) s]    
     [(LATEUNIFY #f ,[b]) `(LATEUNIFY #f ,b)]
     [(LATEUNIFY ,[a] ,[b])
      `(LATEUNIFY ,a ,b)]
     [#(,[t*] ...) (apply vector t*)]
     [(,[arg*] ... -> ,[res])
      `(,@arg* -> ,res)]
-    ;; Including Ref:
+    ;; Including Ref, Record, Row
     [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]
     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [,other (error 'export-type "bad type: ~s" other)]))
@@ -326,6 +342,7 @@
     ))
 
 ;; This traverses the type and does any LATEUNIFY's
+;; It destructively removes them from the type.
 (define (do-late-unify! t)
   (match t
     [(quote ,pr)
@@ -354,10 +371,13 @@
     [(LATEUNIFY ,a ,b)
      (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
     ;[',n `(quote ,n)]
-    [(NUM ,v) (guard (symbol? v))            (void)]
-    [(NUM (,v . ,t)) (if t (do-late-unify! t) (void))]
+    ;; Catch NUM and ROW:
+    [(,qt ,v) (guard (symbol? v) (tvar-quotation? qt))            (void)]
+    [(,qt (,v . ,t)) (guard (tvar-quotation? qt)) (if t (do-late-unify! t) (void))]
+  
+    ;; FIXME TODO: Handle row variables
     [(,[arg*] ... -> ,[res])                 (void)]
-    ;; Including Ref:
+    ;; Including Ref, Record, Row
     [(,s ,[t] ...) (guard (symbol? s))       (void)]
     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [,other (error 'do-late-unify! "bad type: ~s" other)]))
@@ -442,6 +462,23 @@
       
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
+      [(wsrecord-select ',name ,[rec])
+       (match rec
+	 [(Record ,row) ; '(,v . ,row)
+	  (let loop ([row row])
+	    (match row
+	      [(Row ,nm ,ty ,tail) (if (eq? nm name) ty (loop tail))]
+	      [,else (error 'recover-type "wsrecord-select Couldn't look up label ~a in record type ~a" name rec)]))])]
+      [(wsrecord-extend ',name ,[xty] ,[rec])
+       (match rec [(Record ,row) `(Record (Row ,name ,xty ,row))])]
+      [(wsrecord-restrict ',name ,[rec])
+       (match rec
+	 [(Record ,row) 
+	  (let loop ([row row])
+	    (match row
+	      [(Row ,nm ,ty ,tail) (if (eq? nm name) tail `(Row ,nm ,ty ,(loop tail)))]
+	      [,else (error 'recover-type "wsrecord-restrict Couldn't look up label ~a in record type ~a" name rec)]))])]
+
       [(unionN ,annot ,[t*] ...) 
        (ASSERT (not (null? t*)))
        (ASSERT all-equal?  t*) ;; Requires that they're literally equal sexps...
@@ -466,7 +503,7 @@
    [(flonum? c) 'Float]
    [(cflonum? c) 'Complex]
    ;[(integer? c) 'Int]
-   [(integer? c) `(NUM ,(cons (make-tvar) #f))]
+   [(integer? c) (make-numcell)]
    
    [(char? c)   'Char]
    [(string? c) 'String] 
@@ -651,7 +688,10 @@
                  (match (deep-assq 'Stream first)
                    [(Stream ,elt) `(Stream #(Int ,elt))])))]
 
+
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
+      ;; FIXME: It *might* be profitable to use lazy evaluation on formatting these error messages.
+      ;; Processing the strings is probably somewhat expensive.
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
          (error 'annotate-expression 
@@ -660,6 +700,60 @@
                (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
                  (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
                  (vector-ref newtypes (qinteger->integer n))))]
+      
+      ;; This is a primitive:
+      [(wsrecord-select ',name ,[l -> e recty])
+       (define tc (make-tcell))
+       (define elt (make-tcell))
+       (tcell-set! tc `(Row ,name ,elt ,(make-tcell)))
+       (types-equal! recty `(Record ,tc) exp 
+		     (format "(Attempt to access record field '~a' within incompatible type ~a)\n" name recty))
+       (values `(wsrecord-select ',name ,e) elt)]
+
+      [(wsrecord-extend ',name ,[l -> el elt] ,[l -> rec ty])   
+       (define tc1 (make-tcell))
+       (define tc2 (make-tcell))
+       (tcell-set! tc2 `(Row ,name ,elt ,tc1))
+       (types-equal! ty `(Record ,tc1) exp
+		     (format "(Attempt to extend non-record type '~a' with field label ~a)\n" ty name))
+       (values `(wsrecord-extend ',name ,el ,rec)
+	       `(Record ,tc2))]
+
+      ;; Remember, there may be duplicate fields, this must be careful to remove the LAST ADDED:
+      ;; Of course, this enforces that its record argument have the field label being removed.
+      [(wsrecord-restrict ',name ,[l -> e recty])       
+       ;; TEMP: SORT THIS OUT:  Make consistent with helpers.ss
+       (define (assq-remove-first key ls)
+	 (let loop ((ls ls))
+	   (cond
+	    [(null? ls) #f]
+	    [(eq? (caar ls) key) (cdr ls)]
+	    [else (cons (car ls) (loop (cdr ls)))])))
+
+       (define tc2 (make-tcell))
+       (tcell-set! tc2 `(Row ,name ,(make-tcell) ,(make-tcell)))
+       (types-equal! recty `(Record ,tc2) exp
+		     (format "(Attempt to remove nonexistent field label '~a' from type ~a)\n" name recty))
+
+       ;; This part is tricky.  We do not want to replace any of the
+       ;; mutable tcell's for the fields contained within the returned
+       ;; record type.  However, we do want to rebuild the linked list
+       ;; spine (of Row's) so that it does not contain the label.
+       ;; Essentially, the row-variables are being replaced, but not
+       ;; normal type variables.  However, we currently use the same
+       ;; physical representation for the two.
+       (values `(wsrecord-restrict ',name ,e)
+	       `(Record 
+		 ,(let loop ([recty tc2])
+		    (match recty
+		      ['(,var . ,[ty]) 
+		       (define newtc (make-tcell))
+		       (tcell-set! newtc ty)
+		       newtc]
+		      [(Row ,nm ,ty ,super)
+		       (if (eq? name nm)
+			   super
+			   `(Row ,nm ,ty ,(loop super)))]))))]
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
@@ -781,7 +875,8 @@
 		  `(quote ,n) ty))]
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
-	 (types-equal! (instantiate-type ty '()) et newexp "(Type incompatible with explicit type annotation.)\n")
+	 (types-equal! (instantiate-type ty '()) et newexp
+		       "(Type incompatible with explicit type annotation.)\n")
 	 (values newexp et))]
 
       ;; ----------------------------------------
@@ -1000,11 +1095,10 @@
 
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
-     (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
+     (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data 'static-allocate)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
-    [(tupref ,n ,[e]) `(tupref ,n ,e)]
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
@@ -1016,12 +1110,25 @@
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c)) c]
 
+#|
+    [(,ignrfst . ,rest) (guard (ignore-leading? ignrfst))
+     (define skipped (ignore-leading-how-many ignrfst))
+     (cons (append (list-head ) (map (list-tail ))))
+     ]
+
+|#
     [(struct-ref ,nm ,fld ,[e])   `(struct-ref ,nm ,fld ,e)]
     [(make-struct ,nm ,[e*] ...)  `(make-struct ,nm ,@e*)]
     [(,refcnt ,ty ,[e]) (guard (refcount-form? refcnt))
      `(,refcnt ,ty ,e)]
+#|
+    [(tupref ,n ,[e]) `(tupref ,n ,e)]
+    [(wsrecord-extend   ,n ,[e1] ,[e2])  `(wsrecord-extend ,n ,e1 ,e2)]
+    [(wsrecord-select   ,n ,[e])         `(wsrecord-select ,n ,e)]
+    [(wsrecord-restrict ,n ,[e])         `(wsrecord-restrict ,n ,e)]
+|#
 
-    [(static-allocate ,[x]) `(static-allocate ,x)]
+    ;[(static-allocate ,[x]) `(static-allocate ,x)]
     
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
@@ -1039,6 +1146,7 @@
     [(assert-type ,t ,[e])                                    (void)]
     [(src-pos ,t ,[e])                                        (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])        (void)]
+
     [(tupref ,n ,[e])                                         (void)]
 
     [(set! ,v ,[e])                                           (void)]
@@ -1063,6 +1171,10 @@
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c))                                 (void)]
+
+    [(wsrecord-extend   ,n ,[e1] ,[e2])                       (void)]
+    [(wsrecord-restrict ,n ,[e])                              (void)]
+    [(wsrecord-select   ,n ,[e])                              (void)]
 
     [(struct-ref ,nm ,fld ,[e])                               (void)]
     [(make-struct ,nm ,[e*] ...)                              (void)]
@@ -1115,6 +1227,11 @@
      `(,simplekwd ,@args)]
 
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
+
+    [(wsrecord-extend   ,n ,[e1] ,[e2])  `(wsrecord-extend ,n ,e1 ,e2)]
+    [(wsrecord-select   ,n ,[e])         `(wsrecord-select ,n ,e)]
+    [(wsrecord-restrict ,n ,[e])         `(wsrecord-restrict ,n ,e)]
+
     [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-binding-types "bad expression: ~a" other)]
     ))
@@ -1125,17 +1242,6 @@
     ;[,other (error 'strip-binding-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
     ))
 
-
-;; [2007.04.30] This is useful for printing
-
-#;
-(define-pass strip-annotations
-    [Expr (lambda (x fallthru)
-	    (match x
-	      [(src-pos ,_ ,[e]) e]
-	      [(assert-type ,_ ,[e]) e]
-	      [(using ,M ,[e]) `(using ,M ,e)]
-	      [,other (fallthru other)]))])
 
 ;; Optionally takes symbols indicating which annotations to strip.
 ;; Otherwise, strips all.
@@ -1335,21 +1441,101 @@
     [[,numty .   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
      (tvar-equal-type! t2 numty exp msg)]
 
-;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
-#;
-    ;; If one of them is a symbol, it might be a type alias.
-    [[,x . ,y] (guard (or (symbol? x) (symbol? y)))
-     (let ([sym    (if (symbol? x) x y)]
-	   [nonsym (if (symbol? x) y x)])
-       (let ([entry (assq sym regiment-type-aliases)])
-	 (if entry 
-	     ;; Instantiate the alias and unify.
-	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp msg)
-	     (raise-type-mismatch msg x y exp))))]
+    ;; FIXME TODO: Handle ROW variables...
 
     [[#(,x* ...) . #(,y* ...)]
      (guard (= (length x*) (length y*)))
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg)) x* y*)]
+
+    ;; Records - this is the tricky part    
+    [[(Record ,rowx) . (Record ,rowy)]
+     ;; By convention, both rows must be wrapped in a tcell:
+     (let-match (['(,var . ,tyx) rowx]
+		 ['(,var . ,tyy) rowy])
+       (cond
+	;; If either one of them simply an unset tvar, we set it.
+	[(not tyx) (tcell-set! rowx rowy)]
+	[(not tyy) (tcell-set! rowy rowx)]
+	[else 
+	 ;; Otherwise they both have at least one 'Row':
+	 (let ([table1 (make-default-hash-table)]
+	       [table2 (make-default-hash-table)])
+	   (define (scan-fields row table)
+	     (match row
+	       [#() #t] ;; A closed record.
+	       ['(,var . ,ty)  (if ty (scan-fields ty table) #f)]
+	       [(Row ,name ,ty ,[tail])
+		(let ([prev (hashtab-get table name)]) 		    
+		  (hashtab-set! table name (cons ty (or prev '())))
+		  tail ;(scan-fields tail table)
+		  )]
+	       [,else (error 'types-equal! "unmatched row variable: ~s" else)]))
+
+	   ;; If we need to, we reallocate the spine so as to close the row:
+	   (define (maybe-close-it row)
+	     (if (or xclosed? yclosed?)
+		 (let loop ([row row])
+		   (match row
+		     [(Row ,nm ,ty ,[tail]) `(Row ,nm ,ty ,tail)]
+		     ['(,var . ,ty) (if ty (loop ty) '#())]
+		     [#() '#()]))
+		 row))
+	   (define xclosed? (scan-fields rowx table1))
+	   (define yclosed? (scan-fields rowy table2))
+
+	   ;(printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a" rowx rowy)
+
+	   ;; Traverse the second type, unifying against entries from the first table.
+	   (hashtab-for-each
+	    (lambda (name tyls)
+	      (define msg (format "field labeled ~a must match" name))
+	      (let ([fst (hashtab-get table1 name)])
+		(if fst
+		  ;; TODO : This woud be a place for some better error messages:
+		  ;; It's in both, unify the whole stack of scoped labels:
+		  (let loop ([l1 fst] [l2 tyls])
+		    (unless (or (null? l1) (null? l2))
+		      (types-equal! (car l1) (car l2) exp msg)
+		      (loop (cdr l1) (cdr l2)))
+		    )
+		  ;; If it's in t2 but not t1:
+		  (when xclosed?
+		    (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
+					 `(Record ,rowx) `(Record ,rowy) exp)))
+		;; If it's in t2 but not t1, add it:
+		;(set! row-acc (row-append tyls row-acc))
+		))
+	    table2)
+
+	   ;; Now, with the relevant fields unified, we just need to
+	   ;; combine all fields from both rowx & rowy.	   
+	   (let ([combined (maybe-close-it tyy)]) ;; Better not duplicate that outer tcell...
+	     (define (row-append name tyls row)
+	       (if (null? tyls) row
+		   `(Row ,name ,(car tyls) 
+			 ,(row-append name (cdr tyls) row))))
+	     ;; Acumulate any from rowx that aren't already in rowy.
+	     (hashtab-for-each
+	      (lambda (name tyls)
+		(unless (hashtab-get table2 name)		   
+		  ;; In this case it's in t1 but not t2:
+		  (if yclosed?
+		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
+					   `(Record ,rowx) `(Record ,rowy) exp)
+		      (set! combined (row-append name tyls combined)))))
+	      table1)	     
+	     ;(printf "COMBINED: ~s\n" combined)
+	     ;; Now we overwrite them both to the combined row:
+	     (tcell-set! rowx combined)
+	     (tcell-set! rowy combined)
+	     ))]))]
+
+    [[(Record ,rowx ,x* ...) . ,_]
+     (error 'record-unification "unimplemented2 ~a" _)
+     ]
+    [[,_ . #(Record ,rowy ,y* ...)]
+     (error 'record-unification "unimplemented3")
+     ]
 
     ;; Ref will fall under this category:
     [[(,x1 ,xargs ...) . (,y1 ,yargs ...)]
@@ -1428,7 +1614,8 @@
 (define (tvar-equal-type! tvar ty exp msg)
   (DEBUGASSERT (type? ty))
   (match tvar ;; Type variable should be a quoted pair.
-    [(,qt ,pr) (guard (memq qt '(NUM quote)))
+    [(,qt ,pr) (guard (tvar-quotation? qt);(memq qt '(NUM quote))
+		      )
      (if (not (pair? pr))
 	 (error 'tvar-equal-type! "bad tvar here, no cell: ~a" tvar))
      (if (cdr pr)
@@ -1451,6 +1638,8 @@
     ;; Two num-types join at NUM:
     [[,x ,y] (guard (memq x num-types) (memq y num-types))
      `(NUM ,(make-tvar))]
+
+    ;; Two record types? TODO FIXME
 
     ;; This is a mismatch of basic types:
     [[,x ,y] (guard (symbol? x) (symbol? y)) `(quote ,(make-tvar))]
@@ -1504,6 +1693,15 @@
     [[#(,x* ...) ,y]  `(quote ,(make-tvar))]
     [[,y #(,x* ...)]  `(quote ,(make-tvar))]
 
+    [[(Record ,x* ...) (Record ,y* ...)]
+     (error 'record-lub "unimplemented")
+     ]
+    [[,x (Record ,y* ...)]
+     (error 'record-lub "unimplemented")
+     ]
+    [[(Record ,x* ...) ,y]
+     (error 'record-lub "unimplemented")
+     ]
 
     ;; Two type constructors (Ref falls under this umbrella)
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
@@ -1540,8 +1738,8 @@
   (DEBUGASSERT (type? ty))
   ;; This is a lame hack to repair certain cycles.
   (if (match ty
-	[(,qt (,tyvar . ,_)) (guard (memq qt '(NUM quote)) (eq? tyvar tvar)) #t]
-	[(,qt (,tyvar . ,[tyt])) (guard (memq qt '(NUM quote))) tyt]
+	[(,qt (,tyvar . ,_))     (guard (tvar-quotation? qt) (eq? tyvar tvar)) #t]
+	[(,qt (,tyvar . ,[tyt])) (guard (tvar-quotation? qt)) tyt]
 	[,else #f])
 
       ;; HACK: VERIFY CORRECTNESS::
@@ -1553,17 +1751,18 @@
 	(match ty
 	  [(,qt ,tvarpair)	   
 	   ;; Ouch, mutating in the guard... Nasty.
-	   (guard  (memq qt '(quote NUM))
+	   (guard  (tvar-quotation? qt);(memq qt '(quote NUM))
 		   (match tvarpair
 		     [(,outer . (,qt (,inner . ,targettyp))) 
-		      (guard (memq qt '(NUM quote)) (eq? inner tvar))
+		      (guard (tvar-quotation? qt);(memq qt '(NUM quote))
+			     (eq? inner tvar))
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
 		      (when (>= (regiment-verbosity) 3)
 			(printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp))
 		      ]
-		     [(,outer . (,qt ,[deeper])) (guard (memq qt '(NUM quote))) (void)]
+		     [(,outer . (,qt ,[deeper])) (guard (tvar-quotation? qt)) (void)]
 		     [else (error 'no-occurrence! "this is an implementation bug.")]))
 	   ;; Guard already did the work:
 	   (void)]	  	 
@@ -1573,13 +1772,13 @@
   (match ty
     [#f #t]
     [,s (guard (symbol? s)) #t]
-    [(,qt (,tyvar . ,[tyt])) (guard (memq qt '(NUM quote)))
+    [(,qt (,tyvar . ,[tyt])) (guard (tvar-quotation? qt))
      (if (equal? tyvar tvar)
 	 (raise-occurrence-check tvar ty exp))]
     [#(,[t*] ...) #t]
     [(,[arg*] ... -> ,[res]) res]    
     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
-    [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor
+    [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor, including Record, Row
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
     )))
@@ -1595,6 +1794,7 @@
       (match t
 	[(quote ,[var]) (** "'" var)]
 	[(NUM ,[var]) (** "#" var)]
+	[(ROW ,[var]) (** "ROW" var)] ;; TEMP
 	[(-> ,b) (** "() -> " ((loop #t) b))]
 
 	;; One arg functions:
@@ -1608,6 +1808,14 @@
 
 	[#(,[(loop #t) -> x*] ...)
 	 (** "(" (apply string-append (insert-between " * " x*)) ")")]
+	
+	;; There's a question about when we normalize these type representations.
+	#;
+	[(Record ,[row] (,name* ,ty*) ...)	 
+	 (warning 'record-show-type "unimplemented")
+	 ;; TEMP
+	 (format "{~a ~a}" row (map list name* ty*))
+	 ]
 
 	;; [2006.12.01] Removing assumption that TC's have only one arg:
 	[(,[tc] ,arg* ...)
@@ -1718,6 +1926,11 @@
                          id* t* 
                          rhs*))
                 bod)]
+
+       [(wsrecord-extend   ,n ,[e1] ,[e2])  (append e1 e2)]
+       [(wsrecord-select   ,n ,[e])         e]
+       [(wsrecord-restrict ,n ,[e])         e]
+
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
     ;; print-var-types body:
@@ -1783,13 +1996,20 @@
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
       [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
       [(NUM (,v . ,t))                          (if t (loop t) `(NUM ,v))]
+
+      [(ROW . ,_) (error 'dealias-type "row var unimplemented")]
+
       [#(,[t*] ...)                            (apply vector t*)]
+
+      ;[(Record ,[row] (,name* ,[ty*]) ...)      `(Record ,row ,@(map list name* ty*))]
+
       [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
 
       [(Pointer ,name)          `(Pointer ,name)]
       [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
 
       ;; This is simple substitition of the type arguments:
+      ;; Handles Record, Row:
       [(,s ,[t*] ...) (guard (symbol? s))
 
        (let ([entry (or (assq s aliases)
@@ -1879,13 +2099,22 @@
       ;; Walk over the type structure top-to-bottom.  Check at each
       ;; node whether we can re-alias:
       (let l ([ty t])
-	(match ty
+	(match ty ;; No recursion
 	  [,x (guard (or (symbol? x) (string? x)
 			 ;; Type variables can't be aliases by themselves.
 			 (and (pair? x)
-			      (memq (car x) '(NUM quote)))))
+			      (tvar-quotation? (car x));(memq (car x) '(NUM quote))
+			      )))
 	      x]
 	  [#(,t* ...) (or (try-realias ty) (list->vector (map l t*)))]
+
+	  [(Record ,[row])
+	   (warning 'realias-type "record types are tricky because of ordering... not handled yet")
+	   `(Record ,row)
+	   #;
+	   (or (try-realias ty) 
+	       `(Record ,(l row) ,@(map (lambda (n t) (list n (l t))) n* ty*)))]
+
 	  [(,arg* ... -> ,res) (or (try-realias ty) `(,@(map l arg*) -> ,(l res)))]
 	  [(,s ,t* ...) (guard (symbol? s))
 	   (or (try-realias ty) `(,s . ,(map l t*)))]

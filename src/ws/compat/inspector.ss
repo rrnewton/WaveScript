@@ -33,6 +33,10 @@
 	 [(member line '("n" "native"))
 	  (printf "\nSwitching to ~a's native inspector...\n" which-scheme)
 	  (native-inspect x)]
+
+	 [(member line '("q" "quit"))
+	  (printf "\nExiting and returning last value.\n")
+	  x]
  	 
 	 [(equal? line "?")
 	  (printf "\nWS Homegrown Scheme object inspector, commands:\n\n")
@@ -40,6 +44,7 @@
 	  (printf "  write(w) ............ write object\n")
 	  (printf "  cont(c)  ............ continuation of 'inspect' call\n")
 	  (printf "  native(n) ........... drop to native inspector (Chez)\n")
+	  (printf "  quit(q) ............. exit and continue execution\n")
 	  
 ; Chez Scheme options:    
 ;  

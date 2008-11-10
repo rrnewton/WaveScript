@@ -186,17 +186,6 @@
     [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
     ;; ========================================
 
-    [(assert-type (Stream ,t) (dataFile ,[file] ,[mode] ,[repeats]))
-     (let ([Type (lambda (t)
-                   (unless (memq t '(String Int Float Char))
-                     (error 'verify-regiment
-                            "this is not a type that can be read with dataFile: ~s" t))
-                   t)])
-		 (match t
-		   [#(,t* ...) (for-each Type t*)]
-		   [,t (Type t)])
-		 `(assert-type (Stream ,t)  `(dataFile ,file ,mode ,repeats)))]
-
     [(iterate ,annot ,[f] ,[s])
      `(iterate ,annot ,f ,s)]
     
@@ -207,8 +196,10 @@
     
     [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
 
-    [(,record . ,rest) (guard (memq record '(record record-update)))
-     (error 'verify-regiment "record syntax not supported yet ~s" `(,record . ,rest))]
+    [(empty-wsrecord) `(empty-record)]
+    [(wsrecord-extend ,name ,[x] ,[rec]) `(wsrecord-extend ,name ,x ,rec)]
+    [(wsrecord-select ,name ,[rec])      `(wsrecord-select ,name ,rec)]
+    [(wsrecord-restrict ,name ,[rec])    `(wsrecord-restrict ,name ,rec)]
     
     [,unmatched
      (error 'verify-regiment "invalid syntax ~s" unmatched)])))

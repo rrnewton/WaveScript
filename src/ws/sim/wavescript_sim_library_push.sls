@@ -87,7 +87,9 @@
 		 realpart imagpart 
 
 		 nullseg Array:null nulltimebase
-		 tuple tupref
+		 tuple tupref 
+		 empty-wsrecord wsrecord-select wsrecord-restrict wsrecord-extend ;; imported from common
+
 		 Array:length Array:make Array:makeUNSAFE
 		 Array:ref Array:set Array:map Array:build Array:fold Array:toList Array:andmap
 		 internString uninternString
@@ -146,15 +148,6 @@
      (import (except (rnrs) error + - * / ) ;; [2008.04.30] HACK... Don't want to import ALL of this.
 	     (except (rnrs r5rs) force delay)
 	     (prefix (rnrs (6)) s:)
-
-; 	     (ws compat compat)
-; 	     (ws globals)
-; 	     (ws util iu-match)
-; 	     (ws util hashtab)
-; 	     (except (ws util reg_macros) for)
-;	   (ws compiler_components regiment_helpers)
-;	   (ws compiler_components type_environments)
-;	   (ws util helpers)
 
 	     (except (ws common) for
 		     ;; Erk, subtract streams.sls:
@@ -217,6 +210,11 @@
        ;(import (add-prefix scheme s:))
        ;(import (add-prefix ws_util_slib_hashtab slib:))
        ;(alias begin s:begin)       
+
+       (alias empty-wsrecord empty-wsrecord)
+       (alias wsrecord-select wsrecord-select)
+       (alias wsrecord-restrict wsrecord-restrict)
+       (alias wsrecord-extend wsrecord-extend)
        )
      (begin
        ;(define mod_scheme )

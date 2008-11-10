@@ -82,6 +82,7 @@
     (theprog ;; <- holds on to the program we're compiling
      struct-defs union-types ;; <- cache these two pieces of metadata from theprog
      free-fun-table ;; <- This contains a table mapping
+     copy-fun-table ;; <- Analogous t the free-fun-table
      ;;   types to a scheme function that generates free-code (when given
      ;;   text representing the pointer to free).
      include-files link-files ;; <- accumulate a list of files to include/link
@@ -95,6 +96,7 @@
 
   ;; These are the methods:
   (define-generic build-free-fun-table!)
+  (define-generic build-copy-fun-table!)
   (define-generic heap-type?)
   (define-generic add-include!)
   (define-generic add-link!)
@@ -108,7 +110,6 @@
   (define-generic decr-heap-refcount)
   (define-generic incr-queue-refcount)
   (define-generic decr-queue-refcount)
-
 
   (define-generic potential-collect-point)
   (define-generic say-goodbye)
@@ -334,6 +335,9 @@
 ;;
 ;; This is this function that decides what freeing will be "open coded"
 ;; vs. relegated to separately defined functions.
+;; 
+;; [2008.11.07] This should be factored out into an earlier pass.  It
+;; can generate WS code.
 (__spec build-free-fun-table! <emitC2-base> (self heap-types)
   (define fun-def-acc '()) ;; mutated below  
   (define proto-acc '()) ;; mutated below
@@ -428,6 +432,16 @@
      final-defs)))
 
 
+;; [2008.11.07] This is not ideal, but for now I'm doing this in just
+;; the same way as the free functions.  It would be better to do it in
+;; a previous pass.  But doing as good of a job would require throwing
+;; a bunch of new stuff into the intermediate language (for example,
+;; tuple mutation...).
+(__spec build-copy-fun-table! <emitC2-base> (self queue-types)
+	
+	)
+
+
 
 
 ;================================================================================
@@ -478,18 +492,23 @@
 
 ;; This generates free code for a type (using free-fun-table).
 ;; Should only be called for types that are actually heap allocated.
-(define _ig 
+(define (strip-refs ty) (match ty [(Ref ,ty) ty] [,ty ty]))
+(define _ignrd
   (specialise! gen-free-code <emitC2-base>
      (debug-return-contract lines?
        (lambda (next self ty ptr)
 	 (next)
-	 (let* ([strip-refs (lambda(ty)
-			      (match ty [(Ref ,ty) ty] [,ty ty]))]
-		[newty (strip-refs ty)])
-	   ;; Look up and apply the function for generating free code syntax:
-	   ((cdr (ASSERT (assoc newty (slot-ref self 'free-fun-table))))
-	    ptr))))))
+	 ;; Look up and apply the function for generating free code syntax:
+	   ((cdr (ASSERT (assoc (strip-refs ty) (slot-ref self 'free-fun-table))))
+	    ptr)))))
 
+(define gen-copy-code 
+  (lambda (self ty ptr)
+    ;; Look up and apply the function for generating free code syntax:
+    "// COPY IT\n"
+    #;
+    ((cdr (ASSERT (assoc (strip-refs ty) (slot-ref self 'copy-fun-table))))
+     ptr)))
 
 ;; These methods represent the actions to take when encountering local or heap refs.
 ;; All return a block of code in a "lines" datatype.
@@ -955,6 +974,24 @@
        ;; Simply cast and assign:
        (make-lines `("*((",(Type self ty)" *)(",buf" + ",offset")) = ",xp"; /* type unsafe write */ \n"))]
       [(__type_unsafe_write . ,_) (error 'emitC2:Prim "invalid form: ~s" (cons '__type_unsafe_write _))]
+
+      [(fifo-copy-outgoing ,elt ,down)
+       (define ff (list "& "(symbol->string down) "_queue"))
+       (make-lines
+	(list 
+	 "#ifdef WS_DISJOINT_HEAPS\n"
+	 (block ""
+	       (list 
+"  // Copy & Release enqueued FIFO contents.
+  int i;
+  int pending = wsfifo_pending("ff"); 
+  for(i=0; i < pending ; i++) { 
+    void* ptr = wsfifo_recheck("ff");
+    "(gen-copy-code self elt "ptr")"
+    wsfifo_release_one("ff");
+  }
+"))
+	 "#endif\n"))]
 
       ))))
 
@@ -2053,7 +2090,14 @@ int main(int argc, char **argv)
 		 (operators ,oper* ...)
 		 (sink ,base ,basetype)
 		 ,meta* ...))
-
+	;; We only need to skim the meta-data off each operator to get the sum total of types that travel through queues.
+	(define queue-types 
+	  (list->set
+	   (apply append 
+		  (map (lambda (op) '())
+		    oper*))))
+	(define __ (build-copy-fun-table! self queue-types))
+	
 	(define pieces* (apply append pieces**))
 	;; Break out the different pieces:
 	(define timers        (filter c-timer? pieces*))
@@ -2174,6 +2218,7 @@ int main(int argc, char **argv)
 ;; Constructor, parse out the pieces of the program.
 (__spec initialise <emitC2-base> (self prog)
   (slot-set! self 'free-fun-table '())
+  (slot-set! self 'copy-fun-table '())
   (slot-set! self 'struct-defs (cdr (project-metadata 'struct-defs prog)))
   (slot-set! self 'union-types (cdr (project-metadata 'union-types prog)))
   (slot-set! self 'theprog prog)
@@ -2269,8 +2314,10 @@ int main(int argc, char **argv)
 (define ___IterEndHook
   (specialise! IterEndHook <emitC2-zct>
     (lambda (next self name arg argty down*) 
-      (list (map (lambda (down)
-		   (list 	  "FIFO_COPY_OUTGOING("(symbol->string down)");\n"))
+      (list #;(map (lambda (down)
+		   (list "FIFO_COPY_OUTGOING("(symbol->string down)");\n")
+		   ;(build-fifo-copy down elt)
+		   )
 	      down*)
 	    (next)	  
 	    (lines-text (InvokePerOpCollector self))

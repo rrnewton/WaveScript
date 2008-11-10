@@ -336,8 +336,9 @@
   ;; We automatially inject an include of "internal.ws"
   (define  ws (first-value 
 	       (process* 
-		(append ;'((include "internal.ws"))
-			(case (compiler-invocation-mode)
+		(append (if (ws-no-prelude)
+			    '()
+			  (case (compiler-invocation-mode)
 			  ;; Java backends share with wsc2 for now:
 			  [(wavescript-compiler-c 
 			    wavescript-compiler-java
@@ -356,7 +357,7 @@
 			   '((include "internal.ws")
 			     (include "internal_ml.ws"))]
 			  
-			  [else '((include "internal.ws"))])
+			  [else '((include "internal.ws"))]))
 			origws)
 		'() #f)))
   (define (f1 x) (eq? (car x) '::))

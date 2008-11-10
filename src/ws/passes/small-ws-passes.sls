@@ -889,9 +889,15 @@
 
 ;; Insert a dummy type in place of polymorphic types:
 (define (strip-polymorphic-type t)
+  ;; ASSUMPTION: #() is also the correct type to use to terminate row types.
   ;(define dummy-type #()) ;; Type to insert.    
-  (define dummy-type 'Int) ;; Type to insert.  
-  (type-replace-polymorphic t dummy-type))
+  ;(define dummy-type 'Int) ;; Type to insert.  
+  ;(define dummy-type 'DummyType) ;; Type to insert.  
+  ;(type-replace-polymorphic t dummy-type)
+
+  ;; New version, use a separate subst for NUM and row variables:
+  (type-replace-polymorphic t '#() 'Int '#())
+  )
 
 ;; [2007.07.08]
 ;; Remaining polymorphism at this phase of the compiler is
@@ -1021,6 +1027,7 @@
 (define-pass resolve-type-aliases
     (define aliases '())    ;; Mutated below:
     (define union-types #f) ;; Mutated below:
+    
     (define Type (lambda (t) (export-type (dealias-type aliases union-types (instantiate-type t)))))
 
     ;; First, to apply aliases, we must resolve any aliases on the

@@ -644,6 +644,14 @@
     (tuple Object Tuple)
     (tupref (Int Int Tuple) Object) ;; takes ind, len, tuple
 
+    (empty-wsrecord () (Record 'any))
+    ;; NOTE: These are overly weak types, this cannot be used for
+    ;; typechecking.  It's a hack to reduce the burden of handling
+    ;; record ops explicitly in some places.
+    (wsrecord-select (Symbol (Record 'r)) 'unknown)
+    (wsrecord-extend (Symbol 'a (Record 'r)) (Record 's))
+    (wsrecord-restrict (Symbol (Record 'r)) (Record 's))
+
     ;; Here we pretend similarly:
     ;; Foreign takes: 
     ;;  (1) function name 

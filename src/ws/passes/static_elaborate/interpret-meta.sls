@@ -346,8 +346,23 @@
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))
+     (warning 'tupref "fixme, this loses type data ~a" (plain-type tup))
      (maybe-wrap (list-ref (tuple-fields  (plain-val tup)) ind))
      ]
+
+    ;; As with tuples, we don't store the type metadata in the value
+    ;; itself, (including in the values within the data structure),
+    ;; instead we put the type info in the wrapper.
+    ;[(empty-wsrecord) (make-plain (empty-wsrecord) #f)]
+    [(wsrecord-extend ',nm ,[val] ,[rec]) 
+     (warning 'rec "should probably propagate this type info: ~a to this record: ~a" (get-value-type val) (get-value-type rec))
+     (make-plain (wsrecord-extend nm (unwrap-plain val) (plain-val rec)) #f)]
+    [(wsrecord-select ',nm ,[rec])
+     (warning 'rec "wsrecord-select should probably propagate type info...")
+     (maybe-wrap (wsrecord-select nm (plain-val rec)))]
+    [(wsrecord-restrict ',nm ,[rec])
+     (warning 'rec "wsrecord-restrict should probably propagate this type info")     
+     (make-plain (wsrecord-restrict nm (plain-val rec)) #f)]
 
     ;; UGLINESS
     ;; FIXME: THE BELOW SHOULD BE ABLE TO REPLACE THESE TWO CASES:

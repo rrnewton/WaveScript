@@ -20,11 +20,15 @@
 	   type->width
            datum->width
 
+	   tvar-quotation?
            make-tvar
 	   reset-tvar-generator
 	   get-tvar-generator-count
 	   make-tcell
+	   make-rowcell
+	   make-numcell
 	   tcell->name
+	   tcell-set!
            
 	   empty-tenv
 	   tenv?
@@ -59,6 +63,16 @@
 ;;; and instantiated-types totally disjoint; at the cost of boxing
 ;;; them.  Currently I believe I'm being sloppy in places.
 
+;;; NOTE: Record types:
+;;; These have the form (Record ROW-kind (name type) ...)
+;;; ROW-kind = (Record ...) | (ROW ,sym) | #() 
+;;;
+;;; Thus we've overloaded #() to mean empty-record (in row context),
+;;; and empty tuple in a normal type context.  
+;;;
+;;; The other tricky part about this representation is that throughout
+;;; the compiler we assume the fields are sorted by field name.  This
+;;; invariant must be preserved.
 
 (define (scalar-type? ty) 
   (or (memq ty num-types)
@@ -77,137 +91,159 @@
 	 (char-lower-case? (string-ref str 0)))))
 
 ;; Our types aren't a very safe datatype, but this predicate tries to give some assurance.
+;; extra-pred is a bit of a hack to allow us to extend the functionality
 (define (instantiated-type? t . extra-pred)
   (define (id x) x)
   (IFCHEZ (import rn-match) (void))
-  (match t
+  (let loop ((t t))
+   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
     ;[(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
-    [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
-    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
-    [#(,[t] ...) (andmap id t)] 
-    [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+    [(,qt (,v . #f))   (guard (tvar-quotation? qt) (symbol? v)) (valid-typevar-symbol? v)]
+    [(,qt (,v . ,[t])) (guard (tvar-quotation? qt) (symbol? v)) (and t (valid-typevar-symbol? v))]
+    [#(,ty* ...) (andmap loop ty*)]
+    [(,arg* ... -> ,[ret]) (and ret (andmap loop arg*))]
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(LATEUNIFY #f ,[t]) t]
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
     [(List Annotation) #t] ; FIXME: a bit of a hack, but Annotations should not appear in any other form
-    ;; Including Ref:
-    [(,C ,[t] ...) (guard (symbol? C) (not (memq C '(quote NUM)))) (andmap id t)]
+
+    ;; Instantiated record types must have a mutable cell separating them and their row.
+    [(Record '(,var . ,ty)) (loop ty)]
+    ;; Including Ref, Row:
+    [(,C ,[t] ...) (guard (symbol? C) (not (tvar-quotation? C))) (andmap id t)]
     [,s (guard (string? s)) #t] ;; Allowing strings for uninterpreted C types.
     ;[(,ptr ,[name]) (guard (eq-any? ptr 'Pointer 'ExclusivePointer)) name]
     [,oth (if (null? extra-pred) #f 
-	      ((car extra-pred) oth))]))
+	      ((car extra-pred) oth))])))
 (define (type? t)
   (IFCHEZ (import rn-match) (void))
   (instantiated-type? t 
     (lambda (x) 
       (match x 
-        [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
+        [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v))
+	 (valid-typevar-symbol? v)]
+	;; This is a valid uninstantiated type:
+	[(Record ',var) (symbol? var)]
         [,other #f]))))
 
 ;; Does it contain the monad?
 (define (distributed-type? t)
   (define (id x) x)
   (IFCHEZ (import rn-match) (void))
-  (match t
+  (let loop ((t t))
+   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [Region #t]
     [Anchor #t]
     [(Area ,_) #t]
     [(Stream ,_) #t]    
     [,s (guard (symbol? s)) #f]
-    [#(,[t] ...) (ormap id t)]
-    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
-    [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
+    [#(,ty* ...) (ormap loop ty*)]
+    [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) #f]
+    [(,qt (,v . #f))  (guard (tvar-quotation? qt) (symbol? v))
      (warning 'distributed-type? "got type var with no info: ~s" v)
      #t] ;; This COULD be.
-    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+    [(,qt (,v . ,[t])) (guard (tvar-quotation? qt) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'distributed-type? "don't know how to answer this for LUB yet.")]
+    ;; Handles Ref, Record, Row:
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
-    [,else #f]))
+    [,else #f])))
 
 ;; Does it contain any type-vars?
 (define (polymorphic-type? t)
   (define (id x) x)
   (IFCHEZ (import rn-match) (void))
-  (match t
+  (let loop ((t t))
+   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [,s (guard (symbol? s)) #f]
-    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
-    [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
+    [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) #t]
+    [(,qt (,v . #f))  (guard (tvar-quotation? qt) (symbol? v))
      (warning 'polymorphic-type? "got type var with no info: ~s" v)
      #t] ;; This COULD be.
-    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+    [(,qt (,v . ,[t])) (guard (tvar-quotation? qt) (symbol? v)) t]
     [#() #f]
-    [#(,[t] ...) (ormap id t)]
+    [#(,ty* ...) (ormap loop ty*)]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'polymorphic-type? "don't know how to answer this for LUB yet.")]
-    ;; Including Ref:
+    ;; Including Ref, Record, Row
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
-    [,else #f]))
+    [,else #f])))
 
-(define (type-replace-polymorphic ty dummy-type)
-  (match ty
-    [(,qt ,v) (guard (memq qt '(quote NUM)))
-     (ASSERT symbol? v)
-     dummy-type]
-    [,s (guard (symbol? s)) s]
-    [#(,[t*] ...)                    (list->vector t*)]
-    [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
-    ;; Including Ref:
-    [(,C ,[t*] ...) (guard (symbol? C) (not (memq C '(quote NUM))))    (cons C t*)]
-    [,s (guard (string? s)) s] 
-    [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))
+(define type-replace-polymorphic
+  (case-lambda
+    [(ty dummy)        (type-replace-polymorphic ty dummy dummy dummy)]
+    [(ty dummy ty-num) (type-replace-polymorphic ty dummy ty-num dummy)]
+    [(ty dummy ty-num ty-row)
+     (let loop ([ty ty])
+       (match ty
+	 [',v (ASSERT symbol? v) dummy]
+	 [(NUM ,v) (ASSERT symbol? v) ty-num]      
+	 [(Record ,row)
+	  `(Record ,(match row
+		      [(Row ,name ,[loop -> ty] ,[tail])
+		       `(Row ,name ,ty ,tail)]
+		      [#() '#()]
+		      [',v (ASSERT symbol? v) ty-row]))]	 
+	 [,s (guard (symbol? s)) s]
+	 [#(,[t*] ...)                    (list->vector t*)]
+	 [(,[arg*] ... -> ,[ret])        `(,@arg* -> ,ret)]
+	 ;; Including Ref, Record, Row
+	 [(,C ,[t*] ...) (guard (symbol? C) (not (tvar-quotation? C)))    (cons C t*)]
+	 [,s (guard (string? s)) s] 
+	 [,oth (error 'strip-irrelevant-polymorphism "unhandled type: ~s" oth)]))]))
 
 ;; Does a value of this type have mutable subcomponents?
 (define (type-containing-mutable? t)
   (IFCHEZ (import rn-match) (void))
-  (match t
+  (let loop ((t t))
+   (match t
     [(Array ,_) #t]
     [(HashTable ,_ ,__) #t]
     [,s (guard (symbol? s))                              #f]
-    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
-    [(,qt (,v . ,_)) (guard (memq qt '(quote NUM)) (symbol? v))
+    [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) #f]
+    [(,qt (,v . ,_)) (guard (tvar-quotation? qt) (symbol? v))
      (error 'type-containing-mutable? "got instantiated type!: ~s" t)]
-    [#(,[t] ...) (ormap id t)]
+    [#(,ty* ...) (ormap loop ty*)]
     ;; An arrow type is not itself mutable.
     [(,[arg] ... -> ,[ret]) #f]
-    ;; Including Ref:
-
     [(Pointer ,name) #t] ;; This could contain mutable... 
     [(ExclusivePointer ,name) #t]
+    ;; Including Ref, Record, Row
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     ;[,else #f] ;; [2008.08.06]
-    ))
+    )))
 
 ;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
   (IFCHEZ (import rn-match) (void))
   (match t
-    [(quote (,v . #f)) #f]
+    ;[(quote (,v . #f)) #f]
     [(quote (,v . ,[rhs])) rhs]
-    [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
+    ;[(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [,else #f]))
 
 (define (type-containing-arrow? t)
-  (match t
+  (let loop ((t t))
+   (match t
     [(quote (,v . #f)) #f]
     [(quote ,v) #f]    
     [(quote (,v . ,[rhs])) rhs]
     [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'type-containing-arrow? "don't know how to answer this for LUB yet.")]
-    [#(,[t] ...) (ormap id t)]
+    [#(,ty* ...) (ormap loop ty*)]
     [(Pointer ,name) #f]
     [(ExclusivePointer ,name) #f]
-    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref.    
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)] ;; Including Ref, Record, Row
     [,s (guard (symbol? s)) #f]
-    ))
+    )))
 
 ;; Taken instantiated or uninstantiated type:
 (define constant-typeable-as? 
@@ -233,9 +269,15 @@
 	  [#(,t* ...)
 	   (and (tuple? c) (andmap (lambda (x t) (constant-typeable-as? x t))
 				   (tuple-fields c) t*))]
+	 #;
+	  [(Record ,row (,name* ,ty*) ...)
+	   (and (wsrecord? c)
+		(andmap (lambda (name ty) 
+			  (constant-typeable-as? (wsrecord-select c name) ty))
+			name* ty*))]
 
 	  ;; Type variable, matches anything:
-	  [(,qt ,v) (guard (memq qt '(quote NUM))) #t]	  
+	  [(,qt ,v) (guard (tvar-quotation? qt)) #t]	  
 
 	  [(Sigseg ,t) (and (sigseg? c) (vector-andmap (lambda (x) (constant-typeable-as? x t)) (sigseg-vec c)))]
 	  [Timebase    (timebase? c)]
@@ -252,8 +294,8 @@
     (match t
       [,simple (guard (symbol? simple)) #t]
       ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
-      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
-      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+      [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) #f]
+      [(,qt (,v . ,[t])) (guard (tvar-quotation? qt) (symbol? v)) t]
       ;; This shouldn't be in a tuple anyway:
       [(,[arg] ... -> ,[ret]) #f]
 
@@ -264,6 +306,9 @@
       [(List   ,_)            #t]
       [(Pointer   ,_)         #t]
       [(ExclusivePointer  ,_) #t]
+      ;; The name is an arbitrary symbol:
+      [(Row ,name ,[elt] ,tail) (and elt (known-size? tail))]
+      ;; Including Ref, Record:
       [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
       [#(,[t] ...) (andmap id t)]
       [,else #f]))
@@ -301,6 +346,9 @@
 	 
          ;[#() 1] ;????
          [#(,[t*] ...) (apply + t*)]
+	 ;[(Record ...)]
+	 [(Record ,row)
+	  (error 'type->width "unimplemented case: (Record ~a)" row)]
 
          [(Sum ,TC)
           (ASSERT sumdecls)
@@ -331,6 +379,8 @@
 			     (type->width 'Int sumdecls) d)]
 	     [#() 1] ; FIXME FIXME: what to really do here?
 	     [#(,t* ...) (apply +   (map (lambda (e ty) (datum->width ty e sumdecls)) (tuple-fields d) t*))]
+	     [(Record ,row)
+	      (error 'datum->width "unimplemented case: (Record ~a)" row)]
 	     [String (string-length d)] ; FIXME: there may be some overhead?
 	     [(Sigseg ,elt) 
 	      (+ 
@@ -346,6 +396,11 @@
 
 ; ----------------------------------------
 ;;; Representation for type variables  
+
+;; We have three different kinds of type variables, each use a different "quotation mark".
+;; Maybe should make a macro to assure it's inlined:
+(define (tvar-quotation? qt)
+  (eq-any? qt 'quote 'NUM 'ROW))
   
 (define tvar-generator-count 0)
 ;; Makes a unique type variable.  Returns a symbol.
@@ -380,14 +435,27 @@
     [() `(quote (,(make-tvar) . #f))]
     [(x)`(quote (,(make-tvar) . ,x))]))
 
+;; Same but for row variables rather than normal type variables
+(define make-rowcell
+  (case-lambda
+    [() `(ROW (,(make-tvar) . #f))]
+    [(x)`(ROW (,(make-tvar) . ,x))]))
+(define make-numcell
+  (case-lambda
+    [() `(NUM (,(make-tvar) . #f))]
+    [(x)`(NUM (,(make-tvar) . ,x))]))
+
 (define (tcell->name x)
   (IFCHEZ (import rn-match) (void))
   (match x
-    [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
+    [(,qt (,n . ,t)) (guard (tvar-quotation? qt))
+     (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
-
-  
-  
+(define (tcell-set! x ty)
+  (if (and (pair? x) (tvar-quotation? (car x))
+	   (pair? (cadr x)))
+      (set-cdr! (cadr x) ty)
+      (error 'tcell-set! "Bad tcell: ~a" x)))
   
 ; ----------------------------------------
 ;;; Type Environment ADT.
@@ -606,6 +674,9 @@
       ["NUM must have vars attached" (type? '#((NUM Int) (NUM Float))) #f]
       [(type? '(NUM a)) #t]
       [(type? '(Int -> (NUM a))) #t]      
+      
+      [(type? '(Record 'i)) #t]
+      [(instantiated-type? '(Record 'i)) #f]
       
       [(polymorphic-type? '#()) #f]
       [(polymorphic-type? '(-> Int)) #f]

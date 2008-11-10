@@ -10,7 +10,8 @@
   (require (lib "yacc.ss" "parser-tools")
 	   (lib "lex.ss" "parser-tools")
 	   (prefix : (lib "lex-sre.ss" "parser-tools"))
-	   
+
+	   (lib "list.ss")
 	   "iu-match.ss"
 	   ;"../generic/util/helpers.ss"
 	   ;;"plt/prim_defs.ss"
@@ -37,8 +38,8 @@
     +. -. *. /. ^. 
     +: -: *: /: ^: 
     :: ++  COLON
-    AND OR NEG HASH 
-    APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
+    AND OR NEG HASH AT TILDE
+    APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG 
     ; Keywords :
     fun for while to emit return include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef uniontype static case
@@ -49,22 +50,26 @@
     EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
     EOF ))
-(define-tokens value-tokens (NUM DOUBLE VAR DOTVARS TYPEVAR NUMVAR CHAR STRING))
+(define-tokens value-tokens (NUM DOUBLE LOWVAR UPVAR DOTVARS TYPEVAR NUMVAR CHAR STRING))
 
 (define-lex-abbrevs (lower-letter (:/ "a" "z"))
                     (upper-letter (:/ #\A #\Z))
   ;; (:/ 0 9) would not work because the lexer does not understand numbers.  (:/ #\0 #\9) is ok too.
                     (digit (:/ "0" "9"))
 		    
+                    (varleadchar (:or lower-letter upper-letter "_"))
+		    (varchar (:or varleadchar digit))
+		    (vartail (:* (:or varchar
+				      ;; Can have a single semi-colon inbetween the reasonable characters:
+				      (:seq varchar ":" varchar)
+				      )))
+
 		    ;; This can include colons for namespace specifiers.
 		    ;; Currently namespaces must be more than one letter!!
-                    (variable (:seq (:or lower-letter upper-letter "_")
-                                    (:* (:or lower-letter upper-letter "_" digit
-					     ;; Can have a single semi-colon inbetween the reasonable characters:
-					     (:seq (:or lower-letter upper-letter "_" digit)
-						   ":"
-						   (:or lower-letter upper-letter "_" digit))
-					     )))))
+                    (variable (:seq varleadchar vartail))
+		    (lower_variable (:seq (:or lower-letter "_") vartail))
+		    (upper_variable (:seq upper-letter vartail))		    
+		    )
 
 (define (unescape-chars str)
   (read (open-input-string (string-append "\"" str "\""))))
@@ -114,8 +119,10 @@
     (token-STRING (unescape-chars (substring lexeme 1 (sub1 (string-length lexeme)))))]
 
    ;["#"  'HASH]
+   ["@"  'AT]
    [(:seq "#" (:+ lower-letter)) (token-NUMVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    ["&&" 'AND] ["||" 'OR]
+   ["~"  'TILDE]
    
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
@@ -130,7 +137,9 @@
 ;   ["sin" (token-FNCT sin)]
 
    ;; Variables:
-   [variable (token-VAR (string->symbol lexeme))]
+   ;[variable (token-VAR (string->symbol lexeme))]
+   [lower_variable (token-LOWVAR (string->symbol lexeme))]
+   [upper_variable (token-UPVAR (string->symbol lexeme))]
 
    ;; Dot/stream-projection
    [".(" 'DOTSTREAM]
@@ -268,6 +277,27 @@
       `(assert-type Double (cast_num ',num))
       )
 
+    (define (make-record-update root updates)
+      (let loop ((ls updates))
+	(if (null? ls)
+	    (or root '(empty-wsrecord))
+	    (match (car ls)
+	      [(extend ,name ,val) `(wsrecord-extend ',name ,val ,(loop (cdr ls)))]
+	      [(restrict ,name)    `(wsrecord-restrict ',name ,(loop (cdr ls)))]
+	      [(update ,name ,val) `(wsrecord-extend ',name ,val 
+				    (wsrecord-restrict ',name ,(loop (cdr ls))))]
+	      ))))
+
+    ;; Inside the compiler record types have the convention that their fields are always sorted.
+    ;; When constructing a record type for the first time, we must therefore sort them.
+    (define (make-initial-record-type super fields)
+      ;`(Record ,super ,@(sort fields (lambda (a b) (symbol<? (car a) (car b)))))
+      `(Record ,(match fields
+		  [() super]
+		  [((,nm ,ty) . ,[rest]) `(Row ,nm ,ty ,rest)]))
+      )
+    (define (symbol<? a b) (string<? (symbol->string a) (symbol->string b)))
+
    ;; Returns a function that takes a lexer thunk producing a token on each invocation:a
     (define theparser
       (parser
@@ -313,7 +343,7 @@
 ;          (left DOTBRK) 
 ;	  (right BAR)
 	  ;(right BANG) ;; This should be pretty strong but weaker than DOT.
-          (left NEG APP DOT MAGICAPPLYSEP COMMA       )
+          (left NEG APP DOT MAGICAPPLYSEP COMMA AT )
           (right ^ g^ ^_ ^. ^:  BANG)
 
     	  (nonassoc in)
@@ -338,6 +368,8 @@
     ;; [2007.07.13] This caused a reduce-reduce conflict so I had to do it manually.
 ;    (VarExp [(VAR) (wrap $1-start-pos $1-end-pos $1)])
 ;    (VarExp [(VAR) $1])
+
+    (VAR [(LOWVAR) $1] [(UPVAR) $1])
 
     (type
 	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
@@ -378,12 +410,16 @@
 	  ;[(type * type * type) (vector $1 $3 $5)]
 	  ;[(type * type) (vector $1 $3)]
 	  ;[(typetuple) (list->vector $1)]
-	  
+	  	  
 	  ;; Record types:
-	  [(LeftParen BAR RightParen) `(record-type #f)]
-	  ;[(LeftParen BAR recordtypebinds+ RightParen)       `(record-type #f ,@$3)]
-	  [(LeftParen recordtypebinds+ RightParen)       `(record-type #f ,@$2)]
-	  [(LeftParen type BAR recordtypebinds+ RightParen) `(record-type ,$2 ,@$4)]
+	  ;; Convention... #() in row-variable context designates a closed record.
+	  ;; The record is closed if it does not extend another one (no BAR):
+	  ;; Empty records are written with BAR and so are not closed.
+	  ;[(LeftParen BAR RightParen)  (make-initial-record-type '(ROW rowvar) '())]
+	  [(LeftParen BAR RightParen)  (make-initial-record-type `',(gensym "_rowvar") '())]
+	  ;[(LeftParen BAR recordtypebinds+ RightParen)      `(Record #f ,@$3)]
+	  [(LeftParen recordtypebinds+ RightParen)          (make-initial-record-type '#() $2)]
+	  [(LeftParen type BAR recordtypebinds+ RightParen) (make-initial-record-type $2 $4)]
 	  
           )
 
@@ -565,20 +601,33 @@
      ;; These are not implemented yet, but just wanted to put them in
      ;; the parser so I know they don't cause future conflicts:
      ;[(LeftParen recordbinds+ RightParen) `(record ,@$2)]
-     [(LeftParen BAR RightParen) `(record)]
-     [(LeftParen BAR recordbinds+ RightParen) `(record ,@$3)]
-     [(LeftParen recordbinds+ RightParen) `(record ,@$2)]
-     [(LeftParen exp BAR recordbinds+ RightParen) `(record-update ,$2 ,@$4)]
+     [(LeftParen BAR RightParen) `(empty-wsrecord)]
+     [(LeftParen BAR fullrecordbinds+ RightParen)     (make-record-update #f $3)]
+     [(LeftParen recordbinds+ RightParen)         (make-record-update #f $2)]
+     [(LeftParen exp BAR fullrecordbinds+ RightParen) (make-record-update $2 $4)]
+
      ;; Alternatively, I kind of like this syntax:
-     [(LeftBrace BAR RightBrace) `(record)]
-     [(LeftBrace BAR recordbinds+ RightBrace) `(record ,@$3)]
-     [(LeftBrace exp BAR recordbinds+ RightBrace) `(record-update ,$2 ,@$4)]
+     [(LeftBrace BAR RightBrace) `(empty-wsrecord)]
+     [(LeftBrace BAR recordbinds+ RightBrace)     (make-record-update #f $3)]
+     [(LeftBrace exp BAR recordbinds+ RightBrace) (make-record-update $2 $4)]
 
-     
      )
-    (recordbinds+ [(VAR = exp) (list (list $1 $3))]
-		  [(VAR = exp COMMA recordbinds+) (cons (list $1 $3) $5)])
 
+    ;; Some more hackery.  The record update (:=) can only be used if
+    ;; (1) The full '|' syntax is used.  Or (2) it occurs only after a
+    ;; normal record extension (l=v) in the list.
+    
+    ;;(recordbind [(VAR = exp)])
+    (recordbind [(VAR = exp) (list 'extend $1 $3)]
+		[(TILDE VAR) (list 'restrict $2)])
+    (fullrecordbind [(recordbind) $1]
+		    [(VAR := exp) (list 'update $1 $3)]
+		    )
+    (recordbinds+ [(recordbind) (list $1)]		  
+		  [(recordbind COMMA fullrecordbinds+) (cons $1 $3)])
+    (fullrecordbinds+ [(fullrecordbind) (list $1)]		  
+		      [(fullrecordbind COMMA fullrecordbinds+) (cons $1 $3)])
+   
 
     ;; Hack to enable my syntax for sigseg refs!!
     ;; We separate out lists from other sy
@@ -707,6 +756,10 @@
 	 ;; Basic dot syntax:
 	 ;; Can only use this to call named functions, that is symbols:
          [(exp DOT VAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
+
+	 ;; FIXME: This is temporary... my intention is to use '.'
+	 [(exp AT VAR) `(wsrecord-select ',$3 ,$1)]
+	 ;[(exp DOT UPVAR) `(wsrecord-select ',$3 ,$1)]
 
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))

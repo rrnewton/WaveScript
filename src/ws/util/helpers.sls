@@ -49,7 +49,7 @@
    list-is-set? list-subset? set-equal? list->set set->list union intersection difference set-cons:list
    list-rem-dups ;define-values 
    list-is-setq? list-subsetq? set-eq?
-   remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
+   remq-all assq-remove assq-remove-all list-remove-first list-remove-last! list-remove-after 
    list-index snoc rac rdc rdc! rac&rdc! last  mapleft mapright
    list-find-position list-remove-before
    list-build list-copy
@@ -421,6 +421,13 @@
 (define list-find-position
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
+
+(define (assq-remove key ls)
+  (let loop ((ls ls))
+    (cond
+     [(null? ls) '()]
+     [(eq? (caar ls) key) (cdr ls)]
+     [else (cons (car ls) (loop (cdr ls)))])))
 ;; This removes all!  Not just first.
 (define (assq-remove-all x ls)
   (let loop ((ls ls))

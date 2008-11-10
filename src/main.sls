@@ -464,6 +464,7 @@
   (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])
     (ws-run-pass p retypecheck))
+
   p)
 
 ;; This will store a continuation that hops into the compiler write before generate-marshal-code.
@@ -626,6 +627,8 @@
   (DEBUGMODE (do-late-typecheck))
   ;; This is expensive because it lifts generic ops, and retypechecks:
   ;; (Like we later do for polymorphic constants)
+
+;  (inspect (strip-annotations p 'src-pos))
   (ws-run-pass p degeneralize-arithmetic)
 
   ;; NOTE: SHOULD BE SAFE TO TURN OFF LET-BOUND-POLYMORPHISM HERE:
@@ -642,10 +645,10 @@
   ;; Pull constants up to the top.
   ;(ws-run-pass p lift-complex-constant)
 
-
   ;; This lift/typecheck/unlift process is inefficient, but easy:
   ;; A hack, but a pretty cool hack.
   (ws-run-pass p lift-polymorphic-constant)
+
   (do-late-typecheck)
   
   ;; This just fills polymorphic types with unit.  These should be
@@ -653,9 +656,7 @@
   ;; [2007.10.11] Right now this messes up demo3f:
   (ws-run-pass p strip-irrelevant-polymorphism)
   (ws-run-pass p unlift-polymorphic-constant)   
-
   (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
-
   (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.  
 
   (IFDEBUG 
@@ -685,6 +686,7 @@
   (ws-run-pass p reduce-primitives)
  
   (IFDEBUG (do-late-typecheck) (void))
+  
   ;(profile-clear)
 
   (ws-run-pass p type-annotate-misc) ;; This pass is really slow...
@@ -1116,7 +1118,6 @@
        
        (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
-       ;(inspect compiled)     
        (run-wavescript-sim compiled))))
   
   (define (wsint-early x input-params . flags)
@@ -2130,7 +2131,7 @@
 
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
-      (define (loop args)	
+      (define (loop args)
         (match args
 
           [() '()]
@@ -2209,6 +2210,8 @@
 	  ;; This signals that we include whatever debugging info we can in the output code.
 	  ;; [2007.10.26] Currently it's just used by the wsmlton script, and doees nothing here.
 	  [("-dbg" ,rest ...) (loop rest)]
+
+	  [("-noprelude" ,rest ...) (ws-no-prelude #t) (loop rest)]
 
 	  [(".h" ,rest ...) (print-help) (regiment-exit 0)]
 	  

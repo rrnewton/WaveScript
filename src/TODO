@@ -21,6 +21,13 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.11.07]
+
+  *) It would be nice to expose wsfifo, refcounting, and free
+     operations in the intermediate language.  Then some of the work
+     could be lifted off emit-c2 and into an earlier pass (such as
+     building free_ functions for each type).
+
 [2008.10.02]
   *) partition-graph-by-namespace still only does a shallow scan.  It needs to do the transitive closure.
 

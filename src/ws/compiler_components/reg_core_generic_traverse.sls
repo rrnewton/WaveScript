@@ -35,6 +35,8 @@
 	  core-free-vars
 	  core-substitute
 	  core-refcount
+	  ignore-leading?
+	  ignore-leading-how-many
 	  )
   (import (except (rnrs (6)) error)
 	  (ws compat compat)
@@ -49,6 +51,23 @@
 	  )
 
 (IFCHEZ (import rn-match) (begin))
+
+;; [2008.11.08] Some new helpers: There are an excess of of special
+;; syntax forms that have a couple non-expression operands before the
+;; expression operands.  These two functions provide a simple way to
+;; handle these in bulk.  Some of these syntaxes only exist at
+;; particular points in the compiler, but this handles all of them.
+(define (ignore-leading? x)
+  (eq-any? (car x) 
+	   'tupref 'struct-ref
+	   'make-struct 'wsrecord-extend 'wsrecord-select 'wsrecord-restrict))
+(define (ignore-leading-how-many x)
+  (case x
+    [(tupref struct-ref) 2]
+    [(make-struct wsrecord-extend wsrecord-select wsrecord-restrict) 1]
+    [else (error 'ignore-leading-how-many "not a handled keyword: ~a" x)]))
+
+
 
 ;;============================================================
 ;;; Procedural Interface 
@@ -192,7 +211,7 @@
 	    [(expr newdriver) (build-traverser newdriver fuse expr)]
 
        [(expression)       	      
-	(match  expression
+	(match  expression ;; No direct match recursion!!
 ;	  [,x (guard (begin (printf "\nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (simple-constant? const)) (fuse '() (lambda () const))]
@@ -205,6 +224,9 @@
 	  ;; We don't put any restrictions (HERE) on what can be in a quoted constant:
 	  [(quote ,const)                (fuse '()      (lambda () `(quote ,const)))]
 	  [,var (guard (symbol? var))    (fuse '()      (lambda () var))]
+
+	  ;; A primitive now:
+	  ;[(empty-wsrecord)              (fuse '()      (lambda () expression))]
 
 	  ;; Annotations, these are actually quite common:
 	  [(,annot ,t ,[loop -> e])
@@ -226,6 +248,13 @@
 	   (DEBUGASSERT fixnum? m)
 	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
+
+	  [(wsrecord-extend ,name ,[loop -> x] ,[loop -> rec])
+	   (fuse (list x rec) (lambda (x rec) `(wsrecord-extend ,name ,x ,rec)))]
+	  [(wsrecord-select ,name ,[loop -> x])
+	   (fuse (list x) (lambda (x) `(wsrecord-select ,name ,x)))]
+	  [(wsrecord-restrict ,name ,[loop -> x])
+	   (fuse (list x) (lambda (x) `(wsrecord-restrict ,name ,x)))]
 
 	  ;; Being VERY lenient.  Vector is here just because it's used in static-elaborate. [2007.03.06]
 	  [(,varargkeyword ,[loop -> args] ...)
@@ -337,6 +366,8 @@
 		    `(lambda ,@other))
 	   (inspect `(lambda ,@other))
 	   (error 'core-generic-traverse "")]
+
+	  [(fifo-copy-outgoing ,rst ...) (cons 'fifo-copy-outgoing rst)]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)

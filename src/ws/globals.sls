@@ -129,6 +129,7 @@
 
 	 suppress-main-stream-printing
          ws-print-output-port ;; For the WS simulator.
+	 ws-no-prelude
 	 ws-optimizations-enabled
 	 ws-optimization-level
 	 ws-profile-limit
@@ -172,6 +173,7 @@
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
 	 make-tuple tuple-fields tuple?
+	 make-wsrecord wsrecord-pairs wsrecord-select wsrecord-extend wsrecord-restrict empty-wsrecord
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
 	 make-double double-val double?
@@ -417,6 +419,9 @@
 
 ;; When we use the 'print' command within a WS program, this is where that output goes.
 (define-regiment-parameter ws-print-output-port (current-output-port))
+
+;; This suppresses loading of built-in internal*.ws files.
+(define-regiment-parameter ws-no-prelude #f)
 
 ;; Suppress the default behavior wherein the "main" stream is echo'd to stdout.
 ;; Should work across backends.
@@ -959,6 +964,37 @@
 
 ;; [2007.07.29] Adding this to distinguish tuples from vectors.
 (reg:define-struct (tuple fields))
+
+;; [2008.09.28] This datatype is used for records at metaprog time.
+;; The association list of name-value pairs must be sorted in
+;; alphabetic order.  It may contain duplicate names, but extend and
+;; restrict operations must respect the order of these duplicated
+;; entries.
+(reg:define-struct (wsrecord pairs))
+(define (empty-wsrecord) (make-wsrecord '()))
+(define (wsrecord-select fld rec)
+  (cdr (ASSERT (assq fld (wsrecord-pairs rec)))))
+(define (wsrecord-restrict name rec)
+  (define (assq-remove key ls)
+    (let loop ((ls ls))
+      (cond
+       [(null? ls) '()]
+       [(eq? (caar ls) key) (cdr ls)]
+       [else (cons (car ls) (loop (cdr ls)))])))
+  (make-wsrecord (assq-remove name (wsrecord-pairs rec))))
+;; NOTE: Actually for now we're not maintaining a sorted list:
+#;
+(define (wsrecord-extend name val rec )
+  (define (symbol<=? s1 s2)
+    (string<=? (symbol->string s1) (symbol->string s2)))
+  (define pair (cons name val))
+  (let loop ((ls (wsrecord-pairs rec)))
+    (cond
+     [(null? ls) (list pair)]
+     [(symbol<=? name (caar ls)) (cons pair ls)]
+     [else (cons (car ls) (loop (cdr ls)))])))
+(define (wsrecord-extend name val rec)
+  (make-wsrecord (cons (cons name val) (wsrecord-pairs rec))))
 
 (reg:define-struct (uniontype tag val)) ;; Sum types
 

@@ -136,7 +136,6 @@
      (parameterize ([inferencer-enable-LUB #f]
 		    [inferencer-let-bound-poly #f])
        (let ([lifted (lift-generics p)])
-;	 (inspect lifted)
 	 (let ([typed (retypecheck lifted)])
 ;	   (inspect typed)
 	   typed))
