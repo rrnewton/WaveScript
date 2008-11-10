@@ -886,6 +886,7 @@
 		   eq? locdiff nodeid getID sense even? odd? 
 		   ;; These weren't really primitives:    
 		   tuple tupref ref deref static statref __foreign foreign foreign_box foreign_source
+		   empty-wsrecord wsrecord-select wsrecord-extend wsrecord-restrict
 		   ;; These were desugared or reduced to other primitives:
 		   ws:or ws:and dataFile 
 		   ;; These were resolved into the w/namespace versions:

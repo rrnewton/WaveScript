@@ -109,3 +109,4 @@ mv benchlogs benchlogs_bgsub
 # #cat pipeline.dat >> RESULTS.txt
 # #cat pothole.dat >> RESULTS.txt
 
+echo Finished running all application benchmarks.
