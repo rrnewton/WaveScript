@@ -1539,12 +1539,14 @@
 	   (tcell-set! rowx row-acc)
 	   (tcell-set! rowy row-acc))]))]
 
+#|
     [[(Record ,rowx ,x* ...) . ,_]
      (error 'record-unification "unimplemented2 ~a" _)
      ]
     [[,_ . #(Record ,rowy ,y* ...)]
      (error 'record-unification "unimplemented3")
      ]
+|#
 
     ;; Ref will fall under this category:
     [[(,x1 ,xargs ...) . (,y1 ,yargs ...)]
@@ -1828,6 +1830,10 @@
 		  (match row
 		    [(Row ,nm ,[show-type -> ty] ,tail)
 		     (loop tail (cons (list (symbol->string nm) ":" ty) acc))]
+		    ['(,v . ,_) 
+		     ;(error 'show-type "type should not be instantiated, found this within Row: ~a" row)
+		     (cons* " _ | " (wrapup))
+		     ]
 		    [',v (cons* (symbol->string v) " | " (wrapup))]
 		    [#() (cons                      "| " (wrapup))])))]
 
@@ -1837,8 +1843,7 @@
 	   (if outer?		 
 	       (**     tc " " inside )
 	       (** "(" tc " " inside ")")))]
-	[,sym (guard (symbol? sym))
-	      (symbol->string sym)]
+	[,sym (guard (symbol? sym)) (symbol->string sym)]
 	[,s (guard (string? s)) (format "~s" s)] ;; Allowing strings for uninterpreted C types.
 	[,other (error 'print-type "bad type: ~s" other)])))
   ;; Prettification: we drop the loop parens:
@@ -2083,7 +2088,7 @@
 	  ;; We don't want to inject any ADDITIONAL constraints into the original type.
 	  ;; So first we make sure that our alias matches even if
 	  ;; the polymorphism is stripped from the original type.
-	  (if (types-equal!? (type-replace-polymorphic origty (gensym "DummyType")) (instantiate-type rhs))
+	  (if (types-equal!? (type-replace-polymorphic origty (gensym "DummyType") 'Int '#()) (instantiate-type rhs))
 	      ;; If that succeeds we match them again without the hack:
 	      (match (instantiate-type `(Magic #(,@a*) ,rhs) '() #t)
 		;; We bundle together the LHS* and RHS here so that their mutable cells are shared.

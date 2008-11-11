@@ -15,7 +15,7 @@ fun testit() {
 
   print("And a little projection: " ++ rec2.A ++" "++ rec2.B ++"\n");
 
-  rec3 = ( rec2  | ~A, B := () );
+  rec3 = ( if true then (rec2 | D='t') else (rec2 | D='f') | ~A, B := () );
   print(rec3 ++ "\n");
 
   print("And more projection: "++ rec3.A ++"\n");

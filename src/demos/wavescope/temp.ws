@@ -1,9 +1,17 @@
 
 /* //include "stdlib.ws"; */
 
-_ = {
-  r = (A=3);
+
+
+main = iterate _ in timer(1) {
+  r = (A=3, B="four");
   print(r ++ "\n");
+  print(r.A ++ "\n");
+
+  r2 = (r | C=());
+  print(r2 ++ "\n");
+
+  emit 0;
 }
 
 

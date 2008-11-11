@@ -249,6 +249,7 @@
     [Array:null #t] ;; [2007.12.09] Adding...
     ;; Void value:
     [(tuple) #t] ;; [2007.03.19] Why had I commented this before? Using 'UNIT instead.
+    [(empty-wsrecord) #t] ;; [2008.11.11] This should be treated the same as an empty tuple.
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
 
     ;; Annotations can still be simple.

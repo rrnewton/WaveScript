@@ -53,6 +53,7 @@
 
 ;(ws passes normalize_query remove-complex-opera)
 (ws passes normalize_query reduce-primitives)
+(ws passes normalize_query desugar-records)
 
 (ws passes normalize_query ws-remove-letrec)
 (ws passes normalize_query ws-remove-complex-opera)

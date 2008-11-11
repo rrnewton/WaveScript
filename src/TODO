@@ -21,6 +21,13 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2008.11.11]
+  *) It probably wouldn't hurt to make tupref's simple expressions.
+  *) If interested we could implement polymorphic positional tuple access by 
+     switching the source-level tuples into a syntactic sugar for records.
+     But... could we get into trouble with the scoped labels?
+
+
 [2008.11.07]
 
   *) It would be nice to expose wsfifo, refcounting, and free
