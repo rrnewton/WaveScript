@@ -55,15 +55,18 @@
 	(cond
 	 [(vector? x) (format "#~a" (loop (vector->list x)))]
 	 [(tuple? x) (string-append (apply string-append "(" (insert-between ", " (map loop (tuple-fields x)))) ")")]
-	 [(list? x) (text->string (list "[" (insert-between ", " (map loop x)) "]"))]
 	 [(eqv? x unit-representation) "()"]
 	 [(uniontype? x) (format "~a(~a)" (deunique-name (uniontype-tag x)) 
 				 (loop (uniontype-val x)))]
 	 [(string? x) (string-append "\"" x "\"")]
 	 [(double? x) (number->string (double-val x))]
+	 [(list? x) (text->string (list "[" (insert-between ", " (map loop x)) "]"))]
+	 [(wsrecord? x)
+	  (text->string (list "(" (insert-between ", " (map (lambda (pr) (list (symbol->string (car pr)) "=" (loop (cdr pr))))
+							 (wsrecord-pairs x))) ")"))]
+	 [(boolean? x) (if x "true" "false")]
 	 [else (format "~a" x)]
-	 ))
-      ))
+	 ))))
 
 ;  (define unit-representation #())
 (define unit-representation 'UNIT)

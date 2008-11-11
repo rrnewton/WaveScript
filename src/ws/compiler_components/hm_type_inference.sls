@@ -1819,12 +1819,17 @@
 	 (** "(" (apply string-append (insert-between " * " x*)) ")")]
 	
 	;; There's a question about when we normalize these type representations.
-	#;
-	[(Record ,[row] (,name* ,ty*) ...)	 
-	 (warning 'record-show-type "unimplemented")
+	[(Record ,row)
+	 ;(warning 'record-show-type "unimplemented")
 	 ;; TEMP
-	 (format "{~a ~a}" row (map list name* ty*))
-	 ]
+	 (apply string-append "("
+		(let loop ([row row] [acc '()])
+		  (define (wrapup) (apply append (reverse! (cons '(")") (insert-between '(", ") acc)))))
+		  (match row
+		    [(Row ,nm ,[show-type -> ty] ,tail)
+		     (loop tail (cons (list (symbol->string nm) ":" ty) acc))]
+		    [',v (cons* (symbol->string v) " | " (wrapup))]
+		    [#() (cons                      "| " (wrapup))])))]
 
 	;; [2006.12.01] Removing assumption that TC's have only one arg:
 	[(,[tc] ,arg* ...)

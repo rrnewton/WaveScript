@@ -173,7 +173,7 @@
 ;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
 	 make-tuple tuple-fields tuple?
-	 make-wsrecord wsrecord-pairs wsrecord-select wsrecord-extend wsrecord-restrict empty-wsrecord
+	 make-wsrecord wsrecord-pairs wsrecord-select wsrecord-extend wsrecord-restrict empty-wsrecord wsrecord? 
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
 	 make-double double-val double?
