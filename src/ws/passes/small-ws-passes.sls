@@ -378,6 +378,35 @@
 		  fld*))
 	      ,(addstr! ''")"))))]
 
+      ;; Prints them in alphabetical order currently.
+      [(Record ,row)
+       (let ([tmp (unique-name "rec")]
+	     [pairs 
+	      (list-sort (lambda (a b) (symbol<? (car a) (car b)))
+			 (match row 
+			   [(Row ,nm ,fldty ,[tail]) (cons (cons nm fldty) tail)]
+			   [#() '()]))])
+	 `(let ([,tmp ,ty ,expr])
+	    (begin
+	      ,(addstr! ''"(")
+	      ,@(apply append
+		       (insert-between 
+			(list (addstr! ''", "))
+			;; This is a bit tricky, as we go through, we need to print the labels "below the surface".
+			(let loop ([last #f] [depth 0] [ls pairs])
+			  (if (null? ls) '()
+			      (let ([newdepth (if (eq? (caar ls) last) (add1 depth) 0)]
+				    [name `',(caar ls)])
+				(cons 
+				 (list (addstr! `',(format "~a=" (caar ls)))
+				       (recur (cdar ls)
+					      `(wsrecord-select 
+						,name
+						,(let godeep ([d newdepth])
+						   (if (zero? d) tmp
+						       `(wsrecord-restrict ,name ,(godeep (sub1 d))))))))
+				 (loop (caar ls) newdepth (cdr ls))))))))
+	      ,(addstr! ''")"))))]
 
       [Complex (guard (and (wsc2-variant-mode? (compiler-invocation-mode))
 			   (not (java-mode? (compiler-invocation-mode)))))

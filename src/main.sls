@@ -700,14 +700,12 @@
     (unless (suppress-main-stream-printing)	
       (ws-run-pass p explicit-toplevel-print)))
 
-  ;; [2008.11.11] TEMPORARILY putting this BEFORE gen-printing-code
-  ;; This means records will print as tuples... to get proper
-  ;; printing, move it after gen-printing and implement proper record printing.
-  (ws-run-pass p desugar-records)  
-  ;(print-graph #f)(pretty-print (strip-annotations p 'src-pos))  
-
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
   (ws-run-pass p generate-printing-code)
+
+  (ws-run-pass p records-to-tuples)
+;  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
+
 
   ;; Now that we're done with elaboration we should take the stream
   ;; processing spine, convert it to let.

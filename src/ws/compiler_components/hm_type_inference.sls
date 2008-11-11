@@ -474,10 +474,11 @@
       [(wsrecord-restrict ',name ,[rec])
        (match rec
 	 [(Record ,row) 
-	  (let loop ([row row])
-	    (match row
-	      [(Row ,nm ,ty ,tail) (if (eq? nm name) tail `(Row ,nm ,ty ,(loop tail)))]
-	      [,else (error 'recover-type "wsrecord-restrict Couldn't look up label ~a in record type ~a" name rec)]))])]
+	  `(Record 
+	    ,(let loop ([row row])
+	       (match row
+		 [(Row ,nm ,ty ,tail) (if (eq? nm name) tail `(Row ,nm ,ty ,(loop tail)))]
+		 [,else (error 'recover-type "wsrecord-restrict Couldn't look up label ~a in record type ~a" name rec)])))])]
 
       [(unionN ,annot ,[t*] ...) 
        (ASSERT (not (null? t*)))

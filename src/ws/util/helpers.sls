@@ -75,7 +75,7 @@
       
    with-evaled-params
    display-constrained
-   symbol-append 
+   symbol-append symbol<? symbol<=?
 
    eprintf log-opt
 
@@ -614,6 +614,8 @@
 (define symbol-append
   (lambda args
     (string->symbol (apply string-append (map symbol->string args)))))
+(define (symbol<? a b) (string<? (symbol->string a) (symbol->string b)))
+(define (symbol<=? a b) (string<=? (symbol->string a) (symbol->string b)))
 
 ;; [2004.10.04]  Finds the element in a list maximizing a metric:
 (define (find-maximizing f ls)

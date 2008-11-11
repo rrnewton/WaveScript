@@ -11,8 +11,8 @@
 
 ;;;; .author Ryan Newton [2008.11.11]
 
-(library (ws passes normalize_query desugar-records)
-  (export desugar-records)
+(library (ws passes normalize_query records-to-tuples)
+  (export records-to-tuples)
   (import (except (rnrs (6)) error) (ws common) )
 
 
@@ -22,8 +22,6 @@
       [',v '()]  ;; empty-wsrecord will cause this.  TODO: treat it like other polymorphic constants.
       [#() '()]))
   (define (row->sorted row) (list-sort symbol<? (row->labels row)))
-  (define (symbol<? a b) (string<? (symbol->string a) (symbol->string b)))
-  (define (symbol<=? a b) (string<=? (symbol->string a) (symbol->string b)))
 
   (define (row->alist row)
     (match row
@@ -37,7 +35,7 @@
        [(fn x (car ls)) (cons x ls)]
        [else (cons (car ls) (loop (cdr ls)))])))
 
-  (define-pass desugar-record-ops
+  (define-pass convert-ops
     [Expr/Types (lambda (x tenv fallthru)		  
 		  (let loop ([x x])
 		    (match x ;; no recursion
@@ -47,7 +45,7 @@
 		       (let-match ([',name name]
 				   [(Record ,row) (recover-type rec tenv)])
 			 (define labels (row->sorted row))
-			 `(tupref ,(list-find-position name labels) ,(length labels) ,rec))]
+			 `(tupref ,(list-find-position name labels) ,(length labels) ,(loop rec)))]
 
 		      [(,recordop ,args ...) (guard (eq-any? recordop 'wsrecord-extend 'wsrecord-restrict))
 		       ;; This opchain reflects the order in which extension/restrictions are applied:
@@ -82,7 +80,7 @@
 				(loop (cdr chain)
 				      (let loop2 ([map index_map])
 					(cond 
-					 [(null? map) (error 'desugar-records "must be a bug, could not find label ~a in record type" nm)]
+					 [(null? map) (error 'records-to-tuples "must be a bug, could not find label ~a in record type" nm)]
 					 [(eq? nm (caar map)) (cdr map)]
 					 [else (cons (car map) (loop2 (cdr map)))])))]
 			       ))))
@@ -96,7 +94,7 @@
     )
 
   ;; 'Bindings' doesn't mix with 'Expr/Types' so this is currently broken up into two passes.
-  (define-pass desugar-record-types
+  (define-pass convert-types
       ;; Convert record types to a tuple types:
       ;; Hmm. still no generic traverse for types it looks like.  [2008.11.11] 
       (define (Type orig) 
@@ -111,7 +109,7 @@
 	  ;; Including Ref:
 	  [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]
 	  [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
-	  [,other (error 'desugar-records "bad type: ~s" other)]))
+	  [,other (error 'records-to-tuples "bad type: ~s" other)]))
     [Expr (lambda (x fallthru)
 	    (match x 
 	      [(assert-type ,[Type -> ty] ,[e]) `(assert-type ,ty ,e)]
@@ -119,6 +117,6 @@
     [Bindings (lambda (vars types exprs reconstr exprfun)
 		(reconstr vars (map Type types) (map exprfun exprs)))])
 
-  (define desugar-records (compose desugar-record-types desugar-record-ops))
+  (define records-to-tuples (compose convert-types convert-ops))
 
 ) ;; End module

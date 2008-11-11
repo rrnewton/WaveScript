@@ -19,6 +19,9 @@ fun testit() {
   print(rec3 ++ "\n");
 
   print("And more projection: "++ rec3.A ++"\n");
+
+  // [2008.11.11] This causes lingering polymorphism... investigate:
+  //print("A stack of identical names: " ++ (| A=1, A=(), A=true, A=(3,4), A="str") ++ "\n");
 }
 
 _ = testit();

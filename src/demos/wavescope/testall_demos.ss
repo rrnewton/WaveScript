@@ -95,6 +95,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3n_static_vals.ws"     ,(lambda (a b) #t)]
 
     ["demo3o_strings.ws"       ,(lambda (a b) #t)]
+    ["demo3p_records.ws"       ,(lambda (a b) #t)]
 
 
 ;; TEMP: NO COMPLEX NUMBERS IN IKARUS YET:    
