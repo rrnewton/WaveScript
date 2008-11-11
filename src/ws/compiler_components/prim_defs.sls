@@ -648,9 +648,9 @@
     ;; NOTE: These are overly weak types, this cannot be used for
     ;; typechecking.  It's a hack to reduce the burden of handling
     ;; record ops explicitly in some places.
-    (wsrecord-select (Symbol (Record 'r)) 'unknown)
-    (wsrecord-extend (Symbol 'a (Record 'r)) (Record 's))
-    (wsrecord-restrict (Symbol (Record 'r)) (Record 's))
+    (wsrecord-select (Symbol UnspecifiedRecordType) UnspecifiedRecordType)
+    (wsrecord-extend (Symbol 'a UnspecifiedRecordType) UnspecifiedRecordType)
+    (wsrecord-restrict (Symbol UnspecifiedRecordType) UnspecifiedRecordType)
 
     ;; Here we pretend similarly:
     ;; Foreign takes: 

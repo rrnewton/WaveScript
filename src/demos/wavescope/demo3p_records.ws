@@ -13,17 +13,17 @@ fun testit() {
   rec2 = (rec | A="yay", C=99.9 );
   print(rec2 ++ "\n");
 
-  print("And a little projection: " ++ rec2@A ++" "++ rec2@B ++"\n");
+  print("And a little projection: " ++ rec2.A ++" "++ rec2.B ++"\n");
 
   rec3 = ( rec2  | ~A, B := () );
   print(rec3 ++ "\n");
 
-  println("And more projection: "++ rec3@A );
+  print("And more projection: "++ rec3.A ++"\n");
 }
 
 _ = testit();
 
-main = iterate _ in 3`timer {
+main = iterate _ in 3 . timer {
   // Uh oh... parser problem... can't have JUST a variable binding in a block.  WITHOUT a semicolon. 
 
   testit();

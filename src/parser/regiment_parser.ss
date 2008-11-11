@@ -752,14 +752,14 @@
 	 [(exp $ exp) `(app ,$1 ,$3)] ;; Note, every binop adds a shift/reduce conflict currently¢
 
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
-	 [(exp DOT VAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1 . ,$5)]
+	 [(exp DOT LOWVAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1 . ,$5)]
 	 ;; Basic dot syntax:
 	 ;; Can only use this to call named functions, that is symbols:
          [(exp DOT LOWVAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
 	 ;; FIXME: This is temporary... my intention is to use '.'
-	 [(exp AT VAR) `(wsrecord-select ',$3 ,$1)]
-	 ;[(exp DOT UPVAR) `(wsrecord-select ',$3 ,$1)]
+	 [(exp AT VAR)    `(wsrecord-select ',$3 ,$1)]
+	 [(exp DOT UPVAR) `(wsrecord-select ',$3 ,$1)]
 
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))

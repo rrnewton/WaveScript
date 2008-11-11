@@ -588,7 +588,9 @@
       ;; Here's the magic:
       [,v (guard (symbol? v))
 	  (if (and (regiment-primitive? v) (not (tenv-lookup tenv v)))
-	      (values v (prim->type v))	      
+	      (begin
+		(printf "PRIM ~a \n" v)
+		(values v (prim->type v)))
           (let ((entry (tenv-lookup tenv v)))
             (if entry 
                 (cond
@@ -621,8 +623,8 @@
                     )]
                  [else                   
                   (values v entry)])
-                (error 'annotate-expression "no binding in type environment for var: ~a" v)))
-	      )]
+                (error 'annotate-expression "no binding in type environment for var: ~a" v))))]
+
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te "(Conditional's test expression must have boolean type.)\n") ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
@@ -754,6 +756,9 @@
 		       (if (eq? name nm)
 			   super
 			   `(Row ,nm ,ty ,(loop super)))]))))]
+#;
+      [(,missed . ,_) (guard (memq missed '(wsrecord-select wsrecord-restrict wsrecord-extend)))
+       (error "MISSED RECORD OP: ~a\n" (cons missed _))]
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
@@ -825,9 +830,10 @@
        (DEBUGASSERT (andmap type? `((List Annotation) ,ft ,st)))
        (values `(iterate ,annot ,f ,s)
                (type-app (prim->type 'iterate) `((List Annotation) ,ft ,st) exp tenv nongeneric))]
+
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
        (guard (regiment-primitive? prim)
-              (not (memq prim '(tuple unionN))))
+              (not (eq-any? prim 'tuple 'unionN 'wsrecord-extend 'wsrecord-restrict 'wsrecord-select)))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
                (type-app (prim->type prim) t* exp tenv nongeneric))]
@@ -1172,9 +1178,9 @@
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
     [,c (guard (simple-constant? c))                                 (void)]
 
-    [(wsrecord-extend   ,n ,[e1] ,[e2])                       (void)]
-    [(wsrecord-restrict ,n ,[e])                              (void)]
-    [(wsrecord-select   ,n ,[e])                              (void)]
+;    [(wsrecord-extend   ,n ,[e1] ,[e2])                       (void)]
+;    [(wsrecord-restrict ,n ,[e])                              (void)]
+;    [(wsrecord-select   ,n ,[e])                              (void)]
 
     [(struct-ref ,nm ,fld ,[e])                               (void)]
     [(make-struct ,nm ,[e*] ...)                              (void)]
@@ -1228,9 +1234,9 @@
 
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
 
-    [(wsrecord-extend   ,n ,[e1] ,[e2])  `(wsrecord-extend ,n ,e1 ,e2)]
-    [(wsrecord-select   ,n ,[e])         `(wsrecord-select ,n ,e)]
-    [(wsrecord-restrict ,n ,[e])         `(wsrecord-restrict ,n ,e)]
+;    [(wsrecord-extend   ,n ,[e1] ,[e2])  `(wsrecord-extend ,n ,e1 ,e2)]
+;    [(wsrecord-select   ,n ,[e])         `(wsrecord-select ,n ,e)]
+;    [(wsrecord-restrict ,n ,[e])         `(wsrecord-restrict ,n ,e)]
 
     [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-binding-types "bad expression: ~a" other)]
@@ -1481,9 +1487,17 @@
 		     [#() '#()]))
 		 row))
 	   (define xclosed? (scan-fields rowx table1))
-	   (define yclosed? (scan-fields rowy table2))
+	   (define yclosed? (scan-fields rowy table2))	   
 
-	   ;(printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a" rowx rowy)
+	   (define (row-append name tyls row)
+	     (if (null? tyls) row
+		 `(Row ,name ,(car tyls) 
+		       ,(row-append name (cdr tyls) row))))
+
+	   ;; This will accumulate all the fields in the combined record type:
+	   (define row-acc (if (or xclosed? yclosed?) '#() (make-tcell)))
+
+	   ;(printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a\n" rowx rowy xclosed? yclosed?)
 
 	   ;; Traverse the second type, unifying against entries from the first table.
 	   (hashtab-for-each
@@ -1492,43 +1506,40 @@
 	      (let ([fst (hashtab-get table1 name)])
 		(if fst
 		  ;; TODO : This woud be a place for some better error messages:
-		  ;; It's in both, unify the whole stack of scoped labels:
+		  ;; It's in both, unify the whole stack of scoped labels.
+		  ;; They must have a matching prefix... whichever goes deeper will 
+		  ;; determine the depth of the unified type.
 		  (let loop ([l1 fst] [l2 tyls])
-		    (unless (or (null? l1) (null? l2))
-		      (types-equal! (car l1) (car l2) exp msg)
-		      (loop (cdr l1) (cdr l2)))
-		    )
-		  ;; If it's in t2 but not t1:
-		  (when xclosed?
-		    (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
-					 `(Record ,rowx) `(Record ,rowy) exp)))
-		;; If it's in t2 but not t1, add it:
-		;(set! row-acc (row-append tyls row-acc))
+		    (cond
+		     [(null? l1) (set! row-acc (row-append name tyls row-acc))] ;; row2 goes deeper
+		     [(null? l2) (set! row-acc (row-append name fst  row-acc))] ;; row1 goes deeper
+		     [else (types-equal! (car l1) (car l2) exp msg)
+			   (loop (cdr l1) (cdr l2))]))
+		  (begin 
+		    (set! row-acc (row-append name tyls row-acc))
+		    ;; If it's in t2 but not t1:
+		    (when xclosed?
+		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
+					   `(Record ,rowx) `(Record ,rowy) exp))))		
 		))
 	    table2)
 
 	   ;; Now, with the relevant fields unified, we just need to
 	   ;; combine all fields from both rowx & rowy.	   
-	   (let ([combined (maybe-close-it tyy)]) ;; Better not duplicate that outer tcell...
-	     (define (row-append name tyls row)
-	       (if (null? tyls) row
-		   `(Row ,name ,(car tyls) 
-			 ,(row-append name (cdr tyls) row))))
-	     ;; Acumulate any from rowx that aren't already in rowy.
-	     (hashtab-for-each
+	   (hashtab-for-each
+	      ;; Acumulate any from rowx that aren't already in rowy.
 	      (lambda (name tyls)
 		(unless (hashtab-get table2 name)		   
 		  ;; In this case it's in t1 but not t2:
 		  (if yclosed?
 		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
 					   `(Record ,rowx) `(Record ,rowy) exp)
-		      (set! combined (row-append name tyls combined)))))
+		      (set! row-acc (row-append name tyls row-acc)))))
 	      table1)	     
-	     ;(printf "COMBINED: ~s\n" combined)
-	     ;; Now we overwrite them both to the combined row:
-	     (tcell-set! rowx combined)
-	     (tcell-set! rowy combined)
-	     ))]))]
+	   ;(printf "COMBINED: ~s\n" row-acc)
+	   ;; Now we overwrite them both to the combined row:
+	   (tcell-set! rowx row-acc)
+	   (tcell-set! rowy row-acc))]))]
 
     [[(Record ,rowx ,x* ...) . ,_]
      (error 'record-unification "unimplemented2 ~a" _)
@@ -1905,6 +1916,11 @@
        [(timer ,annot ,[args] ...) (apply append args)]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
         (apply append rat rand*)]
+
+       [(wsrecord-extend   ,n ,[e1] ,[e2])  (append e1 e2)]
+       [(wsrecord-select   ,n ,[e])         e]
+       [(wsrecord-restrict ,n ,[e])         e]
+
        ;; This one case brings us from 0 to 30 ms:
        [(,prim ,[rand*] ...)
          (guard (regiment-primitive? prim))
@@ -1926,10 +1942,6 @@
                          id* t* 
                          rhs*))
                 bod)]
-
-       [(wsrecord-extend   ,n ,[e1] ,[e2])  (append e1 e2)]
-       [(wsrecord-select   ,n ,[e])         e]
-       [(wsrecord-restrict ,n ,[e])         e]
 
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
@@ -2472,6 +2484,25 @@
      (LATEUNIFY (LUB (Bool -> 'v) (Int -> 't)) 's)))
   ->
   #('ao 'ag))
+
+
+(let ([x '(Record (Row B #() (Row A String (Row A (NUM u) (Row C Float 'ai)))))]
+      [y '(Record (Row A 'an 'ao))])
+  (define a (instantiate-type x))
+  (define b (instantiate-type y))
+  (types-equal! a b "" "")
+  (values a b))
+
+
+(let ([x '(Record (quote (al Row B #() (quote (ak quote (aj Row A String (Row A (quote (v NUM (u . #f))) (Row C Float (quote (ai . #f))))))))))]
+      [y '(Record (quote (am Row A (quote (an . #f)) (quote (ao . #f)))))])
+  (types-equal! x y "" "")
+  (values x y))
+
+
+
+xclosed/yclosed: #f #fCOMBINED: (Row C Float (Row B #0() (Row A (quote (an . String)) (quote (ao . #f)))))
+
 
 |#
 

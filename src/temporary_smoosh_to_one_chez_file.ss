@@ -1,5 +1,6 @@
 #! /bin/bash
 #|
+#exec regiment.chez i --script $0 ${1+"$@"}
 exec regiment.ikarus i --script $0 ${1+"$@"}
 |#
 ;;exec mzscheme -qr "$0" ${1+"$@"}
