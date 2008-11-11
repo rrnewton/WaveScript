@@ -59,16 +59,24 @@
 		    
                     (varleadchar (:or lower-letter upper-letter "_"))
 		    (varchar (:or varleadchar digit))
+#;
 		    (vartail (:* (:or varchar
 				      ;; Can have a single semi-colon inbetween the reasonable characters:
 				      (:seq varchar ":" varchar)
 				      )))
 
+		    (namespace (:seq upper-letter (:* varchar) ":"))		    
+		    
 		    ;; This can include colons for namespace specifiers.
 		    ;; Currently namespaces must be more than one letter!!
-                    (variable (:seq varleadchar vartail))
-		    (lower_variable (:seq (:or lower-letter "_") vartail))
-		    (upper_variable (:seq upper-letter vartail))		    
+
+		    (variable (:seq (:* namespace) varleadchar (:* varchar)))
+		    (lower_variable (:seq (:* namespace) (:or lower-letter "_") (:* varchar)))
+		    (upper_variable (:seq (:* namespace) upper-letter (:* varchar)))
+
+                    ;(variable (:seq varleadchar vartail))
+		    ;(lower_variable (:seq (:or lower-letter "_") vartail))
+		    ;(upper_variable (:seq upper-letter vartail))		    
 		    )
 
 (define (unescape-chars str)

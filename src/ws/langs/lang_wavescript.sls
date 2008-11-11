@@ -89,7 +89,8 @@
      (match (strip-binding-types p)
        [(,lang '(program ,body ,_ ...))
         ;; If strip-binding-types worked there shouldn't be any VQueue symbols!
-        (DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
+	;; [2008.11.11] This is no longer true, because it doesn't strip assert-type's
+        ;;(DEBUGASSERT (not (deep-assq 'VQueue (list body _))))
         `(begin (reset-wssim-state!)
                 (run-stream-query ,body))
         ]))

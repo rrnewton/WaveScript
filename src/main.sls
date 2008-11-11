@@ -460,6 +460,8 @@
   (ws-run-pass p resolve-type-aliases)
   (ws-run-pass p ws-label-mutable)
 
+;  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
+
   ;; This is the initial typecheck. 
   (parameterize ([inferencer-enable-LUB     #f]
 		 [inferencer-let-bound-poly #t])

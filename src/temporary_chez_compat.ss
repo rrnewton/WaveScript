@@ -138,4 +138,5 @@
   (syntax-case syn ()
 	       [(_ prim) (datum->syntax-object #'_ `(let () (import scheme) ,(datum prim)))]))
 
-
+(define bitwise-length integer-length)
+(define bitwise-arithmetic-shift ash)

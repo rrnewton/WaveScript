@@ -588,9 +588,7 @@
       ;; Here's the magic:
       [,v (guard (symbol? v))
 	  (if (and (regiment-primitive? v) (not (tenv-lookup tenv v)))
-	      (begin
-		(printf "PRIM ~a \n" v)
-		(values v (prim->type v)))
+	      (values v (prim->type v))
           (let ((entry (tenv-lookup tenv v)))
             (if entry 
                 (cond
