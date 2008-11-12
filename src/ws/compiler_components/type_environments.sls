@@ -29,6 +29,7 @@
 	   make-numcell
 	   tcell->name
 	   tcell-set!
+	   tcell-get
            
 	   empty-tenv
 	   tenv?
@@ -109,7 +110,8 @@
     [(List Annotation) #t] ; FIXME: a bit of a hack, but Annotations should not appear in any other form
 
     ;; Instantiated record types must have a mutable cell separating them and their row.
-    [(Record '(,var . ,ty)) (loop ty)]
+    [(Record ,row) (guard (match? row '(,var . ,ty))) (loop row)]
+
     ;; Including Ref, Row:
     [(,C ,[t] ...) (guard (symbol? C) (not (tvar-quotation? C))) (andmap id t)]
     [,s (guard (string? s)) #t] ;; Allowing strings for uninterpreted C types.
@@ -456,6 +458,12 @@
 	   (pair? (cadr x)))
       (set-cdr! (cadr x) ty)
       (error 'tcell-set! "Bad tcell: ~a" x)))
+(define (tcell-get x)
+  (if (and (pair? x) (tvar-quotation? (car x))
+	   (pair? (cadr x)))
+      (cdr (cadr x))
+      (error 'tcell-get "Bad tcell: ~a" x)))
+
   
 ; ----------------------------------------
 ;;; Type Environment ADT.
@@ -677,6 +685,7 @@
       
       [(type? '(Record 'i)) #t]
       [(instantiated-type? '(Record 'i)) #f]
+      [(instantiated-type? '(Record (quote (awn . #f)))) #t]
       
       [(polymorphic-type? '#()) #f]
       [(polymorphic-type? '(-> Int)) #f]

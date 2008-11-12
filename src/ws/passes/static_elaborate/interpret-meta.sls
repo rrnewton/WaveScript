@@ -99,15 +99,16 @@
   (DEBUGASSERT wrapped? x)
   (if (plain? x) (plain-val x) x))
 
-(define (maybe-wrap x)
+(define (maybe-wrap x . optional-type)
   (cond 
    [(wrapped? x) x]
    [(procedure? x) (x reflect-msg)]
    [else  
     ;(ASSERT (not (tuple? x))) ;; Can't allow these to not have a type!
     ;(make-plain x #f)
-    (make-plain x (unknown-type))
-    ]))
+    (if (null? optional-type)
+	(make-plain x (unknown-type))
+	(make-plain x (car optional-type)))]))
 
 (define (unknown-type . _) `',(unique-name 'ty))
 
@@ -355,14 +356,42 @@
     ;; instead we put the type info in the wrapper.
     ;[(empty-wsrecord) (make-plain (empty-wsrecord) #f)]
     [(wsrecord-extend ',nm ,[val] ,[rec]) 
-     (warning 'rec "should probably propagate this type info: ~a to this record: ~a" (get-value-type val) (get-value-type rec))
-     (make-plain (wsrecord-extend nm (unwrap-plain val) (plain-val rec)) #f)]
+     (define newty
+       (let ([valty (or (get-value-type val) `',(make-tvar))]
+	     [recty (get-value-type rec)])
+	 ;(unless recty (printf "extend: No recty! ~a\n" rec))	 
+	 (match recty
+	   [(Record ,origrow) `(Record (Row ,nm ,valty ,origrow))]
+	   [#f                `(Record (Row ,nm ,valty ',(make-tvar)))])))
+     (make-plain (wsrecord-extend nm (unwrap-plain val) (plain-val rec)) newty)]
     [(wsrecord-select ',nm ,[rec])
-     (warning 'rec "wsrecord-select should probably propagate type info...")
-     (maybe-wrap (wsrecord-select nm (plain-val rec)))]
+     ;; This is very expensive:
+     (define recty (get-value-type rec))     
+     ;(unless recty (printf "select: No recty! ~a\n" rec))
+     (maybe-wrap (wsrecord-select nm (plain-val rec))
+		 (if recty
+		     (let ([cell (make-tcell)]
+			   [cell2 (make-tcell)])
+		       (tcell-set! cell2 `(Row ,nm ,cell ,(make-tcell)))
+		       (types-equal! (instantiate-type recty) `(Record ,cell2) "" "")
+		       (export-type (tcell-get cell)))))]
     [(wsrecord-restrict ',nm ,[rec])
-     (warning 'rec "wsrecord-restrict should probably propagate this type info")     
-     (make-plain (wsrecord-restrict nm (plain-val rec)) #f)]
+     (define recty (get-value-type rec))
+     ;(unless recty (printf "restrict: No recty! ~a\n" rec))
+     ;(warning 'rec "wsrecord-restrict should probably propagate this type info")     
+     (make-plain (wsrecord-restrict nm (plain-val rec))
+		 (if recty
+		     (match recty
+		       [(Record ,row)
+			`(Record 
+			  ,(let loop ([row row])
+			     (match row
+			       [(Row ,name ,ty ,tail)
+				(if (eq? name nm) tail
+				    `(Row ,name ,ty ,(loop tail)))]
+			       [,oth (error 'interpret-meta:Eval "tried to restrict record, but it had a type which was missing label ~a: ~a"
+					    nm recty)])))])
+		     #f))]
 
     ;; UGLINESS
     ;; FIXME: THE BELOW SHOULD BE ABLE TO REPLACE THESE TWO CASES:
