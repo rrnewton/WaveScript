@@ -1465,16 +1465,16 @@
 	 ;; Otherwise they both have at least one 'Row':
 	 (let ([table1 (make-default-hash-table)]
 	       [table2 (make-default-hash-table)])
-	   ;; Returns the row variable of the final tail, or #f if the row is closed:
+	   ;; Returns the row variable (cell) of the final tail, or #f if the row is closed:
 	   (define (scan-fields row table)
-	     (match row
+	     (match row ;; no recursion
 	       [#() #f] ;; A closed record.
-	       ['(,var . ,ty)  (if ty (scan-fields ty table) var)]
-	       [(Row ,name ,ty ,[tail])
-		(let ([prev (hashtab-get table name)]) 		    
+	       ['(,var . ,ty)  (if ty (scan-fields ty table) row)]
+	       [(Row ,name ,ty ,tail)
+		(let* ([result (scan-fields tail table)]
+		       [prev (hashtab-get table name)])
 		  (hashtab-set! table name (cons ty (or prev '())))
-		  tail ;(scan-fields tail table)
-		  )]
+		  result)]
 	       [,else (error 'types-equal! "unmatched row variable: ~s" else)]))
 
 	   ;; If we need to, we reallocate the spine so as to close the row:
@@ -1490,7 +1490,7 @@
 	   (define ytail (scan-fields rowy table2))
 	   (define shared-tail? (eq? xtail ytail))
 	   ;; As in Leijen's 2005 paper, we must be wary of record types with the same tail:
-	   (define (check-tail)
+	   (define (no-shared-tail!)
 	     (when shared-tail?
 	       (raise-type-mismatch "Could unify record types with identical base type, but different extensions" 
 				    `(Record ,rowx) `(Record ,rowy) exp)))
@@ -1503,10 +1503,16 @@
 		 `(Row ,name ,(car tyls) 
 		       ,(row-append name (cdr tyls) row))))
 
-	   ;; This will accumulate all the fields in the combined record type:
-	   (define row-acc (if (or xclosed? yclosed?) '#() (make-tcell)))
+	   ;; This represents any new fields to be added in the future:
+	   (define common-fate (make-tcell))
 
-	   (printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a\n" rowx rowy xclosed? yclosed?)
+	   ;; This will accumulate all the fields in the combined record type:
+	   (define row-acc (if (or xclosed? yclosed?) '#() common-fate))
+	   ;; This accumulates those constraints that need to be added to rowx/rowy:
+	   (define xacc row-acc)
+	   (define yacc row-acc)
+
+	   ;(printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a\n" rowx rowy xclosed? yclosed?)
 
 	   ;; Traverse the second type, unifying against entries from the first table.
 	   (hashtab-for-each
@@ -1526,11 +1532,12 @@
 			   (loop (cdr l1) (cdr l2))]))
 		  (begin 
 		    (set! row-acc (row-append name tyls row-acc))
-		    ;; If it's in t2 but not t1:
+		    ;; If it's in rowy but not rowx:
 		    (when xclosed?
 		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
 					   `(Record ,rowx) `(Record ,rowy) exp))
-		    (check-tail)))
+		    (set! xacc (row-append name tyls xacc))
+		    (no-shared-tail!)))
 		))
 	    table2)
 
@@ -1540,17 +1547,23 @@
 	      ;; Acumulate any from rowx that aren't already in rowy.
 	      (lambda (name tyls)
 		(unless (hashtab-get table2 name)
-		  (check-tail)
-		  ;; In this case it's in t1 but not t2:
-		  (if yclosed?
-		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
-					   `(Record ,rowx) `(Record ,rowy) exp)
-		      (set! row-acc (row-append name tyls row-acc)))))
+		  (no-shared-tail!)
+		  ;; In this case it's in rowx but not rowy:
+		  (when yclosed?
+		    (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
+					 `(Record ,rowx) `(Record ,rowy) exp))
+		  (set! yacc (row-append name tyls yacc))
+		  (set! row-acc (row-append name tyls row-acc))
+		  ))
 	      table1)	     
-	   (printf "COMBINED: ~s\n" row-acc)
+	   ;(printf "COMBINED: ~s,\n  xtail: ~s  xacc: ~s\n  ytail: ~s  yacc: ~s\n" row-acc xtail xacc ytail yacc)
 	   ;; Now we overwrite them both to the combined row:
 	   (tcell-set! rowx row-acc)
-	   (tcell-set! rowy row-acc))]))]
+	   (tcell-set! rowy row-acc)
+	   ;; And restrict the tails of the original types:
+	   (unless xclosed? (tcell-set! xtail xacc))
+	   (unless yclosed? (tcell-set! ytail yacc))
+	   )]))]
 
 #|
     [[(Record ,rowx ,x* ...) . ,_]

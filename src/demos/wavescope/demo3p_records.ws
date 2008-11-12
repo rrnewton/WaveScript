@@ -1,5 +1,9 @@
 
 
+fun bar(r) if true then ( r | X = 2 ) else ( (|) | X = 4 )
+fun baz(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | X = 4 )
+fun qux(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | Y = 4 )
+
 fun testit() { 
   empt = {|};
   print(empt ++ "\n"); 
@@ -16,6 +20,12 @@ fun testit() {
   print(rec3 ++ "\n");
 
   print("And more projection: "++ rec3.A ++"\n");
+
+  print("bar takes only empty: "++ bar((|)) ++"\n");
+
+  print("Calling baz: "++ baz(rec3, rec3) ++"\n");
+
+  print("Qux: another neat function: "++ qux((|Y=1), (|X=1)) ++"\n");
 
   // [2008.11.11] This causes lingering polymorphism... investigate:
   //print("A stack of identical names: " ++ (| A=1, A=(), A=true, A=(3,4), A="str") ++ "\n");

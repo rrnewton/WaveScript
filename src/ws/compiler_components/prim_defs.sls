@@ -644,7 +644,7 @@
     (tuple Object Tuple)
     (tupref (Int Int Tuple) Object) ;; takes ind, len, tuple
 
-    (empty-wsrecord () (Record 'any))
+    (empty-wsrecord () (Record #()))
     ;; NOTE: These are overly weak types, this cannot be used for
     ;; typechecking.  It's a hack to reduce the burden of handling
     ;; record ops explicitly in some places.
