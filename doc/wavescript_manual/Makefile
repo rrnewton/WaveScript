@@ -2,7 +2,11 @@
 
 WWWDIR=/var/www/chastity/
 
-all: pdf html
+all: svnrev pdf html
+
+svnrev:
+	svn info | grep Revision | sed 's/Revision://' > svnrev.txt
+#	svn info | grep Revision | awk '{ print $2 }' > svnrev.txt
 
 install:
 	cp -a manual/* $(WWWDIR)/wsmanual/

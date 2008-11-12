@@ -23,7 +23,8 @@
 % page size commands
 
 %% Need to automatically grab the revision number.
-\title{WaveScript Rev 3493 User Manual}
+%\title{WaveScript Rev 3493 User Manual}
+\title{WaveScript Rev \input{svnrev.txt} User Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -886,6 +887,72 @@ expression extra parentheses are required: {\tt (f(x))[i]}.
 Many array operations are analogous to the list operations (map,
 fold, etc).  See the documentation for additional primitives below.
 
+\subsection{Extensible Records}
+\label{s:records}
+
+Tuples are useful for packing together a small number of data items.
+But from a software engineering perspective they have a number of
+limitations.  First, they quickly grow confusing as the number of
+items increases.  Second, they require that client code be fully aware
+of all the data inside the tuple (and thus be fragile and difficult to
+refactor).  
+
+A solution to the first problem is to use named fields.  Tuples with
+named fields are called ``records'' (similar to C structs).  A
+solution to the second problem is to make those records {\em
+extensible}.  WaveScript implements the extensible record system
+documented in the paper ``Extensible Records with Scoped Labels'' by
+Dan Leijen.
+
+In WaveScript, records are constructed in a manner similar to tuples,
+but with the labels on each data field.  Data fields can then be
+extracted using then common ``dot syntax''.
+\begin{verbatim}
+  r = (A=3, B=true)  // Record construction
+  x = r.A            // Extract the field 'A'
+\end{verbatim}
+But records can also be extended with new fields.  This uses a ``bar''
+syntax as follows:
+\begin{verbatim}
+  ( r | A=3)        // Extend a record r
+  (A=3) == (|A=3)   // The bar is optional here
+\end{verbatim}
+
+When updating records, it is also possible to remove fields:
+\begin{verbatim}
+  ( r | ~A, B=4)    // Remove field A, add field B
+\end{verbatim}
+
+Removing a field and then replacing it is a common idiom, and has
+a special syntactic sugar:
+\begin{verbatim}
+  ( r | ~B, B = 4) // Remove field B, add new B
+  ( r | B := 4)    // Shorthand for the same
+\end{verbatim}
+
+Field labels are required to begin with capital letters in WaveScript.
+This is to avoid conflict with another use of the dot syntax.  
+
+Extensible records are particularly useful in a streaming language
+like WaveScript.  In WaveScript, the only communication between
+different parts of the program is through streams.  Thus we typically
+need to pack data together to travel on a stream (for example, raw
+data plus metadata).  With extensible records, it is possible to write
+an application as a series of modular components that take and produce
+records---consuming some fields, and adding others, while remaining
+agnostic to the presence of unused fields:
+\begin{verbatim}
+  // Function foo takes a record that has at 
+  // least X,Y. (But might have other fields.)
+  fun foo(r) {
+    n = f(r.X, r.Y);
+    ( r | Z=n )      // add new results field
+  }
+\end{verbatim}
+
+This form of processing is very common in stream SQL dialects, but
+here can be used in a more general purpose language with type-inference.
+
 \subsection{Additional primitive functions}
 
 Appendix~\ref{s:primtable} contains a table of all currently supported
@@ -1208,7 +1275,9 @@ write the following:
 ls.tail.tail.head
 \end{wscode}
 \vspace{-2mm}
-
+Note that this syntax requires that the name of the function (not
+counting namespace modifiers) begin with a lower case letter.  This is
+to avoid ambiguity with record field projection (see Section~\ref{s:records}).
 
 \subsection{\$: ``Unary parentheses''}
 
