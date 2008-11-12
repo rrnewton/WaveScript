@@ -1969,3 +1969,29 @@ The ubuntu package description says the following:
  defaults for everything else.  Particularly, it does not work as a malloc()
  replacement.
 
+[2008.11.12] {Problems with max heap size and boehm}
+
+Oh this is a mess, boehm has compile-time constants MAXHINCR and
+MAX_HEAP_SECTS that affect the maximum heap size.  Currently bgSub.ws
+overflows them witch the default configuration.  I'm going to rebuild
+my libgc with --enable-large-config.  It looks like maybe WS should
+include the boehm collector and build it itself, so that it can build
+the GC with the right options.
+
+ cd gc-7.0
+ ./configure --enable-large-config --enable-threads=posix --enable-thread-local-alloc --enable-parallel-mark
+
+Oh, I see... it looks like the reason it was having a problem is that
+bgSub.ws really is broken and is using an unreasonable amount of
+memory, if not outright leaking.  Well bgSub.ws uses 20% of memory
+(800mb) on honor using reference counting.  Is the high watermark more
+than 5X higher under boehm?  I guess so.  I'm just going to reduce the
+resolution...  This cuts memory usage by 4X, under this config
+bgSub.ws takes 5% honor's memory with refcount, and 30% with boehm.
+That's pretty ugly, we should figure out why that is.
+
+
+
+
+
+

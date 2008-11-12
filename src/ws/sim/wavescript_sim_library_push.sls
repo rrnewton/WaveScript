@@ -1614,7 +1614,7 @@
 	   [halflen (add1 (quotient fulllen 2))]
 	   [half (make-vector halflen)])
       ;(vector-blit! double half 0 0 halflen)
-      (vector-set! half 0 (vector-ref double 0))
+      (vector-set! half 0 (s:+ (vector-ref double 0) 0.0+0.0i))
       (let loop ([i 1])
 	(unless (fx= i halflen)
 	  ;; Fill from the front:

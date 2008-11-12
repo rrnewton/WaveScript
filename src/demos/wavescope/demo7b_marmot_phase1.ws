@@ -286,7 +286,7 @@ fun detect(scorestrm) {
   max_run_length = 48000`intToInt64;
   samples_padding = 2400`intToInt64;
 
-  iterate((score,win) in scorestrm) {
+  iterate(rec in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
@@ -314,7 +314,7 @@ fun detect(scorestrm) {
       refract := 0;
     };
 
-    if not(yay) && win`start > shouldhitby
+    if not(yay) && rec.RAW.start > shouldhitby
     then wserror("Got to sample "++shouldhitby++" and didn't find a marmot detection!  "++
 		 "Are you running on the normal datafile in the demos dir?");
 
@@ -330,7 +330,7 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if win.end - _start > max_run_length then {
+      if rec.RAW.end - _start > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
 	      ++", re-estimating noise\n");
 	
@@ -340,7 +340,7 @@ fun detect(scorestrm) {
       };
 
       /* over thresh.. set refractory */
-      if score > thresh_value then {
+      if rec.SCORE > thresh_value then {
 	refract := refract_interval;
       } else if refract > 0 then {	
 	/* refractory counting down */
@@ -350,20 +350,20 @@ fun detect(scorestrm) {
 	trigger := false;
 
 	yay := true;
-	tmp :: Int64 = win.end;
+	tmp :: Int64 = rec.RAW.end;
 
 	/*
 	emit (true,                            // yes, snapshot
 	      _start - samples_padding,   // start sample
 	      tmp + samples_padding); // end sample
 	*/
-	// PAD IT FOR TESTALL_DEMOS:
-	emit(true, 0`gint, 0`gint);
+	// HACK PAD IT FOR TESTALL_DEMOS:
+	emit (Fired=true, Start= 0, End= 0`gint);
 
 
 	if DEBUG then
-	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
-	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+	print("KEEP message: "++show((true, _start - samples_padding, rec.RAW.end + samples_padding))++
+	      " just processed window "++show(rec.RAW.start)++":"++show(rec.RAW.end)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0`gint;
@@ -373,20 +373,20 @@ fun detect(scorestrm) {
       let thresh = intToFloat(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
-        print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
+        print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(rec.SCORE)++"\n");
 
       /* over thresh and not in startup period (noise est period) */
-      if startup == 0 && score > thresh then {
+      if startup == 0 && rec.SCORE > thresh then {
 	if DEBUG then print("Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
-	_start := win.start;
-	trigger_value := score;
+	_start := rec.RAW.start;
+	trigger_value := rec.SCORE;
       }	else {
 	/* otherwise, update the smoothing filters */
-	smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
-	delt = score -. smoothed_mean;
+	smoothed_mean := rec.SCORE *. (1.0 -. alpha) +. smoothed_mean *. alpha;
+	delt = rec.SCORE -. smoothed_mean;
 	smoothed_var := (delt *. delt) *. (1.0 -. alpha) +. smoothed_var *. alpha;
       };
 	
@@ -396,10 +396,10 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0`gint, win.end - samples_padding));
+      emit (Fired= false, Start= 0, End= max(0`gint, rec.RAW.end - samples_padding));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0`gint, win.end - samples_padding)))++
-	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+      print("DISCARD message: "++show((false, 0, max(0`gint, rec.RAW.end - samples_padding)))++
+	    " just processed window "++show(rec.RAW.start)++":"++show(rec.RAW.end)++"\n");
       
     }
   }
@@ -466,15 +466,15 @@ rw1 = rewindow(ch1, 32, 96);
 hn = myhanning(rw1);
 
   fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
-freq = iterate(x in hn) { emit (sigseg_fftR2C(x),x) };
+freq = iterate(x in hn) { emit (FREQ= sigseg_fftR2C(x), RAW= x) };
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate (w,orig) in freq { emit (marmotscore(w), orig); }
+wscores = iterate r in freq { emit (r | ~FREQ, SCORE= marmotscore(r.FREQ)); }
 
 detections = detect(wscores);
 
 
-positives = stream_filter(fun((b,_,_)) b, detections)
+positives = stream_filter(fun(r) r.Fired, detections)
 		   
 //synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 //synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
@@ -487,8 +487,8 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 main = 
 //synced
 //positives
-//detections
-wscores
+detections
+//wscores
 // iterate(w in hn){emit w[[16]]}
 // iterate(w in rw1){emit w[[16]]}
 //unionList([ch1,ch2])

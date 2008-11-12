@@ -16,7 +16,7 @@
     (cond
      [(getenv "REGDEBUGMODE") => 
       (lambda (m) 
-	(if (or (equal? m "0") (equal? m "OFF")) 
+	(if (or (equal? m "0") (equal? m "OFF") (equal? m ""))
 	     (off) (on)))]
      [else (if DEFAULT_IS_DEBUG_MODE (on) (off))])))
 

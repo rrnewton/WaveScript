@@ -242,7 +242,7 @@
 ;(inspect (command-line-arguments))
 
 (unless #f ;(inspect (member "-quiet" (command-line-arguments)))
-  (fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a...\n"
+  (fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a~a...\n"
 	 (let ([ws #f]  [reg #f])
 	   (IFWAVESCOPE (set! ws #t) (set! reg #t))
 	   (cond 
@@ -252,7 +252,9 @@
 	 (if (top-level-bound? 'regiment-origin)
 	     (format " (from ~a)" regiment-origin)    
 	     " (LOADED VIA UNKNOWN METHOD!?)"
-	     )))
+	     )
+	 (IFDEBUG " Debug mode" "")
+	 ))
 
 
 ;======================================================================

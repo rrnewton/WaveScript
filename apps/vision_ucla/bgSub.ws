@@ -752,9 +752,9 @@ output_imgs = if LIVE then my_display else dump_files;
 main = 
        output_imgs
 /*      $ unsquisher */
-/*      $ unsquisher */
+     $ unsquisher
      //$ nilbhatta
      $ bhatta
 /*      $ squisher */
-/*      $ squisher */
+     $ squisher
      $ input_imgs;

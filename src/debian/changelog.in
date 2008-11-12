@@ -5,3 +5,10 @@ wavescript (0.0) unstable; urgency=low
   * Added Debian GNU/Linux Linux package maintenance system files
 
  -- Ryan Newton <ryan.newton@alum.mit.edu>  Fri, 15 Aug 2008 17:01:17 -0400
+
+
+wavescript (0.1) unstable; urgency=low
+
+  * Added extensible records.
+
+ -- Ryan Newton <ryan.newton@alum.mit.edu>  Wed, 12 Nov 2008 13:04:25 -0500

@@ -21,9 +21,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;
 ;; OH RIGHT.  DEBUGMODE.  Gotta be careful about that.
 
-;; [2007.11.03] FIXME!!! BADLY NEED A TIMEOUT ON ALL SUBPROCESSES!
-
 (require (lib "process.ss") (lib "date.ss"))
+
+(define default-timeout (* 40 60)) ;; Timeout in seconds
 
 (define publish? (not (member "-nopost" (vector->list (current-command-line-arguments)))))
 
@@ -169,8 +169,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	[else (error 'system/timeout "")])))))
 
 (define (system/timeout cmd)
-  ;; Give it 30 min by default:
-  ((system/async/timeout cmd) (* 30 60)))
+  ((system/async/timeout cmd) default-timeout))
 
 (define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
 (define engine-svn-revision 'unknown)
@@ -237,8 +236,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (post-to-web (format "intermediate/rev_~a" svn-revision)))))
 
 (define (run-test title cmd)
-  ((run-async-test title cmd) (* 30 60))) ;; 30 minutes default.
-
+  ((run-async-test title cmd) default-timeout))
 
 
 
@@ -843,6 +841,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     ;; [2008.08.01] Right now I'm having some occasional ikarus segfaults:
     ;; [2008.11.07] More ikarus segfaults on chastity, switching to chez:
     (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "REGDEBUGMODE" "OFF"))
     (current-directory (format "~a/benchmarks/appbench" ws-root-dir))
     (run-test "    Run application benchmarks: " 
 	      (format "make &> ~a/bench_apps.log" test-directory))

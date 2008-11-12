@@ -54,16 +54,15 @@ freq = iterate(x in hn) { emit sigseg_fftR2C(x) };
 
 wscores = iterate w in freq {
   //emit(marmotscore(w), w);
-  emit (3.8, w); 
+  emit (SCORE=3.8, WIN=w); 
 };
 
 detections = 
-  iterate pr in wscores {
-    let (sc,w) = pr;
+  iterate rec in wscores {
 
     // PAD IT FOR TESTALL_DEMOS:
-    emit(false, 0.0);
-    emit(true, sc);
+    emit(DET= false, SCORE= 0.0);
+    emit(rec | ~WIN, DET=true);
   };
 
 //synced = sync4( 

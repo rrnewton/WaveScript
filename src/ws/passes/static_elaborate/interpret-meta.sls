@@ -347,9 +347,10 @@
     [(tupref ,ind ,len ,[tup])
      (ASSERT (fixnum? ind)) (ASSERT (fixnum? len))
      (ASSERT (plain? tup))
-     (warning 'tupref "fixme, this loses type data ~a" (plain-type tup))
-     (maybe-wrap (list-ref (tuple-fields  (plain-val tup)) ind))
-     ]
+     (maybe-wrap (list-ref (tuple-fields  (plain-val tup)) ind)
+		 (if (plain-type tup)
+		     (vector-ref (plain-type tup) ind)
+		     #f))]
 
     ;; As with tuples, we don't store the type metadata in the value
     ;; itself, (including in the values within the data structure),
