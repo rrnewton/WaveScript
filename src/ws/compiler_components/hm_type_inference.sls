@@ -1465,10 +1465,11 @@
 	 ;; Otherwise they both have at least one 'Row':
 	 (let ([table1 (make-default-hash-table)]
 	       [table2 (make-default-hash-table)])
+	   ;; Returns the row variable of the final tail, or #f if the row is closed:
 	   (define (scan-fields row table)
 	     (match row
-	       [#() #t] ;; A closed record.
-	       ['(,var . ,ty)  (if ty (scan-fields ty table) #f)]
+	       [#() #f] ;; A closed record.
+	       ['(,var . ,ty)  (if ty (scan-fields ty table) var)]
 	       [(Row ,name ,ty ,[tail])
 		(let ([prev (hashtab-get table name)]) 		    
 		  (hashtab-set! table name (cons ty (or prev '())))
@@ -1485,8 +1486,17 @@
 		     ['(,var . ,ty) (if ty (loop ty) '#())]
 		     [#() '#()]))
 		 row))
-	   (define xclosed? (scan-fields rowx table1))
-	   (define yclosed? (scan-fields rowy table2))	   
+	   (define xtail (scan-fields rowx table1))
+	   (define ytail (scan-fields rowy table2))
+	   (define shared-tail? (eq? xtail ytail))
+	   ;; As in Leijen's 2005 paper, we must be wary of record types with the same tail:
+	   (define (check-tail)
+	     (when shared-tail?
+	       (raise-type-mismatch "Could unify record types with identical base type, but different extensions" 
+				    `(Record ,rowx) `(Record ,rowy) exp)))
+	   
+	   (define xclosed? (not xtail))
+	   (define yclosed? (not ytail)) 
 
 	   (define (row-append name tyls row)
 	     (if (null? tyls) row
@@ -1496,7 +1506,7 @@
 	   ;; This will accumulate all the fields in the combined record type:
 	   (define row-acc (if (or xclosed? yclosed?) '#() (make-tcell)))
 
-	   ;(printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a\n" rowx rowy xclosed? yclosed?)
+	   (printf "Unifying rows:\n  ~a\n  ~a\n   xclosed/yclosed: ~a ~a\n" rowx rowy xclosed? yclosed?)
 
 	   ;; Traverse the second type, unifying against entries from the first table.
 	   (hashtab-for-each
@@ -1519,7 +1529,8 @@
 		    ;; If it's in t2 but not t1:
 		    (when xclosed?
 		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
-					   `(Record ,rowx) `(Record ,rowy) exp))))		
+					   `(Record ,rowx) `(Record ,rowy) exp))
+		    (check-tail)))
 		))
 	    table2)
 
@@ -1528,14 +1539,15 @@
 	   (hashtab-for-each
 	      ;; Acumulate any from rowx that aren't already in rowy.
 	      (lambda (name tyls)
-		(unless (hashtab-get table2 name)		   
+		(unless (hashtab-get table2 name)
+		  (check-tail)
 		  ;; In this case it's in t1 but not t2:
 		  (if yclosed?
 		      (raise-type-mismatch (format "Could not unify closed record type with one containing label ~a" name)
 					   `(Record ,rowx) `(Record ,rowy) exp)
 		      (set! row-acc (row-append name tyls row-acc)))))
 	      table1)	     
-	   ;(printf "COMBINED: ~s\n" row-acc)
+	   (printf "COMBINED: ~s\n" row-acc)
 	   ;; Now we overwrite them both to the combined row:
 	   (tcell-set! rowx row-acc)
 	   (tcell-set! rowy row-acc))]))]
@@ -2129,12 +2141,7 @@
 	      x]
 	  [#(,t* ...) (or (try-realias ty) (list->vector (map l t*)))]
 
-	  [(Record ,[row])
-	   (warning 'realias-type "record types are tricky because of ordering... not handled yet")
-	   `(Record ,row)
-	   #;
-	   (or (try-realias ty) 
-	       `(Record ,(l row) ,@(map (lambda (n t) (list n (l t))) n* ty*)))]
+	  ;; Do records need any special treatment?
 
 	  [(,arg* ... -> ,res) (or (try-realias ty) `(,@(map l arg*) -> ,(l res)))]
 	  [(,s ,t* ...) (guard (symbol? s))
@@ -2228,6 +2235,7 @@
 	  [,else #f]))]
 
     [(export-type (',type-expression 
+
 		   '(letrec ([f (lambda (x) x)])
 		      (tuple (app f 3) "foo" f))
 		  (empty-tenv)))
@@ -2427,6 +2435,14 @@
   ["Verify the shared structure of a type"
    (begin (',reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
    ((List '(a . 99)) -> '(a . 99))]
+
+  ["Valid use of record extension in if branches"
+   (export-type (type-expression '(lambda (r) (if '#t (wsrecord-extend 'X '2 r) (wsrecord-extend 'X '3 r))) (empty-tenv)))
+   ((Record 'unspecified) -> (Record (Row X (NUM unspecified) 'unspecified)))]
+
+  ["INVALID use of record extension in if branches"
+   (type-expression '(lambda (r) (if '#t (wsrecord-extend 'X '2 r) (wsrecord-extend 'Y '3 r))) (empty-tenv))
+   error]
  
   #;
   ;; Should we type-check with patterns in there?
@@ -2495,23 +2511,7 @@
   #('ao 'ag))
 
 
-(let ([x '(Record (Row B #() (Row A String (Row A (NUM u) (Row C Float 'ai)))))]
-      [y '(Record (Row A 'an 'ao))])
-  (define a (instantiate-type x))
-  (define b (instantiate-type y))
-  (types-equal! a b "" "")
-  (values a b))
-
-
-(let ([x '(Record (quote (al Row B #() (quote (ak quote (aj Row A String (Row A (quote (v NUM (u . #f))) (Row C Float (quote (ai . #f))))))))))]
-      [y '(Record (quote (am Row A (quote (an . #f)) (quote (ao . #f)))))])
-  (types-equal! x y "" "")
-  (values x y))
-
-
-
-xclosed/yclosed: #f #fCOMBINED: (Row C Float (Row B #0() (Row A (quote (an . String)) (quote (ao . #f)))))
-
 
 |#
+
 

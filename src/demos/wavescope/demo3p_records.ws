@@ -1,8 +1,5 @@
 
 
-//include "stdlib.ws"
-
-
 fun testit() { 
   empt = {|};
   print(empt ++ "\n"); 
@@ -55,11 +52,13 @@ main = iterate _ in 3 . timer {
 }
 
 
+
 /*
 
-  \r → if True then {x = 2 | r } else {y = 2 | r }
-  \r → if True then {x = 1 | r } else {x = 2 | {}}
-
+ fun foo(r) if true then ( r | X = 2 ) else ( r | Y = 2 )
+ fun bar(r) if true then ( r | X = 2 ) else ( (|) | X = 4 )
+ fun baz(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | X = 4 )
+ fun qux(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | Y = 4 )
 
  */
 

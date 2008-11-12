@@ -1,4 +1,4 @@
-
+#!r6rs
 
 ;;;; This pass replaces records with tuples.  It works because the
 ;;;; program is already monomorphic.  It batches together multiple

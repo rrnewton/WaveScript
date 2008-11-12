@@ -3,6 +3,20 @@
 
 
 
+ fun baz(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | X = 4 )
+
+/*
+
+ fun foo(r) if true then ( r | X = 2 ) else ( r | Y = 2 )
+ fun bar(r) if true then ( r | X = 2 ) else ( (|) | X = 4 )
+
+ fun qux(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | Y = 4 )
+
+ */
+
+
+/*
+
 main = iterate _ in timer(1) {
   r = (A=3, B="four");
   print(r ++ "\n");
@@ -13,6 +27,8 @@ main = iterate _ in timer(1) {
 
   emit 0;
 }
+*/
+
 
 
 /* using TOS; */
