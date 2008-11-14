@@ -515,6 +515,13 @@
 			     (type-const (vector-ref c 0))))]
 
    [(tuple? c) (list->vector (map type-const (tuple-fields c)))]
+   
+   [(wsrecord? c) 
+    `(Record 
+      ,(let loop ([ls (wsrecord-pairs c)])
+	 (if (null? ls)
+	     (make-tcell)
+	     `(Row ,(caar ls) ,(type-const (cdar ls)) ,(loop (cdr ls))))))]
 
    ;; This is strange, but we need an actual representation of "no value" or "any value" at some points.
    [(eq? c 'BOTTOM) (make-tcell)]
@@ -1438,7 +1445,17 @@
     [[',tv . ,ty] (tvar-equal-type! t1 t2 exp msg)]
     [[,ty . ',tv] (tvar-equal-type! t2 t1 exp msg)]
     [[,x . ,y] (guard (symbol? x) (symbol? y))
-     (raise-type-mismatch msg x y exp)]
+     ;; TODO: Raise a better error if one of the symbols is not an alias or a builtin:
+     (define extramsg "")
+     (unless (memq x built-in-atomic-types)
+       (string-append extramsg (format "\nThis is not a built-in type or an alias: ~a\n" x)))
+     (unless (memq y built-in-atomic-types) 
+       (string-append extramsg (format "\nThis is not a built-in type or an alias: ~a\n" y)))     
+;     (unless (or (memq x built-in-atomic-types) (eq? x 'DummyType))
+;       (warning 'types-equal "This is not a built-in type or an alias: ~a\n" x))
+;     (unless (or (memq y built-in-atomic-types) (eq? y 'DummyType))
+;       (warning 'types-equal "This is not a built-in type or an alias: ~a\n" y))
+     (raise-type-mismatch (string-append msg extramsg) x y exp)]
 
     [[(NUM ,tv1) . (NUM ,tv2)] (tvar-equal-type! t1 t2 exp msg)]
     [[(NUM ,x) . ,numty]   (guard (symbol? numty) (memq numty num-types))

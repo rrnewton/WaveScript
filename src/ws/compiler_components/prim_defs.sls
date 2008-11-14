@@ -49,6 +49,7 @@
 	   infix-arith-prims
 
 	   built-in-type-constructors
+	   built-in-atomic-types
 	   generic-arith-primitives
 	   token-machine-primitives
 
@@ -121,6 +122,10 @@
   '(List Array Sigseg Stream HashTable
 	 Ref
 	 Record Row))
+
+(define built-in-atomic-types
+  (append '(Bool Char String)
+	  num-types))
 
 ;; Hierarchy:
 ;; Int8

@@ -351,8 +351,12 @@
 ;          (left DOTBRK) 
 ;	  (right BAR)
 	  ;(right BANG) ;; This should be pretty strong but weaker than DOT.
-          (left NEG APP DOT MAGICAPPLYSEP COMMA AT )
-          (right ^ g^ ^_ ^. ^:  BANG)
+          (left NEG APP MAGICAPPLYSEP COMMA AT ; DOT
+		)
+	  (right BANG)
+	  (left DOT)
+          (right ^ g^ ^_ ^. ^:  ; BANG ;; [2008.11.14] Hmm... when did I go back on this?
+		 )
 
     	  (nonassoc in)
 	  )
@@ -766,8 +770,8 @@
          [(exp DOT LOWVAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
 	 ;; FIXME: This is temporary... my intention is to use '.'
-	 [(exp AT VAR)    `(wsrecord-select ',$3 ,$1)]
-	 [(exp DOT UPVAR) `(wsrecord-select ',$3 ,$1)]
+	 [(exp AT VAR)    (prec DOT) `(wsrecord-select ',$3 ,$1)]
+	 [(exp DOT UPVAR) (prec DOT) `(wsrecord-select ',$3 ,$1)]
 
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))
@@ -792,7 +796,7 @@
 	 ;[(type BANG exp) `(assert-type ,$1 (cast_num ,$3))]
 	 ;[(LeftParen type RightParen BANG exp) `(assert-type ,$2 (cast_num ,$5))]
 	 ;[(type BANG exp) `(assert-type ,$1 (cast_num ,$3))]
-	 [(VAR BANG exp) `(assert-type ,$1 (cast_num ,$3))]
+	 [(VAR BANG exp) (prec BANG) `(assert-type ,$1 (cast_num ,$3))]
 
 	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(Array:ref ,(wrap $1-start-pos $1-end-pos $1) ,$3)]

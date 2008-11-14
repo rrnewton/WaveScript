@@ -168,6 +168,19 @@
 					    e))
 				     (tuple-fields x) (vector->list type) ))])
 	      (values expr type anymuts?))]
+
+	   ;; Same for records:
+	   [(Record ,row) 	    
+	    (define pairs (wsrecord-pairs x))
+	     (match row
+	       [(Row ,nm ,ty ,tail)
+		(let-values ([(e1 elt mut1?) (loop (cdr (assq nm pairs)) ty)]
+			     ;; Here's a hack, we loop on the *same* value, but whiddle the type:
+			     [(e2 tty mut2?) (loop x `(Record ,tail))])		  
+		  (values `(wsrecord-extend ',nm ,e1 ,e2)
+			  type (or mut1? mut2?)))]
+	       [#()  (values '(empty-wsrecord) type #f)]
+	       [',nm (values '(empty-wsrecord) type #f)])]
 	   
 	   ;; This is only for nullseg:
 	   [(Sigseg ,elt-t)
