@@ -693,7 +693,7 @@
       [(instantiated-type? '(Record 'i)) #f]
       [(instantiated-type? '(Record (quote (awn . #f)))) #t]
 
-      [(instantiated-type? '(HashTable Int (Record (Row LastLoc #(Uint8 Int Uint8) (Row Balance Int #0()))))) #f]
+      [(instantiated-type? '(HashTable Int (Record (Row LastLoc #(Uint8 Int Uint8) (Row Balance Int #()))))) #f]
       
       [(polymorphic-type? '#()) #f]
       [(polymorphic-type? '(-> Int)) #f]
