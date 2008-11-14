@@ -1900,6 +1900,41 @@ boehm, because it verbosely prints every collection rather than
 printing a summary.  (I looked the source... it doesn't seem to tally
 up a summary.  I'd have to hack the boehm source, which is pretty easy.)
 
+[- 2008.11.13 -] Returning to this with multithreaded.  Actually, if I
+do run_3phases.ws for 30 tuples I'm currently seeing high GC times
+with boehm (such as 1s out of 3.2s) even not multithreaded.  This is
+with my "LARGE_CONFIG" libgc build.  That's very odd, because mlton on
+the same run takes only 20ms to collect.  This is with ~600 mb of
+allocation and a max live of 2mb.  Switching boehm back to a single
+threaded version brings total runtime down 2.8... but turning back on
+GC_PRINT_STATS brings it up to 3.14s... although it only registers
+550ms collecting.
+
+This particular example may respond to twiddling boehm's parameters.
+Setting INITIAL_HEAP_SIZE to 5mb brings it to 470 ms.  Nah, on retest
+more like 500+.  Let's double the test size.  1260ms collection,
+1180ms.  MLton claims only 80ms... but it could be undersampling
+because there were over 400 collections... I'm not sure about this
+pathetic timing methodology.
+
+Ok, switching back to threaded, large_config... I get more like 2540ms
+collecting (2240ms, 2410).  With threads, parallel mark, local alloc
+but NO large_config...  3620 3660... 2880 huh??  This is with the 5mb
+inital_heap; without that... 3380ms 4000...  Switching back to the
+large_config brings me back to 2380... 2420... 1900 with initial_heap
+to 5mb.
+
+Ok, trying single threaded with large_config, 5mb initial... 1170 1180
+(but hmm... total user time is just down to 6.0s... so the GC timing
+is not accurate, I guess I should just use the total runtime).  The
+total span observed is from 6.0 user time to 7.7 user time.
+
+I should also try compiling libgc with icc.  Trying single threaded,
+large config, icc, 5mb.  Wow... down to 5.3s runtime!  "790"ms collect
+time.  
+
+
+
 [2008.11.06] {Hacking on fifos}
 
 Most of the problems I thought I had with my twostage fifo

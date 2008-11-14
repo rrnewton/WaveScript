@@ -1941,9 +1941,11 @@ int main(int argc, char **argv)
 	    ;[numstrings (length (filter (lambda (sA) (eq? s 'String)) types))]
 
 	    [binarymode (equal? mode "binary")]
+	    [__ (unless binarymode (error 'emit-c2:readFile "text mode reading not supported yet"))]
+
 	    [handle (Var self (unique-name "_f"))]
 	    [eofhit (Var self (unique-name "_eofhit"))]
-
+	    	    
 	    [init (make-lines `(
 		,handle" = fopen(\"",file"\", ",(if binarymode "\"rb\"" "\"r\"")");\n"
 		"if (",handle" == NULL) {\n"

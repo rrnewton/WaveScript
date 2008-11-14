@@ -97,7 +97,8 @@
                      [() (map (lambda (_) (blank-type)) v*)]
                      [((,t* ...)) t*])]
             [vars (apply append (map pattern->vars v*))])	     
-	     (ASSERT (list-is-set? vars))
+	     (unless (list-is-set? vars)
+	       (error 'verify-regiment "argument list has repeats: ~a" vars))
 	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
 
 	  ;; Should eventually remove ifs as subsumed by case statements.

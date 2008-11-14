@@ -19,19 +19,24 @@ fun temporal_cluster_amls(minclustsize, amls) {
   iterate (ind,entry) in unionList([amls, 
 		  stream_map(fun (_) ((0,0,0,0), (Array:null,0,nulltimebase)),
 			     //(Int * Float * Float * Float) (Array Float * Int64 * Timebase)
-		    timer_source("cluster_timer", 500))]) {
+		    // We cluster based on 500ms intervals:
+		    //timer_source("cluster_timer", 500 )
+		    timer(2 * accelerator)
+		    )])
+  {
     state { 
       acc = [];
       counter = 0;
       duparr = Array:make(20,false);
     }
+    len = List:length(acc);
     if ind == 0 then {
         foo :: Tagged AML = entry;
-        log(1,"AML received! Already had: "++acc`List:length);
+        log(1,"AML received! Already had: "++len);
         acc := entry ::: acc;
 	counter := 0;
     } else {
-        println("Timer Fired! acc length: "++acc`List:length);
+        if len > 0 then println("Timer Fired! acc length: "++len);
         counter += 1;
 	if counter > 1 
 	then {

@@ -778,7 +778,7 @@
   (match code
     [(__readFile ,annot ,[(lambda (x) (Expr x #f)) -> file] ,[Var -> source] ',mode ',repeats ',skipbytes ',offset ',winsize ',types)
      (cond
-      [(equal? mode "text") 	  
+      [(equal? mode "text")
        (if (not (zero? repeats))
 	   (error 'emit-mlton "MLton text mode reader doesn't support replaying the file yet."))
        (if (not (zero? winsize))
@@ -797,8 +797,10 @@
 						     [Float  (desome (list "Real32.fromString "name))]
 						     [Double (desome (list "Real64.fromString "name))]
 						     [Int    (desome (format "~a.fromString ~a" int-module name))]
-						     [Int16  (desome (list "Int16.fromString "name))]
+						     [Int16  (desome (list "Int16.fromString "name))]						     
 						     [Int64  (desome (list "Int64.fromString "name))]
+						     [Uint8  (desome (list "Word8.fromString "name))]
+						     [Uint16  (desome (list "Word16.fromString "name))]
 						     [String name]
 						     ))
 					      names types))

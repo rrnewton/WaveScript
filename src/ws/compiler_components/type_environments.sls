@@ -113,7 +113,8 @@
     [(Record ,row) (guard (match? row '(,var . ,ty))) (loop row)]
 
     ;; Including Ref, Row:
-    [(,C ,[t] ...) (guard (symbol? C) (not (tvar-quotation? C))) (andmap id t)]
+    [(,C ,[t] ...) (guard (symbol? C) (not (tvar-quotation? C)) (not (eq? C 'Record)))
+     (andmap id t)]
     [,s (guard (string? s)) #t] ;; Allowing strings for uninterpreted C types.
     ;[(,ptr ,[name]) (guard (eq-any? ptr 'Pointer 'ExclusivePointer)) name]
     [,oth (if (null? extra-pred) #f 
@@ -126,7 +127,11 @@
         [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v))
 	 (valid-typevar-symbol? v)]
 	;; This is a valid uninstantiated type:
-	[(Record ',var) (symbol? var)]
+	[(Record ,row) 
+	 (match row
+	   [(Row ,nm ,ty ,[tail]) (and tail (type? ty))]
+	   [',var (symbol? var)]
+	   [#() #t])]
         [,other #f]))))
 
 ;; Does it contain the monad?
@@ -684,8 +689,11 @@
       [(type? '(Int -> (NUM a))) #t]      
       
       [(type? '(Record 'i)) #t]
+      [(type? '(Record #())) #t]
       [(instantiated-type? '(Record 'i)) #f]
       [(instantiated-type? '(Record (quote (awn . #f)))) #t]
+
+      [(instantiated-type? '(HashTable Int (Record (Row LastLoc #(Uint8 Int Uint8) (Row Balance Int #0()))))) #f]
       
       [(polymorphic-type? '#()) #f]
       [(polymorphic-type? '(-> Int)) #f]

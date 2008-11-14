@@ -119,7 +119,8 @@
 ;; Anything not in this list is either a user-defined type constructor, or invalid.
 (define built-in-type-constructors 
   '(List Array Sigseg Stream HashTable
-	 Ref))
+	 Ref
+	 Record Row))
 
 ;; Hierarchy:
 ;; Int8
@@ -875,7 +876,6 @@
     (HashTable:get       ((HashTable 'key 'val) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
-    ;(hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
     (HashTable:set       ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
     (HashTable:rem       ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
    

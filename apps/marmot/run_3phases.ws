@@ -11,6 +11,33 @@
 // ... sec w/ 8 threads
 // Currently it gets a regiment-primitive? related error!  Even with hash tables turned off.
 
+/* [2008.11.13] Currently running this to test garbage collection under multithreaded conditions.
+
+Running 10 tuples through is taking 12s with hoard and 17s with the
+default allocator (using simple reference counting, 42 threads).  Of
+course, this is abysmal because the single threaded version takes 1.6
+seconds.
+
+It presently segfaults sometimes with -gc ref, and segfaults often
+with boehm (and sometimes gets a bus error).  The memory usage with
+boehm seems to expand rapidly to >225mb.  And the collection times
+likewise go up to >200ms.  (Extrapolating from 2 tuples to 60 would
+leave it with a total collection time of 20s!  Or worse if the heap
+kept growing...).
+
+Ah, well duh, the accumulated FIFO nodes (from the over-running
+timers) create extra heap for the GC to trace.  But I don't know if
+they fully account for the rapid growth in memory footprint...  (in
+just -n 2, we are left with 13 million extra in-flight fifo elements
+after only a few seconds!  And that's with accelerator=20...).
+
+Hmm... even with accelerator turned down to 1, it uses less than 100%
+cpu (with all threads), but we still end up with 13,000 in-flight
+tuples at the end.  It seems like I really need to switch to bounded
+fifos.
+
+*/
+
 
 include "sources_from_file.ws";
 include "marmot_first_phase.ws";

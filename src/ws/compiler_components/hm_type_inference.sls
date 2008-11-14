@@ -2043,8 +2043,6 @@
       [(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
       [(NUM (,v . ,t))                          (if t (loop t) `(NUM ,v))]
 
-      [(ROW . ,_) (error 'dealias-type "row var unimplemented")]
-
       [#(,[t*] ...)                            (apply vector t*)]
 
       ;[(Record ,[row] (,name* ,[ty*]) ...)      `(Record ,row ,@(map list name* ty*))]
@@ -2114,14 +2112,22 @@
 	  ;; We don't want to inject any ADDITIONAL constraints into the original type.
 	  ;; So first we make sure that our alias matches even if
 	  ;; the polymorphism is stripped from the original type.
-	  (if (types-equal!? (type-replace-polymorphic origty (gensym "DummyType") 'Int '#()) (instantiate-type rhs))
+
+	  ;; [2008.11.14] Note: In the past there was no need to
+	  ;; instantiate the result of type-replace-polymorphic (all
+	  ;; variables are gone).  Yet now there's a convention with
+	  ;; Records that must be respected:
+	  (if (types-equal!? (instantiate-type (type-replace-polymorphic origty (gensym "DummyType") 'Int '#()))
+			     (instantiate-type rhs))
 	      ;; If that succeeds we match them again without the hack:
 	      (match (instantiate-type `(Magic #(,@a*) ,rhs) '() #t)
 		;; We bundle together the LHS* and RHS here so that their mutable cells are shared.
-		[(Magic #(,cells ...) ,rhs)
+		[(Magic #(,cells ...) ,newrhs)
+		 ;(printf "It worked, now pulling out a unification for the alias's params: ~a \n" newrhs)
 		 ;; Because origty is really a type FRAGMENT, we don't want to rename its type vars here:
 		 ;;(ASSERT instantiated-type? origty)
-		 (let ([res (types-equal!? rhs (instantiate-type origty '() #f))])
+		 (let ([res (types-equal!? newrhs
+					   (instantiate-type origty '() #f))])
 		   (if res 
 		       ;; We feed it back through, possibly further reduce "cells":
 		       ;;(try-realias )

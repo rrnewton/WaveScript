@@ -6,7 +6,7 @@ include "types.ws";
 // When we're not live we just print log messages to the stream.
 fun log(l,s) println(s)
 fun log_file(l,s) print(s++"\n")
-fun timer_source(_,t) timer(1000.0 / t`intToFloat)
+fun timer_source(_,t) timer(1000.0 / intToFloat(t))
 
 // Also need a dummy for this:
 fun vxp_buffer_time_remaining() 0.0
@@ -23,8 +23,16 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 // How many samples a second do we want to process on each input audio channel?
-accelerator = 1;                   // For testing purposes.
-//samp_rate = 48000.0 * accelerator; // HACK - we should get this from the stream/timebase/sigseg
+//accelerator = 1;                   // For testing purposes.
+//accelerator = 20;          // 60 saturates honor on one thread, actually 30 does, 20 almost does but not quite
+accelerator = 4
+
+// With multiple threads on honor we don't saturate CPU, but we do end
+// up with an extra 5 million elements in the queue after running 10
+// tuples through run_3phases
+
+
+
 // HACK: making the timer integer for emit-c2:
 samp_rate = 49152 * accelerator; // HACK - we should get this from the stream/timebase/sigseg
 
