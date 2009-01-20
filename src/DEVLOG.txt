@@ -2060,7 +2060,10 @@ The article:
 
 Does talk about measurement and verbose output.  
 
- The command line argument -verbose:gc prints information at every collection. Note that the format of the -verbose:gc output is subject to change between releases of the J2SE platform. For example, here is output from a large server application:
+ The command line argument -verbose:gc prints information at every
+collection. Note that the format of the -verbose:gc output is subject
+to change between releases of the J2SE platform. For example, here is
+output from a large server application:
 
   [GC 325407K->83000K(776768K), 0.2300771 secs]
   [GC 325816K->83372K(776768K), 0.2454258 secs]
@@ -2073,7 +2076,23 @@ I think that puts it in the same boat as... was it ocaml or mlton?
 Won't print simple a GC summary on exit, but will print verbose
 messages.
 
-[2009.01.20] {Reminder ENOTDIR error}
 
-When I get this error under ikarus...
+[2009.01.20] {Ikarus rot}
+
+Right now, under WS rev 3662, I just updated to Ikarus rev 1746 and am
+getting a problem (works under an old ikarus, for example 1559).
+
+Presently when I run this:
+
+ ikarus -O2  --compile-dependencies regiment.ss
+
+I get this:
+
+Unhandled exception:
+ Condition components:
+   1. &assertion
+   2. &who: string=?
+   3. &message: "not a string"
+   4. &irritants: (#f)
+make: *** [ik] Error 255
 
