@@ -77,6 +77,7 @@
   (define (native-inspect x)
     (error 'ikarus "doesn't have a built-in object inspector"))
 
+  (ik:include "ws/compat/reg_record.ss")
   (ik:include "ws/compat/common.ss")
   (ik:include "ws/compat/inspector.ss")
   (ik:include "ws/compat/top-level-values.ss")

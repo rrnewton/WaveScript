@@ -201,6 +201,8 @@
 	)))
 
   ;; This necessitates building in-place:
+
+  (plt:include "reg_record.ss")
   (plt:include "common.ss")
   (define (native-inspect x)
     (error 'mzscheme "doesn't have a built-in object inspector"))

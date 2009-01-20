@@ -1,1 +1,1 @@
-compat.larceny.sls
+compat.chez.sls

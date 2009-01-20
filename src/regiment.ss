@@ -1,4 +1,4 @@
-;#!r6rs
+#!r6rs
 
 ;;#! /usr/bin/env scheme-script
 
@@ -10,7 +10,11 @@
 	(main)
 	;; Some shorthands for the interactive REPL:
 	(ws shortcuts)
+;	(only (scheme) new-cafe)
 	)
+
+;(new-cafe)
+;(repl)
 
 ;; Next, we do some configuration stuff.
 
@@ -27,6 +31,8 @@
 ;(ws "/home/newton/demos/demo1c_timer.ws")
 ;;================================================================================
 
+(printf "COMMAND LINE ~s\n" (command-line))
+
 (if (< (length (command-line)) 2)
     (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
 
@@ -41,5 +47,42 @@
 
 ;(if (null? (command-line)) (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
 
-;(printf "COMMAND LINE ~s\n" (command-line))
+#;
+;; Trying to set the svn rev when the code is *compiled*:
+;; Set to #f if we can't get it.
+(define-syntax bind-svn-revision
+  (lambda (x)
+    (syntax-case x ()
+      [(_)
+       (let ()
+	 (define (system-to-str str)
+	   (let* ([pr (process str)]
+		  [in (car pr)]
+		  [out (cadr pr)]
+		  [id  (caddr pr)])
+	     (let ((p (open-output-string)))
+	       (let loop ((c (read-char in)))
+		 (if (eof-object? c)	  
+		     (begin 
+		       (close-input-port in)
+		       (close-output-port out)
+		       (get-output-string p))
+		     (begin (display c p)
+			    (loop (read-char in))))))))
+	 (and (not (eq? (machine-type) 'i3nt))
+		  (zero? (system "which svn &> /dev/null"))
+		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
+		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
+		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
+		      (if (eof-object? rev)
+			  (set! rev (read (open-input-string (system-to-str 
+		           "svn info https://svn.csail.mit.edu/wavescript/branches/wavescope | grep Revision | sed s/Revision://")))))
+		      (with-syntax ([revis (datum->syntax-object #'_ rev)])
+			#'(define-top-level-value 'svn-revision (let ([x 'revis]) (if (number? x) x #f))))
+		      )
+		    )))])))
+
+;(bind-svn-revision)
+
+
 (apply main (cddr (command-line)))

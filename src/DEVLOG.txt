@@ -1,8 +1,7 @@
-I'm writing down most of my *thinking* in my personal
-AMORIDEAS.emacs.txt file.  But I realized that my day-to-day
-development issues should go in a separate file; so here we
-are. [2004.04.29]
 
+================================================================================
+   A file for day-to-day development issues
+================================================================================
 
 [2004.04.29]
   Hmm, without "identifier-syntax" I can't get things working fully
@@ -2026,7 +2025,55 @@ bgSub.ws takes 5% honor's memory with refcount, and 30% with boehm.
 That's pretty ugly, we should figure out why that is.
 
 
+[2008.12.05] {Trying Chez 7.5 prerelease}
 
+This version of Chez has partial R6RS support.  Ok, I'm not sure where
+to start testing it.  I'll keep a little log here.
 
+Trying to jump right in gives this:
 
+ $ chez --program regiment.ss --verbose
+Exception: library (primitives with-output-to-string random current-directory gensym repl ...) not found
+
+Next starting with a very basic hello world program.  That works.
+Then trying to import (ws globals)... that gives me:
+
+ $ chez --verbose --program test.ss       
+Exception: library (primitives with-output-to-string random current-directory gensym repl ...) not found
+
+It's loading compat.sls, which is meant for larceny.  Let's try to
+start with just the compat file.  Chez doesn't seem to try
+foo.chez.sls; I'll have to bug Kent about that.
+
+[2009.01.19] {Coming back to multithreaded GC}
+
+I had made some improvements to GC benchmarking, but I was having
+trouble figuring out how to measure GC time for Sun's JVM.  It seemed
+non-obvious.  Maybe the better thing to do is use jikes.  It's open
+and seems to always be used for research.
+
+It looks like apt-get installing Jikes installes the kaffe jvm to go
+with it.  Hmm... why that instead of "Jikes RVM"? 
+
+The article:
+  "Tuning Garbage Collection with the 5.0 Java[tm] Virtual Machine"
+
+Does talk about measurement and verbose output.  
+
+ The command line argument -verbose:gc prints information at every collection. Note that the format of the -verbose:gc output is subject to change between releases of the J2SE platform. For example, here is output from a large server application:
+
+  [GC 325407K->83000K(776768K), 0.2300771 secs]
+  [GC 325816K->83372K(776768K), 0.2454258 secs]
+  [Full GC 267628K->83769K(776768K), 1.8479984 secs]
+
+ Here we see two minor collections and one major one. 
+
+Wow, those are some long pause times in that app ;).
+I think that puts it in the same boat as... was it ocaml or mlton?
+Won't print simple a GC summary on exit, but will print verbose
+messages.
+
+[2009.01.20] {Reminder ENOTDIR error}
+
+When I get this error under ikarus...
 

@@ -1945,7 +1945,9 @@
 
 	  ;; Open a session on the pipe
 	  (error 'gnuplot_pipe "Cannot append to output file yet.")
-	  (set! dat (open-output-file fn2 'append))
+	  ;(set! dat (open-output-file fn2 'append))
+	  ;; [2008.12.05] Ack... is there not an append mode for file-output?
+	  (set! dat (open-file-output-port fn2 (file-options no-fail no-truncate) (buffer-mode block) (native-transcoder)))	  
 	  
 	  ;;(printf "Opened pipe.\n")
 	  ;; Write dataset to pipe:

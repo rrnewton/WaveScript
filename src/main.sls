@@ -1676,18 +1676,23 @@
 ;===============================================================================
 ;;; These functions are used for command-line invocation of the whole system:
 
+(define svnrev 
+  (if (top-level-bound? 'svn-revision) 
+      (top-level-value 'svn-revision)
+      "unknown-svn-rev"))
+
 (define-regiment-parameter wavescript-version 
   (format "~a.~a"
    (let ([version-file (string-append (REGIMENTD) "/src/version")])
     (if (file-exists? version-file)
 	(read-line (open-string-input-port (file->string version-file)))
 	"???"))
-   (top-level-value 'svn-revision)))
+   svnrev))
 
 (define (print-help)
   (printf "WaveScript/Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
 	  (wavescript-version)
-	  (top-level-value 'svn-revision)
+	  svnrev
 	  (top-level-value 'regiment-origin))
   (printf "Usage: regiment command [options] \n")
   (printf "\n")

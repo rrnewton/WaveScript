@@ -78,6 +78,7 @@
       [(kwd form msg) (syntax-violation #f msg form)]
       [(kwd msg)      (syntax-violation #f msg #f)]))
 
+  (include "ws/compat/reg_record.ss")
   (include "ws/compat/common.ss")
 
   (reg:define-struct (boxrec contents))

@@ -187,16 +187,7 @@
 	(import (except (rnrs (6)) error)
 		(for (ws compat compat) run expand)
 
-	 ;(lib "include.ss")
-;	 "../plt/regmodule.ss"
-	 ;"../plt/plt_constants.ss"	 
 	 )
-
-;	(chezprovide hash-percent path->string)
-		
-	;; Import the platform specific constants.
-;	(chezimports chez_constants)
-
 	
   ;; No support in my R6RS-ish port yet:
   (define-syntax IF_THREADS
@@ -851,6 +842,7 @@
 ;; This controls both the "language-mechanism" and simalpha..
 (define-regiment-parameter simulator-write-sims-to-disk (IFDEBUG #t #f))
 
+
 ;; This parameter controls whether or not the generated (simulator)
 ;; code will be wrapped in "module" declarations.  This makes
 ;; execution faster, but has the drawback that the code will not be
@@ -1034,6 +1026,7 @@
   (define dir (reverse (or (memq #\/ (reverse chars)) '(#\.))))
   (list->string dir))
 
+
 ;; The filename, the *last* part of a path.
 (define (basename pathstr)
   ;; Everything after the last "#/"
@@ -1061,6 +1054,7 @@
  [plt ;(or  larceny)
   (simulation-logger-fasl-batched #f)
   (simulation-logger-gzip-output #f)])
+
 
 ; ======================================================================
 

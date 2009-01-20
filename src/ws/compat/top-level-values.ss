@@ -9,8 +9,13 @@
 (define (define-top-level-value var val) (hashtable-set! top-table var val))
 (define (set-top-level-value! var val)   (hashtable-set! top-table var val))
 
+(define special-value (lambda (x) x))
 (define (top-level-bound? var) (hashtable-ref top-table var #f))
-(define (top-level-value var)  (hashtable-ref top-table var #f))
+(define (top-level-value var)  
+  (let ([result (hashtable-ref top-table var special-value)])
+    (if (eq? result special-value)
+	(error 'top-level-value "unbound: ~a" var)
+	result)))
 
 ;; (Inefficient) This evaluates something inside the virtual top-level
 ;; environment.  This is unfinished, it also needs to import the
