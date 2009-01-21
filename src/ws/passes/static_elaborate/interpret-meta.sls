@@ -795,15 +795,11 @@
       `(assert-type ,(streamop-type op) ,default)
       default))
 
-
-
-;; We should maybe maintain types...
-(define (Marshal/type val ty)
-  (Marshal val))
-
 (define (Marshal-Plain p) 
-;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
+  (ASSERT (plain? p))
+  (Marshal-Value (plain-val p) (plain-type p)))
 
+(define (Marshal-Value val ty) 
   (define (box-doubles val ty) 
     (match ty
       [Double (if (double? val) val (make-double val))]
@@ -812,11 +808,6 @@
       [#(,fld* ...) (make-tuple (map (lambda (x ty) (box-doubles x ty)) (tuple-fields val) fld*))]
       [(HashTable . ,_) (error 'Marshal-Plain:box-doubles "Can't handle hash tables yet")]
       [,else val]))
-
-  (ASSERT (plain? p))
-  
-  (let ([val (plain-val p)]
-	[ty  (plain-type p)])
     (cond
      [(hashtab? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
      ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
@@ -828,7 +819,7 @@
 ;     [(double? val) (double-num val)]
 
      [(tuple? val)
-      `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (Marshal/type x ty)))
+      `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (Marshal-Value x ty)))
 		   (ASSERT (tuple-fields val))
 		   ;; FIXME FIXME FIXME HMM: NOT SURE HOW THIS GETS TO #F:
 		   ;(match ty [#(,t* ...) t*])
@@ -846,7 +837,7 @@
 	   [() '(empty-wsrecord)]
 	   [((,nm . ,vl) . ,[rest])
 	    `(wsrecord-extend ',nm 
-			      ,(Marshal/type vl (assq nm typairs))
+			      ,(Marshal-Value vl (assq nm typairs))
 			      ,rest)])])]
 
      [(uniontype? val)
@@ -885,7 +876,7 @@
       (DEBUGMODE
        (match (or ty (type-const val))
 	 ;; Going through just to make sure there are no errors:
-	 [(List ,elt) (for-each (lambda (x) (Marshal/type x elt)) val)]))
+	 [(List ,elt) (for-each (lambda (x) (Marshal-Value x elt)) val)]))
       ;`(assert-type ,ty ',val)
       `',(box-doubles val ty)
       ]
@@ -895,6 +886,10 @@
       ;`(assert-type ,ty ',val)
       `',(box-doubles val ty)
       ]
+
+     ;; FIXME: Reorganize so this isn't necessary:
+     ;; We are currently hitting this case when our tuples and records contain closures.
+     [(closure? val) (Marshal-Closure val)]
 
      ;; FIXME: GET RID OF THIS FALLTHROUGH!
      [else
@@ -906,7 +901,7 @@
 	(error 'Marshal-Plain "invalid value: ~s" val))
       ;(DEBUGASSERT complex-constant? val)
       `',val]
-     )))
+     ))
 
 
 ;; Foreign closures are simple... they become foreign entries.
