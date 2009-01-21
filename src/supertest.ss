@@ -1089,11 +1089,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system "echo | ikarus | head -n 1 &> temp.log")
 (fpf (file->string "temp.log"))
 
-(fpf "MLton version:  \n   ")
-(fpf (system-to-str "echo | mlton | head -n 1"))
-
-(fpf "OCaml version:  \n   ")
-(fpf (system-to-str "ocaml -version"))
+(fpf "MLton version:  \n ~a   " (system-to-str "echo | mlton | head -n 1"))
+(fpf "OCaml version:  \n ~a   " (system-to-str "ocaml -version"))
 
 (parameterize ([current-directory ws-root-dir])
   (fpf "\nSVN log message:  \n   ")
