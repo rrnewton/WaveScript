@@ -21,6 +21,10 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2009.01.21]
+ *) Inlining rators that are record-dereferences (or tuples).  It is
+    quite useful to package methods together in a record.
+
 [2008.11.11]
   *) It probably wouldn't hurt to make tupref's simple expressions.
   *) If interested we could implement polymorphic positional tuple access by 

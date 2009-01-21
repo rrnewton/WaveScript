@@ -29,7 +29,7 @@ Options for all WaveScript (ws*) configurations:
   -noprint      do not print the values returned on the 'main' stream
   -threads      enable threads, if supported by backend
   -nothreads    disable threads
-  -ret <name>   custom return stream, rather than 'main'
+  -ret <name>   custom return stream, rather than 'main' (also -main)
   -opt <name>   enable a specific optimization
   -exit-error   exit process on any error, don't enter debugger
   -quiet        suppress output from the WS compiler

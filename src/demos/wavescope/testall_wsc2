@@ -10,7 +10,7 @@ OPTIONS=$*
 #OPTIONS=" -gc none -threads "
 #OPTIONS=" -gc refcount -threads "
 
-#LAUNCHIT=""
+## As a hack you can set LAUNCHIT=" " to skip valgrind:
 if [ "$LAUNCHIT" = "" ];
 then LAUNCHIT="valgrind --leak-check=full"
 fi
@@ -33,6 +33,8 @@ function go () {
     #./query.exe -n 2 &> /dev/stdout >> $RUN
 
     # Would like to add --error-exitcode=99 except that currently demo4b generates errors.
+    # > /tmp/foobar_$1"
+    echo Executing "($LAUNCHIT ./query.exe -n 2)"
     ($LAUNCHIT ./query.exe -n 2 &> /dev/stdout) > /tmp/foobar_$1
     RETVAL=$?    
     cat /tmp/foobar_$1 >> $RUN

@@ -72,7 +72,7 @@ fun Pull:applyST(qsize, src, transformer) {
          state { buf = FIFO:make(qsize);
 	         owed = 0 }
          case evt {
-	   FinalResult(x)    : {} //emit evt
+	   FinalResult(x)    : {} // This is just the echo from the outbound stream.
 	   UpstreamPull (_)  : {} // This will have been handled above.
 
  	   DownstreamPull(_) : 

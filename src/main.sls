@@ -2261,8 +2261,9 @@
 	   (loop rest)]
 
 	  [("-dot" ,rest ...) (dump-graphviz-output #t) (loop rest)]
-	  [("-ret" ,name ,rest ...) (ws-alternate-return-stream name) (loop rest)]
-	  
+	  [("-ret" ,name ,rest ...)  (ws-alternate-return-stream (string->symbol name)) (loop rest)]
+	  [("-main" ,name ,rest ...) (ws-alternate-return-stream (string->symbol name)) (loop rest)]
+
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 	  [("-debug" ,rest ...)		     
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #f)

@@ -2071,11 +2071,13 @@ output from a large server application:
 
  Here we see two minor collections and one major one. 
 
-Wow, those are some long pause times in that app ;).
+Wow, those are some long pase times in that app ;).
 I think that puts it in the same boat as... was it ocaml or mlton?
 Won't print simple a GC summary on exit, but will print verbose
 messages.
 
+[- I wonder how it works under multithreaded conditions.  At least
+part of the mark phase happens in parallel... -]
 
 [2009.01.20] {Ikarus rot}
 
@@ -2095,4 +2097,27 @@ Unhandled exception:
    3. &message: "not a string"
    4. &irritants: (#f)
 make: *** [ik] Error 255
+
+One really annoying thing is that SVN is not well designed to let you
+jump back and forth between revs.  If I jump back to an old rev, and
+them jump forward, I'll get an error if I'd added any directories in
+the intervening revs that contained non-subversion-managed files.  (It
+won't delete the dir on the way back, but then on the way forward it
+complains that a dir's in the way).  What it needs to do in this case
+is overlay the dir on top of the existing one, not complain.  (Maybe
+--force does this...)
+
+In any case... I'm sure it worked with some 16XX and 17XX revisions of
+ikarus (1717 & 1716 didn't), but now I'm jumping all the way back to
+1559 to get it to  work.  I don't want to mess with it now.
+
+Ik Rev 1618 works on honor.
+
+[2009.01.20] {Trying to get things together}
+
+Demo6b is stalling testall_wsc2 right now... that's odd.
+Even without valgrind (but with icc).
+Trying with gcc: works fine.
+
+ *) Relevant
 

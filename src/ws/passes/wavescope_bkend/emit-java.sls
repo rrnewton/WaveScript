@@ -79,6 +79,7 @@
 	[,else (next)]
 	))))
 
+;; For now we do depth first, and emit = function call:
 (__specreplace Emit <java> (self down* ty)
   (lambda (expr)
     (ASSERT simple-expr? expr)
@@ -86,6 +87,7 @@
       (make-lines (map (lambda (down) (list (Var self down) "(" (list element) ");\n"))
 		    down*)))))
 
+;; Mostly the same:
 (define ___Const
   (specialise! Const <java>
     (lambda (next self datum wrap)

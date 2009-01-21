@@ -94,6 +94,7 @@ language_shootout/RESULTS.tex: language_shootout/RESULTS.txt
 
 clean:
 	rm -f machineinfo.tex perfreport.pdf perfreport.log perfreport.aux top_*.txt wssvn.tex enginesvn.tex
+	rm -f top_after.tex top_before.tex
 
 distclean: clean
 	rm -rf ./engine

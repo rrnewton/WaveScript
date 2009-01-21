@@ -22,14 +22,15 @@ mkdir $TEMP
 COMPILE=wsc2
 RUN=./query.exe
 
-
 # function manual_compile() {
 #    echo "IN MANUAL COMPILE $1"
 #    gcc $BENCHMARK
 # }
 
+SAMPLEPOINTS="5 10 25 50 100 250 500 750 1000 2000 5000 10000"
+
 function runit() {
-  for i in 5 10 25 50 100 250 500 750 1000 2000 5000 10000; do
+  for i in $SAMPLEPOINTS; do
     export SCALEFACTOR=$i
     FILE=$TEMP/time_$i.txt  
     echo " Compiling with: $COMPILE $BENCHMARK "
@@ -42,7 +43,7 @@ function runit() {
 }
 
 function runscheme() {
-  for i in 5 10 25 50 100 250 500 750 1000 2000 5000 10000; do
+  for i in $SAMPLEPOINTS; do
     export SCALEFACTOR=$i
     FILE=$TEMP/time_$i.txt  
     echo Running with size $i ...

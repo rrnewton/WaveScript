@@ -399,9 +399,13 @@
 		  (let ([return-name (or (ws-alternate-return-stream) 'main)])
 		    (if (assq return-name defs)
 			return-name ;; The returned stream is whatever the most recent binding of the return name is.
-			(begin (warning 'wsparse-postprocess "Return stream unbound, defaulting to \"timer(1)\"")
-			       ;(set! routes `((BASE (timer '1.0))))
-			       '(timer '1.0))))
+			(begin 
+			  (if (ws-alternate-return-stream)
+			      (error 'wsparse-postprocess 
+				     (format "Return stream '~s' unbound." (ws-alternate-return-stream)))
+			      (warning 'wsparse-postprocess "Return stream 'main' unbound, defaulting to \"timer(1)\""))
+			  ;;(set! routes `((BASE (timer '1.0))))
+			  '(timer '1.0))))
 		  (error 'wsparse-postprocess "Must have only one stream-wiring (<-) expression for now! ~a" routes)))))
       (define final-expression
 	(match defs

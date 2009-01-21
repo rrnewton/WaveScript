@@ -82,6 +82,8 @@
     (find-file-noselect (concat regd "/src/regiment.ss"))
     (find-file-noselect (concat regd "/src/config.ss"))
 
+    (find-file-noselect (concat regd "/DEVLOG.txt"))
+
 ;    (load-all-files-of-interest-from (concat regd "lib"))
 ;    (load-all-files-of-interest-from (concat regd "apps"))
 					;'("~/cur/generic/"))

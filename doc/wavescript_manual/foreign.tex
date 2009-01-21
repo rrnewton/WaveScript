@@ -87,8 +87,9 @@ currently undefined.
 \section{Foreign Sources}
 
 A call to register a foreign source has the same form as for a foreign
-function: ``{\tt foreign\_source({\em function-name}, {\em
-file-list})}''.  However, in this case the {\em function-name} is the
+function: \\
+``{\tt foreign\_source({\em function-name}, {\em file-list})}''
+However, in this case the {\em function-name} is the
 name of the function being {\em exported}.  The call to {\tt
 foreign\_source} will return a stream of incoming values.  It must be
 annotated with a type of the form {\tt Stream} $T$, where $T$ is a
@@ -330,6 +331,11 @@ $WaveScript$ & $C$ & $explanation$\\
   \parbox[t]{2.2in}{native ints have a system-dependent 
 length, note that in the Scheme backend WaveScript {\tt Int}s may 
 have less precision than C {\tt int}s} \\
+
+{\tt Uint16}   & {\tt unsigned short}   & 
+  \parbox[t]{2.2in}{{\WS} supports 8, 16, 32, and 64 bit signed and
+  unsigned integers.} \\
+
 
 {\tt Float} & {\tt float} & 
 \parbox[t]{2.2in}{WaveScript floats are single-precision}\\

@@ -262,6 +262,27 @@ fun tagged_pixel_kernel_with_neighborhood_and_patch_hooks
 }
 
 // This simplified interface doesn't bother with the patch-level hooks:
+// FIXME: inferring overly general type:
+/* tagged_pixel_kernel_with_neighborhood  ::  */
+/*    (Int, Int, Int,  */
+/*     // Work function at each pixel: */
+/*     (a, b, c, (Int, Int) -> d) -> e,  */
+/*     (Int, Int) -> f) */
+/*   ->  */
+/*    Stream (g * Matrix h) -> Stream (Matrix i); */
+
+// Method to access the neighborhood around a pixel:
+type Nbrhood a = (Int,Int) -> a;
+
+tagged_pixel_kernel_with_neighborhood  :: 
+   (Int, Int, Int, 
+    // Work function at each pixel:
+    (tag, sigma, px, Nbrhood px) -> px2, 
+    // Per-pixel state initialization function
+    (Int, Int) -> sigma)
+  -> 
+   Stream (tag * Matrix px) -> Stream (Matrix px2);
+
 fun tagged_pixel_kernel_with_neighborhood
     (iworkers, jworkers, nbrhood_size, pixel_transform, init_state)
   tagged_pixel_kernel_with_neighborhood_and_patch_hooks

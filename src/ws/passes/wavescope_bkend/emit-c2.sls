@@ -2240,7 +2240,10 @@ int main(int argc, char **argv)
 
 ;;================================================================================
 
-(define-class <emitC2> (<emitC2-base>) ())
+;; TODO: bring specifics down from the emitC2-base class to this one.
+;; We need to get these out of the way of other sibling classes (e.g. for Java).
+(define-class <emitC2> (<emitC2-base>) 
+  ())
 
 ;;================================================================================
 

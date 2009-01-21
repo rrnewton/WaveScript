@@ -108,7 +108,7 @@
 	     (error 'verify-elaborated
 		    ;"post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
 		    "~a~a  Type: ~s\n\n  Rator: ~a\n  Location: ~a\n"
-		    "post-elaboration expression should polymorphic or higher order functions, or applications with non-symbol operators\n"
+		    "post-elaboration expression should not contain polymorphic or higher order functions, or applications with non-symbol operators\n"
 		    "This should have inlined...\n"
 		    ;"This probably means that you have a "
 		    type 

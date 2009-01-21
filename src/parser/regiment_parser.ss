@@ -769,8 +769,9 @@
 	 ;; Can only use this to call named functions, that is symbols:
          [(exp DOT LOWVAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
-	 ;; FIXME: This is temporary... my intention is to use '.'
-	 [(exp AT VAR)    (prec DOT) `(wsrecord-select ',$3 ,$1)]
+	 [(exp AT VAR)    (prec DOT) `(wsrecord-select ',$3 ,$1)] ;; FIXME: This is temporary... my intention is to use '.'
+	 
+	 [(exp DOT UPVAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos `(wsrecord-select ',$3 ,$1)) . ,$5)] ;; adds 1 shift/reduce
 	 [(exp DOT UPVAR) (prec DOT) `(wsrecord-select ',$3 ,$1)]
 
 	 ;y . (foo(x)) . if then else . 

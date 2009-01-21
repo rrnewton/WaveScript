@@ -798,6 +798,9 @@
 
 
 ;; We should maybe maintain types...
+(define (Marshal/type val ty)
+  (Marshal val))
+
 (define (Marshal-Plain p) 
 ;  (display-constrained "    MARSHALLING plain " `[,p 100] "\n")
 
@@ -812,8 +815,8 @@
 
   (ASSERT (plain? p))
   
-  (let loop ([val (plain-val p)]
-	     [ty  (plain-type p)])
+  (let ([val (plain-val p)]
+	[ty  (plain-type p)])
     (cond
      [(hashtab? val) (error 'Marshal-Plain "hash table marshalling unimplemented")]
      ;; Going to wait and get rid of sigseg constants in remove-complex-constants:
@@ -825,12 +828,26 @@
 ;     [(double? val) (double-num val)]
 
      [(tuple? val)
-      `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (loop x ty)))
+      `(tuple . ,(map (lambda (x ty) (if (wrapped? x) (Marshal x) (Marshal/type x ty)))
 		   (ASSERT (tuple-fields val))
 		   ;; FIXME FIXME FIXME HMM: NOT SURE HOW THIS GETS TO #F:
 		   ;(match ty [#(,t* ...) t*])
 		   (vector->list (ASSERT ty))
 		   ))]
+
+     [(wsrecord? val)
+      (match ty
+	[(Record ,rows)
+	 (define typairs
+	   (match rows
+	     [#() '()]
+	     [(Row ,nm ,ty ,[rest]) (cons (cons nm ty) rest)]))
+	 (match (wsrecord-pairs val)
+	   [() '(empty-wsrecord)]
+	   [((,nm . ,vl) . ,[rest])
+	    `(wsrecord-extend ',nm 
+			      ,(Marshal/type vl (assq nm typairs))
+			      ,rest)])])]
 
      [(uniontype? val)
       `(construct-data ,(uniontype-tag val)
@@ -868,7 +885,7 @@
       (DEBUGMODE
        (match (or ty (type-const val))
 	 ;; Going through just to make sure there are no errors:
-	 [(List ,elt) (for-each (lambda (x) (loop x elt)) val)]))
+	 [(List ,elt) (for-each (lambda (x) (Marshal/type x elt)) val)]))
       ;`(assert-type ,ty ',val)
       `',(box-doubles val ty)
       ]
@@ -883,10 +900,10 @@
      [else
 ;      (ASSERT (not (streamop? val))) (ASSERT (not (closure? val))) 
 ;      (ASSERT (not (ref? val)))      (ASSERT (not (suspension? val)))
-
-      (ASSERT (or (string? val) (char? val) (flonum? val) (cflonum? val) (boolean? val)
-		  (sigseg? val)
-		  ))
+      
+      (unless (or (string? val) (char? val) (flonum? val) (cflonum? val) (boolean? val)
+		  (sigseg? val))
+	(error 'Marshal-Plain "invalid value: ~s" val))
       ;(DEBUGASSERT complex-constant? val)
       `',val]
      )))
