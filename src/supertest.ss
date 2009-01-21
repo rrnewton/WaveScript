@@ -244,8 +244,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;; Main Script:
 ; ----------------------------------------
 
-
 (ASSERT (putenv "REGIMENTD" ws-root-dir))
+(ASSERT (putenv "REGIMENTHOST" "")) ;; Clear this
 
 ;; We use debugmode for all the tests below:
 

@@ -2112,12 +2112,11 @@ ikarus (1717 & 1716 didn't), but now I'm jumping all the way back to
 1559 to get it to  work.  I don't want to mess with it now.
 
 Ik Rev 1618 works on honor.
+(Also, 1621 worked in the last successfully supertest on chastity.)
 
 [2009.01.20] {Trying to get things together}
 
 Demo6b is stalling testall_wsc2 right now... that's odd.
 Even without valgrind (but with icc).
 Trying with gcc: works fine.
-
- *) Relevant
 
