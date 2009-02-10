@@ -44,10 +44,11 @@
 
   ;; This is the continuation for returning to the scheduler, set up later:
   (define schedk #f)
-  ;(define (receiver n) (lambda () (call/cc schedk)))
+  (define alldone exit)
   (define (receiver n) ;; instantiated for each thread
     (lambda ()
       (define msg 
+	;; ODD.  Under chez 7.5 call/1cc goes SLOWER than call/cc here: 
 	(call/cc (lambda (k)
 		 (DBG (printf " -- recv called.. posting cont ~a for ~a jumping back to sched\n " k n))
 		 (vector-set! threads n k)
@@ -110,7 +111,7 @@
     (let workerloop ((msg (recv)))
       (define next (if (fx= N who) 1 (fx+ 1 who)))
       (DBG (printf "  ** Done Recv, message ~a, passing from ~a to ~a\n" msg who next))
-      (when (fxzero? msg) (printf "~a\n" who) (exit))
+      (when (fxzero? msg) (printf "~a\n" who) (alldone #t))
       (emit! next (fx- msg 1))
       (workerloop (recv))))
 
@@ -122,5 +123,9 @@
       (spawnloop (fx- n 1))))
 
   (emit! 1 steps)
-  (mainloop)
+  ;; Timing slows it down.
+  (time (call/cc (lambda (k) 
+		   (set! alldone k)
+		   (mainloop))))
+  ;(time  (mainloop))
 )
