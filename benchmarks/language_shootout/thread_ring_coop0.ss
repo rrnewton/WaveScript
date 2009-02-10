@@ -3,11 +3,9 @@
 ;;;; For reference, here is a scheme implementation of thread ring using
 ;;;; cooperative multithreading (continuations).
 
-(eval-when (compile eval load) (optimize-level 3))
+;(eval-when (compile eval load) (optimize-level 3))
 
 (let ()
-
-  (define-syntax DBG (syntax-rules () [(_ e) (void)]))
   
   (define N 503) 
   (define steps (string->number (car (command-line-arguments))))
@@ -28,6 +26,7 @@
   (define mailboxes (make-vector (add1 N) qnull))
   (define threads   (make-vector (add1 N))) ;; Continuations
   (define enqueued? (make-vector (add1 N) #f)) ;; Is the thread queued?
+  (define already-called (make-vector (add1 N) #f))
 
   (define globalqueue qnull)
 
@@ -43,73 +42,70 @@
 	)))
 
   ;; This is the continuation for returning to the scheduler, set up later:
-  (define schedk #f)
-  ;(define (receiver n) (lambda () (call/cc schedk)))
-  (define (receiver n) ;; instantiated for each thread
-    (lambda ()
-      (define msg 
-	(call/cc (lambda (k)
-		 (DBG (printf " -- recv called.. posting cont ~a for ~a jumping back to sched\n " k n))
-		 (vector-set! threads n k)
-		 (schedk 'nilmsg) ;; Don't need to send any info to the scheduler
-		 )))
-      (DBG (printf " @@ Returning control to recv call ~s, message ~s \n " n msg))
-      msg
-      ))
+;  (define schedk 'uninit)
 
   ;; Do an initial run of the workfun:
+#;
   (define (spawn fn n)
-    (call/1cc (lambda (return)
-		(begin ;fluid-let ((schedk return))
-		  (set! schedk return)
-		  (fn n (receiver n))		    
-		  )))
-    (set! schedk #f)
-    ;(printf ".....finished first call ~a\n" n)
-    (vector-ref threads n)
-    )
+    (call/cc (lambda (return)
+	       (fluid-let ((schedk return))
+		 (fn n (lambda () (call/cc schedk))))
+	       )))
 
   ;; This processes the queue of threads with active messages.
   (define (mainloop)    
-
-    ;(printf "MAINLOOP schedk init ~a\n" schedk)
-
-    ;; Initialize the schedk that we jump back to in the future.
-    (unless schedk 
-      (call/cc (lambda (k) (DBG (printf " SETTING SCHEDK ~s\n" k)) (set! schedk k)))
-      (DBG (printf "jumped back in\n")))
-
-    (DBG (printf "Looping, with queue: ~s, mailboxes ~s\n" globalqueue
+#;
+    (define __ (begin 
+		 (set! count (add1 count))
+		 (when (= count 10) (printf "ENOUGH\n") (exit))
+		 (printf "Looping, with queue: ~s, mailboxes ~s\n" globalqueue
 			 mailboxes
 			 #;
 			 (if (qnull? globalqueue)   #f
-			   (vector-ref mailboxes (qcar globalqueue)))))
-
+			   (vector-ref mailboxes (qcar globalqueue))))))
+    (define who (qcar globalqueue))
+    (set! globalqueue (qcdr globalqueue))
+    (vector-set! enqueued? who #f) ;; Reenable it
+    ;; Invoke it, it returns a new queue, updates own continuation.
     
     ;; Pop the first message for the selected thread:
-    (let* ((who (qcar globalqueue))
-	   (msgs (vector-ref mailboxes who))
+    (let* ((msgs (vector-ref mailboxes who))
 	   (msg  (qcar msgs)))
-      (set! globalqueue (qcdr globalqueue))
-      (DBG (printf "    popped queue ~s \n" globalqueue))
-      (vector-set! enqueued? who #f) ;; Reenable it
+
       (vector-set! mailboxes who (qcdr msgs)) ;; Pop the message
 
-      ((vector-ref threads who) msg) ;; This will transfer control back to scheduler
-
-;      (printf "   finishd, new queue ~a\n" globalqueue)
-;      (mainloop)
-      ;; If we've been called before, just charge throuagh, otherwise initialize.
+      ;; If we've been called before, just charge through, otherwise initialize.
       ;; We could use multi-value continuations to get around this weirdness.
-      )
+      (if (vector-ref already-called who)
+	  (begin
+	    ;(printf "  just go on through ~a \n" who)
+	    ((vector-ref threads who) msg) ;; This will transfer control back to scheduler
+	    )
+	  (begin 
+	    ;; Run the thread, give it a blocking recv function.
+	    ;; This will generate N different continuations for jumping back to scheduler.
+	    (vector-set! threads who
+	       (call/1cc (lambda (backtosched)
+			  ((vector-ref threads who)
+			   who (lambda ()
+				 ;(printf "Calling recv function for ~a \n" who)
+				 (call/cc backtosched))))))
+	    ;(printf " INSTALLED new continuation for ~a  \n" who)
+	    ;; If we're passing through the first time we still have a message to process.
+	    (unless (vector-ref already-called who)
+	     ; (printf "...bounce...\n")
+	      (vector-set! already-called who #t)
+	      ((vector-ref threads who) msg))
+	    )))
+    ;(printf "   finishd, new queue ~a\n" globalqueue)    
+    (mainloop))
 
-    )
   
   (define (workfun who recv)
-    (DBG (printf "  ** Calling ~a for first time.. ~a\n" who recv))
+    ;(printf "  ** Calling ~a for first time.. ~a\n" who recv)
     (let workerloop ((msg (recv)))
       (define next (if (fx= N who) 1 (fx+ 1 who)))
-      (DBG (printf "  ** Done Recv, message ~a, passing from ~a to ~a\n" msg who next))
+      ;(printf "  ** Done Recv, message ~a, passing from ~a to ~a\n" msg who next)
       (when (fxzero? msg) (printf "~a\n" who) (exit))
       (emit! next (fx- msg 1))
       (workerloop (recv))))
@@ -118,9 +114,9 @@
   ;; Spawn the threads:
   (let spawnloop ((n N))
     (unless (zero? n)
-      (vector-set! threads n (spawn workfun n))
+      (vector-set! threads n workfun)
       (spawnloop (fx- n 1))))
-
+    
   (emit! 1 steps)
   (mainloop)
 )
