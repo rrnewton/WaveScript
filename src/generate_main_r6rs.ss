@@ -16,6 +16,7 @@
 ;; Override the defaults with the command-line arguments.
 (when (> (length (command-line)) 1)
    (set! importsfile (cadr (reverse (command-line)))) ;; agnostic to missing first arg
+   ;; This argument will have a space:
    (set! outputlib (read (open-string-input-port (car (reverse (command-line)))))))
 
 (define ignored1 (begin (display "imports/output: ") (write (list importsfile outputlib)) (newline)))

@@ -317,14 +317,17 @@ aggregated:
 	rm -f ws/common.sls main_r6rs.sls
 	$(MAKE) ws/common.sls main_r6rs.sls
 
+R6SCRIPT="$(IKARUS) --r6rs-script"
+#R6SCRIPT=chez --script
+
 ws/common.sls:
-	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+	$(R6SCRIPT) ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
 #	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
 #	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
 
 main_r6rs.sls:
-	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss 
+	$(R6SCRIPT) ./generate_main_r6rs.ss 
 #	@./generate_main_r6rs.ss 
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
 
