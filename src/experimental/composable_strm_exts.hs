@@ -20,23 +20,18 @@
 -- backchannels as well.  In the other order the back-channels would
 -- be untouched.
 
+newtype Stream a = Stream [a]
+  deriving Show
+
 data StateOp a b = 
 --  StateOp (forall sig. (sig, (a,sig) -> ([b],sig)))
   StateOp (a -> ([b], StateOp a b))
 --  StateOp (forall sig. (sig, (a,sig) -> ([b], StateOp a b)))
 
 class StreamT t where 
---  bind :: t a -> (a -> t b) -> t b -- monads
---  bind :: t a -> (a -> [b]) -> t b
   bind :: t a -> StateOp a b  -> t b
 
-newtype Stream a = Stream [a]
-  deriving Show
-
 instance StreamT Stream where 
---  bind x = bind x
---  bind (Stream x) f = Stream( concat $ map (\o -> let Stream b = f o in b) x)
---  bind (Stream x) f = Stream$ concat $ map f x
   bind (Stream ls) op = Stream $ loop ls op
     where 
       loop [] _ = []
@@ -44,17 +39,9 @@ instance StreamT Stream where
 	  let (bs,op') = f h
 	  in bs ++ loop t op'
 	       
---     scanl (\ (StateOp f) x -> 
--- 	   let (bs,f') = f x 
--- 	   in 
--- 	   ) op ls
-
 s = Stream [1,2,3]
 -- t2 = bind test (\x -> [x,x])
 
-
---a :: StateOp Int Int
---a = StateOp (0, \ (n,count) -> ([n+count], count+1))
 a count = StateOp (\n -> ([n+count], a$count+1))
 -- Here's one that's really stateless:
 b = StateOp (\n -> ([n,n], b))
@@ -134,16 +121,11 @@ newtype PullStream a = PullStream (Stream () -> Stream a)
 -- the pull requests and the normal elements.
 
 -- This means `bind` will have to be different:
+-- This would ideally be defined as an extension of the parent 'bind'.
 
 instance StreamT PullStream where 
   bind (PullStream f) op = PullStream $
-       \ pulls -> Stream $ loop (deStrm (f pulls)) op
-         where 
-	 deStrm (Stream ls) = ls
- 	 loop [] _ = []
-         loop (h:t) (StateOp opf) = 
- 	   let (bs,op') = opf h  
-   	   in bs ++ loop t op'
+       \pulls -> (f pulls) `bind` op
  
 s3 = PullStream $ (\_ -> s)
 
@@ -152,3 +134,18 @@ p3 = pop (s3 `bind` b `bind` b)
 pop (PullStream f) = f (Stream (repeat ()))
 
 --------------------------------------------------------------------------------
+
+-- Migration adds a bunch of wires also.  
+
+-- A stream value with migration support internally exposes what?
+-- Well, you don't want to do anything to the existing DAG implied by
+-- that stream value.  However, when you extend with new ops, you want
+-- to have the option of hooking up migration wires.  
+
+--------------------------------------------------------------------------------
+
+-- The first step towards composability is playing the monad transformer trick:
+
+--newtype StreamT sa => PullTrans a sa = sa
+-- newtype PullStream a = PullStream (Stream () -> Stream a)
+
