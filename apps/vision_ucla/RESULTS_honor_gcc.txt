@@ -1,0 +1,6 @@
+## Time for each benchmark/backend 
+Benchmark c2
+bgSub4_patchoriented 0 47586.000
+bgSub4_patchoriented 2 Couldn't extract time!
+bgSub4_patchoriented 3 Couldn't extract time!
+bgSub4_patchoriented 4 74844.000
