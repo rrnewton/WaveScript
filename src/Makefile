@@ -4,45 +4,16 @@
 #*    Primary Compile Targets                                          */
 #*---------------------------------------------------------------------*/
 
-# There are three ways to run Regiment/WaveScript.
-#  (*) From source
-#  (*) From compiled shared object (.so) file.
-#  (*) From saved memory heap. (Fast but not portable.)
+# The Regiment/WaveScript compiler can be ran under several scheme
+# implementations.
 
-# make wsparse  -- build parser
-# make chez     -- build regiment .so file
 # make          -- build wsparse and .so file
-# make heap     -- build regiment heap file
-# make fullheap -- build regiment heap file with compiler
+# make wsparse  -- build parser
 
-#*---------------------------------------------------------------------*/
-#*    Objects and sources                                              */
-#*---------------------------------------------------------------------*/
+# make [ikarus,chez,pltbc] -- build compiler under different implementations.
 
-CHEZ_MAIN_FILE = main_chez.ss
-PLT_MAIN_FILE = main_plt.ss
-
-#*---------------------------------------------------------------------*/
-#*    Commands                                                         */
-#*---------------------------------------------------------------------*/
-
-IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
-MZSCHEME = mzscheme
-MZC = mzc
-# Trying to do some optimization: 
-#   
-MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
 
 #export REGIMENTD=`pwd`/../
-
-CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
-#CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
-
-#CHEZ = petite
-#CHEZ = fullpetite
-
-SWL = swl
-DEST = a.out
 
 basic: 
 	@echo; echo BUILDING PARSER
@@ -70,7 +41,7 @@ basic:
 
 all: basic ws.debug
 
-allheap: fullheap fullheap.opt
+# allheap: fullheap fullheap.opt
 
 MT=`echo '(display (machine-type))' | ../depends/petite -q`
 SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
@@ -78,7 +49,8 @@ CMT=`echo '(machine-type)' | chez_threaded`
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
-#*---------------------------------------------------------------------*/
+#* We handle multiple scheme backends as well as other misc code.      */
+#*- --------------------------------------------------------------------*/
 
 c: 
 	(cd C; $(MAKE))
@@ -87,10 +59,61 @@ caml: ocaml
 ocaml:
 	(cd ws/passes/ocaml_bkend/; $(MAKE))
 
-# Two scheme back-ends, PLT or Chez.
+# A couple of these aggregate scheme libraries are automatically generated:
+ag: aggregated
+aggregated:
+	rm -f ws/common.sls main_r6rs.sls
+	$(MAKE) ws/common.sls main_r6rs.sls
 
-# PLT: 
-#----------------------------------------
+ws/common.sls:
+	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+#	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
+#	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
+#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
+
+main_r6rs.sls:
+	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss 
+#	@./generate_main_r6rs.ss 
+#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
+
+
+#----------------------------------------#
+#    Default compiler build:             #
+#----------------------------------------#
+
+# These presently invoke the Chez version:
+
+# [2007.04.22] Switching the default to .boot files:
+ws:       boot
+ws.opt:   boot.opt
+opt:      boot.opt
+ws.debug: so.debug
+debug:    so.debug
+dbg:      so.debug
+
+
+#----------------------------------------#
+#    Ikarus - a good open source R6RS    #
+#----------------------------------------#
+
+IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
+
+# Depends on aggregated libraries:
+ikarus: ik
+ik: ws/common.sls main_r6rs.sls
+	$(IKARUS) -O2 --compile-dependencies regiment.ss
+
+
+#----------------------------------------#
+#    PLT:                                #
+#----------------------------------------#
+
+# Most common entrypoint: "pltbc"
+
+MZSCHEME = mzscheme
+MZC = mzc
+# Trying to do some optimization: 
+MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
 
 DEFAULTPLTLIB=`mzscheme -e '(for-each (lambda (p) (display p) (display ":")) (current-library-collection-paths))'`
 
@@ -132,6 +155,10 @@ nc2:
 	export PLTCOLLECTS=`pwd`:$(PLTLIB)
 	cat .temp_plt-source-files  | xargs -n1 $(MZC) $(MZCFLAGS) --auto-dir
 
+#----------------------------------------#
+#    Parser (PLT only)                   #
+#----------------------------------------#
+
 wsparse: wsparse_zo
 
 # only works in PLT right now:
@@ -168,8 +195,151 @@ wsparse_zo:
 #	echo 'LOC=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
 
 
-#----------------------------------------
 
+#----------------------------------------#
+#    Chez                                #
+#----------------------------------------#
+
+# Most common entrypoint: "chez"
+
+# We support Chez in two ways.  After the R6RS port I made a dirty
+# hack that stripped the R6RS libraries into a form that Chez could
+# consume.  But once Chez got its own R6RS support this wasn't
+# necessary.  I would remove it, but the fact is that it's the only
+# current [2009.03.11] way to make a single .boot file (and it loads
+# twice as fast).  So the hack still has its uses.
+
+# The new one:
+CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
+#CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
+
+# Old, possibly pre-r6 chez:
+OLDCHEZ = chez74
+
+# This is the R6RS chez:
+chez: ws/common.sls main_r6rs.sls 
+        # Build all the individual .so files:
+	./experimental/r6make.ss regiment.ss
+        # It would be nice to make a .boot file out of them...
+#	echo '(make-boot-header "tmp.hdr" "scheme.boot" "petite.boot")' | $(CHEZ)
+#	find -name "*.so"
+
+# This is the old HACK:
+
+# Currently the hack requires first building ikarus.
+
+# This converts the R6RS codebase to a Chez-palatable form.
+ag_chez: aggregated_chez
+aggregated_chez:
+	./temporary_smoosh_to_one_chez_file.ss
+
+# This compiles the source into loadable object files
+chez_hack: ws/common.sls main_r6rs.sls chez_native ikarus
+chez_native: aggregated_chez
+	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
+	if [ "$(REGDEBUGMODE)" == "ON" ]; \
+        then echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); \
+        else echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); fi
+
+# This makes a Chez Scheme .boot file instead of a shared object file.
+# After the boot file is made we can kill the shared object file.
+boot: aggregated_chez boot_only
+boot_only: _temp_temp.so shared 
+	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(OLDCHEZ)
+	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
+	rm -f _temp_temp.ss _temp_temp.so "build/$(MT)/legacy_main_chez.so"
+
+boot.opt: aggregated_chez _temp_temp.so shared.opt 
+	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(OLDCHEZ)
+	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez_OPT.so" > "build/$(MT)/legacy_main_chez_OPT.boot" 
+	rm -f _temp_temp.ss _temp_temp.so
+
+
+# This is an extra little header:
+_temp_temp.so:
+	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
+	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(OLDCHEZ)
+
+## These targets just make the shared objects as necessary for the boot file.
+## In this case we only worry include the WS target, not regiment.
+so: shared
+shared: 
+	if ! [ -d "build/$(MT)" ]; then mkdir -p build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(generate-inspector-information #f) (compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=OFF; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(OLDCHEZ))
+
+so.debug: shared.debug
+shared.debug:
+	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=ON; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(OLDCHEZ))
+
+# so.opt: shared.opt
+# shared.opt:
+# 	MT=`echo '(machine-type)' | ../depends/petite`
+# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
+# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
+#           (export REGOPTLVL=3; \
+#            export REGDEBUGMODE=OFF; \
+#            export REGIMENT_OR_WAVESCRIPT=WS; \
+#            $(CHEZ))
+
+
+# ws.threaded: threaded
+# threaded:
+# #	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
+# 	export REGIMENT_OR_WAVESCRIPT=WS; 
+# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+#          (export REGOPTLVL=2; \
+#           export REGDEBUGMODE=OFF; \
+#           export REGIMENT_OR_WAVESCRIPT=WS; \
+#           chez_threaded)
+
+# # Saved heap images start up very fast, but don't work right on all platforms.
+# # (doesn't work right on Mac OS or fedora core)
+
+# # Run "make chez" before this to compile the code before grabbing a Petite heap:
+# heap: builddir 
+# 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
+# #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+# #	$(RM) -f build/regiment.0.heap 
+# #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+
+# # A fullheap includes the Chez compiler as well as the petite heap.
+# fullheap: builddir
+# 	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
+# #	@if [ `which chez` ]; \
+# #	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
+# #	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
+# #	     $(RM) -f build/regiment.0.heap; \
+# #	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
+# #	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
+# #	fi
+
+# ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+
+# fullheap.opt:
+# 	(export REGOPTLVL=3; \
+#          export REGDEBUGMODE=OFF; \
+# 	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
+
+# builddir:
+# 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
+
+
+#----------------------------------------#
+#    Larceny (never fully working)       #
+#----------------------------------------#
 
 # (main_r6rs) (main)
 # Ack this takes 43 minutes... I remember it taking 5 minutes before to load from source.
@@ -210,10 +380,6 @@ NOOPTS='(control-optimization #f) (parallel-assignment-optimization #f) (lambda-
 	echo '(import (larceny compiler) (primitives global-optimization)) (global-optimization #f) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
 #	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
 #	echo '(import (larceny compiler)) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src/
-
-
-
-
 
 
 #ws/constants.sls: ws/util/compat.sls
@@ -310,158 +476,6 @@ larceny: ws/common.sls main_r6rs.sls \
 #  ws/passes/normalize_source/rename-vars.slfasl \
 
 
-
-## Combine 
-ag: aggregated
-aggregated:
-	rm -f ws/common.sls main_r6rs.sls
-	$(MAKE) ws/common.sls main_r6rs.sls
-
-R6SCRIPT="$(IKARUS) --r6rs-script"
-#R6SCRIPT=chez --script
-
-ws/common.sls:
-	$(R6SCRIPT) ./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
-#	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
-#	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
-#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
-
-main_r6rs.sls:
-	$(R6SCRIPT) ./generate_main_r6rs.ss 
-#	@./generate_main_r6rs.ss 
-#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
-
-
-ikarus: ik
-ik: ws/common.sls main_r6rs.sls
-	$(IKARUS) -O2 --compile-dependencies regiment.ss
-
-# ikrun:
-# 	ikarus --r6rs-script test_run.ss
-
-
-#ws/util/compat.slfasl
-#	(cd ws/util/; echo '(import (larceny compiler)) (compile-library "compat.sls")' | larceny -r6rs -path $(REGIMENTD)/src/)
-
-
-
-
-# This compiles the source into loadable object files
-chez: chez_native
-chez_native: aggregated_chez
-	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
-	if [ "$(REGDEBUGMODE)" == "ON" ]; \
-        then echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
-        else echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
-
-# [2007.04.22] Switching the default to .boot files:
-
-ws:       boot
-ws.opt:   boot.opt
-opt:      boot.opt
-ws.debug: so.debug
-debug:    so.debug
-dbg:      so.debug
-
-# This makes a Chez Scheme .boot file instead of a shared object file.
-# After the boot file is made we can kill the shared object file.
-boot: aggregated_chez boot_only
-boot_only: _temp_temp.so shared 
-	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez.so" > "build/$(MT)/legacy_main_chez.boot" 
-	rm -f _temp_temp.ss _temp_temp.so "build/$(MT)/legacy_main_chez.so"
-
-boot.opt: aggregated_chez _temp_temp.so shared.opt 
-	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/legacy_main_chez_OPT.so" > "build/$(MT)/legacy_main_chez_OPT.boot" 
-	rm -f _temp_temp.ss _temp_temp.so
-
-# This converts the R6RS codebase to a Chez-palatable form.
-ag_chez: aggregated_chez
-aggregated_chez:
-	./temporary_smoosh_to_one_chez_file.ss
-
-_temp_temp.so:
-	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
-	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
-
-## These targets just make the shared objects as necessary for the boot file.
-## In this case we only worry include the WS target, not regiment.
-so: shared
-shared: 
-	if ! [ -d "build/$(MT)" ]; then mkdir -p build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(generate-inspector-information #f) (compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=OFF; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          $(CHEZ))
-
-so.debug: shared.debug
-shared.debug:
-	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=ON; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          $(CHEZ))
-
-# so.opt: shared.opt
-# shared.opt:
-# 	MT=`echo '(machine-type)' | ../depends/petite`
-# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
-# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
-#           (export REGOPTLVL=3; \
-#            export REGDEBUGMODE=OFF; \
-#            export REGIMENT_OR_WAVESCRIPT=WS; \
-#            $(CHEZ))
-
-
-# ws.threaded: threaded
-# threaded:
-# #	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
-# 	export REGIMENT_OR_WAVESCRIPT=WS; 
-# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-#          (export REGOPTLVL=2; \
-#           export REGDEBUGMODE=OFF; \
-#           export REGIMENT_OR_WAVESCRIPT=WS; \
-#           chez_threaded)
-
-# # Saved heap images start up very fast, but don't work right on all platforms.
-# # (doesn't work right on Mac OS or fedora core)
-
-# # Run "make chez" before this to compile the code before grabbing a Petite heap:
-# heap: builddir 
-# 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
-# #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-# #	$(RM) -f build/regiment.0.heap 
-# #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
-
-# # A fullheap includes the Chez compiler as well as the petite heap.
-# fullheap: builddir
-# 	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
-# #	@if [ `which chez` ]; \
-# #	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
-# #	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
-# #	     $(RM) -f build/regiment.0.heap; \
-# #	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
-# #	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
-# #	fi
-
-# ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-
-# fullheap.opt:
-# 	(export REGOPTLVL=3; \
-#          export REGDEBUGMODE=OFF; \
-# 	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
-
-# builddir:
-# 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
-
-
 #/*--------------------------------------------------------------------*/
 #                              TESTING                                 #
 #/*--------------------------------------------------------------------*/
@@ -531,25 +545,7 @@ super-test:
 
 
 #/*--------------------------------------------------------------------*/
-#*    Running                                                          */
-#*---------------------------------------------------------------------*/
-
-run: runplt
-
-runchez: 
-	$(CHEZ) $(CHEZ_MAIN_FILE)
-
-runplt: 
-	$(MZSCHEME) -e "(load/use-compiled \"$(PLT_MAIN_FILE)\")"
-
-
-#mred:
-#	$(MRED) -f $(PLT_MAIN_FILE) -e "(require compiler)"
-#swl:
-#	$(SWL) $(CHEZ_MAIN_FILE)
-
-#/*--------------------------------------------------------------------*/
-#*    Installation Packages                                            */
+#*            Building Installation Packages                           */
 #*---------------------------------------------------------------------*/
 
 # [2007.04.09] Updating this, it was very old:
@@ -604,6 +600,8 @@ cleanheap:
 
 # Clean the compiler stuff but not wsparse.
 cleanchez: cleancomp
+	find . -name "*.so" | xargs $(RM)
+	find ../depends/ -name "*.so" | xargs $(RM)
 cleancomp:
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/* build/ti3osx/* build/ti3le/*
 
@@ -651,6 +649,10 @@ distclean: clean
 	$(RM) -f *.log
 
 
+#============================================================
+# Shortcuts, utils, and junk.
+#============================================================
+
 upload:
 	scp build/$(MT)/main_chez.so "newton@faith.ffh.us:/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
 	ssh newton@faith.ffh.us chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
@@ -659,39 +661,6 @@ upload:
 	ssh newton@faith.ffh.us chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
 	ssh newton@faith.ffh.us chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
 
-
-#	find -name "*.zo" | xargs rm # This is excessive...
-#	(cd compiled; $(MAKE) clean)
-
-
-#	find . \( -name '*[~%]' \
-#                       -o -name '.??*[~%]' \
-#                       -o -name '#*#' \
-#                       -o -name '?*#' \
-#                     -type f -exec $(RM) {} \;   
-
-#*---------------------------------------------------------------------*/
-#*    Suffixes                                                         */
-#*---------------------------------------------------------------------*/
-# .SUFFIXES:
-# .SUFFIXES: .ss .so 
-
-#*---------------------------------------------------------------------*/
-#*    .ss.so                                                             */
-#*---------------------------------------------------------------------*/
-# .ss.so:
-# 	mzc $(MZCFLAGS) --extension --destination compiled/native/ppc-darwin  $*.ss
-
-#	$(MZC) $*.ss
-
-#*---------------------------------------------------------------------*/
-#*    .scm.o                                                           */
-#*---------------------------------------------------------------------*/
-#.scm.o:
-#	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
-
-
-#awkit=awk '{ print \\$1" +"}'
 
 wc:        wordcount
 count:     wordcount

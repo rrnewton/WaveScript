@@ -345,8 +345,6 @@ signed =
     { emit outbuf };
 
     // Pick which one you want:
-    //src = sensor;
-    //src = dummy;
     src = if GETENV("DUMMY") != "" 
           then { print$"Configuring with DUMMY data stream.\n";     dummy } 
           else { print$"Configuring for LIVE audio data stream.\n"; sensor};

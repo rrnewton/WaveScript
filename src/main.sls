@@ -377,7 +377,7 @@
   (let ((stream (reg:read-log file 'stream)))
     (let loop ((s (reg:read-log file 'stream)))
       (unless (null? s)
-	(display (log-line->human-readable 0 (stream-car s) ()))
+	(display (log-line->human-readable 0 (stream-car s) '()))
 	(loop (stream-cdr s))))))
 
     ))

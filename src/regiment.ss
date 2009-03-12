@@ -27,11 +27,17 @@
 (unless (top-level-bound? 'regiment-origin)
   (define-top-level-value 'regiment-origin "unknown")) ;; This tracks how the system was loaded.
 
+;; [2009.03.12] Temp: for r6rs chez:
+#;
+(IFCHEZ (eval-when (eval load compile) 
+	  (printf "SETTING OPTIMIZE LEVEL TO 2!\n")
+	  (optimize-level 2)) (void))
+
 ;;================================================================================
 ;(ws "/home/newton/demos/demo1c_timer.ws")
 ;;================================================================================
 
-(printf "COMMAND LINE ~s\n" (command-line))
+;(printf "COMMAND LINE ~s\n" (command-line))
 
 (if (< (length (command-line)) 2)
     (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))

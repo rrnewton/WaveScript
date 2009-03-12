@@ -144,6 +144,7 @@ fun myRound(val)
 
 // implementation of an FIR filter using convolution 
 // you have to provide an array of coefficients 
+// Lifted over a windowed stream.  (Should factor this.)
 fun FIRFilter(filter_coeff, strm) {
     using Array;
     nCoeff = filter_coeff.length;
@@ -156,7 +157,7 @@ fun FIRFilter(filter_coeff, strm) {
     iterate seg in strm {
       state {
         // remembers the previous points needed for convolution
-        _memory = { fifo = FIFO:make(nCoeff-1);
+        _memory = { fifo = FIFO:make(nCoeff);
                     for i = 1 to nCoeff-1 { FIFO:enqueue(fifo, 0) };
                     fifo }
       }

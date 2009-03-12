@@ -1,5 +1,6 @@
-
-
+/* This is the internal library that is implicitly included whenever
+   'wstiny' is invoked.
+ */
 
 source_count = Mutable:ref(0);
 
@@ -141,12 +142,12 @@ event void "++smod++".readDone(error_t result, uint16_t data) {
 }
 
 // This uses the ReadStream instead of Read:
-// The is the per-sample rate, not the per-buffer rate.
+// The is the per-sample rate (in Hz), not the per-buffer rate.
 fun readstream_uint16(name, bufsize, rate) {
   arbitraryStupidLimit = 16; // Thanks Tinyos 2.0...
   if rate < arbitraryStupidLimit then 
     wserror("readstream_uint16: cannot handle rates less than "++
-            arbitraryStupidLimit++" hz: "++rate);
+            arbitraryStupidLimit++" Hz: "++rate);
   n = source_count;
   ty = "uint16_t";
   source_count += 1;

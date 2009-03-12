@@ -2120,3 +2120,27 @@ Demo6b is stalling testall_wsc2 right now... that's odd.
 Even without valgrind (but with icc).
 Trying with gcc: works fine.
 
+[2009.03.07] {Incremental building with r6rs chez}
+
+I just hacked together a little r6make.ss script that will allow me to
+do incremental builds with chez (it's not correct by any means, just a
+hack).  On chastity I notice chez builds a little over twice as fast
+as ikarus.  Ikarus produces 18 megs of binaries (unzipped) and chez
+5mb.  The old .boot file hack was only generating 1.25 mb.  That hack
+still works for Chez 7.4.  (But screws up under chez 7.5.)  It doesn't
+generate inspector info though.  Inspector info drops the new version
+down to 3mb.  Startup time is much lower too, .425s rather than closer
+to a second (but the previous boot file hack was .250s).  The load
+time is pretty much proportional to the code size.
+
+It's possible that my temporary_smoosh_to_one_chez_file.ss is actually
+omitting a bunch of the code.  
+
+I'm having a bit of trouble concatenating all my individual .so's into
+a working bootfile.  I get an invalid memory reference error.
+
+
+
+
+
+

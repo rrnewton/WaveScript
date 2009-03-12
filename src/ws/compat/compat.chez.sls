@@ -31,11 +31,16 @@
 	  
 	  (rename (chez:call/1cc call/ec))
 
+	  ;(rename (chez:import import))
+
 	  )
 
   (import 
 	  (prefix (scheme) chez:)
-	  (except (scheme) inspect warning)
+	  (except (scheme) inspect warning
+		  ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
+		  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
+		  )
 	  ;(rnrs eval (6))
 	  ;(rnrs programs)
 	  ;(except (rnrs (6)) error)
@@ -64,7 +69,8 @@
 
   (define format-syntax-nicely (lambda (x) x))
 
-  (define reg:top-level-eval chez:eval)
+  ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
+  ;(define reg:top-level-eval chez:eval)
   (define (simple-eval xp) (eval xp '(rnrs (6))))
 
   ;; [2008.12.05] Check up on this one:
@@ -74,7 +80,7 @@
 ;   (ik:include "ws/compat/common.ss")
    (include "ws/compat/reg_record.ss")
    (include "ws/compat/inspector.ss")
-;   (ik:include "ws/compat/top-level-values.ss")
+   (include "ws/compat/top-level-values.ss")
    (include "ws/compat/multiple-values.ss")
 
   (define (inspect x)    

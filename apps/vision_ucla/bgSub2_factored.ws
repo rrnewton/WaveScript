@@ -27,6 +27,10 @@ LIVE = false;
 //====================================================================================================
 /// Types and Constants:
 
+DEBUG = true;
+
+include "helpers.ws"
+
 type Color = Uint8;
 type RawImage = Array Color; // Without the width/height metadata.
 type Image = (RawImage * Int * Int); // With width/height (cols/rows)
@@ -42,10 +46,9 @@ abs  =  absD
 ceil = ceilD 
 sqrt = sqrtD // Need type classes!
 
-DEBUG = true;
 
-//include "helpers.ws"
-include "array3d_nested.ws"
+//include "array3d_nested.ws"
+//include "array3d_flat.ws"
 
 settings = (
 		"/data/birdmotion/JR_webcam/FeederStation_2007-06-26_14-00-03.000/",  // Filename
@@ -119,9 +122,9 @@ fun hist_update(r,g,b, hist, fn) {
   binG = Int! (Inexact! g * inv_sizeBins2);
   binR = Int! (Inexact! r * inv_sizeBins3);
   // apply transform to histogram
-  //using Array3D;
-  //set(hist, binB, binG, binR, fn(get(hist, binB, binG, binR)));
-  hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
+  using Array3D;
+  set(hist, binB, binG, binR, fn(get(hist, binB, binG, binR)));
+  //hist[binB][binG][binR] := fn(hist[binB][binG][binR]);
 }
 
 // Do the first patch in an image, fill in the histogram using all the color values.
@@ -324,11 +327,21 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
       // update if indicated to do so
       // NOTE! RRN: THIS CODE IS CURRENTLY UNTESTED::
       if mask == null || mask[index] == 0 then {
-	 sum = ref$ 0;
-	 Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D
-	    bgHist[index][cb][cg][cr] += Alpha * tempHist[cb][cg][cr];
-	    sum += bgHist[index][cb][cg][cr];
+	 sum = 0;
+
+	 using Array3D;
+	 iter( bgHist[index], fun(cb,cg,cr) {  // or map2_inplace3D
+	    set(bgHist[index], cb,cg,cr, (Alpha * get(tempHist,      cb,cg,cr)) +
+	     	                                  get(bgHist[index], cb,cg,cr));
+	    // Naughty!  This needn't use inexact.
+	    sum += get(bgHist[index], cb,cg,cr);
 	 });
+
+/* 	 Array3D:iter( bgHist, fun(cb,cg,cr) {  // or map2_inplace3D */
+/* 	    bgHist[index][cb][cg][cr] += Alpha * tempHist[cb][cg][cr]; */
+/* 	    sum += bgHist[index][cb][cg][cr]; */
+/* 	 }); */
+
 	 if abs(sum - 1) > (Inexact! 0.00001)
 	 then wserror$ "ERROR2: bgHist not normalized properly: sum  = "++ sum;
       }
@@ -339,6 +352,8 @@ fun updateBg(tempHist, bgHist, (image,cols,rows), mask)
 //====================================================================================================
 //   Complete Bhatta function
 //====================================================================================================
+
+
 
 type OutputBundle = (Int * Image * RawImage * RawImage);
 
@@ -359,10 +374,10 @@ fun bhatta(video) {
             stopFrame = BgStartFrame + NumBgFrames * BgStep;
 	    
 	    // Here is the main storage:
-            bghist    = null;
+            bghist    = (null :: Array PixelHist);
 
 	    // create temporary patch to store working histogram 
-	    temppatch = null;
+	    temppatch = Array3D:null;
 	    mask      = null;  // Just one channel.
 	    diffImage = null;  // All three channels.
           }

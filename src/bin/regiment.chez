@@ -9,10 +9,13 @@
 #if [ "$REGIMENTHOST" == "plt" ]
 #then export REGIMENTEXEC=regiment.plt
 
+## R6RS VERSION:
+
 CURDIR=`pwd`
 (cd $REGIMENTD/src && chez --program $REGIMENTD/src/regiment.ss $CURDIR $*;)
 
 
+## PRE R6RS HACK:
 
 # source `dirname $0`/assert_regimentd
 
@@ -35,6 +38,7 @@ CURDIR=`pwd`
 #     INVOKEDIR=`pwd`
 #     ENTRY="$REGIMENTD/src/regiment_chez.ss"
 #     setupchez;
+#     echo Executing: exec $SCHEME $1 --script "$ENTRY" "$INVOKEDIR" $ARGS
 #     exec $SCHEME $1 --script "$ENTRY" "$INVOKEDIR" $ARGS
 # }
 

@@ -1581,6 +1581,7 @@ fun stream_iterate(f,z,s) {
 
 // Legacy names:
 fun sigseg_map (f, ss) {
+  // Does array:build guarantee left-to-right?
   arr = Array:build(ss`width, fun(i) f(ss[[i]]));
   toSigseg(arr, ss`start, ss`timebase)
 }

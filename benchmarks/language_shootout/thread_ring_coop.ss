@@ -3,21 +3,33 @@
 ;;;; For reference, here is a scheme implementation of thread ring using
 ;;;; cooperative multithreading (continuations).
 
-(eval-when (compile eval load) (optimize-level 3))
+(eval-when (compile eval load) (optimize-level 2))
 
-(let ()
+(begin ;let ()
 
   (define-syntax DBG (syntax-rules () [(_ e) (void)]))
   
   (define N 503) 
-  (define steps (string->number (car (command-line-arguments))))
 
   ;; Double linked lists for queues:
   ;; TODO: First just using singly linked lists.
+
   (begin
-    (define qnull '())
+    (define-record-type queue (fields (mutable hd) (mutable tl) (mutable vec)))
+    (trace-define (qnull) (make-queue 0 0 (make-vector 10 'uninit)))
+    (define (qnull? q) (error 'qnull? "unimplemented"))
+    (define (qsnoc x q) 
+      (define tl (fx+ 1 (queue-tl q)))
+      ;(if (fx>= t (vector-length )))
+      (vector-set! (queue-vec q) 0 x))
+    (trace-define (qcar q) (vector-ref (queue-vec q) (queue-hd q)))
+    (trace-define (qcdr q) (queue-hd-set! q 0))
+    (define (qrac q) (vector-ref (queue-vec q) (queue-tl q))))
+
+#;
+  (begin
+    (define (qnull) '())
     (define qnull? null?)
-    (define qcons cons)
     (define (qsnoc x dll) (append dll (list x)))
     (define qcar car)
     (define qcdr cdr)
@@ -25,11 +37,11 @@
 
   ;; Because this is very simple, just using disjoint arrays to store
   ;; the fields rather than an array of structures.
-  (define mailboxes (make-vector (add1 N) qnull))
+  (define mailboxes (make-vector (add1 N) (qnull)))
   (define threads   (make-vector (add1 N))) ;; Continuations
   (define enqueued? (make-vector (add1 N) #f)) ;; Is the thread queued?
 
-  (define globalqueue qnull)
+  (define globalqueue (qnull))
 
   ;; Passes data, returns a new queue.
   (define (emit! who what)
@@ -115,17 +127,24 @@
       (emit! next (fx- msg 1))
       (workerloop (recv))))
 
-  (printf "Running ~a threads for ~a steps \n" N steps)
+
+  (printf "Running ~a threads for ~a steps \n" N 
+	  (string->number (car (command-line-arguments))))
   ;; Spawn the threads:
   (let spawnloop ((n N))
     (unless (zero? n)
       (vector-set! threads n (spawn workfun n))
       (spawnloop (fx- n 1))))
 
-  (emit! 1 steps)
+  (emit! 1 (string->number (car (command-line-arguments))))
   ;; Timing slows it down.
+
+#;
   (time (call/cc (lambda (k) 
 		   (set! alldone k)
 		   (mainloop))))
   ;(time  (mainloop))
+  (mainloop)
+
+
 )

@@ -142,3 +142,13 @@ Unhandled exception:
 
 It seems to happen on chastity (under plt or ikarus) but not on honor.
 
+[2009.03.02]
+
+Rerunning parallel benchmarks.  Use the script run_par_bench.sh
+
+
+[2009.03.02] 
+
+Why the hell is bgsub2 so much slower than bgsub.ws??  It should be
+the same.
+
