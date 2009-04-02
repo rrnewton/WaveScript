@@ -92,8 +92,8 @@ inconsistencies might be confusing.
 
 [2007.09.17] {TEMPTOGGLE}
 I'm starting to use the symbol TEMPTOGGLE to tag things that I toggle
-and need to remember to *toggle back*.  It's been a recurrent problem
-that I'll, say, turn profiling off, and then check it in without
+and need to remember to *toggle back*.  It's been a recurring problem
+that I will turn, say, profiling off, and then check it in without
 remembering to turn it off.  Thus, in a good checkin, the symbol
 TEMPTOGGLE should not occur in the code.
 
@@ -155,19 +155,19 @@ ws/langs/*:
 ws/testing/system_tests.ss:
   The primary system tests.
 
-ws/globals.ss:
+ws/globals.sls:
   Widely used constants and tunable parameters for the system.
 
-ws/util/helpers.ss:
+ws/util/helpers.sls:
   Library code.  This might have unused stuff in it.
 
-ws/compiler_components/prim_defs.ss:
+ws/compiler_components/prim_defs.sls:
   The specification for every primitive in the Regiment/WaveScript systems.
 
-ws/compiler_components/regiment_helpers.ss:
+ws/compiler_components/regiment_helpers.sls:
   Various helper routines specifically for working with Regiment/WS/TML code.
   
-ws/compiler_components/hm_type_inference.ss:
+ws/compiler_components/hm_type_inference.sls:
   The type checker.
     
 ws/sim/simulator_alpha.ss:

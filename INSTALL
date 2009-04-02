@@ -43,8 +43,9 @@ trust all future WaveScript packages.
 [2008.09.16] Mac OS Note:
   Note, I've run into some recent problems with MacOS.  It seems that
   there are dependencies on gnu versions of several tools (find,
-  xargs, getopt).  Also be sure to configure ikarus with -CFLAGS=-m64.
-  Also having trouble building PLT scheme do to problems setting PLTCOLLECTS.
+  xargs, getopt).  Be sure to configure ikarus with -CFLAGS=-m64.  I
+  also have trouble building under PLT scheme due to problems setting
+  PLTCOLLECTS.
 
 ======================================================================
 
@@ -103,7 +104,7 @@ This will build several components, including the parser and compiler.
 using "wsc2". Note that install_environment_vars is quite
 simple. Basically, $REGIMENTD needs to point to ~/wavescript, and
 ~/wavescript/bin needs to be added to your $PATH.  You can save time
-by (for example) doing this from your .bashrc.
+by (for example) configuring this from your .bashrc.
 
 To test the installation, try typing "regiment" and see if you get the
 help output.  At this point you are ready to try executing "regiment
