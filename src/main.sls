@@ -704,8 +704,9 @@
   (ws-run-pass p generate-printing-code)
 
   (ws-run-pass p records-to-tuples)
-;  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
 
+  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
+  (exit 0)
 
   ;; Now that we're done with elaboration we should take the stream
   ;; processing spine, convert it to let.

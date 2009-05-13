@@ -114,6 +114,33 @@
 	    (match x 
 	      [(assert-type ,[Type -> ty] ,[e]) `(assert-type ,ty ,e)]
 	      [,oth (fallthru oth)]))]
+
+    ;; [2009.05.10] Also need to catch types in the metadata.
+    ;; Currently this is just union type declarations (and top level
+    ;; return type), but BE CAREFUL that something new doesn't get
+    ;; added here.
+    [Program (lambda (pr Expr)
+      (match pr
+	[(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
+	 (inspect meta*)
+	 (define unions 
+	   (cons 'union-types
+		 (map (lambda (entry)
+			(match entry
+			  [(,tyname-and-args ,cases ...)
+			   (list tyname-and-args 
+				 (map (lambda (case)
+					
+					(Type (cadr case)))))
+			   ])
+			)
+		     (cdr (or (assq 'union-types meta*) '(union-types))))))
+	 ;; We don't update the info in type aliases.
+	 (if (assq 'type-aliases meta*)
+	     (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase."))
+	 `(,lang '(program ,bod ,meta* ... ,(Type topty)))
+	 ]))]
+
     [Bindings (lambda (vars types exprs reconstr exprfun)
 		(reconstr vars (map Type types) (map exprfun exprs)))])
 

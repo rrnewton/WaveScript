@@ -226,6 +226,8 @@ chez: ws/common.sls main_r6rs.sls
 
 # This is the old HACK:
 
+oldchez: boot
+
 # Currently the hack requires first building ikarus.
 
 # This converts the R6RS codebase to a Chez-palatable form.
