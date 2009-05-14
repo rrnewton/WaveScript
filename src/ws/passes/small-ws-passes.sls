@@ -1340,7 +1340,33 @@
 	    )]  
     [Bindings
      (lambda (vars types exprs reconstr exprfun)
-       (reconstr vars (map Type types) (map exprfun exprs)))])
+       (reconstr vars (map Type types) (map exprfun exprs)))]
+    
+
+    ;; TODO: Need to add some kind of "Type" hook to the define-pass mechanism.
+    ;; This is ugly and the code is duplicated from records-to-tuples.
+    [Program (lambda (pr Expr)
+      (match pr
+	[(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
+	 (define orig (assq 'union-types meta*))
+	 (define unions 
+	   (map (lambda (entry)
+			(match entry
+			  [(,tyname-and-args [,tag* ,(Type -> ty*)] ...)
+			   `(,tyname-and-args ,@(map list tag* ty*))]))
+	     (cdr (or orig '(union-types)))))
+	 ;; We don't update the info in type aliases.
+	 (cond
+	  [(assq 'type-aliases meta*) =>
+	   (lambda (x) 
+	     (warning 'embed-strings-as-arrays "Should not have type aliases in the metadata at this late phase.")
+	     (set! meta* (remq x meta*)))])
+	 
+	 ;; We clean out those type-aliases to make sure no one else uses them either.
+	 `(,lang '(program ,bod (union-types ,@unions) ,(remq orig meta*) ... ,(Type topty)))
+	 ]))]
+
+    )
 
 
 ;; [2008.08.11]

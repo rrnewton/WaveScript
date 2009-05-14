@@ -40,6 +40,10 @@
     :: ++  COLON
     AND OR NEG HASH AT TILDE
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG 
+    ; Experimental
+    DOTRECORD
+
+
     ; Keywords :
     fun for while to emit return include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef uniontype static case
@@ -148,6 +152,9 @@
    ;[variable (token-VAR (string->symbol lexeme))]
    [lower_variable (token-LOWVAR (string->symbol lexeme))]
    [upper_variable (token-UPVAR (string->symbol lexeme))]
+
+   ;; Dot/record-projection
+   [".(|" 'DOTRECORD]
 
    ;; Dot/stream-projection
    [".(" 'DOTSTREAM]
@@ -355,6 +362,9 @@
 		)
 	  (right BANG)
 	  (left DOT)
+	  (nonassoc DOTSTREAM)
+	  (nonassoc DOTRECORD)
+
           (right ^ g^ ^_ ^. ^:  ; BANG ;; [2008.11.14] Hmm... when did I go back on this?
 		 )
 
@@ -639,7 +649,8 @@
 		  [(recordbind COMMA fullrecordbinds+) (cons $1 $3)])
     (fullrecordbinds+ [(fullrecordbind) (list $1)]		  
 		      [(fullrecordbind COMMA fullrecordbinds+) (cons $1 $3)])
-   
+    (recordnames+ [(VAR) (list $1)]
+		  [(VAR COMMA recordnames+) (cons $1 $3)])
 
     ;; Hack to enable my syntax for sigseg refs!!
     ;; We separate out lists from other sy
@@ -776,6 +787,9 @@
 
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))
+
+	 [(exp DOTRECORD recordnames+ RightParen) 	  
+	  `(dot-record-project ,(map unwrap $3) ,(unwrap $1))]
 
 	 ;; Special stream-projection dot syntax.
 	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]

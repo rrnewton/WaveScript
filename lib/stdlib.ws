@@ -1579,6 +1579,12 @@ fun stream_iterate(f,z,s) {
   }
 }
 
+// TODO: MAKE SIGSEG MAP/FOLD/FOREACH primitive!
+
+// NOTE: For some sigseg representations, these pointwise accesses
+// ss[[i]], will result in worse performance than simply converting the sigseg to an array.
+// OR, in this case, exposing map and foreach as primitive so that they can iterate efficiently.
+
 // Legacy names:
 fun sigseg_map (f, ss) {
   // Does array:build guarantee left-to-right?

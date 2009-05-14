@@ -10,7 +10,42 @@ include "stdlib.ws"
 /* 
  * Select only certain tuples from a stream.
  */ 
-SELECT = stream_filter
+//SELECT = stream_filter
+fun SELECT(project, strm, pred) {
+  iterate x in strm {
+    if pred(x) 
+    then emit project(x);
+  }
+}
+
+/* 
+ * MAP a function over every element of a stream.
+ */ 
+MAP = stream_map
+
+/* 
+ * A function of a window (sigseg):
+ */ 
+// [2009.05.14] Getting too weak a type here, FIXME!!!
+//AVG :: Sigseg #a -> #a;
+//AVG :: Sigseg Int -> Int;
+fun AVG(ss) {
+  sum = 0;
+  count = 0;
+
+  // Apply to each element of the sigseg: 
+
+  // These two version result in the WRONG TYPE!!!
+  //fun f(x) { sum += x; count += 1 };
+  //Sigseg:foreach(f, ss);
+  //for i = 0 to ss`width - 1 {  f(ss[[i]])  };
+
+  // This one results in the CORRECT TYPE!!
+  for i = 0 to ss`width - 1 { sum += ss[[i]]; count += 1 };
+
+  // Return value:
+  sum / count
+}
 
 /* 
  * Window by time.  Assumes a TIME field.
@@ -38,9 +73,10 @@ fun WINDOW_notimeout(size, strm)
     buffer := r ::: buffer;
   }
 
-
-fun WINDOW(size, strm) 
-  iterate x in union2(strm, timer(1.0 / size)) {
+// This version does things based on arrival time, not on timestamp.
+// It doesn't require a timestamp at all.
+fun WINDOW_timeout(size, strm) 
+  iterate x in union2(strm, timer(1.0 / Float! size)) {
     state { count = 0; buffer = [] }
     case x {
       Left(r): {
@@ -56,13 +92,14 @@ fun WINDOW(size, strm)
     }
   }
 
+// TEMP
+WINDOW = if false then WINDOW_timeout else WINDOW_notimeout
+
 
 //fun WINDOW(size, strm) = window(strm, size)
 //fun REWINDOW(size,gap, strm) = rewindow(strm, size, gap
 
-/* 
- * 
- */ 
+
 
 
 /******************************************************************************/

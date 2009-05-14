@@ -122,23 +122,22 @@
     [Program (lambda (pr Expr)
       (match pr
 	[(,lang '(program ,[Expr -> bod] ,meta* ... ,topty))
-	 (inspect meta*)
+	 (define orig (assq 'union-types meta*))
 	 (define unions 
-	   (cons 'union-types
-		 (map (lambda (entry)
+	   (map (lambda (entry)
 			(match entry
-			  [(,tyname-and-args ,cases ...)
-			   (list tyname-and-args 
-				 (map (lambda (case)
-					
-					(Type (cadr case)))))
-			   ])
-			)
-		     (cdr (or (assq 'union-types meta*) '(union-types))))))
+			  [(,tyname-and-args [,tag* ,(Type -> ty*)] ...)
+			   `(,tyname-and-args ,@(map list tag* ty*))]))
+	     (cdr (or orig '(union-types)))))
 	 ;; We don't update the info in type aliases.
-	 (if (assq 'type-aliases meta*)
-	     (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase."))
-	 `(,lang '(program ,bod ,meta* ... ,(Type topty)))
+	 (cond
+	  [(assq 'type-aliases meta*) =>
+	   (lambda (x) 
+	     (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase.")
+	     (set! meta* (remq x meta*)))])
+	 
+	 ;; We clean out those type-aliases to make sure no one else uses them either.
+	 `(,lang '(program ,bod (union-types ,@unions) ,(remq orig meta*) ... ,(Type topty)))
 	 ]))]
 
     [Bindings (lambda (vars types exprs reconstr exprfun)

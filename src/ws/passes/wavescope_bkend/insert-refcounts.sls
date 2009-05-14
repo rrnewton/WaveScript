@@ -173,6 +173,9 @@
 	    `(begin 
 	       ,@(map (lambda (down) `(_emit_to ,down () ,vq ,x))
 		   downstream-targets))]
+	   ;; [2009.05.13] Should perhaps push this into the core shared language:
+	   [(cast-variant-to-parent ,TC ,ty ,[exp])
+	    `(cast-variant-to-parent ,TC ,ty ,exp)]
 	   [,oth (fallthru oth)]))))
     (lambda (prog)
       (match prog

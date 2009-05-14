@@ -705,8 +705,7 @@
 
   (ws-run-pass p records-to-tuples)
 
-  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
-  (exit 0)
+  ;;;;(print-graph #f)(pretty-print (strip-annotations p 'src-pos))  
 
   ;; Now that we're done with elaboration we should take the stream
   ;; processing spine, convert it to let.
@@ -728,6 +727,8 @@
 	 (inspect tmp))))
     ;(ws-run-pass p remove-complex-constant) ;; Should we leave those array constants?
     )
+
+  ;;;(print-graph #f)(pretty-print (strip-annotations p 'src-pos))  
   
   ;; HACKISH, TEMP: Grab the continuation at this point:
   (set! p (call/cc (lambda (k) (before-marshal-hook k) 
@@ -1296,8 +1297,7 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 		     
-		     ;(pp prog)
-		     (id #|time|# (ws-run-pass prog emit-c2 class))
+		     (id #|time|# (ws-run-pass prog emit-c2 class))		    
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.
