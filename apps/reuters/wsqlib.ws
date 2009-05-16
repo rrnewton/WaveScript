@@ -18,10 +18,11 @@ fun SELECT(project, pred, strm) {
   }
 }
 
-/* 
+/************************************************
  * MAP a function over every element of a stream.
  */ 
 MAP = stream_map
+FILTER = stream_filter
 
 /* 
  * A function of a window (sigseg):
@@ -47,9 +48,10 @@ fun AVG(ss) {
   sum / count
 }
 
-/* 
+/************************************************
  * Window by time.  Assumes a TIME field.
  */ 
+
 // FIXME: type too weak:
 /*
 TIMESTAMP_WINDOW :: 
@@ -87,6 +89,39 @@ fun TIMESTAMP_WINDOW(proj, size, strm)
     count += 1;
     buffer := proj(r) ::: buffer;
   }
+
+
+// This variant also supports grouping.
+fun TIMESTAMP_WINDOW_GROUPBY(proj, groupby, size, strm) 
+  iterate r in strm {
+    state { edge = 0; 
+            first = true;
+	    buffer = [];
+	    starttime = 0;
+	    count = 0; }
+    // Calibrate the time to the first tuple.
+    if first then { edge := r.TIME + size; first := false };
+
+    // Unless we maintain a timer, we can't produce output until we
+    // get a tuple that falls OUTSIDE of the time range.
+    // (TODO, maintain a timer)
+    if r.TIME >= edge then {
+
+      // emit toSigseg(List:toArray(buffer), starttime, nulltimebase);
+      emit toSigseg(List:toArray(buffer), Int64! starttime, nulltimebase);
+      
+      buffer := [];
+      count := 0;
+      edge := edge + size;
+
+      starttime := r.TIME;
+    };
+
+    count += 1;
+    buffer := proj(r) ::: buffer;
+  }
+
+
 
 // This version does things based on arrival time, not on timestamp.
 // It doesn't require a timestamp at all.

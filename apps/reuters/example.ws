@@ -2,7 +2,7 @@
 
 include "wsqlib.ws"
 
-syms = #["IBM", "APPL", "GOOG"]
+syms = #["IBM", "APPL", "GOOG", "GM"]
 
 fakestocks = iterate _ in timer(10) {
   state{ t = 0.0l }
@@ -21,6 +21,8 @@ fakestocks = iterate _ in timer(10) {
 //s4 = REWINDOW(4, -2, s3);
 
 
+// Identity function:
+fun id(x) x
 
 
 // Stonebreaker's 20 Queries:
@@ -40,7 +42,7 @@ q1 = SELECT(  fun(x) x.(| PRICE, SYM ) ,
 // Query 2: 30 second moving avg.
 
 q2a = TIMESTAMP_WINDOW(fun(x) x.PRICE, 30.0l, 
-        SELECT(fun(x) x, 
+        SELECT(id,
 	       fun(x) x.SYM == "IBM",
                fakestocks))
 q2 = MAP(AVG, q2a)
@@ -51,7 +53,10 @@ q2 = MAP(AVG, q2a)
 // technology sector for 5 minutes, if it has risen by more than 1% in
 // the last 5 minutes  
 
+fun techsector(r) List:member(r.SYM, ["GOOG", "IBM"]);
 
-//q3 = WINDOW(30 
 
-main = q2;
+q3 = TIMESTAMP_WINDOW(id, 5*60, 
+      FILTER(techsector, fakestocks))
+
+main = q3;
