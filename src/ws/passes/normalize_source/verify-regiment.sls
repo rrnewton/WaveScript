@@ -169,6 +169,10 @@
 	  (ASSERT (curry andmap symbol?) proj*)
 	  `(dot-project (,proj* ...) ,src)]
 
+	 [(dot-record-project (,proj* ...) ,[src])
+	  (ASSERT (curry andmap symbol?) proj*)
+	  `(dot-record-project (,proj* ...) ,src)]
+
 	 ;; verify-regiment can't track the bindings that should be introduced here:
 	 [(using ,M ,[e])  (ASSERT symbol? M)  `(using ,M ,e)]
 

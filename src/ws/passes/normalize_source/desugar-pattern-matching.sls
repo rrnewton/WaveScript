@@ -232,6 +232,22 @@
 		     ,src))]
 
 
+	;; Likewise, we desugar this construct here as well:
+	[(dot-record-project (,fld* ...) ,[src])
+	 (let ([body (lambda (var)
+		       (let loop ((fld* fld*))
+			 (if (null? fld*)
+			     '(empty-wsrecord)
+			     `(wsrecord-extend ',(car fld*)
+					       (wsrecord-select ',(car fld*) ,var)
+					       ,(loop (cdr fld*))))))])
+	   (if (symbol? (peel-annotations src))
+		(body src)
+		(let ([var (unique-name 'dotrecprojtmp)])	      
+		  `(let ([,var ,(notype) ,src])
+		     ,(body var))
+		  )))]
+
 	;; We don't desugar this here, it lives for one more pass:
 	[(using ,M ,[e]) `(using ,M ,e)]
 

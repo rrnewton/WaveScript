@@ -14,10 +14,26 @@
 (define ignored0 (begin (display "command line arguments: ") (write (command-line)) (newline)))
 
 ;; Override the defaults with the command-line arguments.
+#;
 (when (> (length (command-line)) 1)
    (set! importsfile (cadr (reverse (command-line)))) ;; agnostic to missing first arg
    ;; This argument will have a space:
    (set! outputlib (read (open-string-input-port (car (reverse (command-line)))))))
+
+;; Some scheme implementations have problems with arguments with
+;; spaces, so rather than passing in a list (...), I pass in space
+;; separated symbols AFTER the symbol R6PATH.
+;;
+;; Note, we also want to remain agnostic to missing first arg, so this gets ugly.
+(when (> (length (command-line)) 1)
+  (unless (member "R6PATH" (command-line))
+    (error 'generate_main_r6rs "command line arguments don't match the lame calling convention for this script, need a R6PATH separator"))
+  (let ([tail    (member "R6PATH" (command-line))]
+	[flipped (member "R6PATH" (reverse (command-line)))])
+    (set! importsfile (cadr flipped)) ;; agnostic to missing first arg   
+    (set! outputlib (map string->symbol (cdr tail)))
+    ))
+
 
 (define ignored1 (begin (display "imports/output: ") (write (list importsfile outputlib)) (newline)))
 

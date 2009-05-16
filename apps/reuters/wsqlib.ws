@@ -11,7 +11,7 @@ include "stdlib.ws"
  * Select only certain tuples from a stream.
  */ 
 //SELECT = stream_filter
-fun SELECT(project, strm, pred) {
+fun SELECT(project, pred, strm) {
   iterate x in strm {
     if pred(x) 
     then emit project(x);
@@ -50,11 +50,21 @@ fun AVG(ss) {
 /* 
  * Window by time.  Assumes a TIME field.
  */ 
-fun WINDOW_notimeout(size, strm) 
+// FIXME: type too weak:
+/*
+TIMESTAMP_WINDOW :: 
+     ((b | TIME:Int64) -> c, Int64, Stream (b | TIME:Int64))
+     -> Stream (Sigseg c);
+*/
+TIMESTAMP_WINDOW :: 
+     ((b | TIME:#a) -> c, #a, Stream (b | TIME:#a))
+     -> Stream (Sigseg c);
+fun TIMESTAMP_WINDOW(proj, size, strm) 
   iterate r in strm {
     state { edge = 0; 
             first = true;
 	    buffer = [];
+	    starttime = 0;
 	    count = 0; }
     // Calibrate the time to the first tuple.
     if first then { edge := r.TIME + size; first := false };
@@ -63,24 +73,29 @@ fun WINDOW_notimeout(size, strm)
     // get a tuple that falls OUTSIDE of the time range.
     // (TODO, maintain a timer)
     if r.TIME >= edge then {
-      emit buffer;
+
+      // emit toSigseg(List:toArray(buffer), starttime, nulltimebase);
+      emit toSigseg(List:toArray(buffer), Int64! starttime, nulltimebase);
+      
       buffer := [];
       count := 0;
       edge := edge + size;
+
+      starttime := r.TIME;
     };
 
     count += 1;
-    buffer := r ::: buffer;
+    buffer := proj(r) ::: buffer;
   }
 
 // This version does things based on arrival time, not on timestamp.
 // It doesn't require a timestamp at all.
-fun WINDOW_timeout(size, strm) 
+fun REALTIME_WINDOW(proj, size, strm) 
   iterate x in union2(strm, timer(1.0 / Float! size)) {
     state { count = 0; buffer = [] }
     case x {
       Left(r): {
-        buffer := r ::: buffer;
+      buffer := proj(r) ::: buffer;
         count += 1;
       }
       Right(_): {
@@ -93,7 +108,8 @@ fun WINDOW_timeout(size, strm)
   }
 
 // TEMP
-WINDOW = if false then WINDOW_timeout else WINDOW_notimeout
+//WINDOW = if false then REALTIME_WINDOW else TIMESTAMP_WINDOW
+WINDOW = TIMESTAMP_WINDOW
 
 
 //fun WINDOW(size, strm) = window(strm, size)

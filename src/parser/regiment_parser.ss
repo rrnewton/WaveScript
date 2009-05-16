@@ -789,7 +789,9 @@
 	 ;((if then else) ((foo(x)) (y)))
 
 	 [(exp DOTRECORD recordnames+ RightParen) 	  
-	  `(dot-record-project ,(map unwrap $3) ,(unwrap $1))]
+	  (begin 
+	    ;(printf "GOT DOTRECORD: ~s and ~s\n" $1 $3)
+	    `(dot-record-project ,$3 ,(unwrap $1)))]
 
 	 ;; Special stream-projection dot syntax.
 	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
