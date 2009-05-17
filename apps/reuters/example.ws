@@ -6,6 +6,7 @@ syms = #["IBM", "APPL", "GOOG", "GM"]
 
 lastprice = Array:make(Array:length(syms), 50.0)
 
+fakestocks :: Stream (| TIME : Float, SYM : String, PRICE : Float);
 fakestocks = iterate _ in timer(10) {
   state{ t = 0.0 }
   i = randomI(Array:length(syms));
@@ -71,30 +72,35 @@ fun gone_up_1percent(ss) ss[[ss.width - 1]].PRICE >= 1.01 * ss[[0]].PRICE
 // This may not be efficient.  It isn't necessary to keep entire 5min
 // windows to figure out if the stock has gone up.
 
-grouped = TIMESTAMP_WINDOW_GROUPBY(id,            // projection
+grouped = TIMESTAMP_WINDOW_GROUPBY2(id,           // projection
                                    fun(r) r.SYM,  // groupby
-                                   5*60,          // window size
-                                                  // gap between windows (neg for overlap)
+                                   5*60,          // window size, 5 min
            FILTER(techsector, fakestocks))
 
+// You really want the window to slide by time, but there's no point
+// in processing the same window of tuples twice.
+// The minimum unit of slide should be 
+
+
 // FIXME: We don't actually know the desired window size...
-sliding = REWINDOW_GROUPBY(fun(ss) ss[[0]].SYM, 20, 0, grouped)
+// INSTEAD WE JUST WANT TO SLIDE BY N! 
+//sliding = REWINDOW_GROUPBY(fun(ss) ss[[0]].SYM, 20, 0, grouped)
 
 // filter for stocks that have gone up.
-wentup = FILTER(gone_up_1percent, sliding)
+//wentup = FILTER(gone_up_1percent, sliding)
+
+//joined = TIMESTAMP_ZIP(averaged, wentup)
+// MAP(fun((x,y)) x, joined)
+
+//q3 = wentup
 
 
-//TIMESTAMP_ZIP(averaged, wentup)
 
-q3 = wentup
-
-
-
-
+//main = fakestocks
 
 //main = MAP(fun(ss) Sigseg:map(fun(r) r.PRICE, ss), q3);
 //main = MAP(fun(r) r.TIME, q3.dewindow);
-main = q3
+//main = q3
 
 //main = MAP(fun(ss) (ss.start, ss[[0]].SYM), q3);
 
@@ -107,5 +113,5 @@ main = q3
           //)
 //main = rewindow(q3, 4, -2);
 
-//main = grouped
+main = grouped
 //     main = window(timer(3), 10)

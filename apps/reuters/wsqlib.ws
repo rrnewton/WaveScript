@@ -135,6 +135,123 @@ fun TIMESTAMP_WINDOW_GROUPBY(proj, groupby, sze, strm) {
 }
 
 
+//================================================================================
+
+// Here is the WINDOW construct under StreamSQL... this is the functionality we want.
+
+/*
+window_identifier
+A unique name for the window declaration.
+
+window_specification
+A description of the window in the format:
+
+  SIZE size ADVANCE increment
+  {TIME | TUPLES | ON field_identifier_w}
+  [PARTITION BY field_identifier_p[,...]]
+  [VALID ALWAYS]
+  [OFFSET offset]
+  [TIMEOUT timeout]
+size
+The size of the window, expressed as either the number of tuples, an interval of time, or a range of values within a tuple field.
+
+increment
+The amount each subsequent window is offset from the first window that opens on a stream.
+
+field_identifier_w
+The tuple field used to set window size and advance.
+
+field_identifier_p
+The tuple field to use to create windows for separate groupings of tuples.
+
+offset
+Indicates when to open the first window on a stream.
+
+timeout
+Indicates the amount of time (in seconds) after which a window should close regardless of whether a tuple has arrived.
+*/
+
+// TODO: VALID ALWAYS, OFFSET, TIMEOUT
+
+// Currently 
+fun TIMESTAMP_WINDOW_GROUPBY2(proj, groupby, timerng, strm) {
+  using HashTable;
+  iterate r in strm {
+    state { 
+            edges      = make(100);
+	    buffers    = make(100);
+	    starttimes = make(100);
+	    counts     = make(100);
+	  }
+    key = groupby(r);
+
+    fun crosses_edge(r) {
+      r.TIME >= edges.get(key);
+    };
+    
+    fun slice_current(buf) {
+      using List;
+      toArray( map(proj, buf.reverse))
+    };
+
+    // Initialize on the first tuple in a group:
+    if not(starttimes.contains(key)) then {
+	edges.set_BANG(key, r.TIME + timerng);
+	buffers.set_BANG(key,[]);
+
+        starttimes.set_BANG(key, (0::Int64));
+        counts.set_BANG    (key, (0::Int64));
+    };
+
+    // if ADVANCE WINDOW
+    if crosses_edge(r) then {
+
+      // Slide the time window forward just enough to include the next tuple.
+      newstart = r.TIME - timerng;
+      fun advance_start(old) {
+        //counts.get(key);
+        //old + 1
+	newstart
+      };
+
+      fun advance_buffer(old) {
+	using List;
+        flipped = old.reverse;
+        while (flipped.head.TIME < newstart) {
+	  println("  pruning out "++ flipped.head);
+	  flipped := flipped.tail;
+	};
+        flipped.reverse; 
+      };
+
+      // FIXME: need to pay attention to inclusive/exclusive.
+      fun advance_edge(old) {
+        //old + timerng;
+	newstart + timerng;
+      };
+
+      // The problem with accumulating arrays of any kind, is that they have to be completely full when we pass them to toSigseg.
+      // If we're forming windows with a fixed size this is no problem....
+      // Otherwise, a doubly linked list wouldn't be bad here.  Or we could store both in a FIFO and a list.
+
+      emit toSigseg( slice_current(buffers.get(key)), starttimes.get(key), nulltimebase);
+
+      // SLIDE instead of reset.
+
+      // Set the start-time for the next window to the index of 
+      starttimes.set_BANG(key, advance_start(starttimes.get(key)));
+      buffers.set_BANG   (key, advance_buffer(buffers.get(key)));
+      edges.set_BANG     (key, advance_edge( edges.get(key)) );
+    };
+    buffers.set_BANG(key, r ::: buffers.get(key));
+    counts.set_BANG (key, counts.get(key) + 1); 
+  }
+}
+
+
+
+//============================================================
+
 // This version does things based on arrival time, not on timestamp.
 // It doesn't require a timestamp at all.
 fun REALTIME_WINDOW(proj, size, strm) 
@@ -162,7 +279,7 @@ fun REALTIME_WINDOW(proj, size, strm)
 //fun WINDOW(size, strm) = window(strm, size)
 //fun REWINDOW(size,gap, strm) = rewindow(strm, size, gap
 
-
+//================================================================================
 
 fun REWINDOW_GROUPBY(groupby, newwidth, gap, sig) {
   feed = newwidth + gap;
