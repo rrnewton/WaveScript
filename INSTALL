@@ -40,6 +40,14 @@ trust all future WaveScript packages.
 (The apt-key command will have to be run as root of course.)
 
 
+
+Installing under Fedora instead:
+========================================
+
+
+
+
+
 [2008.09.16] Mac OS Note:
   Note, I've run into some recent problems with MacOS.  It seems that
   there are dependencies on gnu versions of several tools (find,

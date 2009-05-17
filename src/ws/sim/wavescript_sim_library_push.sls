@@ -1743,7 +1743,8 @@
 	    (lambda (k v) (put-hash-table! newtab k v)))
 	   newtab))
        (define HashTable:make (hash-percent make-hash-table))
-       (define (HashTable:contains ht k) ((hash-percent get-hash-table) ht k #f))
+       (define (HashTable:contains ht k) 
+	 ((hash-percent get-hash-table) ht k #f))
        (define (HashTable:get ht k) 
 	 (or ((hash-percent get-hash-table) ht k #f)
 	     (wserror "HashTable:get element not found")))
@@ -1763,8 +1764,15 @@
 
      ;; EQUAL? based hash tables:
      (begin
-       (define HashTable:set_BANG (slib:hash-associator s:equal?))
-       
+       (define slibset (slib:hash-associator s:equal?))
+       (define (HashTable:set_BANG ht k v) 
+	 (slibset ht k (maskfalse v)))
+
+       ;; Alas, we can't store #f in the hash table using this implementation.
+       (define fakefalse (gensym))
+       (define (maskfalse x)   (if x x fakefalse))
+       (define (unmaskfalse x) (if (eq? x fakefalse) #f x))
+
        (define (copy-hash-table ht)
 	 ;; This is terrible, we don't know how big it is.
 	 (let ([newtab (slib:make-hash-table (vector-length ht))])
@@ -1775,14 +1783,16 @@
        (define HashTable:make slib:make-hash-table)
        (define HashTable:contains 
 	 (let ([getfun (slib:hash-inquirer s:equal?)])
-	   (lambda (ht k) (if (getfun ht k) #t #f))))       
+	   (lambda (ht k) 
+	     ;(printf "Using hash inquirer: ~a ~a ~a\n" k ht  (getfun ht k))
+	     (if (getfun ht k) #t #f))))
        (define HashTable:get 
 	 (let ([getfun (slib:hash-inquirer s:equal?)])
 	   (lambda (ht k)
 	     (let ([result (getfun ht k)])
 	       (unless result
 		 (error 'HashTable:get "couldn't find key: ~s" k))
-	       result
+	       (unmaskfalse result)
 	       ))))
        ;; Pretty useless nondestructive version:
        ;; If we cared we could use some kind of balanced tree for functional maps.

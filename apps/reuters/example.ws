@@ -4,12 +4,16 @@ include "wsqlib.ws"
 
 syms = #["IBM", "APPL", "GOOG", "GM"]
 
+lastprice = Array:make(Array:length(syms), 50.0)
+
 fakestocks = iterate _ in timer(10) {
-  state{ t = 0.0l }
+  state{ t = 0.0 }
   i = randomI(Array:length(syms));
+  // Random walk:
+  lastprice[i] += (Float! (randomI(200) - 100)) / 100;
   emit (SYM= syms[i], 
         TIME= t, 
-        PRICE= randomI(100));
+        PRICE= lastprice[i]);
   t += randomI(10).gint;
 }
 
@@ -33,6 +37,10 @@ fun id(x) x
 // Note that it is clumsy to write a new record like this:
 //    (| PRICE=x.PRICE, SYM=x.SYM )
 
+// The shorthand is:
+//    x.(| PRICE,SYM )
+
+
 // This is a shorter, but equivalent, syntax:
 q1 = SELECT(  fun(x) x.(| PRICE, SYM ) , 
   /* WHERE */ fun(x) x.SYM == "IBM",
@@ -41,7 +49,7 @@ q1 = SELECT(  fun(x) x.(| PRICE, SYM ) ,
 
 // Query 2: 30 second moving avg.
 
-q2a = TIMESTAMP_WINDOW(fun(x) x.PRICE, 30.0l, 
+q2a = TIMESTAMP_WINDOW(fun(x) x.PRICE, 30.0, 
         SELECT(id,
 	       fun(x) x.SYM == "IBM",
                fakestocks))
@@ -54,9 +62,50 @@ q2 = MAP(AVG, q2a)
 // the last 5 minutes  
 
 fun techsector(r) List:member(r.SYM, ["GOOG", "IBM"]);
+//fun techsector(r) List:member(r.SYM, ["IBM"]);
 
 
-q3 = TIMESTAMP_WINDOW(id, 5*60, 
-      FILTER(techsector, fakestocks))
+// A predicate on a 5 min window:
+fun gone_up_1percent(ss) ss[[ss.width - 1]].PRICE >= 1.01 * ss[[0]].PRICE
 
-main = q3;
+// This may not be efficient.  It isn't necessary to keep entire 5min
+// windows to figure out if the stock has gone up.
+
+grouped = TIMESTAMP_WINDOW_GROUPBY(id,            // projection
+                                   fun(r) r.SYM,  // groupby
+                                   5*60,          // window size
+                                                  // gap between windows (neg for overlap)
+           FILTER(techsector, fakestocks))
+
+// FIXME: We don't actually know the desired window size...
+sliding = REWINDOW_GROUPBY(fun(ss) ss[[0]].SYM, 20, 0, grouped)
+
+// filter for stocks that have gone up.
+wentup = FILTER(gone_up_1percent, sliding)
+
+
+//TIMESTAMP_ZIP(averaged, wentup)
+
+q3 = wentup
+
+
+
+
+
+//main = MAP(fun(ss) Sigseg:map(fun(r) r.PRICE, ss), q3);
+//main = MAP(fun(r) r.TIME, q3.dewindow);
+main = q3
+
+//main = MAP(fun(ss) (ss.start, ss[[0]].SYM), q3);
+
+
+//main = REWINDOW_GROUPBY( (.SYM) q3, 10, -5);
+
+
+
+// main = //MAP(fun (ss) toArray$ Sigseg:map(fun(r) r.PRICE, ss), 
+          //)
+//main = rewindow(q3, 4, -2);
+
+//main = grouped
+//     main = window(timer(3), 10)
