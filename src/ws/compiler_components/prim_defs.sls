@@ -639,6 +639,7 @@
 
     ;; Written &&, ||, and not(b).
     (not (Bool) Bool)
+    ;; These are actually SYNTAX, because short-circuiting is expected:
     (ws:or  (Bool Bool) Bool)
     (ws:and (Bool Bool) Bool)
     

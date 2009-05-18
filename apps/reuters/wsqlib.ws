@@ -48,6 +48,18 @@ fun AVG(ss) {
   sum / count
 }
 
+fun AVG_OF(proj, ss) {
+  sum = 0;
+  count = 0;
+  for i = 0 to ss.width-1 { 
+    sum += proj( ss[[i]] );
+    count += 1 
+  };
+  // Return value:
+  sum / count
+}
+
+
 /************************************************
  * Window by time.  Assumes a TIME field.
  */ 
@@ -174,7 +186,7 @@ Indicates the amount of time (in seconds) after which a window should close rega
 // TODO: VALID ALWAYS, OFFSET, TIMEOUT
 
 // Currently 
-fun TIMESTAMP_WINDOW_GROUPBY2(proj, groupby, timerng, strm) {
+fun TIMESTAMP_WINDOW_GROUPBY_MINSLIDE(proj, groupby, timerng, strm) {
   using HashTable;
   iterate r in strm {
     state { 
@@ -208,21 +220,6 @@ fun TIMESTAMP_WINDOW_GROUPBY2(proj, groupby, timerng, strm) {
 
       // Slide the time window forward just enough to include the next tuple.
       newstart = r.TIME - timerng;
-      fun advance_start(old) {
-        //counts.get(key);
-        //old + 1
-	newstart
-      };
-
-      fun advance_buffer(old) {
-	using List;
-        flipped = old.reverse;
-        while (flipped.head.TIME < newstart) {
-	  println("  pruning out "++ flipped.head);
-	  flipped := flipped.tail;
-	};
-        flipped.reverse; 
-      };
 
       // FIXME: need to pay attention to inclusive/exclusive.
       fun advance_edge(old) {
@@ -238,9 +235,29 @@ fun TIMESTAMP_WINDOW_GROUPBY2(proj, groupby, timerng, strm) {
 
       // SLIDE instead of reset.
 
+      shed = 0;
+      newbuf = {
+	using List;
+        flipped = buffers.get(key).reverse;
+        while (not(flipped.is_null) && flipped.head.TIME < newstart) {
+	  // println("  pruning out "++ flipped.head);
+	  flipped := flipped.tail;
+	  shed += 1;
+	};
+	//	println("");
+        flipped.reverse; 
+      };
+
+      fun advance_start(old) {
+        //counts.get(key);
+        //old + 1
+	//newstart
+	old + shed
+      };
+
       // Set the start-time for the next window to the index of 
       starttimes.set_BANG(key, advance_start(starttimes.get(key)));
-      buffers.set_BANG   (key, advance_buffer(buffers.get(key)));
+      buffers.set_BANG   (key, newbuf);
       edges.set_BANG     (key, advance_edge( edges.get(key)) );
     };
     buffers.set_BANG(key, r ::: buffers.get(key));
@@ -275,8 +292,7 @@ fun REALTIME_WINDOW(proj, size, strm)
 //WINDOW = if false then REALTIME_WINDOW else TIMESTAMP_WINDOW
 //WINDOW = TIMESTAMP_WINDOW
 
-
-//fun WINDOW(size, strm) = window(strm, size)
+fun WINDOW(size, strm) window(strm, size)
 //fun REWINDOW(size,gap, strm) = rewindow(strm, size, gap
 
 //================================================================================
@@ -334,6 +350,55 @@ fun REWINDOW_GROUPBY(groupby, newwidth, gap, sig) {
 	} else go := false
       }
    }
+  }
+}
+
+//================================================================================
+
+// Joining and Syncing
+
+// Join on a one-to-one basis via timestamps.
+//   ASSUMES: monotonically increasing timestamps
+//   ASSUMES: record stread elements with TIME field
+// If one stream has a tuple that doesn't have a counterpart in the
+// other stream, it is simply DROPPED.
+
+fun TIMESTAMP_JOIN(s1,s2) {
+  using FIFO;
+  iterate(x in union2(s1,s2)) {
+    state {
+      buf1 = make(10);
+      buf2 = make(10);
+    }
+
+    case x { 
+      Left  (a): buf1.enqueue(a)
+      Right (b): buf2.enqueue(b)
+    };
+
+    //buf1.peek(0).FOOBAR + 1;
+
+    while (buf1.elements > 0 && buf2.elements > 0) {
+
+      a = buf1.peek(0);      
+      //b = ( TIME= 99 );
+      b = buf2.peek(0);      
+      if (a.TIME == b.TIME) then {
+        buf1.dequeue();
+        buf2.dequeue();
+        emit(a, b);
+      } else {
+        // The younger one is necessarily trash, because of monotonicity 
+	//tm1 = a.TIME;
+	//tm2 = b.TIME;
+	//if tm1 < tm2 then buf1.dequeue() else ();
+	// SUBTLE AND INTERESTING BUG!!  If forces the values to be the same here.
+        if a.TIME < b.TIME                 
+        then { buf1.dequeue(); () }
+        else { buf2.dequeue(); () } 
+      }
+
+    }
   }
 }
 

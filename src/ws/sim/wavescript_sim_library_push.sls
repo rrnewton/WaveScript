@@ -2247,9 +2247,11 @@
 (define ptrToArray
   )
 
-(define (ws:or  a b) (s:or  a b))
-(define (ws:and a b) (s:and a b))
-
+;; [2009.05.17] ACK!  Need to make sure these are short-circuiting.
+;(define (ws:or  a b) (s:or  a b))
+;(define (ws:and a b) (s:and a b))
+(define-syntax ws:or  (syntax-rules () [(_ a b) (if a #t b)]))
+(define-syntax ws:and (syntax-rules () [(_ a b) (if a b #f)]))
 
 ;    (getPtr         (ExclusivePointer) Pointer)
 

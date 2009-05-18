@@ -76,7 +76,9 @@
 
 		    (variable (:seq (:* namespace) varleadchar (:* varchar)))
 		    (lower_variable (:seq (:* namespace) (:or lower-letter "_") (:* varchar)))
-		    (upper_variable (:seq (:* namespace) upper-letter (:* varchar)))
+		    ;(upper_variable (:seq (:* namespace) upper-letter (:* varchar)))
+		    ;; TEMP: Considering this:
+		    (upper_variable (:seq upper-letter (:* varchar)))
 
                     ;(variable (:seq varleadchar vartail))
 		    ;(lower_variable (:seq (:or lower-letter "_") vartail))
@@ -440,6 +442,8 @@
 	  ;[(LeftParen BAR RightParen)  (make-initial-record-type '(ROW rowvar) '())]
 	  [(LeftParen BAR RightParen)  (make-initial-record-type `',(gensym "_rowvar") '())]
 	  ;[(LeftParen BAR recordtypebinds+ RightParen)      `(Record #f ,@$3)]
+	  ;; Same as writing record expressions:
+	  [(LeftParen BAR recordtypebinds+ RightParen)      (make-initial-record-type '#() $3)]
 	  [(LeftParen recordtypebinds+ RightParen)          (make-initial-record-type '#() $2)]
 	  [(LeftParen type BAR recordtypebinds+ RightParen) (make-initial-record-type $2 $4)]
 	  
@@ -458,8 +462,8 @@
     (typeargs [(type) (list $1)]
               [(type COMMA typeargs) (prec COMMA) (cons $1 $3)]
               )
-    (recordtypebinds+ [(VAR COLON type) (list (list $1 $3))]
-		      [(VAR COLON type COMMA recordtypebinds+) (cons (list $1 $3) $5)])
+    (recordtypebinds+ [(UPVAR COLON type) (list (list $1 $3))]
+		      [(UPVAR COLON type COMMA recordtypebinds+) (cons (list $1 $3) $5)])
 
 ;     (typevar [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
 ; 	     [(TYPEVAR) `(quote ,$1)]
@@ -898,6 +902,13 @@
 	 ;; Haskell's "sections".
          [(LeftParen binop exp RightParen) `(lambda (x) (app ,$2 x ,$3))]
          [(LeftParen exp binop RightParen) `(lambda (x) (app ,$3 ,$2 x))]
+
+	 ;; An odd form of a section to refer to a record field extractor:
+	 [(LeftParen DOT UPVAR RightParen)
+	  (begin 
+	    ;(printf "RECORD FIELD EXCTRACTOR SECTION SYNTAX ~a \n" $3)
+	    `(lambda (x) (wsrecord-select ',$3 x))
+	    )]
 
 	 ;; Negative numbers.
 	 [(- NUM)    (prec NEG) (- $2)]
