@@ -30,7 +30,8 @@
 		ensBoxAudio ensBoxAudioF ensBoxAudioAll
 
 		;; These were resolved into the w/namespace versions:
-		head tail map append fold
+		head tail map append fold 
+		ws:or ws:and
 
 		;; These are defined as syntaxes:
 		Mutable:ref ref deref static statref 
@@ -98,6 +99,8 @@
 
 	["num reps 1" (',(lambda () (ws:__cast_num #f 'Int16 32.0))) 32]
 	["num reps 2" (',(lambda () (ws:__cast_num #f 'Int16 32769.0))) -32767]
+
+	;[]
 
 	,@(map
 	      (lambda (prim)

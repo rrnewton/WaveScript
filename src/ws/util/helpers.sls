@@ -592,12 +592,32 @@
 	  (loop (fx+ 1 i) 
 		(f x (vector-ref v i)))))))
 (define vector-blit!
-  (lambda (src dest ind1 ind2 len)
+  (lambda (src dest ind1 ind2_ len)
     (let loop ([i 0])
       (if (fx= i len)
 	  (void)
-	  (begin (vector-set! dest (fx+ ind2 i) (vector-ref src (fx+ ind1 i)))
-		 (loop (fx+ i 1)))))))
+	  (begin 
+	    ;(inspect fx+)
+
+	    ;; Chez is getting an exception from the fx+ call below.  But when I insert these printfs it goes away!
+#|
+	    (printf "WHAT THE HECK\n")
+	    (printf "here ~a\n" (fx+ 1 2))	    
+	    (printf "ok wow ~a\n" ind2_)
+	    (printf "what could this be ~a\n" i)
+
+	    (let ((a ind2_)
+		  (b i))
+	      (printf "Now they're letbound ~a ~a\n" a b)
+	      (printf "Add them normal like ~a\n" (+ a b))
+	      (printf "Add them fx styl ~a\n" (fx+ a b))
+	      )
+	    (printf "then here ~a\n" (fx+ ind2_ i))
+	    ;(printf "and here ~a\n" (fx+ 1 2 3))
+|#
+
+	    (vector-set! dest (fx+ ind2_ i) (vector-ref src (fx+ ind1 i)))
+	    (loop (fx+ i 1)))))))
 
 (define vector-build
   (lambda (n f)

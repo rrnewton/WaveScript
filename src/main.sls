@@ -12,8 +12,8 @@
 
 (library (main)
   (export
-   main
-   ws wsint wsint-early
+   main ; wsint wsint-early
+   ws ws.early 
    wscaml wsmlton wscomp wsc2
    wavescript-version
    )
@@ -524,6 +524,8 @@
 ;  (DEBUGMODE (do-early-typecheck) (void))
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
+  ;(print-graph #f)(write (strip-annotations p 'src-pos))
+  
   (ws-run-pass p remove-unquoted-constant)
  
   ;; Run this twice!!!
@@ -2328,8 +2330,10 @@
       (main) ;; Call the entrypoint above.      
       )))
 
+
 ;; ENTRYPOINTS:  These mimic the shell commands but are callable from within Scheme.
-(define (ws prog . args)   (apply main "wsint"  prog args))
+(define (ws prog . args)        (apply main "wsint"  prog args))
+(define (ws.early prog . args)  (apply main "wsearly"  prog args))
 (define (wsc2 prog . args) 
   (apply main "wsc2"   prog args)
   (system "wsc2-gcc"))

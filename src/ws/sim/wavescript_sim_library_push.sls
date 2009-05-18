@@ -2247,9 +2247,9 @@
 (define ptrToArray
   )
 
-;; [2009.05.17] ACK!  Need to make sure these are short-circuiting.
-;(define (ws:or  a b) (s:or  a b))
-;(define (ws:and a b) (s:and a b))
+;; These should ONLY be used by ws.early.
+;; Interpret-meta should not touch them.
+;; [2009.05.17] Need to make sure these are short-circuiting.
 (define-syntax ws:or  (syntax-rules () [(_ a b) (if a #t b)]))
 (define-syntax ws:and (syntax-rules () [(_ a b) (if a b #f)]))
 
