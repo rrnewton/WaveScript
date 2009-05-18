@@ -113,9 +113,9 @@
 (import (except (rnrs (6)) error)
 	(rnrs mutable-strings (6))
 	(rnrs mutable-pairs (6))
-	(rnrs exceptions (6))
+	(rnrs exceptions (6)) 
 	(except (rnrs r5rs (6)) delay force)
-	(rnrs eval (6))
+	(rnrs eval (6))  ;; Compositie library, includes fixnums
 	(ws compat compat)
 	(ws globals)
 	(ws util hashtab)
@@ -597,26 +597,10 @@
       (if (fx= i len)
 	  (void)
 	  (begin 
-	    ;(inspect fx+)
 
-	    ;; Chez is getting an exception from the fx+ call below.  But when I insert these printfs it goes away!
-#|
-	    (printf "WHAT THE HECK\n")
-	    (printf "here ~a\n" (fx+ 1 2))	    
-	    (printf "ok wow ~a\n" ind2_)
-	    (printf "what could this be ~a\n" i)
-
-	    (let ((a ind2_)
-		  (b i))
-	      (printf "Now they're letbound ~a ~a\n" a b)
-	      (printf "Add them normal like ~a\n" (+ a b))
-	      (printf "Add them fx styl ~a\n" (fx+ a b))
-	      )
-	    (printf "then here ~a\n" (fx+ ind2_ i))
-	    ;(printf "and here ~a\n" (fx+ 1 2 3))
-|#
-
-	    (vector-set! dest (fx+ ind2_ i) (vector-ref src (fx+ ind1 i)))
+	    ;; [2009.05.18] Weird chez bug here:
+	    (vector-set! dest (+ ind2_ i) (vector-ref src (+ ind1 i)))
+	    ;(vector-set! dest (fx+ ind2_ i) (vector-ref src (fx+ ind1 i)))
 	    (loop (fx+ i 1)))))))
 
 (define vector-build
