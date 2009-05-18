@@ -167,9 +167,15 @@ q8 = FILTER(fun(r) (r.SYM == U && r.VOLUME > V),
 // This is a kind of join:
 
 //q9 = MAP(fun(ls) List:map(fun (r) r.(| SYM,TIME), ls),
+
+// TODO: this isn't really complete:
+     // Finally, extract just the SYM:
 q9 = MAP(fun(ls) List:map((.SYM), ls),
+      // Filter for time windows with more than one over the threshold:
       FILTER(fun(ls) List:length(ls) > 1,
+       // Extract all ticks over a certain volume (could push this pred 1st)
        MAP(fun(ss) List:filter(fun(r) r.VOLUME > V, ss.toArray.Array:toList),
+	  // Start with 30-sec windows including ALL symbols:
           TIMESTAMP_WINDOW_GROUPBY_MINSLIDE(id, fun(_) 0, 30, fakestocks))))
 
 
