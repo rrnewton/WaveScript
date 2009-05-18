@@ -12,13 +12,18 @@
 ## R6RS VERSION:
 
 ## What's a good way to check if we're in R6RS mode?
-CHEZVER=`chez --version &> /dev/stdout`
 
+## The R6RS version doesn't currently compile a debug version:
+if [ "$REGDEBUGMODE" == "" ]; 
+then
+
+CHEZVER=`chez --version &> /dev/stdout`
 N=`echo $CHEZVER | sed 's/\\.//g'`
 if (( "$N" > 75 )); then 
   CURDIR=`pwd`
   (cd $REGIMENTD/src && chez --program $REGIMENTD/src/regiment.ss $CURDIR $*;)
   exit 0;
+fi
 fi
 
 echo "USING OLD METHOD"
@@ -32,7 +37,10 @@ MT=`$REGIMENTD/depends/get_machine_type`
 ARGS=${1+"$@"}
 
 setupchez() {
-    if (which chez > /dev/null); 
+
+    if   (which chez74 > /dev/null); 
+	then SCHEME=chez74;
+    elif (which chez > /dev/null); 
 	then SCHEME=chez;
     elif (which petite > /dev/null); 
 	then SCHEME=petite

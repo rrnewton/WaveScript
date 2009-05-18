@@ -136,7 +136,7 @@
   ;; It's in contradiction with the current semantics of "cflonum?" under chez:
   (IFCHEZ (define (cflonum? x) (and ((hash-percent cflonum?) x) (not (flonum? x))))
 	  ;; And this version doesn't work for chez because it's 'real?' misbehaves with 0.0 imaginary component.
-	  ;; Adding this for r6rs.
+	  ;; Adding this for r6rs:
 	  (define (cflonum? x) (and (complex? x) (not (real? x)))))
 
   (define (add1 x) (+ x 1))

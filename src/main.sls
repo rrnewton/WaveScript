@@ -12,7 +12,7 @@
 
 (library (main)
   (export
-   main ; wsint wsint-early
+   main  wsint wsint-early
    ws ws.early 
    wscaml wsmlton wscomp wsc2
    wavescript-version

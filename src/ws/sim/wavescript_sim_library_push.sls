@@ -1134,7 +1134,7 @@
   ;; Read two bytes from a string and build a uint16.
   (define (to-uint16 str ind)  ;; Internal helper function.
     (fx+ (bitwise-arithmetic-shift-left (char->integer (string-ref str (fx+ 1 ind))) 8)
-	 (char->integer (string-ref str (fx+ 0 ind)))
+	 (char->integer (string-ref str (fx+ 0 ind))) ;; taking away this fx+ 0 causes demo4b to fail under ikarus
 	 ))
   ;; The signed version
   (define (to-int16 str ind) 
