@@ -655,43 +655,7 @@
 					       (assert-type (Stream (Array Uint8))
 							    (foreign_source '"READ_CUTPOINT_0" '("cutpoint_main.c")))])
 				    (_merge (annotations) ,tmp ,tmp2)))
-				#;
-				(iterate (annotations (name ,Server_bytes))
-					    (let ([myin (Pointer "FILE*")
-							(foreign-app '"ws_get_stdin"
-								     (assert-type ( -> (Pointer "FILE*"))
-										  (foreign '"ws_get_stdin" '())))]
-						  [myfread ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
-							   (assert-type
-							    ((Array Uint8) Int Int (Pointer "FILE*") -> Int)
-							    (foreign '"fread" '("stdio.h")))])
-					      (lambda (x vq) 
-						(#() (VQueue (Array Uint8)))
-						(let ([count_buf (Array Uint8) (Array:make '4 (assert-type Uint8 '0))])
-						  (begin 
-						    ;; WARNING: this doesn't check the error condition:
-						    ;; First read the length field:
-						    (foreign-app '"fread" myfread	count_buf '4 '1 myin)
-						    (let ([count Int (assert-type Int (unmarshal count_buf '0))])
-						      (let ([buf (Array Uint8) (Array:makeUNSAFE count)])
-							(begin
-							  ;(print '"Got msg w/ length ")
-							  ;(print count)
-							  ;(print '"\n")
-							  (foreign-app '"fread" myfread buf '1 count myin)
-							  (emit (assert-type (VQueue (Array Uint8)) vq)
-								buf))))
-						    vq))))
-					    ;; This is arbitrary, should be infinity I suppose:
-					    ;,var
-					    ;; [2008.10.01] Why do I need to keep the original varref alive?
-					    ;; Was it to keep the cutpoint alive?
-					    #;
-					    (timer (annotations) (assert-type Float '1000.0))
-					     
-					    (let ([,tmp (Stream #()) (timer (annotations) (assert-type Float '1000.0))])
-					      (_merge (annotations) ,var ,tmp))
-					    )])
+				])
 			   (let ([,Server_vals (Stream ,elt)
 					       (iterate (annotations (name ,Server_vals))
 							(let ()
@@ -1057,7 +1021,9 @@
     (define aliases '())    ;; Mutated below:
     (define union-types #f) ;; Mutated below:
     
-    (define Type (lambda (t) (export-type (dealias-type aliases union-types (instantiate-type t)))))
+    (define Type 
+      (lambda (t)
+	(export-type (dealias-type aliases union-types (instantiate-type t)))))
 
     ;; First, to apply aliases, we must resolve any aliases on the
     ;; right hand sides of aliases themselves!!
@@ -1088,16 +1054,16 @@
 		 [(,inputlang '(program ,bod ,meta* ... ,type))
 		  (fluid-let ([union-types (or (assq 'union-types meta*) '(union-types))])
 		    (fluid-let ([aliases 
-				 ;; [2008.07.07] Reverse these so that more later-defined aliases take precedence:
+				 ;; [2008.07.07] Reverse these so that later-defined aliases take precedence:
 				 (reverse
 				  (normalize-aliases
 				   (cdr (or (assq 'type-aliases meta*) 
 					    '(type-aliases)))))])
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) 
-			        (type-aliases ,@aliases)
+			        (type-aliases ,@aliases) ;; [2009.06.02] Why put them back??
 			        ,@(remq (assq 'type-aliases meta*) meta*)
-				,type))))]))]
+				,(Type type)))))]))]
     ;; Now we're free of sugars and can use the initial grammar.
     [OutputGrammar initial_regiment_grammar])
 

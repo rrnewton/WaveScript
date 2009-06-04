@@ -2039,6 +2039,13 @@
 ;; This takes the union types just so it can distinguish whether a type constructor is valid.
 (define (dealias-type aliases union-types t)
   (define user-datatypes (map caar (cdr union-types)))
+  (define (check-valid-sym s)
+    (when (and (symbol? s) (not (memq s built-in-atomic-types)))
+      (if (memq s built-in-type-constructors)
+	  (error 'dealias-type "Type constructor is missing argument: ~s" s)
+	  (error 'dealias-type "This type is not in the alias table, nor is it builtin: ~s\n  Aliases: ~s" 
+		 s (map car aliases))))
+    s)
   (let loop ([t t])
   (match t
 
@@ -2046,14 +2053,16 @@
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
 			   (assq s regiment-type-aliases))])
-	    (if entry 
+	    (check-valid-sym
+	     (if entry 
 		(begin 		  
 		  ;; Make sure the alias has no type arguments:
 		  (unless (null? (cadr entry))
                     (error 'dealias-type "this alias should have had arguments: ~s" s))
 		  ;; Recursively dealias:
-		  (loop (caddr entry))) ;; Instantiate?
-		s))]
+		  (loop (caddr entry)) ;; Instantiate?
+		  )
+		s)))]
       [',n                                     `(quote ,n)]
 
       ;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]

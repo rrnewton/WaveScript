@@ -79,9 +79,20 @@ namespace Unix {
 
   // The third interface reads from WS strings:
   fread_str :: (String, Int, Int, FileDescr) -> Int = 
-    foreign("fread", stdio)
+    foreign("fread", stdio);
   fwrite_str :: (String, Int, Int, FileDescr) -> Int = 
-    foreign("fwrite", stdio)
+    foreign("fwrite", stdio);
+
+  // Basic write & read:
+  write     :: (Int, Pointer "void*", Int) -> Int = foreign("write", stdio);
+  read      :: (Int, Pointer "void*", Int) -> Int = foreign("read",  stdio);
+  write_arr :: (Int, Array Char, Int) -> Int  = foreign("write", stdio);
+  read_arr  :: (Int, Array Char, Int) -> Int  = foreign("read",  stdio);
+  write_str :: (Int, String, Int) -> Int  = foreign("write", stdio);
+  read_str  :: (Int, String, Int) -> Int  = foreign("read",  stdio);
+
+  write_bytes :: (Int, Array Uint8, Int) -> Int  = foreign("write", stdio);
+  read_bytes  :: (Int, Array Uint8, Int) -> Int  = foreign("read",  stdio);
 
 } // End namespace
 

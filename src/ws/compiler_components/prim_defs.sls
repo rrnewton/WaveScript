@@ -121,7 +121,9 @@
 (define built-in-type-constructors 
   '(List Array Sigseg Stream HashTable
 	 Ref
-	 Record Row))
+	 Record Row
+	 Pointer
+	 ))
 
 (define built-in-atomic-types
   (append '(Bool Char String)
