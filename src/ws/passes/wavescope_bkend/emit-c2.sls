@@ -1522,6 +1522,25 @@
        [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]       
 
 
+	;; ----------------------------------------
+	;; Hash tables:
+
+	;; We should have the proper type assertion on there after flattening the program.
+	;; (Remove-complex-opera*)
+	[(assert-type (HashTable ,k ,v) (HashTable:make ,[Simple -> n]))
+	 (let ([hashtype (HashType k v)]
+	       ;[eqfun ]
+	       [k (Type k)]
+	       [v (Type v)])
+	   `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")
+	   )
+	 ]
+	[(HashTable:make ,_) (error 'emit-c2:Value "hashtable not wrapped in proper assert-type: ~s"
+				    `(HashTable:make ,_))]
+	[(HashTable:get ,[Simple -> ht] ,[Simple -> key])   `("(*",ht ")[",key"]")]
+	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
+	[(HashTable:contains ,[Simple -> ht] ,[Simple -> key]) `("(*",ht ")[",key"]")]
+
 	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
        )  
