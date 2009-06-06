@@ -2070,13 +2070,17 @@
       [(NUM (,v . ,t))                          (if t (loop t) `(NUM ,v))]
 
       [#(,[t*] ...)                            (apply vector t*)]
-
-      ;[(Record ,[row] (,name* ,[ty*]) ...)      `(Record ,row ,@(map list name* ty*))]
-
+      
       [(,[arg*] ... -> ,[res])                 `(,@arg* -> ,res)]
 
       [(Pointer ,name)          `(Pointer ,name)]
       [(ExclusivePointer ,name) `(ExclusivePointer ,name)]
+
+      ;[(Record ,[row] (,name* ,[ty*]) ...)      `(Record ,row ,@(map list name* ty*))]
+      ;[(Record ,foo ...) (guard (begin (printf "matching record ~a" (cons 'Record foo)) #f)) #f]
+
+      ;; [2009.06.04] Handle Rows, because the field names are not proper types and will generate errors:
+      [(Row ,sym ,[ty] ,[row]) `(Row ,sym ,ty ,row)]
 
       ;; This is simple substitition of the type arguments:
       ;; Handles Record, Row:

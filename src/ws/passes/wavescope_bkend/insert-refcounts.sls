@@ -56,7 +56,9 @@
 
        ;; This is a function pointer, no closures at this point:
        [(,_ ... -> ,__) #f]
-
+       
+       [(HashTable ,ty1 ,ty2) #t]
+       
        [(Array ,_) #t]
        [(List ,_)  #t]
        [(Ref ,_)   #t] ;; ?? 
@@ -105,6 +107,7 @@
 	 [String                        (void)]
 	 [Symbol                        (void)]
 	 [Timebase                      (void)]
+	 [(HashTable ,[ty1] ,[ty2])     (void)]
 	 ))]))
 
 ;; Helper pass.

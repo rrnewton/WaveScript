@@ -259,7 +259,24 @@
     
     [(Pointer ,name) (string-append "Pointer_" )]    
     [Timebase "Timebase"]
+    
+    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
+    [(HashTable ,kt ,vt) (??? (HashType kt vt))]
+
     ))
+
+;(define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
+
+(define (HashType k v)
+  (define hashfun
+    (match k
+      [,s (guard (symbol? s) (memq s '(Int Float))) #f]
+      [String "boost::hash<string>"]
+      [(Struct ,name)	`("hash",(sym2str name))]
+      [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
+      ))
+  `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >"))
+
 
 (__spec ForeignSourceHook <emitC2-base> (self name callcode)
 	callcode)

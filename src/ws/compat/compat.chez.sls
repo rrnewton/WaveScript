@@ -40,6 +40,7 @@
 	  (except (scheme) inspect warning
 		  ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
 		  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
+		  error
 		  )
 	  ;(rnrs eval (6))
 	  ;(rnrs programs)
@@ -109,6 +110,12 @@
        (printf "Warning in ~a: ~a\n" who (apply format str args)))))
   (define (warning who str . args)
     (apply (warning-handler) who str args))
+
+  (define (error who msg . args)   
+    (newline) (printf " ** ERROR ** \n")
+    (chez:error 'hmm (apply format msg args))
+    ;(apply chez:error who msg args)
+    )
 
 ) ;; End library
 

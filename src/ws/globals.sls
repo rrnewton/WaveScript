@@ -431,7 +431,7 @@
 
 (define-regiment-parameter dump-graphviz-output #f)
 
-;; [2007.12.01] Should we return something other than 'main
+;; [2007.12.01] Allows us to return something other than 'main'
 (define-regiment-parameter ws-alternate-return-stream #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
