@@ -96,6 +96,7 @@
 		 
 		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
 		 HashTable:foreach
+		 Internal:hash
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make List:is_null
 		 List:head List:tail head tail
@@ -492,19 +493,20 @@
   ;; Stream source:
   (define (timer annot freq) 
     ;; milliseconds:
-    (define timestep (rate->timestep freq))
+    (define timestep (if (zero? freq) 0 (rate->timestep freq)))
     (define our-sinks '())
-    (define src (let ([t 0]
-                      [n 0])
-		  (lambda (msg)
-		    (s:case msg
-		      ;; Returns the next time we run.
-		      [(peek) t]
-		      [(pop)
-		       ;; Release one stream element.
-		       (set! t (s:+ t timestep))
-             (fire! unit-representation our-sinks)
-		       ]))))
+    (define src 
+      (let ([t 0] [n 0])
+	(lambda (msg)
+	  (s:case msg
+		  ;; Returns the next time we run.
+		  ;; TODO: if we do timer(0) we need to implement that behavior here:
+		  [(peek) t]
+		  [(pop)
+		   ;; Release one stream element.
+		   (set! t (s:+ t timestep))
+		   (fire! unit-representation our-sinks)
+		   ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
     (lambda (sink)
@@ -1762,9 +1764,14 @@
        (define HashTable:foreach (hash-percent hashtab-for-each))
        )
 
+
+;; [2009.06.07] Wait, can the reify step handle these yet?
      ;; EQUAL? based hash tables:
+;; [2009.06.08] Actually, these need to be WSEQUAL hash tables:
      (begin
-       (define slibset (slib:hash-associator s:equal?))
+       ;(define thisequals s:equal?)
+       (define thisequals wsequal?)
+       (define slibset (slib:hash-associator thisequals))
        (define (HashTable:set_BANG ht k v) 
 	 (slibset ht k (maskfalse v)))
 
@@ -1775,19 +1782,23 @@
 
        (define (copy-hash-table ht)
 	 ;; This is terrible, we don't know how big it is.
-	 (let ([newtab (slib:make-hash-table (vector-length ht))])
-	   (slib:hash-for-each ht
-	    (lambda (k v) (HashTable:set_BANG newtab k v)))
+	 (define size 0)
+	 (slib:hash-for-each (lambda (_ __) (set! size (fx+ size 1))) ht)
+	 (let ([newtab (slib:make-hash-table (s:* 2 size))])
+	   (slib:hash-for-each 
+	    (lambda (k v) 
+	      (HashTable:set_BANG newtab k v))
+	    ht)
 	   newtab))
 
        (define HashTable:make slib:make-hash-table)
        (define HashTable:contains 
-	 (let ([getfun (slib:hash-inquirer s:equal?)])
+	 (let ([getfun (slib:hash-inquirer thisequals)])
 	   (lambda (ht k) 
 	     ;(printf "Using hash inquirer: ~a ~a ~a\n" k ht  (getfun ht k))
 	     (if (getfun ht k) #t #f))))
        (define HashTable:get 
-	 (let ([getfun (slib:hash-inquirer s:equal?)])
+	 (let ([getfun (slib:hash-inquirer thisequals)])
 	   (lambda (ht k)
 	     (let ([result (getfun ht k)])
 	       (unless result
@@ -1801,7 +1812,7 @@
 	 (HashTable:set_BANG new k v)
 	 new)
 
-       (define HashTable:rem_BANG (slib:hash-remover s:equal?))
+       (define HashTable:rem_BANG (slib:hash-remover thisequals))
        (define (HashTable:rem ht k) 
 	 (define new (copy-hash-table ht))
 	 (HashTable:rem_BANG new ht k)
@@ -1809,6 +1820,13 @@
        
        (define HashTable:foreach slib:hash-for-each)
        )
+
+     ;; [2009.06.07] Careful, this must be the same as the runtime hash function...
+     (define (Internal:hash ob)
+       (warning 'Internal:hash "not implemented at meta-program eval time yet. Object was:")
+       (inspect ob)
+       )
+
 
      (define show ws-show)
      ;; Null terminate:

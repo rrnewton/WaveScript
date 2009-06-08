@@ -186,13 +186,16 @@
 	       (define (topExpr x) (vector-ref (Expr x) 0))
 	       (apply-to-program-body topExpr prg))])
 
-
 ;; [2007.08.02] This kind of thing should not be done in the actual
 ;; code generators if it can be helped.
 ;;
-;; [2007.12.22] But, as with the printing code, it would be nice to
+;; [2007.12.22] TODO But, as with the printing code, it would be nice to
 ;; generate function definitions and leave it up to the inliner as to
 ;; whether its worth inlining.
+;;
+;; [2009.06.07] TODO Should rename this function, because I'm going to
+;; do hashing here as well.  Also this one certainly deserves its own
+;; file.
 (define-pass generate-comparison-code
   (define (build-comparison origtype e1 e2)
     (match origtype ;; NO MATCH RECURSION!.
@@ -279,6 +282,85 @@
 
       ;; For the simple case we just allow the wsequal? to stick around.
       [,_ `(wsequal? (assert-type ,origtype ,e1) ,e2)]))
+
+  (define (build-hasher origtype expr)    
+    ;; Mimicking ocaml's hash function:
+    (define Alpha '(assert-type Int '65599))
+    (define Beta  '(assert-type Int '19))  ;; #\x13 character 19
+
+    (define hash_accu (unique-name "hash_accu"))
+    (define (Combine_word w2)
+      `(set! ,hash_accu 
+	     (_+_ (*_ (deref ,hash_accu) ,Alpha) ,w2)))
+    (define (Combine_byte b2)
+      `(set! ,hash_accu 
+	     (_+_ (*_ (deref ,hash_accu) ,Beta)
+		  (__cast_num 'Uint8 'Int ,b2))))
+        
+    ;(printf "GENERATING HASH FOR TYPE: ~a\n" origtype)
+    ;; First, introduce an accumulator:
+    ;; We need to double check that constant-prop/delta-reduction is
+    ;; making this efficient even for integer keys. (FIXME - could just handle the scalar-only case separately)
+     `(let ([,hash_accu (Ref Int) (Mutable:ref (assert-type Int '0))])
+       (begin 
+	 ,(let loop ([thety origtype]
+		     [expr expr])
+	    (match thety ;; NO MATCH RECURSION!.
+	      
+	      [Int   (Combine_word expr)]
+	      [Uint8 (Combine_byte expr)]
+
+	      ;; [2009.06.08] I was a little surprised that other
+	      ;; hashtable implementations I glanced at (STL, Ocaml)
+	      ;; hashed strings by byte rather than by word.  Maybe
+	      ;; there's something I'm missing...
+	      ;[String ]
+	      ;; Convoluted casts:
+	      [Char  (Combine_byte `(__cast_num 'Int 'Uint8 (charToInt ,expr)))]
+
+	      ;;[Int32 (Combine_word hash_accu `(assert-type Int (cast_num (assert-type Int32 ,expr))))]
+
+	      ;; It would be very inefficient to marshal everything just to hash it.
+	      ;; So we punt on this and leave it for the backend to be able to hash a flat block of data.
+	      ;; We could also do this through an unsafe cast mechanism of some kind.
+	      ;[Int64  `(Internal:hash_scalar_words ,expr (assert-type Int '2))]
+	      ;[Double `(Internal:hash_scalar_words ,expr (assert-type Int '2))]
+	      ;[Float  `(Internal:hash_scalar_words ,expr (assert-type Int '1))]
+
+	      ;; TEMP FIXME:  Currently throwing away bits:
+	      [Int64  (Combine_word `(__cast_num 'Int64 'Int ,expr))]
+	      	      
+	      [(Array ,elt) 
+	       (let ([arr1 (unique-name "arr1")]
+		     [i    (unique-name "i")])
+		 `(let ([,arr1 (Array ,elt) ,expr])
+		    (for (,i (assert-type Int '0) (_-_ (Array:length ,arr1) (assert-type Int '1)))
+			;; Combine just this element:
+			,(loop elt `(Array:ref ,arr1 ,i))
+		      )))]
+	      [(List ,elt) 
+	       (let ([ptr1 (unique-name "lsptr1")])
+		 `(let ([,ptr1 (Ref (List ,elt)) (Mutable:ref ,expr)])
+		    (while (not (List:isNull (deref ,ptr1)))
+			   ,(loop elt `(List:head (deref ,ptr1))))))]
+	      [#(,ty* ...) ;; Tuples
+	       (define len (length ty*))
+	       (maybe-bind-tmp expr thety
+		(lambda (tmp)
+		  `(begin 
+		     ,@(mapi (lambda (ind ty) 
+			       (loop ty `(tupref ,ind ,len ,tmp)))
+			     ty*)
+		     )))]
+	      ;; TODO: sums.	      	      
+	      [,_ (error 'generate-comparison-code:build-hasher "Unhandled type: ~a\n" _)]
+	      ))
+	 (deref ,hash_accu) ;; Return accum
+	 )
+       )     
+    )
+
+
   [Expr 
    (lambda (x fallthru)
      (match x
@@ -291,6 +373,13 @@
 	(error 'generate-comparison-code 
 	       "wsequal? was missing type annotation: ~s"
 	       `(wsequal? . ,_))]
+
+       [(Internal:hash (assert-type ,ty ,[expr]))
+	(build-hasher ty expr)]
+       [(Internal:hash ,_) 
+	(error 'generate-comparison-code
+	       "Internal:hash was missing type annotation: ~s" `(Internal:hash ,_))]
+
        [,oth (fallthru oth)]
        ))])
 

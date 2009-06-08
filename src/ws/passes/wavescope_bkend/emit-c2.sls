@@ -261,7 +261,7 @@
     [Timebase "Timebase"]
     
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-    [(HashTable ,kt ,vt) (??? (HashType kt vt))]
+    ;[(HashTable ,kt ,vt) (??? (HashType kt vt))]
 
     ))
 

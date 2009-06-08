@@ -745,6 +745,8 @@
     (ws-run-pass p type-annotate-misc)
     (ws-run-pass p generate-comparison-code))
 
+  ;(inspect (strip-annotations p 'src-pos))
+
   ;(DEBUGMODE (do-late-typecheck)) ;; [2008.08.05] check all that generated printing/marshaling/comparison code.
 
 ;  (ws-run-pass p uncover-free)
@@ -752,8 +754,7 @@
   ;(ws-run-pass p purify-letrec)
   ;; This is what we need to do.
 
-  ;; remove-letrec was here
-  
+  ;; remove-letrec was here  
   (IFDEBUG (do-late-typecheck) (void)) ;; Do a typecheck to make sure it works without letrec.
 
   (ws-run-pass p standardize-iterate) ;; no fuse

@@ -259,6 +259,8 @@
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     (List:build        (Int (Int -> 'a)) (List 'a))
 
+    ;; 
+
     ;[wsexit (Int) a]
     )))
 
@@ -879,8 +881,13 @@
     (internString (String) Symbol)
     (uninternString (Symbol) String)
 
+    ;; TODO, this should probably be defined in terms of hash_param
+    ;; which has depth-caps like Ocaml's version.
+    (Internal:hash ('a) Int)
+
     (HashTable:make (Int) (HashTable 'key 'val))
     (HashTable:contains  ((HashTable 'key 'val) 'key) Bool)
+    ;; TODO: need to change this to take a default value instead.
     (HashTable:get       ((HashTable 'key 'val) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
@@ -954,7 +961,11 @@
     (timebase     ((Sigseg 'a)) Timebase)
     
     ;; INTERNAL!!!
+    ;; (Should rename Internal:newTimebase)
     (Secret:newTimebase (Int)   Timebase)
+
+    ;; Not exposing this polymorphic hash function to users right now.
+    (Internal:hash ('a) Int)
 
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))

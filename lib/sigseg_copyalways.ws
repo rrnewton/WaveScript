@@ -1,5 +1,6 @@
 
 // Implementing sigsegs in the language:
+// Currently used by the ansi C backend: wsc2.
 
 type Sigseg t = (Array t * Int64);
 type Timebase = Int;

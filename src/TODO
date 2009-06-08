@@ -21,6 +21,11 @@ TOOPTIMIZE:
 
 ================================================================================
 
+[2009.06.08]
+
+ *) It's really rather high priority to fix the printing/equality/hashing code 
+    generation to not *fully* inline everything.
+
 [2009.01.21]
  *) Inlining rators that are record-dereferences (or tuples).  It is
     quite useful to package methods together in a record.

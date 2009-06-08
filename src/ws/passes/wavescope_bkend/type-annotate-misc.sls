@@ -61,7 +61,8 @@
 
 		    < <= > >= max min
 		    
-		    = wsequal?
+		    = wsequal? 
+		    Internal:hash ;; [2009.06.07] Adding
 		    joinsegs subseg width toSigseg toArray timebase start end seg_get
 		    
 		    emit ;; [2008.07.22] adding

@@ -179,7 +179,11 @@
 	((eq? pred char-ci=?) hashv)
 	((eq? pred string=?) hash)
 	((eq? pred string-ci=?) hash)
-	(else (error 'predicate-hash "unknown predicate for hash: ~a" pred))))
+
+	;; [2009.06.08] HACK to get this to work for wsequal? as well:
+	(else hash)
+	;(else (error 'predicate-hash "unknown predicate for hash: ~a" pred))
+	))
 
 ;;@noindent
 ;;A hash table is a vector of association lists.

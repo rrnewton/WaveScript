@@ -11,7 +11,6 @@
 //include "sigseg_wsharing.ws"
 //include "sigseg.ws"
 
-
 using Sigseg;
 
 // Also, for now we just define unionList using merge:
@@ -78,19 +77,6 @@ fun read_default_audio(bufsize,rate)
 // This is here instead of internal.ws because it's still primitive in
 // some other backends (namely, MLton).
 fun List:toArray(ls) {
-  /*
-  fun List:length(ls) {
-    using List; using Mutable;
-    count :: Ref Int = ref$ 0;
-    ptr   = ref$ ls;
-    while ptr != [] {
-      ptr := ptr.tail;
-      count += 1;
-    };
-    count
-  };
-  */
-
   len = List:length(ls);
   arr = Array:makeUNSAFE(len);
   ptr = ls;
@@ -100,7 +86,6 @@ fun List:toArray(ls) {
   };
   arr
 }
-
 
 // No reason to add a primitive for this.  It is defined in wsc2.h
 lshiftC :: (Char,Int)  -> Char = foreign("ws_lshiftC", []);
@@ -117,3 +102,7 @@ fun commandLine() {
   __getcmdln();
 }
 //argv = commandLine(); // An alias.
+
+
+// [2009.06.08] Now hashtables are handled in a similar manner to sigsegs:
+include "hashtables.ws"
