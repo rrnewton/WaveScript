@@ -1300,7 +1300,7 @@
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
 		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
-		     (id #|time|# (ws-run-pass prog emit-c2 class))		    
+		     (id (ws-run-pass prog emit-c2 class))		    
 
 		     ;; Now "prog" is an alist of [file text] bindings, along with 
 		     ;; a thunk to execute when the files are written.

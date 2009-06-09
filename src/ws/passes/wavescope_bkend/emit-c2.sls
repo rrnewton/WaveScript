@@ -73,6 +73,8 @@
 	  (ws compiler_components c_generator)
 	  (ws util bos_oop) 
 
+	  (ws passes wavescope_bkend convert-sums-to-tuples)
+
 	  ;(ws util rn-match) ;; TEMPTOGGLE
 	  )
 
@@ -259,23 +261,10 @@
     
     [(Pointer ,name) (string-append "Pointer_" )]    
     [Timebase "Timebase"]
+
+    [(Union ,name) (string-append "Union_" (sym2str name))]
     
-    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-    ;[(HashTable ,kt ,vt) (??? (HashType kt vt))]
-
     ))
-
-;(define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
-
-(define (HashType k v)
-  (define hashfun
-    (match k
-      [,s (guard (symbol? s) (memq s '(Int Float))) #f]
-      [String "boost::hash<string>"]
-      [(Struct ,name)	`("hash",(sym2str name))]
-      [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
-      ))
-  `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >"))
 
 
 (__spec ForeignSourceHook <emitC2-base> (self name callcode)
@@ -657,6 +646,8 @@
     ;; This is an unused value.
     [(VQueue ,_) "char"]
     [Timebase    "ws_timebase_t"]
+
+    [(Union ,name) `("struct ",(sym2str name))]
     ))
 
 
@@ -671,6 +662,33 @@
 		      ctype* fld*))
 	    ";\n"
             ))]))
+
+(define (UnionDef self)
+  (define tagty  (Type self tag-type)) ;; from convert-sums-to-tuples
+  (lambda (def)
+    (define (Ty x) (Type self x))
+    (match def
+      [((,[sym2str -> name]) (,[sym2str -> tc*] ,[Ty -> ty*]) ...)      
+       (inspect
+	(text->string
+	(list (block `("struct ",name)
+		      (list
+		       tagty" tag;\n"
+		       #;
+		       (block "union"
+			      (map (lambda (tc ty) (list ty " " tc ";\n"))
+				tc* ty*)
+			      )
+		       " payload;\n"))
+	       ";\n"
+	       (block (list "enum "name"_enum")
+		      (list (insert-between ", " tc*) "\n"))
+	       ";\n"
+	       "uint32_t getTotalByteSize(const struct "name" &e) {\n"
+	       "  return sizeof(e.tag) + sizeof(e.payload);\n"
+	       "}\n")))
+       ])
+    ))
 
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
 (__spec type->printf-flag <emitC2-base> (self ty)
@@ -689,6 +707,7 @@
     [Float  "%g"]
     [Double "%.15g"]
     [#() "()"]
+    [(Union ,_) "<union>"]
     [Timebase "<timebase>"]
     [(Pointer ,_) "%p"]
     [(,args ... -> ,ret) ;"%p"
@@ -1072,6 +1091,16 @@
        ;; This doesn't change the runtime rep at all.
        [(assert-type ,_ (Mutable:ref ,x)) (kont (Simple self x))]
        [(begin ,e) (recur e)]
+
+
+
+
+
+
+
+
+
+
        [(begin ,e1 ,e* ...)
 	(define first ((Effect self) e1))
 	(define rest 
@@ -1111,6 +1140,44 @@
 	(kont "0")]
        [(__foreign . ,_)
 	(error 'emit-c2 "unhandled foreign form: ~s" `(__foreign ,@_))]
+              
+       ;; [2009.06.08] Transplanted from emit-c.ss
+       [(wscase ,[Simp -> x] ((,tag* . ,tc*) (lambda (,v*) (,ty*) ,bod*)) ...)
+	(let-values ([(lines newk) (kont split-msg)])
+	  (make-lines
+	   (list (lines-text lines)
+		 (block `("switch (",x".tag)")
+			(map (lambda (tc v ty bod)
+			       (define TC (sym2str tc))
+			       `("case ",TC": {\n"
+				 ;; Simply bind a reference to the struct:  	   
+				 ;; In the orig backend we bound this as a reference!!
+				 "  // This should be a reference... could maybe use a hack like #define\n"
+				 "  ",(Type self ty)" ",(sym2str v) " = ",x".payload.",TC";\n"
+				 ,(lines-text ((Value self) bod newk))
+				 
+			      ;(Block (tenv-extend tenv (list v) (list ty)))
+			   ;,(indent ( name "" bod) "  ")
+			   "  }  break;\n"))
+		    tc* v* ty* bod*)
+		  ))))]
+       
+       [(cast-variant-to-parent ,[sym2str -> tc] ,ty 
+				(assert-type ,variant-ty ,e))	
+	(let* ([ty (Type self ty)]
+	       [newvar (unique-name 'sumbld)]
+	       [name   (sym2str (unique-name 'sumresult))])
+	  ;; First build the variant itself:
+	  (make-lines
+	   (list (lines-text ((Value self) e (varbindk self newvar variant-ty)))
+		 ;; Build the parent container:
+		 ty" "name"; // Casting to union parent type\n" ;; decl
+		 ;; Next store the result within the parent union type.
+		 name".payload."tc" = "(sym2str newvar)";\n"
+		 ;; And store the tag:
+		 name".tag = "tc";\n"
+		 (lines-text (kont name))
+		 )))]
 
        ;; [2008.02.26] Had a problem with substituting this pattern for 'ty': (,argty* ... -> ,retty)
        ;;
@@ -1520,26 +1587,6 @@
 	
        [(Array:makeUNSAFE ,[Simp -> len]) (array-constructor-codegen self len #f   mayberetty kont)]       
        [(Array:make ,[Simp -> len] ,init) (array-constructor-codegen self len init mayberetty kont)]       
-
-
-	;; ----------------------------------------
-	;; Hash tables:
-
-	;; We should have the proper type assertion on there after flattening the program.
-	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (HashTable:make ,[Simple -> n]))
-	 (let ([hashtype (HashType k v)]
-	       ;[eqfun ]
-	       [k (Type k)]
-	       [v (Type v)])
-	   `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")
-	   )
-	 ]
-	[(HashTable:make ,_) (error 'emit-c2:Value "hashtable not wrapped in proper assert-type: ~s"
-				    `(HashTable:make ,_))]
-	[(HashTable:get ,[Simple -> ht] ,[Simple -> key])   `("(*",ht ")[",key"]")]
-	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(HashTable:contains ,[Simple -> ht] ,[Simple -> key]) `("(*",ht ")[",key"]")]
 
 	[(,other ,[Simp -> rand*] ...)
 	 (kont `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))]
@@ -2227,10 +2274,15 @@ int main(int argc, char **argv)
 						 "START_WORKERS();\n"
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
-	
+
+	(define union-defs (map (UnionDef self) (slot-ref self 'union-types)))
+
 	;; This is called last:
-	(BuildOutputFiles self includes freefundefs
-			    (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
+	(BuildOutputFiles self includes 
+			  ;; Put the union definitions with the free-functions:
+			  (** union-defs freefundefs)
+			  ;; Stick state and prototypes together:
+			  (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
 				allstate
 				
 				(if #f ""
@@ -2245,8 +2297,9 @@ int main(int argc, char **argv)
 						(iota (length opnames)) opnames opinputs
 						))))
 				)
-			    (** (text->string (map lines-text toplvl-pieces)) ops) ;; Put these top level defs before the iterate defs.
-			    init driver)
+			  (** (text->string (map lines-text toplvl-pieces))
+				ops) ;; Put these top level defs before the iterate defs.
+			  init driver)
 	  )]
 
        [,other ;; Otherwise it's an invalid program.
@@ -2418,7 +2471,7 @@ int main(int argc, char **argv)
 ;; FIXME: Change the interface to BuildOutputFiles so that this can be done away with:
 (define __BuildOutputFiles
   (specialise! BuildOutputFiles <emitC2-zct>
-    (lambda (next self includes freefundefs state ops init driver)
+	       (lambda (next self includes freefundefs state ops init driver)
       (BuildOutputFiles_helper self includes freefundefs 
 			       (text->string 
 				(list state

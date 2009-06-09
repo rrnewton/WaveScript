@@ -25,6 +25,8 @@ TOOPTIMIZE:
 
  *) It's really rather high priority to fix the printing/equality/hashing code 
     generation to not *fully* inline everything.
+ *) The other thing that will speed up compiles is working on emit-c2
+    (One thing would be getting simple home grown object system working rather than BOS.)
 
 [2009.01.21]
  *) Inlining rators that are record-dereferences (or tuples).  It is

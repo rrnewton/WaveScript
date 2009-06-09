@@ -69,5 +69,6 @@ main = iterate _ in timer(0) {
   
   //emit 99;
   emit ();
+  emit ();
 }
 

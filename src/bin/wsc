@@ -45,6 +45,7 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-opt" ] ||
        [ "$1" == "-gc" ]  ||
        [ "$1" == "-ss" ]  ||
+       [ "$1" == "-main" ]  ||
        [ "$1" == "-sigseg" ]
   then REGPASSTHRU="$REGPASSTHRU $1 $2"; shift
   elif [ "$1" == "-exit-error" ] ||

@@ -207,7 +207,7 @@ q9 = MAP(fun(ls) List:map((.SYM), ls),
 
 //==============================================================================
 
-main = q9
+main = q3
 
 // [2009.06.04] Currently having problems with q5, q6, q8 with plain ws
 // Everything works under ws.early.
