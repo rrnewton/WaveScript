@@ -669,26 +669,23 @@
     (define (Ty x) (Type self x))
     (match def
       [((,[sym2str -> name]) (,[sym2str -> tc*] ,[Ty -> ty*]) ...)      
-       (inspect
-	(text->string
+       (text->string
 	(list (block `("struct ",name)
 		      (list
 		       tagty" tag;\n"
-		       #;
 		       (block "union"
 			      (map (lambda (tc ty) (list ty " " tc ";\n"))
-				tc* ty*)
-			      )
+				tc* ty*))
 		       " payload;\n"))
 	       ";\n"
 	       (block (list "enum "name"_enum")
 		      (list (insert-between ", " tc*) "\n"))
 	       ";\n"
-	       "uint32_t getTotalByteSize(const struct "name" &e) {\n"
-	       "  return sizeof(e.tag) + sizeof(e.payload);\n"
-	       "}\n")))
-       ])
-    ))
+	       ;"uint32_t getTotalByteSize(const struct "name" &e) {\n"
+	       ;"  return sizeof(e.tag) + sizeof(e.payload);\n"
+	       ;"}\n"
+	       ))
+       ])))
 
 ;; For the set of types that are printable at this point, we can use a simple printf flag.
 (__spec type->printf-flag <emitC2-base> (self ty)
@@ -1166,6 +1163,9 @@
 				(assert-type ,variant-ty ,e))	
 	(let* ([ty (Type self ty)]
 	       [newvar (unique-name 'sumbld)]
+	       ;; TODO: check if the C compiler can optimize away spurious copies with (=) on struct types:
+	       ;; If it can't, we should not introduce a new variable sumresult if we already have a varbindk.
+	       ;; (But that still leaves us with the question of how we ge at the var.)
 	       [name   (sym2str (unique-name 'sumresult))])
 	  ;; First build the variant itself:
 	  (make-lines
@@ -2275,12 +2275,12 @@ int main(int argc, char **argv)
 						 )))))
 	  ;;(define toplevelsink "void BASE(int x) { }\n")	  
 
-	(define union-defs (map (UnionDef self) (slot-ref self 'union-types)))
+	(define union-defs (make-lines (map (UnionDef self) (slot-ref self 'union-types))))
 
 	;; This is called last:
 	(BuildOutputFiles self includes 
 			  ;; Put the union definitions with the free-functions:
-			  (** union-defs freefundefs)
+			  (append-lines union-defs freefundefs)
 			  ;; Stick state and prototypes together:
 			  (** (text->string (map lines-text proto-pieces)) ;; Put the prototypes early.				
 				allstate

@@ -1,6 +1,7 @@
 
 
 
+
 uniontype Foo = A Int | B Float | C ();
 
 //res2 = match (1,2) { (a,b) : b }

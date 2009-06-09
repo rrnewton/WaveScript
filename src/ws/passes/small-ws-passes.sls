@@ -414,7 +414,7 @@
 ;; definitions for all the necessary "print_type" functions are
 ;; injected.
 (define-pass generate-printing-code
-  ;(define ) ;; Mutated below, but scoped out here.
+  (define union-types 'notdefd) ;; Mutated below, but scoped out here.
 
   (define (build-print which ty expr addstr!)
     (define (recur ty expr)
@@ -508,7 +508,24 @@
 
       [String #f] ;; No change
       
-      [(Sum ,ty) #f] ;; TODO: Need to implement sums.
+      [(Sum ,ty)
+       (let ([variants 
+	      (cdr (let loop ((ls (cdr union-types)))
+		     (ASSERT (not (null? ls)))
+		     (if (eq? ty (caaar ls)) (car ls)
+			 (loop (cdr ls)))))])
+	 (maybe-bind-tmp expr `(Sum ,ty)
+	    (lambda (tmp)
+	      `(wscase ,tmp
+		       ,@(map (match-lambda ((,name ,ty))
+				(define v (unique-name "v"))
+				`(,name (lambda (,v) (,ty) 
+						(begin 
+						  ,(addstr! `',(format "~a(" (deunique-name name)))
+						  ,(recur ty v)
+						  ,(addstr! ''")")))))
+			   variants)
+		       ))))]
 
       ;; Scalars we let through.
       ;[,ty (guard (scalar-type? ,ty)) `(,which (assert-type ,ty ,expr))]
@@ -545,7 +562,16 @@
 		`(show (assert-type ,ty ,exp)))))]
        [(show . ,_)(error 'generate-printing-code "show was missing type annotation: ~s" `(print . ,_))]
        [,oth (fallthru oth)]
-       ))])
+       ))]
+
+  ;; [2009.06.09] This is here just to pull out the union defs:
+  [Program (lambda (prog Expr)	  
+	     (match prog
+	       [(,inputlang '(program ,bod ,meta* ... ,type))
+		(fluid-let ([union-types (or (assq 'union-types meta*) '(union-types))])
+		  `(,inputlang '(program ,(Expr bod) ,@meta* ,type)))]))]
+
+  )
 
 
 ;; The marshal code generated must walk a data structure twice.  First

@@ -975,7 +975,8 @@
         ";\n"
         "uint32_t getTotalByteSize(const struct "name" &e) {\n"
         "  return sizeof(e.tag) + sizeof(e.payload);\n"
-        "}\n"))
+       "}\n"
+	))
      ]))
 
 ;; This produces a struct definition as well as a printer function for the struct.

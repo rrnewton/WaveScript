@@ -137,6 +137,7 @@
     [LHS Pattern]
     [Pattern Var]
     [Pattern #(Pattern ...)]
+    ;; [2009.06.09] Hmm... it looks like this will probably need to become a gensym when we fill out the pattern language:
     [Pattern ('data-constructor Var Pattern ...)]
 
     ,@type_grammar
