@@ -72,7 +72,7 @@ fun socket_out(strm, port) {
 }
 
 // Returns a stream of byte arrays.
-fun socket_in_bytes(addr, port) {
+fun socket_in_raw(addr, port) {
   // FIXME: this really should not be driven by a timer.  It should be a foreign_source:
   // Either that or it should run in an infinite loop.
   iterate _ in timer(500) {
@@ -112,7 +112,7 @@ fun socket_in_bytes(addr, port) {
 }
 
 fun socket_in(addr, port) {
-  rawbytes = socket_in_bytes(addr,port);
+  rawbytes = socket_in_raw(addr,port);
   iterate buf in rawbytes {
    // We're on thin ice typing wise:
     ob = unmarshal(buf,0);
@@ -122,136 +122,4 @@ fun socket_in(addr, port) {
 
 
 //================================================================================
-
-
-// Here's a simple example of using socket_in and socket_out.
-//================================================================================
-
-port = 9000 + Uint16! randomI(1000);
-_ = println("Picked port: " ++ port);
-
-nums = iterate n in COUNTUP(10) { emit #[n,n] };
-
-out = socket_out(nums, port);
-instrm :: Stream (Array Int) = socket_in("localhost", port);
-
-// We need to merge in & out.. ask me why.
-main = merge(out, instrm);
-//main = merge(out, (instrm :: Stream (Array Int)));
-
-
-
-
-/*
-// connect to www.example.com port 80 (http)
-
-struct addrinfo hints, *res;
-int sockfd;
-
-// first, load up address structs with getaddrinfo():
-
-memset(&hints, 0, sizeof hints);
-hints.ai_family = AF_UNSPEC;  // use IPv4 or IPv6, whichever
-hints.ai_socktype = SOCK_STREAM;
-
-// we could put "80" instead on "http" on the next line:
-getaddrinfo("www.example.com", "http", &hints, &res);
-
-// make a socket:
-
-sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-
-// connect it to the address and port we passed in to getaddrinfo():
-
-connect(sockfd, res->ai_addr, res->ai_addrlen);
- */
-
-//================================================================================
-// Here's a simple example written by hand:
-
-port = 9996;
-
-server = iterate _ in timer(0) {
-  using Unix;
-
-  print("Sender starting\n");
-  sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-  if sockfd < 0 then error("ERROR opening socket.");  
-  println("Sender: Allocated socket " ++ sockfd); 
-
-  serv_addr = make_sockaddr_in(AF_INET(), port, INADDR_ANY());
-
-  print_sockaddr(serv_addr);
-
-  b = bind(sockfd, serv_addr, sizeof_sockaddr());
-  if b < 0 then error("ERROR on binding: "++b++ " errno " ++ errno());
-  println(" Bound...");
-
-  listen(sockfd,5);
-  println(" Listening...");
-
-  // Go ahead and send out the token that will trigger the downstream.
-  emit 0;
-
-  // Storage space:  
-  cli_addr = make_sockaddr_in(0,0,0);
-  clilen = #[sizeof_sockaddr()];
-  newsockfd = accept(sockfd, cli_addr, clilen);
-    println( " server accepted connection! " ++ newsockfd);
-
-   buf1 = Array:make(255,0);
-   // Read the length:
-   rd = read_bytes(newsockfd, buf1, 4);   
-     assert_eq("read wrong length", rd, 4);
-   len :: Int = unmarshal(buf1,0);   
-   println(" server read length "++ len);  
-
-   buf2 = Array:make(len, 0);
-   rd = read_bytes(newsockfd, buf2, len);
-     assert_eq("read wrong length", rd, len);
-   println(" server read bytes "++ buf2);  
-
-   ob :: Array String = unmarshal(buf2,0);
-   println(" unmarshaled "++ ob);
-
-  exit(1);
-}
-
-client = iterate _ in server {
-  using Unix;
-  print("Receiver starting\n");
-
-  sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-  if sockfd < 0 then error("ERROR opening socket.");  
-
-  server = gethostbyname("localhost");
-  if server.ptrIsNull then error("ERROR no such host");
-  println("  Client: got host " ++ server); 
-
-  addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
-  println("  Client: got addr " ++ addr);   
-  print_sockaddr(addr);
-
-  c = connect(sockfd, addr, sizeof_sockaddr());
-  if c < 0 then error("ERROR connecting "++ c);  
-  println("  Client: got connection!");   
-
-  //s = "foobarmsg";
-
-  buf = marshal(#["my happy array", "yay"]);
-
-  len = Array:length(buf);  
-  lenbuf = marshal(len);  
-
-  println$ "Marshaling "++ len ++ " bytes";
-  write_bytes(sockfd, lenbuf, 4);
-  write_bytes(sockfd, buf, len);
-  
-  //write_str(sockfd, s, s.String:length);
-  println $ "  Client: msg written";
-  
-  emit 0;
-} 
-
-//main = client
 

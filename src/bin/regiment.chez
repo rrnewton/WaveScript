@@ -10,6 +10,7 @@
 #then export REGIMENTEXEC=regiment.plt
 
 ## R6RS VERSION:
+############################################################
 
 ## What's a good way to check if we're in R6RS mode?
 
@@ -21,14 +22,20 @@ CHEZVER=`chez --version &> /dev/stdout`
 N=`echo $CHEZVER | sed 's/\\.//g'`
 if (( "$N" > 75 )); then 
   CURDIR=`pwd`
-  (cd $REGIMENTD/src && chez --program $REGIMENTD/src/regiment.ss $CURDIR $*;)
-  exit 0;
+  if cd $REGIMENTD/src
+  then if chez --program $REGIMENTD/src/regiment.ss $CURDIR $*
+       then exit $?
+       else exit $?
+       fi
+  fi
+  exit 99;
 fi
 fi
-
-echo "USING OLD METHOD"
 
 ## PRE R6RS HACK:
+############################################################
+
+echo "USING OLD METHOD"
 
 source `dirname $0`/assert_regimentd
 

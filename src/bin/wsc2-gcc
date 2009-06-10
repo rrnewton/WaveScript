@@ -60,7 +60,8 @@ echo "$CMD"
 
 if time $CMD;
 then echo Compiled .c output successfully.
-else echo ERROR, gcc failed.; exit 1
+else echo ERROR, gcc failed.; 
+     exit 1
 fi
 
 wc $CFILE

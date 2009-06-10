@@ -1134,7 +1134,8 @@
     (wsint-parameterize
      (lambda ()
        (define p x)
-       (time (begin 
+       (define (go)
+	 (begin 
 	       (set! p (early-part p input-params))
 	       (ws-run-pass p eta-primitives)
 	       ;; (ws-run-pass p desugar-misc)
@@ -1146,7 +1147,9 @@
 	       
 	       ;(ws-run-pass p strip-annotations) ;; [2008.08.24] Why do we do this?
 	       ))
-       (printf "Running program EARLY:\n")
+       (if (>= (regiment-verbosity) 1) 
+	   (begin (time (go)) (printf "Running program EARLY:\n"))
+	   (go))
        (run-wavescript-sim p))))
 
   (values wsint wsint-early)))

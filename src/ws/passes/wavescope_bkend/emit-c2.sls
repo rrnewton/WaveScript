@@ -375,6 +375,8 @@
 	      (if (not (heap-type? self elt))
 		  (add-to-freefuns! ty (lambda (ptr) (make-lines `("FREEARR(",ptr");\n"))))
 		  (add-to-freefuns! ty default-specialized_fun))]
+	     [(Union ,name)
+	      (add-to-freefuns! ty default-specialized_fun)]
 	     ;[Timebase #f]
 	     )))
     heap-types)
@@ -391,7 +393,7 @@
 			 (lambda (ptr) (make-lines `("free_",name"(",ptr");\n"))))
 		       (let loop ([ty ty])
 			 (match ty ;; <- No match recursion!
-			   [(Struct ,tuptyp)
+			   [(Struct ,tuptyp) 
 			    (set! proto-acc (cons default-fun_name proto-acc))
 			    (let ([flds (cdr (ASSERT (assq tuptyp (slot-ref self 'struct-defs))))])
 			      (make-lines
@@ -431,7 +433,30 @@
 						    (begin ;(loop elt) ;; For side effect
 						      (lines-text (gen-decr-code self elt `("ptr[",ind"]") ""))))
 					    "FREEARR(ptr);\n")))
-				  ))])))     
+				  ))]
+
+			   ;; [2009.06.10] This case should work for unions too:
+			    ;(guard (eq-any? structish 'Struct 'Union))
+			   [(Union ,name) 
+			    (set! proto-acc (cons default-fun_name proto-acc))
+			    (let ([variants (let loop ([ls (slot-ref self 'union-types)])
+					      (ASSERT (not (null? ls)))
+					      (if (eq? (caaar ls) name)
+						  (cdr (car ls))
+						  (loop (cdr ls))))])
+			      (make-lines 
+			       (list 
+				"/* Freeing union: "(sym2str name)"*/\n"
+				;; TODO: If we generated C++ we could pass a reference here:
+				(block default-fun_name
+				  (block "switch(ptr.tag)"
+				    (map (match-lambda ((,variantname ,ty))
+					   (list 
+					    "case "(sym2str variantname)" :\n"
+					    (lines-text (gen-decr-code self ty (list "ptr.payload."(sym2str variantname)) ""))
+					    "   break;\n"))
+					 variants))))))]
+			   )))
 		  (slot-ref self 'free-fun-table)))])
     (append-lines 
      (make-lines (map (lambda (x) (list x ";\n")) proto-acc))
@@ -494,6 +519,30 @@
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
+
+#;
+    [(Union ,name) 
+     ;; [2009.06.10] Can we just call the same code from build-free...
+     #;
+     (let ([variants (let loop ([ls (slot-ref self 'union-types)])
+		       (ASSERT (not (null? ls)))
+		       (if (eq? (caaar ls) name)
+			   (cdr (car ls))
+			   (loop (cdr ls))))])
+       (make-lines 
+	(list 
+	 ;; TODO: If we generated C++ we could pass a reference here:
+	 (block default-fun_name
+		(block "switch(ptr.tag)"
+		       (map (match-lambda ((,variantname ,ty))
+			      (list 
+			       "case "(sym2str variantname)" :\n"
+			       (lines-text (gen-decr-code self ty (list "ptr.payload."(sym2str variantname)) ""))
+			       "   break;\n"))
+			 variants))))))
+     ]    
+
+
     [,ty (guard (not (heap-type? self ty))) null-lines]))
 
 ;; This generates free code for a type (using free-fun-table).

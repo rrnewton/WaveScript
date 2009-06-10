@@ -120,11 +120,13 @@ export REGIMENT_OR_WAVESCRIPT=WS
 echo "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
 
 if "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
-then echo
+then echo ERROR CODE $?
 else #rm -f $TMP; 
-    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    echo Compilation aborted: \"$REGIMENTEXEC $REGFLAG\" exited with error code.
     exit 1;
 fi
+
+
 
 if [ "$WSARCH" == "ensbox" ];
 then CCOMPILE='wsc-arm-g++'

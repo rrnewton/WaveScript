@@ -26,6 +26,8 @@ then echo
 else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi
 
+# Now the compile is finished
+#================================================================================
 
 ## TEMP: PTHREADS BY DEFAULT  :
 #THREADS=true
@@ -80,9 +82,15 @@ if [ "$CC" = "icc" ] || ([ "$CC" = "" ] && [ "`which icc`" != "" ])
 then export CC='icc -O3 -ipo -no-prec-div'
 fi
 
-for file in `ls $CFILE*.c`; do
-export CFILE=$file
-$REGIMENTD/bin/wsc2-gcc
+if [ "$CFILE" = "" ]; then CFILE=query; fi
+
+rm -f "$CFILE".exe "$CFILE"_*.exe
+
+for file in `ls "$CFILE"*.c`; do
+  export CFILE=$file
+  $REGIMENTD/bin/wsc2-gcc
+  CODE=$?
+  if [ "$CODE" != "0" ]; then exit $CODE; fi
 done
 
 # if ! [ -f "query.c" ]

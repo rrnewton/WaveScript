@@ -113,8 +113,11 @@
 
   (define (error who msg . args)   
     (newline) (printf " ** ERROR ** \n")
-    (chez:error 'hmm (apply format msg args))
+    ;(chez:error who (apply format msg args))
     ;(apply chez:error who msg args)
+    (printf " In ~a: ~a" who (apply format msg args))
+    ;(chez:inspect chez:exit)
+    (newline)(chez:exit 12)
     )
 
 ) ;; End library
