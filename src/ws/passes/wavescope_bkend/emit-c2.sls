@@ -156,9 +156,9 @@
   (define-generic InvokePerOpCollector)
 
   (__spec add-include! <emitC2-base> (self fn)
-    (define __ (printf "adding include ~s \n" fn))
     (define files (slot-ref self 'include-files))
     (unless (member fn files)
+      (printf "     --> adding include ~a \n" (apply string-append fn))
       (slot-set! self 'include-files (cons fn files))))
   (__spec add-link! <emitC2-base> (self fn)
     (define files (slot-ref self 'link-files))

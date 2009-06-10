@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# TODO: ACCEPTING -o ARGUMENT BUT IT'S NOT USED CURRENTLY.
-
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 TMP=`dirname $0`
@@ -10,7 +8,6 @@ then source "$TMP/assert_regimentd"; fi
 
 # Make sure to call the script in this directory:
 if [ "$REGIMENTEXEC" == "" ]; 
-#then REGIMENTEXEC=regiment; fi
 then REGIMENTEXEC=`dirname $0`/regiment; 
 fi
 
@@ -39,11 +36,9 @@ while [ $# != 0 ];  do
   elif [ "$1" == "-nothreads" ]
 #  then CCPASSTHRU="$CCPASSTHRU -DBOOST_SP_DISABLE_THREADS"
   then CCPASSTHRU="$CCPASSTHRU -nothreads"
-  elif [ "$1" == "-o" ]
-  then shift;
-       OUTFILE="$1"; 
   elif [ "$1" == "-opt" ] ||
        [ "$1" == "-gc" ]  ||
+       [ "$1" == "-o" ]  ||
        [ "$1" == "-ss" ]  ||
        [ "$1" == "-main" ]  ||
        [ "$1" == "-sigseg" ]
@@ -130,22 +125,6 @@ else #rm -f $TMP;
     echo Compilation aborted: \"regiment wscomp\" exited with error code.
     exit 1;
 fi
-#rm -f $TMP
-
-# If this flag is set, we stop here.
-# HACK: accepts the argument only in this position:
-#if test "$2" == "-c0" ; 
-#then exit 0
-#fi
-
-#echo
-#echo
-#(cd $WAVESCOPED; make WaveScriptQuery)
-#echo Writing scipt \"run_query\".  Use it to invoke the compiled query.
-#echo '#!/bin/bash' > run_query
-##echo '(cd $WAVESCOPED; ./run_WaveScriptQuery)' >> run_query
-#echo '$WAVESCOPED/run_WaveScriptQuery $*' >> run_query
-#chmod +x run_query
 
 if [ "$WSARCH" == "ensbox" ];
 then CCOMPILE='wsc-arm-g++'
@@ -153,10 +132,9 @@ then CCOMPILE='wsc-arm-g++'
 else CCOMPILE='wsc-g++'
 fi
 
-
 export WSCDEBUG
-
 export COPTFLAG
+
 if ! [ "$NOGCC" == "0" ]
 then exit 0
 elif $CCOMPILE $CCPASSTHRU ./query 

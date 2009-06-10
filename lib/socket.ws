@@ -133,10 +133,11 @@ _ = println("Picked port: " ++ port);
 nums = iterate n in COUNTUP(10) { emit #[n,n] };
 
 out = socket_out(nums, port);
-instrm = socket_in("localhost", port);
+instrm :: Stream (Array Int) = socket_in("localhost", port);
 
 // We need to merge in & out.. ask me why.
-main = merge(out, (instrm :: Stream (Array Int)));
+main = merge(out, instrm);
+//main = merge(out, (instrm :: Stream (Array Int)));
 
 
 

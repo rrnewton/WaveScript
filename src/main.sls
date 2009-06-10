@@ -2171,6 +2171,7 @@
 	  
 	  [("-o" ,outfile ,rest ...)
 	   (wsint-output-file outfile)
+	   (emitC2-output-target (string-append outfile ".c"))
 	   (loop rest)]
 
 	  [("-opt" ,name ,rest ...)
@@ -2267,6 +2268,7 @@
 	  [("-dot" ,rest ...) (dump-graphviz-output #t) (loop rest)]
 	  [("-ret" ,name ,rest ...)  (ws-alternate-return-stream (string->symbol name)) (loop rest)]
 	  [("-main" ,name ,rest ...) (ws-alternate-return-stream (string->symbol name)) (loop rest)]
+
 
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 	  [("-debug" ,rest ...)		     
