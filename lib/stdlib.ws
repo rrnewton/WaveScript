@@ -90,7 +90,6 @@ Array:foreach    :: (     a -> (), Array a) -> ();
 Array:foreach2   :: ((a,b) -> (), Array a, Array b) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 Array:mapi       :: ((Int, a) -> b, Array a) -> Array b;
-//Array:sub        :: (Array a, Int, Int) -> Array a;
 
 //Array:sort       :: ()
 
@@ -673,13 +672,6 @@ namespace Array {
       arr[i] := v;
     }
   }
-
-  // Takes a start and a number of elements to copy.
-  /*
-  fun  sub(arr, st, len) {
-    Array:build(len, fun(i) arr[st+i]);
-  }
-  */
 
   // Append a list of arrays.
   fun concat(loa) {

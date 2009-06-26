@@ -743,7 +743,15 @@
   (when (and (wsc2-variant-mode? (compiler-invocation-mode))
 	     (not (java-mode? (compiler-invocation-mode))))
     (ws-run-pass p type-annotate-misc)
-    (ws-run-pass p generate-comparison-code))
+    (ws-run-pass p generate-comparison-code)
+    ;;(ws-run-pass p generate-hash-code)
+    )
+  
+  ;; We could also generate hash functions under the ML variants:
+  (when (memq (compiler-invocation-mode) '(wavescript-compiler-caml))
+    ;;(ws-run-pass p generate-hash-code)
+    (void)
+    )
 
   ;(inspect (strip-annotations p 'src-pos))
 

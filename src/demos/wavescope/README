@@ -16,6 +16,12 @@ grouped like this:
  demo10*: Tests/examples of different optimizations.
  demo11*: Platform-specific demos (ENSbox or telos).
 
+ demo12 : stress tests and other small tests (similar to
+          benchmarks/microbench but without a focus on performance
+          measurement)
+
+Taken together, these demos give a broad but shallow coverage of different WS features.
+
  ...
 
   -Ryan

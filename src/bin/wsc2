@@ -21,7 +21,7 @@ WSC=`dirname $0`/wsc
 #echo CALLING WSC $WSC $* -exit-error -no-gcc
 
 rm -f query.c query_*.c query.exe query_*.exe
-if $WSC $* -exit-error -no-gcc
+if $WSC $* -no-gcc
 then echo
 else echo ERROR, wsc2 failed with code $?.; exit 1;
 fi

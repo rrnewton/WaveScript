@@ -439,11 +439,7 @@
 			    ;(guard (eq-any? structish 'Struct 'Union))
 			   [(Union ,name) 
 			    (set! proto-acc (cons default-fun_name proto-acc))
-			    (let ([variants (let loop ([ls (slot-ref self 'union-types)])
-					      (ASSERT (not (null? ls)))
-					      (if (eq? (caaar ls) name)
-						  (cdr (car ls))
-						  (loop (cdr ls))))])
+			    (let ([variants (get-variants self name)])
 			      (make-lines 
 			       (list 
 				"/* Freeing union: "(sym2str name)"*/\n"
@@ -462,6 +458,13 @@
      (make-lines (map (lambda (x) (list x ";\n")) proto-acc))
      final-defs)))
 
+;; Get the variants of a particular union type.
+(define (get-variants self name)
+  (let loop ([ls (slot-ref self 'union-types)])
+    (ASSERT (not (null? ls)))
+    (if (eq? (caaar ls) name)
+	(cdr (car ls))
+	(loop (cdr ls)))))
 
 ;; [2008.11.07] This is not ideal, but for now I'm doing this in just
 ;; the same way as the free functions.  It would be better to do it in
@@ -481,6 +484,9 @@
 ;; These underlying methods do the actual code generation:
 ;; For the naive strategy we'de allow shared pointers but would need a CAS here.
 ;; Returns lines representing a block of code to do refcount incr.
+;; 
+;; TODO: We should really generate incr/decr *functions* for more
+;; complex types, like we do with free functions.
 (__spec gen-incr-code <emitC2-base> (self ty ptr msg)
   (match ty
     ;; Both of these types just decr the -1 offset:
@@ -495,6 +501,20 @@
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-incr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
+
+    [(Union ,name)
+     (let ([variants (get-variants self name)])
+       (make-lines 
+	(list (format "/* Incr union refcount, Union ~a */\n" name)
+	      ;; TODO: If we generated C++ we could pass a reference here:
+	      (block (list "switch("ptr".tag)")
+		     (map (match-lambda ((,variantname ,ty))
+			    (list 
+			     "case "(sym2str variantname)" :\n"
+			     (lines-text (gen-incr-code self ty (list ptr ".payload."(sym2str variantname)) msg))
+			     "   break;\n"))
+		       variants)))))]
+
     ;; Other types are not heap allocated:
     [,ty (guard (not (heap-type? self ty))) null-lines]
     ))
@@ -516,13 +536,19 @@
     [(Struct ,name) 
      (apply append-lines
 	    (make-lines (format "/* Decr ~a tuple refcount, Struct ~a */\n" msg name))
+	    ;; [2009.06.10] This also looks the same as the free code:
+	    ;; Consider this:
+	    ;;   "free_"(type->name `(Struct ,name))
+	    ;; But it had better inline or this will copy the struct!
 	    (map (match-lambda ((,fldname ,ty))
 		   (gen-decr-code self ty (list ptr "." (sym2str fldname)) msg))
 	      (cdr (assq name (slot-ref self 'struct-defs)))))]
 
-#;
     [(Union ,name) 
      ;; [2009.06.10] Can we just call the same code from build-free...
+     (make-lines (list (format "/* Decr union refcount, Union ~a */\n" name)
+		       "free_"(type->name self `(Union ,name))"("ptr");\n"
+		       ))
      #;
      (let ([variants (let loop ([ls (slot-ref self 'union-types)])
 		       (ASSERT (not (null? ls)))
@@ -1340,8 +1366,10 @@
 	    ;; object (a null pointer).
 	    [(Array ,_) (eq? obj 'Array:null)]
 	    [(List ,_)  (eq? obj '())]
-
+	    
+	    ;; [2009.06.10] Actually, given our implementation of structs, it seems like this could be zero:
 	    [(Struct ,_) #f]
+	    [(Union ,_) #f]
 
 	    [#() #t]
 	    
@@ -1481,7 +1509,8 @@
        
        ;; wsequal? should only exist for scalars at this point:
        [(wsequal? ,[(TyAndSimple self) -> ty left] ,[Simp -> right])
-	(ASSERT (or (scalar-type? ty) (eq? ty 'Timebase)))
+	(unless (or (scalar-type? ty) (eq? ty 'Timebase))
+	  (error 'emitC2 "wsequal? should not be used at this type at this late phase: ~a" ty))
 	(kont `("(",left" == ",right")"))]
 
        [(__show_ARRAY ,[(TyAndSimple self) -> ty obj])
@@ -2431,7 +2460,12 @@ int main(int argc, char **argv)
   (unless (slot-ref self 'zct-init?)
     (slot-set! self 'zct-init? #t)
     (slot-set! self 'zct-types
-	       (filter (lambda (pr) (not (match? (car pr) (Struct ,_))))
+	       (filter (lambda (pr) 
+			 ;; Structs and Unions are not heap allocated:
+			 (match (car pr)
+			   [(Struct ,_) #f]
+			   [(Union ,_)  #f]
+			   [,else       #t]))
 		 (slot-ref self 'free-fun-table)))))
 
 (define (get-zct-type-tag self ty)

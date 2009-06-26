@@ -1294,7 +1294,7 @@
 
       [absI16 Int16.abs]
       [absI64 Int64.abs]
-      [absI   (format "~s.abs" int-module)]
+      [absI   ,(format "~s.abs" int-module)]
       [absF   Real32.abs]
       [absD   Real64.abs]
       [absC   Complex.magnitude]
@@ -1303,6 +1303,7 @@
       [logD Real64.Math.ln]
 
       [randomI "(fn n => Int.mod (Word.toInt (MLton.Random.rand ()),  n))"]
+      [moduloI "Int.mod"]
 
       [List:append List.@]
       [List:zip ListPair.zip]
@@ -1460,6 +1461,8 @@
 
       [Secret:newTimebase newTimebase]    ;; ADT breakage!
 
+      [Internal:hash "MLton.hash"]
+
       [roundF  ,(make-fun '("x") "Real32.fromInt (Real32.floor (x + 0.5))")]
       [roundD  ,(make-fun '("x") "Real64.fromInt (Real64.floor (x + 0.5))")]
 
@@ -1521,7 +1524,7 @@
 		   __stringToInt_ARRAY __stringToFloat_ARRAY __stringToDouble_ARRAY __stringToComplex_ARRAY
 
 		   __cast_num  ^U8 ^U16
-		   stringToComplex moduloI
+		   stringToComplex 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   fftC ifftC ifftC2R
