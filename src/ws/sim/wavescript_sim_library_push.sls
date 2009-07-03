@@ -267,7 +267,7 @@
 		      (wsequal? (tuple-fields a) (tuple-fields b)))]
      ;; Even more inefficiency:
      [(number? a) (= a b)] ;; Matters for 0.0 == -0.0
-     [(double? a) (= (double-val a) (double-val b))]
+     [(double? a) (= (double-val a) (maybe-double b))] ;; (=) handles precise/imprecise
      [else (s:equal? a b)]))
   ;(define equal? wsequal?)
   
@@ -1219,8 +1219,8 @@
   (define (double-wrap binop)
     (lambda (a b)
       (if (or (double? a) (double? b))	  
-	  (let ([a (if (double? a) (double-val a) a)]
-		[b (if (double? b) (double-val b) b)])
+	  (let ([a (maybe-double a)]
+		[b (maybe-double b)])
 	    (make-double (binop a b)))
 	  (binop a b))))
 
@@ -1238,8 +1238,8 @@
     (cond
 
      [(or (double? a) (double? b))       
-      (let ([a (if (double? a) (double-val a) a)]
-	    [b (if (double? b) (double-val b) b)])
+      (let ([a (maybe-double a)]
+	    [b (maybe-double b)])
 	(make-double (s:/ a b)))]
 
      [(and (fixnum? a) (fixnum? b)) (fx/ a b)]
@@ -1323,10 +1323,10 @@
   (define _+. fl+)    (define _-. fl-)    (define *. fl*)    (define /. fl/)
   (define _+: cfl+)   (define _-: cfl-)   (define *: cfl*)   (define /: cfl/)
 
-  (define (_+D x y) (make-double (fl+ (double-val x) (double-val y)))) 
-  (define (_-D x y) (make-double (fl- (double-val x) (double-val y)))) 
-  (define (*D x y)  (make-double (fl* (double-val x) (double-val y)))) 
-  (define (/D x y)  (make-double (fl/ (double-val x) (double-val y))))
+  (define (_+D x y) (make-double (fl+ (maybe-double x) (maybe-double y)))) 
+  (define (_-D x y) (make-double (fl- (maybe-double x) (maybe-double y)))) 
+  (define (*D x y)  (make-double (fl* (maybe-double x) (maybe-double y)))) 
+  (define (/D x y)  (make-double (fl/ (maybe-double x) (maybe-double y))))
 
   ;; [2008.02.22] New strategy: cast_num does nothing, whereas
   ;; assert-type ensures conformance with our numeric representation
@@ -1371,7 +1371,7 @@
   (define min32  (s:- max32))
   (define min64  (s:- max64))
   (define (__cast_num from to num) 
-    (let ([num (if (double? num) (double-val num) num)])
+    (let ([num (maybe-double num)])
       (define (signed_int base max min num)
       (let ([int (cond
 		  [(and (integer? num) (exact? num)) num]
@@ -1422,12 +1422,12 @@
   (define ^U16 (uoverflow expt 16)) ;; Overflow!! FIXME
   (define ^I32 expt)
   (define ^I64 expt)
-  (define (^D x y) (make-double (expt (double-val x) (double-val y))))
+  (define (^D x y) (make-double (expt (maybe-double x) (maybe-double y))))
   (define ^. expt)
   (define ^: expt)
 
   (define (sqrtI n) (flonum->fixnum (sqrt n)))
-  (define (sqrtD x) (make-double (sqrt (double-val x))))
+  (define (sqrtD x) (make-double (sqrt (maybe-double x))))
   (define sqrtF sqrt)
   (define sqrtC sqrt)
   (define moduloI fxmod)
@@ -1447,7 +1447,7 @@
   (define absI64 s:abs)
   (define absI s:abs)
   (define absF flabs)
-  (define (absD x) (make-double (flabs (double-val x))))
+  (define (absD x) (make-double (flabs (maybe-double x))))
   (define absC magnitude
     #;
     (IFCHEZ s:abs 
@@ -1463,8 +1463,12 @@
     #;
     (if (< n 0) (wserror "logF: cannot accept negative numbers")
 	(log n)))
+
+  (define (maybe-double n) (if (double? n) (double-val n) n))
+ 
   (define (logD n) 
-    (let ([n (double-val n)])
+    ;; This is messy... during metaprog eval "generic" ints are possible:
+    (let ([n (maybe-double n)])
       (if (< n 0) (wserror "logD: cannot accept negative numbers")
 	  (make-double (log n)))))
 
@@ -1500,11 +1504,12 @@
   (define (floatToDouble x) (make-double x))
   (define (floatToComplex f) (make-rectangular f 0.0))
 
-  (define (doubleToInt16 d) (floatToInt16 (double-val d)))
-  (define (doubleToInt64 d) (floatToInt64 (double-val d)))
-  (define (doubleToInt   d) (floatToInt   (double-val d)))
-  (define (doubleToFloat x) (double-val x))
-  (define (doubleToComplex d) (floatToComplex (double-val d)))
+  ;; FIXME [2009.07.02] Handle generic ints:
+  (define (doubleToInt16 d) (floatToInt16 (maybe-double d)))
+  (define (doubleToInt64 d) (floatToInt64 (maybe-double d)))
+  (define (doubleToInt   d) (floatToInt   (maybe-double d)))
+  (define (doubleToFloat x) (maybe-double x))
+  (define (doubleToComplex d) (floatToComplex (maybe-double d)))
 
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToInt16 complexToInt)

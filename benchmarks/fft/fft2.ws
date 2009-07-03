@@ -19,8 +19,11 @@ fun composeAll(ls)
   else if ls`tail == [] 
   then ls`head
   else List:fold1(compose, ls)
-fun log2(n) {
-  doubleToInt(logD(gint(n)) / logD(2))
+
+
+log2 = {
+  cnst = logD(2);
+  fun (n) Int! (logD(gint(n)) / cnst);
 }
 
 // ==================================================================
@@ -31,7 +34,7 @@ fun log2(n) {
 //FFTReorderSimple :: (Int, Stream (Sigseg Float)) -> Stream (Sigseg Float);
 //fun FFTReorderSimple(n) fun (strm) {
 fun FFTReorderSimple(n, strm) {
-  totalData = 2*n;
+  totalData = 2 * n;
   //dewindow $ iterate ss in window(strm, totalData) {
   iterate ss in rewindow(strm, totalData, 0) {
   //iterate ss in strm {

@@ -3,7 +3,7 @@
 
 (library (ws compat compat)
   (export syntax->list getenv
-	  merge merge! sort! append! reverse! call/ec inspect native-inspect define-values
+	  merge merge! sort! append! reverse! call/ec inspect native-inspect debug define-values
 	  fluid-let parameterize reg:define-struct reg:struct?
 	  void make-parameter
 	  printf error format format-syntax-nicely
@@ -19,6 +19,8 @@
 	  
 	  system repl make-list with-output-to-string
 	  which-scheme IFCHEZ	  
+
+	  
 	  
 	  (rename 
 	          (ik:gensym gensym) 
@@ -76,6 +78,9 @@
 
   (define (native-inspect x)
     (error 'ikarus "doesn't have a built-in object inspector"))
+
+  (define (debug . x)
+    (error 'ikarus "doesn't have a built-in debug mode"))
 
   (ik:include "ws/compat/reg_record.ss")
   (ik:include "ws/compat/common.ss")

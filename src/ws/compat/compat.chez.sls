@@ -31,6 +31,8 @@
 	  
 	  (rename (chez:call/1cc call/ec))
 
+	  (rename (chez:debug debug))
+
 	  ;(rename (chez:import import))
 
 	  )
