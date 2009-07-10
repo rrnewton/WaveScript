@@ -1,0 +1,46 @@
+
+;; The physical network:
+
+network n1 n2 n3 
+node n1 55
+node n2 55
+node n3 55
+link n1 2.1 2.3 -> n2
+link n2 2.4 2.5 -> n3
+
+;; A query to be placed on that network:
+
+query Q_1 q1 q2 q3 
+
+op q1 30
+op q2 20
+op q3 20
+edge q1 3.3 -> q2
+edge q2 1.2 -> q3
+
+ ;; Pin sources and sinks
+pin q1 n1
+pin q3 n3
+
+;; A second query:
+
+; query Q_2 q4 q5 q6 q7 q8
+; op q4 10
+; op q5 10
+; op q6 10
+; op q7 10
+; op q8 10
+; edge q4 1.6 -> q5
+; edge q5 1.7 -> q6
+; edge q7 1.8 -> q6
+; edge q8 1.9 -> q7
+
+; pin q4 n1
+; pin q8 n1
+; pin q6 n3
+
+; ;; Certain edges and operators (either intra- or inter-query) can
+; ;; share 0-100% of their cpu/bandwidth requirments.
+
+; edge_share q1 q2 q4 q5 100
+; op_share q1 q4 50
