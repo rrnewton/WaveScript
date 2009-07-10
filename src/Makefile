@@ -22,9 +22,9 @@ basic:
 	@echo; echo GENERATING AGGREGATE LIBRARIES
 	@echo "======================================================================"
 	$(MAKE) aggregated
-	@echo; echo BUILDING COMPILER UNDER IKARUS
+	@echo; echo BUILDING COMPILER # UNDER IKARUS
 	@echo "======================================================================"
-	$(MAKE) ik
+	$(MAKE) chez || $(MAKE) ik 
 
 # 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 # 	@echo "======================================================================"
@@ -68,17 +68,20 @@ aggregated:
 
 # With some Scheme implementations I'm having problems with passing in a command line argument with a space inside it.
 ws/common.sls:
-	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common || \
-	$(CHEZ) --program ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
-#	@./generate_main_r6rs.ss common_import_list.sexp '(ws common)'
-#	@./generate_main_r6rs.ss common_import_list.sexp "(ws"' '"common)"
+	plt-r6rs                ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
+        # This is hacked to work with either scheme implementation:
+#	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common || \
+#	$(CHEZ)   --program     ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
+
+
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
 
 main_r6rs.sls:
-	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss || \
-	$(CHEZ) --program ./generate_main_r6rs.ss 
-#	@./generate_main_r6rs.ss 
-#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
+	plt-r6rs                ./generate_main_r6rs.ss 
+#	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss || \
+#	$(CHEZ) --program ./generate_main_r6rs.ss 
+
+##	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
 
 
 #----------------------------------------#

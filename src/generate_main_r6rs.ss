@@ -1,4 +1,4 @@
-#! /usr/bin/env scheme-script
+;#! /usr/bin/env scheme-script
 
 ;; This script scrapes the export lists from all the files that go into the main library.
 ;; It aggregates them to generate main_r6rs.sls

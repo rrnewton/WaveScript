@@ -12,6 +12,8 @@
 ## R6RS VERSION:
 ############################################################
 
+## FIXME: This branch assumes that thecommand "chez" is in the path.
+
 ## What's a good way to check if we're in R6RS mode?
 
 ## The R6RS version doesn't currently compile a debug version:
