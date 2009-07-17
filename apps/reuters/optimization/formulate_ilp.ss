@@ -6,17 +6,32 @@ exec regiment.chez i --script $0 $*
 
 ;exec chez74 --script $0 $*
 
-;(define )
-(printf "woot2\n")
+(define (read-qopt fn)
+ (filter (compose not null?)
+      (file->linelists fn)))
 
+(define raw (read-qopt "test.qopt"))
+
+;;==============================================================================
 
 (define latencies (make-eq-hashtable))
 ;(define edge-bw   (make-eq-hashtable))
 
 ;; An edge is a pair (src . dst), and each edge has a bandwidth.
 (define edge-bw   (make-hashtable equal-hash equal?))
-(define link-bw   (make-hashtable equal-hash equal?)) ;; Same here
-(define link-lat  (make-hashtable equal-hash equal?)) ;; and here
+
+
+;; This is used simply as a set to keep track of all links (without
+;; duplicate entries for the reverse links).
+(define links-tbl (make-hashtable equal-hash equal?))
+
+;; This keeps track of the canonical name for each link.
+(define links-canonical (make-hashtable equal-hash equal?))
+
+;; Links are undirected.  We make entries for (a . b) and (b . a)
+;; We could (should?) treat separate directions independently.
+(define link-bw   (make-hashtable equal-hash equal?)) 
+(define link-lat  (make-hashtable equal-hash equal?)) 
 
 (define op-cpu     (make-eq-hashtable))
 (define op-pin     (make-eq-hashtable))
@@ -25,20 +40,14 @@ exec regiment.chez i --script $0 $*
 (define node-pinned  (make-eq-hashtable))
 (define node-cpu     (make-eq-hashtable))
 
-(define (read-qopt fn)
- (filter (compose not null?)
-      (file->linelists fn)))
-
-(define raw (read-qopt "test.qopt"))
-
 (define (filt sym)
   (map cdr 
     (filter (lambda (l) (eq? sym (car l)))
       raw)))
-
 (define queries  
   (map car (filt 'query)))
 
+;;==============================================================================
 
 ;; Loads the meta-data into global variables and returns network graph
 ;; and a list of query graphs.
@@ -68,9 +77,21 @@ exec regiment.chez i --script $0 $*
 
 	  
 	  [(link ,src ,band ,latency -> ,dst)
-	   (define pr (cons src dst))
-	   (hashtable-set! link-bw  pr band)
-	   (hashtable-set! link-lat pr latency)]
+	   (define pr1 (cons src dst))
+	   (define pr2 (cons dst src))
+
+	   (unless (hashtable-contains? links-tbl pr2)	     
+	     (begin
+	       (hashtable-set! links-tbl pr1 #t)
+	       (hashtable-set! links-canonical pr1 pr1)
+	       (hashtable-set! links-canonical pr2 pr1)
+	       ))
+
+	   (hashtable-set! link-bw  pr1 band)
+	   (hashtable-set! link-bw  pr2 band)
+	   (hashtable-set! link-lat pr1 latency)
+	   (hashtable-set! link-lat pr2 latency)
+	   ]
 
 	  ;; Ignored, handled above:
 	  [(query ,name ,opnames ...)
@@ -86,12 +107,30 @@ exec regiment.chez i --script $0 $*
     raw)
   )
 
+;;========================================
 
 (define (cartesian-product a* b*)
   (apply append
    (map (lambda (a)
 	  (map (lambda (b) (list a b)) b*))
      a*)))
+
+
+(define (map-distinct-pairs f ls)
+  (let loop1 ((l1 ls))
+    (if (null? l1) '()
+	(let loop2 ((l2 (cdr l1)))
+	  (if (null? l2) 
+	      (loop1 (cdr l1))
+	      (cons (f (car l1) (car l2))
+		    (loop2 (cdr l2))))
+	  ))))
+
+;; Todo: plug in a shortest path algorithm:
+(define (shortest-path graph a b)
+  99)
+
+
 
 ;; Ok, let's see if I can actually remember my scheme.
 ;; This produces output that uses certain "shorthands" like MIN.
@@ -100,17 +139,22 @@ exec regiment.chez i --script $0 $*
   ;(define edges (filt 'edge))
   ;(define links (filt 'link))  
   (define edges (vector->list (hashtable-keys edge-bw))) ;; All edges that have been registered
-  (define links (vector->list (hashtable-keys link-bw)))
+  (define links (vector->list (hashtable-keys links-tbl)))
   (define ops   (vector->list (hashtable-keys op-cpu))) 
   (define nodes (vector->list (hashtable-keys node-cpu)))
 
-  (define (edgevar   n1 n2)    (symbol-append 'edge_  n1 '_ n2))
-  (define (assignvar op node)  (symbol-append 'assign_op '_ node))
-
   (define (binary var) `((>= ,var 0) (<= ,var 1)))
 
+  (define (assignvar op node)  (symbol-append 'assign_op '_ node))
   (define assignvars (map (curry apply assignvar) (cartesian-product ops nodes)))
-  (define edgevars   (map (lambda (pr) (edgevar (car pr) (cdr pr))) edges))
+  
+  ;; Variables for the real bandwidth used on real edges:
+  ;(define (edgevar   n1 n2)    (symbol-append 'edgebw_  n1 '_ n2))
+  ;(define edgevars   (map (lambda (pr) (edgevar (car pr) (cdr pr))) edges))
+
+  (define (linkvar   n1 n2)    (symbol-append 'linkbw_  n1 '_ n2))
+  (define linkvars   (map (lambda (pr) (linkvar (car pr) (cdr pr))) links))
+
 
   (ASSERT (not (null? queries)))  
  
@@ -123,8 +167,27 @@ exec regiment.chez i --script $0 $*
     "Force assignment variables to be binary:" 
     (map binary assignvars))
 
-   (list "Force edge vars to be binary:"
-	 (map binary edgevars))
+   "Transitively close the graph by introducing virtual edges."
+   "  There may be more than one virtual edge between nodes (different paths)."
+   
+   (map-distinct-pairs
+    (lambda (a b) 
+	  ;; For every pair of real nodes we introduce a virtual edge.		
+	  (let ([var (symbol-append 'virtlinkbw_ a '_ b)]
+		[canon (hashtable-ref links-canonical (cons a b) #f)])
+	    ;; If a real edge exists:
+	    (printf "Contains ~a\n" (cons a b))		   
+	    (if canon
+		`(= ,var ,(linkvar (car canon) (cdr canon)))
+		;; Insert the sum of the edges on the shortest path:
+		`(= ,var MAGIC)
+		))) 
+    (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))
+   
+
+   ;(list "Force edge vars to be binary:" (map binary edgevars))
+   
+   
 
    "Introduce variables for the bandwidth consumed by each query edge" 
    (map (lambda (quer) 
@@ -133,7 +196,9 @@ exec regiment.chez i --script $0 $*
 	  )
      queries)
 
-   ""
+   "Introduce path variables for every path through a query"
+   
+   "Define the latency of a query as its most latent path"
 
    "Objective function: Minimize latency for each query "
    
@@ -166,6 +231,7 @@ exec regiment.chez i --script $0 $*
 
 (pretty-print (values->list (hashtable-entries edge-bw)))
 
+(printf "Links:\n")
 (pretty-print (values->list (hashtable-entries link-bw)))
 (pretty-print (values->list (hashtable-entries link-lat)))
 
@@ -196,3 +262,4 @@ exec regiment.chez i --script $0 $*
 	(filt 'edge)
 	)
   )
+
