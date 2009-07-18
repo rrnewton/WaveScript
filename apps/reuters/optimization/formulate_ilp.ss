@@ -223,11 +223,10 @@ exec regiment.chez i --script $0 $*
   '([a b c]
     [b c]
     [c d]
-    [d ]
-;    [d e]
-;    [e f]
-;    [f g]
-;    [g a]
+    [d e]
+    [e f]
+    [f g]
+    [g a]
     )))
 ;(pretty-print (f 'c 'b))
 (printf "Computing path:\n")
