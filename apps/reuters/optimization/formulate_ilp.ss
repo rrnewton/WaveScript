@@ -127,7 +127,117 @@ exec regiment.chez i --script $0 $*
 	  ))))
 
 ;; Todo: plug in a shortest path algorithm:
-(define (shortest-path graph a b)
+;; The Floyd-Warshall algorithm (dynamic programming).
+;; Input a directed graph represented as a list ((src dst1 dst2 ...) ...).
+;; Returns: a function that unpacks the shortest path for a src/dst pair.
+(define (shortest-paths graph)
+  (define N (length graph))    
+  (define paths (make-vector (fx* N N) #f)) ;; A matrix encoding paths.  
+  (define cost  (make-vector (fx* N N) #f)) ;; A corresponding matrix with path costs (hops).
+  (define (get m x y)     (vector-ref  m (fx+ (fx* x N) y)))
+  (define (set m x y val) (vector-set! m (fx+ (fx* x N) y) val))
+  
+  (define inf (greatest-fixnum)) ;; Positive infinity (approximately)
+  
+  (define indices (make-eq-hashtable N)) ;; Reencode the node names as numbers.
+  (define revinds (make-eq-hashtable N)) ;; Remember the reverse mapping to decode.
+  (define table   (make-vector N #f))    ;; Reencode the graph as a vector.
+  (define (do-pos x y)
+    (or (get cost x y)
+	;; Consider posible neighbors:
+	(let loop ([ls (vector-ref table x)] 
+		   [bestnode #f]
+		   [bestcost inf])
+	  (if (null? ls)
+	      ;; Note, might set the cost to "inf":
+	      (begin (set paths x y bestnode)
+		     (set cost  x y bestcost)
+		     bestcost)
+	      (let ([result (do-pos (car ls) y)])
+		(if (= result inf)
+		    (loop (cdr ls) bestnode bestcost)
+		    (let ([thiscost (fx+ 1 result)])
+		      (if (fx< thiscost bestcost)
+			  (loop (cdr ls) (car ls) thiscost)
+			  (begin
+			    #;
+			    (printf "       Had another path, not worth it: ~a ~a, I can do it for ~a through ~a\n"
+				    (hashtable-ref revinds (car ls) 'huh) thiscost bestcost
+				    (hashtable-ref revinds bestnode 'huh))
+			    (loop (cdr ls) bestnode bestcost)
+			    )))))))))
+
+
+  ;; Map node names onto indices:
+  ;; ASSUMES: that there is an entry for every node.
+  (for-eachi (lambda (i ls)
+	       (hashtable-set! indices (car ls) i)
+	       (hashtable-set! revinds i (car ls)))
+	     graph)
+
+  ;; Reencode as numeric indices:
+  (let ([encoded (map (lambda (ls) 
+			(map (lambda (o) (ASSERT (hashtable-ref indices o #f)))
+			  ls))
+		   graph)])
+
+  ;; Populate the table, and put in initial edges:
+  (for-each (lambda (ls) 
+	      (define hd (car ls))
+	      (vector-set! table hd (cdr ls))
+	      (for-each (lambda (dst) 
+			  (set paths hd dst dst) ;; Connect directly
+			  (set cost  hd dst 1))
+		(cdr ls))
+	      )
+    encoded)
+  
+  ;; Now do a "tug" on each position, to make sure they're all computed:
+  ;; Deactivate this to do it lazily:
+  (if #f 
+      (for x = 0 to (sub1 N)
+	   (for y = 0 to (sub1 N)
+		(do-pos x y))))
+  
+  ;(inspect paths)
+
+  ;; Return a function that can read out the shortest path for a src/dst pair:
+  (lambda (src dst) 
+    (define _s (ASSERT (hashtable-ref indices src #f)))
+    (define _d (ASSERT (hashtable-ref indices dst #f)))
+    ;; Do a "pull" on that position:
+    (do-pos _s _d)
+    (let read ([n _s])
+      (if (not n) #f
+	  (if (fx= n _d) ;; Have we arrived?
+	      (list dst)
+	      (let ([tail (read (get paths n _d))])
+		(if tail
+		    (cons (hashtable-ref revinds n #f) tail)
+		    #f))	      
+	      ))))
+  ))
+
+(define f
+  (shortest-paths 
+  '([a b c]
+    [b c]
+    [c d]
+    [d ]
+;    [d e]
+;    [e f]
+;    [f g]
+;    [g a]
+    )))
+;(pretty-print (f 'c 'b))
+(printf "Computing path:\n")
+(pretty-print (f 'a 'd))
+(printf "Computing reverse path:\n")
+(pretty-print (f 'd 'a))
+(exit)
+
+
+(define (unpack-path matrix src dst)
   99)
 
 
