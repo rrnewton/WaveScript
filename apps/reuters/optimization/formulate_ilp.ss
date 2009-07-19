@@ -15,17 +15,18 @@ exec regiment.chez i --script $0 $*
 ;;==============================================================================
 
 (define latencies (make-eq-hashtable))
-;(define edge-bw   (make-eq-hashtable))
 
 ;; An edge is a pair (src . dst), and each edge has a bandwidth.
 (define edge-bw   (make-hashtable equal-hash equal?))
-
 
 ;; This is used simply as a set to keep track of all links (without
 ;; duplicate entries for the reverse links).
 (define links-tbl (make-hashtable equal-hash equal?))
 
-;; This keeps track of the canonical name for each link.
+;; This one, on the other hand, has duplicate entries for reverse links:
+;; Representing an undirected graph is a little tricky.
+;;   Do we use the key (a . b) or (b . a) to reach into the hash table?
+;;   This maps each link (pair) to its canonical form.
 (define links-canonical (make-hashtable equal-hash equal?))
 
 ;; Links are undirected.  We make entries for (a . b) and (b . a)
@@ -33,88 +34,61 @@ exec regiment.chez i --script $0 $*
 (define link-bw   (make-hashtable equal-hash equal?)) 
 (define link-lat  (make-hashtable equal-hash equal?)) 
 
-(define op-cpu     (make-eq-hashtable))
-(define op-pin     (make-eq-hashtable))
-(define op-query   (make-eq-hashtable))
+;; Should probably refactor this data to store a record per-op:
+(define op-cpu      (make-eq-hashtable))
+(define op-pin      (make-eq-hashtable))
+(define op-query    (make-eq-hashtable))
+(define op-neighbors (make-eq-hashtable)) ;; (Outgoing) neighbors
+(define op-incoming  (make-eq-hashtable)) ;; The reverse.
 
 (define node-pinned  (make-eq-hashtable))
 (define node-cpu     (make-eq-hashtable))
+
+;; A table mapping a node to its neighbors.
+;; This is another way of encoding the graph:
+(define node-neighbors (make-eq-hashtable))
+
 
 (define (filt sym)
   (map cdr 
     (filter (lambda (l) (eq? sym (car l)))
       raw)))
-(define queries  
-  (map car (filt 'query)))
+(define queries  (map car (filt 'query)))
+(define query->ops (make-eq-hashtable))
 
-;;==============================================================================
-
-;; Loads the meta-data into global variables and returns network graph
-;; and a list of query graphs.
-(define (load-globals raw)
-  (define qgraphs '())
-  (define netgraph '())
-  ;; This maps nodes back to the queries that they are part of.
-  ;(define reverse-lookup (make-eq-hashtable))
-  (for-each 
-      (lambda (entry)
-	(void)
-	(match entry
-	  ;; An edge can have multiple targets (hypergraph):
-	  [(edge ,src ,bw  -> ,dst* ...)
-	   (for-each (lambda (dst) (hashtable-set! edge-bw (cons src dst) bw)) 
-	     dst*)]
-
-	  [(pin ,op ,node)	   
-	   (when (hashtable-contains? op-pin op)
-	     (error 'load-globals "Corrupt data file, cannot pin this node more than once: ~s" op))
-	   (hashtable-set! op-pin op node)
-	   (hashtable-set! node-pinned node
-			   (set-cons:list op (hashtable-ref node-pinned node '())))]
-
-	  [(op ,name ,cpucost)     (hashtable-set! op-cpu name cpucost)]
-	  [(node ,name ,cpucap)    (hashtable-set! node-cpu name cpucap)]
-
-	  
-	  [(link ,src ,band ,latency -> ,dst)
-	   (define pr1 (cons src dst))
-	   (define pr2 (cons dst src))
-
-	   (unless (hashtable-contains? links-tbl pr2)	     
-	     (begin
-	       (hashtable-set! links-tbl pr1 #t)
-	       (hashtable-set! links-canonical pr1 pr1)
-	       (hashtable-set! links-canonical pr2 pr1)
-	       ))
-
-	   (hashtable-set! link-bw  pr1 band)
-	   (hashtable-set! link-bw  pr2 band)
-	   (hashtable-set! link-lat pr1 latency)
-	   (hashtable-set! link-lat pr2 latency)
-	   ]
-
-	  ;; Ignored, handled above:
-	  [(query ,name ,opnames ...)
-	   ;(printf "GOT QUERY ~a ~s  ~a \n" name queries (box? queries ))
-	   ;(set-box! queries (cons name (unbox queries)))
-	   (for-each (lambda (op) (hashtable-set! op-query op name))  opnames)
-	   ;(printf "queries ~a\n" queries)
-	   ]
-	  ;; All the network names, not needed here (or ever really).
-	  [(network ,name* ...) (void)]
-
-	  ))
-    raw)
-  )
 
 ;;========================================
+;; HELPERS:
+
+;(define (map-append fn ls) (apply append (map fn ls)))
+(define (map-append fn ls)
+  (let loop ([ls ls])
+    (if (null? ls) '()
+	(append (fn (car ls)) (loop (cdr ls))))))
+
+(define (hashtable-cons! tab k v)
+  (hashtable-set! tab k (cons v (hashtable-ref tab k '()))))
+
+(define (sliding-window win advance ls)
+  (define N (length ls))
+  (let loop ([n N] [ls ls])
+    (if (fx< n win) '()
+	(cons (list-head ls win)
+	      (if (fx> n advance)
+		    (loop (fx- n advance)
+			  (list-tail ls advance))
+		    '())))))
+
+(define (map-path-links fn path)
+  (map (lambda (x) (fn (car x) (cadr x)))
+    (sliding-window 2 1 path)))
+
 
 (define (cartesian-product a* b*)
   (apply append
    (map (lambda (a)
 	  (map (lambda (b) (list a b)) b*))
      a*)))
-
 
 (define (map-distinct-pairs f ls)
   (let loop1 ((l1 ls))
@@ -136,9 +110,7 @@ exec regiment.chez i --script $0 $*
   (define cost  (make-vector (fx* N N) #f)) ;; A corresponding matrix with path costs (hops).
   (define (get m x y)     (vector-ref  m (fx+ (fx* x N) y)))
   (define (set m x y val) (vector-set! m (fx+ (fx* x N) y) val))
-  
-  (define inf (greatest-fixnum)) ;; Positive infinity (approximately)
-  
+  (define inf     (greatest-fixnum))     ;; Positive infinity (approximately)
   (define indices (make-eq-hashtable N)) ;; Reencode the node names as numbers.
   (define revinds (make-eq-hashtable N)) ;; Remember the reverse mapping to decode.
   (define table   (make-vector N #f))    ;; Reencode the graph as a vector.
@@ -166,21 +138,20 @@ exec regiment.chez i --script $0 $*
 				    (hashtable-ref revinds bestnode 'huh))
 			    (loop (cdr ls) bestnode bestcost)
 			    )))))))))
-
-
   ;; Map node names onto indices:
   ;; ASSUMES: that there is an entry for every node.
   (for-eachi (lambda (i ls)
 	       (hashtable-set! indices (car ls) i)
 	       (hashtable-set! revinds i (car ls)))
 	     graph)
+  ;; This version does not make that assumption:
+ ;(let loop ([i 0]))
 
   ;; Reencode as numeric indices:
   (let ([encoded (map (lambda (ls) 
 			(map (lambda (o) (ASSERT (hashtable-ref indices o #f)))
 			  ls))
 		   graph)])
-
   ;; Populate the table, and put in initial edges:
   (for-each (lambda (ls) 
 	      (define hd (car ls))
@@ -188,19 +159,13 @@ exec regiment.chez i --script $0 $*
 	      (for-each (lambda (dst) 
 			  (set paths hd dst dst) ;; Connect directly
 			  (set cost  hd dst 1))
-		(cdr ls))
-	      )
+		(cdr ls)))
     encoded)
-  
   ;; Now do a "tug" on each position, to make sure they're all computed:
   ;; Deactivate this to do it lazily:
-  (if #f 
-      (for x = 0 to (sub1 N)
-	   (for y = 0 to (sub1 N)
-		(do-pos x y))))
-  
-  ;(inspect paths)
-
+  (if #f (for x = 0 to (sub1 N)
+	      (for y = 0 to (sub1 N)
+		   (do-pos x y))))
   ;; Return a function that can read out the shortest path for a src/dst pair:
   (lambda (src dst) 
     (define _s (ASSERT (hashtable-ref indices src #f)))
@@ -214,9 +179,7 @@ exec regiment.chez i --script $0 $*
 	      (let ([tail (read (get paths n _d))])
 		(if tail
 		    (cons (hashtable-ref revinds n #f) tail)
-		    #f))	      
-	      ))))
-  ))
+		    #f))))))))
 
 (define f
   (shortest-paths 
@@ -229,16 +192,65 @@ exec regiment.chez i --script $0 $*
     [g a]
     )))
 ;(pretty-print (f 'c 'b))
-(printf "Computing path:\n")
+(printf "Computing path: ")
 (pretty-print (f 'a 'd))
-(printf "Computing reverse path:\n")
+(printf "Computing reverse path:  ")
 (pretty-print (f 'd 'a))
-(exit)
+;(exit)
 
 
-(define (unpack-path matrix src dst)
-  99)
+;;==============================================================================
 
+;; Loads the meta-data into global variables and returns network graph
+;; and a list of query graphs.
+(define (load-globals raw)
+  ;; This maps nodes back to the queries that they are part of.
+  ;(define reverse-lookup (make-eq-hashtable))
+  (for-each 
+      (lambda (entry)
+	(void)
+	(match entry
+	  ;; An edge can have multiple targets (hypergraph):
+	  [(edge ,src ,bw  -> ,dst* ...)
+	   (hashtable-set! op-neighbors src 
+			   (append dst* (hashtable-ref op-neighbors src '())))	  
+	   (for-each (lambda (dst) 
+		       (hashtable-set!  edge-bw (cons src dst) bw)
+		       (hashtable-cons! op-incoming dst src))
+	     dst*)]
+
+	  [(pin ,op ,node)	   
+	   (when (hashtable-contains? op-pin op)
+	     (error 'load-globals "Corrupt data file, cannot pin this node more than once: ~s" op))
+	   (hashtable-set! op-pin op node)
+	   (hashtable-set! node-pinned node
+			   (set-cons:list op (hashtable-ref node-pinned node '())))]
+	  [(op ,name ,cpucost)     (hashtable-set! op-cpu name cpucost)]
+	  [(node ,name ,cpucap)    (hashtable-set! node-cpu name cpucap)]
+
+	  [(link ,src ,band ,latency -- ,dst)
+	   (define pr1 (cons src dst))
+	   (define pr2 (cons dst src))
+	   (unless (hashtable-contains? links-tbl pr2)	     
+	     (begin
+	       (hashtable-set! links-tbl pr1 #t)
+	       (hashtable-set! links-canonical pr1 pr1)
+	       (hashtable-set! links-canonical pr2 pr1)
+	       (hashtable-cons! node-neighbors src dst)
+	       (hashtable-cons! node-neighbors dst src)
+	       ))
+	   (hashtable-set! link-bw  pr1 band)
+	   (hashtable-set! link-bw  pr2 band)
+	   (hashtable-set! link-lat pr1 latency)
+	   (hashtable-set! link-lat pr2 latency)]
+
+	  ;; Ignored, handled above:
+	  [(query ,name ,opnames ...)
+	   (hashtable-set! query->ops name opnames)
+	   (for-each (lambda (op) (hashtable-set! op-query op name))  opnames)]
+	  ;; All the network names, not needed here (or ever really).
+	  [(network ,name* ...) (void)]))
+    raw))
 
 
 ;; Ok, let's see if I can actually remember my scheme.
@@ -252,83 +264,157 @@ exec regiment.chez i --script $0 $*
   (define ops   (vector->list (hashtable-keys op-cpu))) 
   (define nodes (vector->list (hashtable-keys node-cpu)))
 
+
+
+  ;; For tracking which virt edges pass through real ones.
+  (define incident-virtuals   (make-hashtable equal-hash equal?))
+
   (define (binary var) `((>= ,var 0) (<= ,var 1)))
 
-  (define (assignvar op node)  (symbol-append 'assign_op '_ node))
-  (define assignvars (map (curry apply assignvar) (cartesian-product ops nodes)))
+  (define (assignvar op node)  (symbol-append 'assign_ op '_ node))
+
+  (define assignvars (map (lambda (a)
+			    (map (lambda (b) (assignvar a b)) nodes))
+		       ops))
+  (define all_assignvars (apply append assignvars))
   
   ;; Variables for the real bandwidth used on real edges:
   ;(define (edgevar   n1 n2)    (symbol-append 'edgebw_  n1 '_ n2))
   ;(define edgevars   (map (lambda (pr) (edgevar (car pr) (cdr pr))) edges))
 
-  (define (linkvar   n1 n2)    (symbol-append 'linkbw_  n1 '_ n2))
-  (define linkvars   (map (lambda (pr) (linkvar (car pr) (cdr pr))) links))
+  (define (linkvar    n1 n2)    (symbol-append 'linkbw_  n1 '_ n2))
+  ;(define (linklatvar n1 n2)    (symbol-append 'linklat_  n1 '_ n2))
 
+  (define (virtlinklat-var a b)  (symbol-append 'virtlink_lat_ a '_ b))
+  (define (virtlinkbw-var  a b)  (symbol-append 'virtlink_bw_ a '_ b))
 
-  (ASSERT (not (null? queries)))  
+  ;(define linkvars   (map (lambda (pr) (linkvar (car pr) (cdr pr))) links))
+  (define (edgelatvar n1 n2)    (symbol-append 'edgelat_  n1 '_ n2))
+  (define (querylatvar q)       (symbol-append 'querylatency_  q))
+
+  ;; A (list) graph representation, directed edges (and we put them in both directions to simulate undirected).
+  (define network-graph
+    (let-values ([(keys vals) (hashtable-entries node-neighbors)])
+      (vector->list (vector-map cons keys vals))))
+  (define pathfinder (shortest-paths network-graph))
+
+  ;; Sort them just for display purposes:   
+  (define sorted-nodes (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))    
+  (define virtuals ;; Compute these constraints early to populate incident-virtuals table.
+    (list 
+     "Transitively close the graph by introducing virtual edges."
+     "  We assume shortest path routing to establish virtual/physical correspondence." 
+     "  Virtual edge latency is the sum of edges traversed." 
+     (map-distinct-pairs
+      (lambda (a b) 
+	;; For every pair of real nodes we introduce a virtual edge.		
+	(let* ([var (virtlinklat-var a b)]
+	       [pair (cons a b)]
+	       [canon (hashtable-ref links-canonical pair #f)])	  
+	  ;; If a real edge exists:
+	  (if canon
+	      (begin 
+		(hashtable-cons! incident-virtuals pair (virtlinkbw-var a b))
+		`(= ,var ,(ASSERT (hashtable-ref link-lat canon #f))
+		    #;
+		    (linklatvar (car canon) (cdr canon))))	      
+	      ;; The sum of the edge latencies on the shortest path:
+	      `(= ,var (+ ,@(map-path-links
+			     (lambda (src dst) 
+			       ;; Register that this virtual edge brings load to each of these physical edge:
+			       (hashtable-cons! incident-virtuals (cons src dst) (virtlinkbw-var a b))
+			       (ASSERT (hashtable-ref link-lat (cons src dst) #f))
+			       #;
+			       (linklatvar src dst)
+			       )
+			     (pathfinder a b)))))))
+      sorted-nodes)))
+
+  (ASSERT (not (null? queries)))
  
-  (cons*
+  (list
      
    ;; Assignment variables: binary variables representing the op/node assignment (quadratic)
    (list
-    "Constrain the sum to 1 -- only can assign op to one node:"      
-    `(= 1 (+ ,@assignvars))
+    "Assignment: Constrain the sum to 1 -- only can assign op to one node:"      
+    (map (lambda (ls) `(= 1 (+ ,@ls))) assignvars)
     "Force assignment variables to be binary:" 
-    (map binary assignvars))
+    (map binary all_assignvars))
 
-   "Transitively close the graph by introducing virtual edges."
-   "  There may be more than one virtual edge between nodes (different paths)."
-   
-   (map-distinct-pairs
-    (lambda (a b) 
-	  ;; For every pair of real nodes we introduce a virtual edge.		
-	  (let ([var (symbol-append 'virtlinkbw_ a '_ b)]
-		[canon (hashtable-ref links-canonical (cons a b) #f)])
-	    ;; If a real edge exists:
-	    (printf "Contains ~a\n" (cons a b))		   
-	    (if canon
-		`(= ,var ,(linkvar (car canon) (cdr canon)))
-		;; Insert the sum of the edges on the shortest path:
-		`(= ,var MAGIC)
-		))) 
-    (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))
-   
-
-   ;(list "Force edge vars to be binary:" (map binary edgevars))
+   virtuals ;; stick them in:
+      
+   """The bandwidth consumed on each physical edge is the sum of all virtual edges passing through."
+   (map (lambda (pr) 
+	  (define incidents (hashtable-ref incident-virtuals pr '()))
+	  (if (null? incidents) '()
+	      `(= ,(linkvar (car pr) (cdr pr)) 
+		  (+ ,@incidents))))
+     links)
+   "And the bandwidth on each physical edge must be less than its physical limit."
+   (map (lambda (pr) 	  
+	  `(<= ,(linkvar (car pr) (cdr pr)) 
+	       ,(ASSERT (hashtable-ref link-bw pr #f))))
+     links)
    
    
-
-   "Introduce variables for the bandwidth consumed by each query edge" 
-   (map (lambda (quer) 
-	  (define var (symbol-append 'SUMBW_ quer))
-	  `(= ,var )
-	  )
+   """The latency of a query is defined as the worst latency of any of its source->sink paths."   
+   "  Currently we look at only the shortest path for each source/sink pair, not every path."
+   "  We also only consider network latency and not varation in compute latency." 
+   ;"  (Could do longest, or some other scheme...)"
+   (map (lambda (query)
+	  (define theseops (hashtable-ref query->ops query '()))	  
+	  (define graph 
+	    (map (lambda (op)
+		   (cons op (hashtable-ref op-neighbors op '())))
+	      theseops))
+	  ;; Based on the topology of the query we define sources as
+	  ;; nodes with no incoming edges and sinks as those with no
+	  ;; outgoing ones.
+	  (define sinks
+	    (map car 
+	      (filter (lambda (entry) (null? (cdr entry))) graph)))
+	  (define sources
+	    (filter (lambda (op) (null? (hashtable-ref op-incoming op '())))
+	      theseops))
+	  (define path (shortest-paths graph))
+	  
+	  `(= ,(querylatvar query)
+	      (MAX	    
+	       ,@(map
+		     (lambda (src) 
+		       (map-append (lambda (sink) 
+				     `(+ ,@(map-path-links edgelatvar (path src sink))))
+				   sinks))
+		   sources))))
      queries)
-
-   "Introduce path variables for every path through a query"
    
-   "Define the latency of a query as its most latent path"
-
-   "Objective function: Minimize latency for each query "
    
-   (map 
-      (lambda (entry)	
-	(match entry
-	  ;; An edge can have multiple targets (hypergraph):
-	  [(edge ,src ,bw  -> ,dst* ...)
-	   '()]
-
-	  [(link ,src ,band ,latency -> ,dst)
-	   '()]
-
-	  [(pin ,op ,node)            '()]
-	  [(op ,name ,cpucost)        '()]
-	  [(node ,name ,cpucap)       '()]
-	  [(query ,name ,opnames ...) '()]
-	  [(network ,name* ...)       '()]
-	  ))
-    raw))
-  )
+   """Now begin to tie together the op assignments and the affected edges."
+   ;; If an edge is broken, then its 
+   (map-distinct-pairs
+    (lambda (a b)
+      `(= ,(virtlinkbw-var a b)
+	  (+ ,@(map (lambda (edge) 			     
+		      `(* ,(ASSERT (hashtable-ref edge-bw edge #f))
+			  (AND ,(assignvar (car edge) a)
+			       ,(assignvar (cdr edge) b))))
+		 edges))))
+    sorted-nodes)
+   " Ditto for edge latencies."
+   (map (lambda (edge) 			     
+	  `(= ,(edgelatvar (car edge) (cdr edge))
+	      (+ ,@(map-distinct-pairs
+		    (lambda (a b)
+		      `(* ,(virtlinklat-var a b)
+			  (AND ,(assignvar (car edge) a)
+			       ,(assignvar (cdr edge) b))))
+		    sorted-nodes))))
+     edges)
+   
+   
+   "Minimize sum of query latencies."
+   `(OBJECTIVE (+ ,@(map querylatvar queries)))
+))
 
 
 ;;================================================================================
@@ -352,6 +438,8 @@ exec regiment.chez i --script $0 $*
 (pretty-print (values->list (hashtable-entries node-pinned)))
 
 (printf "queries ~a\n" queries)
+
+(printf "================================================================================\n\n\n")
 
 (pretty-print (generate-constraints))
 

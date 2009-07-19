@@ -5,8 +5,8 @@ network n1 n2 n3
 node n1 55
 node n2 55
 node n3 55
-link n1 2.1 2.3 -> n2
-link n2 2.4 2.5 -> n3
+link n1 2.1 2.3 -- n2
+link n2 2.4 2.5 -- n3
 
 ;; A query to be placed on that network:
 
