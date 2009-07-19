@@ -379,7 +379,7 @@ exec regiment.chez i --script $0 $*
 	  (define path (shortest-paths graph))
 	  
 	  `(= ,(querylatvar query)
-	      (MAX	    
+	      (overMAX ; underMAX
 	       ,@(map
 		     (lambda (src) 
 		       (map-append (lambda (sink) 
@@ -415,6 +415,21 @@ exec regiment.chez i --script $0 $*
    "Minimize sum of query latencies."
    `(OBJECTIVE (+ ,@(map querylatvar queries)))
 ))
+
+;;================================================================================
+
+;; Desugar to ILP
+
+;; This is what I came up with for AND:
+; (AND a b) => c     | c <= a, c <= b, c > a+b-2
+
+;; And from the NSDI paper:
+; (XOR a b) => c + d | 0 <= a-b + c <= 1, 0 <= b-a + d <= 1, 
+
+;; We can define overMAX/underMAX and overMIN/underMIN,
+;; But we can't define a true MIN or MAX.
+; x = (overMAX a b) => x >= a, x >= b 
+
 
 
 ;;================================================================================
