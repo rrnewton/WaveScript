@@ -599,20 +599,3 @@ exec regiment.ikarus i --script $0 $*
 ; (printf "================================================================================\n\n\n")
 (print-ilp (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
 
-
-#;
-(define (read-qopt fn)
-  (define raw
-    (filter (compose not null?)
-      (file->linelists fn)))
-  (define (filt sym)
-    (map cdr 
-      (filter (lambda (l) (eq? sym (car l)))
-	raw)))
-  (list (filt 'node)
-	(filt 'query)
-	(filt 'op)
-	(filt 'edge)
-	)
-  )
-
