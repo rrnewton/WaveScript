@@ -1,8 +1,8 @@
 #! /bin/bash
 #|
 exec regiment.chez i --script $0 $*
-exec regiment.plt i --script $0 $*
-exec regiment.ikarus i --script $0 $*
+#exec regiment.plt i --script $0 $*
+#exec regiment.ikarus i --script $0 $*
 |#
 
 ;exec chez74 --script $0 $*
@@ -581,7 +581,6 @@ exec regiment.ikarus i --script $0 $*
 	   (printf "// (See objective function above, moved to top of file.)\n")]
 	  ))
     cstrts))
-
 
 
 ;;================================================================================
