@@ -1,7 +1,8 @@
 #! /bin/bash
 #|
 exec regiment.chez i --script $0 $*
-;exec regiment.plt i --script $0 $*
+exec regiment.plt i --script $0 $*
+exec regiment.ikarus i --script $0 $*
 |#
 
 ;exec chez74 --script $0 $*
@@ -191,12 +192,8 @@ exec regiment.chez i --script $0 $*
     [f g]
     [g a]
     )))
-;(pretty-print (f 'c 'b))
-(printf "Computing path: ")
-(pretty-print (f 'a 'd))
-(printf "Computing reverse path:  ")
-(pretty-print (f 'd 'a))
-;(exit)
+;(printf "Computing path: ") (pretty-print (f 'a 'd))
+;(printf "Computing reverse path:  ") (pretty-print (f 'd 'a))
 
 
 ;;==============================================================================
@@ -228,7 +225,7 @@ exec regiment.chez i --script $0 $*
 	  [(op ,name ,cpucost)     (hashtable-set! op-cpu name cpucost)]
 	  [(node ,name ,cpucap)    (hashtable-set! node-cpu name cpucap)]
 
-	  [(link ,src ,band ,latency -- ,dst)
+	  [(link ,src ,band ,latency - ,dst)
 	   (define pr1 (cons src dst))
 	   (define pr2 (cons dst src))
 	   (unless (hashtable-contains? links-tbl pr2)	     
@@ -253,18 +250,14 @@ exec regiment.chez i --script $0 $*
     raw))
 
 
+
 ;; Ok, let's see if I can actually remember my scheme.
 ;; This produces output that uses certain "shorthands" like MIN.
 (define (generate-constraints)
-
-  ;(define edges (filt 'edge))
-  ;(define links (filt 'link))  
   (define edges (vector->list (hashtable-keys edge-bw))) ;; All edges that have been registered
   (define links (vector->list (hashtable-keys links-tbl)))
   (define ops   (vector->list (hashtable-keys op-cpu))) 
   (define nodes (vector->list (hashtable-keys node-cpu)))
-
-
 
   ;; For tracking which virt edges pass through real ones.
   (define incident-virtuals   (make-hashtable equal-hash equal?))
@@ -302,7 +295,7 @@ exec regiment.chez i --script $0 $*
   (define sorted-nodes (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))    
   (define virtuals ;; Compute these constraints early to populate incident-virtuals table.
     (list 
-     "Transitively close the graph by introducing virtual edges."
+     """Transitively close the graph by introducing virtual edges."
      "  We assume shortest path routing to establish virtual/physical correspondence." 
      "  Virtual edge latency is the sum of edges traversed." 
      (map-distinct-pairs
@@ -338,8 +331,17 @@ exec regiment.chez i --script $0 $*
    (list
     "Assignment: Constrain the sum to 1 -- only can assign op to one node:"      
     (map (lambda (ls) `(= 1 (+ ,@ls))) assignvars)
-    "Force assignment variables to be binary:" 
-    (map binary all_assignvars))
+    " Force assignment variables to be binary:" 
+    (map binary all_assignvars)
+    """ Pin some ops to nodes."
+    (map (lambda (op)
+	   (define pin (hashtable-ref op-pin op #f))
+	   (if pin
+	       `(= 1 ,(assignvar op pin))
+	       '())
+	   )
+      ops)
+    )
 
    virtuals ;; stick them in:
       
@@ -411,52 +413,175 @@ exec regiment.chez i --script $0 $*
 		    sorted-nodes))))
      edges)
    
-   
-   "Minimize sum of query latencies."
+   """Minimize sum of query latencies."
    `(OBJECTIVE (+ ,@(map querylatvar queries)))
-))
+   ))
+
+
+(define (flatten-constraints nested)  
+  (reverse! ;; Cosmetic.
+   (let loop ([x nested] [acc '()])
+     (cond
+      [(null? x) acc]
+      [(pair? x) 
+       (if (symbol? (car x))
+	   (cons x acc)
+	   (loop (cdr x)
+		 (loop (car x) acc)))]
+      [(string? x) (cons x acc)]
+      [else (error 'flatten-constraints "Got an invalid object: ~s" x)]))))
 
 ;;================================================================================
 
-;; Desugar to ILP
+;; Desugar to a normal ILP
 
 ;; This is what I came up with for AND:
 ; (AND a b) => c     | c <= a, c <= b, c > a+b-2
 
 ;; And from the NSDI paper:
 ; (XOR a b) => c + d | 0 <= a-b + c <= 1, 0 <= b-a + d <= 1, 
+;;
+;; WAIT, looks like that can allow c/d to be spuriously high, and
+;; requires that the objective function minimize them.
+;; Is there a tight solution??
+
 
 ;; We can define overMAX/underMAX and overMIN/underMIN,
 ;; But we can't define a true MIN or MAX.
 ; x = (overMAX a b) => x >= a, x >= b 
 
+;; NOTE: This could do some simple inlining as well, but hopefully the
+;; ILP solvers are smart enough that that wouldn't help. 
+(define (desugar-constraints lst)
+  (define (Expr e) 
+    (match e
+      [,s (guard (symbol? s)) (values s '())]
+      [,n (guard (number? n)) (values n '())]
+      [(,arith ,[e* c**] ...)
+       (guard (memq arith '(+ - *)))
+       (values `(,arith ,@e*) (apply append! c**))]
+
+      [(overMax ,rand)  (Expr rand)]
+
+      [(overMAX ,[rand* c**] ...)
+       (define var (unique-name "omax"))
+       (values var
+	       (append! (map (lambda (rand) 
+			       `(>= ,var ,rand))
+			  rand*)
+			(apply append! c**)))]
+      
+      ;; POSSIBLE EXPR DUPLICATION
+      [(AND ,[a c1*] ,[b c2*])
+       (define var (unique-name "c"))
+       (values var  
+	       (cons*
+		`(<= ,var ,a)
+		`(<= ,var ,b)
+		`(> ,var (+ ,a ,b -2))
+		(append! c1* c2*)))]
+
+      [(,other ,rand* ...)
+       (guard (memq other '(underMAX overMIN underMIN XOR)))
+       (error "desugar-constraints: ~a not implemented yet." other)]
+      ))
+  (map (lambda (cnstrt)
+	 (match cnstrt		
+	   [(,op ,[Expr -> e1 c1*] ,[Expr -> e2 c2*])
+	    (guard (memq op '(= < > <= >=)))
+	    (cons `(,op ,e1 ,e2)
+		  (append c1* c2*))]
+	   [,str (guard (string? str)) str]
+	   [(OBJECTIVE ,[Expr -> e c*])
+	    (append c* `((OBJECTIVE ,e)))]
+	   ))
+    lst)
+  )
+
+
+;; Output in a form suitable for an ilp solver
+(define (print-ilp cstrts)
+  (define (Expr e) 
+    (match e
+      [,s (guard (symbol? s)) (display s)]
+      [,n (guard (number? n)) (display n)]
+      [(,arith ,e* ...)       
+       (guard (memq arith '(+ - *)))
+       (let loop ([ls e*])
+	 (if (null? (cdr ls))
+	     (Expr (car ls))
+	     (begin
+	       (Expr (car ls))
+	       (printf " ~a " arith)
+	       (loop (cdr ls)))))]
+      ))
+  (printf "// Script-Generated ILP formulation: \n\n")
+  (printf "// Objective Function:\n")
+  ;; Print the objective function first:  
+  (match (let loop ([ls cstrts])
+	   (if (and (pair? (car ls)) (eq? (caar ls) 'OBJECTIVE))
+	       (car ls) (loop (cdr ls))))
+    [(OBJECTIVE ,e)
+     (printf "min: ")
+     (Expr e)
+     (printf ";\n\n")])
+
+  (for-each 
+      (lambda (line)
+	(match line
+	  [,str (guard (string? str))
+		(if (equal? str "")
+		    (newline)
+		    (printf "// ~a\n" str))
+		]
+	  [(,op ,e1 ,e2) (guard (memq op '(= < > <= >=)))
+	   ;(if (eq? op '=) (newline))
+	   (printf " ")
+	   (Expr e1)
+	   (printf " ~a " op)
+	   (Expr e2)
+	   (printf ";\n")]
+	  
+	  [(OBJECTIVE ,_) 
+	   (printf "// (See objective function above, moved to top of file.)\n")]
+	  ))
+    cstrts))
+
 
 
 ;;================================================================================
 
-(pretty-print raw)
+(unique-name-counter 0)
+
+; (pretty-print raw)
 (load-globals raw)
 
-;(pretty-print )
+; ;(pretty-print )
 
-(pretty-print (values->list (hashtable-entries edge-bw)))
+; (pretty-print (values->list (hashtable-entries edge-bw)))
 
-(printf "Links:\n")
-(pretty-print (values->list (hashtable-entries link-bw)))
-(pretty-print (values->list (hashtable-entries link-lat)))
+; (printf "Links:\n")
+; (pretty-print (values->list (hashtable-entries link-bw)))
+; (pretty-print (values->list (hashtable-entries link-lat)))
 
-(newline)
-(pretty-print (values->list (hashtable-entries op-cpu)))
-(pretty-print (values->list (hashtable-entries node-cpu)))
-(newline)
-(pretty-print (values->list (hashtable-entries op-pin)))
-(pretty-print (values->list (hashtable-entries node-pinned)))
+; (newline)
+; (pretty-print (values->list (hashtable-entries op-cpu)))
+; (pretty-print (values->list (hashtable-entries node-cpu)))
+; (newline)
+; (pretty-print (values->list (hashtable-entries op-pin)))
+; (pretty-print (values->list (hashtable-entries node-pinned)))
 
-(printf "queries ~a\n" queries)
+; (printf "queries ~a\n" queries)
 
-(printf "================================================================================\n\n\n")
+; (printf "================================================================================\n\n\n")
+; (pretty-print (flatten-constraints (generate-constraints)))
 
-(pretty-print (generate-constraints))
+; (printf "================================================================================\n\n\n")
+; (pretty-print (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
+
+; (printf "================================================================================\n\n\n")
+; (printf "================================================================================\n\n\n")
+(print-ilp (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
 
 
 #;
