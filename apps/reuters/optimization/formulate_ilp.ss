@@ -11,7 +11,11 @@ exec regiment.chez i --script $0 $*
  (filter (compose not null?)
       (file->linelists fn)))
 
-(define raw (read-qopt "test.qopt"))
+;; A bunch of spurious arguments because of the way this is invoked (above):
+(unless (= (length (command-line)) 6)
+  (error 'formulate_ilp "This script takes one argument: a .qopt file."))
+
+(define raw (read-qopt (rac (command-line))))
 
 ;;==============================================================================
 
@@ -222,8 +226,8 @@ exec regiment.chez i --script $0 $*
 	   (hashtable-set! op-pin op node)
 	   (hashtable-set! node-pinned node
 			   (set-cons:list op (hashtable-ref node-pinned node '())))]
-	  [(op ,name ,cpucost)     (hashtable-set! op-cpu name cpucost)]
-	  [(node ,name ,cpucap)    (hashtable-set! node-cpu name cpucap)]
+	  [(op ,name   cpu ,cpucost)   (hashtable-set! op-cpu name cpucost)]
+	  [(node ,name cpu ,cpucap)    (hashtable-set! node-cpu name cpucap)]
 
 	  [(link ,src bw ,band lat ,latency <-> ,dst)
 	   (define pr1 (cons src dst))

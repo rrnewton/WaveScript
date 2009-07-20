@@ -1,20 +1,19 @@
 
 ;; The physical network:
 network n1 n2 n3 
-node n1 55
-node n2 56
-node n3 57
+node n1 cpu 55
+node n2 cpu 56
+node n3 cpu 57
 link n1 bw 210 lat 9  <-> n2
 link n2 bw 240 lat 11 <-> n3
 
 ;;========================================
 ;; A query to be placed on that network:
-
 query Q_1 q1 q2 q3 
 
-op q1 21
-op q2 22
-op q3 30
+op q1 cpu 21
+op q2 cpu 22
+op q3 cpu 30
 edge q1 bw 330 -> q2
 edge q2 bw 120 -> q3
 
