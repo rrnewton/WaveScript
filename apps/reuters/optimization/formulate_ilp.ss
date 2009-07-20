@@ -588,25 +588,7 @@ exec regiment.ikarus i --script $0 $*
 
 (unique-name-counter 0)
 
-; (pretty-print raw)
 (load-globals raw)
-
-; ;(pretty-print )
-
-; (pretty-print (values->list (hashtable-entries edge-bw)))
-
-; (printf "Links:\n")
-; (pretty-print (values->list (hashtable-entries link-bw)))
-; (pretty-print (values->list (hashtable-entries link-lat)))
-
-; (newline)
-; (pretty-print (values->list (hashtable-entries op-cpu)))
-; (pretty-print (values->list (hashtable-entries node-cpu)))
-; (newline)
-; (pretty-print (values->list (hashtable-entries op-pin)))
-; (pretty-print (values->list (hashtable-entries node-pinned)))
-
-; (printf "queries ~a\n" queries)
 
 ; (printf "================================================================================\n\n\n")
 ; (pretty-print (flatten-constraints (generate-constraints)))
