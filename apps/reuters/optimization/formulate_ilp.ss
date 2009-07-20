@@ -1,8 +1,8 @@
 #! /bin/bash
 #|
+# This works with either PLT or chez right now (ikarus doesn't have hashtables yet)
+exec regiment.plt i --script $0 $*
 exec regiment.chez i --script $0 $*
-#exec regiment.plt i --script $0 $*
-#exec regiment.ikarus i --script $0 $*
 |#
 
 ;exec chez74 --script $0 $*

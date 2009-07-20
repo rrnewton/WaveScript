@@ -1,6 +1,5 @@
 
 ;; The physical network:
-
 network n1 n2 n3 
 node n1 55
 node n2 56
