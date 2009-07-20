@@ -35,16 +35,6 @@ exec chez --script $0 $*
       (car (command-line-arguments))
       ))
 
-(define (id x) x)
-(define remove-file-extension
-  (lambda (filename)
-    (let loop ([ls (reverse (string->list filename))])
-      (cond
-        [(null? ls) filename] ;no extension to remove
-        [(eq? (car ls) #\.)
-         (list->string (reverse (cdr ls)))]
-        [else (loop (cdr ls))]))))
-
 (define (resolve-name los)
     (case (car los)
       [(rnrs scheme) #f]
@@ -70,7 +60,19 @@ exec chez --script $0 $*
      (map cleanup (cdr (cadddr sexp)))
      ]))
 
+;; Various generic utility functions:
+;; ============================================================
+
 (define (id x) x)
+(define remove-file-extension
+  (lambda (filename)
+    (let loop ([ls (reverse (string->list filename))])
+      (cond
+        [(null? ls) filename] ;no extension to remove
+        [(eq? (car ls) #\.)
+         (list->string (reverse (cdr ls)))]
+        [else (loop (cdr ls))]))))
+
 (define intersection
   (case-lambda
     [(set1 set2)
@@ -91,8 +93,8 @@ exec chez --script $0 $*
     (cond
      ((null? set1) '())
      ((member (car set1) set2) (loop (cdr set1) set2))
-     (else (cons (car set1)  (loop (cdr set1) set2)))))
-    ))
+     (else (cons (car set1)  (loop (cdr set1) set2)))))))
+
 (define remove-file-extension
   (lambda (filename)
     (let loop ([ls (reverse (string->list filename))])
@@ -126,6 +128,8 @@ exec chez --script $0 $*
       (> (modtime file) (modtime obj))))
 
 
+;; ============================================================
+
 ;; Returns a new checked, changed
 (define (compile-loop ls checked changed)
   (if (null? ls) 
@@ -148,6 +152,9 @@ exec chez --script $0 $*
 			(begin (invoke-compiler thisfile)
 			       (compile-loop (cdr ls) chk2 (cons thisfile chng))))
 		    ))))))))
+
+;; TODO: make this parallel, a la make -j 
+
 
 (display "Processing dependencies for: ")
 (display source)(newline)

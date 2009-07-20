@@ -2272,7 +2272,7 @@
 	   (loop rest)]
 
 	  [("-exit-error" ,rest ...)
-	   (when (>= (regiment-verbosity) 1) (eprintf "SETTING BATCH MODE\n"))
+	   (when (>= (regiment-verbosity) 2) (eprintf "SETTING BATCH MODE\n"))
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (loop rest)]
 

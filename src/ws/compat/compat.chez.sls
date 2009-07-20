@@ -74,7 +74,7 @@
 
   ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
   ;(define reg:top-level-eval chez:eval)
-  (define (simple-eval xp) (eval xp '(rnrs (6))))
+  (define (simple-eval xp) (eval xp (environment '(rnrs (6)))))
 
   ;; [2008.12.05] Check up on this one:
   (define (get-string-available inp)

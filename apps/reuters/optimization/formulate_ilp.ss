@@ -208,7 +208,7 @@ exec regiment.ikarus i --script $0 $*
 	(void)
 	(match entry
 	  ;; An edge can have multiple targets (hypergraph):
-	  [(edge ,src ,bw  -> ,dst* ...)
+	  [(edge ,src bw ,bw  -> ,dst* ...)
 	   (hashtable-set! op-neighbors src 
 			   (append dst* (hashtable-ref op-neighbors src '())))	  
 	   (for-each (lambda (dst) 
@@ -225,7 +225,7 @@ exec regiment.ikarus i --script $0 $*
 	  [(op ,name ,cpucost)     (hashtable-set! op-cpu name cpucost)]
 	  [(node ,name ,cpucap)    (hashtable-set! node-cpu name cpucap)]
 
-	  [(link ,src ,band ,latency - ,dst)
+	  [(link ,src bw ,band lat ,latency <-> ,dst)
 	   (define pr1 (cons src dst))
 	   (define pr2 (cons dst src))
 	   (unless (hashtable-contains? links-tbl pr2)	     
@@ -308,18 +308,14 @@ exec regiment.ikarus i --script $0 $*
 	  (if canon
 	      (begin 
 		(hashtable-cons! incident-virtuals pair (virtlinkbw-var a b))
-		`(= ,var ,(ASSERT (hashtable-ref link-lat canon #f))
-		    #;
-		    (linklatvar (car canon) (cdr canon))))	      
+		`(= ,var ,(ASSERT (hashtable-ref link-lat canon #f))))
 	      ;; The sum of the edge latencies on the shortest path:
-	      `(= ,var (+ ,@(map-path-links
+	      `(= ,var ,(apply + 
+			  (map-path-links
 			     (lambda (src dst) 
 			       ;; Register that this virtual edge brings load to each of these physical edge:
 			       (hashtable-cons! incident-virtuals (cons src dst) (virtlinkbw-var a b))
-			       (ASSERT (hashtable-ref link-lat (cons src dst) #f))
-			       #;
-			       (linklatvar src dst)
-			       )
+			       (ASSERT (hashtable-ref link-lat (cons src dst) #f)))
 			     (pathfinder a b)))))))
       sorted-nodes)))
 
@@ -342,6 +338,17 @@ exec regiment.ikarus i --script $0 $*
 	   )
       ops)
     )
+
+   (list 
+    """Constrain bandwidth at each node to be less than its maximum."
+    (map (lambda (node)
+	   (define cpu (ASSERT (hashtable-ref node-cpu node #f)))
+	   `(>= ,cpu
+		(+ ,@(map (lambda (op) 
+			    `(* ,(ASSERT (hashtable-ref op-cpu op #f))
+				,(assignvar op node)))
+		       ops))))
+      nodes))
 
    virtuals ;; stick them in:
       
@@ -402,7 +409,7 @@ exec regiment.ikarus i --script $0 $*
 			       ,(assignvar (cdr edge) b))))
 		 edges))))
     sorted-nodes)
-   " Ditto for edge latencies."
+   """ Ditto for edge latencies."
    (map (lambda (edge) 			     
 	  `(= ,(edgelatvar (car edge) (cdr edge))
 	      (+ ,@(map-distinct-pairs
@@ -453,13 +460,19 @@ exec regiment.ikarus i --script $0 $*
 ;; NOTE: This could do some simple inlining as well, but hopefully the
 ;; ILP solvers are smart enough that that wouldn't help. 
 (define (desugar-constraints lst)
-  (define (Expr e) 
+  (define inlines (make-eq-hashtable)) 
+  (define (Expr e)
     (match e
-      [,s (guard (symbol? s)) (values s '())]
+      [,s (guard (symbol? s)) 
+	  (values (hashtable-ref inlines s s) '())]
       [,n (guard (number? n)) (values n '())]
       [(,arith ,[e* c**] ...)
        (guard (memq arith '(+ - *)))
-       (values `(,arith ,@e*) (apply append! c**))]
+       ;; lp_solve is lazy... it won't even do a little arithmetic:
+       (values (if (andmap number? e*)
+		   (simple-eval `(,arith ,@e*))
+		   `(,arith ,@e*))
+	       (apply append! c**))]
 
       [(overMax ,rand)  (Expr rand)]
 
@@ -474,6 +487,11 @@ exec regiment.ikarus i --script $0 $*
       ;; POSSIBLE EXPR DUPLICATION
       [(AND ,[a c1*] ,[b c2*])
        (define var (unique-name "c"))
+       ;;
+       #;
+       (if (or (number? a) (number? b))
+	   
+	   )
        (values var  
 	       (cons*
 		`(<= ,var ,a)
@@ -483,21 +501,34 @@ exec regiment.ikarus i --script $0 $*
 
       [(,other ,rand* ...)
        (guard (memq other '(underMAX overMIN underMIN XOR)))
-       (error "desugar-constraints: ~a not implemented yet." other)]
-      ))
+       (error "desugar-constraints: ~a not implemented yet." other)]))
+  ;; Do some simple inlining, fill up the table of inlinable vars:
+  (for-each (lambda (cstrt)
+	      (match cstrt
+		[(= ,var ,num) (guard (symbol? var) (number? num))
+		 (hashtable-set! inlines var num)]
+		[(= ,num ,var) (guard (symbol? var) (number? num))
+		 (hashtable-set! inlines var num)]	       		
+		[,else (void)]))
+    lst)
+  ;; Now process all the constraints:
   (map (lambda (cnstrt)
 	 (match cnstrt		
 	   [(,op ,[Expr -> e1 c1*] ,[Expr -> e2 c2*])
 	    (guard (memq op '(= < > <= >=)))
-	    (cons `(,op ,e1 ,e2)
-		  (append c1* c2*))]
+	    ;; lp_solve won't accept NUM = NUM constraints.
+	    (if (and (number? e1) (number? e2))
+		(begin (ASSERT (simple-eval `(,op ,e1 ,e2))) 
+		       '() 
+		       ;(list (format " ~a ~a ~a // <- suppressed" e1 op e2))
+		       )
+		(cons `(,op ,e1 ,e2)
+		      (append c1* c2*)))]
 	   [,str (guard (string? str)) str]
 	   [(OBJECTIVE ,[Expr -> e c*])
 	    (append c* `((OBJECTIVE ,e)))]
 	   ))
-    lst)
-  )
-
+    lst))
 
 ;; Output in a form suitable for an ilp solver
 (define (print-ilp cstrts)
@@ -538,7 +569,11 @@ exec regiment.ikarus i --script $0 $*
 	   ;(if (eq? op '=) (newline))
 	   (printf " ")
 	   (Expr e1)
-	   (printf " ~a " op)
+	   ;; VERY ODD: What are the semantics of "<" for lp_solve?
+	   (case op
+	     [(<) (printf " <= -1 + ")]
+	     [(>) (printf " >=  1 + ")]
+	     [else (printf " ~a " op)])
 	   (Expr e2)
 	   (printf ";\n")]
 	  
@@ -577,9 +612,8 @@ exec regiment.ikarus i --script $0 $*
 ; (pretty-print (flatten-constraints (generate-constraints)))
 
 ; (printf "================================================================================\n\n\n")
-; (pretty-print (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
+;(pretty-print (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
 
-; (printf "================================================================================\n\n\n")
 ; (printf "================================================================================\n\n\n")
 (print-ilp (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
 
