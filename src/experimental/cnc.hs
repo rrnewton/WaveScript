@@ -85,18 +85,29 @@ prescribe (Graph graph) (MP (tagc,step)) =
        return ()
 
 runSimpleScheduler (Graph graph) = 
-    do stepmap <- readSTRef graph
-       let doEach _ acc = acc
-       let doList (MP (tags,step)) acc = 
-	     do (id,frnt,bck) <- readSTRef tags 
-		val <- acc
-	        return (if Set.null frnt
-			then val 
-			else val)
-       let foo = Map.fold (\ ls acc -> foldr doList acc ls)
-		          (return 99)
-         		  stepmap
-       return ()
+    do 
+          stepmap <- readSTRef graph
+	  -- For each tag collection:
+	  Map.fold (\ ls acc -> 
+		    case head ls of
+		     (MP (tags,_)) -> 
+		        do (id,frnt,bck) <- readSTRef tags
+		           -- For each step prescribed by this tag collection:
+		           foldr (\ (MP (tags,step)) (acc) ->
+				  do (id,frnt,bck) <- readSTRef tags
+				     -- Invoke each step:
+				     Set.fold (\ tag acc -> do acc; step tag)
+				              acc frnt)
+		                 acc ls
+		           -- After we're done consuming the fresh tags, clear them:
+		           writeSTRef tags (id, Set.empty, Set.union frnt bck)
+		           unsafeIOToST $ putStr "Hello\n"
+		           return undefined)
+		   (return ())
+         	   stepmap
+          return ()
+--       return ()
+	  
 
 
 -- System.IO.Unsafe.unsafePerformIO
