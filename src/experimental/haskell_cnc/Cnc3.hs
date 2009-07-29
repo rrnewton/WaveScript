@@ -26,6 +26,9 @@ import Control.Monad
 import Control.Concurrent.MVar
 import Control.Parallel
 
+--import Time
+--import System.CPUTime
+
 ------------------------------------------------------------
 -- Type definitions:
 
@@ -41,9 +44,9 @@ newTagCol  :: () -> IO (TagCol tag)
 newItemCol :: (Eq tag, Hashable tag) => () -> IO (ItemCol tag b)
 prescribe  :: TagCol tag -> Step tag -> IO ()
 
-call :: Ord a => TagCol a -> a          -> IO ()
-put  ::          ItemCol a b -> a -> b  -> IO ()
-get  ::          ItemCol a b -> a       -> IO b
+call :: Ord a  => TagCol a -> a          -> IO ()
+put  :: Show a => ItemCol a b -> a -> b  -> IO ()
+get  ::           ItemCol a b -> a       -> IO b
 
 class Hashable a where
     hash :: a -> Int32
@@ -89,8 +92,9 @@ call (_set,_steps) tag =
 -- FIXME: we also need an I-var!!
 put col tag item = 
     do mvar <- assureMvar col tag 
-       putMVar mvar item
-
+       bool <- tryPutMVar mvar item
+       if not bool then error ("Already an item with tag " ++ show tag) else return ()
+	       
 get col tag = 
     do mvar <- assureMvar col tag 
        readMVar mvar
@@ -151,3 +155,29 @@ test = -- Allocate collections:
 --        ls <- itemsToList d1
 --        ls2 <- itemsToList d2
 --        return ls2
+
+
+----------------------------------------
+-- Primes example:
+
+isPrime 2 = True
+isPrime n = (loop 3 == n)
+    where loop i = if (n `rem` i) == 0
+		   then i else loop (i+2)
+
+primes n = 
+   do primes <- newItemCol() :: IO (ItemCol Int Int)
+      put primes 2 2
+      tags <- newTagCol()
+      prescribe tags (\t -> if isPrime t 
+		            then put primes t t
+		            else return ())
+      let loop i | i >= n = return ()
+  	  loop i = do call tags i 
+	              loop (i+2)
+      loop 3
+      result <- itemsToList primes
+      return (Prelude.map fst result)
+	       
+
+--main = primes 100000
