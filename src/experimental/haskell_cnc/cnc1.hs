@@ -65,6 +65,7 @@ put col tag item =
     do map <- readSTRef col
        writeSTRef col (Map.insert tag item map)
 
+-- UNFINISHED: this doesn't block on a missing item.. instead it crashes:
 get col tag = 
     do map <- readSTRef col
        return $ Map.findWithDefault 

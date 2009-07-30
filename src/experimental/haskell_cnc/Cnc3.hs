@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE FlexibleInstances, BangPatterns, MagicHash #-}
+
 {-
   This is the third version.
 
@@ -16,7 +17,7 @@
   is a "what-if" scenario.
  -}
 
-module Cnc3 where 
+--module Cnc3 where 
 
 import Data.Set as Set
 import Data.HashTable as HT
@@ -24,10 +25,19 @@ import Data.Int
 import Data.IORef
 import Control.Monad
 import Control.Concurrent.MVar
-import Control.Parallel
+import System
 
---import Time
---import System.CPUTime
+import System.IO.Unsafe
+
+--import Control.Concurrent
+import GHC.Conc
+
+import GHC.Prim
+
+-- GRRR
+import GHC.Exts 
+
+--par a b = b
 
 ------------------------------------------------------------
 -- Type definitions:
@@ -76,6 +86,8 @@ newItemCol () = HT.new (==) hash
 newTagCol () = do ref1 <- newIORef Set.empty
 		  ref2 <- newIORef []
 		  return (ref1, ref2)
+
+-- Here's where we spawn new work.
 call (_set,_steps) tag = 
     do set <- readIORef _set
        steps <- readIORef _steps
@@ -84,7 +96,9 @@ call (_set,_steps) tag =
 		return ()
 	else foldM (\ () step -> 
 		    do let v = step tag
-		       v `par` v)
+--		       unsafePerformIO v `par` v)  -- Nope..
+		       unsafePerformIO v `par` return ()) -- Haha.. finishes too soon.  Need to wait.
+--		       unsafePerformIO v `par` unsafeInterleaveIO v)
 		 () steps
 			 
 -- If it's not there we add the mvar ourselves then block:
@@ -160,16 +174,31 @@ test = -- Allocate collections:
 ----------------------------------------
 -- Primes example:
 
+-- Wow this is the SAME, performance wise. 
+-- GHC is already getting all the unboxing:
+{-
+isPrime :: Int -> Bool
 isPrime 2 = True
-isPrime n = (loop 3 == n)
-    where loop i = if (n `rem` i) == 0
-		   then i else loop (i+2)
+isPrime !n = (prmlp 3# ==# n#)
+    where (I# n#) = n
+	  prmlp :: Int# -> Int#
+	  prmlp !i = if (remInt# n# i) ==# 0#
+		     then i else prmlp (i +# 2#)
+-}
+
+isPrime :: Int -> Bool
+isPrime 2 = True
+isPrime n = (prmlp 3 == n)
+    where prmlp :: Int -> Int
+  	  prmlp i = if (rem n i) == 0
+ 		    then i else prmlp (i + 2)
+
 
 primes n = 
    do primes <- newItemCol() :: IO (ItemCol Int Int)
       put primes 2 2
       tags <- newTagCol()
-      prescribe tags (\t -> if isPrime t 
+      prescribe tags (\t -> if isPrime (t) 
 		            then put primes t t
 		            else return ())
       let loop i | i >= n = return ()
@@ -177,7 +206,34 @@ primes n =
 	              loop (i+2)
       loop 3
       result <- itemsToList primes
-      return (Prelude.map fst result)
-	       
+      --return (take 30 (Prelude.map fst result))
+      return (length result)	       
 
---main = primes 100000
+mymain = do [n] <- System.getArgs 
+	    x <- primes ((read n)::Int)
+	    putStrLn (show x)
+main = mymain
+
+-- Test the serial function:
+serial n = serlp 3 1
+   where serlp :: Int -> Int -> Int
+	 serlp i c | i >= n    = c
+  	 serlp i c | isPrime i = serlp (i+2) (c+1)
+	 serlp i c             = serlp (i+2) c
+
+-- main = do [n] <- System.getArgs 
+-- 	  putStrLn "Running serial version of primes..."
+-- 	  putStrLn $ show $ serial ((read n)::Int)
+
+-- For reference, here's a sieve :
+primels :: [Integer]
+primels = 2 : Prelude.filter isPrime [3,5..]
+     where
+     isPrime n   = all (not . divides n) $ takeWhile (\p -> p*p <= n) primels
+     divides n p = n `mod` p == 0
+
+--main = putStrLn (show (length (take 9592 primels)))
+--main = putStrLn (show (take 50 primels))
+
+-- Alas this is 3X slower than the C version to start with.
+

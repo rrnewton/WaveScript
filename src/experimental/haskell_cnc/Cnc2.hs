@@ -1,60 +1,74 @@
-
+{-# OPTIONS -fglasgow-exts #-}
 {-
   This is the second version.
 
   Here the primary goal is to make the steps themselves pure functions.  
 
-  The schedule remains serial.
+  A step returns a list of output tags and a list of output items.
+
+  We perform some existential type tricks to allow this polymorphic
+  list output (mixing several types together).
+
  -}
 
-import Control.Monad.ST
-import Data.STRef
+
 import Data.Set as Set
 import Data.Map as Map
-import System.IO.Unsafe
-
-
-
+--import Data.IntMap as Map
+import Data.IORef
+import Control.Monad.ST
+import Control.Concurrent
+--import System.IO.Unsafe
 
 ------------------------------------------------------------
 -- Type definitions:
 
--- A tag collection has a buffer of newly written tags.
--- It also has a unique identifier.
---type TagColID = Int
---type TagCol  s a   = STRef s (TagColID, Set a, Set a)
+-- We could use various methods
 
---type ItemCol s a b = STRef s (Map a b)
+-- (1) We could require that the user construct a sum-type including
+--     all the item types that will occur in their program.  (And
+--     another for the tag types.)
 
-type Step1 a b c = a -> (Set b, Map b c)
---type Step2 a b c d e = a -> (Map b c, Map d e)
---type Step a b c = a -> ([b], [c])
+-- (2) We could use existential types to pack various sorts of output
+--     items and tags into one list.  But then we could only act on
+--     them with the methods of a particular type class.  That would
+--     enable extracting a tag and sorting them into their respective
+--     collections.  But even once they lived in those collections,
+--     there would be no way to recover the typeinformation and they
+--     would live on only as that universal type.  (How can they be
+--     consumed by the downstream??)  This might be a place for an
+--     unsafe cast if it exists....
+
+type Step intag outtag item = intag -> ([outtag], [item])
+
+--type TagCol a = MVar (Set (MVar a))
+type TagCol  a   = Set a
+type ItemCol a b = MVar (Map a (MVar b))
+
+--class Tag a where 
+--  getUniqueIndex :: a -> Int
+
+-- Yuck, we don't want to do this:
+--type Step1 a b c     = a -> (Set b, Map b c)
+--type Step2 a b c d e = a -> (Set b, Map b c, Set d, Map d e)
 
 
--- The monad stores all the information in the tag/item collections
--- It's a state thread.  There only needs to be ONE state thread currently.
---type CncCode s a = ST s a
-
--- A graph data structure keeps track of the steps that are prescribed
--- everything that is needed by the scheduler.
--- Do we need a different monad for wiring together the graph??
--- Not in this version...
---data Graph s = Graph (STRef s (Map TagColID [MatchedPair s]))
-
---data Graph s = Graph (STRef s (Map TagColID [MatchedPair s]))
+-- (3) Don't forget that we can glean type information from the item
+--     collections that we consume!  That's where the type info comes
+--     from, and we need to encode that in our representation somehow.
+--     But how then to use it when we need to unpack one of our
+--     outbound values?  How similar is this to the problem faced when
+--     implementing IORefs or STRefs?  
 
 
--- Tricky existential types:
--- Here's a tag collection and associated step that "match" tag-types:
---data MatchedPair s = forall t. Ord t => MP (TagCol s t, Step s t)
 
 
 ------------------------------------------------------------
 -- (Optional) type signatures for operations:
 
 -- You can mostly ignore 's' type variables.
--- newTagCol  :: TagColID -> CncCode s (TagCol s a)
--- newItemCol :: CncCode s (ItemCol s a b)
+newTagCol  :: TagCol a
+newItemCol :: IO (ItemCol a b)
 -- call :: Ord a           => TagCol  s a   -> a      -> CncCode s ()
 -- put  :: Ord a           => ItemCol s a b -> a -> b -> CncCode s ()
 -- get  :: (Ord a, Show a) => ItemCol s a b -> a      -> CncCode s b
@@ -65,11 +79,9 @@ type Step1 a b c = a -> (Set b, Map b c)
 --------------------------------------------------------------------------------
 -- Implementation:
 
--- counter = newSTRef 0
+newTagCol  = Set.empty
 
--- newTagCol cnt = newSTRef (cnt+1, Set.empty,Set.empty)	       
-
--- newItemCol = newSTRef Map.empty
+newItemCol = do (newMvar Map.empty)
 
 -- call col tag = 
 --     do (id, frontset,backset) <- readSTRef col
@@ -125,6 +137,39 @@ type Step1 a b c = a -> (Set b, Map b c)
 
 -- --------------------------------------------------------------------------------
 -- -- Test program:
+
+-- Here's an example of what it would be like to lift all tags/items into one type manually:
+data MyTags  = Tag1 Int
+data MyItems = Item1 Int Int
+          -- | Item2 Float ...
+
+-- And we can extract a tag to route items to the right collection:
+route (Item1 _ _) = 0
+--route (Item2 _) = 1
+routetag (Tag1 _) = 0
+
+isPrime 2 = True
+isPrime n = (loop 3 == n)
+    where loop i = if (n `rem` i) == 0
+		   then i else loop (i+2)
+
+-- Here's an example step:
+step t =  ([], if isPrime t then [Item1 t t] else [])
+
+-- primes n = 
+--    do primes <- newItemCol() :: IO (ItemCol Int Int)
+--       put primes 2 2
+--       tags <- newTagCol()
+--       prescribe tags (\t -> if isPrime t 
+-- 		            then put primes t t
+-- 		            else return ())
+--       let loop i | i >= n = return ()
+--   	  loop i = do call tags i 
+-- 	              loop (i+2)
+--       loop 3
+--       result <- itemsToList primes
+--       return (take 30 (Prelude.map fst result))
+	       
 
 
 -- incrStep d1 (t2,d2) tag = 
