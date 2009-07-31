@@ -47,7 +47,7 @@ data MatchedItemMap = forall a b. Ord a => MI (IntMap.IntMap (ItemCol a b))
 data MatchedTagMap  = forall a.   MT (Map (TagColID  a)   (TagCol a))
 
 type TagColID  a   = Int
-type ItemColID a b = Int
+data ItemColID a b = ICID Int
 type TagCol    a   = Set a
 type ItemCol   a b = Map a b
 
@@ -89,7 +89,7 @@ newTagCol ref = do (cnt, MT tags, items) <- readIORef ref
 newItemCol ref = do (cnt, tags, MI items) <- readIORef ref 	   
 		    let newitems = IntMap.insert cnt Map.empty items
 		    writeIORef ref (cnt+1, tags, MI newitems)
-		    return cnt
+		    return (ICID cnt)
 
 magic :: ItemColID a b -> ItemCol c d -> (a->c, d->b)
 magic id col = (unsafeCoerce, unsafeCoerce)
@@ -99,7 +99,8 @@ magic id col = (unsafeCoerce, unsafeCoerce)
 get :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 get (_, MT tmap, MI imap) id tag = 
   unsafePerformIO (putStrLn $ "  GETTING "++ show (unsafeCoerce tag::Char)) `seq`
-  let itemcol = (IntMap.!) imap id 
+  let ICID n = id 
+      itemcol = (IntMap.!) imap n
       (castkey,castback) = magic id itemcol in
   case
       --trace ("LOOKUP " ++ (show $ (unsafeCoerce (Map.lookup (castkey tag) itemcol :: Maybe b) :: Maybe Int))) $ 
@@ -123,7 +124,8 @@ bla =
        let !foo = trace "GET starting" $ get c d1 'b'
        putStrLn "almost done"
        --return $ trace ("foo " ++ show (foo::Maybe Int)) $ foo
-       return $ (fromJust foo) + 0
+--       return $ (fromJust foo) + 0
+       return $ foo
 
 
 -- This inserts new items and tags into a Collections object.
@@ -135,9 +137,9 @@ bla =
 -- Also, we could optimize this here by optimistically assuming that a
 -- batch of updates are likely to the same collection.
 
-magic2 :: ItemColID a b -> ItemCol c d -> 
-	  (a -> c, b -> d, ItemColID a b -> ItemColID c d)
-magic2 id col = (unsafeCoerce, unsafeCoerce, unsafeCoerce)
+magic2 :: ItemColID a b -> ItemCol c d ->  (a -> c, b -> d)
+--	  (a -> c, b -> d, ItemColID a b -> ItemColID c d)
+magic2 id col = (unsafeCoerce, unsafeCoerce)
 
 --mergeUpdates :: IORef Collections -> [NewTag] -> [NewItem] -> IO ()
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
@@ -145,11 +147,12 @@ mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE foldl' ???
        let items' = foldl (\ acc (NI id k x) -> 
-  			    let (castkey, castval, cast) = magic2 id itemcol 
-			        itemcol = (IntMap.!) acc (cast id)
+  			    let ICID n = id 
+			        (castkey, castval) = magic2 id itemcol 
+			        itemcol = (IntMap.!) acc n
  			        col = Map.insert (castkey k) (castval x) itemcol 
 			    in
-  			    IntMap.insert id col acc 
+  			    IntMap.insert n col acc 
 			  )
  	             items newitems in
 
