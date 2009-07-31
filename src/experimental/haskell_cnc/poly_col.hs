@@ -28,8 +28,12 @@ import Control.Monad
 -- The central abstraction is a (heterogeneous) group of item and tag collections.
 type Collections = (Int, MatchedTagMap, MatchedItemMap)
 
+
+showcol (n, MT tmap, MI imap) =
+  show (n, Map.size tmap, Map.size imap)
+    
 -- I think this is WRONG.  Quantification should have a narrower scope.
-data MatchedItemMap = forall a b. MI (Map (ItemColID a b) (ItemCol a b))
+data MatchedItemMap = forall a b. Ord a => MI (Map (ItemColID a b) (ItemCol a b))
 data MatchedTagMap  = forall a.   MT (Map (TagColID  a)   (TagCol a))
 
 type TagColID  a   = Int
@@ -64,7 +68,9 @@ call :: Ord a => TagColID  a   -> a      -> NewTag
 --------------------------------------------------------------------------------
 -- Implementation:
 
-newCollections = newIORef (0, MT Map.empty, MI Map.empty)
+dummy = Map.empty :: Map (ItemColID Int Int) (ItemCol Int Int)
+
+newCollections = newIORef (0, MT Map.empty, MI dummy)
 newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
 		   let newtags = Map.insert cnt Set.empty tags
 		   writeIORef ref (cnt+1, MT newtags, items)
@@ -74,16 +80,33 @@ newItemCol ref = do (cnt, tags, MI items) <- readIORef ref
 		    writeIORef ref (cnt+1, tags, MI newitems)
 		    return cnt
 
---get (_, MT tmap, MI imap) (id :: TagColID a)  tag = 
+magic :: ItemColID a b -> ItemCol c d -> (a->c, b->d, d->b)
+magic id col = (unsafeCoerce, unsafeCoerce, unsafeCoerce)
 
 get :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
---get (_, MT tmap, MI imap) (id :: ItemColID a b)  tag = 
 get (_, MT tmap, MI imap) (id )  tag = 
-  let itemcol = imap!id in
-  Map.lookup tag (unsafeCoerce itemcol )
+  let itemcol = imap!id 
+      (castkey,_,castback) = magic id itemcol in
+  case Map.lookup (castkey tag) itemcol of
+    Nothing -> Nothing
+    Just d  -> castback d	       
+
 
 put id tag item = NI id tag item -- Just accumulate puts as data
 call id tag     = NT id tag 
+
+bla = 
+    do cref <- newCollections 
+       d1 <- newItemCol cref :: IO (ItemColID Char Int)
+       modifyIORef cref $ 
+	 mergeUpdates [] [put d1 'a' 33, put d1 'b' 100]
+       c  <- readIORef cref
+       putStrLn "WTF is happening"
+       putStrLn $ showcol c
+       let !foo = get c d1 'a'
+       putStrLn "almost done"
+       return $ foo
+
 
 -- This inserts new items and tags into a Collections object.
 --
@@ -100,20 +123,22 @@ mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE foldl' ???
        let items' = foldl (\ acc (NI id k x) -> 
- 			  -- DOESNT SEEM LIKE WE SHOULD NEED TWO unsafeCoerces!!
-  			  let _acc = unsafeCoerce acc 
- 			      col = Map.insert k x (_acc!id) in
-  			  unsafeCoerce $ Map.insert id col _acc)
+  			  let itemcol = acc!id
+			      (castkey,cast,castback) = magic id itemcol 
+ 			      col = Map.insert (castkey k) (cast x) itemcol in
+  			  Map.insert id col acc
+			  )
  	             items newitems in
-       let tags' = foldl (\ acc (NT id k) -> 
- 			  let _acc = unsafeCoerce acc 
- 			      col = Set.insert k (_acc!id) in
- 			  unsafeCoerce $ Map.insert id col _acc)
- 	             tags newtags in
-       (n, MT tags', MI items')
+--        let tags' = foldl (\ acc (NT id k) -> 
+--  			  let _acc = unsafeCoerce acc 
+--  			      col = Set.insert k (_acc!id) in
+--  			  unsafeCoerce $ Map.insert id col _acc)
+--  	             tags newtags in
+       (n, MT tags, MI items')
 --       writeIORef cref 
 --       return ()
 
+{-
 emptyGraph = G Map.empty
 prescribe :: TagColID a -> Step a -> Graph -> Graph
 prescribe id step (G gmap) = G (Map.insertWith (++) id [unsafeCoerce step] gmap)
@@ -181,37 +206,12 @@ test = -- Allocate collections:
 -}
        c  <- readIORef cref
        let foo = get c d1 'a' :: Maybe Int
-       return $ (d1, foo)
+       return $ (d1, get c d1 'a', get c d1)
 --       return (get c d1 'a', get c d1 'b') 
 --       return (get c d3 'a', get c d3 'b') 
       
-
-
-{-
-
-
 -}
 
-main = putStrLn "hello"
+--main = putStrLn "hello"
 
 
-
-{-
-
-poly_col.o(.text+0x54f): In function `sQa_info':
-: undefined reference to `__stginit_containerszm0zi2zi0zi0_DataziMap_'
-poly_col.o(.text+0x55b): In function `sQa_info':
-: undefined reference to `__stginit_containerszm0zi2zi0zi0_DataziSet_'
-collect2: ld returned 1 exit status
-
-
-
-Prelude> :r
-[1 of 1] Compiling Main             ( poly_col.hs, interpreted )
-ghc: panic! (the 'impossible' happened)
-  (GHC version 6.10.1 for x86_64-unknown-linux):
-        readFilledBox a{tv a1rY} [box]
-
-Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
-
--}
