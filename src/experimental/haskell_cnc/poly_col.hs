@@ -1,4 +1,7 @@
-{-# LANGUAGE RankNTypes, ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification #-}
+
+-- 
+-- RankNTypes
 
 -- , ScopedTypeVariables, PatternSignatures
 -- Also had that same 'impossible' crash on mac with 6.8.3
@@ -18,6 +21,11 @@ import Data.Map as Map
 import Data.IORef
 import Unsafe.Coerce
 import Control.Monad
+import qualified Data.IntMap as IntMap
+
+import System.IO.Unsafe
+import Debug.Trace
+import Data.Maybe
 
 --import Data.IntMap as Map
 --type Foo = IntMap Float
@@ -30,10 +38,12 @@ type Collections = (Int, MatchedTagMap, MatchedItemMap)
 
 
 showcol (n, MT tmap, MI imap) =
-  show (n, Map.size tmap, Map.size imap)
-    
+  show (n, Map.size tmap, IntMap.keys imap, Map.keys foo, Map.elems foo)
+ where 
+    foo = unsafeCoerce $ (IntMap.!) imap 0 :: ItemCol Char Int
+
 -- I think this is WRONG.  Quantification should have a narrower scope.
-data MatchedItemMap = forall a b. Ord a => MI (Map (ItemColID a b) (ItemCol a b))
+data MatchedItemMap = forall a b. Ord a => MI (IntMap.IntMap (ItemCol a b))
 data MatchedTagMap  = forall a.   MT (Map (TagColID  a)   (TagCol a))
 
 type TagColID  a   = Int
@@ -68,7 +78,8 @@ call :: Ord a => TagColID  a   -> a      -> NewTag
 --------------------------------------------------------------------------------
 -- Implementation:
 
-dummy = Map.empty :: Map (ItemColID Int Int) (ItemCol Int Int)
+--dummy = Map.empty :: Map (ItemColID Int Int) (ItemCol Int Int)
+dummy = IntMap.empty :: IntMap.IntMap (ItemCol Int Int)
 
 newCollections = newIORef (0, MT Map.empty, MI dummy)
 newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
@@ -76,20 +87,26 @@ newTagCol ref = do (cnt, MT tags, items) <- readIORef ref
 		   writeIORef ref (cnt+1, MT newtags, items)
 		   return cnt
 newItemCol ref = do (cnt, tags, MI items) <- readIORef ref 	   
-		    let newitems = Map.insert cnt Map.empty items
+		    let newitems = IntMap.insert cnt Map.empty items
 		    writeIORef ref (cnt+1, tags, MI newitems)
 		    return cnt
 
-magic :: ItemColID a b -> ItemCol c d -> (a->c, b->d, d->b)
-magic id col = (unsafeCoerce, unsafeCoerce, unsafeCoerce)
+magic :: ItemColID a b -> ItemCol c d -> (a->c, d->b)
+magic id col = (unsafeCoerce, unsafeCoerce)
 
+
+{-# NOINLINE get #-}
 get :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
-get (_, MT tmap, MI imap) (id )  tag = 
-  let itemcol = imap!id 
-      (castkey,_,castback) = magic id itemcol in
-  case Map.lookup (castkey tag) itemcol of
-    Nothing -> Nothing
-    Just d  -> castback d	       
+get (_, MT tmap, MI imap) id tag = 
+  unsafePerformIO (putStrLn $ "  GETTING "++ show (unsafeCoerce tag::Char)) `seq`
+  let itemcol = (IntMap.!) imap id 
+      (castkey,castback) = magic id itemcol in
+  case
+      --trace ("LOOKUP " ++ (show $ (unsafeCoerce (Map.lookup (castkey tag) itemcol :: Maybe b) :: Maybe Int))) $ 
+      --unsafePerformIO (putStrLn $ "  tag again "++ show (castkey tag)) `seq`
+      Map.lookup (castkey tag) itemcol of
+    Nothing -> trace " DAMN " $ Nothing
+    Just d  -> trace (" YAY************ " ++ show (unsafeCoerce d :: Int)) $ Just (castback d)
 
 
 put id tag item = NI id tag item -- Just accumulate puts as data
@@ -99,13 +116,14 @@ bla =
     do cref <- newCollections 
        d1 <- newItemCol cref :: IO (ItemColID Char Int)
        modifyIORef cref $ 
-	 mergeUpdates [] [put d1 'a' 33, put d1 'b' 100]
+	 mergeUpdates [] [put d1 'z' 33, put d1 'b' 100]
        c  <- readIORef cref
        putStrLn "WTF is happening"
        putStrLn $ showcol c
-       let !foo = get c d1 'a'
+       let !foo = trace "GET starting" $ get c d1 'b'
        putStrLn "almost done"
-       return $ foo
+       --return $ trace ("foo " ++ show (foo::Maybe Int)) $ foo
+       return $ (fromJust foo) + 0
 
 
 -- This inserts new items and tags into a Collections object.
@@ -117,18 +135,29 @@ bla =
 -- Also, we could optimize this here by optimistically assuming that a
 -- batch of updates are likely to the same collection.
 
+magic2 :: ItemColID a b -> ItemCol c d -> 
+	  (a -> c, b -> d, ItemColID a b -> ItemColID c d)
+magic2 id col = (unsafeCoerce, unsafeCoerce, unsafeCoerce)
+
 --mergeUpdates :: IORef Collections -> [NewTag] -> [NewItem] -> IO ()
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 --mergeUpdates cref newtags newitems =
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE foldl' ???
        let items' = foldl (\ acc (NI id k x) -> 
-  			  let itemcol = acc!id
-			      (castkey,cast,castback) = magic id itemcol 
- 			      col = Map.insert (castkey k) (cast x) itemcol in
-  			  Map.insert id col acc
+  			    let (castkey, castval, cast) = magic2 id itemcol 
+			        itemcol = (IntMap.!) acc (cast id)
+ 			        col = Map.insert (castkey k) (castval x) itemcol 
+			    in
+  			    IntMap.insert id col acc 
 			  )
  	             items newitems in
+
+-- Even THIS doesn't work:
+--       let items' = foldl (\ acc newitem -> undefined) items [] in
+--       let loop newitems = undefined
+--       in
+--       let items' = loop newitems inC
 --        let tags' = foldl (\ acc (NT id k) -> 
 --  			  let _acc = unsafeCoerce acc 
 --  			      col = Set.insert k (_acc!id) in
