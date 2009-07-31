@@ -194,7 +194,7 @@ test = -- Allocate collections:
        t1 <- newTagCol cref
        t2 <- newTagCol cref
        t3 <- newTagCol cref
-       d1 <- newItemCol cref :: IO (ItemColID Char Int)
+       d1 <- newItemCol cref 
        d2 <- newItemCol cref
        d3 <- newItemCol cref
 
@@ -210,7 +210,11 @@ test = -- Allocate collections:
 
        let inittags = [call t1 'a',  call t1 'b']
 
+       putStrLn "About to start scheduler...\n"
+
        modifyIORef cref $ serialScheduler graph inittags
+
+       putStrLn " -- FINISHED SCHEDULER\n"
 
        c  <- readIORef cref
        let foo = get c d1 'a' :: Maybe Int
