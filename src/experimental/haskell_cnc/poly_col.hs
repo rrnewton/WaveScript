@@ -58,9 +58,6 @@ call :: Ord a => TagColID  a   -> a      -> NewTag
 
 get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 
---prescribe :: Ord (TagColID a) => TagColID a -> Step a -> Graph -> Graph
-prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
-getSteps  :: Graph -> TagColID a -> [Step a]
 
 --------------------------------------------------------------------------------
 -- Implementation:
@@ -125,13 +122,23 @@ magic3 id col = (unsafeCoerce)
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE a strcict foldl' ???
+       trace (" MERGING " ++ show (length newitems))$
        let items' = foldl (\ acc (NI id k x) -> 
+			    trace (" New item "++ show (unsafeCoerce k::Char)) $
   			    let ICID n = id 
 			        (castkey, castval) = magic2 id itemcol 
 			        itemcol = (IntMap.!) acc n
- 			        col = Map.insert (castkey k) (castval x) itemcol 
+			        key = (castkey k)
+ 			        --newcol = Map.insert key (castval x) itemcol 
+			        --- This works!!!! (if we force the key to be a char) 
+			        -- Somehow the key is getting messed up, and probably turned to unit:
+			        newcol = unsafeCoerce $ Map.insert (unsafeCoerce key::Char) (castval x) (unsafeCoerce itemcol) 
 			    in
-  			    IntMap.insert n col acc)
+			    trace ("  >> the one we retrieved, had #items= " ++ (show (Map.size itemcol))) $
+			    trace ("  >> and the new one.....  had #items= " ++ (show (Map.size newcol))) $
+			    trace ("  >> Ok, the key was: " ++ (show (unsafeCoerce key::Char))) $
+			    trace (" inserted, now collection " ++ (show (Map.keys ((unsafeCoerce newcol) :: Map Char Int)))) $
+  			    IntMap.insert n newcol acc)
  	             items newitems in
 
        let tags' = foldl (\ acc (NT id k) -> 
@@ -144,13 +151,27 @@ mergeUpdates newtags newitems (n, MT tags, MI items) =
  	             tags newtags in
        (n, MT tags', MI items')
 
+magic4 :: TagColID a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
+magic4 id col = (unsafeCoerce col)
+
+--prescribe :: Ord (TagColID a) => TagColID a -> Step a -> Graph -> Graph
+
 emptyGraph = G IntMap.empty
 --prescribe id step (G gmap) = G (Map.insertWith (++) id [unsafeCoerce step] gmap)
-prescribe (TCID n) step (G gmap) = 
-    G (IntMap.insertWith (++) n [unsafeCoerce step] gmap)
+
+prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
+prescribe id step (G gmap) = 
+    case id of 
+     TCID n ->
+       G (IntMap.insertWith (++) n [step] $ magic4 id gmap)
 
 -- Retrieve the steps from a graph:
-getSteps (G graph) id = Map.findWithDefault [] id (unsafeCoerce graph)
+getSteps  :: Graph -> TagColID a -> [Step a]
+--getSteps (G graph) id = Map.findWithDefault [] id (unsafeCoerce graph)
+
+getSteps (G gmap) id = 
+    case id of 
+     TCID n -> IntMap.findWithDefault [] n (magic4 id gmap)
 
 -- Serially run actions and make updates
 serialScheduler graph inittags cols = schedloop cols [] inittags
@@ -164,7 +185,7 @@ serialScheduler graph inittags cols = schedloop cols [] inittags
        --schedloop c blocked [] = schedloop c [] blocked
        schedloop c blocked [] = error "err ran out of tags but have blocked..."
        schedloop c blocked (hd : tl) = 
-	   case trace "  Looping... " $ hd of 
+	   case trace ("  Looping... " ++ show (length tl)) $ hd of 
 	    NT id tag ->
 	     foldl (\ acc step -> 
 		    case step acc tag of
@@ -212,23 +233,30 @@ test = -- Allocate collections:
 
        putStrLn "About to start scheduler...\n"
 
-       modifyIORef cref $ serialScheduler graph inittags
+       --modifyIORef cref $ serialScheduler graph inittags
 
        putStrLn " -- FINISHED SCHEDULER\n"
 
        c  <- readIORef cref
        let foo = get c d1 'a' :: Maybe Int
-       return $ (d1, get c d1 'a', get c d1)
+--       return $ (d1, get c d1 'a', get c d1)
 --       return "BLAH"
-       return (get c d1 'a', get c d1 'b') 
+
 --       return (get c d3 'a', get c d3 'b') 
+
+--       return (get c d1 'a', get c d1 'b') 
+       putStrLn $ showcol c
+       return (get c d1 'a') 
       
 --main = putStrLn "hello"
 
 
 showcol (n, MT tmap, MI imap) =
-  show (n, IntMap.size tmap, IntMap.keys imap, Map.keys foo, Map.elems foo)
+  show (n, IntMap.size tmap, IntMap.keys imap, 
+	Map.keys foo, 
+	Map.elems foo)
  where 
-    foo = unsafeCoerce $ (IntMap.!) imap 0 :: ItemCol Char Int
+    -- Hack -- pull out the first item collection:
+    foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
 
 
