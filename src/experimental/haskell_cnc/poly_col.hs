@@ -34,7 +34,7 @@ type TagCol    a   = Set a
 type ItemCol   a b = Map a b
 
 -- Produces a batch of new data to write, or blocks
-type Step a = Collections -> a -> StepResult
+type Step a = a -> Collections -> StepResult
 data StepResult = Done ([NewTag], [NewItem])
                 | forall a b. Ord a => Block (ItemColID a b) a
 		  -- type-wise Block is the same as NewTag
@@ -122,9 +122,9 @@ mostmagic id = (unsafeCoerce)
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE a strcict foldl' ???
-       trace (" MERGING " ++ show (length newitems))$
+       trace ("   MERGING "++ show (length newtags)++ " tags " ++ show (length newitems) ++ " items" )$
        let items' = foldl (\ acc (NI id k x) -> 
-			    trace (" New item "++ show (unsafeCoerce k::Char)) $
+			    trace ("    New item "++ show (unsafeCoerce k::Char)) $
   			    let ICID n = id 
 			        badcol = (IntMap.!) acc n
 			        goodcol = magic id badcol
@@ -166,30 +166,72 @@ getSteps (G gmap) id =
     case id of 
      TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
+
+-- Returns thunks representing the result of the steps:
+callSteps  :: Graph -> TagColID a -> a -> [Collections -> StepResult]
+callSteps (G gmap) id tag = 
+    case id of 
+     TCID n -> Prelude.map (\fn -> fn tag) $ 
+	       IntMap.findWithDefault [] n (megamagic id gmap)
+
+char x = unsafeCoerce x :: Char
+
 -- Serially run actions and make updates
-serialScheduler graph inittags cols = schedloop cols [] inittags
---    do c <- readIORef cref       
---	    schedloop c [] inittags
-       -- Initially we should take ALL resident tags to be un-processed:
-       -- Nevermind, we are lazy and require the user tell us:
- where schedloop c [] [] = c
+-- serialScheduler graph inittags cols = schedloop cols [] inittags
+-- --    do c <- readIORef cref       
+-- --	    schedloop c [] inittags
+--        -- Initially we should take ALL resident tags to be un-processed:
+--        -- Nevermind, we are lazy and require the user tell us:
+--  where schedloop c [] [] = c
+--        -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
+--        -- TODO: wake up blocked steps intelligently when the output is produced.
+--        --schedloop c blocked [] = schedloop c [] blocked
+--        schedloop c blocked [] = error "err ran out of tags but have blocked..."
+--        schedloop c blocked (hd : tl) = 
+-- 	   case trace ("\n  Looping... " ++ show (1 + length tl)) $ hd of 
+-- 	    NT id tag ->
+-- 	     trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
+
+-- 	     -- For each step triggered by this tag, we do depth-first traversals:
+-- 	     foldl (\ acc step -> 
+-- 		    case step acc tag of
+-- 		      -- FIXME: We don't YET track what item collection we blocked on.
+-- 		      Block d_id tag -> trace (" ... Blocked ... ") $
+-- 		                        schedloop acc (hd:blocked) tl
+-- 		      Done (newtags, newitems) -> 
+-- 		        schedloop (mergeUpdates newtags newitems acc)
+-- 		                  blocked (newtags++tl) -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
+-- 		   )
+-- 	           c (getSteps graph id)
+
+
+
+serialScheduler graph inittags cols = schedloop cols [] inittags []
+ where schedloop c [] [] []  = c
        -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
        -- TODO: wake up blocked steps intelligently when the output is produced.
        --schedloop c blocked [] = schedloop c [] blocked
-       schedloop c blocked [] = error "err ran out of tags but have blocked..."
-       schedloop c blocked (hd : tl) = 
-	   case trace ("\n  Looping... " ++ show (length tl)) $ hd of 
+       schedloop c blocked [] [] = error "err ran out of tags but have blocked..."
+
+       schedloop c blocked (hd : tl) [] = 
+	   case trace ("\n  Looping (popping a new tag)... " ++ show (1 + length tl)) $ hd of 
 	    NT id tag ->
-	     foldl (\ acc step -> 
-		    case step acc tag of
-		      -- FIXME: We don't YET track what item collection we blocked on.
-		      Block d_id tag -> trace (" ... Blocked ... ") $
-		                        schedloop acc (hd:blocked) tl
-		      Done (newtags, newitems) -> 
-		        schedloop (mergeUpdates newtags newitems acc)
-		                  blocked (newtags++tl) -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
-		   )
-	           c (getSteps graph id)
+	     -- For each step triggered by this tag, we do depth-first traversals:	           	   
+	     --let (c,blocked') = steploop c (getSteps graph id) in
+	     --schedloop c tag (blocked' ++ blocked) tl
+	     schedloop c blocked tl (callSteps graph id tag)
+
+       schedloop c blocked tags (step:tl) = 
+	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
+	   case step c of
+	     -- FIXME: We don't YET track what item collection we blocked on.
+	     Block d_id tag -> trace (" ... Blocked ... ") $
+			       schedloop c (step:blocked) tags tl
+	     Done (newtags, newitems) -> 
+		 schedloop (mergeUpdates newtags newitems c)
+		           blocked (newtags++tags) tl
+	 -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
+
 
 
 --------------------------------------------------------------------------------
@@ -198,7 +240,7 @@ serialScheduler graph inittags cols = schedloop cols [] inittags
 type TI = TagColID  Char
 type II = ItemColID Char Int
 incrStep :: II -> (TI, II) -> Step Char
-incrStep d1 (t2,d2) c tag = 
+incrStep d1 (t2,d2) tag c = 
     case get c d1 tag of 
       Nothing -> Block d1 tag
       Just n ->  Done ([call t2 tag],
@@ -226,12 +268,10 @@ test = -- Allocate collections:
        case graph of G g -> putStrLn $ "Graph Size... " ++ (show $ IntMap.size g)
 
        let inittags = [call t1 'a',  call t1 'b']
+--       let inittags = [call t1 'b', call t1 'a']
 
        putStrLn "About to start scheduler...\n"
-
        modifyIORef cref $ serialScheduler graph inittags
-
-       putStrLn " -- FINISHED SCHEDULER\n"
 
        c  <- readIORef cref
        let foo = get c d1 'a' :: Maybe Int
