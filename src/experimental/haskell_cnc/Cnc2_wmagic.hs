@@ -88,18 +88,6 @@ get (_, _, MI imap) id tag =
 put id tag item = NI id tag item -- Just accumulate puts as data
 call id tag     = NT id tag 
 
-bla = 
-    do cref <- newCollections 
-       d1 <- newItemCol cref :: IO (ItemColID Char Int)
-       modifyIORef cref $ 
-	 mergeUpdates [] [put d1 'z' 33, put d1 'b' 100]
-       c  <- readIORef cref
-       putStrLn "WTF is happening"
-       putStrLn $ showcol c
-       let !foo = trace "GET starting" $ get c d1 'b'
-       putStrLn "almost done"
-       return $ foo
-
 moremagic :: IntMap.IntMap (ItemCol a b) -> ItemCol c d -> ItemCol a b
 moremagic id = (unsafeCoerce)
 
@@ -122,20 +110,14 @@ mostmagic id = (unsafeCoerce)
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
 mergeUpdates newtags newitems (n, MT tags, MI items) =
        -- SHOULD WE USE a strcict foldl' ???
-       trace ("   MERGING "++ show (length newtags)++ " tags " ++ show (length newitems) ++ " items" )$
        let items' = foldl (\ acc (NI id k x) -> 
-			    trace ("    New item "++ show (unsafeCoerce k::Char)) $
   			    let ICID n = id 
 			        badcol = (IntMap.!) acc n
 			        goodcol = magic id badcol
  			        newcol = moremagic acc $ Map.insert k x goodcol
 			    in
-			    trace ("  >> the one we retrieved, had #items= " ++ (show (Map.size goodcol))) $
-			    trace ("  >> and the new one.....  had #items= " ++ (show (Map.size newcol))) $
-			    trace (" inserted, now collection " ++ (show (Map.keys ((unsafeCoerce newcol) :: Map Char Int)))) $
   			    IntMap.insert n newcol acc)
  	             items newitems in
-
        let tags' = foldl (\ acc (NT id k) -> 
   			    let TCID n = id 
 			        badcol = (IntMap.!) acc n
@@ -149,11 +131,8 @@ mergeUpdates newtags newitems (n, MT tags, MI items) =
 megamagic :: TagColID a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
 megamagic id col = (unsafeCoerce col)
 
---prescribe :: Ord (TagColID a) => TagColID a -> Step a -> Graph -> Graph
 
 emptyGraph = G IntMap.empty
---prescribe id step (G gmap) = G (Map.insertWith (++) id [unsafeCoerce step] gmap)
-
 prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
 prescribe id step (G gmap) = 
     case id of 
@@ -166,7 +145,6 @@ getSteps (G gmap) id =
     case id of 
      TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
-
 -- Returns thunks representing the result of the steps:
 callSteps  :: Graph -> TagColID a -> a -> [Collections -> StepResult]
 callSteps (G gmap) id tag = 
@@ -174,53 +152,16 @@ callSteps (G gmap) id tag =
      TCID n -> Prelude.map (\fn -> fn tag) $ 
 	       IntMap.findWithDefault [] n (megamagic id gmap)
 
-char x = unsafeCoerce x :: Char
-
--- Serially run actions and make updates
--- serialScheduler graph inittags cols = schedloop cols [] inittags
--- --    do c <- readIORef cref       
--- --	    schedloop c [] inittags
---        -- Initially we should take ALL resident tags to be un-processed:
---        -- Nevermind, we are lazy and require the user tell us:
---  where schedloop c [] [] = c
---        -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
---        -- TODO: wake up blocked steps intelligently when the output is produced.
---        --schedloop c blocked [] = schedloop c [] blocked
---        schedloop c blocked [] = error "err ran out of tags but have blocked..."
---        schedloop c blocked (hd : tl) = 
--- 	   case trace ("\n  Looping... " ++ show (1 + length tl)) $ hd of 
--- 	    NT id tag ->
--- 	     trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
-
--- 	     -- For each step triggered by this tag, we do depth-first traversals:
--- 	     foldl (\ acc step -> 
--- 		    case step acc tag of
--- 		      -- FIXME: We don't YET track what item collection we blocked on.
--- 		      Block d_id tag -> trace (" ... Blocked ... ") $
--- 		                        schedloop acc (hd:blocked) tl
--- 		      Done (newtags, newitems) -> 
--- 		        schedloop (mergeUpdates newtags newitems acc)
--- 		                  blocked (newtags++tl) -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
--- 		   )
--- 	           c (getSteps graph id)
-
-
-
 serialScheduler graph inittags cols = schedloop cols [] inittags []
  where schedloop c [] [] []  = c
        -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
        -- TODO: wake up blocked steps intelligently when the output is produced.
        --schedloop c blocked [] = schedloop c [] blocked
        schedloop c blocked [] [] = error "err ran out of tags but have blocked..."
-
        schedloop c blocked (hd : tl) [] = 
-	   case trace ("\n  Looping (popping a new tag)... " ++ show (1 + length tl)) $ hd of 
+	   case hd of 
 	    NT id tag ->
-	     -- For each step triggered by this tag, we do depth-first traversals:	           	   
-	     --let (c,blocked') = steploop c (getSteps graph id) in
-	     --schedloop c tag (blocked' ++ blocked) tl
 	     schedloop c blocked tl (callSteps graph id tag)
-
        schedloop c blocked tags (step:tl) = 
 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
 	   case step c of
@@ -231,7 +172,6 @@ serialScheduler graph inittags cols = schedloop cols [] inittags []
 		 schedloop (mergeUpdates newtags newitems c)
 		           blocked (newtags++tags) tl
 	 -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
-
 
 
 --------------------------------------------------------------------------------
@@ -259,23 +199,17 @@ test = -- Allocate collections:
        modifyIORef cref $ 
 	 mergeUpdates [] [put d1 'a' 33, 
 			  put d1 'b' 100]
-
        let graph = 
 	    prescribe t1 (incrStep d1 (t2,d2)) $
 	    prescribe t2 (incrStep d2 (t3,d3)) $
 	    emptyGraph
-
        case graph of G g -> putStrLn $ "Graph Size... " ++ (show $ IntMap.size g)
-
-       let inittags = [call t1 'a',  call t1 'b']
---       let inittags = [call t1 'b', call t1 'a']
+       let inittags = [call t1 'b', call t1 'a']
 
        putStrLn "About to start scheduler...\n"
        modifyIORef cref $ serialScheduler graph inittags
 
        c  <- readIORef cref
-       let foo = get c d1 'a' :: Maybe Int
-
        putStrLn $ showcol c
        putStrLn $ "  d1: " ++ show (get c d1 'a', get c d1 'b') 
        putStrLn $ "  d2: " ++ show (get c d2 'a', get c d2 'b') 
@@ -292,3 +226,4 @@ showcol (n, MT tmap, MI imap) =
     foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
 
 
+main = test
