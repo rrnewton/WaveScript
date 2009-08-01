@@ -25,8 +25,8 @@ import Debug.Trace
 -- The central abstraction is a (heterogeneous) group of item and tag collections.
 type Collections = (Int, MatchedTagMap, MatchedItemMap)
 
-data MatchedItemMap = forall a b. Ord a => MI (IntMap.IntMap (ItemCol a b))
-data MatchedTagMap  = forall a.   Ord a => MT (IntMap.IntMap  (TagCol a))
+data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemCol a b))
+data MatchedTagMap  = forall a.   MT (IntMap.IntMap  (TagCol a))
 
 data TagColID  a   = TCID Int deriving (Ord, Eq)
 data ItemColID a b = ICID Int
@@ -62,11 +62,7 @@ get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 --------------------------------------------------------------------------------
 -- Implementation:
 
---dummy = Map.empty :: Map (ItemColID Int Int) (ItemCol Int Int)
-dummy  = IntMap.empty :: IntMap.IntMap (ItemCol () ())
-dummy2 = IntMap.empty :: IntMap.IntMap (TagCol ())
-
-newCollections = newIORef (0, MT dummy2, MI dummy)
+newCollections = newIORef (0, MT IntMap.empty, MI IntMap.empty)
 newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
 		   let newtags = IntMap.insert cnt Set.empty tags
 		   writeIORef ref (cnt+1, MT newtags, items)
@@ -76,18 +72,18 @@ newItemCol ref = do (cnt, tags, MI items) <- readIORef ref
 		    writeIORef ref (cnt+1, tags, MI newitems)
 		    return (ICID cnt)
 
-magic :: ItemColID a b -> ItemCol c d -> (a->c, d->b)
-magic id col = (unsafeCoerce, unsafeCoerce)
 
+magic :: ItemColID a b -> ItemCol c d -> ItemCol a b
+magic id = (unsafeCoerce)
 
-{-# NOINLINE get #-}
-get (_, MT tmap, MI imap) id tag = 
+get (_, _, MI imap) id tag = 
   let ICID n = id 
-      itemcol = (IntMap.!) imap n
-      (castkey,castback) = magic id itemcol in
-   case Map.lookup (castkey tag) itemcol of
+      badcol  = (IntMap.!) imap n
+      goodcol = magic id badcol
+   in
+   case Map.lookup tag goodcol of
     Nothing -> Nothing
-    Just d  -> Just (castback d)
+    Just d  -> Just d
 
 put id tag item = NI id tag item -- Just accumulate puts as data
 call id tag     = NT id tag 
@@ -104,11 +100,15 @@ bla =
        putStrLn "almost done"
        return $ foo
 
-magic2 :: ItemColID a b -> ItemCol c d ->  (a -> c, b -> d)
-magic2 id col = (unsafeCoerce, unsafeCoerce)
+moremagic :: IntMap.IntMap (ItemCol a b) -> ItemCol c d -> ItemCol a b
+moremagic id = (unsafeCoerce)
 
-magic3 :: TagColID a -> TagCol b ->  (a -> b)
-magic3 id col = (unsafeCoerce)
+tmagic :: TagColID a -> TagCol c -> TagCol a
+tmagic id = (unsafeCoerce)
+
+mostmagic :: IntMap.IntMap (TagCol a) -> TagCol c -> TagCol a
+mostmagic id = (unsafeCoerce)
+
 
 -- This inserts new items and tags into a Collections object.
 --
@@ -126,33 +126,28 @@ mergeUpdates newtags newitems (n, MT tags, MI items) =
        let items' = foldl (\ acc (NI id k x) -> 
 			    trace (" New item "++ show (unsafeCoerce k::Char)) $
   			    let ICID n = id 
-			        (castkey, castval) = magic2 id itemcol 
-			        itemcol = (IntMap.!) acc n
-			        key = (castkey k)
- 			        --newcol = Map.insert key (castval x) itemcol 
-			        --- This works!!!! (if we force the key to be a char) 
-			        -- Somehow the key is getting messed up, and probably turned to unit:
-			        newcol = unsafeCoerce $ Map.insert (unsafeCoerce key::Char) (castval x) (unsafeCoerce itemcol) 
+			        badcol = (IntMap.!) acc n
+			        goodcol = magic id badcol
+ 			        newcol = moremagic acc $ Map.insert k x goodcol
 			    in
-			    trace ("  >> the one we retrieved, had #items= " ++ (show (Map.size itemcol))) $
+			    trace ("  >> the one we retrieved, had #items= " ++ (show (Map.size goodcol))) $
 			    trace ("  >> and the new one.....  had #items= " ++ (show (Map.size newcol))) $
-			    trace ("  >> Ok, the key was: " ++ (show (unsafeCoerce key::Char))) $
 			    trace (" inserted, now collection " ++ (show (Map.keys ((unsafeCoerce newcol) :: Map Char Int)))) $
   			    IntMap.insert n newcol acc)
  	             items newitems in
 
        let tags' = foldl (\ acc (NT id k) -> 
   			    let TCID n = id 
-			        (castkey) = magic3 id tagcol 
-			        tagcol = (IntMap.!) acc n
- 			        col = Set.insert (castkey k) tagcol 
+			        badcol = (IntMap.!) acc n
+			        goodcol = tmagic id badcol
+ 			        newcol = mostmagic acc $ Set.insert k goodcol
 			    in
-  			    IntMap.insert n col acc)
+  			    IntMap.insert n newcol acc)
  	             tags newtags in
        (n, MT tags', MI items')
 
-magic4 :: TagColID a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
-magic4 id col = (unsafeCoerce col)
+megamagic :: TagColID a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
+megamagic id col = (unsafeCoerce col)
 
 --prescribe :: Ord (TagColID a) => TagColID a -> Step a -> Graph -> Graph
 
@@ -163,15 +158,13 @@ prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
 prescribe id step (G gmap) = 
     case id of 
      TCID n ->
-       G (IntMap.insertWith (++) n [step] $ magic4 id gmap)
+       G (IntMap.insertWith (++) n [step] $ megamagic id gmap)
 
 -- Retrieve the steps from a graph:
 getSteps  :: Graph -> TagColID a -> [Step a]
---getSteps (G graph) id = Map.findWithDefault [] id (unsafeCoerce graph)
-
 getSteps (G gmap) id = 
     case id of 
-     TCID n -> IntMap.findWithDefault [] n (magic4 id gmap)
+     TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
 -- Serially run actions and make updates
 serialScheduler graph inittags cols = schedloop cols [] inittags
@@ -185,12 +178,13 @@ serialScheduler graph inittags cols = schedloop cols [] inittags
        --schedloop c blocked [] = schedloop c [] blocked
        schedloop c blocked [] = error "err ran out of tags but have blocked..."
        schedloop c blocked (hd : tl) = 
-	   case trace ("  Looping... " ++ show (length tl)) $ hd of 
+	   case trace ("\n  Looping... " ++ show (length tl)) $ hd of 
 	    NT id tag ->
 	     foldl (\ acc step -> 
 		    case step acc tag of
 		      -- FIXME: We don't YET track what item collection we blocked on.
-		      Block d_id tag -> schedloop acc (hd:blocked) tl
+		      Block d_id tag -> trace (" ... Blocked ... ") $
+		                        schedloop acc (hd:blocked) tl
 		      Done (newtags, newitems) -> 
 		        schedloop (mergeUpdates newtags newitems acc)
 		                  blocked (newtags++tl) -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
@@ -229,26 +223,24 @@ test = -- Allocate collections:
 	    prescribe t2 (incrStep d2 (t3,d3)) $
 	    emptyGraph
 
+       case graph of G g -> putStrLn $ "Graph Size... " ++ (show $ IntMap.size g)
+
        let inittags = [call t1 'a',  call t1 'b']
 
        putStrLn "About to start scheduler...\n"
 
-       --modifyIORef cref $ serialScheduler graph inittags
+       modifyIORef cref $ serialScheduler graph inittags
 
        putStrLn " -- FINISHED SCHEDULER\n"
 
        c  <- readIORef cref
        let foo = get c d1 'a' :: Maybe Int
---       return $ (d1, get c d1 'a', get c d1)
---       return "BLAH"
 
---       return (get c d3 'a', get c d3 'b') 
-
---       return (get c d1 'a', get c d1 'b') 
        putStrLn $ showcol c
-       return (get c d1 'a') 
-      
---main = putStrLn "hello"
+       putStrLn $ "  d1: " ++ show (get c d1 'a', get c d1 'b') 
+       putStrLn $ "  d2: " ++ show (get c d2 'a', get c d2 'b') 
+       putStrLn $ "  d3: " ++ show (get c d3 'a', get c d3 'b') 
+       return ()
 
 
 showcol (n, MT tmap, MI imap) =
