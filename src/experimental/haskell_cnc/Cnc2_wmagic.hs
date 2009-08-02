@@ -19,6 +19,8 @@ import Control.Monad
 import qualified Data.IntMap as IntMap
 import Debug.Trace
 
+import Data.Complex
+
 ------------------------------------------------------------
 -- Type definitions:
 
@@ -217,6 +219,8 @@ test = -- Allocate collections:
        return ()
 
 
+	 
+
 showcol (n, MT tmap, MI imap) =
   show (n, IntMap.size tmap, IntMap.keys imap, 
 	Map.keys foo, 
@@ -227,3 +231,151 @@ showcol (n, MT tmap, MI imap) =
 
 
 main = test
+
+
+
+--------------------------------------------------------------------------------
+
+computeMandel dat pixel = 
+    undefined
+
+max_depth = 10
+
+mandel :: Complex -> ??
+mandel c = loop max_depth 
+  where   
+   loop i z 
+    | i == 0 = 
+    | z >= 2.0 = 
+   loop i z = 
+-- int mandel(const complex &c)
+-- {
+--     int count = 0;
+--     complex z = 0;
+
+--     for(int i = 0; i < max_depth; i++)
+--     {
+--         if (abs(z) >= 2.0) break;
+--         z = z*z + c;
+--         count++;
+--     }
+--     return count;
+
+
+mandel = 
+    do cref <- newCollections 
+       position <- newTagCol  cref
+       dat      <- newItemCol cref
+       pixel    <- newItemCol cref
+
+       let graph = 
+	    prescribe position (computeMandel dat pixel) $
+	    emptyGraph
+
+       return ()
+
+-- int max_depth;
+
+
+-- }
+
+
+-- int ComputeMandel::execute( pair p, my_context &c) const
+-- {
+--     int depth = mandel(c.m_data.get(p));
+--     c.m_pixel.put(p,depth);
+--     return CnC::CNC_Success;
+-- }
+
+-- int main(int argc, char* argv[])
+-- {
+
+--     bool verbose = false;
+--     int max_row = 100;
+--     int max_col = 100;
+--     max_depth = 200;
+
+--     int ai = 1;
+--     if (argc > ai && 0 == strcmp("-v", argv[ai]))
+--     {
+--         verbose = true;
+--         ai++;
+--     }
+--     if (argc == ai+3)
+--     {
+--         max_row = atoi(argv[ai]);
+--         max_col = atoi(argv[ai+1]);
+--         max_depth = atoi(argv[ai+2]);
+--      }
+--     else
+--     {
+--         fprintf(stderr,"Usage: mandel [-v] rows columns max_depth\n");
+--         return -1;
+--     }
+
+--     complex z = (1.0,1.5);
+--     std::cout << mandel(z) << std::endl;
+    
+--     double r_origin = -2;
+--     double r_scale = 4.0/max_row;
+--     double c_origin = -2.0;
+--     double c_scale = 4.0/max_col;
+--     int *pixels = new int[max_row*max_col];
+
+--     my_context c;
+
+--     tbb::tick_count t0 = tbb::tick_count::now();
+    
+--     for (int i = 0; i < max_row; i++) 
+--     {
+--         for (int j = 0; j < max_col; j++ )
+--         {
+--             complex z = complex(r_scale*j +r_origin,c_scale*i + c_origin);
+--             c.m_data.put(make_pair(i,j),z);
+--             c.m_position.put(make_pair(i,j));
+--         }
+--     }
+--     c.wait();
+    
+--     for (int i = 0; i < max_row; i++) 
+--     {
+--         for (int j = 0; j < max_col; j++ )
+--         {
+--             pixels[i*max_col + j] = c.m_pixel.get(make_pair(i,j));
+--         }
+--     }
+    
+--     tbb::tick_count t1 = tbb::tick_count::now();
+--     printf("Mandel %d %d %d in %g seconds\n", max_row, max_col, max_depth,
+--            (t1-t0).seconds());
+    
+--     int check = 0;
+--     for (int i = 0; i < max_row; i++) 
+--     {
+--         for (int j = 0; j < max_col; j++ )
+--         {
+--             if (pixels[i*max_col + j ] == max_depth) check += (i*max_col +j );
+--         }
+--     }
+--     printf("Mandel check %d \n", check);
+    
+--     if (verbose)
+--     {
+--         for (int i = 0; i < max_row; i++) 
+--         {
+--             for (int j = 0; j < max_col; j++ )
+--             {
+--                 if (pixels[i*max_col + j] == max_depth)
+--                 {
+--                     std::cout << " ";
+--                 }
+--                 else
+--                 {
+--                     std::cout << ".";
+--                 }
+--             }
+--             std::cout << std::endl;
+--         }
+--     }
+--     delete [] pixels;
+-- }
