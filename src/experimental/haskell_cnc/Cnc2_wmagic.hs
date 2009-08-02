@@ -1,9 +1,10 @@
 {-# LANGUAGE ExistentialQuantification
+, PatternSignatures
   #-}
 {-
    , FlexibleContexts
    , RankNTypes
-   , ScopedTypeVariables, PatternSignatures
+   , ScopedTypeVariables
    , ImpredicativeTypes
    , FlexibleContexts
   OPTIONS glasgow-exts
@@ -18,6 +19,9 @@ import Unsafe.Coerce
 import Control.Monad
 import qualified Data.IntMap as IntMap
 import Debug.Trace
+
+--import Data.Int
+import Data.Word
 
 import Data.Complex
 
@@ -37,7 +41,7 @@ type ItemCol   a b = Map a b
 
 -- Produces a batch of new data to write, or blocks
 type Step a = a -> Collections -> StepResult
-data StepResult = Done ([NewTag], [NewItem])
+data StepResult = Done [NewTag] [NewItem]
                 | forall a b. Ord a => Block (ItemColID a b) a
 		  -- type-wise Block is the same as NewTag
 data NewTag  = forall a.   Ord a => NT (TagColID  a)   a
@@ -170,7 +174,7 @@ serialScheduler graph inittags cols = schedloop cols [] inittags []
 	     -- FIXME: We don't YET track what item collection we blocked on.
 	     Block d_id tag -> trace (" ... Blocked ... ") $
 			       schedloop c (step:blocked) tags tl
-	     Done (newtags, newitems) -> 
+	     Done newtags newitems -> 
 		 schedloop (mergeUpdates newtags newitems c)
 		           blocked (newtags++tags) tl
 	 -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
@@ -185,8 +189,8 @@ incrStep :: II -> (TI, II) -> Step Char
 incrStep d1 (t2,d2) tag c = 
     case get c d1 tag of 
       Nothing -> Block d1 tag
-      Just n ->  Done ([call t2 tag],
-		       [put  d2 tag (n+1)])
+      Just n ->  Done [call t2 tag]
+		      [put  d2 tag (n+1)]
 
 test = -- Allocate collections:
     do cref <- newCollections 
@@ -236,105 +240,84 @@ main = test
 
 --------------------------------------------------------------------------------
 
-computeMandel dat pixel = 
-    undefined
+--instance Monad (StepResult
+
+--mget 
+--mput
+
+--------------------------------------------------------------------------------
+
+
 
 max_depth = 10
 
-mandel :: Complex -> ??
-mandel c = loop max_depth 
+
+mandel :: Complex Double -> Int
+mandel c = loop max_depth 0 0
   where   
-   loop i z 
-    | i == 0 = 
-    | z >= 2.0 = 
-   loop i z = 
--- int mandel(const complex &c)
--- {
---     int count = 0;
---     complex z = 0;
-
---     for(int i = 0; i < max_depth; i++)
---     {
---         if (abs(z) >= 2.0) break;
---         z = z*z + c;
---         count++;
---     }
---     return count;
+   loop i z count
+    | i == 0        = count
+    | magnitude(z) >= 2.0 = count 
+    | otherwise     = loop (i+1) (z*z + c) (count+1)
 
 
-mandel = 
+type Pair = (Word16, Word16)
+
+m = 
     do cref <- newCollections 
-       position <- newTagCol  cref
-       dat      <- newItemCol cref
-       pixel    <- newItemCol cref
+       position <- newTagCol  cref  :: IO (TagColID  Pair)
+       dat      <- newItemCol cref  :: IO (ItemColID Pair (Complex Double))
+       pixel    <- newItemCol cref  :: IO (ItemColID Pair Int)
+
+       let mandelStep tag c =     
+	    case get c dat tag of 
+	     Nothing -> Block dat tag
+	     Just n ->  Done [] [put pixel tag (mandel n)]
 
        let graph = 
-	    prescribe position (computeMandel dat pixel) $
+	    prescribe position mandelStep $
 	    emptyGraph
 
+       let putit :: Word16 -> Word16 -> NewItem
+	   putit i j = 
+	      put dat ((i,j) :: Pair) (z :: Complex Double)
+	    where 
+             z = (r_scale * (fromIntegral j) + r_origin) :+ 
+		 (c_scale * (fromIntegral i) + c_origin)
+       let inititems = 
+	    [ putit i j | i :: Word16 <- [0..max_row-1], j <- [0..max_col-1]]
+
+       let inittags = [ call position (i,j) 
+			| i <- [0..max_row-1], j <- [0..max_col-1]]
+       -- Load up init data:
+       modifyIORef cref $ mergeUpdates inittags inititems
+
+       -- why do we do this??:
+       putStrLn $ show (mandel z)
+
+       modifyIORef cref $ serialScheduler graph inittags
+
+       putStr "Done simple test...\n"
        return ()
+  where 
+   max_row = 100 :: Word16
+   max_col = 100 :: Word16
+   z = 1.0 :+ 1.5                   :: Complex Double
+   r_origin = -2                            :: Double
+   r_scale  = 4.0 / (fromIntegral max_row)  :: Double
+   c_origin = -2.0                          :: Double
+   c_scale = 4.0 / (fromIntegral max_col)   :: Double
+--   verbose = false
+--     int *pixels = new int[max_row*max_col];
 
--- int max_depth;
 
-
--- }
-
-
--- int ComputeMandel::execute( pair p, my_context &c) const
--- {
---     int depth = mandel(c.m_data.get(p));
---     c.m_pixel.put(p,depth);
---     return CnC::CNC_Success;
--- }
-
--- int main(int argc, char* argv[])
--- {
-
---     bool verbose = false;
---     int max_row = 100;
---     int max_col = 100;
---     max_depth = 200;
-
---     int ai = 1;
---     if (argc > ai && 0 == strcmp("-v", argv[ai]))
---     {
---         verbose = true;
---         ai++;
---     }
---     if (argc == ai+3)
---     {
+-- Read max_rows...
+--         fprintf(stderr,"Usage: mandel [-v] rows columns max_depth\n");
 --         max_row = atoi(argv[ai]);
 --         max_col = atoi(argv[ai+1]);
 --         max_depth = atoi(argv[ai+2]);
---      }
---     else
---     {
---         fprintf(stderr,"Usage: mandel [-v] rows columns max_depth\n");
---         return -1;
---     }
 
---     complex z = (1.0,1.5);
---     std::cout << mandel(z) << std::endl;
-    
---     double r_origin = -2;
---     double r_scale = 4.0/max_row;
---     double c_origin = -2.0;
---     double c_scale = 4.0/max_col;
---     int *pixels = new int[max_row*max_col];
 
---     my_context c;
-
---     tbb::tick_count t0 = tbb::tick_count::now();
-    
---     for (int i = 0; i < max_row; i++) 
---     {
---         for (int j = 0; j < max_col; j++ )
---         {
---             complex z = complex(r_scale*j +r_origin,c_scale*i + c_origin);
---             c.m_data.put(make_pair(i,j),z);
---             c.m_position.put(make_pair(i,j));
---         }
---     }
 --     c.wait();
     
 --     for (int i = 0; i < max_row; i++) 
