@@ -248,7 +248,6 @@ main = test
 --------------------------------------------------------------------------------
 
 
-
 max_depth = 10
 
 
@@ -297,7 +296,19 @@ m =
 
        modifyIORef cref $ serialScheduler graph inittags
 
-       putStr "Done simple test...\n"
+       putStr "Done simple test... Now unpack it:\n"
+
+       c <- readIORef cref
+       let foo = get c dat (0,0) 
+
+       putStrLn "Mandel check "
+       
+--             if (pixels[i*max_col + j ] == max_depth) check += (i*max_col +j );
+--         }
+--     }
+--     printf("Mandel check %d \n", check);
+           
+
        return ()
   where 
    max_row = 100 :: Word16
