@@ -1,19 +1,24 @@
 {-# LANGUAGE ExistentialQuantification
-, PatternSignatures
+   , ScopedTypeVariables
+   , BangPatterns
   #-}
 {-
    , FlexibleContexts
    , RankNTypes
-   , ScopedTypeVariables
    , ImpredicativeTypes
    , FlexibleContexts
+
+, PatternSignatures
   OPTIONS glasgow-exts
+
+   -funbox-strict-fields
 -}
 
 -- Haskell needs :t in the code!!!
 
 import Data.Set as Set
 import Data.Map as Map
+import Data.Maybe
 import Data.IORef
 import Unsafe.Coerce
 import Control.Monad
@@ -234,6 +239,7 @@ showcol (n, MT tmap, MI imap) =
     foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
 
 
+
 main = test
 
 
@@ -248,21 +254,43 @@ main = test
 --------------------------------------------------------------------------------
 
 
-max_depth = 10
+
+--max_depth = 10
 
 
-mandel :: Complex Double -> Int
-mandel c = loop max_depth 0 0
+mandel :: Int -> Complex Double -> Int
+mandel max_depth c = 
+    trace ("==== MANDEL STEP of " ++ show c) $
+    loop 0 0 0
   where   
+   fn = magnitude
+--   fn = realPart . abs
    loop i z count
-    | i == 0        = count
-    | magnitude(z) >= 2.0 = count 
-    | otherwise     = loop (i+1) (z*z + c) (count+1)
+    | i == max_depth      = count
+    | fn(z) >= 2.0 = trace "  FALLOUT2" $ count 
+    | otherwise     = trace (" z parts "++ show (realPart z) ++ " " ++ show (imagPart z)++
+			     "  looping "++ show i ++ " "++ show count ++" "++ show (fn z) 
+			     ) $
+		      loop (i+1) (z*z + c) (count+1)
+
+-- int mandel(const complex &c)
+-- {
+--     int count = 0;
+--     complex z = 0;
+
+--     for(int i = 0; i < max_depth; i++)
+--     {
+--         if (abs(z) >= 2.0) break;
+--         z = z*z + c;
+--         count++;
+--     }
+--     return count;
+-- }
 
 
 type Pair = (Word16, Word16)
 
-m = 
+run max_row max_col max_depth = 
     do cref <- newCollections 
        position <- newTagCol  cref  :: IO (TagColID  Pair)
        dat      <- newItemCol cref  :: IO (ItemColID Pair (Complex Double))
@@ -270,8 +298,9 @@ m =
 
        let mandelStep tag c =     
 	    case get c dat tag of 
-	     Nothing -> Block dat tag
-	     Just n ->  Done [] [put pixel tag (mandel n)]
+	     Nothing -> trace ("  (blocking mandel step "++ show tag ++")") $ Block dat tag
+	     Just n ->  trace ("  (invoking mandel step "++ show n ++")") $ 
+			Done [] [put pixel tag (mandel max_depth n)]
 
        let graph = 
 	    prescribe position mandelStep $
@@ -292,7 +321,7 @@ m =
        modifyIORef cref $ mergeUpdates inittags inititems
 
        -- why do we do this??:
-       putStrLn $ show (mandel z)
+--       putStrLn $ show (mandel max_depth (1.0 :+ 1.5))
 
        modifyIORef cref $ serialScheduler graph inittags
 
@@ -301,25 +330,44 @@ m =
        c <- readIORef cref
        let foo = get c dat (0,0) 
 
-       putStrLn "Mandel check "
+       let check = foldRange 0 (max_row-1) 0 $
+ 		   \ acc i -> foldRange 0 (max_col-1) acc $
+ 		    \ acc j -> 
+--		      trace ("Hmm... ij " ++ show i ++ " " ++ show j ++ 
+--			     " max depth "++ show max_depth ++" "++ show (get c dat (i,j))) $
+  		      if fromJust (get c dat (i,j)) == fromIntegral max_depth
+  		      then acc + (i*max_col + j)
+  		      else acc
+	 
+       putStrLn ("Mandel check " ++ show check)
        
---             if (pixels[i*max_col + j ] == max_depth) check += (i*max_col +j );
---         }
---     }
---     printf("Mandel check %d \n", check);
-           
-
        return ()
   where 
-   max_row = 100 :: Word16
-   max_col = 100 :: Word16
-   z = 1.0 :+ 1.5                   :: Complex Double
+   --z = 1.0 :+ 1.5                   :: Complex Double
    r_origin = -2                            :: Double
    r_scale  = 4.0 / (fromIntegral max_row)  :: Double
    c_origin = -2.0                          :: Double
    c_scale = 4.0 / (fromIntegral max_col)   :: Double
 --   verbose = false
 --     int *pixels = new int[max_row*max_col];
+
+--     double r_origin = -2;
+--     double r_scale = 4.0/max_row;
+--     double c_origin = -2.0;
+--     double c_scale = 4.0/max_col;
+--     int *pixels = new int[max_row*max_col];
+
+
+m = run (3::Word16) (3::Word16) 3
+
+
+-- Start = inclusive, End = uninclusive:
+foldRange start end acc fn = loop start acc
+ where
+  loop !start !acc
+    | start == end = acc
+    | otherwise = loop (start+1) (fn acc start)
+
 
 
 -- Read max_rows...
