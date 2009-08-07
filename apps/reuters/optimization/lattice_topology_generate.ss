@@ -4,8 +4,9 @@ exec regiment.plt i --script $0 $*
 exec regiment.chez i --script $0 $*
 |#
 
-;; ./network_generate.ss <N>
+;; ./latice_topology_generate.ss <N>
 ;; This little script dumps a random topology with N nodes to stdout.
+;; The topology consists of a number of layers with random interconnections between them.
 
 (define N 
   (if (= (length (command-line)) 6)
