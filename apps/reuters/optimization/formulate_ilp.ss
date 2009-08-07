@@ -1,21 +1,24 @@
 #! /bin/bash
 #|
 # This works with either PLT or chez right now (ikarus doesn't have hashtables yet)
-exec regiment.plt i --script $0 $*
 exec regiment.chez i --script $0 $*
+exec regiment.plt i --script $0 $*
 |#
 
 ;exec chez74 --script $0 $*
 
-(define (read-qopt fn)
+(define (read-qopt prt)
  (filter (compose not null?)
-      (file->linelists fn)))
+      (port->linelists prt)))
 
-;; A bunch of spurious arguments because of the way this is invoked (above):
-(unless (= (length (command-line)) 6)
-  (error 'formulate_ilp "This script takes one argument: a .qopt file."))
-
-(define raw (read-qopt (rac (command-line))))
+(define raw 
+  (read-qopt 
+   ;; A bunch of spurious arguments because of the way this is invoked (above):
+   (if (= (length (command-line)) 6)
+       (open-input-file (rac (command-line)))
+       (current-input-port)
+       ;;(error 'formulate_ilp "This script takes one argument: a .qopt file.")
+       )))
 
 ;;==============================================================================
 
