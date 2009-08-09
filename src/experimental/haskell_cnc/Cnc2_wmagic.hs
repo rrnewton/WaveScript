@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification
    , ScopedTypeVariables
    , BangPatterns
+   , PatternSignatures
   #-}
 {-
    , FlexibleContexts
@@ -8,7 +9,6 @@
    , ImpredicativeTypes
    , FlexibleContexts
 
-, PatternSignatures
   OPTIONS glasgow-exts
 
    -funbox-strict-fields
@@ -335,7 +335,7 @@ run max_row max_col max_depth =
  		    \ acc j -> 
 --		      trace ("Hmm... ij " ++ show i ++ " " ++ show j ++ 
 --			     " max depth "++ show max_depth ++" "++ show (get c dat (i,j))) $
-  		      if fromJust (get c dat (i,j)) == fromIntegral max_depth
+  		      if fromJust (get c pixel (i,j)) == max_depth
   		      then acc + (i*max_col + j)
   		      else acc
 	 
