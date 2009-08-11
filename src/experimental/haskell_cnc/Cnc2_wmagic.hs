@@ -1,9 +1,9 @@
 {-# LANGUAGE ExistentialQuantification
    , ScopedTypeVariables
    , BangPatterns
+   , PatternSignatures
   #-}
 {-
-   , PatternSignatures
    , FlexibleContexts
    , RankNTypes
    , ImpredicativeTypes
@@ -28,6 +28,8 @@ import System
 import Debug.Trace
 import Unsafe.Coerce
 import Util
+
+import System.IO.Unsafe
 
 -- README
 ------------------------------------------------------------
@@ -62,15 +64,15 @@ data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemCol a b))
 data MatchedTagMap  = forall a.   MT (IntMap.IntMap  (TagCol a))
 
 -- We pass around HANDLES to the real item/tag collections, called "ID"s:
-data TagColID  a   = TCID Int deriving (Ord, Eq)
-data ItemColID a b = ICID Int
+data TagColID  a   = TCID Int deriving (Ord, Eq, Show)
+data ItemColID a b = ICID Int deriving (Ord, Eq, Show)
 type TagCol    a   = Set a
 type ItemCol   a b = Map a b
 
 -- A step either produces a batch of new data to write, or blocks:
 type Step a = a -> Collections -> StepResult
 data StepResult = Done [NewTag] [NewItem]
-                | forall a b. Ord a => Block (ItemColID a b) a
+                | forall a b. (Ord a, Show a) => Block (ItemColID a b) a
 data NewTag  = forall a.   Ord a => NT (TagColID  a)   a
 data NewItem = forall a b. Ord a => NI (ItemColID a b) a b
 
@@ -82,27 +84,21 @@ data Graph = forall a. G (IntMap.IntMap [Step a])
 
 -- The raw functional interface:
 _newWorld   :: Int -> Collections
-_newTagCol  :: Collections -> (TagColID a, Collections)
+_newTagCol  :: Collections -> (TagColID ma, Collections)
 _newItemCol :: Collections -> (ItemColID a b, Collections)
 
-newWorld   :: IO (IORef Collections)
-newTagCol      :: IORef Collections -> IO (TagColID a)
-newItemCol     :: IORef Collections -> IO (ItemColID a b)
 -- These are called by the step code and produce outbound tags and items:
 _put  :: Ord a => ItemColID a b -> a -> b -> NewItem
 _call :: Ord a => TagColID  a   -> a      -> NewTag
 _get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 
-
--- The monadic interface 
-put  :: Ord a => ItemColID a b -> a -> b -> CncCode ()
-get  :: Ord a => ItemColID a b -> a -> CncCode b
-call :: Ord a => TagColID  a   -> a -> CncCode ()
+_prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
 
 --------------------------------------------------------------------------------
 -- Implementation:
 
-
+-- A "world" is a (heterogeneous) set of collections.
+-- A world keeps a counter that is used to uniquely name each collection in that world:
 _newWorld n = (n, MT IntMap.empty, MI IntMap.empty)
 _newTagCol (cnt, MT tags, items) = 
     (TCID cnt, (cnt+1, MT newtags, items))
@@ -172,8 +168,7 @@ megamagic id col = (unsafeCoerce col)
 
 
 emptyGraph = G IntMap.empty
-prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
-prescribe id step (G gmap) = 
+_prescribe id step (G gmap) = 
     case id of 
      TCID n ->
        G (IntMap.insertWith (++) n [step] $ megamagic id gmap)
@@ -191,6 +186,7 @@ callSteps (G gmap) id tag =
      TCID n -> Prelude.map (\fn -> fn tag) $ 
 	       IntMap.findWithDefault [] n (megamagic id gmap)
 
+serialScheduler :: Graph -> [NewTag] -> Collections -> Collections
 serialScheduler graph inittags cols = schedloop cols [] inittags []
  where schedloop c [] [] []  = c
        -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
@@ -220,14 +216,26 @@ serialScheduler graph inittags cols = schedloop cols [] inittags []
 -- blocks on a failed get.
 data CncCode a = CC (Collections -> [NewTag] -> [NewItem] -> (Maybe a, StepResult))
 
+-- Currently ONE GRAPH context implicit in the monad (could do many):
+-- GraphCode threads through the Collections and Graph values:
+data GraphCode a = GC (Collections -> Graph -> [NewTag] -> (Collections, Graph, [NewTag], a))
+
+newTagCol      :: () -> GraphCode (TagColID a)
+newItemCol     :: () -> GraphCode (ItemColID a b)
+
+-- The monadic interface 
+put  :: Ord a           => ItemColID a b -> a -> b -> CncCode ()
+get  :: (Show a, Ord a) => ItemColID a b -> a -> CncCode b
+call :: Ord a => TagColID  a   -> a -> CncCode ()
+
+-- CncCode accumulates a list of new items/tags without committing them to the Collections.
 instance Monad CncCode where 
-    return x = CC$ \w nt ni -> (Just x, Done [] [])
+    return x = CC$ \w nt ni -> (Just x, Done nt ni)
     (CC ma) >>= f = CC$ \w nt ni -> 
 		          case ma w nt ni of 
 			   (_, Block ic t) -> (Nothing, Block ic t)
 			   (Just a, Done nt' ni') -> let CC mb = f a 
 						     in mb w nt' ni'
-
 get col tag = CC $
     \ w tags items -> 
       case _get w col tag of 
@@ -243,22 +251,122 @@ call col tag = CC $
       (Just (), Done (_call col tag : tags) items)
 
 
--- The graph monad for captures code that builds graphs:
+-- The graph monad captures code that builds graphs:
+instance Monad GraphCode where 
+    return x = GC$ \ w g it -> (w,g,it, x)
+    (GC ma) >>= f = 
+      GC $ \w g itags -> 
+	let (w',g',it',a) = ma w g itags
+	    GC mb = f a
+	in mb w' g' it'
+	
+newTagCol () = 
+    GC$ \(cnt, MT tags, items) graph inittags -> 
+      let newtags = IntMap.insert cnt Set.empty tags in
+       ((cnt+1, MT newtags, items), 
+        graph, inittags,TCID cnt)
+
+newItemCol () = 
+    GC$ \(cnt, tags, MI items) graph inittags -> 
+      let newitems = IntMap.insert cnt Map.empty items in
+       ((cnt+1, tags, MI newitems), 
+        graph, inittags, ICID cnt)
+
+prescribe :: Ord a => TagColID a -> (a -> CncCode ()) -> GraphCode ()
+--prescribe tc step = 
+prescribe tc stepcode = 
+    GC$ \ cols graph inittags -> 
+	(cols,
+	 _prescribe tc 
+	     (\a w -> 
+	      let CC fn = stepcode a 
+	          (_,result) = fn w [] []
+	      in result)
+	     graph,
+	 inittags, ())    
+
+-- Initialize runs CncCode but does not invoke the scheduler.
+-- You should not do any 'gets' inside this CncCode.
+-- New tags introduced are accumulated as "inittags":
+initialize :: CncCode a -> GraphCode a
+initialize (CC fn) = 
+    GC$ \w graph inittags -> 
+     case fn w inittags [] of 
+       -- This commits the new tags/items to the Collections
+       (Just x, Done nt ni) ->  
+	   --seq (unsafePerformIO $ putStrLn $ show ("  initializing", length nt, length ni)) $
+	   (mergeUpdates [] ni w, graph, nt, x)
+       (Nothing, Block itemcol tag) ->
+	   error ("Tried to run initialization CncCode within the GraphCode monad but it blocked!: "
+		 ++ show (itemcol, tag))
+
+-- Execute is like init except that it invokes the scheduler.
+-- Any tags already in the collection are taken to be "unexecuted"
+-- and make up the inittags argument to the scheduler.
+-- 
+-- NOTE: The current philosophy is that the serialScheduler runs until
+-- nothing is blocking.  Thus the finalize action won't need to block.
+-- A different method would be to only run the scheduler just enough
+-- to satisfy the finalize action.  That would be nice.
+finalize :: CncCode a -> GraphCode a
+finalize (CC fn) = 
+    GC$ \w graph inittags -> 	
+	case w of  
+	 (_, MT tmap, _) -> 
+--        Can't do this because we don't have the type info anywhere:	     
+-- 	  let inittags = 
+-- 	       foldl (\ acc (key,set) -> 
+-- 		      Prelude.map (\ (k,v) -> NT (TCID k) v) $
+-- 		      zip (repeat key)
+-- 		          (Set.toList set)
+-- 		     )
+-- 		[] (IntMap.assocs tmap)
+--  	  in 
+	  let finalworld = serialScheduler graph inittags w in
+	  -- After the scheduler is done executing, then when run the final action:
+          case fn finalworld [] [] of 
+	   (Just x, Done [] []) -> (finalworld, graph, [], x)
+	   (Just _, Done _ _)   -> error "It isn't proper for a finalize action to produce new tags/items!"
+	   (Nothing, Block itemcol tag) ->
+	    error ("Tried to run finalization CncCode but it blocked!: "
+		 ++ show (itemcol, tag))
+
+runGraph :: GraphCode a -> IO a
+runGraph (GC fn) = return x
+    where (_,_,_,x) = fn (_newWorld 0) emptyGraph []
 
 
--- A "world" is a (heterogeneous) set of collections.
--- A world keeps a counter that is used to uniquely name each collection in that world:
-newWorld = newIORef (0, MT IntMap.empty, MI IntMap.empty)
-newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
-		   let newtags = IntMap.insert cnt Set.empty tags
-		   writeIORef ref (cnt+1, MT newtags, items)
-		   return (TCID cnt)
-newItemCol ref = do (cnt, tags, MI items) <- readIORef ref 	   
-		    let newitems = IntMap.insert cnt Map.empty items
-		    writeIORef ref (cnt+1, tags, MI newitems)
-		    return (ICID cnt)
+gcPrintWorld :: String -> GraphCode ()
+gcPrintWorld str =
+  GC$ \w g it -> 
+   case w of 
+    (n, MT tmap, MI imap) ->
+     seq (unsafePerformIO $
+	  do putStr "GraphCode - Printing world: "
+	     putStrLn str
+	     putStrLn ("  "++ show (IntMap.size tmap) ++" tag collections "++
+		              show (IntMap.size imap) ++" item collections")
+	     mapM (\key -> 		    
+		    let m = IntMap.findWithDefault (error "shouldn't happen") key tmap in
+		    putStrLn ("    Tag col "++ show key ++" size "++ show (Set.size m)))
+	       (IntMap.keys tmap)
 
+	     mapM (\key -> 		    
+		    let m = IntMap.findWithDefault (error "shouldn't happen") key imap in
+		    putStrLn ("    Item col "++ show key ++" size "++ show (Map.size m)))
+	       (IntMap.keys imap)
+	 )
+     (w,g,it,())
+       
+--   show (n, IntMap.size tmap, IntMap.keys imap, 
+-- 	Map.keys foo, 
+-- 	Map.elems foo)
 
+gcPutStr :: String -> GraphCode ()
+gcPutStr str = 
+  GC$ \w g it -> 
+     seq (unsafePerformIO (putStr str))
+	 (w,g,it,())
 
 --------------------------------------------------------------------------------
 -- Test program:
@@ -272,7 +380,7 @@ incrStep d1 (t2,d2) tag c =
       Just n ->  Done [_call t2 tag]
 		      [_put  d2 tag (n+1)]
 
--- Test using the pure interface directly:
+-- Test using the function interface directly:
 test = -- Allocate collections:
     let w0      = _newWorld 0
         (t1,w2) = _newTagCol  w0
@@ -286,8 +394,8 @@ test = -- Allocate collections:
         w8 = mergeUpdates [] [_put d1 'a' 33, 
  			      _put d1 'b' 100] w7
 
-        graph = prescribe t1 (incrStep d1 (t2,d2)) $
- 		prescribe t2 (incrStep d2 (t3,d3)) $
+        graph = _prescribe t1 (incrStep d1 (t2,d2)) $
+ 		_prescribe t2 (incrStep d2 (t3,d3)) $
  		emptyGraph
 
         inittags = [_call t1 'b', _call t1 'a']
@@ -301,7 +409,40 @@ test = -- Allocate collections:
         putStrLn $ "  d3: " ++ show (_get w9 d3 'a', _get w9 d3 'b') 
         return ()
 
-	 
+-- Same test using wrappers:	 
+test2 = 
+ do v <- runGraph $ do
+        t1 <- newTagCol()
+        t2 <- newTagCol()
+        t3 <- newTagCol()
+        d1 <- newItemCol()
+        d2 <- newItemCol()
+        d3 <- newItemCol()
+		  
+	initialize $ do put d1 'a' 33
+ 			put d1 'b' 100
+			call t1 'b'
+			call t1 'a'
+
+        let incrStep d1 (t2,d2) tag = 
+	     do n <- get d1 tag
+	        put d2 tag (n+1)
+	        call t2 tag
+
+        prescribe t1 (incrStep d1 (t2,d2))
+ 	prescribe t2 (incrStep d2 (t3,d3))
+
+        gcPrintWorld "Initialization finished"
+
+        -- Get some of the results:
+        finalize $ do d1a <- get d1 'a'
+		      d1b <- get d1 'b'
+		      d2a <- get d2 'a'
+		      d2b <- get d2 'b'
+		      d3a <- get d3 'a'
+		      d3b <- get d3 'b'
+		      return ((d1a,d1b), (d2a,d2b), (d3a,d3b)) 
+    putStrLn ("Final: "++ show v)
 
 showcol (n, MT tmap, MI imap) =
   show (n, IntMap.size tmap, IntMap.keys imap, 
@@ -311,9 +452,13 @@ showcol (n, MT tmap, MI imap) =
     -- Hack -- pull out the first item collection:
     foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
 
+--instance Show StepResult where
+--    show x = "foo"
+
+#include "mandel.hs"
 
 --------------------------------------------------------------------------------
-
+{-
 mandel :: Int -> Complex Double -> Int
 mandel max_depth c = 
 --    trace ("==== MANDEL STEP of " ++ show c) $
@@ -390,72 +535,7 @@ run max_row max_col max_depth =
    r_scale  = 4.0 / (fromIntegral max_row)  :: Double
    c_origin = -2.0                          :: Double
    c_scale = 4.0 / (fromIntegral max_col)   :: Double
---   verbose = false
---     int *pixels = new int[max_row*max_col];
+-}
 
---     double r_origin = -2;
---     double r_scale = 4.0/max_row;
---     double c_origin = -2.0;
---     double c_scale = 4.0/max_col;
---     int *pixels = new int[max_row*max_col];
-
-
-
---main = run (3::Word16) (3::Word16) 3
---m = run (2::Word16) (2::Word16) 2
-
-main = do (one : two : three : _) <- getArgs	  
-	  run (read one::Word16) (read two)  (read three)
-
-
--- Read max_rows...
---         fprintf(stderr,"Usage: mandel [-v] rows columns max_depth\n");
---         max_row = atoi(argv[ai]);
---         max_col = atoi(argv[ai+1]);
---         max_depth = atoi(argv[ai+2]);
-
-
---     c.wait();
-    
---     for (int i = 0; i < max_row; i++) 
---     {
---         for (int j = 0; j < max_col; j++ )
---         {
---             pixels[i*max_col + j] = c.m_pixel.get(make_pair(i,j));
---         }
---     }
-    
---     tbb::tick_count t1 = tbb::tick_count::now();
---     printf("Mandel %d %d %d in %g seconds\n", max_row, max_col, max_depth,
---            (t1-t0).seconds());
-    
---     int check = 0;
---     for (int i = 0; i < max_row; i++) 
---     {
---         for (int j = 0; j < max_col; j++ )
---         {
---             if (pixels[i*max_col + j ] == max_depth) check += (i*max_col +j );
---         }
---     }
---     printf("Mandel check %d \n", check);
-    
---     if (verbose)
---     {
---         for (int i = 0; i < max_row; i++) 
---         {
---             for (int j = 0; j < max_col; j++ )
---             {
---                 if (pixels[i*max_col + j] == max_depth)
---                 {
---                     std::cout << " ";
---                 }
---                 else
---                 {
---                     std::cout << ".";
---                 }
---             }
---             std::cout << std::endl;
---         }
---     }
---     delete [] pixels;
--- }
+--main = do (one : two : three : _) <- getArgs	  
+--	  run (read one::Word16) (read two)  (read three)
