@@ -16,14 +16,9 @@ type Pair = (Word16, Word16)
 
 mandelProg :: Int -> Int -> Int -> GraphCode Int
 mandelProg max_row max_col max_depth = 
-    do --w <- newWorld
-       position :: TagCol  Pair                  <- newTagCol()
+    do position :: TagCol  Pair                  <- newTagCol()
        dat      :: ItemCol Pair (Complex Double) <- newItemCol()
        pixel    :: ItemCol Pair Int              <- newItemCol()   
-
---        position  <- newTagCol()
---        dat       <- newItemCol()
---        pixel     <- newItemCol()   
        
        let mandelStep tag = 
 	    do cplx <- get dat tag
@@ -31,9 +26,7 @@ mandelProg max_row max_col max_depth =
 
        prescribe position mandelStep 
 
---        gcPutStr "Initialize 1: "
---        gcPrintWorld "1 "
-
+--        gcPrintWorld "1"
        initialize $ 
         for_ 0 max_row $ \i -> 
          for_ 0 max_col $ \j ->
@@ -42,9 +35,7 @@ mandelProg max_row max_col max_depth =
   		  (c_scale * (fromIntegral i) + c_origin) in
 	  do put dat (_i,_j) z
 	     call position (_i,_j)
-
---        gcPrintWorld " 2 "
---        gcPutStr  "Now finalize 2: "
+--        gcPrintWorld "2"
 
        -- Final result, count coordinates of the  pixels with a certain value:
        finalize $ 
