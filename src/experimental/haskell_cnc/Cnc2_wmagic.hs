@@ -1,9 +1,9 @@
 {-# LANGUAGE ExistentialQuantification
    , ScopedTypeVariables
    , BangPatterns
-   , PatternSignatures
   #-}
 {-
+   , PatternSignatures
    , FlexibleContexts
    , RankNTypes
    , ImpredicativeTypes
@@ -20,15 +20,37 @@ import Data.Set as Set
 import Data.Map as Map
 import Data.Maybe
 import Data.IORef
-import Unsafe.Coerce
-import Control.Monad
 import qualified Data.IntMap as IntMap
-import Debug.Trace
-
---import Data.Int
 import Data.Word
-
 import Data.Complex
+import Control.Monad
+import System
+import Debug.Trace
+import Unsafe.Coerce
+import Util
+
+-- README
+------------------------------------------------------------
+-- How to do a *PURE* CnC?
+
+-- Well, this is a bit tricky because the a cnc step is a function
+-- from a heterogeneous set of collections to a set of new tags and
+-- items.  We could use various methods:
+
+-- (1) We could require that the user construct a sum-type including
+--     all the item types that will occur in their program.  (And
+--     another for the tag types.)
+
+-- (2) We could use existential types to pack various sorts of output
+--     items and tags into one list.  Together with an unsafe cast we 
+--     could build a safe interface into heterogeneous collections.
+
+-- This file implements (2).  This is fairly inefficent because our
+-- primary representation is a Map of Maps.  We have the overhead of
+-- that double indirection times the cost of the pure data structures.
+
+-- Below you will see two interfaces, the "raw" functional interface
+-- (functions prefixed with "_") and a nicer monadic interface.
 
 ------------------------------------------------------------
 -- Type definitions:
@@ -39,55 +61,61 @@ type Collections = (Int, MatchedTagMap, MatchedItemMap)
 data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemCol a b))
 data MatchedTagMap  = forall a.   MT (IntMap.IntMap  (TagCol a))
 
+-- We pass around HANDLES to the real item/tag collections, called "ID"s:
 data TagColID  a   = TCID Int deriving (Ord, Eq)
 data ItemColID a b = ICID Int
 type TagCol    a   = Set a
 type ItemCol   a b = Map a b
 
--- Produces a batch of new data to write, or blocks
+-- A step either produces a batch of new data to write, or blocks:
 type Step a = a -> Collections -> StepResult
 data StepResult = Done [NewTag] [NewItem]
                 | forall a b. Ord a => Block (ItemColID a b) a
-		  -- type-wise Block is the same as NewTag
 data NewTag  = forall a.   Ord a => NT (TagColID  a)   a
 data NewItem = forall a b. Ord a => NI (ItemColID a b) a b
 
--- Need it to be a map... but this type is wrong, as above:
+-- Need it to be a map... but this type is not truly polymorphic enough:
 data Graph = forall a. G (IntMap.IntMap [Step a])
 
 ------------------------------------------------------------
 -- (Optional) type signatures for operations:
 
-newCollections :: IO (IORef Collections)
+-- The raw functional interface:
+_newWorld   :: Int -> Collections
+_newTagCol  :: Collections -> (TagColID a, Collections)
+_newItemCol :: Collections -> (ItemColID a b, Collections)
+
+newWorld   :: IO (IORef Collections)
 newTagCol      :: IORef Collections -> IO (TagColID a)
 newItemCol     :: IORef Collections -> IO (ItemColID a b)
-
-
 -- These are called by the step code and produce outbound tags and items:
-put  :: Ord a => ItemColID a b -> a -> b -> NewItem
-call :: Ord a => TagColID  a   -> a      -> NewTag
+_put  :: Ord a => ItemColID a b -> a -> b -> NewItem
+_call :: Ord a => TagColID  a   -> a      -> NewTag
+_get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 
-get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
 
+-- The monadic interface 
+put  :: Ord a => ItemColID a b -> a -> b -> CncCode ()
+get  :: Ord a => ItemColID a b -> a -> CncCode b
+call :: Ord a => TagColID  a   -> a -> CncCode ()
 
 --------------------------------------------------------------------------------
 -- Implementation:
 
-newCollections = newIORef (0, MT IntMap.empty, MI IntMap.empty)
-newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
-		   let newtags = IntMap.insert cnt Set.empty tags
-		   writeIORef ref (cnt+1, MT newtags, items)
-		   return (TCID cnt)
-newItemCol ref = do (cnt, tags, MI items) <- readIORef ref 	   
-		    let newitems = IntMap.insert cnt Map.empty items
-		    writeIORef ref (cnt+1, tags, MI newitems)
-		    return (ICID cnt)
 
+_newWorld n = (n, MT IntMap.empty, MI IntMap.empty)
+_newTagCol (cnt, MT tags, items) = 
+    (TCID cnt, (cnt+1, MT newtags, items))
+  where newtags = IntMap.insert cnt Set.empty tags 
+
+_newItemCol (cnt, tags, MI items) =
+    (ICID cnt, (cnt+1, tags, MI newitems))
+  where newitems = IntMap.insert cnt Map.empty items
 
 magic :: ItemColID a b -> ItemCol c d -> ItemCol a b
 magic id = (unsafeCoerce)
 
-get (_, _, MI imap) id tag = 
+_get (_, _, MI imap) id tag = 
   let ICID n = id 
       badcol  = (IntMap.!) imap n
       goodcol = magic id badcol
@@ -96,8 +124,8 @@ get (_, _, MI imap) id tag =
     Nothing -> Nothing
     Just d  -> Just d
 
-put id tag item = NI id tag item -- Just accumulate puts as data
-call id tag     = NT id tag 
+_put id tag item = NI id tag item -- Just accumulate puts as data
+_call id tag     = NT id tag 
 
 moremagic :: IntMap.IntMap (ItemCol a b) -> ItemCol c d -> ItemCol a b
 moremagic id = (unsafeCoerce)
@@ -186,47 +214,92 @@ serialScheduler graph inittags cols = schedloop cols [] inittags []
 
 
 --------------------------------------------------------------------------------
+-- Common interface for interoperability:
+
+-- The CncCode monad carries forward a state (newtags, newitems) and
+-- blocks on a failed get.
+data CncCode a = CC (Collections -> [NewTag] -> [NewItem] -> (Maybe a, StepResult))
+
+instance Monad CncCode where 
+    return x = CC$ \w nt ni -> (Just x, Done [] [])
+    (CC ma) >>= f = CC$ \w nt ni -> 
+		          case ma w nt ni of 
+			   (_, Block ic t) -> (Nothing, Block ic t)
+			   (Just a, Done nt' ni') -> let CC mb = f a 
+						     in mb w nt' ni'
+
+get col tag = CC $
+    \ w tags items -> 
+      case _get w col tag of 
+       Nothing -> (Nothing, Block col tag)
+       Just x  -> (Just x,  Done tags items)
+
+put col tag val = CC $ 
+   \ w tags items -> 
+      (Just (), Done tags (_put col tag val : items))
+
+call col tag = CC $ 
+   \ w tags items -> 
+      (Just (), Done (_call col tag : tags) items)
+
+
+-- The graph monad for captures code that builds graphs:
+
+
+-- A "world" is a (heterogeneous) set of collections.
+-- A world keeps a counter that is used to uniquely name each collection in that world:
+newWorld = newIORef (0, MT IntMap.empty, MI IntMap.empty)
+newTagCol ref = do (cnt, MT tags, items) <- readIORef ref		   
+		   let newtags = IntMap.insert cnt Set.empty tags
+		   writeIORef ref (cnt+1, MT newtags, items)
+		   return (TCID cnt)
+newItemCol ref = do (cnt, tags, MI items) <- readIORef ref 	   
+		    let newitems = IntMap.insert cnt Map.empty items
+		    writeIORef ref (cnt+1, tags, MI newitems)
+		    return (ICID cnt)
+
+
+
+--------------------------------------------------------------------------------
 -- Test program:
 
 type TI = TagColID  Char
 type II = ItemColID Char Int
 incrStep :: II -> (TI, II) -> Step Char
 incrStep d1 (t2,d2) tag c = 
-    case get c d1 tag of 
+    case _get c d1 tag of 
       Nothing -> Block d1 tag
-      Just n ->  Done [call t2 tag]
-		      [put  d2 tag (n+1)]
+      Just n ->  Done [_call t2 tag]
+		      [_put  d2 tag (n+1)]
 
+-- Test using the pure interface directly:
 test = -- Allocate collections:
-    do cref <- newCollections 
-       t1 <- newTagCol cref
-       t2 <- newTagCol cref
-       t3 <- newTagCol cref
-       d1 <- newItemCol cref 
-       d2 <- newItemCol cref
-       d3 <- newItemCol cref
+    let w0      = _newWorld 0
+        (t1,w2) = _newTagCol  w0
+        (t2,w3) = _newTagCol  w2
+        (t3,w4) = _newTagCol  w3
+        (d1,w5) = _newItemCol w4
+        (d2,w6) = _newItemCol w5
+        (d3,w7) = _newItemCol w6
+		  
+        -- Initialize:
+        w8 = mergeUpdates [] [_put d1 'a' 33, 
+ 			      _put d1 'b' 100] w7
 
-       -- Initialize:
-       modifyIORef cref $ 
-	 mergeUpdates [] [put d1 'a' 33, 
-			  put d1 'b' 100]
-       let graph = 
-	    prescribe t1 (incrStep d1 (t2,d2)) $
-	    prescribe t2 (incrStep d2 (t3,d3)) $
-	    emptyGraph
-       case graph of G g -> putStrLn $ "Graph Size... " ++ (show $ IntMap.size g)
-       let inittags = [call t1 'b', call t1 'a']
+        graph = prescribe t1 (incrStep d1 (t2,d2)) $
+ 		prescribe t2 (incrStep d2 (t3,d3)) $
+ 		emptyGraph
 
-       putStrLn "About to start scheduler...\n"
-       modifyIORef cref $ serialScheduler graph inittags
+        inittags = [_call t1 'b', _call t1 'a']
 
-       c  <- readIORef cref
-       putStrLn $ showcol c
-       putStrLn $ "  d1: " ++ show (get c d1 'a', get c d1 'b') 
-       putStrLn $ "  d2: " ++ show (get c d2 'a', get c d2 'b') 
-       putStrLn $ "  d3: " ++ show (get c d3 'a', get c d3 'b') 
-       return ()
+        w9 = serialScheduler graph inittags w8
 
+    in 
+     do putStrLn $ showcol w9
+        putStrLn $ "  d1: " ++ show (_get w9 d1 'a', _get w9 d1 'b') 
+        putStrLn $ "  d2: " ++ show (_get w9 d2 'a', _get w9 d2 'b') 
+        putStrLn $ "  d3: " ++ show (_get w9 d3 'a', _get w9 d3 'b') 
+        return ()
 
 	 
 
@@ -239,68 +312,35 @@ showcol (n, MT tmap, MI imap) =
     foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
 
 
-
-main = test
-
-
-
 --------------------------------------------------------------------------------
-
---instance Monad (StepResult
-
---mget 
---mput
-
---------------------------------------------------------------------------------
-
-
-
---max_depth = 10
-
 
 mandel :: Int -> Complex Double -> Int
 mandel max_depth c = 
-    trace ("==== MANDEL STEP of " ++ show c) $
+--    trace ("==== MANDEL STEP of " ++ show c) $
     loop 0 0 0
   where   
    fn = magnitude
 --   fn = realPart . abs
    loop i z count
     | i == max_depth      = count
-    | fn(z) >= 2.0 = trace "  FALLOUT2" $ count 
-    | otherwise     = trace (" z parts "++ show (realPart z) ++ " " ++ show (imagPart z)++
-			     "  looping "++ show i ++ " "++ show count ++" "++ show (fn z) 
-			     ) $
+    | fn(z) >= 2.0 =  count  -- trace "  FALLOUT2" $
+    | otherwise     = --trace (" z parts "++ show (realPart z) ++ " " ++ show (imagPart z)++
+		      --       "  looping "++ show i ++ " "++ show count ++" "++ show (fn z)     ) $
 		      loop (i+1) (z*z + c) (count+1)
-
--- int mandel(const complex &c)
--- {
---     int count = 0;
---     complex z = 0;
-
---     for(int i = 0; i < max_depth; i++)
---     {
---         if (abs(z) >= 2.0) break;
---         z = z*z + c;
---         count++;
---     }
---     return count;
--- }
-
 
 type Pair = (Word16, Word16)
 
 run max_row max_col max_depth = 
-    do cref <- newCollections 
+    do cref <- newWorld 
        position <- newTagCol  cref  :: IO (TagColID  Pair)
        dat      <- newItemCol cref  :: IO (ItemColID Pair (Complex Double))
        pixel    <- newItemCol cref  :: IO (ItemColID Pair Int)
 
        let mandelStep tag c =     
-	    case get c dat tag of 
+	    case _get c dat tag of 
 	     Nothing -> trace ("  (blocking mandel step "++ show tag ++")") $ Block dat tag
-	     Just n ->  trace ("  (invoking mandel step "++ show n ++")") $ 
-			Done [] [put pixel tag (mandel max_depth n)]
+	     Just cplx ->  --trace ("  (invoking mandel step "++ show cplx ++")") $ 
+			Done [] [_put pixel tag (mandel max_depth cplx)]
 
        let graph = 
 	    prescribe position mandelStep $
@@ -308,34 +348,36 @@ run max_row max_col max_depth =
 
        let putit :: Word16 -> Word16 -> NewItem
 	   putit i j = 
-	      put dat ((i,j) :: Pair) (z :: Complex Double)
+	      _put dat ((i,j) :: Pair) (z :: Complex Double)
 	    where 
              z = (r_scale * (fromIntegral j) + r_origin) :+ 
 		 (c_scale * (fromIntegral i) + c_origin)
        let inititems = 
 	    [ putit i j | i :: Word16 <- [0..max_row-1], j <- [0..max_col-1]]
 
-       let inittags = [ call position (i,j) 
+       let inittags = [ _call position (i,j) 
 			| i <- [0..max_row-1], j <- [0..max_col-1]]
        -- Load up init data:
        modifyIORef cref $ mergeUpdates inittags inititems
 
        -- why do we do this??:
---       putStrLn $ show (mandel max_depth (1.0 :+ 1.5))
+       putStrLn $ show (mandel max_depth (1.0 :+ 1.5))
 
        modifyIORef cref $ serialScheduler graph inittags
 
        putStr "Done simple test... Now unpack it:\n"
 
        c <- readIORef cref
-       let foo = get c dat (0,0) 
+       let foo = _get c dat (0,0) 
 
-       let check = foldRange 0 (max_row-1) 0 $
- 		   \ acc i -> foldRange 0 (max_col-1) acc $
+--       putStrLn $ "Ok, max_row and max_col: " ++ show (max_row, max_col)
+
+       let check = foldRange 0 max_row 0 $
+ 		   \ acc i -> foldRange 0 max_col acc $
  		    \ acc j -> 
---		      trace ("Hmm... ij " ++ show i ++ " " ++ show j ++ 
---			     " max depth "++ show max_depth ++" "++ show (get c dat (i,j))) $
-  		      if fromJust (get c pixel (i,j)) == max_depth
+---		      trace ("Hmm... ij " ++ show (i,j)  ++ 
+--			     " max depth "++ show max_depth ++" get pixel: "++ show (get c pixel (i,j))) $
+  		      if fromJust (_get c pixel (i,j)) == max_depth
   		      then acc + (i*max_col + j)
   		      else acc
 	 
@@ -358,16 +400,12 @@ run max_row max_col max_depth =
 --     int *pixels = new int[max_row*max_col];
 
 
-m = run (3::Word16) (3::Word16) 3
 
+--main = run (3::Word16) (3::Word16) 3
+--m = run (2::Word16) (2::Word16) 2
 
--- Start = inclusive, End = uninclusive:
-foldRange start end acc fn = loop start acc
- where
-  loop !start !acc
-    | start == end = acc
-    | otherwise = loop (start+1) (fn acc start)
-
+main = do (one : two : three : _) <- getArgs	  
+	  run (read one::Word16) (read two)  (read three)
 
 
 -- Read max_rows...

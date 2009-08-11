@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleInstances, BangPatterns, MagicHash #-}
+{-# LANGUAGE FlexibleInstances
+  , BangPatterns
+  , MagicHash 
+  , ScopedTypeVariables
+  #-}
 
 {-
   This is the third version.
@@ -23,19 +27,21 @@ import Data.Set as Set
 import Data.HashTable as HT
 import Data.Int
 import Data.IORef
+import Data.Complex
+import Data.Word
 import Control.Monad
 import Control.Concurrent.MVar
 import System
-
 import System.IO.Unsafe
 
 --import Control.Concurrent
 import GHC.Conc
-
 import GHC.Prim
 
 -- GRRR
 import GHC.Exts 
+
+import Util
 
 --par a b = b
 
@@ -48,6 +54,8 @@ type Step a = a -> IO ()
 
 ------------------------------------------------------------
 -- (Optional) type signatures for operations:
+
+--newWorld = return () 
 
 -- Basically just a table for memoization:
 newTagCol  :: () -> IO (TagCol tag)
@@ -65,17 +73,20 @@ instance Hashable Int where
     hash = hashInt
 instance Hashable Char where
     hash = hashInt . fromEnum 
+instance Hashable Word16 where
+    hash = hashInt . fromIntegral
 --instance Hashable String where -- Needs -XTypeSynonymInstances 
 instance Hashable [Char] where
     hash = hashString
+instance (Hashable a, Hashable b) => Hashable (a,b) where 
+    hash (a,b) = hash a + hash b
 
 -- Needs -fallow-undecidable-instances:
-{-
-instance Integral t => Hashable t where
-    hash n = hashInt (fromInteger (toInteger n))
-instance Enum a => Hashable a where
-    hash = hashInt . fromEnum 
--}
+-- instance Integral t => Hashable t where
+--     hash n = hashInt (fromInteger (toInteger n))
+-- instance Enum a => Hashable a where
+--     hash = hashInt . fromEnum 
+
 
 --------------------------------------------------------------------------------
 -- Implementation:
@@ -121,10 +132,31 @@ assureMvar col tag =
 		       return mvar
 	 Just mvar -> return mvar
 
+-- A tag collection stores the list of subscribed step collections.
 -- Simply add it to the list:
 prescribe (_set,_steps) step = 
     do steps <- readIORef _steps
        writeIORef _steps (step:steps)
+
+
+--------------------------------------------------------------------------------
+-- Common interface for interoperating with my alternate implementations:
+
+-- For this implementation we don't have separate monads for CncCode and GraphCode.
+
+type CncCode   a = IO a
+type GraphCode a = IO a
+
+-- Embed CncCode in the graph construction program:
+execute :: CncCode a -> GraphCode a
+execute x = x
+
+-- Bring us from the graph monad back to the IO monad:
+runGraph :: CncCode a -> IO a
+runGraph x = x
+
+--------------------------------------------------------------------------------
+
 
 -- --------------------------------------------------------------------------------
 -- -- Test program:
@@ -212,7 +244,8 @@ primes n =
 mymain = do [n] <- System.getArgs 
 	    x <- primes ((read n)::Int)
 	    putStrLn (show x)
-main = mymain
+
+
 
 -- Test the serial function:
 serial n = serlp 3 1
@@ -237,3 +270,11 @@ primels = 2 : Prelude.filter isPrime [3,5..]
 
 -- Alas this is 3X slower than the C version to start with.
 
+
+
+main = runMandel
+
+--main = mymain
+
+
+#include "mandel.hs"
