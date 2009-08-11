@@ -14,7 +14,7 @@
    -funbox-strict-fields
 -}
 
--- Haskell needs :t in the code!!!
+module CncPure where
 
 import Data.Set as Set
 import Data.Map as Map
@@ -359,6 +359,31 @@ gcPutStr str =
      seq (unsafePerformIO (putStr str))
 	 (w,g,it,())
 
+finalmagic :: ItemCol a b -> [(c,d)] -> [(a,b)]
+finalmagic id ls = unsafeCoerce ls
+
+-- itemsToList :: ItemCol a b -> GraphCode [(a,b)]
+-- itemsToList id = 
+--  GC $ \w g it -> 
+--     case w of 
+--      (_, _, MI imap) ->
+--       let ICID num = id 
+-- 	  items = (IntMap.!) imap num
+--       in (w,g,it, 
+-- 	  finalmagic id (Map.toList items))
+
+itemsToList :: ItemCol a b -> CncCode [(a,b)]
+itemsToList id = 
+ CC $ \w tags items -> 
+    case w of 
+     (_, _, MI imap) ->
+      let ICID num = id 
+	  it = (IntMap.!) imap num
+      in (Just (finalmagic id (Map.toList it)),
+	  Done tags items)
+
+
+
 --------------------------------------------------------------------------------
 -- Test program:
 
@@ -426,13 +451,12 @@ test2 =
         gcPrintWorld "Initialization finished"
 
         -- Get some of the results:
-        finalize $ do d1a <- get d1 'a'
-		      d1b <- get d1 'b'
-		      d2a <- get d2 'a'
-		      d2b <- get d2 'b'
-		      d3a <- get d3 'a'
-		      d3b <- get d3 'b'
-		      return ((d1a,d1b), (d2a,d2b), (d3a,d3b)) 
+	finalize $ 
+	  do a <- itemsToList d1
+	     b <- itemsToList d2
+	     c <- itemsToList d3
+	     return (a,b,c)
+		      
     putStrLn ("Final: "++ show v)
 
 showcol (n, MT tmap, MI imap) =
@@ -446,7 +470,7 @@ showcol (n, MT tmap, MI imap) =
 --instance Show StepResult where
 --    show x = "foo"
 
-#include "mandel.hs"
+-- #include "mandel.hs"
 
 --------------------------------------------------------------------------------
 {-
@@ -530,3 +554,5 @@ run max_row max_col max_depth =
 
 --main = do (one : two : three : _) <- getArgs	  
 --	  run (read one::Word16) (read two)  (read three)
+
+-- Haskell needs :t in the code!!!

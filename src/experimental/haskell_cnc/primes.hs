@@ -1,6 +1,7 @@
-{-# LANGUAGE FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
 #include "Cnc3.hs"
+-- #include "Cnc2_wmagic.hs"
 
 ----------------------------------------
 -- Primes example:
@@ -25,20 +26,25 @@ isPrime !n = (prmlp 3# ==# n#)
 -}
 
 primes n = 
-   do primes <- newItemCol() :: IO (ItemCol Int Int)
-      put primes 2 2
+   do primes :: ItemCol Int Int <- newItemCol()       
       tags <- newTagCol()
       prescribe tags (\t -> if isPrime (t) 
 		            then put primes t t
 		            else return ())
+
       let loop i | i >= n = return ()
   	  loop i = do call tags i 
 	              loop (i+2)
-      loop 3
-      result <- itemsToList primes
-      --return (take 30 (Prelude.map fst result))
-      return (length result)	       
+      initialize $
+	do put primes 2 2
+           loop 3
+      finalize $ 
+        do result <- itemsToList primes
+	   --return (take 30 (Prelude.map fst result))
+	   return (length result)	       
+	   --return result
 
+--primes n = return $ serial n
 
 -- Test the serial function:
 serial n = serlp 3 1
@@ -64,5 +70,5 @@ primels = 2 : Prelude.filter isPrime [3,5..]
 -- Alas this is 3X slower than the C version to start with.
 
 main = do [n] <- System.getArgs 
-	  x <- primes ((read n)::Int)
+	  x <- runGraph $ primes ((read n)::Int)
 	  putStrLn (show x)

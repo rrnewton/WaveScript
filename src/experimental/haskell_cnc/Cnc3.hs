@@ -22,7 +22,7 @@
   is a "what-if" scenario.
  -}
 
---module Cnc3 where 
+module Cnc3 where 
 
 import Data.Set as Set
 import Data.HashTable as HT
@@ -108,8 +108,10 @@ call (_set,_steps) tag =
 		return ()
 	else foldM (\ () step -> 
 		    do let v = step tag
+		       -- OK here we fork for great justice!!
+		       v) -- Well, this works.
 --		       unsafePerformIO v `par` v)  -- Nope..
-		       unsafePerformIO v `par` return ()) -- Haha.. finishes too soon.  Need to wait.
+--		       unsafePerformIO v `par` return ()) -- Haha.. finishes too soon.  Need to wait.
 --		       unsafePerformIO v `par` unsafeInterleaveIO v)
 		 () steps
 			 

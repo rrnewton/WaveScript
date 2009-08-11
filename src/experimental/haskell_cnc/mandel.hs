@@ -1,6 +1,9 @@
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-
-
+{-
+#include "Cnc2_wmagic.hs"
+-}
+#include "Cnc3.hs"
 
 
 mandel :: Int -> Complex Double -> Int
@@ -62,3 +65,5 @@ testMandel = do check <- runGraph $ mandelProg 3 3 3
 	        putStrLn ("Mandel check " ++ show check)
 
 t = testMandel
+
+main = runMandel
