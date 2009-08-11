@@ -17,13 +17,13 @@ type Pair = (Word16, Word16)
 mandelProg :: Int -> Int -> Int -> GraphCode Int
 mandelProg max_row max_col max_depth = 
     do --w <- newWorld
---        position :: TagCol  Pair                  <- newTagCol()
---        dat      :: ItemCol Pair (Complex Double) <- newItemCol()
---        pixel    :: ItemCol Pair Int              <- newItemCol()   
+       position :: TagCol  Pair                  <- newTagCol()
+       dat      :: ItemCol Pair (Complex Double) <- newItemCol()
+       pixel    :: ItemCol Pair Int              <- newItemCol()   
 
-       position  <- newTagCol()
-       dat       <- newItemCol()
-       pixel     <- newItemCol()   
+--        position  <- newTagCol()
+--        dat       <- newItemCol()
+--        pixel     <- newItemCol()   
        
        let mandelStep tag = 
 	    do cplx <- get dat tag
@@ -31,8 +31,8 @@ mandelProg max_row max_col max_depth =
 
        prescribe position mandelStep 
 
-       gcPrintWorld "1 "
-       gcPutStr "Initialize 1: "
+--        gcPutStr "Initialize 1: "
+--        gcPrintWorld "1 "
 
        initialize $ 
         for_ 0 max_row $ \i -> 
@@ -40,28 +40,11 @@ mandelProg max_row max_col max_depth =
           let (_i,_j) = (fromIntegral i, fromIntegral j)
 	      z = (r_scale * (fromIntegral j) + r_origin) :+ 
   		  (c_scale * (fromIntegral i) + c_origin) in
-	  do --seq (unsafePerformIO (putStrLn (show (_i,_j)))) $ put dat (_i,_j) z
-	     put dat (_i,_j) z
+	  do put dat (_i,_j) z
 	     call position (_i,_j)
 
---        initialize $ 
---         forM [(0,0), (1,1)]
--- 	  (\ (_i,_j) ->
--- 	   do put dat (_i,_j) 39.9
--- 	      call position (_i,_j))
-
---        initialize $ sequence $
---          [do put dat (0,0) 39.38
--- 	     call position (0,0)]
--- 	  do put dat (1,1) 39.38
--- 	     call position (1,1)]
-
---        initialize $ 
---          do put dat (0,0) 39.38
--- 	    call position (0,0) 
-
-       gcPrintWorld " 2 "
-       gcPutStr  "Now finalize 2: "
+--        gcPrintWorld " 2 "
+--        gcPutStr  "Now finalize 2: "
 
        -- Final result, count coordinates of the  pixels with a certain value:
        finalize $ 

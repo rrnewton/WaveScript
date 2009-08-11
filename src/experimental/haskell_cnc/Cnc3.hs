@@ -2,6 +2,7 @@
   , BangPatterns
   , MagicHash 
   , ScopedTypeVariables
+  , PatternSignatures
   #-}
 
 {-
@@ -148,8 +149,11 @@ type CncCode   a = IO a
 type GraphCode a = IO a
 
 -- Embed CncCode in the graph construction program:
-execute :: CncCode a -> GraphCode a
-execute x = x
+initialize :: CncCode a -> GraphCode a
+initialize x = x
+
+finalize :: CncCode a -> GraphCode a
+finalize x = x 
 
 -- Bring us from the graph monad back to the IO monad:
 runGraph :: CncCode a -> IO a

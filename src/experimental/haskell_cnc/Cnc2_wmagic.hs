@@ -60,21 +60,21 @@ import System.IO.Unsafe
 -- The central abstraction is a (heterogeneous) group of item and tag collections.
 type Collections = (Int, MatchedTagMap, MatchedItemMap)
 
-data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemCol a b))
-data MatchedTagMap  = forall a.   MT (IntMap.IntMap  (TagCol a))
+data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemColInternal a b))
+data MatchedTagMap  = forall a.   MT (IntMap.IntMap (TagColInternal a))
 
 -- We pass around HANDLES to the real item/tag collections, called "ID"s:
-data TagColID  a   = TCID Int deriving (Ord, Eq, Show)
-data ItemColID a b = ICID Int deriving (Ord, Eq, Show)
-type TagCol    a   = Set a
-type ItemCol   a b = Map a b
+data TagCol  a   = TCID Int deriving (Ord, Eq, Show)
+data ItemCol a b = ICID Int deriving (Ord, Eq, Show)
+type TagColInternal    a   = Set a
+type ItemColInternal   a b = Map a b
 
 -- A step either produces a batch of new data to write, or blocks:
 type Step a = a -> Collections -> StepResult
 data StepResult = Done [NewTag] [NewItem]
-                | forall a b. (Ord a, Show a) => Block (ItemColID a b) a
-data NewTag  = forall a.   Ord a => NT (TagColID  a)   a
-data NewItem = forall a b. Ord a => NI (ItemColID a b) a b
+                | forall a b. (Ord a, Show a) => Block (ItemCol a b) a
+data NewTag  = forall a.   Ord a => NT (TagCol  a)   a
+data NewItem = forall a b. Ord a => NI (ItemCol a b) a b
 
 -- Need it to be a map... but this type is not truly polymorphic enough:
 data Graph = forall a. G (IntMap.IntMap [Step a])
@@ -84,15 +84,15 @@ data Graph = forall a. G (IntMap.IntMap [Step a])
 
 -- The raw functional interface:
 _newWorld   :: Int -> Collections
-_newTagCol  :: Collections -> (TagColID ma, Collections)
-_newItemCol :: Collections -> (ItemColID a b, Collections)
+_newTagCol  :: Collections -> (TagCol ma, Collections)
+_newItemCol :: Collections -> (ItemCol a b, Collections)
 
 -- These are called by the step code and produce outbound tags and items:
-_put  :: Ord a => ItemColID a b -> a -> b -> NewItem
-_call :: Ord a => TagColID  a   -> a      -> NewTag
-_get  :: Ord a => Collections -> ItemColID a b -> a -> Maybe b
+_put  :: Ord a => ItemCol a b -> a -> b -> NewItem
+_call :: Ord a => TagCol  a   -> a      -> NewTag
+_get  :: Ord a => Collections -> ItemCol a b -> a -> Maybe b
 
-_prescribe :: Ord a => TagColID a -> Step a -> Graph -> Graph
+_prescribe :: Ord a => TagCol a -> Step a -> Graph -> Graph
 
 --------------------------------------------------------------------------------
 -- Implementation:
@@ -108,7 +108,7 @@ _newItemCol (cnt, tags, MI items) =
     (ICID cnt, (cnt+1, tags, MI newitems))
   where newitems = IntMap.insert cnt Map.empty items
 
-magic :: ItemColID a b -> ItemCol c d -> ItemCol a b
+magic :: ItemCol a b -> ItemColInternal c d -> ItemColInternal a b
 magic id = (unsafeCoerce)
 
 _get (_, _, MI imap) id tag = 
@@ -123,13 +123,13 @@ _get (_, _, MI imap) id tag =
 _put id tag item = NI id tag item -- Just accumulate puts as data
 _call id tag     = NT id tag 
 
-moremagic :: IntMap.IntMap (ItemCol a b) -> ItemCol c d -> ItemCol a b
+moremagic :: IntMap.IntMap (ItemColInternal a b) -> ItemColInternal c d -> ItemColInternal a b
 moremagic id = (unsafeCoerce)
 
-tmagic :: TagColID a -> TagCol c -> TagCol a
+tmagic :: TagCol a -> TagColInternal c -> TagColInternal a
 tmagic id = (unsafeCoerce)
 
-mostmagic :: IntMap.IntMap (TagCol a) -> TagCol c -> TagCol a
+mostmagic :: IntMap.IntMap (TagColInternal a) -> TagColInternal c -> TagColInternal a
 mostmagic id = (unsafeCoerce)
 
 
@@ -163,7 +163,7 @@ mergeUpdates newtags newitems (n, MT tags, MI items) =
  	             tags newtags in
        (n, MT tags', MI items')
 
-megamagic :: TagColID a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
+megamagic :: TagCol a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
 megamagic id col = (unsafeCoerce col)
 
 
@@ -174,13 +174,13 @@ _prescribe id step (G gmap) =
        G (IntMap.insertWith (++) n [step] $ megamagic id gmap)
 
 -- Retrieve the steps from a graph:
-getSteps  :: Graph -> TagColID a -> [Step a]
+getSteps  :: Graph -> TagCol a -> [Step a]
 getSteps (G gmap) id = 
     case id of 
      TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
 -- Returns thunks representing the result of the steps:
-callSteps  :: Graph -> TagColID a -> a -> [Collections -> StepResult]
+callSteps  :: Graph -> TagCol a -> a -> [Collections -> StepResult]
 callSteps (G gmap) id tag = 
     case id of 
      TCID n -> Prelude.map (\fn -> fn tag) $ 
@@ -220,13 +220,13 @@ data CncCode a = CC (Collections -> [NewTag] -> [NewItem] -> (Maybe a, StepResul
 -- GraphCode threads through the Collections and Graph values:
 data GraphCode a = GC (Collections -> Graph -> [NewTag] -> (Collections, Graph, [NewTag], a))
 
-newTagCol      :: () -> GraphCode (TagColID a)
-newItemCol     :: () -> GraphCode (ItemColID a b)
+newTagCol      :: () -> GraphCode (TagCol a)
+newItemCol     :: () -> GraphCode (ItemCol a b)
 
 -- The monadic interface 
-put  :: Ord a           => ItemColID a b -> a -> b -> CncCode ()
-get  :: (Show a, Ord a) => ItemColID a b -> a -> CncCode b
-call :: Ord a => TagColID  a   -> a -> CncCode ()
+put  :: Ord a           => ItemCol a b -> a -> b -> CncCode ()
+get  :: (Show a, Ord a) => ItemCol a b -> a -> CncCode b
+call :: Ord a => TagCol  a   -> a -> CncCode ()
 
 -- CncCode accumulates a list of new items/tags without committing them to the Collections.
 instance Monad CncCode where 
@@ -272,7 +272,7 @@ newItemCol () =
        ((cnt+1, tags, MI newitems), 
         graph, inittags, ICID cnt)
 
-prescribe :: Ord a => TagColID a -> (a -> CncCode ()) -> GraphCode ()
+prescribe :: Ord a => TagCol a -> (a -> CncCode ()) -> GraphCode ()
 --prescribe tc step = 
 prescribe tc stepcode = 
     GC$ \ cols graph inittags -> 
@@ -313,15 +313,6 @@ finalize (CC fn) =
     GC$ \w graph inittags -> 	
 	case w of  
 	 (_, MT tmap, _) -> 
---        Can't do this because we don't have the type info anywhere:	     
--- 	  let inittags = 
--- 	       foldl (\ acc (key,set) -> 
--- 		      Prelude.map (\ (k,v) -> NT (TCID k) v) $
--- 		      zip (repeat key)
--- 		          (Set.toList set)
--- 		     )
--- 		[] (IntMap.assocs tmap)
---  	  in 
 	  let finalworld = serialScheduler graph inittags w in
 	  -- After the scheduler is done executing, then when run the final action:
           case fn finalworld [] [] of 
@@ -371,8 +362,8 @@ gcPutStr str =
 --------------------------------------------------------------------------------
 -- Test program:
 
-type TI = TagColID  Char
-type II = ItemColID Char Int
+type TI = TagCol  Char
+type II = ItemCol Char Int
 incrStep :: II -> (TI, II) -> Step Char
 incrStep d1 (t2,d2) tag c = 
     case _get c d1 tag of 
@@ -450,7 +441,7 @@ showcol (n, MT tmap, MI imap) =
 	Map.elems foo)
  where 
     -- Hack -- pull out the first item collection:
-    foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemCol Char Int
+    foo = (unsafeCoerce $ (IntMap.!) imap 3) :: ItemColInternal Char Int
 
 --instance Show StepResult where
 --    show x = "foo"
@@ -477,9 +468,9 @@ type Pair = (Word16, Word16)
 
 run max_row max_col max_depth = 
     do cref <- newWorld 
-       position <- newTagCol  cref  :: IO (TagColID  Pair)
-       dat      <- newItemCol cref  :: IO (ItemColID Pair (Complex Double))
-       pixel    <- newItemCol cref  :: IO (ItemColID Pair Int)
+       position <- newTagCol  cref  :: IO (TagCol  Pair)
+       dat      <- newItemCol cref  :: IO (ItemCol Pair (Complex Double))
+       pixel    <- newItemCol cref  :: IO (ItemCol Pair Int)
 
        let mandelStep tag c =     
 	    case _get c dat tag of 
