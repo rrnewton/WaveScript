@@ -113,21 +113,61 @@ newTagCol () = do ref1 <- newIORef Set.empty
 		  ref2 <- newIORef []
 		  return (ref1, ref2)
 
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- FIXME: use a trampoline here..
+--  I think this is our stack space leak:
+
 -- Here's where we spawn new work.
-call (_set,_steps) tag = 
+-- WARNING: This simple version does not do tail call optimizations!
+call1 (_set,_steps) tag = 
     do set <- readIORef _set
        steps <- readIORef _steps
        if Set.member tag set
 	then do writeIORef _set (Set.insert tag set)
 		return ()
-	else foldM (\ () step -> 
-		    do let v = step tag
+	else do mapM (\step -> step tag) steps
+		return ()
+--		foldM (\ () step -> step tag) () steps
+
+-- Here we do the tail call optimization for the common case.
+call2 (_set,_steps) tag = 
+    do set <- readIORef _set
+       steps <- readIORef _steps
+       if Set.member tag set
+	then do writeIORef _set (Set.insert tag set)
+		return ()
+	else case steps of 
+	       [step] -> step tag
+	       steps -> 
+		 do mapM (\step -> step tag) steps
+		    return ()
+
+-- Here we try for forked parallelism:
+call3 (_set,_steps) tag = 
+    do set <- readIORef _set
+       steps <- readIORef _steps
+       if Set.member tag set
+	then do writeIORef _set (Set.insert tag set)
+		return ()
+	else case steps of 
+	       -- Enable the tail-call optimization even with the parallel scheduler!!
+	       [step] -> step tag
+	       steps -> 
+--  		 do mapM (\step -> forkIO (step tag)) steps
+--  		    return ()
+-- This may have microscopically better performance:
+		 foldM (\ () step -> do forkIO (step tag); return ())
+   	  	   () steps
+
 		       -- OK here we fork for great justice!!
-		       v) -- Well, this works.
+		       --v) -- Well, this works.
 --		       unsafePerformIO v `par` v)  -- Nope..
 --		       unsafePerformIO v `par` return ()) -- Haha.. finishes too soon.  Need to wait.
 --		       unsafePerformIO v `par` unsafeInterleaveIO v)
-		 () steps
+
+
+call = call3
+
 			 
 -- If it's not there we add the mvar ourselves then block:
 -- FIXME: what we need is a concurrent hash table here so that we can 

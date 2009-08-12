@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
 #define INCLUDEMETHOD
-#define MEMOIZE
+-- #define MEMOIZE
 
 -- #include "CncPure.hs"
 #include "Cnc.hs"
@@ -70,7 +70,6 @@ NOTES:
   (Btw, if I just force the stack size up to 100mb, it runs... but
    very slowly.  It takes >23.5 minutes... and, well it stack
    overflowed the 100mb after using 1.3gb heap.  Egad.)
-
 
 
  -}
