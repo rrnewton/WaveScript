@@ -14,7 +14,9 @@
    -funbox-strict-fields
 -}
 
+#ifndef INCLUDEMETHOD
 module CncPure where
+#endif
 
 import Data.Set as Set
 import Data.Map as Map
@@ -53,6 +55,20 @@ import System.IO.Unsafe
 
 -- Below you will see two interfaces, the "raw" functional interface
 -- (functions prefixed with "_") and a nicer monadic interface.
+
+------------------------------------------------------------
+-- Toggles
+
+-- Should we remember which tags have been invoked?
+#ifdef MEMOIZE
+#warning "Memoization enabled"
+memoize = True
+#else
+memoize = False
+#endif
+
+--scheduler = simpleScheduler
+scheduler = betterBlockingScheduler
 
 ------------------------------------------------------------
 -- Type definitions:
@@ -134,6 +150,7 @@ mostmagic id = (unsafeCoerce)
 
 
 -- This inserts new items and tags into a Collections object.
+-- It also returns a list containing the tags that were actually new.
 --
 -- This is inefficient in that it looks up the tagCol/itemCol ID for
 -- each update.  Ideally, steps would produce a more organized
@@ -142,9 +159,9 @@ mostmagic id = (unsafeCoerce)
 -- Also, we could optimize this here by optimistically assuming that a
 -- batch of updates are likely to the same collection.
 --mergeUpdates :: IORef Collections -> [NewTag] -> [NewItem] -> IO ()
-mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> Collections
+mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> (Collections, [NewTag])
 mergeUpdates newtags newitems (n, MT tags, MI items) =
-       -- SHOULD WE USE a strcict foldl' ???
+       -- SHOULD WE USE a strict foldl' ???
        let items' = foldl (\ acc (NI id k x) -> 
   			    let ICID n = id 
 			        badcol = (IntMap.!) acc n
@@ -153,15 +170,24 @@ mergeUpdates newtags newitems (n, MT tags, MI items) =
 			    in
   			    IntMap.insert n newcol acc)
  	             items newitems in
-       let tags' = foldl (\ acc (NT id k) -> 
-  			    let TCID n = id 
-			        badcol = (IntMap.!) acc n
-			        goodcol = tmagic id badcol
- 			        newcol = mostmagic acc $ Set.insert k goodcol
-			    in
-  			    IntMap.insert n newcol acc)
- 	             tags newtags in
-       (n, MT tags', MI items')
+       -- This also keeps track of what tags are new.
+       let (tags',fresh) = 
+	       foldl (\ (acc,fresh) nt -> 
+		      case nt of 
+		       NT id k ->	
+  		        let 
+		          TCID n = id 
+		          badcol = (IntMap.!) acc n
+		          goodcol = tmagic id badcol
+ 		          newcol = mostmagic acc $ Set.insert k goodcol
+		          notnew = Set.member k goodcol
+		        in
+  	       	         (IntMap.insert n newcol acc, 
+		          if notnew then fresh else nt:fresh))
+	         (tags,[]) newtags in
+       if memoize
+       then ((n, MT tags', MI items'), fresh)
+       else ((n, MT tags, MI items'), newtags)
 
 megamagic :: TagCol a -> IntMap.IntMap [Step b] -> IntMap.IntMap [Step a]
 megamagic id col = (unsafeCoerce col)
@@ -179,34 +205,75 @@ getSteps (G gmap) id =
     case id of 
      TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
--- Returns thunks representing the result of the steps:
+-- Looks up all the steps associated with a tag and returns a list of
+-- ready-to-execute steps, just waiting for a Collections argument.
 callSteps  :: Graph -> TagCol a -> a -> [Collections -> StepResult]
 callSteps (G gmap) id tag = 
     case id of 
      TCID n -> Prelude.map (\fn -> fn tag) $ 
 	       IntMap.findWithDefault [] n (megamagic id gmap)
 
-serialScheduler :: Graph -> [NewTag] -> Collections -> Collections
-serialScheduler graph inittags cols = schedloop cols [] inittags []
- where schedloop c [] [] []  = c
-       -- FIXME: TEMP HACK -- just try all the blocked ones when we run out of other stuff:
-       -- TODO: wake up blocked steps intelligently when the output is produced.
-       --schedloop c blocked [] = schedloop c [] blocked
-       schedloop c blocked [] [] = error "err ran out of tags but have blocked..."
+-- A simple scheduler. 
+-- This runs blocked steps naively and only when it runs out of other steps.
+simpleScheduler :: Graph -> [NewTag] -> Collections -> Collections
+simpleScheduler graph inittags cols = schedloop cols [] inittags []
+ where -- schedloop takes four arguments:
+       --  (1) The world (all collections).
+       --  (2) Blocked steps.
+       --  (3) New tags to process.
+       --  (4) Steps ready to execute.
+       schedloop c [] [] []  = c
+       -- WARNING: this can loop indefinitely 
+       schedloop c blocked [] [] = schedloop c [] [] blocked
+
        schedloop c blocked (hd : tl) [] = 
 	   case hd of 
 	    NT id tag ->
 	     schedloop c blocked tl (callSteps graph id tag)
+
        schedloop c blocked tags (step:tl) = 
 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
 	   case step c of
-	     -- FIXME: We don't YET track what item collection we blocked on.
-	     Block d_id tag -> trace (" ... Blocked ... ") $
+	     Block d_id tag -> trace (" ... Blocked ... " ++ show (d_id,tag)) $
 			       schedloop c (step:blocked) tags tl
 	     Done newtags newitems -> 
-		 schedloop (mergeUpdates newtags newitems c)
-		           blocked (newtags++tags) tl
-	 -- FIXME: SUPPRESS pre-existing tags. Currently the tag collections do NOTHING
+		 let (c2,fresh) = mergeUpdates newtags newitems c
+		 in schedloop c2 blocked (fresh++tags) tl
+
+
+-- A better scheduler that keeps track of which item-tags have blocked steps on them.
+betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
+betterBlockingScheduler graph inittags cols = schedloop cols Map.empty inittags []
+ where 
+       schedloop w blocked [] [] | Map.size blocked == 0 = w
+       schedloop w blocked [] [] = 
+	   error "betterScheduler: all activated steps finished but there are still blocked ones."
+
+       schedloop w blocked (hd : tl) [] = 
+	   case hd of 
+	    NT id tag ->
+	     schedloop w blocked tl (callSteps graph id tag)
+
+       schedloop w blocked tags (step:tl) = 
+	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
+	   case step w of
+	     Block d_id tag -> trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
+			       --let newblocked = Map.insertWith (++) (d_id,tag) [step] blocked in
+			       let newblocked = undefined in
+			       schedloop w newblocked tags tl
+	     Done newtags newitems -> 
+		 let (w2,fresh) = mergeUpdates newtags newitems w
+		      -- Check to see if the new items have activated any blocked actions:
+		     (steps',blocked') = 
+			 foldl (\ (acc,blocked) (NI id tag val) -> 
+				 case Map.updateLookupWithKey (\_ _ -> Nothing ) (id,tag) blocked
+				 of (Nothing, blocked')   -> (acc, blocked) -- key was not present
+				    (Just orig, blocked') -> (step:acc, blocked') -- was deleted
+				)
+			    ([],blocked) newitems
+		 in schedloop w2 blocked (fresh++tags) tl
+
+
 
 
 --------------------------------------------------------------------------------
@@ -295,7 +362,8 @@ initialize (CC fn) =
        -- This commits the new tags/items to the Collections
        (Just x, Done nt ni) ->  
 	   --seq (unsafePerformIO $ putStrLn $ show ("  initializing", length nt, length ni)) $
-	   (mergeUpdates [] ni w, graph, nt, x)
+	   let (w2,[]) = mergeUpdates [] ni w
+           in (w2, graph, nt, x)
        (Nothing, Block itemcol tag) ->
 	   error ("Tried to run initialization CncCode within the GraphCode monad but it blocked!: "
 		 ++ show (itemcol, tag))
@@ -304,7 +372,7 @@ initialize (CC fn) =
 -- Any tags already in the collection are taken to be "unexecuted"
 -- and make up the inittags argument to the scheduler.
 -- 
--- NOTE: The current philosophy is that the serialScheduler runs until
+-- NOTE: The current philosophy is that the scheduler runs until
 -- nothing is blocking.  Thus the finalize action won't need to block.
 -- A different method would be to only run the scheduler just enough
 -- to satisfy the finalize action.  That would be nice.
@@ -313,7 +381,7 @@ finalize (CC fn) =
     GC$ \w graph inittags -> 	
 	case w of  
 	 (_, MT tmap, _) -> 
-	  let finalworld = serialScheduler graph inittags w in
+	  let finalworld = scheduler graph inittags w in
 	  -- After the scheduler is done executing, then when run the final action:
           case fn finalworld [] [] of 
 	   (Just x, Done [] []) -> (finalworld, graph, [], x)
@@ -358,6 +426,12 @@ gcPutStr str =
   GC$ \w g it -> 
      seq (unsafePerformIO (putStr str))
 	 (w,g,it,())
+
+cncPutStr :: String -> CncCode ()
+cncPutStr str =
+  CC$ \w nt ni -> 
+     seq (unsafePerformIO (putStr str))
+	 (Just (), Done nt ni)
 
 finalmagic :: ItemCol a b -> [(c,d)] -> [(a,b)]
 finalmagic id ls = unsafeCoerce ls
@@ -407,8 +481,8 @@ test = -- Allocate collections:
         (d3,w7) = _newItemCol w6
 		  
         -- Initialize:
-        w8 = mergeUpdates [] [_put d1 'a' 33, 
- 			      _put d1 'b' 100] w7
+        (w8,[]) = mergeUpdates [] [_put d1 'a' 33, 
+ 				   _put d1 'b' 100] w7
 
         graph = _prescribe t1 (incrStep d1 (t2,d2)) $
  		_prescribe t2 (incrStep d2 (t3,d3)) $
@@ -416,7 +490,7 @@ test = -- Allocate collections:
 
         inittags = [_call t1 'b', _call t1 'a']
 
-        w9 = serialScheduler graph inittags w8
+        w9 = scheduler graph inittags w8
 
     in 
      do putStrLn $ showcol w9
@@ -518,12 +592,12 @@ run max_row max_col max_depth =
        let inittags = [ _call position (i,j) 
 			| i <- [0..max_row-1], j <- [0..max_col-1]]
        -- Load up init data:
-       modifyIORef cref $ mergeUpdates inittags inititems
+       modifyIORef cref $ fst (mergeUpdates inittags inititems)
 
        -- why do we do this??:
        putStrLn $ show (mandel max_depth (1.0 :+ 1.5))
 
-       modifyIORef cref $ serialScheduler graph inittags
+       modifyIORef cref $ scheduler graph inittags
 
        putStr "Done simple test... Now unpack it:\n"
 
