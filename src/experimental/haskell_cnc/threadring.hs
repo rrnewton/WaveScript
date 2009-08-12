@@ -74,8 +74,20 @@ is a parallel scheduler that also DOMINATES this benchmark.
 
   OK, I spammed the bang-pattern (!) and got it to work!  I banged
   basically everything in callSteps, mergeUpdates and simpleScheduler.
-  Now the pure version can do 50M in 9.1s with a constant 2mb memory.
+  Now the pure version can do 50M in 9.1 seconds with a constant 2mb memory.
 
-  Narrowing it down...  Unstricting mergeUpdates breaks it again...
-  
- -}
+  Narrowing it down...  Unstricting mergeUpdates breaks it
+  again... Making it strict ONLY in the items component of the world
+  argument passed to mergeUpdates does the trick.  Interesting, why is
+  it needed on items but not tags?  Ah, because this program doesn't
+  really use the item collections!  All the traffic was on the tag
+  collections, but for each time round the scheduler, the world was
+  accumulating layer after layer of meaningless item updates in the
+  form of thunks!  Well the scheduler has to use tags, right?  So this
+  can only happen with items...
+
+  An alternative would be to make the MT/MI data constructors strict.
+  There's really no point at all in postponing the computation of the
+  outer IntMaps!!!  That's what I did.
+
+-}
