@@ -70,6 +70,17 @@ memoize = False
 --scheduler = simpleScheduler
 scheduler = betterBlockingScheduler
 
+{- 
+Notes on Schedulers:
+
+[2009.08.12] {Initial testing of betterBlockingScheduler}
+Ok, for the sched_tree.hs test, enabling betterBlockingScheduler slows
+it down from 1.19 user (200,000 limit) to 1.26 user.  And that's with
+no blocking!  Just the extra cost of checking to see if there are
+blocked steps hanging off of new items.
+
+-}
+
 ------------------------------------------------------------
 -- Type definitions:
 
@@ -135,6 +146,20 @@ _get (_, _, MI imap) id tag =
    case Map.lookup tag goodcol of
     Nothing -> Nothing
     Just d  -> Just d
+
+-- INTERNAL USE ONLY: Remove an item from an item collection.
+_rem  :: Ord a => Collections -> ItemCol a b -> a -> Collections
+_rem (cnt,tmap,MI imap) id tag =	
+  let ICID n = id in
+   (cnt, tmap,
+    MI$ IntMap.adjust 
+         (\col -> moremagic imap $ Map.delete tag (magic id col))
+	 n imap)
+--     MI$ IntMap.insert 
+-- 	 n (moremagic imap $ Map.delete tag goodcol)
+-- 	 imap)
+
+--data MatchedItemMap = forall a b. MI (IntMap.IntMap (ItemColInternal a b))
 
 _put id tag item = NI id tag item -- Just accumulate puts as data
 _call id tag     = NT id tag 
@@ -205,9 +230,13 @@ getSteps (G gmap) id =
     case id of 
      TCID n -> IntMap.findWithDefault [] n (megamagic id gmap)
 
+
+-- A "primed" step is one that already has its tag and just needs a Collections:
+type PrimedStep = Collections -> StepResult
+
 -- Looks up all the steps associated with a tag and returns a list of
 -- ready-to-execute steps, just waiting for a Collections argument.
-callSteps  :: Graph -> TagCol a -> a -> [Collections -> StepResult]
+callSteps  :: Graph -> TagCol a -> a -> [PrimedStep]
 callSteps (G gmap) id tag = 
     case id of 
      TCID n -> Prelude.map (\fn -> fn tag) $ 
@@ -215,15 +244,15 @@ callSteps (G gmap) id tag =
 
 -- A simple scheduler. 
 -- This runs blocked steps naively and only when it runs out of other steps.
+-- WARNING: this can loop indefinitely 
 simpleScheduler :: Graph -> [NewTag] -> Collections -> Collections
 simpleScheduler graph inittags cols = schedloop cols [] inittags []
- where -- schedloop takes four arguments:
+ where -- The scheduler loop takes four arguments:
        --  (1) The world (all collections).
        --  (2) Blocked steps.
        --  (3) New tags to process.
        --  (4) Steps ready to execute.
        schedloop c [] [] []  = c
-       -- WARNING: this can loop indefinitely 
        schedloop c blocked [] [] = schedloop c [] [] blocked
 
        schedloop c blocked (hd : tl) [] = 
@@ -232,46 +261,135 @@ simpleScheduler graph inittags cols = schedloop cols [] inittags []
 	     schedloop c blocked tl (callSteps graph id tag)
 
        schedloop c blocked tags (step:tl) = 
-	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
 	   case step c of
-	     Block d_id tag -> trace (" ... Blocked ... " ++ show (d_id,tag)) $
-			       schedloop c (step:blocked) tags tl
+	     Block d_id tag -> schedloop c (step:blocked) tags tl
 	     Done newtags newitems -> 
 		 let (c2,fresh) = mergeUpdates newtags newitems c
 		 in schedloop c2 blocked (fresh++tags) tl
 
 
--- A better scheduler that keeps track of which item-tags have blocked steps on them.
-betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
-betterBlockingScheduler graph inittags cols = schedloop cols Map.empty inittags []
- where 
-       schedloop w blocked [] [] | Map.size blocked == 0 = w
-       schedloop w blocked [] [] = 
-	   error "betterScheduler: all activated steps finished but there are still blocked ones."
+-- data NewTag  = forall a.   Ord a => NT (TagCol  a)   a
+-- data NewItem = forall a b. Ord a => NI (ItemCol a b) a b
 
-       schedloop w blocked (hd : tl) [] = 
+-- We pair together the collection id with the tag:
+--data ID_tag = forall a b. (Ord a) => ID_tag (ItemCol a b) a
+data ID_tag a b = ID_tag (ItemCol a b) a
+     deriving (Ord, Eq)
+
+magic_id_tag :: ID_tag a b -> ID_tag c d
+magic_id_tag = unsafeCoerce
+
+-- A better scheduler that keeps track of which item-tags have blocked steps on them.
+-- betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
+-- betterBlockingScheduler graph inittags cols = schedloop cols Map.empty inittags []
+--  where 
+--        schedloop w blocked [] [] | Map.size blocked == 0 = w
+--        schedloop w blocked [] [] = 
+-- 	   error "betterScheduler: all activated steps finished but there are still blocked ones."
+
+--        schedloop w blocked (hd : tl) [] = 
+-- 	   case hd of 
+-- 	    NT id tag ->
+-- 	     schedloop w blocked tl (callSteps graph id tag)
+
+--        schedloop w blocked tags (step:tl) = 
+-- 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
+-- 	   case step w of
+-- 	     Block (d_id) tag -> 
+-- 		 trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
+-- 		 --let newblocked = Map.insertWith (++) (d_id,tag) [step] blocked in
+-- 		 --let newblocked = undefined in
+-- 		 let newblocked = Map.insertWith (++) (ID_tag d_id tag) [step] blocked in
+-- 		   schedloop w newblocked tags tl
+-- 	     Done newtags newitems -> 
+-- 		 let (w2,fresh) = mergeUpdates newtags newitems w
+-- 		      -- Check to see if the new items have activated any blocked actions:
+-- 		     (steps',blocked') = 
+-- 			 foldl (\ (acc,blocked) (NI (ICID id) tag val) -> 
+-- 				   case Map.updateLookupWithKey (\_ _ -> Nothing ) (id,tag) blocked
+-- 				   of (Nothing, blocked')   -> (acc, blocked) -- key was not present
+-- 				      (Just orig, blocked') -> (step:acc, blocked') -- was deleted
+-- 				)
+-- 			    ([],blocked) newitems
+-- 		 in schedloop w2 blocked (fresh++tags) tl
+
+
+
+-- _put  :: Ord a => ItemCol a b -> a -> b -> NewItem
+-- _call :: Ord a => TagCol  a   -> a      -> NewTag
+-- _get  :: Ord a => Collections -> ItemCol a b -> a -> Maybe b
+
+
+-- Bring an ID into the alternate reality (which stores blocked steps)
+magic_to_alternate :: ItemCol a b -> ItemCol a [PrimedStep]
+magic_to_alternate id = unsafeCoerce id
+
+-- We reuse the typing magic of the existing collections mechanism for
+-- creating a collection of blocked steps.
+betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
+betterBlockingScheduler graph inittags world = schedloop world alternate' inittags []
+ where 
+       -- Create a new world to mirror the "real" one.  This tracks the blocked steps.
+       -- Duplicate all the ICIDs used in the real world.
+       -- (We will expect all the entries in the IntMap to be defined.)
+       -- However, all that's important here is that we initialize the
+       -- alternate reality with the same NUMBER of item collections.
+       alternate' = 
+	 case world of 
+	  (_,_,MI imap) ->
+	   -- Hack, we actually need to make ADDITIONAL item
+	   -- collections to fill in the gaps where tag collections
+	   -- used up ID numbers.  Wouldn't be necessary if
+	   -- Collections stored two counters...
+	   trace (" DUPLICATING KEYS: " ++ show (IntMap.keys imap)) $
+	   foldl (\ w _ -> snd $ _newItemCol w)
+	       (_newWorld 0) [0.. foldl max 0 (IntMap.keys imap)]
+
+       schedloop :: Collections -> Collections -> [NewTag] -> [PrimedStep] -> Collections
+
+       schedloop w alternate [] [] = w
+       -- |  Map.size blocked == 0
+       --error "betterScheduler: all activated steps finished but there are still blocked ones."
+
+       schedloop w alternate (hd : tl) [] = 
 	   case hd of 
 	    NT id tag ->
-	     schedloop w blocked tl (callSteps graph id tag)
+	     schedloop w alternate tl (callSteps graph id tag)
 
-       schedloop w blocked tags (step:tl) = 
+       schedloop w alternate tags (pstep:tl) = 
 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
-	   case step w of
-	     Block d_id tag -> trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
-			       --let newblocked = Map.insertWith (++) (d_id,tag) [step] blocked in
-			       let newblocked = undefined in
-			       schedloop w newblocked tags tl
+	   case pstep w of
+	     Block (d_id) tag -> 
+		 trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
+		 -- Here we extend the collection of blocked steps.
+		 let alt_id = magic_to_alternate d_id 
+		     otherblocked = 
+		      case _get alternate alt_id tag of
+		        Nothing -> []
+			Just ls -> ls
+		     newblocked = _put alt_id tag (pstep:otherblocked)
+		     (alternate',[]) = mergeUpdates [] [newblocked] alternate
+		 in
+		   schedloop w alternate' tags tl
+
 	     Done newtags newitems -> 
+		 --trace " ... ran step " $ 
 		 let (w2,fresh) = mergeUpdates newtags newitems w
 		      -- Check to see if the new items have activated any blocked actions:
-		     (steps',blocked') = 
-			 foldl (\ (acc,blocked) (NI id tag val) -> 
-				 case Map.updateLookupWithKey (\_ _ -> Nothing ) (id,tag) blocked
-				 of (Nothing, blocked')   -> (acc, blocked) -- key was not present
-				    (Just orig, blocked') -> (step:acc, blocked') -- was deleted
+		     (steps',alternate') = 
+			 foldl (\ (acc,alternate) (NI (id) tag _) -> 
+				     let alt_id = magic_to_alternate id in
+				     case _get alternate alt_id tag of
+				      Nothing -> (acc,alternate)
+				      Just [] -> (acc,alternate)
+				      Just steps -> 
+				       -- Remove the blocked steps from the collection:
+				       (steps++acc, _rem alternate alt_id tag)
 				)
-			    ([],blocked) newitems
-		 in schedloop w2 blocked (fresh++tags) tl
+			    (tl,alternate) newitems
+		 in schedloop w2 alternate' (fresh++tags) steps'
+--		 in schedloop w2 alternate (fresh++tags) tl
+
 
 
 

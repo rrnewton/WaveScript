@@ -4,13 +4,15 @@ FILE=$1
 
 BIN=`echo $1 | sed 's/\.hs//'`
 
+rm $BIN
+
 shift
 
 echo "  [Compiling $FILE to $BIN]"
 if ghc  -cpp -O2 --make $FILE
 then 
   echo "  [Executing]"
-  exec $BIN $* 
+  exec time ./$BIN $* 
 else exit -1
 fi
 
