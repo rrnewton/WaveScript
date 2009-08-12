@@ -79,6 +79,10 @@ it down from 1.19 user (200,000 limit) to 1.26 user.  And that's with
 no blocking!  Just the extra cost of checking to see if there are
 blocked steps hanging off of new items.
 
+  primes 100K - makes no difference (heavyweight steps)
+  mandel 100 100 1000 - makes no difference (heavyweight)
+  threadring_onestepcollection 1M - 3.67 vs 3.6
+
 -}
 
 ------------------------------------------------------------
@@ -101,7 +105,7 @@ type Step a = a -> Collections -> StepResult
 data StepResult = Done [NewTag] [NewItem]
                 | forall a b. (Ord a, Show a) => Block (ItemCol a b) a
 data NewTag  = forall a.   Ord a => NT (TagCol  a)   a
-data NewItem = forall a b. Ord a => NI (ItemCol a b) a b
+data NewItem = forall a b. (Ord a,Show a) => NI (ItemCol a b) a b
 
 -- Need it to be a map... but this type is not truly polymorphic enough:
 data Graph = forall a. G (IntMap.IntMap [Step a])
@@ -115,7 +119,7 @@ _newTagCol  :: Collections -> (TagCol ma, Collections)
 _newItemCol :: Collections -> (ItemCol a b, Collections)
 
 -- These are called by the step code and produce outbound tags and items:
-_put  :: Ord a => ItemCol a b -> a -> b -> NewItem
+_put  :: (Show a,Ord a) => ItemCol a b -> a -> b -> NewItem
 _call :: Ord a => TagCol  a   -> a      -> NewTag
 _get  :: Ord a => Collections -> ItemCol a b -> a -> Maybe b
 
@@ -276,50 +280,6 @@ simpleScheduler graph inittags cols = schedloop cols [] inittags []
 data ID_tag a b = ID_tag (ItemCol a b) a
      deriving (Ord, Eq)
 
-magic_id_tag :: ID_tag a b -> ID_tag c d
-magic_id_tag = unsafeCoerce
-
--- A better scheduler that keeps track of which item-tags have blocked steps on them.
--- betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
--- betterBlockingScheduler graph inittags cols = schedloop cols Map.empty inittags []
---  where 
---        schedloop w blocked [] [] | Map.size blocked == 0 = w
---        schedloop w blocked [] [] = 
--- 	   error "betterScheduler: all activated steps finished but there are still blocked ones."
-
---        schedloop w blocked (hd : tl) [] = 
--- 	   case hd of 
--- 	    NT id tag ->
--- 	     schedloop w blocked tl (callSteps graph id tag)
-
---        schedloop w blocked tags (step:tl) = 
--- 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
--- 	   case step w of
--- 	     Block (d_id) tag -> 
--- 		 trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
--- 		 --let newblocked = Map.insertWith (++) (d_id,tag) [step] blocked in
--- 		 --let newblocked = undefined in
--- 		 let newblocked = Map.insertWith (++) (ID_tag d_id tag) [step] blocked in
--- 		   schedloop w newblocked tags tl
--- 	     Done newtags newitems -> 
--- 		 let (w2,fresh) = mergeUpdates newtags newitems w
--- 		      -- Check to see if the new items have activated any blocked actions:
--- 		     (steps',blocked') = 
--- 			 foldl (\ (acc,blocked) (NI (ICID id) tag val) -> 
--- 				   case Map.updateLookupWithKey (\_ _ -> Nothing ) (id,tag) blocked
--- 				   of (Nothing, blocked')   -> (acc, blocked) -- key was not present
--- 				      (Just orig, blocked') -> (step:acc, blocked') -- was deleted
--- 				)
--- 			    ([],blocked) newitems
--- 		 in schedloop w2 blocked (fresh++tags) tl
-
-
-
--- _put  :: Ord a => ItemCol a b -> a -> b -> NewItem
--- _call :: Ord a => TagCol  a   -> a      -> NewTag
--- _get  :: Ord a => Collections -> ItemCol a b -> a -> Maybe b
-
-
 -- Bring an ID into the alternate reality (which stores blocked steps)
 magic_to_alternate :: ItemCol a b -> ItemCol a [PrimedStep]
 magic_to_alternate id = unsafeCoerce id
@@ -337,7 +297,7 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
        alternate' = 
 	 case world of 
 	  (_,_,MI imap) ->
-	   -- Hack, we actually need to make ADDITIONAL item
+	   -- HACK: we actually need to make ADDITIONAL item
 	   -- collections to fill in the gaps where tag collections
 	   -- used up ID numbers.  Wouldn't be necessary if
 	   -- Collections stored two counters...
@@ -348,8 +308,6 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
        schedloop :: Collections -> Collections -> [NewTag] -> [PrimedStep] -> Collections
 
        schedloop w alternate [] [] = w
-       -- |  Map.size blocked == 0
-       --error "betterScheduler: all activated steps finished but there are still blocked ones."
 
        schedloop w alternate (hd : tl) [] = 
 	   case hd of 
@@ -373,7 +331,6 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
 		   schedloop w alternate' tags tl
 
 	     Done newtags newitems -> 
-		 --trace " ... ran step " $ 
 		 let (w2,fresh) = mergeUpdates newtags newitems w
 		      -- Check to see if the new items have activated any blocked actions:
 		     (steps',alternate') = 
@@ -384,14 +341,11 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
 				      Just [] -> (acc,alternate)
 				      Just steps -> 
 				       -- Remove the blocked steps from the collection:
+				       trace (" ... REACTIVATED ... " ++ show (alt_id,tag)) $
 				       (steps++acc, _rem alternate alt_id tag)
 				)
 			    (tl,alternate) newitems
 		 in schedloop w2 alternate' (fresh++tags) steps'
---		 in schedloop w2 alternate (fresh++tags) tl
-
-
-
 
 
 --------------------------------------------------------------------------------
@@ -409,7 +363,7 @@ newTagCol      :: () -> GraphCode (TagCol a)
 newItemCol     :: () -> GraphCode (ItemCol a b)
 
 -- The monadic interface 
-put  :: Ord a           => ItemCol a b -> a -> b -> CncCode ()
+put  :: (Show a, Ord a) => ItemCol a b -> a -> b -> CncCode ()
 get  :: (Show a, Ord a) => ItemCol a b -> a -> CncCode b
 call :: Ord a => TagCol  a   -> a -> CncCode ()
 
@@ -553,16 +507,6 @@ cncPutStr str =
 
 finalmagic :: ItemCol a b -> [(c,d)] -> [(a,b)]
 finalmagic id ls = unsafeCoerce ls
-
--- itemsToList :: ItemCol a b -> GraphCode [(a,b)]
--- itemsToList id = 
---  GC $ \w g it -> 
---     case w of 
---      (_, _, MI imap) ->
---       let ICID num = id 
--- 	  items = (IntMap.!) imap num
---       in (w,g,it, 
--- 	  finalmagic id (Map.toList items))
 
 itemsToList :: ItemCol a b -> CncCode [(a,b)]
 itemsToList id = 

@@ -1,9 +1,10 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-{-
-#include "Cnc2_wmagic.hs"
--}
-#include "Cnc3.hs"
+#define INCLUDEMETHOD
+#define MEMOIZE
+
+#include "CncPure.hs"
+-- #include "Cnc3.hs"
 
 
 mandel :: Int -> Complex Double -> Int

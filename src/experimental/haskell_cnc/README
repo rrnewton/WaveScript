@@ -1,0 +1,33 @@
+
+
+
+README FIRST:
+--------------------------------------------------------------------------------
+
+This directory includes two implementations of CnC for Haskell:
+  CncPure.hs -- a purely functional implementation
+  Cnc.hs -- an implementation exposing the same interface but using IO internally.
+
+It also contains several example programs written against the CnC for
+Haskell API.  You can run these most easily with a little help from
+the "run" script, e.g.
+
+ ./run primes.hs 100
+
+Compiles the example program and runs it to count the primes 2-100.
+
+
+Development notes:
+--------------------------------------------------------------------------------
+
+[2009.08.10] 
+
+I should have been taking some notes earlier on all the ghc compilation issues I was having.  I need to get a 6.11 version built.
+
+But even for 6.10 ... where do I put the -threads option again?
+
+Egad... and now I'm getting this "thread blocked indefinitely" error.
+
+[2009.08.12]
+
+Ok, things are going alright but there's a lot of ground still to cover.

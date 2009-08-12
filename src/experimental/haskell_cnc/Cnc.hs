@@ -22,7 +22,10 @@
   is a "what-if" scenario.
  -}
 
-module Cnc3 where 
+
+#ifndef INCLUDEMETHOD
+module Cnc where
+#endif
 
 import Data.Set as Set
 import Data.HashTable as HT
@@ -45,6 +48,17 @@ import GHC.Exts
 import Util
 
 --par a b = b
+
+------------------------------------------------------------
+-- Configuration Toggles:
+
+#ifdef MEMOIZE
+#warning "Memoization enabled"
+memoize = True
+#else
+memoize = False
+#endif
+
 
 ------------------------------------------------------------
 -- Type definitions:
@@ -202,7 +216,3 @@ test = -- Allocate collections:
        result2 <- get d3 'b'
        return (result1, result2) 
 
-
---main = runMandel
-
--- #include "mandel.hs"

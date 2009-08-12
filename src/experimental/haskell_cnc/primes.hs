@@ -1,7 +1,13 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-#include "Cnc3.hs"
--- #include "Cnc2_wmagic.hs"
+#define INCLUDEMETHOD
+#define MEMOIZE
+
+import System
+
+#include "CncPure.hs"
+-- #include "Cnc3.hs"
+
 
 ----------------------------------------
 -- Primes example:
@@ -69,6 +75,9 @@ primels = 2 : Prelude.filter isPrime [3,5..]
 
 -- Alas this is 3X slower than the C version to start with.
 
-main = do [n] <- System.getArgs 
-	  x <- runGraph $ primes ((read n)::Int)
-	  putStrLn (show x)
+main = do args <- System.getArgs 
+	  case args of 
+	   [] -> error "primes takes an argument!"
+	   [n] -> 
+	     do x <- runGraph $ primes ((read n)::Int)
+		putStrLn (show x)
