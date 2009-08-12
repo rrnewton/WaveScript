@@ -3,8 +3,8 @@
 #define INCLUDEMETHOD
 -- #define MEMOIZE
 
--- #include "CncPure.hs"
-#include "Cnc.hs"
+#include "CncPure.hs"
+-- #include "Cnc.hs"
 
 -- This simple microbenchmark is drawn from the "Great Language Shootout".
 -- It passes token(s) around a ring.
@@ -67,4 +67,15 @@ to enable the tail-call optimization for the forkIO version as well!
 Why fork another thread when your own thread is finished??  The result
 is a parallel scheduler that also DOMINATES this benchmark.
 
+ --> Returning to CncPure.hs
+   It's hard to understand why this implementation has a stack leak.
+   The scheduler loop is tail recursive.  It has the same problem both
+   with simpleScheduler and with betterScheduler.  Laziness must be at fault.
+
+  OK, I spammed the bang-pattern (!) and got it to work!  I banged
+  basically everything in callSteps, mergeUpdates and simpleScheduler.
+  Now the pure version can do 50M in 9.1s with a constant 2mb memory.
+
+  Narrowing it down...  Unstricting mergeUpdates breaks it again...
+  
  -}

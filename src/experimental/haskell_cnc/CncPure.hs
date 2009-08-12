@@ -67,8 +67,8 @@ memoize = True
 memoize = False
 #endif
 
---scheduler = simpleScheduler
-scheduler = betterBlockingScheduler
+scheduler = simpleScheduler
+--scheduler = betterBlockingScheduler
 
 {- 
 Notes on Schedulers:
@@ -189,7 +189,7 @@ mostmagic id = (unsafeCoerce)
 -- batch of updates are likely to the same collection.
 --mergeUpdates :: IORef Collections -> [NewTag] -> [NewItem] -> IO ()
 mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> (Collections, [NewTag])
-mergeUpdates newtags newitems (n, MT tags, MI items) =
+mergeUpdates newtags newitems (n, MT tags, MI !items) =
        -- SHOULD WE USE a strict foldl' ???
        let items' = foldl (\ acc (NI id k x) -> 
   			    let ICID n = id 
@@ -264,21 +264,81 @@ simpleScheduler graph inittags cols = schedloop cols [] inittags []
 	    NT id tag ->
 	     schedloop c blocked tl (callSteps graph id tag)
 
-       schedloop c blocked tags (step:tl) = 
+       schedloop c blocked tags (step : tl) = 
 	   case step c of
 	     Block d_id tag -> schedloop c (step:blocked) tags tl
 	     Done newtags newitems -> 
 		 let (c2,fresh) = mergeUpdates newtags newitems c
 		 in schedloop c2 blocked (fresh++tags) tl
 
+-- HACKING to try to get rid of space leak:
+--        schedloop !c [] [] []  = c
+--        schedloop !c !blocked [] [] = schedloop c [] [] blocked
 
--- data NewTag  = forall a.   Ord a => NT (TagCol  a)   a
--- data NewItem = forall a b. Ord a => NI (ItemCol a b) a b
+--        schedloop !c !blocked (!hd : tl) [] = 
+-- 	   case hd of 
+-- 	    NT !id !tag ->
+-- 	     schedloop c blocked tl (callSteps graph id tag)
 
--- We pair together the collection id with the tag:
---data ID_tag = forall a b. (Ord a) => ID_tag (ItemCol a b) a
-data ID_tag a b = ID_tag (ItemCol a b) a
-     deriving (Ord, Eq)
+--        schedloop !c !blocked !tags (!step : tl) = 
+-- 	   case step c of
+-- 	     Block !d_id !tag -> schedloop c (step:blocked) tags tl
+-- 	     Done !newtags !newitems -> 
+-- 		 let (!c2,!fresh) = mergeUpdates newtags newitems c
+-- 		 in schedloop c2 blocked (fresh++tags) tl
+
+_mergeUpdates :: [NewTag] -> [NewItem] -> Collections -> (Collections, [NewTag])
+_mergeUpdates !newtags !newitems (!n, MT !tags, MI !items) =
+       -- SHOULD WE USE a strict foldl' ???
+       let items' = foldl (\ acc (NI id k x) -> 
+  			    let ICID n = id 
+			        badcol = (IntMap.!) acc n
+			        goodcol = magic id badcol
+ 			        newcol = moremagic acc $ Map.insert k x goodcol
+			    in
+  			    IntMap.insert n newcol acc)
+ 	             items newitems in
+       -- This also keeps track of what tags are new.
+       let (tags',fresh) = 
+	       foldl (\ (acc,fresh) nt -> 
+		      case nt of 
+		       NT id k ->	
+  		        let 
+		          TCID n = id 
+		          badcol = (IntMap.!) acc n
+		          goodcol = tmagic id badcol
+ 		          newcol = mostmagic acc $ Set.insert k goodcol
+		          notnew = Set.member k goodcol
+		        in
+  	       	         (IntMap.insert n newcol acc, 
+		          if notnew then fresh else nt:fresh))
+	         (tags,[]) newtags in
+       if memoize
+       then ((n, MT tags', MI items'), fresh)
+       else ((n, MT tags, MI items'), newtags)
+
+
+_callSteps  :: Graph -> TagCol a -> a -> [PrimedStep]
+_callSteps (G !gmap) !id !tag = 
+    case id of 
+     TCID n -> Prelude.map (\fn -> fn tag) $ 
+	       IntMap.findWithDefault [] n (megamagic id gmap)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- Bring an ID into the alternate reality (which stores blocked steps)
 magic_to_alternate :: ItemCol a b -> ItemCol a [PrimedStep]
@@ -301,7 +361,6 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
 	   -- collections to fill in the gaps where tag collections
 	   -- used up ID numbers.  Wouldn't be necessary if
 	   -- Collections stored two counters...
-	   trace (" DUPLICATING KEYS: " ++ show (IntMap.keys imap)) $
 	   foldl (\ w _ -> snd $ _newItemCol w)
 	       (_newWorld 0) [0.. foldl max 0 (IntMap.keys imap)]
 
