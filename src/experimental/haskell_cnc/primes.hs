@@ -127,5 +127,9 @@ And with some other options:
   that has more than one downstream spawns multiple threads.
 
   The optimization is definitely broken.  How to fix it?
+  Problem is that with the current IO based formulation calls happen immediately,
+  we don't have any context to know whether there was more than one... 
+
+  Could introduce an explicit "tailcall" form.
 
 -}

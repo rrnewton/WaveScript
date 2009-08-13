@@ -1,18 +1,8 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-{-
- #include "Cnc3.hs"
--}
-
-#define INCLUDEMETHOD
 #define MEMOIZE
-
-import System
-
-#include "CncPure.hs"
-
---import CncPure
---import Cnc3
+#define REPEAT_PUT_ALLOWED
+#include "stub.h"
 
 -- A simple scheduler test that creates a tree of exponentially
 -- expanding numbers of step executions (as though it were a binary
@@ -36,7 +26,9 @@ run limit =
 	                        call tags (n*2)
 	    )
 	  initialize $ 
-	     do call tags 1
+	     -- TEST: should be fine to throw an extra tag out there which will block:
+	     do call tags 5
+		call tags 1
 		put items 1 1
 
 	  finalize $ get items 100
@@ -54,3 +46,13 @@ main = do args <- System.getArgs
 	    []  -> run 200000
 	    [s] -> run (read s)
 
+{-
+
+NOTES:
+
+[2009.08.12] 
+Hmm, this doesn't seem to work with my global-work queue Cnc.hs version.
+
+
+
+ -}

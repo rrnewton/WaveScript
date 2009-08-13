@@ -40,7 +40,7 @@ import Control.Concurrent.MVar
 import System
 import System.IO.Unsafe
 
---import Control.Concurrent
+import Control.Concurrent
 import GHC.Conc
 import GHC.Prim
 
@@ -65,6 +65,7 @@ memoize = False
 ------------------------------------------------------------
 -- Type definitions:
 
+-- FIXME: Switch to MVars for thread safety:
 type TagCol a    = (IORef (Set a), IORef [Step a])
 type ItemCol a b = HashTable a (MVar b)
 type Step a = a -> IO ()
@@ -80,8 +81,12 @@ newItemCol :: (Eq tag, Hashable tag) => () -> IO (ItemCol tag b)
 prescribe  :: TagCol tag -> Step tag -> IO ()
 
 call :: Ord a  => TagCol a -> a          -> IO ()
+--call :: TagCol a -> a -> IO ()
 put  :: Show a => ItemCol a b -> a -> b  -> IO ()
 get  ::           ItemCol a b -> a       -> IO b
+
+initialize :: CncCode a -> GraphCode a
+finalize   :: CncCode a -> GraphCode a
 
 class Hashable a where
     hash :: a -> Int32
@@ -119,69 +124,159 @@ newTagCol () = do ref1 <- newIORef Set.empty
 -- FIXME: use a trampoline here..
 --  I think this is our stack space leak:
 
--- Here's where we spawn new work.
--- WARNING: This simple version does not do tail call optimizations!
-call1 (_set,_steps) tag = 
-    do set <- readIORef _set
+--call :: Ord a  => TagCol a -> a          -> IO ()
+-- proto_call :: (Ord a1) =>
+-- 	      (a ->  -> IO ()) -> 
+-- 	       TagCol a -> a -> IO ()
+proto_call action tc@(_set,_steps) tag = 
+    do set   <- readIORef _set
        steps <- readIORef _steps
-       if Set.member tag set
-	then do writeIORef _set (Set.insert tag set)
-		return ()
-	else do mapM (\step -> step tag) steps
-		return ()
---		foldM (\ () step -> step tag) () steps
+       if memoize 
+        then if Set.member tag set
+	     then return ()
+	     else do writeIORef _set (Set.insert tag set)
+		     action steps tag
+        else action steps tag
 
--- Here we do the tail call optimization for the common case.
-call2 (_set,_steps) tag = 
-    do set <- readIORef _set
-       steps <- readIORef _steps
-       if Set.member tag set
-	then do writeIORef _set (Set.insert tag set)
-		return ()
-	else case steps of 
-	       [step] -> step tag
-	       steps -> 
-		 do mapM (\step -> step tag) steps
-		    return ()
 
+call1 :: Ord a  => TagCol a -> a -> IO ()
+call2 :: Ord a  => TagCol a -> a -> IO ()
+call3 :: Ord a  => TagCol a -> a -> IO ()
+call4 :: Ord a  => TagCol a -> a -> IO ()
+call5 :: Ord a  => TagCol a -> a -> IO ()
+
+finalize3 :: CncCode a -> GraphCode a
+finalize4 :: CncCode a -> GraphCode a
+finalize5 :: CncCode a -> GraphCode a
+
+------------------------------------------------------------
+
+-- Call is where we spawn new work.
+call1 = proto_call (\ steps tag -> foldM (\ () step -> step tag) () steps)
+-- Here we do the tail call optimization for the common case of a single prescribed step.
+call2 = proto_call (\ steps tag -> 
+		    case steps of 
+		     [step] -> step tag
+		     steps -> foldM (\ () step -> step tag) () steps)
 -- Here we try for forked parallelism:
-call3 (_set,_steps) tag = 
-    do set <- readIORef _set
-       steps <- readIORef _steps
-       if Set.member tag set
-	then do writeIORef _set (Set.insert tag set)
-		return ()
-	else case steps of 
-	       -- Enable the tail-call optimization even with the parallel scheduler!!
---	       [step] -> step tag
-	       steps -> 
---  		 do mapM (\step -> forkIO (step tag)) steps
---  		    return ()
--- This may have microscopically better performance:
-		 foldM (\ () step -> do forkIO (step tag); return ())
-   	  	   () steps
+call3 = proto_call (\ steps tag -> 
+		    case steps of 
+	            -- Enable the tail-call optimization even with the parallel scheduler!!
+		    --	         [step] -> step tag
+	             steps -> 
+		      foldM (\ () step -> do forkIO (step tag); return ())
+   	  	       () steps)
 
-		       -- OK here we fork for great justice!!
-		       --v) -- Well, this works.
---		       unsafePerformIO v `par` v)  -- Nope..
---		       unsafePerformIO v `par` return ()) -- Haha.. finishes too soon.  Need to wait.
---		       unsafePerformIO v `par` unsafeInterleaveIO v)
+get3 col tag = do mvar <- assureMvar col tag 
+		  readMVar mvar
 
+-- The above 'call's use a trivial finalizer:
+finalize3 x = x 
 
-call = call3
+------------------------------------------------------------
+-- Version 4: A global work queue.
 
-			 
+-- This version uses a global work-queue.
+-- Here laziness comes in handy, we queue the thunks.
+call4 = proto_call (\ steps tag -> 
+		    foldM (\ () step -> 
+			   do writeChan global_queue (step tag)
+			      putStrLn "Enqueued work!")
+		      () steps)
+
+-- Then at finalize time we set up the workers and run them.
+finalize4 finalAction = 
+    do joiner <- newChan 
+       let worker = do e <- isEmptyChan global_queue
+		       if e then writeChan joiner ()
+			    else do action <- readChan global_queue 
+				    putStrLn " - Got work, doing it!"
+				    action 
+				    worker 
+       -- Fork one worker per thread:
+       mapM (\n -> forkOnIO n worker) [0..numCapabilities-1]
+       mapM_ (\_ -> readChan joiner)  [0..numCapabilities-1]
+       finalAction
+
+get4 = get3
+___get4 col tag = 
+    do mvar <- assureMvar col tag 
+       hopeful <- tryTakeMVar mvar
+       case hopeful of 
+         Just v -> return v
+         Nothing -> do putStrLn " <<< ouch probably blacking! >>>"
+		       readMVar mvar
+
+-- TODO: we should do a better job here of using a monad transformer on top of IO:
+-- But if we must keep the same CnC interface... This is expedient:
+global_queue :: Chan (IO ())
+global_queue = unsafePerformIO newChan
+
+------------------------------------------------------------
+-- Version 5: Blocking with replacement.
+
+call5 = call4
+
+-- Then at finalize time we set up the workers and run them.
+finalize5 finalAction = 
+    do joiner <- newChan 
+       let worker recursive = 
+	       do e <- isEmptyChan global_queue
+		  if e then writeChan joiner ()
+		       else do action <- readChan global_queue 
+			       putStrLn " - Got work, doing it!"
+			       action 
+			       if recursive 
+				then worker True 
+			        else putStrLn " *** Oneshot finished! " -- return ()
+       writeIORef global_makeworker (worker True)
+       atomicModifyIORef global_numworkers (\n -> (n + numCapabilities, ()))
+       -- Fork one worker per thread:
+       mapM (\n -> forkOnIO n (worker True)) [0..numCapabilities-1]
+ --      mapM_ (\_ -> readChan joiner)  [0..numCapabilities-1]
+       let waitloop = do num <- readIORef global_numworkers
+	                 if num == 0
+			  then return () 
+			  else do readChan joiner
+				  atomicDecr global_numworkers
+				  waitloop
+       finalAction
+
+-- If we block our own thread, we need to issue a replacement.
+get5 col tag = 
+    do mvar <- assureMvar col tag 
+       hopeful <- tryTakeMVar mvar
+       case hopeful of 
+         Just v -> return v
+         Nothing -> do action <- readIORef global_makeworker
+		       atomicIncr global_numworkers
+		       forkIO action
+		       readMVar mvar
+
+global_numworkers :: IORef Int
+global_numworkers = unsafePerformIO (newIORef 0)
+
+global_makeworker :: IORef (IO ())
+global_makeworker = unsafePerformIO$ newIORef (return ())
+
+------------------------------------------------------------
+
+-- Pick an implementation:
+get      =      get5
+call     =     call5 
+finalize = finalize5
+
 -- If it's not there we add the mvar ourselves then block:
--- FIXME: what we need is a concurrent hash table here so that we can 
+-- FIXME: what we need is a concurrent hash table here ...
 -- FIXME: we also need an I-var!!
 put col tag item = 
     do mvar <- assureMvar col tag 
        bool <- tryPutMVar mvar item
+#ifdef REPEAT_PUT_ALLOWED
+       return ()
+#else
        if not bool then error ("Already an item with tag " ++ show tag) else return ()
-	       
-get col tag = 
-    do mvar <- assureMvar col tag 
-       readMVar mvar
+#endif
 
 assureMvar col tag = 
   do mayb <- HT.lookup col tag
@@ -207,11 +302,7 @@ type CncCode   a = IO a
 type GraphCode a = IO a
 
 -- Embed CncCode in the graph construction program:
-initialize :: CncCode a -> GraphCode a
 initialize x = x
-
-finalize :: CncCode a -> GraphCode a
-finalize x = x 
 
 -- Bring us from the graph monad back to the IO monad:
 runGraph :: CncCode a -> IO a
@@ -219,6 +310,8 @@ runGraph x = x
 
 --------------------------------------------------------------------------------
 
+atomicIncr x = atomicModifyIORef x (\n -> (n+1, ()))
+atomicDecr x = atomicModifyIORef x (\n -> (n-1, ()))
 
 -- --------------------------------------------------------------------------------
 -- -- Test program:
