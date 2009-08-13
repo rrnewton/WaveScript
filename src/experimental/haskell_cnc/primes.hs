@@ -97,6 +97,7 @@ Surprisingly, disabling memoization doesn't change memory usage perciptibly.
 
 ---------
  Trying for parallelism.
+ Using the forkIO-on-every-call version:
  With the tail-call optimization in Cnc.hs I get 9 threads but 100% cpu usage.
  When I disable that, I start seeing 2-300% cpu usage.
    For 200K:
@@ -131,5 +132,22 @@ And with some other options:
   we don't have any context to know whether there was more than one... 
 
   Could introduce an explicit "tailcall" form.
+
+-------- 
+  A different strategy is to just switch gears and look at other
+  schedulers.  I did a global-work-queue scheduler.  
+
+  In my first version, without -threaded I get 10.04 seconds real.
+  Not a noticable slowdown for the thread mortality check on each
+  action...  (And it's the same whether thread mortality is tracked in
+  a HashTable or an IORef Map.)
+
+  Uh oh, it gets reasonably good speedup when I enable multiple threads.
+  BUT it sometimes gets threads that are blocked indefinitely.
+  Odd... on this quadcore it only happens on primes with -N5 (not with -N3).
+  And only sometimes with -N5... Wow, with this scheduler -N5 has horrible performance.
+
+  It could be the underlying unsafety of the non-concurrent hashtables I'm using.
+  After all, I know this to be a broken implementation.
 
 -}

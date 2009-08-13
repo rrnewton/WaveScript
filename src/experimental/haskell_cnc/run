@@ -6,6 +6,7 @@ BIN=`echo $1 | sed 's/\.hs//'`
 
 #GHC=ghc
 GHC=ghc-6.10.4.20090726
+#GHC=ghc-6.11.20090726  
 
 #rm -f $BIN *.hi *.o
 #touch $FILE
@@ -26,14 +27,22 @@ elif [ "$CNC_VARIANT" == "" ]; then
  FLAGS="$FLAGS -DCNC_VARIANT=1" 
 fi
 
+if [ "$CNC_SCHEDULER" == "" ];
+then FLAGS=" $FLAGS -DCNC_SCHEDULER=5"
+     echo " *** WARNING - defaulting CNC_SCHEDULER to '5'"
+else FLAGS=" $FLAGS -DCNC_SCHEDULER=$CNC_SCHEDULER"
+fi
+
 echo "  [Compiling $FILE to $BIN]"
 echo $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
 if $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
 #if ghc  -cpp -O2 $FILE -o 
 then 
+if [ "$NORUN" == "" ]; then
   echo "  [Executing]"
 #  exec time ./$BIN $* 
   exec time memprof ./$BIN $* 
+fi
 else exit -1
 fi
 
