@@ -67,19 +67,19 @@ for test in $TESTS; do
   echo "                           Running Test: $1                        "
   echo "================================================================================"
 
- export CNC_VARIANT=pure
- export threads=0
- for i in 1 2; do
-   unset hashtab
-   export CNC_SCHEDULER=$i
-   runit
- done
+#  export CNC_VARIANT=pure
+#  export threads=0
+#  for i in 1 2; do
+#    unset hashtab
+#    export CNC_SCHEDULER=$i
+#    runit
+#  done
 
  export CNC_VARIANT=io
  for i in 5 6 3; do
    export CNC_SCHEDULER=$i
-   for threads in 4; do
-   #for threads in 0 1 2 3 4 5 8; do
+   #for threads in 4; do
+   for threads in 0 1 2 3 4 5 8; do
      export hashtab=""
      runit
      export hashtab="-DHASHTABLE_TEST"
