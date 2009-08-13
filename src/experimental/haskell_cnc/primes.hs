@@ -150,4 +150,9 @@ And with some other options:
   It could be the underlying unsafety of the non-concurrent hashtables I'm using.
   After all, I know this to be a broken implementation.
 
+  Well darn, now I'm getting "thread blocked indefinitely" with
+  scheduler 5 even with using Data.Map based item collections!
+  By the way, with sched 5 & Maps, I get 3.69 seconds realtime.
+  We would expect maps not to matter for primes.
+
 -}

@@ -64,11 +64,53 @@ memoize = False
 
 
 ------------------------------------------------------------
+-- Abstract over the shared mutable data structure used for item
+-- collections:
+
+#ifdef HASHTABLE_TEST
+type MutableMap a b = HashTable a (MVar b)
+newMutableMap :: (Eq tag, Hashable tag) => IO (MutableMap tag b)
+newMutableMap = HT.new (==) hash
+assureMvar col tag = 
+  do mayb <- HT.lookup col tag
+     case mayb of 
+         Nothing -> do mvar <- newEmptyMVar
+		       HT.insert col tag mvar
+		       return mvar
+	 Just mvar -> return mvar
+mmToList = HT.toList
+#warning "Enabling HashTable item collections.  These are not truly thread safe (yet)."
+#else
+-- A Data.Map based version:
+type MutableMap a b = IORef (Map a (MVar b))
+newMutableMap :: (Ord tag) => IO (MutableMap tag b)
+newMutableMap = newIORef Map.empty
+assureMvar col tag = 
+  do map <- readIORef col
+     case Map.lookup tag map of 
+         Nothing -> do mvar <- newEmptyMVar
+		       atomicModifyIORef col 
+			  (\mp -> 
+			   let altered = Map.alter 
+			                  (\mv -> 
+					    case mv of
+					     Nothing -> Just mvar
+					     Just mv -> Just mv)
+			                  tag mp 
+			   -- Might be able to optimize this somehow...
+			   in (altered, altered!tag))
+	 Just mvar -> return mvar
+mmToList col = 
+    do map <- readIORef col 
+       return (Map.toList map)
+#endif
+
+------------------------------------------------------------
 -- Type definitions:
 
 -- FIXME: Switch to MVars for thread safety:
 type TagCol a    = (IORef (Set a), IORef [Step a])
-type ItemCol a b = HashTable a (MVar b)
+type ItemCol a b = MutableMap a b
 type Step a = a -> IO ()
 
 ------------------------------------------------------------
@@ -78,13 +120,13 @@ type Step a = a -> IO ()
 
 -- Basically just a table for memoization:
 newTagCol  :: () -> IO (TagCol tag)
-newItemCol :: (Eq tag, Hashable tag) => () -> IO (ItemCol tag b)
+newItemCol :: (Eq tag, Ord tag, Hashable tag) => () -> IO (ItemCol tag b)
 prescribe  :: TagCol tag -> Step tag -> IO ()
 
 call :: Ord a  => TagCol a -> a          -> IO ()
 --call :: TagCol a -> a -> IO ()
-put  :: Show a => ItemCol a b -> a -> b  -> IO ()
-get  ::           ItemCol a b -> a       -> IO b
+put  :: (Show a, Ord a) => ItemCol a b -> a -> b  -> IO ()
+get  :: Ord a           => ItemCol a b -> a       -> IO b
 
 initialize :: CncCode a -> GraphCode a
 finalize   :: CncCode a -> GraphCode a
@@ -116,7 +158,7 @@ instance (Hashable a, Hashable b) => Hashable (a,b) where
 
 -- Need an argument if we don't want to run in to the monomorphism
 -- restriction (-fno-monomorphism-restriction)
-newItemCol () = HT.new (==) hash
+newItemCol () = newMutableMap
 newTagCol () = do ref1 <- newIORef Set.empty
 		  ref2 <- newIORef []
 		  return (ref1, ref2)
@@ -151,15 +193,20 @@ finalize4 :: CncCode a -> GraphCode a
 finalize5 :: CncCode a -> GraphCode a
 
 ------------------------------------------------------------
-
+--Version 1: Serial
 -- Call is where we spawn new work.
 call1 = proto_call (\ steps tag -> foldM (\ () step -> step tag) () steps)
+
+-- Version 2: 
 -- Here we do the tail call optimization for the common case of a single prescribed step.
 call2 = proto_call (\ steps tag -> 
 		    case steps of 
 		     [step] -> step tag
 		     steps -> foldM (\ () step -> step tag) () steps)
--- Here we try for forked parallelism:
+
+------------------------------------------------------------
+-- Version 3: Here we try for forked parallelism:
+
 call3 = proto_call (\ steps tag -> 
 		    case steps of 
 	            -- Enable the tail-call optimization even with the parallel scheduler!!
@@ -172,6 +219,8 @@ get3 col tag = do mvar <- assureMvar col tag
 		  readMVar mvar
 
 -- The above 'call's use a trivial finalizer:
+-- WARNING -- this will not wait for workers to finish during finalization.
+-- Therefore, this only works with programs that 'get' their output.
 finalize3 x = x 
 
 ------------------------------------------------------------
@@ -197,6 +246,7 @@ finalize4 finalAction =
        mapM_ (\_ -> readChan joiner)  [0..numCapabilities-1]
        finalAction
 
+get4 :: Ord a => ItemCol a b -> a -> IO b
 get4 = get3
 
 -- TODO: we should do a better job here of using a monad transformer on top of IO:
@@ -216,18 +266,12 @@ finalize5 finalAction =
 	       do e <- isEmptyChan global_queue
 		  if e then writeChan joiner ()
 		       else do action <- readChan global_queue 
-			       --putStrLn " - Got work, doing it!"
 			       action 
 			       myId <- myThreadId
-			       --b <- HT.lookup global_mortalthreads myId
-			       --case b of
-			       --  Nothing -> worker
-			       --  Just b -> 
 			       set <- readIORef global_mortalthreads
 			       if Set.notMember myId set
 				  then worker
-				  else do writeChan joiner ()
-				          --putStrLn " *** Oneshot finished! "
+				  else writeChan joiner ()
        writeIORef global_makeworker (worker)
        atomicModifyIORef global_numworkers (\n -> (n + numCapabilities, ()))
        -- Fork one worker per thread:
@@ -259,8 +303,6 @@ get5 col tag =
 		       forkIO action
 		       -- The safe way:
 		       atomicModifyIORef global_mortalthreads (\s -> (Set.insert myId s, ()))
-		       -- The as-of-now fiction way:
-		       --HT.insert global_mortalthreads myId  False
 		       putStrLn " >>> Blocked ||| "
 		       readMVar mvar
 
@@ -268,14 +310,6 @@ get5 col tag =
 -- each worker thread know whether it is recursive (True) or "oneshot".
 global_mortalthreads :: IORef (Set ThreadId)
 global_mortalthreads = unsafePerformIO (newIORef Set.empty)
-
--- global_mortalthreads :: HashTable ThreadId Bool
--- global_mortalthreads = unsafePerformIO (HT.new (==) hash)
--- -- Well this is an inefficient hack:
--- instance Hashable ThreadId where
---     hash = hashString . show
-
---am_I_immortal = do 
 
 global_numworkers :: IORef Int
 global_numworkers = unsafePerformIO (newIORef 0)
@@ -314,14 +348,6 @@ put col tag item =
        if not bool then error ("Already an item with tag " ++ show tag) else return ()
 #endif
 
-assureMvar col tag = 
-  do mayb <- HT.lookup col tag
-     case mayb of 
-         Nothing -> do mvar <- newEmptyMVar
-		       HT.insert col tag mvar
-		       return mvar
-	 Just mvar -> return mvar
-
 -- A tag collection stores the list of subscribed step collections.
 -- Simply add it to the list:
 prescribe (_set,_steps) step = 
@@ -354,7 +380,7 @@ atomicDecr x = atomicModifyIORef x (\n -> (n-1, ()))
 
 itemsToList :: ItemCol a b -> IO [(a,b)]
 itemsToList ht = 
- do ls <- (HT.toList ht)
+ do ls <- (mmToList ht)
     foldM (\ acc (key,mvar) -> 
 	   do val <- readMVar mvar
 	      return $ (key,val) : acc)
