@@ -31,6 +31,7 @@ module Cnc where
 
 import Data.Set as Set
 import Data.HashTable as HT
+import Data.Map as Map
 import Data.Int
 import Data.IORef
 import Data.Complex
@@ -179,9 +180,7 @@ finalize3 x = x
 -- This version uses a global work-queue.
 -- Here laziness comes in handy, we queue the thunks.
 call4 = proto_call (\ steps tag -> 
-		    foldM (\ () step -> 
-			   do writeChan global_queue (step tag)
-			      putStrLn "Enqueued work!")
+		    foldM (\ () step -> writeChan global_queue (step tag))
 		      () steps)
 
 -- Then at finalize time we set up the workers and run them.
@@ -190,7 +189,6 @@ finalize4 finalAction =
        let worker = do e <- isEmptyChan global_queue
 		       if e then writeChan joiner ()
 			    else do action <- readChan global_queue 
-				    putStrLn " - Got work, doing it!"
 				    action 
 				    worker 
        -- Fork one worker per thread:
@@ -204,7 +202,7 @@ ___get4 col tag =
        hopeful <- tryTakeMVar mvar
        case hopeful of 
          Just v -> return v
-         Nothing -> do putStrLn " <<< ouch probably blacking! >>>"
+         Nothing -> do putStrLn " <<< ouch probably blocking! >>>"
 		       readMVar mvar
 
 -- TODO: we should do a better job here of using a monad transformer on top of IO:
@@ -220,21 +218,30 @@ call5 = call4
 -- Then at finalize time we set up the workers and run them.
 finalize5 finalAction = 
     do joiner <- newChan 
-       let worker recursive = 
+       let worker = 
 	       do e <- isEmptyChan global_queue
 		  if e then writeChan joiner ()
 		       else do action <- readChan global_queue 
 			       putStrLn " - Got work, doing it!"
 			       action 
-			       if recursive 
-				then worker True 
-			        else putStrLn " *** Oneshot finished! " -- return ()
-       writeIORef global_makeworker (worker True)
+			       myId <- myThreadId
+			       b <- HT.lookup global_threadtable myId
+			       case b of
+			         Nothing -> worker
+				 Just b -> if b 
+					   then worker
+					   else do writeChan joiner ()
+						   putStrLn " *** Oneshot finished! "
+-- 			       if recursive 
+-- 				then worker True 
+-- 			        else putStrLn " *** Oneshot finished! " -- return ()
+       writeIORef global_makeworker (worker)
        atomicModifyIORef global_numworkers (\n -> (n + numCapabilities, ()))
        -- Fork one worker per thread:
-       mapM (\n -> forkOnIO n (worker True)) [0..numCapabilities-1]
+       mapM (\n -> forkOnIO n (worker)) [0..numCapabilities-1]
  --      mapM_ (\_ -> readChan joiner)  [0..numCapabilities-1]
        let waitloop = do num <- readIORef global_numworkers
+			 putStrLn ("Waiting on "++ show num)
 	                 if num == 0
 			  then return () 
 			  else do readChan joiner
@@ -250,8 +257,31 @@ get5 col tag =
          Just v -> return v
          Nothing -> do action <- readIORef global_makeworker
 		       atomicIncr global_numworkers
-		       forkIO action
+		       -- If this were CPS then we would just give our
+		       -- continuation to the forked thread.  Alas, no.
+		       myId  <- myThreadId
+		       newId <- forkIO action
+		       -- The safe way:
+		       --atomicModifyIORef global_threadtable (\ -> )
+		       -- The as-of-now fiction way:
+		       HT.insert global_threadtable myId  False
+		       putStrLn " >>> Blocked ||| "
+		       --HT.insert global_threadtable newId True
 		       readMVar mvar
+
+-- This is a bit silly, this emulates "thread local storage" to let
+-- each worker thread know whether it is recursive (True) or "oneshot".
+--global_threadtable :: IORef (Map ThreadId Bool)
+--global_threadtable = unsafePerformIO (newIORef Map.empty)
+
+global_threadtable :: HashTable ThreadId Bool
+global_threadtable = unsafePerformIO (HT.new (==) hash)
+-- Well this is an inefficient hack:
+instance Hashable ThreadId where
+    hash = hashString . show
+
+--am_I_immortal = do 
+
 
 global_numworkers :: IORef Int
 global_numworkers = unsafePerformIO (newIORef 0)
