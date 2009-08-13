@@ -44,6 +44,7 @@ run limit =
 main = do args <- System.getArgs 
 	  case args of 
 	    []  -> run 200000
+--	    []  -> run 10000
 	    [s] -> run (read s)
 
 {-
@@ -51,8 +52,20 @@ main = do args <- System.getArgs
 NOTES:
 
 [2009.08.12] 
-Hmm, this doesn't seem to work with my global-work queue Cnc.hs version.
+   Hmm, this doesn't seem to work with my global-work queue Cnc.hs version.
+   Ah, ok I added a REPEAT_PUT_ALLOWED flag.
 
+ (Using io/Map, scheduler 5:)
+   This runs ever so slightly faster (8s for 9M limit rather than 8.75)
+   with 4 threads than with 1. (And it gets 8.29s compiled without -threaded).
+ Also:
+   Wish hashtables -threaded and 1 thread: 14.1
+   With                         4 threads: 13.28
+
+ Pure: (currently not parallel)
+   nothreads: 6.65
+   1 thread:  6.7
+   4 threads: 6.48
 
 
  -}

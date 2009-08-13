@@ -1,4 +1,5 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables #-}
+-- , PatternSignatures
 
 -- #define MEMOIZE
 #include "stub.h"
@@ -54,16 +55,17 @@ mandelProg max_row max_col max_depth =
     c_scale = 4.0 / (fromIntegral max_col)   :: Double
 
 
-runMandel = do (a:b:c:_) <- System.getArgs 
-	       check <- runGraph $ mandelProg (read a) (read b) (read c)
+
+runMandel a b c = 
+	    do check <- runGraph $ mandelProg a b c
 	       putStrLn ("Mandel check " ++ show check)
 
-testMandel = do check <- runGraph $ mandelProg 3 3 3
-	        putStrLn ("Mandel check " ++ show check)
-
-t = testMandel
-
-main = runMandel
+main = do args <- System.getArgs  
+	  case args of
+--	   []      -> runMandel 3 3 3
+	   []      -> runMandel 300 300 100
+	   [a,b,c] -> runMandel (read a) (read b) (read c)
+	 
 
 {- 
   NOTES:

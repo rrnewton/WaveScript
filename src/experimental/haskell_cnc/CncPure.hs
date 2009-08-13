@@ -67,8 +67,16 @@ memoize = True
 memoize = False
 #endif
 
---scheduler = simpleScheduler
+
+#if CNC_SCHEDULER == 1
+scheduler = simpleScheduler
+#elif CNC_SCHEDULER == 2
 scheduler = betterBlockingScheduler
+#else
+#error "CncPure.hs -- CNC_SCHEDULER is not set to one of {1,2}"
+#endif
+
+
 
 {- 
 Notes on Schedulers:

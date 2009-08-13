@@ -4,9 +4,11 @@ FILE=$1
 
 BIN=`echo $1 | sed 's/\.hs//'`
 
-#GHC=ghc
-GHC=ghc-6.10.4.20090726
-#GHC=ghc-6.11.20090726  
+if [ "$GHC" == "" ];  then 
+ #GHC=ghc
+ GHC=ghc-6.10.4.20090726
+ #GHC=ghc-6.11.20090726  
+fi
 
 #rm -f $BIN *.hi *.o
 #touch $FILE
@@ -24,12 +26,19 @@ elif [ "$CNC_VARIANT" == "" ]; then
  echo " *** \$CNC_VARIANT unset (should be 'pure' or 'io'/'normal')!"
  echo " ***   Defaulting to 'pure'..."
  echo " *** "
+ CNC_VARIANT="pure"
  FLAGS="$FLAGS -DCNC_VARIANT=1" 
 fi
 
 if [ "$CNC_SCHEDULER" == "" ];
-then FLAGS=" $FLAGS -DCNC_SCHEDULER=5"
-     echo " *** WARNING - defaulting CNC_SCHEDULER to '5'"
+then 
+   if [ "$CNC_VARIANT" == "pure" ]; then
+     FLAGS=" $FLAGS -DCNC_SCHEDULER=2"
+     echo " *** WARNING - defaulting CNC_SCHEDULER to '2' (pure)"
+   else
+     FLAGS=" $FLAGS -DCNC_SCHEDULER=5"
+     echo " *** WARNING - defaulting CNC_SCHEDULER to '5' (io)"
+   fi
 else FLAGS=" $FLAGS -DCNC_SCHEDULER=$CNC_SCHEDULER"
 fi
 
@@ -40,8 +49,8 @@ if $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
 then 
 if [ "$NORUN" == "" ]; then
   echo "  [Executing]"
-#  exec time ./$BIN $* 
-  exec time memprof ./$BIN $* 
+  exec time ./$BIN $* 
+#  exec time memprof ./$BIN $* 
 fi
 else exit -1
 fi

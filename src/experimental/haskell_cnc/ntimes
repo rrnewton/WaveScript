@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Takes the best time out of ten.
+# Returns that best time in seconds to stdout.
+
+TIMEOUT=15
+
+N=$1
+shift
+CMD=$*
+
+  TMP=`tempfile`
+#  echo "============================== ASYNCHRONOUS OUTPUT ==============================" > $TMP
+  tail -f $TMP >> /dev/stderr &
+  for ((i=0; i < $N; i++)); do
+#    echo "Exec $i (time $CMD)"
+    TMP2=`tempfile`
+#    ((time $CMD) &> /dev/stdout) >> $TMP2
+#    echo hmm "((/usr/bin/time --format="%e" $CMD)  /dev/stdout) "
+    ( (/usr/bin/time --format="real %e" ./timeout -t $TIMEOUT $CMD) &> /dev/stdout) > $TMP2
+    CODE=$?
+#    ( (/usr/bin/time --format="%e" $CMD) &> /dev/stdout) 
+#    (/usr/bin/time --format="%e" $CMD)
+
+    # If there was an error, we don't commit the output:
+    if [ "$CODE" == "0" ];
+    then cat $TMP2 >> $TMP
+    else echo "Warning: run $i of command failed: $CMD" >> /dev/stderr
+    fi
+  done;
+
+  TMP3=`tempfile`
+  grep real $TMP | sort -n > $TMP3
+  
+  final=`head -n1 $TMP3 | sed 's/real //'`
+
+  if [ "$final" == "" ];
+  then echo "ERROR: None of the runs completed successfully!" >> /dev/stderr
+       exit 1
+  else echo "Temp file: $TMP" >> /dev/stderr
+       echo "Sorted timings:" >> /dev/stderr
+       cat $TMP3 >> /dev/stderr
+       echo $final
+  fi

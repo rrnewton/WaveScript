@@ -1,4 +1,5 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables #-}
+-- , PatternSignatures
 
 -- #define MEMOIZE
 #include "stub.h"
@@ -70,11 +71,14 @@ primels = 2 : Prelude.filter isPrime [3,5..]
 -- Alas this is 3X slower than the C version to start with.
 
 main = do args <- System.getArgs 
+	  let run n =
+	        do x <- runGraph $ primes n
+		   putStrLn (show x)
 	  case args of 
-	   [] -> error "primes takes an argument!"
-	   [n] -> 
-	     do x <- runGraph $ primes ((read n)::Int)
-		putStrLn (show x)
+	   []  -> run 200000
+--	   []  -> run 1000
+	   [n] -> run (read n)
+	     
 {- 
 NOTES:
 
@@ -154,5 +158,10 @@ And with some other options:
   scheduler 5 even with using Data.Map based item collections!
   By the way, with sched 5 & Maps, I get 3.69 seconds realtime.
   We would expect maps not to matter for primes.
+
+  Just for the heck of it I added a version 6 scheduler that adds a
+  new permanent worker thread everytime there's a blocked get.  
+  Ok, there, just got a blocked indefinitely erro with -N5.
+  There must be some kind of data race.
 
 -}

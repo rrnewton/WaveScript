@@ -187,10 +187,12 @@ call2 :: Ord a  => TagCol a -> a -> IO ()
 call3 :: Ord a  => TagCol a -> a -> IO ()
 call4 :: Ord a  => TagCol a -> a -> IO ()
 call5 :: Ord a  => TagCol a -> a -> IO ()
+call6 :: Ord a  => TagCol a -> a -> IO ()
 
 finalize3 :: CncCode a -> GraphCode a
 finalize4 :: CncCode a -> GraphCode a
 finalize5 :: CncCode a -> GraphCode a
+finalize6 :: CncCode a -> GraphCode a
 
 ------------------------------------------------------------
 --Version 1: Serial
@@ -222,6 +224,7 @@ get3 col tag = do mvar <- assureMvar col tag
 -- WARNING -- this will not wait for workers to finish during finalization.
 -- Therefore, this only works with programs that 'get' their output.
 finalize3 x = x 
+-- TODO: At least kil off the existing threads here?
 
 ------------------------------------------------------------
 -- Version 4: A global work queue.
@@ -318,6 +321,48 @@ global_makeworker :: IORef (IO ())
 global_makeworker = unsafePerformIO$ newIORef (return ())
 
 ------------------------------------------------------------
+-- Version 6: Thread spammer -- fork a permanent worker every time we block.
+
+call6 = call5
+
+-- Then at finalize time we set up the workers and run them.
+finalize6 finalAction = 
+    do joiner <- newChan 
+       let worker = 
+	       do e <- isEmptyChan global_queue
+		  if e then writeChan joiner ()
+		       else do action <- readChan global_queue 
+			       action 
+			       worker
+       writeIORef global_makeworker (worker)
+       atomicModifyIORef global_numworkers (\n -> (n + numCapabilities, ()))
+       -- Fork one worker per thread:
+       putStrLn$ "Forking "++ show numCapabilities ++" threads"
+       mapM (\n -> forkIO (worker)) [0..numCapabilities-1]
+       let waitloop = do num <- readIORef global_numworkers
+			 putStrLn ("=== Waiting on "++ show num)
+	                 if num == 0
+			  then return () 
+			  else do readChan joiner
+				  atomicDecr global_numworkers
+				  waitloop
+       waitloop
+       finalAction
+
+-- If we block our own thread, we need to issue a replacement.
+get6 col tag = 
+    do mvar <- assureMvar col tag 
+       hopeful <- tryTakeMVar mvar
+       case hopeful of 
+         Just v -> return v
+         Nothing -> do action <- readIORef global_makeworker
+		       atomicIncr global_numworkers
+		       forkIO action
+		       putStrLn " >>> Blocked ||| "
+		       readMVar mvar
+
+
+------------------------------------------------------------
 
 -- Pick an implementation:
 #if CNC_SCHEDULER == 3
@@ -326,8 +371,10 @@ get = get3 ; call = call3 ; finalize = finalize3
 get = get4 ; call = call4 ; finalize = finalize4
 #elif CNC_SCHEDULER == 5
 get = get5 ; call = call5 ; finalize = finalize5
+#elif CNC_SCHEDULER == 6
+get = get6 ; call = call6 ; finalize = finalize6
 #else
-#error "Cnc.hs -- SCHEDULER is not set to one of {3,4,5}"
+#error "Cnc.hs -- CNC_SCHEDULER is not set to one of {3,4,5,6}"
 #endif
 
 -- get      =      get5
