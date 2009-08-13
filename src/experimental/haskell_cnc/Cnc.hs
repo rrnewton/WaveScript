@@ -241,12 +241,13 @@ finalize5 finalAction =
        mapM (\n -> forkOnIO n (worker)) [0..numCapabilities-1]
  --      mapM_ (\_ -> readChan joiner)  [0..numCapabilities-1]
        let waitloop = do num <- readIORef global_numworkers
-			 putStrLn ("Waiting on "++ show num)
+			 putStrLn ("=== Waiting on "++ show num)
 	                 if num == 0
 			  then return () 
 			  else do readChan joiner
 				  atomicDecr global_numworkers
 				  waitloop
+       waitloop
        finalAction
 
 -- If we block our own thread, we need to issue a replacement.
