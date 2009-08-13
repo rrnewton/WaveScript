@@ -1,13 +1,7 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-#define INCLUDEMETHOD
-#define MEMOIZE
-
-import System
-
-#include "CncPure.hs"
--- #include "Cnc3.hs"
-
+-- #define MEMOIZE
+#include "stub.h"
 
 ----------------------------------------
 -- Primes example:
@@ -81,3 +75,57 @@ main = do args <- System.getArgs
 	   [n] -> 
 	     do x <- runGraph $ primes ((read n)::Int)
 		putStrLn (show x)
+{- 
+NOTES:
+
+[2009.08.12]
+ * Primes 100K:
+    - pure: 2.543
+    - io:   2.544
+   IO uses less memory, however.
+
+ * Primes 200K:
+    - pure: 9.47
+    - io:   9.42
+
+This is what we would expect, it's absolutely dominated by the kernel.
+Surprisingly, disabling memoization doesn't change memory usage perciptibly.
+
+---------
+ Trying GHC 6.10.4:
+  (same)
+
+---------
+ Trying for parallelism.
+ With the tail-call optimization in Cnc.hs I get 9 threads but 100% cpu usage.
+ When I disable that, I start seeing 2-300% cpu usage.
+   For 200K:
+     - nothreads : 10.04 real
+     - w/threads : 5.35/9.6 real/user  | -N2
+     - w/threads : 4.04 real (9.8 user)  -N4
+     - w/threads : 3.36/10.3 real/user | -N5
+     - w/threads : 4.15/10.0 real/user | -N6
+     - w/threads : 3.8/11.6 real/user  | -N7
+     - w/threads : 8.2/23.4 real/user  | -N8
+
+And with some other options:
+
+     - w/threads : 9.7 real  | -N5 -qm
+     - w/threads : 9.9 real/user | -N5 -qm -qw
+     - w/threads : 3.33 real/user | -N5 -H1G
+
+ Increasing context switch time with -C150ms doesn't help either.
+
+ GC is 8.3%, not bad.
+
+--------
+  Ok, so why is the tail call optimization wrong?
+
+  Well, that's pretty clear.  Many apps only do a single 'call' from
+  each step, but they do many calls initially.  Problem is, many calls
+  from one "CncCode" doesn't spawn extra threads... only a single call
+  that has more than one downstream spawns multiple threads.
+
+  The optimization is definitely broken.  How to fix it?
+
+-}

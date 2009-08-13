@@ -1,10 +1,9 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-#define INCLUDEMETHOD
--- #define MEMOIZE
+-- Memoize bad!
+-- #define MEMOIZE 
+#include "stub.h"
 
-#include "CncPure.hs"
--- #include "Cnc.hs"
 
 -- This simple microbenchmark is drawn from the "Great Language Shootout".
 -- It passes token(s) around a ring.
@@ -74,7 +73,11 @@ is a parallel scheduler that also DOMINATES this benchmark.
 
   OK, I spammed the bang-pattern (!) and got it to work!  I banged
   basically everything in callSteps, mergeUpdates and simpleScheduler.
-  Now the pure version can do 50M in 9.1 seconds with a constant 2mb memory.
+  Now the pure version can do 50M in 9.1 seconds with a constant 2mb
+  memory.  (It's an order of magnitude worse even for 5M with
+  memoization enabled.  Bounded memoization could elegantly combine
+  the benefits... some kind of cache replacement policy.  What's the
+  right data structure for it?)
 
   Narrowing it down...  Unstricting mergeUpdates breaks it
   again... Making it strict ONLY in the items component of the world
@@ -89,5 +92,7 @@ is a parallel scheduler that also DOMINATES this benchmark.
   An alternative would be to make the MT/MI data constructors strict.
   There's really no point at all in postponing the computation of the
   outer IntMaps!!!  That's what I did.
+
+
 
 -}

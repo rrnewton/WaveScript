@@ -25,6 +25,8 @@
 
 #ifndef INCLUDEMETHOD
 module Cnc where
+#else
+#warning "Loading imperative, IO-based CnC implementation."
 #endif
 
 import Data.Set as Set
@@ -151,7 +153,7 @@ call3 (_set,_steps) tag =
 		return ()
 	else case steps of 
 	       -- Enable the tail-call optimization even with the parallel scheduler!!
-	       [step] -> step tag
+--	       [step] -> step tag
 	       steps -> 
 --  		 do mapM (\step -> forkIO (step tag)) steps
 --  		    return ()

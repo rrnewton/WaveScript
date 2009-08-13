@@ -67,8 +67,8 @@ memoize = True
 memoize = False
 #endif
 
-scheduler = simpleScheduler
---scheduler = betterBlockingScheduler
+--scheduler = simpleScheduler
+scheduler = betterBlockingScheduler
 
 {- 
 Notes on Schedulers:

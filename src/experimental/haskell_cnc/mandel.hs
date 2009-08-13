@@ -1,11 +1,7 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
 
-#define INCLUDEMETHOD
-#define MEMOIZE
-
-#include "CncPure.hs"
--- #include "Cnc3.hs"
-
+-- #define MEMOIZE
+#include "stub.h"
 
 mandel :: Int -> Complex Double -> Int
 mandel max_depth c = loop 0 0 0
@@ -68,3 +64,42 @@ testMandel = do check <- runGraph $ mandelProg 3 3 3
 t = testMandel
 
 main = runMandel
+
+{- 
+  NOTES:
+
+[2009.08.12] 
+ GHC 6.8.2
+ * Params 100 100 2000:
+   Mandel check 4810272
+    - pure, 1.669 seconds
+    - io,   1.466 seconds
+
+ * Params 100 1000 100:
+    - pure: stack overflow 
+    - io:   stack overflow :(
+With 100M stack:  
+    - pure: Completes, but mandel check is 0... oh that's the write answer.
+
+ * Params 300 300 100:
+    - pure: 9.7 seconds
+    - io:   29.29 seconds (with call3/forkIO, uses 67mb) 
+             (With call2 it's no better -- 32s !!)
+
+   Running (on a different machine vs 6) on CnC/C++ gives 1.27
+   seconds.  Big slow down for haskell on this one, probably
+   substantial room for improvement of the inner loop.
+
+By the way, the language shootout threadring compiles with (-O2 -threaded) and runs with:
+  +RTS -N5 -qm -qw -RTS 50000000
+
+---------
+ Trying GHC 6.10.4:
+   * Params 300 300 100:
+    - pure: 6.59
+    - io:   4.17
+  WOW.
+
+    
+
+ -}

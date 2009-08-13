@@ -4,14 +4,31 @@ FILE=$1
 
 BIN=`echo $1 | sed 's/\.hs//'`
 
-rm -f $BIN *.hi *.o
+#GHC=ghc
+GHC=ghc-6.10.4.20090726
+
+#rm -f $BIN *.hi *.o
 #touch $FILE
 
 shift
 
+if   [ "$CNC_VARIANT" == "pure" ]; then 
+ echo "Using CNC_VARIANT='pure'"
+ FLAGS="$FLAGS -DCNC_VARIANT=1"
+elif [ "$CNC_VARIANT" == "io" ] || [ "$CNC_VARIANT" == "normal" ] ; then
+ echo "Using CNC_VARIANT='normal'"
+ FLAGS="$FLAGS -DCNC_VARIANT=2"
+elif [ "$CNC_VARIANT" == "" ]; then
+ echo " *** "
+ echo " *** \$CNC_VARIANT unset (should be 'pure' or 'io'/'normal')!"
+ echo " ***   Defaulting to 'pure'..."
+ echo " *** "
+ FLAGS="$FLAGS -DCNC_VARIANT=1" 
+fi
 
 echo "  [Compiling $FILE to $BIN]"
-if ghc  -cpp -O2 --make $FILE
+echo $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
+if $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
 #if ghc  -cpp -O2 $FILE -o 
 then 
   echo "  [Executing]"
