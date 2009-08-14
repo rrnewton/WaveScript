@@ -29,7 +29,7 @@ public class NWPath {
 	
 	public void print(OutputStream op) {
 		try{
-			String s = "Length: " + path.size() + ", ";
+			String s = "Length: " + path.size() + ", latency: " + latency;
 			op.write(s.getBytes());			
 			for(int i=0; i<path.size(); i++) { path.get(i).print(op); }
 			op.write('\n');			

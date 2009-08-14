@@ -31,9 +31,11 @@ public class ResourceMap {
 	
 	// check for constraint: latency, cpu, link
 	public boolean constraint(ResourceMap rm, NWPath nwp, Operator op) {
-		// latency constraint
-		double newlatency = rm.totallatency + nwp.latency();
-		if(!latencyconstraint(newlatency)) return false;
+		if(nwp != null) {  // child and parent not on the same node
+			// latency constraint
+			double newlatency = rm.totallatency + nwp.latency();
+			if(!latencyconstraint(newlatency)) return false;
+		}
 		
 		// cpu constraint
 		for(int i=0; i<ParseInput.DIM; i++) {			
@@ -49,15 +51,20 @@ public class ResourceMap {
 					return false;
 			}
 		}
-		// combine with the new link edge
-		for(NWLink link : nwp.path()) {			
-			if(!linkconstraint(op, link.resource(), linkresource, rm.linkresource))
-				return false;
+		
+		if(nwp != null) { // child and parent not on the same node
+			// combine with the new link edge
+			for(NWLink link : nwp.path()) {
+				if(!linkconstraint(op, link.resource(), linkresource, rm.linkresource))
+					return false;
+			}
 		}
 		
 		//pass all constraint checking		
 		return true;
 	}
+	
+	
 	
 	// check for latency constraint
 	private static boolean latencyconstraint(double latency) {
@@ -100,7 +107,9 @@ public class ResourceMap {
 		totalcost += subcost;	// total cost
 		
 		// new latency
-		double newlatency = rm.totallatency + nwp.latency();
+		double newlatency;
+		if(nwp != null) { newlatency = rm.totallatency + nwp.latency();	}
+		else { newlatency = rm.totallatency; }
 		totallatency = totallatency < newlatency ? newlatency : totallatency; 
 		
 		// vertex resource
@@ -129,12 +138,14 @@ public class ResourceMap {
 		}
 		
 		// path link update
-		for(NWLink link : nwp.path()) {	
-			if (linkresource.get(link.resource().id()) == null)
-				linkresource.set(link.resource().id(), new NWLinkResource(op.bw()));
-			else
-				linkresource.get(link.resource().id()).addbw(op.bw());
-		}		
+		if(nwp != null) { // child and parent not on the same node
+			for(NWLink link : nwp.path()) {	
+				if (linkresource.get(link.resource().id()) == null)
+					linkresource.set(link.resource().id(), new NWLinkResource(op.bw()));
+				else
+					linkresource.get(link.resource().id()).addbw(op.bw());
+			}	
+		}
 	}
 	
 	/*

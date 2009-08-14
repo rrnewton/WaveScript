@@ -1,9 +1,5 @@
 package optimization;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
 import reuters.*;
 
 public class CostFunction {
@@ -21,7 +17,10 @@ public class CostFunction {
 	 */
 	
 	public static double calccost(CostRecord cr, NWPath nwp) {
-		return calccost(cr.opn.resource().bw(), nwp.latency()) + cr.resource.totalcost;
+		if(nwp != null) {  // parent and child not on the same node 
+			return calccost(cr.opn.resource().bw(), nwp.latency()) + cr.resource.totalcost; 
+		}
+		else { return cr.resource.totalcost; }
 	}
 	
 	public static double calccost(double bw, double latency) { return bw*latency; }	

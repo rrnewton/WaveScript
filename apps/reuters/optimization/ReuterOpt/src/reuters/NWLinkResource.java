@@ -40,7 +40,7 @@ public class NWLinkResource {
 	
 	
 	public String toString() {
-		return "ID: " + String.valueOf(id) + "BW: " + String.valueOf(bw) 
+		return "ID: " + String.valueOf(id) + ", BW: " + String.valueOf(bw) 
 		+ " Latency: " + String.valueOf(latency);
 	}
 }

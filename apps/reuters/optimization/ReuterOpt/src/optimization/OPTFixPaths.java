@@ -73,8 +73,8 @@ public class OPTFixPaths {
 	
 	public static void subprint(OutputStream ops, CostRecord rcr) {
 		try {
-			ops.write(("Operator\t" + rcr.opn.resource().name() + 
-					"is put on Node\t" + rcr.nwn.name() + "\n").getBytes());
+			ops.write(("Operator " + rcr.opn.resource().name() + 
+					" is put on Node " + rcr.nwn.name() + "\n").getBytes());
 			if(rcr.children == null) return;
 			for(CostRecord cr : rcr.children) {
 				subprint(ops, cr);

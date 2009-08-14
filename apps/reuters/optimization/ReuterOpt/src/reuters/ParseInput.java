@@ -7,7 +7,7 @@ import java.util.*;
 
 public class ParseInput {
 	private static ParseInput input = new ParseInput();	
-	private static final String DEPLOY = "test.qopt"; // node file
+	private static final String DEPLOY = "test1.qopt"; // node file
 	private ParseInput() {}
 
 	public static ParseInput getinstance() { return input; }

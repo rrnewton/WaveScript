@@ -38,14 +38,15 @@ public class CostRecord {
 			// each child has already haven an entry in SUBTREECOST
 			for(CostRecord cr : SUBTREECOST.get(child)) { 				
 				NWElement ele = ParseInput.networkpath.get(cr.nwn.id(), nwn.id());
-				if(ele == null) continue; // not connected  
+				if(ele == null && cr.nwn != nwn) continue; // not connected
 				
 				// else connected, constraint check
 				/*
 				 * !!!~~~~ for now, just consider one path, 
 				 * If having multiple connecting paths, adding here ~~~~~~!!!!!
 				 */
-				NWPath nwp = ele.getPath(0);
+				NWPath nwp = null;
+				if(ele != null) nwp = ele.getPath(0);  // child and parent not on the same node
 				if(!resource.constraint(cr.resource, nwp, child.resource()))
 					continue;
 				

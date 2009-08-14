@@ -18,7 +18,7 @@ public class NWLink {
 	
 	public void print(OutputStream op) {
 		try {
-			op.write(("[From "+ String.valueOf(start) + " To " + 
+			op.write(("["+ String.valueOf(start) + "->" + 
 					String.valueOf(end) + ", " + resource.toString() + "]").getBytes());			
 		}catch(IOException e) { e.printStackTrace(); }
 	}

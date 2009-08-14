@@ -16,7 +16,7 @@ public class Operator {
 		
 	public void setbw(double bw) { this.bw = bw; }	
 	public String toString() {
-		return "Name:" + name + "\tOuputBW: " + String.valueOf(bw) 
+		return "Name:" + name + "\tBW: " + String.valueOf(bw) 
 		+ ", CPU: " + String.valueOf(cpu);
 	}
 }
