@@ -5,13 +5,18 @@ import java.io.OutputStream;
 import java.util.Vector;
 
 public class NWElement {
-	private Vector<NWPath> paths;
+	private Vector<NWPath> paths = null;
 		
 	// Used for reading from the file
-	NWElement(NWLink e) {
+	NWElement(NWLink e) {		
 		paths = new Vector<NWPath>();
 		NWPath p = new NWPath(e);
-		paths.addElement(p);	
+		paths.addElement(p);
+	}
+	
+	public NWElement(NWPath p) {
+		paths = new Vector<NWPath>();
+		paths.add(p);
 	}
 		
 	public int pathNumber() { return paths.size(); }

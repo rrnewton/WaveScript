@@ -40,8 +40,11 @@ public class ParseInput {
 	// ---------------------------------------------
 	//  main function
 	public static void main(String args[]) {
+		
 		ParseInput.getinstance().parseinput();
 		network.print(System.out, "all", "all");
+		System.out.println("\n");
+		networkpath.print(System.out, "all", "all");
 		
 		System.out.println("OP  ");
 		
@@ -49,6 +52,7 @@ public class ParseInput {
 			OPTree<Operator> tree = new OPTree<Operator>(root);
 			tree.pirnt(System.out);
 		}
+		
 	}
 
 	// parsing input file

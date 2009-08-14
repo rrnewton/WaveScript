@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
 
+import shortestpath.Floyds;
+
 public class NWMatrix {
 	ArrayList<NWElement> matrix;
 	int dim;
@@ -18,14 +20,16 @@ public class NWMatrix {
 			matrix.add(null);
 	}
 	
+	
 	public int getDim() { return dim; }
 	public void set(int i, int j, NWElement ob) { matrix.set(i*dim+j, ob); }
 	public NWElement get(int i, int j) { return matrix.get(i*dim+j); }
+	public NWElement get(int index) { return matrix.get(index); }
 	//public boolean isconnected(int i, int j) { return get(i, j) != null ; }
 	
 	// automatically set the path between each node based on direct link
 	public NWMatrix setPath() {
-		return this;	// for now, just return the current matrix
+		return Floyds.FloydsAlgorithm(this);
 	}
 	
 	

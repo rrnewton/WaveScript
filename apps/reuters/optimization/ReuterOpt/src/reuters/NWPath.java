@@ -8,6 +8,11 @@ public class NWPath {
 	Vector<NWLink> path;
 	double latency;
 		
+	public NWPath(double latency) {
+		this.path = new Vector<NWLink>();
+		this.latency = latency;
+	}
+	
 	NWPath(NWLink e){ 
 		// add the edge
 		this.path = new Vector<NWLink>();
@@ -18,6 +23,9 @@ public class NWPath {
 	public double latency() { return latency; }
 	public Vector<NWLink> path() { return path; }
 	public NWLink link(int index) { return path.get(index); }
+	
+	// just insert the edge, no latency update
+	public void insertedge(NWLink nwl) { path.add(nwl); }
 	
 	public void print(OutputStream op) {
 		try{

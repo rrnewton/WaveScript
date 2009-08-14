@@ -1,44 +1,71 @@
 package shortestpath;
 
-import java.util.*;
+import reuters.*;
 
 public class Floyds {
-	public static Digraph FloydsAlgorithm (Digraph g) {
+	public static int NOTCONNECTED = -1; 
+	
+	public static NWMatrix FloydsAlgorithm (NWMatrix g) {
 		int n = g.getDim ();
-		int[][] distance = new int[n][n];
+		
+		double[][] distance = new double[n][n];		
+		for(int v=0; v<n; v++)
+		    for(int w=0; w<n; w++) {
+		    	//if(v == w) distance[v][w] = 0;    // the same node does not have 
+		    	distance[v][w] = Double.MAX_VALUE;
+		    }
+		
 		int[][] path = new int[n][n];
-		for (int v = 0; v < n; ++v)
-		    for (int w = 0; w < n; ++w)
-			distance [v][w] = Integer.MAX_VALUE;
+		for(int v=0; v<n; v++)
+			for(int w=0; w<n; w++) {
+				//if(v == w) path[v][w] = v;
+				//else path[v][w] = NOTCONNECTED;
+				path[v][w] = NOTCONNECTED;
+			}				
 
-/*		Enumeration p = g.getEdges ();
-		while (p.hasMoreElements ()) {
-		    Edge edge = (Edge) p.nextElement ();
-		    Int wt = (Int) edge.getWeight ();
-		    distance [edge.getV0().getNumber()]
-			[edge.getV1().getNumber()] = wt.intValue ();
-		}
+		// setup distance and path information based on the matrix, all are directed edge link
+		for(int v=0; v<n; v++)
+			for(int w=0; w<n; w++) {
+				if(g.get(v, w) != null) {
+					distance[v][w] = g.get(v, w).getPath(0).latency();
+					path[v][w] = v;		// record the starting point if linked directly
+				}
+			}
+		
 
-		for (int i = 0; i < n; ++i)
-		    for (int v = 0; v < n; ++v)
-			for (int w = 0; w < n; ++w)
-			    if (distance [v][i] != Integer.MAX_VALUE &&
-				distance [i][w] != Integer.MAX_VALUE)
-			    {
-				int d = distance[v][i] + distance[i][w];
-				if (distance [v][w] > d)
-				    distance [v][w] = d;
-			    }
+		for (int i=0; i<n; i++)
+		    for (int v=0; v<n; v++)
+			for (int w=0; w<n; w++) {
+			    if (distance[v][i] < Double.MAX_VALUE && distance [i][w] < Double.MAX_VALUE) { 
+			    	double d = distance[v][i] + distance[i][w];			    
+			    	if (distance[v][w] > d) {
+			    		distance[v][w] = d;
+			    		path[v][w] = i;
+			    	}
+				}			    
+			}
 
-		Digraph result = new DigraphAsMatrix (n);
-		for (int v = 0; v < n; ++v)
-		    result.addVertex (v);
-		for (int v = 0; v < n; ++v)
-		    for (int w = 0; w < n; ++w)
-			if (distance [v][w] != Integer.MAX_VALUE)
-			    result.addEdge (v, w,
-				new Int (distance [v][w]));
-		return result;*/
-		return null;
-	    }
+		// generate new results
+		NWMatrix matrix = new NWMatrix(n);
+		for(int v=0; v<n; v++)
+			for(int w=0; w<n; w++) {
+				
+				if(distance[v][w] < Double.MAX_VALUE && v != w)  {// it is connected
+					NWElement ele = null;
+					NWPath nwp = new NWPath(distance[v][w]);
+					findpath(path, nwp, v, w, g);
+					ele = new NWElement(nwp);
+					matrix.set(v, w, ele);
+				}				
+			}
+		return matrix;
+	}
+	
+	// find the path
+	public static void findpath(int[][] paths, NWPath path, int v, int w, NWMatrix g) {
+		
+		if(paths[v][w] == v) { path.insertedge(g.get(v, w).getPath(0).link(0)); return;	}
+		findpath(paths, path, v, paths[v][w], g);
+		findpath(paths, path, paths[v][w], w, g);
+	}
 }
