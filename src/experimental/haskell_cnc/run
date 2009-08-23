@@ -6,8 +6,8 @@ BIN=`echo $1 | sed 's/\.hs//'`
 
 if [ "$GHC" == "" ];  then 
  #GHC=ghc
- GHC=ghc-6.10.4.20090726
- #GHC=ghc-6.11.20090726  
+ #GHC=ghc-6.10.4.20090726
+ GHC=ghc-6.11.20090726  
 fi
 
 #rm -f $BIN *.hi *.o
