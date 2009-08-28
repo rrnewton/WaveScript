@@ -2,12 +2,25 @@
 
 FILE=$1
 
-BIN=`echo $1 | sed 's/\.hs//'`
+# A little hackery to accept either "foo" or "foo.hs" as input:
+if [ -e $FILE".hs" ]; 
+then 
+ BIN=$FILE
+ FILE=$FILE".hs"
+else
+ BIN=`echo $1 | sed 's/\.hs//'`
+fi
+
+#FLAGS="$FLAGS -O2 "
+
+#TIME=/usr/bin/time
+#TIME=
+#TIME=time
 
 if [ "$GHC" == "" ];  then 
- #GHC=ghc
+ GHC=ghc
  #GHC=ghc-6.10.4.20090726
- GHC=ghc-6.11.20090726  
+ #GHC=ghc-6.11.20090726  
 fi
 
 #rm -f $BIN *.hi *.o
@@ -43,13 +56,15 @@ else FLAGS=" $FLAGS -DCNC_SCHEDULER=$CNC_SCHEDULER"
 fi
 
 echo "  [Compiling $FILE to $BIN]"
-echo $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
-if $GHC $FLAGS -cpp -O2 --make $FILE -fforce-recomp
+echo $GHC $FLAGS -cpp  --make $FILE -fforce-recomp
+if $GHC $FLAGS -cpp --make $FILE -fforce-recomp
 #if ghc  -cpp -O2 $FILE -o 
 then 
 if [ "$NORUN" == "" ]; then
   echo "  [Executing]"
-  exec time ./$BIN $* 
+  #exec $TIME ./$BIN $* 
+#  $TIME ./$BIN $* 
+  time ./$BIN $* 
 #  exec time memprof ./$BIN $* 
 fi
 else exit -1

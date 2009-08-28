@@ -1,9 +1,11 @@
 {-# LANGUAGE ExistentialQuantification
    , ScopedTypeVariables
    , BangPatterns
-   , PatternSignatures
+   , NamedFieldPuns, RecordWildCards
   #-}
 {-
+   , PatternSignatures
+
    , FlexibleContexts
    , RankNTypes
    , ImpredicativeTypes
@@ -12,12 +14,24 @@
   OPTIONS glasgow-exts
 
    -funbox-strict-fields
+
+[2009.08.25] {Optimizing GC}
+
+One thing that I'm thinking about just now is that irrespective of how
+much we allocate we may still make GC efficient if we can minimize the
+LIVE data.  There are certain points in the execution where live data
+should be minimized (temporary structures are finished, etc).  If we
+could somehow provide hints on when to GC this could potentially be
+useful... (but it would be complicated in the multithreaded
+scenario...).
+
 -}
 
 #ifndef INCLUDEMETHOD
 module CncPure where
 #endif
 
+import Data.List as List
 import Data.Set as Set
 import Data.Map as Map
 import Data.Maybe
@@ -25,6 +39,9 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import Data.Word
 import Data.Complex
+
+import Control.Concurrent
+import GHC.Conc
 import Control.Monad
 import System
 import Debug.Trace
@@ -72,6 +89,13 @@ memoize = False
 scheduler = simpleScheduler
 #elif CNC_SCHEDULER == 2
 scheduler = betterBlockingScheduler
+#elif CNC_SCHEDULER == 3
+#warning "Yay parallel scheduler."
+scheduler = parallelScheduler
+
+#elif CNC_SCHEDULER == 4
+scheduler = parSched2
+
 #else
 #error "CncPure.hs -- CNC_SCHEDULER is not set to one of {1,2}"
 #endif
@@ -288,23 +312,9 @@ magic_to_alternate id = unsafeCoerce id
 betterBlockingScheduler :: Graph -> [NewTag] -> Collections -> Collections
 betterBlockingScheduler graph inittags world = schedloop world alternate' inittags []
  where 
-       -- Create a new world to mirror the "real" one.  This tracks the blocked steps.
-       -- Duplicate all the ICIDs used in the real world.
-       -- (We will expect all the entries in the IntMap to be defined.)
-       -- However, all that's important here is that we initialize the
-       -- alternate reality with the same NUMBER of item collections.
-       alternate' = 
-	 case world of 
-	  (_,_,MI imap) ->
-	   -- HACK: we actually need to make ADDITIONAL item
-	   -- collections to fill in the gaps where tag collections
-	   -- used up ID numbers.  Wouldn't be necessary if
-	   -- Collections stored two counters...
-	   foldl (\ w _ -> snd $ _newItemCol w)
-	       (_newWorld 0) [0.. foldl max 0 (IntMap.keys imap)]
+       alternate' = mirrorWorld world 
 
        schedloop :: Collections -> Collections -> [NewTag] -> [PrimedStep] -> Collections
-
        schedloop w alternate [] [] = w
 
        schedloop w alternate (hd : tl) [] = 
@@ -316,34 +326,452 @@ betterBlockingScheduler graph inittags world = schedloop world alternate' initta
 	   --trace (case id of TCID n -> "      *** Executing tagcol "++ show n ++" tag: "++ show (char tag)) $ 
 	   case pstep w of
 	     Block (d_id) tag -> 
-		 trace (" ... Blocked ... " ++ show (d_id,tag)) $			       
-		 -- Here we extend the collection of blocked steps.
-		 let alt_id = magic_to_alternate d_id 
-		     otherblocked = 
-		      case _get alternate alt_id tag of
-		        Nothing -> []
-			Just ls -> ls
-		     newblocked = _put alt_id tag (pstep:otherblocked)
-		     (alternate',[]) = mergeUpdates [] [newblocked] alternate
-		 in
-		   schedloop w alternate' tags tl
+		 trace (" ... Blocked ... " ++ show (d_id,tag)) $ 
+		 let alternate' = updateMirror alternate d_id tag pstep 
+	         in schedloop w alternate' tags tl
 
 	     Done newtags newitems -> 
 		 let (w2,fresh) = mergeUpdates newtags newitems w
 		      -- Check to see if the new items have activated any blocked actions:
 		     (steps',alternate') = 
 			 foldl (\ (acc,alternate) (NI (id) tag _) -> 
-				     let alt_id = magic_to_alternate id in
-				     case _get alternate alt_id tag of
-				      Nothing -> (acc,alternate)
-				      Just [] -> (acc,alternate)
-				      Just steps -> 
-				       -- Remove the blocked steps from the collection:
-				       trace (" ... REACTIVATED ... " ++ show (alt_id,tag)) $
-				       (steps++acc, _rem alternate alt_id tag)
+				     let (alternate',steps) = mirrorGet alternate id tag in 
+				       trace (" ... REACTIVATED ... " ++ show (id,tag)) $
+				       (steps++acc, alternate')
 				)
 			    (tl,alternate) newitems
 		 in schedloop w2 alternate' (fresh++tags) steps'
+
+
+--------------------------------------------------------------------------------
+
+-- Parallel scheduler: 
+
+-- The basic idea here is that there's a single copy of the world
+-- state.  Each worker thread computes some number of steps and lazily
+-- tries to push the updates to the global copy.  
+
+-- We have a choice as to the data structure for the global world
+-- state -- IORef or MVar.
+
+-- The complication in this approach is blocking steps.  By the time a
+-- thread commits its output, a step may have blocked on data that has
+-- since become available.
+
+-- Unless we use a trickier data structure (some kind of sliding
+-- window, storing updates at each "revision number" and processing
+-- only the item updates since we last snapshotted the global state)
+-- then we need to recheck all new blocked items against the new
+-- global state.  I don't think we can really amortize this cost by
+-- committing less often, because we then have proportinally more
+-- blocked items to commit -- each new blocked needs to be looked up
+-- against the global state.
+
+-- ==============================================================================
+-- Interface for maintaining a mirror of the Collections, including
+-- blocked steps rather than items.
+
+-- Duplicate all the ICIDs used in the real world.
+-- (We will expect all the entries in the IntMap to be defined.)
+-- However, all that's important here is that we initialize the
+-- alternate reality with the same NUMBER of item collections.
+mirrorWorld :: Collections -> Collections
+mirrorWorld world = 
+    case world of 
+     (_,_,MI imap) ->
+       -- HACK: we actually need to make ADDITIONAL item
+       -- collections to fill in the gaps where tag collections
+       -- used up ID numbers.  Wouldn't be necessary if
+       -- Collections stored two counters...
+       foldl (\ w _ -> snd $ _newItemCol w)
+	     (_newWorld 0) 
+	     [0.. foldl max 0 (IntMap.keys imap)]
+
+updateMirror :: (Show a, Ord a) => Collections -> ItemCol a b -> a -> PrimedStep -> Collections
+updateMirror mirror d_id tag val = mirror'
+  where
+        alt_id = magic_to_alternate d_id 
+	others = 
+	    case _get mirror alt_id tag of
+	      Nothing -> []
+	      Just ls -> ls
+	new = _put alt_id tag (val:others)
+	(mirror',[]) = mergeUpdates [] [new] mirror
+
+-- Similar but takes a list of Block entries and a list of primed steps:
+updateMirrorList mirror bls sls = 
+    case bls of 
+     [] -> mirror
+     Block d_id tag : tl -> 
+       updateMirrorList (updateMirror mirror d_id tag (head sls))
+			tl (tail sls)
+
+-- Destructive get operation:
+mirrorGet mirror id tag =
+    let alt_id = magic_to_alternate id in
+     case _get mirror alt_id tag of
+      Nothing    -> (mirror, [])
+      Just steps -> (_rem mirror alt_id tag, steps)
+
+------------------------------------------------------------
+
+-- Scan new items against the existing blocked
+--   Complexity m * (log n) 
+--   Would be better asymptotically to intersect maps.
+--   (Well, we'd pay when we built up the little map... but that would
+--    be, m * log m and presumably m << n.)
+-- This function returns:
+--  (1) the activated steps and 
+--  (2) a new collection of blocked-entries with the activated steps removed.
+newItemsAgainstBlocked :: [NewItem] -> Collections -> (Collections, [PrimedStep])
+newItemsAgainstBlocked newitems mirror = 
+	    foldl (\ (mirror,acc) (NI (id) tag _) -> 
+		   let alt_id = magic_to_alternate id in
+		     case _get mirror alt_id tag of
+		       Nothing -> (mirror,acc)
+		       --Just [] -> (acc,mirror)
+		       Just steps -> 
+		         -- Remove the blocked steps from the collection:
+		         trace (" ... REACTIVATED ... " ++ show (alt_id,tag)) $
+		         (_rem mirror alt_id tag, steps++acc)
+		  )
+	    (mirror,[]) newitems
+
+
+-- ==============================================================================
+-- Scheduler version 3: Now in parallel.
+
+data Bundle = B { blocked :: [StepResult]
+		, bsteps  :: [PrimedStep]
+		, intags  :: [NewTag]
+		, outtags :: [NewTag]
+		, items   :: [NewItem]}
+
+-- _GRAIN = 1  ; _NUMTHREADS = 1
+
+_GRAIN = 2 ;_NUMTHREADS = 2
+
+-- _NUMTHREADS = numCapabilities
+
+parallelScheduler :: Graph -> [NewTag] -> Collections -> Collections
+parallelScheduler graph inittags world = 
+    -- It's safe to be unsafe here!! (If you follow the CnC rules...)
+    unsafePerformIO $ 
+    do global_world   <- newIORef world
+       global_blocked <- newIORef (mirrorWorld world)
+       -- How do we split the initial tags up?
+       -- Let's split them evenly for now, ignorant of any data locality principles.
+       forkJoin $ Prelude.map (threadloop global_world global_blocked []) 
+		$ splitN _NUMTHREADS inittags
+       -- Finally, return the quiescent world:
+       readIORef global_world
+ where 
+       threadloop worldref blockedref primed mytags = 
+	 do 
+	    -- Snapshot the world:
+	    world <- readIORef worldref
+	    -- If the world is stale, we might block unnecessarily.
+	    let B {blocked, bsteps, intags, outtags, items} = 
+		  runSomeSteps graph world _GRAIN 
+		     (B {blocked=[], bsteps=[], intags=mytags, outtags=[], items=[]}) 
+		     primed
+
+            len <- return $ length bsteps
+	    -- Now we atomically write back changes to the world:
+	    fresh <- atomicModifyIORef worldref (mergeUpdates outtags items)
+
+            -- Atomically read blocked and unblock steps as necessary,
+            -- extending blocked and returning unblocked steps.
+            newprimed <- atomicModifyIORef blockedref
+			 (\ oldblck -> 
+			  -- NEED TO INCORPORATE blckd' into blocked
+			  let newb = updateMirrorList oldblck blocked bsteps in 
+			  newItemsAgainstBlocked items newb)
+	    if Prelude.null intags && Prelude.null fresh && Prelude.null newprimed
+	     then return ()
+	     else threadloop worldref blockedref newprimed (fresh ++ intags)
+
+
+
+-- This is the heart of the scheduler.  Run some work and commit it,
+-- unblock steps as necessary.
+run_and_commit graph worldref blockedref primed mytags = 
+    do 
+	       -- Snapshot the world:
+	       world <- readIORef worldref
+	       -- If the world is stale, we might block unnecessarily.
+	       let B {blocked, bsteps, intags, outtags, items} = 
+		    runSomeSteps graph world _GRAIN 
+		     (B {blocked=[], bsteps=[], intags=mytags, outtags=[], items=[]}) 
+		     primed
+
+	       -- Now we atomically write back changes to the world:
+	       fresh <- atomicModifyIORef worldref (mergeUpdates outtags items)
+
+               -- Atomically read blocked and unblock steps as necessary,
+               -- extending blocked and returning unblocked steps.
+               newprimed <- atomicModifyIORef blockedref
+			     (\ oldblck -> 
+			      -- NEED TO INCORPORATE blckd' into blocked
+			      let newb = updateMirrorList oldblck blocked bsteps in 
+			      newItemsAgainstBlocked items newb)
+	       return (fresh ++ intags, newprimed)
+
+parSched2 :: Graph -> [NewTag] -> Collections -> Collections
+parSched2 graph inittags world = 
+    -- It's safe to be unsafe here!! (If you follow the CnC rules...)
+    unsafePerformIO $ 
+    do worldref   <- newIORef world
+       blockedref <- newIORef (mirrorWorld world)
+
+       -- For now work-queues are indeed queues... should be stacks.
+       work_queues <- mapM (\_ -> newChan) [1..10]
+
+       ------------------------------------------------------------
+
+       let perms = let p = permutations work_queues in p 
+	   workerthread primed (chan, mytags) = 
+	       do writeList2Chan chan mytags 
+	          threadloop primed mytags
+	    where 
+	     inls = do b <- isEmptyChan chan 
+		       if b then return []
+		            else do x <- readChan chan
+				    rst <- inls 
+				    return (x : rst)
+
+	     threadloop primed mytags = 
+	      do
+	       --mytags <- inls
+
+	       -- Snapshot the world:
+	       world <- readIORef worldref
+	       -- If the world is stale, we might block unnecessarily.
+	       B {blocked, bsteps, intags, outtags, items} <- 
+		    runSomeSteps2 graph world _GRAIN 
+		     (B {blocked=[], bsteps=[], intags=chan, outtags=[], items=[]}) 
+		     primed
+
+	       -- Now we atomically write back changes to the world:
+	       fresh <- atomicModifyIORef worldref (mergeUpdates outtags items)
+
+               -- Atomically read blocked and unblock steps as necessary,
+               -- extending blocked and returning unblocked steps.
+               newprimed <- atomicModifyIORef blockedref
+			     (\ oldblck -> 
+			      -- NEED TO INCORPORATE blckd' into blocked
+			      let newb = updateMirrorList oldblck blocked bsteps in 
+			      newItemsAgainstBlocked items newb)
+
+               let tags = fresh ++ intags
+	       if List.null tags && List.null newprimed
+	        -- Now get work off the work-queue
+ 		then do more <- inls 
+ 			if List.null more
+			 -- Now Steal some work.
+ 			 then putStr "STEAL\n"
+ 			 else threadloop [] more
+		else threadloop newprimed tags
+
+       ------------------------------------------------------------
+       -- How do we split the initial tags up?
+       -- Let's split them evenly for now, ignorant of any data locality principles.
+       forkJoin $ Prelude.map (workerthread []) 
+		$ zip work_queues
+		$ splitN _NUMTHREADS inittags
+       -- Finally, return the quiescent world:
+       readIORef worldref
+ where 
+
+       trysteal = 
+	 do putStr "th"
+	    return ()
+
+runSomeSteps2 = undefined
+
+{-
+runSomeSteps2 :: Graph -> Collections -> Int -> Bundle -> [PrimedStep] -> Bundle
+-- If we run out of work we have to stop:
+runSomeSteps2 _ _ n (rec @ B{intags=[]}) [] = rec
+
+-- If we're over our limit, we stop even if there's work left.
+-- (But we make sure to finish the already primed steps.)
+runSomeSteps2 _ _ n bundle [] | n <= 0 = bundle
+-- In this case we're out of primed steps, but we have more tags.
+-- We prime a batch of new steps (corresponding to the next tag).
+runSomeSteps2 graph w n (rec @ B{intags = hd:tl}) [] = 
+	   case hd of 
+	    NT id tag ->
+	     runSomeSteps2 graph w n rec{intags=tl} (callSteps graph id tag)
+-- Here's where we do the real work, execute the next primed step:
+runSomeSteps2 g w n (rec @ B{..}) (pstep:tl) = 
+           -- INVOKE THE STEP!
+	   case pstep w of
+	     -- Accumulate blocked tokens:
+	     newb@(Block _ _) -> 
+		 runSomeSteps2 g w (n-1) 
+		    rec{blocked= newb:blocked, bsteps= pstep:bsteps} tl
+
+             -- Alas, we don't know which of these newtags are really
+             -- FRESH (seen for the first time) until we merge it back
+             -- into the global world state.
+	     Done newtags newitems ->
+		 runSomeSteps2 g w (n-1) 
+		    rec{outtags=newtags++outtags, items=newitems++items} tl
+-}
+
+
+-- ==============================================================================
+-- Scheduler version 4: Local world copies.
+
+-- This version is an intermediate step towards a distributed version.
+-- Each thread maintains its own picture of the world.
+
+-- Communication is via a gossip protocol.
+-- In this prototype version, every thread maintains a channel with
+-- every other.  However, we have a great deal of leeway wrt the
+-- communication organization here.  We could, for example, try to
+-- coelesce updates in various ways... The trick will be versioning
+-- the updates and suppressing duplicates.
+
+-- Initial tags are split evenly.  Work stealing balances load
+-- subsquently.  The trickiest part here is managing duplicated work.
+
+--distScheduler :: Graph -> [NewTag] -> Collections -> Collections
+distScheduler graph inittags world = 
+    -- It's safe to be unsafe here!! (If you follow the CnC rules...)
+    unsafePerformIO $ 
+    -- Open up a comm channel for every pair of workers:
+
+    do chans <- sequence 
+		[ sequence [ do c <- newChan; return (i,j,c) 
+			     | j <- [1.. _NUMTHREADS], not(i == j) ] 
+		  | i <- [1.. _NUMTHREADS] ]
+--     do chans <- sequence [ do c <- newChan; return (i,j,c) | 
+-- 			   i <- [1.. _NUMTHREADS], 
+-- 			   j <- [1.. _NUMTHREADS], 
+-- 			   not(i == j) ]
+
+       -- How do we split the initial tags up?
+       -- Let's split them evenly for now, ignorant of any data locality principles.
+       forkJoin $ Prelude.map 
+		   (\ (ch,tags) -> 
+		     let (my_i,_,_):_ = ch 
+		         myinbound = List.filter (\ (_,j,_) -> j == my_i)
+		                     $ concat chans
+		         third (_,_,x) = x
+		         thirds = List.map third
+		     in	threadloop world (mirrorWorld world) 
+		                   (thirds ch) (thirds myinbound) [] tags)
+		$ zip chans
+		-- $ zip (List.groupBy (\ (a,b,_) (x,_) -> a==x) chans)
+		$ splitN _NUMTHREADS inittags
+       -- Finally, return the quiescent world:
+       --readIORef global_world
+       return chans
+ where 
+       threadloop world bworld outchans inchans primed mytags = 
+	 do 
+            --worldref   <- newIORef world
+	    --blockedref <- newIORef (mirrorWorld world)
+	    --let mirror = mirrorWorld world
+
+            -- Receive updates from other workers:
+	    world2 <-
+	     foldM (\ w c -> do b <- isEmptyChan c
+	                        if b then return w
+	                             else return w
+		   )
+	       world inchans
+
+	    -- If the world is stale, we might block unnecessarily.
+	    let B {blocked, bsteps, intags, outtags, items} = 
+		  runSomeSteps graph world _GRAIN 
+		     (B {blocked=[], bsteps=[], intags=mytags, outtags=[], items=[]})
+		     primed
+	        world2  = mergeUpdates outtags items 
+		newb    = updateMirrorList bworld blocked bsteps 
+	        bworld2 = newItemsAgainstBlocked items newb
+
+            -- Send updates to other workers:
+	    mapM_ (\_ -> return () ) outchans
+{-
+
+            -- Atomically read blocked and unblock steps as necessary,
+            -- extending blocked and returning unblocked steps.
+
+
+	    if Prelude.null intags && Prelude.null fresh && Prelude.null newprimed
+	     then putStr "EMPTIED\n"
+	     else threadloop worldref blockedref newprimed (fresh ++ intags)
+-}
+            return undefined
+
+--------------------------------------------------------------------------------
+-- Run some steps, accumulate output, and then return to synchronize/schedule.
+--------------------------------------------------------------------------------
+
+-- The big question is how many actions we should run before we
+-- stop and commit.  Perhaps we should determine some heuristic
+-- that would serve here.  One example heuristic would be that
+-- we could check realtime every time that we come back to
+-- commit and dynamically adjust the number of actions so that
+-- we don't come back to commit too often.
+
+-- There are several additional choices in terms of how we
+-- commit the output of a worker thread.  
+
+-- First, if we batch up output items without committing them
+-- to the local copy of the world, then subsequent steps we
+-- perform within a thread (before committing) will not be able
+-- to see those items and will block unnecessarily.  We can
+-- live with this problem, but it will create trouble on
+-- "depth-first" style problems---ones where the thread could
+-- go ahead as far as it likes using only local data.  There
+-- are a couple solutions to the problem:
+				
+--   (1) If we commit to the local world, then we would need to
+-- do a full merge of the local & global worlds.  
+
+--   (2) We could build up the new items as a Map (rather than
+-- a list), and modify get so that it always checks the local
+-- item collection before the (snapshot of) the global one.
+
+-- For now, however, we just live with the problem:
+
+runSomeSteps :: Graph -> Collections -> Int -> Bundle -> [PrimedStep] -> Bundle
+
+-- If we run out of work we have to stop:
+runSomeSteps _ _ n (rec @ B{intags=[]}) [] = rec
+--trace ("Out of work.. stopping blocked: "++ show (length blocked)) $ 
+--(blocked,bsteps,[],items)
+
+-- If we're over our limit, we stop even if there's work left.
+-- (But we make sure to finish the already primed steps.)
+runSomeSteps _ _ n bundle [] | n <= 0 = bundle
+					     
+-- In this case we're out of primed steps, but we have more tags.
+-- We prime a batch of new steps (corresponding to the next tag).
+runSomeSteps graph w n (rec @ B{intags = hd:tl}) [] = 
+	   case hd of 
+	    NT id tag ->
+	     runSomeSteps graph w n rec{intags=tl} (callSteps graph id tag)
+
+-- Here's where we do the real work, execute the next primed step:
+runSomeSteps g w n (rec @ B{..}) (pstep:tl) = 
+           -- INVOKE THE STEP!
+	   case pstep w of
+	     -- Accumulate blocked tokens:
+	     newb@(Block _ _) -> 
+		 runSomeSteps g w (n-1) 
+		    rec{blocked= newb:blocked, bsteps= pstep:bsteps} tl
+
+             -- Alas, we don't know which of these newtags are really
+             -- FRESH (seen for the first time) until we merge it back
+             -- into the global world state.
+	     Done newtags newitems ->
+		 runSomeSteps g w (n-1) 
+		    rec{outtags=newtags++outtags, items=newitems++items} tl
 
 
 --------------------------------------------------------------------------------

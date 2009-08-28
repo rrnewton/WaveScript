@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures, NamedFieldPuns, RecordWildCards #-}
 
 #define MEMOIZE
 #define REPEAT_PUT_ALLOWED
@@ -16,8 +16,10 @@ run limit =
 	  items :: ItemCol Int Int <- newItemCol() 
 
 	  prescribe tags 
-	    (\_n -> do n <- get items _n
-	               --cncPutStr$ "Running "++ show n ++"\n"
+	    (\_n -> do 
+--	               cncPutStr$ "Running "++ show _n ++"\n"
+	               n <- get items _n
+--	               cncPutStr$ "    got "++ show n ++"\n"
 	               if n >= limit
 	                then return ()
 	                else do put items (n+1) (n+1)
@@ -43,8 +45,9 @@ run limit =
 
 main = do args <- System.getArgs 
 	  case args of 
-	    []  -> run 200000
+--	    []  -> run 200000
 --	    []  -> run 10000
+	    []  -> run 200 
 	    [s] -> run (read s)
 
 {-
@@ -66,6 +69,17 @@ NOTES:
    nothreads: 6.65
    1 thread:  6.7
    4 threads: 6.48
+
+[2009.08.25]
+
+Note... for testing my new parallel CncPure.hs, this DOES involve
+blocking/reactivation (under scheduler 3).
+
+Currently this test fails due to finalization code blocking....
+
+Yuck... it may be nondetermistic... 
+  Well, it seems grain/threads = 2 is working....
+  But 1/1 doesn't work!! That's odd.
 
 
  -}

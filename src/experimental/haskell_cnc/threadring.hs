@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, PatternSignatures, NamedFieldPuns, RecordWildCards #-}
 
 -- Memoize bad!
 -- #define MEMOIZE 

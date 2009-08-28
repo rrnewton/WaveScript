@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, NamedFieldPuns, RecordWildCards #-}
 -- , PatternSignatures
 
 -- #define MEMOIZE
@@ -62,10 +62,9 @@ runMandel a b c =
 
 main = do args <- System.getArgs  
 	  case args of
---	   []      -> runMandel 3 3 3
-	   []      -> runMandel 300 300 100
+	   []      -> runMandel 3 3 3   -- Should output 24.
+--	   []      -> runMandel 300 300 100
 	   [a,b,c] -> runMandel (read a) (read b) (read c)
-	 
 
 {- 
   NOTES:

@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, BangPatterns, MagicHash, ScopedTypeVariables, NamedFieldPuns, RecordWildCards #-}
 -- , PatternSignatures
 
 -- #define MEMOIZE
@@ -75,8 +75,8 @@ main = do args <- System.getArgs
 	        do x <- runGraph $ primes n
 		   putStrLn (show x)
 	  case args of 
-	   []  -> run 200000
---	   []  -> run 1000
+--	   []  -> run 200000
+	   []  -> run 1000 -- Should output 168
 	   [n] -> run (read n)
 	     
 {- 
