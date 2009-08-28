@@ -441,12 +441,13 @@ newItemsAgainstBlocked newitems mirror =
 -- ==============================================================================
 -- Scheduler version 3: Now in parallel.
 
-data Bundle = B { blocked :: [StepResult]
-		, bsteps  :: [PrimedStep]
-		, intags  :: [NewTag]
-		, outtags :: [NewTag]
-		, items   :: [NewItem]}
-
+data Bundle a = 
+    B { blocked :: [StepResult]
+      , bsteps  :: [PrimedStep]
+      , intags  :: a
+      , outtags :: [NewTag]
+      , items   :: [NewItem]}
+    
 -- _GRAIN = 1  ; _NUMTHREADS = 1
 
 _GRAIN = 2 ;_NUMTHREADS = 2
@@ -739,7 +740,7 @@ distScheduler graph inittags world =
 
 -- For now, however, we just live with the problem:
 
-runSomeSteps :: Graph -> Collections -> Int -> Bundle -> [PrimedStep] -> Bundle
+runSomeSteps :: Graph -> Collections -> Int -> Bundle [NewTag] -> [PrimedStep] -> Bundle [NewTag]
 
 -- If we run out of work we have to stop:
 runSomeSteps _ _ n (rec @ B{intags=[]}) [] = rec
