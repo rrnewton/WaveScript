@@ -31,6 +31,8 @@ scenario...).
 module CncPure where
 #endif
 
+import Data.Array as Array
+
 import Data.List as List
 import Data.Set as Set
 import Data.Map as Map
@@ -49,6 +51,8 @@ import Unsafe.Coerce
 import Util
 
 import System.IO.Unsafe
+
+import Random
 
 -- README
 ------------------------------------------------------------
@@ -448,8 +452,9 @@ data Bundle a =
       , outtags :: [NewTag]
       , items   :: [NewItem]}
     
--- _GRAIN = 1  ; _NUMTHREADS = 1
+-- _GRAIN = 5  ; _NUMTHREADS = numCapabilities
 
+-- _GRAIN = 1  ; _NUMTHREADS = 1
 _GRAIN = 2 ;_NUMTHREADS = 2
 
 -- _NUMTHREADS = numCapabilities
@@ -492,31 +497,7 @@ parallelScheduler graph inittags world =
 	     then return ()
 	     else threadloop worldref blockedref newprimed (fresh ++ intags)
 
-
-
--- This is the heart of the scheduler.  Run some work and commit it,
--- unblock steps as necessary.
-run_and_commit graph worldref blockedref primed mytags = 
-    do 
-	       -- Snapshot the world:
-	       world <- readIORef worldref
-	       -- If the world is stale, we might block unnecessarily.
-	       let B {blocked, bsteps, intags, outtags, items} = 
-		    runSomeSteps graph world _GRAIN 
-		     (B {blocked=[], bsteps=[], intags=mytags, outtags=[], items=[]}) 
-		     primed
-
-	       -- Now we atomically write back changes to the world:
-	       fresh <- atomicModifyIORef worldref (mergeUpdates outtags items)
-
-               -- Atomically read blocked and unblock steps as necessary,
-               -- extending blocked and returning unblocked steps.
-               newprimed <- atomicModifyIORef blockedref
-			     (\ oldblck -> 
-			      -- NEED TO INCORPORATE blckd' into blocked
-			      let newb = updateMirrorList oldblck blocked bsteps in 
-			      newItemsAgainstBlocked items newb)
-	       return (fresh ++ intags, newprimed)
+-- ==============================================================================
 
 parSched2 :: Graph -> [NewTag] -> Collections -> Collections
 parSched2 graph inittags world = 
@@ -528,29 +509,39 @@ parSched2 graph inittags world =
        -- For now work-queues are indeed queues... should be stacks.
        work_queues <- mapM (\_ -> newChan) [1..10]
 
+       -- For fast indexing:
+       let queue_arr = listArray (0,length work_queues-1) work_queues
+
        ------------------------------------------------------------
-
-       let perms = let p = permutations work_queues in p 
-	   workerthread primed (chan, mytags) = 
-	       do writeList2Chan chan mytags 
-	          threadloop primed mytags
+       let --perms = let p = permutations work_queues in listArray (0,length p - 1) p
+	   workerthread primed (myid, chan, mytags) = 
+	       do putStrLn $ "=== Starting thread "++ show (myid) ++" with "++ show (length mytags) ++" initial tags."
+		  writeList2Chan chan mytags 
+	          threadloop primed 
 	    where 
-	     inls = do b <- isEmptyChan chan 
-		       if b then return []
-		            else do x <- readChan chan
-				    rst <- inls 
-				    return (x : rst)
+              -- THIS COULD DEADLOCK!! WE NEED A NONBLOCKING GET!! 
+	     -- FIXME: DON'T STEAL FROM OURSELVES!! 
+	     trysteal 0 = putStr "Thread giving up and dying...\n"
+	     trysteal n = 
+	      do _i :: Int <- randomIO 
+		 let i = _i `mod` _NUMTHREADS
+		 if myid == i then return () else putStrLn $ " "++ show myid ++" Stealing from " ++ show i
+		 let q = (Array.!) queue_arr i
+		 b <- isEmptyChan q
+		 if b then trysteal (n-1)
+		      else do x <- readChan q
+			      putStrLn "   <STOLEN>"
+			      writeChan chan x
+			      threadloop []
 
-	     threadloop primed mytags = 
+	     threadloop primed = 
 	      do
-	       --mytags <- inls
-
 	       -- Snapshot the world:
 	       world <- readIORef worldref
 	       -- If the world is stale, we might block unnecessarily.
-	       B {blocked, bsteps, intags, outtags, items} <- 
-		    runSomeSteps2 graph world _GRAIN 
-		     (B {blocked=[], bsteps=[], intags=chan, outtags=[], items=[]}) 
+	       B {blocked, bsteps, outtags, items} <- 
+		    runSomeSteps2 graph world _GRAIN chan 
+		     (B {blocked=[], bsteps=[], intags=(), outtags=[], items=[]}) 
 		     primed
 
 	       -- Now we atomically write back changes to the world:
@@ -564,62 +555,60 @@ parSched2 graph inittags world =
 			      let newb = updateMirrorList oldblck blocked bsteps in 
 			      newItemsAgainstBlocked items newb)
 
-               let tags = fresh ++ intags
-	       if List.null tags && List.null newprimed
-	        -- Now get work off the work-queue
- 		then do more <- inls 
- 			if List.null more
-			 -- Now Steal some work.
- 			 then putStr "STEAL\n"
- 			 else threadloop [] more
-		else threadloop newprimed tags
+               writeList2Chan chan fresh
+
+               --putStrLn $ "PERMS OF " ++ show (length (work_queues))
+               --putStrLn $ "PERMS " ++ show ((permutations work_queues !! 10000))
+
+               -- Are we out of work?
+	       if List.null newprimed
+		then do b <- isEmptyChan chan
+			if b then trysteal (_NUMTHREADS * 2)
+			     else threadloop newprimed
+                else threadloop newprimed 
 
        ------------------------------------------------------------
        -- How do we split the initial tags up?
        -- Let's split them evenly for now, ignorant of any data locality principles.
        forkJoin $ Prelude.map (workerthread []) 
-		$ zip work_queues
+		$ zip3 [0.. length work_queues] work_queues
 		$ splitN _NUMTHREADS inittags
        -- Finally, return the quiescent world:
        readIORef worldref
- where 
+ 
 
-       trysteal = 
-	 do putStr "th"
-	    return ()
 
-runSomeSteps2 = undefined
+runSomeSteps2 :: Graph -> Collections -> Int -> Chan NewTag -> Bundle () -> [PrimedStep] -> IO (Bundle ())
 
-{-
-runSomeSteps2 :: Graph -> Collections -> Int -> Bundle -> [PrimedStep] -> Bundle
--- If we run out of work we have to stop:
-runSomeSteps2 _ _ n (rec @ B{intags=[]}) [] = rec
-
--- If we're over our limit, we stop even if there's work left.
--- (But we make sure to finish the already primed steps.)
-runSomeSteps2 _ _ n bundle [] | n <= 0 = bundle
--- In this case we're out of primed steps, but we have more tags.
--- We prime a batch of new steps (corresponding to the next tag).
-runSomeSteps2 graph w n (rec @ B{intags = hd:tl}) [] = 
+runSomeSteps2 g w n c (rec @ B{..}) primed = 
+ case primed of 
+  [] ->
+    -- If we're over our limit, we stop even if there's work left.
+    -- (But we make sure to finish the already primed steps.)
+    if n <= 0 then return rec else
+    -- If we run out of (readily available) work we have to stop:
+    do b <- isEmptyChan c
+       if b then return rec else
+        -- In this case we're out of primed steps, but we have more tags.
+        -- We prime a batch of new steps (corresponding to the next tag).
+	do hd <- readChan c 
 	   case hd of 
 	    NT id tag ->
-	     runSomeSteps2 graph w n rec{intags=tl} (callSteps graph id tag)
--- Here's where we do the real work, execute the next primed step:
-runSomeSteps2 g w n (rec @ B{..}) (pstep:tl) = 
-           -- INVOKE THE STEP!
-	   case pstep w of
-	     -- Accumulate blocked tokens:
-	     newb@(Block _ _) -> 
-		 runSomeSteps2 g w (n-1) 
-		    rec{blocked= newb:blocked, bsteps= pstep:bsteps} tl
+	     runSomeSteps2 g w n c rec (callSteps g id tag)
 
-             -- Alas, we don't know which of these newtags are really
-             -- FRESH (seen for the first time) until we merge it back
-             -- into the global world state.
-	     Done newtags newitems ->
-		 runSomeSteps2 g w (n-1) 
-		    rec{outtags=newtags++outtags, items=newitems++items} tl
--}
+  -- In this case we have primed steps and just need to do the real work:
+  pstep:tl ->
+   case pstep w of
+   -- Accumulate blocked tokens:
+    newb@(Block _ _) -> 
+       runSomeSteps2 g w (n-1) c 
+        rec{blocked= newb:blocked, bsteps= pstep:bsteps} tl
+    -- Alas, we don't know which of these newtags are really
+    -- FRESH (seen for the first time) until we merge it back
+    -- into the global world state.
+    Done newtags newitems ->
+       runSomeSteps2 g w (n-1) c
+        rec{outtags=newtags++outtags, items=newitems++items} tl
 
 
 -- ==============================================================================
