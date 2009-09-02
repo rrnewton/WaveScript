@@ -12,17 +12,17 @@
 
 (library (main)
   (export
-   main  wsint wsint-early
+   main  wsint wsint-early wsint-early-passes
    ws ws.early 
    wscaml wsmlton wscomp wsc2
-   wavescript-version
+   wavescript-version browse-stream wsint:direct-stream
    )
   ;; We use the generated, aggregated package to supply all the bindings we need:
   (import (except (rnrs (6)) error) 
 	  (except (rnrs r5rs) force delay)
 	  (main_r6rs);(except (main_r6rs) +)
 	  )
-
+;(require scheme/mpair)
 
 ;;================================================================================;;
 ;;                             System Initialization                              ;;
@@ -1027,7 +1027,13 @@
                  (read-wavescript-source-file x)]
                 [(list? x)   
                  (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Evaluating WS source: \n \n"))
-                 x]
+		 ;; [2009.09.01] Here's a total hack:
+		 (wsparse-postprocess x)
+		 #;
+		 (match x
+		   ;; FIXME FIXME
+		   [,_ (wsparse-postprocess x)]
+		   [,_ x])]
                 [else (error 'wsint "bad input: ~s" x)])))
     
     ;; add in the input-parameters
@@ -1071,7 +1077,7 @@
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 ;; .returns - A stream of results
-(define-values (wsint wsint-early)
+(define-values (wsint wsint-early wsint-early-passes)
   (let ()
 
     (define (cleanup-compiler-tmpfiles)
@@ -1138,29 +1144,27 @@
        (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
        (run-wavescript-sim compiled))))
   
-  (define (wsint-early x input-params . flags)
+  (define (wsint-early-passes p input-params . flags)
     (wsint-parameterize
      (lambda ()
-       (define p x)
-       (define (go)
-	 (begin 
-	       (set! p (early-part p input-params))
-	       (ws-run-pass p eta-primitives)
-	       ;; (ws-run-pass p desugar-misc)
+       (set! p (early-part p input-params))
+       (ws-run-pass p eta-primitives)
+       ;; (ws-run-pass p desugar-misc)
+       
+       ;; Need to convert readFile to __readFile
+       ;;(ws-run-pass p type-annotate-misc)
+       (ws-run-pass p strip-src-pos)
+       (ws-run-pass p reify-certain-types)
+       ;;(ws-run-pass p strip-annotations) ;; [2008.08.24] Why do we do this?
+       p)))
 
-	       ;; Need to convert readFile to __readFile
-	       ;(ws-run-pass p type-annotate-misc)
-	       (ws-run-pass p strip-src-pos)
-	       (ws-run-pass p reify-certain-types)
-	       
-	       ;(ws-run-pass p strip-annotations) ;; [2008.08.24] Why do we do this?
-	       ))
-       (if (>= (regiment-verbosity) 1) 
-	   (begin (time (go)) (printf "Running program EARLY:\n"))
-	   (go))
-       (run-wavescript-sim p))))
+  (define (wsint-early . args)
+    (define prepped (apply wsint-early-passes args))
+    (when (>= (regiment-verbosity) 1) 
+      (printf "Running program EARLY:\n"))
+    (run-wavescript-sim prepped))
 
-  (values wsint wsint-early)))
+  (values wsint wsint-early wsint-early-passes)))
 
 ;; When invoking "ws" from the command line, this is the function that
 ;; determines where the stream goes.  I.e. to an interactive browser

@@ -1011,15 +1011,14 @@
   ))
            
 ;; run the calculator on the given input-port       
-(define (ws-parse-port ip)
+(define (ws-parse-port ip . file)
   (port-count-lines! ip)
-  (cdr (ws-parse (lambda () (flatten (ws-lex ip)))))
-  #;
-  (let loop ()        
-        (let ((result (ws-parse (lambda () (flatten (ws-lex ip))))))
-          (if result
-              (cons result (loop))
-              '()))))
+  (fluid-let ([thefile
+	       (if (null? file) thefile
+		   (car file))])
+    (cdr (ws-parse (lambda () (flatten (ws-lex ip)))))
+    )
+  )
 
 (define (flatten pt)
   ;(printf " ")

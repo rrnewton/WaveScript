@@ -2313,7 +2313,7 @@
 (define (IFPROFILE a b) a)
 
 
-
+(printf "------ WAVESCRIPT SIM LOADED\n")
 
 ) ; End module.
 
