@@ -12,13 +12,14 @@
   (require scheme/pretty)
 
   (define (ws-read-syntax file port)
-    (define _ (source-position-tracking #f))
-    (define expr 
+    (source-position-tracking #t)
+    (let ((expr 
       `((require (except-in rnrs error + - * / or and)
 		 "../ws/sim/wavescript_sim_library_push.sls"
+		 "../ws/util/streams.sls"
 		 scheme/pretty
 
-		 (for-syntax "../ws/sim/wavescript_sim_library_push.sls"
+		 (for-syntax ;"../ws/sim/wavescript_sim_library_push.sls"
 			     scheme/pretty)
 
 		 ;(for-meta 2 "../ws/sim/wavescript_sim_library_push.sls")
@@ -26,12 +27,15 @@
 	(let ()
 	  (begin 
 	    ;(printf "Executing module code.  And got sim binding: ~a ~a\n" wsequal? (wscase #f))
-	    ;(EXPANDING_STUFF)
 	    (reset-wssim-state!)
-	    (browse-stream ;wsint:direct-stream
-	     (run-stream-query 
-	      (WSCOMPILE_MACRO ,(ws-parse-port port file))))
-	    (void)))))
+	    (for-each print
+	      (car 
+	       (values->list 
+		(stream-take 10 ;browse-stream ;wsint:direct-stream
+			     (run-stream-query 
+			      (WSCOMPILE_MACRO ,(ws-parse-port port file)))))))
+	    (void))))))
+
     
     (if (file-exists? "DEBUG.ss") (delete-file "DEBUG.ss") (void))
     (with-output-to-file "DEBUG.ss"
@@ -39,12 +43,12 @@
 	(pretty-print expr)))
     
     (datum->syntax #f expr)
+      )
     )
 
   (define (ws-read port)
     (syntax->datum (ws-read-syntax "UNKNOWN_FILE" port)))
   )
-
 
 
 
