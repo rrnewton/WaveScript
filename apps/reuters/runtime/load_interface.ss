@@ -19,48 +19,56 @@
     (printf "INDIR ~s\n" (current-directory))
     (load src)))
 
+;; This factors out some of the repetitive tasks in exposing Scheme functions to C.
+(define-syntax define-entrypoint
+  (lambda (x)
+    (syntax-case x ()
+	[(_ var argtype rettype expr)
+	 (let ((var-entrypoint 
+		(datum->syntax #'var
+		 (string->symbol 
+		   (string-append (symbol->string (syntax->datum #'var))
+				  "-entry")))))
+	 #`(begin 
+	     (define var expr)
+	     (define #,var-entrypoint
+	       (let ([x (foreign-callable var argtype rettype)])
+		 (lock-object x)
+		 (foreign-callable-entry-point x)))))
+	 ])))
+
+;(pretty-print (expand '(define-entrypoint foo (int) void bar)))
 
 ;;==============================================================================
 (printf " --- BRIDGING CONTROL MODULE AND RUNTIME\n")
 
-(define (WSQ_BeginTransaction id)
-  (printf ".....In WSQ_BeginTransaction.....\n")
-  )
+(define-entrypoint WSQ_BeginTransaction (int) void
+  (lambda (id)
+    (printf ".....In WSQ_BeginTransaction ~a.....\n" id)))
 
-(define (WSQ_EndTransaction)
-  (printf ".....In WSQ_EndTransaction....\n")
-  )
+;(printf "Defined wsq_begintrans ~a\n" WSQ_BeginTransaction)
+;(printf "Defined wsq_begintrans entry ~a ~a\n" WSQ_BeginTransaction-entry (#%top-level-bound? 'WSQ_BeginTransaction-entry))
 
-;;==============================================================================
+(define-entrypoint WSQ_EndTransaction () void
+  (lambda ()
+    (printf ".....In WSQ_EndTransaction....\n")
+    ))
 
-(define WSQ_BeginTransaction-entry
-  (let ([x (foreign-callable WSQ_BeginTransaction (int) void)])
-    (lock-object x) (foreign-callable-entry-point x)))
+(define-entrypoint WSQ_BeginSubgraph (int) void 
+  (lambda (id)
+    (printf ".....In WSQ_BeginSubgraph ~a....\n" id)
+    ))
 
-(define WSQ_EndTransaction-entry
-  (let ([x (foreign-callable WSQ_EndTransaction () void)])
-    (lock-object x) (foreign-callable-entry-point x)))
+(define-entrypoint WSQ_EndSubgraph () void
+  (lambda ()
+    (printf ".....In WSQ_EndSubgraph....\n")))
 
-
-
-
-
-
-(define (foo n)
-  (printf " >> THIS IS MY SCHEME FUNCTION ~a\n" n))
-(define foo-entry 
-  (let ([x (foreign-callable foo (int) void)])
-    (lock-object x) (foreign-callable-entry-point x)))
-(printf "Set foo-entry ~a\n" foo-entry)
-#;
-(let ([x (foreign-callable foo (int) void)])
-  (lock-object x)
-  (define-top-level-value 'foo-entry
-    (foreign-callable-entry-point x))
-  (printf "Set foo-entry ~a\n" (top-level-value 'foo-entry)))
-(define test 3939)
-;(define-top-level-value 'test 9383)
+(define-entrypoint WSQ_RemSubgraph (int) void
+  (lambda (id)
+    (printf ".....In WSQ_RemSubgraph ~a....\n" id)))
 
 ;;==============================================================================
 
+;; Done with initializing the runtime interface bindings.  Now return
+;; control to the enclosing C program in which we are embedded.
 (exit 0)

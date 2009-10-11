@@ -6,6 +6,8 @@
  * queries in a distributed environment.
  */
 
+// The type for unique IDs.
+// This is used for operators, edges, subgraphs, and transactions.
 typedef int id_t;
 
 /// Initialization and shutdown.
@@ -21,11 +23,11 @@ void WSQ_Shutdown();
 /// Transactions.
 
 // These two calls bracket a transaction.
-void (*WSQ_BeginTransaction)(id_t id);
-void (*WSQ_EndTransaction)();
+//void (*WSQ_BeginTransaction)(id_t id);
+//void (*WSQ_EndTransaction)();
 
-//void WSQ_BeginTransaction(id_t id);
-//void WSQ_EndTransaction();
+void WSQ_BeginTransaction(id_t id);
+void WSQ_EndTransaction();
 
 /// Subgraphs.
 

@@ -13,35 +13,45 @@ const char *S_date_stamp = "0";
 void WSQ_Init() {}
 void WSQ_Shutdown() {}
 
+//==============================================================================
+// First, function pointers to all of the relevant calls.  These point
+// to scheme functions.
 
-//void WSQ_EndTransaction() {}
 
-void WSQ_BeginSubgraph(id_t id) {
-}
+void (*Scheme_BeginTransaction)(id_t id);
+void (*Scheme_EndTransaction)();
 
-void WSQ_EndSubgraph() {
-}
+void (*Scheme_BeginSubgraph)(id_t id);
+void (*Scheme_EndSubgraph)();
+void (*Scheme_RemSubgraph)(id_t id);
 
-void WSQ_AddSubgraph() {
-}
+void (*Scheme_AddProject)(id_t in, id_t out, char* expr);
+void (*Scheme_AddFilter) (id_t in, id_t out, char* expr);
 
-void WSQ_RemSubgraph(id_t id) {
-}
+void (*Scheme_ConnectRemoteOut) (id_t out, char* host, int port);
+void (*Scheme_ConnectRemoteIn)  (id_t in,  char* host, int port);
 
-void WSQ_AddProject(id_t in, id_t out, char* expr) {
-}
+//==============================================================================
+/* The functions exposed through the C API are just wrappers for the
+   above scheme functions.  The only reason that these are separate
+   (annoying I know) is that in our wsq_runtime.h header file we don't
+   want to expose the fact that we are using function pointers.
+*/
 
-void WSQ_AddFilter (id_t in, id_t out, char* expr) {
-}
+void WSQ_BeginTransaction(id_t id) { Scheme_BeginTransaction(id); }
+void WSQ_EndTransaction()          { Scheme_EndTransaction(); }
 
-void WSQ_ConnectOutTCP (id_t in, char* host, int port) {
-}
+void WSQ_BeginSubgraph(id_t id) { Scheme_BeginSubgraph(id); }
+void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
+void WSQ_RemSubgraph(id_t id)   { Scheme_RemSubgraph(id); }
 
-void WSQ_ConnectInTCP  (id_t in, int port) {
-}
+void WSQ_AddProject(id_t in, id_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
+void WSQ_AddFilter (id_t in, id_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
 
-void (*WSQ_BeginTransaction)(id_t id);
-void (*WSQ_EndTransaction)();
+void WSQ_ConnectRemoteOut (id_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
+void WSQ_ConnectRemoteIn  (id_t in, char* host, int port)  { Scheme_ConnectRemoteIn (in,host,port); }
+
+//==============================================================================
 
 typedef void (*intfun) (int);
 typedef void (*voidfun) ();
@@ -68,73 +78,38 @@ int do_scheme(int argc, char* argv[]) {
   printf("heap built\n");
   
   Senable_expeditor(0);
-  //  Sscheme_start(argc, argv);
-
-  /*
-  const char* regimentd = getenv("REGIMENTD");
-  char script[1000];
-  char* pwd = getcwd(0,0);
-
-  sprintf(script, "%s/src/regiment.ss", regimentd);
-  printf("  regiment.ss located: %s\n", script);
-  printf("  pwd: %s\n", pwd);
-
-  //const char* new_args[] = {"--script", script, pwd, ""};
-  //const char* new_args[] = {pwd, ""};
-
-  // Either of these two work... and that makes no sense:
-  //const char* new_args[] = {pwd};
-  const char* new_args[] = {"",pwd, "nothing"};
-
-  chdir(regimentd);
-  chdir("src");
-
-  printf("Now starting scheme:\n\n");
-  //Sscheme_start(3, new_args);
-  // RRN: It very much seems that this should be one!
-  Sscheme_script(script, 3, new_args);
-  */
 
   const char* regimentd = getenv("REGIMENTD");
   char script[1000];
   sprintf(script, "%s/apps/reuters/runtime/load_interface.ss", regimentd);
+
+  // NOTE: This is a real oddity.  I must *pad* the argument list??
+  // Seems like there might be a bug.
   const char* new_args[] = {"", script};
   int result = Sscheme_start(2, new_args);
 
   printf("Scheme started (and probably finished)\n");
 
-
-  // ======================================================================
-  ptr sym = Sstring_to_symbol("test");
-
-  printf("  sym is a sym %d\n", Ssymbolp(sym));
-  ptr test =  Stop_level_value( sym );
-  ptr foo =  Stop_level_value( Sstring_to_symbol("foo-entry") );
-
-  printf("TEST\n");
-
-  printf("Is it fixnum %d \n", Sfixnump(test));
-  printf("Is it bignum %d \n", Sbignump(test));
-  printf("Is it exactnum %d \n", Sexactnump(test));
-
-  printf("Got some values from the toplevel, test: %d.\n", Sfixnum_value(test));
-
-  //printf("Got some values from the toplevel, foo: %d.\n", foo);
-  printf("Got some values from the toplevel, foo: %ud.\n", Sinteger_value(foo));
-
-  foo_fun = (intfun)Sinteger_value(foo);
-
-  printf("  Set foo fun: %ud\n", foo_fun);
-  foo_fun(993);
-  printf("  Finished calling foo fun!\n");
-  // ======================================================================
-  
+  // Grab the relevant function entrypoints from the Scheme symbol table.
   ptr tbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginTransaction-entry"));
   ptr tend   =  Stop_level_value( Sstring_to_symbol("WSQ_EndTransaction-entry"));
 
-  WSQ_BeginTransaction = (intfun) Sinteger_value(tbegin);
-  WSQ_EndTransaction   = (voidfun)Sinteger_value(tend);
+  // WSQ_BeginTransaction-entry
 
+
+  ptr gbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginSubgraph-entry"));
+  ptr gend   =  Stop_level_value( Sstring_to_symbol("WSQ_EndSubgraph-entry"));
+  ptr grem   =  Stop_level_value( Sstring_to_symbol("WSQ_RemSubgraph-entry"));
+
+  Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
+  Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
+
+  /*
+  Scheme_BeginSubgraph    = (voidfun)Sinteger_value(gbegin);
+  Scheme_EndSubgraph      = (voidfun)Sinteger_value(gend);
+  Scheme_RemSubgraph   = (voidfun)Sinteger_value(grem);
+
+  */
   WSQ_BeginTransaction(99);
   WSQ_EndTransaction();
 
