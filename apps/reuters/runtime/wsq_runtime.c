@@ -10,9 +10,6 @@ const char *S_date_stamp = "0";
 
 #include "scheme.h"
 
-void WSQ_Init() {}
-void WSQ_Shutdown() {}
-
 //==============================================================================
 // First, function pointers to all of the relevant calls.  These point
 // to scheme functions.
@@ -25,6 +22,7 @@ void (*Scheme_BeginSubgraph)(id_t id);
 void (*Scheme_EndSubgraph)();
 void (*Scheme_RemSubgraph)(id_t id);
 
+void (*Scheme_AddReutersSource)(id_t id);
 void (*Scheme_AddProject)(id_t in, id_t out, char* expr);
 void (*Scheme_AddFilter) (id_t in, id_t out, char* expr);
 
@@ -45,6 +43,8 @@ void WSQ_BeginSubgraph(id_t id) { Scheme_BeginSubgraph(id); }
 void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
 void WSQ_RemSubgraph(id_t id)   { Scheme_RemSubgraph(id); }
 
+void WSQ_AddReutersSource(id_t id) { Scheme_AddReutersSource(id); } 
+
 void WSQ_AddProject(id_t in, id_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
 void WSQ_AddFilter (id_t in, id_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
 
@@ -60,23 +60,17 @@ typedef void (*voidfun) ();
 intfun foo_fun;
 
 
-int do_scheme(int argc, char* argv[]) {
-  printf("yay\n");
+//int do_scheme(int argc, char* argv[]) {
+void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
-  Sscheme_init(0);
-
-  printf("scheme initialized\n");
-  
+  Sscheme_init(0);  
   Sregister_boot_file("~/bin/Linux-i686/csv7.9.2/boot/i3le/petite.boot");
   Sregister_boot_file("~/bin/Linux-i686/csv7.9.2/boot/i3le/scheme.boot");
 
-  printf("boot files registered\n");
+  Sbuild_heap(".", 0);
+  //Sbuild_heap(argv[0], 0);
 
-  Sbuild_heap(argv[0], 0);
-
-  printf("heap built\n");
-  
   Senable_expeditor(0);
 
   const char* regimentd = getenv("REGIMENTD");
@@ -86,33 +80,64 @@ int do_scheme(int argc, char* argv[]) {
   // NOTE: This is a real oddity.  I must *pad* the argument list??
   // Seems like there might be a bug.
   const char* new_args[] = {"", script};
-  int result = Sscheme_start(2, new_args);
 
-  printf("Scheme started (and probably finished)\n");
+  //const char* new_args[] = {"", script, "--quiet"};
+  //const char* new_args[] = {"", "--quiet", script};
+
+  // Tell chez scheme not to print the greeting:
+  // (Doesn't work for me presently.)
+  //Scall1(Stop_level_value( Sstring_to_symbol("suppress-greeting")), Sfalse);
+
+  printf(" <WSQ> Starting Scheme runtime system.\n");
+  int result = Sscheme_start(2, new_args);
+  //int result = Sscheme_start(3, new_args);
+  //printf("Scheme_start finished\n");
+
+  // This is awful gross.  Oh well.
+  // ========================================
+
+  printf(" <WSQ> Registering WSQ runtime interface with control module.\n");
 
   // Grab the relevant function entrypoints from the Scheme symbol table.
   ptr tbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginTransaction-entry"));
   ptr tend   =  Stop_level_value( Sstring_to_symbol("WSQ_EndTransaction-entry"));
 
-  // WSQ_BeginTransaction-entry
-
-
   ptr gbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginSubgraph-entry"));
   ptr gend   =  Stop_level_value( Sstring_to_symbol("WSQ_EndSubgraph-entry"));
   ptr grem   =  Stop_level_value( Sstring_to_symbol("WSQ_RemSubgraph-entry"));
 
+  ptr addsrc =  Stop_level_value( Sstring_to_symbol("WSQ_AddReutersSource-entry"));
+  ptr addfil =  Stop_level_value( Sstring_to_symbol("WSQ_AddFilter-entry"));
+  ptr addpro =  Stop_level_value( Sstring_to_symbol("WSQ_AddProject-entry"));
+
+  ptr con_in  = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteIn-entry"));
+  ptr con_out = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteOut-entry"));
+
   Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
   Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
 
-  /*
-  Scheme_BeginSubgraph    = (voidfun)Sinteger_value(gbegin);
+  Scheme_BeginSubgraph    = (intfun)Sinteger_value(gbegin);
   Scheme_EndSubgraph      = (voidfun)Sinteger_value(gend);
-  Scheme_RemSubgraph   = (voidfun)Sinteger_value(grem);
+  Scheme_RemSubgraph      = (intfun)Sinteger_value(grem);
 
-  */
-  WSQ_BeginTransaction(99);
-  WSQ_EndTransaction();
+  Scheme_AddProject       = (void(*)(int,int,char*))Sinteger_value(addpro);
+  Scheme_AddFilter        = (void(*)(int,int,char*))Sinteger_value(addfil);
+  Scheme_AddReutersSource = (intfun)Sinteger_value(addsrc);
 
+  Scheme_ConnectRemoteIn  = (void(*)(int,char*,int))Sinteger_value(con_in);
+  Scheme_ConnectRemoteOut = (void(*)(int,char*,int))Sinteger_value(con_out);
+
+
+  // ========================================
+  printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
+
+  // fork some threads...
+
+  printf(" <WSQ> Returning to control module...\n");
+  
+}
+
+void WSQ_Shutdown() {
   Sscheme_deinit();
 }
 

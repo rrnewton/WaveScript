@@ -8,16 +8,17 @@
 ;; runtime, compiler, and control module could all be in separate
 ;; processes if desired.
 
-(printf " --- LOADING UP COMPILER.\n")
-
+(printf " <WSQ> Loading WaveScope compiler...")(flush-output-port)
 
 (let* ([startd (current-directory)]
        [src-dir (string-append (getenv "REGIMENTD") "/src")]
        [src (string-append src-dir "/regiment.ss")])
   (parameterize ([current-directory src-dir]
 		 [command-line `(,src ,startd "nothing")])
-    (printf "INDIR ~s\n" (current-directory))
+    ;(printf "INDIR ~s\n" (current-directory))
     (load src)))
+
+(printf " finished.\n")
 
 ;; This factors out some of the repetitive tasks in exposing Scheme functions to C.
 (define-syntax define-entrypoint
@@ -37,35 +38,12 @@
 		 (foreign-callable-entry-point x)))))
 	 ])))
 
-;(pretty-print (expand '(define-entrypoint foo (int) void bar)))
 
-;;==============================================================================
-(printf " --- BRIDGING CONTROL MODULE AND RUNTIME\n")
+;; Next load the WSQ runtime manager.
 
-(define-entrypoint WSQ_BeginTransaction (int) void
-  (lambda (id)
-    (printf ".....In WSQ_BeginTransaction ~a.....\n" id)))
-
-;(printf "Defined wsq_begintrans ~a\n" WSQ_BeginTransaction)
-;(printf "Defined wsq_begintrans entry ~a ~a\n" WSQ_BeginTransaction-entry (#%top-level-bound? 'WSQ_BeginTransaction-entry))
-
-(define-entrypoint WSQ_EndTransaction () void
-  (lambda ()
-    (printf ".....In WSQ_EndTransaction....\n")
-    ))
-
-(define-entrypoint WSQ_BeginSubgraph (int) void 
-  (lambda (id)
-    (printf ".....In WSQ_BeginSubgraph ~a....\n" id)
-    ))
-
-(define-entrypoint WSQ_EndSubgraph () void
-  (lambda ()
-    (printf ".....In WSQ_EndSubgraph....\n")))
-
-(define-entrypoint WSQ_RemSubgraph (int) void
-  (lambda (id)
-    (printf ".....In WSQ_RemSubgraph ~a....\n" id)))
+(printf " <WSQ> Loading runtime manager...") (#%flush-output-port)
+(load "wsq_runtime_manager.ss")
+(printf "  finished.\n")
 
 ;;==============================================================================
 
