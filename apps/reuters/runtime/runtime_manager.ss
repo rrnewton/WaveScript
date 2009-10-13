@@ -139,6 +139,13 @@
     (printf " <WSQ>  WSQ_RemSubgraph ~s \n" id)
     ))
 
+(define-entrypoint WSQ_EdgeType (int) scheme-object
+  (lambda (id)
+    (define type (format "type_~a" (random 1000)))
+    (printf " <WSQ>  WSQ_EdgeType ~s : ~s \n" id type)
+    type
+    ))
+
 ;; Adding operators.
 
 (define-entrypoint WSQ_AddReutersSource (int string) void

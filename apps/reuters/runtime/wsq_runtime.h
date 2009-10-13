@@ -8,7 +8,7 @@
 
 // The type for unique IDs.
 // This is used for operators, edges, subgraphs, and transactions.
-typedef int id_t;
+typedef int wsid_t;
 
 /// Initialization and shutdown.
 
@@ -23,10 +23,10 @@ void WSQ_Shutdown();
 /// Transactions.
 
 // These two calls bracket a transaction.
-//void (*WSQ_BeginTransaction)(id_t id);
+//void (*WSQ_BeginTransaction)(wsid_t id);
 //void (*WSQ_EndTransaction)();
 
-void WSQ_BeginTransaction(id_t id);
+void WSQ_BeginTransaction(wsid_t id);
 void WSQ_EndTransaction();
 
 /// Subgraphs.
@@ -36,21 +36,25 @@ void WSQ_EndTransaction();
 // The graph built up inbetween those calls forms a subgraph
 // identified by 'id'.  This subgraph is added to the runtime as part
 // of the current transaction.
-void WSQ_BeginSubgraph(id_t id);
+void WSQ_BeginSubgraph(wsid_t id);
 void WSQ_EndSubgraph();
 
 // We can also remove already installed subgraphs as part of a transaction.
-void WSQ_RemSubgraph(id_t id);
+void WSQ_RemSubgraph(wsid_t id);
+
+
+// This allocates a fresh string.  You are responsible for freeing it.
+char* WSQ_EdgeType(wsid_t id);
 
 /// Stream Operators.
 
 // Within a subgraph block, we add individual operators.
-void WSQ_AddProject(id_t in, id_t out, char* expr);
-void WSQ_AddFilter (id_t in, id_t out, char* expr);
+void WSQ_AddProject(wsid_t in, wsid_t out, char* expr);
+void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr);
 
 // Sources will probably need a bunch more parameters when we understand how things work.
-void WSQ_AddReutersSource(id_t id, char* schema_path);
-void WSQ_AddPrinter(id_t id);
+void WSQ_AddReutersSource(wsid_t id, char* schema_path);
+void WSQ_AddPrinter(wsid_t id);
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO = right.FOO")
 
@@ -62,8 +66,8 @@ void WSQ_AddPrinter(id_t id);
 // do need to make explicit calls to setup outbound and inbound
 // connections to other machines.  This interface doesn't commit to
 // any particular implementation strategy.
-void WSQ_ConnectRemoteOut (id_t out, char* host, int port);
-void WSQ_ConnectRemoteIn  (id_t in,  char* host, int port);
+void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port);
+void WSQ_ConnectRemoteIn  (wsid_t in,  char* host, int port);
 
 
 //==============================================================================

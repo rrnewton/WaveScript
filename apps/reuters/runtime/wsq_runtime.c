@@ -1,4 +1,6 @@
 
+#include <stdlib.h>
+#include <string.h>	
 #include <stdio.h>
 
 #include "wsq_runtime.h"
@@ -14,20 +16,22 @@ const char *S_date_stamp = "0";
 // First, function pointers to all of the relevant calls.  These point
 // to scheme functions.
 
-void (*Scheme_BeginTransaction)(id_t id);
+void (*Scheme_BeginTransaction)(wsid_t id);
 void (*Scheme_EndTransaction)();
 
-void (*Scheme_BeginSubgraph)(id_t id);
+void (*Scheme_BeginSubgraph)(wsid_t id);
 void (*Scheme_EndSubgraph)();
-void (*Scheme_RemSubgraph)(id_t id);
+void (*Scheme_RemSubgraph)(wsid_t id);
 
-void (*Scheme_AddReutersSource)(id_t id, char* path);
-void (*Scheme_AddPrinter)(id_t id);
-void (*Scheme_AddProject)(id_t in, id_t out, char* expr);
-void (*Scheme_AddFilter) (id_t in, id_t out, char* expr);
+ptr  (*Scheme_EdgeType)(wsid_t id);
 
-void (*Scheme_ConnectRemoteOut) (id_t out, char* host, int port);
-void (*Scheme_ConnectRemoteIn)  (id_t in,  char* host, int port);
+void (*Scheme_AddReutersSource)(wsid_t id, char* path);
+void (*Scheme_AddPrinter)(wsid_t id);
+void (*Scheme_AddProject)(wsid_t in, wsid_t out, char* expr);
+void (*Scheme_AddFilter) (wsid_t in, wsid_t out, char* expr);
+
+void (*Scheme_ConnectRemoteOut) (wsid_t out, char* host, int port);
+void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port);
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -36,21 +40,48 @@ void (*Scheme_ConnectRemoteIn)  (id_t in,  char* host, int port);
    want to expose the fact that we are using function pointers.
 */
 
-void WSQ_BeginTransaction(id_t id) { Scheme_BeginTransaction(id); }
+void WSQ_BeginTransaction(wsid_t id) { Scheme_BeginTransaction(id); }
 void WSQ_EndTransaction()          { Scheme_EndTransaction(); }
 
-void WSQ_BeginSubgraph(id_t id) { Scheme_BeginSubgraph(id); }
+void WSQ_BeginSubgraph(wsid_t id) { Scheme_BeginSubgraph(id); }
 void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
-void WSQ_RemSubgraph(id_t id)   { Scheme_RemSubgraph(id); }
+void WSQ_RemSubgraph(wsid_t id)   { Scheme_RemSubgraph(id); }
 
-void WSQ_AddReutersSource(id_t id, char* path) { Scheme_AddReutersSource(id, path); } 
-void WSQ_AddPrinter(id_t id)                   { Scheme_AddPrinter(id); }
+char* WSQ_EdgeType  (wsid_t id) { 
+  ptr sstr = Scheme_EdgeType(id);
+  iptr len = Sstring_length(sstr);
+  char* buf = malloc(len+1);
+  int i;  
 
-void WSQ_AddProject(id_t in, id_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
-void WSQ_AddFilter (id_t in, id_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
+  /*
+  printf("Copying %d chars from scheme string: %s\n", len, (char*)sstr);
+  for(i=0; i<len; i++) 
+    printf(" %c", Sstring_ref(sstr, i));
+  printf("\n\n");
+  */
 
-void WSQ_ConnectRemoteOut (id_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
-void WSQ_ConnectRemoteIn  (id_t in, char* host, int port)  { Scheme_ConnectRemoteIn (in,host,port); }
+  //memcpy(buf, (char*)Sstring_value(sstr), len+1);
+  // FIXME: Bug kent about string_value
+  //memcpy(buf, (char*)(sstr), len+1);
+
+  // [2009.10.13] I am currently FAILING to memcpy out the string.
+  for(i=0; i<len; i++) 
+    buf[i] = Sstring_ref(sstr, i);
+  buf[len] = 0;
+
+  //printf("Resulting buffer: %s\n", buf);
+
+  return buf; 
+}
+
+void WSQ_AddReutersSource(wsid_t id, char* path) { Scheme_AddReutersSource(id, path); } 
+void WSQ_AddPrinter(wsid_t id)                   { Scheme_AddPrinter(id); }
+
+void WSQ_AddProject(wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
+void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
+
+void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
+void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port)  { Scheme_ConnectRemoteIn (in,host,port); }
 
 //==============================================================================
 
@@ -119,6 +150,7 @@ void WSQ_Init() {
   ptr gbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginSubgraph-entry"));
   ptr gend   =  Stop_level_value( Sstring_to_symbol("WSQ_EndSubgraph-entry"));
   ptr grem   =  Stop_level_value( Sstring_to_symbol("WSQ_RemSubgraph-entry"));
+  ptr gtyp   =  Stop_level_value( Sstring_to_symbol("WSQ_EdgeType-entry"));
 
   ptr addsrc =  Stop_level_value( Sstring_to_symbol("WSQ_AddReutersSource-entry"));
   ptr addprn =  Stop_level_value( Sstring_to_symbol("WSQ_AddPrinter-entry"));
@@ -134,6 +166,7 @@ void WSQ_Init() {
   Scheme_BeginSubgraph    = (intfun)Sinteger_value(gbegin);
   Scheme_EndSubgraph      = (voidfun)Sinteger_value(gend);
   Scheme_RemSubgraph      = (intfun)Sinteger_value(grem);
+  Scheme_EdgeType         = (ptr(*)(int))Sinteger_value(gtyp);
 
   Scheme_AddProject       = (void(*)(int,int,char*))Sinteger_value(addpro);
   Scheme_AddFilter        = (void(*)(int,int,char*))Sinteger_value(addfil);
