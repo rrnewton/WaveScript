@@ -54,7 +54,9 @@
 
 ;; This assumes for now that it's a series of binary operators.
 (define (parse-filter str) 
-  (match (string->slist str)
+  (define arg 'rec)
+  `(lambda (,arg)
+     ,(match (string->slist str)
     [() #t]
     [(,left ,binop ,right . ,[rest])
      ;(ASSERT (memq binop '(== <= >=)))
@@ -63,15 +65,12 @@
 	 [== 'wsequal?]
 	 [<= <=]
 	 [>= >=]))
-     (define arg 'rec)
      (define expr
-       `(,bop ,(temp-convert-rand arg left) 
+       `(,bop ,(temp-convert-rand arg (ununquote left)) 
 	      ,(temp-convert-rand arg right)))
-     
-     `(lambda (,arg)
-	,(if (null? rest) expr	 
-	     `(and ,expr ,rest)))]
-    ))
+     (if (eq? rest #t) expr
+	 `(and ,expr ,rest))]
+    )))
 
 (define (temp-convert-rand rec x)
   (cond    
