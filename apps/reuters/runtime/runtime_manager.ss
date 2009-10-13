@@ -81,6 +81,7 @@
     )
   )
 
+(define mergemagic 'Merge)
 
 ;;==============================================================================
 
@@ -106,8 +107,12 @@
 
     ;; Ok, this is where we need to actually commit a change.
 
-    (let ([prog (id (unbox cursubgraph))])
-      (printf " >>> ASSEMBLED PROG: \n") (pretty-print prog)
+    ;; FIXME: need to do a topological sort.
+    (let* ([binds (reverse (unbox cursubgraph))]
+	   [prog `((include "wsqlib.ws")
+		   ,@(map (lambda (x) (cons 'define x))
+		       binds))])
+      (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog)
       )
     
     (set-box! subgraphs '())
@@ -141,7 +146,7 @@
   (lambda (id path)
     (printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" id path)
     (let ([sym (edge-sym id)])
-      (set-box! cursubgraph (cons `(,sym (wsq_reuterSource ',path))
+      (set-box! cursubgraph (cons `(,sym (app wsq_reuterSource ',path))
 				  (unbox cursubgraph))))
     (print-state)
     ))
@@ -150,7 +155,7 @@
   (lambda (id)
     (printf " <WSQ>  WSQ_AddPrinter ~s \n" id)
     (let ([sym (edge-sym id)])
-      (set-box! cursubgraph (cons `(MERGEMAGIC (wsq_printer ,id))
+      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,id))
 				  (unbox cursubgraph))))
     (print-state)
     ))
@@ -159,7 +164,7 @@
   (lambda (in out expr)
     (printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
     (set-box! cursubgraph 
-	      (cons `(,(edge-sym out) (wsq_project ,(parse-project expr) 
+	      (cons `(,(edge-sym out) (app wsq_project ,(parse-project expr) 
 						   ,(edge-sym in)))
 		    (unbox cursubgraph)))
     (print-state)
@@ -169,7 +174,7 @@
   (lambda (in out expr)
     (printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (set-box! cursubgraph 
-	      (cons `(,(edge-sym out) (wsq_filter ,(parse-filter expr) 
+	      (cons `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) 
 						  ,(edge-sym in)))
 		    (unbox cursubgraph)))
     (print-state)
@@ -181,7 +186,7 @@
   (lambda (id host port)
     (printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s \n" id host port)
     (set-box! cursubgraph 
-	      (cons `(,(edge-sym id) (wsq_connect_in ,host ,port))
+	      (cons `(,(edge-sym id) (app wsq_connect_in ,host ,port))
 		    (unbox cursubgraph)))
     ))
 
@@ -189,7 +194,7 @@
   (lambda (id host port)
     (printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" id host port)
     (set-box! cursubgraph 
-	      (cons `(MERGEMAGIC (wsq_connect_out ,host ,port ,(edge-sym id)))
+	      (cons `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym id)))
 		    (unbox cursubgraph)))
     ))
 

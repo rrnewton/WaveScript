@@ -60,14 +60,27 @@ typedef void (*voidfun) ();
 //void foo* (int);
 intfun foo_fun;
 
+const int PATHMAX = 1000;
 
 //int do_scheme(int argc, char* argv[]) {
 void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
+  char* chezd = getenv("CHEZD");
+  
+  char bootfile[PATHMAX];
+  
+  if (!chezd) {
+    printf("Environment variable CHEZD must be bound to the Chez-Scheme install directory, usually called csv<ver>.");
+    exit(1);
+  }
+
   Sscheme_init(0);  
-  Sregister_boot_file("~/bin/Linux-i686/csv7.9.2/boot/i3le/petite.boot");
-  Sregister_boot_file("~/bin/Linux-i686/csv7.9.2/boot/i3le/scheme.boot");
+
+  sprintf(bootfile, "%s/boot/i3le/petite.boot", chezd);
+  Sregister_boot_file(bootfile);
+  sprintf(bootfile, "%s/boot/i3le/scheme.boot", chezd);
+  Sregister_boot_file(bootfile);
 
   Sbuild_heap(".", 0);
   //Sbuild_heap(argv[0], 0);
@@ -75,7 +88,7 @@ void WSQ_Init() {
   Senable_expeditor(0);
 
   const char* regimentd = getenv("REGIMENTD");
-  char script[1000];
+  char script[PATHMAX];
   sprintf(script, "%s/apps/reuters/runtime/load_interface.ss", regimentd);
 
   // NOTE: This is a real oddity.  I must *pad* the argument list??
