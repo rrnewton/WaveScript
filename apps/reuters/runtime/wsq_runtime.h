@@ -49,7 +49,8 @@ void WSQ_AddProject(id_t in, id_t out, char* expr);
 void WSQ_AddFilter (id_t in, id_t out, char* expr);
 
 // Sources will probably need a bunch more parameters when we understand how things work.
-void WSQ_AddReutersSource(id_t id);
+void WSQ_AddReutersSource(id_t id, char* schema_path);
+void WSQ_AddPrinter(id_t id);
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO = right.FOO")
 

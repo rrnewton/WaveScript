@@ -14,7 +14,6 @@ const char *S_date_stamp = "0";
 // First, function pointers to all of the relevant calls.  These point
 // to scheme functions.
 
-
 void (*Scheme_BeginTransaction)(id_t id);
 void (*Scheme_EndTransaction)();
 
@@ -22,7 +21,8 @@ void (*Scheme_BeginSubgraph)(id_t id);
 void (*Scheme_EndSubgraph)();
 void (*Scheme_RemSubgraph)(id_t id);
 
-void (*Scheme_AddReutersSource)(id_t id);
+void (*Scheme_AddReutersSource)(id_t id, char* path);
+void (*Scheme_AddPrinter)(id_t id);
 void (*Scheme_AddProject)(id_t in, id_t out, char* expr);
 void (*Scheme_AddFilter) (id_t in, id_t out, char* expr);
 
@@ -43,7 +43,8 @@ void WSQ_BeginSubgraph(id_t id) { Scheme_BeginSubgraph(id); }
 void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
 void WSQ_RemSubgraph(id_t id)   { Scheme_RemSubgraph(id); }
 
-void WSQ_AddReutersSource(id_t id) { Scheme_AddReutersSource(id); } 
+void WSQ_AddReutersSource(id_t id, char* path) { Scheme_AddReutersSource(id, path); } 
+void WSQ_AddPrinter(id_t id)                   { Scheme_AddPrinter(id); }
 
 void WSQ_AddProject(id_t in, id_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
 void WSQ_AddFilter (id_t in, id_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
@@ -107,6 +108,7 @@ void WSQ_Init() {
   ptr grem   =  Stop_level_value( Sstring_to_symbol("WSQ_RemSubgraph-entry"));
 
   ptr addsrc =  Stop_level_value( Sstring_to_symbol("WSQ_AddReutersSource-entry"));
+  ptr addprn =  Stop_level_value( Sstring_to_symbol("WSQ_AddPrinter-entry"));
   ptr addfil =  Stop_level_value( Sstring_to_symbol("WSQ_AddFilter-entry"));
   ptr addpro =  Stop_level_value( Sstring_to_symbol("WSQ_AddProject-entry"));
 
@@ -122,7 +124,8 @@ void WSQ_Init() {
 
   Scheme_AddProject       = (void(*)(int,int,char*))Sinteger_value(addpro);
   Scheme_AddFilter        = (void(*)(int,int,char*))Sinteger_value(addfil);
-  Scheme_AddReutersSource = (intfun)Sinteger_value(addsrc);
+  Scheme_AddReutersSource = (void(*)(int,char*))Sinteger_value(addsrc);
+  Scheme_AddPrinter       = (intfun)Sinteger_value(addprn);
 
   Scheme_ConnectRemoteIn  = (void(*)(int,char*,int))Sinteger_value(con_in);
   Scheme_ConnectRemoteOut = (void(*)(int,char*,int))Sinteger_value(con_out);

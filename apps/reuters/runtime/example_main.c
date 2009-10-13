@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 
   WSQ_BeginSubgraph(101);
 
-  WSQ_AddReutersSource(2);
+  WSQ_AddReutersSource(2, "foobar.schema");
   
   WSQ_AddFilter(2,3, "FOO == 333");
   WSQ_AddProject(3,4, "FOO, BAR");

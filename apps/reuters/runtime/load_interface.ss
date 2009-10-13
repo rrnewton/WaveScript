@@ -42,7 +42,7 @@
 ;; Next load the WSQ runtime manager.
 
 (printf " <WSQ> Loading runtime manager...") (#%flush-output-port)
-(load "wsq_runtime_manager.ss")
+(load "runtime_manager.ss")
 (printf "  finished.\n")
 
 ;;==============================================================================
