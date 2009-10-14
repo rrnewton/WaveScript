@@ -81,7 +81,9 @@
 
 (define (Type t)
   (case t
-    [(int float double)   (capitalize t)]
+    [(int float double
+	  string) 
+     (capitalize t)]    
     [else (error 'Type "unhandled type: ~s" t)]))
 
 (define (parse-types str)
@@ -154,9 +156,13 @@
       ;(pretty-print (wsparse-postprocess prog))  
       ;(ws prog)
       (printf "\n\n >>> COMPILING PROG: \n\n")
-      (browse-stream
-       (wsint (wsparse-postprocess prog) '()))
-      ;(ws (wsparse-postprocess prog))
+      ;(browse-stream (wsint (wsparse-postprocess prog) '()))
+      ;(wscomp (wsparse-postprocess prog) '())
+      ;(wsc2 (wsparse-postprocess prog))
+      (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
+	(wscomp (wsparse-postprocess prog) '() 'wsc2))
+      (system "wsc2-gcc")
+      ;(system "./query.exe | head")
       )
     
     (set-box! subgraphs '())
