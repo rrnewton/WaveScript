@@ -31,7 +31,7 @@ void (*Scheme_AddProject)(wsid_t in, wsid_t out, char* expr);
 void (*Scheme_AddFilter) (wsid_t in, wsid_t out, char* expr);
 
 void (*Scheme_ConnectRemoteOut) (wsid_t out, char* host, int port);
-void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port);
+void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port, char* types);
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -81,7 +81,7 @@ void WSQ_AddProject(wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(in,ou
 void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
 
 void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
-void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port)  { Scheme_ConnectRemoteIn (in,host,port); }
+void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port, char* types)  { Scheme_ConnectRemoteIn (in,host,port,types); }
 
 //==============================================================================
 
@@ -173,7 +173,7 @@ void WSQ_Init() {
   Scheme_AddReutersSource = (void(*)(int,char*))Sinteger_value(addsrc);
   Scheme_AddPrinter       = (intfun)Sinteger_value(addprn);
 
-  Scheme_ConnectRemoteIn  = (void(*)(int,char*,int))Sinteger_value(con_in);
+  Scheme_ConnectRemoteIn  = (void(*)(int,char*,int,char*))Sinteger_value(con_in);
   Scheme_ConnectRemoteOut = (void(*)(int,char*,int))Sinteger_value(con_out);
 
 

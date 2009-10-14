@@ -10,17 +10,38 @@ int main(int argc, char* argv[]) {
   WSQ_Init();
 
   WSQ_BeginTransaction(1001);
+
     WSQ_BeginSubgraph(101);
       WSQ_AddReutersSource(2, "foobar.schema");
-      WSQ_AddFilter(2,3, "FOO == 333, BAR == 444");
+      WSQ_AddFilter(2,3, "FOO == 3, BAR == 4");
       WSQ_AddProject(3,4, "FOO, BAR");
+      WSQ_AddPrinter(4);
       WSQ_ConnectRemoteOut(4, "honor.csail.mit.edu", 9898); 
     WSQ_EndSubgraph();
+
+  /*
+    WSQ_BeginSubgraph(101);
+      WSQ_AddReutersSource(2, "foobar.schema");
+      WSQ_AddFilter(2,3, "FOO == 3, BAR == 4");
+      WSQ_AddProject(3,4, "FOO, BAR");
+      WSQ_AddPrinter(4);
+      WSQ_ConnectRemoteOut(4, "honor.csail.mit.edu", 9898); 
+    WSQ_EndSubgraph();
+
+
+    WSQ_BeginSubgraph(102);
+      WSQ_ConnectRemoteIn(20,"honor.csail.mit.edu", 9897, "int FOO, float BAR");
+      WSQ_AddPrinter(20);
+      WSQ_ConnectRemoteOut(20, "honor.csail.mit.edu", 9896); 
+    WSQ_EndSubgraph();
+  */
   WSQ_EndTransaction();
 
-  char* str = WSQ_EdgeType(3);
-  printf("\nTransaction ended.  Main program retreived edge type: <%s>\n", str);
-  free(str);
+
+
+  //char* str = WSQ_EdgeType(3);
+  //printf("\nTransaction ended.  Main program retreived edge type: <%s>\n", str);
+  //free(str);
 
   //WSQ_CommitTransaction(1001);
 

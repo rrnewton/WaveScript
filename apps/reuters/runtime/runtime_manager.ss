@@ -69,8 +69,31 @@
        `(,bop ,(temp-convert-rand arg (ununquote left)) 
 	      ,(temp-convert-rand arg right)))
      (if (eq? rest #t) expr
-	 `(and ,expr ,rest))]
+	 `(ws:and ,expr ,rest))]
     )))
+
+(define (capitalize s)
+  (define str (symbol->string s))
+  (string->symbol
+   (string-append 
+    (string-upcase (substring str 0 1))
+    (substring str 1 (string-length str)))))
+
+(define (Type t)
+  (case t
+    [(int float double)   (capitalize t)]
+    [else (error 'Type "unhandled type: ~s" t)]))
+
+(define (parse-types str)
+  `(Record 
+    ,(match (string->slist str)
+       [() `',(unique-name "_rowvar")]
+       #; ;; It's inexplicable that this one doesn't work:
+       [(,[ununquote -> type] ,[ununquote -> name] . ,[rest])
+	`(Row ,name ,type ,rest)]
+       [(,type ,name . ,[rest])
+	`(Row ,(ununquote name) ,(Type (ununquote type)) ,rest)]
+       )))
 
 (define (temp-convert-rand rec x)
   (cond    
@@ -80,7 +103,7 @@
     )
   )
 
-(define mergemagic 'Merge)
+(define mergemagic (gensym "Merge"))
 
 ;;==============================================================================
 
@@ -108,10 +131,32 @@
 
     ;; FIXME: need to do a topological sort.
     (let* ([binds (reverse (unbox cursubgraph))]
+	   [empties '()]
+	   [bod (map (match-lambda ((,v ,e)) 
+		       (let ([var (if (eq? v mergemagic)
+				      (let ((new (unique-name "ignored")))
+					(set! empties (cons new empties ))
+					new)
+				      v)])			      
+			 `(define ,var ,e)))
+		  binds)]
 	   [prog `((include "wsqlib.ws")
-		   ,@(map (lambda (x) (cons 'define x))
-		       binds))])
-      (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog)
+		   ,@bod
+		   (define main 
+		     (assert-type (Stream #())
+				  ,(match empties
+				     [() '(app timer '0)]
+				     [(,vr) vr]
+				     [(,vr . ,[rest])
+				      `(app merge ,vr ,rest)]))))])
+      (printf "\n >>> ASSEMBLED PROG: \n\n") 
+      (pretty-print prog)
+      ;(pretty-print (wsparse-postprocess prog))  
+      ;(ws prog)
+      (printf "\n\n >>> COMPILING PROG: \n\n")
+      (browse-stream
+       (wsint (wsparse-postprocess prog) '()))
+      ;(ws (wsparse-postprocess prog))
       )
     
     (set-box! subgraphs '())
@@ -161,7 +206,7 @@
   (lambda (id)
     (printf " <WSQ>  WSQ_AddPrinter ~s \n" id)
     (let ([sym (edge-sym id)])
-      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,id))
+      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,(edge-sym id)))
 				  (unbox cursubgraph))))
     (print-state)
     ))
@@ -188,11 +233,13 @@
 
 ;; Connecting to remote machines.
 
-(define-entrypoint WSQ_ConnectRemoteIn (int string int) void
-  (lambda (id host port)
-    (printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s \n" id host port)
+(define-entrypoint WSQ_ConnectRemoteIn (int string int string) void
+  (lambda (id host port field-types)
+    (printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" id host port field-types)
     (set-box! cursubgraph 
-	      (cons `(,(edge-sym id) (app wsq_connect_in ,host ,port))
+	      (cons `(,(edge-sym id) 
+		      (assert-type (Stream ,(parse-types field-types))
+				   (app wsq_connect_in ,host ,port)))
 		    (unbox cursubgraph)))
     ))
 

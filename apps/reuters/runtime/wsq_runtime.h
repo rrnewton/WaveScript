@@ -67,7 +67,7 @@ void WSQ_AddPrinter(wsid_t id);
 // connections to other machines.  This interface doesn't commit to
 // any particular implementation strategy.
 void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port);
-void WSQ_ConnectRemoteIn  (wsid_t in,  char* host, int port);
+void WSQ_ConnectRemoteIn  (wsid_t in,  char* host, int port, char* type_str);
 
 
 //==============================================================================

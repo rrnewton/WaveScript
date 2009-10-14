@@ -418,3 +418,39 @@ fun TCPOUTPUT(str) {
  // TODO
 }
 
+
+
+/******************************************************************************/
+
+fun discard(s) iterate _ in s { }
+
+fun wsq_reuterSource(schema) {
+  iterate _ in timer(1) {
+    //print(" -- Fake reuters source emitting tuple...\n");
+    emit (| FOO=(1::Int), BAR=(2::Float) );
+    emit (| FOO=(3::Int), BAR=(4::Float) );
+  }
+}
+
+wsq_filter  = stream_filter
+wsq_project = stream_map
+
+fun wsq_printer(s) {
+  //stream_map(fun(x) { print(x); x }, s)
+  iterate x in s { 
+    println(x); 
+  }
+}
+
+fun wsq_connect_out(host, prt, strm) {
+  print("  **** wsq_connect_out not implemented yet! **** \n");
+  // Hmm... this was a typo, but why didn't it work??
+  //iterate _ in timer(0) {}  
+  iterate _ in strm { }
+}
+
+fun wsq_connect_in(host, prt) {
+  print("  **** wsq_connect_in not implemented yet! **** \n");
+  iterate _ in timer(0) {}  
+}
+
