@@ -12,19 +12,19 @@ int main() {
   /* test for Event(uint ts, EventType* etptr, const char** values)		
    * binary -->
    */
-  /*int id_e = 12;
+  int id_e = 12;
   const char* name_e = "yuan";
 		
-  const char* values_e[2];
-  values_e[0] = (char*)&id_e;	
-  values_e[1] = name_e;*/
+  char values_e[S_SIZE+4];
+  memcpy(values_e, (char*)&id_e, 4);
+  memcpy(values_e+4, name_e, S_SIZE);
 		
   EventType type_e("Test", 2, (const char**)fnames_e, ftypes_e);
   cout << type_e.tostring() << endl;
 	
 
-  //Event e_e(&type_e, (const char**)values_e);	
-  //cout << e_e.tostring();
+  Event e_e(values_e, 34);	
+  e_e.print(cout, &type_e);
 
   /* test for Event(EventType* etptr, string* values)	
    * ascii -->

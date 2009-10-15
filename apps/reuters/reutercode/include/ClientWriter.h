@@ -28,23 +28,22 @@ class ClientWriter : public Thread {
 
 	MapIter first = _catalog->outputmap.upper_bound(-1);
 	while(first != _catalog->outputmap.end()) {
-	  ESBuffer* buf = _catalog->operatormap[first->first]->buffer();
-	  
+	  ESBuffer* buf = _catalog->operatormap[first->first]->sockbuffer();  
 	  if (buf == 0) { 
 	    perror("buffer is NULL\n"); 
 	    first = _catalog->outputmap.upper_bound(first->first);
 	    continue;
 	  }
-	  
+	  EventPtr ep;
 	  if(buf->hasNext()) {
-	    printf("here1\n");
 	    pair<MapIter, MapIter> ret = 
 	      _catalog->outputmap.equal_range(first->first);
-	    for(MapIter iter = ret.first; iter != ret.second; iter++)
-	      if(send(iter->second, tempbuf, 25, 0) == -1)
+	    ep = buf->next();
+	    for(MapIter iter = ret.first; iter != ret.second; iter++) 
+	      if(send(iter->second, ep->values(), ep->sz(), 0) == -1)
 		printf("error sending\n");
 	  }
-
+	  
 	  
 	  first = _catalog->outputmap.upper_bound(first->first);
 	}
@@ -97,7 +96,7 @@ class ClientWriter : public Thread {
       //   int my = first->first;
       //printf("%d\n", my);
       ESBox* op = _catalog->operatormap[first->first];
-      if(op->buffer() !=0 && op->buffer()->hasNext()) {
+      if(op->sockbuffer() !=0 && op->sockbuffer()->hasNext()) {
 	flag = true; break;
       }
       first = _catalog->outputmap.upper_bound(first->first);

@@ -44,10 +44,8 @@ class Server : public Thread {
     }*/
  
   ~Server() {
-
   };
   
-
   // server initialization
   void init() {
 
@@ -169,7 +167,8 @@ class Server : public Thread {
 	// nobody else bind to this operator yet before
 	// initialize the operator buffer
 	_catalog->requireoperatormaplock();
-	
+	ESBox* op = _catalog->operatormap[opid];
+	op->setsockbuffer();
 	_catalog->releaseoperatormaplock();
       }
       _catalog->outputmap.insert(pair<int, int>(opid, clisock));      
@@ -186,14 +185,25 @@ class Server : public Thread {
 
   void clientclean(int clisock) {
     // clean the client from this node's outputmap
+    int opid = -1;
+
     _catalog->requireoutputmaplock();
     for(MapIter iter=_catalog->outputmap.begin(); 
 	iter!= _catalog->outputmap.end(); iter++) {
       if(iter->second == clisock) {
-	_catalog->outputmap.erase(iter);
+	opid = iter->first;
+	_catalog->outputmap.erase(iter);	
 	break;
       }
-    }
+    }    
+    // nobody else need the buffer, close the buffer
+    MapIter iter = _catalog->outputmap.find(opid);
+    if(iter == _catalog->outputmap.end()) {
+      _catalog->requireoperatormaplock();
+      ESBox* op = _catalog->operatormap[opid];
+      op->closesockbuffer();
+      _catalog->releaseoperatormaplock();      
+    }      
     _catalog->printoutputmap();
     _catalog->releaseoutputmaplock();
   }

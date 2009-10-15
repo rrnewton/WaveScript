@@ -19,16 +19,12 @@ class Event {
    *  etptr: event type
    *  values: binary format contents of event
    */
-  /*Event(uint ts, EventType* etptr, const char** values) {
-    _sqno = ts;
-    _etypeptr = etptr;
-    int noFields = _etypeptr->fieldsno();
-    _fields = new Field*[noFields];
-    
-    for(int i=0; i<noFields; i++)			
-      _fields[i] = new Field(_etypeptr->fieldtype(i), values[i]);		
-  }	
-  */
+  Event(const char* values, size_t sz) {
+    _sz = sz;
+    _values = (char*)malloc(_sz);
+    memcpy(_values, values, _sz);
+  }
+ 
 
   /*
    * Constructor
@@ -101,6 +97,9 @@ class Event {
     }
     return s +"]";
   }
+
+  char* values() { return _values; }
+  size_t sz() { return _sz; }
 
   void print(ostream& os, EventType* etptr) { os << tostring(etptr) << endl; }
   

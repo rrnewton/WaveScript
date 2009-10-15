@@ -25,6 +25,8 @@ int main() {
   Filter flt(1, &type, &src);                        // Filter 
   flt.setflist(&list0);  
 
+  //flt.setsockbuffer();
+
   Node n(2020, "piquin", &flt);
   n.start();
   

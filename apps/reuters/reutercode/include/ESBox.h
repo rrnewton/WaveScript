@@ -47,6 +47,10 @@ class ESBox {
     _ndbuffer = true;
     if(_sockbuffer == 0) _sockbuffer = new ESBuffer();
   }
+
+  void closesockbuffer() {
+    _ndbuffer = false;    
+  }
   
   bool needbuffer() { return _ndbuffer; }
 

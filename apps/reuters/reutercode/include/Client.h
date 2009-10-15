@@ -14,6 +14,13 @@ class Client : public ESBox, public Thread {
   int sockfd;
   struct sockaddr_in  ser_addr;
 
+  ESBuffer* _buffer;    // internal buffer, like Source
+  char* _values;
+  size_t sz;
+  size_t offset;
+
+  int count;
+
  public:
   char inbuf[BUFTEMP];
   char outbuf[BUFTEMP];
@@ -25,10 +32,19 @@ class Client : public ESBox, public Thread {
     strcpy(outbuf, msg.c_str());
     string threadname = "client-" + _to_string(index);
     strcpy(_threadname, threadname.c_str());
+    
+    _buffer = new ESBuffer();
+    sz = etype->bytes();
+    offset = 0;
+
+    _values = (char*)malloc(sz);
+
+    count = 0;
+    
     init();
   }
 
-  ~Client() {};
+  ~Client() { delete _buffer; free(_values); }
 
   // client initialization
   void init() {
@@ -59,7 +75,9 @@ class Client : public ESBox, public Thread {
 
   void run() {
     // writing data from socket to operator buffer
+    
     int nbytes;
+    size_t bytes = 0;
     while(true) {
       usleep(10);
       memset(&inbuf, 0, BUFTEMP); 
@@ -71,10 +89,23 @@ class Client : public ESBox, public Thread {
 	break;
       }
       else {  // successfully read
-	printf("Got Message %d bytes: %s\n", nbytes, inbuf);
-	
+	//printf("Got Message %d bytes: %s\n", nbytes, inbuf);
+	bytes = 0;
+	while(nbytes - bytes + offset >= sz) {
+	  memcpy(_values+offset, inbuf+bytes, sz);
+	  EventPtr ep = new Event(_values, sz);
+	  _buffer->push_back(ep);
+	  ep->print(cout, _inetptr);
+	  count++;
+	  bytes += sz - offset;
+	  offset = 0;	  
+	}
+	offset = nbytes - bytes;
+	if(offset > 0) memcpy(_values, inbuf+bytes, offset);	
       }      
-    }    
+    }
+    cout << count << endl;      
+    
   }
 
 

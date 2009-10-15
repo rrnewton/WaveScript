@@ -15,6 +15,7 @@ int main() {
   // @Test EventType
   EventType type("Trade", 3, (const char**)fnames, ftypes);
   FileSource src(0, &type, "testdata/mytest.dat");   // File Source
+  src.setsockbuffer();
 
   Node n(2020, "piquin", &src);
 
