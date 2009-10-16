@@ -1027,13 +1027,9 @@
                  (read-wavescript-source-file x)]
                 [(list? x)   
                  (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Evaluating WS source: \n \n"))
-		 ;; [2009.09.01] Here's a total hack:
-		 (wsparse-postprocess x)
-		 #;
 		 (match x
-		   ;; FIXME FIXME
-		   [,_ (wsparse-postprocess x)]
-		   [,_ x])]
+		   [(wsparse-postprocess-language . ,_) x]
+		   [,_ (wsparse-postprocess x)])]
                 [else (error 'wsint "bad input: ~s" x)])))
     
     ;; add in the input-parameters
