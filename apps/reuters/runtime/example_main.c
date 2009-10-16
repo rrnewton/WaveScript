@@ -13,9 +13,8 @@ int main(int argc, char* argv[]) {
 
     WSQ_BeginSubgraph(101);
       WSQ_AddReutersSource(2, "foobar.schema");
-      WSQ_AddFilter(2,3, "SYM == \"IBM\", PRICE >= (40 + 40)");
-      //WSQ_AddFilter(2,3, "SYM == \"IBM\"");
-      WSQ_AddProject(3,4, "SYM, TIME, PRICE");
+      WSQ_AddFilter(100, 2,3, "SYM == \"IBM\", PRICE >= (40 + 40)");
+       WSQ_AddProject(3,4, "SYM, TIME, PRICE");
       WSQ_AddPrinter("STOCKSTRM: ", 4);
       WSQ_ConnectRemoteOut(4, "honor.csail.mit.edu", 9898); 
     WSQ_EndSubgraph();
