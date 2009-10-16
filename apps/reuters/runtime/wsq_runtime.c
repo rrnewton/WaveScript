@@ -26,7 +26,7 @@ void (*Scheme_RemSubgraph)(wsid_t id);
 ptr  (*Scheme_EdgeType)(wsid_t id);
 
 void (*Scheme_AddReutersSource)(wsid_t id, char* path);
-void (*Scheme_AddPrinter)(wsid_t id);
+void (*Scheme_AddPrinter)(char* prefix, wsid_t id);
 void (*Scheme_AddProject)(wsid_t in, wsid_t out, char* expr);
 void (*Scheme_AddFilter) (wsid_t in, wsid_t out, char* expr);
 
@@ -75,7 +75,7 @@ char* WSQ_EdgeType  (wsid_t id) {
 }
 
 void WSQ_AddReutersSource(wsid_t id, char* path) { Scheme_AddReutersSource(id, path); } 
-void WSQ_AddPrinter(wsid_t id)                   { Scheme_AddPrinter(id); }
+void WSQ_AddPrinter(char* prefix, wsid_t id)     { Scheme_AddPrinter(prefix, id); }
 
 void WSQ_AddProject(wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
 void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
@@ -136,7 +136,7 @@ void WSQ_Init() {
   printf(" <WSQ> Starting Scheme runtime system.\n");
   int result = Sscheme_start(2, new_args);
   //int result = Sscheme_start(3, new_args);
-  //printf("Scheme_start finished\n");
+  printf("Exited from scheme initialization with code %d\n", result);
 
   // This is awful gross.  Oh well.
   // ========================================
@@ -171,7 +171,7 @@ void WSQ_Init() {
   Scheme_AddProject       = (void(*)(int,int,char*))Sinteger_value(addpro);
   Scheme_AddFilter        = (void(*)(int,int,char*))Sinteger_value(addfil);
   Scheme_AddReutersSource = (void(*)(int,char*))Sinteger_value(addsrc);
-  Scheme_AddPrinter       = (intfun)Sinteger_value(addprn);
+  Scheme_AddPrinter       = (void(*)(char*,int))Sinteger_value(addprn);
 
   Scheme_ConnectRemoteIn  = (void(*)(int,char*,int,char*))Sinteger_value(con_in);
   Scheme_ConnectRemoteOut = (void(*)(int,char*,int))Sinteger_value(con_out);

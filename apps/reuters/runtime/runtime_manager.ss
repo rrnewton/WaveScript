@@ -59,12 +59,11 @@
      ,(match (string->slist str)
     [() #t]
     [(,left ,binop ,right . ,[rest])
-     ;(ASSERT (memq binop '(== <= >=)))
      (define bop 
-       (match binop
-	 [== 'wsequal?]
-	 [<= <=]
-	 [>= >=]))
+       (case binop
+	 [(==) 'wsequal?]
+	 [(<= >= < >) binop]
+	 [else (error 'WSQ "unhandled binary operator ~s" binop)]))
      (define expr
        `(,bop ,(temp-convert-rand arg (ununquote left)) 
 	      ,(temp-convert-rand arg right)))
@@ -98,10 +97,13 @@
        )))
 
 (define (temp-convert-rand rec x)
-  (cond    
-    [(symbol? x) `(wsrecord-select ',x ,rec)]
-    [(number? x) `',x]
-    [else (error 'temp-convert-rand "Invalid operand: ~a" x)]
+  (match x
+    [,x (guard (symbol? x)) `(wsrecord-select ',x ,rec)]
+    [,x (guard (number? x)) `',x]
+    [,x (guard (string? x)) `',x]
+    [(,[a] ,binop ,[b]) (guard (memq binop '(+ * - / ^)))
+     `(,(symbol-append 'g binop) ,a ,b)]
+    [,else (error 'temp-convert-rand "Invalid operand: ~a" x)]
     )
   )
 
@@ -208,11 +210,11 @@
     (print-state)
     ))
 
-(define-entrypoint WSQ_AddPrinter (int) void
-  (lambda (id)
-    (printf " <WSQ>  WSQ_AddPrinter ~s \n" id)
+(define-entrypoint WSQ_AddPrinter (string int) void
+  (lambda (str id)
+    (printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
     (let ([sym (edge-sym id)])
-      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,(edge-sym id)))
+      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,str ,(edge-sym id)))
 				  (unbox cursubgraph))))
     (print-state)
     ))

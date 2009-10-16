@@ -424,21 +424,47 @@ fun TCPOUTPUT(str) {
 
 fun discard(s) iterate _ in s { }
 
+/*
 fun wsq_reuterSource(schema) {
   iterate _ in timer(1) {
-    //print(" -- Fake reuters source emitting tuple...\n");
+    state { time = 0 }
     emit (| FOO=(1::Int), BAR=(2::Float) );
     emit (| FOO=(3::Int), BAR=(4::Float) );
   }
 }
+*/
+
+//fakestocks :: Stream (| TIME : Float, SYM : String, PRICE : Float);
+fun wsq_reuterSource(schema) {
+  syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
+  lastprice = Array:make(Array:length(syms), 50.0);
+  iterate _ in timer(150) {
+    state{ t = 0.0 }
+    i = randomI(Array:length(syms));
+    // Random walk:
+    lastprice[i] += (Float! (randomI(200) - 100)) / 100;
+    if lastprice[i] < 0
+    then lastprice[i] := 0;
+
+    emit (SYM= syms[i], 
+          TIME= t, 
+          PRICE= lastprice[i],
+	  VOLUME= randomI(10)
+  	  );
+    t += randomI(10).gint;
+  }
+}
+
 
 wsq_filter  = stream_filter
 wsq_project = stream_map
 
-fun wsq_printer(s) {
+fun wsq_printer(str, s) {
   //stream_map(fun(x) { print(x); x }, s)
   iterate x in s { 
-    println(x); 
+    print(str);
+    print(x); 
+    print("\n");
   }
 }
 
@@ -451,6 +477,8 @@ fun wsq_connect_out(host, prt, strm) {
 
 fun wsq_connect_in(host, prt) {
   print("  **** wsq_connect_in not implemented yet! **** \n");
-  iterate _ in timer(0) {}  
+  iterate _ in timer(1) {
+    emit (| BAZ="blah", BAR=0.0 )
+  }
 }
 

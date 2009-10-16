@@ -18,7 +18,8 @@ all:
 
 	@echo;echo MADE SHARED LIBRARY; echo; echo
 	gcc $(FLAGS) -c -I $(CHEZP) example_main.c 
-	gcc $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o a.out
+	gcc $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main
 
 clean:
-	rm -f *.o *.a *.exe a.out *.so
+	rm -f *.o *.a *.exe a.out *.so example_main query.*
+
