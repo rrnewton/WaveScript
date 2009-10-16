@@ -61,7 +61,7 @@
 
    insert-between  compose compose/values disp pp
    extract-file-extension remove-file-extension 
-   file->string string->file file->slist slist->file file->linelists
+   file->string string->file file->slist slist->file file->linelists port->linelists
    file->lines string->lines string->slist port->slist
    string-split
 
@@ -916,6 +916,7 @@
 ;; Useful for space deliminited files of numbers.
 ;; Potentially respects a comment character (other than semi-colon).
 ;; (I use this for reading gnuplot data files.)
+;; This also takes ports!!
 (define file->linelists
   (case-lambda 
     [(f) (file->linelists f #\;)]
@@ -942,6 +943,9 @@
 				  '()
 				  (cons x (munch-line))))))
 			acc)))))))]))
+
+(define port->linelists file->linelists)
+
 
 ;; This one just reads the file as a list of lines.
 (define (file->lines fn) (string->lines (file->string fn)))
@@ -1371,6 +1375,7 @@
 ;; [2006.02.12] This should have a stddev of 1.0 but it looks like it
 ;; has a stddev of more like .90.
 (define (gaussian)
+  ;; Compute random 1.0 in a somewhat more portable way...
   (let ((x1 0.0) (x2 0.0) (w 0.0) (y1 0.0) (y2 0.0))
     (let loop ()
       (set! x1 (* 2.0 (- (random 1.0) 1.0)))

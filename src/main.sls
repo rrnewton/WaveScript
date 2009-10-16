@@ -1861,11 +1861,17 @@
 	(cond 
 	 [(symbol? x) x]
 	 [(string? x) (string->symbol x)]
-	 [else (string->symbol (format "~a" x))]))
+	 ;; [2009.10.13] Tightening
+	 [else (error 'coerce-symbol "takes string or symbol, not ~s\n" x)]
+	 ;[else (string->symbol (format "~a" x))]
+	 ))
       (define (coerce-string x)
 	(cond
 	 [(string? x) x]
-	 [else (format "~a" x)]))
+	 [(symbol? x) (symbol->string x)]
+	 [else (error 'coerce-string "takes string or symbol, not ~s\n" x)]
+	 ;; [else (format "~a" x)]
+	 ))
       ;; This determines what mode we're in then calls "loop" to process the flags.
       (define (main)
         ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("loop")
@@ -1876,7 +1882,7 @@
 	  (match filenames
 	    ;; If there's no file given read from stdin
 	    [() (standard-input-port)]
-	    [(,fn ,rest ...) 
+	    [(,fn ,rest ...) (guard (string? fn))
 	     (unless (null? rest)
 	       (error callmode  "bad extra filename(s) or flag(s) following filename ~s:\n ~s" fn rest))
 	     ;; If it's a ws file we need to parse the file:
@@ -1959,6 +1965,10 @@
 		     ((top-level-value 'go-sim))
 		     ))
 	     )))]
+
+	  ;; [2009.10.10] Nothing mode.  Do nothing.
+	  ;; This is when we want to load up the compiler but don't want to do anything.
+	  [(nothing)  (void)]
 
 	  ;; Interactive mode.  A Scheme REPL.
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:

@@ -5,7 +5,7 @@ fun baz(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | X = 4 )
 fun qux(r1,r2) if true then ( r1 | X = 2 ) else ( r2 | Y = 4 )
 
 fun testit() { 
-  empt = {|};
+  empt = (|);
   print(empt ++ "\n"); 
 
   rec = (| A=3, B=true);

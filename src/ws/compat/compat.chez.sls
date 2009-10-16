@@ -21,7 +21,7 @@
  	  box unbox set-box! box? 
  	  promise? 
 	  
- 	  system make-list  repl 
+ 	  system make-list  repl ; native-repl
 	  with-output-to-string
 	  which-scheme IFCHEZ	  
 

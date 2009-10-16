@@ -48,7 +48,7 @@
               #'(e x (... ...))]))])))
 
 
-  (define (simple-eval xp) (eval xp '(rnrs (6))))
+  (define (simple-eval xp) (eval xp (environment '(rnrs (6)))))
 
 
  (define-syntax IFCHEZ
