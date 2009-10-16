@@ -1,7 +1,8 @@
 
 
-CHEZP = ~/bin/Linux-i686/csv7.9.2/boot/i3le
+#CHEZD = ~/bin/Linux-i686/csv7.9.2/boot/i3le
 
+CHEZP = $(CHEZD)/boot/i3le
 
 DIRS32 = -L/lib32 -L/usr/lib32
 
