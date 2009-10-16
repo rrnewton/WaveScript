@@ -3,6 +3,8 @@
 
 #define S_SIZE	        30 		// size of string type
 #define BUFTEMP         2048            // maximal schema size
+#define SLEEPTIME       1             // Thread sleep time
+#define BUFFERSIZE      8            // default maximal buffer size
 
 //#define Events          deque<Event*>   // used in RecBuffer and Predicate
 

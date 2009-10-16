@@ -33,13 +33,17 @@ class QueryEngine {
     }
     
     // run the query
-    while(_root->hasNext()) {
-      EventPtr ept = _root->next();
-      ept->print(cout, _root->outetptr());
+    while(true) {
+      while(_root->hasNext()) {
+	EventPtr ept = _root->next();
+	if(ept != 0)
+	  ept->print(cout, _root->outetptr());
+      }
+      usleep(SLEEPTIME);
     }    
-    
+      
     //close();
-    while(true) { sleep(10); }
+
   }
 };
 #endif

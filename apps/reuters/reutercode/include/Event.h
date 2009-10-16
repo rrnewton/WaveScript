@@ -63,7 +63,13 @@ class Event {
     _sz = etptr->bytes();
     _values = (char*)malloc(_sz);
     memset(_values, 0, _sz);
-  }  
+  }
+
+  Event(size_t sz) {
+    _sz = sz;
+    _values = (char*)malloc(_sz);
+    memset(_values, 0, _sz);    
+  }
   
   ~Event() {
     if (_values != 0) { free(_values); }
@@ -72,7 +78,16 @@ class Event {
   // copy the v to the _values
   void copy(char* v) { memcpy(_values, v, _sz); }
   void copy(EventPtr ep) { memcpy(_values, ep->_values, _sz); }
-  
+
+  void copy(EventType* etptr, string* values) {      
+    int noFields = etptr->fieldsno();
+    size_t offset = 0;
+    for(int i=0; i<noFields; i++) {      
+      Field::convert_a(etptr->fieldtype(i), _values+offset, values[i]);
+      offset += etptr->fieldtype(i)->bytes();
+    }
+  }  
+
   //EventType* type() { return _etypeptr; }	
   //int fieldsno() { return _etypeptr->fieldsno(); }
   char* field(int index, EventType* type) { 

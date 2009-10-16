@@ -56,10 +56,13 @@ class Filter : public ESBox {
   }
 
   EventPtr next() { 
+    if(_ndbuffer && _sockbuffer->full()) {
+      printf("filter sockbuffer is full, hold on.....\n"); return 0; 
+    }
+
     nextflag = false; 
     if(_ndbuffer) {
-      EventPtr ep = new Event(*_teptr);
-      _sockbuffer->push_back(ep);	
+      _sockbuffer->add(_teptr->values());	
     }
     return _teptr; 
   }

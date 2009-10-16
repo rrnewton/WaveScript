@@ -1,5 +1,4 @@
 #include "Client.h"
-#include <pthread.h>
 
 int main() {
   Client c(2020, "127.30.76.32", "~~~~~~Connecting to the Server~~~~~");

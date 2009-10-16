@@ -65,7 +65,7 @@ class ClientWriter : public Thread {
 	  }*/
 	_catalog->releaseoperatormaplock();
 	_catalog->releaseoutputmaplock();
-	usleep(100);
+	usleep(SLEEPTIME);
 	
       }
       

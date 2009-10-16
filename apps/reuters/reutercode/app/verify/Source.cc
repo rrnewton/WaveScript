@@ -1,8 +1,10 @@
 #include "FileSource.h"
 
+/* Test for Source, with socketbuffer = 0*/
 int main() {
 
   Catalog ct;
+  int count = 0;
 
   const char* fnames[3];
   FieldType ftypes[3];
@@ -18,27 +20,24 @@ int main() {
 			
   // @Test file source
   FileSource bs(0, &type, "testdata/mytest.dat");
-  bs.setsockbuffer();
-
+  //  bs.setsockbuffer();
   bs.open(&ct);
+  while(true) {
+    while(bs.hasNext()) {
+      bs.next()->print(cout, &type);   
+      count++;
+    }
+    usleep(SLEEPTIME);
+    printf("count : %d\n", count);
+  } 
 
-  /*
-  EventPtr ep = bs.next();
-  ep->print(cout, &type);
-
-  ep = bs.next();
-  ep->print(cout, &type);*/
-
-  cout << "while output" << endl;
-  while(bs.hasNext()) {
-    bs.next()->print(cout, &type);
-  }
-
-  bs.sockbuffer()->print(cout, &type);
-
+  // the remaining tuple left in the buffer;
+  //while(bs.hasNext()) {
+  //  bs.next()->print(cout, &type);
+  //}
+  
   bs.close(&ct);
-
-  return 0;
-
+  pthread_exit(NULL);
+  //return 0;
 }
  	  

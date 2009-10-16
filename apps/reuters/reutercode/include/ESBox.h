@@ -45,11 +45,12 @@ class ESBox {
 
   void setsockbuffer() {
     _ndbuffer = true;
-    if(_sockbuffer == 0) _sockbuffer = new ESBuffer();
+    if(_sockbuffer == 0) _sockbuffer = new ESBuffer(_outetptr->bytes());
   }
 
   void closesockbuffer() {
     _ndbuffer = false;    
+    _sockbuffer->reset();
   }
   
   bool needbuffer() { return _ndbuffer; }

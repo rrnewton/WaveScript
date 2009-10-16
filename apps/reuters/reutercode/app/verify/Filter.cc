@@ -4,6 +4,8 @@
 
 int main() {
   Catalog ct; 
+  //int count = 0;
+
   const char* fnames[3];
   FieldType ftypes[3];
   fnames[0] = "id";
@@ -24,27 +26,32 @@ int main() {
 
   cout << list0.tostring() << endl;
 
+  // FPredlist: string contains IBM
   FPredList list1;
   list1.add_fpred(type.fieldtype(1), "IBM", CONTAINS, 1);
   cout << list1.tostring() << endl;
   
   FileSource src(0, &type, "testdata/mytest.dat");   // File Source
-  Filter flt(1, &type, &src);                           // Filter 
+  Filter flt(1, &type, &src);                        // Filter 
   flt.setflist(&list0);
   //flt.setflist(&list1);
 
-  flt.setsockbuffer();
-
+  //flt.setsockbuffer();
   flt.open(&ct);
-  while(flt.hasNext()) {
-    EventPtr ep = flt.next();      
-    ep->print(cout, &type);
+  while(true) {
+    while(flt.hasNext()) {
+      EventPtr ep = flt.next();      
+      ep->print(cout, &type);
+      // count++;
+    }
+    usleep(SLEEPTIME);
+    // printf("count : %d\n", count);
   }
 
-  flt.sockbuffer()->print(cout, &type);
+  //flt.sockbuffer()->print(cout, &type);
   flt.close(&ct); 
 
-  return 0;
+  pthread_exit(NULL);
 
 }
  	  

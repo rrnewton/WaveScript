@@ -15,7 +15,7 @@ int main() {
   // @Test EventType
   EventType type("Trade", 3, (const char**)fnames, ftypes);
 
-  Client c(2020, "128.30.76.32", "1,0", 0, &type);
+  Client c(2020, "128.30.76.165", "1,0", 0, &type);
 
   Node n(2022, "piquin", &c);
   n.addclient(&c);

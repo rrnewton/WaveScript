@@ -33,13 +33,14 @@ class Client : public ESBox, public Thread {
     string threadname = "client-" + _to_string(index);
     strcpy(_threadname, threadname.c_str());
     
-    _buffer = new ESBuffer();
+    _buffer = new ESBuffer(etype->bytes());
     sz = etype->bytes();
     offset = 0;
 
     _values = (char*)malloc(sz);
 
     count = 0;
+    cout << _ip << _to_string(_port) << endl;
     
     init();
   }
@@ -75,15 +76,16 @@ class Client : public ESBox, public Thread {
 
   void run() {
     // writing data from socket to operator buffer
-    
+    EventPtr event = new Event(sz);
     int nbytes;
     size_t bytes = 0;
     while(true) {
-      usleep(10);
+      usleep(SLEEPTIME);
       memset(&inbuf, 0, BUFTEMP); 
       if((nbytes =  recv(sockfd, inbuf, BUFTEMP, 0)) <= 0) {
-	if(nbytes == 0) 
-	  printf("socket %d hung up..........\n", sockfd);
+	if(nbytes == 0) {
+	  printf("socket %d hung up..........\n", sockfd);	  
+	}
 	else 
 	  printf("server recv has error from socket: %d \n", sockfd);	
 	break;
@@ -93,9 +95,15 @@ class Client : public ESBox, public Thread {
 	bytes = 0;
 	while(nbytes - bytes + offset >= sz) {
 	  memcpy(_values+offset, inbuf+bytes, sz);
-	  EventPtr ep = new Event(_values, sz);
-	  _buffer->push_back(ep);
-	  ep->print(cout, _inetptr);
+
+	  while(_buffer->full()) {
+	    usleep(SLEEPTIME);
+	  }
+	  
+	  event->copy(_values);
+	  event->print(cout, _inetptr);
+	  _buffer->add(_values);
+
 	  count++;
 	  bytes += sz - offset;
 	  offset = 0;	  
@@ -104,9 +112,25 @@ class Client : public ESBox, public Thread {
 	if(offset > 0) memcpy(_values, inbuf+bytes, offset);	
       }      
     }
-    cout << count << endl;      
-    
+    delete event;
+    cout << count << endl;          
   }
+
+  bool hasNext() { return _buffer->hasNext(); }
+  EventPtr next() {
+    // if need buffered
+    if(_ndbuffer && _sockbuffer->full()) {
+      return 0;
+    }
+    
+    EventPtr eptr = _buffer->next();    
+    if(_ndbuffer) {
+      _sockbuffer->add(eptr->values());      
+    }
+    return eptr;
+  }
+
+  
 
 
 };
