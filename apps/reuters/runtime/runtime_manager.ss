@@ -53,20 +53,28 @@
 	(map ununquote (string->slist str)))))
 
 ;; This assumes for now that it's a series of binary operators.
-(define (parse-filter str) 
-  (define arg 'rec)
-  `(lambda (,arg)
+(define (parse-filter str . extra)
+  (define args
+    (match extra
+      [() '(rec)]
+      [(,x)    extra]
+      [(,x ,y) extra]))
+
+  `(lambda ,args
      ,(match (string->slist str)
     [() #t]
     [(,left ,binop ,right . ,[rest])
      (define bop 
        (case binop
-	 [(==) 'wsequal?]
+	 [(== =) 'wsequal?] ;; Accept both single and double equals.
 	 [(<= >= < >) binop]
 	 [else (error 'WSQ "unhandled binary operator ~s" binop)]))
      (define expr
-       `(,bop ,(temp-convert-rand arg (ununquote left)) 
-	      ,(temp-convert-rand arg right)))
+       `(,bop ,(temp-convert-rand (car args) (ununquote left)) 
+	      ,(temp-convert-rand (if (not (null? (cdr args)))
+				      (cadr args)
+				      (car args))
+				  right)))
      (if (eq? rest #t) expr
 	 `(ws:and ,expr ,rest))]
     )))
@@ -238,6 +246,45 @@
 		    (unbox cursubgraph)))
     (print-state)
     ))
+
+
+(define (make-merger skel1 skel2)
+  (define result )
+  `(lambda (left right)
+     ,(match (union skel1 skel2)
+	[() '(empty-wsrecord)]
+	[(,hd . ,[rest])
+	 ;; For now this biases left if a field occurs in both tuples.
+	 (if (memq hd skel1)
+	     `(wsrecord-extend ',hd (wsrecord-select ',hd left) ,rest)
+	     `(wsrecord-extend ',hd (wsrecord-select ',hd right) ,rest))])))
+
+;; FINISHME
+(define (get-type-skeleton1)  '(SYM PRICE TIME))
+;(define (get-type-skeleton2)  '(VOLUME))
+(define (get-type-skeleton2)  '(SYM PRICE TIME VOLUME))
+
+;; Ok, what we need to do here is keep track of some of the edge
+;; information... specifically just the set of fields.  We don't need
+;; to know the whole type... just that set of field *names*.
+;;
+;; This will enable us to simulate 
+(define-entrypoint WSQ_AddWindowJoin (int int int single-float string) void
+  (lambda (in1 in2 out seconds expr)
+    (printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
+    (set-box! cursubgraph 
+	      (cons `(,(edge-sym out) (app wsq_windowJoin
+					   ,(parse-filter expr 'left 'right)
+					   ,(make-merger (get-type-skeleton1)
+							 (get-type-skeleton2))
+					   ,(edge-sym in1)
+					   ,(edge-sym in2)
+					   ,seconds
+					   ))
+		    (unbox cursubgraph)))
+    (print-state)
+    ))
+
 
 ;; Connecting to remote machines.
 

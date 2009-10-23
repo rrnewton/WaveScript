@@ -28,7 +28,7 @@ exec regiment.plt i --script $0 $*
 (define WAN-lat 60)
 
 (unique-name-counter 0)
-;(random-seed (time-nanoseconds (current-time)))
+(seed-random)  ;(random-seed (time-nanoseconds (current-time)))
 
 (define node-names (list-build N (lambda _ (unique-name "node"))))
 

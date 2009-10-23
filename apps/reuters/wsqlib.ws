@@ -1,11 +1,42 @@
 
-
 include "stdlib.ws"
+include "socket.ws"
+
 
 /* NOTE: Some of these are just aliases for common functions in the
  * standard library, possibly with the arguments rearranged.  For this
  * library we make sure that the stream argument is always last.
  */
+
+/******************************************************************************/
+/*  Interface.  */
+
+// MAP, FILTER, AVG
+
+TIMESTAMP_WINDOW :: 
+     ((b | TIME:#a) -> c, #a, Stream (b | TIME:#a))
+     -> Stream (Sigseg c);
+
+TIMESTAMP_WINDOW_GROUPBY :: 
+     ((b | TIME:#a) -> c,      // Projection
+      (b | TIME:#a) -> key,    // Groupby function
+      #a,                      // Window size
+       Stream (b | TIME:#a))   // Input stream
+     -> Stream (Sigseg c);
+
+// TIMESTAMP_WINDOW_GROUPBY_MINSLIDE :: 
+
+// REALTIME_WINDOW
+
+// WINDOW
+// REWINDOW_GROUPBY
+
+// TIMESTAMP_JOIN
+
+
+
+
+/******************************************************************************/
 
 /* 
  * Select only certain tuples from a stream.
@@ -62,6 +93,7 @@ fun AVG_OF(proj, ss) {
 
 /************************************************
  * Window by time.  Assumes a TIME field.
+   Does a projection as well.
  */ 
 
 // FIXME: type too weak:
@@ -70,9 +102,11 @@ TIMESTAMP_WINDOW ::
      ((b | TIME:Int64) -> c, Int64, Stream (b | TIME:Int64))
      -> Stream (Sigseg c);
 */
-TIMESTAMP_WINDOW :: 
-     ((b | TIME:#a) -> c, #a, Stream (b | TIME:#a))
-     -> Stream (Sigseg c);
+
+// Inferred: [2009.10.18]
+// TIMESTAMP_WINDOW :: ((c | TIME:#b) -> 'd, #b, Stream (c | TIME:#b)) -> SS 'f;
+
+
 fun TIMESTAMP_WINDOW(proj, size, strm) 
   iterate r in strm {
     state { edge = 0; 
@@ -109,6 +143,10 @@ fun TIMESTAMP_WINDOW(proj, size, strm)
 // I have modified this version to not use the actual timestamp
 // contents as the sigseg "start" metadata.  That doesn't really make
 // sense.  Instead, we use simple sequence numbers here.
+
+
+
+
 fun TIMESTAMP_WINDOW_GROUPBY(proj, groupby, sze, strm) {
   using HashTable;
   iterate r in strm {
@@ -184,6 +222,7 @@ Indicates the amount of time (in seconds) after which a window should close rega
 */
 
 // TODO: VALID ALWAYS, OFFSET, TIMEOUT
+// What about time/tuples?  
 
 // Currently 
 fun TIMESTAMP_WINDOW_GROUPBY_MINSLIDE(proj, groupby, timerng, strm) {
@@ -359,7 +398,7 @@ fun REWINDOW_GROUPBY(groupby, newwidth, gap, sig) {
 
 // Join on a one-to-one basis via timestamps.
 //   ASSUMES: monotonically increasing timestamps
-//   ASSUMES: record stread elements with TIME field
+//   ASSUMES: record stream elements with TIME field
 // If one stream has a tuple that doesn't have a counterpart in the
 // other stream, it is simply DROPPED.
 
@@ -422,19 +461,14 @@ fun TCPOUTPUT(str) {
 
 /******************************************************************************/
 
+/* [2009.10] Functions called by generated WSQ code (via the C API) */
+
 fun discard(s) iterate _ in s { }
 
-/*
-fun wsq_reuterSource(schema) {
-  iterate _ in timer(1) {
-    state { time = 0 }
-    emit (| FOO=(1::Int), BAR=(2::Float) );
-    emit (| FOO=(3::Int), BAR=(4::Float) );
-  }
-}
-*/
+type DummySchema = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
 
-//fakestocks :: Stream (| TIME : Float, SYM : String, PRICE : Float);
+//wsq_reuterSource :: String -> Stream (| TIME : Float, SYM : String, PRICE : Float);
+wsq_reuterSource :: String -> Stream DummySchema;
 fun wsq_reuterSource(schema) {
   syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
   lastprice = Array:make(Array:length(syms), 50.0);
@@ -459,6 +493,21 @@ fun wsq_reuterSource(schema) {
 wsq_filter  = stream_filter
 wsq_project = stream_map
 
+fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
+  iterate x in union2(left,right) {
+    print(".");
+    //    print(" -*|*- Running window joiner: \n")
+ // GETTING A TYPE CHECKING ERROR!!!!
+/*
+    case x { 
+      Left(t):  print(" -*|*- Running window joiner: LEFT\n")
+      Right(t): print(" -*|*- Running window joiner: RIGHT\n")
+    }
+*/
+    //println(" -*|*- Running window joiner: " ++ x);
+  }
+}
+
 fun wsq_printer(str, s) {
   //stream_map(fun(x) { print(x); x }, s)
   iterate x in s { 
@@ -469,16 +518,23 @@ fun wsq_printer(str, s) {
 }
 
 fun wsq_connect_out(host, prt, strm) {
-  print("  **** wsq_connect_out not implemented yet! **** \n");
+  //print("  **** wsq_connect_out not implemented yet! **** \n");
+  //iterate _ in strm { }
+  println(" <WSQ> Creating outgoing (blocking, server) socket, port: " ++ prt);
+  socket_out(strm, prt);
+
   // Hmm... this was a typo, but why didn't it work??
   //iterate _ in timer(0) {}  
-  iterate _ in strm { }
 }
 
 fun wsq_connect_in(host, prt) {
+  /*
   print("  **** wsq_connect_in not implemented yet! **** \n");
   iterate _ in timer(1) {
     emit (| BAZ="blah", BAR=0.0 )
   }
+  */
+  println(" <WSQ> Creating incoming (client) socket, host "++ host ++" port: " ++ prt);
+  //(socket_in(host, prt) :: Stream (| BAZ : String, BAR : Float ) )
+  socket_in(host, prt)
 }
-

@@ -26,7 +26,7 @@
 	  which-scheme IFCHEZ	  
 
 	  current-directory with-output-to-port time
-	  include random trace-define trace-lambda syntax-error fprintf
+	  include random seed-random trace-define trace-lambda syntax-error fprintf
 	  delay force gensym
 	  
 	  (rename (chez:call/1cc call/ec))
@@ -124,6 +124,11 @@
        ;(inspect errork)
        ))
     )
+
+  (define seed-random
+    (case-lambda 
+      [() (chez:random-seed (chez:time-nanosecond (chez:current-time)))]
+      [(n) (chez:random-seed n)]))
 
 ) ;; End library
 

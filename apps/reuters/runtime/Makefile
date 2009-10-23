@@ -6,7 +6,7 @@ CHEZP = $(CHEZD)/boot/i3le
 
 DIRS32 = -L/lib32 -L/usr/lib32
 
-FLAGS = -m32 -rdynamic $(DIRS32)
+FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 
 LIBS = -lm -ldl -lncurses -lrt
 

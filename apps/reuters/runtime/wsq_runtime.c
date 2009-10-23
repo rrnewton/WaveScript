@@ -30,6 +30,8 @@ void (*Scheme_AddPrinter)(char* prefix, wsid_t id);
 void (*Scheme_AddProject)(wsid_t in, wsid_t out, char* expr);
 void (*Scheme_AddFilter) (wsid_t in, wsid_t out, char* expr);
 
+void (*Scheme_AddWindowJoin) (wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, char* expr);
+
 void (*Scheme_ConnectRemoteOut) (wsid_t out, char* host, int port);
 void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port, char* types);
 
@@ -79,6 +81,10 @@ void WSQ_AddPrinter(char* prefix, wsid_t id)     { Scheme_AddPrinter(prefix, id)
 
 void WSQ_AddProject(wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
 void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
+
+void WSQ_AddWindowJoin (wsid_t in1, wsid_t in2, wsid_t out, float seconds, char* expr) { 
+  Scheme_AddWindowJoin(in1,in2,out,seconds,expr); 
+}
 
 void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
 void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port, char* types)  { Scheme_ConnectRemoteIn (in,host,port,types); }
@@ -157,6 +163,8 @@ void WSQ_Init() {
   ptr addfil =  Stop_level_value( Sstring_to_symbol("WSQ_AddFilter-entry"));
   ptr addpro =  Stop_level_value( Sstring_to_symbol("WSQ_AddProject-entry"));
 
+  ptr addwin =  Stop_level_value( Sstring_to_symbol("WSQ_AddWindowJoin-entry"));
+
   ptr con_in  = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteIn-entry"));
   ptr con_out = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteOut-entry"));
 
@@ -170,6 +178,8 @@ void WSQ_Init() {
 
   Scheme_AddProject       = (void(*)(int,int,char*))Sinteger_value(addpro);
   Scheme_AddFilter        = (void(*)(int,int,char*))Sinteger_value(addfil);
+  Scheme_AddWindowJoin    = (void(*)(int,int,int,float,char*))Sinteger_value(addwin);
+
   Scheme_AddReutersSource = (void(*)(int,char*))Sinteger_value(addsrc);
   Scheme_AddPrinter       = (void(*)(char*,int))Sinteger_value(addprn);
 

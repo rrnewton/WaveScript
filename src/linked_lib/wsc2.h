@@ -8,10 +8,10 @@
    -Ryan
 
  Important preprocessor variables:
-   LOAD_COMPLEX
-   USE_BOEHM
-   ALLOC_STATS 
-   WS_THRADED
+   LOAD_COMPLEX -- we need complex support, bring in complex.h
+   USE_BOEHM    -- a conservative garbage collector
+   ALLOC_STATS  -- print allocation statics at various points
+   WS_THRADED   -- turn on threading
 
  */
 
@@ -521,10 +521,10 @@ void* worker_thread(void* i) {
     (*worker_table[index])(ptr);
     wsfifoget_cleanup(queue_table[index]);
 
-#ifdef FIFO_COARSE_LOCKING
+ #ifdef FIFO_COARSE_LOCKING
     }
     release_wsfifo(queue_table[index]);
-#endif
+ #endif
   }
   return 0;
 }
@@ -713,35 +713,35 @@ int Listref(void* list, int n) {
 }
 */
 
-
+// This just prints a number comma delimited for readability.
 char *commaprint(unsigned long long n)
 {
-	static int comma = '\0';
-	static char retbuf[30];
-	char *p = &retbuf[sizeof(retbuf)-1];
-	int i = 0;
+  static int comma = '\0';
+  static char retbuf[30];
+  char *p = &retbuf[sizeof(retbuf)-1];
+  int i = 0;
 
-	if(comma == '\0') {
-		struct lconv *lcp = localeconv();
-		if(lcp != NULL) {
-			if(lcp->thousands_sep != NULL &&
-				*lcp->thousands_sep != '\0')
-				comma = *lcp->thousands_sep;
-			else	comma = ',';
-		}
-	}
+  if(comma == '\0') {
+    struct lconv *lcp = localeconv();
+    if(lcp != NULL) {
+      if(lcp->thousands_sep != NULL &&
+        *lcp->thousands_sep != '\0')
+        comma = *lcp->thousands_sep;
+      else  comma = ',';
+    }
+  }
 
-	*p = '\0';
+  *p = '\0';
 
-	do {
-		if(i%3 == 0 && i != 0)
-			*--p = comma;
-		*--p = '0' + n % 10;
-		n /= 10;
-		i++;
-	} while(n != 0);
+  do {
+    if(i%3 == 0 && i != 0)
+      *--p = comma;
+    *--p = '0' + n % 10;
+    n /= 10;
+    i++;
+  } while(n != 0);
 
-	return p;
+  return p;
 }
 
 

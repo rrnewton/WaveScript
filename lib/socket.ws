@@ -41,6 +41,8 @@ namespace Unix {
 
 // High level interface for socket communication.
 
+socket_out :: (Stream a, Uint16) -> Stream b;
+
 // The convention here is that out-bound sockets are the server.
 fun socket_out(strm, port) {
   iterate x in strm {
@@ -122,4 +124,50 @@ fun socket_in(addr, port) {
 
 
 //================================================================================
+
+/* [2009.10.20] Version 2 
+
+   We can avoid blocking.  We simply have to fork an additional
+   pthread that does the blocking for us.  Without changing the WS
+   compiler it's possible for us to use the foreign interface to
+   create our own separate subsystem that establishes all the
+   connections.
+
+   That's fine if we are ok with data dumping on the floor while we
+   wait for connections to be made.  (Which in turn requires that
+   programs be robust against arbitrary *skew*.).  The difficulty is
+   if we *want* the whole system to block (backpressure).  We can't
+   just block within an individual kernel, because we don't know the
+   threading structure of the backend we're in.  For this to work I
+   think we'll need to expose a WS call that this socket library can
+   use to quiesce the system.  That in turn will require support in
+   all the backends that support the FFI.
+
+   (How would I implement that on a future TBB backend where I don't
+   control the scheduler?)
+
+*/
+
+
+// Create a separate thread to wait for the client to connect.
+// In the meantime data dumps on the floor.
+// fun socket_out(strm, port) {
+
+//  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
+// The thread will return when it has made its connection.
+
+
+
+// This makes a blocking call to connect to a server.  We need to put
+// this on its own thread as well to avoid deadlock.  (Case in point:
+// imagine a program that connects to its own socket with a
+// single-threaded scheduler.  At the point where we setup )
+
+//fun socket_in_raw(addr, port) {
+
+// Here we have a problem though... we really can't return to the WS
+// scheduler without having produced some data item (if we are a source).
+// And we really should be a source.  The way we drove it by a timer
+// above doesn't really make sense.
+
 

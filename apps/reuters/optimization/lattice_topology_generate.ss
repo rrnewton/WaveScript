@@ -1,7 +1,7 @@
 #! /bin/bash
 #|
-exec regiment.plt i --script $0 $*
 exec regiment.chez i --script $0 $*
+# exec regiment.plt i --script $0 $*
 |#
 
 ;; ./latice_topology_generate.ss <N>
@@ -13,8 +13,12 @@ exec regiment.chez i --script $0 $*
       (string->number (rac (command-line)))
       50))
 
+;; On average, how many of the nodes in the next layer does our node connect to.
+(define fraction-down-connect 0.3)
+
 
 (unique-name-counter 0)
+(seed-random)
 ;(random-seed (time-nanoseconds (current-time)))
 
 (define node-names (list-build N (lambda _ (unique-name "node"))))
@@ -34,9 +38,6 @@ exec regiment.chez i --script $0 $*
 (define nodes-per-layer (max 1 (exact (floor (sqrt N)))))
 
 (printf "\n;; Total Nodes: ~a.  Mean nodes per layer: ~a\n" N nodes-per-layer)
-
-;; On average, how many of the nodes in the next layer does our node connect to.
-(define fraction-down-connect 0.3)
 
 (define (layer-size n)
   (min n (max 1 (exact (floor (+ nodes-per-layer

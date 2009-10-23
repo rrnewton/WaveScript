@@ -56,8 +56,10 @@ void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr);
 void WSQ_AddReutersSource(wsid_t id, char* schema_path);
 void WSQ_AddPrinter(char* prefix, wsid_t id);
 
-// void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO = right.FOO")
+// void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO == right.FOO")
 
+// void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "FOO == FOO")
+void WSQ_AddWindowJoin(wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, char* expr);
 
 /// Inter-machine connections.
 

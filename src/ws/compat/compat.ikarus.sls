@@ -20,7 +20,7 @@
 	  system repl make-list with-output-to-string
 	  which-scheme IFCHEZ	  
 
-	  
+	  seed-random
 	  
 	  (rename 
 	          (ik:gensym gensym) 

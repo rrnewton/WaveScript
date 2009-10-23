@@ -3,7 +3,7 @@
 (library (ws compat compat)
   (export 
           include getenv syntax->list 
- 	  random make-list
+ 	  random seed-random make-list
  	  merge merge! sort! append! reverse! call/ec inspect native-inspect debug define-values
  	  fluid-let parameterize reg:define-struct reg:struct?
  	  void make-parameter
@@ -214,8 +214,4 @@
   (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")
 
-
-  ;(display "MZSCHHHHHHHHHHHHHHHEEEEEEEEEEEEMMMEEEEEEEE ")
-  ;(display (random 300))
-  ;(newline)
 )
