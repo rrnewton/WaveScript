@@ -7,16 +7,28 @@ exec regiment.plt i --script $0 $*
 
 ;exec chez74 --script $0 $*
 
+;; TEMP:
+#;
+(import (except (rnrs (6)) error)
+	(for (main_r6rs) expand run)
+	(main)
+	(prefix (scheme) chez:)
+	(ws shortcuts)
+	(for (ws util reg_macros) expand)
+	)
+
 (define (read-qopt prt)
  (filter (compose not null?)
-      (port->linelists prt)))
+   (port->linelists prt)))
 
 (define raw 
   (read-qopt 
    ;; A bunch of spurious arguments because of the way this is invoked (above):
    (if (= (length (command-line)) 6)
        (open-input-file (rac (command-line)))
-       (current-input-port)
+       (begin 
+	 (printf "// File argument not given, reading problem description from stdin...\n")
+	 (current-input-port))
        ;;(error 'formulate_ilp "This script takes one argument: a .qopt file.")
        )))
 
@@ -123,17 +135,24 @@ exec regiment.plt i --script $0 $*
   (define revinds (make-eq-hashtable N)) ;; Remember the reverse mapping to decode.
   (define table   (make-vector N #f))    ;; Reencode the graph as a vector.
   (define (do-pos x y)
+    (let outer ((x x)
+		(y y)
+		(seen '()))
+     (define (not-seen? n) (not (memq n seen)))
     (or (get cost x y)
 	;; Consider posible neighbors:
-	(let loop ([ls (vector-ref table x)] 
+	(let loop ([ls (filter not-seen? (vector-ref table x))]
 		   [bestnode #f]
 		   [bestcost inf])
+	  ;(printf "   LOOP  ~s ~s ~s\n" ls bestnode bestcost)
 	  (if (null? ls)
+	      ;; If we've considered all neighbors we must have the best.
 	      ;; Note, might set the cost to "inf":
 	      (begin (set paths x y bestnode)
 		     (set cost  x y bestcost)
 		     bestcost)
-	      (let ([result (do-pos (car ls) y)])
+	      ;; Consider the path from a neighbor to the destination.
+	      (let ([result (outer (car ls) y (cons (car ls) seen))])
 		(if (= result inf)
 		    (loop (cdr ls) bestnode bestcost)
 		    (let ([thiscost (fx+ 1 result)])
@@ -145,7 +164,7 @@ exec regiment.plt i --script $0 $*
 				    (hashtable-ref revinds (car ls) 'huh) thiscost bestcost
 				    (hashtable-ref revinds bestnode 'huh))
 			    (loop (cdr ls) bestnode bestcost)
-			    )))))))))
+			    ))))))))))
   ;; Map node names onto indices:
   ;; ASSUMES: that there is an entry for every node.
   (for-eachi (lambda (i ls)
@@ -174,6 +193,7 @@ exec regiment.plt i --script $0 $*
   (if #f (for x = 0 to (sub1 N)
 	      (for y = 0 to (sub1 N)
 		   (do-pos x y))))
+    
   ;; Return a function that can read out the shortest path for a src/dst pair:
   (lambda (src dst) 
     (define _s (ASSERT (hashtable-ref indices src #f)))
@@ -228,7 +248,8 @@ exec regiment.plt i --script $0 $*
 	     (error 'load-globals "Corrupt data file, cannot pin this node more than once: ~s" op))
 	   (hashtable-set! op-pin op node)
 	   (hashtable-set! node-pinned node
-			   (set-cons:list op (hashtable-ref node-pinned node '())))]
+			   (set-cons:list op (hashtable-ref node-pinned node '())))
+	   ]
 	  [(op ,name   cpu ,cpucost)   (hashtable-set! op-cpu name cpucost)]
 	  [(node ,name cpu ,cpucap)    (hashtable-set! node-cpu name cpucap)]
 
@@ -300,33 +321,43 @@ exec regiment.plt i --script $0 $*
 
   ;; Sort them just for display purposes:   
   (define sorted-nodes (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))    
+
   (define virtuals ;; Compute these constraints early to populate incident-virtuals table.
     (list 
      """Transitively close the graph by introducing virtual edges."
      "  We assume shortest path routing to establish virtual/physical correspondence." 
      "  Virtual edge latency is the sum of edges traversed." 
      (map-distinct-pairs
-      (lambda (a b) 
+      (lambda (a b)
 	;; For every pair of real nodes we introduce a virtual edge.		
 	(let* ([var (virtlinklat-var a b)]
 	       [pair (cons a b)]
-	       [canon (hashtable-ref links-canonical pair #f)])	  
+	       [canon (hashtable-ref links-canonical pair #f)])
 	  ;; If a real edge exists:
 	  (if canon
 	      (begin 
 		(hashtable-cons! incident-virtuals pair (virtlinkbw-var a b))
 		`(= ,var ,(ASSERT (hashtable-ref link-lat canon #f))))
+
 	      ;; The sum of the edge latencies on the shortest path:
-	      `(= ,var ,(apply + 
-			  (map-path-links
-			     (lambda (src dst) 
-			       ;; Register that this virtual edge brings load to each of these physical edge:
-			       (hashtable-cons! incident-virtuals (cons src dst) (virtlinkbw-var a b))
-			       (ASSERT (hashtable-ref link-lat (cons src dst) #f)))
-			     (pathfinder a b)))))))
+              (let ([path (pathfinder a b)])
+		(if (not path) 
+		    '() ;(error 'generate-constraints " coud not find path between ~a and ~a\n" a b)
+		    `(= ,var ,(apply + 
+				       (map-path-links
+					(lambda (src dst)
+					  ;; Register that this virtual edge brings load to each of these physical edge:
+					  (hashtable-cons! incident-virtuals (cons src dst) (virtlinkbw-var a b))
+					  (ASSERT (hashtable-ref link-lat (cons src dst) #f)))
+					path)))
+		    ))
+	      ))
+	)
       sorted-nodes)))
 
-  (ASSERT (not (null? queries)))
+  (when (null? queries)
+    (error 'generate-constraints
+	   " cannot generate ILP problem.  There were no queries in the problem description."))
  
   (list
      
@@ -340,6 +371,7 @@ exec regiment.plt i --script $0 $*
     (map (lambda (op)
 	   (define pin (hashtable-ref op-pin op #f))
 	   (if pin
+	       ;" please pin I mean..."
 	       `(= 1 ,(assignvar op pin))
 	       '())
 	   )
@@ -372,7 +404,19 @@ exec regiment.plt i --script $0 $*
 	       ,(ASSERT (hashtable-ref link-bw pr #f))))
      links)
    
-   
+   ;; [2009.10.22] Ok... what were the other optimization metrics that
+   ;; we were considering?  We talked about at least these:
+   ;;
+   ;;   (1) Minimizing bottleneck.  Minimize the breaking point if all
+   ;;   data rates increase homogeneously.  This would be the worst of
+   ;;   the most loaded CPU and the most loaded network link.
+   ;;
+   ;;   (2) Minimizing total network usage.  That is, minimiizing $$$
+   ;;   spent on bandwidth.  
+   ;;
+   ;;   (3) And latency too... that's what I did first.
+   ;; 
+
    """The latency of a query is defined as the worst latency of any of its source->sink paths."   
    "  Currently we look at only the shortest path for each source/sink pair, not every path."
    "  We also only consider network latency and not varation in compute latency." 
@@ -403,6 +447,12 @@ exec regiment.plt i --script $0 $*
 				   sinks))
 		   sources))))
      queries)
+
+
+   ""
+   "Now define latencies on virtual edges."
+   
+
    
    
    """Now begin to tie together the op assignments and the affected edges."
@@ -417,16 +467,31 @@ exec regiment.plt i --script $0 $*
 		 edges))))
     sorted-nodes)
    """ Ditto for edge latencies."
-   (map (lambda (edge) 			     
+   (map (lambda (edge) 
 	  `(= ,(edgelatvar (car edge) (cdr edge))
+	      ;; For each edge in the query, the latency is a latency of whatever virtual edge we were assigned.
 	      (+ ,@(map-distinct-pairs
 		    (lambda (a b)
+#;
+		      (unless (pathfinder a b)
+			(warning 'hmm "No path between ~a and ~a\n" a b))
+		      ;; It is impossible for a query edge to span across disconnected parts of the network:
+		      (if (pathfinder a b)
+			  `(* ,(virtlinklat-var a b)
+			      (AND ,(assignvar (car edge) a)
+				   ,(assignvar (cdr edge) b)))
+			  0
+			  )
+		      #;
 		      `(* ,(virtlinklat-var a b)
 			  (AND ,(assignvar (car edge) a)
 			       ,(assignvar (cdr edge) b))))
 		    sorted-nodes))))
      edges)
    
+   """Make vars integral:"  
+   `(int . ,all_assignvars)
+
    """Minimize sum of query latencies."
    `(OBJECTIVE (+ ,@(map querylatvar queries)))
    ))
@@ -466,6 +531,8 @@ exec regiment.plt i --script $0 $*
 
 ;; NOTE: This could do some simple inlining as well, but hopefully the
 ;; ILP solvers are smart enough that that wouldn't help. 
+;; NOTE2: I did it anyway.  One consequence of this is you will not
+;; see "assign_" variables printed for the PINNED nodes.
 (define (desugar-constraints lst)
   (define inlines (make-eq-hashtable)) 
   (define (Expr e)
@@ -494,22 +561,20 @@ exec regiment.plt i --script $0 $*
       ;; POSSIBLE EXPR DUPLICATION
       [(AND ,[a c1*] ,[b c2*])
        (define var (unique-name "c"))
-       ;;
-       #;
-       (if (or (number? a) (number? b))
-	   
-	   )
        (values var  
-	       (cons*
-		`(<= ,var ,a)
-		`(<= ,var ,b)
-		`(> ,var (+ ,a ,b -2))
-		(append! c1* c2*)))]
+	       (append 
+		`((<= ,var ,a)
+		  (<= ,var ,b)
+		  (> ,var (+ ,a ,b -2)))
+		(append! c1* c2*))
+	       
+	       )]
 
       [(,other ,rand* ...)
        (guard (memq other '(underMAX overMIN underMIN XOR)))
        (error "desugar-constraints: ~a not implemented yet." other)]))
-  ;; Do some simple inlining, fill up the table of inlinable vars:
+  
+  ;; We first need to do a scan to fill up the table of inlinable vars:
   (for-each (lambda (cstrt)
 	      (match cstrt
 		[(= ,var ,num) (guard (symbol? var) (number? num))
@@ -518,12 +583,13 @@ exec regiment.plt i --script $0 $*
 		 (hashtable-set! inlines var num)]	       		
 		[,else (void)]))
     lst)
+
   ;; Now process all the constraints:
   (map (lambda (cnstrt)
 	 (match cnstrt		
 	   [(,op ,[Expr -> e1 c1*] ,[Expr -> e2 c2*])
 	    (guard (memq op '(= < > <= >=)))
-	    ;; lp_solve won't accept NUM = NUM constraints.
+	    ;; Lame, lp_solve won't accept NUM = NUM constraints.
 	    (if (and (number? e1) (number? e2))
 		(begin (ASSERT (simple-eval `(,op ,e1 ,e2))) 
 		       '() 
@@ -532,10 +598,14 @@ exec regiment.plt i --script $0 $*
 		(cons `(,op ,e1 ,e2)
 		      (append c1* c2*)))]
 	   [,str (guard (string? str)) str]
+	   [(int ,v* ...) `(int . ,v*)]
 	   [(OBJECTIVE ,[Expr -> e c*])
 	    (append c* `((OBJECTIVE ,e)))]
 	   ))
-    lst))
+    lst)
+  ) ;; End desugar
+
+;; ============================================================
 
 ;; Output in a form suitable for an ilp solver
 (define (print-ilp cstrts)
@@ -543,8 +613,9 @@ exec regiment.plt i --script $0 $*
     (match e
       [,s (guard (symbol? s)) (display s)]
       [,n (guard (number? n)) (display n)]
+
       [(,arith ,e* ...)       
-       (guard (memq arith '(+ - *)))
+       (guard (memq arith '(+ - * overMAX AND)))
        (let loop ([ls e*])
 	 (if (null? (cdr ls))
 	     (Expr (car ls))
@@ -572,6 +643,12 @@ exec regiment.plt i --script $0 $*
 		    (newline)
 		    (printf "// ~a\n" str))
 		]
+
+	  [(int ,v* ...)
+	   (printf "int ")
+	   (for-each display (insert-between ", " v*))
+	   (printf ";\n")]
+
 	  [(,op ,e1 ,e2) (guard (memq op '(= < > <= >=)))
 	   ;(if (eq? op '=) (newline))
 	   (printf " ")
@@ -592,6 +669,8 @@ exec regiment.plt i --script $0 $*
 
 ;;================================================================================
 
+
+
 (unique-name-counter 0)
 
 (load-globals raw)
@@ -603,5 +682,23 @@ exec regiment.plt i --script $0 $*
 ;(pretty-print (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
 
 ; (printf "================================================================================\n\n\n")
-(print-ilp (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
+
+;(print-ilp (flatten-constraints (desugar-constraints (flatten-constraints (generate-constraints)))))
+
+
+(printf "// About to start generating....\n")(flush-output-port (current-output-port))
+(define a (generate-constraints))
+(printf "// GENERATED CONSTRAINTS...\n")(flush-output-port (current-output-port))
+(define b (flatten-constraints a))
+(define c (desugar-constraints b))
+(define d (flatten-constraints c))
+
+;(print-ilp b)
+(print-ilp d)
+
+
+;(inspect y)(inspect x)
+;(inspect (desugar-constraints x))
+;(print-ilp (flatten-constraints (desugar-constraints x)))
+;
 
