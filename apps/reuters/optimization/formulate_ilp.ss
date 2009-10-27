@@ -5,17 +5,8 @@ exec regiment.chez i --script $0 $*
 exec regiment.plt i --script $0 $*
 |#
 
-;exec chez74 --script $0 $*
-
-;; TEMP:
-#;
-(import (except (rnrs (6)) error)
-	(for (main_r6rs) expand run)
-	(main)
-	(prefix (scheme) chez:)
-	(ws shortcuts)
-	(for (ws util reg_macros) expand)
-	)
+;; One of: latency, bandwidth, bottleneck
+(define optimization-objective 'bandwidth)
 
 (define (read-qopt prt)
  (filter (compose not null?)
@@ -403,6 +394,43 @@ exec regiment.plt i --script $0 $*
 	  `(<= ,(linkvar (car pr) (cdr pr)) 
 	       ,(ASSERT (hashtable-ref link-bw pr #f))))
      links)
+       
+   """Now begin to tie together the op assignments and the affected edges."
+   (map-distinct-pairs
+    (lambda (a b)
+      `(= ,(virtlinkbw-var a b)
+	  ;; If a query edge is broken, then its bw spills onto the virtual link:
+	  (+ ,@(map (lambda (edge) 			     
+		      `(+ (* ,(ASSERT (hashtable-ref edge-bw edge #f))
+			     (AND ,(assignvar (car edge) a)
+				  ,(assignvar (cdr edge) b)))
+			  ;; And alas we could cross the link in either direction:
+			  (* ,(ASSERT (hashtable-ref edge-bw edge #f))
+			     (AND ,(assignvar (car edge) b)
+				  ,(assignvar (cdr edge) a)))
+			  ))
+		 edges))))
+    sorted-nodes)
+
+   """ Ditto for edge latencies."
+   (map (lambda (edge) 
+	  `(= ,(edgelatvar (car edge) (cdr edge))
+	      ;; For each edge in the query, the latency is a latency of whatever virtual edge we were assigned.
+	      (+ ,@(map-distinct-pairs
+		    (lambda (a b)
+		      ;; It is impossible for a query edge to span across disconnected parts of the network:
+		      (if (pathfinder a b)
+			  `(* ,(virtlinklat-var a b)
+			      (AND ,(assignvar (car edge) a)
+				   ,(assignvar (cdr edge) b)))
+			  0))
+		    sorted-nodes))))
+     edges)
+   
+   """Make vars integral:"  
+   `(int . ,all_assignvars)
+
+
    
    ;; [2009.10.22] Ok... what were the other optimization metrics that
    ;; we were considering?  We talked about at least these:
@@ -416,84 +444,56 @@ exec regiment.plt i --script $0 $*
    ;;
    ;;   (3) And latency too... that's what I did first.
    ;; 
+   (match optimization-objective
+     [latency
+      (list
+       """The latency of a query is defined as the worst latency of any of its source->sink paths."   
+       "  Currently we look at only the shortest path for each source/sink pair, not every path."
+       "  We also only consider network latency and not varation in compute latency." 
+       (map (lambda (query)
+	      (define theseops (hashtable-ref query->ops query '()))	  
+	      (define graph 
+		(map (lambda (op)
+		       (cons op (hashtable-ref op-neighbors op '())))
+		  theseops))
+	      ;; Based on the topology of the query we define sources as
+	      ;; nodes with no incoming edges and sinks as those with no
+	      ;; outgoing ones.
+	      (define sinks
+		(map car 
+		  (filter (lambda (entry) (null? (cdr entry))) graph)))
+	      (define sources
+		(filter (lambda (op) (null? (hashtable-ref op-incoming op '())))
+		  theseops))
+	      (define path (shortest-paths graph))
+	      
+	      `(= ,(querylatvar query)
+		  (overMAX ; underMAX
+		   ,@(map
+			 (lambda (src) 
+			   (map-append (lambda (sink) 
+					 `(+ ,@(map-path-links edgelatvar (path src sink))))
+				       sinks))
+		       sources))))
+	 queries)
 
-   """The latency of a query is defined as the worst latency of any of its source->sink paths."   
-   "  Currently we look at only the shortest path for each source/sink pair, not every path."
-   "  We also only consider network latency and not varation in compute latency." 
-   ;"  (Could do longest, or some other scheme...)"
-   (map (lambda (query)
-	  (define theseops (hashtable-ref query->ops query '()))	  
-	  (define graph 
-	    (map (lambda (op)
-		   (cons op (hashtable-ref op-neighbors op '())))
-	      theseops))
-	  ;; Based on the topology of the query we define sources as
-	  ;; nodes with no incoming edges and sinks as those with no
-	  ;; outgoing ones.
-	  (define sinks
-	    (map car 
-	      (filter (lambda (entry) (null? (cdr entry))) graph)))
-	  (define sources
-	    (filter (lambda (op) (null? (hashtable-ref op-incoming op '())))
-	      theseops))
-	  (define path (shortest-paths graph))
-	  
-	  `(= ,(querylatvar query)
-	      (overMAX ; underMAX
-	       ,@(map
-		     (lambda (src) 
-		       (map-append (lambda (sink) 
-				     `(+ ,@(map-path-links edgelatvar (path src sink))))
-				   sinks))
-		   sources))))
-     queries)
+       """Minimize sum of query latencies."
+       `(OBJECTIVE (+ ,@(map querylatvar queries)))
+       )]
 
+     [bandwidth 
+      ;; This one is easy: just the sum of bandwidth on real network links:
+      (list """Minimize sum of network link bandwidth."
+	    `(OBJECTIVE (+ ,@(map (lambda (pr) (linkvar (car pr) (cdr pr)))
+			       links))))]
 
-   ""
-   "Now define latencies on virtual edges."
-   
+     [bottleneck 
+      (list
+       ;; FINISHME
+       )]
+     [,other (error 'generate-constraints "Do not recocognize optimzation objective: ~a" other)]
+     )
 
-   
-   
-   """Now begin to tie together the op assignments and the affected edges."
-   ;; If an edge is broken, then its 
-   (map-distinct-pairs
-    (lambda (a b)
-      `(= ,(virtlinkbw-var a b)
-	  (+ ,@(map (lambda (edge) 			     
-		      `(* ,(ASSERT (hashtable-ref edge-bw edge #f))
-			  (AND ,(assignvar (car edge) a)
-			       ,(assignvar (cdr edge) b))))
-		 edges))))
-    sorted-nodes)
-   """ Ditto for edge latencies."
-   (map (lambda (edge) 
-	  `(= ,(edgelatvar (car edge) (cdr edge))
-	      ;; For each edge in the query, the latency is a latency of whatever virtual edge we were assigned.
-	      (+ ,@(map-distinct-pairs
-		    (lambda (a b)
-#;
-		      (unless (pathfinder a b)
-			(warning 'hmm "No path between ~a and ~a\n" a b))
-		      ;; It is impossible for a query edge to span across disconnected parts of the network:
-		      (if (pathfinder a b)
-			  `(* ,(virtlinklat-var a b)
-			      (AND ,(assignvar (car edge) a)
-				   ,(assignvar (cdr edge) b)))
-			  0
-			  )
-		      #;
-		      `(* ,(virtlinklat-var a b)
-			  (AND ,(assignvar (car edge) a)
-			       ,(assignvar (cdr edge) b))))
-		    sorted-nodes))))
-     edges)
-   
-   """Make vars integral:"  
-   `(int . ,all_assignvars)
-
-   """Minimize sum of query latencies."
-   `(OBJECTIVE (+ ,@(map querylatvar queries)))
    ))
 
 
@@ -545,6 +545,7 @@ exec regiment.plt i --script $0 $*
        ;; lp_solve is lazy... it won't even do a little arithmetic:
        (values (if (andmap number? e*)
 		   (simple-eval `(,arith ,@e*))
+		   ;; TODO: Make it a binary op:
 		   `(,arith ,@e*))
 	       (apply append! c**))]
 
