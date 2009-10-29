@@ -1,0 +1,15 @@
+
+network n1 n2 n3 n4
+
+node n1 cpu 100
+node n2 cpu 100
+node n3 cpu 100
+node n4 cpu 100
+
+link n1 bw 100 lat 10  <-> n2  
+link n2 bw 100 lat 10  <-> n3
+
+;; Slightly lower latency on this side of the square:
+link n3 bw 100 lat 9  <-> n4
+link n4 bw 100 lat 9  <-> n1
+

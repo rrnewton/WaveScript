@@ -1,0 +1,6 @@
+
+pin q2 n1
+
+pin q2 n2
+
+pin q2 n4

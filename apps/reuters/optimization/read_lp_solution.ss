@@ -30,11 +30,31 @@ exec regiment.chez i --script $0 $*
       (string=? "assign" (substring str 0 len))))
 
 (define (split-var vr)
-  (match (string-split (symbol->string vr) #\_)
-    [("assign" ,op , node)
-     ;(values (string->symbol op)  (string->symbol node))
-     (values op node)
-     ]))
+
+  ;; How we do this is a hack:  We assume no double-underscore in the variables:
+  (define-values (left right)
+    (split-before (curry string=? "") 
+		  (string-split (symbol->string vr) #\_)))
+
+  
+;   (printf "SPLIT UP ~s\n" (string-split (symbol->string vr) #\_))
+;   (let-values (((a b) (split-before (curry string=? "") 
+; 				    (string-split (symbol->string vr) #\_))))    
+;     (printf "MORE SPLIT ~s ~s\n" a b))
+  
+;   (match (string-split (symbol->string vr) #\_)
+;     [("assign" ,op , node)
+;      ;(values (string->symbol op)  (string->symbol node))
+;      (values op node)
+;      ])
+
+
+  (ASSERT (string=? "assign" (car left)))
+  (ASSERT (string=? "" (car right)))
+  (values 
+   (apply string-append (insert-between "_" (cdr left)))
+   (apply string-append (insert-between "_" (cdr right))))
+  )
 
 (for-each 
     (lambda (line)

@@ -6,11 +6,18 @@ exec regiment.plt i --script $0 $*
 |#
 
 ;; One of: latency, bandwidth, bottleneck
-(define optimization-objective 'bandwidth)
+;(define optimization-objective 'bandwidth)
+(define optimization-objective 'latency)
 
 (define (read-qopt prt)
- (filter (compose not null?)
-   (port->linelists prt)))
+  (let loop ((prt prt))
+    (apply append 
+	   (map (lambda (line) 
+		  (match line
+		    [(include ,file) (loop (open-input-file file))]
+		    [,else (list line)]))
+	     (filter (compose not null?)
+	       (port->linelists prt))))))
 
 (define raw 
   (read-qopt 
@@ -101,6 +108,17 @@ exec regiment.plt i --script $0 $*
 	  (map (lambda (b) (list a b)) b*))
      a*)))
 
+
+;; Cartesian product:
+(define (map-all-pairs f ls)
+  (define acc '())
+  (for-each (lambda (x) 
+	      (for-each (lambda (y) (set! acc (cons (f x y) acc)))
+		ls))
+    ls)
+  (reverse! acc))
+
+;; Selects all distinct pairings (discounting symmetry and selecting with removal)
 (define (map-distinct-pairs f ls)
   (let loop1 ((l1 ls))
     (if (null? l1) '()
@@ -110,6 +128,10 @@ exec regiment.plt i --script $0 $*
 	      (cons (f (car l1) (car l2))
 		    (loop2 (cdr l2))))
 	  ))))
+
+
+;(define (path-not-found a b) #f)
+(define (path-not-found a b) (error 'shortest-path "Disconnected graph.  Path not found between ~a and ~a" a b))
 
 ;; Todo: plug in a shortest path algorithm:
 ;; The Floyd-Warshall algorithm (dynamic programming).
@@ -129,8 +151,17 @@ exec regiment.plt i --script $0 $*
     (let outer ((x x)
 		(y y)
 		(seen '()))
-     (define (not-seen? n) (not (memq n seen)))
-    (or (get cost x y)
+    (define (not-seen? n) (not (memq n seen)))
+;     (printf "outer ~a ~a ~a\n" (hashtable-ref revinds x #f) (hashtable-ref revinds y #f)
+; 	    (map (lambda (x) (hashtable-ref revinds x #f)) seen))
+;     (when (equal? (get cost x y) inf) (printf "   UMM, we already 'know' the cost but it's: ~a\n" inf))
+    
+    ;; Before there was a bug where we'd search for a path in and pollute the cost matrix with inf's:
+    ;; Now we need to recognize that an 'inf' doesn't meen that we're done.
+    (let ([cur (get cost x y)])
+     (if ;cur
+         (and cur (not (fx= cur inf)))
+	 cur
 	;; Consider posible neighbors:
 	(let loop ([ls (filter not-seen? (vector-ref table x))]
 		   [bestnode #f]
@@ -155,7 +186,7 @@ exec regiment.plt i --script $0 $*
 				    (hashtable-ref revinds (car ls) 'huh) thiscost bestcost
 				    (hashtable-ref revinds bestnode 'huh))
 			    (loop (cdr ls) bestnode bestcost)
-			    ))))))))))
+			    )))))))))))
   ;; Map node names onto indices:
   ;; ASSUMES: that there is an entry for every node.
   (for-eachi (lambda (i ls)
@@ -199,6 +230,7 @@ exec regiment.plt i --script $0 $*
 		(if tail
 		    (cons (hashtable-ref revinds n #f) tail)
 		    #f))))))))
+
 
 (define f
   (shortest-paths 
@@ -244,17 +276,28 @@ exec regiment.plt i --script $0 $*
 	  [(op ,name   cpu ,cpucost)   (hashtable-set! op-cpu name cpucost)]
 	  [(node ,name cpu ,cpucap)    (hashtable-set! node-cpu name cpucap)]
 
+
+	  ;; Links go both directions:
 	  [(link ,src bw ,band lat ,latency <-> ,dst)
+	   ;; There are two potential representations for this edge (A-B and B-A):
 	   (define pr1 (cons src dst))
 	   (define pr2 (cons dst src))
-	   (unless (hashtable-contains? links-tbl pr2)	     
-	     (begin
-	       (hashtable-set! links-tbl pr1 #t)
-	       (hashtable-set! links-canonical pr1 pr1)
-	       (hashtable-set! links-canonical pr2 pr1)
-	       (hashtable-cons! node-neighbors src dst)
-	       (hashtable-cons! node-neighbors dst src)
+	   (if (hashtable-contains? links-tbl pr2)
+	       (begin 
+		 ;; Otherwise pr2 has already been entered as the canonical name.	
+		 (void)
+		 (error 'load-globals "I forgot when this would happen... ~a ~a" src dst)
+		 )
+	       (begin		 
+		 ;; Register under the canonical "name", which is pr1:
+		 (hashtable-set! links-tbl pr1 #t)
+		 (hashtable-set! links-canonical pr1 pr1)
+		 (hashtable-set! links-canonical pr2 pr1)
+		 (hashtable-cons! node-neighbors src dst)
+		 (hashtable-cons! node-neighbors dst src)
 	       ))
+
+	   ;; We set metadata 'under both names:
 	   (hashtable-set! link-bw  pr1 band)
 	   (hashtable-set! link-bw  pr2 band)
 	   (hashtable-set! link-lat pr1 latency)
@@ -278,12 +321,14 @@ exec regiment.plt i --script $0 $*
   (define ops   (vector->list (hashtable-keys op-cpu))) 
   (define nodes (vector->list (hashtable-keys node-cpu)))
 
-  ;; For tracking which virt edges pass through real ones.
+  ;; For tracking which virt edges pass through real ones. 
+  ;; (Specifically it keeps track of the virtual bandwidth vars.)
   (define incident-virtuals   (make-hashtable equal-hash equal?))
 
   (define (binary var) `((>= ,var 0) (<= ,var 1)))
 
-  (define (assignvar op node)  (symbol-append 'assign_ op '_ node))
+  ;; [2009.10.27] Hack, use double underscore to separate:
+  (define (assignvar op node)  (symbol-append 'assign_ op '__ node))
 
   (define assignvars (map (lambda (a)
 			    (map (lambda (b) (assignvar a b)) nodes))
@@ -313,7 +358,7 @@ exec regiment.plt i --script $0 $*
   ;; Sort them just for display purposes:   
   (define sorted-nodes (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) nodes))    
 
-  (define virtuals ;; Compute these constraints early to populate incident-virtuals table.
+  (define virtuals ;; Compute virt latency constraints early to populate incident-virtuals table.
     (list 
      """Transitively close the graph by introducing virtual edges."
      "  We assume shortest path routing to establish virtual/physical correspondence." 
@@ -321,26 +366,46 @@ exec regiment.plt i --script $0 $*
      (map-distinct-pairs
       (lambda (a b)
 	;; For every pair of real nodes we introduce a virtual edge.		
-	(let* ([var (virtlinklat-var a b)]
+	;; [2009.10.28] This is tricky... we introduce both forward and reverse variables for LATENCY.
+	;; But currently we only need forward variables for BANDWIDTH.
+	(let* ([var   (virtlinklat-var a b)]
+	       [var2  (virtlinklat-var b a)]
+	       [bwvar (virtlinkbw-var a b)]
 	       [pair (cons a b)]
+	       ;; Then convert to canonical form (if such an edge exists):
 	       [canon (hashtable-ref links-canonical pair #f)])
 	  ;; If a real edge exists:
 	  (if canon
 	      (begin 
-		(hashtable-cons! incident-virtuals pair (virtlinkbw-var a b))
-		`(= ,var ,(ASSERT (hashtable-ref link-lat canon #f))))
+		;; We introduce a virtual edge, but we make it synonymous with the real edge:
+		;(hashtable-cons! incident-virtuals pair bwvar)
+		(hashtable-cons! incident-virtuals canon bwvar)
+		`((= ,var  ,(ASSERT (hashtable-ref link-lat canon #f)))
+		  (= ,var2 ,(ASSERT (hashtable-ref link-lat canon #f)))))
 
+	      ;; FIXME:
+	      ;;; [2009.10.27] ??? Hmm... we don't have a canonical form for virtual edges, eh?
+	      
 	      ;; The sum of the edge latencies on the shortest path:
               (let ([path (pathfinder a b)])
+		(eprintf "// TRAVERSING PATH... ~a \n" path)
 		(if (not path) 
-		    '() ;(error 'generate-constraints " coud not find path between ~a and ~a\n" a b)
-		    `(= ,var ,(apply + 
-				       (map-path-links
-					(lambda (src dst)
-					  ;; Register that this virtual edge brings load to each of these physical edge:
-					  (hashtable-cons! incident-virtuals (cons src dst) (virtlinkbw-var a b))
+		    (path-not-found a b)
+		    (let ([sum (apply + 
+				      (map-path-links
+				       (lambda (src dst)
+					 ;; Register that this virtual edge brings load to each of these physical edge:
+					 ;; FIXME:  I think this was wrong:
+					  ;;; ?????????????????????????//
+					  ;(hashtable-cons! incident-virtuals (cons dst src) bwvar)
+					  ;;; ?????????????????????????//
+					  (hashtable-cons! incident-virtuals (cons src dst) bwvar)
+					  
 					  (ASSERT (hashtable-ref link-lat (cons src dst) #f)))
-					path)))
+					path))])		      
+		    ;'() ;(error 'generate-constraints " could not find path between ~a and ~a\n" a b)
+		      `((= ,var  ,sum)
+			(= ,var2 ,sum)))
 		    ))
 	      ))
 	)
@@ -385,7 +450,12 @@ exec regiment.plt i --script $0 $*
    """The bandwidth consumed on each physical edge is the sum of all virtual edges passing through."
    (map (lambda (pr) 
 	  (define incidents (hashtable-ref incident-virtuals pr '()))
-	  (if (null? incidents) '()
+	  ;; If there are no virtual edges, we use the real edge as a proxy:
+	  (if (null? incidents) 
+	      ;'()
+	      ;; But that means there must NOT be virtual edge between these neighbors.
+	      (error 'physical-bandwidth "double check this code path")
+
 	      `(= ,(linkvar (car pr) (cdr pr)) 
 		  (+ ,@incidents))))
      links)
@@ -416,21 +486,25 @@ exec regiment.plt i --script $0 $*
    (map (lambda (edge) 
 	  `(= ,(edgelatvar (car edge) (cdr edge))
 	      ;; For each edge in the query, the latency is a latency of whatever virtual edge we were assigned.
-	      (+ ,@(map-distinct-pairs
+	      (+ ,@(map-all-pairs
 		    (lambda (a b)
-		      ;; It is impossible for a query edge to span across disconnected parts of the network:
-		      (if (pathfinder a b)
-			  `(* ,(virtlinklat-var a b)
-			      (AND ,(assignvar (car edge) a)
-				   ,(assignvar (cdr edge) b)))
-			  0))
+		      (if (eq? a b) 
+			  ;; Being assigned to the same node doesn't incur latency:
+			  0
+			  (let () ;([canon (ASSERT (hashtable-ref links-canonical (cons a b) #f))])
+			    ;; It is impossible for a query edge to span across disconnected parts of the network:
+			    (if (pathfinder a b)
+				`(* ;,(virtlinklat-var  (car canon) (cdr canon))
+				  ,(virtlinklat-var  a b)
+				    (AND ,(assignvar (car edge) a)
+					 ,(assignvar (cdr edge) b)))			 
+				0 ;; We can't actually fully support disconnected graphs yet.
+			      ;(path-not-found a b)
+				))
+			  ))
 		    sorted-nodes))))
      edges)
    
-   """Make vars integral:"  
-   `(int . ,all_assignvars)
-
-
    
    ;; [2009.10.22] Ok... what were the other optimization metrics that
    ;; we were considering?  We talked about at least these:
@@ -465,14 +539,14 @@ exec regiment.plt i --script $0 $*
 	      (define sources
 		(filter (lambda (op) (null? (hashtable-ref op-incoming op '())))
 		  theseops))
-	      (define path (shortest-paths graph))
+	      (define pathfind (shortest-paths graph))
 	      
 	      `(= ,(querylatvar query)
 		  (overMAX ; underMAX
 		   ,@(map
 			 (lambda (src) 
 			   (map-append (lambda (sink) 
-					 `(+ ,@(map-path-links edgelatvar (path src sink))))
+					 `(+ ,@(map-path-links edgelatvar (ASSERT (pathfind src sink)))))
 				       sinks))
 		       sources))))
 	 queries)
@@ -489,10 +563,15 @@ exec regiment.plt i --script $0 $*
 
      [bottleneck 
       (list
+       ;; Minimize the worst bottleneck.
+       
        ;; FINISHME
        )]
      [,other (error 'generate-constraints "Do not recocognize optimzation objective: ~a" other)]
      )
+   
+   """Make vars integral:"  
+   `(int . ,all_assignvars)
 
    ))
 
@@ -676,6 +755,15 @@ exec regiment.plt i --script $0 $*
 
 (load-globals raw)
 
+; (hashtab-for-each (lambda (a b) (printf "  ~a ~a\n" a b)) 
+; 		    links-tbl)
+; (printf "\nNEIGHBORS:\n")
+; (hashtab-for-each (lambda (a b) (printf "  ~a ~a\n" a b)) 
+; 		  node-neighbors)
+;  (printf "================================================================================\n\n\n")
+
+
+
 ; (printf "================================================================================\n\n\n")
 ; (pretty-print (flatten-constraints (generate-constraints)))
 
@@ -690,6 +778,14 @@ exec regiment.plt i --script $0 $*
 (printf "// About to start generating....\n")(flush-output-port (current-output-port))
 (define a (generate-constraints))
 (printf "// GENERATED CONSTRAINTS...\n")(flush-output-port (current-output-port))
+
+(if (file-exists? "intermediate.ss")
+    (delete-file  "intermediate.ss"))
+(with-output-to-file "intermediate.ss"
+  (lambda ()
+    (pretty-print a)
+    ))
+
 (define b (flatten-constraints a))
 (define c (desugar-constraints b))
 (define d (flatten-constraints c))
