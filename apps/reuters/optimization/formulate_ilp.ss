@@ -5,9 +5,27 @@ exec regiment.chez i --script $0 $*
 exec regiment.plt i --script $0 $*
 |#
 
+ ;; A bunch of spurious arguments because of the way this is invoked (above):
+(define real-command-line (list-tail (command-line) 5))
+
 ;; One of: latency, bandwidth, bottleneck
-;(define optimization-objective 'bandwidth)
-(define optimization-objective 'latency)
+(define optimization-objective 
+  (match real-command-line
+    [("latency"    ,file) 'latency]
+    [("bandwidth"  ,file) 'bandwidth]
+    [("bottleneck" ,file) 'bottleneck]
+    [(,other ,file) (error 'optimization-objective "invalid optimization objective: ~s" other)]
+    [,else (fprintf (current-error-port) "// No optimization criteria given.  By default optimizing latency...")
+	   'latency]))
+
+(printf "\n// Optimizing for ~a\n" optimization-objective)
+
+(define the-port
+  (match real-command-line
+    [(,_ ,file) (open-input-file file)]
+    [(,file)    (open-input-file file)]
+    [() (fprintf (current-error-port) "// File argument not given, reading problem description from stdin...\n")
+        (current-input-port)]))
 
 (define (read-qopt prt)
   (let loop ((prt prt))
@@ -19,16 +37,9 @@ exec regiment.plt i --script $0 $*
 	     (filter (compose not null?)
 	       (port->linelists prt))))))
 
-(define raw 
-  (read-qopt 
-   ;; A bunch of spurious arguments because of the way this is invoked (above):
-   (if (= (length (command-line)) 6)
-       (open-input-file (rac (command-line)))
-       (begin 
-	 (printf "// File argument not given, reading problem description from stdin...\n")
-	 (current-input-port))
-       ;;(error 'formulate_ilp "This script takes one argument: a .qopt file.")
-       )))
+(define raw (read-qopt the-port))
+
+(define basic-arith '(+ - * ))
 
 ;;==============================================================================
 
@@ -435,7 +446,7 @@ exec regiment.plt i --script $0 $*
     )
 
    (list 
-    """Constrain bandwidth at each node to be less than its maximum."
+    """Constrain CPU use at each node to be less than its maximum."
     (map (lambda (node)
 	   (define cpu (ASSERT (hashtable-ref node-cpu node #f)))
 	   `(>= ,cpu
@@ -537,10 +548,16 @@ exec regiment.plt i --script $0 $*
 		(map car 
 		  (filter (lambda (entry) (null? (cdr entry))) graph)))
 	      (define sources
-		(filter (lambda (op) (null? (hashtable-ref op-incoming op '())))
+		(filter (lambda (op) 
+			  ;(printf "// incoming ~s ~s\n" op (hashtable-ref op-incoming op '()))
+			  (null? (hashtable-ref op-incoming op '())))
 		  theseops))
 	      (define pathfind (shortest-paths graph))
 	      
+	      ;(printf "// OUT OF these ~a\n" theseops)
+	      (printf "// Query sources: ~a\n" sources)
+	      (printf "// Query sinks: ~a\n" sinks)
+
 	      `(= ,(querylatvar query)
 		  (overMAX ; underMAX
 		   ,@(map
@@ -552,7 +569,9 @@ exec regiment.plt i --script $0 $*
 	 queries)
 
        """Minimize sum of query latencies."
-       `(OBJECTIVE (+ ,@(map querylatvar queries)))
+       ;`(OBJECTIVE (+ ,@(map querylatvar queries)))
+       ;; Or maybe we would like to minimize the worst query latency??
+       `(OBJECTIVE (overMAX ,@(map querylatvar queries)))
        )]
 
      [bandwidth 
@@ -562,10 +581,26 @@ exec regiment.plt i --script $0 $*
 			       links))))]
 
      [bottleneck 
-      (list
-       ;; Minimize the worst bottleneck.
-       
-       ;; FINISHME
+      `(
+	"""Minimize the worst bottleneck."
+	"""Including all cpu utilization:"
+	(= worst_cpu
+	   (overMAX ,@(map (lambda (node)		  
+			     ;; Use percentage instead of fractions:
+			     (define coefficient (inexact (/ 100 (ASSERT (hashtable-ref node-cpu node #f)))))
+			     `(+ ,@(map (lambda (op) 
+					  `(* ,(* coefficient (ASSERT (hashtable-ref op-cpu op #f)))
+					      ,(assignvar op node)))
+				     ops)))
+			nodes)))
+	"""And all link bandwidth utilization:"
+	(= worst_link
+	   (overMAX	  
+	  ,@(map (lambda (pr) 	  
+		   (define coef (inexact (/ 100 (ASSERT (hashtable-ref link-bw pr #f)))))
+		   `(* ,coef ,(linkvar (car pr) (cdr pr))))
+	      links)))
+	(OBJECTIVE (overMAX worst_cpu worst_link))
        )]
      [,other (error 'generate-constraints "Do not recocognize optimzation objective: ~a" other)]
      )
@@ -620,7 +655,7 @@ exec regiment.plt i --script $0 $*
 	  (values (hashtable-ref inlines s s) '())]
       [,n (guard (number? n)) (values n '())]
       [(,arith ,[e* c**] ...)
-       (guard (memq arith '(+ - *)))
+       (guard (memq arith basic-arith))
        ;; lp_solve is lazy... it won't even do a little arithmetic:
        (values (if (andmap number? e*)
 		   (simple-eval `(,arith ,@e*))
@@ -695,14 +730,18 @@ exec regiment.plt i --script $0 $*
       [,n (guard (number? n)) (display n)]
 
       [(,arith ,e* ...)       
-       (guard (memq arith '(+ - * overMAX AND)))
+       (guard (or (memq arith basic-arith) 
+		  (memq arith '(overMAX AND))))
        (let loop ([ls e*])
 	 (if (null? (cdr ls))
 	     (Expr (car ls))
 	     (begin
+	       ;(printf "(")
 	       (Expr (car ls))
 	       (printf " ~a " arith)
-	       (loop (cdr ls)))))]
+	       (loop (cdr ls))
+	       ;(printf ")")
+	       )))]
       ))
   (printf "// Script-Generated ILP formulation: \n\n")
   (printf "// Objective Function:\n")

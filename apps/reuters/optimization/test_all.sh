@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTS="test test2 test3"
+TESTS="test test2 test3 test4"
 
 for tst in $TESTS; do
   echo 

@@ -25,27 +25,3 @@ pin q1 n1
 pin q3 n3
 ;; ANSWER: q2 needs to go on n1 (because of q1->q2 bandwidth).
 
-
-;;========================================
-;; A second query:
-
-; query Q_2 q4 q5 q6 q7 q8
-; op q4 10
-; op q5 10
-; op q6 10
-; op q7 10
-; op q8 10
-; edge q4 1.6 -> q5
-; edge q5 1.7 -> q6
-; edge q7 1.8 -> q6
-; edge q8 1.9 -> q7
-
-; pin q4 n1
-; pin q8 n1
-; pin q6 n3
-
-; ;; Certain edges and operators (either intra- or inter-query) can
-; ;; share 0-100% of their cpu/bandwidth requirments.
-
-; edge_share q1 q2 q4 q5 100
-; op_share q1 q4 50

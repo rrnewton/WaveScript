@@ -36,11 +36,14 @@ exec regiment.plt i --script $0 $*
     (lambda (entry)
       (match entry
 	[() (void)]
-	[(edge ,src bw ,bw  -> ,dst* ...)
-	 (void)]
+	[(edge ,src bw ,bw  -> ,dst* ...)	 
+	 (for-each (lambda (dst) 
+		     (printf "    ~a -> ~a [label=\" ~a\"];\n" src dst bw))
+	   dst*)]
 
-	[(pin ,op ,node)           (void)]
-	[(op ,name   cpu ,cpucost) (void)]
+	[(pin ,op ,node)           (printf "   ~a [shape=box, style=rounded];\n" op)]
+	[(op ,name   cpu ,cpucost) (printf "   ~a [shape=box];\n" name)]
+
 	[(node ,name cpu ,cpucap)  
 	 (printf "  ~a [label=\"~a\"];\n" name name)
 	 ]
