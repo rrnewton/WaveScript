@@ -9,6 +9,21 @@ exec regiment.plt i --script $0 $*
       (open-input-file (rac (command-line)))
       (current-input-port)))
 
+
+;;              CAREFUL!
+;; [2009.11.01] This is dangerous because we might cause COLLISIONS!
+;;
+;; Some characters are not acceptable:
+;; Type: Symbol -> String
+(define (clean-name s)
+  ;; A table of replacements
+  (define bad-chars  (list->hashtab '((#\- #\_))))
+  (list->string 
+   (map (lambda (c) 
+	  (or (hashtab-get bad-chars c) c))
+     (string->list (symbol->string s))))
+  )
+
 ; digraph Foo {
 ;   COUNTUP_8 -> COUNTUP_7;
 ;   interleaveSS_1 -> BASE;
@@ -36,20 +51,21 @@ exec regiment.plt i --script $0 $*
     (lambda (entry)
       (match entry
 	[() (void)]
-	[(edge ,src bw ,bw  -> ,dst* ...)	 
+	[(edge ,src bw ,bw  -> ,dst* ...)
+	 (define csrc (clean-name src))
 	 (for-each (lambda (dst) 
-		     (printf "    ~a -> ~a [label=\" ~a\"];\n" src dst bw))
+		     (printf "    ~a -> ~a [label=\" ~a\"];\n" csrc (clean-name dst) bw))
 	   dst*)]
-
-	[(pin ,op ,node)           (printf "   ~a [shape=box, style=rounded];\n" op)]
-	[(op ,name   cpu ,cpucost) (printf "   ~a [shape=box];\n" name)]
+	
+	[(pin ,op ,node)           (printf "   ~a [shape=box, style=rounded];\n" (clean-name op))]
+	[(op ,name   cpu ,cpucost) (printf "   ~a [shape=box];\n" (clean-name name))]
 
 	[(node ,name cpu ,cpucap)  
-	 (printf "  ~a [label=\"~a\"];\n" name name)
-	 ]
+	 (define clean (clean-name name))
+	 (printf "  ~a [label=\"~a\"];\n" clean clean)]
 
 	[(link ,src bw ,band lat ,latency <-> ,dst)
-	 (printf "  ~a -> ~a [label=\"bw ~a\\nlat ~a\"];\n" src dst band latency)
+	 (printf "  ~a -> ~a [label=\"bw ~a\\nlat ~a\"];\n" (clean-name src) (clean-name dst) band latency)
 	 (void)]
 
 	[(query ,name ,opnames ...)
