@@ -21,6 +21,11 @@
   (import (except (rnrs (6)) error) 
 	  (except (rnrs r5rs) force delay)
 	  (main_r6rs);(except (main_r6rs) +)
+
+	  (prefix (scheme) chez:) ;; Temp.  Remove me.
+	  ;(except (rnrs (6)) error) (prefix (scheme) chez:) (ws shortcuts)
+	  ;(except (rnrs (6)) error) (main_r6rs) (prefix (scheme) chez:) (ws shortcuts)
+	  ;'(except (rnrs (6)) error) '(main_r6rs) '(prefix (scheme) chez:) '(ws shortcuts)
 	  )
 ;(require scheme/mpair)
 
@@ -858,7 +863,6 @@
     (printf "Total typechecker time used:\n")
     (time-accum-report)(newline))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
-;  (exit)
 
   ;; Here we dump it to a .dot file for graphviz.
   ;; Wasted work if we're going to apply explicit-stream-wiring again later.
@@ -1898,6 +1902,10 @@
 	   ;(test-everything)
 	   ]
 
+	  ;; [2009.10.23] Nothing mode.
+	  ;; For whatever reason if we want main to do nothing at all, we can give it this:
+	  [(nothing) (void)]
+
 	  ;; Compile mode:
 	  [(c compile)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
@@ -1998,13 +2006,18 @@
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
 	     ;; --script implies --exit-error: add that setting:
-	     (loop '("-exit-error"))
+	     ;; [2009.10.23] Going back on that... why did I want that necessarily?
+	     ;(loop '("-exit-error"))  
+
 	     (let* ([file (cadr filenames)] ;; (caddr args)
 		    [exps (file->slist file)])
+	       ;(chez:load file)
+	       ;(chez:load file reg:top-level-eval)	       
 	       ;; Under R6RS a script is essentially a sequence of expressions sent to "eval".
 	       (for-each reg:top-level-eval
 		 ;;(lambda (x) (printf "EVALUATING: ~a\n" x) (reg:top-level-eval x))
-		 exps))]
+		 exps)
+	       )]
 
 	    [else 
 	     ;(inspect (list->vector args))

@@ -63,6 +63,8 @@
 	  ;(mzscheme)
 	  )
 
+
+
 #;
   (define-syntax trace-lambda
     (syntax-rules ()
@@ -76,6 +78,11 @@
 	 closure)]))
 
   (define which-scheme 'mzscheme)
+
+  (define seed-random
+    (case-lambda 
+      [() (plt:random-seed (current-milliseconds))]
+      [(n) (plt:random-seed n)]))
 
   ;; PLT needs some help printing out the line numbers of a syntax object.
   (define (format-syntax-nicely x)

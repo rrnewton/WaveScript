@@ -47,6 +47,8 @@
 	  (rnrs eval (6))
 	  (prefix (ikarus) ik:)
 	  (rnrs programs)
+
+	  ;(ikarus foreign)
 	  )
 
   (define which-scheme 'ikarus)
@@ -68,6 +70,14 @@
   (define-syntax sort! (identifier-syntax list-sort))
 
   (define call/ec call/cc)
+
+  (define (seed-random . n) (error 'seed-random "Not implemented."))
+  ;(define srandom ((make-c-callout 'void '(unsigned-long)) (dlsym (dlopen) "srandom"))) 
+#;
+  (define seed-random
+    (case-lambda 
+      [() (srandom (current-milliseconds))]
+      [(n) (srandom n)]))
 
   ;; Include is defined relative to REGIMENTD
   #;

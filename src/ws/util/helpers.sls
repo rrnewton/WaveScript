@@ -31,7 +31,7 @@
    display-progress-meter progress-dots count-nodes
    periodic-display all-equal?   
 	  
-   set->hashtab hashtab->list
+   set->hashtab hashtab->list list->hashtab
    
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
@@ -1472,6 +1472,13 @@
 			(set! ls (cons (cons k x) ls)))
 		      h)
     (reverse! ls)))
+
+(define (list->hashtab ls)
+  (let ((tab (make-default-hash-table (length ls))))
+    (for-each (lambda (pr)
+		(hashtab-set! tab (car pr) (cadr pr)))
+      ls)
+    tab))
 
 ;; I thought the primitive equal? did this by default?  This is just a
 ;; version that accepts any number of arguments.  Just a throw-away helper function.

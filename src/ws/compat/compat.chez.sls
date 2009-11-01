@@ -70,7 +70,7 @@
 
   (define native-inspect chez:inspect)
 
-  (define format-syntax-nicely (lambda (x) x))
+  (define format-syntax-nicely (lambda (x) (inspect x) x))
 
   ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
   ;(define reg:top-level-eval chez:eval)

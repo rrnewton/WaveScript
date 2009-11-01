@@ -206,7 +206,12 @@
       ((_ Template Cata Obj ThreadedIds)
        ;#'(error 'match "Unmatched datum" Obj)
        ;; RRN:
-       #'(error 'match "Unmatched datum.\n  Datum: ~s\n  Source-Location: ~s\n" Obj #'Template)
+       ;#'(error 'match "Unmatched datum.\n  Datum: ~s\n  Source-Location: ~s\n" Obj #'Template)
+       ;; [2009.10.26] Trying format syntax nicely.
+       ;#'(error 'match "Unmatched datum.\n  Datum: ~s\n  Source-Location: ~s\n" Obj (format-syntax-nicely #'Template))
+       #'(begin 
+	   ;(inspect #'Template)
+	   (error 'match "Unmatched datum.\n  Datum: ~s\n  Source Location: ~s\n" Obj #'Template))
        )
       ((_ Template Cata Obj ThreadedIds (Pat B0 B ...) Rest ...)
        #'(convert-pat Pat

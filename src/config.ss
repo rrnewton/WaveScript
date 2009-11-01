@@ -1,6 +1,6 @@
 
 ;; This file may be loaded more than once.
-;; MORE (and detailed) configuration options can be found in constants.ss
+;; MORE (and detailed) configuration options can be found in globals.ss
 
 ;; The IFDEBUG/DEBUGMODE toggles are like a #define that toggles debug code for the whole compiler.
 ;; This is not a very appropriate place for this definition, but it's the most convenient
