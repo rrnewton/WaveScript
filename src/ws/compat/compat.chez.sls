@@ -36,7 +36,7 @@
 	  ;(rename (chez:import import))
 
 	  )
-
+  
   (import 
 	  (prefix (scheme) chez:)
 	  (except (scheme) inspect warning
@@ -94,12 +94,23 @@
 ;   ;; This is too lenient, but there's no other option.
    (define promise? procedure?)
 
+   (define repl-env (environment '(except (rnrs (6)) error) 
+				 '(rnrs r5rs (6))
+				 '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
+				 '(main_r6rs) '(main) ; '(ws shortcuts)
+				 ;'(prefix (scheme) chez:)
+				 ))
+   
+   #;
+   (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
+		'(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
+		'(main_r6rs) '(main))
+
    (define (repl)
-     ;(new-cafe)
-     (define env (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) '(prefix (scheme) chez:) '(ws shortcuts)))     
+     ;(new-cafe)          
      (new-cafe 
       (lambda (x)
-	(reg:top-level-eval x env)
+	(reg:top-level-eval x repl-env)
 	)))
 
   (define (with-output-to-port p th)

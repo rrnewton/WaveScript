@@ -120,6 +120,13 @@
   (define print-graph (make-parameter #f))  
   (define print-vector-length  (make-parameter #f))
 
+  (define repl-env
+    (environment '(except (rnrs (6)) error) '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
+		 '(main_r6rs) '(main)  '(ws shortcuts)
+		 ;'(prefix (scheme) plt:)
+		 '(scheme)
+		 ))
+
   (define repl read-eval-print-loop)
 #;
    (define (repl)
@@ -215,7 +222,7 @@
         [(_ fn)
 	 (let ([regd (getenv "REGIMENTD")])
 	   (unless regd
-			   (environment '(scheme base) '(except (rnrs (6)) error)))
+	     (environment '(scheme base) '(except (rnrs (6)) error)))
 	   ;(display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src")) (newline)
 	   #`(plt:include (file #,(datum->syntax #'_ (string-append regd "/src/" (syntax->datum #'fn)))))
 	   )]

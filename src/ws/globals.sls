@@ -185,7 +185,8 @@
          ) ;; End export
 
 	(import (except (rnrs (6)) error)
-		(for (ws compat compat) run expand (meta 1) (meta 2))
+		(for (ws compat compat) run expand)
+		;(for (ws compat compat) run expand (meta 1) (meta 2))
 
 	 )
 	

@@ -6,6 +6,7 @@
 
 ;; Be careful about relying on this default.  Generally scheme
 ;; implementations need a little extra somethig added to this.
+#;
 (define default-top-level-eval-env
     (environment 
      '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
@@ -47,9 +48,12 @@
 	   [else x])
 	  x))
     (case-lambda 
-      [(exp) (reg:top-level-eval 
-	      exp 	    
-	      default-top-level-eval-env
+      [(exp) (reg:top-level-eval  
+
+	      (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
+			   '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
+			   '(main_r6rs) '(main))
+	      ;repl-env
 	      )]
       [(exp env)
        
