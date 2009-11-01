@@ -91,11 +91,8 @@
 
   (define (debug . x)
     (error 'ikarus "doesn't have a built-in debug mode"))
-
-  (define repl-env
-    (environment '(except (rnrs (6)) error) '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
-		 '(main_r6rs) '(main)  '(ws shortcuts)
-		 '(prefix (ikarus) ik:)))
+ 
+  (define implementation-specific-imports '((prefix (ikarus) ik:)))
 
   (ik:include "ws/compat/reg_record.ss")
   (ik:include "ws/compat/common.ss")
@@ -164,11 +161,7 @@
 
   (define (repl)
     ;; Ack, here if we pass an explicit evaluator then we can't "define".
-    (ik:new-cafe 
-     (lambda (x)
-       (reg:top-level-eval x repl-env)
-       ;(eval x (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) '(prefix (ikarus) ik:)))
-       )))
+    (ik:new-cafe reg:top-level-eval))
 
   ;; Ikarus has this now:
 #;

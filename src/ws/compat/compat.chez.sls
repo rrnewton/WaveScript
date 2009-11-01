@@ -94,24 +94,17 @@
 ;   ;; This is too lenient, but there's no other option.
    (define promise? procedure?)
 
-   (define repl-env (environment '(except (rnrs (6)) error) 
-				 '(rnrs r5rs (6))
-				 '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
-				 '(main_r6rs) '(main) ; '(ws shortcuts)
-				 ;'(prefix (scheme) chez:)
-				 ))
+   (define implementation-specific-imports '((prefix (scheme) chez:)))
+#;
+   (define (default-repl-env)
+     (environment '(except (rnrs (6)) error) ; (rnrs r5rs (6))
+		  '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
+		  '(main_r6rs) '(main) '(ws shortcuts)
+		  '(prefix (scheme) chez:)
+		  ))
    
-   #;
-   (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
-		'(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
-		'(main_r6rs) '(main))
-
-   (define (repl)
-     ;(new-cafe)          
-     (new-cafe 
-      (lambda (x)
-	(reg:top-level-eval x repl-env)
-	)))
+   (define (repl)  
+     (new-cafe reg:top-level-eval))
 
   (define (with-output-to-port p th)
     (parameterize ([current-output-port p])

@@ -5,6 +5,10 @@ exec regiment.chez i --script $0 $*
 exec regiment.plt i --script $0 $*
 |#
 
+(chez:optimize-level 3)
+
+(printf "// optimize level ~s\n" (chez:optimize-level))
+
  ;; A bunch of spurious arguments because of the way this is invoked (above):
 (define real-command-line (list-tail (command-line) 5))
 
@@ -399,7 +403,7 @@ exec regiment.plt i --script $0 $*
 	      
 	      ;; The sum of the edge latencies on the shortest path:
               (let ([path (pathfinder a b)])
-		(eprintf "// TRAVERSING PATH... ~a \n" path)
+		;(eprintf "// TRAVERSING PATH... ~a \n" path)
 		(if (not path) 
 		    (path-not-found a b)
 		    (let ([sum (apply + 
@@ -613,7 +617,8 @@ exec regiment.plt i --script $0 $*
 
 (define (flatten-constraints nested)  
   (reverse! ;; Cosmetic.
-   (let loop ([x nested] [acc '()])
+   (let loop ([x nested] 
+	      [acc '()])
      (cond
       [(null? x) acc]
       [(pair? x) 
@@ -698,6 +703,8 @@ exec regiment.plt i --script $0 $*
 		 (hashtable-set! inlines var num)]	       		
 		[,else (void)]))
     lst)
+
+  (printf "//  (DBG) Desugar: filled up inlinable table.\n")(flush-output-port (current-output-port))
 
   ;; Now process all the constraints:
   (map (lambda (cnstrt)
@@ -816,7 +823,7 @@ exec regiment.plt i --script $0 $*
 
 (printf "// About to start generating....\n")(flush-output-port (current-output-port))
 (define a (generate-constraints))
-(printf "// GENERATED CONSTRAINTS...\n")(flush-output-port (current-output-port))
+(printf "//  (DBG) Generated constraints...\n")(flush-output-port (current-output-port))
 
 (if (file-exists? "intermediate.ss")
     (delete-file  "intermediate.ss"))
@@ -825,11 +832,17 @@ exec regiment.plt i --script $0 $*
     (pretty-print a)
     ))
 
-(define b (flatten-constraints a))
-(define c (desugar-constraints b))
-(define d (flatten-constraints c))
+(printf "//  (DBG) Dumped to intermediate.ss ...\n")(flush-output-port (current-output-port))
 
-;(print-ilp b)
+(define b (flatten-constraints a))
+(printf "//  (DBG) Flattened constraints ...\n")(flush-output-port (current-output-port))
+
+(define c (desugar-constraints b))
+(printf "//  (DBG) Desugared constraints ...\n")(flush-output-port (current-output-port))
+
+(define d (flatten-constraints c))
+(printf "//  (DBG) Reflattened constraints ...\n")(flush-output-port (current-output-port))
+
 (print-ilp d)
 
 

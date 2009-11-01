@@ -35,7 +35,7 @@
 		void make-parameter
 		format printf fprintf 
 		gensym 
-		time read-eval-print-loop
+		time 
 		file 
 		current-milliseconds current-process-milliseconds
 		box unbox set-box! box? 
@@ -120,22 +120,17 @@
   (define print-graph (make-parameter #f))  
   (define print-vector-length  (make-parameter #f))
 
-  (define repl-env
-    (environment '(except (rnrs (6)) error) '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
-		 '(main_r6rs) '(main)  '(ws shortcuts)
-		 ;'(prefix (scheme) plt:)
-		 '(scheme)
-		 ))
+  (define implementation-specific-imports 
+    '(
+      ;;'(prefix (scheme) plt:)
+      (scheme)
+      ))
 
-  (define repl read-eval-print-loop)
-#;
+;  (define repl read-eval-print-loop)
    (define (repl)
-     (define env (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) 
-			      '(scheme)))
-     (parameterize ((current-eval
-		     (lambda (x)
-		       (reg:top-level-eval x env))))
-       (read-eval-print-loop)))
+     (parameterize ((plt:current-eval reg:top-level-eval))
+       (printf "SPAWNING EVAL\n")
+       (plt:read-eval-print-loop)))
     
   (define make-list
     (case-lambda 

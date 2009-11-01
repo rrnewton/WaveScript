@@ -29,7 +29,13 @@
 
 ;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
 (define reg:top-level-eval  
-  (let ()
+  (let ([repl-env (box #f)])
+
+    (define default-imports
+      '((except (rnrs (6)) error) ; (rnrs r5rs (6))
+	(rnrs mutable-pairs (6)) (rnrs mutable-strings (6))
+	(main_r6rs) (main) (ws shortcuts)))
+    
     ;; Here's a little hack that transforms (define v e) expressions into
     ;; explicit top-level-value calls.
     ;; WARNING: This won't allow recursive bindings.
@@ -48,13 +54,13 @@
 	   [else x])
 	  x))
     (case-lambda 
-      [(exp) (reg:top-level-eval  
-
-	      (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
-			   '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
-			   '(main_r6rs) '(main))
-	      ;repl-env
-	      )]
+      [(exp) 
+       (unless (unbox repl-env)
+	 (set-box! repl-env (apply environment (append default-imports implementation-specific-imports)))
+	 ;(set-box! repl-env (default-repl-env))
+	 (printf "SET THE DAMN REPL ENV ~s\n" (unbox repl-env))
+	 )
+       (reg:top-level-eval exp (unbox repl-env))]
       [(exp env)
        
        
