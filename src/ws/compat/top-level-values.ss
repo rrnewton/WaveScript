@@ -4,6 +4,15 @@
 ;; implementations which don't allow direct access to the top-level
 ;; environment.  
 
+;; Be careful about relying on this default.  Generally scheme
+;; implementations need a little extra somethig added to this.
+(define default-top-level-eval-env
+    (environment 
+     '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
+     '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
+     '(main_r6rs) '(main)))
+
+
 (define top-table (make-eq-hashtable 200))
 
 (define (define-top-level-value var val) (hashtable-set! top-table var val))
@@ -17,13 +26,13 @@
 	(error 'top-level-value "unbound: ~a" var)
 	result)))
 
-;; (Inefficient) This evaluates something inside the virtual top-level
-;; environment.  This is unfinished, it also needs to import the
-;; top-level WS/Regiment module.
+;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
 (define reg:top-level-eval  
   (let ()
-  ;; Here's a little hack that transforms (define v e) expressions into
+    ;; Here's a little hack that transforms (define v e) expressions into
     ;; explicit top-level-value calls.
+    ;; WARNING: This won't allow recursive bindings.
+    ;; TODO: I could manage that with let-n-set.
     (define (eval-preprocess x)
       ;; UNLESS we do a little hack.
       ;; We manage a virtual top-level environment ourselves:
@@ -39,11 +48,8 @@
 	  x))
     (case-lambda 
       [(exp) (reg:top-level-eval 
-	      exp 
-	      ;;default-environment
-	      (environment '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
-			   '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
-			   '(main_r6rs) '(main))
+	      exp 	    
+	      default-top-level-eval-env
 	      )]
       [(exp env)
        

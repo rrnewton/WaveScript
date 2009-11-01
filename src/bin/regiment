@@ -18,10 +18,10 @@ then exec regiment.plt  $*;
 
 # Otherwise choose a default, in a particular preference order:
 
-elif [ `which ikarus` != "" ]
+elif [ "`which ikarus`" != "" ]
 # elif [ `which ikarus > /dev/null` ]
 then exec regiment.ikarus $*;
-elif [ `which chez` != "" ]
+elif [ "`which chez`" != "" ]
 then exec regiment.chez  $*;
 else exec regiment.plt   $*;
 #else exec regiment.plt $*;

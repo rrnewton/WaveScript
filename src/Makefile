@@ -24,7 +24,7 @@ basic:
 	$(MAKE) aggregated
 	@echo; echo BUILDING COMPILER # UNDER IKARUS
 	@echo "======================================================================"
-	$(MAKE) chez || $(MAKE) ik 
+	if $(MAKE) chez; then echo "  ==== FALLING BACK TO IKARUS ===="; $(MAKE) ik; fi
 
 # 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 # 	@echo "======================================================================"
@@ -65,6 +65,10 @@ aggregated:
 	rm -f ws/common.sls main_r6rs.sls
 	$(MAKE) ws/common.sls main_r6rs.sls
 
+# [2009.10.09] Let's factor this:
+#AGGREGATOR = plt-r6rs
+#AGGREGATOR = $(CHEZ) --program
+#AGGREGATOR = $(IKARUS) --r6rs-script
 
 # With some Scheme implementations I'm having problems with passing in a command line argument with a space inside it.
 ws/common.sls:
@@ -72,7 +76,7 @@ ws/common.sls:
         # This is hacked to work with either scheme implementation:
 #	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common || \
 #	$(CHEZ)   --program     ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
-
+#	$(AGGREGATOR)           ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
 
 #	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
 
@@ -80,6 +84,7 @@ main_r6rs.sls:
 	plt-r6rs                ./generate_main_r6rs.ss 
 #	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss || \
 #	$(CHEZ) --program ./generate_main_r6rs.ss 
+#	$(AGGREGATOR)           ./generate_main_r6rs.ss 
 
 ##	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
 

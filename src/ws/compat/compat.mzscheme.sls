@@ -42,6 +42,12 @@
 		current-output-port
 		) run expand)
 
+	  ;(scheme srfi/19)	
+;	  (scheme mzlib cml) 
+	  ;(scheme mzlib/cml)
+	  ;(mzlib cml)  
+	  ;(srfi 19)
+	  
 	  ;(only (lazy promise) promise? delay force)
 	  (only (scheme promise) promise? delay force)
 	  
@@ -63,7 +69,7 @@
 	  ;(mzscheme)
 	  )
 
-
+  (define which-scheme 'mzscheme)
 
 #;
   (define-syntax trace-lambda
@@ -77,11 +83,11 @@
 	 (trace sym)
 	 closure)]))
 
-  (define which-scheme 'mzscheme)
-
-  (define seed-random
+  (define seed-random 
     (case-lambda 
-      [() (plt:random-seed (current-milliseconds))]
+      ;[()  (plt:random-seed (time-nanosecond (current-time)))]
+      ;[()  (plt:random-seed (exact (round (current-time))))]
+      [() (plt:random-seed (plt:current-milliseconds))]
       [(n) (plt:random-seed n)]))
 
   ;; PLT needs some help printing out the line numbers of a syntax object.
@@ -115,6 +121,14 @@
   (define print-vector-length  (make-parameter #f))
 
   (define repl read-eval-print-loop)
+#;
+   (define (repl)
+     (define env (environment '(except (rnrs (6)) error) '(main_r6rs) '(main) 
+			      '(scheme)))
+     (parameterize ((current-eval
+		     (lambda (x)
+		       (reg:top-level-eval x env))))
+       (read-eval-print-loop)))
     
   (define make-list
     (case-lambda 

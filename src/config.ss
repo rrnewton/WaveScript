@@ -1,4 +1,7 @@
 
+;; This file contains configuration options that users of the
+;; WaveScript compiler might want to change.
+
 ;; This file may be loaded more than once.
 ;; MORE (and detailed) configuration options can be found in globals.ss
 
