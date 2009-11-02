@@ -3,6 +3,8 @@
 
 # This will rank the quality of a solution according to the objective function specified.
 
+SOLVER=lp_solve
+
 TEMP=`tempfile`
 
 OPT=$1
@@ -31,7 +33,7 @@ FORMULATE=`dirname $0`/formulate_ilp.ss
 #lp_solve $TEMP2 | grep Value
 
 TEMP2=$ANSWER".dump"
-$FORMULATE $OPT $TEMP | lp_solve > $TEMP2
+$FORMULATE $OPT $TEMP | $SOLVER > $TEMP2
 grep "Value of objective" $TEMP2
 
 #  $FORMULATE $OPT $TEMP | lp_solve | grep -v " 0"
