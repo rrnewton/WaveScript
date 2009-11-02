@@ -32,6 +32,6 @@ FORMULATE=`dirname $0`/formulate_ilp.ss
 
 TEMP2=$ANSWER".dump"
 $FORMULATE $OPT $TEMP | lp_solve > $TEMP2
-grep Value $TEMP2
+grep "Value of objective" $TEMP2
 
 #  $FORMULATE $OPT $TEMP | lp_solve | grep -v " 0"

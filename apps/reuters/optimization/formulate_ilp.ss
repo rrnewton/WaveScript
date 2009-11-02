@@ -51,15 +51,28 @@ exec regiment.plt i --script $0 $*
  ;; A bunch of spurious arguments because of the way this is invoked (above):
 ;(define real-command-line (list-tail (command-line) 5))
 
-;; One of: latency, bandwidth, bottleneck
 (define optimization-objective 
   (match real-command-line
     [("latency"    ,file) 'latency]
     [("bandwidth"  ,file) 'bandwidth]
     [("bottleneck" ,file) 'bottleneck]
+    [("combo" ,file)      'combo]
     [(,other ,file) (error 'optimization-objective "invalid optimization objective: ~s" other)]
     [,else (fprintf (current-error-port) "// No optimization criteria given.  By default optimizing latency...")
 	   'latency]))
+
+
+;; Beta times network usage plus cpu usage is used for the 'combo optimization objective:
+(define beta 
+  (match (getenv "BETA")
+    [#f 3.0] ;; lame default
+    [,n (string->number n)]))
+
+;; The maximum tolerable query latency is, uh, 100:
+(define max-query-latency 
+  (match (getenv "MAXLAT")
+    [#f 100]
+    [,n (string->number n)]))
 
 (printf "\n// Optimizing for ~a\n" optimization-objective)
 
@@ -597,6 +610,41 @@ exec regiment.plt i --script $0 $*
      edges)
    
    
+   
+   (let ([query-latencies 
+	  ;; This returns a list of 
+	  (lambda ()
+	    (map (lambda (query)
+		   (define theseops (hashtable-ref query->ops query '()))	  
+		   (define graph 
+		     (map (lambda (op)
+			    (cons op (hashtable-ref op-neighbors op '())))
+		       theseops))
+		   ;; Based on the topology of the query we define sources as
+		   ;; nodes with no incoming edges and sinks as those with no
+		   ;; outgoing ones.
+		   (define sinks
+		     (map car 
+		       (filter (lambda (entry) (null? (cdr entry))) graph)))
+		   (define sources
+		     (filter (lambda (op) 
+			  ;(printf "// incoming ~s ~s\n" op (hashtable-ref op-incoming op '()))
+			  (null? (hashtable-ref op-incoming op '())))
+		  theseops))
+		   (define pathfind (shortest-paths graph))
+		   
+	      ;(printf "// OUT OF these ~a\n" theseops)
+		   (printf "// Query sources: ~a\n" sources)
+		   (printf "// Query sinks: ~a\n" sinks)
+		   
+		   ;; Return a list of source/sink latencies for the query:
+		   (map (lambda (src) 
+			  (map-append (lambda (sink) 
+					`(+ ,@(map-path-links edgelatvar (ASSERT (pathfind src sink)))))
+				      sinks))
+		     sources))
+	      queries))])
+
    ;; [2009.10.22] Ok... what were the other optimization metrics that
    ;; we were considering?  We talked about at least these:
    ;;
@@ -615,6 +663,10 @@ exec regiment.plt i --script $0 $*
        """The latency of a query is defined as the worst latency of any of its source->sink paths."   
        "  Currently we look at only the shortest path for each source/sink pair, not every path."
        "  We also only consider network latency and not varation in compute latency." 
+       (map (lambda (query latencies)
+	      `(= ,(querylatvar query) (overMAX ,@latencies)))
+	 queries (query-latencies))
+#;
        (map (lambda (query)
 	      (define theseops (hashtable-ref query->ops query '()))	  
 	      (define graph 
@@ -682,8 +734,27 @@ exec regiment.plt i --script $0 $*
 	      links)))
 	(OBJECTIVE (overMAX worst_cpu worst_link))
        )]
+
+     [combo
+      `(
+	(= sum_bw (+ ,@(map (lambda (pr) (linkvar (car pr) (cdr pr)))
+			 links)))
+	(= sum_cpu (+ ,@(map (lambda (node)		  
+			       `(+ ,@(map (lambda (op) 
+					    `(* ,(ASSERT (hashtable-ref op-cpu op #f))
+						,(assignvar op node)))
+				       ops)))
+			  nodes)))
+	,(map (lambda (query latencies)
+		`((= ,(querylatvar query) (overMAX ,@latencies))
+		  (<= ,(querylatvar query) ,max-query-latency))
+		)
+	   queries (query-latencies))
+	(OBJECTIVE (+ (* ,beta sum_bw) sum_cpu))
+	)]
+
      [,other (error 'generate-constraints "Do not recocognize optimzation objective: ~a" other)]
-     )
+     ))
    
    """Make vars integral:"  
    `(int . ,all_assignvars)
