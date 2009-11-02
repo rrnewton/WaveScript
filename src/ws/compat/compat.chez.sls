@@ -74,8 +74,15 @@
 
   ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
   ;(define reg:top-level-eval chez:eval)
-  (define (simple-eval xp) (eval xp (environment '(rnrs (6)))))
 
+  ;; [2009.11.01] 'environment' is actually quite expensive. 
+  (define simple-eval
+    (let ([env #f])
+      (lambda (xp)
+	(unless env 
+	  (set! env (environment '(rnrs (6)))))
+	(chez:eval xp env))))
+  
   ;; [2008.12.05] Check up on this one:
   (define (get-string-available inp)
     (error 'get-string-available "non-blocking IO not implemented..."))

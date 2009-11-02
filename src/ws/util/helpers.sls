@@ -1707,25 +1707,28 @@
 
 ;; This generates a simple text progress meter.  Call it with a total,
 ;; and then invoke the returned thunk that many times to fill it up.
-(define (display-progress-meter totalcount)
-  (let ((ticksize (/ totalcount 100))
-	(lasttick 0)
-	(counter 0))
-    (lambda ()
-      (when (= 0 counter) 
-	(printf "\nProgress:         20%                           50%                                              100%\n")
-	(printf "[") (flush-output-port (current-output-port)))
-      (set! counter (add1 counter))
-      (if (= lasttick 100)
-       #f ;; We're finished, signal that there's no more work to do
-       (let ((newticks (floor (/ counter ticksize))))
-	 (when (> newticks lasttick)
-	  (for i = 1 to (- newticks lasttick)
-	       (display #\.))
-	  (flush-output-port (current-output-port))
-	  (set! lasttick newticks))
-	 (when (= newticks 100) (display #\]) (newline) (flush-output-port (current-output-port)))
-	 #t)))))
+(define display-progress-meter
+  (case-lambda
+    [(totalcount) (display-progress-meter totalcount 100)]
+    [(totalcount width)
+     (let ((ticksize (/ totalcount width))
+	   (lasttick 0)
+	   (counter 0))
+       (lambda ()
+	 (when (= 0 counter) 
+	   (printf "\nProgress:         20%                           50%                                              100%\n")
+	   (printf "[") (flush-output-port (current-output-port)))
+	 (set! counter (add1 counter))
+	 (if (= lasttick width)
+	     #f ;; We're finished, signal that there's no more work to do
+	     (let ((newticks (floor (/ counter ticksize))))
+	       (when (> newticks lasttick)
+		 (for i = 1 to (- newticks lasttick)
+		      (display #\.))
+		 (flush-output-port (current-output-port))
+		 (set! lasttick newticks))
+	       (when (= newticks width) (display #\]) (newline) (flush-output-port (current-output-port)))
+	       #t))))]))
 ;; Example
 #;
 (let ((f (display-progress-meter 100)))

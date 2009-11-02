@@ -1,16 +1,55 @@
 #! /bin/bash
 #|
+  echo "// Running $0 $*"
+  CURDIR=`pwd`  
+  if cd $REGIMENTD/src
+  then exec chez --program $0 $CURDIR $*
+  fi
+#  exec chez --script $0 $*
+
+# Old method, run through regiment script mode:
 # This works with either PLT or chez right now (ikarus doesn't have hashtables yet)
 exec regiment.chez i --script $0 $*
 exec regiment.plt i --script $0 $*
 |#
 
-(chez:optimize-level 3)
+;(library-directories (cons (format "~a/src" (getenv "REGIMENTD")) (library-directories)))
+;(printf "// Set lib dirs: ~s\n" (library-directories))
+;(printf "// Set lib exts: ~s\n" (library-extensions))
+
+;; This is for running as an R6RS program:
+;; Requires that the library path include $REGIMENTD/src
+(import (except (rnrs (6)) error) (rnrs mutable-pairs (6))
+	(main_r6rs) ;(except (main_r6rs) match)
+	(main)
+	(ws shortcuts)
+	(prefix (scheme) chez:)
+	;(ws util rn-match)
+	)
+
+;(load (format "~a/src/main_r6rs.sls" (getenv "REGIMENTD")))
+;(load (format "~a/src/main.sls" (getenv "REGIMENTD")))
+
+;(eval-when (compile eval load) (optimize-level 3))
+
+(define real-command-line (list-tail (command-line) 2))
+(printf "// Command line ~s\n" real-command-line)
+
+(define orig-dir (cadr (command-line)))
+(printf "// Ran from dir ~s\n" orig-dir)
+(current-directory orig-dir)
+
+(chez:eval-when (compile eval load) (chez:optimize-level 2))
+
+
+;;================================================================================
+
+;(chez:optimize-level 3)
 
 (printf "// optimize level ~s\n" (chez:optimize-level))
 
  ;; A bunch of spurious arguments because of the way this is invoked (above):
-(define real-command-line (list-tail (command-line) 5))
+;(define real-command-line (list-tail (command-line) 5))
 
 ;; One of: latency, bandwidth, bottleneck
 (define optimization-objective 
@@ -93,6 +132,23 @@ exec regiment.plt i --script $0 $*
 ;;========================================
 ;; HELPERS:
 
+;;              CAREFUL!
+;; [2009.11.01] This is dangerous because we might cause COLLISIONS!
+;;
+;; Some characters are not acceptable:
+;; Type: Symbol -> String
+
+(define (clean-name s)
+  ;; A table of replacements
+  (define bad-chars  (list->hashtab '((#\- #\_))))
+  (list->string 
+   (map (lambda (c) 
+	  (case c
+	    [(#\-) #\_])
+	  (or (hashtab-get bad-chars c) c))
+     (string->list (symbol->string s))))
+  )
+
 ;(define (map-append fn ls) (apply append (map fn ls)))
 (define (map-append fn ls)
   (let loop ([ls ls])
@@ -143,6 +199,19 @@ exec regiment.plt i --script $0 $*
 	      (cons (f (car l1) (car l2))
 		    (loop2 (cdr l2))))
 	  ))))
+
+(define (map-tail-rec f ls)
+  (if (null? ls) '()
+      (let* ([start (cons (f (car ls)) #f)]
+	     [acc start])
+	(let mtr-loop ((ls (cdr ls)))
+	  (if (null? ls) 
+	      (begin (set-cdr! acc '())
+		     start)
+	      (let ((newpr (cons (f (car ls)) #f)))
+		(set-cdr! acc newpr)
+		(set! acc newpr)
+		(mtr-loop (cdr ls))))))))
 
 
 ;(define (path-not-found a b) #f)
@@ -295,28 +364,28 @@ exec regiment.plt i --script $0 $*
 	  ;; Links go both directions:
 	  [(link ,src bw ,band lat ,latency <-> ,dst)
 	   ;; There are two potential representations for this edge (A-B and B-A):
-	   (define pr1 (cons src dst))
-	   (define pr2 (cons dst src))
-	   (if (hashtable-contains? links-tbl pr2)
-	       (begin 
-		 ;; Otherwise pr2 has already been entered as the canonical name.	
-		 (void)
-		 (error 'load-globals "I forgot when this would happen... ~a ~a" src dst)
-		 )
-	       (begin		 
-		 ;; Register under the canonical "name", which is pr1:
-		 (hashtable-set! links-tbl pr1 #t)
-		 (hashtable-set! links-canonical pr1 pr1)
-		 (hashtable-set! links-canonical pr2 pr1)
-		 (hashtable-cons! node-neighbors src dst)
-		 (hashtable-cons! node-neighbors dst src)
-	       ))
+	   (let ([pr1 (cons src dst)]
+		 [pr2 (cons dst src)])
+	     (if (hashtable-contains? links-tbl pr2)
+		 (begin 
+		   ;; Otherwise pr2 has already been entered as the canonical name.	
+		   (void)
+		   (error 'load-globals "I forgot when this would happen... ~a ~a" src dst)
+		   )
+		 (begin		 
+		   ;; Register under the canonical "name", which is pr1:
+		   (hashtable-set! links-tbl pr1 #t)
+		   (hashtable-set! links-canonical pr1 pr1)
+		   (hashtable-set! links-canonical pr2 pr1)
+		   (hashtable-cons! node-neighbors src dst)
+		   (hashtable-cons! node-neighbors dst src)
+		   ))
 
-	   ;; We set metadata 'under both names:
-	   (hashtable-set! link-bw  pr1 band)
-	   (hashtable-set! link-bw  pr2 band)
-	   (hashtable-set! link-lat pr1 latency)
-	   (hashtable-set! link-lat pr2 latency)]
+	     ;; We set metadata 'under both names:
+	     (hashtable-set! link-bw  pr1 band)
+	     (hashtable-set! link-bw  pr2 band)
+	     (hashtable-set! link-lat pr1 latency)
+	     (hashtable-set! link-lat pr2 latency))]
 
 	  ;; Ignored, handled above:
 	  [(query ,name ,opnames ...)
@@ -469,7 +538,7 @@ exec regiment.plt i --script $0 $*
 	  (if (null? incidents) 
 	      ;'()
 	      ;; But that means there must NOT be virtual edge between these neighbors.
-	      (error 'physical-bandwidth "double check this code path")
+	      (error 'physical-bandwidth "double check this code path: ~s" pr)
 
 	      `(= ,(linkvar (car pr) (cdr pr)) 
 		  (+ ,@incidents))))
@@ -648,13 +717,20 @@ exec regiment.plt i --script $0 $*
 ;; But we can't define a true MIN or MAX.
 ; x = (overMAX a b) => x >= a, x >= b 
 
+(define tempfile 
+  (begin (if (file-exists? "/tmp/foo.txt")
+	     (delete-file "/tmp/foo.txt"))
+	 (open-output-file "/tmp/foo.txt")))
+
 ;; NOTE: This could do some simple inlining as well, but hopefully the
 ;; ILP solvers are smart enough that that wouldn't help. 
 ;; NOTE2: I did it anyway.  One consequence of this is you will not
 ;; see "assign_" variables printed for the PINNED nodes.
 (define (desugar-constraints lst)
   (define inlines (make-eq-hashtable)) 
+;  (define (Expr e) (values e '()))
   (define (Expr e)
+    ;; Returns two values: new expression and list of new constraints generated.
     (match e
       [,s (guard (symbol? s)) 
 	  (values (hashtable-ref inlines s s) '())]
@@ -689,7 +765,7 @@ exec regiment.plt i --script $0 $*
 		(append! c1* c2*))
 	       
 	       )]
-
+      
       [(,other ,rand* ...)
        (guard (memq other '(underMAX overMIN underMIN XOR)))
        (error "desugar-constraints: ~a not implemented yet." other)]))
@@ -706,14 +782,23 @@ exec regiment.plt i --script $0 $*
 
   (printf "//  (DBG) Desugar: filled up inlinable table.\n")(flush-output-port (current-output-port))
 
+  (let* ([len (length lst)]
+	 [progress (display-progress-meter len)])
+
+    (printf "//  (DBG) Now processing ~s constraints.\n" len)
+
   ;; Now process all the constraints:
-  (map (lambda (cnstrt)
+  (map-tail-rec
+   (lambda (cnstrt)
+     ;(progress)
+     ;(printf ".")
+     ;(printf "//Processign constraint: ~s\n" cnstrt)
 	 (match cnstrt		
 	   [(,op ,[Expr -> e1 c1*] ,[Expr -> e2 c2*])
 	    (guard (memq op '(= < > <= >=)))
 	    ;; Lame, lp_solve won't accept NUM = NUM constraints.
 	    (if (and (number? e1) (number? e2))
-		(begin (ASSERT (simple-eval `(,op ,e1 ,e2))) 
+		(begin (ASSERT (simple-eval `(,op ,e1 ,e2)))
 		       '() 
 		       ;(list (format " ~a ~a ~a // <- suppressed" e1 op e2))
 		       )
@@ -723,8 +808,14 @@ exec regiment.plt i --script $0 $*
 	   [(int ,v* ...) `(int . ,v*)]
 	   [(OBJECTIVE ,[Expr -> e c*])
 	    (append c* `((OBJECTIVE ,e)))]
+
+	   ;; TEMP FIXME DELETEME
+	   ;[,oth oth]
+
 	   ))
     lst)
+    
+    )
   ) ;; End desugar
 
 ;; ============================================================

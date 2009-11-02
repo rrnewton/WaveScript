@@ -58,7 +58,7 @@
        (unless (unbox repl-env)
 	 (set-box! repl-env (apply environment (append default-imports implementation-specific-imports)))
 	 ;(set-box! repl-env (default-repl-env))
-	 (printf "SET THE DAMN REPL ENV ~s\n" (unbox repl-env))
+	 ;(printf "SET THE REPL ENV ~s\n" (unbox repl-env))
 	 )
        (reg:top-level-eval exp (unbox repl-env))]
       [(exp env)

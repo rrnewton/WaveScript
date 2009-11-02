@@ -18,7 +18,23 @@ cat $PROBLEM $ANSWER > $TEMP
 
 # echo "Filled up temp file $TEMP"
 
-./formulate_ilp.ss $OPT $TEMP | lp_solve | grep Value
+#FORMULATE=./formulate_ilp.ss
+#FORMULATE= formulate_ilp.ss
 
+FORMULATE=`dirname $0`/formulate_ilp.ss
+#TEMP2=`tempfile`
+
+#echo RUNNING FROM `dirname $0`
+#echo FORMMULATE $FORMULATE , temp2 $TEMP2
+
+#$FORMULATE $OPT $TEMP > $TEMP2
+#lp_solve $TEMP2 | grep Value
+
+
+# $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep Value
+
+ $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep -v " 0"
+
+# $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep linkbw
 
 
