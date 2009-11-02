@@ -31,10 +31,6 @@ FORMULATE=`dirname $0`/formulate_ilp.ss
 #lp_solve $TEMP2 | grep Value
 
 
-# $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep Value
+$FORMULATE $OPT $TEMP | lp_solve | grep Value
 
- $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep -v " 0"
-
-# $FORMULATE $OPT $TEMP | lp_solve $TEMP2 | grep linkbw
-
-
+#  $FORMULATE $OPT $TEMP | lp_solve | grep -v " 0"

@@ -16,7 +16,12 @@ exec regiment.chez i --script $0 $*
 
 (define prt
   (if arg1
-      (open-input-file arg1)
+      ;; If we're reading from a file we cut off the prefix first.
+      ;; (This allows us to run lp_solve with verbose turned on.)
+      (let ((tmp (car (string->lines (system-to-str "tempfile")))))
+	;; This can be rather wasteful if the file is, say, 20mb.  Better to do it with awk.
+	(system (format "csplit --prefix=~a_ ~a '/Value of objective/' > /dev/null" tmp arg1))
+	(open-input-file (string-append tmp "_01")))
       (current-input-port)))
 
 (define lines (port->linelists prt))

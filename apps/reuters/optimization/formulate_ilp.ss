@@ -99,6 +99,7 @@ exec regiment.plt i --script $0 $*
 ;; Representing an undirected graph is a little tricky.
 ;;   Do we use the key (a . b) or (b . a) to reach into the hash table?
 ;;   This maps each link (pair) to its canonical form.
+;; [2009.11.01] NOTE: This is only for real edges, not virtual.
 (define links-canonical (make-hashtable equal-hash equal?))
 
 ;; Links are undirected.  We make entries for (a . b) and (b . a)
@@ -458,12 +459,14 @@ exec regiment.plt i --script $0 $*
 	       [pair (cons a b)]
 	       ;; Then convert to canonical form (if such an edge exists):
 	       [canon (hashtable-ref links-canonical pair #f)])
-	  ;; If a real edge exists:
-	  (if canon
+
+	  ;(printf "// Processing virtual ~a\n" var)
+
+	  (if canon  ;; If a real edge exists:
 	      (begin 
 		;; We introduce a virtual edge, but we make it synonymous with the real edge:
 		;(hashtable-cons! incident-virtuals pair bwvar)
-		(hashtable-cons! incident-virtuals canon bwvar)
+		(hashtable-cons! incident-virtuals canon bwvar)		
 		`((= ,var  ,(ASSERT (hashtable-ref link-lat canon #f)))
 		  (= ,var2 ,(ASSERT (hashtable-ref link-lat canon #f)))))
 
@@ -472,7 +475,7 @@ exec regiment.plt i --script $0 $*
 	      
 	      ;; The sum of the edge latencies on the shortest path:
               (let ([path (pathfinder a b)])
-		;(eprintf "// TRAVERSING PATH... ~a \n" path)
+		;(eprintf "//   TRAVERSING PATH... ~a \n" path)
 		(if (not path) 
 		    (path-not-found a b)
 		    (let ([sum (apply + 
@@ -481,7 +484,8 @@ exec regiment.plt i --script $0 $*
 					 ;; Register that this virtual edge brings load to each of these physical edge:
 					 ;; FIXME:  I think this was wrong:
 					  ;;; ?????????????????????????//
-					  ;(hashtable-cons! incident-virtuals (cons dst src) bwvar)
+					  ;; [2009.11.01] Well NOT having it is definitely wrong.
+					  (hashtable-cons! incident-virtuals (cons dst src) bwvar)
 					  ;;; ?????????????????????????//
 					  (hashtable-cons! incident-virtuals (cons src dst) bwvar)
 					  
@@ -550,6 +554,9 @@ exec regiment.plt i --script $0 $*
      links)
        
    """Now begin to tie together the op assignments and the affected edges."
+   ;; NOTE: It's important that we do the same map-distinct-pairs over
+   ;; the same sorted list of nodes so that we get the same set of
+   ;; virtual bw-vars.  (We only do "forward" edges, not both.)
    (map-distinct-pairs
     (lambda (a b)
       `(= ,(virtlinkbw-var a b)
