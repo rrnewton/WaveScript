@@ -1,3 +1,5 @@
+#!r6rs
+
 ;;;; [2009.11.07] This is a specialization of emit-c2 (wsc2) that
 ;;;; produces code to be run with a TBB scheduler.
 

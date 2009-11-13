@@ -39,13 +39,18 @@
 
 ;(printf "COMMAND LINE ~s\n" (command-line))
 
-(if (< (length (command-line)) 2)
-    (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
+(define invoke-dir 
+  (if (< (length (command-line)) 2)
+      (begin 
+	(warning 'regiment.ss "script should take at least one argument.  (First argument should be working directory.)")
+	(printf "\n **** DEFAULTING TO CURRENT DIRECTORY: ~s\n\n" (current-directory))
+	(current-directory))
+      (cadr (command-line))))
 
 ;; By convention the first argument to this script is the directory
 ;; from which it was originally invoked.  Switch to this directory.
 
-(define invoke-dir (cadr (command-line)))
+
 ;(unless (file-exists? invoke-dir) (error 'regiment.ss "First argument should be working directory.  Dir does not exist: " invoke-dir))
 (current-directory invoke-dir)
 
@@ -90,5 +95,5 @@
 
 ;(bind-svn-revision)
 
-
-(apply main (cddr (command-line)))
+(apply main (if (< (length (command-line)) 2) '()
+		(cddr (command-line))))

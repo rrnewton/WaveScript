@@ -24,7 +24,7 @@ basic:
 	$(MAKE) aggregated
 	@echo; echo BUILDING COMPILER # UNDER IKARUS
 	@echo "======================================================================"
-	if $(MAKE) chez; then echo "  ==== FALLING BACK TO IKARUS ===="; $(MAKE) ik; fi
+	if $(MAKE) chez; then echo; else echo "  ==== FALLING BACK TO IKARUS ===="; $(MAKE) ik; fi
 
 # 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 # 	@echo "======================================================================"

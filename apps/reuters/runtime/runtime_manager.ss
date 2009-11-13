@@ -169,8 +169,14 @@
       ;(browse-stream (wsint (wsparse-postprocess prog) '()))
       ;(wscomp (wsparse-postprocess prog) '())
       ;(wsc2 (wsparse-postprocess prog))
+
+      ;; TEMPTOGGLE:
+      ;(regiment-verbosity 5)
+
       (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 	(wscomp (wsparse-postprocess prog) '() 'wsc2))
+
+      ;; We go all the way back to our shell script to have it call gcc.
       (system "wsc2-gcc")
       ;(system "./query.exe | head")
       )

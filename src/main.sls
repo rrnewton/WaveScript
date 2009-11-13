@@ -193,6 +193,7 @@
        'replace)]
     [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
+;; Regiment compiler (unused by WS).
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'full-tokens
 ;; Also: use 'verbose to print the output of every pass.
@@ -1218,6 +1219,9 @@
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
 
+;; The code below implements the WaveScript backend compiler.  It uses
+;; run-ws-compiler to perform the bulk of the compile, then here we do
+;; backend code generation.
 (define (wscomp x input-params . flags)                                 ;; Entrypoint.  
   (define new-version? (or (not (null? (find-in-flags 'wsc2 0 flags)))
 			   (not (null? (find-in-flags 'wstiny 0 flags)))
@@ -1334,7 +1338,7 @@
 
 		  ;; In this case we're not in embedded mode, but we might still want to split.
 		  (let ([class (match (compiler-invocation-mode)
-				      ;[wavescript-compiler-c      <emitC2-timed>]
+				 [wavescript-compiler-tbb <emit-tbb>]
 				 [wavescript-compiler-c 
 				       (match (wsc2-gc-mode)
 					 [refcount <emitC2>]
@@ -1342,7 +1346,6 @@
 					 [boehm    <emitC2-nogc>]
 					 [none     <emitC2-nogc>]
 					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
-				 [wavescript-compiler-c      <emitC2-nogc>]
 				 [wavescript-compiler-java   <java>])])
 		    ;; In this case we do a 'normal', non-partitioned compile:
 		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
@@ -1666,7 +1669,6 @@
 ;; WaveScript MLTON Compiler Entrypoint:
 
 (define (wsmlton x input-params . flags)                                 ;; Entrypoint.  
-
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
 		 [regiment-primitives ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -1847,7 +1849,7 @@
 	 (ASSERT (string->number (or (getenv "REGTHREADS") "1"))))
        ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
        (init-par desired-number-of-threads)
-)
+       )
      (void))
 
 ;    (printf "regimentc: compile regiment programs!\n")
@@ -1873,7 +1875,7 @@
 	 ;; [else (format "~a" x)]
 	 ))
       ;; This determines what mode we're in then calls "loop" to process the flags.
-      (define (main)
+      (define (mainbody)
         ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("loop")
 	(let ([mode (coerce-symbol (car args))] 
 	      [filenames (loop (map coerce-string (cdr args)))])
@@ -2021,10 +2023,10 @@
 
 	    [else 
 	     ;(inspect (list->vector args))
-	     (error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
-	     #;
+	     ;(error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
 	     (IFCHEZ (apply orig-scheme-start (cdr args))
-		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
+		     ;(error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
+		     (error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
 		     )
 	     ])]
 
@@ -2140,11 +2142,26 @@
 	     (define port (acquire-input-prog 'wscomp))
 	     (apply wscomp port input-parameters opts))]
 
+	  [(wstbb)
+	   ;; HACK: need to set compiler-invocation-mode EARLY for wsc2 (for parsing):
+	   (parameterize ([compiler-invocation-mode   'wavescript-compiler-tbb])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wstbb opts)))]
+	  
 	  [(wsc2)
 	   ;; HACK: need to set compiler-invocation-mode EARLY for wsc2 (for parsing):
-	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
+	   (parameterize ([compiler-invocation-mode 
+			   (if (memq 'tbb (ws-optimizations-enabled))
+			       'wavescript-compiler-tbb
+			       'wavescript-compiler-c)])
 	     (let ((port (acquire-input-prog 'wscomp)))
 	       (apply wscomp port input-parameters 'wsc2 opts)))]
+
+	  ;; TBB target:
+[(wstiny)
+	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-nesc])
+	     (let ((port (acquire-input-prog 'wscomp)))
+	       (apply wscomp port input-parameters 'wstiny opts)))]
 
 	  ;; NesC/TinyOS target, similar to wsc2:
 	  [(wstiny)
@@ -2256,6 +2273,11 @@
 	   (ws-optimizations-enabled (cons 'split (ws-optimizations-enabled)))
 	   (loop rest)]
 
+	  ;; [2009.11.13] Not sure where to stick this, putting in the optimizations list for now.
+	  [("-tbb" ,rest ...)
+	   (ws-optimizations-enabled (cons 'tbb (ws-optimizations-enabled)))
+	   (loop rest)]
+
 	  ;; This signals that we include whatever debugging info we can in the output code.
 	  ;; [2007.10.26] Currently it's just used by the wsmlton script, and doees nothing here.
 	  [("-dbg" ,rest ...) (loop rest)]
@@ -2364,7 +2386,7 @@
      ))
 
       
-      (main) ;; Call the entrypoint above.      
+      (mainbody) ;; Call the entrypoint above.      
       )))
 
 

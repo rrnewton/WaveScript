@@ -14,6 +14,7 @@ LIBS = -lm -ldl -lncurses -lrt
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
 all:
+	@if [ -d "$(CHEZD)" ]; then echo; else echo "ERROR: CHEZD ($(CHEZD)) does not exist."; exit 1; fi
 	gcc $(FLAGS) -c -fPIC -I $(CHEZP) wsq_runtime.c -o wsq_runtime.o
 	ar rcs libwsq_runtime.a wsq_runtime.o $(CHEZP)/kernel.o $(STATICLIBS)
 

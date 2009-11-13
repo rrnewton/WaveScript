@@ -1,7 +1,31 @@
 
+
 ================================================================================
    A file for day-to-day development issues
 ================================================================================
+
+General Notes:
+----------------------------------------
+
+  How to load from source without using the scripts in bin/: 
+
+I depend on shell scripts for launching the compiler so often that
+it's easy to forget what to call to load the code directly in one of
+the scheme systems.  Here's a quick reference.
+
+You can always start up a repl in the src/ directory and do "(import (main))" by hand.
+
+  echo '#!r6rs' > imports_only.sls
+  echo "(import (except (rnrs (6)) error) (main_r6rs) (main) (ws shortcuts))" >> imports_only.sls
+
+  chez imports_only.sls
+
+  PLTCOLLECTS=$PLTCOLLECTS:$REGIMENTD/src mzscheme imports_only.sls
+
+
+================================================================================
+
+
 
 [2004.04.29]
   Hmm, without "identifier-syntax" I can't get things working fully
@@ -2140,3 +2164,31 @@ I'm having a bit of trouble concatenating all my individual .so's into
 a working bootfile.  I get an invalid memory reference error.
 
 
+[2009.11.13] {Darn Union2_1 Union2_2 problems.}
+
+I'm having very unpredictable compiler errors (post monomorphisation)
+in the context of the reuters stuff.  Seems to be nondeterministic.
+Of course, this always means a compiler bug because you shouldn't have
+type errors past the initial type-check.  
+
+I remember running into these before, but I can't quite remember when
+and where.  In this case it has to do with a simple print op that
+has an unconstrained output type.
+
+----------
+Metaprogram evaluation succeeded.
+Warning in type-checker: 
+Type mismatch: "Union2_1" doesn't match "Union2_2" 
+(Argument to function of wrong type.)
+
+Location:
+   Unknown source location.
+
+Expression:
+(in abstract syntax)
+(iterate
+  (annotations (name wsq_windowJoin_2748))
+  (lambda (x_19 ___VIRTQUEUE____18)
+    ((Sum Union2_1) (VQueue #()))
+    (letrec () (begin (print '".") ___VIRTQUEUE____18)))
+  union2_5)
