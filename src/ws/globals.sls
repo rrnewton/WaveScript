@@ -321,6 +321,7 @@
     wavescript-compiler-caml ;; also used for mlton
     wavescript-compiler-xstream
     wavescript-compiler-c
+    wavescript-compiler-tbb
     wavescript-compiler-nesc
     wavescript-compiler-java
     wavescript-compiler-javame
@@ -347,6 +348,7 @@
 (define (wsc2-variant-mode? mode)
   (memq mode
 	'(wavescript-compiler-c
+	  wavescript-compiler-tbb
 	  wavescript-compiler-nesc
 	  wavescript-compiler-java
 	  wavescript-compiler-javame)))

@@ -89,6 +89,8 @@
 (ws passes wavescope_bkend emit-c)
 (ws passes wavescope_bkend insert-refcounts)
 (ws passes wavescope_bkend emit-c2)
+(ws passes wavescope_bkend emit-tbb)
+
 (ws passes wavescope_bkend emit-tinyos)
 (ws passes wavescope_bkend emit-java)
 

@@ -3,7 +3,7 @@
 
 ;;;; .author Ryan Newton
 
-(library (ws passes wavescope_bkend emit-java)
+(library (ws passes wavescope_bkend emit-tbb)
   (export <emit-tbb>
 	  )
   (import (except (rnrs (6)) error) (except (rnrs r5rs) force delay)
@@ -24,8 +24,12 @@
   ;; emitC2-zct.
   
   (define-class <emit-tbb> (<emitC2>) (wserror-acc import-acc))
-  
-  (__spec GenWorkFunction <emitC2-base> (self name arg vqarg argty code down*)
+
+  ;; The trappings around a work-funciton are the main things that change.
+
+  (__spec GenWorkFunction <emit-tbb> (self name arg vqarg argty code down*)
+    (printf "GENWORKFUNCitoN\n")
+  #|
      (define _arg (Var self arg))
      (define _argty (Type self argty))
      (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
@@ -38,6 +42,9 @@
 		     (IterStartHook self name arg argty down*)
 		     (lines-text code)
 		     (IterEndHook self name arg argty down*)))
-	     "\n"))))
+	     "\n")))
+   |#
+    )
+	   
 )
 
