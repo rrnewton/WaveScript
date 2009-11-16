@@ -229,7 +229,10 @@ CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; 
 OLDCHEZ = chez74
 
 # This is the R6RS chez:
-chez: ws/common.sls main_r6rs.sls 
+chez: chezwhole
+
+# Do an incremental rebuild of dirty objects:
+chezincr: ws/common.sls main_r6rs.sls 
         # Build all the individual .so files:
 	./experimental/r6make.ss regiment.ss
         # It would be nice to make a .boot file out of them...
@@ -239,6 +242,28 @@ chez: ws/common.sls main_r6rs.sls
 chezpurge: ws/common.sls main_r6rs.sls 
 	./experimental/r6make.ss regiment.ss purge
 chezwipe: chezpurge
+
+chezwhole:
+	find . -name "*.so" | xargs $(RM)
+	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | chez
+	./experimental/r6make.ss regiment.ss list > build/so_list.txt
+	make chezincr
+	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+
+chezdebug:
+	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
+	REGDEBUGMODE=ON make chezwhole
+	mv build/$(MT)/regiment.complete.boot build/$(MT)/regiment.debug.boot
+	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/regiment.complete.boot; fi
+
+chezopt:
+	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
+	REGOPTLVL=3 make chezwhole
+	mv build/$(MT)/regiment.complete.boot build/$(MT)/regiment.opt.boot
+	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/regiment.complete.boot; fi
+
+chezall: chezwhole chezdebug chezopt
+
 
 # This is the old HACK:
 

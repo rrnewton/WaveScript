@@ -18,24 +18,32 @@ exec chez --script $0 $*
 (import (rnrs))
 
 ;; Should we compile, or (our alternate behaviour), purge the dirty files.
-(define purge-instead? #f)
+(define selected-action 'compile)
 
 ;; One argument function invoked on a source file:
 (define (perform-action f) 
   (define root (remove-file-extension f))
-  (optimize-level 2) ;; [2009.03.12] TEMP
-  ;(generate-inspector-information #f)
-  (generate-inspector-information #t)
+  
+  ;; Regiment/WaveScript specific flags.
+  (define optlvl (getenv "REGOPTLVL"))
+  (if optlvl
+    (optimize-level (string->number optlvl))
+    (optimize-level 2))
+  ;; REGDEBUGMODE is unset to indicate non-debug:
+  (generate-inspector-information (if (getenv "REGDEBUGMODE") #t #f))
+  
+  ;(generate-inspector-information #t)
   ;(printf "  Compiling: ~a opt-level ~a \n" f (optimize-level))
-
-  (if purge-instead?
-    (let ((obj (string-append root ".so")))
-      (printf "[wiping]  ~s\n" obj)
-      (when (file-exists? obj) (delete-file obj)))
-    (begin
+  (case selected-action
+    [(compile) 
       (printf "[optlvl ~a]  " (optimize-level))
-      (compile-file f (string-append root ".so"))
-      )))
+      (compile-file f (string-append root ".so"))]
+    [(purge)
+     (let ((obj (string-append root ".so")))
+      (printf "[wiping]  ~s\n" obj)
+      (when (file-exists? obj) (delete-file obj)))]
+    [(list) (printf "~a.so\n" root)]
+    [else (error 'perform-action "this is an internal bug.")]))
 
 ;; The file to compile.
 ;; Also process other command line arguments.
@@ -48,9 +56,11 @@ exec chez --script $0 $*
 		   x)))
       (begin
         (unless (null? (cdr (command-line-arguments)))
-	  (if (equal? (cadr (command-line-arguments)) "purge")
-	      (set! purge-instead? #t)
-	      (error 'r6make.ss "unknown extra argument ~s" (cadr (command-line-arguments)))))
+	  (cond
+	    [(equal? (cadr (command-line-arguments)) "purge")   (set! selected-action 'purge)]
+	    [(equal? (cadr (command-line-arguments)) "compile") (set! selected-action 'compile)]
+	    [(equal? (cadr (command-line-arguments)) "list")    (set! selected-action 'list)]
+	    [else (error 'r6make.ss "unknown extra argument ~s" (cadr (command-line-arguments)))]))
         (car (command-line-arguments)))))
 
 (define (resolve-name los)
@@ -155,7 +165,8 @@ exec chez --script $0 $*
       (if (member (car ls) checked)
 	  (compile-loop (cdr ls) checked changed)
 	  (let ([thisfile (car ls)])
-	    (printf "  Checking: ~a\n" thisfile)
+	    (unless (eq? selected-action 'list)
+	      (printf "  Checking: ~a\n" thisfile))
 	    (let* ([file (open-input-file thisfile)]
 		   [deps (extract-deps (read file))])
 	      (close-port file)
@@ -173,7 +184,9 @@ exec chez --script $0 $*
 
 ;; TODO: make this parallel, a la make -j 
 
-(display "Processing dependencies for: ")
-(display source)(newline)
+(unless (eq? selected-action 'list)
+  (display "Processing dependencies for: ")
+  (display source)(newline))
 (compile-loop (list source) '() '())
-(display "Done.\n")
+(unless (eq? selected-action 'list)
+  (display "Done.\n"))
