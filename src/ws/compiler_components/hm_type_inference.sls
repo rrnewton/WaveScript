@@ -1479,7 +1479,8 @@
 	[(not tyx) (tcell-set! rowx rowy)]
 	[(not tyy) (tcell-set! rowy rowx)]
 	[else 
-	 ;; Otherwise they both have at least one 'Row':
+	 ;; Otherwise they both have at least one 'Row'.
+	 ;; To be order-agnostic we build a hash table for both row sets:
 	 (let ([table1 (make-default-hash-table)]
 	       [table2 (make-default-hash-table)])
 	   ;; Returns the row variable (cell) of the final tail, or #f if the row is closed:

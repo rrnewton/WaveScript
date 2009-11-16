@@ -15,18 +15,33 @@
 	  (ws passes static_elaborate static-elaborate)
 	   )
 
-  (define instancetable 'uninit) ;; Counts instances of each type.
+  (define instancetable 'uninit) ;; Collects instances of each sum type.
   (define varianttable  'uninit) ;; Maps constructor name to type name.
   (define counter       'uninit)
 
   (define (symappendcntr sym n)
     (string->symbol (string-append (symbol->string sym) "_" (number->string n))))
+
+  ;; ============================================================== 
+  ;; ASSUMPTION: equal? is sufficient on monomorphic types after we
+  ;; have sorted record field.
+  ;; ==============================================================
+ 
+  (define (find-matching ty ls)
+    ;; NOTE: Here we do a search using "equal?" for matching types.
+    ;; This assumes equal? is sufficient on types.
+    (assoc ty ls)
+  )
+
+  ;; TODO: Move depoly here and make it sort rows as well.  
+ 
+  ;; ==============================================================
   
   (define (instance->number type)
     (match type
       [(Sum ,typename . ,t*)
-       (let* ([existing-instances (hashtab-get instancetable typename)]
-	      [entry (assoc type existing-instances)])
+       (let* ([existing-instances (hashtab-get instancetable typename)]              
+	      [entry (find-matching type existing-instances)])
 	 (match entry
 	   [#f 
 	    (set! counter (fx+ 1 counter))
@@ -37,7 +52,14 @@
 	   [(,ty ,cntr) cntr]))
        ]))
 
+  (define (depoly urty)
+    (if (polymorphic-type? urty)
+	;; [2007.10.27] Doing this for now.   It's easy (and legal) to have under-constrained Sums.
+	(begin (printf "WARNING: squishing out unresolved polymorphism in sum type: ~s\n" urty)
+	       (type-replace-polymorphic urty '#()))
+	urty))
 
+  ;; This simply pulls out the names of all sum types.
   (define (type->allsums ty)
     (match ty
       [(Sum ,name ,t* ...) (ASSERT symbol? name) (list name)]
@@ -45,7 +67,7 @@
       [,s (guard (string? s)) '()]
       [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) '()]
       [#(,[t*] ...) (apply append t*)]
-      ;[(,[arg*] ... -> ,[ret]) (apply append ret arg*)]
+      ;[(,[arg*] ... -> ,[ret]) (apply append ret arg*)]  ;; Shouldn't still have arrow types.
       [(,C ,[t*] ...) (guard (symbol? C)) (apply append t*)]))
 
   ;; Do a topological sort of the unions so that declaration precedes use.
@@ -84,12 +106,6 @@
 	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) `(,qt ,v)]
 	[(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)])
       )
-    (define (depoly urty)
-      (if (polymorphic-type? urty)
-	  ;; [2007.10.27] Doing this for now.   It's easy (and legal) to have under-constrained Sums.
-	  (begin (printf "WARNING: squishing out unresolved polymorphism in sum type: ~s\n" urty)
-		 (type-replace-polymorphic urty '#()))
-	  urty))
     
     [Bindings 
      (lambda (vars types exprs reconstr exprfun)
@@ -99,14 +115,12 @@
 	      [(assert-type ,urty (construct-data ,tc ,[args] ...))
 ;	       (printf "GOT CONSTRUCTDATA: ~a ~a\n" tc ty)
 	       ;(ASSERT (not (polymorphic-type? ty)))
-	       (define ty (depoly urty))
 	       (let* (;[typename (hashtab-get varianttable tc)]
-		      [cntr (instance->number ty)])
+		      [cntr (instance->number (depoly urty))])
 		 `(construct-data ,(symappendcntr tc cntr) ,@args))]
 	      [(wscase (assert-type ,ursumty ,[x]) (,tag* ,[fun*]) ...)
 	       ;(ASSERT (not (polymorphic-type? sumty)))
-	       (define sumty (depoly ursumty))
-	       (let ([cntr (instance->number sumty)])
+	       (let ([cntr (instance->number (depoly ursumty))])
 		 `(wscase ,x ,@(map list (map (lambda (s) (symappendcntr s cntr)) tag*) fun*)))]
 
 	      [(construct-data . ,_) (error 'split-union-types "construct-data without type assertion")]

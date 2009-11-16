@@ -305,8 +305,13 @@
 				    (wsrecord-restrict ',name ,(loop (cdr ls))))]
 	      ))))
 
-    ;; Inside the compiler record types have the convention that their fields are always sorted.
-    ;; When constructing a record type for the first time, we must therefore sort them.
+
+    ;; [2009.11.14] I used to try to maintain record fields sorted in
+    ;; a alphabetical order within the compiler.  I ended up giving up
+    ;; on this.  When the type checker does unification it is
+    ;; order-agnostic.  However, there are certain places later in the
+    ;; compiler where we need to be able to compare types by equality
+    ;; only (e.g. split-union-types).  That requires sorting fields.
     (define (make-initial-record-type super fields)
       ;`(Record ,super ,@(sort fields (lambda (a b) (symbol<? (car a) (car b)))))
       `(Record ,(match fields

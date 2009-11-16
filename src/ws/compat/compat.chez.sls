@@ -124,6 +124,7 @@
   (define (warning who str . args)
     (apply (warning-handler) who str args))
 
+#;
   (define (error who msg . args)   
     (call/cc 
      (lambda (errork)
@@ -131,15 +132,100 @@
        (chez:error who (apply format msg args))
        ;(printf " In ~a: ~a" who (apply format msg args)) (newline)
        ;;(debug)
-       ;;(chez:exit 12)e
+       ;;(chez:exit 12)
        ;(inspect errork)
        ))
     )
+  (define error chez:error)
 
   (define seed-random
     (case-lambda 
       [() (chez:random-seed (chez:time-nanosecond (chez:current-time)))]
       [(n) (chez:random-seed n)]))
+
+
+  ;; Chez Scheme specific configuration.
+  ;;================================================================================
+
+
+  ;; A Chez hack to see all the source locations in a continuation.
+  (define (continuation->sourcelocs k)
+    (let loop ([depth 0] [ob (inspect/object k)])
+      (when (> (ob 'depth) 1)
+	(call-with-values (lambda () (ob 'source-path))
+	  (lambda args
+	    (if (= (length args) 3) ;; Success
+	      (apply printf "  ~a: File: ~a, line ~a char ~a\n" depth args)
+	      (begin 
+	     	(printf "  ~a: (unknown loc) " depth )
+		(ob 'print (current-output-port)))
+	      )))
+	(loop (add1 depth) (ob 'link)))))
+  (define k->files continuation->sourcelocs)
+
+  ; ;; Set some Chez scheme parameters.
+  ; (print-graph #t )
+  ; (print-gensym #f)
+  ; ;(print-level 8)
+  ; (print-level #f) ;20)
+  ; (print-length #f) ;80)
+  ; (print-vector-length #t)
+  ; ;(pretty-maximum-lines 700)
+  ; (pretty-maximum-lines #f)
+  ; (pretty-line-length 150)
+  ; (pretty-standard-indent 0)
+
+#;
+  (define inspector-error-handler
+    (lambda (who msg . args)
+      (call/cc (lambda (k) 	     
+		 (parameterize ([error-handler default-error-handler]
+			     ;[current-directory (string-append (REGIMENTD) "/src/generic")]
+			     )
+		(fprintf (console-output-port)
+			 "~%Error~a: ~a.~%"
+			 (if who (format " in ~s" who) "")
+			 (parameterize ([print-level 3] [print-length 6])
+			   (apply format msg args)))
+
+		(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
+			   (top-level-value 'REGIMENT-BATCH-MODE))
+		  (exit 1)) ;; Should only do this if we're running as a script.
+
+		(fprintf (console-output-port)
+			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
+		;; [2008.03.30] Also reset the source-directories so Chez can find the code:
+		(source-directories default-source-directories)
+		;; Set the current directory so that the inspector can find line numbers:
+		(inspect k))))))
+#;
+  (error-handler inspector-error-handler)
+
+  (base-exception-handler 
+   (lambda (x)
+     (call/cc
+      (lambda (k)
+	(if (warning? x)
+	    (begin (display-condition x) (newline))
+	    (begin 	      
+	      (printf "\n *** ERROR *** \n")        
+	      ;;(pretty-print x)	
+	      (display-condition x)(newline)
+	      (printf "Backtrace: \n")
+	      (continuation->sourcelocs k)
+
+	      ; (printf "First entering inspector with exception object:\n")
+	      ; (chez:inspect x)
+	      ; (printf "Entering inspector with error continuation:\n")
+	      ; (chez:inspect k)
+
+	      (reset)
+
+	      ;(debug-message-and-continuation "test" k)
+	      ;(debug)
+       ))))))
+
+   
 
 ) ;; End library
 

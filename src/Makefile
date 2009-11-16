@@ -117,7 +117,7 @@ ik: ws/common.sls main_r6rs.sls
 
 
 #----------------------------------------#
-#    PLT:                                #
+#    PLT - supporting R6RS as well       #
 #----------------------------------------#
 
 # Most common entrypoint: "pltbc"
@@ -494,7 +494,7 @@ larceny: ws/common.sls main_r6rs.sls \
 #                              TESTING                                 #
 #/*--------------------------------------------------------------------*/
 
-# This is basic, for someone who just downloaded WScript:
+# This is basic, for someone who just downloaded WaveScript:
 t: test
 test:
 	rm -rf /tmp/wsparse_server_*

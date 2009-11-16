@@ -104,6 +104,9 @@ void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
+  char* machinetype = "i3osx";
+
+  //  char* machinetype = shell(); 
   
   char bootfile[PATHMAX];
   
@@ -114,9 +117,9 @@ void WSQ_Init() {
 
   Sscheme_init(0);  
 
-  sprintf(bootfile, "%s/boot/i3le/petite.boot", chezd);
+  sprintf(bootfile, "%s/boot/%s/petite.boot", chezd, machinetype);
   Sregister_boot_file(bootfile);
-  sprintf(bootfile, "%s/boot/i3le/scheme.boot", chezd);
+  sprintf(bootfile, "%s/boot/%s/scheme.boot", chezd, machinetype);
   Sregister_boot_file(bootfile);
 
   Sbuild_heap(".", 0);

@@ -2164,7 +2164,7 @@ I'm having a bit of trouble concatenating all my individual .so's into
 a working bootfile.  I get an invalid memory reference error.
 
 
-[2009.11.13] {Darn Union2_1 Union2_2 problems.}
+[2009.11.13] {Darn Union2_1 Union2_2 problem}
 
 I'm having very unpredictable compiler errors (post monomorphisation)
 in the context of the reuters stuff.  Seems to be nondeterministic.
@@ -2192,3 +2192,25 @@ Expression:
     ((Sum Union2_1) (VQueue #()))
     (letrec () (begin (print '".") ___VIRTQUEUE____18)))
   union2_5)
+
+Ok, digging inside this a little more you find a mismatch between
+these types:
+
+(Sum Union2
+      (Record
+        (Row VOLUME
+             Int
+             (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+      (Record
+        (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+(Sum Union2
+       (Record
+         (Row SYM
+              String
+              (Row VOLUME Int (Row TIME Float (Row PRICE Float #())))))
+       (Record
+         (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+
+Ok, so at one pointI had the invariant that fields need to be
+alphabetically sorted.  
+ 

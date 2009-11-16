@@ -1133,11 +1133,30 @@
 
   (define (fxlogbit? index num) (fxbit-set? num index))
 
+  
+  ;; FIXME: UNICODE SUPPORT
+
+  ;; [2009.11.15] Currently many aspects of this file are broken wrt
+  ;; to R6RS unicode strings because of their dependence on ASCII
+  ;; strings.  I need to systematically port everything over to bytevectors.
+  
+  ;; In the meantime, I'm going to hack this in a clearly nonfunctional way:
+
+  ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+  ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+  ;  (define charToInt char->integer)
+  #| HACK HACK HACK |# (define (charToInt x) (min 255 (char->integer x))) ;; HACK HACK HACK
+  ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+  ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
+
   ;; Read two bytes from a string and build a uint16.
   (define (to-uint16 str ind)  ;; Internal helper function.
-    (fx+ (bitwise-arithmetic-shift-left (char->integer (string-ref str (fx+ 1 ind))) 8)
-	 (char->integer (string-ref str (fx+ 0 ind))) ;; taking away this fx+ 0 causes demo4b to fail under ikarus
-	 ))
+    (fx+ (bitwise-arithmetic-shift-left (charToInt (string-ref str (fx+ 1 ind))) 8)
+;    	 (charToInt (string-ref str (fx+ 0 ind))) ;; taking away this fx+ 0 causes demo4b to fail under ikarus -- WEIRD
+    	 (charToInt (string-ref str ind)) ;; taking away this fx+ 0 causes demo4b to fail under ikarus -- FIXME
+	 )
+  )
+
   ;; The signed version
   (define (to-int16 str ind) 
     (let ([unsigned (to-uint16 str ind)])
@@ -1152,11 +1171,13 @@
    (bitwise-xor num (bitwise-arithmetic-shift-left 1 ind)))
   
   ;; Might not be a fixnum:
-  (define (to-uint32 str ind)  ;; Internal helper function.
-    (s:+ (s:* (char->integer (string-ref str (fx+ 3 ind))) (s:* 256 256 256))
-       (fxarithmetic-shift-left (char->integer (string-ref str (fx+ 2 ind))) 16)
-       (fxarithmetic-shift-left (char->integer (string-ref str (fx+ 1 ind))) 8)
-       (char->integer (string-ref str (fx+ 0 ind)))))
+ (define (to-uint32 str ind)  ;; Internal helper function.        
+   (s:+ (s:* (charToInt (string-ref str (fx+ 3 ind))) (s:* 256 256 256))
+	(fxarithmetic-shift-left (charToInt (string-ref str (fx+ 2 ind))) 16)
+	(fxarithmetic-shift-left (charToInt (string-ref str (fx+ 1 ind))) 8)
+;       (charToInt (string-ref str (fx+ 0 ind))))) ;; FIXME
+       (charToInt (string-ref str ind))))
+
   (define (to-int32 str ind) 
     (let ([unsigned (to-uint32 str ind)])
       (if (bitwise-bit-set? unsigned 31)
@@ -1562,7 +1583,6 @@
     (list->string (vector->list arr)))
 
   (define intToChar integer->char)
-  (define charToInt char->integer)
   
   (define (roundF f) (flround  f))
   (define (roundD f) (flround  f))
@@ -1621,11 +1641,16 @@
 	   [halflen (add1 (quotient fulllen 2))]
 	   [half (make-vector halflen)])
       ;(vector-blit! double half 0 0 halflen)
+      ;; This looks like a hack to force the first position to be complex:
       (vector-set! half 0 (s:+ (vector-ref double 0) 0.0+0.0i))
       (let loop ([i 1])
 	(unless (fx= i halflen)
 	  ;; Fill from the front:
-	  (vector-set! half i (vector-ref double i))
+
+	  ;; A little more representation hackage:
+	  ;(vector-set! half i (vector-ref double i))
+	  (vector-set! half i (s:+ (vector-ref double i) 0.0+0.0i))
+
 	  ;; Fill from the back:
 	  ;(vector-set! half i (vector-ref double (fx- fulllen i)))
 	  (loop (fx+ 1 i))))

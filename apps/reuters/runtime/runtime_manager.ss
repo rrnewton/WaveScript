@@ -171,7 +171,7 @@
       ;(wsc2 (wsparse-postprocess prog))
 
       ;; TEMPTOGGLE:
-      ;(regiment-verbosity 5)
+      ;      (regiment-verbosity 5)
 
       (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 	(wscomp (wsparse-postprocess prog) '() 'wsc2))

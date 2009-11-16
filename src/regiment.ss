@@ -61,6 +61,7 @@
 #;
 ;; Trying to set the svn rev when the code is *compiled*:
 ;; Set to #f if we can't get it.
+;; (This is duplicated in legacy_main_chez.ss)
 (define-syntax bind-svn-revision
   (lambda (x)
     (syntax-case x ()

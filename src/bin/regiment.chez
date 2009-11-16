@@ -9,30 +9,35 @@
 #if [ "$REGIMENTHOST" == "plt" ]
 #then export REGIMENTEXEC=regiment.plt
 
+
 ## R6RS VERSION:
 ############################################################
 
 ## FIXME: This branch assumes that thecommand "chez" is in the path.
 
 ## What's a good way to check if we're in R6RS mode?
-
-## The R6RS version doesn't currently compile a debug version:
-if [ "$REGDEBUGMODE" == "" ]; 
-then
-
 CHEZVER=`chez --version &> /dev/stdout`
 N=`echo $CHEZVER | sed 's/\\.//g'`
+
 if (( "$N" > 75 )); then 
+# RUN New R6RS mode:
   CURDIR=`pwd`
-  if cd $REGIMENTD/src
-  then if chez --program $REGIMENTD/src/regiment.ss $CURDIR $*
+
+  if cd $REGIMENTD/src; then
+
+    if [ "$REGDEBUGMODE" != "" ];  then
+      # Well, we could kind of hack a debug mode by running from source.
+      echo "EXPERIMENTAL! Trying R6RS regiment in debug mode.";  echo
+      make cleanchez
+    fi 
+    if chez --program $REGIMENTD/src/regiment.ss $CURDIR $*
        then exit $?
        else exit $?
-       fi
-  fi
+    fi
+  fi # end if cd /src
   exit 99;
-fi
-fi
+fi # end if version
+
 
 ## PRE R6RS HACK:
 ############################################################
