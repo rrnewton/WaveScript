@@ -11,8 +11,10 @@ OPTIONS=$*
 #OPTIONS=" -gc refcount -threads "
 
 ## As a hack you can set LAUNCHIT=" " to skip valgrind:
-if [ "$LAUNCHIT" = "" ];
-then LAUNCHIT="valgrind --leak-check=full"
+if [ "$LAUNCHIT" = "" ]; then 
+if [ "`which valgrind`" != "" ]; then
+LAUNCHIT="valgrind --leak-check=full"
+fi 
 fi
 
 echo > $COMP

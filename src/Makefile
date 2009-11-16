@@ -236,6 +236,10 @@ chez: ws/common.sls main_r6rs.sls
 #	echo '(make-boot-header "tmp.hdr" "scheme.boot" "petite.boot")' | $(CHEZ)
 #	find -name "*.so"
 
+chezpurge: ws/common.sls main_r6rs.sls 
+	./experimental/r6make.ss regiment.ss purge
+chezwipe: chezpurge
+
 # This is the old HACK:
 
 oldchez: boot

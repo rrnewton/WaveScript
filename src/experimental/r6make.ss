@@ -9,31 +9,49 @@ exec chez --script $0 $*
 ;; not supposed to be general or correct, rather, it's a temporary fix
 ;; for this particular project.
 ;;
+
+;; Usage: r6rsmake.ss file.sls [purge]
+;; The optional "purge" argument will destroy dirty objects rather than rebuilding.
+
 ;; Ryan Newton [2009.02.17]
 
 (import (rnrs))
 
+;; Should we compile, or (our alternate behaviour), purge the dirty files.
+(define purge-instead? #f)
+
 ;; One argument function invoked on a source file:
-(define (invoke-compiler f) 
+(define (perform-action f) 
   (define root (remove-file-extension f))
   (optimize-level 2) ;; [2009.03.12] TEMP
-  (generate-inspector-information #f)
+  ;(generate-inspector-information #f)
+  (generate-inspector-information #t)
   ;(printf "  Compiling: ~a opt-level ~a \n" f (optimize-level))
-  (printf "[optlvl ~a]  " (optimize-level))
-  (compile-file f (string-append root ".so"))
-  )
+
+  (if purge-instead?
+    (let ((obj (string-append root ".so")))
+      (printf "[wiping]  ~s\n" obj)
+      (when (file-exists? obj) (delete-file obj)))
+    (begin
+      (printf "[optlvl ~a]  " (optimize-level))
+      (compile-file f (string-append root ".so"))
+      )))
 
 ;; The file to compile.
+;; Also process other command line arguments.
 (define source 
   (if (null? (command-line-arguments))
       (begin (display "Enter filename: ") 
 	     (let ((x (read)))
 	       (if (symbol? x)
 		   (symbol->string x)
-		   x)
-	       ))
-      (car (command-line-arguments))
-      ))
+		   x)))
+      (begin
+        (unless (null? (cdr (command-line-arguments)))
+	  (if (equal? (cadr (command-line-arguments)) "purge")
+	      (set! purge-instead? #t)
+	      (error 'r6make.ss "unknown extra argument ~s" (cadr (command-line-arguments)))))
+        (car (command-line-arguments)))))
 
 (define (resolve-name los)
     (case (car los)
@@ -149,12 +167,11 @@ exec chez --script $0 $*
 		    (if (and (not (is-changed? thisfile)) 
 			     (null? depschanged))
 			(compile-loop (cdr ls) chk2 chng)
-			(begin (invoke-compiler thisfile)
+			(begin (perform-action thisfile)
 			       (compile-loop (cdr ls) chk2 (cons thisfile chng))))
 		    ))))))))
 
 ;; TODO: make this parallel, a la make -j 
-
 
 (display "Processing dependencies for: ")
 (display source)(newline)

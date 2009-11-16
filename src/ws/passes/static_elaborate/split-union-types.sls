@@ -30,14 +30,45 @@
   (define (find-matching ty ls)
     ;; NOTE: Here we do a search using "equal?" for matching types.
     ;; This assumes equal? is sufficient on types.
-    (assoc ty ls)
-  )
+    (assoc ty ls))
 
   ;; TODO: Move depoly here and make it sort rows as well.  
+  (define (preprocess-type urty)
+    (define nonpoly
+      (if (polymorphic-type? urty)
+	  ;; [2007.10.27] Doing this for now.	It's easy (and legal) to have under-constrained Sums.
+	  (begin (printf "WARNING: squishing out unresolved polymorphism in sum type: ~s\n" urty)
+		 (type-replace-polymorphic urty '#()))
+	  urty))
+      (let loop ((x nonpoly))
+	(match x
+	  [(Sum ,name ,[t*] ...) (ASSERT symbol? name) `(Sum ,name ,@t*)]
+	  [(Record ,ty)
+	   (define list 
+	     (match ty
+	       [(Row ,name ,rhs ,[rest]) (cons (cons name (loop rhs)) rest)]
+	       [#() '()]
+	       [,oth (error 'split-union-types:preprocess-type
+			    "monomorphic row should end in #(): ~s"  ty)]))
+	   (define sorted 
+	     (list-sort (lambda (a b) (symbol<? (car a) (car b))) list))
+	   `(Record ,(make-rows sorted))]
+	  [,s (guard (symbol? s)) s]
+	  [,s (guard (string? s)) s]
+	  [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) `(,qt ,v)]
+	  [#(,[t*] ...) (list->vector t*)]
+	  [(,arg* ... -> ,ret) (error 'split-union-types "shouldn't still have an arrow type.")]  ;; Shouldn't still have arrow types.
+	  [(,C ,[t*] ...) (guard (symbol? C)) (cons C t*)])))
  
+  (define (make-rows field-pairs)
+    (match field-pairs
+      [() '#()]
+      [((,nm . ,ty) . ,[rest]) `(Row ,nm ,ty ,rest)]))
+
   ;; ==============================================================
   
-  (define (instance->number type)
+  (define (instance->number _type)
+    (define type (preprocess-type _type))
     (match type
       [(Sum ,typename . ,t*)
        (let* ([existing-instances (hashtab-get instancetable typename)]              
@@ -51,13 +82,6 @@
 	    counter]
 	   [(,ty ,cntr) cntr]))
        ]))
-
-  (define (depoly urty)
-    (if (polymorphic-type? urty)
-	;; [2007.10.27] Doing this for now.   It's easy (and legal) to have under-constrained Sums.
-	(begin (printf "WARNING: squishing out unresolved polymorphism in sum type: ~s\n" urty)
-	       (type-replace-polymorphic urty '#()))
-	urty))
 
   ;; This simply pulls out the names of all sum types.
   (define (type->allsums ty)
@@ -98,7 +122,7 @@
       (match ty
 	[(Sum ,name ,t* ...)
 ;	 (printf "CONVERTING TYPE: Sum ~a ~a\n" name t*)
-	 `(Sum ,(symappendcntr name (instance->number (depoly `(Sum ,name ,@t*)))))]
+	 `(Sum ,(symappendcntr name (instance->number `(Sum ,name ,@t*))))]
 	[,s (guard (symbol? s)) s]
 	[,s (guard (string? s)) s]
 	[#(,[t*] ...) (list->vector t*)]
@@ -116,11 +140,11 @@
 ;	       (printf "GOT CONSTRUCTDATA: ~a ~a\n" tc ty)
 	       ;(ASSERT (not (polymorphic-type? ty)))
 	       (let* (;[typename (hashtab-get varianttable tc)]
-		      [cntr (instance->number (depoly urty))])
+		      [cntr (instance->number urty)])
 		 `(construct-data ,(symappendcntr tc cntr) ,@args))]
 	      [(wscase (assert-type ,ursumty ,[x]) (,tag* ,[fun*]) ...)
 	       ;(ASSERT (not (polymorphic-type? sumty)))
-	       (let ([cntr (instance->number (depoly ursumty))])
+	       (let ([cntr (instance->number ursumty)])
 		 `(wscase ,x ,@(map list (map (lambda (s) (symappendcntr s cntr)) tag*) fun*)))]
 
 	      [(construct-data . ,_) (error 'split-union-types "construct-data without type assertion")]

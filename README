@@ -209,7 +209,7 @@ nightly unit tests. )
 ======================================================================
 
  *) Whenever trying to use Chez's interactive debugger (using "(debug)"),
-you should remember to go to the top of legacy_main_chez.ss and set the
+you should remember to go to the top of compiler_chez.ss and set the
 optimize-level to 0.  Otherwise inlining might result in you not
 seeing stack frames in the inspector that you expect to see.
   [With WaveScript, simply run ws.debug - 2007.03.12]
