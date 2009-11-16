@@ -29,11 +29,6 @@
 		 gnuplot_process spawnprocess
 		 prim_window
 
-		 ;; Unmarshall from strings:
-		 to-uint16 to-int16 uint16->string 
-		 ;marshal __type_unsafe_read
-		 ;__type_unsafe_write
-
 		 wsequal?
 
 		 gint
@@ -874,22 +869,17 @@
   (define (read-binary-file-stream file srcstrm wordsize sample-extractor len overlap skipbytes offset
                                    bench? output-type box-name edge-counts-table sum-type-declarations)
     (define chunksize 32768) ;; How much to read from file at a time.
-    (define infile (open-input-file file))
-    (IFCHEZ (define buffer1 (make-string chunksize #\_))
-	    (begin))
-    ;(define count1 0)
+    (define infile (open-file-input-port file))
+
+    (define buffer1 (make-bytevector chunksize))
+
     (define winsize (s:* len (s:+ wordsize skipbytes)))    
 
     (define counter 0)
     (define total 0)
     (define print-every 500000)
 
-    ;; This version is simpler than my previous attempt and just
-    ;; reads at the granularity of the window-size.  However it has
-    ;; a CORRECTNESS problem.  It depends on block-read getting all
-    ;; the data every read.  
-    ;; TODO: FIX THIS.
-    ;;
+    ;; OLD COMMENTS:
     ;; This version takes 750 ms (opt lvl 3) with no alloc or fill.
     ;; 1.6 s with alloc, 2.0 s with alloc & constant fill.
     ;; And 22 seconds with alloc, fill, and sample parsing!
@@ -900,41 +890,21 @@
     ;; NOTE: Performance got vastly better when I only did one
     ;; channel at a time instead of every sample being a 4-vector.
     (define (read-window)
-      (define (return-it string)
+      (define (return-it bvec)
         (let ([win (make-vector len)])
           (let readloop ([i 0] [pos 0])
             ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
             (unless (= i len)
-              (vector-set! win i (sample-extractor string pos))
-              (readloop (fx+ i 1) (s:+ pos wordsize skipbytes))
-              ))  
+              (vector-set! win i (sample-extractor bvec pos))
+              (readloop (fx+ i 1) (s:+ pos wordsize skipbytes))))
           win))
-
-      (IFCHEZ
-       (begin
-	(set! count1 (block-read infile buffer1 winsize))
-	(cond
-	 [(eof-object? count1)  #f]
-	 [(fx< count1  winsize)
-	  ;; If we got an incomplete window we just keep reading:
-	  ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
-	  (let loop ([count count1]
-		     [acc (list (substring buffer1 0 count1))])
-                                        ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
-          (let ([newcount (block-read infile buffer1 (fx- winsize count))])
-            (if (eof-object? newcount) 
-                (begin (warning 'read-window 
-                                "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
-                                count1 winsize) 
-                       #f)
-                (let ([total (s:+ count newcount)]
-                      [newacc (cons (substring buffer1 0 newcount) acc)])
-                  (if (fx= total winsize)
-                      (return-it (apply string-append (reverse! newacc)))
-                      (loop total newacc))))))] 
-	 [else (return-it buffer1)]))       
-       (return-it (get-string-n infile winsize)))
-)
+      (let ([bytes (get-bytevector-n! infile buffer1 0 winsize)])
+	(if (eq? bytes winsize)
+	    (return-it buffer1)
+	    (begin (warning 'read-window 
+			    "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
+			    bytes winsize) 
+		   #f))))
 
     (define _ 
       ;; This returns the stream representing the audio channel (read in from disk):
@@ -972,16 +942,8 @@
               (stop-WS-sim! "readFile: hit eof")
               (void)))))
     
-      ;; Scan ahead in the file to the offset:
-    (IFCHEZ 
-     (let scan ([offset offset])
-       ;; Would be nice if we had a seek command instead of having
-       ;; to read this out by blocks:
-       (unless (zero? offset)
-	 ;; Don't read more than we have room for.
-	 (scan (fx- offset (block-read infile buffer1 (min offset chunksize))))))
-     (get-string-n infile offset) ;; Discard result.
-     )
+       ;; Scan ahead in the file to the offset:
+       (get-bytevector-n! infile buffer1 0 offset) ;; Discard result.
 
        ;; Register with our parent stream.
        (srcstrm wsbox)
@@ -989,8 +951,8 @@
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
-     
 
+     
      ;; This is just for testing.  IT LEAKS.
      (define (unionList ls)
        (define our-sinks '())
@@ -1150,20 +1112,8 @@
   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
 
   ;; Read two bytes from a string and build a uint16.
-  (define (to-uint16 str ind)  ;; Internal helper function.
-    (fx+ (bitwise-arithmetic-shift-left (charToInt (string-ref str (fx+ 1 ind))) 8)
-;    	 (charToInt (string-ref str (fx+ 0 ind))) ;; taking away this fx+ 0 causes demo4b to fail under ikarus -- WEIRD
-    	 (charToInt (string-ref str ind)) ;; taking away this fx+ 0 causes demo4b to fail under ikarus -- FIXME
-	 )
-  )
-
-  ;; The signed version
-  (define (to-int16 str ind) 
-    (let ([unsigned (to-uint16 str ind)])
-      (if (fxlogbit? 15 unsigned)	  
-	  ;(fx- (fxlogbit0 15 unsigned))
-	  (fx- unsigned (expt 2 16))
-	  unsigned)))
+  (define to-uint16 bytevector-u16-native-ref)
+  (define to-int16  bytevector-s16-native-ref)
 
   ;; Set the ith bit to zero:
  (define (bitwise-bit0 num ind)
@@ -1171,19 +1121,8 @@
    (bitwise-xor num (bitwise-arithmetic-shift-left 1 ind)))
   
   ;; Might not be a fixnum:
- (define (to-uint32 str ind)  ;; Internal helper function.        
-   (s:+ (s:* (charToInt (string-ref str (fx+ 3 ind))) (s:* 256 256 256))
-	(fxarithmetic-shift-left (charToInt (string-ref str (fx+ 2 ind))) 16)
-	(fxarithmetic-shift-left (charToInt (string-ref str (fx+ 1 ind))) 8)
-;       (charToInt (string-ref str (fx+ 0 ind))))) ;; FIXME
-       (charToInt (string-ref str ind))))
-
-  (define (to-int32 str ind) 
-    (let ([unsigned (to-uint32 str ind)])
-      (if (bitwise-bit-set? unsigned 31)
-	  ;; Zero that bit and make it negative:
-	  (s:- (bitwise-bit0 unsigned 31))
-	  unsigned)))
+  (define to-uint32 bytevector-u32-native-ref)
+  (define to-int32  bytevector-s32-native-ref)
 
   (define (types->reader types)
      (define (type->reader t)
@@ -1202,24 +1141,13 @@
      (cond 
       [(= 0 len) (error 'types->reader "can't read unit type (zero-length tuple) from a file!")]
       [(= 1 len) (type->reader (car types))]
-      [else (lambda (str ind)
+      [else (lambda (bvec ind)
 	      (apply tuple
 	       (let unmarshallloop ([i 0] [pos ind])
 		 (if (= i len)
 		     '()
-		     (cons ((vector-ref readers i) str pos)
+		     (cons ((vector-ref readers i) bvec pos)
 			   (unmarshallloop (fx+ 1 i) (fx+ pos (vector-ref widths i))))))))]))
-
-  ;; Currently unused.
-  (define (uint16->string n)
-    (if (>= n 65536)
-	(error 'uint16->string "input is too large: ~s" n))
-    (let* ([lowbyte (fxmod n 256)]
-	   [highbyte (fx/ (fx- n lowbyte) 256)])
-      (list->string (list (integer->char highbyte)
-			  (integer->char lowbyte)))))
-
-
 
   ;; ================================================================================
 

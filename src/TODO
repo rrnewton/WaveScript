@@ -15,8 +15,8 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 There's a lot of cleanup to be done.
  *) Start ripping out old regiment stuff wholesale.
  *) Phase out IFCHEZ but figure out what to do with local rn-match imports.
- *) Switch to unicode
  *) Fix PLT WS-repl
+ *) implement marshal under scheme now that we have byte vectors!
 
 ================================================================================
 TOOPTIMIZE:

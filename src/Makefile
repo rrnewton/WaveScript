@@ -39,7 +39,7 @@ basic:
 # 	@echo "======================================================================"
 # 	$(MAKE) c
 
-all: basic ws.debug
+all: basic ws.debug ws.opt
 
 # allheap: fullheap fullheap.opt
 
@@ -90,18 +90,18 @@ main_r6rs.sls:
 
 
 #----------------------------------------#
-#    Default compiler build:             #
+#    Default compiler build entrpoints   #
 #----------------------------------------#
 
 # These presently invoke the Chez version:
 
 # [2007.04.22] Switching the default to .boot files:
-ws:       boot
-ws.opt:   boot.opt
-opt:      boot.opt
-ws.debug: so.debug
-debug:    so.debug
-dbg:      so.debug
+ws:       chez
+ws.opt:   chezopt
+opt:      chezopt
+ws.debug: chezdebug
+debug:    chezdebug
+dbg:      chezdebug
 
 
 #----------------------------------------#
