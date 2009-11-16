@@ -889,6 +889,13 @@
     ;;
     ;; NOTE: Performance got vastly better when I only did one
     ;; channel at a time instead of every sample being a 4-vector.
+    ;; 
+    ;; NEW COMMENTS:
+    ;; [2009.11.16] I just did a reading test on a >100mb file.
+    ;; Chez/R6RS/O3 did slightly better than wsc2 on demo1e.  I'm a little surprised.
+    ;; This might be a function of GC on small objects (sigsegs with one int16).a
+    ;; It might be a function of the C code calling fread/fseek for every tuple.  Not for every window.a
+    ;; (That can easily be fixed.)  "cat" is doing a factor of 2 better.  We should be able to keep up with that in this case.
     (define (read-window)
       (define (return-it bvec)
         (let ([win (make-vector len)])

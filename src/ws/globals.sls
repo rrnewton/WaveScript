@@ -170,7 +170,6 @@
 	 int16? int32? int64? uint8? uint16?
 	 basename dirname
 
-;	 special-nullseg-object
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
 	 make-tuple tuple-fields tuple?
 	 make-wsrecord wsrecord-pairs wsrecord-select wsrecord-extend wsrecord-restrict empty-wsrecord wsrecord? 
@@ -955,7 +954,6 @@
 
 ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
 (reg:define-struct (sigseg start end vec timebase))
-;(define special-nullseg-object (gensym "unique-nullseg"))
 
 ;; [2007.07.29] Adding this to distinguish tuples from vectors.
 (reg:define-struct (tuple fields))

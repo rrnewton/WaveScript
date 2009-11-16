@@ -70,7 +70,7 @@
 
   (define native-inspect chez:inspect)
 
-  (define format-syntax-nicely (lambda (x) (inspect x) x))
+  (define format-syntax-nicely (lambda (x) x))
 
   ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
   ;(define reg:top-level-eval chez:eval)
@@ -123,16 +123,15 @@
        (printf "Warning in ~a: ~a\n" who (apply format str args)))))
   (define (warning who str . args)
     (apply (warning-handler) who str args))
-
 #;
   (define (error who msg . args)   
     (call/cc 
      (lambda (errork)
        (newline) (printf " ** ERROR ** \n")
-       (chez:error who (apply format msg args))
+       ;(chez:error who (apply format msg args))
        ;(printf " In ~a: ~a" who (apply format msg args)) (newline)
        ;;(debug)
-       ;;(chez:exit 12)
+       (chez:exit 12)
        ;(inspect errork)
        ))
     )

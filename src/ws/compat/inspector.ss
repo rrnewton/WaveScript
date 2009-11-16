@@ -5,7 +5,7 @@
 
 ;; DOESN'T WORK FOR CYCLIC STRUCTURES!
 
-(define (generic-inspect x)
+(trace-define (generic-inspect x)
 ;   (printf "\nInteractive inspector (This is not implemented yet): \n")
 ;   (pretty-print x)(newline)
 ;   (printf "\nPress enter to continue.\n")

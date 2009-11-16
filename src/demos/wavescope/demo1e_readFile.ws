@@ -16,7 +16,6 @@
 (-1529, -1017, -505)
 */
 
-
 s1 = (readFile("./countup.raw", 
 	       "mode: binary  repeats: 0 "++
 	       "skipbytes: 2  window: 255 offset: 2", 

@@ -932,6 +932,7 @@
 		   hashrem hashset ;; pure versions
 		   Array:map Array:fold
 		   internString uninternString
+		   Internal:hash
 
 		   exclusivePtr getPtr
 		   marshal unmarshal
@@ -962,7 +963,7 @@
 		     wavescript-primitives))))
       ))
 
-(define-testing test-this (default-unit-tester "wavescript_emit-caml.ss: generating WaveScript OCaML code." these-tests))
+(define-testing test-this (default-unit-tester "emit-caml: generating WaveScript OCaML code." these-tests))
 (define test-emit-caml test-this)
 
 

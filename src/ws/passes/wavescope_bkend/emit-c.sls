@@ -2161,6 +2161,7 @@ int main(int argc, char ** argv)
 		 lshiftI32 rshiftI32 logorI32 logandI32 logxorI32 
 
 		   internString uninternString
+		   Internal:hash
 
 		   exclusivePtr getPtr
 		   marshal unmarshal

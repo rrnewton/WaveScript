@@ -200,7 +200,6 @@
   ;; Return value: 'result                                               <br>
   (let ()
     (define (build-traverser driver fuse e)
-;      (call/cc inspect)
       (let loop ((e e))	
 	;; This is the fallthrough/autolooper function that is passed to the driver.
 	(define fallthru
@@ -238,7 +237,6 @@
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 
 	  [(wscase ,[loop -> val] (,TC ,[loop -> rhs*]) ...)
-;	   (inspect pat*)  (inspect rhs*)
 	   (fuse (cons val rhs*)
 		 (lambda (v . r*) `(wscase ,v . ,(map list TC r*))))]
 
@@ -246,7 +244,6 @@
 	  [(tupref ,n ,m ,[loop -> exp])
 	   (DEBUGASSERT fixnum? n)
 	   (DEBUGASSERT fixnum? m)
-	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
 
 	  [(wsrecord-extend ,name ,[loop -> x] ,[loop -> rec])
@@ -274,12 +271,11 @@
 	   (fuse (cons bod rhs*)
 		 (lambda (x . y*) `(,letrec ,(map list lhs* typ* y*) ,x)))]
 
-	  ;; Letrec's are big and hairy enough that we try to give slightly better error messages.
 	  [(letrec ([,lhs* ,rhs*] ...) ,bod)
-	   (warning 'core-generic-traverse "letrec does not have types:\n ~s\n\n" 
+	   (error 'core-generic-traverse "letrec does not have types:\n ~s\n\n" 
 		  `(letrec ([,lhs* ,rhs*] ...) ,bod))
-	   (inspect `(letrec ,(map list lhs* rhs*) ,bod))
-	   (error 'core-generic-traverse "")]
+	   ;(error 'core-generic-traverse "")
+	   ]
 
 	  ;; Again, no looping on types.  This is an expression traversal only.
 	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
@@ -352,26 +348,18 @@
 	  ;; ========================================
 	  ;; Specific error catching:
 	  [(letrec ,other ...)
-	   (warning 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
-		    `(letrec ,@other))
-	   (inspect `(letrec ,@other))
-	   (error 'core-generic-traverse "")]
+	   (error 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
+	   	    `(letrec ,@other))]
 	  [(lambda (,v* ...) ,e)
-	   (warning 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
-		    `(lambda ,v* ,e))
-	   (inspect `(lambda ,v* ,e))
-	   (error 'core-generic-traverse "")]
+	   (error 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
+		    `(lambda ,v* ,e))]
 	  [(lambda ,other ...)
-	   (warning 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
-		    `(lambda ,@other))
-	   (inspect `(lambda ,@other))
-	   (error 'core-generic-traverse "")]
+	   (error 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
+		    `(lambda ,@other))]
 
 	  [(fifo-copy-outgoing ,rst ...) (cons 'fifo-copy-outgoing rst)]
 
-	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
-		      (inspect otherwise)
-		      (error 'core-generic-traverse "")]
+	  [,otherwise (error 'core-generic-traverse "bad expression: ~s" otherwise)]
 	  )])) ;; End fallthru
 	(driver e fallthru)))
 
@@ -399,7 +387,6 @@
 		    ;; If it has not been extended, we are fine to proceed
 		    (if (not (tenv-eq? tenv old_tenv))
 			
-			;;(inspect 'USER_EXTENDED_TENV)
 			((loop tenv) x) ;; WARNING: this feeds it back through the driver a second time!
 			
 		    (match x 
@@ -467,8 +454,6 @@
 		    [vars (binding-form->vars form)]
 		    [others (binding-form->unscoped-exprs form)]
 		    )			      
-;	      (inspect `([scoped ,scoped] [vars ,vars] [others ,others] ))
-
 	      (union  
 	       (difference (apply append (map core-free-vars scoped))
 			   vars)
