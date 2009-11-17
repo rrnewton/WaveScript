@@ -235,8 +235,10 @@
   (with-exception-handler 
    (lambda (exn)
      ;; (#<record &error> #<record &who> #<record &message> #<record &irritants>) 
-     ;; Dissect the R6RS error record into "who" "string":
+     ;; FIXME: Dissect the R6RS error record into "who" "string":
+     ;; FIXME:      ;; FIXME:      ;; FIXME:      ;; FIXME: 
      (display exn "") ;; <- Hack, for now just do this
+     ;; FIXME:      ;; FIXME:      ;; FIXME:      ;; FIXME: 
      (escape))
    th))
 (define (with-warning-handler display th)
@@ -306,7 +308,7 @@
 	(begin (f i (car ls))
 	       (foreachi-loop (add1 i) (cdr ls))))))
 
-(include "ws/testing/unit_tester.ss")
+(include "ws/testing/unit_tester.ss") 
 
 
 ; ======================================================================

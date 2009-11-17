@@ -13,7 +13,7 @@
  	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
  	  reg:top-level-eval simple-eval
 	  real-time cpu-time 
-	  warning warning-handler
+	  warning warning-handler display-condition
  	  print-level print-graph print-length pretty-maximum-lines pretty-line-length print-vector-length
 
  	  process  pretty-print get-string-available
@@ -44,6 +44,7 @@
 		  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 		  error
 		  )
+
 	  ;(rnrs eval (6))
 	  ;(rnrs programs)
 	  ;(except (rnrs (6)) error)
@@ -111,7 +112,18 @@
 		  ))
    
    (define (repl)  
-     (new-cafe reg:top-level-eval))
+     (import expression-editor)
+     (ee-flash-parens #t)
+     ;; [2009.11.17] Can't presently figure out how to get the expression editor on.
+#;
+     (printf "STARTING NEW CAFE: ~s ~s ~s ~s TERM ~s interactive: ~s\n" 
+	     (current-output-port) (current-input-port)
+	     (standard-output-port) (standard-input-port)
+	     (getenv "TERM") (interactive?)
+	     )
+     ;(new-cafe)
+     (new-cafe reg:top-level-eval)
+     )
 
   (define (with-output-to-port p th)
     (parameterize ([current-output-port p])

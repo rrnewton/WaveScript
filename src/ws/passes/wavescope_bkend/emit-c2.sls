@@ -62,6 +62,7 @@
 	   make-c-state c-state-lines c-state?
 	   make-c-proto c-proto-lines c-proto?
 	   
+	   test-emit-c2
 	   )
   (import (except (rnrs (6)) error) (except (rnrs r5rs) force delay)
 	  (rnrs mutable-strings)
@@ -2642,5 +2643,27 @@ int main(int argc, char **argv)
 	       piece))
       (next)))))
 
+(define-testing test-emit-c2
+  (let ()
+    (define testprog
+      '(explicit-stream-wiring-language
+       '(graph
+	 (const)
+	 (init)
+	 (sources)
+	 (operators)
+	 (sink tmpsmp_223 'hmm) (union-types)
+	 (heap-types)
+	 (struct-defs)
+	 (input-parameters ()))))
+    (default-unit-tester "emit-c2" 
+      `(
+	
+	[(let ((obj (make-object <emitC2> ',testprog)))
+	   obj)
+	 unspecified]
+
+	))
+    ))
 
 ) ;; End module

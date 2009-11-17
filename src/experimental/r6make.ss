@@ -30,7 +30,8 @@ exec chez --script $0 $*
     (optimize-level (string->number optlvl))
     (optimize-level 2))
   ;; REGDEBUGMODE is unset to indicate non-debug:
-  (generate-inspector-information (if (getenv "REGDEBUGMODE") #t #f))
+  ;(generate-inspector-information (if (getenv "REGDEBUGMODE") #t #f))
+  (generate-inspector-information (not (= 3 (optimize-level))))
   
   ;(generate-inspector-information #t)
   ;(printf "  Compiling: ~a opt-level ~a \n" f (optimize-level))

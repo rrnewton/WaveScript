@@ -143,8 +143,11 @@
 ;	       [intended (map cadddr entries)]
 	       [success #t]
 	       [tests-to-run (filter number? args)]
-	       [suppressed-test-output #f]
 	       )
+
+	   (define-values (suppressed-test-output suppressed-output-extractor)
+	     (if quiet (open-string-output-port)
+		 (values (current-output-port) #f)))
 
 	   ;; This (long) sub-procedure executes a single test:
 	   (let ([execute-one-test
@@ -176,31 +179,30 @@
 						 ;; Should format the output, but don't want to cause *another* error
 						 ;; and thereby go into an infinite loop.
 						 ;; Could reparameterize the error-handler... TODO
-						 (printf "default-unit-tester, got ERROR: \n  ~s\n"
-							 args)
-					;(if (car args) (printf "~s: " (car args)))
-					;(printf "~a\n" (apply format (cdr args)))
-						 ;; TEMP: reraise:						 
-						 ;(raise (car args))
+						 (printf "default-unit-tester, got ERROR: \n")
+						 (match args
+						   [(,cond ,str)			
+						    (printf "~a/n" str)
+						    (display-condition cond)
+						    (newline)])
 						 )
 					       (lambda () (escape-eval 'error))
 					       (lambda () 
-						 (if quiet						    
-						     (let ([result #f])
+						 (printf "RUNNING TEST \n")
+						 (let ([result #f])
 						       (with-warning-handler 
 							(lambda (who str . args) 
 							  (printf "Warning in ~a: ~a\n" 
 								  who (apply format str args)))
 							(lambda ()
-							  (set! suppressed-test-output
-								(with-output-to-string
-								  ;;========================================
-								  ;; RUN THE TEST:
-								  (lambda () 
-								    (set! result
-									  (reg:top-level-eval (preprocessor expr))))))))
+							  (with-output-to-port suppressed-test-output
+							    ;;========================================
+							    ;; RUN THE TEST:
+							    (lambda () 
+							      (set! result
+								    (reg:top-level-eval (preprocessor expr))))
+							    )))
 						       result)
-						     (reg:top-level-eval (preprocessor expr)))
 						 ;;========================================
 						 ))))])
 ;	       (newline)
@@ -220,7 +222,7 @@
 		       (begin (printf "fail:  But retrying... Retry #~a\n" try)
 			      (retryloop (add1 try)))
 		       ;; Otherwise just print a notification of the failure and bind it to a global var:
-		       (begin 
+		       (begin
 			  (set! success #f)
 			  (newline)
 			  (if (procedure? intended)
@@ -231,14 +233,21 @@
 			  (printf "\n      Received: \n")
 			  (write result)
 ;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
-			  (printf "\n\nFor Test: \n")
+			  (printf "\n\n      For Test: \n")
 			  (pretty-print expr)
 			  (newline)
+			  
 			  ;(eval `(define failed-unit-test ',expr))
 			  (define-top-level-value 'unit-test-received result)
 			  (define-top-level-value 'unit-test-expected intended)
 			  (define-top-level-value 'failed-unit-test expr)
-			  (define-top-level-value 'default-unit-tester-output suppressed-test-output)
+			  (define-top-level-value 'default-unit-tester-output 
+			    (if quiet (suppressed-output-extractor) #f))
+
+			  (printf "      Test Output:\n")
+			  (printf "----------------------------------------\n")
+			  (display (top-level-value 'default-unit-tester-output))
+			  (printf "----------------------------------------\n")
 
 			  (printf "Violating test bound to global-variable, try (reg:top-level-eval (top-level-value 'failed-unit-test))\n")
 			  (printf "Expected and received also bound to globals, consider: ")

@@ -13,7 +13,8 @@
 	  syntax-error error
  	  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
  	  reg:top-level-eval simple-eval
- 	  warning warning-handler real-time cpu-time time	   
+ 	  warning warning-handler display-condition
+	  real-time cpu-time time	   
  	  print-level print-graph print-length pretty-maximum-lines pretty-line-length print-vector-length
  	  with-output-to-string with-output-to-port
 	  repl
@@ -260,5 +261,8 @@
   (plt:include "inspector.ss") (define inspect generic-inspect)
   (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")
+
+  (define (display-condition cond . prt)
+    (error 'display-condition "TODO implement me in mzscheme"))
 
 )

@@ -137,8 +137,9 @@
 
 ;; Dump an entire stream to a file:
 (define stream-dump
-  (lambda (stream file)
+  (lambda (stream file)    
     (define count 0)
+    (if (symbol? file) (set! file (symbol->string file)))
     (when (file-exists? file) (delete-file file))
     (let ([port (open-output-file (format "~a" file))])
 	       (parameterize ([print-length #f]
