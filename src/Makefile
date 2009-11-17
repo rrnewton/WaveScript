@@ -245,6 +245,7 @@ chezwipe: chezpurge
 
 chezwhole:
 	find . -name "*.so" | xargs $(RM)
+	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | chez
 	./experimental/r6make.ss regiment.ss list > build/so_list.txt
 	make chezincr
@@ -536,13 +537,10 @@ test:
 # This is in contrast to supertest.ss, which is supposed to be as
 # exhaustive as possible.
 fulltest: 
-	rm -rf /tmp/wsparse_server_*
-#killall mzscheme
 	$(MAKE) clean 
-	$(MAKE) wsparse
+	$(MAKE)
 	regiment test
         # Now build it to speed up these subsequent tests:
-	if [ `which chez` ]; then $(MAKE) boot; fi 
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 # NOT WORKING RIGHT NOW:
 	(cd ../apps/stockticks/; $(MAKE) test)
