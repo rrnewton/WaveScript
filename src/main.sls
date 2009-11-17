@@ -22,7 +22,6 @@
 	  (except (rnrs r5rs) force delay)
 	  (main_r6rs);(except (main_r6rs) +)
 
-	  (prefix (scheme) chez:) ;; Temp.  Remove me.
 	  ;(except (rnrs (6)) error) (prefix (scheme) chez:) (ws shortcuts)
 	  ;(except (rnrs (6)) error) (main_r6rs) (prefix (scheme) chez:) (ws shortcuts)
 	  ;'(except (rnrs (6)) error) '(main_r6rs) '(prefix (scheme) chez:) '(ws shortcuts)

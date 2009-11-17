@@ -13,7 +13,6 @@
      '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
      '(main_r6rs) '(main)))
 
-
 (define top-table (make-eq-hashtable 200))
 
 (define (define-top-level-value var val) (hashtable-set! top-table var val))
@@ -29,7 +28,9 @@
 
 ;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
 (define reg:top-level-eval  
-  (let ([repl-env (box #f)])
+  ;; [2009.11.17] IKARUS BUG: Runnig (box #f) at initialization time for the module crashes ikarus.
+;  (let ([repl-env (box #f)])
+  (let ([repl-env #f])
 
     (define default-imports
       '((except (rnrs (6)) error) ; (rnrs r5rs (6))
@@ -41,7 +42,7 @@
     ;; WARNING: This won't allow recursive bindings.
     ;; TODO: I could manage that with let-n-set.
     (define (eval-preprocess x)
-      ;; UNLESS we do a little hack.
+      ;; UNLESS we do a little hack.+
       ;; We manage a virtual top-level environment ourselves:
       (if (pair? x)
 	  (cond 
@@ -55,12 +56,12 @@
 	  x))
     (case-lambda 
       [(exp) 
-       (unless (unbox repl-env)
-	 (set-box! repl-env (apply environment (append default-imports implementation-specific-imports)))
+       (unless repl-env
+	 (set! repl-env (apply environment (append default-imports implementation-specific-imports)))
 	 ;(set-box! repl-env (default-repl-env))
 	 ;(printf "SET THE REPL ENV ~s\n" (unbox repl-env))
 	 )
-       (reg:top-level-eval exp (unbox repl-env))]
+       (reg:top-level-eval exp repl-env)]
       [(exp env)
        
        
@@ -92,4 +93,6 @@
 			   (eval `(let ,bindsacc ,e) env))
 		 (eval-preprocess exp)))))
        ])))
+
+
 

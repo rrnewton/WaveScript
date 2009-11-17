@@ -18,6 +18,8 @@ There's a lot of cleanup to be done.
  *) Fix PLT WS-repl
  *) implement marshal under scheme now that we have byte vectors!
 
+ *) FIX IKARUS BUILD
+
 ================================================================================
 TOOPTIMIZE:
 

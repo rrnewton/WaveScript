@@ -245,7 +245,7 @@ chezwipe: chezpurge
 
 chezwhole:
 	find . -name "*.so" | xargs $(RM)
-	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
+	@if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | chez
 	./experimental/r6make.ss regiment.ss list > build/so_list.txt
 	make chezincr
