@@ -27,7 +27,6 @@ function from_source() {
 
 function go() {
     FILE=$1
-    echo "RUNNING $FILE"
     if [ -e $FILE ];
     then exec chez --program $FILE $CURDIR $ARGS
     else from_source

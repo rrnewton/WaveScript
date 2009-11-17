@@ -526,9 +526,7 @@ larceny: ws/common.sls main_r6rs.sls \
 # This is basic, for someone who just downloaded WaveScript:
 t: test
 test:
-	rm -rf /tmp/wsparse_server_*
-	$(MAKE) clean 
-	$(MAKE) wsparse
+#	$(MAKE) clean wsparse ag
 	regiment test
 	(cd demos/wavescope; $(MAKE) getdata)
 	(cd demos/wavescope; ./testall_demos.ss)
