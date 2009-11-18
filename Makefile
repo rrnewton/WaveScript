@@ -18,3 +18,7 @@ pltbc:
 	(cd src/; $(MAKE) pltbc)
 
 
+clean:
+	(cd src/; $(MAKE) clean)
+
+

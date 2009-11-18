@@ -12,9 +12,10 @@ DIRS32 = -L/lib32 -L/usr/lib32
 
 FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 
-#LIBS = -lm -ldl -lncurses -lrt
+LIBS = -lm -ldl -lncurses -lrt
 # [2009.11.13] Why does this include rt?
-LIBS = -lm -ldl -lncurses 
+# [2009.11.18] Oh, because of clock_gettime
+#LIBS = -lm -ldl -lncurses 
 
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
