@@ -104,8 +104,11 @@ void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
-  char* machinetype = "i3osx";
 
+  // TEMP FIXME:  Need to get the machine type here:
+
+  char* machinetype = "i3le";
+  //char* machinetype = "i3osx";
   //  char* machinetype = shell(); 
   
   char bootfile[PATHMAX];

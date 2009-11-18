@@ -3,8 +3,8 @@
 #CHEZD = ~/bin/Linux-i686/csv7.9.2/boot/i3le
 
 #MACHINE = `echo (machine-type) | chez -q`
-MACHINE = i3osx
-#MACHINE = i3le
+#MACHINE = i3osx
+MACHINE = i3le
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 
