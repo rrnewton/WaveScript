@@ -517,7 +517,7 @@
   ;; Another reason (besides paralelizing) that it would be convenient
   ;; to have weights on AST nodes that track the size of the tree.
   (define table (make-default-hash-table 500))
-  (define (check-table s) (hashtab-get table s))
+  (trace-define (check-table s) (hashtab-get table s))
   (define (add-to-table! s) (hashtab-set! table s 0))
   (define (incr-table! s)
     (define rc (hashtab-get table s))
@@ -582,7 +582,8 @@
      (core-free-vars '(readFile '"countup.raw" '"" x))
      (x)]
 
-    [(core-refcount '(lambda (x) (Int) (lambda (x) (Float) x))) error]
+    ["core-refcount error because of non-unique variables"
+     (core-refcount '(lambda (x) (Int) (lambda (x) (Float) x))) error]
 
     ["core-refcount"
      (hashtab->list (core-refcount '(lambda (x) (Int) x)))
