@@ -209,6 +209,8 @@
 	    acc)))))
 
   (define (display-condition cond . prt)
-    (error 'display-condition "TODO implement me in ikarus"))
+    ;(error 'display-condition "TODO implement me in ikarus")
+    (printf " CONDITION ~s\n" cond)
+    )
 
 )
