@@ -1,12 +1,12 @@
 
 
-// [2009.06.10] This is a simple example which sends an (arbitrarily
-// complex) piece of wavescope data over a socket.
+// [2009.11.20] This example opens multiple sockets between two different processes.
+// It is not supported by my initial implementation of socket.ws
 
 include "socket.ws"
 
-
 port = 9700;
+port2 = 9701;
 
 
 // Sender:
@@ -18,7 +18,11 @@ nums = iterate n in COUNTUP(10) {
   print("Sending: "++ x  ++"\n"); 
   emit x;
 };
-outstrm = socket_out(nums, port);
+
+out_first = socket_out(nums, port);
+and_back :: Stream Int = socket_in("localhost", port2)
+
+main1 = merge(out_first, and_back)
 
 
 // Receiver: 
@@ -30,16 +34,7 @@ type MySchema = (| NAME : String, DAT :  (List Char * Array Int));
 // This needs the type annotation to deserialize:
 instrm :: Stream MySchema = socket_in("localhost", port);
 
+results = iterate x in instrm { emit String:length(x.NAME) }
 
-/* //======================================== */
-/* // This is an alternate way of doing things. */
-/* // First, receieve the raw bytes: */
-/* in2 = socket_in_raw("localhost", port); */
+main2 = socket_out(results, port2)
 
-/* // Second, unmarshal them manually: */
-/* instrm2 = iterate bytes in in2 { */
-/*   print("Received "++ Array:length(bytes)  ++" bytes: "++ bytes ++ "\n"); */
-/*   x :: MySchema = unmarshal(bytes, 0); // 0 is offset */
-/*   print("  Unpacked into: " ++ x ++"\n"); */
-/*   emit (); */
-/* } */
