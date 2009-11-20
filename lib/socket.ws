@@ -150,11 +150,38 @@ fun socket_in(addr, port) {
 
 
 // Create a separate thread to wait for the client to connect.
-// In the meantime data dumps on the floor.
-// fun socket_out(strm, port) {
+start_spawn_server :: Int -> Int  = foreign("start_spawn_socket_server", socket_includes)
+check_server       :: Int -> Bool = foreign("check_socket_server", socket_includes)
 
-//  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
-// The thread will return when it has made its connection.
+fun socket_out2(strm, port) {
+  //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
+  // The thread will return when it has made its connection.
+  iterate x in strm {
+    state { first = true; 
+            id = 0;
+	    up = false; 
+          }
+    using Unix;
+    if first then {
+      first := false;
+	id = start_spawn_server(port);
+    };
+
+    if up then {    
+	// Marshal and send it:
+	bytes = marshal(x);    
+	len = Array:length(bytes);  
+	lenbuf = marshal(len);  
+	write_bytes(clientfd, lenbuf, 4);
+	write_bytes(clientfd, bytes, len);
+    } else {
+      // Otherwise data gets DROPPED ON THE FLOOR.
+      up = check_server_up(id)
+    }
+  }
+}
+
+
 
 
 

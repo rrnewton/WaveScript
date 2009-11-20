@@ -8,6 +8,8 @@
 
 #include <errno.h> 
 
+#include <pthread.h> 
+
 // [2009.06.02] Need some systematic way to generate these wrappers...
 
 // This builds a struct:
@@ -38,6 +40,45 @@ int ws_hostent_h_addr(struct hostent* server) {
   return *(int*)server->h_addr; 
 }
 
+// These build enum values:
+
+short ws_AF_INET() { return AF_INET; }
+unsigned short ws_SOCK_STREAM() { return SOCK_STREAM; }
+int ws_INADDR_ANY() { return INADDR_ANY; }
+
+int ws_sizeof_sockaddr() { return sizeof(struct sockaddr); }
+
+int ws_print_sockaddr(struct sockaddr* addr) {   
+  struct sockaddr_in* x = (struct sockaddr_in*)addr;
+  printf("Sockaddr, assuming _in: %p \n", x);
+  printf("  family %d  port %d  s_addr %X \n", 
+         x->sin_family, ntohs(x->sin_port), x->sin_addr.s_addr);  
+}
+
+int ws_errno() { return errno; }
+
+// These deal with pthreads:
+
+void start_spawn_server() {
+  //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);
+
+/*       sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0); */
+/*       if sockfd < 0 then error("socket_out: ERROR opening socket."); */
+/*       serv_addr = make_sockaddr_in(AF_INET(), port, INADDR_ANY()); */
+/*       b = bind(sockfd, serv_addr, sizeof_sockaddr()); */
+/*       if b < 0 then error("socket_out: ERROR on binding: "++b++ " errno " ++ errno()); */
+/*       listen(sockfd,5);       */
+/*       // Accept client connection: */
+/*       cli_addr = make_sockaddr_in(0,0,0); */
+/*       clilen = #[sizeof_sockaddr()]; */
+/*       clientfd := accept(sockfd, cli_addr, clilen); */
+
+}
+
+
+
+/********************************************************************************/
+// SCRAP
 
 /*
 
@@ -98,21 +139,3 @@ struct sockaddr_storage {
 };
 
 */
-
-
-// These build enum values:
-
-short ws_AF_INET() { return AF_INET; }
-unsigned short ws_SOCK_STREAM() { return SOCK_STREAM; }
-int ws_INADDR_ANY() { return INADDR_ANY; }
-
-int ws_sizeof_sockaddr() { return sizeof(struct sockaddr); }
-
-int ws_print_sockaddr(struct sockaddr* addr) {   
-  struct sockaddr_in* x = (struct sockaddr_in*)addr;
-  printf("Sockaddr, assuming _in: %p \n", x);
-  printf("  family %d  port %d  s_addr %X \n", 
-         x->sin_family, ntohs(x->sin_port), x->sin_addr.s_addr);  
-}
-
-int ws_errno() { return errno; }
