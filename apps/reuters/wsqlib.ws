@@ -465,6 +465,7 @@ fun TCPOUTPUT(str) {
 
 fun discard(s) iterate _ in s { }
 
+// This is a temporary fake data source with a temporary fake schema.
 type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
 
 //wsq_reuterSource :: String -> Stream (| TIME : Float, SYM : String, PRICE : Float);
@@ -483,7 +484,7 @@ fun wsq_reuterSource(schema) {
     emit (SYM= syms[i], 
           TIME= t, 
           PRICE= lastprice[i],
-	  VOLUME= randomI(10)
+	  VOLUME= randomI(10) + 1
   	  );
     t += randomI(10).gint;
   }
@@ -520,7 +521,7 @@ fun wsq_printer(str, s) {
 fun wsq_connect_out(host, prt, strm) {
   //print("  **** wsq_connect_out not implemented yet! **** \n");
   //iterate _ in strm { }
-  println(" <WSQ> Creating outgoing (blocking, server) socket, port: " ++ prt);
+  println(" <WSQ> Creating outgoing (server) socket, port: " ++ prt);
   socket_out(strm, prt);
 
   // Hmm... this was a typo, but why didn't it work??

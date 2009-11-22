@@ -537,23 +537,23 @@ test:
 # This a lot of tests but tries not to be fairly quick.
 # This is in contrast to supertest.ss, which is supposed to be as
 # exhaustive as possible.
-# This should be agnostic to REGIMENTHOST (chez/plt/ikarus)
+# This SHOULD be agnostic to REGIMENTHOST (chez/plt/ikarus)
 fulltest: 
 	$(MAKE) clean 
-	$(MAKE)
         # Now build it to speed up these subsequent tests:
+	$(MAKE)
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 	(cd ../apps/stockticks/; $(MAKE) test)
 	(cd demos/wavescope; $(MAKE) getdata)
 	(cd demos/wavescope; ./testall_demos.ss)
+
+	$(MAKE) debug
+	export REGDEBUGMODE=ON
 	@echo
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
 	@echo "============================================================"
-#	$(MAKE) dbg # Now build DEBUG version to speed up these subsequent tests:
 	ws ../lib/stdlib_test.ws -exit-error -n 10;
 	ws ../lib/test_matrix.ws -exit-error -n 10;
-	$(MAKE) debug
-	export REGDEBUGMODE=ON
 	(cd demos/wavescope; ./testall_wsc2)
 # Run tests in debug mode:
 	regiment test

@@ -109,7 +109,7 @@ void WSQ_Init() {
 
   char* machinetype = "i3le";
   //char* machinetype = "i3osx";
-  //  char* machinetype = shell(); 
+  //  char* machinetype = shell(REGIMENTD/depends/get_machine_type); 
   
   char bootfile[PATHMAX];
   

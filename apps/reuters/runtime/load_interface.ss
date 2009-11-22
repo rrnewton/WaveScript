@@ -42,7 +42,7 @@
 ;; Next load the WSQ runtime manager.
 
 (printf " <WSQ> Loading runtime manager...") (#%flush-output-port)
-(load "runtime_manager.ss")
+(load (string-append(getenv "REGIMENTD") "/apps/reuters/runtime/runtime_manager.ss"))
 (printf "  finished.\n")
 
 ;;==============================================================================

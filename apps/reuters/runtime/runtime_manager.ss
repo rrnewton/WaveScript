@@ -152,7 +152,7 @@
 				      v)])			      
 			 `(define ,var ,e)))
 		  binds)]
-	   [prog `((include "wsqlib.ws")
+	   [prog `((include ,(string-append (getenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
 		   ,@bod
 		   (define main 
 		     (assert-type (Stream #())
