@@ -2226,6 +2226,9 @@
 	  [("-o" ,outfile ,rest ...)
 	   (wsint-output-file outfile)
 	   (emitC2-output-target (string-append outfile ".c"))
+	   ;; Clear the output file before we begin compilation.
+	   (when (file-exists? (emitC2-output-target))
+	         (delete-file (emitC2-output-target)))
 	   (loop rest)]
 
 	  [("-opt" ,name ,rest ...)

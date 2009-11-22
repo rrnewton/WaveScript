@@ -220,8 +220,14 @@
 	    (begin (display-condition x) (newline))
 	    (begin 	      
 	      (printf "\n *** ERROR *** \n")        
-	      ;;(pretty-print x)	
-	      (display-condition x)(newline)
+	      (if (and (irritants-condition? x)
+	               (message-condition? x)
+		       (error? x))
+	         (begin 
+		   (apply printf (condition-message x) (condition-irritants x))
+		 )
+	      	 (begin (display-condition x)(newline))
+	      )
 	      (printf "Backtrace: \n")
 	      (continuation->sourcelocs k)
 

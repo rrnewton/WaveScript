@@ -59,7 +59,9 @@ int ws_errno() { return errno; }
 
 // These deal with pthreads:
 
-void start_spawn_server() {
+int start_spawn_socket_server(int port) {
+  printf("SPAWNING: port %d\n", port);
+  return 0;
   //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);
 
 /*       sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0); */
@@ -74,6 +76,12 @@ void start_spawn_server() {
 /*       clientfd := accept(sockfd, cli_addr, clilen); */
 
 }
+
+bool socket_server_ready(int id) {
+  printf("CHECKING SERVER READY... %d\n", id);
+  return 1;
+}
+
 
 
 

@@ -18,7 +18,9 @@ nums = iterate n in COUNTUP(10) {
   print("Sending: "++ x  ++"\n"); 
   emit x;
 };
-outstrm = socket_out(nums, port);
+
+//outstrm = socket_out(nums, port);
+outstrm = socket_out2(nums, port);
 
 
 // Receiver: 

@@ -150,8 +150,8 @@ fun socket_in(addr, port) {
 
 
 // Create a separate thread to wait for the client to connect.
-start_spawn_server :: Int -> Int  = foreign("start_spawn_socket_server", socket_includes)
-check_server       :: Int -> Bool = foreign("check_socket_server", socket_includes)
+start_spawn_socket_server  :: Int -> Int  = foreign("start_spawn_socket_server", ["pthread.h"])
+socket_server_ready :: Int -> Int = foreign("socket_server_ready", ["pthread.h"])
 
 fun socket_out2(strm, port) {
   //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
@@ -159,24 +159,27 @@ fun socket_out2(strm, port) {
   iterate x in strm {
     state { first = true; 
             id = 0;
-	    up = false; 
+            clientfd = 0;
           }
     using Unix;
     if first then {
       first := false;
-	id = start_spawn_server(port);
+	id = start_spawn_socket_server(port);
     };
 
-    if up then {    
+    // We are making the ASSUMPTION that socket descriptors are nonzero.
+    if clientfd == 0 
+    then clientfd := socket_server_ready(id);
+
+    if clientfd != 0 then {    
 	// Marshal and send it:
 	bytes = marshal(x);    
 	len = Array:length(bytes);  
 	lenbuf = marshal(len);  
-	write_bytes(clientfd, lenbuf, 4);
-	write_bytes(clientfd, bytes, len);
+	//	write_bytes(clientfd, lenbuf, 4);
+	//	write_bytes(clientfd, bytes, len);
     } else {
       // Otherwise data gets DROPPED ON THE FLOOR.
-      up = check_server_up(id)
     }
   }
 }
