@@ -28,4 +28,4 @@ run2:
 	(./p1.exe &); (sleep 1;./p2.exe &); (sleep 1; ./p3.exe -n 50)
 
 clean:
-	rm -f *.exe *.c *~
+	rm -rf *.exe *.c *~ *.dSYM

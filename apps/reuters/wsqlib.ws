@@ -465,10 +465,10 @@ fun TCPOUTPUT(str) {
 
 fun discard(s) iterate _ in s { }
 
-type DummySchema = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
+type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
 
 //wsq_reuterSource :: String -> Stream (| TIME : Float, SYM : String, PRICE : Float);
-wsq_reuterSource :: String -> Stream DummySchema;
+wsq_reuterSource :: String -> Stream DummySchema99;
 fun wsq_reuterSource(schema) {
   syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
   lastprice = Array:make(Array:length(syms), 50.0);

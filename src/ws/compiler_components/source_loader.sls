@@ -188,8 +188,6 @@
 ;(define reg:load load-regiment) ;; shorthand
 
 
-
-
 ;----------------------------------------
 ;;; Some syntactic sugar.
 
@@ -216,7 +214,8 @@
 ;; better to have a different syntax for including library code.
 (define (resolve-lib-path file working-directory)
   (define libver (** (REGIMENTD) "/lib/" file))
-  (cond 
+  (normalize-absolute-path 
+   (cond 
    ;; Absolute path, not a library:
    [(not (ws-relative-path? file)) file]
    ;; Safety: Can't use ".." wrt to lib directory:
@@ -226,8 +225,10 @@
    [else 
     (** working-directory "/" file)
     ;(** (current-directory) "/" file)
-    ]
-   ))
+    ])))
+
+(define (normalize-absolute-path path)
+  (chomp (system-to-str (** "readlink -f " path))))
 
 ;================================================================================
 

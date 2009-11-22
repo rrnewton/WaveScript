@@ -188,57 +188,17 @@
 ;; ================================================================================
 
 
-
-#; ;; TODO FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME  NEED TO MAP THIS ONTO R6RS:
-(cond-expand
- [chez 
-  ;; [2004.06.13] Matches the function defined in plt, provides
-  ;; functionality used by the generic code.
-  ;; The escape handler had *better* escape.
-  (define (with-error-handlers display escape th)
-    (let ([orig-error ((hash-percent error-handler))])
-      (parameterize ([error-handler (lambda args 
-				      (parameterize ([error-handler orig-error])
-					(apply display args)
-					(escape)))])
-	(th))))
-  (define (with-warning-handler fun th)
-    (parameterize ([warning-handler fun])
-      (th)))
-  ;; This is a hack, it's not safe because it can report false
-  ;; positives.  This is used to tell when something is a graphics
-  ;; screen object as constructed with SWL's (make <foo> ...):
-  (define gobj?
-    (lambda (x)
-      (and (vector? x)
-	   (> (vector-length x) 2)
-	   (procedure? (vector-ref x 0))
-	   (vector? (vector-ref x 1))
-	   (> (vector-length (vector-ref x 1)) 1)
-	   (eq? 'class (vector-ref (vector-ref x 1) 0)))))
-  (define current-error-port (reg:make-parameter stderr))
-  ]
- [larceny
-  (define (with-error-handlers display escape th)
-    (let ([orig-error (error-handler)])
-      (parameterize ([error-handler (lambda args 
-				      (parameterize ([error-handler orig-error])
-					(decode-error args);(apply display args)
-					(escape)))])
-	(th))))
-  (define (with-warning-handler fun th) 
-    (parameterize ([warning-handler fun]) (th)))]
- [plt])
-
 ;; Here's the R6RS version
+;; DEPRECATED!  Just use with-exception-handler directly.
 (define (with-error-handlers display escape th)
   (with-exception-handler 
    (lambda (exn)
-     ;; (#<record &error> #<record &who> #<record &message> #<record &irritants>) 
      ;; FIXME: Dissect the R6RS error record into "who" "string":
-     ;; FIXME:      ;; FIXME:      ;; FIXME:      ;; FIXME: 
-     (display exn "") ;; <- Hack, for now just do this
-     ;; FIXME:      ;; FIXME:      ;; FIXME:      ;; FIXME: 
+      ;; Hack, for now just do this
+     (if (message-condition? exn)
+        (display exn (condition-message exn))
+	(display exn "")
+     )
      (escape))
    th))
 (define (with-warning-handler display th)

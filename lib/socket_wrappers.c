@@ -57,29 +57,70 @@ int ws_print_sockaddr(struct sockaddr* addr) {
 
 int ws_errno() { return errno; }
 
-// These deal with pthreads:
+struct thread_arg {
+  int port;
+  int filedecr;
+};
 
-int start_spawn_socket_server(int port) {
-  printf("SPAWNING: port %d\n", port);
-  return 0;
-  //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);
+void* socket_setup_helper(void* vptr) {
+  struct thread_arg* arg = (struct thread_arg*)vptr;
 
-/*       sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0); */
-/*       if sockfd < 0 then error("socket_out: ERROR opening socket."); */
-/*       serv_addr = make_sockaddr_in(AF_INET(), port, INADDR_ANY()); */
-/*       b = bind(sockfd, serv_addr, sizeof_sockaddr()); */
-/*       if b < 0 then error("socket_out: ERROR on binding: "++b++ " errno " ++ errno()); */
-/*       listen(sockfd,5);       */
-/*       // Accept client connection: */
-/*       cli_addr = make_sockaddr_in(0,0,0); */
-/*       clilen = #[sizeof_sockaddr()]; */
-/*       clientfd := accept(sockfd, cli_addr, clilen); */
+  printf("  <socket.ws> Spawned thread to listen on port %d\n", arg->port);  
 
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) { 
+    printf("socket_out: ERROR opening socket.");
+    exit(99);
+  }
+
+  const struct sockaddr_in* serv_addr = ws_make_sockaddr_in(AF_INET, arg->port, INADDR_ANY);
+  int b = bind(sockfd, (const struct sockaddr*)serv_addr, sizeof(struct sockaddr_in));
+  if (b < 0) { 
+    printf("socket_out: ERROR on binding: %d errno %d\n", b, errno);
+    exit(99);
+  }
+
+  int l = listen(sockfd, 5);
+  if (l < 0) { 
+    printf("socket_out: ERROR on listen: returned %d, errno %d\n", l, errno);
+    exit(99);
+  }
+  
+  // Accept client connection:
+  //const struct sockaddr_in* cli_addr = ws_make_sockaddr_in(0,0,0);
+  struct sockaddr cli_addr;
+  int clientfd;
+  socklen_t size = sizeof(cli_addr);
+  while (1) {
+    clientfd = accept(sockfd, &cli_addr, &size);
+    if (clientfd < 0) { 
+      //printf("socket_out: ERROR on accept: returned %d, errno %d\n", clientfd, errno);
+      //exit(99);
+      perror("accept");
+      continue;
+    }
+    printf("  <socket.ws> Server got connection (fd %d) on port %d\n", clientfd, arg->port);
+    // Write back the file descriptor:
+    arg->filedecr = clientfd;
+    return 0;
+  }
 }
 
-bool socket_server_ready(int id) {
-  printf("CHECKING SERVER READY... %d\n", id);
-  return 1;
+int64_t start_spawn_socket_server(short port) {
+  pthread_t threadID;
+
+  // We use a single memory cell here to communicate the port, and then to get back the file descriptor.
+  struct thread_arg* cell = malloc(sizeof(struct thread_arg));
+  cell->port = port;
+  cell->filedecr = 0;
+
+  pthread_create(&threadID, NULL, &socket_setup_helper, (void*)cell);
+  return (int64_t)cell;
+}
+
+int socket_server_ready(int64_t ptr) {
+  struct thread_arg* arg = (struct thread_arg*)ptr;
+  return arg->filedecr;
 }
 
 

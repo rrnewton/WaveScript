@@ -6,7 +6,7 @@ include "socket.ws"
 include "../wsqlib.ws"
 
 // Use the fake stock feed from this example:
-include "../example.ws"
+include "../stonebreaker_example_queries.ws"
 
 include "stdlib.ws" // 
 

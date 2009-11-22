@@ -236,7 +236,8 @@
 	      ; (printf "Entering inspector with error continuation:\n")
 	      ; (chez:inspect k)
 
-	      (reset)
+	      ;(reset)
+	      (exit 1)
 
 	      ;(debug-message-and-continuation "test" k)
 	      ;(debug)

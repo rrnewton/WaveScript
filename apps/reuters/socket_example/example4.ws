@@ -1,9 +1,7 @@
 
 
-// [2009.11.20] This example opens multiple sockets between two different processes.
-// It is not supported by my initial implementation of socket.ws
+// This is an even trickier version of example3 that forms a cycle.
 
-include "stdlib.ws"
 include "socket.ws"
 
 port = 9700;
@@ -16,13 +14,14 @@ port2 = 9701;
 // First build a stream of some kind of data object:
 nums = iterate n in COUNTUP(10) {
   x = (NAME="hello"++n, DAT= (['a','b'], #[n,n+1]));
+  print("Sending: "++ x  ++"\n"); 
   emit x;
 };
 
-out1 = socket_out(nums, port);
-out2 = socket_out(COUNTUP((100::Int)), port2);
+out_first = socket_out(nums, port);
+and_back :: Stream Int = socket_in("localhost", port2)
 
-main1 = merge(out1, out2);
+main1 = merge(out_first, and_back)
 
 
 // Receiver: 
@@ -32,7 +31,9 @@ main1 = merge(out1, out2);
 type MySchema = (| NAME : String, DAT :  (List Char * Array Int));
   
 // This needs the type annotation to deserialize:
-in1 :: Stream MySchema = socket_in("localhost", port);
-in2 :: Stream Int      = socket_in("localhost", port2);
+instrm :: Stream MySchema = socket_in("localhost", port);
 
-main2 = union2(in1,in2)
+results = iterate x in instrm { emit String:length(x.NAME) }
+
+main2 = socket_out(results, port2)
+

@@ -181,10 +181,11 @@
 						 ;; Could reparameterize the error-handler... TODO
 						 (printf "default-unit-tester, got ERROR: \n")
 						 (match args
-						   [(,cond ,str)			
+						   [(,cond ,str)
 						    (printf "~a/n" str)
 						    (display-condition cond)
-						    (newline)])
+						    (newline)]
+						    [,oth (printf "default-unit-tester got ERROR, unexpected arguments: ~s\n" oth)])
 						 )
 					       (lambda () 
 						 (printf "ESCAPING..\n")

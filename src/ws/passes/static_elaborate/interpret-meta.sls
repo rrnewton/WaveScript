@@ -132,7 +132,7 @@
     (define (fold-in ty1 ty2)  
       (if ty2 
 	  (or (types-compat? ty1 ty2) 
-	      (error 'set-value-type! "types were not compatible! ~s ~s\n Value:\n ~a\n" ty1 ty2 val))
+	      (error 'set-value-type! " Types were not compatible:\n     ~s ~s\n Value:\n     ~a\n" ty1 ty2 val))
 	  ty1))
     (ASSERT type) ;; No point in setting to #f
     ;; Either us, or the caller of this function, must freshen the type variables.
@@ -619,7 +619,7 @@
 	 ;; Foreign app is suspended for later:
 	 (begin
 	   (when (>= (regiment-verbosity) 2)
-	     (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s" f))
+	     (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s\n" f))
 	   (make-suspension f e*))
 
 	 ;; Native closure:
@@ -847,6 +847,7 @@
      [(timebase? val) `(Secret:newTimebase ',(timebase-num val))]
 
      ;; HACK: all ints become gints!!!
+     ;; Subsequent type checking should clean it up...
      ;[(and (integer? val) (exact? val)) `(gint ',val)]
      [;(number? val)
       (and (integer? val) (exact? val))
@@ -857,6 +858,7 @@
       (if (polymorphic-type? ty)
 	  `(gint ',val)
 	  `(assert-type ,ty (gint ',val)))
+	  
       `(gint ',val)
       ]
 
@@ -1249,12 +1251,11 @@
 		  )
 		))
 	    ;; We set up the error handler to give some source info.
-	    (main-work)
-#;
-	    (with-error-handlers
-	     (lambda args 
+;	    (main-work)
+	    (with-exception-handler
+	     (lambda (x) 
 	       (printf "\n========================================\n")
-	       (printf "Ran into error during interpret-meta.\n")
+	       (printf "Ran into a Scheme error during meta program evaluation.\n")
 	       (printf "  Probably encountered when evaluating a primitive using the Scheme embedding.\n")
 	       (if current-src-pos
 		   (begin (printf "  The approximate source location was:\n\n   ~a\n\n" 
@@ -1264,8 +1265,9 @@
 		   (printf "  The source location is unknown.\n\n"))
 	       
 	       (printf "  The Scheme error was:\n")
-	       (apply inspector-error-handler args)) ;; display
-	     (lambda () (void))   ;; escape
+	       ;(apply inspector-error-handler args)
+	        ;(display-condition x)
+	       (raise x))
 	     main-work)
 )])
 
