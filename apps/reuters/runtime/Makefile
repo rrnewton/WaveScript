@@ -1,21 +1,8 @@
 
 
-#CHEZD = ~/bin/Linux-i686/csv7.9.2/boot/i3le
-
-#MACHINE = `echo (machine-type) | chez -q`
-
-########################################
-# FOR MAC OS
-#MACHINE = i3osx
-#LIBS = -lm -ldl -lncurses 
-
-########################################
-# FOR LINUX:
-MACHINE = i3le
-LIBS = -lm -ldl -lncurses -lrt
-# [2009.11.18] Oh, because of clock_gettime..
-########################################
-
+MACHINE = `$(REGIMENTD)/depends/get_machine_type`
+EXTRAS=`if [ "$(OSTYPE)" == "Linux" ]; then echo "-lrt"; fi` 
+LIBS = -lm -ldl -lncurses $(EXTRAS)
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 

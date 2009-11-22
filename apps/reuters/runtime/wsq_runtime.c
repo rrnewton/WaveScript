@@ -99,17 +99,20 @@ intfun foo_fun;
 
 const int PATHMAX = 1000;
 
+
+char* get_machine_type() {
+  FILE* strm = popen("$REGIMENTD/depends/get_machine_type", "r");
+  char* format = malloc(100);
+  fscanf(strm, "%s\n", format);
+  return format;
+}
+
 //int do_scheme(int argc, char* argv[]) {
 void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
-
-  // TEMP FIXME:  Need to get the machine type here:
-
-  char* machinetype = "i3le";
-  //char* machinetype = "i3osx";
-  //  char* machinetype = shell(REGIMENTD/depends/get_machine_type); 
+  char* machinetype = get_machine_type();
   
   char bootfile[PATHMAX];
   

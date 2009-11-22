@@ -1,19 +1,8 @@
 
 
-#CHEZD = ~/bin/Linux-i686/csv7.9.2/boot/i3le
-
-#MACHINE = `echo (machine-type) | chez -q`
-
-########################################
-# FOR MAC OS
-#MACHINE = i3osx
-#LIBS = -lm -ldl -lncurses 
-
-########################################
-# FOR LINUX:
-MACHINE = i3le
-LIBS = -lm -ldl -lncurses -lrt
-########################################
+MACHINE = `$(REGIMENTD)/depends/get_machine_type`
+EXTRAS=`if [ "$(OSTYPE)" == "Linux" ]; then echo "-lrt"; fi` 
+LIBS = -lm -ldl -lncurses $(EXTRAS)
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 DIRS32 = -L/lib32 -L/usr/lib32
@@ -22,6 +11,8 @@ FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
+#go:
+#	echo $(LIBS)
 
 all: gen_proc1 gen_proc2 run_proc1 run_proc2
 
