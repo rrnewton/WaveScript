@@ -1,16 +1,9 @@
 
+MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
 
-
-MACHINE = `$(REGIMENTD)/depends/get_machine_type`
-# EXTRAS=`if [ "$(OSTYPE)" == "Linux" ]; then echo "-lrt"; fi` 
-# LIBS = -lm -ldl -lncurses $(EXTRAS)
-
-
-LIBS = -lm -ldl -lncurses 
-ifeq ($(OSTYPE), linux-gnu)
-  LIBS+= -lrt
-endif
-ifeq ($(OSTYPE), Linux)
+UNAME = $(shell uname -s)
+LIBS = -lm -ldl -lncurses -lpthread
+ifeq ($(UNAME), Linux)
   LIBS+= -lrt
 endif
 
@@ -28,7 +21,6 @@ FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 
 
 all: libwsq_runtime.a example_main
-
 
 
 libwsq_runtime.a: wsq_runtime.c 

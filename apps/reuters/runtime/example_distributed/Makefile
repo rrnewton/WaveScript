@@ -1,18 +1,10 @@
+MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
 
-
-MACHINE = `$(REGIMENTD)/depends/get_machine_type`
-#EXTRAS=`if [ "$(OSTYPE)" == "Linux" ]; then echo "-lrt"; fi` 
-#LIBS = -lm -ldl -lncurses $(EXTRAS)
-
-
-LIBS = -lm -ldl -lncurses 
-ifeq ($(OSTYPE), linux-gnu)
+UNAME = $(shell uname -s)
+LIBS = -lm -ldl -lncurses -lpthread
+ifeq ($(UNAME), Linux)
   LIBS+= -lrt
 endif
-ifeq ($(OSTYPE), Linux)
-  LIBS+= -lrt
-endif
-
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 DIRS32 = -L/lib32 -L/usr/lib32

@@ -6,35 +6,39 @@
 include "stdlib.ws"
 include "unix.ws"
 
+socket_pthread_includes = 
+  ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c", 
+   "pthread.h", "socket_wrappers.c", "libpthread.so"]
+
 namespace Unix {
   
-  socket_includes = ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c"]
+  //  socket_includes = ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c"]
 
-  socket  :: (Int,Int,Int) -> Int                          = foreign("socket", socket_includes);
-  connect :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("connect", socket_includes);
-  bind    :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("bind", socket_includes)
-  listen  :: (Int, Int) -> Int                             = foreign("listen", socket_includes);
-  accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_includes);
+  socket  :: (Int,Int,Int) -> Int                          = foreign("socket", socket_pthread_includes);
+  connect :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("connect", socket_pthread_includes);
+  bind    :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("bind", socket_pthread_includes)
+  listen  :: (Int, Int) -> Int                             = foreign("listen", socket_pthread_includes);
+  accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_pthread_includes);
   
-  gethostbyname :: String -> Pointer "struct hostent*"  = foreign("gethostbyname", socket_includes);
-  hostent_h_addr :: Pointer "struct hostent*"  -> Int   = foreign("ws_hostent_h_addr", socket_includes);
+  gethostbyname :: String -> Pointer "struct hostent*"  = foreign("gethostbyname", socket_pthread_includes);
+  hostent_h_addr :: Pointer "struct hostent*"  -> Int   = foreign("ws_hostent_h_addr", socket_pthread_includes);
 
   make_sockaddr_in :: (Int16, Uint16, Int) -> Pointer "struct sockaddr_in*"
-    = foreign("ws_make_sockaddr_in", socket_includes);
+    = foreign("ws_make_sockaddr_in", socket_pthread_includes);
 
-  AF_INET     :: () -> Int16  = foreign("ws_AF_INET", socket_includes);
-  SOCK_STREAM :: () -> Uint16 = foreign("ws_SOCK_STREAM", socket_includes);
-  INADDR_ANY  :: () -> Int    = foreign("ws_INADDR_ANY", socket_includes);
+  AF_INET     :: () -> Int16  = foreign("ws_AF_INET", socket_pthread_includes);
+  SOCK_STREAM :: () -> Uint16 = foreign("ws_SOCK_STREAM", socket_pthread_includes);
+  INADDR_ANY  :: () -> Int    = foreign("ws_INADDR_ANY", socket_pthread_includes);
 
-  errno  :: () -> Int = foreign("ws_errno", socket_includes);
+  errno  :: () -> Int = foreign("ws_errno", socket_pthread_includes);
 
   // These wrap enum values.
   // These don't work yet... but it shouldn't be too hard to make them.
-  //AF_INET     :: Int16 = foreign("AF_INET", socket_includes);
-  //SOCK_STREAM :: Uint16 = foreign("SOCK_STREAM", socket_includes);
+  //AF_INET     :: Int16 = foreign("AF_INET", socket_pthread_includes);
+  //SOCK_STREAM :: Uint16 = foreign("SOCK_STREAM", socket_pthread_includes);
 
-  sizeof_sockaddr :: () -> Int = foreign("ws_sizeof_sockaddr", socket_includes);
-  print_sockaddr  :: (Pointer "struct sockaddr*") -> () = foreign("ws_print_sockaddr", socket_includes);
+  sizeof_sockaddr :: () -> Int = foreign("ws_sizeof_sockaddr", socket_pthread_includes);
+  print_sockaddr  :: (Pointer "struct sockaddr*") -> () = foreign("ws_print_sockaddr", socket_pthread_includes);
 }
 
 //================================================================================
@@ -158,9 +162,11 @@ fun socket_in(addr, port) {
 
 */
 
+// my_pthread_includes = ["pthread.h", "socket_wrappers.c", "libpthread.so"]
+
 // Create a separate thread to wait for the client to connect.
-start_spawn_socket_server  :: Uint16 -> Int64 = foreign("start_spawn_socket_server", ["pthread.h", "socket_wrappers.c"])
-socket_server_ready        :: Int64 -> Int = foreign("socket_server_ready", ["pthread.h", "socket_wrappers.c"])
+start_spawn_socket_server  :: Uint16 -> Int64 = foreign("start_spawn_socket_server", socket_pthread_includes)
+socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",       socket_pthread_includes)
 
 // This makes a blocking call to connect to a server.  We need to put
 // this on its own thread as well to avoid deadlock.  (Case in point:
