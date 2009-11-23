@@ -344,7 +344,9 @@
 ;===============================================================================
 
 
-(define-testing these-tests
+(define-testing test-ws-remove-complex-opera
+  (default-unit-tester 
+    "11: WS-Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
   (map
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
@@ -352,20 +354,7 @@
 	 (ws-remove-complex-opera*-language '(program ,res notype))]))
    '(
      ;[(lazy-letrec ([x (List Int) (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
-     )
-   )
-  ) 
-
-(define-testing test-this
-  (default-unit-tester 
-    "11: WS-Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
-    these-tests))
-  
-
-(define test11 test-this)
-(define tests11 these-tests)
-(define test-ws-remove-complex-opera test-this)
-(define tests-ws-remove-complex-opera these-tests)
+    ))))
 
 ;==============================================================================
 

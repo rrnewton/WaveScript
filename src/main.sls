@@ -16,12 +16,15 @@
    ws ws.early 
    wscaml wsmlton wscomp wsc2
    wavescript-version browse-stream wsint:direct-stream
+   test-system ;; From system_tests.sls
    )
   ;; We use the generated, aggregated package to supply all the bindings we need:
   (import (except (rnrs (6)) error) 
 	  (except (rnrs r5rs) force delay)
 	  (main_r6rs);(except (main_r6rs) +)
-
+	  
+	  (ws testing system_tests)
+	  
 	  ;(except (rnrs (6)) error) (prefix (scheme) chez:) (ws shortcuts)
 	  ;(except (rnrs (6)) error) (main_r6rs) (prefix (scheme) chez:) (ws shortcuts)
 	  ;'(except (rnrs (6)) error) '(main_r6rs) '(prefix (scheme) chez:) '(ws shortcuts)
@@ -615,6 +618,7 @@
   (when (>= (regiment-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))
+
   (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
@@ -1138,15 +1142,18 @@
 	     (apply append ty**)))]))
 
   (define (wsint x input-params . flags)                                             ;; Entrypoint.      
-    (wsint-parameterize
-     (lambda ()    
-       (define typed (early-part x input-params))
-       (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
-       (define compiled (time (run-ws-compiler typed input-params disabled-passes #t)))
-       
-       (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
-       (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
-       (run-wavescript-sim compiled))))
+    (let/ec escape   
+      (parameterize ([abort-compiler-continuation escape])
+	(wsint-parameterize
+	 (lambda ()    
+	   (define typed (early-part x input-params))
+	   (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
+	   (define compiled (time (run-ws-compiler typed input-params disabled-passes #t)))
+	   
+	   (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
+	   (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
+	   (run-wavescript-sim compiled)))
+	)))
   
   (define (wsint-early-passes p input-params . flags)
     (wsint-parameterize
@@ -1163,10 +1170,12 @@
        p)))
 
   (define (wsint-early . args)
-    (define prepped (apply wsint-early-passes args))
-    (when (>= (regiment-verbosity) 1) 
-      (printf "Running program EARLY:\n"))
-    (run-wavescript-sim prepped))
+    (let/ec escape   
+      (parameterize ([abort-compiler-continuation escape])
+	(define prepped (apply wsint-early-passes args))
+	(when (>= (regiment-verbosity) 1) 
+	  (printf "Running program EARLY:\n"))
+	(run-wavescript-sim prepped))))
 
   (values wsint wsint-early wsint-early-passes)))
 
@@ -1990,14 +1999,7 @@
 	   (cond
 	    [(null? filenames) 
 	     (eprintf "Exposing Regiment through interactive read-eval-print loop:\n")
-;	     (printf "GOING INTO REPL ~s\n" main)
-	     ;(eval '(require main_plt))
-	     ;(eval '(require regiment_pltscript))
-;	     (printf "GOT MODULE INTO TOP LEVEL ~s\n" (eval 'main))
-	     (repl)	     
-	     #;
-	     (IFCHEZ (call-with-values new-cafe (lambda ls (apply exit ls)))
-		     (read-eval-print-loop))]
+	     (repl)]
 	    ;; To run a script through "regiment"
 	    ;; --script must be the first argument after "regiment i"
 	    ;; [2008.10.08] Nope -- loosened that up so that we can stick some other arguments between them.
@@ -2440,6 +2442,14 @@
 ;; The rest of the system tests are in the files named tests_*.ss
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
 ;;
+
+;; [2009.11.22] Bringing this back with WaveScope tests.
+#;
+(define-testing test-system
+  (default-unit-tester "System tests"
+   (include "ws/testing/system_tests.ss")))
+
+
 ;; NOTE: in WaveScript only mode these are mostly invalid, disabling them:
 #;
 (IFWAVESCOPE 

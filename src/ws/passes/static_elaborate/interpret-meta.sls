@@ -899,7 +899,8 @@
 ;      (ASSERT (not (ref? val)))      (ASSERT (not (suspension? val)))
       
       (unless (or (string? val) (char? val) (flonum? val) (cflonum? val) (boolean? val)
-		  (sigseg? val))
+		  (sigseg? val)
+		  (eq? val (void)))
 	(error 'Marshal-Plain "invalid value: ~s" val))
       ;(DEBUGASSERT complex-constant? val)
       `',val]
@@ -1244,6 +1245,19 @@
 		       [evaled    (maybtime (Eval x '() #f))]		       		       		       
 		       [marshaled (maybtime (Marshal evaled))]
 		       )
+
+		  (unless (streamop? evaled)
+		    (when (> (regiment-verbosity) 0)
+		      (printf "------------------------------------------------------------\n")
+		      (printf "  Non-stream value returned from metaprogram: \n")
+		      ;(pretty-print evaled)
+		      ;(printf "  Marshaled:\n")
+		      (pretty-print marshaled)
+		      (printf "  Aborting compilation.\n")		      
+		      (ASSERT (abort-compiler-continuation))
+		      ((abort-compiler-continuation) evaled)
+		      ))
+		 		 
 		  ;(pretty-print (strip-annotations marshaled 'src-pos))
 		  (do-inlining 
 		   (id;inspect/continue

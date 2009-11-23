@@ -51,6 +51,7 @@
 		 exptI exptD exptF		
 		 ;modI modF 
 		 roundF	roundD
+		 max min
 
 		 lshiftI16 rshiftI16 logorI16 logandI16 logxorI16 
 		 lshiftU16 rshiftU16 logorU16 logandU16 logxorU16 
@@ -141,7 +142,7 @@
 		 ;(ws^ ^)
 		 for 
 		 )
-     (import (except (rnrs) error + - * / ) ;; [2008.04.30] HACK... Don't want to import ALL of this.
+     (import (except (rnrs) error + - * / max min) ;; [2008.04.30] HACK... Don't want to import ALL of this.
 	     (except (rnrs r5rs) force delay)
 	     (prefix (rnrs (6)) s:)
 
@@ -1114,7 +1115,7 @@
   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
   ;  (define charToInt char->integer)
-  #| HACK HACK HACK |# (define (charToInt x) (min 255 (char->integer x))) ;; HACK HACK HACK
+  #| HACK HACK HACK |# (define (charToInt x) (s:min 255 (char->integer x))) ;; HACK HACK HACK
   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
 
@@ -1209,6 +1210,9 @@
       (ASSERT (or (inexact? a) (inexact? b)))
       (s:/ a b)]
      ))
+
+   (define max (double-wrap s:max))
+   (define min (double-wrap s:min))
 
 #;
 (begin 
@@ -1936,8 +1940,8 @@
 	     (DEBUGASSERT (sigseg? w2))
 	     ;(printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
 	     	     
-	     (let ([new (make-vector (add1 (s:- (max b y) a)))])
-	       (for (i a (max b y))
+	     (let ([new (make-vector (add1 (s:- (s:max b y) a)))])
+	       (for (i a (s:max b y))
 		 (define (first) (vector-ref (sigseg-vec w1) (s:- i a)))
 		 (define (second) (vector-ref (sigseg-vec w2) (s:- i x)))
 					;		  (printf "i ~a\n" i)
@@ -1957,7 +1961,7 @@
 			       [(> i b) (second)]
 			       [else (error 'joinsegs "hmm... broken")])))
 					;`(Success ,(make-sigseg a (max b y) new (sigseg-timebase w1)))
-	       (make-sigseg a (max b y) new (sigseg-timebase w1)))]
+	       (make-sigseg a (s:max b y) new (sigseg-timebase w1)))]
 
 	    ;; In this case there is a gap!
 	    [(< b (sub1 x)) 

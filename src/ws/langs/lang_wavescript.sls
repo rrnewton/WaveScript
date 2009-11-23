@@ -186,13 +186,17 @@
 
 ;; R6RS Version:
 ;; This is also insanely slow.
-(define (wavescript-language expr)
-  ;(printf "  Evaling in wavescript-language: \n")(pretty-print expr)
-  ;; if (simulator-write-sims-to-disk) 
-  (let ([result (eval expr (environment '(except (rnrs (6)) error + - * / or and)  
-					'(ws sim wavescript_sim_library_push)))])
-   ; (printf "    Returning result: ~s\n" result)
-    result))
+(define wavescript-language
+  (let ([langws_env #f])
+   (lambda (expr) 
+     (unless langws_env 
+       (set! langws_env
+	     (environment '(except (rnrs (6)) error + - * / or and max min)
+			  '(ws sim wavescript_sim_library_push))))
+    ;(printf "  Evaling in wavescript-language: \n")(pretty-print expr)
+    ;; if (simulator-write-sims-to-disk) 
+    (eval expr langws_env)
+   )))
 
 ) ; End IFCHEZ
 

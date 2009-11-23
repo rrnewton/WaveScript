@@ -1,16 +1,108 @@
 
-;; TODO FIXME:  Expand some of these tests to use more passes.
+(library (ws testing system_tests)
+  (export test-system)
+  (import (except (rnrs (6)) error) 
+	  (except (rnrs r5rs) force delay)
 
-`( 
-;    ["foobar" #t #f]
+	  ;; This includes most everything elso so that it can test everything.
+	  (main_r6rs)
+	  )
 
-    ;; Urg, this is wrong:
-    ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+(define-testing test-system
+  (default-unit-tester "System tests"
 
+`(
     ["Verify that the host scheme systems complex numbers behave"
      (cflonum? (make-rectangular 0 0)) #f]
     ["Verify that the host scheme systems complex numbers behave"
      (cflonum? (make-rectangular 1.0 0.0)) #t]
+
+;; FIXME
+#;
+     ["WSINT: tuples of tuples"
+      (map (lambda (t1)
+             (map (lambda (t2) (if (tuple? t2) (tuple-fields t2) t2))
+	          (tuple-fields t1)))
+	  (mvlet ([(ls _)
+	    (stream-take 10 
+	       (wsint '(let* ([s1 (timer #;(annotations) 
+                                   3.0)]
+			      [s2 (iterate (annotations) (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
+			      [s3 (iterate (annotations) (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
+				   s3)
+		 '()))]) 
+     	ls))
+      ,(make-list 10 '((3 4) 9))]
+
+
+    ["Run multiple WS queries in a row and see if it screws up the global state."
+     (list
+     (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+     (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+     (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+     (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
+     )
+    ,(make-list 4 (list unit-representation unit-representation))
+    ;;((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0()))
+    ]
+
+;; FIXME
+#;
+    ["Run multiple WS queries in a row and see if it screws up the global state."
+     ,(let ([prog 
+	 `(first-value (stream-take 2 (wsint-early
+          '(lang '(program (assert-type (Stream Int16) 
+            (readFile
+		      ',(string-append (REGIMENTD) "/demos/wavescope/countup.txt") 
+		      '"mode: text" (timer '1000.0))) (Stream Int16))) '())))])
+       `(begin   ,prog ,prog ,prog))
+      unspecified]
+
+   
+   ["Test max/min of doubles during meta eval."
+    (first-value
+      (stream-take 2 
+	(wsint 
+	 '((define main 
+	     (letrec ((x (assert-type Double '3)))
+	       (letrec ((y '4)) 
+		 (begin (app print (app min '19 (app max x '4))) 
+			(timer '3))))))
+		    '())))
+     (UNIT UNIT)]
+
+
+   ;; TODO: Compiler should drop out after interpret-meta when there's no stream.
+#;
+   ["Test tolerance of nonstream values resulting from metaprog (void)."
+    (first-value
+      (stream-take 2 
+	(wsint 
+	 '((define main (app print "hello world\n")))
+	 		    '())))
+     (UNIT UNIT)]
+
+     ;
+
+	    
+)
+
+)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+#;
+`( 
     
     ["Verify that the trivial program produces no token bindings but the defaults"
      (filter (lambda (tokbind)
@@ -2621,42 +2713,6 @@
 
 
 
-["WSINT: tuples of tuples"
- (map (lambda (t1)
-	(map (lambda (t2) (if (tuple? t2) (tuple-fields t2) t2)) (tuple-fields t1)))
-   (mvlet ([(ls _)
-	    (stream-take 10 
-			 (wsint '(let* ([s1 (timer #;(annotations) 
-                              3.0)]
-					[s2 (iterate (annotations) (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
-					[s3 (iterate (annotations) (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
-				   s3) '()))]) 
-     ls))
- ,(make-list 10 '((3 4) 9))]
-
-
-["Run multiple WS queries in a row and see if it screws up the global state."
-
- (list
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
-   (first-value (stream-take 2 (run-wavescript-sim '(lang '(program (timer (annotations) '3.0) (Stream #()))))))
-   )
- ,(make-list 4 (list unit-representation unit-representation))
- ;((#0() #0()) (#0() #0()) (#0() #0()) (#0() #0()))
- ]
-
-
-["Run multiple WS queries in a row and see if it screws up the global state."
- ,(let ([prog 
-	 `(first-value (stream-take 2 (wsint-early
-          '(lang '(program (assert-type (Stream Int16) 
-            (readFile
-		      ',(string-append (REGIMENTD) "/demos/wavescope/countup.txt") 
-		      '"mode: text" (timer '1000.0))) (Stream Int16))) '())))])
-    `(begin   ,prog ,prog ,prog))
- unspecified]
 
 
 

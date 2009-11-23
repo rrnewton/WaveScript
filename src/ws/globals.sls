@@ -138,6 +138,7 @@
 
 	 dump-graphviz-output
 	 ws-alternate-return-stream
+	 abort-compiler-continuation
 
 	 varied-param
 	 dummy-param
@@ -435,6 +436,10 @@
 
 ;; [2007.12.01] Allows us to return something other than 'main'
 (define-regiment-parameter ws-alternate-return-stream #f)
+
+;; [2009.11.23] This is a continuation to abort compilation.
+;; (Irrespective of which version of the compiler you were called from.)
+(define-regiment-parameter abort-compiler-continuation #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns

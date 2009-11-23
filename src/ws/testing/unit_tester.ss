@@ -296,9 +296,9 @@
     )) ;; End testerproc let binding
 
     ;; Regiment specific:
-    (if enabled
+    (when enabled
 	;; Add this unit-tester to the global list:     
-	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))	  
+	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))
 	  
     ;; Finally, return the test-executor procedure:  
     testerproc))))
@@ -319,6 +319,7 @@
   (flush-output-port (current-output-port))
   ;; R6RS hack: pull on the names of all unit testers to make sure we've initialized those libraries:
   (reg:top-level-eval (cons 'list (reg:all-tester-names)))
+
   (printf ";;   All libraries initialized.\n")
   (if (for-all ;andmap
        (lambda (pr) (newline) (newline) (apply (cadr pr) args))

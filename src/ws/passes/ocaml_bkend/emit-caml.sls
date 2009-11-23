@@ -869,9 +869,9 @@
 
 ;;================================================================================
 
-  (define-testing these-tests
-    `(
-      [3 3]
+(define-testing test-emit-caml
+ (default-unit-tester "emit-caml: generating WaveScript OCaML code." 
+   `(
 
       ;; This makes sure we can generate *something* for all the primitives.
       ,@(map
@@ -961,12 +961,6 @@
 	   (filter (lambda (e) (not (memq (car e) exceptions)))
 	     (append regiment-basic-primitives
 		     wavescript-primitives))))
-      ))
-
-(define-testing test-this (default-unit-tester "emit-caml: generating WaveScript OCaML code." these-tests))
-(define test-emit-caml test-this)
-
+      )))
 
 ) ;; End Module
-
-

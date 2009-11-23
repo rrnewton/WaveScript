@@ -378,7 +378,7 @@
       [(_ x e) 
        ;; [2008.04.29] Register this name globally so that we can "pull" it...
        ;; It registers upon expansion, not evaluation.
-       ;(reg:all-tester-names (cons (syntax->datum #'x) (reg:all-tester-names))) ;; TEMPTOGGLE
+       (reg:all-tester-names (cons (syntax->datum #'x) (reg:all-tester-names)))
        #'(define x e)]
       ;; Disable testing:
       ;;[(_ x e) (define x '())]

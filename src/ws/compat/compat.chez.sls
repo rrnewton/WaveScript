@@ -28,6 +28,8 @@
 	  current-directory with-output-to-port time
 	  include random seed-random trace-define trace-lambda syntax-error fprintf
 	  delay force gensym
+
+	  ;nice-print-exception
 	  
 	  (rename (chez:call/1cc call/ec))
 
@@ -121,8 +123,15 @@
 	     (standard-output-port) (standard-input-port)
 	     (getenv "TERM") (interactive?)
 	     )
-     ;(new-cafe)
-     (new-cafe reg:top-level-eval)
+     (with-exception-handler
+       (lambda (x)
+         (call/cc 
+	  (lambda (k)	 
+	    (nice-print-exception x k)
+            (reset)
+	    (repl))))
+       (lambda ()
+         (new-cafe reg:top-level-eval)))
      )
 
   (define (with-output-to-port p th)
@@ -212,6 +221,16 @@
 #;
   (error-handler inspector-error-handler)
 
+  (define (nice-print-exception x k)
+    (printf "\n *** ERROR *** \n")        
+    (if (and (irritants-condition? x)
+	     (message-condition? x)
+	     (error? x))
+	(apply printf (condition-message x) (condition-irritants x))
+	(begin (display-condition x)(newline)))
+    (printf "Backtrace: \n")
+    (continuation->sourcelocs k))
+
   (base-exception-handler 
    (lambda (x)
      (call/cc
@@ -219,17 +238,7 @@
 	(if (warning? x)
 	    (begin (display-condition x) (newline))
 	    (begin 	      
-	      (printf "\n *** ERROR *** \n")        
-	      (if (and (irritants-condition? x)
-	               (message-condition? x)
-		       (error? x))
-	         (begin 
-		   (apply printf (condition-message x) (condition-irritants x))
-		 )
-	      	 (begin (display-condition x)(newline))
-	      )
-	      (printf "Backtrace: \n")
-	      (continuation->sourcelocs k)
+	      (nice-print-exception x k)
 
 	      ; (printf "First entering inspector with exception object:\n")
 	      ; (chez:inspect x)
