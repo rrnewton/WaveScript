@@ -1,0 +1,154 @@
+
+
+
+[2008.07.08] 
+
+Out of curiousity, I tried dropping in llvmgcc instead of gcc:
+
+I ran into this assert failure:
+
+  cc1: ../../gcc/llvm-expand.c:3778: llvm_expand_constructor_element: Assertion `((enum tree_code) (value)->common.code) == CONSTRUCTOR || ((enum tree_code) (value)->common.code) == STRING_CST' failed.
+
+[2008.07.10] {Dropping refcounting}
+
+I'm going to experiment with the Boehm collector.  As an intermediate
+step I'm testing without collecting at all.
+
+Compiling without refcounts dropped the binary size a little bit to
+(66/ vs. 84/137 under -O2/-O3).  Still a factor of two worse than the
+CPP version.  However, the running time improved dramatically.
+
+On O3, it went from 1270/1400 (populateBG/estimateFG) to 600/610 on my
+Core2 at Nokia.  This is virtually identical to the C++ version
+(600/700).  So refcounting is the problem.
+
+(Note, adding ALLOC_STATS tracking brought the above (RC version) to
+~1300/1350... it also bumped the binary size up to 153.  Hmm, odd
+numbers, also, O2 RC NoStats 1180/1440..)
+
+
+[2008.07.14]
+
+By the way, running with cachegrind indicated 0.3% and 0.1% L1 and L2
+miss rates respectively.
+
+Running with valgrind --tool=lackey doing basic counts (-O2)... each
+populateBg takes 36 seconds.  (I think I saw 78 seconds with cache
+grind.)  After running 20 frames bg and 20 frames fg:
+
+==9532== 
+==9532== Counted 204 calls to _dl_runtime_resolve()
+==9532== 
+==9532== Jccs:
+==9532==   total:         9,473,786,328
+==9532==   taken:         4,318,804,327 ( 45%)
+==9532== 
+==9532== Executed:
+==9532==   SBs entered:   7,646,717,688
+==9532==   SBs completed: 3,979,468,489
+==9532==   guest instrs:  57,566,368,676
+==9532==   IRStmts:       360,734,815,899
+==9532== 
+==9532== Ratios:
+==9532==   guest instrs : SB entered  =  75 : 10
+==9532==        IRStmts : SB entered  = 471 : 10
+==9532==        IRStmts : guest instr =  62 : 10
+==9532== 
+==9532== Exit code:       0
+
+Doing --detailed-counts=yes instead makes it take 47 secs per populateBg. (65 for estimate).
+
+==10572== 
+==10572== Counted 204 calls to _dl_runtime_resolve()
+==10572== 
+==10572== Jccs:
+==10572==   total:         9,473,786,303
+==10572==   taken:         4,318,804,380 ( 45%)
+==10572== 
+==10572== Executed:
+==10572==   SBs entered:   7,646,717,659
+==10572==   SBs completed: 3,979,468,420
+==10572==   guest instrs:  57,566,368,224
+==10572==   IRStmts:       360,734,813,710
+==10572== 
+==10572== Ratios:
+==10572==   guest instrs : SB entered  =  75 : 10
+==10572==        IRStmts : SB entered  = 471 : 10
+==10572==        IRStmts : guest instr =  62 : 10
+==10572== 
+==10572== IR-level counts by type:
+==10572==    Type        Loads       Stores       AluOps
+==10572==    -------------------------------------------
+==10572==    I1              0            0        14,382,576,456
+==10572==    I8    2,018,235,835     121,977,030       95,226,435
+==10572==    I16   5,634,506,137      51,732,827      264,126,723
+==10572==    I32  20,967,108,198   8,154,186,980   74,731,611,646
+==10572==    I64             0            0                37,493
+==10572==    I128            0            0             0
+==10572==    F32   1,244,083,201          0             0
+==10572==    F64     435,917,113     219,648,303   10,756,378,228
+==10572==    V128            0            0             0
+==10572== 
+==10572== Exit code:       0
+
+
+
+[2008.07.15] {Note on compile times with ikarus}
+
+Testing on bgSub4, with rev 1522: 
+
+  compile: 
+    112 collections
+    1116 ms elapsed cpu time, including 104 ms collecting
+    1115 ms elapsed real time, including 105 ms collecting
+    468,879,048 bytes allocated
+
+  compile + run 2 bg 1 fg frame:     
+    real	0m38.640s
+    user	0m37.990s
+
+And with rev 1539, default optimize level (1)
+
+    111 collections
+    1104 ms elapsed cpu time, including 96 ms collecting
+    1106 ms elapsed real time, including 105 ms collecting
+    467,133,856 bytes allocated
+
+    real	0m32.769s
+    user	0m32.018s
+
+Then, enabling -O2 for both compile and run:
+
+    111 collections
+    1152 ms elapsed cpu time, including 92 ms collecting
+    1152 ms elapsed real time, including 102 ms collecting
+    467,129,408 bytes allocated
+
+    real	0m32.406s
+    user	0m31.742s
+
+
+[2008.10.22] {Type checking error}
+
+Hmm... why does it seem like I'm inconsistently running into this
+error some of the time.  (i.e. when I make a fresh checkout on
+chastity.)
+
+************
+Error in export-type: bad type: ((a quote (b . #f)))
+Unhandled exception:
+ Condition components:
+   1. &error
+
+It seems to happen on chastity (under plt or ikarus) but not on honor.
+
+[2009.03.02]
+
+Rerunning parallel benchmarks.  Use the script run_par_bench.sh
+
+
+[2009.03.02] 
+
+Why the hell is bgsub2 so much slower than bgsub.ws??  It should be
+the same.
+

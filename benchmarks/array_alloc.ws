@@ -1,0 +1,1 @@
+../demos/wavescope/demo3g_arrays.ws

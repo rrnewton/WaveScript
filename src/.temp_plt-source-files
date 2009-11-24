@@ -1,0 +1,83 @@
+./plt/basic_graphics.ss
+  ./generic/util/helpers.ss
+    ./plt/iu-match.ss
+      ./plt/iu-exptime.ss
+      ./plt/cheztrace.ss
+    ./plt/hashtab.ss
+    ./plt/chez_compat.ss
+      ./plt/identifier-syntax.ss
+    ./generic/constants.ss
+      ./plt/plt_constants.ss
+    ./generic/util/reg_macros.ss
+./plt/common.ss
+  ./generic/compiler_components/prim_defs.ss
+  ./generic/compiler_components/regiment_helpers.ss
+    ./generic/grammars/grammar_checker.ss
+  ./generic/compiler_components/hm_type_inference.ss
+  ./generic/compiler_components/reg_core_generic_traverse.ss
+  ./generic/passes/pass-mechanism.ss
+./plt/critical_section.ss
+./plt/engine.ss
+./plt/flat_threads.ss
+./plt/graphics_stub.ss
+./plt/info.ss
+./plt/regmodule.ss
+./generic/info.ss
+./generic/util/fft.ss
+  ./generic/util/scheme_fft.ss
+./generic/util/hash.ss
+./generic/util/info.ss
+./generic/util/tsort.ss
+./generic/grammars/info.ss
+./generic/sim/alpha_lib.ss
+  ./generic/compiler_components/logfiles.ss
+  ./generic/sim/simulator_alpha_datatypes.ss
+./generic/sim/alpha_lib_scheduler_simple.ss
+./generic/sim/info.ss
+./generic/sim/simulator_alpha.ss
+  ./generic/passes/tokmac_bkend/cleanup-token-machine.ss
+    ./generic/compiler_components/tml_generic_traverse.ss
+./generic/passes/info.ss
+./generic/passes/normalize_source/desugar-misc.ss
+./generic/passes/normalize_source/desugar-pattern-matching.ss
+./generic/passes/normalize_source/eta-primitives.ss
+./generic/passes/normalize_source/info.ss
+./generic/passes/normalize_source/remove-unquoted-constant.ss
+./generic/passes/normalize_source/rename-vars.ss
+./generic/passes/normalize_source/typecheck.ss
+./generic/passes/normalize_source/verify-regiment.ss
+./generic/passes/normalize_query/info.ss
+./generic/passes/normalize_query/lift-letrec-body.ss
+./generic/passes/normalize_query/lift-letrec.ss
+./generic/passes/normalize_query/reduce-primitives.ss
+  ./generic/passes/static_elaborate/static-elaborate.ss
+./generic/passes/normalize_query/remove-complex-constant.ss
+./generic/passes/normalize_query/remove-complex-opera.ss
+./generic/passes/normalize_query/remove-lazy-letrec.ss
+./generic/passes/normalize_query/uncover-free.ss
+./generic/passes/normalize_query/verify-core.ss
+./generic/passes/static_elaborate/info.ss
+./generic/passes/static_elaborate/verify-elaborated.ss
+./generic/passes/deglobalize/deglobalize.ss
+./generic/passes/deglobalize/deglobalize2.ss
+./generic/passes/deglobalize/info.ss
+./generic/passes/tokmac_bkend/closure-convert.ss
+./generic/passes/tokmac_bkend/cps-tokmac.ss
+./generic/passes/tokmac_bkend/desugar-gradients.ss
+  ./generic/compiler_components/source_loader.ss
+./generic/passes/tokmac_bkend/desugar-let-stored.ss
+./generic/passes/tokmac_bkend/desugar-macros.ss
+./generic/passes/tokmac_bkend/find-emittoks.ss
+./generic/passes/tokmac_bkend/info.ss
+./generic/passes/tokmac_bkend/inline-tokens.ss
+./generic/passes/tokmac_bkend/rename-stored.ss
+./generic/passes/tokmac_bkend/sever-cont-state.ss
+./generic/passes/nesc_bkend/emit-nesc.ss
+  ./generic/compiler_components/c_generator.ss
+./generic/passes/nesc_bkend/flatten-tokmac.ss
+./generic/passes/nesc_bkend/info.ss
+./generic/passes/wavescope_bkend/emit-c.ss
+  ./generic/passes/wavescope_bkend/nominalize-types.ss
+./generic/passes/wavescope_bkend/flatten-iterate-spine.ss
+./generic/passes/wavescope_bkend/info.ss
+./generic/passes/wavescope_bkend/merge-iterates.ss

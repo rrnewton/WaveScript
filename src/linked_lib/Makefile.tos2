@@ -1,0 +1,46 @@
+
+
+
+##                    Configuration Options                     ##
+## ************************************************************ ##
+
+# Uncomment to send results back over radio rather than serial:
+# NOTE [2008.10.08] -- now this is handled by the progtelos script.
+#CFLAGS += -DWSRADIOMODE -I$(TOSDIR)/lib/net -I$(TOSDIR)/lib/net/le  -I$(TOSDIR)/lib/net/ctp
+
+#CFLAGS += -DTOSH_DATA_LENGTH=50
+#PFLAGS += -DTOSH_DATA_LENGTH=50
+
+#MYPLATFORM=telosb
+
+# Use this to change the size of the buffer for printed 
+# text (default 250).
+#CFLAGS += -DPRINTF_BUFFER_SIZE=1000
+
+## ************************************************************ ##
+
+
+
+CFLAGS += -I$(TOSDIR)/lib/printf 
+BUILD_EXTRA_DEPS += PrintfMsg.class PrintfClient.class 
+
+# init:
+#	if [ $(WSRADIOMODE) != "" ]; then echo SETTING; export CFLAGS="$(CFLAGS) -DWSRADIOMODE"; fi
+
+%.class: %.java
+	javac $<
+PrintfClient.java: $(REGIMENTD)/src/linked_lib/PrintfClient.java
+	cp $(REGIMENTD)/src/linked_lib/PrintfClient.java .
+PrintfMsg.java: $(TOSDIR)/lib/printf/printf.h
+	mig java -target=$(PLATFORM) $(CFLAGS) \
+		-java-classname=PrintfMsg \
+		$(TOSDIR)/lib/printf/printf.h printf_msg -o $@
+COMPONENT=WSQueryApp
+include $(MAKERULES)
+
+
+# mig c -target=telosb -java-classname=TestSerialMsg WSQuery.nc cut_type -o WSQueryMsg.h
+#  gcc serialsource.c seriallisten.c 
+#  gcc libmote.a message.c serialsource.c seriallisten.c WSQueryMsg.c -I/opt/tinyos-2.x/support/sdk/c
+
+# gcc query.c WSQueryMsg*.c -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote

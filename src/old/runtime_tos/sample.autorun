@@ -1,0 +1,28 @@
+# This is a sample TinyViz autorun file. To use it, run
+#   tinyviz -autorun sample.autorun
+# Set the layout
+layout gridrandom
+# Enable some plugins
+plugin DebugMsgPlugin
+plugin RadioLinkPlugin
+plugin RadioModelPlugin
+# Total number of simulated seconds to run
+numsec 10
+# Name of the executable file
+executable build/pc/main.exe
+# DBG messages to include
+dbg usr1
+# The radio model and scaling factor to use
+radiomodel disc100
+radioscaling 5
+# Number of motes
+nummotes 20
+# Command to run before starting
+precmd echo "This is a command that will run before the simulation"
+# File to log all DBG messages to
+logfile logfile-20.txt
+
+# The blank line above indicates that we are starting another simulation
+# This time run with a different number of motes
+nummotes 30
+logfile logfile-30.txt

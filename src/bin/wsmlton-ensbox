@@ -1,0 +1,8 @@
+#!/bin/bash
+
+export WSARCH=ensbox
+
+# First phase consumes the first argument (.ws file)
+wsmlton-firstphase $*
+shift
+wsmlton-secondphase-ensbox query.sml $*

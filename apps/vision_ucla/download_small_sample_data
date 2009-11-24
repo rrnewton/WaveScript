@@ -1,0 +1,5 @@
+#!/bin/bash
+
+wget www.regiment.us/datasets/small_feederstation_dataset.tar
+if ! [ -d processed ]; then mkdir processed; fi
+(cd input && tar xvf ../small_feederstation_dataset.tar)

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# This version imitates the ensbox on x86.
+
+export WSARCH=ensbox
+
+# First phase consumes the first argument (.ws file)
+wsmlton-firstphase $*
+shift
+wsmlton-secondphase-x86ensbox query.sml $*

@@ -1,0 +1,30 @@
+
+# [2008.10.22] I'm considering switching the benchmarks over to a
+# slightly more modular/declarative structure.  Rather than having
+# scripts that run whole sets of benchmarks directly, I'm going to
+# make separate .bench files.
+
+# These are scripts that can be sourced from any directory.  They
+# establish some prerequisites (like sample data), and they set
+# certain environment variables that allow the test harness to run the
+# benchmark.  Decisions about which benchmarks to run and where to
+# send the output are left up to the test harness.
+
+# Variables set: DIRECTORY, FILE, TUPLES
+
+# Setup data:
+
+DIRECTORY="$REGIMENTD/apps/marmot"
+
+# # If it exists and is a symbolic link we assume it's right.
+# if ! [ -h 6sec_marmot_sample.raw ];
+# # Otherwise we download and replicate it.
+# then ./replicate_sample_data.sh
+# fi
+
+# Well, the safer bet is just to make it fresh no matter what.
+(cd $DIRECTORY; ./replicate_sample_data.sh)
+
+FILE="run_first_phase"
+TUPLES=100
+

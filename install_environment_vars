@@ -1,0 +1,9 @@
+#!/bin/bash
+
+## This is a very simple script to get you up and running quickly.
+## Run it from the directory in which it resides.
+## You want to source it into bash with "source <thisfile>" or just ". <this file>"
+
+export REGIMENTD=`pwd`
+export PATH=$REGIMENTD/bin:$PATH
+export PATH=$PATH:$REGIMENTD/depends

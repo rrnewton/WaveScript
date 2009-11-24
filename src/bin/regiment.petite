@@ -1,0 +1,5 @@
+#! /bin/bash
+
+# This version runs Regiment under Petite Chez Scheme (even if full Chez is available).
+
+(exec petite --script $REGIMENTD/src/regiment.ss `pwd` $*)

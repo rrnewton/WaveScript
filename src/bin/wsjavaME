@@ -1,0 +1,13 @@
+#!/bin/bash
+
+export WSVARIANT=wsjavaME
+
+if [ "$REGFLAG" == "" ];
+then export REGFLAG=wsjavame;
+fi
+rm -rf javaME_stub/src/WSQuery.java
+
+if wsc $* -no-gcc;
+then echo ERROR, wsc failed with code $?.; exit 1;
+else echo
+fi

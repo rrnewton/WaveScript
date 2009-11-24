@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# This is just a shorthand for using the new scheduler.
+
+wsc $* --scheduler corefit-scheduler-df

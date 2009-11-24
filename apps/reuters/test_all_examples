@@ -1,0 +1,36 @@
+#!/bin/bash
+
+COMPLOG=._compile.log
+
+ALLTESTS="q1 q2 q3 q5 q6 q8 q9 "
+
+echo "Testing with ws.early:"
+echo ============================================================
+for mn in $ALLTESTS
+do
+  echo 
+  echo "Running example $mn"
+  ws.early example.ws -main $mn -n 10 -v 0
+  if [ "$?" != "0" ]; then echo Failed ws.early run.; exit 1; fi
+done
+
+echo 
+echo ============================================================
+echo "Testing with wsc2:"
+echo ============================================================
+
+# [2009.06.10] Having problems q3, q5, q6,
+
+for mn in q1 q2 q8 q9 
+do 
+  echo 
+  echo "Compiling example $mn (log $COMPLOG)"
+  wsc2 example.ws -main $mn &> $COMPLOG
+  if [ "$?" != "0" ]; then echo Failed compile.; exit 1; fi
+  echo "Executing example $mn"
+  echo ==========================
+  ./query.exe -n 10
+  if [ "$?" != "0" ]; then echo Failed run; exit 1; fi
+done
+
+

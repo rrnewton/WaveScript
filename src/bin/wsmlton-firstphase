@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# This compiles the program to a .sml source file.
+
+#TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+source `dirname $0`/assert_regimentd
+
+# Clean up first:
+rm -f "query.sml"
+
+if [ ! -f "$1" ];
+then echo Usage: "wsmlton <file> <options> ...";
+     if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
+     else cat $REGIMENTD/bin/ws_opts.txt
+     fi
+     exit 1;
+fi
+
+#if [ ! -d /tmp/`whoami` ];  then mkdir /tmp/`whoami`; fi
+
+# FILENAME MUST BE FIRST ARG
+INFILE=$1
+D=`dirname "$INFILE"`
+B=`basename "$INFILE"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+shift
+
+
+
+export REGIMENT_OR_WAVESCRIPT=WS
+#echo regiment wsml $abspath ${1+"$@"} ;
+#  Should pass some flags/arguments here maybe??:
+echo regiment wsml $abspath $*
+if regiment wsml $abspath $*
+then echo
+else #rm -f $TMP; 
+    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    exit 1;
+fi
+

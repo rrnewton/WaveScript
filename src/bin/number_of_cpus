@@ -1,0 +1,11 @@
+#!/bin/bash
+
+case `uname -s` in 
+#  "Linux")  grep MHz /proc/cpuinfo | wc -l;;
+
+# This method is consistent even if some of the processors are currently offline:
+  "Linux")  ls -d /sys/devices/system/cpu/cpu? /sys/devices/system/cpu/cpu?? 2> /dev/null | wc -l;;      
+
+  "Darwin") /usr/sbin/system_profiler SPHardwareDataType | grep "Number Of Cores" | sed 's/.*://';;
+  * )  echo "ERROR: Unknown platform: `uname -s`"; exit 1;;
+esac

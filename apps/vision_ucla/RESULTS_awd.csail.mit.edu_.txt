@@ -1,0 +1,22 @@
+## Real or User time for each benchmark/backend 
+## LD_PRELOAD: /home/ldgirod/libhoard.so
+## NOSUDO: 
+## NICE: 
+Benchmark c2
+bgSub4_patchoriented 0 174233.000
+bgSub4_patchoriented 1 349724.000
+bgSub4_patchoriented 2 153045.000
+bgSub4_patchoriented 3 96130.000
+bgSub4_patchoriented 4 69375.000
+bgSub4_patchoriented 5 48848.000
+bgSub4_patchoriented 6 42312.000
+bgSub4_patchoriented 7 35071.000
+bgSub4_patchoriented 8 30308.000
+bgSub4_patchoriented 9 27709.000
+bgSub4_patchoriented 10 23977.000
+bgSub4_patchoriented 11 21533.000
+bgSub4_patchoriented 12 19838.000
+bgSub4_patchoriented 13 17823.000
+bgSub4_patchoriented 14 16875.000
+bgSub4_patchoriented 15 14986.000
+bgSub4_patchoriented 16 13910.000

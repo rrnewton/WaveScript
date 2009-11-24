@@ -1,0 +1,32 @@
+#-*-Makefile-*- vim:syntax=make
+#$Id: netbsl.extra,v 1.1 2005/05/11 07:33:08 cssharp Exp $
+
+# NETBSL arguments:
+#
+#   netbsl,<host>:<port>
+#     install onto the given host:port
+#
+#   netbsl,<host_lsb>.<port_lsb> ... like netbsl,77.2
+#     install onto NETBSL_HOSTPORT_PREFIX.host_lsb:10000+port_lsb
+
+PROGRAM = netbsl
+
+MSP_NETBSL ?= $(TINYOS_MAKE_PATH)/msp/netbsl
+MSP_BSL_FLAGS ?= --telos
+
+program: $(BSL_TARGETS) $(TELOS_PROGRAM_DEPS) FORCE
+	@echo "    installing $(PLATFORM) binary using $(PROGRAM)"
+	$(MSP_NETBSL) $(NETBSL) $(INSTALL_IHEX) $(MSP_BSL_FLAGS) -r -e -I -p
+	rm -f $(subst .ihex.,.exe.,$(INSTALL_IHEX)) $(INSTALL_IHEX) 
+
+program_no_e: $(BSL_TARGETS) $(TELOS_PROGRAM_DEPS) FORCE
+	@echo "    installing $(PLATFORM) binary using $(PROGRAM) (without mass erase)"
+	$(MSP_NETBSL) $(NETBSL) $(INSTALL_IHEX) $(MSP_BSL_FLAGS) -r -I -p
+	rm -f $(subst .ihex.,.exe.,$(INSTALL_IHEX)) $(INSTALL_IHEX) 
+
+program_bl: $(BSL_TARGETS) $(TELOS_PROGRAM_DEPS) FORCE
+	@echo "    installing $(PLATFORM) bootloader using $(PROGRAM)"
+	$(MSP_NETBSL) $(NETBSL) $(BOOTLOADER) $(MSP_BSL_FLAGS) -r -e -I -p
+
+program_input: ihex
+	@:

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+PID=`ps aux | grep query.exe | grep -v grep | awk '{ print $2 }'`
+
+echo top -b -d 01.00 -p "$PID"
+top -b -d 01.00 -p "$PID"
+
+#  parseaccel -f <filename> > output
+# readaccel /dev/ttyS1 | parseaccel 
+
+#  readaccel /dev/ttyS1 | ./parseaccel -f /dev/stdin

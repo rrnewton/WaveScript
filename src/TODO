@@ -1,0 +1,414 @@
+Key:
+
+ *) Todo item
+ X) Finished item
+ -) Out of date / expired item.
+ ~~) Partially complete
+
+ <IN_PROGRESS>:
+================================================================================
+Things I'm working on now --Ryan:
+
+REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER!
+
+
+There's a lot of cleanup to be done.
+ *) Start ripping out old regiment stuff wholesale.
+ *) Phase out IFCHEZ but figure out what to do with local rn-match imports.
+ *) Fix PLT WS-repl
+ *) implement marshal under scheme now that we have byte vectors!
+
+================================================================================
+TOOPTIMIZE:
+
+*) Look at all uses of recover-type... this is a great source of inefficiency.
+
+
+================================================================================
+
+[2009.06.08]
+
+ *) It's really rather high priority to fix the printing/equality/hashing code 
+    generation to not *fully* inline everything.
+ *) The other thing that will speed up compiles is working on emit-c2
+    (One thing would be getting simple home grown object system working rather than BOS.)
+
+[2009.01.21]
+ *) Inlining rators that are record-dereferences (or tuples).  It is
+    quite useful to package methods together in a record.
+
+[2008.11.11]
+  *) It probably wouldn't hurt to make tupref's simple expressions.
+  *) If interested we could implement polymorphic positional tuple access by 
+     switching the source-level tuples into a syntactic sugar for records.
+     But... could we get into trouble with the scoped labels?
+
+
+[2008.11.07]
+
+  *) It would be nice to expose wsfifo, refcounting, and free
+     operations in the intermediate language.  Then some of the work
+     could be lifted off emit-c2 and into an earlier pass (such as
+     building free_ functions for each type).
+
+[2008.10.02]
+  *) partition-graph-by-namespace still only does a shallow scan.  It needs to do the transitive closure.
+
+[2008.08.26]
+  *) verify-elaborated looks very rotted, it needs to be overhauled.
+
+[2008.08.04]
+  *) Working on marshal/unmarshel, eventually, readFile codegen should leverage unmarshal.
+
+[2008.07.22] 
+  *) Consolidate array-freeing cases in emit-c2.  All arrays of
+     scalars can be handled uniformly.
+
+[2008.07.01] {Expand backend intermediate language}
+  *) Eventually I would like to expand the IL just towards the end of
+   the compiler to handle things like multiple input paths and output
+   paths so that we have the language to express the result of
+   union-iterate-route optimzations.  This will complicate code
+   generation but hopefully happen right at the end.
+
+[2008.05.28] {wsc2 additions for running on phones}
+  *) I need to get the foreign interface going if I'm going to
+     integrate with sensor hardware on phones.
+
+
+[2008.02.29] {Benchmarks to implement}
+  *) Elizabeth should be looking at StreamSQL benchmarks.
+     I'd like to do some simple "Pig Latin" style benchmarks.
+
+[2008.02.15]
+
+  *) Modify lift-immutable-constants to eliminate duplicates.
+  *) Statically allocate arrays as well as strings.
+  *) Allow emit-static-array as idiom for communication.
+  *) Support sensors, radio
+
+[2008.01.25]
+  *) Should do some renaming:
+     wsc     -> wscpp.old
+     wsc.new -> wscpp.corefit
+     wsc2    -> 
+   How do I configure either wscpp for 
+
+
+[2007.12.27] 
+  *) Need to switch regression over to wsc.new, and start including wsc2
+
+
+[2007.12.20] {Doing the right thing for wsparse}
+
+  X) The wsparse "server" solution is really quite silly.  What I should do
+is just have a command line version (like plain "wsparse") that is
+called once, and kept open.  You pay the startup cost only once,
+irrespective of how many files you parse.  So it's almost as good as
+the server without the fragilities.
+
+  *) Add monomorphic first-order functions to the backends.
+     Gotta work with Michael to get merging going right.
+
+
+[2007.12.07]
+  *) I *really* need to optimize large arrays at interpret-meta time.
+
+
+[2007.10.22] {Sharing in Stream DAG}
+   *) It's been clear for a while now that the stream DAG notation
+      should be able to capture repeated identical operators.  This
+      should probably be implemented in interpret-meta.
+      Interpret-meta should hash the stream kernels that it generates
+      (or the inputs that generate them), so that it knows when it can
+      use the same kernel function in two operators.  This will also
+      require widening the output grammar to accept names rather than
+      lambda expressions as argument to an "iterate" (how else to
+      express the sharing?). 
+
+[2007.10.20] {Critical path for PLDI}
+What's the critical path for the remaining weeks before PLDI?
+ *) For data-rep transforms:
+   ~) Empirically measure data rep effiiency across backends.
+   *) Implement IFPROFILE switch (though could maybe do without).
+   X) Implement "coerce" in its basic, inefficient form.
+     X) That means having some way of expressing mappings from T1 => T2
+   *) Implement "push-through" that pushes a transform into an
+      upstream or downstream operator.
+   *) Implement accessor short-circuiting optimizations (build(i,f)[j] => f(j))
+      And map/tabulate fold/tabulate deforestations.
+   *) Array/Array: Speed up a naive matrix library?
+
+ X) For rewrite opts:
+   X) Make interpret-meta idempotent.
+   X) Tag "special" stream prim names.  Pull out their defs in the initial program.
+   X) After interpret-meta, we want to inline single-ref variables (in
+      object and meta-code) to get a squished-together expression that we an
+      match our patterns against.  This is probably better than trying
+      to "see through" variable bindings when looking for applications of a
+      rewrite rule.  (Reference counting becomes annoying, and the inliner
+      needs to be sucked into the rewrite pass.)
+   X) Apply rewrite rules to special prims.
+   X) Push their defs back in after the first interpret-meta.
+
+ *) For stream-graph parallelism opts:
+   ~) Identify "maps"... general stateless operators are annoying to deal with.
+   ~) Take heavy maps and split them N ways, insert splitter&joiner.
+   ~) Insert rewindow/dewindow around busy edges.
+   X) Merge operators.
+   That's as far as we'll go at first.
+
+ *) For profiling (waiting on Michael's stuff):
+    This is what will drive the control policies of the other opts.
+   *) Profile times as well as data rate.  Profile data sizes.
+
+[2007.09.20]
+ *) Change regiment-primitive? to use symbol props.
+ *) Is -exit-error not working for type errors?
+
+[2007.09.16] {MLton integer constants}
+ *) Fix emit-mlton to ascribe types to integer constants, even if
+    mlton-ascribe-types is turned off.
+ *) Also refactor mlton-ascribe-types so that it doesn't touch the shared module.
+
+[2007.09.14] {Ideas that haven't been written up}
+Here are some things we've worked on in this project that haven't been written up yet:
+ *) interpret-meta
+ *)
+
+[2007.07.28]
+ *) When not in debug mode, DEBUASSERT should not evaluate the val
+    even when called (DEBUGASSERT pred val).  I think I initially
+    conceived of that as a way to optionally assert a predicate on a
+    value before returning it.  However, now I very frequently use
+    that form of invocation just to get the better error message when the
+    assertion fails.
+
+[2007.07.27]
+ *) I'm pretty confident that I can add a -fastprune option that would
+    eliminated dead code very early (without type checking it!).
+    While dangerous, I think this would be useful.  Perhaps it could
+    be restricted a little to only prune official "standard library" code...
+
+[2007.07.07]
+ Need to use two threads and add a buffer for wsmlton's ensbox data acquisition.
+ Also, can remove one copy of the data relative to how I do things right now.
+
+[2007.07.03]
+ *) Add Int64 to support proper timestamps in sigsegs.
+ *) Need a binary file sink too..
+ *) MLton FFI & ensbox data acquisition.
+
+[2007.06.28]
+    Add ws.early for running queries *without* running static elaborate.
+
+[2007.05.29]
+  *) Eventually reduce dependency on C++ features in wsc.
+     In particular... tuples should not have constructors.
+
+[2007.05.17]
+
+  *) Need to make "using Matrix:Float;" work.
+
+[2007.03.24]
+  *) Because all these backends are a mess... it would be nice if the
+     polymorphic printing were implemented in the language (in the
+     compiler, at least).  We could generate abstract syntax for the
+     printer functions in the compiler, then it wouldn't have to be
+     implemented separately for each backend.
+
+[2007.03.19]
+  *) Oops, Array and Hashtable need to be treated like Ref too.
+
+[2007.03.17]
+  X) Add REF types!!!
+  *) Wouldn't hurt to have haskell-style "sections"
+
+[2007.03.13]
+  *) Make dependencies on GSL and fftw non-static.
+
+[2007.03.13]
+  *) Check the prims handled by emit-c against the prim_defs list.
+
+[2007.03.11]
+  X) Revisit type aliases at some point.
+
+[2007.03.09]
+  *) It would be nice to make a manual "fuse-passes" function that
+     fuses two passes defined with "define-pass".  This would be
+     tricky and will probably just work for passes that return a single
+     expression value as their intermediate form from the Expr function.
+
+[2007.03.09] {Optimization todo-list}
+These are the order that optimizations need to be implemented: 
+  *) Copy-propogation
+  *) De-boosting, manually managed memory for arrays especially
+  *) (Non-optimization) replace stl vectors with plain C-arrays
+
+
+[2007.03.08]
+  *) I think I can make a good foreign interface that would allow
+     pulling in all the GSL functions easily.
+
+[2007.03.07]
+ X) What happened to my work on that little syntax to bind projectors
+    for a tuple-stream?
+
+[2007.03.05]
+ X) allow type assertions on state var declarations
+ *) add += *=... couldn't hurt.
+
+[2007.03.04]
+ *) use boost shared_array rather than a shared_ptr to a Vector
+ 
+[2007.03.02]
+ *) uniform value printing
+ *) remove dependence on $WAVESCOPED/Makefile in wsc process.
+
+[2007.02]
+
+Severe problems that need to be fixed::
+
+FIXME:
+  The type checker bug regarding petite chez.
+  Look at tests in system_tests and hm_type_inference.ss, they explain
+  the problem.
+
+
+[2007.02.11]
+ *) Initialize class-typed iterator state properly (not from within
+    the {} of the constructor)
+
+ *) How about ditching the current elaborator and putting a
+    straightforward interpreter in its place.  It would evaluate
+    lazily, and treat streams and streams as *values*.  It
+    would make a single pass through the program.
+
+[2007.02.07]
+ X) Remove distributed Regiment primitives from wavescope compiles.
+ ~~) Add general binary reader!
+ *) Don't forget my syntax for binding stream-projectors.
+
+[2007.01.27]
+
+ X) Build .boot file.
+ *) Finish implementing equality
+ *) Make printed representations consistent between WS and WSC. 
+ X) Push generic arith system to the front end.
+ X) add ws.opt and wsc.opt targets for when performance is critical.
+
+[2006.11.29]
+ X) For distribution compile a separate regiment.opt for simulations.
+    (The default checkout should be opt-level 2, DEBUG on.)
+
+[2006.11.08]
+ *) Move more into the simworld structure.  In particular, world
+    xbound/ybound.  Maybe connectivity model also.
+
+[2006.11.05]
+ *) Change inliner to allow "lib" functions that don't inline (of
+    appropriate type). [Did a weird hack for this instead.]
+
+[2006.11.01]
+  Should include optional Intermediate? check for define-pass to
+verify that a user function produces a valid intermediate record.
+It's very easy to accidentally return an expression where you were
+supposed to return an intermediate record.
+
+[2006.10.17~]
+
+ *) Completing static-elaboration for effectful constructs
+ ~~) Inserting grammars between passes. [Significant progress]
+ ~~) Moving to generic-traversal for early passes. [2006.10]
+ *) Fixing let, letrec, lazy-letrec.
+    *) Make "let" not desugar... (for consistency with typing rules)
+    *) Make letrec strict throughout the compiler.
+ *) Would like to get the LAML Schemedoc stuff working again.
+
+ ~~) Add matrix WS operations
+   *) Also add more FFT ops (maybe stream-lifted version too) 
+
+
+[2006.09.03]
+  X) Do not desugar one-armed if in the parser!!!
+
+[2006.09.01]
+ *) I have NEVER taken advantage of the "test-this" convention, I should do away with it.
+
+[2006.08.29]
+
+ x) How much work would it be to track source locations?
+  [2006.12.03]
+  So what I would like to do is add a general association list of "info" to each term.
+  This is analogous to the to a parameterized "expr 'a" type in ML.
+  THEN I can remove certain hackish things.
+
+
+[2006.08.02]
+
+ x) Encapsulate thread related things into a threads.ss
+ *) Is there any way to get "languages" working in PLT?
+ X) Finish porting modules to common module format.
+
+[2006.05.02]
+
+ -) Unit tests for deglobalize2
+
+
+[2006.04.03]
+
+  -) Add type checking to TMs.
+  X) Add type checking between all passes of the compiler.
+  X) Add more custom grammar checks.
+  X) (Maybe fix the system for grammar check errors, it's fundamentally
+     broken and a hack.)
+  X) Rework type system.
+  X) Add and use generic traverse for Regiment as well as TML.
+  x) Lift out certain Regiment utilities from individual passes into common files.
+
+
+
+================================================================================
+COMPLETELY FINISHED:
+
+<Done> [2005.10.19] Make the chez version use records.  Better safety that way.
+Can't remember why I didn't originally.
+<Done> [2006.10] Reorganizing files into a deeper hierarchy. [2006.10.17]
+
+ X) I am going to need to add a pass to annotate the type of rators.
+    Will need this to make the elaborator work right.
+
+ X) Bringing PLT version back online.
+   *) Move chez/alpha_lib to generic
+
+ X) Porting over to common module system.
+
+ X) sigseg_foreach (but no efficient support yet)
+
+ X) Inserting type-checking between passes.
+   ~) De-primitive-izing tuple, tupref [2006.10]
+
+ X) Updating type checker to handle partially annotated programs.
+
+[2007.08.13] {Deployment}
+
+ *) check out degap
+ 
+
+[2007.08.14]
+
+Run AML on the nodes.
+Make cluster algorithm use detection time.
+
+[2007.09.07]
+
+Came across serious incompleteness in treatment of Sum types.  After
+metaprogram evaluation we need to switch to having explicit sums (not
+named sum-types), or we need to split the datatype decls
+appropriately, because they *may not be used polymorphically* after
+that point.  This new pass could be similar to nominalize-types...
+.
+Right now, if you try to instantiate the same data
+constructor with different types in different parts of the program, it
+will break!
+

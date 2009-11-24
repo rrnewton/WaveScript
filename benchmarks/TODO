@@ -1,0 +1,12 @@
+
+
+Benchmarks that we still need to write / copy-from-somewhere:
+
+ *) Array read/write
+ *) Passing large numbers of tuples
+ *) File reading
+ *) Sigseg operations
+
+Done:
+
+ X) Array allocation

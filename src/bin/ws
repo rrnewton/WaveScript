@@ -1,0 +1,22 @@
+#!/bin/bash
+
+source `dirname $0`/assert_regimentd
+
+if [ ! -f "$1" ];
+then echo Usage: "ws <file> <option> ...";
+     if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
+     else cat $REGIMENTD/bin/ws_opts.txt
+     fi
+     exit 1;
+fi
+
+if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=$REGIMENTD/bin/regiment; fi
+
+D=`dirname "$1"`
+B=`basename "$1"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+shift
+
+#echo WS CALLING "$REGIMENTEXEC" wsint $abspath ${1+"$@"}
+
+(export REGIMENT_OR_WAVESCRIPT=WS; "$REGIMENTEXEC" wsint $abspath ${1+"$@"};)
