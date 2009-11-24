@@ -1,1 +1,0 @@
-../../demos/wavescope/demo4a_fft.ws

@@ -1,5 +1,0 @@
-#!/bin/sh
-
-wget www.regiment.us/marmotdata/multinode48khz.tgz
-tar xzvf multinode48khz.tgz
-

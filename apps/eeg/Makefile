@@ -1,9 +1,0 @@
-
-
-
-# TODO: Finish me.
-ws:
-	wsc2 ???
-
-cpp:
-	gcc ???

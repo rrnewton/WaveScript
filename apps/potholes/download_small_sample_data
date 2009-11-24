@@ -1,9 +1,0 @@
-#!/bin/sh
-
-#wget www.regiment.us/potholedata/slave18_snip.dat.bz2
-#echo Now decompressing downloaded file.
-#time bunzip2 -k slave18_snip.dat.bz2
-
-wget www.regiment.us/potholedata/slave18_smallsnip.dat.bz2
-bunzip2 -k slave18_smallsnip.dat.bz2
-

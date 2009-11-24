@@ -1,8 +1,0 @@
-#!/bin/sh
-
-if [ `which wget` ];
-then wget www.regiment.us/marmotdata/6sec_marmot_sample.raw
-elif [ `which curl` ];
-then curl "http://www.regiment.us/marmotdata/6sec_marmot_sample.raw" -o 6sec_marmot_sample.raw
-else echo NEITHER CURL NOR WGET AVAILABLE!!; exit 1
-fi 

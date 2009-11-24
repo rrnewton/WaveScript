@@ -1,3 +1,0 @@
-#!/bin/bash
-
-mlton -debug true -const 'Exn.keepHistory true' -default-ann 'allowFFI true' -profile-branch true -profile-val true $*

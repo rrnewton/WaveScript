@@ -1,5 +1,0 @@
-#!/bin/bash
-
-## Note... this won't work for PLT if the bytecode is already compiled!
-
-(export REGOPTLVL=2; export REGDEBUGMODE=ON; ws $*)

@@ -1,3 +1,0 @@
-#!/bin/sh
-
-(export WSTESTALLEARLY=true; ./testall_demos.ss)

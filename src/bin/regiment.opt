@@ -1,3 +1,0 @@
-#!/bin/bash
-
-(export REGOPTLVL=3; export REGDEBUGMODE=OFF; regiment $*)

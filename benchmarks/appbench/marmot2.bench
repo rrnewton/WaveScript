@@ -1,5 +1,0 @@
-
-DIRECTORY="$REGIMENTD/apps/marmot"
-(cd $DIRECTORY; ./replicate_sample_data.sh)
-FILE="test_marmot2"
-TUPLES=150
