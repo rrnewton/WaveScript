@@ -2214,3 +2214,98 @@ these types:
 Ok, so at one pointI had the invariant that fields need to be
 alphabetically sorted.  
  
+[2009.11.24] {TypeCase again}
+
+I've been thinking about typecase a bit more recently.  I need to go
+back to those papers on the subject.
+
+We can do it as long as we have the closed world constraint.
+
+It would be fine to do it like normal case and require that all the
+RHS's unify.  But that's not very powerful.
+
+I think to do better the way we'll need to procede is to type each RHS
+function with a universal input type.  Snapshot the resulting
+instantiated type for that function, put it to the side, and then
+unify the primary copy with the concrete input type (e.g. Int) to make
+sure everything checks out.
+
+Once we're sure that things check out, we go back to the type we set
+aside and we "hollow it out".  We take everything touched by the input
+argument and wipe all type information hanging from it, leaving only
+type variables.  After that is done, the function fun(x) x+1 has type
+(a -> a).
+
+We take the set of "hollowed out" function types from all RHS's and we
+unify them together.  That's our notion of the return value of the
+typecase.
+
+Because typecase is really on functions it's very hard to say what the
+syntax shuold be.
+
+f = typecase {
+  Int:    fun(x) x+1
+  String: fun(y) y
+ }
+
+typecase (x) {
+  Int    : y :    y+1
+  String : z :    z
+ }
+
+
+typecase f() as x {
+  Int:    x + 1
+  String: x ++ "1"
+}
+
+// Or just write the function:
+typecase (x) {
+  Int:    x + 1
+  String: x ++ "1"
+}
+
+Or instead of "typecase", "multifun", "casefun", "typecase_fun"?  
+Then you could possibly use the named function syntax as well:
+
+casefun f(x) { Int: x + 1 }
+
+
+
+----------------------------------------
+
+Finally, we would have the choice of either introducing some kind of
+numtypecase that doesn't fully generalize its input, leaving numeric
+type vars, or doing away with the whole notion of numeric subkinds.
+
+We'd have to have some different treatment of recursion during
+metaprogram eval if we expect to be able to write hash and marshal
+using typecase...
+
+[2009.11.24] {Precompiled external primitives and libraries}
+
+Once we have typecase we'd like to move a whole bunch of primitives
+(e.g. +) out to plain WS code.  But to do that it would be nice to
+precompile them and have some way of pulling them into an AST being
+compiled on demand.  That is, when we find unbound variables early in
+compilation we would check to see if they're library prims, and if so
+pull up their definitions.
+
+We could actually go pretty far with precompiling sources while
+keeping with the whole program compilation.  We could modularly
+typecheck the preprocessed code.  We could do all the passes up to
+metaprogram evaluation.  
+
+We could store the preprocessed sexps in a FASL format.  To make it
+cross platform maybe it would be possible to wrap them in an R6
+library.  But I believe that would only work for standard libraries
+that are present at compile time.
+
+[2009.11.24] {Subgraph compilation}
+ .
+By the way, whole program compilation doesn't need to mean that we
+compile a complete graph at once.  Just that the output be a graph is
+enough.  That graph could have loose ends that connect to other
+graphs.  But for monomorphism we would need the interfaces between
+"modules" of this sort to be monomorphic.
+
