@@ -1,4 +1,0 @@
-#!/bin/sh
-
-tinyviz -run build/pc/main.exe 20
-

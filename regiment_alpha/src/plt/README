@@ -1,7 +1,0 @@
-
-[2004.04.22]
-  Every file in here should correspond to a file of the same name in
-the ../generic/ subdirectory.  These are wrappers to make the generic
-scheme files into plt modules.  Although sometimes (as in the case of
-"tests.ss" I cheat and have one PLT file for multiple scheme files).
-

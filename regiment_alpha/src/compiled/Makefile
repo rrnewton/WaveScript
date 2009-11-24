@@ -1,5 +1,0 @@
-
-all:
-
-clean:
-	$(RM) *.zo

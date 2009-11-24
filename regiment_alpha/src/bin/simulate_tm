@@ -1,5 +1,0 @@
-#!/bin/bash
-
-#(cd $HOME/cur; ./simulate_tm.ss $*)
-
-$HOME/cur/simulate_tm.ss $*

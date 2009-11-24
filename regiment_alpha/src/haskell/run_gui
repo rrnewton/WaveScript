@@ -1,7 +1,0 @@
-#!/bin/sh
-
-#java -Dpython.cachedir=/tmp/jython.cache -DDBG=usr1 -DSIMDBG= -jar /opt/tinyos-1.x/tools/java/net/tinyos/sim/simdriver.jar -noconsole -autorun test.autorun
-
-#tinyviz -nosf -nopause -autorun test.autorun
-tinyviz -autorun test.autorun
-

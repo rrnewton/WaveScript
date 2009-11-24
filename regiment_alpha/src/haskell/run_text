@@ -1,4 +1,0 @@
-#!/bin/sh
-
-./build/pc/main.exe -b=1 -r=simple 10 | grep TM
-#./build/pc/main.exe -b=1 -r=disc10 30

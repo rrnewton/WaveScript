@@ -1,1 +1,0 @@
-../generic/pass04_static-elaborate.ss
