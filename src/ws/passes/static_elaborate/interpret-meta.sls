@@ -1253,9 +1253,11 @@
 		      ;(pretty-print evaled)
 		      ;(printf "  Marshaled:\n")
 		      (pretty-print marshaled)
-		      (printf "  Aborting compilation.\n")		      
-		      (ASSERT (abort-compiler-continuation))
-		      ((abort-compiler-continuation) evaled)
+		      ;; [2009.12.01] I did abort compilation here.  
+		      ;; I'm instead going to abort up in the compiler itself based on type.
+		      ; (printf "  Aborting compilation.\n")		      
+		      ; (ASSERT (abort-compiler-continuation))
+		      ; ((abort-compiler-continuation) evaled)
 		      ))
 		 		 
 		  ;(pretty-print (strip-annotations marshaled 'src-pos))

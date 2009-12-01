@@ -228,7 +228,7 @@
 	     (error? x))
 	(apply printf (condition-message x) (condition-irritants x))
 	(begin (display-condition x)(newline)))
-    (printf "Backtrace: \n")
+    (printf "\nBacktrace: \n")
     (continuation->sourcelocs k))
 
   (base-exception-handler 

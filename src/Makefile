@@ -103,6 +103,13 @@ ws.debug: chezdebug
 debug:    chezdebug
 dbg:      chezdebug
 
+# Other Lazy shorthands:
+nc: pltnc
+bc:pltbc
+ik: ikarus
+
+pltnc:  mzscheme_native
+native: mzscheme_native
 
 #----------------------------------------#
 #    Ikarus - a good open source R6RS    #
@@ -111,8 +118,7 @@ dbg:      chezdebug
 IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
 
 # Depends on aggregated libraries:
-ikarus: ik
-ik: ws/common.sls main_r6rs.sls
+ikarus: ws/common.sls main_r6rs.sls
 	$(IKARUS) -O2 --compile-dependencies regiment.ss
 
 
@@ -129,15 +135,11 @@ MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disab
 
 DEFAULTPLTLIB=`mzscheme -e '(for-each (lambda (p) (display p) (display ":")) (current-library-collection-paths))'`
 
-bc:pltbc
 pltbc:
 	find -name "._*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
-	$(MAKE) pltquick
-pltquick:
 	(export PLTCOLLECTS=$(DEFAULTPLTLIB)`pwd`; plt-r6rs --compile regiment.ss)
-#	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
 
 # This version DOES NOT build regiment sources.  Leaner and meaner.
 wsbc: ws/common.sls main_r6rs.sls 
@@ -147,23 +149,17 @@ wsbc: ws/common.sls main_r6rs.sls
 	(export REGIMENT_OR_WAVESCRIPT=WS; \
          export PLTCOLLECTS=`pwd`:$(PLTLIB); $(MZC) $(MZCFLAGS) --collection-zos .)
 
-
-# Disabling this by default because I'm getting a 'collection not found: "mzlib"' error.
-#	$(MAKE) pltexe
-
+# OLD? 
 pltexe:
 	$(MZC) --exe regiment_pltscript.exe regiment_pltscript.ss
 	$(MZC) --exe-dir regiment_pltscript regiment_pltscript.exe 
 
-nc: pltnc
-pltnc:  mzscheme_native
-native: mzscheme_native
 mzscheme_native: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); $(MZC) $(MZCFLAGS) --collection-extension .)
 
 # building to native code with a collection isn't working:
-nc2:
+pltnc2:
 	export PLTCOLLECTS=`pwd`:$(PLTLIB)
 	cat .temp_plt-source-files  | xargs -n1 $(MZC) $(MZCFLAGS) --auto-dir
 
@@ -193,19 +189,6 @@ wsparse_zo:
 	chmod +x bin/wsparse
 	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
 	echo 'mzscheme -qu "$$REGIMENTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
-
-#	echo 'DIR=`pwd`' >> bin/wsparse
-# 	echo 'LOC1=`dirname $$0`/../parser/wsparse.ss' >> bin/wsparse
-# 	echo 'LOC2=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
-# 	echo 'echo Checking absolute location $$LOC1' >> bin/wsparse
-# 	echo 'if [ -f $$LOC1 ]; then echo ok absolute is there; else echo erk; fi' >> bin/wsparse
-# 	echo 'if [ -f $$LOC1 ]; then echo absolute; mzscheme -qt "$$LOC1" $$*; ' >> bin/wsparse
-# 	echo '                    else mzscheme -qt "$$LOC2" $$*; fi' >> bin/wsparse
-
-
-#	echo 'echo runnig wsparse, dir $$0 `pwd` args $$*' >> bin/wsparse
-#	echo 'LOC=`dirname $$DIR/$$0`/../src/parser/wsparse.ss' >> bin/wsparse
-
 
 
 #----------------------------------------#
@@ -244,6 +227,7 @@ chezpurge: ws/common.sls main_r6rs.sls
 	./experimental/r6make.ss regiment.ss purge
 chezwipe: chezpurge
 
+# Whole program compilation to a single .boot file (R6RS)
 chezwhole:
 	find . -name "*.so" | xargs $(RM)
 	@if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
@@ -252,12 +236,14 @@ chezwhole:
 	make chezincr
 	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
 
+# Whole program compilation in debug mode
 chezdebug:
 	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
 	REGDEBUGMODE=ON make chezwhole
 	mv build/$(MT)/regiment.complete.boot build/$(MT)/regiment.debug.boot
 	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/regiment.complete.boot; fi
 
+# Whole program compilaion in opt mode.
 chezopt:
 	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
 	REGOPTLVL=3 make chezwhole
@@ -329,59 +315,6 @@ shared.debug:
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(OLDCHEZ))
 
-# so.opt: shared.opt
-# shared.opt:
-# 	MT=`echo '(machine-type)' | ../depends/petite`
-# 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
-# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
-#           (export REGOPTLVL=3; \
-#            export REGDEBUGMODE=OFF; \
-#            export REGIMENT_OR_WAVESCRIPT=WS; \
-#            $(CHEZ))
-
-
-# ws.threaded: threaded
-# threaded:
-# #	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
-# 	export REGIMENT_OR_WAVESCRIPT=WS; 
-# 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-#          (export REGOPTLVL=2; \
-#           export REGDEBUGMODE=OFF; \
-#           export REGIMENT_OR_WAVESCRIPT=WS; \
-#           chez_threaded)
-
-# # Saved heap images start up very fast, but don't work right on all platforms.
-# # (doesn't work right on Mac OS or fedora core)
-
-# # Run "make chez" before this to compile the code before grabbing a Petite heap:
-# heap: builddir 
-# 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
-# #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-# #	$(RM) -f build/regiment.0.heap 
-# #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
-
-# # A fullheap includes the Chez compiler as well as the petite heap.
-# fullheap: builddir
-# 	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
-# #	@if [ `which chez` ]; \
-# #	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
-# #	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
-# #	     $(RM) -f build/regiment.0.heap; \
-# #	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
-# #	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
-# #	fi
-
-# ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-
-# fullheap.opt:
-# 	(export REGOPTLVL=3; \
-#          export REGDEBUGMODE=OFF; \
-# 	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
-
-# builddir:
-# 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
-
-
 #----------------------------------------#
 #    Larceny (never fully working)       #
 #----------------------------------------#
@@ -401,16 +334,6 @@ larc3:
 
 runlarc:
 	larceny -r6rs -path . -program regiment.ss
-
-
-#	echo '(import (primitives dump-interactive-heap current-require-path compiler-switches) (rnrs)) (compiler-switches (string->symbol "slow")) (compiler-switches) (import (rnrs r5rs (6)) (rnrs mutable-pairs (6)) (rnrs mutable-strings (6)) (main_r6rs) (main) ) (dump-interactive-heap "larc.heap")' | larceny -err5rs -stopcopy -path .
-
-#	larceny -r6rs -program test_run.ss -path .
-#	echo '(import (err5rs load)) (load "main_larceny.ss")' | larceny -err5rs -stopcopy
-
-#	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
-
-
 
 cs:
 	larceny -r6rs -path . -program scrap/compile-stale.ss
