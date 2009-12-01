@@ -622,6 +622,12 @@
   (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
+  (unless (match? p (,lang '(program ,_ ... (Stream ,__))))
+    (when (> (regiment-verbosity) 0)
+      (printf "  Compilation finished early due to non-stream 'main'.\n")
+      (ASSERT (abort-compiler-continuation))
+      ((abort-compiler-continuation) p)))
+
   ;------------------------------------------------------------------
   ;<<<<<<<<<<<<<<<<<<<< POST ELABORATION CLEANUP >>>>>>>>>>>>>>>>>>>>
 
@@ -1219,14 +1225,20 @@
       (eprintf "Dumping output to file: ~s\n" (wsint-output-file)))    
     (stream-dump strm (wsint-output-file))]
    [else
-    ;; Otherwise, browse it interactively:
-    (when (>= (regiment-verbosity) 1)
-      (printf "Interactively executing stream program:\n")
-      (printf "------------------------------------------------------------\n"))
+    ;; Otherwise, browse it interactively:    
     (parameterize ([print-vector-length #t])
-      (if (>= (regiment-verbosity) 2)
-	  (browse-stream strm)
-	  (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline)))))]))
+      (match strm 
+	[(,lang '(program ,val ,_ ...))
+	 (printf "Not browsing interactely, non-stream output:\n")
+	 (pretty-print val)]
+	[,else 
+	 (when (>= (regiment-verbosity) 1)
+	   (printf "Interactively executing stream program:\n")
+	   (printf "------------------------------------------------------------\n"))
+	 (if (>= (regiment-verbosity) 2)
+	     (browse-stream strm)
+	     (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline))))])
+      )]))
 
 ;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
@@ -1239,52 +1251,54 @@
 			   (not (null? (find-in-flags 'wstiny 0 flags)))
 			   (not (null? (find-in-flags 'wsjavame 0 flags)))))
   (unless new-version? (compiler-invocation-mode 'wavescript-compiler-xstream))
-  ;; Some primitives are instead library defined for wsc2:
-  (parameterize ([library-primitives (cons (get-primitive-entry 'List:toArray) (library-primitives))]
-		 [regiment-primitives
-		  ;; Remove those regiment-only primitives.
-		  (filter (lambda (entry)
-			    (and (not (eq? (car entry) 'List:toArray))
-				 (not (assq (car entry) regiment-distributed-primitives)))
-			    )
-		    (regiment-primitives))])
-    
-   (define prog (coerce-to-ws-prog x input-params))  
-   (define typed (ws-compile-until-typed prog))
-   (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
-   (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
-                                            `(,ws-default-wavescope-scheduler))))
-   ;; [2007.11.23] Are we running the new C backend?
-   
-   (define outfile (if new-version? #f "./query.cpp")) ;; The new version isn't controlled by "outfile"
+   (let/ec escape
+     ;; Some primitives are instead library defined for wsc2:
+       (parameterize ([abort-compiler-continuation escape]
+		      [library-primitives (cons (get-primitive-entry 'List:toArray) (library-primitives))]
+		      [regiment-primitives
+		       ;; Remove those regiment-only primitives.
+		       (filter (lambda (entry)
+				 (and (not (eq? (car entry) 'List:toArray))
+				      (not (assq (car entry) regiment-distributed-primitives)))
+				 )
+			 (regiment-primitives))])
+	 
+	 (define prog (coerce-to-ws-prog x input-params))  
+	 (define typed (ws-compile-until-typed prog))
+	 (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
+	 (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))
+						  `(,ws-default-wavescope-scheduler))))
+	 ;; [2007.11.23] Are we running the new C backend?
+	 
+	 (define outfile (if new-version? #f "./query.cpp")) ;; The new version isn't controlled by "outfile"
 
-   (define (run-wscomp)
-     
-     ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
-     
-     (unless (<= (regiment-verbosity) 0)
-       (printf "\nTypecheck complete, program types:\n\n")
-       (if (>= (regiment-verbosity) 2) 
-	   (print-var-types typed +inf.0)
-	   (print-var-types typed 1))
-       (flush-output-port (current-output-port)))
-     
-     ;; Run the main body of the compiler.  Call it in continuation passing style.
-     (set! prog (call/cc (lambda (k) 
-			   (run-ws-compiler typed input-params disabled-passes #t k))))
-         
-     (ws-run-pass prog convert-sums-to-tuples)
-     
-     (if new-version?
-	  (begin 
-	    (ws-run-pass prog nominalize-types)
-	    (ws-run-pass prog gather-heap-types)
+	 (define (run-wscomp)
+	   
+	   ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
+	   
+	   (unless (<= (regiment-verbosity) 0)
+	     (printf "\nTypecheck complete, program types:\n\n")
+	     (if (>= (regiment-verbosity) 2) 
+		 (print-var-types typed +inf.0)
+		 (print-var-types typed 1))
+	     (flush-output-port (current-output-port)))
+	   
+	   ;; Run the main body of the compiler.  Call it in continuation passing style.
+	   (set! prog (call/cc (lambda (k) 
+				 (run-ws-compiler typed input-params disabled-passes #t k))))
+	   
+	   (ws-run-pass prog convert-sums-to-tuples)
+	   
+	   (if new-version?
+	       (begin 
+		 (ws-run-pass prog nominalize-types)
+		 (ws-run-pass prog gather-heap-types)
 
-	    (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
-	      (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss"))
-	    (ws-run-pass prog explicit-stream-wiring)
-	    (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
-	      (dump-compiler-intermediate prog ".__afterexplicitwiring.ss"))
+		 (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		   (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss"))
+		 (ws-run-pass prog explicit-stream-wiring)
+		 (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		   (dump-compiler-intermediate prog ".__afterexplicitwiring.ss"))
 	    ;(ws-run-pass prog remove-unused-streams)
 	    
 	    ;; Encapsulate the last-few-steps to use on different graph partitions.
@@ -1651,8 +1665,7 @@
 	 )))
    
    (if (>= (regiment-verbosity) 1) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
-   )
- ) ; End wscomp
+   ))) ; End wscomp
 
 
 

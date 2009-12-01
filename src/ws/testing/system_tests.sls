@@ -71,7 +71,6 @@
 		    '())))
      (UNIT UNIT)]
 
-
    ;; TODO: Compiler should drop out after interpret-meta when there's no stream.
 #;
    ["Test tolerance of nonstream values resulting from metaprog (void)."

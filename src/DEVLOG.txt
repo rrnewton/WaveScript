@@ -2268,9 +2268,17 @@ typecase (x) {
 Or instead of "typecase", "multifun", "casefun", "typecase_fun"?  
 Then you could possibly use the named function syntax as well:
 
-casefun f(x) { Int: x + 1 }
+f :: List a -> a;
+casefun f(x) { 
+  List Int    :      x.head + 1
+  List String : x.tail.head ++ "1"
+}
 
+Or for the whole C-ish syntax thing maybe I need to work "overload" in there.
 
+A potential pitfall may be that we have a danger of introducing too
+many spurious universal types that lead to typecase failures after
+monomorphisation.
 
 ----------------------------------------
 
