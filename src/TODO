@@ -18,6 +18,13 @@ There's a lot of cleanup to be done.
  *) Fix PLT WS-repl
  *) implement marshal under scheme now that we have byte vectors!
 
+Working on just cleaning up commented and dead code.
+
+ *) Really need to clean up the scripts and kill the wsc backend.
+
+ *) FIX DEMO 4A.. it fails badly.
+
+
 ================================================================================
 TOOPTIMIZE:
 
