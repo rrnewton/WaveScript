@@ -478,9 +478,8 @@
 ; 	       )
 
     (type* [() ()]  [(type type*) (cons $1 $2)])
-    (unioncases [(VAR type*)                `((,$1 ,@$2))]
-		[(VAR type* BAR unioncases) `((,$1 ,@$2) . ,$4)])
-    
+    (unioncases [(UPVAR type*)                `((,$1 ,@$2))]
+		[(UPVAR type* BAR unioncases) `((,$1 ,@$2) . ,$4)])    
 
     (decls ;; Top level variable binding
            ;; It's unfortunate that this duplicates much within the "stmt" production.
@@ -533,12 +532,14 @@
 		       [(pattern :: type) `(assert-type ,$3 ,$1)])
 
    ;; [2006.09.01] For now patterns are just tuples.
+   ;; Then they could be type constructors also:
    (pattern [(VAR) $1]
 	    ;; A type constructor:
 	    [(VAR LeftParen RightParen)      `(data-constructor ,$1)]
 	    [(VAR LeftParen pat+ RightParen) `(data-constructor ,$1 ,@$3)]
 	    [(LeftParen RightParen) #()]
 	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
+	    ;; TODO, list array patterns:
 	    )
    (pat+ [(pattern) (list $1)]
 	 [(pattern COMMA pat+) (cons $1 $3)])
@@ -678,7 +679,7 @@
 		[(pattern COLON exp matchcases) (cons (list $1 $3) $4)]
 		[(pattern COLON exp BAR matchcases) (cons (list $1 $3) $5)]
 		)
-;    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
+    (typecases  [() '()] [(type COLON exp typecases)  (cons (list $1 $3) $4)])
 
     ;; Helper for array navigation.
     (arrayNav ;[() (lambda (x) x)]
@@ -758,7 +759,14 @@
 	 ;; Deconstructing sum types with pattern matching:
 	 [(case exp LeftBrace matchcases RightBrace) `(wscase ,$2 . ,$4)]
 
-;	 [(typecase exp LeftBrace typecases RightBrace) `(typecase ,$2 ,$4)]
+	 ;; We don't want to write a function on each RHS.  That's too ugly.
+	 ;; Instead typecase is a binding form.  It introduces the formal once.
+	 ;; But punning is allowed.
+	 [(typecase VAR LeftBrace typecases RightBrace) 
+	 `(typecase ,$2 ,(map (lambda (rhs) `(lambda (,$2) ,rhs)) $4))]
+	 [(typecase exp AS VAR LeftBrace typecases RightBrace)
+	 `(typecase ,$2 ,(map (lambda (rhs) `(lambda (,$4) ,rhs)) $6))]
+
 	 ;; Haven't decided how to do this yet.  Can typecase on the *return* type:
 ;	 [(returncase LeftBrace typecases RightBrace) `(returncase ,$3)]
 
@@ -781,16 +789,18 @@
 	 ;; Another application syntax... Haskell's '$' operator.
 	 ;; Don't want to pollute the language too much, but I find
 	 ;; this useful.  I'll avoid using it in the standard library.
-	 [(exp $ exp) `(app ,$1 ,$3)] ;; Note, every binop adds a shift/reduce conflict currently¢
+	 [(exp $ exp) `(app ,$1 ,$3)] ;; Note, every binop adds a shift/reduce conflict currently
 
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
 	 [(exp DOT LOWVAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1 . ,$5)]
+
 	 ;; Basic dot syntax:
 	 ;; Can only use this to call named functions, that is symbols:
          [(exp DOT LOWVAR) `(app ,(wrap $3-start-pos $3-end-pos $3) ,$1)]
 
 	 [(exp AT VAR)    (prec DOT) `(wsrecord-select ',$3 ,$1)] ;; FIXME: This is temporary... my intention is to use '.'
-	 
+
+	 ;; We reserve the precious dot syntax for records when an uppercase var follows:
 	 [(exp DOT UPVAR LeftParen expls RightParen) `(app ,(wrap $3-start-pos $3-end-pos `(wsrecord-select ',$3 ,$1)) . ,$5)] ;; adds 1 shift/reduce
 	 [(exp DOT UPVAR) (prec DOT) `(wsrecord-select ',$3 ,$1)]
 

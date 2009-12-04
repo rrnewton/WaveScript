@@ -1,3 +1,4 @@
+#!r6rs
 
 (library (ws testing system_tests)
   (export test-system)

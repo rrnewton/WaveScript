@@ -30,8 +30,12 @@
   ;; The trappings around a work-funciton are the main things that change.
 
   (__spec GenWorkFunction <emit-tbb> (self name arg vqarg argty code down*)
-    (printf "GENWORKFUNCitoN\n")
-  #|
+;    (printf "\nGENWORKFUNCitoN\n")
+#;
+    (values 
+     (make-lines "// Prototype\n")
+     (make-lines `("void work_it_up() {}\n")))
+
      (define _arg (Var self arg))
      (define _argty (Type self argty))
      (define extra (map (lambda (x) (list x ", ")) (ExtraKernelArgsHook self)))
@@ -45,7 +49,7 @@
 		     (lines-text code)
 		     (IterEndHook self name arg argty down*)))
 	     "\n")))
-   |#
+
     )
 	   
 )

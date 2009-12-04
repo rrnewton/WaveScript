@@ -43,10 +43,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define last-test-timer start-time)
 (define failed #f)
 
-;; This should be run from this directory, but to make sure...
-;(define test-directory (current-directory))
-;(define test-root (format "~a/WS_test_copy" (getenv "HOME")))
-;
 ;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
 (current-directory "..")
 (define ws-root-dir (path->string (current-directory)))
@@ -64,7 +60,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (format "~a-~a-~a_~a:~a:~a" 
 	    (date-year d) (date-month d) (date-day d)
 	    (date-hour d) (date-minute d) (date-second d))))
-;(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
 (define logfile (format "~a/supertest_~a.log" test-directory date))
 (define log (force-open-output-file logfile))
 (define scriptoutput (force-open-output-file "SUPERTEST_SCRIPT_OUTPUT.log"))
@@ -171,27 +166,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (system/timeout cmd)
   ((system/async/timeout cmd) default-timeout))
 
-(define engine-dir (format "~a/WS_test_engine_~a" (getenv "HOME") (random 10000)))
-(define engine-svn-revision 'unknown)
-(define (setup-engine-dir!)
-  (fprintf orig-console "  Checking out engine from svn into directory\n  ~a\n" engine-dir)
-  (fpf "  Checking out engine from svn into directory\n   ~a\n" engine-dir)
-  (ASSERT (system (format "rm -rf ~a" engine-dir)))
-  (ASSERT (system 
-	   (format 
-	    "svn co -r 1495 svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
-	    ;; [2007.10.29] Switching back to HEAD revision:
-					;"svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
-	    engine-dir)))
-
-  (ASSERT (putenv "WAVESCOPED" engine-dir))
-  (ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
-  (parameterize ([current-directory engine-dir])
-    (set! engine-svn-revision
-	  (begin 
-	    (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
-	    (read (open-input-file "svn_rev.txt"))))))
-
 (define webroot "/var/www")
 (define webdir  "/var/www/regression")
 
@@ -214,8 +188,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	;; Now do the performance report:
 	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" ws-root-dir)])
 	  (when (file-exists? perfreport)
-	    (let* ([webfile (format "~a/rev~a_eng~a_perfreport.pdf" webdir
-				    svn-revision engine-svn-revision)])
+	    (let* ([webfile (format "~a/rev~a_perfreport.pdf" webdir
+				    svn-revision)])
 	      (publish perfreport webfile)))))
       ;; Otherwise we could try to scp it...
       (void)
@@ -287,7 +261,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (begin 
     (ASSERT (eqv? 0 (system/exit-code "which svn > /dev/null")))
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
-    (read (open-input-file "svn_rev.txt"))))
+    (let ([x (read (open-input-file "svn_rev.txt"))])
+      (if (eof-object? x) 'unknown x))))
 
 (define svn-log-message 
   (parameterize ([current-directory ws-root-dir])
@@ -433,9 +408,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./query.exe -n 10 &> ~a/matrix_old_run.log" test-directory))
 
   ;(when (file-exists? "query.exe") (delete-file "query.exe"))
-#;  
-  (run-test "ws: Running native WS test_matrix.ws:" 
-	    (format "ws test_matrix.ws -exit-error -n 10 &> ~a/matrix_ws.log" test-directory))
+;  (run-test "ws: Running native WS test_matrix.ws:" 
+;	    (format "ws test_matrix.ws -exit-error -n 10 &> ~a/matrix_ws.log" test-directory))
   (run-test "wsc2: Native WS test_matrix.ws (plt):"
 	    (format "wsc2 test_matrix.ws -exit-error &> ~a/matrix_build.log" test-directory))
   (run-test "wsc2: Run output exe:" 
@@ -469,58 +443,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
   )
 
 
-
-;;================================================================================
-;; WAVESCOPE ENGINE:
-
-#; ;; Disabling
-(begin 
-(setup-engine-dir!) 
-
-(fpf "\n\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
-(fpf "========================================\n")
-
-(post-to-web (format "intermediate/rev_~a" svn-revision))
-(parameterize ([current-directory engine-dir])
-  
-  (fpf "Engine: directory cleaned:                     ~a\n" (code->msg! (system/timeout "make clean")))  
-  (fpf "Engine: 'make all':                            ~a\n" 
-       (code->msg! (system/timeout (format "make all &> ~a/enigne_MAKE_ALL.log" test-directory))))  
-
-  ;; TODO: This doesn't return ERROR code:
-  (let ([testSignal (system/timeout (format "./testSignal-SMSegList &> ~a/engine_testSignal.log" 
-					    test-directory))])
-    (code->msg! testSignal)
-    (fpf "Engine: testSignal-SMSegList                  ~a\n"
-	 (if (zero? testSignal) "?maybe passed?" "-FAILED-")))
-  (post-to-web (format "intermediate/rev_~a" svn-revision))
-  
-  ;; TODO: This probably doesn't return ERROR code:
-  (let ([pipeMemory (system/timeout (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/engine_PipeMemory.log" 
-					    test-directory))])    
-    (code->msg! pipeMemory)
-    (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
-	 (if (zero? pipeMemory) "?maybe passed?" "-FAILED-")))
-  (post-to-web (format "intermediate/rev_~a" svn-revision))
-)
-
-) ;; End engine
-
-
-
-
 ;;================================================================================
 ;; Now test WSC:
 
-(fpf "\n\nWaveScript C/C++ Backends (C++ uses XStream):\n")
+(fpf "\n\nWaveScript C Backends:\n")
 (fpf "===================================================\n")
 
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   ;; This runs faster if we load Regiment pre-compiled:
  ;(current-directory test-directory) (ASSERT (system "make chez"))
-#; ;; Disabling
-  (run-test "wsc: Running WaveScript Demos with WSC:"
-	    (format "./testall_wsc &> ~a/wsc_demos.log" test-directory))
 
   (begin
     (ASSERT (putenv "REGIMENTHOST" "ikarus"))
@@ -583,17 +514,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
 
   )
-
-
-
-; (parameterize ((current-directory (format "~a/lib/" ws-root-dir)))
-;   (run-test "wsc: Compiling stdlib_test:"
-; 	    (format "wsc stdlib_test.ws -exit-error &> ~a/wsc_stdlib_build.log" test-directory))
-;   #;
-;   (run-test "wsc: Running stdlib_test:"
-; 	    (format "./query.exe -exit-error &> ~a/wsc_stdlib_run.log" test-directory)))
-
-
 
 
 ;;================================================================================
@@ -697,18 +617,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
   
   ;; FIXME: ADD THIRD STAGE MULTINODE ETC!!!
 
-  #; ;; Disabling
-  (begin 
-    (run-test "wsc: Compiling marmot app (first phase):  "
-	      (format "wsc run_first_phase.ws -exit-error &> ~a/wsc_marmot1_build.log" 
-		      test-directory))
-    (run-test "wsc: Running marmot app (first phase):  "
-	      (format "./query.exe -n 1 &> ~a/wsc_marmot1_run.log" test-directory))
-    (run-test "wsc: Compiling marmot app (second phase):  "
-	      (format "wsc run_marmot2.ws -exit-error &> ~a/wsc_marmot12_build.log" test-directory))
-    ;; [2007.10.12] Need -n for the C++ engine!!! This query will not die when the file ends.
-    (run-test "wsc: Running marmot app (second phase): "
-	      (format "./query.exe -n 1 &> ~a/wsc_marmot12_run.log" test-directory)))
 |#
   
   ) ;; End MARMOT
@@ -827,9 +735,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
     
-    ;; [2007.10.30] running stepts incrementally, so we see what fails:
-    (run-test "    Setup Engines:             " 
-	      (format "make engine &> ~a/bench_setup.log" test-directory))
+    ;; [2007.10.30] running steps incrementally, so we see what fails:
     (ASSERT (system "make topbefore"))
 
     (current-directory (format "~a/benchmarks/microbench" ws-root-dir))
@@ -860,7 +766,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;     (ASSERT (system "make machineinfo.tex"))
 ;     (ASSERT (system "make wssvn.tex"))
-;     (ASSERT (system "make enginesvn.tex"))
     (run-test "    Compile results, build full report: " 
 	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
     (ASSERT (putenv "REGIMENTHOST" ""))
@@ -1053,7 +958,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
      (milli->minute (- (current-inexact-milliseconds) start-time)))
 
 ;(fpf "\n\nWaveScript Rev: ~a\n" svn-revision)
-;(fpf "WaveScope Engine Rev: ~a\n" engine-svn-revision)
 
 (fpf "\nMachine:\n   ")
 (system (format "uname -a &> temp.log"))
@@ -1101,15 +1005,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (close-output-port log)
 (define thesubj 
   (if failed 
-      (format "[Regression] WaveScript/Scope rev ~a/~a FAILED nightly tests" svn-revision engine-svn-revision)
-      (format "[Regression] WaveScript/Scope rev ~a/~a passed nightly tests" svn-revision engine-svn-revision)))
+      (format "[Regression] WaveScript/Scope rev ~a FAILED nightly tests" svn-revision)
+      (format "[Regression] WaveScript/Scope rev ~a passed nightly tests" svn-revision)))
 (define themsg  (file->string logfile))
 
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
-(post-to-web (format "rev~a_eng~a_~a~a~a"
-		     svn-revision engine-svn-revision
+(post-to-web (format "rev~a_~a~a~a"
+		     svn-revision 
 		     (if (getenv "CC") (format "~a_" (getenv "CC")) "")
 		     (if benchmarks? "wbench_" "")
 		     (if failed "FAILED" "passed")))

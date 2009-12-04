@@ -6,6 +6,11 @@ export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
 |#
 
+(printf "Running all demos using ~a.\n" which-scheme)
+
+;; [2009.12.01] PLT is pulling in the wrong version of match here.
+;(printf "This is being run through reg:top-level-eval ~a.\n" (match '(1 2) [(,x ,y) x]))
+
 ;(import (rnrs)  (ws common))
 
 ;; This runs all the demo files and (for some tests) checks their

@@ -55,16 +55,15 @@
 	   [else x])
 	  x))
     (case-lambda 
-      [(exp) 
+      [(exp)        
        (unless repl-env
 	 (set! repl-env (apply environment (append default-imports implementation-specific-imports)))
 	 ;(set-box! repl-env (default-repl-env))
 	 ;(printf "SET THE REPL ENV ~s\n" (unbox repl-env))
 	 )
        (reg:top-level-eval exp repl-env)]
-      [(exp env)
-       
-       
+
+      [(exp env)      
        ;; FIXME FIXME : Redefine the existing bindings as
        ;; identifier-syntax that references the *current* value of
        ;; each binding.  However, even then there will be problems if

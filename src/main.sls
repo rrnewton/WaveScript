@@ -2160,6 +2160,9 @@
 	     (define port (acquire-input-prog 'wscomp))
 	     (apply wscomp port input-parameters opts))]
 
+	  ;; TBB target:
+	  ;; For now doing it through wsc2.
+#;
 	  [(wstbb)
 	   ;; HACK: need to set compiler-invocation-mode EARLY for wsc2 (for parsing):
 	   (parameterize ([compiler-invocation-mode   'wavescript-compiler-tbb])
@@ -2175,11 +2178,6 @@
 	     (let ((port (acquire-input-prog 'wscomp)))
 	       (apply wscomp port input-parameters 'wsc2 opts)))]
 
-	  ;; TBB target:
-[(wstiny)
-	   (parameterize ([compiler-invocation-mode 'wavescript-compiler-nesc])
-	     (let ((port (acquire-input-prog 'wscomp)))
-	       (apply wscomp port input-parameters 'wstiny opts)))]
 
 	  ;; NesC/TinyOS target, similar to wsc2:
 	  [(wstiny)

@@ -25,9 +25,6 @@ topafter:
 	top -b | head -n 20    >> top_after.tex
 	echo '\end{verbatim}'  >> top_after.tex
 
-engine: 
-	./setup_engines.sh
-
 #  enginesvn.tex 
 alldeps: machineinfo.tex wssvn.tex perfreport.tex microbench/microbench1.pdf language_shootout/shootout.pdf microbench/RESULTS.tex language_shootout/RESULTS.tex appbench/MARMOT.pdf
 # datareps/alloc_arrarr.pdf ## DISABLING

@@ -487,22 +487,8 @@ testgsl:
 	(cd ../lib; $(MAKE));
 	echo exit | ws ../lib/run_matrix_gsl_test.ws -exit-error;
 
-supertest: super-test
-super-test: 
+supertest: 
 	./supertest.ss
-# 	@echo Testing different build methods.
-# 	@echo
-# 	@echo ======================================================================
-# 	$(MAKE) clean 
-# 	@echo
-# 	@echo First from source:
-# 	@echo ======================================================================
-# 	./regiment_script.ss test
-# 	echo 'ntohue' | regiment i --exit-error
-# 	echo HMM $?
-# 	@echo
-# 	@echo Second from compiled shared-object:
-# 	@echo ======================================================================
 
 
 #/*--------------------------------------------------------------------*/

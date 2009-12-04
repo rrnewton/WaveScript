@@ -156,11 +156,15 @@
 
   (define-generic InvokePerOpCollector)
 
+  ;; Add a filename (string) to the list of includes.
   (__spec add-include! <emitC2-base> (self fn)
     (define files (slot-ref self 'include-files))
+    ;; [2009.12.01] It looks like at some point I was accepting lists of strings here.  Dunno why:
+    (ASSERT string? fn)
     (unless (member fn files)
-      (printf "     --> adding include ~a \n" (apply string-append fn))
-      (slot-set! self 'include-files (cons fn files))))
+      (printf "     --> adding include ~a \n" fn)
+      (slot-set! self 'include-files (cons fn files)))
+      )
   (__spec add-link! <emitC2-base> (self fn)
     (define files (slot-ref self 'link-files))
     (unless (member fn files)
@@ -172,7 +176,7 @@
       (let ([ext (extract-file-extension file)])
 	(cond
 	 [(member ext '("c" "cpp" "h" "hpp"))
-	  (add-include! self (list "\"" file "\""))]
+	  (add-include! self (** "\"" file "\""))]
 	 [(or (member ext '("so" "a" "o"))
 	      ;; A hack:
 	      (substring? ".so." file))
@@ -1493,7 +1497,7 @@
 	(define name (if inverse? "memoized_ifftC2R" "memoized_fftR2C"))
 	(ASSERT simple-expr? arr)
 	(add-include! self "<fftw3.h>")
-	(add-include! self (list "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
+	(add-include! self (** "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
 	(add-link! self "libfftw3f.so")		
 	(append-lines ((Binding self) (list len0 'Int `(Array:length ,arr)))
 		      ((Binding self) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
