@@ -166,21 +166,35 @@
       ;(pretty-print (wsparse-postprocess prog))  
       ;(ws prog)
       (printf "\n\n >>> COMPILING PROG: \n\n")
-      ;(browse-stream (wsint (wsparse-postprocess prog) '()))
-      ;(wscomp (wsparse-postprocess prog) '())
-      ;(wsc2 (wsparse-postprocess prog))
 
       ;; TEMPTOGGLE:
       ;      (regiment-verbosity 5)
 
-      (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
-	(wscomp (wsparse-postprocess prog) '() 'wsc2))
+      (if #f
+	  ;; Execute through the "ws" scheme environment.
+	  (begin
+	    (browse-stream (wsint (wsparse-postprocess prog) '()))
+	    )
 
-      ;; We go all the way back to our shell script to have it call gcc.
-      (system "wsc2-gcc")
-      ;(system "./query.exe | head")
-      )
-    
+	  ;; Compile through the wsc2 backend:
+	  (begin
+	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
+	      (time (wscomp (wsparse-postprocess prog) '() 'wsc2)))
+
+	    ;; We go all the way back to our shell script to have it call gcc.
+	    (time (system "wsc2-gcc"))
+	    ;(system "./query.exe | head")
+
+	    (setenv "WS_LINK" "$WS_LINK -DWS_REAL_TIMERS ")
+
+	    (let-values ([(to-stdin from-stdout from-stderr pid) 
+			  (open-process-ports "exec ./query.exe -realtime" 'block (make-transcoder (latin-1-codec)))])
+	      (let loop ((x (read-char from-stdout)))
+	      	        ;(system (format "echo kill -9 ~a" pid))
+	        (unless (eof-object? x)	
+		  (display x)
+		  (loop (read-char from-stdout)))))
+	    )))
     (set-box! subgraphs '())
     (set-box! cursubgraph '())
     (set-box! curtransaction #f)

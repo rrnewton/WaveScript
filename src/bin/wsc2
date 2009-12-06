@@ -63,7 +63,8 @@ while [ $# != 0 ];  do
    "--D" )    export WS_LINK="$WS_LINK -D$2";   shift;;
 
    "--o" )    export CFILE="$2";   shift;;
-   
+
+   # This shortcuts the (scheme) compiler entirely:
    "--realtime" )  export WS_LINK="$WS_LINK -DWS_REAL_TIMERS ";;
 
    "--" ) break;;

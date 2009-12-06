@@ -36,6 +36,8 @@ int main(int argc, char* argv[]) {
 
   WSQ_EndTransaction();
 
+  sleep(10);
+
   WSQ_Shutdown();
 }
 
