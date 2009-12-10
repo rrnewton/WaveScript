@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   WSQ_BeginTransaction(1001);
     WSQ_BeginSubgraph(101);
       WSQ_AddReutersSource(2, "foobar.schema");
-      WSQ_ConnectRemoteOut(2, "localhost", PORT); 
+      WSQ_ConnectRemoteOut(2, "fort2.csail.mit.edu", PORT); 
     WSQ_EndSubgraph();
   WSQ_EndTransaction();
 

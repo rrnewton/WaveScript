@@ -1,3 +1,4 @@
 
 
-main = timer(30);
+main = timer(2);
+

@@ -185,7 +185,7 @@
 	    (time (system "wsc2-gcc"))
 	    ;(system "./query.exe | head")
 
-	    (setenv "WS_LINK" "$WS_LINK -DWS_REAL_TIMERS ")
+	    (chez:putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
 
 	    (let-values ([(to-stdin from-stdout from-stderr pid) 
 			  (open-process-ports "exec ./query.exe -realtime" 'block (make-transcoder (latin-1-codec)))])

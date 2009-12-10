@@ -19,7 +19,10 @@ bar :: Int -> Int = foreign("bar", ["bar.h", "./bar.o"])
 main = iterate _ in timer(30.0) { 
   state {
     // Do this at compile time:
-    _ = { SHELL("gcc -c bar.c"); 
+    _ = { ws_link = GETENV("WS_LINK");
+	  cmd = "gcc "++ws_link++" -c bar.c";
+          print("Executing command: "++ cmd ++"\n");
+	  SHELL(cmd); 
 	  //SHELL("ar rcs bar.a bar.o"); 
           print("compiled bar.c, and made static archive (.a)\n"); }
   }

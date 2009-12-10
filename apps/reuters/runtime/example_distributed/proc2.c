@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     WSQ_BeginSubgraph(101);
     //type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
     //      WSQ_ConnectRemoteIn(20,"localhost", PORT, "string BAZ, float BAR");
-      WSQ_ConnectRemoteIn(20,"localhost", PORT, "string SYM, float TIME, float PRICE, int VOLUME");
+      WSQ_ConnectRemoteIn(20,"128.30.79.5", PORT, "string SYM, float TIME, float PRICE, int VOLUME");
       WSQ_AddPrinter("NETSTRM: ", 20);
     WSQ_EndSubgraph();
   WSQ_EndTransaction();

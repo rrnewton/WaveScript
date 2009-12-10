@@ -473,7 +473,7 @@ wsq_reuterSource :: String -> Stream DummySchema99;
 fun wsq_reuterSource(schema) {
   syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
   lastprice = Array:make(Array:length(syms), 50.0);
-  iterate _ in timer(15) {
+  iterate _ in timer(2) {
     state{ t = 0.0 }
     i = randomI(Array:length(syms));
     // Random walk:

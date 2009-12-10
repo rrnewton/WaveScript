@@ -490,9 +490,8 @@ testgsl:
 supertest: 
 	./supertest.ss
 
-
 #/*--------------------------------------------------------------------*/
-#*            Building Installation Packages                           */
+#*            Building Binary Installation Packages                    */
 #*---------------------------------------------------------------------*/
 
 # [2007.04.09] Updating this, it was very old:

@@ -44,12 +44,11 @@ trust all future WaveScript packages.
 Installing under Fedora instead:
 ========================================
 
-
-
+Build from source.  RPM's will be forthcoming.
 
 
 [2008.09.16] Mac OS Note:
-  Note, I've run into some recent problems with MacOS.  It seems that
+  There have been some recent problems with MacOS.  It seems that
   there are dependencies on gnu versions of several tools (find,
   xargs, getopt).  Be sure to configure ikarus with -CFLAGS=-m64.  I
   also have trouble building under PLT scheme due to problems setting
@@ -80,23 +79,23 @@ the most recent revision that passed all system tests:
 
    http://regiment.us/regression
 
+ (2) Install a recentish version of PLT scheme (>370) for the parser.
+  Make sure that "mzscheme" and "mzc" are in your path.
 
- (2) Check out the development version of Ikarus Scheme from source
+ (3) (Optional) For better performance than PLT Scheme, check
+  out the development version of Ikarus Scheme from source
   (using bzr) and build it. As of this writing the binary release
   (0.0.3) is too old. Instructions for building ikarus are here:
 
    http://www.cs.indiana.edu/~aghuloum/ikarus/
 
-After ikarus is installed you should be able to run it like this:
+  After ikarus is installed you should be able to run it like this:
 
    [joe@computer ~/demos]  $ ikarus
    Ikarus Scheme version 0.0.3+ (revision 1477, build 2008-05-16)
    Copyright (c) 2006-2008 Abdulaziz Ghuloum
    >
 
-
- (3) Install a recentish version of PLT scheme (>370) for the parser.
- Make sure that "mzscheme" and "mzc" are in your path.
 
  (4) Now try building Wavescript. Assuming it was unpacked into
    ~/wavescript, try the following.
@@ -121,7 +120,6 @@ test" which runs the unit tests.
 
 OPTIONAL EXTRAS.
 
-       If you want the C++ backend, look into downloading the XStream engine.
        If you want to run "wscaml" for the OCaml backend, get fftw2 and try
 
          make ocaml
@@ -141,7 +139,7 @@ OPTIONAL EXTRAS.
 
  ---- Installing under Windows ----
 
-[Note: this doesn't work yet - 2007.03.13]
+[Note: this doesn't fully work yet and will probably rot.  Bother Ryan. - 2007.03.13]
 
 Step 1: Install cygwin, including the "make" package under development.
 Step 2: Install Petite Chez Scheme, for example in c:\csv7.3.  Then add

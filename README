@@ -4,27 +4,6 @@ See INSTALL for installation.
 
 
 
-<Running Regiment>
-======================================================================
-
-Running regiment from the command-line will enable you to:
-
- *) Compile Regiment source.  "regiment c"
-    Compile (.rs) to Token Machines (.tm) and .tm to simulator files
-    for the TM network simulator, or to NesC files for use with the
-    Tossim simulator (currently incomplete).
-
- *) Run the TM network simulator. "regiment s"
-
- *) Load the Regiment source and interact with it. "regiment i"
-
-There are separate scripts for invoking the WaveScript variant of the
-system.  Use "ws", "wsc", and so on.  See the wavescript manual under
-doc/wavescript_manual.
-
-(wsint "file.ws" '())
-
-
 <Documentation>
 ======================================================================
 
@@ -252,25 +231,16 @@ describing profiling results.
 (p-view (with-input-from-file "/tmp/pdump" read))
 
 
-<Using the GUI>
-======================================================================
-<OBSOLETE>
-
-Start SWL from the $REGIMENTD/src directory, or start SWL and switch to it with
-   (cd (getenv "REGIMENTD")) 
-   (cd "src")
-
-Type (load "main_chez.ss").
-
-Now you should be able to load Regiment source files (or Token Machine
-source files) and run them/interact with them through the GUI.
-
-Try: (load-regiment "demos/regiment/simple_fold.rs")
-
-You will now have three windows open.  The Scheme interaction window
-(REPL), the stdout window for output messages from the simulator.  (If
-you press "Print Stats" for example, the output goes here.)
-
-
+<Environment variables affecting operation>
 ======================================================================
 
+ REGIMENTD -- the location of the directory containing this file
+
+REGIMENTHOST=
+REGIMENTEXEC=
+REGDEBUGMODE=
+REGOPTLVL=
+REGIMENT_OR_WAVESCRIPT=
+REGTHREADS=
+
+ WS_LINK -- extra flags to be sent to the C compiler at link time
