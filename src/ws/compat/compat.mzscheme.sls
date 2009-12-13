@@ -277,7 +277,9 @@
   (plt:include "inspector.ss") (define inspect generic-inspect)
 
 ;;  (plt:include "top-level-values.ss")
+
 ;; TEST TEMPTOGGLE FIXME -- seeing if including makes any difference:
+;; FIXME FIXME -- DUPLICATING THIS CODE HERE FOR TESTING:
 (begin  
 ;; This defines a system of top-level "global" variables for R6RS
 ;; implementations which don't allow direct access to the top-level
@@ -305,6 +307,8 @@
 	(error 'top-level-value "unbound: ~a" var)
 	result)))
 
+
+;; FIXME FIXME -- DUPLICATING THIS CODE HERE FOR TESTING:
 ;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
 (define reg:top-level-eval  
   ;; [2009.11.17] IKARUS BUG: Runnig (box #f) at initialization time for the module crashes ikarus.
@@ -336,9 +340,12 @@
     (case-lambda 
       [(exp)     
       (printf "reg:top-level-eval TRYING TO SET REPL ENV: ~s ~s\n" exp repl-env)   
+      (printf "This is a PLT bug, the following will crash: ..\n")
+             (printf "Environment ~s\n" (environment (list 'rnrs)))
+             (printf "Environment ~s\n" (environment '(rnrs)))
        (unless repl-env
 ;	 (set! repl-env (apply environment (append default-imports implementation-specific-imports)))
-	 (set-box! repl-env (default-repl-env))
+	 (set! repl-env (default-repl-env))
 #;
 	 (set! repl-env 
 	    (environment '(except (rnrs (6)) error) ; (rnrs r5rs (6))
@@ -346,7 +353,7 @@
 		  '(main_r6rs) '(main) '(ws shortcuts)
 		  '(prefix (scheme) plt:)
 		  ))
-	 (printf "SET THE REPL ENV ~s\n" (unbox repl-env))
+	 (printf "SET THE REPL ENV ~s\n" repl-env)
 	 )
        (reg:top-level-eval exp repl-env)]
 

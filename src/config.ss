@@ -42,7 +42,11 @@
        [(equal? m "REG")       reg]
        [(equal? m "BOTH")
 	(lambda (x) (syntax-case x () [(_ ws reg) #'(begin ws reg)] [(_ ws) #'ws]))]
-       [else (error 'IFWAVESCOPE "unknown value for environment var REGIMENT_OR_WAVESCRIPT: ~s" m)]
+
+       [else 
+      ;(error 'IFWAVESCOPE "unknown value for environment var REGIMENT_OR_WAVESCRIPT: ~s" m)
+       (raise (make-error))
+       ]
        ))
     (cond
      [(getenv "REGIMENT_OR_WAVESCRIPT") => (lambda (m) (set m))]

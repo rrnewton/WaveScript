@@ -63,7 +63,8 @@ Certain things are in the process of happening.  As a result the
 inconsistencies might be confusing.
 
  *) Reformatting comments for Schemedoc is a work-in-progress.
- *) 
+ *) Windows support comes and goes.  I don't use it actively but
+    there's no major barrier to it.
 
 
 <Coding Conventions>
@@ -236,11 +237,8 @@ describing profiling results.
 
  REGIMENTD -- the location of the directory containing this file
 
-REGIMENTHOST=
-REGIMENTEXEC=
-REGDEBUGMODE=
-REGOPTLVL=
-REGIMENT_OR_WAVESCRIPT=
-REGTHREADS=
+ REGIMENTHOST -- controls which scheme compiler is used: plt, chez, or ikarus
+ REGDEBUGMODE -- Set to ON to enable debug mode
+ REGOPTLVL    -- Optimization level for the compiler ITSELF, 0-3
 
  WS_LINK -- extra flags to be sent to the C compiler at link time

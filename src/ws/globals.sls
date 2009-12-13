@@ -187,7 +187,6 @@
 	(import (except (rnrs (6)) error)
 		(for (ws compat compat) run expand)
 		;(for (ws compat compat) run expand (meta 1) (meta 2))
-
 	 )
 	
   ;; No support in my R6RS-ish port yet:
@@ -235,6 +234,8 @@
 ;=======================================================================;;
 ;; [2006.09.11] Factored some config parameters that the user will want to change.
 
+;; [2009.12.12] Having problems with PLT 4.2.2.
+;; Pasting the contents of config.ss seems to change the behavior.
 (include "config.ss")
 
 ;=======================================================================;;
