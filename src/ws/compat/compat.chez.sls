@@ -45,6 +45,9 @@
 		  ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
 		  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 		  error
+
+		  ;; [2010.01.09] It looks like chez 7.9.4 added define-values.
+		  ;define-values
 		  )
 
 	  ;(rnrs eval (6))

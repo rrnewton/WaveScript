@@ -1,5 +1,6 @@
 
 include "stdlib.ws"
+include "unix.ws"
 include "socket.ws"
 
 
@@ -514,7 +515,8 @@ fun wsq_printer(str, s) {
   iterate x in s { 
     print(str);
     print(x); 
-    print("\n");
+    print("\n");    
+    Unix:fflush(Unix:stdout); 
   }
 }
 

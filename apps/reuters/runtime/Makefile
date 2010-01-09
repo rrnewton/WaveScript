@@ -2,7 +2,7 @@
 MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
 
 UNAME = $(shell uname -s)
-LIBS = -lm -ldl -lncurses -lpthread
+LIBS = -lm -ldl -lncurses -lpthread -liconv
 ifeq ($(UNAME), Linux)
   LIBS+= -lrt
 endif

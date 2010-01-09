@@ -38,7 +38,6 @@
 		 (foreign-callable-entry-point x)))))
 	 ])))
 
-
 ;; Next load the WSQ runtime manager.
 
 (printf " <WSQ> Loading runtime manager...") (#%flush-output-port)

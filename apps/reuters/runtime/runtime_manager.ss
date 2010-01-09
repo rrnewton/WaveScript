@@ -22,6 +22,8 @@
 
 (define curtransaction (box #f))
 
+(define current-child-process #f)
+
 ;; Subgraphs accumulated in the current transaction.
 (define subgraphs (box '()))
 
@@ -185,22 +187,47 @@
 
 	    ;; We go all the way back to our shell script to have it call gcc.
 	    (time (system "wsc2-gcc"))
-	    ;(system "./query.exe | head")
 
-	    (let-values ([(to-stdin from-stdout from-stderr pid) 
-			  ;(open-process-ports "exec ./query.exe -realtime" 'block (make-transcoder (latin-1-codec)))
-			  (open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
+	    (begin 
+	      (printf "\n================================================================================\n")
+	      ;; Kill old process:
+	      (when current-child-process (kill-child current-child-process))	   
+	      (let-values ([(to-stdin from-stdout from-stderr pid)
+			  ;(open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
+			  (open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
-	      (let loop ((x (read-char from-stdout)))
-	      	        ;(system (format "echo kill -9 ~a" pid))
-	        (unless (eof-object? x)	
-		  (display x)
-		  (loop (read-char from-stdout)))))
+	      (if current-child-process
+		  (printf " <WSQ> Created replacement child process (pid ~a).\n" pid)
+		  (printf " <WSQ> Started child process to execute query (pid ~a).\n" pid))
+	      (printf "================================================================================\n\n")
+
+	      ;; We need to return from the EndTransaction call back to the control program.
+	      ;; I wish there were some good way to plug the from-stdout into console-output-port 
+	      ;; without having a separate thread for the express purpose of echoing input.
+
+	      (unless (threaded?)
+  	        (error 'WSQ "must be run with a threaded version of Chez Scheme."))
+	      (fork-thread (echo-port from-stdout))
+	      ))
+	      
 	    )))
     (set-box! subgraphs '())
     (set-box! cursubgraph '())
     (set-box! curtransaction #f)
     ))
+
+;; Creates a silly thread just for the purpose of relaying input to
+;; output -- "plugging" an input port into an output one.
+(define (echo-port port)
+  (lambda ()
+    (let loop ((x (get-string-some port)))
+      (unless (eof-object? x)
+	(display x)
+	(loop (get-string-some port))))))
+
+(define (kill-child pid)
+  (printf " <WSQ> Killing child process ~s\n" (format "kill -9 ~a" pid))
+  (system (format "kill -9 ~a" pid)))
 
 ;; Subgraphs.
 
@@ -326,6 +353,12 @@
     (set-box! cursubgraph 
 	      (cons `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym id)))
 		    (unbox cursubgraph)))
+    ))
+
+(define-entrypoint WSQ_Shutdown () void
+  (lambda ()
+    (when current-child-process (kill-child current-child-process))
+    (printf " <WSQ> Shutting down query engine.\n")
     ))
 
 

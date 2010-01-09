@@ -12,6 +12,15 @@ const char *S_date_stamp = "0";
 
 #include "scheme.h"
 
+// NOTES: HOW TO ADD A NEW ENTRYPOINT INTO SCHEME:
+
+// (1) Add a C prototype for the function pointer (Scheme_*).
+// (2) Add a wrapper that's exposed to C code (WSQ_*).
+// (3) Extend the WSQ_Init to initialize the function pointer by doing
+//     a lookup in the global scheme symbol table.
+//     (These names end in -entry because of the define-entrypoint macro.)
+
+
 //==============================================================================
 // First, function pointers to all of the relevant calls.  These point
 // to scheme functions.
@@ -34,6 +43,8 @@ void (*Scheme_AddWindowJoin) (wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float
 
 void (*Scheme_ConnectRemoteOut) (wsid_t out, char* host, int port);
 void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port, char* types);
+
+void (*Scheme_Shutdown) ();
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -88,6 +99,12 @@ void WSQ_AddWindowJoin (wsid_t in1, wsid_t in2, wsid_t out, float seconds, char*
 
 void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
 void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port, char* types)  { Scheme_ConnectRemoteIn (in,host,port,types); }
+
+void WSQ_Shutdown() {
+  Scheme_Shutdown();
+  Sscheme_deinit(); // Chez call to bring down the runtime.
+}
+
 
 //==============================================================================
 
@@ -177,6 +194,8 @@ void WSQ_Init() {
   ptr con_in  = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteIn-entry"));
   ptr con_out = Stop_level_value( Sstring_to_symbol("WSQ_ConnectRemoteOut-entry"));
 
+  ptr shutdwn = Stop_level_value( Sstring_to_symbol("WSQ_Shutdown-entry"));
+
   Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
   Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
 
@@ -195,6 +214,7 @@ void WSQ_Init() {
   Scheme_ConnectRemoteIn  = (void(*)(int,char*,int,char*))Sinteger_value(con_in);
   Scheme_ConnectRemoteOut = (void(*)(int,char*,int))Sinteger_value(con_out);
 
+  Scheme_Shutdown         = (void(*)())Sinteger_value(shutdwn);
 
   // ========================================
   printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
@@ -205,9 +225,6 @@ void WSQ_Init() {
   
 }
 
-void WSQ_Shutdown() {
-  Sscheme_deinit();
-}
 
 
 //int main(int argc, char* argv[]) { do_scheme(argc,argv); }
