@@ -12,7 +12,9 @@ int main(int argc, char* argv[]) {
   WSQ_BeginTransaction(1001);
 
     WSQ_BeginSubgraph(101);
+
       WSQ_AddReutersSource(2, "foobar.schema");
+
       WSQ_AddFilter(2,3, "SYM == \"IBM\", PRICE >= (40 + 40)");
       WSQ_AddProject(3,4, "SYM, TIME, PRICE");
       WSQ_AddPrinter("STOCKSTRM: ", 4);

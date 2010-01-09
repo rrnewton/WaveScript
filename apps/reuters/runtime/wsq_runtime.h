@@ -52,6 +52,12 @@ char* WSQ_EdgeType(wsid_t id);
 void WSQ_AddProject(wsid_t in, wsid_t out, char* expr);
 void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr);
 
+
+
+//void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr);
+void WSQ_AddOp (wsid_t nodeid, char* optype, int inc, wsid_t* inv, int outc, wsid_t* outv, char* expr);
+
+
 // Sources will probably need a bunch more parameters when we understand how things work.
 void WSQ_AddReutersSource(wsid_t id, char* schema_path);
 void WSQ_AddPrinter(char* prefix, wsid_t id);

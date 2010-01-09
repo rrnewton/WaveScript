@@ -181,14 +181,16 @@
 	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 	      (time (wscomp (wsparse-postprocess prog) '() 'wsc2)))
 
+	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
+
 	    ;; We go all the way back to our shell script to have it call gcc.
 	    (time (system "wsc2-gcc"))
 	    ;(system "./query.exe | head")
 
-	    (chez:putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
-
 	    (let-values ([(to-stdin from-stdout from-stderr pid) 
-			  (open-process-ports "exec ./query.exe -realtime" 'block (make-transcoder (latin-1-codec)))])
+			  ;(open-process-ports "exec ./query.exe -realtime" 'block (make-transcoder (latin-1-codec)))
+			  (open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
+			  ])
 	      (let loop ((x (read-char from-stdout)))
 	      	        ;(system (format "echo kill -9 ~a" pid))
 	        (unless (eof-object? x)	
