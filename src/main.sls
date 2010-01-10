@@ -1374,7 +1374,8 @@
 					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
 				 [wavescript-compiler-java   <java>])])
 		    ;; In this case we do a 'normal', non-partitioned compile:
-		    (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode))
+		    (when (>= (regiment-verbosity) 2) 
+		      (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode)))		    
 		    
 		    (if (memq 'split (ws-optimizations-enabled))
 

@@ -162,16 +162,16 @@
 				     [() '(app timer '0)]
 				     [(,vr) vr]
 				     [(,vr . ,[rest])
-				      `(app merge ,vr ,rest)]))))])
-      (printf "\n >>> ASSEMBLED PROG: \n\n") 
-      (pretty-print prog)
+				      `(app merge ,vr ,rest)]))))]
+	   [start-time (current-time 'time-monotonic)])
+				      
+      ;(printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog)
       ;(pretty-print (wsparse-postprocess prog))  
       ;(ws prog)
-      (printf "\n\n >>> COMPILING PROG: \n\n")
 
-      ;; TEMPTOGGLE:
-      ;      (regiment-verbosity 5)
+      (regiment-verbosity 0)
 
+      (printf " <WSQ>   Compiling generated WS program.\n")
       (if #f
 	  ;; Execute through the "ws" scheme environment.
 	  (begin
@@ -181,32 +181,41 @@
 	  ;; Compile through the wsc2 backend:
 	  (begin
 	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
-	      (time (wscomp (wsparse-postprocess prog) '() 'wsc2)))
+	      (wscomp (wsparse-postprocess prog) '() 'wsc2))
 
 	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
 
 	    ;; We go all the way back to our shell script to have it call gcc.
-	    (time (system "wsc2-gcc"))
+	    (putenv "REGIMENT_QUIET" "1")
+	    (system "wsc2-gcc")
+
+	    (let ([end-time (current-time 'time-monotonic)])
+	      (printf " <WSQ>   Finished compilation (~a seconds).\n"
+	        (+ (- (time-second end-time)
+		      (time-second start-time))
+		   (/ (- (time-nanosecond end-time)
+			 (time-nanosecond start-time))
+		      (* 1000.0 1000 1000)))))
 
 	    (begin 
 	      (printf "\n================================================================================\n")
 	      ;; Kill old process:
-	      (when current-child-process (kill-child current-child-process))	   
+	      (when current-child-process (kill-child current-child-process))
 	      (let-values ([(to-stdin from-stdout from-stderr pid)
-			  ;(open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
-			  (open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
+			  (open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
+			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
 	      (if current-child-process
 		  (printf " <WSQ> Created replacement child process (pid ~a).\n" pid)
 		  (printf " <WSQ> Started child process to execute query (pid ~a).\n" pid))
+	      (set! current-child-process pid)
 	      (printf "================================================================================\n\n")
 
 	      ;; We need to return from the EndTransaction call back to the control program.
 	      ;; I wish there were some good way to plug the from-stdout into console-output-port 
 	      ;; without having a separate thread for the express purpose of echoing input.
 
-	      (unless (threaded?)
-  	        (error 'WSQ "must be run with a threaded version of Chez Scheme."))
+	     ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
 	      (fork-thread (echo-port from-stdout))
 	      ))
 	      
@@ -220,14 +229,28 @@
 ;; output -- "plugging" an input port into an output one.
 (define (echo-port port)
   (lambda ()
+    (printf "##### STARTING THREAD FOR PRINTING... \n")
     (let loop ((x (get-string-some port)))
       (unless (eof-object? x)
 	(display x)
-	(loop (get-string-some port))))))
+	(loop (get-string-some port))))
+    (printf "##### ENDING ECHO THREAD... \n")
+	))
 
 (define (kill-child pid)
   (printf " <WSQ> Killing child process ~s\n" (format "kill -9 ~a" pid))
-  (system (format "kill -9 ~a" pid)))
+  
+  ;; If it's a shell I thought a normal kill might let it kill recursively... but no.
+  ;(system (format "kill  ~a" pid))
+
+  ;; And in fact doing a normal kill will of course let the query
+  ;; persist a little bit and overlap with the next executable.
+  ;; Oh, wait... that happens with -9 too... darn.
+  (system (format "kill -9 ~a" pid))
+
+  (printf "  Processes after kill:\n")
+  (system "ps aux | grep query")
+)
 
 ;; Subgraphs.
 
@@ -331,8 +354,7 @@
 					   ,seconds
 					   ))
 		    (unbox cursubgraph)))
-    (print-state)
-    ))
+    (print-state)))
 
 
 ;; Connecting to remote machines.

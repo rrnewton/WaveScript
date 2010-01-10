@@ -45,15 +45,18 @@ int main(int argc, char* argv[]) {
   WSQ_Init();
 
   transaction1();
+  //printf(" ******* ENDTRANSACTION finished... sleeping now \n");
 
-  printf(" ******* ENDTRANSACTION finished... sleeping now \n");
+  sleep(3);
+  printf("Query run for a 3 seconds, doing another transaction.\n");
 
-  sleep(5);
-  printf("Query run for 5 seconds, doing another transaction.\n");
+  transaction1();
+  sleep(3);
+  printf("Ok, then one more time...\n");
 
-      //transaction1();
-      //sleep(5);
-      //printf("Query run for another 5 seconds shutting down...\n");
+  transaction1();
+  sleep(3);
+  printf("Query run for another 3 seconds shutting down...\n");
 
   WSQ_Shutdown();
 }

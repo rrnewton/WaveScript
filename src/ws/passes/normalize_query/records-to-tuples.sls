@@ -133,8 +133,9 @@
 	 (cond
 	  [(assq 'type-aliases meta*) =>
 	   (lambda (x) 
-	     (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase.")
-	     (set! meta* (remq x meta*)))])
+		    (when (>= (regiment-verbosity) 2) 
+		      (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase."))
+		    (set! meta* (remq x meta*)))])
 	 
 	 ;; We clean out those type-aliases to make sure no one else uses them either.
 	 `(,lang '(program ,bod (union-types ,@unions) ,(remq orig meta*) ... ,(Type topty)))

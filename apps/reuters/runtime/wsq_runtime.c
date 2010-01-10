@@ -129,7 +129,8 @@ void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
-  char* machinetype = get_machine_type();
+  //char* machinetype = get_machine_type();
+  char* machinetype = "ti3osx";
   
   char bootfile[PATHMAX];
   
@@ -168,7 +169,10 @@ void WSQ_Init() {
   printf(" <WSQ> Starting Scheme runtime system.\n");
   int result = Sscheme_start(2, new_args);
   //int result = Sscheme_start(3, new_args);
-  printf("Exited from scheme initialization with code %d\n", result);
+  if (result) { 
+      printf("Exited from scheme initialization with non-zero code %d\n", result);
+      abort(); 
+  }
 
   // This is awful gross.  Oh well.
   // ========================================

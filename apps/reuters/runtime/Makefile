@@ -1,5 +1,6 @@
 
-MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
+#MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
+MACHINE = ti3osx
 
 UNAME = $(shell uname -s)
 LIBS = -lm -ldl -lncurses -lpthread -liconv

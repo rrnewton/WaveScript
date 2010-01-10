@@ -162,7 +162,8 @@
     ;; [2009.12.01] It looks like at some point I was accepting lists of strings here.  Dunno why:
     (ASSERT string? fn)
     (unless (member fn files)
-      (printf "     --> adding include ~a \n" fn)
+      (when (>= (regiment-verbosity) 1)
+	(printf "     --> adding include ~a \n" fn))
       (slot-set! self 'include-files (cons fn files)))
       )
   (__spec add-link! <emitC2-base> (self fn)
@@ -1706,8 +1707,9 @@
 			   (if (normal-rate? rate) (list nm code rate) #f))
 		      srcname* srccode* srcrates*))]
 		 )
-	(printf "   TIMER RATES: ~s\n" srcrates*)
-	(printf "   ZERO TIMERS ~s\n" zerosrc*)
+	(when (>= (regiment-verbosity) 1)  ;; TEMP 
+	  (printf "   TIMER RATES: ~s\n" srcrates*)
+	  (printf "   ZERO TIMERS ~s\n" zerosrc*))
 	;; This is a hack: rather than maintain a sorted list of
 	;; upcoming events, we simply compute a common tick frequency
 	;; and go tick by tick:
