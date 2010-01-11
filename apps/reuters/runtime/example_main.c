@@ -45,7 +45,10 @@ void transaction1() {
         sprintf(buf2,"%d", 4 + offset);
       WSQ_AddOp(5+offset, "Project", buf1,buf2, "SYM, TIME, PRICE");
 
-      WSQ_AddOp(6+offset, "Printer", buf2, "", "STOCKSTRM: ");
+
+        char msg[128];
+        sprintf(msg, "STOCKSTRM(id %d): ", 6+offset);
+      WSQ_AddOp(6+offset, "Printer", buf2, "", msg);
 
       // Add a second stream and do a join:
         sprintf(buf1,"%d", 5 + offset);

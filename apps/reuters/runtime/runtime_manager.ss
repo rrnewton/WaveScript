@@ -27,10 +27,14 @@
 (define subgraphs (box '()))
 
 ;; This table tracks all the operators created.
+;; It stores the *GENERATED* WS code (bindings) to instantiate each operator.
 (define op_table (make-eq-hashtable))
 
-;; Here we build up a list of bindings that will be used to build a WS program.
-(define cursubgraph (box '()))
+(define subgraph_table (make-eq-hashtable))
+
+;; HACK
+;; Here we build up an list of op ids in the order they were added:
+(define op_log (box '()))
 
 (define print-state void)
 #;
@@ -38,7 +42,7 @@
   (printf "     Subgraphs:\n       ")
   (pretty-print (unbox subgraphs))
   (printf "     Current Subgraph:\n       ")
-  (pretty-print cursubgraph))
+  (pretty-print op_log))
 
 ;;==============================================================================
 
@@ -133,8 +137,6 @@
 
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
-    ;(ASSERT "State must be clean at start of transaction" null? (unbox subgraphs))
-    (ASSERT "State must be clean at start of transaction" null? (unbox cursubgraph))
     (set-box! curtransaction id)
     ))
 
@@ -146,7 +148,9 @@
     ;; Ok, this is where we need to actually commit a change.
 
     ;; FIXME: need to do a topological sort.
-    (let* ([binds (reverse (unbox cursubgraph))]
+    (let* ([binds (map (lambda (opid)
+                         (ASSERT (hashtable-ref op_table opid #f)))
+		    (reverse (unbox op_log)))]
 	   [empties '()]
 	   [bod (map (match-lambda ((,v ,e)) 
 		       (let ([var (if (eq? v mergemagic)
@@ -192,7 +196,7 @@
 	    (system "wsc2-gcc")
 
 	    (let ([end-time (current-time 'time-monotonic)])
-	      (printf " <WSQ>   Finished compilation (~a seconds); back to control program...ex\n"
+	      (printf " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
 	        (+ (- (time-second end-time)
 		      (time-second start-time))
 		   (/ (- (time-nanosecond end-time)
@@ -222,8 +226,6 @@
 	      ))
 	      
 	    )))
-    ;(set-box! subgraphs '())
-    (set-box! cursubgraph '())
     (set-box! curtransaction #f)
     ))
 
@@ -253,9 +255,14 @@
   ;(printf "  Processes after kill:\n") (system "ps aux | grep query")
 )
 
-(define (add-op! ndid)
-  (when (hashtable-contains? op_table ndid) (error 'WSQ "op with node id ~s already exists!" ndid))
-  (hashtable-set! op_table ndid #t))
+(define (add-op! opid binding)
+  (when (hashtable-contains? op_table opid) (error 'WSQ "op with node id ~s already exists!" opid))
+  (hashtable-set! op_table opid binding)
+  ;;(hashtable-set! subgraph_table sym code)
+  (set-box! op_log (cons opid (unbox op_log))))
+
+(define (add-edge! id)
+  (void))
 
 ;; Subgraphs.
 
@@ -295,43 +302,34 @@
 ;; Adding operators.
 
 (define-entrypoint WSQ_AddReutersSource (int int string) void
-  (lambda (ndid outid schema-path)
-    ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" ndid schema-path)
-    (add-op! ndid)
-    (set-box! cursubgraph (cons `(,(edge-sym outid) (app wsq_reuterSource ',schema-path))
-				(unbox cursubgraph)))
+  (lambda (opid outid schema-path)
+    ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" opid schema-path)
+    (define code `(,(edge-sym outid) (app wsq_reuterSource ',schema-path)))
+    (add-op! opid code) (add-edge! outid)
     (print-state)
     ))
 
 (define-entrypoint WSQ_AddPrinter (int string int) void
-  (lambda (ndid str id)
+  (lambda (opid str inid)
     ;(printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
-    (add-op! ndid)  
-    (let ([sym (edge-sym id)])
-      (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,str ,(edge-sym id)))
-				  (unbox cursubgraph))))
+    (define code `(,mergemagic (app wsq_printer ,str ,(edge-sym inid))))
+    (add-op! opid code) (add-edge! inid)
     (print-state)
     ))
 
 (define-entrypoint WSQ_AddProject (int int int string) void
-  (lambda (ndid in out expr)
+  (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
-    (add-op! ndid)
-    (set-box! cursubgraph 
-	      (cons `(,(edge-sym out) (app wsq_project ,(parse-project expr) 
-						   ,(edge-sym in)))
-		    (unbox cursubgraph)))
+    (define code `(,(edge-sym out) (app wsq_project ,(parse-project expr) ,(edge-sym in))))
+    (add-op! opid code) (add-edge! in) (add-edge! out)
     (print-state)
     ))
 
 (define-entrypoint WSQ_AddFilter (int int int string) void
-  (lambda (ndid in out expr)
+  (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
-    (add-op! ndid)
-    (set-box! cursubgraph 
-	      (cons `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) 
-						  ,(edge-sym in)))
-		    (unbox cursubgraph)))
+    (define code `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) ,(edge-sym in))))
+    (add-op! opid code) (add-edge! in) (add-edge! out)
     (print-state)
     ))
 
@@ -407,42 +405,37 @@
 ;;
 ;; This will enable us to simulate 
 (define-entrypoint WSQ_AddWindowJoin (int int int int single-float string) void
-  (lambda (ndid in1 in2 out seconds expr)
+  (lambda (opid in1 in2 out seconds expr)
     ;(printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
-    (add-op! ndid)
-    (set-box! cursubgraph 
-	      (cons `(,(edge-sym out) (app wsq_windowJoin
-					   ,(parse-filter expr 'left 'right)
-					   ,(make-merger (get-type-skeleton1)
-							 (get-type-skeleton2))
-					   ,(edge-sym in1)
-					   ,(edge-sym in2)
-					   ,seconds
-					   ))
-		    (unbox cursubgraph)))
+    (define code
+      `(,(edge-sym out) (app wsq_windowJoin
+			     ,(parse-filter expr 'left 'right)
+			     ,(make-merger (get-type-skeleton1)
+					   (get-type-skeleton2))
+			     ,(edge-sym in1)
+			     ,(edge-sym in2)
+			     ,seconds
+			     )))
+    (add-op! opid code)   (add-edge! in1) (add-edge! in2) (add-edge! out)
     (print-state)))
 
 
 ;; Connecting to remote machines.
 
 (define-entrypoint WSQ_ConnectRemoteIn (int int string int string) void
-  (lambda (ndid id host port field-types)
-    ;(printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" id host port field-types)
-    (add-op! ndid)
-    (set-box! cursubgraph 
-	      (cons `(,(edge-sym id) 
-		      (assert-type (Stream ,(parse-types field-types))
-				   (app wsq_connect_in ,host ,port)))
-		    (unbox cursubgraph)))
+  (lambda (opid inid host port field-types)
+    ;(printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" inid host port field-types)
+    (define code `(,(edge-sym inid) 
+		   (assert-type (Stream ,(parse-types field-types))
+				(app wsq_connect_in ,host ,port))))
+    (add-op! opid code)  (add-edge! inid)
     ))
 
 (define-entrypoint WSQ_ConnectRemoteOut (int int string int) void
-  (lambda (ndid id host port)
-    ;(printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" id host port)
-    (add-op! ndid)
-    (set-box! cursubgraph 
-	      (cons `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym id)))
-		    (unbox cursubgraph)))
+  (lambda (opid outid host port)
+    ;(printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" outid host port)
+    (define code `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym outid))))
+    (add-op! opid code) (add-edge! outid)
     ))
 
 (define-entrypoint WSQ_Shutdown () void
