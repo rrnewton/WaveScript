@@ -792,13 +792,16 @@
 		  (loop (add1 i)))))))))
 
 ;[2001.07.15]
+;; [2010.01.10] Modifying this to catch read errors and return #f.
 (define port->slist
   (lambda (p)
-    (let porttoslistloop ([exp (read p)] [acc '()])
-        (if (eof-object? exp)
-            (begin (close-input-port p)
-                   (reverse! acc))
-            (porttoslistloop (read p) (cons exp acc))))))
+    (guard (con [(and (i/o-read-error? con) (lexical-violation? con)) #f])
+	   (let porttoslistloop ([exp (read p)] [acc '()])
+	     (if (eof-object? exp)
+		 (begin (close-input-port p)
+			(reverse! acc))
+		 (porttoslistloop (read p) (cons exp acc)))))))
+
 ;; [2008.05.07] Adding a hack to tolerate #! lines at the top of the file.
 (define file->slist
   (lambda (filename . opts)

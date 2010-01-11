@@ -34,18 +34,18 @@ void (*Scheme_RemSubgraph)(wsid_t id);
 
 ptr  (*Scheme_EdgeType)(wsid_t id);
 
-void (*Scheme_AddReutersSource)(wsid_t id, char* path);
-void (*Scheme_AddPrinter)(char* prefix, wsid_t id);
-void (*Scheme_AddProject)(wsid_t in, wsid_t out, char* expr);
-void (*Scheme_AddFilter) (wsid_t in, wsid_t out, char* expr);
+void (*Scheme_AddReutersSource)(wsid_t ndid, wsid_t id, char* path);
+void (*Scheme_AddPrinter)(wsid_t ndid, char* prefix, wsid_t id);
+void (*Scheme_AddProject)(wsid_t ndid, wsid_t in, wsid_t out, char* expr);
+void (*Scheme_AddFilter) (wsid_t ndid, wsid_t in, wsid_t out, char* expr);
 
-void (*Scheme_AddWindowJoin) (wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, char* expr);
+void (*Scheme_AddWindowJoin) (wsid_t ndid, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, char* expr);
 
-void (*Scheme_ConnectRemoteOut) (wsid_t out, char* host, int port);
-void (*Scheme_ConnectRemoteIn)  (wsid_t in,  char* host, int port, char* types);
+void (*Scheme_ConnectRemoteOut) (wsid_t ndid, wsid_t out, char* host, int port);
+void (*Scheme_ConnectRemoteIn)  (wsid_t ndid, wsid_t in,  char* host, int port, char* types);
 
 // The generic version.
-void (*Scheme_AddOp)  (wsid_t id,  char* optype, char* inputs, char* outputs, char* args);
+void (*Scheme_AddOp)  (wsid_t ndid, char* optype, char* inputs, char* outputs, char* args);
 
 void (*Scheme_Shutdown) ();
 
@@ -90,28 +90,27 @@ char* WSQ_EdgeType  (wsid_t id) {
   return buf; 
 }
 
-void WSQ_AddReutersSource(wsid_t id, char* path) { Scheme_AddReutersSource(id, path); } 
-void WSQ_AddPrinter(char* prefix, wsid_t id)     { Scheme_AddPrinter(prefix, id); }
+void WSQ_AddReutersSource(wsid_t ndid, wsid_t id, char* path) { Scheme_AddReutersSource(ndid, id, path); } 
+void WSQ_AddPrinter(wsid_t ndid, char* prefix, wsid_t id)     { Scheme_AddPrinter(ndid, prefix, id); }
 
-void WSQ_AddProject(wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(in,out,expr); } 
-void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(in,out,expr); }
+void WSQ_AddProject(wsid_t ndid, wsid_t in, wsid_t out, char* expr) { Scheme_AddProject(ndid,in,out,expr); } 
+void WSQ_AddFilter (wsid_t ndid, wsid_t in, wsid_t out, char* expr) { Scheme_AddFilter(ndid,in,out,expr); }
 
-void WSQ_AddWindowJoin (wsid_t in1, wsid_t in2, wsid_t out, float seconds, char* expr) { 
-  Scheme_AddWindowJoin(in1,in2,out,seconds,expr); 
+void WSQ_AddWindowJoin (wsid_t ndid, wsid_t in1, wsid_t in2, wsid_t out, float seconds, char* expr) { 
+    Scheme_AddWindowJoin(ndid,in1,in2,out,seconds,expr); 
 }
 
-void WSQ_ConnectRemoteOut (wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(out,host,port); }
-void WSQ_ConnectRemoteIn  (wsid_t in, char* host, int port, char* types)  { Scheme_ConnectRemoteIn (in,host,port,types); }
+void WSQ_ConnectRemoteOut (wsid_t ndid, wsid_t out, char* host, int port) { Scheme_ConnectRemoteOut(ndid,out,host,port); }
+void WSQ_ConnectRemoteIn  (wsid_t ndid, wsid_t in, char* host, int port, char* types)  { Scheme_ConnectRemoteIn (ndid,in,host,port,types); }
 
 void WSQ_Shutdown() {
   Scheme_Shutdown();
   Sscheme_deinit(); // Chez call to bring down the runtime.
 }
 
-void WSQ_AddOp(wsid_t id, char* optype, char* inputs, char* outputs, char* args) {
-    Scheme_AddOp(id, optype, inputs, outputs, args);
+void WSQ_AddOp(wsid_t ndid, char* optype, char* inputs, char* outputs, char* args) {
+    Scheme_AddOp(ndid, optype, inputs, outputs, args);
 }
-
 
 //==============================================================================
 
@@ -122,7 +121,6 @@ typedef void (*voidfun) ();
 intfun foo_fun;
 
 const int PATHMAX = 1000;
-
 
 char* get_machine_type() {
   FILE* strm = popen("$REGIMENTD/depends/get_machine_type", "r");

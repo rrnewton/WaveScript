@@ -7,58 +7,13 @@
 
 int offset = 0;
 
-void transaction1() {
-    WSQ_BeginTransaction(1001 + offset);
-
-     WSQ_BeginSubgraph(101 + offset);
-
-     //WSQ_AddReutersSource(2 + offset, "foobar.schema");
-     //WSQ_AddPrinter("STOCKSTRM: ", 2 + offset);
-
-     char buf1[128];
-     char buf2[128];
-
-     //WSQ_AddOp(2 + offset, "ReutersSource", "1", "2", "foobar.schema");
-
-        sprintf(buf1,"%d", 1 + offset);
-        sprintf(buf2,"%d", 2 + offset);
-      WSQ_AddOp(2 + offset, "ReutersSource", buf1, buf2, "foobar.schema");
-
-
-      WSQ_AddPrinter("STOCKSTRM: ", 2 + offset);
-
-    /*
-      WSQ_AddFilter(2,3, "SYM == \"IBM\", PRICE >= (40 + 40)");
-      WSQ_AddProject(3,4, "SYM, TIME, PRICE");
-      WSQ_AddPrinter("STOCKSTRM: ", 4);
-
-      // Add a second stream and do a join:
-      WSQ_AddReutersSource(5, "foobar.schema");
-
-      // WSQ_AddProject(3,6,"SYM, VOLUME");
-      WSQ_AddWindowJoin(5,4,7, 30, "SYM == SYM"); // TUPLES, 
-      WSQ_AddPrinter("Joined: ", 7);
-    */
-
-    //WSQ_ConnectRemoteOut(4, "honor.csail.mit.edu", 9898); 
-      WSQ_EndSubgraph();
-
-    // This simple subgraph just routes a stream through to another machine.
-    WSQ_BeginSubgraph(102 + offset);
-    //WSQ_ConnectRemoteIn(20,"honor.csail.mit.edu", 9897, "string BAZ, float BAR");
-    //WSQ_AddPrinter("NETSTRM: ", 20);
-    //WSQ_ConnectRemoteOut(20, "chastity.csail.mit.edu", 9896); 
-    WSQ_EndSubgraph();
-
-    WSQ_EndTransaction();
-}
+void transaction1();
 
 int main(int argc, char* argv[]) {
 
   WSQ_Init();
 
   transaction1();
-  //printf(" ******* ENDTRANSACTION finished... sleeping now \n");
   sleep(3);
   printf("\n ****** Query run for a 3 seconds, doing another transaction.\n\n");
 
@@ -73,5 +28,39 @@ int main(int argc, char* argv[]) {
   printf("\n ******* Query successfully ran for another 3 seconds, shutting down...\n");
 
   WSQ_Shutdown();
+}
+
+void transaction1() {
+    char buf1[128];
+    char buf2[128];
+    WSQ_BeginTransaction(1001 + offset);
+     WSQ_BeginSubgraph(101 + offset);
+
+        sprintf(buf2,"%d", 2 + offset);
+      WSQ_AddOp(2 + offset, "ReutersSource", "", buf2, "foobar.schema");
+
+        sprintf(buf1,"%d", 3 + offset);
+      WSQ_AddOp(4+offset, "Filter", buf2,buf1, "SYM == \"IBM\", PRICE >= (2 + 2)");
+
+        sprintf(buf2,"%d", 4 + offset);
+      WSQ_AddOp(5+offset, "Project", buf1,buf2, "SYM, TIME, PRICE");
+
+      WSQ_AddOp(6+offset, "Printer", buf2, "", "STOCKSTRM: ");
+
+      // Add a second stream and do a join:
+        sprintf(buf1,"%d", 5 + offset);
+      WSQ_AddOp(7+offset, "ReutersSource", "", buf1, "foobar.schema");
+
+        sprintf(buf1,"%d %d", 4+offset, 5+offset); // Two inputs
+        sprintf(buf2,"%d", 6 + offset);
+      WSQ_AddOp(8+offset, "WindowJoin", buf1, buf2, "30 | SYM == SYM");
+
+      WSQ_AddOp(9+offset, "Printer", buf2, "", "STOCKSTRM: ");
+             
+     WSQ_EndSubgraph();
+     WSQ_BeginSubgraph(102 + offset);
+       // Empty subgraph.
+     WSQ_EndSubgraph();
+    WSQ_EndTransaction();
 }
 

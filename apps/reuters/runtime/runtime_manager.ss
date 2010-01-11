@@ -54,7 +54,7 @@
      ,(foldl (lambda (x acc)
 	       `(wsrecord-extend ',x (wsrecord-select ',x orig) ,acc))
 	'(empty-wsrecord)    
-	(map ununquote (string->slist str)))))
+	(map ununquote (ASSERT (string->slist str))))))
 
 ;; This assumes for now that it's a series of binary operators.
 (define (parse-filter str . extra)
@@ -65,7 +65,7 @@
       [(,x ,y) extra]))
 
   `(lambda ,args
-     ,(match (string->slist str)
+     ,(match (ASSERT (string->slist str))
     [() #t]
     [(,left ,binop ,right . ,[rest])
      (define bop 
@@ -99,7 +99,7 @@
 
 (define (parse-types str)
   `(Record 
-    ,(match (string->slist str)
+    ,(match (ASSERT (string->slist str))
        [() `',(unique-name "_rowvar")]
        #; ;; It's inexplicable that this one doesn't work:
        [(,[ununquote -> type] ,[ununquote -> name] . ,[rest])
@@ -296,7 +296,7 @@
 
 (define-entrypoint WSQ_AddReutersSource (int int string) void
   (lambda (ndid outid schema-path)
-    (printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" ndid schema-path)
+    ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" ndid schema-path)
     (add-op! ndid)
     (set-box! cursubgraph (cons `(,(edge-sym outid) (app wsq_reuterSource ',schema-path))
 				(unbox cursubgraph)))
@@ -305,7 +305,7 @@
 
 (define-entrypoint WSQ_AddPrinter (int string int) void
   (lambda (ndid str id)
-    (printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
+    ;(printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
     (add-op! ndid)  
     (let ([sym (edge-sym id)])
       (set-box! cursubgraph (cons `(,mergemagic (app wsq_printer ,str ,(edge-sym id)))
@@ -315,7 +315,7 @@
 
 (define-entrypoint WSQ_AddProject (int int int string) void
   (lambda (ndid in out expr)
-    (printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
+    ;(printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
     (add-op! ndid)
     (set-box! cursubgraph 
 	      (cons `(,(edge-sym out) (app wsq_project ,(parse-project expr) 
@@ -326,7 +326,7 @@
 
 (define-entrypoint WSQ_AddFilter (int int int string) void
   (lambda (ndid in out expr)
-    (printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
+    ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (add-op! ndid)
     (set-box! cursubgraph 
 	      (cons `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) 
@@ -337,9 +337,50 @@
 
 (define-entrypoint WSQ_AddOp (int string string string string) void
   (lambda (id optype inputs outputs args)
-    (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a ~s \n" id optype inputs outputs args)
-    (case (string->symbol optype)
-      [(ReutersSource) (WSQ_AddReutersSource id (car (string->slist outputs)) args)]
+    (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a   '~a' \n" id optype inputs outputs args))
+    (define in*  (string->slist inputs))
+    (define out* (string->slist outputs))
+    (define opsym (string->symbol optype))
+
+    (define (kill-whitespace str)
+      (list->string (filter (compose not char-whitespace?) (string->list str))))
+
+    ;; Error handling:
+    (define (has-inputs n)
+      (ASSERT (format "~a should have exactly one input edge." opsym)  (curry = n) (length in*)))
+    (define (has-outputs n)
+      (ASSERT (format "~a should have exactly one output edge." opsym) (curry = n) (length out*)))
+    (unless in*  (error 'WSQ_AddOp "Bad list of inputs: ~s"  inputs))
+    (unless out* (error 'WSQ_AddOp "Bad list of outputs: ~s" outputs))
+
+    (case opsym
+      [(ReutersSource) (has-inputs 0) (has-outputs 1)  (WSQ_AddReutersSource id (car out*) args)]
+      [(Printer)       (has-inputs 1) (has-outputs 0)  (WSQ_AddPrinter id args (car in*))]
+      [(Filter)     (has-inputs 1) (has-outputs 1)  (WSQ_AddFilter id (car in*) (car out*) args)]
+      [(Project)    (has-inputs 1) (has-outputs 1)  (WSQ_AddProject id (car in*) (car out*) args)]
+      [(WindowJoin) (has-inputs 2) (has-outputs 1)
+       ;; This is a horrible hack, to get both a FILTER expression,
+       ;; and a number of seconds into this operator, we pack them
+       ;; both in the same string.  We follow the arbitrary convention
+       ;; that "|" serves as a divider for breaking up that string.
+       (let-match ([(,_seconds ,filter) (string-split args #\|)])
+        (define seconds (car (ASSERT (string->slist _seconds))))
+	(WSQ_AddWindowJoin id (car in*) (cadr in*) (car out*) seconds filter))]
+
+      [(ConnectRemoteIn)  (has-inputs 0) (has-outputs 1)
+       ;; This one takes three arguments in the string 'args'
+       (let-match ([(,_host ,_port ,fieldtypes) (string-split args #\|)])
+        ;; Trim any extra whitespace.  No whitespace in hostnames.
+        (define host (kill-whitespace _host))
+        (define port (car (ASSERT (string->slist _port))))
+	(WSQ_ConnectRemoteOut id (car out*) host port fieldtypes))]
+
+      [(ConnectRemoteOut) (has-inputs 1) (has-outputs 0)     
+       (let-match ([(,_host ,_port) (string-split args #\|)])
+        (define host (kill-whitespace _host))
+        (define port (car (ASSERT (string->slist _port))))
+	(WSQ_ConnectRemoteOut id (car in*) host port))]
+
       [else (error 'WSQ_AddOp "unknown op type: ~s" optype)]
     )))
 
@@ -367,7 +408,7 @@
 ;; This will enable us to simulate 
 (define-entrypoint WSQ_AddWindowJoin (int int int int single-float string) void
   (lambda (ndid in1 in2 out seconds expr)
-    (printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
+    ;(printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
     (add-op! ndid)
     (set-box! cursubgraph 
 	      (cons `(,(edge-sym out) (app wsq_windowJoin
@@ -386,7 +427,7 @@
 
 (define-entrypoint WSQ_ConnectRemoteIn (int int string int string) void
   (lambda (ndid id host port field-types)
-    (printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" id host port field-types)
+    ;(printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" id host port field-types)
     (add-op! ndid)
     (set-box! cursubgraph 
 	      (cons `(,(edge-sym id) 
@@ -397,7 +438,7 @@
 
 (define-entrypoint WSQ_ConnectRemoteOut (int int string int) void
   (lambda (ndid id host port)
-    (printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" id host port)
+    ;(printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" id host port)
     (add-op! ndid)
     (set-box! cursubgraph 
 	      (cons `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym id)))

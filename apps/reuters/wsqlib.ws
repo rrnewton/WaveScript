@@ -491,7 +491,6 @@ fun wsq_reuterSource(schema) {
   }
 }
 
-
 wsq_filter  = stream_filter
 wsq_project = stream_map
 
