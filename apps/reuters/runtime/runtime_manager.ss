@@ -21,10 +21,9 @@
 ;; interactions with the control module.
 
 (define curtransaction (box #f))
-
 (define current-child-process #f)
 
-;; Subgraphs accumulated in the current transaction.
+;; A persistent accumulation of subgraphs.
 (define subgraphs (box '()))
 
 ;; Here we build up a list of bindings that will be used to build a WS program.
@@ -131,7 +130,7 @@
 
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
-    (ASSERT "State must be clean at start of transaction" null? (unbox subgraphs))
+    ;(ASSERT "State must be clean at start of transaction" null? (unbox subgraphs))
     (ASSERT "State must be clean at start of transaction" null? (unbox cursubgraph))
     (set-box! curtransaction id)
     ))
@@ -190,7 +189,7 @@
 	    (system "wsc2-gcc")
 
 	    (let ([end-time (current-time 'time-monotonic)])
-	      (printf " <WSQ>   Finished compilation (~a seconds).\n"
+	      (printf " <WSQ>   Finished compilation (~a seconds); back to control program...ex\n"
 	        (+ (- (time-second end-time)
 		      (time-second start-time))
 		   (/ (- (time-nanosecond end-time)
@@ -220,7 +219,7 @@
 	      ))
 	      
 	    )))
-    (set-box! subgraphs '())
+    ;(set-box! subgraphs '())
     (set-box! cursubgraph '())
     (set-box! curtransaction #f)
     ))
@@ -229,41 +228,49 @@
 ;; output -- "plugging" an input port into an output one.
 (define (echo-port port)
   (lambda ()
-    (printf "##### STARTING THREAD FOR PRINTING... \n")
+    ;(printf "##### STARTING THREAD FOR PRINTING... \n")
     (let loop ((x (get-string-some port)))
       (unless (eof-object? x)
 	(display x)
 	(loop (get-string-some port))))
-    (printf "##### ENDING ECHO THREAD... \n")
+    ;(printf "##### ENDING ECHO THREAD... \n")
 	))
 
 (define (kill-child pid)
-  (printf " <WSQ> Killing child process ~s\n" (format "kill -9 ~a" pid))
-  
+  (define killcmd (format "kill -9 ~a" pid))
   ;; If it's a shell I thought a normal kill might let it kill recursively... but no.
-  ;(system (format "kill  ~a" pid))
+  ;(define killcmd (format "kill  ~a" pid))
 
   ;; And in fact doing a normal kill will of course let the query
   ;; persist a little bit and overlap with the next executable.
   ;; Oh, wait... that happens with -9 too... darn.
-  (system (format "kill -9 ~a" pid))
+  (system killcmd)
 
-  (printf "  Processes after kill:\n")
-  (system "ps aux | grep query")
+  (printf " <WSQ> Killing child process ~s\n" killcmd)
+  ;(printf "  Processes after kill:\n") (system "ps aux | grep query")
 )
 
 ;; Subgraphs.
 
+;; The "working" subgraph goes on the front of the list.
 (define-entrypoint WSQ_BeginSubgraph (int) void 
   (lambda (id)
     (printf " <WSQ>  WSQ_BeginSubgraph ~s \n" id)
+    
+    (when (memq id (unbox subgraphs))
+       (printf " <WSQ>  ERROR: Subgraph with ID ~s already exists and has not been removed.\n" id)
+       (exit -1))
+    
     (set-box! subgraphs (cons id (unbox subgraphs)))
     (print-state)
     ))
 
 (define-entrypoint WSQ_EndSubgraph () void
   (lambda ()
-    (printf " <WSQ>  WSQ_EndSubgraph \n")
+    (when (null? (unbox subgraphs))
+      (printf " <WSQ>  ERROR: WSQ_EndSubgraph called without a corresponding WSQ_BeginSubgraph.\n")
+      (exit -1))
+    (printf " <WSQ>  WSQ_EndSubgraph ~s \n" (car (unbox subgraphs)))
     (print-state)
     ))
 
