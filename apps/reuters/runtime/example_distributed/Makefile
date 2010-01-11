@@ -13,7 +13,8 @@ FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
-all: gen_proc1 gen_proc2 run_proc1 run_proc2
+all: gen_proc1 gen_proc2 
+#all: gen_proc1 gen_proc2 run_proc1 run_proc2
 
 
 gen_proc1: proc1.c port.h
@@ -26,14 +27,15 @@ gen_proc2: proc2.c port.h
 
 run_proc1: gen_proc1
 	./gen_proc1
-	mv query.exe run_proc1
+#	mv query.exe run_proc1
 
 run_proc2: gen_proc2
 	./gen_proc2
-	mv query.exe run_proc2
+#	mv query.exe run_proc2
 
 run: 
-	 (./run_proc1 &) ; ./run_proc2 | head    
+	 (./gen_proc1 &) ; sleep 5; ./gen_proc2 | head -n 60
+#	 (./run_proc1 &) ; ./run_proc2 | head    
 
 clean:
 	rm -rf *.o *.a *.exe a.out *.so *proc1 *proc2 query.* *.dSYM

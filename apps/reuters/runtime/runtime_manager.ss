@@ -371,7 +371,7 @@
         ;; Trim any extra whitespace.  No whitespace in hostnames.
         (define host (kill-whitespace _host))
         (define port (car (ASSERT (string->slist _port))))
-	(WSQ_ConnectRemoteOut id (car out*) host port fieldtypes))]
+	(WSQ_ConnectRemoteIn id (car out*) host port fieldtypes))]
 
       [(ConnectRemoteOut) (has-inputs 1) (has-outputs 0)     
        (let-match ([(,_host ,_port) (string-split args #\|)])
