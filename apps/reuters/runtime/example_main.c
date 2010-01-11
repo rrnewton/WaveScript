@@ -12,7 +12,19 @@ void transaction1() {
 
      WSQ_BeginSubgraph(101 + offset);
 
-      WSQ_AddReutersSource(2 + offset, "foobar.schema");
+     //WSQ_AddReutersSource(2 + offset, "foobar.schema");
+     //WSQ_AddPrinter("STOCKSTRM: ", 2 + offset);
+
+     char buf1[128];
+     char buf2[128];
+
+     //WSQ_AddOp(2 + offset, "ReutersSource", "1", "2", "foobar.schema");
+
+        sprintf(buf1,"%d", 1 + offset);
+        sprintf(buf2,"%d", 2 + offset);
+      WSQ_AddOp(2 + offset, "ReutersSource", buf1, buf2, "foobar.schema");
+
+
       WSQ_AddPrinter("STOCKSTRM: ", 2 + offset);
 
     /*

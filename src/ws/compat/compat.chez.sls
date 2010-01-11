@@ -225,12 +225,14 @@
   (error-handler inspector-error-handler)
 
   (define (nice-print-exception x k)
-    (printf "\n *** ERROR *** \n")        
+    (if (who-condition? x)
+	(printf "\n *** ERROR in ~a *** \n" (condition-who x))
+	(printf "\n *** ERROR *** \n"))
     (if (and (irritants-condition? x)
 	     (message-condition? x)
 	     (error? x))
 	(apply printf (condition-message x) (condition-irritants x))
-	(begin (display-condition x)(newline)))
+	(begin (display-condition x) (newline)))
     (printf "\nBacktrace: \n")
     (continuation->sourcelocs k))
 

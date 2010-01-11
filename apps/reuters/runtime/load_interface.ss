@@ -21,6 +21,8 @@
 (printf " finished.\n")
 
 ;; This factors out some of the repetitive tasks in exposing Scheme functions to C.
+;; In addition to binding the normal scheme function, it adds another
+;; symbol bound to the pointer expressed as an integer.
 (define-syntax define-entrypoint
   (lambda (x)
     (syntax-case x ()
