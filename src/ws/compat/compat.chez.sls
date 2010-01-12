@@ -41,32 +41,61 @@
   
   (import 
 	  (prefix (scheme) chez:)
+
+	  ;; [2010.01.12] It looks like most recently I was pulling in all of 'scheme'.
+	  ;; I'm changing this now because 'define-values' was added in 7.9.4 and 
+	  ;; I temporarily want something that works with 7.9.3 AND 7.9.4.
+#;
 	  (except (scheme) inspect warning
 		  ;; [2009.03.12] Using the virtual top-level environment instead of the real one:
 		  define-top-level-value set-top-level-value! top-level-bound? top-level-value 
 		  error
 
 		  ;; [2010.01.09] It looks like chez 7.9.4 added define-values.
-		  ;define-values
+		  define-values
 		  )
 
-	  ;(rnrs eval (6))
-	  ;(rnrs programs)
-	  ;(except (rnrs (6)) error)
-#;
+	  ;; The alternative is to pull in r6 plus only what we need from chez.
+	  (rnrs eval (6))
+	  (except (rnrs (6)) error)
 	  (only (scheme) 
 		syntax->list getenv 
 		make-list merge merge! sort! append! reverse! include
 		with-output-to-string pretty-print printf parameterize
 		print-level print-graph print-length pretty-maximum-lines pretty-line-length print-vector-length
-		error format fluid-let void make-parameter
-		define-top-level-value set-top-level-value! top-level-bound? top-level-value 
-		warning  real-time cpu-time
+	        format fluid-let void make-parameter
+		;define-top-level-value set-top-level-value! top-level-bound? top-level-value 
+	        real-time cpu-time
 		system process 
 		box unbox set-box! box? 
 		new-cafe random trace-define trace-lambda syntax-error fprintf 
 		current-directory time delay force gensym
-		))
+		
+		environment import expression-editor reset add1 inspect/object 
+		display-condition base-exception-handler 
+		)
+
+	  ;; This third approach is overkill, listing everything used from scheme.
+#;
+	  (only (scheme) 
+	        define quote define-syntax syntax-rules syntax-case lambda let let* 
+		quasisyntax map syntax syntax->datum datum->syntax  string->symbol apply
+		string-append if string? symbol->string with-syntax length case-lambda cons car cdr = + - <
+		unless set! environment include record? call/cc cond display list->string make-list
+		string-length substring else with-output-to-string  write newline eof-object? 
+		pretty-print member printf equal? get-line current-input-port flush-output-port current-output-port
+		make-eq-hashtable hashtable-set! hashtable-ref eq? for-each and pair? call-with-values void
+		fx=? begin quasiquote fx+ eval vector-length hashtable-entries append cadr parameterize print-graph
+		procedure? import expression-editor with-exception-handler new-cafe reset make-parameter format
+		when add1 > inspect/object condition-who who-condition? condition-irritants condition-message
+		error? message-condition? irritants-condition? display-condition base-exception-handler warning?
+		exit gensym force delay fprintf syntax-error trace-lambda trace-define random time current-directory
+		system box? set-box! unbox box process print-vector-length pretty-line-length pretty-maximum-lines 
+		print-length print-level 
+		)
+
+	  )
+		
 
   (define which-scheme 'chez)
 

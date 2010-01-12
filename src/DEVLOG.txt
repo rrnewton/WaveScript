@@ -2317,3 +2317,34 @@ enough.  That graph could have loose ends that connect to other
 graphs.  But for monomorphism we would need the interfaces between
 "modules" of this sort to be monomorphic.
 
+[2010.01.12] {Chez 7.9.4}
+
+Now with Chez's R6RS support I'm using it heavily again.  (Especially
+because the "WSQ" interface for the Reuters proect is exclusively
+based on it.)  
+
+A lot of changes in this version of Chez.  
+
+When trying to upgrade I ran into a strange compile problem with
+match.  In two separate points in the code the following would not
+compile, and commenting it fixed things:
+
+(match alias
+  [(,v ,rhs)           (values v '() rhs)]
+  [(,v (,a* ...) ,rhs) (values v a* rhs)])
+
+The error, for example, would be:
+
+Exception: extra ellipsis in syntax form (syntax (match alias ((...) (...)) ((...) (...)))) near line 1151, char 6 of ./ws/passes/small-ws-passes.sls
+
+GRRR, when I use that exact code through the REPL (regiment i, eval
+based) it works fine.  For example:
+
+> (match '(1 (a b c) 2)
+  [(,v ,rhs)           (values v '() rhs)]
+  [(,v (,a* ...) ,rhs) (values v a* rhs)])
+1
+(a b c)
+2
+> 
+
