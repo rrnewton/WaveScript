@@ -10,4 +10,5 @@ then
   exit -1
 fi
 
-echo "t"$base
+#echo "t"$base
+echo $base

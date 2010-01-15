@@ -222,6 +222,9 @@ chezincr: ws/common.sls main_r6rs.sls
 #	echo '(make-boot-header "tmp.hdr" "scheme.boot" "petite.boot")' | $(CHEZ)
 #	find -name "*.so"
 
+chezincr2: ws/common.sls main_r6rs.sls 
+	chez --compile-imported-libraries --program regiment.ss
+
 # Should be idempotent:
 chezpurge: ws/common.sls main_r6rs.sls 
 	./experimental/r6make.ss regiment.ss purge

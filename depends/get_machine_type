@@ -17,4 +17,4 @@ else echo Unknown platform for scheme system: $MACHINE;
      exit -1;
 fi
 
-echo $MT
+echo t"$MT"
