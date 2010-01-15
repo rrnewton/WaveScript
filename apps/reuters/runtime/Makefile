@@ -2,10 +2,14 @@
 MACHINE = $(shell $(REGIMENTD)/apps/reuters/runtime/chez_machine_type_threaded)
 
 UNAME = $(shell uname -s)
-LIBS = -lm -ldl -lncurses -lpthread -liconv
+LIBS = -lm -ldl -lncurses -lpthread 
 ifeq ($(UNAME), Linux)
   LIBS+= -lrt
 endif
+ifeq ($(UNAME), Darwin)
+  LIBS+= -liconv
+endif
+
 
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
