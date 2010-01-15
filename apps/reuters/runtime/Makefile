@@ -1,6 +1,5 @@
 
-#MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
-MACHINE = ti3osx
+MACHINE = $(shell $(REGIMENTD)/apps/reuters/runtime/chez_machine_type_threaded)
 
 UNAME = $(shell uname -s)
 LIBS = -lm -ldl -lncurses -lpthread -liconv
@@ -35,7 +34,7 @@ example_main:
 	gcc $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main
 
 clean:
-	rm -f *.o *.a *.exe a.out *.so example_main query.*
+	rm -rf *.o *.a *.exe a.out *.so example_main query.*
 	(cd example_distributed; $(MAKE) clean)
 
 

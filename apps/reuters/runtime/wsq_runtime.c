@@ -123,10 +123,11 @@ intfun foo_fun;
 const int PATHMAX = 1000;
 
 char* get_machine_type() {
-  FILE* strm = popen("$REGIMENTD/depends/get_machine_type", "r");
-  char* format = malloc(100);
-  fscanf(strm, "%s\n", format);
-  return format;
+    //FILE* strm = popen("$REGIMENTD/depends/get_machine_type", "r");
+    FILE* strm = popen("$REGIMENTD/apps/reuters/runtime/chez_machine_type_threaded", "r");
+    char* format = malloc(100);
+    fscanf(strm, "%s\n", format);
+    return format;
 }
 
 //int do_scheme(int argc, char* argv[]) {
@@ -134,8 +135,7 @@ void WSQ_Init() {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
-  //char* machinetype = get_machine_type();
-  char* machinetype = "ti3osx";
+  char* machinetype = get_machine_type();
   
   char bootfile[PATHMAX];
   
