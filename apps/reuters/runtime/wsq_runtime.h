@@ -6,6 +6,10 @@
  * queries in a distributed environment.
  */
 
+#ifdef __cplusplus 
+extern "C" {
+#endif 
+
 // The type for unique IDs.
 // This is used for operators, edges, subgraphs, and transactions.
 typedef int wsid_t;
@@ -101,3 +105,6 @@ void WSQ_AddOp(wsid_t id, char* optype, char* inputs, char* outputs, char* args)
 // TODO: current avg bandwidth
 // TODO: current avg cpu
 
+#ifdef __cplusplus 
+} // End extern C
+#endif 

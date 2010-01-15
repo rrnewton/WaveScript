@@ -13,7 +13,9 @@
 ;; code and dlopen to bring it into the running system.
 
 
-
+;; TODO Set from an environment variable 
+(define verbose-mode 
+    (if (getenv "WS_VERBOSE") #t #f))
 
 ;;==============================================================================
 
@@ -191,7 +193,10 @@
       ;(pretty-print (wsparse-postprocess prog))  
       ;(ws prog)
 
-      ;(regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1")
+      (unless verbose-mode
+        (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1")
+       )
+      
 
       (printf " <WSQ>   Compiling generated WS program.\n")
       (if #f

@@ -10,7 +10,8 @@ ifeq ($(UNAME), Darwin)
   LIBS+= -liconv
 endif
 
-
+# -lwsq_runtime
+# -L$(REGIMENTD)/apps/reuters/runtime
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 
@@ -24,6 +25,8 @@ FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
 
+CC=g++
+
 all: libwsq_runtime.a example_main
 
 
@@ -34,8 +37,8 @@ libwsq_runtime.a: wsq_runtime.c
 	@echo;echo MADE SHARED LIBRARY; echo; echo
 
 example_main:
-	gcc $(FLAGS) -c -I $(CHEZP) example_main.c 
-	gcc $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main
+	$(CC) $(FLAGS) -c -I $(CHEZP) example_main.c 
+	$(CC) $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main
 
 clean:
 	rm -rf *.o *.a *.exe a.out *.so example_main query.*

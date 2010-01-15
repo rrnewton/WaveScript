@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "wsq_runtime.h"
 
 // An example demonstrating how to link and use the WSQ runtime system.
