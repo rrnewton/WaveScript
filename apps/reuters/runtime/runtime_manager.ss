@@ -191,7 +191,7 @@
       ;(pretty-print (wsparse-postprocess prog))  
       ;(ws prog)
 
-      (regiment-verbosity 0)
+      ;(regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1")
 
       (printf " <WSQ>   Compiling generated WS program.\n")
       (if #f
@@ -208,7 +208,6 @@
 	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
 
 	    ;; We go all the way back to our shell script to have it call gcc.
-	    (putenv "REGIMENT_QUIET" "1")
 	    (system "wsc2-gcc")
 
 	    (let ([end-time (current-time 'time-monotonic)])
