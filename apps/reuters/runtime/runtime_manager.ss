@@ -205,8 +205,10 @@
 	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
 	      (wscomp (wsparse-postprocess prog) '() 'wsc2))
 
-	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (getenv "WS_LINK")))
+	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") "")))
 
+	    ;(printf "SETTING LINK ~s\n" (getenv "WS_LINK"))
+	    
 	    ;; We go all the way back to our shell script to have it call gcc.
 	    (system "wsc2-gcc")
 
