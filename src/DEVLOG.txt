@@ -2348,3 +2348,5 @@ based) it works fine.  For example:
 2
 > 
 
+[- The above problem was evident in revision 3863 -]
+

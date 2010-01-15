@@ -88,7 +88,7 @@
 	    (if (= 1 procsseen)
 		(set! preprocessor (car ls))
 		(error 'default-unit-tester "Too many proc arguments!: ~a" (car ls))))
-	(arg-loop (cdr ls) (add1 procsseen))]
+	(arg-loop (cdr ls) (+ 1 procsseen))]
        [(memq (car ls) '(disable disabled))
 	(set! enabled #f)
 	(arg-loop (cdr ls) procsseen)]
@@ -223,7 +223,7 @@
 			    (< try (default-unit-tester-retries))
 			    (not (eq? result 'error))) ;; We don't retry an error!
 		       (begin (printf "fail:  But retrying... Retry #~a\n" try)
-			      (retryloop (add1 try)))
+			      (retryloop (+ 1 try)))
 		       ;; Otherwise just print a notification of the failure and bind it to a global var:
 		       (begin
 			  (set! success #f)

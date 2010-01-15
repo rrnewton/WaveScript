@@ -470,7 +470,7 @@
 		   (assert-type (Stream ,(parse-types field-types))
 				(app wsq_connect_in ,host ,port))))
     (add-op! opid code)  (add-out-edge! inid)
-    ))
+    )) 
 
 (define-entrypoint WSQ_ConnectRemoteOut (int int string int) void
   (lambda (opid outid host port)

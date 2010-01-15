@@ -207,15 +207,6 @@
 
 ; ======================================================================
 
-;; The unit tester lives in its own file:
-#;
-(cond-expand
- ;; We play nasty tricks with symbolic links here. 
- ;; It doesn't matter if we load this file from "src" or "src/chez"
- ;; because we've linked the "generic" subdir from both locations.
- [(or larceny chez) (include "generic/util/unit_tester.ss")]
- [(or plt) (include "unit_tester.ss")])
-
 ;(define-syntax andmap (identifier-syntax for-all))
 ;(define-syntax ormap  (identifier-syntax exists))
 (define andmap for-all)
