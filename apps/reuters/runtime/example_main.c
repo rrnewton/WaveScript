@@ -20,11 +20,18 @@ int main(int argc, char* argv[]) {
   offset += 1000;
   transaction1();
   sleep(3);
-  printf("\n ******* Ok, then one more time...\n\n");
 
-  offset += 1000;
-  transaction1();
+  /* printf("\n ******* Ok, then one more time...\n\n"); */
+  /* offset += 1000; */
+  /* transaction1(); */
+
+  printf("\n ******* REMOVING one of those subgraphs...\n\n"); 
+  WSQ_BeginTransaction(9999); 
+    WSQ_RemSubgraph(101);
+  WSQ_EndTransaction(); 
+
   sleep(3);
+
   printf("\n ******* Query successfully ran for another 3 seconds, shutting down...\n");
 
   WSQ_Shutdown();
@@ -61,9 +68,10 @@ void transaction1() {
       WSQ_AddOp(9+offset, "Printer", buf2, "", "STOCKSTRM: ");
              
      WSQ_EndSubgraph();
-     WSQ_BeginSubgraph(102 + offset);
-       // Empty subgraph.
-     WSQ_EndSubgraph();
+
+     /* WSQ_BeginSubgraph(102 + offset); */
+     /*   // Empty subgraph. */
+     /* WSQ_EndSubgraph(); */
     WSQ_EndTransaction();
 }
 

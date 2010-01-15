@@ -23,13 +23,25 @@
 (define curtransaction (box #f))
 (define current-child-process #f)
 
-;; A persistent accumulation of subgraphs.
+;; The subgraph we're currently working on:
+(define cursubgraph #f)
+
+;; A persistent accumulation of subgraph ids.
 (define subgraphs (box '()))
+
+;; A list of the operators in the current subgraph.
+(define cur_ops #f)
 
 ;; This table tracks all the operators created.
 ;; It stores the *GENERATED* WS code (bindings) to instantiate each operator.
 (define op_table (make-eq-hashtable))
 
+;; This should store the types of edges when we can conveniently extract them.
+;; For now [2010.01.15] it stores undefined values.
+(define edge_table (make-eq-hashtable))
+
+;; This tracks the operator ids in each subgraph.  Binds subgraph ids
+;; to a list of numbers.
 (define subgraph_table (make-eq-hashtable))
 
 ;; HACK
@@ -93,6 +105,10 @@
    (string-append 
     (string-upcase (substring str 0 1))
     (substring str 1 (string-length str)))))
+
+(define (hashtable-for-each fn tab)
+  (define-values (keys vals) (hashtable-entries tab))
+  (map fn (vector->list keys) (vector->list vals)))
 
 (define (Type t)
   (case t
@@ -258,45 +274,70 @@
 (define (add-op! opid binding)
   (when (hashtable-contains? op_table opid) (error 'WSQ "op with node id ~s already exists!" opid))
   (hashtable-set! op_table opid binding)
+  (ASSERT cur_ops) (set! cur_ops (cons opid cur_ops))
   ;;(hashtable-set! subgraph_table sym code)
   (set-box! op_log (cons opid (unbox op_log))))
 
-(define (add-edge! id)
-  (void))
+
+
+;; The value stored in the edge table tracks the number of WRITERS (out edges) for that edge.
+(define (add-in-edge! id)
+  ;; This makes sure there is an entry but doesn't increment the counter:
+  (hashtable-set! edge_table id (hashtable-ref edge_table id 0)))
+(define (add-out-edge! id)
+  (define old (hashtable-ref edge_table id 0))
+  (unless (zero? old)
+    (error 'add-in-edge 
+       "More than one output to a given edge id not currently allowed.  Offending edge id: ~s." id))
+  (hashtable-set! edge_table id 1))
+
 
 ;; Subgraphs.
 
-;; The "working" subgraph goes on the front of the list.
+
 (define-entrypoint WSQ_BeginSubgraph (int) void 
   (lambda (id)
     (printf " <WSQ>  WSQ_BeginSubgraph ~s \n" id)
-    
-    (when (memq id (unbox subgraphs))
-       (error 'WSQ "Subgraph with ID ~s already exists and has not been removed.\n" id))
-    
-    (set-box! subgraphs (cons id (unbox subgraphs)))
+    (when cursubgraph
+       (error 'WSQ_BeginSubgraph "cannot begin subgraph ~s within another subgraph ~s!" id cursubgraph)
+       ;(error 'WSQ "Subgraph with ID ~s already exists and has not been removed.\n" id)
+       )
+    (ASSERT (not (hashtable-contains? subgraph_table id)))
+    (ASSERT not cur_ops)
+    (set! cursubgraph id)
+    (set! cur_ops '())
     (print-state)
     ))
 
 (define-entrypoint WSQ_EndSubgraph () void
   (lambda ()
-    (when (null? (unbox subgraphs))
+    (unless cursubgraph 
       (printf " <WSQ>  ERROR: WSQ_EndSubgraph called without a corresponding WSQ_BeginSubgraph.\n")
       (exit -1))
-    (printf " <WSQ>  WSQ_EndSubgraph ~s \n" (car (unbox subgraphs)))
-    (print-state)
-    ))
+    (let ((id cursubgraph))
+      (printf " <WSQ>  WSQ_EndSubgraph ~s \n" id)
+      (print-state)
+      ;; Currently subgraphs don't really do anything special.
+      ;; But we do record the operators introduced by the subgraph so we can remove them later.
+      (hashtable-set! subgraph_table id cur_ops)
+      (set! cursubgraph #f)
+      (set! cur_ops #f)
+      )))
 
 (define-entrypoint WSQ_RemSubgraph (int) void
   (lambda (id)
     (printf " <WSQ>  WSQ_RemSubgraph ~s \n" id)
+    (unless (hashtable-contains? subgraph_table id)
+      (error 'WSQ_RemSubgraph "Tried to remove subgraph which was not installed: id ~s" id))
+    (hashtable-delete! subgraph_table id)
     ))
 
 (define-entrypoint WSQ_EdgeType (int) scheme-object
   (lambda (id)
     (define type (format "type_~a" (random 1000)))
     (printf " <WSQ>  WSQ_EdgeType ~s : ~s \n" id type)
-    type
+    ;   type
+    (error 'WSQ_EdgeType "not implemented yet")
     ))
 
 ;; Adding operators.
@@ -305,7 +346,7 @@
   (lambda (opid outid schema-path)
     ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" opid schema-path)
     (define code `(,(edge-sym outid) (app wsq_reuterSource ',schema-path)))
-    (add-op! opid code) (add-edge! outid)
+    (add-op! opid code) (add-out-edge! outid)
     (print-state)
     ))
 
@@ -313,7 +354,7 @@
   (lambda (opid str inid)
     ;(printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
     (define code `(,mergemagic (app wsq_printer ,str ,(edge-sym inid))))
-    (add-op! opid code) (add-edge! inid)
+    (add-op! opid code) (add-in-edge! inid)
     (print-state)
     ))
 
@@ -321,7 +362,7 @@
   (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
     (define code `(,(edge-sym out) (app wsq_project ,(parse-project expr) ,(edge-sym in))))
-    (add-op! opid code) (add-edge! in) (add-edge! out)
+    (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
     (print-state)
     ))
 
@@ -329,7 +370,7 @@
   (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (define code `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) ,(edge-sym in))))
-    (add-op! opid code) (add-edge! in) (add-edge! out)
+    (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
     (print-state)
     ))
 
@@ -416,7 +457,7 @@
 			     ,(edge-sym in2)
 			     ,seconds
 			     )))
-    (add-op! opid code)   (add-edge! in1) (add-edge! in2) (add-edge! out)
+    (add-op! opid code)   (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
     (print-state)))
 
 
@@ -428,20 +469,28 @@
     (define code `(,(edge-sym inid) 
 		   (assert-type (Stream ,(parse-types field-types))
 				(app wsq_connect_in ,host ,port))))
-    (add-op! opid code)  (add-edge! inid)
+    (add-op! opid code)  (add-in-edge! inid)
     ))
 
 (define-entrypoint WSQ_ConnectRemoteOut (int int string int) void
   (lambda (opid outid host port)
     ;(printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" outid host port)
     (define code `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym outid))))
-    (add-op! opid code) (add-edge! outid)
+    (add-op! opid code) (add-out-edge! outid)
     ))
 
 (define-entrypoint WSQ_Shutdown () void
   (lambda ()
     (when current-child-process (kill-child current-child-process))
     (printf " <WSQ> Shutting down query engine.\n")
+
+#;
+    (begin 
+      (printf "Subgraph table was:\n")
+      (hashtable-for-each 
+       (lambda (id ls)
+	 (printf "  ~s: ~s\n" id ls))
+       subgraph_table))
     ))
 
 

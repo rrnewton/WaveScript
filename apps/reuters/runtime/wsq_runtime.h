@@ -42,6 +42,7 @@ void WSQ_EndSubgraph();
 // We can also remove already installed subgraphs as part of a transaction.
 void WSQ_RemSubgraph(wsid_t id);
 
+// This returns the schema for a given edge.
 // This allocates a fresh string.  You are responsible for freeing it.
 char* WSQ_EdgeType(wsid_t id);
 
