@@ -7,7 +7,7 @@
 
 #include "port.h"
 
-int main(int argc, char* argv[]) { 
+int main(int argc, char* argv[]) {
     char addr[128];
     //sprintf(addr, "fort2.csail.mit.edu | %d", PORT);
     sprintf(addr, "localhost | %d", PORT);
@@ -28,4 +28,3 @@ int main(int argc, char* argv[]) {
   WSQ_Shutdown();
   return 0;
 }
-

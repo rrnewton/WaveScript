@@ -279,7 +279,6 @@
   (set-box! op_log (cons opid (unbox op_log))))
 
 
-
 ;; The value stored in the edge table tracks the number of WRITERS (out edges) for that edge.
 (define (add-in-edge! id)
   ;; This makes sure there is an entry but doesn't increment the counter:
@@ -293,7 +292,7 @@
 
 
 ;; Subgraphs.
-
+;; ----------------------------------------
 
 (define-entrypoint WSQ_BeginSubgraph (int) void 
   (lambda (id)
@@ -341,6 +340,7 @@
     ))
 
 ;; Adding operators.
+;; ----------------------------------------
 
 (define-entrypoint WSQ_AddReutersSource (int int string) void
   (lambda (opid outid schema-path)
@@ -469,14 +469,14 @@
     (define code `(,(edge-sym inid) 
 		   (assert-type (Stream ,(parse-types field-types))
 				(app wsq_connect_in ,host ,port))))
-    (add-op! opid code)  (add-in-edge! inid)
+    (add-op! opid code)  (add-out-edge! inid)
     ))
 
 (define-entrypoint WSQ_ConnectRemoteOut (int int string int) void
   (lambda (opid outid host port)
     ;(printf " <WSQ>  WSQ_ConnectRemoteOut ~s ~s ~s \n" outid host port)
     (define code `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym outid))))
-    (add-op! opid code) (add-out-edge! outid)
+    (add-op! opid code) (add-in-edge! outid)
     ))
 
 (define-entrypoint WSQ_Shutdown () void
