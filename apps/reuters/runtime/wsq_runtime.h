@@ -58,19 +58,19 @@ char* WSQ_EdgeType(wsid_t id);
 /// Stream Operators.
 
 // Within a subgraph block, we add individual operators.
-void WSQ_AddProject(wsid_t id, wsid_t in, wsid_t out, char* expr);
-void WSQ_AddFilter (wsid_t id, wsid_t in, wsid_t out, char* expr);
+void WSQ_AddProject(wsid_t id, wsid_t in, wsid_t out, const char* expr);
+void WSQ_AddFilter (wsid_t id, wsid_t in, wsid_t out, const char* expr);
 
-//void WSQ_AddFilter (wsid_t in, wsid_t out, char* expr);
+//void WSQ_AddFilter (wsid_t in, wsid_t out, const char* expr);
 
 // Sources will probably need a bunch more parameters when we understand how things work.
-void WSQ_AddReutersSource(wsid_t id, wsid_t out, char* schema_path);
-void WSQ_AddPrinter(wsid_t id, char* prefix, wsid_t in);
+void WSQ_AddReutersSource(wsid_t id, wsid_t out, const char* schema_path);
+void WSQ_AddPrinter(wsid_t id, const char* prefix, wsid_t in);
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO == right.FOO")
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "FOO == FOO")
-void WSQ_AddWindowJoin(wsid_t id, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, char* expr);
+void WSQ_AddWindowJoin(wsid_t id, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, const char* expr);
 
 /// Inter-machine connections.
 
@@ -79,8 +79,8 @@ void WSQ_AddWindowJoin(wsid_t id, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, f
 // do need to make explicit calls to setup outbound and inbound
 // connections to other machines.  This interface doesn't commit to
 // any particular implementation strategy.
-void WSQ_ConnectRemoteOut (wsid_t id, wsid_t out, char* host, int port);
-void WSQ_ConnectRemoteIn  (wsid_t id, wsid_t in,  char* host, int port, char* type_str);
+void WSQ_ConnectRemoteOut (wsid_t id, wsid_t out, const char* host, int port);
+void WSQ_ConnectRemoteIn  (wsid_t id, wsid_t in,  const char* host, int port, const char* type_str);
 
 //------------------------------------------------------------------------------
 // Generic Interface
@@ -89,7 +89,7 @@ void WSQ_ConnectRemoteIn  (wsid_t id, wsid_t in,  char* host, int port, char* ty
 // In place of the above per-operator calls, there is a single call
 // which can add operators of any kind.
 
-void WSQ_AddOp(wsid_t id, char* optype, char* inputs, char* outputs, char* args);
+void WSQ_AddOp(wsid_t id, const char* optype, const char* inputs, const char* outputs, const char* args);
 
 
 //==============================================================================

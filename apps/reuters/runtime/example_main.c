@@ -14,26 +14,34 @@ int main(int argc, char* argv[]) {
 
   WSQ_Init();
 
-  transaction1();
+  WSQ_BeginTransaction(99);
+     WSQ_BeginSubgraph(11);
+      WSQ_AddOp(1, "ReutersSource", "", "1", "foobar.schema");
+      WSQ_AddOp(2, "Printer", "1", "", "YAY:");
+     WSQ_EndSubgraph();
+  WSQ_EndTransaction();
   sleep(3);
-  printf("\n ****** Query run for a 3 seconds, doing another transaction.\n\n");
 
-  offset += 1000;
-  transaction1();
-  sleep(3);
+  /* transaction1(); */
+  /* sleep(3); */
+  /* printf("\n ****** Query run for a 3 seconds, doing another transaction.\n\n"); */
 
-  /* printf("\n ******* Ok, then one more time...\n\n"); */
   /* offset += 1000; */
   /* transaction1(); */
+  /* sleep(3); */
 
-  printf("\n ******* REMOVING one of those subgraphs...\n\n"); 
-  WSQ_BeginTransaction(9999); 
-    WSQ_RemSubgraph(101);
-  WSQ_EndTransaction(); 
+  /* /\* printf("\n ******* Ok, then one more time...\n\n"); *\/ */
+  /* /\* offset += 1000; *\/ */
+  /* /\* transaction1(); *\/ */
 
-  sleep(3);
+  /* printf("\n ******* REMOVING one of those subgraphs...\n\n");  */
+  /* WSQ_BeginTransaction(9999);  */
+  /*   WSQ_RemSubgraph(101); */
+  /* WSQ_EndTransaction();  */
 
-  printf("\n ******* Query successfully ran for another 3 seconds, shutting down...\n");
+  /* sleep(3); */
+
+  /* printf("\n ******* Query successfully ran for another 3 seconds, shutting down...\n"); */
 
   WSQ_Shutdown();
 }

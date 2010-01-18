@@ -17,6 +17,14 @@
 (define verbose-mode 
     (if (getenv "WS_VERBOSE") #t #f))
 
+;; An optional file to place query output:
+(define query-output-log 
+   (let ((filename (getenv "QUERYLOG")))
+     (if filename 
+	 (begin (when (file-exists? filename) (delete-file filename))
+		(open-output-file filename))
+	 #f)))
+
 ;;==============================================================================
 
 ;; This is gross but we use global state to keep track of the
@@ -152,7 +160,6 @@
 (define-entrypoint WSQ_BeginTransaction (int) void
   (lambda (id)
     (printf " <WSQ>  WSQ_BeginTransaction ~s \n" id)
-
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
     (set-box! curtransaction id)
@@ -188,15 +195,16 @@
 				     [(,vr . ,[rest])
 				      `(app merge ,vr ,rest)]))))]
 	   [start-time (current-time 'time-monotonic)])
-				      
-      ;(printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog)
-      ;(pretty-print (wsparse-postprocess prog))  
-      ;(ws prog)
 
-      (unless verbose-mode
-        (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1")
-       )
-      
+      (if verbose-mode
+	  (begin
+	    (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog) (newline)
+	    ;;(pretty-print (wsparse-postprocess prog))  
+	    ;;(ws prog)
+	    )
+	  (begin 
+	    (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1"))
+	  )
 
       (printf " <WSQ>   Compiling generated WS program.\n")
       (if #f
@@ -258,7 +266,10 @@
     ;(printf "##### STARTING THREAD FOR PRINTING... \n")
     (let loop ((x (get-string-some port)))
       (unless (eof-object? x)
-	(display x)
+	(display x)  (flush-output-port (current-output-port))
+	(when query-output-log 
+	  (display x query-output-log)
+	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
     ;(printf "##### ENDING ECHO THREAD... \n")
 	))

@@ -25,7 +25,7 @@ FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
 
-CC=g++
+CC=gcc
 
 all: libwsq_runtime.a example_main
 
