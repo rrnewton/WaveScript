@@ -2350,3 +2350,17 @@ based) it works fine.  For example:
 
 [- The above problem was evident in revision 3863 -]
 
+[2010.01.18] {PLT problems in 4.2}
+
+Currently, as of rev 3874, I can build with PLT 4.1, but have a
+problem in 4.2.  helpers.sls includes unit_tester.ss.  For some reason
+in 4.2 the include mechanism has problems and unit_tester.ss no longer
+sees bindings to "match" which are included in helpers.sls.
+
+  4.1 -- works
+  4.2.2 -- broken
+  4.2.3.4 -- broken
+
+
+
+

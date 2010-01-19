@@ -17,4 +17,12 @@ else echo Unknown platform for scheme system: $MACHINE;
      exit -1;
 fi
 
-echo t"$MT"
+
+
+if [ "$1" == "--threaded" ]; then
+#if [ "$*" ~= "--threaded" ]; then
+ # This is a hack that isn't valid for all machine types:
+ echo t"$MT"
+else
+ echo "$MT"
+fi

@@ -249,8 +249,10 @@
 ;   (include "/home/newton/wavescript/src/ws/compat/common.ss")
 ;   (include "/home/newton/wavescript/src/ws/compat/inspector.ss")
 ;   (include "/home/newton/wavescript/src/ws/compat/top-level-values.ss")
+  
 
   ;; includes are relative to $REGIMENTD/src
+  ;; Therefore we need to override the PLT default include.
   ;; Can't use this from this file or we'd run into a circular dependency.
   (define-syntax include
     (lambda (x)

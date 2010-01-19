@@ -43,9 +43,21 @@ all: basic ws.debug ws.opt
 
 # allheap: fullheap fullheap.opt
 
-MT=`echo '(display (machine-type))' | ../depends/petite -q`
 SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
-CMT=`echo '(machine-type)' | chez_threaded`
+
+# Machine type for Chez Scheme:
+#MT=`echo '(display (machine-type))' | ../depends/petite -q`
+#MT=$(shell echo '(display (machine-type))' | ../depends/petite -q)
+
+ifneq ($(CHEZTHREADED),)
+  THREADED="--threaded"
+  MT=$(shell ../depends/get_machine_type --threaded)
+else
+  THREADED=
+  MT=$(shell ../depends/get_machine_type)
+endif
+
+
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
@@ -107,6 +119,7 @@ dbg:      chezdebug
 nc: pltnc
 bc:pltbc
 ik: ikarus
+plt: pltbc
 
 pltnc:  mzscheme_native
 native: mzscheme_native
@@ -205,14 +218,18 @@ wsparse_zo:
 # twice as fast).  So the hack still has its uses.
 
 # The new one:
-CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
-#CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
+CHEZ="../depends/chez"
+#CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
+##CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
 
 # Old, possibly pre-r6 chez:
 OLDCHEZ = chez74
 
 # This is the R6RS chez:
 chez: chezwhole
+
+chezthreaded: 
+	CHEZTHREADED=1 $(MAKE) chezincr2
 
 # Do an incremental rebuild of dirty objects:
 chezincr: ws/common.sls main_r6rs.sls 
@@ -223,7 +240,8 @@ chezincr: ws/common.sls main_r6rs.sls
 #	find -name "*.so"
 
 chezincr2: ws/common.sls main_r6rs.sls 
-	chez --compile-imported-libraries --program regiment.ss
+	mkdir -p build/$(MT)
+	$(CHEZ) $(THREADED) --libdirs ".::build/$(MT)/"  --compile-imported-libraries --optimize-level 2 --program regiment.ss `pwd` nothing
 
 # Should be idempotent:
 chezpurge: ws/common.sls main_r6rs.sls 
@@ -238,6 +256,12 @@ chezwhole:
 	./experimental/r6make.ss regiment.ss list > build/so_list.txt
 	make chezincr
 	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+
+chezwhole2: chezincr2
+	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	find build/$(MT)/ -name "*.so"  | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+#	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+
 
 # Whole program compilation in debug mode
 chezdebug:
@@ -552,7 +576,7 @@ cleanchez: cleancomp
 	find . -name "*.so" | xargs $(RM)
 	find ../depends/ -name "*.so" | xargs $(RM)
 cleancomp:
-	$(RM) build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/* build/ti3osx/* build/ti3le/*
+	$(RM) -rf build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/* build/ti3osx/* build/ti3le/*
 
 
 cleanplt:
