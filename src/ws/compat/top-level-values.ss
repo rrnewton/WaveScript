@@ -26,11 +26,13 @@
 	(error 'top-level-value "unbound: ~a" var)
 	result)))
 
+(define repl-env #f)
+
 ;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
 (define reg:top-level-eval  
   ;; [2009.11.17] IKARUS BUG: Runnig (box #f) at initialization time for the module crashes ikarus.
 ;  (let ([repl-env (box #f)])
-  (let ([repl-env #f])
+  (let () ;([repl-env #f])
 
     (define default-imports
       '((except (rnrs (6)) error) ; (rnrs r5rs (6))

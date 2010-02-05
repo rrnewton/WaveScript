@@ -163,7 +163,10 @@
             (reset)
 	    (repl))))
        (lambda ()
-         (new-cafe reg:top-level-eval)))
+         (reg:top-level-eval '12345)  ;; To make sure we've set repl-env
+         (parameterize ((chez:interaction-environment repl-env))
+	   ;; (environment  '(prefix (scheme) chez:))
+	   (new-cafe reg:top-level-eval))))
      )
 
   (define (with-output-to-port p th)
