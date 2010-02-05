@@ -7,27 +7,6 @@
 # --threaded argument or by setting the CHEZTHREADED environment
 # variable to be non empty.
 
-
-# ARGS=
-# RELEVANT=`getopt -a -l "threaded" -o ":" -- "$@"`
-# echo "SET TO $RELEVANT"
-# eval set -- "$RELEVANT"
-# while [ $# != 0 ];  do 
-#  flag=$1
-#  case $flag in 
-#    "--threaded" )
-#           MT=`$REGIMENTD/depends/get_machine_type --threaded`;
-# 	  echo "GETTING THREADED $MT";
-# 		    ;;
-#    "--" ) shift; 
-#           ARGS="$ARGS $*";
-#           break;;
-#    *)     ARGS="$ARGS $flag";;
-#  esac;
-#  shift;
-# done
-
-
 ARGS=" $* "
 if [[ "$ARGS" =~ " --threaded " ]] || 
    [ "$CHEZTHREADED" != "" ]; 

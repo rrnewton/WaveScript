@@ -49,6 +49,21 @@ SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
 #MT=`echo '(display (machine-type))' | ../depends/petite -q`
 #MT=$(shell echo '(display (machine-type))' | ../depends/petite -q)
 
+#IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
+ifneq (,$(IKARUSEXEC))
+ IKARUS= ikarus
+else
+ IKARUS= $(IKARUSEXEC)
+endif
+
+# The new one:
+CHEZ= ../depends/chez
+#CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
+##CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
+
+# Old, possibly pre-r6 chez:
+OLDCHEZ = chez74
+
 ifneq ($(CHEZTHREADED),)
   THREADED="--threaded"
   MT=$(shell ../depends/get_machine_type --threaded)
@@ -57,6 +72,21 @@ else
   MT=$(shell ../depends/get_machine_type)
 endif
 
+# Pick a default scheme:
+# This is used for some of the bits below that just need "any old r6 implementation"
+ifneq (,$(CHEZD)) # CHEZD being set is a proxy for having chez.
+  DEFAULTSCHEME=$(CHEZ) 
+  R6MODE= --program
+else
+ifneq (,$(shell which ikarus))
+  DEFAULTSCHEME=$(IKARUS)
+  R6MODE= --r6rs-script
+else
+  DEFAULTSCHEME=plt-r6rs
+  R6MODE=
+endif
+endif
+#	larceny -r6rs -path . -program 
 
 
 #*---------------------------------------------------------------------*/
@@ -84,21 +114,10 @@ aggregated:
 
 # With some Scheme implementations I'm having problems with passing in a command line argument with a space inside it.
 ws/common.sls:
-	plt-r6rs                ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
-        # This is hacked to work with either scheme implementation:
-#	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common || \
-#	$(CHEZ)   --program     ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
-#	$(AGGREGATOR)           ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
-
-#	larceny -r6rs -path . -program  ./generate_main_r6rs.ss -- common_import_list.sexp '(ws common)'
+	$(DEFAULTSCHEME) $(R6MODE)  ./generate_main_r6rs.ss common_import_list.sexp R6PATH ws common 
 
 main_r6rs.sls:
-	plt-r6rs                ./generate_main_r6rs.ss 
-#	$(IKARUS) --r6rs-script ./generate_main_r6rs.ss || \
-#	$(CHEZ) --program ./generate_main_r6rs.ss 
-#	$(AGGREGATOR)           ./generate_main_r6rs.ss 
-
-##	larceny -r6rs -path . -program  ./generate_main_r6rs.ss
+	$(DEFAULTSCHEME) $(R6MODE) ./generate_main_r6rs.ss 
 
 
 #----------------------------------------#
@@ -127,8 +146,6 @@ native: mzscheme_native
 #----------------------------------------#
 #    Ikarus - a good open source R6RS    #
 #----------------------------------------#
-
-IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
 
 # Depends on aggregated libraries:
 ikarus: ws/common.sls main_r6rs.sls
@@ -217,13 +234,6 @@ wsparse_zo:
 # current [2009.03.11] way to make a single .boot file (and it loads
 # twice as fast).  So the hack still has its uses.
 
-# The new one:
-CHEZ="../depends/chez"
-#CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
-##CHEZ = `if (bash -c "which chez" > /dev/null); then bash -c "which chez"; else echo ../depends/chez; fi`
-
-# Old, possibly pre-r6 chez:
-OLDCHEZ = chez74
 
 # This is the R6RS chez:
 chez: chezwhole

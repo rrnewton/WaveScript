@@ -1148,11 +1148,11 @@
       ;; We simply repeatedly dealias all RHS's until we reach a fixed point.
       (let ([new (map (lambda (alias)
 			(let-values ([(v a* rhs)
+#;
 (if (= 2 (length alias)) 
     (values (car alias) '() (cadr alias))
     (apply values alias))
 ;; [2010.01.12] Odd problem compiling under chez 7.9.4:
-#;
 			  (match alias
 			    [(,v ,rhs)           (values v '() rhs)]
 			    [(,v (,a* ...) ,rhs) (values v a* rhs)])])
