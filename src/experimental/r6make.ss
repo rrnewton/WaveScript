@@ -1,6 +1,6 @@
 #! /bin/bash
 #|
-exec chez --script $0 $*
+exec $REGIMENTD/depends/chez --script $0 $*
 |#
 
 ;; Currently this is chez-specific.
