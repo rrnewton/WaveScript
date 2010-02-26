@@ -20,6 +20,9 @@ There's a lot of cleanup to be done.
  *) Fix PLT WS-repl  
    -- this is a problem with mutable pairs...
 
+ *) Change 'regiment' command to 'wscore' 
+
+
 Working on just cleaning up commented and dead code.
 
  *) Really need to clean up the scripts and kill the wsc backend.

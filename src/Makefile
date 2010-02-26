@@ -1,21 +1,20 @@
 
+# The WaveScript Makefile
 
-#*---------------------------------------------------------------------*/
-#*    Primary Compile Targets                                          */
-#*---------------------------------------------------------------------*/
+#------------------------------------------------------------------------------#
+#    Primary Targets                                                           #
+#    ---------------                                                           #
+#                                                                              #
+#   make          -- build a handy default set of targets                      #
+#   make wsparse  -- build parser                                              #
+#   make ikarus                                                                #
+#   make chez                                                                  #
+#   make pltbc    -- build WS under different Scheme implementations.          #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-# The Regiment/WaveScript compiler can be ran under several scheme
-# implementations.
 
-# make          -- build wsparse and .so file
-# make wsparse  -- build parser
-
-# make [ikarus,chez,pltbc] -- build compiler under different implementations.
-
-
-#export REGIMENTD=`pwd`/../
-
-basic: 
+default: 
 	@echo; echo BUILDING PARSER
 	@echo "======================================================================"
 	$(MAKE) wsparse
@@ -39,7 +38,11 @@ basic:
 # 	@echo "======================================================================"
 # 	$(MAKE) c
 
-all: basic ws.debug ws.opt
+all: default ws.debug ws.opt
+
+#------------------------------------------------------------------------------#
+#   Configure the environment                                                  #
+#------------------------------------------------------------------------------#
 
 # allheap: fullheap fullheap.opt
 
@@ -89,10 +92,10 @@ endif
 #	larceny -r6rs -path . -program 
 
 
-#*---------------------------------------------------------------------*/
-#*   Compiling.                                                        */
-#* We handle multiple scheme backends as well as other misc code.      */
-#*- --------------------------------------------------------------------*/
+#------------------------------------------------------------------------------#
+#    Dependencies.                                                             # 
+# We handle multiple scheme backends as well as other misc code.               #
+#------------------------------------------------------------------------------#
 
 c: 
 	(cd C; $(MAKE))
@@ -527,9 +530,10 @@ testgsl:
 supertest: 
 	./supertest.ss
 
-#/*--------------------------------------------------------------------*/
-#*            Building Binary Installation Packages                    */
-#*---------------------------------------------------------------------*/
+#------------------------------------------------------------------------------#
+#                Building Binary Distribution Packages                         #
+#------------------------------------------------------------------------------#
+
 
 # [2007.04.09] Updating this, it was very old:
 PKGDIR=$(REGIMENTD)/binary_pkg
@@ -572,9 +576,10 @@ deb:
 	(cd $(DEBPKG) && export WSVER=$(WSVER); ./package_deb.sh source) 
 	@echo Now run 'make' from $(DEBPKG).
 
-#/*--------------------------------------------------------------------*/
-#*    Cleaning                                                         */
-#*---------------------------------------------------------------------*/
+#------------------------------------------------------------------------------#
+#       Cleaning                                                               #
+#------------------------------------------------------------------------------#
+
 #.PHONY: clean
 
 cleanheap:
@@ -632,9 +637,10 @@ distclean: clean
 	$(RM) -f *.log
 
 
-#============================================================
-# Shortcuts, utils, and junk.
-#============================================================
+#==============================================================================#
+#     Shortcuts, utils, and junk.                                              #
+#------------------------------------------------------------------------------#
+
 
 upload:
 	scp build/$(MT)/main_chez.so "newton@faith.ffh.us:/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"

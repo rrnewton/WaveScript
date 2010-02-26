@@ -2361,6 +2361,24 @@ sees bindings to "match" which are included in helpers.sls.
   4.2.2 -- broken
   4.2.3.4 -- broken
 
+[2010.02.05] {Still have PLT problems with "regiment i" repl}
+
+
+
+
+[2010.02.05] {Chez degraded load times}
+
+Once we moved to R6 I started having longer load times.  I hope I
+recorded some numbers somewhere.  Right now on my 2.53 ghz core 2
+laptop I get 0.845 s loads from chez (multiple .so files) vs 0.735s
+loads from plt (of course not actually jitting all the byte code in
+that case).
+
+Heap loading used to be near instantaneous, and I thought I was
+getting better times than this from .boot file loading.  (Right now
+.boot loading at least brings it down to 0.741s)
+
+
 
 
 
