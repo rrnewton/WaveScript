@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ -e 6sec_marmot_sample.raw ];
+then echo "Already present!"
+     exit 0
+fi
+
 if [ `which wget` ];
 then wget www.regiment.us/marmotdata/6sec_marmot_sample.raw
 elif [ `which curl` ];

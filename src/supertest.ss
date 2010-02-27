@@ -3,6 +3,18 @@
 exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
+;;----------------------------------------------------------------------------;;
+;;     USAGE                                                                  ;;
+;;                                                                            ;;
+;;  cd <installdir>/src; ./supertest.ss [options]                             ;;
+;;                                                                            ;;
+;;     Options:                                                               ;;
+;;  -nopost  : Don't post results to the web                                  ;;
+;;  -nobench : Don't run benchmarks, just tests.                              ;;
+;;  -short   : Run only until first fail                                      ;;
+;;  -stdout  : Put all the output on stdout                                   ;;
+;;----------------------------------------------------------------------------;;
+
 ;; TODO: generate intermediate/ and most_recent_logs/ dirs if they're not there...
 
 ;; This really puts the system through the paces.
@@ -23,60 +35,107 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (require (lib "process.ss") (lib "date.ss"))
 
-(define default-timeout (* 40 60)) ;; Timeout in seconds
-
-(define publish? (not (member "-nopost" (vector->list (current-command-line-arguments)))))
-
-;; Should we do the benchmarks in addition to regression testing?
-(define benchmarks? (not (member "-nobench" (vector->list (current-command-line-arguments)))))
-
-;; Let's clean up some:
-(if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
-(if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response") (void))
-
-;; Should we killall the wsparse_server processes also?
- 
-; ----------------------------------------
+;;----------------------------------------------------------------------------;;
+;;     CONFIGURATION                                                          ;;
+;; Read command line parameters and hardcode constants.                       ;;
+;;----------------------------------------------------------------------------;;
 
 (define ryan-email "ryan.newton@alum.mit.edu")
+(define default-timeout (* 40 60)) ;; Timeout in seconds
+
+;; Should we do the benchmarks in addition to regression testing?
+(define benchmarks?  (not (member "-nobench" (vector->list (current-command-line-arguments)))))
+(define short?       (not (member "-short"   (vector->list (current-command-line-arguments)))))
+(define stdout-only? (not (member "-stdout"  (vector->list (current-command-line-arguments)))))
+(define publish?     (not (member "-nopost"  (vector->list (current-command-line-arguments)))))
+
+; ----------------------------------------
+
 (define start-time (current-inexact-milliseconds))
 (define last-test-timer start-time)
 (define failed #f)
 
+;; Let's clean up some:
+;(if (file-exists? "/tmp/wsparse_server_pipe")     (delete-file "/tmp/wsparse_server_pipe") (void))
+;(if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response") (void))
+;; Should we killall the wsparse_server processes also?
+
 ;; [2007.10.11] Changing this to ASSUME that supertest.ss is invoked from it's own directory:
-(current-directory "..")
+  (current-directory "..")
 (define ws-root-dir (path->string (current-directory)))
 (define test-directory (format "~a/src" ws-root-dir))
-(current-directory test-directory)
+  (current-directory test-directory)
 
-(printf "Test directory: ~s\n" test-directory)
-
-(define (force-open-output-file file)
-  (when (file-exists? file) (delete-file file))
-  (open-output-file file))
+  (printf "Test directory: ~s\n" test-directory)
 
 (define date 
   (let ((d (seconds->date (current-seconds))))
     (format "~a-~a-~a_~a:~a:~a" 
 	    (date-year d) (date-month d) (date-day d)
 	    (date-hour d) (date-minute d) (date-second d))))
-(define logfile (format "~a/supertest_~a.log" test-directory date))
-(define log (force-open-output-file logfile))
-(define scriptoutput (force-open-output-file "SUPERTEST_SCRIPT_OUTPUT.log"))
-(define orig-console (current-output-port))
 
-(define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
-(define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
-(define code->msg!
-  (case-lambda
-    [(m) (code->msg! m (- (current-inexact-milliseconds) last-test-timer))]
-    [(m time-elapsed)
-     (let ([val (if (or (equal? m 0) (equal? m #t))
-		    (format "passed (~a min)" (milli->minute time-elapsed))
-		    (begin (set! failed #t) 
-			   (format "-FAILED- (code ~a)" m)))])
-       (reset-timer!)
-       val)]))
+(define logfile (format "~a/supertest_~a.log" test-directory date))
+(define script-output-file "SUPERTEST_SCRIPT_OUTPUT.log")
+
+;;----------------------------------------------------------------------------;;
+;;     Routines to communicate results                                        ;;
+;;----------------------------------------------------------------------------;;
+
+(define webroot "/var/www")
+(define webdir  "/var/www/regression")
+
+(define (mail to subj msg)
+  (define tmpfile (format "/tmp/temp~a.msg" (current-milliseconds)))
+  (string->file msg tmpfile)
+  (system (format "mail ~a -s '~a' < ~a" to subj tmpfile))
+  (delete-file tmpfile)
+  (printf "\nMail Sent, to:~a subj: ~a\n" to subj)
+  (printf "Body:\n~a\n" msg))
+
+(define (post-to-web webfilename) 
+  (define publish 
+    (lambda (logfile webfile)
+      (when (file-exists? webfile) (delete-file webfile))
+      (cprint "Copying log to website. ~a\n" webfile)
+      (copy-file logfile webfile)
+      (system (format "chmod g+r ~a" webfile)); (ASSERT )
+      (system (format "chgrp www-data ~a" webfile));(ASSERT )
+      ))
+  ;; As icing on the cake let's post this on the web too:
+  ;; This should run on faith:
+  (if (and publish? (directory-exists? webdir))
+      (begin 
+	(printf "Going to try publishing to website.\n")
+	(let* ([webfile (format "~a/~a" webdir webfilename)])
+	  (publish logfile webfile))
+	;; Now do the performance report:
+	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" ws-root-dir)])
+	  (when (file-exists? perfreport)
+	    (let* ([webfile (format "~a/rev~a_perfreport.pdf" webdir
+				    svn-revision)])
+	      (publish perfreport webfile)))))
+      ;; Otherwise we could try to scp it...
+      (void)
+      ))
+
+;; Print to the console(s) but not to the log
+(define (cprint . args)
+  (apply fprintf orig-console args)  (flush-output orig-console)
+  (apply fprintf scriptoutput args)  (flush-output scriptoutput))
+
+;; Print everywhere -- to the log AND to both the user and console outputs.
+(define (fpf . args)
+  (apply cprint args)
+  (apply fprintf log args)           (flush-output log))
+
+
+;;----------------------------------------------------------------------------;;
+;;     Misc Utility Functions                                                 ;;
+;;----------------------------------------------------------------------------;;
+
+(define (force-open-output-file file)
+  (when (file-exists? file) (delete-file file))
+  (open-output-file file))
 
 (define (file->string filename)
     (let ([p (open-input-file filename)])
@@ -90,6 +149,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (let ([p (force-open-output-file fn)])
       (display str p)
       (close-output-port p)))
+
 (define (system-to-str cmd)
   (define fn (format "/tmp/___supertest_tmp_~a.txt" (random 100000000)))
   (and ;(system (format "~a &> ~a" cmd fn))
@@ -100,29 +160,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	 (delete-file fn)
 	 str)))
 
-(define (mail to subj msg)
-  (define tmpfile (format "/tmp/temp~a.msg" (current-milliseconds)))
-  (string->file msg tmpfile)
-  (system (format "mail ~a -s '~a' < ~a" to subj tmpfile))
-  (delete-file tmpfile)
-  (printf "Mail Sent, to:~a subj: ~a\n" to subj)
-  (printf "Body:\n~a\n" msg)
-  )
-;; Print to the log and to the screen:
-(define (fpf . args)
-  (apply fprintf log args)
-  (apply printf args)
-  (flush-output log))
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
       [(_ expr) 
        #'(or expr 
-	     (begin (mail ryan-email
-			  "Failure of supertest.ss"
-			  (format "ASSERT failed: ~s\n\nCurrent Directory: ~s\n" 
-				  #'expr (current-directory)))
-		    (exit 1)))])))
+	     (let ((msg (format "ASSERT failed: ~s\n\nCurrent Directory: ~s\n" 
+				  #'expr (current-directory))))
+	       (fpf msg)
+	       (mail ryan-email "Failure of supertest.ss" msg)
+	       (exit 1)))])))
 
 ;; Run a command with a timeout.
 ;; Asynchronously separates spawning of the process, and waiting for it to complete.
@@ -154,7 +201,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	     (begin 
 	       ;(printf "TIMED OUT\n")
 	       (fpf " *** Process timed out!: ***\n")
-	       (fprintf orig-console "   Process timed out!\n")
 	       (statusfn 'kill)
 	       99)
 	     (begin 
@@ -166,34 +212,26 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define (system/timeout cmd)
   ((system/async/timeout cmd) default-timeout))
 
-(define webroot "/var/www")
-(define webdir  "/var/www/regression")
+;;----------------------------------------------------------------------------;;
 
-(define (post-to-web webfilename) 
-  (define publish 
-    (lambda (logfile webfile)
-      (when (file-exists? webfile) (delete-file webfile))
-      (fprintf orig-console "Copying log to website. ~a\n" webfile)
-      (copy-file logfile webfile)
-      (system (format "chmod g+r ~a" webfile)); (ASSERT )
-      (system (format "chgrp www-data ~a" webfile));(ASSERT )
-      ))
-  ;; As icing on the cake let's post this on the web too:
-  ;; This should run on faith:
-  (if (and publish? (directory-exists? webdir))
-      (begin 
-	(printf "Going to try publishing to website.\n")
-	(let* ([webfile (format "~a/~a" webdir webfilename)])
-	  (publish logfile webfile))
-	;; Now do the performance report:
-	(let ([perfreport (format "~a/benchmarks/perfreport.pdf" ws-root-dir)])
-	  (when (file-exists? perfreport)
-	    (let* ([webfile (format "~a/rev~a_perfreport.pdf" webdir
-				    svn-revision)])
-	      (publish perfreport webfile)))))
-      ;; Otherwise we could try to scp it...
-      (void)
-      ))
+;; There are three possible destinations for output.  The log is really the official report of results.
+;; 
+(define log (force-open-output-file logfile))
+(define scriptoutput (force-open-output-file script-output-file))
+(define orig-console (current-output-port))
+
+(define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
+(define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
+(define code->msg!
+  (case-lambda
+    [(m) (code->msg! m (- (current-inexact-milliseconds) last-test-timer))]
+    [(m time-elapsed)
+     (let ([val (if (or (equal? m 0) (equal? m #t))
+		    (format "passed (~a min)" (milli->minute time-elapsed))
+		    (begin (set! failed #t) 
+			   (format "-FAILED- (code ~a)" m)))])
+       (reset-timer!)
+       val)]))
 
 ;; Partway through refactoring all the tests below to use this helper:
 (define (run-async-test title cmd) 
@@ -207,7 +245,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     ;; Can't report accurate time currently.  If the subprocess 
 		     ;; is already finished we don't know how long it took.		    
 		     (code->msg! result (- (current-inexact-milliseconds) test-start)))))
-      (post-to-web (format "intermediate/rev_~a" svn-revision)))))
+      (post-to-web (format "intermediate/rev_~a" svn-revision))
+      (when (and short? failed)
+            (fpf "Test failed and ran with -short, exiting.\n")
+            (exit 1))
+      )))
 
 (define (run-test title cmd)
   ((run-async-test title cmd) default-timeout))
@@ -219,7 +261,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; ----------------------------------------
 
 (ASSERT (putenv "REGIMENTD" ws-root-dir))
-(ASSERT (putenv "REGIMENTHOST" "")) ;; Clear this
+;(ASSERT (putenv "REGIMENTHOST" "")) ;; Clear this
+(if (getenv "REGIMENTHOST")
+    (printf "Getting default scheme from the environment ($REGIMENTHOST): ~a\n" (getenv "REGIMENTHOST"))
+    (ASSERT (putenv "REGIMENTHOST" plt)))
+(define defaulthost (getenv "REGIMENTHOST"))
 
 ;; We use debugmode for all the tests below:
 
@@ -229,7 +275,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;(ASSERT (putenv "PATH" (format "~a/bin:~a" ws-root-dir (getenv "PATH"))))
 ;(ASSERT (putenv "PATH" (format "~a/depends:~a" ws-root-dir (getenv "PATH"))))
 
-(ASSERT (system "echo Environment established: REGIMENTD:$REGIMENTD"))
+(ASSERT (system "echo Environment established: REGIMENTD = $REGIMENTD"))
 
 ;; This is a lame hack for compatibility across a wide range of versions:
 (define excep-hndlr
@@ -242,17 +288,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
      (format "ERROR during script execution:\n   ~a\n\nException: ~s\n" 
 	     (exn-message exn) 
 	     exn))
-   (display msg orig-console);(fprintf orig-console msg)
-   (mail ryan-email "Failure of supertest.ss" msg)
-   ;; Might as well try this too:
    (fpf msg)
+   (mail ryan-email "Failure of supertest.ss" msg)
    (post-to-web (format "rev~a_ERROR" svn-revision))
    (exit 1)))
+
+(cprint "Opened results summary file: ~s \n" logfile)
+(cprint "Copying script output to: ~s \n" script-output-file)
 
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
-(fprintf orig-console "Opened logfile: ~s \n" logfile)
 ;(flush-output log)
 ;(close-output-port log)
 ;(set! log (open-output-file logfile 'append))
@@ -268,7 +314,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (parameterize ([current-directory ws-root-dir])
     (system-to-str "svn log -v -r HEAD:PREV")))
 
-(fprintf orig-console "SVN revision: ~a\n" svn-revision)
+(cprint "SVN revision: ~a\n" svn-revision)
 
 ;; Here we begin running tests:
 
@@ -291,8 +337,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "Build aggregate libraries:" "make aggregated &> make_aggregated.log")
 (run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log")
-(run-test "ikarus: Load & run unit tests: "
-	  "../bin/regiment.ikarus t &> ikarus_UNIT_TESTS.log")
+(run-test (format "(~a): Load & run unit tests: " defaulthost)
+	  "../bin/regiment t &> ikarus_UNIT_TESTS.log")
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
 
 ;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
@@ -356,36 +402,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   (run-test "ws: Downloading sample marmot data:" "./download_sample_marmot_data")
 
-  (ASSERT (putenv "REGIMENTHOST" "ikarus"))
-
-  ;; [2008.08.07] Doing at least testall_demos in debug mode.
-  ; (ASSERT (putenv "REGDEBUGMODE" "ON"))
-;   (current-directory test-directory)
-;   (run-test "ikarus: Build in debug mode: " "make cleanik ik &> ikarus_BUILD_DEBUG.log")
-;   (current-directory (format "~a/demos/wavescope" test-directory))t
-  (run-test "ws: Running Demos (ikarus, debug)  :"
+  ;; This should run in debug mode if "regiment" is responsive to REGDEBUGMODE:
+  (run-test "ws: Running Demos   :"
 	    (format "./testall_demos.ss &> ~a/ws_demos_debug.log" test-directory))
-;   (ASSERT (putenv "REGDEBUGMODE" "OFF"))
-;   (current-directory test-directory)
-;   (run-test "ikarus: Build object files: " "make cleanik ik &> ikarus_BUILD2.log")
 
-  (run-test "ws.early: WaveScript Demos (ikarus):"
+  (run-test "ws.early: WaveScript Demos:"
 	    (format "./testall_early &> ~a/wsearly_demos.log" test-directory))
-
-  ;; Do the demos in PLT also.
-  (ASSERT (putenv "REGIMENTHOST" "plt"))  
-  (run-test "ws: Running WaveScript Demos (plt):"
-	    (format "./testall_demos.ss &> ~a/ws_demos.log" test-directory))
-  (ASSERT (putenv "REGIMENTHOST" ""))
-
-;   (putenv "REGIMENTHOST" "plt")
-;   (run-test  "plt: Running WaveScript Demos:"
-; 	     (format "./testall_demos.ss &> ~a/plt_demos.log" test-directory))
-;   (putenv "REGIMENTHOST" "")
-
-
   )
-
 
 
 ;; Test STANDARD LIBRARIES:
@@ -1019,10 +1042,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (if failed "FAILED" "passed")))
 
 ;; Finally, copy all logs 
-(fprintf orig-console "~a all logs to website ~a...\n" (if publish? "Copying" "NOT copying") webdir)
+(cprint "~a all logs to website ~a...\n" (if publish? "Copying" "NOT copying") webdir)
 (when publish? (system (format "rm -f ~a/most_recent_logs/*" webdir)))
 (when publish? (system (format "cp ~a/*.log ~a/most_recent_logs/" test-directory webdir)))
-(fprintf orig-console "Finished (not) copying.")
+(cprint "Finished (not) copying.")
 
 (current-directory webroot)
 (system "pwd")

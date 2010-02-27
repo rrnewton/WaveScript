@@ -342,7 +342,7 @@
     (case-lambda 
       [(exp)     
       (printf "reg:top-level-eval TRYING TO SET REPL ENV: ~s ~s\n" exp repl-env)   
-      (printf "This is a PLT bug, the following will crash: ..\n")
+      (printf "This is a PLT bug, the following will crash:   (environment (list 'rnrs)) \n")
              (printf "Environment ~s\n" (environment (list 'rnrs)))
              (printf "Environment ~s\n" (environment '(rnrs)))
        (unless repl-env

@@ -53,10 +53,10 @@ SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
 #MT=$(shell echo '(display (machine-type))' | ../depends/petite -q)
 
 #IKARUS =`if [ "$(IKARUSEXEC)" = "" ]; then echo ikarus; else echo $(IKARUSEXEC); fi`
-ifneq (,$(IKARUSEXEC))
- IKARUS= ikarus
+ifeq (,$(IKARUSEXEC))
+ IKARUS=ikarus
 else
- IKARUS= $(IKARUSEXEC)
+ IKARUS=$(IKARUSEXEC)
 endif
 
 # The new one:
@@ -75,7 +75,7 @@ else
   MT=$(shell ../depends/get_machine_type)
 endif
 
-# Pick a default scheme:
+# Pick a default Scheme:
 # This is used for some of the bits below that just need "any old r6 implementation"
 ifneq (,$(CHEZD)) # CHEZD being set is a proxy for having chez.
   DEFAULTSCHEME=$(CHEZ) 
