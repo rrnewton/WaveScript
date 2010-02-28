@@ -49,6 +49,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define stdout-only? (not (member "-stdout"  (vector->list (current-command-line-arguments)))))
 (define publish?     (not (member "-nopost"  (vector->list (current-command-line-arguments)))))
 
+;; Presently Ikarus and Chez are optional and PLT is mandatory.
+(define ikarus? (eqv? 0 (system/exit-code "which ikarus > /dev/null")))
+(define chez?   (eqv? 0 (system/exit-code "which chez > /dev/null")))
+
 ; ----------------------------------------
 
 (define start-time (current-inexact-milliseconds))
@@ -126,7 +130,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Print everywhere -- to the log AND to both the user and console outputs.
 (define (fpf . args)
   (apply cprint args)
-  (apply fprintf log args)           (flush-output log))
+  (apply fprintf logport args)           (flush-output logport))
 
 
 ;;----------------------------------------------------------------------------;;
@@ -214,12 +218,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;;----------------------------------------------------------------------------;;
 
-;; There are three possible destinations for output.  The log is really the official report of results.
-;; 
-(define log (force-open-output-file logfile))
-(define scriptoutput (force-open-output-file script-output-file))
-(define orig-console (current-output-port))
-
 (define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
 (define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
 (define code->msg!
@@ -247,24 +245,31 @@ exec mzscheme -qr "$0" ${1+"$@"}
 		     (code->msg! result (- (current-inexact-milliseconds) test-start)))))
       (post-to-web (format "intermediate/rev_~a" svn-revision))
       (when (and short? failed)
-            (fpf "Test failed and ran with -short, exiting.\n")
+            (fpf "Test failed (and ran with -short).  Exiting.\n")
             (exit 1))
       )))
 
 (define (run-test title cmd)
+  (fprintf orig-console " >>> Running test with command: ~a\n" cmd)
   ((run-async-test title cmd) default-timeout))
-
 
 
 ; ----------------------------------------
 ;;; Main Script:
 ; ----------------------------------------
 
+;; Three ports:
+;; There are three possible destinations for output.  
+(define logport          (force-open-output-file logfile))
+(define scriptoutput (force-open-output-file script-output-file))
+(define orig-console (current-output-port))
+
+
 (ASSERT (putenv "REGIMENTD" ws-root-dir))
 ;(ASSERT (putenv "REGIMENTHOST" "")) ;; Clear this
 (if (getenv "REGIMENTHOST")
     (printf "Getting default scheme from the environment ($REGIMENTHOST): ~a\n" (getenv "REGIMENTHOST"))
-    (ASSERT (putenv "REGIMENTHOST" plt)))
+    (ASSERT (putenv "REGIMENTHOST" "plt")))
 (define defaulthost (getenv "REGIMENTHOST"))
 
 ;; We use debugmode for all the tests below:
@@ -299,9 +304,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
-;(flush-output log)
-;(close-output-port log)
-;(set! log (open-output-file logfile 'append))
+;(flush-output logport)
+;(close-output-port logport)
+;(set! logport (open-output-file logfile 'append))
 
 (define svn-revision
   (begin 
@@ -319,6 +324,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Here we begin running tests:
 
 (fpf "\nRunning from directory: ~a\n\n" ws-root-dir)
+
 (fpf "Date: ~a\n" (system-to-str "date"))
 
 (fpf "\nWaveScript (rev ~a) build & unit tests:\n" svn-revision)
@@ -327,9 +333,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (post-to-web (format "intermediate/rev_~a" svn-revision))
 
 (reset-timer!)
+
+(run-test "Empty test, run ls:" "ls")
+
 (run-test "Build directory cleaned:" "make clean > make_clean.log")
 
-(run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
+(if ikarus?
+    (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
+    (fpf "(skipping ikarus test -- ikarus not in path)\n"))
+
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
 ;(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
 
@@ -533,6 +545,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (ASSERT (putenv "MAKERULES" "/opt/tinyos-2.x/support/make/Makerules"))
   (ASSERT (putenv "CLASSPATH" (string-append "/opt/tinyos-2.x/support/sdk/java/tinyos.jar:"
 					     (or (getenv "CLASSPATH") ""))))
+
+
+  ;; FIX ME ... FALSE POSITIVE HERE..
   (run-test "wstiny: Running demos w/ TOSSIM:"
 	    (format "./testall_wstiny &> ~a/wstiny_demos.log" test-directory))
 
@@ -1025,7 +1040,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (fpf "\nSVN log message:  \n   ")
   (fpf (or svn-log-message "NO-LOG-MESSAGE")))
 
-(close-output-port log)
+(close-output-port logport)
 (define thesubj 
   (if failed 
       (format "[Regression] WaveScript/Scope rev ~a FAILED nightly tests" svn-revision)
