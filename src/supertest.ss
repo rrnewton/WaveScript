@@ -45,13 +45,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Should we do the benchmarks in addition to regression testing?
 (define benchmarks?  (not (member "-nobench" (vector->list (current-command-line-arguments)))))
-(define short?       (not (member "-short"   (vector->list (current-command-line-arguments)))))
-(define stdout-only? (not (member "-stdout"  (vector->list (current-command-line-arguments)))))
 (define publish?     (not (member "-nopost"  (vector->list (current-command-line-arguments)))))
+(define short?       (member "-short"   (vector->list (current-command-line-arguments))))
 
 ;; Presently Ikarus and Chez are optional and PLT is mandatory.
 (define ikarus? (eqv? 0 (system/exit-code "which ikarus > /dev/null")))
 (define chez?   (eqv? 0 (system/exit-code "which chez > /dev/null")))
+(unless ikarus? (printf "(Ikarus not found, omitting from tests.)\n"))
+(unless chez?   (printf "(Chez not found, omitting from tests.)\n"))
 
 ; ----------------------------------------
 
@@ -338,9 +339,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (run-test "Build directory cleaned:" "make clean > make_clean.log")
 
-(if ikarus?
-    (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus "))
-    (fpf "(skipping ikarus test -- ikarus not in path)\n"))
+(when ikarus? (run-test "ikarus:   Ikarus runs:"    (format "echo | ikarus ")))
 
 (run-test "mzscheme: MzScheme runs:"  (format "echo | mzscheme "))
 ;(run-test "larceny:  Larceny runs:"   (format "echo | larceny"))
@@ -348,10 +347,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (current-directory test-directory)
 
 (run-test "Build aggregate libraries:" "make aggregated &> make_aggregated.log")
-(run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log")
-(run-test (format "(~a): Load & run unit tests: " defaulthost)
-	  "../bin/regiment t &> ikarus_UNIT_TESTS.log")
 (run-test "plt: Build bytecode files: " "make bc &> plt_BUILD.log")
+
+(when ikarus? (run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log"))
+
+(run-test (format "(~a): Load & run unit tests: " defaulthost)
+	  "../bin/regiment t &> UNIT_TESTS.log")
 
 ;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
 #;

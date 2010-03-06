@@ -75,8 +75,24 @@ else
   MT=$(shell ../depends/get_machine_type)
 endif
 
-# Pick a default Scheme:
+# Pick a default Scheme.  This could happen in a "configure" step.
 # This is used for some of the bits below that just need "any old r6 implementation"
+# ----------------------------------------
+# If REGIMENTHOST is setwe use that for the default scheme.
+ifeq (plt,$(REGIMENTHOST))
+  DEFAULTSCHEME=plt-r6rs
+  R6MODE=
+else
+ifeq (chez,$(REGIMENTHOST))
+  DEFAULTSCHEME=$(CHEZ) 
+  R6MODE= --program
+else
+ifeq (ikarus,$(REGIMENTHOST))
+  DEFAULTSCHEME=$(IKARUS)
+  R6MODE= --r6rs-script
+else
+# Otherwise, we pick a default based on what we can find in the environment.
+# ----------------------------------------
 ifneq (,$(CHEZD)) # CHEZD being set is a proxy for having chez.
   DEFAULTSCHEME=$(CHEZ) 
   R6MODE= --program
@@ -87,6 +103,9 @@ ifneq (,$(shell which ikarus))
 else
   DEFAULTSCHEME=plt-r6rs
   R6MODE=
+endif
+endif
+endif
 endif
 endif
 #	larceny -r6rs -path . -program 

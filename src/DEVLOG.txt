@@ -2378,7 +2378,72 @@ Heap loading used to be near instantaneous, and I thought I was
 getting better times than this from .boot file loading.  (Right now
 .boot loading at least brings it down to 0.741s)
 
+[2010.03.05] {Trying PLT 4.2.4}
 
+By the way, when updating supertest.ss I noticed that I was
+successfully running scripts through PLT at some point and it was
+getting past that little "This will cause an error" trip-wire that I
+had set (in compat.mzcheme.sls because of the environment problem).
 
+4.2.4 seems to have the "compile: unbound identifier in module in:
+match" problem still... oh well.  Back to 4.1.  I've got both the
+"environment" problem and the "include" one.
 
+All in all, it's tough for me to get a REPL under PLT right now.  My
+custom repl is broken because of the above issue.  The following
+works:
+
+  mzscheme -S . 
+  (require "main.sls")
+  (require "main_r6rs.sls")
+
+But this fails:
+
+[newton@localhost ~/wavescript/src]  $ mzscheme  -t main.sls -t main_r6rs.sls -i
+Welcome to MzScheme v4.1 [3m], Copyright (c) 2004-2008 PLT Scheme Inc.
+> 3495
+stdin::0: compile: bad syntax; function application is not allowed, because no #%app syntax transformer is bound in: (#%top-interaction . 3495)
+
+Egad.  Also, btw, -S doesn't work in this case:
+
+  mzscheme -S . -t main.sls -t main_r6rs.sls -i 
+
+I had to use PLTCOLLECTS instead.  Order doesn't help by the way.
+Played with a few orders, including.
+
+   mzscheme  -i -t main_r6rs.sls  -S .
+
+But, by the way, the following does work:
+
+  mzscheme  -i  -e "(require \"main.sls\") (require \"main_r6rs.sls\")"
+
+WAIT HUH?? The following just worked for me:
+
+ mzscheme  -i -t main_r6rs.sls  
+
+Ok, order doesn't matter to -S not working... but it looks like order
+does matter for -i vs -t!!
+
+------------------------------
+
+Ok, while trying to shrink the bug case, 
+
+INCLUDE RESOLVED TO: /Users/newton/wavescript/src/test2.sls
+/Users/newton/wavescript/src/test2.sls:2:14: compile: unbound identifier in module in: match
+[newton@localhost ~/wavescript/src]  $ 
+[newton@localhost ~/wavescript/src]  $ 
+[newton@localhost ~/wavescript/src]  $ mzscheme -t test.sls 
+INCLUDE RESOLVED TO: /Users/newton/wavescript/src/test2.sls
+/Users/newton/wavescript/src/test2.sls:2:10: compile: identifier used out of context in: x
+
+The variable name seems to matter.
+
+------------------------------
+
+Ugh, I'm also having problems now reproducing the problems I was
+having before with -S not working (independent of -i).... was that
+with 4.1?  It must have been, because I wasn't able to load in 4.2.4.  
+
+Ugh... right now I'm not able to load AT ALL using mzscheme.. I'm
+having extreme problems with reproducability.
 

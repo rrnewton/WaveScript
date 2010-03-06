@@ -2,7 +2,7 @@
 
 (library (ws compat compat)
   (export 
-          include getenv syntax->list 
+          plt:include include getenv syntax->list 
  	  random seed-random make-list
  	  merge merge! sort! append! reverse! call/ec inspect native-inspect debug define-values
  	  fluid-let parameterize reg:define-struct reg:struct?
@@ -28,6 +28,7 @@
 
 	  (rename (sys:system system))
 ; 	  make-rectangular
+          default-repl-env ;; TEMPTOGGLE -- exposing temporarily
 	  )
   (import (except (rnrs (6)) current-output-port error)
 	  (for (rnrs eval (6)) run expand)
@@ -261,7 +262,7 @@
 	 (let ([regd (getenv "REGIMENTD")])
 	   (unless regd
 	     (environment '(scheme base) '(except (rnrs (6)) error)))
-	   ;(display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src")) (newline)
+	   (display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src/" (syntax->datum #'fn))) (newline)
 	   #`(plt:include (file #,(datum->syntax #'_ (string-append regd "/src/" (syntax->datum #'fn)))))
 	   )]
 	)))
@@ -341,8 +342,11 @@
 	  x))
     (case-lambda 
       [(exp)     
-      (printf "reg:top-level-eval TRYING TO SET REPL ENV: ~s ~s\n" exp repl-env)   
-      (printf "This is a PLT bug, the following will crash:   (environment (list 'rnrs)) \n")
+      (printf "reg:top-level-eval TRYING TO SET REPL ENV: ~s ~s\n" exp repl-env)
+      (printf "This may be a PLT bug, the following will crash:   \n")
+
+      (printf "  default env: ~a\n" (default-repl-env))
+
              (printf "Environment ~s\n" (environment (list 'rnrs)))
              (printf "Environment ~s\n" (environment '(rnrs)))
        (unless repl-env

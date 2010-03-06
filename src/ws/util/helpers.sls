@@ -260,6 +260,7 @@
 	       (foreachi-loop (add1 i) (cdr ls))))))
 
 (include "ws/testing/unit_tester.ss") 
+;(plt:include "../testing/unit_tester.ss")
 ;(define default-unit-tester 3) (define tester-eq? 9) (define test-units 3)
 
 
