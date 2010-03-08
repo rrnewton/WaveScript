@@ -140,39 +140,21 @@
        (printf "  Env ~s\n" env)
        env))
 
-;  (define repl read-eval-print-loop)
+   ;; Having problems with using the native PLT repl:
+;  (define repl plt:read-eval-print-loop)
    (define (repl)
-     (define (wrapper x) 
-       (define sexp (syntax->datum x))
-       (printf "Fake eval function: ~s ~s ~s ~s\n" x sexp (symbol? (car sexp)) (procedure? (car sexp)))
-       ;; This is pretty weird indeed, sexp will be of the form (#%top-interaction . expr)
-       (unless (and (pair? sexp)
-		(symbol? (car sexp))
-		;(eq? (car sexp) plt:top-interaction)
-		;(eq? (car sexp) #%top-interaction)
-		)
-	 (error 'repl "Violated expectations of PLT reader conventions."))
-       (printf "Calling reg:topeval ~s\n" (cdr sexp))
+     (define (cleanse-pairs x) 
+       (syntax->datum (plt:datum->syntax #f x)))     
 
-;; PLT scheme environments seem kind of broken:
-;; mcar: expects argument of type <mutable-pair>; given (#%base-require r6rs/private/prelims . #<syntax>)
-       ;(printf "Here's an eval ~s\n" (eval '3 (environment '(rnrs))))
-       ;(printf "Here's an example environment: ~s\n" (environment '(rnrs)))
-
-       (reg:top-level-eval (cdr sexp))       
-       )
-     (parameterize ((plt:current-eval wrapper))
-       (printf "SPAWNING REPL\n")
-       ;; Having so many problems with this:
-       ;(plt:read-eval-print-loop)
-       ;; Here's a simple repl
-       (let loop ()
-	 (printf "> ")(flush-output-port (current-output-port))
-	 (let ([exp (read)])
-	   (unless (eof-object? exp)
-	     (reg:top-level-eval exp)
-	     (loop))))
-       ))
+     ;; Here's a simple repl
+     (let loop ()
+       (printf "> ")(flush-output-port (current-output-port))
+       (let ([exp (read)])
+	 (unless (eof-object? exp)
+	   (let ((val (reg:top-level-eval (cleanse-pairs exp))))
+	     (unless (eq? val (void)) (write val))
+	     (newline))
+	   (loop)))))
     
   (define make-list
     (case-lambda 
@@ -259,13 +241,11 @@
     (lambda (x)
       (syntax-case x ()
         [(_ fn)
-	 (let ([regd (getenv "REGIMENTD")])
-	   (unless regd
-	     (environment '(scheme base) '(except (rnrs (6)) error)))
-	   (display "INCLUDE RESOLVED TO: ") (display  (string-append regd "/src/" (syntax->datum #'fn))) (newline)
-	   #`(plt:include (file #,(datum->syntax #'_ (string-append regd "/src/" (syntax->datum #'fn)))))
-	   )]
-	)))
+	 (let* ([regd (getenv "REGIMENTD")]
+		[path (string-append regd "/src/" (syntax->datum #'fn))])
+	   #`(plt:include (file #,(datum->syntax #'_ path)))
+	   ;#`(plt:include-at/relative-to fn fn (file #,(datum->syntax #'_ path)))
+	  )])))
 
   ;; This necessitates building in-place:
 
@@ -279,122 +259,7 @@
 
   (plt:include "inspector.ss") (define inspect generic-inspect)
 
-;;  (plt:include "top-level-values.ss")
-
-;; TEST TEMPTOGGLE FIXME -- seeing if including makes any difference:
-;; FIXME FIXME -- DUPLICATING THIS CODE HERE FOR TESTING:
-(begin  
-;; This defines a system of top-level "global" variables for R6RS
-;; implementations which don't allow direct access to the top-level
-;; environment.  
-
-;; Be careful about relying on this default.  Generally scheme
-;; implementations need a little extra somethig added to this.
-#;
-(define default-top-level-eval-env
-    (environment 
-     '(except (rnrs (6)) error) '(rnrs r5rs (6)) 
-     '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6)) 
-     '(main_r6rs) '(main)))
-
-(define top-table (make-eq-hashtable 200))
-
-(define (define-top-level-value var val) (hashtable-set! top-table var val))
-(define (set-top-level-value! var val)   (hashtable-set! top-table var val))
-
-(define special-value (lambda (x) x))
-(define (top-level-bound? var) (hashtable-ref top-table var #f))
-(define (top-level-value var)  
-  (let ([result (hashtable-ref top-table var special-value)])
-    (if (eq? result special-value)
-	(error 'top-level-value "unbound: ~a" var)
-	result)))
-
-
-;; FIXME FIXME -- DUPLICATING THIS CODE HERE FOR TESTING:
-;; (Inefficient) This evaluates something inside the virtual top-level namespace. 
-(define reg:top-level-eval  
-  ;; [2009.11.17] IKARUS BUG: Runnig (box #f) at initialization time for the module crashes ikarus.
-;  (let ([repl-env (box #f)])
-  (let ([repl-env #f])
-
-    (define default-imports
-      '((except (rnrs (6)) error) ; (rnrs r5rs (6))
-	(rnrs mutable-pairs (6)) (rnrs mutable-strings (6))
-	(main_r6rs) (main) (ws shortcuts)))
-    
-    ;; Here's a little hack that transforms (define v e) expressions into
-    ;; explicit top-level-value calls.
-    ;; WARNING: This won't allow recursive bindings.
-    ;; TODO: I could manage that with let-n-set.
-    (define (eval-preprocess x)
-      ;; UNLESS we do a little hack.+
-      ;; We manage a virtual top-level environment ourselves:
-      (if (pair? x)
-	  (cond 
-	   [(eq? (car x) 'define)
-	    (if (pair? (cadr x))
-		`(define-top-level-value ',(caadr x) (lambda ,(cdadr x) ,@(cddr x)))
-		`(define-top-level-value ',(cadr x) ,(caddr x)))]
-	   ;; Go inside begins:
-	   ;[(eq? (car x) 'begin)    ]
-	   [else x])
-	  x))
-    (case-lambda 
-      [(exp)     
-      (printf "reg:top-level-eval TRYING TO SET REPL ENV: ~s ~s\n" exp repl-env)
-      (printf "This may be a PLT bug, the following will crash:   \n")
-
-      (printf "  default env: ~a\n" (default-repl-env))
-
-             (printf "Environment ~s\n" (environment (list 'rnrs)))
-             (printf "Environment ~s\n" (environment '(rnrs)))
-       (unless repl-env
-;	 (set! repl-env (apply environment (append default-imports implementation-specific-imports)))
-	 (set! repl-env (default-repl-env))
-#;
-	 (set! repl-env 
-	    (environment '(except (rnrs (6)) error) ; (rnrs r5rs (6))
-		  '(rnrs mutable-pairs (6)) '(rnrs mutable-strings (6))
-		  '(main_r6rs) '(main) '(ws shortcuts)
-		  '(prefix (scheme) plt:)
-		  ))
-	 (printf "SET THE REPL ENV ~s\n" repl-env)
-	 )
-       (reg:top-level-eval exp repl-env)]
-
-      [(exp env)      
-       ;; FIXME FIXME : Redefine the existing bindings as
-       ;; identifier-syntax that references the *current* value of
-       ;; each binding.  However, even then there will be problems if
-       ;; the code tries to define a new top-level value, and then
-       ;; access it as a normal variable binding.
-       (if (and (pair? exp) (eq? (car exp) 'begin))
-	   ;; Go inside begins:
-	   (for-each (lambda (e) (reg:top-level-eval e env))
-	     (cdr exp))
-	   (call-with-values (lambda () (hashtable-entries top-table))
-	     (lambda (keys vals)
-	       (define bound (vector-length keys))
-	       (define bindsacc '())
-	       (let loop ([i 0])
-		 (if (fx=? i bound) (void)
-		     (begin 
-		       ;;(set! bindsacc (cons (list (vector-ref keys i) (vector-ref vals i)) bindsacc))
-		       (set! bindsacc `((,(vector-ref keys i) ',(vector-ref vals i)) . ,bindsacc))
-		       (loop (fx+ 1 i)))))
-	       ;(printf "Extending with bindings: ~s\n" bindsacc)
-	       ;(printf "Expr: \n")
-	       ;(pretty-print (eval-preprocess exp))
-	       (eval `(let ,bindsacc ,(eval-preprocess exp)) env)
-	       #;
-	       (for-each (lambda (e)
-			   (eval `(let ,bindsacc ,e) env))
-		 (eval-preprocess exp)))))
-       ])))
-)
-
-
+  (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")
 
   (define (display-condition cond . prt)

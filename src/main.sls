@@ -2012,7 +2012,7 @@
 
 	   (cond
 	    [(null? filenames) 
-	     (eprintf "Exposing Regiment through interactive read-eval-print loop:\n")
+	     (eprintf "Exposing WaveScript compiler internals through interactive read-eval-print loop (~s):\n" which-scheme)
 	     (repl)]
 	    ;; To run a script through "regiment"
 	    ;; --script must be the first argument after "regiment i"

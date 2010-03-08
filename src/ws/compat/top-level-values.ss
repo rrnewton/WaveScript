@@ -53,7 +53,7 @@
 		`(define-top-level-value ',(caadr x) (lambda ,(cdadr x) ,@(cddr x)))
 		`(define-top-level-value ',(cadr x) ,(caddr x)))]
 	   ;; Go inside begins:
-	   ;[(eq? (car x) 'begin)    ]
+	   [(eq? (car x) 'begin) (cons 'begin (map eval-preprocess (cdr x)))]
 	   [else x])
 	  x))
     (case-lambda 
@@ -71,28 +71,17 @@
        ;; each binding.  However, even then there will be problems if
        ;; the code tries to define a new top-level value, and then
        ;; access it as a normal variable binding.
-       (if (and (pair? exp) (eq? (car exp) 'begin))
-	   ;; Go inside begins:
-	   (for-each (lambda (e) (reg:top-level-eval e env))
-	     (cdr exp))
-	   (call-with-values (lambda () (hashtable-entries top-table))
-	     (lambda (keys vals)
-	       (define bound (vector-length keys))
-	       (define bindsacc '())
-	       (let loop ([i 0])
-		 (if (fx=? i bound) (void)
-		     (begin 
-		       ;;(set! bindsacc (cons (list (vector-ref keys i) (vector-ref vals i)) bindsacc))
-		       (set! bindsacc `((,(vector-ref keys i) ',(vector-ref vals i)) . ,bindsacc))
-		       (loop (fx+ 1 i)))))
-	       ;(printf "Extending with bindings: ~s\n" bindsacc)
-	       ;(printf "Expr: \n")
-	       ;(pretty-print (eval-preprocess exp))
-	       (eval `(let ,bindsacc ,(eval-preprocess exp)) env)
-	       #;
-	       (for-each (lambda (e)
-			   (eval `(let ,bindsacc ,e) env))
-		 (eval-preprocess exp)))))
+       (call-with-values (lambda () (hashtable-entries top-table))
+	 (lambda (keys vals)
+	   (define bound (vector-length keys))
+	   (define bindsacc '())
+	   (let loop ([i 0])
+	     (if (fx=? i bound) (void)
+		 (begin 
+		   ;;(set! bindsacc (cons (list (vector-ref keys i) (vector-ref vals i)) bindsacc))
+		   (set! bindsacc `((,(vector-ref keys i) ',(vector-ref vals i)) . ,bindsacc))
+		   (loop (fx+ 1 i)))))
+	   (eval `(let ,bindsacc ,(eval-preprocess exp)) env)))
        ])))
 
 
