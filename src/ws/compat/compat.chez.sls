@@ -23,7 +23,7 @@
 	  
  	  system make-list  repl ; native-repl
 	  with-output-to-string
-	  which-scheme IFCHEZ	  
+	  which-scheme IFCHEZ  IFPLT
 
 	  current-directory with-output-to-port time
 	  include random seed-random trace-define trace-lambda syntax-error fprintf
@@ -102,6 +102,7 @@
   ;; Humorously, IFCHEZ is currently FALSE for the purpose of getting R6RS to work.
   ;(define-syntax IFCHEZ (syntax-rules ()  [(_ a b) a]))
   (define-syntax IFCHEZ (syntax-rules ()  [(_ a b) b]))
+  (define-syntax IFPLT  (syntax-rules ()  [(_ a b) b]))
 
   (define native-inspect chez:inspect)
 

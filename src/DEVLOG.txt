@@ -2447,3 +2447,45 @@ with 4.1?  It must have been, because I wasn't able to load in 4.2.4.
 Ugh... right now I'm not able to load AT ALL using mzscheme.. I'm
 having extreme problems with reproducability.
 
+[2010.03.08] {Quick tip for getting a back-trace from PLT scheme}
+
+[2010.03.08] {Haven't got the include business working in PLT}
+
+I can use an IFPLT macro to hack around my inability to get a working,
+overridden version of include.  But that seems to work in some files,
+but not in others.  In particular in bos_oop it doesn't work.  Even if
+I hack around that by hardcoding the PLT version (no IFPLT), it then
+compiles in 4.1 but I get the following error in 4.2.4:
+
+....
+ [Compiling /Users/newton/wavescript/src/ws/util/hashtab.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/iu-match.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/reg_macros.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/helpers.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/streams.sls]
+ [Compiling /Users/newton/wavescript/src/ws/compiler_components/prim_defs.sls]
+ [Compiling /Users/newton/wavescript/src/ws/compiler_components/regiment_helpers.sls]
+mcar: expects argument of type <mutable-pair>; given #<syntax (meta10 x9)>
+
+ === context ===
+/Applications/PLT Scheme/collects/scheme/mpair.ss:122:2: mappend
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+try-next
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+/Users/newton/wavescript/src/ws/util/iu-match.sls:451:2
+/Applications/PLT Scheme/collects/rnrs/base-6.ss:569:6
+/Applications/PLT Scheme/collects/compiler/cm.ss:174:0: compile-zo*
+/Applications/PLT Scheme/collects/compiler/cm.ss:266:0: compile-zo
+/Applications/PLT Scheme/collects/compiler/cm.ss:306:2: do-check
+/Applications/PLT Scheme/collects/compiler/cm.ss:371:4: compilation-manager-load-handler
+standard-module-name-resolver
+/Applications/PLT Scheme/collects/compiler/cm.ss:174:0: compile-zo*
+/Applications/PLT Scheme/collects/compiler/cm.ss:266:0: compile-zo
+/Applications/PLT Scheme/collects/compiler/cm.ss:306:2: do-check
+/Applications/PLT Scheme/collects/compiler/cm.ss:371:4: compilation-manager-load-handler
+...
+
+make: *** [pltbc] Error 1
+
+

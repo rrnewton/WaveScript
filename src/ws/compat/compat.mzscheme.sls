@@ -28,7 +28,8 @@
 
 	  (rename (sys:system system))
 
-	  (rename (plt:include include)) ; include
+	  ;(rename (plt:include include))
+	   include
 
 ; 	  make-rectangular
           default-repl-env ;; TEMPTOGGLE -- exposing temporarily
@@ -55,12 +56,12 @@
 	  
 	  ;(only (lazy promise) promise? delay force)
 	  (only (scheme promise) promise? delay force)
-	  
-	  (prefix (scheme base) plt:)
+
+	  (for (prefix (scheme base) plt:) expand run)
 	  (prefix (only (scheme include) include)
-		  
 		  plt:)
-	  (only (scheme mpair) list->mlist)
+	  (for (only (scheme mpair) list->mlist mlist->list) expand run)
+
 	  (scheme pretty )
 	  ;(scheme process)
 	  (prefix (scheme system) sys:)
@@ -245,18 +246,34 @@
   ;; Therefore we need to override the PLT default include.
   ;; Can't use this from this file or we'd run into a circular dependency.
 
-;; [2010.03.07] SWITCHING BACK TO PLT BUILTIN INCLUDE:
-#;
+;; TEMPTOGGLE [2010.03.07] SWITCHING BACK TO PLT BUILTIN INCLUDE:
   (define-syntax include
     (lambda (x)
       (syntax-case x ()
-        [(_ fn)
+        [(form fn)
 	 (let* ([regd (getenv "REGIMENTD")]
 		[path (string-append regd "/src/" (syntax->datum #'fn))])
+
+	   (printf "RESOLVED INCLUDE PATH ~s\n" path)
+
 	   ;#`(plt:include (file #,(datum->syntax #'_ path)))
 	   #`(plt:include-at/relative-to fn fn (file #,(datum->syntax #'_ path)))
-	  )])))
 
+	   ;(datum->syntax (car (syntax->list #'x)) (list #'plt:include `(file ,path)))
+	   ;(datum->syntax #'form (list #'plt:include `(file ,path)))
+
+	   ;(datum->syntax #'_ `(,#'plt:include (file ,path)))  ;; Matthew's suggestion
+
+	   
+	   ;; Invalid <datum> : 
+	   ;(datum->syntax #'form (plt:list #'plt:include (plt:list #'file path)))
+
+	   ;; Not a 'file' or 'lib' form:
+	   ;(datum->syntax #'form (syntax->datum #`(plt:include (file #,(datum->syntax #'form path)))))
+
+	   ;; silent fail -- no binding:
+	   ;#`(plt:include-at/relative-to #,x #,x (file #,(datum->syntax #'_ path))) 
+	  )])))
 
   ;; This necessitates building in-place:
 

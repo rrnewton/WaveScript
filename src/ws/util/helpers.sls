@@ -263,6 +263,8 @@
 ;; definitions (it seems to think there are non-definition expressions
 ;; in there):
 
+(include "ws/testing/unit_tester.ss")
+#;
 (IFPLT (include "../testing/unit_tester.ss")
        (include "ws/testing/unit_tester.ss"))
 

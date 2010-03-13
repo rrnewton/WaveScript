@@ -27,14 +27,24 @@
             )
   (import (except (rnrs (6)) error) (rnrs mutable-pairs) 
 	  (ws common))
-#;
-  (chezprovide (define-class i-make-class )
-	       (define-object i-make-class )
-	       (define-generic i-make-class )
-	       (make-class i-make-class )
-	       (__spec specialise!)
-	       (__specreplace specialise!)
-	       )
+
+; 	 (include "../../depends/bos/bos.scm")
+; 	 (include "../../depends/bos/macros.scm")
+; ;; This works:	  
+; 	 (include "../../depends/bos/utilities.scm")
+
+; ;; This will get an eror based on th file not existing, as expected:
+; ;(include "../../depends/bos/utilities.scm_FOOBAR")
+
+; ;; This won't work:
+; #; (IFPLT (include "../../depends/bos/utilities.scm")
+; 	 (include     "./depends/bos/utilities.scm"))
+
+; ;; This won't work, and in fact doesn't get an error if the name is wrong:
+; #;
+;   (IFPLT (include "../../depends/bos/utilities.scm_FOOBAR")
+; 	 (include     "./depends/bos/utilities.scm_BAZ"))
+
 
 
   (IFPLT (include "../../depends/bos/utilities.scm")
@@ -43,6 +53,7 @@
 	 (include     "./depends/bos/bos.scm"))
   (IFPLT (include "../../depends/bos/macros.scm")
          (include     "./depends/bos/macros.scm"))
+
 
   (define-syntax defspecialized
     (lambda (x)

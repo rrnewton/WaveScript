@@ -51,9 +51,8 @@
   (define (simple-eval xp) (eval xp (environment '(rnrs (6)))))
 
 
- (define-syntax IFCHEZ
-    (syntax-rules ()
-      [(_ a b) b]))
+ (define-syntax IFCHEZ (syntax-rules ()  [(_ a b) b]))
+ (define-syntax IFPLT  (syntax-rules ()  [(_ a b) b]))
 
   ;; The default uncaught exception handler prints ugly messages.
   (define (error who msg . args)

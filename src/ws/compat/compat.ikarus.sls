@@ -19,7 +19,7 @@
 	  promise? 
 	  
 	  system repl make-list with-output-to-string
-	  which-scheme IFCHEZ	  
+	  which-scheme IFCHEZ IFPLT
 
 	  seed-random
 	  
