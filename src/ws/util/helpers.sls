@@ -124,13 +124,13 @@
    )
 
 
-;; ================================================================================
-;; I'm sticking some basic compatibility functions here which MIGHT be
-;; moved into compat.sls in the future so as to take advantage of
-;; implementation-native versions.  For the time being keeping them
-;; here removes the complexity of duplicating them in the different
-;; compat.*.sls files.
-;; ================================================================================
+;; ================================================================================ ;;
+;;   I'm sticking some basic compatibility functions here which MIGHT be            ;;
+;;   moved into compat.sls in the future so as to take advantage of                 ;;
+;;   implementation-native versions.  For the time being keeping them               ;;
+;;   here removes the complexity of duplicating them in the different               ;;
+;;   compat.*.sls files.                                                            ;;
+;; ================================================================================ ;;
 
   ;; This is used to distinguish if something is complex but NOT real:
   ;; It's in contradiction with the current semantics of "cflonum?" under chez:
@@ -259,7 +259,13 @@
 	(begin (f i (car ls))
 	       (foreachi-loop (add1 i) (cdr ls))))))
 
-(include "ws/testing/unit_tester.ss") 
+;; [2010.03.07] Under PLT having problems if this precedes other
+;; definitions (it seems to think there are non-definition expressions
+;; in there):
+
+(IFPLT (include "../testing/unit_tester.ss")
+       (include "ws/testing/unit_tester.ss"))
+
 ;(plt:include "../testing/unit_tester.ss")
 ;(define default-unit-tester 3) (define tester-eq? 9) (define test-units 3)
 
@@ -2283,10 +2289,6 @@
 		 (loop (read-char in))))))))
  
 
-#;
-(define (crit-printf . args)
-  (critical-section (apply printf args)))
-
 ;; [2006.02.20] Copying here from my other utility files.
 ;; This is a very useful little utility that allows you to search
 ;; through all the currently bound top-level symbols.
@@ -2366,7 +2368,6 @@
  (define (force-open-output-file file)
    (open-file-output-port file  (file-options no-fail) (buffer-mode block) (native-transcoder))
   ))
-
 
 
 ) ;; End library

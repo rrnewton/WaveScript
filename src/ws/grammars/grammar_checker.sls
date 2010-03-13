@@ -472,10 +472,13 @@
 
 
 ;; This contains actual grammar definitions (used in unit tests below).
-(include "ws/grammars/grammars.ss")
+(IFPLT (include "grammars.ss")
+       (include "ws/grammars/grammars.ss"))
 
-; =======================================================================
-;;; Unit tests.
+
+; ====================================================================================================
+;   Unit tests.
+; ====================================================================================================
 
 (define-testing test-grammar 
   (default-unit-tester

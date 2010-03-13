@@ -36,9 +36,13 @@
 	       (__specreplace specialise!)
 	       )
 
-(include "./depends/bos/utilities.scm")
-(include "./depends/bos/bos.scm")
-(include "./depends/bos/macros.scm")
+
+  (IFPLT (include "../../depends/bos/utilities.scm")
+	 (include     "./depends/bos/utilities.scm"))
+  (IFPLT (include "../../depends/bos/bos.scm")
+	 (include     "./depends/bos/bos.scm"))
+  (IFPLT (include "../../depends/bos/macros.scm")
+         (include     "./depends/bos/macros.scm"))
 
   (define-syntax defspecialized
     (lambda (x)

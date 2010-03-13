@@ -2,7 +2,7 @@
 
 (library (ws compat compat)
   (export 
-          plt:include include getenv syntax->list 
+          plt:include getenv syntax->list 
  	  random seed-random make-list
  	  merge merge! sort! append! reverse! call/ec inspect native-inspect debug define-values
  	  fluid-let parameterize reg:define-struct reg:struct?
@@ -23,10 +23,13 @@
 	  box unbox set-box! box? 
 	  promise? delay force
 
-	  which-scheme IFCHEZ
+	  which-scheme IFCHEZ IFPLT
 	  trace-define trace-lambda
 
 	  (rename (sys:system system))
+
+	  (rename (plt:include include)) ; include
+
 ; 	  make-rectangular
           default-repl-env ;; TEMPTOGGLE -- exposing temporarily
 	  )
@@ -72,6 +75,10 @@
 	  )
 
   (define which-scheme 'mzscheme)
+
+ (define-syntax IFPLT
+    (syntax-rules ()
+      [(_ a b) a]))
 
 #;
   (define-syntax trace-lambda
@@ -237,15 +244,19 @@
   ;; includes are relative to $REGIMENTD/src
   ;; Therefore we need to override the PLT default include.
   ;; Can't use this from this file or we'd run into a circular dependency.
+
+;; [2010.03.07] SWITCHING BACK TO PLT BUILTIN INCLUDE:
+#;
   (define-syntax include
     (lambda (x)
       (syntax-case x ()
         [(_ fn)
 	 (let* ([regd (getenv "REGIMENTD")]
 		[path (string-append regd "/src/" (syntax->datum #'fn))])
-	   #`(plt:include (file #,(datum->syntax #'_ path)))
-	   ;#`(plt:include-at/relative-to fn fn (file #,(datum->syntax #'_ path)))
+	   ;#`(plt:include (file #,(datum->syntax #'_ path)))
+	   #`(plt:include-at/relative-to fn fn (file #,(datum->syntax #'_ path)))
 	  )])))
+
 
   ;; This necessitates building in-place:
 

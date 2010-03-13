@@ -1,3 +1,4 @@
+
 ;;;; Tree Grammars for Regiment and TML
 
 ;;;; Currently 'include'd into grammar_checker.ss
@@ -7,7 +8,7 @@
 ;;;; careful.  The grammars for subsequent passes depend on
 ;;;; programmatically modifying these basic grammars.
 
-; =======================================================================
+; ====================================================================================================
 ;;; Regiment Grammars.
 
 ;; This is the type grammar supported by the Regiment source language.
@@ -405,4 +406,5 @@
 ;     [(symbol) (symbol? e)]
 ;     [(
   
+
 

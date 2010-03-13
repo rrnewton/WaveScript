@@ -1,3 +1,4 @@
+
 ;; Note: becuase of recursive dependencies, this file is included into
 ;; helpers.ss rather than being its own module.
 
@@ -331,3 +332,8 @@
 	       (top-level-value 'REGIMENT-BATCH-MODE))
 	  (exit 1)
 	  #f)))
+
+
+;;====================================================================================================;;
+;;   END UNIT TESTER                                                                                  ;;
+;;====================================================================================================;;
