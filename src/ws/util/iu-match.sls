@@ -281,7 +281,7 @@
   (lambda (x)
     (syntax-case x ()
       ((_ ((Cvar Cdepth MyCata Cformal ...) ...) B)
-       (with-syntax (((CF ...) (apply append #'((Cformal ...) ...))))
+       (with-syntax (((CF ...) (apply append #'((Cformal ...) ...)))) ;(map syntax->list )
          #'(let-syntax
                ((CF
                   (lambda (x)
@@ -452,6 +452,11 @@
     (define ellipsis?
       (lambda (x)
         (and (identifier? x) (free-identifier=? x #'(... ...)))))
+
+	(define (synappend l1 l2)
+	  ;(printf "Synappend ~s ~s\n" l1 l2)
+	  (append l1 l2))
+
     (define-syntax with-values
       (syntax-rules ()
         ((_ P C) (call-with-values (lambda () P) C))))
@@ -561,8 +566,8 @@
                                              (error 'unquote
                                                "Mismatched lists ~a"
                                                Orig))))
-                                 (append #'(ExpVar ...) #'RestVars)
-                                 (append #'(ExpExp ...) #'RestExps)))))))))
+                                 (synappend #'(ExpVar ...) (syntax->list #'RestVars))
+                                 (synappend #'(ExpExp ...) (syntax->list #'RestExps))))))))))
           ;; Vectors
           (#(X ...)
            (with-values (destruct Orig #'(X ...) depth)
@@ -581,8 +586,8 @@
                                          #''Tl
                                          #'TlBuilder)))
                      (values #'(cons Hd Tl)
-                             (append #'HdVars #'TlVars)
-                             (append #'HdExps #'TlExps))))))))
+                             (synappend (syntax->list #'HdVars) (syntax->list #'TlVars))
+                             (synappend (syntax->list #'HdExps) (syntax->list #'TlExps)))))))))
           (OtherThing
             (values #''OtherThing '() '())))))
     ;; macro begins
