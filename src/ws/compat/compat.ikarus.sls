@@ -213,4 +213,6 @@
     (printf " CONDITION ~s\n" cond)
     )
 
+  (define-syntax IFPLT  (syntax-rules ()  [(_ a b) b]))
+
 )

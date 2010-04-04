@@ -2,7 +2,8 @@
 
 (library (ws compat compat)
   (export 
-          plt:include getenv syntax->list 
+          plt:include plt:include-at/relative-to 
+	  getenv syntax->list 
  	  random seed-random make-list
  	  merge merge! sort! append! reverse! call/ec inspect native-inspect debug define-values
  	  fluid-let parameterize reg:define-struct reg:struct?
@@ -28,8 +29,8 @@
 
 	  (rename (sys:system system))
 
-	  ;(rename (plt:include include))
-	   include
+	  (rename (plt:include include))
+	  ; include
 
 ; 	  make-rectangular
           default-repl-env ;; TEMPTOGGLE -- exposing temporarily
@@ -58,7 +59,7 @@
 	  (only (scheme promise) promise? delay force)
 
 	  (for (prefix (scheme base) plt:) expand run)
-	  (prefix (only (scheme include) include)
+	  (prefix (only (scheme include) include include-at/relative-to)
 		  plt:)
 	  (for (only (scheme mpair) list->mlist mlist->list) expand run)
 
@@ -157,12 +158,30 @@
      ;; Here's a simple repl
      (let loop ()
        (printf "> ")(flush-output-port (current-output-port))
-       (let ([exp (read)])
-	 (unless (eof-object? exp)
-	   (let ((val (reg:top-level-eval (cleanse-pairs exp))))
-	     (unless (eq? val (void)) (write val))
-	     (newline))
-	   (loop)))))
+       
+       (with-exception-handler
+	(lambda (exn)
+	  (call/cc 
+	   (lambda (k)	 
+	     (nice-print-exception exn k)
+	     (loop))))
+	(lambda ()
+	 (let ([exp (read)])
+	   (unless (eof-object? exp)
+	     (let ((val (reg:top-level-eval (cleanse-pairs exp))))
+	       (unless (eq? val (void)) (write val))
+	       (newline))
+	     (loop)))))))
+
+   ;; TEMP: duplicated code from compat.chez.sls
+  (define (nice-print-exception x k)
+    (if (who-condition? x)
+	(printf "\n *** ERROR in ~a *** \n" (condition-who x))
+	(printf "\n *** ERROR *** \n"))
+    (display-condition x) (newline)
+    ;(printf "\nBacktrace: \n")
+    ;(continuation->sourcelocs k)
+    )
     
   (define make-list
     (case-lambda 
@@ -247,6 +266,7 @@
   ;; Can't use this from this file or we'd run into a circular dependency.
 
 ;; TEMPTOGGLE [2010.03.07] SWITCHING BACK TO PLT BUILTIN INCLUDE:
+#;
   (define-syntax include
     (lambda (x)
       (syntax-case x ()
@@ -290,7 +310,37 @@
   (plt:include "top-level-values.ss")
   (plt:include "tracer.ss")
 
-  (define (display-condition cond . prt)
-    (error 'display-condition "TODO implement me in mzscheme"))
+;  (define (display-condition x . prt)
+  (define (display-condition x)
+    ;(define port (if (null? prt) (current-output-port) (car prt)))
+#;
+    (if (and (irritants-condition? x)
+	     (message-condition? x)
+	     (error? x))
+	;(apply fprintf port (condition-message x) (condition-irritants x))
+	;(display x port)
+	(if (null? prt) 
+	    (apply printf (condition-message x) (condition-irritants x))
+	    (apply fprintf (car prt) (condition-message x) (condition-irritants x)))
+	(if (null? prt)	    
+	    (display x)
+	    (display x prt)))
 
+
+#|
+    (if (and (irritants-condition? x)
+	     (message-condition? x)
+	     (error? x))
+	(apply printf (condition-message x) (condition-irritants x))
+	(if (message-condition? x)
+	    (display (condition-message x))
+	    (display x))
+	)
+    (printf "\nBacktrace:\n")
+    (pretty-print (plt:continuation-mark-set->context (plt:exn-continuation-marks x)))
+    (newline)
+|#
+
+    ((plt:error-display-handler) (if (message-condition? x) (condition-message x) "") x)
+)
 )

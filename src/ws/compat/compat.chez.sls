@@ -269,6 +269,7 @@
     (printf "\nBacktrace: \n")
     (continuation->sourcelocs k))
 
+  ;; [2010.04.02] Shouldn't this check the batch-mode business before exiting?
   (base-exception-handler 
    (lambda (x)
      (call/cc
