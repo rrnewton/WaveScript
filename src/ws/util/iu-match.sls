@@ -455,7 +455,7 @@
 
 	(define (synappend l1 l2)
 	  ;(printf "Synappend ~s ~s\n" l1 l2)
-	  (append l1 l2))
+	  (append (syntax->list l1) (syntax->list l2)))
 
     (define-syntax with-values
       (syntax-rules ()
@@ -566,8 +566,8 @@
                                              (error 'unquote
                                                "Mismatched lists ~a"
                                                Orig))))
-                                 (synappend #'(ExpVar ...) (syntax->list #'RestVars))
-                                 (synappend #'(ExpExp ...) (syntax->list #'RestExps))))))))))
+                                 (synappend #'(ExpVar ...) #'RestVars)
+                                 (synappend #'(ExpExp ...) #'RestExps)))))))))
           ;; Vectors
           (#(X ...)
            (with-values (destruct Orig #'(X ...) depth)
@@ -586,8 +586,8 @@
                                          #''Tl
                                          #'TlBuilder)))
                      (values #'(cons Hd Tl)
-                             (synappend (syntax->list #'HdVars) (syntax->list #'TlVars))
-                             (synappend (syntax->list #'HdExps) (syntax->list #'TlExps)))))))))
+                             (synappend #'HdVars #'TlVars)
+                             (synappend #'HdExps #'TlExps))))))))
           (OtherThing
             (values #''OtherThing '() '())))))
     ;; macro begins
