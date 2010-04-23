@@ -1,5 +1,11 @@
 ;; Now doing a hack to get rid of thunk allocation.
 
+;; ================================================================================
+;;  Implementation of 'par' facility.
+;;  Important entrypoints:
+;;   (par e1 e2) compute expressions in parallel and return in a list.
+;; ================================================================================
+
 (eval-when (compile eval load) 
   (optimize-level 3)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
@@ -46,7 +52,7 @@
   (define-record shadowframe  (mut status oper argval))
 
   ;; There's also a global list of threads:
-  (define allstacks #()) ;; This is effectively immutable.
+  (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
@@ -199,6 +205,7 @@
     (syntax-rules ()
       [(_ a b) (pcall list ((lambda (_) a) #f) b)]))
 
+  ;; Returns multiple values instead.
   (define-syntax parmv
     (syntax-rules ()
       [(_ a b) (pcall values ((lambda (_) a) #f) b)]))

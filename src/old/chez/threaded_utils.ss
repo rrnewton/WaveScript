@@ -5,7 +5,7 @@
 
 ;; TODO: Par should really return multiple values... not a list.
 
-(chez:module threaded_utils
+(module threaded_utils
     (stream-parmap 
      make-bq enqueue! dequeue!   bq-i bq-vec bq-mutex bq-ready bq-room
 
@@ -37,7 +37,12 @@
      this-stack
      )
   
-  (import chez_constants)
+  ;(import chez_constants)
+
+(define-syntax ASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax-nicely #'expr))))])))
 
 
 ;=============================================================================
@@ -272,7 +277,7 @@
   (reg:define-struct (frame mut thunks statuses))
   
   ;; There's also a global list of threads:
-  (define allstacks #()) ;; This is effectively immutable.
+  (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))  
@@ -466,6 +471,13 @@
 ;; ================================================================================
 ;; <-[ VERSION 4 ]->
 
+(define vector-build
+  (lambda (n f)
+    (let ([v (make-vector n)])
+      (do ([i 0 (fx+ i 1)])
+	  ((= i n) v)
+	(vector-set! v i (f i))))))
+
 ;; Tweaking Work-stealing version to use multiple values and do only 2-way par.
 #;
 (begin
@@ -497,7 +509,7 @@
 	 (define (set-shadowframe-thunkval! v x) (vector-set! v 2 x)))
 
   ;; There's also a global list of threads:
-  (define allstacks #()) ;; This is effectively immutable.
+  (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
@@ -701,7 +713,7 @@
   (define-record shadowframe  (mut status oper argval))
 
   ;; There's also a global list of threads:
-  (define allstacks #()) ;; This is effectively immutable.
+  (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
@@ -862,7 +874,7 @@
       [(_ a b) (pcall values ((lambda (_) a) #f) b)]))
 
   (define (par-map fn ls) 
-    (if (null? ls) ()
+    (if (null? ls) '()
 	(let loop ([ls ls])
 	  (if (null? (cdr ls))
 	      (list (fn (car ls)))

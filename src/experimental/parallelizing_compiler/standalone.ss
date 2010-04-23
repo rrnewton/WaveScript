@@ -1,11 +1,14 @@
 
+;; SEPARATE STANDALONE VERSION FOR TESTING -- 
+;; Note, this is duplicated code from threaded_utils.ss
+
 (eval-when (compile eval load) 
   (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
 ;; Tweaking Work-stealing version to use multiple values and do only 2-way par.
-(module ()
+(module ((parmv push! parmv-helper this-stack))
 
   (define test-depth 25) ;; Make a tree with 2^test-depth nodes.
 
@@ -34,7 +37,7 @@
   (define-record shadowframe  (mut status thunkval))
 
   ;; There's also a global list of threads:
-  (define allstacks #()) ;; This is effectively immutable.
+  (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished #f)
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
@@ -136,16 +139,16 @@
 	   ))]))
 
 
-  (init-par (string->number (or (getenv "NUMTHREADS") "2")))
+  (define (test)
+    (init-par (string->number (or (getenv "NUMTHREADS") "2")))
 
-  (printf "Run using parallel add-tree via multiple-value based parmv:\n")
-  (let ()
-    (define (tree n)
-      (if (zero? n) 1
-	  (call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
-    (par-reset!)
-    (printf "\n~s\n\n" (time (tree test-depth)))
-    (par-status))
+    (printf "Run using parallel add-tree via multiple-value based parmv:\n")
+    (let ()
+      (define (tree n)
+	(if (zero? n) 1
+	    (call-with-values (lambda () (parmv (tree (sub1 n)) (tree (sub1 n)))) +)))
+      (par-reset!)
+      (printf "\n~s\n\n" (time (tree test-depth)))
+      (par-status)))
 
 ) 
-
