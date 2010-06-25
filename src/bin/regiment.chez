@@ -10,8 +10,8 @@ source `dirname $0`/assert_regimentd
 function setupchez() {
     if   [ -e "$CHEZD" ]; 
         then SCHEME="$REGIMENTD/depends/chez"
-    elif (which chez74 > /dev/null); 
-	then SCHEME=chez74;
+    # elif (which chez74 > /dev/null); 
+    # 	then SCHEME=chez74;
     elif (which chez > /dev/null); 
 	then SCHEME=chez;
     elif (which petite > /dev/null); 
@@ -38,7 +38,7 @@ fi
 ## R6RS VERSION:
 ############################################################
 
-## FIXME: This branch assumes that thecommand "chez" is in the path.
+## FIXME: This branch assumes that the command "chez" is in the path.
 
 ## What's a good way to check if we're in R6RS mode?
 #CHEZVER=`chez --version &> /dev/stdout`
@@ -69,6 +69,7 @@ function go() {
 
 # Only in newer, R6 supporting versions of Chez:
 if (( "$N" > 75 )); then 
+  # echo "Running in R6 mode.."
   # RUN New R6RS mode:
   CURDIR=`pwd`
   if   [ "$REGOPTLVL" == "3" ];    then go "$REGIMENTD/build/$MT/regiment.opt.boot"

@@ -214,8 +214,9 @@
 	(set! threads (cons (make-worker) threads)))))
   (define (shutdown-par) (set! not-finished #f))
   (define (par-status)
-    (printf "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
-	    not-finished mut  tickets threads par-list-counter))
+    (fprintf (console-error-port)
+             "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
+	     not-finished mut  tickets threads par-list-counter))
   ;; This should maybe reset more:
   (define (par-reset!) 
     (with-mutex mut (set! par-list-counter 0)))
@@ -768,7 +769,8 @@
   (define (par-reset!) (void))
   (define (shutdown-par) (set! par-finished #t))
   (define (par-status) 
-    (printf "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
+    (fprintf (console-error-port)
+            "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
             par-finished (vector-length allstacks)
             (map shadowstack-tail (vector->list allstacks))))
 

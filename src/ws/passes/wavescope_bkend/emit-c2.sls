@@ -2079,6 +2079,11 @@ int main(int argc, char **argv)
 
     [(unionN . ,_) (error 'emitC2 "doesn't support unionN/unionList right now")]
 
+    ;; It would be nicer to be able to write this as a library
+    ;; function.  That would probably require at least type-case..  Or
+    ;; perhaps the functionality of demarshaling could be factored out
+    ;; of here without introducing inefficiency?
+
     ;; This doesn't work for sigsegs, only arrays:
     [(__readFile (name ,name) (output-type (Stream ,elt))
 		 (code (__readFile (annotations .  ,annot)

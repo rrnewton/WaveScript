@@ -1,4 +1,7 @@
 
+;; SET SECKET OPTION TO SS_REUSE_ADDR... so it can reuse something previously bound...
+
+
 
 ;: Runtime configuration manager for Reuters distributed processing project.
 
@@ -263,15 +266,16 @@
 ;; output -- "plugging" an input port into an output one.
 (define (echo-port port)
   (lambda ()
-    ;(printf "##### STARTING THREAD FOR PRINTING... \n")
+    (printf "##### STARTING THREAD FOR PRINTING... \n")
     (let loop ((x (get-string-some port)))
       (unless (eof-object? x)
-	(display x)  (flush-output-port (current-output-port))
+	(display x (current-output-port))  
+	(flush-output-port (current-output-port))
 	(when query-output-log 
 	  (display x query-output-log)
 	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
-    ;(printf "##### ENDING ECHO THREAD... \n")
+    (printf "##### ENDING ECHO THREAD... \n")
 	))
 
 (define (kill-child pid)
