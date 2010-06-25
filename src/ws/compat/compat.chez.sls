@@ -29,6 +29,7 @@
 	  include random seed-random trace-define trace-lambda syntax-error fprintf
 	  delay force gensym
 
+	  grep
 	  ;nice-print-exception
 	  
 	  (rename (chez:call/1cc call/ec))
@@ -171,7 +172,7 @@
      )
 
   (define (with-output-to-port p th)
-    (parameterize ([current-output-port p])
+    (parameterize ([chez:current-output-port p])
       (th)))
 
   (define warning-handler 
@@ -218,6 +219,40 @@
 	      )))
 	(loop (add1 depth) (ob 'link)))))
   (define k->files continuation->sourcelocs)
+
+;;<br> [2005.10.05]
+;;<br>  Evaluate expression and mask output by search string.  
+;;<br>  NOTE: Currently just does string match, not regexp.
+(define-syntax grep
+  (syntax-rules ()
+    [(_ pat exp)
+     (let ([str (open-output-string)]
+	   [searchpat pat]
+	   [leftovers ""])
+       (let* ([guarded-display (lambda (s)
+				 (when (substring? searchpat s)
+				   (display s (console-output-port))
+				   (newline (console-output-port))))]
+	      [print (lambda ()		      
+		       (let ((chunks (string-split 
+				     (string-append leftovers (get-output-string str))
+				     #\newline)))
+;			(if (> (length chunks) 1)  (printf "\nGot chunks: ~s\n" chunks))
+			(cond 
+			 [(null? chunks) (void)]
+			 [else ;(for-each guarded-display (rdc chunks))
+			       (for-each guarded-display (reverse (cdr (reverse chunks))))
+			       (set! leftovers (rac chunks))])))]
+	      [eng (chez:make-engine (lambda () 
+				  (parameterize ((chez:current-output-port str)
+						 (chez:console-output-port str))
+				    exp)))])
+	 (let loop ((eng eng))
+	   (eng 100
+		(lambda (ticks val) (print) val (guarded-display leftovers))
+		(lambda (neweng) 
+		  (print) 
+		  (loop neweng))))))]))
 
   ; ;; Set some Chez scheme parameters.
   ; (print-graph #t )

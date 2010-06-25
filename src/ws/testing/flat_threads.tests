@@ -13,6 +13,7 @@
 
     [ "Break an infinite loop."
       (let ((s (open-output-string)))
+        ;; TODO: CHANGE TO WITH-OUTPUT-TO-PORT
 	(parameterize ([current-output-port s])
 	  (run-flat-threads 
 	   (list (lambda () (let loop () (loop))))
@@ -21,6 +22,7 @@
     [ "One thread waits for another." 
      (let ((v #f)
 	    (s (open-output-string)))
+        ;; TODO: CHANGE TO WITH-OUTPUT-TO-PORT
 	(parameterize ([current-output-port s])
 	   (run-flat-threads
 	    (list (lambda ()

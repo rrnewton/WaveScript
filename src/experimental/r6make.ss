@@ -1,6 +1,6 @@
 #! /bin/bash
 #|
-exec chez --script $0 $*
+exec $REGIMENTD/depends/chez --threaded --script $0 $*
 |#
 
 ;; exec $REGIMENTD/depends/chez --script $0 $*
@@ -10,17 +10,26 @@ exec chez --script $0 $*
 ;; A simple make style utility for incremental builds with Chez.  This
 ;; not supposed to be general or correct, rather, it's a temporary fix
 ;; for this particular project.
-;;
 
 ;; Usage: r6rsmake.ss file.sls [purge]
 ;; The optional "purge" argument will destroy dirty objects rather than rebuilding.
 
 ;; Ryan Newton [2009.02.17]
 
+;; Note, this build script is now parallel:
+;(define-syntax IFPAR (syntax-rules () [(_ a b) a] [(_ a) a])) ;; ENABLE
+(define-syntax IFPAR (syntax-rules () [(_ a b) b] [(_ a) (void)])) ;; DISABLE
+
+;; FIXME: BUG [2010.06.25] In parallel mode the 'list action doesn't
+;; work.  It prints a number of lines that contain only ".so" (with no
+;; file name).
+
 (import (rnrs))
 
-(include "experimental/chez_threaded_utils.ss")
-(import threaded_utils)
+(IFPAR 
+ (begin 
+   (include "experimental/chez_threaded_utils.ss")
+   (import threaded_utils)))
 
 ;; Should we compile, or (our alternate behaviour) purge the dirty files.
 (define selected-action 'compile)
@@ -358,17 +367,6 @@ exec chez --script $0 $*
 (define (par-opportunity-profile dagls) 
   (map length (breadth-first-slices (transitive-closure dagls))))
 
-(define (parallel-compile flipped-dag)
-  ;; First, a bitmask indicating whether each file has been (or is being) compiled:
-  ;; Stores pairs of (bool . mutex)
-  (define table (make-eq-hashtable))
-  ;; Next, serially go over the DAG and populate the table:
-  ;(let loop (()))
-
-  ;; Now, simply use par to fork off the ..............
-  9999
-  )
-
 ;;====================================================================================================
 
 (define test0
@@ -642,19 +640,24 @@ exec chez --script $0 $*
 
 ;(compile-loop (list source) '() '())
 (let ;((dag (build-compile-dag source)))
-     ((dag FULLDAG))
-  (pretty-print dag) 
-  ;(pretty-print (flip-dag dag))
-  (printf "\n\n Par op prof:\n")
+     ((dag FULLDAG)
+      (DEBUG #f))
+  (when DEBUG
+     (pretty-print dag) 
+     ;(pretty-print (flip-dag dag))
+     (printf "\n\n Par op prof:\n"))
   (let ;((slices (time (breadth-first-slices (transitive-closure (list dag))))))
        ((slices FULLSLICES))
-    (pretty-print slices)
-    (pretty-print (map length slices))
 
-    (init-par 4)
-    (time 
+    (when DEBUG 
+      (pretty-print slices)
+      (pretty-print (map length slices)))
+
+    (IFPAR (init-par 4))
+    (begin ;time 
      (for-each (lambda (stage)                 
-		(par-map perform-action stage) ;(lambda (x) (printf "COMPILE ~s\n" x))
+		(IFPAR (par-map perform-action stage) 
+		       (map perform-action stage))
 		) slices))
     ;; On wasp, it takes 9.4s with 8 threads (38.8s cpu time, 2.5s collecting)
     ;;   (Most of that CPU time must be steal-spinning...)
@@ -662,14 +665,11 @@ exec chez --script $0 $*
     ;; 2 threads -- 7.8
     ;; 4 threads -- 7.2
 
-
-    (par-status)
-    
+     (when DEBUG (IFPAR (par-status)))
     )
 
   ;(pretty-print (par-opportunity-profile (list dag)))
   )
-
 
 
 (unless (eq? selected-action 'list)

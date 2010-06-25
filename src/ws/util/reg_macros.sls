@@ -221,41 +221,9 @@
 (define-syntax cheap-fluid-let
   (syntax-rules ()
     [(_ ([lhs* rhs*] ...) bod* ...)
+     ;; UNIMPLEMENTED: default through to normal fluid-let.
      (fluid-let ([lhs* rhs*] ...) bod* ...)
      ]))
-
-;;<br> [2005.10.05]
-;;<br>  Evaluate expression and mask output by search string.  
-;;<br>  NOTE: Currently just does string match, not regexp.
-(define-syntax grep
-  (syntax-rules ()
-    [(_ pat exp)
-     (let ([str (open-output-string)]
-	   [searchpat pat]
-	   [leftovers ""])
-       (let* ([guarded-display (lambda (s)
-				 (when (substring? searchpat s)
-				   (display s (console-output-port))
-				   (newline (console-output-port))))]
-	      [print (lambda ()		      
-		       (let ((chunks (string-split 
-				     (string-append leftovers (get-output-string str))
-				     #\newline)))
-;			(if (> (length chunks) 1)  (printf "\nGot chunks: ~s\n" chunks))
-			(cond 
-			 [(null? chunks) (void)]
-			 [else (for-each guarded-display (rdc chunks))
-			       (set! leftovers (rac chunks))])))]
-	      [eng (make-engine (lambda () 
-				  (parameterize ((current-output-port str)
-						 (console-output-port str))
-				    exp)))])
-	 (let loop ((eng eng))
-	   (eng 100
-		(lambda (ticks val) (print) val (guarded-display leftovers))
-		(lambda (neweng) 
-		  (print) 
-		  (loop neweng))))))]))
   
 
   ;===============================================================================

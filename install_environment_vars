@@ -5,5 +5,7 @@
 ## You want to source it into bash with "source <thisfile>" or just ". <this file>"
 
 export REGIMENTD=`pwd`
-export PATH=$REGIMENTD/bin:$PATH
-export PATH=$PATH:$REGIMENTD/depends
+# [2010.06.25] Now shadowing global binaries with depends/
+export PATH=$REGIMENTD/depends:$REGIMENTD/bin:$PATH
+#export PATH=$PATH:$REGIMENTD/depends
+

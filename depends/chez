@@ -7,6 +7,8 @@
 # --threaded argument or by setting the CHEZTHREADED environment
 # variable to be non empty.
 
+# echo "(Executing $REGIMENTD/depends/chez wrapper script)" > /dev/stderr
+
 ARGS=" $* "
 if [[ "$ARGS" =~ " --threaded " ]] || 
    [ "$CHEZTHREADED" != "" ]; 

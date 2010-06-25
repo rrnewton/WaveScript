@@ -113,7 +113,7 @@
   (define (init-par num-cpus) (void))
   (define (shutdown-par) (void))
   (define numforked 0)
-  (define (par-status) (printf "Total threads forked: ~s\n" numforked))
+  (define (par-status) (fprintf (current-error-port) "Total threads forked: ~s\n" numforked))
   (define (par-reset!) (set! numforked 0))
   (define tickets 'dummy)
 
@@ -214,7 +214,7 @@
 	(set! threads (cons (make-worker) threads)))))
   (define (shutdown-par) (set! not-finished #f))
   (define (par-status)
-    (fprintf (console-error-port)
+    (fprintf (current-error-port)
              "Par status:\n  not-finished: ~s\n  mut: ~s\n  tickets: ~s\n  threads: ~s\n  fork-attempts: ~s\n"
 	     not-finished mut  tickets threads par-list-counter))
   ;; This should maybe reset more:
@@ -755,7 +755,7 @@
   ;; ----------------------------------------
 
   (define (init-par num-cpus)
-    (printf "\n  Initializing PAR system for ~s threads.\n" num-cpus)
+    (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
     (with-mutex global-mut   
       (ASSERT (eq? threads-registered 1))
       (set! numprocessors num-cpus)
@@ -765,12 +765,13 @@
       (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
         (vector-set! allstacks i (make-worker))))
     (wait-for-everybody)
-    (printf "Everyone's awake!\n"))
+    (fprintf (current-error-port) "  [par] Everyone's awake!\n")
+    )
   (define (par-reset!) (void))
   (define (shutdown-par) (set! par-finished #t))
   (define (par-status) 
-    (fprintf (console-error-port)
-            "Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
+    (fprintf (current-error-port)
+            "  [par] Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
             par-finished (vector-length allstacks)
             (map shadowstack-tail (vector->list allstacks))))
 

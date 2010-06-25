@@ -68,6 +68,9 @@ CHEZ= ../depends/chez
 # Old, possibly pre-r6 chez:
 OLDCHEZ = chez74
 
+# [2010.06.25] TEMP, we're setting things to threaded mode by default to make it more convenient for reuters
+CHEZTHREADED=1
+
 ifneq ($(CHEZTHREADED),)
   THREADED="--threaded"
   MT=$(shell ../depends/get_machine_type --threaded)
@@ -259,7 +262,13 @@ wsparse_zo:
 
 
 # This is the R6RS chez:
-chez: chezwhole
+# [2010.06.25] Right now I need to cleanup chezwhole.  The first
+# version has threading/machinetype problems.  The second version
+# appears to build then silently fails when executing regiment.chez
+# (main screwed up).
+#chez: chezwhole2
+chez: chezincr2
+
 
 chezthreaded: 
 	CHEZTHREADED=1 $(MAKE) chezincr2
