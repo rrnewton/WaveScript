@@ -9,3 +9,6 @@ export REGIMENTD=`pwd`
 export PATH=$REGIMENTD/depends:$REGIMENTD/bin:$PATH
 #export PATH=$PATH:$REGIMENTD/depends
 
+
+# [2010.06.25] TEMP, we're setting things to threaded mode by default to make it more convenient for reuters
+export CHEZTHREADED=1

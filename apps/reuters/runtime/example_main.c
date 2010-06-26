@@ -14,13 +14,20 @@ int main(int argc, char* argv[]) {
 
   WSQ_Init();
 
+  // Simple Example:
+  //================================================================================
+
   WSQ_BeginTransaction(99);
      WSQ_BeginSubgraph(11);
-      WSQ_AddOp(1, "ReutersSource", "", "1", "foobar.schema");
+      WSQ_AddOp(1, "ReutersSource", "", "1", "5 |foobar.schema");
       WSQ_AddOp(2, "Printer", "1", "", "YAY:");
      WSQ_EndSubgraph();
   WSQ_EndTransaction();
+ 
   sleep(3);
+
+  // More complex example:
+  //================================================================================
 
   /* transaction1(); */
   /* sleep(3); */
@@ -41,8 +48,7 @@ int main(int argc, char* argv[]) {
 
   /* sleep(3); */
 
-  /* printf("\n ******* Query successfully ran for another 3 seconds, shutting down...\n"); */
-
+  printf("\n ******* Query successfully ran for 3 seconds, shutting down...\n");
   WSQ_Shutdown();
 }
 
@@ -53,14 +59,14 @@ void transaction1() {
      WSQ_BeginSubgraph(101 + offset);
 
         sprintf(buf2,"%d", 2 + offset);
-      WSQ_AddOp(2 + offset, "ReutersSource", "", buf2, "foobar.schema");
+      WSQ_AddOp(2 + offset, "ReutersSource", "", buf2, "20 |foobar.schema");
 
         sprintf(buf1,"%d", 3 + offset);
-      WSQ_AddOp(4+offset, "Filter", buf2,buf1, "SYM == \"IBM\", PRICE >= (2 + 2)");
+      WSQ_AddOp(4+offset, "Filter", buf2,buf1, "(SYM = \"IBM\") AND (PRICE >= (2 + 2))");
 
         sprintf(buf2,"%d", 4 + offset);
       WSQ_AddOp(5+offset, "Project", buf1,buf2, "SYM, TIME, PRICE");
-
+      //WSQ_AddOp(5+offset, "Project", buf1,buf2, "SYM, TIME, (PRICE + 1) AS PRICE");
 
         char msg[128];
         sprintf(msg, "STOCKSTRM(id %d): ", 6+offset);
@@ -68,11 +74,13 @@ void transaction1() {
 
       // Add a second stream and do a join:
         sprintf(buf1,"%d", 5 + offset);
-      WSQ_AddOp(7+offset, "ReutersSource", "", buf1, "foobar.schema");
+      WSQ_AddOp(7+offset, "ReutersSource", "", buf1, "10 |foobar.schema");
 
         sprintf(buf1,"%d %d", 4+offset, 5+offset); // Two inputs
         sprintf(buf2,"%d", 6 + offset);
-      WSQ_AddOp(8+offset, "WindowJoin", buf1, buf2, "30 | SYM == SYM");
+      // WSQ_AddOp(8+offset, "WindowJoin", buf1, buf2, "30 | SYM == SYM");
+
+      WSQ_AddOp(8+offset, "WindowJoin", buf1, buf2, "30 | A | B | A.SYM == B.SYM");
 
       WSQ_AddOp(9+offset, "Printer", buf2, "", "STOCKSTRM: ");
              

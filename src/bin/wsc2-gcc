@@ -67,14 +67,14 @@ if [ "$REGIMENT_QUIET" == "" ]; then
 if time $CMD;
 then echo Compiled .c output successfully.
      wc $CFILE
-else echo ERROR, gcc failed.; 
+else echo ERROR, C compiler failed.; 
      exit 1
 fi
 
 else 
 
 if ! $CMD;
-then echo ERROR, gcc failed.; 
+then echo ERROR, C compiler failed.; 
      exit 1
 fi
 

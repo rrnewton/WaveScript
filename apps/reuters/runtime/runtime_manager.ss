@@ -71,12 +71,34 @@
 
 ;;==============================================================================
 
+
+(define supported-binops 
+  '((+ g+) (* g*) (- g-) 
+    (/ g/) (^ g^)    
+    
+    (== wsequal?)
+    (=  wsequal?) 
+    (<=) (>=) (<) (>)
+    (<> ,(lambda (a b) `(not (wsequal ,a ,b))))        
+
+    (AND ws:and) (OR ws:or) (NOT not)
+    ))
+
+
+;;==============================================================================
+
+;; When we write field names "SYM" rather than "A.SYM" there's an
+;; implicit record (tuple) that we're operating on.  In the generated
+;; WS code that variable gets a name, as follows:
+(define implicit-record-name 'rec)
+
 (define (edge-sym id) (string->symbol (format "edge_~a" id)))
 
 (define (ununquote x) 
   (if (and (pair? x) (eq? (car x) 'unquote))
       (cadr x) x))
 
+;; Poor man's "Parsing" -- we're just assuming sexp compatible strings.
 ;; Super simple at first, assumes it is just a list of fields:
 (define (parse-project str) 
   `(lambda (orig)
@@ -85,14 +107,47 @@
 	'(empty-wsrecord)    
 	(map ununquote (ASSERT (string->slist str))))))
 
+(trace-define (parse-expression expr)
+  (match expr
+    [,x (guard (symbol? x)) 
+      (match (string-split (symbol->string x) #\.)
+        [(,field)      `(wsrecord-select ',x ,implicit-record-name)]
+        [(,rec ,field) `(wsrecord-select ',x ,rec)]
+	[,else          (error 'parse-expression "unsupported identifier: ~s" x)])]
+    [,x (guard (number? x)) `',x]
+    [,x (guard (string? x)) `',x]
+    [(,[x]) x] ;; Extra parens are ok.
+    [(,[a] ,binop ,[b])  (guard (symbol? binop))
+     (define entry (assq binop supported-binops))
+     (unless entry  (error 'parse-expression "unsupported binary operator"))
+      `(,(cadr entry) ,a ,b)]
+    [,else (error 'parse-expression "Invalid expression: ~a" expr)]
+  ))
+
+;; Simple operands allowed, convert to WS AST:
+(define (temp-convert-rand rec x)
+  (match x
+    [,x (guard (symbol? x)) `(wsrecord-select ',x ,rec)]
+    [,x (guard (number? x)) `',x]
+    [,x (guard (string? x)) `',x]
+    [(,[a] ,binop ,[b]) (guard (memq binop '(+ * - / ^)))
+     `(,(symbol-append 'g binop) ,a ,b)]
+    [,else (error 'temp-convert-rand "Invalid operand: ~a" x)]
+    )
+  )
+
+
 ;; This assumes for now that it's a series of binary operators.
-(define (parse-filter str . extra)
+(define (parse-filter str)
+  ;; We generate a function that either takes a record 
   (define args
-    (match extra
+    (match extra 
       [() '(rec)]
       [(,x)    extra]
       [(,x ,y) extra]))
 
+  `(lambda ,args ,(parse-expression (string->slist str)))
+#;
   `(lambda ,args
      ,(match (ASSERT (string->slist str))
     [() #t]
@@ -111,6 +166,7 @@
      (if (eq? rest #t) expr
 	 `(ws:and ,expr ,rest))]
     )))
+
 
 (define (capitalize s)
   (define str (symbol->string s))
@@ -141,16 +197,6 @@
 	`(Row ,(ununquote name) ,(Type (ununquote type)) ,rest)]
        )))
 
-(define (temp-convert-rand rec x)
-  (match x
-    [,x (guard (symbol? x)) `(wsrecord-select ',x ,rec)]
-    [,x (guard (number? x)) `',x]
-    [,x (guard (string? x)) `',x]
-    [(,[a] ,binop ,[b]) (guard (memq binop '(+ * - / ^)))
-     `(,(symbol-append 'g binop) ,a ,b)]
-    [,else (error 'temp-convert-rand "Invalid operand: ~a" x)]
-    )
-  )
 
 (define mergemagic (gensym "Merge"))
 
@@ -167,6 +213,10 @@
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
     (set-box! curtransaction id)
     ))
+
+;; Execute through the "ws" scheme-hosted environment.
+(define scheme-hosted #f)
+
 
 (define-entrypoint WSQ_EndTransaction () void
   (lambda ()    
@@ -210,8 +260,9 @@
 	  )
 
       (printf " <WSQ>   Compiling generated WS program.\n")
-      (if #f
-	  ;; Execute through the "ws" scheme environment.
+
+      
+      (if scheme-hosted 
 	  (begin
 	    (browse-stream (wsint (wsparse-postprocess prog) '()))
 	    )
@@ -275,6 +326,7 @@
 	  (display x query-output-log)
 	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
+	(fprintf (console-error-port) "\n ### ECHO THREAD: Port closed.  Child process died?  Terminating.\n")
     (printf "##### ENDING ECHO THREAD... \n")
 	))
 
@@ -283,12 +335,18 @@
   ;; If it's a shell I thought a normal kill might let it kill recursively... but no.
   ;(define killcmd (format "kill  ~a" pid))
 
+  (when verbose-mode
+    (printf " <WSQ> checking for child process:\n")(flush-output-port (current-output-port))
+    ;(system (format "ps aux | grep ~a" pid))
+    (system (format "ps u -p  ~a" pid))
+    )
+
   ;; And in fact doing a normal kill will of course let the query
   ;; persist a little bit and overlap with the next executable.
   ;; Oh, wait... that happens with -9 too... darn.
   (system killcmd)
 
-  (printf " <WSQ> Killing child process ~s\n" killcmd)
+  (printf " <WSQ> Killing child process ~s\n" killcmd)(flush-output-port (current-output-port))
   ;(printf "  Processes after kill:\n") (system "ps aux | grep query")
 )
 
@@ -363,10 +421,11 @@
 ;; Adding operators.
 ;; ----------------------------------------
 
-(define-entrypoint WSQ_AddReutersSource (int int string) void
-  (lambda (opid outid schema-path)
+(define-entrypoint WSQ_AddReutersSource (int int single-float string) void
+  (lambda (opid outid frequency schema-path)
     ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" opid schema-path)
-    (define code `(,(edge-sym outid) (app wsq_reuterSource ',schema-path)))
+    (define code `(,(edge-sym outid) 
+		   (app wsq_reuterSource ,(car (string->slist frequency)) ',schema-path)))
     (add-op! opid code) (add-out-edge! outid)
     (print-state)
     ))
@@ -388,16 +447,18 @@
     ))
 
 (define-entrypoint WSQ_AddFilter (int int int string) void
-  (lambda (opid in out expr)
+  (trace-lambda FILTER (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (define code `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
     (print-state)
     ))
 
+
 (define-entrypoint WSQ_AddOp (int string string string string) void
-  (lambda (id optype inputs outputs args)
-    (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a   '~a' \n" id optype inputs outputs args))
+  (lambda (id optype inputs outputs _args)
+    (define args (string-split _args #\|))
+    (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
     (define in*  (string->slist inputs))
     (define out* (string->slist outputs))
     (define opsym (string->symbol optype))
@@ -410,33 +471,37 @@
       (ASSERT (format "~a should have exactly one input edge." opsym)  (curry = n) (length in*)))
     (define (has-outputs n)
       (ASSERT (format "~a should have exactly one output edge." opsym) (curry = n) (length out*)))
+    (define (has-args n)
+      (ASSERT (format "~a should have exactly ~a extra string arguments, not ~s.  See documentatio in README.txt" opsym n (length args))
+              (curry = n) (length args)))
     (unless in*  (error 'WSQ_AddOp "Bad list of inputs: ~s"  inputs))
     (unless out* (error 'WSQ_AddOp "Bad list of outputs: ~s" outputs))
 
     (case opsym
-      [(ReutersSource) (has-inputs 0) (has-outputs 1)  (WSQ_AddReutersSource id (car out*) args)]
-      [(Printer)       (has-inputs 1) (has-outputs 0)  (WSQ_AddPrinter id args (car in*))]
-      [(Filter)     (has-inputs 1) (has-outputs 1)  (WSQ_AddFilter id (car in*) (car out*) args)]
-      [(Project)    (has-inputs 1) (has-outputs 1)  (WSQ_AddProject id (car in*) (car out*) args)]
-      [(WindowJoin) (has-inputs 2) (has-outputs 1)
+      [(ReutersSource) (has-inputs 0) (has-outputs 1) (has-args 2)
+        (apply WSQ_AddReutersSource id (car out*) args)]
+      [(Printer)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
+      [(Filter)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
+      [(Project)    (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddProject id (car in*) (car out*) _args)]
+      [(WindowJoin) (has-inputs 2) (has-outputs 1) (has-args 4)
        ;; This is a horrible hack, to get both a FILTER expression,
        ;; and a number of seconds into this operator, we pack them
        ;; both in the same string.  We follow the arbitrary convention
        ;; that "|" serves as a divider for breaking up that string.
-       (let-match ([(,_seconds ,filter) (string-split args #\|)])
+       (let-match ([(,_seconds ,filter) args])
         (define seconds (car (ASSERT (string->slist _seconds))))
 	(WSQ_AddWindowJoin id (car in*) (cadr in*) (car out*) seconds filter))]
 
-      [(ConnectRemoteIn)  (has-inputs 0) (has-outputs 1)
+      [(ConnectRemoteIn)  (has-inputs 0) (has-outputs 1) (has-args 3)
        ;; This one takes three arguments in the string 'args'
-       (let-match ([(,_host ,_port ,fieldtypes) (string-split args #\|)])
+       (let-match ([(,_host ,_port ,fieldtypes) args])
         ;; Trim any extra whitespace.  No whitespace in hostnames.
         (define host (kill-whitespace _host))
         (define port (car (ASSERT (string->slist _port))))
 	(WSQ_ConnectRemoteIn id (car out*) host port fieldtypes))]
 
-      [(ConnectRemoteOut) (has-inputs 1) (has-outputs 0)     
-       (let-match ([(,_host ,_port) (string-split args #\|)])
+      [(ConnectRemoteOut) (has-inputs 1) (has-outputs 0) (has-args 2)
+       (let-match ([(,_host ,_port) args])
         (define host (kill-whitespace _host))
         (define port (car (ASSERT (string->slist _port))))
 	(WSQ_ConnectRemoteOut id (car in*) host port))]
@@ -471,7 +536,7 @@
     ;(printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
     (define code
       `(,(edge-sym out) (app wsq_windowJoin
-			     ,(parse-filter expr 'left 'right)
+			     'TEMPUNFINISHED ;,(parse-filter expr 'left 'right)
 			     ,(make-merger (get-type-skeleton1)
 					   (get-type-skeleton2))
 			     ,(edge-sym in1)

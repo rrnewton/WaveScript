@@ -17,13 +17,14 @@ CHEZP = $(CHEZD)/boot/$(MACHINE)
 
 DIRS32 = -L/lib32 -L/usr/lib32
 
-FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
-#FLAGS = -g -O0 -rdynamic
-
+ifeq ($(shell uname -m),x86_64)
+  FLAGS = -g -O0 -rdynamic
+else 
+  FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
+endif
 
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
-
 
 CC=gcc
 

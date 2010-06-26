@@ -8,9 +8,9 @@
 #include "port.h"
 
 int main(int argc, char* argv[]) { 
-    char addr[128];
-    //sprintf(addr, "128.30.79.5 | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
-    sprintf(addr, "localhost | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
+    char strargs[128];
+    //sprintf(strargs, "128.30.79.5 | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
+    sprintf(strargs, "localhost | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
 
   WSQ_Init();
 
@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     //type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
     //      WSQ_ConnectRemoteIn(20,"localhost", PORT, "string BAZ, float BAR");
 
-      WSQ_AddOp(20, "ConnectRemoteIn", "", "20", addr);
+      WSQ_AddOp(20, "ConnectRemoteIn", "", "20", strargs);
       WSQ_AddOp(21, "Printer", "20", "", "NETSTRM: ");
 
     WSQ_EndSubgraph();

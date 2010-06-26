@@ -10,6 +10,8 @@
 
 (printf " <WSQ> Loading WaveScope compiler...")(flush-output-port)
 
+;(printf "       (Currently we load from source this avoids compile bugs) \n")(flush-output-port)
+
 (let* ([startd (current-directory)]
        [src-dir (string-append (getenv "REGIMENTD") "/src")]
        [src (string-append src-dir "/regiment.ss")])

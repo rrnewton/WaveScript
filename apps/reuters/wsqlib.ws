@@ -3,6 +3,15 @@ include "stdlib.ws"
 include "unix.ws"
 include "socket.ws"
 
+// A collection of database-like stream operators.
+
+/****************************************************************************************************/
+/* (1) The first part of this file contains a bunch of "all caps"
+   experimental operators defined directly in WS.  These are mostly
+   unused.  The wsq_* operators are the ones actually exposed through
+   the WSQ library.  */
+/****************************************************************************************************/
+
 
 /* NOTE: Some of these are just aliases for common functions in the
  * standard library, possibly with the arguments rearranged.  For this
@@ -152,7 +161,7 @@ fun TIMESTAMP_WINDOW_GROUPBY(proj, groupby, sze, strm) {
   using HashTable;
   iterate r in strm {
     state { 
-            edges      = make(100);
+        edges      = make(100);
 	    buffers    = make(100);
 	    starttimes = make(100);
 	    counts     = make(100);
@@ -444,37 +453,22 @@ fun TIMESTAMP_JOIN(s1,s2) {
 
 
 
-/******************************************************************************/
-/*  Handling network communication */
-
-/* 
- * Receive an input stream from a TCP Socket.
- */ 
-fun TCPINPUT(str) {
- // TODO
-}
-
-fun TCPOUTPUT(str) {
- // TODO
-}
 
 
 
-/******************************************************************************/
-
-/* [2009.10] Functions called by generated WSQ code (via the C API) */
+/****************************************************************************************************/
+/* (2)  Functions called by generated WSQ code (via the C API)  [2009.10]                           */
+/****************************************************************************************************/
 
 fun discard(s) iterate _ in s { }
 
 // This is a temporary fake data source with a temporary fake schema.
-type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
-
-//wsq_reuterSource :: String -> Stream (| TIME : Float, SYM : String, PRICE : Float);
-wsq_reuterSource :: String -> Stream DummySchema99;
-fun wsq_reuterSource(schema) {
+type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
+wsq_reuterSource :: (Float, String) -> Stream DummySchema99;
+fun wsq_reuterSource(freq, schema) {
   syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
   lastprice = Array:make(Array:length(syms), 50.0);
-  iterate _ in timer(2) {
+  iterate _ in timer(freq) {
     state{ t = 0.0 }
     i = randomI(Array:length(syms));
     // Random walk:
@@ -518,6 +512,8 @@ fun wsq_printer(str, s) {
     Unix:fflush(Unix:stdout); 
   }
 }
+
+/*  Handling network communication */
 
 fun wsq_connect_out(host, prt, strm) {
   //print("  **** wsq_connect_out not implemented yet! **** \n");

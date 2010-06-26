@@ -1,14 +1,14 @@
 #!/bin/bash
 
-base=`$REGIMENTD/depends/get_machine_type`
+base=`$REGIMENTD/depends/get_machine_type --threaded`
 
-if [ "$base" == ""  ]      || 
-   [ "$base" == "ppcosx" ] || 
-   [ "$base" == "i3nt" ]   ;
-then
-  echo "ERROR: machine type $base does not have threaded version."
-  exit -1
-fi
+# if [ "$base" == ""  ]      || 
+#    [ "$base" == "ppcosx" ] || 
+#    [ "$base" == "i3nt" ]   ;
+# then
+#   echo "ERROR: machine type $base does not have threaded version."
+#   exit -1
+# fi
 
 #echo "t"$base
 echo $base

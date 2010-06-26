@@ -64,7 +64,7 @@ void WSQ_AddFilter (wsid_t id, wsid_t in, wsid_t out, const char* expr);
 //void WSQ_AddFilter (wsid_t in, wsid_t out, const char* expr);
 
 // Sources will probably need a bunch more parameters when we understand how things work.
-void WSQ_AddReutersSource(wsid_t id, wsid_t out, const char* schema_path);
+void WSQ_AddReutersSource(wsid_t id, wsid_t out, float freq, const char* schema_path);
 void WSQ_AddPrinter(wsid_t id, const char* prefix, wsid_t in);
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO == right.FOO")
@@ -90,6 +90,9 @@ void WSQ_ConnectRemoteIn  (wsid_t id, wsid_t in,  const char* host, int port, co
 // which can add operators of any kind.
 
 void WSQ_AddOp(wsid_t id, const char* optype, const char* inputs, const char* outputs, const char* args);
+
+// See README.txt file for the syntax of supported operators (e.g.,
+// what to put in the char* fields).
 
 
 //==============================================================================
