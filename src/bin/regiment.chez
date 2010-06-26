@@ -8,24 +8,31 @@
 source `dirname $0`/assert_regimentd
 
 function setupchez() {
-    if   [ -e "$CHEZD" ]; 
-        then SCHEME="$REGIMENTD/depends/chez"
-    # elif (which chez74 > /dev/null); 
-    # 	then SCHEME=chez74;
-    elif (which chez > /dev/null); 
-	then SCHEME=chez;
-    elif (which petite > /dev/null); 
-	then SCHEME=petite
-    elif [ -f $REGIMENTD/depends/petite ]; 
-	then SCHEME="$REGIMENTD/depends/petite"
-    else echo   ERROR:  CHEZ SCHEME not found.; exit -1 
-    fi 
+    # Using our own chez wrapper because it obeys "--threaded"
+    SCHEME="$REGIMENTD/depends/chez"
+
+    # [2010.06.26] For now disabling the more "flexible" behaviors
+    # because it's better to know what's happening:
+    #
+    # if   [ -e "$CHEZD" ]; 
+    #     then SCHEME="$REGIMENTD/depends/chez"
+    # # elif (which chez74 > /dev/null); 
+    # # 	then SCHEME=chez74;
+    # elif (which chez > /dev/null); 
+    # 	then SCHEME=chez;
+    # elif (which petite > /dev/null); 
+    # 	then SCHEME=petite
+    # elif [ -f $REGIMENTD/depends/petite ]; 
+    # 	then SCHEME="$REGIMENTD/depends/petite"
+    # else echo   ERROR:  CHEZ SCHEME not found.; exit -1 
+    # fi 
 }
 
 # [2010.01.19] Why was this not done at the outset before? 
 setupchez;
 
 if [ -e "$CHEZD" ] && [ "$CHEZTHREADED" != "" ]; then
+  echo "  (Enabling threaded mode.)"
   MT=`$REGIMENTD/depends/get_machine_type --threaded`
   echo "  Note: Executing WS under Chez Scheme with threading support."
   CHEZARGS="--threaded"
@@ -58,7 +65,8 @@ function go() {
     if [ -e $FILE ];
     then exec $SCHEME --program $FILE $CURDIR $ARGS
     else 
-      # The boot file is not available, but we've compiled a tree of .so's in the
+      # The boot file is not available, but we've compiled a tree of .so's in the build/ dir:      
+      # (This is the method used by "make chezincr2".)
       if [ -e "$REGIMENTD/build/$MT/ws" ]; then        
         CHEZARGS="--libdirs $REGIMENTD/src::$REGIMENTD/build/$MT"
 	echo "  Note: Using object files within $REGIMENTD/build/$MT/"

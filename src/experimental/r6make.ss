@@ -1,9 +1,11 @@
 #! /bin/bash
 #|
-exec $REGIMENTD/depends/chez --threaded --script $0 $*
+exec $REGIMENTD/depends/chez --script $0 $*
 |#
 
-;; exec $REGIMENTD/depends/chez --script $0 $*
+;; The problem with this script ITSELF being threaded, is then we build the target in a threaded mode...
+;; exec $REGIMENTD/depends/chez --threaded --script $0 $*
+
 
 ;; Currently this is chez-specific.
 
@@ -51,7 +53,7 @@ exec $REGIMENTD/depends/chez --threaded --script $0 $*
   ;(printf "  Compiling: ~a opt-level ~a \n" f (optimize-level))
   (case selected-action
     [(compile) 
-      (printf "[optlvl ~a]  " (optimize-level))
+      (printf "[~a optlvl ~a]  " (machine-type) (optimize-level))
       (compile-file f (string-append root ".so"))]
     [(purge)
      (let ((obj (string-append root ".so")))

@@ -8,7 +8,7 @@
 ;; runtime, compiler, and control module could all be in separate
 ;; processes if desired.
 
-(printf " <WSQ> Loading WaveScope compiler...")(flush-output-port)
+(printf " <WSQ> Loading WaveScope compiler, machine type ~a..." (machine-type))(flush-output-port)
 
 ;(printf "       (Currently we load from source this avoids compile bugs) \n")(flush-output-port)
 
