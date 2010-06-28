@@ -17,7 +17,8 @@ typedef int wsid_t;
 /// Initialization and shutdown.
 
 // These bring up and bring down the runtime.
-void WSQ_Init();
+//   "outfile" can be "" (for stdout) or the name of an file to receive query output.
+void WSQ_Init(const char* outfile);
 void WSQ_Shutdown();
 
 //==============================================================================
@@ -70,7 +71,7 @@ void WSQ_AddPrinter(wsid_t id, const char* prefix, wsid_t in);
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "left", "right", "left.FOO == right.FOO")
 
 // void WSQ_AddWindowJoin(id_in1, id_in2, id_out, seconds, "FOO == FOO")
-void WSQ_AddWindowJoin(wsid_t id, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, const char* expr);
+void WSQ_AddWindowJoin(wsid_t id, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, const char* recA, const char* recB, const char* expr);
 
 /// Inter-machine connections.
 

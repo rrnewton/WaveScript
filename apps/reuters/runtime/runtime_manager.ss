@@ -21,6 +21,7 @@
     (if (getenv "WS_VERBOSE") #t #f))
 
 ;; An optional file to place query output:
+#;
 (define query-output-log 
    (let ((filename (getenv "QUERYLOG")))
      (if filename 
@@ -29,12 +30,14 @@
 	 #f)))
 
 ;;==============================================================================
+;; Global Variables:
 
 ;; This is gross but we use global state to keep track of the
 ;; interactions with the control module.
 
 (define curtransaction (box #f))
 (define current-child-process #f)
+(define query-output-file #f)
 
 ;; The subgraph we're currently working on:
 (define cursubgraph #f)
@@ -72,18 +75,33 @@
 ;;==============================================================================
 
 
+;; Following the convention that the 
 (define supported-binops 
   '((+ g+) (* g*) (- g-) 
     (/ g/) (^ g^)    
+
+    ;; For now abs is not generic, just for FLOAT:
+    (abs absF)
     
     (== wsequal?)
     (=  wsequal?) 
     (<=) (>=) (<) (>)
-    (<> ,(lambda (a b) `(not (wsequal ,a ,b))))        
+    (<> ,(lambda (a b) `(not (wsequal ,a ,b))))
 
     (AND ws:and) (OR ws:or) (NOT not)
     ))
 
+;; This dispatches on the representation of the entry in
+;; supported-binops and returns a piece of WS syntax that applies the
+;; primitive to its operands.
+(define (apply-prim-entry entry . args)
+ (match entry
+   [(,op) (cons op args)]
+   [(,op ,newop)
+   (if (procedure? newop)
+       (apply newop args)
+       (cons newop args))]
+   [,else (error "apply-prim-entry bad entry in supported-binops: ~s" entry)]))
 
 ;;==============================================================================
 
@@ -100,72 +118,41 @@
 
 ;; Poor man's "Parsing" -- we're just assuming sexp compatible strings.
 ;; Super simple at first, assumes it is just a list of fields:
-(define (parse-project str) 
+(define (parse-project slist) 
   `(lambda (orig)
      ,(foldl (lambda (x acc)
-	       `(wsrecord-extend ',x (wsrecord-select ',x orig) ,acc))
-	'(empty-wsrecord)    
-	(map ununquote (ASSERT (string->slist str))))))
+               (match x
+	        [(,s) (guard (symbol? s))       `(wsrecord-extend ',s (wsrecord-select ',s orig) ,acc)]
+		[(,x AS ,y) (guard (symbol? y)) `(wsrecord-extend ',y ,(parse-expression x 'orig)  ,acc)]
+		[,x (error 'parse-project "invalid syntax for projection field: ~s" x)]
+		))
+	'(empty-wsrecord)
+	(map ununquote slist))))
 
-(trace-define (parse-expression expr)
-  (match expr
-    [,x (guard (symbol? x)) 
-      (match (string-split (symbol->string x) #\.)
-        [(,field)      `(wsrecord-select ',x ,implicit-record-name)]
-        [(,rec ,field) `(wsrecord-select ',x ,rec)]
-	[,else          (error 'parse-expression "unsupported identifier: ~s" x)])]
-    [,x (guard (number? x)) `',x]
-    [,x (guard (string? x)) `',x]
-    [(,[x]) x] ;; Extra parens are ok.
-    [(,[a] ,binop ,[b])  (guard (symbol? binop))
-     (define entry (assq binop supported-binops))
-     (unless entry  (error 'parse-expression "unsupported binary operator"))
-      `(,(cadr entry) ,a ,b)]
-    [,else (error 'parse-expression "Invalid expression: ~a" expr)]
-  ))
-
-;; Simple operands allowed, convert to WS AST:
-(define (temp-convert-rand rec x)
-  (match x
-    [,x (guard (symbol? x)) `(wsrecord-select ',x ,rec)]
-    [,x (guard (number? x)) `',x]
-    [,x (guard (string? x)) `',x]
-    [(,[a] ,binop ,[b]) (guard (memq binop '(+ * - / ^)))
-     `(,(symbol-append 'g binop) ,a ,b)]
-    [,else (error 'temp-convert-rand "Invalid operand: ~a" x)]
-    )
-  )
-
+;;  Takes an sexp and returns a WS expression AST.
+(define parse-expression
+  (case-lambda 
+    [(expr) (parse-expression expr implicit-record-name)]
+    [(expr rec)
+     (match expr
+       [,x (guard (symbol? x)) 
+	   (match (string-split (symbol->string x) #\.)
+	     [(,field)      `(wsrecord-select ',x ,rec)]
+	     [(,rec ,field) `(wsrecord-select ',(string->symbol field) ,(string->symbol rec))]
+	     [,else          (error 'parse-expression "unsupported identifier: ~s" x)])]
+       [,x (guard (number? x)) `',x]
+       [,x (guard (string? x)) `',x]
+       [(,[x]) x] ;; Extra parens are ok.
+       [(,[a] ,binop ,[b])  (guard (symbol? binop))
+	(define entry (assq binop supported-binops))
+	(unless entry  (error 'parse-expression "unsupported binary operator"))
+	(apply-prim-entry entry a b)]
+       [,else (error 'parse-expression "Invalid expression: ~a" expr)]
+       )]))
 
 ;; This assumes for now that it's a series of binary operators.
 (define (parse-filter str)
-  ;; We generate a function that either takes a record 
-  (define args
-    (match extra 
-      [() '(rec)]
-      [(,x)    extra]
-      [(,x ,y) extra]))
-
-  `(lambda ,args ,(parse-expression (string->slist str)))
-#;
-  `(lambda ,args
-     ,(match (ASSERT (string->slist str))
-    [() #t]
-    [(,left ,binop ,right . ,[rest])
-     (define bop 
-       (case binop
-	 [(== =) 'wsequal?] ;; Accept both single and double equals.
-	 [(<= >= < >) binop]
-	 [else (error 'WSQ "unhandled binary operator ~s" binop)]))
-     (define expr
-       `(,bop ,(temp-convert-rand (car args) (ununquote left)) 
-	      ,(temp-convert-rand (if (not (null? (cdr args)))
-				      (cadr args)
-				      (car args))
-				  right)))
-     (if (eq? rest #t) expr
-	 `(ws:and ,expr ,rest))]
-    )))
+  `(lambda (,implicit-record-name) ,(parse-expression (ASSERT (string->slist str)))))
 
 
 (define (capitalize s)
@@ -179,8 +166,16 @@
   (define-values (keys vals) (hashtable-entries tab))
   (map fn (vector->list keys) (vector->list vals)))
 
+#;
+(define (downcase str)  ;; Lowercase a string
+  (let ((new (string-copy str)))
+    (for i = 0 to (sub1 (string-length str))
+	 (string-set! new i (char-downcase (string-ref new i))))
+    new))
+(define (downcase-symbol s) (symbol->string (lowercase (string->symbol s))))
+
 (define (Type t)
-  (case t
+  (case (downcase-symbol t)
     [(int float double
 	  string) 
      (capitalize t)]    
@@ -269,8 +264,10 @@
 
 	  ;; Compile through the wsc2 backend:
 	  (begin
-	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c])
-	      (wscomp (wsparse-postprocess prog) '() 'wsc2))
+	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
+			   [regiment-verbosity (if verbose-mode 5 1)])
+	      (wscomp (wsparse-postprocess prog) '() 'wsc2)
+	      )
 
 	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") "")))
 
@@ -291,8 +288,10 @@
 	      (printf "\n================================================================================\n")
 	      ;; Kill old process:
 	      (when current-child-process (kill-child current-child-process))
-	      (let-values ([(to-stdin from-stdout from-stderr pid)
-			  (open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec)))
+	      (let-values ([(to-stdin from-stdout from-stderr pid)	                  
+			    (if query-output-file
+				(open-process-ports (format "exec ./query.exe > \"~a\"" query-output-file))
+				(open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec))))			  
 			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
 	      (if current-child-process
@@ -306,7 +305,8 @@
 	      ;; without having a separate thread for the express purpose of echoing input.
 
 	     ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
-	      (fork-thread (echo-port from-stdout))
+	      (unless query-output-file
+		(fork-thread (echo-port from-stdout)))
 	      ))
 	      
 	    )))
@@ -317,18 +317,27 @@
 ;; output -- "plugging" an input port into an output one.
 (define (echo-port port)
   (lambda ()
-    (printf "##### STARTING THREAD FOR PRINTING... \n")
+;    (printf "##### STARTING THREAD FOR PRINTING... \n")
     (let loop ((x (get-string-some port)))
       (unless (eof-object? x)
 	(display x (current-output-port))  
 	(flush-output-port (current-output-port))
+	#;
 	(when query-output-log 
 	  (display x query-output-log)
 	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
-	(fprintf (console-error-port) "\n ### ECHO THREAD: Port closed.  Child process died?  Terminating.\n")
-    (printf "##### ENDING ECHO THREAD... \n")
+	(when verbose-mode
+	  (fprintf (console-error-port) "\n ### ECHO THREAD: Port closed.  Child process probably dead.  Terminating.\n"))
+    ; (printf "##### ENDING ECHO THREAD... \n")
 	))
+
+;; [2010.06.26] I'm running into what appears to be a bug with system.
+;; It will give me spurious "No child process" errors.  This fixes the problem:
+(define (spin-system cmd)
+  (let-values ([(to out err pid) (open-process-ports cmd)])
+    ;; Run it dry:
+    (let loop ((x 0)) (unless (eof-object? x) (loop (get-bytevector-some out))))))
 
 (define (kill-child pid)
   (define killcmd (format "kill -9 ~a" pid))
@@ -344,7 +353,10 @@
   ;; And in fact doing a normal kill will of course let the query
   ;; persist a little bit and overlap with the next executable.
   ;; Oh, wait... that happens with -9 too... darn.
-  (system killcmd)
+  ;(printf "RIGHT BEFORE KILLCMD\n") (flush-output-port (current-output-port))
+  ;(system killcmd) ;; This is the call that throws the "No child process" error.
+  (spin-system killcmd)      
+  ;(printf "RIGHT AFTER KILLCMD\n") (flush-output-port (current-output-port))
 
   (printf " <WSQ> Killing child process ~s\n" killcmd)(flush-output-port (current-output-port))
   ;(printf "  Processes after kill:\n") (system "ps aux | grep query")
@@ -425,7 +437,7 @@
   (lambda (opid outid frequency schema-path)
     ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" opid schema-path)
     (define code `(,(edge-sym outid) 
-		   (app wsq_reuterSource ,(car (string->slist frequency)) ',schema-path)))
+		   (app wsq_reuterSource ,(car (ASSERT (string->slist frequency))) ',schema-path)))
     (add-op! opid code) (add-out-edge! outid)
     (print-state)
     ))
@@ -441,13 +453,14 @@
 (define-entrypoint WSQ_AddProject (int int int string) void
   (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
-    (define code `(,(edge-sym out) (app wsq_project ,(parse-project expr) ,(edge-sym in))))
+    (define fun (parse-project (map (lambda (s) (ASSERT (string->slist s))) (string-split expr #\,))))
+    (define code `(,(edge-sym out) (app wsq_project ,fun ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
     (print-state)
     ))
 
 (define-entrypoint WSQ_AddFilter (int int int string) void
-  (trace-lambda FILTER (opid in out expr)
+  (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (define code `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
@@ -455,12 +468,106 @@
     ))
 
 
+(define (WSQ_MatchRecognize opid in out _rows-per-match _pattern _defs)
+  (define rows-per-match (car (ASSERT (string->slist _rows-per-match))))
+  (define pat (ASSERT (string->slist _pattern)))
+  (define defs (map (lambda (x) (ASSERT (string->slist x))) (string-split _defs #\,)))
+  (define patwidth (length pat))
+  (define names (map (lambda (x) (match x [(,v AS . ,e*) (guard (symbol? v)) v])) defs))
+  (define exprs (map (lambda (x) (match x [(,v AS . ,e*) (guard (symbol? v)) e*])) defs))
+  (define dummy_names (map (lambda (i) 
+			     (symbol-append 'dummy_ (string->symbol (number->string i)))) 
+			(iota patwidth)))
+
+  ;; [2010.06.28] TYPE CHECKER ERROR THAT SEEM SPURIOUS:
+  ;; Trouble matching the incomplete record type in the predicates against the closed one.
+#;
+  (define code 
+    `(,(edge-sym out)
+      (app wsq_filter
+       ;; First bind predicate functions for each name:
+       (let ,(map (lambda (name rhs) `[,name (lambda (,name) 
+					       ;; Allow either qualified or unqualified field refs:
+					       (let ([,implicit-record-name ,name]) 
+						 ,(parse-expression rhs)))]) names exprs)
+	(lambda (tuple)
+	    ;; Second bind the elements of the window to names:
+	    (let (,@(map (lambda (dummyname i) `[,dummyname (seg_get tuple ',i)]) dummy_names (iota patwidth)))
+		;; Now take the conjunction of all predicates on corrensponding positions:
+		,(match (map (lambda (dummyname predname) `(app ,predname ,dummyname)) dummy_names pat)
+		   [() '#t]
+		   [(,one) one]
+		   [(,a . ,[rest]) `(ws:and ,a ,rest)]))))
+	(app rewindow (app window ,(edge-sym in) ',patwidth)
+	  ',patwidth ',(- (sub1 patwidth)) ))))
+
+  ;; Workaround: doing windowing manually with a circular buffer:
+  (define code 
+    `(,(edge-sym out)
+      (iterate (annotations)
+       ;; First bind predicate functions for each name:
+       (let (,@(map (lambda (name rhs) `[,name (lambda (,name) 
+					       ;; Allow either qualified or unqualified field refs:
+					       (let ([,implicit-record-name ,name]) 
+						 ,(parse-expression rhs)))]) names exprs)
+	     ;; This is the circular buffer:
+	     [buffer (Array:makeUNSAFE ',patwidth)]
+	     [index  (Mutable:ref '0)]
+	     ;[filled (Mutable:ref '#f)]
+	     [total (Mutable:ref '0)]
+	     )
+	(lambda (tuple vq)
+	  (begin
+	    ;; Store the new tuple and see if we've filled the buffer:
+	    (Array:set buffer index tuple)
+	    (set! index (_+_ '1 index))
+	    (if (wsequal? index ',patwidth)
+		(begin 
+		  (set! index '0)
+		   ;(if filled (begin) (set! filled '#t))
+		  ;(set! filled '#t)
+		  )
+		  (begin))
+
+	    (set! total (_+I64 '1 total))
+	    (if (ws:and 
+		 ;; filled
+		      (>= total ',patwidth)
+		      ;; Now take the conjunction of all predicates on corrensponding positions:
+		      ,(match (map (lambda (i predname) 
+				     `(app ,predname (Array:ref buffer (_+_ index ',i))))
+				(iota patwidth) pat)
+			 [() '#t]
+			 [(,one) one]
+			 [(,a . ,[rest]) `(ws:and ,a ,rest)]))
+		  ,(case rows-per-match
+		    [(ALL) 
+		     ;; Not really anything we can do with Arrays... turn it into a sigseg.
+		     ;'(emit vq (app Array:copy buffer))
+		     `(emit vq (app Sigseg:toSigseg (app Array:copy buffer) (_-I64 total ',(sub1 patwidth)) nulltimebase))
+		     ]
+		    [(ONE)
+		      ;; In ONE ROW PER MATCH mode we pass on the last tuple received:
+		      '(emit vq tuple)]
+		    [else (error 'MatchRecognize "unsupported ROWS PER MATCH setting: ~s\n" rows-per-match)])
+		  (begin))
+	      vq)))
+       ,(edge-sym in))))
+
+  (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
+  (print-state)
+  (pretty-print code)
+  )
+
+
+
+;; The generic entrypoint that can add any operator.
 (define-entrypoint WSQ_AddOp (int string string string string) void
   (lambda (id optype inputs outputs _args)
     (define args (string-split _args #\|))
     (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
-    (define in*  (string->slist inputs))
-    (define out* (string->slist outputs))
+    (define in*  (ASSERT (string->slist inputs)))
+    (define out* (ASSERT (string->slist outputs)))
     (define opsym (string->symbol optype))
 
     (define (kill-whitespace str)
@@ -476,7 +583,8 @@
               (curry = n) (length args)))
     (unless in*  (error 'WSQ_AddOp "Bad list of inputs: ~s"  inputs))
     (unless out* (error 'WSQ_AddOp "Bad list of outputs: ~s" outputs))
-
+    
+    ;; Dispatch on the type of operator.  It would be nice to extend this while writing only WS code.
     (case opsym
       [(ReutersSource) (has-inputs 0) (has-outputs 1) (has-args 2)
         (apply WSQ_AddReutersSource id (car out*) args)]
@@ -488,9 +596,9 @@
        ;; and a number of seconds into this operator, we pack them
        ;; both in the same string.  We follow the arbitrary convention
        ;; that "|" serves as a divider for breaking up that string.
-       (let-match ([(,_seconds ,filter) args])
+       (let-match ([(,_seconds ,recA ,recB ,filter) args])
         (define seconds (car (ASSERT (string->slist _seconds))))
-	(WSQ_AddWindowJoin id (car in*) (cadr in*) (car out*) seconds filter))]
+	(WSQ_AddWindowJoin id (car in*) (cadr in*) (car out*) seconds recA recB filter))]
 
       [(ConnectRemoteIn)  (has-inputs 0) (has-outputs 1) (has-args 3)
        ;; This one takes three arguments in the string 'args'
@@ -506,6 +614,9 @@
         (define port (car (ASSERT (string->slist _port))))
 	(WSQ_ConnectRemoteOut id (car in*) host port))]
 
+      [(MatchRecognize) (has-inputs 1) (has-outputs 1) (has-args 3)
+       (apply WSQ_MatchRecognize id (car in*) (car out*) args)]
+	
       [else (error 'WSQ_AddOp "unknown op type: ~s" optype)]
     )))
 
@@ -530,13 +641,15 @@
 ;; information... specifically just the set of fields.  We don't need
 ;; to know the whole type... just that set of field *names*.
 ;;
-;; This will enable us to simulate 
-(define-entrypoint WSQ_AddWindowJoin (int int int int single-float string) void
-  (lambda (opid in1 in2 out seconds expr)
+;; This will enable us to simulate ....
+(define-entrypoint WSQ_AddWindowJoin (int int int int single-float string string string) void
+  (lambda (opid in1 in2 out seconds recA recB expr)
     ;(printf " <WSQ>  WSQ_AddWindowJoin ~s ~s ~s ~s ~s \n" in1 in2 out seconds expr)
     (define code
       `(,(edge-sym out) (app wsq_windowJoin
-			     'TEMPUNFINISHED ;,(parse-filter expr 'left 'right)
+			     (lambda (,(car (ASSERT (string->slist recA))) 
+				      ,(car (ASSERT (string->slist recB))))
+			       ,(parse-expression (ASSERT (string->slist expr))))
 			     ,(make-merger (get-type-skeleton1)
 					   (get-type-skeleton2))
 			     ,(edge-sym in1)
@@ -577,6 +690,13 @@
        (lambda (id ls)
 	 (printf "  ~s: ~s\n" id ls))
        subgraph_table))
+    ))
+
+(define-entrypoint WSQ_SetOutputFile (string) void
+  (lambda (path)
+    (unless (equal? path "")
+    (set! query-output-file path))
+    (printf " <WSQ> Query output redirected to ~s\n" path)
     ))
 
 

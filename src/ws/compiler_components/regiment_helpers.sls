@@ -174,7 +174,7 @@
 		 [('UNIT   . ,[rest])  rest]
 		 [(,fst . ,[rest]) (cons fst rest)]))
 	;[() '(tuple)]
-	[() 'UNIT]
+	[() ''UNIT]
 	[(,x) x]
 	[(,x ,x* ...) `(begin ,x ,@x*)]))))
 

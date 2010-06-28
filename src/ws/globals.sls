@@ -172,7 +172,7 @@
 	 basename dirname
 
 	 make-sigseg sigseg? sigseg-start sigseg-end sigseg-vec sigseg-timebase
-	 make-tuple tuple-fields tuple?
+	 make-tuple  tuple? (rename (safe-tuple-fields tuple-fields)) 
 	 make-wsrecord wsrecord-pairs wsrecord-select wsrecord-extend wsrecord-restrict empty-wsrecord wsrecord? 
 	 make-timebase timebase-num timebase?
          make-uniontype uniontype-tag uniontype-val  uniontype?
@@ -1044,8 +1044,19 @@
 ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
 (reg:define-struct (sigseg start end vec timebase))
 
+;; Tuple VALUE representation:
 ;; [2007.07.29] Adding this to distinguish tuples from vectors.
 (reg:define-struct (tuple fields))
+
+;; [2010.06.28] Ack, we need to be careful whenever asking for the
+;; fields.  We also allow 'UNIT as a constant.  Maybe I want to phase
+;; that out now that I have the above tuple struct.
+(define (safe-tuple-fields t)
+ (cond
+   [(eq? t 'UNIT) '()]
+   [(tuple? t) (tuple-fields t)]
+   [else (error 'safe-tuple-fields "Not a tuple value representation: ~s" t)]))
+
 
 ;; [2008.09.28] This datatype is used for records at metaprog time.
 ;; The association list of name-value pairs must be sorted in

@@ -1263,7 +1263,7 @@
 				 )
 			 (regiment-primitives))])
 	 
-	 (define prog (coerce-to-ws-prog x input-params))  
+	 (define prog (coerce-to-ws-prog x input-params))
 	 (define typed (ws-compile-until-typed prog))
 	 (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
 	 (define wavescope-scheduler (car (append (map cadr (find-in-flags 'scheduler 1 flags))

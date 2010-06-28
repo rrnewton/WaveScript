@@ -39,7 +39,7 @@ void (*Scheme_AddPrinter)(wsid_t ndid, const char* prefix, wsid_t id);
 void (*Scheme_AddProject)(wsid_t ndid, wsid_t in, wsid_t out, const char* expr);
 void (*Scheme_AddFilter) (wsid_t ndid, wsid_t in, wsid_t out, const char* expr);
 
-void (*Scheme_AddWindowJoin) (wsid_t ndid, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, const char* expr);
+void (*Scheme_AddWindowJoin) (wsid_t ndid, wsid_t id_in1, wsid_t id_in2, wsid_t id_out, float seconds, const char* recA, const char* recB, const char* expr);
 
 void (*Scheme_ConnectRemoteOut) (wsid_t ndid, wsid_t out, const char* host, int port);
 void (*Scheme_ConnectRemoteIn)  (wsid_t ndid, wsid_t in,  const char* host, int port, const char* types);
@@ -48,6 +48,8 @@ void (*Scheme_ConnectRemoteIn)  (wsid_t ndid, wsid_t in,  const char* host, int 
 void (*Scheme_AddOp)  (wsid_t ndid, const char* optype, const char* inputs, const char* outputs, const char* args);
 
 void (*Scheme_Shutdown) ();
+
+void (*Scheme_SetOutputFile) (const char* path);
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -96,8 +98,8 @@ void WSQ_AddPrinter(wsid_t ndid, const char* prefix, wsid_t id)     { Scheme_Add
 void WSQ_AddProject(wsid_t ndid, wsid_t in, wsid_t out, const char* expr) { Scheme_AddProject(ndid,in,out,expr); } 
 void WSQ_AddFilter (wsid_t ndid, wsid_t in, wsid_t out, const char* expr) { Scheme_AddFilter(ndid,in,out,expr); }
 
-void WSQ_AddWindowJoin (wsid_t ndid, wsid_t in1, wsid_t in2, wsid_t out, float seconds, const char* expr) { 
-    Scheme_AddWindowJoin(ndid,in1,in2,out,seconds,expr); 
+void WSQ_AddWindowJoin (wsid_t ndid, wsid_t in1, wsid_t in2, wsid_t out, float seconds, const char* recA, const char* recB, const char* expr) { 
+    Scheme_AddWindowJoin(ndid,in1,in2,out,seconds,recA, recB,expr); 
 }
 
 void WSQ_ConnectRemoteOut (wsid_t ndid, wsid_t out, const char* host, int port) { Scheme_ConnectRemoteOut(ndid,out,host,port); }
@@ -107,6 +109,7 @@ void WSQ_Shutdown() {
   Scheme_Shutdown();
   Sscheme_deinit(); // Chez call to bring down the runtime.
 }
+
 
 void WSQ_AddOp(wsid_t ndid, const char* optype, const char* inputs, const char* outputs, const char* args) {
     Scheme_AddOp(ndid, optype, inputs, outputs, args);
@@ -131,7 +134,7 @@ char* get_machine_type() {
 }
 
 //int do_scheme(int argc, char* argv[]) {
-void WSQ_Init() {
+void WSQ_Init(const char* outfile) {
 
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
@@ -180,7 +183,7 @@ void WSQ_Init() {
   }
 
   // This is awful gross.  Oh well.
-  // ========================================
+  // ============================================================
 
   printf(" <WSQ> Registering WSQ runtime interface with control module.\n");
 
@@ -207,6 +210,8 @@ void WSQ_Init() {
 
   ptr shutdwn = Stop_level_value( Sstring_to_symbol("WSQ_Shutdown-entry"));
 
+  ptr setout  = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
+
   Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
   Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
 
@@ -217,7 +222,7 @@ void WSQ_Init() {
 
   Scheme_AddProject       = (void(*)(int,int,int,const char*))Sinteger_value(addpro);
   Scheme_AddFilter        = (void(*)(int,int,int,const char*))Sinteger_value(addfil);
-  Scheme_AddWindowJoin    = (void(*)(int,int,int,int,float,const char*))Sinteger_value(addwin);
+  Scheme_AddWindowJoin    = (void(*)(int,int,int,int,float,const char*, const char*, const char*))Sinteger_value(addwin);
 
   Scheme_AddReutersSource = (void(*)(int,int,float,const char*))Sinteger_value(addsrc);
   Scheme_AddPrinter       = (void(*)(int,const char*,int))Sinteger_value(addprn);
@@ -228,14 +233,17 @@ void WSQ_Init() {
   Scheme_AddOp            = (void(*)(int,const char*,const char*,const char*,const char*))Sinteger_value(addop);
 
   Scheme_Shutdown         = (void(*)())Sinteger_value(shutdwn);
+  Scheme_SetOutputFile    = (void(*)(const char*))Sinteger_value(setout);
 
-  // ========================================
+  // ============================================================
   printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
 
   // fork some threads...
 
-  printf(" <WSQ> Returning to control module...\n");
-  
+  //
+  Scheme_SetOutputFile(outfile);
+
+  printf(" <WSQ> Returning to control module...\n");  
 }
 
 //int main(int argc, char* argv[]) { do_scheme(argc,argv); }

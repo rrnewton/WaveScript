@@ -20,7 +20,11 @@ DIRS32 = -L/lib32 -L/usr/lib32
 ifeq ($(shell uname -m),x86_64)
   FLAGS = -g -O0 -rdynamic
 else 
+ifeq ($(UNAME), Darwin)
+  FLAGS = -g -O0 -rdynamic
+else
   FLAGS = -g -O0 -m32 -rdynamic $(DIRS32)
+endif
 endif
 
 # Perhaps should consider linking these libs statically for portability.

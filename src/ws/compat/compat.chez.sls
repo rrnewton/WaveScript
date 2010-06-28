@@ -205,19 +205,23 @@
   ;;================================================================================
 
 
+  (define backtrace-limit (make-parameter 100))
+
   ;; A Chez hack to see all the source locations in a continuation.
   (define (continuation->sourcelocs k)
     (let loop ([depth 0] [ob (inspect/object k)])
-      (when (> (ob 'depth) 1)
-	(call-with-values (lambda () (ob 'source-path))
-	  (lambda args
-	    (if (= (length args) 3) ;; Success
-	      (apply printf "  ~a: File: ~a, line ~a char ~a\n" depth args)
-	      (begin 
-	     	(printf "  ~a: (unknown loc) " depth )
-		(ob 'print (current-output-port)))
-	      )))
-	(loop (add1 depth) (ob 'link)))))
+      (if (>= depth (backtrace-limit))
+	  (printf "<Not printing stack frames beyond first ~s>\n" (backtrace-limit))
+	  (when (> (ob 'depth) 1)
+	    (call-with-values (lambda () (ob 'source-path))
+	      (lambda args
+		(if (= (length args) 3) ;; Success
+		    (apply printf "  ~a: File: ~a, line ~a char ~a\n" depth args)
+		    (begin 
+		      (printf "  ~a: (unknown loc) " depth )
+		      (ob 'print (current-output-port)))
+		    )))
+	    (loop (add1 depth) (ob 'link))))))
   (define k->files continuation->sourcelocs)
 
 ;;<br> [2005.10.05]

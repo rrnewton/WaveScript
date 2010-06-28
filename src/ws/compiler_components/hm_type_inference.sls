@@ -191,9 +191,11 @@
 	     (apply string-append lines)))
 	 (get-snippet exp))]
     [,x 
-     (format "(in abstract syntax)\n   ~s\n" 
+     (format "(in abstract syntax)\n   ~a\n" 
 	     ;; This is HACKISH, and error-prone, but it makes messages nicer:
-	     (if (or (equal? x (void)) (string? x)) x (strip-annotations x))
+	     (with-output-to-string
+	       (lambda ()
+		 (pretty-print (if (or (equal? x (void)) (string? x)) x (strip-annotations x)))))
              )]))
 
 ;; Raises a generic type error at a particular expression.

@@ -490,8 +490,9 @@ wsq_project = stream_map
 
 fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
   iterate x in union2(left,right) {
-    print(".");
+    error("WindowJoin operator unfinished!!");
     //    print(" -*|*- Running window joiner: \n")
+
  // GETTING A TYPE CHECKING ERROR!!!!
 /*
     case x { 
@@ -500,6 +501,8 @@ fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
     }
 */
     //println(" -*|*- Running window joiner: " ++ x);
+    
+
   }
 }
 

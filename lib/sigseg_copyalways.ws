@@ -34,6 +34,8 @@ namespace Sigseg {
   fun start((_,st)) st;
   fun end((a,st)) st + intToInt64(Array:length(a) - 1);
   fun seg_get((a,_), ind)    a[ind]
+
+  // Note: DOES NOT COPY:
   fun toSigseg(arr, st, tb) (arr, st);
   fun toArray((arr,_)) arr;
   fun subseg((ar,st), pos, len) {

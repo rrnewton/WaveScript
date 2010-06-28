@@ -757,6 +757,7 @@
     (statref         (Static 'a)  'a)
 
     ;; These are for second-class references (iterator state variables)
+    ;; Renamed with Mutable: prefix to avoid conflicts.
     (Mutable:ref     ('a)         (Ref 'a))
 ;    (ref             ('a)         (Ref 'a))
     (deref            ((Ref 'a))   'a)

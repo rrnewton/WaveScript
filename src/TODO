@@ -29,6 +29,8 @@ Working on just cleaning up commented and dead code.
 
  *) FIX DEMO 4A.. it fails badly.
 
+ *) Remove UNIT value representation.  Use the "tuple" struct.
+
 
 ================================================================================
 TOOPTIMIZE:
