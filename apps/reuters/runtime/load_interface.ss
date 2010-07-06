@@ -52,4 +52,7 @@
 
 ;; Done with initializing the runtime interface bindings.  Now return
 ;; control to the enclosing C program in which we are embedded.
-(exit 0)
+(unless (top-level-bound? 'wsq-debug-mode)
+  (exit 0))
+
+

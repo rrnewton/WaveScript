@@ -174,7 +174,7 @@ void WSQ_Init(const char* outfile) {
   // (Doesn't work for me presently.)
   //Scall1(Stop_level_value( Sstring_to_symbol("suppress-greeting")), Sfalse);
 
-  printf(" <WSQ> Starting Scheme runtime system.\n");
+  printf(" <WSQ>  WSQ_Init: Starting Scheme runtime system.\n");
   int result = Sscheme_start(2, new_args);
   //int result = Sscheme_start(3, new_args);
   if (result) { 

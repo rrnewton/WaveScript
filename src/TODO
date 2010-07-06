@@ -31,6 +31,7 @@ Working on just cleaning up commented and dead code.
 
  *) Remove UNIT value representation.  Use the "tuple" struct.
 
+ *) Am I currently coalescing identical string constants?
 
 ================================================================================
 TOOPTIMIZE:

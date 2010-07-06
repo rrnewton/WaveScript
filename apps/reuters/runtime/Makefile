@@ -32,8 +32,7 @@ endif
 
 CC=gcc
 
-all: libwsq_runtime.a example_main
-
+all: libwsq_runtime.a example_main.exe shailendra_example.exe
 
 libwsq_runtime.a: wsq_runtime.c 
 	@if [ -d "$(CHEZD)" ]; then echo; else echo "ERROR: CHEZD ($(CHEZD)) does not exist."; exit 1; fi
@@ -41,9 +40,13 @@ libwsq_runtime.a: wsq_runtime.c
 	ar rcs libwsq_runtime.a wsq_runtime.o $(CHEZP)/kernel.o $(STATICLIBS)
 	@echo;echo MADE SHARED LIBRARY; echo; echo
 
-example_main:
+example_main.exe: example_main.c 
 	$(CC) $(FLAGS) -c -I $(CHEZP) example_main.c 
-	$(CC) $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main
+	$(CC) $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main.exe
+
+shailendra_example.exe: shailendra_example.c
+	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_example.c 
+	$(CC) $(FLAGS) $(LIBS) shailendra_example.o libwsq_runtime.a -o shailendra_example.exe
 
 clean:
 	rm -rf *.o *.a *.exe a.out *.so example_main query.*

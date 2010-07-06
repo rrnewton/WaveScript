@@ -711,6 +711,38 @@ namespace Array {
     };
     new
   }
+
+  /* This function has the conundrum that it doesn't know how big to
+   * make the output.  It might be profitable to make first pass and
+   * set a bitmask together with a second pass that does the copying.
+   * another language offhand that includes this function.
+   *
+   * Imperative languages seem to use an iterator to incrementally
+   * append the elements that make it through the filter (probably
+   * growing as necessary), or they destructively remove them from the
+   * old collection.   
+   *
+   * Alternatively, if we had an array primitive that would virtually
+   * restrict its length to less than the allocated memory, we could
+   * then try a guess anf restrict if necessary...
+   */ 
+  fun filter(pred,arr) {
+    // Inefficient, first create same-sized copy.
+    tmp = makeUNSAFE(arr`length);
+    j = 0;
+    for i = 0 to arr`length - 1 {
+      if pred(arr[i]) then {
+         tmp[j] := arr[i];
+         j += 1;
+      }
+    };
+
+    // Finally, create an appropriately sized copy:
+    final = makeUNSAFE(j);
+    blit(final, 0, tmp, 0, j);
+    return final;
+  }
+
  
 } // End namespace Array
 
@@ -1585,6 +1617,8 @@ fun sigseg_map (f, ss) {
 }
 fun sigseg_fold (fn, zer, ss) {
   // We don't want to use the sigseg indexing operator [[]]:
+  // It has (potential) linear complexity.
+  // We should expose something like this as part of the sigseg implementation.
   Array:fold(fn,zer, toArray(ss));
 }
 // Should have primitive support!!
@@ -1595,7 +1629,21 @@ fun Sigseg:foreach(fn, ss) {
 }
 Sigseg:fold = sigseg_fold
 Sigseg:map  = sigseg_map
-Sigseg:toArray  = toArray
+Sigseg:toArray  = toArray;
+
+fun Sigseg:fold1(fn, ss) {
+  Array:fold1(fn, toArray(ss));
+}
+// This is another complicated interface that should be unnecessary
+// when maps & folds can be effectively fused:
+// It is not necessary for normal fold, but for fold1...
+//fun Sigseg:mapfold1(mapper, folder, ss) {}
+
+
+// [2010.07.05] Again, this is much more inefficient than with direct access to the representation:
+fun Sigseg:filter(fn, ss) {
+  toSigseg(Array:filter(fn, toArray(ss)), ss`start, ss`timebase);
+}
 
 
 // This doesn't create a shared structure:

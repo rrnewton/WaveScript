@@ -1,6 +1,6 @@
 
 
-include "wsqlib.ws"
+include "wsqlib_alpha.ws"
 
 syms = #["IBM", "GOOG", "GM", "F", "IMGN"]
 
@@ -209,6 +209,9 @@ q9 = MAP(fun(ls) List:map((.SYM), ls),
 
 main = q3
 
-// [2009.06.04] Currently having problems with q5, q6, q8 with plain ws
+// [2009.06.04] Currently having problems with q5, q6, q8 with plain WS.
 // Everything works under ws.early.
+
+// What was the status under wsc2?  Were there WS language features
+// used here not supported there?
 

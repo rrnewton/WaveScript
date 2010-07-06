@@ -280,4 +280,10 @@
 
 ;(font-lock-add-keywords 'c-mode '(("\\<\\( = \\)" 1 font-lock-keyword-face t)))
 
+(defun rrn-config-c-mode-for-ws ()
+   "Sets up desired configuration for WS under c-mode"
+   (interactive)
+   (c-toggle-syntactic-indentation -1)
+   )
 
+(add-hook 'c-mode-hook 'rrn-config-c-mode-for-ws)

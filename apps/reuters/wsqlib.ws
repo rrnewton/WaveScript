@@ -5,460 +5,45 @@ include "socket.ws"
 
 // A collection of database-like stream operators.
 
-/****************************************************************************************************/
-/* (1) The first part of this file contains a bunch of "all caps"
-   experimental operators defined directly in WS.  These are mostly
-   unused.  The wsq_* operators are the ones actually exposed through
-   the WSQ library.  */
-/****************************************************************************************************/
-
-
-/* NOTE: Some of these are just aliases for common functions in the
- * standard library, possibly with the arguments rearranged.  For this
- * library we make sure that the stream argument is always last.
- */
-
-/******************************************************************************/
-/*  Interface.  */
-
-// MAP, FILTER, AVG
-
-TIMESTAMP_WINDOW :: 
-     ((b | TIME:#a) -> c, #a, Stream (b | TIME:#a))
-     -> Stream (Sigseg c);
-
-TIMESTAMP_WINDOW_GROUPBY :: 
-     ((b | TIME:#a) -> c,      // Projection
-      (b | TIME:#a) -> key,    // Groupby function
-      #a,                      // Window size
-       Stream (b | TIME:#a))   // Input stream
-     -> Stream (Sigseg c);
-
-// TIMESTAMP_WINDOW_GROUPBY_MINSLIDE :: 
-
-// REALTIME_WINDOW
-
-// WINDOW
-// REWINDOW_GROUPBY
-
-// TIMESTAMP_JOIN
-
-
-
-
-/******************************************************************************/
-
-/* 
- * Select only certain tuples from a stream.
- */ 
-//SELECT = stream_filter
-fun SELECT(project, pred, strm) {
-  iterate x in strm {
-    if pred(x) 
-    then emit project(x);
-  }
-}
-
-/************************************************
- * MAP a function over every element of a stream.
- */ 
-MAP = stream_map
-FILTER = stream_filter
-
-/* 
- * A function of a window (sigseg):
- */ 
-// [2009.05.14] Getting too weak a type here, FIXME!!!
-//AVG :: Sigseg #a -> #a;
-//AVG :: Sigseg Int -> Int;
-fun AVG(ss) {
-  sum = 0;
-  count = 0;
-
-  // Apply to each element of the sigseg: 
-
-  // These two version result in the WRONG TYPE!!!
-  //fun f(x) { sum += x; count += 1 };
-  //Sigseg:foreach(f, ss);
-  //for i = 0 to ss`width - 1 {  f(ss[[i]])  };
-
-  // This one results in the CORRECT TYPE!!
-  for i = 0 to ss`width - 1 { sum += ss[[i]]; count += 1 };
-
-  // Return value:
-  sum / count
-}
-
-fun AVG_OF(proj, ss) {
-  sum = 0;
-  count = 0;
-  for i = 0 to ss.width-1 { 
-    sum += proj( ss[[i]] );
-    count += 1 
-  };
-  // Return value:
-  sum / count
-}
-
-
-/************************************************
- * Window by time.  Assumes a TIME field.
-   Does a projection as well.
- */ 
-
-// FIXME: type too weak:
-/*
-TIMESTAMP_WINDOW :: 
-     ((b | TIME:Int64) -> c, Int64, Stream (b | TIME:Int64))
-     -> Stream (Sigseg c);
-*/
-
-// Inferred: [2009.10.18]
-// TIMESTAMP_WINDOW :: ((c | TIME:#b) -> 'd, #b, Stream (c | TIME:#b)) -> SS 'f;
-
-
-fun TIMESTAMP_WINDOW(proj, size, strm) 
-  iterate r in strm {
-    state { edge = 0; 
-            first = true;
-	    buffer = [];
-	    starttime = 0;
-	    count = 0; }
-    // Calibrate the time to the first tuple.
-    if first then { edge := r.TIME + size; first := false };
-
-    // Unless we maintain a timer, we can't produce output until we
-    // get a tuple that falls OUTSIDE of the time range.
-    // (TODO, maintain a timer)
-    if r.TIME >= edge then {
-
-      // emit toSigseg(List:toArray(buffer), starttime, nulltimebase);
-      emit toSigseg(List:toArray(List:reverse(buffer)), Int64! starttime, nulltimebase);
-      
-      buffer := [];
-      count := 0;
-      edge := edge + size;
-
-      starttime := r.TIME;
-    };
-
-    count += 1;
-    buffer := proj(r) ::: buffer;
-  }
-
-
-
-// This variant also supports grouping.
-
-// I have modified this version to not use the actual timestamp
-// contents as the sigseg "start" metadata.  That doesn't really make
-// sense.  Instead, we use simple sequence numbers here.
-
-
-
-
-fun TIMESTAMP_WINDOW_GROUPBY(proj, groupby, sze, strm) {
-  using HashTable;
-  iterate r in strm {
-    state { 
-        edges      = make(100);
-	    buffers    = make(100);
-	    starttimes = make(100);
-	    counts     = make(100);
-	  }
-    key = groupby(r);
-
-    // Initialize on the first tuple in a group:
-    if not(starttimes.contains(key)) then {
-	edges.set_BANG(key, r.TIME + sze);
-	buffers.set_BANG(key,[]);
-
-        starttimes.set_BANG(key, (0::Int64));
-        counts.set_BANG    (key, (0::Int64));
-    };
-
-    // Unless we maintain a timer, we can't produce output until we
-    // get a tuple that falls OUTSIDE of the time range.
-    // (TODO, maintain a timer)
-    if r.TIME >= edges.get(key) then {
-
-      emit toSigseg(List:toArray(List:reverse(buffers.get(key))), starttimes.get(key), nulltimebase);
-
-      // Set the start-time for the next window to the index of 
-      starttimes.set_BANG(key, counts.get(key));
-      buffers.set_BANG(key, []);
-      edges.set_BANG(key, edges.get(key) + sze);
-    };
-    buffers.set_BANG(key, proj(r) ::: buffers.get(key));
-    counts.set_BANG(key, counts.get(key) + 1); 
-  }
-}
-
-
-//================================================================================
-
-// Here is the WINDOW construct under StreamSQL... this is the functionality we want.
-
-/*
-window_identifier
-A unique name for the window declaration.
-
-window_specification
-A description of the window in the format:
-
-  SIZE size ADVANCE increment
-  {TIME | TUPLES | ON field_identifier_w}
-  [PARTITION BY field_identifier_p[,...]]
-  [VALID ALWAYS]
-  [OFFSET offset]
-  [TIMEOUT timeout]
-size
-The size of the window, expressed as either the number of tuples, an interval of time, or a range of values within a tuple field.
-
-increment
-The amount each subsequent window is offset from the first window that opens on a stream.
-
-field_identifier_w
-The tuple field used to set window size and advance.
-
-field_identifier_p
-The tuple field to use to create windows for separate groupings of tuples.
-
-offset
-Indicates when to open the first window on a stream.
-
-timeout
-Indicates the amount of time (in seconds) after which a window should close regardless of whether a tuple has arrived.
-*/
-
-// TODO: VALID ALWAYS, OFFSET, TIMEOUT
-// What about time/tuples?  
-
-// Currently 
-fun TIMESTAMP_WINDOW_GROUPBY_MINSLIDE(proj, groupby, timerng, strm) {
-  using HashTable;
-  iterate r in strm {
-    state { 
-            edges      = make(100);
-	    buffers    = make(100);
-	    starttimes = make(100);
-	    counts     = make(100);
-	  }
-    key = groupby(r);
-
-    fun crosses_edge(r) {
-      r.TIME >= edges.get(key);
-    };
-    
-    fun slice_current(buf) {
-      using List;
-      toArray( map(proj, buf.reverse))
-    };
-
-    // Initialize on the first tuple in a group:
-    if not(starttimes.contains(key)) then {
-	edges.set_BANG(key, r.TIME + timerng);
-	buffers.set_BANG(key,[]);
-
-        starttimes.set_BANG(key, (0::Int64));
-        counts.set_BANG    (key, (0::Int64));
-    };
-
-    // if ADVANCE WINDOW
-    if crosses_edge(r) then {
-
-      // Slide the time window forward just enough to include the next tuple.
-      newstart = r.TIME - timerng;
-
-      // FIXME: need to pay attention to inclusive/exclusive.
-      fun advance_edge(old) {
-        //old + timerng;
-	newstart + timerng;
-      };
-
-      // The problem with accumulating arrays of any kind, is that they have to be completely full when we pass them to toSigseg.
-      // If we're forming windows with a fixed size this is no problem....
-      // Otherwise, a doubly linked list wouldn't be bad here.  Or we could store both in a FIFO and a list.
-
-      emit toSigseg( slice_current(buffers.get(key)), starttimes.get(key), nulltimebase);
-
-      // SLIDE instead of reset.
-
-      shed = 0;
-      newbuf = {
-	using List;
-        flipped = buffers.get(key).reverse;
-        while (not(flipped.is_null) && flipped.head.TIME < newstart) {
-	  // println("  pruning out "++ flipped.head);
-	  flipped := flipped.tail;
-	  shed += 1;
-	};
-	//	println("");
-        flipped.reverse; 
-      };
-
-      fun advance_start(old) {
-        //counts.get(key);
-        //old + 1
-	//newstart
-	old + shed
-      };
-
-      // Set the start-time for the next window to the index of 
-      starttimes.set_BANG(key, advance_start(starttimes.get(key)));
-      buffers.set_BANG   (key, newbuf);
-      edges.set_BANG     (key, advance_edge( edges.get(key)) );
-    };
-    buffers.set_BANG(key, r ::: buffers.get(key));
-    counts.set_BANG (key, counts.get(key) + 1); 
-  }
-}
-
-
-
-//============================================================
-
-// This version does things based on arrival time, not on timestamp.
-// It doesn't require a timestamp at all.
-fun REALTIME_WINDOW(proj, size, strm) 
-  iterate x in union2(strm, timer(1.0 / Float! size)) {
-    state { count = 0; buffer = [] }
-    case x {
-      Left(r): {
-      buffer := proj(r) ::: buffer;
-        count += 1;
-      }
-      Right(_): {
-        tmp = buffer;
-	buffer := [];
-	count := 0;
-	emit List:reverse(tmp);
-      }
-    }
-  }
-
-// TEMP
-//WINDOW = if false then REALTIME_WINDOW else TIMESTAMP_WINDOW
-//WINDOW = TIMESTAMP_WINDOW
-
-fun WINDOW(size, strm) window(strm, size)
-//fun REWINDOW(size,gap, strm) = rewindow(strm, size, gap
-
-//================================================================================
-
-fun REWINDOW_GROUPBY(groupby, newwidth, gap, sig) {
-  feed = newwidth + gap;
-
-  using HashTable;
-  if (gap <= (0 - newwidth))
-    then wserror("REWINDOW_GROUPBY cannot step backwards: width "++ show(newwidth) ++" gap "++show(gap))
-    else 
-        
-   iterate (win in sig) {
-    state { 
-      acc = make(100);
-      // This bool helps to handle an output streams with gaps.
-      // We have two states, true means we're to "output" a gap next,
-      // false means we're to output a sigseg next.
-      need_feed = make(100);
-      go = false; // Temp 
-    }
-
-    key = groupby(win);
-
-    if not(acc.contains(key)) then { 
-      acc.set_BANG(key, nullseg);
-      need_feed.set_BANG(key, false);
-    };
-
-    newacc = joinsegs(acc.get(key), win);
-    acc.set_BANG(key, newacc);
-    //print("Acc "++show(acc`start)++":"++show(acc`end)++" need_feed "++show(need_feed)++"\n");
-
-   // This is INEFFICIENT!  We don't need to do this many subseg operations:
-   go := true;
-   while go {
-
-     temp = acc.get(key);
-     //print(temp.width ++" ");
-
-     if need_feed.get(key) then {
-       if temp.width > gap // here we discard a segment:
-       then { acc.set_BANG(key, subseg(temp, temp.start + Int64! gap, temp.width - gap));
-	      need_feed.set_BANG(key, false);
-	    }
-       else go := false
-      } else {
-	if temp.width > newwidth
-	then {emit subseg(temp, temp.start, newwidth);
-	      if gap > 0 
-	      then { 
-	        acc.set_BANG(key, subseg(temp, temp.start + Int64! newwidth, temp.width - newwidth));
-		need_feed.set_BANG(key, true); 
-	      } else acc.set_BANG(key, subseg(temp, temp.start + Int64! feed, temp.width - feed));
-	} else go := false
-      }
-   }
-  }
-}
-
-//================================================================================
-
-// Joining and Syncing
-
-// Join on a one-to-one basis via timestamps.
-//   ASSUMES: monotonically increasing timestamps
-//   ASSUMES: record stream elements with TIME field
-// If one stream has a tuple that doesn't have a counterpart in the
-// other stream, it is simply DROPPED.
-
-fun TIMESTAMP_JOIN(s1,s2) {
-  using FIFO;
-  iterate(x in union2(s1,s2)) {
-    state {
-      buf1 = make(10);
-      buf2 = make(10);
-    }
-
-    case x { 
-      Left  (a): buf1.enqueue(a)
-      Right (b): buf2.enqueue(b)
-    };
-
-    //buf1.peek(0).FOOBAR + 1;
-
-    while (buf1.elements > 0 && buf2.elements > 0) {
-
-      a = buf1.peek(0);      
-      //b = ( TIME= 99 );
-      b = buf2.peek(0);      
-      if (a.TIME == b.TIME) then {
-        buf1.dequeue();
-        buf2.dequeue();
-        emit(a, b);
-      } else {
-        // The younger one is necessarily trash, because of monotonicity 
-	//tm1 = a.TIME;
-	//tm2 = b.TIME;
-	//if tm1 < tm2 then buf1.dequeue() else ();
-	// SUBTLE AND INTERESTING BUG!!  If forces the values to be the same here.
-        if a.TIME < b.TIME                 
-        then { buf1.dequeue(); () }
-        else { buf2.dequeue(); () } 
-      }
-
-    }
-  }
-}
-
-
-
-
-
 
 /****************************************************************************************************/
 /* (2)  Functions called by generated WSQ code (via the C API)  [2009.10]                           */
 /****************************************************************************************************/
+
+// Interface:
+
+// Apply windowing based on a time field.
+wsq_window :: (tup -> #time, #time, Int, Stream tup) -> SS tup;
+// wsq_window(extract_time, winsize, slide, strm)
+// For now SLIDE is in terms of number of TUPLES.
+// In the future it may be possible to specify minimum slide in the original time unit.
+
+
+
+//wsq_join_leftonly :: (a -> time, Stream a, Stream a) -> Stream (a * a);
+
+// wsq_join_helper    :: (a -> b, Stream a, Stream a, (a, a) -> c) -> Stream c;
+//wsq_join_leftonly  :: (a -> time, Stream a, Stream a) -> Stream a;
+
+
+
+ /* wsq_reuterSource                         :: (Float, String) -> Stream DummySchema99; */
+ /* wsq_window                               :: (a -> #b, #b, Int, Stream a) -> SS a; */
+ /* wsq_window_super                         :: (a, b, c, Stream d) -> Stream #e; */
+ /* wsq_windowJoin                           :: (a, b, Stream c, Stream d, e) -> Stream f; */
+ /* wsq_mergeMonotonic                       :: (a, b, c) -> d; */
+ /* wsq_printer                              :: (a, Stream b) -> Stream c; */
+ /* wsq_connect_out                          :: (a, Uint16, Stream b) -> Stream c; */
+ /* wsq_connect_in                           :: (String, Uint16) -> Stream a; */
+ /* wsq_SUM                                  :: (a -> #b, Sigseg a) -> #b; */
+ /* wsq_MIN                                  :: (a -> b, Sigseg a) -> b; */
+ /* wsq_MAX                                  :: (a -> b, Sigseg a) -> b; */
+ /* wsq_AVG                                  :: (a -> #b, Sigseg c) -> #d; */
+ /* wsq_FIRST                                :: (a -> b, Sigseg a) -> b; */
+ /* wsq_LAST                                 :: (a -> b, Sigseg a) -> b; */
+
+
+//====================================================================================================
 
 fun discard(s) iterate _ in s { }
 
@@ -466,7 +51,25 @@ fun discard(s) iterate _ in s { }
 type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
 wsq_reuterSource :: (Float, String) -> Stream DummySchema99;
 fun wsq_reuterSource(freq, schema) {
-  syms = #["IBM", "GOOG", "GM", "F", "IMGN"];
+    syms = #["IBM", "GOOG", "GM", "F", "IMGN", 
+             // Supplementing this with a bunch of other symbols:
+             "AAPL", "AAUKY", "AAV", "AAWW", "AB", "ABAX", "ABB", "ABC", "ABFS", "ABG", "ABM", "ABMD", "ABT", "ABV", "ABVT", "ABX",
+             "ACC", "ACCL", "ACE", "ACET", "ACF", "ACGL", "ACGY", "ACH", "ACI", "ACIW", "ACL", "ACLI", "ACM", "ACN", "ACO", "ACOM",
+             "ACOR", "ACTG", "ACV", "ACXM", "ADBE", "ADCT", "ADI", "ADM", "ADP", "ADRE", "ADS", "ADSK", "ADTN", "ADVS", "ADY",
+             "AEE", "AEG", "AEIS", "AEL", "AEM", "AEO", "AEP", "AER", "AES", "AET", "AEZ", "AF", "AFAM", "AFFX", "AFFY", "AFG", "AFL",
+             "AFSI", "AGAM", "AGCO", "AGG", "AGII", "AGL", "AGM", "AGN", "AGNC", "AGO", "AGP", "AGQ", "AGU", "AGYS", "AHGP", "AHL",
+             "AHS", "AHT", "AIG", "AIMC", "AIN", "AINV", "AIPC", "AIR", "AIRM", "AIT", "AIV", "AIXG", "AIZ", "AJG", "AKAM", "AKR",
+             "AKS", "ALB", "ALE", "ALEX", "ALGN", "ALGT", "ALJ", "ALK", "ALKS", "ALL", "ALNY", "ALOG", "ALSK", "ALTE", "ALTH",
+             "ALTR", "ALV", "ALXN", "AM", "AMAG", "AMAT", "AMB", "AMCC", "AMD", "AME", "AMED", "AMG", "AMGN", "AMJ", "AMKR",
+             "AMLN", "AMMD", "AMN", "AMP", "AMR", "AMRI", "AMSC", "AMSF", "AMSG", "AMT", "AMTD", "AMX", "AMZN", "AN", "ANDE",
+             "ANF", "ANGO", "ANH", "ANN", "ANR", "ANSS", "ANV", "ANW", "AOL", "AON", "AONE", "AOS", "APA", "APAC", "APC", "APD",
+             "APEI", "APH", "APKT", "APL", "APOG", "APOL", "APSG", "APU", "APWR", "ARAY", "ARB", "ARBA", "ARCC", "ARD", "ARE",
+             "ARG", "ARGN", "ARI", "ARII", "ARJ", "ARLP", "ARM", "ARMH", "ARO", "ARP", "ARRS", "ARST", "ART", "ARUN", "ARW", "ASA",
+             "ASBC", "ASCA", "ASEI", "ASF", "ASFI", "ASH", "ASIA", "ASMI", "ASML", "ASPS", "ASTE", "ATAC", "ATHN", "ATHR",
+             "ATI", "ATK", "ATLS", "ATMI", "ATNI", "ATO", "ATPG", "ATR", "ATU", "ATVI", "ATW", "AU", "AUO", "AUXL", "AUY", "AVA",
+             "AVAV", "AVB", "AVD", "AVGO", "AVID", "AVP", "AVT", "AVTR", "AVY", "AWC", "AWH", "AWI", "AWK", "AXAHY", "AXE", "AXL",
+             "AXP", "AXS", "AYE", "AYI", "AYR", "AZN", "AZO", "AZSEY"
+             ];
   lastprice = Array:make(Array:length(syms), 50.0);
   iterate _ in timer(freq) {
     state{ t = 0.0 }
@@ -485,8 +88,195 @@ fun wsq_reuterSource(freq, schema) {
   }
 }
 
-wsq_filter  = stream_filter
-wsq_project = stream_map
+wsq_filter  = stream_filter;
+wsq_project = stream_map;
+
+
+//====================================================================================================
+// Windowing:
+
+// UNFINISHED:
+
+// This produces windows of a non-fixed size based on qualities of the data.
+// It can be used for time-stamp based windows but is more general than that.
+/*
+fun wsq_window_general (pred, strm) {
+  using Array;
+  arbitrary_start_size = 16;
+
+  //fun count() { dif = tl - hd; if dif < 0 then dif + arr`length else dif; };
+
+  iterate(new in strm) {
+    state{ 
+      // The buffer for accumulating elements:
+      arr = makeUNSAFE(arbitrary_start_size);
+      hd = 0;    // Head index into the circular buffer.
+      tl = 0;    // Tail index into the circular buffer.
+      count = 0; // How many elements are in the buffer.
+
+      startsamp = 0`gint;
+    }
+
+    curlen = arr`length;
+
+    // Prune old elements that cause the predicate to fail.
+    // (This could remove ALL saved elements.)
+    while not( pred(arr[hd], new)) && count > 0 // hd < tl 
+    {
+      hd += 1;
+      count -= 1;
+      if hd == curlen then hd := 0;
+    }
+
+    // Add the new element, if there's not enough space, double the buffer:    
+    if count == curlen then {
+       old = arr; 
+       arr := makeUNSAFE(2 * count);
+       // Copy the first part:
+       blit(arr, 0, old, hd, count - hd);
+       // Copy the part after the wrap-around:
+       if tl < hd then 
+          blit(arr, 0, old, _, count - hd);
+       hd := 0;
+       tl := count;
+    };
+
+    // Ok, NOW we are ready to add it for real:
+    arr[tl] = new;
+    tl += 1;
+    count += 1;
+    if tl == curlen then tl := 0;
+
+    // UNFINSHED:
+    // How far to slide is a totally different question and hard to answer in as general a way.       
+    //emit toSigseg(arr, startsamp, nulltimebase);
+  }
+}
+*/
+
+// This version is somewhat less ambitious it provides data-dependent
+// windowing but requires that windows be defined in terms of a scalar
+// "time" property.
+
+/* One tradeoff here is whether or not windows should WAIT until they
+   fill up, or if they should fire immediately.  In the latter case
+   there's really no guarantee as to the size of the actual windows. 
+   Of course, that's always the case with very sparse datapoints.  */
+fun wsq_window(extract_time, winsize, slide, strm) {
+  using Array;
+  arbitrary_start_size = 16;
+  iterate(new in strm) {
+    state{ 
+      // The buffer for accumulating elements:
+      arr = makeUNSAFE(arbitrary_start_size);
+      hd = 0;    // Head index into the circular buffer.
+      tl = 0;    // Tail index into the circular buffer.
+      count = 0; // How many elements are in the buffer.
+      slide_counter = slide;  // Count down to producing an output.
+    }
+
+    newtime = extract_time(new);
+    curlen = arr`length;
+
+    // Prune old elements that cause the predicate to fail.
+    // (This could remove ALL saved elements.)
+    while (newtime - extract_time(arr[hd])) > winsize  && count > 0 
+    {
+      hd += 1;
+      count -= 1;
+      if hd == curlen then hd := 0;
+    }
+
+    // Add the new element, if there's not enough space, double the buffer:    
+    if count == curlen then {
+       old = arr; 
+       arr := makeUNSAFE(2 * count);
+       // Copy the first part:
+       blit(arr, 0, old, hd, (if tl < hd then curlen else tl) - hd); 
+       // Copy the part after the wrap-around:
+       if tl < hd then blit(arr, 0, old, 0, count - hd);
+       hd := 0;
+       tl := count;
+    };
+
+    // Ok, NOW we are ready to add it for real:
+    newlen = arr`length;
+    arr[tl] := new;
+    tl += 1;
+    count += 1;
+    if tl == newlen then tl := 0;
+
+    // INEFFICIENT FIXME -- currently with a slide of 1 this will exhibit NO SHARING.
+    // The problem is that we don't want to introduce latency....
+    // A solution would be to unsafely modify sigsegs after they have left this kernel...
+
+    // TODO: support sliding in meaningful time units:
+    slide_counter -= 1;    
+    if slide_counter == 0 then {
+
+       // For now we just COPY like mad:
+       // Pointless to have a circular buffer if we do this much copy.
+
+       // TODO!! Ensure that count != 0..
+
+       tmparr = makeUNSAFE(count);
+
+       blit(tmparr, 0, arr, hd, (if tl < hd then newlen else tl) - hd); 
+       if tl < hd then blit(tmparr, 0, arr, 0, count - hd);
+       
+       emit toSigseg(tmparr, (Int64! extract_time(tmparr[0])), nulltimebase);
+
+       slide_counter := slide;
+    };
+
+    // UNFINSHED:
+    // How far to slide is a totally different question and hard to answer in as general a way.       
+    //
+  }
+}
+
+// This version implements the memory sharing strategy.
+// UNFINISHED:
+fun wsq_window_super(extract_time, winsize, slide, strm) {
+  using Array;
+  arbitrary_start_size = 16;
+  iterate(new in strm) {
+    state { 
+      // Double buffer:
+      buf1 = null;                              // The old one.
+      buf2 = makeUNSAFE(arbitrary_start_size);  // The current one.
+
+      // We "remove" elements from the front of the old buffer:
+      hd1 = 0;
+      // And we add them to the tail of the new buffer.
+      tl2 = 0;
+
+      slide_counter = slide;  // Count down to producing an output.
+    }
+
+    // If we get rid of the circular approach and never overwrite
+    // array positions we could get nice sharing here..
+    // Would need to be able to point a sigseg at *part* of an array.
+
+    // Point to the current array and join them:
+    // sig1 = unsafeToSigseg(arr_old, hd, len?, startsamp, nulltimebase);
+    // sig2 = ...
+    //  joinsegs
+    
+    emit 99;
+  }
+}
+
+//====================================================================================================
+// Joins and Merges
+
+// If we ONLY care about aggregating windows, we do not even need to allocate.
+// fun wsq_window_aggronly
+// We can do as CQL and produce only add/remove tuples (deltas).
+
+
+// (app wsq_window (lambda (,fst ,lst) ,predicate) ,(edge-sym in))
+
 
 fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
   iterate x in union2(left,right) {
@@ -506,6 +296,59 @@ fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
   }
 }
 
+fun wsq_mergeMonotonic(extractor, s1, s2) {
+  error("wsq_mergeMonotonic not implemented");
+}
+
+fun wsq_join_helper(extractor, s1, s2, pickresult) {
+  using FIFO;
+  iterate(x in union2(s1,s2)) {
+    state {
+      buf1 = make(10);
+      buf2 = make(10);
+    }
+
+    case x { 
+      Left  (a): buf1.enqueue(a)
+      Right (b): buf2.enqueue(b)
+    };
+
+    //buf1.peek(0).FOOBAR + 1;
+
+    while (buf1.elements > 0 && buf2.elements > 0) {
+
+      a = buf1.peek(0);      
+      b = buf2.peek(0);      
+      a_time = extractor(a);
+      b_time = extractor(b);
+      if (a_time == b_time) then {
+      //if (ismatch(a,b)) then  {
+
+        buf1.dequeue();
+        buf2.dequeue();
+        emit pickresult(a, b);
+      } else {
+        // The younger one is necessarily trash, because of monotonicity 
+	//tm1 = a.TIME;
+	//tm2 = b.TIME;
+	//if tm1 < tm2 then buf1.dequeue() else ();
+	// SUBTLE AND INTERESTING BUG!!  If forces the values to be the same here.
+        if a_time < b_time
+        then { buf1.dequeue(); () }
+        else { buf2.dequeue(); () }
+      }
+    }
+  }
+}
+
+
+fun wsq_join_leftonly(extractor, s1, s2) {
+    wsq_join_helper(extractor, s1,s2, fun (l,r) l);
+}
+
+
+//====================================================================================================
+
 fun wsq_printer(str, s) {
   //stream_map(fun(x) { print(x); x }, s)
   iterate x in s { 
@@ -517,6 +360,8 @@ fun wsq_printer(str, s) {
 }
 
 /*  Handling network communication */
+
+//====================================================================================================
 
 fun wsq_connect_out(host, prt, strm) {
   //print("  **** wsq_connect_out not implemented yet! **** \n");
@@ -539,3 +384,64 @@ fun wsq_connect_in(host, prt) {
   //(socket_in(host, prt) :: Stream (| BAZ : String, BAR : Float ) )
   socket_in(host, prt)
 }
+
+
+//====================================================================================================
+// AGGREGATION
+
+wsq_SUM        :: (a -> #b, Sigseg a) -> #b;
+wsq_MIN        :: (a -> b,  Sigseg a) -> b;
+wsq_MAX        :: (a -> b,  Sigseg a) -> b;
+wsq_AVG        :: (a -> #b, Sigseg c) -> #b;
+wsq_FIRST      :: (a -> b,  Sigseg a) -> b;
+wsq_LAST       :: (a -> b,  Sigseg a) -> b;
+wsq_FIRSTWHERE :: (a -> b, a -> Bool, Sigseg a) -> b;
+wsq_LASTWHERE  :: (a -> b, a -> Bool, Sigseg a) -> b;
+
+
+// (1) Simple version, windowed streams pass sigsegs, aggregators operate on sigsegs:
+
+fun wsq_SUM(extract, ss) Sigseg:fold(fun (acc,x) acc + extract(x), 0, ss);
+
+// FIXME: these two implementations do an extra comparison:
+fun wsq_MIN(extract, ss) Sigseg:fold(fun (acc,x) min(acc, extract(x)), extract(ss[[0]]), ss);
+fun wsq_MAX(extract, ss) Sigseg:fold(fun (acc,x) max(acc, extract(x)), extract(ss[[0]]), ss);
+
+
+// BUG: [2010.07.06] Infers too weak a type:
+// wsq_AVG        :: (a -> #b, Sigseg c) -> #d;
+fun wsq_AVG(extract, ss) {
+    fun folder((num, cnt), x) (num + extract(x), cnt+1);
+    let (num,den) = Sigseg:fold(folder, (0,0), ss); 
+    return (num / den);
+}
+
+// These are not incrementally computable, require a memory of the whole window:
+fun wsq_FIRST(extract, ss) extract(ss[[0]]);
+fun wsq_LAST (extract, ss) extract(ss[[ss`width - 1]]);
+
+fun wsq_FIRSTWHERE(extract, predicate, ss) {
+    i = 0;
+    while not( predicate(ss[[i]]) ) {                            
+      i += 1;
+    };  
+    return extract( ss[[i]] );
+}
+
+fun wsq_LASTWHERE(extract, predicate, ss) {
+   // Inefficient currently:
+   i = ss`width - 1;
+   while not( predicate(ss[[i]]) ) {                            
+      i -= 1;
+   };  
+   return extract( ss[[i]] );
+}
+
+
+
+// (2) Alternate version: +/- add/remove tuples as in CQL.
+// This is probable more efficient but doesn't conveniently support
+// aggregates that are not incrementally computable (that need the
+// whole window).
+
+

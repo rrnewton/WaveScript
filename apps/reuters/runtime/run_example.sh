@@ -3,7 +3,7 @@
 # This illustrates a conservative method of running the query.
 
 killall query.exe
-./example_main
+./example_main.exe
 
 # if [ "$?" != 0 ]; then
 

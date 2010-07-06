@@ -218,6 +218,8 @@ int wsc2_tuplimit = 10;
 //                           Scheduler and data passing
 //################################################################################//
 
+
+// --------------------------------------------------------------------------------
 #ifdef WS_REAL_TIMERS
 
 unsigned long tick_counter;
@@ -272,10 +274,13 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
 #define VIRTTICK() tick_counter++
 #define WAIT_TICKS(delta) wait_ticks(delta)
 
-#else
+// --------------------------------------------------------------------------------
+#else // Not WS_REAL_TIMERS:
+
 #define VIRTTICK()                   {}
 #define WAIT_TICKS(delta)            {}
 #endif
+
 
 
 // Single threaded version:

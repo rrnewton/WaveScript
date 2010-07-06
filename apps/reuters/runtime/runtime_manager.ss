@@ -1,11 +1,10 @@
 
 ;; SET SECKET OPTION TO SS_REUSE_ADDR... so it can reuse something previously bound...
 
-
-
+;;====================================================================================================
 ;: Runtime configuration manager for Reuters distributed processing project.
 
-;; This is Chez Scheme specific.
+;; This is Chez Scheme specific, meant to be loaded after the ws/regiment compiler is loaded.
 
 ;; Note that this Scheme code is not on the critical path for actual
 ;; (high rate) data processing.  This code runs at "configuration
@@ -14,6 +13,10 @@
 ;; It must keep track of what code (query subgraphs) we've compiled
 ;; and loaded.  It must call the WaveScope compiler to compile new
 ;; code and dlopen to bring it into the running system.
+
+;;====================================================================================================
+
+;;====================================================================================================
 
 
 ;; TODO Set from an environment variable 
@@ -74,14 +77,10 @@
 
 ;;==============================================================================
 
-
 ;; Following the convention that the 
 (define supported-binops 
   '((+ g+) (* g*) (- g-) 
     (/ g/) (^ g^)    
-
-    ;; For now abs is not generic, just for FLOAT:
-    (abs absF)
     
     (== wsequal?)
     (=  wsequal?) 
@@ -90,6 +89,14 @@
 
     (AND ws:and) (OR ws:or) (NOT not)
     ))
+
+;; For now abs is not generic, just for FLOAT:
+    ;(abs absF)
+
+;; These are the allowed aggregators over windows:
+(define aggregator-prims '(SUM AVG MIN MAX FIRST LAST FIRSTWHERE LASTWHERE))
+;; TODO: Add PREV
+
 
 ;; This dispatches on the representation of the entry in
 ;; supported-binops and returns a piece of WS syntax that applies the
@@ -103,7 +110,10 @@
        (cons newop args))]
    [,else (error "apply-prim-entry bad entry in supported-binops: ~s" entry)]))
 
-;;==============================================================================
+;;====================================================================================================
+;; Poor man's "Parsing" -- we're just assuming sexp compatible strings.
+;;====================================================================================================
+
 
 ;; When we write field names "SYM" rather than "A.SYM" there's an
 ;; implicit record (tuple) that we're operating on.  In the generated
@@ -112,47 +122,140 @@
 
 (define (edge-sym id) (string->symbol (format "edge_~a" id)))
 
+;; We prefix the variables:
+(define (var-sym id) (symbol-append 'var id))
+
 (define (ununquote x) 
   (if (and (pair? x) (eq? (car x) 'unquote))
       (cadr x) x))
 
-;; Poor man's "Parsing" -- we're just assuming sexp compatible strings.
 ;; Super simple at first, assumes it is just a list of fields:
 (define (parse-project slist) 
   `(lambda (orig)
      ,(foldl (lambda (x acc)
                (match x
-	        [(,s) (guard (symbol? s))       `(wsrecord-extend ',s (wsrecord-select ',s orig) ,acc)]
-		[(,x AS ,y) (guard (symbol? y)) `(wsrecord-extend ',y ,(parse-expression x 'orig)  ,acc)]
+	        [(,s) (guard (symbol? s))           `(wsrecord-extend ',s (wsrecord-select ',s orig) ,acc)]
+		[(,x ... AS ,y) (guard (symbol? y)) `(wsrecord-extend ',y ,(parse-expression x 'RECORD 'orig)  ,acc)]
 		[,x (error 'parse-project "invalid syntax for projection field: ~s" x)]
 		))
 	'(empty-wsrecord)
 	(map ununquote slist))))
 
+
+(define (comma-split-slist sexp)
+  (let loop ((sexp sexp) (acc '()))
+    (match sexp
+      [()    (if (null? acc) '() (list (reverse! acc)))]
+      [((,uq ,a) ,b* ...) (guard (eq? uq 'unquote))
+       (cons (reverse! acc) (loop b* (list a)))]
+      [(,a ,b* ...) (loop b* (cons a acc))]
+      )))
+;; (string->symbol "unquote")
+
+
 ;;  Takes an sexp and returns a WS expression AST.
+;;  Does NOT take a string.  This operates in two modes.  VARIABLE
+;;  where identifiers are interpreted as plain variables, and RECORD,
+;;  where they are all implicitly field references.
 (define parse-expression
   (case-lambda 
-    [(expr) (parse-expression expr implicit-record-name)]
-    [(expr rec)
+    [(expr)      (parse-expression expr 'RECORD)]
+    [(expr mode) (parse-expression expr mode implicit-record-name)]
+    [(expr mode rec)
      (match expr
        [,x (guard (symbol? x)) 
-	   (match (string-split (symbol->string x) #\.)
-	     [(,field)      `(wsrecord-select ',x ,rec)]
-	     [(,rec ,field) `(wsrecord-select ',(string->symbol field) ,(string->symbol rec))]
-	     [,else          (error 'parse-expression "unsupported identifier: ~s" x)])]
+	   (match mode	     
+	     [RECORD 
+	      (match (string-split (symbol->string x) #\.)
+		[(,field)      `(wsrecord-select ',x ,rec)]
+		[(,rec ,field) `(wsrecord-select ',(string->symbol field) ,(string->symbol rec))]
+		[,else          (error 'parse-expression "unsupported identifier: ~s" x)])]
+	     [VARIABLE (var-sym x)])]
        [,x (guard (number? x)) `',x]
        [,x (guard (string? x)) `',x]
        [(,[x]) x] ;; Extra parens are ok.
-       [(,[a] ,binop ,[b])  (guard (symbol? binop))
+       [(,[a] ,binop ,[b])  (guard (symbol? binop) (assq binop supported-binops))
 	(define entry (assq binop supported-binops))
-	(unless entry  (error 'parse-expression "unsupported binary operator"))
+	;(unless entry  (error 'parse-expression "unsupported binary operator"))
 	(apply-prim-entry entry a b)]
-       [,else (error 'parse-expression "Invalid expression: ~a" expr)]
+
+	[(CAST (,[expr] AS ,type))
+	 ;(ASSERT "WSQ/SQL types should be simple for now." symbol? type)
+	 ;; Currently this only works for NUMBERS:
+	 `(assert-type ,(parse-type type) (cast_num ,expr))
+	]
+
+       ;; Difficult multiple values error here... is it a problem with -> x*?
+       ;[(,AGGRPRIM ,[comma-split-slist -> x*] ...)  ]
+
+       [(,AGGRPRIM (,_x* ...))
+       	(guard (symbol? AGGRPRIM) (memq AGGRPRIM aggregator-prims))
+        (define x* (comma-split-slist _x*))
+	(define (app x . args)
+	  (let-values ([(aggrexpr window-name) (lift-aggregate rec x)])
+	    `(app ,(symbol-append 'wsq_ AGGRPRIM) ,aggrexpr ,@args ,window-name)))
+	(cond 	  
+	 ;; [2010.07.06] Adding these new aggregators
+	 [(memq AGGRPRIM '(FIRSTWHERE LASTWHERE))	  
+	  (match x* [(,x ,pred) (app x `(lambda (,implicit-record-name) ,(parse-expression pred)))])]
+	 [else (match x* [(,x) (app x)])])]
+	
+	;; TODO ADD COMMAS:
+	#;
+       [(,prim ,[rand*] ...) (guard (symbol? prim) (regiment-primitive? prim))
+        `(,prim . ,rand*)]
+
+       [,oth (error 'parse-expression "Invalid expression: ~a" oth)]
        )]))
 
-;; This assumes for now that it's a series of binary operators.
-(define (parse-filter str)
-  `(lambda (,implicit-record-name) ,(parse-expression (ASSERT (string->slist str)))))
+
+(define (free-rec-vars expr default-rec)
+  (match expr
+    [,x (guard (symbol? x)) 
+	(match (string-split (symbol->string x) #\.)
+	  [(,field)       (list default-rec)]
+	  [(,rec ,field)  (list (string->symbol rec))])]
+    [,x (guard (number? x)) '()]
+    [,x (guard (string? x)) '()]
+    [(,[x]) x] ;; Extra parens are ok.
+    [(,[a] ,binop ,[b])  (guard (symbol? binop) (assq binop supported-binops))
+     (union a b)]
+    [(CAST (,[expr] AS ,type)) expr]
+    [(,AGGRPRIM ,[comma-split-slist -> x*] ...) 
+     (guard (symbol? AGGRPRIM) (memq AGGRPRIM aggregator-prims)) 
+     (apply append x*)]
+    [(,prim ,[rand*] ...) (guard (symbol? prim) (regiment-primitive? prim)) (apply union rand*)]
+    [,oth (error 'free-rec-vars "Invalid expression: ~a" oth)]))
+
+
+;; SQL has overloading conventions where sometime a variable that
+;; refers to a window can be treated used as a scalar.  We need to
+;; unravel that.
+(define (lift-aggregate default-rec expr)
+  ;; For now we assume that all variables inside the aggregation body
+  ;; are WINDOWED, we need some primitive type checking to figure out
+  ;; when scalars and windows are mixed.
+  ;;
+  ;; Here's a hack... we need to determine sometimes WHICH window it refers to.
+  ;; We check the free variables of the operand to determine that.
+  (define rec-name 
+    (match (free-rec-vars expr default-rec)
+      [(,nm) nm]
+      [,oth (error 'lift-aggregate "aggregator expression contains mixed record references ~s : ~s " oth expr)]))
+  (values `(lambda (,rec-name) ,(parse-expression expr 'RECORD rec-name))
+	  rec-name))
+
+(define (parse-type ty)
+  (case  ty
+    [(FLOAT INT DOUBLE) (capitalize-first ty)]
+    [else (error 'parse-type "This type not currently supported by WSQ: ~s" ty)]))
+
+(define (capitalize-first s_or_s)
+  (define str (if (symbol? s_or_s) (symbol->string s_or_s) s_or_s))
+  (define result 
+    (string-append (uppercase (substring str 0 1))
+		   (lowercase (substring str 1 (string-length str)))))
+  (if (symbol? s_or_s) (string->symbol result) result))
 
 
 (define (capitalize s)
@@ -210,8 +313,8 @@
     ))
 
 ;; Execute through the "ws" scheme-hosted environment.
-(define scheme-hosted #f)
-
+(define wsq-engine
+  (string->symbol (uppercase (or (getenv "WSQMODE") "C"))))
 
 (define-entrypoint WSQ_EndTransaction () void
   (lambda ()    
@@ -244,7 +347,7 @@
 				      `(app merge ,vr ,rest)]))))]
 	   [start-time (current-time 'time-monotonic)])
 
-      (if verbose-mode
+      (if #t ;verbose-mode
 	  (begin
 	    (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog) (newline)
 	    ;;(pretty-print (wsparse-postprocess prog))  
@@ -255,21 +358,18 @@
 	  )
 
       (printf " <WSQ>   Compiling generated WS program.\n")
-
       
-      (if scheme-hosted 
-	  (begin
-	    (browse-stream (wsint (wsparse-postprocess prog) '()))
-	    )
-
-	  ;; Compile through the wsc2 backend:
-	  (begin
-	    (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
-			   [regiment-verbosity (if verbose-mode 5 1)])
-	      (wscomp (wsparse-postprocess prog) '() 'wsc2)
-	      )
-
-	    (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") "")))
+      (match wsq-engine
+        [SCHEME (browse-stream (wsint (wsparse-postprocess prog) '()))]	
+	[C ;; Compile through the wsc2 backend:
+	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
+			[regiment-verbosity (if verbose-mode 5 1)])
+	   (wscomp (wsparse-postprocess prog) '() 'wsc2))
+	 
+	 ;; Make it run in REAL time:
+	 (when #t
+	   (printf " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
+	   (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") ""))))
 
 	    ;(printf "SETTING LINK ~s\n" (getenv "WS_LINK"))
 	    
@@ -307,9 +407,8 @@
 	     ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
 	      (unless query-output-file
 		(fork-thread (echo-port from-stdout)))
-	      ))
-	      
-	    )))
+	      ))])
+      )
     (set-box! curtransaction #f)
     ))
 
@@ -365,7 +464,9 @@
 (define (add-op! opid binding)
   (when (hashtable-contains? op_table opid) (error 'WSQ "op with node id ~s already exists!" opid))
   (hashtable-set! op_table opid binding)
-  (ASSERT cur_ops) (set! cur_ops (cons opid cur_ops))
+  (unless cur_ops (error 'add-op! "The system is not in a good state.  Maybe BeginSubgraph was omitted?\n"))
+  ;(ASSERT cur_ops) 
+  (set! cur_ops (cons opid cur_ops))
   ;;(hashtable-set! subgraph_table sym code)
   (set-box! op_log (cons opid (unbox op_log))))
 
@@ -459,6 +560,12 @@
     (print-state)
     ))
 
+
+;; This assumes for now that it's a series of binary operators.
+(define (parse-filter str)
+  `(lambda (,implicit-record-name) 
+     ,(parse-expression (ASSERT (string->slist str)))))
+
 (define-entrypoint WSQ_AddFilter (int int int string) void
   (lambda (opid in out expr)
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
@@ -468,7 +575,42 @@
     ))
 
 
-(define (WSQ_MatchRecognize opid in out _rows-per-match _pattern _defs)
+(define (WSQ_AddFilterWindows opid in out _expr)  
+  (define code
+    `[,(edge-sym out) (app wsq_project
+			   (lambda (win)
+			      (app Sigseg:filter ,(parse-filter _expr) win))
+			      ,(edge-sym in))])
+  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
+  (print-state))
+
+
+; char* joinstr = "MONOTONIC LEFT ONLY | A B | ((FIRST(A.TIME)) <= (FIRST(B.TIME))) AND (LAST(A.TIME)) >= (LAST(B.TIME))";
+(define (WSQ_AddJoin opid in1 in2 out _conf _names _predexpr)
+  (define conf     (ASSERT (string->slist _conf)))
+  (define predexpr (parse-expression (ASSERT (string->slist _predexpr))))  
+  (match conf 
+    [(MONOTONIC LEFT ONLY) (void)]
+    [,oth (error 'WSQ_AddJoin "Initial prototype is very restrictive, only MONOTONIC LEFT ONLY config supported, not: ~s" oth)])
+  (match (string->slist _names)
+    [(,A ,B)  
+     (define code `[,(edge-sym out)
+		    (app wsq_join_leftonly (lambda (,A ,B) ,predexpr)
+			 ,(edge-sym in1) ,(edge-sym in2))])
+     (add-op! opid code)  (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
+     (print-state)]))
+
+(define (WSQ_AddMergeMonotonic opid in1 in2 out _labeler)
+  (define labeler (parse-expression (ASSERT (string->slist _labeler))))
+  (define code `[,(edge-sym out)
+		 (app wsq_mergeMonotonic (lambda (,implicit-record-name) ,labeler)
+		      ,(edge-sym in1) ,(edge-sym in2))])
+  (add-op! opid code)  (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
+  (print-state))
+
+
+
+(define (WSQ_AddMatchRecognize opid in out _rows-per-match _pattern _defs)
   (define rows-per-match (car (ASSERT (string->slist _rows-per-match))))
   (define pat (ASSERT (string->slist _pattern)))
   (define defs (map (lambda (x) (ASSERT (string->slist x))) (string-split _defs #\,)))
@@ -556,8 +698,41 @@
 
   (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
   (print-state)
-  (pretty-print code)
   )
+
+;; This is the general version that uses a start/end predicate rather than
+(define (WSQ_WindowGeneral opid in out _names _predicate)
+  (define predicate (parse-expression (ASSERT (string->slist _predicate))))
+  (define code 
+    (let-match ([(,fst ,lst) (ASSERT (string->slist _names))])  
+      `[,(edge-sym out) (app wsq_window (lambda (,fst ,lst) ,predicate) ,(edge-sym in))]))
+  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
+  (print-state))
+
+(define (WSQ_AddWindow opid in out _field _timeexpr _slide)
+  (define field (car (ASSERT (string->slist _field))))
+  (define time (parse-expression (ASSERT (string->slist _timeexpr))))
+  (define tmp (ASSERT (string->slist _slide)))
+  (define slide 
+    (match tmp
+      [(,e ... TUPLE) (parse-expression e)]
+      [(,e ... TUPLES) (parse-expression e)]
+      [,oth (error 'WSQ_AddWindow "unhandled SLIDE specification (currently): ~s" oth)]))
+
+  (define code 
+    `[,(edge-sym out) (app wsq_window 
+			   ;; An extractor:
+			   (lambda (,implicit-record-name) ,(parse-expression field))
+			   ,time ,slide ,(edge-sym in))]
+  )
+
+  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
+  (print-state))
+
+
+
+
+
 
 
 
@@ -568,16 +743,16 @@
     (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
     (define in*  (ASSERT (string->slist inputs)))
     (define out* (ASSERT (string->slist outputs)))
-    (define opsym (string->symbol optype))
+    (define opsym (string->symbol (uppercase optype)))
 
     (define (kill-whitespace str)
       (list->string (filter (compose not char-whitespace?) (string->list str))))
 
     ;; Error handling:
     (define (has-inputs n)
-      (ASSERT (format "~a should have exactly one input edge." opsym)  (curry = n) (length in*)))
+      (ASSERT (format "~a should have exactly ~s input edge(s), not ~s." opsym n (length in*))  (curry = n) (length in*)))
     (define (has-outputs n)
-      (ASSERT (format "~a should have exactly one output edge." opsym) (curry = n) (length out*)))
+      (ASSERT (format "~a should have exactly ~s output edge(s), not ~s." opsym n (length out*)) (curry = n) (length out*)))
     (define (has-args n)
       (ASSERT (format "~a should have exactly ~a extra string arguments, not ~s.  See documentatio in README.txt" opsym n (length args))
               (curry = n) (length args)))
@@ -586,12 +761,12 @@
     
     ;; Dispatch on the type of operator.  It would be nice to extend this while writing only WS code.
     (case opsym
-      [(ReutersSource) (has-inputs 0) (has-outputs 1) (has-args 2)
+      [(REUTERSSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
         (apply WSQ_AddReutersSource id (car out*) args)]
-      [(Printer)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
-      [(Filter)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
-      [(Project)    (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddProject id (car in*) (car out*) _args)]
-      [(WindowJoin) (has-inputs 2) (has-outputs 1) (has-args 4)
+      [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
+      [(FILTER)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
+      [(PROJECT)    (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddProject id (car in*) (car out*) _args)]
+      [(WINDOWJOIN) (has-inputs 2) (has-outputs 1) (has-args 4)
        ;; This is a horrible hack, to get both a FILTER expression,
        ;; and a number of seconds into this operator, we pack them
        ;; both in the same string.  We follow the arbitrary convention
@@ -600,7 +775,7 @@
         (define seconds (car (ASSERT (string->slist _seconds))))
 	(WSQ_AddWindowJoin id (car in*) (cadr in*) (car out*) seconds recA recB filter))]
 
-      [(ConnectRemoteIn)  (has-inputs 0) (has-outputs 1) (has-args 3)
+      [(CONNECTREMOTEIN)  (has-inputs 0) (has-outputs 1) (has-args 3)
        ;; This one takes three arguments in the string 'args'
        (let-match ([(,_host ,_port ,fieldtypes) args])
         ;; Trim any extra whitespace.  No whitespace in hostnames.
@@ -608,14 +783,17 @@
         (define port (car (ASSERT (string->slist _port))))
 	(WSQ_ConnectRemoteIn id (car out*) host port fieldtypes))]
 
-      [(ConnectRemoteOut) (has-inputs 1) (has-outputs 0) (has-args 2)
+      [(CONNECTREMOTEOUT) (has-inputs 1) (has-outputs 0) (has-args 2)
        (let-match ([(,_host ,_port) args])
         (define host (kill-whitespace _host))
         (define port (car (ASSERT (string->slist _port))))
 	(WSQ_ConnectRemoteOut id (car in*) host port))]
 
-      [(MatchRecognize) (has-inputs 1) (has-outputs 1) (has-args 3)
-       (apply WSQ_MatchRecognize id (car in*) (car out*) args)]
+      [(MATCHRECOGNIZE) (has-inputs 1) (has-outputs 1) (has-args 3)  (apply WSQ_AddMatchRecognize id (car in*) (car out*) args)]
+      [(WINDOW)         (has-inputs 1) (has-outputs 1) (has-args 3)  (apply WSQ_AddWindow id (car in*) (car out*) args)]
+      [(JOIN)           (has-inputs 2) (has-outputs 1) (has-args 3)  (apply WSQ_AddJoin   id (car in*) (cadr in*) (car out*) args)]
+      [(MERGEMONOTONIC) (has-inputs 2) (has-outputs 1) (has-args 1)  (apply WSQ_AddMergeMonotonic id (car in*) (cadr in*) (car out*) args)]
+      [(FILTERWINDOWS)  (has-inputs 1) (has-outputs 1) (has-args 1)  (apply WSQ_AddFilterWindows  id (car in*) (car out*) args)]
 	
       [else (error 'WSQ_AddOp "unknown op type: ~s" optype)]
     )))
@@ -701,3 +879,21 @@
 
 
 ;;==============================================================================
+;; TESTS:
+
+#;
+(parse-expression
+   (((LAST (PRICE))
+      /
+      ((SUM (CAST (VOLUME AS FLOAT) * PRICE))
+        /
+        (CAST ((SUM (VOLUME)) AS FLOAT))))
+     >=
+     1.02)
+   rec)
+
+
+;(comma-split-slist ((PRICE ,SYM == "S&P")))
+
+#;
+(parse-expression  '(SUM (VOLUME))  'RECORD  'rec)

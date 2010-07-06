@@ -2491,3 +2491,27 @@ make: *** [pltbc] Error 1
 
 [2010.06.18] {Trying with PLT v 5.0 "Racket"}
 
+Well, seems to work out of the box.
+
+[2010.06.28] {WSQ timings on laptop}
+
+Simple timing of one filter + matchRecognize.
+
+Mostly spending time printing:
+  printed 2811855 lines in 42.48 seconds
+
+total tuples processed:
+  21,091,321 in 20.575
+Oh wait... that's post filtering...
+
+It would be very nice to print how many INPUT tuples were processed
+after killing the process.
+
+Changed it to look for 6 ibm's in a row followed by a FILTER on price.
+
+This might have precision problems...
+ 2.68435e+08 in 13.699 seconds.
+
+ 7.34831e+07 in 1.67 seconds
+
+

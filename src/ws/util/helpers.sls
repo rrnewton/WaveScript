@@ -1036,7 +1036,7 @@
 (define (set->list set) (setadt-internal set))
 (define (list->set . args) (make-setadt (apply list-rem-dups args)))
 
-;; On lists, port to sets:
+;; On lists, TODO port to sets ADT:
 ;; NOTE: Uses eq? !
 (define set-cons:list
   (case-lambda
@@ -1047,7 +1047,7 @@
       [else (cons (car set) (set-cons:list x (cdr set)))])]
     [(x set) (set-cons:list x set eq?)]))
 
-;; On lists, port to sets:
+;; On lists, TODO port to sets ADT:
 (define union
   (case-lambda
     [(set1 set2)
@@ -1176,7 +1176,7 @@
                  (loop (cdr args)))))))
 
 (define (pp . args)
-  (parameterize ([pretty-line-length 130]
+  (parameterize ([pretty-line-length 170]
 		 [print-level 40]
 		 [print-length 100])
     (apply pretty-print args)))

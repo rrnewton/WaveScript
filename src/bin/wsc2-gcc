@@ -33,6 +33,7 @@ case "$COPTFLAG" in
  --dbg )
    OPTFLAGS="-g -O0";;
  *)
+  echo WARNING: UNMATCHED OPT FLAG: $COPTFLAG
    ## DEBUG MODE:
    OPTFLAGS="-g -O0";;
 esac

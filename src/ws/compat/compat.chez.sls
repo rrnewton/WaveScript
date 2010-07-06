@@ -205,7 +205,7 @@
   ;;================================================================================
 
 
-  (define backtrace-limit (make-parameter 100))
+  (define backtrace-limit (make-parameter 50))
 
   ;; A Chez hack to see all the source locations in a continuation.
   (define (continuation->sourcelocs k)
@@ -258,17 +258,6 @@
 		  (print) 
 		  (loop neweng))))))]))
 
-  ; ;; Set some Chez scheme parameters.
-  ; (print-graph #t )
-  ; (print-gensym #f)
-  ; ;(print-level 8)
-  ; (print-level #f) ;20)
-  ; (print-length #f) ;80)
-  ; (print-vector-length #t)
-  ; ;(pretty-maximum-lines 700)
-  ; (pretty-maximum-lines #f)
-  ; (pretty-line-length 150)
-  ; (pretty-standard-indent 0)
 
 #;
   (define inspector-error-handler
@@ -329,6 +318,19 @@
 	      ;(debug-message-and-continuation "test" k)
 	      ;(debug)
        ))))))
+
+  ; ;; Set some Chez scheme parameters.
+  ; (print-graph #t )
+  ; (print-gensym #f)
+  ; ;(print-level 8)
+  ; (print-level #f) ;20)
+  ; (print-length #f) ;80)
+  ; (print-vector-length #t)
+  ; ;(pretty-maximum-lines 700)
+  ; (pretty-maximum-lines #f)
+  (pretty-line-length 170)
+  ; (pretty-standard-indent 0)
+
 
    
 

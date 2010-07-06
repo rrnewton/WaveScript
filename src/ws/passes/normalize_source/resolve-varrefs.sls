@@ -102,7 +102,10 @@
 	 [(regiment-primitive? var) var]
 	 [else (error 'resolve-varrefs 
 		      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
-		      var (map car var-table)
+		      var 
+		      (let ([ls (map car var-table)])
+		        (if (<= (length ls) 100) ls
+			    (append (list-head ls 100) '(...))))
 		      (if pos
 			  (format "\nSource location:\n  ~a\n\n" (src-pos->string pos))
 			  ""))]))

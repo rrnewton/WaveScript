@@ -21,11 +21,13 @@ int main(int argc, char* argv[]) {
   if (1) {
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
-        WSQ_AddOp(1, "ReutersSource", "", "100", "1000 |foobar.schema");
-        WSQ_AddOp(2, "Filter", "100", "200", "(PRICE >= 50) AND (PRICE <= (50 * 10))");
+        WSQ_AddOp(1, "ReutersSource", "", "100", "100 |foobar.schema");
+        //WSQ_AddOp(2, "Filter", "100", "200", "(PRICE >= 50) AND (PRICE <= (50 * 10))");
 
-        //WSQ_AddOp(3, "MatchRecognize", "200", "300", "A B | A AS (PRICE > 50), B AS (SYM = \"IBM\")");
-        WSQ_AddOp(3, "MatchRecognize", "200", "300", "ALL | B B | B AS (SYM = \"IBM\")");
+        //WSQ_AddOp(3, "MatchRecognize", "200", "300", "ALL | A B | A AS (PRICE > 50), B AS (SYM = \"IBM\")");
+        WSQ_AddOp(2, "MatchRecognize", "100", "200", "ONE | B B B B B B | B AS (SYM = \"IBM\")");
+
+        WSQ_AddOp(3, "Filter", "200", "300", "(PRICE >= 50) AND (PRICE <= (50 * 10))");
 
         WSQ_AddOp(4, "Printer", "300", "", "YAY:");
        WSQ_EndSubgraph();
