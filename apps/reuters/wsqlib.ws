@@ -47,11 +47,8 @@ wsq_window :: (tup -> #time, #time, Int, Stream tup) -> SS tup;
 
 fun discard(s) iterate _ in s { }
 
-// This is a temporary fake data source with a temporary fake schema.
-type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
-wsq_reuterSource :: (Float, String) -> Stream DummySchema99;
-fun wsq_reuterSource(freq, schema) {
-    syms = #["IBM", "GOOG", "GM", "F", "IMGN", 
+
+all_syms = #["IBM", "GOOG", "GM", "F", "IMGN", "MSFT",
              // Supplementing this with a bunch of other symbols:
              "AAPL", "AAUKY", "AAV", "AAWW", "AB", "ABAX", "ABB", "ABC", "ABFS", "ABG", "ABM", "ABMD", "ABT", "ABV", "ABVT", "ABX",
              "ACC", "ACCL", "ACE", "ACET", "ACF", "ACGL", "ACGY", "ACH", "ACI", "ACIW", "ACL", "ACLI", "ACM", "ACN", "ACO", "ACOM",
@@ -70,16 +67,26 @@ fun wsq_reuterSource(freq, schema) {
              "AVAV", "AVB", "AVD", "AVGO", "AVID", "AVP", "AVT", "AVTR", "AVY", "AWC", "AWH", "AWI", "AWK", "AXAHY", "AXE", "AXL",
              "AXP", "AXS", "AYE", "AYI", "AYR", "AZN", "AZO", "AZSEY"
              ];
-  lastprice = Array:make(Array:length(syms), 50.0);
+
+// This is a temporary fake data source with a temporary fake schema.
+type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
+wsq_reuterSource :: (Float, String) -> Stream DummySchema99;
+fun wsq_reuterSource(freq, schema) {
+
+  print ("<WSQ> Creating dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
+
+  lastprice = Array:make(Array:length(all_syms), 50.0);
   iterate _ in timer(freq) {
     state{ t = 0.0 }
-    i = randomI(Array:length(syms));
-    // Random walk:
+    i = randomI(Array:length(all_syms));
+    // Random walk, change arithmetically:
     lastprice[i] += (Float! (randomI(200) - 100)) / 100;
+    // Here is a geometric one instead:
+    //lastprice[i] *= (Float! (randomI(50) + 75)) / 100;
     if lastprice[i] < 0
     then lastprice[i] := 0;
 
-    emit (SYM= syms[i], 
+    emit (SYM= all_syms[i], 
           TIME= t, 
           PRICE= lastprice[i],
 	  VOLUME= randomI(10) + 1
@@ -296,8 +303,30 @@ fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
   }
 }
 
+// Requires streams to be the same type:
 fun wsq_mergeMonotonic(extractor, s1, s2) {
-  error("wsq_mergeMonotonic not implemented");
+  using FIFO;
+  iterate(x in union2(s1,s2)) {
+    state {
+      buf1 = make(10);
+      buf2 = make(10);
+    }
+    case x { 
+      Left  (a): buf1.enqueue(a)
+      Right (b): buf2.enqueue(b)
+    };
+    while (buf1.elements > 0 && buf2.elements > 0) {
+      a = buf1.peek(0);      
+      b = buf2.peek(0);      
+      if a.extractor <= b.extractor  then {
+        buf1.dequeue();
+        emit a;
+      } else {
+        buf2.dequeue();
+        emit b;
+      }
+    }
+  }
 }
 
 fun wsq_join_helper(extractor, s1, s2, pickresult) {

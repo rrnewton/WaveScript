@@ -347,7 +347,7 @@
 				      `(app merge ,vr ,rest)]))))]
 	   [start-time (current-time 'time-monotonic)])
 
-      (if #t ;verbose-mode
+      (if verbose-mode
 	  (begin
 	    (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog) (newline)
 	    ;;(pretty-print (wsparse-postprocess prog))  

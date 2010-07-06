@@ -194,6 +194,8 @@ stream_id add_user_query(int offset, stream_id all_ticks, stream_id msft_selecte
              stream_id twomins_all2  = 111 + offset;
              stream_id twomins_final = 112 + offset;
              stream_id final         = 113 + offset;
+             stream_id bc_winners    = 114 + offset;
+             stream_id parent_timepoints = 115 + offset; 
 
              WSQ_AddOp_1_1(54+offset, "Filter", all_ticks, filtered_all, "((SYM = \"MSFT\") OR (SYM = \"IBM\")) OR (SYM = \"S&P\")");
              // This ensures that all the per-symbol windows will fit within THE SAME two minutes.
@@ -265,9 +267,20 @@ stream_id add_user_query(int offset, stream_id all_ticks, stream_id msft_selecte
                            "(((LASTWHERE(PRICE, SYM == \"IBM\")) / (FIRSTWHERE(PRICE, SYM == \"IBM\"))) >= 1.05) OR (((LASTWHERE(PRICE, SYM == \"MSFT\")) / (FIRSTWHERE(PRICE, SYM == \"MSFT\"))) <= 0.98)");
 
              // Finally project out the start/end times of the windows that made it through...
-             WSQ_AddOp_1_1(60+offset, "Project", twomins_final, final, " (FIRST(TIME)) AS START, (LAST(TIME)) AS END");            
+             WSQ_AddOp_1_1(60+offset, "Project", twomins_final, bc_winners, " (FIRST(TIME)) AS START, (LAST(TIME)) AS END");
+             
+             // One more thing, in this inefficient version we always compute (B) & (C1/C2), and then finally we join with (A)
+             // These are the endpoints of the MSFT windows:
+             WSQ_AddOp_1_1(65+offset, "Project", msft_selected_15, parent_timepoints, " -1 AS START, (LAST(TIME)) AS END");
 
-             WSQ_AddOp(67, "Printer", "113", "", "FINAL: ");
+             // Now we merge that stream 
+
+             WSQ_AddOp_2_1(64+offset, "MergeMonotonic", parent_timepoints, bc_winners, final, " END ");
+
+             // TODO: one more thing to do, look for temporal pattern
+             // of (A) followed by (B/C1/C2) within some short period of time.
+             WSQ_AddOp(67, "Printer", "115", "", "fired: ");
+             //WSQ_AddOp(67, "Printer", "114", "", "BUYIT!: "); // Bus error:
 
              return final;
          }
@@ -290,12 +303,12 @@ int main(int argc, char* argv[]) {
 
       WSQ_BeginSubgraph(999999);
       {
-          WSQ_AddOp(49, "ReutersSource", "", "99", "173 |foobar.schema");
+          WSQ_AddOp(49, "ReutersSource", "", "99", "100073 |foobar.schema");
 
           // (A) MSFT 15 min vwap moves outside of 2%:
 
           // First filter the MSFT ticks:
-          WSQ_AddOp_1_1(48+offset, "Filter", source, filtered,  "(SYM = \"MSFT\")");
+          WSQ_AddOp_1_1(48, "Filter", source, filtered,  "(SYM = \"MSFT\")");
           
           // Next: we compute the volume-weighted average price over 15 min windwows:          
           // WSQ_AddOp_1_1(50, "Window", source, windowed, "FST SND | (absF (FST.TIME - SND.TIME)) <= (15 * 60)");
@@ -304,11 +317,13 @@ int main(int argc, char* argv[]) {
                         "((LAST(PRICE)) / ((SUM((CAST(VOLUME AS FLOAT)) * PRICE)) / (CAST((SUM(VOLUME)) AS FLOAT)))) >= 1.02");
 
           // Debugging: print a diagnistic at the source:
-          if (1) {
+          if (0) {
               // Let us project here just to print:
               WSQ_AddOp_1_1(41, "Project", vwap_filtered, 103 , 
                  "((LAST(PRICE)) / ((SUM((CAST(VOLUME AS FLOAT)) * PRICE)) / (CAST((SUM(VOLUME)) AS FLOAT)))) AS RATIO, (LAST(TIME)) - (FIRST(TIME)) AS WIDTH, LAST(TIME) AS END");
+
               WSQ_AddOp(42, "Printer", "103", "", "      15 MIN WIN: ");
+              //WSQ_AddOp(42, "Printer", "96", "", "      15 MIN WIN: ");
           }
       }
       WSQ_EndSubgraph();
@@ -316,7 +331,7 @@ int main(int argc, char* argv[]) {
       // Now add multiple random queries onto that:
       int i;
       for (i=0; i < NUM_QUERIES; i++) {
-          //add_user_query(1000 * i, source, vwap_filtered);
+          add_user_query(1000 * i, source, vwap_filtered);
       }
   }
   //================================================================================
