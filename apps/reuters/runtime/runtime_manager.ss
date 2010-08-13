@@ -246,7 +246,7 @@
   (values `(lambda (,rec-name) ,(parse-expression expr 'RECORD rec-name))
 	  rec-name))
 
-(trace-define (parse-type ty)
+(define (parse-type ty)
   (case  ty
     [(FLOAT INT DOUBLE) (capitalize-first ty)]
     [else (error 'parse-type "This type not currently supported by WSQ: ~s" ty)]))
@@ -259,7 +259,7 @@
   (if (symbol? s_or_s) (string->symbol result) result))
 
 ;; Operates on symbols:
-(trace-define (capitalize s)
+(define (capitalize s)
   (define str (symbol->string s))
   (string->symbol
    (string-append 
@@ -282,13 +282,13 @@
   (string->symbol (lowercase (symbol->string s)))
   )
 
-(trace-define (Type t)
+(define (Type t)
   (case (downcase-symbol t)
     [(int float double string)
      (capitalize t)]    
     [else (error 'Type "unhandled type: ~s" t)]))
 
-(trace-define (parse-types str)
+(define (parse-types str)
   (define sexp (ASSERT (string->slist str)))
   (printf "GOT SEXP: ~s\n" sexp)
   `(Record 
