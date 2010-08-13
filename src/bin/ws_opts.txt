@@ -4,6 +4,7 @@ WS Interpreter (ws) options:
   -t            time how long it takes to produce that many tuples 
 
 WS compiler, C backend, version 2 (wsc2) options: 
+  -o <file>     base name to use for .c and .exe output
   -nogcc        emit C code but don't invoke C compiler  
   -sigseg <sym> select sigseg implementation: copyalways/seglist
   -gc <sym>     select garbage collector: none/refcount/deferred/boehm

@@ -12,12 +12,13 @@ int main(int argc, char* argv[]) {
     //sprintf(addr, "fort2.csail.mit.edu | %d", PORT);
     sprintf(addr, "localhost | %d", PORT);
 
-  WSQ_Init();
+  WSQ_Init("");
+  WSQ_SetQueryName("proc1query");
 
   WSQ_BeginTransaction(1001);
     WSQ_BeginSubgraph(101);
 
-      WSQ_AddOp(2, "ReutersSource", "","2", "foobar.schema");
+      WSQ_AddOp(2, "ReutersSource", "","2", "100 |foobar.schema");
       WSQ_AddOp(3, "ConnectRemoteOut", "2", "", addr); 
 
     WSQ_EndSubgraph();

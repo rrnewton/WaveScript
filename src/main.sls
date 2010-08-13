@@ -14,7 +14,7 @@
   (export
    main  wsint wsint-early wsint-early-passes
    ws ws.early 
-   wscaml wsmlton wscomp wsc2
+   wscaml wsmlton wscomp wsc2 set-c-output-basename!
    wavescript-version browse-stream wsint:direct-stream
    test-system ;; From system_tests.sls
    )
@@ -2236,13 +2236,10 @@
 	  ;; This SHOULD also switch on some optimization passes with ws-optimizations-enabled:
 	  [("-O3" ,rest ...) (ws-optimization-level 3) (loop rest)]
 	  [("-O2" ,rest ...) (ws-optimization-level 2) (loop rest)]
-	  
+
+	  ;; Override the query.c/query.exe default:
 	  [("-o" ,outfile ,rest ...)
-	   (wsint-output-file outfile)
-	   (emitC2-output-target (string-append outfile ".c"))
-	   ;; Clear the output file before we begin compilation.
-	   (when (file-exists? (emitC2-output-target))
-	         (delete-file (emitC2-output-target)))
+	   (set-c-output-basename! (remove-file-extension outfile))	   
 	   (loop rest)]
 
 	  [("-opt" ,name ,rest ...)
@@ -2410,14 +2407,22 @@
       )))
 
 
-;; ENTRYPOINTS:  These mimic the shell commands but are callable from within Scheme.
-(define (ws prog . args)        (apply main "wsint"  prog args))
-(define (ws.early prog . args)  (apply main "wsearly"  prog args))
-(define (wsc2 prog . args) 
+;; These mimic the shell commands but are callable from within Scheme.
+(define (ws prog . args)        (apply main "wsint"  prog args))   ;; Entrypoint
+(define (ws.early prog . args)  (apply main "wsearly"  prog args)) ;; Entrypoint
+(define (wsc2 prog . args)                                         ;; Entrypoint
   (apply main "wsc2"   prog args)
   (system "wsc2-gcc"))
 
-(define (wstiny prog . args) 
+;; This can be used from several places -- it overrides the query.c/query.exe defaults:
+(define (set-c-output-basename! outfile)
+  (wsint-output-file outfile)
+  (emitC2-output-target (string-append outfile ".c"))
+  ;; Clear the output file before we begin compilation.
+  (when (file-exists? (emitC2-output-target))
+    (delete-file (emitC2-output-target))))
+
+(define (wstiny prog . args)                                       ;; Entrypoint
   (apply main "wstiny"   prog args)
   ;(system "wsc2-gcc")
   )

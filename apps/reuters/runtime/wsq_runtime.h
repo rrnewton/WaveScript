@@ -21,6 +21,8 @@ typedef int wsid_t;
 void WSQ_Init(const char* outfile);
 void WSQ_Shutdown();
 
+void WSQ_SetQueryName(const char* name);
+
 //==============================================================================
 // Runtime Query Graph Construction.
 //==============================================================================

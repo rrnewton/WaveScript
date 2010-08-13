@@ -21,19 +21,22 @@ fi
 
 #========================================
 
+if [ "$COPTFLAG" == "" ]; then COPTFLAG=0; fi
 case "$COPTFLAG" in
- --O1 ) ;;
- --O2 ) 
+ --O1 | O1 | 1 ) 
+   OPTFLAGS=""
+   ;;
+ --O2 | O2 | 2 ) 
    OPTFLAGS="-O2 ";
    ;;
- --O3 )
+ --O3 | O3 | 3 )
    # max-unroll-times Seems to be 8 by default.
    OPTFLAGS="-O3 -funroll-loops --param max-unroll-times=16 ";
    ;;
- --dbg )
+ --dbg | dbg | O0 | 0 )
    OPTFLAGS="-g -O0";;
  *)
-  echo WARNING: UNMATCHED OPT FLAG: $COPTFLAG
+  echo WARNING: UNMATCHED OPT FLAG: \"$COPTFLAG\"
    ## DEBUG MODE:
    OPTFLAGS="-g -O0";;
 esac

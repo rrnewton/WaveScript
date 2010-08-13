@@ -32,7 +32,7 @@ endif
 
 CC=gcc
 
-all: libwsq_runtime.a example_main.exe shailendra_example.exe
+all: libwsq_runtime.a example_main.exe shailendra_example.exe shailendra_server.exe shailendra_client.exe
 
 libwsq_runtime.a: wsq_runtime.c 
 	@if [ -d "$(CHEZD)" ]; then echo; else echo "ERROR: CHEZD ($(CHEZD)) does not exist."; exit 1; fi
@@ -47,6 +47,16 @@ example_main.exe: example_main.c
 shailendra_example.exe: shailendra_example.c
 	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_example.c 
 	$(CC) $(FLAGS) $(LIBS) shailendra_example.o libwsq_runtime.a -o shailendra_example.exe
+
+
+# DUPLICATED CODE IN THESE:
+shailendra_server.exe: shailendra_server.c
+	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_server.c 
+	$(CC) $(FLAGS) $(LIBS) shailendra_server.o libwsq_runtime.a -o shailendra_server.exe
+shailendra_client.exe: shailendra_client.c
+	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_client.c 
+	$(CC) $(FLAGS) $(LIBS) shailendra_client.o libwsq_runtime.a -o shailendra_client.exe
+
 
 clean:
 	rm -rf *.o *.a *.exe a.out *.so example_main query.*

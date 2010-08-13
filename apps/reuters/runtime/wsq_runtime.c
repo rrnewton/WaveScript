@@ -50,6 +50,8 @@ void (*Scheme_AddOp)  (wsid_t ndid, const char* optype, const char* inputs, cons
 void (*Scheme_Shutdown) ();
 
 void (*Scheme_SetOutputFile) (const char* path);
+void (*Scheme_SetQueryName) (const char* name);
+
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -139,6 +141,7 @@ void WSQ_Init(const char* outfile) {
   // void Sscheme_init(void (*abnormal_exit)(void))
   char* chezd = getenv("CHEZD");
   char* machinetype = get_machine_type();
+  //char* machinetype = "ti3le"; // [2010.07.30] Temptoggle: hardcoding
   
   char bootfile[PATHMAX];
   
@@ -210,7 +213,8 @@ void WSQ_Init(const char* outfile) {
 
   ptr shutdwn = Stop_level_value( Sstring_to_symbol("WSQ_Shutdown-entry"));
 
-  ptr setout  = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
+  ptr setout    = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
+  ptr setquery  = Stop_level_value( Sstring_to_symbol("WSQ_SetQueryName-entry"));
 
   Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
   Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
@@ -235,6 +239,8 @@ void WSQ_Init(const char* outfile) {
   Scheme_Shutdown         = (void(*)())Sinteger_value(shutdwn);
   Scheme_SetOutputFile    = (void(*)(const char*))Sinteger_value(setout);
 
+  Scheme_SetQueryName     = (void(*)(const char*))Sinteger_value(setquery);
+
   // ============================================================
   printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
 
@@ -245,5 +251,11 @@ void WSQ_Init(const char* outfile) {
 
   printf(" <WSQ> Returning to control module...\n");  
 }
+
+
+void WSQ_SetQueryName(const char* name) {
+   Scheme_SetQueryName(name);
+}
+
 
 //int main(int argc, char* argv[]) { do_scheme(argc,argv); }

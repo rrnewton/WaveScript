@@ -1,0 +1,112 @@
+
+
+
+[2010.06.28] {WSQ timings on laptop}
+
+Simple timing of one filter + matchRecognize.
+
+Mostly spending time printing:
+  printed 2811855 lines in 42.48 seconds
+
+total tuples processed:
+  21,091,321 in 20.575
+Oh wait... that's post filtering...
+
+It would be very nice to print how many INPUT tuples were processed
+after killing the process.
+
+Changed it to look for 6 ibm's in a row followed by a FILTER on price.
+
+This might have precision problems...
+ 2.68435e+08 in 13.699 seconds.
+
+ 7.34831e+07 in 1.67 seconds
+
+[- Was that on wasp? What was my methodology? -]
+
+How did 
+
+
+[2010.07.28]  {Bugs and robustness}
+
+This WSQ stuff hasn't gotten much testing..
+
+
+Timing shailendra examples [wisdom]:
+
+  20K lines of fired OUTPUT written in 2.4 seconds 
+
+How many processed?
+
+
+
+[2010.07.30]  {Trying to run distributed}
+
+here are ticks running local:
+
+RAWSOURCE: (PRICE=49.86, SYM=ALB, TIME=0, VOLUME=8)
+RAWSOURCE: (PRICE=50.35, SYM=AGQ, TIME=5, VOLUME=7)
+RAWSOURCE: (PRICE=49.21, SYM=ABMD, TIME=7, VOLUME=3)
+RAWSOURCE: (PRICE=49.59, SYM=ARG, TIME=14, VOLUME=4)
+RAWSOURCE: (PRICE=49.26, SYM=AER, TIME=20, VOLUME=3)
+RAWSOURCE: (PRICE=50.68, SYM=ABAX, TIME=26, VOLUME=8)
+RAWSOURCE: (PRICE=50.3, SYM=ATPG, TIME=35, VOLUME=3)
+RAWSOURCE: (PRICE=50.35, SYM=ALGT, TIME=38, VOLUME=10)
+RAWSOURCE: (PRICE=49.58, SYM=AUY, TIME=40, VOLUME=10)
+RAWSOURCE: (PRICE=49.56, SYM=ATVI, TIME=47, VOLUME=2)
+
+Does it print the same (randomized) stream running distributed?
+
+Darn, it looks like NO... there must be other calls to rand:
+
+  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).
+  <socket.ws> Established client connection, port 3434
+NETSTRM: (PRICE=0.6, SYM=AGN, TIME=9.20786e+07, VOLUME=3)
+NETSTRM: (PRICE=2.09, SYM=ARBA, TIME=9.20786e+07, VOLUME=3)
+NETSTRM: (PRICE=7.4, SYM=AGU, TIME=9.20786e+07, VOLUME=3)
+NETSTRM: (PRICE=15.12, SYM=AZO, TIME=9.20786e+07, VOLUME=9)
+NETSTRM: (PRICE=33.1394, SYM=AEL, TIME=9.20786e+07, VOLUME=8)
+NETSTRM: (PRICE=24.02, SYM=ACE, TIME=9.20786e+07, VOLUME=5)
+NETSTRM: (PRICE=0.66, SYM=ASMI, TIME=9.20786e+07, VOLUME=2)
+NETSTRM: (PRICE=12.87, SYM=ARW, TIME=9.20786e+07, VOLUME=1)
+NETSTRM: (PRICE=18.2396, SYM=AHS, TIME=9.20786e+07, VOLUME=8)
+NETSTRM: (PRICE=5.36998, SYM=AOS, TIME=9.20786e+07, VOLUME=8)
+NETSTRM: (PRICE=8.14, SYM=ANSS, TIME=9.20786e+07, VOLUME=2)
+NETSTRM: (PRICE=25.6202, SYM=AFSI, TIME=9.20786e+07, VOLUME=9)
+
+
+--------------------------------------------------------------------------------
+
+PRINTING TEST:
+
+$ time ./wsq_query.exe | wc
+
+3739480 18696682 233521358
+
+real    0m10.494s
+user    0m9.420s
+sys     0m1.070s
+
+Prints about 370K ticks/second.
+NO THAT WAS WRONG... not just printing also doing the shailendra
+query.
+
+$ time ./wsq_query.exe  |wc 
+1157876 5788740 71589006
+
+real    0m3.225s
+user    0m2.920s
+sys     0m0.340s
+
+Huh... not any better... a rate of 359,031
+
+Over a socket on the local host:
+
+$ time ./wsq_client_3939.exe  |wc 
+3447511 17237563 209665530
+
+real    0m14.485s
+user    0m9.500s
+sys     0m5.280s
+
+Slowed to 238K.

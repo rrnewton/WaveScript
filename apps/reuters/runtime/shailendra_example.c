@@ -89,6 +89,7 @@ void WSQ_AddOp_2_1(int node_id, const char* optype, int in1, int in2, int out, c
 }
 
 // A table of symbols so that we can generate
+// Curretnly 246 different stock ticks:
 const char all_symbols[][10] = 
     { "IBM", "GOOG", "GM", "F", "IMGN", 
       // Supplementing this with a bunch of other symbols:
@@ -281,7 +282,6 @@ stream_id add_user_query(int offset, stream_id all_ticks, stream_id msft_selecte
              // of (A) followed by (B/C1/C2) within some short period of time.
              WSQ_AddOp(67, "Printer", "115", "", "fired: ");
              //WSQ_AddOp(67, "Printer", "114", "", "BUYIT!: "); // Bus error:
-
              return final;
          }
      }
@@ -290,6 +290,8 @@ stream_id add_user_query(int offset, stream_id all_ticks, stream_id msft_selecte
 
 
 int main(int argc, char* argv[]) {
+
+  int PRINT_ONLY=1;
 
   //WSQ_Init("query_output.log");
   WSQ_Init("");
@@ -303,7 +305,9 @@ int main(int argc, char* argv[]) {
 
       WSQ_BeginSubgraph(999999);
       {
-          WSQ_AddOp(49, "ReutersSource", "", "99", "100073 |foobar.schema");
+          // Run at 100KHz
+          //WSQ_AddOp(49, "ReutersSource", "", "99", "100073 |foobar.schema");
+          WSQ_AddOp(49, "ReutersSource", "", "99", "5000000 |foobar.schema");
 
           // (A) MSFT 15 min vwap moves outside of 2%:
 
@@ -315,6 +319,9 @@ int main(int argc, char* argv[]) {
           WSQ_AddOp_1_1(50, "Window", filtered, windowed, " TIME | 15 * 60 | 1 TUPLE");
           WSQ_AddOp_1_1(51, "Filter", windowed, vwap_filtered, 
                         "((LAST(PRICE)) / ((SUM((CAST(VOLUME AS FLOAT)) * PRICE)) / (CAST((SUM(VOLUME)) AS FLOAT)))) >= 1.02");
+
+          if (PRINT_ONLY)  WSQ_AddOp(42, "Printer", "99", "", "RAWSOURCE: ");
+
 
           // Debugging: print a diagnistic at the source:
           if (0) {
@@ -330,6 +337,7 @@ int main(int argc, char* argv[]) {
 
       // Now add multiple random queries onto that:
       int i;
+      if (! PRINT_ONLY)
       for (i=0; i < NUM_QUERIES; i++) {
           add_user_query(1000 * i, source, vwap_filtered);
       }

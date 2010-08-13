@@ -21,7 +21,7 @@
 
 ;; TODO Set from an environment variable 
 (define verbose-mode 
-    (if (getenv "WS_VERBOSE") #t #f))
+    (if (getenv "WSQ_VERBOSE") #t #f))
 
 ;; An optional file to place query output:
 #;
@@ -41,6 +41,7 @@
 (define curtransaction (box #f))
 (define current-child-process #f)
 (define query-output-file #f)
+(define query-app-name "wsq_query")
 
 ;; The subgraph we're currently working on:
 (define cursubgraph #f)
@@ -245,7 +246,7 @@
   (values `(lambda (,rec-name) ,(parse-expression expr 'RECORD rec-name))
 	  rec-name))
 
-(define (parse-type ty)
+(trace-define (parse-type ty)
   (case  ty
     [(FLOAT INT DOUBLE) (capitalize-first ty)]
     [else (error 'parse-type "This type not currently supported by WSQ: ~s" ty)]))
@@ -257,8 +258,8 @@
 		   (lowercase (substring str 1 (string-length str)))))
   (if (symbol? s_or_s) (string->symbol result) result))
 
-
-(define (capitalize s)
+;; Operates on symbols:
+(trace-define (capitalize s)
   (define str (symbol->string s))
   (string->symbol
    (string-append 
@@ -275,18 +276,23 @@
     (for i = 0 to (sub1 (string-length str))
 	 (string-set! new i (char-downcase (string-ref new i))))
     new))
-(define (downcase-symbol s) (symbol->string (lowercase (string->symbol s))))
 
-(define (Type t)
+(define (downcase-symbol s)
+  ;(symbol->string (lowercase (string->symbol s)))
+  (string->symbol (lowercase (symbol->string s)))
+  )
+
+(trace-define (Type t)
   (case (downcase-symbol t)
-    [(int float double
-	  string) 
+    [(int float double string)
      (capitalize t)]    
     [else (error 'Type "unhandled type: ~s" t)]))
 
-(define (parse-types str)
+(trace-define (parse-types str)
+  (define sexp (ASSERT (string->slist str)))
+  (printf "GOT SEXP: ~s\n" sexp)
   `(Record 
-    ,(match (ASSERT (string->slist str))
+    ,(match sexp
        [() `',(unique-name "_rowvar")]
        #; ;; It's inexplicable that this one doesn't work:
        [(,[ununquote -> type] ,[ununquote -> name] . ,[rest])
@@ -361,20 +367,35 @@
       
       (match wsq-engine
         [SCHEME (browse-stream (wsint (wsparse-postprocess prog) '()))]	
-	[C ;; Compile through the wsc2 backend:
-	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
-			[regiment-verbosity (if verbose-mode 5 1)])
-	   (wscomp (wsparse-postprocess prog) '() 'wsc2))
+	[C 
 	 
-	 ;; Make it run in REAL time:
-	 (when #t
+	 ;; Make it run in REALtime:
+	 (when (not (getenv "WSQ_MAXSPEED"))
 	   (printf " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
 	   (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") ""))))
 
+	 (when (getenv "WSQ_OUTEXE") (WSQ_SetQueryName-entry (getenv "WSQ_OUTEXE")))
+
+	 ;;====================================================================================================
+         (set-c-output-basename! query-app-name)
+	 ;; Compile through the wsc2 backend:
+	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
+			[regiment-verbosity (if verbose-mode 5 1)])
+	   (wscomp (wsparse-postprocess prog) '() 'wsc2)
+	   ;; The problem with this is our input program is already an sexp:
+	   ; (wsc2 prog "-o" (string-append (remove-file-extension query-app-name) ".exe"))
+	   )
+	 ;;====================================================================================================
+
+	 ;; We use the undocumented interface to wsc2-gcc
+	 (putenv "CFILE" (string-append query-app-name ".c"))
+	 ;; Same here:
+	 (putenv "COPTFLAG" (or (getenv "WSQ_OPTLVL") "0"))
+	 
 	    ;(printf "SETTING LINK ~s\n" (getenv "WS_LINK"))
 	    
 	    ;; We go all the way back to our shell script to have it call gcc.
-	    (system "wsc2-gcc")
+	    (system "wsc2-gcc") ;; Why is the output from this not printing?
 
 	    (let ([end-time (current-time 'time-monotonic)])
 	      (printf " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
@@ -390,8 +411,9 @@
 	      (when current-child-process (kill-child current-child-process))
 	      (let-values ([(to-stdin from-stdout from-stderr pid)	                  
 			    (if query-output-file
-				(open-process-ports (format "exec ./query.exe > \"~a\"" query-output-file))
-				(open-process-ports "exec ./query.exe" 'block (make-transcoder (latin-1-codec))))			  
+				(open-process-ports (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file))
+				(open-process-ports (format "exec ./~a.exe" query-app-name) 
+						    'block (make-transcoder (latin-1-codec))))
 			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
 	      (if current-child-process
@@ -407,8 +429,7 @@
 	     ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
 	      (unless query-output-file
 		(fork-thread (echo-port from-stdout)))
-	      ))])
-      )
+	      ))]))
     (set-box! curtransaction #f)
     ))
 
@@ -754,7 +775,7 @@
     (define (has-outputs n)
       (ASSERT (format "~a should have exactly ~s output edge(s), not ~s." opsym n (length out*)) (curry = n) (length out*)))
     (define (has-args n)
-      (ASSERT (format "~a should have exactly ~a extra string arguments, not ~s.  See documentatio in README.txt" opsym n (length args))
+      (ASSERT (format "~a should have exactly ~a extra string arguments, not ~s.  See documentation in README.txt" opsym n (length args))
               (curry = n) (length args)))
     (unless in*  (error 'WSQ_AddOp "Bad list of inputs: ~s"  inputs))
     (unless out* (error 'WSQ_AddOp "Bad list of outputs: ~s" outputs))
@@ -841,7 +862,7 @@
 ;; Connecting to remote machines.
 
 (define-entrypoint WSQ_ConnectRemoteIn (int int string int string) void
-  (lambda (opid inid host port field-types)
+  (trace-lambda WSQ_CONNECTREMOTEIN (opid inid host port field-types)
     ;(printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" inid host port field-types)
     (define code `(,(edge-sym inid) 
 		   (assert-type (Stream ,(parse-types field-types))
@@ -876,6 +897,15 @@
     (set! query-output-file path))
     (printf " <WSQ> Query output redirected to ~s\n" path)
     ))
+
+
+;; Takes a base name.
+(define-entrypoint WSQ_SetQueryName (string) void
+  (lambda (path)
+    (unless (equal? path "")
+      (set! query-app-name path)
+      (printf " <WSQ> Query base name (used for .c/.exe) set to: ~s\n" path)
+   )))
 
 
 ;;==============================================================================

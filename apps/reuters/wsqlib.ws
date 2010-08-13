@@ -370,7 +370,7 @@ fun wsq_join_helper(extractor, s1, s2, pickresult) {
   }
 }
 
-
+// Find matches (inner join) but then output only the left tuple.
 fun wsq_join_leftonly(extractor, s1, s2) {
     wsq_join_helper(extractor, s1,s2, fun (l,r) l);
 }
