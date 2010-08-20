@@ -409,11 +409,19 @@
 	      (printf "\n================================================================================\n")
 	      ;; Kill old process:
 	      (when current-child-process (kill-child current-child-process))
-	      (let-values ([(to-stdin from-stdout from-stderr pid)	                  
-			    (if query-output-file
-				(open-process-ports (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file))
-				(open-process-ports (format "exec ./~a.exe" query-app-name) 
-						    'block (make-transcoder (latin-1-codec))))
+	      (let-values ([(to-stdin from-stdout from-stderr pid)
+	                    (let ((cmd 
+				   (if query-output-file
+				       ;; [2010.08.20] I think I was using exec to avoid TWO CHILD PROCESSES and make sure my kill went through.
+				       ;; But if I kill the process can I make sure it's flushing and actually opens the output log?
+				       ;; Maybe it would be better to generate WS code that opens/writes the output file.
+				       (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file)
+				       (format "exec ./~a.exe" query-app-name))))
+			      (printf " <WSQ> Executing command in child process: ~a\n" cmd)
+			      (if query-output-file
+				  (open-process-ports cmd)
+				  (open-process-ports cmd 'block (make-transcoder (latin-1-codec)))))
+			    
 			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
 	      (if current-child-process
