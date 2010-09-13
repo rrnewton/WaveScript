@@ -91,6 +91,7 @@ Array:foreach2   :: ((a,b) -> (), Array a, Array b) -> ();
 Array:foreachi   :: ((Int, a) -> (), Array a) -> ();
 Array:mapi       :: ((Int, a) -> b, Array a) -> Array b;
 
+//Array:sub        :: (Array t, Int, Int) -> Array t;
 //Array:sort       :: ()
 
 String:append   :: (String, String) -> String;
@@ -743,6 +744,13 @@ namespace Array {
     return final;
   }
 
+/*
+  fun sub(arr, pos, len) {
+    new = makeUNSAFE(len);
+    blit(arr,pos, new,0, len);
+    new
+  }
+*/
  
 } // End namespace Array
 
@@ -836,6 +844,7 @@ fun COUNTUP(n)
   }
 
 // Emits 0...n-1 and then stops.
+// Again... would be nice to have an end-of-stream functionality.
 fun FINITE(n)
   iterate _ in timer(100) {
     state { counter :: Int = 0 }
@@ -844,6 +853,8 @@ fun FINITE(n)
       counter += 1;
     }
   }
+
+COUNTTO = FINITE;
 
 /*
 // Modification: it emits a burst of n elements at the beginning of time.
@@ -1490,6 +1501,21 @@ fun rep_first(count, strm) {
       }*/
   }
 }
+
+
+// [2010.09.10] Actually, I decided I dislike this until there is some end-of-stream functionality.
+/*
+// Take only the first N elements of a stream (like take in Haskell).
+fun stream_take(n, strm) 
+  iterate x in strm {
+    state { i = 0 }
+    if i != n then {
+      i += 1;
+      emit x;
+    } 
+    // else -- should have a way to indicate end-of-stream!
+  }
+*/
 
 
 /* 

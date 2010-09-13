@@ -33,7 +33,7 @@ case "$COPTFLAG" in
    # max-unroll-times Seems to be 8 by default.
    OPTFLAGS="-O3 -funroll-loops --param max-unroll-times=16 ";
    ;;
- --dbg | dbg | O0 | 0 )
+ --O0 | --dbg | dbg | O0 | 0 )
    OPTFLAGS="-g -O0";;
  *)
   echo WARNING: UNMATCHED OPT FLAG: \"$COPTFLAG\"

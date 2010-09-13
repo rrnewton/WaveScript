@@ -2,6 +2,8 @@
 //#include <wsc2.h>
 #include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <sys/stat.h>
 
 #include "ws.h"
@@ -51,4 +53,19 @@ struct stat* ws_make_stat() {
 
 int ws_st_size(struct stat* ptr) {  return ptr->st_size; }
 
+int       atoi_woffset(char* ptr, int offset) { return atoi(ptr + offset); }
+//long int atol_woffset(char* ptr, int offset) { return atol(ptr + offset); }
+long long atoll_woffset(char* ptr, int offset) { return atoll(ptr + offset); }
+double    atof_woffset(char* ptr, int offset) { return atof(ptr + offset); }
 
+
+int       ws_strtol (const char* ptr, int offset, int base) { return strtol (ptr + offset, 0, base); }
+long long ws_strtoll(const char* ptr, int offset, int base) { return strtoll(ptr + offset, 0, base); }
+
+int get_errno() { return errno; }
+int clear_errno() { errno = 0; }
+
+// For use with fseek 
+int ws_get_SEEK_SET() { return SEEK_SET; }
+int ws_get_SEEK_CUR() { return SEEK_CUR; }
+int ws_get_SEEK_END() { return SEEK_END; }

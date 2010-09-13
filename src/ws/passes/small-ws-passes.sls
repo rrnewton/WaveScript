@@ -865,7 +865,7 @@
   (apply-to-program-body marshal-and-comm prog))
 
 
-;; Make the toplevel print exlplicit.  Return only unit.
+;; Make the toplevel print explicit.  Return only unit.
 (define-pass explicit-toplevel-print
   [Program 
    (lambda (pr Expr)
@@ -879,8 +879,9 @@
 			     (let ()
 			       (lambda (,x ,vq)
 				 (,topty (VQueue #()))
-				 (begin (print (assert-type ,topty ,x))
-					(print (assert-type String '"\n"))
+				 (begin ,@(if (suppress-main-stream-printing) '()
+				          `((print (assert-type ,topty ,x))
+					    (print (assert-type String '"\n"))))
 					(emit (assert-type (VQueue #()) ,vq) (tuple))
 					,vq)))
 			     ,bod)
@@ -1307,14 +1308,17 @@
 		      (for (,ind '0 (_-_ (Array:length ,old) '2))
 			  (Array:set ,new ,ind (Array:ref ,old ,ind)))
 		      ,new)))]
+
+	      ;; TODO: ADD LENGTH/OFFSET ARGUMENTS
 	      [(String:fromArray ,[arr])	       
 	       (define old (unique-name "old"))
 	       (define new (unique-name "new"))
 	       (define ind (unique-name "ind"))
 	       `(let ([,old (Array Char) ,arr])
+	          ;; Add one character to hold the terminating: NULL
 		  (let ([,new (Array Char) (Array:makeUNSAFE (_+_ (Array:length ,old) '1))])
 		    (begin 
-		      (for (,ind '0 (Array:length ,old))
+		      (for (,ind '0 (_-_ (Array:length ,old) '1))
 			  (Array:set ,new ,ind (Array:ref ,old ,ind)))
 		      (Array:set ,new (Array:length ,old) '#\nul)
 		      ,new)))]

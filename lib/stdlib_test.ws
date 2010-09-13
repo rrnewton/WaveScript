@@ -73,10 +73,8 @@ result = iterate _ in middle {
   state { first = true }
   if first then {
     first := false;
-    println("\n");
-
     {
-      println("  Basic Functions");
+      println("\n  Basic Functions");
       println("=====================");
       assert_prnt("ceilF ", ceilF(3.01), 4.0);
       assert_prnt("ceilF ", ceilF(3.0),  3.0);
@@ -90,7 +88,7 @@ result = iterate _ in middle {
     };
 
     {
-      println("  FIFO ADT ");
+      println("\n  FIFO ADT ");
       println("=====================");
       using FIFO;
       q = make(10);
@@ -111,16 +109,17 @@ result = iterate _ in middle {
     };
 
     {
-      println("  Array primitives: ");
+      println("\n  Array primitives: ");
       println("=====================");
-
       using Array;
+
+      assert_prnt("Length of null", length(#[]), 0);
+
       arr = build(10, fun(x) x);
+      assert_prnt("Built 0..9:", arr, #[0,1,2,3,4,5,6,7,8,9]);
       f1 = Array:fold((+), 0, arr);
       f2 = Array:fold1((+), arr);
-      println("Fold:  " ++ f1);
-      println("Fold1: " ++ f2 ++ "  (should be same as previous)");
-      assert_prnt("folds equal", f1,f2);
+      assert_prnt("Folds equal", f1,f2);
 
       new = make(15,0);
       Array:blit(new, 2, arr, 5, 5);
@@ -155,6 +154,16 @@ result = iterate _ in middle {
        assert_prnt("List:build", bld, [0,1,2,3,4]);
        assert_prnt("List:foldi", foldi(fun(i,sum,x) i+sum+x, 0, bld), 20);
     };
+
+    {
+       println("\n  String primitives: ");
+       println("====================");
+       using String;
+       assert_prnt("toArray", toArray("abc"), #['a','b','c']);
+       assert_prnt("toArray of empty", toArray(""), #[]);
+       assert_prnt("fromArray of null", fromArray(#[]), "");
+    }
+       
   };
   emit ();
 }

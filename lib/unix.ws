@@ -16,19 +16,21 @@
 /******************************************************************************/
 
 type FileDescr = Pointer "FILE*";
+type VoidPtr = Pointer "void*";
+type CharPtr = Pointer "char*";
 
 namespace Unix {
 
+  // First, what headers or libs do we need for accessing the standard library?
   namespace Internal {
     ext = "dylib" // or .so
     //libc = ["libc."++ext]
     //libc = ["./libc.so"]
     libc = []
   }
-
-  //using Internal;
-
-  stdio = "stdio.h":::Internal:libc;
+  stdio = "stdio.h" ::: Internal:libc;
+  // Some routines depend on extra C code as well:
+  c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
 
   // Can we support error codes across backends?
   system :: String -> Int = 
@@ -37,12 +39,12 @@ namespace Unix {
   usleep :: Int -> () = 
      foreign("usleep","unistd.h":::Internal:libc)
 
-  free   :: Pointer "void*" -> ()         = foreign("free",  stdio);
-  malloc :: Int        -> Pointer "void*" = foreign("malloc",stdio);
-  calloc :: (Int, Int) -> Pointer "void*" = foreign("malloc",stdio);
+  free   :: VoidPtr -> ()         = foreign("free",  stdio);
+  malloc :: Int        -> VoidPtr = foreign("malloc",stdio);
+  calloc :: (Int, Int) -> VoidPtr = foreign("malloc",stdio);
 
-  memcpy :: (Pointer "void*", Pointer "void*", Int) -> () = foreign("memcpy",["string.h"]);
-  strlen :: (Pointer "char*") -> Int                      = foreign("strlen",["string.h"]);
+  memcpy :: (VoidPtr, VoidPtr, Int) -> () = foreign("memcpy",["string.h"]);
+  strlen :: (CharPtr) -> Int                      = foreign("strlen",["string.h"]);
 
   stat  :: (String,    Pointer "struct stat*") -> Int = foreign("stat", stdio);
   fstat :: (FileDescr, Pointer "struct stat*") -> Int = foreign("fstat", stdio);
@@ -50,24 +52,30 @@ namespace Unix {
   fopen  :: (String, String) -> FileDescr = foreign("fopen",  stdio);
   fclose :: FileDescr -> Int              = foreign("fclose", stdio);
   
-  fgets  :: (String, Int, FileDescr) -> Pointer "char*" = foreign("fgets",  stdio);
+  fgets  :: (String, Int, FileDescr) -> CharPtr = foreign("fgets",  stdio);
 
   fflush :: FileDescr -> () = foreign("fflush",  stdio);
 
   // Only supporting foreign *functions* right now.
   //stdout :: FileDescr = foreign("stdout",  stdio);
-  // This is defined in wsc2.h:
+  // These are defined in wsc2.h:
   stdout :: FileDescr = ((foreign("ws_get_stdout",  stdio) :: () -> FileDescr))();
   stderr :: FileDescr = ((foreign("ws_get_stderr",  stdio) :: () -> FileDescr))();
   stdin  :: FileDescr = ((foreign("ws_get_stdin" ,  stdio) :: () -> FileDescr))();
 
   puts :: String -> () = foreign("puts", stdio);
 
+  ftell :: (FileDescr) -> Int = foreign("ftell", stdio);
+  fseek :: (FileDescr, Int, Int) -> Int = foreign("fseek", stdio);
+  SEEK_SET :: () -> Int = foreign("ws_get_SEEK_SET", c_exts); // For use with fseek
+  SEEK_CUR :: () -> Int = foreign("ws_get_SEEK_CUR", c_exts); // For use with fseek
+  SEEK_END :: () -> Int = foreign("ws_get_SEEK_END", c_exts); // For use with fseek
+
   // This is kind of funny, we have multiple interfaces into the same functions.
   // One set reads from an *external* pointer:
-  fread :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+  fread :: (VoidPtr, Int, Int, FileDescr) -> Int = 
      foreign("fread", stdio)
-  fwrite :: (Pointer "void*", Int, Int, FileDescr) -> Int = 
+  fwrite :: (VoidPtr, Int, Int, FileDescr) -> Int = 
      foreign("fwrite", stdio)
 
   // The second interface reads from WS arrays:
@@ -84,8 +92,8 @@ namespace Unix {
     foreign("fwrite", stdio);
 
   // Basic write & read:
-  write     :: (Int, Pointer "void*", Int) -> Int = foreign("write", stdio);
-  read      :: (Int, Pointer "void*", Int) -> Int = foreign("read",  stdio);
+  write     :: (Int, VoidPtr, Int) -> Int = foreign("write", stdio);
+  read      :: (Int, VoidPtr, Int) -> Int = foreign("read",  stdio);
   write_arr :: (Int, Array Char, Int) -> Int  = foreign("write", stdio);
   read_arr  :: (Int, Array Char, Int) -> Int  = foreign("read",  stdio);
   write_str :: (Int, String, Int) -> Int  = foreign("write", stdio);
@@ -93,6 +101,40 @@ namespace Unix {
 
   write_bytes :: (Int, Array Uint8, Int) -> Int  = foreign("write", stdio);
   read_bytes  :: (Int, Array Uint8, Int) -> Int  = foreign("read",  stdio);
+
+  // Also including bits of the C stdlib as needed:
+
+  clear_errno  :: () -> ()  = foreign("clear_errno", c_exts); 
+  get_errno    :: () -> Int = foreign("get_errno", c_exts); 
+
+  // Because pointer arithmetic is not allowed within WS we include an offset into the string with atoi:
+  atoi_woffset  :: (CharPtr, Int) -> Int     = foreign("atoi_woffset", c_exts); // List:append(stdio, c_exts)
+  atoll_woffset :: (CharPtr, Int) -> Int64   = foreign("atoll_woffset", c_exts); 
+  atof_woffset  :: (CharPtr, Int) -> Double  = foreign("atof_woffset", c_exts); 
+
+  ws_strtol  :: (CharPtr, Int, Int) -> Int = foreign("ws_strtol", c_exts); 
+  ws_strtoll :: (CharPtr, Int, Int) -> Int = foreign("ws_strtoll", c_exts); 
+
+  // Maybe this is a more disciplined way of separating out the functions that operate on WS data structures
+  // instead of native Pointers.
+  namespace String {
+    fread  = fread_str;
+    fwrite = fwrite_str;
+    atoi_woffset  :: (String, Int) -> Int     = foreign("atoi_woffset", c_exts); // List:append(stdio, c_exts)
+    atoll_woffset :: (String, Int) -> Int64   = foreign("atoll_woffset", c_exts); 
+    atof_woffset  :: (String, Int) -> Double  = foreign("atof_woffset", c_exts); 
+  };
+
+  namespace Array {
+    fread  = fread_str;
+    fwrite = fwrite_str;
+    atoi_woffset  :: (Array Char, Int) -> Int     = foreign("atoi_woffset", c_exts); // List:append(stdio, c_exts)
+    atoll_woffset :: (Array Char, Int) -> Int64   = foreign("atoll_woffset", c_exts); 
+    atof_woffset  :: (Array Char, Int) -> Double  = foreign("atof_woffset", c_exts); 
+
+    ws_strtol  :: (Array Char, Int, Int) -> Int = foreign("ws_strtol", c_exts); 
+    ws_strtoll :: (Array Char, Int, Int) -> Int = foreign("ws_strtoll", c_exts); 
+  };
 
 } // End namespace
 
@@ -143,19 +185,19 @@ fun fileSink (filename, mode, strm) {
 }
 
 
+// TDOO: this should all be hidden:
   // Unpacking name lists for directories:
-  c_exts = ["unix_wrappers.c"];  // C extensions that go with this file.
-  scandir_sorted :: (String, (Pointer "struct dirent ***")) -> Int = foreign("scandir_sorted", c_exts);
-  ws_namelist_ptr :: () -> Pointer "struct dirent ***"           = foreign("ws_namelist_ptr", c_exts);
-//getname :: (Pointer "struct dirent ***", Int) -> Array Char    = foreign("getname", c_exts);
-  dirent_getname :: (Pointer "struct dirent ***", Int) -> Pointer "char*" = foreign("dirent_getname", c_exts);
-  freenamelist :: (Pointer "struct dirent ***", Int) -> ()       = foreign("freenamelist", c_exts);
+  scandir_sorted :: (String, (Pointer "struct dirent ***")) -> Int = foreign("scandir_sorted", Unix:c_exts);
+  ws_namelist_ptr :: () -> Pointer "struct dirent ***"           = foreign("ws_namelist_ptr", Unix:c_exts);
+//getname :: (Pointer "struct dirent ***", Int) -> Array Char    = foreign("getname", Unix:c_exts);
+  dirent_getname :: (Pointer "struct dirent ***", Int) -> CharPtr = foreign("dirent_getname", Unix:c_exts);
+  freenamelist :: (Pointer "struct dirent ***", Int) -> ()       = foreign("freenamelist", Unix:c_exts);
 
   // [2008.08.19] These conversions are basically the identity function, but we're doing casts through the FFI:
   // First of all, this is dangerous because WS strings are not mutable using WS primitives.
-  stringToPointer :: String  -> (Pointer "char*") = foreign("stringToPointer", c_exts);
-  arrayToPointer  :: Array t -> (Pointer "void*") = foreign("arrayToPointer", c_exts);
-//pointerToString ::  Pointer "char*" -> String = foreign("stringToPointer", c_exts);
+  stringToPointer :: String  -> (CharPtr) = foreign("stringToPointer", Unix:c_exts);
+  arrayToPointer  :: Array t -> (VoidPtr) = foreign("arrayToPointer", Unix:c_exts);
+//pointerToString ::  CharPtr -> String = foreign("stringToPointer", Unix:c_exts);
 
 namespace Unix {
   make_stat :: () -> Pointer "struct stat*" = foreign("ws_make_stat", c_exts);

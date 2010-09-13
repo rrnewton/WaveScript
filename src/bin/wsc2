@@ -85,7 +85,8 @@ fi
 
 if [ "$CC" = "icc" ] || ([ "$CC" = "" ] && [ "`which icc`" != "" ])
 # Could do -static also:
-then export CC='icc -O3 -ipo -no-prec-div'
+#then export CC='icc -O3 -ipo -no-prec-div'
+then export CC='icc -ipo -no-prec-div'
 fi
 
 if [ "$CFILE" = "" ]; then CFILE=query; fi

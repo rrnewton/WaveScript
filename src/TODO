@@ -5,6 +5,15 @@ Key:
  -) Out of date / expired item.
  ~~) Partially complete
 
+ <The worst bugs to address>
+================================================================================
+
+ *) I just found out [2010.09.10] that the "type A = A" alias causes
+    WS to happily diverge and explode in memory usage.
+
+ *) It looks like \n \r character constants don't work??
+
+
  <IN_PROGRESS>:
 ================================================================================
 Things I'm working on now --Ryan:

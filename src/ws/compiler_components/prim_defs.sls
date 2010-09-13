@@ -302,6 +302,7 @@
      (Array:set         ((Array 'a) Int 'a)          #())
 
      ;; [2006.11.28] Giving these void types.
+     ;; Note, I THINK I am desugaring plain set/rem into these... and something else into the pure versions.  I should fix this internally also:
      (HashTable:set_BANG ((HashTable 'key 'val) 'key 'val) #())
      (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
      (print            ('a) #())

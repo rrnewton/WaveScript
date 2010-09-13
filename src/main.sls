@@ -718,7 +718,8 @@
   ;;(assure-type-annotated p (lambda (x) (equal? x ''())))
 
   (when (wsc2-variant-mode? (compiler-invocation-mode))
-    (unless (suppress-main-stream-printing)	
+    ;; [2010.09.12] Modifying this to run the pass anyway.  Printing suppression is done inside:
+    (begin ;unless (suppress-main-stream-printing)	
       (ws-run-pass p explicit-toplevel-print)))
 
   (ws-run-pass p optimize-print-and-show) ;; Should be optional.
@@ -2307,7 +2308,7 @@
 	  [("-repl" ,rest ...) (set! simrepl #t) (loop rest)]
 
 	  ;; Do not print output elements on the "main" stream automatically.
-	  [("-noprint" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
+	  [("-noprint" ,rest ...)     (suppress-main-stream-printing #t) (loop rest)]
 	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
 
 	  [("-nopos" ,rest ...) (regiment-track-source-locations #f) (loop rest)]
