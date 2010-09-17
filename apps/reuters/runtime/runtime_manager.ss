@@ -563,14 +563,16 @@
 ;; Adding operators.
 ;; ----------------------------------------
 
-(define-entrypoint WSQ_AddReutersSource (int int single-float string) void
-  (lambda (opid outid frequency schema-path)
+(;define-entrypoint WSQ_AddReutersSource (int int single-float string) void
+ define WSQ_AddASCIIFileSource
+  (lambda (opid outid frequency schema-path datafile)
     ;(printf " <WSQ>  WSQ_AddReutersSource ~s ~s \n" opid schema-path)
     (define code `(,(edge-sym outid) 
-		   (app wsq_reuterSource ,(car (ASSERT (string->slist frequency))) ',schema-path)))
+		   (app wsq_asciiFileSource ,(car (ASSERT (string->slist frequency))) ',schema-path ',datafile)))
     (add-op! opid code) (add-out-edge! outid)
     (print-state)
     ))
+
 
 (define-entrypoint WSQ_AddPrinter (int string int) void
   (lambda (opid str inid)
@@ -729,6 +731,12 @@
   (print-state)
   )
 
+(define (WSQ_AddRandomSource opid outid frequency schema-path)
+    (define code `(,(edge-sym outid) 
+		   (app wsq_randomSource ,(car (ASSERT (string->slist frequency))) ',schema-path)))
+    (add-op! opid code) (add-out-edge! outid)
+    (print-state))
+
 ;; This is the general version that uses a start/end predicate rather than
 (define (WSQ_WindowGeneral opid in out _names _predicate)
   (define predicate (parse-expression (ASSERT (string->slist _predicate))))
@@ -790,8 +798,12 @@
     
     ;; Dispatch on the type of operator.  It would be nice to extend this while writing only WS code.
     (case opsym
-      [(REUTERSSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
-        (apply WSQ_AddReutersSource id (car out*) args)]
+      [;(REUTERSSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
+       (ASCIIFILESOURCE) (has-inputs 0) (has-outputs 1) (has-args 3)
+        (apply WSQ_AddASCIIFileSource id (car out*) args)]
+      [(RANDOMSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
+        (apply WSQ_AddRandomSource id (car out*) args)]
+
       [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
       [(FILTER)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
       [(PROJECT)    (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddProject id (car in*) (car out*) _args)]

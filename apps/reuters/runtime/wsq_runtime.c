@@ -34,7 +34,7 @@ void (*Scheme_RemSubgraph)(wsid_t id);
 
 ptr  (*Scheme_EdgeType)(wsid_t id);
 
-void (*Scheme_AddReutersSource)(wsid_t ndid, wsid_t id, float freq, const char* path);
+//void (*Scheme_AddReutersSource)(wsid_t ndid, wsid_t id, float freq, const char* path);
 void (*Scheme_AddPrinter)(wsid_t ndid, const char* prefix, wsid_t id);
 void (*Scheme_AddProject)(wsid_t ndid, wsid_t in, wsid_t out, const char* expr);
 void (*Scheme_AddFilter) (wsid_t ndid, wsid_t in, wsid_t out, const char* expr);
@@ -94,7 +94,7 @@ char* WSQ_EdgeType  (wsid_t id) {
   return buf; 
 }
 
-void WSQ_AddReutersSource(wsid_t ndid, wsid_t id, float freq, const char* path) { Scheme_AddReutersSource(ndid, id, freq, path); } 
+//void WSQ_AddReutersSource(wsid_t ndid, wsid_t id, float freq, const char* path) { Scheme_AddReutersSource(ndid, id, freq, path); } 
 void WSQ_AddPrinter(wsid_t ndid, const char* prefix, wsid_t id)     { Scheme_AddPrinter(ndid, prefix, id); }
 
 void WSQ_AddProject(wsid_t ndid, wsid_t in, wsid_t out, const char* expr) { Scheme_AddProject(ndid,in,out,expr); } 
@@ -199,7 +199,7 @@ void WSQ_Init(const char* outfile) {
   ptr grem   =  Stop_level_value( Sstring_to_symbol("WSQ_RemSubgraph-entry"));
   ptr gtyp   =  Stop_level_value( Sstring_to_symbol("WSQ_EdgeType-entry"));
 
-  ptr addsrc =  Stop_level_value( Sstring_to_symbol("WSQ_AddReutersSource-entry"));
+//  ptr addsrc =  Stop_level_value( Sstring_to_symbol("WSQ_AddReutersSource-entry"));
   ptr addprn =  Stop_level_value( Sstring_to_symbol("WSQ_AddPrinter-entry"));
   ptr addfil =  Stop_level_value( Sstring_to_symbol("WSQ_AddFilter-entry"));
   ptr addpro =  Stop_level_value( Sstring_to_symbol("WSQ_AddProject-entry"));
@@ -228,7 +228,7 @@ void WSQ_Init(const char* outfile) {
   Scheme_AddFilter        = (void(*)(int,int,int,const char*))Sinteger_value(addfil);
   Scheme_AddWindowJoin    = (void(*)(int,int,int,int,float,const char*, const char*, const char*))Sinteger_value(addwin);
 
-  Scheme_AddReutersSource = (void(*)(int,int,float,const char*))Sinteger_value(addsrc);
+//  Scheme_AddReutersSource = (void(*)(int,int,float,const char*))Sinteger_value(addsrc);
   Scheme_AddPrinter       = (void(*)(int,const char*,int))Sinteger_value(addprn);
 
   Scheme_ConnectRemoteIn  = (void(*)(int,int,const char*,int,const char*))Sinteger_value(con_in);

@@ -3,6 +3,8 @@ include "stdlib.ws"
 include "unix.ws"
 include "socket.ws"
 
+include "taq_reader.ws"
+
 // A collection of database-like stream operators.
 
 
@@ -43,6 +45,11 @@ wsq_window :: (tup -> #time, #time, Int, Stream tup) -> SS tup;
  /* wsq_LAST                                 :: (a -> b, Sigseg a) -> b; */
 
 
+wsq_asciiFileSource :: (Float, String, String) -> Stream TAQ_Tup;
+fun wsq_asciiFileSource(rate, schema, datfile) {
+  read_TAQ_ASCII_tuples(datfile)
+}
+
 //====================================================================================================
 
 fun discard(s) iterate _ in s { }
@@ -70,8 +77,8 @@ all_syms = #["IBM", "GOOG", "GM", "F", "IMGN", "MSFT",
 
 // This is a temporary fake data source with a temporary fake schema.
 type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
-wsq_reuterSource :: (Float, String) -> Stream DummySchema99;
-fun wsq_reuterSource(freq, schema) {
+wsq_randomSource :: (Float, String) -> Stream DummySchema99;
+fun wsq_randomSource(freq, schema) {
 
   print ("<WSQ> Creating dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
 
