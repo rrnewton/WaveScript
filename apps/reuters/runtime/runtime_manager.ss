@@ -19,10 +19,6 @@
 ;;====================================================================================================
 
 
-;; TODO Set from an environment variable 
-(define verbose-mode 
-    (if (getenv "WSQ_VERBOSE") #t #f))
-
 ;; An optional file to place query output:
 #;
 (define query-output-log 
@@ -290,7 +286,6 @@
 
 (define (parse-types str)
   (define sexp (ASSERT (string->slist str)))
-  (printf "GOT SEXP: ~s\n" sexp)
   `(Record 
     ,(match sexp
        [() `',(unique-name "_rowvar")]
@@ -312,19 +307,19 @@
 
 (define-entrypoint WSQ_BeginTransaction (int) void
   (lambda (id)
-    (printf " <WSQ>  WSQ_BeginTransaction ~s \n" id)
+    (vprintf 1 " <WSQ>  WSQ_BeginTransaction ~s \n" id)
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
     (set-box! curtransaction id)
     ))
 
-;; Execute through the "ws" scheme-hosted environment.
+;; Pick which WS backend to use, default is wsc2:
 (define wsq-engine
-  (string->symbol (uppercase (or (getenv "WSQMODE") "C"))))
+  (string->symbol (uppercase (or (getenv "WSQ_BACKEND") "C"))))
 
 (define-entrypoint WSQ_EndTransaction () void
   (lambda ()    
-    (printf " <WSQ>  WSQ_EndTransaction \n")
+    (vprintf 1 " <WSQ>  WSQ_EndTransaction \n")
     (ASSERT "Must be in transaction to call EndTransaction." id (unbox curtransaction))
 
     ;; Ok, this is where we need to actually commit a change.
@@ -353,7 +348,7 @@
 				      `(app merge ,vr ,rest)]))))]
 	   [start-time (current-time 'time-monotonic)])
 
-      (if verbose-mode
+      (if (>= verbose-mode 2)
 	  (begin
 	    (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog) (newline)
 	    ;;(pretty-print (wsparse-postprocess prog))  
@@ -363,7 +358,7 @@
 	    (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1"))
 	  )
 
-      (printf " <WSQ>   Compiling generated WS program.\n")
+      (vprintf 1 " <WSQ>   Compiling generated WS program.\n")
       
       (match wsq-engine
         [SCHEME (browse-stream (wsint (wsparse-postprocess prog) '()))]	
@@ -371,7 +366,7 @@
 	 
 	 ;; Make it run in REALtime:
 	 (when (not (getenv "WSQ_MAXSPEED"))
-	   (printf " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
+	   (vprintf 1 " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
 	   (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") ""))))
 
 	 (when (getenv "WSQ_OUTEXE") (WSQ_SetQueryName-entry (getenv "WSQ_OUTEXE")))
@@ -380,7 +375,9 @@
          (set-c-output-basename! query-app-name)
 	 ;; Compile through the wsc2 backend:
 	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
-			[regiment-verbosity (if verbose-mode 5 1)])
+			;[regiment-verbosity (if (>= verbose-mode) 5 1)]
+			[regiment-verbosity (- verbose-mode 1)]
+			)
 	   (wscomp (wsparse-postprocess prog) '() 'wsc2)
 	   ;; The problem with this is our input program is already an sexp:
 	   ; (wsc2 prog "-o" (string-append (remove-file-extension query-app-name) ".exe"))
@@ -395,10 +392,13 @@
 	    ;(printf "SETTING LINK ~s\n" (getenv "WS_LINK"))
 	    
 	    ;; We go all the way back to our shell script to have it call gcc.
-	    (system "wsc2-gcc") ;; Why is the output from this not printing?
+	    (if (>= verbose-mode 1)
+	    	(system "wsc2-gcc") ;; Why is the output from this not printing?
+		(system "wsc2-gcc 2> wsc2-gcc.output.log") ;; FIXME: ASSUMES UNIX
+		)
 
 	    (let ([end-time (current-time 'time-monotonic)])
-	      (printf " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
+	      (vprintf 1 " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
 	        (+ (- (time-second end-time)
 		      (time-second start-time))
 		   (/ (- (time-nanosecond end-time)
@@ -406,9 +406,10 @@
 		      (* 1000.0 1000 1000)))))
 
 	    (begin 
-	      (printf "\n================================================================================\n")
+	      (vprintf 1 "\n================================================================================\n")
 	      ;; Kill old process:
 	      (when current-child-process (kill-child current-child-process))
+	      ;; Create new child process:
 	      (let-values ([(to-stdin from-stdout from-stderr pid)
 	                    (let ((cmd 
 				   (if query-output-file
@@ -417,7 +418,7 @@
 				       ;; Maybe it would be better to generate WS code that opens/writes the output file.
 				       (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file)
 				       (format "exec ./~a.exe" query-app-name))))
-			      (printf " <WSQ> Executing command in child process: ~a\n" cmd)
+			      (vprintf 1 " <WSQ> Executing command in child process: ~a\n" cmd)
 			      (if query-output-file
 				  (open-process-ports cmd)
 				  (open-process-ports cmd 'block (make-transcoder (latin-1-codec)))))
@@ -425,10 +426,10 @@
 			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
 	      (if current-child-process
-		  (printf " <WSQ> Created replacement child process (pid ~a).\n" pid)
-		  (printf " <WSQ> Started child process to execute query (pid ~a).\n" pid))
+		  (vprintf 1 " <WSQ> Created replacement child process (pid ~a).\n" pid)
+		  (vprintf 1 " <WSQ> Started child process to execute query (pid ~a).\n" pid))
 	      (set! current-child-process pid)
-	      (printf "================================================================================\n\n")
+	      (vprintf 1 "================================================================================\n\n")
 
 	      ;; We need to return from the EndTransaction call back to the control program.
 	      ;; I wish there were some good way to plug the from-stdout into console-output-port 
@@ -455,7 +456,7 @@
 	  (display x query-output-log)
 	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
-	(when verbose-mode
+	(when (>= verbose-mode 1)
 	  (fprintf (console-error-port) "\n ### ECHO THREAD: Port closed.  Child process probably dead.  Terminating.\n"))
     ; (printf "##### ENDING ECHO THREAD... \n")
 	))
@@ -472,8 +473,8 @@
   ;; If it's a shell I thought a normal kill might let it kill recursively... but no.
   ;(define killcmd (format "kill  ~a" pid))
 
-  (when verbose-mode
-    (printf " <WSQ> checking for child process:\n")(flush-output-port (current-output-port))
+  (when (>= verbose-mode 1)
+    (vprintf 1 " <WSQ> checking for child process:\n")(flush-output-port (current-output-port))
     ;(system (format "ps aux | grep ~a" pid))
     (system (format "ps u -p  ~a" pid))
     )
@@ -486,7 +487,7 @@
   (spin-system killcmd)      
   ;(printf "RIGHT AFTER KILLCMD\n") (flush-output-port (current-output-port))
 
-  (printf " <WSQ> Killing child process ~s\n" killcmd)(flush-output-port (current-output-port))
+  (vprintf 1 " <WSQ> Killing child process ~s\n" killcmd)(flush-output-port (current-output-port))
   ;(printf "  Processes after kill:\n") (system "ps aux | grep query")
 )
 
@@ -517,7 +518,7 @@
 
 (define-entrypoint WSQ_BeginSubgraph (int) void 
   (lambda (id)
-    (printf " <WSQ>  WSQ_BeginSubgraph ~s \n" id)
+    (vprintf 1 " <WSQ>  WSQ_BeginSubgraph ~s \n" id)
     (when cursubgraph
        (error 'WSQ_BeginSubgraph "cannot begin subgraph ~s within another subgraph ~s!" id cursubgraph)
        ;(error 'WSQ "Subgraph with ID ~s already exists and has not been removed.\n" id)
@@ -532,10 +533,10 @@
 (define-entrypoint WSQ_EndSubgraph () void
   (lambda ()
     (unless cursubgraph 
-      (printf " <WSQ>  ERROR: WSQ_EndSubgraph called without a corresponding WSQ_BeginSubgraph.\n")
+      (vprintf 1 " <WSQ>  ERROR: WSQ_EndSubgraph called without a corresponding WSQ_BeginSubgraph.\n")
       (exit -1))
     (let ((id cursubgraph))
-      (printf " <WSQ>  WSQ_EndSubgraph ~s \n" id)
+      (vprintf 1 " <WSQ>  WSQ_EndSubgraph ~s \n" id)
       (print-state)
       ;; Currently subgraphs don't really do anything special.
       ;; But we do record the operators introduced by the subgraph so we can remove them later.
@@ -546,7 +547,7 @@
 
 (define-entrypoint WSQ_RemSubgraph (int) void
   (lambda (id)
-    (printf " <WSQ>  WSQ_RemSubgraph ~s \n" id)
+    (vprintf 1 " <WSQ>  WSQ_RemSubgraph ~s \n" id)
     (unless (hashtable-contains? subgraph_table id)
       (error 'WSQ_RemSubgraph "Tried to remove subgraph which was not installed: id ~s" id))
     (hashtable-delete! subgraph_table id)
@@ -555,7 +556,7 @@
 (define-entrypoint WSQ_EdgeType (int) scheme-object
   (lambda (id)
     (define type (format "type_~a" (random 1000)))
-    (printf " <WSQ>  WSQ_EdgeType ~s : ~s \n" id type)
+    (vprintf 1 " <WSQ>  WSQ_EdgeType ~s : ~s \n" id type)
     ;   type
     (error 'WSQ_EdgeType "not implemented yet")
     ))
@@ -777,7 +778,7 @@
 (define-entrypoint WSQ_AddOp (int string string string string) void
   (lambda (id optype inputs outputs _args)
     (define args (string-split _args #\|))
-    (define __ (printf " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
+    (define __ (vprintf 1 " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
     (define in*  (ASSERT (string->slist inputs)))
     (define out* (ASSERT (string->slist outputs)))
     (define opsym (string->symbol (uppercase optype)))
@@ -900,7 +901,7 @@
 (define-entrypoint WSQ_Shutdown () void
   (lambda ()
     (when current-child-process (kill-child current-child-process))
-    (printf " <WSQ> Shutting down query engine.\n")
+    (vprintf 1 " <WSQ> Shutting down query engine.\n")
 
 #;
     (begin 
@@ -915,7 +916,7 @@
   (lambda (path)
     (unless (equal? path "")
     (set! query-output-file path))
-    (printf " <WSQ> Query output redirected to ~s\n" path)
+    (vprintf 1 " <WSQ> Query output redirected to ~s\n" path)
     ))
 
 
@@ -924,7 +925,7 @@
   (lambda (path)
     (unless (equal? path "")
       (set! query-app-name path)
-      (printf " <WSQ> Query base name (used for .c/.exe) set to: ~s\n" path)
+      (vprintf 1 " <WSQ> Query base name (used for .c/.exe) set to: ~s\n" path)
    )))
 
 

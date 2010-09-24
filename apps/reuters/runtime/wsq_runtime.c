@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>	
 #include <stdio.h>
+#include <sys/types.h>
+#include <limits.h>
+#include <errno.h>
 
 #include "wsq_runtime.h"
 
@@ -150,6 +153,13 @@ void WSQ_Init(const char* outfile) {
     exit(1);
   }
 
+  int verbose = 0;
+  const char* v = getenv("WSQ_VERBOSE");
+  if (v) verbose = strtol(v, NULL, 10);
+  if (errno) { printf("WSQ_VERBOSE set to invalid value: %s\n", v); abort(); }
+
+  // Sset_verbose(verbose); This won't suppress the banner.
+  // Sset_verbose(5);
   Sscheme_init(0);  
 
   sprintf(bootfile, "%s/boot/%s/petite.boot", chezd, machinetype);
@@ -168,27 +178,29 @@ void WSQ_Init(const char* outfile) {
 
   // NOTE: This is a real oddity.  I must *pad* the argument list??
   // Seems like there might be a bug.
-  const char* new_args[] = {"", script};
-
-  //const char* new_args[] = {"", script, "--quiet"};
+  const char* new_args[] = {"apparently ignored", script};
+  // [2010.09.24] Trying to make it quiet...
+  // It seems to treat all arguments as files to be loaded, even empty strings!
+  //const char* new_args[] = {"", "-q"};
   //const char* new_args[] = {"", "--quiet", script};
 
   // Tell chez scheme not to print the greeting:
   // (Doesn't work for me presently.)
   //Scall1(Stop_level_value( Sstring_to_symbol("suppress-greeting")), Sfalse);
+  Scall1(Stop_level_value( Sstring_to_symbol("suppress-greeting")), Strue);
 
-  printf(" <WSQ>  WSQ_Init: Starting Scheme runtime system.\n");
+  if (verbose>=1) printf(" <WSQ>  WSQ_Init: Starting Scheme runtime system.\n");
   int result = Sscheme_start(2, new_args);
   //int result = Sscheme_start(3, new_args);
   if (result) { 
-      printf("Exited from scheme initialization with non-zero code %d\n", result);
+      printf("ERROR: Exited from scheme initialization with non-zero code %d\n", result);
       abort(); 
   }
 
   // This is awful gross.  Oh well.
   // ============================================================
 
-  printf(" <WSQ> Registering WSQ runtime interface with control module.\n");
+  if (verbose>=1) printf(" <WSQ> Registering WSQ runtime interface with control module.\n");
 
   // Grab the relevant function entrypoints from the Scheme symbol table.
   ptr tbegin =  Stop_level_value( Sstring_to_symbol("WSQ_BeginTransaction-entry"));
@@ -242,14 +254,14 @@ void WSQ_Init(const char* outfile) {
   Scheme_SetQueryName     = (void(*)(const char*))Sinteger_value(setquery);
 
   // ============================================================
-  printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
+  if (verbose>=1) printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
 
   // fork some threads...
 
   //
   Scheme_SetOutputFile(outfile);
 
-  printf(" <WSQ> Returning to control module...\n");  
+  if (verbose>=1) printf(" <WSQ> Returning to control module...\n");  
 }
 
 
