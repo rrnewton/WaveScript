@@ -11,7 +11,14 @@ int main(int argc, char* argv[]) {
     char strargs[128];
     //sprintf(strargs, "128.30.79.5 | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
     //sprintf(strargs, "localhost | %d | \"string SYM, float TIME, float PRICE, int VOLUME\"", PORT);
-    sprintf(strargs, "localhost | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
+
+    // This is the schema for RandomSource:
+    // sprintf(strargs, "localhost | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
+
+    // This is the schema for ASCIIFileSource:
+    // CHANGE TO BIGINT!!! TODO FIXME
+    sprintf(strargs, "localhost | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE ", PORT);
+
 
   WSQ_Init("");
   WSQ_SetQueryName("proc2query");

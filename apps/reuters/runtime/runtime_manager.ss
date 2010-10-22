@@ -278,10 +278,11 @@
   (string->symbol (lowercase (symbol->string s)))
   )
 
+;; Convert a type from the input schema (which is wannabe SQL) into a proper WaveScript type.
 (define (Type t)
   (case (downcase-symbol t)
-    [(int float double string)
-     (capitalize t)]    
+    [(int float double string)  (capitalize t)]
+    [(bigint) 'Int64]
     [else (error 'Type "unhandled type: ~s" t)]))
 
 (define (parse-types str)

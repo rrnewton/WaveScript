@@ -18,7 +18,9 @@ int main(int argc, char* argv[]) {
   WSQ_BeginTransaction(1001);
     WSQ_BeginSubgraph(101);
 
-      WSQ_AddOp(2, "ReutersSource", "","2", "100 |foobar.schema");
+      // Random tuples, 100Hz
+      //WSQ_AddOp(2, "RandomSource", "","2", "100 |foobar.schema");
+      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|longer.dat"); 
       WSQ_AddOp(3, "ConnectRemoteOut", "2", "", addr); 
 
     WSQ_EndSubgraph();

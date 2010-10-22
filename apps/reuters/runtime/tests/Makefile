@@ -33,7 +33,11 @@ test: $(TESTS)
 	WSQ_VERBOSE=1 ./$<  &> /dev/stdout | tee $(<:.exe=.run)
 
 .out.testrun:
-	python compare.py -p $(<:.out=.compare) -c $<  > $@
+	@echo 
+	@echo Comparing output to expected, check .err file for results if an error occurs:
+	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)
+# if we were successful, move the result into place:
+	mv $(<:.out=.err) $@ 
 	@echo 
 	@echo --------------------
 	@echo COMPARISON SUCCEEDED

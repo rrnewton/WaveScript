@@ -18,3 +18,16 @@ Ok... I can get it to happen pretty often... more often when I run
 through the query-generator rather than the query?
 
 
+[2010.10.22]
+
+
+
+        WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100
+|foobar.schema|test.dat");
+
+
+        WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100 |foobar.schema|test.dat");
+
+
+stack smashing
+
