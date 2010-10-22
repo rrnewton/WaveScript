@@ -1,4 +1,6 @@
 
+# This makefile both builds and runs the tests.
+
 include ../makefile.common
 
 
@@ -13,6 +15,7 @@ all: $(EXES)
 
 test: $(TESTS)
 
+
 .SUFFIXES: .o .c .exe .testrun .out
 .PRECIOUS: $(EXES) $(OUTS) $(TESTS)
 
@@ -22,16 +25,21 @@ test: $(TESTS)
 
 
 .exe.out:
-	./$< &> $(<:.exe=.run)
+	@echo 
+	@echo ====================================================================================================
+	@echo RUNNING TEST $< 
+	@echo -------------------------------
+	@echo 
+	WSQ_VERBOSE=1 ./$<  &> /dev/stdout | tee $(<:.exe=.run)
 
 .out.testrun:
 	python compare.py -p $(<:.out=.compare) -c $<  > $@
 	@echo 
+	@echo --------------------
 	@echo COMPARISON SUCCEEDED
-	@echo ============================================================
+	@echo ====================================================================================================
+	@echo 
 
 clean: 
 	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run
-
-
 

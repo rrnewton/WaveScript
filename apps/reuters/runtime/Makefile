@@ -4,6 +4,10 @@ include makefile.common
 
 all: libwsq_runtime.a example_main.exe shailendra_example.exe shailendra_server.exe shailendra_client.exe
 
+
+test:
+	cd tests; $(MAKE) && $(MAKE) test
+
 libwsq_runtime.a: wsq_runtime.c 
 	@if [ -d "$(CHEZD)" ]; then echo; else echo "ERROR: CHEZD ($(CHEZD)) does not exist."; exit 1; fi
 	gcc $(FLAGS) -c -fPIC -I $(CHEZP) wsq_runtime.c -o wsq_runtime.o

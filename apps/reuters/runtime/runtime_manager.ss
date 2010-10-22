@@ -317,7 +317,7 @@
 (define wsq-engine
   (string->symbol (uppercase (or (getenv "WSQ_BACKEND") "C"))))
 
-(define-entrypoint WSQ_EndTransaction () void
+(define-entrypoint WSQ_EndTransaction () int
   (lambda ()    
     (vprintf 1 " <WSQ>  WSQ_EndTransaction \n")
     (ASSERT "Must be in transaction to call EndTransaction." id (unbox curtransaction))
@@ -440,6 +440,8 @@
 		(fork-thread (echo-port from-stdout)))
 	      ))]))
     (set-box! curtransaction #f)
+    ;; Return pid:
+    current-child-process
     ))
 
 ;; Creates a silly thread just for the purpose of relaying input to

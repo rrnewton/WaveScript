@@ -34,7 +34,7 @@ void WSQ_SetQueryName(const char* name);
 //void (*WSQ_EndTransaction)();
 
 void WSQ_BeginTransaction(wsid_t id);
-void WSQ_EndTransaction();
+int WSQ_EndTransaction();
 
 /// Subgraphs.
 

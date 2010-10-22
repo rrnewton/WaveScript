@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include "wsq_runtime.h"
 
@@ -7,7 +8,7 @@ int main(int argc, char* argv[]) {
 
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
-        WSQ_AddOp(1, "ReutersSource", "", "100", "10 |foobar.schema");
+        WSQ_AddOp(1, "RandomSource", "", "100", "10 |foobar.schema");
         WSQ_AddOp(2, "Project", "100", "200", "SYM, TIME, (PRICE + 1000) AS PRICE");
         WSQ_AddOp(3, "Printer", "200", "", "");
        WSQ_EndSubgraph();

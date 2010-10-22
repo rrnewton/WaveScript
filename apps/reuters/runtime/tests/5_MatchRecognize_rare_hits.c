@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
   // WSQ_Init("");
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
-        WSQ_AddOp(1, "ReutersSource", "", "100", "100000 |foobar.schema");
+        WSQ_AddOp(1, "RandomSource", "", "100", "100000 |foobar.schema");
         WSQ_AddOp(2, "MatchRecognize", "100", "200", "ALL | A B A | A AS (PRICE > 55), B AS (SYM = \"IBM\")");
         WSQ_AddOp(3, "Printer", "200", "", "");
        WSQ_EndSubgraph();

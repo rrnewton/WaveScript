@@ -1,19 +1,14 @@
 
-#include <stdlib.h>
-#include <string.h>	
-#include <stdio.h>
-#include <sys/types.h>
-#include <limits.h>
-#include <errno.h>
 
-#include "wsq_runtime.h"
 
-// This version connects to Chez.
+//====================================================================================================
+// wsq_runtime.c
+// This compiles to a library that can be linked to another program to give it stream processing capabilities.
+// This library does not *include* the WaveScript compiler, it finds it and loads it dynamically.
+//====================================================================================================
 
-//const char *S_date_stamp = "10102009080511";
-const char *S_date_stamp = "0";
+// This version connects to Chez Scheme.
 
-#include "scheme.h"
 
 // NOTES: HOW TO ADD A NEW ENTRYPOINT INTO SCHEME:
 
@@ -24,12 +19,27 @@ const char *S_date_stamp = "0";
 //     (These names end in -entry because of the define-entrypoint macro.)
 
 
+#include <stdlib.h>
+#include <string.h>	
+#include <stdio.h>
+#include <sys/types.h>
+#include <limits.h>
+#include <errno.h>
+
+#include "wsq_runtime.h"
+
+//const char *S_date_stamp = "10102009080511";
+const char *S_date_stamp = "0";
+
+#include "scheme.h"
+
+
 //==============================================================================
 // First, function pointers to all of the relevant calls.  These point
 // to scheme functions.
 
 void (*Scheme_BeginTransaction)(wsid_t id);
-void (*Scheme_EndTransaction)();
+int (*Scheme_EndTransaction)();
 
 void (*Scheme_BeginSubgraph)(wsid_t id);
 void (*Scheme_EndSubgraph)();
@@ -64,7 +74,7 @@ void (*Scheme_SetQueryName) (const char* name);
 */
 
 void WSQ_BeginTransaction(wsid_t id) { Scheme_BeginTransaction(id); }
-void WSQ_EndTransaction()          { Scheme_EndTransaction(); }
+int  WSQ_EndTransaction()          { Scheme_EndTransaction(); }
 
 void WSQ_BeginSubgraph(wsid_t id) { Scheme_BeginSubgraph(id); }
 void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
@@ -228,8 +238,8 @@ void WSQ_Init(const char* outfile) {
   ptr setout    = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
   ptr setquery  = Stop_level_value( Sstring_to_symbol("WSQ_SetQueryName-entry"));
 
-  Scheme_BeginTransaction = (intfun) Sinteger_value(tbegin);
-  Scheme_EndTransaction   = (voidfun)Sinteger_value(tend);
+  Scheme_BeginTransaction = (intfun)Sinteger_value(tbegin);
+  Scheme_EndTransaction   = (int(*)())Sinteger_value(tend);
 
   Scheme_BeginSubgraph    = (intfun)Sinteger_value(gbegin);
   Scheme_EndSubgraph      = (voidfun)Sinteger_value(gend);
