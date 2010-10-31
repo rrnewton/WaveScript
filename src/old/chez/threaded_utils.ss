@@ -94,23 +94,10 @@
             (condition-signal (bq-room bq))
             item))))))
 
-
-
-
-;(define par-map map)
-;(define (par-list . thunks)  (map (lambda (th) (th)) thunks))
-
 ;; ================================================================================
-#;
-(define-syntax par
-  (syntax-rules ()
-    [(par e ...) (par-list (lambda () e) ...)]
-    ))
-
-;; A bit inefficient, defined in terms of par-list:
-;(define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
-
+;;; < PAR IMPLEMENTATION FOR STRICTLY NESTED PARALLELISM>
 ;; ================================================================================
+
 ;; <-[ VERSION 1 ]->
 
 ;; Inefficient version, forks threads on demand:
@@ -135,7 +122,17 @@
 			q))
 		 thunks))
     (fprintf (current-error-port) "\n  Forking ~s threads.\n" (length thunks))
-    (map dequeue! q*)))
+    (map dequeue! q*))
+
+  #;
+  (define-syntax par
+    (syntax-rules ()
+      [(par e ...) (par-list (lambda () e) ...)]
+      ))
+
+  ;; A bit inefficient, defined in terms of par-list:
+  ;;(define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
+)
 
 
 ;; ================================================================================
@@ -724,10 +721,10 @@
 
   ;; There's also a global list of threads:
   (define allstacks '#()) ;; This is effectively immutable.
-  (define par-finished #f) 
-  ;; And a mutex for global state:
-  (define global-mut (make-mutex))
+  (define par-finished 'par-finished-uninit) ;; This gets polled without the lock.
   (define threads-registered 1)
+  ;; And a mutex for global state (threads-registered, numprocessors, allstacks...):
+  (define global-mut (make-mutex)) 
 
   (define initial-stack-size 500)
 
@@ -740,23 +737,22 @@
         (lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
 
   ;; A per-thread parameter.
-  (define this-stack (make-thread-parameter (new-stack)))
-  
-  ;; Mutated below:
-  (define numprocessors #f)
+  (define this-stack (make-thread-parameter 'stack-uninit))
+  (define numprocessors #f) ;; Mutated below.
 
-  ;; We spin until everybody is awake.
-  (define (wait-for-everybody)
+  ;; We spin until everybody is awake. (Could perhaps make this gentler by yielding?)
+  (define (wait-for-everybody desired)    
+    ;(define start (with-mutex global-mut threads-registered))
     (let wait-for-threads ()
-      ;(printf "  ~s ~s\n" threads-registered numprocessors)
+      ;(printf " w~s" threads-registered) (let loop ((i 1000000)) (unless (zero? i) (loop (sub1 i))))
       (unless 
-	;(= threads-registered numprocessors)
-  	(with-mutex global-mut (= threads-registered numprocessors))
-	  (wait-for-threads))))
+	(fx= threads-registered desired)  ;; unlocked version, polling + monotonicity
+  	;(with-mutex global-mut (fx= threads-registered desired))
+	(wait-for-threads))))
 
     ;; DEBUGGING:
   ;;  Pick a print:
-     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
+;     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
   ;   (define (print . args) (void)) ;; fizzle
 
@@ -765,23 +761,31 @@
 
   (define (init-par num-cpus)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
-    (with-mutex global-mut   
-      (ASSERT (eq? threads-registered 1))
-      (set! numprocessors num-cpus)
-      (set! allstacks (make-vector num-cpus))
-      (vector-set! allstacks 0 (this-stack))
-      ;; We fork N-1 threads (the original one counts)
-      (do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
-        (vector-set! allstacks i (make-worker))))
-    (wait-for-everybody)
+    (let ((mystack (new-stack)))
+      (with-mutex global-mut   
+	(ASSERT (eq? threads-registered 1))
+	(set! par-finished #f)
+	(set! numprocessors num-cpus)
+	(set! allstacks (make-vector num-cpus))
+	(this-stack mystack)
+	(vector-set! allstacks 0 mystack)
+	;; We fork N-1 threads (the original one counts too)
+	;; Each worker will grab global-mut before they really get started.
+	(do ([i 1 (fx+ i 1)]) ([= i num-cpus] (void))
+	  (vector-set! allstacks i (make-worker)))))
+    
+    (wait-for-everybody numprocessors)
     (fprintf (current-error-port) "  [par] Everyone's awake!\n")
     )
   (define (par-reset!) (void))
-  (define (shutdown-par) (set! par-finished #t))  ;; TODO: should block until all shutdown.
+  (define (shutdown-par)
+    (with-mutex global-mut (set! par-finished #t))
+    (wait-for-everybody 1)
+    (fprintf (current-error-port) "  [par] Shutdown complete\n"))
   (define (par-status) 
     (with-mutex global-mut
       (fprintf (current-error-port)
-	       "  [par] Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
+	       "  [par] Par status:\n        par-finished ~s\n        allstacks: ~s\n        stacksizes: ~s\n\n"
 	       par-finished (vector-length allstacks)
 	       (map shadowstack-tail (vector->list allstacks)))))
 
@@ -822,6 +826,7 @@
 		    #t
 		    (frmloop (fx+ 1 i))))))))
 
+  ;; Fork a worker thread and return its stack:
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
@@ -830,13 +835,14 @@
 			  (with-mutex global-mut ;; Register our existence.
 			    (set! threads-registered (add1 threads-registered))
 			    threads-registered)])
-		     ;; Steal work forever:
+		     ;; Steal work approximately forever:
 		     (let steal-loop ()
 		       (find-and-steal-once!)
 		       (if par-finished
 			   (with-mutex global-mut 
 			      (set! threads-registered (sub1 threads-registered))
-			      (fprintf (current-error-port) "  [par] worker ~s terminating.\n" myid))
+			      (fprintf (current-error-port) "  [par] worker ~s terminating (TID ~s, ~s remain).\n"
+				       myid (get-thread-id) threads-registered))
 			   (steal-loop))))))
      stack)
 

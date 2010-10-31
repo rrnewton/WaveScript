@@ -436,3 +436,56 @@ a ready-queue, etc.
 
 
 |#
+
+
+
+
+====================================================================================================
+
+[2010.10.31] {Apparent nondeterministic failure}
+
+I just ran into a failure taht is difficult to reproduce... ah the
+trick must be that shutdown doesn't block yet, so the two consecutive
+par phases are interfering:
+
+    [newton@wasp ~/wavescript/src/experimental/parallelizing_compiler] $ chez test.ss
+    Chez Scheme Version 8.0
+    Copyright (c) 1985-2010 Cadence Research Systems
+
+    Starting simple test
+
+    [collecting generation 4 into generation 4...done]
+
+      [par] Initializing PAR system for 4 threads.
+
+    [collecting generation 0 into generation 1...done]
+
+    [collecting generation 0 into generation 1...done]
+      [par] Everyone's awake!
+    Run using parallel add-tree via pcall mechanism:
+    (time (tree test-depth))
+	no collections
+	275 ms elapsed cpu time
+	97 ms elapsed real time
+	32768 bytes allocated
+
+    32768
+
+      [par] Par status:
+      par-finished #f
+      allstacks: 4
+      stacksizes: (0 0 0 0)
+
+      [par] worker 2 terminating (TID 2).
+      [par] worker 4 terminating (TID 3).
+      [par] Par status:
+      par-finished #t
+      allstacks: 4
+      stacksizes: (0 0 0 0)
+
+
+      [par] Initializing PAR system for 2 threads.
+    Exception in ASSERT: failed: #<syntax (eq? threads-registered 1) [line 766, char 15 of chez_threaded_utils.ss]>
+
+
+
