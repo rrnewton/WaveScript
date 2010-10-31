@@ -9,7 +9,8 @@
     (stream-parmap 
      make-bq enqueue! dequeue!   bq-i bq-vec bq-mutex bq-ready bq-room
 
-     init-par  ;; Run initialization code (fork threads, etc)
+     init-par     ;; Run initialization code (fork threads, etc)
+     shutdown-par ;; Tell workers to stop spinning.
      par       ;; Evaluate expressions in parallel, return list of values
 ;     par-list  ;; Evaluate a list of thunks
      ;parmv-fun          
@@ -715,7 +716,7 @@
 
   ;; There's also a global list of threads:
   (define allstacks '#()) ;; This is effectively immutable.
-  (define par-finished #f)
+  (define par-finished #f) 
   ;; And a mutex for global state:
   (define global-mut (make-mutex))
   (define threads-registered 1)
@@ -768,7 +769,7 @@
     (fprintf (current-error-port) "  [par] Everyone's awake!\n")
     )
   (define (par-reset!) (void))
-  (define (shutdown-par) (set! par-finished #t))
+  (define (shutdown-par) (set! par-finished #t))  ;; TODO: should block until all shutdown.
   (define (par-status) 
     (fprintf (current-error-port)
             "  [par] Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
@@ -801,8 +802,7 @@
 	   #t)))
 
   (define (find-and-steal-once!)
-    (unless par-finished
-      (let* ([ind (random numprocessors)]
+    (let* ([ind (random numprocessors)]
 	     [stack (vector-ref allstacks ind)])
 	(let* ([frames (shadowstack-frames stack)]
 	       [tl     (shadowstack-tail stack)])
@@ -811,19 +811,22 @@
 		#f ;; No work on this processor, try again. 
 		(if (steal-work! (vector-ref frames i))
 		    #t
-		    (frmloop (fx+ 1 i)))))))))
+		    (frmloop (fx+ 1 i))))))))
 
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
                    (this-stack stack) ;; Initialize stack. 
-		   (with-mutex global-mut ;; Register our existence.
-		     (set! threads-registered (add1 threads-registered)))
-                   ;; Steal work forever:
-                   (let forever ()
-		     (find-and-steal-once!)
-		     (forever)		     
-                     )))
+		   (let ([myid 
+			  (with-mutex global-mut ;; Register our existence.
+			    (set! threads-registered (add1 threads-registered))
+			    threads-registered)])
+		     ;; Steal work forever:
+		     (let steal-loop ()
+		       (find-and-steal-once!)
+		       (if par-finished
+			   (with-mutex global-mut (fprintf (current-error-port) "  [par] worker ~s terminating.\n" myid))
+			   (steal-loop))))))
     stack)
 
   (define-syntax pcall
