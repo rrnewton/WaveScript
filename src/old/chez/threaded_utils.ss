@@ -53,6 +53,16 @@
     (format "Syntax ~a, line ~a in ~a" 
 	    (syntax->datum x) (plt:syntax-line x) (plt:syntax-source x)))
 
+;; This is an unsafe version that doesn't handle escapes via continuations :
+(define-syntax with-mutex
+  (syntax-rules ()
+    [(_ e0 e1 e2 ...)
+     (let ([m e0])
+       (mutex-acquire m)
+       (let ([x (begin e1 e2 ...)])
+         (mutex-release m)
+         x))]))
+
 
 ;=============================================================================
 ;;; Bounded queues, from http://www.scheme.com/csug7/threads.html#./threads:h7
@@ -752,7 +762,7 @@
 
     ;; DEBUGGING:
   ;;  Pick a print:
-;     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
+     (define (print . args) (with-mutex global-mut (apply printf args) (flush-output-port (current-output-port))))
   ;   (define (print . args) (apply printf args))
   ;   (define (print . args) (void)) ;; fizzle
 
@@ -781,7 +791,8 @@
   (define (shutdown-par)
     (with-mutex global-mut (set! par-finished #t))
     (wait-for-everybody 1)
-    (fprintf (current-error-port) "  [par] Shutdown complete\n"))
+    (with-mutex global-mut (fprintf (current-error-port) "  [par] Shutdown complete\n"))
+    )
   (define (par-status) 
     (with-mutex global-mut
       (fprintf (current-error-port)
@@ -793,25 +804,28 @@
 
   ;; Try to do work and mark it as done.
   (define (steal-work! frame)
-    (and (eq? 'available (shadowframe-status frame))
+    (and (eq? 'available (shadowframe-status frame)) ;; Check before locking.
 	 ;(mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
-	 (mutex-acquire (shadowframe-mut frame)) ;; NONBLOCKING VERSION HAS A PROBLEM!!?
+	 (begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
 	 ;; From here on out we've got the mutex:
-	 (if (eq? 'available (shadowframe-status frame)) ;; If someone beat us here, we fizzle
+	 (if (eq? 'available (shadowframe-status frame)) 
 	     #t 
-	     (begin (mutex-release (shadowframe-mut frame)) 
+	     (begin (mutex-release (shadowframe-mut frame)) ;; If someone beat us here, we fizzle
 		    #f))
 	 (begin 
-	   ;(print "STOLE work! ~s\n" frame)
-	   (set-shadowframe-status! frame 'stolen)
+	   (print "STOLE work! ~s, ID ~s\n" frame (get-thread-id)) 
+	   ;(print "STOLE work! ~s \n" frame)
+
+	   (set-shadowframe-status! frame 'stolen) ;; Could have done this atomically with CAS
 	   (mutex-release (shadowframe-mut frame)) 
-	   ;; Then let go to do the real work:
+	   ;; Then let go to do the real work, note that this may do further pcall's:
 	   (set-shadowframe-argval! frame 
 	      ((shadowframe-oper frame) (shadowframe-argval frame)))
-	   ;; Now we *must* acquire it (even if we block) in order to set the status to done.
+	   ;; Now we *must* acquire the lock (even if we block) in order to set the status to done.
+	   ;; [2010.10.31]  Really, why?  Shouldn't we own it after it's stolen?
 	   (mutex-acquire (shadowframe-mut frame)) ;; blocking...
 	   (set-shadowframe-status! frame 'done)	   
-	   (mutex-release (shadowframe-mut frame)) 
+	   (mutex-release (shadowframe-mut frame))
 	   #t)))
 
   (define (find-and-steal-once!)
@@ -822,7 +836,7 @@
 	  (let frmloop ([i 0])
 	    (if (fx= i tl) 
 		#f ;; No work on this processor, try again. 
-		(if (steal-work! (vector-ref frames i))
+		(if (steal-work! (vector-ref frames i)) ;; NOTE: Wrong number of args to steal-work! here seemed to cause deadlock!!  Add any extra arg, like '99'
 		    #t
 		    (frmloop (fx+ 1 i))))))))
 
@@ -857,6 +871,7 @@
              (set-shadowframe-argval! frame val)
              (set-shadowframe-status! frame  'available)
              (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
+	     ;; TODO: could check for stack-overflow here and possibly add another stack segment...
              frame))
          (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 

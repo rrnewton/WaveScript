@@ -489,3 +489,19 @@ par phases are interfering:
 
 
 
+[2010.10.31] {Timings and unpredictability}
+
+I notice that on wasp on four threads doing an add-tree of 2^23 it
+can occassionally take 335ms but usually takes 600+ms.
+
+But two threads is pretty dependably good... hmm.
+Would be nice to have compare and swap (CAS)...
+
+Right now the safe/unsafe with-mutex doesn't make any difference at
+all.
+
+
+
+
+
+
