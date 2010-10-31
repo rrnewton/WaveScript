@@ -717,7 +717,7 @@
   
   ;; Frames are locked individually.
   ;; status may be 'available, 'stolen, or 'done
-  (define-record shadowframe  (mut status oper argval))
+  (define-record shadowframe  (mut status oper argval)) ;; argval is both argument and stores result
 
   ;; There's also a global list of threads:
   (define allstacks '#()) ;; This is effectively immutable.
@@ -849,42 +849,45 @@
   (define-syntax pcall
     (syntax-rules ()
       [(_ op (f x) e2)
-       (let ([stack (this-stack)])
+       (let ([stack (this-stack)]) ;; thread-local parameter
          (define (push! oper val)
            (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
              ;; Initialize the frame
              (set-shadowframe-oper!   frame oper)
              (set-shadowframe-argval! frame val)
              (set-shadowframe-status! frame  'available)
-             (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1))
+             (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
              frame))
          (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
-         (let ([frame (push! f x)])
-           (let ([val1 e2])
-	     ;; We're the parent, when we get to this frame, we lock it off from all other comers.
-	     ;; Thieves should do non-blocking probes.
-	     (let waitloop ()
-	       (mutex-acquire (shadowframe-mut frame))
-	       (case (shadowframe-status frame)
-		 [(available) 		  
-		  (set-shadowframe-status! frame 'stolen) ;; Just in case...
-		  (pop!) ;; Pop before we even start the thunk.
-		  (mutex-release (shadowframe-mut frame))
-		  (op ((shadowframe-oper frame) (shadowframe-argval frame))
-		      val1)]
-		 ;; Oops, they may be waiting to get back in here and set the result, let's get out quick.
-		 [(stolen) 
-		  ;; Let go of this so they can finish and mark it as done.
-		  (mutex-release (shadowframe-mut frame))		 
-		  (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
-		  (waitloop)] ;; When we're done with that come back and see if our outsourced job is done.
-		 ;; It was stolen and is now completed:
-		 [else (pop!) 
-		       (mutex-release (shadowframe-mut frame))
-		       (op (shadowframe-argval frame) val1)]))
+         (let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
+	   (let ([frame (push! f1 x1)])
+	     (let ([val1 e2])
+	       ;; We're the parent, when we get to this frame, we lock it off from all other comers.
+	       ;; Thieves should do non-blocking probes.
+	       (let waitloop ()
+		 (mutex-acquire (shadowframe-mut frame))
+		 (case (shadowframe-status frame)
+		   [(available) 		  
+		    (set-shadowframe-status! frame 'stolen) ;; Just in case...
+		    (pop!) ;; Pop before we even start the thunk.
+		    (mutex-release (shadowframe-mut frame))
+		    ;; [2010.10.31] Oper/argval should be f/x here:
+		    (op1 (f1 x1) 
+		         ;((shadowframe-oper frame) (shadowframe-argval frame))
+			 val1)]
+		   ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
+		   [(stolen) 
+		    ;; Let go of this so they can finish and mark it as done.
+		    (mutex-release (shadowframe-mut frame))		 
+		    (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
+		    (waitloop)] ;; When we're done with that come back and see if our outsourced job is done.
+		   ;; It was stolen and is now completed:
+		   [else (pop!) 
+			 (mutex-release (shadowframe-mut frame))
+			 (op1 (shadowframe-argval frame) val1)]))
 
-             )))]))
+	       ))))]))
 
   ;; Returns values in a list
   (define-syntax par
