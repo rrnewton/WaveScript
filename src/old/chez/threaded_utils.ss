@@ -40,10 +40,18 @@
   
   ;(import chez_constants)
 
+(define (format-syntax-nicely x) x)
+
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
       [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax-nicely #'expr))))])))
+
+;; PLT:
+#;
+  (define (format-syntax-nicely x)
+    (format "Syntax ~a, line ~a in ~a" 
+	    (syntax->datum x) (plt:syntax-line x) (plt:syntax-source x)))
 
 
 ;=============================================================================
@@ -771,10 +779,11 @@
   (define (par-reset!) (void))
   (define (shutdown-par) (set! par-finished #t))  ;; TODO: should block until all shutdown.
   (define (par-status) 
-    (fprintf (current-error-port)
-            "  [par] Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
-            par-finished (vector-length allstacks)
-            (map shadowstack-tail (vector->list allstacks))))
+    (with-mutex global-mut
+      (fprintf (current-error-port)
+	       "  [par] Par status:\n  par-finished ~s\n  allstacks: ~s\n  stacksizes: ~s\n\n"
+	       par-finished (vector-length allstacks)
+	       (map shadowstack-tail (vector->list allstacks)))))
 
   ;; ----------------------------------------
 
@@ -825,9 +834,11 @@
 		     (let steal-loop ()
 		       (find-and-steal-once!)
 		       (if par-finished
-			   (with-mutex global-mut (fprintf (current-error-port) "  [par] worker ~s terminating.\n" myid))
+			   (with-mutex global-mut 
+			      (set! threads-registered (sub1 threads-registered))
+			      (fprintf (current-error-port) "  [par] worker ~s terminating.\n" myid))
 			   (steal-loop))))))
-    stack)
+     stack)
 
   (define-syntax pcall
     (syntax-rules ()

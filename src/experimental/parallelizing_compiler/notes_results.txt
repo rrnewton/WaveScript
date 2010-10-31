@@ -2,6 +2,25 @@
 ;; This is pertinent mainly to threaded_utils.ss, but it was growing to big to leave in there.
 
 ;; ================================================================================
+;; SUMMARY:
+;;
+;; Coming back to glance at this a bit [2010.10.30] a little unclear what the bottom line(s) were.
+
+;; First, what are all these files:
+;; The main implementation is in threaded_utils.ss
+
+  standalone.ss         -- 
+  standalone_pcall.ss   -- 
+
+  pipelined_bottumup.ws -- a little conceptual model of a streaming compiler
+  pipelined_compiler.ws -- 
+
+  partest_eightway.sh   -- 
+  partest_tree.sh       -- 
+  test_standalone.sh    -- 
+
+
+;; ================================================================================
 ;;; Little tests:
 
 ;; ------------------------------------------------------------
@@ -323,7 +342,7 @@ to make much difference... but switchng to O3 jumps us back up to 11X
 overhead.
 
 |#
-
+;; [2010.10.30] Note -- this is still the fib test right?
 
 #|
 ;;================================================================================

@@ -2,6 +2,8 @@
 ;; SEPARATE STANDALONE VERSION FOR TESTING -- 
 ;; Note, this is duplicated code from threaded_utils.ss
 
+;; [2010.10.31] VERSION (4) This should be trash...
+
 (eval-when (compile eval load) 
   (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
