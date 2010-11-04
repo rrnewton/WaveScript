@@ -16,8 +16,8 @@
 (define prog1
   '(cilk 
     (a)
-    (b = spawn foo 3 4)
-    (c)
+    (define b (spawn foo 3 4))
+    (define cresult (c))
     (spawn bar 5 6)
     (e)
     (f)
@@ -32,29 +32,31 @@
 ;; A syntax for writing Cilk-like programs.
 (define-syntax cilk
   (lambda (x)
-    (define (gather-vars cmds)
-      (syntax-case cmds (spawn =)
+    (define (gather-spawn-vars cmds)
+      (syntax-case cmds (spawn define)
 	[() '()]
-        [((spawn f ..) rest ...) (gather-vars #'(rest ...))]
-        [((var = spawn f ...) rest ...) 
-	 (cons #'var (gather-vars #'(rest ...)))]
-        [(_ rest ...) (gather-vars #'(rest ...))]))
+        [((spawn f ..) rest ...) (gather-spawn-vars #'(rest ...))]
+        [((define var _) rest ...)
+	 ;;((define var (spawn f ...)) rest ...)
+	 (cons #'var (gather-spawn-vars #'(rest ...)))]
+        [(_ rest ...) (gather-spawn-vars #'(rest ...))]))
     
     (define (convert-cmds cmds)
-      (syntax-case cmds (spawn sync =)
+      (define (make-pcall rest right)
+	#`(pcall (lambda (a b) (void)) ;; Nothing to do after join.
+		 ((lambda (_) #,(convert-cmds rest)) 'ignored)
+		 #,right))
+      (syntax-case cmds (spawn sync define)
         [() #'(void)]
         [((spawn f args ...) rest ...) 
-	 (let ((kont (convert-cmds #'(rest ...))))
-	   #`(pcall 
-	      (lambda (a b) (void)) ;; No variable assignment here.
-	      ((lambda (_) #,kont) #f)
-	      (f args ...)))]
-        [((var = spawn f args ...) rest ...) 
-	 (let ((kont (convert-cmds #'(rest ...))))
-	   #`(pcall 
-	      (lambda (_ x) (set! var x))
-	      ((lambda (_) #,kont) #f)
-	      (f args ...)))]
+	  (make-pcall #'(rest ...) #'(f args ...))]
+
+        [((define var (spawn f args ...)) rest ...)
+	  (make-pcall #'(rest ...) #'(set! var (f args ...)))]
+
+	;; This allows variable bindings within a Cilk block.
+	[((define var other) rest ...) 
+	  #`(begin (set! var other) #,(convert-cmds #'(rest ...)))]
 	[(sync) (error 'cilk "internal error")]
         [(other) #'other]
         [(other rest ...)
@@ -72,10 +74,10 @@
 	 (cons (cons #'other (car segs))
 	       (cdr segs)))]))
 	
-    (syntax-case x (spawn sync =)
+    (syntax-case x (spawn sync define)
       [(cilk cmds ...)
-       (let ((vars (gather-vars #'(cmds ...))))
-        #`(let #, (map (lambda (v) (list v #f)) vars) 
+       (let ((vars (gather-spawn-vars #'(cmds ...))))
+        #`(let #, (map (lambda (v) (list v (syntax 'cilk-var-uninit))) vars)
 	    #,@(map convert-cmds 
 		 (chop-at-syncs #'(cmds ...)))))
       ])))
@@ -83,25 +85,19 @@
 ;; ====================================================================================================
 
 ;(pretty-print (expand prog1))
-;(print-gensym #f)
+(print-gensym #f)
 ;(pretty-print (expand prog1))
 
 ;; ====================================================================================================
 
 (define (cilkfib n)
   (if (fx< n 2) 1
-      (let ((right #f))
 	(cilk    
-	 (left = spawn cilkfib (fx- n 1))
-	 (set! right (cilkfib (fx- n 2)))  ;; This is quite unpleasant.
-
-	 (left = spawn cilkfib (fx- n 1))
-	 (set! right (cilkfib (fx- n 2)))  ;; This is quite unpleasant.
+	 (define left (spawn cilkfib (fx- n 1)))
+	 (define right (cilkfib (fx- n 2)))
 
 	 (sync)
-	 (fx+ left right)))))
-
-
+	 (fx+ left right))))
 
 (init-par 2)
 

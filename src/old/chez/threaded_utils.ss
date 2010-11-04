@@ -383,7 +383,7 @@
 		       (forever)
 		       ))))
     stack)
-
+    
   (define (init-par num-cpus) 
     (fprintf (current-error-port) "\n  Initializing PAR system for ~s threads.\n" num-cpus)
     (with-mutex global-mut   
@@ -752,7 +752,6 @@
 
   ;; We spin until everybody is awake. (Could perhaps make this gentler by yielding?)
   (define (wait-for-everybody desired)    
-    ;(define start (with-mutex global-mut threads-registered))
     (let wait-for-threads ()
       ;(printf " w~s" threads-registered) (let loop ((i 1000000)) (unless (zero? i) (loop (sub1 i))))
       (unless 
@@ -805,8 +804,8 @@
   ;; Try to do work and mark it as done.
   (define (steal-work! frame)
     (and (eq? 'available (shadowframe-status frame)) ;; Check before locking.
-	 ;(mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
-	 (begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
+	 (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it
+	 ;(begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
 	 ;; From here on out we've got the mutex:
 	 (if (eq? 'available (shadowframe-status frame)) 
 	     #t 
@@ -864,6 +863,7 @@
     (syntax-rules ()
       [(_ op (f x) e2)
        (let ([stack (this-stack)]) ;; thread-local parameter
+#;
          (define (push! oper val)
            (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
              ;; Initialize the frame
@@ -875,8 +875,17 @@
              frame))
          (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
-         (let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
-	   (let ([frame (push! f1 x1)])
+         (begin ;let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
+	   (let ([frame ; (push! f x)
+	          ;; Inlining push!:
+		  (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
+		    ;; Initialize the frame
+		    (set-shadowframe-oper!   frame f)
+		    (set-shadowframe-argval! frame x)
+		    (set-shadowframe-status! frame  'available)
+		    (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
+		    ;; TODO: could check for stack-overflow here and possibly add another stack segment...
+		    frame)])
 	     (let ([val1 e2])
 	       ;; We're the parent, when we get to this frame, we lock it off from all other comers.
 	       ;; Thieves should do non-blocking probes.
@@ -888,7 +897,7 @@
 		    (pop!) ;; Pop before we even start the thunk.
 		    (mutex-release (shadowframe-mut frame))
 		    ;; [2010.10.31] Oper/argval should be f/x here:
-		    (op1 (f1 x1) 
+		    (op (f x) 
 		         ;((shadowframe-oper frame) (shadowframe-argval frame))
 			 val1)]
 		   ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
@@ -900,7 +909,7 @@
 		   ;; It was stolen and is now completed:
 		   [else (pop!) 
 			 (mutex-release (shadowframe-mut frame))
-			 (op1 (shadowframe-argval frame) val1)]))
+			 (op (shadowframe-argval frame) val1)]))
 
 	       ))))]))
 

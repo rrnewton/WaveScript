@@ -13,7 +13,8 @@
 ;(define test-depth 27)
 ;(define test-depth 23)
 ;(define test-depth 25)
-(define test-depth 42)
+;(define test-depth 42)
+(define test-depth 40)
 
 #;
 (define (test)
@@ -32,6 +33,8 @@
 ;; My HCilk on haskell could do 6.6 seconds on wasp.
 ;;    Right now this is taking around 31.8 seconds for me at opt-level 3... 48 seconds one thread.
 ;;    5.5 seconds serial...
+;; I can do prints on the steals and its not doing many steals at all... as one would expect.
+;; the problem is that the workers aren't using 100% cpu... they're messing with mutexes constantly.
 (define (test)
   (let ()
     (define (fib n)
@@ -43,8 +46,6 @@
     (printf "\n~s\n\n" (time (fib test-depth)))
     ;(par-status)
     ))
-
-
 
 (printf "Starting simple test\n")
 ;(collect-notify #t)
@@ -60,8 +61,8 @@
   )
 
 ;(go "8")
-;(go "4")
-;(go "2")
+(go "4")
+(go "2")
 ;(go "1")
 
 ;; After threads shutdown I should be able to collect!
