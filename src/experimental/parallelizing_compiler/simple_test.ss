@@ -10,11 +10,12 @@
 (import threaded_utils)
 
 
-(define test-depth 27)
+;(define test-depth 27)
 ;(define test-depth 23)
 ;(define test-depth 25)
 ;(define test-depth 42)
 ;(define test-depth 40) ;; fib of 40... is that 165580141 yes?
+(define test-depth 33)
 
 #;
 (define (test)

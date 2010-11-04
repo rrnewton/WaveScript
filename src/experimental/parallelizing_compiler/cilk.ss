@@ -7,8 +7,7 @@
   )
 
 (include "chez_threaded_utils.ss")
-;(import threaded_utils)
-
+(import threaded_utils)
 
 ;; ====================================================================================================
 ;; Example programs
@@ -78,14 +77,14 @@
 	  (make-pcall #'(rest ...) #'(set! var (f args ...)))]
 
 	[((define var (read-ivar ivar)) rest ...)
-	 #`(let ((kont (lambda (tmp) 
+	 #`(let ((kont (lambda (tmp)
 	                 (set! var tmp)
 			 #,(convert-cmds #'(rest ...) subsequent-blocks)
-			 #,(guarded-exec-chunks subsequent-blocks)
+			 ;; FIXME: It is NOT VALID to jump to the next chunk before the sync is finished!!
+			 ; #,(guarded-exec-chunks subsequent-blocks)
 			 )))
-	     (ivar-apply-or-block kont ivar '#,magic-val)
-	     )
-	]
+	     (ivar-apply-or-block kont ivar) ; '#,magic-val
+	     )]
 
 	;; This allows variable bindings within a Cilk block.
 	[((define var other) rest ...) 
@@ -134,11 +133,12 @@
 			   (cons (convert-cmds (car ls) (cdr names))
 				 (loop (cdr ls) (cdr names)))))])
         #`(let #,(map (lambda (v) (list v (syntax 'cilk-var-uninit))) vars)
-	  ;  #,@exprs
+	    #,@exprs
 
 	   ;; This (as yet unused) version is for packaging up each
 	   ;; fork/join block as a separate function (to assemble the
 	   ;; continuation piecemeal).
+	   #;
 	    (letrec #,(map (lambda (v e) #`(#,v (lambda () #,e))) names exprs)
 	       ;(and #,@(map (lambda (name) #`(not (eq? '#,magic-val (#,name)))) names))
 	       #,(guarded-exec-chunks names)
@@ -152,6 +152,7 @@
 ;(pretty-print (expand prog1))
 ;(pretty-print (expand prog2))
 ;(pretty-print (expand '(cilk (spawn printf "   print from cilk test\n") 44)))
+#;
 (pretty-print (expand '(cilk    
 			(define iv (empty-ivar))
 			(spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
@@ -160,7 +161,7 @@
 			(printf " *** Woo, read completed!\n")
 			(sync)
 			x)))
-(exit)
+;(exit)
 
 ;; ====================================================================================================
 
@@ -211,9 +212,12 @@
 		  (spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
 				 (set-ivar! iv 33)))
 		  (define x  (read-ivar iv))
-		  (printf " *** Woo, read completed!\n")
+		  (printf " *** Woo, read completed! ~s\n" x)
 		  (sync)
 		  x)))
+
+
+
 
 
 

@@ -17,7 +17,7 @@
     ; (parmv pop! push! this-stack parmv-helper par-list)
      par-map   ;; Apply function to list in parallel
 
-     (pcall find-and-steal-once! )
+     (pcall find-and-steal-once! wait-on-frame push! pop! mark-pop-release!)
      parmv
 
      par-status ;; Optional utility to show status of par threads.
@@ -37,7 +37,8 @@
      shadowstack-head  set-shadowstack-head!
      this-stack
 
-     empty-ivar set-ivar! register-on-ivar ivar-avail? ivar-apply-or-block
+     empty-ivar set-ivar! register-on-ivar ivar-avail? 
+     (ivar-apply-or-block mark-pop-release!)
      )
   
   ;(import chez_constants)
@@ -116,6 +117,13 @@
       (do ([i 0 (fx+ i 1)])
 	  ((= i n) v)
 	(vector-set! v i (f i))))))
+
+(define-syntax define-inlined
+  (syntax-rules ()
+    [(_ (f x ...) e ...)
+     (define-syntax f 
+       (syntax-rules ()
+	 [(_ x ...) e ...]))]))
 
 ;; ================================================================================
 ;; <-[ VERSION 5 ]->
@@ -336,23 +344,18 @@
   ;; Testing for availability is not part of the 
   (define (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
 
-  ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
-  (trace-define (ivar-apply-or-block fn ivar failval)
-    (let ((v (ivar-val ivar)))
-      (if (not (eq? v magic2))
-          (fn v)
-	  (let ([stack (this-stack)]) ;; thread-local parameter
-	    (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
-	      (when DEBUG (printf "Ivar blocking frame number ~s on TID ~s\n" (shadowstack-tail stack) (get-thread-id)))
-	      ;; Initialize the frame
-	      (set-shadowframe-oper!   frame fn)
-	      (set-shadowframe-argval! frame ivar)
-	      (set-shadowframe-status! frame  'ivar-blocked)
-	      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
-	      ;; TODO: could check for stack-overflow here and possibly add another stack segment...	      
-	      failval
-	      ))
-	  )))
+  ;; TODO: possibly make these syntax instead of functions:
+  (define (push! stack oper val status)
+    (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
+      ;; Initialize the frame
+      (set-shadowframe-oper!   frame oper)
+      (set-shadowframe-argval! frame val)
+      (set-shadowframe-status! frame  status)
+      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
+      ;; TODO: could check for stack-overflow here and possibly add another stack segment...
+      frame))
+  (define (pop! stack) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+
 
   ;; Read the ivar or BLOCK the current stack frame if it isn't available.
   ;; UNFINISHED
@@ -371,50 +374,163 @@
 	    ))
       ))
 
+
+
   ;; --------------------------------------------------------------------------------	      
+
+  ;; This has an ugly interface.  But the alternative is duplicated code.
+  ;; This is shared between ivar-apply-or-block and pcall.
+  (define-syntax wait-on-frame
+    (syntax-rules ()
+      [(_ stack frame release-and-steal mark-pop-release availstatus do-it-ourself retrieve-complete)
+       (let waitloop ()
+         (define (release-and-steal)
+	   (mutex-release (shadowframe-mut frame))		 
+	   (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
+	   (waitloop))
+	 (define (mark-pop-release)
+	   (set-shadowframe-status! frame 'stolen) ;; Just in case...
+	   (pop! stack) ;; Pop before we even start the thunk.
+	   (mutex-release (shadowframe-mut frame)))
+
+	 ;; We're the parent, when we get to this frame, we lock it off from all other comers.
+	 ;; Thieves should do non-blocking probes.
+	 (mutex-acquire (shadowframe-mut frame))
+	 (let ([status (shadowframe-status frame)])
+	   (cond
+	    [(eq? status availstatus)  do-it-ourself]
+	   
+	    ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
+	    ;; Let go of this so they can finish and mark it as done.
+	    [(eq? status 'stolen)  
+	     (release-and-steal) ;; When we're done with that come back and see if our outsourced job is done.
+	     ]
+
+	    ;; It was stolen and is now completed:
+	    [(eq? status 'done) 
+	     (pop! stack)
+	     (mutex-release (shadowframe-mut frame))	     
+	     retrieve-complete]
+	     
+	    [else (error 'wait-on-frame (format "invalid status: ~s" (shadowframe-status frame)))]
+	    )))
+      ]))
+
+  ;; Capturing common sequences of operations to avoid duplication:
+  (define (mark-pop-release! stack frame)
+    (set-shadowframe-status! frame 'stolen) ;; Just in case...
+    (pop! stack) ;; Pop before we even start the thunk.
+    (mutex-release (shadowframe-mut frame)))
+
+
+  ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
+  ;; If the new frame gets pushed this thread will go off and steal work.
+  (trace-define (ivar-apply-or-block fn ivar)
+    (let () ;((v (ivar-val ivar)))
+      ;; FIRST test: before blocking:
+      (if (ivar-avail? ivar);(not (eq? v magic2)) ;; Inlined ivar-avail? here.
+          (fn (ivar-val ivar)) ; (fn v)
+	  (let* ([stack (this-stack)] ;; thread-local parameter
+		 [_ (when DEBUG (print "\n\n(TID ~s) BLOCKING ON IVAR\n\n" (get-thread-id)))]
+		 [frame (push! stack fn ivar 'ivar-blocked)])
+	     (find-and-steal-once!) ;; Let some time pass before polling again.
+
+
+;;====================================================================================================
+#;
+      (wait-on-frame stack frame release-and-steal mark-pop-release 'ivar-blocked
+		     ;; Scenario 1: Still blocked, poll it ourselves:
+			    (begin
+			      (when DEBUG (print "(TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
+			      (if (ivar-avail? ivar) ;; SECOND test: can we unblock?
+				  (begin (mark-pop-release) (fn (ivar-val ivar)))
+				  (release-and-steal)))
+			    ;; Scenario 2: Stolen but finished.
+			    (begin 
+			      (when DEBUG (ASSERT (ivar-avail? ivar)))
+			      (fn (ivar-val ivar)))
+			    )
+       ;; This is similar to the loop inside pcall:
+       (trace-let waitloop ()
+         (define (release-and-steal!) ;; Used twice below.
+	   (mutex-release (shadowframe-mut frame))		 
+	   (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
+	   (waitloop))
+
+	 ;; We're the parent, when we get to this frame, we lock it off from all other comers.
+	 ;; Thieves should do non-blocking probes.
+	 (mutex-acquire (shadowframe-mut frame))
+	 (let ([status (shadowframe-status frame)])
+	   (cond
+	    [(eq? status 'ivar-blocked)
+	     (when DEBUG (print "(TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
+	     (if (ivar-avail? ivar) ;; SECOND test: can we unblock?
+		 (begin
+		   (mark-pop-release! stack frame)
+		   (fn (ivar-val ivar)))
+		 ;; Otherwise steal and then come back to it:
+		 (release-and-steal!))]
+
+	    ;; IVar-blocked frames will be set to stolen by a thief too (after the ivar is filled).
+	    [(eq? status 'stolen) (release-and-steal!)]
+
+	    ;; It was stolen and is now completed:
+	    [(eq? status 'done) 
+	     (pop! stack)
+	     (mutex-release (shadowframe-mut frame))
+	     
+	     (when DEBUG (ASSERT (ivar-avail? ivar)))
+	     (fn (ivar-val ivar))]
+	     
+	    [else (error 'wait-on-frame (format "invalid status: ~s" (shadowframe-status frame)))]
+	    )))
+
+
+;;====================================================================================================
+
+	     (when DEBUG (print "(TID ~s) IVAR unblocked, returning: ~s\n" (get-thread-id) ivar))
+	     ))))
+
+
 
 
   (define-syntax pcall
     (syntax-rules ()
       [(_ op (f x) e2)
        (let ([stack (this-stack)]) ;; thread-local parameter
-         (define (push! oper val)
-           (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
-             ;; Initialize the frame
-             (set-shadowframe-oper!   frame oper)
-             (set-shadowframe-argval! frame val)
-             (set-shadowframe-status! frame  'available)
-             (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
-	     ;; TODO: could check for stack-overflow here and possibly add another stack segment...
-             frame))
-         (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
-
          (begin ;let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
-	   (let ([frame (push! f x)])
+	   (let ([frame (push! stack f x 'available)])
 	     (let ([val1 e2])  ;; Evaluate the second expression on this thread.
-	       ;; We're the parent, when we get to this frame, we lock it off from all other comers.
-	       ;; Thieves should do non-blocking probes.
+
+#;
+	       (wait-on-frame stack frame release-and-steal mark-pop-release 'available
+			      ;; [2010.10.31] Oper/argval should be f/x here:
+			      (op ;(f x)  ;; possible optimization?
+			       ((shadowframe-oper frame) (shadowframe-argval frame))
+			       val1)
+			      (op (shadowframe-argval frame) val1)
+			       )
+
 	       (let waitloop ()
-		 (mutex-acquire (shadowframe-mut frame))
-		 (case (shadowframe-status frame)
-		   [(available) 		  
-		    (set-shadowframe-status! frame 'stolen) ;; Just in case...
-		    (pop!) ;; Pop before we even start the thunk.
-		    (mutex-release (shadowframe-mut frame))
-		    ;; [2010.10.31] Oper/argval should be f/x here:
-		    (op ;(f x)  ;; possible optimization?
-		        ((shadowframe-oper frame) (shadowframe-argval frame))
-			val1)]
-		   ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
-		   [(stolen) 
-		    ;; Let go of this so they can finish and mark it as done.
-		    (mutex-release (shadowframe-mut frame))		 
-		    (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
-		    (waitloop)] ;; When we're done with that come back and see if our outsourced job is done.
-		   ;; It was stolen and is now completed:
-		   [else (pop!) 
-			 (mutex-release (shadowframe-mut frame))
-			 (op (shadowframe-argval frame) val1)]))
+                 (mutex-acquire (shadowframe-mut frame))
+                 (case (shadowframe-status frame)
+                   [(available)                   
+		    (mark-pop-release! stack frame)
+                    ;; [2010.10.31] Oper/argval should be f/x here:
+                    (op ;(f x)  ;; possible optimization?
+                        ((shadowframe-oper frame) (shadowframe-argval frame))
+                        val1)]
+                   ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
+                   [(stolen) 
+                    ;; Let go of this so they can finish and mark it as done.
+                    (mutex-release (shadowframe-mut frame))              
+                    (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..               
+                    (waitloop)] ;; When we're done with that come back and see if our outsourced job is done.
+                   ;; It was stolen and is now completed:
+                   [else (pop! stack) 
+                         (mutex-release (shadowframe-mut frame))
+                         (op (shadowframe-argval frame) val1)]))
+
 
 	       ))))]))
 
@@ -543,3 +659,4 @@
 
 
 ) ;; End module.
+
