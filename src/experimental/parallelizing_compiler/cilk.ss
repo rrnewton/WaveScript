@@ -7,7 +7,7 @@
   )
 
 (include "chez_threaded_utils.ss")
-(import threaded_utils)
+;(import threaded_utils)
 
 
 ;; ====================================================================================================
@@ -17,12 +17,13 @@
   '(cilk 
     (a)
     (define b (spawn foo 3 4))
-    (define cresult (c))
+    (define c (empty-ivar))
     (spawn bar 5 6)
     (e)
-    (f)
+    (define cresult (read-ivar c))
+    (f cresult)
     (sync)
-    (g)
+    (g cresult)
     (baz b d)
 ;    (sync)
     ))
@@ -53,14 +54,22 @@
 	 (cons #'var (gather-spawn-vars #'(rest ...)))]
         [(_ rest ...) (gather-spawn-vars #'(rest ...))]))
 
+    (define magic-val #f)
+
     ;; We convert a subsequence of the cilk construct (until the next sync point)
     ;; We also get a list of all the subsequent fork/join blocks within the cilk construct:
     (define (convert-cmds cmds subsequent-blocks)
       (define (make-pcall rest right)
-	#`(pcall (lambda (a b) (void)) ;; Nothing to do after join.
+	#`(pcall ;(lambda (a b) (void)) ;; Nothing to do after join.
+	         ;(lambda (a b) (if (eq? b '#,magic-val) a b))
+		 ;;
+		 (lambda (a b) a)
+		 ;; The right hand side is the "spawn".  Given the current syntax the
+		 ;; spawn cannot contain a read. (Without another (cilk...) block, that is.)
+
 		 ((lambda (_) #,(convert-cmds rest subsequent-blocks)) 'ignored) ;; continuation
 		 #,right))
-      (syntax-case cmds (spawn sync define)
+      (syntax-case cmds (spawn sync define read-ivar)
         [() #'(void)]
         [((spawn f args ...) rest ...) 
 	  (make-pcall #'(rest ...) #'(f args ...))]
@@ -68,14 +77,33 @@
         [((define var (spawn f args ...)) rest ...)
 	  (make-pcall #'(rest ...) #'(set! var (f args ...)))]
 
+	[((define var (read-ivar ivar)) rest ...)
+	 #`(let ((kont (lambda (tmp) 
+	                 (set! var tmp)
+			 #,(convert-cmds #'(rest ...) subsequent-blocks)
+			 #,(guarded-exec-chunks subsequent-blocks)
+			 )))
+	     (ivar-apply-or-block kont ivar '#,magic-val)
+	     )
+	]
+
 	;; This allows variable bindings within a Cilk block.
 	[((define var other) rest ...) 
 	  #`(begin (set! var other) #,(convert-cmds #'(rest ...) subsequent-blocks))]
+
 	[(sync) (error 'cilk "internal error")]
         [(other) #'other]
         [(other rest ...)
 	 #`(begin other 
 	 	  #,(convert-cmds #'(rest ...) subsequent-blocks))]))
+
+    (define (guarded-exec-chunks names)
+      (if (null? (cdr names))
+	  #`(#,(car names))
+	  #`(let ((#,(car names) (#,(car names))))
+	      (if (eq? '#,magic-val #,(car names))
+		  '#,magic-val
+		  #,(guarded-exec-chunks (cdr names))))))
       
     ;; Returns a list of lists of commands, separated by the syncs (join points).
     (define (chop-at-syncs cmds)
@@ -87,9 +115,12 @@
 	 (let ((segs (chop-at-syncs #'(rest ...))))
 	 (cons (cons #'other (car segs))
 	       (cdr segs)))]))
-	
+
+    ;; Main body: transform a (cilk ...) construct:
     (syntax-case x (spawn sync define)
       [(cilk cmds ...)
+       (set! magic-val (datum->syntax #'cilk (gensym "chunkfailed")))
+
        (let* ([vars (gather-spawn-vars #'(cmds ...))]
               [blocks (chop-at-syncs #'(cmds ...))]
 	      [names (map (lambda (n) (datum->syntax #'cilk
@@ -103,14 +134,14 @@
 			   (cons (convert-cmds (car ls) (cdr names))
 				 (loop (cdr ls) (cdr names)))))])
         #`(let #,(map (lambda (v) (list v (syntax 'cilk-var-uninit))) vars)
-	    #,@exprs
+	  ;  #,@exprs
 
 	   ;; This (as yet unused) version is for packaging up each
 	   ;; fork/join block as a separate function (to assemble the
 	   ;; continuation piecemeal).
-#;	    
-	    (let #,(map (lambda (v e) #`(#,v (lambda () #,e))) names exprs)
-	       #,@(map list names)
+	    (letrec #,(map (lambda (v e) #`(#,v (lambda () #,e))) names exprs)
+	       ;(and #,@(map (lambda (name) #`(not (eq? '#,magic-val (#,name)))) names))
+	       #,(guarded-exec-chunks names)
 	    )))
       ])))
 
@@ -120,8 +151,23 @@
 (print-gensym #f)
 ;(pretty-print (expand prog1))
 ;(pretty-print (expand prog2))
+;(pretty-print (expand '(cilk (spawn printf "   print from cilk test\n") 44)))
+(pretty-print (expand '(cilk    
+			(define iv (empty-ivar))
+			(spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
+				       (set-ivar! iv 33)))
+			(define x  (read-ivar iv))
+			(printf " *** Woo, read completed!\n")
+			(sync)
+			x)))
+(exit)
 
 ;; ====================================================================================================
+
+(define-syntax ASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" #'expr)))])))
 
 (define (cilkfib n)
   (if (fx< n 2) 1
@@ -133,10 +179,43 @@
 
 (init-par 2)
 
-(printf "cilk test 1: ~s\n" (cilk 33))
-(printf "cilk test 2: ~s\n" (cilk (spawn printf "   printf test\n") 44))
 
-(printf "FIB 20 = ~s \n" (cilkfib 20)) ;; 10946
+(define counter 0)
+(define (test msg result fn)
+  (set! counter (add1 counter))
+  (printf "================================================================================\n")
+  (printf "Test #~s: ~a\n" counter msg) (flush-output-port)
+  ;(ASSERT (eq? (fn) result))
+  (let ((val (fn)))
+    (if (equal? result val)
+	(printf "Test #~s: PASSED!\n\n" counter)
+	(error 'unit-test (format "Test #~s: FAILED, expected ~s received ~s!\n" counter result val))))
+  )
+
+(test "cilk simple test 1" 33 (lambda () (cilk 33)))
+(test "cilk simple test 2" 44 (lambda () (cilk (spawn printf "   print from cilk test\n") 44)))
+
+(test "cilk FIB 20" 10946 (lambda () (cilkfib 20)))
+
+(test "Cilk Ivar1 on one thread" 33 
+      (lambda () (cilk    
+		  (define iv (empty-ivar))
+		  (set-ivar! iv 33)
+		  (define x  (read-ivar iv))
+		  (sync)
+		  x)))
+
+(test "Cilk Ivar with blocking"  33
+      (lambda () (cilk    
+		  (define iv (empty-ivar))
+		  (spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
+				 (set-ivar! iv 33)))
+		  (define x  (read-ivar iv))
+		  (printf " *** Woo, read completed!\n")
+		  (sync)
+		  x)))
+
+
 
 #;
 (pretty-print

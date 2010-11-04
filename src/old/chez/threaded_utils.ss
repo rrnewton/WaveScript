@@ -37,7 +37,7 @@
      shadowstack-head  set-shadowstack-head!
      this-stack
 
-     empty-ivar set-ivar! apply-to-ivar ivar-avail?
+     empty-ivar set-ivar! register-on-ivar ivar-avail? ivar-apply-or-block
      )
   
   ;(import chez_constants)
@@ -235,7 +235,7 @@
 	    (case (shadowframe-status frame) ;; Double check after waking up.
 	      [(available) #t]
 	      [(ivar-blocked)
-	       (when DEBUG (printf "ATTEMPT TO STEAL ivar-blocked FRAME...\n"))
+	       (when DEBUG (printf "(TID ~s) ATTEMPT TO STEAL ivar-blocked FRAME, avail ~s: ~s\n" (get-thread-id) (ivar-avail? (shadowframe-argval frame)) frame))
 	       (ivar-avail? (shadowframe-argval frame))]  ;; TODO: if blocked on ivar, might want a different return value for steal-work!
 	      [else (begin ;(bump) ;; FIXME: Head not used yet.
 		      (mutex-release (shadowframe-mut frame)) ;; If someone beat us here, we fizzle
@@ -311,8 +311,8 @@
   ;;  < Experimenting with IVars > 
   ;; --------------------------------------------------------------------------------
   ;; We don't want to change shadowframe, so we just put a magic value in shadowframe-argval
-  (define magic1 (gensym "blocked-on-ivar"))
-  (define magic2 (gensym "empty-ivar"))
+  (define magic1 (gensym "blocked-on-ivar-sym"))
+  (define magic2 (gensym "empty-ivar-sym"))
 
   ;; An ivar really *should* support atomic operations to extend the
   ;; wait list... alas for now it has to have its own mutex:
@@ -327,7 +327,7 @@
 	(for-each (lambda (fn) (fn val)) (ivar-waiting iv))
 	(set-ivar-val! iv val))))
   ;; Apply a function to the ivar when its available:
-  (define (apply-to-ivar fn iv)
+  (define (register-on-ivar fn iv)
     (with-mutex (ivar-mut iv)
       (let ((val (ivar-val iv)))
 	(if (eq? val magic2)
@@ -336,21 +336,40 @@
   ;; Testing for availability is not part of the 
   (define (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
 
-  ;; Like apply-to-ivar but goes through the stack.
-  (trace-define (ivar-apply-or-block fn ivar)
+  ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
+  (trace-define (ivar-apply-or-block fn ivar failval)
     (let ((v (ivar-val ivar)))
       (if (not (eq? v magic2))
           (fn v)
 	  (let ([stack (this-stack)]) ;; thread-local parameter
 	    (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
+	      (when DEBUG (printf "Ivar blocking frame number ~s on TID ~s\n" (shadowstack-tail stack) (get-thread-id)))
 	      ;; Initialize the frame
 	      (set-shadowframe-oper!   frame fn)
 	      (set-shadowframe-argval! frame ivar)
 	      (set-shadowframe-status! frame  'ivar-blocked)
 	      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
 	      ;; TODO: could check for stack-overflow here and possibly add another stack segment...	      
+	      failval
 	      ))
 	  )))
+
+  ;; Read the ivar or BLOCK the current stack frame if it isn't available.
+  ;; UNFINISHED
+  (trace-define (read-ivar iv)
+    (if (ivar-avail? iv) (ivar-val iv)
+      ;; Here the trick is that we use both the Scheme stack, and the
+      ;; shadow stack to store the blocked computation.
+      ;; We assume that "our" frame is the tail of our own stack:
+	(let ([stack (this-stack)]) ;; thread-local parameter
+	  (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
+	    ;; Whether we or someone else is working on it we have the convention of marking 
+	    (ASSERT (eq? 'stolen (shadowframe-status frame)))
+	    
+	    ;; TODO -- problem here, this strategy won't make ivar-blocked computations stealable...
+	    ;; The trapped part of the computation in the Scheme stack is never captured and exposed.    
+	    ))
+      ))
 
   ;; --------------------------------------------------------------------------------	      
 
@@ -372,7 +391,7 @@
 
          (begin ;let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
 	   (let ([frame (push! f x)])
-	     (let ([val1 e2])
+	     (let ([val1 e2])  ;; Evaluate the second expression on this thread.
 	       ;; We're the parent, when we get to this frame, we lock it off from all other comers.
 	       ;; Thieves should do non-blocking probes.
 	       (let waitloop ()
@@ -383,9 +402,9 @@
 		    (pop!) ;; Pop before we even start the thunk.
 		    (mutex-release (shadowframe-mut frame))
 		    ;; [2010.10.31] Oper/argval should be f/x here:
-		    (op (f x) 
-		         ;((shadowframe-oper frame) (shadowframe-argval frame))
-			 val1)]
+		    (op ;(f x)  ;; possible optimization?
+		        ((shadowframe-oper frame) (shadowframe-argval frame))
+			val1)]
 		   ;; Oops, they may be waiting to get back in here and set the result, let's get out quick:
 		   [(stolen) 
 		    ;; Let go of this so they can finish and mark it as done.
