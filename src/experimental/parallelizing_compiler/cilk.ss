@@ -213,6 +213,7 @@
 				 (set-ivar! iv 33)))
 		  (define x  (read-ivar iv))
 		  (printf " *** Woo, read completed! ~s\n" x)
+		  'yay
 		  (sync)
 		  x)))
 
