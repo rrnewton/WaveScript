@@ -2,13 +2,14 @@
 
 (eval-when (compile eval load) 
   ;(optimize-level 3)
-  ;(optimize-level 2)
-  (optimize-level 0)
+  (optimize-level 2)
+  ;(optimize-level 0)
   ;(collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-(include "chez_threaded_utils.ss")
-(import threaded_utils)
+;(include "chez_threaded_utils.ss")
+;(import threaded_utils)
+(import (par5))
 
 ;; ====================================================================================================
 ;; Example programs
@@ -186,7 +187,6 @@
   )
 
 
-
 (test "cilk simple test 1" 33 (lambda () (cilk 33)))
 (test "cilk simple test 2" 44 (lambda () (cilk (spawn printf "   print from cilk test\n") 44)))
 
@@ -235,23 +235,26 @@
           (printf "*** Foo (TID ~s): Done with work now writing I1\n" (get-thread-id))
           (set-ivar! i1 33)))
   (define (snafoo)
-    (cilk (define x (read-ivar i1))
+    (cilk (define x1 (read-ivar i1))
           (printf "*** Snafoo (TID ~s): Done read I1, now writing I2\n" (get-thread-id))
-	  (set-ivar! i2 (+ x 44))))
+	  (set-ivar! i2 (+ x1 44))))
   (define (quux)
     (cilk (spawn snafoo)
-	  (define x (read-ivar i2))
+	  (define y1 (read-ivar i2))
           (printf "*** Quux (TID ~s): done reading I2\n" (get-thread-id))
-	  x))
+	  ))
   (define (baz)
     (cilk (spawn foo)
 	  (spawn quux)
           (printf "*** Bar (TID ~s): after spawns\n" (get-thread-id))
-	  (define x (read-ivar i1))
+	  (define x2 (read-ivar i1))
           (printf "*** Bar (TID ~s): done reading I1\n" (get-thread-id))
-	  (define y (read-ivar i2))
+	  (define y2 (read-ivar i2))
           (printf "*** Bar (TID ~s): done reading I2\n" (get-thread-id))
-	  (* x y)))
+	  (par-status 'verbose)
+	  (sync)
+          (printf "*** Bar (TID ~s): Return final value... \n" (get-thread-id))
+	  (* x2 y2)))
   (baz)
   )
 

@@ -501,6 +501,8 @@ Right now the safe/unsafe with-mutex doesn't make any difference at
 all.
 
 
+
+====================================================================================================
 [2010.10.31] {Doing some hacking for ivars}
 
 Hmm... just got it to segfault in opt level 2.
@@ -778,3 +780,369 @@ Here's the macro expanded version of what it is running:
 	  (set-ivar! iv 33)))
       (#2%+ x y))
 
+================================================================================
+UPDATE:
+Great, fixed duplication bug.  Now a different problem with Will's example.
+
+     Test #1: William Leiserson's example
+       (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+     |(ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+       (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+       (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+     *** Bar (TID 1): after spawns
+     | (ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+       (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+       (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+     | |(ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+       (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+     *** Foo (TID 0): Done with work now writing I1
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: 
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+       (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #t: 
+       (TID 1) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 33 ()]]
+     Unpacking ivar for continuation: #[ivar #<mutex> 33 ()]| | (x1 33)
+     *** Snafoo (TID 1): Done read I1, now writing I2
+     | | #<void>
+       (TID 1) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+       (TID 1) Polling ivar: #[ivar #<mutex> 77 ()]
+       (TID 1) Frame nuked.  Original owner executing continuation on ivar #[ivar #<mutex> 77 ()]
+     | | (x2 77)
+     *** Quux (TID 1): done reading I2
+     | | 77
+       (TID 1) IVAR unblocked, returning: #[ivar #<mutex> 77 ()]
+     | |#<void>
+       (TID 1) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+       (TID 1) Polling ivar: #[ivar #<mutex> 33 ()]
+       (TID 1) Frame nuked.  Original owner executing continuation on ivar #[ivar #<mutex> 33 ()]
+     | |(x3 33)
+     *** Bar (TID 1): done reading I1
+     | |(ivar-apply-or-block #<procedure> #[ivar #<mutex> 77 ()])
+       (TID 1) Ivar available on first try #[ivar #<mutex> 77 ()]
+     | |(y 77)
+     *** Bar (TID 1): done reading I2
+     | |2541
+       (TID 1) IVAR unblocked, returning: #[ivar #<mutex> 33 ()]
+     | #<void>
+       (TID 1) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+       (TID 1) IVAR unblocked, returning: #[ivar #<mutex> 33 ()]
+     |#<void>
+       (TID 1) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+     Exception in unit-test: Test #1: FAILED, expected 2541 received #<void>!
+
+
+INTERESTING.  If I put the (sync) before the final (+ x3 y) line it
+fixes this problem and then passes williams test the vast majority of
+the time... but it IS possible to deadlock it... here's an execution:
+
+
+      [par] Initializing PAR system for 2 threads.
+      [par] Everyone's awake!
+    ================================================================================
+    Test #1: William Leiserson's example
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+    |(ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+    *** Bar (TID 1): after spawns
+    | (ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+    | |(ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+    *** Foo (TID 0  (TID ): Done with work now writing I1
+    1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 33 ()]]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+    Unpacking ivar for continuation: #[ivar #<mutex> 33 ()]| | (x3 33)
+    *** Bar (TID 1): done reading I1
+    | | (ivar-apply-or-block #<procedure> #[ivar #<mutex> empty-ivar-sym ()])
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #t 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 33 ()]]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+    Unpacking ivar for continuation: #[ivar #<mutex> 33 ()]| | |(x1 33)
+    *** Snafoo (TID 1): Done read I1, now writing I2
+    | | |#<void>
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+      (TID 0) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 77 ()]]
+    Unpacking ivar for continuation: #[ivar #<mutex> 77 ()]|(y 77)
+    *** Bar (TID 0): done reading I2
+    |#<void>
+      (TID 0) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #t 
+      (TID 0) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 77 ()]]
+    Unpacking ivar for continuation: #[ivar #<mutex> 77 ()]|(x2 77)
+    *** Quux (TID 0): done reading I2
+    |77
+      (TID 0) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> 77]
+
+This is a bit confusing because it seems to finish doing all the
+meaningful work... maybe it threw an error on a different thread.
+
+INTERESTING... it actually gets stuck at the final (sync) essentially...
+
+WOW, I can ALSO get an infinite loop on attempt to steal for an ivar
+that doesn't become available.
+Ok, here's the expanded version of the cilk macro:
+================================================================================
+
+    (letrec* ([i1 (empty-ivar)]
+	      [i2 (empty-ivar)]
+	      [foo (lambda ()
+		     (begin
+		       ((letrec ([loop (lambda (i)
+					 (if (#2%not (#2%= 0 i))
+					     (loop (#2%sub1 i))
+					     (#2%void)))])
+			  loop)
+			 1000000)
+		       (#2%printf
+			 "*** Foo (TID ~s): Done with work now writing I1\n"
+			 (#2%get-thread-id))
+		       (set-ivar! i1 33)))]
+	      [snafoo (lambda ()
+			(let ([x1 'cilk-var-uninit])
+			  (let ([kont (#2%$trace-closure
+					'x1
+					(lambda (tmp)
+					  (set! x1 tmp)
+					  (#2%printf
+					    "*** Snafoo (TID ~s): Done read I1, now writing I2\n"
+					    (#2%get-thread-id))
+					  (set-ivar! i2 (#2%+ x1 44))))])
+			    (ivar-apply-or-block kont i1))))]
+	      [quux (lambda ()
+		      (let ([y1 'cilk-var-uninit])
+			(pcall
+			  (lambda (a b) a)
+			  (let ([_ 'ignored])
+			    (let ([kont (#2%$trace-closure
+					  'y1
+					  (lambda (tmp)
+					    (set! y1 tmp)
+					    (#2%printf
+					      "*** Quux (TID ~s): done reading I2\n"
+					      (#2%get-thread-id))))])
+			      (ivar-apply-or-block kont i2)))
+			  (snafoo))))]
+	      [baz (lambda ()
+		     (let ([x2 'cilk-var-uninit] [y2 'cilk-var-uninit])
+		       (pcall
+			 (lambda (a b) a)
+			 (let ([_ 'ignored])
+			   (pcall
+			     (lambda (a b) a)
+			     (let ([_ 'ignored])
+			       (#2%printf
+				 "*** Bar (TID ~s): after spawns\n"
+				 (#2%get-thread-id))
+			       (let ([kont (#2%$trace-closure
+					     'x2
+					     (lambda (tmp)
+					       (set! x2 tmp)
+					       (#2%printf
+						 "*** Bar (TID ~s): done reading I1\n"
+						 (#2%get-thread-id))
+					       (let ([kont (#2%$trace-closure
+							     'y2
+							     (lambda (tmp)
+							       (set! y2 tmp)
+							       (#2%printf
+								 "*** Bar (TID ~s): done reading I2\n"
+								 (#2%get-thread-id))))])
+						 (ivar-apply-or-block
+						   kont
+						   i2))))])
+				 (ivar-apply-or-block kont i1)))
+			     (quux)))
+			 (foo))
+		       (#2%printf
+			 "*** Bar (TID ~s): Return final value... \n"
+			 (#2%get-thread-id))
+		       (#2%* x2 y2)))])
+      (baz))
+
+Well... it seems that the problem is returning from down inside that
+double-pcall with double ivar-apply-or-block.  Here's the final stack state:
+
+     *** Bar (TID 0): done reading I2
+       [par] Par status:
+	     par-finished #f
+	     allstacks: 2
+	     stacksizes: (1 6)
+
+     STACK 0:
+     (#[shadowframe #<mutex> stolen #<procedure> ignored])
+     STACK 1:
+     (#[shadowframe #<mutex> stolen #<procedure> ignored] #[shadowframe #<mutex> stolen #<procedure> ignored]
+       #[shadowframe #<mutex> done #<procedure> #<void>]
+       #[shadowframe #<mutex> stolen #<procedure> #[ivar #<mutex> 33 ()]]
+       #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 77 ()]]
+       #[shadowframe #<mutex> stolen #<procedure> #[ivar #<mutex> 77 ()]])
+     |#<void>
+       (TID 0) DONE with stolen work: #[shadowframe #<mutex> stolen #<procedure> #<void>]
+
+
+Hmm... added a message for popping frames... the deadlocking run
+doesn't pop ANY frames.  It gets stuck at this innermost point.... But
+the odd thing is that it looks like TID 0 does finish some stolen
+work... and that that should unblock TID 1...  I could probably
+disable self-stealing to make this a little clearer.
+
+
+====================================================================================================
+Also, here's one of the runs that tries to steal forever:
+
+    Test #1: William Leiserson's example
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+    *** Bar (TID 1): after spawns
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+    *** Foo (TID   (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+    0  (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+    ): Done with work now writing I1
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 1) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure> #[ivar #<mutex> 33 ()]]
+    Unpacking ivar for continuation: #[ivar #<mutex> 33 ()]|(x2 33)
+    *** Bar (TID 1): done reading I1
+
+
+      (TID 1) BLOCKING ON IVAR fn = #<procedure>
+
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
+      .......
