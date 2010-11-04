@@ -12,13 +12,13 @@ WS compiler, C backend, version 2 (wsc2) options:
   -D <sym>      pass -D<sym> to the C compiler
   -realtime     run timers in realtime, rather than as fast as possible
   -cpus <num>   Limit the number of physical CPUs used.
-  -tbb          Use Intel TBB scheduler. Implies -threads.
+  -tbb          Use Intel TBB scheduler. Implies -threads. [UNFINISHED]
   -split        
 
 WS compiler, MLton backend (wsmlton) options: 
   -dbg          run in debug mode
 
-WS compiler, C++/XStream backend (wsc) options: 
+WS compiler, C++/XStream backend (wsc) options [deprecated]: 
   -nogcc        emit C code but don't invoke C compiler  
   -c0           only run the WaveScript compiler, stop at C++
   --scheduler <name> xstream scheduler policy; can be train-scheduler,
@@ -32,7 +32,9 @@ Options for all WaveScript (ws*) configurations:
   -threads      enable threads, if supported by backend
   -nothreads    disable threads
   -ret <name>   custom return stream, rather than 'main' (also -main)
-  -opt <name>   enable a specific optimization
+  -opt <name>   enable a specific optimization, currently recognized opts:
+                    maxinline -- during meta-languages evaluation
+                    mininline -- inline/specialize enough to achieve monomorphism
   -exit-error   exit process on any error, don't enter debugger
   -quiet        suppress output from the WS compiler
   -v <int>      set the verbosity level (-1 ... 5)

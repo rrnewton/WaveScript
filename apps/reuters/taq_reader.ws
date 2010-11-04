@@ -6,8 +6,9 @@
 include "stdlib.ws"
 include "unix.ws"
 
+// Turning the DEBUG flag on will print some extra messages for debugging.
 DEBUG  = false
-DEBUG2 = false
+DEBUG2 = false // Beware, this one enables extremely verbose output!
 
 // This is a subset of the fields in Reuters TAQ ticks that we care about:
 type TAQ_Tup = 
@@ -100,12 +101,22 @@ fun read_TAQ_ASCII_tuples(file) {
       if DEBUG then print(" prefix of what we got |"++ String:fromArray(buf.sub(0, min(100, bufsize))) ++"|\n");
     };
     fun is_sep(c) c == ',' || c.charToInt == 10 || c.charToInt == 13;
+
+
+    // A flag to record whether we hit a newline too early:
+    premature_end = false; 
+
     // Read a comma separated field, advance the cursor to the next field.
-    fun scan_forward() { 
+    // Sets premature_end if a newline is encountered.
+    // MUTATES: premature_end, i 
+    fun scan_forward() {
                          while i < num_bytes && not( is_sep( buf[i] )) { i += 1; };
                          //if buf[i].charToInt == 13 then {wserror("DARN carriage return")}; 
+                         premature_end := premature_end || (buf[i].charToInt == 10);
+                         //if (buf[i].charToInt == 10) then wserror("Hit newline while reading field!!");
                        };
-    fun scan_to_eol() { 
+    // MUTATES: i 
+    fun scan_to_eol() {
       fun scan() { while i < num_bytes && buf[i].charToInt != 10 { i += 1; } };
       old_i = i;  
       scan();
@@ -115,10 +126,12 @@ fun read_TAQ_ASCII_tuples(file) {
         if i == num_bytes then wserror("internal error: single tuple should not be longer than bufsize");
       };
       i += 1;
-      if DEBUG then print(" --> SCANNED TO EOL num_bytes="++num_bytes++" old_i = "++old_i++" i = "++i++" buf[i]= "++buf[i].charToInt++" prefix |"++ 
+      if DEBUG then print(" --> SCANNED TO EOL num_bytes="++num_bytes++" old_i = "++old_i++" i = "++i++" buf[i]= "++buf[i].charToInt++" new prefix |"++ 
                           String:fromArray(buf.sub(i, min(60, bufsize-i))) ++"|\n");
     };
 
+    // Read a field from the bytestream.  If anything goes wrong, return the default value.
+    // NOTE: Modifies premature_end, i
     fun read_field(allow_empty, reader, default) {
       old_i = i; // At this point the cursor is at the first char of a field.
       // Scout ahead for the next separator character.
@@ -126,7 +139,7 @@ fun read_TAQ_ASCII_tuples(file) {
 
       // If we hit the end of the buffer before the next separator then we have to abort.
       // We use a trick here.  Fseek backwards a little bit and refill the buffer from the start.
-      if i == num_bytes then {
+      if not(premature_end) && i == num_bytes then {
         if DEBUG then print("REWINDING, fseek back "++ old_i - i ++ " chars" ++"\n");
         //code = fseek(hndl, old_i - i, SEEK_SET());
         cur = ftell(hndl);
@@ -139,19 +152,30 @@ fun read_TAQ_ASCII_tuples(file) {
         scan_forward();
         if i == num_bytes then wserror("Error READING got tuple field larger than read buffer: "++ bufsize);
       };
-      len = i - old_i;
-      // ASSUMES that \r is followed by \n:
-      if buf[i].charToInt == 13 then i += 1; // An extra BUMP
-      i += 1; // Bump from the separator character to the next field start.
-      
 
-      if DEBUG2 then print("\nREADING " ++ (old_i,len) ++" |"++ String:fromArray(buf.sub(old_i,len)) ++"| "); 
-      if DEBUG2 then print("   "++ Array:map(charToInt, buf.sub(old_i,len)) ++" EOR\n"); 
+      if premature_end then default else {
+          len = i - old_i;
+          // ASSUMES that \r is followed by \n:
+          if buf[i].charToInt == 13 then i += 1; // An extra BUMP
+          i += 1; // Bump from the separator character to the next field start.
 
-      if len == 0 && not(allow_empty) then wserror("empty field not expected, default was "++default++"  BUFFER:\n"++String:fromArray(buf));
 
-      if len == 0 then default 
-      else reader(old_i, len);
+          if DEBUG2 then print("\nREADING " ++ (old_i,len) ++" |"++ String:fromArray(buf.sub(old_i,len)) ++"| "); 
+          if DEBUG2 then print("   "++ Array:map(charToInt, buf.sub(old_i,len)) ++" EOR\n"); 
+
+          if len == 0 && not(allow_empty) then wserror("empty field not expected, default was "++default++"  BUFFER:\n"++String:fromArray(buf));
+
+          if len == 0 then default 
+          else reader(old_i, len);
+      }
+    };
+
+    fun skip_n_fields(n) {
+      ind = 0;
+      while (not(premature_end) && ind < n) {
+          read_field(true, skip, ());
+          ind += 1;
+      }
     };
 
     //------------------------------------------------------------
@@ -184,25 +208,25 @@ fun read_TAQ_ASCII_tuples(file) {
     if DEBUG then print("\nBegin field extraction...\n");
     // Now go through and extract the fields one by one:    
     ts = parse_timestamp$ read_field(false, read_arrstring, #[]); // timeStamp
-    for _ = 1 to 2 { read_field(true, skip, ()) }; // eyeCatcher, recType
+    skip_n_fields(2); // eyeCatcher, recType
 
     sym = read_field(false, read_string, ""); // symbol  VARCHAR(64),
-    for _ = 1 to 3 { read_field(true, skip, ()) }; // defName, srcName, vhSeqNo
+    skip_n_fields(3); // defName, srcName, vhSeqNo
 
     exchstamp = read_field(false, read_int64, 0); // exchTimeStamp  BIGINT,
-    for _ = 1 to 2 { read_field(true, skip, ()) }; // subType, RecordKey
+    skip_n_fields(2); // subType, RecordKey
 
     rcvdtm = read_field(false, read_int64, 0); // ReceivedTime  BIGINT
 
     // COLLECT_DATETIME_2, RTL_Wrap RTL Sub_RTL, RuleSetVersion, RuleID, RuleVersionID, RuleClauseNo, 
     // RecordType, RecordStatus, EditType, SOURCE_DATETIME, SEQNUM, TRDXID_1    
-    for _ = 1 to 14 { read_field(true, skip, ()) }; 
+    skip_n_fields(14); 
 
     // FIXME: TEMP: ALLOWING THESE TO BE EMPTY (zero) FOR NOW:
     bid     = read_field(true, read_double, 0); // BID  DOUBLE,    
     bidsize = read_field(true, read_double, 0); // BIDSIZE  DOUBLE,
 
-    for _ = 1 to 2 { read_field(true, skip, ()) }; // BID_MMID1, NO_BIDMMKR
+    skip_n_fields(2); // BID_MMID1, NO_BIDMMKR
 
     // FIXME: TEMP: ALLOWING THESE TO BE EMPTY (zero) FOR NOW:
     ask     = read_field(true, read_double, 0); // ASK  DOUBLE,    
@@ -215,18 +239,26 @@ fun read_TAQ_ASCII_tuples(file) {
 */
     scan_to_eol();
 
-    // TEMP: FIXME: For now we do a simple filter for tuples that have a bid and ask
-    if bid != 0 && ask != 0 then 
-    emit (| TIMESTAMP     = ts
-          , SYMBOL        = sym
-          , EXCHTIMESTAMP = exchstamp
-          , RECEIVEDTIME  = rcvdtm
-          , BID           = bid
-          , BIDSIZE       = bidsize
-          , ASK           = ask
-          , ASKSIZE       = asksize
-          )
-    else if DEBUG then print(" ==> TUPLE FILTERED, NOT EMITTED\n");
+    // NOTE: Could check for premature_end after reading each field above:
+    if premature_end then {
+        if DEBUG then print("WARNING: Skipping tuple due to premature end-of-line");
+    }; 
+    // else // NOTE: For now we emit even incomplete outputs!!! EMIT EVERYTHING POLICY.
+    {
+
+        // TEMP: FIXME: For now we do a simple filter for tuples that have a bid and ask
+        //if bid != 0 && ask != 0 then 
+        emit (| TIMESTAMP     = ts
+              , SYMBOL        = sym
+              , EXCHTIMESTAMP = exchstamp
+              , RECEIVEDTIME  = rcvdtm
+              , BID           = bid
+              , BIDSIZE       = bidsize
+              , ASK           = ask
+              , ASKSIZE       = asksize
+              )
+        //else if DEBUG then print(" ==> TUPLE FILTERED, NOT EMITTED\n");
+    }
   }
 }
 

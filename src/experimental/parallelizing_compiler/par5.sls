@@ -390,8 +390,9 @@
   ;; Testing for availability is not part of the 
   (define-inlined (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
 
-  ;; Pushes a new stack frame that is blocked on the ivar.
-  ;; If the new frame gets pushed this thread will go off and steal work.
+  ;; Apply a function to the contents of an ivar.  If the ivar is
+  ;; empty, pushes a new stack frame that is blocked on the ivar.
+  ;; After pushing that frame the worker thread becomes a thief.
   (define (ivar-apply-or-block fn ivar)
       ;; FIRST test: before blocking:
       (if (ivar-avail? ivar);(not (eq? v magic2)) ;; Potential mini-optimization: inline ivar-avail? here.

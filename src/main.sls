@@ -2246,13 +2246,15 @@
 	  [("-opt" ,name ,rest ...)
 	   ;(unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
 	   (set! name (string->symbol name))
-	   (if (eq? name 'maxinline)
-	       (ws-full-inline #t)
-	       (begin
-		 (unless (memq name '(rewrites fuse merge-iterates profile autosplit))
-		   (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
-		 (unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
-		 (ws-optimizations-enabled (cons name (ws-optimizations-enabled )))))	   
+	   (case name 
+	     [(maxinline) (ws-full-inline #t)]
+	     [(mininline) (ws-full-inline #f)]
+	     [else        
+	      (begin
+		(unless (memq name '(rewrites fuse merge-iterates profile autosplit))
+		  (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
+		(unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
+		(ws-optimizations-enabled (cons name (ws-optimizations-enabled ))))])
 	   (loop rest)]
 
 	  ;[("-profelements") ]

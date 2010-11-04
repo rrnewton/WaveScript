@@ -39,7 +39,8 @@
          (only (scheme) fork-thread make-thread-parameter get-thread-id
 	       mutex-acquire mutex-release make-mutex ;; Scheme's pthread mutexes
 	       gensym list-head iota void random format printf fprintf define-record
-	       trace-define base-exception-handler create-exception-state print-graph display-condition) ;; Chez scheme primitives
+	       trace-define base-exception-handler create-exception-state current-exception-state
+	        print-graph display-condition) ;; Chez scheme primitives
 	 )
 
 
