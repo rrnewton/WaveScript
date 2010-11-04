@@ -39,16 +39,25 @@
 
      empty-ivar set-ivar! register-on-ivar ivar-avail? 
      (ivar-apply-or-block mark-pop-release!)
+     threaderror
      )
   
   ;(import chez_constants)
 
 (define (format-syntax-nicely x) x)
 
+;; [2010.11.01] The default error isn't working on other threads for me:
+(define (threaderror sym str . args)
+ (fprintf (current-error-port) "\nERROR: ~a" (apply format str args))
+ (flush-output-port (current-error-port))
+ (par-status 'verbose)
+ (exit))
+
+
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT (format "failed: ~s" (format-syntax-nicely #'expr))))])))
+      [(_ expr) #'(or expr (threaderror 'ASSERT (format "failed: ~s" (format-syntax-nicely #'expr))))])))
 
 ;; PLT:
 #;
@@ -217,12 +226,21 @@
     (wait-for-everybody 1)
     (with-mutex global-mut (fprintf (current-error-port) "  [par] Shutdown complete\n"))
     )
-  (define (par-status) 
+  (define (par-status . args) 
     (with-mutex global-mut
-      (fprintf (current-error-port)
-	       "  [par] Par status:\n        par-finished ~s\n        allstacks: ~s\n        stacksizes: ~s\n\n"
-	       par-finished (vector-length allstacks)
-	       (map shadowstack-tail (vector->list allstacks)))))
+      (let ((stackls (vector->list allstacks)))
+	(fprintf (current-error-port)
+		 "  [par] Par status:\n        par-finished ~s\n        allstacks: ~s\n        stacksizes: ~s\n\n"
+		 par-finished (vector-length allstacks)
+		 (map shadowstack-tail stackls))
+	(when (memq 'verbose args)
+	  (for-each (lambda (i stack) 
+	              (printf "STACK ~s:\n" i)
+	              (pretty-print (list-head (vector->list (shadowstack-frames stack)) 
+					       (shadowstack-tail stack)))		      
+		      )
+	    (iota (length stackls)) stackls))
+	)))
 
   ;; ----------------------------------------
 
@@ -232,7 +250,8 @@
     (define (bump)
       ;; How much can we do just holding the lock on the head-frame on this stack?
       (set-shadowstack-head! stack (fx+ 1 (shadowstack-head stack)))  ;; FIXME: need atomic ops
-      (when DEBUG (print "BUMPED head on stack ~s to ~s because of status ~s \n" (shadowstack-id stack) (shadowstack-head stack) (shadowframe-status frame)))
+      (when DEBUG (print "BUMPED head on stack ~s to ~s because of status ~s \n" 
+			 (shadowstack-id stack) (shadowstack-head stack) (shadowframe-status frame)))
       )
 
     (case (shadowframe-status frame) ;; Check before locking.
@@ -243,14 +262,15 @@
 	    (case (shadowframe-status frame) ;; Double check after waking up.
 	      [(available) #t]
 	      [(ivar-blocked)
-	       (when DEBUG (printf "(TID ~s) ATTEMPT TO STEAL ivar-blocked FRAME, avail ~s: ~s\n" (get-thread-id) (ivar-avail? (shadowframe-argval frame)) frame))
+	       (when DEBUG (print "  (TID ~s) ATTEMPT TO STEAL ivar-blocked FRAME, avail ~s: ~s\n" 
+				  (get-thread-id) (ivar-avail? (shadowframe-argval frame)) frame))
 	       (ivar-avail? (shadowframe-argval frame))]  ;; TODO: if blocked on ivar, might want a different return value for steal-work!
 	      [else (begin ;(bump) ;; FIXME: Head not used yet.
 		      (mutex-release (shadowframe-mut frame)) ;; If someone beat us here, we fizzle
 		      #f)]
 		    )
-	    (begin 
-	      (when DEBUG (print "STOLE work! ~s, ID ~s\n" frame (get-thread-id)))
+	    (let ((oldstatus (shadowframe-status frame)))
+	      (when DEBUG (print "  (TID ~s) STOLE work! ~s\n" (get-thread-id) frame))
 	      ;;(print "STOLE work! ~s \n" frame)
 
 	      (set-shadowframe-status! frame 'stolen) ;; Could have done this atomically with CAS
@@ -259,8 +279,9 @@
 	      (set-shadowframe-argval! frame 	                               
 				       ((shadowframe-oper frame) 
 				       ;; If stealing an ivar-blocked computation, we need an extra step:
-					(if (eq? 'ivar-blocked (shadowframe-status frame))
-					    (ivar-val (shadowframe-argval frame))
+					(if (eq? 'ivar-blocked oldstatus)
+					    (begin (when DEBUG (print "Unpacking ivar for continuation: ~s" (shadowframe-argval frame)))
+					      (ivar-val (shadowframe-argval frame)))
 					    (shadowframe-argval frame))
 				        ))
 	      ;; Now we *must* acquire the lock (even if we block) in order to set the status to done.
@@ -351,7 +372,7 @@
                    [(done) (pop! stack) 
                          (mutex-release (shadowframe-mut frame))
                          (op (shadowframe-argval frame) val1)]
-		   [else (error 'waitloop (format "invalid status: ~s" (shadowframe-status frame)))]
+		   [else (threaderror 'waitloop "invalid status: ~s" (shadowframe-status frame))]
 		   ))))))]))
 
 
@@ -391,7 +412,7 @@
     (with-mutex (ivar-mut iv)
       (let ((old (ivar-val iv)))
 	(unless (eq? old magic2)
-	  (error 'set-ivar! "error ivar should only be assigned once!  Already contains value ~s\n" old))
+	  (threaderror 'set-ivar! "error ivar should only be assigned once!  Already contains value ~s\n" old))
 	(for-each (lambda (fn) (fn val)) (ivar-waiting iv))
 	(set-ivar-val! iv val))))
   ;; Apply a function to the ivar when its available:
@@ -416,24 +437,6 @@
       frame))
   (define (pop! stack) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
-
-  ;; Read the ivar or BLOCK the current stack frame if it isn't available.
-  ;; UNFINISHED
-  (trace-define (read-ivar iv)
-    (if (ivar-avail? iv) (ivar-val iv)
-      ;; Here the trick is that we use both the Scheme stack, and the
-      ;; shadow stack to store the blocked computation.
-      ;; We assume that "our" frame is the tail of our own stack:
-	(let ([stack (this-stack)]) ;; thread-local parameter
-	  (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
-	    ;; Whether we or someone else is working on it we have the convention of marking 
-	    (ASSERT (eq? 'stolen (shadowframe-status frame)))
-	    
-	    ;; TODO -- problem here, this strategy won't make ivar-blocked computations stealable...
-	    ;; The trapped part of the computation in the Scheme stack is never captured and exposed.    
-	    ))
-      ))
-
   ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
   ;; If the new frame gets pushed this thread will go off and steal work.
   (trace-define (ivar-apply-or-block fn ivar)
@@ -442,7 +445,7 @@
       (if (ivar-avail? ivar);(not (eq? v magic2)) ;; Inlined ivar-avail? here.
           (fn (ivar-val ivar)) ; (fn v)
 	  (let* ([stack (this-stack)] ;; thread-local parameter
-		 [_ (when DEBUG (print "\n\n(TID ~s) BLOCKING ON IVAR\n\n" (get-thread-id)))]
+		 [_ (when DEBUG (print "\n\n  (TID ~s) BLOCKING ON IVAR fn = ~s\n\n" (get-thread-id) fn))]
 		 [frame (push! stack fn ivar 'ivar-blocked)])
 	     (find-and-steal-once!) ;; Let some time pass before polling again.
 
@@ -459,7 +462,7 @@
 	 (let ([status (shadowframe-status frame)])
 	   (cond
 	    [(eq? status 'ivar-blocked)
-	     (when DEBUG (print "(TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
+	     (when DEBUG (print "  (TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
 	     (if (ivar-avail? ivar) ;; SECOND test: can we unblock?
 		 (begin
 		   (mark-pop-release! stack frame)
@@ -476,9 +479,9 @@
 	     (when DEBUG (ASSERT (ivar-avail? ivar)))
 	     (fn (ivar-val ivar))]
 	     
-	    [else (error 'waitloop (format "invalid status: ~s" (shadowframe-status frame)))]
+	    [else (threaderror 'waitloop "invalid status: ~s" (shadowframe-status frame))]
 	    )))
-       (when DEBUG (print "(TID ~s) IVAR unblocked, returning: ~s\n" (get-thread-id) ivar))
+       (when DEBUG (print "  (TID ~s) IVAR unblocked, returning: ~s\n" (get-thread-id) ivar))
        ))))
 
   ;;================================================================================
@@ -486,9 +489,14 @@
 )  ;; End version 5
 
 
-
 ;; ================================================================================
 ;; <-[ VERSION 6 ]->
+
+;; TODO: Use a proper cactus-stack.
+
+
+;; ================================================================================
+;; <-[ VERSION 7 ]->
 
 ;; This version will block an entire worker (and use its real continuation) whenever a read happens.
 ;; It will maintain a queue of unblocked workers looking to rejoin the computation.

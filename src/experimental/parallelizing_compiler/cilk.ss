@@ -2,8 +2,9 @@
 
 (eval-when (compile eval load) 
   ;(optimize-level 3)
-  (optimize-level 2)
-  (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
+  ;(optimize-level 2)
+  (optimize-level 0)
+  ;(collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
 (include "chez_threaded_utils.ss")
@@ -193,6 +194,7 @@
 	(error 'unit-test (format "Test #~s: FAILED, expected ~s received ~s!\n" counter result val))))
   )
 
+#|
 (test "cilk simple test 1" 33 (lambda () (cilk 33)))
 (test "cilk simple test 2" 44 (lambda () (cilk (spawn printf "   print from cilk test\n") 44)))
 
@@ -216,9 +218,56 @@
 		  'yay
 		  (sync)
 		  x)))
+|#
 
 
+;; [2010.11.01] This triggers my current duplicate-execute-read-continuation bug.
+(test "Cilk Ivar with blocking 2"  132
+      (lambda () (cilk    
+		  (define iv (empty-ivar))
+		  (spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
+				 (set-ivar! iv 33)))
+		  (define iv2 (empty-ivar))
+		  (define x  (read-ivar iv))
+		  (set-ivar! iv2 99)
+		  (printf " *** Woo, read completed! ~s\n" x)
+		  'yay
+		  (define y (read-ivar iv2))
+		  (sync)
+		  (+ x y))))
 
+(exit)
+
+;; Example from William Leiserson that deadlocks if ivar-blocked continuations are not stealable.
+(define (willexample)
+  (define i1 (empty-ivar))
+  (define i2 (empty-ivar))
+  (define (foo)
+    (cilk (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i)))) ;; expensive
+          (printf "*** Foo (TID ~s): Done with work now writing I1\n" (get-thread-id))
+          (set-ivar! i1 33)))
+  (define (snafoo)
+    (cilk (define x (read-ivar i1))
+          (printf "*** Snafoo (TID ~s): Done read I1, now writing I2\n" (get-thread-id))
+	  (set-ivar! i2 (+ x 44))))
+  (define (quux)
+    (cilk (spawn snafoo)
+	  (define x (read-ivar i2))
+          (printf "*** Quux (TID ~s): done reading I2\n" (get-thread-id))
+	  x))
+  (define (baz)
+    (cilk (spawn foo)
+	  (spawn quux)
+          (printf "*** Bar (TID ~s): after spawns\n" (get-thread-id))
+	  (define x (read-ivar i1))
+          (printf "*** Bar (TID ~s): done reading I1\n" (get-thread-id))
+	  (define y (read-ivar i2))
+          (printf "*** Bar (TID ~s): done reading I2\n" (get-thread-id))
+	  (* x y)))
+  (baz)
+  )
+
+(test "William Leiserson's example" 2541 (lambda () (willexample)))
 
 
 
