@@ -1,5 +1,7 @@
+; #!r6rs
+;; A script...
 
-
+#;
 (eval-when (compile eval load) 
   ;(optimize-level 3)
   (optimize-level 2)
@@ -9,8 +11,9 @@
 
 ;(include "chez_threaded_utils.ss")
 ;(import threaded_utils)
-;(import (par6))
-(import (cilk))
+;(import (par5))
+(import (par6))
+;(import (for (cilk) expand run))
 
 ;; ====================================================================================================
 ;; Example programs
@@ -50,7 +53,7 @@
     (define (gather-spawn-vars cmds)
       (syntax-case cmds (spawn define)
 	[() '()]
-        [((spawn f ..) rest ...) (gather-spawn-vars #'(rest ...))]
+        [((spawn f ...) rest ...) (gather-spawn-vars #'(rest ...))]
         [((define var _) rest ...)
 	 ;;((define var (spawn f ...)) rest ...)
 	 (cons #'var (gather-spawn-vars #'(rest ...)))]
@@ -151,7 +154,7 @@
 ;; ====================================================================================================
 
 ;(pretty-print (expand prog1))
-(print-gensym #f)
+;(print-gensym #f)
 ;(pretty-print (expand prog1))
 ;(pretty-print (expand prog2))
 ;(pretty-print (expand '(cilk (spawn printf "   print from cilk test\n") 44)))
@@ -172,8 +175,7 @@
 	 (sync)
 	 (fx+ left right))))
 
-(init-par 2)
-
+(define _ (init-par 2))
 
 (define counter 0)
 (define (test msg result fn)

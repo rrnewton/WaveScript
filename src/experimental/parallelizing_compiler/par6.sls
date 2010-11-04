@@ -37,7 +37,7 @@
 	 (rnrs arithmetic fixnums (6))
          (only (scheme) fork-thread mutex-acquire mutex-release make-mutex make-thread-parameter get-thread-id
 	       gensym list-head iota void random format printf fprintf define-record
-	       trace-define base-exception-handler) ;; Chez scheme primitives
+	       trace-define base-exception-handler create-exception-state print-graph) ;; Chez scheme primitives
 	 )
 
 ;; [2010.11.01] The default error isn't working on other threads for me:
@@ -167,11 +167,11 @@
        (fprintf (current-error-port) "CAUGHT EXCEPTION\n")
        ;(threaderror 'system-exception x)
        (exit 1)
-       )))
+       ))
+    (create-exception-state))
 
   (define (init-par num-cpus)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
-    
     (install-exception-handler)
     (let ((mystack (new-stack)))
       (with-mutex global-mut   
@@ -203,9 +203,12 @@
 		 par-finished (vector-length allstacks)
 		 (map shadowstack-length stackls))
 	(when (memq 'verbose args)
+	  (print-graph #t)
 	  (for-each (lambda (i stack) 
 	              (printf "STACK ~s:\n" i)
-	              (for-each (lambda (f) (printf "   ~a\n" f)) 
+	              (for-each (lambda (f) 
+		                  (printf "   frame ~a ~a ~a \n" 
+					  (shadowframe-status f) (shadowframe-oper f) (shadowframe-argval f)))
 			(shadowstack->list stack))
 		      )
 	    (iota (length stackls)) stackls))
