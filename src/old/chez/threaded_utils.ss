@@ -254,7 +254,7 @@
 			 (shadowstack-id stack) (shadowstack-head stack) (shadowframe-status frame)))
       )
 
-    (case (shadowframe-status frame) ;; Check before locking.
+    (case (shadowframe-status frame) ;; Check BEFORE locking.
       [(available ivar-blocked)   
        (and (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it           
             ;;(begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
@@ -274,7 +274,7 @@
 	      ;;(print "STOLE work! ~s \n" frame)
 
 	      (set-shadowframe-status! frame 'stolen) ;; Could have done this atomically with CAS
-	      (mutex-release (shadowframe-mut frame)) 
+	      (mutex-release (shadowframe-mut frame)) ;; After we set status we can let go.
 	      ;; Then let go to do the real work, note that this may do further pcall's:
 	      (set-shadowframe-argval! frame 	                               
 				       ((shadowframe-oper frame) 
@@ -284,10 +284,12 @@
 					      (ivar-val (shadowframe-argval frame)))
 					    (shadowframe-argval frame))
 				        ))
+	      (when DEBUG (print "  (TID ~s) DONE with stolen work: ~s\n" (get-thread-id) frame))
+
 	      ;; Now we *must* acquire the lock (even if we block) in order to set the status to done.
 	      ;; [2010.10.31]  Really? Why?  Shouldn't we own it after it's stolen?
 	      (mutex-acquire (shadowframe-mut frame)) ;; blocking...
-	      (set-shadowframe-status! frame 'done)	   
+	      (set-shadowframe-status! frame 'done) ;; Now the result is in place, and status is 'done
 	      (mutex-release (shadowframe-mut frame))
 	      #t)
 	      )]
@@ -312,7 +314,7 @@
 	  (let frmloop ([i 0])
 	    (if (fx= i tl)
 		#f ;; No work on this processor, try again. 
-		(if (steal-work! stack (vector-ref frames i)) ;; NOTE: Wrong number of args to steal-work! here seemed to cause deadlock!!  Add any extra arg, like '99'
+		(if (steal-work! stack (vector-ref frames i))
 		    #t
 		    (frmloop (fx+ 1 i))))))))
 
@@ -341,8 +343,11 @@
 
   ;; Capturing a common sequence of operations to avoid duplication:
   (define-inlined (mark-pop-release! stack frame)
-    (set-shadowframe-status! frame 'stolen) ;; Just in case...
-    (pop! stack) ;; Pop before we even start the thunk.
+    ;(set-shadowframe-status! frame 'stolen) ;; Just in case...
+    ;(set-shadowframe-status! frame 'corrupt) ;; Just in case...
+    ;; Another thread could glance at this frame after its been deactivated:
+    (set-shadowframe-status! frame #f)
+    (pop! stack) ;; Hold the lock on the frame while we destroy it.
     (mutex-release (shadowframe-mut frame)))
 
   ;; Do a call in parallel with something else.
@@ -351,13 +356,13 @@
       [(_ op (f x) e2)
        (let ([stack (this-stack)]) ;; thread-local parameter
          (begin ;let ([op1 op] [f1 f] [x1 x]) ;; Optional Safety: Don't duplicate subexpressions:
-	   (let ([frame (push! stack f x 'available)])
+	   (let ([frame (push! stack f x 'available)])  ;; Only each thread can push on its own stack.
 	     (let ([val1 e2])  ;; Evaluate the second expression on this thread.
 	       (let waitloop ()
                  (mutex-acquire (shadowframe-mut frame))
                  (case (shadowframe-status frame)
                    [(available)                   
-		    (mark-pop-release! stack frame)
+		    (mark-pop-release! stack frame) ;; Pop before we even start the thunk from the frame.
                     ;; [2010.10.31] Oper/argval should be f/x here:
                     (op ;(f x)  ;; possible optimization?
                         ((shadowframe-oper frame) (shadowframe-argval frame))
@@ -427,6 +432,7 @@
 
   ;; TODO: possibly make these syntax instead of functions:
   (define (push! stack oper val status)
+    ;; No lock here because only the owning thread is allowed to push.
     (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
       ;; Initialize the frame
       (set-shadowframe-oper!   frame oper)
@@ -440,49 +446,55 @@
   ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
   ;; If the new frame gets pushed this thread will go off and steal work.
   (trace-define (ivar-apply-or-block fn ivar)
-    (let () ;((v (ivar-val ivar)))
       ;; FIRST test: before blocking:
-      (if (ivar-avail? ivar);(not (eq? v magic2)) ;; Inlined ivar-avail? here.
-          (fn (ivar-val ivar)) ; (fn v)
+      (if (ivar-avail? ivar);(not (eq? v magic2)) ;; Potential mini-optimization: inline ivar-avail? here.
+          (begin
+	    (when DEBUG (print "  (TID ~s) Ivar available on first try ~s\n" (get-thread-id) ivar))
+	    (fn (ivar-val ivar)) ; (fn v)
+	    )
 	  (let* ([stack (this-stack)] ;; thread-local parameter
 		 [_ (when DEBUG (print "\n\n  (TID ~s) BLOCKING ON IVAR fn = ~s\n\n" (get-thread-id) fn))]
-		 [frame (push! stack fn ivar 'ivar-blocked)])
-	     (find-and-steal-once!) ;; Let some time pass before polling again.
+		 [frame (push! stack fn ivar 'ivar-blocked)]) ;; A new frame for the read-blocked computation.
+	    (find-and-steal-once!) ;; Let some time pass before polling again.
 
-       ;; This is similar to the loop inside pcall:
-       (let waitloop ()
-         (define (release-and-steal!) ;; Used twice below.
-	   (mutex-release (shadowframe-mut frame))		 
-	   (find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
-	   (waitloop))
+	    ;; This is similar to the waitloop inside pcall:
+	    (let waitloop ()
+	      (define (release-and-steal!) ;; Used twice below.
+		(mutex-release (shadowframe-mut frame))		 
+		(find-and-steal-once!) ;; Meanwhile we should go try to make ourselves useful..		  
+		(waitloop))
 
-	 ;; We're the parent, when we get to this frame, we lock it off from all other comers.
-	 ;; Thieves should do non-blocking probes.
-	 (mutex-acquire (shadowframe-mut frame))
-	 (let ([status (shadowframe-status frame)])
-	   (cond
-	    [(eq? status 'ivar-blocked)
-	     (when DEBUG (print "  (TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
-	     (if (ivar-avail? ivar) ;; SECOND test: can we unblock?
-		 (begin
-		   (mark-pop-release! stack frame)
-		   (fn (ivar-val ivar)))
-		 ;; Otherwise steal and then come back to it:
-		 (release-and-steal!))]
+	      ;; We're the frame creator, when we get to this frame, we lock it off from all other comers.
+	      ;; Thieves should do non-blocking probes.
+	      (mutex-acquire (shadowframe-mut frame))
+	      (let ([status (shadowframe-status frame)])
+		(cond
+		 [(eq? status 'ivar-blocked)
+		  ;; If the status is still ivar-blocked and we hold the mutex it has not been stolen.
+		  (when DEBUG (print "  (TID ~s) Polling ivar: ~s\n" (get-thread-id) ivar))
+		  (if (ivar-avail? ivar) ;; SECOND test: can we unblock?
+		      (begin
+			(mark-pop-release! stack frame)
+			(when DEBUG (print "  (TID ~s) Frame nuked.  Original owner executing continuation on ivar ~s\n" (get-thread-id) ivar))
+			(fn (ivar-val ivar)))
+		      ;; Otherwise steal and then come back to it:
+		      (release-and-steal!))]
 
-	    ;; IVar-blocked frames will be set to stolen by a thief too (after the ivar is filled).
-	    [(eq? status 'stolen) (release-and-steal!)]
+		 ;; IVar-blocked frames will be set to stolen by a thief too (AFTER the ivar is filled).
+		 [(eq? status 'stolen) (release-and-steal!)]
 
-	    [(eq? status 'done) 
-	     (pop! stack)
-	     (mutex-release (shadowframe-mut frame))
-	     (when DEBUG (ASSERT (ivar-avail? ivar)))
-	     (fn (ivar-val ivar))]
-	     
-	    [else (threaderror 'waitloop "invalid status: ~s" (shadowframe-status frame))]
+		 [(eq? status 'done) 
+		  (pop! stack)
+		  (mutex-release (shadowframe-mut frame))
+		  (when DEBUG (ASSERT (ivar-avail? ivar)))
+		  ;; The ivar's (delimited) continuation is already executed, return value is here:
+		  (shadowframe-argval frame)
+		  ]
+		 
+		 [else (threaderror 'waitloop "invalid status: ~s" (shadowframe-status frame))]
+		 )))
+	    (when DEBUG (print "  (TID ~s) IVAR unblocked, returning: ~s\n" (get-thread-id) ivar))
 	    )))
-       (when DEBUG (print "  (TID ~s) IVAR unblocked, returning: ~s\n" (get-thread-id) ivar))
-       ))))
 
   ;;================================================================================
 

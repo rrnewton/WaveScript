@@ -78,7 +78,7 @@
 	  (make-pcall #'(rest ...) #'(set! var (f args ...)))]
 
 	[((define var (read-ivar ivar)) rest ...)
-	 #`(let ((kont (lambda (tmp)
+	 #`(let ((kont (trace-lambda var (tmp)
 	                 (set! var tmp)
 			 #,(convert-cmds #'(rest ...) subsequent-blocks)
 			 ;; FIXME: It is NOT VALID to jump to the next chunk before the sync is finished!!
@@ -153,15 +153,6 @@
 ;(pretty-print (expand prog1))
 ;(pretty-print (expand prog2))
 ;(pretty-print (expand '(cilk (spawn printf "   print from cilk test\n") 44)))
-#;
-(pretty-print (expand '(cilk    
-			(define iv (empty-ivar))
-			(spawn (lambda () (let loop ((i 1000000)) (unless (= 0 i) (loop (sub1 i))))
-				       (set-ivar! iv 33)))
-			(define x  (read-ivar iv))
-			(printf " *** Woo, read completed!\n")
-			(sync)
-			x)))
 ;(exit)
 
 ;; ====================================================================================================
@@ -194,7 +185,8 @@
 	(error 'unit-test (format "Test #~s: FAILED, expected ~s received ~s!\n" counter result val))))
   )
 
-#|
+
+
 (test "cilk simple test 1" 33 (lambda () (cilk 33)))
 (test "cilk simple test 2" 44 (lambda () (cilk (spawn printf "   print from cilk test\n") 44)))
 
@@ -218,8 +210,6 @@
 		  'yay
 		  (sync)
 		  x)))
-|#
-
 
 ;; [2010.11.01] This triggers my current duplicate-execute-read-continuation bug.
 (test "Cilk Ivar with blocking 2"  132
@@ -229,14 +219,12 @@
 				 (set-ivar! iv 33)))
 		  (define iv2 (empty-ivar))
 		  (define x  (read-ivar iv))
+		  (printf " *** Woo, read completed! ~s (TID ~s)\n" x (get-thread-id))
 		  (set-ivar! iv2 99)
-		  (printf " *** Woo, read completed! ~s\n" x)
 		  'yay
 		  (define y (read-ivar iv2))
 		  (sync)
 		  (+ x y))))
-
-(exit)
 
 ;; Example from William Leiserson that deadlocks if ivar-blocked continuations are not stealable.
 (define (willexample)

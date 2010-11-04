@@ -714,9 +714,67 @@ instead of a deadlock.
       *** Snafoo: Read I1, now writing I2
       error ivar should only be assigned once!  Already contains value 77
 
+================================================================================
+
+I ran a simpler test that also duplicates the continuation:
+
+      Test #1: Cilk Ivar with blocking 2
+	(TID 1) STOLE work! #[shadowframe #<mutex> available #<procedure> ignored]
+      |(ivar-apply-or-block #<procedure kont> #[ivar #<mutex> empty-ivar-sym ()])
 
 
+	(TID 1) BLOCKING ON IVAR fn = #<procedure kont>
 
+	(TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+	(TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+	(TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+	(TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: #[shadowframe #<mutex> ivar-blocked #<procedure kont> #[ivar #<mutex> empty-ivar-sym ()]]
+	(TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+	(TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: #[shadowframe #<mutex> ivar-blocked #<procedure kont> #[ivar #<mutex> empty-ivar-sym ()]]
+	(TID 1) Polling ivar: #[ivar #<mutex> empty-ivar-sym ()]
+	(TID 1) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f: #[shadowframe #<mutex> ivar-blocked #<procedure kont> #[ivar #<mutex> empty-ivar-sym ()]]
+	(TID 1) STOLE work! #[shadowframe #<mutex> ivar-blocked #<procedure kont> #[ivar #<mutex> 33 ()]]
+      Unpacking ivar for continuation: #[ivar #<mutex> 33 ()] *** Woo, read completed! 33
+      | (ivar-apply-or-block #<procedure kont> #[ivar #<mutex> 99 ()])
+      | #<void>
 
+      ERROR: error ivar should only be assigned once!  Already contains value 99
+	[par] Par status:
+	      par-finished #f
+	      allstacks: 2
+	      stacksizes: (1 0)
 
+      STACK 0:
+      (#[shadowframe #<mutex> stolen #<procedure> ignored])
+      STACK 1:
+      ()
+
+Here's the macro expanded version of what it is running:
+
+    (let ([iv 'cilk-var-uninit]
+	  [iv2 'cilk-var-uninit]
+	  [x 'cilk-var-uninit]
+	  [y 'cilk-var-uninit])
+      (set! iv (empty-ivar))
+      (pcall
+	(lambda (a b) a)
+	(let ([_ 'ignored])
+	  (set! iv2 (empty-ivar))
+	  (let ([kont (lambda (tmp)
+			(set! x tmp)
+			(#2%printf " *** Woo, read completed! ~s\n" x)
+			(set-ivar! iv2 99)
+			'yay
+			(let ([kont (lambda (tmp) (set! y tmp) (#2%void))])
+			  (ivar-apply-or-block kont iv2)))])
+	    (ivar-apply-or-block kont iv)))
+	(begin
+	  ((letrec ([loop (lambda (i)
+			    (if (#2%not (#2%= 0 i))
+				(loop (#2%sub1 i))
+				(#2%void)))])
+	     loop)
+	    1000000)
+	  (set-ivar! iv 33)))
+      (#2%+ x y))
 
