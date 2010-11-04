@@ -4,19 +4,19 @@
 (eval-when (compile eval load) 
 ;  (optimize-level 3)
   (optimize-level 2)
-  (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
+;  (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
 ;(include "chez_threaded_utils.ss")
 ;(import threaded_utils)
-;(import (par5))
-(import (par6))
+(import (par5))
+;(import (par6))
 
 (print-gensym #f)
 (print-graph #t)
 
 ;(define test-depth 5)
-(define test-depth 33)
+(define test-depth (string->number (or (getenv "TESTDEPTH") "33")))
 ;(define test-depth 27)
 ;(define test-depth 23)
 ;(define test-depth 25)

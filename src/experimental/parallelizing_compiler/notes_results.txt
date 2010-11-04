@@ -1194,4 +1194,29 @@ I'm having a lot of trouble reproducing that deadlock now...  Alas,
 the deadlock could also be an EXCEPTION on another thread... sigh.
 I should redefine the exception handler.
 
+[2010.11.02] {Spinlocks make fib almost twice as fast}
+
+On wasp, par6, with four threads, fib(40):
+
+    30973 ms elapsed cpu time, including 69 ms collecting
+    8182 ms elapsed real time, including 62 ms collecting
+
+And it chugs along at ~380% cpu usage...
+
+Using par5 instead (and tweaking it to use spinlocks) seems to result
+in less spinning / cpu use:
+On four threads:
+    22338 ms elapsed cpu time
+    9924 ms elapsed real time
+And on one threads:
+    18347 ms elapsed cpu time
+    18406 ms elapsed real time
+
+GRR... this is quite unpredictable though... and I'm having trouble
+reproducing those initial results... ERGH.
+
+The par6 version has huge memory growth thanks to those
+leaking spinlocks.. (e.g. like 4gb).  Let's fix that leak for now.
+
+
 

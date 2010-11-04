@@ -35,10 +35,13 @@
   
  (import (rnrs (6))
 	 (rnrs arithmetic fixnums (6))
-         (only (scheme) fork-thread mutex-acquire mutex-release make-mutex make-thread-parameter get-thread-id
+;	 (tbb)
+         (only (scheme) fork-thread make-thread-parameter get-thread-id
+	       mutex-acquire mutex-release make-mutex ;; Scheme's pthread mutexes
 	       gensym list-head iota void random format printf fprintf define-record
-	       trace-define base-exception-handler create-exception-state print-graph) ;; Chez scheme primitives
+	       trace-define base-exception-handler create-exception-state print-graph display-condition) ;; Chez scheme primitives
 	 )
+
 
 ;; [2010.11.01] The default error isn't working on other threads for me:
 (define (threaderror sym str . args)
@@ -54,6 +57,12 @@
   (lambda (x)
     (syntax-case x ()
       [(_ expr) #'(or expr (threaderror 'ASSERT (format "failed: ~s" #'expr)))])))
+(define-syntax define-inlined
+  (syntax-rules ()
+    [(_ (f x ...) e ...)
+     (define-syntax f 
+       (syntax-rules ()
+	 [(_ x ...) (begin e ...)]))]))
 
 
 ;; This is an unsafe version that doesn't handle escapes via continuations :
@@ -65,6 +74,20 @@
        (let ([x (begin e1 e2 ...)])
          (mutex-release m)
          x))]))
+
+;; OPTION 1: use native pthread mutexes:
+(define-inlined (mutex-try-acquire m) (mutex-acquire m #f))
+(define-inlined (free-mutex m) (void))
+;; OPTION 2: use TBB  spin mutexes:
+#;
+(begin
+  (define-inlined (make-mutex)      (make-spin-mutex))
+  (define-inlined (mutex-acquire m) (spin-mutex-acquire m))
+  (define-inlined (mutex-release m) (spin-mutex-release m))
+  (define-inlined (mutex-try-acquire m) (spin-mutex-try-acquire m))
+  ;(define-inlined (free-mutex m)    (free-spin-mutex m))
+  )
+
 
 
 ;; ================================================================================
@@ -78,12 +101,7 @@
 	  ((= i n) v)
 	(vector-set! v i (f i))))))
 
-(define-syntax define-inlined
-  (syntax-rules ()
-    [(_ (f x ...) e ...)
-     (define-syntax f 
-       (syntax-rules ()
-	 [(_ x ...) (begin e ...)]))]))
+
 
 ;; ================================================================================
 
@@ -164,11 +182,12 @@
     ;; Because of our problems with exceptions on other threads:
     (base-exception-handler 
      (lambda (x) 
-       (fprintf (current-error-port) "CAUGHT EXCEPTION\n")
+       (fprintf (current-error-port) "CAUGHT EXCEPTION:\n")
+       (display-condition x)
        ;(threaderror 'system-exception x)
        (exit 1)
        ))
-    (create-exception-state))
+    (current-exception-state (create-exception-state)))
 
   (define (init-par num-cpus)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
@@ -228,7 +247,7 @@
 
     (case (shadowframe-status frame) ;; Check BEFORE locking.
       [(available ivar-blocked)   
-       (and (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it           
+       (and (mutex-try-acquire (shadowframe-mut frame)) ;; Don't block on it           
             ;;(begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
 	    ;; From here on out we've got the mutex:
 	    (case (shadowframe-status frame) ;; Double check after waking up.
@@ -320,9 +339,14 @@
   (define (push! stack oper val status)
     ;; No lock here because only the owning thread is allowed to push.
     (let* ([oldframe (shadowstack-tail stack)]
-           ;; Could pull from a pool here I suppose to not have to make new mutex:
+           ;; Could pull from a pool here I suppose to not have to make new mutex:	   
            [frame (make-shadowframe (make-mutex) status oper val oldframe #f)]
+;; EXPERIMENTAL:
+;           [frame (make-shadowframe #f status oper val oldframe #f)]
+;	   [mut (make-guarded-spin-mutex frame shadowframe-mut)]
 	   [head (shadowstack-head stack)])
+;      (set-shadowframe-mut! frame mut) ;; EXPERIMENTAL
+;      (print "(TID ~s) PUSHING, APPROX STACK LENGTH ~s, new MUT ~s\n" (get-thread-id) (shadowstack-length stack) (shadowframe-mut frame))
 
       ;; Finally, install new tail, LOCK FREE, only this thread can do it:
       (set-shadowstack-tail! stack frame)
@@ -335,11 +359,14 @@
      #;
      (when DEBUG (print "  (TID ~s) Popping frame #~a: ~a\n" (get-thread-id) (shadowstack-tail stack) 
 			(vector-ref (shadowstack-frames stack) (shadowstack-tail stack))))
+;     (print "(TID ~s) POPPING, APPROX STACK LENGTH ~s\n" (get-thread-id) (shadowstack-length stack))
+
      (let* ([oldtail (shadowstack-tail stack)]
      	    [head (shadowstack-head stack)]
             [_ (when DEBUG (ASSERT oldtail) (ASSERT head))]
             [prev (shadowframe-prev oldtail)])
        ;; NO LOCKS: This will also only be done by the owning thread.
+       ;; 
 
        ;; FIXME: TODO: WILL PROBABLY NEED TO LOCK TO CHANGE HEAD!!!
        (if (eq? oldtail head)
@@ -355,6 +382,8 @@
 	   (set-shadowframe-next! prev #f) ;; Cut of thieves following the chain.
 	   (set-shadowstack-tail! stack prev) ;; For *this* worker thread, note the new tail.
 	 ))
+	 ;(print "(TID ~s) FREEING MUTEX ~a\n" (get-thread-id) (shadowframe-mut oldtail))
+	 ;(free-mutex (shadowframe-mut oldtail))
        ))
 
   ;; Capturing a common sequence of operations to avoid duplication:

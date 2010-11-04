@@ -1,10 +1,5 @@
 
-;; [2006.07] This contains some miscellaneous stuff related to
-;; threads.  Only relevent to the pthread-based version of Chez
-;; Scheme.
-
-;; TODO: Par should really return multiple values... not a list.
-
+;; An implement of strictly nested parallelism, "par".
 
 (library (par5)
  (export 
@@ -19,7 +14,7 @@
      par-status ;; Optional utility to show status of par threads.
      par-reset! ;; Reset counters
 
-     empty-ivar set-ivar! register-on-ivar ivar-avail? 
+     empty-ivar set-ivar! ivar-avail? 
      ivar-apply-or-block ;(ivar-apply-or-block mark-pop-release!)
      
      ;; INTERNAL:
@@ -35,7 +30,11 @@
   
  (import (rnrs (6))
 	 (rnrs arithmetic fixnums (6))
-         (only (scheme) fork-thread mutex-acquire mutex-release make-mutex make-thread-parameter get-thread-id
+;	 (tbb)
+         (only (scheme) fork-thread 
+	       mutex-acquire mutex-release make-mutex 
+	       make-thread-parameter get-thread-id 
+	       display-condition base-exception-handler current-exception-state create-exception-state
 	       gensym list-head iota void random format printf fprintf define-record) ;; Chez scheme primitives
 	 )
 
@@ -53,7 +52,22 @@
   (lambda (x)
     (syntax-case x ()
       [(_ expr) #'(or expr (threaderror 'ASSERT (format "failed: ~s" #'expr)))])))
+(define-syntax define-inlined
+  (syntax-rules ()
+    [(_ (f x ...) e ...)
+     (define-syntax f 
+       (syntax-rules ()
+	 [(_ x ...) (begin e ...)]))]))
 
+;; OPTION 1: use native pthread mutexes:
+(define-inlined (mutex-try-acquire m) (mutex-acquire m #f))
+;; OPTION 2: use TBB  spin mutexes:
+#;
+(begin
+  (define-inlined (make-mutex) (make-spin-mutex))
+  (define-inlined (mutex-acquire m) (spin-mutex-acquire m))
+  (define-inlined (mutex-release m) (spin-mutex-release m))
+  (define-inlined (mutex-try-acquire m) (spin-mutex-try-acquire m)))
 
 ;; This is an unsafe version that doesn't handle escapes via continuations :
 (define-syntax with-mutex
@@ -65,7 +79,6 @@
          (mutex-release m)
          x))]))
 
-
 ;; ================================================================================
 ;;; < PAR IMPLEMENTATION FOR STRICTLY NESTED PARALLELISM>
 ;; ================================================================================
@@ -76,13 +89,6 @@
       (do ([i 0 (fx+ i 1)])
 	  ((= i n) v)
 	(vector-set! v i (f i))))))
-
-(define-syntax define-inlined
-  (syntax-rules ()
-    [(_ (f x ...) e ...)
-     (define-syntax f 
-       (syntax-rules ()
-	 [(_ x ...) (begin e ...)]))]))
 
 ;; ================================================================================
 ;; <-[ VERSION 5 ]->
@@ -146,7 +152,18 @@
 
   ;; ----------------------------------------
 
+  (define (install-exception-handler)
+    ;; Because of our problems with exceptions on other threads:
+    (base-exception-handler 
+     (lambda (x) 
+       (fprintf (current-error-port) "CAUGHT EXCEPTION:\n")
+       (display-condition x)
+       (exit 1)
+       ))
+    (current-exception-state (create-exception-state)))
+
   (define (init-par num-cpus)
+    (install-exception-handler)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
     (let ((mystack (new-stack)))
       (with-mutex global-mut   
@@ -193,7 +210,7 @@
   (define (steal-work! stack frame)
     (case (shadowframe-status frame) ;; Check BEFORE locking.
       [(available ivar-blocked)   
-       (and (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it           
+       (and (mutex-try-acquire (shadowframe-mut frame)) ;; Don't block on it           
             ;;(begin (mutex-acquire (shadowframe-mut frame)) #t) ;; NONBLOCKING VERSION APPEARS TO HAVE A PROBLEM!!?
 	    ;; From here on out we've got the mutex:
 	    (case (shadowframe-status frame) ;; Double check after waking up.
@@ -252,6 +269,7 @@
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
+		   (install-exception-handler)
                    (this-stack stack) ;; Initialize stack. 
 		   (let ([myid 
 			  (with-mutex global-mut ;; Register our existence.
@@ -360,27 +378,19 @@
 
   ;; An ivar really *should* support atomic operations to extend the
   ;; wait list... alas for now it has to have its own mutex:
-  (define-record ivar (mut val waiting))
+  (define-record ivar (val))
 
-  (define (empty-ivar) (make-ivar (make-mutex) magic2 '()))
+  (define (empty-ivar) (make-ivar magic2))
   (define (set-ivar! iv val)
-    (with-mutex (ivar-mut iv)
       (let ((old (ivar-val iv)))
 	(unless (eq? old magic2)
 	  (threaderror 'set-ivar! "error ivar should only be assigned once!  Already contains value ~s\n" old))
-	(for-each (lambda (fn) (fn val)) (ivar-waiting iv))
-	(set-ivar-val! iv val))))
-  ;; Apply a function to the ivar when its available:
-  (define (register-on-ivar fn iv)
-    (with-mutex (ivar-mut iv)
-      (let ((val (ivar-val iv)))
-	(if (eq? val magic2)
-	    (set-ivar-waiting! iv (cons fn (ivar-waiting iv)))
-	    (fn val)))))
-  ;; Testing for availability is not part of the 
-  (define (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
+	(set-ivar-val! iv val)))
 
-  ;; Like register-on-ivar but pushes a new stack frame that is blocked on the ivar.
+  ;; Testing for availability is not part of the 
+  (define-inlined (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
+
+  ;; Pushes a new stack frame that is blocked on the ivar.
   ;; If the new frame gets pushed this thread will go off and steal work.
   (define (ivar-apply-or-block fn ivar)
       ;; FIRST test: before blocking:

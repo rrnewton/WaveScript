@@ -1,19 +1,12 @@
-; #!r6rs
 ;; A script...
 
-#;
 (eval-when (compile eval load) 
-  ;(optimize-level 3)
   (optimize-level 2)
-  ;(optimize-level 0)
   ;(collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-;(include "chez_threaded_utils.ss")
-;(import threaded_utils)
-;(import (par5))
-(import (par6))
-;(import (for (cilk) expand run))
+(import (par5))
+;(import (par6))
 
 ;; ====================================================================================================
 ;; Example programs
@@ -83,7 +76,9 @@
 	  (make-pcall #'(rest ...) #'(set! var (f args ...)))]
 
 	[((define var (read-ivar ivar)) rest ...)
-	 #`(let ((kont (trace-lambda var (tmp)
+	 #`(let ((kont 
+	           ; (trace-lambda var (tmp)
+		   (lambda (tmp)
 	                 (set! var tmp)
 			 #,(convert-cmds #'(rest ...) subsequent-blocks)
 			 ;; FIXME: It is NOT VALID to jump to the next chunk before the sync is finished!!

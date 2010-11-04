@@ -9,6 +9,7 @@ extern "C"  {
   void acquire_spin_mutex    (tbb::spin_mutex* M) { M->lock(); }
   bool try_acquire_spin_mutex(tbb::spin_mutex* M) { return M->try_lock(); }
   void release_spin_mutex    (tbb::spin_mutex* M) { M->unlock(); }
+  void free_spin_mutex       (tbb::spin_mutex* M) { delete M; }
 
     /*
   void* make_queuing_mutex()    { return new tbb::queuing_mutex(); }
