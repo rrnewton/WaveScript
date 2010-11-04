@@ -27,6 +27,18 @@
     (sync)
     ))
 
+(define prog2
+  '(cilk   
+    (define i1 (empty-ivar))
+    
+    (spawn (lambda () (set-ivar! i1 33)))
+    
+    (define r1 (read-ivar i1))
+    (printf "yay ~s\n" r1)
+    (sync)
+    r1 
+    ))
+
 ;; ====================================================================================================
 
 ;; A syntax for writing Cilk-like programs.
@@ -44,7 +56,7 @@
     (define (convert-cmds cmds)
       (define (make-pcall rest right)
 	#`(pcall (lambda (a b) (void)) ;; Nothing to do after join.
-		 ((lambda (_) #,(convert-cmds rest)) 'ignored)
+		 ((lambda (_) #,(convert-cmds rest)) 'ignored) ;; continuation
 		 #,right))
       (syntax-case cmds (spawn sync define)
         [() #'(void)]

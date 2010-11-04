@@ -1,8 +1,8 @@
 
 
 (eval-when (compile eval load) 
-  (optimize-level 3)
-  ;(optimize-level 2)
+;  (optimize-level 3)
+  (optimize-level 2)
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
@@ -10,11 +10,11 @@
 (import threaded_utils)
 
 
-;(define test-depth 27)
+(define test-depth 27)
 ;(define test-depth 23)
 ;(define test-depth 25)
 ;(define test-depth 42)
-(define test-depth 40)
+;(define test-depth 40) ;; fib of 40... is that 165580141 yes?
 
 #;
 (define (test)
@@ -61,7 +61,7 @@
   )
 
 ;(go "8")
-(go "4")
+;(go "4")
 (go "2")
 ;(go "1")
 

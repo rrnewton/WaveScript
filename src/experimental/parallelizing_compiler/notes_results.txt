@@ -501,6 +501,9 @@ Right now the safe/unsafe with-mutex doesn't make any difference at
 all.
 
 
+[2010.10.31] {Doing some hacking for ivars}
+
+Hmm... just got it to segfault in opt level 2.
 
 
 
