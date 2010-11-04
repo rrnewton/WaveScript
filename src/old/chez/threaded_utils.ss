@@ -36,6 +36,8 @@
      shadowstack-tail  set-shadowstack-tail!
      shadowstack-head  set-shadowstack-head!
      this-stack
+
+     empty-ivar set-ivar! apply-to-ivar ivar-avail?
      )
   
   ;(import chez_constants)
@@ -859,6 +861,38 @@
 			   (steal-loop))))))
      stack)
 
+  ;; --------------------------------------------------------------------------------
+  ;;  < Experimenting with IVars > 
+  ;; --------------------------------------------------------------------------------
+  ;; We don't want to change shadowframe, so we just put a magic value in shadowframe-argval
+  (define magic1 (gensym "blocked-on-ivar"))
+  (define magic2 (gensym "empty-ivar"))
+
+  ;; An ivar really *should* support atomic operations to extend the
+  ;; wait list... alas for now it has to have its own mutex:
+  (define-record ivar (mut val waiting))
+
+  (define (empty-ivar) (make-ivar (make-mutex) magic2 '()))
+  (define (set-ivar! iv val)
+    (with-mutex (ivar-mut iv)
+      (let ((old (ivar-val iv)))
+	(unless (eq? old magic2)
+	  (error 'set-ivar! "error ivar should only be assigned once!  Already contains value ~s\n" old))
+	(for-each (lambda (fn) (fn val)) (ivar-waiting iv))
+	(set-ivar-val! iv val))))
+  ;; Apply a function to the ivar when its available:
+  (define (apply-to-ivar fn iv)
+    (with-mutex (ivar-mut iv)
+      (let ((val (ivar-val iv)))
+	(if (eq? val magic2)
+	    (set-ivar-waiting! iv (cons fn (ivar-waiting iv)))
+	    (fn val)))))
+  ;; Testing for availability is not part of the 
+  (define (ivar-avail? iv) (not (eq? (ivar-val iv) magic2)))
+
+  ;; --------------------------------------------------------------------------------	      
+
+
   (define-syntax pcall
     (syntax-rules ()
       [(_ op (f x) e2)
@@ -912,6 +946,7 @@
 			 (op (shadowframe-argval frame) val1)]))
 
 	       ))))]))
+
 
   ;; Returns values in a list
   (define-syntax par

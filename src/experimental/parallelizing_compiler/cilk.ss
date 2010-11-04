@@ -95,7 +95,6 @@
 	(cilk    
 	 (define left (spawn cilkfib (fx- n 1)))
 	 (define right (cilkfib (fx- n 2)))
-
 	 (sync)
 	 (fx+ left right))))
 
