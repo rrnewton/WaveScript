@@ -6,7 +6,7 @@
 ;; TODO: Par should really return multiple values... not a list.
 
 
-(library (par5)
+(library (par6)
  (export 
      init-par     ;; Run initialization code (fork threads, etc)
      shutdown-par ;; Tell workers to stop spinning.
@@ -36,7 +36,8 @@
  (import (rnrs (6))
 	 (rnrs arithmetic fixnums (6))
          (only (scheme) fork-thread mutex-acquire mutex-release make-mutex make-thread-parameter get-thread-id
-	       gensym list-head iota void random format printf fprintf define-record) ;; Chez scheme primitives
+	       gensym list-head iota void random format printf fprintf define-record
+	       trace-define base-exception-handler) ;; Chez scheme primitives
 	 )
 
 ;; [2010.11.01] The default error isn't working on other threads for me:
@@ -44,7 +45,7 @@
  (fprintf (current-error-port) "\nERROR: ~a" (apply format str args))
  (flush-output-port (current-error-port))
  (par-status 'verbose)
- (exit))
+ (exit 1))
 
 ;; DEBUGGING:
 (define DEBUG #t)
@@ -159,8 +160,19 @@
 	  (cons ptr (loop (shadowframe-next ptr)))
 	 '())))
 
+  (define (install-exception-handler)
+    ;; Because of our problems with exceptions on other threads:
+    (base-exception-handler 
+     (lambda (x) 
+       (fprintf (current-error-port) "CAUGHT EXCEPTION\n")
+       ;(threaderror 'system-exception x)
+       (exit 1)
+       )))
+
   (define (init-par num-cpus)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
+    
+    (install-exception-handler)
     (let ((mystack (new-stack)))
       (with-mutex global-mut   
 	(ASSERT (eq? threads-registered 1))
@@ -227,7 +239,8 @@
 		      #f)]
 		    )
 	    (let ((oldstatus (shadowframe-status frame)))
-	      (when DEBUG (print "  (TID ~s) STOLE work! ~s\n" (get-thread-id) frame))
+	      (when DEBUG (print "  (TID ~s) STOLE work! frame: ~s ~s ~s\n" (get-thread-id)
+				 (shadowframe-status frame) (shadowframe-oper frame) (shadowframe-argval frame)))
 	      ;;(print "STOLE work! ~s \n" frame)
 
 	      (set-shadowframe-status! frame 'stolen) ;; Could have done this atomically with CAS
@@ -241,7 +254,8 @@
 					      (ivar-val (shadowframe-argval frame)))
 					    (shadowframe-argval frame))
 				        ))
-	      (when DEBUG (print "  (TID ~s) DONE with stolen work: ~s\n" (get-thread-id) frame))
+	      (when DEBUG (print "  (TID ~s) DONE with stolen work:~s ~s ~s\n" (get-thread-id)
+				 (shadowframe-status frame) (shadowframe-oper frame) (shadowframe-argval frame)))
 
 	      ;; Now we *must* acquire the lock (even if we block) in order to set the status to done.
 	      ;; [2010.10.31]  Really? Why?  Shouldn't we own it after it's stolen?
@@ -258,27 +272,27 @@
   (define (find-and-steal-once!)
     (let* ([ind (random numprocessors)]
 	   [stack (vector-ref allstacks ind)])
-	(let* ([frames (shadowstack-frames stack)]
-	       [tl     (shadowstack-tail stack)]
-	       ;[hd     (shadowstack-head stack)]
-	       )
 #;  ;; FIXME: head not used yet:
 	  (when (fx> tl 0)  ;; If tail==0 there are no frames to steal.
 	    (steal-work! stack (vector-ref frames hd)))
 
 	  ;; Testing: This is a silly strategy to scan all of them from the base:
 	  ;; Inefficient, but should be correct.
-	  (let frmloop ([i 0])
-	    (if (fx=? i tl)
-		#f ;; No work on this processor, try again. 
-		(if (steal-work! stack (vector-ref frames i))
+	  (let frmloop ([fptr (shadowstack-head stack)])
+	    (if fptr 
+	        (if (steal-work! stack fptr)
 		    #t
-		    (frmloop (fx+ 1 i))))))))
+		    ;; NOTE: we are reading the tail pointer in an unsafe way...
+		    ;; We might follow it to a dead frame.. but that's ok we will have to lock it before proceeding.
+		    (frmloop (shadowframe-next fptr)))
+		#f ;; No work on this processor, try again. 
+		))))
 
   ;; Fork a worker thread and return its stack:
   (define (make-worker)
     (define stack (new-stack))
     (fork-thread (lambda ()                
+		   (install-exception-handler)
                    (this-stack stack) ;; Initialize stack. 
 		   (let ([myid 
 			  (with-mutex global-mut ;; Register our existence.
@@ -302,18 +316,43 @@
   ;; TODO: possibly make these syntax instead of functions:
   (define (push! stack oper val status)
     ;; No lock here because only the owning thread is allowed to push.
-    (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
-      ;; Initialize the frame
-      (set-shadowframe-oper!   frame oper)
-      (set-shadowframe-argval! frame val)
-      (set-shadowframe-status! frame  status)
-      (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
-      ;; TODO: could check for stack-overflow here and possibly add another stack segment...
+    (let* ([oldframe (shadowstack-tail stack)]
+           ;; Could pull from a pool here I suppose to not have to make new mutex:
+           [frame (make-shadowframe (make-mutex) status oper val oldframe #f)]
+	   [head (shadowstack-head stack)])
+
+      ;; Finally, install new tail, LOCK FREE, only this thread can do it:
+      (set-shadowstack-tail! stack frame)
+      (when oldframe (set-shadowframe-next! oldframe frame)) ;; Link the old frame for thieves.
+      ;; If head is null, set it too (last):
+      (unless head (set-shadowstack-head! stack frame))
+      (when DEBUG (ASSERT (if oldframe head #t))) ;; The head should be #f only when tail was also #f.
       frame))
   (define (pop! stack) 
+     #;
      (when DEBUG (print "  (TID ~s) Popping frame #~a: ~a\n" (get-thread-id) (shadowstack-tail stack) 
 			(vector-ref (shadowstack-frames stack) (shadowstack-tail stack))))
-     (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
+     (let* ([oldtail (shadowstack-tail stack)]
+     	    [head (shadowstack-head stack)]
+            [_ (when DEBUG (ASSERT oldtail) (ASSERT head))]
+            [prev (shadowframe-prev oldtail)])
+       ;; NO LOCKS: This will also only be done by the owning thread.
+
+       ;; FIXME: TODO: WILL PROBABLY NEED TO LOCK TO CHANGE HEAD!!!
+       (if (eq? oldtail head)
+	 ;; If we wipe out the very last frame need to change head too.
+         (begin
+	    (when DEBUG (ASSERT (not prev)))
+	    (set-shadowstack-head! stack #f) ;; DOUBLE CHECK THE CONCURRENT BEHAVIOR HERE.
+	    ;; As soon as we deactivate the head, that should foil all thieves.
+	    (set-shadowstack-tail! stack #f)
+	    ;(when DEBUG (print "  (TID ~s) Stack went empty!\n" (get-thread-id)))
+	    )
+	 (begin 
+	   (set-shadowframe-next! prev #f) ;; Cut of thieves following the chain.
+	   (set-shadowstack-tail! stack prev) ;; For *this* worker thread, note the new tail.
+	 ))
+       ))
 
   ;; Capturing a common sequence of operations to avoid duplication:
   (define-inlined (mark-pop-release! stack frame)

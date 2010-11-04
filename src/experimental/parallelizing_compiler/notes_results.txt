@@ -1167,3 +1167,31 @@ Even more with ICC.... hmm... what is the solution?
                  U __gxx_personality_v0@@CXXABI_1.3
                  U sched_yield@@GLIBC_2.2.5
 
+
+[2010.11.02] {Working on par6}
+
+Works sometimes on small fibs...
+Getting some deadlocks.  Probably need to lock that head.
+
+Is the following correct?  I'm seeing many hits against the bottom of
+the stack:
+
+     |(pop!
+	#[shadowstack 407 #0=#[shadowframe #<mutex> #f #<procedure fib> 3 #f #f] #0#])
+       (TID 0) Stack went empty!
+     |#<void>
+     |(pop!
+	#[shadowstack 407 #0=#[shadowframe #<mutex> #f #<procedure fib> 2 #f #f] #0#])
+       (TID 0) Stack went empty!
+     |#<void>
+     |(pop!
+	#[shadowstack 407 #0=#[shadowframe #<mutex> #f #<procedure fib> 1 #f #f] #0#])
+       (TID 0) Stack went empty!
+
+I guess so...
+
+I'm having a lot of trouble reproducing that deadlock now...  Alas,
+the deadlock could also be an EXCEPTION on another thread... sigh.
+I should redefine the exception handler.
+
+

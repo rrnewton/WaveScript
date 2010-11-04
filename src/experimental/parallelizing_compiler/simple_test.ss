@@ -6,16 +6,22 @@
   (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-(include "chez_threaded_utils.ss")
-(import threaded_utils)
+;(include "chez_threaded_utils.ss")
+;(import threaded_utils)
+;(import (par5))
+(import (par6))
 
+(print-gensym #f)
+(print-graph #t)
 
+;(define test-depth 5)
+(define test-depth 33)
 ;(define test-depth 27)
 ;(define test-depth 23)
 ;(define test-depth 25)
 ;(define test-depth 42)
 ;(define test-depth 40) ;; fib of 40... is that 165580141 yes?
-(define test-depth 33)
+
 
 #;
 (define (test)
