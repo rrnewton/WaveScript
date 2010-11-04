@@ -1041,6 +1041,9 @@ the odd thing is that it looks like TID 0 does finish some stolen
 work... and that that should unblock TID 1...  I could probably
 disable self-stealing to make this a little clearer.
 
+While using petite I noticed a different deadlock... it stopped right
+after reading I1 in Will's example...
+
 
 ====================================================================================================
 Also, here's one of the runs that tries to steal forever:
@@ -1146,3 +1149,21 @@ Also, here's one of the runs that tries to steal forever:
       (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
       (TID 0) ATTEMPT TO STEAL ivar-blocked FRAME, avail #f 
       .......
+
+
+[2010.11.01] {FFI adventures}
+
+Trying to do a wrapper around TBB... these symbols are undefined:
+
+                 U _Znwm
+                 U __gxx_personality_v0
+                 U sched_yield@@GLIBC_2.2.5
+
+Even more with ICC.... hmm... what is the solution?
+
+                 U _Unwind_Resume@@GCC_3.0
+                 U _ZdlPv@@GLIBCXX_3.4
+                 U _Znwm@@GLIBCXX_3.4
+                 U __gxx_personality_v0@@CXXABI_1.3
+                 U sched_yield@@GLIBC_2.2.5
+

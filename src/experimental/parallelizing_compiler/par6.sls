@@ -28,8 +28,8 @@
      set-shadowframe-mut! set-shadowframe-status! 
      shadowframe-argval shadowframe-oper set-shadowframe-argval! set-shadowframe-oper!
      
-     shadowstack-frames set-shadowstack-frames!
      shadowstack-tail  set-shadowstack-tail!
+     shadowstack-head  set-shadowstack-head!
      this-stack
      )
   
@@ -47,7 +47,7 @@
  (exit))
 
 ;; DEBUGGING:
-(define DEBUG #f)
+(define DEBUG #t)
 
 (define-syntax ASSERT
   (lambda (x)
@@ -85,32 +85,35 @@
 	 [(_ x ...) (begin e ...)]))]))
 
 ;; ================================================================================
-;; <-[ VERSION 5 ]->
 
-;; Using a more restricted "pcall" syntax to try to minimize allocation.
-;; Also, this includes Kent's modifications to get rid of allocation.
+;; Version 6: Cactus Stack.
 
 ;; CHANGELOG:
+;;
+;; [2007.?] Using a more restricted "pcall" syntax to try to minimize
+;; allocation.  Also, this includes Kent's modifications to get rid of
+;; allocation.
 ;; 
-;; [2010.10.31] Adding support for blocking on ivars. This is a new state for a shadowframe.
-    
-  ;; STATE:
+;; [2010.10.31] Adding support for blocking on ivars. This is a new
+;; state for a shadowframe.
 
-  ;; Each thread's stack has vector of frames, from oldest to newest.
-  ;; We use a lock-free approach for mutating/reading the frame vector itself.
-  ;; A thief might steal an old inactive frame, but this poses no problem.
+  ;; STATE:
+  ;;
+  ;; Each thread's stack has a doubly-linked list of frames, from oldest to newest.
   ;; 
-  ;; A thread's "stack" must be as efficient as possible, because
-  ;; it essentially replaces the native scheme stack where par calls
-  ;; are concerned.  (I wonder if continuations can serve any purpose here.)
-  ;; Note, tail is the "top", head is always index 0 in this
-  ;; prototype.  We add to tail, steal from the front.
-  (define-record shadowstack (id tail frames)) 
+  ;; Note, head is the "bottom" and tail is the "top".  We add to tail, steal from head.
+  (define-record shadowstack (id head tail))
+  ;; Only the owning thread will change the tail pointer, but any
+  ;; thread may change the head pointer.  They must hold the lock on
+  ;; the frame pointed to by head.
+
   
   ;; Frames are locked individually.
   ;; status may be 'available, 'ivar-blocked, 'stolen, or 'done
-  (define-record shadowframe  (mut status oper argval)) ;; argval is both argument and stores result
-
+  ;; argval is both argument and stores result
+  ;; prev/next are #f or pointers to other frames
+  (define-record shadowframe  (mut status oper argval prev next)) 
+  
   ;; There's also a global list of threads:
   (define allstacks '#()) ;; This is effectively immutable.
   (define par-finished 'par-finished-uninit) ;; This gets polled without the lock.
@@ -118,15 +121,13 @@
   ;; And a mutex for global state (threads-registered, numprocessors, allstacks...):
   (define global-mut (make-mutex)) 
 
-  (define initial-stack-size 500)
-
   ;; A new stack has no frames, but has a (hopefully) unique ID:
   (define (new-stack) 
     (make-shadowstack (random 10000) 
-      0            ;; Tail pointer.
-      (vector-build initial-stack-size
-        (lambda (_) (make-shadowframe (make-mutex) #f #f #f)))))
-
+      #f            ;; Head pointer.
+      #f            ;; Tail pointer.
+      ))
+  
   ;; A per-thread parameter.
   (define this-stack (make-thread-parameter 'stack-uninit))
   (define numprocessors #f) ;; Mutated below.
@@ -143,8 +144,20 @@
   ;   (define (print . args) (apply printf args))
   ;   (define (print . args) (void)) ;; fizzle
 
-
   ;; ----------------------------------------
+
+  (define (shadowstack-length stack)
+    ;; Beware of races here:
+    (let loop ((ptr (shadowstack-head stack)) (n 0))
+      (if ptr
+	  (loop (shadowframe-next ptr) (fx+ 1 n))
+	 n)))
+  (define (shadowstack->list stack)
+    ;; Beware of races here:
+    (let loop ((ptr (shadowstack-head stack)))
+      (if ptr
+	  (cons ptr (loop (shadowframe-next ptr)))
+	 '())))
 
   (define (init-par num-cpus)
     (fprintf (current-error-port) "\n  [par] Initializing PAR system for ~s threads.\n" num-cpus)
@@ -176,13 +189,12 @@
 	(fprintf (current-error-port)
 		 "  [par] Par status:\n        par-finished ~s\n        allstacks: ~s\n        stacksizes: ~s\n\n"
 		 par-finished (vector-length allstacks)
-		 (map shadowstack-tail stackls))
+		 (map shadowstack-length stackls))
 	(when (memq 'verbose args)
 	  (for-each (lambda (i stack) 
 	              (printf "STACK ~s:\n" i)
 	              (for-each (lambda (f) (printf "   ~a\n" f)) 
-			(list-head (vector->list (shadowstack-frames stack)) 
-				   (shadowstack-tail stack)))
+			(shadowstack->list stack))
 		      )
 	    (iota (length stackls)) stackls))
 	)))
@@ -191,6 +203,14 @@
 
   ;; Try to do work and mark it as done.
   (define (steal-work! stack frame)
+    #;
+    (define (bump)
+      ;; How much can we do just holding the lock on the head-frame on this stack?
+      (set-shadowstack-head! stack (fx+ 1 (shadowstack-head stack)))  ;; FIXME: need atomic ops
+      (when DEBUG (print "BUMPED head on stack ~s to ~s because of status ~s \n" 
+			 (shadowstack-id stack) (shadowstack-head stack) (shadowframe-status frame)))
+      )
+
     (case (shadowframe-status frame) ;; Check BEFORE locking.
       [(available ivar-blocked)   
        (and (mutex-acquire (shadowframe-mut frame) #f) ;; Don't block on it           
@@ -202,7 +222,7 @@
 	       (when DEBUG (print "  (TID ~s) ATTEMPT TO STEAL ivar-blocked FRAME, avail ~s \n" 
 				  (get-thread-id) (ivar-avail? (shadowframe-argval frame)) ))
 	       (ivar-avail? (shadowframe-argval frame))]  ;; TODO: if blocked on ivar, might want a different return value for steal-work!
-	      [else (begin 
+	      [else (begin ;(bump) ;; FIXME: Head not used yet.
 		      (mutex-release (shadowframe-mut frame)) ;; If someone beat us here, we fizzle
 		      #f)]
 		    )
@@ -230,6 +250,8 @@
 	      (mutex-release (shadowframe-mut frame))
 	      #t)
 	      )]
+      ;[(stolen done) (with-mutex (shadowframe-mut frame) (bump))] ;; FIXME: Head not used yet.
+      ;[(#f) #f])
       [else #f]
     ))
 
@@ -238,7 +260,12 @@
 	   [stack (vector-ref allstacks ind)])
 	(let* ([frames (shadowstack-frames stack)]
 	       [tl     (shadowstack-tail stack)]
+	       ;[hd     (shadowstack-head stack)]
 	       )
+#;  ;; FIXME: head not used yet:
+	  (when (fx> tl 0)  ;; If tail==0 there are no frames to steal.
+	    (steal-work! stack (vector-ref frames hd)))
+
 	  ;; Testing: This is a silly strategy to scan all of them from the base:
 	  ;; Inefficient, but should be correct.
 	  (let frmloop ([i 0])
@@ -284,7 +311,6 @@
       ;; TODO: could check for stack-overflow here and possibly add another stack segment...
       frame))
   (define (pop! stack) 
-  #;
      (when DEBUG (print "  (TID ~s) Popping frame #~a: ~a\n" (get-thread-id) (shadowstack-tail stack) 
 			(vector-ref (shadowstack-frames stack) (shadowstack-tail stack))))
      (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))

@@ -9,7 +9,7 @@
 
 ;(include "chez_threaded_utils.ss")
 ;(import threaded_utils)
-(import (par5))
+(import (par6))
 
 ;; ====================================================================================================
 ;; Example programs
