@@ -24,7 +24,7 @@
     (sync)
     (g)
     (baz b d)
-    (sync)
+;    (sync)
     ))
 
 (define prog2
@@ -52,11 +52,13 @@
 	 ;;((define var (spawn f ...)) rest ...)
 	 (cons #'var (gather-spawn-vars #'(rest ...)))]
         [(_ rest ...) (gather-spawn-vars #'(rest ...))]))
-    
-    (define (convert-cmds cmds)
+
+    ;; We convert a subsequence of the cilk construct (until the next sync point)
+    ;; We also get a list of all the subsequent fork/join blocks within the cilk construct:
+    (define (convert-cmds cmds subsequent-blocks)
       (define (make-pcall rest right)
 	#`(pcall (lambda (a b) (void)) ;; Nothing to do after join.
-		 ((lambda (_) #,(convert-cmds rest)) 'ignored) ;; continuation
+		 ((lambda (_) #,(convert-cmds rest subsequent-blocks)) 'ignored) ;; continuation
 		 #,right))
       (syntax-case cmds (spawn sync define)
         [() #'(void)]
@@ -68,12 +70,12 @@
 
 	;; This allows variable bindings within a Cilk block.
 	[((define var other) rest ...) 
-	  #`(begin (set! var other) #,(convert-cmds #'(rest ...)))]
+	  #`(begin (set! var other) #,(convert-cmds #'(rest ...) subsequent-blocks))]
 	[(sync) (error 'cilk "internal error")]
         [(other) #'other]
         [(other rest ...)
 	 #`(begin other 
-	 	  #,(convert-cmds #'(rest ...)))]))
+	 	  #,(convert-cmds #'(rest ...) subsequent-blocks))]))
       
     ;; Returns a list of lists of commands, separated by the syncs (join points).
     (define (chop-at-syncs cmds)
@@ -88,10 +90,28 @@
 	
     (syntax-case x (spawn sync define)
       [(cilk cmds ...)
-       (let ((vars (gather-spawn-vars #'(cmds ...))))
-        #`(let #, (map (lambda (v) (list v (syntax 'cilk-var-uninit))) vars)
-	    #,@(map convert-cmds 
-		 (chop-at-syncs #'(cmds ...)))))
+       (let* ([vars (gather-spawn-vars #'(cmds ...))]
+              [blocks (chop-at-syncs #'(cmds ...))]
+	      [names (map (lambda (n) (datum->syntax #'cilk
+				       (string->symbol (string-append "chunk" (number->string n)))
+				       ))
+		        (iota (length blocks))
+			;(syntax->list #'(cmds ...))
+			)]
+	      [exprs (let loop ([ls blocks] [names names])
+		       (if (null? ls) '()
+			   (cons (convert-cmds (car ls) (cdr names))
+				 (loop (cdr ls) (cdr names)))))])
+        #`(let #,(map (lambda (v) (list v (syntax 'cilk-var-uninit))) vars)
+	    #,@exprs
+
+	   ;; This (as yet unused) version is for packaging up each
+	   ;; fork/join block as a separate function (to assemble the
+	   ;; continuation piecemeal).
+#;	    
+	    (let #,(map (lambda (v e) #`(#,v (lambda () #,e))) names exprs)
+	       #,@(map list names)
+	    )))
       ])))
 
 ;; ====================================================================================================
@@ -99,6 +119,7 @@
 ;(pretty-print (expand prog1))
 (print-gensym #f)
 ;(pretty-print (expand prog1))
+;(pretty-print (expand prog2))
 
 ;; ====================================================================================================
 

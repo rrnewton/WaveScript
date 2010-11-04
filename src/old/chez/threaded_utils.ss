@@ -359,7 +359,6 @@
     (syntax-rules ()
       [(_ op (f x) e2)
        (let ([stack (this-stack)]) ;; thread-local parameter
-#;
          (define (push! oper val)
            (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
              ;; Initialize the frame
@@ -372,16 +371,7 @@
          (define (pop!) (set-shadowstack-tail! stack (fx- (shadowstack-tail stack) 1)))
 
          (begin ;let ([op1 op] [f1 f] [x1 x]) ;; Don't duplicate subexpressions:
-	   (let ([frame ; (push! f x)
-	          ;; Inlining push!:
-		  (let ([frame (vector-ref (shadowstack-frames stack) (shadowstack-tail stack))])
-		    ;; Initialize the frame, don't need to hold the lock because only the owning thread can do this.
-		    (set-shadowframe-oper!   frame f)
-		    (set-shadowframe-argval! frame x)
-		    (set-shadowframe-status! frame  'available)
-		    (set-shadowstack-tail! stack (fx+ (shadowstack-tail stack) 1)) ;; bump cursor
-		    ;; TODO: could check for stack-overflow here and possibly add another stack segment...
-		    frame)])
+	   (let ([frame (push! f x)])
 	     (let ([val1 e2])
 	       ;; We're the parent, when we get to this frame, we lock it off from all other comers.
 	       ;; Thieves should do non-blocking probes.
@@ -489,6 +479,11 @@
     ))
 
 
+;; ================================================================================
+;; <-[ VERSION 6 ]->
+
+;; This version will block an entire worker (and use its real continuation) whenever a read happens.
+;; It will maintain a queue of unblocked workers looking to rejoin the computation.
 
 
 
