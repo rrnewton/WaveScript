@@ -43,9 +43,13 @@ fun parse_timestamp(arr) {
   //print("parse_timestamp: FIXME: implement this, should parse: "++ String:fromArray(arr) ++ "\n");
   // TODO: what is the proper epoch here?  Should we use the 1970 start?  What does receivedtime use?
 
+  print("PARSING TIMESTAMP " ++ String:fromArray(arr) ++ "\n");
+
   tmp = arr[0];
   fun next(last, next) {
     arr[last]:=tmp; tmp:=arr[next]; arr[next]:='|'; // HACK  
+
+    print("ABOUT TO STRTOL...\n");
     Int64! Unix:Array:ws_strtoll(arr, last, 10);
   };
 
@@ -56,8 +60,11 @@ fun parse_timestamp(arr) {
   n = next(10,12);
   s = next(12,14);
 
+  print("ABOUT TO DO FINAL STRTOL..."++ String:fromArray(Array:sub(arr, 15, 3))  ++"\n");
   frac = Int64! Unix:Array:ws_strtoll(arr, 15, 10);
   //  print("Fraction "++ Array:sub(arr, 15, 3) ++ "\n");
+
+  print("Finished FINAL STRTOL...\n");
 
   // Output in milliseconds:
   (y * 365 * 24 * 60 * 60 * 1000) + // FIXME -- INNACCURATE!!!
@@ -190,7 +197,13 @@ fun read_TAQ_ASCII_tuples(file) {
     };
 
     fun read_string(i,len) String:fromArray( buf.sub(i,len) ); // Unnecessary copy!
-    fun read_arrstring(i,len) ( buf.sub(i,len) ); // Unnecessary copy!
+
+    fun read_arrstring(i,len) { 
+         slice = buf.sub(i, len+1); // Unnecessary copy!
+         // Null terminate it for the sake of the C FFI:
+         slice[len] := intToChar(0);
+         slice
+    };
 
     // TODO: FIXME: DO SOMETHING TO CATCH MISSING FIELDS THAT WE EXPECT TO BE THERE!!!
 
