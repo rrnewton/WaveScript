@@ -125,8 +125,9 @@ void WSQ_Shutdown() {
   Sscheme_deinit(); // Chez call to bring down the runtime.
 }
 
+void WSQ_AddOp(wsid_t ndid, const char* optype, const char* inputs, 
+	       const char* outputs, const char* args) {
 
-void WSQ_AddOp(wsid_t ndid, const char* optype, const char* inputs, const char* outputs, const char* args) {
     Scheme_AddOp(ndid, optype, inputs, outputs, args);
 }
 

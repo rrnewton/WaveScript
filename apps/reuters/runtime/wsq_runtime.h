@@ -92,7 +92,9 @@ void WSQ_ConnectRemoteIn  (wsid_t id, wsid_t in,  const char* host, int port, co
 // In place of the above per-operator calls, there is a single call
 // which can add operators of any kind.
 
-void WSQ_AddOp(wsid_t id, const char* optype, const char* inputs, const char* outputs, const char* args);
+void WSQ_AddOp(wsid_t id, const char* optype, const char* inputs, 
+	       const char* outputs, const char* args);
+
 
 // See README.txt file for the syntax of supported operators (e.g.,
 // what to put in the char* fields).
