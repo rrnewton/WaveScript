@@ -59,9 +59,12 @@ namespace Unix {
   // Only supporting foreign *functions* right now.
   //stdout :: FileDescr = foreign("stdout",  stdio);
   // These are defined in wsc2.h:
+// [2010.12.09] Disabling temporarily:
+/*
   stdout :: FileDescr = ((foreign("ws_get_stdout",  stdio) :: () -> FileDescr))();
   stderr :: FileDescr = ((foreign("ws_get_stderr",  stdio) :: () -> FileDescr))();
   stdin  :: FileDescr = ((foreign("ws_get_stdin" ,  stdio) :: () -> FileDescr))();
+*/
 
   puts :: String -> () = foreign("puts", stdio);
 
@@ -321,8 +324,9 @@ fun fileToString(filename) {
 main = { 
   strings = iterate _ in timer(3.0) {
     state { cnt = 0; 
-            stdout = Unix:fopen("/dev/stdout", "a");
+            // stdout = Unix:fopen("/dev/stdout", "a"); // Disabling because it screws up ws.early [2010.12.09]
           }
+    stdout = Unix:fopen("/dev/stdout", "a");
     using Unix;
     s = "Emitting "++cnt++"\n";
     //print("Trying to print through stdout... string length "++String:length(s)++"\n");

@@ -1182,6 +1182,7 @@
 	(define prepped (apply wsint-early-passes args))
 	(when (>= (regiment-verbosity) 1) 
 	  (printf "Running program EARLY:\n"))
+	(when (>= (regiment-verbosity) 5) (display prepped))
 	(run-wavescript-sim prepped))))
 
   (values wsint wsint-early wsint-early-passes)))
@@ -1211,7 +1212,8 @@
     (when (>= (regiment-verbosity) 1)
       (printf "Executing stream program with output to file: ~s\n" (wsint-output-file))
       (printf "------------------------------------------------------------\n"))
-    (slist->file  (run)  (wsint-output-file) 'display)]
+     ;; Evaluate the stream in memory and then write it out to a file:
+     (slist->file  (run)  (wsint-output-file) 'display)]
    [(wsint-tuple-limit)
     (when (>= (regiment-verbosity) 1)
       (printf "Executing stream program:\n")

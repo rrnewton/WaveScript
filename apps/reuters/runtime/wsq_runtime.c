@@ -64,6 +64,7 @@ void (*Scheme_Shutdown) ();
 
 void (*Scheme_SetOutputFile) (const char* path);
 void (*Scheme_SetQueryName) (const char* name);
+void (*Scheme_SetBackend) (enum WSQBackend mode);
 
 
 //==============================================================================
@@ -236,8 +237,9 @@ void WSQ_Init(const char* outfile) {
 
   ptr shutdwn = Stop_level_value( Sstring_to_symbol("WSQ_Shutdown-entry"));
 
-  ptr setout    = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
-  ptr setquery  = Stop_level_value( Sstring_to_symbol("WSQ_SetQueryName-entry"));
+  ptr setout     = Stop_level_value( Sstring_to_symbol("WSQ_SetOutputFile-entry"));
+  ptr setquery   = Stop_level_value( Sstring_to_symbol("WSQ_SetQueryName-entry"));
+  ptr setbackend = Stop_level_value( Sstring_to_symbol("WSQ_SetBackend-entry"));
 
   Scheme_BeginTransaction = (intfun)Sinteger_value(tbegin);
   Scheme_EndTransaction   = (int(*)())Sinteger_value(tend);
@@ -263,6 +265,7 @@ void WSQ_Init(const char* outfile) {
   Scheme_SetOutputFile    = (void(*)(const char*))Sinteger_value(setout);
 
   Scheme_SetQueryName     = (void(*)(const char*))Sinteger_value(setquery);
+  Scheme_SetBackend       = (void(*)(const char*))Sinteger_value(setbackend);
 
   // ============================================================
   if (verbose>=1) printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
@@ -278,6 +281,10 @@ void WSQ_Init(const char* outfile) {
 
 void WSQ_SetQueryName(const char* name) {
    Scheme_SetQueryName(name);
+}
+
+void WSQ_SetBackend(enum WSQBackend mode) {
+   Scheme_SetBackend(mode);
 }
 
 

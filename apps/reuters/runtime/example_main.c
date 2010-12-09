@@ -12,8 +12,10 @@ void transaction1();
 
 int main(int argc, char* argv[]) {
 
-  //WSQ_Init("query_output.log");
+//  WSQ_Init("query_output.log");
   WSQ_Init("");
+  WSQ_SetQueryName("foobar"); // Optional
+//  WSQ_SetBackend(SCHEME_BACKEND); // Optional
 
   // Simple Example:
   //================================================================================
@@ -21,9 +23,9 @@ int main(int argc, char* argv[]) {
   if (1) {
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
-        //WSQ_AddOp(1, "RandomSource", "", "100", "100000 |foobar.schema");
+        WSQ_AddOp(1, "RandomSource", "", "100", "10 |foobar.schema");
         //WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100 |foobar.schema|short.log");
-	WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100 |foobar.schema|short_old.log");
+
         //WSQ_AddOp(2, "Filter", "100", "200", "(PRICE >= 50) AND (PRICE <= (50 * 10))");
 
         //WSQ_AddOp(3, "MatchRecognize", "100", "200", "ALL | A B | A AS (BID > 50), B AS (SYMBOL = \"IBM\")");

@@ -128,8 +128,7 @@
 
 		 readFile-wsearly FILE_EXISTS GETENV SHELL SETCPU SETCPUDEEP
 		 clock realtime getID
-
-		 IFPROFILE
+		 IFPROFILE marshal unmarshal ptrToArray
 
 		 ;HACK_O_RAMA
 
@@ -2276,6 +2275,12 @@
 ;(define (IFPROFILE a b) b)
 (define (IFPROFILE a b) a)
 
+(define (marshal . _)
+  (error 'marshal "not implemented in ws.early"))
+(define (unmarshal . _)
+  (error 'unmarshal "not implemented in ws.early"))
+(define (ptrToArray . _)
+  (error 'ptrToArray "not implemented in ws.early"))
 
 ) ; End module.
 

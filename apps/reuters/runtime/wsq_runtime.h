@@ -23,6 +23,14 @@ void WSQ_Shutdown();
 
 void WSQ_SetQueryName(const char* name);
 
+enum WSQBackend {
+ C_BACKEND = 1,        // Uses `wsc2` as the backend.
+ SCHEME_BACKEND = 2,  // Uses `ws` as the backend.
+ SCHEMEQUICK_BACKEND = 3  // Uses `ws-early` as the backend.
+}; 
+
+void WSQ_SetBackend(enum WSQBackend mode);
+
 //==============================================================================
 // Runtime Query Graph Construction.
 //==============================================================================

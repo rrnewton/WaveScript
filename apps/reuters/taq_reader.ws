@@ -43,13 +43,10 @@ fun parse_timestamp(arr) {
   //print("parse_timestamp: FIXME: implement this, should parse: "++ String:fromArray(arr) ++ "\n");
   // TODO: what is the proper epoch here?  Should we use the 1970 start?  What does receivedtime use?
 
-  // print("PARSING TIMESTAMP " ++ String:fromArray(arr) ++ "\n");
-
   tmp = arr[0];
   fun next(last, next) {
     arr[last]:=tmp; tmp:=arr[next]; arr[next]:='|'; // HACK  
 
-    //print("ABOUT TO STRTOL...\n");
     Int64! Unix:Array:ws_strtoll(arr, last, 10);
   };
 
@@ -60,11 +57,7 @@ fun parse_timestamp(arr) {
   n = next(10,12);
   s = next(12,14);
 
-  //print("ABOUT TO DO FINAL STRTOL..."++ String:fromArray(Array:sub(arr, 15, 3))  ++"\n");
   frac = Int64! Unix:Array:ws_strtoll(arr, 15, 10);
-  //  print("Fraction "++ Array:sub(arr, 15, 3) ++ "\n");
-
-  // print("Finished FINAL STRTOL...\n");
 
   // Output in milliseconds:
   (y * 365 * 24 * 60 * 60 * 1000) + // FIXME -- INNACCURATE!!!
@@ -102,7 +95,7 @@ fun read_TAQ_ASCII_tuples(file) {
       if DEBUG then print("Filling buffer from file " ++ hndl  ++"\n");
       if ptrIsNull(hndl) then wserror("File was not opened successfully: " ++ file);
       num_bytes := fread_arr(buf, 1, bufsize, hndl);
-      if num_bytes == 0 then { print("End of stream reached.\n"); exit(0); }; // File is finished, should emit EOS.
+      if num_bytes == 0 then { print("End of stream reached.\n"); wsexit(0); }; // File is finished, should emit EOS.
       i := 0; 
       if DEBUG then print("Got bytes " ++ num_bytes ++"\n");
       if DEBUG then print(" prefix of what we got |"++ String:fromArray(buf.sub(0, min(100, bufsize))) ++"|\n");

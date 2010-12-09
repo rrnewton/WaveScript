@@ -96,8 +96,8 @@ fun wsq_randomSource(freq, schema) {
     emit (SYM= all_syms[i], 
           TIME= t, 
           PRICE= lastprice[i],
-	  VOLUME= randomI(10) + 1
-  	  );
+	      VOLUME= randomI(10) + 1
+  	      );
     t += randomI(10).gint;
   }
 }
@@ -391,7 +391,8 @@ fun wsq_printer(str, s) {
     print(str);
     print(x); 
     print("\n");    
-    Unix:fflush(Unix:stdout); 
+    // [2010.12.08] What made me do a flush? 
+    // Unix:fflush(Unix:stdout); 
   }
 }
 

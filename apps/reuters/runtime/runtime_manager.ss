@@ -347,7 +347,19 @@
 				     [(,vr) vr]
 				     [(,vr . ,[rest])
 				      `(app merge ,vr ,rest)]))))]
-	   [start-time (current-time 'time-monotonic)])
+	   [start-time (current-time 'time-monotonic)]
+	   [print-end-time 
+	    (lambda () 
+	      (let ([end-time (current-time 'time-monotonic)])
+		(vprintf 1 " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
+			 (+ (- (time-second end-time)
+			       (time-second start-time))
+			    (/ (- (time-nanosecond end-time)
+				  (time-nanosecond start-time))
+			       (* 1000.0 1000 1000))))))])
+
+      ;;[regiment-verbosity (if (>= verbose-mode) 5 1)]
+      (regiment-verbosity (- verbose-mode 1))
 
       (if (>= verbose-mode 2)
 	  (begin
@@ -359,12 +371,26 @@
 	    (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1"))
 	  )
 
-      (vprintf 1 " <WSQ>   Compiling generated WS program.\n")
-      
-      (match wsq-engine
-        [SCHEME (browse-stream (wsint (wsparse-postprocess prog) '()))]	
-	[C 
-	 
+
+      (case wsq-engine
+        [(SCHEME SCHEMEQUICK)
+	 (vprintf 1 " <WSQ>   JITing WS program inside Scheme process.\n")
+	 ;(regiment-verbosity 5)
+	 (let* ([strm 
+		 ((if (eq? wsq-engine 'SCHEMEQUICK) wsint-early wsint) 
+		  (wsparse-postprocess prog) '())]
+		[end-time (current-time 'time-monotonic)])
+	   (print-end-time)
+	   ;(wsint-output-file query-output-file)
+	   ;(wsint:direct-stream strm)
+	   ; (browse-stream   )
+	   ;; FORK A THREAD FOR THIS:
+	   (stream-dump strm (or query-output-file (current-output-port)))
+	   )]
+
+        ;; ====================================================================================================
+	[(C)
+	 (vprintf 1 " <WSQ>   Compiling generated WS program.\n")	 
 	 ;; Make it run in REALtime:
 	 (when (not (getenv "WSQ_MAXSPEED"))
 	   (vprintf 1 " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
@@ -372,18 +398,16 @@
 
 	 (when (getenv "WSQ_OUTEXE") (WSQ_SetQueryName-entry (getenv "WSQ_OUTEXE")))
 
-	 ;;====================================================================================================
-         (set-c-output-basename! query-app-name)
+	 ;;------------------------------------------------------------
+         (set-c-output-basename! query-app-name)      
 	 ;; Compile through the wsc2 backend:
 	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
-			;[regiment-verbosity (if (>= verbose-mode) 5 1)]
-			[regiment-verbosity (- verbose-mode 1)]
 			)
 	   (wscomp (wsparse-postprocess prog) '() 'wsc2)
 	   ;; The problem with this is our input program is already an sexp:
 	   ; (wsc2 prog "-o" (string-append (remove-file-extension query-app-name) ".exe"))
 	   )
-	 ;;====================================================================================================
+	 ;;------------------------------------------------------------
 
 	 ;; We use the undocumented interface to wsc2-gcc
 	 (putenv "CFILE" (string-append query-app-name ".c"))
@@ -398,13 +422,7 @@
 		(system "wsc2-gcc 2> wsc2-gcc.output.log") ;; FIXME: ASSUMES UNIX
 		)
 
-	    (let ([end-time (current-time 'time-monotonic)])
-	      (vprintf 1 " <WSQ>   Finished compilation (~a seconds); back to control program...\n"
-	        (+ (- (time-second end-time)
-		      (time-second start-time))
-		   (/ (- (time-nanosecond end-time)
-			 (time-nanosecond start-time))
-		      (* 1000.0 1000 1000)))))
+	    (print-end-time)
 
 	    (begin 
 	      (vprintf 1 "\n================================================================================\n")
@@ -426,20 +444,21 @@
 			    
 			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
 			  ])
-	      (if current-child-process
-		  (vprintf 1 " <WSQ> Created replacement child process (pid ~a).\n" pid)
-		  (vprintf 1 " <WSQ> Started child process to execute query (pid ~a).\n" pid))
-	      (set! current-child-process pid)
-	      (vprintf 1 "================================================================================\n\n")
+		(if current-child-process
+		    (vprintf 1 " <WSQ> Created replacement child process (pid ~a).\n" pid)
+		    (vprintf 1 " <WSQ> Started child process to execute query (pid ~a).\n" pid))
+		(set! current-child-process pid)
+		(vprintf 1 "================================================================================\n\n")
 
-	      ;; We need to return from the EndTransaction call back to the control program.
-	      ;; I wish there were some good way to plug the from-stdout into console-output-port 
-	      ;; without having a separate thread for the express purpose of echoing input.
+		;; We need to return from the EndTransaction call back to the control program.
+		;; I wish there were some good way to plug the from-stdout into console-output-port 
+		;; without having a separate thread for the express purpose of echoing input.
 
-	     ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
-	      (unless query-output-file
-		(fork-thread (echo-port from-stdout)))
-	      ))]))
+		;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
+		(unless query-output-file
+		  (fork-thread (echo-port from-stdout)))
+		))]
+	 [else (error 'WSQ_EndTransaction "unknown WSQ_BACKEND: ~s" wsq-engine)]))
     (set-box! curtransaction #f)
     ;; Return pid:
     current-child-process
@@ -931,6 +950,18 @@
       (vprintf 1 " <WSQ> Query base name (used for .c/.exe) set to: ~s\n" path)
    )))
 
+;; This can also be done from the environment variable "WSQ_BACKEND"
+(define-entrypoint WSQ_SetBackend (int) void
+  (lambda (mode)
+    (define sym
+      (case mode 
+	[(1) 'C]           
+	[(2) 'SCHEME]      
+	[(3) 'SCHEMEQUICK] 
+	[else (error 'WSQ_SetBackend "Error: unrecognized mode enum ~s" mode)]))
+    (vprintf 1 " <WSQ> Setting query mode to: ~s\n" sym)
+    (set! wsq-engine sym)
+    ))
 
 ;;==============================================================================
 ;; TESTS:

@@ -135,18 +135,24 @@
 	(error 'stream-drop "Stream ran out of elements before the end!")]
        [else (stloop (fx- n 1) (stream-cdr s))]))))
 
-;; Dump an entire stream to a file:
+;; Dump an entire stream to a file or port:
 (define stream-dump
-  (lambda (stream file)    
+  (lambda (stream input)    
     (define count 0)
-    (if (symbol? file) (set! file (symbol->string file)))
-    (when (file-exists? file) (delete-file file))
-    (let ([port (open-output-file (format "~a" file))])
-	       (parameterize ([print-length #f]
-			      [print-level #f]
-			      [print-graph #f]
-			      [ws-print-output-port port]
-			      )
+    (let ([port 
+             (cond 
+	      [(port? input) input]
+	      [(or (string? input) (symbol? input))
+	       (let ((file (if (symbol? input) (symbol->string input) input)))
+		 (when (file-exists? file) (delete-file file))
+		 (open-output-file (format "~a" file))
+	       )]
+	      [else (error 'stream-dump "unhandled input ~s" input)])])
+      (parameterize ([print-length #f]
+		     [print-level #f]
+		     [print-graph #f]
+		     [ws-print-output-port port]
+		     )
 		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
 		 (let ([go
 			(lambda ()
