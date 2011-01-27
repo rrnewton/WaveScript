@@ -1,0 +1,14 @@
+#!/bin/bash
+
+MACHINE=`uname`
+VER=7.9.4
+
+MT=`$REGIMENTD/depends/get_machine_type`
+
+PATH=depends/petite_chez_scheme$VER
+#PATH=depends/csv7.9.4/
+
+SCHEME=scheme
+if [ "$MT" == "i3nt" ]; then SCHEME=petite.exe; fi
+
+($REGIMENTD/$PATH/bin/$MT/$SCHEME -b $REGIMENTD/$PATH/boot/$MT/petite.boot $*)

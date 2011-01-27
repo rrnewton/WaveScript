@@ -1,0 +1,71 @@
+#!/bin/bash
+
+#TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+source `dirname $0`/assert_regimentd
+
+# Inline factor should be, say, 3:
+#FLAGS="-unsafe -ffast-math -inline 100 -noassert"
+FLAGS=""
+
+OUTPUT=query.caml.exe
+
+## ADD LOOP
+if [ "$1" == "-O3" ];
+## HUH? On some computers ocaml doesn't recognize "-ffast-math"
+then FLAGS="$FLAGS -unsafe  -inline 100 -noassert"; shift; 
+
+# NOTE, from the shootout:
+# ocamlopt -noassert -unsafe -ccopt -O3 -ccopt -fomit-frame-pointer q.ml -o q.exe
+fi
+
+if [ "$1" == "-O0" ];
+then FLAGS=""; shift;
+fi
+
+
+
+
+if [ ! -f "$1" ];
+then echo Usage: "wscaml <file> <options ...>";
+#     echo   (Options: -b  Build cpp file.)
+     echo 
+     echo   File \"$1\" does not exist.
+     exit 1;
+fi
+
+if [ ! -d /tmp/`whoami` ]; 
+then mkdir /tmp/`whoami`;
+fi
+
+
+D=`dirname "$1"`
+B=`basename "$1"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+shift;
+
+# Clean up first:
+rm -f "query.ml"
+
+export REGIMENT_OR_WAVESCRIPT=WS
+if regiment wscaml $abspath ${1+"$@"} ;
+then echo
+else #rm -f $TMP; 
+    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    exit 1;
+fi
+
+
+INCLUDES="-I $REGIMENTD/src/ws/passes/ocaml_bkend/fftw2-0.2"
+LIBS="bigarray.cmxa fftw2.cmxa"
+#
+
+echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o $OUTPUT
+start=`date +%s`
+if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o $OUTPUT
+then end=`date +%s`;
+     echo "  Time spent in ocaml compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to $OUTPUT.";
+else echo "OCaml returned error!!"; exit -1
+fi
+

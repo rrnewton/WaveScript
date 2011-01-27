@@ -1,0 +1,8 @@
+MIDlet-Version: 1.0.0
+MIDlet-Vendor: WaveScript
+MIDlet-Jar-URL: WSQuery.jar
+MicroEdition-Configuration: CLDC-1.1
+MIDlet-1: WSJavaQuery,/ticon.png,WSPhoneSetup
+MicroEdition-Profile: MIDP-2.0
+MIDlet-Permissions: javax.microedition.media.control.RecordControl,javax.microedition.io.Connector.socket,javax.microedition.io.Connector.datagram,javax.microedition.io.Connector.bluetooth.client,javax.microedition.io.Connector.comm
+MIDlet-Name: WSQuery Midlet Suite

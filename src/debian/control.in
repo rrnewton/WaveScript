@@ -1,0 +1,53 @@
+Source: wavescript
+Section: devel
+Priority: optional
+Maintainer: Ryan Newton <ryan.newton@alum.mit.edu>
+Uploaders: Ryan Newton <ryan.newton@alum.mit.edu>
+Build-Depends: debhelper (>> 5.0.0), libc6 (>= 2.6-1), libgmp3c2, libgmp3-dev (>= 4.0.1), bzr (>= 0.11), wget (>= 1.10.2), bash (>= 3.1), dc (>= 1.06)
+Standards-Version: 3.8.0
+Version: WSVERSIONGOESHERE
+XS-Vcs-Svn: https://svn.csail.mit.edu/wavescript/branches/wavescope
+XS-Vcs-Browser: https://svn.csail.mit.edu/wavescript/branches/wavescope
+
+Package: wavescript
+Section: devel
+Priority: optional
+Architecture: i386 amd64
+Depends: libc6 (>= 2.6-1), libgmp3c2, libc6-dev (>= 2.6-1), libgmp3-dev (>= 4.0.1), gcc (>= 4), mzscheme (>= 1:352), python (>= 2.4), time (>= 1.7), bash (>= 3.1)
+Recommends: fftw3 (>= 3.1.2), fftw3-dev (>= 3.1.2), libgc-dev (>= 1:6.8), libgc1c2 (>= 1:6.8)
+Suggests: mlton (>= 20070826), fftw2 (>= 2.1.3), ocaml-native-compilers (>= 3.09.2), libcv-dev (>= 1.0.0), libcv1 (>= 1.0.0), graphviz (>= 2.12), lp-solve (>= 5.5.0.10)
+Conflicts: wavescript-chez
+Replaces: 
+Description:High performance distributed/parallel stream-processing language & compiler
+  WaveScript (wavescope.csail.mit.edu) is a functional language for
+  writing highly abstract programs that generate efficient dataflow
+  graphs through a two-stage evaluation model.  This graph intermediate
+  language is executable in several backends (Scheme, ML, Java[ME],
+  C/C++, TinyOS) that enable support for various embedded platforms and
+  offer different tradeoffs in features, performance, portability,
+  compile times, and parallel/distributed execution.  WaveScript is
+  primarily used for programming sensor networks, or for parallel
+  computation on multicores or clusters.  Includes a C FFI and various
+  libraries.
+
+
+Package: wavescript-chez
+Section: devel
+Priority: optional
+Architecture: i386 amd64
+Depends: libc6 (>= 2.3.6), libc6-dev (>= 2.3.6), gcc, mzscheme (>= 1:352), python (>= 2.4), time (>= 1.7), bash (>= 3.1)
+Recommends: fftw3 (>= 3.1.2), fftw3-dev (>= 3.1.2), libgc-dev (>= 1:6.8), libgc1c2 (>= 1:6.8)
+Suggests: mlton (>= 20070826), fftw2 (>= 2.1.3), ocaml-native-compilers (>= 3.09.2), libcv-dev (>= 1.0.0), libcv1 (>= 1.0.0), graphviz (>= 2.12), lp-solve (>= 5.5.0.10)
+Conflicts: wavescript
+Replaces: 
+Description:Distributed/parallel stream-processing language & compiler, built w/Chez Scheme
+  WaveScript (wavescope.csail.mit.edu) is a functional language for
+  writing highly abstract programs that generate efficient dataflow
+  graphs through a two-stage evaluation model.  This graph intermediate
+  language is executable in several backends (Scheme, ML, Java[ME],
+  C/C++, TinyOS) that enable support for various embedded platforms and
+  offer different tradeoffs in features, performance, portability,
+  compile times, and parallel/distributed execution.  WaveScript is
+  primarily used for programming sensor networks, or for parallel
+  computation on multicores or clusters.  Includes a C FFI and various
+  libraries.

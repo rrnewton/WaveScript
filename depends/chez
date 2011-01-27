@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# This finds runs the version of Chez Scheme found based on the $CHEZD
+# environment variable.
+
+# There are two ways to call the threaded version.  Either with the
+# --threaded argument or by setting the CHEZTHREADED environment
+# variable to be non empty.
+
+# echo "(Executing $REGIMENTD/depends/chez wrapper script)" > /dev/stderr
+
+ARGS=" $* "
+if [[ "$ARGS" =~ " --threaded " ]] || 
+   [ "$CHEZTHREADED" != "" ]; 
+then
+     ARGS=${ARGS/--threaded/}
+     MT=`$REGIMENTD/depends/get_machine_type --threaded`     
+else 
+     MT=`$REGIMENTD/depends/get_machine_type`     
+fi
+
+if [ -e "$CHEZD" ]; then
+  if [ -e $CHEZD/boot/$MT/scheme.boot ];
+  then FULLBOOT="-b $CHEZD/boot/$MT/scheme.boot"
+  else FULLBOOT=
+  fi 
+  $CHEZD/bin/$MT/scheme -b $CHEZD/boot/$MT/petite.boot $FULLBOOT  $ARGS
+else
+ echo "env var CHEZD was not set to an existing directory!"
+ exit -1
+fi

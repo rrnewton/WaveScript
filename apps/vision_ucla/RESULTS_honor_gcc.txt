@@ -1,0 +1,12 @@
+## Real or User time for each benchmark/backend 
+## LD_PRELOAD: 
+## NOSUDO: 
+## NICE: 
+## CC: gcc 
+## `which icc` = /usr/local/icc/cc_10.1.013/bin/icc
+Benchmark c2
+bgSub4_patchoriented 0 35107.000
+bgSub4_patchoriented 1 Couldn't extract time!
+bgSub4_patchoriented 2 Couldn't extract time!
+bgSub4_patchoriented 3 Couldn't extract time!
+bgSub4_patchoriented 4 24.000

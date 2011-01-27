@@ -1,0 +1,7 @@
+
+
+Here's a simple example using these scripts:a
+
+  cat test.qopt | ./formulate_ilp.ss | lp_solve | ./read_lp_solution.ss 
+
+

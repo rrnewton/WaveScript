@@ -1,0 +1,2496 @@
+
+
+================================================================================
+   A file for day-to-day development issues
+================================================================================
+
+General Notes:
+----------------------------------------
+
+  How to load from source without using the scripts in bin/: 
+
+I depend on shell scripts for launching the compiler so often that
+it's easy to forget what to call to load the code directly in one of
+the scheme systems.  Here's a quick reference.
+
+You can always start up a repl in the src/ directory and do "(import (main))" by hand.
+
+  echo '#!r6rs' > imports_only.sls
+  echo "(import (except (rnrs (6)) error) (main_r6rs) (main) (ws shortcuts))" >> imports_only.sls
+
+  chez imports_only.sls
+
+  PLTCOLLECTS=$PLTCOLLECTS:$REGIMENTD/src mzscheme imports_only.sls
+
+
+================================================================================
+
+
+
+[2004.04.29]
+  Hmm, without "identifier-syntax" I can't get things working fully
+under PLT.  Until I can write a "lazy-letrec" macro for PLT I'm not
+going to be able to have testing in drscheme.  Sigh.  Ok, for the
+moment I'm just going to focus on the chez code.
+
+
+[2004.05.21]
+
+WEIRD. Chez scheme started up with the normal heap is hanging on
+(define-record a (b c)).  What is wrong with my system right now??
+
+[2004.05.26]
+  Right now I'm trying to hack the final Sim_nought together.
+Annoying model/view issues without object system.  It's gonna be work
+to get the plt version working.
+
+[2004.05.27]
+  15:30: There! Dammit, the basic simulator works in swl.  Now gotta
+get an actual meaningful display of it up.
+  17:30: Yay! Ok, for the first time runnning a little token-machine
+with graphics!
+
+[2004.06.09] {How to return values?}
+ 9:47am:   Ok, I'm trying to tie together the compiler and the
+graphical simulator.  Right now I'm trying to figure out how
+*returning values* should work.  Especially since almost all the
+return values will be streams.
+
+ 8:05pm:  I'm all screwed up now wrt the status of local bindings for
+token handlers.  I'm trying to make my token-language a little wider
+than it needs to be for my compiler, that makes it easier for me to
+make test-cases by hand. 
+
+[2004.06.10]
+  Need to think about what happens when two processes are using
+gradients when the same token name, and they start hitting eachother!
+Sonuds like a big problem, how did that not occur to me before.
+
+
+[2004.06.13]
+  It's annoying to add more complexity like this.  But I'm adding an
+(ONLYPLT <expr>*) and possibly ONLYCHEZ syntax to my code in the
+generic/ branch.  SCRATCH THAT.  Not doing it yet.  Might do it soon
+tho, it's not that unreasonably an idea.
+
+[2004.06.16]
+  Dammit I got burned again by a recompilation failure on
+graphics_stub.zo.  PLTs system for time-stamp checks on compiled files
+is totally broken...  Or maybe my clock skew is all to blame.
+  Overall my ratio of messing with my environment vs. making progress
+has been horrible, and this isn't entirely my fault.  My environment
+has big problems.  Sigh, I should have used a safer language, I don't
+think I'm really getting enough benifits from scheme... but it's too
+late to back out now.  Eventually it will be a haskell compiler, so
+theoretically I can dump this compiler as soon as I'm done with my
+masters.
+  Although, even given my decisions thusfar, it was a bad idea to make
+a simulator at all.. I *totally* should have just hacked onward
+towards NesC.  Sigh.
+
+1:33pm: *THere* all the damn graphical simulator tests work in PLT
+also..
+
+[2004.06.17]
+URGH.  Having problems returning a stream of answers.  Can't nest
+engines dammit!  So run-flat-threads is not a sufficient interface...
+
+Hmmm strange bug right now, trying to get my stream-outputting
+simulator to work.  It'll run for a while and then get an invalid
+application for soc-return.  How does it suddenly come out of that
+fluid-let?  What's with that?
+
+[2004.07.07]
+Ok, need to drive to finish up a demo for tomorrow.  I don't have
+*returns* working right.  That's the priority for right this second.
+Making a big fat complex test in the test-suite for simulator_nought.ss.
+Got test suite up for simulator_nought with the return-test.  Now for
+a bigger test that actual returns some values!
+
+*) Rudimentary heartbeat
+*) Time and widen the aggregation-window...
+
+[2004.07.13]
+Ok, gonna do a refactoring to lift out a "build-call" within simulator_nought.
+
+
+
+TODO: Fix unit-tester so that it won't give the special 'error value
+to the oracle!!!
+
+[2004.07.27] Trying to finish return values
+  Ok, I was going to add a time-window for the return values, but
+right now I'm deciding between that and an explicit generation
+counter.  But how would I know whether I've gotten everything in
+the generation?  Could use a safely large time-window and seperate
+out the different generations within it?
+
+[2004.07.30] {Tokens first class and skeleton pushing}
+  Ok, going to make token-names *first class values*.  Reason is, that
+map is going to dynamically pass along the name of the token that
+provides the skeleton for the map.  I could do this with a static
+analysis, but that makes me even less scalable to more general
+language features.
+  ACTUALLY, I take it back, I may do that in the future, but right now
+I'm just going to introduce a simple propogate-skeletons pass which
+annotates folds appropriately.
+
+I still need to make tokens first class at somepoint... right now I'm
+being inconsistent with them.  I should also right down a type-system
+and some semantics for the token machines.  (Also need to think about
+Matt's modifications...)
+
+Sigh, right now I'm throwing a bunch of hackery into deglobalize that
+should probably properly belong in other passes.  This is bad form.
+But some of these things are so experimental and temporary, that
+setting up extra passes for them seems not worth it...
+
+[2004.08.03] {About the cost model that I'd like to have}
+Thinking about metrics used in that Bill Theis "Linear Analysis" paper...
+
+Wait, wait, first a bit of meta-reasoning, the cost model must be
+either: 
+  *) Context free, parts of the program are assigned a cost w/out
+     regard to their context
+  *) Context sensitive - a much trickier computation, probably using
+     existing program analysis techniques.
+
+Well let's first think about reasoning over all connection topologies.
+
+[2004.08.06]
+  Reading about TinyOS.  I like how you can wire outwires to multiple
+components. Like hooking Main.StdControl to multiple targets.  But
+what are the semantics for which of these calls comes first?  In the
+order you list the edges??
+
+[2004.08.11]
+I need to sort things out... I'd like all areas to take a single
+argument carrying their value.. but regions must be otherwise.  "this"
+isn't going to be first class in the token-machine abstraction, so
+it's not viable for Regions to pass "this" as the token argument.
+  Problem is when you're generating code for "filter" you don't know
+off the bat whether it's running against a Region, or some other Area.
+
+
+We can always just pass null, or the node id as the value carried for
+region membership...
+
+[2004.08.15]
+Ok I'm working on places and routing now.  Maybe next I need pull/push
+and/or known/unknown annotations.  I really like doing more of the
+work before deglobalize.
+
+[2004.08.16]
+Ok, I'm digging into TinyOS a bit more now.  I've used it
+embarassingly little.  Notes...
+  Data segment of a message is fixed to 29 bytes.  Don't put more than
+that in it!  
+  TOSH_DATA_LENGTH
+  TOS_LOCAL_ADDRESS = our local address
+
+[2004.08.20]
+  So that TOS_Msg struct definition is in AM.h
+
+[2004.09.07]
+WHOA! If I have a BareSendMsg interface (wired to UARTNoCRC...), when
+I send the message it *also* fires the sendDone event from this
+*other* SendMsg component I have!??!  I guess it's just determined by
+the message type, and doesn't give a damn about the static component
+bindings and whether or not you sent with the corresponding send method....
+
+But I still can't get a message sent with a BareSendMsg interface...
+ 
+[2004.09.29]
+
+There's some serious lack of clarity in my head right now as to what
+the abstraction boundary should be between the generated NesC code and
+the static NesC runtime.  As much as possible should be factored over
+to the runtime side.  But the generated code needs to provide the
+actual handler for tokens.  Although that can just be *one* function.
+m
+WAIT: stupid question, but TinyOs does make a seperate instantiation
+for each use of each module?  Or are all timers the same timer!?
+
+[2004.10.17]
+I finished my brief return to messing with the front-end.  Looking at
+this NesC code again.  I see the FIFO I set up is working correctly
+now.
+
+
+[2004.10.21]
+
+Gonna switch it so no prims take LISTS..
+
+[2004.10.24]
+
+Sigh, right now I'm hacking on the simulator, trying to get it back up
+to speed...  Doing some cleanup and documentation in the process.
+
+Adding "reject".  It has a pretty yucky semantics at the minute.  I
+need to simplify simplify...  It's inclusion presently is yet another
+quick and nasty hack.
+
+[2004.11.04]
+
+The component model is tricky... you need to remember to get
+StdControl to things.  I still have very embarassing
+non-understandings of the way things work.
+
+I need to understand the memory management a lot better.  I don't know
+when it's safe for me to give a pointer to a send or receive, because
+I don't want the memory to be corrupted while something else still
+needs it.  For example what on earth happens if I send a pointer to a
+local variable to SendMsg.send??
+
+[2004.11.05]
+
+Ok, making a relatively big change here.  I've got the tokenhandlers
+just working right off the message (token), figuring that the token is already
+allocated, and they can use that.  This is a bad assumption, because
+sometimes it isn't... and allocating an extra whole TOS_Msg is horrible.
+
+Right now I have really broken buffer management, I need to get some
+locks on things and try to make sense of stuff. 
+
+[2004.11.08]
+
+I have had some seriously bad experience using the tossim simulator.
+It will hang, I don't always think the gui display is saying the right
+thing, etc...
+
+[2004.12.01]
+
+Ok, trying to get back into it for a final run of (pre-masters)
+hacking.
+
+Grr.. trying to run drscheme on jetta still gets the symbol error with
+__libc_stack_end from ld-linux.so.2  (GLIBC 2).  Sigh.  
+
+Could try hacking in my own version and using ldconfig...
+
+[2004.12.05]
+
+Wow, Mondrian had support for dynamic specialization stuff?
+
+[2004.12.06]
+
+Messing around with the simulator and GUI, there's some severe
+timing-dependency problems there.  I can do a simulation at 20 nodes
+and have things basically work, but then not work at 100 nodes.
+
+Man if I actually get anyone else to work on this with me maybe the
+right thing to do for the second version would be to do it in Java or
+something (with a C-like external rep for Token Machines).
+
+
+[2005.01.13]
+
+Thusfar the NesC component system has just got in my way and annoyed me.
+
+
+[2006.02.28] {Looking at poor SWL stability}
+
+Trying to remember exactly what it is that causes the SWL invalid
+command name problem.
+
+Right now I'm having a lot of nondeterminism / timing-dependency
+problems with SWL.  The unit tests will crash if run normally.
+Sometimes it will crash around test 9 with an obscure error.  However,
+if I run unit tests one at a time, manually, I haven't yet found one
+that doesn't pass.
+
+Further, this works fine:
+
+  (for i = 1 to 30 (sleep 500) (maintest 9))
+
+Also tried with test 5, and a couple others at random.  This will
+work in rapid fire also:  
+
+  (for i = 1 to 30 (maintest 16))
+
+Further, tests 1-50 work fine with some sleeping:
+
+  (for i = 1 to 50 (sleep 500) (maintest i))
+
+However, if you wave the mouse over the sim window you'll get 'Invalid
+command name "0" errors' which don't stop the tests from passing.
+(Those must be errors in the GUI event handlers resulting from objects
+being deleted out from under their noses.)
+
+Ok, now trying to do tests 1-50 in rapid fire.  Well, first try
+crashed SWL with "nonrecoverable invalid memory reference".  (Add that
+to the malformed stack errors I was getting earlier.)  Wow, that's
+actually a consistent behavior.  HMM.  Third try and I get hung SWL
+windows, but no crash.  SWL doesn't seem to be stable enough for
+actually deploying anything with it.  
+
+"nonrecoverable invalid memory reference" happens on blacksmoker as
+well as faith.
+
+I also need to take a look at what's going on with the
+threading/errors in SWL, because when I run tests 51-75 (with
+sleeping, as above), it currently gets an error on 72, but then keeps
+going, accumulating more errors.  I haven't looked at my unit tester
+in a while, but it could be that my attempts to redefine the error
+handlers isn't working correctly under SWL.
+
+Wow, just Segfaulted SWL by trying to go to "Exit" via the menu while
+it was in the process of spitting up a bunch of load errors from
+_genned_node_code.ss (I'm sure there are some legitimate bugs there.)
+
+Just did 75-100 manually, one at a time and they all passed.  (This is
+revision 1135.)
+
+Well, alas, no time to really track down these problems now.
+
+[Oops, note: 70 can fail even right after loading.  It gets a
+number->string error, and further, when run repeatedly, it can spit
+out "car: () is not a pair" probably from another thread, a graphics
+thread.]
+
+
+[2006.03.01]
+
+Just got this error, but not from inside SWL:
+
+ "sweep_stack(gc): malformed stack"
+
+This time it must have been a stack overflow error, because I was
+loading a program that had a quasiquote with a cyclic structure inside
+it (even though it was unquoted! hmm!).
+
+[2006.03.03] {Further SWL problems}
+
+Ouch.  I'm getting a variety of bad behaviours from SWL.  I just wrote
+about this in the svn log also.  Right now when I run unit tests it
+crashes on test 69.  But it also spits out a bunch of #f's at the REPL
+prompt (other threads returning?).  And even though all the tests say
+"PASS", a large number of the same error print out repeatedly after it
+gets to test 69.  What's going on with threading?  (What happened to
+the "ps-all" "pps" commands that are listed within the manual?)  This
+is not worth debugging right now, but I really have no idea what's
+going on.
+
+Sample:
+
+69  (parameterize ((unique-name-counter 0) (simalpha-dbg-on #f) (simalp... -> Satisfy oracle? #<procedure>: default-unit-tester, got ERROR:
+  (#f "~?.  Some debugging context lost" "invalid memory reference" ())
+default-unit-tester, got ERROR:
+  (#f "~?.  Some debugging context lostdefault-unit-tester, got ERROR:
+  (#f "invalid command name \"0\"")
+
+FAIL: Expected result to satisfy procedure: #<procedure>
+
+      Received:
+error
+
+
+[2006.03.08]
+Wow, just ran my system under ubuntu on my macbook pro 1.83 ghz.  
+With revision 1150, (opt lvl 3, no debug) it completed my unit tests 
+faster than any other computer that I use.
+
+(time (tu))
+    1053 collections
+    9336 ms elapsed cpu time, including 2764 ms collecting
+    9412 ms elapsed real time, including 2747 ms collecting
+    903636344 bytes allocated, including 881799464 bytes reclaimed
+
+[2006.04.05]
+
+[2007.02.24]
+Does chez not have a TCP library except in SWL?  SWL's a bit
+heavyweight and it would be annoying to have to use it for all
+command-line invocations.
+
+(What did TOSSIM use?  Or am I thinking of something I saw at MSR?)
+
+xgraph 
+
+[2007.02.24] {Adding a new numeric datatype}
+
+Adding Int16... these are the things that had to change:
+ *) Add conversion procedures to prim_defs.ss, wavescript_sim_library, static-elaborate
+ *) Added to list of num types in type_environments (now in prim_defs)
+    Also, in type_environments, update constant-typeable-as? and type->width.
+    After adding arith primitives, you'll need to implement them in
+    wavescript_sim_library_push.sls
+ *) Changed the type checker to allow constants of special int types,
+    the convention is that they be always wrapped in (assert-type ...)
+    forms. This change has been made and shouldn't be needed again.
+ *) Add to emit-c for printing, reading, and arithmetic 
+.
+NOTE! Also need to add to degeneralize-arithmetic !! - [2007.07.12]
+NOTE! Also need to add to grammar.ss - [2007.07.27] (no, not anymore)
+NOTE! Now you don't add full conversion primitives, you just extend cast_num - [2008.06.27]
+
+[2007.03.05]
+Just got a segfault on demo3f which I can't now reproduce... strange.
+
+[2007.03.08]
+Eventually I would like a foreign function entry to look something
+like this:
+
+foo :: (Matrix Complex, Array Int, Matrix Complex) -> Int;
+foo = foreign("gsl_linalg_complex_LU_invert", 
+              [GSLComplexMatrixType, GSLPermType, GSLComplexMatrixType], IntType, 
+              [Include "gsl/gsl_matrix.h", Include "gsl/gsl_linalg.h",
+               Link "gsl.so", Link "gslcblas.so"]);
+
+f = fun(x) 
+    numtypecase(x) {
+      Int: ...
+      Float: ...
+    }
+
+case(x){
+  Foo(a,b): ...;
+  Bar(a,b): ...;
+  Baz(head:::tail): ...;
+}
+
+================================================================================
+[2007.03.10] {Syntax choices}
+
+  Thinking about different syntax here...
+  let s2 as (x,y) = ...
+  s2 as (x,y) = ...
+ 
+  s2.x   s2.(x,x,y)
+  s2@x   s2@(x,x,y)
+  s2:x   s2:(x,x,y)
+  s2|x   s2|(x,x,y)
+
+  s2.(x)   s2.(x,x,y)
+  s2.<x>   s2.<x,x,y>
+ 
+  x@s2,  (x,x,y)@s2
+ 
+  x from s2,  (x,x,y) from s2
+  
+  case (x) {
+    First z  | z + 3;
+    Second z | z + 4;
+  }
+
+  case (x) {
+    First z  -> z + 3;
+    Second z -> z + 4;
+  }
+
+  case (x) {
+    First z  > z + 3;
+    Second z > z + 4;
+  }
+ 
+  switch (x) {
+    |  First z -> z + 3
+    | Second z -> z + 4
+  }
+
+  match x {
+       First z -> z + 3
+    | Second z -> z + 4
+  }
+
+  match x {
+    |  First z | z + 3
+    | Second z | z + 4
+  }
+
+  match x {
+    | First z : z + 3
+    | Second z : z + 4
+  }
+ 
+  switch (x) {
+    case First z -> z + 3
+    case Second z -> z + 4
+  }
+  
+  iterate( (x,y) in s2 ) { emit (x,x,y) }
+  ls.head 
+
+
+================================================================================
+[2007.03.14]
+
+Extensible records should just desugar into plain tuples because of
+our meta-programming approach.
+
+{ x | a=3, b=4 }
+{ a=3, b=4; }   !!ACK need more delimiters!!
+
+( x | a=3 )     
+( ( a=3, b=4) | c=5 )
+(| a = 3)
+(|)
+
+< x | c=3 >
+<a=3, b=4>
+
+If we do get records, then we'll probably need to push the modified
+application syntax to a different character.
+
+ls.tail.tail.head
+
+ls#tail#tail#head
+
+ls # tail # tail # head
+
+ls$ tail$ tail$ head
+
+ls$tail$tail$head
+
+ls%tail%tail%head
+
+ls@tail@tail@head
+ls|tail|tail|head
+
+ls.ref(n)
+
+ls|ref(n)
+
+ls\ref(n)
+
+ls\tail\tail\head -- That's not bad!
+
+ls \ tail \ tail \ head  
+
+Kinda denotes going "backwards" which is what the function application
+is doing...
+
+ls \tail \tail \head
+
+ls\ tail\ tail\ head
+
+head( tail( tail(ls)))
+
+x\f 
+x\f(y)
+f(x,y)
+
+w\length
+w|length
+w%length
+
+================================================================================
+[2007.03.28] {More Syntax}
+
+If I did implement type classes, what syntax for the types would I use?
+
+x :: a -> String where Num a
+x :: a -> String | Num a
+x :: Num a | a -> String 
+x :: Num a . a -> String
+x :: Num a => a -> String
+
+x :: a -> b  | Num a, Foo b;
+
+{x | a=3 }
+{| a=3 }
+{| }
+
+To implement records on top of type classes, why did it seem to Greg &
+I that you needed multi-parameter type classes?  "Has" doesn't need to
+reify the type as one of its arguments.... it seems like we can just
+generate a "Has_x" class for every label that occurs in the input
+program.  Oh, you need a parameter to represent the output type of the
+field.
+
+
+class Has_x a b where
+  proj_x :: a -> b
+
+How do we translate a record expression? 
+
+{| x=3 }   :: a | Has_x a b, Num b
+{| x='s' } :: a | Has_x a Char
+
+{| x=3, y=4.0 }
+(3,4.0) ::  (Int * Float) | 
+             Has_x (Int * Float) Int, 
+             Has_y (Int * Float) Float
+
+instance Has_x (Int*Float) Int where
+   proj_x (i,_) -> i
+
+e.x ==> proj_x e :: b | Has_x a b 
+Uh, need functional dependencies???
+
+
+[2007.04.06] {Source locations}
+
+I'm thinking of making the relatively wide-reaching change of
+including source-position information.  At least as far as the
+type-checker.
+
+Maybe as I push through this wave of changes I should move over to
+using vectors for ASTs also.  However, first I'm trying to ascertain
+if there's really any performance benefit.  This simple test seems to
+say that there isn't at all!!
+
+  (collect 4)(time (rep 100000 (match '(foo 1 2 3) [(foo ,x ,y) 'no] [(bar ,x ,y ,z) 'no] [(foo ,x ,y ,z) 'yes])))
+  (collect 4)(time (rep 100000 (match #(foo 1 2 3) [#(foo ,x ,y) 'no] [#(bar ,x ,y ,z) 'no] [#(foo ,x ,y ,z) 'yes])))
+
+    32 collections
+    64 ms elapsed cpu time, including 4 ms collecting
+    64 ms elapsed real time, including 5 ms collecting
+    35052176 bytes allocated, including 34308880 bytes reclaimed
+
+    41 collections
+    80 ms elapsed cpu time, including 8 ms collecting
+    79 ms elapsed real time, including 8 ms collecting
+    44654232 bytes allocated, including 44460776 bytes reclaimed
+
+
+Here's a slightly more complex test that rebuilds the data structure as well:
+
+  (collect 4)(time (rep 50000 (match #(foo 1 2 #(bar 3 4 5)) [#(foo ,x ,y) 'no]
+     [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
+  (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+    136 collections
+    316 ms elapsed cpu time, including 136 ms collecting
+    318 ms elapsed real time, including 125 ms collecting
+    147311072 bytes allocated, including 146858896 bytes reclaimed
+
+    123 collections
+    236 ms elapsed cpu time, including 72 ms collecting
+    234 ms elapsed real time, including 74 ms collecting
+    136940584 bytes allocated, including 136467768 bytes reclaimed
+
+  [ Doesn't get much from opt-level 3 ]
+
+Lists win again!!!
+
+Just for reference let's try records.
+Ideally this would look something like the vector case:
+ (match #[foo 1 2 3] [#[foo ,x ,y ,z] ...])
+ (match (make-foo 1 2 3) [[record foo ,x ,y ,z] ...])
+But alas match doesn't handle records.
+
+
+  (define-record foo (x y z))
+  (define-record foo2 (x y))
+  (define-record bar (x y z))
+  (collect 4)
+  (time (rep 50000
+   (let f ([r (make-foo 1 2 (make-bar 3 4 5))])
+     (cond 
+       [(foo2? r) 'no]
+       [(bar? r) (make-bar (f (bar-x r)) (f (bar-y r)) (f (bar-z r)))]
+       [(foo? r) (make-foo (f (foo-x r)) (f (foo-y r)) (f (foo-z r)))]
+       [else 0]))))
+
+    3 collections
+    16 ms elapsed cpu time, including 0 ms collecting
+    19 ms elapsed real time, including 0 ms collecting
+    3200720 bytes allocated, including 3185704 bytes reclaimed
+
+  [ Doesn't get much from opt-level 3 ]
+
+Well, that's not much of a contest, is it?  Surprising that the
+allocation is so much better for the records case, but worse for the
+vector case.  Where's all the allocation for the vectors?  Is it
+closure allocation from the match system?
+
+Let's try my r5rs syntax-rules based match.  SIGH... it beats the
+pants off the other match.ss 
+
+  (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+    24 collections
+    84 ms elapsed cpu time, including 4 ms collecting
+    87 ms elapsed real time, including 1 ms collecting
+    24805568 bytes allocated, including 25449056 bytes reclaimed
+
+(Then on opt-level 3 that drops down to 34 ms.)
+(Took out delay-values and got that down to 77 opt0 and 32 in opt3)
+(Then took out the ASSERT on literals, and that brought it to 69ms/30ms)
+
+
+HMM... My current r5rs matcher doesn't support vector patterns.  But
+here's a simple rewrite of the record example above for vectors.  This
+does really well!
+
+  (collect 4)
+  (time (rep 50000
+   (let f ([r (vector 'foo 1 2 (vector 'bar 3 4 5))])
+     (cond 
+       [(and (vector? r) (= (vector-length r) 3) (equal? 'foo (vector-ref r 0))) 'no]
+
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'bar (vector-ref r 0))) 
+         (vector 'bar (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'foo (vector-ref r 0)))
+         (vector 'foo (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [else 0]))))
+
+    4 collections
+    8 ms elapsed cpu time, including 0 ms collecting
+    9 ms elapsed real time, including 0 ms collecting
+    4800928 bytes allocated, including 4224800 bytes reclaimed
+
+
+
+
+OOOPS! SHOULDN'T USE A QUOTED CONSTANT DIRECTLY... The optimizer can
+then cheat.  Here, I reran the above, fixing that, and got pretty
+similar results:
+
+
+  (collect 4)(define val '(foo 1 2 (bar 3 4 5)))
+  (time (rep 50000 (match val [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+
+  (collect 4)(define val #(foo 1 2 #(bar 3 4 5)))
+  (time (rep 50000 (match val [#(foo ,x ,y) 'no]
+     [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
+
+
+  (define-record foo (x y z))
+  (define-record foo2 (x y))
+  (define-record bar (x y z))
+  (define val (make-foo 1 2 (make-bar 3 4 5)))
+  (collect 4)
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(foo2? r) 'no]
+       [(bar? r) (make-bar (f (bar-x r)) (f (bar-y r)) (f (bar-z r)))]
+       [(foo? r) (make-foo (f (foo-x r)) (f (foo-y r)) (f (foo-z r)))]
+       [else 0]))))
+
+
+
+
+  (collect 4)
+  (define val (vector 'foo 1 2 (vector 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (vector? r) (= (vector-length r) 3) (equal? 'foo (vector-ref r 0))) 'no]
+
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'bar (vector-ref r 0))) 
+         (vector 'bar (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'foo (vector-ref r 0)))
+         (vector 'foo (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [else 0]))))
+
+
+  (collect 4)
+  (define val (list 'foo 1 2 (list 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (list? r) (= (length r) 3) (equal? 'foo (car r))) 'no]
+       [(and (list? r) (= (length r) 4) (equal? 'bar (car r))) 
+         (list 'bar (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [(and (list? r) (= (length r) 4) (equal? 'foo (car r)))
+         (list 'foo (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [else 0]))))
+
+
+;; INCORRECT, but gives us a lower bound:
+  (collect 4)
+  (define val (list 'foo 1 2 (list 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (pair? r) (equal? 'foo (car r)) (= (length r) 3) ) 'no]
+       [(and (pair? r) (equal? 'bar (car r)) (= (length r) 4) )
+         (list 'bar (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [(and (pair? r) (equal? 'foo (car r)) (= (length r) 4))
+         (list 'foo (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [else 0]))))
+
+
+
+(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] 
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] 
+       [,_ 0])
+
+(expand '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
+
+(expand/optimize '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
+
+
+[2007.04.16]
+
+Switched the DEFINE_OUTPUT_TYPE macro back to the default one rather
+than my WS_ version.  It seemed to reduce crashing in wsc code, but it
+still gets double-free errors.  (Now it got a floating point exception
+anyway.) 
+
+
+[2007.05.03] {Linking GSL}
+When loading libraries into Scheme, it seems that they can't see
+*eachother*.  That is, I need to link together all co-dependent .so
+files and then load the final product into Chez.
+
+[2007.05.10] {Should we use dlopen?}
+.
+Otherwise where do we get the "Pointer" types from for generating the
+right calls to foreign procedures?  We could somehow require them in
+the "foreign" entry... but that's rather cumbersome.  I'd wanted them
+all to be (void*), but that results in the C compiler throwing type
+errors unless there are casts.  There's something nice about requiring
+that the foreign code be compiled and only supporting it through
+dlopen... 
+.
+OR could have another keyword...
+.
+  foreign "foo" in ["foo.so"] pointerargs ["foobar_t *"]
+.
+This would let us typecheck the code properly.
+
+[2007.05.14] {Trying to optimize PLT version a little bit.}
+.
+Performing a test on demo3a_tuples.ws.  (Takes 12ms to compile in chez
+with the normal "ws" command.)
+.
+Baseline, from source: 4361 ms (1680 typechecking)
+Compiled .zo's    :    5652     2330
+With --prim       :    5572     2284
+With all --unsafe :    4920     4938
+
+AHA!  This turns out to be a profoundly broken iu-match package.
+
+By switching over to rn-match for the typechecker and static
+elaborator, this dropped a lot (2 secs were spend in type checker, 1
+in elaborator -- this was almost entirely eliminated).  That got us
+down to ~2 secs..  Applying rn-match to generic-traversal got us down
+to 600ms.  Still much worse than 12ms but an improvement!
+
+
+ (time (let f ([n 50000]) 
+         (unless (= 0 n) 
+           (let l ([v '(foo 1 2 (bar 3 4 5))])
+             (match  v
+             [('foo x y) 'no]
+             [('bar x y z) `(bar ,(l x) ,(l y) ,(l z))] 
+             [('foo x y z) `(foo ,(l x) ,(l y) ,(l z))]
+             [_ 0]))
+           (f (- n 1)))))
+
+
+(define top '(foo 1 2 (bar 3 4 5)))
+(time (let f ([n 50000]) 
+         (unless (= 0 n) 
+           (let l ([v top])
+             (match  v
+             [(foo ,x ,y) 'no]
+             [(bar ,x ,y ,z) `(bar ,(l x) ,(l y) ,(l z))] 
+             [(foo ,x ,y ,z) `(foo ,(l x) ,(l y) ,(l z))]
+             [,_ 0]))
+           (f (- n 1)))))
+
+
+(define top '(foo 1 2 (bar 3 4 5)))
+(time (let f ([n 50000]) 
+         (unless (= 0 n) 
+            (match  v
+             [(foo ,x ,y) 'no]
+             [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] 
+             [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)]
+             [,_ 0])
+           (f (- n 1)))))
+
+
+
+[2007.05.30] {Thinking about adding static annotations}
+.
+But what do they annotate?
+Ultimately, we want to designate certain *allocating* operations
+(list, array, hash-table creation) as being static.  
+.
+This could be done in several ways.  Alternate versions of those
+allocating operators, perhaps expressed as an annotation *to* the
+operator itself.  Or an annotation on a whole lexical scope (applying
+to all operators within it).  Or an annotation on a variable binding,
+indicating that *that value* is never collected.
+.
+But, because the (static) values will have a different type, the
+static designation also needs to be carried in the types.  Again, do
+we have a (StaticArray 'a) type?  Or do we have just one new
+type-constructor: (Static (Array 'a)).
+.
+After thinking about this a bit more it seems like I should add in
+explicit operators for ref-counting an object, and expose those to the
+compiler.  But will that mess up my ability to use intrusive_ptrs?
+I need to talk to Greg about this.
+
+
+[2007.06.06] {Trying hash tables for type environments.}
+
+Testing compiler on pothole3.ws.
+  tenv-extend is called 7035 times.
+  tenv-lookup is called 8403 times.
+
+For HASH based tenvs:
+(Note this uses one table for the whole tree traversal of the program.)
+  The average size of the tenv being extended is 676.
+  The median size is 435.
+
+For LIST based tenvs:
+  Average size at extension is 87.
+  Median size at extension is 81.
+  Average size at lookup is 75.26.
+  Median size at lookup is 55.0.
+
+LIST BASED:  total elab  typecheck 
+  ws:        2098  1247  322
+  ws.opt:    1580  934   206 
+
+HASH TABLES, SIZE 100:
+  ws:        3008  1261  333
+  ws.opt:    2247  951   214
+
+HASH TABLES, SIZE 1000:
+  ws:        2967  1238  329
+  ws.opt:    2274  941   215
+
+
+[2007.06.19]
+.
+Well on the newest version of demo3g the struct-based arrays run twice
+as fast as the old "vector"-class based ones (on -O3, 2 seconds vs. 1
+second).  Demo3g is invariant to one vs. two processors (it does a big
+loop *inside* an iterate, rather than passing lots of data across channels).
+
+As long as one processor is disabled (so it's uniprocessor), these do
+about the same on faith with -O3 and running with -j 1.  (Actually the
+-j 1 doesn't make much difference either way.)
+
+[2007.06.23] {porting Mlton ARM cross compiler}
+
+Trying to hack up a MLton ARM cross compiler.
+
+Looking for the ARM equivalent to the following i386 linux code:
+(in linux.c)
+
+  ucontext_t* ucp = (ucontext_t*)mystery;
+  GC_handleSigProf ((code_pointer) ucp->uc_mcontext.gregs[EIP]);
+
+
+ arm-linux-gcc -I/usr/arm-linux/include -I. -o print-constants print-constants.c libmlton.a libgdtoa.a /usr/arm-linux/lib/libgmp.so -lm 2> /dev/stdout  
+
+Ok... got cross compiling working for "hello world"... but when I try
+a more substantial example I run into this:
+
+/usr/lib/mlton/arm-linux/libmlton.a(IEEEReal.o)(.text+0x0): In function `IEEEReal_getRoundingMode':
+: warning: warning: fegetround is not implemented and will always fail
+/usr/lib/mlton/arm-linux/libmlton.a(IEEEReal.o)(.text+0x4): In function `IEEEReal_setRoundingMode':
+: warning: warning: fesetround is not implemented and will always fail
+.tmp.1.o(.text+0x2e8c): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.1.o(.text+0x8ee8): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.1.o(.text+0xae68): In function `$a':
+: undefined reference to `Chunk0'
+.tmp.0.o(.text+0x654): In function `main':
+: undefined reference to `Chunk0'
+.tmp.0.o(.data+0x2214): undefined reference to `Chunk0'
+.tmp.0.o(.data+0x221c): more undefined references to `Chunk0' follow
+collect2: ld returned 1 exit status
+gcc returned error!!
+
+
+I think I messed up the IEEEReal related hack for my cross compile of
+the runtime....
+
+[2007.08.10] {Stream revisions}
+
+Can we do borealis style stream revisions with metaprogramming?
+
+Other metaprogramming topics:
+ pop/push/pull interface...
+ teleporting messages
+ pull streams
+ marshaling  
+
+
+[2007.08.13] {ENSbox stuff}
+
+polling mode is rev 1.28
+checkin date 8/13 2:10
+
+rbsh -U flood --ignore 100,103
+rbsh -b wlan0
+
+/home/emstar/wavescope.run
+
+./emrun/emrun wavescope.run --daemon
+./query.ensbox.mlton.exe --sink 192.168.12.151
+
+
+================================================================================
+[2007.08.13] 6:10 pm... slow windspeed, fairly humid... 70F??
+54 ranges... very nice 
+
+STEPS:
+
+start_wavescope
+
+/dev/dsr/cache  was populated
+
+toggle_routing off
+linux route?
+
+PROBLEM: /bin/ip didn't exist... had to simlink /sbin/ip
+
+SET THE GATEWAY AS MASTER TIMESYNC SEEDED WITH LOCAL CLOCK
+ssh root@192.168.11.1 "echo root=`date -u +%s` > /dev/sync/gsync"
+
+my_tx_seq:   1195
+outbound queue: cur=0, peak=0
+
+
+ root@ensbox-1 /home/emstar $cat /dev/dsr/cache Node 1 Routing Cache:
+8 entries ----------------------------------------- Dest Flaps Hops
+(ETX) Timeout Path
+ 100       3      2( 2.07)         5   (A) 1-(1.02)->104-(1.05)->100
+ 112       2      2( 2.02)         6   (A) 1-(1.02)->104-(1.00)->112
+ 108       8      1( 1.51)         6   (A) 1-(1.51)->108
+ 115       3      2( 2.03)         6   (A) 1-(1.02)->104-(1.00)->115
+ 109       5      2( 2.02)         5   (A) 1-(1.02)->104-(1.00)->109
+ 113       0      1( 1.04)         5   (A) 1-(1.04)->113
+ 104       0      1( 1.02)         5   (A) 1-(1.02)->104
+ 103       1      2( 2.12)         5   (A) 1-(1.02)->104-(1.09)->103
+
+
+ root@ensbox-1 /home/emstar 
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 100       3      2( 2.03)         4   (A) 1-(1.01)->104-(1.02)->100
+ 112       2      2( 2.01)         5   (A) 1-(1.01)->104-(1.00)->112
+ 108       8      1( 1.19)         5   (A) 1-(1.19)->108
+ 115       3      2( 2.09)         5   (A) 1-(1.01)->104-(1.08)->115
+ 109       5      2( 2.01)         5   (A) 1-(1.01)->104-(1.00)->109
+ 113       0      1( 1.02)         5   (A) 1-(1.02)->113
+ 104       0      1( 1.01)         4   (A) 1-(1.01)->104
+ 103       1      2( 2.05)         5   (A) 1-(1.01)->104-(1.04)->103
+
+my_tx_seq:   1226
+outbound queue: cur=0, peak=0
+
+
+ root@ensbox-1 /home/emstar 
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 100       3      2( 2.00)         3   (A) 1-(1.00)->104-(1.00)->100
+ 112       2      2( 2.02)         4   (A) 1-(1.00)->104-(1.02)->112
+ 108       8      1( 1.75)         3   (A) 1-(1.75)->108
+ 115       3      2( 2.01)         3   (A) 1-(1.00)->104-(1.01)->115
+ 109       5      2( 2.06)         3   (A) 1-(1.00)->104-(1.06)->109
+ 113       0      1( 1.00)         3   (A) 1-(1.00)->113
+ 104       0      1( 1.00)         3   (A) 1-(1.00)->104
+ 103       1      2( 2.01)         3   (A) 1-(1.00)->104-(1.00)->103
+
+
+
+
+Finally got routing working!
+========================================
+
+gettime -c gps -t
+  g2007-08-14_00.55.51.048889
+Route for 108 makes no sense!!!
+
+$cat /dev/dsr/cache 
+Node 1 Routing Cache: 8 entries
+-----------------------------------------
+Dest   Flaps    Hops (ETX)   Timeout   Path
+ 112       0      2( 2.01)         8   (A) 1-(1.00)->104-(1.01)->112
+ 108       1      5( 5.12)         7   (A) 1-(1.00)->104-(1.00)->115-(1.00)->100-(1.08)->103-(1.04)->108
+ 113       2      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->113
+ 109       1      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->109
+ 103       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->103
+ 100       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->100
+ 115       0      2( 2.00)         7   (A) 1-(1.00)->104-(1.00)->115
+ 104       0      1( 1.00)         7   (A) 1-(1.00)->104
+
+my_tx_seq:   3112
+
+{0, 99, 99, 1, 2, 99, 99, 99, 3, 4, 99, 99, 5, 6, 99, 7}
+
+
+
+TICKET NUMBER BEING CREDITED: 
+  016 216 185 7904
+
+Person helping me fix the fare:
+  575.00 charged to credit card 
+
+
+================================================================================
+
+[2007.08.28]
+As a simple feature, it would be nice if metaprogram evaluation could
+result in multiple disjoint executables.  Then you could at least
+express a client and server program together and not invoke the
+compiler multiple times.
+.
+What would we name them though ;).  Name them after the sources/sinks?
+
+[2007.10.01] {Thinking about auto-lifting functions over streams.}
+
+  1 + S ==> smap(fun(x)(x+1), S)
+
+Can we define allow the unifier to unify these two types??
+  (... T ...) -> T2
+  (... Stream T ...) -> Stream T2
+
+But even once we do that, how do we go back and convert the code?
+Perhaps the app (and primapp) case can detect that a coercion has
+occured, and modify the code....  But this is still strange and
+dangerous.  For one thing, it involves *changing* the return type of
+a primitive, so we must be careful in what order we do our
+unification!  (The unifier may no longer rely on the unify being
+associativity/commutative.)
+
+[2007.10.02] {Builtin syntax for smap}
+
+Been thinking a bit more about overloading function applications to streams.
+
+f(g(S) + 3, 99)
+
+f(g(S) + 3)
+
+But another option is just to have an infix smap operator:
+
+S => g => (+3) => f
+
+S -> g -> (+3) -> f
+
+S >> g >> (+3) >> f
+
+f @ (+3) @ g @ S
+
+f@  (+3)@  g@  S
+
+S  @(+3)  @g  @f
+
+S2 = S 
+  -> g 
+  -> (+3) 
+  -> f
+
+S2 = f <- (+3) <- g <- S
+S2 = f << (+3) << g << S
+
+
+[2007.10.20] {AST representation}
+
+If I had to do this whole compiler over again, and was using Scheme,
+the first thing I'd do would be to abstract all uses of abstract
+syntax.  This means adding macros for defining "datatypes" and then
+for pattern matching on them.  That's a lot of overhead upfront, but
+then I could experiment with different representations.  Now so much
+is invested in lists+match, it would be very difficult to change.
+
+[2007.10.26]
+
+Thinking of trying to partition an operator to pull out the read-only
+part.
+
+iterate x in S {
+  state { a=0; b=0 }
+  if p(x) then a+=1 else b+=1;
+  ??
+}
+
+This is amenable to the simple rule wherein if all varrefs to x feed
+into a particular function, then you can pull it out:
+
+S2 = smap(p,S)
+S3 = iterate y in S2 {
+  state { a=0; b=0 }
+  if y then a+=1 else b+=1
+}
+
+BUT, since we're probably emitting x, it's not that easy:
+
+iterate x in S {
+  state { a=0; b=0 }
+  if p(x) then { a+=1; emit (a,b,x) } else b+=1
+}
+
+Now x occurs in two contexts... we can still lift out p(x) like this:
+
+S2 = smap(fun(x) (x,p(x)), S)
+S3 = iterate (x,tmp) in S2 {
+  state { a=0; b=0 }
+  if tmp then { a+=1; emit (a,b,x) } else b+=1
+}
+
+But to discover this we need finer granularity profiling.  Luckily we
+can probably iteratively profile on demand.  (I.e. when you find
+something you can pull out, then you profile it.)
+
+This is probably analogous to an existing loop/pipelining
+optimization.
+
+
+
+[2007.10.27] {Trying to get saved heaps on *some* machine}
+
+Interesting.  I made some linux virtual machines.  I've got a Debian
+3.0 VM with a 2.4 kernel.  It runs from saved heaps, but it sometimes
+gives me this:
+
+  Error in random-seed: invalid argument 0.
+
+And it does this on the way out:
+
+  free(): invalid pointer 0x80b05f8!
+
+Maybe that's the FFI, but I don't know how that would be touched in a
+simple call to "regiment".
+
+[2007.10.27] {Rewrite optimizations on marmot.}
+
+It looks like we could get this picture:
+
+  overlap/hanning, fft, toArray, lopass(blit), fromArray, ifft, unhanning/merge
+  overlap/hanning, fft, toArray, hipass(blit), fromArray, ifft, unhanning/merge
+  overlap/hanning, fft, sumEnergy, ....
+
+ From this: lopass o hipass o marmotScore ...
+ Where: marmotScore = toFreq o sumEnergy  ...
+
+Ideally we could fuse the lopass/hipass automatically:
+
+  lo = smap(fun(arr) blit(copy(arr), st1, end1, 0), input)
+  hi = smap(fun(arr) blit(copy(arr), st2, end2, 0), lo)
+
+=> Fuses to => 
+
+  hi = smap(fun(arr1) { arr2 = blit(copy(arr), st1, end1, 0);
+                        blit(copy(arr2), st2, end2, 0) }, input)
+
+Then the question is whether we can recognize that arr2 is used
+linearly, and copy(arr2) can be eliminated.
+
+[2007.11.05] 
+Ah, what would things have been like if we'de used records for ASTs?
+.
+(let loop ([x _])
+  (compile-case x
+   [lit? (f (lit-val x))]
+   [iterate? (if (iterate? (streamop-code x))
+		 MERGE-ITERATES
+		 ;(traverse loop x)
+		 (make-streamop 'iterate _ _ _ _ _)
+		 )]))
+
+[2007.12.03] {The new C backend and garbage collector}
+.
+Progress has been slow on this new backends.  There are a lot of
+issues to deal with.  For example, for the optimized deferred
+refcounting GC algorithm to work, emit essentially needs to be a tail
+call.  We need to buffer up additional emits until the end.  How do we
+do this?  We could complexify the interface with the scheduler,
+provide a way for the "box" to specify desired scheduling/buffering
+policies.  Or we can try to do as much as possible with
+source-to-source transforms.  For example, we can take all non-tail
+emits and redirect them to an explicit wavescript buffer that we
+introduce.  Then the actual emit just sends off the whole buffer.
+
+Even though it is disallowed in the language, there are reasons for
+using shared state at intermediate points in the compiler.  It would
+be nice to have detailed control over buffer management.  For example,
+we may decide to double-buffer a communication channel to another
+core, with both upstream and downstream boxes reading and writing the
+same memory.  Unfortunately, this would also require more from the
+scheduler, because  now the two boxes need to synchronoize before
+swapping the buffers and moving on to the next round.
+
+But if we don't have that kind of communication pattern, that means
+all we can do is allocate new arrays to send downstream.  Maybe
+that's for the best, however.  If we had a custom memory allocator, it
+could do a good job of reusing the same address ranges to approximate
+the double-buffered solution.
+
+There are a whole bunch of issues mixed up, however.  When thinking
+about the FFT benchmark (copied from streamit), it becomes desirable
+to statically allocate the communication buffers, because of the pain
+of many small arrays.  But then again, if we can do "execution
+scaling" in a source to source transform, then that results in much
+larger buffers, and the pain of allocation is greatly reduced.  
+
+Yet another issue is how we handle this stuff when we "merge" boxes
+for coexistence within a single core.  You can still do execution
+scaling and maintain buffers for "emit"s.  In fact, situation is in
+most ways improved because the compiler has full control over the edge
+between the boxes.  However, the GC model where we collect at the end
+of every operator.... that gets strained.  The granularity is
+increased by merging operators.
+. 
+But if the calls between the now-merged operators are in tail
+position, then we should be able to maintain the same GC strategy as
+before.  That is, we collect when we transfer control internally.
+.
+Really, any collection strategy is going to have to have a backup
+stack-tracing method if a ton of allocation occurs in one iterate.  We
+probably won't implement that for a while, and will just avoid that
+situation.  (You'd also have to trigger that if the ZCT overflows.)
+
+
+Execution Scaling:
+========================================
+One interesting way of doing this may be to perform a simple execution
+scaling without regard for the type of data passed (arrays or
+scalars).  Then, as a separate transformation, we could observe the
+Array of small Arrays produced by the scaling, and then flatten it
+using the data representation transforms that we have been discussing.
+
+The alternative is to do this in one go -- where we recognize the
+array passing structure (and the static size of the arrays), and we
+transform all reads and writes to those small arrays directly into
+reads and writes in a "scaled" array.
+
+
+
+New C codegen:
+========================================
+
+Will the type mapping be isomorphic?  Will any special packing or
+unpacking have to happen on comm channels?  (Well, other than the GC
+ownership transfer.) 
+
+How is that ownership transfer best accomplished?  At the end of an
+execution, we process the queued data, checking ref counts.  Ref
+counts of one (including the pointer from the queue itself), mean that
+we can transfer ownership.  Otherwise a copy occurs.
+
+But even that copy doesn't always make sense IF we know we have a
+depth-first edge AND that the downstream won't modify the array (which
+it's not allowed to).
+
+
+
+[2007.12.09]
+
+benchmarks/microbench:
+
+Interesting.  Begining to test the performance of my new refcounting
+scheme.  Works great for passing a stream of arrays.  But then it
+worked pretty terribly for passing square 2D arrays.
+
+Testing with manual_best.c, which represents the theoretical best
+performance we can achieve (no refcounting overhead).
+
+For allocating 200 million units worth (in 1000x1000 arrays), it was
+taking 1200 ms total, almost half of which was SYSTEM TIME (680ms
+user).  BUT, it turns out that using either hoard or tcmalloc greatly
+improves this.  Hoard gives us 560ms and tcmalloc 750ms, both with
+neglible system time.
+
+Tried nedmalloc... 608ms or 696ms.
+
+ptmalloc3 does a *little* better than whatever is default on faith, it
+gets 877ms (648/228 real/user).
+
+The naive reference counting scheme takes 650ms with hoard as opposed
+to 560 with the manual no-refcount version.  The ZCT algorithm
+shouldn't do much better, and may do worse.
+
+Interesting... my idealized manual_zct version gets 568ms (hoard).  Deffered
+RC does offer benefit here.
+
+It's going to be tricky to figure out :
+ (1) How to best represent type information at runtime in the ZCT for
+     the purpose of calling the appropriate free code.  (Could just
+     store a function pointer to freeing code... or could use some
+     bits to try to describe the type...)
+ (2) How to best handle newly created objects with the deferred
+     scheme.  Could enter them in the ZCT immediately.  But then we
+     may have to process the ZCT multiple times, because it will
+     include non-zero-refcount objects.  Even if we do it this way,
+     the compiler can still omit those ZCT entries as an optimization.
+
+     This must be a standard problem with deferred refcounting GC's.
+
+[2007.12.26] {Looking at Larceny again}
+.
+Version 0.96 of larceny was just released (has r6rs support).  I
+recall looking at larceny before and determining that it was missing
+some bits that I would need to easily support it.  It's got saved
+heaps, which is very nice.  Syntax-case was probably one of the main
+pieces I found missing (which is needed for iu-match).  However, this
+new Larceny has syntax case!  Unfortunately, it's only available or
+the R6RS mode, not the R5RS mode.  Well it looks like I may be able to
+use the ERR5RS mode.
+
+[2008.01.08] {Lots of outstanding implementation}
+
+There are many things that need to be implemented: 
+ *) Marshaling (+ java reader + visualization)
+ *) Monomorphic function defs in backends.
+ *) Shared representation of repeated stream kernels.
+ *) Recursive stream graphs in backends.
+ *) Type classes
+ *) Wrapping up PLDI optimizations.
+ *) Memory management (GC + static alloc analysis)
+ *) Finish filling out the new C backend
+ *) Libraries for gapped streams, spill-to-disk
+
+But the question is what will make research hay right now?  I imagine
+most of the scutwork will get put off until the next application makes
+it necessary.  
+
+If we're thinking about focusing on a distributed scheduling/placement
+sort of paper, what ingredients will we need?  We already have
+infrastructure for statically assigning operators to cores in an SMP.
+
+  *) How to deal with memory constrainst on Cell SPEs? Static? Microheaps?
+  *) Simply compiling to Streamit would be another approach.
+     (but very limited)
+  *) static alloc and static refcount opt are just applying known
+     techniques.
+  *) optimized deferred refcount is at least novel
+  *) better perf measurement infrastructure would probably be
+     informative in any case.
+
+
+ -) Data reps haven yet been really justified. (2d arrays was good
+    counter argument.)
+
+
+[2008.02.26] {wstiny automatic partitioning}
+
+I've tried three simulators for msp430 (telos):
+  *) MSPSim
+  *) Simics
+  *) cdk-msp-gdb
+
+I'm not entirely sure at what level each of these simulates the CPU in
+the first place.  Do any of them model USART timing?  I'm currently
+stuck in some way or another with all of them.  I can't get gdb to
+work at all.  MSPSim works but I'm having problems getting the serial
+output.  And I think I was also having a problem with serial output on
+simics.
+
+MSPSim:
+
+The Java code is pretty easy to navigate.  I can disable the GUI and
+add extra print messages to USART.write and
+USARTListener.dataReceived.  I guess the next step would be to trace
+this back further.
+
+Simics:
+
+Useful commands:
+  new-tracer 
+
+I tried making a simple .simics file using their
+telos-mote-with-serial-common.simics.  
+
+I've tried it with a simple version of Blink that performs printfs.
+I can't get anything to come up on the "console" window.
+
+Trying with BaseStation... Nothing on console.
+
+Trying with TinyOS 1.0.  
+
+
+[2008.04.05] {Numeric types, casting, meta-eval}
+
+The generic arithmetic has become a giant headache.  This Scheme
+representation of numbers started off as a simple hack (fixnum for
+ints, flonum for floats), and it has become a huge mess.
+
+This would all be much better if:
+
+ (1) Type classes were used (properly) for overloading.
+
+ (2) WS were written in a strongly typed language, that always
+     properly abstracted the numeric representations and operations.
+
+One of the many issues that came up recently involved whether
+representation invariants (fixnum<->float) should always be maintained
+*within* container representations (arrays, lists).  For the moment
+they are not.  Only when data is unpacked from such a container is it
+forced to conform with the proper numeric representation.
+
+[2008.06.16]
+
+It looks like the myserious infinite loops in R6RS eval (for using ws)
+under PLT 3.99 are gone under 4.0.  I can now run the demos.  (There's
+still a unit test that fails... probably for a different reason.) 
+
+[2008.06.30] {Reverse aliasing types for printing}
+.
+I notice that it will still print a less general type than the real
+type... that's a serious bug.  For example if I define type Image =
+Array Int, it will print an "Array #t" as "Image".
+
+[2008.07.16] {Path to operator migration}
+
+What would we need to work on operator migration?  Or on profile
+driven selection of 
+
+Well, we need to get back to a place where we can run multithreaded
+code first of all!  This means either resurecting wsc, or outfitting
+wsc2 with threading capabilities.  Because XStream is no longer
+actively developed, I lean towards the latter.
+
+[2008.07.18] {Working through crashes in trying to get Boehm + threads}
+
+This is odd, I've built the 7.0 version enabling GC_LINUX_THREADS,
+THREAD_LOCAL_ALLOC, and PARALLEL_MARK, but I still get a crash from
+GC_INIT!  Even if I *just* enable GC_LINUX_THREADS it crashes.
+
+==31526== Invalid read of size 4
+==31526==    at 0x40533DB: GC_mark_from (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4053B96: GC_do_local_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4053F03: GC_mark_local (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4054017: GC_do_parallel_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4052C88: GC_mark_some (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x404AE09: GC_stopped_mark (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x404AA86: GC_try_to_collect_inner (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4056679: GC_init_inner (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x4056157: GC_init (in /home/newton/build/gc-7.0/.libs/libgc.so.1.0.3)
+==31526==    by 0x8049303: initState (query.c:30)
+==31526==    by 0x804950A: main (query.c:78)
+==31526==  Address 0xbfd59cc4 is not stack'd, malloc'd or (recently) free'd
+
+It gets pretty much the same crash if I try the libgc-dev ubuntu
+package (version 6.8).
+
+If I try the refcount GC under the new wsc2 -threads configuration, it
+currently passes some demos but crashes on demo3f.
+
+[2008.07.23] {Working on leaks, testing marmot}
+
+Well, now I have implemented deferred reference counting.  
+But it is looking like both my refcounting versions are leaking.
+
+Testing on my nokia machine on a ~450mb replicated
+6sec_marmot_sample. (All O3)
+
+mlton:     23.9   23.4
+mlton:     71.5   69.3  (copy always sigsegs)
+
+boehm:     62.7   61.9
+
+refcount:  27.0   26.3 (leaky)
+deferred:  35.7   34.4 (leaky)
+
+refcount:  25.45  25.1 (rev 3342, not leaky)
+
+
+The mlton version cruises along using exactly 5.6 mb of memory.  Boehm
+is even better using 1.2-1.6 mb of memory (probably can speed it up by
+increasing heap size).
+
+Both normal and deferred reference counting seem to leak about the
+same rate and the same total amount.  Over this run the simple version
+leaves 55K unfreed objects (out of 85M allocated - 51 gigs).
+
+Ok, good, this was a recently introduced leak.  Going back to rev
+3342, that version does not leak and only uses half a meg of memory!!
+Somehow the new changes have introduced a leak into the old
+simple refcounting scheme!
+
+Ah, the problem was that the queue-reference counting was enabled in
+this revision (even without threads).  There must be a leak with the
+queue reference counting.
+
+After the fix the deferred version uses between 3.8 and 5.6 mb of
+memory.  Bouncing around somewhat in its memory usage.  Still not bad
+since it's executing an entire traversal of the graph between every
+GC.
+
+deferred:  25.1   24.08  (no longer leaky)
+
+With queue refcount ops turned off, Valgrind's leak-check=full mode
+doesn't report anything "definitely lost" for either the normal
+refcounting or the deferred.
+
+[2008.07.24] {In good shape with deferred RC, now to RC + threads}
+
+It looks like rev 3341 failed just because of the activation of the
+queue refcounts, but we need to test this now.
+
+[2008.07.29] {performance discrepancy in test_marmot2}
+
+It seems that mlton is beating GCC in compiling the inner loops of the
+AML algorithm.  I had nirav look at this a bit.  It's just a handful
+of floating point ops.  
+
+First, I was afraid that C wasn't generating and storing the complex
+number properly, so I did the stores manually (prettending we're
+writing into a float array).  That didn't make a difference.  Then I
+knocked out the division and the cos/sin ops.  That made a big
+difference in the runtime.
+
+ for (n_447 = 0; n_447 < 4; n_447++) 
+  {
+    float tmpsmp_2763 = (6.283185307179586 * _order_435) * td_430[n_447];
+    float f_448 = tmpsmp_2763 / _window_size_397;
+    D_423[n_447] = cos(f_448) + (sin(f_448) * 1.0fi);
+  }
+
+   while !var_n_241 <= var_tmpsmp_1708 do
+   (let val var_n_241 = !var_n_241 in
+    (let val var_tmpsmp_1710 : Real32.real = (( Real32.* ) (2.0, 3.141592653589793)) in 
+     (let val var_tmpsmp_1712 : Real32.real = (( Real32.* ) (var_tmpsmp_1710, var__order_229)) in 
+      (let val var_tmpsmp_1714 : Real32.real = (Array.sub (var_outls_750, var_n_241)) in 
+        (let val var_tmpsmp_1716 : Real32.real = (( Real32.* ) (var_tmpsmp_1712, var_tmpsmp_1714)) in 
+          (let val var_f_242 : Real32.real = (( Real32./ ) (var_tmpsmp_1716, var__window_size_190)) in 
+            (let val var_tmpsmp_1718 : Real32.real = (Real32.Math.cos (var_f_242)) in 
+              (let val var_tmpsmp_1720 : Real32.real = (Real32.Math.sin (var_f_242)) in 
+                (let val var_tmpsmp_1722 : Complex.complex = 
+                    (((fn  (( (r ,  i) ))  =>  ({real= r, imag= i}) )) (var_tmpsmp_1718, var_tmpsmp_1720)) in 
+                    ((Array.update (var_D_216, var_n_241, var_tmpsmp_1722));
+                    ())
+                 end)
+               end)
+             end)
+           end)
+         end)
+       end)
+     end)
+   end)
+   end; 
+   var_n_241 := !var_n_241 + 1)
+
+Ok wait, wait... I was off base.  As I and nirav dug deeper, we found
+out that it actually wasn't this loop that was causing the
+difference.  Omitting this loop simply crushed the cost of downstream
+computations.  In the following WS code:
+
+	for n = 0 to (sens_num - 1) {
+	  _D       = expC2(2.0 * const_PI * _order * td[n] / _window_size);
+	  temp_c  += conjC(_D) * get(data_f, n, order[j]);
+	  Jvec[i] += norm_sqrC( _D * sdivC(temp_c, _sens_num) );
+        }
+
+... wsmlton and wsc2 are similar in performance up to the inclusion of
+the very last norm_sqrC operation.  Throwing in operation crushes the
+performance of gcc (by a factor of 2).  It must be breaking some
+delicate optimization, resulting in the whole thing falling apart
+(whereas MLton is more aggressive or persistent).
+
+Ok, this seems to be a problem unique to my core2 duo.  I've got it
+down to one line of the following function.   Changing a single
+floating point add to a divide wrecks it under gcc but not under mlton:
+
+wsfor (n_437 = 0; n_437 <= tmpsmp_2677; n_437++) {
+
+  float tmpsmp_2679 = (2.0 * 3.141592653589793);
+  float tmpsmp_2681  = (tmpsmp_2679 * _order_434);                                                                                                  
+  float tmpsmp_2683  = td_429[n_437];
+  float tmpsmp_2685  = (tmpsmp_2681 * tmpsmp_2683);
+  float f_439  = (tmpsmp_2685 / _window_size_397);
+  float tmpsmp_2687  = cos(f_439);
+  float tmpsmp_2689  = sin(f_439);
+  float complex _D_438  = (tmpsmp_2687 + (tmpsmp_2689 * 1.0fi));
+  float tmpsmp_2719  = __real__ (_D_438);
+  float tmpsmp_2721  = __imag__ (_D_438);
+  float tmpsmp_2723  = (0.0 - tmpsmp_2721);
+  float complex tmpsmp_2725  = (tmpsmp_2719 + (tmpsmp_2723 * 1.0fi));
+  int col_445  = order_428[j_433];
+  float complex* tmpsmp_2727 ;
+  float complex* tmprc_3258  = arr_421[n_437];
+  tmpsmp_2727 = tmprc_3258;
+  float complex tmpsmp_2729  = tmpsmp_2727[col_445];
+  float complex tmpsmp_2731  = (tmpsmp_2725 * tmpsmp_2729);
+  float complex tmpsmp_2733  = (temp_c_436 + tmpsmp_2731);
+  temp_c_436 = tmpsmp_2733;
+  float complex c_440  = temp_c_436;
+  float tmpsmp_2693  = __real__ (c_440);
+  float tmpsmp_2695  = (tmpsmp_2693 / _sens_num_399);
+  float tmpsmp_2697  = __imag__ (c_440);
+  float tmpsmp_2699  = (tmpsmp_2697 / _sens_num_399);
+  float complex tmpsmp_2701  = (tmpsmp_2695 + (tmpsmp_2699 * 1.0fi));
+  float complex c_442  = (_D_438 * tmpsmp_2701);
+  float tmpsmp_2703  = __real__ (c_442);
+  float tmpsmp_2705  = __real__ (c_442);
+  float tmpsmp_2709  = __imag__ (c_442);
+  float tmpsmp_2711  = __imag__ (c_442);
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 + tmpsmp_2709)); // fast
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 + tmpsmp_2705) + (tmpsmp_2709 + tmpsmp_2711))); // fast
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 + tmpsmp_2703));   // fast
+  Jvec_402[i_431] = (Jvec_402[i_431] + (tmpsmp_2703 * tmpsmp_2703));   // slow
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 * tmpsmp_2703) + (tmpsmp_2709 * tmpsmp_2709)));   // slow
+
+  //Jvec_402[i_431] = (Jvec_402[i_431] + ((tmpsmp_2703 * tmpsmp_2705) + (tmpsmp_2709 * tmpsmp_2711))); // slow
+}
+
+Yet it has no problem on honor.  Well, that's not entirely true.
+Compiling from scratch on honor and generating a 64-bit executable has
+no problem... however, if I run the 32 bit executable on honor, it has
+the same behavior (only very slightly faster).
+
+Diffing the assembly code .s files for the above add/mul one character
+change gives the following:
+
+7807c7807
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7825c7825
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7835c7835,7836
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+7870c7871
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7888c7889
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7896c7897,7898
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+7931c7933
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1332 0
+7948c7950
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+7958c7960,7961
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+8001c8004
+< 	.loc 2 1331 0
+---
+> 	.loc 2 1322 0
+8003a8007
+> 	.loc 2 1332 0
+8004a8009
+> 	.loc 2 1322 0
+8024c8029,8030
+< 	fadd	%st(0), %st
+---
+> 	.loc 2 1332 0
+> 	fmul	%st(0), %st
+
+
+Basically just switching fadd for fmul.  But this tiny change in the
+assembly code creates a gigantic change in the excution speed of the
+entire application.  Some microcode weirdness?  How does mlton
+sidestep this?
+
+WOW, tried icc 10.1 on this file.  Not only does it not have a problem
+with the fmul version, but it runs between 2 and 3X faster in absolute
+terms!!  Must be the vectorization.  However, while -O3 does well,
+-fast is bad.  Must be doing the wrong processor... These are all
+fine: "-O3 -ipo -no-prec-div -static".  But -xP -xS are bad.  -x0 is
+good (on honor).  You'd think sse4 (-xS) would be the best, since I believe
+honor has sse4.  With -ipo -x0 -no-prec-div it does slightly better
+than -O3 alone.  -xT is also bad.  -xW is good.
+
+
+[2008.08.11] {I'd prefer to measure tuples/second rather than seconds/tuple}
+
+The benchmarking framework measures time elapsed.  This has a problem.
+We don't want any time measurement that's too small, but if I scale up
+execution so that the fastest always takes over, say, a second.  Then
+the slowest may take an enormous amount of time.
+
+It would be nicer to measure how much work can be accomplished in a
+fixed time.  Killing the process from the outside would probably not
+be very accurate.  It would also mean that there would be no way to
+count partially completed work (e.g. 1.5 tuples in a second), and I
+would need to ensure that all benchmarks are fine-grained (i.e. many
+tuples output per second).
+
+The alternative would be to have the process limit itself, but only
+quit after an integral number of output tuples.  This could be done by
+modifying all backends to take a time limit as well as a tuple limit.
+Or perhaps this could be accomplished as a compiler pass, much like
+explicit-toplevel-print, by simply checking the clock() on every
+output tuple, and optionally exiting.  In this scenario, the actual
+time consumed by the process would be greater than or equal to the
+time cutoff.  Then we would do a division to normalize this number to
+tuples-per-second.  The nice part would be that we'd get at least one
+output-tuple for every run, so we wouldn't get spurious "0" rates.
+
+Finally, there will be a presentation problem with graphing
+tuples/second.  Each benchmark will need to be normalized separately,
+because different benchmarks will have wildly varying tuples/second.
+
+[2008.09.19] {Re-learning the t-mote connect}
+
+Whatever I learned about these devices I forgot. For the most part, I
+just interact with them through netbsl style mote programming.
+
+But you can also manually send commands to them like this:
+
+  echo <command> | nc tmote-1.csail.mit.edu 10001
+
+Here are some commands you can send.
+
+  status, quit, msp430-bsl, unfriendly_system_reboot.
+
+I got the documentation here:
+  http://www.bandwavetech.com/download/tmote-connect-datasheet.pdf
+
+Port 900X is the Serial Forwarder.  But I assume the Serial Forwarder
+only works for tinyos messages (rather than just forwarding raw
+bytes).  Let's play with netcat and find out.
+
+  java net.tinyos.tools.Listen
+Should hopefully be equivalent to: 
+  /opt/tinyos-2.x/support/sdk/c/seriallisten
+
+Neither one of these would work for reading individual bytes... it
+must expect at minimum some framing protocol.
+
+AH, now it's coming back to me.  I had a fundamental problem with the
+serialforwarders on the tmote connects.  Let me look back at my emails
+with Kyle.  It's possible that they simply didn't work with tinyos
+2.0.  Ah, the tmote connect version is 1.0.6.  Very old.  Needs to be
+at least 1.2 it sounds like to handle the "protocol" command.
+ The underlying linksys software version says... V2.3R29.
+
+To reduce interference with 802.11 Kyle recommended something like:
+   export CC2420_CHANNEL=26
+
+
+MOVE THIS SOMEWHERE ELSE:
+[2008.09.25] {Error conditions for wstiny}
+
+I've thrown in some misc error conditions and LED patterns.  These are
+mostly temporary, but I need to try to keep track of them.
+
+[2008.10.09] 
+
+[2008.10.17] {Back to garbage collection}
+
+The first order of business may be to make the deferred refcount
+approach clear the ZCT on each operator rather than each traversal
+(where possible).
+
+[2008.10.17] {Fixing regression tests}
+
+I'm getting memory leaks in the demos again.  I have a known leak of
+an fftw plan in demo4b.  But it looks like demo9i has also started
+leaking.  This is happening under both simple and deferred
+refcounting.  It's a problem with the -split run on the server side.
+
+[2008.10.31] {Where are the high GC costs?}
+
+Unfortunately, I had based my impression of them on some miscellaneous
+numbers I saw at some point in the past while running things by hand.
+Now that I'm systematically benchmarking, I'm seeing very low GC
+costs (under MLton)!  
+
+  marmot - negligable
+  bgsub  - negligable
+  pipeline - 7.5%
+  eeg - ~9.3% 10ms
+  pothole - 1.1% 
+  mfcc - 
+
+Marmot's run_3phases takes only 1.25 seconds under wsc2/boehm whereas
+it takes 5.5 seconds under mlton.  Yet it seems to do 240ms of
+collection under boehm (2400 collections), and only 30ms under mlton
+(118 collections).  I can't get as good measurements as I'd like from
+boehm, because it verbosely prints every collection rather than
+printing a summary.  (I looked the source... it doesn't seem to tally
+up a summary.  I'd have to hack the boehm source, which is pretty easy.)
+
+[- 2008.11.13 -] Returning to this with multithreaded.  Actually, if I
+do run_3phases.ws for 30 tuples I'm currently seeing high GC times
+with boehm (such as 1s out of 3.2s) even not multithreaded.  This is
+with my "LARGE_CONFIG" libgc build.  That's very odd, because mlton on
+the same run takes only 20ms to collect.  This is with ~600 mb of
+allocation and a max live of 2mb.  Switching boehm back to a single
+threaded version brings total runtime down 2.8... but turning back on
+GC_PRINT_STATS brings it up to 3.14s... although it only registers
+550ms collecting.
+
+This particular example may respond to twiddling boehm's parameters.
+Setting INITIAL_HEAP_SIZE to 5mb brings it to 470 ms.  Nah, on retest
+more like 500+.  Let's double the test size.  1260ms collection,
+1180ms.  MLton claims only 80ms... but it could be undersampling
+because there were over 400 collections... I'm not sure about this
+pathetic timing methodology.
+
+Ok, switching back to threaded, large_config... I get more like 2540ms
+collecting (2240ms, 2410).  With threads, parallel mark, local alloc
+but NO large_config...  3620 3660... 2880 huh??  This is with the 5mb
+inital_heap; without that... 3380ms 4000...  Switching back to the
+large_config brings me back to 2380... 2420... 1900 with initial_heap
+to 5mb.
+
+Ok, trying single threaded with large_config, 5mb initial... 1170 1180
+(but hmm... total user time is just down to 6.0s... so the GC timing
+is not accurate, I guess I should just use the total runtime).  The
+total span observed is from 6.0 user time to 7.7 user time.
+
+I should also try compiling libgc with icc.  Trying single threaded,
+large config, icc, 5mb.  Wow... down to 5.3s runtime!  "790"ms collect
+time.  
+
+
+
+[2008.11.06] {Hacking on fifos}
+
+Most of the problems I thought I had with my twostage fifo
+implementation were in fact unfinished changes to the code generator
+instead.  For large numbers of messages, the courser grained locking
+(locking output queues for entire operator executions) seem to perform
+very poorly compared to finer grained locking.  This doesn't bode well
+for the ZCT method that depends on courser locking.  It could be made
+somewhat better if the GRAB_WRITEFIFO call was pushed further into the
+main codepath of an operator (it just has to be called before the
+first emit).  
+
+Also, when I'm running unbridled timers (constantly enqueueing), the
+courser grained locks seem to result in occasional build-ups of large
+numbers of elements in the queues -- something I don't see with fine
+grained locks.  (Although maybe this just happens because it runs for
+longer.)
+
+[2008.11.06] {Leaking FIFOs}
+
+On even a simple example like demo1c, the list_fifo.c implementation
+currently leaks if FIFO_COARSE_LOCKING is turned off.  It doesn't leak
+otherwise, even if FIFO_TWOSTAGE is enabled.  Hmm.  Rewinding to even
+revision 3631 (currently 3634) seems to fix this problem.  And then in
+3632 the problem starts.  Wait... odd, the leak doesn't seem to occur
+if -realtime is turned on.  Ah, I suppose it could not be a leak, but
+just the producer running asymptotically ahead of the consumer.  The
+course grained locking version doesn't exhibit the problem because it
+simply slows down the producer?
+
+Hmm.. I still have the problem that with deferred reference counting
+demo1e only produces one output tuple and then stalls.  Ah, I've seen
+this before.  That's a problem with BLAST_PRINT.
+
+[2008.11.07] {Coming back to Multithreaded Boehm}
+
+This requires intercepting pthread calls.  Also, it will be
+interesting to test out their support for parallel marking.
+I remember I had experimented with their incremental GC (doesn't help
+throughput, but could help pause times), but I don't know if I tried
+their concurrent marking support.  If I remember correctly, I don't
+think they support concurrent & parallel GC simultaneously, right?
+
+I need to build it with:
+
+  --enable-threads=posix --enable-thread-local-alloc --enable-parallel-mark
+
+I don't know where the best documentation of the API is... I'm just
+reading the header file gc.h, which says:
+
+   * All threads must be created using GC_CreateThread or GC_beginthreadex,
+   * or must explicitly call GC_register_my_thread,
+
+However, it looks like their headers conveniently redefine the
+pthread_* functions.  But do I still need to set -DGC_PTHREADS?  I
+think so.  And what about the build process for the GC?  Hmm. My
+current ubuntu system has libgc-dev 6.8.  Is it compiled with pthread
+support?
+
+In versions before 7.0 it says this is necessary:
+  #define GC_REDIRECT_TO_LOCAL
+  #include "gc_local_alloc.h"
+
+The ubuntu package description says the following:
+
+ This version of the collector is thread safe, has C++ support, and uses the
+ defaults for everything else.  Particularly, it does not work as a malloc()
+ replacement.
+
+[2008.11.12] {Problems with max heap size and boehm}
+
+Oh this is a mess, boehm has compile-time constants MAXHINCR and
+MAX_HEAP_SECTS that affect the maximum heap size.  Currently bgSub.ws
+overflows them witch the default configuration.  I'm going to rebuild
+my libgc with --enable-large-config.  It looks like maybe WS should
+include the boehm collector and build it itself, so that it can build
+the GC with the right options.
+
+ cd gc-7.0
+ ./configure --enable-large-config --enable-threads=posix --enable-thread-local-alloc --enable-parallel-mark
+
+Oh, I see... it looks like the reason it was having a problem is that
+bgSub.ws really is broken and is using an unreasonable amount of
+memory, if not outright leaking.  Well bgSub.ws uses 20% of memory
+(800mb) on honor using reference counting.  Is the high watermark more
+than 5X higher under boehm?  I guess so.  I'm just going to reduce the
+resolution...  This cuts memory usage by 4X, under this config
+bgSub.ws takes 5% honor's memory with refcount, and 30% with boehm.
+That's pretty ugly, we should figure out why that is.
+
+
+[2008.12.05] {Trying Chez 7.5 prerelease}
+
+This version of Chez has partial R6RS support.  Ok, I'm not sure where
+to start testing it.  I'll keep a little log here.
+
+Trying to jump right in gives this:
+
+ $ chez --program regiment.ss --verbose
+Exception: library (primitives with-output-to-string random current-directory gensym repl ...) not found
+
+Next starting with a very basic hello world program.  That works.
+Then trying to import (ws globals)... that gives me:
+
+ $ chez --verbose --program test.ss       
+Exception: library (primitives with-output-to-string random current-directory gensym repl ...) not found
+
+It's loading compat.sls, which is meant for larceny.  Let's try to
+start with just the compat file.  Chez doesn't seem to try
+foo.chez.sls; I'll have to bug Kent about that.
+
+[2009.01.19] {Coming back to multithreaded GC}
+
+I had made some improvements to GC benchmarking, but I was having
+trouble figuring out how to measure GC time for Sun's JVM.  It seemed
+non-obvious.  Maybe the better thing to do is use jikes.  It's open
+and seems to always be used for research.
+
+It looks like apt-get installing Jikes installes the kaffe jvm to go
+with it.  Hmm... why that instead of "Jikes RVM"? 
+
+The article:
+  "Tuning Garbage Collection with the 5.0 Java[tm] Virtual Machine"
+
+Does talk about measurement and verbose output.  
+
+ The command line argument -verbose:gc prints information at every
+collection. Note that the format of the -verbose:gc output is subject
+to change between releases of the J2SE platform. For example, here is
+output from a large server application:
+
+  [GC 325407K->83000K(776768K), 0.2300771 secs]
+  [GC 325816K->83372K(776768K), 0.2454258 secs]
+  [Full GC 267628K->83769K(776768K), 1.8479984 secs]
+
+ Here we see two minor collections and one major one. 
+
+Wow, those are some long pase times in that app ;).
+I think that puts it in the same boat as... was it ocaml or mlton?
+Won't print simple a GC summary on exit, but will print verbose
+messages.
+
+[- I wonder how it works under multithreaded conditions.  At least
+part of the mark phase happens in parallel... -]
+
+[2009.01.20] {Ikarus rot}
+
+Right now, under WS rev 3662, I just updated to Ikarus rev 1746 and am
+getting a problem (works under an old ikarus, for example 1559).
+
+Presently when I run this:
+
+ ikarus -O2  --compile-dependencies regiment.ss
+
+I get this:
+
+Unhandled exception:
+ Condition components:
+   1. &assertion
+   2. &who: string=?
+   3. &message: "not a string"
+   4. &irritants: (#f)
+make: *** [ik] Error 255
+
+One really annoying thing is that SVN is not well designed to let you
+jump back and forth between revs.  If I jump back to an old rev, and
+them jump forward, I'll get an error if I'd added any directories in
+the intervening revs that contained non-subversion-managed files.  (It
+won't delete the dir on the way back, but then on the way forward it
+complains that a dir's in the way).  What it needs to do in this case
+is overlay the dir on top of the existing one, not complain.  (Maybe
+--force does this...)
+
+In any case... I'm sure it worked with some 16XX and 17XX revisions of
+ikarus (1717 & 1716 didn't), but now I'm jumping all the way back to
+1559 to get it to  work.  I don't want to mess with it now.
+
+Ik Rev 1618 works on honor.
+(Also, 1621 worked in the last successfully supertest on chastity.)
+
+[2009.01.20] {Trying to get things together}
+
+Demo6b is stalling testall_wsc2 right now... that's odd.
+Even without valgrind (but with icc).
+Trying with gcc: works fine.
+
+[2009.03.07] {Incremental building with r6rs chez}
+
+I just hacked together a little r6make.ss script that will allow me to
+do incremental builds with chez (it's not correct by any means, just a
+hack).  On chastity I notice chez builds a little over twice as fast
+as ikarus.  Ikarus produces 18 megs of binaries (unzipped) and chez
+5mb.  The old .boot file hack was only generating 1.25 mb.  That hack
+still works for Chez 7.4.  (But screws up under chez 7.5.)  It doesn't
+generate inspector info though.  Inspector info drops the new version
+down to 3mb.  Startup time is much lower too, .425s rather than closer
+to a second (but the previous boot file hack was .250s).  The load
+time is pretty much proportional to the code size.
+
+It's possible that my temporary_smoosh_to_one_chez_file.ss is actually
+omitting a bunch of the code.  
+
+I'm having a bit of trouble concatenating all my individual .so's into
+a working bootfile.  I get an invalid memory reference error.
+
+
+[2009.11.13] {Darn Union2_1 Union2_2 problem}
+
+I'm having very unpredictable compiler errors (post monomorphisation)
+in the context of the reuters stuff.  Seems to be nondeterministic.
+Of course, this always means a compiler bug because you shouldn't have
+type errors past the initial type-check.  
+
+I remember running into these before, but I can't quite remember when
+and where.  In this case it has to do with a simple print op that
+has an unconstrained output type.
+
+----------
+Metaprogram evaluation succeeded.
+Warning in type-checker: 
+Type mismatch: "Union2_1" doesn't match "Union2_2" 
+(Argument to function of wrong type.)
+
+Location:
+   Unknown source location.
+
+Expression:
+(in abstract syntax)
+(iterate
+  (annotations (name wsq_windowJoin_2748))
+  (lambda (x_19 ___VIRTQUEUE____18)
+    ((Sum Union2_1) (VQueue #()))
+    (letrec () (begin (print '".") ___VIRTQUEUE____18)))
+  union2_5)
+
+Ok, digging inside this a little more you find a mismatch between
+these types:
+
+(Sum Union2
+      (Record
+        (Row VOLUME
+             Int
+             (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+      (Record
+        (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+(Sum Union2
+       (Record
+         (Row SYM
+              String
+              (Row VOLUME Int (Row TIME Float (Row PRICE Float #())))))
+       (Record
+         (Row SYM String (Row TIME Float (Row PRICE Float #())))))
+
+Ok, so at one pointI had the invariant that fields need to be
+alphabetically sorted.  
+ 
+[2009.11.24] {TypeCase again}
+
+I've been thinking about typecase a bit more recently.  I need to go
+back to those papers on the subject.
+
+We can do it as long as we have the closed world constraint.
+
+It would be fine to do it like normal case and require that all the
+RHS's unify.  But that's not very powerful.
+
+I think to do better the way we'll need to procede is to type each RHS
+function with a universal input type.  Snapshot the resulting
+instantiated type for that function, put it to the side, and then
+unify the primary copy with the concrete input type (e.g. Int) to make
+sure everything checks out.
+
+Once we're sure that things check out, we go back to the type we set
+aside and we "hollow it out".  We take everything touched by the input
+argument and wipe all type information hanging from it, leaving only
+type variables.  After that is done, the function fun(x) x+1 has type
+(a -> a).
+
+We take the set of "hollowed out" function types from all RHS's and we
+unify them together.  That's our notion of the return value of the
+typecase.
+
+Because typecase is really on functions it's very hard to say what the
+syntax shuold be.
+
+f = typecase {
+  Int:    fun(x) x+1
+  String: fun(y) y
+ }
+
+typecase (x) {
+  Int    : y :    y+1
+  String : z :    z
+ }
+
+
+typecase f() as x {
+  Int:    x + 1
+  String: x ++ "1"
+}
+
+// Or just write the function:
+typecase (x) {
+  Int:    x + 1
+  String: x ++ "1"
+}
+
+Or instead of "typecase", "multifun", "casefun", "typecase_fun"?  
+Then you could possibly use the named function syntax as well:
+
+f :: List a -> a;
+casefun f(x) { 
+  List Int    :      x.head + 1
+  List String : x.tail.head ++ "1"
+}
+
+Or for the whole C-ish syntax thing maybe I need to work "overload" in there.
+
+A potential pitfall may be that we have a danger of introducing too
+many spurious universal types that lead to typecase failures after
+monomorphisation.
+
+----------------------------------------
+
+Finally, we would have the choice of either introducing some kind of
+numtypecase that doesn't fully generalize its input, leaving numeric
+type vars, or doing away with the whole notion of numeric subkinds.
+
+We'd have to have some different treatment of recursion during
+metaprogram eval if we expect to be able to write hash and marshal
+using typecase...
+
+[2009.11.24] {Precompiled external primitives and libraries}
+
+Once we have typecase we'd like to move a whole bunch of primitives
+(e.g. +) out to plain WS code.  But to do that it would be nice to
+precompile them and have some way of pulling them into an AST being
+compiled on demand.  That is, when we find unbound variables early in
+compilation we would check to see if they're library prims, and if so
+pull up their definitions.
+
+We could actually go pretty far with precompiling sources while
+keeping with the whole program compilation.  We could modularly
+typecheck the preprocessed code.  We could do all the passes up to
+metaprogram evaluation.  
+
+We could store the preprocessed sexps in a FASL format.  To make it
+cross platform maybe it would be possible to wrap them in an R6
+library.  But I believe that would only work for standard libraries
+that are present at compile time.
+
+[2009.11.24] {Subgraph compilation}
+ .
+By the way, whole program compilation doesn't need to mean that we
+compile a complete graph at once.  Just that the output be a graph is
+enough.  That graph could have loose ends that connect to other
+graphs.  But for monomorphism we would need the interfaces between
+"modules" of this sort to be monomorphic.
+
+[2010.01.12] {Chez 7.9.4}
+
+Now with Chez's R6RS support I'm using it heavily again.  (Especially
+because the "WSQ" interface for the Reuters proect is exclusively
+based on it.)  
+
+A lot of changes in this version of Chez.  
+
+When trying to upgrade I ran into a strange compile problem with
+match.  In two separate points in the code the following would not
+compile, and commenting it fixed things:
+
+(match alias
+  [(,v ,rhs)           (values v '() rhs)]
+  [(,v (,a* ...) ,rhs) (values v a* rhs)])
+
+The error, for example, would be:
+
+Exception: extra ellipsis in syntax form (syntax (match alias ((...) (...)) ((...) (...)))) near line 1151, char 6 of ./ws/passes/small-ws-passes.sls
+
+GRRR, when I use that exact code through the REPL (regiment i, eval
+based) it works fine.  For example:
+
+> (match '(1 (a b c) 2)
+  [(,v ,rhs)           (values v '() rhs)]
+  [(,v (,a* ...) ,rhs) (values v a* rhs)])
+1
+(a b c)
+2
+> 
+
+[- The above problem was evident in revision 3863 -]
+
+[2010.01.18] {PLT problems in 4.2}
+
+Currently, as of rev 3874, I can build with PLT 4.1, but have a
+problem in 4.2.  helpers.sls includes unit_tester.ss.  For some reason
+in 4.2 the include mechanism has problems and unit_tester.ss no longer
+sees bindings to "match" which are included in helpers.sls.
+
+  4.1 -- works
+  4.2.2 -- broken
+  4.2.3.4 -- broken
+
+[2010.02.05] {Still have PLT problems with "regiment i" repl}
+
+
+
+
+[2010.02.05] {Chez degraded load times}
+
+Once we moved to R6 I started having longer load times.  I hope I
+recorded some numbers somewhere.  Right now on my 2.53 ghz core 2
+laptop I get 0.845 s loads from chez (multiple .so files) vs 0.735s
+loads from plt (of course not actually jitting all the byte code in
+that case).
+
+Heap loading used to be near instantaneous, and I thought I was
+getting better times than this from .boot file loading.  (Right now
+.boot loading at least brings it down to 0.741s)
+
+[2010.03.05] {Trying PLT 4.2.4}
+
+By the way, when updating supertest.ss I noticed that I was
+successfully running scripts through PLT at some point and it was
+getting past that little "This will cause an error" trip-wire that I
+had set (in compat.mzcheme.sls because of the environment problem).
+
+4.2.4 seems to have the "compile: unbound identifier in module in:
+match" problem still... oh well.  Back to 4.1.  I've got both the
+"environment" problem and the "include" one.
+
+All in all, it's tough for me to get a REPL under PLT right now.  My
+custom repl is broken because of the above issue.  The following
+works:
+
+  mzscheme -S . 
+  (require "main.sls")
+  (require "main_r6rs.sls")
+
+But this fails:
+
+[newton@localhost ~/wavescript/src]  $ mzscheme  -t main.sls -t main_r6rs.sls -i
+Welcome to MzScheme v4.1 [3m], Copyright (c) 2004-2008 PLT Scheme Inc.
+> 3495
+stdin::0: compile: bad syntax; function application is not allowed, because no #%app syntax transformer is bound in: (#%top-interaction . 3495)
+
+Egad.  Also, btw, -S doesn't work in this case:
+
+  mzscheme -S . -t main.sls -t main_r6rs.sls -i 
+
+I had to use PLTCOLLECTS instead.  Order doesn't help by the way.
+Played with a few orders, including.
+
+   mzscheme  -i -t main_r6rs.sls  -S .
+
+But, by the way, the following does work:
+
+  mzscheme  -i  -e "(require \"main.sls\") (require \"main_r6rs.sls\")"
+
+WAIT HUH?? The following just worked for me:
+
+ mzscheme  -i -t main_r6rs.sls  
+
+Ok, order doesn't matter to -S not working... but it looks like order
+does matter for -i vs -t!!
+
+------------------------------
+
+Ok, while trying to shrink the bug case, 
+
+INCLUDE RESOLVED TO: /Users/newton/wavescript/src/test2.sls
+/Users/newton/wavescript/src/test2.sls:2:14: compile: unbound identifier in module in: match
+[newton@localhost ~/wavescript/src]  $ 
+[newton@localhost ~/wavescript/src]  $ 
+[newton@localhost ~/wavescript/src]  $ mzscheme -t test.sls 
+INCLUDE RESOLVED TO: /Users/newton/wavescript/src/test2.sls
+/Users/newton/wavescript/src/test2.sls:2:10: compile: identifier used out of context in: x
+
+The variable name seems to matter.
+
+------------------------------
+
+Ugh, I'm also having problems now reproducing the problems I was
+having before with -S not working (independent of -i).... was that
+with 4.1?  It must have been, because I wasn't able to load in 4.2.4.  
+
+Ugh... right now I'm not able to load AT ALL using mzscheme.. I'm
+having extreme problems with reproducability.
+
+[2010.03.08] {Quick tip for getting a back-trace from PLT scheme}
+
+[2010.03.08] {Haven't got the include business working in PLT}
+
+I can use an IFPLT macro to hack around my inability to get a working,
+overridden version of include.  But that seems to work in some files,
+but not in others.  In particular in bos_oop it doesn't work.  Even if
+I hack around that by hardcoding the PLT version (no IFPLT), it then
+compiles in 4.1 but I get the following error in 4.2.4:
+
+....
+ [Compiling /Users/newton/wavescript/src/ws/util/hashtab.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/iu-match.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/reg_macros.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/helpers.sls]
+ [Compiling /Users/newton/wavescript/src/ws/util/streams.sls]
+ [Compiling /Users/newton/wavescript/src/ws/compiler_components/prim_defs.sls]
+ [Compiling /Users/newton/wavescript/src/ws/compiler_components/regiment_helpers.sls]
+mcar: expects argument of type <mutable-pair>; given #<syntax (meta10 x9)>
+
+ === context ===
+/Applications/PLT Scheme/collects/scheme/mpair.ss:122:2: mappend
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+try-next
+/Users/newton/wavescript/src/ws/util/iu-match.sls:463:15
+/Users/newton/wavescript/src/ws/util/iu-match.sls:451:2
+/Applications/PLT Scheme/collects/rnrs/base-6.ss:569:6
+/Applications/PLT Scheme/collects/compiler/cm.ss:174:0: compile-zo*
+/Applications/PLT Scheme/collects/compiler/cm.ss:266:0: compile-zo
+/Applications/PLT Scheme/collects/compiler/cm.ss:306:2: do-check
+/Applications/PLT Scheme/collects/compiler/cm.ss:371:4: compilation-manager-load-handler
+standard-module-name-resolver
+/Applications/PLT Scheme/collects/compiler/cm.ss:174:0: compile-zo*
+/Applications/PLT Scheme/collects/compiler/cm.ss:266:0: compile-zo
+/Applications/PLT Scheme/collects/compiler/cm.ss:306:2: do-check
+/Applications/PLT Scheme/collects/compiler/cm.ss:371:4: compilation-manager-load-handler
+...
+
+make: *** [pltbc] Error 1
+
+
+[2010.06.18] {Trying with PLT v 5.0 "Racket"}
+
+Well, seems to work out of the box.
+
+

@@ -1,0 +1,37 @@
+
+(printf "Loading LAML in Chez to generate index for the documentation.\n")(flush-output-port)
+
+(load "schemedoc/laml.init")
+(load "schemedoc/laml.scm")
+(laml-style "xml-in-laml/schemedoc-index/schemedoc-index")
+
+;(fake-startup-parameters (cadr (command-line-arguments)) (car (command-line-arguments)))
+(fake-startup-parameters "index" "./")
+
+(define (in-laml sf) (string-append (laml-dir-prefix (startup-directory))  sf))
+(define (in-lib-man sf) (string-append (laml-dir-prefix (startup-directory)) "lib/man/" sf))
+
+(define files (command-line-arguments))
+
+(manual-index
+ (manual-index-front-matters
+    (manual-index-title "Regiment Compiler/Simulator Source Code.")
+    ;'browser-type "two-steps"
+    'browser-type "one-step"
+    'left-frame-width "350px"
+    'top-frame-height "350px"
+    'initial-manual-frame "info"
+    'scheme-report-version "r5rs"
+    'scheme-report "include" ; none, include, merge
+    'source-destination-delta "html/"
+  )
+
+  (apply manual-index-contributions
+	 (map (lambda (file)		
+		(manual-index-contribution 
+		 'informative-name file
+		 'path 
+		 file
+		 ))
+	   files)
+))

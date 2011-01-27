@@ -1,0 +1,14 @@
+#!/bin/bash
+
+## This is a very simple script to get you up and running quickly.
+## Run it from the directory in which it resides.
+## You want to source it into bash with "source <thisfile>" or just ". <this file>"
+
+export REGIMENTD=`pwd`
+# [2010.06.25] Now shadowing global binaries with depends/
+export PATH=$REGIMENTD/depends:$REGIMENTD/bin:$PATH
+#export PATH=$PATH:$REGIMENTD/depends
+
+
+# [2010.06.25] TEMP, we're setting things to threaded mode by default to make it more convenient for reuters
+export CHEZTHREADED=1

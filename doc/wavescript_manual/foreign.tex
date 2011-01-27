@@ -1,0 +1,431 @@
+
+\chapter{Foreign (C/C++) Interface}
+
+The WaveScript compiler provides a facility for calling external
+(foreign) functions written in C or C++.  The primary reasons for this
+are two-fold.
+
+\begin{enumerate}
+\item We wish to reuse existing libraries without modification (e.g. Gnu
+  Scientific Library, FFTW, etc).
+
+\item We wish to add new stream sources and sinks --- for network communication, disk access and so
+  on --- without modifying the WaveScript compiler itself.  Also, we
+  frequently want to add support for new hardware data-sources
+  (sensors).
+  
+%In the future we will have a {\tt foreign\_box} syntax similar to {\tt
+%  foreign}, but allowing the user to write a WSSource class usable by
+%  the WaveScope engine.}.
+\end{enumerate}
+
+There are three WaveScript primitives used to interface with foreign
+code.  The {\tt foreign} primitive registers a single C function with
+WaveScript.  Alternatively, {\tt foreign\_source} imports a stream of
+values from foreign code.  It does this by providing a C function that
+can be called to add a single tuple to the stream.  Thus we can call
+from WaveScript into C and from C into WaveScript.  The third
+primitive is {\tt inline\_C}.  It allows WaveScript to generate
+arbitrary C code at compile time which is then linked into the final
+stream query.  We can of course call into the C code we generate from
+WaveScript (or it can call into us).
+%Thus we can generate C code and then call into the code
+%we generated (or have it call into us).
+
+
+
+
+\section{Foreign functions}
+
+The basic foreign function primitive is called as follows: ``{\tt
+foreign({\em function-name}, {\em file-list})}''.  Like any other
+primitive function, {\tt foreign} can be used anywhere within a
+WaveScript program.  It returns a WaveScript function representing the
+corresponding C function of the given name.  The only restriction is
+that any call to the {\tt foreign} primitive {\em must} have a type
+annotation.  The type annotation lets WaveScript type-check the
+program, and tells the WaveScript compiler how to convert (if
+necessary) WaveScript values into C-values when the foreign function
+is called.  
+
+The second argument is a list of {\em dependencies}---files that must
+be compiled/linked into the query for the foreign function to be
+available.
+%
+For example, the following would import a function ``foo'' from ``foo.c''.
+
+\begin{wscode}
+c\_foo :: Int -> Int = foreign("foo", ["foo.c"])
+\end{wscode}
+
+%Note that, as when reading data from a file, the compiler has no way
+%to know the type of the external function, so an explicit type
+%annotation is required.
+
+Currently C-code can be loaded from source files ({\tt .c}, {\tt
+  .cpp}) or object files ({\tt .o}, {\tt .a}, {\tt .so}).  When
+  loading from object files, it's necessary to also include a header
+  ({\tt .h}, {\tt .hpp}).  For example:
+
+\begin{verbatim}
+c_bar = 
+   (foreign("bar", ["bar.h", "bar.a"]) 
+    :: Int -> Int)
+\end{verbatim}
+
+Of course, you may want to import many functions from the same file or
+library.  WaveScript uses a very simple rule.  If a file has already
+been imported once, repeated imports are suppressed.  (This goes for
+source and object files.)  Also, if you try to import multiple files with
+the same basename (e.g. ``bar.o'' and ``bar.so'') the behavior is
+currently undefined.
+
+
+
+
+
+\section{Foreign Sources}
+
+A call to register a foreign source has the same form as for a foreign
+function: \\
+``{\tt foreign\_source({\em function-name}, {\em file-list})}''
+However, in this case the {\em function-name} is the
+name of the function being {\em exported}.  The call to {\tt
+foreign\_source} will return a stream of incoming values.  It must be
+annotated with a type of the form {\tt Stream} $T$, where $T$ is a
+type that supports marshaling from C code.
+
+We call the function exported to C an {\em entrypoint}.  When called
+from C, it will take a single argument, convert it to the WaveScript
+representation, and fire off a tuple as one element of the input
+stream.  The return behavior of this entrypoint is determined by the
+scheduling policy employed by that particular WaveScope backend.  For
+example, it may follow the tuple through a depth-first traversal of
+the stream graph, returning only when there is no further processing.
+Or the entrypoint may return immediately, merely enqueuing
+the tuple for later processing.  The entrypoint returns an integer
+error code, which is zero if the WaveScope process is in a
+healthy state at the time the call completes.  Note that a zero
+return-code does not guarantee that an error will not be encountered
+in the time between the call completion and the next invocation of the
+entrypoint. 
+
+Currently, using multiple foreign sources is supported (i.e. multiple
+entrypoints into WaveScript).  However, if using foreign sources, you
+cannot also use built-in WaveScript ``timer'' sources.  When driving
+the system from foreign sources, the entire WaveScript system becomes
+just a set of functions that can be called from C.  The system is
+dormant until one of these entrypoints is called.
+
+Because the main thread of control belongs to the foreign C code,
+there is another convention that must be followed.  The user must implement
+{\em three} functions that WaveScript uses to initialize, start up the
+system, and handle errors respectively.
+
+\begin{verbatim}
+  void wsinit(int argc, char** argv)
+  void wsmain(int argc, char** argv)
+  void wserror(const char*)
+\end{verbatim}
+
+{\tt Wsinit} is called at startup, before any WaveScript code runs
+(e.g. before {\tt state\{\}} blocks are initialized, and even before
+constants are allocated).  {\tt Wsmain} is called when the WaveScript
+dataflow graph is finished initialing and is ready to receive data.
+{\tt Wsmain} should control all subsequent acquisition of data, and
+feed data into WaveScript through the registered {\tt foreign\_source}
+functions.  {\tt Wserror} is called when WaveScope reaches an error.
+This function may choose to end the process, or may return control to
+the WaveScope process.  The WaveScope process is thereafter
+``broken''; any pending or future calls to entrypoints will return a
+non-zero error code.
+
+\section{Inline C Code}
+
+The function for generating and including C code in the compiler's
+output is {\tt inline\_C}.  We want this bso that we can
+{\em generate} new/parameterized C code (by pasting strings together) rather than 
+including a static {\tt .c} or {\tt .h} file, and instead of using
+some other mechanism (such as the C preprocessor) to generate the C code.
+The function  is called as ``{\tt inline\_C({\em c-code},
+{\em init-function})}''.  Both of its arguments are strings.  The first
+string contains raw C-code (top level declarations).  The second
+argument is either the null string, or is the name of an
+initialization function to add to the list of initializers called
+before {\tt wsmain} is called (if present).  This method enables us to
+generate, for example, an arbitrary number of C-functions dependent on
+an arbitrary number of pieces of global state.  Accordingly we also
+generate initializer functions for the global state, and register them
+to be called at startup-time.
+
+The return value of the {\tt inline\_C} function is a bit odd.  It
+returns an empty stream (a stream that never fires).  This stream may
+be of any type; just as the empty list may serve as a list of any
+type.  This convention is an artifact of the WaveScript metaprogram
+evaluation.  The end result of metaprogram evaluation is a dataflow
+graph.  For the inline C code to be included in the final output of
+the compiler, it must be included in this dataflow graph.  Thus {\tt inline\_C}
+returns a ``stream'', that must in turn be included in the dataflow
+graph for the inline C code to be included.
+%
+You can do this by using the {\tt merge} primitive to combine it with any
+other Stream (this will not affect that other stream, as {\tt
+inline\_C} never produces any tuples).  Alternatively, you can return the
+output of {\tt inline\_C} directly to the ``main'' stream,
+as follows:
+
+\begin{wscode}
+main = inline\_C(\dots)
+\end{wscode}
+
+%% Note that a WaveScript program can contain multiple ``{\tt BASE <-}''
+%% statements that are implicitly combined with the {\tt merge}
+%% primitive.  Of course, all the streams returned in this way must be of
+%% the same type.
+%% %
+%% \rednote{Actually, this feature is planned but not implemented at the
+%%   moment [2007.08.24].}
+
+
+\section{Foreign code in TinyOS}\label{s:foreigntos}
+
+There are a few differences in how foreign code works in TinyOS. The {\cde
+foreign\_source} function is virtually the same.  The {\cde foreign} function is similar,
+but it should be noted that one can cheat a little by suppying an
+arbitrary string for the function name.  For example, here is a
+foreign function that toggles an LED, written using NesC's {\tt call} syntax:
+
+\begin{verbatim}
+led0Toggle = 
+  (foreign("call Leds.led0Toggle", []) 
+   :: () -> ());
+\end{verbatim}
+
+\rednote{Currently [2008.02.22] foreign only works for functions
+  returning {\cde void}.  Bug me to fix this.}
+
+The major difference lies in {\cde inline\_C}, which is replaced by
+{\cde inline\_TOS}.  TinyOS simply has more places that one might want
+to stick code, thus more hooks are exposed:
+
+\begin{wscode}
+inline\_TOS({\em top}, {\em conf1}, {\em conf2}, {\em mod1}, {\em mod2}, {\em boot})
+\end{wscode}
+
+All arguments are strings.  They inject code into different contexts
+as follows:
+\begin{enumerate}
+\item {\bf top}: Inject code at top-level, not iside a {\em configuration}
+  or {\em module} block.
+\item {\bf conf1}: Inject code into the {\cde configuration} block produced
+  by the WaveScript compiler.
+\item {\bf conf2}: Inject code into the {\cde implementation} section of
+  that {\cde configuration} block.
+\item {\bf mod1}: Inject code into the {\cde module} block produced
+  by the WaveScript compiler.
+\item {\bf mod2}: Inject code into the {\cde implementation} section of
+  that {\cde module} block.
+\item {\bf boot}: Inject code into the {\cde Boot.booted()} event handler.
+\end{enumerate}
+
+This mechanism for inlining NesC code can be used for adding support
+for new timers or data sources.  In fact, this is how existing
+ functions like {\cde tos\_timer} and {\cde sensor\_uint16}
+are implemented.  (See {\cde internal\_wstiny.ws} inside the {\tt
+  lib/} directory.)
+
+\section{Other backend's support}
+
+The foreign interface works to varying degrees under each backend.
+%the {\bf Scheme}, {\bf MLton}, and {\bf C++/XStream} backends ({\tt
+%  ws}, {\tt wsmlton}, and {\tt wsc} respectively).
+Below we discuss the current  limitations in each
+ backend.  The feature matrix in Figure \ref{f:features} gives an
+ overview.
+
+\rednote{This has not been updated to address {\bf wsc2}.}
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{|r|r|r|l|}
+\hline $feature$ & $ws$ & $wsmlton$ & $wsc$ \\
+\hline
+
+{\tt foreign}         & yes     & yes & yes \\
+{\tt foreign\_source} & never   & yes & not yet \\
+{\tt inline\_C}       & not yet & yes & not yet \\
+
+loads {\tt .c}        & yes     & yes     & yes \\
+loads {\tt .h}        & yes     & yes     & yes \\
+loads {\tt .o}        & yes     & not yet & yes \\
+loads {\tt .a}        & yes     & not yet & yes \\
+loads {\tt .so}       & yes     & no      & yes \\
+
+
+marshal scalars    & yes     & yes      & yes \\
+marshal arrays     & no      & yes      & not yet \\
+{\tt ptrToArray}   & no      & yes      & not yet \\
+{\tt exclusivePtr} & yes     & not yet  & yes \\
+
+\hline
+\end{tabular}
+\end{center}
+\caption{Feature matrix for foreign interface in different backends}
+\label{f:features}
+\end{figure}
+
+Note that even though the Scheme backend is listed as supporting {\tt
+.a} and {\tt .o} files, the semantics are slightly different than for
+the C and MLton backends.  The Scheme system can only load
+shared-object files, thus when passed {\tt .o} or {\tt .a} files, it
+simply invokes a shell command to convert them to shared-object files
+before loading them.
+
+Including source files also has a slightly different meaning between
+the Scheme and the other backends.  Scheme will ignore header files
+(it doesn't need them).  Then C source files ({\tt .c} or {\tt .cpp})
+are compiled by invoking the system's C compiler.  On the other hand,
+in the XStream backend, C source files are simply {\tt \#include}d
+into the output C++ query file.  In the former case, the source is
+compiled with no special link options or compiler flags, and in the
+latter it is compiled under the same environment as the C++ query file
+itself.  
+
+Thus the C source code imported in this way must be fairly
+robust to the {\tt gcc} configuration that it is called with.
+%  If
+%greater control is needed it is recommended to precompile the C code
+%into a library or object file.
+If the imported code requires any customization of
+the build environment whatsoever, it is recommended to compile them
+yourself and import the object files into WaveScript, rather than
+importing the source files.
+
+\rednote{[2007.05.03] Note: Currently the foreign function interface is only
+supported on Linux platforms.  It also has very preliminary support
+for Mac OS but has a long way to go.}
+
+
+
+
+\section{Converting WaveScript and C types}
+
+An important feature of the foreign interface is that it defines a set
+of mappings between WaveScript types and native C types.  The compiler
+then automatically converts, where necessary, the representation of arguments to foreign
+functions.
+This allows many C functions to be used without modification, or ``wrappers''.  Figure
+\ref{f:types} shows the mapping between C types and WaveScript types.
+
+\rednote{[2007.08.24] Currently wsmlton does not automatically null
+  terminate strings.  This needs to be fixed, but in the meantime the
+  user must null terminate them manually.}
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{|r|r|l|}
+\hline
+$WaveScript$ & $C$ & $explanation$\\
+\hline
+{\tt Int}   & {\tt int}   & 
+  \parbox[t]{2.2in}{native ints have a system-dependent 
+length, note that in the Scheme backend WaveScript {\tt Int}s may 
+have less precision than C {\tt int}s} \\
+
+{\tt Uint16}   & {\tt unsigned short}   & 
+  \parbox[t]{2.2in}{{\WS} supports 8, 16, 32, and 64 bit signed and
+  unsigned integers.} \\
+
+
+{\tt Float} & {\tt float} & 
+\parbox[t]{2.2in}{WaveScript floats are single-precision}\\
+
+{\tt Double} & {\tt double} & \\
+
+{\tt Bool} &   {\tt int} & \\
+
+{\tt String} & {\tt char*} & pointer to null-terminated string \\
+
+%()   & 
+
+{\tt Char} & {\tt char} &  \\
+
+{\tt Array T} & {\tt $T$*} & \parbox[t]{2.2in}{
+pointer to C-style array of elements of type {\tt T}, where {\tt T}
+must be a scalar type
+}\\
+
+{\tt Pointer} & {\tt void*} &  \parbox[t]{2.2in}{
+ Type for handling C-pointers.  Only good for
+  passing back to C.
+}\\
+
+\hline
+\end{tabular}
+\end{center}
+\caption{Mapping between WaveScript and C types.  Conversions
+  performed automatically.}
+\label{f:types}
+\end{figure}
+
+\rednote{[2007.05.03] The system will very soon support conversion of
+  Complex and Int16 types.  
+%Further, it might provide a
+%  C-library for manipulating the representations of other WaveScript
+  types.
+}
+
+
+\section{Importing C-allocated Arrays}
+
+A WaveScript array is generally a bit more involved than a C-style
+array.  Namely, it includes a length field, and potentially other
+metadata.  In some backends ({\tt wsc}, {\tt wsmlton}) it is easy to
+pass WaveScript arrays to C without copying them, because the WS array
+contains a C-style array within it, and that pointer may be passed
+directly.
+
+Going the other way is more difficult.  If an array has been allocated
+(via {\tt malloc}) in C, it's not possible to use it directly in
+WaveScript.  It lacks the necessary metadata and lives outside the
+space managed by the garbage collector.  However, WaveScript does
+offer a way to {\em unpack} a pointer to C array into a WaveScript
+array.  Simple use the primitive {\tt ``ptrToArray''}. But, as with
+foreign functions, be sure to include a type annotation.  (See the
+table in Figure \ref{f:features} for a list of backends that currently
+support {\tt ptrToArray}.)
+
+\section{``Exclusive'' Pointers}
+
+Unfortunately, {\tt ptrToArray} is not always sufficient for our
+purposes.  When wrapping an external library for use in WaveScript, it
+is desirable to use memory allocated outside WaveScript, while
+maintaining a WaveScript-like API.  For instance, consider a Matrix
+library based on the Gnu Scientific Library (GSL), as will described in the
+next chapter.  GSL matrices must be allocated outside of WaveScript.
+Yet we wish to provide a wrapper to the GSL matrix operations that
+feels natural within WaveScript.  In particular, the user should not
+need to manually deallocate the storage used for matrices.
+
+For this purpose, WaveScript supports the concept of an {\em
+  exclusive} pointer.  ``Exclusive'' means that no code outside of
+WaveScript holds onto the pointer.  Thus when WaveScript is done
+with the pointer the garbage collector may invoke {\tt free} to
+deallocate the referenced memory.  (This is equivalent to calling {\tt
+  free} from C, and will not, for example, successfully deallocate a
+  pointer to a pointer.)
+
+Using exclusive pointers is easy.  There is one function {\tt
+  exclusivePtr} that converts a normal {\tt Pointer} type (machine
+  address) into a managed exclusive pointer.  By calling this, the
+  user guarantees that that copy of the pointer is the only in
+  existence.  Converting to an exclusive pointer should be thought of
+  as ``destroying'' the pointer---it cannot be used afterwards.  To
+  retrieve a normal pointer from the exclusive pointer, use the {\tt
+  getPtr} function.  \rednote{In the future, getting an exclusive
+  pointer will ``lock'' it, and you'll have to release it to make it
+  viable for garbage collection again.  Currently, this mechanism is
+  unimplemented, so you must be careful that you use the {\tt Pointer}
+  value that you get back immediately, and that there is a live copy
+  of the exclusive pointer in existence to keep it from being free'd
+  before you finish with it.}

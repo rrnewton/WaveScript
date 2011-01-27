@@ -1,0 +1,21 @@
+
+
+This directory contains an implementation of a seizure detection based
+on eeg signals.  The algorithm was published in "Detecting Seizure
+Onset in the Ambulatory Setting: Demonstrating Fe$ibility" by A. Shoeb et
+al, 2005.
+
+This directory contains a number of different versions of the algorithm:
+
+  SeizureDetection.cpp: The original implementation, by Eugene Shih
+
+  eeg.ws: The initial WaveScript port
+  eeg_static.ws: A version without dynamic memory allocation
+  eeg_fixedapprox.ws: A further refinement that replaces floating
+    point arithmetic with fixed point.  (Unfinished.)
+
+
+Notes 
+================================================================================
+
+

@@ -1,0 +1,33 @@
+
+Also see README.txt up one directory from this.
+
+--------------------------------------------------------------------------------
+DEVELOPMENT LOG
+--------------------------------------------------------------------------------
+
+[2010.08.20] {I seem to hvae found a situation where the logfile is not there}
+
+This is what Yuan mentioned I believe.
+
+It just happened nondeterministically... I ran it again and then the
+.out file appeared.  This is something to figure out.
+
+At least there's no laziness!
+
+Ok... I can get it to happen pretty often... more often when I run
+through the query-generator rather than the query?
+
+
+[2010.10.22]
+
+
+
+        WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100
+|foobar.schema|test.dat");
+
+
+        WSQ_AddOp(1, "ASCIIFileSource", "", "100", "100 |foobar.schema|test.dat");
+
+
+stack smashing
+

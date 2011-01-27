@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# This is not exactly portable.
+# It just happens to work on the machines I have access to for cross-compilation.
+
+
+echo Configuring to compile for arm-linux.
+
+NSTARGATE_TOOLS_ROOT="/usr/arm-linux"
+NSTARGATE_GCC_ROOT="$NSTARGATE_TOOLS_ROOT"
+NSTARGATE_LINUX_ROOT="$NSTARGATE_TOOLS_ROOT/arm-linux"
+
+GLIB_PATH="$NSTARGATE_LINUX_ROOT/lib/libglib-2.0.so"
+#GLIB_CFLAGS=" -I$NSTARGATE_LINUX_ROOT/include/glib-2.0 -I$NSTARGATE_LINUX_ROOT/lib/glib-2.0/include "
+
+EMLIB='/scratch/girod/emstar/obj.nims-stargate/lib'
+
+ENSBOXLD=" \
+  $EMLIB/libensbox_ws.so $EMLIB/libemrun.so $EMLIB/liblink.so \
+  $EMLIB/libdev.so $EMLIB/libsync.so $EMLIB/libdev.so \
+  $EMLIB/libmisc.so $EMLIB/libfusd.so -lm -lasound $GLIB_PATH"
+
+#CXX=$(NSTARGATE_GCC_ROOT)/bin/arm-linux-g++
+
+#CXXFLAGS+=  $(OPTS) -Wall -Werror -I$(EMSTAR_ROOT)/sensors/audiod/vxpc_server \
+#            -I./include -g -O2 -DENSBOX -DEMBEDDED -DARM -D$(STORAGEMGR) $(USEARRAY) $(GLIB_FLAGS)
+#LDFLAGS+= -lrt
+
+EXTRAFLAGS=" -I/usr/arm-linux/include -L/usr/arm-linux/lib -DENSBOX -DEMBEDDED -DARM $ENSBOXLD "
+
+export PATH=$PATH:/usr/arm-linux/bin
+
+export WSGPLUSPLUS="arm-linux-g++ $EXTRAFLAGS "
+export WSEXESUFFIX="arm.exe"
+export WSARCH=ensbox
+
+# Now with the environment set.
+wsc-g++ $*

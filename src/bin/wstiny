@@ -1,0 +1,115 @@
+#!/bin/bash
+
+
+export REGFLAG=wstiny
+
+export WSVARIANT=wstiny
+
+
+# TEMP=`getopt -o ab:c:: --long a-long,b-long:,c-long:: \
+#      -n 'example.bash' -- "$@"`
+
+# if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+
+# # Note the quotes around `$TEMP': they are essential!
+# eval set -- "$TEMP"
+
+# while true ; do
+#         case "$1" in
+#                 -a|--a-long) echo "Option a" ; shift ;;
+#                 -b|--b-long) echo "Option b, argument \`$2'" ; shift 2 ;;
+#                 -c|--c-long) 
+#                         # c has an optional argument. As we are in quoted mode,
+#                         # an empty parameter will be generated if its optional
+#                         # argument is not found.
+#                         case "$2" in
+#                                 "") echo "Option c, no argument"; shift 2 ;;
+#                                 *)  echo "Option c, argument \`$2'" ; shift 2 ;;
+#                         esac ;;
+#                 --) shift ; break ;;
+#                 *) echo "Internal error!" ; exit 1 ;;
+#         esac
+# done
+
+## HACK HACK HACK: I hate having to do this.
+function killjavahack () {
+  ps aux | grep "java PrintfClient" | grep -v grep | awk '{ print $2 }' | xargs kill &> /dev/null
+}
+
+rm -f query.c query.py WSQuery.nc WSQueryApp.nc Makefile.tos2 
+if [ -d build/telosb ];
+then rm -f build/telosb/*;
+fi
+
+killjavahack;
+
+if wsc $* -exit-error -no-gcc
+then echo
+else CODE=$?; echo ERROR, wstiny failed with code $CODE.; exit $CODE;
+fi
+
+echo "Copying WSMsp files to local directory."
+cp -f $REGIMENTD/src/linked_lib/WSMspAdc*.nc .
+
+# # No nesC separate compilation:
+# # MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
+# # if [ "$MATCH" != "" ];
+# # then 
+# #    export EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
+# #    export WS_LINK="$WS_LINK $EXTRALIBS"
+# #    echo Linking extra libraries requested by query file: $EXTRALIBS
+# # fi
+
+
+function tossim() {
+     chmod +x query.py;
+     echo
+     echo "BUILDING TINYOS COMPONENTS:" 
+     echo "============================================================"
+     ## HACK:
+     TELOSSPECIFIC=`grep Msp WSQueryApp.nc`
+     if [ "$TELOSSPECIFIC" == "" ]; 
+     then make -f Makefile.tos2 micaz sim; 
+     else echo "  Generated code is Telos-specific, not generating code for TOSSIM.";  
+     fi
+}
+
+function pc() {
+   echo;echo "BUILDING PC-SIDE COMPONENTS:" 
+   echo "============================================================"
+   if ! wsc2-gcc;
+   then exit 1;
+   fi 
+}
+
+# Option (1) This builds both... for now this is only for telos:
+if [ -f "WSQuery.nc" ] && 
+   [ -f "query.c" ]; 
+then
+  echo;echo "BUILDING SPLIT APPLICATION (TELOS/PC)"
+  pc;
+  echo;echo "BUILDING TINYOS COMPONENTS:" 
+  echo "============================================================"
+
+  killjavahack
+
+# A default:
+#if [ "$THEMOTE" == "" ]; then THEMOTE=/dev/ttyUSB0; fi
+  if [ "$THEMOTE" = "" ]; then 
+    echo "Environment var THEMOTE is unset."
+    echo "You may use 'progtelos' to program the mote(s) yourself."
+  else
+    echo "Programming a single mote with nodeID = 1: $THEMOTE"; echo;    
+    if ! make -f Makefile.tos2 telosb bsl,$THEMOTE install,1 2> .TOS_build_log.txt
+    then echo "Error $? while building telosb, see .TOS_build_log.txt"; exit 1; fi 
+  fi
+# Option (2)  Build only tossim
+elif [ -f "WSQuery.nc" ]; 
+then tossim;
+
+# Option (3)  Build only the pc side -- hmm, why would that be?
+elif [ -f "query.c" ]; 
+then pc;
+
+else echo No .c or .nc output files found...
+fi

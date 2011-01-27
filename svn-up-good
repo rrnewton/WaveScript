@@ -1,0 +1,63 @@
+#! /bin/sh
+#|
+(export DIR=`pwd`;
+cd `dirname "$0"`;
+petite --script `basename "$0"` "$DIR" ${1+"$@"};)
+exit 0;
+|#
+
+(unless (= (length (command-line-arguments)) 1)
+  (error 'svn-up-good "wrong number of command line arguments"))
+
+(load "depends/xml-parser.ss")
+(load "src/chez/match.ss")(import iu-match)
+
+;; This script updates to the latest svn rev that DOES NOT include "brokenrev" in its message.
+
+(define tmpfile (format "/tmp/svn-up-good_tmp~a" (random 10000)))
+
+;; There might be a better way to do this by controlling the args to "svn log".
+;; But currently I just update to the latest version and then rewind.
+
+(define thedir (car (command-line-arguments)))
+(current-directory thedir) ;; Switch to that dir before running svn up.
+
+(system "svn up")
+(printf "Now rewinding to last good revision.\n")
+
+;(system (format "svn log --xml --limit 20 -r PREV:HEAD > ~a" tmpfile))
+(system (format "svn log --xml --limit 20 > ~a" tmpfile))
+
+(define log (ssax:xml->sxml (open-input-file tmpfile) '()))
+
+;(delete-file tmpfile)
+
+(define substring?
+  (lambda (s1 s2)
+    (let ([l1 (string-length s1)] [l2 (string-length s2)])
+    (if (< l2 l1)
+	#f
+	(let loop ((i 0))
+	  (if (> i (- l2 l1))
+	      #f
+	      (or (equal? s1 (substring s2 i (+ i l1)))
+		  (loop (add1 i)))))))))
+
+(let loop ([log log])
+  (match log
+  [(*top* (*pi* ,_ ...) (log . ,[entries])) entries]
+  
+  [((logentry (@ (revision ,rev)) ,other* ...) . ,rest)
+   (define msg (cdr (ASSERT (assq 'msg other*))))
+   (printf "  Considering: ~a...\n" rev)
+   (if (and (not (null? msg)) (substring? "broken" (car msg)))
+       (begin (printf "Rev ~a: includes 'brokenrev'.\n" rev)
+	      (loop rest))
+       (begin 
+	 (printf "Rev ~a: is good, updating\n" rev)
+	 (system (format "svn up -r ~a" rev))))]
+  
+  [() (error 'svn-up-good "Did not find a good revision!")]
+  )) 
+
+(printf "Finished.\n")

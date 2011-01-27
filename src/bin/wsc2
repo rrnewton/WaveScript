@@ -1,0 +1,164 @@
+#!/bin/bash
+
+export WSVARIANT=wsc2
+
+export REGFLAG=$WSVARIANT
+
+source `dirname $0`/assert_regimentd
+
+# Get out only the relevant options:
+RELEVANT=`getopt -a -l "v:,main:,ss:,sigseg:,gc:,gcc:,o:,limitcpus,cpus:,D:,realtime,tbb,threads,noprelude,nothreads,nogcc,no-gcc,tree,O0,O1,O2,O3,dbg" -o ":" -- "$@"`
+#RELEVANT=`getopt -a "ss:,sigseg:,gc:,gcc:,cpus:,D:,realtime,threads,nothreads,nogcc,no-gcc,O0,O1,O2,O3" -o ":" -- "$@"`
+#echo wsc2 getopt result: $RELEVANT
+
+# I would like to pass only the relevant options on to "wsc", but I
+# can't currently get getopt to do everything I want it to, i.e. pass
+# through everything not handled in after the "--".
+
+# [2008.08.18] Make sure to use the one stored in the same directory.
+WSC=`dirname $0`/wsc
+
+#================================================================================
+
+#echo CALLING WSC $WSC $* -exit-error -no-gcc
+
+rm -f query.c query_*.c query.exe query_*.exe
+if $WSC $* -no-gcc
+then echo
+else CODE=$?
+     echo ERROR, wsc2 failed with code $CODE.
+     exit $CODE;
+fi
+
+# Now the compile is finished
+#================================================================================
+
+## TEMP: PTHREADS BY DEFAULT  :
+#THREADS=true
+
+eval set -- "$RELEVANT"
+
+NOGCC=
+while [ $# != 0 ];  do 
+#for flag in $RELEVANT; do 
+ flag=$1
+# echo Handling flag: $flag
+ case $flag in 
+   # Sadly duplicating the COPTFLAG business because no way for "wsc" to pass the env vars back up.
+   "--O0" )        COPTFLAG="$flag";;
+   "--O1" )        COPTFLAG="$flag";;
+   "--O2" )        COPTFLAG="$flag";;
+   "--O3" )        COPTFLAG="$flag";;
+   "--dbg" )       COPTFLAG="$flag";;
+   "--tbb" )       THREADS=true;;  # -tbb implies -threads
+   "--threads" )   THREADS=true;;
+   "--nothreads")  THREADS="";;
+   "--nogcc" | "--no-gcc" ) NOGCC=true;;
+   "--gcc" )  export CC="$2";             shift;;
+   "--limitcpus") export WS_LINK+=" -DLIMITCPUS "; shift;;
+#    "--cpus") export WS_LINK+=" -DLIMITCPUS "; 
+#               TEMP=$2;
+#               export LIMITCPUS="$((TEMP-1))";  
+# 	      shift;;
+   "--D" )    export WS_LINK="$WS_LINK -D$2";   shift;;
+
+   "--o" )    export CFILE="$2";   shift;;
+
+   # This option bypasses the (scheme) compiler and affects the generated code:
+   "--realtime" )  export WS_LINK="$WS_LINK -DWS_REAL_TIMERS ";;
+
+   "--" ) break;;
+#   *) echo "  Uh, unhandled...";;
+ esac;
+ shift;
+done
+export COPTFLAG
+
+#echo WITH CFILE $CFILE
+#exit
+
+#echo After parsing args, WS_LINK is $WS_LINK
+
+if ! [ "$THREADS" = "" ]; 
+then export WS_LINK="$WS_LINK -DWS_THREADED -lpthread ";
+fi
+
+if [ "$CC" = "icc" ] || ([ "$CC" = "" ] && [ "`which icc`" != "" ])
+# Could do -static also:
+#then export CC='icc -O3 -ipo -no-prec-div'
+then export CC='icc -ipo -no-prec-div'
+fi
+
+if [ "$CFILE" = "" ]; then CFILE=query; fi
+
+rm -f "$CFILE".exe "$CFILE"_*.exe
+
+for file in `ls "$CFILE"*.c 2> /dev/null`; do
+  export CFILE=$file
+  $REGIMENTD/bin/wsc2-gcc
+  CODE=$?
+  if [ "$CODE" != "0" ]; then exit $CODE; fi
+done
+
+# if ! [ -f "query.c" ]
+# then echo "query.c not found..."
+# elif [ $NOGCC ]
+# then echo "Not calling C compiler."; exit 0
+# else exec wsc2-gcc
+# fi
+
+
+
+
+
+
+
+## Run again to profile branches:
+# ./query.exe
+# CMD="gcc $OPTFLAGS -o query.exe $WS_LINK query.c -fbranch-probabilities"
+# echo $CMD; $CMD
+
+
+# GCC flags not enabled by -O3:
+#       -fforce-addr
+#       -funroll-loops / unroll-all-loops
+#       -finline-limit=
+#       -fno-keep-static-consts
+#       -fmerge-all-constants (non conforming behavior)
+
+#       -fsched-spec-load
+#       -fsched-spec-load-dangerous
+#       -fmove-all-movables
+
+#       -fbranch-probabilities
+#       -fno-guess-branch-probability
+
+#       -fprefetch-loop-arrays
+
+# Experimental:
+#       -fnew-ra - Experimental register allocator
+#       -ftracer
+#       -fssa  - not ready for productio use
+#      -ffunction-sections  -fdata-sections  -- place functions and data into their own sections, helps linker.
+
+
+# Our array representation is going to require disabling:
+#       -fstrict-aliasing
+
+
+# May or may not increase performance (might disable)
+#       -fcrossjumping
+#       -freduce-all-givs
+#       -falign-labels
+
+
+# DANGER opts that must be turned on by hand, breaks IEEE math.
+#       -ffast-math
+#       -fno-math-errno
+#       -funsafe-math-optimizations
+#       -ffinite-math-only   - disable handling of NANs and INFs
+#       -fno-trapping-math   - don't worry about DIV zero and so on
+#       -fsingle-precision-constant
+
+
+
