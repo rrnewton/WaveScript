@@ -1,0 +1,10 @@
+
+
+
+[2011.01.31]
+
+  * Add a port number to query.exe without recompiling
+  * pause mode for endtransaction without actually running subprocess
+  * Investigate child process problems / talk to kent
+  * new socket library
+

@@ -44,6 +44,9 @@ void WSQ_SetBackend(enum WSQBackend mode);
 void WSQ_BeginTransaction(wsid_t id);
 int WSQ_EndTransaction();
 
+ // TODO: Pause / unpause concept
+
+
 /// Subgraphs.
 
 // Whereas these two bracket a subgraph.
