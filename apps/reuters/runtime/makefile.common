@@ -1,4 +1,6 @@
 
+# A collection of common build configuration options for build WSQ C programs.
+
 MACHINE = $(shell $(REGIMENTD)/apps/reuters/runtime/chez_machine_type_threaded)
 
 UNAME = $(shell uname -s)
