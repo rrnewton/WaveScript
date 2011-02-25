@@ -51,6 +51,8 @@
 ;; to a list of numbers.
 (define subgraph_table (make-eq-hashtable))
 
+(define stream-engine-paused #f)
+
 ;; HACK
 ;; Here we build up an list of op ids in the order they were added:
 (define op_log (box '()))
@@ -416,44 +418,48 @@
 
 	    (print-end-time)
 
-	    (begin 
-	      (vprintf 1 "\n================================================================================\n")
-	      ;; Kill old process:
-	      (when current-child-process (kill-child current-child-process))
-	      ;; Create new child process:
-	      (let-values ([(to-stdin from-stdout from-stderr pid)
-	                    (let ((cmd 
-				   (if query-output-file
-				       ;; [2010.08.20] I think I was using exec to avoid TWO CHILD PROCESSES and make sure my kill went through.
-				       ;; But if I kill the process can I make sure it's flushing and actually opens the output log?
-				       ;; Maybe it would be better to generate WS code that opens/writes the output file.
-				       (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file)
-				       (format "exec ./~a.exe" query-app-name))))
-			      (vprintf 1 " <WSQ> Executing command in child process: ~a\n" cmd)
-			      (if query-output-file
-				  (open-process-ports cmd)
-				  (open-process-ports cmd 'block (make-transcoder (latin-1-codec)))))
-			    
-			  ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
-			  ])
-		(if current-child-process
-		    (vprintf 1 " <WSQ> Created replacement child process (pid ~a).\n" pid)
-		    (vprintf 1 " <WSQ> Started child process to execute query (pid ~a).\n" pid))
-		(set! current-child-process pid)
-		(vprintf 1 "================================================================================\n\n")
+	    ;; Begin executing the query:
+	    (if stream-engine-paused
+	      (vprintf 1 " <WSQ> EndTransaction NOT running query because stream engine paused.\n")
+	      (begin
+		(vprintf 1 "\n================================================================================\n")
+		;; Kill old process:
+		(when current-child-process (kill-child current-child-process))
+		;; Create new child process:
+		(let-values ([(to-stdin from-stdout from-stderr pid)
+			      (let ((cmd 
+				     (if query-output-file
+					 ;; [2010.08.20] I think I was using exec to avoid TWO CHILD PROCESSES and make sure my kill went through.
+					 ;; But if I kill the process can I make sure it's flushing and actually opens the output log?
+					 ;; Maybe it would be better to generate WS code that opens/writes the output file.
+					 (format "exec ./~a.exe > \"~a\"" query-app-name query-output-file)
+					 (format "exec ./~a.exe" query-app-name))))
+				(vprintf 1 " <WSQ> Executing command in child process: ~a\n" cmd)
+				(if query-output-file
+				    (open-process-ports cmd)
+				    (open-process-ports cmd 'block (make-transcoder (latin-1-codec)))))
 
-		;; We need to return from the EndTransaction call back to the control program.
-		;; I wish there were some good way to plug the from-stdout into console-output-port 
-		;; without having a separate thread for the express purpose of echoing input.
+			    ;(open-process-ports "./query.exe &> /dev/stdout" 'block (make-transcoder (latin-1-codec)))
+			    ])
+		  (if current-child-process
+		      (vprintf 1 " <WSQ> Created replacement child process (pid ~a).\n" pid)
+		      (vprintf 1 " <WSQ> Started child process to execute query (pid ~a).\n" pid))
+		  (set! current-child-process pid)
+		  (vprintf 1 "================================================================================\n\n")
 
-		;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
-		(unless query-output-file
-		  (fork-thread (echo-port from-stdout)))
-		))]
+		  ;; We need to return from the EndTransaction call back to the control program.
+		  ;; I wish there were some good way to plug the from-stdout into console-output-port 
+		  ;; without having a separate thread for the express purpose of echoing input.
+
+		  ;; (unless (threaded?) (error 'WSQ "must be run with a threaded version of Chez Scheme."))
+		  (unless query-output-file
+		    (fork-thread (echo-port from-stdout)))
+		  ))
+	    	)]
 	 [else (error 'WSQ_EndTransaction "unknown WSQ_BACKEND: ~s" wsq-engine)]))
     (set-box! curtransaction #f)
     ;; Return pid:
-    current-child-process
+    (or current-child-process 0)
     ))
 
 ;; Creates a silly thread just for the purpose of relaying input to
@@ -954,6 +960,20 @@
 	[else (error 'WSQ_SetBackend "Error: unrecognized mode enum ~s" mode)]))
     (vprintf 1 " <WSQ> Setting query mode to: ~s\n" sym)
     (set! wsq-engine sym)
+    ))
+
+(define-entrypoint WSQ_Pause () void
+  (lambda ()
+    (vprintf 1 " <WSQ> Pausing stream engine.\n")
+    (set! stream-engine-paused #t)
+    ))
+
+(define-entrypoint WSQ_Unpause () void
+  (lambda ()
+    (vprintf 1 " <WSQ> Unpausing stream engine.\n")
+    ;; Return value:
+    (error 'WSQ_Unpause "<WSQ> unpausing not supported yet")
+    0
     ))
 
 ;;==============================================================================

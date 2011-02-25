@@ -31,6 +31,14 @@ enum WSQBackend {
 
 void WSQ_SetBackend(enum WSQBackend mode);
 
+/// Change the pause state. 
+// 
+// When the stream engine is paused it will register new operators (and possibly compile
+// them) but it will not process any tuples.
+void WSQ_Pause();
+// Like EndTransaction, a nonzero return from Unpause is a process ID.
+int  WSQ_Unpause();
+
 //==============================================================================
 // Runtime Query Graph Construction.
 //==============================================================================
@@ -42,9 +50,10 @@ void WSQ_SetBackend(enum WSQBackend mode);
 //void (*WSQ_EndTransaction)();
 
 void WSQ_BeginTransaction(wsid_t id);
-int WSQ_EndTransaction();
 
- // TODO: Pause / unpause concept
+// If EndTransaction returns a non-zero number it is a process ID for a subprocess that is
+// running the current query.
+int  WSQ_EndTransaction();
 
 
 /// Subgraphs.

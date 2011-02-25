@@ -22,6 +22,9 @@ int main(int argc, char* argv[]) {
   //================================================================================
 
   if (1) {
+    // For demonstraction purposes we pause the stream engine here:
+    WSQ_Pause();
+
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
         WSQ_AddOp(1, "RandomSource", "", "100", "10 |foobar.schema");
@@ -39,7 +42,14 @@ int main(int argc, char* argv[]) {
         WSQ_AddOp(4, "Printer", "100", "", "YAY:");
        WSQ_EndSubgraph();
     int pid = WSQ_EndTransaction();
-    printf("EndTransaction returned to main C program, reports PID %d\n", pid);
+
+    printf("EndTransaction returned to main C program, return value: %d\n", pid);
+    fflush(stdout);
+
+    sleep(1);
+    printf("Unpausing stream engine... subprocess should now run.  Sleeping for three seconds.\n");
+    int val = WSQ_Unpause();
+    printf("Unpause returned: %d.\n", val);
     fflush(stdout);
     sleep(3);
   }

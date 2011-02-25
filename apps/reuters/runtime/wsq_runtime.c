@@ -66,6 +66,9 @@ void (*Scheme_SetOutputFile) (const char* path);
 void (*Scheme_SetQueryName) (const char* name);
 void (*Scheme_SetBackend) (enum WSQBackend mode);
 
+void (*Scheme_Pause) ();
+int  (*Scheme_Unpause) ();
+
 
 //==============================================================================
 /* The functions exposed through the C API are just wrappers for the
@@ -75,7 +78,7 @@ void (*Scheme_SetBackend) (enum WSQBackend mode);
 */
 
 void WSQ_BeginTransaction(wsid_t id) { Scheme_BeginTransaction(id); }
-int  WSQ_EndTransaction()          { Scheme_EndTransaction(); }
+int  WSQ_EndTransaction()          { return Scheme_EndTransaction(); }
 
 void WSQ_BeginSubgraph(wsid_t id) { Scheme_BeginSubgraph(id); }
 void WSQ_EndSubgraph()          { Scheme_EndSubgraph(); }
@@ -241,6 +244,10 @@ void WSQ_Init(const char* outfile) {
   ptr setquery   = Stop_level_value( Sstring_to_symbol("WSQ_SetQueryName-entry"));
   ptr setbackend = Stop_level_value( Sstring_to_symbol("WSQ_SetBackend-entry"));
 
+  ptr pause    = Stop_level_value( Sstring_to_symbol("WSQ_Pause-entry"));
+  ptr unpause  = Stop_level_value( Sstring_to_symbol("WSQ_Unpause-entry"));
+  
+
   Scheme_BeginTransaction = (intfun)Sinteger_value(tbegin);
   Scheme_EndTransaction   = (int(*)())Sinteger_value(tend);
 
@@ -265,7 +272,10 @@ void WSQ_Init(const char* outfile) {
   Scheme_SetOutputFile    = (void(*)(const char*))Sinteger_value(setout);
 
   Scheme_SetQueryName     = (void(*)(const char*))Sinteger_value(setquery);
-  Scheme_SetBackend       = (void(*)(const char*))Sinteger_value(setbackend);
+  Scheme_SetBackend       = (void(*)(enum WSQBackend mode))Sinteger_value(setbackend);
+
+  Scheme_Pause      = (void(*)())Sinteger_value(pause);
+  Scheme_Unpause    = (int(*)()) Sinteger_value(unpause);
 
   // ============================================================
   if (verbose>=1) printf(" <WSQ> Bringing up WSQ runtime system (forking threads)...\n");
@@ -286,6 +296,9 @@ void WSQ_SetQueryName(const char* name) {
 void WSQ_SetBackend(enum WSQBackend mode) {
    Scheme_SetBackend(mode);
 }
+
+void WSQ_Pause()   { Scheme_Pause(); }
+int  WSQ_Unpause() { return Scheme_Unpause(); }
 
 
 //int main(int argc, char* argv[]) { do_scheme(argc,argv); }
