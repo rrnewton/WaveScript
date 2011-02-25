@@ -91,6 +91,8 @@
 					;(find-file "~/cur/*.ss")
     ))
 
+(defun load-wavescript-all-source () "" (interactive) (load-regiment-all-source))
+
       
 ;;       (mapcar (lambda (dir)
 ;; 	)
@@ -141,41 +143,6 @@
 ;;   then the low 16 bits.
 ;; 11. Device number.  If it is larger than the Emacs integer, this is
 ;;   a cons cell, similar to the inode number.
-
-
-(defvar wsd (concat (cap-dir "~/WaveScope") "code/v1/"))
-
-;; [2006.08.24]
-(defun load-wavescope-all-source ()
-  "Load all the source code for the WaveScope engine."
-  (interactive)
-  ;; Hardcoded location for now:
-  (let ((wsd (concat (cap-dir "~/WaveScope") "code/v1/")))
-    ;; Sometimes it doesn't work if I don't do this first:
-    (cd wsd)
-    (mapcar (lambda (dir)
-	    (mapcar (lambda (f)
-		      (if (> (length f) 3)
-			  (if (and (not (string= (substring f 0 1) "_")) ;; Ignore files starting with "_"
-				   (not (string= (substring f 0 2) ".#"))
-				   )
-			      (if (or (string= (substring f -4) ".hpp")
-				      (string= (substring f -4) ".cpp")
-				      (string= f "Makefile")		      
-				      )
-				  (progn 
-				    (print (concat "Loading " f))
-				    (find-file-noselect (concat wsd dir f))
-				)))))
-		    (directory-files (concat wsd dir))))
-	  '("" "include/" "Library/" "Sources/" "Storage/" "Misc/" 
-	    "Timebases/" "Engine/" "FFI/" 
-	    ))
-	  ;'("~/cur/generic/"))
-  ;(setq find-file-wildcards t)
-  ;(find-file "~/cur/*.ss")
-  ))
-
 
 
 

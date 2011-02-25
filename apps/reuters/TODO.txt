@@ -8,3 +8,7 @@
   * Investigate child process problems / talk to kent
   * new socket library
 
+  * Need to measure...
+
+
+

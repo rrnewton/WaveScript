@@ -39,6 +39,9 @@
 (define query-output-file #f)
 (define query-app-name "wsq_query")
 
+;; [2011.02.16] Introducing a paused/unpaused state to the stream engine.
+(define runtime-paused-state #f)
+
 ;; The subgraph we're currently working on:
 (define cursubgraph #f)
 
