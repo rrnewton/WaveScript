@@ -388,11 +388,20 @@ fun wsq_join_leftonly(extractor, s1, s2) {
 fun wsq_printer(str, s) {
   //stream_map(fun(x) { print(x); x }, s)
   iterate x in s { 
+   state {
+     do_flush = 
+       if GETENV("WSQ_NOFLUSH") == "" 
+       then true
+       else { print(" <WSQ> DISABLING flushing after printing stream elements.  Be careful.\n");
+              false; };
+     stdout :: FileDescr = ((foreign("ws_get_stdout", ["stdio.h"]) :: () -> FileDescr))();  
+   }
     print(str);
     print(x); 
     print("\n");    
     // [2010.12.08] What made me do a flush? 
-    // Unix:fflush(Unix:stdout); 
+    // [2011.02.25] Reenabling... could do something better here and catch kill signals.
+    if do_flush then Unix:fflush(stdout); 
   }
 }
 

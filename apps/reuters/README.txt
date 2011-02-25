@@ -165,6 +165,11 @@ engine through environment variables:
 
   WSQ_BACKEND -- select WS code generator to use, currently only "C" supported.
 
+  WSQ_OUTPUTFILE -- Cause the final output of stream engine queries to be
+                    written to a file.  Overrided by the argument to WSQ_Init.
+
+  WSQ_NOFLUSH -- set nonempty to disable flushing after stream
+                 elements are printed to a file.
 
 ----------------------------------------------------------------------------------------------------
 

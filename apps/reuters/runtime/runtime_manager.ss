@@ -17,18 +17,6 @@
 ;;====================================================================================================
 
 ;;====================================================================================================
-
-
-;; An optional file to place query output:
-#;
-(define query-output-log 
-   (let ((filename (getenv "QUERYLOG")))
-     (if filename 
-	 (begin (when (file-exists? filename) (delete-file filename))
-		(open-output-file filename))
-	 #f)))
-
-;;==============================================================================
 ;; Global Variables:
 
 ;; This is gross but we use global state to keep track of the
@@ -36,7 +24,7 @@
 
 (define curtransaction (box #f))
 (define current-child-process #f)
-(define query-output-file #f)
+(define query-output-file (getenv "WSQ_OUTPUTFILE")) ; #f means use stdout
 (define query-app-name "wsq_query")
 
 ;; [2011.02.16] Introducing a paused/unpaused state to the stream engine.
@@ -69,7 +57,7 @@
 
 (define print-state void)
 #;
-(define (print-state)
+(define (print-state)  ;; super verbose debug version:
   (printf "     Subgraphs:\n       ")
   (pretty-print (unbox subgraphs))
   (printf "     Current Subgraph:\n       ")
@@ -77,7 +65,9 @@
 
 ;;==============================================================================
 
-;; Following the convention that the 
+;; Following the convention that we try to use SQL names, here we need
+;; to map them onto the names used by the WaveScript intermediate
+;; representation.
 (define supported-binops 
   '((+ g+) (* g*) (- g-) 
     (/ g/) (^ g^)    
@@ -97,7 +87,6 @@
 (define aggregator-prims '(SUM AVG MIN MAX FIRST LAST FIRSTWHERE LASTWHERE))
 ;; TODO: Add PREV
 
-
 ;; This dispatches on the representation of the entry in
 ;; supported-binops and returns a piece of WS syntax that applies the
 ;; primitive to its operands.
@@ -111,9 +100,8 @@
    [,else (error "apply-prim-entry bad entry in supported-binops: ~s" entry)]))
 
 ;;====================================================================================================
-;; Poor man's "Parsing" -- we're just assuming sexp compatible strings.
+;; Poor man's "Parsing" -- we're just assuming sexp-compatible strings.
 ;;====================================================================================================
-
 
 ;; When we write field names "SYM" rather than "A.SYM" there's an
 ;; implicit record (tuple) that we're operating on.  In the generated
@@ -200,7 +188,7 @@
 	  (match x* [(,x ,pred) (app x `(lambda (,implicit-record-name) ,(parse-expression pred)))])]
 	 [else (match x* [(,x) (app x)])])]
 	
-	;; TODO ADD COMMAS:
+	;; TODO: ADD COMMAS:
 	#;
        [(,prim ,[rand*] ...) (guard (symbol? prim) (regiment-primitive? prim))
         `(,prim . ,rand*)]
@@ -208,7 +196,8 @@
        [,oth (error 'parse-expression "Invalid expression: ~a" oth)]
        )]))
 
-
+;; Variables in SQL-like expressions may be qualified by what stream
+;; they refer to or that may be implicit.
 (define (free-rec-vars expr default-rec)
   (match expr
     [,x (guard (symbol? x)) 
@@ -229,7 +218,7 @@
 
 
 ;; SQL has overloading conventions where sometime a variable that
-;; refers to a window can be treated used as a scalar.  We need to
+;; refers to a window can be used as a scalar.  We need to
 ;; unravel that.
 (define (lift-aggregate default-rec expr)
   ;; For now we assume that all variables inside the aggregation body
@@ -304,8 +293,8 @@
 (define mergemagic (gensym "Merge"))
 
 ;;==============================================================================
-
 ;; Here are the C-callable functions -- the interface to the control module.
+;;==============================================================================
 
 ;; Transactions.
 
@@ -476,10 +465,6 @@
       (unless (eof-object? x)
 	(display x (current-output-port))  
 	(flush-output-port (current-output-port))
-	#;
-	(when query-output-log 
-	  (display x query-output-log)
-	  (flush-output-port query-output-log))
 	(loop (get-string-some port))))
 	(when (>= verbose-mode 1)
 	  (fprintf (console-error-port) "\n ### ECHO THREAD: Port closed.  Child process probably dead.  Terminating.\n"))
@@ -494,9 +479,10 @@
     (let loop ((x 0)) (unless (eof-object? x) (loop (get-bytevector-some out))))))
 
 (define (kill-child pid)
-  (define killcmd (format "kill -9 ~a" pid))
+  ;(define killcmd (format "kill -9 ~a" pid))
   ;; If it's a shell I thought a normal kill might let it kill recursively... but no.
-  ;(define killcmd (format "kill  ~a" pid))
+  ;; [2011.02.25] How about behavior with respect to flushing output ports?  Any difference?
+  (define killcmd (format "kill  ~a" pid))
 
   (when (>= verbose-mode 1)
     (vprintf 1 " <WSQ> checking for child process:\n")(flush-output-port (current-output-port))
@@ -939,10 +925,14 @@
 
 (define-entrypoint WSQ_SetOutputFile (string) void
   (lambda (path)
-    (unless (equal? path "")
-    (set! query-output-file path))
-    (vprintf 1 " <WSQ> Query output redirected to ~s\n" path)
-    ))
+    (if (equal? path "")
+     (if query-output-file
+         (vprintf 1 " <WSQ> Query output goes to ~s based on WSQ_OUTPUTFILE environment var.\n" query-output-file)
+         (vprintf 1 " <WSQ> Query output goes to stdout (not redirecting).\n"))
+     (begin
+       (set! query-output-file path)
+       (vprintf 1 " <WSQ> Query output redirected to ~s\n" path))
+       )))
 
 
 ;; Takes a base name.

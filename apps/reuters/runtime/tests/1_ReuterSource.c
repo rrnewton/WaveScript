@@ -4,7 +4,8 @@
 // This test creates just a source of data and prints tuples to a file.
 
 int main(int argc, char* argv[]) {
-  WSQ_Init("1_ReuterSource.out");
+    WSQ_Init("1_ReuterSource.out");
+//    WSQ_Init(0);
 
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);

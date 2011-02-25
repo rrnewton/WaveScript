@@ -269,7 +269,7 @@
 ;; TODO: FIXME: Don't think I enforce this right now!!
 (define meta-only-primitives
   `(
-    (GETENV (String) String) ; Returns "" if the env var is unbound.
+    (GETENV (String) String)    ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
     ;(FILECONTENTS (String) String)
 
