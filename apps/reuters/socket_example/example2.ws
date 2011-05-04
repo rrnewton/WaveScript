@@ -49,7 +49,12 @@ main1 = f3( f2( f1(fakestocks)))
 
 // Version 2: insert sockets between each pair of filters.
 //============================================================
-// Run all within the same process, requires "-threads"
+/* 
+  Run all within the same process, requires "-threads"
+  Compile like so:
+ 	CC=gcc wsc2 example2.ws -threads -main main2 -o example2_main2
+*/
+
 port = 9730
 s1   = trace("p1 passing on: ", f1(fakestocks))
 out1 = socket_out(s1, port)
@@ -63,12 +68,21 @@ in3 :: Stream (| PRICE:Float, SYM:String)
      = socket_in("localhost", port+1)
 final = f3(in3)
 
+// Note, out1/out2 have no actual contents, we are just `pulling` them to make stuff happen:
 main2 = unionList([out1,out2, final])
+
 
 
 // Version3 : separate entrypoints for each process:
 //============================================================
-// Compile each of these separately:
+/*
+Compile each of these separately, like this:
+
+	wsc2 example2.ws -main p1 -o p1
+	wsc2 example2.ws -main p2 -o p2
+	wsc2 example2.ws -main p3 -o p3 
+ */
+
 p1 = out1 
 p2 = out2 
 p3 = iterate x in final {

@@ -143,6 +143,7 @@
 ;; (string->symbol "unquote")
 
 
+;; Parsing of SQL-style value expressions.
 ;;  Takes an sexp and returns a WS expression AST.
 ;;  Does NOT take a string.  This operates in two modes.  VARIABLE
 ;;  where identifiers are interpreted as plain variables, and RECORD,
@@ -624,6 +625,11 @@
     ))
 
 
+;; UDF's may take and produce any number of stream arguments.
+; (define (WSQ_AddUDF opid in* out* args)
+;   ;; TODO: implement me.
+;   )
+
 (define (WSQ_AddFilterWindows opid in out _expr)  
   (define code
     `[,(edge-sym out) (app wsq_project
@@ -814,13 +820,20 @@
     (unless in*  (error 'WSQ_AddOp "Bad list of inputs: ~s"  inputs))
     (unless out* (error 'WSQ_AddOp "Bad list of outputs: ~s" outputs))
     
-    ;; Dispatch on the type of operator.  It would be nice to extend this while writing only WS code.
+    ;; Dispatch on the type of operator.  
     (case opsym
       [;(REUTERSSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
        (ASCIIFILESOURCE) (has-inputs 0) (has-outputs 1) (has-args 3)
         (apply WSQ_AddASCIIFileSource id (car out*) args)]
       [(RANDOMSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
         (apply WSQ_AddRandomSource id (car out*) args)]
+
+      ;; User-defined-functions.  Pure WS code implementing a custom operator.
+      ; [(UDF)        
+      ; ; (has-inputs 1) (has-outputs 1) (has-args 1) 
+      ; ;  (WSQ_AddUDF id (car in*) (car out*) _args)
+      ;   (WSQ_AddUDF id in* out* _args)
+      ; ]
 
       [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
       [(FILTER)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
@@ -853,6 +866,8 @@
       [(JOIN)           (has-inputs 2) (has-outputs 1) (has-args 3)  (apply WSQ_AddJoin   id (car in*) (cadr in*) (car out*) args)]
       [(MERGEMONOTONIC) (has-inputs 2) (has-outputs 1) (has-args 1)  (apply WSQ_AddMergeMonotonic id (car in*) (cadr in*) (car out*) args)]
       [(FILTERWINDOWS)  (has-inputs 1) (has-outputs 1) (has-args 1)  (apply WSQ_AddFilterWindows  id (car in*) (car out*) args)]
+
+
 	
       [else (error 'WSQ_AddOp "unknown op type: ~s" optype)]
     )))

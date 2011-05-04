@@ -23,7 +23,6 @@ run:
 
 # Similarly:
 # Here I insert sleeps to make sure there's no race to connect.
-# [2009.06.10] Presently the client is not robust to failing on connect.
 run2:
 	(./p1.exe &); (sleep 1;./p2.exe &); (sleep 1; ./p3.exe -n 50)
 

@@ -16,4 +16,5 @@
   More recent action items included
    * the reconnection hack... 
    * and the UDF stuff.
+   * Explore the cause of dropped data on the server side.
 
