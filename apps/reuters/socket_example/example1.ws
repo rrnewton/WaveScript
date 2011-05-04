@@ -48,5 +48,3 @@ instrm2 = iterate bytes in in2 {
 }
 
 
-// TEMP
-//main = outstrm2

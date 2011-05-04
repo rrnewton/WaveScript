@@ -102,10 +102,21 @@ fun socket_in_raw(addr, port) {
 
       print("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
       // May block for some time:      
-      c = connect(sockfd, addr, sizeof_sockaddr());
+
+
+// OLD WAY: No reconnection:
+//    c = connect(sockfd, addr, sizeof_sockaddr());
+
+// NEW Way: 
+      c = -1;
+      while (c < 0) {
+         c := connect(sockfd, addr, sizeof_sockaddr());
+         if c < 0 then print("WARNING: connect returned error code "++ c ++", retrying.\n");
+         usleep(500 * 1000);
+      };
 
       print("  <socket.ws> Established client connection, port " ++ port ++ "\n");
-      if c < 0 then error("ERROR connecting "++ c);
+
     };
 
 //   while (true) 
