@@ -4,11 +4,22 @@
 [2011.01.31]
 
   * Add a port number to query.exe without recompiling
-  * pause mode for endtransaction without actually running subprocess
   * Investigate child process problems / talk to kent
   * new socket library
 
-  * Need to measure...
+  * Feedback on operator perfomance -- profiling data.
+
+  * UDF infrastructure.
+  * Do socket throughput tests.
+
+Partially DONE:
+-------------------------------------------------------------------
+
+  * Pause/unpause -- some work left here.
+
+DONE:
+-------------------------------------------------------------------
+
 
 
 [2011.05.04]  

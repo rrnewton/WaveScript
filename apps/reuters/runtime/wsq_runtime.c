@@ -10,7 +10,7 @@
 // This version connects to Chez Scheme.
 
 
-// NOTES: HOW TO ADD A NEW ENTRYPOINT INTO SCHEME:
+// NOTES: HOWTO ADD A NEW ENTRYPOINT INTO SCHEME:
 
 // (1) Add a C prototype for the function pointer (Scheme_*).
 // (2) Add a wrapper that's exposed to C code (WSQ_*).
@@ -129,6 +129,7 @@ void WSQ_Shutdown() {
   Sscheme_deinit(); // Chez call to bring down the runtime.
 }
 
+// Generic version, the other functions could be replaced with this one:
 void WSQ_AddOp(wsid_t ndid, const char* optype, const char* inputs, 
 	       const char* outputs, const char* args) {
 

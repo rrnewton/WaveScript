@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 
 //  WSQ_Init("query_output.log");
   WSQ_Init(NULL); // Null argument means do not specify an output file.
-  WSQ_SetQueryName("foobar"); // Optional, affects output file name.
+  WSQ_SetQueryName("example_main_query"); // Optional, affects output file name.
 
 //  WSQ_SetBackend(SCHEME_BACKEND); // Optional
 
@@ -47,9 +47,11 @@ int main(int argc, char* argv[]) {
     fflush(stdout);
 
     sleep(1);
-    printf("Unpausing stream engine... subprocess should now run.  Sleeping for three seconds.\n");
-    int val = WSQ_Unpause();
-    printf("Unpause returned: %d.\n", val);
+    if (0) {
+      printf("Unpausing stream engine... subprocess should now run.  Sleeping for three seconds.\n");
+      int val = WSQ_Unpause();
+      printf("Unpause returned: %d.\n", val);
+    }
     fflush(stdout);
     sleep(3);
   }

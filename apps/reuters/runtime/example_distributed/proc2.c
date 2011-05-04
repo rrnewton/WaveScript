@@ -23,19 +23,24 @@ int main(int argc, char* argv[]) {
   WSQ_Init("");
   WSQ_SetQueryName("proc2query");
 
+  WSQ_Pause();
+  printf("PAUSING WSQ engine, run compiled query manually...\n");
+
   WSQ_BeginTransaction(1001);
     WSQ_BeginSubgraph(101);
     //type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
     //      WSQ_ConnectRemoteIn(20,"localhost", PORT, "string BAZ, float BAR");
 
       WSQ_AddOp(20, "ConnectRemoteIn", "", "20", strargs);
-      WSQ_AddOp(21, "Printer", "20", "", "NETSTRM: ");
+          WSQ_AddOp(21, "Printer", "20", "", "NETSTRM: ");
 
     WSQ_EndSubgraph();
   WSQ_EndTransaction();
 
-  sleep(1000);
+  //sleep(1000);
+  sleep(1);
 
+  printf("Done Sleeping.  Shutting down WSQ Engine...\n");
   WSQ_Shutdown();
   return 0;
 }

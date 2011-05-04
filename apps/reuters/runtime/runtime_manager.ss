@@ -624,11 +624,20 @@
     (print-state)
     ))
 
-
 ;; UDF's may take and produce any number of stream arguments.
-; (define (WSQ_AddUDF opid in* out* args)
-;   ;; TODO: implement me.
-;   )
+(define (WSQ_UDF in* out* file name args)
+
+;; FIXME: UNFINISHED!!
+  (define code
+    `[#(,(map edge-sym out*) ...) ;; Tuple of output streams.
+       (app name
+	    (tuple ,@(map edge-sym in*))
+	    ,@args)])
+  (add-op! opid code)  
+  (for-each add-in-edge! in*) 
+  (for-each add-out-edge! out*)
+  (print-state)
+  )
 
 (define (WSQ_AddFilterWindows opid in out _expr)  
   (define code
@@ -795,8 +804,6 @@
 
 
 
-
-
 ;; The generic entrypoint that can add any operator.
 (define-entrypoint WSQ_AddOp (int string string string string) void
   (lambda (id optype inputs outputs _args)
@@ -828,12 +835,10 @@
       [(RANDOMSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
         (apply WSQ_AddRandomSource id (car out*) args)]
 
-      ;; User-defined-functions.  Pure WS code implementing a custom operator.
-      ; [(UDF)        
-      ; ; (has-inputs 1) (has-outputs 1) (has-args 1) 
-      ; ;  (WSQ_AddUDF id (car in*) (car out*) _args)
-      ;   (WSQ_AddUDF id in* out* _args)
-      ; ]
+      [(UDF) 
+        (match args 
+	 [(,file ,funname . ,rest) (WSQ_UDF in* out* file (string->symbol funname) rest)]
+	 [,other (error 'UDF "UDF WSQ Op expected at LEAST two arguments (file/name), got: ~s" other)])]
 
       [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
       [(FILTER)     (has-inputs 1) (has-outputs 1) (has-args 1) (WSQ_AddFilter id (car in*) (car out*) _args)]
@@ -929,6 +934,7 @@
     (define code `(,mergemagic (app wsq_connect_out ,host ,port ,(edge-sym outid))))
     (add-op! opid code) (add-in-edge! outid)
     ))
+
 
 (define-entrypoint WSQ_Shutdown () void
   (lambda ()

@@ -31,3 +31,83 @@ through the query-generator rather than the query?
 
 stack smashing
 
+
+[2011.03.02] 
+
+On Wasp I'm getting that stack smashing error:
+
+       <socket.ws> BLOCKING main WS thread to wait for data source connection (client).
+       <socket.ws> Established client connection, port 9877
+     Failed with error: ERROR connecting -1
+     *** stack smashing detected ***: ./proc2 terminated
+     ======= Backtrace: =========
+     /lib/libc.so.6(__fortify_fail+0x37)[0x2b1173c3b537]
+     /lib/libc.so.6(__fortify_fail+0x0)[0x2b1173c3b500]
+     ./proc2(main+0xf8)[0x4078ac]
+     /lib/libc.so.6(__libc_start_main+0xfe)[0x2b1173b5ad8e]
+     ./proc2[0x4076f9]
+     ======= Memory map: ========
+
+But then running the same queries by hand a moment later worked....
+
+Hmm...  got that same stack smashing on a WSQ_Shutdown call:
+
+    *** stack smashing detected ***: ./proc2 terminated
+    ======= Backtrace: =========
+    /lib/libc.so.6(__fortify_fail+0x37)[0x7f94240c1537]
+    /lib/libc.so.6(__fortify_fail+0x0)[0x7f94240c1500]
+    ./proc2(main+0x116)[0x4078ca]
+    /lib/libc.so.6(__libc_start_main+0xfe)[0x7f9423fe0d8e]
+    ./proc2[0x4076f9]
+
+
+
+[2011.03.31] {Ran into stack smashing problem}
+
+With distributed example:
+
+     *** stack smashing detected ***: ./proc2 terminated
+     ======= Backtrace: =========
+     /lib/libc.so.6(__fortify_fail+0x37)[0x7fe9fb2ad537]
+     /lib/libc.so.6(__fortify_fail+0x0)[0x7fe9fb2ad500]
+     ./proc2(main+0x116)[0x4078ca]
+     /lib/libc.so.6(__libc_start_main+0xfe)[0x7fe9fb1ccd8e]
+     ./proc2[0x4076f9]
+     ======= Memory map: ========
+     00400000-00442000 r-xp 00000000 09:00 26215327                           /home/newton/Dropbox/working_copies/wavescript/apps/reuters/runtime/example_distributed/proc2
+     00642000-00643000 r--p 00042000 09:00 26215327                           /home/newton/Dropbox/working_copies/wavescript/apps/reuters/runtime/example_distributed/proc2
+     00643000-00644000 rw-p 00043000 09:00 26215327                           /home/newton/Dropbox/working_copies/wavescript/apps/reuters/runtime/example_distributed/proc2
+     00644000-007f7000 rw-p 00000000 00:00 0 
+     022b1000-022d2000 rw-p 00000000 00:00 0                                  [heap]
+     400a3000-402a7000 rwxp 00000000 00:00 0 
+     40461000-40869000 rwxp 00000000 00:00 0 
+     40979000-40d81000 rwxp 00000000 00:00 0 
+     40d9c000-40e1c000 rwxp 00000000 00:00 0 
+     40ee9000-40fe9000 rwxp 00000000 00:00 0 
+     410eb000-4116b000 rwxp 00000000 00:00 0 
+     41351000-419dd000 rwxp 00000000 00:00 0 
+     41ae8000-424fc000 rwxp 00000000 00:00 0 
+     425f6000-492ce000 rwxp 00000000 00:00 0 
+     7fe9faf98000-7fe9fafad000 r-xp 00000000 09:00 273                        /lib/libgcc_s.so.1
+     7fe9fafad000-7fe9fb1ac000 ---p 00015000 09:00 273                        /lib/libgcc_s.so.1
+     7fe9fb1ac000-7fe9fb1ad000 r--p 00014000 09:00 273                        /lib/libgcc_s.so.1
+     7fe9fb1ad000-7fe9fb1ae000 rw-p 00015000 09:00 273                        /lib/libgcc_s.so.1
+     7fe9fb1ae000-7fe9fb328000 r-xp 00000000 09:00 63132                      /lib/libc-2.12.1.so
+     7fe9fb328000-7fe9fb527000 ---p 0017a000 09:00 63132                      /lib/libc-2.12.1.so
+     7fe9fb527000-7fe9fb52b000 r--p 00179000 09:00 63132                      /lib/libc-2.12.1.so
+     7fe9fb52b000-7fe9fb52c000 rw-p 0017d000 09:00 63132                      /lib/libc-2.12.1.so
+     7fe9fb52c000-7fe9fb531000 rw-p 00000000 00:00 0 
+     7fe9fb531000-7fe9fb538000 r-xp 00000000 09:00 63129                      /lib/librt-2.12.1.so
+     7fe9fb538000-7fe9fb737000 ---p 00007000 09:00 63129                      /lib/librt-2.12.1.so
+     7fe9fb737000-7fe9fb738000 r--p 00006000 09:00 63129                      /lib/librt-2.12.1.so
+     7fe9fb738000-7fe9fb739000 rw-p 00007000 09:00 63129                      /lib/librt-2.12.1.so
+     7fe9fb739000-7fe9fb751000 r-xp 00000000 09:00 63134                      /lib/libpthread-2.12.1.so
+     7fe9fb751000-7fe9fb950000 ---p 00018000 09:00 63134                      /lib/libpthread-2.12.1.so
+     7fe9fb950000-7fe9fb951000 r--p 00017000 09:00 63134                      /lib/libpthread-2.12.1.so
+     7fe9fb951000-7fe9fb952000 rw-p 00018000 09:00 63134                      /lib/libpthread-2.12.1.so
+     7fe9fb952000-7fe9fb956000 rw-p 00000000 00:00 0 
+     7fe9fb956000-7fe9fb996000 r-xp 00000000 09:00 603                        /lib/libncurses.so.5.7
+     7fe9fb996000-7fe9fbb95000 ---p 00040000 09:00 603                        /lib/libncurses.so.5.7
+     7fe9fbb95000-7fe9fbb99000 r--p 0003f000 09:00 603                        /lib/libncurses.so.5.7
+     7fe9fbb99000-7fe9fbb9a000 rw-p 00043000 09:00 603                        /lib/libncurses.so.5.7
+     7fe9fbb9a000-7fe9fbb9c000 r-xp 00000000 09:00 63148                      /lib/libdl-2.12.1.so

@@ -49,7 +49,6 @@ args --
    (2) file name of schema file containing tuple format (UNUSED CURRENTLY)
 Currently the schema of random source is fixed:
 
-
 "ASCIIFileSource" -- stock ticks read from a ascii TAQ reuters file
 Schema:
 
@@ -109,6 +108,30 @@ Schema:
    (1) host name
    (2) port
 
+
+"UDF" -- A User-Defined function written in the WaveScript programming
+         language.
+ X-input, Y-output, N+2 string arguments:
+   (1) The name of the file defining the UDF.
+   (2) The name of function.
+   (3-N+2) Extra string arguments
+
+The number of input and output streamIDs passed inside the respective
+char* arguments to WSQ_AddOp determine the number of stream inputs and
+stream outputs.
+
+The UDF itself should accept a tuple containing all input streams as first argument,
+followed by the extra string arguments, and must return a tuple of
+output streams as its result.  Thus it will have the following form:
+
+    fun myUDF((instrm1, instrm2, ...), str1, str2, ...) 
+    { 
+      ...
+      (outstrm1, outstrm2, ...)
+    }
+  
+Any parsing of the string arguments str1, str2 will typically happen
+at WaveScript metaprogram evaluation time.
 
 
 ----------------------------------------

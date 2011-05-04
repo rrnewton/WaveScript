@@ -51,6 +51,9 @@ namespace Unix {
 socket_out :: (Stream a, Uint16) -> Stream b;
 
 // The convention here is that out-bound sockets are the server.
+// 
+// TODO: We need a good way to queisce the WS runtime system AFTER we have all socket
+//       listening and until they all have successfully connected.
 fun socket_out_old(strm, port) {
   iterate x in strm {
     state { first = true; 
@@ -84,7 +87,7 @@ fun socket_out_old(strm, port) {
 fun socket_in_raw(addr, port) {
   // FIXME: this really should not be driven by a timer.  It should be a foreign_source:
   // Either that or it should run in an infinite loop.
-  // BUT an infinite loop in single threaded world won't let other sources go!!
+  // BUT an infinite loop in single threaded world won't let other sources have a turn!
   //  iterate _ in timer(0) {
   iterate _ in timer(500) {
     state { first = true;
