@@ -5,12 +5,14 @@
 
   * Add a port number to query.exe without recompiling
   * Investigate child process problems / talk to kent
+    (Did these turn out to be OS problems?  I thought I replicated 
+     them without Scheme....)
   * new socket library
 
   * Feedback on operator perfomance -- profiling data.
 
-  * UDF infrastructure.
   * Do socket throughput tests.
+  * Explore the cause of dropped data on the server side.
 
 Partially DONE:
 -------------------------------------------------------------------
@@ -20,12 +22,6 @@ Partially DONE:
 DONE:
 -------------------------------------------------------------------
 
-
-
-[2011.05.04]  
-
-  More recent action items included
-   * the reconnection hack... 
-   * and the UDF stuff.
-   * Explore the cause of dropped data on the server side.
+  * UDF infrastructure.
+  * the client reconnection hack... 
 

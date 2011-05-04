@@ -131,7 +131,8 @@ output streams as its result.  Thus it will have the following form:
     }
   
 Any parsing of the string arguments str1, str2 will typically happen
-at WaveScript metaprogram evaluation time.
+at WaveScript metaprogram evaluation time, but it must be performed by
+the user code.
 
 
 ----------------------------------------

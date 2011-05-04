@@ -39,6 +39,9 @@
 ;; A list of the operators in the current subgraph.
 (define cur_ops #f)
 
+;; A list of extra WS includes for the current transaction
+(define extra_includes #f)
+
 ;; This table tracks all the operators created.
 ;; It stores the *GENERATED* WS code (bindings) to instantiate each operator.
 (define op_table (make-eq-hashtable))
@@ -199,6 +202,29 @@
        [,oth (error 'parse-expression "Invalid expression: ~a" oth)]
        )]))
 
+;; Reads a single symbol from a string (eliminating whitespace)
+;; This is a hackish way to do it:
+; (define (extract-symbol-name str)  (read (open-string-input-port str)))
+
+;; Trim whitespace just from the start and end:
+(define (trim-whitespace str)
+  (define len (string-length str))
+  (define start 
+    (let loop1 ((i 0))
+      (cond
+	[(= i len) (sub1 len)]
+	[(not (char-whitespace? (string-ref str i))) i]
+	[else (loop1 (add1 i))])))
+  (define end
+    (let loop2 ((i (sub1 len)))
+      (cond
+	[(< i 0) 0]
+	[(not (char-whitespace? (string-ref str i))) (add1 i)]
+	[else (loop2 (sub1 i))])))
+  (if (> len 0)
+      (substring str start end)
+      ""))
+
 ;; Variables in SQL-like expressions may be qualified by what stream
 ;; they refer to or that may be implicit.
 (define (free-rec-vars expr default-rec)
@@ -307,6 +333,7 @@
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
     (set-box! curtransaction id)
+    (set! extra_includes '())
     ))
 
 ;; Pick which WS backend to use, default is wsc2:
@@ -334,6 +361,8 @@
 			 `(define ,var ,e)))
 		  binds)]
 	   [prog `((include ,(string-append (getenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
+	           ;; Include the user's code as well:
+	           ,@(map (lambda (x) `(include ,x)) extra_includes)
 		   ,@bod
 		   (define main 
 		     (assert-type (Stream #())
@@ -459,6 +488,7 @@
 	    	)]
 	 [else (error 'WSQ_EndTransaction "unknown WSQ_BACKEND: ~s" wsq-engine)]))
     (set-box! curtransaction #f)
+    (set! extra_includes #f)
     ;; Return pid:
     (or current-child-process 0)
     ))
@@ -513,9 +543,7 @@
   (when (hashtable-contains? op_table opid) (error 'WSQ "op with node id ~s already exists!" opid))
   (hashtable-set! op_table opid binding)
   (unless cur_ops (error 'add-op! "The system is not in a good state.  Maybe BeginSubgraph was omitted?\n"))
-  ;(ASSERT cur_ops) 
   (set! cur_ops (cons opid cur_ops))
-  ;;(hashtable-set! subgraph_table sym code)
   (set-box! op_log (cons opid (unbox op_log))))
 
 
@@ -625,14 +653,25 @@
     ))
 
 ;; UDF's may take and produce any number of stream arguments.
-(define (WSQ_UDF in* out* file name args)
+(define (WSQ_UDF opid in* out* file name args)
 
-;; FIXME: UNFINISHED!!
+;; FIXME!!! If I DONT do this maybe-tuple thing I seem to get type
+;; errors with unary tuples (which should just be aliases for
+;; non-tuples!).
+
+  (define (maybe-tuple fn ls)
+    (if (> (length ls) 1)
+        (fn ls)
+	(car ls)))
   (define code
-    `[#(,(map edge-sym out*) ...) ;; Tuple of output streams.
-       (app name
-	    (tuple ,@(map edge-sym in*))
+    `[,(maybe-tuple list->vector (map edge-sym out*)) ;; Tuple of output streams.
+       (app ,name
+	    ,(maybe-tuple (lambda (x) `(tuple ,@x))
+	                  (map edge-sym in*))
 	    ,@args)])
+  (unless extra_includes (error 'WSQ_UDF "The system is not in a good state.  Maybe BeginTransaction was omitted?\n"))  
+  (set! extra_includes (cons file extra_includes))
+
   (add-op! opid code)  
   (for-each add-in-edge! in*) 
   (for-each add-out-edge! out*)
@@ -807,14 +846,12 @@
 ;; The generic entrypoint that can add any operator.
 (define-entrypoint WSQ_AddOp (int string string string string) void
   (lambda (id optype inputs outputs _args)
-    (define args (string-split _args #\|))
+    (define args (map trim-whitespace (string-split _args #\|)))
+;    (define args (string-split _args #\|))
     (define __ (vprintf 1 " <WSQ>  WSQ_AddOp ~a ~s in: ~a out: ~a  args:  ~s \n" id optype inputs outputs args))
     (define in*  (ASSERT (string->slist inputs)))
     (define out* (ASSERT (string->slist outputs)))
     (define opsym (string->symbol (uppercase optype)))
-
-    (define (kill-whitespace str)
-      (list->string (filter (compose not char-whitespace?) (string->list str))))
 
     ;; Error handling:
     (define (has-inputs n)
@@ -837,7 +874,7 @@
 
       [(UDF) 
         (match args 
-	 [(,file ,funname . ,rest) (WSQ_UDF in* out* file (string->symbol funname) rest)]
+	 [(,file ,funname . ,rest) (WSQ_UDF id in* out* file (string->symbol (trim-whitespace funname)) rest)]
 	 [,other (error 'UDF "UDF WSQ Op expected at LEAST two arguments (file/name), got: ~s" other)])]
 
       [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]
@@ -854,24 +891,20 @@
 
       [(CONNECTREMOTEIN)  (has-inputs 0) (has-outputs 1) (has-args 3)
        ;; This one takes three arguments in the string 'args'
-       (let-match ([(,_host ,_port ,fieldtypes) args])
-        ;; Trim any extra whitespace.  No whitespace in hostnames.
-        (define host (kill-whitespace _host))
+       (let-match ([(,host ,_port ,fieldtypes) args])
         (define port (car (ASSERT (string->slist _port))))
-	(WSQ_ConnectRemoteIn id (car out*) host port fieldtypes))]
+	(WSQ_ConnectRemoteIn id (car out*) (trim-whitespace host) port fieldtypes))]
 
       [(CONNECTREMOTEOUT) (has-inputs 1) (has-outputs 0) (has-args 2)
-       (let-match ([(,_host ,_port) args])
-        (define host (kill-whitespace _host))
+       (let-match ([(,host ,_port) args])
         (define port (car (ASSERT (string->slist _port))))
-	(WSQ_ConnectRemoteOut id (car in*) host port))]
+	(WSQ_ConnectRemoteOut id (car in*) (trim-whitespace host) port))]
 
       [(MATCHRECOGNIZE) (has-inputs 1) (has-outputs 1) (has-args 3)  (apply WSQ_AddMatchRecognize id (car in*) (car out*) args)]
       [(WINDOW)         (has-inputs 1) (has-outputs 1) (has-args 3)  (apply WSQ_AddWindow id (car in*) (car out*) args)]
       [(JOIN)           (has-inputs 2) (has-outputs 1) (has-args 3)  (apply WSQ_AddJoin   id (car in*) (cadr in*) (car out*) args)]
       [(MERGEMONOTONIC) (has-inputs 2) (has-outputs 1) (has-args 1)  (apply WSQ_AddMergeMonotonic id (car in*) (cadr in*) (car out*) args)]
       [(FILTERWINDOWS)  (has-inputs 1) (has-outputs 1) (has-args 1)  (apply WSQ_AddFilterWindows  id (car in*) (car out*) args)]
-
 
 	
       [else (error 'WSQ_AddOp "unknown op type: ~s" optype)]
