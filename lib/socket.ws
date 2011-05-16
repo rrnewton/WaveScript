@@ -114,7 +114,8 @@ fun socket_in_raw(addr, port) {
       c = -1;
       while (c < 0) {
          c := connect(sockfd, addr, sizeof_sockaddr());
-         if c < 0 then print("WARNING: connect returned error code "++ c ++", retrying.\n");
+         code = get_errno();
+         if c < 0 then print("WARNING: connect returned error code "++ code ++", retrying.\n");
          usleep(500 * 1000);
       };
 
