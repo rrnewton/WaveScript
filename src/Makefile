@@ -271,6 +271,7 @@ chezthreaded:
 	CHEZTHREADED=1 $(MAKE) chezincr2
 
 # Do an incremental rebuild of dirty objects:
+# This version uses my own hack for chasing r6rs library deps:
 chezincr: ws/common.sls main_r6rs.sls 
         # Build all the individual .so files:
 	./experimental/r6make.ss regiment.ss
@@ -278,6 +279,7 @@ chezincr: ws/common.sls main_r6rs.sls
 #	echo '(make-boot-header "tmp.hdr" "scheme.boot" "petite.boot")' | $(CHEZ)
 #	find -name "*.so"
 
+# This version uses chez scheme's builtin transitive compilation:
 chezincr2: ws/common.sls main_r6rs.sls 
 	mkdir -p build/$(MT)
 	$(CHEZ) $(THREADED) --libdirs ".::build/$(MT)/"  --compile-imported-libraries --optimize-level 2 --program regiment.ss `pwd` nothing

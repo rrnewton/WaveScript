@@ -25,3 +25,13 @@ DONE:
   * UDF infrastructure.
   * the client reconnection hack... 
 
+
+
+[2011.05.16] 
+
+ * make nonblocking to socket.ws
+ * deliver microbenchmark for distributed communication 
+ * deliver UDF for join...
+ 
+
+

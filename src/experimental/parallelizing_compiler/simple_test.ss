@@ -7,8 +7,6 @@
 ;  (collect-trip-bytes (* 20 1048576)) ;; collects 47 times in ~3 sec
   )
 
-;(include "chez_threaded_utils.ss")
-;(import threaded_utils)
 (import (par5))
 ;(import (par6))
 

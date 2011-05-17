@@ -1,4 +1,6 @@
 
+;; This version uses a cactus stack.
+
 ;; [2006.07] This contains some miscellaneous stuff related to
 ;; threads.  Only relevent to the pthread-based version of Chez
 ;; Scheme.
