@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
-        WSQ_AddOp(1, "RandomSource", "", "100", "100000 |foobar.schema");
+        WSQ_AddOp(1, "RandomSource", "", "100", "10000 |foobar.schema");
 
         WSQ_AddOp(2, "UDF", "100", "200", "6_UDF.ws | myUDF | 39 | 42 ");
 

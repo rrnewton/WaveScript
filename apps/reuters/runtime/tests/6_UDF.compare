@@ -1,0 +1,40 @@
+myUDF(39, 42) counted 1000 tuples.
+ [6_UDF] got output: (PRICE=48.76, SYM=ALOG, TIME=4514, VOLUME=6)
+myUDF(39, 42) counted 2000 tuples.
+ [6_UDF] got output: (PRICE=46.97, SYM=AVP, TIME=9057, VOLUME=7)
+myUDF(39, 42) counted 3000 tuples.
+ [6_UDF] got output: (PRICE=47.05, SYM=APL, TIME=13400, VOLUME=1)
+myUDF(39, 42) counted 4000 tuples.
+ [6_UDF] got output: (PRICE=52.01, SYM=ACC, TIME=18001, VOLUME=3)
+myUDF(39, 42) counted 5000 tuples.
+ [6_UDF] got output: (PRICE=48.54, SYM=ALK, TIME=22504, VOLUME=6)
+myUDF(39, 42) counted 6000 tuples.
+ [6_UDF] got output: (PRICE=52.51, SYM=AEE, TIME=27242, VOLUME=10)
+myUDF(39, 42) counted 7000 tuples.
+ [6_UDF] got output: (PRICE=44.88, SYM=AVP, TIME=31758, VOLUME=10)
+myUDF(39, 42) counted 8000 tuples.
+ [6_UDF] got output: (PRICE=55.43, SYM=AWC, TIME=36240, VOLUME=5)
+myUDF(39, 42) counted 9000 tuples.
+ [6_UDF] got output: (PRICE=52.13, SYM=ACOR, TIME=40775, VOLUME=2)
+myUDF(39, 42) counted 10000 tuples.
+ [6_UDF] got output: (PRICE=49.87, SYM=AKR, TIME=45193, VOLUME=8)
+myUDF(39, 42) counted 11000 tuples.
+ [6_UDF] got output: (PRICE=43.87, SYM=ALB, TIME=49704, VOLUME=9)
+myUDF(39, 42) counted 12000 tuples.
+ [6_UDF] got output: (PRICE=44.77, SYM=ACN, TIME=54191, VOLUME=3)
+myUDF(39, 42) counted 13000 tuples.
+ [6_UDF] got output: (PRICE=38.96, SYM=AVAV, TIME=58578, VOLUME=1)
+myUDF(39, 42) counted 14000 tuples.
+ [6_UDF] got output: (PRICE=46.8, SYM=AMAG, TIME=63033, VOLUME=2)
+myUDF(39, 42) counted 15000 tuples.
+ [6_UDF] got output: (PRICE=54.12, SYM=ACGY, TIME=67478, VOLUME=1)
+myUDF(39, 42) counted 16000 tuples.
+ [6_UDF] got output: (PRICE=47.37, SYM=AZN, TIME=71937, VOLUME=7)
+myUDF(39, 42) counted 17000 tuples.
+ [6_UDF] got output: (PRICE=47.34, SYM=AIPC, TIME=76328, VOLUME=4)
+myUDF(39, 42) counted 18000 tuples.
+ [6_UDF] got output: (PRICE=56.23, SYM=AEIS, TIME=80916, VOLUME=6)
+myUDF(39, 42) counted 19000 tuples.
+ [6_UDF] got output: (PRICE=44.59, SYM=ACN, TIME=85248, VOLUME=4)
+myUDF(39, 42) counted 20000 tuples.
+ [6_UDF] got output: (PRICE=45.33, SYM=AU, TIME=89656, VOLUME=7)

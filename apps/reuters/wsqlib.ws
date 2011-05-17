@@ -102,6 +102,27 @@ fun wsq_randomSource(freq, schema) {
   }
 }
 
+// NON-Random version.  
+wsq_nonRandomSource :: (Float, String) -> Stream DummySchema99;
+fun wsq_nonRandomSource(freq, schema) {
+  print ("<WSQ> Creating (nonrandom) dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
+  iterate _ in timer(freq) {
+    state{ i = 0 }
+    i += 1;
+    ind = moduloI(i, Array:length(all_syms));
+
+    f = Float! i;
+    emit (SYM= all_syms[ind], 
+          TIME= f,
+          PRICE= f,
+	      VOLUME= i
+  	      );
+  }
+}
+
+
+
+
 wsq_filter  = stream_filter;
 wsq_project = stream_map;
 

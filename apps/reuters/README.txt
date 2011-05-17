@@ -43,11 +43,16 @@ args --
   Supported stream operators and their syntax.        
 --------------------------------------------------------------------------------
 
-"RandomSource" -- a source of stock tick tuples
+"RandomSource" -- a simple example source of stock tick tuples for
+                  testing purposes
  0-inputs 1-output 2 string arguments: 
    (1) frequency of source in hertz (floating point)
    (2) file name of schema file containing tuple format (UNUSED CURRENTLY)
 Currently the schema of random source is fixed:
+
+
+"NonRandomSource" -- The same, except with deterministic output for
+                     repeatable tests.
 
 "ASCIIFileSource" -- stock ticks read from a ascii TAQ reuters file
 Schema:

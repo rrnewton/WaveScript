@@ -81,6 +81,8 @@
     (=  wsequal?) 
     (<=) (>=) (<) (>)
     (<> ,(lambda (a b) `(not (wsequal ,a ,b))))
+    
+    (% moduloI)
 
     (AND ws:and) (OR ws:or) (NOT not)
     ))
@@ -573,7 +575,6 @@
     (ASSERT not cur_ops)
     (set! cursubgraph id)
     (set! cur_ops '())
-    (print-state)
     ))
 
 (define-entrypoint WSQ_EndSubgraph () void
@@ -583,7 +584,6 @@
       (exit -1))
     (let ((id cursubgraph))
       (vprintf 1 " <WSQ>  WSQ_EndSubgraph ~s \n" id)
-      (print-state)
       ;; Currently subgraphs don't really do anything special.
       ;; But we do record the operators introduced by the subgraph so we can remove them later.
       (hashtable-set! subgraph_table id cur_ops)
@@ -617,7 +617,6 @@
     (define code `(,(edge-sym outid) 
 		   (app wsq_asciiFileSource ,(car (ASSERT (string->slist frequency))) ',schema-path ',datafile)))
     (add-op! opid code) (add-out-edge! outid)
-    (print-state)
     ))
 
 
@@ -626,7 +625,6 @@
     ;(printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
     (define code `(,mergemagic (app wsq_printer ,str ,(edge-sym inid))))
     (add-op! opid code) (add-in-edge! inid)
-    (print-state)
     ))
 
 (define-entrypoint WSQ_AddProject (int int int string) void
@@ -635,7 +633,6 @@
     (define fun (parse-project (map (lambda (s) (ASSERT (string->slist s))) (string-split expr #\,))))
     (define code `(,(edge-sym out) (app wsq_project ,fun ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
-    (print-state)
     ))
 
 
@@ -649,7 +646,6 @@
     ;(printf " <WSQ>  WSQ_AddFilter ~s ~s ~s \n" in out expr)
     (define code `(,(edge-sym out) (app wsq_filter ,(parse-filter expr) ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
-    (print-state)
     ))
 
 ;; UDF's may take and produce any number of stream arguments.
@@ -675,7 +671,6 @@
   (add-op! opid code)  
   (for-each add-in-edge! in*) 
   (for-each add-out-edge! out*)
-  (print-state)
   )
 
 (define (WSQ_AddFilterWindows opid in out _expr)  
@@ -685,7 +680,7 @@
 			      (app Sigseg:filter ,(parse-filter _expr) win))
 			      ,(edge-sym in))])
   (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
-  (print-state))
+ )
 
 
 ; char* joinstr = "MONOTONIC LEFT ONLY | A B | ((FIRST(A.TIME)) <= (FIRST(B.TIME))) AND (LAST(A.TIME)) >= (LAST(B.TIME))";
@@ -701,7 +696,7 @@
 		    (app wsq_join_leftonly (lambda (,A ,B) ,predexpr)
 			 ,(edge-sym in1) ,(edge-sym in2))])
      (add-op! opid code)  (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
-     (print-state)]))
+     ]))
 
 (define (WSQ_AddMergeMonotonic opid in1 in2 out _labeler)
   (define labeler (parse-expression (ASSERT (string->slist _labeler))))
@@ -709,7 +704,7 @@
 		 (app wsq_mergeMonotonic (lambda (,implicit-record-name) ,labeler)
 		      ,(edge-sym in1) ,(edge-sym in2))])
   (add-op! opid code)  (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
-  (print-state))
+  )
 
 
 
@@ -780,7 +775,9 @@
 		      (>= total ',patwidth)
 		      ;; Now take the conjunction of all predicates on corrensponding positions:
 		      ,(match (map (lambda (i predname) 
-				     `(app ,predname (Array:ref buffer (_+_ index ',i))))
+		                     ;; Index has already been incremented, therefore it points to the EARLIEST tuple in 
+				     ;; the buffer (first in the pattern), not the latest.
+				     `(app ,predname (Array:ref buffer (moduloI (_+_ index ',i) ',patwidth))))
 				(iota patwidth) pat)
 			 [() '#t]
 			 [(,one) one]
@@ -789,7 +786,14 @@
 		    [(ALL) 
 		     ;; Not really anything we can do with Arrays... turn it into a sigseg.
 		     ;'(emit vq (app Array:copy buffer))
-		     `(emit vq (app Sigseg:toSigseg (app Array:copy buffer) (_-I64 total ',(sub1 patwidth)) nulltimebase))
+		     `(let ([inorder (Array:makeUNSAFE ',patwidth)])
+			(begin
+			  (app Array:blit inorder '0 buffer index (_-_ ',patwidth index)) ;; Copy first part.
+			  (app Array:blit inorder (_-_ ',patwidth index) buffer '0 index) ;; Copy second part.
+			  (emit vq (app Sigseg:toSigseg 
+					inorder
+					(_-I64 total ',(sub1 patwidth)) 
+					nulltimebase))))
 		     ]
 		    [(ONE)
 		      ;; In ONE ROW PER MATCH mode we pass on the last tuple received:
@@ -800,14 +804,17 @@
        ,(edge-sym in))))
 
   (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
-  (print-state)
   )
 
+;; BOILERPLATE: WE COULD GENERATE THESE SIMPLE WRAPPERS:
 (define (WSQ_AddRandomSource opid outid frequency schema-path)
     (define code `(,(edge-sym outid) 
 		   (app wsq_randomSource ,(car (ASSERT (string->slist frequency))) ',schema-path)))
-    (add-op! opid code) (add-out-edge! outid)
-    (print-state))
+    (add-op! opid code) (add-out-edge! outid))
+(define (WSQ_AddNonRandomSource opid outid frequency schema-path)
+    (define code `(,(edge-sym outid) 
+		   (app wsq_nonRandomSource ,(car (ASSERT (string->slist frequency))) ',schema-path)))
+    (add-op! opid code) (add-out-edge! outid))
 
 ;; This is the general version that uses a start/end predicate rather than
 (define (WSQ_WindowGeneral opid in out _names _predicate)
@@ -815,8 +822,7 @@
   (define code 
     (let-match ([(,fst ,lst) (ASSERT (string->slist _names))])  
       `[,(edge-sym out) (app wsq_window (lambda (,fst ,lst) ,predicate) ,(edge-sym in))]))
-  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
-  (print-state))
+  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out))
 
 (define (WSQ_AddWindow opid in out _field _timeexpr _slide)
   (define field (car (ASSERT (string->slist _field))))
@@ -835,8 +841,7 @@
 			   ,time ,slide ,(edge-sym in))]
   )
 
-  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out)
-  (print-state))
+  (add-op! opid code)  (add-in-edge! in) (add-out-edge! out))
 
 
 
@@ -871,6 +876,8 @@
         (apply WSQ_AddASCIIFileSource id (car out*) args)]
       [(RANDOMSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
         (apply WSQ_AddRandomSource id (car out*) args)]
+      [(NONRANDOMSOURCE) (has-inputs 0) (has-outputs 1) (has-args 2)
+        (apply WSQ_AddNonRandomSource id (car out*) args)]
 
       [(UDF) 
         (match args 
@@ -946,14 +953,13 @@
 			     ,(edge-sym in2)
 			     ,seconds
 			     )))
-    (add-op! opid code)   (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)
-    (print-state)))
+    (add-op! opid code)   (add-in-edge! in1) (add-in-edge! in2) (add-out-edge! out)))
 
 
 ;; Connecting to remote machines.
 
 (define-entrypoint WSQ_ConnectRemoteIn (int int string int string) void
-  (trace-lambda WSQ_CONNECTREMOTEIN (opid inid host port field-types)
+  (lambda (opid inid host port field-types)
     ;(printf " <WSQ>  WSQ_ConnectRemoteIn ~s ~s ~s ~s \n" inid host port field-types)
     (define code `(,(edge-sym inid) 
 		   (assert-type (Stream ,(parse-types field-types))

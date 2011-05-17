@@ -16,9 +16,7 @@ OUTS  = $(SOURCES:.c=.out)
 
 all: $(EXES)
 
-# [2011.02.25] Because of comparison problems only running the tests for now, not comparing:
-# test: fulltests
-test: runonly
+test: fulltests
 
 # Do a full build, run, and check output results:
 fulltests: $(TESTS)
@@ -50,9 +48,14 @@ runonly: $(OUTS)
 	@echo 
 	@echo ----------------------------------------
 	@echo Comparing output, $<, to expected, check .err file for results if an error occurs:
-	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)
-# if we were successful, move the result into place:
+	head -n $(shell ./wc_lines_only.sh $(<:.out=.compare)) $< > $(<:.out=.trunc)
+	diff $(<:.out=.compare) $(<:.out=.trunc) > $(<:.out=.err)
+#	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)
+
+        # IF we were successful, move the result into place:
 	mv $(<:.out=.err) $@ 
+        # And remove the temporary:
+	rm -f $(<:.out=.trunc)
 	@echo 
 	@echo --------------------
 	@echo COMPARISON SUCCEEDED

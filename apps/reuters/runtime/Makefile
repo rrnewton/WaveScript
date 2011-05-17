@@ -5,7 +5,7 @@ include makefile.common
 all: libwsq_runtime.a example_main.exe shailendra_example.exe shailendra_server.exe shailendra_client.exe
 
 
-test:
+test: libwsq_runtime.a
 	cd tests; $(MAKE) && $(MAKE) test
 
 libwsq_runtime.a: wsq_runtime.c 
@@ -35,5 +35,7 @@ shailendra_client.exe: shailendra_client.c
 clean:
 	rm -rf *.o *.a *.exe a.out *.so example_main query.*
 	(cd example_distributed; $(MAKE) clean)
+	(cd tests;               $(MAKE) clean)
+
 
 

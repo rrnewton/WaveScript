@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
   if (1) {
     // For demonstraction purposes we pause the stream engine here:
-    WSQ_Pause();
+    // WSQ_Pause();
 
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
