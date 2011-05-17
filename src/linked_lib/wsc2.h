@@ -579,7 +579,7 @@ void wsShutdown() {
 void wsInternalInit() {
 #ifdef USE_BOEHM
   GC_INIT();
-  printf("GC INIT COMPLETE.\n");
+  //  fprintf(stderr," [ws/boehm] GC INIT COMPLETE.\n");
 #endif
 }
 

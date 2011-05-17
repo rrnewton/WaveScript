@@ -428,6 +428,9 @@
          (set-c-output-basename! query-app-name)      
 	 ;; Compile through the wsc2 backend:
 	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
+
+	                ;; In tests/7_MergeMonotonic I have tripped a refcount GC bug... doing Boehm for the moment:
+			[wsc2-gc-mode 'boehm]
 			)
 	   (wscomp (wsparse-postprocess prog) '() 'wsc2)
 	   ;; The problem with this is our input program is already an sexp:

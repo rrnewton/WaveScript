@@ -336,7 +336,7 @@ fun wsq_mergeMonotonic(extractor, s1, s2) {
   using FIFO;
   iterate(x in union2(s1,s2)) {
     state {
-      buf1 = make(10);
+      buf1 = make(10); // ARBITRARY -- FIFO sizes
       buf2 = make(10);
     }
     case x { 
