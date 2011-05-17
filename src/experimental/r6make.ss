@@ -6,17 +6,23 @@ exec $REGIMENTD/depends/chez --script $0 $*
 ;; The problem with this script ITSELF being threaded, is then we build the target in a threaded mode...
 ;; exec $REGIMENTD/depends/chez --threaded --script $0 $*
 
-
 ;; Currently this is chez-specific.
 
 ;; A simple make style utility for incremental builds with Chez.  This
 ;; not supposed to be general or correct, rather, it's a temporary fix
 ;; for this particular project.
-
-;; Usage: r6rsmake.ss file.sls [purge]
-;; The optional "purge" argument will destroy dirty objects rather than rebuilding.
-
+;;
 ;; Ryan Newton [2009.02.17]
+
+;; Usage: 
+;;    r6rsmake.ss file.sls [purge]
+;;      Rebuild file.sls and all dependencies.
+;;
+;;    r6rsmake.ss file.sls purge
+;;      The optional "purge" argument will destroy dirty objects rather than rebuilding.
+;;
+;;    r6rsmake.ss file.sls list   
+;;      List files that would be rebuilt.
 
 ;; Note, this build script is now parallel:
 ;(define-syntax IFPAR (syntax-rules () [(_ a b) a] [(_ a) a])) ;; ENABLE
@@ -30,8 +36,10 @@ exec $REGIMENTD/depends/chez --script $0 $*
 
 (IFPAR 
  (begin 
-   (include "experimental/chez_threaded_utils.ss")
-   (import threaded_utils)))
+   ;(include "experimental/chez_threaded_utils.ss")
+   (include "experimental/parallelizing_compiler/par5.sls")
+   (import (par5))
+   ))
 
 ;; Should we compile, or (our alternate behaviour) purge the dirty files.
 (define selected-action 'compile)
