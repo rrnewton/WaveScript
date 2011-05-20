@@ -433,7 +433,7 @@ fun wsq_printer(str, s) {
 fun wsq_connect_out(host, prt, strm) {
   //print("  **** wsq_connect_out not implemented yet! **** \n");
   //iterate _ in strm { }
-  println(" <WSQ> Creating outgoing (server) socket, port: " ++ prt);
+  println(" <WSQ> Connection operator for outgoing (server) socket, port: " ++ prt);
   socket_out(strm, prt);
 
   // Hmm... this was a typo, but why didn't it work??

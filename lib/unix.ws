@@ -67,6 +67,8 @@ namespace Unix {
 */
 
   puts :: String -> () = foreign("puts", stdio);
+  // An extra version of puts that goes specifically to stderr:
+  puts_err :: String -> () = foreign("puts_err", c_exts);
 
   ftell :: (FileDescr) -> Int = foreign("ftell", stdio);
   fseek :: (FileDescr, Int, Int) -> Int = foreign("fseek", stdio);

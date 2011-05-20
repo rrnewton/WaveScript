@@ -11,8 +11,8 @@ SOURCES = 1_ReuterSource.c 2_Filter.c 3_Project.c \
 # 6_Orfilter.c
 
 EXES  = $(SOURCES:.c=.exe)
-TESTS = $(SOURCES:.c=.testrun)
-OUTS  = $(SOURCES:.c=.out)
+TESTS = $(SOURCES:.c=.testrun)  8_example_distributed.testrun
+OUTS  = $(SOURCES:.c=.out)      8_example_distributed.out
 
 all: $(EXES)
 
@@ -32,6 +32,9 @@ runonly: $(OUTS)
 	$(CC) $(FLAGS) -c -I $(CHEZP) $<
 	$(CC) $(FLAGS) $(LIBS) $(<:.c=.o) ../libwsq_runtime.a -o $@
 
+
+8_example_distributed.out:
+	(cd example_distributed; $(MAKE) run)
 
 .exe.out:
 	@echo 
@@ -64,4 +67,4 @@ runonly: $(OUTS)
 
 clean: 
 	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run *_*.err
-
+	(cd example_distributed; $(MAKE) clean)

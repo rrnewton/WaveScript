@@ -69,3 +69,7 @@ int clear_errno() { errno = 0; }
 int ws_get_SEEK_SET() { return SEEK_SET; }
 int ws_get_SEEK_CUR() { return SEEK_CUR; }
 int ws_get_SEEK_END() { return SEEK_END; }
+
+void puts_err(char* str) {
+   fputs(str, stderr);
+}

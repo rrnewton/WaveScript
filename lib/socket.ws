@@ -103,14 +103,10 @@ fun socket_in_raw(addr, port) {
       if server.ptrIsNull then error("socket_in: ERROR no such host");
       addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
 
-      print("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
+      puts_err("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
       // May block for some time:      
 
-
-// OLD WAY: No reconnection:
-//    c = connect(sockfd, addr, sizeof_sockaddr());
-
-// NEW Way: 
+      // Attempt to reconnect in a loop:
       c = -1;
       while (c < 0) {
          c := connect(sockfd, addr, sizeof_sockaddr());
@@ -119,10 +115,12 @@ fun socket_in_raw(addr, port) {
          usleep(500 * 1000);
       };
 
-      print("  <socket.ws> Established client connection, port " ++ port ++ "\n");
+      puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
 
     };
 
+// TRADEOFF: Originally this was an infinitely 'amplifying' kernel in the sense that one
+// invocation produced infinite results.  That approach is not friendly with single threading.
 //   while (true) 
     {
   
@@ -148,7 +146,7 @@ fun socket_in_raw(addr, port) {
 fun socket_in(addr, port) {
   rawbytes = socket_in_raw(addr,port);
   iterate buf in rawbytes {
-   // We're on thin ice typing wise:
+   // We are on thin ice typing wise:
     ob = unmarshal(buf,0);
     emit ob;
   }
@@ -198,29 +196,56 @@ fun socket_out(strm, port) {
     state { first = true; 
             id = 0;
             clientfd = 0;
+
+            // [2011.05.20] New hack -- introduce a small amount of buffering so that,
+            // during the disconnected phase, we can RETURN from this kernel and let 
+            // sockets initiate their connections.
+            // buffer = 
+
+            nodrop = { 
+              tmp = GETENV("WS_SOCKET_ALLOWDROP") == "";
+              if not(tmp) then 
+              Unix:puts_err(" <socket.ws> WS_SOCKET_ALLOWDROP unset; stall data sources until sockets are up.  REQUIRES SINGLE THREADED EXECUTION.\n");
+              tmp
+            }
           }
     using Unix;
     if first then {
       first := false;
-      id := start_spawn_socket_server(port);
+      id    := start_spawn_socket_server(port);
     };
 
-    // We are making the ASSUMPTION that socket descriptors are nonzero.
-    if clientfd == 0 
-    then clientfd := socket_server_ready(id);
+    fun shoot() // Requires clientfd be ready.
+    {
+        // Marshal and send it:
+        bytes = marshal(x);    
+        len = Array:length(bytes);  
+        lenbuf = marshal(len);  
+        // Use unix 'write' command:
+        write_bytes(clientfd, lenbuf, 4);
+        write_bytes(clientfd, bytes, len);
+        ()
+    };
+   
+    if clientfd == 0 then clientfd := socket_server_ready(id);
 
-    if clientfd != 0 then {
-	// Marshal and send it:
-	bytes = marshal(x);    
-	len = Array:length(bytes);  
-	lenbuf = marshal(len);  
-	// Use unix 'write' command:
-	write_bytes(clientfd, lenbuf, 4);
-	write_bytes(clientfd, bytes, len);
-	()
+    // We are making the ASSUMPTION that real socket descriptors are nonzero.
+    if clientfd != 0 then shoot() else
+
+    if nodrop then {
+      // Here we simple stall the current thread until data is ready.
+      while ( clientfd == 0 ) {
+        // The problem with this is that we may be holding other socket_out sources up
+        // from calling start_spawn_socket_server:
+        usleep(2 * 1000);
+        clientfd := socket_server_ready(id);
+      };
+      shoot();
+
     } else {
       // Otherwise data gets DROPPED ON THE FLOOR.
-    }
+    }    
+
   }
 }
 
