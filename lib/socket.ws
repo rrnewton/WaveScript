@@ -203,7 +203,8 @@ fun socket_out(strm, port) {
             // buffer = 
 
             nodrop = { 
-              tmp = GETENV("WS_SOCKET_ALLOWDROP") == "";
+              envvar = GETENV("WS_SOCKET_ALLOWDROP");
+              tmp = envvar == "" || envvar == "0";
               if not(tmp) then 
               Unix:puts_err(" <socket.ws> WS_SOCKET_ALLOWDROP unset; stall data sources until sockets are up.  REQUIRES SINGLE THREADED EXECUTION.\n");
               tmp
@@ -234,6 +235,7 @@ fun socket_out(strm, port) {
 
     if nodrop then {
       // Here we simple stall the current thread until data is ready.
+      puts_err("  <socket.ws> SPINNING main WS thread to wait for data source connection (server).\n");
       while ( clientfd == 0 ) {
         // The problem with this is that we may be holding other socket_out sources up
         // from calling start_spawn_socket_server:

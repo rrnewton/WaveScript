@@ -6,13 +6,13 @@ include ../makefile.common
 
 SOURCES = 1_ReuterSource.c 2_Filter.c 3_Project.c \
  4_MatchRecognize_always_succeed.c 5_MatchRecognize_rare_hits.c \
- 6_UDF.c 7_MergeMonotonic.c
+ 6_UDF.c 7_MergeMonotonic.c 8_TAQ_reader.c
 
 # 6_Orfilter.c
 
 EXES  = $(SOURCES:.c=.exe)
-TESTS = $(SOURCES:.c=.testrun)  8_example_distributed.testrun
-OUTS  = $(SOURCES:.c=.out)      8_example_distributed.out
+TESTS = $(SOURCES:.c=.testrun)  9_example_distributed.testrun
+OUTS  = $(SOURCES:.c=.out)      9_example_distributed.out
 
 all: $(EXES)
 
@@ -33,7 +33,7 @@ runonly: $(OUTS)
 	$(CC) $(FLAGS) $(LIBS) $(<:.c=.o) ../libwsq_runtime.a -o $@
 
 
-8_example_distributed.out:
+9_example_distributed.out:
 	(cd example_distributed; $(MAKE) run)
 
 .exe.out:

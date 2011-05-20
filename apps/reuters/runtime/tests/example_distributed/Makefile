@@ -31,7 +31,10 @@ CHEZP = $(CHEZD)/boot/$(MACHINE)
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
-all: proc1 proc2 
+#all: proc1 proc2 
+all: queries
+
+queries: proc1query.exe proc2query.exe
 
 proc1: proc1.c port.h
 	gcc $(FLAGS) -c -I $(CHEZP) proc1.c 
@@ -55,10 +58,10 @@ proc2query.exe: proc2
 
 #	 (./proc1 &) ; sleep 5; ./proc2 | head -n 60
 
-run: proc1query.exe proc2query.exe
+run: queries
 	@echo; echo "Query executables created, now running."
 	@echo "================================================================================"
-	(./proc1query.exe &) ; ./proc2query.exe | head -n 30 | tee ../8_example_distributed.out
+	(./proc1query.exe &) ; ./proc2query.exe | head -n 30 | tee ../9_example_distributed.out
 
 # The socket layer should be tolerant to running the queries in either order.
 run1: proc1query.exe proc2query.exe
