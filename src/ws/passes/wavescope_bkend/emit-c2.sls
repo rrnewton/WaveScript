@@ -1681,7 +1681,7 @@
 
 ;; .param srccode* blocks of code (lines) for the body of each source.
 (__spec BuildTimerSourceDriver <emitC2-base> (self srcname* srccode* srcrates*)
-   (define (normal-rate? r) (and r (not (zero? r))))
+   (define (normal-rate? r) (and r (> r 0)))
    (ASSERT "BuildTimerSourceDriver: must have same number of names, code, and rates"
 	   all-equal?
 	   (list (length srcname*) (length srccode*) (length srcrates*)))
@@ -1701,6 +1701,15 @@
 		    (map (lambda (nm code rate)
 			   (if (zero? rate) (list nm code) #f))
 		      srcname* srccode* srcrates*))]
+
+		 ;; As ANOTHER special convention we do the same for negative rates [2011.05.20].
+		 ;; They run, not infinitely fast, but "at least as fast as anybody else".
+		 [([,negsrc* ,negsrccode*] ...)
+		  (filter id 
+		    (map (lambda (nm code rate) (if (< rate 0) (list nm code) #f))
+		      srcname* srccode* srcrates*))]
+
+		 ;; Normal, positive timer rates:
 		 [([,srcname* ,srccode* ,srcrates*] ...)
 		  (filter id
 		    (map (lambda (nm code rate)
@@ -1709,7 +1718,8 @@
 		 )
 	(when (>= (regiment-verbosity) 1)  ;; TEMP 
 	  (printf "   TIMER RATES: ~s\n" srcrates*)
-	  (printf "   ZERO TIMERS ~s\n" zerosrc*))
+	  (printf "   ZERO TIMERS ~s\n" zerosrc*)
+	  (printf "   NEG  TIMERS ~s\n" negsrc*))
 	;; This is a hack: rather than maintain a sorted list of
 	;; upcoming events, we simply compute a common tick frequency
 	;; and go tick by tick:
@@ -1740,17 +1750,21 @@
 		   (block "while(dummy && !stopalltimers)"
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				"VIRTTICK();\n"
+
+				"// Insert calls to those (negative rate) timers that run max speed:\n"
+				(map lines-text negsrccode*)
+
+				"// And finally call the normal-timers on ticks where it is appropriate:\n"
 				(map (lambda (name code mark)
 				       (block (format "if (counter_~a == ~a)" name mark)
 					      ;; Execute the code for this source.
 					      (list (lines-text code)
 						    (format "counter_~a = 0;\n" name)
-						    (format "WAIT_TICKS(~a);\n" timestep_ms)
 						    )))
 				  srcname* srccode* counter_marks)
+				(format "WAIT_TICKS(~a);\n" timestep_ms)
 				;"sleep(1);\n"
 				)
-					;(map (lambda (f) (list (make-app (Var f) ()) ";\n")) srcname*)
 			  )		   
 		   ;"wsShutdown();\n"
 		   "// We keep the main function going for other tuples to come through.\n"

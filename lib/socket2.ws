@@ -1,20 +1,18 @@
 
-// TODO -- set buffer size on TCP stack....  
-
-
 // [2009.06.02] A socket library.
-
-// First, we extend the Unix namespace with these basic wrappers.
+// [2011.05.20] Trying a new version where we keep some global state.
 
 include "stdlib.ws"
 include "unix.ws"
+
+//================================================================================
+// First, we extend the Unix namespace with these basic wrappers.
 
 socket_pthread_includes = 
   ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c", 
    "pthread.h", "socket_wrappers.c", "libpthread.so"]
 
 namespace Unix {
-  
   //  socket_includes = ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c"]
 
   socket  :: (Int,Int,Int) -> Int                          = foreign("socket", socket_pthread_includes);
@@ -47,110 +45,19 @@ namespace Unix {
 //================================================================================
 
 // High level interface for socket communication.
+// API:
 
-socket_out :: (Stream a, Uint16) -> Stream b;
+// socket_in() and socket_out() return two values:
+//   * result stream -- either with input tuples or the empty stream (for output)
+//   * initialization stream function --
+//     This is an initialization function with a funky representation.
+//     It shoud be called once at startup; the way we accomplish that is by feeding the stream
+//     function a singleton stream (e.g. timer(0)).  This is the users responsibility.
 
-// The convention here is that out-bound sockets are the server.
-// 
-// TODO: We need a good way to queisce the WS runtime system AFTER we have all socket
-//       listening and until they all have successfully connected.
-fun socket_out_old(strm, port) {
-  iterate x in strm {
-    state { first = true; 
-            clientfd = 0;
-          }
-    using Unix;
-    if first then {
-      first := false;
-      sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-      if sockfd < 0 then error("socket_out: ERROR opening socket.");
-      serv_addr = make_sockaddr_in(AF_INET(), port, INADDR_ANY());
-      b = bind(sockfd, serv_addr, sizeof_sockaddr());
-      if b < 0 then error("socket_out: ERROR on binding: "++b++ " errno " ++ errno());
-      listen(sockfd,5);      
-      // Accept client connection:
-      cli_addr = make_sockaddr_in(0,0,0);
-      clilen = #[sizeof_sockaddr()];
-      clientfd := accept(sockfd, cli_addr, clilen);
-    };
+//================================================================================
 
-    // Marshal and send it:
-    bytes = marshal(x);    
-    len = Array:length(bytes);  
-    lenbuf = marshal(len);  
-    write_bytes(clientfd, lenbuf, 4);
-    write_bytes(clientfd, bytes, len);
-  }
-}
 
-// Returns a stream of byte arrays.
-fun socket_in_raw(addr, port) {
-  // FIXME: this really should not be driven by a timer.  It should be a foreign_source:
-  // Either that or it should run in an infinite loop.
-  // BUT an infinite loop in single threaded world won't let other sources have a turn!
-  //  iterate _ in timer(0) {
-  iterate _ in timer(500) {
-    state { first = true;
-            sockfd = 0;
-	    tempbuf = Array:make(4,0);
-          }
-    using Unix;
-    if first then {
-      first := false;
-      sockfd := socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-      if sockfd < 0 then error("socket_in: ERROR opening socket.");  
-      server = gethostbyname(addr);
-      if server.ptrIsNull then error("socket_in: ERROR no such host");
-      addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
-
-      puts_err("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
-      // May block for some time:      
-
-      // Attempt to reconnect in a loop:
-      c = -1;
-      while (c < 0) {
-         c := connect(sockfd, addr, sizeof_sockaddr());
-         code = get_errno();
-         if c < 0 then print("WARNING: connect returned error code "++ code ++", retrying.\n");
-         usleep(500 * 1000);
-      };
-
-      puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
-
-    };
-
-// TRADEOFF: Originally this was an infinitely 'amplifying' kernel in the sense that one
-// invocation produced infinite results.  That approach is not friendly with single threading.
-//   while (true) 
-    {
-  
-     rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
-        assert_eq("read wrong length", rd, 4);
-     len :: Int = unmarshal(tempbuf,0);
-
-     buf = Array:make(len, 0);
-     rd = read_bytes(sockfd, buf, len);
-       assert_eq("read wrong length", rd, len);
-
-     //ob :: Array String = unmarshal(buf2,0);  
-     // We're on thin ice typing wise:
-     //ob = unmarshal(buf,0);
-     //emit ob;
-
-     // Emit the raw bytes.
-     emit buf;
-   }
-  }
-}
-
-fun socket_in(addr, port) {
-  rawbytes = socket_in_raw(addr,port);
-  iterate buf in rawbytes {
-   // We are on thin ice typing wise:
-    ob = unmarshal(buf,0);
-    emit ob;
-  }
-}
+// Socket_in goes here.
 
 
 //================================================================================
@@ -189,6 +96,7 @@ socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",  
 // imagine a program that connects to its own socket with a
 // single-threaded scheduler.  )
 
+socket_out :: (Stream a, Uint16) -> Stream b; // Returns empty stream.
 fun socket_out(strm, port) {
   //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
   // The thread will return when it has made its connection.

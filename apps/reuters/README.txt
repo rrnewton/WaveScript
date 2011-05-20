@@ -184,7 +184,7 @@ Aside from passing arguments to the WSQ API explicitly through C API
 calls, it is also possible to configure the behavior of the WSQ stream
 engine through environment variables:
 
-  WSQ_MAXSPEED -- if set, turn off realtime timers and run all out
+  WSQ_MAXSPEED -- if set, turn off realtime timers and run data sources full tilt
   WSQ_OUTEXE   -- base file name to use for generating output 
                   .c/.exe files (in the background).
 

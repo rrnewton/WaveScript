@@ -242,6 +242,8 @@ unsigned long long total_events = 0;
  */
 inline void wait_ticks(double delta) { // Delta in milliseconds
 
+  if (delta < 0.0) return;
+
   //double now = clock() * (1000000 / CLOCKS_PER_SEC); // microseconds
   struct timeval tmp;
   gettimeofday(&tmp, NULL);

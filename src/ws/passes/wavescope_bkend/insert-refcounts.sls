@@ -1,5 +1,6 @@
 #!r6rs
 
+;; This pass adds explicit calls to the AST to manipulate refcounts.
 
 (library (ws passes wavescope_bkend insert-refcounts)
   (export insert-refcounts

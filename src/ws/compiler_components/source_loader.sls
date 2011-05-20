@@ -388,6 +388,7 @@
 
     ;; Now let's build that expression:
     (let ()
+      ;; Legacy support for deprecated "BASE <- " stream wiring expressions:
       ;; Pull out the "BASE <-" returned expression:
       (define body 
 	(begin 

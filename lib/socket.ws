@@ -50,49 +50,17 @@ namespace Unix {
 
 socket_out :: (Stream a, Uint16) -> Stream b;
 
-// The convention here is that out-bound sockets are the server.
-// 
-// TODO: We need a good way to queisce the WS runtime system AFTER we have all socket
-//       listening and until they all have successfully connected.
-fun socket_out_old(strm, port) {
-  iterate x in strm {
-    state { first = true; 
-            clientfd = 0;
-          }
-    using Unix;
-    if first then {
-      first := false;
-      sockfd = socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-      if sockfd < 0 then error("socket_out: ERROR opening socket.");
-      serv_addr = make_sockaddr_in(AF_INET(), port, INADDR_ANY());
-      b = bind(sockfd, serv_addr, sizeof_sockaddr());
-      if b < 0 then error("socket_out: ERROR on binding: "++b++ " errno " ++ errno());
-      listen(sockfd,5);      
-      // Accept client connection:
-      cli_addr = make_sockaddr_in(0,0,0);
-      clilen = #[sizeof_sockaddr()];
-      clientfd := accept(sockfd, cli_addr, clilen);
-    };
-
-    // Marshal and send it:
-    bytes = marshal(x);    
-    len = Array:length(bytes);  
-    lenbuf = marshal(len);  
-    write_bytes(clientfd, lenbuf, 4);
-    write_bytes(clientfd, bytes, len);
-  }
-}
-
 // Returns a stream of byte arrays.
 fun socket_in_raw(addr, port) {
   // FIXME: this really should not be driven by a timer.  It should be a foreign_source:
   // Either that or it should run in an infinite loop.
   // BUT an infinite loop in single threaded world won't let other sources have a turn!
-  //  iterate _ in timer(0) {
-  iterate _ in timer(500) {
+  iterate _ in timer(-1.0) 
+  {
     state { first = true;
+            connected = true;
             sockfd = 0;
-	    tempbuf = Array:make(4,0);
+            tempbuf = Array:make(4,0);
           }
     using Unix;
     if first then {
@@ -104,41 +72,37 @@ fun socket_in_raw(addr, port) {
       addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
 
       puts_err("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
-      // May block for some time:      
-
-      // Attempt to reconnect in a loop:
-      c = -1;
-      while (c < 0) {
-         c := connect(sockfd, addr, sizeof_sockaddr());
-         code = get_errno();
-         if c < 0 then print("WARNING: connect returned error code "++ code ++", retrying.\n");
-         usleep(500 * 1000);
-      };
-
-      puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
-
     };
 
-// TRADEOFF: Originally this was an infinitely 'amplifying' kernel in the sense that one
-// invocation produced infinite results.  That approach is not friendly with single threading.
-//   while (true) 
+    // We do not block or spin in the connection phase.  We just return without producing
+    // anything and give other sources a chance to go.  Therefore a program consisting of
+    // all socket_in sources will poll them round robin.
+    if (not(connected)) then {
+      c = connect(sockfd, addr, sizeof_sockaddr());
+      code = get_errno();
+      if c < 0 then puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n")
+      else { 
+        connected = true;
+        puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
+      }
+    };
+
+    if (connected) then 
     {
-  
-     rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
-        assert_eq("read wrong length", rd, 4);
-     len :: Int = unmarshal(tempbuf,0);
+       // TODO: make this non-blocking:
 
-     buf = Array:make(len, 0);
-     rd = read_bytes(sockfd, buf, len);
-       assert_eq("read wrong length", rd, len);
+       rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
+          assert_eq("read wrong length", rd, 4);
+       len :: Int = unmarshal(tempbuf,0);
 
-     //ob :: Array String = unmarshal(buf2,0);  
-     // We're on thin ice typing wise:
-     //ob = unmarshal(buf,0);
-     //emit ob;
+       buf = Array:make(len, 0);
+       rd = read_bytes(sockfd, buf, len);
+         assert_eq("read wrong length", rd, len);
 
-     // Emit the raw bytes.
-     emit buf;
+       // Emit the raw bytes.
+       emit buf;
+    }
+    // Otherwise fizzle.
    }
   }
 }
