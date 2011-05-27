@@ -17,6 +17,9 @@ three:
 	wsc2 example3.ws -main main1 -o proc1
 	wsc2 example3.ws -main main2 -o proc2
 
+
+test: run run2
+
 # You probably want to run these in two separate windows, but this runs them together:
 run:
 	 (./server.exe &) ; ./client.exe 
@@ -25,6 +28,12 @@ run:
 # Here I insert sleeps to make sure there's no race to connect.
 run2:
 	(./p1.exe &); (sleep 1;./p2.exe &); (sleep 1; ./p3.exe -n 50)
+
+
+run3:
+#	(./proc1.exe &); ./proc2.exe
+	(./proc1.exe &); sleep 2; ./proc2.exe
+
 
 clean:
 	rm -rf *.exe *.c *~ *.dSYM

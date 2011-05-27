@@ -1,6 +1,6 @@
 
 // [2009.06.02] A socket library.
-// [2011.05.20] Trying a new version where we keep some global state.
+// [2011.05.20] Trying a new version where we do some global initialization.
 
 include "stdlib.ws"
 include "unix.ws"

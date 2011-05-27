@@ -23,7 +23,7 @@ namespace Unix {
   listen  :: (Int, Int) -> Int                             = foreign("listen", socket_pthread_includes);
   accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_pthread_includes);
   
-  gethostbyname :: String -> Pointer "struct hostent*"  = foreign("gethostbyname", socket_pthread_includes);
+  gethostbyname  :: String -> Pointer "struct hostent*" = foreign("gethostbyname", socket_pthread_includes);
   hostent_h_addr :: Pointer "struct hostent*"  -> Int   = foreign("ws_hostent_h_addr", socket_pthread_includes);
 
   make_sockaddr_in :: (Int16, Uint16, Int) -> Pointer "struct sockaddr_in*"
@@ -48,35 +48,37 @@ namespace Unix {
 
 // High level interface for socket communication.
 
-socket_out :: (Stream a, Uint16) -> Stream b;
+socket_in     :: (String, Uint16) -> Stream a;
+socket_in_raw :: (String, Uint16) -> Stream (Array Uint8);
 
 // Returns a stream of byte arrays.
-fun socket_in_raw(addr, port) {
-  // FIXME: this really should not be driven by a timer.  It should be a foreign_source:
-  // Either that or it should run in an infinite loop.
-  // BUT an infinite loop in single threaded world won't let other sources have a turn!
+fun socket_in_raw( address, port) {
+  // Rather than driving this by a foreign_source or by an infinite loop inside a single 
+  // kernel invocation, we use the convention that a timer with a negative rate will run
+  // as fast as psosible.  (At least as fast as any real timer rates in the system.)
   iterate _ in timer(-1.0) 
   {
     state { first = true;
-            connected = true;
+            connected = false;
             sockfd = 0;
             tempbuf = Array:make(4,0);
+            sockaddr = ptrMakeNull();
           }
     using Unix;
     if first then {
       first := false;
       sockfd := socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
       if sockfd < 0 then error("socket_in: ERROR opening socket.");  
-      server = gethostbyname(addr);
+      server = gethostbyname( address );
       if server.ptrIsNull then error("socket_in: ERROR no such host");
-      addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
+      sockaddr := make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
     };
-/*
+
     // We do not block or spin in the connection phase.  We just return without producing
     // anything and give other sources a chance to go.  Therefore a program consisting of
     // all socket_in sources will poll them round robin.
     if (not(connected)) then {
-      c = connect(sockfd, addr, sizeof_sockaddr());
+      c = connect(sockfd, sockaddr, sizeof_sockaddr());
       code = get_errno();
       if c < 0 then puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n")
       else { 
@@ -85,28 +87,36 @@ fun socket_in_raw(addr, port) {
       }
     };
 
+    fun check_read_result(msg, result, expected) {
+        if (result == -1) then {
+           code = get_errno();
+           error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
+        };
+        assert_eq(msg++" read wrong length", result, expected);
+    };
+
     if (connected) then 
     {
        // TODO: make this non-blocking:
+       // If nothing is available we can just poll other input sources.
 
        rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
-          assert_eq("read wrong length", rd, 4);
+       check_read_result("rd header:", rd, 4);
        len :: Int = unmarshal(tempbuf,0);
 
        buf = Array:make(len, 0);
        rd = read_bytes(sockfd, buf, len);
-         assert_eq("read wrong length", rd, len);
+       check_read_result("rd payload:", rd, len);
 
        // Emit the raw bytes.
        emit buf;
     }
     // Otherwise fizzle.
-*/
    }
 }
 
-fun socket_in(addr, port) {
-  rawbytes = socket_in_raw(addr,port);
+fun socket_in(address, port) {
+  rawbytes = socket_in_raw(address,port);
   iterate buf in rawbytes {
    // We are on thin ice typing wise:
     ob = unmarshal(buf,0);
@@ -115,9 +125,9 @@ fun socket_in(addr, port) {
 }
 
 
-//================================================================================
+//----------------------------------------
 
-/* [2009.10.20] Version 2 
+/* [2009.10.20] socket_out Version 2 
 
    We can avoid blocking.  We simply have to fork an additional
    pthread that does the blocking for us.  Without changing the WS
@@ -150,6 +160,7 @@ socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",  
 // this on its own thread as well to avoid deadlock.  (Case in point:
 // imagine a program that connects to its own socket with a
 // single-threaded scheduler.  )
+socket_out :: (Stream a, Uint16) -> Stream b;
 
 fun socket_out(strm, port) {
   //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
