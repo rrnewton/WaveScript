@@ -47,7 +47,7 @@ wsq_window :: (tup -> #time, #time, Int, Stream tup) -> SS tup;
 
 wsq_asciiFileSource :: (Float, String, String) -> Stream TAQ_Tup;
 fun wsq_asciiFileSource(rate, schema, datfile) {
-  read_TAQ_ASCII_tuples(datfile)
+  read_TAQ_ASCII_tuples(rate, datfile)
 }
 
 //====================================================================================================

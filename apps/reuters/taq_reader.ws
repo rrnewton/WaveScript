@@ -73,13 +73,13 @@ fun parse_timestamp(arr) {
 // This routine is hardcoded to the schema of TAQ tuples:
 // WARNING: this is very low level code that is specific to the wsc2 backend.
 // 
-read_TAQ_ASCII_tuples :: String -> Stream TAQ_Tup; 
-fun read_TAQ_ASCII_tuples(file) {
+read_TAQ_ASCII_tuples :: (Float, String) -> Stream TAQ_Tup; 
+fun read_TAQ_ASCII_tuples(rate, file) {
   using Array;
   using Unix;
   bufsize = 32 * 1024; // 32K constant setting... feel free to change.
   //bufsize = 360; // 32K constant setting... feel free to change.
-  iterate x in timer(-1.0) {
+  iterate x in timer( rate ) {
     state {
       buf = #[];
       hndl = ptrMakeNull();
@@ -278,7 +278,7 @@ main1 = iterate _ in FINITE_BURST(15) {
 //main = read_TAQ_ASCII_tuples("small_prefix.log")
 //main0 = read_TAQ_ASCII_tuples("TAQ_only.log")
 //main0 = read_TAQ_ASCII_tuples("test.txt")
-main0 = read_TAQ_ASCII_tuples("only_TAQ_373mb.log")
+main0 = read_TAQ_ASCII_tuples(100.0, "only_TAQ_373mb.log")
 
 //main1 = snoop_every(100, (fun (i,_) show(i)), main0)
 

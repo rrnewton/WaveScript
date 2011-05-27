@@ -70,10 +70,8 @@ fun socket_in_raw(addr, port) {
       server = gethostbyname(addr);
       if server.ptrIsNull then error("socket_in: ERROR no such host");
       addr = make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
-
-      puts_err("  <socket.ws> BLOCKING main WS thread to wait for data source connection (client).\n");
     };
-
+/*
     // We do not block or spin in the connection phase.  We just return without producing
     // anything and give other sources a chance to go.  Therefore a program consisting of
     // all socket_in sources will poll them round robin.
@@ -82,7 +80,7 @@ fun socket_in_raw(addr, port) {
       code = get_errno();
       if c < 0 then puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n")
       else { 
-        connected = true;
+        connected := true;
         puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
       }
     };
@@ -103,8 +101,8 @@ fun socket_in_raw(addr, port) {
        emit buf;
     }
     // Otherwise fizzle.
+*/
    }
-  }
 }
 
 fun socket_in(addr, port) {

@@ -34,8 +34,6 @@ shailendra_client.exe: shailendra_client.c
 
 clean:
 	rm -rf *.o *.a *.exe a.out *.so example_main query.*
-	(cd example_distributed; $(MAKE) clean)
-	(cd tests;               $(MAKE) clean)
-
+	(cd tests && $(MAKE) clean)
 
 

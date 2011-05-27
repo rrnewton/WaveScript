@@ -1751,8 +1751,7 @@
 			  (list (map (lambda (name) (format "counter_~a++;\n" name)) srcname*)
 				"VIRTTICK();\n"
 
-				"// Insert calls to those (negative rate) timers that run max speed:\n"
-				(map lines-text negsrccode*)
+				"int fired = 0;\n"
 
 				"// And finally call the normal-timers on ticks where it is appropriate:\n"
 				(map (lambda (name code mark)
@@ -1760,9 +1759,18 @@
 					      ;; Execute the code for this source.
 					      (list (lines-text code)
 						    (format "counter_~a = 0;\n" name)
+						    "fired = 1;\n"
 						    )))
 				  srcname* srccode* counter_marks)
-				(format "WAIT_TICKS(~a);\n" timestep_ms)
+
+				"// The timesteps where we fire are the only 'real' ones:\n"
+				(block (if (null? srcname*) "if (1)" "if (fired)")
+				  (if (null? negsrc*)
+				      (format "WAIT_TICKS(~a);\n" timestep_ms)				  
+				      (list "// Insert calls to those (negative rate) timers that run max speed:\n"
+					    (map lines-text negsrccode*))
+				      ))
+				  
 				;"sleep(1);\n"
 				)
 			  )		   
