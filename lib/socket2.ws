@@ -98,8 +98,10 @@ fun socket_in_raw( address, port) {
     if (not(connected)) then {
       c = connect(sockfd, sockaddr, sizeof_sockaddr());
       code = get_errno();
-      if c < 0 then puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n")
-      else { 
+      if c < 0 then { 
+         puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n");
+         usleep(200 * 1000);
+      } else { 
         connected := true;
         puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
       }
@@ -177,6 +179,7 @@ fun socket_in(address, port) {
 // Create a separate thread to wait for the client to connect.
 start_spawn_socket_server  :: Uint16 -> Int64 = foreign("start_spawn_socket_server", socket_pthread_includes)
 socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",       socket_pthread_includes)
+socket_server_ready_port   :: Uint16 -> Int   = foreign("socket_server_ready_port",  socket_pthread_includes)
 
 // This makes a blocking call to connect to a server.  We need to put
 // this on its own thread as well to avoid deadlock.  (Case in point:
@@ -185,11 +188,11 @@ socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",  
 
 socket_out :: (Stream a, Uint16) -> Stream b; // Returns empty stream.
 fun socket_out(strm, port) {
-  id = 0;
   init = iterate _ in timer(0) {
      // The problem with doing initialization in a separate thread is that we need to
      // communicate the ID of the socket back through shared memory.
-     id := start_spawn_socket_server(port);
+     // Currently this is done through a global table in socket_wrappers.c
+     start_spawn_socket_server(port);
   };
   // The thread will return when it has made its connection.
   s = iterate x in strm {
@@ -221,26 +224,29 @@ fun socket_out(strm, port) {
         write_bytes(clientfd, bytes, len);
         ()
     };
-   
-    if clientfd == 0 then clientfd := socket_server_ready(id);
+
+    // Poll to see if the connection has been made yet.
+    if clientfd == 0 then clientfd := socket_server_ready_port(port);
 
     // We are making the ASSUMPTION that real socket descriptors are nonzero.
     if clientfd != 0 then shoot() else
 
     if nodrop then {
       // Here we simple stall the current thread until data is ready.
-      puts_err("  <socket.ws> SPINNING main WS thread to wait for data source connection (server).\n");
+      puts_err("  <socket.ws> SPINNING main WS thread to wait for outbound connection (server).\n");
       while ( clientfd == 0 ) {
         // The problem with this is that we may be holding other socket_out sources up
         // from calling start_spawn_socket_server:
-        usleep(2 * 1000);
-        clientfd := socket_server_ready(id);
+        // usleep(2 * 1000);
+        usleep(500 * 1000);
+        clientfd := socket_server_ready_port(port);
       };
+      puts_err("  <socket.ws> Done SPINNING, client connected.\n");
       shoot();
 
     } else {
-      // Otherwise data gets DROPPED ON THE FLOOR.
-    }    
+      // Otherwise dropping is allowed and data gets DROPPED ON THE FLOOR.
+    }
 
   };
   // Merge both empty streams:
