@@ -57,12 +57,99 @@ namespace Unix {
 //================================================================================
 
 
-// Socket_in goes here.
+// High level interface for socket communication.
+
+socket_in     :: (String, Uint16) -> (Stream a);
+socket_in_raw :: (String, Uint16) -> (Stream (Array Uint8));
+
+// Returns a stream of byte arrays.
+fun socket_in_raw( address, port) {
+  // Initialization code.  Fork a thread to attempt to connect.
+  // This runs once at the begining of time and before normal timers begin.  That is the
+  // convention for "zero rate timers".
+  init = iterate _ in timer(0) {
+  };
+
+  // Rather than driving this by a foreign_source or by an infinite loop inside a single 
+  // kernel invocation, we use the convention that a timer with a negative rate will run
+  // as fast as possible, irrespective of whether -realtime mode is used.  This should be
+  // least as fast as any other timer in the system.
+  s = iterate _ in timer(-1.0) 
+  {
+    state { first = true;
+            connected = false;
+            sockfd = 0;
+            tempbuf = Array:make(4,0);
+            sockaddr = ptrMakeNull();
+          }
+    using Unix;
+    if first then {
+      first := false;
+      sockfd := socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
+      if sockfd < 0 then error("socket_in: ERROR opening socket.");  
+      server = gethostbyname( address );
+      if server.ptrIsNull then error("socket_in: ERROR no such host");
+      sockaddr := make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
+    };
+
+    // We do not block or spin in the connection phase.  We just return without producing
+    // anything and give other sources a chance to go.  Therefore a program consisting of
+    // all socket_in sources will poll them round robin.
+    if (not(connected)) then {
+      c = connect(sockfd, sockaddr, sizeof_sockaddr());
+      code = get_errno();
+      if c < 0 then puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n")
+      else { 
+        connected := true;
+        puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
+      }
+    };
+
+    fun check_read_result(msg, result, expected) {
+        if (result == -1) then {
+           code = get_errno();
+           error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
+        };
+        assert_eq(msg++" read wrong length", result, expected);
+    };
+
+    if (connected) then 
+    {
+       // TODO: make this non-blocking:
+       // If nothing is available we can just poll other input sources.
+
+       rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
+       check_read_result("rd header:", rd, 4);
+       len :: Int = unmarshal(tempbuf,0);
+
+       buf = Array:make(len, 0);
+       rd = read_bytes(sockfd, buf, len);
+       check_read_result("rd payload:", rd, len);
+
+       // Emit the raw bytes.
+       emit buf;
+    }
+    // Otherwise fizzle.
+   }; 
+   // We merge the empty initialization stream into the result.
+   // Thus it is included in the final program if the result stream is used, which is
+   // approrpiate.
+   merge(init,s)
+}
+
+fun socket_in(address, port) {
+  let rawbytes = socket_in_raw(address,port);
+  iterate buf in rawbytes {
+   // We are on thin ice typing wise:
+    ob = unmarshal(buf,0);
+    emit ob;
+  };
+}
 
 
 //================================================================================
 
-/* [2009.10.20] Version 2 
+/* [2009.10.20] socket_out Version 2 
 
    We can avoid blocking.  We simply have to fork an additional
    pthread that does the blocking for us.  Without changing the WS
@@ -98,11 +185,15 @@ socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",  
 
 socket_out :: (Stream a, Uint16) -> Stream b; // Returns empty stream.
 fun socket_out(strm, port) {
-  //  pthread_create(&threadID, NULL, &worker_thread, (void*)(size_t)i);	
+  id = 0;
+  init = iterate _ in timer(0) {
+     // The problem with doing initialization in a separate thread is that we need to
+     // communicate the ID of the socket back through shared memory.
+     id := start_spawn_socket_server(port);
+  };
   // The thread will return when it has made its connection.
-  iterate x in strm {
-    state { first = true; 
-            id = 0;
+  s = iterate x in strm {
+    state { 
             clientfd = 0;
 
             // [2011.05.20] New hack -- introduce a small amount of buffering so that,
@@ -119,11 +210,6 @@ fun socket_out(strm, port) {
             }
           }
     using Unix;
-    if first then {
-      first := false;
-      id    := start_spawn_socket_server(port);
-    };
-
     fun shoot() // Requires clientfd be ready.
     {
         // Marshal and send it:
@@ -156,7 +242,9 @@ fun socket_out(strm, port) {
       // Otherwise data gets DROPPED ON THE FLOOR.
     }    
 
-  }
+  };
+  // Merge both empty streams:
+  merge(init,s)
 }
 
 

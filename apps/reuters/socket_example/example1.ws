@@ -3,7 +3,7 @@
 // [2009.06.10] This is a simple example which sends an (arbitrarily
 // complex) piece of wavescope data over a socket.
 
-include "socket.ws"
+include "socket2.ws"
 
 
 port :: Uint16 = 9700;
@@ -32,7 +32,6 @@ type MySchema = (| NAME : String, DAT :  (List Char * Array Int));
   
 // This needs the type annotation to deserialize:
 instrm :: Stream MySchema = socket_in("localhost", Uint16! port);
-
 
 //========================================
 // This is an alternate way of doing things.
