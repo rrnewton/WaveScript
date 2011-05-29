@@ -2,7 +2,7 @@
 
 // [2009.06.10] This example uses sockets in conjunction with wsqlib.ws
 
-include "socket2.ws"
+include "socket.ws"
 include "../wsqlib.ws"
 
 // Use the fake stock feed from this example:

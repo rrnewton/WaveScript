@@ -15,32 +15,25 @@
 // [2009.06.02] Need some systematic way to generate these wrappers...
 struct sockaddr_in* ws_make_sockaddr_in (short sin_family, 
                                          unsigned short portno, 
-					 int s_addr	 
-                                         //struct hostent *server
-					 )
+                                         int s_addr) // NONPORTABLE?
+                                         // unsigned long long?
 {
   struct sockaddr_in* x = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
   x->sin_family      = sin_family;
-  //x->sin_port        = portno;
   x->sin_port        = htons(portno);
   x->sin_addr.s_addr = s_addr;
   //bcopy(addr, &(x->sin_addr.s_addr), addr_len);
   //bcopy(addr, &(x->sin_addr.s_addr), addr_len);
-  /*
-  bcopy((char *)  (server->h_addr), 
-        (char *)& (x->sin_addr.s_addr),
-        server->h_length);
-  */
   return x;
 }
 
+/*
 int ws_hostent_h_addr(struct hostent* server) {
   // HACK, assumes ipv4 & 4 byte int:
   return *(int*)server->h_addr; 
 }
 
 // These build enum values:
-
 short ws_AF_INET() { return AF_INET; }
 unsigned short ws_SOCK_STREAM() { return SOCK_STREAM; }
 int ws_INADDR_ANY() { return INADDR_ANY; }
@@ -53,6 +46,7 @@ int ws_print_sockaddr(struct sockaddr* addr) {
   printf("  family %d  port %d  s_addr %X \n", 
          x->sin_family, ntohs(x->sin_port), x->sin_addr.s_addr);  
 }
+*/
 
 int ws_errno() { return errno; }
 
@@ -135,7 +129,6 @@ void* outbound_socket_setup_helper_thread(void* vptr) {
   }
   
   // Accept client connection:
-  //const struct sockaddr_in* cli_addr = ws_make_sockaddr_in(0,0,0);
   struct sockaddr cli_addr;
   int clientfd;
   socklen_t size = sizeof(cli_addr);
@@ -222,7 +215,6 @@ void* inbound_socket_setup_helper_thread(void* vptr) {
   sockaddr->sin_family      = AF_INET;
   sockaddr->sin_port        = htons(arg->port);
   //sockaddr->sin_addr.s_addr = server->h_addr; // Why didn't this work?
-
   // This is a very odd way to assign an unsigned long.  I guess the point is that it could be 4 bytes or more for IPv6 etc.
   memcpy((char *)& sockaddr->sin_addr.s_addr,
          (char *)server->h_addr, 

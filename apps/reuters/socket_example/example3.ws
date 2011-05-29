@@ -3,8 +3,7 @@
 // [2009.11.20] This example opens multiple sockets between two different processes.
 // It is not supported by my initial implementation of socket.ws
 
-// include "stdlib.ws"
-include "socket2.ws"
+include "socket.ws"
 
 port = 9700;
 port2 = 9701;

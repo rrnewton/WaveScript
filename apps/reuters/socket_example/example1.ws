@@ -3,7 +3,7 @@
 // [2009.06.10] This is a simple example which sends an (arbitrarily
 // complex) piece of wavescope data over a socket.
 
-include "socket2.ws"
+include "socket.ws"
 
 
 port :: Uint16 = 9702;
