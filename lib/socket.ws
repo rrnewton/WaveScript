@@ -19,25 +19,10 @@ namespace Unix {
   socket  :: (Int,Int,Int) -> Int                          = foreign("socket", socket_pthread_includes);
   connect :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("connect", socket_pthread_includes);
   bind    :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("bind", socket_pthread_includes)
-  listen  :: (Int, Int) -> Int                             = foreign("listen", socket_pthread_includes);
-  accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_pthread_includes);
+  //listen  :: (Int, Int) -> Int                             = foreign("listen", socket_pthread_includes);
+  //accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_pthread_includes);
   
-  gethostbyname :: String -> Pointer "struct hostent*"  = foreign("gethostbyname", socket_pthread_includes);
-  hostent_h_addr :: Pointer "struct hostent*"  -> Int   = foreign("ws_hostent_h_addr", socket_pthread_includes);
-
-  make_sockaddr_in :: (Int16, Uint16, Int) -> Pointer "struct sockaddr_in*"
-    = foreign("ws_make_sockaddr_in", socket_pthread_includes);
-
-  AF_INET     :: () -> Int16  = foreign("ws_AF_INET", socket_pthread_includes);
-  SOCK_STREAM :: () -> Uint16 = foreign("ws_SOCK_STREAM", socket_pthread_includes);
-  INADDR_ANY  :: () -> Int    = foreign("ws_INADDR_ANY", socket_pthread_includes);
-
   errno  :: () -> Int = foreign("ws_errno", socket_pthread_includes);
-
-  // These wrap enum values.
-  // These don't work yet... but it shouldn't be too hard to make them.
-  //AF_INET     :: Int16 = foreign("AF_INET", socket_pthread_includes);
-  //SOCK_STREAM :: Uint16 = foreign("SOCK_STREAM", socket_pthread_includes);
 
   sizeof_sockaddr :: () -> Int = foreign("ws_sizeof_sockaddr", socket_pthread_includes);
   print_sockaddr  :: (Pointer "struct sockaddr*") -> () = foreign("ws_print_sockaddr", socket_pthread_includes);
@@ -49,21 +34,7 @@ spawn_socket_client_helper    :: (String, Uint16) -> Int64 = foreign("spawn_sock
 poll_socket_server_ready_port :: Uint16 -> Int   = foreign("poll_socket_server_ready_port",  socket_pthread_includes)
 poll_socket_client_ready_port :: Uint16 -> Int   = foreign("poll_socket_client_ready_port",  socket_pthread_includes)
 
-
 //================================================================================
-
-// High level interface for socket communication.
-// API:
-
-// socket_in() and socket_out() return two values:
-//   * result stream -- either with input tuples or the empty stream (for output)
-//   * initialization stream function --
-//     This is an initialization function with a funky representation.
-//     It shoud be called once at startup; the way we accomplish that is by feeding the stream
-//     function a singleton stream (e.g. timer(0)).  This is the users responsibility.
-
-//================================================================================
-
 
 // High level interface for socket communication.
 
@@ -145,30 +116,29 @@ fun socket_in(address, port) {
 
 //================================================================================
 
-/* [2009.10.20] socket_out Version 2 
+/* [2009.10.20] 
 
-   We can avoid blocking.  We simply have to fork an additional
-   pthread that does the blocking for us.  Without changing the WS
-   compiler it's possible for us to use the foreign interface to
-   create our own separate subsystem that establishes all the
+   We can avoid blocking to connect.  We simply have to fork an additional pthread that
+   does the blocking for us.  Without changing the WS compiler it's possible for us to use
+   the foreign interface to create our own separate subsystem that establishes all the
    connections.
 
-   That's fine if we are ok with data dumping on the floor while we
-   wait for connections to be made.  (Which in turn requires that
-   programs be robust against arbitrary *skew*.).  The difficulty is
-   if we *want* the whole system to block (backpressure).  We can't
-   just block within an individual kernel, because we don't know the
-   threading structure of the backend we're in.  For this to work I
-   think we'll need to expose a WS call that this socket library can
-   use to quiesce the system.  That in turn will require support in
-   all the backends that support the FFI.
+   That's fine if we are ok with data dumping on the floor while we wait for connections
+   to be made.  (Which in turn requires that programs be robust against arbitrary
+   *skew*.).  The difficulty is if we *want* the whole system to block (backpressure).  We
+   can't just block within an individual kernel, because we don't know the threading
+   structure of the backend we're in.  For this to work I think we'll need to expose a WS
+   call that this socket library can use to quiesce the system.  That in turn will require
+   support in all the backends that support the FFI.
 
-   (How would I implement that on a future TBB backend where I don't
-   control the scheduler?)
+   (How would I implement that on a future TBB backend where I don't control the
+   scheduler?)
+
+
+   [2011.05.29] For now we are using a backpressure strategy that ONLY WORKS in single
+   threaded mode.  We just block the main thread with a slow spin/sleep wait.
 
 */
-
-// my_pthread_includes = ["pthread.h", "socket_wrappers.c", "libpthread.so"]
 
 // This makes a blocking call to connect to a server.  We need to put
 // this on its own thread as well to avoid deadlock.  (Case in point:
@@ -227,7 +197,7 @@ fun socket_out(strm, port) {
         // The problem with this is that we may be holding other socket_out sources up
         // from calling spawn_socket_server_helper:
         // usleep(2 * 1000);
-        usleep(20 * 1000);
+        usleep(100 * 1000);
         clientfd := poll_socket_server_ready_port(port);
       };
       puts_err("  <socket.ws> outbound: Done SPINNING, client connected on port "++port++".\n");
@@ -241,18 +211,3 @@ fun socket_out(strm, port) {
   // Merge both empty streams:
   merge(init,s)
 }
-
-
-// Here we have a problem though... we really can't return to the WS
-// scheduler without having produced some data item (if we are a source).
-// And we really should be a source.  The way we drove it by a timer
-// we can ignore ticks, but this is not correct, because it requires
-// picking an arbitrary timer frequency.
-
-// [2009.11.22] TEMPORARY:
-// For now we have a blocking socket_in that.
-
-// This will ONLY WORK as long as our WS processes' socket connections
-// form a DAG.  There must be source node(s) that have output but no input.
-// And interior nodes must not depend upon any of their outputs.
-
