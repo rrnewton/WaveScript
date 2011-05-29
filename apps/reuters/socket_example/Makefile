@@ -18,7 +18,7 @@ three:
 	wsc2 example3.ws -main main2 -o proc2
 
 
-test: run run2
+test: run run2 run3
 
 # You probably want to run these in two separate windows, but this runs them together:
 run:

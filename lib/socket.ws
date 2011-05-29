@@ -153,8 +153,8 @@ fun socket_in(address, port) {
 // my_pthread_includes = ["pthread.h", "socket_wrappers.c", "libpthread.so"]
 
 // Create a separate thread to wait for the client to connect.
-start_spawn_socket_server  :: Uint16 -> Int64 = foreign("start_spawn_socket_server", socket_pthread_includes)
-socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",       socket_pthread_includes)
+spawn_socket_server_helper  :: Uint16 -> Int64 = foreign("spawn_socket_server_helper", socket_pthread_includes)
+poll_socket_server_ready    :: Int64  -> Int   = foreign("poll_socket_server_ready",   socket_pthread_includes)
 
 // This makes a blocking call to connect to a server.  We need to put
 // this on its own thread as well to avoid deadlock.  (Case in point:
@@ -186,7 +186,7 @@ fun socket_out(strm, port) {
     using Unix;
     if first then {
       first := false;
-      id    := start_spawn_socket_server(port);
+      id    := spawn_socket_server_helper(port);
     };
 
     fun shoot() // Requires clientfd be ready.
@@ -201,7 +201,7 @@ fun socket_out(strm, port) {
         ()
     };
    
-    if clientfd == 0 then clientfd := socket_server_ready(id);
+    if clientfd == 0 then clientfd := poll_socket_server_ready(id);
 
     // We are making the ASSUMPTION that real socket descriptors are nonzero.
     if clientfd != 0 then shoot() else
@@ -213,7 +213,7 @@ fun socket_out(strm, port) {
         // The problem with this is that we may be holding other socket_out sources up
         // from calling start_spawn_socket_server:
         usleep(2 * 1000);
-        clientfd := socket_server_ready(id);
+        clientfd := poll_socket_server_ready(id);
       };
       shoot();
 

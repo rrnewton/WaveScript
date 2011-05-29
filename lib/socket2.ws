@@ -12,6 +12,7 @@ socket_pthread_includes =
   ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c", 
    "pthread.h", "socket_wrappers.c", "libpthread.so"]
 
+// We add some calls to the Unix namespace:
 namespace Unix {
   //  socket_includes = ["sys/types.h", "sys/socket.h", "netinet/in.h", "socket_wrappers.c"]
 
@@ -42,6 +43,13 @@ namespace Unix {
   print_sockaddr  :: (Pointer "struct sockaddr*") -> () = foreign("ws_print_sockaddr", socket_pthread_includes);
 }
 
+// create a separate thread to wait for the client/server to connect successfully.
+spawn_socket_server_helper    :: Uint16 -> Int64 = foreign("spawn_socket_server_helper", socket_pthread_includes)
+spawn_socket_client_helper    :: (String, Uint16) -> Int64 = foreign("spawn_socket_client_helper", socket_pthread_includes)
+poll_socket_server_ready_port :: Uint16 -> Int   = foreign("poll_socket_server_ready_port",  socket_pthread_includes)
+poll_socket_client_ready_port :: Uint16 -> Int   = foreign("poll_socket_client_ready_port",  socket_pthread_includes)
+
+
 //================================================================================
 
 // High level interface for socket communication.
@@ -68,6 +76,7 @@ fun socket_in_raw( address, port) {
   // This runs once at the begining of time and before normal timers begin.  That is the
   // convention for "zero rate timers".
   init = iterate _ in timer(0) {
+     spawn_socket_client_helper(address, port);
   };
 
   // Rather than driving this by a foreign_source or by an infinite loop inside a single 
@@ -80,32 +89,9 @@ fun socket_in_raw( address, port) {
             connected = false;
             sockfd = 0;
             tempbuf = Array:make(4,0);
-            sockaddr = ptrMakeNull();
+            // sockaddr = ptrMakeNull();
           }
     using Unix;
-    if first then {
-      first := false;
-      sockfd := socket(Int! AF_INET(), Int! SOCK_STREAM(), 0);
-      if sockfd < 0 then error("socket_in: ERROR opening socket.");  
-      server = gethostbyname( address );
-      if server.ptrIsNull then error("socket_in: ERROR no such host");
-      sockaddr := make_sockaddr_in(AF_INET(), port, hostent_h_addr(server));
-    };
-
-    // We do not block or spin in the connection phase.  We just return without producing
-    // anything and give other sources a chance to go.  Therefore a program consisting of
-    // all socket_in sources will poll them round robin.
-    if (not(connected)) then {
-      c = connect(sockfd, sockaddr, sizeof_sockaddr());
-      code = get_errno();
-      if c < 0 then { 
-         puts_err("  <socket.ws> WARNING: connect returned error code "++ code ++", retrying.\n");
-         usleep(200 * 1000);
-      } else { 
-        connected := true;
-        puts_err("  <socket.ws> Established client connection, port " ++ port ++ "\n");
-      }
-    };
 
     fun check_read_result(msg, result, expected) {
         if (result == -1) then {
@@ -115,6 +101,14 @@ fun socket_in_raw( address, port) {
         assert_eq(msg++" read wrong length", result, expected);
     };
 
+    if sockfd == 0 then {
+      sockfd := poll_socket_client_ready_port(port);
+      if sockfd != 0 then connected := true;
+    };
+
+    // We do not block or spin in the connection phase.  We just return without producing
+    // anything and give other sources a chance to go.  Therefore a program consisting of
+    // all socket_in sources will poll them round robin.
     if (connected) then 
     {
        // TODO: make this non-blocking:
@@ -176,11 +170,6 @@ fun socket_in(address, port) {
 
 // my_pthread_includes = ["pthread.h", "socket_wrappers.c", "libpthread.so"]
 
-// Create a separate thread to wait for the client to connect.
-start_spawn_socket_server  :: Uint16 -> Int64 = foreign("start_spawn_socket_server", socket_pthread_includes)
-socket_server_ready        :: Int64  -> Int   = foreign("socket_server_ready",       socket_pthread_includes)
-socket_server_ready_port   :: Uint16 -> Int   = foreign("socket_server_ready_port",  socket_pthread_includes)
-
 // This makes a blocking call to connect to a server.  We need to put
 // this on its own thread as well to avoid deadlock.  (Case in point:
 // imagine a program that connects to its own socket with a
@@ -192,7 +181,7 @@ fun socket_out(strm, port) {
      // The problem with doing initialization in a separate thread is that we need to
      // communicate the ID of the socket back through shared memory.
      // Currently this is done through a global table in socket_wrappers.c
-     start_spawn_socket_server(port);
+     spawn_socket_server_helper(port);
   };
   // The thread will return when it has made its connection.
   s = iterate x in strm {
@@ -226,22 +215,22 @@ fun socket_out(strm, port) {
     };
 
     // Poll to see if the connection has been made yet.
-    if clientfd == 0 then clientfd := socket_server_ready_port(port);
+    if clientfd == 0 then clientfd := poll_socket_server_ready_port(port);
 
     // We are making the ASSUMPTION that real socket descriptors are nonzero.
     if clientfd != 0 then shoot() else
 
     if nodrop then {
       // Here we simple stall the current thread until data is ready.
-      puts_err("  <socket.ws> SPINNING main WS thread to wait for outbound connection (server).\n");
+      puts_err("  <socket.ws> outbound: SPINNING main WS thread to wait for connection on port "++port++" (server).\n");
       while ( clientfd == 0 ) {
         // The problem with this is that we may be holding other socket_out sources up
-        // from calling start_spawn_socket_server:
+        // from calling spawn_socket_server_helper:
         // usleep(2 * 1000);
-        usleep(500 * 1000);
-        clientfd := socket_server_ready_port(port);
+        usleep(20 * 1000);
+        clientfd := poll_socket_server_ready_port(port);
       };
-      puts_err("  <socket.ws> Done SPINNING, client connected.\n");
+      puts_err("  <socket.ws> outbound: Done SPINNING, client connected on port "++port++".\n");
       shoot();
 
     } else {

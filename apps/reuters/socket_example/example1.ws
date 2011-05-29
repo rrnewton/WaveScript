@@ -6,9 +6,7 @@
 include "socket2.ws"
 
 
-port :: Uint16 = 9701;
-//port :: Int = 9700;
-//port = 9700;
+port :: Uint16 = 9702;
 
 
 // Sender:

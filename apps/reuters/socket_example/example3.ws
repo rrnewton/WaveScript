@@ -3,24 +3,31 @@
 // [2009.11.20] This example opens multiple sockets between two different processes.
 // It is not supported by my initial implementation of socket.ws
 
-include "stdlib.ws"
-include "socket.ws"
+// include "stdlib.ws"
+include "socket2.ws"
 
 port = 9700;
 port2 = 9701;
 
+fun COUNTUP(rate, n)
+  iterate _ in timer(rate) {
+    // Should be Int64:
+    state { counter = n }
+    emit (counter);
+    counter := (counter) + 1;
+  }
 
 // Sender:
 //========================================
 
 // First build a stream of some kind of data object:
-nums = iterate n in COUNTUP(10) {
+nums = iterate n in COUNTUP(10, 10) {
   x = (NAME="hello"++n, DAT= (['a','b'], #[n,n+1]));
   emit x;
 };
 
 out1 = socket_out(nums, port);
-out2 = socket_out(COUNTUP((100::Int)), port2);
+out2 = socket_out(COUNTUP(10, (100::Int)), port2);
 
 main1 = merge(out1, out2);
 
