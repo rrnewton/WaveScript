@@ -1,27 +1,33 @@
 
 
-// This is an even trickier version of example3 that forms a cycle.
+// [2011.05.31] A small tweak of example3.ws that measures data rates of its multiple input streams.
 
 include "socket.ws"
 
 port = 9700;
 port2 = 9701;
 
+fun COUNT_UP(rate, n)
+  iterate _ in timer(rate) {
+    // Should be Int64:
+    state { counter = n }
+    emit (counter);
+    counter := (counter) + 1;
+  }
 
 // Sender:
 //========================================
 
 // First build a stream of some kind of data object:
-nums = iterate n in COUNTUP(10) {
+nums = iterate n in COUNT_UP(15, 10) {
   x = (NAME="hello"++n, DAT= (['a','b'], #[n,n+1]));
-  print("Sending: "++ x  ++"\n"); 
   emit x;
 };
 
-out_first = socket_out(nums, port);
-and_back :: Stream Int = socket_in("localhost", port2)
+out1 = socket_out(nums, port);
+out2 = socket_out(COUNT_UP(5, (100::Int)), port2);
 
-main1 = merge(out_first, and_back)
+main1 = merge(out1, out2);
 
 
 // Receiver: 
@@ -31,9 +37,26 @@ main1 = merge(out_first, and_back)
 type MySchema = (| NAME : String, DAT :  (List Char * Array Int));
   
 // This needs the type annotation to deserialize:
-instrm :: Stream MySchema = socket_in("localhost", port);
+in1 :: Stream MySchema = socket_in("localhost", port);
+in2 :: Stream Int      = socket_in("localhost", port2);
 
-results = iterate x in instrm { emit String:length(x.NAME) }
+inputs = union2(in1,in2)
+heartbeat = timer(1.0) // 1hz
 
-main2 = socket_out(results, port2)
-
+main2 = iterate x in union2(heartbeat, inputs) {
+  state { 
+           seconds = 0; 
+           left    = 0;
+           right   = 0;
+        }
+  case x {
+    Left(_): { 
+                seconds += 1;
+                print("After "++seconds++" seconds, got "++left++" / "++right++" on left/right.\n");
+             }
+    Right(inp): case inp { 
+                  Left(_):  left += 1
+                  Right(_): right += 1
+                }
+  }
+}

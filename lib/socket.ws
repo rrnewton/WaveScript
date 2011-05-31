@@ -21,8 +21,9 @@ namespace Unix {
   bind    :: (Int, Pointer "struct sockaddr*", Int) -> Int = foreign("bind", socket_pthread_includes)
   //listen  :: (Int, Int) -> Int                             = foreign("listen", socket_pthread_includes);
   //accept  :: (Int, Pointer "struct sockaddr*", Array Int) -> Int = foreign("accept", socket_pthread_includes);
-  
-  errno  :: () -> Int = foreign("ws_errno", socket_pthread_includes);
+
+  ewouldblock :: () -> Int = foreign("ws_EWOULDBLOCK", socket_pthread_includes);
+  errno       :: () -> Int = foreign("ws_errno", socket_pthread_includes);
 
   sizeof_sockaddr :: () -> Int = foreign("ws_sizeof_sockaddr", socket_pthread_includes);
   print_sockaddr  :: (Pointer "struct sockaddr*") -> () = foreign("ws_print_sockaddr", socket_pthread_includes);
@@ -56,25 +57,37 @@ fun socket_in_raw( address, port) {
   // least as fast as any other timer in the system.
   s = iterate _ in timer(-1.0) 
   {
-    state { first = true;
+    state { 
             connected = false;
             sockfd = 0;
             tempbuf = Array:make(4,0);
-            // sockaddr = ptrMakeNull();
+            wouldblock = 0;
+            
+            // Ugliness to handle partial states.  For example, we have read the length
+            // header but not the payload.
+            have_header = false;  // Could use a Maybe type here.
+            header = 0;
           }
     using Unix;
 
-    fun check_read_result(msg, result, expected) {
+    fun check_read_result(msg, result, expected) {     
         if (result == -1) then {
            code = get_errno();
-           error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
-        };
-        assert_eq(msg++" read wrong length", result, expected);
+           if code == wouldblock
+           then false // { puts_err(" ... would have blocked ... \n"); false }
+           else error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
+        } else {
+          assert_eq(msg++" read wrong length, FIXME socket_in should tolerate partial reads", result, expected);
+          true
+        }
     };
 
     if sockfd == 0 then {
       sockfd := poll_socket_client_ready_port(port);
-      if sockfd != 0 then connected := true;
+      if sockfd != 0 then { 
+        connected := true;
+        wouldblock := ewouldblock(); // Lame.
+      }
     };
 
     // We do not block or spin in the connection phase.  We just return without producing
@@ -85,16 +98,43 @@ fun socket_in_raw( address, port) {
        // TODO: make this non-blocking:
        // If nothing is available we can just poll other input sources.
 
-       rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
-       check_read_result("rd header:", rd, 4);
-       len :: Int = unmarshal(tempbuf,0);
+       // Get the length (header), if we can:
+       len = if have_header then header else {
+                rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
+                if check_read_result("rd header:", rd, 4) then {
+                   have_header := true;
+                   // header := (unmarshal(tempbuf,0) :: Int);  // BUG: Why should this cause a monomorphism problem?
+                   tmp :: Int = unmarshal(tempbuf,0); // But this fixes it.
+                   header := tmp;
+                   header
+                } 
+                else -1
+             };
 
-       buf = Array:make(len, 0);
-       rd = read_bytes(sockfd, buf, len);
-       check_read_result("rd payload:", rd, len);
+       if len >= 0 then {       
+          buf = Array:make(len, 0);
+          rd = read_bytes(sockfd, buf, len);
+          if check_read_result("rd payload:", rd, len) then {
+             have_header := false;
+             // Emit the raw bytes.
+             emit buf;
+          }
+       }
 
-       // Emit the raw bytes.
-       emit buf;
+       /* rd = read_bytes(sockfd, tempbuf, 4);  // Read length. */
+       /* if check_read_result("rd header:", rd, 4) then { */
+       /*    len :: Int = unmarshal(tempbuf,0); */
+       /*    have_header := true; */
+       /*    header := len; */
+
+       /*    buf = Array:make(len, 0); */
+       /*    rd = read_bytes(sockfd, buf, len); */
+       /*    if check_read_result("rd payload:", rd, len) then { */
+       /*       have_header := false; */
+       /*       // Emit the raw bytes. */
+       /*       emit buf; */
+       /*    } */
+       /* } */
     }
     // Otherwise fizzle.
    }; 

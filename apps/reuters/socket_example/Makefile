@@ -1,6 +1,6 @@
 
 
-all: one two
+all: one two three
 
 ## These don't use -threads right now:
 one: 
@@ -17,6 +17,10 @@ three:
 	wsc2 example3.ws -main main1 -o proc1
 	wsc2 example3.ws -main main2 -o proc2
 
+four: 
+	wsc2 -realtime example4.ws -main main1 -o e4_server
+	wsc2 -realtime example4.ws -main main2 -o e4_client
+
 
 test: run run2 run3
 
@@ -32,7 +36,7 @@ run2:
 
 run3:
 #	(./proc1.exe &); ./proc2.exe
-	(./proc1.exe &); sleep 2; ./proc2.exe
+	(./proc1.exe &); sleep 2; ./proc2.exe -n 30
 
 
 clean:

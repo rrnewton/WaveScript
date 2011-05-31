@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <fcntl.h> 
 
 #include <errno.h> 
 
@@ -26,6 +27,8 @@ struct sockaddr_in* ws_make_sockaddr_in (short sin_family,
   //bcopy(addr, &(x->sin_addr.s_addr), addr_len);
   return x;
 }
+
+int ws_EWOULDBLOCK() { return EWOULDBLOCK; }
 
 /*
 int ws_hostent_h_addr(struct hostent* server) {
@@ -219,7 +222,6 @@ void* inbound_socket_setup_helper_thread(void* vptr) {
   memcpy((char *)& sockaddr->sin_addr.s_addr,
          (char *)server->h_addr, 
          server->h_length);
-
 //printf("COPIED %d bytes to s_addr, contents: %ld \n", server->h_length, (unsigned long)sockaddr->sin_addr.s_addr);
 
   while(1) {
@@ -235,6 +237,13 @@ void* inbound_socket_setup_helper_thread(void* vptr) {
         break;
       }
   }
+
+  // EWOULDBLOCK EAGAIN
+  // Make the inbound socket non-blocking.
+  int flags = fcntl(sockfd, F_GETFL);
+  flags |= O_NONBLOCK;
+  fcntl(sockfd, F_SETFL, flags);
+  fprintf(stderr,"  <socket.ws> inbound: Socket file descriptor set to non-blocking: %d (flags %o)\n", sockfd, flags);
 
   arg->filedecr = sockfd;  // WARNING, read by another thread.  May need a fence.
   __sync_synchronize();
