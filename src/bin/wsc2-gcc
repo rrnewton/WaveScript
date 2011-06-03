@@ -46,6 +46,8 @@ if [ "$CC" = "" ];
 then CC="gcc $OPTFLAGS"; 
 elif [ "$CC" = "gcc" ]; 
 then CC="gcc $OPTFLAGS";
+elif [ "$CC" = "icc" ]; 
+then CC="icc $OPTFLAGS";
 #else echo "Using alternate C compiler $CC."; 
 fi 
 

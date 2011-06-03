@@ -240,9 +240,10 @@ unsigned long long total_events = 0;
  * for a long time.  Perhaps we want a shorter time horizon, or an
  * EWMA or something.
  */
-inline void wait_ticks(double delta) { // Delta in milliseconds
-
-  if (delta < 0.0) return;
+inline double TIME_DEBT(double delta) 
+// Delta is the length of a single virtual (logical) tick in milleseconds.
+{
+  if (delta < 0.0) return 0.0;
 
   //double now = clock() * (1000000 / CLOCKS_PER_SEC); // microseconds
   struct timeval tmp;
@@ -253,28 +254,39 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
   // TODO: Set this at the beginning of time from the init function:
   if (start_of_time == 0.0) start_of_time = now;
 
-  logical_time += 1000 * delta * tick_counter; // microseconds
-  tick_counter = 0;
+  if (tick_counter > 0) {
+    logical_time += 1000 * delta * tick_counter; // microseconds
+    tick_counter = 0;
+  }  
+  double actual_time = now - start_of_time; // microseconds
   
-  double actual_time = now - start_of_time; // microseconds:
-
   // HACK: Only bother waiting if we owe more than 5ms:
   if (logical_time > actual_time )//+ 5000)
   {
     double diff = logical_time - actual_time;
-    //printf("sleep %g, logical %g, actual %g\n", diff, logical_time, actual_time);
-    usleep(diff);
+
+    // printf("GOT TIME DEBT %lf\n", diff);
+    return diff;
     //nanosleep(diff);
     // HACK: because clock() only measures process time, not sleeping time, we need
     // to manually update the "actual_time" interval here!
-        //start_of_time -= diff;    
+        //start_of_time -= diff;        
   } else {
-    //printf(".");
+    return 0.0;
   }
 }
 
-#define VIRTTICK() tick_counter++
-#define WAIT_TICKS(delta) wait_ticks(delta)
+inline void WAIT_TICKS(double delta) // Delta in milliseconds
+{ 
+  double debt = TIME_DEBT(delta);
+  if (debt > 0.0)  usleep(debt);
+}
+
+inline void VIRTTICK() 
+{
+  tick_counter++;
+}
+
 
 // --------------------------------------------------------------------------------
 #else // Not WS_REAL_TIMERS:

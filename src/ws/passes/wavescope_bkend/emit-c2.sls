@@ -1767,14 +1767,13 @@
 				(block (if (null? srcname*) "if (1)" "if (fired)")
 				  (if (null? negsrc*)
 				      (format "WAIT_TICKS(~a);\n" timestep_ms)
-				      (list "// Insert calls to those (negative rate) timers that run max speed:\n"
-				            "// This substitutes for a call to WAIT_TICKS:\n"
-					    (map lines-text negsrccode*))
+				      (block 
+				       (format "while (TIME_DEBT(~a) > 0.0)" timestep_ms)
+				       (list "// Insert calls to those (negative rate) timers that run max speed:\n"
+					     "// This substitutes for a call to WAIT_TICKS:\n"
+					     (map lines-text negsrccode*)))
 				      ))
-				  
-				;"sleep(1);\n"
-				)
-			  )		   
+				))
 		   ;"wsShutdown();\n"
 		   "// We keep the main function going for other tuples to come through.\n"
 		   ;"printf(\"Out of main loop.\\n\");\n"

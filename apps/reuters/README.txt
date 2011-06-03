@@ -200,6 +200,9 @@ engine through environment variables:
   WSQ_NOFLUSH -- set nonempty to disable flushing after stream
                  elements are printed to a file.
 
+  WSQ_GC -- which WaveScript garbage collector to use (boehm, refcount)
+  WSQ_CC -- which C compiler to use (e.g. gcc, icc)
+
 ----------------------------------------------------------------------------------------------------
 
 

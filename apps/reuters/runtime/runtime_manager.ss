@@ -22,9 +22,15 @@
 ;; This is gross but we use global state to keep track of the
 ;; interactions with the control module.
 
+(define (tryenv name)
+  (let ((x (getenv name)))
+    (when x
+      (vprintf 1 " <WSQ>   Using value of environment variable ~a = ~s\n" name x))
+    x))
+
 (define curtransaction (box #f))
 (define current-child-process #f)
-(define query-output-file (getenv "WSQ_OUTPUTFILE")) ; #f means use stdout
+(define query-output-file (tryenv "WSQ_OUTPUTFILE")) ; #f means use stdout
 (define query-app-name "wsq_query")
 
 ;; [2011.02.16] Introducing a paused/unpaused state to the stream engine.
@@ -340,7 +346,7 @@
 
 ;; Pick which WS backend to use, default is wsc2:
 (define wsq-engine
-  (string->symbol (uppercase (or (getenv "WSQ_BACKEND") "C"))))
+  (string->symbol (uppercase (or (tryenv "WSQ_BACKEND") "C"))))
 
 (define-entrypoint WSQ_EndTransaction () int
   (lambda ()    
@@ -362,7 +368,7 @@
 				      v)])			      
 			 `(define ,var ,e)))
 		  binds)]
-	   [prog `((include ,(string-append (getenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
+	   [prog `((include ,(string-append (tryenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
 	           ;; Include the user's code as well:
 	           ,@(map (lambda (x) `(include ,x)) extra_includes)
 		   ,@bod
@@ -418,11 +424,11 @@
 	[(C)
 	 (vprintf 1 " <WSQ>   Compiling generated WS program.\n")	 
 	 ;; Make it run in REALtime:
-	 (when (not (getenv "WSQ_MAXSPEED"))
+	 (when (not (tryenv "WSQ_MAXSPEED"))
 	   (vprintf 1 " <WSQ>   Compiling query to run timers in REAL time (using usleep)....\n")
-	   (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (getenv "WS_LINK") ""))))
+	   (putenv "WS_LINK" (format "~a -DWS_REAL_TIMERS " (or (tryenv "WS_LINK") ""))))
 
-	 (when (getenv "WSQ_OUTEXE") (WSQ_SetQueryName-entry (getenv "WSQ_OUTEXE")))
+	 (when (tryenv "WSQ_OUTEXE") (WSQ_SetQueryName-entry (getenv "WSQ_OUTEXE")))
 
 	 ;;------------------------------------------------------------
          (set-c-output-basename! query-app-name)      
@@ -430,7 +436,7 @@
 	 (parameterize ([compiler-invocation-mode 'wavescript-compiler-c]
 
 	                ;; In tests/7_MergeMonotonic I have tripped a refcount GC bug... doing Boehm for the moment:
-			[wsc2-gc-mode 'boehm]
+			[wsc2-gc-mode (string->symbol (or (tryenv "WSQ_GC") "boehm"))]
 			)
 	   (wscomp (wsparse-postprocess prog) '() 'wsc2)
 	   ;; The problem with this is our input program is already an sexp:
@@ -441,10 +447,9 @@
 	 ;; We use the undocumented interface to wsc2-gcc
 	 (putenv "CFILE" (string-append query-app-name ".c"))
 	 ;; Same here:
-	 (putenv "COPTFLAG" (or (getenv "WSQ_OPTLVL") "0"))
-	 
-	    ;(printf "SETTING LINK ~s\n" (getenv "WS_LINK"))
-	    
+	 (putenv "COPTFLAG" (or (tryenv "WSQ_OPTLVL") "0"))
+	 (putenv "CC"       (or (tryenv "WSQ_CC") "gcc"))
+	   
 	    ;; We go all the way back to our shell script to have it call gcc.
 	    (if (>= verbose-mode 1)
 	    	(system "wsc2-gcc") ;; Why is the output from this not printing?
