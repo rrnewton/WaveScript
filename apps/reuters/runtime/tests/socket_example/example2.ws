@@ -3,12 +3,12 @@
 // [2009.06.10] This example uses sockets in conjunction with wsqlib.ws
 
 include "socket.ws"
-include "../wsqlib.ws"
+include "../../wsqlib.ws"
 
 // Use the fake stock feed from this example:
-include "../stonebreaker_example_queries.ws"
+include "../../../stonebreaker_example_queries.ws"
 
-include "stdlib.ws" // 
+include "stdlib.ws" 
 
 // Here we do a chain of filters, breaking into separate processes.
 

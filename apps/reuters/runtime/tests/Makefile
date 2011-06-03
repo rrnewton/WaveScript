@@ -15,8 +15,11 @@ TESTS = $(SOURCES:.c=.testrun)  9_example_distributed.testrun
 OUTS  = $(SOURCES:.c=.out)      9_example_distributed.out
 
 all: $(EXES)
+	(cd example_distributed; $(MAKE))
+	(cd socket_example;      $(MAKE))
 
 test: fulltests
+	(cd socket_example;      $(MAKE) test)
 
 # Do a full build, run, and check output results:
 fulltests: $(TESTS)
@@ -68,3 +71,4 @@ runonly: $(OUTS)
 clean: 
 	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run *_*.err
 	(cd example_distributed; $(MAKE) clean)
+	(cd socket_example;      $(MAKE) clean)
