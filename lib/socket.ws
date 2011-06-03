@@ -79,7 +79,7 @@ fun socket_in_raw( address, port) {
         } else {
 	  if result == expected then true
 	  else {
-            print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.", );
+            print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n");
 	    false
 	  }
         }

@@ -16,15 +16,12 @@ int main(int argc, char* argv[]) {
       // Drive it by a max-rate timer (negative frequency convention):
       WSQ_AddOp(1, "ASCIIFileSource", "", "100", "-1 || TAQ.1000000");
       WSQ_AddOp(2, "UDF", "100", "200", "output_timer.ws | output_timer | 1.0 ");
-
       WSQ_AddOp(3, "Printer", "200", "", " Should never see this.. ");
 
     WSQ_EndSubgraph();
   int pid = WSQ_EndTransaction();
   
-  printf("Spawned pid %d, waiting on child process.\n");  
-  //sleep(2);
-  // printf("Done Sleeping.  Shutting down WSQ Engine...\n");
+  // printf("Spawned pid %d, waiting on child process.\n");  
   // WSQ_Shutdown();
   return 0;
 }

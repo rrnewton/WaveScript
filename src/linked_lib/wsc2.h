@@ -293,6 +293,7 @@ inline void VIRTTICK()
 
 #define VIRTTICK()                   {}
 #define WAIT_TICKS(delta)            {}
+#define TIME_DEBT(delta)             0.0
 #endif
 
 

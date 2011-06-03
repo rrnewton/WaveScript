@@ -326,7 +326,7 @@
 	`(Row ,(ununquote name) ,(Type (ununquote type)) ,rest)]
        )))
 
-
+;; A special value used to name empty streams that need to be merged into the final output.
 (define mergemagic (gensym "Merge"))
 
 ;;==============================================================================

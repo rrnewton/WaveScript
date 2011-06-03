@@ -1767,11 +1767,14 @@
 				(block (if (null? srcname*) "if (1)" "if (fired)")
 				  (if (null? negsrc*)
 				      (format "WAIT_TICKS(~a);\n" timestep_ms)
-				      (block 
-				       (format "while (TIME_DEBT(~a) > 0.0)" timestep_ms)
-				       (list "// Insert calls to those (negative rate) timers that run max speed:\n"
-					     "// This substitutes for a call to WAIT_TICKS:\n"
-					     (map lines-text negsrccode*)))
+				      (list 
+				       "// Use do-while here to make sure that the negative guys go at least ONCE:\n"
+				       (block "do"
+					      (list "// Insert calls to those (negative rate) timers that run max speed:\n"
+						    "// This substitutes for a call to WAIT_TICKS:\n"
+						    (map lines-text negsrccode*)))
+				       (format "while (TIME_DEBT(~a) > 0.0);\n" timestep_ms)
+				       )
 				      ))
 				))
 		   ;"wsShutdown();\n"
