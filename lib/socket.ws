@@ -62,11 +62,12 @@ fun socket_in_raw( address, port) {
             sockfd = 0;
             tempbuf = Array:make(4,0);
             wouldblock = 0;
-            
+
             // Ugliness to handle partial states.  For example, we have read the length
             // header but not the payload.
             have_header = false;  // Could use a Maybe type here.
             header = 0;
+
           }
     using Unix;
 

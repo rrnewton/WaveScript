@@ -69,6 +69,6 @@ runonly: $(OUTS)
 	@echo 
 
 clean: 
-	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run *_*.err
+	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run *_*.err generated_query*
 	(cd example_distributed; $(MAKE) clean)
 	(cd socket_example;      $(MAKE) clean)
