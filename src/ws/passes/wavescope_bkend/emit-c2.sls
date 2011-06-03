@@ -1766,8 +1766,9 @@
 				"// The timesteps where we fire are the only 'real' ones:\n"
 				(block (if (null? srcname*) "if (1)" "if (fired)")
 				  (if (null? negsrc*)
-				      (format "WAIT_TICKS(~a);\n" timestep_ms)				  
+				      (format "WAIT_TICKS(~a);\n" timestep_ms)
 				      (list "// Insert calls to those (negative rate) timers that run max speed:\n"
+				            "// This substitutes for a call to WAIT_TICKS:\n"
 					    (map lines-text negsrccode*))
 				      ))
 				  

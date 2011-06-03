@@ -77,8 +77,11 @@ fun socket_in_raw( address, port) {
            then false // { puts_err(" ... would have blocked ... \n"); false }
            else error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
         } else {
-          assert_eq(msg++" read wrong length, FIXME socket_in should tolerate partial reads", result, expected);
-          true
+	  if result == expected then true
+	  else {
+            print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.", );
+	    false
+	  }
         }
     };
 
@@ -118,23 +121,8 @@ fun socket_in_raw( address, port) {
              have_header := false;
              // Emit the raw bytes.
              emit buf;
-          }
-       }
-
-       /* rd = read_bytes(sockfd, tempbuf, 4);  // Read length. */
-       /* if check_read_result("rd header:", rd, 4) then { */
-       /*    len :: Int = unmarshal(tempbuf,0); */
-       /*    have_header := true; */
-       /*    header := len; */
-
-       /*    buf = Array:make(len, 0); */
-       /*    rd = read_bytes(sockfd, buf, len); */
-       /*    if check_read_result("rd payload:", rd, len) then { */
-       /*       have_header := false; */
-       /*       // Emit the raw bytes. */
-       /*       emit buf; */
-       /*    } */
-       /* } */
+          } // else fizzle
+       } // else fizzle
     }
     // Otherwise fizzle.
    }; 

@@ -253,7 +253,7 @@ inline void wait_ticks(double delta) { // Delta in milliseconds
   // TODO: Set this at the beginning of time from the init function:
   if (start_of_time == 0.0) start_of_time = now;
 
-  logical_time += 1000 * delta * tick_counter; // milliseconds, no microseconds
+  logical_time += 1000 * delta * tick_counter; // microseconds
   tick_counter = 0;
   
   double actual_time = now - start_of_time; // microseconds:
