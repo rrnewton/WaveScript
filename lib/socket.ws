@@ -87,6 +87,7 @@ fun socket_in_raw( address, port) {
              // print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n");
              // TEMP: For now we will use this as an exit mechanism.
              puts_err("  <socket.ws> "++msg++" Read wrong length, taking this as a signal that upstream is closed.  Exiting.\n");
+             shutdown_sockets();
              wsexit(0);
         };
   	    warned := true;
