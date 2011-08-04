@@ -59,14 +59,16 @@ struct thread_arg {
   char* address;
 };
 
+
 /********************************************************************************/
+//                <  Simple association list data type. >
 // We could use a hash table from Glib or the linux kernel headers or something.
 //
 // But instead I am assuming this table will not grow very long and therefore using a
 // simple association list to avoid extra dependencies.
 
-// The alist currently stores a pointer to the thread_arg structure.
-
+// The alist currently stores maps port numbers onto a pointer to the thread_arg
+// structure.  (But it stores these pointers as int64s.)
 typedef struct alist 
 {
   short port;
@@ -74,7 +76,7 @@ typedef struct alist
   struct alist* next;
 } alist_t;
 
-// No concurrent modification!
+// Not threadsafe!  No concurrent modification!
 alist_t* alist_add(alist_t* ls, short p, int64_t v)
 {
   alist_t* newp = (alist_t*)malloc(sizeof(alist_t));
@@ -204,7 +206,9 @@ int poll_socket_server_ready_port(short port) {
 /********************************************************************************/
 // And for the input side as well:
 
-void* inbound_socket_setup_helper_thread(void* vptr) {
+// This is spawned on a separate thread:
+void* inbound_socket_setup_helper_thread(void* vptr) 
+{
   struct thread_arg* arg = (struct thread_arg*)vptr;
   fprintf(stderr,"  <socket.ws> inbound: Spawned thread to connect to host %s port %d\n", arg->address, arg->port);
 
@@ -285,4 +289,23 @@ int poll_socket_client_ready_port(short port) {
   if(!arg) { printf(" <socket.ws> ERROR: NULL ptr found in table.\n");  abort(); }
 
   return arg->filedecr;
+}
+
+
+void shutdown_list(alist_t* ptr) 
+{
+   while (ptr) {
+      struct thread_arg* ta = (struct thread_arg*)ptr->value;
+      close(ta->filedecr);
+      fprintf(stderr,"  <socket.ws>   Closed descriptor %d, port %d\n", ta->filedecr, ta->port);
+      ptr = ptr->next;
+   }
+}
+
+// It would be nice to register this as a callback from within wsexit...
+void shutdown_sockets() 
+{
+   fprintf(stderr,"  <socket.ws> Closing all sockets before exiting.\n"); 
+   shutdown_list(global_inbound_table);
+   shutdown_list(global_outbound_table);
 }

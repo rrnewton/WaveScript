@@ -95,7 +95,10 @@ fun read_TAQ_ASCII_tuples(rate, file) {
       if DEBUG then print("Filling buffer from file " ++ hndl  ++"\n");
       if ptrIsNull(hndl) then wserror("File was not opened successfully: " ++ file);
       num_bytes := fread_arr(buf, 1, bufsize, hndl);
-      if num_bytes == 0 then { print("End of stream reached.\n"); wsexit(0); }; // File is finished, should emit EOS.
+      if num_bytes == 0 then { print("TAQ: End of stream reached.\n"); 
+                               shutdown_sockets();
+                               wsexit(0); // File is finished, should emit EOS.
+                             };
       i := 0; 
       if DEBUG then print("Got bytes " ++ num_bytes ++"\n");
       if DEBUG then print(" prefix of what we got |"++ String:fromArray(buf.sub(0, min(100, bufsize))) ++"|\n");

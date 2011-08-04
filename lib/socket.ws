@@ -35,6 +35,8 @@ spawn_socket_client_helper    :: (String, Uint16) -> Int64 = foreign("spawn_sock
 poll_socket_server_ready_port :: Uint16 -> Int   = foreign("poll_socket_server_ready_port",  socket_pthread_includes)
 poll_socket_client_ready_port :: Uint16 -> Int   = foreign("poll_socket_client_ready_port",  socket_pthread_includes)
 
+shutdown_sockets              :: ()     -> ()    = foreign("shutdown_sockets", socket_pthread_includes)
+
 //================================================================================
 
 // High level interface for socket communication.
@@ -68,6 +70,7 @@ fun socket_in_raw( address, port) {
             have_header = false;  // Could use a Maybe type here.
             header = 0;
 
+	    warned = false
           }
     using Unix;
 
@@ -80,7 +83,13 @@ fun socket_in_raw( address, port) {
         } else {
 	  if result == expected then true
 	  else {
-            print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n");
+	    if not(warned) then {
+             // print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n");
+             // TEMP: For now we will use this as an exit mechanism.
+             puts_err("  <socket.ws> "++msg++" Read wrong length, taking this as a signal that upstream is closed.  Exiting.\n");
+             wsexit(0);
+        };
+  	    warned := true;
 	    false
 	  }
         }

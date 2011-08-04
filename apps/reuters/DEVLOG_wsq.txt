@@ -75,38 +75,50 @@ NETSTRM: (PRICE=8.14, SYM=ANSS, TIME=9.20786e+07, VOLUME=2)
 NETSTRM: (PRICE=25.6202, SYM=AFSI, TIME=9.20786e+07, VOLUME=9)
 
 
---------------------------------------------------------------------------------
+ ---------------------------------------------
 
 PRINTING TEST:
 
-$ time ./wsq_query.exe | wc
+    $ time ./wsq_query.exe | wc
 
-3739480 18696682 233521358
+    3739480 18696682 233521358
 
-real    0m10.494s
-user    0m9.420s
-sys     0m1.070s
+    real    0m10.494s
+    user    0m9.420s
+    sys     0m1.070s
 
-Prints about 370K ticks/second.
-NO THAT WAS WRONG... not just printing also doing the shailendra
-query.
+    Prints about 370K ticks/second.
+    NO THAT WAS WRONG... not just printing also doing the shailendra
+    query.
 
-$ time ./wsq_query.exe  |wc 
-1157876 5788740 71589006
+    $ time ./wsq_query.exe  |wc 
+    1157876 5788740 71589006
 
-real    0m3.225s
-user    0m2.920s
-sys     0m0.340s
+    real    0m3.225s
+    user    0m2.920s
+    sys     0m0.340s
 
-Huh... not any better... a rate of 359,031
+    Huh... not any better... a rate of 359,031
 
-Over a socket on the local host:
+    Over a socket on the local host:
 
-$ time ./wsq_client_3939.exe  |wc 
-3447511 17237563 209665530
+    $ time ./wsq_client_3939.exe  |wc 
+    3447511 17237563 209665530
 
-real    0m14.485s
-user    0m9.500s
-sys     0m5.280s
+    real    0m14.485s
+    user    0m9.500s
+    sys     0m5.280s
 
-Slowed to 238K.
+    Slowed to 238K.
+
+
+
+[2011.08.03] {Trying to get back to where we were}
+
+It passes tests on the SOIC RHEL 5.6 machines. I tried on a RHEL 6.1
+machine (basalt) and it passed as well.
+
+
+
+
+

@@ -53,7 +53,7 @@ runonly: $(OUTS)
 .out.testrun:
 	@echo 
 	@echo ----------------------------------------
-	@echo Comparing output, $<, to expected, check .err file for results if an error occurs:
+	@echo Comparing output, $<, to expected, check .err file for results in case of failure:
 	head -n $(shell ./wc_lines_only.sh $(<:.out=.compare)) $< > $(<:.out=.trunc)
 	diff $(<:.out=.compare) $(<:.out=.trunc) > $(<:.out=.err)
 #	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)
