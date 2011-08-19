@@ -111,3 +111,10 @@ With distributed example:
      7fe9fbb95000-7fe9fbb99000 r--p 0003f000 09:00 603                        /lib/libncurses.so.5.7
      7fe9fbb99000-7fe9fbb9a000 rw-p 00043000 09:00 603                        /lib/libncurses.so.5.7
      7fe9fbb9a000-7fe9fbb9c000 r-xp 00000000 09:00 63148                      /lib/libdl-2.12.1.so
+
+
+[2011.08.19] {Working on github issue #3}
+
+First I confirmed that revision 5aef5462790abd077 passes tests on a
+fresh repo.
+
