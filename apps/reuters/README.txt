@@ -79,6 +79,11 @@ Schema:
 
 "Join" --
 
+"MergeMonotonic" -- Merge two streams which have monotonically
+                    increasing fields
+  
+
+
 "MatchRecognize" -- Corresponds roughly to the MATCH_RECOGNIZE
 		    operator in CQL.
   1 input 1 output, 3 string arguments:
@@ -112,6 +117,7 @@ Schema:
   1-input 0-output, 2 string arguments:
    (1) host name
    (2) port
+
 
 
 "UDF" -- A User-Defined function written in the WaveScript programming

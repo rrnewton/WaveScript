@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     WSQ_BeginSubgraph(101);
 
       // Tuples, 100Hz
-      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|./example_distributed/taq_500lines.dat"); 
+      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|./example_distributed/taq_500lines.dat"); 
 
       WSQ_AddOp(2, "Printer", "2", "", "From file source:");
 
