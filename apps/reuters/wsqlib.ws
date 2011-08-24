@@ -80,7 +80,7 @@ type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int );
 wsq_randomSource :: (Float, String) -> Stream DummySchema99;
 fun wsq_randomSource(freq, schema) {
 
-  print ("<WSQ> Creating dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
+  Unix:puts_err("<WSQ> Creating dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
 
   lastprice = Array:make(Array:length(all_syms), 50.0);
   iterate _ in timer(freq) {
@@ -105,7 +105,7 @@ fun wsq_randomSource(freq, schema) {
 // NON-Random version.  
 wsq_nonRandomSource :: (Float, String) -> Stream DummySchema99;
 fun wsq_nonRandomSource(freq, schema) {
-  print ("<WSQ> Creating (nonrandom) dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
+  Unix:puts_err ("<WSQ> Creating (nonrandom) dummy stocktick source streaming " ++ Array:length(all_syms) ++ " different symbols.\n"); 
   iterate _ in timer(freq) {
     state{ i = 0 }
     i += 1;
@@ -413,7 +413,7 @@ fun wsq_printer(str, s) {
      do_flush = 
        if GETENV("WSQ_NOFLUSH") == "" 
        then true
-       else { print(" <WSQ> DISABLING flushing after printing stream elements.  Be careful.\n");
+       else { Unix:puts_err(" <WSQ> DISABLING flushing after printing stream elements.  Be careful.\n");
               false; };
      stdout :: FileDescr = ((foreign("ws_get_stdout", ["stdio.h"]) :: () -> FileDescr))();  
    }
@@ -430,25 +430,15 @@ fun wsq_printer(str, s) {
 
 //====================================================================================================
 
-fun wsq_connect_out(host, prt, strm) {
-  //print("  **** wsq_connect_out not implemented yet! **** \n");
-  //iterate _ in strm { }
-  println(" <WSQ> Connection operator for outgoing (server) socket, port: " ++ prt);
+fun wsq_connect_out(host, prt, strm) 
+{
+  Unix:puts_err(" <WSQ> Connection operator for outgoing (server) socket, port: " ++ prt ++ "\n");
   socket_out(strm, prt);
-
-  // Hmm... this was a typo, but why didn't it work??
-  //iterate _ in timer(0) {}  
 }
 
-fun wsq_connect_in(host, prt) {
-  /*
-  print("  **** wsq_connect_in not implemented yet! **** \n");
-  iterate _ in timer(1) {
-    emit (| BAZ="blah", BAR=0.0 )
-  }
-  */
-  println(" <WSQ> Creating incoming (client) socket, host "++ host ++" port: " ++ prt);
-  //(socket_in(host, prt) :: Stream (| BAZ : String, BAR : Float ) )
+fun wsq_connect_in(host, prt) 
+{
+  Unix:puts_err(" <WSQ> Creating incoming (client) socket, host "++ host ++" port: " ++ prt ++ "\n");
   socket_in(host, prt)
 }
 
@@ -510,5 +500,3 @@ fun wsq_LASTWHERE(extract, predicate, ss) {
 // This is probable more efficient but doesn't conveniently support
 // aggregates that are not incrementally computable (that need the
 // whole window).
-
-

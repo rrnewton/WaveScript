@@ -6,7 +6,8 @@ include ../makefile.common
 
 SOURCES = 1_ReuterSource.c 2_Filter.c 3_Project.c \
  4_MatchRecognize_always_succeed.c 5_MatchRecognize_rare_hits.c \
- 6_UDF.c 7_MergeMonotonic.c 8_TAQ_reader.c
+ 6_UDF.c 7_MergeMonotonic.c 7B_MergeFiles.c \
+ 8_TAQ_reader.c
 
 # 6_Orfilter.c
 
@@ -14,11 +15,22 @@ EXES  = $(SOURCES:.c=.exe)
 TESTS = $(SOURCES:.c=.testrun)  9_example_distributed.testrun
 OUTS  = $(SOURCES:.c=.out)      9_example_distributed.out
 
-all: $(EXES)
+all: $(EXES) distmake sockmake
+
+distmake:
 	(cd example_distributed; $(MAKE))
+
+sockmake:
 	(cd socket_example;      $(MAKE))
 
-test: fulltests
+test: fulltests socktest
+	@echo 
+	@echo "Done running tests."
+	@echo "Double check that there are no \*.err files:"
+	ls "*.err"
+
+
+socktest:
 	(cd socket_example;      $(MAKE) test)
 
 # Do a full build, run, and check output results:
@@ -44,16 +56,21 @@ runonly: $(OUTS)
 	@echo ====================================================================================================
 	@echo RUNNING TEST $< 
 	@echo -------------------------------
+        # Store the raw terminal output in the .run file (different from the query output).
+        # We don't DIRECTLY write the .out file here, by convention the test itself writes it:
+	@echo "(Counting on exe $< to write file $@ ...)"
 	@echo 
 	WSQ_VERBOSE=1 ./$<  "&>" /dev/stdout | tee $(<:.exe=.run)
 	@echo 
 	@echo Done Running test.
 	@echo -------------------------------
 
+# Note -- we only take as many lines of output as are in the compare file:
 .out.testrun:
 	@echo 
 	@echo ----------------------------------------
 	@echo Comparing output, $<, to expected, check .err file for results in case of failure:
+        # Here we count the number of lines in the compare file and truncate that much of the .out:
 	head -n $(shell ./wc_lines_only.sh $(<:.out=.compare)) $< > $(<:.out=.trunc)
 	diff $(<:.out=.compare) $(<:.out=.trunc) > $(<:.out=.err)
 #	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)

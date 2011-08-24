@@ -95,7 +95,7 @@ fun read_TAQ_ASCII_tuples(rate, file) {
       if DEBUG then print("Filling buffer from file " ++ hndl  ++"\n");
       if ptrIsNull(hndl) then wserror("File was not opened successfully: " ++ file);
       num_bytes := fread_arr(buf, 1, bufsize, hndl);
-      if num_bytes == 0 then { print("TAQ: End of stream reached.\n"); 
+      if num_bytes == 0 then { Unix:puts_err("<TAQ_reader>: End of stream reached.\n"); 
                                shutdown_sockets();
                                wsexit(0); // File is finished, should emit EOS.
                              };
@@ -271,12 +271,6 @@ fun read_TAQ_ASCII_tuples(rate, file) {
   }
 }
 
-
-
-main1 = iterate _ in FINITE_BURST(15) {
-  println("Testing ATOI: " ++ Unix:String:atoi_woffset("23101blah", 2));
-  emit 99;
-}
 
 //main = read_TAQ_ASCII_tuples("small_prefix.log")
 //main0 = read_TAQ_ASCII_tuples("TAQ_only.log")
