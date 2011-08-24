@@ -25,7 +25,7 @@ sockmake:
 
 test: fulltests socktest
 	@echo 
-	@echo "Done running tests."
+	@echo " === DONE RUNNING TESTS, APPARENTLY SUCCESSFUL ==="
 	@echo "Double check that there are no \*.err files:"
 	ls "*.err"
 
