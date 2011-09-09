@@ -5,6 +5,7 @@
 
 include "stdlib.ws"
 include "unix.ws"
+include "socket.ws"
 
 // Turning the DEBUG flag on will print some extra messages for debugging.
 DEBUG  = false
