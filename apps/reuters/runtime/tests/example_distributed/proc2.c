@@ -7,8 +7,10 @@
 
 #include "port.h"
 
-int main(int argc, char* argv[]) { 
-    char strargs[128];
+int main(int argc, char* argv[]) 
+{ 
+    printf("Proc2 starting.\n");
+    char strargs[2048];
     //sprintf(strargs, "128.30.79.5 | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
     //sprintf(strargs, "localhost | %d | \"string SYM, float TIME, float PRICE, int VOLUME\"", PORT);
 

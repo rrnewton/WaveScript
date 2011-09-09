@@ -15,6 +15,7 @@ LIBS = -lm -ldl -lncurses -lpthread
 
 # Debug mode for now:
 FLAGS= -g -O0 -rdynamic
+# FLAGS= -O3 
 
 ifeq ($(UNAME), Linux)
   LIBS+= -lrt
@@ -49,12 +50,14 @@ proc2: proc2.c port.h
 proc1query.exe: proc1 
 	@echo; echo "Building query1."
 	@echo "================================================================================"
-	WS_SOCKET_ALLOWDROP=0 WSQ_VERBOSE=1 ./proc1
+	WS_SOCKET_ALLOWDROP=0  WSQ_VERBOSE=1 ./proc1
 
 proc2query.exe: proc2 
 	@echo; echo "Building query2."
 	@echo "================================================================================"
-	(WS_SOCKET_ALLOWDROP=0  WSQ_VERBOSE=1 ./proc2; echo "proc2 done.  TEMP: Ignoring stack smashing error on shutdown for now.")
+	WS_SOCKET_ALLOWDROP=0  WSQ_VERBOSE=1 ./proc2
+#	(WS_SOCKET_ALLOWDROP=0  WSQ_VERBOSE=1 ./proc2; echo "proc2 done.  TEMP: Ignoring stack smashing error on shutdown for now.")
+
 
 #	 (./proc1 &) ; sleep 5; ./proc2 | head -n 60
 
