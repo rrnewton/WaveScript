@@ -20,12 +20,14 @@ int main(int argc, char* argv[]) {
         // Increment by one:
         WSQ_AddOp(4, "Project", "300", "400", "SYM, TIME, PRICE, (VOLUME + 1) AS VOLUME");
 
-        // Now merge them together:
+        // Now merge them together:  (Volume goes up with this non-random source.)
         // ============================================================
         WSQ_AddOp(5, "MergeMonotonic", "200 400", "500", "VOLUME");
         // ============================================================
 
-        WSQ_AddOp(6, "Printer", "500", "", "Merged");
+        WSQ_AddOp(6, "Printer", "200", "", "In1");
+        WSQ_AddOp(7, "Printer", "400", "", "In2");
+        WSQ_AddOp(8, "Printer", "500", "", "Merged");
 
        WSQ_EndSubgraph();
     WSQ_EndTransaction();

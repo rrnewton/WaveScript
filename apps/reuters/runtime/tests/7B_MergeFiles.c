@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[]) {
   WSQ_Init("7B_MergeFiles.out");
-  WSQ_SetQueryName("generated_query_8");
+  WSQ_SetQueryName("generated_query_7B");
 
   printf("PAUSING WSQ engine, run compiled query manually...\n");
 
@@ -21,9 +21,12 @@ int main(int argc, char* argv[]) {
 
       WSQ_AddOp(2, "ASCIIFileSource", "", "200", "-1 |foobar.schema|./example_distributed/taq_10lines.dat"); 
 
-      WSQ_AddOp(3, "MergeMonotonic", "100 200", "300", "RECEIVEDTIME");
+      WSQ_AddOp(4, "Printer", "100", "", "Inp1:");
+      WSQ_AddOp(5, "Printer", "200", "", "Inp2:");
 
-      WSQ_AddOp(4, "Printer", "300", "", "Merged file sources:");
+      WSQ_AddOp(3, "MergeMonotonic", "100 200", "300", "TIMESTAMP");
+
+      WSQ_AddOp(6, "Printer", "300", "", "Merged:");
 
     WSQ_EndSubgraph();
   WSQ_EndTransaction();
