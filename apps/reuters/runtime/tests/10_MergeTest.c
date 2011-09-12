@@ -6,13 +6,13 @@
 // Merge monotonic matches fields that montonically increase in both of two input streams.
 
 int main(int argc, char* argv[]) {
-  WSQ_Init("7_MergeMonotonic.out");
-  WSQ_SetQueryName("generated_query_7");
+  WSQ_Init("10_MergeTest.out");
+  WSQ_SetQueryName("generated_query_10");
 
     WSQ_BeginTransaction(99);
-       WSQ_BeginSubgraph(11);
-       WSQ_AddOp(1, "ASCIIFileSource", "", "100", "50 |foobar.schema|TAQ.10000");
-       WSQ_AddOp(2, "ASCIIFileSource", "", "200", "50 |foobar.schema|TAQ.10000");
+     WSQ_BeginSubgraph(11);
+       WSQ_AddOp(1, "ASCIIFileSource", "", "100", "-1 |foobar.schema|TAQ.10000");
+       WSQ_AddOp(2, "ASCIIFileSource", "", "200", "-1 |foobar.schema|TAQ.10000");
 
        // Now merge them together:
        // ============================================================
@@ -21,13 +21,17 @@ int main(int argc, char* argv[]) {
 
        WSQ_AddOp(6, "Printer", "300", "", "Merged");
 
-       WSQ_EndSubgraph();
-       WSQ_EndTransaction();
-       sleep(2);
-       
-       printf("\n ******* Query successfully ran for 3 seconds, shutting down...\n");
-       WSQ_Shutdown();
-       
-       printf("Shutdown apparently successful.\n");
-       return 0;
+     WSQ_EndSubgraph();
+    int pid = WSQ_EndTransaction();
+    int status = 0;
+
+    printf("\n ******* Waiting on PID %d...\n", pid);
+
+    waitpid(pid, &status, 0);
+
+    printf("\n ******* PID %d terminated, now shutting down.\n", pid);
+    WSQ_Shutdown();
+
+    printf("Shutdown apparently successful.\n");
+    return 0;
 }
