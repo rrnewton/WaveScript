@@ -1,4 +1,5 @@
 
+
 # The WaveScript Makefile
 
 #------------------------------------------------------------------------------#
@@ -616,8 +617,9 @@ cleanheap:
 
 # Clean the compiler stuff but not wsparse.
 cleanchez: cleancomp
-	find . -name "*.so" | xargs $(RM)
-	find ../depends/ -name "*.so" | xargs $(RM)
+# I can't get xargs to work with single quotes:
+	find . -name "*.so" | grep -v \' | xargs $(RM)
+	find ../depends/ -name "*.so" | grep -v \' | xargs $(RM)
 cleancomp:
 	$(RM) -rf build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/* build/ti3osx/* build/ti3le/*
 

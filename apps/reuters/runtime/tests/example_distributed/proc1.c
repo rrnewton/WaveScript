@@ -24,8 +24,8 @@ int main(int argc, char* argv[]) {
       // Random tuples, 100Hz
       //WSQ_AddOp(2, "RandomSource", "","2", "1000 |foobar.schema");
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|longer.dat"); 
-      // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500mb.log"); 
-      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500lines.dat"); 
+      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500mb.log"); 
+      // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500lines.dat"); 
 
       //      WSQ_AddOp(4, "Printer", "2", "", "From file source:");Thank
 

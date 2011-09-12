@@ -120,6 +120,10 @@ void* outbound_socket_setup_helper_thread(void* vptr) {
     exit(99);
   }
 
+  // Make the socket reusable:
+  int on = 1; 
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
   const struct sockaddr_in* serv_addr = ws_make_sockaddr_in(AF_INET, arg->port, INADDR_ANY);
   int b = bind(sockfd, (const struct sockaddr*)serv_addr, sizeof(struct sockaddr_in));
   if (b < 0) { 
