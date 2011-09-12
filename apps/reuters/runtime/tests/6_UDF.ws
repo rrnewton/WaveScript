@@ -1,5 +1,5 @@
 
-
+include "unix.ws"
 
 
 // This is a user defined function that corresponds to an operator used by WSQ:
@@ -23,6 +23,9 @@ fun myUDF( instrm, arg1, arg2)
       c := 0;
       total += 1000;
       print("myUDF"++ (n1,n2) ++" counted "++ total ++" tuples.\n");
+      // In this case we do not print too often so we might as well flush:
+      Unix:fflush( Unix:get_stdout() ); 
+
       // Let through every thousandth tuple:
       emit x;
     };

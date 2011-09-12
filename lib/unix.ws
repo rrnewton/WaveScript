@@ -60,6 +60,9 @@ namespace Unix {
   //stdout :: FileDescr = foreign("stdout",  stdio);
   // These are defined in wsc2.h:
 // [2010.12.09] Disabling temporarily:
+  get_stdout :: () -> FileDescr = foreign("ws_get_stdout",  stdio);
+  get_stderr :: () -> FileDescr = foreign("ws_get_stderr",  stdio);
+  get_stdin  :: () -> FileDescr = foreign("ws_get_stdin" ,  stdio);
 /*
   stdout :: FileDescr = ((foreign("ws_get_stdout",  stdio) :: () -> FileDescr))();
   stderr :: FileDescr = ((foreign("ws_get_stderr",  stdio) :: () -> FileDescr))();

@@ -77,7 +77,7 @@ Schema:
 
 "FilterWindows" -- 
 
-"Join" --
+"Join" -- [YUAN, TODO]
 
 "MergeMonotonic" -- Merge two streams which have monotonically
                     increasing fields
@@ -205,6 +205,8 @@ engine through environment variables:
 
   WSQ_NOFLUSH -- set nonempty to disable flushing after stream
                  elements are printed to a file.
+
+  WSQ_NOPRINT -- simply DISABLE the Printer operator entirely.
 
   WSQ_GC -- which WaveScript garbage collector to use (boehm, refcount)
   WSQ_CC -- which C compiler to use (e.g. gcc, icc)

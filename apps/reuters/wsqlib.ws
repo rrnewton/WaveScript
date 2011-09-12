@@ -415,14 +415,24 @@ fun wsq_printer(str, s) {
        then true
        else { Unix:puts_err(" <WSQ> DISABLING flushing after printing stream elements.  Be careful.\n");
               false; };
+
+      do_print = 
+       if GETENV("WSQ_NOPRINT") == "" 
+       then true
+       else { Unix:puts_err(" <WSQ> DISABLING ALL PRINTING.  BE WARNED!\n");
+              false; };
+
      stdout :: FileDescr = ((foreign("ws_get_stdout", ["stdio.h"]) :: () -> FileDescr))();  
    }
-    print(str);
-    print(x); 
-    print("\n");    
-    // [2010.12.08] What made me do a flush? 
-    // [2011.02.25] Reenabling... could do something better here and catch kill signals.
-    if do_flush then Unix:fflush(stdout); 
+   if do_print then 
+   {
+      print(str);
+      print(x); 
+      print("\n");    
+      // [2010.12.08] What made me do a flush? 
+      // [2011.02.25] Reenabling... could do something better here and catch kill signals.
+      if do_flush then Unix:fflush(stdout); 
+   }
   }
 }
 

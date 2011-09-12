@@ -8,6 +8,7 @@ int main(int argc, char* argv[])
 {
   // Set output file:
   WSQ_Init("6_UDF.out");
+  WSQ_SetQueryName("generated_query_6");
 
     WSQ_BeginTransaction(99);
        WSQ_BeginSubgraph(11);
