@@ -29,19 +29,25 @@ int main(int argc, char* argv[])
 
   WSQ_BeginTransaction(1001);
     WSQ_BeginSubgraph(101);
-    //type DummySchema99 = (| SYM:String, TIME:Float, PRICE:Float, VOLUME:Int);
-    //      WSQ_ConnectRemoteIn(20,"localhost", PORT, "string BAZ, float BAR");
-
+    
       WSQ_AddOp(20, "ConnectRemoteIn", "", "20", strargs);
           WSQ_AddOp(21, "Printer", "20", "", "NETSTRM: ");
 
     WSQ_EndSubgraph();
-  WSQ_EndTransaction();
+  int pid = WSQ_EndTransaction();
+
+  if(pid == 0) { //pause version
+
+    // run the executable directly
+    printf("pid is 000000000000\n");
+    char cmd[128] = "WSQ_OPTLVL=3 WSQ_MAXSPEED=1 ./proc2query.exe";
+    system(cmd);
+  }
 
   //sleep(1000);
-  sleep(1);
+  //sleep(1);
 
-  printf("Done Sleeping.  Shutting down WSQ Engine...\n");
+  //printf("Done Sleeping.  Shutting down WSQ Engine...\n");
   WSQ_Shutdown();
   return 0;
 }

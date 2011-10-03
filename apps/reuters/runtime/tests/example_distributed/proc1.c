@@ -24,7 +24,12 @@ int main(int argc, char* argv[]) {
       // Random tuples, 100Hz
       //WSQ_AddOp(2, "RandomSource", "","2", "1000 |foobar.schema");
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|longer.dat"); 
+<<<<<<< HEAD:apps/reuters/runtime/tests/example_distributed/proc1.c
+      //WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500mb.log"); 
+      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|TAQ.1000000"); 
+=======
       WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|../taq_500mb.log"); 
+>>>>>>> c25c5c3107b61440e9a33660b36982e27029ae21:apps/reuters/runtime/tests/example_distributed/proc1.c
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500lines.dat"); 
 
       //      WSQ_AddOp(4, "Printer", "2", "", "From file source:");Thank
@@ -32,12 +37,20 @@ int main(int argc, char* argv[]) {
       WSQ_AddOp(3, "ConnectRemoteOut", "2", "", addr); 
 
     WSQ_EndSubgraph();
-  WSQ_EndTransaction();
+  int pid = WSQ_EndTransaction();
+
+  if(pid ==0) { //pause version
+
+    // run the executable directly
+    printf("pid is 000000000000\n");
+    char cmd[128] = "WSQ_OPTLVL=3 WSQ_MAXSPEED=1 ./proc1query.exe";
+    system(cmd);
+  }
 
   // sleep(1000);
-  sleep(1);
+  //sleep(1);
 
-  printf("Done Sleeping.  Shutting down WSQ Engine...\n");
+  //printf("Done Sleeping.  Shutting down WSQ Engine...\n");
   WSQ_Shutdown();
   return 0;
 }
