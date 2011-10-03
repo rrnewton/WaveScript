@@ -22,10 +22,16 @@
 ;; This is gross but we use global state to keep track of the
 ;; interactions with the control module.
 
-(define (tryenv name)
+(define (tryenv name . valid)
   (let ((x (getenv name)))
     (when x
-      (vprintf 1 " <WSQ>   Using value of environment variable ~a = ~s\n" name x))
+      (vprintf 1 " <WSQ>   Using value of environment variable ~a = ~s\n" name x)
+      (unless (null? valid) 
+	  (unless (member x valid)	      
+	      (printf " <WSQ> ERROR invalid value for environment variable ~a (~a).  Must be one of ~a\n" name x valid)
+	      (exit 1)
+	      ))
+      )
     x))
 
 (define curtransaction (box #f))
@@ -447,7 +453,7 @@
 	 ;; We use the undocumented interface to wsc2-gcc
 	 (putenv "CFILE" (string-append query-app-name ".c"))
 	 ;; Same here:
-	 (putenv "COPTFLAG" (or (tryenv "WSQ_OPTLVL") "0"))
+	 (putenv "COPTFLAG" (or (tryenv "WSQ_OPTLVL" "O0" "O1" "O2" "O3") "0"))
 	 (putenv "CC"       (or (tryenv "WSQ_CC") "gcc"))
 	   
 	    ;; We go all the way back to our shell script to have it call gcc.
