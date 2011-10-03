@@ -1,5 +1,7 @@
 
 
+// This test merges two copies of the same file.
+
 #include <stdio.h>
 #include "wsq_runtime.h"
 #include <time.h>

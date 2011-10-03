@@ -669,6 +669,8 @@
 	(car ls)))
   (define code
     `[,(maybe-tuple list->vector (map edge-sym out*)) ;; Tuple of output streams.
+
+;`(,mergemagic (app wsq_printer ,str ,(edge-sym inid)))
        (app ,name
 	    ,(maybe-tuple (lambda (x) `(tuple ,@x))
 	                  (map edge-sym in*))

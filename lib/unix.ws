@@ -36,6 +36,9 @@ namespace Unix {
   system :: String -> Int = 
      foreign("system", "stdlib.h":::Internal:libc)
 
+  getenv :: String -> String = 
+     foreign("getenv", "stdlib.h":::Internal:libc)
+
   usleep :: Int -> () = 
      foreign("usleep","unistd.h":::Internal:libc)
 

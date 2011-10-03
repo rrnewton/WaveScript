@@ -118,3 +118,35 @@ With distributed example:
 First I confirmed that revision 5aef5462790abd077 passes tests on a
 fresh repo.
 
+
+[2011.10.03] {Observed strange transient test failure}
+
+A test which is supposed to output a stream of tuples outputed a
+different type.  In fact it looks like 2_Filter.out got mixed up with
+4_MatchRecognize_always_succeed.out.
+
+     (#[(PRICE=2, SYM=GM, TIME=2, VOLUME=2), (PRICE=3, SYM=F, TIME=3, VOLUME=3)], 2)
+     (#[(PRICE=3, SYM=F, TIME=3, VOLUME=3), (PRICE=4, SYM=IMGN, TIME=4, VOLUME=4)], 3)
+     (#[(PRICE=4, SYM=IMGN, TIME=4, VOLUME=4), (PRICE=5, SYM=MSFT, TIME=5, VOLUME=5)], 4)
+     (#[(PRICE=5, SYM=MSFT, TIME=5, VOLUME=5), (PRICE=6, SYM=AAPL, TIME=6, VOLUME=6)], 5)
+     (#[(PRICE=6, SYM=AAPL, TIME=6, VOLUME=6), (PRICE=7, SYM=AAUKY, TIME=7, VOLUME=7)], 6)
+     (#[(PRICE=7, SYM=AAUKY, TIME=7, VOLUME=7), (PRICE=8, SYM=AAV, TIME=8, VOLUME=8)], 7)
+     (#[(PRICE=8, SYM=AAV, TIME=8, VOLUME=8), (PRICE=9, SYM=AAWW, TIME=9, VOLUME=9)], 8)
+     (#[(PRICE=9, SYM=AAWW, TIME=9, VOLUME=9), (PRICE=10, SYM=AB, TIME=10, VOLUME=10)], 9)
+     (#[(PRICE=10, SYM=AB, TIME=10, VOLUME=10), (PRICE=11, SYM=ABAX, TIME=11, VOLUME=11)], 10)
+     (#[(PRICE=11, SYM=ABAX, TIME=11, VOLUME=11), (PRICE=12, SYM=ABB, TIME=12, VOLUME=12)], 11)
+     (#[(PRICE=12, SYM=ABB, TIME=12, VOLUME=12), (PRICE=13, SYM=ABC, TIME=13, VOLUME=13)], 12)
+     (#[(PRICE=13, SYM=ABC, TIME=13, VOLUME=13), (PRICE=14, SYM=ABFS, TIME=14, VOLUME=14)], 13)
+     (#[(PRICE=14, SYM=ABFS, TIME=14, VOLUME=14), (PRICE=15, SYM=ABG, TIME=15, VOLUME=15)], 14)
+     (#[(PRICE=15, SYM=ABG, TIME=15, VOLUME=15), (PRICE=16, SYM=ABM, TIME=16, VOLUME=16)], 15)
+     (#[(PRICE=16, SYM=ABM, TIME=16, VOLUME=16), (PRICE=17, SYM=ABMD, TIME=17, VOLUME=17)], 16)
+     (#[(PRICE=17, SYM=ABMD, TIME=17, VOLUME=17), (PRICE=18, SYM=ABT, TIME=18, VOLUME=18)], 17)
+     (#[(PRICE=18, SYM=ABT, TIME=18, VOLUME=18), (PRICE=19, SYM=ABV, TIME=19, VOLUME=19)], 18)
+     (#[(PRICE=19, SYM=ABV, TIME=19, VOLUME=19), (PRICE=20, SYM=ABVT, TIME=20, VOLUME=20)], 19)
+     (#[(PRICE=20, SYM=ABVT, TIME=20, VOLUME=20), (PRICE=21, SYM=ABX, TIME=21, VOLUME=21)], 20)
+
+I was running with "make -j" and it seems it was not threadsafe.
+
+But how did it happen!??
+
+

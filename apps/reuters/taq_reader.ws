@@ -74,8 +74,8 @@ fun parse_timestamp(arr) {
 // This routine is hardcoded to the schema of TAQ tuples:
 // WARNING: this is very low level code that is specific to the wsc2 backend.
 // 
-read_TAQ_ASCII_tuples :: (Float, String) -> Stream TAQ_Tup; 
-fun read_TAQ_ASCII_tuples(rate, file) {
+read_TAQ_ASCII_tuples :: (Float, (() -> String)) -> Stream TAQ_Tup; 
+fun read_TAQ_ASCII_tuples(rate, file_fn) {
   using Array;
   using Unix;
   bufsize = 32 * 1024; // 32K constant setting... feel free to change.
@@ -87,6 +87,7 @@ fun read_TAQ_ASCII_tuples(rate, file) {
       num_bytes = 0; // How many bytes have been filled into the buffer.
       i = 0; // Cursor position within buffer.
       not_init = true;
+      file = "NOT_INITIALIZED";
     }
 
     //--------------------------------------------------------------------------------
@@ -208,9 +209,10 @@ fun read_TAQ_ASCII_tuples(rate, file) {
 
     // Initialization:
     if (not_init) then {
-      buf := makeUNSAFE(bufsize);
+      buf      := makeUNSAFE(bufsize);
       not_init := false;
-      hndl := fopen(file, "r");
+      file     := file_fn(); // Evaluate the file function at runtime.
+      hndl     := fopen(file, "r");
       if DEBUG then print("Filling buffer initially\n");
       fill_buffer();
     };
@@ -276,7 +278,7 @@ fun read_TAQ_ASCII_tuples(rate, file) {
 //main = read_TAQ_ASCII_tuples("small_prefix.log")
 //main0 = read_TAQ_ASCII_tuples("TAQ_only.log")
 //main0 = read_TAQ_ASCII_tuples("test.txt")
-main0 = read_TAQ_ASCII_tuples(100.0, "only_TAQ_373mb.log")
+main0 = read_TAQ_ASCII_tuples(100.0, fun() "./runtime/tests/example_distributed/taq_10lines.dat")
 
 //main1 = snoop_every(100, (fun (i,_) show(i)), main0)
 
