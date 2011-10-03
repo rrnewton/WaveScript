@@ -167,7 +167,7 @@ I have made some effort to ensure that a unit-tests will execute using
 only the file in question.  Most multi-module tests counts as a
 "system test", and go in system_tests.ss.  However, in a bunch of
 places this doesn't quite make sense, so I believe this convention is
-begining to slip in certain places. -rrn [2005.09.24]
+beginning to slip in certain places. -rrn [2005.09.24]
  
 NOTE on TESTING: There are a number of toggles and parameters in the
 system (mostly concentrated in globals.ss).  I am following a
