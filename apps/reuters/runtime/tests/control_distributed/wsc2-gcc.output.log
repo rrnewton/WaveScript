@@ -1,0 +1,11 @@
+In file included from proc2query.c:9:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c: In function ‘spawn_socket_server_helper’:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c:174: warning: cast from pointer to integer of different size
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c: In function ‘poll_socket_server_ready’:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c:187: warning: cast to pointer from integer of different size
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c: In function ‘spawn_socket_client_helper’:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c:271: warning: cast from pointer to integer of different size
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c: In function ‘poll_socket_client_ready_port’:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c:292: warning: cast to pointer from integer of different size
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c: In function ‘shutdown_list’:
+/export/home/meiyuan/smartnet/code/WaveScript/lib/socket_wrappers.c:302: warning: cast to pointer from integer of different size

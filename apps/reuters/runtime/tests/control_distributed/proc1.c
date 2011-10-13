@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|longer.dat"); 
       //WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500mb.log"); 
       WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|TAQ.1000000"); 
-      //WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|../taq_500mb.log"); 
+      //      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|../taq_500mb.log"); 
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500lines.dat"); 
 
       //      WSQ_AddOp(4, "Printer", "2", "", "From file source:");Thank
