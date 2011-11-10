@@ -18,7 +18,9 @@ int main(int argc, char* argv[])
     // sprintf(strargs, "localhost | %d | string SYM, float TIME, float PRICE, int VOLUME", PORT);
 
     // This is the schema for ASCIIFileSource:
-    sprintf(strargs, "localhost | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE ", PORT);
+    //    sprintf(strargs, "localhost | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE ", PORT);
+
+    sprintf(strargs, "slate | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE ", PORT);
 
 
   WSQ_Init("");

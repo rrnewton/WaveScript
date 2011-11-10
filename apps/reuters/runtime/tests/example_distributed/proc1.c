@@ -25,9 +25,10 @@ int main(int argc, char* argv[]) {
       //WSQ_AddOp(2, "RandomSource", "","2", "1000 |foobar.schema");
       // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "100 |foobar.schema|longer.dat"); 
       //WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500mb.log"); 
-      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|TAQ.1000000"); 
+    //      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|TAQ.1000000"); 
       //WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|../taq_500mb.log"); 
-      // WSQ_AddOp(1, "ASCIIFileSource", "", "2", "10000 |foobar.schema|taq_500lines.dat"); 
+
+      WSQ_AddOp(1, "ASCIIFileSource", "", "2", "-1 |foobar.schema|taq_500lines.dat"); 
 
       //      WSQ_AddOp(4, "Printer", "2", "", "From file source:");Thank
 
@@ -36,13 +37,14 @@ int main(int argc, char* argv[]) {
     WSQ_EndSubgraph();
   int pid = WSQ_EndTransaction();
 
+#if 0
   if(pid ==0) { //pause version
-
     // run the executable directly
     printf("pid is 000000000000\n");
     char cmd[128] = "WSQ_OPTLVL=3 WSQ_MAXSPEED=1 ./proc1query.exe";
     system(cmd);
   }
+#endif
 
   // sleep(1000);
   //sleep(1);

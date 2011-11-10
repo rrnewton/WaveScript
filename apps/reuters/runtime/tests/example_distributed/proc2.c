@@ -36,13 +36,14 @@ int main(int argc, char* argv[])
     WSQ_EndSubgraph();
   int pid = WSQ_EndTransaction();
 
-  if(pid == 0) { //pause version
-
+#if 0
+  if(pid == 0) { // run directly with pause version
     // run the executable directly
     printf("pid is 000000000000\n");
     char cmd[128] = "WSQ_OPTLVL=3 WSQ_MAXSPEED=1 ./proc2query.exe";
     system(cmd);
   }
+#endif
 
   //sleep(1000);
   //sleep(1);

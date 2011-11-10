@@ -1,6 +1,13 @@
 
+# Main entrypoints:
 
+# Build executables:
 all: one two three
+
+# Run all three tests:
+test: one.testrun two.testrun three.testrun 
+
+#================================================================================
 
 ## These don't use -threads right now:
 one: server.exe client.exe
@@ -32,9 +39,7 @@ e4_client.exe: example4.ws
 	wsc2 -realtime example4.ws -main main2 -o e4_client
 
 
-#================================================================================
-#test: run run2 run3
-test: one.out two.out three.out 
+
 # four.out
 # Not working... odd:
 #	(make run) &> test
@@ -46,7 +51,9 @@ two.out: two
 	grep received two.raw > two.out
 three.out: three
 	bash -c "make run3 &> /dev/stdout | tee three.raw"
-	egrep 'Right|Left' three.raw > three.out
+        # Put them in a consistent order:
+	egrep 'Left' three.raw   > three.out
+	egrep 'Right' three.raw >> three.out
 #four.out:
 #	bash -c "make run4 &> /dev/stdout | tee four.out"
 
@@ -63,6 +70,9 @@ run2:
 run3:
 #	(./proc1.exe &); ./proc2.exe
 	(./proc1.exe &); sleep 2; ./proc2.exe -n 30
+
+
+include ../make.common
 
 clean:
 	rm -rf *.exe *.c *~ *.dSYM *.out *.raw

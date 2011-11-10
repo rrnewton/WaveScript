@@ -35,6 +35,7 @@ CHEZP = $(CHEZD)/boot/$(MACHINE)
 #all: proc1 proc2 
 all: queries
 
+# Build separate query executables.  Don't run them:
 queries: proc1query.exe proc2query.exe
 
 proc1: proc1.c port.h

@@ -57,9 +57,7 @@ fulltests: $(TESTS)
 # Run but do not COMPARE the expected outputs:
 runonly: $(OUTS)
 
-
-.SUFFIXES: .o .c .exe .testrun .out
-.PRECIOUS: $(EXES) $(OUTS) $(TESTS)
+include make.common
 
 .c.exe:
 	$(CC) $(FLAGS) -c -I $(CHEZP) $<
@@ -68,40 +66,6 @@ runonly: $(OUTS)
 
 9_example_distributed.out:
 	(cd example_distributed; $(MAKE) run)
-
-.exe.out:
-	@echo 
-	@echo ====================================================================================================
-	@echo RUNNING TEST $< 
-	@echo -------------------------------
-        # Store the raw terminal output in the .run file (different from the query output).
-        # We don't DIRECTLY write the .out file here, by convention the test itself writes it:
-	@echo "(Counting on exe $< to write file $@ ...)"
-	@echo 
-	WSQ_VERBOSE=1 ./$<  "&>" /dev/stdout | tee $(<:.exe=.run)
-	@echo 
-	@echo Done Running test.
-	@echo -------------------------------
-
-# Note -- we only take as many lines of output as are in the compare file:
-.out.testrun:
-	@echo 
-	@echo ----------------------------------------
-	@echo Comparing output, $<, to expected, check .err file for results in case of failure:
-        # Here we count the number of lines in the compare file and truncate that much of the .out:
-	head -n $(shell ./wc_lines_only.sh $(<:.out=.compare)) $< > $(<:.out=.trunc)
-	diff $(<:.out=.compare) $(<:.out=.trunc) > $(<:.out=.err)
-#	python compare.py -p $(<:.out=.compare) -c $<  > $(<:.out=.err)
-
-        # IF we were successful, move the result into place:
-	mv $(<:.out=.err) $@ 
-        # And remove the temporary:
-	rm -f $(<:.out=.trunc)
-	@echo 
-	@echo --------------------
-	@echo COMPARISON SUCCEEDED
-	@echo ====================================================================================================
-	@echo 
 
 clean: 
 	rm -rf *.out *~ *.exe *.o *.dSYM *query.c *.testrun *.run *_*.err generated_query*
