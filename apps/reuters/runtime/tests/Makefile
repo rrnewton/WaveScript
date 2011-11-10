@@ -24,7 +24,7 @@ test: fulltests socktest
 	@echo 
 	@echo " === DONE RUNNING TESTS, APPARENTLY SUCCESSFUL ==="
 	@echo "Double check that there are no \*.err files:"
-	ls "*.err"
+	find -name "*.err"
 
 # These represent certain tests that can be run with more input and
 # thereby become benchmarks.
