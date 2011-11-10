@@ -99,7 +99,9 @@ fun read_TAQ_ASCII_tuples(rate, file_fn) {
       num_bytes := fread_arr(buf, 1, bufsize, hndl);
       if num_bytes == 0 then { Unix:puts_err("<TAQ_reader>: End of stream reached.\n"); 
                                shutdown_sockets();
-                               wsexit(0); // File is finished, should emit EOS.
+                               wsexit(0); // File is finished, should emit EOS but WS has no EOS!!!
+			       // Note this is INCORRECT in general, but this hack will work 
+			       // with a non-threaded, depth-first WS execution
                              };
       i := 0; 
       if DEBUG then print("Got bytes " ++ num_bytes ++"\n");

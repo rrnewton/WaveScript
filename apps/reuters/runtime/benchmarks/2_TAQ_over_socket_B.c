@@ -8,8 +8,12 @@
 
 int main(int argc, char* argv[]) { 
     char strargs[128];
-    // This is the schema for ASCIIFileSource:
-    sprintf(strargs, "localhost | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE ", PORT);
+    char* machine = "localhost";
+    // char* machine = "marble";
+    // This is the schema for tuples produced directly from ASCIIFileSource:
+    sprintf(strargs, 
+	    "%s | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE "
+	    , machine, PORT);
 
   WSQ_Init("");
   WSQ_SetQueryName("generated_query_2B");

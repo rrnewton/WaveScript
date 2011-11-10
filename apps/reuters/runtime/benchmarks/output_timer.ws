@@ -2,6 +2,7 @@
 include "stdlib.ws"
 
 // This is a user defined function that corresponds to an operator used by WSQ:
+// It prints messages at regular time intervals indicating how many tuples have been received.
 fun output_timer( instrm, arg1 )
 {
   print("Creating a measurement operator to print the number of tuples received at intervals of "++arg1++" Hz.\n");
@@ -22,7 +23,8 @@ fun output_timer( instrm, arg1 )
 	total     += c;
 	intervals += 1;
 	if (intervals > 0) then
-  	  print("Counted "++c++" tuples in interval "++intervals++" average "++ (total / intervals) ++ "\n");
+  	  print("  Counted "++c++" tuples in interval "++intervals++" average "++ (total / intervals) ++ " total "++ total ++"\n")
+        else print("Starting timer to count outputs, frequency = " ++ freq ++ " Hz\n");
         c := 0;
       }
     }

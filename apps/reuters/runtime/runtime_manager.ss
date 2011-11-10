@@ -636,14 +636,12 @@
 
 (define-entrypoint WSQ_AddPrinter (int string int) void
   (lambda (opid str inid)
-    ;(printf " <WSQ>  WSQ_AddPrinter ~s ~s \n" str id)
     (define code `(,mergemagic (app wsq_printer ,str ,(edge-sym inid))))
     (add-op! opid code) (add-in-edge! inid)
     ))
 
 (define-entrypoint WSQ_AddProject (int int int string) void
   (lambda (opid in out expr)
-    ;(printf " <WSQ>  WSQ_AddProject ~s ~s ~s \n" in out expr)
     (define fun (parse-project (map (lambda (s) (ASSERT (string->slist s))) (string-split expr #\,))))
     (define code `(,(edge-sym out) (app wsq_project ,fun ,(edge-sym in))))
     (add-op! opid code) (add-in-edge! in) (add-out-edge! out)
@@ -673,10 +671,9 @@
     (if (> (length ls) 1)
         (fn ls)
 	(car ls)))
+  (define names (map edge-sym out*))
   (define code
-    `[,(maybe-tuple list->vector (map edge-sym out*)) ;; Tuple of output streams.
-
-;`(,mergemagic (app wsq_printer ,str ,(edge-sym inid)))
+    `[,(maybe-tuple list->vector names) ;; Tuple of output streams.
        (app ,name
 	    ,(maybe-tuple (lambda (x) `(tuple ,@x))
 	                  (map edge-sym in*))
@@ -685,6 +682,13 @@
   (set! extra_includes (cons file extra_includes))
 
   (add-op! opid code)  
+  ;; Here we add an extra operator that "tugs" on the output(s) of the UDF.
+  (for-each (lambda (name) 
+	      ;; It is expected that all the streams tagged with "mergemagic" 
+	      ;; are empty streams of type (forall a. Stream a).  Hence the below iterate:
+	      (add-op! (gensym "internalopid") `[,mergemagic (iterate (annotations) (lambda (tup vq) vq) ,name)]))
+    names)
+
   (for-each add-in-edge! in*) 
   (for-each add-out-edge! out*)
   )

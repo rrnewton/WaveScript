@@ -43,13 +43,13 @@ e4_client.exe: example4.ws
 # four.out
 # Not working... odd:
 #	(make run) &> test
-one.out: one
+one.out: server.exe client.exe
 	bash -c "make run &> /dev/stdout | tee one.raw"
 	grep Unpacked one.raw > one.out
-two.out: two
+two.out: p1.exe p2.exe p3.exe
 	bash -c "make run2 &> /dev/stdout | tee two.raw"
 	grep received two.raw > two.out
-three.out: three
+three.out: proc1.exe proc2.exe
 	bash -c "make run3 &> /dev/stdout | tee three.raw"
         # Put them in a consistent order:
 	egrep 'Left' three.raw   > three.out
