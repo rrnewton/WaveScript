@@ -247,7 +247,7 @@ void* inbound_socket_setup_helper_thread(void* vptr)
   }
 
   // EWOULDBLOCK EAGAIN
-  // Make the inbound socket non-blocking.
+  // Make the inbound socket non-blocking (outbound sockets are blocking).
   int flags = fcntl(sockfd, F_GETFL);
   flags |= O_NONBLOCK;
   fcntl(sockfd, F_SETFL, flags);
@@ -300,6 +300,16 @@ void shutdown_list(alist_t* ptr)
 {
    while (ptr) {
       struct thread_arg* ta = (struct thread_arg*)ptr->value;
+      // HACK: TMP: Write out a special EOS length header:
+      // ----------------------------------------
+      int special = -999;
+//      int code = fwrite(&special[5], 4, 1, ta->filedecr);
+      int code = write(ta->filedecr, &special, 4);
+      if (code != 4) {
+        fprintf(stderr, "  <socket.ws>  ERROR: Failed to write final EOS length header to descriptor %d, code %d\n", ta->filedecr, code);
+      }
+//      fflush(ta->filedecr);
+      // ----------------------------------------
       close(ta->filedecr);
       fprintf(stderr,"  <socket.ws>   Closed descriptor %d, port %d\n", ta->filedecr, ta->port);
       ptr = ptr->next;

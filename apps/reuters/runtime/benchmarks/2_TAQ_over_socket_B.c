@@ -8,8 +8,10 @@
 
 int main(int argc, char* argv[]) { 
     char strargs[128];
-    char* machine = "localhost";
-    // char* machine = "marble";
+
+    //char* machine = "localhost";
+    char* machine = "marble";
+
     // This is the schema for tuples produced directly from ASCIIFileSource:
     sprintf(strargs, 
 	    "%s | %d | bigint TIMESTAMP, string SYMBOL, bigint EXCHTIMESTAMP, bigint RECEIVEDTIME, double BID, double BIDSIZE, double ASK, double ASKSIZE "

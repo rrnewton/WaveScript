@@ -91,16 +91,6 @@ fun socket_in_raw( address, port) {
            then (if dbgINSOCK then puts_err(" ... would have blocked ... \n"))
            else error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
         } else {
-/* 	  if result == expected then true */
-/* 	  else { */
-/* 	    if not(warned) then { */
-/*              // print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n"); */
-/*              // TEMP: For now we will use this as an exit mechanism. */
-/*              puts_err("  <socket.ws> "++msg++" Read wrong length, taking this as a signal that upstream is closed.  Exiting.\n"); */
-/*              shutdown_sockets(); */
-/*              wsexit(0); */
-/*         }; */
-//  	    warned := true;
 	  }
 
     };    
@@ -140,6 +130,12 @@ if dbgINSOCK then print("    rd "++ rd ++" of "++ remaining ++"\n");
             msglen  := tmp;
 
             // TODO: if msglen = -999 then that signifies an End-of-Stream
+            if (msglen < 0) then {
+               Unix:puts_err(" <socket.ws> Got special EOS header.  Shutting down immediately. "
+                             ++ " TODO!!!: should wait for other sockets/streams to finish...\n");
+               shutdown_sockets();
+               wsexit(0); // File is finished, should emit EOS but WS has no EOS!!!
+            };
 
             lenctr  := 0;
             datactr := 0;
@@ -160,8 +156,8 @@ if dbgINSOCK then print("  Entering state 1 ... len = "++ msglen ++"\n");
       // References are second class which makes it annoying to factor out this duplicated code:
       // ----------------------------------------
       } 
-      else 
-      // if (curstate == 1)
+      ; if (curstate == 1) then  // Option A: do length and header both in one firing.
+      // else                    // Option B: only do length or header, not both
       { 
          // State 1: Reading data payload:
 

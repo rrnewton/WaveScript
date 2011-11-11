@@ -45,5 +45,13 @@ During that gigabyte transfer BOTH sender and receiver are pegged at
 100% CPU... maybe it is somehow compute bound.
 
 
+[2011.11.11] {Testing updated socket library}
+
+Right now it gets a similar throughput (250K tuples/sec), but it fails
+to terminate...
+
+It's maybe a smidge higher throughput (avg 270K) when I enable doing
+both the length and the payload in one firing of the inbound socket
+"iterate".
 
 

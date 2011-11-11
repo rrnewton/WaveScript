@@ -75,6 +75,7 @@ main2 = unionList([out1,out2, final])
 
 // Version3 : separate entrypoints for each process:
 //============================================================
+// This is the one currently tested by the Makefile [2011.11.11]
 /*
 Compile each of these separately, like this:
 
