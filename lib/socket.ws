@@ -44,6 +44,8 @@ shutdown_sockets              :: ()     -> ()    = foreign("shutdown_sockets", s
 socket_in     :: (String, Uint16) -> (Stream a);
 socket_in_raw :: (String, Uint16) -> (Stream (Array Uint8));
 
+dbgINSOCK = false;
+
 // Returns a stream of byte arrays.
 fun socket_in_raw( address, port) {
   // Initialization code.  Fork a thread to attempt to connect.
@@ -66,18 +68,17 @@ fun socket_in_raw( address, port) {
             sockfd = 0;
             lenbuf  = Array:make(4,0);   // For reading the length field.
             lenctr  = 0;                 // Leftover bytes in the length buf.
-	    databuf = Array:make(256,0); // For reading the actual messages.
+            //	    databuf = Array:make(256,0); // For reading the actual messages.
+            databuf = Array:null; // For reading the actual messages.
             datactr = 0;                 // Leftover bytes in the data buf.
             wouldblock = 0;
 
             // Ugliness to handle partial states.  For example, we have read the length
             // header successfully but not the payload.
-            state = 0;  
+            curstate = 0;  
             // States: 
-	    //  0 -> Have read nothing for the next tuple
-	    //  1 -> Have read some bytes into lenbuf but not finished.
-	    //  2 -> Have read lenbuf but nothing in databuf.
-	    //  3 -> Have read some bytes into databuf but not finished.
+            //  0 -> In the process of reading length field.
+            //  1 -> In the process of reading data field.
             msglen = 0; // Store the unmarshaled value of the length if we have it.
           }
     using Unix;
@@ -86,7 +87,8 @@ fun socket_in_raw( address, port) {
         if (result == -1) then {
            code = get_errno();
            if code == wouldblock
-           then false // { puts_err(" ... would have blocked ... \n"); false }
+//           then false // { puts_err(" ... would have blocked ... \n"); false }
+           then (if dbgINSOCK then puts_err(" ... would have blocked ... \n"))
            else error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
         } else {
 /* 	  if result == expected then true */
@@ -99,10 +101,10 @@ fun socket_in_raw( address, port) {
 /*              wsexit(0); */
 /*         }; */
 //  	    warned := true;
-	    false
 	  }
-        }
+
     };    
+
 
     if sockfd == 0 then {
       sockfd := poll_socket_client_ready_port(port);
@@ -117,63 +119,83 @@ fun socket_in_raw( address, port) {
     // all socket_in sources will poll them round robin.
     if (connected) then 
     {
+
+if dbgINSOCK then print("Connected!\n");
        // TODO: make this non-blocking:
        // If nothing is available we can just poll other input sources.
+      if (curstate == 0) then {
+         // State 0: Reading length header:
 
-      fun check_len_complete(rd, expected) {
+if dbgINSOCK then print("  In state 0\n");
 
-	 if (rd == expected) then {
-	    tmp :: Int = unmarshal(lenbuf,lenctr); // But this fixes it.
-  	    state := 2; // Completed, move to reading data.
-	 } else if (rd == 0) {
-	   // Do nothing, stay in current state.
-	 } else {
-	    // Incomplete read.
-   	    lenctr := rd;
-  	    state := 1;
-	 }
+         remaining = len_size - lenctr;
+         rd = read_bytes_offset(sockfd, lenbuf, lenctr, remaining );  // Read length.
+             check_read_result("rd header:", rd);
 
-      }; 
+if dbgINSOCK then print("    rd "++ rd ++" of "++ remaining ++"\n");
 
-      if (state == 0) then {
-	 rd = read_bytes(sockfd, lenbuf, len_size);  // Read length.
-         check_read_result("rd header:", rd);
-         check_len_complete(rd, len_size );
+         if (rd == remaining) then {
+            tmp :: Int = unmarshal(lenbuf,0); // But this fixes it.
+            curstate := 1; // Completed, move to reading data.
+            msglen  := tmp;
 
-      } else if (state == 1) then {
+            // TODO: if msglen = -999 then that signifies an End-of-Stream
 
-	 remaining = len_size - lencnt;
-	 rd = read_bytes(sockfd, lenbuf, remaining );  // Read length.
-         check_read_result("rd header:", rd);
-	 if (rd == len_size) then {
-         
-      } else if (state == 2) then {
-      } else { // (state == 3) 
+            lenctr  := 0;
+            datactr := 0;
+            databuf := Array:makeUNSAFE(msglen);
+    /*             curlen  = Array:length(databuf); */
+    /*             if (curlen < msglen) then  */
+    /* 	      databuf := Array:makeUNSAFE(max(msglen, 2*curlen)); */
+
+if dbgINSOCK then print("  Entering state 1 ... len = "++ msglen ++"\n");
+
+         } else if (rd == 0) then {
+           // Do nothing, stay in current state.
+         } else {
+            // Incomplete read.
+            lenctr   := lenctr + max(rd,0);
+         }
+
+      // References are second class which makes it annoying to factor out this duplicated code:
+      // ----------------------------------------
+      } 
+      else 
+      // if (curstate == 1)
+      { 
+         // State 1: Reading data payload:
+
+if dbgINSOCK then print("  In state 1... \n");
+
+         remaining = msglen - datactr;
+         rd = read_bytes_offset(sockfd, databuf, datactr, remaining ); // Read message.
+             check_read_result("rd payload:", rd);
+
+if dbgINSOCK then print("    rd "++ rd ++" of "++ remaining ++"\n");
+
+         if (rd == remaining) then {
+            emit databuf;
+            databuf := Array:null;
+            curstate := 0; // Completed, move back to reading length header.
+            lenctr  := 0;
+            datactr := 0;
+            msglen  := 0;
+
+         } else if (rd == 0) then {
+           // Do nothing, stay in current state.
+         } else {
+            // Incomplete read.
+            datactr := datactr + max(rd,0);
+         }
       }
+     }
+  }; // End iterate
 
-       // Get the length header for the next message, if we can:
-       len = if have_header then header else {
-
-                else -1
-             };
-
-       if len >= 0 then {       
-          buf = Array:make(len, 0);
-          rd = read_bytes(sockfd, buf, len);
-          if check_read_result("rd payload:", rd, len) then {
-             have_header := false;
-             // Emit the raw bytes.
-             emit buf;
-          } // else fizzle
-       } // else fizzle
-    }
-    // Otherwise fizzle.
-   }; 
    // We merge the empty initialization stream into the result.
    // Thus it is included in the final program if the result stream is used, which is
    // approrpiate.
    merge(init,s)
-}
+} // End socket_in_raw
 
 fun socket_in(address, port) {
   let rawbytes = socket_in_raw(address,port);

@@ -112,6 +112,7 @@ namespace Unix {
 
   write_bytes :: (Int, Array Uint8, Int) -> Int  = foreign("write", stdio);
   read_bytes  :: (Int, Array Uint8, Int) -> Int  = foreign("read",  stdio);
+  read_bytes_offset :: (Int, Array Uint8, Int, Int) -> Int  = foreign("ws_read_offset",  c_exts);
 
   // Also including bits of the C stdlib as needed:
 

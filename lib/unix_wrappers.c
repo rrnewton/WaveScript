@@ -73,3 +73,8 @@ int ws_get_SEEK_END() { return SEEK_END; }
 void puts_err(char* str) {
    fputs(str, stderr);
 }
+
+//  read_bytes_offset :: (Int, Array Uint8, Int, Int) -> Int  = foreign("ws_read_offset",  c_exts);
+int ws_read_offset(int filehandle, char* buf, int offset, int length) {
+  return read(filehandle, buf + offset, length);
+}

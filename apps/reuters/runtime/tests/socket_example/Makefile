@@ -51,9 +51,9 @@ two.out: p1.exe p2.exe p3.exe
 	grep received two.raw > two.out
 three.out: proc1.exe proc2.exe
 	bash -c "make run3 &> /dev/stdout | tee three.raw"
-        # Put them in a consistent order:
-	egrep 'Left' three.raw   > three.out
-	egrep 'Right' three.raw >> three.out
+        # Put them in a consistent order, and take a consistent # of each:
+	egrep 'Left'  three.raw | head -n7  > three.out
+	egrep 'Right' three.raw | head -n7 >> three.out
 #four.out:
 #	bash -c "make run4 &> /dev/stdout | tee four.out"
 
