@@ -53,6 +53,8 @@ fun socket_in_raw( address, port) {
      spawn_socket_client_helper(address, port);
   };
 
+  len_size = 4; // Constant: size in bytes of length header.
+
   // Rather than driving this by a foreign_source or by an infinite loop inside a single 
   // kernel invocation, we use the convention that a timer with a negative rate will run
   // as fast as possible, irrespective of whether -realtime mode is used.  This should be
@@ -62,39 +64,45 @@ fun socket_in_raw( address, port) {
     state { 
             connected = false;
             sockfd = 0;
-            tempbuf = Array:make(4,0);
+            lenbuf  = Array:make(4,0);   // For reading the length field.
+            lenctr  = 0;                 // Leftover bytes in the length buf.
+	    databuf = Array:make(256,0); // For reading the actual messages.
+            datactr = 0;                 // Leftover bytes in the data buf.
             wouldblock = 0;
 
             // Ugliness to handle partial states.  For example, we have read the length
-            // header but not the payload.
-            have_header = false;  // Could use a Maybe type here.
-            header = 0;
-
-	    warned = false
+            // header successfully but not the payload.
+            state = 0;  
+            // States: 
+	    //  0 -> Have read nothing for the next tuple
+	    //  1 -> Have read some bytes into lenbuf but not finished.
+	    //  2 -> Have read lenbuf but nothing in databuf.
+	    //  3 -> Have read some bytes into databuf but not finished.
+            msglen = 0; // Store the unmarshaled value of the length if we have it.
           }
     using Unix;
 
-    fun check_read_result(msg, result, expected) {     
+    fun check_read_result(msg, result) {
         if (result == -1) then {
            code = get_errno();
            if code == wouldblock
            then false // { puts_err(" ... would have blocked ... \n"); false }
            else error("  <socket.ws> ERROR: read() returned errno "++ code ++ "\n");
         } else {
-	  if result == expected then true
-	  else {
-	    if not(warned) then {
-             // print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n");
-             // TEMP: For now we will use this as an exit mechanism.
-             puts_err("  <socket.ws> "++msg++" Read wrong length, taking this as a signal that upstream is closed.  Exiting.\n");
-             shutdown_sockets();
-             wsexit(0);
-        };
-  	    warned := true;
+/* 	  if result == expected then true */
+/* 	  else { */
+/* 	    if not(warned) then { */
+/*              // print(msg++" WARNING read wrong length, FIXME socket_in should tolerate partial reads.  Dropping data for now.\n"); */
+/*              // TEMP: For now we will use this as an exit mechanism. */
+/*              puts_err("  <socket.ws> "++msg++" Read wrong length, taking this as a signal that upstream is closed.  Exiting.\n"); */
+/*              shutdown_sockets(); */
+/*              wsexit(0); */
+/*         }; */
+//  	    warned := true;
 	    false
 	  }
         }
-    };
+    };    
 
     if sockfd == 0 then {
       sockfd := poll_socket_client_ready_port(port);
@@ -112,16 +120,40 @@ fun socket_in_raw( address, port) {
        // TODO: make this non-blocking:
        // If nothing is available we can just poll other input sources.
 
-       // Get the length (header), if we can:
+      fun check_len_complete(rd, expected) {
+
+	 if (rd == expected) then {
+	    tmp :: Int = unmarshal(lenbuf,lenctr); // But this fixes it.
+  	    state := 2; // Completed, move to reading data.
+	 } else if (rd == 0) {
+	   // Do nothing, stay in current state.
+	 } else {
+	    // Incomplete read.
+   	    lenctr := rd;
+  	    state := 1;
+	 }
+
+      }; 
+
+      if (state == 0) then {
+	 rd = read_bytes(sockfd, lenbuf, len_size);  // Read length.
+         check_read_result("rd header:", rd);
+         check_len_complete(rd, len_size );
+
+      } else if (state == 1) then {
+
+	 remaining = len_size - lencnt;
+	 rd = read_bytes(sockfd, lenbuf, remaining );  // Read length.
+         check_read_result("rd header:", rd);
+	 if (rd == len_size) then {
+         
+      } else if (state == 2) then {
+      } else { // (state == 3) 
+      }
+
+       // Get the length header for the next message, if we can:
        len = if have_header then header else {
-                rd = read_bytes(sockfd, tempbuf, 4);  // Read length.
-                if check_read_result("rd header:", rd, 4) then {
-                   have_header := true;
-                   // header := (unmarshal(tempbuf,0) :: Int);  // BUG: Why should this cause a monomorphism problem?
-                   tmp :: Int = unmarshal(tempbuf,0); // But this fixes it.
-                   header := tmp;
-                   header
-                } 
+
                 else -1
              };
 
