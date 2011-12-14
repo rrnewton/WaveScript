@@ -30,7 +30,7 @@ wsq_window :: (tup -> #time, #time, Int, Stream tup) -> SS tup;
 
 
  /* wsq_reuterSource                         :: (Float, String) -> Stream DummySchema99; */
- /* wsq_window                               :: (a -> #b, #b, Int, Stream a) -> SS a; */
+ /* wsq_window                               :: (a -> #b, #b, Int, Stream a) -> 	 SS a; */
  /* wsq_window_super                         :: (a, b, c, Stream d) -> Stream #e; */
  /* wsq_windowJoin                           :: (a, b, Stream c, Stream d, e) -> Stream f; */
  /* wsq_mergeMonotonic                       :: (a, b, c) -> d; */

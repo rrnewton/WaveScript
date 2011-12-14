@@ -14,8 +14,8 @@ int main(int argc, char* argv[]) {
 
     WSQ_BeginTransaction(99);
      WSQ_BeginSubgraph(11);
-       WSQ_AddOp(1, "ASCIIFileSource", "", "100", "-1 |foobar.schema|TAQ.10000");
-       WSQ_AddOp(2, "ASCIIFileSource", "", "200", "-1 |foobar.schema|TAQ.10000");
+       WSQ_AddOp(1, "ASCIIFileSource", "", "100", "-1 |foobar.schema|./../TAQ.100000");
+       WSQ_AddOp(2, "ASCIIFileSource", "", "200", "-1 |foobar.schema|./../TAQ.100000");
 
        // Now merge them together:
        // ============================================================
