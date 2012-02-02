@@ -915,7 +915,7 @@
     ;----------------------------------------------------------------------
 
     (show             ('a) String)
-    (__show_ARRAY     ('a) (Array Char)) ;; Internal
+    (__show_ARRAY     ('a) (Array Char)) ;; Internal, print a value to an array of chars.
 
     ;; These keep a gnuplot window open and repeatedly update it.
     ;; Shouldn't need both of these, one should be defined in wavescript:

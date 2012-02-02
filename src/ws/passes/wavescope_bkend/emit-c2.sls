@@ -630,6 +630,7 @@
 
 ;; [2007.12.04] TEMP!!!!! SHOULD NOT DUPLICATE CODE
 (__spec Const <emitC2-base> (self datum wrap)
+
     ;; Should also make sure it's 32 bit or whatnot:
     (cond
 
@@ -667,8 +668,14 @@
 				     (imag-part datum)))]
      [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
      [(integer? datum) 
+      ;; [2012.02.02] Well this commented line looks wrong, but it
+      ;; probably is necessary to do something here.  For one thing,
+      ;; should comply with C's conventions for suffixes on numeric
+      ;; literals:
+      ;; 
       ;(wrap (format "(~a)~a" (Type self 'Int) datum))
-      (wrap (number->string datum))]
+      (wrap (number->string datum))
+      ]
 
 #;
      [(vector? datum)
@@ -1535,7 +1542,9 @@
 	      (make-lines (list 			   
 			   "int "_realsize" = snprintf("_str", "
 			           _max", \""
-				   (type->printf-flag self ty)"\", "obj");\n"
+				   ;; [2012.02.02] Hit an error, adding a cast here.
+				   ;; Probably the underlying problem is with "Const":
+				   (type->printf-flag self ty)"\", ("(Type self ty)")"obj");\n"
 			   "if ("_realsize" >= "_max") { printf(\"Error, show overflowed fixed length "
 			   _max" buffer\\n\"); exit(-1); }\n"
 			   "SETARRLEN("_str", "_realsize" + 1); /* set virtual length */ \n"
