@@ -15,6 +15,9 @@
 
  */
 
+#ifndef WSC2_HEADER
+#define WSC2_HEADER
+
 // For some godawful reason sched.h won't work out of the box and I need to do this:
 #define _GNU_SOURCE 
 // And it has to be done *before* stdio.h is included...
@@ -294,8 +297,7 @@ inline void VIRTTICK()
 #define VIRTTICK()                   {}
 #define WAIT_TICKS(delta)            {}
 #define TIME_DEBT(delta)             0.0
-#endif
-
+#endif  // End #if WS_REAL_TIMERS
 
 
 // Single threaded version:
@@ -318,7 +320,7 @@ unsigned long print_queue_status() { return 0; }
 #define GRAB_WRITEFIFO(name)    {}
 #define RELEASE_WRITEFIFO(name) {}
 
-#else
+#else // WS_THREADED:
 
 // Thread-per-operator version, various FIFO implementations:
 // ================================================================================
@@ -351,7 +353,7 @@ unsigned long print_queue_status() { return 0; }
 // Env Vars: FIFO_TWOSTAGE  FIFO_COARSE_LOCKING
 #include "c_fifos/bits/list_fifo.c"
 
-#endif
+#endif // End #if WS_LOCK_FREE_FIFO
 
 //============================================================
 
@@ -425,7 +427,7 @@ void pin2cpuRange(int numcpus) {
 
 #else
   #error "pin2cpu: Cpu Pinning only works under linux presently."
-#endif
+#endif // End if __linux__
 
 
 
@@ -440,12 +442,12 @@ pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 // Declare the existence of each operator.
-#ifdef WS_USE_ZCT
-// Here we need to pass a ZCT also, we grab it from the global table.
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  void fp##_wrapper(void* x) { fp(all_zcts[ind], *(ty*)x);  }
-#else
-#define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
-#endif
+ #ifdef WS_USE_ZCT
+ // Here we need to pass a ZCT also, we grab it from the global table.
+ #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue;  void fp##_wrapper(void* x) { fp(all_zcts[ind], *(ty*)x);  }
+ #else
+ #define DECLARE_WORKER(ind, ty, fp) wsfifo fp##_queue; void fp##_wrapper(void* x) { fp(*(ty*)x);  }
+ #endif
 
 // Declare number of worker threads.
 // This uses plain old malloc... tables are allocated once.
@@ -465,13 +467,13 @@ void TOTAL_WORKERS(int count) {
    queue_table   = malloc(sizeof(wsfifo*) * count);  
    cpu_affinity_table = malloc(sizeof(int) * count);  
    total_workers = count; 
-#ifdef WS_USE_ZCT
+ #ifdef WS_USE_ZCT
    all_zcts = malloc(count * sizeof(void*)); 
    for(i=0; i<count; i++) { 
      all_zcts[i] = malloc(sizeof(zct_t)); 
      all_zcts[i]->count = 0; 
   }
-#endif
+ #endif
 }
 
 // Register a function pointer for each worker.
@@ -483,13 +485,13 @@ void TOTAL_WORKERS(int count) {
 }
 
 // Enqueue a datum in another thread's queue.
-#ifdef WS_USE_ZCT
-//#define EMIT(val, ty, fn) WS_INTERNAL_QUEUE(& fn##_queue, val, ty);
-//#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_internal_queue, val, ty);
-#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
-#else
-#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
-#endif
+ #ifdef WS_USE_ZCT
+ //#define EMIT(val, ty, fn) WS_INTERNAL_QUEUE(& fn##_queue, val, ty);
+ //#define EMIT(val, ty, fn) WSFIFOPUT(& fn##_internal_queue, val, ty);
+ #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
+ #else
+ #define EMIT(val, ty, fn) WSFIFOPUT(& fn##_queue, val, ty);
+ #endif
 
 // This defines the main loop for each WS thread.  Grab messages and process them.
 void* worker_thread(void* i) {
@@ -500,16 +502,16 @@ void* worker_thread(void* i) {
 
   // In this mode we restrict the subset of CPUs that we use.
 #ifdef __linux__
-#ifdef LIMITCPUS
+ #ifdef LIMITCPUS
   // For now this mode cannot restrict which cpu *within* the subset each thread uses.
   char* str = getenv("LIMITCPUS");
   if (str == 0) str =  "1";
   int cpus = atoi(str);
   //printf("  LIMITING TO %d CPUS (from %s)\n", cpus, str);  fflush(stdout);
   pin2cpuRange(cpus);
-#else
+ #else
   pin2cpu(cpu_affinity_table[index]);
-#endif
+ #endif
 #else
   #error "worker_thread: Cpu Pinning only works under linux presently."
 #endif
@@ -520,7 +522,7 @@ void* worker_thread(void* i) {
   // We don't need a "select":
   while (1) 
   {
-#ifdef FIFO_COARSE_LOCKING
+ #ifdef FIFO_COARSE_LOCKING
     // [2008.11.04] We need to grab/release for reading also..
     // But, once we grab, we should dequeue until its empty before releasing...
     int i;
@@ -534,7 +536,7 @@ void* worker_thread(void* i) {
 /*         wserror_builtin("Grabbed for reading: THE FIRST STAGE BUFFER SHOULD BE NULL"); } */
     for(i=0; i<size; i++) {
       //printf("Reading out element %d\n", i);
-#endif
+ #endif
 
     // Accesses to these two tables are read-only:
     void* ptr = wsfifoget(queue_table[index]);
@@ -574,7 +576,7 @@ unsigned long print_queue_status() {
   printf(" total %d\n", total);
   return total;
 }
-#endif
+#endif // End THREADED 
 
 //################################################################################//
 //               Startup, Shutdown, Errors, Final output values                   //
@@ -684,6 +686,51 @@ int wsexit_fun(int code) {
 }
 
 //################################################################################//
+//                Counting Live Inputs and Shutting Down                          //
+//################################################################################//
+
+// Here we count the input sources that are still providing data:
+// These routines need to be threadsafe REGARDLESS of whether WS
+// itself is threaded.
+
+#include <pthread.h>
+int live_source_count = 0;
+pthread_mutex_t live_source_count_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// Register a new input source.  Returns count.  Threadsafe.
+int wsincr_source_count_fun() {
+  int cnt;
+  pthread_mutex_lock(&live_source_count_lock);
+  live_source_count++;
+  cnt = live_source_count;
+  pthread_mutex_unlock(&live_source_count_lock);
+  return cnt;
+}
+
+// Unregister an input source.  Returns count.  Threadsafe.
+int wsdecr_source_count_fun() {
+  int cnt;
+  pthread_mutex_lock  (&live_source_count_lock);
+  live_source_count--;
+  cnt = live_source_count;
+  if ( cnt < 0 ) {
+    fprintf(stderr, "ERROR, number of live sources dropped BELOW zero: %d\n", cnt);
+    wsexit_fun(1);
+  }
+  pthread_mutex_unlock(&live_source_count_lock);
+
+  // This responsibility could be delegated to the caller of this
+  // function, but for now we immediately exit when the count hits
+  // zero.
+  if ( cnt == 0 ) {
+    fprintf(stderr, "WS: Number of input sources dropped to zero, exiting.\n");
+    wsexit_fun(0);
+  }
+  return cnt;
+}
+
+
+//################################################################################//
 //                                    Misc                                        //
 //################################################################################//
 
@@ -772,4 +819,6 @@ inline static float cNorm(complex float c) {
    return sqrt ((re*re) + (im*im));
 }
 #endif
+
+#endif // End WSC2_HEADER
 

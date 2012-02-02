@@ -12,6 +12,7 @@ all: $(EXES) $(GEN)
 
 run: $(GEN)
 	./run_benchmark.sh generated_query_1.exe
+# TODO:
 #	./run_dist_benchmark.sh generated_query_2A.exe generated_query_2B.exe
 
 #--------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ run: $(GEN)
 
 1: generated_query_1.exe
 2: generated_query_2A.exe generated_query_2B.exe
+3: generated_query_31.exe generated_query_32.exe generated_query_33.exe 
 
 #--------------------------------------------------------------------------------
 # Build rules:
@@ -36,9 +38,18 @@ generated_query_2B.exe: 2_TAQ_over_socket_B.exe
 	(./build_benchmark.sh $<; echo "IGNORING stack smashing... weird")
 
 
+generated_query_31.exe: 3_TAQ_merge_over_socket.exe 
+	./build_benchmark.sh $< 1
+generated_query_32.exe: 3_TAQ_merge_over_socket.exe 
+	./build_benchmark.sh $< 2
+generated_query_33.exe: 3_TAQ_merge_over_socket.exe 
+	./build_benchmark.sh $< 3
+
+
 .SUFFIXES: .o .c .exe .testrun .out
 .PRECIOUS: $(EXES) $(OUTS) $(TESTS)
 
+# Build any of the C programs (the WSQ clients):
 .c.exe:
 	$(CC) $(FLAGS) -c -I $(CHEZP) $<
 	$(CC) $(FLAGS) $(LIBS) $(<:.c=.o) ../libwsq_runtime.a -o $@

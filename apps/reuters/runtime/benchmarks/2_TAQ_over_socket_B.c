@@ -2,15 +2,16 @@
 #include <stdio.h>
 #include "wsq_runtime.h"
 
-// An example demonstrating how to link and use the WSQ runtime system.
+// A small benchmark that simply pumps tuples through a socket.
+// (SERVER SIDE)
 
 #include "port.h"
 
 int main(int argc, char* argv[]) { 
-    char strargs[128];
+    char strargs[2048];
 
-    //char* machine = "localhost";
-    char* machine = "marble";
+    char* machine = "localhost";
+    //char* machine = "marble";
 
     // This is the schema for tuples produced directly from ASCIIFileSource:
     sprintf(strargs, 

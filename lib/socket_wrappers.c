@@ -296,6 +296,7 @@ int poll_socket_client_ready_port(short port) {
 }
 
 
+// FIXME -- should only send EOS on OUTBOUND sockets.  These are SIMPLEX connections.
 void shutdown_list(alist_t* ptr) 
 {
    while (ptr) {

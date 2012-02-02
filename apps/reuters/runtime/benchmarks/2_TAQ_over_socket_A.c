@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include "wsq_runtime.h"
 
-// An example demonstrating how to link and use the WSQ runtime system.
+// A small benchmark that simply pumps tuples through a socket.
+// (CLIENT SIDE)
 
 #include "port.h"
 
