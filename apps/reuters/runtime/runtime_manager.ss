@@ -374,7 +374,11 @@
 				      v)])			      
 			 `(define ,var ,e)))
 		  binds)]
-	   [prog `((include ,(string-append (tryenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
+	   [prog (begin
+		   (printf "SETTING EXTRA INCLUDES TO: ~a\n" extra_includes)
+		   (printf "EMITTING BODY: \n")
+		   (pretty-print bod)
+		   `((include ,(string-append (tryenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
 	           ;; Include the user's code as well:
 	           ,@(map (lambda (x) `(include ,x)) extra_includes)
 		   ,@bod
@@ -384,7 +388,8 @@
 				     [() '(app timer '0)]
 				     [(,vr) vr]
 				     [(,vr . ,[rest])
-				      `(app merge ,vr ,rest)]))))]
+				      `(app merge ,vr ,rest)]))))
+		   )]
 	   [start-time (current-time 'time-monotonic)]
 	   [print-end-time 
 	    (lambda () 
@@ -661,12 +666,11 @@
     ))
 
 ;; UDF's may take and produce any number of stream arguments.
+;; ------------------------------------------------------------
 (define (WSQ_UDF opid in* out* file name args)
-
-;; FIXME!!! If I DONT do this maybe-tuple thing I seem to get type
-;; errors with unary tuples (which should just be aliases for
-;; non-tuples!).
-
+  ;; FIXME!!! If I DONT do this maybe-tuple thing I seem to get type
+  ;; errors with unary tuples (which should just be aliases for
+  ;; non-tuples!).
   (define (maybe-tuple fn ls)
     (if (> (length ls) 1)
         (fn ls)
@@ -677,7 +681,8 @@
        (app ,name
 	    ,(maybe-tuple (lambda (x) `(tuple ,@x))
 	                  (map edge-sym in*))
-	    ,@args)])
+	    ,@args
+	    )])
   (unless extra_includes (error 'WSQ_UDF "The system is not in a good state.  Maybe BeginTransaction was omitted?\n"))  
   (set! extra_includes (cons file extra_includes))
 
@@ -692,6 +697,8 @@
   (for-each add-in-edge! in*) 
   (for-each add-out-edge! out*)
   )
+
+;; ------------------------------------------------------------
 
 (define (WSQ_AddFilterWindows opid in out _expr)  
   (define code
@@ -864,8 +871,27 @@
   (add-op! opid code)  (add-in-edge! in) (add-out-edge! out))
 
 
+;; Hack, write to a file so we can parse it:
+; (define (ws-parse-string str)
+;   (define tmpfile (format "/tmp/parse_tmp~a.ws" (random 99999999999999999999)))
+;   (with-output-to-file tmpfile (lambda () (display str)))
+;   (ws-parse-file tmpfile))
 
-
+;; Create a temporary file just to carry args to a UDF:
+(define (make-args-file strs)
+;  (define tmpfile (format "/tmp/udf_args_tmp~a.ws" (random 99999999999999999999)))
+  (define tmpfile (format "/tmp/udf_args_tmp.ws"))
+  (with-output-to-file tmpfile 
+    (lambda () 
+      (let loop ((i 0) (strs strs))
+	(unless (null? strs)
+	  (printf "arg~a = ~a;\n" i (car strs))
+	  (loop (add1 i) (cdr strs))))))
+  (set! extra_includes (cons tmpfile extra_includes))
+  ;; Return the list of arguments as symbols:
+  (map (lambda (i) (string->symbol (format "arg~a" i)))
+    (iota (length strs)))
+  )
 
 
 ;; The generic entrypoint that can add any operator.
@@ -902,6 +928,13 @@
       [(UDF) 
         (match args 
 	 [(,file ,funname . ,rest) (WSQ_UDF id in* out* file (string->symbol (trim-whitespace funname)) rest)]
+	 [,other (error 'UDF "UDF WSQ Op expected at LEAST two arguments (file/name), got: ~s" other)])]
+
+      [(UDF_PARSEARGS)
+        (match args 
+	 [(,file ,funname . ,rest)
+	  (define args (make-args-file rest))
+	  (WSQ_UDF id in* out* file (string->symbol (trim-whitespace funname)) args)]
 	 [,other (error 'UDF "UDF WSQ Op expected at LEAST two arguments (file/name), got: ~s" other)])]
 
       [(PRINTER)    (has-inputs 1) (has-outputs 0) (has-args 1) (WSQ_AddPrinter id _args (car in*))]

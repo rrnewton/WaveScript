@@ -274,6 +274,9 @@ int64_t spawn_socket_client_helper(char* address, short port) {
   global_inbound_table = alist_add(global_inbound_table, port, num);
   fprintf(stderr,"  <socket.ws> inbound: Extended table of inbound socket-connecting helper threads with port=%d, val=%p\n", port, num);
 
+  // [2012.02.09] When we create an inbound connection we increment the active source count:
+  wsincr_source_count_fun();
+
   pthread_create(&threadID, NULL, &inbound_socket_setup_helper_thread, (void*)cell);
   return num;  
 }
@@ -317,6 +320,9 @@ void shutdown_list(alist_t* ptr, int is_outbound)
       fprintf(stderr,"  <socket.ws>   Closed descriptor %d, port %d, outbound %d\n", 
 	      ta->filedecr, ta->port, is_outbound);
       ptr = ptr->next;
+
+      // Record that we've lost exactly one input source:
+      wsdecr_source_count_fun();
    }
 }
 
