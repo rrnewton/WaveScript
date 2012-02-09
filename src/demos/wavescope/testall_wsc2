@@ -1,10 +1,13 @@
 #!/bin/bash
 
-COMP=.__wsc2Messages.txt
-RUN=.__runquery_output_wsc2.txt
+#================================================================================
+# Invoking the script:
+
+# [LAUNCHIT=...] ./testall_wsc2 [OPTIONS]
 
 OPTIONS=$*
 
+# Examples:
 #OPTIONS=" -gc boehm "
 #OPTIONS=" -gc none -threads "
 #OPTIONS=" -gc none -threads "
@@ -17,8 +20,16 @@ LAUNCHIT="valgrind --leak-check=full"
 fi 
 fi
 
+#================================================================================
+# Constants:
+
+COMP=.__wsc2Messages.txt
+RUN=.__runquery_output_wsc2.txt
+
 echo > $COMP
 echo > $RUN
+
+
 
 function go () {
     echo; echo; echo; echo; echo; echo; echo;  
@@ -45,16 +56,8 @@ function go () {
 }
 
 
-
-
-
-
-
-
-
-
-
-
+#================================================================================
+# Main Script:
 
 
 go "demo1c_timer.ws"

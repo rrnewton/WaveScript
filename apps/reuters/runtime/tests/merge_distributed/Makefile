@@ -32,8 +32,8 @@ CHEZP = $(CHEZD)/boot/$(MACHINE)
 # Perhaps should consider linking these libs statically for portability.
 #STATICLIBS= /usr/lib/librt.a /usr/lib/libdl.a
 
-#all: proc1 proc2 
-all: queries
+all: proc1 proc2 
+#all: queries
 
 queries: proc1query.exe proc2query.exe
 
