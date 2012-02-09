@@ -297,22 +297,25 @@ int poll_socket_client_ready_port(short port) {
 
 
 // FIXME -- should only send EOS on OUTBOUND sockets.  These are SIMPLEX connections.
-void shutdown_list(alist_t* ptr) 
+void shutdown_list(alist_t* ptr, int is_outbound)
 {
    while (ptr) {
       struct thread_arg* ta = (struct thread_arg*)ptr->value;
       // HACK: TMP: Write out a special EOS length header:
       // ----------------------------------------
       int special = -999;
-//      int code = fwrite(&special[5], 4, 1, ta->filedecr);
-      int code = write(ta->filedecr, &special, 4);
-      if (code != 4) {
-        fprintf(stderr, "  <socket.ws>  ERROR: Failed to write final EOS length header to descriptor %d, code %d\n", ta->filedecr, code);
+      if (is_outbound) { 
+	  int code = write(ta->filedecr, &special, 4);
+          if (code != 4) {
+	      fprintf(stderr, "  <socket.ws>  ERROR: Failed to write final EOS length header to descriptor %d, code %d\n", 
+		      ta->filedecr, code);
+	  }
+	  // fflush(ta->filedecr);
       }
-//      fflush(ta->filedecr);
       // ----------------------------------------
       close(ta->filedecr);
-      fprintf(stderr,"  <socket.ws>   Closed descriptor %d, port %d\n", ta->filedecr, ta->port);
+      fprintf(stderr,"  <socket.ws>   Closed descriptor %d, port %d, outbound %d\n", 
+	      ta->filedecr, ta->port, is_outbound);
       ptr = ptr->next;
    }
 }
@@ -321,6 +324,6 @@ void shutdown_list(alist_t* ptr)
 void shutdown_sockets() 
 {
    fprintf(stderr,"  <socket.ws> Closing all sockets before exiting.\n"); 
-   shutdown_list(global_inbound_table);
-   shutdown_list(global_outbound_table);
+   shutdown_list(global_inbound_table, 0);
+   shutdown_list(global_outbound_table, 1);
 }
