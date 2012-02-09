@@ -7,7 +7,10 @@ include ../makefile.common
 SOURCES = 1_ReuterSource.c 2_Filter.c 3_Project.c \
  4_MatchRecognize_always_succeed.c 5_MatchRecognize_rare_hits.c \
  6_UDF.c 7_MergeMonotonic.c 7B_MergeFiles.c \
- 8_TAQ_reader.c 10_MergeTest.c 11_Avg_UDF.c
+ 8_TAQ_reader.c 10_MergeTest.c 
+
+# Unfinished:
+# 11_Avg_UDF.c
 
 # 6_Orfilter.c
 
@@ -18,7 +21,7 @@ OUTS  = $(SOURCES:.c=.out)      9_example_distributed.out
 ################################################################################
 ## MAIN ENTRYPOINTS:
 
-all: $(EXES) distmake sockmake
+all: datasets $(EXES) distmake sockmake
 
 test: fulltests socktest
 	@echo 
@@ -37,6 +40,10 @@ benchmark:  8_TAQ_reader.bench
 
 taq_500mb.log:
 	wget http://cs.indiana.edu/~rrnewton/temp/taq_500mb.log
+
+# Download datasets from the web.  These live in the benchmarks dir:
+datasets:
+	(cd ../benchmarks; ./get_datasets.sh)
 
 ################################################################################
 

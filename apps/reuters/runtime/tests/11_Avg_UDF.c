@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "wsq_runtime.h"
 
+// UNFINISHED:
+
 // This test demonstrates the new UDF capability of the WSQ query system.
 
 int main(int argc, char* argv[]) 

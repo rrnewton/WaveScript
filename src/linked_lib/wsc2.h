@@ -723,7 +723,7 @@ int wsdecr_source_count_fun() {
   // function, but for now we immediately exit when the count hits
   // zero.
   if ( cnt == 0 ) {
-    fprintf(stderr, "WS: Number of input sources dropped to zero, exiting.\n");
+    fprintf(stderr, " [WS] Number of input sources dropped to zero, exiting.\n");
     wsexit_fun(0);
   }
   return cnt;

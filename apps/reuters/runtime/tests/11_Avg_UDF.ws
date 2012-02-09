@@ -1,6 +1,8 @@
 
 include "unix.ws"
 
+// UNFINISHED: TODO: Update this so that it prints the average:
+
 
 // This is a user defined function that corresponds to an operator used by WSQ:
 // arg1 is the number to be count in each loop
