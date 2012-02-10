@@ -64,5 +64,3 @@
 ;; control to the enclosing C program in which we are embedded.
 (unless (top-level-bound? 'wsq-debug-mode)
   (exit 0))
-
-

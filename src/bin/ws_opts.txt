@@ -45,3 +45,15 @@ Options for all WaveScript (ws*) configurations:
   --disable-pass <pass-name> suppress a specific pass 
   --inspect <pass-name>      inspect output of <pass-name>
   --parem-file <file>        
+
+Environment variables affecting WS compiler:
+  
+  REGIMENTD -- the location of the directory with the WS/Regiment installation
+
+  REGIMENTHOST -- controls which scheme compiler is used: plt, chez, or ikarus
+  REGDEBUGMODE -- Set to ON to enable debug mode
+  REGOPTLVL    -- Optimization level for the compiler ITSELF, 0-3
+
+  WS_LINK -- extra flags to be sent to the C compiler at link time
+  WS_VERBOSE -- if set to a number (0-5) control verbosity of compiler
+

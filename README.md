@@ -231,10 +231,9 @@ describing profiling results.
 Environment variables affecting operation
 ======================================================================
 
- REGIMENTD -- the location of the directory containing this file
+See the file ./bin/ws_opts.txt for a description of environment
+variables that affect the WS compiler.
 
- REGIMENTHOST -- controls which scheme compiler is used: plt, chez, or ikarus
- REGDEBUGMODE -- Set to ON to enable debug mode
- REGOPTLVL    -- Optimization level for the compiler ITSELF, 0-3
+The most important one for setup purposes is "REGIMENTD" which is set
+by the "install_environment_vars" script in this directory.
 
- WS_LINK -- extra flags to be sent to the C compiler at link time

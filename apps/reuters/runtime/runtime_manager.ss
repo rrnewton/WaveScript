@@ -344,6 +344,10 @@
 (define-entrypoint WSQ_BeginTransaction (int) void
   (lambda (id)
     (vprintf 1 " <WSQ>  WSQ_BeginTransaction ~s \n" id)
+
+    ;; Seed the random number generator:
+    (random-seed (time-nanosecond (current-time)))
+
     (when (unbox curtransaction)
       (error "Nested transactions are not allowed.  Attempted to start ~a within ~a\n" id (unbox curtransaction)))
     (set-box! curtransaction id)
@@ -375,9 +379,6 @@
 			 `(define ,var ,e)))
 		  binds)]
 	   [prog (begin
-		   (printf "SETTING EXTRA INCLUDES TO: ~a\n" extra_includes)
-		   (printf "EMITTING BODY: \n")
-		   (pretty-print bod)
 		   `((include ,(string-append (tryenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
 	           ;; Include the user's code as well:
 	           ,@(map (lambda (x) `(include ,x)) extra_includes)
@@ -401,19 +402,15 @@
 				  (time-nanosecond start-time))
 			       (* 1000.0 1000 1000))))))])
 
+      ;; HACK: For now we set the wsc2 verbosity level based on the WSQ_VERBOSE flag IF WS_VERBOSE isn't set.
       ;;[regiment-verbosity (if (>= verbose-mode) 5 1)]
-      (regiment-verbosity (- verbose-mode 1))
-
+      (unless (getenv "WS_VERBOSE") ;; If set the user is controlling the underlying WS compilers verbosity mode explicity:
+	(regiment-verbosity (- verbose-mode 1)))
       (if (>= verbose-mode 2)
-	  (begin
-	    (printf "\n >>> ASSEMBLED PROG: \n\n") (pretty-print prog) (newline)
-	    ;;(pretty-print (wsparse-postprocess prog))  
-	    ;;(ws prog)
-	    )
-	  (begin 
+	  (begin (printf "\n >>> WSQ ASSEMBLED WS AST: \n\n") (pretty-print prog) (newline))
+	  (when (getenv "WS_VERBOSE")
 	    (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1"))
 	  )
-
 
       (case wsq-engine
         [(SCHEME SCHEMEQUICK)
@@ -871,16 +868,10 @@
   (add-op! opid code)  (add-in-edge! in) (add-out-edge! out))
 
 
-;; Hack, write to a file so we can parse it:
-; (define (ws-parse-string str)
-;   (define tmpfile (format "/tmp/parse_tmp~a.ws" (random 99999999999999999999)))
-;   (with-output-to-file tmpfile (lambda () (display str)))
-;   (ws-parse-file tmpfile))
-
 ;; Create a temporary file just to carry args to a UDF:
 (define (make-args-file strs)
-;  (define tmpfile (format "/tmp/udf_args_tmp~a.ws" (random 99999999999999999999)))
-  (define tmpfile (format "/tmp/udf_args_tmp.ws"))
+  (define tmpfile (format "/tmp/udf_args_tmp~a.ws" (random 99999999999999999999)))
+;  (define tmpfile (format "/tmp/udf_args_tmp.ws"))
   (with-output-to-file tmpfile 
     (lambda () 
       (let loop ((i 0) (strs strs))

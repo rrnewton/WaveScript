@@ -6,7 +6,7 @@ include ../makefile.common
 
 SOURCES = 1_ReuterSource.c 2_Filter.c 3_Project.c \
  4_MatchRecognize_always_succeed.c 5_MatchRecognize_rare_hits.c \
- 6_UDF.c 7_MergeMonotonic.c 7B_MergeFiles.c \
+ 6_UDF.c 6B_UDF_PARSEARGS.c 7_MergeMonotonic.c 7B_MergeFiles.c \
  8_TAQ_reader.c 10_MergeTest.c 
 
 # Unfinished:

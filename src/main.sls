@@ -1881,8 +1881,7 @@
        )
      (void))
 
-;    (printf "regimentc: compile regiment programs!\n")
-    ;; This is a list of option flags mutated by "loop" below.
+    ;; 'opts' is a list of option flags mutated by "argloop" below.
     ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
     ;; FIXME: may want to merge these two eventually; input-parameters added mostly for
     ;;        profiling information, which can have slightly more complex structure
@@ -1903,11 +1902,24 @@
 	 [else (error 'coerce-string "takes string or symbol, not ~s\n" x)]
 	 ;; [else (format "~a" x)]
 	 ))
-      ;; This determines what mode we're in then calls "loop" to process the flags.
+
+      ;; This determines what mode we're in then calls "argloop" to process the flags.
       (define (mainbody)
-        ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("loop")
+
+	;; Before going through the argloop we read relevant
+	;; environment variables: Note, this verbosity setting can be
+	;; overwritten by a command line argument processed by argloop
+	;; below:
+	(let ([verb (getenv "WS_VERBOSE")])
+	  (when verb 
+	    (let ((n (string->number verb)))
+	      (when (> n 1) (set! opts (cons 'verbose opts)))
+	      (regiment-verbosity n)
+	      )))
+
+        ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("argloop")
 	(let ([mode (coerce-symbol (car args))] 
-	      [filenames (loop (map coerce-string (cdr args)))])
+	      [filenames (argloop (map coerce-string (cdr args)))])
 
 	(define (acquire-input-prog callmode ) 
 	  (match filenames
@@ -2025,7 +2037,7 @@
 	    ;; directly.  Code should go in the scheme-script parameter.
 	    ;;
 	    ;; Note, if we're doing it this way we pass the raw
-	    ;; arguments, not those processed by "loop" above.
+	    ;; arguments, not those processed by "argloop" above.
 	    [(and (equal? (car filenames) "--script")) ;;Loosening: ;;(equal? (cadr args) "--script")
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
@@ -2216,7 +2228,7 @@
 
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
-      (define (loop args)
+      (define (argloop args)
         (match args
 
           [() '()]
@@ -2224,26 +2236,26 @@
 	   (set! opts (cons 'verbose opts))
 	   (if (string->number num?)
 	       (begin (regiment-verbosity (string->number num?))
-		      (loop rest))
+		      (argloop rest))
 	       (begin (regiment-verbosity (add1 (regiment-verbosity)))
-		      (loop (cons num? rest))))]
+		      (argloop (cons num? rest))))]
 
 	  [("-n" ,limit ,rest ...)
 	   (wsint-tuple-limit (ASSERT integer? (string->number limit)))
-	   (loop rest)]
+	   (argloop rest)]
 	  ;; Goes with -n... Time query for wsint:
 	  [("-t" ,rest ...)
 	   (wsint-time-query #t)
-	   (loop rest)]
+	   (argloop rest)]
 
 	  ;; This SHOULD also switch on some optimization passes with ws-optimizations-enabled:
-	  [("-O3" ,rest ...) (ws-optimization-level 3) (loop rest)]
-	  [("-O2" ,rest ...) (ws-optimization-level 2) (loop rest)]
+	  [("-O3" ,rest ...) (ws-optimization-level 3) (argloop rest)]
+	  [("-O2" ,rest ...) (ws-optimization-level 2) (argloop rest)]
 
 	  ;; Override the query.c/query.exe default:
 	  [("-o" ,outfile ,rest ...)
 	   (set-c-output-basename! (remove-file-extension outfile))	   
-	   (loop rest)]
+	   (argloop rest)]
 
 	  [("-opt" ,name ,rest ...)
 	   ;(unless (symbol? name) (error 'main "bad option to -opt flag: ~s" name))
@@ -2257,7 +2269,7 @@
 		  (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
 		(unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 		(ws-optimizations-enabled (cons name (ws-optimizations-enabled ))))])
-	   (loop rest)]
+	   (argloop rest)]
 
 	  ;[("-profelements") ]
 	  ;[("-profvtime")  ]
@@ -2278,7 +2290,7 @@
 	     ;[(rcmult refcount-multiheap)         (wsc2-gc-mode )]
 	     [(bo boehm)                   (wsc2-gc-mode 'boehm)]
 	     [else               (error "unsupported garbage collection mode: ~s" name)])
-	   (loop rest)]
+	   (argloop rest)]
 	  
 	  [(,ss ,name ,rest ...) (guard (or (string=? ss "-sigseg") (string=? ss "-ss")))
 	   (set! name (string->symbol name))
@@ -2287,48 +2299,48 @@
 	     [(copy copyalways)         (wsc2-sigseg-mode 'copyalways)]
 	     [(list seglist wsharing)   (wsc2-sigseg-mode 'seglist)]
 	     [else               (error "unsupported sigseg implementation: ~s" name)])
-	   (loop rest)]
+	   (argloop rest)]
 	  
 	  ;; This tells wstiny to split the program into node and server components:
 	  [("-split" ,rest ...)
 	   ;; Using the optimization list as a place to keep track of this:
 	   (ws-optimizations-enabled (cons 'split (ws-optimizations-enabled)))
-	   (loop rest)]
+	   (argloop rest)]
 
 	  ;; [2009.11.13] Not sure where to stick this, putting in the optimizations list for now.
 	  [("-tbb" ,rest ...)
 	   (ws-optimizations-enabled (cons 'tbb (ws-optimizations-enabled)))
-	   (loop rest)]
+	   (argloop rest)]
 
 	  ;; This signals that we include whatever debugging info we can in the output code.
 	  ;; [2007.10.26] Currently it's just used by the wsmlton script, and doees nothing here.
-	  [("-dbg" ,rest ...) (loop rest)]
+	  [("-dbg" ,rest ...) (argloop rest)]
 
-	  [("-noprelude" ,rest ...) (ws-no-prelude #t) (loop rest)]
+	  [("-noprelude" ,rest ...) (ws-no-prelude #t) (argloop rest)]
 
 	  [(".h" ,rest ...) (print-help) (regiment-exit 0)]
 	  
-	  [("-plot" ,rest ...) (set! plot #t) (loop rest)]
-	  [("-repl" ,rest ...) (set! simrepl #t) (loop rest)]
+	  [("-plot" ,rest ...) (set! plot #t) (argloop rest)]
+	  [("-repl" ,rest ...) (set! simrepl #t) (argloop rest)]
 
 	  ;; Do not print output elements on the "main" stream automatically.
-	  [("-noprint" ,rest ...)     (suppress-main-stream-printing #t) (loop rest)]
-	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (loop rest)]
+	  [("-noprint" ,rest ...)     (suppress-main-stream-printing #t) (argloop rest)]
+	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (argloop rest)]
 
-	  [("-nopos" ,rest ...) (regiment-track-source-locations #f) (loop rest)]
+	  [("-nopos" ,rest ...) (regiment-track-source-locations #f) (argloop rest)]
 
 	  ;; How far should the regiment compiler go:
-	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (loop rest)]	 
-	  [("-lt" ,rest ...)  (set! opts (cons 'type-only-verbose opts)) (loop rest)]
-	  [("-ltt" ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
-	  [("-l0" ,rest ...)  (set! opts (cons 'almost-tokens opts))   (loop rest)]
-	  [("-l1" ,rest ...)  (set! opts (cons 'barely-tokens opts))   (loop rest)]
-	  [("-l2" ,rest ...)  (set! opts (cons 'full-tokens opts))  (loop rest)]
+	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (argloop rest)]	 
+	  [("-lt" ,rest ...)  (set! opts (cons 'type-only-verbose opts)) (argloop rest)]
+	  [("-ltt" ,rest ...) (set! opts (cons 'type-only opts)) (argloop rest)]
+	  [("-l0" ,rest ...)  (set! opts (cons 'almost-tokens opts))   (argloop rest)]
+	  [("-l1" ,rest ...)  (set! opts (cons 'barely-tokens opts))   (argloop rest)]
+	  [("-l2" ,rest ...)  (set! opts (cons 'full-tokens opts))  (argloop rest)]
 	  [("-l4" ,rest ...) 
 	   (IFWAVESCOPE (begin) 
 	     (begin (set! makesimcode #t)
 		    (set! opts (cons 'to-simcode opts))))
-	   (loop rest)]	  
+	   (argloop rest)]	  
 	  [("-l5" ,rest ...)
 	   ;; [2006.11.11] Not handled right now:
 	   (IFWAVESCOPE (begin) 
@@ -2336,34 +2348,34 @@
 		    (pass-list 
 		     (snoc emit-nesc (snoc flatten-tokmac
 					   (remq flatten-tokmac (remq emit-nesc (pass-list))))))))
-	   (loop rest)]
+	   (argloop rest)]
 
 	  [("-exit-error" ,rest ...)
 	   (when (>= (regiment-verbosity) 2) (eprintf "SETTING BATCH MODE\n"))
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
-	   (loop rest)]
+	   (argloop rest)]
 
-	  [("-dot" ,rest ...) (dump-graphviz-output #t) (loop rest)]
-	  [("-ret" ,name ,rest ...)  (ws-alternate-return-stream (string->symbol name)) (loop rest)]
-	  [("-main" ,name ,rest ...) (ws-alternate-return-stream (string->symbol name)) (loop rest)]
+	  [("-dot" ,rest ...) (dump-graphviz-output #t) (argloop rest)]
+	  [("-ret" ,name ,rest ...)  (ws-alternate-return-stream (string->symbol name)) (argloop rest)]
+	  [("-main" ,name ,rest ...) (ws-alternate-return-stream (string->symbol name)) (argloop rest)]
 
 
-					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
+					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (argloop rest)]
 	  [("-debug" ,rest ...)		     
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #f)
 	   (regiment-emit-debug #t)
-	   (loop rest)]
+	   (argloop rest)]
 
 	  [("-quiet" ,rest ...)
 	   (regiment-verbosity -1)
-	   (loop rest)]
+	   (argloop rest)]
 	  
 	  [("-dump" ,file ,rest ...)
 	   (set! outfile file)
-	   (loop rest)]
+	   (argloop rest)]
 
 	  ;; How far should the wsc compiler go:
-	  [("-c0" ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
+	  [("-c0" ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (argloop rest)]
 	  
 	  [("-timeout" ,n ,rest ...)
 	   (let ((n (read (open-string-input-port n))))
@@ -2373,12 +2385,12 @@
 	  ;; FIXME: add to print-help (or automate print-help)
 	  [("--disable-pass" ,pass-name ,rest ...)
 	   (set! opts (append `(disable ,pass-name) opts))
-	   (loop rest)]
+	   (argloop rest)]
 
 	  [("--inspect" ,pass-name ,rest ...)
 	   (ws-compiler-hooks
 	    (cons `[,(string->symbol pass-name) ,inspect] (ws-compiler-hooks)))
-	   (loop rest)]
+	   (argloop rest)]
 
      ;; --mic
      ;; FIXME: add to print-help (or automate print-help)
@@ -2389,7 +2401,7 @@
       (set! sched-name (string->symbol sched-name))
       (unless (<= (regiment-verbosity) 0) (printf "Setting scheduler: ~s\n" sched-name))
       (set! opts (append `(scheduler ,sched-name) opts))
-      (loop rest)]
+      (argloop rest)]
 
      ;; --mic
      ;; FIXME: add to print-help (or automate print-help)
@@ -2397,12 +2409,12 @@
       (let ((param-file (open-input-file param-file-name)))
         (set! input-parameters (read param-file))
         (close-input-port param-file))
-      (loop rest)]
+      (argloop rest)]
 	  
      ;; otherwise a file to compile that we add to the list
      [(,fn ,rest ...)
       ;;(regiment-compile-file fn)
-      (cons fn (loop rest))]
+      (cons fn (argloop rest))]
 
      [,_ (error "Bad command line arguments to regimentc: ~a\n" args)]
      ))
