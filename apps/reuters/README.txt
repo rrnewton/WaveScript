@@ -77,11 +77,24 @@ Schema:
 
 "FilterWindows" -- 
 
-"Join" -- [YUAN, TODO]
+
+"JoinWindowed" -- 
+  2-input 1-output, ??? string argument:  
+   Takes 
+         * Two streams with matching windows (i.e. it processes a
+           window from each input stream)
+         * Join predicate, e.g. a wavescope function
+
+  UNFINISHED 
+
+ Emits a new windowed stream containing matches.
+
+
 
 "MergeMonotonic" -- Merge two streams which have monotonically
                     increasing fields
-  
+  2-input 1-output, 1 string argument:  
+
 
 
 "MatchRecognize" -- Corresponds roughly to the MATCH_RECOGNIZE

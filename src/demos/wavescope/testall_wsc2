@@ -96,6 +96,7 @@ go "demo4a_fft.ws"
 go "demo4b_morefft.ws"
 go "demo4d_quoted_constants.ws"
 go "demo4e_fifo_adt.ws"
+go "demo4g_array_fifo.ws"
 
 
 # # This one doesn't work for currently unknown reasons.

@@ -39,6 +39,7 @@ namespace FIFO {
   }
 }
 
+// Simple enqueue and deque a couple elements every iteration: 
 main = iterate _ in timer(3.0) {
   foo = FIFO:make(3);
   if PRINT then print("  FOO1: "++foo++"\n");

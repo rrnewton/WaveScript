@@ -598,7 +598,7 @@ namespace FIFO {
   }
   */
   fun enqueue(q,x) q[0] := List:append(q[0], [x])
-  fun dequeue(q) { x=q[0]`head; q[0] := q[0]`tail; x }
+  fun dequeue(q) { x = head(q[0]); q[0] := tail(q[0]); x }
   fun peek(q,ind) List:ref(q[0], ind);
   fun elements(q) List:length(q[0]);
   fun andmap(fn,q) List:andmap(fn,q[0]);

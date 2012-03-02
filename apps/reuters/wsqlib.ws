@@ -331,6 +331,18 @@ fun wsq_windowJoin(cmpr, combine, left, right, winsize) {
   }
 }
 
+// TODO -- Yuan, do you want to give this a try?
+fun wsq_JoinWindowed(s1, s2, fn) {
+  iterate(x in zip2(s1,s2)) {
+     // let (ss1,ss2) = x;
+
+     // loop over ss1
+     //   loop over ss2   
+     // Build sigseg full of results.
+     // emit results sigseg
+  }
+}
+
 // Requires streams to be the same type:
 fun wsq_mergeMonotonic(extractor, s1, s2) {
   using FIFO;
