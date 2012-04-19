@@ -4,7 +4,8 @@
 // Because Refs are not first class, we use an array to store the start/count.
 type Queue t = (Array t * Array Int);
 
-PRINT = false;
+PRINT = true;
+//PRINT = false;
 
 namespace FIFO {
   fun make(n)   (Array:makeUNSAFE(n), Array:build(2, fun(_) 0));

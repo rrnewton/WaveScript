@@ -68,7 +68,7 @@ include make.common
 
 .c.exe:
 	$(CC) $(FLAGS) -c -I $(CHEZP) $<
-	$(CC) $(FLAGS) $(LIBS) $(<:.c=.o) ../libwsq_runtime.a -o $@
+	$(CC) $(FLAGS) $(<:.c=.o) ../libwsq_runtime.a $(LIBS) -o $@
 
 
 9_example_distributed.out:

@@ -14,22 +14,26 @@ libwsq_runtime.a: wsq_runtime.c
 	ar rcs libwsq_runtime.a wsq_runtime.o $(CHEZP)/kernel.o $(STATICLIBS)
 	@echo;echo MADE SHARED LIBRARY; echo; echo
 
+#example_main.exe: example_main.c 
+#	$(CC) $(FLAGS) -c -I $(CHEZP) example_main.c 
+#	$(CC) $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main.exe
+
 example_main.exe: example_main.c 
 	$(CC) $(FLAGS) -c -I $(CHEZP) example_main.c 
-	$(CC) $(FLAGS) $(LIBS) example_main.o libwsq_runtime.a -o example_main.exe
+	$(CC) $(FLAGS) example_main.o libwsq_runtime.a $(LIBS) -o example_main.exe
 
 shailendra_example.exe: shailendra_example.c
 	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_example.c 
-	$(CC) $(FLAGS) $(LIBS) shailendra_example.o libwsq_runtime.a -o shailendra_example.exe
+	$(CC) $(FLAGS) shailendra_example.o libwsq_runtime.a $(LIBS) -o shailendra_example.exe
 
 
 # DUPLICATED CODE IN THESE:
 shailendra_server.exe: shailendra_server.c
 	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_server.c 
-	$(CC) $(FLAGS) $(LIBS) shailendra_server.o libwsq_runtime.a -o shailendra_server.exe
+	$(CC) $(FLAGS) shailendra_server.o libwsq_runtime.a $(LIBS) -o shailendra_server.exe
 shailendra_client.exe: shailendra_client.c
 	$(CC) $(FLAGS) -c -I $(CHEZP) shailendra_client.c 
-	$(CC) $(FLAGS) $(LIBS) shailendra_client.o libwsq_runtime.a -o shailendra_client.exe
+	$(CC) $(FLAGS) shailendra_client.o libwsq_runtime.a $(LIBS) -o shailendra_client.exe
 
 
 clean:

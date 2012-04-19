@@ -22,11 +22,11 @@ __DEBUG = false;
 FIFO:make       ::  Int -> FIFO t;
 FIFO:empty      ::  FIFO t -> Bool;
 FIFO:enqueue    :: (FIFO t, t) -> ();
-/*
 FIFO:dequeue    ::  FIFO t -> t;
+
 FIFO:peek       :: (FIFO t,Int) -> t;
 FIFO:elements   ::  FIFO t -> Int;
-*/
+
 
 
 namespace FIFO {
@@ -76,6 +76,7 @@ namespace FIFO {
       arrarr[0] := newarr;
       newarr[elems[0]] := newitem;
       elems[0] += 1;
+      start[0] := 0;   // added by Yuan, start be reset
     }
     // ----------------------------------------
     else 
@@ -96,18 +97,59 @@ namespace FIFO {
 
   // Pop an element and return it.
   // Should only succeeed if the FIFO is nonempty, otherwise error.
+  dequeue    :: (FIFO t) -> t;
+
   fun dequeue( q ) {
     if __DEBUG then print("   * Dequeuing from: "++ q ++"\n");
-    // TODO
+    if empty(q)
+    then wserror("FIFO:dequeue - queue empty!")
+    else {
+      let arrarr = q.BUFFER;
+      let arr = arrarr[0];
+      let elems = q.ELEMS;
+      let start = q.START;
+      let st = start[0];
+
+      start[0] := start[0] + 1;
+      elems[0] := elems[0] - 1;
+
+      arr[st];       
+    };    
   }
 
   // Peek ahead without popping.  peek(q,0) should show the next
   // element to be dequeued.
-  fun peek(q, index) { /* TODO */ }
+  peek       :: (FIFO t,Int) -> t;
+  
+  fun peek(q, index) {
+    if __DEBUG then print("   * Peeking from: "++ q ++"\n");
+    if empty(q)
+    then wserror("FIFO:peek - queue empty!");
+        
+    let arrarr = q.BUFFER;
+    let arr = arrarr[0];
+    let len = Array:length( arr );
+    
+    let start = q.START;
+    let elems = q.ELEMS;
+    
+    let idx = start[0] + index;
+
+    if index >= elems[0]
+    then wserror("FIFO:peek - out of boundary!")
+    else {   
+      if idx >= len
+      then idx := idx - len;           
+      
+      arr[idx];  
+    }    
+  }
 
 
   // O(1) -- return the number of elements in the FIFO:
-  fun elements(q) { /* TODO */ }
+  elements   ::  FIFO t -> Int;	 
+  
+  fun elements(q) (q.ELEMS)[0];
 
 }
 
@@ -125,12 +167,17 @@ main = iterate _ in timer(3.0) {
   cntr += 1;
   FIFO:enqueue(myfifo, cntr);
 
-//  FIFO:dequeue(myfifo);
+  emit myfifo;
+
+  print("---- before and after deque -----");
+  FIFO:dequeue(myfifo);
 
   // Then in this test we emit the FIFO *itself* so we can peek at its
   // representation:
   emit myfifo;
 
   // Or we could just peek:
-  // emit FIFO:peek( myfifo );
+  print("peek is: " ++ FIFO:peek( myfifo, 0 ) ++ "\n");
+
+  print("Number of Elements: " ++ FIFO:elements(myfifo) ++ "\n");
 }
