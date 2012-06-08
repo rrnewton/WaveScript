@@ -12,9 +12,11 @@
 (define verbose-mode 
   (let ((mode (getenv "WSQ_VERBOSE")))
     (cond 
-      [(not mode) 0]
+      [(not mode)       0]
       [(equal? mode "") 0]
-      [(string->number mode) => (lambda (x) x)]
+      [(string->number mode) => (lambda (x) 
+	(when (>= x 1) (printf " <WSQ>   Using value of environment variable WSQ_VERBOSE = ~s\n" mode))
+        x)]
       [else (error "invalid setting for WSQ_VERBOSE: ~a" mode)])))
 (define (vprintf lvl . args) (when (>= verbose-mode lvl) (apply printf args)))
 
