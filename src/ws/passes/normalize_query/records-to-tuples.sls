@@ -103,7 +103,8 @@
       [(,[arg*] ... -> ,[res]) `(,@arg* -> ,res)]              ; Function type
       [(Record ,row)                                           ; A Record to desugar!
        (define sorted (list-sort (lambda (a b) (symbol<? (car a) (car b))) (row->alist row)))
-       (list->vector (map cdr sorted))]
+       ;; We then have to continue to process the contents recursively:
+       (Type (list->vector (map cdr sorted)))]
       ;; Including Ref:
       [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]          ; Other type constructor with arguments.
       [,s (guard (string? s)) s]                               ; Allowing strings for uninterpreted C types.
@@ -143,14 +144,13 @@
 	 ]))]
 
     [Bindings (lambda (vars types exprs reconstr exprfun)
-             ;   (printf " RECORDS-TO-TUPLES : processing bindings for: ~s, processed types: ~s \n" vars (map Type types))
 		(reconstr vars (map Type types) (map exprfun exprs)))])
 
   (define records-to-tuples (compose convert-types convert-ops))
 
   (define-testing test-records-to-tuples
     (default-unit-tester 
-      " ?: Records-to-Tuples: Pass to desugar records."
+      " *: Records-to-Tuples: Pass to desugar records."
     `( [(',Type '#((Array (Array (Record (Row TIME Float (Row SYM String (Row VOLUME Int (Row PRICE Float #()))))))) (Array Int) (Array Int)))
 	#((Array (Array #(Float String Float Int))) (Array Int) (Array Int))]
        )))
