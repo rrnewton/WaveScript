@@ -13,7 +13,7 @@
         # We don't DIRECTLY write the .out file here, by convention the test itself writes it:
 	@echo "(Counting on exe $< to write file $@ ...)"
 	@echo 
-	WSQ_VERBOSE=1 ./$<  "&>" /dev/stdout | tee $(<:.exe=.run)
+	./$<  "&>" /dev/stdout | tee $(<:.exe=.run)
 	@echo 
 	@echo Done Running test.
 	@echo -------------------------------
