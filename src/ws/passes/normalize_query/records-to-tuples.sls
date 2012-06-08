@@ -93,23 +93,24 @@
 		      [,oth (fallthru oth tenv)])))]
     )
 
+  ;; Convert record types to a tuple types:
+  ;; Hmm. still no generic traverse for types it looks like.  [2008.11.11] 
+  (define (Type orig) 
+    (match orig ;; No recursion.
+      [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) orig] ; A normal or numeric type variable.
+      [,s (guard (symbol? s)) s]                               ; Simple type constructor
+      [#(,[t*] ...) (apply vector t*)]                         ; A tuple
+      [(,[arg*] ... -> ,[res]) `(,@arg* -> ,res)]              ; Function type
+      [(Record ,row)                                           ; A Record to desugar!
+       (define sorted (list-sort (lambda (a b) (symbol<? (car a) (car b))) (row->alist row)))
+       (list->vector (map cdr sorted))]
+      ;; Including Ref:
+      [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]          ; Other type constructor with arguments.
+      [,s (guard (string? s)) s]                               ; Allowing strings for uninterpreted C types.
+      [,other (error 'records-to-tuples "bad type: ~s" other)]))
+
   ;; 'Bindings' doesn't mix with 'Expr/Types' so this is currently broken up into two passes.
   (define-pass convert-types
-      ;; Convert record types to a tuple types:
-      ;; Hmm. still no generic traverse for types it looks like.  [2008.11.11] 
-      (define (Type orig) 
-	(match orig ;; No recursion.
-	  [(,qt ,v) (guard (tvar-quotation? qt) (symbol? v)) orig]
-	  [,s (guard (symbol? s)) s]    
-	  [#(,[t*] ...) (apply vector t*)]
-	  [(,[arg*] ... -> ,[res]) `(,@arg* -> ,res)]
-	  [(Record ,row)
-	   (define sorted (list-sort (lambda (a b) (symbol<? (car a) (car b))) (row->alist row)))
-	   (list->vector (map cdr sorted))]
-	  ;; Including Ref:
-	  [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]
-	  [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
-	  [,other (error 'records-to-tuples "bad type: ~s" other)]))
     [Expr (lambda (x fallthru)
 	    (match x 
 	      [(assert-type ,[Type -> ty] ,[e]) `(assert-type ,ty ,e)]
@@ -142,8 +143,16 @@
 	 ]))]
 
     [Bindings (lambda (vars types exprs reconstr exprfun)
+             ;   (printf " RECORDS-TO-TUPLES : processing bindings for: ~s, processed types: ~s \n" vars (map Type types))
 		(reconstr vars (map Type types) (map exprfun exprs)))])
 
   (define records-to-tuples (compose convert-types convert-ops))
+
+  (define-testing test-records-to-tuples
+    (default-unit-tester 
+      " ?: Records-to-Tuples: Pass to desugar records."
+    `( [(',Type '#((Array (Array (Record (Row TIME Float (Row SYM String (Row VOLUME Int (Row PRICE Float #()))))))) (Array Int) (Array Int)))
+	#((Array (Array #(Float String Float Int))) (Array Int) (Array Int))]
+       )))
 
 ) ;; End module
