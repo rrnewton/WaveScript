@@ -343,30 +343,33 @@ fun wsq_JoinWindowed(s1, s2, fn) {
   }
 }
 
-// Requires streams to be the same type:
+// Requires streams to be the same type.  The first argument to the
+// function extracts a COMPARABLE quantity.  That is used to determine
+// monotonicity.
+wsq_mergeMonotonic :: ((a -> #b), Stream a, Stream a) -> Stream a ;
 fun wsq_mergeMonotonic(extractor, s1, s2) {
   using FIFO;
   iterate(x in union2(s1,s2)) {
-    state {
-      buf1 = make(10); // ARBITRARY -- FIFO sizes
-      buf2 = make(10);
-    }
-    case x { 
-      Left  (a): buf1.enqueue(a)
-      Right (b): buf2.enqueue(b)
-    };
-    while (buf1.elements > 0 && buf2.elements > 0) {
-      a = buf1.peek(0);      
-      b = buf2.peek(0);      
-      if a.extractor <= b.extractor  then {
-        buf1.dequeue();
-        emit a;
-      } else {
-        buf2.dequeue();
-        emit b;
-      }
-    }
-  }
+   state {
+     buf1 = make(10); // ARBITRARY -- FIFO sizes
+     buf2 = make(10);
+   }
+   case x { 
+     Left  (a): buf1.enqueue(a)
+     Right (b): buf2.enqueue(b)
+   };
+   while (buf1.elements > 0 && buf2.elements > 0) {
+     a = buf1.peek(0);      
+     b = buf2.peek(0);      
+     if a.extractor <= b.extractor  then {
+       buf1.dequeue();
+       emit a;
+     } else {
+       buf2.dequeue();
+       emit b;
+     }
+   }
+ }
 }
 
 fun wsq_join_helper(extractor, s1, s2, pickresult) {

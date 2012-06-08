@@ -50,15 +50,21 @@ sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
 
 // Extra ADT functions augmenting the compiler builtins.
 
-/*
-FIFO:make       ::  Int -> Queue t;
-FIFO:empty      ::  Queue t -> Bool;
-FIFO:enqueue    :: (Queue t, t) -> ();
-FIFO:dequeue    ::  Queue t -> t;
-FIFO:peek       :: (Queue t,Int) -> t;
-FIFO:elements   ::  Queue t -> Int;
-FIFO:andmap     :: (t -> Bool, Queue t) -> Bool;
-*/
+// commented by Yuan
+//FIFO:make       ::  Int -> Queue t;
+//FIFO:empty      ::  Queue t -> Bool;
+//FIFO:enqueue    :: (Queue t, t) -> ();
+//FIFO:dequeue    ::  Queue t -> t;
+//FIFO:peek       :: (Queue t,Int) -> t;
+//FIFO:elements   ::  Queue t -> Int;
+//FIFO:andmap     :: (t -> Bool, Queue t) -> Bool;
+
+FIFO:make       ::  Int -> FIFO t;
+FIFO:empty      ::  FIFO t -> Bool;
+FIFO:enqueue    :: (FIFO t, t) -> ();
+FIFO:dequeue    ::  FIFO t -> t;
+FIFO:peek       :: (FIFO t,Int) -> t;
+FIFO:elements   ::  FIFO t -> Int;
 
 // WARNING: SOME OF THESE WON'T WORK AT META TIME WITH THE OLD ELABORATOR!!!
 List:filter     :: (a -> Bool, List a) -> List a;
@@ -579,6 +585,8 @@ namespace List {
 }
 
 
+////////////////////////////////////////////////////////
+/// Commented by Yuan
 //======================================================================
 /* FIFO Queues */
 
@@ -586,24 +594,175 @@ namespace List {
 // This is a very inefficient initial implementation.
 // Should use circular buffers.
 //type Queue t = Array (List t);
+//namespace FIFO {
+//  fun make(n) Array:make(1,[]);
+//    fun empty(q) q[0] == [];
+//  /*
+//  fun enqueue(q,x) q[0] := x ::: q[0];
+//  fun dequeue(q) {
+//    let (x,ls) = List:choplast(q[0]);
+//    q[0] := ls;
+//   x
+//  }
+//  */
+//  fun enqueue(q,x) q[0] := List:append(q[0], [x])
+//  fun dequeue(q) { x = head(q[0]); q[0] := tail(q[0]); x }
+//  fun peek(q,ind) List:ref(q[0], ind);
+//  fun elements(q) List:length(q[0]);
+//  fun andmap(fn,q) List:andmap(fn,q[0]);
+//  // [2008.04.05] I think I'd like to rename the constructor to this:
+//  makefifo = FIFO:make;
+//}
+
+// This implementation will use a GROWING buffer.
+
+
+// Because Refs are not first class, we use arrays as refs:
+
+// Our queue datatype contains:
+//   (1) A mutable reference to an array (the buffer).
+//       (To keep the array pointer itself mutable this is a nested array.)
+//   (2) The index of the starting element.
+//   (3) The number of elements currently residing in the buffer.
+// type Queue t = (Array (Array t) * Array Int);
+
+// Here we use a RECORD type:
+type FIFO t = (| BUFFER : Array (Array t), 
+                  START  : Array Int,
+                  ELEMS  : Array Int );
+
+__DEBUG = false;
+
+//FIFO:make       ::  Int -> FIFO t;
+//FIFO:empty      ::  FIFO t -> Bool;
+//FIFO:enqueue    :: (FIFO t, t) -> ();
+//FIFO:dequeue    ::  FIFO t -> t;
+
+//FIFO:peek       :: (FIFO t,Int) -> t;
+//FIFO:elements   ::  FIFO t -> Int;
+
 namespace FIFO {
-  fun make(n) Array:make(1,[]);
-    fun empty(q) q[0] == [];
-  /*
-  fun enqueue(q,x) q[0] := x ::: q[0];
-  fun dequeue(q) {
-    let (x,ls) = List:choplast(q[0]);
-    q[0] := ls;
-    x
+
+  // Construct an empty array. #[] is an array-constant / literal:
+  fun make(n)   (| BUFFER = #[ Array:makeUNSAFE(n) ], 
+                   START = #[0],
+                   ELEMS = #[0] );
+
+  // Is a FIFO Queue empty?
+  fun empty(q)  (q.ELEMS)[0] == 0;
+
+
+  enqueue    :: (FIFO t, t) -> ();
+
+  // Enqueing may need to increase the buffer size.
+  fun enqueue(q, newitem) {
+    if __DEBUG then print("\n   * Enqueing "++ newitem ++" "++ q ++"\n");
+
+    let arrarr = q.BUFFER;
+    let arr = arrarr[0];
+    let elems = q.ELEMS;
+    let start = q.START;
+
+    // How much actual storage do we have?
+    let len = Array:length( arr );
+
+    // Buffer Growing:
+    // ----------------------------------------
+    if elems[0] == len then {
+      if __DEBUG then print("  --> GROWING from "++ len ++ " TO " ++ len*2 ++ "\n");
+      let newarr = Array:makeUNSAFE( len * 2 );
+
+      // The current contents may be "wrapped around", but the new
+      // array one won't be.  Note, Array:blit is like a memcpy:
+      let firstblit = elems[0];
+      let numwrapped = start[0] + elems[0] - len;
+      if (numwrapped > 0) then {
+        firstblit -= numwrapped;
+        // If the elements WERE wrapped around, copy the wrapped bunch here:
+	Array:blit(newarr, firstblit, arr, 0, numwrapped);
+      };
+      // Copy the initial segment here (this is out of order):
+      Array:blit(newarr, 0, arr, start[0], firstblit);
+
+      // Finally, replace the old array with the new array:
+      arrarr[0] := newarr;
+      newarr[elems[0]] := newitem;
+      elems[0] += 1;
+      start[0] := 0;   // added by Yuan, start be reset
+    }
+    // ----------------------------------------
+    else 
+    {
+      let ind = start[0] + elems[0];
+
+      // Next write the element into the correct position, possibly
+      // wrapping around:
+      if ind >= len
+      then arr[ind-len] := newitem
+      else arr[ind]     := newitem;
+      // Increase the count by one:
+      elems[0] := elems[0] + 1;
+    };
+    if __DEBUG then print("   * Finished Enqueueing "++ newitem ++" "++ q ++"\n");
   }
-  */
-  fun enqueue(q,x) q[0] := List:append(q[0], [x])
-  fun dequeue(q) { x = head(q[0]); q[0] := tail(q[0]); x }
-  fun peek(q,ind) List:ref(q[0], ind);
-  fun elements(q) List:length(q[0]);
-  fun andmap(fn,q) List:andmap(fn,q[0]);
-  // [2008.04.05] I think I'd like to rename the constructor to this:
-  makefifo = FIFO:make;
+
+
+  // Pop an element and return it.
+  // Should only succeeed if the FIFO is nonempty, otherwise error.
+  dequeue    :: (FIFO t) -> t;
+
+  fun dequeue( q ) {
+    if __DEBUG then print("   * Dequeuing from: "++ q ++"\n");
+    if empty(q)
+    then wserror("FIFO:dequeue - queue empty!")
+    else {
+      let arrarr = q.BUFFER;
+      let arr = arrarr[0];
+      let elems = q.ELEMS;
+      let start = q.START;
+      let st = start[0];
+
+      start[0] := start[0] + 1;
+      elems[0] := elems[0] - 1;
+
+      arr[st];       
+    };    
+  }
+
+  // Peek ahead without popping.  peek(q,0) should show the next
+  // element to be dequeued.
+  peek       :: (FIFO t,Int) -> t;
+  
+  fun peek(q, index) {
+    if __DEBUG then print("   * Peeking from: "++ q ++"\n");
+    if empty(q)
+    then wserror("FIFO:peek - queue empty!");
+        
+    let arrarr = q.BUFFER;
+    let arr = arrarr[0];
+    let len = Array:length( arr );
+    
+    let start = q.START;
+    let elems = q.ELEMS;
+    
+    let idx = start[0] + index;
+
+    if index >= elems[0]
+    then wserror("FIFO:peek - out of boundary!")
+    else {   
+      if idx >= len
+      then idx := idx - len;           
+      
+      arr[idx];  
+    }    
+  }
+
+
+  // O(1) -- return the number of elements in the FIFO:
+  elements   ::  FIFO t -> Int;	 
+  
+  fun elements(q) (q.ELEMS)[0];
+
 }
 
 //include "fifostatic.ws"
