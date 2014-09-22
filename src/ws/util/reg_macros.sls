@@ -19,7 +19,8 @@
 (library (ws util reg_macros)
   (export 
       eq-any?
-      for grep rep
+      for ;; grep  ;; [2014.09.22] Having a problem with this in PLT but not chez.. Huh?
+      rep
       cheap-fluid-let
       let-match match?
       mvlet
