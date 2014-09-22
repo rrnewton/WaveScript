@@ -20,4 +20,6 @@ else
 fi 
 
 which regiment
-regiment
+echo "Testing system load/JIT time:"
+time regiment
+
