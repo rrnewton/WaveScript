@@ -4,10 +4,12 @@
 
 depends/compiled/
 src/_parser.log
+src/bin/wsparse
 src/compiled/
 src/main/compiled/
 src/main_r6rs.sls
 src/main_r6rs/compiled/
+src/parser/compiled/
 src/ws/common.sls
 src/ws/compat/compiled/
 src/ws/compiled/
