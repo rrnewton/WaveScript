@@ -10,7 +10,7 @@ then exec regiment.plt  $*;
 
 # Otherwise choose a default, in a particular preference order:
 
-if [ "`which chez`" != "" ]
+elif [ "$CHEZD" != "" ]
 then exec regiment.chez  $*;
 else exec regiment.plt   $*;
 fi
