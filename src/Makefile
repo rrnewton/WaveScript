@@ -8,9 +8,8 @@
 #                                                                              #
 #   make          -- build a handy default set of targets                      #
 #   make wsparse  -- build parser                                              #
-#   make ikarus                                                                #
 #   make chez                                                                  #
-#   make pltbc    -- build WS under different Scheme implementations.          #
+#   make plt      -- build WS under PLT/Racket implementations.                #
 #                                                                              #
 #------------------------------------------------------------------------------#
 
@@ -22,10 +21,10 @@ default:
 	@echo; echo GENERATING AGGREGATE LIBRARIES
 	@echo "======================================================================"
 	$(MAKE) aggregated
-	@echo; echo BUILDING COMPILER # UNDER IKARUS
+	@echo; echo BUILDING COMPILER
 	@echo "======================================================================"
-#	if $(MAKE) chez; then echo; else echo "  ==== FALLING BACK TO IKARUS ===="; $(MAKE) ik; fi
-	@if $(MAKE) chezincr; then echo; else echo "  ==== FALLING BACK TO IKARUS ===="; $(MAKE) ik; fi
+#	if $(MAKE) chez; then echo; else echo "  ==== FALLING BACK TO RACKET ===="; $(MAKE) plt; fi
+	@if $(MAKE) chezincr; then echo; else echo "  ==== FALLING BACK TO RACKET ===="; $(MAKE) plt; fi
 
 # 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source w/ Unsafe Optimizations
 # 	@echo "======================================================================"
@@ -99,13 +98,8 @@ ifneq (,$(CHEZD)) # CHEZD being set is a proxy for having chez.
   DEFAULTSCHEME=$(CHEZ) 
   R6MODE= --program
 else
-ifneq (,$(shell which ikarus))
-  DEFAULTSCHEME=$(IKARUS)
-  R6MODE= --r6rs-script
-else
   DEFAULTSCHEME=plt-r6rs
   R6MODE=
-endif
 endif
 endif
 endif
