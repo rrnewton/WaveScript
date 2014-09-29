@@ -12,7 +12,7 @@ elif [ "$REGIMENTHOST" == plt ]; then
     cd src
     make wsparse
     make aggregated
-    make pltbc
+    make plt
 
 else
     echo "REGIMENTHOST is not set to a known setting! ($REGIMENTHOST)"
@@ -23,3 +23,5 @@ which regiment
 echo "Testing system load/JIT time:"
 time regiment
 
+echo "Running minimal tests"
+make test
