@@ -2,7 +2,7 @@
 ;; This just encapsulates common imports for pass modules:
 
 (module common mzscheme
-; (require-regiment "plt/iu-match.ss")
+; (require-wavescript "plt/iu-match.ss")
  (require (lib "include.ss")
 	  ;(only "../generic/constants.ss" chezimports ASSERT)
           "iu-match.ss"
@@ -11,7 +11,7 @@
 	  "chez_compat.ss"
 	  "../generic/util/helpers.ss"
           "../generic/compiler_components/prim_defs.ss"
-          "../generic/compiler_components/regiment_helpers.ss"
+          "../generic/compiler_components/wavescript_helpers.ss"
           "../generic/compiler_components/type_environments.ss"
           "../generic/compiler_components/hm_type_inference.ss"
           "../generic/compiler_components/reg_core_generic_traverse.ss"
@@ -27,7 +27,7 @@
            (all-from "chez_compat.ss")
            (all-from "../generic/util/helpers.ss")
            (all-from "../generic/compiler_components/prim_defs.ss")
-           (all-from "../generic/compiler_components/regiment_helpers.ss")
+           (all-from "../generic/compiler_components/wavescript_helpers.ss")
 	   (all-from "../generic/compiler_components/type_environments.ss")
            (all-from "../generic/compiler_components/hm_type_inference.ss")
            (all-from "../generic/compiler_components/reg_core_generic_traverse.ss" )

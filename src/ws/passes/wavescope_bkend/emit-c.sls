@@ -855,7 +855,7 @@
 	   (list stmt* val)]
 
 	  [,v (guard (symbol? v))
-	      (ASSERT (compose not regiment-primitive?) v)
+	      (ASSERT (compose not wavescript-primitive?) v)
 	      (wrap (Var v))]
 
 	  ;[(if ,[Simple -> test] ,conseq ,altern)
@@ -918,9 +918,9 @@
 	 (wrap `("(",x "." ,(sym2str fld)")"))]
 
 	; ============================================================
-	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	[(,prim ,rand* ...) (guard (wavescript-primitive? prim))
 	 (Prim (cons prim rand*) name type)]
-	[(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+	[(assert-type ,t (,prim ,rand* ...)) (guard (wavescript-primitive? prim))
 	 ;(printf "\nANNOTATED PRIM: ~s\n" prim)
 	 (Prim `(assert-type ,t (,prim . ,rand*)) name type)]
 
@@ -1278,7 +1278,7 @@
             (make-output-printer typ)))
 
     #;
-    (unless (<= (regiment-verbosity) 0)
+    (unless (<= (wavescript-verbosity) 0)
       (printf "WSQ connection graph:\n")
       (newline)(display (text->string wsq))(newline)(newline))
     ;(break)
@@ -1409,9 +1409,9 @@
 	  [(quote ,c) (Const #f #f c)]
           [nulltimebase (Const #f #f 'nulltimebase)]
 
-          [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var var)]
+          [(deref ,var) (ASSERT (not (wavescript-primitive? var))) (Var var)]
           [nullseg "WSNULLSEG"] ;; [2008.07.28] hack
-          [,v (guard (symbol? v)) (ASSERT (compose not regiment-primitive?) v) (Var v)]
+          [,v (guard (symbol? v)) (ASSERT (compose not wavescript-primitive?) v) (Var v)]
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
@@ -2042,7 +2042,7 @@ int main(int argc, char ** argv)
 
 
 (define (boilerplate_postmain scheduler return_name return_type)   
-  (unless (<= (regiment-verbosity) 0) (printf "Generating code for returning stream of type ~s\n" return_type))
+  (unless (<= (wavescript-verbosity) 0) (printf "Generating code for returning stream of type ~s\n" return_type))
   (case scheduler
     [(default-scheduler train-scheduler depth-first)
      `("
@@ -2176,7 +2176,7 @@ int main(int argc, char ** argv)
 	   ;; Make some exceptions for things that are in Regiment but not WaveScript.
 	   ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	   (filter (lambda (e) (not (memq (car e) exceptions)))
-	     (append regiment-basic-primitives
+	     (append wavescript-basic-primitives
 		     wavescript-primitives))))
       )
     ))

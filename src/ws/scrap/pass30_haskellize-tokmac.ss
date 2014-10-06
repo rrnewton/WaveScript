@@ -118,7 +118,7 @@
 	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 #;
 	[(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
+	 (guard (wavescript-primitive? prim))
 	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
 	[(let ([,lhs ,[rhs]]) ,[body])

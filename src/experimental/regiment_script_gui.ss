@@ -11,7 +11,7 @@ exec $WAVESCRIPTD/depends/petite_swl --script "$0" ${1+"$@"}
 ; (load "main_chez.ss")
 
 ;(parameterize ([current-directory "~/cur"])
-(load (string-append (getenv "WAVESCRIPTD") "/src/regiment.ss"))
+(load (string-append (getenv "WAVESCRIPTD") "/src/wavescript.ss"))
 
 ; (suppress-greeting #t)
 ; (scheme-start main)

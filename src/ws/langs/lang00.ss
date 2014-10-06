@@ -1,8 +1,8 @@
-;;; Lang 00: trivial regiment stubs
+;;; Lang 00: trivial wavescript stubs
 ;===============================================================================
 
 (define-language
-  'regiment-stub-evaluator
+  'wavescript-stub-evaluator
   (make-begin
     `(,(base-language 'return)
       

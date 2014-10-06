@@ -406,7 +406,7 @@
      (guard (printf "GUARDING ~s \n" id*) #f)
      (printf " LET: ~s\n" id*)]
     [(,prim ,[rand*] ...)
-     (guard (regiment-primitive? prim))
+     (guard (wavescript-primitive? prim))
      (printf "  HMM ~s\n" prim)
      'prim]
     [,oth 'fail])))
@@ -420,7 +420,7 @@
      (guard (printf "GUARDING ~s \n" id*) #f)
      (printf " LET: ~s\n" id*)]
     [(,prim ,[rand*8] ...)
-     (guard (regiment-primitive? prim))
+     (guard (wavescript-primitive? prim))
      (printf "  HMM ~s\n" prim)
      'prim]
     [,oth 'fail])))

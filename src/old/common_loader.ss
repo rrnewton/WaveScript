@@ -38,7 +38,7 @@
 ;; Lists all the Regiment primitives and their types:
 (common:load-source "generic/compiler_components/prim_defs.ss")
 
-(common:load-source "generic/compiler_components/regiment_helpers.ss")
+(common:load-source "generic/compiler_components/wavescript_helpers.ss")
 
 ;; [2007.04.30] The "type?" predicate is currently used in grammars.ss
 ;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #t)))] [else (void)])
@@ -113,7 +113,7 @@
 
 (common:load-source "generic/compiler_components/reg_core_generic_traverse.ss") 
 
-;; Type inference is used by verify-regiment, below.
+;; Type inference is used by verify-wavescript, below.
 ;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #t)))] [else (void)])
 (common:load-source "generic/compiler_components/hm_type_inference.ss") 
 ;(cond-expand [(chez (eval-when (compile eval load) (compile-profile #f)))] [else (void)])
@@ -174,7 +174,7 @@
 (if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
 
 
-(common:load-source "generic/passes/normalize_source/verify-regiment.ss")          
+(common:load-source "generic/passes/normalize_source/verify-wavescript.ss")          
 (common:load-source "generic/passes/normalize_source/typecheck.ss")                
 (common:load-source "generic/passes/normalize_source/desugar-pattern-matching.ss") 
 

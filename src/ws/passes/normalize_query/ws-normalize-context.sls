@@ -82,7 +82,7 @@
 
       ;; Now we address normal value primitives.
       ;; Some of these may go away (optimization)
-      [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+      [(,prim ,rand* ...) (guard (wavescript-primitive? prim))
        (if #f ;(>= (ws-optimization-level) 3) ;; TEMPTOGGLE
 	   ;; [2007.12.22] This is the most extreme version: 
 	   ;; Kill all value primitives, assume no error conditions.  (And by definition, no side effects.)

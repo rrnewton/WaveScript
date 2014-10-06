@@ -16,7 +16,7 @@
           [(letrec ([,lhs* ,[rhs*]] ...) ,[body])
 	   `(letrec ([,lhs* ,rhs*] ...) ,body)]
           [(,prim ,[rand*] ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
            (process-primapp prim rand*)]          
           [,unmatched
             (error 'TEMPLATE "invalid expression: ~s"

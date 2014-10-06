@@ -91,7 +91,7 @@
 				   ;; This is node-local code now, check against TML prims:
 				   [(,prim ,[args] ...)
 				    (guard (or (token-machine-primitive? prim)
-					       ;(regiment-primitive? prim)
+					       ;(wavescript-primitive? prim)
 					       (basic-primitive? prim)))
 				    (void)]
 				   [(if ,[x] ,[y] ,[z]) (void)]

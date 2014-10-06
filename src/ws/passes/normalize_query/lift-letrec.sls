@@ -87,7 +87,7 @@
 
 
           [(,prim ,[rand* rand-decl*] ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
            (values
              `(,prim ,rand* ...)
              (apply append rand-decl*))]

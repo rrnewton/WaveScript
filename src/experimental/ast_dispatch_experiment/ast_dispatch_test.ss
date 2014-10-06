@@ -1,6 +1,6 @@
 #! /bin/sh
 #|
-exec regiment i --script "$0"
+exec wavescript i --script "$0"
 |#
 
 ;; The "datatype" variants: 

@@ -4,7 +4,7 @@
 exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
-;(module regiment_pltscript mzscheme  
+;(module wavescript_pltscript mzscheme  
 
   (eval '(define start-dir (current-directory)))
   
@@ -12,7 +12,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   (DEBUGMODE (printf "Running in DEBUG mode.\n"))
   
-  (eval '(define regiment-origin "PLT"))
+  (eval '(define wavescript-origin "PLT"))
   (eval '(define svn-revision 'unknown-svn-rev))
 
   ;; Bring this out to top level:

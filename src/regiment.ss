@@ -24,8 +24,8 @@
 ;;  "compiled .so"
 ;;  "compiled .boot"
 ;;  "saved heap"
-(unless (top-level-bound? 'regiment-origin)
-  (define-top-level-value 'regiment-origin "unknown")) ;; This tracks how the system was loaded.
+(unless (top-level-bound? 'wavescript-origin)
+  (define-top-level-value 'wavescript-origin "unknown")) ;; This tracks how the system was loaded.
 
 ;; [2009.03.12] Temp: for r6rs chez:
 #;
@@ -42,7 +42,7 @@
 (define invoke-dir 
   (if (< (length (command-line)) 2)
       (begin 
-	(warning 'regiment.ss "script should take at least one argument.  (First argument should be working directory.)")
+	(warning 'wavescript.ss "script should take at least one argument.  (First argument should be working directory.)")
 	(printf "\n **** DEFAULTING TO CURRENT DIRECTORY: ~s\n\n" (current-directory))
 	(current-directory))
       (cadr (command-line))))
@@ -51,12 +51,12 @@
 ;; from which it was originally invoked.  Switch to this directory.
 
 
-;(unless (file-exists? invoke-dir) (error 'regiment.ss "First argument should be working directory.  Dir does not exist: " invoke-dir))
+;(unless (file-exists? invoke-dir) (error 'wavescript.ss "First argument should be working directory.  Dir does not exist: " invoke-dir))
 (current-directory invoke-dir)
 
 ;; Now invoke the main program based on the command line arguments.
 
-;(if (null? (command-line)) (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
+;(if (null? (command-line)) (error 'wavescript.ss "script must take at least one argument.  First argument should be working directory."))
 
 #;
 ;; Trying to set the svn rev when the code is *compiled*:
@@ -83,7 +83,7 @@
 			    (loop (read-char in))))))))
 	 (and (not (eq? (machine-type) 'i3nt))
 		  (zero? (system "which svn &> /dev/null"))
-		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
+		  (parameterize ([current-directory (string-append (default-wavescriptd) "/src")])
 		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
 		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
 		      (if (eof-object? rev)

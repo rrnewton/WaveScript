@@ -337,7 +337,7 @@
   (syntax-rules ()
     [(_ (name field ...))
      (begin (define-record-type name (fields field ...))
-	    ;; Allows the reader to read in regiment records.  System should work without this:
+	    ;; Allows the reader to read in wavescript records.  System should work without this:
 	    ;(define reg:struct-dummy-val (record-reader 'name (type-descriptor name)))
 	    )]))
 ;; TEMPTOGGLE: This is a simple vector based struct instead:

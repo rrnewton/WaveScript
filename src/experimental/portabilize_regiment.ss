@@ -4,5 +4,5 @@
 
 ;;;; To use this, first switch reg:define-struct to use vectors rather than
 
-(define regiment (expand-file "main_chez.ss"))
+(define wavescript (expand-file "main_chez.ss"))
 

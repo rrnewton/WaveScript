@@ -3,7 +3,7 @@
 if [ ! -d "$WAVESCRIPTD" ];
 then 
   DIR=`dirname $0`
-  export WAVESCRIPTD=`$DIR/find_regimentd`
+  export WAVESCRIPTD=`$DIR/find_wavescriptd`
   CUR=`pwd`
   if [ -d "$WAVESCRIPTD" ];
   then cd "$WAVESCRIPTD"

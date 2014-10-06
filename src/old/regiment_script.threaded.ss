@@ -16,7 +16,7 @@ fi
 ;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])
 (parameterize ([current-directory (car (command-line-arguments))])
-  (load (string-append (getenv "WAVESCRIPTD") "/src/regiment.ss")))
+  (load (string-append (getenv "WAVESCRIPTD") "/src/wavescript.ss")))
   
 ; (suppress-greeting #t)
 ; (scheme-start main)

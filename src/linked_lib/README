@@ -10,6 +10,6 @@ extension:
  *.cpp, *.hpp -- files for wsc
  *.c, *.h     -- files for wsc2
  *.java       -- files for wsjava
- *.tm         -- token machine files for old regiment backend
+ *.tm         -- token machine files for old wavescript backend
 
 

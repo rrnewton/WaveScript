@@ -54,7 +54,7 @@
 	     [,var (guard (symbol? var))
 		   (cond
 		    [(assq var var-table) (cdr (assq var var-table))]
-		    [(regiment-primitive? var) var]
+		    [(wavescript-primitive? var) var]
 		    ;; FIXME: Currently library-primitives are only allowed as operators...
 		    [else (error 'rename-vars "variable was not bound, how can this happen?: ~a ~a"
 				 var var-table)])]

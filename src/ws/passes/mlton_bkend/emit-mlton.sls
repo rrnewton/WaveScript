@@ -1557,7 +1557,7 @@
 	   ;; Make some exceptions for things that are in Regiment but not WaveScript.
 	   ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	   (filter (lambda (e) (not (memq (car e) exceptions)))
-	     (append regiment-basic-primitives
+	     (append wavescript-basic-primitives
 		     wavescript-primitives))))
       )))
 

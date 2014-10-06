@@ -10,7 +10,7 @@ exec mzscheme -qt "$0" ${1+"$@"}
 
 (module wsparse_server mzscheme 
 
-  (require "regiment_parser.ss")
+  (require "wavescript_parser.ss")
   (require (lib "process.ss"))
   (require (lib "pretty.ss"))
 

@@ -35,8 +35,8 @@
 (define (with-fun-binding name formals funbody body)
   (make-letrec `([,name ,(make-fun formals funbody)]) body))
 
-;; Should be used everywhere below rather than "regiment-primitive?"
-(define (real-primitive? x) (and (regiment-primitive? x) 
+;; Should be used everywhere below rather than "wavescript-primitive?"
+(define (real-primitive? x) (and (wavescript-primitive? x) 
 				 (not (eq? x 'tuple))
 				 (not (eq? x 'tupref))))
 
@@ -61,7 +61,7 @@
     (define Expr ;(Expr tenv)
       (lambda (exp emitter)
 	(match exp
-	  [,v (guard (symbol? v) (regiment-constant? v))
+	  [,v (guard (symbol? v) (wavescript-constant? v))
 	      (ASSERT (not (eq? v 'Array:null)))
 	      (obj 'Const v)]
 	  [,v (guard (symbol? v)) (obj 'Var v)]

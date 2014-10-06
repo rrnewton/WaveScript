@@ -10,9 +10,9 @@ else echo CHEZ SCHEME not found.; exit -1
 fi 
 |#
 
-;;;; This script is just an executable wrapper script to regiment.ss
+;;;; This script is just an executable wrapper script to wavescript.ss
 
 ;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])
 (parameterize ([current-directory (car (command-line-arguments))])
-  (load (string-append (getenv "WAVESCRIPTD") "/src/regiment.ss")))
+  (load (string-append (getenv "WAVESCRIPTD") "/src/wavescript.ss")))

@@ -65,7 +65,7 @@
           [(fold ,fun ,seed ,region)
 	   `(foldwith ,(find-skeleton ,region) ,fun ,seed ,region)]
           [(,prim ,rand* ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
 	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))

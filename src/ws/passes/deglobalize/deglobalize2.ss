@@ -46,16 +46,16 @@
   ;; fields in the let bindings:
 
 ;; TODO: TEST THIS
-(define (regiment-free-vars expr)
+(define (wavescript-free-vars expr)
   (list-rem-dups 
    (let loop ((env ()) (expr expr))
      (match expr	 
        [,var (guard (symbol? var))
-	     (if (or (regiment-constant? var)
+	     (if (or (wavescript-constant? var)
 		     (memq var env))
 		 '() (list var))]
        [(quote ,x) '()]
-       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+       [(,prim ,rand* ...) (guard (wavescript-primitive? prim))
 	(let ((frees (map (lambda (x) (loop env x)) rand*)))
 	  (apply append frees))]
 
@@ -79,13 +79,13 @@
 	  (apply append (loop newenv expr)
 		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
        [(,letrec ,junk ...) (memq letrec '(letrec lazy-letrec))
-	(error 'regiment-free-vars "badly formed letrec: ~s" `(,letrec ,junk))]
+	(error 'wavescript-free-vars "badly formed letrec: ~s" `(,letrec ,junk))]
 |#
 
 
        [(app ,[opera*] ...)
 	(apply append opera*)]
-       [,else (error 'regiment-free-vars "unmatched expression: ~s" expr)]))))
+       [,else (error 'wavescript-free-vars "unmatched expression: ~s" expr)]))))
 
 
   (define new-prims
@@ -119,7 +119,7 @@
 			   ('SCOREFUN [Var Type Expr])
 			   ('INPUT Expr))]
 	     )]
-	  ;; Prune down the regiment grammar.
+	  ;; Prune down the wavescript grammar.
 	  [pruned 
 	   (filter (lambda (prod)
 		     (match prod
@@ -131,7 +131,7 @@
 		       ;; Also take off the Program production
 		       [(Program ,_ ...) #f]
 		       [,else #t]))
-	     initial_regiment_grammar)])
+	     initial_wavescript_grammar)])
       (append newbinds pruned)))
 
 
@@ -188,7 +188,7 @@
 	 (define comm-outputs
 	   (foldl (match-lambda ([,lhs ,ty ,annots ,rhs] ,acc)
 		    (match rhs 
-		      [(,cp ,args ...) (guard (regiment-primitive? cp)
+		      [(,cp ,args ...) (guard (wavescript-primitive? cp)
 					      (memq cp comm-prims))
 		       ;`([,lhs ,(recover-type lhs tenv)] . ,acc)
 		       `([,lhs ,ty] . ,acc)
@@ -212,12 +212,12 @@
 	       [(,lhs ,ty ,annots ,rhs)
 		(match rhs 
 		  ;; This breaks the segment.
-		  [(,commprim ,args ...) (guard (regiment-primitive? commprim)
+		  [(,commprim ,args ...) (guard (wavescript-primitive? commprim)
 						(memq commprim comm-prims))
 		   ()]
 		  ;; Otherwise trace the dependencies, and include those decls.
 		  [,other (cons `[,lhs ,ty ,annots ,rhs]
-				(apply append (map loop (regiment-free-vars other))))]
+				(apply append (map loop (wavescript-free-vars other))))]
 		  )]))
 	   (let ([x (loop var)])
 	     (if (null? x) var
@@ -227,7 +227,7 @@
 	 ;; Only works if there are no cycles.
 	 (define (tsort-bindings bnds)
 	   (define edges (map (lambda (bnd)
-				[list (car bnd) (regiment-free-vars (last bnd))])
+				[list (car bnd) (wavescript-free-vars (last bnd))])
 			   bnds))
 	   (if (cyclic? edges)
 	       (error 'deglobalize2:tsort-bindings
@@ -271,7 +271,7 @@
 	       [,other (error 'transform-expr "bad binding: ~s" other)]))
 	   (define (Expr exp)
 	     (match exp
-	       [,x (guard (symbol? x) (not (regiment-constant? x)))
+	       [,x (guard (symbol? x) (not (wavescript-constant? x)))
 		   (transform-varref x)]
 	       [(quote ,v) `(quote ,v)]
 	       [(lambda ,v* (,[transform-type -> ty*] ...) ,[body])
@@ -286,7 +286,7 @@
 	       [(rmap ,[fun] ,[reg]) `(smap ,fun ,reg)]
 	       [(nodeid ,_) `(my-id)]
 
-	       [(,p ,[x*] ...) (guard (regiment-primitive? p))
+	       [(,p ,[x*] ...) (guard (wavescript-primitive? p))
 		`(,p ,x* ...)]
 	       [,other (error 'transform-expr "unmatched: ~s" other)]
 	       ))
@@ -313,7 +313,7 @@
 	     (match-lambda ([,lhs ,ty ,annots ,rhs] ,acc)
 	       ;; This is structured so as to insure we handle all comm-prims:
 	       (trace-match COMM? rhs 
-		 [(,commprim ,args ...) (guard (regiment-primitive? commprim)
+		 [(,commprim ,args ...) (guard (wavescript-primitive? commprim)
 					       (memq commprim comm-prims))
 		  (match rhs
 
@@ -546,7 +546,7 @@
 	       (match bnd
 		 [(,lhs ,ty ,annots ,rhs)
 		  (match rhs ;; No match-recursion here.
-		    ;;		[,v (guard (regiment-constant? v)) ]
+		    ;;		[,v (guard (wavescript-constant? v)) ]
 
 		    ;; Variable references are either "local" or references to 
 		    ;; the output of other communication expressions.		    
@@ -572,7 +572,7 @@
 			     (loop fun) (loop sig))]
 
 		    ;; This breaks the segment.
-		    [(,commprim ,args ...) (guard (regiment-primitive? commprim)
+		    [(,commprim ,args ...) (guard (wavescript-primitive? commprim)
 						  (memq commprim comm-prims))
 		     ()]
 		    

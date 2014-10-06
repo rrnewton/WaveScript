@@ -27,5 +27,5 @@
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:
-; (mvlet (((prog _) (read-regiment-source-file "demos/token_machs/dyn_extrefset.tm"))) (set! theprog (at prog 'verbose 'barely-tokens)))
-; (load-regiment "demos/regiment/nested_regions.rs")
+; (mvlet (((prog _) (read-wavescript-source-file "demos/token_machs/dyn_extrefset.tm"))) (set! theprog (at prog 'verbose 'barely-tokens)))
+; (load-wavescript "demos/wavescript/nested_regions.rs")

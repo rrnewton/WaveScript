@@ -63,5 +63,5 @@ sigs
 
 
 
-; (annotate-program (mvlet (((a b) (read-regiment-source-file "demos/drawing_board/double_nested.rs"))) a))
-; (export-type (type-expression (mvlet (((a b) (read-regiment-source-file "demos/drawing_board/double_nested.rs"))) a) ()))
+; (annotate-program (mvlet (((a b) (read-wavescript-source-file "demos/drawing_board/double_nested.rs"))) a))
+; (export-type (type-expression (mvlet (((a b) (read-wavescript-source-file "demos/drawing_board/double_nested.rs"))) a) ()))

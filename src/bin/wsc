@@ -3,12 +3,12 @@
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 TMP=`dirname $0`
-if [ -f "$TMP/assert_regimentd" ]; 
-then source "$TMP/assert_regimentd"; fi
+if [ -f "$TMP/assert_wavescriptd" ]; 
+then source "$TMP/assert_wavescriptd"; fi
 
 # Make sure to call the script in this directory:
 if [ "$WAVESCRIPTEXEC" == "" ]; 
-then WAVESCRIPTEXEC=`dirname $0`/regiment; 
+then WAVESCRIPTEXEC=`dirname $0`/wavescript; 
 fi
 
 CCPASSTHRU=""

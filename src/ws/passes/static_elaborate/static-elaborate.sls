@@ -69,7 +69,7 @@
 (define static-elaborate-grammar
   ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
   (lambda (subcheck)
-    `( ,@base_regiment_forms
+    `( ,@base_wavescript_forms
        [Expr ('lambda . ValidLambda)]
        ;; Lambda's are no longer allowed to have free-vars.
        [ValidLambda ,(lambda (ls)
@@ -152,7 +152,7 @@
       (lambda (exp)
 	(match exp
 	  [(,prim ,args ...)
-	   (guard (regiment-primitive? prim))
+	   (guard (wavescript-primitive? prim))
 	   (match (caddr (get-primitive-entry prim))
 	     [(Stream ,t) #t]
 	     [,else #f])]
@@ -353,7 +353,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      (IFDEBUG (when (>= (regiment-verbosity) 2) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
+      (IFDEBUG (when (>= (wavescript-verbosity) 2) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -375,7 +375,7 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (IFDEBUG (when (>= (regiment-verbosity) 2)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
+      (IFDEBUG (when (>= (wavescript-verbosity) 2)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
@@ -415,7 +415,7 @@
           [(tupref ,n ,m ,[x]) x]
           [(tuple ,[args] ...) (apply + args)]
           [(,prim ,[rands] ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
            (apply fx+ rands)]
           [(begin ,(stmt) ...) (apply + stmt)]
 
@@ -445,7 +445,7 @@
           [(foreign-app ',realname ,[arg*] ...)	 (apply + arg*)]
 
           [,unmatched
-           (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
+           (if (and (pair? unmatched) (wavescript-primitive? (car unmatched)))
                (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
            (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
@@ -512,7 +512,7 @@
 		       [(lambda ,vs ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
-			  ;(when (>= (regiment-verbosity) 2) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
+			  ;(when (>= (wavescript-verbosity) 2) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
 			  (andmap available? fv*))]
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
@@ -615,7 +615,7 @@
 		      [,const (guard (simple-constant? const)) #t] ;; for tupref etc
 		      [(lambda . ,_) #t]
 		      [(quote ,datum) #t]
-		      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
+		      [(,prim ,[args] ...) (guard (wavescript-primitive? prim))
 		       (if (assq prim wavescript-effectful-primitives)
 			   #f
 			   (andmap (lambda (x) x) args))]
@@ -634,7 +634,7 @@
 
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
-	  [,prim (guard (regiment-primitive? prim))
+	  [,prim (guard (wavescript-primitive? prim))
 		 (if (memq prim computable-constants)
 		     (do-constant prim)
 		     prim)]
@@ -758,7 +758,7 @@
 #; ;; DISABLING this one:
 	  ;; It's a little funky that we look for letrec? before evaluating the rands...
           [(,prim ,rand* ...)
-	   (guard (regiment-primitive? prim)
+	   (guard (wavescript-primitive? prim)
 		  (list-index letrec? rand*))
 	   (let ();([rand* (map (lambda (x) (process-expr x env)) rand*)])
 	     ;; For now only do it for ONE rand
@@ -965,7 +965,7 @@
 		     `(unionN (annotations) ,@ls)
 		     (begin 
 		       #;
-		       (when (>= (regiment-verbosity) 2) 
+		       (when (>= (wavescript-verbosity) 2) 
 			 (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s" ls))
 		       `(unionList (annotations) ,x))
 		     ))
@@ -1016,7 +1016,7 @@
 		   ,(if (available? files)        `',(getval files) files))]
 	  
 	  ;; All other computable prims:
-          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+          [(,prim ,[rand*] ...) (guard (wavescript-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
 	   
 	   ;; Trying to lift out letrecs:
@@ -1029,7 +1029,7 @@
 		;; Exceptions:
 		(not (assq prim wavescript-effectful-primitives))
 		(not (assq prim wavescript-stream-primitives))
-		(not (assq prim regiment-distributed-primitives))
+		(not (assq prim wavescript-distributed-primitives))
 		
 		;; TEMP! -- execute higher order prims if their functions are ready:
 		(if (assq prim higher-order-primitives)
@@ -1136,12 +1136,12 @@
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
 		 (inline code rands))
 	       (begin 
-		 (if (>= (regiment-verbosity) 2)
+		 (if (>= (wavescript-verbosity) 2)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
 		 `(app ,rator ,@rands)))]
 
           [,unmatched
-	   (if (and (pair? unmatched) (regiment-primitive? (car unmatched)))
+	   (if (and (pair? unmatched) (wavescript-primitive? (car unmatched)))
 	       (error 'IMPLEMENTATION-ERROR "missed a prim app: ~s" unmatched))
 	   (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
 
@@ -1165,7 +1165,7 @@
 			     [iterations 1])
 		(if (equal? oldbody body)	   
 		    (begin
-		      ;(when (>= (regiment-verbosity) 2) )
+		      ;(when (>= (wavescript-verbosity) 2) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      (par-status) ;; TEMPTOGGLE
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
@@ -1241,7 +1241,7 @@
 
 
     ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) 'notype))])
-       `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
+       `["Now run with a wavescript-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])
 

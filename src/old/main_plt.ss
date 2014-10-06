@@ -19,15 +19,15 @@
 	    [(and ws reg) "ws+reg"]
 	    [ws   "ws"]
 	    [reg "reg"]))
-	 (if (top-level-bound? 'regiment-origin)
-	     (format " (from ~a)" regiment-origin)    
+	 (if (top-level-bound? 'wavescript-origin)
+	     (format " (from ~a)" wavescript-origin)    
 	     "(LOADED VIA UNKNOWN METHOD!?)"
 	     ))
 
  
 (require (lib "include.ss")
 ;         (all-except "generic/util/helpers.ss" id rec)
-;         (all-except "generic/compiler_components/regiment_helpers.ss")         
+;         (all-except "generic/compiler_components/wavescript_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/chez_compat.ss"
 	 "generic/util/hash.ss"
@@ -46,7 +46,7 @@
              [(getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD")]
              [(directory-exists? "~/wavescript") "~/wavescript/"]
              [(directory-exists? "~/WaveScope/src/wavescript") "~/WaveScope/src/wavescript/"]
-             [(directory-exists? "~/regiment_alpha") "~/regiment_alpha/"]
+             [(directory-exists? "~/wavescript_alpha") "~/wavescript_alpha/"]
              [else 
               (string-append (path->string (current-directory)) "../")              
                ]))
@@ -90,7 +90,7 @@
 
 ;(all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
-;(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
+;(all-except "generic/passes/normalize_source/verify-wavescript.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/resolve-varrefs.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/ws-label-mutable.ss")
 ;(all-except "generic/passes/normalize_source/typecheck.ss" these-tests test-this)
@@ -251,7 +251,7 @@
 ;	 (all-from  "generic/util/streams.ss")
 ;	 (all-from "generic/passes/normalize_source/typecheck.ss")
 ;	 (all-from "generic/grammars/grammar_checker.ss")
-	 (all-from "generic/compiler_components/regiment_helpers.ss")
+	 (all-from "generic/compiler_components/wavescript_helpers.ss")
 	 (all-from "generic/compiler_components/hm_type_inference.ss")
 ;         (all-from "generic/passes/pass-mechanism_basic.ss")
 ;         (all-from "generic/passes/pass-mechanism.ss")
@@ -263,7 +263,7 @@
 	 ;(all-from "generic/compiler_components/prim_defs.ss" )
 	 (all-from "generic/compiler_components/hm_type_inference.ss" )
 ;	 (all-from "generic/passes/normalize_source/desugar-pattern-matching.ss" )
-;	 (all-from "generic/passes/normalize_source/verify-regiment.ss" )
+;	 (all-from "generic/passes/normalize_source/verify-wavescript.ss" )
 	 (all-from "generic/passes/normalize_source/resolve-varrefs.ss" )
 	 (all-from "generic/passes/normalize_source/ws-label-mutable.ss")
 ;	 (all-from "generic/passes/normalize_source/typecheck.ss" )

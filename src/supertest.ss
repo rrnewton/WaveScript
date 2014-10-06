@@ -352,24 +352,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (when ikarus? (run-test "ikarus: Build object files: " "make ik &> ikarus_BUILD.log"))
 
 (run-test (format "(~a): Load & run unit tests: " defaulthost)
-	  "../bin/regiment t &> UNIT_TESTS.log")
+	  "../bin/wavescript t &> UNIT_TESTS.log")
 
 ;; I turn these on and off, depending on whether I want to tolerate the huge slowdown.
 #;
 (define wait-on-larc-load
-  (run-async-test "larceny: Load from source: " "../bin/regiment.larceny &> larceny_LOAD_FROM_SOURCE.log"))
+  (run-async-test "larceny: Load from source: " "../bin/wavescript.larceny &> larceny_LOAD_FROM_SOURCE.log"))
 ; (run-test "larceny: Partial larceny build: " "make larceny &> larceny_BUILD.log")
 ;; 
 
 (fpf      "  Testing legacy support for Chez Scheme:\n")
 (run-test "chez: Full Chez Scheme on the test system:" "which chez > /dev/null")
 (run-test "chez: extract chez src from R6RS:" "./temporary_smoosh_to_one_chez_file.ss > chez_smoosh.log")
-(run-test "chez: WScript loads from source (via script):" "../bin/regiment.chez &> chez_SCRIPT_LOAD.log")
+(run-test "chez: WScript loads from source (via script):" "../bin/wavescript.chez &> chez_SCRIPT_LOAD.log")
 (run-test "chez: WScript has access to the compiler:"
 	  ;; [2009.03.12] Obsolete in R6RS world:
-	  ;;"echo '(compile 3)' | ../bin/regiment.chez -i --exit-error"
+	  ;;"echo '(compile 3)' | ../bin/wavescript.chez -i --exit-error"
 	  "echo '(compile 3)' | chez")
-;(run-test "chez: Unit tests, loaded from source:" "./regiment_script.ss test &> chez_UNIT_TESTS.log")
+;(run-test "chez: Unit tests, loaded from source:" "./wavescript_script.ss test &> chez_UNIT_TESTS.log")
 
 (begin (newline)
        ;(printf "Second: building Chez shared object\n")
@@ -379,7 +379,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (run-test "chez: Build .so file(s):" "make chez &> chez_BUILD_SO.log")
        ;;TEMP;; (run-test "chez: Also build debugmode .so file:" "make dbg &> chez_BUILD_DBG.log")
 	     
-       (ASSERT (system "../bin/regiment.chez 2> chez_LOAD_FROM_SO.log"))
+       (ASSERT (system "../bin/wavescript.chez 2> chez_LOAD_FROM_SO.log"))
        ;;TEMP;; (run-test "chez: System loads from .so file:" "grep 'compiled .so' chez_LOAD_FROM_SO.log")
 
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
@@ -387,7 +387,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
        ;; FIXME:
 
-;       (define runso (system/timeout "./regiment_script.ss test"))
+;       (define runso (system/timeout "./wavescript_script.ss test"))
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 (run-test "chez: Build C extensions:" "make c &> gcc_BUILD_C_EXTENSIONS.log")
@@ -403,7 +403,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;(run-test "plt: Building WScript as bytecode in PLT:" "make pltbc &> plt_BUILD_PLT_BYTECODE.log")
-;(run-test "plt: Run system from command line with PLT:" "regiment.plt &> plt_RUN_PLT_BYTECODE.log")
+;(run-test "plt: Run system from command line with PLT:" "wavescript.plt &> plt_RUN_PLT_BYTECODE.log")
 
 ;; Now let's see if we can load in larceny:
 ;; Disabling for now because it's explodiing faith's HD:!!!
@@ -415,7 +415,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (parameterize ((current-directory (format "~a/demos/wavescope" test-directory)))
   (run-test "ws: Downloading sample marmot data:" "./download_sample_marmot_data")
 
-  ;; This should run in debug mode if "regiment" is responsive to REGDEBUGMODE:
+  ;; This should run in debug mode if "wavescript" is responsive to REGDEBUGMODE:
   (run-test "ws: Running Demos   :"
 	    (format "./testall_demos.ss &> ~a/ws_demos_debug.log" test-directory))
 

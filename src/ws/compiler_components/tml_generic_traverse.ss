@@ -38,10 +38,10 @@
 	   "prim_defs.ss"
 	   ;(lib "compat.ss")
            (all-except "../util/helpers.ss" test-this these-tests)
-           (all-except "regiment_helpers.ss" test-this these-tests)
+           (all-except "wavescript_helpers.ss" test-this these-tests)
            )
   
-  ;; Insure provision of verify-regiment:
+  ;; Insure provision of verify-wavescript:
   (provide tml-generic-traverse
            tml-simple-pass
            tml-free-vars
@@ -50,7 +50,7 @@
 
   (chezimports prim_defs
 	       (except helpers test-this these-tests)
-	       ;regiment_helpers
+	       ;wavescript_helpers
 	       )
 
 ;; This is confusing, but there are so many small traversals of

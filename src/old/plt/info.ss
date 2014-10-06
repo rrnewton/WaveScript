@@ -55,7 +55,7 @@
   (define compile-zo-omit-files (list))
   (define compile-extension-omit-files 
     ;; Giving some problem at the moment:
-    (list "regiment_parser.ss"
+    (list "wavescript_parser.ss"
 	  "constants.ss"))
   (define compile-subcollections (list))
   )

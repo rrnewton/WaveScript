@@ -15,7 +15,7 @@
 (ws util streams)
 
 (ws compiler_components prim_defs)
-(ws compiler_components regiment_helpers)
+(ws compiler_components wavescript_helpers)
 (ws compiler_components type_environments)
 (ws compiler_components reg_core_generic_traverse)
 (ws compiler_components hm_type_inference)

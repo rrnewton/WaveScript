@@ -135,7 +135,7 @@
 	 (cond
 	  [(assq 'type-aliases meta*) =>
 	   (lambda (x) 
-		    (when (>= (regiment-verbosity) 2) 
+		    (when (>= (wavescript-verbosity) 2) 
 		      (warning 'records-to-tuples "Should not have type aliases in the metadata at this late phase."))
 		    (set! meta* (remq x meta*)))])
 	 

@@ -157,7 +157,7 @@
 	 [(,foreign ',name ',files)
 	  (guard (memq foreign '(foreign foreign_box foreign_source)))
 	  (unless (and (string? name) (andmap string? files))
-	    (error 'verify-regiment "\"~s\" construct can only be used with strings, not: ~s and ~s" 
+	    (error 'verify-wavescript "\"~s\" construct can only be used with strings, not: ~s and ~s" 
 		   foreign name files))
 	  `(,foreign ',name ',files)]
 

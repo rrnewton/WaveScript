@@ -16,7 +16,7 @@
 (define edge-table (make-default-hash-table))
 (define proc-table (make-default-hash-table))
 
-(define-regiment-parameter SHOW_EDGES 
+(define-wavescript-parameter SHOW_EDGES 
   #t
   (lambda (x) (if (boolean? x) x 
 		  (error 'SHOW_EDGES "bad: ~a" x))))

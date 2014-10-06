@@ -1,3 +1,3 @@
 #!/bin/bash
 
-(export WAVESCRIPTEXEC=regiment.plt; exec ws $*)
+(export WAVESCRIPTEXEC=wavescript.plt; exec ws $*)

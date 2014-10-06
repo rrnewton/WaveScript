@@ -66,7 +66,7 @@
    (all-except "../constants.ss" test-this these-tests)
    (all-except "../util/helpers.ss" id flush-output-port test-this these-tests)
    (all-except "../util/tsort.ss" test-this these-tests)      
-   (all-except "../compiler_components/regiment_helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../compiler_components/wavescript_helpers.ss" id flush-output-port test-this these-tests)
    (all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)
    
    (all-except "alpha_lib.ss" test-this these-tests)
@@ -95,7 +95,7 @@
 	       chez_constants
 	       logfiles
 	       (except tsort test-this these-tests)
-	       regiment_helpers
+	       wavescript_helpers
 	       ;;simulator_alpha_datatypes
 	       alpha_lib_scheduler_simple)
 
@@ -163,7 +163,7 @@
     (match expr	 
 	   [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
 	   [(quote ,x) '()]
- 	   [(,prim ,rand* ...) (regiment-primitive? prim)
+ 	   [(,prim ,rand* ...) (wavescript-primitive? prim)
 	    (let ((frees (map (lambda (x) (loop env x)) rand*)))
 	      (apply append frees))]
 	   [(lambda (,formals) ,expr)
@@ -504,7 +504,7 @@
 			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
 					(simtok-equal? ,tok simtok)
 					(begin 	       
-					  (if (>= (regiment-verbosity) 2)
+					  (if (>= (wavescript-verbosity) 2)
 					  (DEBUGMODE (printf "Wow! we actually found the answer to ~s\n"
 							     "token-scheduled? in the scheduler-queue!")))
 					  #t)
@@ -1176,7 +1176,7 @@
 ;    (IFDEBUG (inspect (simulation-logger)) ())
 
       (when (simulation-logger)
-	(regiment-print-params ";; " (simulation-logger))
+	(wavescript-print-params ";; " (simulation-logger))
 	(newline (simulation-logger)))
     
     (let* (

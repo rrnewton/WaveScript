@@ -351,7 +351,7 @@
 	 (let ([linkedcode
 		(if (ormap contains-greturn? toks)
 		    (match (mvlet (((prog _) 
-				    (read-regiment-source-file 
+				    (read-wavescript-source-file 
 				     (** (WAVESCRIPTD) "/src/linked_lib/gradient_lib_ETX.tm"))))
 			     prog)
 		      [(tokens ,gradtoks ...) gradtoks])

@@ -154,7 +154,7 @@
 	 (match current
 	   [() '()]
 	   [([,name ,ty ,ants  (,prim ,rands ...)] . ,rest)
-	    (guard (regiment-primitive? prim))
+	    (guard (wavescript-primitive? prim))
 	    (if (not (distributed-type? ty))
 	       (loop rest) ;; Local value computations needn't be "heads" in this sense.
 	       (let ([deps (filter (lambda (v) 
@@ -826,7 +826,7 @@
 				   ;; This is node-local code now, check against TML prims:
 				   [(,prim ,[args] ...)
 				    (guard (or (token-machine-primitive? prim)
-					       ;(regiment-primitive? prim)
+					       ;(wavescript-primitive? prim)
 					       (basic-primitive? prim)))
 				    (void)]
 				   [(if ,[x] ,[y] ,[z]) (void)]

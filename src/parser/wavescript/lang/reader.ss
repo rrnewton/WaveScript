@@ -6,7 +6,7 @@
 
   #:whole-body-readers? #t
 
-  (require "../../regiment_parser.ss")
+  (require "../../wavescript_parser.ss")
   ;(require "main.sls")
   ;(require (scheme pretty))
   (require scheme/pretty)

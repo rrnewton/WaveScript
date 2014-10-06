@@ -108,12 +108,12 @@
 		      `(wavescript-language (quote ,prim))
 		      'unspecified))
 	    (difference
-	     (map car (append  regiment-basic-primitives 
-			       ;regiment-distributed-primitives
+	     (map car (append  wavescript-basic-primitives 
+			       ;wavescript-distributed-primitives
 			       wavescript-primitives
 			       meta-only-primitives
 			       higher-order-primitives
-			       regiment-constants))
+			       wavescript-constants))
 	     lang_wavescript_prim-exceptions
 	     ))
 

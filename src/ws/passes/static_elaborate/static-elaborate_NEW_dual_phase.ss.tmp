@@ -63,7 +63,7 @@
 (define static-elaborate-grammar
   ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
   (lambda (subcheck)
-    `( ,@base_regiment_forms
+    `( ,@base_wavescript_forms
        [Expr ('lambda . ValidLambda)]
        ;; Lambda's are no longer allowed to have free-vars.
        [ValidLambda ,(lambda (ls)
@@ -132,7 +132,7 @@
       (lambda (exp)
 	(match exp
 	  [(,prim ,args ...)
-	   (guard (regiment-primitive? prim))
+	   (guard (wavescript-primitive? prim))
 	   (match (caddr (get-primitive-entry prim))
 	     [(Stream ,t) #t]
 	     [,else #f])]
@@ -262,7 +262,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      (IFDEBUG (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
+      (IFDEBUG (when (wavescript-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -287,7 +287,7 @@
       (define (make-nested-letrecs binds body)
 	(if (null? binds) body
 	    `(counted-letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
-      (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
+      (IFDEBUG (when (wavescript-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
@@ -332,7 +332,7 @@
 	  [(tupref ,n ,m ,[x]) x]
 	  [(tuple ,[args] ...) (apply + args)]
 	  [(,prim ,[rands] ...)
-	   (guard (regiment-primitive? prim))
+	   (guard (wavescript-primitive? prim))
            (apply fx+ rands)]
           [(begin ,(stmt) ...) (apply + stmt)]
 
@@ -441,7 +441,7 @@
 				 mapping)))	     
 	   `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
 	      ,(substitute newmap expr)))]
-	  [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
+	  [(,prim ,[rands] ...) (guard (wavescript-primitive? prim))
 	   `(,prim ,rands ...)]
 	  [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 
 	   `(,app ,rator ,rands ...)]
@@ -482,7 +482,7 @@
 		       [(counted-lambda ,vs ,cnts ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
-			  ;(when (regiment-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
+			  ;(when (wavescript-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
 			  (andmap available? fv*))]
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
@@ -557,7 +557,7 @@
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
-	  [,prim (guard (regiment-primitive? prim))
+	  [,prim (guard (wavescript-primitive? prim))
 		 (if (memq prim computable-constants)
 		     (do-constant prim)
 		     prim)]
@@ -785,7 +785,7 @@
 		 (if (list? ls)
 		     `(unionN ,@ls)
 		     (begin 
-		       (if (regiment-verbose) 
+		       (if (wavescript-verbose) 
 			   (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s"
 				    ls))
 		       `(unionList ,x))
@@ -814,7 +814,7 @@
 	  ;; ================================================================================
 
 	  ;; All other computable prims:
-          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+          [(,prim ,[rand*] ...) (guard (wavescript-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
 	   (if (and 		
 		(andmap available? rand*)
@@ -822,7 +822,7 @@
 		;; Exceptions:
 		(not (assq prim wavescript-effectful-primitives))
 		(not (assq prim wavescript-stream-primitives))
-		(not (assq prim regiment-distributed-primitives))
+		(not (assq prim wavescript-distributed-primitives))
 
 		;; TEMP! -- execute higher order prims if their functions are ready:
 		(if (assq prim higher-order-primitives)
@@ -860,7 +860,7 @@
 		     ;(inspect/continue (inline (annotate-refcounts code) rands))
 		     ))
 	       (begin 
-		 (if (regiment-verbose)
+		 (if (wavescript-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
 		 `(app ,rator ,@(map (lambda (x) (process-expr x env)) rands))))]
 
@@ -899,7 +899,7 @@
 		;; The comparison is not so efficient either!
 		(if (equal? oldbody body)	   
 		    (begin
-		      ;(when (regiment-verbose) )
+		      ;(when (wavescript-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
 		    (loop body (process-expr (annotate-refcounts body) init-env) (add1 iterations)))))
@@ -960,7 +960,7 @@
 
 
     ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) 'notype))])
-       `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
+       `["Now run with a wavescript-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])
 

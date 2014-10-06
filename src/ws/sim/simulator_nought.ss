@@ -141,9 +141,9 @@
 			exp ...))]))
 
 ;; This makes it use a lame sort of text display instead of the graphics display:
-(define-regiment-parameter simulator-output-text #f (lambda (x) x))
+(define-wavescript-parameter simulator-output-text #f (lambda (x) x))
 ;; This is a SEPERATE LOGGER for debug info as opposed to simulation events.
-(define-regiment-parameter sim-debug-logger 
+(define-wavescript-parameter sim-debug-logger 
   (lambda args
     (critical-section
      (apply printf args)))
@@ -389,7 +389,7 @@
     (match expr	 
 	   [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
 	   [(quote ,x) '()]
-	   [(,prim ,rand* ...) (regiment-primitive? prim)
+	   [(,prim ,rand* ...) (wavescript-primitive? prim)
 	    (let ((frees (map (lambda (x) (loop env x)) rand*)))
 	      (apply append frees))]
 	   [(lambda (,formals) ,expr)

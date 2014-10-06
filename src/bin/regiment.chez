@@ -5,7 +5,7 @@
 # order.  Failing those it will load from source.  If full Chez isn't
 # available, it falls back to Petite.
 
-source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_wavescriptd
 
 function setupchez() {
     # Using our own chez wrapper because it obeys "--threaded"
@@ -56,7 +56,7 @@ ARGS=$*
 function from_source() {
   if cd $WAVESCRIPTD/src; then
     echo "WARNING: Loading under Chez from (potentally mixed) source/object files."
-    exec $SCHEME $CHEZARGS --program $WAVESCRIPTD/src/regiment.ss $CURDIR $ARGS
+    exec $SCHEME $CHEZARGS --program $WAVESCRIPTD/src/wavescript.ss $CURDIR $ARGS
   fi # end if cd /src
 }
 
@@ -80,9 +80,9 @@ if (( "$N" > 75 )); then
   # echo "Running in R6 mode.."
   # RUN New R6RS mode:
   CURDIR=`pwd`
-  if   [ "$REGOPTLVL" == "3" ];    then go "$WAVESCRIPTD/build/$MT/regiment.opt.boot"
-  elif [ "$REGDEBUGMODE" == "" ];  then go "$WAVESCRIPTD/build/$MT/regiment.complete.boot"
-  else                                  go "$WAVESCRIPTD/build/$MT/regiment.debug.boot"
+  if   [ "$REGOPTLVL" == "3" ];    then go "$WAVESCRIPTD/build/$MT/wavescript.opt.boot"
+  elif [ "$REGDEBUGMODE" == "" ];  then go "$WAVESCRIPTD/build/$MT/wavescript.complete.boot"
+  else                                  go "$WAVESCRIPTD/build/$MT/wavescript.debug.boot"
   fi
 fi # end if version > 75
 
@@ -97,7 +97,7 @@ ARGS=${1+"$@"}
 
 function script() {
     INVOKEDIR=`pwd`
-    ENTRY="$WAVESCRIPTD/src/regiment_chez.ss"
+    ENTRY="$WAVESCRIPTD/src/wavescript_chez.ss"
     setupchez;
     echo Executing: exec $SCHEME $1 --script "$ENTRY" "$INVOKEDIR" $ARGS
     exec $SCHEME $1 --script "$ENTRY" "$INVOKEDIR" $ARGS
@@ -105,9 +105,9 @@ function script() {
 
 # First we handle the "ws.opt" cases:
 if [ "$REGOPTLVL" == "3" ];
-then (if [ -f $WAVESCRIPTD/src/build/$MT/regiment.0.OPT.heap ];
+then (if [ -f $WAVESCRIPTD/src/build/$MT/wavescript.0.OPT.heap ];
       # If we can we use the stored heap, 
-      then exec $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/src/build/$MT/regiment.0.OPT.heap $*;
+      then exec $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/src/build/$MT/wavescript.0.OPT.heap $*;
       # Otherwise check for .boot
       elif [ -f "$WAVESCRIPTD/build/$MT/legacy_main_chez_OPT.boot" ]
       then setupchez;
@@ -128,9 +128,9 @@ then setupchez;
      #exec $SCHEME -b $WAVESCRIPTD/src/build/$MT/main_chez.boot $*;
      script "-b $WAVESCRIPTD/src/build/$MT/legacy_main_chez.boot ";
 
-elif [ -f "$WAVESCRIPTD/src/build/$MT/regiment.0.heap" ];
-then #echo Running regiment from saved heap...;
-    exec $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/src/build/$MT/regiment.0.heap $*;
+elif [ -f "$WAVESCRIPTD/src/build/$MT/wavescript.0.heap" ];
+then #echo Running wavescript from saved heap...;
+    exec $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/src/build/$MT/wavescript.0.heap $*;
 else 
      script;
 fi

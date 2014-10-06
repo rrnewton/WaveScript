@@ -162,7 +162,7 @@
     ;; [2009.12.01] It looks like at some point I was accepting lists of strings here.  Dunno why:
     (ASSERT string? fn)
     (unless (member fn files)
-      (when (>= (regiment-verbosity) 1)
+      (when (>= (wavescript-verbosity) 1)
 	(printf "     --> adding include ~a \n" fn))
       (slot-set! self 'include-files (cons fn files)))
       )
@@ -808,7 +808,7 @@
 (__spec Simple <emitC2-base> (self expr)
   (match expr
     [nulltimebase (Const self 'nulltimebase id)]
-    [,v (guard (symbol? v)) (ASSERT (not (regiment-primitive? v))) (Var self v)]
+    [,v (guard (symbol? v)) (ASSERT (not (wavescript-primitive? v))) (Var self v)]
     ;[',c (format "~a" c)] ;;TEMPTEMP
 
     ;; PolyConstants:
@@ -820,7 +820,7 @@
     [',c (Const self c (lambda (x) x))]
 
     [(tuple) (list "(("(Type self '#())")0)")]
-    [(deref ,var) (ASSERT (not (regiment-primitive? var))) (Var self var)]
+    [(deref ,var) (ASSERT (not (wavescript-primitive? var))) (Var self var)]
     ;[(assert-type ,t '())  (wrap (PolyConst '() t))]
     ;['() (error 'Simple "null list without type annotation")]
        
@@ -1299,9 +1299,9 @@
 	     [,else (kont `(,name"(",(insert-between ", " rand*)") /* foreign app */ "))])])]
        [(foreign-app . ,_) (error 'emitC2 "foreign-app without type annotation: ~s" (cons 'foreign-app _))]
 
-       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+       [(,prim ,rand* ...) (guard (wavescript-primitive? prim))
 	(PrimApp self (cons prim rand*) kont #f )]
-       [(assert-type ,ty (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+       [(assert-type ,ty (,prim ,rand* ...)) (guard (wavescript-primitive? prim))
 	(PrimApp self (cons prim rand*) kont ty)]
               
        [(assert-type ,ty ,e) (recur e)]
@@ -1725,7 +1725,7 @@
 			   (if (normal-rate? rate) (list nm code rate) #f))
 		      srcname* srccode* srcrates*))]
 		 )
-	(when (>= (regiment-verbosity) 1)  ;; TEMP 
+	(when (>= (wavescript-verbosity) 1)  ;; TEMP 
 	  (printf "   TIMER RATES: ~s\n" srcrates*)
 	  (printf "   ZERO TIMERS ~s\n" zerosrc*)
 	  (printf "   NEG  TIMERS ~s\n" negsrc*))

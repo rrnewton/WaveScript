@@ -13,7 +13,7 @@
    "../compiler_components/logfiles.ss"
    "../../plt/hashtab.ss"
    (all-except "../util/helpers.ss" test-this these-tests)
-   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests filter)
+   (all-except "../compiler_components/wavescript_helpers.ss" test-this these-tests filter)
 
    ;; Would like to remove this dependency eventually:
    (all-except "simulator_alpha_datatypes.ss") ;run-alpha-simple-scheduler)
@@ -71,7 +71,7 @@
 ;; parameter to node-code.  Node-code is kind enough to set this
 ;; global parameter correctly, so that the current simobject may be
 ;; accessed by the below library code. -[2005.10.16]
-;; NOTE: this is not a "regiment-parameter" because it should not be user-adjustable.
+;; NOTE: this is not a "wavescript-parameter" because it should not be user-adjustable.
 (define current-simobject (reg:make-parameter 'current-simobject_uninitialized!))
 
 ; =======================================================================

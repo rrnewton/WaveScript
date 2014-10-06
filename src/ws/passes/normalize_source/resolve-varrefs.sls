@@ -22,7 +22,7 @@
      `[Type ,type?]
      ;`[Type (,(lambda (x) (and (symbol? x) (not (memq x '(NUM quote ->))))) Type ...)]
      (filter (lambda (x) (not (eq? 'Type (car x))))
-       initial_regiment_grammar)))
+       initial_wavescript_grammar)))
 
   (define (explode-id id) 
     (map string->symbol
@@ -66,7 +66,7 @@
 			(if (not (null? (cdr boom)))
 			    (cons (car prm) boom)
 			    #f))))
-	     (regiment-primitives))))
+	     (wavescript-primitives))))
       (define exploded-table (map cdr relevant-prims))
 
       ;; This is used for two purposes.  It keeps track of all bindings so we can recognize free variables.
@@ -99,7 +99,7 @@
 	      (if (and (symbol? v2) (not (eq? v2 var)))
 		  (Var pos v2)
 		  v2)))]
-	 [(regiment-primitive? var) var]
+	 [(wavescript-primitive? var) var]
 	 [else (error 'resolve-varrefs 
 		      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
 		      var 

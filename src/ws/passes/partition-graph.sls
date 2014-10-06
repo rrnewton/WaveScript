@@ -74,7 +74,7 @@
 (define (source? x)
   (match x
     [((name ,n) (output-type ,ty) (code (,prim . ,args)) (outgoing ,out* ...))
-     (regiment-primitive? prim)]
+     (wavescript-primitive? prim)]
     [,_ #f]))
 
 (define (op-or-source? x)
@@ -368,19 +368,19 @@
 	    (ASSERT (curry andmap id) startpoints) ;; No #f's should have snuck through.
 	    (if (null? startpoints) '()
 		(begin 
-		  (when (>= (regiment-verbosity) 3) (printf " Tracing from starts ~s\n " (map opname startpoints)))
+		  (when (>= (wavescript-verbosity) 3) (printf " Tracing from starts ~s\n " (map opname startpoints)))
 		 (let loop ([tracepoints startpoints] ;; A work-list of trace-points.
 			    [acc '()]) ;; Accumulates mobile operators.
 		   (match tracepoints
-		     [() (when (>= (regiment-verbosity) 3) (printf " finished.\n")) acc]
+		     [() (when (>= (wavescript-verbosity) 3) (printf " finished.\n")) acc]
 		     [(,head . ,tail)
 		      (cond
 		       [((Operator Expr) head)
-			(when (>= (regiment-verbosity) 3) (printf " ~s" (opname head)))
+			(when (>= (wavescript-verbosity) 3) (printf " ~s" (opname head)))
 			(loop (append (filter id (get-next head)) tail) (cons head acc))]
 		       ;; Otherwise we stop the trace here, and continue processing the work-list.
 		       [else		       
-			(when (>= (regiment-verbosity) 3) (printf " | ~s  endpoint.\n Tracing: " (opname head)))
+			(when (>= (wavescript-verbosity) 3) (printf " | ~s  endpoint.\n Tracing: " (opname head)))
 			;; When we reach a stopping point, put in a cutpoint:
 			(loop tail  acc)])])))))
 
@@ -1043,7 +1043,7 @@
 
 
 ;; This is ugly: 
-;(define-regiment-parameter max-tinyos-nodes 10)
+;(define-wavescript-parameter max-tinyos-nodes 10)
 (define max-tinyos-nodes (make-parameter 10))
 
 ;; This goes over the whole graph and multiplexes only those operators

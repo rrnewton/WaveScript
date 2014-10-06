@@ -20,7 +20,7 @@
 	   (ws util iu-match)
 	   (ws util helpers)
 	   (ws util reg_macros)
-	   (ws compiler_components regiment_helpers)
+	   (ws compiler_components wavescript_helpers)
 	   (ws compiler_components reg_core_generic_traverse)
 	   (ws compiler_components hm_type_inference)
 	   (ws passes pass-mechanism_basic) 

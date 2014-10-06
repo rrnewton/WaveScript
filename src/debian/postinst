@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /usr/bin/assert_regimentd
+source /usr/bin/assert_wavescriptd
 
 # This is a nasty hack.
 #find /usr/lib/wavescript/ -name "*.sls.ikarus-fasl"  | xargs touch 

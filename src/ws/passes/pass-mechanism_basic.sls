@@ -14,7 +14,7 @@
 (library (ws passes pass-mechanism_basic)
   (export
 	  build-compiler-pass
-	  regiment-pass->name
+	  wavescript-pass->name
 	  )
   (import (except (rnrs (6)) error)
 	  (ws compat compat)
@@ -68,7 +68,7 @@
 				   (match outspec
 				     ;; Check output grammar:	   
 				     [(grammar ,gram ,optional_initialprod ...)
-				      (if (>= (regiment-verbosity) 2) 
+				      (if (>= (wavescript-verbosity) 2) 
 					  (printf "~a: Got result, checking output grammar...\n" name))
 				      (or (apply check-grammar `(,name ,result ,gram ,@optional_initialprod))
 					;(inspect (apply list 'FOOFOO name result gram optional_initialprod))
@@ -76,7 +76,7 @@
 					  (error 'build-compiler-pass 
 						 "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
 						 name prog))
-				      (if (>= (regiment-verbosity) 2)
+				      (if (>= (wavescript-verbosity) 2)
 					  (printf "~a: Output grammar passed.\n" name))]
 				     [(assert ,f)
 				      (unless (f prog)
@@ -90,8 +90,8 @@
 		      result))
 		  ))])
        ;; Add pass to global pass-table and return:
-       (set! regiment-pass-name-table
-	     (cons `[,mainclosure ,name] regiment-pass-name-table))
+       (set! wavescript-pass-name-table
+	     (cons `[,mainclosure ,name] wavescript-pass-name-table))
        mainclosure
        )]))
 
@@ -99,13 +99,13 @@
 ;; When build-compiler-pass is used to construct a pass, it's added to
 ;; this table so that it's name can be retreived in the future.
 ;; (If the passes were objects, I'd simply have them support a get-name method.)
-(define regiment-pass-name-table '())
+(define wavescript-pass-name-table '())
 
 ;; This exposed function does a lookup in the table.
-(define (regiment-pass->name pass)
+(define (wavescript-pass->name pass)
   (ASSERT (procedure? pass))
   (cond
-   [(assq pass regiment-pass-name-table) => cadr]
+   [(assq pass wavescript-pass-name-table) => cadr]
    ;; Otherwise, the best we can do is print the procedure to a string:
    [else (format "~s" pass)]))
 

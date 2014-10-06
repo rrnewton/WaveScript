@@ -21,8 +21,8 @@
 	    (lambda (x)
 	      (and (symbol? x)
 		   (not (token-machine-keyword? x))
-		   (or (regiment-constant? x) 
-		       (not (regiment-primitive? x)))))])
+		   (or (wavescript-constant? x) 
+		       (not (wavescript-primitive? x)))))])
      (ASSERT varclause)
      (cons `[Var ,new_is-var?]  newgram)))
 
@@ -36,10 +36,10 @@
 	       (lambda (x fallthrough)
 		 (match x
 		   ;; Variable References to primitives are rewritten:
-		   [,var (guard (symbol? var) (regiment-primitive? var))
+		   [,var (guard (symbol? var) (wavescript-primitive? var))
 			 (let* ([possible-formals '(a b c d e f g h i j)]
 				[args (cadr (get-primitive-entry var))])
-			   (if (regiment-constant? var)
+			   (if (wavescript-constant? var)
 			       var
 			       (let ([formals (map unique-name (list-head possible-formals (length args)))])
 				 `(lambda ,formals 
@@ -59,7 +59,7 @@
 
 		   ;; Primitives that are applied with "app" have it taken away:
 		   [(app ,prim ,[rands] ...)
-		    (guard (regiment-primitive? prim))
+		    (guard (wavescript-primitive? prim))
 		    `(,prim ,rands ...)]
 		   
 		   [,other (fallthrough other)]

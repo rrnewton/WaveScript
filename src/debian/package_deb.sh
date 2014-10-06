@@ -44,7 +44,7 @@ function copy_common() {
    cp -pr $WAVESCRIPTD/src/bin                  $WSDIR/src/
    cp -pr $WAVESCRIPTD/src/parser               $WSDIR/src/
    cp -pr $WAVESCRIPTD/src/version              $WSDIR/src/
-   cp -a  $WAVESCRIPTD/src/regiment*.ss         $WSDIR/src/
+   cp -a  $WAVESCRIPTD/src/wavescript*.ss         $WSDIR/src/
 
    ## Todo, should instead download the right version of petite from the web.
    ## We should download the version for this architecture.
@@ -149,12 +149,12 @@ function common_setup() {
   cp ./doc/wavescript_manpages/*.1 ./debian/tmp/usr/share/man/man1/
   (gzip -v -9 ./debian/tmp/usr/share/man/man1/*.1)
 
-  for cmd in wsparse ws wsc wsc2 wsmlton regiment; do 
+  for cmd in wsparse ws wsc wsc2 wsmlton wavescript; do 
     ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 
   done
-  # assert_regimentd in this case forces it to use the globally installed ver:
-  echo "export WAVESCRIPTD=/usr/lib/$PACKAGENAME/$VER/" >  ./debian/tmp/usr/bin/assert_regimentd
-  echo 'export IKARUSEXEC="$WAVESCRIPTD/depends/ikarus -b $WAVESCRIPTD/depends/ikarus_lib/ikarus.boot"' >> ./debian/tmp/usr/bin/assert_regimentd
+  # assert_wavescriptd in this case forces it to use the globally installed ver:
+  echo "export WAVESCRIPTD=/usr/lib/$PACKAGENAME/$VER/" >  ./debian/tmp/usr/bin/assert_wavescriptd
+  echo 'export IKARUSEXEC="$WAVESCRIPTD/depends/ikarus -b $WAVESCRIPTD/depends/ikarus_lib/ikarus.boot"' >> ./debian/tmp/usr/bin/assert_wavescriptd
   WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER  
   copy_common
 }
@@ -170,11 +170,11 @@ function build_binary_pkg_chez() {
   cp -pr $WAVESCRIPTD/src/build                     $WSDIR/src/
   copy_cleanup
 
-  cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
+  cp ./debian/tmp/usr/bin/assert_wavescriptd $WSDIR/bin/assert_wavescriptd
 
-  # Symlink directly to regiment.chez
-  rm -f $WSDIR/bin/regiment 
-  ln -s regiment.chez $WSDIR/bin/regiment
+  # Symlink directly to wavescript.chez
+  rm -f $WSDIR/bin/wavescript 
+  ln -s wavescript.chez $WSDIR/bin/wavescript
   
   # Delete the .zo files, build again client side.
   rm -rf $WSDIR/src/parser/compiled
@@ -200,11 +200,11 @@ function build_binary_pkg_ikarus() {
   cp -a $WAVESCRIPTD/src/config.ss $WSDIR/src/
   copy_cleanup
 
-  cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
+  cp ./debian/tmp/usr/bin/assert_wavescriptd $WSDIR/bin/assert_wavescriptd
 
-  # Symlink directly to regiment.ikarus
-  rm -f $WSDIR/bin/regiment 
-  ln -s regiment.ikarus $WSDIR/bin/regiment
+  # Symlink directly to wavescript.ikarus
+  rm -f $WSDIR/bin/wavescript 
+  ln -s wavescript.ikarus $WSDIR/bin/wavescript
 
   # Delete the .zo files, build again client side.
   rm -rf $WSDIR/src/parser/compiled

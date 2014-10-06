@@ -1,13 +1,13 @@
 #! /bin/bash
 #|
-exec regiment i --script $0 ${1+"$@"}
-#exec regiment.ikarus i --script $0 ${1+"$@"}
+exec wavescript i --script $0 ${1+"$@"}
+#exec wavescript.ikarus i --script $0 ${1+"$@"}
 |#
 ;;exec mzscheme -qr "$0" ${1+"$@"}
 
-;; This script can't be run with regiment.chez -- that's circular.
+;; This script can't be run with wavescript.chez -- that's circular.
 
-;; Running it with regiment.plt currently causes a couple problems, it
+;; Running it with wavescript.plt currently causes a couple problems, it
 ;; prints mutable lists with {}, and I get a weird #\alarm character.
 
 (printf "Running script to compact r6rs files into one large Chez compatible file.\n")

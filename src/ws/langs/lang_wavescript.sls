@@ -107,9 +107,9 @@
    `(begin
       ;; First we have to import the language bindings.
       ;; [2007.01.29] ACK, this is another thing that's mysteriously broken when loading from .so:
-      ,(if (and (top-level-bound? 'regiment-origin)
-		(or (equal? regiment-origin "compiled .so")
-		    (equal? regiment-origin "compiled .boot"))
+      ,(if (and (top-level-bound? 'wavescript-origin)
+		(or (equal? wavescript-origin "compiled .so")
+		    (equal? wavescript-origin "compiled .boot"))
 	       )
 	   ;; For some reason we have to handle this differently when working from compiled .so.
 	   '(begin
@@ -119,9 +119,9 @@
    	     ;;(import helpers)
 	     )
 	   (begin 
-	     (unless (and (top-level-bound? 'regiment-origin)
-			  (or (equal? regiment-origin "source")
-			      (equal? regiment-origin "saved heap")))
+	     (unless (and (top-level-bound? 'wavescript-origin)
+			  (or (equal? wavescript-origin "source")
+			      (equal? wavescript-origin "saved heap")))
 	       (warning 'wavescript-language
 			"Regiment loaded from unknown origin.  Might have problems will delicate module issues."))
 	     '(begin 

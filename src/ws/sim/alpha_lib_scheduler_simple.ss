@@ -25,7 +25,7 @@
    "../../plt/chez_compat.ss"
    "../../plt/hashtab.ss"
    (all-except "../util/helpers.ss" test-this these-tests)
-   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests filter)
+   (all-except "../compiler_components/wavescript_helpers.ss" test-this these-tests filter)
    )
   (provide 
    ;(all-defined)

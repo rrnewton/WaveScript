@@ -1,7 +1,7 @@
 
 
 all:
-	ls *.tm | xargs -n1 regiment c
+	ls *.tm | xargs -n1 wavescript c
 
 clean:
 	$(RM) *.sim *.sim.alpha *.sim.nesc *.tmh *.sexp *~ _*

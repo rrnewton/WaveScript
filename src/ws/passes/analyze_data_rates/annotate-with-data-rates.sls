@@ -54,7 +54,7 @@
 
                ; perform the actual simulation;
                ; this will fill in rates-table
-	       (when (>= (regiment-verbosity) 1)
+	       (when (>= (wavescript-verbosity) 1)
 		 (printf "Directing profiling run output to .profile_run.out\n"))
 	       (let ([out (force-open-output-file ".profile_run.out")])
 		 (parameterize (;[current-output-port out]

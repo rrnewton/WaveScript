@@ -2,16 +2,16 @@
 
 # Use a default location if it is not set.
 if ! [ $WAVESCRIPTD ]; then 
-    if [ -d $HOME/regiment_alpha ];
-    then WAVESCRIPTD=$HOME/regiment_alpha/; 
-    elif [ -d $HOME/macroprogramming/regiment_alpha ];
-    then WAVESCRIPTD=$HOME/macroprogramming/regiment_alpha/; 
+    if [ -d $HOME/wavescript_alpha ];
+    then WAVESCRIPTD=$HOME/wavescript_alpha/; 
+    elif [ -d $HOME/macroprogramming/wavescript_alpha ];
+    then WAVESCRIPTD=$HOME/macroprogramming/wavescript_alpha/; 
 
-    elif [ -d /usr/regiment/ ];
-    then WAVESCRIPTD=/usr/regiment/; 
-    elif [ -d /usr/local/regiment/ ];
-    then WAVESCRIPTD=/usr/local/regiment/; 
+    elif [ -d /usr/wavescript/ ];
+    then WAVESCRIPTD=/usr/wavescript/; 
+    elif [ -d /usr/local/wavescript/ ];
+    then WAVESCRIPTD=/usr/local/wavescript/; 
     fi;
 fi
 
-$WAVESCRIPTD/src/regiment_script.threaded.ss $*;
+$WAVESCRIPTD/src/wavescript_script.threaded.ss $*;

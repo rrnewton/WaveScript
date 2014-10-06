@@ -6,7 +6,7 @@ exec mzscheme -qt "$0" ${1+"$@"}
 ;; Experimenting with doing a TCP version
 
 (module wsparse_server_tcp mzscheme 
-  (require "regiment_parser.ss")
+  (require "wavescript_parser.ss")
 
   (define conn #f)
   (define inpipe #f)

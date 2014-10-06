@@ -39,7 +39,7 @@
 			 )])
 ;; NOW we lift it even if it is simple.
 ;;	   (if (simple? body)
-           (if (and (symbol? body) (not (regiment-constant? body)))
+           (if (and (symbol? body) (not (wavescript-constant? body)))
 	       `(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
 	       (let* ([main (unique-name (symbol-append 'result_of_ namehint))]
 		      [maintype (recover-type body newenv)])
@@ -65,7 +65,7 @@
 	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 	  
 
-          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+          [(,prim ,[rand*] ...) (guard (wavescript-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
             (error 'lift-letrec-body "invalid expression: ~s"

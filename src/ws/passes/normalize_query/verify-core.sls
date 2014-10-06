@@ -60,9 +60,9 @@
 		  (or (simple-constant? const) (symbol? const)))
 	   #t]
 	 
-          [,var (guard (symbol? var) (not (regiment-constant? var)))
+          [,var (guard (symbol? var) (not (wavescript-constant? var)))
 		(if (and (not (memq var env))
-			 (not (regiment-constant? var)))
+			 (not (wavescript-constant? var)))
 		    (error 'verify-core (format "unbound variable: ~a\n" var)))
 	       		#t]
 
@@ -90,7 +90,7 @@
 ;                  (keyword? keyword))
 ;           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
                     
-	  [,prim (guard (regiment-constant? prim)
+	  [,prim (guard (wavescript-constant? prim)
 			(not (memq prim env)))
 		 ;(disp "GOT CONST: " prim)
 	   #t]
@@ -98,7 +98,7 @@
           [(,prim ,rand* ...)
            (guard 
                   (not (memq prim env))
-                  (regiment-primitive? prim)
+                  (wavescript-primitive? prim)
 		  (andmap (lambda (x) (process-expr x env)) rand*)
 		  (andmap simple-rand? rand*))
 	   ;          (check-primitive-numargs prim rand*)

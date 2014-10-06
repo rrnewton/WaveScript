@@ -34,7 +34,7 @@
           [(if ,test ,conseq ,altern)
 	   `(if ,test ,conseq ,altern)]                    
           [(,prim ,rand* ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   (process-primapp prim rand*)]
           [,unmatched
 	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))

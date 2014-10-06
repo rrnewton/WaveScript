@@ -284,7 +284,7 @@
 
 (match '(timer 3.0)
   [(,prim ,[rand*] ...)
-   (guard (regiment-primitive? prim))
+   (guard (wavescript-primitive? prim))
    9999]
   [,oth 78])
 
@@ -345,7 +345,7 @@
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app construct-data)))
 	(apply append rat rand*)]
        [(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
+	 (guard (wavescript-primitive? prim))
 	 (apply append rand*)]
 	[,other (error 'print-var-types "bad expression: ~a" other)])
 

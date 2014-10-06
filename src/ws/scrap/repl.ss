@@ -10,7 +10,7 @@
 (module repl mzscheme
   (require (lib "pretty.ss")
 	   "../constants.ss"
-	   "../compiler_components/regiment_helpers.ss"
+	   "../compiler_components/wavescript_helpers.ss"
 	   ;"helpers.ss"
 	   )
   (provide repl-stream-depth
@@ -22,7 +22,7 @@
 ;; "run" had better take a stream.
 
 ;; The repl stops after reading this many values off the stream:
-(define-regiment-parameter repl-stream-depth
+(define-wavescript-parameter repl-stream-depth
    20 (lambda (n)
 	(if (integer? n) n
 	    (error 'repl-stream-depth " this parameter can only be set to numbers"))))

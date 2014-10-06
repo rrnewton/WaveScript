@@ -84,7 +84,7 @@
       (lambda (expr)
         (match expr
           [(quote ,const) '()]
-          [,var (guard (symbol? var) (not(regiment-constant? var)))
+          [,var (guard (symbol? var) (not(wavescript-constant? var)))
 		(if (check-prop 'local var)
 		    '()
 		    (list var))]
@@ -98,9 +98,9 @@
           [(if ,[test] ,[conseq] ,[altern])
 	   (append test conseq altern)]
 	  
-          [,prim (guard (regiment-constant? prim)) '()]
+          [,prim (guard (wavescript-constant? prim)) '()]
           [(,prim ,[rand*] ...)
-           (guard (regiment-primitive? prim))	  
+           (guard (wavescript-primitive? prim))	  
 	   (apply append rand*)]
           [,unmatched
 	   (error 'addplaces:process-let "invalid syntax ~s" unmatched)])))

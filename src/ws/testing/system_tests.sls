@@ -918,7 +918,7 @@
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
       ; For this unit test we simply run this long enough to get one round of returns back.
-      (load-regiment (** (WAVESCRIPTD) "/src/demos/token_machs/manual_tree.tm")
+      (load-wavescript (** (WAVESCRIPTD) "/src/demos/token_machs/manual_tree.tm")
 		     '[sim-timeout 1500])
       unspecified]
 
@@ -1648,7 +1648,7 @@
 				 (seed 0)
 				 (aggr sum)))
 		  (sum (x y) (+ x y)))
-		'[regiment-verbosity 1]
+		'[wavescript-verbosity 1]
 		'[simalpha-placement-type 'connected]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-failure-model 'none]		
@@ -1705,7 +1705,7 @@
 			 (seed ())
 			 (aggr f)))
 	  (f (x y) (append x y)))
-	'[regiment-verbosity 1]
+	'[wavescript-verbosity 1]
 	'[sim-timeout 10.0]
 	'[simalpha-placement-type 'connected]
 	'[simalpha-consec-ids 2000]
@@ -1741,7 +1741,7 @@
 			 (seed ())
 			 (aggr f)))
 	  (f (x y) (append x y)))
-	'[regiment-verbosity 1]
+	'[wavescript-verbosity 1]
 	'[sim-timeout 5000]
 	))
       ;; Epoch staggered aggregation
@@ -2256,7 +2256,7 @@
 
     ;; [2007.10.15] This is nondeterministic... I just had it fail
     ;; under PLT in revision 2723.
-    ["Run and simulate complete regiment program." 
+    ["Run and simulate complete wavescript program." 
      retry
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
@@ -2278,7 +2278,7 @@
 	      (sort < (list-rem-dups ls)))))]
 
     ;; [2005.11.14] Huh, just started getting some errors on this when running from command line.
-    ["Run a simple fold in regiment." 
+    ["Run a simple fold in wavescript." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [sim-num-nodes 30]
@@ -2318,7 +2318,7 @@
      ,(lambda (ls) (< (apply + (list-head (reverse ls) 3)) 30))]
 
 
-    ["Run an average 'temperature' calculation in regiment." 
+    ["Run an average 'temperature' calculation in wavescript." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
@@ -2363,7 +2363,7 @@
      ,(lambda (ls) (andmap even? (apply append ls)))]
 
 #;
-    ["Run an average 'temperature' calculation in regiment." 
+    ["Run an average 'temperature' calculation in wavescript." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
@@ -2384,7 +2384,7 @@
 
 #;
     ;; Finish
-    ["Run an average 'temperature' calculation in regiment." 
+    ["Run an average 'temperature' calculation in wavescript." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
@@ -2435,7 +2435,7 @@
 		    ;(printf "Average acc: ~a ~a\n"  x y)
 		    (return (list (_+. (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
-	  '[regiment-verbosity 1]
+	  '[wavescript-verbosity 1]
 	  '[sim-timeout 4000]
 	  '[simalpha-zeropad-args 'warning] ;; Must be on for sensing
 ;	  '[simalpha-stream-result #t]
@@ -2645,7 +2645,7 @@
 
 ["Demos: smap2_two_anchors.rs"
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/smap2_two_anchors.rs")))
+   (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/smap2_two_anchors.rs")))
  ,(lambda (x) 
     (match (map cadr x)
       ;; Receive one or the other first:
@@ -2655,7 +2655,7 @@
 
 ["Demos: simple/events.rs" retry
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/simple/events.rs")))
+   (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/simple/events.rs")))
  ,(lambda (ls)
     (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
 
@@ -2673,7 +2673,7 @@
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
    (sort < (list-rem-dups 
-	    (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/nested_regions.rs")))
+	    (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/nested_regions.rs")))
 	 ))
  ,(lambda (set1)
     (let ([sim (simalpha-current-simworld)])
@@ -2703,10 +2703,10 @@
 		[simalpha-failure-model 'none]
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
-   (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/nested_regions_folded.rs"))
+   (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/nested_regions_folded.rs"))
 #;
    (sort < (list-rem-dups 
-	    (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/nested_regions_folded.rs")))
+	    (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/nested_regions_folded.rs")))
 	 ))
 
  unspecified]
@@ -2767,7 +2767,7 @@
 
 #;
 ["Demos: "
- (load-regiment (** (WAVESCRIPTD) "/src/demos/regiment/"))
+ (load-wavescript (** (WAVESCRIPTD) "/src/demos/wavescript/"))
  3]
 
 ;; TODO: simple/events

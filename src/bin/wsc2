@@ -4,7 +4,7 @@ export WSVARIANT=wsc2
 
 export REGFLAG=$WSVARIANT
 
-source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_wavescriptd
 
 # Get out only the relevant options:
 RELEVANT=`getopt -a -l "v:,main:,ss:,sigseg:,gc:,gcc:,o:,limitcpus,cpus:,D:,realtime,tbb,threads,noprelude,nothreads,nogcc,no-gcc,tree,O0,O1,O2,O3,dbg" -o ":" -- "$@"`

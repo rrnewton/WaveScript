@@ -9,7 +9,7 @@ exec mzscheme -qu "$0" ${1+"$@"}
 (module wsparse mzscheme 
 
 ;(provide main)
-(require "regiment_parser.ss")
+(require "wavescript_parser.ss")
 (require (lib "pretty.ss"))
 
 (define allargs (vector->list (current-command-line-arguments)))

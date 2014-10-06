@@ -18,7 +18,7 @@
 ;; This gets the first shot at the expression.
 (define (uncover-free-Expr x fallthrough)
   (match x
-    [,v (guard (symbol? v) (not (regiment-constant? v)))
+    [,v (guard (symbol? v) (not (wavescript-constant? v)))
 	(vector v `(,v))]
     ;; Now all the binding forms:
     [,other (fallthrough other)]  

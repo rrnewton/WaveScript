@@ -42,7 +42,7 @@
 	   [(assert-type ,t (src-pos ,_ ,[e]))
 	    (process-expr `(assert-type ,t ,e) fallthru)]
 	   ;; Like the src-pos case above, this is a little snip of what static-elaborate does:
-	   [(app ,prim ,_ ...) (guard (regiment-primitive? prim))
+	   [(app ,prim ,_ ...) (guard (wavescript-primitive? prim))
 	    (process-expr (cons prim _) fallthru)]
 	   
 	   ;; This needs the type tagged on also:
@@ -56,7 +56,7 @@
 	   
 	   ;; This parses the option string to readFile.
 	   [(assert-type (Stream ,t) (readFile ,annot ,[fn] ',str ,[src]))
-	    ;; From regiment_helpers.ss
+	    ;; From wavescript_helpers.ss
             (parse-readFile-modestring annot str t fn src)]
            
            ;; Here's a hack for ws.early:

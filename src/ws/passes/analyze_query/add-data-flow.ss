@@ -78,7 +78,7 @@
 	 (apply append (map car binds)
 		(map expr->allvars (map last binds)))]
 	[(,prim ,[rand*] ...)	   
-	 (guard (regiment-primitive? prim))
+	 (guard (wavescript-primitive? prim))
 	 (apply append rand*)]
 	[,unmatched
 	 (error 'expr->allvars "invalid syntax ~s" unmatched)]
@@ -109,7 +109,7 @@
     ;; the whole program.  Names are unique, so this is all the info
     ;; we need.
     (define (extract-whole-tenv expr)
-;      (regiment-generic-traverse
+;      (wavescript-generic-traverse
 ;       (lambda (x autoloop)
 ;	 [(lambda ,v* ,ty* ,bod)
 ;	  (tenv-extend (loop bod) v* ty*)
@@ -127,9 +127,9 @@
 	[(lazy-letrec ([,v* ,ty* ,annots* ,[rhs*]] ...) ,[bod])
 	 (apply tenv-append (tenv-extend bod v* (map make-tcell ty*) #t) rhs*)]
 	
-	[(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+	[(,prim ,[rand*] ...) (guard (wavescript-primitive? prim))
 	 (apply tenv-append rand*)]
-	[,other (error 'extract-whole-tenv "bad regiment expression: ~s" other)]
+	[,other (error 'extract-whole-tenv "bad wavescript expression: ~s" other)]
 	))
 
     ;; Returns the inner simple expression that generates the return value.
@@ -139,7 +139,7 @@
     (define (get-tail expr currentloc env)
       (DEBUGASSERT (or currentloc (symbol? expr) (and (list? expr) (eq? 'lazy-letrec (car expr)))))
       (match expr
-          [,const (guard (regiment-constant? const)) currentloc]
+          [,const (guard (wavescript-constant? const)) currentloc]
 	  [,var (guard (symbol? var)) 
 		(let ([cl (lookup var env)])		  
 		  (get-region-tail (codeloc->expr cl) env))]
@@ -195,7 +195,7 @@
 
 	      [(rmap ,rat ,rand)
 	       (ASSERT (simple-expr? rand))
-	       (if (regiment-primitive? rat)
+	       (if (wavescript-primitive? rat)
 		   ;rat
 		   (error 'get-region-tail "non-eta'd primitive as rmap operator: ~a" rat)
 		   (let ([newrand (process-expr rand env)])
@@ -313,7 +313,7 @@
 	  [(tuple ,[args] ...) (apply append args)]
 
           [(,prim ,[rand*] ...)	   
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   (apply append rand*)]
 
           [,unmatched

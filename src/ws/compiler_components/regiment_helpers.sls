@@ -1,6 +1,6 @@
 #!r6rs
 
-;;;; .title Regiment Helper Functions (regiment_helpers.ss)
+;;;; .title Regiment Helper Functions (wavescript_helpers.ss)
 
 ;;;; <br> [2005.12.01] <br>
 
@@ -9,7 +9,7 @@
 ;;;; utilities.  Previously all of this had resided in the bloated
 ;;;; helpers.ss file.
 
-(library (ws compiler_components regiment_helpers)
+(library (ws compiler_components wavescript_helpers)
     (export
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 	  randomize-list randomize-vector! list-get-random vector-get-random
@@ -44,9 +44,9 @@
 	  apply-to-program-body
 	  map-graph-exprs 
 
-	  regiment-print-params	 
+	  wavescript-print-params	 
 
-	  test-regiment_helpers
+	  test-wavescript_helpers
 
 	  parse-readFile-modestring
 	  annotation? peel-annotations apply/annotations
@@ -250,7 +250,7 @@
     ;; Void value:
     [(tuple) #t] ;; [2007.03.19] Why had I commented this before? Using 'UNIT instead.
     [(empty-wsrecord) #t] ;; [2008.11.11] This should be treated the same as an empty tuple.
-    [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
+    [,var (guard (symbol? var) (not (wavescript-constant? var))) #t]
 
     ;; Annotations can still be simple.
     [(,annot ,_ ,[x]) (guard (annotation? annot)) x]
@@ -988,7 +988,7 @@
 ;; recording the state of the compiler/simulator.  It's primarily for
 ;; good book-keeping while benchmarking.  It only records parameters
 ;; relevent to the resulting data.
-(define (regiment-print-params prefix . port)
+(define (wavescript-print-params prefix . port)
   (let ([port (if (null? port) (current-output-port) (car port))]
 	[pad-width (if #f;(top-level-bound? 'pad-width) ;; [2006.02.27] FIXME
 		       (top-level-value 'pad-width)
@@ -1016,10 +1016,10 @@
 			     simulation-logger-count
 			     simulation-logger-level
 			     simulation-logger
-			     regiment-emit-debug
-			     regiment-verbosity
+			     wavescript-emit-debug
+			     wavescript-verbosity
 			     ))))
-	(regiment-parameters))
+	(wavescript-parameters))
       )))
 
 
@@ -1162,8 +1162,8 @@
 
 ; ======================================================================
 
-(define-testing test-regiment_helpers
-  (default-unit-tester "regiment_helpers.ss: Regiment-specific utils." 
+(define-testing test-wavescript_helpers
+  (default-unit-tester "wavescript_helpers.ss: Regiment-specific utils." 
     `( 
     ["Reunique names" 
      (reunique-names '(foo_3 foo_43 foo_3 foo))

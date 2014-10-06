@@ -20,9 +20,9 @@
 	 analyze-grammar-failure 
          
          ;; Predifined Grammars
-	 sugared_regiment_grammar
-	 initial_regiment_grammar
-	 ; elaborated_regiment_grammar
+	 sugared_wavescript_grammar
+	 initial_wavescript_grammar
+	 ; elaborated_wavescript_grammar
          basic_tml_grammar
 ;         tml_gradient_grammar
 ;         tml_letstored_grammar
@@ -38,7 +38,7 @@
 	  (ws util helpers)
 	  (ws util reg_macros)
 	  (ws compiler_components prim_defs)
-	  (ws compiler_components regiment_helpers)
+	  (ws compiler_components wavescript_helpers)
 	  (ws compiler_components type_environments)
 	  )
 

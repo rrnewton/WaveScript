@@ -1,12 +1,12 @@
 #!/bin/bash
 
-source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_wavescriptd
 CURDIR=`pwd`
 
 # This method doesn't set the library path, instead it just switches to that directory:
-#(cd $WAVESCRIPTD/src; larceny -r6rs -path . -program $WAVESCRIPTD/src/regiment.ss -- DUMMY $CURDIR $*;)
+#(cd $WAVESCRIPTD/src; larceny -r6rs -path . -program $WAVESCRIPTD/src/wavescript.ss -- DUMMY $CURDIR $*;)
 # [2008.08.24] Now we don't need the extra argument:
-(cd $WAVESCRIPTD/src; larceny -r6rs -path . -program $WAVESCRIPTD/src/regiment.ss -- $CURDIR $*;)
+(cd $WAVESCRIPTD/src; larceny -r6rs -path . -program $WAVESCRIPTD/src/wavescript.ss -- $CURDIR $*;)
 
 #(cd $WAVESCRIPTD/src; larceny -r6rs -path . -program $WAVESCRIPTD/src/test.ss -- DUMMY $CURDIR $*;)
 

@@ -14,8 +14,8 @@
 
 (library (ws compiler_components source_loader)    
   (export     	
-   ;read-regiment-source-file ;; Read a file to SEXP syntax
-   ;load-regiment reg:load    ;; Read and execute a file using simulator.
+   ;read-wavescript-source-file ;; Read a file to SEXP syntax
+   ;load-wavescript reg:load    ;; Read and execute a file using simulator.
 
    ws-parse-file
    ws-relative-path?
@@ -30,13 +30,13 @@
 	  ;(all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)   
 	  ;"../sim/simulator_alpha_datatypes.ss"
 	  ;(all-except "../sim/simulator_alpha.ss" test-this these-tests id)
-	  ;(only "../../plt/regiment_parser.ss" ws-parse-file)
+	  ;(only "../../plt/wavescript_parser.ss" ws-parse-file)
    )
 
 #;
   (chezimports ;constants
                (except helpers           test-this these-tests)
-	       (except regiment_helpers  test-this these-tests)
+	       (except wavescript_helpers  test-this these-tests)
 	       
 	       ;; FIXME: Why doesn't this work: [2006.10.18]
 	       (except desugar-pattern-matching test-this these-tests)
@@ -49,7 +49,7 @@
 ;; Read the file from disk, desugar the concrete syntax appropriately.
 ;; .param fn File name.
 ;; .returns Two values: desugared program, and parameters.
-(define read-regiment-source-file
+(define read-wavescript-source-file
   (lambda (fn)
     (define (desugar-token e)      
       (match e
@@ -60,7 +60,7 @@
     (define (desugar exps)
       (let loop ((ls exps))
 	(match ls
-	  ;[() (error 'read-regiment-source-file "file has no return expression.")]
+	  ;[() (error 'read-wavescript-source-file "file has no return expression.")]
 	  [() ()]
 
 	  ;; Macro expansion:
@@ -92,7 +92,7 @@
 	   `(letrec (,(map desugar-define x* y*) ...) ,main)]
 
 	  [(,other ,rest ...)
-	   (error 'read-regiment-source-file
+	   (error 'read-wavescript-source-file
 		  "invalid expression in definition context: ~s" `(,other ,rest ...))])))
 
     (if (equal? "ws" (extract-file-extension fn))
@@ -109,9 +109,9 @@
 
 #;
 
-;; This loads (e.g. reads, compiles, and simulates) a regiment program:  <br><br>
+;; This loads (e.g. reads, compiles, and simulates) a wavescript program:  <br><br>
 ;;
-;; [2005.11.17] Currently redundant with code in regiment.ss:            <br>
+;; [2005.11.17] Currently redundant with code in wavescript.ss:            <br>
 ;; [2006.02.15] NOTE: This currently passes the flags to BOTH the       
 ;; compiler and the simulator.  They both follow the bad practice of
 ;; ignoring flags they don't understand.
@@ -125,7 +125,7 @@
 ;
 ;; [2006.11.13] Adding params to compile phase as well.  Compiler
 ;; reads default-slow-pulse, for example.
-(define load-regiment
+(define load-wavescript
   (IFWAVESCOPE
       'undefined-in-wavescope
    (lambda args
@@ -134,7 +134,7 @@
      ;; We pass the world by putting it in the global parameter and
      ;; telling the simulator to use the existing "stale" simworld.
      (simalpha-current-simworld world)
-     (apply load-regiment fn 'use-stale-world opts)]
+     (apply load-wavescript fn 'use-stale-world opts)]
     [(,fn . ,opts) (guard (string? fn))
      (ASSERT (list? opts))
      ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
@@ -146,13 +146,13 @@
        (ASSERT (andmap symbol? (map car userparams)))
        (mvlet ([(prog codeparams passes)
 		  (let ([type (string->symbol (extract-file-extension fn))])
-		    (mvlet (((prg params) (read-regiment-source-file fn)))
+		    (mvlet (((prg params) (read-wavescript-source-file fn)))
 		      (case type
 			[(rs) (values prg params (pass-list))]
 			[(tm) (values prg params 
 				      (list-remove-before cleanup-token-machine (pass-list)))]
 			[(sim alpha) (values prg params ())]
-			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
+			[else (error 'load-wavescript "can't handle file with this extension: ~s" fn)]
 			)))])
 
 	 ;; Prioriy: User params override those set in the file:	 
@@ -183,9 +183,9 @@
 			       )))))
 	     (print-stats)
 	     result)))]
-    [,other (error 'load-regiment "bad arguments: ~s\n" other)]))))
+    [,other (error 'load-wavescript "bad arguments: ~s\n" other)]))))
 
-;(define reg:load load-regiment) ;; shorthand
+;(define reg:load load-wavescript) ;; shorthand
 
 
 ;----------------------------------------
@@ -269,7 +269,7 @@
 	   
 	   (if (member path all-includes)
 	       (begin
-		 (unless (<= (regiment-verbosity) 0) (eprintf "   Suppressing repeated include of file!: ~s\n" path))
+		 (unless (<= (wavescript-verbosity) 0) (eprintf "   Suppressing repeated include of file!: ~s\n" path))
 		 (values '() all-includes))
 	       (begin 
 		 ;; This is usually a relative file path!
@@ -462,7 +462,7 @@
        ;; FIXME: DELETE THIS.  It's obsoleted by the vastly more reliable TCP based server.
 
        ;; We don't even track source locations in ws.opt
-       (define dont-track (or (not (regiment-track-source-locations)) (= 3 (REGOPTLVL))))
+       (define dont-track (or (not (wavescript-track-source-locations)) (= 3 (REGOPTLVL))))
        (define extra-opts (if dont-track " --nopos" ""))
 
        (define (try-command)
@@ -470,7 +470,7 @@
 	 (if (system "which wsparse > /dev/null") ; (not (member  '(0 #f)))
 	     ;; Use pre-compiled executable:
 	     (begin 
-	       (unless (<= (regiment-verbosity) 0)
+	       (unless (<= (wavescript-verbosity) 0)
 		 (eprintf "  Falling back to wsparse executable to parse file: ~a\n" fn))
 	       (system-to-str 
 		;; HACK: TEMP FIXME FIXME FIXME FIXME FIXME FIXME FIXME 
@@ -479,7 +479,7 @@
 	     #f))
 
        (define (try-from-source)
-	 (unless (<= (regiment-verbosity) 0)
+	 (unless (<= (wavescript-verbosity) 0)
 	   (eprintf
 	    (** "  Falling back to wsparse.ss from source, but you probably"
 		" want to do 'make wsparse' or run 'wsparse_server_tcp' for speed.\n")))
@@ -492,7 +492,7 @@
        (define (try-client/server)
 	 (if (file-exists? "/tmp/wsparse_server_tcp_running")
 	     (begin 
-	       (unless (<= (regiment-verbosity) 0) (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn))
+	       (unless (<= (wavescript-verbosity) 0) (eprintf "Calling wsparse_client.ss to parse file: ~a\n" fn))
 	       ;; Ideally, we want only the stdout not the stderr, but can't do that.
 	       ;; I don't want this command line to be bash-dependent if possible.
 	       (let ([str (system-to-str
@@ -506,7 +506,7 @@
        (define (try-command-persist)     
 	 (if outport
 	     (begin 
-	       (unless (<= (regiment-verbosity) 0) (eprintf "  Using wsparse process on file: ~a\n" fn))
+	       (unless (<= (wavescript-verbosity) 0) (eprintf "  Using wsparse process on file: ~a\n" fn))
 	       (write fn outport)(newline outport)
 	       (read inport))
 	     ;; HACK: WON'T WORK IN WINDOWS:
@@ -514,7 +514,7 @@
 		 ;; This isn't very portable either!
 		 (let-match ([(,in ,out ,id) (process (string-append "wsparse --persist --nopretty --nograph " 
 								     extra-opts))])
-		   (unless (<= (regiment-verbosity) 0) (eprintf "  wsparse process started.\n"))
+		   (unless (<= (wavescript-verbosity) 0) (eprintf "  wsparse process started.\n"))
 		   (set! inport in)
 		   (set! outport out)
 		   (try-command-persist))
@@ -561,7 +561,7 @@
 	     (printf "Running simulation from file: ~a\n" fn)
 	     (let ((result
 		    ;; Be careful to watch for parameterization:	     
-		    (mvlet (([prog params] (read-regiment-source-file fn)))
+		    (mvlet (([prog params] (read-wavescript-source-file fn)))
 		      (with-evaled-params params
 					  (lambda () 
 					    (apply run-simulator-alpha prog opts))))))
@@ -580,14 +580,14 @@
 				  [(equal? type "rs") (pass-list)]
 				  [(equal? type "tm") (list-remove-before cleanup-token-machine
 									  (pass-list))]
-				  [else (error 'regiment "unknown input file extension: ~s" type)]
+				  [else (error 'wavescript "unknown input file extension: ~s" type)]
 				  )])
 		      (set! out_file (string-append (remove-file-extension fn) extension))
 		      ;; Don't overwrite one of our own input files!
 		      (if (member out_file filenames) (set! out (string-append "out." extension)))
 
 		      (printf "\n  Writing token machine to: ~s \n" out_file)
-		      (mvlet ([(prog params) (read-regiment-source-file fn)])
+		      (mvlet ([(prog params) (read-wavescript-source-file fn)])
 		       
 			(delete-file out_file)
 			(let ((comped 

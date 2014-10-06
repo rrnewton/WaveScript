@@ -1,5 +1,5 @@
 ;;;; main_chez.ss
-;;;; Loads the regiment compiler in Chez Scheme.
+;;;; Loads the wavescript compiler in Chez Scheme.
 
 ;;;; NOTE: This file uses (include ...) rather than (load ...) 
 ;;;; This basically inlines all the code in question into this file at compile time.
@@ -12,7 +12,7 @@
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
-;; This is *only* relevant if repeatedly loading regiment into a single REPL.
+;; This is *only* relevant if repeatedly loading wavescript into a single REPL.
 (when (top-level-bound? 'WAVESCRIPTD) 
   (printf "WIPING previous bindings before reloading Regiment system.\n")
   (eval '(import scheme)))
@@ -39,21 +39,21 @@
 
 	   ;; For now let's just error if we have no dir:
 ;	   (if (not (getenv "WAVESCRIPTD"))
-;	       (error 'regiment "environment variable WAVESCRIPTD was not set"))
+;	       (error 'wavescript "environment variable WAVESCRIPTD was not set"))
 	   
 	   ;; This is a bit weird, ultimately the global param
 	   ;; WAVESCRIPTD is the thing to look at, but we have some
 	   ;; issues with the order of evaluation/loading/binding
 	   ;; here, so first we bind this:
-	   (define-syntax default-regimentd
+	   (define-syntax default-wavescriptd
 	     (syntax-rules ()
 	       [(_) (if (getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD") (current-directory))]))
 
 	   (define default-source-directories
 	     (#%list 
-;				(string-append (default-regimentd) "/src/chez")
-;				(string-append (default-regimentd) "/src/generic")
-	      (string-append (default-regimentd) "/src")
+;				(string-append (default-wavescriptd) "/src/chez")
+;				(string-append (default-wavescriptd) "/src/generic")
+	      (string-append (default-wavescriptd) "/src")
 				;"."  ;; Alas this causes some problems currently...
 	      ))
 	   (source-directories default-source-directories)
@@ -102,7 +102,7 @@
 				      (cp0-effort-limit 0)
 				      )
 			 (cp0 x))))))]
-	       [else (error 'regiment-compiler "bad setting for REGOPTLVL: <~s>" (REGOPTLVL))])))
+	       [else (error 'wavescript-compiler "bad setting for REGOPTLVL: <~s>" (REGOPTLVL))])))
 
 	   (reg:set_opt_lvl!) ;; According to $REGOPTLVL
 	   
@@ -131,7 +131,7 @@
 	 (if (eq? (machine-type) 'i3nt)
 	     -9999
 	     (and (zero? (system "which svn &> /dev/null"))
-		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
+		  (parameterize ([current-directory (string-append (default-wavescriptd) "/src")])
 		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
 		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
 		      (with-syntax ([revis (datum->syntax-object #'_ rev)])
@@ -291,8 +291,8 @@
 	    [(and ws reg) "ws+reg"]
 	    [ws   "ws"]
 	    [reg "reg"]))
-	 (if (top-level-bound? 'regiment-origin)
-	     (format " (from ~a)" regiment-origin)    
+	 (if (top-level-bound? 'wavescript-origin)
+	     (format " (from ~a)" wavescript-origin)    
 	     "(LOADED VIA UNKNOWN METHOD!?)"
 	     )))
 
@@ -301,7 +301,7 @@
 
 (eval-when (compile load eval) 
   (define-top-level-value 'pre-load-directory (current-directory))
-  (current-directory (string-append (default-regimentd) "/src/chez")))
+  (current-directory (string-append (default-wavescriptd) "/src/chez")))
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
@@ -319,7 +319,7 @@
 ;(import rn-match) ;; Can't yet use rn-match globally.
 
 ;; After this point, everything must use chez:module for native chez modules.
-;; 'module' will become my chez/plt portable regiment modules.
+;; 'module' will become my chez/plt portable wavescript modules.
 (eval-when (load eval)
   (include "chez/regmodule.ss")  ;; Common module syntax.
   (import reg:module)  
@@ -336,7 +336,7 @@
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
 ;; This uses the kinder behavior -- try the current directory.
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
-(WAVESCRIPTD (default-regimentd))
+(WAVESCRIPTD (default-wavescriptd))
 
 (if VERBOSE-LOAD (printf "  Starting load...\n"))
 
@@ -424,7 +424,7 @@
 
 
 
-;;  For loading regiment source.  Depends on desugar-pattern-matching:
+;;  For loading wavescript source.  Depends on desugar-pattern-matching:
 (todo:common:load-source "generic/compiler_components/source_loader.ss") (import source_loader) 
 
 

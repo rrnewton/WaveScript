@@ -380,7 +380,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
 ;;====================================================================================================
 
 (define test0
-  '("regiment.ss"
+  '("wavescript.ss"
    #0=("./main_r6rs.sls"
        #1=("./ws/passes/wavescope_bkend/emit-c2.sls")
        ("./ws/passes/wavescope_bkend/emit-tbb.sls" #1#)
@@ -391,7 +391,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
 
 
 (define FULLDAG
-  '("regiment.ss"
+  '("wavescript.ss"
     #0=("./main_r6rs.sls"
 	#1=("./ws/common.sls" #2=("./ws/compat/compat.sls") #3=("./ws/globals.sls" #2#)
 	    #4=("./ws/util/hashtab.sls")
@@ -401,7 +401,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
 	    ("./ws/util/streams.sls" #2# #3# #7# #6# #5#)
 	    #8=("./ws/compiler_components/prim_defs.sls" #2# #3# #5# #4#
                 #7#)
-	    #9=("./ws/compiler_components/regiment_helpers.sls" #2# #3# #8# #4# #7# #5# #6#)
+	    #9=("./ws/compiler_components/wavescript_helpers.sls" #2# #3# #8# #4# #7# #5# #6#)
 	    #10=("./ws/compiler_components/type_environments.sls" #2# #3# #5# #4# #7# #6# #8#)
 	    #11=("./ws/compiler_components/reg_core_generic_traverse.sls" #2# #3# #5# #4# #7# #6# #8# #9# #10#)
 	    #12=("./ws/compiler_components/hm_type_inference.sls" #2# #3# #7# #6# #4# #8# #11# #10# #9# #5#)
@@ -460,7 +460,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
 	     #39=("./ws/sim/wavescript_sim_library_push.sls" #1# #20#
                   #17# #37# #36# #22#))
 	#39#
-	("./ws/passes/normalize_source/verify-regiment.sls" #1#)
+	("./ws/passes/normalize_source/verify-wavescript.sls" #1#)
 	#40=("./ws/passes/normalize_source/typecheck.sls" #1#)
 	("./ws/passes/normalize_source/desugar-pattern-matching.sls"
 	 #1#)
@@ -547,7 +547,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
     "./ws/compiler_components/prim_defs.sls"
     "./ws/util/imperative_streams.sls"
     "./ws/util/slib_hashtab.sls")
-   ("./ws/compiler_components/regiment_helpers.sls"
+   ("./ws/compiler_components/wavescript_helpers.sls"
     "./ws/compiler_components/type_environments.sls")
    ("./ws/grammars/grammar_checker.sls"
     "./ws/compiler_components/reg_core_generic_traverse.sls")
@@ -570,7 +570,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
     "./depends/matpak.sls" "./ws/util/tsort.sls"
     "./ws/passes/normalize_query/lift-letrec-body.sls"
     "./ws/passes/wavescope_bkend/flatten-iterate-spine.sls"
-    "./ws/passes/normalize_source/verify-regiment.sls"
+    "./ws/passes/normalize_source/verify-wavescript.sls"
     "./ws/passes/normalize_source/desugar-pattern-matching.sls"
     "./ws/passes/normalize_source/resolve-varrefs.sls"
     "./ws/compiler_components/source_loader.sls"
@@ -613,7 +613,7 @@ exec $WAVESCRIPTD/depends/chez --script $0 $*
     "./ws/passes/small-ws-passes.sls")
    ("./ws/passes/wavescope_bkend/type-annotate-misc.sls")
    ("./main_r6rs.sls") ("./ws/testing/system_tests.sls")
-   ("./main.sls") ("./ws/shortcuts.sls") ("regiment.ss")))
+   ("./main.sls") ("./ws/shortcuts.sls") ("wavescript.ss")))
 ;(2 2 2 1 6 2 2 2 1 1 26 7 7 4 4 3 3 4 2 1 1 1 1 1 1)
 ;; 25 stages 87 compiles...
 ;; 3.48X speedup if compile times were uniform... probably aren't.

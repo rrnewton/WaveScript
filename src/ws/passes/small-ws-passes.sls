@@ -58,7 +58,7 @@
 	  (match xp
 	    ;; This is lame... but we repeat eta-prims here:
 	    #;
-	    [,vr (guard (symbol? vr) (regiment-primitive? vr) (not (memq vr regiment-constants)))
+	    [,vr (guard (symbol? vr) (wavescript-primitive? vr) (not (memq vr wavescript-constants)))
 		 `(lambda )]
 
 	    [(app (lambda (,lhs) (,ty) ,[bod]) ,[rhs])
@@ -1186,7 +1186,7 @@
 			        ,@(remq (assq 'type-aliases meta*) meta*)
 				,(Type type)))))]))]
     ;; Now we're free of sugars and can use the initial grammar.
-    [OutputGrammar initial_regiment_grammar])
+    [OutputGrammar initial_wavescript_grammar])
 
 
 ; --mic

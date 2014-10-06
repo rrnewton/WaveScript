@@ -29,5 +29,5 @@
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:
-; (mvlet (((prog _) (read-regiment-source-file "demos/regiment/static_elab.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
-; (load-regiment "demos/regiment/static_elab.rs")
+; (mvlet (((prog _) (read-wavescript-source-file "demos/wavescript/static_elab.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
+; (load-wavescript "demos/wavescript/static_elab.rs")

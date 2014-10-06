@@ -1,5 +1,5 @@
 ;;;; main_chez.ss
-;;;; Loads the regiment compiler in Chez Scheme.
+;;;; Loads the wavescript compiler in Chez Scheme.
 
 ;;;; NOTE: This file uses (include ...) rather than (load ...) 
 ;;;; This basically inlines all the code in question into this file at compile time.
@@ -12,7 +12,7 @@
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
-;; This is *only* relevant if repeatedly loading regiment into a single REPL.
+;; This is *only* relevant if repeatedly loading wavescript into a single REPL.
 (when (top-level-bound? 'WAVESCRIPTD) 
   (printf "RESTORING scheme bindings before reloading Regiment system.\n")
   (eval '(import scheme)))
@@ -42,15 +42,15 @@
 	   ;; WAVESCRIPTD is the thing to look at, but we have some
 	   ;; issues with the order of evaluation/loading/binding
 	   ;; here, so first we bind this:
-	   (define-syntax default-regimentd
+	   (define-syntax default-wavescriptd
 	     (syntax-rules ()
 	       [(_) (if (getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD") (current-directory))]))
 
 	   (define default-source-directories
 	     (#%list 
-;				(string-append (default-regimentd) "/src/chez")
-;				(string-append (default-regimentd) "/src/generic")
-	      (string-append (default-regimentd) "/src")
+;				(string-append (default-wavescriptd) "/src/chez")
+;				(string-append (default-wavescriptd) "/src/generic")
+	      (string-append (default-wavescriptd) "/src")
 				;"."  ;; Alas this causes some problems currently...
 	      ))
 	   (source-directories default-source-directories)
@@ -108,7 +108,7 @@
 				      (cp0-effort-limit 0)
 				      )
 			 (cp0 x))))))]
-	       [else (error 'regiment-compiler "bad setting for REGOPTLVL: <~s>" (REGOPTLVL))])))
+	       [else (error 'wavescript-compiler "bad setting for REGOPTLVL: <~s>" (REGOPTLVL))])))
 
 	   (reg:set_opt_lvl!) ;; According to $REGOPTLVL
 	   
@@ -140,7 +140,7 @@
 			    (loop (read-char in))))))))
 	 (and (not (eq? (machine-type) 'i3nt))
 		  (zero? (system "which svn &> /dev/null"))
-		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
+		  (parameterize ([current-directory (string-append (default-wavescriptd) "/src")])
 		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
 		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
 		      (if (eof-object? rev)
@@ -249,8 +249,8 @@
 	    [(and ws reg) "ws+reg"]
 	    [ws   "ws"]
 	    [reg "reg"]))
-	 (if (top-level-bound? 'regiment-origin)
-	     (format " (from ~a)" regiment-origin)    
+	 (if (top-level-bound? 'wavescript-origin)
+	     (format " (from ~a)" wavescript-origin)    
 	     " (LOADED VIA UNKNOWN METHOD!?)"
 	     )
 	 (IFDEBUG " Debug mode" "")

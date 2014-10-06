@@ -64,8 +64,8 @@
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:
-; (mvlet (((prog _) (read-regiment-source-file "demos/regiment/nested_regions.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
-; (load-regiment "demos/regiment/nested_regions.rs")
+; (mvlet (((prog _) (read-wavescript-source-file "demos/wavescript/nested_regions.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
+; (load-wavescript "demos/wavescript/nested_regions.rs")
 
 
 ;; JUNK:

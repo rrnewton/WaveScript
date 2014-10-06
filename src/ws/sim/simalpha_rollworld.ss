@@ -49,7 +49,7 @@
 ;; This is the function (of no arguments) for creating a new world
 ;; simulation.  It takes no arguments because all the decisions
 ;; affecting the kind of topology to create are made based upon the
-;; values of global regiment system parameters. <br><br>
+;; values of global wavescript system parameters. <br><br>
 ;;
 ;;<br>  Relevent parameters include (as of [2006.03.01]):
 ;;<br>    simalpha-placement-type

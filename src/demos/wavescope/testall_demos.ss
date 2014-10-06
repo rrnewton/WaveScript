@@ -3,7 +3,7 @@
 export WAVESCRIPT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
 export REGDEBUGMODE=ON
-exec regiment i --script "$0" ${1+"$@"};
+exec wavescript i --script "$0" ${1+"$@"};
 |#
 
 (printf "Running all demos using ~a.\n" which-scheme)

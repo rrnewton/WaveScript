@@ -211,17 +211,17 @@
 
 (define __cast_num (wavescript-language '__cast_num))
 
-;; NOTE: this does not track everything in regiment-primitives, as
+;; NOTE: this does not track everything in wavescript-primitives, as
 ;; that may change over time.
 (define (build-dictionary!)
   (set! dictionary (make-default-hash-table 500))
   (let ([prims (difference 
-		(map car (append regiment-basic-primitives 
-				 ;regiment-distributed-primitives
+		(map car (append wavescript-basic-primitives 
+				 ;wavescript-distributed-primitives
 				 wavescript-primitives
 				 meta-only-primitives
 				 higher-order-primitives
-				 regiment-constants
+				 wavescript-constants
 				 ))
 		;; Leave out things that aren't real primitives or won't appear at this point:
 		(append '()
@@ -329,7 +329,7 @@
   (let EvalLoop ([x x])
    (match x
     [,v (guard (symbol? v)) 
-        (if (regiment-primitive? v)
+        (if (wavescript-primitive? v)
             (make-plain (hashtab-get dictionary v) (get-primitive-type v))
             (apply-env env v))]
 
@@ -477,7 +477,7 @@
 
     
     [(iterate ,annot ,[f] ,[s])
-     (match (regiment-primitive? 'iterate)
+     (match (wavescript-primitive? 'iterate)
        [((,annotty ,fty ,sty) (Stream ,return))
         (for-each set-value-type! `(,f ,s) `(,fty ,sty))
         (let ([parents (apply append (map (lambda (x t) (if (stream-type? t) (list x) '())) `(,f ,s) `(,fty ,sty)))]
@@ -489,7 +489,7 @@
     [(,streamprim ,[x*] ...)
      ;(guard (assq streamprim wavescript-stream-primitives))
      (guard (stream-primitive? streamprim))
-     (match (regiment-primitive? streamprim)
+     (match (wavescript-primitive? streamprim)
        [(,argty* (Stream ,return))
 	(for-each set-value-type! x* argty*) ;; Set all the types of arguments (some may be integers).
 	;; This splits the stream from the non-stream components.
@@ -565,7 +565,7 @@
 
     ;; This requires a bit of sketchiness to reuse the existing
     ;; implementation of this functionality within wavescript_sim_library_push
-    [(,prim ,arg* ...) (guard (regiment-primitive? prim))
+    [(,prim ,arg* ...) (guard (wavescript-primitive? prim))
      (define x* (map EvalLoop arg*))
      (DEBUGASSERT (not (assq prim wavescript-stream-primitives)))     
 
@@ -575,7 +575,7 @@
      ;; to allow frozen foreign apps at metaprogram time then what do
      ;; we do when the metaprogram tries to use the value?  Add to that suspension?
      ;(if (ormap suspension? x*) (make-suspension ))
-     (match (regiment-primitive? prim)
+     (match (wavescript-primitive? prim)
        [((,argty* ...) ,retty)
 	;(for-each set-value-type! x* argty*) ;; Necessary?
 	;; This is probably also rather slow.
@@ -618,7 +618,7 @@
      (if (foreign-closure? f)
 	 ;; Foreign app is suspended for later:
 	 (begin
-	   (when (>= (regiment-verbosity) 2)
+	   (when (>= (wavescript-verbosity) 2)
 	     (printf "EXPERIMENTAL: making meta-suspension for foreign app: ~s\n" f))
 	   (make-suspension f e*))
 
@@ -709,7 +709,7 @@
                        ,(Marshal-Foreign-Closure (suspension-operator val))
                        ,@(map Marshal (ASSERT (suspension-argvals val))))
          ])]
-     [(regiment-primitive? (suspension-operator val))
+     [(wavescript-primitive? (suspension-operator val))
       `(,(suspension-operator val) ,@(map Marshal (ASSERT (suspension-argvals val))))]
      [else (error 'interpret-meta:Marshal "unhandled suspended op: ~s" (suspension-operator val))]
      )]
@@ -762,7 +762,7 @@
 			 ;; All stream types. Contents unimportant:
                          (map (lambda (_) `(Stream ',(unique-name "anytype"))) (streamop-parents op)))]
                   [else
-                   (car (ASSERT (regiment-primitive? (streamop-op op))))])]                                          
+                   (car (ASSERT (wavescript-primitive? (streamop-op op))))])]                                          
                [params  (streamop-params op)]
                [parents (streamop-parents op)])
       (cond
@@ -1108,7 +1108,7 @@
 	      [(begin . ,e*) (andmap side-effect-free? e*)]
 	      [(if ,a ,b ,c) (and (side-effect-free? b) (side-effect-free? c) (side-effect-free? a))]
 	      [(quote ,datum) #t]
-	      [(,prim ,[args] ...) (guard (regiment-primitive? prim))
+	      [(,prim ,[args] ...) (guard (wavescript-primitive? prim))
 	       (if (assq prim wavescript-effectful-primitives)
 		   #f
 		   (andmap (lambda (x) x) args))]
@@ -1235,8 +1235,8 @@
 	    (define-syntax maybtime
 	      (syntax-rules ()
 		[(_ e) 
-		 ;(if (<= (regiment-verbosity) 0) e (time e))
-		 (if (>= (regiment-verbosity) 2) (time e) e)
+		 ;(if (<= (wavescript-verbosity) 0) e (time e))
+		 (if (>= (wavescript-verbosity) 2) (time e) e)
 		 ]))
 	    (define (main-work) 
 	      (parameterize ([marshal-cache (make-default-hash-table 1000)])
@@ -1247,7 +1247,7 @@
 		       )
 
 		  (unless (streamop? evaled)
-		    (when (> (regiment-verbosity) 0)
+		    (when (> (wavescript-verbosity) 0)
 		      (printf "------------------------------------------------------------\n")
 		      (printf "  Non-stream value returned from metaprogram: \n")
 		      ;(pretty-print evaled)

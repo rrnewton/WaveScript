@@ -60,7 +60,7 @@
         (guard (and (pair? annot) (eq? (car annot) 'annotations)))
         (process-primapp prim `(,annot ,@rand*))]
 	    [(,prim ,[rand*] ...)
-	     (guard (regiment-primitive? prim))
+	     (guard (wavescript-primitive? prim))
 	     (process-primapp prim rand*)]
 	    [,other (fallthrough other)]))]
   )

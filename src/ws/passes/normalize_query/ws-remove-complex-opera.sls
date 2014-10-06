@@ -87,7 +87,7 @@
 
 (define-pass ws-remove-complex-opera*
 
-    ;; This is the standard one from regiment_helpers.ss
+    ;; This is the standard one from wavescript_helpers.ss
     (define ws-rem-complex:simple? simple-expr?)
 
     
@@ -311,12 +311,12 @@
 	    (mvlet ([(args binds) (make-simples rand* tenv)])
 	      (vector `(app ,rator ,@args) binds))]
 
-	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	   [(,prim ,rand* ...) (guard (wavescript-primitive? prim))
 	    (mvlet ([(args binds) (make-simples rand* tenv)])
 	      (vector `(,prim ,@args) binds))]
 	   
 	   ;; Constants:
-	   [,prim (guard (regiment-primitive? prim))
+	   [,prim (guard (wavescript-primitive? prim))
 		  (vector prim '())]
 
 	   [,other (error 'ws-remove-complex-opera* "didn't handle expr: ~s" other)]

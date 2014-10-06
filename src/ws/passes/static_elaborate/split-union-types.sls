@@ -112,7 +112,7 @@
 			(let ([entry (assq name lookup)])
 			  (cons (list (car entry)) (cdr entry))))
 		   (topological-sort ordering))])
-	(when (>= (regiment-verbosity) 2)
+	(when (>= (wavescript-verbosity) 2)
 	  (printf "Split and sorted union types into:\n")
 	  (pretty-print new))
 	new)))

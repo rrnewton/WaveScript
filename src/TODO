@@ -22,14 +22,14 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 
 There's a lot of cleanup to be done.
- *) Start ripping out old regiment stuff wholesale.
+ *) Start ripping out old wavescript stuff wholesale.
  *) Phase out IFCHEZ but figure out what to do with local rn-match imports.
  *) implement marshal under scheme now that we have byte vectors!
 
  *) Fix PLT WS-repl  
    -- this is a problem with mutable pairs...
 
- *) Change 'regiment' command to 'wscore' 
+ *) Change 'wavescript' command to 'wscore' 
 
 
 Working on just cleaning up commented and dead code.
@@ -187,7 +187,7 @@ What's the critical path for the remaining weeks before PLDI?
    *) Profile times as well as data rate.  Profile data sizes.
 
 [2007.09.20]
- *) Change regiment-primitive? to use symbol props.
+ *) Change wavescript-primitive? to use symbol props.
  *) Is -exit-error not working for type errors?
 
 [2007.09.16] {MLton integer constants}
@@ -322,7 +322,7 @@ FIXME:
  X) add ws.opt and wsc.opt targets for when performance is critical.
 
 [2006.11.29]
- X) For distribution compile a separate regiment.opt for simulations.
+ X) For distribution compile a separate wavescript.opt for simulations.
     (The default checkout should be opt-level 2, DEBUG on.)
 
 [2006.11.08]

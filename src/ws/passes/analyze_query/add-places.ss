@@ -216,7 +216,7 @@
           [(if ,test ,conseq ,altern)
 	   (values `(if ,test ,conseq ,altern) unknown-place unknown-place)]
           [(,prim ,rand* ...)	   
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   (process-primapp prim rand*)]
           [,unmatched
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))

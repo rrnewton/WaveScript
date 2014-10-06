@@ -34,10 +34,10 @@
     (define (meaningful-name exp)
       (match exp
 	     [,prim
-	      (guard (regiment-primitive? prim))
+	      (guard (wavescript-primitive? prim))
 	      (symbol-append 'tmp_ prim)]
 	     [(,prim ,args ...)
-	      (guard (regiment-primitive? prim))
+	      (guard (wavescript-primitive? prim))
 	       (if (basic-primitive? prim)
 		   'tmp_basic
 		   (symbol-append 'tmp_ prim))
@@ -119,7 +119,7 @@
 				 ,(make-letrec altern-decls altern))
 			    test-decls)
 		    ))
-		;; Otherwise it's plain regiment.
+		;; Otherwise it's plain wavescript.
 	     (mvlet ([(test test-decls)     (make-simple a tenv)]
 		     [(conseq conseq-decls) (make-simple b tenv)]
 		     [(altern altern-decls) (make-simple c tenv)])
@@ -175,12 +175,12 @@
 	    (mvlet ([(args binds) (make-simples args tenv)])
 	      (vector `(tuple ,args ...) binds))]
 
-	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	   [(,prim ,rand* ...) (guard (wavescript-primitive? prim))
 	    (mvlet ([(args binds) (make-simples rand* tenv)])
 	      (vector `(,prim ,args ...) binds))]
 
 	   ;; Constants:
-	   [,prim (guard (regiment-primitive? prim))
+	   [,prim (guard (wavescript-primitive? prim))
 		  (vector prim '())]
 
 	   ;[,other (error 'remove-complex-opera* "didn't handle expr: ~s" other)]

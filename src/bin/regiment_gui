@@ -1,17 +1,17 @@
 #! /bin/bash
 
-#scheme -h regimentc.1.heap $*
-#chez -h regimentc.1.heap $*
+#scheme -h wavescriptc.1.heap $*
+#chez -h wavescriptc.1.heap $*
 
 # Use my default location if it is not set.
-if ! [ $WAVESCRIPTD ]; then WAVESCRIPTD=$HOME/regiment_alpha; fi
+if ! [ $WAVESCRIPTD ]; then WAVESCRIPTD=$HOME/wavescript_alpha; fi
 
 # If we can we use the stored heap, otherwise we run it as a script.
-#if [ -f $WAVESCRIPTD/build/regiment.0.heap ];
-#then $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/build/regiment.0.heap $*;
-#else $WAVESCRIPTD/regiment_script.ss $*;
+#if [ -f $WAVESCRIPTD/build/wavescript.0.heap ];
+#then $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/build/wavescript.0.heap $*;
+#else $WAVESCRIPTD/wavescript_script.ss $*;
 #fi
 
 SWL_ROOT=$HOME/bin/Linux-i686/swl1.0a/lib/
 
-swl_bare --script $WAVESCRIPTD/src/regiment.ss ./ $*
+swl_bare --script $WAVESCRIPTD/src/wavescript.ss ./ $*

@@ -59,7 +59,7 @@
 	 )]
       
       ;; [2008.03.28] This handles things like "timer", utilize available type info:
-      [(,prim ,arg* ...) (guard (regiment-primitive? prim))	     
+      [(,prim ,arg* ...) (guard (wavescript-primitive? prim))	     
        (define tmp
 	 (map-prim-w-types 
 	  (lambda (arg ty)
@@ -100,7 +100,7 @@
 	   [(List ,elt-t)
 	    ;; Respect the invariant that nulls have type assertions?
 	    (if (null? x)
-		;; LAME: the regiment part of the backend doesn't know how to handle these assert-types
+		;; LAME: the wavescript part of the backend doesn't know how to handle these assert-types
 		(values ''() type #f)
 		;; Really mutability is a function of the type, not the value.  This is a bit silly.
 		(let-values ([(e1 t1 mu1?) (loop (car x) elt-t)]
@@ -120,14 +120,14 @@
 	     ;; If they're all equal, reduce to 
 	     [(and (all-equal? (vector->list x))
 		   (not (type-containing-mutable? elt-ty)))
-	      (when (>= (regiment-verbosity) 3)
+	      (when (>= (wavescript-verbosity) 3)
 		(printf " ** Note: Found compile-time vector with constant contents.\n"))
 	      ;`(Array:make ,(vector-length x) (assert-type ,elt-ty ,(vector-ref x 1)))
 	      (values	       
 	       (if (eq? 'BOTTOM (vector-ref x 0))
 		   ;; HACK: Special case, an array of BOTTOM turns back into Array:makeUNSAFE
 		   (begin
-		     (when (>= (regiment-verbosity) 3)
+		     (when (>= (wavescript-verbosity) 3)
 		       (printf "   ** Hack: turning Array of bottom symbols back into Array:makeUNSAFE.\n"))
 		     `(Array:makeUNSAFE ',(vector-length x)))
 		   `(Array:make ',(vector-length x) ,(first-value (datum->code (vector-ref x 0) elt-ty))))

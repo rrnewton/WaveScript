@@ -276,8 +276,8 @@
 
   ;; We're not quite ready to leave the "sugared" grammar yet.  The
   ;; next pass removes the 'using' construct.
-  [OutputGrammar  sugared_regiment_grammar]
-  ;[OutputGrammar  initial_regiment_grammar]
+  [OutputGrammar  sugared_wavescript_grammar]
+  ;[OutputGrammar  initial_wavescript_grammar]
 
 ;; TODO: When it works, could redo this with Expr/ExtraArg
   [Expr process-expr]
@@ -293,7 +293,7 @@
 ; ================================================================================
 
 (define-testing test_desugar-patterns
-  (default-unit-tester "desugar-pattern-matching.ss: For reading regiment source files." 
+  (default-unit-tester "desugar-pattern-matching.ss: For reading wavescript source files." 
     `(["Run a basic test of the pattern match expander."
      (cadr (cadadr
 	    (reunique-names 
@@ -321,7 +321,7 @@
     ;; [2007.01.30] BUG: Different behavior in petite and chez.
     [(cadr (deep-assq 'aggr
 		(pass_desugar-pattern-matching 
-		 '(verify-regiment-language
+		 '(verify-wavescript-language
 		   '(program
 			(letrec ([readings 'type_13 (rmap
 						     (lambda (n)

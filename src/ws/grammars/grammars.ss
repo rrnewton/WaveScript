@@ -55,9 +55,9 @@
       [TypeVar ('NUM ,valid-typevar-symbol?)]
       )))
 
-(define base_regiment_forms
+(define base_wavescript_forms
   (let ()
-    (define (is-var? x) (and (symbol? x) (not (regiment-keyword? x))))
+    (define (is-var? x) (and (symbol? x) (not (wavescript-keyword? x))))
   `(
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
@@ -119,7 +119,7 @@
     ;; Include an entry for each primitive.
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:
-	(regiment-primitives))
+	(wavescript-primitives))
 
     [Int ,integer?]
     [Float ,flonum?]
@@ -148,8 +148,8 @@
 ;; the grammar output from resolve-type-aliases, this is the grammar
 ;; accepted by the type-checker the first time we type check the
 ;; program.
-(define initial_regiment_grammar
-  `( ,@base_regiment_forms
+(define initial_wavescript_grammar
+  `( ,@base_wavescript_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
      [Expr ('lambda (LHS ...) (Type ...) Expr)]
      [Expr ('app Expr ...)]  ;; Application.  
@@ -159,9 +159,9 @@
 
 (define (possible-alias? x) (and (symbol? x) (not (eq? x 'quote))))
 
-;; This is the grammar consumed by verify-regiment.
-;; Between verify-regiment and the first typecheck we are inbetween this and the initial_regiment_grammar
-(define sugared_regiment_grammar
+;; This is the grammar consumed by verify-wavescript.
+;; Between verify-wavescript and the first typecheck we are inbetween this and the initial_wavescript_grammar
+(define sugared_wavescript_grammar
   `(
        ,@ (filter (lambda (x) 
 		    ;(cond-expand [chez (import rn-match)] [else])
@@ -169,7 +169,7 @@
 		      [(Type ,_) #f]
 		      [(,_ ('wscase . ,__)) #f]
 		      [,else #t]))
-	    initial_regiment_grammar)
+	    initial_wavescript_grammar)
 
        [Expr ('wscase Expr [LHS Expr] ...)]  ;; This is desugared further by desugar-pattern-matching
 

@@ -23,7 +23,7 @@
 (library (ws globals)
     (export
 
-	 define-regiment-parameter regiment-parameters reg:make-parameter
+	 define-wavescript-parameter wavescript-parameters reg:make-parameter
          WAVESCRIPTD  
 	 ;define-testing
 	 IFWAVESCOPE ;; Load WS extensions or no?
@@ -39,7 +39,7 @@
          ;; Syntax:
 	  VERBOSE-LOAD
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT 
-         WAVESCRIPT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
+         WAVESCRIPT_DEBUG HACK wavescript-emit-debug check-pass-grammars mlton-ascribe-types
 	 REGOPTLVL
 
          SCHEDULE_DELAY         
@@ -53,10 +53,10 @@
 	 compiler-invocation-mode 
 	 wsc2-gc-mode wsc2-sigseg-mode
 	 embedded-mode? wsc2-variant-mode? java-mode?
-;	 regiment-compile-sums-as-tuples
-	 regiment-verbosity 
-	 regiment-track-source-locations
-	 regiment-current-pass
+;	 wavescript-compile-sums-as-tuples
+	 wavescript-verbosity 
+	 wavescript-track-source-locations
+	 wavescript-current-pass
 
 	 wsint-tuple-limit
 	 wsint-output-file
@@ -212,23 +212,23 @@
 ;(define-syntax reg:make-parameter (identifier-syntax (hash-percent make-parameter)))
 
 
-;; In the following manner we distinguish regiment parameters from normal
-;; parameters.  We keep a list of all the existing regiment
+;; In the following manner we distinguish wavescript parameters from normal
+;; parameters.  We keep a list of all the existing wavescript
 ;; parameters.  And it also makes it more acceptable for us to scatter
 ;; around the parameter definitions, because you can grep for
-;; define-regiment-parameter.
-(define regiment-parameters (reg:make-parameter '()))
-(define-syntax define-regiment-parameter
+;; define-wavescript-parameter.
+(define wavescript-parameters (reg:make-parameter '()))
+(define-syntax define-wavescript-parameter
   (syntax-rules () 
     [(_ name args ...)
      (define name 
-       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
+       (begin (wavescript-parameters (cons (quote name) (wavescript-parameters)))
 	      (reg:make-parameter args ...)))]))
 
 
 ;; Parameter determining the location of the Regiment tree. <br>
 ;; This is set when the system loads.
-(define-regiment-parameter WAVESCRIPTD "./")
+(define-wavescript-parameter WAVESCRIPTD "./")
 
 
 ;=======================================================================;;
@@ -296,7 +296,7 @@
      )))
 
 
-;; [2006.09.11] This configures the scheme compiler when loading regiment.
+;; [2006.09.11] This configures the scheme compiler when loading wavescript.
 ;; NOTE: this controls the optimization level for the COMPILER, and
 ;; also for the token machine simulator or the Scheme WS backend.
 ;; But it does *not* control the number of optimizations applied by
@@ -392,13 +392,13 @@
 ;;  1 - Normal.
 ;;  0 - Silent except for high priority warnings.
 ;; -1 - Absolutely silent.
-(define-regiment-parameter regiment-verbosity 1)
+(define-wavescript-parameter wavescript-verbosity 1)
 
 ;; This determines whether the compiler tracks source locations in loaded files.
-(define-regiment-parameter regiment-track-source-locations #t)
+(define-wavescript-parameter wavescript-track-source-locations #t)
 
 ;; It's useful to have this info globally for debugging/error messages.
-(define regiment-current-pass (reg:make-parameter #f))
+(define wavescript-current-pass (reg:make-parameter #f))
 
 (define valid-invocation-modes 
   '(wavescript-simulator  ;; Scheme backends: ws and ws.early
@@ -409,10 +409,10 @@
     wavescript-compiler-nesc
     wavescript-compiler-java
     wavescript-compiler-javame
-    regiment-simulator ;; [2007.03.20] This is now deprecated!!
+    wavescript-simulator ;; [2007.03.20] This is now deprecated!!
     ))
 
-(define-regiment-parameter compiler-invocation-mode 
+(define-wavescript-parameter compiler-invocation-mode 
   'wavescript-simulator
   (lambda (x)
     (if (memq x valid-invocation-modes) x
@@ -442,26 +442,26 @@
 ;;  deferred - deferred refcount, unfinished
 ;;  boehm    - conservative collector
 ;;  none     - simply don't collect
-(define-regiment-parameter wsc2-gc-mode 'refcount)
+(define-wavescript-parameter wsc2-gc-mode 'refcount)
 ;; [2008.08.27] Making this boehm for now because of a known bug with
 ;; simple 'refcount and closed mono-functions not inlined.
 
 ;; Options are:
 ;;  copyalways - sigsegs are contiguous arrays
 ;;  seglist    - lists of segments with sharing
-(define-regiment-parameter wsc2-sigseg-mode 'copyalways)
+(define-wavescript-parameter wsc2-sigseg-mode 'copyalways)
 
 ;; This parameter controls what optimizations the compiler applies.
 
 ;; It can be set by passing a -O2 style flag, or by specifically
 ;; enabling optimizations with -opt <NAME>.
-;(define-regiment-parameter ws-optimizations-enabled '(rewrites))
+;(define-wavescript-parameter ws-optimizations-enabled '(rewrites))
 ;; TEMPTOGGLE - turning maxinline on by default:
-(define-regiment-parameter ws-optimizations-enabled '())
+(define-wavescript-parameter ws-optimizations-enabled '())
 
 ;; This parameter is read by various parts of the compiler.
 ;; It's value is 0,1,2, or 3.  -O3 enables unsafe optimizations.
-(define-regiment-parameter ws-optimization-level 2)
+(define-wavescript-parameter ws-optimization-level 2)
 
 ;; Profiling controls:
 ;; Used by annotate-with-data-rates: We can limit the amount of
@@ -472,7 +472,7 @@
 ;; can only stop after each output element is produced.
 ;; 
 ;; Valid values: 'none, '(time <ms>), '(virttime <ms>), or '(elements <n>)
-(define-regiment-parameter ws-profile-limit 
+(define-wavescript-parameter ws-profile-limit 
   ;'(elements 3)
   ;'(time 3000)
   ;`(time ,(* 21 3000))
@@ -483,56 +483,56 @@
 
 ;; Controls whether we inline *everything*, or reserve the right to
 ;; hold back on monomorphic, first-order functions.
-(define-regiment-parameter ws-full-inline #t)
+(define-wavescript-parameter ws-full-inline #t)
 ;; [2010.11.04] How tested was this mode?
 
 ;; This parameter stores an association list binding the names of
 ;; passes to hooks (functions) that should run after the specified
 ;; pass runs.  This is useful for writing scripts that measure
 ;; properties of the compiler.
-(define-regiment-parameter ws-compiler-hooks '())
+(define-wavescript-parameter ws-compiler-hooks '())
 
 ;; This must be set according to the backend that we're using.
 ;; It must be #t for the C++ backend, and it will be #f for the Caml backend.
-;(define-regiment-parameter regiment-compile-sums-as-tuples 'unset)
+;(define-wavescript-parameter wavescript-compile-sums-as-tuples 'unset)
 
 ;; When we use the 'print' command within a WS program, this is where that output goes.
-(define-regiment-parameter ws-print-output-port (current-output-port))
+(define-wavescript-parameter ws-print-output-port (current-output-port))
 
 ;; This suppresses loading of built-in internal*.ws files.
-(define-regiment-parameter ws-no-prelude #f)
+(define-wavescript-parameter ws-no-prelude #f)
 
 ;; Suppress the default behavior wherein the "main" stream is echo'd to stdout.
 ;; Should work across backends.
-(define-regiment-parameter suppress-main-stream-printing #f)
+(define-wavescript-parameter suppress-main-stream-printing #f)
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.
-(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
+(define-wavescript-parameter wavescript-emit-debug (IFDEBUG #t #f))
 
 ;; [2007.08.17] TEMP: TURNING OFF FOR NOW:
-(define-regiment-parameter check-pass-grammars (IFDEBUG #f #f))
+(define-wavescript-parameter check-pass-grammars (IFDEBUG #f #f))
 
 ;; Output type annotations on all the generated mlton code.
 ;; Makes the output more verbose...
-(define-regiment-parameter mlton-ascribe-types #t)
+(define-wavescript-parameter mlton-ascribe-types #t)
 
-(define-regiment-parameter dump-graphviz-output #f)
+(define-wavescript-parameter dump-graphviz-output #f)
 
 ;; [2007.12.01] Allows us to return something other than 'main'
-(define-regiment-parameter ws-alternate-return-stream #f)
+(define-wavescript-parameter ws-alternate-return-stream #f)
 
 ;; [2009.11.23] This is a continuation to abort compilation.
 ;; (Irrespective of which version of the compiler you were called from.)
-(define-regiment-parameter abort-compiler-continuation #f)
+(define-wavescript-parameter abort-compiler-continuation #f)
 
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
-;; checks the (regiment-emit-debug) parameter, and if true, returns
+;; checks the (wavescript-emit-debug) parameter, and if true, returns
 ;; its arguments in a list, otherwise null.
 ;; .returns Its arguments in list form or the null list.
 (define-syntax WAVESCRIPT_DEBUG
   (syntax-rules ()
-    [(_ expr ...) (if (regiment-emit-debug) (list expr ...) '())]))
+    [(_ expr ...) (if (wavescript-emit-debug) (list expr ...) '())]))
 
 
 ;; [2006.03.20] This enables me to explicitely label the nasty hacks in the system.
@@ -554,15 +554,15 @@
 ;;   string -- log to specified file 
 ;;   function -- use specified logger function
 ;; FIXME : Finish implementing these behaviors.
-(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
-;(define-regiment-parameter simulation-logger #t) ;; Set the default to #t in debug mode, #f otherwise.
+(define-wavescript-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+;(define-wavescript-parameter simulation-logger #t) ;; Set the default to #t in debug mode, #f otherwise.
 
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
-(define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
+(define-wavescript-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
 ;; This toggles whether the file is printed in human readable form
 ;; (indented, etc), or in machine readable (SExp) form.
-(define-regiment-parameter simulation-logger-human-readable #f)
+(define-wavescript-parameter simulation-logger-human-readable #f)
 
 ;; This toggles whether or not the logfile is written in plaintext
 ;; form (well, except for gizpping), or in "FASL" (fast loading) form,
@@ -573,12 +573,12 @@
 ;;  <int> - In addition to fasling, also "batch" the output into vector-chunks
 ;;          This greatly reduces file size and also increases reading speed.
 ;;  [500 is good for running large simulations.]
-(define-regiment-parameter simulation-logger-fasl-batched 500
+(define-wavescript-parameter simulation-logger-fasl-batched 500
   (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x))))
 	  x))
 
 ;; Controls whether a .log or .log.gz is produced.
-(define-regiment-parameter simulation-logger-gzip-output #t)
+(define-wavescript-parameter simulation-logger-gzip-output #t)
 
 
 ;; Just a counter for the simulation logger messages.  
@@ -589,28 +589,28 @@
 ;;; Used by wsint:
 ;;
 ;; Limits the amount of output from the run:
-(define-regiment-parameter wsint-tuple-limit #f)
+(define-wavescript-parameter wsint-tuple-limit #f)
 ;; Directs the output to a file
-(define-regiment-parameter wsint-output-file #f)
+(define-wavescript-parameter wsint-output-file #f)
 ;; Times how long it takes to pull the tuples from the stream.
-(define-regiment-parameter wsint-time-query #f)
+(define-wavescript-parameter wsint-time-query #f)
 
 (define wserror-handler (reg:make-parameter  (lambda (str) (error 'wserror str))))
 
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a
 ;; parameter that needs to be varied for testing/analysis purposes.
-(define-regiment-parameter varied-param 'unset-varied-param!!!)
-;(define-regiment-parameter varied-param (begin (fprintf (current-error-port) "varied-param: HACK LOADED") 12))
+(define-wavescript-parameter varied-param 'unset-varied-param!!!)
+;(define-wavescript-parameter varied-param (begin (fprintf (current-error-port) "varied-param: HACK LOADED") 12))
 
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other
-(define-regiment-parameter reg:comment-code #f)
+(define-wavescript-parameter reg:comment-code #f)
 
 ; ----------------------------------------
 
 ;; This stores the list of all passes (well, pass names) that get run by default.
-(define-regiment-parameter pass-list '())
+(define-wavescript-parameter pass-list '())
 
 ;; This parameter accumulates all the unit tests from the system as they are defined.
 (define reg:all-unit-tests (reg:make-parameter '()))
@@ -665,10 +665,10 @@
 ;====================================================
 
 ;; The slow-pulse is used for region formation.
-(define-regiment-parameter default-slow-pulse (* 10 60000)) ;; MILLISECONDS
+(define-wavescript-parameter default-slow-pulse (* 10 60000)) ;; MILLISECONDS
 
 ;; The fast-pulse is used for folding.
-(define-regiment-parameter default-fast-pulse 5000)  ;; MILLISECONDS
+(define-wavescript-parameter default-fast-pulse 5000)  ;; MILLISECONDS
 
 ;;; Used primarily by pass14_add-places:
 ; (and by pass15_add-routing
@@ -686,7 +686,7 @@
 ;;   values to the base-station.  This extra meta-data generally tells
 ;;   the user what Regiment primitive produced the values, as well as
 ;;   which node-ids they came from.
-(define-regiment-parameter deglobalize-markup-returns #f)
+(define-wavescript-parameter deglobalize-markup-returns #f)
 
 ;;; Used primarily by the pass cleanup-token-machine
 ;====================================================
@@ -714,15 +714,15 @@
 ;;   'linked   -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
 ;;               NOTE: CURRENTLY DOESN'T WORK WITH NON-AGGREGATED GRETURNS!
 ;;   'etx     -- like 'dynamic, but uses an ETX metric for selecting trees, rather than hopcount.  <br>
-(define-regiment-parameter desugar-gradients-mode 'etx) ; TOGGLE FOR UNIT TESTING.
+(define-wavescript-parameter desugar-gradients-mode 'etx) ; TOGGLE FOR UNIT TESTING.
 
 ;; Currently [2006.01.25] I'm implementing a very simple retry
 ;; mechanism for up-sending data in ETX based gradients.  If an upward
 ;; bound message doesn't receive an ACK it will be resent after a
 ;; constant amount of time.H
-(define-regiment-parameter etx-retry-delay 50)
+(define-wavescript-parameter etx-retry-delay 50)
 ;; And this is the maximum number of times a retry will be made.
-(define-regiment-parameter etx-max-retries 5)
+(define-wavescript-parameter etx-max-retries 5)
 
 ;;; Used primarily by pass cps-tokmac
 ;====================================================
@@ -747,7 +747,7 @@
 
 ;; Controls the number of times the default unit tester will retry a failed test.
 ;; (Only applies to nondeterministic tests marked as 'retry'.)<br>
-(define-regiment-parameter default-unit-tester-retries 3)
+(define-wavescript-parameter default-unit-tester-retries 3)
 
 
 
@@ -756,7 +756,7 @@
 
 ;; These are the virtual coordinate bounds of the world.
 ;; [2005.09.25] These are constants for an out of use file:
-;; Now we use regiment-parameters for this type of thing...
+;; Now we use wavescript-parameters for this type of thing...
 (define world-xbound 60)
 
 ;; And the y-bound
@@ -796,7 +796,7 @@
 ;; This determines the size of a node when drawn on the screen.
 ;; (It has to be inexact for SWL's sake; otherwise we end up with
 ;; undesirable rational numbers.) <br><br>
-(define-regiment-parameter processor-screen-radius 16.0)
+(define-wavescript-parameter processor-screen-radius 16.0)
 
 ;; This sets the value of the previous processor-screen-radius
 ;; parameter based on the current number of processors and window size. <br><br>
@@ -820,7 +820,7 @@
 ; [2005.11.14] I'm segregating and renaming the parameters that are
 ; used by the tossim interface and simulator alpha.
 
-(define-regiment-parameter sim-num-nodes 30 
+(define-wavescript-parameter sim-num-nodes 30 
   (lambda (x) (if (and (integer? x) (>= x 1))
 		  x (error 'sim-num-nodes "must be a positive integer"))))
 
@@ -829,11 +829,11 @@
 ;; #f    : No time-out                                        <br>
 ;; Float : Time out after certain number of cpu seconds.      <br>
 ;; Int   : Timeout after certain number of simulator clock ticks
-(define-regiment-parameter sim-timeout 2000)
+(define-wavescript-parameter sim-timeout 2000)
 
 ;; Number of milleseconds over which to start up the nodes.   <br>
 ;; [2005.11.14] FIXME: Not used yet in simulator-alpha.
-(define-regiment-parameter sim-startup-stagger 0)
+(define-wavescript-parameter sim-startup-stagger 0)
 
 ;====================================================
 ;;; Used primarily by Simulator_alpha.ss: <br>
@@ -851,7 +851,7 @@
 
 ;; This parameter is a way for .rs files to set their own topologies.
 ;; If it's set to a filename, that topology is used rather than rolling a new one.
-(define-regiment-parameter simalpha-preset-topology #f)
+(define-wavescript-parameter simalpha-preset-topology #f)
 
 ;; This is the null pointer representation for Token names.  Probably just Zero.
 (define TMNULL ''0)
@@ -859,20 +859,20 @@
 
 ;;; HOW DO YOU DO .form!???! FIXME
 ;; .form Simalpha uses parameters for the world bounds.  This is the xbound.
-(define-regiment-parameter simalpha-world-xbound 60)
+(define-wavescript-parameter simalpha-world-xbound 60)
 
 ;; .form And the ybound...
-(define-regiment-parameter simalpha-world-ybound 60)
+(define-wavescript-parameter simalpha-world-ybound 60)
 
 ;; .form????????? Comm radius: outer.
-(define-regiment-parameter simalpha-outer-radius 15)
+(define-wavescript-parameter simalpha-outer-radius 15)
 
 ;; Comm radius: inner.
-(define-regiment-parameter simalpha-inner-radius 10)
+(define-wavescript-parameter simalpha-inner-radius 10)
 
 ;; When this is set to #t, the simulator slows itself down to match real-time.
 ;; If it can't match real time, will have undefined behavior.
-(define-regiment-parameter simalpha-realtime-mode #f)
+(define-wavescript-parameter simalpha-realtime-mode #f)
 
 ;; This is used by the simulator.  Values:
 ;;   #f: Node IDs are large and random.
@@ -880,11 +880,11 @@
 ;;        zero for BASE, and I like to use 2000 or so for this.  If
 ;;        nodeids are too small it's easy to mix them up with other
 ;;        numbers floating around.
-(define-regiment-parameter simalpha-consec-ids 2000)
+(define-wavescript-parameter simalpha-consec-ids 2000)
 
 ;; This controls where the simulator writes its output.
 ;; If this is false, default is stdout.  Otherwise it must be set to an output port.
-(define-regiment-parameter simalpha-output-port #f) 
+(define-wavescript-parameter simalpha-output-port #f) 
 
 
 ;; This parameter determines node-placement strategy.  Valid settings are:
@@ -894,45 +894,45 @@
 ;;                introduce other biases in the distribution of placements that it
 ;;                 produces.  (But with an opaque channel function it cannot guarantee this.)
 ;;  'gridlike   -- a randomly perturbed grid.  TODO: Expose some parameters for controlling the randomness.
-(define-regiment-parameter simalpha-placement-type 'gridlike)
+(define-wavescript-parameter simalpha-placement-type 'gridlike)
 
 ;; This is the fraction of a grid square (can be greater than 1) that
 ;; represents the maximum pertubation of a node's x or y coordinate in
 ;; 'gridlike' mode.
-(define-regiment-parameter simalpha-max-gridlike-perturbation 1/2)
+(define-wavescript-parameter simalpha-max-gridlike-perturbation 1/2)
 
 ;; [2005.10.03] Can be:
 ;;   'lossless -- 100% until simalpha-outer-radius, 0% beyond  
 ;;   'linear-disc -- 100% at simalpha-inner-radius radius, 0% past outer, linear interpolation between.
 ;;   'empirical -- Uses gathered data on radio connectivity (UNIMPLEMENTED)
-(define-regiment-parameter simalpha-channel-model 'lossless)
+(define-wavescript-parameter simalpha-channel-model 'lossless)
 
 ;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
-(define-regiment-parameter simalpha-failure-model 'none)
+(define-wavescript-parameter simalpha-failure-model 'none)
 
 ;; Controls whether dbg print statements happen.  Can be changed dynamically.
-(define-regiment-parameter simalpha-dbg-on #t)
+(define-wavescript-parameter simalpha-dbg-on #t)
 
 ;; This parameter controls the feature wherein omitted trailing args to token handlers are
 ;; filled in as ZERO.  It may be set to:
 ;; #t/#f turn padding on/off
 ;; warning: turn padding on, but issue a warning when it is used.
-(define-regiment-parameter simalpha-zeropad-args #f) ;'warning)
+(define-wavescript-parameter simalpha-zeropad-args #f) ;'warning)
 
 ;; When this parameter is turned on, the simulator returns a stream of
 ;; soc-return values rather than waiting for the sim to end
-(define-regiment-parameter simalpha-stream-result #f)
+(define-wavescript-parameter simalpha-stream-result #f)
 
 ;; If #t the simulator will open up a GUI as it simulates (if it can).
-(define-regiment-parameter simalpha-graphics-on #t)
+(define-wavescript-parameter simalpha-graphics-on #t)
 
 ;; Determines whether edges are drawn.  Sometimes drawing edges (and
 ;; highlighting them), can be slow.
-;(define-regiment-parameter simalpha-draw-edges #t)
+;(define-wavescript-parameter simalpha-draw-edges #t)
 
 ;; When this is #t the simulator writes all simulations to a file and loads them.  Better for debugging!
 ;; This controls both the "language-mechanism" and simalpha..
-(define-regiment-parameter simulator-write-sims-to-disk (IFDEBUG #t #f))
+(define-wavescript-parameter simulator-write-sims-to-disk (IFDEBUG #t #f))
 
 
 ;; This parameter controls whether or not the generated (simulator)
@@ -940,15 +940,15 @@
 ;; execution faster, but has the drawback that the code will not be
 ;; garbage collectable.  (Top level modules cannot be garbage
 ;; collected in Chez Scheme.)
-(define-regiment-parameter simalpha-generate-modules 
+(define-wavescript-parameter simalpha-generate-modules 
   ;; If we're running long simulations in batch mode, we want to turn this on:
   ;; We just refer to the top-level environment for this: (dodging module-system/load-order issues)
   ;(eval 'simulator-batch-mode))
   #t)
 
 ;; This is a little feature that will print message counts to the GUI:
-(define-regiment-parameter simalpha-label-msgcounts #f)
-(define-regiment-parameter simalpha-label-sensorvals #f)
+(define-wavescript-parameter simalpha-label-msgcounts #f)
+(define-wavescript-parameter simalpha-label-sensorvals #f)
 
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
 (define simalpha-pause-hook (reg:make-parameter #f))
@@ -958,11 +958,11 @@
 ;;
 ;; Cannot set it right now because no sensor stubs have been defined yet here in constants.ss .  
 ;; When sensor stubs are defined, this shoud be set to some default value.
-(define-regiment-parameter simalpha-sense-function-constructor 'unset)
+(define-wavescript-parameter simalpha-sense-function-constructor 'unset)
 ;; This parameter is bound by the simulator to the constructed sensor-functions.
 ;; Shouldn't be modified directly.
 ;; Should have type:  () -> VTime -> SensorTypeString, NodeID, Xcoord, Ycoord -> SensedValue
-(define-regiment-parameter simalpha-sense-function #f)
+(define-wavescript-parameter simalpha-sense-function #f)
 ;(define simalpha-sense-function (reg:make-parameter #f (lambda (x) 
 ;						     (inspect `(sensor! . ,x))
 ;						     x)))

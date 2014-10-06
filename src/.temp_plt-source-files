@@ -11,7 +11,7 @@
     ./generic/util/reg_macros.ss
 ./plt/common.ss
   ./generic/compiler_components/prim_defs.ss
-  ./generic/compiler_components/regiment_helpers.ss
+  ./generic/compiler_components/wavescript_helpers.ss
     ./generic/grammars/grammar_checker.ss
   ./generic/compiler_components/hm_type_inference.ss
   ./generic/compiler_components/reg_core_generic_traverse.ss
@@ -45,7 +45,7 @@
 ./generic/passes/normalize_source/remove-unquoted-constant.ss
 ./generic/passes/normalize_source/rename-vars.ss
 ./generic/passes/normalize_source/typecheck.ss
-./generic/passes/normalize_source/verify-regiment.ss
+./generic/passes/normalize_source/verify-wavescript.ss
 ./generic/passes/normalize_query/info.ss
 ./generic/passes/normalize_query/lift-letrec-body.ss
 ./generic/passes/normalize_query/lift-letrec.ss

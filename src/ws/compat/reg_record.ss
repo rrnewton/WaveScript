@@ -1,6 +1,6 @@
 
 
-;; This defines the regiment records to be R6RS records:
+;; This defines the wavescript records to be R6RS records:
 (define-syntax reg:define-struct
   (lambda (x)      
     (define (symappend . syms) 

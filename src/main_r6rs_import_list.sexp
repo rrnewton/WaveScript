@@ -36,7 +36,7 @@
 ;   (include "generic/langs/lang06_uncover-free.ss")
 ;   (include "generic/langs/lang07_lift-letrec.ss")
 
-(ws passes normalize_source verify-regiment)
+(ws passes normalize_source verify-wavescript)
 (ws passes normalize_source typecheck)
 (ws passes normalize_source desugar-pattern-matching)
 (ws passes normalize_source resolve-varrefs)

@@ -167,7 +167,7 @@ native: mzscheme_native
 
 # Depends on aggregated libraries:
 ikarus: ws/common.sls main_r6rs.sls
-	$(IKARUS) -O2 --compile-dependencies regiment.ss
+	$(IKARUS) -O2 --compile-dependencies wavescript.ss
 
 
 #----------------------------------------#
@@ -187,9 +187,9 @@ pltbc:
 	find -name "._*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
-	(export PLTCOLLECTS=$(DEFAULTPLTLIB)`pwd`; plt-r6rs --compile regiment.ss)
+	(export PLTCOLLECTS=$(DEFAULTPLTLIB)`pwd`; plt-r6rs --compile wavescript.ss)
 
-# This version DOES NOT build regiment sources.  Leaner and meaner.
+# This version DOES NOT build wavescript sources.  Leaner and meaner.
 wsbc: ws/common.sls main_r6rs.sls 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
@@ -199,8 +199,8 @@ wsbc: ws/common.sls main_r6rs.sls
 
 # OLD? 
 pltexe:
-	$(MZC) --exe regiment_pltscript.exe regiment_pltscript.ss
-	$(MZC) --exe-dir regiment_pltscript regiment_pltscript.exe 
+	$(MZC) --exe wavescript_pltscript.exe wavescript_pltscript.ss
+	$(MZC) --exe-dir wavescript_pltscript wavescript_pltscript.exe 
 
 mzscheme_native: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
@@ -235,7 +235,7 @@ wsparse_zo:
 	$(MZC) -z --auto-dir parser/*.ss
 	echo '#!/bin/bash' > bin/wsparse
 	chmod +x bin/wsparse
-	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
+	echo 'source `dirname $$0`/assert_wavescriptd' >> bin/wsparse
 	echo 'mzscheme -qu "$$WAVESCRIPTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
 
 
@@ -256,7 +256,7 @@ wsparse_zo:
 # This is the R6RS chez:
 # [2010.06.25] Right now I need to cleanup chezwhole.  The first
 # version has threading/machinetype problems.  The second version
-# appears to build then silently fails when executing regiment.chez
+# appears to build then silently fails when executing wavescript.chez
 # (main screwed up).
 #chez: chezwhole2
 chez: chezincr
@@ -269,7 +269,7 @@ chezthreaded:
 # This version uses my own hack for chasing r6rs library deps:
 chezincr: ws/common.sls main_r6rs.sls 
         # Build all the individual .so files:
-	./experimental/r6make.ss regiment.ss
+	./experimental/r6make.ss wavescript.ss
         # It would be nice to make a .boot file out of them...
 #	echo '(make-boot-header "tmp.hdr" "scheme.boot" "petite.boot")' | $(CHEZ)
 #	find -name "*.so"
@@ -277,11 +277,11 @@ chezincr: ws/common.sls main_r6rs.sls
 # This version uses chez scheme's builtin transitive compilation:
 chezincr2: ws/common.sls main_r6rs.sls 
 	mkdir -p build/$(MT)
-	$(CHEZ) $(THREADED) --libdirs ".::build/$(MT)/"  --compile-imported-libraries --optimize-level 2 --program regiment.ss `pwd` nothing
+	$(CHEZ) $(THREADED) --libdirs ".::build/$(MT)/"  --compile-imported-libraries --optimize-level 2 --program wavescript.ss `pwd` nothing
 
 # Should be idempotent:
 chezpurge: ws/common.sls main_r6rs.sls 
-	./experimental/r6make.ss regiment.ss purge
+	./experimental/r6make.ss wavescript.ss purge
 chezwipe: chezpurge
 
 # Whole program compilation to a single .boot file (R6RS)
@@ -289,29 +289,29 @@ chezwhole:
 	find . -name "*.so" | xargs $(RM)
 	@if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | chez
-	./experimental/r6make.ss regiment.ss list > build/so_list.txt
+	./experimental/r6make.ss wavescript.ss list > build/so_list.txt
 	make chezincr
-	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/wavescript.complete.boot
 
 chezwhole2: chezincr2
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	find build/$(MT)/ -name "*.so"  | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
-#	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/regiment.complete.boot
+	find build/$(MT)/ -name "*.so"  | xargs cat build/$(MT)/main.hdr > build/$(MT)/wavescript.complete.boot
+#	cat build/so_list.txt | xargs cat build/$(MT)/main.hdr > build/$(MT)/wavescript.complete.boot
 
 
 # Whole program compilation in debug mode
 chezdebug:
-	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
+	if [ -f build/$(MT)/wavescript.complete.boot ]; then mv build/$(MT)/wavescript.complete.boot __TEMP; fi
 	REGDEBUGMODE=ON make chezwhole
-	mv build/$(MT)/regiment.complete.boot build/$(MT)/regiment.debug.boot
-	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/regiment.complete.boot; fi
+	mv build/$(MT)/wavescript.complete.boot build/$(MT)/wavescript.debug.boot
+	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/wavescript.complete.boot; fi
 
 # Whole program compilaion in opt mode.
 chezopt:
-	if [ -f build/$(MT)/regiment.complete.boot ]; then mv build/$(MT)/regiment.complete.boot __TEMP; fi
+	if [ -f build/$(MT)/wavescript.complete.boot ]; then mv build/$(MT)/wavescript.complete.boot __TEMP; fi
 	REGOPTLVL=3 make chezwhole
-	mv build/$(MT)/regiment.complete.boot build/$(MT)/regiment.opt.boot
-	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/regiment.complete.boot; fi
+	mv build/$(MT)/wavescript.complete.boot build/$(MT)/wavescript.opt.boot
+	if [ -f __TEMP ]; then mv __TEMP build/$(MT)/wavescript.complete.boot; fi
 
 chezall: chezwhole chezdebug chezopt
 
@@ -353,11 +353,11 @@ boot.opt: aggregated_chez _temp_temp.so shared.opt
 
 # This is an extra little header:
 _temp_temp.so:
-	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
+	echo '(define wavescript-origin "compiled .boot")' > _temp_temp.ss
 	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(OLDCHEZ)
 
 ## These targets just make the shared objects as necessary for the boot file.
-## In this case we only worry include the WS target, not regiment.
+## In this case we only worry include the WS target, not wavescript.
 so: shared
 shared: 
 	if ! [ -d "build/$(MT)" ]; then mkdir -p build/$(MT); fi
@@ -396,7 +396,7 @@ larc3:
 	larceny -r6rs -path . -program build_larceny.ss
 
 runlarc:
-	larceny -r6rs -path . -program regiment.ss
+	larceny -r6rs -path . -program wavescript.ss
 
 cs:
 	larceny -r6rs -path . -program scrap/compile-stale.ss
@@ -423,8 +423,8 @@ ws/util/helpers.slfasl: ws/util/reg_macros.slfasl ws/util/hashtab.slfasl
 # This over-sequentializes and ruins make -j
 ws/util/streams.slfasl: ws/util/helpers.slfasl
 ws/compiler_components/prim_defs.slfasl: ws/util/streams.slfasl
-ws/compiler_components/regiment_helpers.slfasl: ws/compiler_components/prim_defs.slfasl
-ws/compiler_components/type_environments.slfasl: ws/compiler_components/regiment_helpers.slfasl
+ws/compiler_components/wavescript_helpers.slfasl: ws/compiler_components/prim_defs.slfasl
+ws/compiler_components/type_environments.slfasl: ws/compiler_components/wavescript_helpers.slfasl
 ws/compiler_components/reg_core_generic_traverse.slfasl: ws/compiler_components/type_environments.slfasl
 ws/compiler_components/hm_type_inference.slfasl: ws/compiler_components/reg_core_generic_traverse.slfasl
 ws/grammars/grammar_checker.slfasl: ws/compiler_components/hm_type_inference.slfasl
@@ -456,7 +456,7 @@ larceny: ws/common.sls main_r6rs.sls \
 # Gets an error related to multiple expand of common.sls ...
 
 #   ws/sim/wavescript_sim_library_push.slfasl \
-#   ws/passes/normalize_source/verify-regiment.slfasl \
+#   ws/passes/normalize_source/verify-wavescript.slfasl \
 #   ws/passes/normalize_source/typecheck.slfasl \
 #   ws/passes/normalize_source/desugar-pattern-matching.slfasl \
 #   ws/passes/normalize_source/resolve-varrefs.slfasl \
@@ -515,7 +515,7 @@ larceny: ws/common.sls main_r6rs.sls \
 t: test
 test:
 #	$(MAKE) clean wsparse ag
-	regiment test
+	wavescript test
 	(cd demos/wavescope; $(MAKE) getdata)
 	(cd demos/wavescope; ./testall_demos.ss)
 	ws ../lib/stdlib_test.ws -exit-error -n 10;
@@ -542,7 +542,7 @@ fulltest:
 	ws ../lib/test_matrix.ws -exit-error -n 10;
 	(cd demos/wavescope; ./testall_wsc2)
 # Run tests in debug mode:
-	regiment test
+	wavescript test
 
 
 # This is seperate... requires full Chez (for compiler) as well as GSL.
@@ -606,8 +606,8 @@ deb:
 #.PHONY: clean
 
 cleanheap:
-	$(RM) build/regiment.0.heap
-	$(RM) build/i3nt/regiment.0.heap build/i3le/regiment.0.heap build/ppcosx/regiment.0.heap
+	$(RM) build/wavescript.0.heap
+	$(RM) build/i3nt/wavescript.0.heap build/i3le/wavescript.0.heap build/ppcosx/wavescript.0.heap
 
 # Clean the compiler stuff but not wsparse.
 cleanchez: cleancomp
@@ -647,7 +647,7 @@ cleanlarc:
 clean: cleanchez cleanplt cleanik cleanlarc
 	if [ -d C ]; then (cd C && $(MAKE) clean); fi
 	if [ -d demos/token_machs ]; then  (cd demos/token_machs && $(MAKE) clean); fi
-	if [ -d demos/regiment ];    then (cd demos/regiment && $(MAKE) clean); fi
+	if [ -d demos/wavescript ];    then (cd demos/wavescript && $(MAKE) clean); fi
 	(cd ws/passes/ocaml_bkend/ && $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~ 
 	$(RM) __temp.log _genned_node_code.ss svn_rev.txt 
@@ -667,12 +667,12 @@ distclean: clean
 
 
 upload:
-	scp build/$(MT)/main_chez.so "newton@faith.ffh.us:/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
-	ssh newton@faith.ffh.us chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
-	ssh newton@faith.ffh.us chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
-	scp bin/wsparse "newton@faith.ffh.us:/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
-	ssh newton@faith.ffh.us chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
-	ssh newton@faith.ffh.us chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
+	scp build/$(MT)/main_chez.so "newton@faith.ffh.us:/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	ssh newton@faith.ffh.us chgrp www-data "/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	ssh newton@faith.ffh.us chmod g+r "/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	scp bin/wsparse "newton@faith.ffh.us:/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
+	ssh newton@faith.ffh.us chgrp www-data "/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
+	ssh newton@faith.ffh.us chmod g+r "/var/www/wavescript_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
 
 
 wc:        wordcount

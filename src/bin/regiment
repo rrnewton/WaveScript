@@ -1,16 +1,16 @@
 #! /bin/bash
 
 if [ "$WAVESCRIPTHOST" == "petite" ]; 
-then exec regiment.petite $*;
+then exec wavescript.petite $*;
 elif [ "$WAVESCRIPTHOST" == "chez" ]; 
-then exec regiment.chez $*;
+then exec wavescript.chez $*;
 elif [ "$WAVESCRIPTHOST" == "plt" ]; 
-then exec regiment.plt  $*;
+then exec wavescript.plt  $*;
 
 
 # Otherwise choose a default, in a particular preference order:
 
 elif [ "$CHEZD" != "" ]
-then exec regiment.chez  $*;
-else exec regiment.plt   $*;
+then exec wavescript.chez  $*;
+else exec wavescript.plt   $*;
 fi

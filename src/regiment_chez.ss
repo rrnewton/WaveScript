@@ -5,7 +5,7 @@
 ;;;; Chez doesn't support R6Rs yet.  This is part of a hack to keep using Chez.
 
 ;;;; Regiment.ss
-;;;; This file is a script that drives the regiment compiler/simulator.
+;;;; This file is a script that drives the wavescript compiler/simulator.
 ;;;; It loads the Regiment system from source or from a compiled .so file.
 
 ;;;; A lot of this setup and config stuff is unpleasantly hackish.
@@ -18,8 +18,8 @@
 (define orig-scheme-start (scheme-start))
 (define orig-scheme-script (scheme-script))
 
-(unless (top-level-bound? 'regiment-origin)
-  (define-top-level-value 'regiment-origin "unknown")) ;; This tracks how the system was loaded.
+(unless (top-level-bound? 'wavescript-origin)
+  (define-top-level-value 'wavescript-origin "unknown")) ;; This tracks how the system was loaded.
 ;; This should be one of:
 ;;  "unknown"
 ;;  "source"
@@ -35,7 +35,7 @@
       p)))
 
 ;; If we are loading the current script from source, then we need to
-;; somehow load the regiment system.  If, however, this script is
+;; somehow load the wavescript system.  If, however, this script is
 ;; compiled, we take that as an indication that the system will be
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
@@ -55,18 +55,18 @@
 	(begin (void) 
 	  ;(yucky-hack)
 	  ;; This is kind of a hack too:
-	  ;(set! regiment-origin "compiled .boot")
+	  ;(set! wavescript-origin "compiled .boot")
 	  )
 	(if (file-exists? sofile)
 	    
 	    ;; If the compiled version is there, use that:
 	    (begin 
-	      (set! regiment-origin "compiled .so")
+	      (set! wavescript-origin "compiled .so")
 	      (load sofile)
 	      ;(yucky-hack)
 	      )
 	    (begin (fprintf stderr "Loading Regiment from source...\n")
-		   (set! regiment-origin "source")
+		   (set! wavescript-origin "source")
 		   (load "./legacy_main_chez.ss")))
 	)))
 
@@ -84,7 +84,7 @@
 		      (random-seed (* (real-time) (cpu-time)))
 		      ;; We also need to make sure that we reset the WAVESCRIPTD parameter:
 		      ;; It might not be the same on the system loading the heap as the one compiling it!
-		      (WAVESCRIPTD (default-regimentd))
+		      (WAVESCRIPTD (default-wavescriptd))
 
 		      ;; Let's be nice and restore the command-line-arguments:
 		      ;(inspect (vector args (command-line-arguments)))
@@ -93,15 +93,15 @@
 		      (apply main args)))
 
 ;; If we're running from the heap and we're running in script mode,
-;; that's because I'm using "regiment i" as the interpreter for a
+;; that's because I'm using "wavescript i" as the interpreter for a
 ;; script.
 (scheme-script (lambda (fn . args)
 		 (set! start-dir (current-directory))
 		 ;(printf "SCHEME SCRIPT\n")
 		 (unless (and (>= (length args) 1)
 			      (member (car args) '("i" "interact")))
-		   (error 'regiment 
-			  "bad script-mode arguments to regiment, --script should only be used with 'interact' mode: ~a\n"
+		   (error 'wavescript 
+			  "bad script-mode arguments to wavescript, --script should only be used with 'interact' mode: ~a\n"
 			  args))
 		 ;(inspect args)
 		 ;(inspect (command-line-arguments))
@@ -119,5 +119,5 @@
 ;; Shave off the first argument, it just carries the working directory:
 ;(apply main (cdr (command-line-arguments)))
 (if (null? (command-line-arguments))
-    (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
+    (error 'wavescript.ss "script must take at least one argument.  First argument should be working directory."))
 (apply main (cdr (command-line-arguments)))

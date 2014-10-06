@@ -1,5 +1,5 @@
 #!/bin/bash
 
-export WAVESCRIPTEXEC=regiment.threaded;
+export WAVESCRIPTEXEC=wavescript.threaded;
 
 exec `dirname $0`/ws $*

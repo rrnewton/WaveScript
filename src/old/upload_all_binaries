@@ -45,7 +45,7 @@ do
     SOFILE=$REV"_"$MT"_main_chez.so"
     WSPARSEFILE=$REV"_"$MT"_wsparse"
 
-    REMOTE=/var/www/regiment_binaries/"$MT"/"$REV"_"$MT"_main_chez.so
+    REMOTE=/var/www/wavescript_binaries/"$MT"/"$REV"_"$MT"_main_chez.so
 
     # Does the file already exist?
     ssh newton@faith.csail.mit.edu ls $REMOTE > /dev/null 2> /dev/null;
@@ -77,8 +77,8 @@ do
 	make wsparse;
 	scp build/$MT/main_chez.so newton@faith.csail.mit.edu:$REMOTE;
 	if [ "$MT" == "i3nt" ];
-        then scp bin/wsparse.exe newton@faith.csail.mit.edu:/var/www/regiment_binaries/$MT/$REV"_"$MT"_wsparse";
-        else scp bin/wsparse newton@faith.csail.mit.edu:/var/www/regiment_binaries/$MT/$REV"_"$MT"_wsparse";
+        then scp bin/wsparse.exe newton@faith.csail.mit.edu:/var/www/wavescript_binaries/$MT/$REV"_"$MT"_wsparse";
+        else scp bin/wsparse newton@faith.csail.mit.edu:/var/www/wavescript_binaries/$MT/$REV"_"$MT"_wsparse";
         fi
     fi
 

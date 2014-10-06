@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_wavescriptd
 
 if [ ! -f "$1" ];
 then echo Usage: "ws <file> <option> ...";
@@ -10,7 +10,7 @@ then echo Usage: "ws <file> <option> ...";
      exit 1;
 fi
 
-if [ "$WAVESCRIPTEXEC" == "" ]; then WAVESCRIPTEXEC=$WAVESCRIPTD/bin/regiment; fi
+if [ "$WAVESCRIPTEXEC" == "" ]; then WAVESCRIPTEXEC=$WAVESCRIPTD/bin/wavescript; fi
 
 D=`dirname "$1"`
 B=`basename "$1"`

@@ -1,8 +1,8 @@
 ;; TODO: Haven't finished this yet... 
 
-;;; Pass 00: verify-regiment
+;;; Pass 00: verify-wavescript
 
-;;; This pass verifies that the input is in the regiment lanuguage.
+;;; This pass verifies that the input is in the wavescript lanuguage.
 ;;; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
 
 ;;; <Pgm>  ::= <Exp>
@@ -24,8 +24,8 @@
 ;; No variable capture is allowed at this point.
 
 ;;; The implementation requires constant?, datum?, keyword?,
-;;; regiment-primitive?, set?, formalexp?, get-formals, and the list
-;;; regiment-primitives from helpers.ss.
+;;; wavescript-primitive?, set?, formalexp?, get-formals, and the list
+;;; wavescript-primitives from helpers.ss.
 
 
 ;;; [2004.10.14]
@@ -50,31 +50,31 @@
 		  (cond
 		   [(number? const) 'Number]
 		   [(list? const) 'List] 
-		   [else (error 'verify-regiment:infer-type
+		   [else (error 'verify-wavescript:infer-type
 			 "Unknown type of constant: " const)])]
           [(quote ,datum)
 	   (guard (not (memq 'quote env)) (datum? datum))
 	   (cond
 	    [(number? datum) 'Number]
 	    [(list? datum) 'List]
-	    [else (error 'verify-regiment:infer-type
+	    [else (error 'verify-wavescript:infer-type
 			 "Unknown type of quoteconstant: ~s" `(quote ,datum))])]	  
           [,var (guard (symbol? var)
-		       (not (regiment-primitive? var)))
+		       (not (wavescript-primitive? var)))
 		(let ((entry (assq var type-env)))
 		  (if entry
 		      (cadr entry)
 		      ;; otherwise we have no type information on this variable and must return "Object".
 		      'Object))]
 
-	  [,prim (guard (regiment-constant? prim))
+	  [,prim (guard (wavescript-constant? prim))
 		 (caddr (get-primitive-entry prim))]
 	  ;; Handle first class refs to other prims: 
 	  ;; All those other prims are functions!
-	  [,prim (guard (regiment-primitive? prim)) 'Function]
+	  [,prim (guard (wavescript-primitive? prim)) 'Function]
 
           [(,prim ,[rand*] ...)
-           (guard (not (memq prim env)) (regiment-primitive? prim))
+           (guard (not (memq prim env)) (wavescript-primitive? prim))
 	   (let ((ret-type (caddr (get-primitive-entry prim))))
 ;	     (disp "RETURN TYPE" ret-type)
 	     ret-type)]
@@ -84,10 +84,10 @@
           [(if ,[test] ,[conseq] ,[altern])
 	   (guard (not (memq 'if env)))
 	   (if (not (eq? test 'Bool))
-	       (warning 'verify-regiment "if test expr does not have type bool: ~s" test))
+	       (warning 'verify-wavescript "if test expr does not have type bool: ~s" test))
 	   (if (eq? conseq altern)
 	       conseq
-	       (error 'verify-regiment:infer-type
+	       (error 'verify-wavescript:infer-type
 		      "if branches don't have the same types: ~s and ~s "
 		      altern conseq ))]
           
@@ -143,7 +143,7 @@
       (lambda (var type type-env)
 	(disp "add-type-constraint: " var type type-env)
 	;; Do nothing if the input is not a varref:
-	(if (and (symbol? var) (not (regiment-primitive? var)))
+	(if (and (symbol? var) (not (wavescript-primitive? var)))
 	    (let ([entry (assq var type-env)])
 	      (if entry 
 		  (cons (type-union (cadr entry) type)
@@ -164,8 +164,8 @@
 	   `(quote ,datum)]
           [,var (guard (symbol? var))
             (if (and (not (memq var env))
-		     (not (regiment-primitive? var)))
-                (error 'verify-regiment (format "unbound variable: ~a\n" var))
+		     (not (wavescript-primitive? var)))
+                (error 'verify-wavescript (format "unbound variable: ~a\n" var))
                 var)]
           
 	  ;; In our super simple type inference we don't do arrow
@@ -200,7 +200,7 @@
           [(,prim ,[rand*] ...)
            (guard 
             (not (memq prim env))
-            (regiment-primitive? prim))
+            (wavescript-primitive? prim))
 	   ;      (check-primitive-numargs prim rand*)
 
 	   (let ([entry (get-primitive-entry prim)])
@@ -218,7 +218,7 @@
 	   `(,prim ,rand* ...)]
           
           [,unmatched
-            (error 'verify-regiment "invalid syntax ~s" unmatched)])))
+            (error 'verify-wavescript "invalid syntax ~s" unmatched)])))
     
     (lambda (expr)
       (match expr	    
@@ -244,7 +244,7 @@
 (define-testing these-tests
   (map
    (lambda (prog)
-     `[(verify-regiment '(some-lang '(program ,prog)))
+     `[(verify-wavescript '(some-lang '(program ,prog)))
        (some-lang '(program ,prog))])
    test-programs))
      
@@ -263,7 +263,7 @@
 	  (let ((results (map eval tests)))
 	    (if verbose 
 		(begin
-		  (display "Testing pass to verify initial regiment language.")
+		  (display "Testing pass to verify initial wavescript language.")
 		  (newline)
 		  (newline) (display "Here are intended results:") (newline)
 		  (write intended) (newline) (newline)

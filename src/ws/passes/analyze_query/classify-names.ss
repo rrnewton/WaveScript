@@ -100,10 +100,10 @@
   (define (free-vars expr)
     (let loop ((env ()) (expr expr))
       (match expr	 
-	     [,var (guard (symbol? var) (not (regiment-constant? var)))
+	     [,var (guard (symbol? var) (not (wavescript-constant? var)))
 		   (if (memq var env) '() (list var))]
 	     [(quote ,x) '()]
-	     [(,prim ,rand* ...) (regiment-primitive? prim)
+	     [(,prim ,rand* ...) (wavescript-primitive? prim)
 	      (let ((frees (map (lambda (x) (loop env x)) rand*)))
 		(apply append frees))]
 	     [(lambda (,formals) ,expr)
@@ -112,7 +112,7 @@
 
   (define (simple-rand? expr)
     (match expr
-	   [,var (guard (symbol? var) (not (regiment-constant? var))) 
+	   [,var (guard (symbol? var) (not (wavescript-constant? var))) 
 		 #t]
 	   [(quote ,const) (guard (or (simple-constant? const) (symbol? const))) #t]
 	   [,else #f]))
@@ -192,7 +192,7 @@
 
 	  ;; Here the name is bound directly to this other name, we
 	  ;; temporarily add an alias, then at the end we replace it.
-          [,var (guard (symbol? var) (not (regiment-constant? var)))
+          [,var (guard (symbol? var) (not (wavescript-constant? var)))
 		;(add-dependency! name (list var))
 		(add-props! name `((alias-of ,var)))
 		]
@@ -239,7 +239,7 @@
 	    name)]
 
           [(,prim ,rand* ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   (add-dependency! name (apply union (map free-vars rand*)))
 	   
 	   ;; Process varrefs
@@ -265,7 +265,7 @@
 	       (add-props! name '(anchor))])]
 	    [(basic-primitive? prim) (add-props! name '(local))]
 	    [else (error 'classify-names.process-expr 
-			 "This regiment primitive is neither basic nor distributed!:~s"
+			 "This wavescript primitive is neither basic nor distributed!:~s"
 			 prim)])
 	   ]
 	   

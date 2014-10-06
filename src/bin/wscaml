@@ -2,7 +2,7 @@
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
-source `dirname $0`/assert_regimentd
+source `dirname $0`/assert_wavescriptd
 
 # Inline factor should be, say, 3:
 #FLAGS="-unsafe -ffast-math -inline 100 -noassert"
@@ -48,10 +48,10 @@ shift;
 rm -f "query.ml"
 
 export WAVESCRIPT_OR_WAVESCRIPT=WS
-if regiment wscaml $abspath ${1+"$@"} ;
+if wavescript wscaml $abspath ${1+"$@"} ;
 then echo
 else #rm -f $TMP; 
-    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    echo Compilation aborted: \"wavescript wscomp\" exited with error code.
     exit 1;
 fi
 

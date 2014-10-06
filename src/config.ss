@@ -55,7 +55,7 @@
      )))
 
 
-;; [2006.09.11] This configures the scheme compiler when loading regiment.
+;; [2006.09.11] This configures the scheme compiler when loading wavescript.
 ;; NOTE: this controls the optimization level for the COMPILER, and
 ;; also for the token machine simulator or the Scheme WS backend.
 ;; But it does *not* control the number of optimizations applied by

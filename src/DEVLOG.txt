@@ -1259,7 +1259,7 @@ And it does this on the way out:
   free(): invalid pointer 0x80b05f8!
 
 Maybe that's the FFI, but I don't know how that would be touched in a
-simple call to "regiment".
+simple call to "wavescript".
 
 [2007.10.27] {Rewrite optimizations on marmot.}
 
@@ -2056,7 +2056,7 @@ to start testing it.  I'll keep a little log here.
 
 Trying to jump right in gives this:
 
- $ chez --program regiment.ss --verbose
+ $ chez --program wavescript.ss --verbose
 Exception: library (primitives with-output-to-string random current-directory gensym repl ...) not found
 
 Next starting with a very basic hello world program.  That works.
@@ -2110,7 +2110,7 @@ getting a problem (works under an old ikarus, for example 1559).
 
 Presently when I run this:
 
- ikarus -O2  --compile-dependencies regiment.ss
+ ikarus -O2  --compile-dependencies wavescript.ss
 
 I get this:
 
@@ -2337,7 +2337,7 @@ The error, for example, would be:
 
 Exception: extra ellipsis in syntax form (syntax (match alias ((...) (...)) ((...) (...)))) near line 1151, char 6 of ./ws/passes/small-ws-passes.sls
 
-GRRR, when I use that exact code through the REPL (regiment i, eval
+GRRR, when I use that exact code through the REPL (wavescript i, eval
 based) it works fine.  For example:
 
 > (match '(1 (a b c) 2)
@@ -2361,7 +2361,7 @@ sees bindings to "match" which are included in helpers.sls.
   4.2.2 -- broken
   4.2.3.4 -- broken
 
-[2010.02.05] {Still have PLT problems with "regiment i" repl}
+[2010.02.05] {Still have PLT problems with "wavescript i" repl}
 
 
 
@@ -2464,7 +2464,7 @@ compiles in 4.1 but I get the following error in 4.2.4:
  [Compiling /Users/newton/wavescript/src/ws/util/helpers.sls]
  [Compiling /Users/newton/wavescript/src/ws/util/streams.sls]
  [Compiling /Users/newton/wavescript/src/ws/compiler_components/prim_defs.sls]
- [Compiling /Users/newton/wavescript/src/ws/compiler_components/regiment_helpers.sls]
+ [Compiling /Users/newton/wavescript/src/ws/compiler_components/wavescript_helpers.sls]
 mcar: expects argument of type <mutable-pair>; given #<syntax (meta10 x9)>
 
  === context ===

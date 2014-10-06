@@ -129,7 +129,7 @@
      (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
      ;; Now that we've got a stream we provide a little command
      ;; prompt and ask the user what we should do with it:
-     (unless (<= (regiment-verbosity) 0)
+     (unless (<= (wavescript-verbosity) 0)
        (printf "\nYou can now control the output stream, commands are:\n")
        (printf "     <n>          print n stream element, advance position\n")
        (printf "     <enter>      same as '1'\n")

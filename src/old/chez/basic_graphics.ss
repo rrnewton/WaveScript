@@ -245,8 +245,8 @@
 		     (send (cadr entry) select))))
 	     ]))
 
-    ;; [internal] This is the regiment drawing surface.
-    (define-class (<regiment-canvas> parent) (<canvas> parent)
+    ;; [internal] This is the wavescript drawing surface.
+    (define-class (<wavescript-canvas> parent) (<canvas> parent)
       (ivars) 
       (inherited) (inheritable) (private) (protected)
       (public
@@ -300,7 +300,7 @@
 				;(background-color: (make <rgb> 100 50 50))*
 				(background-color: (rec->rgb Default-Window-Color))
 				))
-	(set! the-win (create <regiment-canvas> group ;the-winframe
+	(set! the-win (create <wavescript-canvas> group ;the-winframe
 				 with
 				 (width: window-width) ;(in->pixels 5))
 				 (height: (+ window-height 25)) ;(in->pixels 5))

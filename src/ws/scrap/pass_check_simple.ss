@@ -17,8 +17,8 @@
 ;; No variable capture is allowed at this point.
 
 ;;; The implementation requires constant?, datum?, keyword?,
-;;; regiment-primitive?, list-is-set?, formalexp?, get-formals, and the list
-;;; regiment-primitives from helpers.ss.
+;;; wavescript-primitive?, list-is-set?, formalexp?, get-formals, and the list
+;;; wavescript-primitives from helpers.ss.
 
 (define verify-core 
   (let ()
@@ -69,7 +69,7 @@
           [(,prim ,rand* ...)
            (guard 
                   (not (memq prim env))
-                  (regiment-primitive? prim)
+                  (wavescript-primitive? prim)
 		  (andmap symbol? rand*)
 		  (andmap (lambda (x) (process-expr x env)) rand*))
 	   ;          (check-primitive-numargs prim rand*)

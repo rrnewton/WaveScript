@@ -52,7 +52,7 @@
 	       [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
 	       [(,prim ,[rand*] ...)
-		(guard (regiment-primitive? prim))
+		(guard (wavescript-primitive? prim))
 		`(,prim ,rand* ...)]
 	       [,unmatched
 		(error 'resolve-fold-trees "invalid syntax ~s" unmatched)])	

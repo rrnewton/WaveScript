@@ -31,15 +31,15 @@
 	   truncate-integer
 	   refcount-form?
 
-           regiment-type-aliases
-	   regiment-basic-primitives
+           wavescript-type-aliases
+	   wavescript-basic-primitives
 	   local-node-primitives
 	   meta-only-primitives
 	   higher-order-primitives
 	   library-primitives
-	   regiment-constants
-	   regiment-distributed-primitives
-	   regiment-primitives
+	   wavescript-constants
+	   wavescript-distributed-primitives
+	   wavescript-primitives
 	   wavescript-primitives
 	   wavescript-effectful-primitives
 	   wavescript-stream-primitives
@@ -53,14 +53,14 @@
 	   generic-arith-primitives
 	   token-machine-primitives
 
-	   regiment-keyword?
+	   wavescript-keyword?
  	   token-machine-keyword?
  	   get-primitive-entry
 	   get-primitive-type
 	   get-primitive-return-type
  	   map-prim-w-types
- 	   regiment-primitive?
- 	   regiment-constant?
+ 	   wavescript-primitive?
+ 	   wavescript-constant?
  	   basic-primitive?
  	   distributed-primitive?
  	   token-machine-primitive?
@@ -78,7 +78,7 @@
 ;;; Misc global definitions.
 
 ;; These are type aliases that are defined by default.
-(define regiment-type-aliases
+(define wavescript-type-aliases
   '(
 
     [Region (Area Node)]
@@ -231,7 +231,7 @@
 
 
 ;; These are primitives that are defined in a library.  Currently they
-;; actually aren't considered primitive by "regiment-primitive?", but
+;; actually aren't considered primitive by "wavescript-primitive?", but
 ;; the names are recognized as special.
 ;;
 ;; There are many other possible conventions here... if we wanted we
@@ -335,9 +335,9 @@
 ;;; General Regiment/WaveScript primitives.
 
 ;; These count as primitives also.
-;; All regiment constants are presumed to be "slow prims" for
+;; All wavescript constants are presumed to be "slow prims" for
 ;; now. (see add-heartbeats)
-(define regiment-constants
+(define wavescript-constants
   '(
     (world          (Area Node))
     (anchor         (Stream Node))
@@ -456,7 +456,7 @@
 			 num-types))) num-types)))
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
-(define regiment-basic-primitives 
+(define wavescript-basic-primitives 
     ; value primitives
   `(
     
@@ -984,7 +984,7 @@
 
 ;; These are the distributed primitives.  The real Regiment combinators.   <br><br>
 ;; These pretty much apply only to Regiment 1.0 and not WaveScript.
-(define regiment-distributed-primitives 
+(define wavescript-distributed-primitives 
   `(
     
     (rmap           (('a -> 'b) (Area 'a)) (Area 'b))
@@ -1096,19 +1096,19 @@
 ;======================================================================
 ;;; Aggregates of the above sets of primitives.
 
-;; This private state keeps a hash-table of all regiment primitives for fast lookup:
+;; This private state keeps a hash-table of all wavescript primitives for fast lookup:
 (define primitives-hash 'primitives-hash-uninitialized)  
 
 ; [2004.03.31]
 ;; [2007.01.30] Upgrading this to a parameter. (A box might have better performance.)
-(define regiment-primitives
+(define wavescript-primitives
   (reg:make-parameter   
-   (append regiment-basic-primitives
-	   regiment-distributed-primitives
+   (append wavescript-basic-primitives
+	   wavescript-distributed-primitives
 	   wavescript-primitives
 	   meta-only-primitives
 	   higher-order-primitives
-	   regiment-constants)
+	   wavescript-constants)
    ;; Update the hash table when we change this parameter:
    (lambda (ls)
      ;; [2007.07.10] Hmm... didn't set the size before.  Setting now:
@@ -1119,17 +1119,17 @@
      ls)))
 
 ;; These are the ones that take or return Stream values:
-;; Be wary that this is only computed once while "regiment-primitives" might change.
+;; Be wary that this is only computed once while "wavescript-primitives" might change.
 (define wavescript-stream-primitives
   (filter (lambda (x) (deep-assq 'Stream x))
     (filter (lambda (pr)
 	      (not (memq (car pr) '(world anchor))))
-      (difference (regiment-primitives) 
-		  regiment-distributed-primitives))))
+      (difference (wavescript-primitives) 
+		  wavescript-distributed-primitives))))
 
 (define (stream-primitive? sym)
   (and (not (memq sym '(world anchor)))
-       (let ([entry (regiment-primitive? sym)])
+       (let ([entry (wavescript-primitive? sym)])
 	 (and entry
 	      (deep-assq 'Stream entry)))))
 
@@ -1335,22 +1335,22 @@
     (and (memq x '(quote set! if begin let let-stored)) #t)))
 
 
-(define regiment-keyword?
+(define wavescript-keyword?
   (lambda (x)
     (and (memq x '(quote set! if letrec lazy-letrec lambda)) #t)))
 
-;; [2004.06.24]<br> This is for the regiment primitives:
+;; [2004.06.24]<br> This is for the wavescript primitives:
 (define get-primitive-entry
   (lambda (prim)
     (or 
-     (let ([entry (regiment-primitive? prim)])
+     (let ([entry (wavescript-primitive? prim)])
        (if entry (cons prim entry) #f))     
      (assq prim token-machine-primitives)
      (error 'get-primitive-entry
 	    "no entry for this primitive: ~a" prim))))
 
 (define (get-primitive-type prim) 
-  (match (regiment-primitive? prim)
+  (match (wavescript-primitive? prim)
     [(,args ,ret) `(,@args -> ,ret)]
     [(,ret) ret]))
 
@@ -1372,25 +1372,25 @@
        [else (cons (f (car args) types)
 		   (loop (cdr args) types))]))))
 
-;; Is it a regiment primitive?
-(define regiment-primitive? 
+;; Is it a wavescript primitive?
+(define wavescript-primitive? 
   ;; TOGGLE: list or hashtab based implementaition:
 #;
   (lambda (x) (hashtab-get primitives-hash x))
   (lambda (x) ;; Slower association list version:
-    (let ([entry (assq x (regiment-primitives))])
+    (let ([entry (assq x (wavescript-primitives))])
       (and entry (cdr entry)))))
 
-;; Is it a regiment constant?
-(define (regiment-constant? x)
-  (if (assq x regiment-constants) #t #f))
+;; Is it a wavescript constant?
+(define (wavescript-constant? x)
+  (if (assq x wavescript-constants) #t #f))
 
 ;; More specific classification of Regiment primitives.
 (define (basic-primitive? x) 
-  (if (assq x regiment-basic-primitives) #t #f))
+  (if (assq x wavescript-basic-primitives) #t #f))
 ;; More specific classification of Regiment primitives.
 (define (distributed-primitive? x) 
-  (if (assq x regiment-distributed-primitives) #t #f))
+  (if (assq x wavescript-distributed-primitives) #t #f))
 
 
 

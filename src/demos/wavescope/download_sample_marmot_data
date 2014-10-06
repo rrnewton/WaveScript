@@ -5,7 +5,7 @@ then echo "Already present!"
      exit 0
 fi
 
-# URL=http://www.regiment.us/marmotdata/6sec_marmot_sample.raw
+# URL=http://www.wavescript.us/marmotdata/6sec_marmot_sample.raw
 URL=http://cs.indiana.edu/~rrnewton/datasets/marmotdata/6sec_marmot_sample.raw
 
 if [ `which wget` ];

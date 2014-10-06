@@ -24,7 +24,7 @@
 
 
 (library (ws compiler_components reg_core_generic_traverse)
-    ;; Insure provision of verify-regiment:
+    ;; Insure provision of verify-wavescript:
   (export core-generic-traverse
 	  core-generic-traverse/types
 	  test-core-generic-traverse
@@ -46,7 +46,7 @@
 	  (ws util helpers)
 	  (ws util reg_macros)
 	  (ws compiler_components prim_defs)
-	  (ws compiler_components regiment_helpers)
+	  (ws compiler_components wavescript_helpers)
 	  (ws compiler_components type_environments)
 	  )
 
@@ -320,7 +320,7 @@
 	   (fuse `(,f ,s) (lambda ls `(iterate ,annot . ,ls)))] ; FIXME: is this at all dangerous?
 
 	  [(,prim ,[loop -> rands] ...)
-	   (guard (or (regiment-primitive? prim)
+	   (guard (or (wavescript-primitive? prim)
 		      (basic-primitive? prim)))
 	   (fuse rands (lambda ls `(,prim . ,ls)))]
 
@@ -444,7 +444,7 @@
    (lambda (x fallthru)
      (match x        
        [,v (guard (symbol? v)) 
-	   (if (regiment-primitive? v)
+	   (if (wavescript-primitive? v)
 	       '()
 	       (list v))]
 
@@ -525,7 +525,7 @@
     (hashtab-set! table s (fx+ 1 rc)))
   (define (Expr x fallthru)
     (match x     
-      [,vr (guard (symbol? vr) (not (regiment-primitive? vr)))
+      [,vr (guard (symbol? vr) (not (wavescript-primitive? vr)))
 	   (incr-table! vr)]
       [,form (guard (binding-form? form))
 	     (let ([scoped (binding-form->scoped-exprs form)]

@@ -159,7 +159,7 @@
 			  ;; Cannot do progress-dots now because we cannot nest engines.
 			  (let loop ()
 			    (if (stream-empty? stream)
-				(unless (<= (regiment-verbosity) 0)
+				(unless (<= (wavescript-verbosity) 0)
 				  (fprintf (current-error-port) "Finished, dumped ~a stream elements.\n" count))
 				(let ([elem (stream-car stream)])
 				  (unless (equal? elem '#())
@@ -175,10 +175,10 @@
 			     ...)
 			   50000000 
 			   (lambda ()
-			     (unless (<= (regiment-verbosity) 0)
+			     (unless (<= (wavescript-verbosity) 0)
 			       (fprintf  (current-error-port) "  POS# ~a dumped...\n" pos))
 			     )))])
-		   (if (<= (regiment-verbosity) 0)		       
+		   (if (<= (wavescript-verbosity) 0)		       
 		       (go)
 		       (time (go))
 		       ))))
@@ -241,7 +241,7 @@
      (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
   ;; prompt and ask the user what we should do with it:
-  (unless (<= (regiment-verbosity) 0)
+  (unless (<= (wavescript-verbosity) 0)
     (printf "\nYou can now control the output stream, commands are:\n")
     (printf "     <n>          print n stream element, advance position\n")
     (printf "     <enter>      same as '1'\n")

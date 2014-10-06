@@ -41,7 +41,7 @@
 ;; WAVESCRIPTD is the thing to look at, but we have some
 ;; issues with the order of evaluation/loading/binding
 ;; here, so first we bind this at expand time:
-(define-syntax default-regimentd
+(define-syntax default-wavescriptd
   (syntax-rules ()
     [(_) (if (getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD") (current-directory))]))
 
@@ -49,7 +49,7 @@
 ;; environment var.  Now that constants.ss is loaded we can set this. 
 ;; This uses the kinder behavior -- try the current directory.
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
-(define ___ (WAVESCRIPTD (default-regimentd)))
+(define ___ (WAVESCRIPTD (default-wavescriptd)))
 
 ;;================================================================================;;
 
@@ -69,7 +69,7 @@
     ;; are run.  Maybe should make it one of the "passes".
     
     ;; (2) Next we verify our input language.
-    verify-regiment
+    verify-wavescript
     
     ;; (3) Then we do a little massaging/normalization.
     pass_desugar-pattern-matching
@@ -200,7 +200,7 @@
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'full-tokens
 ;; Also: use 'verbose to print the output of every pass.
 (define (run-compiler p . args )                              ;; Entrypoint.
-  (parameterize ([compiler-invocation-mode 'regiment-simulator])
+  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
     (if (memq 'deglobalize2 args)
         (apply run-compiler2 p (remq 'deglobalize2 args))
 
@@ -246,7 +246,7 @@
 	      (if verbose
 		  (begin
 		    (printf ";===============================================================================\n")
-		    (printf "~a:\n\n" (regiment-pass->name (car names)))))
+		    (printf "~a:\n\n" (wavescript-pass->name (car names)))))
 	      (let ((result (if verbose 
 				(time ((car funs) p))
 				((car funs) p))))
@@ -266,7 +266,7 @@
 ;;  'barely-tokens
 ;;  'full-tokens 
 ;;  'to-simcode
-(define regiment-compile-file
+(define wavescript-compile-file
   (let ()
     (define compile-target-flags '(to-typed almost-tokens barely-tokens full-tokens to-simcode))
     (define (do-the-compilation fn flags)
@@ -277,28 +277,28 @@
 #|
 	 [(equal? type "tm") 
 	  (if (or (memq '-l0 symargs) (memq '-l1 symargs))
-	      (error 'regiment_command_line_compiler
+	      (error 'wavescript_command_line_compiler
 		     "Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
 |#
 	 [(equal? type "rs") (void)]
 	 [(equal? type "ws") (void)]
-	 [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
+	 [else (error 'wavescript_command_line_compiler "invalid input file extension: ~s" fn)])
 	;; ----------------------------------------
 	(parameterize ([pass-list
 			(cond
 			 [(equal? type "rs") (pass-list)]
-			 ;; We treat these as normal regiment files:
+			 ;; We treat these as normal wavescript files:
 			 [(equal? type "ws") (pass-list)]
 			 [(equal? type "tm") (list-remove-before cleanup-token-machine
 								 (pass-list))]
-			 [else (error 'regiment "unknown input file extension: ~s" type)]
+			 [else (error 'wavescript "unknown input file extension: ~s" type)]
 			 )])
 
 	  (mvlet ([(prog params)
 		   (parameterize ([current-directory (if (top-level-bound? 'start-dir)
 							 (top-level-value 'start-dir)
 							 (current-directory))])
-		     (read-regiment-source-file fn))])
+		     (read-wavescript-source-file fn))])
 	    (let ((comped 
 		   (if (memq 'to-simcode flags)
 		       ;; This goes all the way to a sim-file and bakes the parameters right in:
@@ -311,7 +311,7 @@
     (lambda (fn . flags)      
       (ASSERT (andmap symbol? flags))
       (unless (= 1 (length (intersection flags compile-target-flags)))
-	(error 'regiment-compile-file "expects exactly one flag to indicate compilation target"))
+	(error 'wavescript-compile-file "expects exactly one flag to indicate compilation target"))
       (mvlet ([(comped params) (do-the-compilation fn flags)])
 	(let ([compile-target (car (intersection flags compile-target-flags))]	    )
 	  (if (not (memq 'write-file flags))
@@ -396,7 +396,7 @@
 
 (define ws-pass-optional-stop 
   (lambda (x)
-    (if (>= (regiment-verbosity) 2)
+    (if (>= (wavescript-verbosity) 2)
 	(IFDEBUG
 	 (begin (parameterize ([pretty-line-length 160]
 			       [print-length 300]
@@ -412,10 +412,10 @@
 (define-syntax ws-run-pass
   (syntax-rules ()
     [(_ v pass args ...)
-     (parameterize ([regiment-current-pass 'pass])
-       (when (>= (regiment-verbosity) 2) ;unless (<= (regiment-verbosity) 0)
+     (parameterize ([wavescript-current-pass 'pass])
+       (when (>= (wavescript-verbosity) 2) ;unless (<= (wavescript-verbosity) 0)
 	 (printf "Running Pass: ~s\n" 'pass)(flush-output-port (current-output-port)))
-       (if (>= (regiment-verbosity) 3)
+       (if (>= (wavescript-verbosity) 3)
 	   (time (set! v (ws-pass-optional-stop (pass v args ...))))
 	   (set! v (ws-pass-optional-stop (pass v args ...))))
        ;; Allows multiple hooks:
@@ -456,7 +456,7 @@
 ;; Everything up to and including type checking the program.
 (define (ws-compile-until-typed p)
 
-  (ws-run-pass p verify-regiment)
+  (ws-run-pass p verify-wavescript)
 
   ;; TEMPTOGGLE:
   ;(ws-run-pass p eta-primitives)
@@ -552,12 +552,12 @@
   (when (memq 'rewrites (ws-optimizations-enabled))
     (ws-run-pass p hide-special-libfuns)
     (dump-compiler-intermediate (strip-annotations p) ".__hidden.ss")
-    (parameterize ([regiment-primitives
+    (parameterize ([wavescript-primitives
 		    (append (map (match-lambda ([,lhs ,ty ,rhs]) 
 				   (match ty
 				     [(,args ... -> ,res) `(,lhs ,args ,res)]))
 			      (cdr (ASSERT (project-metadata 'special-libfuns p))))
-			    (regiment-primitives))])
+			    (wavescript-primitives))])
       (ws-run-pass p eta-primitives)
       (ws-run-pass p interpret-meta) (do-early-typecheck)
 
@@ -601,29 +601,29 @@
 
   ;; <METAPROGRAM-EVAL>: 
   ;; -----------------------------------------  
-  (when (>= (regiment-verbosity) 1)
+  (when (>= (wavescript-verbosity) 1)
     (printf "Output of metaprogram evaluation:\n")
     (printf "------------------------------------------------------------\n"))
-  (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
-  (when (or (>= (regiment-verbosity) 5) (IFDEBUG #t #f))
+  (when (>= (wavescript-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+  (when (or (>= (wavescript-verbosity) 5) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__preelab.ss"))
 
   ;(inspect (strip-annotations p 'src-pos))
-  (if (>= (regiment-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))
+  (if (>= (wavescript-verbosity) 2) (time (ws-run-pass p interpret-meta)) (ws-run-pass p interpret-meta))
 ;  (time (ws-run-pass p static-elaborate))
-  (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
+  (when (>= (wavescript-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes p)))
 
 ;  (print-graph #f)(pretty-print (strip-annotations p 'src-pos))
 
-  (when (>= (regiment-verbosity) 1)
+  (when (>= (wavescript-verbosity) 1)
     (printf "------------------------------------------------------------\n")
     (printf "Metaprogram evaluation succeeded.\n"))
 
-  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+  (when (or (>= (wavescript-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__elaborated.ss"))
 
   (unless (match? p (,lang '(program ,_ ... (Stream ,__))))
-    (when (> (regiment-verbosity) 0)
+    (when (> (wavescript-verbosity) 0)
       (printf "  Compilation finished early due to non-stream 'main'.\n")
       (ASSERT (abort-compiler-continuation))
       ((abort-compiler-continuation) p)))
@@ -676,14 +676,14 @@
   (ws-run-pass p strip-irrelevant-polymorphism)
   (ws-run-pass p unlift-polymorphic-constant)   
 
-  (when (or (>= (regiment-verbosity) 5) (IFDEBUG #t #f))
+  (when (or (>= (wavescript-verbosity) 5) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__almost_unionsplit.ss"))
 
   (ws-run-pass p split-union-types) ;; monomorphize sum types (not necessary for MLton)
   (ws-run-pass p verify-elaborated) ;; Also strips src-pos info.  
 
   (IFDEBUG 
-   (unless (<= (regiment-verbosity) 0)
+   (unless (<= (wavescript-verbosity) 0)
      (printf "Post elaboration types: \n")
      (print-var-types p +inf.0))
    (void))
@@ -695,8 +695,8 @@
 
   (do-late-typecheck)  ;; Anihilate introduced type variables.
 
-  (when (>= (regiment-verbosity) 1) (printf "Monomorphism achieved.\n"))
-  (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+  (when (>= (wavescript-verbosity) 1) (printf "Monomorphism achieved.\n"))
+  (when (or (>= (wavescript-verbosity) 3) (IFDEBUG #t #f))
     (dump-compiler-intermediate (strip-annotations p 'src-pos) ".__monomorphic.ss"))
 
   ;; <-------- NOTE: Old location for merge-iterates. [2007.11.01]
@@ -874,7 +874,7 @@
 
 ;(assure-type-annotated p (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
 
-  (when (>= (regiment-verbosity) 2)
+  (when (>= (wavescript-verbosity) 2)
     (printf "Total typechecker time used:\n")
     (time-accum-report)(newline))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
@@ -890,7 +890,7 @@
   p)) ;; End run-that-compiler
  
  (kont (run-that-compiler))
-  ;(if (<= (regiment-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
+  ;(if (<= (wavescript-verbosity) 0) (run-that-compiler) (time (run-that-compiler)))
 ]))
 ;; ================================================================================ ;;
 ;; ================================================================================ ;;
@@ -934,7 +934,7 @@
 ;; Compile-until-typed
 #;
 (define just-until-typed-passes
-  '([verify-regiment]
+  '([verify-wavescript]
     [pass_desugar-pattern-matching]
     [resolve-varrefs]
     [resolve-type-aliases]
@@ -1038,14 +1038,14 @@
 (define (coerce-to-ws-prog x input-params)
   (let ((prog
          (cond  [(input-port? x)
-                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+                 (when (>= (wavescript-verbosity) 2) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
                  ;; We assume this is parsed but not post-processed:
                  (wsparse-postprocess (read x))]
                 [(string? x) 
-                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+                 (when (>= (wavescript-verbosity) 2) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
                  (read-wavescript-source-file x)]
                 [(list? x)   
-                 (when (>= (regiment-verbosity) 2) (printf "WSCOMP: Evaluating WS source: \n \n"))
+                 (when (>= (wavescript-verbosity) 2) (printf "WSCOMP: Evaluating WS source: \n \n"))
 		 (match x
 		   [(wsparse-postprocess-language . ,_) x]
 		   [,_ (wsparse-postprocess x)])]
@@ -1075,7 +1075,7 @@
 		     [print-length #f]
 		     [print-graph #f])
 	(begin ;parameterize-IFCHEZ ([pretty-one-line-limit 120])
-	 (if (>= (regiment-verbosity) 4)
+	 (if (>= (wavescript-verbosity) 4)
 	     ;; It's very expensive to actually pretty-print very large sexps:
 	     (pretty-print ;(strip-annotations prog)
 	      prog)
@@ -1108,11 +1108,11 @@
 
     (define (wsint-parameterize th)
       (parameterize ([compiler-invocation-mode 'wavescript-simulator]
-		     ;;[regiment-compile-sums-as-tuples ]
+		     ;;[wavescript-compile-sums-as-tuples ]
 		     ;;		 [included-var-bindings '()]
-		     [regiment-primitives
-		      ;; Remove those regiment-only primitives.
-		      (difference (regiment-primitives) regiment-distributed-primitives)])
+		     [wavescript-primitives
+		      ;; Remove those wavescript-only primitives.
+		      (difference (wavescript-primitives) wavescript-distributed-primitives)])
 	(th)))
 
     (define (early-part x input-params . flags)
@@ -1124,15 +1124,15 @@
       (define typed (ws-compile-until-typed prog))
       (define __ 
 	(begin 
-	  (when (>= (regiment-verbosity) 1)
+	  (when (>= (wavescript-verbosity) 1)
 	    ;(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
 	    ;(printf "\nProgram types as follows: (also dumped to \".__types.txt\")\n\n")
 	    (printf "Program type-checked: \n")
-	    (if (>= (regiment-verbosity) 4)
+	    (if (>= (wavescript-verbosity) 4)
 		(print-var-types typed +inf.0)
 		(print-var-types typed 1))
 	    (flush-output-port (current-output-port)))
-	  (when (>= (regiment-verbosity) 2)
+	  (when (>= (wavescript-verbosity) 2)
 	   (if (file-exists? ".__types.txt") (delete-file ".__types.txt"))
 	   (with-output-to-file ".__types.txt"
 	     (lambda () (print-var-types typed +inf.0)(flush-output-port (current-output-port)))))))
@@ -1157,7 +1157,7 @@
 	   (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
 	   (define compiled (time (run-ws-compiler typed input-params disabled-passes #t)))
 	   
-	   (when (>= (regiment-verbosity) 1) (printf "WaveScript compilation completed.\n"))
+	   (when (>= (wavescript-verbosity) 1) (printf "WaveScript compilation completed.\n"))
 	   (DEBUGMODE (dump-compiler-intermediate compiled ".__compiledprog.ss"))
 	   (run-wavescript-sim compiled)))
 	)))
@@ -1180,9 +1180,9 @@
     (let/ec escape   
       (parameterize ([abort-compiler-continuation escape])
 	(define prepped (apply wsint-early-passes args))
-	(when (>= (regiment-verbosity) 1) 
+	(when (>= (wavescript-verbosity) 1) 
 	  (printf "Running program EARLY:\n"))
-	(when (>= (regiment-verbosity) 5) (display prepped))
+	(when (>= (wavescript-verbosity) 5) (display prepped))
 	(run-wavescript-sim prepped))))
 
   (values wsint wsint-early wsint-early-passes)))
@@ -1209,13 +1209,13 @@
    [(and (wsint-tuple-limit) (wsint-output-file))
     ;; This could be more efficient, but for now we just take it all
     ;; into memory and then dump it all to disk.
-    (when (>= (regiment-verbosity) 1)
+    (when (>= (wavescript-verbosity) 1)
       (printf "Executing stream program with output to file: ~s\n" (wsint-output-file))
       (printf "------------------------------------------------------------\n"))
      ;; Evaluate the stream in memory and then write it out to a file:
      (slist->file  (run)  (wsint-output-file) 'display)]
    [(wsint-tuple-limit)
-    (when (>= (regiment-verbosity) 1)
+    (when (>= (wavescript-verbosity) 1)
       (printf "Executing stream program:\n")
       (printf "------------------------------------------------------------\n"))
     ;; TODO, use proper WS printing:
@@ -1224,7 +1224,7 @@
     ]
 
    [(wsint-output-file)
-    (when (>= (regiment-verbosity) 1)
+    (when (>= (wavescript-verbosity) 1)
       (eprintf "Dumping output to file: ~s\n" (wsint-output-file)))    
     (stream-dump strm (wsint-output-file))]
    [else
@@ -1235,10 +1235,10 @@
 	 (printf "Not browsing interactely, non-stream output:\n")
 	 (pretty-print val)]
 	[,else 
-	 (when (>= (regiment-verbosity) 1)
+	 (when (>= (wavescript-verbosity) 1)
 	   (printf "Interactively executing stream program:\n")
 	   (printf "------------------------------------------------------------\n"))
-	 (if (>= (regiment-verbosity) 2)
+	 (if (>= (wavescript-verbosity) 2)
 	     (browse-stream strm)
 	     (browse-stream (stream-map ws-show strm) (lambda (x) (display x) (newline))))])
       )]))
@@ -1258,13 +1258,13 @@
      ;; Some primitives are instead library defined for wsc2:
        (parameterize ([abort-compiler-continuation escape]
 		      [library-primitives (cons (get-primitive-entry 'List:toArray) (library-primitives))]
-		      [regiment-primitives
-		       ;; Remove those regiment-only primitives.
+		      [wavescript-primitives
+		       ;; Remove those wavescript-only primitives.
 		       (filter (lambda (entry)
 				 (and (not (eq? (car entry) 'List:toArray))
-				      (not (assq (car entry) regiment-distributed-primitives)))
+				      (not (assq (car entry) wavescript-distributed-primitives)))
 				 )
-			 (regiment-primitives))])
+			 (wavescript-primitives))])
 	 
 	 (define prog (coerce-to-ws-prog x input-params))
 	 (define typed (ws-compile-until-typed prog))
@@ -1279,9 +1279,9 @@
 	   
 	   ;;(ASSERT (andmap symbol? flags)) ;; [2007.11.06] Not true after Michael added (scheduler _) flags.
 	   
-	   (unless (<= (regiment-verbosity) 0)
+	   (unless (<= (wavescript-verbosity) 0)
 	     (printf "\nTypecheck complete, program types:\n\n")
-	     (if (>= (regiment-verbosity) 2) 
+	     (if (>= (wavescript-verbosity) 2) 
 		 (print-var-types typed +inf.0)
 		 (print-var-types typed 1))
 	     (flush-output-port (current-output-port)))
@@ -1297,10 +1297,10 @@
 		 (ws-run-pass prog nominalize-types)
 		 (ws-run-pass prog gather-heap-types)
 
-		 (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		 (when (or (>= (wavescript-verbosity) 3) (IFDEBUG #t #f))
 		   (dump-compiler-intermediate prog ".__beforeexplicitwiring.ss"))
 		 (ws-run-pass prog explicit-stream-wiring)
-		 (when (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f))
+		 (when (or (>= (wavescript-verbosity) 3) (IFDEBUG #t #f))
 		   (dump-compiler-intermediate prog ".__afterexplicitwiring.ss"))
 	    ;(ws-run-pass prog remove-unused-streams)
 	    
@@ -1309,7 +1309,7 @@
 		   (lambda (prog class)
 		     ;;(ws-run-pass heuristic-parallel-schedule)
 		     
-		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
+		     (when (>= (wavescript-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
 		     (ws-run-pass prog classify-emits)
 
@@ -1327,7 +1327,7 @@
 
 		     (unless (embedded-mode? (compiler-invocation-mode))
 		       (ws-run-pass prog insert-refcounts)
-		       (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog))))
+		       (when (>= (wavescript-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog))))
 
 		     (ws-run-pass prog flag-static-allocate)
 		     ;;(assure-type-annotated prog (lambda (x) (and (pair? x) (eq? 'cons (car x)))))
@@ -1341,12 +1341,12 @@
 					[inferencer-let-bound-poly #f])
 			   (time (ws-run-pass prog retypecheck)))))
 		     (when 			 
-			 (or (>= (regiment-verbosity) 3) (IFDEBUG #t #f)
+			 (or (>= (wavescript-verbosity) 3) (IFDEBUG #t #f)
 			     ;; TEMP
 			     (eq? 'wavescript-compiler-nesc (compiler-invocation-mode))
 			     )
 		       (dump-compiler-intermediate prog ".__after_refcounts.ss"))
-		     (when (>= (regiment-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
+		     (when (>= (wavescript-verbosity) 2) (printf "  PROGSIZE: ~s\n" (count-nodes prog)))
 
 		     (id (ws-run-pass prog emit-c2 class))		    
 
@@ -1356,7 +1356,7 @@
 		       (for-each (lambda (file contents)
 				   (string->file (id #|time|# (text->string contents)) file))
 			 file* contents*)
-		       (unless (<= (regiment-verbosity) 0)
+		       (unless (<= (wavescript-verbosity) 0)
 			 (printf "\nGenerated output to files ~s.\n" file*))
 		       ;; And then execute the post-write thunk in the same directory:
 		       (thunk)))])
@@ -1377,7 +1377,7 @@
 					 [,oth (error 'wscomp "unsupported garbage collection mode: ~s" oth)])]
 				 [wavescript-compiler-java   <java>])])
 		    ;; In this case we do a 'normal', non-partitioned compile:
-		    (when (>= (regiment-verbosity) 2) 
+		    (when (>= (wavescript-verbosity) 2) 
 		      (eprintf " Generating code for GC = ~a\n" (wsc2-gc-mode)))		    
 		    
 		    (if (memq 'split (ws-optimizations-enabled))
@@ -1523,7 +1523,7 @@
 		      (append (partition->opnames maybe-node)
 			      (partition->opnames maybe-server)))
 
-		    (when (>= (regiment-verbosity) 2) 
+		    (when (>= (wavescript-verbosity) 2) 
 		      (printf "Connectivity of profiled partition:\n")(print-partition max-node))
 		    
 		    (printf "\n Node-only operators:\n\n  ")
@@ -1627,10 +1627,10 @@
 			  (delete-file "query_partitioned.png")
 			  (printf "Dumping query_partitioned.png..")
 			  (string->file (output-graphviz merged) "query_partitioned.dot")
-			  (when (>= (regiment-verbosity) 1)
+			  (when (>= (wavescript-verbosity) 1)
 			    (printf "Dumping profile visualization to query_partitioned.png... ")(flush-output-port (current-output-port)))
 			  (system "dot -Tpng query_partitioned.dot -oquery_partitioned.png")
-			  (when (>= (regiment-verbosity) 1) (printf "done.\n")))
+			  (when (>= (wavescript-verbosity) 1) (printf "done.\n")))
 
 			;; Now we need to multiplex operators that have migrated to 
 			;; the server to handle many streams from different nodes.
@@ -1664,11 +1664,11 @@
 	  (text->string 
 	   (wsquery->text prog wavescope-scheduler))
 	  outfile)   
-	 (unless (<= (regiment-verbosity) 0)
+	 (unless (<= (wavescript-verbosity) 0)
 	   (printf "\nGenerated C++/XStream output to ~s.\n" outfile))
 	 )))
    
-   (if (>= (regiment-verbosity) 1) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
+   (if (>= (wavescript-verbosity) 1) (time (begin (run-wscomp) (printf "Total compile time:\n"))) (run-wscomp))
    ))) ; End wscomp
 
 
@@ -1681,8 +1681,8 @@
 
 (define (wscaml x input-params . flags)                                 ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
-		 [regiment-primitives ;; Remove those regiment-only primitives.
-		  (difference (regiment-primitives) regiment-distributed-primitives)])
+		 [wavescript-primitives ;; Remove those wavescript-only primitives.
+		  (difference (wavescript-primitives) wavescript-distributed-primitives)])
     (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.ml")
     (define prog (begin (ASSERT list? x) x))
@@ -1699,8 +1699,8 @@
 
 (define (wsmlton x input-params . flags)                                 ;; Entrypoint.  
   (parameterize ([compiler-invocation-mode 'wavescript-compiler-caml]
-		 [regiment-primitives ;; Remove those regiment-only primitives.
-		  (difference (regiment-primitives) regiment-distributed-primitives)])
+		 [wavescript-primitives ;; Remove those wavescript-only primitives.
+		  (difference (wavescript-primitives) wavescript-distributed-primitives)])
     (define disabled-passes (append (map cadr (find-in-flags 'disable 1 flags)) ws-disabled-by-default))
     (define outfile "./query.sml")
     (define prog (coerce-to-ws-prog x input-params))
@@ -1731,7 +1731,7 @@
       (top-level-value 'svn-revision)
       "unknown-svn-rev"))
 
-(define-regiment-parameter wavescript-version 
+(define-wavescript-parameter wavescript-version 
   (format "~a.~a"
    (let ([version-file (string-append (WAVESCRIPTD) "/src/version")])
     (if (file-exists? version-file)
@@ -1743,15 +1743,15 @@
   (printf "WaveScript/Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
 	  (wavescript-version)
 	  svnrev
-	  (top-level-value 'regiment-origin))
-  (printf "Usage: regiment command [options] \n")
+	  (top-level-value 'wavescript-origin))
+  (printf "Usage: wavescript command [options] \n")
   (printf "\n")
   (printf "Commands: \n")
   (printf "  help          prints this message\n")
   (printf "  compile  (c)  compile Regiment source (.rs) to token machines\n")
   (printf "  simulate (s)  simulate a token machine or simulator file\n")
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded\n")
-  (printf "  test     (t)  run all regiment tests\n")
+  (printf "  test     (t)  run all wavescript tests\n")
   (printf "  log      (l)  simulator trace manipulation mode\n")
   (printf "  wsint    (wsint)  WaveScript evaluator mode\n")
   (printf "  wscomp   (wscomp) WaveScript (C++) compiler mode\n")
@@ -1789,12 +1789,12 @@
   (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way\n")
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world\n")
   (printf "\n")
-  ;(display (file->string (string-append (WAVESCRIPTD) "bin/regiment_opts.txt")))
+  ;(display (file->string (string-append (WAVESCRIPTD) "bin/wavescript_opts.txt")))
   (display (file->string (string-append (WAVESCRIPTD) "/bin/ws_opts.txt")))
   )
 
 (define (print-ws-prim-table)
-  (define prims (difference (regiment-primitives) regiment-distributed-primitives))
+  (define prims (difference (wavescript-primitives) wavescript-distributed-primitives))
   ;; These are prims that we don't want to publicize for whatever reason:
   (define secret-prims
     `(world anchor locdiff sense nodeid 
@@ -1832,9 +1832,9 @@
 (define (print-types-and-exit prog . opts)
   (define verbose? (memq 'verbose opts))
   (printf ";; Regiment program with infered types: \n")
-  ;; Run just the verify regiment pass, it will associate types:
+  ;; Run just the verify wavescript pass, it will associate types:
   (parameterize ([print-vector-length #f])
-  (match (verify-regiment `(lang '(program ,prog)))
+  (match (verify-wavescript `(lang '(program ,prog)))
     [(,lang '(program ,p ,t))
      (match p
        [(letrec ([,id* ,t* ,rhs*] ...) ,bod)
@@ -1848,17 +1848,17 @@
      ;(printf "\n;; Regiment program return type: ~a\n" t)
      (printf "  : ~a\n" t)
      (exit 0)]
-    [,other (error 'print-types-and-exit "bad output from verify-regiment: ~s" other)])))
+    [,other (error 'print-types-and-exit "bad output from verify-wavescript: ~s" other)])))
 
-(define (regiment-exit code)
+(define (wavescript-exit code)
   ;; In case we're building a heap, we set this before we exit.
-  ;(disp "SETTING HEAP: " regiment-origin (top-level-value 'regiment-origin))
-  (set-top-level-value! 'regiment-origin "saved heap")
-  ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
+  ;(disp "SETTING HEAP: " wavescript-origin (top-level-value 'wavescript-origin))
+  (set-top-level-value! 'wavescript-origin "saved heap")
+  ;(disp "HEAP SET: " wavescript-origin (top-level-value 'wavescript-origin))
   (exit code))
 
 
-;; *THE* Main function for the regiment/wavescript process.
+;; *THE* Main function for the wavescript/wavescript process.
 ;; Takes an arbitrary number of strings (flags) as arguments.
 (define main 
   (lambda args    
@@ -1867,7 +1867,7 @@
     (define plot #f)
     (define simrepl #f)
     ;(disp "Main called w ARGS: " args)
-    (when (null? args) (print-help) (regiment-exit 0))
+    (when (null? args) (print-help) (wavescript-exit 0))
     
     (IF_THREADS
      (begin       
@@ -1914,7 +1914,7 @@
 	  (when verb 
 	    (let ((n (string->number verb)))
 	      (when (> n 1) (set! opts (cons 'verbose opts)))
-	      (regiment-verbosity n)
+	      (wavescript-verbosity n)
 	      )))
 
         ;; I keep disjoint options for the modes so I use the same option-parser for all modes ("argloop")
@@ -1934,7 +1934,7 @@
 		     (error callmode  "couldn't parse file: ~s" fn))
 		 ;; Otherwise let's assume 
 		 (open-input-file fn))]
-	    [,else (error 'regiment "~a should take one file name as input, given: ~a" callmode else)]))
+	    [,else (error 'wavescript "~a should take one file name as input, given: ~a" callmode else)]))
 
 	;; AFTER, those options are processed we switch on the mode flag.
 	(case mode
@@ -1962,19 +1962,19 @@
 		   (apply run-compiler expr "out.tm" opts)))
 	       (begin 
 		 (if (> (length filenames) 1)
-		     (error 'regiment_command_line_compiler 
+		     (error 'wavescript_command_line_compiler 
 			    "can't handle more than one filename at a time currently: ~s" filenames))
 		 ;; Otherwise we're good to go.
 		 (cond 
 		  [(memq 'type-only-verbose opts)
 		   (print-types-and-exit 
-		    (apply regiment-compile-file (car filenames) 'to-typed opts)
+		    (apply wavescript-compile-file (car filenames) 'to-typed opts)
 		    'verbose)]
 		  [(memq 'type-only opts)
 		   (print-types-and-exit 
-		    (apply regiment-compile-file (car filenames) 'to-typed opts))]
+		    (apply wavescript-compile-file (car filenames) 'to-typed opts))]
 		  [else 
-		   (apply regiment-compile-file (car filenames) 'write-file opts)])
+		   (apply wavescript-compile-file (car filenames) 'write-file opts)])
 		 )))]
 
 	  ;; Simulation mode (also may invoke compiler):
@@ -1990,10 +1990,10 @@
 	       (lambda ()
 		 (printf "Running simulation from file: ~a\n" fn)
 		 (let ((result
-			(apply load-regiment fn opts)
+			(apply load-wavescript fn opts)
 #;
 			;; Be careful to watch for parameterization:	     
-			(mvlet (([prog params] (read-regiment-source-file fn)))
+			(mvlet (([prog params] (read-wavescript-source-file fn)))
 			  (with-evaled-params params
 					      (lambda () 
 						(apply run-simulator-alpha prog 
@@ -2029,8 +2029,8 @@
 	    [(null? filenames) 
 	     (eprintf "Exposing WaveScript compiler internals through interactive read-eval-print loop (~s):\n" which-scheme)
 	     (repl)]
-	    ;; To run a script through "regiment"
-	    ;; --script must be the first argument after "regiment i"
+	    ;; To run a script through "wavescript"
+	    ;; --script must be the first argument after "wavescript i"
 	    ;; [2008.10.08] Nope -- loosened that up so that we can stick some other arguments between them.
 	    ;; 
 	    ;; This won't occur, chez grabs the --script parameter
@@ -2040,7 +2040,7 @@
 	    ;; arguments, not those processed by "argloop" above.
 	    [(and (equal? (car filenames) "--script")) ;;Loosening: ;;(equal? (cadr args) "--script")
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
-	     ;(error 'regiment.ss "this shouldn't happen.")
+	     ;(error 'wavescript.ss "this shouldn't happen.")
 	     ;; --script implies --exit-error: add that setting:
 	     ;; [2009.10.23] Going back on that... why did I want that necessarily?
 	     ;(loop '("-exit-error"))  
@@ -2057,10 +2057,10 @@
 
 	    [else 
 	     ;(inspect (list->vector args))
-	     ;(error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
+	     ;(error 'main:script  "not allowed to invoke wavescript i with a filename in this r6rs port yet (except through --script).")
 	     (IFCHEZ (apply orig-scheme-start (cdr args))
-		     ;(error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
-		     (error 'main:script  "not allowed to invoke regiment i with a filename in this r6rs port yet (except through --script).")
+		     ;(error 'interact-mode "cannot currently run scripts through wavescript in PLT Scheme")
+		     (error 'main:script  "not allowed to invoke wavescript i with a filename in this r6rs port yet (except through --script).")
 		     )
 	     ])]
 
@@ -2070,13 +2070,13 @@
 	   (match (cdr args)
 	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
-			 (error 'regiment:log:print "no log file supplied or found")))]
+			 (error 'wavescript:log:print "no log file supplied or found")))]
 	     [("-print" ,file) 
 	      (let loop ([s (reg:read-log file 'stream)])
 		(unless (stream-empty? s) 
 		  (printf "~a\n" (stream-car s))
 		  (loop (stream-cdr s))))]
-	     [("-print" ,_ ...) (error 'regiment:log:print "only can print exactly one logfile at a time: ~a" args)]
+	     [("-print" ,_ ...) (error 'wavescript:log:print "only can print exactly one logfile at a time: ~a" args)]
 	     [("-reencode" ,in ,out)
 	      ;; Do not replace output file if it's there:
 	      (let ((out (open-output-file out '(compressed)))
@@ -2098,7 +2098,7 @@
 		       (loop (stream-cdr in) (fx- n 1) (cons (stream-car in) acc))]))
 		   )))]
 	     [("-reencode" ,_ ...)
-	      (error 'regiment:log:reencode 
+	      (error 'wavescript:log:reencode 
 		     "bad arguments for log reencoding, expects input and output file: ~a" args)]
 	     [("-examine" ,file)
 	      (newline)
@@ -2126,14 +2126,14 @@
 				  " (except for being gzipped)" ""))
 		      )))]
 	     [("-examine" ,_ ...)
-	      (error 'regiment:log:examine "-examine expects exactly one file name argument: ~a" args)]
+	      (error 'wavescript:log:examine "-examine expects exactly one file name argument: ~a" args)]
 
 	     [("-vw" ,worldfile)
 	      (let ([file worldfile])
 		(IF_GRAPHICS 			     
 		 (begin 
 		   (unless (file-exists? file)
-		     (error 'regiment:log:view-world "this worldfile doesn't exist: ~s" file)
+		     (error 'wavescript:log:view-world "this worldfile doesn't exist: ~s" file)
 		     (exit -1))
 		   ;; Read only the first entry, set up as global world.
 		   (simalpha-current-simworld (read (open-input-file file)))
@@ -2154,7 +2154,7 @@
 		 (begin (printf "view-world (-vw) mode doesn't really make sense without GUI loaded!")
 			(exit -1))))]
 
-	     [,other (warning 'regiment:log "unsupported options or missing arguments: ~a" other)
+	     [,other (warning 'wavescript:log "unsupported options or missing arguments: ~a" other)
 		     (exit -1)]
 	     ))]
 
@@ -2235,9 +2235,9 @@
 	  [("-v" ,num? ,rest ...)  
 	   (set! opts (cons 'verbose opts))
 	   (if (string->number num?)
-	       (begin (regiment-verbosity (string->number num?))
+	       (begin (wavescript-verbosity (string->number num?))
 		      (argloop rest))
-	       (begin (regiment-verbosity (add1 (regiment-verbosity)))
+	       (begin (wavescript-verbosity (add1 (wavescript-verbosity)))
 		      (argloop (cons num? rest))))]
 
 	  [("-n" ,limit ,rest ...)
@@ -2267,7 +2267,7 @@
 	      (begin
 		(unless (memq name '(rewrites fuse merge-iterates profile autosplit))
 		  (error 'main "unsupported name for optimization passed to -opt flag: ~s" name))
-		(unless (<= (regiment-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
+		(unless (<= (wavescript-verbosity) 0) (printf "  Optimization enabled: ~s\n" name))
 		(ws-optimizations-enabled (cons name (ws-optimizations-enabled ))))])
 	   (argloop rest)]
 
@@ -2318,7 +2318,7 @@
 
 	  [("-noprelude" ,rest ...) (ws-no-prelude #t) (argloop rest)]
 
-	  [(".h" ,rest ...) (print-help) (regiment-exit 0)]
+	  [(".h" ,rest ...) (print-help) (wavescript-exit 0)]
 	  
 	  [("-plot" ,rest ...) (set! plot #t) (argloop rest)]
 	  [("-repl" ,rest ...) (set! simrepl #t) (argloop rest)]
@@ -2327,9 +2327,9 @@
 	  [("-noprint" ,rest ...)     (suppress-main-stream-printing #t) (argloop rest)]
 	  [("-noprintmain" ,rest ...) (suppress-main-stream-printing #t) (argloop rest)]
 
-	  [("-nopos" ,rest ...) (regiment-track-source-locations #f) (argloop rest)]
+	  [("-nopos" ,rest ...) (wavescript-track-source-locations #f) (argloop rest)]
 
-	  ;; How far should the regiment compiler go:
+	  ;; How far should the wavescript compiler go:
 	  [("-d2" ,rest ...)  (set! opts (cons 'deglobalize2 opts)) (argloop rest)]	 
 	  [("-lt" ,rest ...)  (set! opts (cons 'type-only-verbose opts)) (argloop rest)]
 	  [("-ltt" ,rest ...) (set! opts (cons 'type-only opts)) (argloop rest)]
@@ -2351,7 +2351,7 @@
 	   (argloop rest)]
 
 	  [("-exit-error" ,rest ...)
-	   (when (>= (regiment-verbosity) 2) (eprintf "SETTING BATCH MODE\n"))
+	   (when (>= (wavescript-verbosity) 2) (eprintf "SETTING BATCH MODE\n"))
 	   (define-top-level-value 'WAVESCRIPT-BATCH-MODE #t)
 	   (argloop rest)]
 
@@ -2363,11 +2363,11 @@
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (argloop rest)]
 	  [("-debug" ,rest ...)		     
 	   (define-top-level-value 'WAVESCRIPT-BATCH-MODE #f)
-	   (regiment-emit-debug #t)
+	   (wavescript-emit-debug #t)
 	   (argloop rest)]
 
 	  [("-quiet" ,rest ...)
-	   (regiment-verbosity -1)
+	   (wavescript-verbosity -1)
 	   (argloop rest)]
 	  
 	  [("-dump" ,file ,rest ...)
@@ -2399,7 +2399,7 @@
      ;;              ikarus passes in command line args. as strings
      [("--scheduler" ,sched-name ,rest ...)
       (set! sched-name (string->symbol sched-name))
-      (unless (<= (regiment-verbosity) 0) (printf "Setting scheduler: ~s\n" sched-name))
+      (unless (<= (wavescript-verbosity) 0) (printf "Setting scheduler: ~s\n" sched-name))
       (set! opts (append `(scheduler ,sched-name) opts))
       (argloop rest)]
 
@@ -2413,10 +2413,10 @@
 	  
      ;; otherwise a file to compile that we add to the list
      [(,fn ,rest ...)
-      ;;(regiment-compile-file fn)
+      ;;(wavescript-compile-file fn)
       (cons fn (argloop rest))]
 
-     [,_ (error "Bad command line arguments to regimentc: ~a\n" args)]
+     [,_ (error "Bad command line arguments to wavescriptc: ~a\n" args)]
      ))
 
       

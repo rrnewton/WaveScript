@@ -8,6 +8,6 @@
   (include (build-path  "generic" "tests_noclosure.ss"))
   (include (build-path  "generic" "tests.ss"))
   
-  ;; Insure provision of verify-regiment:
+  ;; Insure provision of verify-wavescript:
 ;  (provide tests tests_noclosure)
 ;  )

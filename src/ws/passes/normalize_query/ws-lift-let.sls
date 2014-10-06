@@ -130,7 +130,7 @@
 
     (define process-expr
       (lambda (x fallthru)
-	(define (normal-prim? p) (and (regiment-primitive? p) (not (eq? p 'iterate))))
+	(define (normal-prim? p) (and (wavescript-primitive? p) (not (eq? p 'iterate))))
 	(match x
 	  [(iterate ,annot (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
 	   `(iterate ,annot (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]

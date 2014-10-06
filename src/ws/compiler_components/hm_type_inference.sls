@@ -97,14 +97,14 @@
 	   (ws compiler_components prim_defs)
 	   (ws compiler_components reg_core_generic_traverse)
            (ws compiler_components type_environments)
-	   (ws compiler_components regiment_helpers)
+	   (ws compiler_components wavescript_helpers)
 #;
-	   (except (ws compiler_components regiment_helpers)
-		   regiment-type-aliases
-		   regiment-basic-primitives
+	   (except (ws compiler_components wavescript_helpers)
+		   wavescript-type-aliases
+		   wavescript-basic-primitives
 		   local-node-primitives
-		   regiment-constants
-		   regiment-distributed-primitives)
+		   wavescript-constants
+		   wavescript-distributed-primitives)
 	   ;; Wow, and for this pass too... after the call/cc fix rn-match is slower under PLT:
 	   (ws util iu-match)
 	   ;;(ws util rn-match) ;; TEMPTOGGLE
@@ -386,11 +386,11 @@
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
 (define (prim->type p)
-  (let ((entry (or ;(assq p regiment-basic-primitives)
-		   ;(assq p regiment-constants)
-		   ;(assq p regiment-distributed-primitives)
-		   ;(assq p (regiment-primitives))
-		   (regiment-primitive? p)
+  (let ((entry (or ;(assq p wavescript-basic-primitives)
+		   ;(assq p wavescript-constants)
+		   ;(assq p wavescript-distributed-primitives)
+		   ;(assq p (wavescript-primitives))
+		   (wavescript-primitive? p)
 		   ;(get-primitive-entry p)
 		   )))
     (unless entry
@@ -592,12 +592,12 @@
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
 #;
-      [,prim (guard (symbol? prim) (regiment-primitive? prim) (not (tenv-lookup tenv prim)))
+      [,prim (guard (symbol? prim) (wavescript-primitive? prim) (not (tenv-lookup tenv prim)))
              (values prim (prim->type prim))]
       
       ;; Here's the magic:
       [,v (guard (symbol? v))
-	  (if (and (regiment-primitive? v) (not (tenv-lookup tenv v)))
+	  (if (and (wavescript-primitive? v) (not (tenv-lookup tenv v)))
 	      (values v (prim->type v))
           (let ((entry (tenv-lookup tenv v)))
             (if entry 
@@ -840,7 +840,7 @@
                (type-app (prim->type 'iterate) `((List Annotation) ,ft ,st) exp tenv nongeneric))]
 
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
-       (guard (regiment-primitive? prim)
+       (guard (wavescript-primitive? prim)
               (not (eq-any? prim 'tuple 'unionN 'wsrecord-extend 'wsrecord-restrict 'wsrecord-select)))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
@@ -860,7 +860,7 @@
 
       ;; These cases are still around in case there's no source-info.
       [(,prim ,[l -> rand* t*] ...)
-       (guard (regiment-primitive? prim))
+       (guard (wavescript-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
                (type-app (prim->type prim) t* exp tenv nongeneric))]
@@ -931,7 +931,7 @@
       [(static-allocate ,[l -> x xt]) (values `(static-allocate ,x) xt)]
 
       ;; Allowing unlabeled applications for now:
-      [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
+      [(,rat ,rand* ...) (guard (not (wavescript-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,@rand*))]
       
@@ -1095,7 +1095,7 @@
   (match e ;; match-expr
     [,v (guard (symbol? v)) v]
     [(quote ,c)       `(quote ,c)]
-    [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
+    [,prim (guard (symbol? prim) (wavescript-primitive? prim))  prim]
     [(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
     [(src-pos ,p ,[e]) `(src-pos ,p ,e)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
@@ -1110,7 +1110,7 @@
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data 'static-allocate)
-		(regiment-primitive? simplekwd)))
+		(wavescript-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
     [(set! ,v ,[e]) `(set! ,v ,e)]
@@ -1155,7 +1155,7 @@
   (match e ;; match-expr
     [,v (guard (symbol? v))                                   (void)]
     [(quote ,c)                                               (void)]
-    [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
+    [,prim (guard (symbol? prim) (wavescript-primitive? prim))  (void)]
     ;; The type occurring here isn't instantiated (thus doesn't contain late unifies)
     [(assert-type ,t ,[e])                                    (void)]
     [(src-pos ,t ,[e])                                        (void)]
@@ -1176,7 +1176,7 @@
 
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
-		(regiment-primitive? simplekwd)))
+		(wavescript-primitive? simplekwd)))
      (void)]
 
     [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
@@ -1237,7 +1237,7 @@
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
-		(regiment-primitive? simplekwd)))
+		(wavescript-primitive? simplekwd)))
      `(,simplekwd ,@args)]
 
     [(wscase ,[x] [,pat* ,[rhs*]] ...) `(wscase ,x ,@(map list pat* rhs*))]
@@ -1727,7 +1727,7 @@
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
      (let* ([success #f]
 	    [dealias (lambda (s) 
-		       (cond [(assq s regiment-type-aliases) => 			      
+		       (cond [(assq s wavescript-type-aliases) => 			      
 			      (lambda (entry)
 				(set! success #t)
 				(instantiate-type (cadr entry)))]
@@ -1803,7 +1803,7 @@
       ;; Ok, this is recursive, but it's A=B=A, not some more complex
       ;; recursive type constraint.
       (begin 
-	(when (>= (regiment-verbosity) 3)
+	(when (>= (wavescript-verbosity) 3)
 	  (warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty))
 	(match ty
 	  [(,qt ,tvarpair)	   
@@ -1816,7 +1816,7 @@
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
-		      (when (>= (regiment-verbosity) 3)
+		      (when (>= (wavescript-verbosity) 3)
 			(printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp))
 		      ]
 		     [(,outer . (,qt ,[deeper])) (guard (tvar-quotation? qt)) (void)]
@@ -1955,7 +1955,7 @@
 #;
        [(,simplekwd ,[args] ...)
         (guard (or (eq-any? simplekwd 'if 'tuple 'begin 'while 'app 'foreign-app 'construct-data)
-                   (regiment-primitive? simplekwd)))
+                   (wavescript-primitive? simplekwd)))
         (apply append args)]
 
        [(begin ,[e*] ...) (apply append e*)]
@@ -1977,7 +1977,7 @@
 
        ;; This one case brings us from 0 to 30 ms:
        [(,prim ,[rand*] ...)
-         (guard (regiment-primitive? prim))
+         (guard (wavescript-primitive? prim))
          (apply append rand*)]
 
 
@@ -1988,7 +1988,7 @@
 			      ;(if (symbol? rhs) (inspect (format "SYMBOL: ~s\n" rhs)))
 			      ;(unless (null? rhsls) (inspect rhsls))
 			      ;(inspect (included-var-bindings))
-                              (if (or (>= (regiment-verbosity) 2)
+                              (if (or (>= (wavescript-verbosity) 2)
                                       (and (not (memq id (included-var-bindings)))
                                            (not (symbol? (peel-annotations rhs)))))
                                   `([type ,id ,t ,(get-var-types rhs)])
@@ -2019,11 +2019,11 @@
                  (print-type 
 		  ;; For prettyness we reset the tvar counts to not get such ugly tvars:
 		  (let ([old-counter (get-tvar-generator-count)]
-			[pretty (if (>= (regiment-verbosity) 3) t (realias-type aliases t))])
+			[pretty (if (>= (wavescript-verbosity) 3) t (realias-type aliases t))])
 		    ;(printf "\nUgly  : ~s\n" t)
 		    ;(printf "Pretty: ~s\n" pretty)
 		    (reset-tvar-generator 0)
-		    (let ([fresh (if (>= (regiment-verbosity) 5) pretty
+		    (let ([fresh (if (>= (wavescript-verbosity) 5) pretty
 				     (export-type (instantiate-type pretty '())))])
 		      (reset-tvar-generator old-counter)
 		      fresh))
@@ -2055,7 +2055,7 @@
       ;; A type alias with no type arguments:
       [,s (guard (symbol? s))                   
 	  (let ([entry (or (assq s aliases)
-			   (assq s regiment-type-aliases))])
+			   (assq s wavescript-type-aliases))])
 	    (check-valid-sym
 	     (if entry 
 		(begin 		  
@@ -2090,7 +2090,7 @@
       [(,s ,[t*] ...) (guard (symbol? s))
 
        (let ([entry (or (assq s aliases)
-			(assq s regiment-type-aliases))])
+			(assq s wavescript-type-aliases))])
 ;	 (import iu-match) ;; Having problems!
 	 (match entry
 	   [#f 
@@ -2523,7 +2523,7 @@
 		(DEBUGASSERT type? ret)
 		(DEBUGASSERT (curry andmap type?) args)]
 	       [,else (error 'hm_type_inferencer "bad entry in primitive table: ~s" else)]))
-   (regiment-primitives)))
+   (wavescript-primitives)))
 
 
 ) ; End module. 

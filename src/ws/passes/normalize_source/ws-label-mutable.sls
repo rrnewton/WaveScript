@@ -20,7 +20,7 @@
   (define ws-label-mutable-grammar
     ;; Add Ref type:
     (cons '(Type ('Ref Type))
-	  initial_regiment_grammar))
+	  initial_wavescript_grammar))
 
   (define (decorate-rhs rhs)
     ;; The ref cannot be contained within

@@ -47,7 +47,7 @@
     (define (simple? expr)
       (match expr
 	[,num (guard (number? num)) #t]
-	[,var (guard (symbol? var) (not (regiment-constant? var))) #t]
+	[,var (guard (symbol? var) (not (wavescript-constant? var))) #t]
 	[(quote ,const) (guard (or (simple-constant? const) (symbol? const))) #t]
 	[,else #f]))
 
@@ -100,8 +100,8 @@
 			      [,exp (guard (simple? exp)) #f]
 			      [(lambda ,formalexp ,types ,expr) #f]
 			      [(if ,test ,conseq ,altern) #f]
-			      ;; All regiment constants are presumed to be "slow prims" for now.
-			      [,prim (guard (regiment-constant? prim))
+			      ;; All wavescript constants are presumed to be "slow prims" for now.
+			      [,prim (guard (wavescript-constant? prim))
 				     #t]				    
 
 			      [(,prim ,rand* ...)				      
@@ -109,7 +109,7 @@
 			       (or (check-prop 'region name)
 				   (check-prop 'anchor name)) ]
 			      [(,prim ,rand* ...)				      
-			       (guard (regiment-primitive? prim)) #f]
+			       (guard (wavescript-primitive? prim)) #f]
 			      [,else (error 'slow-prim? "invalid exp: ~s" expr)]))]
 
 		    [fast-prim?
@@ -123,7 +123,7 @@
 			       (memq prim '(rmap rfold smap))
 			       #t]
 			      [(,prim ,rand* ...)				      
-			       (guard (regiment-primitive? prim)) #f]
+			       (guard (wavescript-primitive? prim)) #f]
 			      [,else (error 'fast-prim? "invalid exp: ~s" expr)]))]
 		    )
 	       
@@ -179,16 +179,16 @@
     (define get-deps
       (lambda (expr)
         (match expr
-	  [,var (guard (symbol? exp) (not (regiment-constant? exp)))
+	  [,var (guard (symbol? exp) (not (wavescript-constant? exp)))
 		exp]
 	  [,simp (guard (simple? simp)) '()]
           [(lambda ,formalexp ,types ,bod) '()] ; lambdas have no free-vars
           [(if ,[test] ,[conseq] ,[altern])
 	   (append test conseq altern)]
 	  ;; Don't need to recur on rands:
-          [,prim (guard (regiment-constant? prim)) '()]
+          [,prim (guard (wavescript-constant? prim)) '()]
           [(,prim ,[rand*] ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   (apply append rand*)]
           [,unmatched
 	   (error 'get-deps "invalid syntax ~s" unmatched)])))
@@ -202,10 +202,10 @@
 	  ;; Don't need to recur on exprs:
           [(if ,test ,conseq ,altern)
 	   `(if ,test ,conseq ,altern)]
-          [,prim (guard (regiment-constant? prim)) prim]
+          [,prim (guard (wavescript-constant? prim)) prim]
 	  ;; Don't need to recur on rands:
           [(,prim ,rand* ...)
-           (guard (regiment-primitive? prim))
+           (guard (wavescript-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
 	   (error 'add-heartbeat "invalid syntax ~s" unmatched)])))

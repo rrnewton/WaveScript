@@ -167,7 +167,7 @@
 
 
 	   ;(all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
-	   ;(all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)           
+	   ;(all-except "../compiler_components/wavescript_helpers.ss" test-this these-tests for inspect break)           
 	   )
 
 #;
@@ -928,7 +928,7 @@
             (let* ([newpos (s:+ len pos -1)]
                    [result (make-sigseg pos newpos win nulltimebase)])
               
-              (unless (<= (regiment-verbosity) 0)
+              (unless (<= (wavescript-verbosity) 0)
                 (set! counter (fx+ counter len))
                 (when (fx>= counter print-every)
                   (set! counter (fx- counter print-every))
