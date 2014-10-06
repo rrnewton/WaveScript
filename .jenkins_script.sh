@@ -27,4 +27,7 @@ time regiment
 if [ "$REGIMENTHOST" == chez ]; then
   echo "Running tests"
   make fulltest
+else
+  echo "WARNING WARNING WARNING"
+  echo "Skipping tests under PLT.  This is temporary, FIXME."
 fi
