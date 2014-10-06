@@ -6,7 +6,7 @@ TMPDAT=/tmp/duplicated_6sec_marmot_data.raw
 rm -rf $TMPDAT
 
   echo "  Making a big enough audio file."; echo
-  cd "$REGIMENTD/apps/marmot";
+  cd "$WAVESCRIPTD/apps/marmot";
   make testdata.txt
   (rm -f 6sec_marmot_sample.raw)
   # ensure that we have sample data:

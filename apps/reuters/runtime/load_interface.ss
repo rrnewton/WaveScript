@@ -26,7 +26,7 @@
 ;(printf "       (Currently we load from source this avoids compile bugs) \n")(flush-output-port)
 
 (let* ([startd (current-directory)]
-       [src-dir (string-append (getenv "REGIMENTD") "/src")]
+       [src-dir (string-append (getenv "WAVESCRIPTD") "/src")]
        [src (string-append src-dir "/regiment.ss")])
   (parameterize ([current-directory src-dir]
 		 [command-line `(,src ,startd "nothing")])
@@ -57,7 +57,7 @@
 ;; Next load the WSQ runtime manager.
 
 (vprintf 1 " <WSQ> Loading runtime manager...") (#%flush-output-port)
-(load (string-append(getenv "REGIMENTD") "/apps/reuters/runtime/runtime_manager.ss"))
+(load (string-append(getenv "WAVESCRIPTD") "/apps/reuters/runtime/runtime_manager.ss"))
 (vprintf 1 "  finished.\n")
 
 ;;==============================================================================

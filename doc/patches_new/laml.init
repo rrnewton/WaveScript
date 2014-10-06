@@ -6,4 +6,4 @@
 
 ; Set the laml-dir variable to a value determined by the configuration file
 ; in laml-config/templates/configuration.
-(define laml-dir (string-append (getenv "REGIMENTD") "/doc/schemedoc/"))
+(define laml-dir (string-append (getenv "WAVESCRIPTD") "/doc/schemedoc/"))

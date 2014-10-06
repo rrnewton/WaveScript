@@ -24,7 +24,7 @@
     (export
 
 	 define-regiment-parameter regiment-parameters reg:make-parameter
-         REGIMENTD  
+         WAVESCRIPTD  
 	 ;define-testing
 	 IFWAVESCOPE ;; Load WS extensions or no?
 	 IFDEBUG IFWINDOWS
@@ -39,7 +39,7 @@
          ;; Syntax:
 	  VERBOSE-LOAD
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT 
-         REGIMENT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
+         WAVESCRIPT_DEBUG HACK regiment-emit-debug check-pass-grammars mlton-ascribe-types
 	 REGOPTLVL
 
          SCHEDULE_DELAY         
@@ -228,7 +228,7 @@
 
 ;; Parameter determining the location of the Regiment tree. <br>
 ;; This is set when the system loads.
-(define-regiment-parameter REGIMENTD "./")
+(define-regiment-parameter WAVESCRIPTD "./")
 
 
 ;=======================================================================;;
@@ -269,7 +269,7 @@
 (define-syntax IFWAVESCOPE
   (let ()
     ;===============================;
-    (define DEFAULT_WAVESCOPE-REGIMENT_MODE "WAVESCRIPT") ;; <-- CHANGE DEFAULT HERE
+    (define DEFAULT_WAVESCOPE-WAVESCRIPT_MODE "WAVESCRIPT") ;; <-- CHANGE DEFAULT HERE
     ;===============================;
     (define (ws x)  (syntax-case x () [(_ ws reg) #'ws]   [(_ ws) #'ws]))
     (define (reg x) (syntax-case x () [(_ ws reg) #'reg]  [(_ ws) #'(begin)]))
@@ -279,19 +279,19 @@
        [(equal? m "WAVESCRIPT") ws]
        [(equal? m "WAVESCOPE")  ws]
        [(equal? m "WS")         ws]
-       [(equal? m "REGIMENT")  reg]
+       [(equal? m "WAVESCRIPT")  reg]
        [(equal? m "REG")       reg]
        [(equal? m "BOTH")
 	(lambda (x) (syntax-case x () [(_ ws reg) #'(begin ws reg)] [(_ ws) #'ws]))]
 
        [else 
-      ;(error 'IFWAVESCOPE "unknown value for environment var REGIMENT_OR_WAVESCRIPT: ~s" m)
+      ;(error 'IFWAVESCOPE "unknown value for environment var WAVESCRIPT_OR_WAVESCRIPT: ~s" m)
        (raise (make-error))
        ]
        ))
     (cond
-     [(getenv "REGIMENT_OR_WAVESCRIPT") => (lambda (m) (set m))]
-     [else (set DEFAULT_WAVESCOPE-REGIMENT_MODE)]
+     [(getenv "WAVESCRIPT_OR_WAVESCRIPT") => (lambda (m) (set m))]
+     [else (set DEFAULT_WAVESCOPE-WAVESCRIPT_MODE)]
      ;[else (error 'IFWAVESCOPE "environment var not set")]
      )))
 
@@ -530,7 +530,7 @@
 ;; checks the (regiment-emit-debug) parameter, and if true, returns
 ;; its arguments in a list, otherwise null.
 ;; .returns Its arguments in list form or the null list.
-(define-syntax REGIMENT_DEBUG
+(define-syntax WAVESCRIPT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) '())]))
 

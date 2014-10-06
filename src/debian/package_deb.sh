@@ -16,7 +16,7 @@
 VER=$WSVER
 PACKAGENAME=wavescript
 
-DEBDIR=$REGIMENTD/$PACKAGENAME"_"$VER/
+DEBDIR=$WAVESCRIPTD/$PACKAGENAME"_"$VER/
 
 #rm -rf $DEBDIR
 
@@ -29,30 +29,30 @@ WSDIR=$DEBDIR/
 function copy_common() {
   mkdir -p $WSDIR/depends
   mkdir -p $WSDIR/src/
-  cp -pr $REGIMENTD/install_environment_vars $WSDIR/
-  cp -pr $REGIMENTD/lib                      $WSDIR/
+  cp -pr $WAVESCRIPTD/install_environment_vars $WSDIR/
+  cp -pr $WAVESCRIPTD/lib                      $WSDIR/
 
   mkdir -p $WSDIR/src/old/chez
-  cp -pr $REGIMENTD/src/old/chez/rn-match.ss $WSDIR/src/old/chez/
+  cp -pr $WAVESCRIPTD/src/old/chez/rn-match.ss $WSDIR/src/old/chez/
 
   mkdir -p $WSDIR/doc/
-  cp -pr $REGIMENTD/doc/wavescript_manual    $WSDIR/doc/
-  cp -pr $REGIMENTD/doc/wavescript_manpages  $WSDIR/doc/
+  cp -pr $WAVESCRIPTD/doc/wavescript_manual    $WSDIR/doc/
+  cp -pr $WAVESCRIPTD/doc/wavescript_manpages  $WSDIR/doc/
 
-#   cp -pr $REGIMENTD/src/bin                  $WSDIR/
-   cp -pr $REGIMENTD/src/linked_lib           $WSDIR/src/
-   cp -pr $REGIMENTD/src/bin                  $WSDIR/src/
-   cp -pr $REGIMENTD/src/parser               $WSDIR/src/
-   cp -pr $REGIMENTD/src/version              $WSDIR/src/
-   cp -a  $REGIMENTD/src/regiment*.ss         $WSDIR/src/
+#   cp -pr $WAVESCRIPTD/src/bin                  $WSDIR/
+   cp -pr $WAVESCRIPTD/src/linked_lib           $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/bin                  $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/parser               $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/version              $WSDIR/src/
+   cp -a  $WAVESCRIPTD/src/regiment*.ss         $WSDIR/src/
 
    ## Todo, should instead download the right version of petite from the web.
    ## We should download the version for this architecture.
-   cp -pr $REGIMENTD/depends/petite*              $WSDIR/depends/
-   cp -pr $REGIMENTD/depends/get_machine_type     $WSDIR/depends/
+   cp -pr $WAVESCRIPTD/depends/petite*              $WSDIR/depends/
+   cp -pr $WAVESCRIPTD/depends/get_machine_type     $WSDIR/depends/
 
-   cp -a  $REGIMENTD/depends/bos                  $WSDIR/depends/
-   cp -pr $REGIMENTD/depends/matpak*              $WSDIR/depends/
+   cp -a  $WAVESCRIPTD/depends/bos                  $WSDIR/depends/
+   cp -pr $WAVESCRIPTD/depends/matpak*              $WSDIR/depends/
 
   (cd $WSDIR     && ln -s src/bin   ./)
   (cd $WSDIR     && ln -s src/build ./)
@@ -69,20 +69,20 @@ function copy_cleanup() {
 # This copies all the files necessary to a source package.
 function build_src_pkg() {
   echo
-  echo PACKAGING REGIMENT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
+  echo PACKAGING WAVESCRIPT/WAVESCRIPT AS A DEBIAN SOURCE PACKAGE
   echo =================================================================
   echo Output directed to $DEBDIR
 
    copy_common
 
-   cp -pr $REGIMENTD/src/main*                $WSDIR/src/
-   cp -pr $REGIMENTD/src/config.ss            $WSDIR/src/
-   cp -pr $REGIMENTD/src/legacy_main_chez.ss  $WSDIR/src/
-   cp -pr $REGIMENTD/src/temporary*chez*.ss   $WSDIR/src/
-   cp -pr $REGIMENTD/src/generate_main*       $WSDIR/src/
-   cp -pr $REGIMENTD/src/*.sexp               $WSDIR/src/
-   cp -pr $REGIMENTD/src/ws                   $WSDIR/src/
-   cp -pr $REGIMENTD/src/Makefile             $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/main*                $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/config.ss            $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/legacy_main_chez.ss  $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/temporary*chez*.ss   $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/generate_main*       $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/*.sexp               $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/ws                   $WSDIR/src/
+   cp -pr $WAVESCRIPTD/src/Makefile             $WSDIR/src/
 
   copy_cleanup
 
@@ -131,7 +131,7 @@ function common_setup() {
   echo
   echo Packaging with "$SUFFIX" as a Debian Binary Package on arch `uname -m`
   echo =================================================================
-  REGIMENTD=`pwd`
+  WAVESCRIPTD=`pwd`
   rm -rf ./debian/tmp
   mkdir -p ./debian/tmp/usr/bin
   mkdir -p ./debian/tmp/DEBIAN
@@ -153,21 +153,21 @@ function common_setup() {
     ln -s /usr/lib/$PACKAGENAME/$VER/bin/$cmd ./debian/tmp/usr/bin/; 
   done
   # assert_regimentd in this case forces it to use the globally installed ver:
-  echo "export REGIMENTD=/usr/lib/$PACKAGENAME/$VER/" >  ./debian/tmp/usr/bin/assert_regimentd
-  echo 'export IKARUSEXEC="$REGIMENTD/depends/ikarus -b $REGIMENTD/depends/ikarus_lib/ikarus.boot"' >> ./debian/tmp/usr/bin/assert_regimentd
+  echo "export WAVESCRIPTD=/usr/lib/$PACKAGENAME/$VER/" >  ./debian/tmp/usr/bin/assert_regimentd
+  echo 'export IKARUSEXEC="$WAVESCRIPTD/depends/ikarus -b $WAVESCRIPTD/depends/ikarus_lib/ikarus.boot"' >> ./debian/tmp/usr/bin/assert_regimentd
   WSDIR=`pwd`/debian/tmp/usr/lib/$PACKAGENAME/$VER  
   copy_common
 }
 
-# We don't want to rely on REGIMENTD pointing to the host system here.
+# We don't want to rely on WAVESCRIPTD pointing to the host system here.
 # This must be called from the source package directory (called DEBDIR above)
 function build_binary_pkg_chez() {
   SUFFIX="-chez"
   common_setup
 
   mkdir -p $WSDIR/src/ws/passes/mlton_bkend/
-  cp -pr $REGIMENTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
-  cp -pr $REGIMENTD/src/build                     $WSDIR/src/
+  cp -pr $WAVESCRIPTD/src/ws/passes/mlton_bkend/*   $WSDIR/src/ws/passes/mlton_bkend/
+  cp -pr $WAVESCRIPTD/src/build                     $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd
@@ -195,9 +195,9 @@ function build_binary_pkg_ikarus() {
   cp -r /usr/local/bin/ikarus $WSDIR/depends/ikarus
 
   mkdir -p $WSDIR/src/ws/
-  cp -a $REGIMENTD/src/ws/*      $WSDIR/src/ws/
-  cp -a $REGIMENTD/src/main*     $WSDIR/src/
-  cp -a $REGIMENTD/src/config.ss $WSDIR/src/
+  cp -a $WAVESCRIPTD/src/ws/*      $WSDIR/src/ws/
+  cp -a $WAVESCRIPTD/src/main*     $WSDIR/src/
+  cp -a $WAVESCRIPTD/src/config.ss $WSDIR/src/
   copy_cleanup
 
   cp ./debian/tmp/usr/bin/assert_regimentd $WSDIR/bin/assert_regimentd

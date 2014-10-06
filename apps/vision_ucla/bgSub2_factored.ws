@@ -16,9 +16,9 @@ include "stdlib.ws"
 include "opencv.ws"
 include "r100/r100.ws"
 
-fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
-//fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/hamster";
-fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
+fullpath_in = GETENV("WAVESCRIPTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
+//fullpath_in = GETENV("WAVESCRIPTD") ++ "/apps/vision_ucla/input/hamster";
+fullpath_out = GETENV("WAVESCRIPTD") ++ "/apps/vision_ucla/processed/";
 
 outfmt = "bmp"
 

@@ -20,7 +20,7 @@ You can always start up a repl in the src/ directory and do "(import (main))" by
 
   chez imports_only.sls
 
-  PLTCOLLECTS=$PLTCOLLECTS:$REGIMENTD/src mzscheme imports_only.sls
+  PLTCOLLECTS=$PLTCOLLECTS:$WAVESCRIPTD/src mzscheme imports_only.sls
 
 
 ================================================================================

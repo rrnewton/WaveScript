@@ -150,7 +150,7 @@
 ;
 (define (get-svn-info)
   (run-program
-   "cd $REGIMENTD; svn info"
+   "cd $WAVESCRIPTD; svn info"
    (list
     [lambda (line)
       (let ((url-match (pregexp-match "^URL: (.*)" line)))

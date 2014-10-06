@@ -14,7 +14,7 @@
 
 # Setup data:
 
-DIRECTORY="$REGIMENTD/apps/marmot"
+DIRECTORY="$WAVESCRIPTD/apps/marmot"
 
 # # If it exists and is a symbolic link we assume it's right.
 # if ! [ -h 6sec_marmot_sample.raw ];

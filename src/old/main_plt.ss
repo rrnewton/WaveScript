@@ -42,8 +42,8 @@
          "plt/critical_section.ss")
 
 ;; Set parameter:
-(REGIMENTD (cond             
-             [(getenv "REGIMENTD") (getenv "REGIMENTD")]
+(WAVESCRIPTD (cond             
+             [(getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD")]
              [(directory-exists? "~/wavescript") "~/wavescript/"]
              [(directory-exists? "~/WaveScope/src/wavescript") "~/WaveScope/src/wavescript/"]
              [(directory-exists? "~/regiment_alpha") "~/regiment_alpha/"]
@@ -233,8 +233,8 @@
   
 ;; [2007.01.23] For now we exit on error unconditionally.
 ;; [2007.05.17] Making this optional again.  The command line interface should turn it
-(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-	   (top-level-value 'REGIMENT-BATCH-MODE))
+(when (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+	   (top-level-value 'WAVESCRIPT-BATCH-MODE))
   (uncaught-exception-handler
    (lambda (exn)
      (printf "ERROR:\n   ~a\n\nException: ~s\n" (exn-message exn) exn)

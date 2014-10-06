@@ -470,7 +470,7 @@
 
 		   [,parent (v t)
 			    (dbg "Fold parent value... v:~s t:~s \n" v t )
-;			    ,@(REGIMENT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
+;			    ,@(WAVESCRIPT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
 			    ,(if push? 
 				 `(call ,form v t)
 				 `(activate ,form v t))]

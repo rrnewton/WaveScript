@@ -2,7 +2,7 @@
 #|
   echo "// Running $0 $*"
   CURDIR=`pwd`  
-  if cd $REGIMENTD/src
+  if cd $WAVESCRIPTD/src
   then exec chez --program $0 $CURDIR $*
   fi
 #  exec chez --script $0 $*
@@ -13,12 +13,12 @@ exec regiment.chez i --script $0 $*
 exec regiment.plt i --script $0 $*
 |#
 
-;(library-directories (cons (format "~a/src" (getenv "REGIMENTD")) (library-directories)))
+;(library-directories (cons (format "~a/src" (getenv "WAVESCRIPTD")) (library-directories)))
 ;(printf "// Set lib dirs: ~s\n" (library-directories))
 ;(printf "// Set lib exts: ~s\n" (library-extensions))
 
 ;; This is for running as an R6RS program:
-;; Requires that the library path include $REGIMENTD/src
+;; Requires that the library path include $WAVESCRIPTD/src
 (import (except (rnrs (6)) error) (rnrs mutable-pairs (6))
 	(main_r6rs) ;(except (main_r6rs) match)
 	(main)
@@ -27,8 +27,8 @@ exec regiment.plt i --script $0 $*
 	;(ws util rn-match)
 	)
 
-;(load (format "~a/src/main_r6rs.sls" (getenv "REGIMENTD")))
-;(load (format "~a/src/main.sls" (getenv "REGIMENTD")))
+;(load (format "~a/src/main_r6rs.sls" (getenv "WAVESCRIPTD")))
+;(load (format "~a/src/main.sls" (getenv "WAVESCRIPTD")))
 
 ;(eval-when (compile eval load) (optimize-level 3))
 

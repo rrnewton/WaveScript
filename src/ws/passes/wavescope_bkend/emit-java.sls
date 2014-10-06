@@ -27,7 +27,7 @@
 (define sym2str symbol->string)
 
 (__spec initialise <java> (self prog)
-  ;;(slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
+  ;;(slot-set! self 'include-files (list (** "\"" (WAVESCRIPTD) "/src/linked_lib/wsc2.h\"")))
   (slot-set! self 'include-files '()) ;; Alas, can't reuse this right now.
   (slot-set! self 'import-acc '())
   (slot-set! self 'wserror-acc " 
@@ -451,7 +451,7 @@
 	    (lambda () 
 	      ;; Copy the stub to the current directory:
 	      ;; (Fixme, should use cross-platform scheme routines for this)
-	      (system "cp -fpr $REGIMENTD/src/linked_lib/javaME_stub ./")
+	      (system "cp -fpr $WAVESCRIPTD/src/linked_lib/javaME_stub ./")
 	      (system "mv WSQuery.java ./javaME_stub/src/")))]))))
 
 (define ____PrimApp

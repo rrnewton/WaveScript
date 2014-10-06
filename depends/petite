@@ -3,7 +3,7 @@
 MACHINE=`uname`
 VER=7.9.4
 
-MT=`$REGIMENTD/depends/get_machine_type`
+MT=`$WAVESCRIPTD/depends/get_machine_type`
 
 PATH=depends/petite_chez_scheme$VER
 #PATH=depends/csv7.9.4/
@@ -11,4 +11,4 @@ PATH=depends/petite_chez_scheme$VER
 SCHEME=scheme
 if [ "$MT" == "i3nt" ]; then SCHEME=petite.exe; fi
 
-($REGIMENTD/$PATH/bin/$MT/$SCHEME -b $REGIMENTD/$PATH/boot/$MT/petite.boot $*)
+($WAVESCRIPTD/$PATH/bin/$MT/$SCHEME -b $WAVESCRIPTD/$PATH/boot/$MT/petite.boot $*)

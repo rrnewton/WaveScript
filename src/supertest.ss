@@ -266,12 +266,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define orig-console (current-output-port))
 
 
-(ASSERT (putenv "REGIMENTD" ws-root-dir))
-;(ASSERT (putenv "REGIMENTHOST" "")) ;; Clear this
-(if (getenv "REGIMENTHOST")
-    (printf "Getting default scheme from the environment ($REGIMENTHOST): ~a\n" (getenv "REGIMENTHOST"))
-    (ASSERT (putenv "REGIMENTHOST" "plt")))
-(define defaulthost (getenv "REGIMENTHOST"))
+(ASSERT (putenv "WAVESCRIPTD" ws-root-dir))
+;(ASSERT (putenv "WAVESCRIPTHOST" "")) ;; Clear this
+(if (getenv "WAVESCRIPTHOST")
+    (printf "Getting default scheme from the environment ($WAVESCRIPTHOST): ~a\n" (getenv "WAVESCRIPTHOST"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "plt")))
+(define defaulthost (getenv "WAVESCRIPTHOST"))
 
 ;; We use debugmode for all the tests below:
 
@@ -281,7 +281,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;(ASSERT (putenv "PATH" (format "~a/bin:~a" ws-root-dir (getenv "PATH"))))
 ;(ASSERT (putenv "PATH" (format "~a/depends:~a" ws-root-dir (getenv "PATH"))))
 
-(ASSERT (system "echo Environment established: REGIMENTD = $REGIMENTD"))
+(ASSERT (system "echo Environment established: WAVESCRIPTD = $WAVESCRIPTD"))
 
 ;; This is a lame hack for compatibility across a wide range of versions:
 (define excep-hndlr
@@ -436,7 +436,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
   ;; This is the OLD one:
   ;; NO COMPLEX IN IKARUS YET:
-  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  (ASSERT (putenv "WAVESCRIPTHOST" "plt"))
   ;(when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Old matrix_test.ws (plt):" 
 	    (format "wsc2 matrix_test.ws -exit-error &> ~a/matrix_old_build.log" test-directory))
@@ -450,7 +450,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "wsc2 test_matrix.ws -exit-error &> ~a/matrix_build.log" test-directory))
   (run-test "wsc2: Run output exe:" 
 	    (format "./query.exe -n 10 &> ~a/matrix_run.log" test-directory))
-  (ASSERT (putenv "REGIMENTHOST" ""))
+  (ASSERT (putenv "WAVESCRIPTHOST" ""))
   )
 
 
@@ -460,7 +460,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "make &> ~a/gsl_wrappers.log" test-directory))
 
 ;; PLT has a bug with "exists" right now:  [2008.05.21]
-;   (ASSERT (putenv "REGIMENTHOST" "plt"))a
+;   (ASSERT (putenv "WAVESCRIPTHOST" "plt"))a
 ;   (run-test "wsc2: GSL test_matrix_gsl.ws (plt):" 
 ; 	    (format "wsc2 test_matrix_gsl.ws  -exit-error &> ~a/matrix_gsl_build.log" test-directory))
 ;   (run-test "wsc2: Run output executable:" 
@@ -490,27 +490,27 @@ exec mzscheme -qr "$0" ${1+"$@"}
  ;(current-directory test-directory) (ASSERT (system "make chez"))
 
   (begin
-    (ASSERT (putenv "REGIMENTHOST" "ikarus"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "ikarus"))
     (run-test "wsc2: Demos, simple RC (ikarus):"
 	      (format "./testall_wsc2 -gc refcount &> ~a/wsc2_demos_rc_ikarus.log" test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_nondef.txt"))
   (begin
-    (ASSERT (putenv "REGIMENTHOST" "plt"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "plt"))
     (run-test "wsc2: Demos, deferred RC (plt):"
 	      (format "./testall_wsc2 -gc deferred -nothreads &> ~a/wsc2_demos_deferred_plt.log"
 		      test-directory))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_def.txt"))
   (begin
-    (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "chez"))
     (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
     (run-test "wsc2: Demos, boehm RC (chez):"
 	      (format "./testall_wsc2 -gc boehm &> ~a/wsc2_demos_boehm_chez.log" test-directory))
     (ASSERT (putenv "LAUNCHIT" ""))
     (system "cp .__runquery_output_wsc2.txt .__runquery_output_wsc2_boehm.txt")
-    (ASSERT (putenv "REGIMENTHOST" "")))
+    (ASSERT (putenv "WAVESCRIPTHOST" "")))
 
   (begin 
-    (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "chez"))
     (ASSERT (putenv "LAUNCHIT" " "))  ;; Hack [2008.08.23], look at testall_wsc2
 
     ;; First test with simple refcount GC
@@ -538,7 +538,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
     (ASSERT (putenv "LAUNCHIT" ""))
-    (ASSERT (putenv "REGIMENTHOST" "")))
+    (ASSERT (putenv "WAVESCRIPTHOST" "")))
 
   ;; Make things safe for tinyos:
   (ASSERT (putenv "TOSDIR" "/opt/tinyos-2.x/tos/"))
@@ -602,7 +602,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "    Run Makefile   " "make")
 
   (begin
-    (ASSERT (putenv "REGIMENTHOST" "ikarus"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "ikarus"))
     (run-test "wsc2: Compiling marmot app (first phase):  "
 	    (format "wsc2 run_first_phase.ws -exit-error &> ~a/wsc2_marmot1_build.log" 
 		    test-directory))
@@ -610,7 +610,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	      (format "memprof ./query.exe -n 10 > ~a/wsc2_marmot1_run.log 2> marmot1_memprof.txt" test-directory))
     (when (file-exists? "query.exe") (delete-file "query.exe"))
     
-    (ASSERT (putenv "REGIMENTHOST" "plt"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "plt"))
     (run-test "wsc2: Compiling marmot phase 1&2 (plt): "
 	      (format "wsc2 run_marmot2.ws -exit-error &> ~a/wsc2_marmot12_build.log" test-directory))
     (run-test "wsc2:  Running marmot app (second phase): "
@@ -618,12 +618,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
     ;; [2008.08.13] This is segfaulting under ikarus also, let's try Chez:
-    (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "chez"))
     (run-test "wsc2: Compiling marmot app (third phase):  "
       (format "wsc2 test_heatmap.ws -exit-error &> ~a/wsc2_marmot3_build.log" 
 	      test-directory))
 
-    (ASSERT (putenv "REGIMENTHOST" ""))
+    (ASSERT (putenv "WAVESCRIPTHOST" ""))
     
     
     )
@@ -703,7 +703,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (format "ws mfcc1.ws -n 1 &> ~a/ws_mfcc1.log" test-directory))
 
   ;; [2008.08.13] Mysterious ikarus crashes here, use PLT instead:
-  (ASSERT (putenv "REGIMENTHOST" "plt"))
+  (ASSERT (putenv "WAVESCRIPTHOST" "plt"))
   (when (file-exists? "query.exe") (delete-file "query.exe"))
   (run-test "wsc2: Compiling first speaker detect: "
 	    (format "wsc2 mfcc1.ws  &> ~a/wsc2_build_mfcc1.log" test-directory))
@@ -723,7 +723,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (run-test "wsc2:  Running fixed fb speaker detect: "
 	    (format "./query.exe -n 1 &> ~a/wsc2_run_mfcc6.log" test-directory))
 
-  (ASSERT (putenv "REGIMENTHOST" ""))
+  (ASSERT (putenv "WAVESCRIPTHOST" ""))
 
   (run-test "wstiny: Compiling speaker detect, Telos: "	    
 	    (format "wstiny mfcc6_fixedpoint_fb.ws  &> ~a/wstiny_build_mfcc6.log" test-directory))
@@ -770,7 +770,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (fpf "========================================\n")
   
   ;; [2008.10.24] This is so time consuming.  Just switch to 
-  ;(ASSERT (putenv "REGIMENTHOST" "chez"))
+  ;(ASSERT (putenv "WAVESCRIPTHOST" "chez"))
 
   (parameterize ((current-directory (format "~a/benchmarks" ws-root-dir)))
     
@@ -787,7 +787,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
     ;; [2008.08.01] Right now I'm having some occasional ikarus segfaults:
     ;; [2008.11.07] More ikarus segfaults on chastity, switching to chez:
-    (ASSERT (putenv "REGIMENTHOST" "chez"))
+    (ASSERT (putenv "WAVESCRIPTHOST" "chez"))
     (ASSERT (putenv "REGDEBUGMODE" "OFF"))
     (current-directory (format "~a/benchmarks/appbench" ws-root-dir))
     (run-test "    Run application benchmarks: " 
@@ -807,7 +807,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;     (ASSERT (system "make wssvn.tex"))
     (run-test "    Compile results, build full report: " 
 	      (format "make perfreport.pdf &> ~a/bench_perfreport.log" test-directory))
-    (ASSERT (putenv "REGIMENTHOST" ""))
+    (ASSERT (putenv "WAVESCRIPTHOST" ""))
     ))
 
 #|

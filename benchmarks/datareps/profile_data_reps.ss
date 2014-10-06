@@ -178,10 +178,10 @@ exec regiment.plt i --script "$0" ${1+"$@"} -exit-error;
   (parameterize ()    
     ;; [2007.11.06] Getting segfaults with the new scheduler.
     ;(printf "\nRUNNING WITH C++/XSTREAM COREFIT_DF\n")
-    ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/newest"))
+    ;(putenv "WAVESCOPED" (string-append (ASSERT (getenv "WAVESCRIPTD")) "/benchmarks/engine/newest"))
     ;(wscomp prog '() '(scheduler corefit-scheduler-df))
     (printf "\nRUNNING WITH C++/XSTREAM 1495 DF\n")
-    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "REGIMENTD")) "/benchmarks/engine/1495"))
+    (putenv "WAVESCOPED" (string-append (ASSERT (getenv "WAVESCRIPTD")) "/benchmarks/engine/1495"))
     (wscomp prog '(scheduler depth-first))
 
     

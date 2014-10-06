@@ -47,7 +47,7 @@
     ;; If we're using chez and have FFTW available, use that instead:
     #;
     (IFCHEZ 
-     (let ([fftw-file (format "~a/src/build/~a/fftw.so" (REGIMENTD) (machine-type))])
+     (let ([fftw-file (format "~a/src/build/~a/fftw.so" (WAVESCRIPTD) (machine-type))])
        (when (file-exists? fftw-file)
 	 (printf "Loading FFTW extension.\n")
 	 (load fftw-file)

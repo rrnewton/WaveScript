@@ -324,8 +324,8 @@
 	       "Failed subexpression in 'grammar-failed'.\n")
 	   x p)
     ;; In batch mode don't go into REPL:
-    (unless (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-		  (top-level-value 'REGIMENT-BATCH-MODE))       
+    (unless (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+		  (top-level-value 'WAVESCRIPT-BATCH-MODE))       
       (repl))
     (error 'check-grammar "")
     )

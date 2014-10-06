@@ -104,7 +104,7 @@ snip    = make(15,0);
 
 
 // Trying this version instead:
-fixlib = GETENV("REGIMENTD") ++ "/lib/fix_fft.c";
+fixlib = GETENV("WAVESCRIPTD") ++ "/lib/fix_fft.c";
 theCcode = inline_C("#include \""++ fixlib ++"\"","");
 newfn = (foreign("fix_fft", []) :: (Array FftInt, Array FftInt, Int, Bool) -> Int);
 

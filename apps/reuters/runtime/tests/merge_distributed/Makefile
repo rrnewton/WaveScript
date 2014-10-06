@@ -7,7 +7,7 @@
 
 ################################################################################
 
-MACHINE = $(shell $(REGIMENTD)/depends/get_machine_type)
+MACHINE = $(shell $(WAVESCRIPTD)/depends/get_machine_type)
 
 UNAME = $(shell uname -s)
 LIBS = -lm -ldl -lncurses -lpthread 

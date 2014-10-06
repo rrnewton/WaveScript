@@ -2,7 +2,7 @@
 # Don't bother swapping sigseg implementations.  We don't use them.
 BACKENDS="mltonO3 c2boehm c2 c2def "
 
-DIRECTORY="$REGIMENTD/apps/vision_ucla/"
+DIRECTORY="$WAVESCRIPTD/apps/vision_ucla/"
 (cd $DIRECTORY; ./download_small_sample_data)
 FILE="bgSub4_patchoriented"
 TUPLES=1

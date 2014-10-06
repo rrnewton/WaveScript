@@ -135,12 +135,12 @@
 ;; .param prog  The wsquery to process.
 (define emit-caml-wsquery
   (lambda (prog)
-    ;; Lame, requires REGIMENTD:
-    (define header1 (file->string (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/scheduler.ml")))
-    (define header2 (file->string (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/sigseg.ml")))
-    ;(define header2 (file->string (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/sigseg_seglist.ml")))
-    (define header3 (file->string (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/prims.ml")))
-    (define header4 (file->string (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/data_reader.ml")))
+    ;; Lame, requires WAVESCRIPTD:
+    (define header1 (file->string (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/scheduler.ml")))
+    (define header2 (file->string (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/sigseg.ml")))
+    ;(define header2 (file->string (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/sigseg_seglist.ml")))
+    (define header3 (file->string (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/prims.ml")))
+    (define header4 (file->string (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/data_reader.ml")))
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
@@ -196,7 +196,7 @@
 			   )])
 	 #;
 	 (string->file (text->string result) 
-		       (** (REGIMENTD) "/src/ws/passes/ocaml_bkend/foo.ml"))
+		       (** (WAVESCRIPTD) "/src/ws/passes/ocaml_bkend/foo.ml"))
 	 result)]
       [,other ;; Otherwise it's an invalid program.
        (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))

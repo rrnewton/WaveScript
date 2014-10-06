@@ -8,7 +8,7 @@
 
 ;(define _ 
 
-(load-shared-object (format "~a/build/~a/fftw.o" (getenv "REGIMENTD") (machine-type)))
+(load-shared-object (format "~a/build/~a/fftw.o" (getenv "WAVESCRIPTD") (machine-type)))
 
 ;(load-shared-object (format "~a/fftw.o" (machine-type)))
 

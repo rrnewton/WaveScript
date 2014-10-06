@@ -1,10 +1,10 @@
 #! /bin/bash
 #|
-exec $REGIMENTD/depends/chez --script $0 $*
+exec $WAVESCRIPTD/depends/chez --script $0 $*
 |#
 
 ;; The problem with this script ITSELF being threaded, is then we build the target in a threaded mode...
-;; exec $REGIMENTD/depends/chez --threaded --script $0 $*
+;; exec $WAVESCRIPTD/depends/chez --threaded --script $0 $*
 
 ;; Currently this is chez-specific.
 

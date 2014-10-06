@@ -145,8 +145,8 @@ include "opencv.ws"
 
 main = {
 
-  fullpath_in = GETENV("REGIMENTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
-  fullpath_out = GETENV("REGIMENTD") ++ "/apps/vision_ucla/processed/";
+  fullpath_in = GETENV("WAVESCRIPTD") ++ "/apps/vision_ucla/input/FeederStation_2007-06-26_14-00-03.000";
+  fullpath_out = GETENV("WAVESCRIPTD") ++ "/apps/vision_ucla/processed/";
 
   using Curry;
 

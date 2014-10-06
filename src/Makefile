@@ -79,16 +79,16 @@ endif
 # Pick a default Scheme.  This could happen in a "configure" step.
 # This is used for some of the bits below that just need "any old r6 implementation"
 # ----------------------------------------
-# If REGIMENTHOST is setwe use that for the default scheme.
-ifeq (plt,$(REGIMENTHOST))
+# If WAVESCRIPTHOST is setwe use that for the default scheme.
+ifeq (plt,$(WAVESCRIPTHOST))
   DEFAULTSCHEME=plt-r6rs
   R6MODE=
 else
-ifeq (chez,$(REGIMENTHOST))
+ifeq (chez,$(WAVESCRIPTHOST))
   DEFAULTSCHEME=$(CHEZ) 
   R6MODE= --program
 else
-ifeq (ikarus,$(REGIMENTHOST))
+ifeq (ikarus,$(WAVESCRIPTHOST))
   DEFAULTSCHEME=$(IKARUS)
   R6MODE= --r6rs-script
 else
@@ -194,7 +194,7 @@ wsbc: ws/common.sls main_r6rs.sls
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
         # Updating this to only build bytecode for WAVESCRIPT:
-	(export REGIMENT_OR_WAVESCRIPT=WS; \
+	(export WAVESCRIPT_OR_WAVESCRIPT=WS; \
          export PLTCOLLECTS=`pwd`:$(PLTLIB); $(MZC) $(MZCFLAGS) --collection-zos .)
 
 # OLD? 
@@ -230,13 +230,13 @@ wsparse_full:
 # Hack, this script tries the absolute and the relative path.
 # Err... there's a problem with symlinks and resolution of ../
 # Seems like PLT and bash do it differently... not very portable besides.
-# Just giving in and using REGIMENTD.
+# Just giving in and using WAVESCRIPTD.
 wsparse_zo: 
 	$(MZC) -z --auto-dir parser/*.ss
 	echo '#!/bin/bash' > bin/wsparse
 	chmod +x bin/wsparse
 	echo 'source `dirname $$0`/assert_regimentd' >> bin/wsparse
-	echo 'mzscheme -qu "$$REGIMENTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
+	echo 'mzscheme -qu "$$WAVESCRIPTD/src/parser/wsparse.ss" $$*' >> bin/wsparse
 
 
 #----------------------------------------#
@@ -333,9 +333,9 @@ chez_native: aggregated_chez
 	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
 	if [ "$(REGDEBUGMODE)" == "ON" ]; \
         then echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); \
+             (export WAVESCRIPT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); \
         else echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); fi
+             (export WAVESCRIPT_OR_WAVESCRIPT=BOTH; $(OLDCHEZ)); fi
 
 # This makes a Chez Scheme .boot file instead of a shared object file.
 # After the boot file is made we can kill the shared object file.
@@ -361,21 +361,21 @@ _temp_temp.so:
 so: shared
 shared: 
 	if ! [ -d "build/$(MT)" ]; then mkdir -p build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
+	export WAVESCRIPT_OR_WAVESCRIPT=WS; 
 	echo '(generate-inspector-information #f) (compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez.so" (machine-type)))' | \
          (export REGOPTLVL=2; \
           export REGDEBUGMODE=OFF; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
+          export WAVESCRIPT_OR_WAVESCRIPT=WS; \
           $(OLDCHEZ))
 
 so.debug: shared.debug
 shared.debug:
 	if ! [ -d build/$(MT) ]; then mkdir -p build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
+	export WAVESCRIPT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "legacy_main_chez.ss" (format "build/~a/legacy_main_chez_DBG.so" (machine-type)))' | \
          (export REGOPTLVL=2; \
           export REGDEBUGMODE=ON; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
+          export WAVESCRIPT_OR_WAVESCRIPT=WS; \
           $(OLDCHEZ))
 
 #----------------------------------------#
@@ -408,9 +408,9 @@ NOOPTS='(control-optimization #f) (parallel-assignment-optimization #f) (lambda-
 
 # Trying to speed this up with global-optimization #f
 %.slfasl : %.sls
-	echo '(import (larceny compiler) (primitives global-optimization)) (global-optimization #f) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
-#	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src
-#	echo '(import (larceny compiler)) (compile-library "'$<'")' | larceny -r6rs -path $(REGIMENTD)/src/
+	echo '(import (larceny compiler) (primitives global-optimization)) (global-optimization #f) (compile-library "'$<'")' | larceny -r6rs -path $(WAVESCRIPTD)/src
+#	echo '(import (rnrs) (larceny compiler) (primitives compiler-switches)) (compiler-switches (string->symbol "slow")) (compile-library "'$<'")' | larceny -r6rs -path $(WAVESCRIPTD)/src
+#	echo '(import (larceny compiler)) (compile-library "'$<'")' | larceny -r6rs -path $(WAVESCRIPTD)/src/
 
 
 #ws/constants.sls: ws/util/compat.sls
@@ -523,7 +523,7 @@ test:
 # This a lot of tests but tries not to be fairly quick.
 # This is in contrast to supertest.ss, which is supposed to be as
 # exhaustive as possible.
-# This SHOULD be agnostic to REGIMENTHOST (chez/plt/ikarus)
+# This SHOULD be agnostic to WAVESCRIPTHOST (chez/plt/ikarus)
 fulltest: 
 	$(MAKE) clean 
         # Now build it to speed up these subsequent tests:
@@ -559,22 +559,22 @@ supertest:
 
 
 # [2007.04.09] Updating this, it was very old:
-PKGDIR=$(REGIMENTD)/binary_pkg
+PKGDIR=$(WAVESCRIPTD)/binary_pkg
 #clean ws ws.opt wsparse.full
 fullpackage: pkg
 fullpkg: 
 	@echo
-	@echo PACKAGING REGIMENT/WAVESCRIPT FOR BINARY INSTALLATION
+	@echo PACKAGING WAVESCRIPT/WAVESCRIPT FOR BINARY INSTALLATION
 	@echo =================================================================
 	rm -rf $(PKGDIR)
 	mkdir $(PKGDIR)
 	mkdir $(PKGDIR)/depends
-	cp -pr $(REGIMENTD)/install_environment_vars $(PKGDIR)/
-	cp -pr $(REGIMENTD)/src/bin        $(PKGDIR)/
-	cp -pr $(REGIMENTD)/src/build      $(PKGDIR)/
-	cp -pr $(REGIMENTD)/src/wsparse_full    $(PKGDIR)/
-	cp -pr $(REGIMENTD)/depends/chez   $(PKGDIR)/depends/
-	cp -pr $(REGIMENTD)/depends/csv7.3 $(PKGDIR)/depends/
+	cp -pr $(WAVESCRIPTD)/install_environment_vars $(PKGDIR)/
+	cp -pr $(WAVESCRIPTD)/src/bin        $(PKGDIR)/
+	cp -pr $(WAVESCRIPTD)/src/build      $(PKGDIR)/
+	cp -pr $(WAVESCRIPTD)/src/wsparse_full    $(PKGDIR)/
+	cp -pr $(WAVESCRIPTD)/depends/chez   $(PKGDIR)/depends/
+	cp -pr $(WAVESCRIPTD)/depends/csv7.3 $(PKGDIR)/depends/
 	rm -rf $(PKGDIR)/bin/wsparse
 	ln -s $(PKGDIR)/wsparse_full/bin/wsparse $(PKGDIR)/bin/wsparse
 
@@ -586,7 +586,7 @@ fullpkg:
 SVNREV=$(shell if [ "`svn info`" == "" ]; then svn info https://svn.csail.mit.edu/wavescript/branches/wavescope; else svn info; fi | grep Revision | awk '{ print $$2 }' )
 
 WSVER=$(shell cat version).$(SVNREV)
-DEBPKG=$(REGIMENTD)/wavescript_$(WSVER)
+DEBPKG=$(WAVESCRIPTD)/wavescript_$(WSVER)
 # This will build a source package.
 ubuntu: deb
 debian: deb

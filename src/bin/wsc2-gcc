@@ -14,7 +14,7 @@ if [ "$MATCH" != "" ];
 then 
    EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
    WS_LINK="$WS_LINK $EXTRALIBS"
-   if [ "$REGIMENT_QUIET" == "" ]; 
+   if [ "$WAVESCRIPT_QUIET" == "" ]; 
    then echo Linking extra libraries requested by query file: $EXTRALIBS;
    fi
 fi
@@ -62,13 +62,13 @@ done
 EXEFILE=`echo $CFILE | sed 's/\.c$/.exe/'`
 
 ## ACK - include WS_LINK at front and end?!?
-CMD="$CC $WS_LINK -lm -I $REGIMENTD/lib -I $REGIMENTD/src/linked_lib -o $EXEFILE $CFILE $WS_LINK_POST -lm"
-if [ "$REGIMENT_QUIET" == "" ];
+CMD="$CC $WS_LINK -lm -I $WAVESCRIPTD/lib -I $WAVESCRIPTD/src/linked_lib -o $EXEFILE $CFILE $WS_LINK_POST -lm"
+if [ "$WAVESCRIPT_QUIET" == "" ];
 then echo "$CMD"
 fi
 #if gcc -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/ -lm -g -O0 -o query.exe query.c   -I$TOSROOT/support/sdk/c -L$TOSROOT/support/sdk/c -lmote -I$TOSROOT/support/sdk/c/tos/types/
 
-if [ "$REGIMENT_QUIET" == "" ]; then 
+if [ "$WAVESCRIPT_QUIET" == "" ]; then 
 
 if time $CMD;
 then echo Compiled .c output successfully.

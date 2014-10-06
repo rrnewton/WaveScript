@@ -1,10 +1,10 @@
 #! /bin/bash
 
-if [ "$REGIMENTHOST" == "petite" ]; 
+if [ "$WAVESCRIPTHOST" == "petite" ]; 
 then exec regiment.petite $*;
-elif [ "$REGIMENTHOST" == "chez" ]; 
+elif [ "$WAVESCRIPTHOST" == "chez" ]; 
 then exec regiment.chez $*;
-elif [ "$REGIMENTHOST" == "plt" ]; 
+elif [ "$WAVESCRIPTHOST" == "plt" ]; 
 then exec regiment.plt  $*;
 
 

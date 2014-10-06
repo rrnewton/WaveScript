@@ -54,7 +54,7 @@
   ;; DOESN'T WORK YET!!! (Not in PLT.  Sigh.) [2006.03.13]
   (define-syntax reg:include
     (lambda (x)
-      (syntax-case x (REGIMENTD)
+      (syntax-case x (WAVESCRIPTD)
        [(_ str* ...)
 	(let ([lst (datum (str* ...))])
 	  (unless (andmap string? lst)
@@ -62,7 +62,7 @@
 	  (with-syntax ([file (datum->syntax-object 
 			       #'_ 
 			       (apply string-append 
-				      (cons (getenv "REGIMENTD")
+				      (cons (getenv "WAVESCRIPTD")
 					    (cons "/src"
 						  (map (lambda (str)
 							 (string-append "/" str))

@@ -379,7 +379,7 @@
 			 `(define ,var ,e)))
 		  binds)]
 	   [prog (begin
-		   `((include ,(string-append (tryenv "REGIMENTD") "/apps/reuters/runtime/wsqlib.ws"))
+		   `((include ,(string-append (tryenv "WAVESCRIPTD") "/apps/reuters/runtime/wsqlib.ws"))
 	           ;; Include the user's code as well:
 	           ,@(map (lambda (x) `(include ,x)) extra_includes)
 		   ,@bod
@@ -409,7 +409,7 @@
       (if (>= verbose-mode 2)
 	  (begin (printf "\n >>> WSQ ASSEMBLED WS AST: \n\n") (pretty-print prog) (newline))
 	  (when (getenv "WS_VERBOSE")
-	    (regiment-verbosity 0) (putenv "REGIMENT_QUIET" "1"))
+	    (regiment-verbosity 0) (putenv "WAVESCRIPT_QUIET" "1"))
 	  )
 
       (case wsq-engine

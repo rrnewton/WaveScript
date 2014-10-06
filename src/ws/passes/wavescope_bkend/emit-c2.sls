@@ -1505,7 +1505,7 @@
 	(define name (if inverse? "memoized_ifftC2R" "memoized_fftR2C"))
 	(ASSERT simple-expr? arr)
 	(add-include! self "<fftw3.h>")
-	(add-include! self (** "\"" (REGIMENTD) "/src/linked_lib/fftw_wrappers.c\""))
+	(add-include! self (** "\"" (WAVESCRIPTD) "/src/linked_lib/fftw_wrappers.c\""))
 	(add-link! self "libfftw3f.so")		
 	(append-lines ((Binding self) (list len0 'Int `(Array:length ,arr)))
 		      ((Binding self) (list len1 'Int (if inverse? `(_-_ ,len0 '1) `(/_ ,len0 '2) )))
@@ -2441,7 +2441,7 @@ int main(int argc, char **argv)
   (slot-set! self 'compile-flags '())
   (slot-set! self 'hash-defs '())
   ;; Our default includes
-  (slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wsc2.h\"")))
+  (slot-set! self 'include-files (list (** "\"" (WAVESCRIPTD) "/src/linked_lib/wsc2.h\"")))
   (slot-set! self 'server-cutpoints '())
   )
 

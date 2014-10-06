@@ -28,8 +28,8 @@ if [ ! true ]; then
 else
 
   time ./query.exe -j $threads -n 1 &> temp/LOG_$threads
-  export TMP=`$REGIMENTD/bin/extract_user.sh temp/LOG_$threads`
-  export TMP2=`$REGIMENTD/bin/extract_real.sh temp/LOG_$threads`
+  export TMP=`$WAVESCRIPTD/bin/extract_user.sh temp/LOG_$threads`
+  export TMP2=`$WAVESCRIPTD/bin/extract_real.sh temp/LOG_$threads`
   echo "$threads  $TMP  $TMP2" >> RESULTS.txt
 #  mv RESULTS.txt "./temp/RESULTS_"$threads".txt"
 

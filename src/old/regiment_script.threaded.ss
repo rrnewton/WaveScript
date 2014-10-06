@@ -2,8 +2,8 @@
 #|
 if (which chez_threaded > /dev/null); 
 then exec chez_threaded --script "$0" `pwd` ${1+"$@"};
-elif [ -f $REGIMENTD/depends/petite ]; 
-then exec $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"};
+elif [ -f $WAVESCRIPTD/depends/petite ]; 
+then exec $WAVESCRIPTD/depends/petite --script "$0" `pwd` ${1+"$@"};
 else exec petite --script "$0" `pwd` ${1+"$@"}; 
 fi 
 |#
@@ -16,7 +16,7 @@ fi
 ;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])
 (parameterize ([current-directory (car (command-line-arguments))])
-  (load (string-append (getenv "REGIMENTD") "/src/regiment.ss")))
+  (load (string-append (getenv "WAVESCRIPTD") "/src/regiment.ss")))
   
 ; (suppress-greeting #t)
 ; (scheme-start main)

@@ -28,7 +28,7 @@
 (define-syntax IFWAVESCOPE
   (let ()
     ;===============================;
-    (define DEFAULT_WAVESCOPE-REGIMENT_MODE "WAVESCRIPT") ;; <-- CHANGE DEFAULT HERE
+    (define DEFAULT_WAVESCOPE-WAVESCRIPT_MODE "WAVESCRIPT") ;; <-- CHANGE DEFAULT HERE
     ;===============================;
     (define (ws x)  (syntax-case x () [(_ ws reg) #'ws]   [(_ ws) #'ws]))
     (define (reg x) (syntax-case x () [(_ ws reg) #'reg]  [(_ ws) #'(begin)]))
@@ -38,19 +38,19 @@
        [(equal? m "WAVESCRIPT") ws]
        [(equal? m "WAVESCOPE")  ws]
        [(equal? m "WS")         ws]
-       [(equal? m "REGIMENT")  reg]
+       [(equal? m "WAVESCRIPT")  reg]
        [(equal? m "REG")       reg]
        [(equal? m "BOTH")
 	(lambda (x) (syntax-case x () [(_ ws reg) #'(begin ws reg)] [(_ ws) #'ws]))]
 
        [else 
-      ;(error 'IFWAVESCOPE "unknown value for environment var REGIMENT_OR_WAVESCRIPT: ~s" m)
+      ;(error 'IFWAVESCOPE "unknown value for environment var WAVESCRIPT_OR_WAVESCRIPT: ~s" m)
        (raise (make-error))
        ]
        ))
     (cond
-     [(getenv "REGIMENT_OR_WAVESCRIPT") => (lambda (m) (set m))]
-     [else (set DEFAULT_WAVESCOPE-REGIMENT_MODE)]
+     [(getenv "WAVESCRIPT_OR_WAVESCRIPT") => (lambda (m) (set m))]
+     [else (set DEFAULT_WAVESCOPE-WAVESCRIPT_MODE)]
      ;[else (error 'IFWAVESCOPE "environment var not set")]
      )))
 

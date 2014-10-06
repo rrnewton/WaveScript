@@ -26,7 +26,7 @@ echo;echo;echo " *** Running misc microbenchmarks  Takes approx ?? minutes. ***"
 rm -rf $TEMP
 mkdir $TEMP
 
-# cd "$REGIMENTD/apps/marmot/"
+# cd "$WAVESCRIPTD/apps/marmot/"
 # rm -f 6sec_marmot_sample.raw
 # ./download_small_sample_data
 # cp 6sec_marmot_sample.raw "$START"/

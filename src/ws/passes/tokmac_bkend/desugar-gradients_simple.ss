@@ -324,7 +324,7 @@
 		(if (ormap contains-greturn? toks)
 		    (match (mvlet (((prog _) 
 				    (read-regiment-source-file 
-				     (** (REGIMENTD) "/src/linked_lib/gradient_lib.tm"))))
+				     (** (WAVESCRIPTD) "/src/linked_lib/gradient_lib.tm"))))
 			     prog)
 		      [(tokens ,gradtoks ...) gradtoks])
 		    '())])

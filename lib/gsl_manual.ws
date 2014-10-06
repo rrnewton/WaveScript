@@ -13,7 +13,7 @@ Specifically, a "Pointer" type.
 
 // I have to pre-link them because of messed up undefined symbol errors:
 gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h", 
-                GETENV("REGIMENTD")++ "/lib/ws_gslpak.so"]
+                GETENV("WAVESCRIPTD")++ "/lib/ws_gslpak.so"]
 
 //type GslPerm = (Int, Array Int);
 type GslPerm = Pointer;
@@ -24,7 +24,7 @@ type GslPerm = Pointer;
 /*====================================================================================================*/
 
 nullperm :: Int -> Pointer = foreign "makeNullPerm" in gsl_includes
-//    in List:append(gsl_includes, [GETENV("REGIMENTD") ++ "/lib/GSL_extras.c"])
+//    in List:append(gsl_includes, [GETENV("WAVESCRIPTD") ++ "/lib/GSL_extras.c"])
 
 makeMatrixWrapper :: Array #n -> Pointer = foreign "makeNullPerm" in gsl_includes
 

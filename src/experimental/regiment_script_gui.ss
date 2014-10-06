@@ -1,6 +1,6 @@
 #! /bin/bash
 #|
-exec $REGIMENTD/depends/petite_swl --script "$0" ${1+"$@"}
+exec $WAVESCRIPTD/depends/petite_swl --script "$0" ${1+"$@"}
 |#
 
 ; DOESN'T WORK YET!!!
@@ -11,7 +11,7 @@ exec $REGIMENTD/depends/petite_swl --script "$0" ${1+"$@"}
 ; (load "main_chez.ss")
 
 ;(parameterize ([current-directory "~/cur"])
-(load (string-append (getenv "REGIMENTD") "/src/regiment.ss"))
+(load (string-append (getenv "WAVESCRIPTD") "/src/regiment.ss"))
 
 ; (suppress-greeting #t)
 ; (scheme-start main)

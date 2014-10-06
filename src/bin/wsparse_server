@@ -2,4 +2,4 @@
 
 #(cd `dirname $0`; cd ../plt/; ./wsparse_server.ss)
 
-(cd $REGIMENTD/src/plt/; ./wsparse_server.ss)
+(cd $WAVESCRIPTD/src/plt/; ./wsparse_server.ss)

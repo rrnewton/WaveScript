@@ -117,7 +117,7 @@
    ;; This PLT version uses require to make sure the support code is loaded.
    (define (build-genned-code-module node-code)
      `(begin 	       
-        (current-directory (string-append (REGIMENTD) "/src/"))
+        (current-directory (string-append (WAVESCRIPTD) "/src/"))
         (module _genned_node_code mzscheme
 	       ;(provide node-code)	       
 	       (require "generic/constants.ss")
@@ -137,9 +137,9 @@
 
   ;; We are loaded from the root directory, not the chez subdirectory.
   ;;(include "generic/simulator_nought.examples.ss")
-;  (include (** (REGIMENTD) "/src/generic/simalpha_ui.ss"))
-;  (include (** (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
-;  (include (** (REGIMENTD) "/src/generic/simulator_alpha.ss"))
+;  (include (** (WAVESCRIPTD) "/src/generic/simalpha_ui.ss"))
+;  (include (** (WAVESCRIPTD) "/src/generic/simalpha_rollworld.ss"))
+;  (include (** (WAVESCRIPTD) "/src/generic/simulator_alpha.ss"))
 
   
 (IFCHEZ

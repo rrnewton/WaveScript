@@ -16,8 +16,8 @@ if   [ "$WSMLOUTPUT" == "" ]; then WSMLOUTPUT=query.mlton.exe; fi
 # Clean up first:
 rm -f "$WSMLOUTPUT"
 
-export MLTONARGS="$MLTONARGS -verbose 1 -link-opt -lfftw3f -cc-opt -DWSMLTON -cc-opt -I$REGIMENTD/src/linked_lib "
-export WSMLCINCLUDES="$WSMLCINCLUDES $REGIMENTD/src/ws/passes/mlton_bkend/fftw.c "
+export MLTONARGS="$MLTONARGS -verbose 1 -link-opt -lfftw3f -cc-opt -DWSMLTON -cc-opt -I$WAVESCRIPTD/src/linked_lib "
+export WSMLCINCLUDES="$WSMLCINCLUDES $WAVESCRIPTD/src/ws/passes/mlton_bkend/fftw.c "
 
 # I'm having a lot of trouble getting enough quotes around 
 # 'allowFFI true' for it to be treated as one token. 
@@ -52,8 +52,8 @@ then
           MLTONARGS+=" -link-opt -l${BASENAME#lib} "
      elif [ -f "$inc" ];
      then WSMLCINCLUDES+=" $inc "
-     elif [ -f "$REGIMENTD/lib/$inc" ];
-     then WSMLCINCLUDES+=" $REGIMENTD/lib/$inc "; 
+     elif [ -f "$WAVESCRIPTD/lib/$inc" ];
+     then WSMLCINCLUDES+=" $WAVESCRIPTD/lib/$inc "; 
      else 
      #WSMLCINCLUDES+=" $inc "
      echo "Couldn't locate include $inc"; exit 1

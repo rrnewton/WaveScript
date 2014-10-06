@@ -1,6 +1,6 @@
 #!/bin/bash
 
-base=`$REGIMENTD/depends/get_machine_type --threaded`
+base=`$WAVESCRIPTD/depends/get_machine_type --threaded`
 
 # if [ "$base" == ""  ]      || 
 #    [ "$base" == "ppcosx" ] || 

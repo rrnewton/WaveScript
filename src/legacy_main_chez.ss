@@ -13,7 +13,7 @@
 ;; Wipe *all* previous bindings before coming RELOADING the system.
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
 ;; This is *only* relevant if repeatedly loading regiment into a single REPL.
-(when (top-level-bound? 'REGIMENTD) 
+(when (top-level-bound? 'WAVESCRIPTD) 
   (printf "RESTORING scheme bindings before reloading Regiment system.\n")
   (eval '(import scheme)))
 
@@ -39,12 +39,12 @@
   (case-sensitive #t)
 	   
 	   ;; This is a bit weird, ultimately the global param
-	   ;; REGIMENTD is the thing to look at, but we have some
+	   ;; WAVESCRIPTD is the thing to look at, but we have some
 	   ;; issues with the order of evaluation/loading/binding
 	   ;; here, so first we bind this:
 	   (define-syntax default-regimentd
 	     (syntax-rules ()
-	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
+	       [(_) (if (getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD") (current-directory))]))
 
 	   (define default-source-directories
 	     (#%list 
@@ -190,7 +190,7 @@
  (lambda (who msg . args)
    (call/cc (lambda (k) 	     
 	      (parameterize ([error-handler default-error-handler]
-			     ;[current-directory (string-append (REGIMENTD) "/src/generic")]
+			     ;[current-directory (string-append (WAVESCRIPTD) "/src/generic")]
 			     )
 		(fprintf (console-output-port)
 			 "~%Error~a: ~a.~%"
@@ -198,8 +198,8 @@
 			 (parameterize ([print-level 3] [print-length 6])
 			   (apply format msg args)))
 
-		(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-			   (top-level-value 'REGIMENT-BATCH-MODE))
+		(when (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+			   (top-level-value 'WAVESCRIPT-BATCH-MODE))
 		  (exit 1)) ;; Should only do this if we're running as a script.
 
 		(fprintf (console-output-port)
@@ -265,7 +265,7 @@
    (thread-sleep t) ;; This uses the SWL thread library.  (Not real OS threads.)
    (begin
     ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port (current-output-port))
-     (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))
+     (parameterize ((current-directory (string-append (WAVESCRIPTD) "/src/")))
        (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
 	   ;; This even resorts to calling make to build the sleep object!!
 	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.

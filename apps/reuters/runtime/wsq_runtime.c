@@ -147,8 +147,8 @@ intfun foo_fun;
 const int PATHMAX = 1000;
 
 char* get_machine_type() {
-    //FILE* strm = popen("$REGIMENTD/depends/get_machine_type", "r");
-    FILE* strm = popen("$REGIMENTD/apps/reuters/runtime/chez_machine_type_threaded", "r");
+    //FILE* strm = popen("$WAVESCRIPTD/depends/get_machine_type", "r");
+    FILE* strm = popen("$WAVESCRIPTD/apps/reuters/runtime/chez_machine_type_threaded", "r");
     char* format = malloc(100);
     fscanf(strm, "%s\n", format);
     return format;
@@ -188,7 +188,7 @@ void WSQ_Init(const char* outfile) {
 
   Senable_expeditor(0);
 
-  const char* regimentd = getenv("REGIMENTD");
+  const char* regimentd = getenv("WAVESCRIPTD");
   char script[PATHMAX];
   sprintf(script, "%s/apps/reuters/runtime/load_interface.ss", regimentd);
 

@@ -173,7 +173,7 @@
 				  ;; Here we should just allocate a SEPARATE token for this, holding just the counter.
 				  ;; OR we should have one token that holds everybody's counters.  But for now I want 
 				  ;; to everything grouped under this one token "class".
-				  ,@(REGIMENT_DEBUG
+				  ,@(WAVESCRIPT_DEBUG
 				     `(dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname))
 				  ;; FIXME: PADDING
 
@@ -189,7 +189,7 @@
 		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
 		    (call-fast ;; TEMP FIXME: trying out call-fast here.
 		     (tok ,kname ,kind) ',KINIT_FLAG ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
-		    ,@(REGIMENT_DEBUG
+		    ,@(WAVESCRIPT_DEBUG
 		       `(dbg '"~a: Launched an continuation-allocation call (tok ~a ~a) with fvs ~a = ~a" 
 			     (my-id)  ',kname ,kind ',fvs (list ,@fvs))
 		       ;'(sim-print-queue (my-id))
@@ -204,14 +204,14 @@
 		(stored [,KCOUNTER '0] 
 			,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) 
 			       newfvs)
-			,@(REGIMENT_DEBUG `[,fvs-initialized-yet #f])
+			,@(WAVESCRIPT_DEBUG `[,fvs-initialized-yet #f])
 			)
-		,@(REGIMENT_DEBUG
+		,@(WAVESCRIPT_DEBUG
 		   `(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
 			 (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
 			 ((BLACKBOX simobject-token-store) this)))
 		
-		,@(REGIMENT_DEBUG
+		,@(WAVESCRIPT_DEBUG
 		   ;`(sim-print-queue (my-id))
 		   `(if (not (token-present? (tok ,kname 0)))
 			(error ',kname
@@ -225,14 +225,14 @@
 			;; No freevars if we're just initializing the counter-object.
 			(void)
 			(begin
-			  ,@(REGIMENT_DEBUG
+			  ,@(WAVESCRIPT_DEBUG
 			     `(dbg '"~a: Initializing continuation (tok ~a <~a>) freevars! vals: ~a\n" 
 				   (my-id) ',kname subtok_ind (list ,@fvns)))
-			  ,@(REGIMENT_DEBUG `(set! ,fvs-initialized-yet #t))
+			  ,@(WAVESCRIPT_DEBUG `(set! ,fvs-initialized-yet #t))
 			  ,@(map (lambda (fv fvn)
 				   `(begin 
 				      (set! ,fv ,fvn)
-				      ,@(REGIMENT_DEBUG
+				      ,@(WAVESCRIPT_DEBUG
 					 `(dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: <DISABLED,CHECKCODE>~n" 
 					       (my-id)
 					       ',fv ,fvn ;(simobject-token-store this)
@@ -242,7 +242,7 @@
 		    ;; Otherwise, assume the flag is KCALL_FLAG
 		    (begin
 #;
-		      ,@(REGIMENT_DEBUG `(if (not ,fvs-initialized-yet)
+		      ,@(WAVESCRIPT_DEBUG `(if (not ,fvs-initialized-yet)
 					     (error ',kname 
 						    "This continuation token was called before its fvs were initialized.")))
 		      ,(let loop ((fvs fvs) (newfvs newfvs) (body body))
@@ -325,7 +325,7 @@
 				  (loop 
 				   `(let ((,temp ,v))
 				      (begin
-					,@(REGIMENT_DEBUG
+					,@(WAVESCRIPT_DEBUG
 					   `(dbg '"~a: Scheduling invocation of continution token: ~a  arg: ~a"
 						 (my-id) ,k ,temp))
 					(if (eq? ,k ,NULLK)

@@ -11,13 +11,13 @@ then DIR=i3nt;
 else echo Unknown platform: $MACHINE
 fi
 
-export SWL_ROOT=$REGIMENTD/depends/swl0.9z/swllib
-export SWL_LIBRARY=$REGIMENTD/depends/swl0.9z/bin/$DIR
+export SWL_ROOT=$WAVESCRIPTD/depends/swl0.9z/swllib
+export SWL_LIBRARY=$WAVESCRIPTD/depends/swl0.9z/bin/$DIR
 
-export TCL_LIBRARY=$REGIMENTD/depends/tcltk/tcllib/
-export TK_LIBRARY=$REGIMENTD/depends/tcltk/tklib/
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$REGIMENTD/depends/tcltk/$DIR
+export TCL_LIBRARY=$WAVESCRIPTD/depends/tcltk/tcllib/
+export TK_LIBRARY=$WAVESCRIPTD/depends/tcltk/tklib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$WAVESCRIPTD/depends/tcltk/$DIR
 
 #echo $SWL_ROOT
 #echo $SWL_LIBRARY
-exec $REGIMENTD/depends/petite -b $SWL_LIBRARY/swl.boot $*
+exec $WAVESCRIPTD/depends/petite -b $SWL_LIBRARY/swl.boot $*

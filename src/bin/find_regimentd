@@ -6,16 +6,16 @@
 # the box no matter what.  Nothing more annoying than getting a "can't
 # find X" error when you just want the thing to work.  
 
-# Thus, even if we haven't bound REGIMENTD, or run
+# Thus, even if we haven't bound WAVESCRIPTD, or run
 # install_environment_vars like we should have...  This script
-# heuristically tries to find SOME kind of workable REGIMENTD.
+# heuristically tries to find SOME kind of workable WAVESCRIPTD.
 
-if [ "$REGIMENTD" == "" ]; 
-then echo Env var '$REGIMENTD' is not bound.          >&2;
+if [ "$WAVESCRIPTD" == "" ]; 
+then echo Env var '$WAVESCRIPTD' is not bound.          >&2;
 
-elif [ -d "$REGIMENTD" ]; 
+elif [ -d "$WAVESCRIPTD" ]; 
 then exit 0;
-else echo Directory '$REGIMENTD' does not existing.   >&2;
+else echo Directory '$WAVESCRIPTD' does not existing.   >&2;
 fi
 
 echo You should bind it, or source the 'install_environment_vars' >&2;

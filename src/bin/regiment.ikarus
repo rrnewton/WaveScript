@@ -2,14 +2,14 @@
 
 source `dirname $0`/assert_regimentd
 
-#echo "  REGIMENTD is $REGIMENTD"
+#echo "  WAVESCRIPTD is $WAVESCRIPTD"
 
-#cd $REGIMENTD/src
+#cd $WAVESCRIPTD/src
 #ikarus --r6rs-script regiment.ss $*
 
-#export IKARUS_LIBRARY_PATH=$REGIMENTD/src
+#export IKARUS_LIBRARY_PATH=$WAVESCRIPTD/src
 #echo " Ik LIB PATH: "$IKARUS_LIBRARY_PATH
-#ikarus --r6rs-script $REGIMENTD/src/regiment.ss $*
+#ikarus --r6rs-script $WAVESCRIPTD/src/regiment.ss $*
 
 CURDIR=`pwd`
 
@@ -18,4 +18,4 @@ then IKARUSEXEC=ikarus;
 fi
 
 # This method doesn't set the library path, instead it just switches to that directory:
-(cd $REGIMENTD/src && $IKARUSEXEC  -O2 --r6rs-script $REGIMENTD/src/regiment.ss $CURDIR $*;)
+(cd $WAVESCRIPTD/src && $IKARUSEXEC  -O2 --r6rs-script $WAVESCRIPTD/src/regiment.ss $CURDIR $*;)

@@ -2,7 +2,7 @@
 # Don't bother swapping sigseg implementations.  We don't use them.
 BACKENDS="mltonO3 c2boehm c2 c2def "
 
-DIRECTORY="$REGIMENTD/apps/telos_audio/"
+DIRECTORY="$WAVESCRIPTD/apps/telos_audio/"
 #(cd $DIRECTORY; ./download_small_sample_data)
 FILE="mfcc1"
 TUPLES=10

@@ -47,7 +47,7 @@
 
 (__spec initialise <tinyos> (self prog)
 	;; Don't include wsc2.h!!
-	(slot-set! self 'include-files (list (** "\"" (REGIMENTD) "/src/linked_lib/wstiny.h\"")))       
+	(slot-set! self 'include-files (list (** "\"" (WAVESCRIPTD) "/src/linked_lib/wstiny.h\"")))       
 	(slot-set! self 'top-acc '())
 	(slot-set! self 'config-acc '())
 	(slot-set! self 'module-acc '())
@@ -830,11 +830,11 @@ implementation {
 
   ;; We return an association list of files to write.
   (vector
-   (list (list "Makefile.tos2" (file->string (** (REGIMENTD) "/src/linked_lib/Makefile.tos2")))
+   (list (list "Makefile.tos2" (file->string (** (WAVESCRIPTD) "/src/linked_lib/Makefile.tos2")))
 	 (list "WSQueryApp.nc" (text->string config))
 	 (list "WSQuery.nc"    (text->string module))
-	 (list "query.py"      (file->string (** (REGIMENTD) "/src/linked_lib/run_query_tossim.py")))
-	 (list "progtelos"     (file->string (** (REGIMENTD) "/src/linked_lib/progtelos")))
+	 (list "query.py"      (file->string (** (WAVESCRIPTD) "/src/linked_lib/run_query_tossim.py")))
+	 (list "progtelos"     (file->string (** (WAVESCRIPTD) "/src/linked_lib/progtelos")))
 	 )
    ;; We also return a post-file-write thunk to execute:
    (lambda ()

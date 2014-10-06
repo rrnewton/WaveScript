@@ -7,7 +7,7 @@
 	  ;(only "../generic/constants.ss" chezimports ASSERT)
           "iu-match.ss"
           "../generic/constants.ss"
-;          (file "$REGIMENTD/src/plt/iu-match.ss")
+;          (file "$WAVESCRIPTD/src/plt/iu-match.ss")
 	  "chez_compat.ss"
 	  "../generic/util/helpers.ss"
           "../generic/compiler_components/prim_defs.ss"

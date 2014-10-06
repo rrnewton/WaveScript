@@ -80,11 +80,11 @@
       [() (srandom (current-milliseconds))]
       [(n) (srandom n)]))
 
-  ;; Include is defined relative to REGIMENTD
+  ;; Include is defined relative to WAVESCRIPTD
   #;
   (define-syntax include 
     (syntax-case ()
-      (eval '(REGIMENTD) (environment '(ws globals)))
+      (eval '(WAVESCRIPTD) (environment '(ws globals)))
       ))
 
   (define (native-inspect x)

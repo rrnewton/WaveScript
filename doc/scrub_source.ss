@@ -2,7 +2,7 @@
 ; #!/usr/bin/env petite --script
 
 ;; Just load the matcher from source:
-(load (string-append (getenv "REGIMENTD") "/src/chez/match.ss"))(import iu-match)
+(load (string-append (getenv "WAVESCRIPTD") "/src/chez/match.ss"))(import iu-match)
 
 ; [2006.01.13] Remember to manually strip the ::= character
 ; sequence.  That causes a problem for some reason!!
@@ -10,7 +10,7 @@
 
 ; #! /bin/sh
 ; #| 
-; $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"}; 
+; $WAVESCRIPTD/depends/petite --script "$0" `pwd` ${1+"$@"}; 
 ; |#
 
 ;; [2005.11.26] This script invocation wasn't working for me on faith.csail:

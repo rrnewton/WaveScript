@@ -2,12 +2,12 @@
 
 source install_environment_vars
 
-if [ "$REGIMENTHOST" == chez ]; then
+if [ "$WAVESCRIPTHOST" == chez ]; then
 
     cd src
     make 
 
-elif [ "$REGIMENTHOST" == plt ]; then
+elif [ "$WAVESCRIPTHOST" == plt ]; then
 
     cd src
     make wsparse
@@ -15,7 +15,7 @@ elif [ "$REGIMENTHOST" == plt ]; then
     make plt
 
 else
-    echo "REGIMENTHOST is not set to a known setting! ($REGIMENTHOST)"
+    echo "WAVESCRIPTHOST is not set to a known setting! ($WAVESCRIPTHOST)"
     exit 1
 fi 
 

@@ -13,6 +13,6 @@ VER=7.3
 # else echo rawscheme script: Unknown platform: "$MACHINE"
 # fi
 
-DIR=`$REGIMENTD/depends/get_machine_type`
+DIR=`$WAVESCRIPTD/depends/get_machine_type`
 
-$REGIMENTD/depends/petite_chez_scheme$VER/bin/$DIR/scheme $*
+$WAVESCRIPTD/depends/petite_chez_scheme$VER/bin/$DIR/scheme $*

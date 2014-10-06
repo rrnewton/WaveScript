@@ -1,7 +1,7 @@
 
 # A collection of common build configuration options for build WSQ C programs.
 
-MACHINE = $(shell $(REGIMENTD)/apps/reuters/runtime/chez_machine_type_threaded)
+MACHINE = $(shell $(WAVESCRIPTD)/apps/reuters/runtime/chez_machine_type_threaded)
 
 UNAME = $(shell uname -s)
 LIBS = -lm -ldl -lncurses -lpthread 
@@ -13,7 +13,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 # -lwsq_runtime
-# -L$(REGIMENTD)/apps/reuters/runtime
+# -L$(WAVESCRIPTD)/apps/reuters/runtime
 
 CHEZP = $(CHEZD)/boot/$(MACHINE)
 

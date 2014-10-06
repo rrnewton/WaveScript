@@ -262,8 +262,8 @@
 			  ;(display (top-level-value 'default-unit-tester-output))(flush-output-port (current-output-port))(exit)
 			  
 			  ;; Regiment specific.  If we're in batch mode print the error output.
-                          (when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-                                     (top-level-value 'REGIMENT-BATCH-MODE))
+                          (when (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+                                     (top-level-value 'WAVESCRIPT-BATCH-MODE))
                             (printf "\nBecause we're in batch mode, printing unit test output here:\n")
                             (printf "======================================================================\n")
                             (reg:top-level-eval '(display default-unit-tester-output))
@@ -328,8 +328,8 @@
 	      )           
 
       (begin (printf "\n PASSED ALL TESTS.\n") #t)
-      (if (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-	       (top-level-value 'REGIMENT-BATCH-MODE))
+      (if (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+	       (top-level-value 'WAVESCRIPT-BATCH-MODE))
 	  (exit 1)
 	  #f)))
 

@@ -7,8 +7,8 @@ if [ -f "$TMP/assert_regimentd" ];
 then source "$TMP/assert_regimentd"; fi
 
 # Make sure to call the script in this directory:
-if [ "$REGIMENTEXEC" == "" ]; 
-then REGIMENTEXEC=`dirname $0`/regiment; 
+if [ "$WAVESCRIPTEXEC" == "" ]; 
+then WAVESCRIPTEXEC=`dirname $0`/regiment; 
 fi
 
 CCPASSTHRU=""
@@ -96,7 +96,7 @@ done;
 if [ ! -f "$FILE" ];
 then echo Usage: "wsc[2] <file> <options ...>";
      if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
-     else cat $REGIMENTD/bin/ws_opts.txt
+     else cat $WAVESCRIPTD/bin/ws_opts.txt
      fi
      exit 1;
 fi
@@ -116,17 +116,17 @@ rm -f "$OUTFILE"
 #echo PASSING THROUGH ARGS: $REGPASSTHRU
 
 if [ "$REGFLAG" == "" ]; then REGFLAG=wscomp; fi
-export REGIMENT_OR_WAVESCRIPT=WS
+export WAVESCRIPT_OR_WAVESCRIPT=WS
 
 
 #================================================================================
 
-echo "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
-if "$REGIMENTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
+echo "$WAVESCRIPTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
+if "$WAVESCRIPTEXEC" $REGFLAG $abspath $REGPASSTHRU ;
 then echo 
 else #rm -f $TMP; 
     CODE=$?;
-    echo Compilation aborted: \"$REGIMENTEXEC $REGFLAG\" exited with error code $CODE.
+    echo Compilation aborted: \"$WAVESCRIPTEXEC $REGFLAG\" exited with error code $CODE.
     exit $CODE;
 fi
 

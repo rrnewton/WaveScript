@@ -213,7 +213,7 @@
 ;; somewhere else.  Returns an absolute path in either case.  Might be
 ;; better to have a different syntax for including library code.
 (define (resolve-lib-path file working-directory)
-  (define libver (** (REGIMENTD) "/lib/" file))
+  (define libver (** (WAVESCRIPTD) "/lib/" file))
   (normalize-absolute-path 
    (cond 
    ;; Absolute path, not a library:
@@ -487,7 +487,7 @@
 	 ;; UNFORTUNATELY, this 
 	 (system-to-str 
 	  (format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty --nograph ~a" 
-		  (REGIMENTD) fn extra-opts)))
+		  (WAVESCRIPTD) fn extra-opts)))
 
        (define (try-client/server)
 	 (if (file-exists? "/tmp/wsparse_server_tcp_running")
@@ -496,7 +496,7 @@
 	       ;; Ideally, we want only the stdout not the stderr, but can't do that.
 	       ;; I don't want this command line to be bash-dependent if possible.
 	       (let ([str (system-to-str
-			   (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a ~a " (REGIMENTD) fn extra-opts))])
+			   (format "mzscheme -mqt ~a/src/plt/wsparse_client.ss ~a ~a " (WAVESCRIPTD) fn extra-opts))])
 		 (if (or (equal? str "#f") (equal? str "#f\n")) 
 		     #f
 		     str)))

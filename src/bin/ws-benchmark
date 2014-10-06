@@ -6,7 +6,7 @@
 # make separate .bench files.
 
 # These .bench files are scripts that can be sourced from any
-# directory.  They assume certain environment variables (REGIMENTD).
+# directory.  They assume certain environment variables (WAVESCRIPTD).
 # They establish some prerequisites (like sample data), and they set
 # certain environment variables that allow the test harness to run the
 # benchmark.  Decisions about which benchmarks to run and where to
@@ -61,7 +61,7 @@ PLOT=$START/$BASEOUTPUT.gp
 ## ================================================================================ ##
 
 # Load the functions for actually driving the benchmarks:
-source $REGIMENTD/benchmarks/shared.sh
+source $WAVESCRIPTD/benchmarks/shared.sh
 
 rm -f $OUT $TEX $PLOT
 rm -rf $LOGS

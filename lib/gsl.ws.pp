@@ -13,7 +13,7 @@ Specifically, a "Pointer" type.
 
 // I have to pre-link them because of messed up undefined symbol errors:
 gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h", 
-                GETENV("REGIMENTD")++ "/lib/ws_gslpak.so"]
+                GETENV("WAVESCRIPTD")++ "/lib/ws_gslpak.so"]
 
 // gsl_blas.ws -- The high level blas interface.
 
@@ -36,7 +36,7 @@ gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h",
 /*====================================================================================================*/
 
 nullperm :: Int -> Pointer "gsl_permutation*" = foreign("makeNullPerm", gsl_includes)
-//    in List:append(gsl_includes, [GETENV("REGIMENTD") ++ "/lib/GSL_extras.c"])
+//    in List:append(gsl_includes, [GETENV("WAVESCRIPTD") ++ "/lib/GSL_extras.c"])
 
 nulltranspose :: () -> Int = foreign("makeCblasNoTrans", gsl_includes)
 

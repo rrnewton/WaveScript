@@ -45,11 +45,11 @@ function runschemeO3() {
 }
 
 function runcpp() {
-  export WAVESCOPED="$REGIMENTD/benchmarks/engine/1495"
+  export WAVESCOPED="$WAVESCRIPTD/benchmarks/engine/1495"
 
   echo "  cpp: compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
-  ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.default.a" "$WAVESCOPED/libws-SMSegList.a" 
+  ln -s "$WAVESCRIPTD/benchmarks/libws-SMSegList.1495.O2.default.a" "$WAVESCOPED/libws-SMSegList.a" 
   if wsc $FILE -t $WSOPTIONS   &> $DEST/cpp.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
@@ -59,10 +59,10 @@ function runcpp() {
 }
 
 function runcpp_df() {
-  export WAVESCOPED="$REGIMENTD/benchmarks/engine/1495"
+  export WAVESCOPED="$WAVESCRIPTD/benchmarks/engine/1495"
   echo "  cpp: -DDEPTH_FIRST compiling..."
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
-  ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.df.a" "$WAVESCOPED/libws-SMSegList.a" 
+  ln -s "$WAVESCRIPTD/benchmarks/libws-SMSegList.1495.O2.df.a" "$WAVESCOPED/libws-SMSegList.a" 
   if  wsc $FILE -t $WSOPTIONS --scheduler depth-first &> $DEST/cppdf.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cpp: running... -n $TUPS $OLDWSCARGS"
@@ -78,13 +78,13 @@ function runcpp_df() {
 function runcpp_corefit() {
   # This is a flag that the code responds to:
   export COREFITBENCH=true
-  export WAVESCOPED="$REGIMENTD/benchmarks/engine/newest"
+  export WAVESCOPED="$WAVESCRIPTD/benchmarks/engine/newest"
   echo "  cpp: COREFIT_SCHEDULER_DF compiling..."
   # MUST PASS THIS TO G++:
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
-  ln -s "$REGIMENTD/benchmarks/libws-SMSegList.newest.O2.coredf.a" "$WAVESCOPED/libws-SMSegList.a" 
+  ln -s "$WAVESCRIPTD/benchmarks/libws-SMSegList.newest.O2.coredf.a" "$WAVESCOPED/libws-SMSegList.a" 
   # This didn't work:
-  #ln -s "$REGIMENTD/benchmarks/libws-SMSegList.1495.O2.traindf.a" "$WAVESCOPED/libws-SMSegList.a" 
+  #ln -s "$WAVESCRIPTD/benchmarks/libws-SMSegList.1495.O2.traindf.a" "$WAVESCOPED/libws-SMSegList.a" 
   #echo "  cpp: -DTRAIN_SCHEDULER -DDEPTH_FIRST compiling..."
   if  wsc $FILE -t --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnew.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
@@ -98,11 +98,11 @@ function runcpp_corefit() {
 function runcpp_corefit_nothreads() {
   # This is a flag that the code responds to:
   export COREFITBENCH=true
-  export WAVESCOPED="$REGIMENTD/benchmarks/engine/newest_nothreads"
+  export WAVESCOPED="$WAVESCRIPTD/benchmarks/engine/newest_nothreads"
   echo "  cppnothread: COREFIT_SCHEDULER_DF single-threaded compiling..."
   # MUST PASS THIS TO G++:
   rm -f "$WAVESCOPED/libws-SMSegList.a" 
-  ln -s "$REGIMENTD/benchmarks/libws-SMSegList.newest.O2.coredf.nothreads.a" "$WAVESCOPED/libws-SMSegList.a" 
+  ln -s "$WAVESCRIPTD/benchmarks/libws-SMSegList.newest.O2.coredf.nothreads.a" "$WAVESCOPED/libws-SMSegList.a" 
   if  wsc $FILE -t -nothreads --scheduler corefit-scheduler-df $WSOPTIONS  &> $DEST/cppnothreads.compile.$NAME"_"$LIMITCPUS.out; then echo>/dev/null;
   else echo "wsc failed!"; exit -1; fi
   echo "    cppnothreads: running... -n $TUPS $WSCARGS"
@@ -241,12 +241,12 @@ function dump_plot_script() {
 
     # I started to need a real program here.  Call the scheme script.
     export BACKENDS
-    #$REGIMENTD/backends/dump_plot_script.ss $FILE $RESULTS 
+    #$WAVESCRIPTD/backends/dump_plot_script.ss $FILE $RESULTS 
 
     if [ "$NORMALIZE" != "" ];
     then 
       echo "Normalizing timings, sending output to new file: $NORM"
-      if ! $REGIMENTD/benchmarks/normalize_timings.ss $RESULTS $NORM; then exit 1; fi
+      if ! $WAVESCRIPTD/benchmarks/normalize_timings.ss $RESULTS $NORM; then exit 1; fi
     else 
       NORM=$RESULTS
     fi

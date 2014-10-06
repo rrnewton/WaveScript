@@ -31,19 +31,19 @@ mv benchlogs benchlogs_marmot
 ## ================================================================================ ##
 
 # if [ ! true ]; then
-# cd "$REGIMENTD/apps/marmot/refactored";
+# cd "$WAVESCRIPTD/apps/marmot/refactored";
 # echo "## Running marmot phase 1&2 with no split AML. " > RESULTS.txt
 # runallbackends run_marmot2-maps $TEMP 0 3
 # cd "$START"
-# mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
+# mv "$WAVESCRIPTD/apps/marmot/refactored/RESULTS.txt" ./aml_nosplit.txt
 
-# cd "$REGIMENTD/apps/marmot/refactored";
+# cd "$WAVESCRIPTD/apps/marmot/refactored";
 # export HANDOPT_BUILDSPLIT=true
 # echo "## Running marmot phase 1&2 with 2-way split AML. " > RESULTS.txt
 # runallbackends run_marmot2-maps $TEMP 0 3
 # unset HANDOPT_BUILDSPLIT
 # cd "$START"
-# mv "$REGIMENTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
+# mv "$WAVESCRIPTD/apps/marmot/refactored/RESULTS.txt" ./aml_datapar.txt
 # fi
 
 
@@ -61,11 +61,11 @@ unset OMITMLTON
 ##   PIPELINE
 ## ================================================================================ ##
 
-# cd "$REGIMENTD/apps/pipeline/";
+# cd "$WAVESCRIPTD/apps/pipeline/";
 # echo "## Running pipeline   " > RESULTS.txt
 # runallbackends pipeline $TEMP 0 7000
 # cd "$START"
-# mv "$REGIMENTD/apps/pipeline/RESULTS.txt" ./pipeline.dat
+# mv "$WAVESCRIPTD/apps/pipeline/RESULTS.txt" ./pipeline.dat
 
 
 ## ================================================================================ ##
@@ -73,11 +73,11 @@ unset OMITMLTON
 ## ================================================================================ ##
 
 
-# cd "$REGIMENTD/apps/potholes";
+# cd "$WAVESCRIPTD/apps/potholes";
 # echo "## Running pothole   " > RESULTS.txt
 # runallbackends pothole_custom $TEMP 0 1000
 # cd "$START"
-# mv "$REGIMENTD/apps/potholes/RESULTS.txt" ./pothole.dat
+# mv "$WAVESCRIPTD/apps/potholes/RESULTS.txt" ./pothole.dat
 
 
 ## ================================================================================ ##

@@ -150,7 +150,7 @@
 		    (begin	
 		      ;; TEMP: 
 		      ;(leds toggle blue)
-;		      ,@(REGIMENT_DEBUG
+;		      ,@(WAVESCRIPT_DEBUG
 ;			 `(if (token-present? ,storage) (void)
 ;			      (dbg '"~s.~s ERROR: leader election, was expecting ~s storage token to exist." 
 ;				   (my-clock) (my-id) ',storage)))

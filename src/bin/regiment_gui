@@ -4,14 +4,14 @@
 #chez -h regimentc.1.heap $*
 
 # Use my default location if it is not set.
-if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/regiment_alpha; fi
+if ! [ $WAVESCRIPTD ]; then WAVESCRIPTD=$HOME/regiment_alpha; fi
 
 # If we can we use the stored heap, otherwise we run it as a script.
-#if [ -f $REGIMENTD/build/regiment.0.heap ];
-#then $REGIMENTD/depends/rawscheme -h $REGIMENTD/build/regiment.0.heap $*;
-#else $REGIMENTD/regiment_script.ss $*;
+#if [ -f $WAVESCRIPTD/build/regiment.0.heap ];
+#then $WAVESCRIPTD/depends/rawscheme -h $WAVESCRIPTD/build/regiment.0.heap $*;
+#else $WAVESCRIPTD/regiment_script.ss $*;
 #fi
 
 SWL_ROOT=$HOME/bin/Linux-i686/swl1.0a/lib/
 
-swl_bare --script $REGIMENTD/src/regiment.ss ./ $*
+swl_bare --script $WAVESCRIPTD/src/regiment.ss ./ $*

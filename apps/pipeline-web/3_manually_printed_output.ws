@@ -1,5 +1,5 @@
 // This shows how to manually print the output to get it in the desired format.
-// It also demonstrates how to include a library file (found in $REGIMENTD/lib/).
+// It also demonstrates how to include a library file (found in $WAVESCRIPTD/lib/).
 
 include "stdlib.ws";
 

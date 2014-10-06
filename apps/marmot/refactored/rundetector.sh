@@ -37,8 +37,8 @@ cat RESULTS_FFTIFFT_ON.txt  | sed 's/run_detector-slow/DetectorRewrites/' >> RES
 # else
 
 #   ./query.exe -j $threads -n 30 > temp/LOG_$threads
-#   export TMP=`$REGIMENTD/bin/extract_startend_real.sh temp/LOG_$threads`
-#   export TMP2=`$REGIMENTD/bin/extract_startend_times.sh temp/LOG_$threads`
+#   export TMP=`$WAVESCRIPTD/bin/extract_startend_real.sh temp/LOG_$threads`
+#   export TMP2=`$WAVESCRIPTD/bin/extract_startend_times.sh temp/LOG_$threads`
 #   echo "$threads  $TMP  $TMP2" >> RESULTS.txt
 # #  mv RESULTS.txt "./temp/RESULTS_"$threads".txt"
 # fi

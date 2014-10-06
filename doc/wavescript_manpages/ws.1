@@ -62,24 +62,24 @@ Produce a certain number of tuples non-interactively, and then exit.
 Note, these environment variables have "Regiment" in their titles
 because the WaveScript system is built on top of the older Regiment
 compiler.  Only 
-REGIMENTD 
+WAVESCRIPTD 
 is required to have a value, other environment variables are optional.
 .TP
-.B REGIMENTD
+.B WAVESCRIPTD
 The location of the WaveScript/Regiment installation.  Usually this is
 .I /usr/lib/wavescript/0.9.0
 where, for example, 0.9.0 is the version of the WaveScript installation.
 
 The location of standard libraries is 
-.IR $REGIMENTD/lib \.
+.IR $WAVESCRIPTD/lib \.
 .TP
-.B REGIMENTHOST
+.B WAVESCRIPTHOST
   This is one of ikarus, plt, chez, or larceny.  Although larceny
   support may be limited.
 .TP
 .B REGDEBUGMODE
   When set to "ON", the WaveScript/Regiment compiler turns on all
-  debugging checks.  Unfortunately, depending on REGIMENTHOST, the
+  debugging checks.  Unfortunately, depending on WAVESCRIPTHOST, the
   WaveScript compiler may need to be recompiled for changes to take
   effect.
 
@@ -95,6 +95,6 @@ The location of standard libraries is
 
 \" WAVESCOPED= /home/newton/v1
 \" REGOPTLVL=
-\" REGIMENT_OR_WAVESCRIPT=
+\" WAVESCRIPT_OR_WAVESCRIPT=
 \" REGTHREADS=
-\" REGIMENTEXEC
+\" WAVESCRIPTEXEC

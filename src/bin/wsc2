@@ -95,7 +95,7 @@ rm -f "$CFILE".exe "$CFILE"_*.exe
 
 for file in `ls "$CFILE"*.c 2> /dev/null`; do
   export CFILE=$file
-  $REGIMENTD/bin/wsc2-gcc
+  $WAVESCRIPTD/bin/wsc2-gcc
   CODE=$?
   if [ "$CODE" != "0" ]; then exit $CODE; fi
 done

@@ -16,7 +16,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (eval '(define svn-revision 'unknown-svn-rev))
 
   ;; Bring this out to top level:
-;  (eval `(define REGIMEND ,REGIMENTD))
+;  (eval `(define REGIMEND ,WAVESCRIPTD))
 
   (apply main (cdr (vector->list (current-command-line-arguments)))) 
 

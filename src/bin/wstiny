@@ -49,7 +49,7 @@ else CODE=$?; echo ERROR, wstiny failed with code $CODE.; exit $CODE;
 fi
 
 echo "Copying WSMsp files to local directory."
-cp -f $REGIMENTD/src/linked_lib/WSMspAdc*.nc .
+cp -f $WAVESCRIPTD/src/linked_lib/WSMspAdc*.nc .
 
 # # No nesC separate compilation:
 # # MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`

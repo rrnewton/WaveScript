@@ -14,7 +14,7 @@ export GCCBUILD="-std=gnu99 -I/usr/lib/mlton/self/include \
           -I$EMLIBH `pkg-config --cflags glib-2.0` \
           -I/usr/lib/mlton/include -O1 -fno-strict-aliasing \
           -fomit-frame-pointer -w -o $OBJ $fn \
-	  -I$REGIMENTD/src/ws/passes/mlton_bkend"
+	  -I$WAVESCRIPTD/src/ws/passes/mlton_bkend"
 
 ################################################################################
 

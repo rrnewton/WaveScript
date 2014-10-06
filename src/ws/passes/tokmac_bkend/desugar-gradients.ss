@@ -33,8 +33,8 @@
 ;;; Constants shared by gradient implementations.
 
 ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
-;; For now coupling it to global "REGIMENT_DEBUG"
-;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG expr ...)]))
+;; For now coupling it to global "WAVESCRIPT_DEBUG"
+;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (WAVESCRIPT_DEBUG expr ...)]))
 ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
 (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
 

@@ -48,9 +48,9 @@ Options for all WaveScript (ws*) configurations:
 
 Environment variables affecting WS compiler:
   
-  REGIMENTD -- the location of the directory with the WS/Regiment installation
+  WAVESCRIPTD -- the location of the directory with the WS/Regiment installation
 
-  REGIMENTHOST -- controls which scheme compiler is used: plt, chez, or ikarus
+  WAVESCRIPTHOST -- controls which scheme compiler is used: plt, chez, or ikarus
   REGDEBUGMODE -- Set to ON to enable debug mode
   REGOPTLVL    -- Optimization level for the compiler ITSELF, 0-3
 

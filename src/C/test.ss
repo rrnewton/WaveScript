@@ -6,7 +6,7 @@
 
 ;(chez:module fftw (make-dft-plan dft-1d compare-ffts)
 
-;(load-shared-object (format "~a/build/~a/fftw.o" (getenv "REGIMENTD") (machine-type)))
+;(load-shared-object (format "~a/build/~a/fftw.o" (getenv "WAVESCRIPTD") (machine-type)))
 
 
 (load-shared-object "libgslcblas.so")

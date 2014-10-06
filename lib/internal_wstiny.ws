@@ -256,7 +256,7 @@ implementation {
 ";
   //inline = inline_TOS(top, "", "", "", "", "", "");
   //merge(inline, readstream_uint16("WSMspAdcP.ReadStream", bufsize, rate));
-  SHELL("cp "++GETENV("REGIMENTD")++"/src/linked_lib/WSMspAdc* .");
+  SHELL("cp "++GETENV("WAVESCRIPTD")++"/src/linked_lib/WSMspAdc* .");
   readstream_uint16("WSMspAdcC", bufsize, rate);
 }
 

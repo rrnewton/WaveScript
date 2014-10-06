@@ -39,7 +39,7 @@
 ;; compiled, we take that as an indication that the system will be
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
-  (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
+  (parameterize ([current-directory (string-append (getenv "WAVESCRIPTD") "/src/")])
     (define UNSAFEOPTMODE (equal? (getenv "REGOPTLVL")  "3"))
     (define DEBUGINVOCATION (equal? (getenv "REGDEBUGMODE")  "ON"))
 
@@ -82,9 +82,9 @@
 		      ;(random-seed (current-time))
 		      ;; [2007.04.11] This is unsatisfactory:
 		      (random-seed (* (real-time) (cpu-time)))
-		      ;; We also need to make sure that we reset the REGIMENTD parameter:
+		      ;; We also need to make sure that we reset the WAVESCRIPTD parameter:
 		      ;; It might not be the same on the system loading the heap as the one compiling it!
-		      (REGIMENTD (default-regimentd))
+		      (WAVESCRIPTD (default-regimentd))
 
 		      ;; Let's be nice and restore the command-line-arguments:
 		      ;(inspect (vector args (command-line-arguments)))

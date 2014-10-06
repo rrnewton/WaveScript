@@ -261,7 +261,7 @@
 ;   (include "/home/newton/wavescript/src/ws/compat/top-level-values.ss")
   
 
-  ;; includes are relative to $REGIMENTD/src
+  ;; includes are relative to $WAVESCRIPTD/src
   ;; Therefore we need to override the PLT default include.
   ;; Can't use this from this file or we'd run into a circular dependency.
 
@@ -271,7 +271,7 @@
     (lambda (x)
       (syntax-case x ()
         [(form fn)
-	 (let* ([regd (getenv "REGIMENTD")]
+	 (let* ([regd (getenv "WAVESCRIPTD")]
 		[path (string-append regd "/src/" (syntax->datum #'fn))])
 
 	   (printf "RESOLVED INCLUDE PATH ~s\n" path)

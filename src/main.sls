@@ -38,18 +38,18 @@
 
   
 ;; This is a bit weird, ultimately the global param
-;; REGIMENTD is the thing to look at, but we have some
+;; WAVESCRIPTD is the thing to look at, but we have some
 ;; issues with the order of evaluation/loading/binding
 ;; here, so first we bind this at expand time:
 (define-syntax default-regimentd
   (syntax-rules ()
-    [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
+    [(_) (if (getenv "WAVESCRIPTD") (getenv "WAVESCRIPTD") (current-directory))]))
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. 
 ;; This uses the kinder behavior -- try the current directory.
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
-(define ___ (REGIMENTD (default-regimentd)))
+(define ___ (WAVESCRIPTD (default-regimentd)))
 
 ;;================================================================================;;
 
@@ -1437,7 +1437,7 @@
 			    (last-few-steps (strip-cutpoints server-part) class))
 			  (string->file "#!/bin/bash\n ./query_client.exe 2>> /dev/stdout | ./query_server.exe $*\n" "query_both.sh")
 			  (system "chmod +x query_both.sh")
-			  (system (** "cp -fa "(REGIMENTD) "/src/linked_lib/ssh_split_run_query_remote.sh query_remote.sh"))
+			  (system (** "cp -fa "(WAVESCRIPTD) "/src/linked_lib/ssh_split_run_query_remote.sh query_remote.sh"))
 			  ;(last-few-steps node-part  class)
 			  )
 			(last-few-steps prog class)))
@@ -1733,7 +1733,7 @@
 
 (define-regiment-parameter wavescript-version 
   (format "~a.~a"
-   (let ([version-file (string-append (REGIMENTD) "/src/version")])
+   (let ([version-file (string-append (WAVESCRIPTD) "/src/version")])
     (if (file-exists? version-file)
 	(read-line (open-string-input-port (file->string version-file)))
 	"???"))
@@ -1789,8 +1789,8 @@
   (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way\n")
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world\n")
   (printf "\n")
-  ;(display (file->string (string-append (REGIMENTD) "bin/regiment_opts.txt")))
-  (display (file->string (string-append (REGIMENTD) "/bin/ws_opts.txt")))
+  ;(display (file->string (string-append (WAVESCRIPTD) "bin/regiment_opts.txt")))
+  (display (file->string (string-append (WAVESCRIPTD) "/bin/ws_opts.txt")))
   )
 
 (define (print-ws-prim-table)
@@ -1940,7 +1940,7 @@
 	(case mode
 	  ;; Unit Test mode:
 	  [(t test)
-	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   (define-top-level-value 'WAVESCRIPT-BATCH-MODE #t)
 	   (test-units)
 	   ;(test-everything)
 	   ]
@@ -1951,7 +1951,7 @@
 
 	  ;; Compile mode:
 	  [(c compile)
-	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   ;(define-top-level-value 'WAVESCRIPT-BATCH-MODE #t)
 	   (IFWAVESCOPE (void)
 	     (if (null? filenames)
 	       (begin
@@ -2171,7 +2171,7 @@
 	     (wsint:direct-stream (apply wsint-early (cons prog (cons input-parameters opts)))))]
 	  
 	  [(wscomp)
-	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   ;(define-top-level-value 'WAVESCRIPT-BATCH-MODE #t)
 	   (let ()
 	     (define port (acquire-input-prog 'wscomp))
 	     (apply wscomp port input-parameters opts))]
@@ -2352,7 +2352,7 @@
 
 	  [("-exit-error" ,rest ...)
 	   (when (>= (regiment-verbosity) 2) (eprintf "SETTING BATCH MODE\n"))
-	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   (define-top-level-value 'WAVESCRIPT-BATCH-MODE #t)
 	   (argloop rest)]
 
 	  [("-dot" ,rest ...) (dump-graphviz-output #t) (argloop rest)]
@@ -2362,7 +2362,7 @@
 
 					;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (argloop rest)]
 	  [("-debug" ,rest ...)		     
-	   (define-top-level-value 'REGIMENT-BATCH-MODE #f)
+	   (define-top-level-value 'WAVESCRIPT-BATCH-MODE #f)
 	   (regiment-emit-debug #t)
 	   (argloop rest)]
 

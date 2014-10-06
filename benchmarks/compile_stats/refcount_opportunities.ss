@@ -15,7 +15,7 @@ exec regiment i --script "$0"
 
 (for-each 
     (lambda (file)
-      (define path (** (REGIMENTD) "/" file))
+      (define path (** (WAVESCRIPTD) "/" file))
       (define (hook jumpout)
 	(lambda (prog)
 	  (define (local-rc? xp)

@@ -3,7 +3,7 @@
 # This gets the machine type in the format used by Chez Scheme.
 # It echoes that machine type to stdout.
 
-#MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
+#MT=`echo '(display (machine-type))' | $WAVESCRIPTD/depends/petite -q`
 
 # It's a little tricky to do using uname...
 MACHINE=`uname -s -m`

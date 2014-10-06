@@ -47,7 +47,7 @@ shift;
 # Clean up first:
 rm -f "query.ml"
 
-export REGIMENT_OR_WAVESCRIPT=WS
+export WAVESCRIPT_OR_WAVESCRIPT=WS
 if regiment wscaml $abspath ${1+"$@"} ;
 then echo
 else #rm -f $TMP; 
@@ -56,7 +56,7 @@ else #rm -f $TMP;
 fi
 
 
-INCLUDES="-I $REGIMENTD/src/ws/passes/ocaml_bkend/fftw2-0.2"
+INCLUDES="-I $WAVESCRIPTD/src/ws/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 

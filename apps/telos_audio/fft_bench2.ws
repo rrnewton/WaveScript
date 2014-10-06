@@ -18,7 +18,7 @@ inp     = make(arrsize,11);
 imag    = make(arrsize,22);
 
 
-fixlib = GETENV("REGIMENTD") ++ "/lib/fix_fft.c";
+fixlib = GETENV("WAVESCRIPTD") ++ "/lib/fix_fft.c";
 theCcode = inline_C("#include \""++ fixlib ++"\"","");
 cfft = (foreign("fix_fft", []) :: (Array FftInt, Array FftInt, Int, Bool) -> Int);
 

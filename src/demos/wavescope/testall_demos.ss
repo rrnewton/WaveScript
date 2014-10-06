@@ -1,6 +1,6 @@
 #!/bin/bash 
 #|
-export REGIMENT_OR_WAVESCRIPT=WS
+export WAVESCRIPT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
 export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};

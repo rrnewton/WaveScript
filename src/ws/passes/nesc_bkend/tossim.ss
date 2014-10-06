@@ -40,7 +40,7 @@
 	     ;; Here we invoke emit-nesc-language to call Make and compile the NesC code.
 	     (if (eqv? 0 (emit-nesc-language p))
 		 ;; Now, with main.exe built, we invoke it and read its output.
-		 (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell/")))
+		 (parameterize ((current-directory (string-append (getenv "WAVESCRIPTD") "/src/haskell/")))
 		   (define time (let ((t (sim-timeout)))
 				  (if (not t) ""
 				      (format "-t=~a"
@@ -83,7 +83,7 @@
   (lambda (prog)
     (match prog
       [#(,mstr ,cstr ,hstr)
-       (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell")))
+       (parameterize ((current-directory (string-append (getenv "WAVESCRIPTD") "/src/haskell")))
        (printf "~nDumping token machine into directory: ~s~n" (current-directory))
        (let ([modF    (force-open-output-file (string-append emit-nesc-modname "M.nc"))]
 	     [confF   (force-open-output-file (string-append emit-nesc-modname ".nc"))]

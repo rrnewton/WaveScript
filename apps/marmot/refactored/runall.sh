@@ -31,8 +31,8 @@ for threads in `seq 15 15`; do
   for index in `seq 1 5` ; do 
     echo running with -j $TPLUSONE
     ./query.exe -j $TPLUSONE -n 600 > temp/LOG_$threads
-    export TMP=`$REGIMENTD/bin/extract_startend_real.sh temp/LOG_$threads`
-    export TMP2=`$REGIMENTD/bin/extract_startend_times.sh temp/LOG_$threads`
+    export TMP=`$WAVESCRIPTD/bin/extract_startend_real.sh temp/LOG_$threads`
+    export TMP2=`$WAVESCRIPTD/bin/extract_startend_times.sh temp/LOG_$threads`
     echo "$threads  $TMP  $TMP2  $index" >> RESULTS.txt
   done
 

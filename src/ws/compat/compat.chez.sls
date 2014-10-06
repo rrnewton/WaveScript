@@ -264,7 +264,7 @@
     (lambda (who msg . args)
       (call/cc (lambda (k) 	     
 		 (parameterize ([error-handler default-error-handler]
-			     ;[current-directory (string-append (REGIMENTD) "/src/generic")]
+			     ;[current-directory (string-append (WAVESCRIPTD) "/src/generic")]
 			     )
 		(fprintf (console-output-port)
 			 "~%Error~a: ~a.~%"
@@ -272,8 +272,8 @@
 			 (parameterize ([print-level 3] [print-length 6])
 			   (apply format msg args)))
 
-		(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
-			   (top-level-value 'REGIMENT-BATCH-MODE))
+		(when (and (top-level-bound? 'WAVESCRIPT-BATCH-MODE)
+			   (top-level-value 'WAVESCRIPT-BATCH-MODE))
 		  (exit 1)) ;; Should only do this if we're running as a script.
 
 		(fprintf (console-output-port)

@@ -130,7 +130,7 @@ exec regiment i --script "$0"
 (printf "Taking statistics on array allocation sites...\n")
 
 (for-each (lambda (file)
-	    (define path (** (REGIMENTD) "/" file))
+	    (define path (** (WAVESCRIPTD) "/" file))
 	    (current-directory (dirname path))
 	    (printf "  Processing: ~s\n" path)
 	    ;(inspect (read-wavescript-source-file path))

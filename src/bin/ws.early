@@ -8,12 +8,12 @@ then echo Usage: "ws <file> <options ...>";
      exit 1;
 fi
 
-if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
+if [ "$WAVESCRIPTEXEC" == "" ]; then WAVESCRIPTEXEC=regiment; fi
 
 D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 shift
 
-(export REGIMENT_OR_WAVESCRIPT=WS;
- "$REGIMENTEXEC" wsearly $abspath ${1+"$@"};)
+(export WAVESCRIPT_OR_WAVESCRIPT=WS;
+ "$WAVESCRIPTEXEC" wsearly $abspath ${1+"$@"};)

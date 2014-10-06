@@ -8,14 +8,14 @@
         dir
       (concat dir "/")))
 ;;;; Add the following to your .emacs to use this:
-;; (let ((reglib (concat (cap-dir (getenv "REGIMENTD")) "emacs/regiment.el")))
+;; (let ((reglib (concat (cap-dir (getenv "WAVESCRIPTD")) "emacs/regiment.el")))
 ;;   (if (file-readable-p reglib)
 ;;       (load-library reglib)))
 
 ; ======================================================================
 
 ;; Put us in the path so that we can load the modified scheme.el:
-(setq load-path (cons (concat (cap-dir (getenv "REGIMENTD")) "emacs/") load-path))
+(setq load-path (cons (concat (cap-dir (getenv "WAVESCRIPTD")) "emacs/") load-path))
 
 (setq auto-mode-alist 
       (append '(("\\.rs$" . scheme-mode)
@@ -73,7 +73,7 @@
 (defun load-regiment-all-source ()
   "Load all the source code for regiment."
   (interactive)
-  (let ((regd (cap-dir (getenv "REGIMENTD"))))
+  (let ((regd (cap-dir (getenv "WAVESCRIPTD"))))
     (print "LOAD\n")
     (load-all-files-of-interest-from (concat regd "src/ws"))
     (find-file-noselect (concat regd "/src/main.sls"))
@@ -165,7 +165,7 @@
   "Insert text to switch to Regiment dir and load compiler."
   (interactive)
   (insert "(begin (cd \"")
-  (insert (getenv "REGIMENTD"))
+  (insert (getenv "WAVESCRIPTD"))
   (insert "src/\") (load \"compiler_chez.ss\"))"))
 ;(fset 'switch-dir-and-load-regiment
 ;   [?(?b ?e ?g ?i ?n ?  ?( ?c ?d ?  ?\" ?~ ?/ ?c ?u ?r ?\" ?) ?  

@@ -18,8 +18,8 @@ for threads in `seq 1 16`; do
 
   echo Running for $threads threads...
   (time ./query.exe -j $threads -n 1600) 1> "temp/LOG_$threads".out 2> "temp/LOG_$threads".err
-  export TMP=`$REGIMENTD/bin/extract_real.sh temp/LOG_"$threads".err`
-  export TMP2=`$REGIMENTD/bin/extract_user.sh temp/LOG_"$threads".err`
+  export TMP=`$WAVESCRIPTD/bin/extract_real.sh temp/LOG_"$threads".err`
+  export TMP2=`$WAVESCRIPTD/bin/extract_user.sh temp/LOG_"$threads".err`
 
   #INT=`echo $TMP | sed 's/\.0//'`
   #echo INTEGER $INT

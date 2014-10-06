@@ -12,7 +12,7 @@ rm -f "query.sml"
 if [ ! -f "$1" ];
 then echo Usage: "wsmlton <file> <options> ...";
      if [ "$1" != "" ]; then echo   File \"$1\" does not exist.; 
-     else cat $REGIMENTD/bin/ws_opts.txt
+     else cat $WAVESCRIPTD/bin/ws_opts.txt
      fi
      exit 1;
 fi
@@ -28,7 +28,7 @@ shift
 
 
 
-export REGIMENT_OR_WAVESCRIPT=WS
+export WAVESCRIPT_OR_WAVESCRIPT=WS
 #echo regiment wsml $abspath ${1+"$@"} ;
 #  Should pass some flags/arguments here maybe??:
 echo regiment wsml $abspath $*

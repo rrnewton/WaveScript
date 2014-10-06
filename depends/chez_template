@@ -17,8 +17,8 @@ VER=7.3
 # else echo Unknown platform: $MACHINE
 # fi
 
-DIR=`$REGIMENTD/depends/get_machine_type`
+DIR=`$WAVESCRIPTD/depends/get_machine_type`
 SCHEME=scheme
 if [ "$DIR" == "i3nt" ]; then SCHEME=petite.exe; fi
 
-($REGIMENTD/depends/petite_chez_scheme$VER/bin/$DIR/$SCHEME -b $REGIMENTD/depends/petite_chez_scheme$VER/boot/$DIR/petite.boot -b $REGIMENTD/depends/petite_chez_scheme$VER/boot/$DIR/scheme.boot $*)
+($WAVESCRIPTD/depends/petite_chez_scheme$VER/bin/$DIR/$SCHEME -b $WAVESCRIPTD/depends/petite_chez_scheme$VER/boot/$DIR/petite.boot -b $WAVESCRIPTD/depends/petite_chez_scheme$VER/boot/$DIR/scheme.boot $*)

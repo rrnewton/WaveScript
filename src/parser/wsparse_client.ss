@@ -38,7 +38,7 @@ exec mzscheme -mqt "$0" ${1+"$@"}
     (fprintf (current-error-port) "  Invoking wsparse.ss from source.\n")
     (eval '(require (lib "process.ss")))
     (eval `(system ,(format "mzscheme -mqt ~a/src/plt/wsparse.ss ~a --nopretty" 
-		    (getenv "REGIMENTD") filename)))
+		    (getenv "WAVESCRIPTD") filename)))
 |#
     (write #f)
     )

@@ -64,7 +64,7 @@ HTMLFILES = $(SRCCOPY:%.ss=%.html)
 # Here's a bit of a trick, we just use regiment for the scheme system,
 # and let it worry about finding the right scheme to call.
 SCHEME = chez
-#SCHEME = scheme $(REGIMENTD)/src/chez/match.ss
+#SCHEME = scheme $(WAVESCRIPTD)/src/chez/match.ss
 #SCHEME = regiment i
 #SCHEME = scheme -b ./match.ss
 PETITE = ../depends/petite
@@ -107,10 +107,10 @@ match.boot: match.so
 	cat match.hdr match.so > match.boot
 
 match.so: 
-	cp "$(REGIMENTD)/src/chez/match.ss" ./match.ss
+	cp "$(WAVESCRIPTD)/src/chez/match.ss" ./match.ss
 	echo '(import iu-match)' >> match.ss 
 	echo '(compile-file "match.ss" "match.so")' | $(SCHEME)
-#	echo '(compile-file (string-append (getenv "REGIMENTD") "/src/chez/match.ss") "match.so")' | $(SCHEME)
+#	echo '(compile-file (string-append (getenv "WAVESCRIPTD") "/src/chez/match.ss") "match.so")' | $(SCHEME)
 
 schemedoc:
 	tar xjvf schemedoc.tbz; 
@@ -151,8 +151,8 @@ $(SRCCOPY): html/%.ss: ../src/%.ss
 
 # # This invokes regiment.laml with the directory and the filename as command line arguments:
 $(HTMLFILES): html/%.html: html/%.ss
-	mzscheme -r regiment_plt.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
-#	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+	mzscheme -r regiment_plt.laml $(WAVESCRIPTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+#	$(SCHEME) --script regiment.laml $(WAVESCRIPTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 
 
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`

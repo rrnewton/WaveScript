@@ -6,5 +6,5 @@
 
 ; (define laml-dir "/user/normark/scheme/")
 ;(define laml-dir "/home/newton/wavescript/plt_schemedoc/")
-(define laml-dir (string-append (getenv "REGIMENTD") "/doc/plt_schemedoc/"))
+(define laml-dir (string-append (getenv "WAVESCRIPTD") "/doc/plt_schemedoc/"))
 

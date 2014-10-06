@@ -1263,14 +1263,14 @@
 		     (if lib (list " -l" lib) fn)))
 	      link-files)
 	    "\n"
-            (file->string (** (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
-	    (file->string (** (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
+            (file->string (** (WAVESCRIPTD) "/src/linked_lib/WSHeader.hpp"))
+	    (file->string (** (WAVESCRIPTD) "/src/linked_lib/WSTypedefs.hpp"))
 	    
 	    ;; After the types are declared we can bring in the user includes:
 	    "\n\n" (map (lambda (fn) `("#include ",fn "\n")) 
 		     (reverse include-files)) "\n\n"
 
-            (file->string (** (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
+            (file->string (** (WAVESCRIPTD) "/src/linked_lib/WSPrim.cpp"))
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
             (map UnionDef uniondefs)
@@ -1482,7 +1482,7 @@
        ;; This is a bit inflexible.
        ;; Now the C++ query MUST be compiled on the same system that it's generated.  
        ;; Alternatively, we could inline the whole file right here.
-       (add-include! (list "\"" (REGIMENTD)
+       (add-include! (list "\"" (WAVESCRIPTD)
 		     "/src/linked_lib/GSL_wrappers.cpp\""))
        (add-link! "libm.so")
        (add-link! "libgsl.so")
@@ -1493,7 +1493,7 @@
       [(fftR2C ifftC2R fftC ifftC memoized_fftR2C)
        ;(if (eq? var  'memoized_fftR2C) (inspect 'gotit))
        (add-include! "<fftw3.h>")
-       (add-include! (list "\"" (REGIMENTD) 
+       (add-include! (list "\"" (WAVESCRIPTD) 
 			   "/src/linked_lib/FFTW_wrappers.cpp\""))
        (add-link! "libfftw3f.so")
        (mangle var)]

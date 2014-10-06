@@ -234,6 +234,6 @@ Environment variables affecting operation
 See the file ./bin/ws_opts.txt for a description of environment
 variables that affect the WS compiler.
 
-The most important one for setup purposes is "REGIMENTD" which is set
+The most important one for setup purposes is "WAVESCRIPTD" which is set
 by the "install_environment_vars" script in this directory.
 
