@@ -25,6 +25,6 @@ time regiment
 
 # TODO: make these tests apply to PLT also when it is in good shape:
 if [ "$REGIMENTHOST" == chez ]; then
-  echo "Running minimal tests"
-  make test
+  echo "Running tests"
+  make fulltest
 fi
