@@ -2,6 +2,7 @@
 *~
 *#
 
+*.so
 depends/compiled/
 src/_parser.log
 src/bin/wsparse
@@ -31,7 +32,8 @@ src/ws/testing/compiled/
 src/ws/util/compiled/
 svn_rev.txt
 
-
+src/demos/wavescope/6sec_marmot_sample.raw
+src/demos/wavescope/bar.o
 apps/pipeline-web/data.txt
 apps/pipeline-web/test_out.1
 apps/pipeline-web/test_out.2
