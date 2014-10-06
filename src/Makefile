@@ -512,8 +512,9 @@ larceny: ws/common.sls main_r6rs.sls \
 #/*--------------------------------------------------------------------*/
 
 # This is basic, for someone who just downloaded WaveScript:
+# This assumes that the system is already built (e.g. with make chez)
 t: test
-test:
+test: 
 #	$(MAKE) clean wsparse ag
 	regiment test
 	(cd demos/wavescope; $(MAKE) getdata)
