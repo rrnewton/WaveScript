@@ -651,7 +651,6 @@ namespace FIFO {
   // Is a FIFO Queue empty?
   fun empty(q)  (q.ELEMS)[0] == 0;
 
-
   enqueue    :: (FIFO t, t) -> ();
 
   // Enqueing may need to increase the buffer size.
@@ -762,6 +761,20 @@ namespace FIFO {
   elements   ::  FIFO t -> Int;	 
   
   fun elements(q) (q.ELEMS)[0];
+
+  andmap :: (t -> Bool, FIFO t) -> Bool;
+
+  fun andmap(pred, q) {
+    arr = (q.BUFFER)[0];
+    elems = (q.ELEMS)[0];
+    go = Mutable:ref(true);
+    i = 0;
+    while go && (i < elems) {
+      go := pred(arr[i]);
+      i := i + 1;
+    };
+    go
+  }
 
 }
 

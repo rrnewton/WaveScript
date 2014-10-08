@@ -98,8 +98,9 @@ result = iterate _ in middle {
       assert_prnt("fifo peek 1", q`peek(0), 1);
       assert_prnt("fifo peek 2", q`peek(1), 2);
       enqueue(q,3);
-      //      assert_prnt("fifo andmap #t", andmap((> 0), q), true);
-      //      assert_prnt("fifo andmap #f", andmap((< 3), q), false);
+      println("Just enqueued.");
+      assert_prnt("fifo andmap #t", andmap((> 0), q), true);
+      assert_prnt("fifo andmap #f", andmap((< 3), q), false);
       x = dequeue(q);
       y = dequeue(q);
       enqueue(q,4);
