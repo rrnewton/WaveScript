@@ -1,4 +1,4 @@
-include "common.ws"
+include "../common.ws"
 
 numFilters = tryLookup("NUMFILTERS", 5)
 

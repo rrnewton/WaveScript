@@ -1,4 +1,4 @@
-include "common.ws"
+include "../common.ws"
 
 //default to 100 chained operators in pipeline. set environment
 //variable NUMOPS at compile-time to change this.
