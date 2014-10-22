@@ -5,7 +5,8 @@ fun tryLookup(str, def) {
   if GETENV(str) == "" then def else {
     println("Using " ++ str ++ ": " ++ GETENV(str));
     stringToInt(GETENV(str))
-  }
+ 
+ }
 }
 
 //create a n-sized pipeline of identical functions over a stream
