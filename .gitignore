@@ -5,6 +5,7 @@
 # ignore HSBencher cabal files
 .cabal-sandbox
 cabal.sandbox.config
+dist
 
 *.so
 depends/compiled/
