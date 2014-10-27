@@ -3,18 +3,14 @@
 -- | HSBencher script to run all the benchmarks.
 module Main where
 
-import Control.Monad
-import Data.Maybe
 import qualified Data.ByteString.Char8 as B
 import System.Exit
 
 import HSBencher (defaultMainModifyConfig)
 import HSBencher.Types
-import HSBencher.Internal.Utils (runLogged, defaultTimeout)
+import HSBencher.Internal.Utils (runLogged)
 
 --import HSBencher.Backend.Fusion  (defaultFusionPlugin)
-
-import Prelude hiding (log)
 --------------------------------------------------------------------------------
 
 main :: IO ()
