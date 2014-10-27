@@ -2,6 +2,12 @@
 *~
 *#
 
+# ignore HSBencher cabal files
+run_benchmarks.exe
+.cabal-sandbox
+cabal.sandbox.config
+dist
+
 *.so
 depends/compiled/
 src/_parser.log
