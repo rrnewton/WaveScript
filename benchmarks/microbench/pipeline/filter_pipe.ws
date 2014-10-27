@@ -1,6 +1,6 @@
 include "../common.ws"
 
-numFilters = tryLookup("NUMFILTERS", 100)
+numFilters = tryLookup("NUMFILTERS", 10000)
 
 src = iterate _ in timer(100) {
   state { cnt = 1; }
@@ -12,9 +12,11 @@ src = iterate _ in timer(100) {
 main = {
   fun f (n, s) {
     if n == 1 then s else
-    iterate x in f(n-1, s) { if x > n then
-    	      	 	       if (moduloI(x, n) > 0) then 
-			         emit x }
+    iterate x in f(n-1, s) { if (moduloI(x,n) > 0) then emit x else if x == n then emit x }
   };
-  f(numFilters, src);
+  iterate x in f(numFilters, src) {
+    state { cnt = 1 }
+    if cnt == 10001 then emit x;
+    cnt := cnt + 1
+  }
 }
