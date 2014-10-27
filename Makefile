@@ -45,5 +45,13 @@ bench_deps: run_benchmarks.cabal run_benchmarks.hs
 
 clean_bench:
 	rm run_benchmarks.exe
+
+deepclean_bench:
+	rm run_benchmarks.exe
 	rm cabal.sandbox.config
-	rm -rf .cabal-sandbox
+	rm -rf .cabal-sandbox/
+	rm -rf HSBencher/hsbencher-tool/dist/
+	rm HSBencher/hsbencher-tool/hsbencher
+	rm -rf HSBencher/hsbencher/dist/
+	rm -rf HSBencher/hgdata/dist/
+	rm HSBencher/hgdata/hgdata
