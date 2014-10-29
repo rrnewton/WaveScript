@@ -10,14 +10,14 @@ import HSBencher (defaultMainModifyConfig)
 import HSBencher.Types
 import HSBencher.Internal.Utils (runLogged)
 
-import HSBencher.Backend.Fusion  (defaultFusionPlugin)
+--import HSBencher.Backend.Fusion  (defaultFusionPlugin)
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = defaultMainModifyConfig $ \conf -> conf
   { benchlist = benches
   , buildMethods = [ wsc2 ]
-  , plugIns = [ defaultFusionPlugin ]
+  , plugIns = [ ]
   }
 
 benches :: [Benchmark DefaultParamMeaning]
