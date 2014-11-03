@@ -14,3 +14,5 @@ fun h (x) List:fold((+),0,List:map(fun (x) x*x, x))
 fun i (x) List:build(if (moduloI(x,bufsize) < bufsize/2) then bufsize else moduloI(x,bufsize), fun (i) i)
 
 main = op4_pipe(i, h, g, f, numOps / 4, src)
+
+//lists of functions - pass through a list potentially.

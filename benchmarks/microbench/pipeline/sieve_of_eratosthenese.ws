@@ -1,22 +1,20 @@
 include "../common.ws"
 
-numFilters = tryLookup("NUMFILTERS", 10000)
+numFilters = tryLookup("NUMFILTERS", 100)
 
+// iota stream 
 src = iterate _ in timer(100) {
   state { cnt = 1; }
   emit cnt;
   cnt := cnt + 1
 }
 
-//filter out primes... Broken.
 main = {
+  // f is the sieve of eratosthenes
+  //   places a filter on 1..n
   fun f (n, s) {
     if n == 1 then s else
     iterate x in f(n-1, s) { if (moduloI(x,n) > 0) then emit x else if x == n then emit x }
   };
-  iterate x in f(numFilters, src) {
-    state { cnt = 1 }
-    if cnt == 10001 then emit x;
-    cnt := cnt + 1
-  }
+  f(numFilters, src);
 }
