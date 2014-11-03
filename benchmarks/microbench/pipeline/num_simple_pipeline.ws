@@ -5,9 +5,10 @@ include "../common.ws"
 numOps = tryLookup("NUMOPS", 100)
 
 src = iterate _ in timer(100) {
-   state { cnt = 0; }
-   emit cnt;
-   cnt := cnt + 1;
+   emit 10;
+   // state { cnt = 0; }
+   // emit cnt;
+   // cnt := cnt + 1;
 }
 
 fun f (x) x + 1
