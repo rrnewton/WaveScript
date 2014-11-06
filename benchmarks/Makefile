@@ -129,10 +129,12 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 	$(CABAL) sandbox init
 	#$(CABAL) install $(CBLARGS) --only-dep $(PKGS)
 	$(CABAL) install $(CBLARGS) $(PKGS)
+	ln -s .cabal-sandbox/bin/run_benchmarks.exe run_benchmarks.exe
 
 .phony: clean_microsuite
-clean_microsuite:
+clean_microsuite: run_benchmarks.exe
 	$(CABAL) clean
+	rm run_benchmarks.exe
 
 .phony: deepclean_microsuite
 deepclean_microsuite: clean_microsuite
