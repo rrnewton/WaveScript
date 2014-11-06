@@ -100,3 +100,44 @@ distclean: clean
 	(cd microbench && $(MAKE) clean)
 	(cd appbench   && $(MAKE) clean)
 	(cd datareps   && $(MAKE) clean)
+
+
+
+# Microsuite benchmarks
+#######################
+
+ifeq ($(CABAL),)
+  CABAL=cabal
+endif
+ifeq ($(MACHINECLASS),)
+  MACHINECLASS=$(shell hostname -s)
+endif
+
+RUNID=$(shell hostname -s)_$(shell date "+%s")
+
+ifeq ($(JENKINS_GHC),)
+  JENKINS_GHC=7.8.3
+endif
+
+PKGS= ./ ./HSBencher/hsbencher ./HSBencher/hgdata #./HSBencher/hsbencher-tool ./HSBencher/hsbencher-fusion ./HSBencher/hsbencher-codespeed
+CBLARGS= --disable-documentation  --with-ghc=ghc-$(JENKINS_GHC) --force-reinstalls
+
+microsuite: run_benchmarks.exe
+	
+run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
+	which -a $(CABAL)
+	$(CABAL) sandbox init
+	#$(CABAL) install $(CBLARGS) --only-dep $(PKGS)
+	$(CABAL) install $(CBLARGS) $(PKGS)
+
+.phony: clean_microsuite
+clean_microsuite:
+	$(CABAL) clean
+
+.phony: deepclean_microsuite
+deepclean_microsuite: clean_microsuite
+	git submodule foreach --recursive 'git clean -fd'
+
+purge_microsuite: deepclean_microsuite
+	rm -rf .cabal-sandbox/
+	rm cabal.sandbox.config
