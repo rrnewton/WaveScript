@@ -17,13 +17,13 @@ main :: IO ()
 main = defaultMainModifyConfig $ \conf -> conf
   { benchlist = benches
   , buildMethods = [ wsc2 ]
-  , plugIns = []
+  , plugIns = [ ]
   }
 
 benches :: [Benchmark DefaultParamMeaning]
 benches = [ mkBenchmark (bench "pipline/num_pipe.ws") tuples compileSpec
             | tuples <- runtimeSpec ]
-  where bench = ("benchmarks/microbenchmarks/" ++)
+  where bench = ("microbench/" ++)
         runtimeSpec = [ ["-n", show n] | n <- [40,80 .. 400] ]
         compileSpec = Or [ Set NoMeaning . RuntimeEnv "NUMOPS" $ show ops
                            | ops <- [16,32 .. 400] ]

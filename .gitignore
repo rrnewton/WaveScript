@@ -2,11 +2,13 @@
 *~
 *#
 
-# ignore HSBencher cabal files
+# ignore HSBencher files
 run_benchmarks.exe
 .cabal-sandbox
 cabal.sandbox.config
 dist
+bench_*.log*
+results_*.dat*
 
 *.so
 depends/compiled/
