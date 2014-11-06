@@ -132,7 +132,7 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 	ln -s .cabal-sandbox/bin/run_benchmarks.exe run_benchmarks.exe
 
 .phony: clean_microsuite
-clean_microsuite: run_benchmarks.exe
+clean_microsuite:
 	$(CABAL) clean
 	rm run_benchmarks.exe
 
