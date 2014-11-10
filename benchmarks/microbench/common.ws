@@ -37,7 +37,7 @@ fun op4_pipe(f1, f2, f3, f4, n, s) {
   f(n, s)
 }
 
-;; split a single stream evenly into n streams
+// split a single stream evenly into n streams
 createNStreams :: (Int, Stream Int) -> List (Stream Int);
 fun createNStreams (n, src) {
   fun f (nth) {
@@ -51,6 +51,28 @@ fun createNStreams (n, src) {
   };
   fun g (i) if i==n+1 then [] else f(i):::g(i+1);
   g(1); 
+}
+
+// straight line merge
+mergeNStreams1 :: List (Stream Int) -> Stream Int;
+fun mergeNStreams1(streams) {
+  fun f (ls) if tail(ls)==[] then head(ls) else merge(head(ls), f(tail(ls)));
+  f(streams)
+}
+
+// tree merge
+mergeNStreams2 :: List (Stream Int) -> Stream Int;
+fun mergeNStreams2(streams) {
+  fun f (ls) {
+    if tail(ls)==[] then
+      head(ls)
+    else
+      if tail(tail(ls))==[] then 
+        merge(head(ls), head(tail(ls)))
+      else
+        merge(merge(head(ls), head(tail(ls))), f(tail(tail(ls))))
+  };
+  f(streams)
 }
 
 // create a incremental stream given a start int and a successor function
