@@ -5,6 +5,9 @@ module Main where
 
 import qualified Data.ByteString.Char8 as B
 import System.Exit
+import System.FilePath
+import System.Directory
+import Control.Monad.Trans
 
 import HSBencher (defaultMainModifyConfig)
 import HSBencher.Types
@@ -21,7 +24,7 @@ main = defaultMainModifyConfig $ \conf -> conf
   }
 
 benches :: [Benchmark DefaultParamMeaning]
-benches = [ mkBenchmark (bench "pipline/num_pipe.ws") tuples compileSpec
+benches = [ mkBenchmark (bench "pipeline/num_pipe.ws") tuples compileSpec
             | tuples <- runtimeSpec ]
   where bench = ("microbench/" ++)
         runtimeSpec = [ ["-n", show n] | n <- [40,80 .. 400] ]
@@ -36,8 +39,11 @@ wsc2 = BuildMethod
   , setThreads = Nothing
   , clean = \_ _ _ -> return ()
   , compile = \_ _ _ target -> do
-      runSuccessful " [wsc2] " $ "wsc2 " ++ target
-      return $ StandAloneBinary "./query.exe"
+    let (dir,file) = splitFileName target
+    lift $ putStrLn $ " [wsc2] Compiling file "++file++" in dir "++dir
+    lift $ setCurrentDirectory dir 
+    runSuccessful " [wsc2] " $ "wsc2 " ++ file
+    return $ StandAloneBinary "./query.exe"
   }
 
 runSuccessful :: String -> String -> BenchM [B.ByteString]
