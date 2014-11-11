@@ -135,6 +135,7 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 clean_microsuite:
 	$(CABAL) clean
 	rm -f run_benchmarks.exe
+	rm -f microbench/*/query.*
 
 .phony: deepclean_microsuite
 deepclean_microsuite: clean_microsuite
