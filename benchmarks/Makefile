@@ -119,8 +119,8 @@ ifeq ($(JENKINS_GHC),)
   JENKINS_GHC=7.8.3
 endif
 
-PKGS= ./ ./HSBencher/hsbencher ./HSBencher/hgdata #./HSBencher/hsbencher-tool ./HSBencher/hsbencher-fusion ./HSBencher/hsbencher-codespeed
-CBLARGS= --disable-documentation  --with-ghc=ghc-$(JENKINS_GHC) --force-reinstalls
+PKGS= ./ ./HSBencher/hsbencher ./HSBencher/hgdata ./HSBencher/hsbencher-fusion #./HSBencher/hsbencher-tool ./HSBencher/hsbencher-codespeed
+CBLARGS= -j --disable-documentation --with-ghc=ghc-$(JENKINS_GHC) --force-reinstalls
 
 microsuite: run_benchmarks.exe
 	
@@ -139,8 +139,8 @@ clean_microsuite:
 
 .phony: deepclean_microsuite
 deepclean_microsuite: clean_microsuite
-	git submodule foreach --recursive 'git clean -fd'
+	cd $(REGIMENTD) && git submodule foreach --recursive 'git clean -fd'
 
 purge_microsuite: deepclean_microsuite
 	rm -rf .cabal-sandbox/
-	rm cabal.sandbox.config
+	rm -f cabal.sandbox.config

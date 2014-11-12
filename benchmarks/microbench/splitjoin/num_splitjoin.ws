@@ -1,6 +1,6 @@
 include "../common.ws"
 
-numFilters = tryLookup("NUMFILTERS", 100)
+numFilters = tryLookup("NUMOPS", 100)
 
 src = iterate _ in timer(100) {
   state { cnt = 0 }
