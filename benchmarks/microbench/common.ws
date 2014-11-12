@@ -43,7 +43,7 @@ fun createNStreams (n, src) {
   fun f (nth) {
     iterate x in src {
       state { cnt = 1 }
-      if moduloI(cnt + (3 - nth), n) == 0 then {
+      if moduloI(cnt + (n - nth), n) == 0 then {
         emit x;
       };
       cnt += 1;
@@ -73,6 +73,14 @@ fun mergeNStreams2(streams) {
         merge(merge(head(ls), head(tail(ls))), f(tail(tail(ls))))
   };
   f(streams)
+}
+
+pull :: (Int, List a) -> List a;
+fun pull(n, ls) {
+  fun f(n, ls) {
+    if n == 0 then [] else head(ls):::f(n-1, tail(ls))
+  };
+  f(n, ls);
 }
 
 // create a incremental stream given a start int and a successor function
