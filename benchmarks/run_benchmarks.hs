@@ -27,6 +27,11 @@ main = defaultMainModifyConfig $ \conf -> conf
 
 benches :: [Benchmark DefaultParamMeaning]
 benches = [ mkBenchmark (bench "pipeline/num_simple_pipeline.ws") tuples spec 
+          , mkBenchmark (bench "pipeline/array_simple_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/list_simple_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/array_big_allocation_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/list_big_allocation_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/sieve_of_eratosthenese.ws") tuples spec
           , mkBenchmark (bench "splitjoin/num_splitjoin.ws") tuples spec
           ]
   where bench = ("microbench/" ++)
