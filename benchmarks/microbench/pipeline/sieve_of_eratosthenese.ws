@@ -3,11 +3,7 @@ include "../common.ws"
 numFilters = tryLookup("NUMFILTERS", 100)
 
 // iota stream 
-src = iterate _ in timer(100) {
-  state { cnt = 1; }
-  emit cnt;
-  cnt := cnt + 1
-}
+src = createCntStream(fun (x) x + 1, 1)
 
 main = {
   // f is the sieve of eratosthenes
