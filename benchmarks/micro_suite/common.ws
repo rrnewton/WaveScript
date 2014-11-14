@@ -102,3 +102,14 @@ fun createStream (succ, start) {
     cnt := succ(cnt);
   }
 }
+
+// create a incremental stream given a start int and a successor function
+createStreams :: (Int -> Int, Int, Int) -> List (Stream Int);
+fun createStreams (succ, start, n) {
+  fun f (n) {
+    if n==0 then
+      []
+    else createStream(succ, start):::f(n-1)
+  };
+  f(n)
+}
