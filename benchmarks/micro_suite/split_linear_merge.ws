@@ -6,5 +6,5 @@ src = createStream(fun (x) x + 1, 1)
 
 streams = splitStream(numOps, src)
 
-// straight merge
+// linear merge
 main = mergeStreams1(streams)
