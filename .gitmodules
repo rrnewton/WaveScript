@@ -1,3 +1,6 @@
 [submodule "benchmarks/HSBencher"]
 	path = benchmarks/HSBencher
 	url = https://github.com/rrnewton/HSBencher.git
+[submodule "benchmarks/micro_suite/HSBencher"]
+	path = benchmarks/micro_suite/HSBencher
+	url = https://github.com/rrnewton/HSBencher

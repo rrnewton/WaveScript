@@ -27,9 +27,9 @@ set -e
 
 # Switch to where the benchmarks are
 cd "$CHECKOUT"
-pwd
-make clean_microsuite
-make microsuite
+
+make clean
+make
 
 export TRIALS=1
 

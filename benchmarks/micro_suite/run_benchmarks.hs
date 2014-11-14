@@ -26,16 +26,18 @@ main = defaultMainModifyConfig $ \conf -> conf
   }
 
 benches :: [Benchmark DefaultParamMeaning]
-benches = [ mkBenchmark (bench "pipeline/num_simple_pipeline.ws") tuples spec 
-          , mkBenchmark (bench "pipeline/array_simple_pipeline.ws") tuples spec
-          , mkBenchmark (bench "pipeline/list_simple_pipeline.ws") tuples spec
-          , mkBenchmark (bench "pipeline/array_big_allocation_pipeline.ws") tuples spec
-          , mkBenchmark (bench "pipeline/list_big_allocation_pipeline.ws") tuples spec
-          , mkBenchmark (bench "pipeline/sieve_of_eratosthenese.ws") tuples spec
-          , mkBenchmark (bench "splitjoin/num_splitjoin.ws") tuples spec
+benches = [ mkBenchmark "pipeline_simple.ws" tuples spec 
+          , mkBenchmark "pipeline_complex.ws" tuples spec
+          , mkBenchmark "pipeline_sieve_of_eratosthenes.ws" tuples spec
+          , mkBenchmark "linear_merge.ws" tuples spec
+          , mkBenchmark "tree_merge.ws" tuples spec
+          , mkBenchmark "copy_linear_merge.ws" tuples spec
+          , mkBenchmark "copy_tree_merge.ws" tuples spec
+          , mkBenchmark "split_linear_merge.ws" tuples spec
+          , mkBenchmark "split_tree_merge.ws" tuples spec
+          , mkBenchmark "dead_code_pruning.ws" tuples spec
           ]
-  where bench = ("microbench/" ++)
-        tuples = ["-n", "250000"]
+  where tuples = ["-n", "50000"]
         -- It seems that I can't set spec to `Or []` or else benches that use it
         -- will never be run. So we'll set this garbage instead. Ugh.
         --spec = Set NoMeaning $ RuntimeEnv "_IGNORE_" ""
@@ -50,11 +52,8 @@ wsc2 = BuildMethod
   , setThreads = Nothing
   , clean = \_ _ _ -> return ()
   , compile = \_ _ _ target -> do
-      let (dir,file) = splitFileName target
-      lift $ setCurrentDirectory dir
-      runSuccessful " [wsc2] " $ "wsc2 -noprint " ++ file
-      lift $ setCurrentDirectory "../.."
-      return . StandAloneBinary $ dir ++ "query.exe"
+      runSuccessful " [wsc2] " $ "wsc2 -noprint " ++ target
+      return . StandAloneBinary $ "./query.exe"
   }
 
 runSuccessful :: String -> String -> BenchM [B.ByteString]
