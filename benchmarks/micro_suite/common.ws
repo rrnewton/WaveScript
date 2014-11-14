@@ -38,8 +38,8 @@ fun op4_pipe(f1, f2, f3, f4, n, s) {
 }
 
 // split a single stream evenly into n streams
-createNStreams :: (Int, Stream Int) -> List (Stream Int);
-fun createNStreams (n, src) {
+splitStream :: (Int, Stream Int) -> List (Stream Int);
+fun splitStream (n, src) {
   fun f (nth) {
     iterate x in src {
       state { cnt = 1 }
@@ -54,15 +54,15 @@ fun createNStreams (n, src) {
 }
 
 // straight line merge
-mergeNStreams1 :: List (Stream Int) -> Stream Int;
-fun mergeNStreams1(streams) {
+mergeStreams1 :: List (Stream Int) -> Stream Int;
+fun mergeStreams1(streams) {
   fun f (ls) if tail(ls)==[] then head(ls) else merge(head(ls), f(tail(ls)));
   f(streams)
 }
 
 // tree merge
-mergeNStreams2 :: List (Stream Int) -> Stream Int;
-fun mergeNStreams2(streams) {
+mergeStreams2 :: List (Stream Int) -> Stream Int;
+fun mergeStreams2(streams) {
   fun f (ls) {
     if tail(ls)==[] then
       head(ls)
