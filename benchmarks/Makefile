@@ -123,7 +123,7 @@ PKGS= ./ ./HSBencher/hsbencher ./HSBencher/hgdata ./HSBencher/hsbencher-fusion #
 CBLARGS= -j --disable-documentation --with-ghc=ghc-$(JENKINS_GHC) --force-reinstalls
 
 microsuite: run_benchmarks.exe
-	
+
 run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 	which -a $(CABAL)
 	$(CABAL) sandbox init
