@@ -2,7 +2,7 @@ include "common.ws"
 
 numOps = tryLookup("NUMOPS", 100)
 
-src = createCntStream(fun(x) x, 10)
+src = createStream(fun(x) x, 10)
 
 fun f (x) x * 10
 fun g (x) x - 1

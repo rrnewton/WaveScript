@@ -84,8 +84,8 @@ fun pull(n, ls) {
 }
 
 // create a incremental stream given a start int and a successor function
-createCntStream :: (Int -> Int, Int) -> Stream Int;
-fun createCntStream (succ, start) {
+createStream :: (Int -> Int, Int) -> Stream Int;
+fun createStream (succ, start) {
   iterate _ in timer(100) {
     state { cnt = start }
     emit cnt;

@@ -2,7 +2,7 @@ include "common.ws"
 
 numOps = tryLookup("NUMOPS", 100)
 
-src = createCntStream(fun (x) x + 1, 1)
+src = createStream(fun (x) x + 1, 1)
 
 main = {
   // f is the sieve of eratosthenes
