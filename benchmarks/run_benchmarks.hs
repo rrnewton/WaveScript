@@ -3,30 +3,44 @@
 -- | HSBencher script to run all the benchmarks.
 module Main where
 
+import Control.Monad.Trans
 import qualified Data.ByteString.Char8 as B
+import System.Directory
 import System.Exit
+import System.Environment (getEnv)
+import System.FilePath
+import System.IO.Unsafe (unsafePerformIO)
 
 import HSBencher (defaultMainModifyConfig)
 import HSBencher.Types
 import HSBencher.Internal.Utils (runLogged)
 
---import HSBencher.Backend.Fusion  (defaultFusionPlugin)
+import HSBencher.Backend.Fusion  (defaultFusionPlugin)
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = defaultMainModifyConfig $ \conf -> conf
   { benchlist = benches
   , buildMethods = [ wsc2 ]
-  , plugIns = [ ]
+  , plugIns = [ SomePlugin defaultFusionPlugin ]
   }
 
 benches :: [Benchmark DefaultParamMeaning]
-benches = [ mkBenchmark (bench "pipline/num_pipe.ws") tuples compileSpec
-            | tuples <- runtimeSpec ]
+benches = [ mkBenchmark (bench "pipeline/num_simple_pipeline.ws") tuples spec 
+          , mkBenchmark (bench "pipeline/array_simple_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/list_simple_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/array_big_allocation_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/list_big_allocation_pipeline.ws") tuples spec
+          , mkBenchmark (bench "pipeline/sieve_of_eratosthenese.ws") tuples spec
+          , mkBenchmark (bench "splitjoin/num_splitjoin.ws") tuples spec
+          ]
   where bench = ("microbench/" ++)
-        runtimeSpec = [ ["-n", show n] | n <- [40,80 .. 400] ]
-        compileSpec = Or [ Set NoMeaning . RuntimeEnv "NUMOPS" $ show ops
-                           | ops <- [16,32 .. 400] ]
+        tuples = ["-n", "250000"]
+        -- It seems that I can't set spec to `Or []` or else benches that use it
+        -- will never be run. So we'll set this garbage instead. Ugh.
+        --spec = Set NoMeaning $ RuntimeEnv "_IGNORE_" ""
+        spec = Variant (numops++"ops") `Set` RuntimeEnv "NUMOPS" numops
+        numops = unsafePerformIO $ getEnv "NUMOPS"
 
 wsc2 :: BuildMethod
 wsc2 = BuildMethod
@@ -36,8 +50,11 @@ wsc2 = BuildMethod
   , setThreads = Nothing
   , clean = \_ _ _ -> return ()
   , compile = \_ _ _ target -> do
-      runSuccessful " [wsc2] " $ "wsc2 " ++ target
-      return $ StandAloneBinary "./query.exe"
+      let (dir,file) = splitFileName target
+      lift $ setCurrentDirectory dir
+      runSuccessful " [wsc2] " $ "wsc2 -noprint " ++ file
+      lift $ setCurrentDirectory "../.."
+      return . StandAloneBinary $ dir ++ "query.exe"
   }
 
 runSuccessful :: String -> String -> BenchM [B.ByteString]
