@@ -41,6 +41,8 @@ export NUMOPS=100
 ./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload --name=WaveScript_Benchmarks --clientid=$CID --clientsecret=$SEC $*
 export NUMOPS=200
 ./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload --name=WaveScript_Benchmarks --clientid=$CID --clientsecret=$SEC $*
+export NUMOPS=300
+./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload --name=WaveScript_Benchmarks --clientid=$CID --clientsecret=$SEC $*
 export NUMOPS=400
 ./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload --name=WaveScript_Benchmarks --clientid=$CID --clientsecret=$SEC $*
 export NUMOPS=500
