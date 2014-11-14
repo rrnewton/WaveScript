@@ -1,11 +1,9 @@
-include "../common.ws"
+include "common.ws"
 
-numStreams = tryLookup("NUMSTREAMS", 100)
-numMerges = tryLookup("NUMMERGES", 1)
+numOps = tryLookup("NUMOPS", 100)
 
-src = createCntStream(fun (x) x + 1, 1)
+src = createStream(fun (x) x + 1, 1)
 
-streams = createNStreams(numStreams, src)
+streams = splitStream(numOps, src)
 
-// straight merge
-main = mergeNStreams1(pull(numMerges, streams))
+main = head(streams)
