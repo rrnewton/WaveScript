@@ -53,6 +53,16 @@ fun splitStream (n, src) {
   g(1); 
 }
 
+// copy a single stream to n streams
+copyStream :: (Int, Stream Int) -> List (Stream Int);
+fun copyStream (n, src) {
+  fun f (nth) {
+    iterate x in src { emit x }
+  };
+  fun g (i) if i==n+1 then [] else f(i):::g(i+1);
+  g(1); 
+}
+
 // straight line merge
 mergeStreams1 :: List (Stream Int) -> Stream Int;
 fun mergeStreams1(streams) {
