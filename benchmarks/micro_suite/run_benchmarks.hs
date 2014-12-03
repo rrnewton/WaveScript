@@ -23,10 +23,11 @@ main = defaultMainModifyConfig $ \conf -> conf
   { benchlist = benches
   , buildMethods = [ wsc2 ]
   , plugIns = [ SomePlugin defaultFusionPlugin ]
+  -- , harvesters = customTagHarvesterInt "OPTLEVEL" `mappend` harvesters conf
   }
 
 benches :: [Benchmark DefaultParamMeaning]
-benches = [ mkBenchmark "pipeline_simple.ws" tuples spec 
+xbenches = [ mkBenchmark "pipeline_simple.ws" tuples spec 
           , mkBenchmark "pipeline_complex.ws" tuples spec
           , mkBenchmark "pipeline_sieve_of_eratosthenes.ws" tuples spec
           , mkBenchmark "linear_merge.ws" tuples spec

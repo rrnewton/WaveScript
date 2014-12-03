@@ -85,8 +85,8 @@ fun mergeStreams2(streams) {
   f(streams)
 }
 
-pull :: (Int, List a) -> List a;
-fun pull(n, ls) {
+take :: (Int, List a) -> List a;
+fun take(n, ls) {
   fun f(n, ls) {
     if n == 0 then [] else head(ls):::f(n-1, tail(ls))
   };
