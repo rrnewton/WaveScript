@@ -27,7 +27,7 @@ main = defaultMainModifyConfig $ \conf -> conf
   }
 
 benches :: [Benchmark DefaultParamMeaning]
-xbenches = [ mkBenchmark "pipeline_simple.ws" tuples spec 
+benches = [ mkBenchmark "pipeline_simple.ws" tuples spec 
           , mkBenchmark "pipeline_complex.ws" tuples spec
           , mkBenchmark "pipeline_sieve_of_eratosthenes.ws" tuples spec
           , mkBenchmark "linear_merge.ws" tuples spec
